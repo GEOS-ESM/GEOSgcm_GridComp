@@ -1,0 +1,72 @@
+#!/bin/csh -f
+
+gmake clean
+gmake BUILD
+
+######################################################################
+
+set cubes   = `echo c0048 \
+                    c0090 \
+                    c0180 \
+                    c0360 \
+                    c0720 \
+                    c1000 \
+                    c1440 \
+                    c2880`
+
+######################################################################
+
+set latlons = `echo 0144x0091 \
+                    0180x0091 \
+                    0288x0181 \
+                    0360x0180 \
+                    0360x0181 \
+                    0540x0361 \
+                    0576x0361 \
+                    0720x0361 \
+                    1152x0721 \
+                    3600x1800 `
+
+######################################################################
+
+foreach cube   ($cubes)
+     set NC = `echo $cube | cut -dc -f2`
+     set nx = 8640
+     set ny = 4320
+     if($NC == 1440) then
+       set nx = 17280
+       set ny = 8640
+     endif
+     if($NC == 2880) then
+       set nx = 21600
+       set ny = 10800
+     endif
+       set nt = 95000000
+
+     bin/mkCubeFVRaster -x $nx -y $ny $NC
+
+foreach latlon ($latlons)
+     set IM = `echo $latlon | cut -dx -f1`
+     set JM = `echo $latlon | cut -dx -f2`
+
+        @ z = $JM
+        @ n = $JM / 2
+        @ x = $n  * 2
+        @ y = $x  + 1
+
+     # Dateline Center, Pole Center
+     # ----------------------------
+     if( $y == $z ) then
+         bin/mkLatLonRaster -x $nx -y $ny -b DC -p PC $IM $JM
+         bin/CombineRasters -v -t $nt DC${IM}xPC${JM} CF${NC}x6C
+     endif
+
+     # Dateline Edge, Pole Edge
+     # ------------------------
+     if( $x == $z ) then
+         bin/mkLatLonRaster -x $nx -y $ny -b DE -p PE $IM $JM
+         bin/CombineRasters -v -t $nt DE${IM}xPE${JM} CF${NC}x6C
+     endif
+end
+
+end

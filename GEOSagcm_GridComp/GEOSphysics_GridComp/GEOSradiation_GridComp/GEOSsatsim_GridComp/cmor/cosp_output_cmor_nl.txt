@@ -1,0 +1,15 @@
+&CMOR
+  INPATH = './cmor',
+  OUTPATH = './outputs',
+  EXPERIMENT_ID = 'Global forecast model',
+  INSTITUTION = 'Met Office (Exeter, Devon, EX1 3PB, UK)',
+  SOURCE = 'MetUM N320L50 vn6.1',
+  CALENDAR = 'none',
+  REALIZATION = 1,
+  CONTACT = 'alejandro.bodas@metoffice.gov.uk',
+  HISTORY = 'history',
+  COMMENT = 'comment',
+  REFERENCES = 'references',
+  TABLE = 'COSP_table_2D',
+  MAXTSTEPS = 1000
+/

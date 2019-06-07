@@ -1,0 +1,23 @@
+#
+# Sample resource file exemplifying the specification of an interface to
+# boundary conditions, emissions and other external files. This resource
+# file is meant to be read by the MAPL_ExtData Grid Component.
+#
+
+PrimaryExports%%
+# -------------|-------|-------|--------|----------------------|--------|--------|-------------|----------|
+#  Import      |       |       | Regrid |        Refresh       | OffSet | Scale  | Variable On |   File   |
+#  Name        | Units | Clim  | Method |     Time Template    | Factor | Factor |     File    | Template |
+# -------------|-------|-------|--------|----------------------|--------|--------|-------------|----------|
+
+WSUB_NATURE    'm2 s2'     Y         N               0                 0.0      1.0     w_var_masked      ExtData/g5gcm/moist/L72/Wvar_positive_05hrdeg_2006%m2.nc4
+%%
+
+DerivedExports%%
+# ---------|---------|--------------------------------------------|
+#  Export  | Primary |_________________ Mask _____________________|
+#  Name    |  Name   |    Name    |           Expression          |
+# ---------|---------|------------|-------------------------------|
+# ---------|---------|------------|-------------------------------|
+%%
+

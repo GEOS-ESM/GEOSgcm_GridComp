@@ -1,0 +1,79 @@
+Software Licence Agreement
+
+A. Met Office of FitzRoy Road, Exeter EX1 3PB is the Licensor
+
+1. Licence.
+
+The Met Office grants you a non-exclusive, non-transferable Licence to use 
+the Cloud Simulator software ("the Software") accompanying this License. 
+
+2. General Restrictions.
+
+The Software includes source code, object code, scripts, user interface, 
+know-how, copyrighted material, trade secrets and other proprietary materials 
+that are protected by copyright and other laws and international treaty 
+provisions. You may not let, lease, sublicense, distribute, copy, reproduce, 
+assign, share, sell, electronically transfer the Software over a network to 
+another computer or otherwise transfer the right to use it without the 
+express permission of the Met Office.
+
+3. Purpose.
+
+The Software is provided to you solely for research on Earth observation and 
+cloud feedback purposes and must not be used commercially.
+
+4. Ownership.
+
+The ownership of and title to the Software and any supporting documentation 
+shall remain at all times with the copyright British Crown, the Met Office 
+or its licensor. The Software and documentation are provided to you to allow 
+you to exercise your rights under this Licence, which is granted to you.
+
+5. Duration. 
+
+This licence will remain in effect until terminated. 
+
+6. Termination.
+
+You may terminate this license at any time by returning the Software and 
+related documentation to the Met Office. This License will terminate 
+immediately without notice from us if you fail to comply with any of the 
+provisions of this License or you are given notice that the license has 
+terminated. Upon termination you must return the Software and any related 
+documentation.
+
+7. Disclaimer of Warranty
+
+THE MET OFFICE DISCLAIMS ALL WARRANTIES, REPRESENTATIONS AND PROMISES, 
+INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF SATISFACTORY QUALITY 
+AND FIT FOR THE PURPOSE. NEITHER DOES THE MET OFFICE MAKE ANY REPRESENTATIONS
+AS TO COMPATABILITY WITH YOUR OPERATING SYSTEMS AND PLATFORMS.
+
+In no event does the Met Office warrant that the Software or related 
+documentation will satisfy your requirements, that the Software and 
+documentation will be without errors or defects or that the operation of the 
+Software will be uninterrupted.
+
+IN NO EVENT WILL THE MET OFFICE BE LIABLE FOR ANY OTHER DAMAGES, INCLUDING 
+BUT NOT LIMITED TO DAMAGES FOR LOSS OF PROFITS DATA OR USE OF THE SOFTWARE OR
+FOR ANY INDIRECT, INCIDENTAL OR CONSEQUENTIAL DAMAGES, EVEN IF THE MET OFFICE 
+HAS BEEN SPECIFICALLY ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. 
+
+8. Upgrades.
+
+The Met Office reserves the right from time to time to make changes and 
+upgrades to the Software which on request will be provided to you under the 
+same terms set out herein.
+
+9. Entire Agreement.
+
+This License constitutes the entire agreement between us with respect to your 
+rights or warranties for using the Software and related documentation. If any 
+provision of this agreement is determined to be invalid or unenforceable the 
+remaining provisions shall continue in full force.
+
+10. Governing Law.
+
+This Agreement is governed by and construed in accordance with the Laws of 
+England and Wales. 
+

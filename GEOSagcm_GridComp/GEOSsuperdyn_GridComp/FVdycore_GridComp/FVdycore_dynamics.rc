@@ -1,0 +1,6 @@
+# dynamics resource file
+
+dyn_restart_file: dynamics_restart.in
+dyn_incouplings_file: zero_couplings.in
+dyn_layout_file: FVdycore_layout.rc
+topography_file: topography

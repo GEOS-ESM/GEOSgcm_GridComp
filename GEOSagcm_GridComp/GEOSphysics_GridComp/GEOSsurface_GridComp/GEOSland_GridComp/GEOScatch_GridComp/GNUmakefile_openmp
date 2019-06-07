@@ -1,0 +1,132 @@
+#
+# Makefile for ESMA components.
+#
+# REVISION HISTORY:
+#
+# 09Jun2003  da Silva  First crack.
+# 27Aug2008  Reichle   Renamed (mislabeled) "mpi/nompi" to "openmp/noopenmp"
+#
+
+# Make sure ESMADIR is defined
+# ----------------------------
+ifndef ESMADIR
+       ESMADIR := $(PWD)/../../../../../../../..
+endif
+
+# Compilation rules, flags, etc
+# -----------------------------
+  include $(ESMADIR)/Config/ESMA_base.mk  # Generic stuff
+  include $(ESMADIR)/Config/ESMA_arch.mk  # System dependencies
+  include $(ESMADIR)/Config/GMAO_base.mk
+
+# Set openmp flag
+# ------------
+NTHIS = GEOScatch_GridComp
+ifeq ($(OPENMP),openmp)
+  THIS = $(NTHIS)_openmp
+  OPENMPFLAG = $(OMPFLAG) $(MPFLAG)
+else
+  THIS = $(NTHIS)
+  OPENMPFLAG =
+endif
+LIB  = lib$(THIS).a
+
+# Local programs
+# --------------
+#ALLPROGSRCS = dbg_clsm_offline.F90
+ALLPROGSRCS =
+PROGSRCS = $(wildcard $(ALLPROGSRCS))
+ifeq ($(PROGSRCS),$(NULL))
+   PROGUPDIR = $(wildcard $(addprefix ../,$(ALLPROGSRCS)))
+   PROGSRCS = $(subst ../,,$(PROGUPDIR))
+endif
+PROGS = $(addsuffix .x,$(basename $(PROGSRCS)))
+
+#                  ---------------------
+#                  Standard ESMA Targets
+#                  ---------------------
+
+esma_install install: $(LIB) $(PROGS)
+	$(MKDIR) $(ESMALIB) $(ESMAINC)/$(THIS)
+	$(CP) -p *.a            $(ESMALIB)
+	$(CP) -p *.mod          $(ESMAINC)/$(THIS)
+#	$(CP) -p GEOS_ErrLog.h  $(ESMAINC)/$(THIS)
+
+esma_clean clean:
+	$(RM) *~ *.[aox] *.[Mm][Oo][Dd] *.x
+
+esma_distclean distclean:
+	$(RM) *~ *.[aoxd] *.[Mm][Oo][Dd] *.x
+
+esma_doc doc:
+	@echo no documentation here
+#	@$(PROTEX) $(PROTEX_FLAGS) *GridComp*.[fF]* > $(ESMADOC)/$(THIS).tex
+
+esma_help help:
+	@echo "Standard ESMA targets:"
+	@echo "% make esma_install    (builds and install under ESMADIR)"
+	@echo "% make esma_clean      (removes deliverables: *.[aox], etc)"
+	@echo "% make esma_distclean  (leaves in the same state as cvs co)"
+	@echo "% make esma_doc        (generates PDF, installs under ESMADIR)"
+	@echo "% make esma_help       (this message)"
+	@echo "Environment:"
+	@echo "      ESMADIR = $(ESMADIR)"
+	@echo "      BASEDIR = $(BASEDIR)"
+	@echo "         ARCH = $(ARCH)"
+	@echo "         SITE = $(SITE)"
+
+#                  --------------------
+#                  User Defined Targets
+#                  --------------------
+
+ALLSRCS  = GEOS_CatchGridComp.F90 \
+           catchment.F90          \
+           catch_iau.F90         
+
+#---------------------------------------------------------
+# NOTES:
+# 1. source files are either in local or upper directory
+# 2. remove "../" from upper directory filenames
+#---------------------------------------------------------
+
+SRCS = $(wildcard $(ALLSRCS))
+ifeq ($(SRCS),$(NULL))
+   UPDIR = $(wildcard $(addprefix ../,$(ALLSRCS)))
+   SRCS  = $(subst ../,,$(UPDIR))
+endif
+OBJS = $(addsuffix .o,$(basename $(SRCS)))
+DEPS = $(addsuffix .d,$(basename $(SRCS))) $(addsuffix .d,$(basename $(PROGSRCS))) 
+#       m_dbg_routines.d
+
+THIS_CFIO = MAPL_cfio_r4
+
+INC_DIRS = . .. $(INC_MAPL_BASE) $(INC_CFIO) $(INC_MPEU) $(INC_GEOS_SURFSHR) $(INC_GEOS_SHARED) $(INC_ESMF) $(INC_SDF) $(INC_GEOS_LANDSHR)
+USER_FINCS = $(foreach dir,$(INC_DIRS),$(I)$(dir))
+vpath % $(INC_DIRS)
+
+USER_FFLAGS = $(BIG_ENDIAN) $(OPENMPFLAG) \
+              $(M)$(ESMAINC)/GEOS_Shared $(M)$(ESMAINC)/GEOS_Base $(M)$(ESMAINC)/MAPL_Base
+USER_LDFLAGS = $(OPENMPFLAG)
+FREAL = $(FREAL4) # for now, require 32 bit reals (R4)
+
+LIB_GEOS_SURFSHR = $(ESMALIB)/libGEOS_SurfaceShared.a
+
+$(LIB) lib : $(OBJS)
+	$(AR) $(AR_FLAGS) $(LIB) $(OBJS)
+	$(RANLIB) $(RANLIB_FLAGS) $(LIB)
+
+#.
+
+#dbg_clsm_offline.x: dbg_clsm_offline.o m_dbg_routines.o $(LIB) $(LIB_GEOS_SURFSHR) $(LIB_GEOS_LANDSHR)
+#	$(LD) $(LDFLAGS) -o $@ $+ \
+#         $(LIB_MAPL_BASE) $(LIB_MAPL_BASE_STUBS) $(LIB_MAPL_BASE) $(LIB_GEOS_SHARED) $(LIB_CFIO) $(LIB_MPEU) \
+#         $(LIB_ESMF) $(LIB_SDF) $(LIB_SYS) $(LIB_MPI)
+
+# Hack to prevent remaking dep files during cleaning
+# --------------------------------------------------
+  ifneq ($(findstring clean,$(MAKECMDGOALS)),clean)
+    -include $(DEPS)
+  endif
+
+
+  -include $(ESMADIR)/Config/ESMA_post.mk  # ESMA additional targets, macros

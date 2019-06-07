@@ -1,0 +1,102 @@
+
+      taudiag = 0.0
+
+!-----Compute cloud optical thickness following Eqs. (6.4a,b) and (6.7)
+!     Rain optical thickness is set to 0.00307 /(gm/m**2).
+!     It is for a specific drop size distribution provided by Q. Fu.
+
+      tcldlyr(0) = 1.0
+      enn    (0) = 0.0
+
+      do k = 1, nlevs
+         if(reff(k,1)<=0.0) then
+            taucld1=0.0
+         else
+            taucld1=(((dp(k)*1.0e3)/MAPL_GRAV)*hydromets(k,1))*(aib_ir(1,ib)+aib_ir(2,ib)/&
+                  reff(k,1)**aib_ir(3,ib))
+         end if
+
+            taucld2=(((dp(k)*1.0e3)/MAPL_GRAV)*hydromets(k,2))*(awb_ir(1,ib)+(awb_ir(2,ib)+&
+                  (awb_ir(3,ib)+awb_ir(4,ib)*reff(k,2))*reff(k,2))*reff(k,2))
+
+            taucld3=0.00307*(((dp(k)*1.0e3)/MAPL_GRAV)*hydromets(k,3))
+
+!-----Below, we use the table of coefficients tabulated for suspended
+!     cloud ice particles (aib_ir) for falling snow. These coefficients
+!     lead to unphysical (negative) values of cloud optical thickness 
+!     for effective radii greater than 113 microns. By restricting the 
+!     effective radius of snow to 112 microns, we prevent unphysical 
+!     optical thicknesses.
+
+         reff_snow = min(reff(k,4),112.0)
+
+         if(reff_snow<=0.0) then
+            taucld4=0.0
+         else
+            taucld4=(((dp(k)*1.0e3)/MAPL_GRAV)*hydromets(k,4))*(aib_ir(1,ib)+aib_ir(2,ib)/&
+                  reff_snow**aib_ir(3,ib))
+         end if
+
+         taudiag(k,1)=taucld1
+         taudiag(k,2)=taucld2
+         taudiag(k,3)=taucld3
+         taudiag(k,4)=taucld4
+
+!-----Compute cloud single-scattering albedo and asymmetry factor for
+!     a mixture of ice particles and liquid drops following 
+!     Eqs. (6.5), (6.6), (6.15) and (6.16).
+!     Single-scattering albedo and asymmetry factor of rain are set
+!     to 0.54 and 0.95, respectively, based on the information provided
+!     by Prof. Qiang Fu.
+
+         tauc=taucld1+taucld2+taucld3+taucld4
+
+         if (tauc > 0.02 .and. fcld(k) > 0.01) then
+
+            w1=taucld1*(aiw_ir(1,ib)+(aiw_ir(2,ib)+(aiw_ir(3,ib) &
+                  +aiw_ir(4,ib)*reff(k,1))*reff(k,1))*reff(k,1))
+            w2=taucld2*(aww_ir(1,ib)+(aww_ir(2,ib)+(aww_ir(3,ib)&
+                  +aww_ir(4,ib)*reff(k,2))*reff(k,2))*reff(k,2))
+            w3=taucld3*0.54
+            w4=taucld4*(aiw_ir(1,ib)+(aiw_ir(2,ib)+(aiw_ir(3,ib) &
+                  +aiw_ir(4,ib)*reff_snow)*reff_snow)*reff_snow)
+            ww=(w1+w2+w3+w4)/tauc
+
+
+            g1=w1*(aig_ir(1,ib)+(aig_ir(2,ib)+(aig_ir(3,ib)&
+                  +aig_ir(4,ib)*reff(k,1))*reff(k,1))*reff(k,1))
+            g2=w2*(awg_ir(1,ib)+(awg_ir(2,ib)+(awg_ir(3,ib) &
+                  +awg_ir(4,ib)*reff(k,2))*reff(k,2))*reff(k,2))
+            g3=w3*0.95
+            g4=w4*(aig_ir(1,ib)+(aig_ir(2,ib)+(aig_ir(3,ib)&
+                  +aig_ir(4,ib)*reff_snow)*reff_snow)*reff_snow)
+       
+           if (w1+w2+w3+w4.ne.0.0) then 
+            gg=(g1+g2+g3+g4)/(w1+w2+w3+w4)
+	    else 
+	    gg=0.5
+	   end if 
+
+!-----Parameterization of LW scattering following Eqs. (6.11)
+!     and (6.12). 
+
+            ff=0.5+(0.3739+(0.0076+0.1185*gg)*gg)*gg
+
+!ALT: temporary protection against negative cloud optical thickness
+
+            tauc=max((1.-ww*ff),0.0)*tauc
+
+!-----compute cloud diffuse transmittance. It is approximated by using 
+!     a diffusivity factor of 1.66.
+
+            tcldlyr(k) = exp(-1.66*tauc)
+            enn    (k) = fcld(k)*(1.0-tcldlyr(k)) ! N in the documentation (6.13)
+
+         else
+
+            tcldlyr(k) = 1.0
+            enn    (k) = 0.0
+
+         end if
+      end do
+

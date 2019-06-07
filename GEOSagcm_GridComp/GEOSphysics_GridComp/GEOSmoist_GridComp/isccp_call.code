@@ -1,0 +1,100 @@
+
+      call ESMF_ClockGet(CLOCK, TIMESTEP=DELT, RC=STATUS);VERIFY_(STATUS)
+      call GEOS_SunGetInsolation(LONS, LATS,ORBIT, ZTH, SLR, &
+      INTV = DELT,CLOCK = CLOCK,RC=STATUS )
+      VERIFY_(STATUS)
+      call ESMF_GridCompGet( GC, grid=GRID,  RC=STATUS );VERIFY_(STATUS)
+      ZTH = max(ZTH,0.0)
+!
+      pfull = 0.5*(PLE(:,:,0:LM-1) +  PLE(:,:,1:LM ) )
+      phalf = PLE
+      Q_ISCCP = Q1
+      WK_CC = CLCN + CLLS
+!
+        conv     = 0.0   ! without convective cloud fraction
+        dtau_c   = 0.0   ! optical depth for convetive clouds
+        skt      = 0.0   ! The followings simply set to zero because of top_height = 2
+        emsfc_lw = 0.0
+        at       = 0.0
+        dem_s    = 0.0
+        dem_c    = 0.0
+      do J = 1, JM
+        do I = 1, IM
+        IF(ZTH(I,J)>0.0) THEN
+        sunlit(1:npoints) = 1
+        ELSE
+        sunlit(1:npoints) = 0
+        ENDIF
+        seed(1:npoints) = (pfull(I,J,LM)-int(pfull(I,J,LM)))*100 + 1
+        dtau_s(1,:) = TAUCLI(I,J,:) + TAUCLW(I,J,:)
+        IWK = I + (J-1)*IM
+        CALL ISCCP_CLOUD_TYPES( &
+           0,&
+           0,&
+           npoints,&
+           sunlit,&
+           LM,&
+           ncol,&
+           seed,&
+           pfull(I,J,1:LM),&
+           phalf(I,J,0:LM),&
+           Q_ISCCP(I,J,:),&
+           WK_CC(I,J,:),&
+           conv,&
+           dtau_s,&
+           dtau_c,&
+           top_height,&
+           overlap,&
+           skt,&
+           emsfc_lw,&
+           at,&
+           dem_s,&
+           dem_c,&
+           fq_isccp(IWK,:,:),&
+           totalcldarea(IWK),&
+           meanptop(IWK),&
+           meantaucld(IWK),&
+           boxtau(IWK,:),&
+           boxptop(IWK,:) )
+        end do
+        end do
+! output
+        unit=GETFILE( "Cloud_ISCCP.data", form="unformatted", RC=STATUS);VERIFY_(STATUS)
+	do jq = 1, 7
+	do iq = 1, 7
+	do j  = 1, JM
+	do i  = 1, IM
+	IWK = i + (j-1)*IM	
+	out_wk(i,j) = fq_isccp(IWK,iq, jq)
+	end do
+	end do
+	call GEOS_VarWrite(unit,GRID,out_wk(:,:),rc=status); VERIFY_(STATUS)
+	end do
+	end do
+! totalcldarea
+	do j = 1, JM
+	do i = 1, IM
+	IWK = i + (j-1)*IM
+	out_wk(i,j) = totalcldarea(IWK)
+	end do
+	end do
+        call GEOS_VarWrite(unit,GRID,out_wk(:,:),rc=status); VERIFY_(STATUS)
+! meanptop
+        do j = 1, JM
+        do i = 1, IM
+        IWK = i + (j-1)*IM
+        out_wk(i,j) = meanptop(IWK)
+        end do
+        end do
+        call GEOS_VarWrite(unit,GRID,out_wk(:,:),rc=status); VERIFY_(STATUS)
+! meantaucld
+        do j = 1, JM
+        do i = 1, IM
+        IWK = i + (j-1)*IM
+        out_wk(i,j) = meantaucld(IWK)
+        end do
+        end do
+        call GEOS_VarWrite(unit,GRID,out_wk(:,:),rc=status); VERIFY_(STATUS)
+!       call WRITE_PARALLEL(boxtau,      unit=unit,rc=status); VERIFY_(STATUS)
+!       call WRITE_PARALLEL(boxptop,     unit=unit,rc=status); VERIFY_(STATUS)
+

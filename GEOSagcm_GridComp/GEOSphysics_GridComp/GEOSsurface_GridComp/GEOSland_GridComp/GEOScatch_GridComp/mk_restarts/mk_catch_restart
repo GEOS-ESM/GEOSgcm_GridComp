@@ -1,0 +1,29 @@
+#!/bin/csh
+
+setenv  ARCH    `uname`
+setenv  LANDIR  /land/l_data/geos5/bcs/SiB2_V2
+setenv  HOMDIR  /home1/ltakacs/catchment/
+setenv  WRKDIR  $HOMDIR/wrk
+cd     $WRKDIR
+/bin/rm mk_catch_restart.x
+
+
+setenv old_rslv      540x361
+setenv old_dateline  DC
+setenv old_tilefile  FV_540x361_DC_360x180_DE.til
+setenv old_restart   d500_eros_01.catch_internal_rst.20060529_21z.bin
+
+setenv new_rslv      1080x721
+setenv new_tilefile  FV_1080x721_DC_360x180_DE.til
+setenv new_dateline  DC
+
+
+if( $ARCH == 'IRIX64' ) then
+    f90 -o mk_catch_restart.x  -g $HOMDIR/mk_catch_restart.F90
+endif
+
+if( $ARCH == 'OSF1' ) then
+    f90 -o mk_catch_restart.x  -g -convert big_endian -assume byterecl $HOMDIR/mk_catch_restart.F90
+endif
+
+./mk_catch_restart.x

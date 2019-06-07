@@ -1,0 +1,28 @@
+This directory contains software to create restarts and bcs for
+all tile components, not just catch.
+
+The five restarts are created in ./OutData/ by simply 
+running mk_Restarts (no arguments) from the command line.
+This builds the two executables, if necessary. One executable
+does all the land grid files (two restarts, an lai-grn file, and
+two albedo files). The other executable can be used, with appropriate
+arguments (see mk_Restarts) to create the othe three restarts.
+
+Before running mk_Restarts you must checkout the InData and OutData
+subdirectories, and place the input data there.
+(see READMEs in these two directories).
+
+For convenience we have place copies on the MAPL hash software in
+this directory, so that the restarts can be created without building
+MAPL.
+
+The directory also contains legacy software by M Kistler that may
+still be needed for Eros and for early Fortuna tags.
+
+On 11/23/2009 Max made changes to sense if the input restart is old (i.e., has the 2
+pairs of prev/next variables or not. By default it produces an new
+restart, compatible with Fortuna-2_0 and later. By adding a 4th, optional,
+argument of "OutIsOld", it will produce a valid old restart. Note that
+any other string as a 4th argument, or no 4th argument will produce
+the new restart.
+

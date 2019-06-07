@@ -1,0 +1,218 @@
+
+      integer, parameter :: nm=11,nt=9,na=11
+      real,    parameter :: dm=0.1,dt=0.30103,da=0.1,t1=-0.9031
+
+      taubeam = 0.0
+      taudiff = 0.0
+
+      if (ict.ne.0) then
+
+!-----scale cloud optical thickness in each layer from taucld (with
+!     cloud amount fcld) to taubeam and taudiff (with cloud amount cc).
+!     taubeam is the scaled optical thickness for beam radiation and
+!     taudiff is for diffuse radiation (see section 7).
+
+!-----clouds within each of the high, middle, and low clouds are 
+!     assumed to be maximally overlapped, and the cloud cover (cc) 
+!     for a group (high, middle, or low) is the maximum cloud cover 
+!     of all the layers within a group
+
+         cc = 0.0
+
+         do k = 1, ict-1
+             cc(1)=max(cc(1),fcld(k))
+         end do
+         do k = ict, icb-1
+             cc(2)=max(cc(2),fcld(k))
+         end do
+         do k = icb, nlevs
+             cc(3)=max(cc(3),fcld(k))
+         end do
+
+      end if
+
+!-----Compute cloud optical thickness.  Eqs. (4.6) and (4.10)
+!     taucld1 is the optical thickness for ice particles
+!     taucld2 is the optical thickness for liquid particles
+!     taucld3 is the optical thickness for rain drops
+!     taucld4 is the optical thickness for snow
+
+      do k = 1, nlevs
+
+         if (reff(k,1) <= 0.) then
+            taucld1=0.
+         else
+            taucld1=(((dp(k)*1.0e3)/MAPL_GRAV)*hydromets(k,1))*aib_nir/reff(k,1)
+         end if
+
+         if (reff(k,2) <= 0.) then
+            taucld2=0.
+         else
+            taucld2=(((dp(k)*1.0e3)/MAPL_GRAV)*hydromets(k,2))*(awb_nir(ib,1)+awb_nir(ib,2)/reff(k,2))
+         end if
+
+            taucld3=(((dp(k)*1.0e3)/MAPL_GRAV)*hydromets(k,3))*arb_nir(ib,1)
+
+!-----In the IR optical thickness calculation (getirtau.code), it was 
+!     found that using the table of coefficients tabulated for suspended
+!     cloud ice particles (aib_ir) for falling snow lead to unphysical 
+!     (negative) values of cloud optical thickness for effective radii 
+!     greater than 113 microns. By restricting the effective radius of  
+!     snow to 112 microns, we prevent unphysical optical thicknesses. 
+!     For consistency's sake, we limit snow effective radius similarly here.
+
+         reff_snow = min(reff(k,4),112.0)
+
+         if (reff_snow <= 0.) then
+            taucld4=0.
+         else
+            taucld4=(((dp(k)*1.0e3)/MAPL_GRAV)*hydromets(k,4))*aib_nir/reff_snow
+         endif
+
+         if ( ict .ne. 0 ) then
+
+!-----scale cloud optical thickness in each layer from taucld (with
+!     cloud amount fcld) to taubeam and taudiff (with cloud amount cc).
+!     taubeam is the scaled optical thickness for beam radiation and
+!     taudiff is for diffuse radiation (see section 7).
+
+!-----clouds within each of the high, middle, and low clouds are 
+!     assumed to be maximally overlapped, and the cloud cover (cc) 
+!     for a group (high, middle, or low) is the maximum cloud cover 
+!     of all the layers within a group
+
+            if (k.lt.ict) then
+               kk=1
+            else if (k.ge.ict .and. k.lt.icb) then
+               kk=2
+            else
+               kk=3
+            end if
+ 
+            tauc=taucld1+taucld2+taucld3+taucld4
+
+            if (tauc.gt.0.02 .and. fcld(k).gt.0.01) then
+
+!-----normalize cloud cover following Eq. (7.8)
+             if (cc(kk).ne.0.0) then
+                 fa=fcld(k)/cc(kk)
+	     else
+	         fa=0.0
+	     end if
+
+!-----table look-up
+ 
+               tauc=min(tauc,32.)
+
+               fm=cosz/dm 
+               ft=(log10(tauc)-t1)/dt
+               fa=fa/da
+
+               im=int(fm+1.5) 
+               it=int(ft+1.5)
+               ia=int(fa+1.5)
+  
+               im=max(im,2)
+               it=max(it,2)
+               ia=max(ia,2)
+     
+               im=min(im,nm-1)
+               it=min(it,nt-1)
+               ia=min(ia,na-1)
+ 
+               fm=fm-real(im-1)
+               ft=ft-real(it-1)
+               fa=fa-real(ia-1)
+
+!-----scale cloud optical thickness for beam radiation following 
+!     Eq. (7.3).
+!     the scaling factor, xai, is a function of the solar zenith
+!     angle, optical thickness, and cloud cover.
+
+               xai=    (-caib(im-1,it,ia)*(1.-fm)+&
+                         caib(im+1,it,ia)*(1.+fm))*fm*.5+caib(im,it,ia)*(1.-fm*fm)
+
+               xai=xai+(-caib(im,it-1,ia)*(1.-ft)+&
+                         caib(im,it+1,ia)*(1.+ft))*ft*.5+caib(im,it,ia)*(1.-ft*ft)
+
+               xai=xai+(-caib(im,it,ia-1)*(1.-fa)+&
+                         caib(im,it,ia+1)*(1.+fa))*fa*.5+caib(im,it,ia)*(1.-fa*fa)
+
+               xai=xai-2.*caib(im,it,ia)
+
+               xai=max(xai,0.0)
+               xai=min(xai,1.0)
+
+               taubeam(k,1)=taucld1*xai
+               taubeam(k,2)=taucld2*xai
+               taubeam(k,3)=taucld3*xai
+               taubeam(k,4)=taucld4*xai
+
+!-----scale cloud optical thickness for diffuse radiation following 
+!     Eq. (7.4).
+!     the scaling factor, xai, is a function of the cloud optical
+!     thickness and cover but not the solar zenith angle.
+ 
+               xai=    (-caif(it-1,ia)*(1.-ft)+&
+                         caif(it+1,ia)*(1.+ft))*ft*.5+caif(it,ia)*(1.-ft*ft)
+ 
+               xai=xai+(-caif(it,ia-1)*(1.-fa)+&
+                         caif(it,ia+1)*(1.+fa))*fa*.5+caif(it,ia)*(1.-fa*fa)
+ 
+               xai=xai-caif(it,ia)
+ 
+               xai=max(xai,0.0)
+               xai=min(xai,1.0)
+ 
+               taudiff(k,1)=taucld1*xai
+               taudiff(k,2)=taucld2*xai
+               taudiff(k,3)=taucld3*xai
+               taudiff(k,4)=taucld4*xai
+            end if
+         else
+         ! Overlap calculation scaling not needed
+            taubeam(k,1)=taucld1
+            taubeam(k,2)=taucld2
+            taubeam(k,3)=taucld3
+            taubeam(k,4)=taucld4
+
+            taudiff(k,1)=taucld1
+            taudiff(k,2)=taucld2
+            taudiff(k,3)=taucld3
+            taudiff(k,4)=taucld4
+         end if
+
+!-----compute cloud single scattering albedo and asymmetry factor
+!     for a mixture of ice and liquid particles.
+!     Eqs.(4.6)-(4.8), (6.2)-(6.4)
+
+         ssaclt=0.99999
+         asyclt=1.0
+         tauc=taucld1+taucld2+taucld3+taucld4
+
+         if (tauc.gt.0.02 .and. fcld(k).gt.0.01) then
+
+            w1=(1.-(aia_nir(ib,1)+(aia_nir(ib,2)+aia_nir(ib,3)*reff(k,1))*reff(k,1)))*taucld1
+            w2=(1.-(awa_nir(ib,1)+(awa_nir(ib,2)+awa_nir(ib,3)*reff(k,2))*reff(k,2)))*taucld2
+            w3=(1.- ara_nir(ib,1))                                                   *taucld3
+            w4=(1.-(aia_nir(ib,1)+(aia_nir(ib,2)+aia_nir(ib,3)*reff_snow)*reff_snow))*taucld4
+            ssaclt=(w1+w2+w3+w4)/tauc
+
+            g1=(aig_nir(ib,1)+(aig_nir(ib,2)+aig_nir(ib,3)*reff(k,1))*reff(k,1))*w1
+            g2=(awg_nir(ib,1)+(awg_nir(ib,2)+awg_nir(ib,3)*reff(k,2))*reff(k,2))*w2
+            g3= arg_nir(ib,1)                                                   *w3
+
+            g4=(aig_nir(ib,1)+(aig_nir(ib,2)+aig_nir(ib,3)*reff(k,4))*reff(k,4))*w4
+	    
+	    if ((w1+w2+w3+w4).ne.0.0) then
+             asyclt=(g1+g2+g3+g4)/(w1+w2+w3+w4)
+	    end if
+	     
+
+         end if
+
+         ssacl(k)=ssaclt
+         asycl(k)=asyclt
+
+      end do
+

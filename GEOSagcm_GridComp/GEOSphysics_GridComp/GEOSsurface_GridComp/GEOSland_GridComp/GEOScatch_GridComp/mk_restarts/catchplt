@@ -1,0 +1,25 @@
+n = 1
+while ( n < 64 )
+
+m = n
+if( m < 10 ) ; m = 0n ; endif
+
+'set dfile 1'
+'setx'
+'set y 1'
+'set z 1'
+'set cmark 0'
+'d var'm'.1'
+
+'set dfile 2'
+'setx'
+'set y 1'
+'set z 1'
+'set cmark 0'
+'d var'm'.2'
+
+'draw title Var: 'm
+pull flag
+'c'
+n = n + 1
+endwhile

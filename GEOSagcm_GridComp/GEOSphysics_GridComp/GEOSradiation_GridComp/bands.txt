@@ -1,0 +1,33 @@
+c  The solar spectrum is divided into eight bands:
+c
+c        in the uv region :
+c           index  1 for the 0.225-0.285 micron band
+c           index  2 for the 0.175-0.225;0.285-0.300 micron band
+c           index  3 for the 0.300-0.325 micron band
+c           index  4 for the 0.325-0.4 micron band
+c        in the par region :
+c           index  5 for the 0.4-0.690 micron band
+c        in the infrared region :
+c           index  6 for the 0.690-1.220 micron band
+c           index  7 for the 1.220-2.270 micron band
+c           index  8 for the 2.270-3.850 micron band
+c
+c  The terrestrial spectrum is divided into nine bands:
+c   
+c   band     wavenumber (/cm)   absorber          wavelength (microns)
+c
+c    1           0 - 340           h2o            29.412-
+c    2         340 - 540           h2o            18.519-29.412
+c    3         540 - 800       h2o,cont,co2       12.500-18.519
+c    4         800 - 980       h2o,cont           10.204-12.500 
+c                              co2,f11,f12,f22
+c    5         980 - 1100      h2o,cont,o3         9.091-10.204
+c                              co2,f11
+c    6        1100 - 1215      h2o,cont            8.230-9.091
+c                              n2o,ch4,f12,f22
+c    7        1215 - 1380      h2o,cont            7.246-8.230
+c                              n2o,ch4     
+c    8        1380 - 1900          h2o             5.263-7.246
+c    9        1900 - 3000          h2o             3.333-5.263
+c   10         540 - 620           h2o            16.129-18.519
+c

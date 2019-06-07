@@ -1,0 +1,69 @@
+      interface mymalloc
+
+c Reals
+c -----
+         subroutine malloc_1d_r (a,i)
+         real(kind=8), dimension(:), pointer :: a
+         integer :: i
+         end subroutine malloc_1d_r
+ 
+         subroutine malloc_2d_r (a,i,j)
+         real(kind=8), dimension(:,:), pointer :: a
+         integer :: i,j   
+         end subroutine malloc_2d_r
+ 
+         subroutine malloc_3d_r (a,i,j,k)
+         real(kind=8), dimension(:,:,:), pointer :: a
+         integer :: i,j,k 
+         end subroutine malloc_3d_r
+ 
+         subroutine malloc_4d_r (a,i,j,k,l) 
+         real(kind=8), dimension(:,:,:,:), pointer :: a
+         integer :: i,j,k,l 
+         end subroutine malloc_4d_r
+ 
+c Integers
+c --------
+         subroutine malloc_1d_i (a,i)
+         integer, dimension(:), pointer :: a
+         integer :: i
+         end subroutine malloc_1d_i
+ 
+         subroutine malloc_2d_i (a,i,j)
+         integer, dimension(:,:), pointer :: a
+         integer :: i,j   
+         end subroutine malloc_2d_i
+ 
+         subroutine malloc_3d_i (a,i,j,k)
+         integer, dimension(:,:,:), pointer :: a
+         integer :: i,j,k 
+         end subroutine malloc_3d_i
+ 
+         subroutine malloc_4d_i (a,i,j,k,l) 
+         integer, dimension(:,:,:,:), pointer :: a
+         integer :: i,j,k,l 
+         end subroutine malloc_4d_i
+ 
+c Character*8
+c -----------
+         subroutine malloc_1d_c8 (a,i)
+         character*8, dimension(:), pointer :: a
+         integer :: i
+         end subroutine malloc_1d_c8
+ 
+         subroutine malloc_2d_c8 (a,i,j)
+         character*8, dimension(:,:), pointer :: a
+         integer :: i,j   
+         end subroutine malloc_2d_c8
+ 
+         subroutine malloc_3d_c8 (a,i,j,k)
+         character*8, dimension(:,:,:), pointer :: a
+         integer :: i,j,k 
+         end subroutine malloc_3d_c8
+ 
+         subroutine malloc_4d_c8 (a,i,j,k,l) 
+         character*8, dimension(:,:,:,:), pointer :: a
+         integer :: i,j,k,l 
+         end subroutine malloc_4d_c8
+ 
+      end interface 

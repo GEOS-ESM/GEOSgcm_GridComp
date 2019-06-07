@@ -1,0 +1,150 @@
+
+1.0 USAGE
+---------
+
+Usage: mkCatchParam -x nx -y ny -g Gridname -b DL -m MA -l LD -s SD -e EASE                         
+     -x: Size of longitude dimension of raster. DEFAULT: 8640                                       
+     -y: Size of latitude dimension of raster.  DEFAULT: 4320                                       
+     -g: Gridname  (name of the .til or .rst file without file extension)                           
+     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC                     
+     -l: Choice of LAI data set. DEFAULT : GSWP2                                                   
+         MODGEO  : Merged below GEOLAND2, MODIS, GSWP-2                                             
+         GEOLAND2: 10-day climatology from the period 1999-2011 on 40320x20160 grid                 
+         GSWP2   : Monthly climatology from the period 1982-1998 on 360x180 grid                    
+         MODIS   : 8-day climatology from the period 2000-2011  on 43200x21600 grid                  
+     -s: Choice of Soil Data. DEFAULT :HWSD                                                         
+         HWSD : Merged NGDC-HWSD-STATSGO soil properties on 43200x21600 with Woesten Parameters     
+         NGDC : Reynolds soil texture classes on 4320x2160 with Cosby parameters                    
+     -m: Choice of MODIS Albedo data. DEFAULT : MODIS2                                              
+         MODIS1: 16-day Climatology from 1'x1'(21600x10800) MODIS data from the period 2000-2004    
+         MODIS2: 8-day Climatology from 0.5'x0.5'(43200x21600) MODIS data from the period 2001-2011 
+     -e: EASE : This is optional if catchment.def file is available already or                      
+                    the til file format is pre-Fortuna-2.     
+
+HIDDEN OPTION FOR PRE-Fortuna_2 FORMAT VEGEATION DYNAMIC DATA FILES:
+In addition to the above command line options, a hard-wired option is available to obtain 
+monthly climatological vegetation dynamic data files in pre-Fortuna-2 format.
+Set below F25Tag .true. in mkCatchParam.F90:
+logical, parameter :: F25Tag = .false.
+
+2.0 OUTPUT FILES DESCRIPTION
+----------------------------
+
+	2.1 Catchment Geography
+	-----------------------
+
+		2.1.1 lat/lon extremeties and elevation
+			file name: catchment.def 
+			read (10,*) n_tiles
+			do n = 1, n_tiles
+				read (10,'(i8,i8,5(2x,f9.4))') tile_index,pfafstetter_id,   &
+					min_lon,max_lon,min_lat,max_lat, mean_elevation (m) 
+			enddo
+		2.1.2 tile topography
+			file name: cti_stats.dat
+			read (10,*) n_tiles
+			do n = 1, n_tiles
+				read (10,'(i8,i8,5(1x,f8.4))') tile_index,pfafstetter_id,   &
+					cti_mean, cti_std, cti_min, cti_max, cti_skew
+			enddo
+
+	2.2 Soil Parameters and Properties 	
+	----------------------------------
+
+		2.2.1 HWSD Soil Parameters
+			file name : soil_param.dat	
+			read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)') &
+				tile_index,pfafstetter_id,soil_class_top (0-30cm),  &
+				soil_class_com(0-100cm),BEE, PSIS,POROS,COND,       &
+				WPWET (wilting point/porosity),soildepth (mm),      &           
+                                gravel,OrgCarbon(0-30cm) ,OrgCarbon(0-100cm),       &
+				%sand(0-30cm), %clay(0-30cm), %sand(0-100cm),       &
+	                        %clay(0-100cm),WPWET(0-30cm), POROS(0-30cm)
+		2.2.2 NGDC Soil Parameters
+			file name : soil_param.dat	
+			read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4)')       &
+				tile_index,pfafstetter_id,soil_class_top (0-30cm),  &
+				soil_class_com(0-100cm),BEE, PSIS,POROS,COND,       &
+				WPWET (wilting point/porosity),soildepth (mm)		
+
+
+	2.3 Catchment Model Parameters (in tabular format) 	
+	--------------------------------------------------
+
+		2.3.1 Time scale parameters for moisture transfer between 
+	    		surfexec and rzexec
+			file name : tau_param.dat
+			read (10,'(i8,i8,4f10.7)')    &
+				tile_index,pfafstetter_id,atau2,btau2,atau5,btau5
+		2.3.2 Baseflow parameters
+			file name : bf.dat
+			read (10,'(i8,i8,f5.2,3(2x,e13.7))')tindex,pfaf,gnu,bf1,bf2,bf3
+
+		2.3.3 Time scale parameters for moisture transfer between
+			root zone and water table
+			file name : ts.dat
+			read (10,'(i8,i8,f5.2,4(2x,e13.7))')tindex,pfaf,gnu,   &
+			tsa1,tsa2,tsb1,tsb2
+		2.3.4 Area fractioning parameters
+			file name : ar.new	
+			write(10,'(i8,i8,f5.2,11(2x,e13.7))')tindex,pfaf,gnu,  &
+			ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4
+
+	2.4 Vegetatation classification data  (in tabular format) 	
+    	---------------------------------------------------------
+    
+	file name: mosaic_veg_typs_fracs
+	read (10,'(i8,i8,2(2x,i3),2(2x,f6.4))')tindex,pfaf,           &
+		primary_veg_type,secondary_veg_type, primary_veg_frac,&
+		secondary_veg_frac
+	
+	2.5 LAI and Greenness fraction
+	------------------------------
+
+		2.5.1 Current default file format
+			file names : lai.dat/green.dat
+			file format: fortran binaries, little_endian
+		                     The read statement should be MAPL_ReadForcing compatible: each data record is preceded by a header 
+					containing start and end dates of the period that the data have been averaged for.  
+		2.5.2 pre-Fortuna-2_1 files monthly climatology
+			file names : lai.dat/green.dat
+			file format: fortran binaries, big_endian
+				DO mon=1,12
+					read(10)(data(n),n=1,ncat)  
+				END DO	
+
+	2.6 MODIS Albedo Climatology (Visible/Near-Infrared Diffused; Note: GEOS5/CLSM does not read these data)
+	--------------------------------------------------------------------------------------------------------
+
+		2.6.1 Current default file format 
+			file names : MODIS1
+				     AlbMap.WS.16-day.tile.0.3_0.7.dat/AlbMap.WS.16-day.tile.0.7_5.0.dat
+				     MODIS2
+				     AlbMap.WS.8-day.tile.0.3_0.7.dat/AlbMap.WS.8-day.tile.0.7_5.0.dat
+			file format: fortran binaries, little_endian
+		                     The read statement should be MAPL_ReadForcing compatible: each data record is preceded by a header 
+					containing start and end dates of the period that the data have been averaged for.  
+		2.6.2 pre-Fortuna-2_1 files monthly climatology
+			file names : AlbMap.WS.2x5.00-04.monthly-tile.0.3_0.7.dat/AlbMap.WS.2x5.00-04.monthly-tile.0.7_5.0.dat
+			file format: fortran binaries, big_endian
+				DO mon=1,12
+					read(10)(data(n),n=1,ncat)  
+				END DO	
+
+	2.7 MODIS Scale Parameters (Visible/Near-Infrared Diffused) 
+	-----------------------------------------------------------
+
+		2.7.1 Current default file format
+			file names : visdf.dat/nirdf.dat
+			file format: fortran binaries, little_endian
+		                     The read statement should be MAPL_ReadForcing compatible: each data record is preceded by a header 
+					containing start and end dates of the period that the data have been averaged for.  
+		2.7.2 pre-Fortuna-2_1 files monthly climatology
+			file names : modis_scale_factor.albvf.clim/modis_scale_factor.albnf.clim
+			file format: fortran binaries, big_endian
+				DO mon=1,12
+					read(10)(data(n),n=1,ncat)  
+				END DO	
+		
+Contact: Sarith Mahanama (sarith.p.mahanama@nasa.gov)
+January 2, 2014

@@ -1,0 +1,133 @@
+#!/bin/csh
+
+# This script makes a tile file for a fixed sst run
+# using and atmospheric resolution of IM by JM
+# and using a 1 by 1 sst file.
+
+set IM = 288
+set JM = 181
+set RMTINY = 0   # Note: RMTINY=0 (GCM Default) will KEEP Tiny Tiles
+
+# in: ...GEOSsurface_GridComp/Shared/Raster
+#
+# At src Level
+# ------------
+if(! -e bin  ) mkdir bin
+if(! -e mod  ) mkdir mod
+if(! -e lib  ) mkdir lib
+if(! -e rst  ) mkdir rst
+if(! -e til  ) mkdir til
+if(! -e data ) mkdir data
+if(! -e clsm ) mkdir clsm
+
+# Populate data directory
+# -----------------------
+#  Within the data directory, link in the contents of "Shared" from
+#  the boundary condition area:  ../data > ln -s .../bcs/Fortuna-2_1/Shared/* .  
+
+cd src
+   gmake
+cd ../
+
+
+# Make:  til/Pfafstetter.til
+# --------------------------
+./bin/mkLandRaster 
+
+
+# Make:  Ocean Model Raster
+# -------------------------
+bin/mkLatLonRaster -b DE -p PE -t 0 360 180
+
+
+# Make:  Atmos Model Raster
+# -------------------------
+bin/mkLatLonRaster -b DC -p PC -t -1 $IM $JM
+
+
+# Combine Rasters:
+# ------------------------------------
+if( $IM < 100  ) set IM = 0$IM
+if( $JM < 100  ) set JM = 0$JM
+if( $IM < 1000 ) set IM = 0$IM
+if( $JM < 1000 ) set JM = 0$JM
+
+bin/CombineRasters -v -t 2000000 -f 0                 DE0360xPE0180 Pfafstetter
+bin/CombineRasters -v -t 2000000      DC${IM}xPC${JM} DE0360xPE0180-Pfafstetter
+
+
+# The final files are in the rst and til directory. For running
+# the GCM you only need the one in the til directory, which will be 
+# called:  DC${IM}xPC${JM}_DE0360xPE0180-Pfafstetter.til
+
+
+if ( $RMTINY == 1 ) then
+
+# Make:  Remove tiny tiles
+# -------------------------
+bin/rmTinyTiles  -b DC -p PC -t -1 $IM $JM DE0360xPE0180
+bin/mkCatchParam -b DC -p PC -t -1 $IM $JM DE0360xPE0180-Pfaf.notiny
+
+else
+
+bin/mkCatchParam -b DC -p PC -t -1 $IM $JM DE0360xPE0180-Pfafstetter
+
+endif
+
+
+exit
+
+------------------------------------------------------------------------
+
+
+You can also do this by doing 
+
+gmake IM=1152 JM=0721
+
+from the Raster directory. Notice the arguments must have 4 digits.
+
+gmake
+
+would do the same thing, but for a 288 by 181 atmosphere, which is the default.
+
+gmake NC=0360
+
+would do the same for a 1/4 degree cubed sphere. Again notice the
+4-digit argument. The tile file would be called:
+
+ CF0360x6C_DE0360xPE0180-Pfafstetter.til
+
+If you are using different resolution for the SST files, you
+can also do set this with gmake:
+
+gmake IMO=1440 JMO=0740 NC=0720
+
+creates a tile file for 1/4 degree SSTs and and 1/8 degree 
+cubed atmosphere. The file would be called:
+
+ CF0720x6C_DE1440xPE0720-Pfafstetter.til
+
+
+Making files for coupled runs is also possible.
+
+gmake IMM=0360 JMM=0200
+
+would use MOM's 360 by 200 tripolar grid.
+The MOM grids currently supported are
+
+120x65  360x200  720x410
+
+If you wish to use another MOM grid, you will need the
+grid_spec.nc file for your grid. You will also need to know
+its dimensions. Place the grid_spec files under 
+
+./data/MOM/aaaxbbb/grid_spec.nc
+
+and then 
+
+gmake IMM=0aaa JMM=0bbb NC=0720
+
+Would make a tile file to couple and 1/8 degree cubed atmosphere
+with a MOM tripolar of dimensions aaa by bbb described in the
+grid_spec file in the data/0aaax0bbb directory.
+

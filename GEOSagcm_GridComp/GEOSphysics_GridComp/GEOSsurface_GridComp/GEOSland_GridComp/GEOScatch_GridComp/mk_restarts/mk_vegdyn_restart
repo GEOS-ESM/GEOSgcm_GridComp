@@ -1,0 +1,23 @@
+#!/bin/csh
+
+setenv  ARCH    `uname`
+setenv  LANDIR  /land/l_data/geos5/bcs/SiB2_V2
+setenv  HOMDIR  /home1/ltakacs/catchment
+setenv  WRKDIR  $HOMDIR/wrk
+cd     $WRKDIR
+
+setenv rslv      1080x721
+setenv dateline  DC
+setenv nland     374925   # Note, check mk_catch LOG file for number of land tiles
+
+
+if( $ARCH == 'IRIX64' ) then
+     f90 -o mk_vegdyn_restart.x  $HOMDIR/mk_vegdyn_restart.F90
+endif
+
+if( $ARCH == 'OSF1' ) then
+     f90 -o mk_vegdyn_restart.x  -convert big_endian -assume byterecl $HOMDIR/mk_vegdyn_restart.F90
+endif
+
+mk_vegdyn_restart.x
+

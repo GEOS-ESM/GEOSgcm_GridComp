@@ -1,0 +1,15 @@
+      real,    dimension(IM,JM)       :: ZTH, SLR
+! input for the ISCCP simulator
+      integer, parameter:: npoints = 1, ncol = 2400, overlap = 3,&
+                           top_height = 2
+      integer           :: IWK, unit,iq,jq  ! working variable
+      integer,dimension(npoints) :: sunlit, seed
+      real  :: skt(npoints,LM),   at(npoints,LM),  dem_s(npoints,LM),&
+                cc(npoints,LM), conv(npoints,LM), dtau_s(npoints,LM),&
+            dtau_c(npoints,LM),dem_c(npoints,LM),  emsfc_lw
+      real, dimension(IM,JM,LM):: wk_cc, Q_ISCCP,pfull
+      real::phalf(im,jm,0:LM) 
+! output from the ISCCP simulator
+      real :: fq_isccp(IM*JM,7,7), totalcldarea(IM*JM),meanptop(IM*JM),&
+              meantaucld(IM*JM), boxtau(IM*JM,ncol),boxptop(IM*JM,ncol)
+      real :: out_wk(IM,JM)
