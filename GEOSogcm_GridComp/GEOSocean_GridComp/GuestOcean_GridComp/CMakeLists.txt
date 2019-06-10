@@ -1,5 +1,6 @@
 esma_set_this ()
 
+set (rename_MOM_GEOS5PlugMod MOM_GEOS5Plug)
 
 esma_add_library (${this}
   SRCS GuestOcean_GridComp.F90
