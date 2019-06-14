@@ -1,17 +1,25 @@
 esma_set_this ()
 
-set (alldirs
-  GEOSchem_GridComp
-  GEOSmoist_GridComp
-  GEOSsurface_GridComp
-  GEOSturbulence_GridComp
-  GEOSgwd_GridComp
-  GEOSradiation_GridComp
-  )
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_physicsGridComp.F90)
 
-esma_add_library (${this}
-  SRCS GEOS_PhysicsGridComp.F90
-  SUBCOMPONENTS ${alldirs}
-  DEPENDENCIES MAPL_Base GMAO_mpeu GMAO_stoch
-  INCLUDES ${INC_ESMF})
+  set (alldirs
+    GEOSchem_GridComp
+    GEOSmoist_GridComp
+    GEOSsurface_GridComp
+    GEOSturbulence_GridComp
+    GEOSgwd_GridComp
+    GEOSradiation_GridComp
+    )
+
+  esma_add_library (${this}
+    SRCS GEOS_PhysicsGridComp.F90
+    SUBCOMPONENTS ${alldirs}
+    DEPENDENCIES MAPL_Base GMAO_mpeu GMAO_stoch
+    INCLUDES ${INC_ESMF})
+
+else ()
+
+  esma_add_subdirectories (${alldirs})
+
+endif()
 
