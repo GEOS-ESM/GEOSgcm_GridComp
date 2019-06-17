@@ -17,22 +17,33 @@ set (srcs
 #***DAS***#  CubeGridPrototype.F90
   )
 
+set(dependencies MAPL_Base GMAO_hermes GEOS_Shared)
+
 if (FV_PRECISION MATCHES R4)
-   add_definitions (-DSINGLE_FV -DOVERLOAD_R4)
-#  list(APPEND dependencies GFDL_fms_r4)
+  get_target_property (extra_incs GFDL_fms_r4 INCLUDE_DIRECTORIES)
 else ()
-#  list(APPEND dependencies GFDL_fms_r8)
-  string(REPLACE " " ";" tmp ${FREAL8})
+  get_target_property (extra_incs GFDL_fms_r8 INCLUDE_DIRECTORIES)
 endif ()
 
-set(dependencies MAPL_Base GMAO_hermes GEOS_Shared)
-get_target_property (extra_incs GFDL_fms_r4 INCLUDE_DIRECTORIES)
 
 esma_add_library (${this}
   SRCS ${srcs}
   SUBCOMPONENTS fvdycore
   DEPENDENCIES ${dependencies}
   INCLUDES ${INC_ESMF} ${extra_incs})
+
+if (FV_PRECISION MATCHES R4)
+   target_compile_definitions (${this} PRIVATE -DSINGLE_FV -DOVERLOAD_R4)
+#  list(APPEND dependencies GFDL_fms_r4)
+else ()
+#  list(APPEND dependencies GFDL_fms_r8)
+
+#  string(REPLACE " " ";" tmp ${FREAL8})
+#  foreach(flag ${tmp})
+#    target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${flag}>)
+#  endforeach()
+endif ()
+
 
 set (CMAKE_Fortran_FLAGS_RELEASE "${GEOS_Fortran_FLAGS_VECT}")
 

@@ -48,7 +48,11 @@ set (srcs
   geos_utils/rs_scaleMod.F90
   )
 
-get_target_property (extra_incs GFDL_fms_r4 INCLUDE_DIRECTORIES)
+if (FV_PRECISION MATCHES R4)
+  get_target_property (extra_incs GFDL_fms_r4 INCLUDE_DIRECTORIES)
+else ()
+  get_target_property (extra_incs GFDL_fms_r8 INCLUDE_DIRECTORIES)
+endif ()
 
 esma_add_library (${this}
   SRCS ${srcs}
