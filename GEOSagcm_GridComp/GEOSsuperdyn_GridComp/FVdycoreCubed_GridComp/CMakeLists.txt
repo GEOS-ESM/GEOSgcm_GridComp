@@ -20,9 +20,9 @@ set (srcs
 set(dependencies MAPL_Base GMAO_hermes GEOS_Shared)
 
 if (FV_PRECISION MATCHES R4)
-  get_target_property (extra_incs GFDL_fms_r4 INCLUDE_DIRECTORIES)
-else ()
-  get_target_property (extra_incs GFDL_fms_r8 INCLUDE_DIRECTORIES)
+elseif (FV_PRECISION MATCHES R4R8) # FV is R4 but FMS is R8
+   get_target_property (extra_incs GFDL_fms_r4 INCLUDE_DIRECTORIES)
+elseif (FV_PRECISION MATCHES R8)
 endif ()
 
 
@@ -34,14 +34,15 @@ esma_add_library (${this}
 
 if (FV_PRECISION MATCHES R4)
    target_compile_definitions (${this} PRIVATE -DSINGLE_FV -DOVERLOAD_R4)
-#  list(APPEND dependencies GFDL_fms_r4)
-else ()
-#  list(APPEND dependencies GFDL_fms_r8)
-
-#  string(REPLACE " " ";" tmp ${FREAL8})
-#  foreach(flag ${tmp})
-#    target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${flag}>)
-#  endforeach()
+   target_link_libraries (${this} PUBLIC GFDL_fms_r4)
+elseif (FV_PRECISION MATCHES R4R8) # FV is R4 but FMS is R8
+   target_link_libraries (${this} PUBLIC GFDL_fms_r8)
+elseif (FV_PRECISION MATCHES R8)
+   target_link_libraries (${this} PUBLIC GFDL_fms_r8)
+   string(REPLACE " " ";" tmp ${FREAL8})
+   foreach(flag ${tmp})
+     target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${flag}>)
+   endforeach()
 endif ()
 
 
