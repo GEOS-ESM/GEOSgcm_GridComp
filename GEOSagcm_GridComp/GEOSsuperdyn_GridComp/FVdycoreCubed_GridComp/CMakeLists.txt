@@ -59,10 +59,10 @@ endforeach()
 
 add_executable (StandAlone_FV3_Dycore.x StandAlone_FV3_Dycore.F90)
 set_target_properties (StandAlone_FV3_Dycore.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
-target_link_libraries(StandAlone_FV3_Dycore.x ${this} GFDL_fms_r8)
+target_link_libraries(StandAlone_FV3_Dycore.x ${this})
 
 add_executable (rs_scale.x rs_scale.F90)
 set_target_properties (rs_scale.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
-target_link_libraries(rs_scale.x ${this} GMAO_pFIO GFDL_fms_r8)
+target_link_libraries(rs_scale.x ${this} GMAO_pFIO)
 
 
