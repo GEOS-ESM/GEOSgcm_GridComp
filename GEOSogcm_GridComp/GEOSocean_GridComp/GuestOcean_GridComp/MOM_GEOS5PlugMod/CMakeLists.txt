@@ -10,7 +10,7 @@ endif ()
 
 esma_add_library (${this}
   SRCS ${SRCS}
-  SUBCOMPONENTS mom
+  SUBCOMPONENTS @mom
   DEPENDENCIES MAPL_Base
   )
 
