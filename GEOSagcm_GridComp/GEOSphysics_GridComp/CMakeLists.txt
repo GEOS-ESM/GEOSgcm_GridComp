@@ -1,6 +1,6 @@
 esma_set_this ()
 
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_physicsGridComp.F90)
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_PhysicsGridComp.F90)
 
   set (alldirs
     GEOSchem_GridComp
