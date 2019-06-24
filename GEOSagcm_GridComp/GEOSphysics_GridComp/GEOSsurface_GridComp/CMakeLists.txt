@@ -1,6 +1,6 @@
 esma_set_this ()
 
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_surfaceGridComp.F90)
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
 
   set (alldirs
     GEOSlandice_GridComp
