@@ -20,25 +20,25 @@ set (srcs
 set(dependencies MAPL_Base GMAO_hermes GEOS_Shared)
 
 if (FV_PRECISION MATCHES R4)
+  set (GFDL GFDL_fms_r4)
 elseif (FV_PRECISION MATCHES R4R8) # FV is R4 but FMS is R8
-   get_target_property (extra_incs GFDL_fms_r4 INCLUDE_DIRECTORIES)
+  get_target_property (extra_incs GFDL_fms_r4 INCLUDE_DIRECTORIES)
+  set (GFDL GFDL_fms_r8)
 elseif (FV_PRECISION MATCHES R8)
+  set (GFDL GFDL_fms_r8)
 endif ()
-
 
 esma_add_library (${this}
   SRCS ${srcs}
   SUBCOMPONENTS fvdycore
   DEPENDENCIES ${dependencies}
+  DEPENDENCIES ${GFDL}
   INCLUDES ${INC_ESMF} ${extra_incs})
 
 if (FV_PRECISION MATCHES R4)
-   target_compile_definitions (${this} PRIVATE -DSINGLE_FV -DOVERLOAD_R4)
-   target_link_libraries (${this} PUBLIC GFDL_fms_r4)
+  target_compile_definitions (${this} PRIVATE -DSINGLE_FV -DOVERLOAD_R4)
 elseif (FV_PRECISION MATCHES R4R8) # FV is R4 but FMS is R8
-   target_link_libraries (${this} PUBLIC GFDL_fms_r8)
-elseif (FV_PRECISION MATCHES R8)
-   target_link_libraries (${this} PUBLIC GFDL_fms_r8)
+  target_compile_definitions (${this} PRIVATE -DSINGLE_FV -DOVERLOAD_R4)
 endif ()
 
 
@@ -57,13 +57,13 @@ endforeach()
 ecbuild_add_executable (
   TARGET StandAlone_FV3_Dycore.x
   SOURCES StandAlone_FV3_Dycore.F90
-  LIBS ${this} GFDL_fms_r8)
+  LIBS ${this})
 set_target_properties (StandAlone_FV3_Dycore.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
 
 ecbuild_add_executable (
   TARGET rs_scale.x
   SOURCES rs_scale.F90
-  LIBS ${this} GMAO_pFIO GFDL_fms_r8)
+  LIBS ${this} GMAO_pFIO)
 set_target_properties (rs_scale.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
 
 
