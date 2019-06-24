@@ -25,10 +25,9 @@ include_directories(${INC_NETCDF})
 
 foreach (src ${srcs})
   string (REGEX REPLACE ".F90" "" exe ${src})
-  add_executable (${exe} ${src})
-  target_link_libraries (${exe} PUBLIC MAPL_Base GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared)
-  install (
-    TARGETS ${exe}
-    DESTINATION ${CMAKE_BINARY_DIR}/bin)
+  ecbuild_add_executable (
+    TARGET ${exe}
+    SOURCES ${src}
+    LIBS MAPL_Base GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared)
 endforeach ()
 

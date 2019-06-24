@@ -57,12 +57,16 @@ foreach(flag ${tmp})
    target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${flag}>)
 endforeach()
 
-add_executable (StandAlone_FV3_Dycore.x StandAlone_FV3_Dycore.F90)
+ecbuild_add_executable (
+  TARGET StandAlone_FV3_Dycore.x
+  SOURCES StandAlone_FV3_Dycore.F90
+  LIBS ${this} GFDL_fms_r8)
 set_target_properties (StandAlone_FV3_Dycore.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
-target_link_libraries(StandAlone_FV3_Dycore.x ${this} GFDL_fms_r8)
 
-add_executable (rs_scale.x rs_scale.F90)
+ecbuild_add_executable (
+  TARGET rs_scale.x
+  SOURCES rs_scale.F90
+  LIBS ${this} GMAO_pFIO GFDL_fms_r8)
 set_target_properties (rs_scale.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
-target_link_libraries(rs_scale.x ${this} GMAO_pFIO GFDL_fms_r8)
 
 
