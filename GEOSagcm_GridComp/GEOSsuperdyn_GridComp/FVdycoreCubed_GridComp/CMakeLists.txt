@@ -66,4 +66,26 @@ ecbuild_add_executable (
   LIBS ${this} GMAO_pFIO)
 set_target_properties (rs_scale.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
 
+ecbuild_add_executable (
+   TARGET StandAlone_AdvCore.x
+   SOURCES StandAlone_AdvCore.F90
+   LIBS ${this})
+set_target_properties (StandAlone_AdvCore.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
 
+ecbuild_add_executable (
+   TARGET StandAlone_DynAdvCore.x
+   SOURCES StandAlone_DynAdvCore.F90
+   LIBS ${this})
+set_target_properties (StandAlone_DynAdvCore.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
+
+ecbuild_add_executable (
+   TARGET c2c.x
+   SOURCES c2c.F90
+   LIBS ${this})
+set_target_properties (c2c.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
+
+ecbuild_add_executable (
+   TARGET interp_restarts.x
+   SOURCES interp_restarts.F90
+   LIBS ${this})
+set_target_properties (interp_restarts.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
