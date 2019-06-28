@@ -31,3 +31,4 @@ foreach (src ${srcs})
     LIBS MAPL_Base GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared)
 endforeach ()
 
+install(FILES mk_Restarts DESTINATION bin)
