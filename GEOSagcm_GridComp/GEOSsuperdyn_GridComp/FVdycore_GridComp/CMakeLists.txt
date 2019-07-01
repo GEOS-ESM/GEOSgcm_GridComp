@@ -18,4 +18,5 @@ if (CRAY_POINTER)
   set_target_properties (${this} PROPERTIES COMPILE_FLAGS ${CRAY_POINTER})
 endif()
 
-
+file (GLOB rc_files *.rc)
+install(FILES ${rc_files} DESTINATION etc)
