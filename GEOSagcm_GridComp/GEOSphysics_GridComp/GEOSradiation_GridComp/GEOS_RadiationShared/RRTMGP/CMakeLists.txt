@@ -36,8 +36,11 @@ set (srcs
 esma_add_library(${this} 
    SRCS ${srcs})
 
-string (REPLACE " " ";" flags ${FREAL8})
-add_compile_options(${flags})
+string(REPLACE " " ";" tmp ${FREAL8})
+foreach(flag ${tmp})
+  target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${flag}>)
+endforeach()
+
 target_include_directories (${this} PUBLIC ${MKL_INCLUDE_DIRS} ${INC_NETCDF})
 
 set_target_properties (${this} PROPERTIES Fortran_MODULE_DIRECTORY ${include_${this}})
