@@ -19,13 +19,13 @@ set (srcs
 
 set(dependencies MAPL_Base GMAO_hermes GEOS_Shared)
 
-if (FV_PRECISION MATCHES R4)
-  set (GFDL GFDL_fms_r4)
-elseif (FV_PRECISION MATCHES R4R8) # FV is R4 but FMS is R8
-  get_target_property (extra_incs GFDL_fms_r4 INCLUDE_DIRECTORIES)
-  set (GFDL GFDL_fms_r8)
-elseif (FV_PRECISION MATCHES R8)
-  set (GFDL GFDL_fms_r8)
+if (FV_PRECISION STREQUAL R4)
+   set (GFDL GFDL_fms_r4)
+elseif (FV_PRECISION STREQUAL R4R8) # FV is R4 but FMS is R8
+   get_target_property (extra_incs GFDL_fms_r4 INCLUDE_DIRECTORIES)
+   set (GFDL GFDL_fms_r8)
+elseif (FV_PRECISION STREQUAL R8)
+   set (GFDL GFDL_fms_r8)
 endif ()
 
 esma_add_library (${this}

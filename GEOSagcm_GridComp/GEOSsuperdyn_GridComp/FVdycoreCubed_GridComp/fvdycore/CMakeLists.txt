@@ -48,10 +48,10 @@ set (srcs
   geos_utils/rs_scaleMod.F90
   )
 
-if (FV_PRECISION MATCHES R4)
-elseif (FV_PRECISION MATCHES R4R8) # FV is R4 but FMS is R8
+if (FV_PRECISION STREQUAL R4)
+elseif (FV_PRECISION STREQUAL R4R8) # FV is R4 but FMS is R8
    get_target_property (extra_incs GFDL_fms_r4 INCLUDE_DIRECTORIES)
-elseif (FV_PRECISION MATCHES R8)
+elseif (FV_PRECISION STREQUAL R8)
 endif ()
 
 esma_add_library (${this}
@@ -59,12 +59,13 @@ esma_add_library (${this}
   DEPENDENCIES MAPL_Base 
   INCLUDES ${extra_incs} ${INC_ESMF} ${INC_NETCDF})
 
-if (FV_PRECISION MATCHES R4)
+if (FV_PRECISION STREQUAL R4)
    target_compile_definitions (${this} PRIVATE -DSINGLE_FV -DOVERLOAD_R4)
    target_link_libraries (${this} PUBLIC GFDL_fms_r4)
-elseif (FV_PRECISION MATCHES R4R8) # FV is R4 but FMS is R8
+elseif (FV_PRECISION STREQUAL R4R8) # FV is R4 but FMS is R8
+   target_compile_definitions (${this} PRIVATE -DSINGLE_FV -DOVERLOAD_R4)
    target_link_libraries (${this} PUBLIC GFDL_fms_r8)
-elseif (FV_PRECISION MATCHES R8)
+elseif (FV_PRECISION STREQUAL R8)
    target_link_libraries (${this} PUBLIC GFDL_fms_r8)
    string(REPLACE " " ";" tmp ${FREAL8})
    foreach(flag ${tmp})
