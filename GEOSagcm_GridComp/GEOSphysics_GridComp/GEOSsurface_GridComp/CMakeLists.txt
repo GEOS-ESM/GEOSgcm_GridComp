@@ -1,14 +1,14 @@
 esma_set_this ()
 
+set (alldirs
+   GEOSlandice_GridComp
+   GEOSlake_GridComp
+   GEOSland_GridComp
+   GEOSsaltwater_GridComp
+   )
+  
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
 
-  set (alldirs
-    GEOSlandice_GridComp
-    GEOSlake_GridComp
-    GEOSland_GridComp
-    GEOSsaltwater_GridComp
-    )
-  
   esma_add_library (${this}
     SRCS GEOS_SurfaceGridComp.F90
     SUBCOMPONENTS ${alldirs}
@@ -18,7 +18,7 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_SurfaceGridComp.F90)
 
 else ()
 
-  esma_add_subdirectories (${alldirs})
+   esma_add_subdirectories (${alldirs} Shared)
 
 endif()
 
