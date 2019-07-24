@@ -33,7 +33,7 @@ program  mk_CatchRestarts
   real, allocatable :: ARA1(:),  ARA2(:),  ARA3(:), ARA4(:)
   real, allocatable :: ARW1(:),  ARW2(:),  ARW3(:), ARW4(:)
   real, allocatable :: TSA1(:),  TSA2(:),  TSB1(:), TSB2(:)
-  real, allocatable :: ATAU2(:), BTAU2(:), DP2BR(:), rity(:), CanopH(:)
+  real, allocatable :: ATAU2(:), BTAU2(:), DP2BR(:), rity(:)
 
   real              :: zdep1, zdep2, zdep3, zmet, term1, term2, rdum
   real, allocatable :: var1(:),var2(:,:)
@@ -56,6 +56,8 @@ program  mk_CatchRestarts
   logical,allocatable :: written(:)
   integer              :: ndims,filetype
   integer              :: dimSizes(3),nVars
+  logical              :: file_exists
+  type(MAPL_NCIO)      :: NCIOCatch  
 
 !---------------------------------------------------------------------------
 
@@ -146,16 +148,6 @@ program  mk_CatchRestarts
 
   call GetIds(loni,lati,lono,lato,Id)
 
-
-  open(30,file="OutData/visdf.dat", status="unknown", &
-       form="unformatted",convert="little_endian")
-
-  open(31,file="OutData/nirdf.dat", status="unknown", &
-       form="unformatted",convert="little_endian")
-
-  open(32,file="OutData/laigrn.data", status="unknown", &
-       form="unformatted",convert="little_endian")
-
   HAVE: if(havedata) then
 
      print *,'Working from Sariths data pretiled for this resolution'
@@ -163,16 +155,10 @@ program  mk_CatchRestarts
 ! Get number of catchments
 
   open(unit=22, &
-       file=trim(DataDir)//"mosaic_veg_typs_fracs",status='old',form='formatted')
+       file=trim(DataDir)//"catchment.def",status='old',form='formatted')
 
-! DSK c2880 grid has 14455675 land tiles
-  do i=1,16000000
-     read(22,*,end=300)
-  enddo
+  read (22, *) ncatch
 
-300 continue
-
-  ncatch = i-1
   close(22)
 
   if(ncatch==size(ido)) then
@@ -185,25 +171,7 @@ program  mk_CatchRestarts
      call exit(1)
   endif
 
-! Read veg type data
-
-  allocate(ity(ncatch),rity(ncatch), CanopH(ncatch))
-
-  open(unit=22, &
-       file=trim(DataDir)//"mosaic_veg_typs_fracs",status='old',form='formatted')
-
-  do N=1,ncatch
-     if (NewLand) then
-        read(22,*) I, j, ITY(N),idum, rdum, rdum, CanopH(N)
-     else
-        read(22,*) I, j, ITY(N),idum, rdum, rdum
-     endif
-  enddo
-
-  rity = float(ity)
-
-  close(22)
-
+  allocate(ity(ncatch),rity(ncatch))
   allocate (   BF1(ncatch),    BF2 (ncatch),     BF3(ncatch)  )
   allocate (VGWMAX(ncatch),   CDCR1(ncatch),   CDCR2(ncatch)  ) 
   allocate (  PSIS(ncatch),     BEE(ncatch),   POROS(ncatch)  ) 
@@ -215,102 +183,89 @@ program  mk_CatchRestarts
   allocate (  TSA2(ncatch),    TSB1(ncatch),    TSB2(ncatch)  )
   allocate ( ATAU2(ncatch),    BTAU2(ncatch),   DP2BR(ncatch)  )
 
-! allocate( alb(ncatch,12))
-  
-! open(unit=20, &
-!      file=trim(DataDir)//"modis_scale_factor.albvf.clim",status='old',form='unformatted',convert='big_endian')
+  inquire(file = trim(DataDir)//'/catch_params.nc4', exist=file_exists)
 
-! do k=1,12
-!    read(20) alb(:,k)
-! end do
+  if(file_exists) then
+         print *,'FILE FORMAT FOR LAND BCS IS NC4'
+       NCIOCatch   = MAPL_NCIOOpen(trim(DataDir)//'/catch_params.nc4',rc=rc) 
+       call MAPL_VarRead ( NCIOCatch ,'OLD_ITY', rity)
+       call MAPL_VarRead ( NCIOCatch ,'ARA1', ARA1)
+       call MAPL_VarRead ( NCIOCatch ,'ARA2', ARA2)
+       call MAPL_VarRead ( NCIOCatch ,'ARA3', ARA3)
+       call MAPL_VarRead ( NCIOCatch ,'ARA4', ARA4)
+       call MAPL_VarRead ( NCIOCatch ,'ARS1', ARS1)
+       call MAPL_VarRead ( NCIOCatch ,'ARS2', ARS2)
+       call MAPL_VarRead ( NCIOCatch ,'ARS3', ARS3)
+       call MAPL_VarRead ( NCIOCatch ,'ARW1', ARW1)
+       call MAPL_VarRead ( NCIOCatch ,'ARW2', ARW2)
+       call MAPL_VarRead ( NCIOCatch ,'ARW3', ARW3)
+       call MAPL_VarRead ( NCIOCatch ,'ARW4', ARW4)
 
-! do K=0,13
-!    yr = (k+11)/12
-!    mn = mod(k+11,12)+1
-!    yr1= (k+12)/12
-!    mn1= mod(k+12,12)+1
-!    write(30) float((/yr,mn,1,0,0,0,yr1,mn1,1,0,0,0,ncatch,1/))
-!    write(30) alb(Ido,mod(k+11,12)+1)
-! end do
+       if( SURFLAY.eq.20.0 ) then
+          call MAPL_VarRead ( NCIOCatch ,'ATAU2', ATAU2)
+          call MAPL_VarRead ( NCIOCatch ,'BTAU2', BTAU2)
+       endif
 
-! close(20)
-! close(30)
+       if( SURFLAY.eq.50.0 ) then
+          call MAPL_VarRead ( NCIOCatch ,'ATAU5', ATAU2)
+          call MAPL_VarRead ( NCIOCatch ,'BTAU5', BTAU2)
+       endif
 
+       call MAPL_VarRead ( NCIOCatch ,'PSIS', PSIS)
+       call MAPL_VarRead ( NCIOCatch ,'BEE', BEE)
+       call MAPL_VarRead ( NCIOCatch ,'BF1', BF1)
+       call MAPL_VarRead ( NCIOCatch ,'BF2', BF2)
+       call MAPL_VarRead ( NCIOCatch ,'BF3', BF3)
+       call MAPL_VarRead ( NCIOCatch ,'TSA1', TSA1)
+       call MAPL_VarRead ( NCIOCatch ,'TSA2', TSA2)
+       call MAPL_VarRead ( NCIOCatch ,'TSB1', TSB1)
+       call MAPL_VarRead ( NCIOCatch ,'TSB2', TSB2)
+       call MAPL_VarRead ( NCIOCatch ,'COND', COND)
+       call MAPL_VarRead ( NCIOCatch ,'GNU', GNU)
+       call MAPL_VarRead ( NCIOCatch ,'WPWET', WPWET)
+       call MAPL_VarRead ( NCIOCatch ,'DP2BR', DP2BR)
+       call MAPL_VarRead ( NCIOCatch ,'POROS', POROS)
+       call MAPL_NCIOClose (NCIOCatch  )   
+  else
+     open(unit=21, file=trim(DataDir)//"mosaic_veg_typs_fracs",status='old',form='formatted')
+     open(unit=22, file=trim(DataDir)//'bf.dat'               ,form='formatted')
+     open(unit=23, file=trim(DataDir)//'soil_param.dat'       ,form='formatted')
+     open(unit=24, file=trim(DataDir)//'ar.new'               ,form='formatted')
+     open(unit=25, file=trim(DataDir)//'ts.dat'               ,form='formatted')
+     open(unit=26, file=trim(DataDir)//'tau_param.dat'        ,form='formatted')
+     
+     do n=1,ncatch
+        read (21,*) I, j, ITY(N)
+        read (22, *) i,j, GNU(n), BF1(n), BF2(n), BF3(n)
+        
+        read (23, *) i,j, idum, idum, BEE(n), PSIS(n),&
+             POROS(n), COND(n), WPWET(n), DP2BR(n)
+        
+        read (24, *) i,j, rdum, ARS1(n), ARS2(n), ARS3(n),          &
+             ARA1(n), ARA2(n), ARA3(n), ARA4(n), &
+             ARW1(n), ARW2(n), ARW3(n), ARW4(n)
+        
+        read (25, *) i,j, rdum, TSA1(n), TSA2(n), TSB1(n), TSB2(n)
+        
+        if( SURFLAY.eq.20.0 ) read (26, *) i,j, ATAU2(n), BTAU2(n), rdum, rdum   ! for old soil params
+        if( SURFLAY.eq.50.0 ) read (26, *) i,j, rdum , rdum, ATAU2(n), BTAU2(n)  ! for new soil params
+     end do
 
-! open(unit=20, &
-!      file=trim(DataDir)//"modis_scale_factor.albnf.clim",status='old',form='unformatted',convert='big_endian')
+     rity = float(ity)
+     CLOSE (21, STATUS = 'KEEP')
+     CLOSE (22, STATUS = 'KEEP')
+     CLOSE (23, STATUS = 'KEEP')
+     CLOSE (24, STATUS = 'KEEP')
+     CLOSE (25, STATUS = 'KEEP')
 
-! do k=1,12
-!    read(20) alb(:,k)
-! end do
-
-! do K=0,13
-!    yr = (k+11)/12
-!    mn = mod(k+11,12)+1
-!    yr1= (k+12)/12
-!    mn1= mod(k+12,12)+1
-!    write(31) float((/yr,mn,1,0,0,0,yr1,mn1,1,0,0,0,ncatch,1/))
-!    write(31) alb(Ido,mod(k+11,12)+1)
-! end do
-
-! close(20)
-! close(31)
-
-
-! deallocate(alb)
-
-
-
-
-! Lai and greeness dataset
-
-!  allocate( lai(ncatch), grn(ncatch))
-  
-!  open(unit=20, &
-!       file=trim(DataDir)//"lai.dat",status='old',form='unformatted',convert='big_endian')
-!  open(unit=21, &
-!       file=trim(DataDir)//"green.dat",status='old',form='unformatted',convert='big_endian')
-
-!  do k=1,12
-!     read(20) lai
-!     read(21) grn
-!     write(32) lai(ido)
-!     write(32) grn(ido)
-!  end do
-
-!  deallocate(lai,grn)
-
-!  close(20)
-!  close(21)
-!  close(32)
-
-!  print *, "Wrote lai grn climatology"
-
-  open(unit=22, file=trim(DataDir)//'bf.dat'               ,form='formatted')
-  open(unit=23, file=trim(DataDir)//'soil_param.dat'       ,form='formatted')
-  open(unit=24, file=trim(DataDir)//'ar.new'               ,form='formatted')
-  open(unit=25, file=trim(DataDir)//'ts.dat'               ,form='formatted')
-  open(unit=26, file=trim(DataDir)//'tau_param.dat'        ,form='formatted')
+  endif
 
   do n=1,ncatch
-     read (22, *) i,j, GNU(n), BF1(n), BF2(n), BF3(n)
-
-     read (23, *) i,j, idum, idum, BEE(n), PSIS(n),&
-          POROS(n), COND(n), WPWET(n), DP2BR(n)
-
-     read (24, *) i,j, rdum, ARS1(n), ARS2(n), ARS3(n),          &
-          ARA1(n), ARA2(n), ARA3(n), ARA4(n), &
-          ARW1(n), ARW2(n), ARW3(n), ARW4(n)
-
-     read (25, *) i,j, rdum, TSA1(n), TSA2(n), TSB1(n), TSB2(n)
-
-     if( SURFLAY.eq.20.0 ) read (26, *) i,j, ATAU2(n), BTAU2(n), rdum, rdum   ! for old soil params
-     if( SURFLAY.eq.50.0 ) read (26, *) i,j, rdum , rdum, ATAU2(n), BTAU2(n)  ! for new soil params
-
+    
      zdep2=1000.
      zdep3=amax1(1000.,DP2BR(n))
 
-     if (zdep2 .gt.0.75*zdep3) then
+     if (zdep2 > 0.75*zdep3) then
         zdep2  =  0.75*zdep3              
      end if
 
@@ -325,7 +280,8 @@ program  mk_CatchRestarts
      CDCR2(n)  = (1.-WPWET(n))*POROS(n)*zdep3
   enddo
 
-     if (filetype /=0) then
+
+ if (filetype /=0) then
         do i=1,30
            read(50)
         enddo
@@ -339,47 +295,7 @@ else
 
    ncatch = size(pfi)
 
-
-! open(60,file=trim(DataDir)//'visdf.dat', status="unknown", &
-!      form="unformatted",convert="little_endian")
-
-! open(61,file=trim(DataDir)//'nirdf.dat', status="unknown", &
-!      form="unformatted",convert="little_endian")
-
-! open(62,file=trim(DataDir)//'lai_grn_clim', status="unknown", &
-!      form="unformatted",convert="little_endian")
-
-
-! allocate( alb(ncatch,1))
-
-! do K=0,13
-!    read(60) timestamp
-!    read(60) alb
-!    write(30) timestamp
-!    write(30) alb(Id,1)
-! end do
-
-! do K=0,13
-!    read(61) timestamp
-!    read(61) alb
-!    write(31) timestamp
-!    write(31) alb(Id,1)
-! end do
-
-! deallocate(alb)
-! allocate( lai(ncatch), grn(ncatch))
-
-
-! do k=1,12
-!    read(62) lai
-!    read(62) grn
-!    write(32) lai(id)
-!    write(32) grn(id)
-! end do
-
-! deallocate(lai,grn)
-
-  allocate(   rity(ncatch), CanopH(ncatch))
+  allocate(   rity(ncatch))
   allocate(   BF1(ncatch),    BF2 (ncatch),     BF3(ncatch)  )
   allocate (VGWMAX(ncatch),   CDCR1(ncatch),   CDCR2(ncatch)  ) 
   allocate (  PSIS(ncatch),     BEE(ncatch),   POROS(ncatch)  ) 
@@ -390,8 +306,6 @@ else
   allocate (  ARW3(ncatch),    ARW4(ncatch),    TSA1(ncatch)  )
   allocate (  TSA2(ncatch),    TSB1(ncatch),    TSB2(ncatch)  )
   allocate ( ATAU2(ncatch),    BTAU2(ncatch),   DP2BR(ncatch)  )
-
-  CanopH = 0.
 
   if (filetype == 0) then
 
@@ -468,17 +382,6 @@ else
   idx => id
 
   endif HAVE
-
-
-! Vegdyn Boundary Condition
-! -------------------------
-  open(20,file=trim("OutData/vegdyn_internal_rst"), &
-       status="unknown", &
-       form="unformatted",convert="little_endian")
-  write(20) rity(Idx)
-  if(NewLand) write(20) CanopH(Idx)
-  close(20)
-  print *, "Wrote vegdyn_internal_restart"
 
   if (filetype == 0) then
 

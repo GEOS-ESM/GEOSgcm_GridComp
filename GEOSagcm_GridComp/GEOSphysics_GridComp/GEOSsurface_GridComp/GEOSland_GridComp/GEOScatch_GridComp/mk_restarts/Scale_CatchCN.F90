@@ -1,3 +1,6 @@
+#define VERIFY_(A)   IF(A/=0)THEN;PRINT *,'ERROR AT LINE ', __LINE__;STOP;ENDIF
+#define ASSERT_(A)   if(.not.A)then;print *,'Error:',__FILE__,__LINE__;stop;endif
+
   use MAPL_IOMod
   implicit none
 
@@ -126,8 +129,9 @@
   real,    allocatable, dimension(:) :: sfmc, rzmc, prmc, werror, sfmcun, rzmcun, prmcun, dzsf
   real,    allocatable, dimension(:) :: vegdyn
 
-  type(MAPL_NCIO) :: NCIO(3)
-  integer :: i, rc, filetype
+  type(MAPL_NCIO) :: NCIO(3), InNCIO
+  integer :: i, rc, filetype, nVars
+  logical :: have_irrig = .false.
     
 ! Usage
 ! -----
@@ -263,11 +267,25 @@
 ! Write Scaled Catch
 ! ------------------
   if (filetype ==0) then
-     NCIO(3) = NCIO(2)
-     call MAPL_NCIOClose(NCIO(3))
+!     NCIO(3) = NCIO(2)
+!     call MAPL_NCIOClose(NCIO(3))
+!     call MAPL_NCIOSet(NCIO(3),filename=fname3)
+!     call MAPL_NCIOCreateFile(NCIO(3))
+!     call writecatch_nc4 ( catch(sca), NCIO(3) )
+     InNCIO = MAPL_NCIOOpen('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy' ,&
+          rc=rc)                                                     ; VERIFY_(rc)
+     call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)                   ; VERIFY_(rc)
+     call MAPL_NCIOChangeRes(InNCIO,NCIO(3),tileSize=ntiles,rc=rc)   ; VERIFY_(rc)
      call MAPL_NCIOSet(NCIO(3),filename=fname3)
-     call MAPL_NCIOCreateFile(NCIO(3))
-     call writecatch_nc4 ( catch(sca), NCIO(3) )
+     call MAPL_NCIOCreateFile(NCIO(3))   
+     i = index(fname2,'/',back=.true.)   
+     inquire(file=trim(fname2(1:i))//"/clsm/irrigation_internal_rst",exist=have_irrig)
+     print *, 'SCALE IRR FILE : ', trim(fname2(1:i))//"/clsm/irrigation_internal_rst"
+     if(have_irrig) then 
+        call writecatch_nc4 ( catch(sca), NCIO(3), trim(fname2(1:i))//"/clsm/irrigation_internal_rst" )  
+     else
+        call writecatch_nc4 ( catch(sca), NCIO(3) )  
+     endif
   else
      call writecatch ( 30,catch(sca) )
   end if
@@ -534,11 +552,12 @@
    return
    end subroutine readcatch
 
-   subroutine writecatch_nc4 (catch,NCIO)
+   subroutine writecatch_nc4 (catch,NCIO, irr_file)
    type(catch_rst) catch
-   type(MAPL_NCIO) :: NCIO
-   integer :: i,j, ndims, dimSizes(3)
-   real, dimension (:), allocatable :: var
+   type(MAPL_NCIO) :: NCIO, IRRIO
+   character(*), intent (in), optional :: irr_file
+   integer :: i,j, ndims, dimSizes(3), ntiles
+   real, dimension (:), allocatable :: var, read_data
 
        call MAPL_VarWrite(NCIO,"BF1",catch%bf1)
        call MAPL_VarWrite(NCIO,"BF2",catch%bf2)
@@ -648,6 +667,31 @@
              call MAPL_VarWrite(NCIO,"PSNSHAM",var,offset1=j,offset2=i)
           end do
        end do
+
+        if (present (irr_file)) then
+          ntiles = size (catch%bf1)
+          allocate (read_data (1:ntiles))
+          IRRIO = MAPL_NCIOOpen(trim(irr_file), rc=rc) ; VERIFY_(rc)
+          call MAPL_VarRead (IRRIO,"CLMPF"    ,read_data)
+          call MAPL_VarWrite(NCIO ,"CLMPF"    ,read_data)
+          call MAPL_VarRead (IRRIO,"CLMPT"    ,read_data)
+          call MAPL_VarWrite(NCIO ,"CLMPT"    ,read_data)
+          call MAPL_VarRead (IRRIO,"CLMSF"    ,read_data)
+          call MAPL_VarWrite(NCIO ,"CLMSF"    ,read_data)
+          call MAPL_VarRead (IRRIO,"CLMST"    ,read_data)
+          call MAPL_VarWrite(NCIO ,"CLMST"    ,read_data)
+          call MAPL_VarRead (IRRIO,"LAIMAX"   ,read_data)
+          call MAPL_VarWrite(NCIO ,"LAIMAX"   ,read_data)
+          call MAPL_VarRead (IRRIO,"LAIMIN"   ,read_data)
+          call MAPL_VarWrite(NCIO ,"LAIMIN"   ,read_data)
+          call MAPL_VarRead (IRRIO,"PADDYFRAC",read_data)
+          call MAPL_VarWrite(NCIO ,"PADDYFRAC",read_data)
+          call MAPL_VarRead (IRRIO,"IRRIGFRAC",read_data)
+          call MAPL_VarWrite(NCIO ,"IRRIGFRAC",read_data)
+          deallocate (read_data)
+          call MAPL_NCIOClose(IRRIO)
+       endif      
+
        call MAPL_NCIOClose      (NCIO)
    return
    end subroutine writecatch_nc4

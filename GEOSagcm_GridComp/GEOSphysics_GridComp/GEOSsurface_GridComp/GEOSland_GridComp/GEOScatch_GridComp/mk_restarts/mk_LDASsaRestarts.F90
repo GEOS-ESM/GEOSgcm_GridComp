@@ -31,7 +31,7 @@ PROGRAM mk_LDASsaRestarts
   ! Carbon model specifics
   ! ----------------------
 
-  character*256 :: Usage="mk_LDASsaRestarts -a SPONSORCODE -b BCSDIR -d YYYYMMDD  -e EXPNAME -j JOBFILE -l EXPDIR -m MODEL -r REORDER -s SURFLAY -t TILFILE"
+  character*256 :: Usage="mk_LDASsaRestarts -a SPONSORCODE -b BCSDIR -d YYYYMMDD  -e EXPNAME -j JOBFILE -k ENS -l EXPDIR -m MODEL -r REORDER -s SURFLAY -t TILFILE"
   character*256 :: BCSDIR, SPONSORCODE, EXPNAME, EXPDIR, MODEL, TILFILE, YYYYMMDD, SFL
   character*400 :: CMD
 
@@ -54,6 +54,7 @@ PROGRAM mk_LDASsaRestarts
   integer, parameter :: OutUnit = 40, InUnit = 50
   character*256      :: arg, tmpstring, ESMADIR
   character*1        :: opt,  REORDER='N', JOBFILE ='N'
+  character*4        :: ENS='0000'
   integer            :: ntiles, rc, nxt
   character(len=300) :: OutFileName
 
@@ -151,6 +152,8 @@ PROGRAM mk_LDASsaRestarts
         stop
      case ('j')
         JOBFILE = trim(arg)
+     case ('k')
+        ENS     = trim(arg)
      case ('l')
         EXPDIR = trim(arg) 
      case ('m')
@@ -183,7 +186,7 @@ PROGRAM mk_LDASsaRestarts
 
      ! This call is to reorder a LDASsa restart file
 
-     call reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL)
+     call reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, ENS)
 
      stop
 
@@ -275,18 +278,39 @@ contains
 
   ! *****************************************************************************
 
-  SUBROUTINE  reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL)
+  SUBROUTINE  reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, ENS)
 
     implicit none
 
     real, intent (in)         :: SURFLAY
-    character(*), intent (in) :: BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL
+    character(*), intent (in) :: BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, ENS
     character(256)            :: tile_coord, vname
-    character(300)            :: rst_file
+    character(300)            :: rst_file, out_rst_file
     type(MAPL_NCIO)           :: InNCIO, OutNCIO
     integer                   :: NTILES, nVars, i,j,k,n, ndims,dimSizes(3)
     integer, allocatable      :: LDAS2BCS (:), g2d(:), tile_id(:)
     real, allocatable         :: var1(:), var2(:),wesn1(:), htsn1(:)
+    logical :: fexist, bin_out = .false.
+
+    if(trim(MODEL) == 'CATCH') then
+        rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'  &
+           //trim(ExpName)//'.ens'//ENS//'.catch_ldas_rst.'// &
+           YYYYMMDD(1:8)//'_0000z.bin'
+        out_rst_file = 'catch'//ENS//'_internal_rst.'//trim(YYYYMMDD)
+    else
+        rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
+            '.ens'//ENS//'.catchcn_ldas_rst.'//trim(YYYYMMDD)//'_0000z'
+        out_rst_file = 'catchcn'//ENS//'_internal_rst.'//trim(YYYYMMDD)
+    endif
+
+    inquire(file =  trim(rst_file), exist=fexist)
+    if (.not. fexist) then
+       print*, "WARNING!!"
+       print*, rst_file // "does not exsit"
+       print*, "MAY USE ENS0000 only!!"
+       return
+    endif
+
  
    open (10,file =trim(BCSDIR)//"clsm/catchment.def",status='old',form='formatted')
    read (10,*) ntiles
@@ -310,8 +334,8 @@ contains
    call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
    call MAPL_NCIOChangeRes(InNCIO,OutNCIO,tileSize=ntiles,rc=rc)
 
-   if(trim(MODEL) == 'CATCH'  )  call MAPL_NCIOSet( OutNCIO,filename='catch_internal_rst.'//trim(YYYYMMDD))
-   if(trim(MODEL) == 'CATCHCN')  call MAPL_NCIOSet( OutNCIO,filename='catchcn_internal_rst.'//trim(YYYYMMDD))
+   call MAPL_NCIOSet( OutNCIO,filename=trim(out_rst_file))
+
    call MAPL_NCIOCreateFile(OutNCIO)   
    call MAPL_NCIOClose ( InNCIO)
 
@@ -356,9 +380,6 @@ contains
    end do
    
    if(trim(MODEL) == 'CATCH') then   
-      rst_file = trim(EXPDIR)//'rs/ens0000/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'  &
-           //trim(ExpName)//'.ens0000.catch_ldas_rst.'// &
-           YYYYMMDD(1:8)//'_0000z.bin'
 
       open(10, file=trim(rst_file), form='unformatted', status='old', &
            convert='big_endian', action='read')
@@ -531,21 +552,17 @@ contains
       call MAPL_VarWrite(OutNCIO,'TC' ,var2, offset1=4)
       deallocate (var1, var2)
       call MAPL_NCIOClose (OutNCIO)
-
-      call read_bcs_data (ntiles, SURFLAY, trim(MODEL), trim(BCSDIR)//'/clsm/','catch_internal_rst.'//trim(YYYYMMDD))
+      close(10)
 
    else
-      
-       rst_file = trim(EXPDIR)//'rs/ens0000/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
-            '.ens0000.catchcn_ldas_rst.'//trim(YYYYMMDD)//'_0000z'
-
-       InNCIO = MAPL_NCIOOpen(trim(rst_file), rc=rc) 
-       call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
-       call MAPL_VarRead ( InNCIO,'TILE_ID',var1)
-       if(sum (nint(var1) - LDAS2BCS) /= 0) then
+     
+      InNCIO = MAPL_NCIOOpen(trim(rst_file), rc=rc) 
+      call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
+      call MAPL_VarRead ( InNCIO,'TILE_ID',var1)
+      if(sum (nint(var1) - LDAS2BCS) /= 0) then
           print *, 'Tile order mismatch ', sum(var1)/ntiles, sum(LDAS2BCS)/ntiles 
           stop
-       endif
+      endif
 
        do k=1,nVars
           
@@ -614,8 +631,14 @@ contains
     call MAPL_NCIOClose      (InNCIO)
     call MAPL_NCIOClose      (OutNCIO)
     
-    call read_bcs_data (ntiles, SURFLAY, trim(MODEL), trim(BCSDIR)//'/clsm/','catchcn_internal_rst.'//trim(YYYYMMDD))    
-    
+   endif
+
+   call read_bcs_data (ntiles, SURFLAY, trim(MODEL), trim(BCSDIR)//'/clsm/',trim(out_rst_file))
+
+   if(bin_out) then
+      OutNCIO  = MAPL_NCIOOpen(trim(out_rst_file))
+      open(unit=30, file=trim(out_rst_file)//'.bin',  form='unformatted')  
+      call write_bin (30, OutNCIO, NTILES)
    endif
 
   END SUBROUTINE reorder_LDASsa_restarts
@@ -856,12 +879,14 @@ contains
     real, allocatable :: TSA1(:),  TSA2(:),  TSB1(:), TSB2(:)
     real, allocatable :: ATAU2(:), BTAU2(:), DP2BR(:), CanopH(:)
     real, allocatable :: NDEP(:), BVISDR(:), BVISDF(:), BNIRDR(:), BNIRDF(:) 
-    real, allocatable :: T2(:), var1(:), hdm(:), fc(:), gdp(:), peatf(:)
+    real, allocatable :: T2(:), var1(:), hdm(:), fc(:), gdp(:), peatf(:), RITY(:)
     integer, allocatable :: ity(:), abm (:)
     integer       :: NCFID, STATUS
     integer       :: idum, i,j,n, ib, nv
     real          :: rdum, zdep1, zdep2, zdep3, zmet, term1, term2, bare,fvg(4)
     logical       :: NEWLAND
+    logical       :: file_exists
+    type(MAPL_NCIO) :: NCIOCatch, NCIOCatchCN
    
     allocate (   BF1(ntiles),    BF2 (ntiles),     BF3(ntiles)  )
     allocate (VGWMAX(ntiles),   CDCR1(ntiles),   CDCR2(ntiles)  ) 
@@ -875,7 +900,7 @@ contains
     allocate ( ATAU2(ntiles),   BTAU2(ntiles),   DP2BR(ntiles)  )
     allocate (BVISDR(ntiles),  BVISDF(ntiles),  BNIRDR(ntiles)  )
     allocate (BNIRDF(ntiles),      T2(ntiles),    NDEP(ntiles)  )    
-    allocate (   ity(ntiles),  CanopH(ntiles))
+    allocate (   ity(ntiles),  CanopH(ntiles)  )
     allocate (CLMC_pf1(ntiles), CLMC_pf2(ntiles), CLMC_sf1(ntiles))
     allocate (CLMC_sf2(ntiles), CLMC_pt1(ntiles), CLMC_pt2(ntiles))
     allocate (CLMC45_pf1(ntiles), CLMC45_pf2(ntiles), CLMC45_sf1(ntiles))
@@ -883,63 +908,146 @@ contains
     allocate (CLMC_st1(ntiles), CLMC_st2(ntiles))
     allocate (CLMC45_st1(ntiles), CLMC45_st2(ntiles))
     allocate (hdm(ntiles), fc(ntiles), gdp(ntiles))
-    allocate (peatf(ntiles), abm(ntiles), var1(ntiles))
+    allocate (peatf(ntiles), abm(ntiles), var1(ntiles), RITY(ntiles))
 
-    inquire(file=trim(DataDir)//"CLM_veg_typs_fracs"   ,exist=NewLand )
+    inquire(file = trim(DataDir)//'/catchcn_params.nc4', exist=file_exists)
+    inquire(file = trim(DataDir)//"CLM_veg_typs_fracs"   ,exist=NewLand )
 
-    open(unit=21, file=trim(DataDir)//'mosaic_veg_typs_fracs',form='formatted') 
-    open(unit=22, file=trim(DataDir)//'bf.dat'               ,form='formatted')
-    open(unit=23, file=trim(DataDir)//'soil_param.dat'       ,form='formatted')
-    open(unit=24, file=trim(DataDir)//'ar.new'               ,form='formatted')
-    open(unit=25, file=trim(DataDir)//'ts.dat'               ,form='formatted')
-    open(unit=26, file=trim(DataDir)//'tau_param.dat'        ,form='formatted')
+    if(file_exists) then
 
-    if(NewLand) then
-       open(unit=27, file=trim(DataDir)//'CLM_veg_typs_fracs'   ,form='formatted')
-       open(unit=28, file=trim(DataDir)//'CLM_NDep_SoilAlb_T2m' ,form='formatted')
-       if(clm45) then
-          open(unit=29, file=trim(DataDir)//'CLM4.5_veg_typs_fracs',form='formatted')
-          open(unit=30, file=trim(DataDir)//'CLM4.5_abm_peatf_gdp_hdm_fc' ,form='formatted')
+       print *,'FILE FORMAT FOR LAND BCS IS NC4'
+       NCIOCatch   = MAPL_NCIOOpen(trim(DataDir)//'/catch_params.nc4',rc=rc) 
+       NCIOCatchCN = MAPL_NCIOOpen(trim(DataDir)//'/catchcn_params.nc4',rc=rc) 
+       call MAPL_VarRead ( NCIOCatch ,'OLD_ITY', RITY)
+       ITY = NINT (RITY)
+       call MAPL_VarRead ( NCIOCatch ,'ARA1', ARA1)
+       call MAPL_VarRead ( NCIOCatch ,'ARA2', ARA2)
+       call MAPL_VarRead ( NCIOCatch ,'ARA3', ARA3)
+       call MAPL_VarRead ( NCIOCatch ,'ARA4', ARA4)
+       call MAPL_VarRead ( NCIOCatch ,'ARS1', ARS1)
+       call MAPL_VarRead ( NCIOCatch ,'ARS2', ARS2)
+       call MAPL_VarRead ( NCIOCatch ,'ARS3', ARS3)
+       call MAPL_VarRead ( NCIOCatch ,'ARW1', ARW1)
+       call MAPL_VarRead ( NCIOCatch ,'ARW2', ARW2)
+       call MAPL_VarRead ( NCIOCatch ,'ARW3', ARW3)
+       call MAPL_VarRead ( NCIOCatch ,'ARW4', ARW4)
+
+       if( SURFLAY.eq.20.0 ) then
+          call MAPL_VarRead ( NCIOCatch ,'ATAU2', ATAU2)
+          call MAPL_VarRead ( NCIOCatch ,'BTAU2', BTAU2)
        endif
-    endif
 
-    do n=1,ntiles
-       var1 (n) = real (n)
-
-       if (NewLand) then
-          read(21,*) I, j, ITY(N),idum, rdum, rdum, CanopH(N)
-       else
-          read(21,*) I, j, ITY(N),idum, rdum, rdum
+       if( SURFLAY.eq.50.0 ) then
+          call MAPL_VarRead ( NCIOCatch ,'ATAU5', ATAU2)
+          call MAPL_VarRead ( NCIOCatch ,'BTAU5', BTAU2)
        endif
 
-       read (22, *) i,j, GNU(n), BF1(n), BF2(n), BF3(n)
+       call MAPL_VarRead ( NCIOCatch ,'PSIS', PSIS)
+       call MAPL_VarRead ( NCIOCatch ,'BEE', BEE)
+       call MAPL_VarRead ( NCIOCatch ,'BF1', BF1)
+       call MAPL_VarRead ( NCIOCatch ,'BF2', BF2)
+       call MAPL_VarRead ( NCIOCatch ,'BF3', BF3)
+       call MAPL_VarRead ( NCIOCatch ,'TSA1', TSA1)
+       call MAPL_VarRead ( NCIOCatch ,'TSA2', TSA2)
+       call MAPL_VarRead ( NCIOCatch ,'TSB1', TSB1)
+       call MAPL_VarRead ( NCIOCatch ,'TSB2', TSB2)
+       call MAPL_VarRead ( NCIOCatch ,'COND', COND)
+       call MAPL_VarRead ( NCIOCatch ,'GNU', GNU)
+       call MAPL_VarRead ( NCIOCatch ,'WPWET', WPWET)
+       call MAPL_VarRead ( NCIOCatch ,'DP2BR', DP2BR)
+       call MAPL_VarRead ( NCIOCatch ,'POROS', POROS)
+       call MAPL_VarRead ( NCIOCatchCN ,'BGALBNF', BNIRDF)
+       call MAPL_VarRead ( NCIOCatchCN ,'BGALBNR', BNIRDR)
+       call MAPL_VarRead ( NCIOCatchCN ,'BGALBVF', BVISDF)
+       call MAPL_VarRead ( NCIOCatchCN ,'BGALBVR', BVISDR)
+       call MAPL_VarRead ( NCIOCatchCN ,'NDEP', NDEP)
+       call MAPL_VarRead ( NCIOCatchCN ,'T2_M', T2)
+       call MAPL_VarRead(NCIOCatchCN,'ITY',CLMC_pt1,offset1=1)     !  30
+       call MAPL_VarRead(NCIOCatchCN,'ITY',CLMC_pt2,offset1=2)     !  31
+       call MAPL_VarRead(NCIOCatchCN,'ITY',CLMC_st1,offset1=3)     !  32
+       call MAPL_VarRead(NCIOCatchCN,'ITY',CLMC_st2,offset1=4)     !  33
+       call MAPL_VarRead(NCIOCatchCN,'FVG',CLMC_pf1,offset1=1)     !  34
+       call MAPL_VarRead(NCIOCatchCN,'FVG',CLMC_pf2,offset1=2)     !  35
+       call MAPL_VarRead(NCIOCatchCN,'FVG',CLMC_sf1,offset1=3)     !  36
+       call MAPL_VarRead(NCIOCatchCN,'FVG',CLMC_sf2,offset1=4)     !  37
+       call MAPL_NCIOClose (NCIOCatch  )
+       call MAPL_NCIOClose (NCIOCatchCN)
+      
+    else
+       open(unit=21, file=trim(DataDir)//'mosaic_veg_typs_fracs',form='formatted') 
+       open(unit=22, file=trim(DataDir)//'bf.dat'               ,form='formatted')
+       open(unit=23, file=trim(DataDir)//'soil_param.dat'       ,form='formatted')
+       open(unit=24, file=trim(DataDir)//'ar.new'               ,form='formatted')
+       open(unit=25, file=trim(DataDir)//'ts.dat'               ,form='formatted')
+       open(unit=26, file=trim(DataDir)//'tau_param.dat'        ,form='formatted')
        
-       read (23, *) i,j, idum, idum, BEE(n), PSIS(n),&
-            POROS(n), COND(n), WPWET(n), DP2BR(n)
-       
-       read (24, *) i,j, rdum, ARS1(n), ARS2(n), ARS3(n),          &
-            ARA1(n), ARA2(n), ARA3(n), ARA4(n), &
-            ARW1(n), ARW2(n), ARW3(n), ARW4(n)
-       
-       read (25, *) i,j, rdum, TSA1(n), TSA2(n), TSB1(n), TSB2(n)
-       
-       if( SURFLAY.eq.20.0 ) read (26, *) i,j, ATAU2(n), BTAU2(n), rdum, rdum   ! for old soil params
-       if( SURFLAY.eq.50.0 ) read (26, *) i,j, rdum , rdum, ATAU2(n), BTAU2(n)  ! for new soil params
-
-       if (NewLand) then
-          read (27, *) i,j, CLMC_pt1(n), CLMC_pt2(n), CLMC_st1(n), CLMC_st2(n), &
-               CLMC_pf1(n), CLMC_pf2(n), CLMC_sf1(n), CLMC_sf2(n)
-          
-          read (28, *) NDEP(n), BVISDR(n), BVISDF(n), BNIRDR(n), BNIRDF(n), T2(n) ! MERRA-2 Annual Mean Temp is default.
+       if(NewLand) then
+          open(unit=27, file=trim(DataDir)//'CLM_veg_typs_fracs'   ,form='formatted')
+          open(unit=28, file=trim(DataDir)//'CLM_NDep_SoilAlb_T2m' ,form='formatted')
           if(clm45) then
-             read (29, *) i,j, CLMC45_pt1(n), CLMC45_pt2(n), CLMC45_st1(n), CLMC45_st2(n), &
-                  CLMC45_pf1(n), CLMC45_pf2(n), CLMC45_sf1(n), CLMC45_sf2(n)
-             
-             read (30,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) i, j, abm(n), peatf(n), &
-                  gdp(n), hdm(n), fc(n)
+             open(unit=29, file=trim(DataDir)//'CLM4.5_veg_typs_fracs',form='formatted')
+             open(unit=30, file=trim(DataDir)//'CLM4.5_abm_peatf_gdp_hdm_fc' ,form='formatted')
           endif
        endif
 
+       do n=1,ntiles
+          var1 (n) = real (n)
+          
+          if (NewLand) then
+             read(21,*) I, j, ITY(N),idum, rdum, rdum, CanopH(N)
+          else
+             read(21,*) I, j, ITY(N),idum, rdum, rdum
+          endif
+          
+          read (22, *) i,j, GNU(n), BF1(n), BF2(n), BF3(n)
+          
+          read (23, *) i,j, idum, idum, BEE(n), PSIS(n),&
+               POROS(n), COND(n), WPWET(n), DP2BR(n)
+          
+          read (24, *) i,j, rdum, ARS1(n), ARS2(n), ARS3(n),          &
+               ARA1(n), ARA2(n), ARA3(n), ARA4(n), &
+               ARW1(n), ARW2(n), ARW3(n), ARW4(n)
+          
+          read (25, *) i,j, rdum, TSA1(n), TSA2(n), TSB1(n), TSB2(n)
+          
+          if( SURFLAY.eq.20.0 ) read (26, *) i,j, ATAU2(n), BTAU2(n), rdum, rdum   ! for old soil params
+          if( SURFLAY.eq.50.0 ) read (26, *) i,j, rdum , rdum, ATAU2(n), BTAU2(n)  ! for new soil params
+          
+          if (NewLand) then
+             read (27, *) i,j, CLMC_pt1(n), CLMC_pt2(n), CLMC_st1(n), CLMC_st2(n), &
+                  CLMC_pf1(n), CLMC_pf2(n), CLMC_sf1(n), CLMC_sf2(n)
+             
+             read (28, *) NDEP(n), BVISDR(n), BVISDF(n), BNIRDR(n), BNIRDF(n), T2(n) ! MERRA-2 Annual Mean Temp is default.
+             if(clm45) then
+                read (29, *) i,j, CLMC45_pt1(n), CLMC45_pt2(n), CLMC45_st1(n), CLMC45_st2(n), &
+                     CLMC45_pf1(n), CLMC45_pf2(n), CLMC45_sf1(n), CLMC45_sf2(n)
+                
+                read (30,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) i, j, abm(n), peatf(n), &
+                     gdp(n), hdm(n), fc(n)
+             endif
+          endif          
+       end do
+       
+       CLOSE (22, STATUS = 'KEEP')
+       CLOSE (23, STATUS = 'KEEP')
+       CLOSE (24, STATUS = 'KEEP')
+       CLOSE (25, STATUS = 'KEEP')
+       CLOSE (26, STATUS = 'KEEP')
+       
+       if(NewLand) then
+          CLOSE (27, STATUS = 'KEEP')
+          CLOSE (28, STATUS = 'KEEP')
+          if(clm45) then
+             CLOSE (29, STATUS = 'KEEP')
+             CLOSE (30, STATUS = 'KEEP')
+          endif
+       endif
+    endif
+    
+
+    do n=1,ntiles
+       var1 (n) = real (n)
+       
        BVISDR(n) = amax1(1.e-6, BVISDR(n))
        BVISDF(n) = amax1(1.e-6, BVISDF(n))
        BNIRDR(n) = amax1(1.e-6, BNIRDR(n))
@@ -1107,20 +1215,7 @@ contains
           endif
        end do
     endif
-    CLOSE (22, STATUS = 'KEEP')
-    CLOSE (23, STATUS = 'KEEP')
-    CLOSE (24, STATUS = 'KEEP')
-    CLOSE (25, STATUS = 'KEEP')
-    CLOSE (26, STATUS = 'KEEP')
-    
-    if(NewLand) then
-        CLOSE (27, STATUS = 'KEEP')
-        CLOSE (28, STATUS = 'KEEP')
-        if(clm45) then
-           CLOSE (29, STATUS = 'KEEP')
-           CLOSE (30, STATUS = 'KEEP')
-        endif
-     endif
+
      
      ! Vegdyn Boundary Condition
      ! -------------------------
@@ -3434,16 +3529,34 @@ contains
      integer , intent (in) :: nt
      real, dimension (nt), intent(inout) :: xlon, xlat
      integer :: n,icnt,ityp,status
-     real    :: xval,yval, pf
-     
+     real    :: xval,yval, pf,r
+     character(len=100) :: tmpline
+   
    open(11,file=InCNTileFile, &
         form='formatted',action='read',status='old')
 
-   do n = 1,8 ! skip header
+   do n = 1,5 ! skip header
       read(11,*)
    end do
-   
+
    icnt = 0
+
+   ! check if the 6th line is numeric
+   read(11,'(A)') tmpline
+   read(tmpline,*,iostat = status) r
+   if (status == 0 ) then ! it is a number, 5 line header
+     read(tmpline,*) ityp,pf,xval,yval
+     if(ityp == 100) then
+        icnt = 1
+        xlon(icnt) = xval
+        xlat(icnt) = yval
+     endif
+   else 
+     ! throw away 2 more lines ( 8 total)
+     read(11,'(A)') tmpline
+     read(11,'(A)') tmpline
+   endif  
+   
    ityp = 100
 
    do while (ityp == 100) ! loop over land tiles
@@ -3784,6 +3897,196 @@ contains
      END DO 
 
    END FUNCTION StrExtName
+
+   ! ----------------------------------------------------------------------------
+   
+   SUBROUTINE write_bin (unit, NCIO, NTILES)
+
+     implicit none
+     integer :: ntiles
+     integer :: unit
+     type(MAPL_NCIO) :: NCIO
+
+
+     real ::       bf1(ntiles)
+     real ::       bf2(ntiles)
+     real ::       bf3(ntiles)
+     real ::    vgwmax(ntiles)
+     real ::     cdcr1(ntiles)
+     real ::     cdcr2(ntiles)
+     real ::      psis(ntiles)
+     real ::       bee(ntiles)
+     real ::     poros(ntiles)
+     real ::     wpwet(ntiles)
+     real ::      cond(ntiles)
+     real ::       gnu(ntiles)
+     real ::      ars1(ntiles)
+     real ::      ars2(ntiles)
+     real ::      ars3(ntiles)
+     real ::      ara1(ntiles)
+     real ::      ara2(ntiles)
+     real ::      ara3(ntiles)
+     real ::      ara4(ntiles)
+     real ::      arw1(ntiles)
+     real ::      arw2(ntiles)
+     real ::      arw3(ntiles)
+     real ::      arw4(ntiles)
+     real ::      tsa1(ntiles)
+     real ::      tsa2(ntiles)
+     real ::      tsb1(ntiles)
+     real ::      tsb2(ntiles)
+     real ::      atau(ntiles)
+     real ::      btau(ntiles)
+     real ::       ity(ntiles)
+     real ::        tc(ntiles,4)
+     real ::        qc(ntiles,4)
+     real ::     capac(ntiles)
+     real ::    catdef(ntiles)
+     real ::     rzexc(ntiles)
+     real ::    srfexc(ntiles)
+     real ::   ghtcnt1(ntiles)
+     real ::   ghtcnt2(ntiles)
+     real ::   ghtcnt3(ntiles)
+     real ::   ghtcnt4(ntiles)
+     real ::   ghtcnt5(ntiles)
+     real ::   ghtcnt6(ntiles)
+     real ::     tsurf(ntiles)
+     real ::    wesnn1(ntiles)
+     real ::    wesnn2(ntiles)
+     real ::    wesnn3(ntiles)
+     real ::   htsnnn1(ntiles)
+     real ::   htsnnn2(ntiles)
+     real ::   htsnnn3(ntiles)
+     real ::    sndzn1(ntiles)
+     real ::    sndzn2(ntiles)
+     real ::    sndzn3(ntiles)
+     real ::        ch(ntiles,4)
+     real ::        cm(ntiles,4)
+     real ::        cq(ntiles,4)
+     real ::        fr(ntiles,4)
+     real ::        ww(ntiles,4)
+
+        call MAPL_VarRead(NCIO,"BF1",bf1)
+       call MAPL_VarRead(NCIO,"BF2",bf2)
+       call MAPL_VarRead(NCIO,"BF3",bf3)
+       call MAPL_VarRead(NCIO,"VGWMAX",vgwmax)
+       call MAPL_VarRead(NCIO,"CDCR1",cdcr1)
+       call MAPL_VarRead(NCIO,"CDCR2",cdcr2)
+       call MAPL_VarRead(NCIO,"PSIS",psis)
+       call MAPL_VarRead(NCIO,"BEE",bee)
+       call MAPL_VarRead(NCIO,"POROS",poros)
+       call MAPL_VarRead(NCIO,"WPWET",wpwet)
+       call MAPL_VarRead(NCIO,"COND",cond)
+       call MAPL_VarRead(NCIO,"GNU",gnu)
+       call MAPL_VarRead(NCIO,"ARS1",ars1)
+       call MAPL_VarRead(NCIO,"ARS2",ars2)
+       call MAPL_VarRead(NCIO,"ARS3",ars3)
+       call MAPL_VarRead(NCIO,"ARA1",ara1)
+       call MAPL_VarRead(NCIO,"ARA2",ara2)
+       call MAPL_VarRead(NCIO,"ARA3",ara3)
+       call MAPL_VarRead(NCIO,"ARA4",ara4)
+       call MAPL_VarRead(NCIO,"ARW1",arw1)
+       call MAPL_VarRead(NCIO,"ARW2",arw2)
+       call MAPL_VarRead(NCIO,"ARW3",arw3)
+       call MAPL_VarRead(NCIO,"ARW4",arw4)
+       call MAPL_VarRead(NCIO,"TSA1",tsa1)
+       call MAPL_VarRead(NCIO,"TSA2",tsa2)
+       call MAPL_VarRead(NCIO,"TSB1",tsb1)
+       call MAPL_VarRead(NCIO,"TSB2",tsb2)
+       call MAPL_VarRead(NCIO,"ATAU",atau)
+       call MAPL_VarRead(NCIO,"BTAU",btau)
+       call MAPL_VarRead(NCIO,"OLD_ITY",ity)
+       call MAPL_VarRead(NCIO,"TC",tc)
+       call MAPL_VarRead(NCIO,"QC",qc)
+       call MAPL_VarRead(NCIO,"OLD_ITY",ity)
+       call MAPL_VarRead(NCIO,"CAPAC",capac)
+       call MAPL_VarRead(NCIO,"CATDEF",catdef)
+       call MAPL_VarRead(NCIO,"RZEXC",rzexc)
+       call MAPL_VarRead(NCIO,"SRFEXC",srfexc)
+       call MAPL_VarRead(NCIO,"GHTCNT1",ghtcnt1)
+       call MAPL_VarRead(NCIO,"GHTCNT2",ghtcnt2)
+       call MAPL_VarRead(NCIO,"GHTCNT3",ghtcnt3)
+       call MAPL_VarRead(NCIO,"GHTCNT4",ghtcnt4)
+       call MAPL_VarRead(NCIO,"GHTCNT5",ghtcnt5)
+       call MAPL_VarRead(NCIO,"GHTCNT6",ghtcnt6)
+       call MAPL_VarRead(NCIO,"TSURF",tsurf)
+       call MAPL_VarRead(NCIO,"WESNN1",wesnn1)
+       call MAPL_VarRead(NCIO,"WESNN2",wesnn2)
+       call MAPL_VarRead(NCIO,"WESNN3",wesnn3)
+       call MAPL_VarRead(NCIO,"HTSNNN1",htsnnn1)
+       call MAPL_VarRead(NCIO,"HTSNNN2",htsnnn2)
+       call MAPL_VarRead(NCIO,"HTSNNN3",htsnnn3)
+       call MAPL_VarRead(NCIO,"SNDZN1",sndzn1)
+       call MAPL_VarRead(NCIO,"SNDZN2",sndzn2)
+       call MAPL_VarRead(NCIO,"SNDZN3",sndzn3)
+       call MAPL_VarRead(NCIO,"CH",ch)
+       call MAPL_VarRead(NCIO,"CM",cm)
+       call MAPL_VarRead(NCIO,"CQ",cq)
+       call MAPL_VarRead(NCIO,"FR",fr)
+       call MAPL_VarRead(NCIO,"WW",ww)
+    
+      write(unit)       bf1
+       write(unit)       bf2
+       write(unit)       bf3
+       write(unit)    vgwmax
+       write(unit)     cdcr1
+       write(unit)     cdcr2
+       write(unit)      psis
+       write(unit)       bee
+       write(unit)     poros
+       write(unit)     wpwet
+       write(unit)      cond
+       write(unit)       gnu
+       write(unit)      ars1
+       write(unit)      ars2
+       write(unit)      ars3
+       write(unit)      ara1
+       write(unit)      ara2
+       write(unit)      ara3
+       write(unit)      ara4
+       write(unit)      arw1
+       write(unit)      arw2
+       write(unit)      arw3
+       write(unit)      arw4
+       write(unit)      tsa1
+       write(unit)      tsa2
+       write(unit)      tsb1
+       write(unit)      tsb2
+       write(unit)      atau
+       write(unit)      btau
+       write(unit)       ity
+       write(unit)        tc
+       write(unit)        qc
+       write(unit)     capac
+       write(unit)    catdef
+       write(unit)     rzexc
+       write(unit)    srfexc
+       write(unit)   ghtcnt1
+       write(unit)   ghtcnt2
+       write(unit)   ghtcnt3
+       write(unit)   ghtcnt4
+       write(unit)   ghtcnt5
+       write(unit)   ghtcnt6
+       write(unit)     tsurf
+       write(unit)    wesnn1
+       write(unit)    wesnn2
+       write(unit)    wesnn3
+       write(unit)   htsnnn1
+       write(unit)   htsnnn2
+       write(unit)   htsnnn3
+       write(unit)    sndzn1
+       write(unit)    sndzn2
+       write(unit)    sndzn3
+       write(unit)        ch
+       write(unit)        cm
+       write(unit)        cq
+       write(unit)        fr
+       write(unit)        ww
+       
+       close (unit)
+       call MAPL_NCIOClose      (NCIO)
+  
+   END SUBROUTINE write_bin
 
    ! -----------------------------------------------------------------------------
 

@@ -231,8 +231,8 @@ program  mk_CatchCNRestarts
 
   integer, parameter :: ntiles_cn = 1684725
   character(len=300), parameter :: &
-       InCNRestart = '/gpfsm/dnb42/projects/p16/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/M09/20151231/catchcn_internal_rst', &
-       InCNTilFile = '/discover/nobackup/ltakacs/bcs/Heracles-NL/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'     
+       InCNRestart = '/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/M09/20151231/catchcn_internal_rst', &
+       InCNTilFile = '/discover/nobackup/ltakacs/bcs/Icarus-NLv3/Icarus-NLv3_EASE/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'     
 
   character(len=256), parameter :: CatNames   (57) = &
        (/'BF1    ','BF2    ','BF3    ','VGWMAX ','CDCR1  ', &
@@ -607,7 +607,9 @@ contains
     character*256 :: DataDir="OutData/clsm/"
     integer       :: idum, i,j,n, ib, nv
     real          :: rdum, zdep1, zdep2, zdep3, zmet, term1, term2, bare,fvg(4)
-   
+    logical       :: file_exists
+    type(MAPL_NCIO) :: NCIOCatch, NCIOCatchCN
+  
     allocate (   BF1(ntiles),    BF2 (ntiles),     BF3(ntiles)  )
     allocate (VGWMAX(ntiles),   CDCR1(ntiles),   CDCR2(ntiles)  ) 
     allocate (  PSIS(ntiles),     BEE(ntiles),   POROS(ntiles)  ) 
@@ -625,53 +627,130 @@ contains
     allocate (CLMC_sf2(ntiles), CLMC_pt1(ntiles), CLMC_pt2(ntiles))
     allocate (CLMC_st1(ntiles), CLMC_st2(ntiles))
 
-    open(unit=22, &
-         file=trim(DataDir)//"mosaic_veg_typs_fracs",status='old',form='formatted')
-     
-     do N=1,ntiles
-        read(22,*) I, j, ITY(N),idum, rdum, rdum, CanopH(N)
-     enddo
-     
-     rity(:) = float(ity)
-     
-     close(22)
-     
-     open(unit=22, file=trim(DataDir)//'bf.dat'               ,form='formatted')
-     open(unit=23, file=trim(DataDir)//'soil_param.dat'       ,form='formatted')
-     open(unit=24, file=trim(DataDir)//'ar.new'               ,form='formatted')
-     open(unit=25, file=trim(DataDir)//'ts.dat'               ,form='formatted')
-     open(unit=26, file=trim(DataDir)//'tau_param.dat'        ,form='formatted')
-     open(unit=27, file=trim(DataDir)//'CLM_veg_typs_fracs'   ,form='formatted')
-     open(unit=28, file=trim(DataDir)//'CLM_NDep_SoilAlb_T2m' ,form='formatted')
-     
-     do n=1,ntiles
-        read (22, *) i,j, GNU(n), BF1(n), BF2(n), BF3(n)
-        
-        read (23, *) i,j, idum, idum, BEE(n), PSIS(n),&
-             POROS(n), COND(n), WPWET(n), DP2BR(n)
-        
-        read (24, *) i,j, rdum, ARS1(n), ARS2(n), ARS3(n),          &
-             ARA1(n), ARA2(n), ARA3(n), ARA4(n), &
-             ARW1(n), ARW2(n), ARW3(n), ARW4(n)
-        
-        read (25, *) i,j, rdum, TSA1(n), TSA2(n), TSB1(n), TSB2(n)
-        
-        if( SURFLAY.eq.20.0 ) read (26, *) i,j, ATAU2(n), BTAU2(n), rdum, rdum   ! for old soil params
-        if( SURFLAY.eq.50.0 ) read (26, *) i,j, rdum , rdum, ATAU2(n), BTAU2(n)  ! for new soil params
-        
-        read (27, *) i,j, CLMC_pt1(n), CLMC_pt2(n), CLMC_st1(n), CLMC_st2(n), &
-             CLMC_pf1(n), CLMC_pf2(n), CLMC_sf1(n), CLMC_sf2(n)
-        
-        read (28, *) NDEP(n), BVISDR(n), BVISDF(n), BNIRDR(n), BNIRDF(n), T2(n) ! MERRA-2 Annual Mean Temp is default.
-                
-        BVISDR(n) = amax1(1.e-6, BVISDR(n))
-        BVISDF(n) = amax1(1.e-6, BVISDF(n))
-        BNIRDR(n) = amax1(1.e-6, BNIRDR(n))
-        BNIRDF(n) = amax1(1.e-6, BNIRDF(n))
+    inquire(file = trim(DataDir)//'/catchcn_params.nc4', exist=file_exists)
 
-        zdep2=1000.
-        zdep3=amax1(1000.,DP2BR(n))
-        
+    if(file_exists) then
+
+       print *,'FILE FORMAT FOR LAND BCS IS NC4'
+       NCIOCatch   = MAPL_NCIOOpen(trim(DataDir)//'/catch_params.nc4',rc=rc) 
+       NCIOCatchCN = MAPL_NCIOOpen(trim(DataDir)//'/catchcn_params.nc4',rc=rc) 
+       call MAPL_VarRead ( NCIOCatch ,'OLD_ITY', rity)
+       call MAPL_VarRead ( NCIOCatch ,'ARA1', ARA1)
+       call MAPL_VarRead ( NCIOCatch ,'ARA2', ARA2)
+       call MAPL_VarRead ( NCIOCatch ,'ARA3', ARA3)
+       call MAPL_VarRead ( NCIOCatch ,'ARA4', ARA4)
+       call MAPL_VarRead ( NCIOCatch ,'ARS1', ARS1)
+       call MAPL_VarRead ( NCIOCatch ,'ARS2', ARS2)
+       call MAPL_VarRead ( NCIOCatch ,'ARS3', ARS3)
+       call MAPL_VarRead ( NCIOCatch ,'ARW1', ARW1)
+       call MAPL_VarRead ( NCIOCatch ,'ARW2', ARW2)
+       call MAPL_VarRead ( NCIOCatch ,'ARW3', ARW3)
+       call MAPL_VarRead ( NCIOCatch ,'ARW4', ARW4)
+
+       if( SURFLAY.eq.20.0 ) then
+          call MAPL_VarRead ( NCIOCatch ,'ATAU2', ATAU2)
+          call MAPL_VarRead ( NCIOCatch ,'BTAU2', BTAU2)
+       endif
+
+       if( SURFLAY.eq.50.0 ) then
+          call MAPL_VarRead ( NCIOCatch ,'ATAU5', ATAU2)
+          call MAPL_VarRead ( NCIOCatch ,'BTAU5', BTAU2)
+       endif
+
+       call MAPL_VarRead ( NCIOCatch ,'PSIS', PSIS)
+       call MAPL_VarRead ( NCIOCatch ,'BEE', BEE)
+       call MAPL_VarRead ( NCIOCatch ,'BF1', BF1)
+       call MAPL_VarRead ( NCIOCatch ,'BF2', BF2)
+       call MAPL_VarRead ( NCIOCatch ,'BF3', BF3)
+       call MAPL_VarRead ( NCIOCatch ,'TSA1', TSA1)
+       call MAPL_VarRead ( NCIOCatch ,'TSA2', TSA2)
+       call MAPL_VarRead ( NCIOCatch ,'TSB1', TSB1)
+       call MAPL_VarRead ( NCIOCatch ,'TSB2', TSB2)
+       call MAPL_VarRead ( NCIOCatch ,'COND', COND)
+       call MAPL_VarRead ( NCIOCatch ,'GNU', GNU)
+       call MAPL_VarRead ( NCIOCatch ,'WPWET', WPWET)
+       call MAPL_VarRead ( NCIOCatch ,'DP2BR', DP2BR)
+       call MAPL_VarRead ( NCIOCatch ,'POROS', POROS)
+       call MAPL_VarRead ( NCIOCatchCN ,'BGALBNF', BNIRDF)
+       call MAPL_VarRead ( NCIOCatchCN ,'BGALBNR', BNIRDR)
+       call MAPL_VarRead ( NCIOCatchCN ,'BGALBVF', BVISDF)
+       call MAPL_VarRead ( NCIOCatchCN ,'BGALBVR', BVISDR)
+       call MAPL_VarRead ( NCIOCatchCN ,'NDEP', NDEP)
+       call MAPL_VarRead ( NCIOCatchCN ,'T2_M', T2)
+       call MAPL_VarRead(NCIOCatchCN,'ITY',CLMC_pt1,offset1=1)     !  30
+       call MAPL_VarRead(NCIOCatchCN,'ITY',CLMC_pt2,offset1=2)     !  31
+       call MAPL_VarRead(NCIOCatchCN,'ITY',CLMC_st1,offset1=3)     !  32
+       call MAPL_VarRead(NCIOCatchCN,'ITY',CLMC_st2,offset1=4)     !  33
+       call MAPL_VarRead(NCIOCatchCN,'FVG',CLMC_pf1,offset1=1)     !  34
+       call MAPL_VarRead(NCIOCatchCN,'FVG',CLMC_pf2,offset1=2)     !  35
+       call MAPL_VarRead(NCIOCatchCN,'FVG',CLMC_sf1,offset1=3)     !  36
+       call MAPL_VarRead(NCIOCatchCN,'FVG',CLMC_sf2,offset1=4)     !  37
+       call MAPL_NCIOClose (NCIOCatch  )
+       call MAPL_NCIOClose (NCIOCatchCN)
+      
+    else
+
+       open(unit=22, &
+            file=trim(DataDir)//"mosaic_veg_typs_fracs",status='old',form='formatted')
+       
+       do N=1,ntiles
+          read(22,*) I, j, ITY(N),idum, rdum, rdum, CanopH(N)
+       enddo
+       
+       rity(:) = float(ity)
+       
+       close(22)
+       
+       open(unit=22, file=trim(DataDir)//'bf.dat'               ,form='formatted')
+       open(unit=23, file=trim(DataDir)//'soil_param.dat'       ,form='formatted')
+       open(unit=24, file=trim(DataDir)//'ar.new'               ,form='formatted')
+       open(unit=25, file=trim(DataDir)//'ts.dat'               ,form='formatted')
+       open(unit=26, file=trim(DataDir)//'tau_param.dat'        ,form='formatted')
+       open(unit=27, file=trim(DataDir)//'CLM_veg_typs_fracs'   ,form='formatted')
+       open(unit=28, file=trim(DataDir)//'CLM_NDep_SoilAlb_T2m' ,form='formatted')
+       
+       do n=1,ntiles
+          read (22, *) i,j, GNU(n), BF1(n), BF2(n), BF3(n)
+          
+          read (23, *) i,j, idum, idum, BEE(n), PSIS(n),&
+               POROS(n), COND(n), WPWET(n), DP2BR(n)
+          
+          read (24, *) i,j, rdum, ARS1(n), ARS2(n), ARS3(n),          &
+               ARA1(n), ARA2(n), ARA3(n), ARA4(n), &
+               ARW1(n), ARW2(n), ARW3(n), ARW4(n)
+          
+          read (25, *) i,j, rdum, TSA1(n), TSA2(n), TSB1(n), TSB2(n)
+          
+          if( SURFLAY.eq.20.0 ) read (26, *) i,j, ATAU2(n), BTAU2(n), rdum, rdum   ! for old soil params
+          if( SURFLAY.eq.50.0 ) read (26, *) i,j, rdum , rdum, ATAU2(n), BTAU2(n)  ! for new soil params
+          
+          read (27, *) i,j, CLMC_pt1(n), CLMC_pt2(n), CLMC_st1(n), CLMC_st2(n), &
+               CLMC_pf1(n), CLMC_pf2(n), CLMC_sf1(n), CLMC_sf2(n)
+          
+          read (28, *) NDEP(n), BVISDR(n), BVISDF(n), BNIRDR(n), BNIRDF(n), T2(n) ! MERRA-2 Annual Mean Temp is default.
+          
+       end do
+
+       CLOSE (22, STATUS = 'KEEP')
+       CLOSE (23, STATUS = 'KEEP')
+       CLOSE (24, STATUS = 'KEEP')
+       CLOSE (25, STATUS = 'KEEP')
+       CLOSE (26, STATUS = 'KEEP')
+       CLOSE (27, STATUS = 'KEEP')
+       CLOSE (28, STATUS = 'KEEP')
+       
+    endif
+
+   do n=1,ntiles
+
+      BVISDR(n) = amax1(1.e-6, BVISDR(n))
+      BVISDF(n) = amax1(1.e-6, BVISDF(n))
+      BNIRDR(n) = amax1(1.e-6, BNIRDR(n))
+      BNIRDF(n) = amax1(1.e-6, BNIRDF(n))
+      
+      zdep2=1000.
+      zdep3=amax1(1000.,DP2BR(n))
+      
         if (zdep2 .gt.0.75*zdep3) then
            zdep2  =  0.75*zdep3              
         end if
@@ -758,13 +837,7 @@ contains
         endif
      end do
      
-     CLOSE (22, STATUS = 'KEEP')
-     CLOSE (23, STATUS = 'KEEP')
-     CLOSE (24, STATUS = 'KEEP')
-     CLOSE (25, STATUS = 'KEEP')
-     CLOSE (26, STATUS = 'KEEP')
-     CLOSE (27, STATUS = 'KEEP')
-     CLOSE (28, STATUS = 'KEEP')
+
 
      ! Now writing BCs (from BCSDIR) and regridded hydrological variables 1-72
      ! -----------------------------------------------------------------------

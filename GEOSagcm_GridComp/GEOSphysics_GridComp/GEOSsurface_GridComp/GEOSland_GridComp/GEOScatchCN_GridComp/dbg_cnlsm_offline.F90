@@ -1,19 +1,19 @@
-PROGRAM dbg_clsm_offline
+PROGRAM dbg_cnlsm_offline
 
 !
-! This offline driver is good for debugging CLSM offline.
-! The first step will be re-compiling GEOS_CatchGridComp.F90 using 
-! DBG_CATCH_INPUTS directive and running - the model would generate 3 files:
-! catch_inputs.data, catch_params.data, and catch_updates.data.
-! The driver reads catch_params.data and catch_updates.data to initialize
+! This offline driver is good for debugging CNLSM offline.
+! The first step will be re-compiling GEOS_CatchCNGridComp.F90 using 
+! DBG_CNLSM_INPUTS directive and running - the model would generate 3 files:
+! catchcn_inputs.data, catchcn_params.data, and catchcn_updates.data.
+! The driver reads catchcn_params.data and catchcn_updates.data to initialize
 ! parameters and model prognostics, and continues the model integration while
-! reading input variables from catch_inputs.data at every timestep. 
-! - Sarith Mahanama (10-10-2012)
+! reading input variables from catchcn_inputs.data at every timestep. 
+! - Sarith Mahanama (9-1-2018)
 !
 use MAPL_ConstantsMod
 USE SURFPARAMS
-use CATCHMENT_MODEL
-USE MAPL_BaseMod,      ONLY: MAPL_UNDEF
+use CATCHMENT_CN_MODEL
+!USE MAPL_BaseMod,      ONLY: MAPL_UNDEF
 USE catch_constants,   ONLY:                &
      N_SNOW         => CATCH_N_SNOW,        &
      N_GT           => CATCH_N_GT
@@ -57,15 +57,12 @@ type :: c_inputs
    real :: RAW       
    real :: RASN      
    real :: ZTH       
-   real :: DRPAR     
-   real :: DFPAR     
    real :: SWNETFREE 
    real :: SWNETSNOW 
    real :: LWDNSRF   
    real :: PS        
    real :: LAI0      
    real :: GRN0      
-   real :: Z2CH      
    real :: SQSCAT    
    real :: RSL1      
    real :: RSL2      
@@ -86,6 +83,12 @@ type :: c_inputs
    real :: DQSN 
    real :: ALW4
    real :: BLW4
+   real :: RCSAT
+   real :: DRCSDT
+   real :: DRCSDQ
+   real :: RCUNS
+   real :: DRCUDT
+   real :: DRCUDQ
    
 end type c_inputs
 
@@ -94,7 +97,10 @@ type :: c_params
    real :: LONS
    real :: LATS
    real :: DZSF
-   integer :: VEG     
+   integer :: VEG1
+   integer :: VEG2
+   real :: FVEG1
+   real :: FVEG2
    real :: BF1     
    real :: BF2     
    real :: BF3     
@@ -128,7 +134,9 @@ type :: c_params
 end type c_params
 
 type :: c_updates
-   
+   real :: TG1
+   real :: TG2
+   real :: TG4  
    real :: TC1
    real :: TC2
    real :: TC4
@@ -140,13 +148,13 @@ type :: c_updates
    real :: RZEXC
    real :: SRFEXC
    real :: GHTCNT(N_gt)
-   real :: TSURF
    real :: WESNN (N_snow)
    real :: HTSNNN(N_snow)
    real :: SNDZN (N_snow)
    
 end type c_updates
 
+real, parameter    :: MAPL_UNDEF = 1.0e15	
 character*200 :: scratch_dir
 integer :: ntiles,n,t,n_global,typ,iargc,NT
 integer :: tid=0,ntsteps=10000
@@ -165,14 +173,14 @@ REAL, allocatable, dimension (:) ::  &
      EVAPOUT ,SHOUT   ,RUNOFF ,EVPINT ,EVPSOI ,EVPVEG ,EVPICE ,&
      BFLOW   ,RUNSURF ,SMELT  ,HLWUP  ,SWNDSRF,HLATN  ,QINFIL ,&
      AR1     ,AR2     ,RZEQ   ,GHFLX  ,TPSN   ,ASNOW          ,&
-         GHFLXSNO                                             ,&
-         GHFLXTSKIN                                           ,&
+     GHFLXSNO                                                 ,&
+     GHFLXTSKIN                                               ,&
      TP1     ,TP2     ,TP3    ,TP4    ,TP5    ,TP6    ,SFMC   ,&
      RZMC    ,PRMC    ,ENTOT  ,WTOT   ,WCHANGE,ECHANGE,HSNACC ,&
      EVACC   ,SHACC   ,SHSNOW                                 ,&
      AVETSNOW,WAT10CM, WATSOI ,ICESOI                         ,&
      LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW                 ,&
-     TCSORIG1, TPSN1IN1, TPSN1OUT1, LHACC                 
+     TCSORIG1, TPSN1IN1, TPSN1OUT1, LHACC, TSURF             
 
 real, allocatable               :: TC1_0(:), TC2_0(:),  TC4_0(:)
 real, allocatable               :: QA1_0(:), QA2_0(:),  QA4_0(:)
@@ -229,11 +237,11 @@ is_OFFLINE = OFFLINE_MODE /= 0
 
 call SurfParams_init("GCM") 
 
-open (10,file=trim(scratch_dir)//'/catch_inputs.data' ,form ='unformatted', &
+open (10,file=trim(scratch_dir)//'/catchcn_inputs.data' ,form ='unformatted', &
      action ='read', status ='old',convert='little_endian')
-open (11,file=trim(scratch_dir)//'/catch_params.data' ,form ='unformatted', & 
+open (11,file=trim(scratch_dir)//'/catchcn_params.data' ,form ='unformatted', & 
      action ='read', status ='old',convert='little_endian')
-open (12,file=trim(scratch_dir)//'/catch_updates.data',form ='unformatted', &
+open (12,file=trim(scratch_dir)//'/catchcn_updates.data',form ='unformatted', &
      action ='read', status ='old',convert='little_endian')
 
 read (11) ntiles
@@ -313,6 +321,7 @@ allocate (EVACC    (1:ntiles))
 allocate (SHACC    (1:ntiles))
 allocate (SHSNOW   (1:ntiles))
 allocate (LHACC    (1:ntiles))
+allocate (TSURF    (1:ntiles))
 allocate (AVETSNOW (1:ntiles))
 allocate (WAT10CM  (1:ntiles))
 allocate (WATSOI   (1:ntiles))
@@ -386,28 +395,29 @@ do t = 1,ntsteps
 ! The model is run on the entire tile space 
 ! AMM - lons and lats arguments to catchment
 
-      call CATCHMENT ( NTILES, c_param%lons, c_param%lats           ,&
-           DT	    , pfrac      , cat_id     , c_param%VEG, c_param%DZSF  ,& 
-           c_input%PCU ,c_input%PLS ,c_input%SNO ,c_input%UUU,&
+      call  CATCHCN ( NTILES, c_param%LONS, c_param%LATS, DT, PFRAC, cat_id, &
+           c_param%VEG1,c_param%VEG2,c_param%FVEG1,c_param%FVEG2,c_param%DZSF   ,&
+           c_input%PCU, c_input%PLS, c_input%SNO, c_input%UUU                   ,&
            c_input%EVSBTS ,c_input%DEVSBTS ,c_input%DEDTCS   ,&
            c_input%SHSBTS ,c_input%DHSDQAS ,c_input%DSHSBTS  ,&  
            c_input%EVSBTT ,c_input%DEVSBTT ,c_input%DEDTCT   ,&
            c_input%SHSBTT ,c_input%DHSDQAT ,c_input%DSHSBTT  ,&
            c_input%EVSBTW ,c_input%DEVSBTW ,c_input%DEDTCW   ,&
            c_input%SHSBTW ,c_input%DHSDQAW ,c_input%DSHSBTW  ,&
-           c_input%EVSBTN,c_input%DEVSBTN,c_input%DEDTCN   ,&
-           c_input%SHSBTN,c_input%DHSDQAN ,c_input%DSHSBTN ,&
+           c_input%EVSBTN,c_input%DEVSBTN,c_input%DEDTCN   ,  &
+           c_input%SHSBTN,c_input%DHSDQAN ,c_input%DSHSBTN ,  &
            c_input%TA     ,c_input%QA      ,&
-           c_input%RAS    ,c_input%RAT   ,c_input%RAW    ,c_input%RASN     ,&
-           c_input%ZTH    ,c_input%DRPAR ,c_input%DFPAR  ,c_input%SWNETFREE,&
+           c_input%RAS    ,c_input%RAT   ,c_input%RAW  ,c_input%RASN     ,&   
+           c_input%ZTH    ,c_input%SWNETFREE, &
            c_input%SWNETSNOW ,c_input%LWDNSRF   ,&
-           c_input%PS     ,c_input%LAI0  ,c_input%GRN0   ,c_input%Z2CH     ,&
+           c_input%PS     ,c_input%LAI0  ,c_input%GRN0   ,&
            c_input%SQSCAT    ,c_input%RSL1      ,&
            c_input%RSL2   ,c_input%RDC                                     ,&
            c_input%QSATS  ,c_input%DQSS  ,c_input%ALW1  ,c_input%BLW1      ,&
            c_input%QSATT  ,c_input%DQST  ,c_input%ALW2  ,c_input%BLW2      ,&
            c_input%QSATW  ,c_input%DQSW  ,c_input%ALW3  ,c_input%BLW3      ,&
            c_input%QSATN  ,c_input%DQSN  ,c_input%ALW4  ,c_input%BLW4      ,&
+           c_input%RCSAT  ,c_input%DRCSDT  ,c_input%DRCSDQ  ,c_input%RCUNS  ,c_input%DRCUDT ,c_input%DRCUDQ,&
            c_param%BF1    ,c_param%BF2   ,c_param%BF3   ,c_param%VGWMAX ,&
            c_param%CDCR1 ,c_param%CDCR2 ,c_param%PSIS	             ,&
            c_param%BEE    ,c_param%POROS ,c_param%WPWET ,c_param%COND   ,&
@@ -417,21 +427,22 @@ do t = 1,ntsteps
            c_param%ARW1   ,c_param%ARW2  ,c_param%ARW3  ,c_param%ARW4   ,&
            c_param%TSA1  ,c_param%TSA2  ,c_param%TSB1  ,c_param%TSB2   ,&
            c_param%ATAU   ,c_param%BTAU  ,.false.			     ,&
+           c_upds%TG1     ,c_upds%TG2    ,c_upds%TG4		     ,& 
            c_upds%TC1     ,c_upds%TC2    ,c_upds%TC4		     ,& 
            c_upds%QC1     ,c_upds%QC2    ,c_upds%QC4		     ,&
            c_upds%CAPAC   ,c_upds%CATDEF ,c_upds%RZEXC ,c_upds%SRFEXC ,&
-           GHTCNT ,c_upds%TSURF , WESNN  ,HTSNNN ,SNDZN               ,&
+           GHTCNT,WESNN ,HTSNNN ,SNDZN ,&
            EVAPOUT ,SHOUT   ,RUNOFF ,EVPINT ,EVPSOI ,EVPVEG ,EVPICE ,&
            BFLOW   ,RUNSURF ,SMELT  ,HLWUP  ,SWNDSRF,HLATN  ,QINFIL ,&
            AR1     ,AR2     ,RZEQ   ,GHFLX  ,GHFLXSNO, GHFLXTSKIN, TPSN   ,ASNOW          ,&
            TP1     ,TP2     ,TP3    ,TP4    ,TP5    ,TP6    ,SFMC   ,&
            RZMC    ,PRMC    ,ENTOT  ,WTOT   ,WCHANGE,ECHANGE,HSNACC ,&
-           EVACC   ,SHACC   ,SHSNOW                                 ,&
-           AVETSNOW,WAT10CM, WATSOI ,ICESOI                         ,&
+           EVACC   ,SHACC   ,TSURF, SHSNOW                                 ,&
+           AVETSNOW,WAT10CM, WATSOI ,ICESOI                ,&
            LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
-           TCSORIG1, TPSN1IN1, TPSN1OUT1,lonbeg,lonend,latbeg,latend, &
+           TCSORIG1, TPSN1IN1, TPSN1OUT1,                       &
            TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
-           QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0, LHACC=LHACC                )
+           QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0, LHACC=LHACC )
       
 !      if( .not. is_OFFLINE) then
 !         !amm add correction term to latent heat diagnostics (HLATN is always allocated)
@@ -476,8 +487,9 @@ do t = 1,ntsteps
 
       ! The model is run on the problematic tile
       
-      call CATCHMENT ( 1, c_param(tid:tid)%lons, c_param(tid:tid)%lats                ,&
-           DT	    , pfrac      , cat_id(tid:tid), c_param(tid:tid)%VEG, c_param(tid:tid)%DZSF    ,& 
+      call CATCHCN ( 1, c_param(tid:tid)%lons, c_param(tid:tid)%lats                ,&
+           DT	    , pfrac      , cat_id(tid:tid), c_param(tid:tid)%VEG1, c_param(tid:tid)%VEG2, &
+           c_param(tid:tid)%FVEG1, c_param(tid:tid)%FVEG2, c_param(tid:tid)%DZSF    ,& 
            c_input(tid:tid)%PCU ,c_input(tid:tid)%PLS ,c_input(tid:tid)%SNO ,c_input(tid:tid)%UUU,&
            c_input(tid:tid)%EVSBTS ,c_input(tid:tid)%DEVSBTS ,c_input(tid:tid)%DEDTCS   ,&
            c_input(tid:tid)%SHSBTS ,c_input(tid:tid)%DHSDQAS ,c_input(tid:tid)%DSHSBTS  ,&  
@@ -489,15 +501,17 @@ do t = 1,ntsteps
            c_input(tid:tid)%SHSBTN,c_input(tid:tid)%DHSDQAN ,c_input(tid:tid)%DSHSBTN ,&
            c_input(tid:tid)%TA     ,c_input(tid:tid)%QA      ,&
            c_input(tid:tid)%RAS    ,c_input(tid:tid)%RAT   ,c_input(tid:tid)%RAW    ,c_input(tid:tid)%RASN     ,&
-           c_input(tid:tid)%ZTH    ,c_input(tid:tid)%DRPAR ,c_input(tid:tid)%DFPAR  ,c_input(tid:tid)%SWNETFREE,&
+           c_input(tid:tid)%ZTH    ,c_input(tid:tid)%SWNETFREE,&
            c_input(tid:tid)%SWNETSNOW ,c_input(tid:tid)%LWDNSRF   ,&
-           c_input(tid:tid)%PS     ,c_input(tid:tid)%LAI0  ,c_input(tid:tid)%GRN0   ,c_input(tid:tid)%Z2CH     ,&
+           c_input(tid:tid)%PS     ,c_input(tid:tid)%LAI0  ,c_input(tid:tid)%GRN0   ,   &
            c_input(tid:tid)%SQSCAT    ,c_input(tid:tid)%RSL1      ,&
            c_input(tid:tid)%RSL2   ,c_input(tid:tid)%RDC                                     ,&
            c_input(tid:tid)%QSATS  ,c_input(tid:tid)%DQSS  ,c_input(tid:tid)%ALW1  ,c_input(tid:tid)%BLW1      ,&
            c_input(tid:tid)%QSATT  ,c_input(tid:tid)%DQST  ,c_input(tid:tid)%ALW2  ,c_input(tid:tid)%BLW2      ,&
            c_input(tid:tid)%QSATW  ,c_input(tid:tid)%DQSW  ,c_input(tid:tid)%ALW3  ,c_input(tid:tid)%BLW3      ,&
            c_input(tid:tid)%QSATN  ,c_input(tid:tid)%DQSN  ,c_input(tid:tid)%ALW4  ,c_input(tid:tid)%BLW4      ,&
+           c_input(tid:tid)%RCSAT  ,c_input(tid:tid)%DRCSDT  ,c_input(tid:tid)%DRCSDQ  ,c_input(tid:tid)%RCUNS  , &
+           c_input(tid:tid)%DRCUDT ,c_input(tid:tid)%DRCUDQ     ,&
            c_param(tid:tid)%BF1    ,c_param(tid:tid)%BF2   ,c_param(tid:tid)%BF3   ,c_param(tid:tid)%VGWMAX ,&
            c_param(tid:tid)%CDCR1 ,c_param(tid:tid)%CDCR2 ,c_param(tid:tid)%PSIS	             ,&
            c_param(tid:tid)%BEE    ,c_param(tid:tid)%POROS ,c_param(tid:tid)%WPWET ,c_param(tid:tid)%COND   ,&
@@ -507,19 +521,20 @@ do t = 1,ntsteps
            c_param(tid:tid)%ARW1   ,c_param(tid:tid)%ARW2  ,c_param(tid:tid)%ARW3  ,c_param(tid:tid)%ARW4   ,&
            c_param(tid:tid)%TSA1  ,c_param(tid:tid)%TSA2  ,c_param(tid:tid)%TSB1  ,c_param(tid:tid)%TSB2   ,&
            c_param(tid:tid)%ATAU   ,c_param(tid:tid)%BTAU  ,.false.			     ,&
+           c_upds(tid:tid)%TG1     ,c_upds(tid:tid)%TG2    ,c_upds(tid:tid)%TG4		     ,& 
            c_upds(tid:tid)%TC1     ,c_upds(tid:tid)%TC2    ,c_upds(tid:tid)%TC4		     ,& 
            c_upds(tid:tid)%QC1     ,c_upds(tid:tid)%QC2    ,c_upds(tid:tid)%QC4		     ,&
            c_upds(tid:tid)%CAPAC   ,c_upds(tid:tid)%CATDEF ,c_upds(tid:tid)%RZEXC ,c_upds(tid:tid)%SRFEXC ,&
-           GHTCNT(1:n_gt,tid:tid) ,c_upds(tid:tid)%TSURF , WESNN(1:n_snow,tid:tid)  ,HTSNNN(1:n_snow,tid:tid) ,SNDZN(1:n_snow,tid:tid)  ,&
+           GHTCNT(1:n_gt,tid:tid)   ,WESNN(1:n_snow,tid:tid)  ,HTSNNN(1:n_snow,tid:tid) ,SNDZN(1:n_snow,tid:tid)  ,&
            EVAPOUT(tid:tid) ,SHOUT(tid:tid)   ,RUNOFF(tid:tid) ,EVPINT(tid:tid) ,EVPSOI(tid:tid) ,EVPVEG(tid:tid) ,EVPICE(tid:tid) ,&
            BFLOW(tid:tid)   ,RUNSURF(tid:tid) ,SMELT(tid:tid)  ,HLWUP(tid:tid)  ,SWNDSRF(tid:tid),HLATN(tid:tid)  ,QINFIL(tid:tid) ,&
            AR1(tid:tid)     ,AR2(tid:tid)     ,RZEQ(tid:tid)   ,GHFLX(tid:tid)  ,GHFLXSNO(tid:tid), GHFLXTSKIN(tid:tid), TPSN(tid:tid)   ,ASNOW(tid:tid)          ,&
            TP1(tid:tid)     ,TP2(tid:tid)     ,TP3(tid:tid)    ,TP4(tid:tid)    ,TP5(tid:tid)    ,TP6(tid:tid)    ,SFMC(tid:tid)   ,&
            RZMC(tid:tid)    ,PRMC(tid:tid)    ,ENTOT(tid:tid)  ,WTOT(tid:tid)   ,WCHANGE(tid:tid),ECHANGE(tid:tid),HSNACC(tid:tid) ,&
-           EVACC(tid:tid)   ,SHACC(tid:tid)   ,SHSNOW(tid:tid)                                 ,&
+           EVACC(tid:tid)   ,SHACC(tid:tid)   ,TSURF(tid:tid) ,SHSNOW(tid:tid)                                 ,&
            AVETSNOW(tid:tid),WAT10CM(tid:tid), WATSOI(tid:tid) ,ICESOI(tid:tid)                ,&
            LHSNOW1(tid:tid), LWUPSNOW1(tid:tid), LWDNSNOW1(tid:tid), NETSWSNOW(tid:tid)             ,&
-           TCSORIG1(tid:tid), TPSN1IN1(tid:tid), TPSN1OUT1(tid:tid),lonbeg,lonend,latbeg,latend,  &
+           TCSORIG1(tid:tid), TPSN1IN1(tid:tid), TPSN1OUT1(tid:tid),&
            TC1_0=TC1_0(tid:tid), TC2_0=TC2_0(tid:tid), TC4_0=TC4_0(tid:tid)                ,&
            QA1_0=QA1_0(tid:tid), QA2_0=QA2_0(tid:tid), QA4_0=QA4_0(tid:tid), LHACC=LHACC(tid:tid) )
 	
@@ -589,7 +604,10 @@ contains
     read (unit) catchin%LONS
     read (unit) catchin%LATS
     read (unit) catchin%DZSF
-    read (unit) catchin%VEG
+    read (unit) catchin%VEG1
+    read (unit) catchin%VEG2
+    read (unit) catchin%FVEG1
+    read (unit) catchin%FVEG2
     read (unit) catchin%BF1     
     read (unit) catchin%BF2     
     read (unit) catchin%BF3     
@@ -633,6 +651,9 @@ contains
     integer, intent (in) :: ntiles,unit
     type(c_updates), dimension (ntiles), intent(inout) :: catchin
     
+    read (unit) catchin%TG1
+    read (unit) catchin%TG2
+    read (unit) catchin%TG4
     read (unit) catchin%TC1
     read (unit) catchin%TC2
     read (unit) catchin%TC4
@@ -649,7 +670,6 @@ contains
     read (unit) catchin%GHTCNT(4)
     read (unit) catchin%GHTCNT(5)
     read (unit) catchin%GHTCNT(6)
-    read (unit) catchin%TSURF
     read (unit) catchin%WESNN(1)
     read (unit) catchin%WESNN(2)
     read (unit) catchin%WESNN(3)
@@ -707,15 +727,12 @@ contains
     read (unit) catchin%RAW      
     read (unit) catchin%RASN     
     read (unit) catchin%ZTH      
-    read (unit) catchin%DRPAR    
-    read (unit) catchin%DFPAR    
     read (unit) catchin%SWNETFREE
     read (unit) catchin%SWNETSNOW
     read (unit) catchin%LWDNSRF  
     read (unit) catchin%PS       
     read (unit) catchin%LAI0     
     read (unit) catchin%GRN0     
-    read (unit) catchin%Z2CH     
     read (unit) catchin%SQSCAT   
     read (unit) catchin%RSL1     
     read (unit) catchin%RSL2     
@@ -736,7 +753,13 @@ contains
     read (unit) catchin%DQSN 
     read (unit) catchin%ALW4
     read (unit) catchin%BLW4
+    read (unit) catchin%RCSAT
+    read (unit) catchin%DRCSDT
+    read (unit) catchin%DRCSDQ
+    read (unit) catchin%RCUNS
+    read (unit) catchin%DRCUDT
+    read (unit) catchin%DRCUDQ
     
   end subroutine read_catch_inputs
 
-END PROGRAM dbg_clsm_offline
+END PROGRAM dbg_cnlsm_offline
