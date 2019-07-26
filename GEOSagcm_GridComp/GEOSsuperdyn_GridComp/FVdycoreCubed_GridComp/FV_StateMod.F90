@@ -77,6 +77,7 @@ private
   public fv_getOmega
   public fv_getVorticity
   public fv_getDivergence
+  public fv_getUpdraftHelicity
   public fv_getEPV
   public fv_getDELZ
   public fv_getPKZ
@@ -456,18 +457,18 @@ contains
   ! Veritical resolution dependencies
    if (FV_Atm(1)%flagstruct%npz == 72) then
      FV_Atm(1)%flagstruct%n_sponge = 9 ! ~0.2mb
-     FV_Atm(1)%flagstruct%n_zfilter = 37 ! ~100mb
+     FV_Atm(1)%flagstruct%n_zfilter = 25 ! ~10mb
    endif
    if (FV_Atm(1)%flagstruct%npz == 132) then
      FV_Atm(1)%flagstruct%n_sponge = 9 ! ~0.2mb
-     FV_Atm(1)%flagstruct%n_zfilter = 60 ! ~100mb
+     FV_Atm(1)%flagstruct%n_zfilter = 30 ! ~10mb
    endif
    FV_Atm(1)%flagstruct%tau = 0.
    FV_Atm(1)%flagstruct%rf_cutoff = 7.5e2
    FV_Atm(1)%flagstruct%d2_bg_k1 = 0.20
    FV_Atm(1)%flagstruct%d2_bg_k2 = 0.06
    FV_Atm(1)%flagstruct%remap_option = 0
-   FV_Atm(1)%flagstruct%fv_sg_adj = DT*2.0
+   FV_Atm(1)%flagstruct%fv_sg_adj = DT
    FV_Atm(1)%flagstruct%kord_tm =  9
    FV_Atm(1)%flagstruct%kord_mt =  9
    FV_Atm(1)%flagstruct%kord_wz =  9
@@ -481,15 +482,44 @@ contains
    FV_Atm(1)%flagstruct%dwind_2d = .false.
    FV_Atm(1)%flagstruct%delt_max = 0.002
    FV_Atm(1)%flagstruct%ke_bg = 0.0
-  ! Some default time-splitting and damping options
-   FV_Atm(1)%flagstruct%k_split = 2
-   FV_Atm(1)%flagstruct%n_split = 0
+  ! Some default damping options
    FV_Atm(1)%flagstruct%nord = 2
    FV_Atm(1)%flagstruct%dddmp = 0.1
    FV_Atm(1)%flagstruct%d4_bg = 0.12
    FV_Atm(1)%flagstruct%d2_bg = 0.0
    FV_Atm(1)%flagstruct%d_ext = 0.0
-  ! defualt NonHydrostatic settings (irrelavent to Hydrostatic)
+  ! Some default time-splitting options
+   FV_Atm(1)%flagstruct%n_split = 0
+   FV_Atm(1)%flagstruct%k_split = 1
+   if (FV_Atm(1)%flagstruct%ntiles == 6) then
+     ! Cubed-sphere grid resolution and DT dependence 
+     !              based on ideal remapping DT
+      if (FV_Atm(1)%flagstruct%npx >= 48) then
+         FV_Atm(1)%flagstruct%k_split = CEILING(DT/1800.0  )
+      endif
+      if (FV_Atm(1)%flagstruct%npx >= 90) then
+         FV_Atm(1)%flagstruct%k_split = CEILING(DT/ 900.0   )
+      endif
+      if (FV_Atm(1)%flagstruct%npx >= 180) then
+         FV_Atm(1)%flagstruct%k_split = CEILING(DT/ 450.0   )
+      endif
+      if (FV_Atm(1)%flagstruct%npx >= 360) then
+         FV_Atm(1)%flagstruct%k_split = CEILING(DT/ 225.0   )
+      endif
+      if (FV_Atm(1)%flagstruct%npx >= 720) then
+         FV_Atm(1)%flagstruct%k_split = CEILING(DT/ 112.5   )
+      endif
+      if (FV_Atm(1)%flagstruct%npx >= 1440) then
+         FV_Atm(1)%flagstruct%k_split = CEILING(DT/  56.25  )
+      endif
+      if (FV_Atm(1)%flagstruct%npx >= 2880) then
+         FV_Atm(1)%flagstruct%k_split = CEILING(DT/  28.125 )
+      endif
+      if (FV_Atm(1)%flagstruct%npx >= 5760) then
+         FV_Atm(1)%flagstruct%k_split = CEILING(DT/  14.0625)
+      endif
+   endif
+  ! default NonHydrostatic settings (irrelavent to Hydrostatic)
    FV_Atm(1)%flagstruct%beta = 0.0
    FV_Atm(1)%flagstruct%a_imp = 1.0
    FV_Atm(1)%flagstruct%p_fac = 0.1
@@ -508,10 +538,14 @@ contains
        FV_Atm(1)%flagstruct%hord_tr =  8
      ! NonMonotonic defaults for c360 (~25km) and finer
        if (FV_Atm(1)%flagstruct%npx >= 360) then
+       ! This combination of horizontal advection schemes is critical 
+       ! for anomaly correlation NWP skill. 
+       ! Using all = 5 (like GFS) produces a substantial degredation in skill
          FV_Atm(1)%flagstruct%hord_mt =  5
-         FV_Atm(1)%flagstruct%hord_vt =  5
-         FV_Atm(1)%flagstruct%hord_tm =  5
-         FV_Atm(1)%flagstruct%hord_dp = -5
+         FV_Atm(1)%flagstruct%hord_vt =  6
+         FV_Atm(1)%flagstruct%hord_tm =  6
+         FV_Atm(1)%flagstruct%hord_dp = -6
+       ! This is the best/fastest option for tracers
          FV_Atm(1)%flagstruct%hord_tr =  8
        ! Must now include explicit vorticity damping
          FV_Atm(1)%flagstruct%d_con = 1.
@@ -3516,6 +3550,22 @@ subroutine fv_getDivergence(uc, vc, divg)
         enddo
     enddo
 end subroutine fv_getDivergence
+
+subroutine fv_getUpdraftHelicity(uh25)
+   use constants_mod, only: fms_grav=>grav
+   use fv_diagnostics_mod, only: get_vorticity, updraft_helicity
+   real(FVPRC), intent(OUT) :: uh25(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec)
+   integer :: sphum=1
+   real(FVPRC) :: vort(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,FV_Atm(1)%npz)
+   call get_vorticity(FV_Atm(1)%bd%isc, FV_Atm(1)%bd%iec, FV_Atm(1)%bd%jsc, FV_Atm(1)%bd%jec, &
+                      FV_Atm(1)%bd%isd, FV_Atm(1)%bd%ied, FV_Atm(1)%bd%jsd, FV_Atm(1)%bd%jed, &
+                      FV_Atm(1)%npz, FV_Atm(1)%u, FV_Atm(1)%v, vort, &
+                      FV_Atm(1)%gridstruct%dx, FV_Atm(1)%gridstruct%dy, FV_Atm(1)%gridstruct%rarea)
+   call updraft_helicity(FV_Atm(1)%bd%isc, FV_Atm(1)%bd%iec, FV_Atm(1)%bd%jsc, FV_Atm(1)%bd%jec, FV_Atm(1)%ng, FV_Atm(1)%npz, &
+                     zvir, sphum, uh25, &
+                     FV_Atm(1)%w, vort, FV_Atm(1)%delz, FV_Atm(1)%q,   &
+                     FV_Atm(1)%flagstruct%hydrostatic, FV_Atm(1)%pt, FV_Atm(1)%peln, FV_Atm(1)%phis, fms_grav, 2.e3, 5.e3)
+end subroutine fv_getUpdraftHelicity
 
 subroutine fv_getEPV(pt, vort, ua, va, epv)
   real(REAL8), intent(IN)  ::    pt(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%flagstruct%npz)

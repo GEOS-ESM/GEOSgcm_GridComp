@@ -349,9 +349,9 @@ module cloudnew
    real, parameter :: aT_ICE_MAX = 261.16
    real, parameter :: aICEFRPWR  = 2.0
         ! Over snow/ice
-   real, parameter :: iT_ICE_ALL = 236.16
-   real, parameter :: iT_ICE_MAX = 255.16
-   real, parameter :: iICEFRPWR  = 6.0
+   real, parameter :: iT_ICE_ALL = MAPL_TICE-40.0
+   real, parameter :: iT_ICE_MAX = MAPL_TICE
+   real, parameter :: iICEFRPWR  = 4.0
         ! Over Land
    real, parameter :: lT_ICE_ALL = 239.16
    real, parameter :: lT_ICE_MAX = 261.16
@@ -3553,7 +3553,8 @@ contains
     ! Assume unmodified they represent situation at 100 mb
       if (WXR > 0.) then
     !    VF = VF * ( 100./MAX(PL,10.) )**WXR
-         VF = VF * SIN( 0.5*MAPL_PI*MIN(1.0,100./PL)**WXR )
+    !    VF = VF * SIN( 0.5*MAPL_PI*MIN(1.0,100./PL)**WXR )
+         VF = VF * MIN(WXR,SIN( 0.5*MAPL_PI*MIN(1.0,100./PL)))
       endif
 
 #ifdef DONT_SKIP_ICE_THICKEN
@@ -3880,7 +3881,7 @@ contains
         if ( TEMP <= iT_ICE_ALL ) then
            ICEFRCT_1 = 1.000
         else if ( (TEMP > iT_ICE_ALL) .AND. (TEMP <= iT_ICE_MAX) ) then
-           ICEFRCT_1 = SIN( 0.5*MAPL_PI*( 1.00 - ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL ) ) )
+           ICEFRCT_1 = 1.00 -  ( TEMP - iT_ICE_ALL ) / ( iT_ICE_MAX - iT_ICE_ALL )
         end if
         ICEFRCT_1 = MIN(ICEFRCT_1,1.00)
         ICEFRCT_1 = MAX(ICEFRCT_1,0.00)

@@ -12,7 +12,8 @@
    subroutine compute_rc(nch,nveg,tc,qa,tm,pbot,coszen,pardir,pardif, &
                          elai,esai,ityp,fveg,btran,fwet,              &
                          rc,rcdtc,rcdea,psnsun,psnsha,laisun,laisha,  &
-                         dayl_fac,co2v,dtc,dea,parabs,sifsun,sifsha)
+                         dayl_fac,co2v,dtc,dea,parabs,sifsun,sifsha,  &
+                         fpar_sf)
 
    use clm_varcon, only: tfrz
    use MAPL_SatVaporMod
@@ -36,6 +37,7 @@
    real, intent(in) :: fwet(nch)     ! fraction of canopy that is wet (0-1)
    real, intent(in) :: co2v(nch)     ! atmospheric carbon dioxide concentration
    real, intent(in) :: dayl_fac(nch) ! daylength factor (0-1)
+   real, intent(in), optional :: fpar_sf(nch,nveg)   ! FPAR Scale factor = SCALED_FPAR / CLM4_FPAR
 
    real, intent(out) :: rc(nch)      ! canopy stomatal resistance (s/m)
    real, intent(out) :: rcdtc(nch)   ! canopy stomatal resistance (s/m) for Tc+d(Tc)
@@ -46,7 +48,7 @@
    real, intent(out) :: sifsha(nch,nveg)    ! shaded foliage fluorescence
    real, intent(out) :: laisun(nch,nveg)    ! sunlit projected leaf area index
    real, intent(out) :: laisha(nch,nveg)    ! shaded projected leaf area index
-   real, intent(out) :: parabs(nch)         ! total absorbed PAR
+   real, intent(out) :: parabs(nch,nveg)         ! total absorbed PAR
 
 !  local
   
@@ -109,7 +111,7 @@
       rb(:) = 10.            ! gkw: for now, assume a small value for rb (see 8/3/10 email) 
       ea(:) = pbot(:) * qa(:) / (0.622 + qa(:))   ! canopy air vapor pressure (Pa)
 
-     parabs(:) = 0.          ! initialize absorbed PAR to zero
+     parabs(:,:) = 0.          ! initialize absorbed PAR to zero
 
 ! compute saturation vapor pressure
 ! ---------------------------------
@@ -298,10 +300,22 @@
          parsun(n,nv) = sun_add + sun_aid + sun_aii
          parsha(n,nv) = sha_aid + sha_aii
 
-         parsun(n,nv) = parsun(n,nv) * wl ! sunlit canopy PAR for leaves
-         parsha(n,nv) = parsha(n,nv) * wl ! shaded canopy PAR for leaves
+         if(present (fpar_sf)) then 
 
-         parabs(n) = parabs(n) + (parsun(n,nv) + parsha(n,nv))*fveg(n,nv) ! save absorbed PAR for FPAR calculation
+            ! scaling to match MODIS FPAR
+
+            parsun(n,nv) = parsun(n,nv) * wl * fpar_sf(n,nv) ! sunlit canopy PAR for leaves
+            parsha(n,nv) = parsha(n,nv) * wl * fpar_sf(n,nv) ! shaded canopy PAR for leaves
+
+         else
+
+            parsun(n,nv) = parsun(n,nv) * wl ! sunlit canopy PAR for leaves
+            parsha(n,nv) = parsha(n,nv) * wl ! shaded canopy PAR for leaves
+
+         endif
+
+!         parabs(n) = parabs(n) + (parsun(n,nv) + parsha(n,nv))*fveg(n,nv) ! save absorbed PAR for FPAR calculation
+         parabs (n,nv) =  parsun(n,nv) + parsha(n,nv)
 
          if(elai(n,nv) .gt. 0.01) then
            laisun(n,nv) = elai(n,nv)*fsun
@@ -339,7 +353,7 @@
        
      end do ! end PFT loop
 
-   end do   ! end column loop
+  end do   ! end column loop
 
 
 !  compute stomatal resistance using CLM routine; also compute photosynthesis
