@@ -2271,12 +2271,33 @@ l_SIG:DO fase = 1,2
         if( USE_SCALE_DEP == 0) then
            sig(:)=1.; EXIT l_SIG
         endif
+
+!
+!--- SCALE DEPENDENCE FACTOR (SIG), version new
+!
+        if( USE_SCALE_DEP == 1 ) then
+              
+         !if( cumulus /= 'deep') then
+         !   sig(:)=1.
+         !else 
+             do i=its,itf
+	      sig(i) = 0.
+              if(ierr(i) /= 0) cycle
+              sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1000.))
+              sig(i)= max(0.001,min(sig(i),1.))
+              !print*,"FORM2=",sig(i),dx(i)
+             enddo
+         !endif
+          EXIT l_SIG
+         endif
+
         if(fase == 2) EXIT l_SIG
 !
-!--- SCALE DEPENDENCE FACTOR (SIG)
+!--- SCALE DEPENDENCE FACTOR (SIG), version original
 !
-        !- get the effective entraiment between klcl and kbcon
-        do i=its,itf
+        if( USE_SCALE_DEP == 2 ) then
+          !- get the effective entraiment between klcl and kbcon
+          do i=its,itf
 	    sig(i) = 1.
             IF(ierr(i) /= 0)cycle
             effec_entrain=0.0
@@ -2286,7 +2307,7 @@ l_SIG:DO fase = 1,2
             enddo
             effec_entrain=effec_entrain/(po_cup(i,klcl(i))-po_cup(i,kbcon(i)+1))
 
-        !- scale dependence factor
+            !- scale dependence factor
             radius =0.2/effec_entrain
             frh    =3.14*radius*radius/(dx(i)*dx(i))
                !  print*,"frh1=",frh,effec_entrain,(1.-frh)**2
@@ -2298,10 +2319,10 @@ l_SIG:DO fase = 1,2
                  !print*,"frh2=",frh,effec_entrain,rescale_entrain(i)
             endif
             !- scale dependence factor
-            sig (i)=(1.-frh)**2
-                !print*,"frh2=",frh,effec_entrain,rescale_entrain(i),sig(i)
-        enddo
-
+            sig (i)=(1.-frh)**2 
+            !print*,"FORM1=",sig(i),dx(i)
+          enddo
+        endif
      ENDDO l_SIG ! fase loop
 
 

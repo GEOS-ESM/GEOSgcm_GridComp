@@ -642,9 +642,13 @@ contains
     closs(c) = closs(c) + col_fire_closs(i)*wtzone(c,z)
   end do
 
+  where (zlai > 20.) zlai = 20.
+  where (zsai > 20.) zsai = 20.
+  
+
   end subroutine CN_Driver
 
-  subroutine CN_init(istep,nch,nveg,nzone,ityp,fveg,cncol,var_col,cnpft,var_pft)
+  subroutine CN_init(istep,nch,nveg,nzone,ityp,fveg,var_col,var_pft,cncol,cnpft,skip_initCN)
 
   integer*8, intent(in) :: istep
   integer, intent(in) :: nch ! number of tiles
@@ -654,10 +658,11 @@ contains
   real, dimension(nch,nveg,nzone), intent(in) :: fveg    ! PFT fraction
 
   integer, intent(in) :: var_col ! number of CN column restart variables
-  real*4, dimension(nch,nzone,var_col), intent(in) :: cncol ! gkw: column CN restart 
+  real*4, dimension(nch,nzone,var_col), optional, intent(in) :: cncol ! gkw: column CN restart 
 
   integer, intent(in) :: var_pft ! number of CN PFT restart variables
-  real*4, dimension(nch,nzone,nveg,var_pft), intent(in) :: cnpft ! gkw: PFT CN restart 
+  real*4, dimension(nch,nzone,nveg,var_pft), optional, intent(in) :: cnpft ! gkw: PFT CN restart 
+  logical,optional, intent(in) :: skip_initCN
 
   integer :: n, p, nv, nc, nz, np
 
@@ -725,6 +730,8 @@ contains
   call clm_varpar_init()
   call initClmtype(lbg,ubg,lbl,ubl,lbc,ubc,lbp,ubp) ! allocation & initialization
 
+if (.not.present(skip_initCN)) then ! optional for DRCN case to avoid memory leak. The initialization will be skipped.
+
 ! initialize PFT parameters
 ! -------------------------
   pftcon%z0mr         = z0mx	     ! ratio of momentum roughness length to canopy top height (-)
@@ -765,6 +772,9 @@ contains
   pftcon%rhos         = rhosx        ! stem reflectance (visible)
   pftcon%taul         = taulx        ! leaf transmittance (visible)
   pftcon%taus         = tausx        ! stem transmittance (visible)
+
+  if(.not.present(cncol)) RETURN
+  endif   ! for the optional skip_initCN
 
 ! transfer restart vars from to CLM data structures if restart exists
 ! -------------------------------------------------------------------
@@ -1098,6 +1108,9 @@ contains
       end do   ! PFT index loop
     end do     ! CN zone loop
   end do       ! catchment tile loop
+
+  where (elai > 20.) elai = 20.
+  where (esai > 20.) esai = 20.  
 
   end subroutine get_CN_LAI
 
