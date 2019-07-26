@@ -5,8 +5,8 @@ program Runoff
 
   implicit none
 
-  integer, parameter     :: nx=8640, ny=4320
-  integer*2, allocatable :: lats(:,:), lons(:,:)
+  integer                :: nx, ny
+  integer, allocatable   :: lats(:,:), lons(:,:)
   integer, pointer       :: rst(:,:), SortArr(:,:), key(:)
   integer, pointer       :: srctile(:),  srcweight(:), dstweight(:), dsttile(:)
   real, allocatable      :: SrcFraction(:), area(:), in(:), out(:)
@@ -15,7 +15,8 @@ program Runoff
   integer                :: numtrans,  numclosed
   integer                :: status
   character*100          :: file, fileT, fileR, fileO, fileB
-  character*100          :: fileLL="data/Outlet_latlon.dat"
+  character*100          :: fileLL="data/CATCH/Outlet_latlon."
+  character*5            :: C_NX, C_NY
 
   call getarg(1,file)
 
@@ -28,6 +29,17 @@ program Runoff
 ! These should all be ocean pixels
 !---------------------------------------
 
+!  print *, "Getting raster size from "//trim(fileT) 
+
+  open(10,file=fileT, form="formatted", status="old")
+
+  read(10,*) np, nx, ny
+  close(10)
+!  print *, nx, ny
+
+  write (C_NX, '(i5.5)') NX
+  write (C_NY, '(i5.5)') NY
+
   print *, "Reading outlets..."
 
   allocate(lats(nx,ny), lons(nx,ny),stat=status)
@@ -36,16 +48,38 @@ program Runoff
      stop __LINE__
   endif
 
-  open (30,file=fileLL,status="old",form="unformatted")
-  read (30) lons
-  read (30) lats
+  open (30,file=trim(fileLL)//C_NX//'x'//C_NY,form="unformatted",status="old")
+  do j = 1, ny
+     read (30) lons(:,j)
+     read (30) lats(:,j)
+  end do
   close(30)
 
+!  do j=1,ny
+!!     if (mod(j,100) == 0) print *,'J=',j
+!     do i=1,nx
+!        ii = Lons(i,j)
+!        jj = lats(i,j)
+!
+!        if(ii==-999 .or. jj==-999) then
+!           !              ii = i
+!           !              jj = j
+!           cycle
+!        endif
+!
+!        if(ii==i .and. jj==j) then
+!           print *, '>>> Inland Ocean Point ', ii, jj, lons(i,j), lats(i,j)
+!           stop
+!        end if
+!
+!    end do
+! end do
+! stop "DONE"
 ! Count the number of Ocean and land tiles in the tile file
 !  All land tiles preceed the ocean tiles.
 !----------------------------------------------------------
 
-  print *, "Reading til file "//trim(fileT) 
+!  print *, "Reading til file "//trim(fileT) 
 
   open(10,file=fileT, form="formatted", status="old")
 
@@ -81,7 +115,7 @@ program Runoff
 
   print *, "Reading rst file "//trim(fileR) 
 
-  open(20,file=fileR,form="unformatted",status="old",convert="LITTLE_ENDIAN")
+  open(20,file=fileR,form="unformatted",status="old")
 
   allocate(rst(nx,ny),stat=status)
   if(status/=0) then
@@ -95,7 +129,7 @@ program Runoff
 
   close(20)
 
-  allocate(SortArr(1000000,3))
+  allocate(SortArr(2*lnd,3))
 
   DstTile   => SortArr(:,1)
   SrcTile   => SortArr(:,2)
@@ -112,20 +146,23 @@ program Runoff
   NumTrans=0
 
   do j=1,ny
+!     if (mod(j,100) == 0) print *,'J=',j
      do i=1,nx
         if(rst(i,j)<=lnd) then
            ii = Lons(i,j)
            jj = lats(i,j)
+
+           if(ii==-999 .or. jj==-999) then
+!              ii = i
+!              jj = j
+              cycle
+           endif
 
            if(ii==i .and. jj==j) then
               print *, '>>> Inland Ocean Point ', ii, jj, rst(i,j)
               stop
            end if
 
-           if(ii==-999) then
-              ii = i
-              jj = j
-           endif
            k = MAPL_HASHIncrement(HashC,rst(i,j))
            k = MAPL_HASHIncrement(Hash,rst(ii,jj),rst(i,j))
 
@@ -149,14 +186,16 @@ program Runoff
   SrcTile   => SortArr(:NumTrans,2)
   SrcWeight => SortArr(:NumTrans,3)
 
-! Allocate space for transanction lists
-!--------------------------------------
-
-  allocate(key(numTrans))
-
   print *, "Total Transactions ", NumTrans
   print *, MAPL_HashSize(Hash),MAPL_HashSize(HashC)
 
+  call MAPL_HashDestroy(Hash)
+  call MAPL_HashDestroy(HashC)
+
+! Allocate space for transanction lists
+!--------------------------------------
+
+  allocate(key(numTrans),stat=status)
 
   if(status/=0) then
      print *, "Out of Memory"
@@ -222,8 +261,7 @@ program Runoff
   close(10)
 
 
-  open(10,file=fileB, form="unformatted", Convert="LITTLE_ENDIAN", &
-       status="unknown")
+  open(10,file=fileB, form="unformatted", status="unknown")
 
   write(10) NumTrans
   write(10) SrcTile
