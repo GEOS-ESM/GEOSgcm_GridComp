@@ -23,7 +23,7 @@ public :: soil_para_hwsd,hres_lai,hres_gswp2, merge_lai_data, grid2tile_modis6
 public :: modis_alb_on_tiles_high,modis_scale_para_high,hres_lai_no_gswp
 public :: histogram, regrid_map, create_mapping, esa2mosaic , esa2clm, ESA2CLM_45
 public :: grid2tile_ndep_t2m_alb, CREATE_ROUT_PARA_FILE
-public :: CLM45_fixed_parameters, CLM45_clim_parameters, gimms_clim_ndvi
+public :: CLM45_fixed_parameters, CLM45_clim_parameters, gimms_clim_ndvi, grid2tile_glass,  open_landparam_nc4_files
 
 ! Below structure is used to regrid high resolution data to high resolution tile raster
 
@@ -810,7 +810,9 @@ contains
     integer, allocatable, dimension (:,:) :: clm_veg
     integer :: esa_clm_veg (2)
     real    :: esa_clm_frac(2)
-    
+    logical :: file_exists
+    REAL, ALLOCATABLE, DIMENSION (:,:) :: NITYP,NFVEG
+
     ! Reading CLM pft data file
     !--------------------------
 
@@ -1325,7 +1327,14 @@ contains
          action =  'read')
     
     read (11, *) maxcat   
- 
+
+    inquire(file='clsm/catchcn_params.nc4', exist=file_exists)
+    if(file_exists) then
+       status = NF_OPEN ('clsm/catchcn_params.nc4', NF_WRITE, ncid) ; VERIFY_(STATUS)
+       allocate (NITYP (1:MAXCAT, 1:4))
+       allocate (NFVEG (1:MAXCAT, 1:4))    
+    endif
+
     do k = 1, maxcat
 
        read (11,'(i8,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
@@ -1472,8 +1481,27 @@ contains
        write (10,'(2I8,4I3,4f7.2,2I3,2f7.2)')     &
             tid,cid,cpt1, cpt2, cst1, cst2, cpf1, cpf2, csf1, csf2, &
             esa_clm_veg (1), esa_clm_veg (2), esa_clm_frac(1), esa_clm_frac(2)
+
+       if (allocated (NITYP)) NITYP (k, :) = (/REAL(cpt1), REAL(cpt2), REAL(cst1), REAL(cst2)/)
+       if (allocated (NFVEG)) NFVEG (k, :) = (/cpf1, cpf2, csf1, csf2/)
+
     end do
 
+    if(file_exists) then
+
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1,1/),(/maxcat,1/), NITYP (:, 1)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1,2/),(/maxcat,1/), NITYP (:, 2)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1,3/),(/maxcat,1/), NITYP (:, 3)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1,4/),(/maxcat,1/), NITYP (:, 4)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'FVG'    ) ,(/1,1/),(/maxcat,1/), NFVEG (:, 1)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'FVG'    ) ,(/1,2/),(/maxcat,1/), NFVEG (:, 2)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'FVG'    ) ,(/1,3/),(/maxcat,1/), NFVEG (:, 3)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'FVG'    ) ,(/1,4/),(/maxcat,1/), NFVEG (:, 4)) ; VERIFY_(STATUS)
+       DEALLOCATE (NITYP, NFVEG)
+       STATUS   = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+   
+    endif
+    
     close (10, status = 'keep')
     close (11, status = 'keep')    
 
@@ -1501,7 +1529,7 @@ contains
     integer :: NBINS, NPLUS
     real, pointer, dimension (:)  :: z2, z0
     real, dimension (6) :: VGZ2 = (/35.0, 20.0, 17.0, 0.6, 0.5, 0.6/) ! Dorman and Sellers (1989)
-    logical :: jpl_height = .true.
+    logical :: file_exists
 
     ! Reading ESA vegetation types
     !-----------------------------
@@ -1715,16 +1743,32 @@ contains
     close (10,status='keep')    
     close (11,status='keep') 
 
-    open (20,file='clsm/vegdyn.data',status='unknown',action='write',form='unformatted', &
-         convert='little_endian')   
-    write (20) real(ityp)
-    write (20) z2 (:)
-    write (20) z0 (:)
-    
-    close (20)    
-    
+    inquire(file='clsm/catch_params.nc4', exist=file_exists)
 
-    deallocate (veg, z0, z2, ityp)
+    if(file_exists) then
+       status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                                ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'OLD_ITY'    ) ,(/1/),(/maxcat/), real(ityp)) ; VERIFY_(STATUS)
+       STATUS   = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+    endif
+    
+    inquire(file='clsm/vegdyn.data', exist=file_exists)
+
+    if(file_exists) then
+       status = NF_OPEN ('clsm/vegdyn.data', NF_WRITE, ncid                                 ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1/),(/maxcat/), real(ityp)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'Z2CH'   ) ,(/1/),(/maxcat/), z2        ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ASCATZ0') ,(/1/),(/maxcat/), Z0        ) ; VERIFY_(STATUS)
+       STATUS   = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+    else
+       open (20,file='clsm/vegdyn.data',status='unknown',action='write',form='unformatted', &
+            convert='little_endian')   
+       write (20) real(ityp)
+       write (20) z2 (:)
+       write (20) z0 (:)
+       close (20)     
+   endif
+       
+   deallocate (veg, z0, z2, ityp)
    
   END SUBROUTINE ESA2MOSAIC
 
@@ -2117,7 +2161,7 @@ END SUBROUTINE HISTOGRAM
           read (20,'(i8,i8,2(2x,i3),2(2x,f6.4))')     &
             indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
        endif
-       if(ierr /= 0)write (*,*)'Problem reading'
+       if(ierr /= 0)write (*,*)'Problem reading', n, ease_grid
     end do
     close (10,status='keep')
     close (20,status='keep')
@@ -3427,132 +3471,213 @@ END SUBROUTINE modis_scale_para_high
   character*100 :: fname,fout
   character*10 :: string
   character*2 :: VV,HH
-  integer, allocatable, dimension (:,:) :: &
+  integer, allocatable, target, dimension (:,:) :: &
          net_data1
   REAL, ALLOCATABLE, dimension (:) :: vec_lai, count_lai
   character(len=4), dimension (:), allocatable :: MMDD, MMDD_next
   logical :: regrid
-  REAL :: sf
+  REAL :: sf,minlat,maxlat,minlon,maxlon
   logical :: first_entry = .true.
   type (date_time_type) :: date_time_new,bf_lai_time,   &
        af_lai_time
   integer, intent(in), optional :: merge
+  real, parameter :: dxy = 1.
+  integer         :: nx, ny, QSize
+  REAL, ALLOCATABLE, dimension (:) :: x,y,tile_lon, tile_lat
+  real, allocatable, target, dimension (:,:) :: data_grid
+  integer, pointer, dimension (:,:) :: QSub
+  INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l,tindex1,pfaf1 
+  real,    pointer, dimension (:,:)    :: subset
 
   if(trim(lai_name) == 'lai'  ) vid = 4
   if(trim(lai_name) == 'green') vid = 5
 
-!
+    
+  ! For Gap filling
+  ! ---------------
+
+  nx = nint (360./dxy)
+  ny = nint (180./dxy)
+  allocate (x(1:nx))
+  allocate (y(1:ny))
+  
+  FORALL (i = 1:nx) x(i) =  -180. + dxy/2. + (i-1)*dxy
+  FORALL (i = 1:ny) y(i) =   -90. + dxy/2. + (i-1)*dxy
+  
+  allocate (data_grid (1 : nx, 1 : ny))   
+  
+  QSize = nint(dxy*nc_data/360.)
+  
 ! Reading number of cathment-tiles from catchment.def file
 ! -------------------------------------------------------- 
-      fname='clsm/catchment.def' 
-      open (10,file=fname,status='old',action='read',form='formatted')
-      read(10,*) maxcat
-      close (10,status='keep')
 
-      fname =trim(c_data)//'GSWP2_30sec_VegParam/GSWP2_VegParam_H11V13.nc'
-      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS)
-      allocate (MMDD      (0: n_tslices + 1))
-      allocate (MMDD_next (0: n_tslices + 1))
+  fname='clsm/catchment.def' 
+  open (10,file=fname,status='old',action='read',form='formatted')
+  read(10,*) maxcat
+  allocate (tile_lon(1:maxcat)) 
+  allocate (tile_lat(1:maxcat)) 
+  
+  do n = 1, maxcat
+     read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
+     tile_lon(n) = (minlon + maxlon)/2.
+     tile_lat(n) = (minlat + maxlat)/2.
+  end do
+  
+  close (10,status='keep')
+  
+  fname =trim(c_data)//'GSWP2_30sec_VegParam/GSWP2_VegParam_H11V13.nc'
+  status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
+  status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
+  status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
+  status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
+  status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
+  status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
+  status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
+  status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS)
+  allocate (MMDD      (0: n_tslices + 1))
+  allocate (MMDD_next (0: n_tslices + 1))
+  
+  status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); VERIFY_(STATUS)
+  status = NF_CLOSE(ncid); VERIFY_(STATUS)
+  
+  mmdd(0) = mmdd(n_tslices)
+  mmdd(n_tslices + 1)= mmdd(1)
+  
+  mmdd_next(0:n_tslices - 1) =  mmdd(1:n_tslices)
+  mmdd_next(n_tslices: n_tslices + 1) = mmdd (1:2)
+  
+  allocate(net_data1 (1:nc_10,1:nr_10))
+  
+  ! writing GSWP2 data
+  ! ------------------
 
-      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); VERIFY_(STATUS)
-      status = NF_CLOSE(ncid); VERIFY_(STATUS)
+  if(present(merge)) then
+     open (31,file='clsm/lai.gswp2',  &
+          form='unformatted',status='unknown',convert='little_endian')
+  else
+     open (31,file='clsm/'//trim(lai_name)//'.dat',  &
+          form='unformatted',status='unknown',convert='little_endian')
+  endif
+  
+  allocate(vec_lai   (1:maxcat))
+  allocate(count_lai (1:maxcat))    
+  
+  do t =0,n_tslices+1
+     
+     time_slice = t
+     yr = 1
+     yr1= 1
+     if(t == 0) then
+        time_slice =  n_tslices
+        yr         =  1 - 1
+     endif
+     
+     if(t >= n_tslices) then 
+        yr1 = 1 + 1
+        if(t ==n_tslices + 1) then
+           time_slice =  1
+           yr = 1 + 1
+        endif
+     endif
+     
+     read(mmdd(t),'(i2.2,i2.2)') mn,dd
+     read(mmdd_next(t),'(i2.2,i2.2)') mn1,dd1
+     
+     vec_lai   = -9999.
+     count_lai = 0.
+     data_grid  = -9999
 
-       mmdd(0) = mmdd(n_tslices)
-       mmdd(n_tslices + 1)= mmdd(1)
+     do jx = 1,18	
+        do ix = 1,36
+           write (vv,'(i2.2)')jx
+           write (hh,'(i2.2)')ix 
+           fname = trim(c_data)//'GSWP2_30sec_VegParam/GSWP2_VegParam_H'//hh//'V'//vv//'.nc'
+           status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
+           if(status == 0) then
+              status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
+              status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
+              status = NF_GET_att_INT  (ncid,vid,'UNDEF',d_undef); VERIFY_(STATUS)
+              status = NF_GET_att_REAL (ncid,vid,'ScaleFactor',sf); VERIFY_(STATUS)
+              status = NF_GET_VARA_INT (ncid, vid,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); VERIFY_(STATUS)
+              
+              do j = jLL,jLL + nr_10 -1 
+                 do i = iLL, iLL + nc_10 -1 
+                    if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) then
+                       if(rmap(i,j)%nt > 0) then
+                          do n = 1, rmap(i,j)%nt
+                             if(vec_lai(rmap(i,j)%tid(n)) == -9999.) vec_lai(rmap(i,j)%tid(n)) = 0.                                 
+                             vec_lai(rmap(i,j)%tid(n))   = vec_lai(rmap(i,j)%tid(n)) + &
+                                  sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n)
+                             count_lai(rmap(i,j)%tid(n)) = &
+                                  count_lai(rmap(i,j)%tid(n)) + 1.*rmap(i,j)%count(n)                                     
+                          end do
+                       endif
+                    endif
+                 enddo
+              enddo
 
-       mmdd_next(0:n_tslices - 1) =  mmdd(1:n_tslices)
-       mmdd_next(n_tslices: n_tslices + 1) = mmdd (1:2)
+              ! After experimenting with few finer methods, in order to reduce the time taken by the gap filling procedure,
+              ! creating a 1.-degree gridded data set from finer LAI data and use it for filling the gaps seems the most practical/manageble method.
+              !---------------------------------------------------------------------------------------------------------------------------------------
+              
+              do j = ceiling(1.*jLL/QSize),ceiling(1.*jLL/QSize) -1 + nr_10/QSize
+                 do i = ceiling(1.*iLL/QSize),ceiling(1.*iLL/QSize) -1 + nc_10/QSize 
+                    QSub  => net_data1((i-1)*QSize+2-iLL :i*QSize-iLL+1, (j-1)*QSize+2-jLL :j*QSize-jLL+1) 
+                    if(maxval (QSub) > 0) data_grid(i,j) = sf*sum(QSub, QSub>0)/(max(1,count(QSub>0)))
+                 enddo
+              enddo
+              
+              status = NF_CLOSE(ncid)
+           endif
+        end do
+     end do
+     
+     write(31) float((/yr,mn,dd,0,0,0,yr1,mn1,dd1,0,0,0,maxcat,1/))
+     where (count_lai > 0.) vec_lai = vec_lai/count_lai
+ 
+     ! Filling gaps
+     !-------------
+     DO n =1,maxcat
+        if(count_lai(n)==0.)  then 
+           
+           DO i = 1,nx - 1
+              if ((tile_lon(n) >= x(i)).and.(tile_lon(n) < x(i+1))) ix = i
+           end do
+           DO i = 1,ny -1
+              if ((tile_lat(n) >= y(i)).and.(tile_lat(n) < y(i+1))) jx = i
+           end do
+           
+           l = 1
+           do 
+              imx=ix + l
+              imn=ix - l
+              jmn=jx - l
+              jmx=jx + l
+              imn=MAX(imn,1)
+              jmn=MAX(jmn,1)
+              imx=MIN(imx,nx)
+              jmx=MIN(jmx,ny)
+              d1=imx-imn+1
+              d2=jmx-jmn+1
+              subset => data_grid(imn: imx,jmn:jmx)
+              
+              if(maxval(subset) > 0.) then 
+                 vec_lai (n) = sum(subset, subset>0.)/(max(1,count(subset>0.)))
+                 exit
+              endif
+              l = l + 1
+              NULLIFY (subset)
+           end do
+        endif
+     end do     
+     write(31)  vec_lai(:)
+  end do
 
-       allocate(net_data1 (1:nc_10,1:nr_10))
-       !
-       ! writing GSWP2 data
-       ! ------------------
-
-       if(present(merge)) then
-       open (31,file='clsm/lai.gswp2',  &
-            form='unformatted',status='unknown',convert='little_endian')
-       else
-       open (31,file='clsm/'//trim(lai_name)//'.dat',  &
-            form='unformatted',status='unknown',convert='little_endian')
-       endif
-
-       allocate(vec_lai   (1:maxcat))
-       allocate(count_lai (1:maxcat))    
-
-       do t =0,n_tslices+1
-       
-          time_slice = t
-          yr = 1
-          yr1= 1
-          if(t == 0) then
-             time_slice =  n_tslices
-             yr         =  1 - 1
-          endif
-
-          if(t >= n_tslices) then 
-             yr1 = 1 + 1
-             if(t ==n_tslices + 1) then
-                time_slice =  1
-                yr = 1 + 1
-             endif
-          endif
-
-          read(mmdd(t),'(i2.2,i2.2)') mn,dd
-          read(mmdd_next(t),'(i2.2,i2.2)') mn1,dd1
-
-          vec_lai   = -9999.
-          count_lai = 0.
-
-          do jx = 1,18	
-             do ix = 1,36
-                write (vv,'(i2.2)')jx
-                write (hh,'(i2.2)')ix 
-                fname = trim(c_data)//'GSWP2_30sec_VegParam/GSWP2_VegParam_H'//hh//'V'//vv//'.nc'
-                status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
-                if(status == 0) then
-                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-                   status = NF_GET_att_INT  (ncid,vid,'UNDEF',d_undef); VERIFY_(STATUS)
-                   status = NF_GET_att_REAL (ncid,vid,'ScaleFactor',sf); VERIFY_(STATUS)
-                   status = NF_GET_VARA_INT (ncid, vid,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); VERIFY_(STATUS)
-                   
-                   do j = jLL,jLL + nr_10 -1 
-                      do i = iLL, iLL + nc_10 -1 
-                         if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) then
-                            if(rmap(i,j)%nt > 0) then
-                               do n = 1, rmap(i,j)%nt
-                                  if(vec_lai(rmap(i,j)%tid(n)) == -9999.) vec_lai(rmap(i,j)%tid(n)) = 0.                                 
-                                  vec_lai(rmap(i,j)%tid(n))   = vec_lai(rmap(i,j)%tid(n)) + &
-                                       sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n)
-                                  count_lai(rmap(i,j)%tid(n)) = &
-                                       count_lai(rmap(i,j)%tid(n)) + 1.*rmap(i,j)%count(n)                                     
-                               end do
-                            endif
-                         endif
-                      enddo
-                   enddo
-                   status = NF_CLOSE(ncid)
-                endif
-             end do
-          end do
-          
-          write(31) float((/yr,mn,dd,0,0,0,yr1,mn1,dd1,0,0,0,maxcat,1/))
-          where (count_lai > 0.) vec_lai = vec_lai/count_lai
-          where (count_lai == 0.)vec_lai = 0.0001
-          write(31)  vec_lai(:)
-       end do
-       close(31,status='keep')
-
-       deallocate (net_data1)
-       deallocate (count_lai)
-       deallocate (vec_lai)
+  close(31,status='keep')
+  
+  deallocate (net_data1)
+  deallocate (count_lai)
+  deallocate (vec_lai)
 
   END SUBROUTINE hres_gswp2
 
@@ -3606,6 +3731,8 @@ END SUBROUTINE modis_scale_para_high
       logical :: regrid,write_file
       INTEGER, allocatable, dimension (:) :: soil_class_top,soil_class_com
       REAL :: sf,factor,wp_wetness,fac_count
+      logical                            :: file_exists
+      REAL, ALLOCATABLE, DIMENSION (:,:) :: parms4file
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -4379,7 +4506,14 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       END DO
       END DO
 !$OMP ENDPARALLELDO
-            
+
+      inquire(file='clsm/catch_params.nc4', exist=file_exists)
+
+      if(file_exists) then
+         status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid) ; VERIFY_(STATUS)
+         allocate (parms4file (1:maxcat, 1:10))
+      endif
+    
       fname='clsm/catchment.def'
       open (10,file=fname,status='old',action='read',form='formatted')
       read(10,*) maxcat
@@ -4443,7 +4577,22 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	       	    
          write (12,'(i8,i8,4f10.7)')tindex,pfafindex, &
 	       atau_2cm(fac_surf),btau_2cm(fac_surf),atau(fac_surf),btau(fac_surf)  
-	    	    
+
+         if (allocated (parms4file)) then
+
+            parms4file (n, 1) = a_bee(fac)
+            parms4file (n, 2) = a_aksat(fac)/exp(-1.0*zks*gnu)
+            parms4file (n, 3) = a_poros(fac)
+            parms4file (n, 4) = a_psis(fac)
+            parms4file (n, 5) = wp_wetness
+            parms4file (n, 6) = soildepth(n)
+            parms4file (n, 7) = atau_2cm(fac_surf)
+            parms4file (n, 8) = btau_2cm(fac_surf)
+            parms4file (n, 9) = atau(fac_surf)
+            parms4file (n,10) = btau(fac_surf) 
+  
+  	 endif
+
       end do
       write (11,'(a)')'                    '
       write (11,'(a)')'FMT=i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4'
@@ -4460,6 +4609,20 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             atau_2cm,btau_2cm)
       deallocate (soildepth, grav_vec,soc_vec,poc_vec,&
              ncells_top,ncells_top_pro,ncells_sub_pro,soil_class_top,soil_class_com)
+      if(file_exists) then
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ) ,(/1/),(/maxcat/), parms4file (:, 1)) ; VERIFY_(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'COND' ) ,(/1/),(/maxcat/), parms4file (:, 2)) ; VERIFY_(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'POROS') ,(/1/),(/maxcat/), parms4file (:, 3)) ; VERIFY_(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'PSIS' ) ,(/1/),(/maxcat/), parms4file (:, 4)) ; VERIFY_(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'WPWET') ,(/1/),(/maxcat/), parms4file (:, 5)) ; VERIFY_(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'DP2BR') ,(/1/),(/maxcat/), parms4file (:, 6)) ; VERIFY_(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU2') ,(/1/),(/maxcat/), parms4file (:, 7)) ; VERIFY_(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU2') ,(/1/),(/maxcat/), parms4file (:, 8)) ; VERIFY_(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU5') ,(/1/),(/maxcat/), parms4file (:, 9)) ; VERIFY_(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU5') ,(/1/),(/maxcat/), parms4file (:,10)) ; VERIFY_(STATUS) 
+         STATUS   = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+         DEALLOCATE (parms4file)
+      endif
 
   END SUBROUTINE soil_para_hwsd
 !
@@ -4643,7 +4806,8 @@ END FUNCTION center_pix_int0
     character :: ctype*1, cband*1
 
     real :: rdum, ftot, xg, yg, fill, alonw, alats, alone, alatn, rlonw, rlats, rlone, rlatn, xx, yy
-    integer :: i, j, n, im, jm, lwi, idum, ntiles, nland, nv, ix, jx, itype, iband, isum, ntl, np, jalbx, ialbx
+    integer :: i, j, n, im, jm, lwi, idum, ntiles, nland, nv, ix, jx, itype, iband, isum, ntl, np, jalbx, ialbx, ncid, status
+    logical :: file_exists
 
     ! read nland from catchment.def
     ! -----------------------------
@@ -5009,7 +5173,21 @@ END FUNCTION center_pix_int0
             t2mm_tile(n) ,t2mp_tile(n) 
        ! VISDR, VISDF, NIRDR, NIRDF
     end do
-    
+
+    inquire(file='clsm/catchcn_params.nc4', exist=file_exists)
+
+    if(file_exists) then
+       status = NF_OPEN ('clsm/catchcn_params.nc4', NF_WRITE, ncid ) ; VERIFY_(STATUS) 
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'NDEP'    ) ,(/1/),(/nland/), ndep_tile      ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BGALBVR' ) ,(/1/),(/nland/), alb_tile(:,1,1)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BGALBVF' ) ,(/1/),(/nland/), alb_tile(:,2,1)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BGALBNR' ) ,(/1/),(/nland/), alb_tile(:,1,2)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BGALBNF' ) ,(/1/),(/nland/), alb_tile(:,2,2)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'T2_M'    ) ,(/1/),(/nland/), t2mm_tile      ) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'T2_S'    ) ,(/1/),(/nland/), t2mp_tile      ) ; VERIFY_(STATUS)
+       STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+    endif
+
     close (10, status ='keep')
 
   end SUBROUTINE grid2tile_ndep_t2m_alb
@@ -5498,7 +5676,230 @@ END FUNCTION center_pix_int0
 
     END SUBROUTINE CLM45_clim_parameters
 
-   ! ----------------------------------------------------------------------------------------------------------------------------
+! ----------------------------------------------------------------------------------------------------------------------------
+
+  SUBROUTINE grid2tile_glass (ncol,nrow,gfiler,lai_name)
+!
+! Processing GLASS LAI (AVHRR or MODIS) and creating 8-day climatological data 
+!
+  implicit none 
+  integer  , parameter                   :: N_lon_glass = 7200, N_lat_glass = 3600
+  integer, intent (in) :: ncol, nrow
+  real, parameter :: dxy = 1.
+  integer :: QSize
+  character(*)  :: gfiler,lai_name
+  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
+  integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
+      time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2,tindex1,pfaf1
+  character*100 :: fname,fout
+  character*10 :: string
+  character*2 :: VV,HH
+  integer, allocatable, target,  dimension (:,:) :: net_data1
+  real,  pointer, dimension (:,:) :: QSub
+  real,  pointer, dimension (:,:) :: subset
+  REAL, ALLOCATABLE, dimension (:):: vec_lai, count_lai,tile_lon, tile_lat &
+       , x, y !, distance
+  real, allocatable, target, dimension (:,:) :: lai_grid, data_grid, data_grid2
+  INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l, VarID
+  character(len=4), dimension (:), allocatable :: MMDD, MMDD_next
+  logical :: regrid
+  REAL :: sf, dum,dist_save,tile_distance,minlat,maxlat,minlon,maxlon
+  logical :: first_entry = .true.
+  type (date_time_type) :: date_time_new,bf_lai_time,   &
+       af_lai_time, date_time_this
+  integer, dimension (:,:), allocatable, target :: tile_id
+  integer       ::  tileid_tile
+  character*3   :: ddd
+
+! Reading rst file
+!-----------------
+   open (10,file=trim(gfiler)//'.rst',status='old',action='read',  &
+        form='unformatted',convert='little_endian')
+   allocate (tile_id    (1:ncol,1:nrow))         
+   
+   do j=1,nrow
+      read(10)tile_id(:,j)
+   end do
+   close (10,status='keep')
+
+!
+! Reading number of cathment-tiles from catchment.def file
+!_________________________________________________________ 
+!
+      fname='clsm/catchment.def' 
+      open (10,file=fname,status='old',action='read',form='formatted')
+      read(10,*) maxcat
+      allocate (tile_lon(1:maxcat)) 
+      allocate (tile_lat(1:maxcat)) 
+      
+      do n = 1, maxcat
+         read (10,*) tindex1,pfaf1,minlon,maxlon,minlat,maxlat
+         tile_lon(n) = (minlon + maxlon)/2.
+         tile_lat(n) = (minlat + maxlat)/2.
+      end do      
+      close (10,status='keep')
+
+      fname =trim(c_data)//'/MODIS_8-DayClim/MODIS_lai_clim.H11V13.nc'
+      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
+      status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS) 
+      allocate (MMDD      (0: n_tslices + 1))
+      allocate (MMDD_next (0: n_tslices + 1))
+
+      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); VERIFY_(STATUS)
+      status = NF_CLOSE(ncid); VERIFY_(STATUS)
+       
+      mmdd(0) = mmdd(n_tslices)
+      mmdd(n_tslices + 1)= mmdd(1)
+      
+      mmdd_next(0:n_tslices - 1) =  mmdd(1:n_tslices)
+      mmdd_next(n_tslices: n_tslices + 1) = mmdd (1:2)
+     
+      ! writing GLASS LAI
+      !
+      open (31,file='clsm/lai.dat',  &
+           form='unformatted',status='unknown',convert='little_endian')
+     
+      allocate (vec_lai     (maxcat))
+      allocate (count_lai (1:maxcat))
+
+      nx = nint (360./dxy)
+      ny = nint (180./dxy)
+      allocate (x(1:nx))
+      allocate (y(1:ny))
+
+      FORALL (i = 1:nx) x(i) =  -180. + dxy/2. + (i-1)*dxy
+      FORALL (i = 1:ny) y(i) =   -90. + dxy/2. + (i-1)*dxy
+
+      allocate (lai_grid (1 : nx, 1 : ny)) 
+      
+      QSize = nint(dxy*N_lon_glass/360.)
+      allocate (QSub (1:QSize,1:QSize))
+      allocate (net_data1 (1 : N_lon_glass, 1 : N_lat_glass)) 
+      allocate (data_grid (1:NCOL,1:NROW))
+      allocate (data_grid2 (1 : N_lon_glass, 1 : N_lat_glass)) 
+
+      do t =0,n_tslices+1
+         
+         time_slice = t
+         yr = 1
+         yr1= 1
+         if(t == 0) then
+            time_slice =  n_tslices
+            yr         =  1 - 1
+         endif
+         
+         if(t >= n_tslices) then 
+            yr1 = 1 + 1
+            if(t ==n_tslices + 1) then
+               time_slice =  1
+               yr = 1 + 1
+            endif
+         endif
+         
+         read(mmdd(t),'(i2.2,i2.2)') mn,dd
+         read(mmdd_next(t),'(i2.2,i2.2)') mn1,dd1
+         
+         date_time_this%year       = 2001
+         date_time_this%month      = mn
+         date_time_this%day        = dd
+         date_time_this%hour   = 0            
+         date_time_this%min    = 0            
+         date_time_this%sec    = 0 
+         call get_dofyr_pentad(date_time_this)                      
+
+         write (ddd,'(i3.3)')  date_time_this%dofyr
+
+         ! Reading Interpolation or aggregation on to catchment-tiles
+         
+         vec_lai   = -9999.
+         count_lai = 0.
+         lai_grid  = -9999
+
+         status  = NF_OPEN (trim(c_data)//trim(lai_name)//ddd//'.nc4', NF_NOWRITE, ncid) ; VERIFY_(STATUS)
+         status  = NF_INQ_VARID (ncid,'LAI',VarID) ; VERIFY_(STATUS)
+         status  = NF_GET_VARA_INT(ncid,VarID, (/1,1/),(/N_lon_glass, N_lat_glass/), net_data1) ; VERIFY_(STATUS)
+
+         call RegridRasterReal(0.01*real(net_data1), data_grid)
+         data_grid2 = 0.01*real(net_data1)
+
+         status = NF_CLOSE(ncid)
+
+         do j = 1,nrow
+            do i = 1, ncol
+               if((tile_id(i,j).gt.0).and.(tile_id(i,j).le.MAXCAT)) then        
+                  if((data_grid(i,j) >= 0.).and.(data_grid(i,j) <= 10.)) then 
+                     if(vec_lai(tile_id(i,j)) == -9999.) vec_lai(tile_id(i,j)) = 0. 
+                     vec_lai (tile_id(i,j)) = vec_lai (tile_id(i,j)) + data_grid(i,j)
+                     count_lai (tile_id(i,j)) = count_lai (tile_id(i,j)) + 1.                     
+                  endif
+               endif
+            end do
+         end do
+
+         write(31) float((/yr,mn,dd,0,0,0,yr1,mn1,dd1,0,0,0,maxcat,1/))
+         
+         where (count_lai > 0.) vec_lai = vec_lai/count_lai
+
+         ! After experimenting with few finer methods, in order to reduce the time taken by the gap filling procedure,
+         ! creating a 0.25-degree gridded data set from finer LAI data and use it for filling the gaps seems the most practical/manageble method.
+         !---------------------------------------------------------------------------------------------------------------------------------------
+
+         iLL = 1
+         jLL = 1
+         do j = 1, N_lat_glass/QSize
+            do i = 1,  N_lon_glass/QSize 
+               QSub  => data_grid2((i-1)*QSize+2-iLL :i*QSize-iLL+1, (j-1)*QSize+2-jLL :j*QSize-jLL+1) 
+               if(minval (QSub) <= 10.) lai_grid(i,j) = sum(QSub, QSub<=10.)/(max(1,count(QSub<=10.)))
+            enddo
+         enddo
+                  
+         NULLIFY (QSub)
+
+! Filling gaps
+!-------------
+         DO n =1,maxcat
+             if(count_lai(n)==0.)  then 
+                
+                DO i = 1,nx - 1
+                   if ((tile_lon(n) >= x(i)).and.(tile_lon(n) < x(i+1))) ix = i
+                end do
+                DO i = 1,ny -1
+                   if ((tile_lat(n) >= y(i)).and.(tile_lat(n) < y(i+1))) jx = i
+                end do
+                
+                l = 1
+                do 
+                  imx=ix + l
+                  imn=ix - l
+                  jmn=jx - l
+                  jmx=jx + l
+                  imn=MAX(imn,1)
+                  jmn=MAX(jmn,1)
+                  imx=MIN(imx,nx)
+                  jmx=MIN(jmx,ny)
+                  d1=imx-imn+1
+                  d2=jmx-jmn+1
+                  subset => lai_grid(imn: imx,jmn:jmx)
+
+                  if(maxval(subset) > 0.) then 
+                     vec_lai (n) = sum(subset, subset>0.)/(max(1,count(subset>0.)))
+                     exit
+                  endif
+                  l = l + 1
+                  NULLIFY (subset)
+                end do
+             endif
+          END DO
+          write(31)  vec_lai(:)
+       end do
+       close(31,status='keep')
+       
+       deallocate (net_data1, tile_id)
+       deallocate (count_lai)
+       deallocate (vec_lai) 
+       deallocate (tile_lat,tile_lon)
+
+     END SUBROUTINE grid2tile_glass
 
    ! ----------------------------------------------------------------------------------------------------------------------------
 
@@ -5669,6 +6070,118 @@ END FUNCTION center_pix_int0
       close(31,status='keep')    
 
     END SUBROUTINE gimms_clim_ndvi
+
+    ! --------------------------------------------------------------------------
+
+    SUBROUTINE open_landparam_nc4_files 
+
+      implicit none
+      integer                 :: NCCatOUTID,  NCCatCNOUTID,  NCVegOUTID  
+      integer                 :: STATUS, CellID1, CellID2, CellID3, SubID
+      integer, dimension(8)   :: date_time_values
+      character (22)          :: time_stamp
+      character (100)         :: MYNAME
+
+      status = NF_CREATE ('clsm/catch_params.nc4'  , NF_NETCDF4, NCCatOUTID  ) ; VERIFY_(STATUS)
+      status = NF_CREATE ('clsm/catchcn_params.nc4', NF_NETCDF4, NCCatCNOUTID) ; VERIFY_(STATUS)
+      status = NF_CREATE ('clsm/vegdyn.data'       , NF_NETCDF4, NCVegOUTID  ) ; VERIFY_(STATUS)
+
+      status = NF_DEF_DIM(NCCatOUTID  , 'tile' , NF_UNLIMITED, CellID1)
+      status = NF_DEF_DIM(NCCatCNOUTID, 'tile' , NF_UNLIMITED, CellID2)
+      status = NF_DEF_DIM(NCVegOUTID  , 'tile' , NF_UNLIMITED, CellID3)
+      status = NF_DEF_DIM(NCCatCNOUTID, 'unknown_dim2' , 4, SubID)
+
+      call DEF_VAR ( NCCatOUTID, CellID1,'OLD_ITY'   ,'vegetation_type.'            , '1'       )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ARA1'      ,'shape_param_1'               ,'m+2 kg-1' )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ARA2'      ,'shape_param_2'               ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ARA3'      ,'shape_param_3'               ,'m+2 kg-1' )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ARA4'      ,'shape_param_4'               ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ARS1'      ,'wetness_param_1'             ,'m+2 kg-1' )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ARS2'      ,'wetness_param_2'             ,'m+2 kg-1' )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ARS3'      ,'wetness_param_3'             ,'m+4 kg-2' )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ARW1'      ,'min_theta_param_1'           ,'m+2 kg-1' )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ARW2'      ,'min_theta_param_2'           ,'m+2 kg-1' )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ARW3'      ,'min_theta_param_3'           ,'m+4 kg-2' )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ARW4'      ,'min_theta_param_4'           ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ATAU2'     ,'2cm_water_transfer_param_5'  ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'ATAU5'     ,'5cm_water_transfer_param_5'  ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'BEE'       ,'clapp_hornberger_b'          ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'BF1'       ,'topo_baseflow_param_1'       ,'kg m-4'   )
+      call DEF_VAR ( NCCatOUTID, CellID1,'BF2'       ,'topo_baseflow_param_2'       ,'m'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'BF3'       ,'topo_baseflow_param_3'       ,'log(m)'   )
+      call DEF_VAR ( NCCatOUTID, CellID1,'BTAU2'     ,'2cm_water_transfer_param_6'  ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'BTAU5'     ,'5cm_water_transfer_param_6'  ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'COND'      ,'sfc_sat_hydraulic_conduct'   ,'m s-1'    )
+      call DEF_VAR ( NCCatOUTID, CellID1,'GNU'       ,'vertical_transmissivity'     ,'m-1'      )
+      call DEF_VAR ( NCCatOUTID, CellID1,'POROS'     ,'soil_porosity'               ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'PSIS'      ,'saturated_matric_potential'  ,'m'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'TSA1'      ,'water_transfer_param_1'      ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'TSA2'      ,'water_transfer_param_2'      ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'TSB1'      ,'water_transfer_param_3'      ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'TSB2'      ,'water_transfer_param_4'      ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'WPWET'     ,'wetness_at_wilting_point'    ,'1'        )
+      call DEF_VAR ( NCCatOUTID, CellID1,'DP2BR'     ,'depth_to_bedrock'            ,'mm'       )
+
+      call DEF_VAR (  NCVegOUTID, CellID3,'ITY'      ,'vegetation_type'             ,'1'        )
+      call DEF_VAR (  NCVegOUTID, CellID3,'Z2CH'     ,'vegetation_height'           ,'m'        )
+      call DEF_VAR (  NCVegOUTID, CellID3,'ASCATZ0'  ,'ASCAT_roughness_length'      ,'m'        )
+
+      call DEF_VAR ( NCCatCNOUTID, CellID2,'BGALBNF' ,'MODIS soil albedo nir dif'   ,'1'        )
+      call DEF_VAR ( NCCatCNOUTID, CellID2,'BGALBNR' ,'MODIS soil albedo nir dir'   ,'1'        )
+      call DEF_VAR ( NCCatCNOUTID, CellID2,'BGALBVF' ,'MODIS soil albedo vis dif'   ,'1'        )
+      call DEF_VAR ( NCCatCNOUTID, CellID2,'BGALBVR' ,'MODIS soil albedo vis dir'   ,'1'        )
+      call DEF_VAR ( NCCatCNOUTID, CellID2,'T2_M'    ,'Clim 2m temperature (MERRA2)'    ,'K'    )
+      call DEF_VAR ( NCCatCNOUTID, CellID2,'T2_S'    ,'Clim 2m temperature (Sheffield)' ,'K'    )
+      call DEF_VAR ( NCCatCNOUTID, CellID2,'NDEP'    ,'CLM_nitrogen_deposition'     ,'g m-2 s-1')
+      call DEF_VAR ( NCCatCNOUTID, CellID2,'FVG'     ,'vegetation_fraction'         ,'1'        ,SubID = SubID)
+      call DEF_VAR ( NCCatCNOUTID, CellID2,'ITY'     ,'vegetation_type'             ,'1'        ,SubID = SubID)
+
+      call date_and_time(VALUES=date_time_values)
+          
+      write (time_stamp,'(i4.4,a1,i2.2,a1,i2.2,1x,a2,1x,i2.2,a1,i2.2,a1,i2.2)')      &
+           date_time_values(1),'-',date_time_values(2),'-',date_time_values(3),'at', &
+           date_time_values(5),':',date_time_values(6),':',date_time_values(7)
+!      call system('setenv    MYNAME `finger $USER | cut -d: -f3 | head -1`')
+!      call sleep (5)
+      call getenv ("USER"        ,MYNAME        )
+      status = NF_PUT_ATT_TEXT(NCCatOUTID  , NF_GLOBAL, 'CreatedBy', LEN_TRIM(MYNAME),  trim(MYNAME)      )
+      status = NF_PUT_ATT_TEXT(NCCatOUTID  , NF_GLOBAL, 'Date'     , LEN_TRIM(time_stamp),trim(time_stamp))
+      status = NF_PUT_ATT_TEXT(NCVegOUTID  , NF_GLOBAL, 'CreatedBy', LEN_TRIM(MYNAME),  trim(MYNAME)      )
+      status = NF_PUT_ATT_TEXT(NCVegOUTID  , NF_GLOBAL, 'Date'     , LEN_TRIM(time_stamp),trim(time_stamp))
+      status = NF_PUT_ATT_TEXT(NCCatCNOUTID, NF_GLOBAL, 'CreatedBy', LEN_TRIM(MYNAME),  trim(MYNAME)      )
+      status = NF_PUT_ATT_TEXT(NCCatCNOUTID, NF_GLOBAL, 'Date'     , LEN_TRIM(time_stamp),trim(time_stamp))
+      
+      status = NF_ENDDEF(NCCatOUTID  )  
+      status = NF_ENDDEF(NCVegOUTID  )  
+      status = NF_ENDDEF(NCCatCNOUTID)  
+
+      status    = NF_CLOSE (NCCatOUTID  )  
+      status    = NF_CLOSE (NCVegOUTID  )  
+      status    = NF_CLOSE (NCCatCNOUTID)  
+
+    contains
+  
+      SUBROUTINE DEF_VAR (NCFID, CellID, VarName, long_name, units, SubID)
+        
+        implicit none
+        integer, intent (in)           :: NCFID, CellID    
+        character (*), intent (in)     :: VarName, long_name, units
+        integer, intent (in), optional :: SubID
+        integer                        :: STATUS, VID
+
+        if(present (SubID)) then 
+           status = NF_DEF_VAR(NCFID, trim(VarName) , NF_FLOAT, 2 ,(/CellID, SubID/), vid) ; VERIFY_(STATUS)
+        else
+           status = NF_DEF_VAR(NCFID, trim(VarName) , NF_FLOAT, 1 ,(/CellID/), vid) ; VERIFY_(STATUS)
+        endif
+
+        status = NF_PUT_ATT_TEXT(NCFID, vid, 'long_name', LEN_TRIM(long_name), trim(long_name)) ; VERIFY_(STATUS)
+        status = NF_PUT_ATT_TEXT(NCFID, vid, 'units'    , LEN_TRIM(units)    , trim(units))     ; VERIFY_(STATUS)
+
+
+      END SUBROUTINE DEF_VAR
+
+    END SUBROUTINE open_landparam_nc4_files
 
 END MODULE  process_hres_data
 

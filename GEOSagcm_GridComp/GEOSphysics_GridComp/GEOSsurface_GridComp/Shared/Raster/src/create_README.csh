@@ -230,6 +230,36 @@ endif
 if($mylai == GEOLAND2) then
    set MYLAIDATES="${GEOLAND2_DATES}"
 endif
+if($mylai == GLASSA | $mylai == GLASSM) then
+   set MYLAIDATES="${MODIS8_DATES}"
+   set sec4_geo_cite="`printf 'Xiao Z., S. Liang, J. Wang, et al., Use of General Regression Neural Networks for Generating\\n \
+       the GLASS Leaf Area Index Product from Time Series MODIS Surface Reflectance. IEEE Transactions on Geoscience\\n \
+       and Remote Sensing, 2013,doi:10.1109/TGRS.2013.2237780.'`"
+if($mylai == GLASSA) then
+	set sec4_lai="`printf '8-day composites of AVHRR based  GLASS (Global Land Surface Satellite) LAI v04\\n \
+	data are available at 3-arcmin (7200×3600) for the period 1981-2017. \\n \
+       8-day climatology of LAI was computed from these data by temporally averaging over the 37-year period \\n \
+       (by 8-day periods) on the 3-arcmin grid. Those climatological data  were aggregated over \\n \
+       the pixels of each land element to derive a 8-day LAI\\n \
+       In order to fill gaps that may exist due to inconsistencies between LAI and GEOS5 masks as well as data gaps themselves\\n \
+       we constructed, at every time slice, a 1°×1° global gridded LAI dataset \\n \
+       by spatially aggregating the finer resolution LAI climatological data. Missing \\n \
+       LAI values in the finer resolution datasets were filled with the value for the \\n \
+       nearest neighbor on the 1°×1° global grid.'`"
+endif   
+if($mylai == GLASSM) then
+	set sec4_lai="`printf '8-day composites of MODIS based  GLASS (Global Land Surface Satellite) LAI v04\\n \
+	data are available at 3-arcmin (7200×3600) for the period 2000-2017. \\n \
+       8-day climatology of LAI was computed from these data by temporally averaging over the 18-year period \\n \
+       (by 8-day periods) on the 3-arcmin grid. Those climatological data  were aggregated over \\n \
+       the pixels of each land element to derive a 8-day LAI\\n \
+       In order to fill gaps that may exist due to inconsistencies between LAI and GEOS5 masks as well as data gaps themselves\\n \
+       we constructed, at every time slice, a 1°×1° global gridded LAI dataset \\n \
+       by spatially aggregating the finer resolution LAI climatological data. Missing \\n \
+       LAI values in the finer resolution datasets were filled with the value for the \\n \
+       nearest neighbor on the 1°×1° global grid.'`"
+endif   
+endif
 if($mylai == MODIS | $mylai == MODGEO) then
    set MYLAIDATES="${MODIS8_DATES}"
 	set sec4_lai="`printf 'The Second Global Soil Wetness Project (GSWP-2: Dirmeyer and Oki, 2002)\\n \
@@ -355,6 +385,26 @@ cat << _EOI_ > clsm/intro
 ||		   Updates and Data File Descriptions. NASA Technical Report Series||
 ||		   on Global Modeling and Data Assimilation 104606, v39, 51pp.	   ||
 ||                 URL: http://gmao.gsfc.nasa.gov/pubs/tm/                         ||
+||										   ||
+|| IMPORTANT UPDATE (5/4/2019) :						   ||
+||		In addition to the ASCII files mentioned in the text, following    ||
+||		two nc4 files also contain parameters that are needed by models.   ||
+||		More importantly, the restart utilities read parameters            ||
+||		from below 2 nc4 files instead the ASCII files.			   ||
+||										   ||
+||		(1) "catch_params.nc4" contains :				   ||
+||		OLD_ITY  (primary vegetation type Section 3.2.1) 		   ||
+||		BEE, PSIS, POROS, COND,	WPWET, DP2BR (Section 2.2.4)	           ||
+||		ATAU2,BTAU2,ATAU5,BTAU5 (Section 6.2.1) 			   ||
+||		GNU, TSA1,TSA2,TSB1,TSB2 (Section 6.2.2)			   ||
+||		BF1,BF2,BF3 (Section 6.2.3)					   ||
+||		ARS1,ARS2,ARS3,ARA1,ARA2,ARA3,ARA4,ARW1,ARW2,			   ||
+||		     ARW3,ARW4 (Section 6.2.4)					   ||
+||										   ||
+||		(1) "catchcn_params.nc4" contains :				   ||
+||		ITY (CLM-C_pt1, CLM-C_pt2, CLM-C_st1, CLM-C_st2 Section 3.3.3)     ||
+||		FVG (CLM-C_pf1, CLM-C_pf2,CLM-C_sf1, CLM-C_sf2 Section 3.3.3) 	   ||
+||		NDEP,BGALBVR, BGALBVF, BGALBNR, BGALBNF, T2_M, T2_S (Section 3.2.4)||
 ||										   ||
 || Date          : ${today}                                                      ||
 ||										   ||
@@ -561,7 +611,7 @@ if( $mysoil == HWSD ) then
 cat << _EOS1_ > clsm/soil
 		read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)')  &
 		tile_index,pfaf_code,soil_class_top,soil_class_com,BEE,              &
-		PSIS,POROS,COND, WPWET, soildepth, gravel,OrgCarbon_top,             &
+		PSIS,POROS,COND, WPWET, DP2BR, gravel,OrgCarbon_top,                 &
 		OrgCarbon_rz,sand_top,clay_top,sand_rz,clay_rz,WPWET_top, POROS_top
 	 end do
 
@@ -580,7 +630,7 @@ cat << _EOS1_ > clsm/soil
 		[Figure 4 : "plots/soil_param.jpg" middle-right panel]
 	 (9)	WPWET [-]	wilting point/porosity for the root-zone
 		[Figure 4 : "plots/soil_param.jpg" bottom-left panel]
-	 (10)	soildepth [mm]	depth to bedrock
+	 (10)	DP2BR [mm]	depth to bedrock
 		[Figure 4 : "plots/soil_param.jpg" bottom-right panel]
 	 (11)	gravel [vol% ]	percentage gravel in the surface layer (0-30cm) 
 	 (12)	OrgCarbon_top [w%] 	percentage organic carbon in the surface layer (0-30cm)
@@ -930,9 +980,8 @@ cat << _EOV1_ > clsm/veg1
             
          `echo "${sec3_veg_des}"`
 
-	 Global 30-arcsec canopy height data, used (in some implementations) in the calculation 
-	 of surface roughness, were obtained from NASA’s Jet Propulsion Laboratory (Simrad et al.,
-	 2011). These heights were spatially aggregated to catchment surface elements 
+	 Vegetation canopy height data were derived using the look up table in Koster et al.(1996) 
+         for the primary vegetation type of the catchment. 
 	 (plots/Canopy_Height_onTiles.jpg).
 
 	 Global 6km aeolian aerodynamic roughness length data (Prigent et al., 2012) were 
@@ -1053,20 +1102,20 @@ cat << _EOV2_ > clsm/veg2
 	 file name: CLM_Ndep_SoilAlb
 	 do n = 1, ${NTILES}
                read (10, '(f10.4,4f7.4,2f8.3)')    &
-               NDEP,VISDR, VISDF, NIRDR, NIRDF, T2_M, T2_S 
+               NDEP,BGALBVR, BGALBVF, BGALBNR, BGALBNF, T2_M, T2_S 
 	enddo
 
 	Where for each tile:
 
         (1) NDEP [ng m-2 s-1]	Nitrogen deposition 
             [Figure 11a: "plots/CLM_Ndep_T2m.jpg" top panel]
-        (2) VISDR [-]	Direct visible soil background albedo
+        (2) BGALBVR [-]	Direct visible soil background albedo
             [Figure 12a: "plots/SoilAlb.jpg" top-left panel]
-        (3) VISDF [-]	Diffuse visible soil background albedo
+        (3) BGALBVF [-]	Diffuse visible soil background albedo
             [Figure 12b: "plots/SoilAlb.jpg" top-right panel]
-        (4) NIRDR [-]	Direct near-infrared soil background albedo 
+        (4) BGALBNR [-]	Direct near-infrared soil background albedo 
             [Figure 12c: "plots/SoilAlb.jpg" bottom-left panel]
-        (5) NIRDF [-]	Diffuse near-infrared soil background albedo
+        (5) BGALBNF [-]	Diffuse near-infrared soil background albedo
             [Figure 12d: "plots/SoilAlb.jpg" bottom-right panel]
         (6) T2_M [K]	Mean annual 2m air temperature from MERRA-2 (averaged over 1980-2014)
             [Figure 11b: "plots/CLM_Ndep_T2m.jpg" middle panel]

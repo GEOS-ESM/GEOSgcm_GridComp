@@ -4,7 +4,7 @@
 #SILENT:
 
 XY = -x 8640 -y 4320
- T = -t 200000000
+ T = -t 235000000
 
 #LAND_SURFACE_DATA = /discover/nobackup/ltakacs/bcs/LandSurfaceData_for_Catchment_Parameters
 LAND_SURFACE_DATA  = /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/
@@ -17,9 +17,15 @@ export MASKFILE
 ifdef NC
 	ATMOSGRID =CUBE
 	ATMNAME=CF$(NC)x6C
+	ifeq ($(NC), 0768)
+		XY:=-x 17280 -y 8640
+	endif
 	ifeq ($(NC), 1440)
 		XY:=-x 17280 -y 8640
 	endif
+	ifeq ($(NC), 1536)
+		XY:=-x 43200 -y 21600
+	endif	
 	ifeq ($(NC), 2000)
 		XY:=-x 21600 -y 10800
 	endif
@@ -53,10 +59,15 @@ ifdef IMM
 	JMO:=$(shell expr substr $(JMM) $(LENY) 4)
 	OCEANGRID =data/MOM/$(IMO)x$(JMO)/grid_spec.nc
 else
+ifdef IMO
 	OCEANGRID =LATLON
 	IMO ?= 0360
 	JMO ?= 0180
 	OCNNAME=DE$(IMO)xPE$(JMO)
+else
+	OCEANGRID =CUBEDO
+	OCNNAME=$(ATMNAME)
+endif
 endif
 
 LNDNAME=Pfafstetter
@@ -78,6 +89,9 @@ all: $(DIRS) BUILD $(TILEF) CLSM
 
 $(TILEF): $(ATMOS) $(SURFC)
 	bin/CombineRasters $(T) $(ATMNAME) $(OCNNAME)-$(LNDNAME)
+ifeq ($(OCEANGRID),data/MOM/$(IMO)x$(JMO)/grid_spec.nc)
+	bin/mk_runofftbl $(TILNAME)
+endif
 
 $(ATMOS):
 ifeq ($(ATMOSGRID),LATLON)
@@ -87,13 +101,15 @@ else
 endif
 
 $(SURFC): $(OCEAN) $(LAND)
-	bin/CombineRasters -f 0 $(OCNNAME) $(LNDNAME) >/dev/null
+	bin/CombineRasters -f 0 $(T) $(OCNNAME) $(LNDNAME) >/dev/null
 
 $(OCEAN):
 ifeq ($(OCEANGRID),LATLON)
 	bin/mkLatLonRaster $(XY) -b DE -p PE -t 0 $(IMO) $(JMO) >/dev/null
 else
+ifneq  ($(OCEANGRID),CUBEDO)	
 	bin/mkMOMAquaRaster $(XY) $(OCEANGRID) > /dev/null
+endif
 endif
 
 $(LAND): $(CATCH)

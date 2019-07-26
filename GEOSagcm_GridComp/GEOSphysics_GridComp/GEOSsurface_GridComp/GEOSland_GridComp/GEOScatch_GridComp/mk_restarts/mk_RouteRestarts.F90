@@ -25,6 +25,7 @@ PROGRAM mk_RouteRestarts
   logical, allocatable, dimension (:)  :: mask
   integer, allocatable, dimension (:,:):: tile_id, ocean_id, lake_id
   integer(kind =8)                     :: pfaf_code
+  logical                              :: file_exists = .false.
 
   INCLUDE 'netcdf.inc'
 
@@ -86,8 +87,23 @@ PROGRAM mk_RouteRestarts
   i1 = index(OutTileFile,'/')
   i2 = index(OutTileFile,'.',back=.true.)
 
-  OPEN (10, FILE = TRIM(OutTileFile(1:i1))//'til'//'/Pfafstetter.til', &
-       FORM='FORMATTED', STATUS = 'OLD', ACTION = 'READ')
+  inquire(file =  TRIM(OutTileFile(1:i1))//'til'//'/Pfafstetter.til', exist=file_exists)
+
+  if(file_exists) then
+
+     OPEN (10, FILE = TRIM(OutTileFile(1:i1))//'til'//'/Pfafstetter.til', &
+          FORM='FORMATTED', STATUS = 'OLD', ACTION = 'READ')
+
+     print '(a100)','ROUTE_INTERNAL_RST (PfafFile) : '// TRIM(OutTileFile(1:i1))//'til'//'/Pfafstetter.til'
+
+  else
+
+     OPEN (10, FILE = 'OutData2/Pfafstetter.til', &
+          FORM='FORMATTED', STATUS = 'OLD', ACTION = 'READ')   
+     print '(a100)','ROUTE_INTERNAL_RST (PfafFile) : OutData2/Pfafstetter.til' 
+
+  endif
+
   READ (10,*)  N_LND
   DO N = 1,4            
      READ (10,'(A)')            
@@ -111,7 +127,7 @@ PROGRAM mk_RouteRestarts
   ! STEP 3: Find ocean/lake tile ids at river mouths
 
   ! (3a) Reading til file
-  print '(a100)','ROUTE_INTERNAL_RST (OutTileFile) : '// trim(OutTileFile)
+  print '(a150)','ROUTE_INTERNAL_RST (OutTileFile) : '// trim(OutTileFile)
 
   open (10, file=trim(OutTileFile), form='formatted', status ='old',action = 'read') 
   read (10,*) NT,NC,NR
@@ -153,15 +169,19 @@ PROGRAM mk_RouteRestarts
   mask = .false.
   mask = (type == 0)
   N_Ocean = count (mask = mask)
+
   allocate (i_ocean (1:N_Ocean))
   allocate (j_ocean (1:N_Ocean)) 
   i_ocean = pack(i_glb, mask = mask)
   j_ocean = pack(j_glb, mask = mask) 
 
-  do i = 1,N_ocean
-     ocean_id (i_ocean(i), j_ocean(i)) = i  ! + N_Land
-  end do
+  IF(N_OCEAN > 0) THEN
+     do i = 1,N_ocean
+        ocean_id (i_ocean(i), j_ocean(i)) = i  ! + N_Land
+     end do
+  ENDIF
 
+  print *,size(ocean_id,1), size(ocean_id,2)
   mask = .false.
   mask = (type == 19)
   N_Lakes = count (mask = mask)  
@@ -171,7 +191,11 @@ PROGRAM mk_RouteRestarts
   j_lakes = pack (j_glb, mask = mask) 
 
   do i = 1,N_lakes
-     lake_id (i_lakes(i), j_lakes(i)) = i  ! + N_ocean + N_Land
+     IF(N_OCEAN > 0) THEN
+        lake_id (i_lakes(i), j_lakes(i)) = i  ! + N_ocean + N_Land
+     else
+        lake_id (i_lakes(i)+1, j_lakes(i)+1) = i  ! + N_ocean + N_Land
+     ENDIF
   end do
 
   mask = .false.
@@ -180,7 +204,7 @@ PROGRAM mk_RouteRestarts
 
   deallocate (mask, i_lakes, j_lakes, i_ocean, j_ocean)
 
- ! print *,N_land, N_ocean, N_lakes, N_ice
+  print *,N_land, N_ocean, N_lakes, N_ice
  ! print *, NT, N_land + N_ocean + N_lakes + N_ice
 
   ! (3b) Reading rst file
@@ -188,8 +212,17 @@ PROGRAM mk_RouteRestarts
   i2 = index(OutTileFile,'.',back=.true.)
  
   OutRstFile = OutTileFile(1:i1)//'rst'//OutTileFile(i1:i2)//'rst'
-  print '(a100)','ROUTE_INTERNAL_RST (OutRstFile) : '// trim(OutRstFile)
-  open (10, file=trim(OutRstFile), form='unformatted', status ='old',action = 'read', convert='little_endian') 
+  inquire(file =  trim(OutRstFile) , exist=file_exists)
+  if(file_exists) then  
+     print '(a100)','ROUTE_INTERNAL_RST (OutRstFile) : '// trim(OutRstFile)
+     open (10, file=trim(OutRstFile), form='unformatted', status ='old',action = 'read', convert='little_endian') 
+  else
+     i1 = index(OutTileFile,'/',back=.true.)
+     OutRstFile = 'OutData2/rst/'//OutTileFile(i1:i2)//'rst'
+     print '(a100)','ROUTE_INTERNAL_RST (OutRstFile) : '// trim(OutRstFile)
+     open (10, file=trim(OutRstFile), form='unformatted', status ='old',action = 'read', convert='little_endian') 
+  endif
+
   do i =1,nr
      read (10) tile_id(:,i)
   end do
@@ -225,23 +258,29 @@ PROGRAM mk_RouteRestarts
         IM =  floor((DN_lon(i) + 180.)/dx) + 1
         JM =  floor((DN_lat(i) +  90.)/dy) + 1 
         ThisTile = tile_id(IM, JM)
-
-        im = i_glb(ThisTile)
-        jm = j_glb(ThisTile)
-        
-        if(ocean_id(im,jm) > 0) then
-           ! Ocean
-           ORiverMouth (i) =  ocean_id(im,jm)
-           ! print *, 'Ocean tile at  :',i,ORiverMouth (i),DN_lat(i),DN_lon(i)
-        elseif((ocean_id(im,jm) <= 0).and.(lake_id(im,jm) > 0)) then
-           ! Lake
-           LRiverMouth (i) =  lake_id(im,jm)
-           ! print *, 'Lake tile at  :',i,  LRiverMouth (i) ,DN_lat(i),DN_lon(i)       
-        else
-           !  print *, 'No ocean or lake for :',i, cum_area(i),DN_lat(i),DN_lon(i)
-           ! stop
-        endif
-        
+ 
+       IF( ThisTile >= 1) THEN
+           im = i_glb(ThisTile)
+           jm = j_glb(ThisTile)
+           
+           if(N_OCEAN == 0) THEN
+              im = im + 1
+              jm = jm + 1
+           ENDIF
+            
+           if(ocean_id(im,jm) > 0) then
+              ! Ocean
+              ORiverMouth (i) =  ocean_id(im,jm)
+              ! print *, 'Ocean tile at  :',i,ORiverMouth (i),DN_lat(i),DN_lon(i)
+           elseif((ocean_id(im,jm) <= 0).and.(lake_id(im,jm) > 0)) then
+              ! Lake
+              LRiverMouth (i) =  lake_id(im,jm)
+              ! print *, 'Lake tile at  :',i,  LRiverMouth (i) ,DN_lat(i),DN_lon(i)       
+           else
+              !  print *, 'No ocean or lake for :',i, cum_area(i),DN_lat(i),DN_lon(i)
+              ! stop
+           endif
+        endif        
      endif
   end do
 
