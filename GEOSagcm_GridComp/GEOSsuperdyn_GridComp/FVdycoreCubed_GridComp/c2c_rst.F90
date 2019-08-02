@@ -1,6 +1,6 @@
 
-#define VERIFY_(A) if(MAPL_VRFY(A,Iam,__LINE__))call exit(-1)
-#define ASSERT_(A) if(MAPL_ASRT(A,Iam,__LINE__))call exit(-1)
+#define _VERIFY(A) if(MAPL_VRFY(A,Iam,__LINE__))call exit(-1)
+#define _ASSERT(A) if(MAPL_ASRT(A,Iam,__LINE__))call exit(-1,'needs informative message')
 
  
 #if defined(__INTEL_COMPILER)
@@ -109,25 +109,25 @@ program gmao_regrid
   call getarg(1,f_in)
 
   call ESMF_Initialize (vm=vm, logKindFlag=ESMF_LOGKIND_NONE, rc=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call ESMF_VmGet(VM, localPet=myid, petCount=ndes, rc=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   if (ndes /= 1) then
      print *,''
      print *,'ERROR: currently PARALLEL jobs not supported'
      print *,''
-     ASSERT_(.false.)
+     _ASSERT(.false.,'needs informative message')
   end if
 
   if (MAPL_AM_I_Root(vm)) then
      call GuessFileType(f_in, filetype, rc=status)
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
   end if
 
   call MAPL_CommsBcast(vm, DATA=filetype, N=1, ROOT=0, RC=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 !  print *, filetype
   gi%filename = f_in
@@ -135,12 +135,12 @@ program gmao_regrid
   ! determine grid type, and compute/guess im,im
   if (filetype ==0) then
      InNCIO = MAPL_NCIOOpen(f_in,rc=status)
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call GetGridInfo(gi, filetype, f_in, ncinfo=InNCIO, rc=status)
-     VERIFY_(STATUS)   
+     _VERIFY(STATUS)   
   else
      call GetGridInfo(gi, filetype, f_in, rc=status)
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
   end if
 
   call getarg(2,str)
@@ -162,7 +162,7 @@ program gmao_regrid
   else if (str(1:1) == 'C') then
      if (str(2:2) /= ' ') then 
         ic = ichar(str(2:2))
-        ASSERT_(ic >= i0 .and. ic <= i9) ! Must be a number
+        _ASSERT(ic >= i0 .and. ic <= i9,'needs informative message') ! Must be a number
         read(str(2:),*) im
         gout%gridtype = GridType_CubedSphere
         gout%IM = im
@@ -181,12 +181,12 @@ program gmao_regrid
      gout%IM = 1152
      gout%JM = 721
   else
-     VERIFY_(999)
+     _VERIFY(999)
   end if
 
   changeResolution =  gi%im /= gout%im .or. gi%jm /= gout%jm
   if (gout%gridtype /= GridType_CubedSphere .and. gi%gridtype /= GridType_CubedSphere) then
-     ASSERT_(.false.)
+     _ASSERT(.false.,'needs informative message')
   end if
   call MAPL_GenGridName(gi%im, gi%jm, gridname=gridnamef, geos_style=.false.)
   call MAPL_GenGridName(gout%im, gout%jm, gridname=gridnameo, geos_style=.false.)
@@ -199,23 +199,23 @@ program gmao_regrid
 
      ! create horz transform
      call MAPL_HorzTransformCreate (Trans, tileFile, gridnamef, gridnameo, rc=STATUS)
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      ! allocate buffers
      if (isFV3 == 0) then
         allocate(var_in(gi%im, gi%jm), stat=status)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
         allocate(var_out(gout%im, gout%jm), stat=status)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
      else
         allocate(var_in(gi%im, gi%jm), stat=status)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
         allocate(var_out(gout%im, gout%jm), stat=status)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
         allocate(var64_in(gi%im, gi%jm), stat=status)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
         allocate(var64_out(gout%im, gout%jm), stat=status)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
      end if
 
      if (isFV3 /=0) then
@@ -223,7 +223,7 @@ program gmao_regrid
         if (filetype ==0) then
 
            call MAPL_NCIOChangeRes(InNCIO,OutNCIO,latSize=gout%jm,lonSize=gout%im,rc=status)
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
            call MAPL_NCIOSet(OutNCIO,filename=gout%filename)
            call MAPL_NCIOCreateFile(OutNCIO)
            do n=1,InNCIO%nVars
@@ -235,7 +235,7 @@ program gmao_regrid
                  call MAPL_VarRead(InNCIO,InNCIO%vars(n)%name,var64_in)
                  var_in=var64_in
                  call MAPL_HorzTransformRun(Trans, var_in, var_out, RC=status)
-                 VERIFY_(STATUS)
+                 _VERIFY(STATUS)
                  var64_out=var_out
                  call MAPL_VarWrite(OutNCIO,InNCIO%vars(n)%name,var64_out)
               else if (ndims ==3) then
@@ -243,7 +243,7 @@ program gmao_regrid
                     call MAPL_VarRead(InNCIO,InNCIO%vars(n)%name,var64_in,lev=i)
                     var_in=var64_in
                     call MAPL_HorzTransformRun(Trans, var_in, var_out, RC=status)
-                    VERIFY_(STATUS)
+                    _VERIFY(STATUS)
                     var64_out=var_out
                     call MAPL_VarWrite(OutNCIO,InNCIO%vars(n)%name,var64_out,lev=i)
                  end do
@@ -253,10 +253,10 @@ program gmao_regrid
         else
            ! open files
            UNIT_R = GetFile(gi%filename, rc=status)
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
 
            UNIT_W = GetFile(gout%filename, rc=status)
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
 
            i=0
            ! do until EOF
@@ -277,7 +277,7 @@ program gmao_regrid
               var_in=var64_in
               i = i+1
               call MAPL_HorzTransformRun(Trans, var_in, var_out, RC=status)
-              VERIFY_(STATUS)
+              _VERIFY(STATUS)
               var64_out=var_out
               write(unit_w) var64_out
               cycle
@@ -298,7 +298,7 @@ program gmao_regrid
         if (filetype ==0) then
 
            call MAPL_NCIOChangeRes(InNCIO,OutNCIO,latSize=gout%jm,lonSize=gout%im,rc=status)
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
            call MAPL_NCIOSet(OutNCIO,filename=gout%filename)
            call MAPL_NCIOCreateFile(OutNCIO)
            do n=1,InNCIO%nVars
@@ -308,13 +308,13 @@ program gmao_regrid
               else if (ndims ==2) then
                  call MAPL_VarRead(InNCIO,InNCIO%vars(n)%name,var_in)
                  call MAPL_HorzTransformRun(Trans, var_in, var_out, RC=status)
-                 VERIFY_(STATUS)
+                 _VERIFY(STATUS)
                  call MAPL_VarWrite(OutNCIO,InNCIO%vars(n)%name,var_out)
               else if (ndims ==3) then
                  do i=1,dimSizes(3) 
                     call MAPL_VarRead(InNCIO,InNCIO%vars(n)%name,var_in,lev=i)
                     call MAPL_HorzTransformRun(Trans, var_in, var_out, RC=status)
-                    VERIFY_(STATUS)
+                    _VERIFY(STATUS)
                     call MAPL_VarWrite(OutNCIO,InNCIO%vars(n)%name,var_out,lev=i)
                  end do
               end if
@@ -323,10 +323,10 @@ program gmao_regrid
         else
            ! open files
            UNIT_R = GetFile(gi%filename, rc=status)
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
 
            UNIT_W = GetFile(gout%filename, rc=status)
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
 
            i=0
            ! do until EOF
@@ -339,7 +339,7 @@ program gmao_regrid
            !    transform
            !  write
               call MAPL_HorzTransformRun(Trans, var_in, var_out, RC=status)
-              VERIFY_(STATUS)
+              _VERIFY(STATUS)
               write(unit_w) var_out
       !        print *,'record ',i
               cycle
@@ -348,7 +348,7 @@ program gmao_regrid
               RecEnd = _FTELL(unit_r)
               backspace(unit_r)
               RecStart = _FTELL(unit_r)
-              ASSERT_(4*((LM+1)+2) == RecEnd-RecStart)
+              _ASSERT(4*((LM+1)+2) == RecEnd-RecStart,'needs informative message')
               print *,'WARNING: encoutered shorter record, assuming PREF'
               read (unit_r) pref
               write(unit_w) pref
@@ -366,15 +366,15 @@ program gmao_regrid
      end if
 
      call MAPL_HorzTransformDestroy(Trans,rc=STATUS)
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
   else
      print *, 'No change in resolution! Nothing to be done. Copy input to output yourself!'
   end if
   call ESMF_Finalize (RC=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
-#undef VERIFY_
-#undef ASSERT_
+#undef _VERIFY
+#undef _ASSERT
 
 #include "MAPL_Generic.h"
 
@@ -411,11 +411,11 @@ program gmao_regrid
 
 
       UNIT = GETFILE(FILENAME, DO_OPEN=0, ALL_PES=.false., RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
      
       INQUIRE(IOLENGTH=IREC) WORD
       open (UNIT=UNIT, FILE=FILENAME, FORM='unformatted', ACCESS='DIRECT', RECL=IREC, IOSTAT=status)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       
 ! Read first 8 characters and compare with HDF5 signature
       read (UNIT, REC=1, ERR=100) TwoWords(1:4)
@@ -434,7 +434,7 @@ program gmao_regrid
       if (typehdf5) then
          print *, 'HDF5 file'
          filetype = 0 ! HDF5
-         RETURN_(ESMF_SUCCESS)
+         _RETURN(ESMF_SUCCESS)
 
       end if
 
@@ -445,13 +445,13 @@ program gmao_regrid
       filetype = irec
       if (cwrd /= 4*irec) then
          print *, "ERROR: not a Fortran binary"
-         RETURN_(ESMF_FAILURE)
+         _RETURN(ESMF_FAILURE)
       end if
 
-      RETURN_(ESMF_SUCCESS)
+      _RETURN(ESMF_SUCCESS)
 
 100   continue
-      RETURN_(ESMF_FAILURE)
+      _RETURN(ESMF_FAILURE)
 
     end subroutine GuessFileType
 
@@ -486,27 +486,27 @@ program gmao_regrid
                gi%jm = ncinfo%dims(i)%len
             end if
          enddo
-         ASSERT_(gi%im /= -1)
-         ASSERT_(gi%jm /= -1)
+         _ASSERT(gi%im /= -1,'needs informative message')
+         _ASSERT(gi%jm /= -1,'needs informative message')
          if (gi%jm == gi%im*6) then
             gi%gridtype = GridType_CubedSphere
          else
             gi%gridtype = GridType_LatLon
          end if
-         RETURN_(ESMF_SUCCESS)
+         _RETURN(ESMF_SUCCESS)
       end if
 
       if (filetype == 6) then
          UNIT = GETFILE(FILENAME, DO_OPEN=0, ALL_PES=.false., RC=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
          open (UNIT=UNIT, FILE=FILENAME, FORM='unformatted',  IOSTAT=status)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
          read(unit)headr1
          read(unit)headr2
          close(unit)
          gi%im=headr2(1)
          gi%jm=headr2(2)
-         RETURN_(ESMF_SUCCESS)
+         _RETURN(ESMF_SUCCESS)
       end if
 
       ! check for cubed-sphere
@@ -519,7 +519,7 @@ program gmao_regrid
             gi%gridtype = GridType_CubedSphere
             gi%im = im
             gi%jm = 6*im
-            RETURN_(ESMF_SUCCESS)
+            _RETURN(ESMF_SUCCESS)
          end if
       end if
 
@@ -542,10 +542,10 @@ program gmao_regrid
          print *, ""
          print *, 'Unknown input grid type, assumming TILE, currently not supported'
          print *, ""
-         RETURN_(ESMF_FAILURE)
+         _RETURN(ESMF_FAILURE)
       end if
 
-      RETURN_(ESMF_SUCCESS)
+      _RETURN(ESMF_SUCCESS)
 
     end subroutine GetGridInfo
 

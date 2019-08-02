@@ -190,7 +190,7 @@ implicit none
     close (10,status='keep')
 
     if(regrid) then
-       allocate(raster(nc,nr),stat=STATUS); VERIFY_(STATUS)
+       allocate(raster(nc,nr),stat=STATUS); _VERIFY(STATUS)
     else
        raster => gswp2_mask
     end if
@@ -215,7 +215,7 @@ implicit none
 
     iret = NF_OPEN(trim(c_data)//trim(vname)//'_uk.nc',NF_NOWRITE, ncid)
 
-    ASSERT_(iret==NF_NOERR)
+    _ASSERT(iret==NF_NOERR,'needs informative message')
 
     if (present (merge)) then
        open (31,file='clsm/lai.dat.gswp2',  &
@@ -235,7 +235,7 @@ implicit none
           imon=imon+1
 	  
 	  iret = NF_GET_VARA_REAL(ncid, 6,(/1,mon/),(/MAX_NOF_GRID,1/),vecforc)
-	  ASSERT_(iret==NF_NOERR)		          
+	  _ASSERT(iret==NF_NOERR,'needs informative message')		          
 	  catforc =1.e-20
 	  catcount=0
           DO j =1,nr
@@ -258,7 +258,7 @@ implicit none
        END DO  
     END DO ! Year
     iret = NF_CLOSE(ncid)
-    ASSERT_(iret==NF_NOERR)
+    _ASSERT(iret==NF_NOERR,'needs informative message')
 
     fname='clsm/catchment.def'
 
@@ -373,7 +373,7 @@ lai   = 0.
 count = 0.
 
 if(regrid) then
-    allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
+    allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
 else
     raster => lai_grid
 end if
@@ -595,15 +595,15 @@ END SUBROUTINE modis_lai
           if (present(F25Tag)) then 
 
              iret = NF_OPEN('data/CATCH/SoilDepth.nc',NF_NOWRITE, ncid)
-             ASSERT_(iret==NF_NOERR)
+             _ASSERT(iret==NF_NOERR,'needs informative message')
              allocate (soildepth_gswp2(1: ncat_gswp2))
              allocate (land_gswp2     (1: ncat_gswp2)) 
              iret = NF_GET_VARA_INT (ncid, 3,(/1/),(/ncat_gswp2/),land_gswp2)
-	     ASSERT_(iret==NF_NOERR)	
+	     _ASSERT(iret==NF_NOERR,'needs informative message')	
              iret = NF_GET_VARA_REAL(ncid, 4,(/1/),(/ncat_gswp2/),soildepth_gswp2)
-	     ASSERT_(iret==NF_NOERR)		          
+	     _ASSERT(iret==NF_NOERR,'needs informative message')		          
              iret = NF_CLOSE(ncid)
-             ASSERT_(iret==NF_NOERR)
+             _ASSERT(iret==NF_NOERR,'needs informative message')
 
              k1 = i_raster/360
 
@@ -629,7 +629,7 @@ END SUBROUTINE modis_lai
           endif
              
 	  if(regrid) then
-	      allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
+	      allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
           else
               raster => soil_high
           end if
@@ -1218,7 +1218,7 @@ END SUBROUTINE modis_lai
     allocate(alb_out(1:maxcat)) 
     allocate(alb_count(1:maxcat)) 
     if(regrid) then
-	allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
+	allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
      else
         raster => alb_in
     end if
@@ -1728,7 +1728,7 @@ END SUBROUTINE modis_scale_para
     close (10,status='keep')
 
     if(regrid) then
-       allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
+       allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
     else
        raster => q0
     end if
@@ -2239,7 +2239,7 @@ END SUBROUTINE modis_scale_para
     close (10,status='keep')
     sib_veg = sib_veg2
     if(regrid) then
-       allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
+       allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
     else
        raster => sib_veg
     end if
@@ -6749,8 +6749,8 @@ END SUBROUTINE compute_stats
       allocate (z0_grid   (1 : NC         , 1 : NR))
       allocate (data_grid (1 : N_lon_ascat, 1 : N_lat_ascat)) 
 
-      status  = NF_INQ_VARID (ncid,'roughness',VarID) ; VERIFY_(STATUS)
-      status  = NF_GET_VARA_REAL (ncid,VarID, (/1,1,1/),(/N_lon_ascat, N_lat_ascat,1/), data_grid) ; VERIFY_(STATUS)
+      status  = NF_INQ_VARID (ncid,'roughness',VarID) ; _VERIFY(STATUS)
+      status  = NF_GET_VARA_REAL (ncid,VarID, (/1,1,1/),(/N_lon_ascat, N_lat_ascat,1/), data_grid) ; _VERIFY(STATUS)
 
       call RegridRasterReal(data_grid, z0_grid)
 
@@ -6838,8 +6838,8 @@ END SUBROUTINE compute_stats
       allocate (z2_grid   (1 : NC         , 1 : NR))
       allocate (data_grid (1 : N_lon_jpl, 1 : N_lat_jpl)) 
 
-      status  = NF_INQ_VARID (ncid,'CanopyHeight',VarID) ; VERIFY_(STATUS)
-      status  = NF_GET_VARA_INT (ncid,VarID, (/1,1/),(/N_lon_jpl, N_lat_jpl/), data_grid) ; VERIFY_(STATUS)
+      status  = NF_INQ_VARID (ncid,'CanopyHeight',VarID) ; _VERIFY(STATUS)
+      status  = NF_GET_VARA_INT (ncid,VarID, (/1,1/),(/N_lon_jpl, N_lat_jpl/), data_grid) ; _VERIFY(STATUS)
       
       call RegridRaster(data_grid, z2_grid)
 

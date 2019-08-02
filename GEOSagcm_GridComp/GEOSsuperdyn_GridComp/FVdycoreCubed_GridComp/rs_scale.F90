@@ -1,6 +1,7 @@
       program  main
       use MAPL_IOMod
       use MAPL_ConstantsMod, only: MAPL_PSDRY
+      use pFIO
       implicit none
 
 ! ************************************************************************
@@ -62,8 +63,8 @@
       real*8, parameter   :: eps = epsilon(1.0d-10)
       real                :: kappa
 
-      type(MAPL_NCIO) :: InNCIODyn, OutNCIODyn
-      type(MAPL_NCIO) :: InNCIOMoist, OutNCIOMoist
+      type(Netcdf4_FileFormatter) :: InDyn,OutDyn,InMoist,OutMoist
+      type(FileMetadata) :: InCfgDyn,OutCfgDyn,InCfgMoist,OutCfgMoist
       integer         :: filetypeDyn, filetypeMoist, nVars,nVarsMoist
 
       kappa = 2.0/7.0
@@ -92,11 +93,15 @@
 
      if (filetypeDyn == 0) then
 
-        InNCIODyn = MAPL_NCIOOpen(dynrst,rc=rc)
-        InNCIOMoist = MAPL_NCIOOpen(mstrst,rc=rc)
-        call MAPL_NCIOGetDimSizes(InNCIODyn,lon=im,lat=jm,lev=lm,nVars=nVars)
-        call MAPL_NCIOGetDimSizes(InNCIOMoist,nVars=nVarsMoist)
-        
+        call InDyn%open(dynrst,pFIO_READ,rc=rc)
+        InCfgDyn=InDyn%read(rc=rc)
+        im = InCfgDyn%get_dimension('lon',rc=rc)
+        jm = InCfgDyn%get_dimension('lat',rc=rc)
+        lm = InCfgDyn%get_dimension('lev',rc=rc)
+        call MAPL_IOCountNonDimVars(InCfgDyn,nVars)
+        call InMoist%open(mstrst,pFIO_READ,rc=rc)
+        InCfgMoist = InMoist%read(rc=rc)
+        call MAPL_IOCountNonDimVars(InCfgMoist,nVarsMoist)
 
         nymd=0
         nhms=0
@@ -144,32 +149,32 @@
 
       if (filetypeDyn == 0) then
 
-         call MAPL_VarRead(InNCIODyn,"AK",ak)
-         call MAPL_VarRead(InNCIODyn,"BK",bk)
+         call MAPL_VarRead(InDyn,"AK",ak)
+         call MAPL_VarRead(InDyn,"BK",bk)
          do L=1,lm
-            call MAPL_VarRead(InNCIODyn,"U",u(:,:,L),lev=l)
+            call MAPL_VarRead(InDyn,"U",u(:,:,L),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarRead(InNCIODyn,"V",v(:,:,L),lev=l)
+            call MAPL_VarRead(InDyn,"V",v(:,:,L),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarRead(InNCIODyn,"PT",th(:,:,L),lev=l)
+            call MAPL_VarRead(InDyn,"PT",th(:,:,L),lev=l)
          enddo
          do L=1,lm+1
-            call MAPL_VarRead(InNCIODyn,"PE",ple(:,:,L),lev=l)
+            call MAPL_VarRead(InDyn,"PE",ple(:,:,L),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarRead(InNCIODyn,"PKZ",pk(:,:,L),lev=l)
+            call MAPL_VarRead(InDyn,"PKZ",pk(:,:,L),lev=l)
          enddo
          ! check if we have delz and w
          if (nvars == 9) then
             allocate( delz(im,jm,lm ) )
             allocate(    w(im,jm,lm ) )
             do L=1,lm
-               call MAPL_VarRead(InNCIODyn,"DZ",delz(:,:,L),lev=l)
+               call MAPL_VarRead(InDyn,"DZ",delz(:,:,L),lev=l)
             enddo
             do L=1,lm
-               call MAPL_VarRead(InNCIODyn,"W",w(:,:,L),lev=l)
+               call MAPL_VarRead(InDyn,"W",w(:,:,L),lev=l)
             enddo
          end if
 
@@ -218,25 +223,25 @@
       if (filetypeMoist == 0) then
 
          do L=1,lm
-            call MAPL_VarRead(InNCIOMoist,"Q",qv(:,:,l),lev=l)
+            call MAPL_VarRead(InMoist,"Q",qv(:,:,l),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarRead(InNCIOMoist,"QLLS",qlls(:,:,l),lev=l)
+            call MAPL_VarRead(InMoist,"QLLS",qlls(:,:,l),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarRead(InNCIOMoist,"QLCN",qlcn(:,:,l),lev=l)
+            call MAPL_VarRead(InMoist,"QLCN",qlcn(:,:,l),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarRead(InNCIOMoist,"CLLS",cfls(:,:,l),lev=l)
+            call MAPL_VarRead(InMoist,"CLLS",cfls(:,:,l),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarRead(InNCIOMoist,"CLCN",cfcn(:,:,l),lev=l)
+            call MAPL_VarRead(InMoist,"CLCN",cfcn(:,:,l),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarRead(InNCIOMoist,"QILS",qils(:,:,l),lev=l)
+            call MAPL_VarRead(InMoist,"QILS",qils(:,:,l),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarRead(InNCIOMoist,"QICN",qicn(:,:,l),lev=l)
+            call MAPL_VarRead(InMoist,"QICN",qicn(:,:,l),lev=l)
          enddo
 
       else
@@ -384,33 +389,33 @@
       if (filetypeDyn == 0) then
 
          dynrst = trim(dynrst) // '.scaled'
-         call MAPL_NCIOChangeRes(InNCIODyn,OutNCIODyn,latSize=jm,lonSize=im)
-         call MAPL_NCIOSet(OutNCIODyn,filename=dynrst)
-         call MAPL_NCIOCreateFile(OutNCIODyn)
+         OutCfgDyn=InCfgDyn
+         call OutDyn%create(dynrst,rc=rc)
+         call OutDyn%write(OutCfgDyn,rc=rc)
 
-         call MAPL_VarWrite(OutNCIODyn,"AK",ak)
-         call MAPL_VarWrite(OutNCIODyn,"BK",bk)
+         call MAPL_VarWrite(OutDyn,"AK",ak)
+         call MAPL_VarWrite(OutDyn,"BK",bk)
          do L=1,lm
-            call MAPL_VarWrite(OutNCIODyn,"U",u(:,:,L),lev=L)
+            call MAPL_VarWrite(OutDyn,"U",u(:,:,L),lev=L)
          enddo
          do L=1,lm
-            call MAPL_VarWrite(OutNCIODyn,"V",v(:,:,L),lev=L)
+            call MAPL_VarWrite(OutDyn,"V",v(:,:,L),lev=L)
          enddo
          do L=1,lm
-            call MAPL_VarWrite(OutNCIODyn,"PT",th(:,:,L),lev=L)
+            call MAPL_VarWrite(OutDyn,"PT",th(:,:,L),lev=L)
          enddo
          do L=1,lm+1
-            call MAPL_VarWrite(OutNCIODyn,"PE",ple(:,:,L),lev=L)
+            call MAPL_VarWrite(OutDyn,"PE",ple(:,:,L),lev=L)
          enddo
          do L=1,lm
-            call MAPL_VarWrite(OutNCIODyn,"PKZ",pk(:,:,L),lev=L)
+            call MAPL_VarWrite(OutDyn,"PKZ",pk(:,:,L),lev=L)
          enddo
          if (nvars==9) then
             do L=1,lm
-               call MAPL_VarWrite(OutNCIODyn,"DZ",delz(:,:,L),lev=L)
+               call MAPL_VarWrite(OutDyn,"DZ",delz(:,:,L),lev=L)
             enddo
             do L=1,lm
-               call MAPL_VarWrite(OutNCIODyn,"W",w(:,:,L),lev=L)
+               call MAPL_VarWrite(OutDyn,"W",w(:,:,L),lev=L)
             enddo
          end if
 
@@ -474,42 +479,43 @@
       if (fileTypeMoist == 0) then
 
          mstrst = trim(mstrst) // '.scaled'
-         call MAPL_NCIOChangeRes(InNCIOMoist,OutNCIOMoist,latSize=jm,lonSize=im)
-         call MAPL_NCIOSet(OutNCIOMoist,filename=mstrst)
-         call MAPL_NCIOCreateFile(OutNCIOMoist)
+
+         OutCfgMoist=InCfgMoist
+         call OutMoist%create(mstrst,rc=rc)
+         call OutMoist%write(OutCfgMoist,rc=rc)
 
          do L=1,lm
-            call MAPL_VarWrite(OutNCIOMoist,"Q",qv(:,:,l),lev=l)
+            call MAPL_VarWrite(OutMoist,"Q",qv(:,:,l),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarWrite(OutNCIOMoist,"QLLS",qlls(:,:,l),lev=l)
+            call MAPL_VarWrite(OutMoist,"QLLS",qlls(:,:,l),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarWrite(OutNCIOMoist,"QLCN",qlcn(:,:,l),lev=l)
+            call MAPL_VarWrite(OutMoist,"QLCN",qlcn(:,:,l),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarWrite(OutNCIOMoist,"CLLS",cfls(:,:,l),lev=l)
+            call MAPL_VarWrite(OutMoist,"CLLS",cfls(:,:,l),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarWrite(OutNCIOMoist,"CLCN",cfcn(:,:,l),lev=l)
+            call MAPL_VarWrite(OutMoist,"CLCN",cfcn(:,:,l),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarWrite(OutNCIOMoist,"QILS",qils(:,:,l),lev=l)
+            call MAPL_VarWrite(OutMoist,"QILS",qils(:,:,l),lev=l)
          enddo
          do L=1,lm
-            call MAPL_VarWrite(OutNCIOMoist,"QICN",qicn(:,:,l),lev=l)
+            call MAPL_VarWrite(OutMoist,"QICN",qicn(:,:,l),lev=l)
          enddo
          ! check if we have ncpl and ncpi
          if (nVarsMoist == 9) then
             allocate( dum4(im,jm) )
                
             do L=1,lm
-               call MAPL_VarRead(InNCIOMoist,"NCPL",dum4,lev=l)
-               call MAPL_VarWrite(OutNCIOMoist,"NCPL",dum4,lev=l)
+               call MAPL_VarRead(InMoist,"NCPL",dum4,lev=l)
+               call MAPL_VarWrite(OutMoist,"NCPL",dum4,lev=l)
             enddo
             do L=1,lm
-               call MAPL_VarRead(InNCIOMoist,"NCPI",dum4,lev=l)
-               call MAPL_VarWrite(OutNCIOMoist,"NCPI",dum4,lev=l)
+               call MAPL_VarRead(InMoist,"NCPI",dum4,lev=l)
+               call MAPL_VarWrite(OutMoist,"NCPI",dum4,lev=l)
             enddo
 
          end if

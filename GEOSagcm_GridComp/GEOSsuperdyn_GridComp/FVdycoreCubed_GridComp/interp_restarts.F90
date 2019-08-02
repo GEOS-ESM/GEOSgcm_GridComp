@@ -1,7 +1,6 @@
-#define VERIFY_(A)   if((A)/=0) then; PRINT *, 'Interp_restarts.x', __LINE__; call MPI_Abort(A); endif
+#define _VERIFY(A)   if((A)/=0) then; PRINT *, 'Interp_restarts.x', __LINE__; call MPI_Abort(A); endif
 
 program interp_restarts
-#define DEALLOCGLOB_(A) if(associated(A)) then;A=0;call MAPL_DeAllocNodeArray(A,rc=STATUS);if(STATUS==MAPL_NoShm) deallocate(A,stat=STATUS);NULLIFY(A);endif
 
 !--------------------------------------------------------------------!
 ! purpose: driver for interpolation of GEOS FV and Moist restarts    !
@@ -26,8 +25,10 @@ program interp_restarts
    use MAPL_ShmemMod
    use MAPL_ConstantsMod
    use rs_scaleMod
-   use pFIO_StringVectorMod
-   use pFIO_StringIntegerMapMod
+   use MAPL_GridManagerMod
+   use MAPL_RegridderManagerMod
+   use MAPL_CubedSphereGridFactoryMod
+   use pFIO
 
    implicit none
 
@@ -69,22 +70,36 @@ program interp_restarts
    integer :: nmoist
    logical :: isBinFV, isBinMoist
    integer :: ftype
-   type(MAPL_NCIO) :: ncio,ncioOut
+   type(Netcdf4_Fileformatter) :: InFmt,OutFmt
+   type(FileMetadata), allocatable :: InCfg(:),OutCfg(:)
    integer :: nVars,imc,jmc,lonid,latid,levid,edgeid
    character(62) :: vname
-   type(StringVector) :: moist_variables
+   type(StringVector) :: moist_variables,all_moist_vars
+   type(StringVectorIterator) :: siter
    type(StringIntegerMap) :: tracer_names
+   ! bma added
    character(len=128) :: moist_order(9) = (/"Q   ","QLLS","QLCN","CLLS","CLCN","QILS","QICN","NCPL","NCPI"/)
-   integer :: p_split, npx, npy, npz,ivar,lcnt_var,iq0
+   integer :: p_split, npx, npy, npz, ivar, lcnt_var, iq0
    integer :: n_args,n_files,nlevs,nedges,ifile,nlev,n_output,nfv_vars
    character(len=ESMF_MAXPATHLEN), allocatable :: extra_files(:),extra_output(:)
    type(fv_rst), pointer :: rst_files(:) => null()
    type(ArrDescr) :: ArrDes
    integer        :: info
    logical        :: amWriter
-   integer :: isl,iel,jsl,jel,npes_x,npes_y,n_writers,n_readers,ndims,dimsize(3)
+   integer :: isl,iel,jsl,jel,npes_x,npes_y,n_writers,n_readers
    type(ESMF_Grid) :: grid
    logical :: scale_rst
+   type(StringVariableMap), pointer :: vars
+   type(StringVariableMapIterator) :: iter
+   character(len=:), pointer :: var_name
+   type(StringVariableMap), pointer :: variables
+   type(Variable), pointer :: myVariable
+   type(StringVariableMapIterator) :: var_iter
+   type(StringVector), pointer :: var_dimensions
+   character(len=:), pointer :: dname
+   integer :: dim1,ndims
+   type(CubedSphereGridFactory) :: csfactory
+   real, allocatable :: schmidt_parameters(:)
 
    real(FVPRC), allocatable :: q_wat(:,:,:,:)
 
@@ -158,6 +173,14 @@ program interp_restarts
         else
            write(*,*)'bad argument to scalers, will scale by default'
         end if
+     case('-stretched_grid')
+        allocate(schmidt_parameters(3))
+        call get_command_argument(i+1,astr)
+        read(astr,*)schmidt_parameters(1)
+        call get_command_argument(i+2,astr)
+        read(astr,*)schmidt_parameters(2)
+        call get_command_argument(i+3,astr)
+        read(astr,*)schmidt_parameters(3)
      end select
    end do
 
@@ -174,6 +197,12 @@ program interp_restarts
    if (ihydro == 0) FV_Atm(1)%flagstruct%hydrostatic = .false.
    FV_Atm(1)%flagstruct%Make_NH = .false.
    if (.not. FV_Atm(1)%flagstruct%hydrostatic) FV_Atm(1)%flagstruct%Make_NH = .true.
+   if (allocated(schmidt_parameters)) then
+      FV_Atm(1)%flagstruct%do_schmidt = .true.
+      FV_Atm(1)%flagstruct%target_lon=schmidt_parameters(1)
+      FV_Atm(1)%flagstruct%target_lat=schmidt_parameters(2)
+      FV_Atm(1)%flagstruct%stretch_fac=schmidt_parameters(3)
+   end if
 
    if (n_files > 0) allocate(rst_files(n_files)) 
 
@@ -199,6 +228,16 @@ program interp_restarts
    isBinFV     = .true.
    isBinMoist  = .true.
 
+! Determine Total Number of Tracers (MOIST, GOCART, PCHEM, ANA)
+! -------------------------------------------------------------
+   nmoist  = 0
+   isBinFV     = .true.
+   isBinMoist  = .true.
+
+   call print_memuse_stats('interp_restarts: rs_count')
+   call mpp_broadcast(nmoist, mpp_root_pe())
+   call mpp_broadcast(isBinMoist, mpp_root_pe())
+
    if (is_master()) print*, 'HYDROSTATIC : ', FV_Atm(1)%flagstruct%hydrostatic  
    if (is_master()) print*, 'Make_NH     : ', FV_Atm(1)%flagstruct%Make_NH
    if (is_master()) print*, 'Tracers     : ', FV_Atm(1)%ncnst
@@ -221,10 +260,15 @@ program interp_restarts
          km=header(3)
          close(IUNIT)
       else
-         ncio = MAPL_NCIOOpen("fvcore_internal_restart_in")
-         call MAPL_NCIOGetDimSizes(NCIO,lon=im,lat=jm,lev=km)
-         call MAPL_NCIOClose(NCIO,destroy=.true.)
-      end if 
+         call InFmt%open("fvcore_internal_restart_in",pFIO_READ,rc=status)
+         allocate(InCfg(1))
+         InCfg(1) = InFmt%read()
+         im = InCfg(1)%get_dimension('lon')
+         jm = InCfg(1)%get_dimension('lat')
+         km = InCfg(1)%get_dimension('lev')
+         call InFmt%close()
+         deallocate(InCfg)
+      end if    
    else
       call mpp_error(FATAL, 'ABORT: fvcore_internal_restart_in does not exist')
    endif
@@ -233,30 +277,39 @@ program interp_restarts
       call MAPL_NCIOGetFileType("moist_internal_restart_in",ftype)
       if (ftype == 0) then
          isBinMoist = .false.
-         NCIO = MAPL_NCIOOpen("moist_internal_restart_in")
-         call MAPL_NCIOGetDimSizes(ncio,slices=nmoist,nVars=nVars)
+         call InFmt%open("moist_internal_restart_in",pFIO_READ,rc=status)
+         allocate(InCfg(1))
+         InCfg(1) = InFmt%read()
+         call MAPL_IOCountLevels(InCfg(1),nmoist)
+         all_moist_vars = MAPL_IOGetNonDimVars(InCfg(1),rc=status)
+         siter = all_moist_vars%begin()
+         variables => InCfg(1)%get_variables()
          lcnt_var=2
-         do ivar=1,nVars
-            call MAPL_NCIOGetVarName(NCIO,ivar,vname)
-            call MAPL_NCIOVarGetDims(NCIO,vname,ndims,dimSize)
+         do while (siter /= all_moist_vars%end())
+            var_name => siter%get()
+            myVariable => variables%at(var_name)
+            var_dimensions => myVariable%get_dimensions()
+            ndims = var_dimensions%size()
             if (ndims==2) nmoist=nmoist-1
             if (ndims==3) then
-            call moist_variables%push_back(trim(vname))
-               if (trim(vname)=='Q') then
+               call moist_variables%push_back(trim(var_name))
+               if (trim(var_name)=='Q') then
                   iq0=1
-                  call tracer_names%insert(trim(vname),iq0)
+                  call tracer_names%insert(trim(var_name),iq0)
                else
                   iq0=lcnt_var
-                  call tracer_names%insert(trim(vname),iq0)
+                  call tracer_names%insert(trim(var_name),iq0)
                   lcnt_var=lcnt_var+1
                end if
             end if
-         enddo
-         call MAPL_NCIOClose(ncio,destroy=.true.)
+            call siter%next()
+         end do
+         call InFmt%close()
+         deallocate(InCfg)
       else
          call rs_count( "moist_internal_restart_in",nmoist )
-         if(mod(nmoist,km)/=0) then
-           call mpp_error(FATAL, 'ABORT: '//'binary moist restart must have only 3D variabels')
+         if (mod(nmoist,km)/=0) then
+            call mpp_error(FATAL, 'ABORT: '//'binary moist restart must have only 3D variabels')
          end if
          nVars = nmoist/km
          do ivar=1,nVars
@@ -270,6 +323,8 @@ program interp_restarts
    else
       call mpp_error(FATAL, 'ABORT: moist_internal_restart_in does not exist')
    endif
+
+   call print_memuse_stats('interp_restarts: rs_count')
    call mpp_broadcast(nmoist, mpp_root_pe())
    call mpp_broadcast(isBinMoist, mpp_root_pe())
 
@@ -307,27 +362,44 @@ program interp_restarts
          if (ftype ==0) then
             rst_files(i)%isBin=.false.
             rst_files(i)%file_name=trim(extra_files(i))
-            NCIO = MAPL_NCIOOpen(trim(extra_files(i)))
-            allocate(rst_files(i)%vars(size(ncio%vars)))
-            edgeid=-1
-            levid=-1
-            call MAPL_NCIOGetDimSizes(ncio,lev=nLevs,edges=nEdges,levid=levid,edgeid=edgeid)
-            do n=1,size(ncio%vars)
-               rst_files(i)%vars(n)%name=trim(ncio%vars(n)%name)
-               if (ncio%vars(n)%ndims==3) then
-                  do j=1,size(ncio%vars(n)%dimids)
-                     if (ncio%vars(n)%dimids(j) == edgeid) then
-                        rst_files(i)%vars(n)%nlev= npz+1
-                     else if (ncio%vars(n)%dimids(j) == levid) then
-                        rst_files(i)%vars(n)%nlev= npz
+
+            call InFmt%open(trim(extra_files(i)),pFIO_READ,rc=status)
+            allocate(InCfg(1))
+            InCfg(1) = InFmt%read()
+            call MAPL_IOCountNonDimVars(InCfg(1),nVars)
+
+            allocate(rst_files(i)%vars(nVars))
+
+            variables => InCfg(1)%get_variables()
+            var_iter = variables%begin()
+            n=0
+            do while (var_iter /= variables%end())
+
+               var_name => var_iter%key() 
+               myVariable => var_iter%value()
+               if (.not.InCfg(1)%is_coordinate_variable(var_name)) then
+                  n=n+1
+                  var_dimensions => myVariable%get_dimensions()
+                  ndims = var_dimensions%size()
+                  rst_files(i)%vars(n)%name=trim(var_name)
+                  if (ndims ==2) then
+                     rst_files(i)%vars(n)%nlev=1
+                  else if (ndims==3) then
+                     dname => myVariable%get_ith_dimension(3)
+                     dim1=InCfg(1)%get_dimension(dname)
+                     if (dim1 == km) then
+                         rst_files(i)%vars(n)%nlev=npz
+                     else if (dim1 == km+1) then
+                         rst_files(i)%vars(n)%nlev=npz+1
                      end if
-                  enddo
-               else if (ncio%vars(n)%ndims==2) then
-                  rst_files(i)%vars(n)%nlev=1
+                  end if
                end if
+               call var_iter%next()
             enddo
+
             rst_files(i)%have_descriptor=.true.
-            call MAPL_NCIOClose(NCIO,destroy=.true.)
+            call InFmt%close()
+            deallocate(InCfg)
          else
            call rs_count(trim(extra_files(i)),nlevs)
            if (mod(nlevs,km) /= 0) then
@@ -354,22 +426,38 @@ program interp_restarts
 
    call print_memuse_stats('interp_restarts: begining get_external_ic')
 
-   FV_Atm(1)%flagstruct%Make_NH = .false. ! Do this after rescaling
-   if (jm == 6*im) then
-      call get_geos_ic( FV_Atm, rst_files, .true.)
-   else
-      call get_geos_ic( FV_Atm, rst_files, .false.)
-   endif
-   FV_Atm(1)%flagstruct%Make_NH = .true. ! Reset this for later
-
+   npes_x=fv_atm(1)%layout(1)
+   npes_y=fv_atm(1)%layout(2)
    is = FV_Atm(1)%bd%isc
    ie = FV_Atm(1)%bd%iec
    js = FV_Atm(1)%bd%jsc
    je = FV_Atm(1)%bd%jec
+   isl=is
+   iel=ie
+   jsl=(npx-1)*(tile-1)+js
+   jel=(npx-1)*(tile-1)+je
+
+   call ArrDescrInit(Arrdes,MPI_COMM_WORLD,npx-1,(npx-1)*6,npes_x,npes_y*6,n_readers,n_writers,isl,iel,jsl,jel,rc=status)
+   call ArrDescrSet(arrdes,offset=0_MPI_OFFSET_KIND)
+   if (allocated(schmidt_parameters)) then
+      csfactory = CubedSphereGridFactory(im_world=npx-1,lm=npz,nx=npes_x,ny=npes_y,stretch_factor=schmidt_parameters(3), &
+                  target_lon=schmidt_parameters(1),target_lat=schmidt_parameters(2))
+   else
+      csfactory = CubedSphereGridFactory(im_world=npx-1,lm=npz,nx=npes_x,ny=npes_y) 
+   end if
+   grid = grid_manager%make_grid(csfactory,rc=status) 
+
+   FV_Atm(1)%flagstruct%Make_NH = .false. ! Do this after rescaling
+   if (jm == 6*im) then
+      call get_geos_ic( FV_Atm, rst_files, .true., grid)
+   else
+      call get_geos_ic( FV_Atm, rst_files, .false., grid)
+   endif
+   FV_Atm(1)%flagstruct%Make_NH = .true. ! Reset this for later
 
    if (scale_rst) then
       call scale_drymass(fv_atm,tracer_names,rc=status)
-      VERIFY_(status)
+      _VERIFY(status)
    end if
 
    if (FV_Atm(1)%flagstruct%Make_NH) then
@@ -393,19 +481,7 @@ program interp_restarts
       pt_local(is:ie,js:je,k) = FV_Atm(1)%pt(is:ie,js:je,k)/FV_Atm(1)%pkz(is:ie,js:je,k)
    enddo
 
-
-
-   npes_x=fv_atm(1)%layout(1)
-   npes_y=fv_atm(1)%layout(2)
-   isl=is
-   iel=ie
-   jsl=(npx-1)*(tile-1)+js
-   jel=(npx-1)*(tile-1)+je
-
-   call ArrDescrInit(Arrdes,MPI_COMM_WORLD,npx-1,(npx-1)*6,npes_x,npes_y*6,n_readers,n_writers,isl,iel,jsl,jel,rc=status)
-   call ArrDescrSet(arrdes,offset=0_MPI_OFFSET_KIND)
    amWriter = arrdes%writers_comm/=MPI_COMM_NULL
-   grid = simple_cs_grid_creator(npx-1,(npx-1)*6,npes_x,npes_y*6,status)
    call MPI_Info_create(info,status)
 
    call print_memuse_stats('interp_restarts: going to write restarts')
@@ -413,254 +489,238 @@ program interp_restarts
 ! write fvcore_internal_rst
    if( file_exist("fvcore_internal_restart_in") ) then
 
-         write(fname1, "('fvcore_internal_rst_c',i4.4,'_',i3.3,'L')") npx-1,npz
-         if (is_master()) print*, 'Writing : ', TRIM(fname1)
-         if (isBinFV) then
+      write(fname1, "('fvcore_internal_rst_c',i4.4,'_',i3.3,'L')") npx-1,npz
+      if (is_master()) print*, 'Writing : ', TRIM(fname1)
+      if (isBinFV) then
 
-            open(IUNIT,file='fvcore_internal_restart_in' ,access='sequential',form='unformatted',status='old')
-            !if (AmWriter) open(OUNIT,file=TRIM(fname1),access='sequential',form='unformatted')
-            if (n_writers==1) then
-               OUNIT=getfile(TRIM(fname1),form='unformatted',rc=status)
-               VERIFY_(status)
-            else
-               if (AmWriter) then
-                  call MPI_FILE_OPEN(arrdes%writers_comm, fname1, MPI_MODE_WRONLY+MPI_MODE_CREATE, &
-                                      info, OUNIT, STATUS)
-                  VERIFY_(STATUS)
-               end if
-            end if
-
-            ! Headers
-            read (IUNIT, IOSTAT=status) header 
-            if(n_writers > 1) then
-               call Write_Parallel(HEADER, OUNIT, ARRDES=ARRDES, RC=status)
-               VERIFY_(STATUS)
-            else
-               if (amwriter) write(OUNIT) header
-            endif
-            if (is_master()) print*, header
-
-            read (IUNIT, IOSTAT=status) header(1:5)
-            if (is_master()) print*, header(1:5)  
-            header(1) = (npx-1)
-            header(2) = (npy-1)*6
-            header(3) = npz
-
-            if(n_writers > 1) then
-               call Write_Parallel(HEADER(1:5), OUNIT, ARRDES=ARRDES, RC=status)
-               VERIFY_(STATUS)
-            else
-               if (amwriter) write(OUNIT) header(1:5)
-            endif
-
-            if (is_master()) print*, header(1:5) 
-            close(IUNIT)
-
+         open(IUNIT,file='fvcore_internal_restart_in' ,access='sequential',form='unformatted',status='old')
+         !if (AmWriter) open(OUNIT,file=TRIM(fname1),access='sequential',form='unformatted')
+         if (n_writers==1) then
+            OUNIT=getfile(TRIM(fname1),form='unformatted',rc=status)
+            _VERIFY(status)
          else
-
-            ncio = MAPL_NCIOOpen("fvcore_internal_restart_in",rc=status)
-            call MAPL_NCIOGetDimSizes(ncio,nVars=nVars)
             if (AmWriter) then
-               imc = npx-1
-               jmc = imc*6
-               call MAPL_NCIOChangeRes(ncio,ncioOut,lonSize=imc,latSize=jmc,levSize=npz)
-               if (.not.fv_atm(1)%flagstruct%hydrostatic) then
-                  nfv_vars = 9
-               else
-                  nfv_vars = 7
-               end if
-               call MAPL_NCIOSet(ncioOut,filename=fname1,nVars=nfv_vars,overwriteVars=.true.)
-               !start creating file. Can not simply use input because if it is lat-lon will not have dz or w
-               call MAPL_NCIOGetDimSizes(ncioOut,lonid=lonid,latid=latid,levid=levid,edgeid=edgeid)
-               call MAPL_NCIOAddVar(ncioOut,"AK",(/edgeid/),6,units="Pa",long_name="hybrid_sigma_pressure_a",rc=status)
-               VERIFY_(status)
-               call MAPL_NCIOAddVar(ncioOut,"BK",(/edgeid/),6,units="Pa",long_name="hybrid_sigma_pressure_b",rc=status)
-               VERIFY_(status)
-               call MAPL_NCIOAddVar(ncioOut,"U",(/lonid,latid,levid/),6,units="m s-1",long_name="eastward_wind",rc=status)
-               VERIFY_(status)
-               call MAPL_NCIOAddVar(ncioOut,"V",(/lonid,latid,levid/),6,units="m s-1",long_name="northward_wind",rc=status)
-               VERIFY_(status)
-               call MAPL_NCIOAddVar(ncioOut,"PT",(/lonid,latid,levid/),6,units="K Pa$^{-\kappa}$",long_name="scaled_potential_temperature",rc=status)
-               VERIFY_(status)
-               call MAPL_NCIOAddVar(ncioOut,"PE",(/lonid,latid,edgeid/),6,units="Pa",long_name="air_pressure",rc=status)
-               VERIFY_(status)
-               call MAPL_NCIOAddVar(ncioOut,"PKZ",(/lonid,latid,levid/),6,units="Pa$^\kappa$",long_name="pressure_to_kappa",rc=status)
-               VERIFY_(status)
-               
-               ! if dz and w were not in the original file add them
-               ! they need to be in there for the restart
-
-               if (.not.fv_atm(1)%flagstruct%hydrostatic) then
-                  call MAPL_NCIOAddVar(ncioOut,"DZ",(/lonid,latid,levid/),6,units="m",long_name="height_thickness",rc=status)
-                  VERIFY_(status)
-                  call MAPL_NCIOAddVar(ncioOut,"W",(/lonid,latid,levid/),6,units="m s-1",long_name="vertical_velocity",rc=status)
-                  VERIFY_(status)
-               endif
-               call MAPL_NCIOCreateFile(ncioOut,comm=arrdes%writers_comm,info=info,rc=status)
-               VERIFY_(status)
+               call MPI_FILE_OPEN(arrdes%writers_comm, fname1, MPI_MODE_WRONLY+MPI_MODE_CREATE, &
+                                   info, OUNIT, STATUS)
+               _VERIFY(STATUS)
             end if
-
          end if
 
-! AK and BK
-         allocate ( r8_akbk(npz+1) )
-         r8_akbk = FV_Atm(1)%ak
-         if (isBinFV) then
-            if (n_writers == 1) then
-               if (AmWriter) write(OUNIT) r8_akbk
-            else
-               call write_parallel(r8_akbk,ounit,arrdes=arrdes,rc=status)
-               VERIFY_(status)
-            end if
-         else  
-            if (AmWriter) call MAPL_VarWrite(ncioOut,"AK",r8_akbk)
-         end if
-         r8_akbk = FV_Atm(1)%bk
-         if (isBinFV) then
-            if (n_writers == 1) then
-               if (AmWriter) write(OUNIT) r8_akbk
-            else
-               call write_parallel(r8_akbk,ounit,arrdes=arrdes,rc=status)
-               VERIFY_(status)
-            end if
-         else  
-            if (AmWriter) call MAPL_VarWrite(ncioOut,"BK",r8_akbk)
-         end if
-         deallocate ( r8_akbk )
-
-         allocate(r8_local(is:ie,js:je,npz+1))
-
-! U
-         if (is_master()) print*, 'Writing : ', TRIM(fname1), ' U'
-         r8_local(is:ie,js:je,1:npz) = FV_Atm(1)%u(is:ie,js:je,1:npz)
-         if (isBinFV) then
-            if (n_writers==1) then
-               call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),rc=status)
-               VERIFY_(status)
-            else
-               call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-               VERIFY_(status)
-            end if
+         ! Headers
+         read (IUNIT, IOSTAT=status) header 
+         if(n_writers > 1) then
+            call Write_Parallel(HEADER, OUNIT, ARRDES=ARRDES, RC=status)
+            _VERIFY(STATUS)
          else
-            call MAPL_VarWrite(ncioOut,"U",r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-            VERIFY_(status)
-         end if   
-! V
-         if (is_master()) print*, 'Writing : ', TRIM(fname1), ' V'
-         r8_local(is:ie,js:je,1:npz) = FV_Atm(1)%v(is:ie,js:je,1:npz)
-         if (isBinFV) then
-            if (n_writers==1) then
-               call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),rc=status)
-               VERIFY_(status)
-            else
-               call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-               VERIFY_(status)
-            end if
-         else
-            call MAPL_VarWrite(ncioOut,"V",r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-               VERIFY_(status)
-         end if   
-! PT
-         if (is_master()) print*, 'Writing : ', TRIM(fname1), ' PT'
+            if (amwriter) write(OUNIT) header
+         endif
+         if (is_master()) print*, header
 
-         if (isBinFV) then
-            if (n_writers==1) then
-               call MAPL_VarWrite(OUNIT,grid,pt_local(is:ie,js:je,1:npz),rc=status)
-               VERIFY_(status)
-            else
-               call MAPL_VarWrite(OUNIT,grid,pt_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-               VERIFY_(status)
-            end if
-         else
-            call MAPL_VarWrite(ncioOut,"PT",pt_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-            VERIFY_(status)
-         end if
+         read (IUNIT, IOSTAT=status) header(1:5)
+         if (is_master()) print*, header(1:5)  
+         header(1) = (npx-1)
+         header(2) = (npy-1)*6
+         header(3) = npz
 
-! PE
-         if (is_master()) print*, 'Writing : ', TRIM(fname1), ' PE'
-         do k=1,npz+1
-            r8_local(is:ie,js:je,k) = FV_Atm(1)%pe(is:ie,k,js:je)
-         enddo
-         if (isBinFV) then
-            if (n_writers==1) then
-               call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz+1),rc=status)
-               VERIFY_(status)
-            else
-               call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz+1),arrdes=arrdes,rc=status)
-               VERIFY_(status)
-            end if
+         if(n_writers > 1) then
+            call Write_Parallel(HEADER(1:5), OUNIT, ARRDES=ARRDES, RC=status)
+            _VERIFY(STATUS)
          else
-            call MAPL_VarWrite(ncioOut,"PE",r8_local(is:ie,js:je,1:npz+1),arrdes=arrdes,rc=status)
-            VERIFY_(status)
-         end if
-! PKZ
-         if (is_master()) print*, 'Writing : ', TRIM(fname1), ' PKZ'
-         r8_local(is:ie,js:je,1:npz) = FV_Atm(1)%pkz(is:ie,js:je,1:npz)
-         if (isBinFV) then
-            if (n_writers==1) then
-               call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),rc=status)
-               VERIFY_(status)
-            else
-               call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-               VERIFY_(status)
-            end if
-         else
-            call MAPL_VarWrite(ncioOut,"PKZ",r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-            VERIFY_(status)
-         end if
-
-         if (.not. fv_atm(1)%flagstruct%hydrostatic) then
-! DZ
-            if (is_master()) print*, 'Writing : ', TRIM(fname1), ' DZ'
-            r8_local(is:ie,js:je,1:npz) = FV_Atm(1)%delz(is:ie,js:je,1:npz)
-            if (isBinFV) then
-               if (n_writers==1) then
-                  call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),rc=status)
-                  VERIFY_(status)
-               else
-                  call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-                  VERIFY_(status)
-               end if
-            else
-               call MAPL_VarWrite(ncioOut,"DZ",r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-               VERIFY_(status)
-            end if
-
-! W
-            if (is_master()) print*, 'Writing : ', TRIM(fname1), ' W'
-            if (is_master()) print*, 'Writing : ', TRIM(fname1), ' DZ'
-            r8_local(is:ie,js:je,1:npz) = FV_Atm(1)%w(is:ie,js:je,1:npz)
-            if (isBinFV) then
-               if (n_writers==1) then
-                  call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),rc=status)
-                  VERIFY_(status)
-               else
-                  call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-                  VERIFY_(status)
-               end if
-            else
-               call MAPL_VarWrite(ncioOut,"W",r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-               VERIFY_(status)
-            end if
+            if (amwriter) write(OUNIT) header(1:5)
          endif
 
-         if (isBinFV) then
-            if (n_writers > 1) then
-               if (AmWriter) then
-                  call MPI_FILE_CLOSE(OUNIT,status)
-                  VERIFY_(status)
-               end if
-            else
-               close (OUNIT)
-            end if
-         else
-            if (AmWriter) call MAPL_NCIOClose(ncioOut,destroy=.true.,rc=status)
+         if (is_master()) print*, header(1:5) 
+         close(IUNIT)
+
+      else
+
+         call InFmt%open("fvcore_internal_restart_in",pFIO_READ,rc=status)
+         allocate(InCfg(1),OutCfg(1))
+         InCfg(1)=InFmt%read(rc=status)
+         call MAPL_IOCountNonDimVars(InCfg(1),nVars)
+
+         if (AmWriter) then
+            imc = npx-1
+            jmc = imc*6
+            call MAPL_IOChangeRes(InCfg(1),OutCfg(1),(/'lon ','lat ','lev ','edge'/),(/imc,jmc,npz,npz+1/),rc=status)
+
+            ! if dz and w were not in the original file add them
+            ! they need to be in there for the restart
+
+            if (.not.fv_atm(1)%flagstruct%hydrostatic) then
+               ! fix thic
+               !call MAPL_NCIOAddVar(ncioOut,"DZ",(/lonid,latid,levid/),6,units="m",long_name="height_thickness",rc=status)
+               !call MAPL_NCIOAddVar(ncioOut,"W",(/lonid,latid,levid/),6,units="m s-1",long_name="vertical_velocity",rc=status)
+            endif
+            call OutFmt%create_par(fname1,comm=arrdes%writers_comm,info=info,rc=status)
+            call OutFmt%write(OutCfg(1),rc=status)
          end if
 
-         deallocate (r8_local)
-         deallocate (pt_local)
+      end if
 
+! AK and BK
+      allocate ( r8_akbk(npz+1) )
+      r8_akbk = FV_Atm(1)%ak
+      if (isBinFV) then
+         if (n_writers == 1) then
+            if (AmWriter) write(OUNIT) r8_akbk
+         else
+            call write_parallel(r8_akbk,ounit,arrdes=arrdes,rc=status)
+            _VERIFY(status)
+         end if
+      else 
+         write(*,*)'bma writing ak'
+         if (AmWriter) call MAPL_VarWrite(OutFmt,"AK",r8_akbk)
+      end if
+      r8_akbk = FV_Atm(1)%bk
+      if (isBinFV) then
+         if (n_writers == 1) then
+            if (AmWriter) write(OUNIT) r8_akbk
+         else
+            call write_parallel(r8_akbk,ounit,arrdes=arrdes,rc=status)
+            _VERIFY(status)
+         end if
+      else  
+         write(*,*)'bma writing bk'
+         if (AmWriter) call MAPL_VarWrite(OutFmt,"BK",r8_akbk)
+      end if
+      deallocate ( r8_akbk )
+
+      allocate(r8_local(is:ie,js:je,npz+1))
+
+! U
+      if (is_master()) print*, 'Writing : ', TRIM(fname1), ' U'
+      r8_local(is:ie,js:je,1:npz) = FV_Atm(1)%u(is:ie,js:je,1:npz)
+      if (isBinFV) then
+         if (n_writers==1) then
+            call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),rc=status)
+            _VERIFY(status)
+         else
+            call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+            _VERIFY(status)
+         end if
+      else
+         write(*,*)'bma writing u'
+         call MAPL_VarWrite(OutFmt,"U",r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+         _VERIFY(status)
+      end if   
+! V
+      if (is_master()) print*, 'Writing : ', TRIM(fname1), ' V'
+      r8_local(is:ie,js:je,1:npz) = FV_Atm(1)%v(is:ie,js:je,1:npz)
+      if (isBinFV) then
+         if (n_writers==1) then
+            call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),rc=status)
+            _VERIFY(status)
+         else
+            call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+            _VERIFY(status)
+         end if
+      else
+         call MAPL_VarWrite(OutFmt,"V",r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+            _VERIFY(status)
+      end if   
+! PT
+      if (is_master()) print*, 'Writing : ', TRIM(fname1), ' PT'
+
+      if (isBinFV) then
+         if (n_writers==1) then
+            call MAPL_VarWrite(OUNIT,grid,pt_local(is:ie,js:je,1:npz),rc=status)
+            _VERIFY(status)
+         else
+            call MAPL_VarWrite(OUNIT,grid,pt_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+            _VERIFY(status)
+         end if
+      else
+         call MAPL_VarWrite(OutFmt,"PT",pt_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+         _VERIFY(status)
+      end if
+
+! PE
+      if (is_master()) print*, 'Writing : ', TRIM(fname1), ' PE'
+      do k=1,npz+1
+         r8_local(is:ie,js:je,k) = FV_Atm(1)%pe(is:ie,k,js:je)
+      enddo
+      if (isBinFV) then
+         if (n_writers==1) then
+            call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz+1),rc=status)
+            _VERIFY(status)
+         else
+            call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz+1),arrdes=arrdes,rc=status)
+            _VERIFY(status)
+         end if
+      else
+         call MAPL_VarWrite(OutFmt,"PE",r8_local(is:ie,js:je,1:npz+1),arrdes=arrdes,rc=status)
+         _VERIFY(status)
+      end if
+! PKZ
+      if (is_master()) print*, 'Writing : ', TRIM(fname1), ' PKZ'
+      r8_local(is:ie,js:je,1:npz) = FV_Atm(1)%pkz(is:ie,js:je,1:npz)
+      if (isBinFV) then
+         if (n_writers==1) then
+            call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),rc=status)
+            _VERIFY(status)
+         else
+            call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+            _VERIFY(status)
+         end if
+      else
+         call MAPL_VarWrite(OutFmt,"PKZ",r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+         _VERIFY(status)
+      end if
+
+      if (.not. fv_atm(1)%flagstruct%hydrostatic) then
+! DZ
+         if (is_master()) print*, 'Writing : ', TRIM(fname1), ' DZ'
+         r8_local(is:ie,js:je,1:npz) = FV_Atm(1)%delz(is:ie,js:je,1:npz)
+         if (isBinFV) then
+            if (n_writers==1) then
+               call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),rc=status)
+               _VERIFY(status)
+            else
+               call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+               _VERIFY(status)
+            end if
+         else
+            call MAPL_VarWrite(OutFmt,"DZ",r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+            _VERIFY(status)
+         end if
+
+! W
+         if (is_master()) print*, 'Writing : ', TRIM(fname1), ' W'
+         if (is_master()) print*, 'Writing : ', TRIM(fname1), ' DZ'
+         r8_local(is:ie,js:je,1:npz) = FV_Atm(1)%w(is:ie,js:je,1:npz)
+         if (isBinFV) then
+            if (n_writers==1) then
+               call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),rc=status)
+               _VERIFY(status)
+            else
+               call MAPL_VarWrite(OUNIT,grid,r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+               _VERIFY(status)
+            end if
+         else
+            call MAPL_VarWrite(OutFmt,"W",r8_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+            _VERIFY(status)
+         end if
       endif
+
+      if (isBinFV) then
+         if (n_writers > 1) then
+            if (AmWriter) then
+               call MPI_FILE_CLOSE(OUNIT,status)
+               _VERIFY(status)
+            end if
+         else
+            close (OUNIT)
+         end if
+      else
+         if (AmWriter) call OutFmt%close()
+         deallocate(InCfg,OutCfg)
+      end if
+
+      deallocate (r8_local)
+      deallocate (pt_local)
+
+   endif
 
 ! MOIST
 !
@@ -676,78 +736,82 @@ program interp_restarts
                if (AmWriter) then
                   call MPI_FILE_OPEN(arrdes%writers_comm, fname1, MPI_MODE_WRONLY+MPI_MODE_CREATE, &
                                       info, OUNIT, STATUS)
-                  VERIFY_(STATUS)
+                  _VERIFY(STATUS)
                end if
             else
                ounit = getfile(trim(fname1),form='unformatted',rc=status)
-               VERIFY_(status)
-               !open(OUNIT,file=fname1,access='sequential',form='unformatted')
+               _VERIFY(status)
             end if
          else
-            !if (AmWriter) then
-               ncio = MAPL_NCIOOpen("moist_internal_restart_in",rc=status)
-               imc = npx-1
-               jmc = imc*6
-               call MAPL_NCIOChangeRes(ncio,ncioOut,lonSize=imc,latSize=jmc,levSize=npz)
-               call MAPL_NCIOSet(ncioOut,filename=fname1)
+            imc = npx-1
+            jmc = imc*6
+            call InFmt%open("moist_internal_restart_in",pFIO_READ,rc=status)
+            allocate(InCfg(1),OutCfg(1))
+            InCfg(1)=InFmt%read(rc=status)
+            call MAPL_IOChangeRes(InCfg(1),OutCfg(1),(/'lon','lat','lev'/),(/imc,jmc,npz/),rc=status)
             if (AmWriter) then
-               call MAPL_NCIOCreateFile(ncioOut,comm=arrdes%writers_comm,info=info,rc=status)
-               VERIFY_(status)
-               call MAPL_NCIOClose(ncio,destroy=.true.,rc=status)
-               VERIFY_(status)
+               call OutFmt%create_par(fname1,comm=arrdes%writers_comm,info=info,rc=status)
+               call OutFmt%write(OutCfg(1),rc=status)
             end if
+            deallocate(InCfg)
+            call InFmt%close()
          end if
-         lcnt_var=2
-         ! binary path
-         if (isBinMoist) then
-            do iq=1,FV_Atm(1)%ncnst
-               if (is_master()) print*, 'Writing : ', TRIM(fname1), ' ', iq
-               r4_local(is:ie,js:je,1:npz) = FV_Atm(1)%q(is:ie,js:je,:,iq)
-               iq0=iq
-               r4_local(is:ie,js:je,1:npz) = FV_Atm(1)%q(is:ie,js:je,:,iq0)
-               if (n_writers == 1) then
-                  call MAPL_VarWrite(OUNIT,grid,r4_local(is:ie,js:je,1:npz),rc=status)
-                  VERIFY_(status)
-               else
-                  call MAPL_VarWrite(OUNIT,grid,r4_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-                  VERIFY_(status)
-               end if
-            end do
+      end if
+      ! binary path
+      if (isBinMoist) then
+         do iq=1,FV_Atm(1)%ncnst
+            if (is_master()) print*, 'Writing : ', TRIM(fname1), ' ', iq
+            r4_local(is:ie,js:je,1:npz) = FV_Atm(1)%q(is:ie,js:je,:,iq)
+            iq0=iq
+            r4_local(is:ie,js:je,1:npz) = FV_Atm(1)%q(is:ie,js:je,:,iq0)
             if (n_writers == 1) then
-               close (OUNIT)
+               call MAPL_VarWrite(OUNIT,grid,r4_local(is:ie,js:je,1:npz),rc=status)
+               _VERIFY(status)
             else
-               if (AmWriter) then
-                  call MPI_FILE_CLOSE(OUNIT,status)
-                  VERIFY_(status)
-               end if
+               call MAPL_VarWrite(OUNIT,grid,r4_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+               _VERIFY(status)
             end if
+         end do
+         if (n_writers == 1) then
+            close (OUNIT)
          else
-            ! netcdf path
-            call MAPL_NCIOGetDimSizes(ncioOut,nVars=nVars)
-            lcnt_var=2
-            do ivar=1,nVars
-               call MAPL_NCIOGetVarName(ncioOut,ivar,vname)
-               if (is_master()) print*, 'Writing : ', TRIM(fname1), ' ', ivar
-               call MAPL_NCIOVarGetDims(ncioOut,vname,ndims,dimSize)
-               if (ndims==2) then
-                  r4_local2d(is:ie,js:je)=0.0
-                  call MAPL_VarWrite(ncioOut,vname,r4_local2d(is:ie,js:je),arrdes=arrdes,rc=status)
-                  VERIFY_(status)
-               else if (ndims==3) then
-                  if (trim(vname)=='Q') then
-                     iq0=1
-                  else
-                     iq0=lcnt_var
-                     lcnt_var=lcnt_var+1
-                  end if
-                  r4_local(is:ie,js:je,1:npz) = FV_Atm(1)%q(is:ie,js:je,:,iq0)
-                  call MAPL_VarWrite(ncioOut,vname,r4_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
-                  VERIFY_(status)
-               end if
-            end do
-            if (AmWriter) call MAPL_NCIOClose(ncioOut,destroy=.true.,rc=status)
-            !if (AmWriter) call MAPL_NCIOClose(ncioOut,destroy=.true.,rc=status)
+            if (AmWriter) then
+               call MPI_FILE_CLOSE(OUNIT,status)
+               _VERIFY(status)
+            end if
          end if
+      else
+         ! netcdf path
+         siter = all_moist_Vars%begin()
+         Variables => OutCfg(1)%get_variables()
+         lcnt_var=2
+         ivar=0
+         do while (siter /= all_moist_vars%end())
+            ivar=ivar+1
+            var_name => siter%get()
+            myVariable => variables%at(var_name)
+            var_dimensions => myVariable%get_dimensions()
+            ndims = var_dimensions%size()
+            if (is_master()) print*, 'Writing : ', TRIM(fname1), ' ', ivar
+            if (ndims==2) then
+               r4_local2d(is:ie,js:je)=0.0
+               call MAPL_VarWrite(OutFmt,trim(var_name),r4_local2d(is:ie,js:je),arrdes=arrdes,rc=status)
+               _VERIFY(status)
+            else if (ndims==3) then
+               if (trim(var_name)=='Q') then
+                  iq0=1
+               else
+                  iq0=lcnt_var
+                  lcnt_var=lcnt_var+1
+               end if
+               r4_local(is:ie,js:je,1:npz) = FV_Atm(1)%q(is:ie,js:je,:,iq0)
+               call MAPL_VarWrite(OutFmt,triM(var_name),r4_local(is:ie,js:je,1:npz),arrdes=arrdes,rc=status)
+               _VERIFY(status)
+            end if
+            call siter%next()
+         end do
+         if (AmWriter) call OutFmt%close()
+         deallocate(outCfg)
       end if
       deallocate(r4_local)
  
@@ -767,27 +831,29 @@ program interp_restarts
                if (AmWriter) then
                   call MPI_FILE_OPEN(arrdes%writers_comm, fname1, MPI_MODE_WRONLY+MPI_MODE_CREATE, &
                                       info, ounit, STATUS)
-                  VERIFY_(STATUS)
+                  _VERIFY(STATUS)
                end if
             else
                ounit=getfile(trim(fname1),form='unformatted',rc=status)
-               VERIFY_(status)
+               _VERIFY(status)
             end if
          else
-            !if (AmWriter) then
-               ncio = MAPL_NCIOOpen(trim(rst_files(ifile)%file_name),rc=status)
+            if (AmWriter) then
                imc = npx-1
                jmc = imc*6
-               call MAPL_NCIOChangeRes(ncio,ncioOut,lonSize=imc,latSize=jmc,levSize=npz)
-               call MAPL_NCIOSet(ncioOut,filename=fname1)
-            if (AmWriter) then
-               call MAPL_NCIOCreateFile(ncioOut,comm=arrdes%writers_comm,info=info,rc=status)
+               call InFmt%open(trim(rst_files(ifile)%file_name),pFIO_READ,rc=status)
+               allocate(InCfg(1),OutCfg(1))
+               InCfg(1)=InFmt%read(rc=status)
+               call MAPL_IOChangeRes(InCfg(1),OutCfg(1),(/'lon','lat','lev'/),(/imc,jmc,npz/),rc=status)
+               call OutFmt%create_par(fname1,comm=arrdes%writers_comm,info=info,rc=status)
+               call OutFmt%write(OutCfg(1),rc=status)
+               deallocate(InCfg,OutCfg)
+               call InFmt%close()
             end if
          end if
          do iq=1,size(rst_files(ifile)%vars)
-            if (.not.rst_files(ifile)%isBin .and. AmWriter) then
-               call MAPL_NCIOGetVarName(ncio,iq,vname) 
-            end if
+            vname = trim(rst_files(ifile)%vars(iq)%name)
+            if (is_master()) print*, 'Writing : ', TRIM(fname1), ' ', iq
             nlev = rst_files(ifile)%vars(iq)%nlev
             allocate(r4_local(is:ie,js:je,nlev))
             if (rst_files(ifile)%isBin) then
@@ -795,30 +861,28 @@ program interp_restarts
                   r4_local(is:ie,js:je,1:nlev)=rst_files(ifile)%vars(iq)%ptr3d(is:ie,js:je,1:nlev)
                   if (n_writers == 1) then
                      call MAPL_VarWrite(ounit,grid,r4_local(is:ie,js:je,1:nlev),rc=status)
-                     VERIFY_(status)
+                     _VERIFY(status)
                   else
                      call MAPL_VarWrite(ounit,grid,r4_local(is:ie,js:je,1:nlev),arrdes=arrdes,rc=status)
-                     VERIFY_(status)
+                     _VERIFY(status)
                   end if
                else
                   r4_local2d(is:ie,js:je)=rst_files(ifile)%vars(iq)%ptr2d(is:ie,js:je)
                   if (n_writers == 1) then
                      call MAPL_VarWrite(ounit,grid,r4_local2d(is:ie,js:je),rc=status)
-                     VERIFY_(status)
+                     _VERIFY(status)
                   else
                      call MAPL_VarWrite(ounit,grid,r4_local2d(is:ie,js:je),arrdes=arrdes,rc=status)
-                     VERIFY_(status)
+                     _VERIFY(status)
                   end if
                end if
             else
                if (nlev/=1) then
-         if (is_master()) print*, 'Writing 3D: ', iq, TRIM(vname)
                   r4_local(is:ie,js:je,1:nlev)=rst_files(ifile)%vars(iq)%ptr3d(is:ie,js:je,1:nlev)
-                  call MAPL_VarWrite(ncioOut,vname,r4_local(is:ie,js:je,1:nlev),arrdes)
+                  call MAPL_VarWrite(OutFmt,vname,r4_local(is:ie,js:je,1:nlev),arrdes)
                else
-         if (is_master()) print*, 'Writing 2D: ', TRIM(vname)
                   r4_local2d(is:ie,js:je)=rst_files(ifile)%vars(iq)%ptr2d(is:ie,js:je)
-                  call MAPL_VarWrite(ncioOut,vname,r4_local2d(is:ie,js:je),arrdes=arrdes)
+                  call MAPL_VarWrite(OutFmt,vname,r4_local2d(is:ie,js:je),arrdes=arrdes)
                end if
             end if
          end do
@@ -829,14 +893,12 @@ program interp_restarts
            else
               if (AmWriter) then
                  call MPI_FILE_CLOSE(ounit,status)
-                 VERIFY_(status)
+                 _VERIFY(status)
               end if
            end if
          else
-           !if (AmWriter) then
-              call MAPL_NCIOClose(ncio,destroy=.true.,rc=status)
            if (AmWriter) then
-              call MAPL_NCIOClose(ncioOut,destroy=.true.,rc=status)
+              call OutFmt%close()
            end if
          end if 
 

@@ -215,7 +215,7 @@ subroutine SetServices ( GC, RC )
 
     Iam='SetServices'
     call ESMF_GridCompGet ( GC, NAME=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam=trim(COMP_NAME)//trim(Iam)
 
 ! pchakrab: Read CATCHMENT_OFFLINE from resource file and save
@@ -224,26 +224,26 @@ subroutine SetServices ( GC, RC )
 ! at this stage where we are running Catch in the offline mode or not
 
     allocate(internal, stat=status)
-    VERIFY_(status)
+    _VERIFY(status)
     wrap%ptr => internal
     call ESMF_UserCompSetInternalState(gc, 'OfflineMode', wrap, status)
 
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     wrap%ptr%CATCH_OFFLINE = OFFLINE_MODE /= 0
 
     is_OFFLINE = wrap%ptr%CATCH_OFFLINE
 
     call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GetResource ( MAPL, USE_ASCATZ0, Label="USE_ASCATZ0:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GetResource ( MAPL, ATM_CO2,        Label="ATM_CO2:",DEFAULT=2, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     ! 0: uses a fix value defined by CO2
     ! 1: CT tracker monthly mean diurnal cycle
     ! 2: CT tracker monthly mean diurnal cycle scaled to match EEA global average CO2
@@ -251,21 +251,21 @@ subroutine SetServices ( GC, RC )
     ! 4: import AGCM model CO2 (AGCM only)
 
     call MAPL_GetResource ( MAPL, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GetResource ( MAPL, PRESCRIBE_DVG, Label="PRESCRIBE_DVG:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GetResource ( MAPL, RUN_IRRIG, Label="RUN_IRRIG:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Set the Run entry points
 ! ------------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, RUN1, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, RUN2, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 
 ! Set the state variable specs.
@@ -283,7 +283,7 @@ subroutine SetServices ( GC, RC )
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_air_temperature'     ,&
@@ -293,7 +293,7 @@ subroutine SetServices ( GC, RC )
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_air_specific_humidity',&
@@ -302,7 +302,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_wind_speed'          ,&
@@ -311,7 +311,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'levellm_uwind',                     &
@@ -320,7 +320,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'levellm_vwind',                     &
@@ -329,7 +329,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'liquid_water_convective_precipitation',&
@@ -338,7 +338,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'liquid_water_large_scale_precipitation',&
@@ -347,7 +347,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'snowfall'                    ,&
@@ -356,7 +356,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_par_beam_flux',&
@@ -365,7 +365,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_par_diffuse_flux',&
@@ -374,7 +374,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_nir_beam_flux',&
@@ -383,7 +383,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_nir_diffuse_flux',&
@@ -392,7 +392,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_uvr_beam_flux',&
@@ -401,7 +401,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_uvr_diffuse_flux',&
@@ -410,7 +410,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_longwave_flux',&
@@ -419,7 +419,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux',&
@@ -428,7 +428,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'linearization_of_surface_upwelling_longwave_flux',&
@@ -437,7 +437,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     IF (ATM_CO2 == 4) THEN
        call MAPL_AddImportSpec(GC,                              &
@@ -447,7 +447,7 @@ subroutine SetServices ( GC, RC )
             DIMS               = MAPL_DimsTileOnly,                   &
             VLOCATION          = MAPL_VLocationNone,                  &
             RC=STATUS  )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
     ENDIF
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -457,7 +457,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'greeness_fraction'           ,&
@@ -466,7 +466,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'evaporation'                 ,&
@@ -475,7 +475,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'derivative_of_evaporation_wrt_QS',&
@@ -484,7 +484,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'upward_sensible_heat_flux'   ,&
@@ -493,7 +493,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'derivative_of_sensible_heat_wrt_Ts',&
@@ -502,7 +502,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_layer_height'        ,&
@@ -511,7 +511,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
    call MAPL_AddImportSpec(GC                         ,&
         LONG_NAME          = 'vegetation_root_length'      ,&
@@ -520,7 +520,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly             ,&
         VLOCATION          = MAPL_VLocationNone            ,&
                                                  RC=STATUS  ) 
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
    call MAPL_AddImportSpec(GC                         ,&
         LONG_NAME          = 'canopy_height'               ,&
@@ -529,7 +529,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly             ,&
         VLOCATION          = MAPL_VLocationNone            ,&
                                                  RC=STATUS  ) 
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          SHORT_NAME         = 'THATM',                       &
@@ -538,7 +538,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          VLOCATION          = MAPL_VLocationNone,            &
                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                         &
          SHORT_NAME         = 'QHATM',                       &
@@ -547,7 +547,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          VLOCATION          = MAPL_VLocationNone,            &
                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
  
     call MAPL_AddImportSpec(GC,                         &
          SHORT_NAME         = 'CTATM',                       &
@@ -556,7 +556,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          VLOCATION          = MAPL_VLocationNone,            &
                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                         &
          SHORT_NAME         = 'CQATM',                       &
@@ -565,7 +565,7 @@ subroutine SetServices ( GC, RC )
          DIMS               = MAPL_DimsTileOnly,             &
          VLOCATION          = MAPL_VLocationNone,            &
                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC                                ,&
        SHORT_NAME = 'ASCATZ0'                                 ,&
@@ -574,7 +574,7 @@ subroutine SetServices ( GC, RC )
        DIMS       = MAPL_DimsTileOnly                         ,&
        VLOCATION  = MAPL_VLocationNone                        ,&
        RC=STATUS  )
-    VERIFY_(STATUS)  
+    _VERIFY(STATUS)  
 
     call MAPL_AddImportSpec(GC                             ,&
         SHORT_NAME         = 'NDVI'                        ,& 
@@ -583,7 +583,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly             ,&
         VLOCATION          = MAPL_VLocationNone            ,&
                                                   RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'dust_dry_depos_all_bins', &
@@ -593,7 +593,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_DUDP/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'dust_wet_depos_conv_scav_all_bins', &
@@ -603,7 +603,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_DUSV/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'dust_wet_depos_ls_scav_all_bins', &
@@ -613,7 +613,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_DUWT/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'dust_gravity_sett_all_bins', &
@@ -623,7 +623,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_DUSD/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'black_carbon_dry_depos_all_bins', &
@@ -633,7 +633,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_BCDP/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'black_carbon_wet_depos_conv_scav_all_bins', &
@@ -643,7 +643,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_BCSV/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'black_carbon_wet_depos_ls_scav_all_bins', &
@@ -653,7 +653,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_BCWT/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
  
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'black_carbon_gravity_sett_all_bins', &
@@ -663,7 +663,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_BCSD/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'organic_carbon_dry_depos_all_bins', &
@@ -673,7 +673,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_OCDP/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'organic_carbon_wet_depos_conv_scav_all_bins', &
@@ -683,7 +683,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_OCSV/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'organic_carbon_wet_depos_ls_scav_all_bins', &
@@ -693,7 +693,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_OCWT/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'organic_carbon_gravity_sett_all_bins', &
@@ -703,7 +703,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_OCSD/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sulfate_dry_depos_all_bins', &
@@ -713,7 +713,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_SUDP/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sulfate_wet_depos_conv_scav_all_bins', &
@@ -723,7 +723,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_SUSV/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sulfate_wet_depos_ls_scav_all_bins', &
@@ -733,7 +733,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_SUWT/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sulfate_gravity_sett_all_bins', &
@@ -743,7 +743,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_SUSD/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sea_salt_dry_depos_all_bins', &
@@ -753,7 +753,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_SSDP/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sea_salt_wet_depos_conv_scav_all_bins', &
@@ -763,7 +763,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_SSSV/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sea_salt_wet_depos_ls_scav_all_bins', &
@@ -773,7 +773,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_SSWT/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_AddImportSpec(GC,                         &
          LONG_NAME          = 'sea_salt_gravity_sett_all_bins', &
@@ -783,7 +783,7 @@ subroutine SetServices ( GC, RC )
          UNGRIDDED_DIMS     = (/NUM_SSSD/),                  &
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 !  !INTERNAL STATE:
 
@@ -803,7 +803,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'topo_baseflow_param_2'     ,&
@@ -814,7 +814,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'topo_baseflow_param_3'     ,&
@@ -825,7 +825,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'max_rootzone_water_content',&
@@ -836,7 +836,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'moisture_threshold'        ,&
@@ -847,7 +847,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'max_water_content'         ,&
@@ -858,7 +858,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'saturated_matric_potential',&
@@ -869,7 +869,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'clapp_hornberger_b'        ,&
@@ -880,7 +880,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'soil_porosity'             ,&
@@ -891,7 +891,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'wetness_at_wilting_point'  ,&
@@ -902,7 +902,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'sfc_sat_hydraulic_conduct' ,&
@@ -913,7 +913,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'vertical_transmissivity'   ,&
@@ -924,7 +924,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'wetness_param_1'           ,&
@@ -935,7 +935,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'wetness_param_2'           ,&
@@ -946,7 +946,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'wetness_param_3'           ,&
@@ -957,7 +957,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'shape_param_1'             ,&
@@ -968,7 +968,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'shape_param_2'             ,&
@@ -979,7 +979,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'shape_param_3'             ,&
@@ -990,7 +990,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'shape_param_4'             ,&
@@ -1001,7 +1001,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'min_theta_param_1'         ,&
@@ -1012,7 +1012,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'min_theta_param_2'         ,&
@@ -1023,7 +1023,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'min_theta_param_3'         ,&
@@ -1034,7 +1034,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'min_theta_param_4'         ,&
@@ -1045,7 +1045,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'water_transfer_param_1'    ,&
@@ -1056,7 +1056,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'water_transfer_param_2'    ,&
@@ -1067,7 +1067,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'water_transfer_param_3'    ,&
@@ -1078,7 +1078,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'water_transfer_param_4'    ,&
@@ -1089,7 +1089,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'water_transfer_param_5'    ,&
@@ -1100,7 +1100,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'water_transfer_param_6'    ,&
@@ -1111,7 +1111,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'vegetation_type'           ,&
@@ -1122,7 +1122,7 @@ subroutine SetServices ( GC, RC )
     UNGRIDDED_DIMS     = (/NUM_VEG/)                 ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'vegetation_fraction'       ,&
@@ -1133,7 +1133,7 @@ subroutine SetServices ( GC, RC )
     UNGRIDDED_DIMS     = (/NUM_VEG/)                 ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'canopy_temperature'        ,&
@@ -1145,7 +1145,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'canopy_specific_humidity'  ,&
@@ -1157,7 +1157,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'ground_temperature'        ,&
@@ -1169,7 +1169,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'interception_reservoir_capac',&
@@ -1180,7 +1180,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'catchment_deficit'         ,&
@@ -1191,7 +1191,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'root_zone_excess'          ,&
@@ -1202,7 +1202,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'surface_excess'            ,&
@@ -1213,7 +1213,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'soil_heat_content_layer_1' ,&
@@ -1224,7 +1224,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'soil_heat_content_layer_2' ,&
@@ -1235,7 +1235,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'soil_heat_content_layer_3' ,&
@@ -1246,7 +1246,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'soil_heat_content_layer_4' ,&
@@ -1257,7 +1257,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'soil_heat_content_layer_5' ,&
@@ -1268,7 +1268,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'soil_heat_content_layer_6' ,&
@@ -1279,7 +1279,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'mean_catchment_temp_incl_snw',&
@@ -1289,7 +1289,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'snow_mass_layer_1'         ,&
@@ -1300,7 +1300,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'snow_mass_layer_2'         ,&
@@ -1311,7 +1311,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'snow_mass_layer_3'         ,&
@@ -1322,7 +1322,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'heat_content_snow_layer_1' ,&
@@ -1333,7 +1333,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'heat_content_snow_layer_2' ,&
@@ -1344,7 +1344,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'heat_content_snow_layer_3' ,&
@@ -1355,7 +1355,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'snow_depth_layer_1'        ,&
@@ -1366,7 +1366,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'snow_depth_layer_2'        ,&
@@ -1377,7 +1377,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'snow_depth_layer_3'        ,&
@@ -1388,7 +1388,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'surface_heat_exchange_coefficient',&
@@ -1399,7 +1399,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = RESTART                     ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'surface_momentum_exchange_coefficient',&
@@ -1410,7 +1410,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = RESTART                     ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'surface_moisture_exchange_coffiecient',&
@@ -1421,7 +1421,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = RESTART                     ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                  ,&
     LONG_NAME          = 'subtile_fractions'         ,&
@@ -1432,7 +1432,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = RESTART                     ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC,                  &
     SHORT_NAME         = 'WW',                        &
@@ -1443,7 +1443,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone,          &
     RESTART            = RESTART                     ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC,                  &
     SHORT_NAME         = 'DCH',                        &
@@ -1454,7 +1454,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone,          &
     RESTART            = MAPL_RestartSkip            ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC,                  &
     SHORT_NAME         = 'DCQ',                        &
@@ -1465,7 +1465,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone,          &
     RESTART            = MAPL_RestartSkip            ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
     LONG_NAME          = 'catchment_tile_id'         ,&
@@ -1475,7 +1475,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
     LONG_NAME          = 'CLM_nitrogen_deposition'   ,&
@@ -1485,7 +1485,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
     LONG_NAME          = 'cli_2m_T_(MERRA2)'      ,&
@@ -1495,7 +1495,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
     LONG_NAME          = 'MODIS soil albedo vis dir' ,&
@@ -1505,7 +1505,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
     LONG_NAME          = 'MODIS soil albedo vis dif' ,&
@@ -1515,7 +1515,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
     LONG_NAME          = 'MODIS soil albedo nir dir' ,&
@@ -1525,7 +1525,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddInternalSpec(GC                       ,&
     LONG_NAME          = 'MODIS soil albedo nir dif' ,&
@@ -1535,7 +1535,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   IF ((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN 
 
@@ -1550,7 +1550,7 @@ subroutine SetServices ( GC, RC )
           UNGRIDDED_DIMS     = (/NUM_ZON*VAR_COL/)         ,&
           RESTART            = MAPL_RestartRequired        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'PFT_rst_vars'              ,&
@@ -1561,7 +1561,7 @@ subroutine SetServices ( GC, RC )
           UNGRIDDED_DIMS     = (/NUM_ZON*NUM_VEG*VAR_PFT/) ,&
           RESTART            = MAPL_RestartRequired        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'CN sum for ground temp'    ,&
@@ -1572,7 +1572,7 @@ subroutine SetServices ( GC, RC )
           UNGRIDDED_DIMS     = (/NUM_ZON/)                 ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'CN sum for soil moisture'  ,&
@@ -1583,7 +1583,7 @@ subroutine SetServices ( GC, RC )
           UNGRIDDED_DIMS     = (/NUM_ZON/)                 ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'CN sum for sfc soil moist' ,&
@@ -1593,7 +1593,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'CN sum for baseflow'       ,&
@@ -1603,7 +1603,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'CN sum for total water'    ,&
@@ -1613,7 +1613,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'CN sum for air temperature',&
@@ -1623,7 +1623,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'CN sum for soil temp'      ,&
@@ -1633,7 +1633,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'CN summing counter'        ,&
@@ -1643,7 +1643,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'CN sum for sunlit photosyn',&
@@ -1654,7 +1654,7 @@ subroutine SetServices ( GC, RC )
           UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'CN sum for shaded photosyn',&
@@ -1665,7 +1665,7 @@ subroutine SetServices ( GC, RC )
           UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'CN sum for snow depth'     ,&
@@ -1675,7 +1675,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
   
      call MAPL_AddInternalSpec(GC                       ,&
           LONG_NAME          = 'CN sum for area snow cover',&
@@ -1685,7 +1685,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
   ENDIF
 
@@ -1701,7 +1701,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Stem Area Index V1 Z2 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1710,7 +1710,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Stem Area Index V1 Z3 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1719,7 +1719,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Stem Area Index V2 Z1 anomaly'     ,&
@@ -1729,7 +1729,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Stem Area Index V2 Z2 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1738,7 +1738,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Stem Area Index V2 Z3 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1747,7 +1747,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Stem Area Index V3 Z1 anomaly'     ,&
@@ -1757,7 +1757,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Stem Area Index V3 Z2 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1766,7 +1766,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Stem Area Index V3 Z3 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1775,7 +1775,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Stem Area Index V4 Z1 anomaly'     ,&
@@ -1785,7 +1785,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Stem Area Index V4 Z2 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1794,7 +1794,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Stem Area Index V4 Z3 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1803,7 +1803,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      ! Add ELAI (NTILES,NV,NZ)
      
@@ -1815,7 +1815,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Leaf Area Index V1 Z2 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1824,7 +1824,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Leaf Area Index V1 Z3 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1833,7 +1833,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Leaf Area Index V2 Z1 anomaly'     ,&
@@ -1843,7 +1843,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Leaf Area Index V2 Z2 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1852,7 +1852,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Leaf Area Index V2 Z3 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1861,7 +1861,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Leaf Area Index V3 Z1 anomaly'     ,&
@@ -1871,7 +1871,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Leaf Area Index V3 Z2 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1880,7 +1880,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Leaf Area Index V3 Z3 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1889,7 +1889,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Leaf Area Index V4 Z1 anomaly'     ,&
@@ -1899,7 +1899,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Leaf Area Index V4 Z2 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1908,7 +1908,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_AddInternalSpec(GC                         ,&
           LONG_NAME          = 'Leaf Area Index V4 Z3 anomaly'     ,&
           UNITS              = '1'                         ,&
@@ -1917,7 +1917,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
   endif
 
@@ -1935,7 +1935,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_2'   ,&
@@ -1947,7 +1947,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_3'   ,&
@@ -1959,7 +1959,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_4'   ,&
@@ -1971,7 +1971,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_5'   ,&
@@ -1983,7 +1983,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'hydrophobic_black_carbon_mass_in_snow_bin_1',&
@@ -1995,7 +1995,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'hydrophilic_black_carbon_mass_in_snow_bin_2',&
@@ -2007,7 +2007,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'hydrophobic_organic_carbon_mass_in_snow_bin_1',&
@@ -2019,7 +2019,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'hydrophilic_organic_carbon_mass_in_snow_bin_2',&
@@ -2031,7 +2031,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartOptional        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
   endif
 
@@ -2048,7 +2048,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartRequired        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'fraction_of_paddy_cropland',&
@@ -2059,7 +2059,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartRequired        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      
      call MAPL_AddInternalSpec(GC                          ,&
@@ -2071,7 +2071,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartRequired        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                          ,&
           LONG_NAME          = 'Minimum_LAI'               ,&
@@ -2082,7 +2082,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartRequired        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                          ,&
           LONG_NAME          = 'CLM_primary_type'          ,&
@@ -2093,7 +2093,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartRequired        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                          ,&
           LONG_NAME          = 'CLM_secondary_type'        ,&
@@ -2104,7 +2104,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartRequired        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                          ,&
           LONG_NAME          = 'CLM_primary_fraction'      ,&
@@ -2115,7 +2115,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartRequired        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
      call MAPL_AddInternalSpec(GC                          ,&
           LONG_NAME          = 'CLM_secondary_fraction'    ,&
@@ -2126,7 +2126,7 @@ subroutine SetServices ( GC, RC )
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartRequired        ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      
   ENDIF
 
@@ -2143,7 +2143,7 @@ subroutine SetServices ( GC, RC )
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
   ENDIF
   
   call MAPL_AddExportSpec(GC,                    &
@@ -2153,7 +2153,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
      LONG_NAME          = 'sublimation'               ,&
@@ -2162,7 +2162,7 @@ subroutine SetServices ( GC, RC )
      DIMS               = MAPL_DimsTileOnly           ,&
      VLOCATION          = MAPL_VLocationNone          ,&
                                                RC=STATUS  ) 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'upward_sensible_heat_flux' ,&
@@ -2171,7 +2171,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'runoff_flux'               ,&
@@ -2180,7 +2180,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'interception_loss_energy_flux',&
@@ -2189,7 +2189,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'baresoil_evap_energy_flux' ,&
@@ -2198,7 +2198,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'transpiration_energy_flux' ,&
@@ -2207,7 +2207,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snow_ice_evaporation_energy_flux',&
@@ -2216,7 +2216,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   call MAPL_AddExportSpec(GC,                    &
@@ -2226,7 +2226,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'totoal soil moisture'      ,&
@@ -2235,7 +2235,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil frozen water content' ,&
@@ -2244,7 +2244,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snowpack_evaporation_energy_flux',&
@@ -2253,7 +2253,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'baseflow_flux'             ,&
     UNITS              = 'kg m-2 s-1'                ,&
@@ -2261,7 +2261,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'overland_runoff_including_throughflow'  ,&
@@ -2270,7 +2270,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snowmelt_flux'             ,&
@@ -2279,7 +2279,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_outgoing_longwave_flux',&
@@ -2288,7 +2288,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                    ,&
     LONG_NAME          = 'surface_net_downward_longwave_flux',&
@@ -2297,7 +2297,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                    ,&
     LONG_NAME          = 'surface_net_downward_shortwave_flux',&
@@ -2306,7 +2306,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 
   call MAPL_AddExportSpec(GC,                    &
@@ -2316,7 +2316,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'rainwater_infiltration_flux',&
@@ -2325,7 +2325,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'areal_fraction_saturated_zone',&
@@ -2334,7 +2334,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'areal_fraction_transpiration_zone',&
@@ -2343,7 +2343,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'root_zone_equilibrium_moisture',&
@@ -2352,7 +2352,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'ground_energy_flux'        ,&
@@ -2361,7 +2361,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'ave_catchment_temp_incl_snw',& 
@@ -2370,7 +2370,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'temperature_top_snow_layer',&
@@ -2379,7 +2379,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'temperature_unsaturated_zone',&
@@ -2388,7 +2388,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'temperature_saturated_zone',&
@@ -2397,7 +2397,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'temperature_wilted_zone'   ,&
@@ -2406,7 +2406,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   if (is_OFFLINE) then
      call MAPL_AddInternalSpec(GC,                       &
@@ -2418,7 +2418,7 @@ subroutine SetServices ( GC, RC )
        RESTART            = MAPL_RestartSkip            ,&
        FRIENDLYTO         = trim(COMP_NAME)             ,&
                                            RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
   else
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'fractional_area_of_land_snowcover',&
@@ -2427,7 +2427,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   endif
 
   call MAPL_AddExportSpec(GC,                    &
@@ -2437,7 +2437,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'averaged_snow_temperature' ,&
@@ -2446,7 +2446,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'fractional_area_of_saturated_zone',&
@@ -2455,7 +2455,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'fractional_area_of_unsaturated_zone',&
@@ -2464,7 +2464,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'fractional_area_of_wilting_zone',&
@@ -2473,7 +2473,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snow_mass'                 ,&
@@ -2482,7 +2482,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snow_depth_in_snow_covered_area' ,&
@@ -2491,7 +2491,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_soil_wetness'      ,&
@@ -2500,7 +2500,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'root_zone_soil_wetness'    ,&
@@ -2509,7 +2509,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'ave_prof_soil__moisture'   ,&
@@ -2518,7 +2518,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'water_surface_layer'       ,&
@@ -2527,7 +2527,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'water_root_zone'           ,&
@@ -2536,7 +2536,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'water_ave_prof'            ,&
@@ -2545,7 +2545,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_1' ,&
@@ -2554,7 +2554,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_2' ,&
@@ -2563,7 +2563,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_3' ,&
@@ -2572,7 +2572,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_4' ,&
@@ -2581,7 +2581,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_5' ,&
@@ -2590,7 +2590,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_6' ,&
@@ -2599,7 +2599,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   if (is_OFFLINE) then
      call MAPL_AddInternalSpec(GC,                       &
@@ -2611,7 +2611,7 @@ subroutine SetServices ( GC, RC )
         RESTART            = MAPL_RestartSkip            ,&
         FRIENDLYTO         = trim(COMP_NAME)             ,&
                                            RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
   else
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_emissivity'        ,&
@@ -2620,7 +2620,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   endif
 
   call MAPL_AddExportSpec(GC,                    &
@@ -2630,7 +2630,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_albedo_visible_diffuse',&
@@ -2639,7 +2639,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_albedo_near_infrared_beam',&
@@ -2648,7 +2648,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_albedo_near_infrared_diffuse',&
@@ -2657,7 +2657,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'change_surface_skin_temperature',&
@@ -2666,7 +2666,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'change_surface_specific_humidity',&
@@ -2675,7 +2675,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'change_evaporation'        ,&
@@ -2684,7 +2684,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'change_upward_sensible_energy_flux',&
@@ -2693,7 +2693,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_skin_temperature'  ,&
@@ -2702,7 +2702,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'land_surface_skin_temperature'  ,&
@@ -2711,7 +2711,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_specific_humidity' ,&
@@ -2720,7 +2720,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'turbulence_surface_skin_temperature',&
@@ -2729,7 +2729,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'turbulence_surface_skin_specific_hum',&
@@ -2738,7 +2738,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_heat_exchange_coefficient',&
@@ -2747,7 +2747,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_momentum_exchange_coefficient',&
@@ -2756,7 +2756,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_moisture_exchange_coefficient',&
@@ -2765,7 +2765,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'neutral_drag_coefficient'  ,&
@@ -2774,7 +2774,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_bulk_richardson_number',&
@@ -2783,7 +2783,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_roughness'         ,&
@@ -2792,7 +2792,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOT2M',                     &
@@ -2801,7 +2801,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
                                                RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOQ2M',                     &
@@ -2810,7 +2810,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
                                                RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOU2M',                    &
@@ -2819,7 +2819,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
                                                RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOV2M',                    &
@@ -2828,7 +2828,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
                                                RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOT10M',                     &
@@ -2837,7 +2837,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
                                                RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOQ10M',                     &
@@ -2846,7 +2846,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
                                                RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOU10M',                    &
@@ -2855,7 +2855,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
                                                RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOV10M',                    &
@@ -2864,7 +2864,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
                                                RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOU50M',                    &
@@ -2873,7 +2873,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
                                                RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
         SHORT_NAME         = 'MOV50M',                    &
@@ -2882,7 +2882,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone,          &
                                                RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_roughness_for_heat',&
@@ -2891,7 +2891,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'zero_plane_displacement_height',&
@@ -2900,7 +2900,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'GUST',                      &
@@ -2909,7 +2909,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'VENT',                      &
@@ -2918,7 +2918,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
      call MAPL_AddExportSpec(GC,                             &
@@ -2928,7 +2928,7 @@ subroutine SetServices ( GC, RC )
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
 
   call MAPL_AddExportSpec(GC,                    &
@@ -2938,7 +2938,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'PRLAND',                    &
@@ -2947,7 +2947,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SNOLAND',                   &
@@ -2956,7 +2956,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'DRPARLAND',                 &
@@ -2965,7 +2965,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'DFPARLAND',                 &
@@ -2974,7 +2974,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'LHSNOW',                    &
@@ -2983,7 +2983,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   call MAPL_AddExportSpec(GC,                    &
@@ -2993,7 +2993,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   call MAPL_AddExportSpec(GC,                    &
@@ -3003,7 +3003,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'LWDNSNOW',                    &
@@ -3012,7 +3012,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'TCSORIG',                   &
@@ -3021,7 +3021,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'TPSN1IN',                   &
@@ -3030,7 +3030,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'TPSN1OUT',                  &
@@ -3039,7 +3039,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'GHSNOW',                    &
@@ -3048,7 +3048,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'LHLAND',                    &
@@ -3057,7 +3057,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   call MAPL_AddExportSpec(GC,                    &
@@ -3067,7 +3067,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   call MAPL_AddExportSpec(GC,                    &
@@ -3077,7 +3077,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SWDOWNLAND',                &
@@ -3086,7 +3086,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   call MAPL_AddExportSpec(GC,                    &
@@ -3096,7 +3096,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   call MAPL_AddExportSpec(GC,                    &
@@ -3106,7 +3106,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'GHTSKIN',                   &
@@ -3115,7 +3115,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SMLAND',                    &
@@ -3124,7 +3124,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   call MAPL_AddExportSpec(GC,                    &
@@ -3134,7 +3134,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   call MAPL_AddExportSpec(GC,                    &
@@ -3144,7 +3144,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'TSLAND',                    &
@@ -3153,7 +3153,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'DWLAND',                    &
@@ -3162,7 +3162,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'DHLAND',                    &
@@ -3171,7 +3171,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SPLAND',                    &
@@ -3180,7 +3180,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SPWATR',                    &
@@ -3189,7 +3189,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SPSNOW',                    &
@@ -3198,7 +3198,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'vegetation_type'           ,&
@@ -3207,7 +3207,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_exposed_leaf-area_index',&
@@ -3216,7 +3216,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_total_leaf-area_index'  ,&
@@ -3225,7 +3225,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_exposed_stem-area_index',&
@@ -3234,7 +3234,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_total_carbon'           ,&
@@ -3243,7 +3243,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_total_vegetation_carbon',&
@@ -3252,7 +3252,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_total_root_carbon'      ,&
@@ -3261,7 +3261,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_net_primary_production' ,&
@@ -3270,7 +3270,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_gross_primary_production',&
@@ -3279,7 +3279,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_total_soil_respiration' ,&
@@ -3288,7 +3288,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_net_ecosystem_exchange' ,&
@@ -3297,7 +3297,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'abstract_C_pool_to_meet_excess_MR_demand' ,&
@@ -3306,7 +3306,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_added_to_maintain_positive_C' ,&
@@ -3315,7 +3315,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_carbon_loss_to_fire'    ,&
@@ -3324,7 +3324,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_fractional_area_burn_rate' ,&
@@ -3333,7 +3333,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'absorbed_PAR'              ,&
@@ -3342,7 +3342,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'incident_PAR'              ,&
@@ -3351,7 +3351,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'saturated_stomatal_conductance' ,&
@@ -3360,7 +3360,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'unstressed_stomatal_conductance' ,&
@@ -3369,7 +3369,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'transpiration coefficient' ,&
@@ -3378,7 +3378,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'solar induced fluorescence',&
@@ -3387,7 +3387,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'fire season length'        ,&
@@ -3396,7 +3396,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CO2 Surface Concentration used'  ,&
@@ -3405,7 +3405,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 ! Add ESAI (NTILES,NV,NZ)
 
@@ -3416,7 +3416,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Stem Area Index V1 Z2'     ,&
     UNITS              = '1'                         ,&
@@ -3424,7 +3424,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Stem Area Index V1 Z3'     ,&
     UNITS              = '1'                         ,&
@@ -3432,7 +3432,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Stem Area Index V2 Z1'     ,&
@@ -3441,7 +3441,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Stem Area Index V2 Z2'     ,&
     UNITS              = '1'                         ,&
@@ -3449,7 +3449,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Stem Area Index V2 Z3'     ,&
     UNITS              = '1'                         ,&
@@ -3457,7 +3457,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Stem Area Index V3 Z1'     ,&
@@ -3466,7 +3466,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Stem Area Index V3 Z2'     ,&
     UNITS              = '1'                         ,&
@@ -3474,7 +3474,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Stem Area Index V3 Z3'     ,&
     UNITS              = '1'                         ,&
@@ -3482,7 +3482,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Stem Area Index V4 Z1'     ,&
@@ -3491,7 +3491,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Stem Area Index V4 Z2'     ,&
     UNITS              = '1'                         ,&
@@ -3499,7 +3499,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Stem Area Index V4 Z3'     ,&
     UNITS              = '1'                         ,&
@@ -3507,7 +3507,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 ! Add ELAI (NTILES,NV,NZ)
 
@@ -3518,7 +3518,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Leaf Area Index V1 Z2'     ,&
     UNITS              = '1'                         ,&
@@ -3526,7 +3526,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Leaf Area Index V1 Z3'     ,&
     UNITS              = '1'                         ,&
@@ -3534,7 +3534,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Leaf Area Index V2 Z1'     ,&
@@ -3543,7 +3543,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Leaf Area Index V2 Z2'     ,&
     UNITS              = '1'                         ,&
@@ -3551,7 +3551,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Leaf Area Index V2 Z3'     ,&
     UNITS              = '1'                         ,&
@@ -3559,7 +3559,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Leaf Area Index V3 Z1'     ,&
@@ -3568,7 +3568,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Leaf Area Index V3 Z2'     ,&
     UNITS              = '1'                         ,&
@@ -3576,7 +3576,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Leaf Area Index V3 Z3'     ,&
     UNITS              = '1'                         ,&
@@ -3584,7 +3584,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Leaf Area Index V4 Z1'     ,&
@@ -3593,7 +3593,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Leaf Area Index V4 Z2'     ,&
     UNITS              = '1'                         ,&
@@ -3601,7 +3601,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'Leaf Area Index V4 Z3'     ,&
     UNITS              = '1'                         ,&
@@ -3609,7 +3609,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_dust_mass_flux_from_the_bottom_layer_bin_1',&
@@ -3618,7 +3618,7 @@ subroutine SetServices ( GC, RC )
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_dust_mass_flux_from_the_bottom_layer_bin_2',&
@@ -3627,7 +3627,7 @@ subroutine SetServices ( GC, RC )
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_dust_mass_flux_from_the_bottom_layer_bin_3',&
@@ -3636,7 +3636,7 @@ subroutine SetServices ( GC, RC )
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_dust_mass_flux_from_the_bottom_layer_bin_4',&
@@ -3645,7 +3645,7 @@ subroutine SetServices ( GC, RC )
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_dust_mass_flux_from_the_bottom_layer_bin_5',&
@@ -3654,7 +3654,7 @@ subroutine SetServices ( GC, RC )
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_black_carbon_mass_flux_from_the_bottom_layer_bin_1',&
@@ -3663,7 +3663,7 @@ subroutine SetServices ( GC, RC )
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_black_carbon_mass_flux_from_the_bottom_layer_bin_2',&
@@ -3672,7 +3672,7 @@ subroutine SetServices ( GC, RC )
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_organic_carbon_mass_flux_from_the_bottom_layer_bin_1',&
@@ -3681,7 +3681,7 @@ subroutine SetServices ( GC, RC )
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
        RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   
   call MAPL_AddExportSpec(GC                  ,&
        LONG_NAME          = 'flushed_out_organic_carbon_mass_flux_from_the_bottom_layer_bin_2',&
@@ -3690,32 +3690,32 @@ subroutine SetServices ( GC, RC )
        DIMS               = MAPL_DimsTileOnly           ,&
        VLOCATION          = MAPL_VLocationNone          ,&
                                                RC=STATUS  ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 !EOS
 
     call MAPL_TimerAdd(GC,    name="RUN1"  ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     if (is_OFFLINE) then
        call MAPL_TimerAdd(GC,    name="-RUN0"  ,RC=STATUS)
-       VERIFY_(status)
+       _VERIFY(status)
     end if
     call MAPL_TimerAdd(GC,    name="-SURF" ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC,    name="RUN2"  ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC,    name="-CATCH" ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC,    name="-ALBEDO" ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Set generic init and final method
 ! ---------------------------------
 
     call MAPL_GenericSetServices ( GC, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
 
 end subroutine SetServices
 
@@ -3897,12 +3897,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! ------------------------------------------------------------------------------
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam=trim(COMP_NAME)//"::RUN1"
 
     ! Get component's offline mode from its pvt internal state
     call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
-    VERIFY_(status)
+    _VERIFY(status)
     is_OFFLINE = wrap%ptr%CATCH_OFFLINE
 
     call ESMF_VMGetCurrent ( VM, RC=STATUS ) 
@@ -3912,7 +3912,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! ----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Start timers
 ! ------------
@@ -3926,221 +3926,221 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get ( MAPL                          ,&
                                 INTERNAL_ESMF_STATE=INTERNAL   ,&
                                                       RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
     call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GetResource ( MAPL, SCALE4Z0, Label="SCALE4Z0:", DEFAULT=0.5, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GetResource ( MAPL, PRESCRIBE_DVG, Label="PRESCRIBE_DVG:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Pointers to inputs
 !-------------------
 
    call MAPL_GetPointer(IMPORT,UU     , 'UU'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(IMPORT,UWINDLMTILE     , 'UWINDLMTILE'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(IMPORT,VWINDLMTILE     , 'VWINDLMTILE'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(IMPORT,DZ     , 'DZ'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(IMPORT,TA     , 'TA'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(IMPORT,QA     , 'QA'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(IMPORT,PS     , 'PS'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(IMPORT,LAI    , 'LAI'    ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(IMPORT,Z2CH   , 'Z2CH'   ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(IMPORT,PCU    , 'PCU'    ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(IMPORT,ASCATZ0, 'ASCATZ0',    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(IMPORT,NDVI   , 'NDVI'   ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
 ! Pointers to internals
 !----------------------
  
    call MAPL_GetPointer(INTERNAL,ITY  , 'ITY'    ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(INTERNAL,FVG  , 'FVG'    ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(INTERNAL,TC   , 'TC'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(INTERNAL,QC   , 'QC'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(INTERNAL,FR   , 'FR'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(INTERNAL,CH   , 'CH'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(INTERNAL,CM   , 'CM'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(INTERNAL,CQ   , 'CQ'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    IF ((PRESCRIBE_DVG == 0) .OR.(PRESCRIBE_DVG == 4)) THEN 
       call MAPL_GetPointer(INTERNAL,CNCOL  ,'CNCOL'  ,   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL,CNPFT  ,'CNPFT'  ,   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
    ENDIF
 
    call MAPL_GetPointer(INTERNAL,DCH  , 'DCH'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(INTERNAL,DCQ  , 'DCQ'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
 ! Pointers to outputs
 !--------------------
 
    call MAPL_GetPointer(EXPORT,QH    , 'QH'      ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,TH    , 'TH'      ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,CHT   , 'CHT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,CMT   , 'CMT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,CQT   , 'CQT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,CNT   , 'CNT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,RIT   , 'RIT'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,Z0    , 'Z0'      ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,Z0H   , 'Z0H'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,D0    , 'D0'      ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,GST   , 'GUST'    ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,VNT   , 'VENT'    ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,MOT2M, 'MOT2M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,MOQ2M, 'MOQ2M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,MOU2M, 'MOU2M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,MOV2M, 'MOV2M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,MOT10M, 'MOT10M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,MOQ10M, 'MOQ10M'   ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,MOU10M, 'MOU10M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,MOV10M, 'MOV10M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,MOU50M, 'MOU50M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,MOV50M, 'MOV50M'  ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(EXPORT,ITYO  , 'ITY'     ,    RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
    NT = size(TA)
 
    allocate(TVA(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(TVS(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(URA(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(UUU(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(VEG1(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(VEG2(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(FVG1(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(FVG2(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(DZE(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(ZVG(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(Z0T(NT,NUM_SUBTILES),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(D0T(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(CHX(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(CQX(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(RE (NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(CN (NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(ZT (NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(ZQ (NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(UCN(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(T2M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(Q2M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(U2M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(v2M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(T10M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(Q10M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(U10M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(v10M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(U50M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(v50M (NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(RHOH(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(PSMB(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(PSL(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(VKH(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(VKM(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(USTAR(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(XX(NT)   ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(YY(NT)   ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(CU(NT)   ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(CT(NT)   ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(RIB(NT)  ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(ZETA(NT) ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(WS(NT)   ,STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    allocate(IWATER(NT),STAT=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
    allocate(   ityp(nt,nveg,nzone) )
    allocate(   fveg(nt,nveg,nzone) )
@@ -4165,8 +4165,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     elsewhere
      VEG2 = map_cat(nint(ITY(:,4)))  ! gkw: secondary CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
    endwhere
-   ASSERT_((count(VEG1>NTYPS.or.VEG1<1)==0))
-   ASSERT_((count(VEG2>NTYPS.or.VEG2<1)==0))
+   _ASSERT((count(VEG1>NTYPS.or.VEG1<1)==0),'needs informative message')
+   _ASSERT((count(VEG2>NTYPS.or.VEG2<1)==0),'needs informative message')
 
    ! At this point, bare soil is not allowed in CatchCN. FVEG in BCs 
    ! files do not have bare soil either. However, at times, tiny bare 
@@ -4440,7 +4440,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_TimerOff ( MAPL, "RUN1"  )
     call MAPL_TimerOff ( MAPL, "TOTAL" )
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
 
 end subroutine RUN1
 
@@ -4489,32 +4489,32 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! ------------------------------------------------------------------------------
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam=trim(COMP_NAME)//trim(Iam)
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Get parameters from generic state.
 !-----------------------------------
 
     call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
     call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetResource ( MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GetResource ( MAPL, SCALE4Z0, Label="SCALE4Z0:", DEFAULT=0.5, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! ------------------------------------------------------------------------------
 ! If its time, recalculate the LSM tile routine
@@ -4525,15 +4525,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     if(ESMF_AlarmIsRinging(ALARM, RC=STATUS))then
        call ESMF_AlarmRingerOff(ALARM, RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        call Driver ( RC=STATUS )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
     endif
 
     call MAPL_TimerOff ( MAPL, "RUN2"  )
     call MAPL_TimerOff ( MAPL, "TOTAL" )
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
 
     contains
 
@@ -5171,38 +5171,38 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
 
         call ESMF_GridCompGet  ( GC, CONFIG=CF, RC=STATUS )
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         ! --------------------------------------------------------------------------
         ! Get my internal MAPL_Generic state
         ! --------------------------------------------------------------------------
 
         call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         call ESMF_ConfigGetAttribute ( CF, DT                  ,&
              Label   = trim(COMP_NAME)//"_DT:"     ,&
              Default = DT                          ,&
              RC=STATUS )
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         call MAPL_GetResource ( MAPL, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         call MAPL_GetResource ( MAPL, PRESCRIBE_DVG, Label="PRESCRIBE_DVG:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         call MAPL_GetResource ( MAPL, RUN_IRRIG, Label="RUN_IRRIG:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
         call MAPL_GetResource ( MAPL, IRRIG_METHOD, Label="IRRIG_METHOD:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         ! Get component's private internal state
         call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
-        VERIFY_(status)
+        _VERIFY(status)
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! Component's offline mode
@@ -5220,7 +5220,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              TILELONS  = LONS                             ,&
              INTERNAL_ESMF_STATE = INTERNAL               ,&
              RC=STATUS )
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         ! Get parameters to zero the deposition rate 
         ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
@@ -5228,342 +5228,342 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! __________________________________________
 
         call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", DEFAULT=1, RC=STATUS)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         ! GOSWIM ANOW_ALBEDO 
         ! 0 : GOSWIM snow albedo scheme is turned off
         ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme
  
         call MAPL_GetResource ( MAPL, N_CONST_LAND4SNWALB, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         ! -----------------------------------------------------
         ! IMPORT Pointers
         ! -----------------------------------------------------
 
-        call MAPL_GetPointer(IMPORT,PS     ,'PS'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,TA     ,'TA'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,QA     ,'QA'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,UU     ,'UU'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DZ     ,'DZ'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,PCU    ,'PCU'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,PLS    ,'PLS'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,SNO    ,'SNO'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DRPAR  ,'DRPAR'  ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DFPAR  ,'DFPAR'  ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DRNIR  ,'DRNIR'  ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DFNIR  ,'DFNIR'  ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DRUVR  ,'DRUVR'  ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DFUVR  ,'DFUVR'  ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,LWDNSRF,'LWDNSRF',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,PS     ,'PS'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,TA     ,'TA'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,QA     ,'QA'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,UU     ,'UU'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DZ     ,'DZ'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,PCU    ,'PCU'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,PLS    ,'PLS'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,SNO    ,'SNO'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DRPAR  ,'DRPAR'  ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DFPAR  ,'DFPAR'  ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DRNIR  ,'DRNIR'  ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DFNIR  ,'DFNIR'  ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DRUVR  ,'DRUVR'  ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DFUVR  ,'DFUVR'  ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,LWDNSRF,'LWDNSRF',RC=STATUS); _VERIFY(STATUS)
 
-        call MAPL_GetPointer(IMPORT,ALW    ,'ALW'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,BLW    ,'BLW'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,ALW    ,'ALW'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,BLW    ,'BLW'    ,RC=STATUS); _VERIFY(STATUS)
 
-        call MAPL_GetPointer(IMPORT,EVAP   ,'EVAP'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DEVAP  ,'DEVAP'  ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,SH     ,'SH'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DSH    ,'DSH'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,THATM  ,'THATM'  ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,QHATM  ,'QHATM'  ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,CTATM  ,'CTATM'  ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,CQATM  ,'CQATM'  ,RC=STATUS); VERIFY_(STATUS)        
-        IF (ATM_CO2 == 4) call MAPL_GetPointer(IMPORT,CO2SC  ,'CO2SC'  ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,LAI    ,'LAI'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,GRN    ,'GRN'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,ROOTL  ,'ROOTL'  ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,Z2CH   ,'Z2CH'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,ASCATZ0,'ASCATZ0',RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,NDVI   ,'NDVI'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DUDP   ,'DUDP'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DUSV   ,'DUSV'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DUWT   ,'DUWT'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,DUSD   ,'DUSD'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,BCDP   ,'BCDP'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,BCSV   ,'BCSV'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,BCWT   ,'BCWT'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,BCSD   ,'BCSD'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,OCDP   ,'OCDP'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,OCSV   ,'OCSV'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,OCWT   ,'OCWT'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,OCSD   ,'OCSD'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,SUDP   ,'SUDP'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,SUSV   ,'SUSV'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,SUWT   ,'SUWT'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,SUSD   ,'SUSD'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,SSDP   ,'SSDP'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,SSSV   ,'SSSV'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,SSWT   ,'SSWT'   ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,EVAP   ,'EVAP'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DEVAP  ,'DEVAP'  ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,SH     ,'SH'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DSH    ,'DSH'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,THATM  ,'THATM'  ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,QHATM  ,'QHATM'  ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,CTATM  ,'CTATM'  ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,CQATM  ,'CQATM'  ,RC=STATUS); _VERIFY(STATUS)        
+        IF (ATM_CO2 == 4) call MAPL_GetPointer(IMPORT,CO2SC  ,'CO2SC'  ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,LAI    ,'LAI'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,GRN    ,'GRN'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,ROOTL  ,'ROOTL'  ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,Z2CH   ,'Z2CH'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,ASCATZ0,'ASCATZ0',RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,NDVI   ,'NDVI'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DUDP   ,'DUDP'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DUSV   ,'DUSV'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DUWT   ,'DUWT'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,DUSD   ,'DUSD'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,BCDP   ,'BCDP'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,BCSV   ,'BCSV'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,BCWT   ,'BCWT'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,BCSD   ,'BCSD'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,OCDP   ,'OCDP'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,OCSV   ,'OCSV'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,OCWT   ,'OCWT'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,OCSD   ,'OCSD'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,SUDP   ,'SUDP'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,SUSV   ,'SUSV'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,SUWT   ,'SUWT'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,SUSD   ,'SUSD'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,SSDP   ,'SSDP'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,SSSV   ,'SSSV'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,SSWT   ,'SSWT'   ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); _VERIFY(STATUS)
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
         ! -----------------------------------------------------
 
-        call MAPL_GetPointer(INTERNAL,BF1        ,'BF1'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,BF2        ,'BF2'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,BF3        ,'BF3'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,VGWMAX     ,'VGWMAX'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,CDCR1      ,'CDCR1'      ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,CDCR2      ,'CDCR2'      ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,PSIS       ,'PSIS'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,BEE        ,'BEE'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,POROS      ,'POROS'      ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,WPWET      ,'WPWET'      ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,COND       ,'COND'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,GNU        ,'GNU'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ARS1       ,'ARS1'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ARS2       ,'ARS2'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ARS3       ,'ARS3'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ARA1       ,'ARA1'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ARA2       ,'ARA2'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ARA3       ,'ARA3'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ARA4       ,'ARA4'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ARW1       ,'ARW1'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ARW2       ,'ARW2'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ARW3       ,'ARW3'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ARW4       ,'ARW4'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,TSA1       ,'TSA1'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,TSA2       ,'TSA2'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,TSB1       ,'TSB1'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,TSB2       ,'TSB2'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ATAU       ,'ATAU'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,BTAU       ,'BTAU'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,ITY        ,'ITY'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,FVG        ,'FVG'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,TC         ,'TC'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,QC         ,'QC'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,TG         ,'TG'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,CAPAC      ,'CAPAC'      ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,CATDEF     ,'CATDEF'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,RZEXC      ,'RZEXC'      ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,SRFEXC     ,'SRFEXC'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,GHTCNT1    ,'GHTCNT1'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,GHTCNT2    ,'GHTCNT2'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,GHTCNT3    ,'GHTCNT3'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,GHTCNT4    ,'GHTCNT4'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,GHTCNT5    ,'GHTCNT5'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,GHTCNT6    ,'GHTCNT6'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,TSURF      ,'TSURF'      ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,WESNN1     ,'WESNN1'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,WESNN2     ,'WESNN2'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,WESNN3     ,'WESNN3'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,HTSNNN1    ,'HTSNNN1'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,HTSNNN2    ,'HTSNNN2'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,HTSNNN3    ,'HTSNNN3'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,SNDZN1     ,'SNDZN1'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,SNDZN2     ,'SNDZN2'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,SNDZN3     ,'SNDZN3'     ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,CH         ,'CH'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,CM         ,'CM'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,CQ         ,'CQ'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'        ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,TILE_ID    ,'TILE_ID'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,NDEP       ,'NDEP'       ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,CLI_T2M    ,'CLI_T2M'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,BGALBVR    ,'BGALBVR'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,BGALBVF    ,'BGALBVF'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,BGALBNR    ,'BGALBNR'    ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(INTERNAL,BGALBNF    ,'BGALBNF'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,BF1        ,'BF1'        ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,BF2        ,'BF2'        ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,BF3        ,'BF3'        ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,VGWMAX     ,'VGWMAX'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,CDCR1      ,'CDCR1'      ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,CDCR2      ,'CDCR2'      ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,PSIS       ,'PSIS'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,BEE        ,'BEE'        ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,POROS      ,'POROS'      ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,WPWET      ,'WPWET'      ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,COND       ,'COND'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,GNU        ,'GNU'        ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ARS1       ,'ARS1'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ARS2       ,'ARS2'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ARS3       ,'ARS3'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ARA1       ,'ARA1'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ARA2       ,'ARA2'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ARA3       ,'ARA3'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ARA4       ,'ARA4'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ARW1       ,'ARW1'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ARW2       ,'ARW2'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ARW3       ,'ARW3'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ARW4       ,'ARW4'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,TSA1       ,'TSA1'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,TSA2       ,'TSA2'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,TSB1       ,'TSB1'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,TSB2       ,'TSB2'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ATAU       ,'ATAU'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,BTAU       ,'BTAU'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,ITY        ,'ITY'        ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,FVG        ,'FVG'        ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,TC         ,'TC'         ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,QC         ,'QC'         ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,TG         ,'TG'         ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,CAPAC      ,'CAPAC'      ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,CATDEF     ,'CATDEF'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,RZEXC      ,'RZEXC'      ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,SRFEXC     ,'SRFEXC'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,GHTCNT1    ,'GHTCNT1'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,GHTCNT2    ,'GHTCNT2'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,GHTCNT3    ,'GHTCNT3'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,GHTCNT4    ,'GHTCNT4'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,GHTCNT5    ,'GHTCNT5'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,GHTCNT6    ,'GHTCNT6'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,TSURF      ,'TSURF'      ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,WESNN1     ,'WESNN1'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,WESNN2     ,'WESNN2'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,WESNN3     ,'WESNN3'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,HTSNNN1    ,'HTSNNN1'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,HTSNNN2    ,'HTSNNN2'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,HTSNNN3    ,'HTSNNN3'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,SNDZN1     ,'SNDZN1'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,SNDZN2     ,'SNDZN2'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,SNDZN3     ,'SNDZN3'     ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,CH         ,'CH'         ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,CM         ,'CM'         ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,CQ         ,'CQ'         ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'        ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'        ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,TILE_ID    ,'TILE_ID'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,NDEP       ,'NDEP'       ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,CLI_T2M    ,'CLI_T2M'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,BGALBVR    ,'BGALBVR'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,BGALBVF    ,'BGALBVF'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,BGALBNR    ,'BGALBNR'    ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(INTERNAL,BGALBNF    ,'BGALBNF'    ,RC=STATUS); _VERIFY(STATUS)
         IF ((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN 
-           call MAPL_GetPointer(INTERNAL,CNCOL      ,'CNCOL'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CNPFT      ,'CNPFT'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,TGWM       ,'TGWM'       ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,RZMM       ,'RZMM'       ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,SFMCM      ,'SFMCM'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,BFLOWM     ,'BFLOWM'     ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,TOTWATM    ,'TOTWATM'    ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,TAIRM      ,'TAIRM'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,TPM        ,'TPM'        ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CNSUM      ,'CNSUM'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,PSNSUNM    ,'PSNSUNM'    ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,PSNSHAM    ,'PSNSHAM'    ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(INTERNAL,CNCOL      ,'CNCOL'      ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,CNPFT      ,'CNPFT'      ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,TGWM       ,'TGWM'       ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,RZMM       ,'RZMM'       ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,SFMCM      ,'SFMCM'      ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,BFLOWM     ,'BFLOWM'     ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,TOTWATM    ,'TOTWATM'    ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,TAIRM      ,'TAIRM'      ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,TPM        ,'TPM'        ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,CNSUM      ,'CNSUM'      ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,PSNSUNM    ,'PSNSUNM'    ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,PSNSHAM    ,'PSNSHAM'    ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM'      ,RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); _VERIFY(STATUS)
         ENDIF
  
         if (DO_GOSWIM /= 0) then
-           call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,RDU003     ,'RDU003'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,RDU004     ,'RDU004'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,RDU005     ,'RDU005'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,RBC001     ,'RBC001'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,RBC002     ,'RBC002'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,ROC001     ,'ROC001'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,ROC002     ,'ROC002'     , RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,RDU003     ,'RDU003'     , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,RDU004     ,'RDU004'     , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,RDU005     ,'RDU005'     , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,RBC001     ,'RBC001'     , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,RBC002     ,'RBC002'     , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,ROC001     ,'ROC001'     , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,ROC002     ,'ROC002'     , RC=STATUS); _VERIFY(STATUS)
         endif
 
         IF (RUN_IRRIG /= 0) THEN
-           call MAPL_GetPointer(INTERNAL,IRRIGFRAC ,'IRRIGFRAC' , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,PADDYFRAC ,'PADDYFRAC' , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,LAIMAX    ,'LAIMAX'    , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,LAIMIN    ,'LAIMIN'    , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CLMPT     ,'CLMPT'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CLMST     ,'CLMST'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CLMPF     ,'CLMPF'     , RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CLMSF     ,'CLMSF'     , RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(INTERNAL,IRRIGFRAC ,'IRRIGFRAC' , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,PADDYFRAC ,'PADDYFRAC' , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,LAIMAX    ,'LAIMAX'    , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,LAIMIN    ,'LAIMIN'    , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,CLMPT     ,'CLMPT'     , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,CLMST     ,'CLMST'     , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,CLMPF     ,'CLMPF'     , RC=STATUS); _VERIFY(STATUS)
+           call MAPL_GetPointer(INTERNAL,CLMSF     ,'CLMSF'     , RC=STATUS); _VERIFY(STATUS)
         ENDIF
 
         ! -----------------------------------------------------
         ! EXPORT POINTERS
         ! -----------------------------------------------------
 
-        call MAPL_GetPointer(EXPORT,EVAPOUT,'EVAPOUT',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SUBLIM,'SUBLIM',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SHOUT,  'SHOUT'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RUNOFF, 'RUNOFF' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,EVPINT, 'EVPINT' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,EVPSOI, 'EVPSOI' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,EVPVEG, 'EVPVEG' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,EVPICE, 'EVPICE' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,WAT10CM,'WAT10CM',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,WATSOI, 'WATSOI' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,ICESOI, 'ICESOI' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,EVPSNO, 'EVPSNO'              ,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,BFLOW,  'BASEFLOW',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RUNSURF,'RUNSURF',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SMELT,  'SMELT'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,HLWUP,  'HLWUP'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SWNDSRF,'SWNDSRF',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,LWNDSRF,'LWNDSRF',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,HLATN,  'HLATN'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,QINFIL, 'QINFIL' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,AR1,    'AR1'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,AR2,    'AR2'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RZEQ,   'RZEQ'   ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,GHFLX,  'GHFLX'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TPSURF, 'TPSURF' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TPSN1,  'TPSNOW' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TPUST,  'TPUNST' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TPSAT,  'TPSAT'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TPWLT,  'TPWLT'  ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,EVAPOUT,'EVAPOUT',ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SUBLIM,'SUBLIM',ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SHOUT,  'SHOUT'  ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,RUNOFF, 'RUNOFF' ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,EVPINT, 'EVPINT' ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,EVPSOI, 'EVPSOI' ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,EVPVEG, 'EVPVEG' ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,EVPICE, 'EVPICE' ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,WAT10CM,'WAT10CM',ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,WATSOI, 'WATSOI' ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,ICESOI, 'ICESOI' ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,EVPSNO, 'EVPSNO'              ,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,BFLOW,  'BASEFLOW',ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,RUNSURF,'RUNSURF',ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SMELT,  'SMELT'  ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,HLWUP,  'HLWUP'  ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SWNDSRF,'SWNDSRF',ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,LWNDSRF,'LWNDSRF',ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,HLATN,  'HLATN'  ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,QINFIL, 'QINFIL' ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,AR1,    'AR1'    ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,AR2,    'AR2'    ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,RZEQ,   'RZEQ'   ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,GHFLX,  'GHFLX'  ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TPSURF, 'TPSURF' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TPSN1,  'TPSNOW' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TPUST,  'TPUNST' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TPSAT,  'TPSAT'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TPWLT,  'TPWLT'  ,             RC=STATUS); _VERIFY(STATUS)
         if (is_OFFLINE) then
-           call MAPL_GetPointer(INTERNAL, ASNOW, 'ASNOW', RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(INTERNAL, ASNOW, 'ASNOW', RC=STATUS); _VERIFY(STATUS)
         else
-           call MAPL_GetPointer(EXPORT,ASNOW,  'ASNOW'  ,             RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(EXPORT,ASNOW,  'ASNOW'  ,             RC=STATUS); _VERIFY(STATUS)
         endif
-        call MAPL_GetPointer(EXPORT,SHSNOW, 'SHSNOW' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,AVETSNOW,'AVETSNOW',           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,FRSAT,  'FRSAT'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,FRUST,  'FRUST'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,FRWLT,  'FRWLT'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TP1,    'TP1'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TP2,    'TP2'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TP3,    'TP3'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TP4,    'TP4'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TP5,    'TP5'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TP6,    'TP6'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,SHSNOW, 'SHSNOW' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,AVETSNOW,'AVETSNOW',           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,FRSAT,  'FRSAT'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,FRUST,  'FRUST'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,FRWLT,  'FRWLT'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TP1,    'TP1'    ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TP2,    'TP2'    ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TP3,    'TP3'    ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TP4,    'TP4'    ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TP5,    'TP5'    ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TP6,    'TP6'    ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
         if (is_OFFLINE) then
-           call MAPL_GetPointer(INTERNAL, EMIS, 'EMIS', RC=STATUS);   VERIFY_(STATUS)
+           call MAPL_GetPointer(INTERNAL, EMIS, 'EMIS', RC=STATUS);   _VERIFY(STATUS)
         else
-           call MAPL_GetPointer(EXPORT,EMIS,   'EMIS'   ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(EXPORT,EMIS,   'EMIS'   ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
         endif
-        call MAPL_GetPointer(EXPORT,ALBVR,  'ALBVR'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,ALBVF,  'ALBVF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,ALBNR,  'ALBNR'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,ALBNF,  'ALBNF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,DELTS,  'DELTS'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,DELQS,  'DELQS'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TST  ,  'TST'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,QST  ,  'QST'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,LST  ,  'LST'    ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,WET1 ,  'WET1'   ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,WET2 ,  'WET2'   ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,WET3 ,  'WET3'   ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,WCSF ,  'WCSF'   ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,WCRZ ,  'WCRZ'   ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,WCPR ,  'WCPR'   ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,ACCUM,  'ACCUM'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SNOMAS,'SNOWMASS',             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SNOWDP, 'SNOWDP' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,EVLAND, 'EVLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,PRLAND, 'PRLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SNOLAND, 'SNOLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,DRPARLAND, 'DRPARLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,DFPARLAND, 'DFPARLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,LHSNOW, 'LHSNOW' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SWNETSNOW1, 'SWNETSNOW' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,LWUPSNOW, 'LWUPSNOW' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,LWDNSNOW, 'LWDNSNOW' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TCSORIG, 'TCSORIG' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TPSN1IN, 'TPSN1IN' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TPSN1OUT, 'TPSN1OUT' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,LHLAND, 'LHLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SHLAND, 'SHLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SWLAND, 'SWLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SWDOWNLAND, 'SWDOWNLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,LWLAND, 'LWLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,GHLAND, 'GHLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,GHSNOW, 'GHSNOW' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,GHTSKIN,'GHTSKIN',             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SMLAND, 'SMLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TWLAND, 'TWLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TELAND, 'TELAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,TSLAND, 'TSLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,DWLAND, 'DWLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,DHLAND, 'DHLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SPLAND, 'SPLAND' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SPWATR, 'SPWATR' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SPSNOW, 'SPSNOW' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI,  'CNLAI'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNTLAI, 'CNTLAI' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI,  'CNSAI'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNTOTC, 'CNTOTC' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNVEGC, 'CNVEGC' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNROOT, 'CNROOT' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNNPP,  'CNNPP'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNGPP,  'CNGPP'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSR,   'CNSR'   ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNNEE,  'CNNEE'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNXSMR, 'CNXSMR' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNADD,  'CNADD'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLOSS, 'CNLOSS' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNBURN, 'CNBURN' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,PARABS, 'PARABS' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,PARINC, 'PARINC' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SCSAT,  'SCSAT'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SCUNS,  'SCUNS'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,BTRANT, 'BTRANT' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,SIF,    'SIF'    ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNFSEL, 'CNFSEL' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNCO2,  'CNCO2'  ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI11, 'CNSAI11' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI12, 'CNSAI12' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI13, 'CNSAI13' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI21, 'CNSAI21' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI22, 'CNSAI22' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI23, 'CNSAI23' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI31, 'CNSAI31' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI32, 'CNSAI32' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI33, 'CNSAI33' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI41, 'CNSAI41' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI42, 'CNSAI42' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNSAI43, 'CNSAI43' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI11, 'CNLAI11' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI12, 'CNLAI12' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI13, 'CNLAI13' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI21, 'CNLAI21' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI22, 'CNLAI22' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI23, 'CNLAI23' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI31, 'CNLAI31' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI32, 'CNLAI32' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI33, 'CNLAI33' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI41, 'CNLAI41' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI42, 'CNLAI42' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNLAI43, 'CNLAI43' ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTDU001,'RMELTDU001',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTDU002,'RMELTDU002',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTDU003,'RMELTDU003',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTDU004,'RMELTDU004',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTDU005,'RMELTDU005',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTBC001,'RMELTBC001',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTBC002,'RMELTBC002',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTOC001,'RMELTOC001',  RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,RMELTOC002,'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
-        IF (RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,  RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,ALBVR,  'ALBVR'  ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,ALBVF,  'ALBVF'  ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,ALBNR,  'ALBNR'  ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,ALBNF,  'ALBNF'  ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,DELTS,  'DELTS'  ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,DELQS,  'DELQS'  ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TST  ,  'TST'    ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,QST  ,  'QST'    ,ALLOC=.true.,RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,LST  ,  'LST'    ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,WET1 ,  'WET1'   ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,WET2 ,  'WET2'   ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,WET3 ,  'WET3'   ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,WCSF ,  'WCSF'   ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,WCRZ ,  'WCRZ'   ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,WCPR ,  'WCPR'   ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,ACCUM,  'ACCUM'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SNOMAS,'SNOWMASS',             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SNOWDP, 'SNOWDP' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,EVLAND, 'EVLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,PRLAND, 'PRLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SNOLAND, 'SNOLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,DRPARLAND, 'DRPARLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,DFPARLAND, 'DFPARLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,LHSNOW, 'LHSNOW' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SWNETSNOW1, 'SWNETSNOW' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,LWUPSNOW, 'LWUPSNOW' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,LWDNSNOW, 'LWDNSNOW' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TCSORIG, 'TCSORIG' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TPSN1IN, 'TPSN1IN' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TPSN1OUT, 'TPSN1OUT' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,LHLAND, 'LHLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SHLAND, 'SHLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SWLAND, 'SWLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SWDOWNLAND, 'SWDOWNLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,LWLAND, 'LWLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,GHLAND, 'GHLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,GHSNOW, 'GHSNOW' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,GHTSKIN,'GHTSKIN',             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SMLAND, 'SMLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TWLAND, 'TWLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TELAND, 'TELAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,TSLAND, 'TSLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,DWLAND, 'DWLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,DHLAND, 'DHLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SPLAND, 'SPLAND' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SPWATR, 'SPWATR' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SPSNOW, 'SPSNOW' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI,  'CNLAI'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNTLAI, 'CNTLAI' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI,  'CNSAI'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNTOTC, 'CNTOTC' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNVEGC, 'CNVEGC' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNROOT, 'CNROOT' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNNPP,  'CNNPP'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNGPP,  'CNGPP'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSR,   'CNSR'   ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNNEE,  'CNNEE'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNXSMR, 'CNXSMR' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNADD,  'CNADD'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLOSS, 'CNLOSS' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNBURN, 'CNBURN' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,PARABS, 'PARABS' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,PARINC, 'PARINC' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SCSAT,  'SCSAT'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SCUNS,  'SCUNS'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,BTRANT, 'BTRANT' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,SIF,    'SIF'    ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNFSEL, 'CNFSEL' ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNCO2,  'CNCO2'  ,             RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI11, 'CNSAI11' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI12, 'CNSAI12' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI13, 'CNSAI13' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI21, 'CNSAI21' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI22, 'CNSAI22' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI23, 'CNSAI23' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI31, 'CNSAI31' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI32, 'CNSAI32' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI33, 'CNSAI33' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI41, 'CNSAI41' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI42, 'CNSAI42' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNSAI43, 'CNSAI43' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI11, 'CNLAI11' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI12, 'CNLAI12' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI13, 'CNLAI13' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI21, 'CNLAI21' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI22, 'CNLAI22' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI23, 'CNLAI23' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI31, 'CNLAI31' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI32, 'CNLAI32' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI33, 'CNLAI33' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI41, 'CNLAI41' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI42, 'CNLAI42' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,CNLAI43, 'CNLAI43' ,           RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTDU001,'RMELTDU001',  RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTDU002,'RMELTDU002',  RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTDU003,'RMELTDU003',  RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTDU004,'RMELTDU004',  RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTDU005,'RMELTDU005',  RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTBC001,'RMELTBC001',  RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTBC002,'RMELTBC002',  RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTOC001,'RMELTOC001',  RC=STATUS); _VERIFY(STATUS)
+        call MAPL_GetPointer(EXPORT,RMELTOC002,'RMELTOC002',  RC=STATUS); _VERIFY(STATUS)
+        IF (RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,  RC=STATUS); _VERIFY(STATUS)
 
         NTILES = size(PS)
 
@@ -5677,19 +5677,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           
           ! Reading Carbon Tracker CO2_MonthlyMean_DiurnalCycle
 
-          call ESMF_ClockGet( CLOCK, startTime=MODELSTART, RC=STATUS ); VERIFY_(STATUS)
-          call ESMF_TimeGet ( MODELSTART, YY = FIRST_YY,  rc=status )  ; VERIFY_(STATUS)
-          CALL ESMF_VMGet(vm, MPICOMMUNICATOR=comm, rc=status); VERIFY_(status)
-          call MPI_Info_create(info, STATUS); VERIFY_(status)
-          call MPI_Info_set(info, "romio_cb_read", "automatic", STATUS); VERIFY_(status)
+          call ESMF_ClockGet( CLOCK, startTime=MODELSTART, RC=STATUS ); _VERIFY(STATUS)
+          call ESMF_TimeGet ( MODELSTART, YY = FIRST_YY,  rc=status )  ; _VERIFY(STATUS)
+          CALL ESMF_VMGet(vm, MPICOMMUNICATOR=comm, rc=status); _VERIFY(status)
+          call MPI_Info_create(info, STATUS); _VERIFY(status)
+          call MPI_Info_set(info, "romio_cb_read", "automatic", STATUS); _VERIFY(status)
 
-          STATUS = NF_OPEN ('CO2_MonthlyMean_DiurnalCycle.nc4', NF_NOWRITE, CTfile); VERIFY_(status) 
+          STATUS = NF_OPEN ('CO2_MonthlyMean_DiurnalCycle.nc4', NF_NOWRITE, CTfile); _VERIFY(status) 
 
           allocate (CT_CO2V (1: NUNQ, 1:12, 1:8))
           allocate (CTCO2_TMP (1:CT_grid_N_lon, 1:CT_grid_N_lat, 1:12, 1:8))
 
           STATUS = NF_GET_VARA_REAL (CTfile, VarID(CTfile,'CO2'),  (/1,1,1,1/), &
-               (/CT_grid_N_lon, CT_grid_N_lat, 12, 8/), CTCO2_TMP);VERIFY_(STATUS) 
+               (/CT_grid_N_lon, CT_grid_N_lat, 12, 8/), CTCO2_TMP);_VERIFY(STATUS) 
 
           do N = 1, NUNQ
              I = MOD (ThisIndex(N), CT_grid_N_lon)
@@ -5700,7 +5700,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              
           end do
 
-          status = NF_CLOSE (CTFile); VERIFY_(status) 
+          status = NF_CLOSE (CTFile); _VERIFY(status) 
           first_ct = .false.
 
           deallocate (CTCO2_TMP,ct2cat, unq_mask, loc_int, ct_index, ThisIndex)
@@ -5712,7 +5712,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! ---------------------
 
     call MAPL_GetResource ( MAPL, SCALE_ALBFPAR, Label="SCALE_ALBFPAR:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
  
     if  (SCALE_ALBFPAR >= 1) then 
        IF (ntiles > 0) THEN
@@ -5722,19 +5722,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              ! --------------------------------------
              
 !             CALL ESMF_VMGet(vm, MPICOMMUNICATOR=comms, rc=status)
-!             VERIFY_(status)
+!             _VERIFY(status)
 !             call MPI_Info_create(infos, STATUS)
 !             call MPI_Info_set(infos, "romio_cb_read", "automatic", STATUS)
              
              STATUS = NF_OPEN ('FPAR_CDF_Params-M09.nc4', NF_NOWRITE, CDFfile)
-             STATUS = NF_INQ_DIMID  (CDFfile, 'tile10D', k); VERIFY_(STATUS)
-             STATUS = NF_INQ_DIMLEN (CDFfile, K, n_modis)  ; VERIFY_(STATUS)
+             STATUS = NF_INQ_DIMID  (CDFfile, 'tile10D', k); _VERIFY(STATUS)
+             STATUS = NF_INQ_DIMLEN (CDFfile, K, n_modis)  ; _VERIFY(STATUS)
              
              allocate (m_lons (1 : n_modis))
              allocate (m_lats (1 : n_modis))  
              
-             STATUS = NF_GET_VARA_REAL (CDFfile, VarID(CDFfile,'lon'),  (/1/), (/n_modis/), m_lons);VERIFY_(STATUS)
-             STATUS = NF_GET_VARA_REAL (CDFfile, VarID(CDFfile,'lat'),  (/1/), (/n_modis/), m_lats);VERIFY_(STATUS) 
+             STATUS = NF_GET_VARA_REAL (CDFfile, VarID(CDFfile,'lon'),  (/1/), (/n_modis/), m_lons);_VERIFY(STATUS)
+             STATUS = NF_GET_VARA_REAL (CDFfile, VarID(CDFfile,'lat'),  (/1/), (/n_modis/), m_lats);_VERIFY(STATUS) 
              
              allocate (modis_index (1: 360/nint(TILEINT), 1: 180/nint(TILEINT)))
              modis_index = -9999    
@@ -5817,27 +5817,27 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                 do K = 1,NOCTAD
                    do n = 1, NUMPFT
                       IF (ThisIndex(i) >= 1) THEN
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'Kappa' ),(/ThisIndex(i),N,K,1/), (/1,1,1,2/), tmparr);VERIFY_(STATUS)
+                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'Kappa' ),(/ThisIndex(i),N,K,1/), (/1,1,1,2/), tmparr);_VERIFY(STATUS)
                          Kappa (i,N,K,:) = tmparr (1,1,1,:) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'Lambda'),(/ThisIndex(i),N,K,1/), (/1,1,1,2/), tmparr);VERIFY_(STATUS)
+                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'Lambda'),(/ThisIndex(i),N,K,1/), (/1,1,1,2/), tmparr);_VERIFY(STATUS)
                          Lambda(i,N,K,:) = tmparr (1,1,1,:) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'Mu'    ),(/ThisIndex(i),N,K,1/), (/1,1,1,2/), tmparr);VERIFY_(STATUS)
+                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'Mu'    ),(/ThisIndex(i),N,K,1/), (/1,1,1,2/), tmparr);_VERIFY(STATUS)
                          Mu    (i,N,K,:) = tmparr (1,1,1,:)               
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MinVal'),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);VERIFY_(STATUS)
+                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MinVal'),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);_VERIFY(STATUS)
                          MnVal(i,N,K)  = tmparr2 (1,1,1)               
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MaxVal'),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);VERIFY_(STATUS)
+                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MaxVal'),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);_VERIFY(STATUS)
                          MxVal(i,N,K) = tmparr2 (1,1,1)             
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISVISmean' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);VERIFY_(STATUS)
+                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISVISmean' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);_VERIFY(STATUS)
                          VISmean (i,N,K) = tmparr2 (1,1,1) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISNIRmean' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);VERIFY_(STATUS)
+                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISNIRmean' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);_VERIFY(STATUS)
                          NIRmean (i,N,K) = tmparr2 (1,1,1) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISVISstd' ),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);VERIFY_(STATUS)
+                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISVISstd' ),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);_VERIFY(STATUS)
                          VISstd (i,N,K) = tmparr2 (1,1,1)                        
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISNIRstd' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);VERIFY_(STATUS)
+                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISNIRstd' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);_VERIFY(STATUS)
                          NIRstd (i,N,K) = tmparr2 (1,1,1) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODELFPARmean' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);VERIFY_(STATUS)
+                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODELFPARmean' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);_VERIFY(STATUS)
                          FPARmean (i,N,K) = tmparr2 (1,1,1) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODELFPARstd'  ),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);VERIFY_(STATUS)
+                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODELFPARstd'  ),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);_VERIFY(STATUS)
                          FPARstd (i,N,K) = tmparr2 (1,1,1)                        
                       ENDIF
                    end do
@@ -6036,7 +6036,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
 
         call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  RC=STATUS )
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
         if (MAPL_AM_I_Root(VM).and.debugzth) then
          print *,' start time of clock '
          CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
@@ -6050,19 +6050,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !!
 ! Need to know when Solar was called last, so first get the solar alarm
         call ESMF_ClockGetAlarm ( CLOCK, alarmname="SOLAR_Alarm", ALARM=SOLALARM, RC=STATUS )
-!        VERIFY_(STATUS)
+!        _VERIFY(STATUS)
       if(status==0) then 
 ! Get the interval of the solar alarm - first get it in seconds
         call ESMF_ConfigGetAttribute ( CF, DT_SOLAR, Label="SOLAR_DT:", DEFAULT=DT, RC=STATUS )
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 ! Now make an ESMF interval from the increment in seconds
         CALL ESMF_TimeIntervalSet ( TINT, S=NINT(DT_SOLAR), RC=STATUS )
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 ! Now print out the solar alarm interval
         if (MAPL_AM_I_Root(VM).and.debugzth) CALL ESMF_TimeIntervalPrint ( TINT, OPTIONS="string", RC=STATUS )
 ! Now find out if it is ringing now: if so, set "BEFORE" to last time it rang before now
          solalarmison = ESMF_AlarmIsRinging(SOLALARM,RC=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
          if (MAPL_AM_I_Root(VM).and.debugzth)print *,' logical for solar alarm ',solalarmison
 !     if so, set "BEFORE" to last time it rang before now
         if(solalarmison) then
@@ -6075,7 +6075,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         else
          if (MAPL_AM_I_Root(VM).and.debugzth)print *,' In catch, solar alarm is not ringing '
          call ESMF_AlarmGet ( SOLALARM, prevRingTime=BEFORE, RC=STATUS )
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
 ! PrevRingTime can lie: if alarm never went off yet it gives next alarm time, not prev.
          if(BEFORE > CURRENT_TIME) then
           BEFORE = BEFORE-TINT
@@ -6097,7 +6097,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             INTV = TINT,     &
             currTime=BEFORE+DELT,  &
             RC=STATUS )
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         ZTH = max(0.0,ZTH)
         ZVG  = fveg1*(Z2CH - SCALE4Z0*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI1)) + &
@@ -6423,7 +6423,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 				       S  = AGCM_S ,       &  
 				       dayOfYear = dofyr , &
 				       rc=status )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     AGCM_S = AGCM_S + 60 * AGCM_MI + 3600 * AGCM_HH
 
@@ -6431,14 +6431,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------                                                                              or MAPL_SunOrbitQuery
     call MAPL_SunOrbitQuery(Orbit,zc=zco,zs=zso,years_per_cycle=years_per_cycle, &
            days_per_cycle=days_per_cycle,year_length=year_length,rc=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     YEAR = mod(AGCM_YY-1,YEARS_PER_CYCLE)  ! gkw: made ORBIT public in MAPL_sun_uc.P90 (temporary solution)
 
     IDAY = YEAR*int(YEAR_LENGTH)+dofyr
     IDAYP1 = mod(IDAY,DAYS_PER_CYCLE) + 1
 
-    ASSERT_(IDAY   <= 1461 .AND. IDAY   > 0)
-    ASSERT_(IDAYP1 <= 1461 .AND. IDAYP1 > 0)
+    _ASSERT(IDAY   <= 1461 .AND. IDAY   > 0,'needs informative message')
+    _ASSERT(IDAYP1 <= 1461 .AND. IDAYP1 > 0,'needs informative message')
 
     FAC = real(AGCM_S)/86400.
 
@@ -6456,7 +6456,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! get ending time; determine if this is last call before ending time
 ! ------------------------------------------------------------------
     call ESMF_ClockGet ( clock,  StopTime=StopTime ,rc=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     NextTime = CURRENT_TIME + DELT
 
@@ -6471,7 +6471,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_SunOrbitQuery(ORBIT,           & ! gkw: this is the correct way to obtain obliquity
                             OBLIQUITY=OB,    & ! gkw: ideally, ZS & ZC would be obtained this way
 			    rc=status )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     do n = 1,ntiles
 !!!   fac = -(sin(lats(n))*sin(declin))/(cos(lats(n))*cos(declin))
@@ -6652,7 +6652,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! get CO2
 ! -------
     call MAPL_GetResource( MAPL, CO2, 'CO2:', default=350.e-6, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     if(ATM_CO2 == 3) CO2 = GETCO2(AGCM_YY,dofyr)
 
@@ -6675,7 +6675,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
        ! Compute scale factor to scale CarbonTracker CO2 monthly mean diurnal cycle (3-hourly)
        
-       call MAPL_GetResource ( MAPL, CO2_YEAR, Label="CO2_YEAR:", DEFAULT=AGCM_YY, RC=STATUS); VERIFY_(status) 
+       call MAPL_GetResource ( MAPL, CO2_YEAR, Label="CO2_YEAR:", DEFAULT=AGCM_YY, RC=STATUS); _VERIFY(status) 
 
        ! update EEA global average CO2 and co2 scalar at the beginning of each year, fz, 26 Sep 2016
        ! -------------------------------------------------------------------------------------------
@@ -6753,11 +6753,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             if(M1 == 0) then ; M1 = 12 ; Y1 = AGCM_YY -1 ; endif
 
             call ESMF_TimeSet(BEFORE, YY = Y1, MM = M1, DD = 16, &
-                 H =  0, M =  0, S = 0, rc = STATUS) ; VERIFY_(STATUS)
+                 H =  0, M =  0, S = 0, rc = STATUS) ; _VERIFY(STATUS)
             call ESMF_TimeSet(AFTER , YY = AGCM_YY, MM = AGCM_MM,   DD = 15, &
-                 H = 23, M = 59, S = 59, rc = STATUS); VERIFY_(STATUS)
+                 H = 23, M = 59, S = 59, rc = STATUS); _VERIFY(STATUS)
          
-            call MAPL_Interp_Fac (CURRENT_TIME,BEFORE,AFTER,FAC,RC=STATUS ) ; VERIFY_(STATUS)
+            call MAPL_Interp_Fac (CURRENT_TIME,BEFORE,AFTER,FAC,RC=STATUS ) ; _VERIFY(STATUS)
             ASSERT_(FAC >= 0.0)
             ASSERT_(FAC <= 1.0)        
 
@@ -6774,11 +6774,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             if(M1 == 13) then ; M1 = 1 ; Y1 = AGCM_YY +1 ; endif
 
             call ESMF_TimeSet(BEFORE , YY = AGCM_YY, MM = AGCM_MM,   DD = 16, &
-                 H =  0, M =  0, S =  0, rc = STATUS) ; VERIFY_(STATUS)           
+                 H =  0, M =  0, S =  0, rc = STATUS) ; _VERIFY(STATUS)           
             call ESMF_TimeSet(AFTER, YY = Y1, MM = M1, DD = 15, &
-                 H = 23, M = 59, S = 59, rc = STATUS) ; VERIFY_(STATUS)
+                 H = 23, M = 59, S = 59, rc = STATUS) ; _VERIFY(STATUS)
          
-            call MAPL_Interp_Fac (CURRENT_TIME,BEFORE,AFTER,FAC,RC=STATUS ) ; VERIFY_(STATUS)
+            call MAPL_Interp_Fac (CURRENT_TIME,BEFORE,AFTER,FAC,RC=STATUS ) ; _VERIFY(STATUS)
             ASSERT_(FAC >= 0.0)
             ASSERT_(FAC <= 1.0)        
             DO N = 1,NTILES
@@ -7112,7 +7112,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! --------------------------
        
        call MAPL_GetResource ( MAPL, DTCN, Label="DTCN:", DEFAULT=5400., RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        
        ! CN time step over 4 hours may fail; limit to 4 hours; verify that DTCN is a multiple of DT
        ! ------------------------------------------------------------------------------------------
@@ -7426,178 +7426,178 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 #ifdef DBG_CNLSM_INPUTS
         call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
         call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
          if (UNIT_i == 0) then
            unit_i = GETFILE( "catchcn_inputs.data", form="unformatted", RC=STATUS )
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
         endif
         unit = unit_i
 
 ! Inputs
 
-        call MAPL_VarWrite(unit, tilegrid, PCU, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, PLS, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SNO, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, UUU, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, PCU, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, PLS, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SNO, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, UUU, mask=mask, rc=status); _VERIFY(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSAT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSAT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FSAT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FSAT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FSAT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FSAT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FTRN), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FTRN), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FTRN), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FTRN), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FTRN), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FTRN), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FWLT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FWLT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FWLT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FWLT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FWLT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FWLT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSNW), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSNW), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FSNW), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FSNW), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FSNW), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FSNW), mask=mask, rc=status); _VERIFY(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, TA, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, QA, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, RA(:,FSAT),  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, RA(:,FTRN),  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, RA(:,FWLT),  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, RA(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ZTH,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SWNETFREE,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SWNETSNOW,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, LWDNSRF, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, PS*.01, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, LAI0,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, GRN0,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SQSCAT,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, RSL1,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, RSL2,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, RDC, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, TA, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, QA, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, RA(:,FSAT),  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, RA(:,FTRN),  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, RA(:,FWLT),  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, RA(:,FSNW), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ZTH,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SWNETFREE,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SWNETSNOW,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, LWDNSRF, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, PS*.01, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, LAI0,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, GRN0,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SQSCAT,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, RSL1,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, RSL2,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, RDC, mask=mask, rc=status); _VERIFY(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DQS(:,FSAT) , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ALWN(:,1)   , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, BLWN(:,1)   , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DQS(:,FTRN) , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ALWN(:,2)   , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, BLWN(:,2)   , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DQS(:,FWLT) , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ALWN(:,3)   , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, BLWN(:,3)   , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DQS(:,FSNW) , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ALWN(:,4)   , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, BLWN(:,4)   , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, RCSAT       , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DRCSDT      , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DRCSDQ      , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, RCUNS       , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DRCUDT      , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DRCUDQ      , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSAT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DQS(:,FSAT) , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ALWN(:,1)   , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, BLWN(:,1)   , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FTRN), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DQS(:,FTRN) , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ALWN(:,2)   , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, BLWN(:,2)   , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FWLT), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DQS(:,FWLT) , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ALWN(:,3)   , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, BLWN(:,3)   , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSNW), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DQS(:,FSNW) , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ALWN(:,4)   , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, BLWN(:,4)   , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, RCSAT       , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DRCSDT      , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DRCSDQ      , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, RCUNS       , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DRCUDT      , mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DRCUDQ      , mask=mask, rc=status); _VERIFY(STATUS)
 
 ! params
         if (firsttime) then
             firsttime = .false.
            unit = GETFILE( "catchcn_params.data", form="unformatted", RC=STATUS )
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
 
            NT_GLOBAL = size(mask)
 
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
            call WRITE_PARALLEL(PRECIPFRAC, UNIT)
-           call MAPL_VarWrite(unit, tilegrid, LONS,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, LATS,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, VEG1,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, VEG2,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, FVEG1, mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, FVEG2, mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, DZSF,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, BF1,   mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, BF2,   mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, BF3,   mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, VGWMAX,mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, CDCR1, mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, CDCR2, mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, PSIS,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, BEE,   mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, POROS, mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, WPWET, mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, COND,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, GNU,   mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, ARS1,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, ARS2,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, ARS3,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, ARA1,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, ARA2,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, ARA3,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, ARA4,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, ARW1,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, ARW2,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, ARW3,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, ARW4,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, TSA1,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, TSA2,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, TSB1,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, TSB2,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, ATAU,  mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, BTAU,  mask=mask, rc=status); VERIFY_(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, LONS,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, LATS,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, VEG1,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, VEG2,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, FVEG1, mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, FVEG2, mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, DZSF,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, BF1,   mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, BF2,   mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, BF3,   mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, VGWMAX,mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, CDCR1, mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, CDCR2, mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, PSIS,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, BEE,   mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, POROS, mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, WPWET, mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, COND,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, GNU,   mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, ARS1,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, ARS2,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, ARS3,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, ARA1,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, ARA2,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, ARA3,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, ARA4,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, ARW1,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, ARW2,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, ARW3,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, ARW4,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, TSA1,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, TSA2,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, TSB1,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, TSB2,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, ATAU,  mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, BTAU,  mask=mask, rc=status); _VERIFY(STATUS)
 
            call FREE_FILE(unit, RC=STATUS)
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
 
 ! Updates
            unit = GETFILE( "catchcn_updates.data", form="unformatted", RC=STATUS )
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
 
-           call MAPL_VarWrite(unit, tilegrid, TG(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, TG(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, TG(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, TC(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, TC(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, TC(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, QC(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, QC(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, QC(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, CAPAC,      mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, CATDEF,     mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, RZEXC,      mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, SRFEXC,     mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, GHTCNT(1,:),mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, GHTCNT(2,:),mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, GHTCNT(3,:),mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, GHTCNT(4,:),mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, GHTCNT(5,:),mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, GHTCNT(6,:),mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, WESNN(1,:), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, WESNN(2,:), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, WESNN(3,:), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, HTSNNN(1,:),mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, HTSNNN(2,:),mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, HTSNNN(3,:),mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, SNDZN(1,:), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, SNDZN(2,:), mask=mask, rc=status); VERIFY_(STATUS)
-           call MAPL_VarWrite(unit, tilegrid, SNDZN(3,:), mask=mask, rc=status); VERIFY_(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, TG(:,FSAT), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, TG(:,FTRN), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, TG(:,FWLT), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, TC(:,FSAT), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, TC(:,FTRN), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, TC(:,FWLT), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, QC(:,FSAT), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, QC(:,FTRN), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, QC(:,FWLT), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, CAPAC,      mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, CATDEF,     mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, RZEXC,      mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, SRFEXC,     mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, GHTCNT(1,:),mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, GHTCNT(2,:),mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, GHTCNT(3,:),mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, GHTCNT(4,:),mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, GHTCNT(5,:),mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, GHTCNT(6,:),mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, WESNN(1,:), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, WESNN(2,:), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, WESNN(3,:), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, HTSNNN(1,:),mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, HTSNNN(2,:),mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, HTSNNN(3,:),mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, SNDZN(1,:), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, SNDZN(2,:), mask=mask, rc=status); _VERIFY(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, SNDZN(3,:), mask=mask, rc=status); _VERIFY(STATUS)
            
            call FREE_FILE(unit, RC=STATUS)
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
 
         end if
         deallocate(mask)
@@ -7707,7 +7707,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             INTV = TINT,     &
             currTime=CURRENT_TIME+DELT,  &
             RC=STATUS )
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         ZTH = max(0.0,ZTH)
 
@@ -8201,7 +8201,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	deallocate( soilice )
         deallocate (PLSIN)
 
-        RETURN_(ESMF_SUCCESS)
+        _RETURN(ESMF_SUCCESS)
 
       end subroutine Driver
 
@@ -8336,7 +8336,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character(*), intent (in) :: VNAME
         integer                   :: status
         
-        STATUS = NF_INQ_VARID (NCFID, trim(VNAME) ,VarID); VERIFY_(STATUS)
+        STATUS = NF_INQ_VARID (NCFID, trim(VNAME) ,VarID); _VERIFY(STATUS)
         
       end function VarID
 
@@ -8428,99 +8428,99 @@ subroutine RUN0(gc, import, export, clock, rc)
 
   ! Get component name and setup traceback handle
   call ESMF_GridCompGet(gc, name=comp_name, rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   Iam = trim(comp_name)//"::RUN0"
 
   ! Get MAPL object
   call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
 
   ! Get component's internal ESMF state
   call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
 
   ! Pointers to IMPORTs
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
 
   ! Pointers to INTERNALs
   call MAPL_GetPointer(INTERNAL, ITY, 'ITY', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, FVG, 'FVG', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, asnow, 'ASNOW', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, emis, 'EMIS', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, fr, 'FR', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, ww, 'WW', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, DCQ, 'DCQ', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, DCH, 'DCH', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, tc, 'TC', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, qc, 'QC', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, htsnnn1, 'HTSNNN1', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, wesnn1, 'WESNN1', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, wesnn2, 'WESNN2', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, wesnn3, 'WESNN3', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, vgwmax, 'VGWMAX', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, cdcr1, 'CDCR1', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, cdcr2, 'CDCR2', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, psis, 'PSIS', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, bee, 'BEE', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, poros, 'POROS', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, wpwet, 'WPWET', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, ars1, 'ARS1', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, ars2, 'ARS2', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, ars3, 'ARS3', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, ara1, 'ARA1', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, ara2, 'ARA2', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, ara3, 'ARA3', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, ara4, 'ARA4', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, arw1, 'ARW1', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, arw2, 'ARW2', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, arw3, 'ARW3', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, arw4, 'ARW4', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, srfexc, 'SRFEXC', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, rzexc, 'RZEXC', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetPointer(INTERNAL, catdef, 'CATDEF', rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   call MAPL_GetResource ( MAPL, PRESCRIBE_DVG, Label="PRESCRIBE_DVG:", DEFAULT=0, RC=STATUS)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   ! Number of tiles and a dummy real array
   ntiles = size(HTSNNN1)
   allocate(dummy(ntiles), stat=status)
-  VERIFY_(status)
+  _VERIFY(status)
   ! Reset WW
   WW = 0.
 
@@ -8528,9 +8528,9 @@ subroutine RUN0(gc, import, export, clock, rc)
   allocate(fveg1     (NTILES))
   allocate(fveg2     (NTILES))
   allocate(veg1(ntiles), stat=status)
-  VERIFY_(status)
+  _VERIFY(status)
   allocate(veg2(ntiles), stat=status)
-  VERIFY_(status)
+  _VERIFY(status)
   allocate(   ityp(ntiles,num_veg,num_zon) )
   allocate(   fveg(ntiles,num_veg,num_zon) )
   allocate( wtzone(ntiles,num_zon) )
@@ -8596,14 +8596,14 @@ subroutine RUN0(gc, import, export, clock, rc)
     elsewhere
      VEG2 = map_cat(nint(ITY(:,4)))  ! gkw: secondary CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
    endwhere
-   ASSERT_((count(VEG1>NTYPS.or.VEG1<1)==0)) 
-   ASSERT_((count(VEG2>NTYPS.or.VEG2<1)==0))
+   _ASSERT((count(VEG1>NTYPS.or.VEG1<1)==0),'needs informative message') 
+   _ASSERT((count(VEG2>NTYPS.or.VEG2<1)==0),'needs informative message')
    fveg1(:) = fvg(:,1) + fvg(:,2) ! sum veg fractions (primary)   gkw: NUM_VEG specific
    fveg2(:) = fvg(:,3) + fvg(:,4) ! sum veg fractions (secondary) gkw: fveg1+fveg2=1
 
   ! Compute ASNOW and EMIS
   allocate(wesnn(3,ntiles), stat=status)
-  VERIFY_(status)
+  _VERIFY(status)
   wesnn(1,:) = wesnn1
   wesnn(2,:) = wesnn2
   wesnn(3,:) = wesnn3
@@ -8621,24 +8621,24 @@ subroutine RUN0(gc, import, export, clock, rc)
 
   ! -step-1-
   call MAPL_GetResource(MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
   allocate(dzsf(ntiles), stat=status)
-  VERIFY_(status)
+  _VERIFY(status)
   dzsf = SURFLAY
 
   ! -step-2-
   allocate(ar1(ntiles), stat=status)
-  VERIFY_(status)
+  _VERIFY(status)
   allocate(ar2(ntiles), stat=status)
-  VERIFY_(status)
+  _VERIFY(status)
   ! -we-don't-want-to-modify-srfexc-rzexc-and-catdef-
   ! -so-we-create-local-copies-
   allocate(catdefcp(ntiles), stat=status)
-  VERIFY_(status)
+  _VERIFY(status)
   allocate(srfexccp(ntiles), stat=status)
-  VERIFY_(status)
+  _VERIFY(status)
   allocate(rzexccp(ntiles), stat=status)
-  VERIFY_(status)
+  _VERIFY(status)
   catdefcp = catdef
   srfexccp = srfexc
   rzexccp = rzexc
@@ -8691,7 +8691,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   if (allocated(wght)) deallocate (wght)
 
   ! All done
-  RETURN_(ESMF_SUCCESS)
+  _RETURN(ESMF_SUCCESS)
 
 end subroutine RUN0
 
@@ -8807,39 +8807,39 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
   allocate (CNLAI42 (1:NTILES))
   allocate (CNLAI43 (1:NTILES))
 
-  call MAPL_GetObjectFromGC(gc, MAPL, rc=status)               ; VERIFY_(status)
-  call ESMF_GridCompGet ( GC, NAME=COMP_NAME, RC=STATUS )      ; VERIFY_(STATUS)
-  call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, RC=STATUS ); VERIFY_(STATUS)
+  call MAPL_GetObjectFromGC(gc, MAPL, rc=status)               ; _VERIFY(status)
+  call ESMF_GridCompGet ( GC, NAME=COMP_NAME, RC=STATUS )      ; _VERIFY(STATUS)
+  call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, RC=STATUS ); _VERIFY(STATUS)
   call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   Iam=trim(COMP_NAME)//"::read_prescribed_LAI"
 
   IF (PRESCRIBE_DVG >= 3) THEN
-     call MAPL_GetPointer(INTERNAL,ITY     , 'ITY'      ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNSAI11A, 'CNSAI11A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNSAI12A, 'CNSAI12A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNSAI13A, 'CNSAI13A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNSAI21A, 'CNSAI21A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNSAI22A, 'CNSAI22A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNSAI23A, 'CNSAI23A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNSAI31A, 'CNSAI31A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNSAI32A, 'CNSAI32A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNSAI33A, 'CNSAI33A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNSAI41A, 'CNSAI41A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNSAI42A, 'CNSAI42A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNSAI43A, 'CNSAI43A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNLAI11A, 'CNLAI11A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNLAI12A, 'CNLAI12A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNLAI13A, 'CNLAI13A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNLAI21A, 'CNLAI21A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNLAI22A, 'CNLAI22A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNLAI23A, 'CNLAI23A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNLAI31A, 'CNLAI31A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNLAI32A, 'CNLAI32A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNLAI33A, 'CNLAI33A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNLAI41A, 'CNLAI41A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNLAI42A, 'CNLAI42A' ,   RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,CNLAI43A, 'CNLAI43A' ,   RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(INTERNAL,ITY     , 'ITY'      ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNSAI11A, 'CNSAI11A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNSAI12A, 'CNSAI12A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNSAI13A, 'CNSAI13A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNSAI21A, 'CNSAI21A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNSAI22A, 'CNSAI22A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNSAI23A, 'CNSAI23A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNSAI31A, 'CNSAI31A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNSAI32A, 'CNSAI32A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNSAI33A, 'CNSAI33A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNSAI41A, 'CNSAI41A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNSAI42A, 'CNSAI42A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNSAI43A, 'CNSAI43A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNLAI11A, 'CNLAI11A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNLAI12A, 'CNLAI12A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNLAI13A, 'CNLAI13A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNLAI21A, 'CNLAI21A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNLAI22A, 'CNLAI22A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNLAI23A, 'CNLAI23A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNLAI31A, 'CNLAI31A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNLAI32A, 'CNLAI32A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNLAI33A, 'CNLAI33A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNLAI41A, 'CNLAI41A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNLAI42A, 'CNLAI42A' ,   RC=STATUS); _VERIFY(STATUS)
+     call MAPL_GetPointer(INTERNAL,CNLAI43A, 'CNLAI43A' ,   RC=STATUS); _VERIFY(STATUS)
   ENDIF
   
   DO N = 1,12 
@@ -8852,34 +8852,34 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
         CNSAIlabel = trim(CNSAI_VARS(n))//comp_name(6:9)//' _FILE:'          
      endif
      
-     call MAPL_GetResource(MAPL, CNLAIFILE, label = trim(CNLAIlabel), default = trim(CNLAI_VARS(n))//'.data', RC=STATUS) ; VERIFY_(STATUS)
-     call MAPL_GetResource(MAPL, CNSAIFILE, label = trim(CNSAIlabel), default = trim(CNSAI_VARS(n))//'.data', RC=STATUS) ; VERIFY_(STATUS)
+     call MAPL_GetResource(MAPL, CNLAIFILE, label = trim(CNLAIlabel), default = trim(CNLAI_VARS(n))//'.data', RC=STATUS) ; _VERIFY(STATUS)
+     call MAPL_GetResource(MAPL, CNSAIFILE, label = trim(CNSAIlabel), default = trim(CNSAI_VARS(n))//'.data', RC=STATUS) ; _VERIFY(STATUS)
      
-     if(n ==  1) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI11,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  2) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI12,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  3) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI13,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  4) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI21,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  5) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI22,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  6) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI23,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  7) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI31,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  8) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI32,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  9) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI33,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n == 10) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI41,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n == 11) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI42,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n == 12) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI43,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
+     if(n ==  1) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI11,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  2) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI12,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  3) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI13,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  4) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI21,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  5) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI22,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  6) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI23,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  7) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI31,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  8) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI32,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  9) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI33,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n == 10) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI41,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n == 11) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI42,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n == 12) call MAPL_ReadForcing(MAPL,trim(CNLAI_VARS(n)),CNLAIFILE,CURRENT_TIME,CNLAI43,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
      
-     if(n ==  1) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI11,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  2) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI12,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  3) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI13,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  4) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI21,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  5) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI22,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  6) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI23,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  7) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI31,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  8) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI32,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n ==  9) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI33,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n == 10) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI41,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n == 11) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI42,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
-     if(n == 12) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI43,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
+     if(n ==  1) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI11,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  2) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI12,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  3) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI13,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  4) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI21,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  5) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI22,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  6) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI23,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  7) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI31,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  8) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI32,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n ==  9) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI33,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n == 10) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI41,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n == 11) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI42,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
+     if(n == 12) call MAPL_ReadForcing(MAPL,trim(CNSAI_VARS(n)),CNSAIFILE,CURRENT_TIME,CNSAI43,ON_TILES=.true.,RC=STATUS) ; _VERIFY(STATUS)
      
   END DO
 
@@ -8919,18 +8919,18 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
   IF (PRESCRIBE_DVG == 3) THEN
 
      ! Forecast mode
-     call MAPL_GetResource(MAPL, FCAST_BEGTIME , label = 'FCAST_BEGTIME:', default = ''  , RC=STATUS) ; VERIFY_(STATUS)
-     call MAPL_GetResource(MAPL, LAI_TSCALE    , label = 'LAI_TSCALE:'   , default = 180., RC=STATUS) ; VERIFY_(STATUS)
+     call MAPL_GetResource(MAPL, FCAST_BEGTIME , label = 'FCAST_BEGTIME:', default = ''  , RC=STATUS) ; _VERIFY(STATUS)
+     call MAPL_GetResource(MAPL, LAI_TSCALE    , label = 'LAI_TSCALE:'   , default = 180., RC=STATUS) ; _VERIFY(STATUS)
      FTIME = ADJUSTL (FCAST_BEGTIME)
-     READ (FTIME ( 1: 4), '(i4)', IOSTAT = STATUS ) BYEAR  ; VERIFY_(STATUS)
-     READ (FTIME ( 5: 6), '(i2)', IOSTAT = STATUS ) BMON   ; VERIFY_(STATUS)
-     READ (FTIME ( 7: 8), '(i2)', IOSTAT = STATUS ) BDAY   ; VERIFY_(STATUS)
-     READ (FTIME ( 9:10),'(i2)', IOSTAT = STATUS ) BHOUR  ; VERIFY_(STATUS)
+     READ (FTIME ( 1: 4), '(i4)', IOSTAT = STATUS ) BYEAR  ; _VERIFY(STATUS)
+     READ (FTIME ( 5: 6), '(i2)', IOSTAT = STATUS ) BMON   ; _VERIFY(STATUS)
+     READ (FTIME ( 7: 8), '(i2)', IOSTAT = STATUS ) BDAY   ; _VERIFY(STATUS)
+     READ (FTIME ( 9:10),'(i2)', IOSTAT = STATUS ) BHOUR  ; _VERIFY(STATUS)
      call ESMF_TimeSet(TIME0, YY = BYEAR, MM = BMON, DD = BDAY, &
-          H =  BHOUR, M =  0, S = 0, rc = STATUS) ; VERIFY_(STATUS)
+          H =  BHOUR, M =  0, S = 0, rc = STATUS) ; _VERIFY(STATUS)
      
      TIMEDIF = CURRENT_TIME - TIME0 
-     call ESMF_TimeIntervalGet (TIMEDIF, s = dSecs, rc=status); VERIFY_(STATUS) 
+     call ESMF_TimeIntervalGet (TIMEDIF, s = dSecs, rc=status); _VERIFY(STATUS) 
      timelag = real (dSecs) / 86400.
 
      DO N = 1, NTILES

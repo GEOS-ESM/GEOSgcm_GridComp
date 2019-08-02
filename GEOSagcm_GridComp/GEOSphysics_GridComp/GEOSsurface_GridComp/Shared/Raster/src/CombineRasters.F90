@@ -167,8 +167,8 @@ program mkOverlaySimple
 
 ! Both grids must be based on same shape rasters
 
-    ASSERT_(NX1==NX)
-    ASSERT_(NY1==NY)
+    _ASSERT(NX1==NX,'needs informative message')
+    _ASSERT(NY1==NY,'needs informative message')
 
 ! allocate space
 
@@ -181,20 +181,20 @@ program mkOverlaySimple
     endif
 
     allocate(iTable(0:nvars,maxtiles),stat=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     allocate(rTable(1:rvars,maxtiles),stat=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     allocate(rst1(nx,ny),             stat=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     allocate(cc(nx),ss(nx), rst2(nx), stat=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     allocate(Table1(6,ip1),         stat=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     allocate(Table2(6,ip2),           stat=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! The rasters cover the sphere in lat-lon 
 
@@ -372,7 +372,7 @@ program mkOverlaySimple
 ! Done with some space and with hash
 
 !    deallocate(Table1,Table2,Rst2,ss,cc,stat=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 !    call MAPL_HashDestroy(Hash)
 

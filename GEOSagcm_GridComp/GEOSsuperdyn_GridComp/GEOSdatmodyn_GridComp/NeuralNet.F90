@@ -1,6 +1,6 @@
 ! $Id$
 
-! VERIFY_ and RETURN_ macros for error handling.
+! _VERIFY and _RETURN macros for error handling.
 
 #include "MAPL_ErrLog.h"
 

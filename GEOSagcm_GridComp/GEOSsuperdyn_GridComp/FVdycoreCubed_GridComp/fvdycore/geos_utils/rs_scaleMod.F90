@@ -245,7 +245,7 @@ contains
 
       deallocate(qv,qlls,qlcn,cfls,cfcn,qils,qicn,pk,pe,pke,area,dp,psold,psnew,pdryold,pdrynew)
 
-      RETURN_(ESMF_SUCCESS)
+      _RETURN(ESMF_SUCCESS)
 
    end subroutine scale_drymass
 
@@ -275,7 +275,7 @@ contains
 
     ! get VM (should get from the grid, but this is quicker)
     call ESMF_VmGetCurrent(vm, rc=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     im = size(area,1) ! local grid dim
     jm = size(area,2) ! local grid dim
@@ -294,7 +294,7 @@ contains
 
     call MAPL_CommsAllReduceSum(vm, sendbuf=qdumloc, recvbuf=qdum, &
          cnt=2, RC=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     if (qdum(2) /= 0.0_8) then
 
@@ -307,7 +307,7 @@ contains
        qave = MAPL_Undef
     end if
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
   end subroutine AreaMean
 
 end module rs_scaleMod

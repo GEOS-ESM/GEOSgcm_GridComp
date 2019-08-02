@@ -83,10 +83,10 @@ contains
     ALLOCATE (PCTPFT      (1:N_lon_clm, 1:N_lat_clm, 1:lsmpft))
      
     status  = NF_OPEN ('data/CATCH/CLM45/mksrf_24pftNT_landuse_rc2000_c121207.nc', NF_NOWRITE, ncid)   
-    status  = NF_INQ_VARID (ncid,'PCT_PFT',VarID) ; VERIFY_(STATUS)
+    status  = NF_INQ_VARID (ncid,'PCT_PFT',VarID) ; _VERIFY(STATUS)
 
     do k = 1, 25 ! Natural vegetation
-       status  = NF_GET_VARA_REAL (ncid,VarID,(/1,1,k/),(/N_lon_clm, N_lat_clm, 1/),PCTPFT(:,:,k)) ; VERIFY_(STATUS)
+       status  = NF_GET_VARA_REAL (ncid,VarID,(/1,1,k/),(/N_lon_clm, N_lat_clm, 1/),PCTPFT(:,:,k)) ; _VERIFY(STATUS)
     end do
 
     status = NF_CLOSE(ncid)
@@ -819,14 +819,14 @@ contains
     ALLOCATE (PCTPFT      (1:N_lon_clm, 1:N_lat_clm, 1:lsmpft))
     ALLOCATE (PCT_PFT_DBL (1:N_lon_clm, 1:N_lat_clm, 1:lsmpft))
     status  = NF_OPEN ('data/CATCH/surfdata_0.23x0.31_simyr2000_c100406.nc', NF_NOWRITE, ncid)   
-    status  = NF_GET_VARA_DOUBLE (ncid,1,(/1/),(/1/),EDGEN) ; VERIFY_(STATUS)
-    status  = NF_GET_VARA_DOUBLE (ncid,2,(/1/),(/1/),EDGEE) ; VERIFY_(STATUS)
-    status  = NF_GET_VARA_DOUBLE (ncid,3,(/1/),(/1/),EDGES) ; VERIFY_(STATUS)
-    status  = NF_GET_VARA_DOUBLE (ncid,4,(/1/),(/1/),EDGEW) ; VERIFY_(STATUS)
-    status  = NF_INQ_VARID (ncid,'PCT_PFT',VarID) ; VERIFY_(STATUS)
+    status  = NF_GET_VARA_DOUBLE (ncid,1,(/1/),(/1/),EDGEN) ; _VERIFY(STATUS)
+    status  = NF_GET_VARA_DOUBLE (ncid,2,(/1/),(/1/),EDGEE) ; _VERIFY(STATUS)
+    status  = NF_GET_VARA_DOUBLE (ncid,3,(/1/),(/1/),EDGES) ; _VERIFY(STATUS)
+    status  = NF_GET_VARA_DOUBLE (ncid,4,(/1/),(/1/),EDGEW) ; _VERIFY(STATUS)
+    status  = NF_INQ_VARID (ncid,'PCT_PFT',VarID) ; _VERIFY(STATUS)
 
     do k = 1, lsmpft
-       status  = NF_GET_VARA_DOUBLE (ncid,VarID,(/1,1,k/),(/N_lon_clm, N_lat_clm, 1/),PCT_PFT_DBL(:,:,k)) ; VERIFY_(STATUS)
+       status  = NF_GET_VARA_DOUBLE (ncid,VarID,(/1,1,k/),(/N_lon_clm, N_lat_clm, 1/),PCT_PFT_DBL(:,:,k)) ; _VERIFY(STATUS)
     end do
 
     status = NF_CLOSE(ncid)
@@ -1330,7 +1330,7 @@ contains
 
     inquire(file='clsm/catchcn_params.nc4', exist=file_exists)
     if(file_exists) then
-       status = NF_OPEN ('clsm/catchcn_params.nc4', NF_WRITE, ncid) ; VERIFY_(STATUS)
+       status = NF_OPEN ('clsm/catchcn_params.nc4', NF_WRITE, ncid) ; _VERIFY(STATUS)
        allocate (NITYP (1:MAXCAT, 1:4))
        allocate (NFVEG (1:MAXCAT, 1:4))    
     endif
@@ -1489,16 +1489,16 @@ contains
 
     if(file_exists) then
 
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1,1/),(/maxcat,1/), NITYP (:, 1)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1,2/),(/maxcat,1/), NITYP (:, 2)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1,3/),(/maxcat,1/), NITYP (:, 3)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1,4/),(/maxcat,1/), NITYP (:, 4)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'FVG'    ) ,(/1,1/),(/maxcat,1/), NFVEG (:, 1)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'FVG'    ) ,(/1,2/),(/maxcat,1/), NFVEG (:, 2)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'FVG'    ) ,(/1,3/),(/maxcat,1/), NFVEG (:, 3)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'FVG'    ) ,(/1,4/),(/maxcat,1/), NFVEG (:, 4)) ; VERIFY_(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1,1/),(/maxcat,1/), NITYP (:, 1)) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1,2/),(/maxcat,1/), NITYP (:, 2)) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1,3/),(/maxcat,1/), NITYP (:, 3)) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1,4/),(/maxcat,1/), NITYP (:, 4)) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'FVG'    ) ,(/1,1/),(/maxcat,1/), NFVEG (:, 1)) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'FVG'    ) ,(/1,2/),(/maxcat,1/), NFVEG (:, 2)) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'FVG'    ) ,(/1,3/),(/maxcat,1/), NFVEG (:, 3)) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'FVG'    ) ,(/1,4/),(/maxcat,1/), NFVEG (:, 4)) ; _VERIFY(STATUS)
        DEALLOCATE (NITYP, NFVEG)
-       STATUS   = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+       STATUS   = NF_CLOSE (NCID) ; _VERIFY(STATUS)
    
     endif
     
@@ -1746,19 +1746,19 @@ contains
     inquire(file='clsm/catch_params.nc4', exist=file_exists)
 
     if(file_exists) then
-       status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                                ) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'OLD_ITY'    ) ,(/1/),(/maxcat/), real(ityp)) ; VERIFY_(STATUS)
-       STATUS   = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+       status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid                                ) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'OLD_ITY'    ) ,(/1/),(/maxcat/), real(ityp)) ; _VERIFY(STATUS)
+       STATUS   = NF_CLOSE (NCID) ; _VERIFY(STATUS)
     endif
     
     inquire(file='clsm/vegdyn.data', exist=file_exists)
 
     if(file_exists) then
-       status = NF_OPEN ('clsm/vegdyn.data', NF_WRITE, ncid                                 ) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1/),(/maxcat/), real(ityp)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'Z2CH'   ) ,(/1/),(/maxcat/), z2        ) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ASCATZ0') ,(/1/),(/maxcat/), Z0        ) ; VERIFY_(STATUS)
-       STATUS   = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+       status = NF_OPEN ('clsm/vegdyn.data', NF_WRITE, ncid                                 ) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ITY'    ) ,(/1/),(/maxcat/), real(ityp)) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'Z2CH'   ) ,(/1/),(/maxcat/), z2        ) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ASCATZ0') ,(/1/),(/maxcat/), Z0        ) ; _VERIFY(STATUS)
+       STATUS   = NF_CLOSE (NCID) ; _VERIFY(STATUS)
     else
        open (20,file='clsm/vegdyn.data',status='unknown',action='write',form='unformatted', &
             convert='little_endian')   
@@ -1851,7 +1851,7 @@ END SUBROUTINE HISTOGRAM
 
    if((nc_data  >= nc).and.(nr_data >= nr)) then
 
-      allocate(iraster(nc_data,nr_data),stat=STATUS); VERIFY_(STATUS)
+      allocate(iraster(nc_data,nr_data),stat=STATUS); _VERIFY(STATUS)
       call RegridRaster(tile_id,iraster)
   
       do j = 1,nr_data
@@ -1863,7 +1863,7 @@ END SUBROUTINE HISTOGRAM
             endif
          end do
       end do
-      deallocate (iraster) ; VERIFY_(STATUS)
+      deallocate (iraster) ; _VERIFY(STATUS)
 
    else
       
@@ -2478,19 +2478,19 @@ END SUBROUTINE modis_scale_para_high
 
       if(MA=='MODIS1') fname =trim(c_data)//'MODIS-Albedo/MODISalb.c004.v2.WS_H11V13.nc'
       if(MA=='MODIS2') fname =trim(c_data)//'MODIS-Albedo2/MCD43GF_wsa_H11V13.nc'
-      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS)
+      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,1,string, nc_10); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,2,string, nr_10); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,3,string, n_tslices); _VERIFY(STATUS)
       allocate (MMDD      (0: n_tslices + 1))
       allocate (MMDD_next (0: n_tslices + 1))
 
-      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); VERIFY_(STATUS)
-      status = NF_CLOSE(ncid); VERIFY_(STATUS)
+      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); _VERIFY(STATUS)
+      status = NF_CLOSE(ncid); _VERIFY(STATUS)
 
       if(nc_data/=i_highd .or. nr_data/=j_highd) then
          print *,'Inconsistent mapping and dimensions in modis_alb_on_tiles_high   -so stopping ...'
@@ -2566,12 +2566,12 @@ END SUBROUTINE modis_scale_para_high
                 if(MA=='MODIS2') fname =trim(c_data)//'MODIS-Albedo2/MCD43GF_wsa_H'//hh//'V'//vv//'.nc'
                 status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
                 if(status == 0) then
-                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-                   status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); VERIFY_(STATUS)
-                   status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); VERIFY_(STATUS)
-                   status = NF_GET_VARA_INT (ncid,4,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); VERIFY_(STATUS)
-                   status = NF_GET_VARA_INT (ncid,5,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data2); VERIFY_(STATUS)
+                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+                   status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); _VERIFY(STATUS)
+                   status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); _VERIFY(STATUS)
+                   status = NF_GET_VARA_INT (ncid,4,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); _VERIFY(STATUS)
+                   status = NF_GET_VARA_INT (ncid,5,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data2); _VERIFY(STATUS)
 
                    do j = jLL,jLL + nr_10 -1 
                       do i = iLL, iLL + nc_10 -1 
@@ -2664,19 +2664,19 @@ END SUBROUTINE modis_scale_para_high
       close (10,status='keep')
 
       fname =trim(c_data)//trim(lai_name)//'lai_clim.H11V13.nc'
-      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS)
+      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,1,string, nc_10); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,2,string, nr_10); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,3,string, n_tslices); _VERIFY(STATUS)
       allocate (MMDD      (0: n_tslices + 1))
       allocate (MMDD_next (0: n_tslices + 1))
 
-      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); VERIFY_(STATUS)
-      status = NF_CLOSE(ncid); VERIFY_(STATUS)
+      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); _VERIFY(STATUS)
+      status = NF_CLOSE(ncid); _VERIFY(STATUS)
 
        mmdd(0) = mmdd(n_tslices)
        mmdd(n_tslices + 1)= mmdd(1)
@@ -2764,11 +2764,11 @@ END SUBROUTINE modis_scale_para_high
                 fname = trim(c_data)//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
                 status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
                 if(status == 0) then
-                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-                   status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); VERIFY_(STATUS)
-                   status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); VERIFY_(STATUS)
-                   status = NF_GET_VARA_INT (ncid, 4,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); VERIFY_(STATUS)
+                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+                   status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+                   status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); _VERIFY(STATUS)
+                   status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); _VERIFY(STATUS)
+                   status = NF_GET_VARA_INT (ncid, 4,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); _VERIFY(STATUS)
                    
                    do j = jLL,jLL + nr_10 -1 
                       do i = iLL, iLL + nc_10 -1 
@@ -2790,7 +2790,7 @@ END SUBROUTINE modis_scale_para_high
           
           if(regrid) then
              if(nx > i_highd) then 
-                allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
+                allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
                 call RegridRaster2(lai_high,raster)	
                 iRaster => tile_id
                 if(ny < j_highd) then
@@ -2799,11 +2799,11 @@ END SUBROUTINE modis_scale_para_high
                 endif
              else
                 if(.not. associated(iraster)) then
-                   allocate(iraster(i_highd,j_highd),stat=STATUS); VERIFY_(STATUS)  
+                   allocate(iraster(i_highd,j_highd),stat=STATUS); _VERIFY(STATUS)  
                 endif
 
 !		if( associated(iraster)) deallocate(iraster)
-!	       allocate(iraster(i_highd,j_highd),stat=STATUS); VERIFY_(STATUS)    
+!	       allocate(iraster(i_highd,j_highd),stat=STATUS); _VERIFY(STATUS)    
                call RegridRaster(tile_id,iraster)	
                 raster  => lai_high
                 nx_adj = i_highd
@@ -2959,19 +2959,19 @@ END SUBROUTINE modis_scale_para_high
       close (10,status='keep')
 
       fname =trim(c_data)//trim(lai_name)//'lai_clim.H11V13.nc'
-      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS) 
+      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,1,string, nc_10); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,2,string, nr_10); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,3,string, n_tslices); _VERIFY(STATUS) 
       allocate (MMDD      (0: n_tslices + 1))
       allocate (MMDD_next (0: n_tslices + 1))
 
-      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); VERIFY_(STATUS)
-      status = NF_CLOSE(ncid); VERIFY_(STATUS)
+      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); _VERIFY(STATUS)
+      status = NF_CLOSE(ncid); _VERIFY(STATUS)
  
       if(nc_data/=i_highd .or. nr_data/=j_highd) then
          print *,'Inconsistent mapping and dimensions in  hres_lai_no_gswp  -so stopping ...'
@@ -3047,11 +3047,11 @@ END SUBROUTINE modis_scale_para_high
                fname = trim(c_data)//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
                status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
                if(status == 0) then
-                  status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-                  status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-                  status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); VERIFY_(STATUS)
-                  status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); VERIFY_(STATUS)
-                  status = NF_GET_VARA_INT (ncid, 4,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); VERIFY_(STATUS)
+                  status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+                  status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+                  status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); _VERIFY(STATUS)
+                  status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); _VERIFY(STATUS)
+                  status = NF_GET_VARA_INT (ncid, 4,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); _VERIFY(STATUS)
                   
                   do j = jLL,jLL + nr_10 -1 
                      do i = iLL, iLL + nc_10 -1 
@@ -3197,19 +3197,19 @@ END SUBROUTINE modis_scale_para_high
       close (10,status='keep')
 
       fname =trim(c_data)//trim(lai_name)//'lai_clim.H11V13.nc'
-      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS) 
+      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,1,string, nc_10); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,2,string, nr_10); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,3,string, n_tslices); _VERIFY(STATUS) 
       allocate (MMDD      (0: n_tslices + 1))
       allocate (MMDD_next (0: n_tslices + 1))
 
-      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); VERIFY_(STATUS)
-      status = NF_CLOSE(ncid); VERIFY_(STATUS)
+      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); _VERIFY(STATUS)
+      status = NF_CLOSE(ncid); _VERIFY(STATUS)
  
       if(nc_data/=i_highd .or. nr_data/=j_highd) then
          print *,'Inconsistent mapping and dimensions in  hres_lai_no_gswp  -so stopping ...'
@@ -3292,11 +3292,11 @@ END SUBROUTINE modis_scale_para_high
                fname = trim(c_data)//trim(lai_name)//'lai_clim.H'//hh//'V'//vv//'.nc'
                status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
                if(status == 0) then
-                  status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-                  status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-                  status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); VERIFY_(STATUS)
-                  status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); VERIFY_(STATUS)
-                  status = NF_GET_VARA_INT (ncid, 4,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); VERIFY_(STATUS)
+                  status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+                  status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+                  status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); _VERIFY(STATUS)
+                  status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); _VERIFY(STATUS)
+                  status = NF_GET_VARA_INT (ncid, 4,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); _VERIFY(STATUS)
                   
                   do j = jLL,jLL + nr_10 -1 
                      do i = iLL, iLL + nc_10 -1 
@@ -3526,19 +3526,19 @@ END SUBROUTINE modis_scale_para_high
   close (10,status='keep')
   
   fname =trim(c_data)//'GSWP2_30sec_VegParam/GSWP2_VegParam_H11V13.nc'
-  status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-  status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-  status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-  status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
-  status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
-  status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
-  status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
-  status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS)
+  status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); _VERIFY(STATUS)
+  status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+  status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+  status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); _VERIFY(STATUS)
+  status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); _VERIFY(STATUS)
+  status = NF_INQ_DIM (ncid,1,string, nc_10); _VERIFY(STATUS)
+  status = NF_INQ_DIM (ncid,2,string, nr_10); _VERIFY(STATUS)
+  status = NF_INQ_DIM (ncid,3,string, n_tslices); _VERIFY(STATUS)
   allocate (MMDD      (0: n_tslices + 1))
   allocate (MMDD_next (0: n_tslices + 1))
   
-  status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); VERIFY_(STATUS)
-  status = NF_CLOSE(ncid); VERIFY_(STATUS)
+  status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); _VERIFY(STATUS)
+  status = NF_CLOSE(ncid); _VERIFY(STATUS)
   
   mmdd(0) = mmdd(n_tslices)
   mmdd(n_tslices + 1)= mmdd(1)
@@ -3594,11 +3594,11 @@ END SUBROUTINE modis_scale_para_high
            fname = trim(c_data)//'GSWP2_30sec_VegParam/GSWP2_VegParam_H'//hh//'V'//vv//'.nc'
            status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
            if(status == 0) then
-              status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-              status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-              status = NF_GET_att_INT  (ncid,vid,'UNDEF',d_undef); VERIFY_(STATUS)
-              status = NF_GET_att_REAL (ncid,vid,'ScaleFactor',sf); VERIFY_(STATUS)
-              status = NF_GET_VARA_INT (ncid, vid,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); VERIFY_(STATUS)
+              status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+              status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+              status = NF_GET_att_INT  (ncid,vid,'UNDEF',d_undef); _VERIFY(STATUS)
+              status = NF_GET_att_REAL (ncid,vid,'ScaleFactor',sf); _VERIFY(STATUS)
+              status = NF_GET_VARA_INT (ncid, vid,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data1); _VERIFY(STATUS)
               
               do j = jLL,jLL + nr_10 -1 
                  do i = iLL, iLL + nc_10 -1 
@@ -3799,14 +3799,14 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       close (10,status='keep')
 
       fname =trim(c_data)//'SOIL-DATA/GSWP2_soildepth_H11V13.nc'
-      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
-      status = NF_CLOSE(ncid); VERIFY_(STATUS)
+      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,1,string, nc_10); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,2,string, nr_10); _VERIFY(STATUS)
+      status = NF_CLOSE(ncid); _VERIFY(STATUS)
 
       allocate(soildepth(1:maxcat))
       allocate(soil_high(1:i_highd,1:j_highd))  
@@ -3837,11 +3837,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	    fname = trim(c_data)//'SOIL-DATA/GSWP2_soildepth_H'//hh//'V'//vv//'.nc'
             status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
 	    if(status == 0) then
-		status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-                status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-		status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); VERIFY_(STATUS)
-		status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); VERIFY_(STATUS)
-		status = NF_GET_VARA_INT (ncid, 4,(/1,1/),(/nc_10,nr_10/),net_data1); VERIFY_(STATUS)
+		status = NF_GET_att_INT  (ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+                status = NF_GET_att_INT  (ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+		status = NF_GET_att_INT  (ncid,4,'UNDEF',d_undef); _VERIFY(STATUS)
+		status = NF_GET_att_REAL (ncid,4,'ScaleFactor',sf); _VERIFY(STATUS)
+		status = NF_GET_VARA_INT (ncid, 4,(/1,1/),(/nc_10,nr_10/),net_data1); _VERIFY(STATUS)
 
 		do j = jLL,jLL + nr_10 -1 
                    do i = iLL, iLL + nc_10 -1 
@@ -3865,7 +3865,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       if(regrid) then
           if(nx > i_highd) then 
-               allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
+               allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
                call RegridRaster2(soil_high,raster)	
 	       iRaster => tile_id
 	       if(ny < j_highd) then
@@ -3874,7 +3874,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	       endif
 	  else
                if( .not.associated(iraster) ) then 
-                   allocate(iraster(i_highd,j_highd),stat=STATUS); VERIFY_(STATUS)
+                   allocate(iraster(i_highd,j_highd),stat=STATUS); _VERIFY(STATUS)
                endif
                call RegridRaster(tile_id,iraster)	
                raster  => soil_high
@@ -3923,13 +3923,13 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 ! Reading NGDC-HWSD-STATSGO merged Soil Properties
 !
       fname =trim(c_data)//'SOIL-DATA/SoilProperties_H11V13.nc'
-      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); VERIFY_(STATUS)
-      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,1,string, nc_10); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,2,string, nr_10); VERIFY_(STATUS)
+      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lon_global',i_highd); _VERIFY(STATUS)
+      status = NF_GET_att_INT(ncid,NF_GLOBAL,'N_lat_global',j_highd); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,1,string, nc_10); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,2,string, nr_10); _VERIFY(STATUS)
       status = NF_CLOSE(ncid)
 
       regrid = nx/=i_highd .or. ny/=j_highd
@@ -3964,17 +3964,17 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	    fname = trim(c_data)//'SOIL-DATA/SoilProperties_H'//hh//'V'//vv//'.nc'
             status = NF_OPEN(trim(fname),NF_NOWRITE, ncid)
 	    if(status == 0) then
-		status = NF_GET_att_INT  (ncid, NF_GLOBAL,'i_ind_offset_LL',iLL); VERIFY_(STATUS)
-                status = NF_GET_att_INT  (ncid, NF_GLOBAL,'j_ind_offset_LL',jLL); VERIFY_(STATUS)
-		status = NF_GET_att_INT  (ncid, 4,'UNDEF',d_undef); VERIFY_(STATUS)
-		status = NF_GET_att_REAL (ncid, 4,'ScaleFactor',sf); VERIFY_(STATUS)
-		status = NF_GET_VARA_INT (ncid, 4,(/1,1/),(/nc_10,nr_10/),net_data1); VERIFY_(STATUS)
-		status = NF_GET_VARA_INT (ncid, 5,(/1,1/),(/nc_10,nr_10/),net_data2); VERIFY_(STATUS)
-		status = NF_GET_VARA_INT (ncid, 6,(/1,1/),(/nc_10,nr_10/),net_data3); VERIFY_(STATUS)
-		status = NF_GET_VARA_INT (ncid, 7,(/1,1/),(/nc_10,nr_10/),net_data4); VERIFY_(STATUS)
-		status = NF_GET_VARA_INT (ncid, 8,(/1,1/),(/nc_10,nr_10/),net_data5); VERIFY_(STATUS)
-		status = NF_GET_VARA_INT (ncid, 9,(/1,1/),(/nc_10,nr_10/),net_data6); VERIFY_(STATUS)
-                status = NF_GET_VARA_INT (ncid,10,(/1,1/),(/nc_10,nr_10/),net_data7); VERIFY_(STATUS)
+		status = NF_GET_att_INT  (ncid, NF_GLOBAL,'i_ind_offset_LL',iLL); _VERIFY(STATUS)
+                status = NF_GET_att_INT  (ncid, NF_GLOBAL,'j_ind_offset_LL',jLL); _VERIFY(STATUS)
+		status = NF_GET_att_INT  (ncid, 4,'UNDEF',d_undef); _VERIFY(STATUS)
+		status = NF_GET_att_REAL (ncid, 4,'ScaleFactor',sf); _VERIFY(STATUS)
+		status = NF_GET_VARA_INT (ncid, 4,(/1,1/),(/nc_10,nr_10/),net_data1); _VERIFY(STATUS)
+		status = NF_GET_VARA_INT (ncid, 5,(/1,1/),(/nc_10,nr_10/),net_data2); _VERIFY(STATUS)
+		status = NF_GET_VARA_INT (ncid, 6,(/1,1/),(/nc_10,nr_10/),net_data3); _VERIFY(STATUS)
+		status = NF_GET_VARA_INT (ncid, 7,(/1,1/),(/nc_10,nr_10/),net_data4); _VERIFY(STATUS)
+		status = NF_GET_VARA_INT (ncid, 8,(/1,1/),(/nc_10,nr_10/),net_data5); _VERIFY(STATUS)
+		status = NF_GET_VARA_INT (ncid, 9,(/1,1/),(/nc_10,nr_10/),net_data6); _VERIFY(STATUS)
+                status = NF_GET_VARA_INT (ncid,10,(/1,1/),(/nc_10,nr_10/),net_data7); _VERIFY(STATUS)
 		do j = jLL,jLL + nr_10 -1 
                    do i = iLL, iLL + nc_10 -1 
                     if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) &
@@ -4015,25 +4015,25 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       if(regrid) then
           if(nx > i_highd) then 
-               allocate(raster1(nx,ny),stat=STATUS); VERIFY_(STATUS)
+               allocate(raster1(nx,ny),stat=STATUS); _VERIFY(STATUS)
                call RegridRaster2(clay_top,raster1)	
 
-               allocate(raster2(nx,ny),stat=STATUS); VERIFY_(STATUS)
+               allocate(raster2(nx,ny),stat=STATUS); _VERIFY(STATUS)
                call RegridRaster2(sand_top,raster2)	
 
-               allocate(raster3(nx,ny),stat=STATUS); VERIFY_(STATUS)
+               allocate(raster3(nx,ny),stat=STATUS); _VERIFY(STATUS)
                call RegridRaster2(oc_top,  raster3)	
 
-               allocate(raster4(nx,ny),stat=STATUS); VERIFY_(STATUS)
+               allocate(raster4(nx,ny),stat=STATUS); _VERIFY(STATUS)
                call RegridRaster2(clay_sub,raster4)	
 
-               allocate(raster5(nx,ny),stat=STATUS); VERIFY_(STATUS)
+               allocate(raster5(nx,ny),stat=STATUS); _VERIFY(STATUS)
                call RegridRaster2(sand_sub,raster5)	
 
-               allocate(raster6(nx,ny),stat=STATUS); VERIFY_(STATUS)
+               allocate(raster6(nx,ny),stat=STATUS); _VERIFY(STATUS)
                call RegridRaster2(oc_sub,  raster6)	
 
-               allocate(raster (nx,ny),stat=STATUS); VERIFY_(STATUS)
+               allocate(raster (nx,ny),stat=STATUS); _VERIFY(STATUS)
                call RegridRaster2(grav_grid,raster)
 
 	       iRaster => tile_id
@@ -4046,7 +4046,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	       nx_adj = i_highd
                ny_adj = j_highd
                if( .not.associated(iraster) ) then
-                  allocate(iRaster(i_highd,j_highd),stat=STATUS); VERIFY_(STATUS)
+                  allocate(iRaster(i_highd,j_highd),stat=STATUS); _VERIFY(STATUS)
                endif
                call RegridRaster(tile_id,iRaster)	
 
@@ -4510,7 +4510,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       inquire(file='clsm/catch_params.nc4', exist=file_exists)
 
       if(file_exists) then
-         status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid) ; VERIFY_(STATUS)
+         status = NF_OPEN ('clsm/catch_params.nc4', NF_WRITE, ncid) ; _VERIFY(STATUS)
          allocate (parms4file (1:maxcat, 1:10))
       endif
     
@@ -4610,17 +4610,17 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       deallocate (soildepth, grav_vec,soc_vec,poc_vec,&
              ncells_top,ncells_top_pro,ncells_sub_pro,soil_class_top,soil_class_com)
       if(file_exists) then
-         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ) ,(/1/),(/maxcat/), parms4file (:, 1)) ; VERIFY_(STATUS) 
-         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'COND' ) ,(/1/),(/maxcat/), parms4file (:, 2)) ; VERIFY_(STATUS) 
-         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'POROS') ,(/1/),(/maxcat/), parms4file (:, 3)) ; VERIFY_(STATUS) 
-         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'PSIS' ) ,(/1/),(/maxcat/), parms4file (:, 4)) ; VERIFY_(STATUS) 
-         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'WPWET') ,(/1/),(/maxcat/), parms4file (:, 5)) ; VERIFY_(STATUS) 
-         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'DP2BR') ,(/1/),(/maxcat/), parms4file (:, 6)) ; VERIFY_(STATUS) 
-         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU2') ,(/1/),(/maxcat/), parms4file (:, 7)) ; VERIFY_(STATUS) 
-         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU2') ,(/1/),(/maxcat/), parms4file (:, 8)) ; VERIFY_(STATUS) 
-         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU5') ,(/1/),(/maxcat/), parms4file (:, 9)) ; VERIFY_(STATUS) 
-         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU5') ,(/1/),(/maxcat/), parms4file (:,10)) ; VERIFY_(STATUS) 
-         STATUS   = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BEE'  ) ,(/1/),(/maxcat/), parms4file (:, 1)) ; _VERIFY(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'COND' ) ,(/1/),(/maxcat/), parms4file (:, 2)) ; _VERIFY(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'POROS') ,(/1/),(/maxcat/), parms4file (:, 3)) ; _VERIFY(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'PSIS' ) ,(/1/),(/maxcat/), parms4file (:, 4)) ; _VERIFY(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'WPWET') ,(/1/),(/maxcat/), parms4file (:, 5)) ; _VERIFY(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'DP2BR') ,(/1/),(/maxcat/), parms4file (:, 6)) ; _VERIFY(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU2') ,(/1/),(/maxcat/), parms4file (:, 7)) ; _VERIFY(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU2') ,(/1/),(/maxcat/), parms4file (:, 8)) ; _VERIFY(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'ATAU5') ,(/1/),(/maxcat/), parms4file (:, 9)) ; _VERIFY(STATUS) 
+         status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BTAU5') ,(/1/),(/maxcat/), parms4file (:,10)) ; _VERIFY(STATUS) 
+         STATUS   = NF_CLOSE (NCID) ; _VERIFY(STATUS)
          DEALLOCATE (parms4file)
       endif
 
@@ -5177,15 +5177,15 @@ END FUNCTION center_pix_int0
     inquire(file='clsm/catchcn_params.nc4', exist=file_exists)
 
     if(file_exists) then
-       status = NF_OPEN ('clsm/catchcn_params.nc4', NF_WRITE, ncid ) ; VERIFY_(STATUS) 
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'NDEP'    ) ,(/1/),(/nland/), ndep_tile      ) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BGALBVR' ) ,(/1/),(/nland/), alb_tile(:,1,1)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BGALBVF' ) ,(/1/),(/nland/), alb_tile(:,2,1)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BGALBNR' ) ,(/1/),(/nland/), alb_tile(:,1,2)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BGALBNF' ) ,(/1/),(/nland/), alb_tile(:,2,2)) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'T2_M'    ) ,(/1/),(/nland/), t2mm_tile      ) ; VERIFY_(STATUS)
-       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'T2_S'    ) ,(/1/),(/nland/), t2mp_tile      ) ; VERIFY_(STATUS)
-       STATUS = NF_CLOSE (NCID) ; VERIFY_(STATUS)
+       status = NF_OPEN ('clsm/catchcn_params.nc4', NF_WRITE, ncid ) ; _VERIFY(STATUS) 
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'NDEP'    ) ,(/1/),(/nland/), ndep_tile      ) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BGALBVR' ) ,(/1/),(/nland/), alb_tile(:,1,1)) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BGALBVF' ) ,(/1/),(/nland/), alb_tile(:,2,1)) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BGALBNR' ) ,(/1/),(/nland/), alb_tile(:,1,2)) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'BGALBNF' ) ,(/1/),(/nland/), alb_tile(:,2,2)) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'T2_M'    ) ,(/1/),(/nland/), t2mm_tile      ) ; _VERIFY(STATUS)
+       status = NF_PUT_VARA_REAL(NCID,NC_VarID(NCID,'T2_S'    ) ,(/1/),(/nland/), t2mp_tile      ) ; _VERIFY(STATUS)
+       STATUS = NF_CLOSE (NCID) ; _VERIFY(STATUS)
     endif
 
     close (10, status ='keep')
@@ -5461,20 +5461,20 @@ END FUNCTION center_pix_int0
       allocate (data_grid (1 : N_lon_clm, 1 : N_lat_clm)) 
       allocate (int_grid  (1 : N_lon_clm, 1 : N_lat_clm)) 
 
-      status  = NF_INQ_VARID (ncid_hdm,'hdm',VarID) ; VERIFY_(STATUS)
-      status  = NF_GET_VARA_REAL (ncid_hdm,VarID,(/1,1,161/),(/N_lon_clm, N_lat_clm, 1/),data_grid(:,:)) ; VERIFY_(STATUS)
+      status  = NF_INQ_VARID (ncid_hdm,'hdm',VarID) ; _VERIFY(STATUS)
+      status  = NF_GET_VARA_REAL (ncid_hdm,VarID,(/1,1,161/),(/N_lon_clm, N_lat_clm, 1/),data_grid(:,:)) ; _VERIFY(STATUS)
       call RegridRasterReal(data_grid, hdm_grid)
 
-      status  = NF_INQ_VARID (ncid_abm,'abm',VarID) ; VERIFY_(STATUS)
-      status  = NF_GET_VARA_INT (ncid_abm,VarID, (/1,1/),(/N_lon_clm, N_lat_clm/), int_grid) ; VERIFY_(STATUS)
+      status  = NF_INQ_VARID (ncid_abm,'abm',VarID) ; _VERIFY(STATUS)
+      status  = NF_GET_VARA_INT (ncid_abm,VarID, (/1,1/),(/N_lon_clm, N_lat_clm/), int_grid) ; _VERIFY(STATUS)
       call RegridRaster (int_grid, abm_grid)
 
-      status  = NF_INQ_VARID (ncid_gdp,'gdp',VarID) ; VERIFY_(STATUS)
-      status  = NF_GET_VARA_REAL (ncid_gdp,VarID, (/1,1/),(/N_lon_clm, N_lat_clm/), data_grid) ; VERIFY_(STATUS)
+      status  = NF_INQ_VARID (ncid_gdp,'gdp',VarID) ; _VERIFY(STATUS)
+      status  = NF_GET_VARA_REAL (ncid_gdp,VarID, (/1,1/),(/N_lon_clm, N_lat_clm/), data_grid) ; _VERIFY(STATUS)
       call RegridRasterReal(data_grid, gdp_grid)
 
-      status  = NF_INQ_VARID (ncid_peatf,'peatf',VarID) ; VERIFY_(STATUS)
-      status  = NF_GET_VARA_REAL (ncid_peatf,VarID, (/1,1/),(/N_lon_clm, N_lat_clm/), data_grid) ; VERIFY_(STATUS)
+      status  = NF_INQ_VARID (ncid_peatf,'peatf',VarID) ; _VERIFY(STATUS)
+      status  = NF_GET_VARA_REAL (ncid_peatf,VarID, (/1,1/),(/N_lon_clm, N_lat_clm/), data_grid) ; _VERIFY(STATUS)
       call RegridRasterReal(data_grid, peatf_grid)
 
       status = NF_CLOSE(ncid_hdm  )
@@ -5630,7 +5630,7 @@ END FUNCTION center_pix_int0
       ! ----------------------------------------
 
       status  = NF_OPEN ('data/CATCH/CLM45/LISOTD_HRMC_V2.3.2014.nc4', NF_NOWRITE, ncid)
-      status  = NF_INQ_VARID (ncid,'HRMC_COM_FR',VarID) ; VERIFY_(STATUS)
+      status  = NF_INQ_VARID (ncid,'HRMC_COM_FR',VarID) ; _VERIFY(STATUS)
 
       allocate (hrmc_grid   (1:NC,1:NR))
       allocate (data_grid (1 : N_lon_clm, 1 : N_lat_clm)) 
@@ -5654,7 +5654,7 @@ END FUNCTION center_pix_int0
          t = k
          if (t == 0 ) t = 12
          if (t == 13) t = 1
-         status  = NF_GET_VARA_REAL (ncid,VarID, (/1,1,t/),(/N_lon_clm, N_lat_clm,1/), data_grid) ; VERIFY_(STATUS)
+         status  = NF_GET_VARA_REAL (ncid,VarID, (/1,1,t/),(/N_lon_clm, N_lat_clm,1/), data_grid) ; _VERIFY(STATUS)
          call RegridRasterReal(data_grid, hrmc_grid)
 
          do j = 1,nr
@@ -5740,13 +5740,13 @@ END FUNCTION center_pix_int0
       close (10,status='keep')
 
       fname =trim(c_data)//'/MODIS_8-DayClim/MODIS_lai_clim.H11V13.nc'
-      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); VERIFY_(STATUS)
-      status = NF_INQ_DIM (ncid,3,string, n_tslices); VERIFY_(STATUS) 
+      status = NF_OPEN(trim(fname),NF_NOWRITE, ncid); _VERIFY(STATUS)
+      status = NF_INQ_DIM (ncid,3,string, n_tslices); _VERIFY(STATUS) 
       allocate (MMDD      (0: n_tslices + 1))
       allocate (MMDD_next (0: n_tslices + 1))
 
-      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); VERIFY_(STATUS)
-      status = NF_CLOSE(ncid); VERIFY_(STATUS)
+      status = NF_GET_VARA_text(ncid, 3,(/1,1/),(/4,n_tslices/),MMDD(1:n_tslices)); _VERIFY(STATUS)
+      status = NF_CLOSE(ncid); _VERIFY(STATUS)
        
       mmdd(0) = mmdd(n_tslices)
       mmdd(n_tslices + 1)= mmdd(1)
@@ -5815,9 +5815,9 @@ END FUNCTION center_pix_int0
          count_lai = 0.
          lai_grid  = -9999
 
-         status  = NF_OPEN (trim(c_data)//trim(lai_name)//ddd//'.nc4', NF_NOWRITE, ncid) ; VERIFY_(STATUS)
-         status  = NF_INQ_VARID (ncid,'LAI',VarID) ; VERIFY_(STATUS)
-         status  = NF_GET_VARA_INT(ncid,VarID, (/1,1/),(/N_lon_glass, N_lat_glass/), net_data1) ; VERIFY_(STATUS)
+         status  = NF_OPEN (trim(c_data)//trim(lai_name)//ddd//'.nc4', NF_NOWRITE, ncid) ; _VERIFY(STATUS)
+         status  = NF_INQ_VARID (ncid,'LAI',VarID) ; _VERIFY(STATUS)
+         status  = NF_GET_VARA_INT(ncid,VarID, (/1,1/),(/N_lon_glass, N_lat_glass/), net_data1) ; _VERIFY(STATUS)
 
          call RegridRasterReal(0.01*real(net_data1), data_grid)
          data_grid2 = 0.01*real(net_data1)
@@ -5948,9 +5948,9 @@ END FUNCTION center_pix_int0
       ! READ GIMMS NDVI source data files and regrid
       ! ----------------------------------------
       
-      status  = NF_OPEN ('data/CATCH/ndvi3g_geo_v1_YYYY_0106.nc4', NF_NOWRITE, ncid1) ; VERIFY_(STATUS)
-      status  = NF_OPEN ('data/CATCH/ndvi3g_geo_v1_YYYY_0712.nc4', NF_NOWRITE, ncid2) ; VERIFY_(STATUS)
-      status  = NF_INQ_VARID (ncid2,'ndvi',VarID) ; VERIFY_(STATUS)
+      status  = NF_OPEN ('data/CATCH/ndvi3g_geo_v1_YYYY_0106.nc4', NF_NOWRITE, ncid1) ; _VERIFY(STATUS)
+      status  = NF_OPEN ('data/CATCH/ndvi3g_geo_v1_YYYY_0712.nc4', NF_NOWRITE, ncid2) ; _VERIFY(STATUS)
+      status  = NF_INQ_VARID (ncid2,'ndvi',VarID) ; _VERIFY(STATUS)
       
       allocate (ndvi_grid   (1:NC,1:NR))
       allocate (data_grid (1 : N_lon_gimms, 1 : N_lat_gimms)) 
@@ -5978,7 +5978,7 @@ END FUNCTION center_pix_int0
             ncid = ncid2
             write(31) float((/yr,mn,16,0,0,0,yr1,mn1,1,0,0,0,NTILES,1/))
 
-            status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,t/),(/N_lon_gimms, N_lat_gimms,1/), data_grid2) ; VERIFY_(STATUS)
+            status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,t/),(/N_lon_gimms, N_lat_gimms,1/), data_grid2) ; _VERIFY(STATUS)
 
             do j = 1,  N_lat_gimms
                data_grid (:,j) =   data_grid2 (:,N_lat_gimms - (j-1)) / real(scale_fac)
@@ -6006,7 +6006,7 @@ END FUNCTION center_pix_int0
             ncid = ncid1
             write(31) float((/yr,mn,1,0,0,0,yr,mn,16,0,0,0,NTILES,1/))
 
-            status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,t/),(/N_lon_gimms, N_lat_gimms,1/), data_grid2) ; VERIFY_(STATUS)
+            status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,t/),(/N_lon_gimms, N_lat_gimms,1/), data_grid2) ; _VERIFY(STATUS)
 
             do j = 1, N_lat_gimms
                data_grid (:,j) = data_grid2 (:,N_lat_gimms - (j-1)) / real(scale_fac)
@@ -6041,7 +6041,7 @@ END FUNCTION center_pix_int0
                ndvi = 0.
                count_pix = 0.
 
-               status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,t/),(/N_lon_gimms, N_lat_gimms,1/), data_grid2) ; VERIFY_(STATUS)
+               status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,t/),(/N_lon_gimms, N_lat_gimms,1/), data_grid2) ; _VERIFY(STATUS)
 
                do j = 1,  N_lat_gimms
                   data_grid (:,j) =   data_grid2 (:,N_lat_gimms - (j-1)) / real(scale_fac)
@@ -6082,9 +6082,9 @@ END FUNCTION center_pix_int0
       character (22)          :: time_stamp
       character (100)         :: MYNAME
 
-      status = NF_CREATE ('clsm/catch_params.nc4'  , NF_NETCDF4, NCCatOUTID  ) ; VERIFY_(STATUS)
-      status = NF_CREATE ('clsm/catchcn_params.nc4', NF_NETCDF4, NCCatCNOUTID) ; VERIFY_(STATUS)
-      status = NF_CREATE ('clsm/vegdyn.data'       , NF_NETCDF4, NCVegOUTID  ) ; VERIFY_(STATUS)
+      status = NF_CREATE ('clsm/catch_params.nc4'  , NF_NETCDF4, NCCatOUTID  ) ; _VERIFY(STATUS)
+      status = NF_CREATE ('clsm/catchcn_params.nc4', NF_NETCDF4, NCCatCNOUTID) ; _VERIFY(STATUS)
+      status = NF_CREATE ('clsm/vegdyn.data'       , NF_NETCDF4, NCVegOUTID  ) ; _VERIFY(STATUS)
 
       status = NF_DEF_DIM(NCCatOUTID  , 'tile' , NF_UNLIMITED, CellID1)
       status = NF_DEF_DIM(NCCatCNOUTID, 'tile' , NF_UNLIMITED, CellID2)
@@ -6170,13 +6170,13 @@ END FUNCTION center_pix_int0
         integer                        :: STATUS, VID
 
         if(present (SubID)) then 
-           status = NF_DEF_VAR(NCFID, trim(VarName) , NF_FLOAT, 2 ,(/CellID, SubID/), vid) ; VERIFY_(STATUS)
+           status = NF_DEF_VAR(NCFID, trim(VarName) , NF_FLOAT, 2 ,(/CellID, SubID/), vid) ; _VERIFY(STATUS)
         else
-           status = NF_DEF_VAR(NCFID, trim(VarName) , NF_FLOAT, 1 ,(/CellID/), vid) ; VERIFY_(STATUS)
+           status = NF_DEF_VAR(NCFID, trim(VarName) , NF_FLOAT, 1 ,(/CellID/), vid) ; _VERIFY(STATUS)
         endif
 
-        status = NF_PUT_ATT_TEXT(NCFID, vid, 'long_name', LEN_TRIM(long_name), trim(long_name)) ; VERIFY_(STATUS)
-        status = NF_PUT_ATT_TEXT(NCFID, vid, 'units'    , LEN_TRIM(units)    , trim(units))     ; VERIFY_(STATUS)
+        status = NF_PUT_ATT_TEXT(NCFID, vid, 'long_name', LEN_TRIM(long_name), trim(long_name)) ; _VERIFY(STATUS)
+        status = NF_PUT_ATT_TEXT(NCFID, vid, 'units'    , LEN_TRIM(units)    , trim(units))     ; _VERIFY(STATUS)
 
 
       END SUBROUTINE DEF_VAR

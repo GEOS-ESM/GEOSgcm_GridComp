@@ -165,8 +165,8 @@ private
                                                        ! lat-lon      = 1
                                                        ! cubed-sphere = 6
 
-    real(REAL8), allocatable           :: DXC(:,:)     ! local C-Gird DeltaX
-    real(REAL8), allocatable           :: DYC(:,:)     ! local C-Gird DeltaY 
+    real(REAL8), allocatable           :: DXC(:,:)     ! local C-Grid DeltaX
+    real(REAL8), allocatable           :: DYC(:,:)     ! local C-Grid DeltaY 
 
     real(REAL8), allocatable           :: AREA(:,:)    ! local cell area
     real(REAL8)                        :: GLOBALAREA   ! global area
@@ -330,41 +330,41 @@ contains
 ! BEGIN
 
   call ESMF_VMGetCurrent(VM, rc=STATUS)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
     call MAPL_MemUtilsWrite(VM, trim(IAm), RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Retrieve the pointer to the state
 ! ---------------------------------
 
   call MAPL_GetObjectFromGC (GC, MAPL,  RC=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
     call MAPL_TimerOn(MAPL,"--FMS_INIT")
     call ESMF_VMGet(VM,mpiCommunicator=comm,rc=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call fms_init(comm)
     call MAPL_TimerOff(MAPL,"--FMS_INIT")
     call MAPL_MemUtilsWrite(VM, 'FV_StateMod: FMS_INIT', RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 ! Start up FV                   
     call MAPL_TimerOn(MAPL,"--FV_INIT")
     call fv_init1(FV_Atm, DT, grids_on_this_pe, p_split)
     call MAPL_TimerOff(MAPL,"--FV_INIT")
     call MAPL_MemUtilsWrite(VM, 'FV_StateMod: FV_INIT', RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
   if (FV_Atm(1)%flagstruct%npz == 1) SW_DYNAMICS = .true.
 
 
 ! FV grid dimensions setup from MAPL
       call MAPL_GetResource( MAPL, FV_Atm(1)%flagstruct%npx, 'AGCM_IM:', default= 32, RC=STATUS )
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetResource( MAPL, FV_Atm(1)%flagstruct%npy, 'AGCM_JM:', default=192, RC=STATUS )
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetResource( MAPL, FV_Atm(1)%flagstruct%npz, 'AGCM_LM:', default= 72, RC=STATUS )
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 ! FV likes npx;npy in terms of cell vertices
       if (FV_Atm(1)%flagstruct%npy == 6*FV_Atm(1)%flagstruct%npx) then
          FV_Atm(1)%flagstruct%ntiles = 6
@@ -377,13 +377,13 @@ contains
       endif
 ! Check for Doubly Periodic Domain Info
       call MAPL_GetResource( MAPL, FV_Atm(1)%flagstruct%deglat, label='FIXED_LATS:', default=FV_Atm(1)%flagstruct%deglat, rc=status )
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 ! MPI decomp setup
       call MAPL_GetResource( MAPL, nx, 'NX:', default=0, RC=STATUS )
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       FV_Atm(1)%layout(1) = nx
       call MAPL_GetResource( MAPL, ny, 'NY:', default=0, RC=STATUS )
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       if (FV_Atm(1)%flagstruct%grid_type == 4) then
          FV_Atm(1)%layout(2) = ny 
       else
@@ -394,13 +394,13 @@ contains
 ! -----------------
 
   call MAPL_GetResource( MAPL, ndt, 'RUN_DT:', default=0, RC=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   DT = ndt
 
 ! Advect tracers within DynCore(AdvCore_Advection=.false.)
 !             or within AdvCore(AdvCore_Advection=.true.)
   call MAPL_GetResource( MAPL, AdvCore_Advection, label='AdvCore_Advection:', default=AdvCore_Advection, rc=status )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_GetResource( MAPL, INT_fix_mass,    label='fix_mass:'    , default=INT_fix_mass, rc=status )
   call MAPL_GetResource( MAPL, INT_check_mass,  label='check_mass:'  , default=INT_check_mass, rc=status )
@@ -484,7 +484,7 @@ contains
    FV_Atm(1)%flagstruct%ke_bg = 0.0
   ! Some default damping options
    FV_Atm(1)%flagstruct%nord = 2
-   FV_Atm(1)%flagstruct%dddmp = 0.2
+   FV_Atm(1)%flagstruct%dddmp = 0.1
    FV_Atm(1)%flagstruct%d4_bg = 0.12
    FV_Atm(1)%flagstruct%d2_bg = 0.0
    FV_Atm(1)%flagstruct%d_ext = 0.0
@@ -574,12 +574,12 @@ contains
     call fv_init2(FV_Atm, DT, grids_on_this_pe, p_split)
     call MAPL_TimerOff(MAPL,"--FV_INIT")
     call MAPL_MemUtilsWrite(VM, 'FV_StateMod: FV_INIT', RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 !! Setup GFDL microphysics module
     call gfdl_cloud_microphys_init()
 
- ASSERT_(DT > 0.0)
+ _ASSERT(DT > 0.0, 'needs informative message')
 
   call WRITE_PARALLEL("Dynamics PE Layout ")
   call WRITE_PARALLEL(FV_Atm(1)%layout(1)    ,format='("NPES_X  : ",(   I3))')
@@ -592,7 +592,7 @@ contains
                     !      if needed, we could compute, ks by count(BK==0.0)
                     !      then FV will try to run slightly more efficient code
                     !      So far, GEOS-5 has used ks = 0
-  ASSERT_(ks <= FV_Atm(1)%flagstruct%NPZ+1)
+  _ASSERT(ks <= FV_Atm(1)%flagstruct%NPZ+1,'needs informative message')
   call WRITE_PARALLEL(ks                          , &
      format='("Number of true pressure levels =", I5)'   )
 
@@ -601,9 +601,9 @@ contains
   prt_minmax     = FV_Atm(1)%flagstruct%fv_debug
 
   call MAPL_MemUtilsWrite(VM, trim(Iam), RC=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
-  RETURN_(ESMF_SUCCESS)
+  _RETURN(ESMF_SUCCESS)
 
 contains
 
@@ -731,10 +731,10 @@ contains
 ! ---------------------------------
 
   call MAPL_GetObjectFromGC (GC, MAPL,  RC=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_GetResource( MAPL, ndt, 'RUN_DT:', default=0, RC=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   DT = ndt
 
   STATE%GRID%FVgenstate => MAPL
@@ -754,7 +754,7 @@ contains
   gid = mpp_pe()
 
   call ESMF_GridCompGet(gc, grid=GRID%GRID, VM=VM, rc=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
   call WRITE_PARALLEL(' ')
   call WRITE_PARALLEL(STATE%DT,format='("Dynamics time step : ",(F10.4))')
@@ -762,30 +762,30 @@ contains
 
 ! Get pointers to internal state vars
   call MAPL_GetPointer(internal, ak, "AK",rc=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_GetPointer(internal, bk, "BK",rc=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_GetPointer(internal, u, "U",rc=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_GetPointer(internal, v, "V",rc=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_GetPointer(internal, pt, "PT",rc=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_GetPointer(internal, pe, "PE",rc=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_GetPointer(internal, pkz, "PKZ",rc=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_GetPointer(internal, dz, "DZ",rc=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_GetPointer(internal, w, "W",rc=status)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call CREATE_VARS ( FV_Atm(1)%bd%isc, FV_Atm(1)%bd%iec, FV_Atm(1)%bd%jsc, FV_Atm(1)%bd%jec,     &
                      1, FV_Atm(1)%flagstruct%npz, FV_Atm(1)%flagstruct%npz+1,            &
                      U, V, PT, PE, PKZ, DZ, W, &
                      STATE%VARS )
   call MAPL_MemUtilsWrite(VM, 'FV_StateMod: CREATE_VARS', RC=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   GRID%IS     = FV_Atm(1)%bd%isc
   GRID%IE     = FV_Atm(1)%bd%iec
@@ -855,18 +855,18 @@ contains
        LONS          = LONS,           & ! These are in radians
        INTERNAL_ESMF_STATE=INTERNAL,   &
                              RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
   STATE%CLOCK => CLOCK
   call ESMF_TimeIntervalSet(Time2Run, &
                             S=nint(STATE%DT), rc=status)
-  VERIFY_(status)
+  _VERIFY(status)
 
   STATE%ALARMS(TIME_TO_RUN) = ESMF_AlarmCreate(name="Time2Run", clock=clock, &
                               ringInterval=Time2Run, &
-                              Enabled=.TRUE., rc=status) ; VERIFY_(status)
-  call ESMF_AlarmEnable(STATE%ALARMS(TIME_TO_RUN), rc=status); VERIFY_(status)
-  call ESMF_AlarmRingerOn(STATE%ALARMS(TIME_TO_RUN), rc=status); VERIFY_(status)
+                              Enabled=.TRUE., rc=status) ; _VERIFY(status)
+  call ESMF_AlarmEnable(STATE%ALARMS(TIME_TO_RUN), rc=status); _VERIFY(status)
+  call ESMF_AlarmRingerOn(STATE%ALARMS(TIME_TO_RUN), rc=status); _VERIFY(status)
 
   call WRITE_PARALLEL(' ')
   call WRITE_PARALLEL(STATE%DT, &
@@ -878,9 +878,9 @@ contains
   STATE%NUM_CALLS = 0
 
   call ESMF_ClockGet( CLOCK, currTime=fv_time, rc=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call ESMF_TimeGet( fv_time, dayOfYear=days, s=seconds, rc=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   ! ---------------------------------------
   ! Create alarm for dry mass fix reporting
@@ -889,7 +889,7 @@ contains
   ! Set an interval for printing. Currently hard-coded to
   ! six hours, but could be a MAPL_GetResource value 
   call ESMF_TimeIntervalSet(MassAlarmInt, H=6, rc=STATUS)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   ! Create the alarm with the above interval
   MASSALARM = ESMF_AlarmCreate(CLOCK = CLOCK, &
@@ -900,10 +900,10 @@ contains
      Enabled      = .true.,                   &
      sticky       = .false.,                  &
      RC           = STATUS                    )
-  VERIFY_(STATUS) 
+  _VERIFY(STATUS) 
 
   call MAPL_GetPointer ( import, phis, 'PHIS', RC=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
  ! Set FV3 surface geopotential
   FV_Atm(1)%phis(isc:iec,jsc:jec) = real(phis,kind=REAL8)
@@ -1036,9 +1036,9 @@ contains
   endif
 
   call MAPL_MemUtilsWrite(VM, 'FV_StateMod: FV Initialize', RC=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
-  RETURN_(ESMF_SUCCESS)
+  _RETURN(ESMF_SUCCESS)
 
 end subroutine FV_InitState
 
@@ -1123,12 +1123,12 @@ subroutine FV_Run (STATE, CLOCK, GC, RC)
 ! ---------------------------------
 
   call MAPL_GetObjectFromGC (GC, MAPL,  RC=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call ESMF_ClockGet( CLOCK, currTime=fv_time, rc=STATUS ) 
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call ESMF_TimeGet( fv_time, dayOfYear=days, s=seconds, rc=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   time_total = days*86400. + seconds
 
@@ -1159,7 +1159,7 @@ subroutine FV_Run (STATE, CLOCK, GC, RC)
          if (TRIM(state%vars%tracer(n)%tname) == 'QILS'    ) nwat_tracers = nwat_tracers + 1
        enddo
       ! We must have these first 5 at a minimum
-       ASSERT_(nwat_tracers == 5)
+       _ASSERT(nwat_tracers == 5, 'needs informative message')
       ! Check for CLLS, CLCN, QRAIN, QSNOW, QGRAUPEL
        do n=1,STATE%GRID%NQ
          if (TRIM(state%vars%tracer(n)%tname) == 'CLLS'    ) nwat_tracers = nwat_tracers + 1
@@ -1176,7 +1176,7 @@ subroutine FV_Run (STATE, CLOCK, GC, RC)
          endif
        endif
        if (FV_Atm(1)%flagstruct%do_sat_adj) then
-          ASSERT_(FV_Atm(1)%flagstruct%nwat == 6)
+          _ASSERT(FV_Atm(1)%flagstruct%nwat == 6, 'needs informative message')
        endif
        STATE%VARS%nwat = FV_Atm(1)%flagstruct%nwat
      endif
@@ -1190,7 +1190,7 @@ subroutine FV_Run (STATE, CLOCK, GC, RC)
                    (FV_Atm(1)%flagstruct%nwat == 1) .OR. &
                    (FV_Atm(1)%flagstruct%nwat == 3) .OR. &
                    (FV_Atm(1)%flagstruct%nwat == 6) )
-     ASSERT_( NWAT_TEST )
+     _ASSERT( NWAT_TEST , 'needs informative message')
      select case ( FV_Atm(1)%flagstruct%nwat )
      case (6) 
           FV_Atm(1)%ncnst = STATE%GRID%NQ + 3 ! NQ + Combined QLIQ,QICE,QCLD
@@ -1245,16 +1245,16 @@ subroutine FV_Run (STATE, CLOCK, GC, RC)
   if (.not. ADIABATIC) then
     select case ( FV_Atm(1)%flagstruct%nwat )
     case (0)
-       ASSERT_(FV_Atm(1)%ncnst == STATE%GRID%NQ)
+       _ASSERT(FV_Atm(1)%ncnst == STATE%GRID%NQ, 'needs informative message')
     case (1)
-       ASSERT_(FV_Atm(1)%ncnst >= 5)
-       ASSERT_(FV_Atm(1)%ncnst == STATE%GRID%NQ)
+       _ASSERT(FV_Atm(1)%ncnst >= 5, 'needs informative message')
+       _ASSERT(FV_Atm(1)%ncnst == STATE%GRID%NQ, 'needs informative message')
     case (3)
-       ASSERT_(FV_Atm(1)%ncnst >= 7)
-       ASSERT_(FV_Atm(1)%ncnst == STATE%GRID%NQ + 2)
+       _ASSERT(FV_Atm(1)%ncnst >= 7, 'needs informative message')
+       _ASSERT(FV_Atm(1)%ncnst == STATE%GRID%NQ + 2, 'needs informative message')
     case (6)
-       ASSERT_(FV_Atm(1)%ncnst >= 13)
-       ASSERT_(FV_Atm(1)%ncnst == STATE%GRID%NQ + 3)
+       _ASSERT(FV_Atm(1)%ncnst >= 13, 'needs informative message')
+       _ASSERT(FV_Atm(1)%ncnst == STATE%GRID%NQ + 3, 'needs informative message')
     end select
     FV_Atm(1)%q(:,:,:,:) = 0.0
     if (FV_Atm(1)%flagstruct%nwat > 0) then
@@ -1410,36 +1410,36 @@ subroutine FV_Run (STATE, CLOCK, GC, RC)
    ! Verify
     select case (FV_Atm(1)%flagstruct%nwat)
     case (6)
-      ASSERT_(nn == 13) ! Q, QLCN, QLLS, QICN, QILS, CLLS, CLCN, QRAIN, QSNOW, QGRAUPEL, QLIQ, QICE, QCLD
-      ASSERT_(SPHU_FILLED)
-      ASSERT_(QLIQ_FILLED)
-      ASSERT_(QICE_FILLED)
-      ASSERT_(RAIN_FILLED)
-      ASSERT_(SNOW_FILLED)
-      ASSERT_(GRPL_FILLED)
-      ASSERT_(QCLD_FILLED)
-      ASSERT_(QLCN_FILLED)
-      ASSERT_(QLLS_FILLED)
-      ASSERT_(QICN_FILLED)
-      ASSERT_(QILS_FILLED)
-      ASSERT_(CLCN_FILLED)
-      ASSERT_(CLLS_FILLED)
+      _ASSERT(nn == 13, 'needs informative message') ! Q, QLCN, QLLS, QICN, QILS, CLLS, CLCN, QRAIN, QSNOW, QGRAUPEL, QLIQ, QICE, QCLD
+      _ASSERT(SPHU_FILLED, 'needs informative message')
+      _ASSERT(QLIQ_FILLED, 'needs informative message')
+      _ASSERT(QICE_FILLED, 'needs informative message')
+      _ASSERT(RAIN_FILLED, 'needs informative message')
+      _ASSERT(SNOW_FILLED, 'needs informative message')
+      _ASSERT(GRPL_FILLED, 'needs informative message')
+      _ASSERT(QCLD_FILLED, 'needs informative message')
+      _ASSERT(QLCN_FILLED, 'needs informative message')
+      _ASSERT(QLLS_FILLED, 'needs informative message')
+      _ASSERT(QICN_FILLED, 'needs informative message')
+      _ASSERT(QILS_FILLED, 'needs informative message')
+      _ASSERT(CLCN_FILLED, 'needs informative message')
+      _ASSERT(CLLS_FILLED, 'needs informative message')
     case (3)
-      ASSERT_(nn == 7) ! Q, QLCN, QLLS, QICN, QILS, QLIQ, QICE
-      ASSERT_(SPHU_FILLED)
-      ASSERT_(QLIQ_FILLED)
-      ASSERT_(QICE_FILLED)
-      ASSERT_(QLCN_FILLED)
-      ASSERT_(QLLS_FILLED)
-      ASSERT_(QICN_FILLED)
-      ASSERT_(QILS_FILLED)
+      _ASSERT(nn == 7, 'needs informative message') ! Q, QLCN, QLLS, QICN, QILS, QLIQ, QICE
+      _ASSERT(SPHU_FILLED, 'needs informative message')
+      _ASSERT(QLIQ_FILLED, 'needs informative message')
+      _ASSERT(QICE_FILLED, 'needs informative message')
+      _ASSERT(QLCN_FILLED, 'needs informative message')
+      _ASSERT(QLLS_FILLED, 'needs informative message')
+      _ASSERT(QICN_FILLED, 'needs informative message')
+      _ASSERT(QILS_FILLED, 'needs informative message')
     case (1)
-      ASSERT_(nn == 5) ! Q, QLCN, QLLS, QICN, QILS
-      ASSERT_(SPHU_FILLED)
-      ASSERT_(QLCN_FILLED)
-      ASSERT_(QLLS_FILLED)
-      ASSERT_(QICN_FILLED)
-      ASSERT_(QILS_FILLED)
+      _ASSERT(nn == 5, 'needs informative message') ! Q, QLCN, QLLS, QICN, QILS
+      _ASSERT(SPHU_FILLED, 'needs informative message')
+      _ASSERT(QLCN_FILLED, 'needs informative message')
+      _ASSERT(QLLS_FILLED, 'needs informative message')
+      _ASSERT(QICN_FILLED, 'needs informative message')
+      _ASSERT(QILS_FILLED, 'needs informative message')
     end select
     endif !nwat > 0
       select case (FV_Atm(1)%flagstruct%nwat)
@@ -1503,7 +1503,7 @@ subroutine FV_Run (STATE, CLOCK, GC, RC)
          endif
        enddo
       end select
-      ASSERT_(nn == FV_Atm(1)%ncnst)
+      _ASSERT(nn == FV_Atm(1)%ncnst, 'needs informative message')
   else
     if (mpp_pe()==0) print*, 'Running In Adiabatic Mode'
       do n=1,STATE%GRID%NQ
@@ -1514,7 +1514,7 @@ subroutine FV_Run (STATE, CLOCK, GC, RC)
             FV_Atm(1)%q(isc:iec,jsc:jec,1:npz,nn) = state%vars%tracer(n)%content(:,:,:)
          endif
       enddo
-      ASSERT_(nn == FV_Atm(1)%ncnst)
+      _ASSERT(nn == FV_Atm(1)%ncnst, 'needs informative message')
   endif
 
     myDT = state%dt
@@ -1528,7 +1528,7 @@ subroutine FV_Run (STATE, CLOCK, GC, RC)
 
     ! Query for PSDRY from AGCM.rc and set to MAPL_PSDRY if not found
     call MAPL_GetResource( MAPL, massD0, 'PSDRY:', default=MAPL_PSDRY, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     FV_Atm(1)%flagstruct%dry_mass = massD0
 
     if (fv_first_run) then
@@ -1866,36 +1866,36 @@ subroutine FV_Run (STATE, CLOCK, GC, RC)
    ! Verify
     select case (FV_Atm(1)%flagstruct%nwat)
     case (6)
-      ASSERT_(nn == 13) ! Q, QLCN, QLLS, QICN, QILS, CLLS, CLCN, QRAIN, QSNOW, QGRAUPEL, QLIQ, QICE, QCLD
-      ASSERT_(SPHU_FILLED)
-      ASSERT_(QLIQ_FILLED)
-      ASSERT_(QICE_FILLED)
-      ASSERT_(RAIN_FILLED)
-      ASSERT_(SNOW_FILLED)
-      ASSERT_(GRPL_FILLED)
-      ASSERT_(QCLD_FILLED)
-      ASSERT_(QLCN_FILLED)
-      ASSERT_(QLLS_FILLED)
-      ASSERT_(QICN_FILLED)
-      ASSERT_(QILS_FILLED)
-      ASSERT_(CLCN_FILLED)
-      ASSERT_(CLLS_FILLED)
+      _ASSERT(nn == 13, 'needs informative message') ! Q, QLCN, QLLS, QICN, QILS, CLLS, CLCN, QRAIN, QSNOW, QGRAUPEL, QLIQ, QICE, QCLD
+      _ASSERT(SPHU_FILLED, 'needs informative message')
+      _ASSERT(QLIQ_FILLED, 'needs informative message')
+      _ASSERT(QICE_FILLED, 'needs informative message')
+      _ASSERT(RAIN_FILLED, 'needs informative message')
+      _ASSERT(SNOW_FILLED, 'needs informative message')
+      _ASSERT(GRPL_FILLED, 'needs informative message')
+      _ASSERT(QCLD_FILLED, 'needs informative message')
+      _ASSERT(QLCN_FILLED, 'needs informative message')
+      _ASSERT(QLLS_FILLED, 'needs informative message')
+      _ASSERT(QICN_FILLED, 'needs informative message')
+      _ASSERT(QILS_FILLED, 'needs informative message')
+      _ASSERT(CLCN_FILLED, 'needs informative message')
+      _ASSERT(CLLS_FILLED, 'needs informative message')
     case (3)
-      ASSERT_(nn == 7) ! Q, QLCN, QLLS, QICN, QILS, QLIQ, QICE
-      ASSERT_(SPHU_FILLED)
-      ASSERT_(QLIQ_FILLED)
-      ASSERT_(QICE_FILLED)
-      ASSERT_(QLCN_FILLED)
-      ASSERT_(QLLS_FILLED)
-      ASSERT_(QICN_FILLED)
-      ASSERT_(QILS_FILLED)
+      _ASSERT(nn == 7, 'needs informative message') ! Q, QLCN, QLLS, QICN, QILS, QLIQ, QICE
+      _ASSERT(SPHU_FILLED, 'needs informative message')
+      _ASSERT(QLIQ_FILLED, 'needs informative message')
+      _ASSERT(QICE_FILLED, 'needs informative message')
+      _ASSERT(QLCN_FILLED, 'needs informative message')
+      _ASSERT(QLLS_FILLED, 'needs informative message')
+      _ASSERT(QICN_FILLED, 'needs informative message')
+      _ASSERT(QILS_FILLED, 'needs informative message')
     case (1)
-      ASSERT_(nn == 5) ! Q, QLCN, QLLS, QICN, QILS
-      ASSERT_(SPHU_FILLED)
-      ASSERT_(QLCN_FILLED)
-      ASSERT_(QLLS_FILLED)
-      ASSERT_(QICN_FILLED)
-      ASSERT_(QILS_FILLED)
+      _ASSERT(nn == 5, 'needs informative message') ! Q, QLCN, QLLS, QICN, QILS
+      _ASSERT(SPHU_FILLED, 'needs informative message')
+      _ASSERT(QLCN_FILLED, 'needs informative message')
+      _ASSERT(QLLS_FILLED, 'needs informative message')
+      _ASSERT(QICN_FILLED, 'needs informative message')
+      _ASSERT(QILS_FILLED, 'needs informative message')
     end select
 
       select case(FV_Atm(1)%flagstruct%nwat)
@@ -1959,7 +1959,7 @@ subroutine FV_Run (STATE, CLOCK, GC, RC)
         endif
        enddo
       end select
-      ASSERT_(nn == FV_Atm(1)%ncnst)
+      _ASSERT(nn == FV_Atm(1)%ncnst, 'needs informative message')
   else
       do n=1,STATE%GRID%NQ
          nn=nn+1
@@ -1969,12 +1969,12 @@ subroutine FV_Run (STATE, CLOCK, GC, RC)
             state%vars%tracer(n)%content(:,:,:) = FV_Atm(1)%q(isc:iec,jsc:jec,1:npz,nn)
          endif
       enddo
-      ASSERT_(nn == FV_Atm(1)%ncnst)
+      _ASSERT(nn == FV_Atm(1)%ncnst, 'needs informative message')
   endif
 
     if (DEBUG) call debug_fv_state('After Dynamics Execution',STATE)
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
 
 end subroutine FV_Run
 

@@ -20,7 +20,6 @@ module fv_regridding_utils
    public remap_scalar
    public fv_rst
    public copy_fv_rst
-   public simple_cs_grid_creator
 
    real(FVPRC), parameter :: PI           = MAPL_PI_R8
    real(FVPRC), parameter :: OMEGA        = MAPL_OMEGA
@@ -34,8 +33,8 @@ module fv_regridding_utils
    type fv_var
       character(len=128)   :: name
       integer              :: nlev
-      real(REAL8), pointer :: ptr2d(:,:) => null()
-      real(REAL8), pointer :: ptr3d(:,:,:) => null()
+      real(FVPRC), pointer :: ptr2d(:,:) => null()
+      real(FVPRC), pointer :: ptr3d(:,:,:) => null()
    end type fv_var
 
    type fv_rst
@@ -253,44 +252,6 @@ subroutine remap_edge(q1,q2,is,ie,km,kn,ak,bk)
    enddo
 
 end subroutine remap_edge
-
-function simple_cs_grid_creator(IM_World,JM_World,NX,NY,rc) result(esmfgrid)
-
-   integer,           intent(IN)    :: IM_WORLD, JM_WORLD
-   integer,           intent(IN)    :: NX, NY
-   integer, optional, intent(OUT)   :: rc
-   type (ESMF_Grid)                 :: esmfgrid
-
-   integer, allocatable             :: IMS(:), JMS(:)
-   integer                          :: n
-   integer                          :: STATUS
-   character(len=ESMF_MAXSTR), parameter :: Iam="simple_cs_grid_creator"
-
-   allocate( IMS(0:NX-1) )
-   allocate( JMS(0:NY-1) )
-
-   call MAPL_DecomposeDim ( IM_WORLD  , IMS             , NX  , symmetric=.true. )
-   call MAPL_DecomposeDim ( JM_WORLD/6, JMS(0:NY/6 -1)  , NY/6, symmetric=.true. )
-   do n=2,6
-      JMS((n-1)*NY/6 : n*NY/6 -1) = JMS(0:NY/6 -1)
-   enddo
-
-   esmfgrid = ESMF_GridCreate(             &
-        name="dummy",                  &
-        countsPerDEDim1=IMS,           &
-        countsPerDEDim2=JMS,           &
-        indexFlag = ESMF_INDEX_USER,   &
-        gridMemLBound = (/1,1/),       &
-        gridEdgeLWidth = (/0,0/),      &
-        gridEdgeUWidth = (/0,0/),      &
-        coordDep1 = (/1,2/),           &
-        coordDep2 = (/1,2/),           &
-        rc=status)
-   VERIFY_(STATUS)
-
-   RETURN_(ESMF_SUCCESS)
-
-end function simple_cs_grid_creator
 
 end module fv_regridding_utils
 

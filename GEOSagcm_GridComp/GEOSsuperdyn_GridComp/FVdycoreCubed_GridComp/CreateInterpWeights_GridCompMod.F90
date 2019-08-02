@@ -57,19 +57,19 @@ contains
     character(len=ESMF_MAXSTR)       :: COMP_NAME
 
     call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam = trim(COMP_NAME) // "SetServices"
  
     call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_INITIALIZE,  Initialize, rc=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
  
 ! Generic SetServices
 !--------------------
 
     call MAPL_GenericSetServices( GC, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
 
   end subroutine SetServices
 
@@ -111,17 +111,17 @@ contains
 
     Iam = "Initialize"
     call ESMF_GridCompGet( GC, name=COMP_NAME, CONFIG=CF, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
 ! Call Generic Initialize
 !------------------------
 
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GetObjectFromGC (GC, MAPL,  RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call ESMF_VMGetCurrent(VM, rc=status)
 
@@ -129,10 +129,10 @@ contains
 
   write(strTxt,'(A,i5.5)') trim(Iam), __LINE__
   call MAPL_MemUtilsWrite(VM, strTxt, RC=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
     call MAPL_GetResource ( MAPL, layout_file, 'LAYOUT:', default='weights.rc', rc=status )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call ESMF_ConfigLoadFile( cf, LAYOUT_FILE, rc = rc )
     call ESMF_ConfigGetAttribute   ( cf, npx, label = 'npx:', default=180, rc = rc )
     npy = npx*6
@@ -158,7 +158,7 @@ contains
     call cube2latlon(npx, npy, nlon, nlat, data_cs, data_ll)
     deallocate( data_ll, data_cs )
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
   end subroutine Initialize
  
 end module CreateInterpWeights_GridCompMod

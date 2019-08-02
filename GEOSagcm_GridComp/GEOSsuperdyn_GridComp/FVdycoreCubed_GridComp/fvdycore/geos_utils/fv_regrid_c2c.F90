@@ -1,7 +1,7 @@
 module fv_regrid_c2c
 
 #ifdef MAPL_MODE
-#define DEALLOCGLOB_(A) if(associated(A)) then;A=0;call MAPL_DeAllocNodeArray(A,rc=STATUS);if(STATUS==MAPL_NoShm) deallocate(A,stat=STATUS);NULLIFY(A);endif
+#define DEALLOCGLOB_(A) if(associated(A)) then;A=0;if(MAPL_ShmInitialized) then; call MAPL_DeAllocNodeArray(A,rc=status);else; deallocate(A);endif;NULLIFY(A);endif
 #endif
 
    use fv_arrays_mod,  only: REAL4, REAL8, FVPRC
@@ -16,8 +16,14 @@ module fv_regrid_c2c
    use MAPL_MOD,          only: MAPL_PI_R8, MAPL_OMEGA, MAPL_GRAV, &
          MAPL_KAPPA, MAPL_RGAS, MAPL_RVAP, &
          MAPL_CP
+   use MAPL_GridManagerMod
+   use MAPL_RegridderManagerMod
+   use MAPL_CubedSphereGridFactoryMod
+   use MAPL_AbstractRegridderMod
+   use MAPL_RegridderSpecMod
    use MAPL_IOMod
    use MAPL_ShmemMod
+   use pFIO
    use, intrinsic :: iso_fortran_env, only: REAL64, REAL32
 
    use fv_arrays_mod,     only: fv_atmos_type, fv_grid_type, fv_grid_bounds_type, FVPRC, REAL4, REAL8
@@ -34,8 +40,7 @@ module fv_regrid_c2c
    use mpp_mod,           only: mpp_pe
    use memutils_mod, only: print_memuse_stats
    use fv_regridding_utils
-   use pFIO_StringVectorMod
-   use pFIO_StringIntegerMapMod
+   use ESMF
 
    implicit none
 
@@ -63,11 +68,12 @@ module fv_regrid_c2c
 
 contains
 
-   subroutine get_geos_ic( Atm, extra_rst, rstcube)
+   subroutine get_geos_ic( Atm, extra_rst, rstcube, gridOut)
 
       type(fv_atmos_type), intent(inout) :: Atm(:)
       type(fv_rst), pointer, intent(inout) :: extra_rst(:)
       logical :: rstcube
+      type(ESMF_Grid), intent(inout) :: gridOut
       real(FVPRC):: alpha = 0.
       integer i,j
       logical :: cubed_sphere,fv_diag_ic
@@ -99,14 +105,14 @@ contains
          if (extra_rst(i)%have_descriptor) then
             do j=1,size(extra_rst(i)%vars)
                if (extra_rst(i)%vars(j)%nLev/=1) then
-                  allocate(extra_rst(i)%vars(j)%ptr3d(isd:ied,jsd:jed,extra_rst(i)%vars(j)%nLev),source=0.0d0 )
+                  allocate(extra_rst(i)%vars(j)%ptr3d(isd:ied,jsd:jed,extra_rst(i)%vars(j)%nLev),source=0.0 )
                else
-                  allocate(extra_rst(i)%vars(j)%ptr2d(isd:ied,jsd:jed), source=0.0d0 )
+                  allocate(extra_rst(i)%vars(j)%ptr2d(isd:ied,jsd:jed), source=0.0 )
                end if
             enddo
          else
             do j=1,size(extra_rst(i)%vars) 
-               allocate(extra_rst(i)%vars(j)%ptr3d(isd:ied,jsd:jed,extra_rst(i)%vars(j)%nLev),source=0.0d0 )
+               allocate(extra_rst(i)%vars(j)%ptr3d(isd:ied,jsd:jed,extra_rst(i)%vars(j)%nLev),source=0.0 )
             enddo 
          end if
       enddo
@@ -118,7 +124,7 @@ contains
       else
          if (allocated(Atm(1)%q)) deallocate( Atm(1)%q )
          allocate  ( Atm(1)%q(isd:ied,jsd:jed,Atm(1)%npz,Atm(1)%ncnst) )
-         call get_geos_cubed_ic( Atm, extra_rst )
+         call get_geos_cubed_ic( Atm, extra_rst, gridOut )
       endif
 
       call prt_maxmin('T', Atm(1)%pt, is, ie, js, je, ng, Atm(1)%npz, 1.0_FVPRC)
@@ -132,12 +138,13 @@ contains
 
    end subroutine get_geos_ic
 
-   subroutine get_geos_cubed_ic( Atm, extra_rst )
+   subroutine get_geos_cubed_ic( Atm, extra_rst, gridOut )
       use GHOST_CUBSPH_mod,  only : A_grid, ghost_cubsph_update
       use CUB2CUB_mod,    only: get_c2c_weight,                 &
             interpolate_c2c
       type(fv_atmos_type), intent(inout) :: Atm(:)
       type(fv_rst), pointer, intent(inout) :: extra_rst(:)
+      type(ESMF_Grid), intent(inout) :: gridOut
 
       character(len=128) :: fname, fname1
       real(FVPRC), allocatable:: pkz0(:,:)
@@ -157,8 +164,7 @@ contains
 
       real(REAL64), allocatable :: akbk_r8(:)
 
-      real(REAL64), dimension(:,:,:,:), allocatable :: corner_in, corner_out, weight_c2c
-      integer, dimension(:,:,:,:), allocatable :: index_c2c
+      real(REAL64), dimension(:,:,:,:), allocatable :: corner_in, corner_out
 
       integer :: is_i,ie_i, js_i,je_i
       integer :: isd_i,ied_i, jsd_i,jed_i
@@ -175,21 +181,31 @@ contains
 
       integer            :: filetype,nqmap
       logical            :: isNC4
-      type(MAPL_NCIO)    :: ncio
+      type(Netcdf4_Fileformatter) :: formatter
+      type(FileMetadata), allocatable :: cfg(:)
       integer            :: nDims, nVars, ivar, dimSizes(3)
       character(len=128) :: vname
       real(FVPRC),   allocatable  :: gslice_r4(:,:)
       real*8, allocatable  :: gslice_r8(:,:)
-      integer            :: tileoff,lvar_cnt,ifile,nlev,dimSize(3)
+      integer            :: tileoff,lvar_cnt,ifile,nlev
       type(fv_rst), pointer :: tracer_bundles(:) => null()
 
 !bma added
+      character(len=:), pointer :: var_name
+      type(StringVariableMap), pointer :: variables
+      type(Variable), pointer :: myVariable
+      type(StringVector) :: all_moist_vars 
+      type(StringVector), pointer :: var_dimensions
+      type(StringVectorIterator) :: siter
       type(StringVector) :: moist_variables
       type(StringIntegerMap) :: moist_tracers
       integer, pointer :: iptr
       character(len=:), pointer :: cptr
       type(StringIntegerMapIterator) :: iter
       character(len=128) :: moist_order(9) = (/"Q   ","QLLS","QLCN","CLLS","CLCN","QILS","QICN","NCPL","NCPI"/)
+      type(CubedSphereGridFactory) :: cs_factory
+      type(ESMF_Grid) :: gridIn
+      class(AbstractRegridder), pointer :: regridder=>null()
 
       npx = Atm(1)%npx
       npy = Atm(1)%npy
@@ -212,9 +228,13 @@ contains
 
          if (isNC4) then
 
-            NCIO = MAPL_NCIOOpen(fname)
-            call MAPL_NCIOGetDimSizes(NCIO,lon=im,lat=jm,lev=km)
-            allocate(gslice_r8(im,jm))
+            allocate(cfg(1))
+            call formatter%open(fname,pFIO_READ,rc=status)
+            cfg(1) = formatter%read(rc=status)
+            im =cfg(1)%get_dimension('lon',rc=status)
+            jm =cfg(1)%get_dimension('lat',rc=status)
+            km =cfg(1)%get_dimension('lev',rc=status)
+            allocate(gslice_r8(im,jm),stat=status)
 
          else
 
@@ -240,6 +260,9 @@ contains
                   & field not found')
          endif
 
+         cs_factory = CubedSphereGridFactory(nx=Atm(1)%layout(1),ny=Atm(1)%layout(2),im_world=im,lm=km)
+         gridIn = grid_manager%make_grid(cs_factory,rc=status)
+         regridder => new_regridder_manager%make_regridder(gridIn,gridOut,REGRID_METHOD_BILINEAR,rc=status)
 !--------------------------------------------------------------------!
 ! setup input cubed-sphere domain                                    !
 !--------------------------------------------------------------------!
@@ -264,18 +287,6 @@ contains
             enddo
          enddo
          call print_memuse_stats('get_geos_cubed_ic: init corner_out')
-!--------------------------------------------------------------------!
-! calculate weights and indices from bilinear interpolation          !
-! from grid_in to grid_out                                           !
-!--------------------------------------------------------------------!
-         allocate(index_c2c (3, is:ie, js:je, tile:tile))
-         allocate(weight_c2c(4, is:ie, js:je, tile:tile))
-         call get_c2c_weight(ntiles, im+1, (jm/6)+1, &
-               is_i, ie_i, js_i, je_i, isd_i, ied_i, jsd_i, jed_i, &
-               corner_in(:,is_i:ie_i+1,js_i:je_i+1,tile), &
-               npx, npy, is,ie, js,je, tile,tile, &
-               corner_out(:,is:ie+1,js:je+1,tile:tile), &
-               index_c2c,  weight_c2c, domain_i)
          npts = im
          call print_memuse_stats('get_geos_cubed_ic: get_c2c_weight')
 
@@ -283,13 +294,13 @@ contains
          allocate ( bk0(km+1) )
          allocate ( akbk_r8(km+1) )
          if (isNC4) then
-            call MAPL_VarRead(NCIO,"AK",akbk_r8)
+            call MAPL_VarRead(formatter,"AK",akbk_r8)
          else
             read (IUNIT, IOSTAT=status) akbk_r8
          end if
          ak0 = akbk_r8
          if (isNC4) then
-            call MAPL_VarRead(NCIO,"BK",akbk_r8)
+            call MAPL_VarRead(formatter,"BK",akbk_r8)
          else
             read (IUNIT, IOSTAT=status) akbk_r8
          end if
@@ -304,7 +315,7 @@ contains
          if (isNC4) then
             tileoff = (tile-1)*(jm/ntiles)
             do k=1,km
-               call MAPL_VarRead(NCIO,"U",gslice_r8,lev=k)
+               call MAPL_VarRead(formatter,"U",gslice_r8,lev=k)
                u0(is_i:ie_i,js_i:je_i,k) = gslice_r8(is_i:ie+i,tileoff+js_i:tileoff+je_i)
             enddo
          else
@@ -320,7 +331,7 @@ contains
          if (isNC4) then
             tileoff = (tile-1)*(jm/ntiles)
             do k=1,km
-               call MAPL_VarRead(NCIO,"V",gslice_r8,lev=k)
+               call MAPL_VarRead(formatter,"V",gslice_r8,lev=k)
                v0(is_i:ie_i,js_i:je_i,k) = gslice_r8(is_i:ie+i,tileoff+js_i:tileoff+je_i)
             enddo
          else
@@ -355,7 +366,7 @@ contains
          allocate ( va(is:ie,js:je,km) )
          call interp_c2c_vect(npts, npts, npx-1, npy-1, km, ntiles, domain_i, &
                is,ie, js,je, isd_i,ied_i, jsd_i,jed_i, is_i,ie_i, js_i,je_i, &
-               u0, v0, ua, va, index_c2c, weight_c2c, corner_in(:,is_i:ie_i+1,js_i:je_i+1,tile), corner_out, Atm(1)%gridstruct)
+               u0, v0, ua, va, regridder, corner_in(:,is_i:ie_i+1,js_i:je_i+1,tile), corner_out, Atm(1)%gridstruct)
          deallocate ( v0 )
          deallocate ( u0 )
          deallocate ( corner_in )
@@ -366,7 +377,7 @@ contains
          if (isNC4) then
             tileoff = (tile-1)*(jm/ntiles)
             do k=1,km
-               call MAPL_VarRead(NCIO,"PT",gslice_r8,lev=k)
+               call MAPL_VarRead(formatter,"PT",gslice_r8,lev=k)
                t0(is_i:ie_i,js_i:je_i,k) = gslice_r8(is_i:ie+i,tileoff+js_i:tileoff+je_i)
             enddo
          else
@@ -379,7 +390,7 @@ contains
          ps0(:,:) = 0.0
          if (isNC4) then
             tileoff = (tile-1)*(jm/ntiles)
-            call MAPL_VarRead(NCIO,"PE",gslice_r8,lev=km+1)
+            call MAPL_VarRead(formatter,"PE",gslice_r8,lev=km+1)
             ps0(is_i:ie_i,js_i:je_i) = gslice_r8(is_i:ie+i,tileoff+js_i:tileoff+je_i)
          else
             slice_2d = npts*npts*ntiles
@@ -396,7 +407,7 @@ contains
          if (isNC4) then
             tileoff = (tile-1)*(jm/ntiles)
             do k=1,km
-               call MAPL_VarRead(NCIO,"PKZ",gslice_r8,lev=k)
+               call MAPL_VarRead(formatter,"PKZ",gslice_r8,lev=k)
                pkz0(is_i:ie_i,js_i:je_i) = gslice_r8(is_i:ie+i,tileoff+js_i:tileoff+je_i)
                t0(is_i:ie_i,js_i:je_i,k) = t0(is_i:ie_i,js_i:je_i,k)*pkz0(is_i:ie_i,js_i:je_i)
             enddo
@@ -412,7 +423,8 @@ contains
          deallocate ( pkz0 )
 
          if (isNC4) then
-            call MAPL_NCIOClose(NCIO,destroy=.true.)
+            call formatter%close()
+            deallocate(cfg)
             deallocate(gslice_r8)
          end if
 
@@ -443,29 +455,11 @@ contains
 
 ! Horiz Interp for surface pressure 
          call prt_maxmin('PS_geos', ps0, is_i, ie_i, js_i, je_i, ng_i, 1, 1.0_FVPRC)
-         do j=js,je
-            do i=is,ie
-               ic=index_c2c(1,i,j,tile)
-               jc=index_c2c(2,i,j,tile)
-               psc(i,j)=weight_c2c(1,i,j,tile)*ps0(ic  ,jc  )  &      
-                     +weight_c2c(2,i,j,tile)*ps0(ic  ,jc+1)  &
-                     +weight_c2c(3,i,j,tile)*ps0(ic+1,jc+1)  &
-                     +weight_c2c(4,i,j,tile)*ps0(ic+1,jc  )
-            enddo
-         enddo
+         call regridder%regrid(ps0(is_i:ie_i,js_i:je_i),psc(is:ie,js:je),rc=status)
          deallocate ( ps0 )
 ! Horiz Interp for surface height
          call prt_maxmin('GZ_geos', gz0, is_i, ie_i, js_i, je_i, ng_i, 1, 1.0/grav)
-         do j=js,je
-            do i=is,ie
-               ic=index_c2c(1,i,j,tile)
-               jc=index_c2c(2,i,j,tile)
-               gzc(i,j)=weight_c2c(1,i,j,tile)*gz0(ic  ,jc  )  &       
-                     +weight_c2c(2,i,j,tile)*gz0(ic  ,jc+1)  &
-                     +weight_c2c(3,i,j,tile)*gz0(ic+1,jc+1)  &
-                     +weight_c2c(4,i,j,tile)*gz0(ic+1,jc  )
-            enddo
-         enddo
+         call regridder%regrid(gz0(is_i:ie_i,js_i:je_i),gzc(is:ie,js:je),rc=status)
          deallocate ( gz0 )
 
 ! Horiz Interp for Q
@@ -485,21 +479,29 @@ contains
             if (filetype /= 0) then
                offset=4
             else
+               lvar_cnt = 0
                allocate(gslice_r4(im,jm))
-               NCIO = MAPL_NCIOOpen("moist_internal_restart_in")
-               call MAPL_NCIOGetDimSizes(NCIO,nVars=nVars)
-               do ivar=1,nVars
-                  call MAPL_NCIOGetVarName(NCIO,ivar,vname)
-                  call MAPL_NCIOVarGetDims(NCIO,vname,ndims,dimSize)
-                  if (ndims==3) call moist_variables%push_back(trim(vname)) !only do the 3d-variables
+               allocate(cfg(1))
+               call formatter%open("moist_internal_restart_in",pFIO_READ,rc=status)
+               cfg(1) = formatter%read(rc=status)
+               all_moist_vars = MAPL_IOGetNonDimVars(cfg(1))
+               siter = all_moist_vars%begin()
+               Variables => cfg(1)%get_variables()
+               do while(siter /= all_moist_vars%end())
+                  var_name => siter%get()
+                  myVariable => variables%at(var_name)
+                  var_dimensions => myVariable%get_dimensions()
+                  ndims = var_dimensions%size()
+                  if (ndims == 3) call moist_variables%push_back(trim(var_name))
+                  call siter%next()
                enddo
-               lvar_cnt=2
                if (moist_variables%size() /= atm(1)%ncnst) call mpp_error(FATAL,'Wrong number of variables in moist file') 
                tileoff = (tile-1)*(jm/ntiles)
+               lvar_cnt=2
             end if
 
             do ivar=1,Atm(1)%ncnst
-               if (filetype /=0) then
+               if (filetype /= 0) then
                   call moist_tracers%insert(trim(moist_order(ivar)),ivar)
                   iq=ivar
                else
@@ -517,27 +519,17 @@ contains
                      call parallel_read_file_r4('moist_internal_restart_in', npts, is_i,ie_i, js_i,je_i, 1, offset, q0(is_i:ie_i,js_i:je_i,k))
                      call mpp_update_domains(q0(:,:,k), domain_i)
                   else
-                     call MAPL_VarRead(NCIO,vname,gslice_r4,lev=k)
+                     call MAPL_VarRead(formatter,vname,gslice_r4,lev=k)
                      q0(is_i:ie_i,js_i:je_i,k)=gslice_r4(is_i:ie+i,tileoff+js_i:tileoff+je_i)
                   end if
-                  call mpp_update_domains(q0(:,:,k), domain_i)
-                  do j=js,je
-                     do i=is,ie
-                        ic=index_c2c(1,i,j,tile)
-                        jc=index_c2c(2,i,j,tile)
-                        qp(i,j,k,iq)=weight_c2c(1,i,j,tile)*q0(ic  ,jc  ,k)  &
-                              +weight_c2c(2,i,j,tile)*q0(ic  ,jc+1,k)  &
-                              +weight_c2c(3,i,j,tile)*q0(ic+1,jc+1,k)  &
-                              +weight_c2c(4,i,j,tile)*q0(ic+1,jc  ,k)
-                     enddo
-                  enddo
-
+                  call regridder%regrid(q0(is_i:ie_i,js_i:je_i,k),qp(:,:,k,iq),rc=status)
                enddo
                call prt_maxmin( 'Q_geos_moist', q0, is_i, ie_i, js_i, je_i, ng_i, km, 1._FVPRC)
             enddo
 
             if (filetype == 0) then
-               call MAPL_NCIOClose(NCIO,destroy=.true.)
+               call formatter%close()
+               deallocate(cfg)
                deallocate(gslice_r4)
             end if
 
@@ -576,8 +568,10 @@ contains
                offset=4
             else
                allocate(gslice_r4(im,jm))
-               NCIO = MAPL_NCIOOpen(trim(tracer_bundles(ifile)%file_name))
-               call MAPL_NCIOGetDimSizes(NCIO,nVars=nVars)
+               allocate(cfg(1))
+               call formatter%open(trim(tracer_bundles(ifile)%file_name),pFIO_READ,rc=status)
+               cfg(1) = formatter%read(rc=status)
+               call MAPL_IOCountNonDimVars(cfg(1),nvars,rc=status)
                tileoff = (tile-1)*(jm/ntiles)
             end if
 
@@ -586,47 +580,30 @@ contains
 
             do ivar=1,size(tracer_bundles(ifile)%vars)
                nlev=tracer_bundles(ifile)%vars(ivar)%nLev
-               if (filetype == 0) call MAPL_NCIOGetVarName(NCIO,ivar,vname)
+               if (filetype == 0) vname = trim(tracer_bundles(ifile)%vars(ivar)%name)
                do k=1,nlev
                   if (filetype /= 0) then
                         call parallel_read_file_r4(trim(tracer_bundles(ifile)%file_name), npts, is_i,ie_i, js_i,je_i, 1, offset, qlev(is_i:ie_i,js_i:je_i))
                   else
                      if (tracer_bundles(ifile)%vars(ivar)%nLev/=1) then
-                        call MAPL_VarRead(NCIO,vname,gslice_r4,lev=k)
+                        call MAPL_VarRead(formatter,vname,gslice_r4,lev=k)
                      else
-                        call MAPL_VarRead(NCIO,vname,gslice_r4)
+                        call MAPL_VarRead(formatter,vname,gslice_r4)
                      end if  
                      qlev(is_i:ie_i,js_i:je_i)=gslice_r4(is_i:ie+i,tileoff+js_i:tileoff+je_i)
                   end if
-                  call mpp_update_domains(qlev, domain_i)
-                  do j=js,je
-                     do i=is,ie
-                        ic=index_c2c(1,i,j,tile)
-                        jc=index_c2c(2,i,j,tile)
-                        if (tracer_bundles(ifile)%vars(ivar)%nLev/=1) then
-                              tracer_bundles(ifile)%vars(ivar)%ptr3d(i,j,k) &
-                              =weight_c2c(1,i,j,tile)*qlev(ic  ,jc)  &
-                              +weight_c2c(2,i,j,tile)*qlev(ic  ,jc+1)  &
-                              +weight_c2c(3,i,j,tile)*qlev(ic+1,jc+1)  &
-                              +weight_c2c(4,i,j,tile)*qlev(ic+1,jc)
-                        else
-                              tracer_bundles(ifile)%vars(ivar)%ptr2d(i,j) &
-                              =weight_c2c(1,i,j,tile)*qlev(ic  ,jc)  &
-                              +weight_c2c(2,i,j,tile)*qlev(ic  ,jc+1)  &
-                              +weight_c2c(3,i,j,tile)*qlev(ic+1,jc+1)  &
-                              +weight_c2c(4,i,j,tile)*qlev(ic+1,jc)
-                        end if
-                     enddo
-                  enddo
-
-
-
+                  if (tracer_bundles(ifile)%vars(ivar)%nLev/=1) then
+                        call regridder%regrid(qlev(is_i:ie_i,js_i:js_i),tracer_bundles(ifile)%vars(ivar)%ptr3d(is:ie,js:je,k),rc=status)
+                  else
+                        call regridder%regrid(qlev(is_i:ie_i,js_i:js_i),tracer_bundles(ifile)%vars(ivar)%ptr2d(is:ie,js:je),rc=status)
+                  end if
                enddo
                !call prt_maxmin( 'Q_geos_gocart', q0, is_i, ie_i, js_i, je_i, ng_i, km, 1._FVPRC)
             enddo
 
             if (filetype == 0) then
-               call MAPL_NCIOClose(NCIO,destroy=.true.)
+               call formatter%close()
+               deallocate(cfg)
                deallocate(gslice_r4)
             end if
             deallocate(qlev)
@@ -639,20 +616,9 @@ contains
          call prt_maxmin( 'T_geos', t0, is_i, ie_i, js_i, je_i, ng_i, km, 1.0_FVPRC)
          allocate (  tp(is:ie,js:je,km) )
          do k=1,km
-            do j=js,je
-               do i=is,ie
-                  ic=index_c2c(1,i,j,tile)
-                  jc=index_c2c(2,i,j,tile)
-                  tp(i,j,k)=weight_c2c(1,i,j,tile)*t0(ic  ,jc  ,k)  &
-                        +weight_c2c(2,i,j,tile)*t0(ic  ,jc+1,k)  &
-                        +weight_c2c(3,i,j,tile)*t0(ic+1,jc+1,k)  &
-                        +weight_c2c(4,i,j,tile)*t0(ic+1,jc  ,k)
-               enddo
-            enddo
+            call regridder%regrid(t0(is_i:ie_i,js_i:je_i,k),tp(:,:,k),rc=status)
          enddo
          deallocate ( t0 )
-         deallocate( index_c2c )
-         deallocate( weight_c2c )
 
 ! Horz/Vert remap for scalars
          nqmap =  Atm(1)%ncnst
@@ -734,7 +700,6 @@ contains
                if (trim(exclude_vars(i))==trim(var_name)) inList = .true.
             enddo
          end function match
-            
 
    end subroutine get_geos_cubed_ic
 
@@ -747,7 +712,7 @@ contains
       real(FVPRC), allocatable:: ps0(:,:), gz0(:,:), t0(:,:,:), q0(:,:,:)
       real(FVPRC), allocatable:: u0(:,:,:), v0(:,:,:), ua0(:,:), va0(:,:)
       real(FVPRC), allocatable:: lat(:), lon(:), ak0(:), bk0(:)
-      integer :: i, j, k, l, iq, j1, j2, im, jm, km, npz
+      integer :: i, j, k, iq, j1, j2, im, jm, km, npz
       integer :: header(6)
       character (len=8) :: imc, jmc
 
@@ -766,12 +731,13 @@ contains
 
       integer            :: filetype
       logical            :: isNC4
-      type(MAPL_NCIO)    :: ncio
+      type(Netcdf4_Fileformatter) :: formatter
+      type(FileMetadata), allocatable :: cfg(:)
       integer            :: nDims, nVars, ivar, dimSizes(3)
       character(len=128) :: vname
       integer :: lvar_cnt
 !bma added
-      type(stringVector) :: moist_variables
+      character(len=128) :: moist_order(9) = (/"Q   ","QLLS","QLCN","CLLS","CLCN","QILS","QICN","NCPL","NCPI"/)
       type(fv_rst), pointer :: tracer_bundles(:) => null()
       integer :: ifile,nlev
       real(FVPRC),   allocatable  :: gslice_r4(:,:)
@@ -796,8 +762,12 @@ contains
 
          if (isNC4) then
 
-            NCIO = MAPL_NCIOOpen(fname)
-            call MAPL_NCIOGetDimSizes(NCIO,lon=im,lat=jm,lev=km)
+            allocate(cfg(1))
+            call formatter%open(fname,pFIO_READ,rc=status)
+            cfg(1) = formatter%read(rc=status)
+            im =cfg(1)%get_dimension('lon',rc=status)
+            jm =cfg(1)%get_dimension('lat',rc=status)
+            km =cfg(1)%get_dimension('lev',rc=status)
 
          else
 
@@ -831,13 +801,13 @@ contains
          allocate ( bk0(km+1) )
          allocate ( akbk_r8(km+1) )
          if (isNC4) then
-            call MAPL_VarRead(NCIO,"AK",akbk_r8)
+            call MAPL_VarRead(formatter,"AK",akbk_r8)
          else
             read (IUNIT, IOSTAT=status) akbk_r8
          end if
          ak0 = akbk_r8
          if (isNC4) then
-            call MAPL_VarRead(NCIO,"BK",akbk_r8)
+            call MAPL_VarRead(formatter,"BK",akbk_r8)
          else
             read (IUNIT, IOSTAT=status) akbk_r8
          end if
@@ -851,7 +821,7 @@ contains
          allocate (  u0(im,jm,km) )
          do k=1,km
             if (isNC4) then
-               call MAPL_VarRead(NCIO,"U",r8latlon,lev=k)
+               call MAPL_VarRead(formatter,"U",r8latlon,lev=k)
             else
                read (IUNIT, IOSTAT=status) r8latlon
             end if
@@ -864,7 +834,7 @@ contains
          allocate (  v0(im,jm,km) )
          do k=1,km
             if (isNC4) then
-               call MAPL_VarRead(NCIO,"V",r8latlon,lev=k)
+               call MAPL_VarRead(formatter,"V",r8latlon,lev=k)
             else
                read (IUNIT, IOSTAT=status) r8latlon
             end if
@@ -912,7 +882,7 @@ contains
          allocate (  t0(im,jm,km) )
          do k=1,km
             if (isNC4) then
-               call MAPL_VarRead(NCIO,"PT",r8latlon,lev=k)
+               call MAPL_VarRead(formatter,"PT",r8latlon,lev=k)
             else
                read (IUNIT, IOSTAT=status) r8latlon
             end if
@@ -924,7 +894,7 @@ contains
 ! Read PE
          do k=1,km+1 
             if (isNC4) then
-               call MAPL_VarRead(NCIO,"PE",r8latlon,lev=k)
+               call MAPL_VarRead(formatter,"PE",r8latlon,lev=k)
             else
                read (IUNIT, IOSTAT=status) r8latlon
             end if
@@ -936,7 +906,7 @@ contains
          allocate ( pkz0(im,jm) )
          do k=1,km
             if (isNC4) then
-               call MAPL_VarRead(NCIO,"PKZ",r8latlon,lev=k)
+               call MAPL_VarRead(formatter,"PKZ",r8latlon,lev=k)
             else
                read (IUNIT, IOSTAT=status) r8latlon
             end if
@@ -950,7 +920,8 @@ contains
          call print_memuse_stats('get_geos_latlon_ic: converted T')
          deallocate ( pkz0 )
          if (isNC4) then
-            call MAPL_NCIOClose(NCIO,destroy=.true.)
+            call formatter%close()
+            deallocate(cfg)
          else
             close (IUNIT)
          end if
@@ -1039,33 +1010,20 @@ contains
                open(IUNIT,file="moist_internal_restart_in" ,access='sequential',form='unformatted',status='old')
             else
                lvar_cnt = 0
-               NCIO = MAPL_NCIOOpen("moist_internal_restart_in")
-               call MAPL_NCIOGetDimSizes(NCIO,nVars=nVars)
-               do ivar=1,nVars
-                  call MAPL_NCIOGetVarName(NCIO,ivar,vname)
-                  call moist_variables%push_back(trim(vname))
-               enddo
-               lvar_cnt=2
+               call formatter%open("moist_internal_restart_in",pFIO_READ,rc=status)
+               cfg = formatter%read(rc=status)
+               call MAPL_IOCountNonDimVars(cfg(1),nvars,rc=status)
                if (nVars /= Atm(1)%ncnst) call mpp_error(FATAL,'Wrong number of variables in moist file')
             end if
 
             do ivar=1,Atm(1)%ncnst
-               if (filetype /=0) then
-                  iq=ivar
-               else
-                  vname = moist_variables%at(ivar)
-                  if (trim(vname)=='Q') then
-                     iq=1
-                  else
-                     iq=lvar_cnt
-                     lvar_cnt=lvar_cnt+1
-                  end if
-               end if
+               if (filetype ==0) lvar_cnt=lvar_cnt+1
                do k=1,km
                   if (filetype /= 0) then
                      read (IUNIT, IOSTAT=status) r4latlon
                   else
-                     call MAPL_VarRead(NCIO,vname,r4latlon,lev=k)
+                     vname = trim(moist_order(lvar_cnt))
+                     call MAPL_VarRead(formatter,vname,r4latlon,lev=k)
                   end if
                   q0(1       :im/2,:,k) = r4latlon(im/2 + 1 :im  , :) ! Regrid from -180:180 to 0:360
                   q0(im/2 + 1:im  ,:,k) = r4latlon(1        :im/2, :) ! Regrid from -180:180 to 0:360
@@ -1074,7 +1032,7 @@ contains
                         i1 = id1(i,j)
                         i2 = id2(i,j)
                         j1 = jdc(i,j)
-                        qp(i,j,k,iq) = s2c(i,j,1)*q0(i1,j1  ,k) + s2c(i,j,2)*q0(i2,j1  ,k) +  &
+                        qp(i,j,k,ivar) = s2c(i,j,1)*q0(i1,j1  ,k) + s2c(i,j,2)*q0(i2,j1  ,k) +  &
                               s2c(i,j,3)*q0(i2,j1+1,k) + s2c(i,j,4)*q0(i1,j1+1,k)
                      enddo
                   enddo
@@ -1083,7 +1041,8 @@ contains
                if (is_master()) call pmaxmin( 'MOIST_Q_',  q0(:,:,:), im*jm, km, 1.0_FVPRC)
             enddo
             if (filetype == 0) then
-               call MAPL_NCIOClose(NCIO,destroy=.true.)
+               call formatter%close()
+               deallocate(cfg)
             else
                close(IUNIT)
             end if
@@ -1124,21 +1083,20 @@ contains
             if (filetype /= 0) then
                open(IUNIT,file=triM(tracer_bundles(ifile)%file_name) ,access='sequential',form='unformatted',status='old')
             else
-               NCIO = MAPL_NCIOOpen(trim(tracer_bundles(ifile)%file_name))
-               call MAPL_NCIOGetDimSizes(NCIO,nVars=nVars)
+               call formatter%open(trim(tracer_bundles(ifile)%file_name),pFIO_READ,rc=status)
             end if
 
             do ivar=1,size(tracer_bundles(ifile)%vars)
                nlev=tracer_bundles(ifile)%vars(ivar)%nLev
-               if (filetype == 0) call MAPL_NCIOGetVarName(NCIO,ivar,vname)
+               if (filetype == 0) vname = trim(tracer_bundles(ifile)%vars(ivar)%name)
                do k=1,nlev
                   if (filetype /= 0) then
                      read (IUNIT, IOSTAT=status)gslice_r4
                   else
                      if (tracer_bundles(ifile)%vars(ivar)%nLev/=1) then
-                        call MAPL_VarRead(NCIO,vname,gslice_r4,lev=k)
+                        call MAPL_VarRead(formatter,vname,gslice_r4,lev=k)
                      else
-                        call MAPL_VarRead(NCIO,vname,gslice_r4)
+                        call MAPL_VarRead(formatter,vname,gslice_r4)
                      end if
                   end if
                   q0(1       :im/2,:,k) = gslice_r4(im/2 + 1 :im  , :) ! Regrid from -180:180 to 0:360
@@ -1171,7 +1129,7 @@ contains
             enddo
 
             if (filetype == 0) then
-               call MAPL_NCIOClose(NCIO,destroy=.true.)
+               call formatter%close()
                deallocate(gslice_r4)
             end if
 
@@ -1820,7 +1778,7 @@ contains
 
                      subroutine interp_c2c_vect(npx_in, npy_in, npx_out, npy_out, npz, ntiles, domain_i, &
                            is,ie, js,je, isd_i,ied_i, jsd_i,jed_i, is_i,ie_i, js_i,je_i, &
-                           u_in, v_in, u_out, v_out, index_c2c, weight_c2c, corner_in, corner_out, gridstruct)
+                           u_in, v_in, u_out, v_out, regridder, corner_in, corner_out, gridstruct)
                         use GRID_UTILS_mod, only: latlon2xyz
                         use GRID_UTILS_mod,   only: get_dx, get_dxa, get_dy, get_dya,     &
                               get_center_vect, get_west_vect,       &
@@ -1831,8 +1789,7 @@ contains
                         integer, intent(IN) :: npx_in, npy_in, npx_out, npy_out, npz, ntiles
                         type(domain2d), intent(INOUT) :: domain_i
                         integer, intent(IN) :: is,ie, js,je, isd_i,ied_i, jsd_i,jed_i, is_i,ie_i, js_i,je_i
-                        integer, intent(IN) ::  index_c2c(3, is:ie, js:je )
-                        real(REAL64),  intent(IN) :: weight_c2c(4, is:ie, js:je )
+                        class(AbstractRegridder), pointer :: regridder
                         real(REAL64),  intent(IN) :: corner_in(2,is_i:ie_i+1,js_i:je_i+1)
                         real(REAL64),  intent(IN) :: corner_out(2,is:ie+1,js:je+1)
                         real(FVPRC),  intent(IN) ::  u_in(isd_i:ied_i,jsd_i:jed_i+1,npz)
@@ -1843,8 +1800,9 @@ contains
 
                         real(FVPRC) :: tmp(isd_i:ied_i,jsd_i:jed_i)
 
-                        integer :: i,j,l,k,n
+                        integer :: i,j,k,n
                         real(REAL64), dimension(:,:,:), allocatable :: vxyz_in, vxyz_out
+                        real(REAL32), dimension(:,:), allocatable :: tmp_in, tmp_out
                         real(REAL64), dimension(:,:,:), allocatable :: ec1, ec2, ew1, ew2, es1, es2
                         real(REAL64), dimension(:,:)  , allocatable :: dx, dy, dxa, dya, rdxa, rdya, cosa_s, sina_s
                         real(FVPRC) :: u1, v1, vx, vy, vz
@@ -1882,6 +1840,8 @@ contains
                         allocate(ec1(3,isd_i:ied_i,jsd_i:jed_i), ec2(3,isd_i:ied_i,jsd_i:jed_i))
                         allocate(cosa_s(isd_i:ied_i,jsd_i:jed_i), sina_s(isd_i:ied_i,jsd_i:jed_i))
                         allocate(vxyz_out(3,is:ie,js:je))
+                        allocate(tmp_in(is_i:ie_i,js_i:je_i))
+                        allocate(tmp_out(is:ie,js:je))
 
 !-------------------------------------------------------!
 ! geometrical properties of input grid                  !
@@ -1924,19 +1884,9 @@ contains
                               vxyz_in(n,:,:) = tmp
                            enddo
                            do n=1,3
-                              do j=js,je
-                                 do i=is,ie
-!----------------------------------------------------------!
-! do interpolation of flow vector on A-Grid                !
-!----------------------------------------------------------!
-                                    ic=index_c2c(1,i,j)
-                                    jc=index_c2c(2,i,j)
-                                    vxyz_out(n,i,j)=weight_c2c(1,i,j)*vxyz_in(n,ic  ,jc  )  &
-                                          +weight_c2c(2,i,j)*vxyz_in(n,ic  ,jc+1)  &
-                                          +weight_c2c(3,i,j)*vxyz_in(n,ic+1,jc+1)  &
-                                          +weight_c2c(4,i,j)*vxyz_in(n,ic+1,jc  )
-                                 enddo
-                              enddo
+                              tmp_in=vxyz_in(n,is_i:ie_i,js_i:je_i)
+                              call regridder%regrid(tmp_in,tmp_out,rc=status)
+                              vxyz_out(n,:,:)=tmp_out
                            enddo
                            do j=js,je
                               do i=is,ie
