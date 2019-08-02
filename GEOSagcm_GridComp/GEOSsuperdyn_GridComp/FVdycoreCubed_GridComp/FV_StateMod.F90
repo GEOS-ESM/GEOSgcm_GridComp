@@ -484,7 +484,7 @@ contains
    FV_Atm(1)%flagstruct%ke_bg = 0.0
   ! Some default damping options
    FV_Atm(1)%flagstruct%nord = 2
-   FV_Atm(1)%flagstruct%dddmp = 0.1
+   FV_Atm(1)%flagstruct%dddmp = 0.2
    FV_Atm(1)%flagstruct%d4_bg = 0.12
    FV_Atm(1)%flagstruct%d2_bg = 0.0
    FV_Atm(1)%flagstruct%d_ext = 0.0
