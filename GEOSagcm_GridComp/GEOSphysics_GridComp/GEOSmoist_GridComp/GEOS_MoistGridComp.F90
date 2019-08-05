@@ -5685,6 +5685,7 @@ contains
       real   , dimension(IM,JM)           :: CNV_FRACTION
       real                                :: CNV_FRACTION_MIN
       real                                :: CNV_FRACTION_MAX
+      real                                :: GF_MIN_AREA
 
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
 
@@ -7201,6 +7202,9 @@ contains
       if(associated(Q600    )) Q600     = QV600
       if(associated(RH600   )) RH600    = RHat600
 
+      call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 1.e6, RC=STATUS)
+      VERIFY_(STATUS)
+
       K0 = LM
       ICMIN    = max(1,count(PREF < PMIN_DET))
       KCBLMIN  =       count(PREF < PMIN_CBL)
@@ -7772,7 +7776,11 @@ contains
 
 ! WMP
 ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRACTION dependence
-         GF_AREA = (1.e6)*CNV_FRACTION + AREA*(1.0-CNV_FRACTION)
+         if (GF_MIN_AREA > 0) then
+           GF_AREA = GF_MIN_AREA*CNV_FRACTION + AREA*(1.0-CNV_FRACTION)
+         else
+           GF_AREA = AREA
+         endif
 ! WMP
          
          !- call GF/GEOS5 interface routine
