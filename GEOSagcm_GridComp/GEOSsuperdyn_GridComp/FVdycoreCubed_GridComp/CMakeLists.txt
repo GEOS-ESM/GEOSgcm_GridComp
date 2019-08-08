@@ -9,12 +9,11 @@ set (srcs
   AdvCore_GridCompMod.F90
   DynCore_GridCompMod.F90 CreateInterpWeights_GridCompMod.F90
   StandAlone_DynAdvCore_GridCompMod.F90
-  CubedSphereGridFactory.F90
   CubeToLatLonRegridder.F90 
   LatLonToCubeRegridder.F90 
   CubeToCubeRegridder.F90
-  CubeToLatLon.F90
-#***DAS***#  CubeGridPrototype.F90
+  CubeToLatLon.F90 
+  CubeGridPrototype.F90
   )
 
 set(dependencies MAPL_Base GMAO_hermes GEOS_Shared)
