@@ -36,6 +36,7 @@
 
 module gfdl2_cloud_microphys_mod
     
+      use mpp_mod, only: mpp_pe, mpp_root_pe
     ! use mpp_mod, only: stdlog, mpp_pe, mpp_root_pe, mpp_clock_id, &
     ! mpp_clock_begin, mpp_clock_end, clock_routine, &
     ! input_nml_file
@@ -337,6 +338,7 @@ contains
 subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
         qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, pt_dt, pt, w,    &
         uin, vin, udt, vdt, dz, delp, area, dt_in, land, cnv_fraction,    &
+        anv_icefall, lsc_icefall, &
         rain, snow, ice, &
         graupel, m2_rain, m2_sol, hydrostatic, phys_hydrostatic,          &
         iis, iie, jjs, jje, kks, kke, ktop, kbot)
@@ -353,6 +355,8 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     real, intent (in), dimension (:, :) :: area !< cell area
     real, intent (in), dimension (:, :) :: land !< land fraction
     real, intent (in), dimension (:, :) :: cnv_fraction !< diagnosed convective fraction
+
+    real, intent (in) :: anv_icefall, lsc_icefall
 
     real, intent (in), dimension (:, :, :) :: delp, dz, uin, vin
     real, intent (in), dimension (:, :, :) :: pt, qv, ql, qr, qg, qa, qn
@@ -458,6 +462,7 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
             qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes,  &
             rain (:, j), snow (:, j), graupel (:, j), ice (:, j), m2_rain,     &
             m2_sol, cond (:, j), area (:, j), land (:, j), cnv_fraction(:, j), &
+            anv_icefall, lsc_icefall,                                          &
             udt, vdt, pt_dt,                                                   &
             qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, vt_r,      &
             vt_s, vt_g, vt_i, qn2)
@@ -614,7 +619,7 @@ end subroutine gfdl_cloud_microphys_driver
 subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         qg, qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes, &
         rain, snow, graupel, ice, m2_rain, m2_sol, cond, area1, land,         &
-        cnv_fraction,                                                         &
+        cnv_fraction, anv_icefall, lsc_icefall,                               &
         u_dt, v_dt, pt_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt,   &
         w_var, vt_r, vt_s, vt_g, vt_i, qn2)
     
@@ -629,7 +634,9 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     
     real, intent (in), dimension (is:) :: area1, land
     real, intent (in), dimension (is:) :: cnv_fraction
-    
+   
+    real, intent (in) :: anv_icefall, lsc_icefall
+ 
     real, intent (in), dimension (is:, js:, ks:) :: uin, vin, delp, pt, dz
     real, intent (in), dimension (is:, js:, ks:) :: qv, ql, qr, qg, qa, qn
     
@@ -858,7 +865,8 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! sedimentation of cloud ice, snow, and graupel
             ! -----------------------------------------------------------------------
             
-            call fall_speed (ktop, kbot, cnv_fraction(i), den, qsz, qiz, qgz, qlz, tz, vtsz, vtiz, vtgz)
+            call fall_speed (ktop, kbot, p1, cnv_fraction(i), anv_icefall, lsc_icefall, &
+                             den, qsz, qiz, qgz, qlz, tz, vtsz, vtiz, vtgz)
             
             call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
                 dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)
@@ -3158,14 +3166,15 @@ end subroutine cs_limiters
 !>@brief The subroutine 'fall_speed' calculates vertical fall speed.
 ! =======================================================================
 
-subroutine fall_speed (ktop, kbot, cnv_fraction, den, qs, qi, qg, ql, tk, vts, vti, vtg)
+subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
+                       den, qs, qi, qg, ql, tk, vts, vti, vtg)
     
     implicit none
     
     integer, intent (in) :: ktop, kbot
     
-    real, intent (in) :: cnv_fraction 
-    real, intent (in), dimension (ktop:kbot) :: den, qs, qi, qg, ql, tk
+    real, intent (in) :: cnv_fraction, anv_icefall, lsc_icefall 
+    real, intent (in), dimension (ktop:kbot) :: pl, den, qs, qi, qg, ql, tk
     real, intent (out), dimension (ktop:kbot) :: vts, vti, vtg
     
     ! fall velocity constants:
@@ -3202,7 +3211,7 @@ subroutine fall_speed (ktop, kbot, cnv_fraction, den, qs, qi, qg, ql, tk, vts, v
     
     real, dimension (ktop:kbot) :: qden, tc, rhof
     
-    real :: vi0, viCNV, viLSC, XIm, LXIm, IWC
+    real :: vi1, vi0, viCNV, viLSC, XIm, LXIm, IWC
     
     integer :: k
     
@@ -3231,14 +3240,16 @@ subroutine fall_speed (ktop, kbot, cnv_fraction, den, qs, qi, qg, ql, tk, vts, v
         ! -----------------------------------------------------------------------
         ! use deng and mace (2008, grl), which gives smaller fall speed than hd90 formula
         ! -----------------------------------------------------------------------
-        vi0 = 0.01 * vi_fac
+        vi0 = vi_fac * ( lsc_icefall*(1.0-cnv_fraction) + anv_icefall*(cnv_fraction) )
         do k = ktop, kbot
+          ! vi1 = 0.01 * MIN(vi0,SIN(0.5*pi*MIN(1.0,10000./pl(k)))) ! WMP: Ramp fall speed from surface to 100mb (10000Pa)
+            vi1 = 0.01 * MIN(vi0,MAX(MIN(1.0,cnv_fraction*10000.),SIN(0.5*pi*MIN(1.0,10000./pl(k))))) ! WMP: Ramp fall speed from surface to 100mb (10000Pa)
             if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
                 vti (k) = vf_min
             else
                 tc (k) = tk (k) - tice
                 vti (k) = (3. + log10 (qi (k) * den (k))) * (tc (k) * (aa * tc (k) + bb) + cc) + dd * tc (k) + ee
-                vti (k) = vi0 * exp (log_10 * vti (k))
+                vti (k) = vi1 * exp (log_10 * vti (k))
                 vti (k) = min (vi_max, max (vf_min, vti (k)))
             endif
         enddo
@@ -3246,7 +3257,7 @@ subroutine fall_speed (ktop, kbot, cnv_fraction, den, qs, qi, qg, ql, tk, vts, v
         ! -----------------------------------------------------------------------
         ! use deng and mace (2008, grl), which gives smaller fall speed than hd90 formula
         ! -----------------------------------------------------------------------
-        vi0 = 0.01 * ( vi_fac*(1.0-cnv_fraction) + cnv_fraction ) ! Keep vi_fac=1 in cnv regions
+        vi0 = 0.01 * vi_fac * ( lsc_icefall*(1.0-cnv_fraction) + anv_icefall*(cnv_fraction) )
         do k = ktop, kbot
             if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
                 vti (k) = vf_min
@@ -3493,6 +3504,13 @@ subroutine gfdl_cloud_microphys_init ()
         call close_file(nlunit)
     endif
 #endif
+
+    if (mpp_pe() .EQ. mpp_root_pe()) then
+        write (*, *) " ================================================================== "
+        write (*, *) "gfdl_cloud_microphys_mod"
+        write (*, nml = gfdl_cloud_microphysics_nml)
+        write (*, *) " ================================================================== "
+    endif
     
     ! write version number and namelist to log file
    !if (me == master) then

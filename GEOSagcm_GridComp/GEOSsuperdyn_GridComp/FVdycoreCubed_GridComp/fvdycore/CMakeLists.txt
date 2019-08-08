@@ -79,7 +79,7 @@ if (CRAY_POINTER)
   set_target_properties (${this} PROPERTIES COMPILE_FLAGS ${CRAY_POINTER})
 endif()
 
-target_compile_definitions (${this} PRIVATE MAPL_MODE SPMD TIMING)
+target_compile_definitions (${this} PRIVATE MAPL_MODE SPMD TIMING USE_COND MOIST_CAPPA)
 
 
 

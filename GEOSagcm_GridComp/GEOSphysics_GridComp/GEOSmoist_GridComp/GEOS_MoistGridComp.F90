@@ -275,10 +275,6 @@ contains
 
     call ESMF_ConfigGetAttribute( CF, DOSHLW, Label="DOSHLW:",  default=0, RC=STATUS)
     
-       !call MAPL_GetResource(STATE, DOSHLW,             'DOSHLW:'  ,DEFAULT=0,        RC=STATUS)
-
-
-
 
     if(adjustl(CLDMICRO)=="2MOMENT") then
       FRIENDLIES_2MOM = 'DYNAMICS:TURBULENCE'
@@ -5685,6 +5681,7 @@ contains
       real   , dimension(IM,JM)           :: CNV_FRACTION
       real                                :: CNV_FRACTION_MIN
       real                                :: CNV_FRACTION_MAX
+      real                                :: CNV_FRACTION_EXP
       real                                :: GF_MIN_AREA
 
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
@@ -5943,14 +5940,15 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%EPSVARW, 'EPSVARW:' ,DEFAULT=5.e-4, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%PGFC,    'PGFC:'    ,DEFAULT=0.7, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,   'CRIQC:'   ,DEFAULT=1.0e-3, RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:',DEFAULT=0.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%KEVP,    'KEVP:'    ,DEFAULT=2.e-6,    RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,   'SHLW_RDROP:',DEFAULT=8.e-6,    RC=STATUS)
 
       if(adjustl(CLDMICRO)=="GFDL") then
-        call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:'  ,DEFAULT=0, RC=STATUS)
+        call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=0  , RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=1.0, RC=STATUS)
       else
-        call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:'  ,DEFAULT=1, RC=STATUS)
+        call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=1  , RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=0.0, RC=STATUS)
       endif
 
       ! Get the time step from the alarm
@@ -7177,10 +7175,13 @@ contains
     ! call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 0.00600, RC=STATUS)
     ! VERIFY_(STATUS)
     ! CAPE Criteria
-        call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
-        VERIFY_(STATUS)
+      call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
+      VERIFY_(STATUS)
+
+      call MAPL_GetResource(STATE,CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT= 1.0, RC=STATUS)
+      VERIFY_(STATUS)
 
       if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
          if (CNV_FRACTION_MAX < 1.0) then
@@ -7196,6 +7197,10 @@ contains
               CNV_FRACTION =MAX(0.0,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
            END WHERE
          endif
+      endif
+
+      if (CNV_FRACTION_EXP /= 1.0) then
+         CNV_FRACTION = CNV_FRACTION**CNV_FRACTION_EXP
       endif
 
       if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
@@ -8416,17 +8421,21 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%LS_DDRF,        'LS_DDRF:',        DEFAULT= 0.0     )
       call MAPL_GetResource( STATE, CLDPARAMS%QC_CRIT_ANV,    'QC_CRIT_ANV:',    DEFAULT= 8.0e-4  )
       call MAPL_GetResource( STATE, CLDPARAMS%TANHRHCRIT,     'TANHRHCRIT:',     DEFAULT= 1.0     )
-
-      if( LM .le. 72 ) then
-        call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
-        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
+      call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
+      if (adjustl(CLDMICRO) =="GFDL") then
+        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.75    )
         call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
         call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     )
       else
-        call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
-        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.15    )
-        call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 0.15    )
-        call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.0     )
+        if( LM .le. 72 ) then
+          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
+          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
+          call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     )
+        else
+          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.15    )
+          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 0.15    )
+          call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.0     )
+        endif
       endif
 
       ! Horizontal resolution dependant defaults for minimum RH crit
@@ -8452,10 +8461,6 @@ contains
          call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 1.0   )
          call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 0.5   )
          call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT,     'TURNRHCRIT:',     DEFAULT= 884.0 )
-      elseif (adjustl(CLDMICRO) =="GFDL") then
-         call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 1.0   )
-         call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 1.0   ) ! Not relevant to GFDL
-         call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT,     'TURNRHCRIT:',     DEFAULT= 750.0 ) ! Not relevant to GFDL
       else
          call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 0.0   )
          call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 1.0   )
@@ -8471,15 +8476,9 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%SC_ENVF,    'SC_ENVF:',   DEFAULT= 1.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%LS_ENVF,    'LS_ENVF:',   DEFAULT= 1.0     )
 
-      if (adjustl(CLDMICRO) =="GFDL") then
-        call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI, 'FAC_RI:',     DEFAULT=   0.1   )
-        call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI, 'MIN_RI:',     DEFAULT=   5.e-6 )
-        call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI, 'MAX_RI:',     DEFAULT= 140.e-6 )
-      else
-        call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI, 'FAC_RI:',     DEFAULT=   1.0   )
-        call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI, 'MIN_RI:',     DEFAULT=  15.e-6 )
-        call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI, 'MAX_RI:',     DEFAULT= 150.e-6 )
-      end if
+      call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI, 'FAC_RI:',     DEFAULT=   1.0   )
+      call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI, 'MIN_RI:',     DEFAULT=  15.e-6 )
+      call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI, 'MAX_RI:',     DEFAULT= 150.e-6 )
 
       call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,    'MIN_RL:',     DEFAULT=   5.e-6 )
       call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,    'MAX_RL:',     DEFAULT=  21.e-6 )
@@ -8779,6 +8778,7 @@ contains
                                TEMP, W1, U1, V1, DUDT_micro, DVDT_micro, DZ, DP, &
                              ! constant inputs
                                AREA, DT_MOIST, FRLAND, CNV_FRACTION, &
+                               CLDPARAMS%ANV_ICEFALL, CLDPARAMS%LS_ICEFALL, &
                              ! Output precipitates
                                PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, &
                              ! Output mass flux during sedimentation (Pa kg/kg)
