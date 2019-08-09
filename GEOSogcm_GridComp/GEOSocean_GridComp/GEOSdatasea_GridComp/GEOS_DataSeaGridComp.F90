@@ -5,7 +5,7 @@
 !=============================================================================
 !BOP
 
-! !MODULE: GEOS_DataSea -- A `fake' ocean surface
+! !MODULE: GEOS_DataSea -- A fake ocean surface
 
 ! !INTERFACE:
 
@@ -206,12 +206,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! character(len=ESMF_MAXSTR)          :: DATASeaSalFILE
   integer                             :: IFCST
   logical                             :: FCST
-  integer                             :: ADJSST
+  integer                             :: adjSST
   real, pointer, dimension(:,:)       :: SST
   integer                             :: IM
   integer                             :: JM
   real                                :: TICE
+  real                                :: CTB  ! Ocean-ice turbulent mixing coefficient (m/sec)
+  real                                :: DT
+  real                                :: RUN_DT
 
+  real, pointer, dimension(:,:)       :: TNEW   => null()
+  real, pointer, dimension(:,:)       :: F1     => null()
 
 ! pointers to export
 
@@ -282,18 +287,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !   call MAPL_GetResource(MAPL,DATASeaSalFILE,LABEL="DATA_SSS_FILE:",  RC=STATUS)
 !   VERIFY_(STATUS)
 
-! In atmospheric forecast mode we don't have future SST and SSS
+! In atmospheric forecast mode we do not have future SST and SSS
 !--------------------------------------------------------------
 
     call MAPL_GetResource(MAPL,IFCST,LABEL="IS_FCST:",default=0,    RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource(MAPL,ADJSST,LABEL="SST_ADJ_UND_ICE:",default=0,    RC=STATUS)
+    call MAPL_GetResource(MAPL,adjSST,LABEL="SST_ADJ_UND_ICE:",default=0,    RC=STATUS)
     VERIFY_(STATUS)
 
     FCST = IFCST==1
 
-! SST is usually Reynolds/OSTIA SST or `bulk' SST
+! SST is usually Reynolds/OSTIA SST or bulk SST
 !------------------------------------------------
 
    call MAPL_Get(MAPL, IM=IM, JM=JM, RC=STATUS)
@@ -302,7 +307,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    allocate(SST(IM,JM), stat=STATUS)
    VERIFY_(STATUS)
 
-! SSS is usually `bulk' SSS
+! SSS is usually bulk SSS
 !--------------------------
 
 !  allocate(SSS(IM, JM), stat=STATUS)
@@ -334,9 +339,44 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated(VW)) VW = 0.0
 
    TICE   = MAPL_TICE-1.8
-   if (ADJSST /= 0) then
+   if (adjSST == 1) then
       SST = max(SST, TICE)
       SST = (1.-FI)*SST+FI*TICE
+   endif
+
+   if (adjSST == 2) then
+
+      call MAPL_GetResource(MAPL,CTB    , LABEL="CTB:"   , default=1.0e-4, RC=STATUS)
+      VERIFY_(STATUS)
+
+      call MAPL_GetResource(MAPL,RUN_DT , LABEL="RUN_DT:" ,                 RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,DT     , LABEL="DT:"    , default=RUN_DT, RC=STATUS)
+      VERIFY_(STATUS)
+
+      allocate(TNEW(size(TW,1),size(TW,2)), stat=STATUS)
+      VERIFY_(STATUS)
+      allocate(F1  (size(TW,1),size(TW,2)), stat=STATUS)
+      VERIFY_(STATUS)
+
+      TNEW=0.0
+      F1  =0.0
+
+!     ! SST below freezing point is set to freezing temperature
+      TNEW   = max( SST,TICE)
+
+      where(FI == 1.0)
+!     ! if fraction of ice is 1, set SST to freezing temperature        
+        TNEW   =  TICE
+      elsewhere
+        F1=FI*CTB/(2.0*(1.0-FI))
+        TNEW=(TNEW+TICE*F1*DT)/(1.0+F1*DT)
+      end where
+
+      SST = TNEW
+
+      deallocate( TNEW)
+      deallocate( F1)
    endif
 
    if(associated(TW)) then
