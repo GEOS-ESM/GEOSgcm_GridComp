@@ -11,8 +11,8 @@ module GuestOcean_GridCompMod
  
   use ESMF
   use MAPL_Mod
-  use MOM_GEOS5PlugMod, only: MOMSetServices => SetServices  ! this sets IRF
-  use GEOS_DataSeaGridCompMod,           only : DataSeaSetServices  => SetServices
+  use MOM_GEOS5PlugMod,           only: MOMSetServices       => SetServices  ! this sets IRF
+  use GEOS_DataSeaGridCompMod,    only : DataSeaSetServices  => SetServices
 
   implicit none
   private
@@ -21,9 +21,9 @@ module GuestOcean_GridCompMod
 
   public SetServices
 
-  character(len=ESMF_MAXSTR)          :: OCEAN_NAME
-  integer            :: DO_DATASEA
-  real :: OrphanDepth
+  character(len=ESMF_MAXSTR)  :: OCEAN_NAME
+  integer                     :: DO_DATASEA
+  real                        :: OrphanDepth
 
 ! !DESCRIPTION:
 ! 
@@ -99,9 +99,9 @@ contains
 ! Get constants from CF
 ! ---------------------
 
-    call MAPL_GetResource ( MAPL,       DO_DATASEA,     Label="USE_DATASEA:" ,       DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL,       DO_DATASEA,     Label="USE_DATASEA:" ,       DEFAULT=1,    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL,       OrphanDepth,    Label="ORPHAN_DEPTH:" ,       DEFAULT=10.0, RC=STATUS)
+    call MAPL_GetResource ( MAPL,       OrphanDepth,    Label="ORPHAN_DEPTH:" ,      DEFAULT=10.0, RC=STATUS)
     VERIFY_(STATUS)
 
     if(DO_DATASEA/=0) then
@@ -220,26 +220,6 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-!!$     call MAPL_AddImportSpec(GC,                             &
-!!$        SHORT_NAME         = 'TR',                                &
-!!$        LONG_NAME          = 'tracer_mixing_ratios',              &
-!!$        UNITS              = '1',                                 &
-!!$        DIMS               = MAPL_DimsHorzVert,                   &
-!!$        VLOCATION          = MAPL_VLocationCenter,                &
-!!$        DATATYPE           = MAPL_BundleItem,                     &
-!!$                                                       RC=STATUS  )
-!!$     VERIFY_(STATUS)
-!!$
-!!$     call MAPL_AddImportSpec(GC,                             &
-!!$        SHORT_NAME         = 'TRFLUX',                            &
-!!$        LONG_NAME          = 'surface_fluxes_of_tracers',         &
-!!$        UNITS              = 'X',                                 &
-!!$        DIMS               = MAPL_DimsHorzOnly,                   &
-!!$        VLOCATION          = MAPL_VLocationNone,                  &
-!!$        DATATYPE           = MAPL_BundleItem,                     &
-!!$                                                       RC=STATUS  )
-!!$     VERIFY_(STATUS)
-
     call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
         UNITS              = 'W m-2',                             &
@@ -328,12 +308,12 @@ contains
 
 !  !EXPORT STATE:
     
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME         = 'MASKO',                            &
-         LONG_NAME          = 'ocean_mask',&
-         UNITS              = '1',                               &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
+    call MAPL_AddExportSpec(GC,                                   &
+         SHORT_NAME         = 'MASK',                             &
+         LONG_NAME          = 'ocean_mask',                       &
+         UNITS              = '1',                                &
+         DIMS               = MAPL_DimsHorzOnly,                  &
+         VLOCATION          = MAPL_VLocationNone,                 &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -382,15 +362,6 @@ contains
          UNITS              = 'W m-2',                             &
          DIMS               = MAPL_DimsHorzVert,                   &
          VLOCATION          = MAPL_VLocationCenter,                &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME         = 'RFLUX',                             &
-         LONG_NAME          = 'downward_radiative_heat_flux_at_ocean_bottom',&
-         UNITS              = 'W m-2',                             &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -515,11 +486,6 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC   ,                          &
-            SHORT_NAME = 'SSH',                                       &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'SLV',                                       &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
@@ -630,8 +596,6 @@ contains
     type (ESMF_Time)                    :: currTime 
 
     real, pointer :: MASK(:,:)
-    real, pointer :: MASKO(:,:)
-    real, pointer :: MASK3D(:,:,:)
     real, pointer :: DH(:,:,:)
 
 !=============================================================================
@@ -642,7 +606,7 @@ contains
 ! -----------------------------------------------------------
 
     Iam = "Initialize"
-    call ESMF_GridCompGet( gc, NAME=comp_name, grid=grid, RC=status )
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, grid=GRID, RC=status )
     VERIFY_(STATUS)
     Iam = trim(comp_name) // trim(Iam)
 
@@ -737,13 +701,9 @@ contains
     call MAPL_TimerOn (STATE,"TOTAL"     )
 
     if(DO_DATASEA==0) then
-       call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,RC=STATUS); VERIFY_(STATUS)     
-       call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GEX(OCN), DH, 'DH', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GEX(OCN), MASK,  'MOM_2D_MASK', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GEX(OCN), DH,    'DH',          RC=STATUS); VERIFY_(STATUS)
        
-       MASK => MASK3D(:,:,1)
-       if(associated(MASKO)) MASKO = MASK
-
 ! The following sets the depth in orphan points. This is needed to calculate SWHEAT in these points.
 ! Unfortunately, frocean is zero at this point so we set OrphanDepth in all MOM land points. 
        where(mask == 0.0)
@@ -827,7 +787,6 @@ contains
 
 ! Diagnostics exports
 
-    real, pointer :: RFLUX (:,:)
     real, pointer :: TAUXe (:,:)
     real, pointer :: TAUYe (:,:)
     real, pointer :: HEATe (:,:,:)
@@ -866,7 +825,6 @@ contains
     real, pointer :: TW  (:,:)
     real, pointer :: SW  (:,:)
     real, pointer :: MASK(:,:)
-    real, pointer :: MASK3D(:,:,:)
     real, pointer :: FRAZIL(:,:)
 
 ! Locals
@@ -957,18 +915,6 @@ contains
 
     if( MyTime <= EndTime ) then ! Time to run
 
-! We get the ocean-land mask (now computed in Initialize of Plug)  
-!----------------------------------------------------------
-       if(DO_DATASEA==0) then
-          call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', RC=STATUS); VERIFY_(STATUS)
-          MASK => MASK3D(:,:,1)
-       else
-          allocate(MASK3D(IM,JM,LM), STAT=STATUS); VERIFY_(STATUS)
-          MASK3D=1.0
-          allocate(MASK(IM,JM), STAT=STATUS); VERIFY_(STATUS)
-          MASK=1.0
-       end if       
-
 ! Get ocean time step and misc. parameters
 !-----------------------------------------
        
@@ -979,45 +925,45 @@ contains
 
 ! Get pointers to imports
 !--------------------------------------------------------------------------------
-       call MAPL_GetPointer(IMPORT, FROCEAN, 'FROCEAN', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, TAUXi, 'TAUX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, TAUYi, 'TAUY'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, PENUVRi, 'PENUVR'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, PENPARi, 'PENPAR'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, PENUVFi, 'PENUVF'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, PENPAFi, 'PENPAF'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, DRNIRi, 'DRNIR'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, DFNIRi, 'DFNIR'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, HEATi, 'SWHEAT' , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, FROCEAN, 'FROCEAN'  ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, TAUXi,   'TAUX'     ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, TAUYi,   'TAUY'     ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, PENUVRi, 'PENUVR'   ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, PENPARi, 'PENPAR'   ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, PENUVFi, 'PENUVF'   ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, PENPAFi, 'PENPAF'   ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, DRNIRi,  'DRNIR'    ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, DFNIRi,  'DFNIR'    ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, HEATi,   'SWHEAT'   ,RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, DISCHARGEi, 'DISCHARGE'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, LWFLXi, 'LWFLX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, SHFLXi, 'SHFLX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, QFLUXi, 'QFLUX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, SNOWi, 'SNOW'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, RAINi, 'RAIN'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FHOCN, 'FHOCN'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FRESH, 'FRESH'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FSALT, 'FSALT'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, LWFLXi,  'LWFLX'    ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, SHFLXi,  'SHFLX'    ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, QFLUXi,  'QFLUX'    ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, SNOWi,   'SNOW'     ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, RAINi,   'RAIN'     ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, FHOCN,   'FHOCN'    ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, FRESH,   'FRESH'    ,RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, FSALT,   'FSALT'    ,RC=STATUS); VERIFY_(STATUS)
 
 ! Get pointers from ImExState
 !----------------------------
        if(DO_DATASEA==0) then
-          call MAPL_GetPointer(GIM(OCN), TAUX, 'TAUX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), TAUY, 'TAUY'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PENUVR, 'PENUVR'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PENPAR, 'PENPAR'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PENUVF, 'PENUVF'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PENPAF, 'PENPAF'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), DRNIR, 'DRNIR'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), DFNIR, 'DFNIR'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), HEAT, 'SWHEAT', RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), TAUX,  'TAUX'    ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), TAUY,  'TAUY'    ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), PENUVR,'PENUVR'  ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), PENPAR,'PENPAR'  ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), PENUVF,'PENUVF'  ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), PENPAF,'PENPAF'  ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), DRNIR, 'DRNIR'   ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), DFNIR, 'DFNIR'   ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), HEAT,  'SWHEAT'  ,RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), DISCHARGE, 'DISCHARGE'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), LWFLX, 'LWFLX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), SHFLX, 'SHFLX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), QFLUX, 'QFLUX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), RAIN, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), SNOW, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), LWFLX, 'LWFLX'   ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), SHFLX, 'SHFLX'   ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), QFLUX, 'QFLUX'   ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), RAIN,  'RAIN'   ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), SNOW,  'SNOW'   ,RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), SFLX,  'SFLX'   ,RC=STATUS); VERIFY_(STATUS)
        end if
        
        call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
@@ -1032,23 +978,22 @@ contains
 
        call MAPL_GetPointer(EXPORT, TS_FOUND,'TS_FOUND', RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SS_FOUND,'SS_FOUND', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, FRZMLT,'FRZMLT', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, FRZMLT,  'FRZMLT',   RC=STATUS); VERIFY_(STATUS)
 
 ! Diagnostics exports
 !---------------------------------------------------------
-       call MAPL_GetPointer(EXPORT, RFLUX,  'RFLUX' , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, FROCEANe,'FROCEAN', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, TAUXe, 'TAUX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, TAUYe, 'TAUY'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, HEATe, 'SWHEAT' , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, TAUXe,   'TAUX'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, TAUYe,   'TAUY'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, HEATe,   'SWHEAT' , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, DISCHARGEe, 'DISCHARGE'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, LWFLXe, 'LWFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SWFLXe, 'SWFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SHFLXe, 'SHFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, QFLUXe, 'QFLUX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, RAINe, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SNOWe, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SFLXe, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetPointer(EXPORT, LWFLXe,  'LWFLX'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, SWFLXe,  'SWFLX'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, SHFLXe,  'SHFLX'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, QFLUXe,  'QFLUX'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, RAINe,   'RAIN'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, SNOWe,   'SNOW'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, SFLXe,   'SFLX'   , RC=STATUS); VERIFY_(STATUS)       
 
        if(associated(FROCEANe)) FROCEANe = FROCEAN
 
@@ -1073,15 +1018,15 @@ contains
           PENPAR = PENPARi * WGHT
           PENUVF = PENUVFi * WGHT
           PENPAF = PENPAFi * WGHT
-          DRNIR = DRNIRi * WGHT
-          DFNIR = DFNIRi * WGHT
+          DRNIR  = DRNIRi  * WGHT
+          DFNIR  = DFNIRi  * WGHT
           DISCHARGE = DISCHARGEi * WGHT
-          LWFLX = LWFLXi * WGHT
-          QFLUX = QFLUXi * WGHT
-          SHFLX = (SHFLXi- FHOCN) * WGHT 
-          RAIN = (RAINi+FRESH) * WGHT 
-          SNOW = SNOWi * WGHT
-          SFLX = FSALT * WGHT
+          LWFLX  = LWFLXi  * WGHT
+          QFLUX  = QFLUXi  * WGHT
+          SHFLX  = (SHFLXi- FHOCN) * WGHT 
+          RAIN   = (RAINi+FRESH) * WGHT 
+          SNOW   = SNOWi * WGHT
+          SFLX   = FSALT * WGHT
 
 ! This stress forces the ocean, combined with sea ice bottom stress later
 
@@ -1089,17 +1034,9 @@ contains
           TAUY = TAUYi * WGHT
 
        
-! Prepare radiative heating for ocean
-!------------------------------------
+! Fill up Exports
+!----------------
 
-          if(associated(RFLUX )) RFLUX  = 0.0
-          do L=1,LM
-             HEAT(:,:,L) = HEATi(:,:,L)*WGHT 
-             if(associated(RFLUX)) then
-                RFLUX = RFLUX + (1.0-MASK3D(:,:,L))*HEAT(:,:,L)
-             end if
-          end do
-          
           if (associated(HEATe)) HEATe = HEAT
           if (associated(TAUXe)) TAUXe = TAUX
           if (associated(TAUYe)) TAUYe = TAUY
@@ -1155,16 +1092,17 @@ contains
              end where
           else
              FRZMLT = 0.0
+          end if
        end if
-       end if
-       
+
+       TS_FOUND = 280.0  ! make sure it is initialized, use 280., same as its default value in the above internal spec.
        where(WGHT > 0.0)
           TS_FOUND = TW
-          end where
+       end where
 
 ! Update orphan points
        if(DO_DATASEA == 0) then
-          WGHT=FROCEAN*(1-MASK)                    
+          WGHT=FROCEAN*(1.0-MASK)                    
           Tfreeze=MAPL_TICE-0.054*OrphanSalinity
 
           where(wght>0.0)
@@ -1179,8 +1117,7 @@ contains
        deallocate(WGHT, STAT=STATUS); VERIFY_(STATUS)
 
        if(DO_DATASEA/=0) then
-          deallocate(MASK3D, STAT=STATUS); VERIFY_(STATUS)
-          deallocate(MASK, STAT=STATUS); VERIFY_(STATUS)
+          deallocate(MASK,   STAT=STATUS); VERIFY_(STATUS)
        end if
     
     end if ! Time to run
