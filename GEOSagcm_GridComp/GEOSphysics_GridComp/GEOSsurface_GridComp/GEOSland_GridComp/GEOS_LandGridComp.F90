@@ -86,7 +86,7 @@ contains
     character(len=ESMF_MAXSTR)              :: TMP
     type(MAPL_MetaComp),pointer             :: MAPL=>null()
     INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
-    integer  :: NUM_LDAS_ENSEMBLE, ens_id_width
+    integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
 
 !=============================================================================
 
