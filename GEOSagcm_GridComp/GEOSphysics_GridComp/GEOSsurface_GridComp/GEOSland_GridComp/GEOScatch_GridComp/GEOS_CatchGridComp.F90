@@ -89,7 +89,7 @@ integer,parameter :: NUM_SUBTILES=4
 !                  7:  BARE SOIL
 !                  8:  DESERT
 
-integer           :: NUM_ENSEMBLE, USE_ASCATZ0
+integer           :: NUM_LDAS_ENSEMBLE, USE_ASCATZ0
 integer,parameter :: NTYPS = MAPL_NUMVEGTYPES
 
 ! Veg-dep. vector SAI factor for scaling of rough length (now exp(-.5) )
@@ -204,7 +204,7 @@ subroutine SetServices ( GC, RC )
 
     is_OFFLINE = wrap%ptr%CATCH_OFFLINE
 
-    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, USE_ASCATZ0, Label="USE_ASCATZ0:", DEFAULT=0, RC=STATUS)
@@ -4216,6 +4216,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: filetype 
         integer                       :: nDims,dimSizes(3) 
         character(len=ESMF_MAXSTR)    :: vname  
+        integer                       :: ens_id_width
 !#---
 
 
@@ -4299,15 +4300,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Get name of albedo files from configuration
         ! --------------------------------------------------------------------------
 
-        if(NUM_ENSEMBLE > 1) then
+        if(NUM_LDAS_ENSEMBLE > 1) then
+           call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
+           VERIFY_(STATUS)           
            !comp_name should be catchxxxx
            call MAPL_GetResource(MAPL   ,&
               VISDFtpl                  ,&
-              label   = 'VISDF'//comp_name(6:9)//'_FILE:',&
+              label   = 'VISDF'//comp_name(6:6+ens_id_width-1)//'_FILE:',&
               RC=STATUS )
            call MAPL_GetResource(MAPL    ,&
               NIRDFtpl                   ,&
-              label   = 'NIRDF'//comp_name(6:9)//'_FILE:' ,&
+              label   = 'NIRDF'//comp_name(6:6+ens_id_width-1)//'_FILE:' ,&
               RC=STATUS )
 
            if (STATUS/=ESMF_SUCCESS) then
@@ -4326,9 +4329,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               VERIFY_(STATUS)
            endif
 
-           call ESMF_CFIOStrTemplate(VISDFFILE, VISDFtpl,'GRADS', xid=comp_name(6:9), stat=status)
+           call ESMF_CFIOStrTemplate(VISDFFILE, VISDFtpl,'GRADS', xid=comp_name(6:6+ens_id_width-1), stat=status)
            VERIFY_(STATUS)
-           call ESMF_CFIOStrTemplate(NIRDFFILE, NIRDFtpl,'GRADS', xid=comp_name(6:9), stat=status)
+           call ESMF_CFIOStrTemplate(NIRDFFILE, NIRDFtpl,'GRADS', xid=comp_name(6:6+ens_id_width-1), stat=status)
            VERIFY_(STATUS) 
         else
 
