@@ -6,7 +6,8 @@ set (SRCS
 
 esma_add_library (${this}
   SRCS ${SRCS}
-  SUBCOMPONENTS @mom @mom6
+# SUBCOMPONENTS @mom @mom6
+  SUBCOMPONENTS @mom6
   DEPENDENCIES MAPL_Base
   )
 

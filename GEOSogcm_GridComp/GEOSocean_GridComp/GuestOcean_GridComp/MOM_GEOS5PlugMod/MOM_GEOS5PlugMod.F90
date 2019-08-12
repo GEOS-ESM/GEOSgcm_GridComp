@@ -10,10 +10,10 @@
 module MOM_GEOS5PlugMod
 
 !BOP
-! !MODULE: MOM6_GEOS5PlugMod -- wrapper for MOM6.
+! !MODULE: MOM6_GEOS5PlugMod -- to couple with MOM6.
 
 !DESCRIPTION:
-! A  MAPL/ESMF Gridded Component that acts as a wrapper for MOM.
+! A  MAPL/ESMF Gridded Component that acts as a couple for MOM.
 ! It uses ESMF AND MAPL. It has heavy dependencies on FMS and MOM.
 !
 ! This should be built like MOM, so that its default reals
@@ -38,23 +38,17 @@ module MOM_GEOS5PlugMod
   use fms_mod,                  only: fms_init, fms_end
   use fms_io_mod,               only: fms_io_exit
 
-  use MOM_grid,                 only: ocean_grid_type                          ! mom6/src/core/MOM_grid.F90         [MOM6 GEOS]
-  use MOM_verticalGrid,         only: verticalGrid_type                        ! mom6/src/core/MOM_verticalGrid.F90 [MOM6 GEOS]
-  use MOM,                      only: MOM_control_struct                       ! mom6/src/core/MOM.F90              [MOM6 GEOS]
-
-  use mpp_domains_mod,          only: domain2d, mpp_update_domains
+  use mpp_domains_mod,          only: domain2d, mpp_update_domains, mpp_get_compute_domain
+  use mpp_parameter_mod,        only: AGRID, SCALAR_PAIR
 
   use time_manager_mod,         only: set_calendar_type, time_type
   use time_manager_mod,         only: set_time, set_date
   use time_manager_mod,         only: JULIAN
-! use time_manager_mod,         only: operator( + )
 
   use ocean_model_mod,          only: ocean_model_init, update_ocean_model, ocean_model_end, ocean_model_restart
-  use ocean_types_mod,          only: ocean_public_type, ice_ocean_boundary_type
-  use ocean_model_mod,          only: get_ocean_domain, ocean_state_type
   use ocean_model_mod,          only: ocean_model_data_get
-
-  use mpp_parameter_mod,        only: AGRID, SCALAR_PAIR
+  use ocean_model_mod,          only: ocean_public_type, ocean_state_type
+  use MOM_surface_forcing,      only: ice_ocean_boundary_type
 
 ! Nothing on the MOM side is visible through this module.
 
@@ -81,7 +75,6 @@ module MOM_GEOS5PlugMod
   end type MOM_MAPLWrap_Type
 
 contains
-
 
 !BOP
 
@@ -566,15 +559,11 @@ contains
 
 ! Locals
 
-    type(ice_ocean_boundary_type), pointer :: boundary                => null()
+    type(ice_ocean_boundary_type), pointer :: Boundary                => null()
     type(ocean_public_type),       pointer :: Ocean                   => null()
     type(ocean_state_type),        pointer :: Ocean_State             => null()
     type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state => null()
     type(MOM_MAPLWrap_Type)                :: wrap
-
-    type(ocean_grid_type),         pointer :: mom_grid                => null()
-    type(verticalGrid_type),       pointer :: mom_v_grid              => null()
-    type(MOM_control_struct),      pointer :: mom_csp                 => null()  ! SA: or ocean_internal_state from mom6/src/core/MOM_variables.F90
 
     integer                                :: DT_OCEAN
 
@@ -645,7 +634,7 @@ contains
 ! Allocate this instance of the internal state and put it in wrapper.
 ! -------------------------------------------------------------------
 
-    allocate( MOM_MAPL_internal_state, stat=status )       ! SA: deallocate ??
+    allocate( MOM_MAPL_internal_state, stat=status )
     VERIFY_(STATUS)
 
     wrap%ptr => MOM_MAPL_internal_state
@@ -696,19 +685,15 @@ contains
 
 !   call mom4_get_dimensions(isc, iec, jsc, jec, nk_out=LM)          ! mom/src/mom5/ocean_core/ocean_model.F90    [MOM5 GEOS]
 
-    mom_grid   => Ocean_state%grid
-
-    isc = mom_grid%isc; iec = mom_grid%iec   ! SA: Seems to be no mom6_get_dimensions in MOM6.
-    jsc = mom_grid%jsc; jec = mom_grid%jec   !     But ocean_state is expanded from MOM5.
+    isc = Ocean_state%grid%isc; iec = Ocean_state%grid%iec           ! SA: Seems to be no mom6_get_dimensions in MOM6.
+    jsc = Ocean_state%grid%jsc; jec = Ocean_state%grid%jec
 
     call MAPL_GridGet(GRID, localCellCountPerDim=counts, RC=status)
     VERIFY_(STATUS)
 
     IM=iec-isc+1
     JM=jec-jsc+1
-
-    mom_v_grid => Ocean_state%GV
-    LM=mom_v_grid%ke
+    LM=Ocean_state%GV%ke
     
     ASSERT_(counts(1)==IM)
     ASSERT_(counts(2)==JM)
@@ -716,7 +701,7 @@ contains
 ! Allocate MOM flux bulletin board.
 !------------------------------------
 
-    allocate ( Boundary% u_flux          (isc:iec,jsc:jec), &        ! SA: deallocate ??
+    allocate ( Boundary% u_flux          (isc:iec,jsc:jec), &
                Boundary% v_flux          (isc:iec,jsc:jec), &
                Boundary% t_flux          (isc:iec,jsc:jec), &
                Boundary% q_flux          (isc:iec,jsc:jec), &
@@ -954,13 +939,10 @@ contains
     type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state  => null()
     type(MOM_MAPLWrap_Type)                :: wrap
 
-    type(ice_ocean_boundary_type), pointer :: boundary     => null()
+    type(ice_ocean_boundary_type), pointer :: Boundary     => null()
     type(ocean_public_type),       pointer :: Ocean        => null()
     type(ocean_state_type),        pointer :: Ocean_State  => null()
     type(domain2d),                pointer :: OceanDomain  => null()
-    type(ocean_grid_type),         pointer :: mom_grid     => null()
-    type(verticalGrid_type),       pointer :: mom_v_grid   => null()
-    type(MOM_control_struct),      pointer :: mom_csp      => null() ! SA: or ocean_internal_state from mom6/src/core/MOM_variables.F90
 
     integer                                :: isc,iec,jsc,jec
     integer                                :: isd,ied,jsd,jed
@@ -1033,15 +1015,12 @@ contains
 !   call get_ocean_domain(OceanDomain)                                      ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
 !   call mom4_get_dimensions(isc, iec, jsc, jec, isd, ied, jsd, jed, LM)    ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
 
-    mom_grid => Ocean_state%grid
-    isd = mom_grid%isd; ied = mom_grid%ied
-    jsd = mom_grid%jsd; jed = mom_grid%jed
-
-    mom_v_grid => Ocean_state%GV
-    LM=mom_v_grid%ke
+    isd = Ocean_state%grid%isd; ied = Ocean_state%grid%ied
+    jsd = Ocean_state%grid%jsd; jed = Ocean_state%grid%jed
 
     IM=iec-isc+1
     JM=jec-jsc+1
+    LM=Ocean_state%GV%ke
 
 ! Temporaries with MOM default reals
 !-----------------------------------
@@ -1101,22 +1080,22 @@ contains
 
     call MAPL_GetResource(MAPL, pice_scaling, Label = "MOM_PICE_SCALING:", default = 1.0, rc = status); VERIFY_(status)
 
-    boundary%P         = pice_scaling* &
-                         real(PICE,      kind=KIND(boundary%P)) ! Pressure of overlying ice and atmosphere
-    boundary%lw_flux   = real(LWFLX,     kind=KIND(boundary%P)) ! Long wave flux: both positive down
-    boundary%t_flux    = real(SHFLX,     kind=KIND(boundary%P)) ! Sensible heat flux: both positive up
-    boundary%q_flux    = real(QFLUX,     kind=KIND(boundary%P)) ! specific humidity flux [kg m-2 s-1] ( OR evaporation flux ?)
-    boundary%lprec     = real(RAIN,      kind=KIND(boundary%P)) ! Liquid precipitation: both positive down
-    boundary%fprec     = real(SNOW,      kind=KIND(boundary%P)) ! Frozen precipitation: both positive down
-    boundary%salt_flux =-real(SFLX,      kind=KIND(boundary%P)) ! Salt flux: MOM positive up, GEOS positive down
-    boundary%runoff    = real(DISCHARGE, kind=KIND(boundary%P)) ! mass flux of liquid runoff [kg m-2 s-1]
+    Boundary%P         = pice_scaling* &
+                         real(PICE,      kind=KIND(Boundary%p)) ! Pressure of overlying ice and atmosphere
+    Boundary%lw_flux   = real(LWFLX,     kind=KIND(Boundary%p)) ! Long wave flux: both positive down
+    Boundary%t_flux    = real(SHFLX,     kind=KIND(Boundary%p)) ! Sensible heat flux: both positive up
+    Boundary%q_flux    = real(QFLUX,     kind=KIND(Boundary%p)) ! specific humidity flux [kg m-2 s-1] ( OR evaporation flux ?)
+    Boundary%lprec     = real(RAIN,      kind=KIND(Boundary%p)) ! Liquid precipitation: both positive down
+    Boundary%fprec     = real(SNOW,      kind=KIND(Boundary%p)) ! Frozen precipitation: both positive down
+    Boundary%salt_flux =-real(SFLX,      kind=KIND(Boundary%p)) ! Salt flux: MOM positive up, GEOS positive down
+    Boundary%runoff    = real(DISCHARGE, kind=KIND(Boundary%p)) ! mass flux of liquid runoff [kg m-2 s-1]
 
 ! All shortwave components are positive down  in MOM and in GEOS
 !---------------------------------------------------------------
-    boundary%sw_flux_vis_dir = real(PENUVR+PENPAR, kind=KIND(boundary%P)) ! direct visible sw radiation        [W m-2]
-    boundary%sw_flux_vis_dif = real(PENUVF+PENPAF, kind=KIND(boundary%P)) ! diffuse visible sw radiation       [W m-2]
-    boundary%sw_flux_nir_dir = real(DRNIR,         kind=KIND(boundary%P)) ! direct Near InfraRed sw radiation  [W m-2]
-    boundary%sw_flux_nir_dif = real(DFNIR,         kind=KIND(boundary%P)) ! diffuse Near InfraRed sw radiation [W m-2]
+    Boundary%sw_flux_vis_dir = real(PENUVR+PENPAR, kind=KIND(Boundary%p)) ! direct visible sw radiation        [W m-2]
+    Boundary%sw_flux_vis_dif = real(PENUVF+PENPAF, kind=KIND(Boundary%p)) ! diffuse visible sw radiation       [W m-2]
+    Boundary%sw_flux_nir_dir = real(DRNIR,         kind=KIND(Boundary%p)) ! direct Near InfraRed sw radiation  [W m-2]
+    Boundary%sw_flux_nir_dif = real(DFNIR,         kind=KIND(Boundary%p)) ! diffuse Near InfraRed sw radiation [W m-2]
 
 ! Convert input stresses over water to B grid
 !--------------------------------------------
@@ -1129,8 +1108,8 @@ contains
     call ocean_model_data_get(Ocean_State, Ocean, 'cos_rot', cos_rot, isc, jsc)    ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
     call ocean_model_data_get(Ocean_State, Ocean, 'sin_rot', sin_rot, isc, jsc)    ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
 
-    boundary%U_flux =  (U*cos_rot + V*sin_rot)*(1.-AICEU) - STROCNXB
-    boundary%V_flux = (-U*sin_rot + V*cos_rot)*(1.-AICEU) - STROCNYB
+    Boundary%U_flux =  (U*cos_rot + V*sin_rot)*(1.-AICEU) - STROCNXB
+    Boundary%V_flux = (-U*sin_rot + V*cos_rot)*(1.-AICEU) - STROCNYB
 
 ! Set the time for MOM
 !---------------------
@@ -1387,6 +1366,7 @@ contains
     type(MOM_MAPLWrap_Type)            :: wrap
     type(ocean_public_type),   pointer :: Ocean                   => null()
     type(ocean_state_type),    pointer :: Ocean_State             => null()
+    type(ice_ocean_boundary_type), pointer :: Boundary            => null()
 
 ! ErrLog Variables
 
@@ -1457,6 +1437,37 @@ contains
 
     call fms_io_exit                                ! FMS/fms/fms_io.F90                                 [MOM6 GEOS]
                                                     ! mom/src/shared/fms/fms_io.F90                      [MOM5 GEOS]
+
+! deallocate
+
+    deallocate ( Boundary% u_flux        , &
+               Boundary% v_flux          , &
+               Boundary% t_flux          , &
+               Boundary% q_flux          , &
+               Boundary% salt_flux       , &
+               Boundary% lw_flux         , &
+               Boundary% sw_flux_vis_dir , &
+               Boundary% sw_flux_vis_dif , &
+               Boundary% sw_flux_nir_dir , &
+               Boundary% sw_flux_nir_dif , &
+               Boundary% lprec           , &
+               Boundary% fprec           , &
+               Boundary% runoff          , &
+               Boundary% calving         , &
+               Boundary% stress_mag      , &        ! SA: additions in MOM6
+               Boundary% ustar_berg      , &
+               Boundary% area_berg       , &
+               Boundary% mass_berg       , &
+               Boundary% runoff_hflx     , &
+               Boundary% calving_hflx    , &
+               Boundary% p               , &
+               Boundary% mi              , &
+               Boundary% ice_rigidity    , &
+                                stat=STATUS )
+    VERIFY_(STATUS)
+
+    deallocate( MOM_MAPL_internal_state, STAT=STATUS); VERIFY_(STATUS)
+!
 
     call MAPL_TimerOff(MAPL,"FINALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"   )
