@@ -53,6 +53,7 @@
                            DYN_CASE        => CASE_ID,               &
                            DYN_DEBUG       => DEBUG,                 &
                            HYDROSTATIC     => FV_HYDROSTATIC,        &
+                           fv_getUpdraftHelicity,                    &
                            ADIABATIC, SW_DYNAMICS, AdvCore_Advection
    use m_topo_remap, only: dyn_topo_remap
    use MAPL_GridManagerMod
@@ -1609,6 +1610,14 @@ contains
              VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
         VERIFY_(STATUS)
      enddo         
+
+    call MAPL_AddExportSpec ( gc,                                  &
+         SHORT_NAME = 'UH25',                                      &
+         LONG_NAME  = 'updraft_helicity_2_to_5_km_mean',           &
+         UNITS      = 'm+2 s-2',                                   &
+         DIMS       = MAPL_DimsHorzOnly,                           &
+         VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'VORT',                                      &
@@ -4738,6 +4747,15 @@ subroutine Run(gc, import, export, clock, rc)
       end if
 
       zle = log(vars%pe)
+
+! Updraft Helicty Export
+
+      call MAPL_GetPointer(export,temp2d,'UH25',  rc=status)
+      VERIFY_(STATUS)
+      if(associated(temp2d)) then
+         call fv_getUpdraftHelicity(temp2d)
+         VERIFY_(STATUS)
+      endif
 
 ! Divergence Exports
 

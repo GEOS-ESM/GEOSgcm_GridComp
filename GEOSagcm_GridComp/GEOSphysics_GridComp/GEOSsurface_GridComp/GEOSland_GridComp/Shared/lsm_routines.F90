@@ -1,10 +1,10 @@
 MODULE lsm_routines
 
 ! The module contains subroutines that are shared by Catchment and Catchment-CN models.
-! Sarith, 10 Nov 2015  - The first version 
+! Sarith, 10 Nov 2015  - The first version
 !                      - moved   RZDRAIN, INTERC, BASE, PARTITION, RZEQUIL, gndtp0
 !                        SIBALB, catch_calc_soil_moist, catch_calc_subtile2tile
-!                        gndtmp, catch_calc_tp,  catch_calc_ght, catch_calc_FT, 
+!                        gndtmp, catch_calc_tp,  catch_calc_ght, catch_calc_FT,
 !                        catch_calc_wtotl, dampen_tc_oscillations and catch_echo_constants from
 !                        land models
 !                      - moved DZTC, FWETL, FWETC, DZGT, PHIGT, ALHMGT, FSN, CATCH_FT_WEIGHT_TP1,
@@ -14,27 +14,28 @@ MODULE lsm_routines
 !                      - removed CSOIL from arguments to INTERC
 !                      - removed CDCR2 from arguments to BASE
 !                      - change catch_echo_constants to lsmroutines_echo_constants
-! Justin, 16 Apr 2018  - replaced LAND_UPD ifdef with LAND_FIX from SurfParams, CSOIL_2 now called 
+! Justin, 16 Apr 2018  - replaced LAND_UPD ifdef with LAND_FIX from SurfParams, CSOIL_2 now called
 !                        from SurfParams, as well as others
+! Sarith, 14 Aug 2018  - Added irrigation routines, considered experimental
 
   USE MAPL_BaseMod,      ONLY:                &
        NTYPS             => MAPL_NumVegTypes, &
        MAPL_Land,                             &
        MAPL_UNDEF
-  
+
   USE MAPL_ConstantsMod, ONLY:           &
-       PIE               => MAPL_PI,     &  ! -                       
-       ALHE              => MAPL_ALHL,   &  ! J/kg  @15C              
-       ALHM              => MAPL_ALHF,   &  ! J/kg                    
-       ALHS              => MAPL_ALHS,   &  ! J/kg                    
-       TF                => MAPL_TICE,   &  ! K                       
-       RGAS              => MAPL_RGAS,   &  ! J/(kg K)                
+       PIE               => MAPL_PI,     &  ! -
+       ALHE              => MAPL_ALHL,   &  ! J/kg  @15C
+       ALHM              => MAPL_ALHF,   &  ! J/kg
+       ALHS              => MAPL_ALHS,   &  ! J/kg
+       TF                => MAPL_TICE,   &  ! K
+       RGAS              => MAPL_RGAS,   &  ! J/(kg K)
        SHW               => MAPL_CAPWTR, &  ! J/kg/K  spec heat of wat
        SHI               => MAPL_CAPICE, &  ! J/kg/K  spec heat of ice
        EPSILON           => MAPL_EPSILON,&
        MAPL_H2OMW,                       &
        MAPL_AIRMW
-  
+
   USE CATCH_CONSTANTS,   ONLY:                   &
        N_SNOW            => CATCH_N_SNOW,        &
        N_GT              => CATCH_N_GT,          &
@@ -43,90 +44,90 @@ MODULE lsm_routines
        SNWALB_NIRMAX     => CATCH_SNWALB_NIRMAX, &
        SLOPE             => CATCH_SNWALB_SLOPE,  &
        MAXSNDEPTH        => CATCH_MAXSNDEPTH,    &
-       DZ1MAX            => CATCH_DZ1MAX,        &  
+       DZ1MAX            => CATCH_DZ1MAX,        &
        SHR, N_SM, SCONST, CSOIL_1,               &
        C_CANOP, SATCAPFR
 
   USE SURFPARAMS,        ONLY:                   &
        LAND_FIX, CSOIL_2, WEMIN, AICEV, AICEN,   &
-       FLWALPHA, ASTRFR, STEXP, RSWILT                           
-  
+       FLWALPHA, ASTRFR, STEXP, RSWILT
+
   USE SIBALB_COEFF,  ONLY: coeffsib
-  
+
   USE STIEGLITZSNOW, ONLY: &
        snowrt, StieglitzSnow_calc_asnow, StieglitzSnow_calc_tpsnow, get_tf0d
-  
+
   IMPLICIT NONE
-  
+
   PRIVATE
-  
+
   PUBLIC :: INTERC, BASE, PARTITION, RZEQUIL, gndtp0
   PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_subtile2tile
   PUBLIC :: gndtmp, catch_calc_tp,  catch_calc_ght, catch_calc_FT, catch_calc_wtotl
-  PUBLIC :: dampen_tc_oscillations, lsmroutines_echo_constants
-  
+  PUBLIC :: dampen_tc_oscillations, lsmroutines_echo_constants, irrigation_rate
+
   ! layer depth associated with snow-free land temperatures
   !
-  ! Note: DZTC = .05 is a hardwired setting of the depth of the bottom of 
-  ! the surface soil layer.  It should be made a parameter that is tied to 
-  ! the heat capacity CSOIL, which had been set to either CSOIL_1 or 
+  ! Note: DZTC = .05 is a hardwired setting of the depth of the bottom of
+  ! the surface soil layer.  It should be made a parameter that is tied to
+  ! the heat capacity CSOIL, which had been set to either CSOIL_1 or
   ! CSOIL_2 based on vegetation type.  For now we leave
-  ! it set to 0.05 despite an apparent inconsistency with CSOIL as 
-  ! currently used.  We do this (again, for now) because the effects of the 
-  ! inconsistency are drowned out by our arbitrary assumption, in computing 
-  ! the thermal conductivities, that the unsaturated soil has a degree of 
-  ! saturation of 50%.  For the flux calculation, setting the depth to .05m 
+  ! it set to 0.05 despite an apparent inconsistency with CSOIL as
+  ! currently used.  We do this (again, for now) because the effects of the
+  ! inconsistency are drowned out by our arbitrary assumption, in computing
+  ! the thermal conductivities, that the unsaturated soil has a degree of
+  ! saturation of 50%.  For the flux calculation, setting the depth to .05m
   ! here provides approximately the same fluxes as setting the depth to much
-  ! closer to 0 (as the value of CSOIL_2 suggests) and assuming a degree of 
-  ! saturation of about 25%, which is no less realistic an assumption.  There 
-  ! are other impacts in wet climates regarding the effect of 
-  ! the depth of the water table on the thermal conductivity; these impacts 
+  ! closer to 0 (as the value of CSOIL_2 suggests) and assuming a degree of
+  ! saturation of about 25%, which is no less realistic an assumption.  There
+  ! are other impacts in wet climates regarding the effect of
+  ! the depth of the water table on the thermal conductivity; these impacts
   ! are presumably very small.
-  
+
   REAL,    PARAMETER, PUBLIC :: DZTC     = 0.05   ! m  layer depth for tc1, tc2, tc4
-  
+
   ! ---------------------------------------------------------------------------
   !
   ! constants for interception routine (interc())
   ! Areal fraction of canopy leaves onto which precipitation falls:
-  
+
   REAL,    PARAMETER :: FWETL    = 0.02   ! for large-scale precipitation
   REAL,    PARAMETER :: FWETC    = 0.02   ! for convective precipitation
 
   ! ---------------------------------------------------------------------------
   !
   ! constants for ground temperature routine (gndtp0() and gndtmp())
-  
-  REAL,    PARAMETER, DIMENSION(N_gt), PUBLIC :: DZGT = &  ! m  layer depths 
+
+  REAL,    PARAMETER, DIMENSION(N_gt), PUBLIC :: DZGT = &  ! m  layer depths
        (/ 0.0988, 0.1952, 0.3859, 0.7626, 1.5071, 10.0 /)
-  
-  ! PHIGT and ALHMGT are needed for backward compatibility with 
+
+  ! PHIGT and ALHMGT are needed for backward compatibility with
   !  off-line (land-only) MERRA replay:
-  ! 
-  ! PHIGT = porosity used in gndtp0() and gndtmp() 
+  !
+  ! PHIGT = porosity used in gndtp0() and gndtmp()
   !         if neg,  POROS(n) from soil moisture submodel will be used
-  ! 
+  !
   !               |   PHIGT      ALHMGT
   ! ------------------------------------------------
-  !  MERRA        |      0.45    3.34e+5   
+  !  MERRA        |      0.45    3.34e+5
   !  Fortuna-2_3  |  -9999.       ALHM
-  
-  REAL,    PARAMETER, PUBLIC :: PHIGT   = -9999.     
+
+  REAL,    PARAMETER, PUBLIC :: PHIGT   = -9999.
   REAL,    PARAMETER, PUBLIC :: ALHMGT  = ALHM
-  
+
   REAL,    PARAMETER, PUBLIC :: FSN     = 1.e3*ALHMGT ! unit change J/kg/K -> J/m/K
-  
+
   ! ---------------------------------------------------------------------------
   !
   ! constants for "landscape" freeze/thaw (FT) state (see subroutine catch_calc_FT())
-  
+
   REAL, PARAMETER  :: CATCH_FT_WEIGHT_TP1      = 0.5   !
   REAL, PARAMETER  :: CATCH_FT_THRESHOLD_TEFF  = TF    ! [Kelvin]
-  REAL, PARAMETER  :: CATCH_FT_THRESHOLD_ASNOW = 0.2   ! 
-  
+  REAL, PARAMETER  :: CATCH_FT_THRESHOLD_ASNOW = 0.2   !
+
   REAL,    PARAMETER :: ZERO     = 0.
   REAL,    PARAMETER :: ONE      = 1.
-  
+
   CONTAINS
 
 !****
@@ -135,7 +136,7 @@ MODULE lsm_routines
 !**** -----------------------------------------------------------------
 !****
 !**** [ BEGIN INTERC ]
-!**** 
+!****
       SUBROUTINE INTERC (                                                      &
                          NCH, DTSTEP, TRAINL, TRAINC,SMELT,                    &
                          SATCAP, SFRAC,BUG,                                    &
@@ -143,7 +144,7 @@ MODULE lsm_routines
                          THRU                                                  &
                         )
 !****
-!**** THIS ROUTINE USES THE PRECIPITATION FORCING TO DETERMINE 
+!**** THIS ROUTINE USES THE PRECIPITATION FORCING TO DETERMINE
 !**** CHANGES IN INTERCEPTION AND SOIL MOISTURE STORAGE.
 !**** Changes in snowcover are not treated here anymore.
 !****
@@ -168,7 +169,7 @@ MODULE lsm_routines
       DATA TIMFRL/1.00/
       DATA TIMFRC/0.333/
 ! value for GSWP
-!      TIMFRC/0.125/  
+!      TIMFRC/0.125/
 
 !****
 !**** ------------------------------------------------------------------
@@ -182,17 +183,17 @@ MODULE lsm_routines
 !**** DETERMINE XTCORR, THE FRACTION OF A STORM THAT FALLS ON A PREVIOUSLY
 !**** WET SURFACE DUE TO THE TIME CORRELATION OF PRECIPITATION POSITION.
 !**** (TIME SCALE TIMFRL FOR LARGE SCALE STORMS SET TO ONE FOR FWETL=1
-!**** TO REFLECT THE EFFECTIVE LOSS OF "POSITION MEMORY" WHEN STORM 
+!**** TO REFLECT THE EFFECTIVE LOSS OF "POSITION MEMORY" WHEN STORM
 !**** COVERS ENTIRE GRID SQUARE.)
 
       XTCORR= (1.-TIMFRL) *                                                    &
-            AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/(FWETL*SFRAC) )   
+            AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/(FWETL*SFRAC) )
 
 !****
 !**** FILL INTERCEPTION RESERVOIR WITH PRECIPITATION.
-!**** THRU1 IS FIRST CALCULATED AS THE AMOUNT FALLING THROUGH THE 
-!****    CANOPY UNDER THE ASSUMPTION THAT ALL RAIN FALLS RANDOMLY.  
-!****    ONLY A FRACTION 1-XTCORR FALLS RANDOMLY, THOUGH, SO THE RESULT 
+!**** THRU1 IS FIRST CALCULATED AS THE AMOUNT FALLING THROUGH THE
+!****    CANOPY UNDER THE ASSUMPTION THAT ALL RAIN FALLS RANDOMLY.
+!****    ONLY A FRACTION 1-XTCORR FALLS RANDOMLY, THOUGH, SO THE RESULT
 !****    IS MULTIPLIED BY 1-XTCORR.
 !****
       WATADD = TRAINL(CHNO)*DTSTEP + SMELT(CHNO)*DTSTEP
@@ -221,15 +222,15 @@ MODULE lsm_routines
 !****
 !**** DETERMINE XTCORR, THE FRACTION OF A STORM THAT FALLS ON A PREVIOUSLY
 !**** WET SURFACE DUE TO THE TIME CORRELATION OF PRECIPITATION POSITION.
-    
+
       XTCORR= (1.-TIMFRC) *                                                    &
            AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/(FWETC*SFRAC) )
 
 !****
 !**** FILL INTERCEPTION RESERVOIR WITH PRECIPITATION.
-!**** THRU1 IS FIRST CALCULATED AS THE AMOUNT FALLING THROUGH THE 
-!****    CANOPY UNDER THE ASSUMPTION THAT ALL RAIN FALLS RANDOMLY.  
-!****    ONLY A FRACTION 1-XTCORR FALLS RANDOMLY, THOUGH, SO THE RESULT 
+!**** THRU1 IS FIRST CALCULATED AS THE AMOUNT FALLING THROUGH THE
+!****    CANOPY UNDER THE ASSUMPTION THAT ALL RAIN FALLS RANDOMLY.
+!****    ONLY A FRACTION 1-XTCORR FALLS RANDOMLY, THOUGH, SO THE RESULT
 !****    IS MULTIPLIED BY 1-XTCORR.
 !****
       WATADD = TRAINC(CHNO)*DTSTEP
@@ -362,7 +363,7 @@ MODULE lsm_routines
       DATA LSTRESS/.FALSE./    !,surflay/20./
 
 !****
-!**** --------------------------------------------------       
+!**** --------------------------------------------------
 
 !rr   next line for debugging, sep 23, 2003, reichle
 !rr
@@ -382,7 +383,7 @@ MODULE lsm_routines
           endif
 
         AR1(N)= AMIN1(1.,AMAX1(0.,(1.+ars1(n)*CATDEFX)                         &
-                 /(1.+ars2(n)*CATDEFX+ars3(n)*CATDEFX*CATDEFX))) 
+                 /(1.+ars2(n)*CATDEFX+ars3(n)*CATDEFX*CATDEFX)))
 
         if (CATDEFX .ge. cdi) then
             ax=ara3(n)*CATDEFX+ara4(n)
@@ -504,7 +505,7 @@ MODULE lsm_routines
 !**** EXTRAPOLATION OF THE SURFACE WETNESSES
 
 ! 1st step: surface wetness in the unstressed fraction without considering
-!           the surface excess; we just assume an equilibrium profile from 
+!           the surface excess; we just assume an equilibrium profile from
 !           the middle of the root zone to the surface.
 
         SWSRF2(N)=((SWSRF2(N)**(-BEE(N))) - (.5/PSIS(N)))**(-1./BEE(N))
@@ -533,7 +534,7 @@ MODULE lsm_routines
           else
             cor=0.
           endif
-          
+
         SWSRF2(N)=SWSRF2(N)+SRFEXC(N)/(dzsf(n)*poros(n)*(1.-ar1(n))+1.e-20)
         SWSRF2(N)=AMIN1(1., AMAX1(1.E-5, SWSRF2(N)))
         swsrf4(n)=swsrf4(n)+srfexc(n)/(dzsf(n)*poros(n)*(1.-ar1(n))+1.e-20)
@@ -562,7 +563,7 @@ MODULE lsm_routines
 
         ENDDO
 
-         
+
       RETURN
       END SUBROUTINE PARTITION
 
@@ -621,7 +622,7 @@ MODULE lsm_routines
           RZEQ(N)=WILT+(RZEQ(N)-WILT)*FACTOR
           ENDIF
 
-! scaling:    
+! scaling:
         RZEQ(N)=AMIN1(1.,AMAX1(0.,RZEQ(N)))
         RZEQ(N)=RZEQ(N)*VGWMAX(N)
 
@@ -629,7 +630,7 @@ MODULE lsm_routines
 
       RETURN
       END SUBROUTINE RZEQUIL
-  
+
 !**** -----------------------------------------------------------------
 !**** /////////////////////////////////////////////////////////////////
 !**** -----------------------------------------------------------------
@@ -645,11 +646,11 @@ MODULE lsm_routines
 !        dts     timestep in seconds
 !        t1      terrestrial (layer 1) temperature in deg C
 !        phi     porosity
-!        zbar    mean depth to the water table. 
-!        thetaf  mean vadose zone soil moisture factor (0-1) 
+!        zbar    mean depth to the water table.
+!        thetaf  mean vadose zone soil moisture factor (0-1)
 !        output,
 !        ht      heat content in layers 2-7
-!        tp      ground temperatures in layers 2-7 
+!        tp      ground temperatures in layers 2-7
 !        tdeep   the temperature of the "deep"
 !        f21     heat flux between layer 2 and the terrestrial layer (1)
 !        df21    derivative of f21 with respect to temperature
@@ -673,8 +674,8 @@ MODULE lsm_routines
       !DATA PHI/0.45/, FSN/3.34e+8/, SHR/2.4E6/
 
 !     initialize parameters
-      shw0=SHW*1000. ! PER M RATHER THAN PER KG 
-      shi0=SHI*1000. ! PER M RATHER THAN PER KG 
+      shw0=SHW*1000. ! PER M RATHER THAN PER KG
+      shi0=SHI*1000. ! PER M RATHER THAN PER KG
       shr0=SHR*1000. ! PER M RATHER THAN PER KG [kg of water equivalent density]
 
 ! calculate the boundaries, based on the layer thicknesses(DZGT)
@@ -684,7 +685,7 @@ MODULE lsm_routines
       shc(1)=shr0*(1.-phi)*DZGT(1)
       zc(1)=0.5*(zb(1)+zb(2))
 
-! evaluates the temperatures in the soil layers based on the heat values.  
+! evaluates the temperatures in the soil layers based on the heat values.
 !             ***********************************
 !             input:
 !             xw - water in soil layers, m
@@ -705,7 +706,7 @@ MODULE lsm_routines
 
       ws=phi*DZGT(1)  ! PORE SPACE IN LAYER 2
       xw=0.5*ws     ! ASSUME FOR THESE CALCULATIONS THAT THE PORE SPACE
-                    ! IS ALWAYS HALF FILLED WITH WATER.  XW IS THE  
+                    ! IS ALWAYS HALF FILLED WITH WATER.  XW IS THE
                     ! AMOUNT OF WATER IN THE LAYER.
 
       tp(1)=0.
@@ -718,7 +719,7 @@ MODULE lsm_routines
         ELSE
           TP(1)=0.
         ENDIF
-           
+
 ! evaluates:  layer thermal conductivities
 ! *****************************************
 !             from farouki(cold regions sci and tech, 5, 1981,
@@ -757,7 +758,7 @@ MODULE lsm_routines
             xd1=zb(1)-zbar
             xd2=zbar-zb(2)
             xwi=((xd1*thetaf)+xd2)/(xd1+xd2)
-         endif 
+         endif
 
       xwi=min(xwi,1.)
       tkdry=0.226 ! = .039*0.45^(-2.2), from Farouki, p. 71
@@ -865,7 +866,7 @@ MODULE lsm_routines
 
       DATA GRN /0.33, 0.67/
 ! moved to catch_constants - SM 10/02/2012
-!      REAL, PARAMETER :: SNWALB_VISMAX = 0.7 
+!      REAL, PARAMETER :: SNWALB_VISMAX = 0.7
 !      REAL, PARAMETER :: SNWALB_VISMIN = 0.5
 !      REAL, PARAMETER :: SNWALB_NIRMAX = 0.5
 !      REAL, PARAMETER :: SNWALB_NIRMIN = 0.3
@@ -889,7 +890,7 @@ MODULE lsm_routines
       REAL ALIDR (NLAI, 2, NTYPS_SIB)
       REAL BTIDR (NLAI, 2, NTYPS_SIB)
       REAL GMIDR (NLAI, 2, NTYPS_SIB)
-      
+
 !  (Data statements for ALVDR described in full; data statements for
 !   other constants follow same framework.)
 
@@ -918,7 +919,7 @@ MODULE lsm_routines
 	DATA (ALVDR (I, 2, 3), I = 1, 14)                                      &
       	  /0.0683, 0.0672, 0.0667, 2*0.0665, 9*0.0664/
 
-!    GROUNDCOVER (ITYP=4); GREEN=0.33; LAI=.5-7    
+!    GROUNDCOVER (ITYP=4); GREEN=0.33; LAI=.5-7
 	DATA (ALVDR (I, 1, 4), I = 1, 14)                                      &
       	  /0.2436, 0.2470, 0.2486, 0.2494, 0.2498, 0.2500, 2*0.2501,           &
       		6*0.2502 /
@@ -1121,7 +1122,7 @@ MODULE lsm_routines
             0.2060, 0.2064, 0.2066, 0.2067, 3*0.2068 /
         DATA (BTIDR (I, 2, 6), I = 1, 14)                                      &
            /0.1969, 0.2268, 0.2416,  0.2488, 0.2521, 0.2537, 0.2544,           &
-            0.2547, 0.2548, 5*0.2549 / 
+            0.2547, 0.2548, 5*0.2549 /
 	DATA (BTIDR (I, 1, 7), I = 1, 14) /14*0./
 	DATA (BTIDR (I, 2, 7), I = 1, 14) /14*0./
 	DATA (BTIDR (I, 1, 8), I = 1, 14) /14*0./
@@ -1222,7 +1223,7 @@ MODULE lsm_routines
              ANIRDR(I) = ANIRDR(I)*fac + SCALIDR(I)*(1.-fac)
         AVISDF(I) = AVISDF(I)*fac + SCALVDF(I)*(1.-fac)
              ANIRDF(I) = ANIRDF(I)*fac + SCALIDF(I)*(1.-fac)
- 
+
      ELSE
 
         AVISDR(I) = AVISDR(I) * SCALVDR(I)
@@ -1251,10 +1252,10 @@ MODULE lsm_routines
   !
   !                      Catchment diagnostic routines
   !
-  ! moved to here from file "catch_diagn_routines.F90" of "lana" directory (LDAS) 
-  ! (except calc_soil_moist), renamed for consistency, and revised for efficiency    
+  ! moved to here from file "catch_diagn_routines.F90" of "lana" directory (LDAS)
+  ! (except calc_soil_moist), renamed for consistency, and revised for efficiency
   ! - reichle, 3 Apr 2012
-  ! 
+  !
   ! ================================================================================
 
   subroutine catch_calc_soil_moist( &
@@ -1265,31 +1266,31 @@ MODULE lsm_routines
        ar1, ar2, ar4, &
        sfmc, rzmc, prmc,  &
        werror, sfmcun, rzmcun, prmcun )
-    
+
     ! Calculate diagnostic soil moisture content from prognostic
     ! excess/deficit variables.
     !
     ! On input, also check validity of prognostic excess/deficit variables
-    ! and modify if necessary.  Perturbed or updated excess/deficit variables 
-    ! in data assimilation integrations may be unphysical.  
+    ! and modify if necessary.  Perturbed or updated excess/deficit variables
+    ! in data assimilation integrations may be unphysical.
     ! Optional output "werror" contains excess or missing water related
     ! to inconsistency.
     !
     ! Optional outputs "smfcun", "rzmcun", "prmcun" are surface,
     ! root zone, and profile moisture content for unsaturated areas only,
-    ! ie. excluding the saturated area of the catchment.    
+    ! ie. excluding the saturated area of the catchment.
     !
     ! NOTE: When calling with optional output arguments, use keywords
     !       unless arguments are in proper order!
-    !       
-    !       Example: 
+    !
+    !       Example:
     !       (don't want "werror" as output, but want "*mcun" output)
-    !       
-    !       call catch_calc_soil_moist(         & 
+    !
+    !       call catch_calc_soil_moist(         &
     !            NTILES, ...                &
     !            sfmc, rzmc, prmc,        &
     !            sfmcun=sfmc_unsat,   &
-    !            rzmcun=rzmc_unsat,   & 
+    !            rzmcun=rzmc_unsat,   &
     !            prmcun=prmc_unsat )
     !
     ! replaces moisture_sep_22_2003.f (and older moisture.f)
@@ -1300,102 +1301,102 @@ MODULE lsm_routines
     !
     ! added optional *un output - koster+reichle, Apr 6, 2004
     !
-    ! removed parameter "KSNGL" ("kind=single") 
+    ! removed parameter "KSNGL" ("kind=single")
     ! added output of "ar1", "ar2", "ar4"
     ! changed output arguments "sfmc", "rzmc", "prmc" to optional
     ! - reichle, 2 Apr 2012
     !
     ! ----------------------------------------------------------------
 
-    
+
     implicit none
-    
+
     integer,                    intent(in) :: NTILES
     integer, dimension(NTILES), intent(in) :: vegcls
-    
+
     real,    dimension(NTILES), intent(in) :: dzsf,vgwmax,cdcr1,cdcr2
     real,    dimension(NTILES), intent(in) :: wpwet,poros,psis
     real,    dimension(NTILES), intent(in) :: bee,ars1
     real,    dimension(NTILES), intent(in) :: ars2,ars3,ara1,ara2,ara3
     real,    dimension(NTILES), intent(in) :: ara4,arw1,arw2,arw3,arw4
-    
+
     real,    dimension(NTILES), intent(inout) :: srfexc, rzexc, catdef
-    
+
     real,    dimension(NTILES), intent(out) :: ar1, ar2, ar4
-    
+
     real,    dimension(NTILES), intent(out), optional :: sfmc, rzmc, prmc
-    
+
     real,    dimension(NTILES), intent(out), optional :: werror
-                                
+
     real,    dimension(NTILES), intent(out), optional :: sfmcun
     real,    dimension(NTILES), intent(out), optional :: rzmcun
     real,    dimension(NTILES), intent(out), optional :: prmcun
-    
+
     ! ----------------------------
-    !    
+    !
     ! local variables
-    
+
     integer :: n
-    
+
     real, parameter :: dtstep_dummy = -9999.
-    
+
     real, dimension(NTILES) :: rzeq, runsrf_dummy, catdef_dummy
     real, dimension(NTILES) :: prmc_orig
     real, dimension(NTILES) :: srfmn, srfmx, swsrf1, swsrf2, swsrf4, rzi
-    
+
 
     ! --------------------------------------------------------------------
     !
     ! compute soil water storage upon input [mm]
-    
+
     do n=1,NTILES
        prmc_orig(n) =                                                 &
             (cdcr2(n)/(1.-wpwet(n))-catdef(n)+rzexc(n)+srfexc(n))
     enddo
-       
+
     ! -----------------------------------
     !
     ! check limits of catchment deficit
     !
-    ! increased minimum catchment deficit from 0.01 to 1. to make the 
+    ! increased minimum catchment deficit from 0.01 to 1. to make the
     ! check work with perturbed parameters and initial condition
     ! reichle, 16 May 01
     !
     ! IT REALLY SHOULD WORK WITH catdef > 0 (rather than >1.) ????
-    ! reichle, 5 Feb 2004 
-    
-    do n=1,NTILES     
+    ! reichle, 5 Feb 2004
+
+    do n=1,NTILES
        catdef(n)=max(1.,min(cdcr2(n),catdef(n)))
     end do
-    
+
     ! ------------------------------------------------------------------
-    !     
+    !
     ! check limits of root zone excess
-    !     
+    !
     ! calculate root zone equilibrium moisture for given catchment deficit
-    
+
     call rzequil( &
          NTILES, catdef, vgwmax,    &
          cdcr1, cdcr2, wpwet, &
          ars1, ars2, ars3, ara1, ara2, ara3, ara4, &
          arw1, arw2, arw3, arw4, &
          rzeq)
-    
+
     ! assume srfexc=0 and constrain rzexc appropriately
     ! (iteration would be needed to constrain srfexc and rzexc simultaneously)
-    
+
     do n=1,NTILES
        rzexc(n)=max(wpwet(n)*vgwmax(n)-rzeq(n),min(vgwmax(n)-rzeq(n),rzexc(n)))
     end do
-    
+
     ! this translates into:
     !
     ! wilting level < rzmc < porosity
-    ! 
+    !
     ! or more precisely:  wpwet*vgwmax < rzeq+rzexc < vgwmax
-    ! 
-    ! NOTE: root zone moisture is not allowed to drop below wilting level 
-    
+    !
+    ! NOTE: root zone moisture is not allowed to drop below wilting level
+
     ! -----------------------------------------------------------------
     !
     ! Call partition() for computation of surface moisture content.
@@ -1407,10 +1408,10 @@ MODULE lsm_routines
     !  puts water into runsrf (for which runsrf_dummy is used here).
     !  Also use catdef_dummy because partition() updates catdef
     !  whenever srfexc exceeds physical bounds, but this is not desired here.
-    
+
     runsrf_dummy = 0.
-    catdef_dummy = catdef          
-    
+    catdef_dummy = catdef
+
     call partition( &
          NTILES,dtstep_dummy,dzsf,rzexc, &
          rzeq,vgwmax,cdcr1,cdcr2, &
@@ -1419,40 +1420,40 @@ MODULE lsm_routines
          ara1,ara2,ara3,ara4, &
          arw1,arw2,arw3,arw4,.false., &
          srfexc,catdef_dummy,runsrf_dummy, &
-         ar1, ar2, ar4,srfmx,srfmn, & 
+         ar1, ar2, ar4,srfmx,srfmn, &
          swsrf1,swsrf2,swsrf4,rzi &
          )
-    
+
     ! compute surface, root zone, and profile soil moisture
-    
+
     if (present(sfmc) .and. present(rzmc) .and. present(prmc)) then
 
        do n=1,NTILES
 
        sfmc(n) = poros(n) *                                           &
             (swsrf1(n)*ar1(n) + swsrf2(n)*ar2(n) + swsrf4(n)*ar4(n))
-       
+
        rzmc(n) = (rzeq(n)+rzexc(n)+srfexc(n))*poros(n)/vgwmax(n)
-       
+
        ! compute revised soil water storage [mm]
-       
+
        prmc(n) =                                                               &
             (cdcr2(n)/(1.-wpwet(n))-catdef(n)+rzexc(n)+srfexc(n))
 
        ! compute error in soil water storage [mm] (if argument is present)
-       
+
        if (present(werror))  werror(n)=(prmc(n)-prmc_orig(n))
-       
+
        ! convert to volumetric soil moisture
-       ! note: dzpr = (cdcr2/(1-wpwet)) / poros 
-       
+       ! note: dzpr = (cdcr2/(1-wpwet)) / poros
+
        prmc(n) = prmc(n)*poros(n) / (cdcr2(n)/(1.-wpwet(n)))
 
-       
-       ! check for negative soil moisture 
-       
+
+       ! check for negative soil moisture
+
        if ( (sfmc(n)<.0) .or. (rzmc(n)<.0) .or. (prmc(n)<.0) ) then
-          
+
           write (*,*) 'FOUND NEGATIVE SOIL MOISTURE CONTENT.... stopping'
           write (*,*) n, sfmc(n), rzmc(n), prmc(n)
           stop
@@ -1460,32 +1461,32 @@ MODULE lsm_routines
 
        ! compute moisture content in unsaturated areas [m3/m3] (if arg present)
 
-       if (ar1(n)<1.) then       
+       if (ar1(n)<1.) then
 
           if (present(prmcun))  prmcun(n)=(prmc(n)-poros(n)*ar1(n))/(1.-ar1(n))
           if (present(rzmcun))  rzmcun(n)=(rzmc(n)-poros(n)*ar1(n))/(1.-ar1(n))
           if (present(sfmcun))  sfmcun(n)=(sfmc(n)-poros(n)*ar1(n))/(1.-ar1(n))
 
-       else          
-          
+       else
+
           if (present(prmcun))  prmcun(n)=poros(n)
           if (present(rzmcun))  rzmcun(n)=poros(n)
           if (present(sfmcun))  sfmcun(n)=poros(n)
-          
+
        end if
-       
+
     enddo
 
     end if
-    
+
   return
 
   end subroutine catch_calc_soil_moist
-  
+
   ! *******************************************************************
 
   subroutine catch_calc_subtile2tile( NTILES, ar1, ar2, asnow, subtile_data, tile_data )
-    
+
     ! average from subtile space to tile-average
     !
     ! subtile areas correspond to subtile_data as follows:
@@ -1494,32 +1495,32 @@ MODULE lsm_routines
     !   ar2    <--->  subtile_data(:,2)    [transpiring]
     !   ar4    <--->  subtile_data(:,3)    [wilting]
     !   asnow  <--->  subtile_data(:,4)    [snow-covered]
-    !   
+    !
     ! reichle, Feb  2, 2011
-    
+
     implicit none
-    
+
     integer,                      intent(in)  :: NTILES
 
     real,    dimension(NTILES),   intent(in)  :: ar1, ar2, asnow
 
     real,    dimension(NTILES,4), intent(in)  :: subtile_data
-    
+
     real,    dimension(NTILES),   intent(out) :: tile_data
-    
+
     ! ----------------------------
-    
+
     ! compute non-snow average
 
     tile_data = ar1*subtile_data(:,1) + ar2*subtile_data(:,2) &
          + (1. - ar1 - ar2)*subtile_data(:,3)
-    
+
     ! mix in snow-covered area
-    
+
     tile_data = asnow*subtile_data(:,4) + (1. - asnow)*tile_data
-    
+
   end subroutine catch_calc_subtile2tile
-  
+
   ! *******************************************************************
 
       subroutine gndtmp(dts,phi,zbar,thetaf,fh21,ht,xfice,tp, FICE)
@@ -1530,11 +1531,11 @@ MODULE lsm_routines
 !        dts     timestep in seconds
 !        phi     porosity
 !        t1      terrestrial (layer 1) temperature in deg C
-!        zbar    mean depth to the water table. 
-!        thetaf  mean vadose zone soil moisture factor (0-1) 
+!        zbar    mean depth to the water table.
+!        thetaf  mean vadose zone soil moisture factor (0-1)
 !        output,
 !        ht      heat content in layers 2-7
-!        tp      ground temperatures in layers 2-7 
+!        tp      ground temperatures in layers 2-7
 !        tdeep   the temperature of the "deep"
 !        f21     heat flux between layer 2 and the terrestrial layer (1)
 !        df21    derivative of f21 with respect to temperature
@@ -1559,8 +1560,8 @@ MODULE lsm_routines
 
 ! initialize parameters
 
-      shw0=SHW*1000. ! PER M RATHER THAN PER KG 
-      shi0=SHI*1000. ! PER M RATHER THAN PER KG 
+      shw0=SHW*1000. ! PER M RATHER THAN PER KG
+      shi0=SHI*1000. ! PER M RATHER THAN PER KG
       shr0=SHR*1000. ! PER M RATHER THAN PER KG [kg of water equivalent density]
 
 !----------------------------------
@@ -1584,8 +1585,8 @@ MODULE lsm_routines
         zc(l)=0.5*(zb(l)+zb(l+1))
         enddo
 
- 
-! evaluates the temperatures in the soil layers based on the heat values.  
+
+! evaluates the temperatures in the soil layers based on the heat values.
 !             ***********************************
 !             input:
 !             xw - water in soil layers, m
@@ -1607,7 +1608,7 @@ MODULE lsm_routines
       do 10 k=1,N_GT
         ws=phi*DZGT(k)  ! PORE SPACE IN LAYER
         xw=0.5*ws   ! ASSUME FOR THESE CALCULATIONS THAT THE PORE SPACE
-                    ! IS ALWAYS HALF FILLED WITH WATER.  XW IS THE  
+                    ! IS ALWAYS HALF FILLED WITH WATER.  XW IS THE
                     ! AMOUNT OF WATER IN THE LAYER.
         tp(k)=0.
         fice(k)= AMAX1( 0., AMIN1( 1., -ht(k)/(fsn*xw) ) )
@@ -1621,7 +1622,7 @@ MODULE lsm_routines
           ENDIF
 
     10  continue
-        
+
 ! evaluates:  layer thermal conductivities
 ! *****************************************
 !             from farouki(cold regions sci and tech, 5, 1981,
@@ -1667,13 +1668,13 @@ MODULE lsm_routines
              xd1=zb(k)-zbar
              xd2=zbar-zb(k+1)
              xwi=((xd1*thetaf)+xd2)/(xd1+xd2)
-           endif 
+           endif
 
          xwi=min(xwi,1.)
          tkdry=0.226 ! = .039*0.45^(-2.2), from Farouki, p. 71
          xklh(k)=(tksat-tkdry)*xwi + tkdry
 
-         enddo                
+         enddo
 
 ! evaluates heat flux between layers due to heat diffussion
 !             ***********************************
@@ -1696,9 +1697,9 @@ MODULE lsm_routines
       fh(1)=fh21
       do k=2,N_GT
 ! THIS xkth is NEW (ie., Agnes corrected) - it should be fixed in all
-! codes I'm using      
+! codes I'm using
          xkth=((zb(k)-zc(k-1))*xklh(k-1)+(zc(k)-zb(k))*xklh(k))                &
-               /(zc(k)-zc(k-1))     
+               /(zc(k)-zc(k-1))
          fh(k)=-xkth*(tp(k-1)-tp(k))/(zc(k-1)-zc(k))
          enddo
 
@@ -1708,11 +1709,11 @@ MODULE lsm_routines
       do k=1,N_GT
          ht(k)=ht(k)+(fh(k+1)-fh(k))*dts
          enddo
- 
+
 
 
 ! evaluates the temperatures in the soil  layers based on the heat
-! values.  
+! values.
 !             ***********************************
 !             input:
 !             xw - water in soil layers, m
@@ -1732,7 +1733,7 @@ MODULE lsm_routines
 ! heat and water content
       do 1000 k=1,N_GT
          ws=phi*DZGT(k)          ! saturated water content
-!            xl=l        
+!            xl=l
 !            xw=(1/(7-xl))*ws
          xw=0.5*ws             ! For calculations here, assume soil
                                ! is half full of water.
@@ -1747,7 +1748,7 @@ MODULE lsm_routines
             ENDIF
 
  1000    continue
-  
+
 ! determine the value of xfice
       xfice=0.0
 
@@ -1756,22 +1757,22 @@ MODULE lsm_routines
          IF(ZBAR .GE. ZB(L+1))THEN
             LSTART=L
             ENDIF
-         ENDDO   
+         ENDDO
 
       do l=lstart,N_GT
          xfice=xfice+fice(l)
          enddo
-      xfice=xfice/((N_GT+1)-lstart)      
+      xfice=xfice/((N_GT+1)-lstart)
 
       Return
 
-      end subroutine gndtmp   
-        
+      end subroutine gndtmp
+
  ! *******************************************************************
-  
+
   subroutine catch_calc_tp( NTILES, poros, ghtcnt, tp, fice )
-    
-    ! Diagnose soil temperatures tp (all_layers, all tiles) from 
+
+    ! Diagnose soil temperatures tp (all_layers, all tiles) from
     ! prognostic ground heat contents
     !
     ! return temperature in degree CELSIUS!!! [for consistency w/ catchment.F90]
@@ -1784,115 +1785,115 @@ MODULE lsm_routines
     ! reichle,  2 Apr 2012 - revised for use without catch_types structures
     !
     !-----------------------------------------------------------------
-    
+
     implicit none
-    
+
     integer,                                      intent(in)            :: NTILES
 
     real,                 dimension(     NTILES), intent(in)            :: poros
 
     real,                 dimension(N_gt,NTILES), intent(in)            :: ghtcnt
-            
-    real,                 dimension(N_gt,NTILES), intent(out)           :: tp  
 
-    real,                 dimension(N_gt,NTILES), intent(out), optional :: fice  
-    
+    real,                 dimension(N_gt,NTILES), intent(out)           :: tp
+
+    real,                 dimension(N_gt,NTILES), intent(out), optional :: fice
+
     ! Local variables
-    
-    real, parameter              :: shw0 = SHW   *1000. ! unit change J/kg/K -> J/m/K 
-    real, parameter              :: shi0 = SHI   *1000. ! unit change J/kg/K -> J/m/K 
-    real, parameter              :: shr0 = SHR   *1000. ! unit change J/kg/K -> J/m/K [where "per kg" is something like "per kg of water equivalent density"] 
-        
+
+    real, parameter              :: shw0 = SHW   *1000. ! unit change J/kg/K -> J/m/K
+    real, parameter              :: shi0 = SHI   *1000. ! unit change J/kg/K -> J/m/K
+    real, parameter              :: shr0 = SHR   *1000. ! unit change J/kg/K -> J/m/K [where "per kg" is something like "per kg of water equivalent density"]
+
     integer                      :: n, k
-    
+
     real                         :: phi, WS, XW
-    real, dimension(N_gt)        :: SHC    
+    real, dimension(N_gt)        :: SHC
     real, dimension(N_gt,NTILES) :: FICE_TMP
-    
+
     ! ---------------------------------------------------------------------------
 
     ! initialize
-    
+
     tp = 0.
-    
+
     do n=1,NTILES
-       
+
        if (PHIGT<0.) then ! if statement for bkwd compatibility w/ off-line MERRA replay
           phi=poros(n)
        else
           phi=PHIGT
        end if
-       
-       do k=1,N_gt 
-          
+
+       do k=1,N_gt
+
           shc(k) = shr0*(1-phi)*DZGT(k)
-          
+
           ws = phi*DZGT(k) ! PORE SPACE IN LAYER
-          
+
           xw = 0.5*ws      ! ASSUME FOR THESE CALCULATIONS THAT THE PORE SPACE
-                           ! IS ALWAYS HALF FILLED WITH WATER.  XW IS THE  
+                           ! IS ALWAYS HALF FILLED WITH WATER.  XW IS THE
                            ! AMOUNT OF WATER IN THE LAYER.
-          
+
           FICE_TMP(k,n)= AMAX1( 0., AMIN1( 1., -ghtcnt(k,n)/(fsn*xw) ) )
-          
+
           IF     (FICE_TMP(K,n) .EQ. 1.) THEN
 
              tp(k,n) = (ghtcnt(k,n)+xw*fsn)/(shc(k)+xw*shi0)   ! Celsius
 
           ELSEIF (FICE_TMP(K,n) .EQ. 0.) THEN
-          
+
              tp(k,n) = (ghtcnt(k,n)       )/(shc(k)+xw*shw0)   ! Celsius
 
           ELSE
 
              tp(k,n) = 0.                                              ! Celsius
-             
+
           ENDIF
-          
+
        end do
-       
+
     end do
-    
+
     if (present(fice))  fice = FICE_TMP
-    
+
   end subroutine catch_calc_tp
 
   ! *******************************************************************
-  
+
   subroutine catch_calc_wtotl( NTILES,                         &
        cdcr2, wpwet, srfexc, rzexc, catdef, capac, wesnn,      &
        wtotl )
-    
+
     ! compute total water stored in land tiles
     !
     ! reichle,  4 Jan 2012
     ! reichle,  2 Apr 2012 - revised for use without catch_types structures
     !
     ! ----------------------------------------------------------------
-    
+
     implicit none
-    
+
     integer,                          intent(in)  :: NTILES
 
     real,    dimension(       NTILES), intent(in)  :: cdcr2, wpwet
     real,    dimension(       NTILES), intent(in)  :: srfexc, rzexc, catdef, capac
     real,    dimension(N_snow,NTILES), intent(in)  :: wesnn
-    
+
     real,    dimension(       NTILES), intent(out) :: wtotl
-    
+
     ! ----------------------------
-    !    
+    !
     ! local variables
-    
+
     integer :: n
-    
+
     ! ----------------------------------------------------------------
-    
+
     do n=1,NTILES
-       
-       ! total water = soil water holding capacity +/- soil water excess/deficit  
+
+       ! total water = soil water holding capacity +/- soil water excess/deficit
        !               + canopy interception + snow water
-       
+
        wtotl(n) =                                  &
             ( cdcr2(n)/(1.-wpwet(n))               &
             - catdef(n)                            &
@@ -1900,97 +1901,97 @@ MODULE lsm_routines
             + srfexc(n)                            &
             + capac(n)                             &
             + sum( wesnn(1:N_snow,n) ) )
-       
+
     end do
-    
+
   end subroutine catch_calc_wtotl
 
   ! *******************************************************************
- 
+
   ! *******************************************************************
-     
+
   subroutine catch_calc_ght( dzgt, poros, tp, fice, ghtcnt )
-    
+
     ! Invert (model diagnostic) soil temperature and ice fraction
     ! into (model prognostic) ground heat content
     !
-    ! Input soil temperature is in deg CELSIUS!!! 
+    ! Input soil temperature is in deg CELSIUS!!!
     !
     ! subroutine is for a single layer only and single tile only!!!
     !
     ! reichle, 13 Oct 2014
     !
     !------------------------------------------------------------------
-    
+
     implicit none
-    
+
     real,    intent(in)    :: dzgt      ! soil temperature layer depth [m?]
     real,    intent(in)    :: poros     ! soil porosity
     real,    intent(in)    :: tp        ! soil temperature [deg CELSIUS]
     real,    intent(in)    :: fice      ! soil ice fraction
-    
+
     real,    intent(out)   :: ghtcnt    ! ground heat content [J?]
 
     ! Local variables
-    
+
     real    :: phi, ws, xw, shc, shw0, shi0, shr0
-    
+
     ! initialize parameters
-    
-    shw0=SHW*1000. ! PER M RATHER THAN PER KG 
-    shi0=SHI*1000. ! PER M RATHER THAN PER KG 
+
+    shw0=SHW*1000. ! PER M RATHER THAN PER KG
+    shi0=SHI*1000. ! PER M RATHER THAN PER KG
     shr0=SHR*1000. ! PER M RATHER THAN PER KG [kg of water equivalent density]
-    
+
     ! ---------------------------------------------------------------------------
-    
+
     if (PHIGT<0.) then ! if statement for bkwd compatibility w/ off-line MERRA replay
        phi=poros
     else
        phi=PHIGT
     end if
-    
+
     shc = shr0*(1-phi)*DZGT
-    
+
     ws  = phi*DZGT           ! PORE SPACE IN LAYER
-    
+
     xw  = 0.5*ws             ! ASSUME FOR THESE CALCULATIONS THAT THE PORE SPACE
-                             ! IS ALWAYS HALF FILLED WITH WATER.  XW IS THE  
+                             ! IS ALWAYS HALF FILLED WITH WATER.  XW IS THE
                              ! AMOUNT OF WATER IN THE LAYER.
-        
+
     IF     (tp<0.0) THEN     ! water in soil is fully frozen
-       
-       ghtcnt = tp*(shc + xw*shi0) - FSN*xw   
-       
+
+       ghtcnt = tp*(shc + xw*shi0) - FSN*xw
+
     ELSEIF (tp>0.0) THEN     ! water in soil is fully thawed
-       
-       ghtcnt = tp*(shc + xw*shw0)  
-       
+
+       ghtcnt = tp*(shc + xw*shw0)
+
     ELSE                     ! water in soil is partially frozen
-       
+
        ghtcnt = -fice*(FSN*xw)
-       
+
     END IF
-    
+
   end subroutine catch_calc_ght
 
   ! ********************************************************************
-  
+
   subroutine catch_calc_FT( NTILES, asnow, tp1, tsurf_excl_snow, FT, Teff )
 
     ! Diagnose "landscape" freeze/thaw (FT) state of the Catchment/StieglitzSnow model.
     !
-    ! The landscape FT state is determined via the snow cover fraction and 
-    ! an "effective" temperature (Teff), computed as the weighted average 
+    ! The landscape FT state is determined via the snow cover fraction and
+    ! an "effective" temperature (Teff), computed as the weighted average
     ! of the top-layer soil temperature and the surface temperature
     ! in the absence of snow (see Farhadi et al., 2014, JHM, section 3).
     !
-    ! Input soil temperature is in CELSIUS!!! 
+    ! Input soil temperature is in CELSIUS!!!
     !
     ! Constants:
     !
-    !  CATCH_FT_WEIGHT_TP1      : weight for tp1 vs. Tsurf_excl_snow in Teff, 
+    !  CATCH_FT_WEIGHT_TP1      : weight for tp1 vs. Tsurf_excl_snow in Teff,
     !                             determines effective depth associated with FT state
-    !                             = 1. - alpha, with alpha as in Farhadi et al. 2014, 
+    !                             = 1. - alpha, with alpha as in Farhadi et al. 2014,
     !
     !  CATCH_FT_THRESHOLD_TEFF  : FT threshold for Teff              [Kelvin]
     !  CATCH_FT_THRESHOLD_ASNOW : FT threshold for asnow
@@ -2009,47 +2010,47 @@ MODULE lsm_routines
     ! reichle, 14 Oct 2014
     !
     !------------------------------------------------------------------
-    
+
     implicit none
 
     integer,                 intent(in)  :: NTILES
-              
+
     real, dimension(NTILES), intent(in)  :: asnow           ! snow cover fraction
     real, dimension(NTILES), intent(in)  :: tsurf_excl_snow ! ar1*tc1+ar2*tc2+ar4*tc4
     real, dimension(NTILES), intent(in)  :: tp1             ! top-layer soil temp [CELSIUS]
-    
+
     real, dimension(NTILES), intent(out) :: FT
-    
+
     real, dimension(NTILES), intent(out), optional :: Teff
-    
+
     ! Local variables
 
     real                    :: w
 
     real, dimension(NTILES) :: Teff_tmp                     ! [Kelvin]
-    
+
     ! ------------------------------------------------------------------
 
     w = CATCH_FT_WEIGHT_TP1
 
     ! compute snow-free "effective" temperature  [Kelvin]
-    
-    Teff_tmp = w*(tp1 + TF) + (1.-w)*Tsurf_excl_snow  
-    
+
+    Teff_tmp = w*(tp1 + TF) + (1.-w)*Tsurf_excl_snow
+
     ! Note: For the thawed state use Teff_threshold with ">" and
     !        not ">=" as in Farhadi et al, 2014 because at exactly
     !        0 deg Celsius the soil may still be partially frozen.
-    
+
     where (                                                   &
          (Teff_tmp  > CATCH_FT_THRESHOLD_TEFF ) .and.         &
-         (asnow     < CATCH_FT_THRESHOLD_ASNOW)           )  
-       
+         (asnow     < CATCH_FT_THRESHOLD_ASNOW)           )
+
        FT = 0.   ! thawed
-       
+
     elsewhere
-       
+
        FT = 1.   ! frozen
-       
+
     end where
 
     if (present(Teff))  Teff = Teff_tmp
@@ -2060,106 +2061,106 @@ MODULE lsm_routines
 
   subroutine dampen_tc_oscillations( dtstep, tair, tc_old, tc_new_in, &
        tc_new_out, dtc_new )
-    
+
     implicit none
-    
+
     ! apply corretion to TC to dampen surface energy balance oscillations
-    
+
     ! reichle, 4 Apr 2014
-    
+
     real, intent(in)  :: dtstep     ! model time step [s]
     real, intent(in)  :: tair       ! air temperature
     real, intent(in)  :: tc_old     ! Tc at beginning of time step
-    real, intent(in)  :: tc_new_in  ! proposed  Tc at end of time step    
+    real, intent(in)  :: tc_new_in  ! proposed  Tc at end of time step
     real, intent(out) :: tc_new_out ! corrected Tc at end of time step
     real, intent(out) :: dtc_new    ! change in tc_new from this subroutine
-    
+
     ! local variables
-    
+
     real, parameter :: xover_frac             = 0.1   ! [dimensionless]
     real, parameter :: xover_max_dTc_per_hour = 1.    ! [Kelvin/hour]
-    
+
     real :: xover_max_dTc, dTc_tmp1, dTc_tmp2
-    
+
     ! --------------------------------------------------------------------
-    
+
     ! maximum Tc change in Kelvin that is allowed if tc1 changes across tm
-    !   [this might better be done only once, at the beginning of subroutine 
+    !   [this might better be done only once, at the beginning of subroutine
     !    catchment() and outside of the loop through tiles]
-    
+
     xover_max_dTc = xover_max_dTc_per_hour*dtstep/3600.
-    
+
     ! establish if tc changed across tair
-    
+
     if ( ((tc_old < tair) .and. (tair < tc_new_in)) .or.                 &
          ((tc_old > tair) .and. (tair > tc_new_in))         ) then
-       
+
        ! limit amount of tc change beyond tair (dTc_tmp) to the smaller of
-       ! (i) a fraction of tcNew_minus_tm and (ii) a max value in Kelvin              
-       
+       ! (i) a fraction of tcNew_minus_tm and (ii) a max value in Kelvin
+
        dTc_tmp1    = tc_new_in - tair
-       
+
        dTc_tmp2    = min( abs(xover_frac*dTc_tmp1), xover_max_dTc )  ! never negative
-       
+
        tc_new_out  = tair + sign( dTc_tmp2, dTc_tmp1 )
-       
+
        dtc_new     = tc_new_out - tc_new_in
-       
+
     else
-       
+
        ! tc_new remains unchanged
-       
+
        tc_new_out  = tc_new_in
-       
+
        dtc_new     = 0.
-       
+
     end if
-    
+
   end subroutine dampen_tc_oscillations
 
   ! ********************************************************************
-  
+
   subroutine lsmroutines_echo_constants(logunit)
-    
+
     ! moved to here from catch_constants.F90, reichle, 14 Aug 2014
 
     ! reichle, 10 Oct 2008
-    
+
     implicit none
-    
+
     integer, intent(in) :: logunit
-    
+
     write (logunit,*)
     write (logunit,*) '-----------------------------------------------------------'
     write (logunit,*)
     write (logunit,*) 'lsmroutines_echo_constants():'
     write (logunit,*)
-    write (logunit,*) 'PIE      = ', PIE      
-    write (logunit,*) 'ALHE     = ', ALHE     
-    write (logunit,*) 'ALHM     = ', ALHM     
-    write (logunit,*) 'ALHS     = ', ALHS     
-    write (logunit,*) 'TF       = ', TF    
-    write (logunit,*) 'RGAS     = ', RGAS     
-    write (logunit,*) 'SHW      = ', SHW      
-    write (logunit,*) 'SHI      = ', SHI      
+    write (logunit,*) 'PIE      = ', PIE
+    write (logunit,*) 'ALHE     = ', ALHE
+    write (logunit,*) 'ALHM     = ', ALHM
+    write (logunit,*) 'ALHS     = ', ALHS
+    write (logunit,*) 'TF       = ', TF
+    write (logunit,*) 'RGAS     = ', RGAS
+    write (logunit,*) 'SHW      = ', SHW
+    write (logunit,*) 'SHI      = ', SHI
     write (logunit,*)
-    write (logunit,*) 'N_snow        = ', N_snow   
-    write (logunit,*) 'N_gt          = ', N_gt 
+    write (logunit,*) 'N_snow        = ', N_snow
+    write (logunit,*) 'N_gt          = ', N_gt
     write (logunit,*)
-    write (logunit,*) 'RHOFS         = ', RHOFS    
+    write (logunit,*) 'RHOFS         = ', RHOFS
     write (logunit,*) 'SNWALB_VISMAX = ', SNWALB_VISMAX
     write (logunit,*) 'SNWALB_NIRMAX = ', SNWALB_NIRMAX
     write (logunit,*) 'SLOPE         = ', SLOPE
     write (logunit,*) 'MAXSNDEPTH    = ', MAXSNDEPTH
-    write (logunit,*) 'DZ1MAX        = ', DZ1MAX   
-    write (logunit,*) 
-    write (logunit,*) 'SHR           = ', SHR    
+    write (logunit,*) 'DZ1MAX        = ', DZ1MAX
+    write (logunit,*)
+    write (logunit,*) 'SHR           = ', SHR
     write (logunit,*) 'EPSILON       = ', EPSILON
     write (logunit,*)
-    write (logunit,*) 'N_sm          = ', N_sm     
+    write (logunit,*) 'N_sm          = ', N_sm
     write (logunit,*)
-    write (logunit,*) 'SCONST        = ', SCONST   
-    write (logunit,*) 'CSOIL_2       = ', CSOIL_2    
+    write (logunit,*) 'SCONST        = ', SCONST
+    write (logunit,*) 'CSOIL_2       = ', CSOIL_2
     write (logunit,*) 'LAND_FIX      = ', LAND_FIX
     write (logunit,*) 'WEMIN         = ', WEMIN
     write (logunit,*) 'AICEV         = ', AICEV
@@ -2169,25 +2170,258 @@ MODULE lsm_routines
     write (logunit,*) 'STEXP         = ', STEXP
     write (logunit,*) 'RSWILT        = ', RSWILT
 
-    write (logunit,*) 'C_CANOP       = ', C_CANOP    
-    write (logunit,*) 
+    write (logunit,*) 'C_CANOP (catchCN only)  = ', C_CANOP
+    write (logunit,*)
     write (logunit,*) 'DZTC          = ', DZTC
     write (logunit,*)
-    write (logunit,*) 'FWETL         = ', FWETL     
-    write (logunit,*) 'FWETC         = ', FWETC     
+    write (logunit,*) 'FWETL         = ', FWETL
+    write (logunit,*) 'FWETC         = ', FWETC
     write (logunit,*) 'SATCAPFR      = ', SATCAPFR
-    write (logunit,*) 
-    write (logunit,*) 'DZGT          = ', DZGT 
+    write (logunit,*)
+    write (logunit,*) 'DZGT          = ', DZGT
     write (logunit,*) 'PHIGT         = ', PHIGT
     write (logunit,*) 'ALHMGT        = ', ALHMGT
-    write (logunit,*) 
+    write (logunit,*)
     write (logunit,*) 'end lsmroutines_echo_constants()'
     write (logunit,*)
     write (logunit,*) '-----------------------------------------------------------'
     write (logunit,*)
-    
+
   end subroutine lsmroutines_echo_constants
 
   ! ********************************************************************
- 
+
+  SUBROUTINE irrigation_rate (IRRIG_METHOD,                                    &
+                NTILES, AGCM_HH, AGCM_MI, AGCM_S, lons, IRRIGFRAC, PADDYFRAC,  &
+                CLMPT,CLMST, CLMPF, CLMSF, LAIMAX, LAIMIN, LAI,                &
+                POROS, WPWET, VGWMAX, RZMC, IRRIGRATE)
+
+    ! !DESCRIPTION:
+    !
+    ! NOTE: This is an experimental feature under development.
+    !
+    ! Calculate water requirement and apply the amount to precipitation.
+    !
+    ! Irrigate when available root zone soil moisture falls below tunable
+    !        irrigation threshold parameter.
+    ! Below GRIPC irrigated data provide fractions of croplands and paddy croplands.
+    ! The irrigation model is applied on a tile if:
+    ! (1) the irrigated fraction of the tile is greater than 0. AND
+    ! (2) primary or secondary type in the tile is CLM4 type 16 (cropland) AND
+    ! (3) LAI exceeds the LAI theshhold  (60% of LAI range)
+    !
+    ! GRIPC croplands and paddy croplands fractions determine whether to apply
+    !    either sprinkler or flood OR both irrigation methods. Each method has
+    !    its own local start times, durations and irrigation threshold parameters.
+    !
+    ! We assume plants need available soil moisture stay above 1/3 of soil moisture range
+    !    [ wilting - saturation]
+    ! Irrigation amount is scaled to grid total crop fraction when intensity
+    ! is less than the fraction.  Irrigation is expanded to non-crop, non-forest,
+    ! non-baresoil/urban tiles if intensity exceeds grid total crop fraction.
+    ! In latter case, scaled irrigation is applied to grassland first,
+    ! then further applied over the rest of tiles equally if the intensity
+    ! exceeds grassland fraction as well.
+    !
+    ! Optionally efficiency correction is applied to account for field loss.
+    !
+    ! REVISION HISTORY:
+    !
+    ! Aug 2018: Sarith Mahanama ; Version 1 adapted from LIS subroutine clsmf25_getirrigationstates.F90
+
+    implicit none
+
+    ! INPUTS
+    ! ------
+    integer, intent (in)                       :: IRRIG_METHOD, NTILES, AGCM_HH, AGCM_MI, AGCM_S
+    real   , intent (in), dimension (ntiles)   :: lons, IRRIGFRAC, PADDYFRAC, LAIMAX,  &
+                  LAIMIN, LAI, CLMPT,CLMST, CLMPF, CLMSF, POROS, WPWET, VGWMAX, RZMC
+    ! IRRIG_METHOD : 0 sprinkler and flood combined; 1 sprinkler irrigation ; 2 flood irrigation
+    ! AGCM_HH / AGCM_MI / AGCM_S/ lons : Current hour, minute, second (UTC) and longitude
+
+    ! Irrigation hotspots : Using the Global Rain-Fed, Irrigated, and Paddy Croplands (GRIPC) Dataset  (Salmon et al., 2015)
+    !       Salmon JM, Friedl MA, Frolking S, Wisser D and Douglas EM: Global rain-fed, irrigated,
+    !             and paddy croplands: A new high resolution map derived from remote sensing, crop
+    !             inventories and climate data, Int. J. Appl. Earth Obs. Geoinf, 38, 321–334,
+    !             doi:10.1016/j.jag.2015.01.014, 2015.
+
+    ! IRRIGFRAC                        : Fraction of irrigated croplands [-] = total number of 500m irrigated croplands pixels in the tile /
+    !                                                                          total number of 500m pixels in the tile
+    ! PADDYFRAC                        : Fraction of paddy croplands [-]     = total number of 500m paddy croplands pixels in the tile /
+    !                                                                          total number of 500m pixels in the tile
+    ! LAIMAX / LAIMIN / LAI            : Maximum, minimum and current Leaf Area Index
+    ! CLMPT / CLMST                    : CLM4 primary and secondary types (Note type 16 is cropland)
+    ! CLMPF / CLMSF                    : CLM4 fractions of primary and secondary types
+    ! POROS / WPWET / VGWMAX / RZMC    : porosity [m3/m3], wilting point wetness [-], maximum and current root zone soil moisture content [m3/m3]
+
+    ! ONLY output
+    ! -----------
+    real   , intent (out), dimension (ntiles)  :: IRRIGRATE
+
+    real, parameter      :: efcor = 76.0           ! Efficiency Correction (%)
+
+    ! Sprinkler parameters
+    ! --------------------
+    real, parameter      :: otimess          = 6.0 ! local trigger check start time [hour]
+    real, parameter      :: irrhrs           = 4.0 ! duration of irrigation hours
+    real, parameter      :: sprinkler_thersh = 0.5 ! soil moisture threshhold to trigger sprinkler irrigation
+
+    ! Drip parameters (not currently implemented)
+    ! -------------------------------------------
+    real, parameter      :: otimeds = 6.0 ! local trigger check start time [hour]
+    real, parameter      :: irrhrd = 12.0 ! duration of irrigation hours
+
+    ! Flood parameters
+    ! ----------------
+    real, parameter      :: otimefs      = 6.0  ! local trigger check start time [hour]
+    real, parameter      :: irrhrf       = 1.0  ! duration of irrigation hours
+    real, parameter      :: flood_thersh = 0.25 ! soil moisture threshhold to trigger flood irrigation
+
+    ! local vars
+    ! ----------
+    real    :: smcwlt, smcref, smcmax, asmc, laithresh, laifac, RZDEP, vfrac, ma,  &
+         otimee, irrig_thresh, IrrigScale, s_irate, f_irate, local_long, local_hour
+    integer :: n, t, vtyp
+
+    IRRIGRATE (:) = 0.
+
+    TILE_LOOP : DO N = 1, NTILES
+
+       local_long = 180. * lons(n) / PIE                                             ! local logitude [degrees]
+       local_hour = AGCM_HH + AGCM_MI / 60. + AGCM_S / 3600. + 12.* local_long /180. ! local time [hours]
+       if (local_hour >= 24.) local_hour =  local_hour - 24.
+       if (local_hour <   0.) local_hour =  local_hour + 24.
+
+       laithresh  = laimin (n) + 0.60 * (laimax (n) - laimin (n))
+       if(laimax (n) /= laimin (n)) then
+          laifac = (lai(n) - laimin (n)) / (laimax(n) - laimin(n))
+       else
+          laifac = 0.
+       endif
+
+       RZDEP      = laifac * VGWMAX (n) / poros (n)                                  ! root zone depth [mm]
+       smcwlt     = RZDEP * wpwet (n) * poros (n)                                    ! RZ soil moisture content at wilting point [mm]
+       smcref     = RZDEP * (wpwet (n) + 0.333 * (1. - wpwet (n))) * poros(n)        ! RZ reference soil moisture content [mm]
+       smcmax     = RZDEP * poros (n)                                                ! RZ soil moisture at saturatopm [mm]
+       asmc       = RZDEP * rzmc (n)                                                 ! actual RZ soil moisture content [mm]
+
+       CHECK_IRRIG_INTENSITY : IF ((IRRIGFRAC(N) + PADDYFRAC(N)) > 0.) THEN
+
+          s_irate = 0.
+          f_irate = 0.
+
+          TWO_CLMTYPS : DO t = 1, 2
+
+             if (t == 1) then
+                ! Primary CLM fraction
+                vtyp  = NINT (CLMPT (n))
+                vfrac = CLMPF (n)
+             endif
+
+             if (t == 2) then
+                ! Secondary CLM fraction
+                vtyp  = NINT (CLMST (n))
+                vfrac = CLMSF (n)
+             endif
+
+             CHECK_CROP_LAITHRESH : IF ((vtyp == 16).and.(vfrac > 0.).and.(lai(n) >= laithresh).and.(laifac > 0.)) THEN
+
+                !-----------------------------------------------------------------------------
+                !     Compute irrigation scale parameter :
+                !     Scale the irrigation intensity to the crop % when intensity < crop%.
+                !     Expand irrigation for non-crop, non-forest when intensity > crop %
+                !     in preference order of grassland first then rest.
+                !-----------------------------------------------------------------------------
+
+                IF ((IRRIGFRAC(N) + PADDYFRAC(N)) <  vfrac) THEN
+                   IrrigScale = vfrac / (IRRIGFRAC(N) + PADDYFRAC(N))
+                ELSE
+                   IrrigScale = 1.
+                ENDIF
+
+                !-----------------------------------------------------------------------------
+                !     Get the root zone moisture availability to the plant
+                !-----------------------------------------------------------------------------
+
+                if(smcref.ge.smcwlt) then
+                   ma = (asmc - smcwlt) /(smcref - smcwlt)
+                else
+                   ma = -1
+                endif
+
+                SELECT CASE (IRRIG_METHOD)
+
+                !--------------------------------------------------------------------------------------------------------------------------
+                !     IRRIGRATE : irrigation rate required to fill up water deficit before END OF IRRIGATION PERIOD  (otimee - local_hour)
+                !--------------------------------------------------------------------------------------------------------------------------
+
+                CASE (0)
+                   ! SPRINKLER AND FLOOD IRRIGATION COMBINED
+                   ! ---------------------------------------
+                   C_SPRINKLER : IF((IRRIGFRAC (N) > 0.).and.(local_hour >= otimess).and. (local_hour < otimess + irrhrs)) THEN
+                      otimee = otimess + irrhrs ;  irrig_thresh = sprinkler_thersh
+                      IF ((ma  <= irrig_thresh).and.(ma.ge.0)) THEN
+                         s_irate = crop_water_deficit (IRRIGFRAC (N) * irrigScale, asmc, smcref, efcor) / (otimee - local_hour) /3600.0
+                      ENDIF
+                   ENDIF C_SPRINKLER
+
+                   C_FLOOD : IF((PADDYFRAC (N) > 0.).and.(local_hour >= otimefs).and. (local_hour <= otimefs + irrhrf)) THEN
+                      otimee = otimefs + irrhrf ; irrig_thresh = flood_thersh
+                      IF ((ma  <= irrig_thresh).and.(ma.ge.0)) THEN
+                         f_irate = crop_water_deficit (PADDYFRAC (N) * irrigScale, asmc, smcref, efcor) / (otimee - local_hour) /3600.0
+                      ENDIF
+                   ENDIF C_FLOOD
+
+                   IRRIGRATE (N) = (s_irate * IRRIGFRAC (N) + f_irate * PADDYFRAC (N)) / (IRRIGFRAC(N) + PADDYFRAC(N)) ! weighted averaged sprinkler + flood
+
+                CASE (1)
+                   ! SPRINKLER IRRIGATION ONLY
+                   ! -------------------------
+                   SPRINKLER : IF(((IRRIGFRAC (N) + PADDYFRAC (N)) > 0.).and.(local_hour >= otimess).and. (local_hour < otimess + irrhrs)) THEN
+                      otimee = otimess + irrhrs ;  irrig_thresh = sprinkler_thersh
+                      IF ((ma  <= irrig_thresh).and.(ma.ge.0)) THEN
+                         IRRIGRATE (N) = crop_water_deficit ((IRRIGFRAC (N) + PADDYFRAC (N)) * irrigScale, asmc, smcref, efcor) / &
+                              (otimee - local_hour) /3600.0
+                      ENDIF
+                   ENDIF SPRINKLER
+
+                CASE (2)
+                   ! FLOOD IRRIGATION ONLY
+                   ! ---------------------
+                   FLOOD : IF(((IRRIGFRAC (N) + PADDYFRAC (N)) > 0.).and.(local_hour >= otimefs).and. (local_hour <= otimefs + irrhrf)) THEN
+                      otimee = otimefs + irrhrf ; irrig_thresh = flood_thersh
+                      IF ((ma  <= irrig_thresh).and.(ma.ge.0)) THEN
+                         IRRIGRATE (N) = crop_water_deficit ((IRRIGFRAC (N) +PADDYFRAC (N)) * irrigScale, asmc, smcref, efcor) / &
+                              (otimee - local_hour) /3600.0
+                      ENDIF
+                   ENDIF FLOOD
+
+                CASE DEFAULT
+                   print *, 'IN IRRIGATION_RATE : IRRIGATION_METHOD can  be 0, 1, or 2'
+                   call exit(1)
+                END SELECT
+             END IF CHECK_CROP_LAITHRESH
+          END DO TWO_CLMTYPS
+         END IF CHECK_IRRIG_INTENSITY
+    END DO TILE_LOOP
+
+  END SUBROUTINE irrigation_rate
+
+  ! ********************************************************************
+
+  REAL FUNCTION crop_water_deficit (IrrigScale, asmc, smcref, efcor)
+
+    implicit none
+
+    real, intent (in)  :: IrrigScale, asmc, smcref, efcor
+    real               :: twater
+
+    twater             = smcref - asmc
+    twater             = twater * IrrigScale            ! Scale the irrigation intensity
+    crop_water_deficit = twater*(100.0/(100.0-efcor))   ! Apply efficiency correction
+
+  END FUNCTION crop_water_deficit
+
+  ! ********************************************************************
+
 END MODULE lsm_routines

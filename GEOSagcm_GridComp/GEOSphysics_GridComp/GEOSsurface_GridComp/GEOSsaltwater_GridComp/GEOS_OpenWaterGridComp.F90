@@ -2569,12 +2569,27 @@ contains
        epsilon_d  = AOIL_depth/OGCM_top_thickness ! < 1. If that is NOT true, AOIL formulation would need revisit; see AS2018
     end if
 
-!   Marginal Ice Zone- threshold on fraction: SST IS NOT ALLOWED TO VARY WITHIN ICE EXTENT 
-!   bzhao: previous 2 different values are consolidated as one threshold should be for both AMIP and coupled    
-!   if AICE < fr_ice_thresh (1.e-11 default), turn off AOIL
 !   --------------------------------------------------------------------------------------------------------
-    call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=1.e-11,    RC=STATUS)
+!   Treatment of Marginal Ice Zone (MIZ), i.e., threshold on fraction of ice (fraci), to model the SST variations. 
+!   One can imagine at least following three possibilities:
+!   (i)  SST is NOT allowed to vary within ice extent, 
+!        i.e., if fraci    < fr_ice_thresh (1.e-11 default), turn AOIL off, set skin SST = TS_FOUND
+!   (ii) SST IS allowed to vary with the ice extent, 
+!                 FRwater  > fr_ice_thresh (0.0 default),    turn AOIL on, only over water, skin SST .ne. TS_FOUND (as it was <= Jason-2_0)
+!   (iii) SST is NOT allowed to vary when SST < SST_cold, say, 15C. Turn AOIL off when the water temperature falls below some threshold.
+!
+!   As already noted, option (ii) was used in versions before and up to Jason-2_0, and (i) was tried in Jason-3_0, which 
+!   showed detriment in forecast skill (self verification tests most prominent, and a bit, with respect to ECMWF operations).
+!   Hence reverting to option (ii). The final option (iii) has not been tested, just proposed for the sake of completeness.
+!   In any case, probably, (iii) will also degrade forecast skill, just as (i) did, because (what SA thinks) -1.7C, set for water temperature is TOO COLD!
+!   Unless we understand and model all the processes, we may have to just let diurnal variability (cool-skin+diurnal warming) pick up the tab!
+!   
+!   ** Revisit when coupled to ocean+sea-ice ** July, 2019.
+!   --------------------------------------------------------------------------------------------------------
+!   call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=1.e-11,    RC=STATUS)   ! above option (i)
+    call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=0.0,       RC=STATUS)   ! above option (ii)
     VERIFY_(STATUS)
+!   --------------------------------------------------------------------------------------------------------
 
     call MAPL_GetResource ( MAPL, STOKES_SPEED,  Label="STOKES_VELOCITY:" , DEFAULT=1.E-2,   RC=STATUS)
     VERIFY_(STATUS)
@@ -2785,7 +2800,7 @@ contains
     call COOL_SKIN (NT,CM,UUA,VVA,UW,VW,SWN,LHF,SHF,LWDNSRF,    &
                     ALW,BLW,TXW,TYW,USTARW_,                    &
                     DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_, &
-                    TS,WATER,FI,n_iter_cool,fr_ice_thresh)
+                    TS,WATER,FR,n_iter_cool,fr_ice_thresh)
 
     DTS     = 0.           ! initialize to zero regardless of whether AOIL is on 
 
@@ -2814,7 +2829,8 @@ contains
 
 
       do N = 1, NT  ! N is now looping over all tiles (NOT sub-tiles)
-       if( FI(N) < fr_ice_thresh ) then
+!      if( FI(N)        < fr_ice_thresh ) then   ! see above note on threshold of MIZ to model SST variations
+       if( FR(N, WATER) > fr_ice_thresh ) then
          ALPH(N)   = (0.6 + 0.0935*(TS(N,WATER)-MAPL_TICE))*1.E-4
 
          SWWARM_(N)= SWN(N) - PEN(N)
@@ -3165,7 +3181,8 @@ contains
 ! !ARGUMENTS:
 
     integer, intent(IN)    :: NT             ! number of tiles
-    real,    intent(IN)    :: FR     (:)     ! fraction of sea ice
+!   real,    intent(IN)    :: FR     (:)     ! fraction of sea ice
+    real,    intent(IN)    :: FR     (:,:)   ! fraction of surface (water/ice)
     integer, intent(IN)    :: WATER          ! subtile  number assigned to surface type: "WATER" 
     real,    intent(IN)    :: CM     (:,:)   ! transfer coefficient for wind
     real,    intent(IN)    :: UUA    (:)     ! zonal       wind
@@ -3214,7 +3231,8 @@ contains
        TXW(N) = CM(N,WATER)*(UUA(N) - UW(N))
        TYW(N) = CM(N,WATER)*(VVA(N) - VW(N))
 
-       if( FR(N) < fr_ice_thresh ) then 
+!      if( FR(N)       < fr_ice_thresh ) then 
+       if( FR(N,WATER) > fr_ice_thresh ) then 
 
 !        Ustar in water has a floor of 2 \mu m/s
 !        ----------------------------------------
