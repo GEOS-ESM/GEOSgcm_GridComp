@@ -67,6 +67,7 @@ module AdvCore_GridCompMod
 
       USE FV_StateMod,     only: AdvCoreTracers => T_TRACERS
       USE FV_StateMod,     only: FV_Atm
+      use CubeGridPrototype, only: register_grid_and_regridders
 
       implicit none
       private
@@ -316,6 +317,7 @@ contains
       !--------------------------------------------------
       if (.NOT. FV3_DynCoreIsRunning) then
          call fv_init2(FV_Atm, dt, grids_on_my_pe, p_split)
+         call register_grid_and_regridders()
       end if
 
       ! Ending with a Generic SetServices call is a MAPL requirement 

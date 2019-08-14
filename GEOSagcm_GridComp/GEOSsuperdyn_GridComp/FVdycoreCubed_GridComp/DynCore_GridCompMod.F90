@@ -60,6 +60,7 @@
    use MAPL_RegridderManagerMod
    use MAPL_AbstractRegridderMod
    use MAPL_RegridderSpecMod
+   use CubeGridPrototype, only: register_grid_and_regridders
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -8550,30 +8551,5 @@ end subroutine freeTracers
            enddo
         enddo
   end function
-
-  subroutine register_grid_and_regridders()
-    use MAPL_GridManagerMod, only: grid_manager
-    use CubedSphereGridFactoryMod, only: CubedSphereGridFactory
-    use MAPL_RegridderManagerMod, only: regridder_manager
-    use MAPL_RegridderSpecMod, only: REGRID_METHOD_BILINEAR
-    use LatLonToCubeRegridderMod
-    use CubeToLatLonRegridderMod
-    use CubeToCubeRegridderMod
-
-    type (CubedSphereGridFactory) :: factory
-
-    type (CubeToLatLonRegridder) :: cube_to_latlon_prototype
-    type (LatLonToCubeRegridder) :: latlon_to_cube_prototype
-    type (CubeToCubeRegridder) :: cube_to_cube_prototype
-
-    call grid_manager%add_prototype('Cubed-Sphere',factory)
-    associate (method => REGRID_METHOD_BILINEAR, mgr => regridder_manager)
-      call mgr%add_prototype('Cubed-Sphere', 'LatLon', method, cube_to_latlon_prototype)
-      call mgr%add_prototype('LatLon', 'Cubed-Sphere', method, latlon_to_cube_prototype)
-      call mgr%add_prototype('Cubed-Sphere', 'Cubed-Sphere', method, cube_to_cube_prototype)
-    end associate
-
-  end subroutine register_grid_and_regridders
-
 
 end module FVdycoreCubed_GridComp
