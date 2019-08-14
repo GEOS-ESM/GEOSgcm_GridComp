@@ -1230,7 +1230,7 @@ contains
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME= 'SHLW_PRC3 ',                                   &
          LONG_NAME = 'shallow_convective_rain',           &
-         UNITS     = 'kg m-2 s-1',                                  &
+         UNITS     = 'kg kg-1 s-1',                                  &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
          RC=STATUS  )
@@ -1239,7 +1239,7 @@ contains
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME= 'SHLW_SNO3 ',                                   &
          LONG_NAME = 'shallow_convective_snow',           &
-         UNITS     = 'kg m-2 s-1',                                  &
+         UNITS     = 'kg kg-1 s-1',                                  &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationCenter,                         &
          RC=STATUS  )
@@ -5584,7 +5584,7 @@ contains
       real                       :: PA2, PA, NA, TH_TOP, TH_BOT, TL_MEAN, Z_LAYER, ZTHICK
 
       integer                    :: levs925, levs600
-      real, dimension(IM,JM   )  :: tempor2d
+      real, dimension(IM,JM   )  :: tempor2d, GF_AREA
 
       ! Manage diagnostic outputs for re-evaporation
       !---------------------------------------------------
@@ -5685,9 +5685,9 @@ contains
       real   , dimension(IM,JM)           :: CNV_FRACTION
       real                                :: CNV_FRACTION_MIN
       real                                :: CNV_FRACTION_MAX
+      real                                :: GF_MIN_AREA
 
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
-      real :: FAC_RI_CNV, FAC_RI_LSC
 
       ! MATMAT CUDA Variables
 #ifdef _CUDA
@@ -5943,11 +5943,7 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%EPSVARW, 'EPSVARW:' ,DEFAULT=5.e-4, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%PGFC,    'PGFC:'    ,DEFAULT=0.7, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,   'CRIQC:'   ,DEFAULT=1.0e-3, RC=STATUS)
-      if(adjustl(CLDMICRO)=="GFDL") then
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:',DEFAULT=1.0, RC=STATUS)
-      else
         call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:',DEFAULT=0.0, RC=STATUS)
-      endif
       call MAPL_GetResource(STATE, SHLWPARAMS%KEVP,    'KEVP:'    ,DEFAULT=2.e-6,    RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,   'SHLW_RDROP:',DEFAULT=8.e-6,    RC=STATUS)
 
@@ -7181,17 +7177,10 @@ contains
     ! call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 0.00600, RC=STATUS)
     ! VERIFY_(STATUS)
     ! CAPE Criteria
-      if (adjustl(CLDMICRO) =="GFDL") then
-        call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
-        VERIFY_(STATUS)
-      else
         call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
         VERIFY_(STATUS)
-      endif
 
       if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
          if (CNV_FRACTION_MAX < 1.0) then
@@ -7212,6 +7201,9 @@ contains
       if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
       if(associated(Q600    )) Q600     = QV600
       if(associated(RH600   )) RH600    = RHat600
+
+      call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 1.e6, RC=STATUS)
+      VERIFY_(STATUS)
 
       K0 = LM
       ICMIN    = max(1,count(PREF < PMIN_DET))
@@ -7781,6 +7773,16 @@ contains
           call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);TAU_EC =0.0
           !print*,"sizes=",size(ERRMD),size(MUPMD);call flush(6)
          ENDIF
+
+! WMP
+! Modify AREA (m^2) here so GF scale dependence has a CNV_FRACTION dependence
+         if (GF_MIN_AREA > 0) then
+           GF_AREA = GF_MIN_AREA*CNV_FRACTION + AREA*(1.0-CNV_FRACTION)
+         else
+           GF_AREA = AREA
+         endif
+! WMP
+         
          !- call GF/GEOS5 interface routine
          call GF_GEOS5_Interface( IM,JM,LM,KM,ITRCR,LONS,LATS,DT_MOIST                       &
                                  ,T, PLE, PLO, ZLE, ZLO, PK, U, V, OMEGA            & 
@@ -7789,7 +7791,7 @@ contains
                                  ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC , CLCN         &                           
                                  ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
-                                 ,FRLAND, AREA,USTAR,TSTAR,QSTAR,T2M                &
+                                 ,FRLAND, GF_AREA,USTAR,TSTAR,QSTAR,T2M                &
                                  ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS                       &
                                  ,KPBLIN    &
                                  ,MAPL_GRAV &
@@ -7963,7 +7965,7 @@ contains
         ! Move any convective condensate/cloud to large-scale
          QLLS = QLLS+QLCN
          QILS = QILS+QICN
-         CLLS = MAX(CLLS,CLCN)
+         CLLS = MIN(CLLS+CLCN,1.0)
         ! Zero out convective condensate/cloud
          QLCN = 0.0
          QICN = 0.0
@@ -8127,6 +8129,8 @@ contains
         SC_NICE   = 0.
         QLDET_SC  = 0.
         QIDET_SC  = 0.
+        QLSUB_SC  = 0.
+        QISUB_SC  = 0.
 
       end if
 
@@ -8245,10 +8249,11 @@ contains
         enddo
        ! add DeepCu Clouds to Convective
         CLCN = CLCN + CNV_MFD*iMASS*DT_MOIST
-       ! add ShallowCu QL/QI to Large-Scale
-        QLLS = QLLS + DQLDT_SC * DT_MOIST
-        QILS = QILS + DQIDT_SC * DT_MOIST
-       ! add ShallowCu rain/snow
+       ! add ShallowCu CL/QL/QI tendencies to Large-Scale
+        CLLS = CLLS +  MFD_SC*iMASS*DT_MOIST
+        QLLS = QLLS + (QLSUB_SC+QLDET_SC)*DT_MOIST
+        QILS = QILS + (QISUB_SC+QIDET_SC)*DT_MOIST
+       ! add ShallowCu rain/snow tendencies
         QRAIN = QRAIN + SHLW_PRC3*DT_MOIST
         QSNOW = QSNOW + SHLW_SNO3*DT_MOIST
        ! add DeepCu rain/snow
@@ -8402,11 +8407,7 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%NCCN_ANVIL,     'NCCN_ANVIL:',     DEFAULT= 0.1     )
       call MAPL_GetResource( STATE, CLDPARAMS%NCCN_PBL,       'NCCN_PBL:',       DEFAULT= 200.    )
       call MAPL_GetResource( STATE, CLDPARAMS%DISABLE_RAD,    'DISABLE_RAD:',    DEFAULT= 0.      )
-      call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
-      call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
-      call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
       call MAPL_GetResource( STATE, CLDPARAMS%REVAP_OFF_P,    'REVAP_OFF_P:',    DEFAULT= 2000.   )
-      call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 1.0     )
       call MAPL_GetResource( STATE, CLDPARAMS%ICE_RAMP,       'ICE_RAMP:',       DEFAULT= -27.0   )
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_ICEPARAM,   'CNV_ICEPARAM:',   DEFAULT= 1.0     )
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_ICEFRPWR,   'CNV_ICEFRPWR:',   DEFAULT= 4.0     )
@@ -8415,6 +8416,18 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%LS_DDRF,        'LS_DDRF:',        DEFAULT= 0.0     )
       call MAPL_GetResource( STATE, CLDPARAMS%QC_CRIT_ANV,    'QC_CRIT_ANV:',    DEFAULT= 8.0e-4  )
       call MAPL_GetResource( STATE, CLDPARAMS%TANHRHCRIT,     'TANHRHCRIT:',     DEFAULT= 1.0     )
+
+      if( LM .le. 72 ) then
+        call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
+        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
+        call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
+        call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     )
+      else
+        call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
+        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.15    )
+        call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 0.15    )
+        call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.0     )
+      endif
 
       ! Horizontal resolution dependant defaults for minimum RH crit
       if( imsize.le.200       ) call MAPL_GetResource( STATE, CLDPARAMS%MINRHCRIT, 'MINRHCRIT:', DEFAULT=0.80, RC=STATUS)
@@ -8458,13 +8471,12 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%SC_ENVF,    'SC_ENVF:',   DEFAULT= 1.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%LS_ENVF,    'LS_ENVF:',   DEFAULT= 1.0     )
 
-      call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,   'FAC_RI:',     DEFAULT=   1.0   )
       if (adjustl(CLDMICRO) =="GFDL") then
-        call MAPL_GetResource( STATE, FAC_RI_LSC,       'FAC_RI_LSC:', DEFAULT= 0.1 )
-        call MAPL_GetResource( STATE, FAC_RI_CNV,       'FAC_RI_CNV:', DEFAULT= 0.1 )
+        call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI, 'FAC_RI:',     DEFAULT=   0.1   )
         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI, 'MIN_RI:',     DEFAULT=   5.e-6 )
         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI, 'MAX_RI:',     DEFAULT= 140.e-6 )
       else
+        call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI, 'FAC_RI:',     DEFAULT=   1.0   )
         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI, 'MIN_RI:',     DEFAULT=  15.e-6 )
         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI, 'MAX_RI:',     DEFAULT= 150.e-6 )
       end if
@@ -8473,7 +8485,7 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,    'MAX_RL:',     DEFAULT=  21.e-6 )
       call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,    'FAC_RL:',     DEFAULT=   1.0   )
 
-      call MAPL_GetResource( STATE, CLDPARAMS%FR_LS_WAT, 'FR_LS_WAT:',  DEFAULT= 0.0    )
+      call MAPL_GetResource( STATE, CLDPARAMS%FR_LS_WAT, 'FR_LS_WAT:',  DEFAULT= 1.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%FR_AN_WAT, 'FR_AN_WAT:',  DEFAULT= 1.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%FR_LS_ICE, 'FR_LS_ICE:',  DEFAULT= 0.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%FR_AN_ICE, 'FR_AN_ICE:',  DEFAULT= 0.0    )
@@ -8567,7 +8579,8 @@ contains
         ! Temperature (K)
          TEMP = TH1*PK
         ! Delta-Z layer thickness (gfdl expects this to be negative)
-         DZ = ( ZLE(:,:,1:LM)-ZLE(:,:,0:LM-1) )
+         DZ = TH1 * (PKE(:,:,0:LM-1) - PKE(:,:,1:LM)) * MAPL_CP/MAPL_GRAV
+     !   DZ = ( ZLE(:,:,1:LM)-ZLE(:,:,0:LM-1) )
         ! W vertical velocity
          W1 = W
         ! Get cloud nuclei particle numbers
@@ -8713,7 +8726,7 @@ contains
          call MAPL_TimerOn(STATE,"---GFDL_CLDMICRO")
         ! Cloud
          FQA= 0.0
-         RAD_CF = CLCN+CLLS
+         RAD_CF = MIN(CLCN+CLLS,1.0)
          where (RAD_CF .gt. 0.0)
             FQA =  MIN(1.0,MAX(CLCN/(RAD_CF),0.0))
          end where
@@ -8891,7 +8904,7 @@ contains
                                         NACTI(I,J,K),  &
                                         2)
            ! apply limits
-            CLDREFFI(I,J,K) = CLDREFFI(I,J,K)*(FAC_RI_LSC*(1.0-CNV_FRACTION(I,J)) + FAC_RI_CNV*CNV_FRACTION(I,J))
+            CLDREFFI(I,J,K) = CLDREFFI(I,J,K)*CLDPARAMS%FAC_RI
             CLDREFFI(I,J,K) = MAX( CLDPARAMS%MIN_RI, MIN(CLDREFFI(I,J,K), CLDPARAMS%MAX_RI) )
            enddo
           enddo
@@ -11036,7 +11049,7 @@ do K= 1, LM
          elseif(adjustl(CLDMICRO)=="1MOMENT") then
            call CALCDBZ(DBZ3D,100*PLO,TEMP,Q1,QRN*RAD_CF,QSN*RAD_CF,QSN*RAD_CF,IM,JM,LM,1,0,0)
          else
-           call CALCDBZ(DBZ3D,100*PLO,TEMP,Q1,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,0,0,0)
+           call CALCDBZ(DBZ3D,100*PLO,TEMP,Q1,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,0)
          endif
          if (associated(DBZ)) DBZ = DBZ3D
          if (associated(DBZ_MAX)) then
@@ -11370,8 +11383,19 @@ do K= 1, LM
 
       if (associated(PRECU  ))   PRECU   = CN_PRC2 + SC_PRC2
       if (associated(PRELS  ))   PRELS   = LS_PRC2 + AN_PRC2
-      if (associated(SNR    ))   SNR     = LS_SNR  + AN_SNR + CN_SNR + SC_SNR
       if (associated(TT_PRCP))   TT_PRCP = TPREC
+
+   !  if(adjustl(CLDMICRO)=="GFDL") then
+   !   ! Separate PRCP_ICE from LS_SNR which is the sum of PRCP_ICE + PRCP_SNOW + PRCP_GRAUPEL
+   !    if (associated(SNR    ))   SNR     = PRCP_SNOW + PRCP_GRAUPEL + AN_SNR + CN_SNR + SC_SNR
+   !    if (associated(ICE    ))   ICE     = PRCP_ICE
+   !    if (associated(FRZR   ))   FRZR    = 0.0
+   !  else
+   !   ! Other microphysics for now have just snow/rain unless diagnosed later...
+        if (associated(SNR    ))   SNR     = LS_SNR  + AN_SNR + CN_SNR + SC_SNR
+        if (associated(ICE    ))   ICE     = 0.0
+        if (associated(FRZR   ))   FRZR    = 0.0
+   !  endif
 
       if (associated(HOURNORAIN))   then
          call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)

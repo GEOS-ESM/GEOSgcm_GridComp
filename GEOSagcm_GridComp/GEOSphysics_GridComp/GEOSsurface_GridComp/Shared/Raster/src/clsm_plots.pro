@@ -1,3 +1,111 @@
+;_____________________________________________________________________
+
+FUNCTION NCDF_ISNCDF, FILENAME
+
+;- Set return values
+
+false = 0B
+true = 1B
+
+;- Establish error handler
+
+catch, error_status
+if error_status ne 0 then begin
+  catch, /cancel
+  return, false
+endif
+
+;- Try opening the file
+
+cdfid = ncdf_open( filename )
+
+;- If we get this far, open must have worked
+
+ncdf_close, cdfid
+catch, /cancel
+return, true
+
+END
+
+; ----------------
+
+function nint, x, LONG = long             ;Nearest Integer Function
+;+
+; NAME:
+;	NINT
+; PURPOSE:
+;	Nearest integer function.
+; EXPLANATION:   
+;	NINT() is similar to the intrinsic ROUND function, with the following
+;	two differences:
+;	(1) if no absolute value exceeds 32767, then the array is returned as
+;		as a type INTEGER instead of LONG
+;	(2) NINT will work on strings, e.g. print,nint(['3.4','-0.9']) will
+;		give [3,-1], whereas ROUND() gives an error message
+;
+; CALLING SEQUENCE:
+;	result = nint( x, [ /LONG] )
+;
+; INPUT:
+;	X - An IDL variable, scalar or vector, usually floating or double
+;		Unless the LONG keyword is set, X must be between -32767.5 and 
+;		32767.5 to avoid integer overflow
+;
+; OUTPUT
+;	RESULT - Nearest integer to X
+;
+; OPTIONAL KEYWORD INPUT:
+;	LONG - If this keyword is set and non-zero, then the result of NINT
+;		is of type LONG.   Otherwise, the result is of type LONG if
+;		any absolute values exceed 32767, and type INTEGER if all
+;		all absolute values are less than 32767.
+; EXAMPLE:
+;	If X = [-0.9,-0.1,0.1,0.9] then NINT(X) = [-1,0,0,1]
+;
+; PROCEDURE CALL:
+;	None:
+; REVISION HISTORY:
+;	Written W. Landsman        January 1989
+;	Added LONG keyword         November 1991
+;	Use ROUND if since V3.1.0  June 1993
+;	Always start with ROUND function    April 1995
+;	Return LONG values, if some input value exceed 32767
+;		and accept string values   February 1998 
+;       Use size(/TNAME) instead of DATATYPE()      October 2001
+;-
+xmax = max(x,min=xmin)
+ xmax = abs(xmax) > abs(xmin)
+ if (xmax gt 32767) or keyword_set(long) then begin
+    if size(x,/TNAME) eq 'STRING' then b = round(float(x)) else b = round(x)
+ end else begin
+    if size(x,/TNAME) eq 'STRING' then b = fix(round(float(x))) else	$
+	    b = fix(round(x))
+ endelse
+
+  return, b 
+  end
+
+; -------------------------------------------------------------------------------------------
+
+FUNCTION IS_IN_DOMAIN, xylim, x,y
+
+if (((x ge xylim(1)) and (x le xylim(3))) and  $
+    ((y ge xylim(0)) and (y le xylim(2)))) then begin
+ 
+   return_value = boolean(1) 
+
+endif else begin
+
+   return_value = boolean(0) 
+
+endelse
+
+return,return_value
+
+END 
+
+; #######################################################
+
 FUNCTION Z0_VALUE, Z2CH, lai, SCALE4Z0
 
 MIN_VEG_HEIGHT = 0.01
@@ -350,16 +458,32 @@ plot_lai, ncat, tile_id
 
 ; (11) vegetation height and roughness length
 filename = '../vegdyn.data'
-openr,1,filename,/F77_UNFORMATTED
-ityp  = fltarr (ncat)
-z2    = fltarr (ncat)
-asz0  = fltarr (ncat)
+ncdf_file   = boolean (ncdf_isncdf(filename))
 
-readu,1,ITYP
-readu,1,Z2
-readu,1,ASZ0
+if (ncdf_file) then begin
+
+   ncid = NCDF_OPEN(filename,/NOWRITE)
+   NCDF_VARGET, ncid,'ITY', ITYP
+   NCDF_VARGET, ncid,'Z2CH', Z2
+   NCDF_VARGET, ncid,'ASCATZ0', ASZ0
+   NCDF_CLOSE, ncid
+
+endif else begin
+
+  openr,1,filename,/F77_UNFORMATTED
+  ityp  = fltarr (ncat)
+  z2    = fltarr (ncat)
+  asz0  = fltarr (ncat)
+
+  readu,1,ITYP
+  readu,1,Z2
+  readu,1,ASZ0
+  close,1
+
+endelse
+
 ASZ0 = ASZ0 * 1000.
-close,1
+
 
 plot_canoph, z2, tile_id
 
@@ -2240,12 +2364,35 @@ end
 
 pro create_vec_file
 
-dx = 60./60.
-dy = 60./60.
+dx         = 1.d0/12.
+dy         = 1.d0/12.
+DATELINE   = 1
+global_bcs = 0
+WORKDIR    = '/gpfsm/dnb02/smahanam/MichelBechtold/SouthAmerica/0.125/'
 
-SRTM_maxcat = 291284
 nc = long(360./dx)
 nr = long(180./dy)
+
+openw,1,workdir + 'clsm/NLDAS-5arcmin_vec.data'
+
+if(NOT (boolean (global_bcs))) then begin
+  xylim = [25., -125., 53., -67.]
+  x = indgen (nc)*dx -180. + dx/2.
+  y = indgen (nr)*dy  -90. + dy/2.
+  i1 = value_locate (x,  xylim(1)) + 1
+  i2 = value_locate (x,  xylim(3)) 
+  j1 = value_locate (y,  xylim(0)) + 1
+  j2 = value_locate (y,  xylim(2)) 
+  i_offset = i1
+  j_offset = j1
+  nc_domain = i2 - i1 + 1
+  nr_domain = j2 - j1 + 1
+  printf,1,format ='(2f8.4, i3, 4i5)', dx,dy, dateline, nc_domain,nr_domain,i_offset,j_offset	
+endif else begin
+  printf,1,dx,dy, dateline
+endelse
+
+SRTM_maxcat = 291284
 
 nc_esa = 129600l
 nr_esa = 64800l
@@ -2253,12 +2400,12 @@ nr_esa = 64800l
 nx = nc_esa/nc
 ny = nr_esa/nr
 
-ncid = NCDF_OPEN(' /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GEOS5_10arcsec_mask.nc')
+ncid = NCDF_OPEN('/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GEOS5_10arcsec_mask.nc')
 ;NCDF_VARGET, ncid,0, y
 ;NCDF_VARGET, ncid,1, x
 
 n = 1l
-openw,1,'1-degree_vec.dat'
+
 subset = lonarr (nc_esa,ny)
 for j = 0l,nr -1l do begin
     NCDF_VARGET, ncid,'CatchIndex', offset = [0,j*ny], count = [nc_esa,ny], SubSet
@@ -2267,10 +2414,16 @@ for j = 0l,nr -1l do begin
 	CatchIndex = SubSet(i*nx:(i+1)*nx -1,*)
 	if(max(CatchIndex) gt SRTM_maxcat) then CatchIndex (where (CatchIndex gt SRTM_maxcat)) = 0
 	if (max (CatchIndex) ge 1) then begin
-	   printf,1,format ='(i7,2(1x,f10.5),2(1x,I5))',n,j*dy -90. + dy/2.,i*dx -180. + dx/2.,I+1,J+1
-;	   print,format ='(i7,2(1x,f10.5))',n,j*dy -90. + dy/2.,i*dx -180. + dx/2.
-           n = n + 1
-	endif
+          if(boolean (global_bcs)) then begin
+	     printf,1,format ='(i7,2(1x,f10.5),2(1x,I5))',n,j*dy -90. + dy/2.,i*dx -180. + dx/2.,I+1,J+1
+             n = n + 1
+	  endif else begin
+             if(IS_IN_DOMAIN(xylim, i*dx -180. + dx/2.,j*dy -90. + dy/2.)) then begin
+                printf,1,format ='(i7,2(1x,f10.5),2(1x,I5))',n,j*dy -90. + dy/2.,i*dx -180. + dx/2.,I+1 - i_offset,J+1 - j_offset
+	        n = n + 1
+             endif
+          endelse
+         endif
     endfor
 endfor
 close,1
@@ -2511,7 +2664,7 @@ for month = 1,12 do begin
     endelse
 
     contour, data_grid,x,y,levels = levels,c_colors=colors,/cell_fill,/overplot
-    MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2	
+    MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
 endfor    
 
 close,1	
@@ -2959,5 +3112,177 @@ image24[0,*,*] = r[snapshot]
 image24[1,*,*] = g[snapshot]
 image24[2,*,*] = b[snapshot]
 Write_JPEG, pname + '_Z0.jpg', image24, True=1, Quality=100
+
+end
+
+; ------------------------------------
+
+pro proc_glass
+
+
+;IDATA = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/AVHRR/V4/HDF/'
+;ODATA = '/discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/GLASS-LAI/AVHRR.v4/'
+;LABEL = 'GLASS01B02.V04.A'
+;yearb = 1981
+;YEARe = 2017
+
+IDATA = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/MODIS/V4/HDF/'
+ODATA = '/discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/GLASS-LAI/MODIS.v4/'
+LABEL = 'GLASS01B01.V04.A'
+yearb = 2000
+YEARe = 2017
+
+nc = 7200
+nr = 3600
+nyrs = YEARe - yearb + 1
+
+lwval = 0.
+upval = 7.
+
+im = nc
+jm = nr
+
+dx = 360. / im
+dy = 180. / jm
+
+x = indgen(im)*dx -180. +  dx/2.
+y = indgen(jm)*dy -90.  +  dy/2.
+r_in  = [253,224,255,238,205,193,152,  0,124,  0,  0,  0,  0,  0,  0, 48,110, 85]
+g_in  = [253,238,255,238,205,255,251,255,252,255,238,205,139,128,100,128,139,107]
+b_in  = [253,224,  0,  0,  0,193,152,127,  0,  0,  0,  0,  0,  0,  0, 20, 61, 47]
+
+n_levels = n_elements (r_in)
+levels=[0.,0.25,0.5,0.75,1.,1.25,1.5,10. * indgen(11)*0.05+2.]
+red  = intarr (256)
+green= intarr (256)
+blue = intarr (256)
+
+red  (255) = 255
+green(255) = 255
+blue (255) = 255
+
+for k = 0, N_levels -1 do begin 
+	red  (k+1) = r_in (k)
+	green(k+1) = g_in (k)
+	blue (k+1) = b_in (k)
+endfor
+
+TVLCT,red,green,blue
+colors = indgen (N_levels) + 1
+
+limits = [-60,-180,90,180]
+thisDevice = !D.Name
+set_plot,'Z'
+Device, Set_Resolution=[800,500], Z_Buffer=0
+Erase,255
+!p.background = 255
+
+;file1 = '/gpfsm/dnb43/projects/p03/RS_DATA/GLASS/LAI/MODIS/V4/HDF/2008/GLASS01B01.V04.A2008185.hdf'
+file1 = '/discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/GLASS-LAI/MODIS.v4/GLASS01B01.V04.AYYYY105.nc4'
+ncid = ncdf_open (file1)
+NCDF_VARGET, ncid,'LAI', adum
+ncdf_close,ncid
+
+;FileID=HDF_SD_Start(file1, /read)
+;sds_id = hdf_sd_select(FileID, 0)
+;hdf_sd_getdata, sds_id,adum
+;HDF_SD_END, FileID
+adum (where (adum eq  2550)) =  !VALUES.F_NAN
+adum = adum /100.
+
+
+MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits
+MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2,/USA
+;contour, adum,x,y,levels = levels,c_colors=colors,/cell_fill
+
+snapshot = TVRD()
+TVLCT, r, g, b, /Get
+Device, Z_Buffer=1
+Set_Plot, thisDevice
+image24 = BytArr(3, 800, 500)
+image24[0,*,*] = r[snapshot]
+image24[1,*,*] = g[snapshot]
+image24[2,*,*] = b[snapshot]
+Write_JPEG, 'global_map.jpg', image24, True=1, Quality=100
+stop
+
+for DOY = 1,361,8 do begin
+    LAI = intarr (nc,nr,nyrs)
+    LAI (*,*,*) = 2550
+    DDD = string (DOY,'(i3.3)')
+    for year = yearB, yearE do begin
+	YYYY = string (year, '(i4.4)')
+	filename = IDATA + YYYY + '/' + LABEL + yyyy + DDD + '.hdf'
+	FileID=HDF_SD_Start(filename, /read)
+	sds_id = hdf_sd_select(FileID, 0)
+	hdf_sd_getdata, sds_id,adum
+        adum = adum *10
+	HDF_SD_END, FileID
+	print, year,min(adum), max(adum)
+	LAI (*,*,year - yearB) = adum
+	
+    endfor
+
+indata = intarr (nc,nr)
+indata (*,*) = 2550
+
+for j = 0, nr -1 do begin
+   for i = 0, nc -1 do begin
+       if(min (LAI (i,j,*)) lt 2550) then begin
+	  syears = where (LAI (i,j,*) lt 2550)
+	  indata (i,j) = mean (LAI (i,j,syears))
+         ; if(mean (LAI (i,j,syears)) gt 500.) then  stop
+	 ; print, n_elements (syears), mean (LAI (i,j,syears))
+       endif
+   endfor
+endfor
+
+print, min (indata), max(indata)
+
+ofile = ODATA + LABEL + 'YYYY' + DDD + '.nc4'
+write_glass_output, indata, ofile
+
+endfor
+
+end
+
+; ----------------------------------------------------------------
+
+
+pro write_glass_output,indata,ofile
+
+nc = 7200
+nr = 3600
+
+id   = NCDF_CREATE(ofile, /clobber) ;Create netCDF output file
+xid  = NCDF_DIMDEF(id, 'N_lon', nc)                                              ;Define x-dimension
+yid  = NCDF_DIMDEF(id, 'N_lat', nr)                                              ;Define y-dimension
+NCDF_ATTPUT,id, 'CellSize_arcmin' , 3,/global
+NCDF_ATTPUT,id, 'CreatedBy', 'Sarith Mahanama',/global
+NCDF_ATTPUT,id, 'Contact', 'sarith.p.mahanama@nasa.gov',/global
+str_date=systime()
+NCDF_ATTPUT,id, 'Date', str_date,/global
+vid  = NCDF_VARDEF(id, 'lat',  yid, /DOUBLE)         ;Define latitude variable
+vid  = NCDF_VARDEF(id, 'lon', xid, /DOUBLE)         ;Define longitude variable
+vid  = NCDF_VARDEF(id, 'LAI', [xid, yid], /SHORT)
+NCDF_ATTPUT, id, vid, 'LongName','Leaf Area Index 8-Day 0.05-degrees GEO Grid climatology'
+NCDF_ATTPUT, id, vid, 'units', 'm^2/m^2'
+NCDF_ATTPUT, id, vid, 'scale_factor',0.01
+NCDF_ATTPUT, id, vid, 'valid_range','0 1000'
+NCDF_ATTPUT, id, vid, '_FillValue', 2550
+
+NCDF_CONTROL, id, /ENDEF
+
+dxy = 360.d/7200.d
+
+x = indgen (nc)*dxy -180. + dxy/2.d
+y = indgen (nr)*dxy  -90. + dxy/2.d
+
+NCDF_VARPUT, id,'lat', y
+NCDF_VARPUT, id,'lon', x
+for j =0, nr -1 do begin
+NCDF_VARPUT, id, 'LAI',offset=[0,nr-1 -j],count=[nc,1]   , nint(indata [*,j])
+endfor
+NCDF_CLOSE, id 
 
 end

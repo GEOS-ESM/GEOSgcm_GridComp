@@ -65,7 +65,7 @@ PROGRAM mkSMAPTilesPara_v2
 
       if(N_args < 1) then
         print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX'
-	print *,'Allowed SMAP grids are: M01 M03 M09 M36'
+	print *,'Allowed SMAP grids are: M01 M03 M09 M25 M36'
         stop
       end if
 
@@ -114,13 +114,13 @@ PROGRAM mkSMAPTilesPara_v2
          gfile = 'SMAP_EASEv2_'//trim(MGRID)//'_964x406'
          EASE_grid_area = CELL_km*CELL_km
          
-         !    elseif(trim(MGRID) == 'M25') then
-         ! 
-         !     	 CELL_km = 3.00003356589     ! nominal cell size in kilometers		 
-         !         nc_smap = 1383
-         !         nr_smap = 586
-         !         gfile = 'SMAP_EASE_M25_1383x586'
-         !         EASE_grid_area = CELL_km*CELL_km
+    elseif(trim(MGRID) == 'M25') then
+ 
+     	 CELL_km = 25.0252600081    ! nominal cell size in kilometers		 
+         nc_smap = 1388
+         nr_smap = 584
+         gfile = 'SMAP_EASEv2_M25_1388x584'
+         EASE_grid_area = CELL_km*CELL_km
          
       else if (trim(MGRID) .eq. 'M03') then ! SMAP  3 km grid
          CELL_km = 3.0026850700487     ! nominal cell size in kilometers
@@ -719,14 +719,14 @@ PROGRAM mkSMAPTilesPara_v2
       ! create Grid2Catch transfer file
       ! -------------------------------
 
-      CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), MGRID=MGRID)  
+       CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), MGRID=MGRID)  
       
       ! now run mkCatchParam
       ! --------------------
 
       tmpstring1 = '-e EASE -g '//trim(gfile)
       write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
-      tmpstring = 'bin/mkCatchParam_openmp '//trim(tmpstring2)//' '//trim(tmpstring1)
+      tmpstring = 'bin/mkCatchParam '//trim(tmpstring2)//' '//trim(tmpstring1)
       print *,trim(tmpstring)
       
       call system (tmpstring)   

@@ -18,8 +18,9 @@ module GEOS_mkiauGridCompMod
   use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
   use ESMF_CFIOFileMod
   use GEOS_UtilsMod
-  use GEOS_RemapMod, only: myremap => remap
-  use m_chars,  only: uppercase
+! use GEOS_RemapMod, only: myremap => remap
+  use m_set_eta, only: set_eta
+  use m_chars, only: uppercase
   use MAPL_GridManagerMod, only: grid_manager
   use MAPL_RegridderManagerMod, only: regridder_manager
   use MAPL_AbstractRegridderMod
@@ -36,7 +37,8 @@ module GEOS_mkiauGridCompMod
      private
      class (AbstractRegridder), pointer :: ANA2BKG_regridder => null()
      class (AbstractRegridder), pointer :: BKG2ANA_regridder => null()
-     type(ESMF_Grid)            :: GRIDana
+     type(ESMF_Grid)            :: GRIDana    ! Analysis    Data using Horizontal:ANA  Vertical:BKG 
+     type(ESMF_Grid)            :: GRIDrep    ! Replay File Data using Horizontal:ANA  Vertical:ANA
      integer                    :: IM
      integer                    :: JM
      integer                    :: LM
@@ -515,6 +517,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:,:,:)     ::  ptr3d, temp3d
   real, pointer, dimension(:,:)       ::  ptr2d, temp2d
 
+! Background Variables from IMPORT State
+! --------------------------------------
   real, pointer, dimension(:,:)       :: vintdiv_ana
   real, pointer, dimension(:,:)       :: vintdiv_bkg
   real, pointer, dimension(:,:)       :: vintdiv_cor
@@ -529,17 +533,39 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:,:)       ::phis_bkg
   real, pointer, dimension(:)         ::  ak,bk
 
+  real, allocatable, dimension(:,:,:) ::  dp_bkg
+
+! Analysis Variables from REPLAY Files
+! ------------------------------------
+  real, allocatable, dimension(:,:)   ::  ps_rep
+  real, allocatable, dimension(:,:,:) ::  dp_rep
+  real, allocatable, dimension(:,:,:) ::   u_rep
+  real, allocatable, dimension(:,:,:) ::   v_rep
+  real, allocatable, dimension(:,:,:) ::   t_rep
+  real, allocatable, dimension(:,:,:) ::   q_rep
+  real, allocatable, dimension(:,:,:) ::  o3_rep
+  real, allocatable, dimension(:,:,:) :: thv_rep
+  real, allocatable, dimension(:,:,:) :: ple_rep
+  real, allocatable, dimension(:,:,:) ::  pk_rep
+  real, allocatable, dimension(:,:,:) :: pke_rep
+  real, allocatable, dimension(:)     ::  ak_rep
+  real, allocatable, dimension(:)     ::  bk_rep
+
+! Analysis Variables from REPLAY Files REMAPPED to Background Vertical Resolution
+! -------------------------------------------------------------------------------
   real, pointer, dimension(:,:)       ::phis_ana
   real, pointer, dimension(:,:)       ::  ts_ana
   real, pointer, dimension(:,:)       ::  ps_ana
-  real, pointer, dimension(:,:,:)     ::  dp_ana
   real, pointer, dimension(:,:,:)     ::   u_ana
   real, pointer, dimension(:,:,:)     ::   v_ana
   real, pointer, dimension(:,:,:)     ::   t_ana
   real, pointer, dimension(:,:,:)     :: thv_ana
   real, pointer, dimension(:,:,:)     ::   q_ana
   real, pointer, dimension(:,:,:)     ::  o3_ana
- 
+
+  real, allocatable, dimension(:,:,:) :: ple_ana
+  real, allocatable, dimension(:,:,:) ::  pk_ana
+  real, allocatable, dimension(:,:,:) :: pke_ana
   real, allocatable, dimension(:,:,:) :: qdum1
   real, allocatable, dimension(:,:,:) :: qdum2
 
@@ -547,12 +573,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real,     pointer, dimension(:,:,:) :: pdum2 => null()
   real,     pointer, dimension(:,:)   :: tropp => null()
 
-  real, allocatable, dimension(:,:,:) ::  dp_bkg
-  real, allocatable, dimension(:,:,:) :: ple_ana
-  real, allocatable, dimension(:,:,:) ::  pk_ana
-  real, allocatable, dimension(:,:,:) :: pke_ana
   real, allocatable, dimension(:,:,:) ::  du_fix
   real, allocatable, dimension(:,:,:) ::  dv_fix
+
+  real  ptopdum
+  real  pintdum
+  integer ksdum
 
   real, allocatable, dimension(:,:)   ::  vintdiva
   real, allocatable, dimension(:,:)   ::  vintdivb
@@ -592,6 +618,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_FieldBundle)              :: bundle
   type(ESMF_Grid)                     :: GRIDbkg
   type(ESMF_Grid)                     :: GRIDana
+  type(ESMF_Grid)                     :: GRIDrep
   type(ESMF_Time)                     :: currtime
   type(ESMF_Calendar)                 :: cal
   type(ESMF_TimeInterval)             :: FileFreq
@@ -969,7 +996,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call CFIO_Open       ( REPLAY_FILEP0, 1, fid, STATUS )
     VERIFY_(STATUS)
-    call CFIO_DimInquire ( fid, IMana_World, JMana_world, LM, nt, nvars, natts, rc=STATUS )
+    call CFIO_DimInquire ( fid, IMana_World, JMana_world, LMana, nt, nvars, natts, rc=STATUS )
     VERIFY_(STATUS)
     call CFIO_Close      ( fid, STATUS )
     VERIFY_(STATUS)
@@ -980,7 +1007,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     do_transforms = ( IMbkg_World /= IMana_World ) .or. &
-                    ( JMbkg_World /= JMana_World )
+                    ( JMbkg_World /= JMana_World ) .or. &
+                    ( LMbkg       /= LMana       )
 
     refresh_internal_state = .false. ! Default
     if (first) then
@@ -988,8 +1016,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     else
        if ( mkiau_internal_state%IM /= IMana_World .or. &
             mkiau_internal_state%JM /= JMana_World .or. &
-            mkiau_internal_state%LM /= LM) then
-          refresh_internal_state = .true. ! somehow different background resolution
+            mkiau_internal_state%LM /= LMana ) then
+          refresh_internal_state = .true. ! Resolution of Analysis File has changed since last update
        end if
     end if
 
@@ -997,6 +1025,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        if (.not. first) then
           call WRITE_PARALLEL("Destroying GRIDana...")
           call ESMF_GridDestroy(mkiau_internal_state%GRIDana, rc=status)
+          VERIFY_(STATUS)
+          call ESMF_GridDestroy(mkiau_internal_state%GRIDrep, rc=status)
           VERIFY_(STATUS)
        end if
 
@@ -1008,24 +1038,28 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! Get grid_dimensions from file.
        call CFIO_Open(REPLAY_FILEP0, 1, fid, rc=status)
        VERIFY_(status)
-       call CFIO_DimInquire (fid, IMana_World, JMana_World, LM, &
-            & nt, nvars, natts, rc=status)
+       call CFIO_DimInquire (fid, IMana_World, JMana_World, LMana, nt, nvars, natts, rc=status)
        VERIFY_(status)
        call CFIO_Close(fid, rc=status)
        VERIFY_(status)
 
        block
          use MAPL_LatLonGridFactoryMod
-         GRIDana = grid_manager%make_grid( &
-              & LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LM, &
-              & nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status))
+         GRIDrep = grid_manager%make_grid(                                                 &
+                   LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMana, &
+                   nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
+         VERIFY_(STATUS)
+         GRIDana = grid_manager%make_grid(                                                 &
+                   LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMbkg, &
+                   nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
          VERIFY_(STATUS)
        end block
          
-       mkiau_internal_state%im = IMana_World
-       mkiau_internal_state%jm = JMana_World
-       mkiau_internal_state%lm = LM
+       mkiau_internal_state%im      =   IMana_World
+       mkiau_internal_state%jm      =   JMana_World
+       mkiau_internal_state%lm      =   LMana
        mkiau_internal_state%GRIDana = GRIDana
+       mkiau_internal_state%GRIDrep = GRIDrep
 
        call MAPL_GetResource(MAPL, K, Label="BKG2ANACNSRV:", default=0, RC=STATUS)
        VERIFY_(STATUS)
@@ -1054,6 +1088,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     else
        if(first) call WRITE_PARALLEL("Using stored GRIDana...")
        GRIDana = mkiau_internal_state%GRIDana
+       GRIDrep = mkiau_internal_state%GRIDrep
     end if
 
     !ALT: Get current VM and the mpi communicator
@@ -1068,30 +1103,31 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !   Set Local Dimensions to GRIDana and GRIDbkg
 !   -------------------------------------------
-    call MAPL_GridGet(GRIDana, localCellCountPerDim=DIMS, RC=STATUS)
+    call MAPL_GridGet(GRIDrep, localCellCountPerDim=DIMS, RC=STATUS)
     VERIFY_(STATUS)
     IMana   = DIMS(1)
     JMana   = DIMS(2)
-    LMana   = LM
+    LMana   = DIMS(3)
 
     call MAPL_GridGet(GRIDbkg, localCellCountPerDim=DIMS, RC=STATUS)
     VERIFY_(STATUS)
     IMbkg   = DIMS(1)
     JMbkg   = DIMS(2)
-    LMbkg   = LM
+    LMbkg   = DIMS(3)
 
-!   Set Local Dimensions to GRIDINC
-!   -------------------------------
+!   Set Local Dimensions to GRIDINC (i.e., the GRID on which the increments are computed)
+!   Note:  In all cases, the vertical resolution is defined by the Background
+!   -------------------------------------------------------------------------------------
     if( trim(GRIDINC) == "ANA" ) then
         IM   = IMana
         JM   = JMana
-        LMP1 = LMana+1
     endif
     if( trim(GRIDINC) == "BKG" ) then
         IM   = IMbkg
         JM   = JMbkg
-        LMP1 = LMbkg+1
     endif
+        LM   = LMbkg
+        LMP1 = LMbkg+1
 
     if ( IHAVEAINC/=0 ) then
        call handleINC_
@@ -1280,13 +1316,13 @@ CONTAINS
     allocate( phis_bkg(IM,JM)      )
     allocate(   ts_bkg(IM,JM)      )
     allocate(   ps_bkg(IM,JM)      )
-    allocate(    u_bkg(IM,JM,LM)   )
-    allocate(    v_bkg(IM,JM,LM)   )
-    allocate(    t_bkg(IM,JM,LM)   )
-    allocate(   tv_bkg(IM,JM,LM)   )
-    allocate(    q_bkg(IM,JM,LM)   )
-    allocate(   o3_bkg(IM,JM,LM)   )
-    allocate (  dp_bkg(IM,JM,LM)   )
+    allocate(    u_bkg(IM,JM,1:LM) )
+    allocate(    v_bkg(IM,JM,1:LM) )
+    allocate(    t_bkg(IM,JM,1:LM) )
+    allocate(   tv_bkg(IM,JM,1:LM) )
+    allocate(    q_bkg(IM,JM,1:LM) )
+    allocate(   o3_bkg(IM,JM,1:LM) )
+    allocate (  dp_bkg(IM,JM,1:LM) )
     allocate(  ple_bkg(IM,JM,0:LM) )
 
 ! **********************************************************************
@@ -1427,7 +1463,7 @@ CONTAINS
     if( NEED_BUNDLEP0 ) then
         RBUNDLEP0 = ESMF_FieldBundleCreate( RC=STATUS)
         VERIFY_(STATUS)
-        if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDana, rc=status)
+        if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDrep, rc=status)
         if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDbkg, rc=status)
         VERIFY_(STATUS)
         call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
@@ -1444,7 +1480,7 @@ CONTAINS
         if( NEED_BUNDLEM1 ) then 
             RBUNDLEM1 = ESMF_FieldBundleCreate( RC=STATUS)
             VERIFY_(STATUS)
-            if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDana, rc=status)
+            if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDrep, rc=status)
             if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDbkg, rc=status)
             VERIFY_(STATUS)
             call MAPL_CFIORead ( REPLAY_FILEM1, REPLAY_TIMEM1, RBUNDLEM1 , RC=status)
@@ -1461,7 +1497,7 @@ CONTAINS
             if( NEED_BUNDLEP1 ) then 
                 RBUNDLEP1 = ESMF_FieldBundleCreate( RC=STATUS)
                 VERIFY_(STATUS)
-                if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDana, rc=status)
+                if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDrep, rc=status)
                 if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDbkg, rc=status)
                 VERIFY_(STATUS)
                 call MAPL_CFIORead ( REPLAY_FILEP1, REPLAY_TIMEP1, RBUNDLEP1 , RC=status)
@@ -1477,7 +1513,7 @@ CONTAINS
             if( NEED_BUNDLEM2 ) then 
                 RBUNDLEM2 = ESMF_FieldBundleCreate( RC=STATUS)
                 VERIFY_(STATUS)
-                if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDana, rc=status)
+                if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDrep, rc=status)
                 if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDbkg, rc=status)
                 VERIFY_(STATUS)
                 call MAPL_CFIORead ( REPLAY_FILEM2, REPLAY_TIMEM2, RBUNDLEM2 , RC=status)
@@ -1502,6 +1538,8 @@ CONTAINS
          VERIFY_(STATUS)
          if( first ) then
              if(MAPL_AM_I_ROOT() ) then
+             print *
+             print *, 'REPLAY File Dimensions: ', IMana_World,JMana_World,LMana
              print *
              print *, 'REPLAY File Variables, NQ: ', nq
              print *, '--------------------------'
@@ -1530,7 +1568,6 @@ CONTAINS
     allocate ( phis_ana(IM,JM)      )
     allocate (   ts_ana(IM,JM)      )
     allocate (   ps_ana(IM,JM)      )
-    allocate (   dp_ana(IM,JM,  LM) )
     allocate (   du_fix(IM,JM,  LM) )
     allocate (   dv_fix(IM,JM,  LM) )
     allocate (    u_ana(IM,JM,  LM) )
@@ -1543,14 +1580,27 @@ CONTAINS
     allocate (  ple_ana(IM,JM,0:LM) )
     allocate (  pke_ana(IM,JM,0:LM) )
 
-    doremap = trim(cremap).eq.'YES'
+    allocate (   dp_rep(IM,JM,  LMana) )
+    allocate (    u_rep(IM,JM,  LMana) )
+    allocate (    v_rep(IM,JM,  LMana) )
+    allocate (    t_rep(IM,JM,  LMana) )
+    allocate (  thv_rep(IM,JM,  LMana) )
+    allocate (    q_rep(IM,JM,  LMana) )
+    allocate (   o3_rep(IM,JM,  LMana) )
+    allocate (   pk_rep(IM,JM,  LMana) )
+    allocate (  ple_rep(IM,JM,0:LMana) )
+    allocate (  pke_rep(IM,JM,0:LMana) )
+
+    allocate ( ak_rep(0:LMana) )
+    allocate ( bk_rep(0:LMana) )
+
+    doremap = (trim(cremap).eq.'YES') .or. (LMana.ne.LMbkg)
 
 ! Initialize ANA.ETA variables to Transformed BKG IMPORT State (In case REPLAY Variables are turned OFF)
 ! ------------------------------------------------------------------------------------------------------
     phis_ana = phis_bkg
       ts_ana =   ts_bkg
       ps_ana =   ps_bkg
-      dp_ana =   dp_bkg
        u_ana =    u_bkg
        v_ana =    v_bkg
        t_ana =    t_bkg
@@ -1649,21 +1699,21 @@ CONTAINS
            if( match('dp',REPLAY_DP,rnames(k)) ) then
                call ESMFL_BundleGetPointertoData(RBUNDLEP0,trim(rnames(k)),ptr3d, RC=STATUS)
                if(STATUS==ESMF_SUCCESS) then
-                          dp_ana =  ptr3d
+                          dp_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              dp_ana =  facp0*dp_ana + facm1*ptr3d
+                              dp_rep =  facp0*dp_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
                                   VERIFY_(STATUS)
-                                  dp_ana =  dp_ana + facp1*ptr3d
+                                  dp_rep =  dp_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              dp_ana =  dp_ana + facm2*ptr3d
+                              dp_rep =  dp_rep + facm2*ptr3d
                           endif
                           endif
-                          if( REPLAY_P_FACTOR.ne.1.0 ) dp_ana = dp_ana * REPLAY_P_FACTOR
+                          if( REPLAY_P_FACTOR.ne.1.0 ) dp_rep = dp_rep * REPLAY_P_FACTOR
                           FOUND  = .true.
                           exit
                endif
@@ -1682,21 +1732,21 @@ CONTAINS
            if( match('u',REPLAY_U,rnames(k)) ) then
                call ESMFL_BundleGetPointertoData(RBUNDLEP0,trim(rnames(k)),ptr3d, RC=STATUS)
                if(STATUS==ESMF_SUCCESS) then
-                          u_ana =  ptr3d
+                          u_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              u_ana =  facp0*u_ana + facm1*ptr3d
+                              u_rep =  facp0*u_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
                                   VERIFY_(STATUS)
-                                  u_ana =  u_ana + facp1*ptr3d
+                                  u_rep =  u_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              u_ana =  u_ana + facm2*ptr3d
+                              u_rep =  u_rep + facm2*ptr3d
                           endif
                           endif
-                          if( REPLAY_U_FACTOR.ne.1.0 ) u_ana = u_ana * REPLAY_U_FACTOR
+                          if( REPLAY_U_FACTOR.ne.1.0 ) u_rep = u_rep * REPLAY_U_FACTOR
                           FOUND = .true.
                           exit
                endif
@@ -1715,21 +1765,21 @@ CONTAINS
            if( match('v',REPLAY_V,rnames(k)) ) then
                call ESMFL_BundleGetPointertoData(RBUNDLEP0,trim(rnames(k)),ptr3d, RC=STATUS)
                if(STATUS==ESMF_SUCCESS) then
-                          v_ana =  ptr3d
+                          v_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              v_ana =  facp0*v_ana + facm1*ptr3d
+                              v_rep =  facp0*v_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
                                   VERIFY_(STATUS)
-                                  v_ana =  v_ana + facp1*ptr3d
+                                  v_rep =  v_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              v_ana =  v_ana + facm2*ptr3d
+                              v_rep =  v_rep + facm2*ptr3d
                           endif
                           endif
-                          if( REPLAY_V_FACTOR.ne.1.0 ) v_ana = v_ana * REPLAY_V_FACTOR
+                          if( REPLAY_V_FACTOR.ne.1.0 ) v_rep = v_rep * REPLAY_V_FACTOR
                           FOUND = .true.
                           exit
                endif
@@ -1752,22 +1802,22 @@ CONTAINS
            if( match('qv',REPLAY_QV,rnames(k)) ) then
                call ESMFL_BundleGetPointertoData(RBUNDLEP0,trim(rnames(k)),ptr3d, RC=STATUS)
                if(STATUS==ESMF_SUCCESS) then
-                          q_ana =  ptr3d
+                          q_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              q_ana =  facp0*q_ana + facm1*ptr3d
+                              q_rep =  facp0*q_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
                                   VERIFY_(STATUS)
-                                  q_ana =  q_ana + facp1*ptr3d
+                                  q_rep =  q_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              q_ana =  q_ana + facm2*ptr3d
-                          !   q_ana =  max( q_ana, 0.0 )
+                              q_rep =  q_rep + facm2*ptr3d
+                          !   q_rep =  max( q_rep, 0.0 )
                           endif
                           endif
-                          if( REPLAY_QV_FACTOR.ne.1.0 ) q_ana = q_ana * REPLAY_QV_FACTOR
+                          if( REPLAY_QV_FACTOR.ne.1.0 ) q_rep = q_rep * REPLAY_QV_FACTOR
                           FOUND = .true.
                           exit
                endif
@@ -1786,22 +1836,22 @@ CONTAINS
            if( match('o3',REPLAY_O3,rnames(k)) ) then
                call ESMFL_BundleGetPointertoData(RBUNDLEP0,trim(rnames(k)),ptr3d, RC=STATUS)
                if(STATUS==ESMF_SUCCESS) then
-                          o3_ana =  ptr3d
+                          o3_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              o3_ana =  facp0*o3_ana + facm1*ptr3d
+                              o3_rep =  facp0*o3_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
                                   VERIFY_(STATUS)
-                                  o3_ana =  o3_ana + facp1*ptr3d
+                                  o3_rep =  o3_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              o3_ana =  o3_ana + facm2*ptr3d
-                            ! o3_ana =  max( o3_ana, 0.0 )
+                              o3_rep =  o3_rep + facm2*ptr3d
+                            ! o3_rep =  max( o3_rep, 0.0 )
                           endif
                           endif
-                          if( REPLAY_O3_FACTOR.ne.1.0 ) o3_ana = o3_ana * REPLAY_O3_FACTOR
+                          if( REPLAY_O3_FACTOR.ne.1.0 ) o3_rep = o3_rep * REPLAY_O3_FACTOR
                           FOUND  = .true.
                           exit
                endif
@@ -1815,15 +1865,22 @@ CONTAINS
 
 ! ANA Pressure Variables
 ! ----------------------
-        ple_ana(:,:,0) = ak(0)
-        do L=1,lm
-        ple_ana(:,:,L) = ple_ana(:,:,L-1) + dp_ana(:,:,L)
+        if( LMana.eq.LMbkg ) then
+            ak_rep = ak
+            bk_rep = bk
+        else
+            call set_eta ( LMana,ksdum,ptopdum,pintdum,ak_rep,bk_rep )
+        endif
+
+        ple_rep(:,:,0) = ak_rep(0)
+        do L=1,LMana
+        ple_rep(:,:,L) = ple_rep(:,:,L-1) + dp_rep(:,:,L)
         enddo
 
-        pke_ana(:,:,:)  = ple_ana(:,:,:)**MAPL_KAPPA
-        do L=1,lm
-         pk_ana(:,:,L)  = ( pke_ana(:,:,L)-pke_ana(:,:,L-1) ) &
-                        / ( MAPL_KAPPA*log(ple_ana(:,:,L)/ple_ana(:,:,L-1)) )
+        pke_rep(:,:,:) = ple_rep(:,:,:)**MAPL_KAPPA
+        do L=1,LMana
+         pk_rep(:,:,L) = ( pke_rep(:,:,L)-pke_rep(:,:,L-1) ) &
+                        / ( MAPL_KAPPA*log(ple_rep(:,:,L)/ple_rep(:,:,L-1)) )
         enddo
 
 ! ANA Temperature Variable
@@ -1846,21 +1903,21 @@ CONTAINS
                call ESMFL_BundleGetPointertoData(RBUNDLEP0,trim(rnames(k)),ptr3d, RC=STATUS)
                if(STATUS==ESMF_SUCCESS) then
                   if( trim(REPLAY_T_TYPE).eq.'NULL' .or. trim(REPLAY_T_TYPE).eq.'T' ) then
-                          t_ana =  ptr3d
+                          t_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              t_ana =  facp0*t_ana + facm1*ptr3d
+                              t_rep =  facp0*t_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
                                   VERIFY_(STATUS)
-                                  t_ana =  t_ana + facp1*ptr3d
+                                  t_rep =  t_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              t_ana =  t_ana + facm2*ptr3d
+                              t_rep =  t_rep + facm2*ptr3d
                           endif
                           endif
-                          if( REPLAY_T_FACTOR.ne.1.0 ) T_ana = T_ana * REPLAY_T_FACTOR
+                          if( REPLAY_T_FACTOR.ne.1.0 ) T_rep = T_rep * REPLAY_T_FACTOR
                           FOUND = .true.
                           exit
                   endif
@@ -1870,22 +1927,22 @@ CONTAINS
                call ESMFL_BundleGetPointertoData(RBUNDLEP0,trim(rnames(k)),ptr3d, RC=STATUS)
                if(STATUS==ESMF_SUCCESS) then
                   if( trim(REPLAY_T_TYPE).eq.'NULL' .or. trim(REPLAY_T_TYPE).eq.'TV' ) then
-                          t_ana =  ptr3d
+                          t_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              t_ana =  facp0*t_ana + facm1*ptr3d
+                              t_rep =  facp0*t_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
                                   VERIFY_(STATUS)
-                                  t_ana =  t_ana + facp1*ptr3d
+                                  t_rep =  t_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              t_ana =  t_ana + facm2*ptr3d
+                              t_rep =  t_rep + facm2*ptr3d
                           endif
                           endif
-                          t_ana =  t_ana/(1.0+eps*q_ana)
-                          if( REPLAY_T_FACTOR.ne.1.0 ) T_ana = T_ana * REPLAY_T_FACTOR
+                          t_rep =  t_rep/(1.0+eps*q_rep)
+                          if( REPLAY_T_FACTOR.ne.1.0 ) T_rep = T_rep * REPLAY_T_FACTOR
                           FOUND = .true.
                           exit
                   endif
@@ -1895,22 +1952,22 @@ CONTAINS
                call ESMFL_BundleGetPointertoData(RBUNDLEP0,trim(rnames(k)),ptr3d, RC=STATUS)
                if(STATUS==ESMF_SUCCESS) then
                   if( trim(REPLAY_T_TYPE).eq.'NULL' .or. trim(REPLAY_T_TYPE).eq.'TH' ) then
-                          t_ana =  ptr3d
+                          t_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              t_ana =  facp0*t_ana + facm1*ptr3d
+                              t_rep =  facp0*t_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
                                   VERIFY_(STATUS)
-                                  t_ana =  t_ana + facp1*ptr3d
+                                  t_rep =  t_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              t_ana =  t_ana + facm2*ptr3d
+                              t_rep =  t_rep + facm2*ptr3d
                           endif
                           endif
-                          t_ana =  t_ana*pk_ana
-                          if( REPLAY_T_FACTOR.ne.1.0 ) T_ana = T_ana * REPLAY_T_FACTOR
+                          t_rep =  t_rep*pk_rep
+                          if( REPLAY_T_FACTOR.ne.1.0 ) T_rep = T_rep * REPLAY_T_FACTOR
                           FOUND = .true.
                           exit
                   endif
@@ -1920,22 +1977,22 @@ CONTAINS
                call ESMFL_BundleGetPointertoData(RBUNDLEP0,trim(rnames(k)),ptr3d, RC=STATUS)
                if(STATUS==ESMF_SUCCESS) then
                   if( trim(REPLAY_T_TYPE).eq.'NULL' .or. trim(REPLAY_T_TYPE).eq.'THV' ) then
-                          t_ana =  ptr3d
+                          t_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              t_ana =  facp0*t_ana + facm1*ptr3d
+                              t_rep =  facp0*t_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
                                   VERIFY_(STATUS)
-                                  t_ana =  t_ana + facp1*ptr3d
+                                  t_rep =  t_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
                               VERIFY_(STATUS)
-                              t_ana =  t_ana + facm2*ptr3d
+                              t_rep =  t_rep + facm2*ptr3d
                               endif
                           endif
-                          t_ana =  t_ana*pk_ana/(1.0+eps*q_ana)
-                          if( REPLAY_T_FACTOR.ne.1.0 ) T_ana = T_ana * REPLAY_T_FACTOR
+                          t_rep =  t_rep*pk_rep/(1.0+eps*q_rep)
+                          if( REPLAY_T_FACTOR.ne.1.0 ) T_rep = T_rep * REPLAY_T_FACTOR
                           FOUND = .true.
                           exit
                   endif
@@ -1950,48 +2007,70 @@ CONTAINS
 
 ! Test for Re-Mapping
 ! -------------------
-    if (doremap ) then
+    if (doremap) then
+
+        if( LMana.eq.LMbkg ) then
             NPHIS = count( phis_ana.ne.phis_bkg )
             call MAPL_CommsAllReduceMax(vm,sendbuf=NPHIS,recvbuf=NPHIS_MAX,cnt=1,rc=status)
             VERIFY_(STATUS)
+        else
+            NPHIS_MAX = 999 ! Force Vertical Remapping when LMana != LMbkg
+        endif
+
             if( NPHIS_MAX > 0 ) then
+
                 if(first .and. MAPL_AM_I_ROOT()) then
-                   print *, 'Vertical Remapping ANA Data to BKG Topography ...'
+                   print *, 'Vertical Remapping ANA Data to BKG Topography and Levels ...'
                    print *
                 endif
-                ! Create ANA Virtual Potential Temperature
-                ! ----------------------------------------
-                thv_ana = t_ana*(1.0+eps*q_ana)/pk_ana
-
-                call myremap ( ple_ana, &
-                                 u_ana, &
-                                 v_ana, &
-                               thv_ana, &
-                                 q_ana, &
-                                o3_ana, &
-                              phis_ana,phis_bkg,ak,bk,im,jm,lm )
+                thv_rep = t_rep*(1.0+eps*q_rep)/pk_rep
+                call myremap ( ple_rep,  ple_ana, &
+                                 u_rep,    u_ana, &
+                                 v_rep,    v_ana, &
+                               thv_rep,  thv_ana, &
+                                 q_rep,    q_ana, &
+                                o3_rep,   o3_ana, &
+                              phis_ana, phis_bkg, &
+                            ak_rep,bk_rep, ak,bk, &
+                                im,jm,LMana,LMbkg )
 
                 ! Create ANA Dry Temperature
                 ! --------------------------
-                 ps_ana(:,:)   = ple_ana(:,:,lm)
-                pke_ana(:,:,:) = ple_ana(:,:,:)**MAPL_KAPPA
-                do L=1,lm
-                pk_ana(:,:,L) = ( pke_ana(:,:,L)-pke_ana(:,:,L-1) ) &
-                              / ( MAPL_KAPPA*log(ple_ana(:,:,L)/ple_ana(:,:,L-1)) )
-                enddo
-                t_ana = thv_ana*pk_ana/(1.0+eps*q_ana)
+                   ps_ana(:,:)   = ple_ana(:,:,LMbkg)
+                  pke_ana(:,:,:) = ple_ana(:,:,:)**MAPL_KAPPA
+                  do L=1,LMbkg
+                     pk_ana(:,:,L) = ( pke_ana(:,:,L)-pke_ana(:,:,L-1) ) &
+                                   / ( MAPL_KAPPA*log(ple_ana(:,:,L)/ple_ana(:,:,L-1)) )
+                  enddo
+                      t_ana = thv_ana*pk_ana/(1.0+eps*q_ana)
+
             else
-               if(first .and. MAPL_AM_I_ROOT()) then
-                  print *, 'Vertical Remapping not necessary since ANA and BKG Topographies are identical.'
-                  print *
-               endif
+
+                if(first .and. MAPL_AM_I_ROOT()) then
+                   print *, 'Vertical Remapping not necessary since ANA and BKG Topographies and Levels are identical.'
+                   print *
+                endif
+                ple_ana = ple_rep
+                  u_ana =   u_rep
+                  v_ana =   v_rep
+                  t_ana =   t_rep
+                  q_ana =   q_rep
+                 o3_ana =  o3_rep
+
             endif
+
     else
             if(first .and. MAPL_AM_I_ROOT()) then
                print *
-               print *, 'Vertical Remapping ANA Data to BKG Topography is disabled.'
+               print *, 'Vertical Remapping ANA Data to BKG Topography and Levels is disabled.'
                print *
             endif
+                ple_ana = ple_rep
+                  u_ana =   u_rep
+                  v_ana =   v_rep
+                  t_ana =   t_rep
+                  q_ana =   q_rep
+                 o3_ana =  o3_rep
     endif
 
 ! **********************************************************************
@@ -2035,7 +2114,7 @@ CONTAINS
 
           call blend ( ple_ana,u_ana,v_ana,t_ana,q_ana,o3_ana,     &
                        ple_bkg,u_bkg,v_bkg,t_bkg,q_bkg,o3_bkg,     &
-                       im,jm,lm, DAMPBEG,DAMPEND, BLEND_QV_AT_TP,  &
+                       im,jm,LMbkg, DAMPBEG,DAMPEND, BLEND_QV_AT_TP,  &
                        tropp=tropp )
 
           if( BLEND_QV_AT_TP ) then
@@ -2066,7 +2145,7 @@ CONTAINS
          method = 1
          call MAPL_TimerON(MAPL,"--WINDFIX")
          call windfix ( u_ana,v_ana,ple_ana,                            &
-                        u_bkg,v_bkg,ple_bkg,im,jm,lm,VM,GRIDana,method, &
+                        u_bkg,v_bkg,ple_bkg,im,jm,LMbkg,VM,GRIDana,method, &
                         vintdiva,vintdivb,vintdivc                      )           
          call MAPL_TimerOFF(MAPL,"--WINDFIX")
     endif
@@ -2100,18 +2179,18 @@ CONTAINS
     call MAPL_GetPointer(export,dvwindfix, 'DVWINDFIX', alloc=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
 
-    allocate(  ptr3d(IM,JM,lm),stat=STATUS)
+    allocate(  ptr3d(IM,JM,LMbkg),stat=STATUS)
     VERIFY_(STATUS)
-    allocate( uptr3d(IM,JM,lm),stat=STATUS)
+    allocate( uptr3d(IM,JM,LMbkg),stat=STATUS)
     VERIFY_(STATUS)
-    allocate( vptr3d(IM,JM,lm),stat=STATUS)
+    allocate( vptr3d(IM,JM,LMbkg),stat=STATUS)
     VERIFY_(STATUS)
 
     uptr3d = du_fix
     vptr3d = dv_fix
 
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. (L_REPLAY_U .or. L_REPLAY_V) ) then
-        call Spectrans_VectorPar (im,jm,lm,uptr3d,vptr3d,JCAP,GRIDana,RC=STATUS)
+        call Spectrans_VectorPar (im,jm,LMbkg,uptr3d,vptr3d,JCAP,GRIDana,RC=STATUS)
         VERIFY_(STATUS)
     endif
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
@@ -2143,7 +2222,7 @@ CONTAINS
     endif
 
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. (L_REPLAY_U .or. L_REPLAY_V) ) then
-        call Spectrans_VectorPar (im,jm,lm,uptr3d,vptr3d,JCAP,GRIDana,RC=STATUS)
+        call Spectrans_VectorPar (im,jm,LMbkg,uptr3d,vptr3d,JCAP,GRIDana,RC=STATUS)
         VERIFY_(STATUS)
     endif
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
@@ -2171,7 +2250,7 @@ CONTAINS
         ptr3d = 0.0
     endif
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. L_REPLAY_T) then
-        call Spectrans_ScalarPar (im,jm,lm,ptr3d,JCAP,GRIDana,RC=STATUS)
+        call Spectrans_ScalarPar (im,jm,LMbkg,ptr3d,JCAP,GRIDana,RC=STATUS)
         VERIFY_(STATUS)
     endif
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
@@ -2189,7 +2268,7 @@ CONTAINS
         ptr3d = 0.0
     endif
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. L_REPLAY_QV) then
-        call Spectrans_ScalarPar (im,jm,lm,ptr3d,JCAP,GRIDana,RC=STATUS)
+        call Spectrans_ScalarPar (im,jm,LMbkg,ptr3d,JCAP,GRIDana,RC=STATUS)
         VERIFY_(STATUS)
     endif
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
@@ -2207,7 +2286,7 @@ CONTAINS
         ptr3d = 0.0
     endif
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. L_REPLAY_O3) then
-        call Spectrans_ScalarPar (im,jm,lm,ptr3d,JCAP,GRIDana,RC=STATUS)
+        call Spectrans_ScalarPar (im,jm,LMbkg,ptr3d,JCAP,GRIDana,RC=STATUS)
         VERIFY_(STATUS)
     endif
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
@@ -2220,7 +2299,7 @@ CONTAINS
 ! PLE
 ! ---
     deallocate( ptr3d )
-      allocate( ptr3d(IM,JM,0:LM),stat=STATUS)
+      allocate( ptr3d(IM,JM,0:LMbkg),stat=STATUS)
     VERIFY_(STATUS)
     if( L_REPLAY_P ) then
         ptr3d = ple_ana-ple_bkg
@@ -2344,7 +2423,6 @@ CONTAINS
     deallocate (    q_ana )
     deallocate (   o3_ana )
     deallocate (   ps_ana )
-    deallocate (   dp_ana )
     deallocate (   pk_ana )
     deallocate (  pke_ana )
     deallocate (  thv_ana )
@@ -2354,6 +2432,19 @@ CONTAINS
     deallocate ( vintdiva )
     deallocate ( vintdivb )
     deallocate ( vintdivc )
+
+    deallocate (   dp_rep )
+    deallocate (    u_rep )
+    deallocate (    v_rep )
+    deallocate (    t_rep )
+    deallocate (  thv_rep )
+    deallocate (    q_rep )
+    deallocate (   o3_rep )
+    deallocate (   pk_rep )
+    deallocate (  ple_rep )
+    deallocate (  pke_rep )
+    deallocate (   ak_rep )
+    deallocate (   bk_rep )
 
     first = .false.
     end subroutine handleANA_
@@ -3089,5 +3180,174 @@ CONTAINS
 
   RETURN_(ESMF_SUCCESS)
   end subroutine spectrans_scalarglob
+
+      subroutine myremap ( ple_in,ple_out,    &
+                             u_in,  u_out,    &
+                             v_in,  v_out,    &
+                           thv_in,thv_out,    &
+                            qv_in, qv_out,    &
+                            o3_in, o3_out,    &
+                            phis_in,phis_out, &
+                            ak_in,bk_in, ak_out,bk_out,im,jm,LM_in,LM_out )
+
+!***********************************************************************
+!
+!  Purpose
+!     Driver for Remapping Fields to New Topography and Levels
+!
+!  Argument Description
+!
+!     ple_in ...... input edge pressure
+!     u_in  ....... input zonal      wind
+!     v_in  ....... input meridional wind
+!     thv_in  ..... input virtual potential  temperature
+!     qv_in ....... input specific   humidity
+!     o3_in  ...... input ozone
+
+!     ple_out...... output edge pressure
+!     u_out ....... output zonal      wind
+!     v_out ....... output meridional wind
+!     thv_out ..... output virtual potential  temperature
+!     qv_out ...... output specific   humidity
+!     o3_out ...... output ozone
+
+!     phis_in... input  surface geopotential
+!     phis_out.. output surface geopotential
+!     ak_in .... input  vertical   dimension
+!     bk_in .... input  vertical   dimension
+!     ak_out ... output vertical   dimension
+!     bk_out ... output vertical   dimension
+!
+!     im ....... zonal      dimension
+!     jm ....... meridional dimension
+!     LM_in .... input  vertical dimension
+!     LM_out ... output vertical dimension
+!
+!***********************************************************************
+!*                  GODDARD LABORATORY FOR ATMOSPHERES                 *
+!***********************************************************************
+
+      use GEOS_GmapMod, only: gmap     
+      implicit none
+      integer  im,jm,LM_in,LM_out
+
+! Input variables
+! ---------------
+      real      ple_in(im,jm,LM_in+1)
+      real        u_in(im,jm,LM_in)
+      real        v_in(im,jm,LM_in)
+      real      thv_in(im,jm,LM_in)
+      real       qv_in(im,jm,LM_in)
+      real       o3_in(im,jm,LM_in)
+
+      real      ple_out(im,jm,LM_out+1)
+      real        u_out(im,jm,LM_out)
+      real        v_out(im,jm,LM_out)
+      real      thv_out(im,jm,LM_out)
+      real       qv_out(im,jm,LM_out)
+      real       o3_out(im,jm,LM_out)
+
+      real phis_in (im,jm)
+      real phis_out(im,jm)
+
+      real    ak_in (LM_in +1)
+      real    bk_in (LM_in +1)
+      real    ak_out(LM_out+1)
+      real    bk_out(LM_out+1)
+
+! Local variables
+! ---------------
+      real, allocatable ::  phi_in (:,:,:)
+      real, allocatable ::  pke_in (:,:,:)
+
+      real, allocatable ::   ps_out(:,:)
+      real, allocatable ::  pke_out(:,:,:)
+
+      real, allocatable ::    q_in (:,:,:,:)
+      real, allocatable ::    q_out(:,:,:,:)
+
+      real    kappa,cp,rgas,eps,rvap
+      integer i,j,L
+
+      kappa = 2.0/7.0
+      rgas  = 8314.3/28.97
+      rvap  = 8314.3/18.01
+      eps   = rvap/rgas-1.0
+      cp    = rgas/kappa
+
+      allocate(  phi_in (im,jm,LM_in +1) )
+      allocate(  pke_in (im,jm,LM_in +1) )
+
+      allocate(  ps_out (im,jm)          )
+      allocate(  pke_out(im,jm,LM_out+1) )
+
+      allocate(    q_in (im,jm,LM_in ,2) )
+      allocate(    q_out(im,jm,LM_out,2) )
+
+! Construct Input Heights
+! -----------------------
+      pke_in(:,:,:) = ple_in(:,:,:)**kappa 
+
+      phi_in(:,:,LM_in+1) = phis_in(:,:)
+      do L=LM_in,1,-1
+      phi_in(:,:,L) = phi_in(:,:,L+1) + cp*thv_in(:,:,L)*( pke_in(:,:,L+1)-pke_in(:,:,L) )
+      enddo
+      
+! Compute new surface pressure consistent with output topography
+! --------------------------------------------------------------
+      do j=1,jm
+      do i=1,im
+           L = LM_in
+           do while ( phi_in(i,j,L).lt.phis_out(i,j) )
+           L = L-1
+           enddo
+           ps_out(i,j) = ple_in(i,j,L+1)*( 1+(phi_in(i,j,L+1)-phis_out(i,j))/(cp*thv_in(i,j,L)*pke_in(i,j,L+1)) )**(1.0/kappa)
+      enddo
+      enddo
+
+! Construct pressure variables using new surface pressure
+! -------------------------------------------------------
+      if( LM_in .eq. LM_out ) then
+          do L=1,LM_in+1
+          do j=1,jm
+          do i=1,im
+           ple_out(i,j,L) = ple_in(i,j,L) + bk_in(L)*( ps_out(i,j)-ple_in(i,j,LM_in+1) )
+          enddo
+          enddo
+          enddo
+      else
+          do L=1,LM_out+1
+          do j=1,jm
+          do i=1,im
+           ple_out(i,j,L) = ak_out(L) + bk_out(L)*ps_out(i,j)
+          enddo
+          enddo
+          enddo
+      endif
+
+      pke_out(:,:,:) = ple_out(:,:,:)**kappa 
+
+! Map original fv state onto new eta grid
+! ---------------------------------------
+      q_in(:,:,:,1) = qv_in(:,:,:)
+      q_in(:,:,:,2) = o3_in(:,:,:)
+
+      call gmap ( im,jm,2 , kappa, &
+                  LM_in,  pke_in ,ple_in ,u_in ,v_in ,thv_in ,q_in , &
+                  LM_out, pke_out,ple_out,u_out,v_out,thv_out,q_out)
+
+       qv_out(:,:,:) = q_out(:,:,:,1)
+       o3_out(:,:,:) = q_out(:,:,:,2)
+
+      deallocate(  phi_in  )
+      deallocate(  pke_in  )
+      deallocate(   ps_out )
+      deallocate(  pke_out )
+
+      deallocate( q_in  )
+      deallocate( q_out )
+
+      return
+      end subroutine myremap
 
 end module GEOS_mkiauGridCompMod
