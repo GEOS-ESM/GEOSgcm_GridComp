@@ -166,12 +166,10 @@ subroutine SetServices ( GC, RC )
 ! Local Variables
 
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-
     type(T_OFFLINE_MODE), pointer :: internal=>null()
     type(OFFLINE_WRAP) :: WRAP
     integer :: OFFLINE_MODE
     logical :: is_OFFLINE
-
     integer :: RESTART
     integer :: DO_GOSWIM, RUN_IRRIG
 
@@ -318,6 +316,26 @@ subroutine SetServices ( GC, RC )
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'icefall'                     ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'ICE'                         ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'freezing_rain_fall'          ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'FRZR'                        ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+    
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_par_beam_flux',&
          UNITS              = 'W m-2'                       ,&
@@ -2796,7 +2814,7 @@ subroutine SetServices ( GC, RC )
 
     RETURN_(ESMF_SUCCESS)
 
-end subroutine SetServices 
+end subroutine SetServices
 
 !#--sqz2018 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -3474,19 +3492,18 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  For now roughnesses and displacement heights
 !   are the same for all subtiles.
 
-      Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0
-      
-      IF (USE_ASCATZ0 == 1) THEN
-         WHERE (NDVI <= 0.2)
-            Z0T(:,N)  = ASCATZ0
-         END WHERE
-      ENDIF
-      D0T  = D0_BY_ZVEG*ZVG
+   Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0
+   IF (USE_ASCATZ0 == 1) THEN
+      WHERE (NDVI <= 0.2)
+         Z0T(:,N)  = ASCATZ0
+      END WHERE
+   ENDIF
+   D0T  = D0_BY_ZVEG*ZVG
 
-      DZE  = max(DZ - D0T, 10.)
+   DZE  = max(DZ - D0T, 10.)
 
-      if(associated(Z0 )) Z0  = Z0T(:,N)
-      if(associated(D0 )) D0  = D0T
+   if(associated(Z0 )) Z0  = Z0T(:,N)
+   if(associated(D0 )) D0  = D0T
 
 !  Compute the three surface exchange coefficients
 !-------------------------------------------------
@@ -3494,53 +3511,53 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Choose sfc layer: if CHOOSEMOSFC is 1, choose helfand MO,
 !                   if CHOOSEMOSFC is 0 (default), choose louis
 
-      call MAPL_TimerOn(MAPL,"-SURF")
-      if(CHOOSEMOSFC.eq.0) then
-         WW(:,N) = 0.
-         CM(:,N) = 0.
+   call MAPL_TimerOn(MAPL,"-SURF")
+   if(CHOOSEMOSFC.eq.0) then
+   WW(:,N) = 0.
+   CM(:,N) = 0.
 
-         call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
+    call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
 
-      elseif (CHOOSEMOSFC.eq.1)then
-
-         niter = 6   ! number of internal iterations in the helfand MO surface layer routine
-         IWATER = 3
-
-         PSMB = PS * 0.01            ! convert to MB
+   elseif (CHOOSEMOSFC.eq.1)then
+  
+    niter = 6   ! number of internal iterations in the helfand MO surface layer routine
+    IWATER = 3
+  
+    PSMB = PS * 0.01            ! convert to MB
 ! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
-         PSL = PSMB * (1. - (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) ) /   &
-              (1. + (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) )
-
-         CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
-              IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,  &
-              t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
-
-         CM(:,N)  = VKM
-         CH(:,N)  = VKH
-         CQ(:,N)  = VKH
-
-         CN = (MAPL_KARMAN/ALOG(DZE/Z0T(:,N) + 1.0)) * (MAPL_KARMAN/ALOG(DZE/Z0T(:,N) + 1.0))
-         ZT = Z0T(:,N)
-         ZQ = Z0T(:,N)
-         RE = 0.
-         UUU = UU  
-         UCN = 0.
+    PSL = PSMB * (1. - (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) ) /   &
+               (1. + (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) )
+  
+    CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+                      IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,  &
+                      t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+  
+    CM(:,N)  = VKM
+    CH(:,N)  = VKH
+    CQ(:,N)  = VKH
+  
+    CN = (MAPL_KARMAN/ALOG(DZE/Z0T(:,N) + 1.0)) * (MAPL_KARMAN/ALOG(DZE/Z0T(:,N) + 1.0))
+    ZT = Z0T(:,N)
+    ZQ = Z0T(:,N)
+    RE = 0.
+    UUU = UU  
+    UCN = 0.
   
 !  Aggregate to tiles for MO only diagnostics
 !--------------------------------------------
-         if(associated(MOU50M))MOU50M = MOU50M + U50M(:)*FR(:,N)
-         if(associated(MOV50M))MOV50M = MOV50M + V50M(:)*FR(:,N)
-         if(associated(MOT10M))MOT10M = MOT10M + T10M(:)*FR(:,N)
-         if(associated(MOQ10M))MOQ10M = MOQ10M + Q10M(:)*FR(:,N)
-         if(associated(MOU10M))MOU10M = MOU10M + U10M(:)*FR(:,N)
-         if(associated(MOV10M))MOV10M = MOV10M + V10M(:)*FR(:,N)
-         if(associated(MOT2M))MOT2M = MOT2M + T2M(:)*FR(:,N)
-         if(associated(MOQ2M))MOQ2M = MOQ2M + Q2M(:)*FR(:,N)
-         if(associated(MOU2M))MOU2M = MOU2M + U2M(:)*FR(:,N)
-         if(associated(MOV2M))MOV2M = MOV2M + V2M(:)*FR(:,N)
+      if(associated(MOU50M))MOU50M = MOU50M + U50M(:)*FR(:,N)
+      if(associated(MOV50M))MOV50M = MOV50M + V50M(:)*FR(:,N)
+      if(associated(MOT10M))MOT10M = MOT10M + T10M(:)*FR(:,N)
+      if(associated(MOQ10M))MOQ10M = MOQ10M + Q10M(:)*FR(:,N)
+      if(associated(MOU10M))MOU10M = MOU10M + U10M(:)*FR(:,N)
+      if(associated(MOV10M))MOV10M = MOV10M + V10M(:)*FR(:,N)
+      if(associated(MOT2M))MOT2M = MOT2M + T2M(:)*FR(:,N)
+      if(associated(MOQ2M))MOQ2M = MOQ2M + Q2M(:)*FR(:,N)
+      if(associated(MOU2M))MOU2M = MOU2M + U2M(:)*FR(:,N)
+      if(associated(MOV2M))MOV2M = MOV2M + V2M(:)*FR(:,N)
 
-      endif
-      call MAPL_TimerOff(MAPL,"-SURF")
+    endif
+    call MAPL_TimerOff(MAPL,"-SURF")
 
 !  Aggregate to tile
 !-------------------
@@ -3649,7 +3666,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! ------------------------------------------------------------------------------
 
     type(MAPL_MetaComp),pointer :: MAPL
-    type(ESMF_Alarm)            :: ALARM
+    type(ESMF_Alarm)                :: ALARM
 
     integer :: IM,JM
     real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
@@ -3659,9 +3676,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer                        :: Z0_FORMULATION
     real                           :: SCALE4ZVG
     real                           :: SCALE4Z0_u
-    real                           :: MIN_VEG_HEIGHT 
-    type(ESMF_VM)                  :: VM
-    integer                        ::  comm, mype
+    real                            :: MIN_VEG_HEIGHT
+    type(ESMF_VM)                   :: VM
+    integer                         ::  comm, mype
 
 ! ------------------------------------------------------------------------------
 ! Begin: Get the target components name and
@@ -3772,6 +3789,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: PCU
         real, dimension(:),   pointer :: PLS
         real, dimension(:),   pointer :: SNO
+        real, dimension(:),   pointer :: ICE
+        real, dimension(:),   pointer :: FRZR
         real, dimension(:),   pointer :: THATM
         real, dimension(:),   pointer :: QHATM
         real, dimension(:),   pointer :: CTATM
@@ -4044,6 +4063,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	real,pointer,dimension(:) :: ALWX, BLWX
         real,pointer,dimension(:) :: LHACC, SUMEV
         real,pointer,dimension(:) :: FICE1
+        real,pointer,dimension(:) :: SLDTOT
  
 !       real*8,pointer,dimension(:) :: fsum
 
@@ -4327,7 +4347,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               default = '../input/nirdf%s.data',&
               RC=STATUS )
               VERIFY_(STATUS)
-           endif
+        endif
 
            call ESMF_CFIOStrTemplate(VISDFFILE, VISDFtpl,'GRADS', xid=comp_name(6:6+ens_id_width-1), stat=status)
            VERIFY_(STATUS)
@@ -4335,19 +4355,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            VERIFY_(STATUS) 
         else
 
-           call MAPL_GetResource(MAPL     ,&
-              VISDFFILE                   ,&
+        call MAPL_GetResource(MAPL      ,&
+             VISDFFILE                  ,&
               label   = 'VISDF_FILE:'     ,&
-              default = 'visdf.dat'       ,&
-              RC=STATUS )
-           VERIFY_(STATUS)
+             default = 'visdf.dat'      ,&
+             RC=STATUS )
+        VERIFY_(STATUS)
 
-           call MAPL_GetResource(MAPL     ,&
-              NIRDFFILE                   ,&
+        call MAPL_GetResource(MAPL       ,&
+             NIRDFFILE                   ,&
               label   = 'NIRDF_FILE:'     ,&
-              default = 'nirdf.dat'       ,&
-              RC=STATUS )
-           VERIFY_(STATUS)
+             default = 'nirdf.dat'       ,&
+             RC=STATUS )
+        VERIFY_(STATUS)
         endif
 
         ! Get parameters to zero the deposition rate 
@@ -4379,6 +4399,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,PCU    ,'PCU'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,PLS    ,'PLS'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SNO    ,'SNO'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,ICE    ,'ICE'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,FRZR   ,'FRZR'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DRPAR  ,'DRPAR'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DFPAR  ,'DFPAR'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DRNIR  ,'DRNIR'  ,RC=STATUS); VERIFY_(STATUS)
@@ -4688,7 +4710,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(LHACC     (NTILES))
         allocate(SUMEV     (NTILES))
         allocate(FICE1     (NTILES)) 
-
+        allocate(SLDTOT    (NTILES))             ! total solid precip
+        
         allocate(SHSBT    (NTILES,NUM_SUBTILES))
         allocate(DSHSBT   (NTILES,NUM_SUBTILES))
         allocate(EVSBT    (NTILES,NUM_SUBTILES))
@@ -4831,14 +4854,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         TINT = DELT
      end if
 ! Get the zenith angle at the center of the time between the last solar call and the next one
-     call MAPL_SunGetInsolation(LONS, LATS,      &
-          ORBIT, ZTH, SLR, &
-          INTV = TINT,     &
-          currTime=BEFORE+DELT,  &
-          RC=STATUS )
-     VERIFY_(STATUS)
+        call MAPL_SunGetInsolation(LONS, LATS,      &
+            ORBIT, ZTH, SLR, &
+            INTV = TINT,     &
+            currTime=BEFORE+DELT,  &
+            RC=STATUS )
+        VERIFY_(STATUS)
 
-     ZTH = max(0.0,ZTH)
+        ZTH = max(0.0,ZTH)
 
      if (Z0_FORMULATION == 4) then
         ! make canopy height >= min veg height:
@@ -4923,15 +4946,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! TOTDEPOS(:,14): Combined sea salt deposition from size bin 4 (dry, conv-scav, ls-scav, sed)
 ! TOTDEPOS(:,15): Combined sea salt deposition from size bin 5 (dry, conv-scav, ls-scav, sed)
 
-     TOTDEPOS(:,1) = DUDP(:,1) + DUSV(:,1) + DUWT(:,1) + DUSD(:,1)
-     TOTDEPOS(:,2) = DUDP(:,2) + DUSV(:,2) + DUWT(:,2) + DUSD(:,2)
-     TOTDEPOS(:,3) = DUDP(:,3) + DUSV(:,3) + DUWT(:,3) + DUSD(:,3)
-     TOTDEPOS(:,4) = DUDP(:,4) + DUSV(:,4) + DUWT(:,4) + DUSD(:,4)
-     TOTDEPOS(:,5) = DUDP(:,5) + DUSV(:,5) + DUWT(:,5) + DUSD(:,5)
-     TOTDEPOS(:,6) = BCDP(:,1) + BCSV(:,1) + BCWT(:,1) + BCSD(:,1)
-     TOTDEPOS(:,7) = BCDP(:,2) + BCSV(:,2) + BCWT(:,2) + BCSD(:,2)
-     TOTDEPOS(:,8) = OCDP(:,1) + OCSV(:,1) + OCWT(:,1) + OCSD(:,1)
-     TOTDEPOS(:,9) = OCDP(:,2) + OCSV(:,2) + OCWT(:,2) + OCSD(:,2)
+        TOTDEPOS(:,1) = DUDP(:,1) + DUSV(:,1) + DUWT(:,1) + DUSD(:,1)
+        TOTDEPOS(:,2) = DUDP(:,2) + DUSV(:,2) + DUWT(:,2) + DUSD(:,2)
+        TOTDEPOS(:,3) = DUDP(:,3) + DUSV(:,3) + DUWT(:,3) + DUSD(:,3)
+        TOTDEPOS(:,4) = DUDP(:,4) + DUSV(:,4) + DUWT(:,4) + DUSD(:,4)
+        TOTDEPOS(:,5) = DUDP(:,5) + DUSV(:,5) + DUWT(:,5) + DUSD(:,5)
+        TOTDEPOS(:,6) = BCDP(:,1) + BCSV(:,1) + BCWT(:,1) + BCSD(:,1)
+        TOTDEPOS(:,7) = BCDP(:,2) + BCSV(:,2) + BCWT(:,2) + BCSD(:,2)
+        TOTDEPOS(:,8) = OCDP(:,1) + OCSV(:,1) + OCWT(:,1) + OCSD(:,1)
+        TOTDEPOS(:,9) = OCDP(:,2) + OCSV(:,2) + OCWT(:,2) + OCSD(:,2)
     
 !============================= Possible future applications ====================================
 !        TOTDEPOS(:,10) = SUDP(:,1) + SUSV(:,1) + SUWT(:,1) + SUSD(:,1)
@@ -4963,16 +4986,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! RCONSTIT(NTILES,N,14): Sea salt mass from size bin 4 in layer N
 ! RCONSTIT(NTILES,N,15): Sea salt mass from size bin 5 in layer N
 
-     if (DO_GOSWIM /= 0) then
-        RCONSTIT(:,:,1) = RDU001(:,:)
-        RCONSTIT(:,:,2) = RDU002(:,:)
-        RCONSTIT(:,:,3) = RDU003(:,:)
-        RCONSTIT(:,:,4) = RDU004(:,:)
-        RCONSTIT(:,:,5) = RDU005(:,:)
-        RCONSTIT(:,:,6) = RBC001(:,:)
-        RCONSTIT(:,:,7) = RBC002(:,:)
-        RCONSTIT(:,:,8) = ROC001(:,:)
-        RCONSTIT(:,:,9) = ROC002(:,:)
+        if (DO_GOSWIM /= 0) then
+           RCONSTIT(:,:,1) = RDU001(:,:)
+           RCONSTIT(:,:,2) = RDU002(:,:)
+           RCONSTIT(:,:,3) = RDU003(:,:)
+           RCONSTIT(:,:,4) = RDU004(:,:)
+           RCONSTIT(:,:,5) = RDU005(:,:)
+           RCONSTIT(:,:,6) = RBC001(:,:)
+           RCONSTIT(:,:,7) = RBC002(:,:)
+           RCONSTIT(:,:,8) = ROC001(:,:)
+           RCONSTIT(:,:,9) = ROC002(:,:)
 
 !============================= Possible future applications ====================================
 !        RCONSTIT(:,:,10) = RSU003(:,:)
@@ -4981,7 +5004,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !        RCONSTIT(:,:,13) = RSS003(:,:)
 !        RCONSTIT(:,:,14) = RSS004(:,:)
 !        RCONSTIT(:,:,15) = RSS005(:,:)
-     end if
+        end if
 
         ! --------------------------------------------------------------------------
         ! Update raditation exports
@@ -5091,14 +5114,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         QC(:,FSNW) = QSAT(:,FSNW)
 
+        
 	! --------------------------------------------------------------------------
+        ! get total solid precip
+        ! --------------------------------------------------------------------------
+
+        SLDTOT = SNO+ICE+FRZR
+        
 	! protect the forcing from unsavory values, as per practice in offline
 	! driver
 	! --------------------------------------------------------------------------
 
         ASSERT_(count(PLS<0.)==0)
         ASSERT_(count(PCU<0.)==0)
-        ASSERT_(count(SNO<0.)==0)
+        ASSERT_(count(SLDTOT<0.)==0)
 
         LAI0  = max(0.0001     , LAI)
         GRN0  = max(0.0001     , GRN)		
@@ -5164,49 +5193,55 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         unit = unit_i
  
 ! Inputs
-        call MAPL_VarWrite(unit, tilegrid, PCU, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, PLS, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SNO, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, UUU, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, PCU,  mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, PLS,  mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SNO,  mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ICE,  mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, FRZR, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, UUU,  mask=mask, rc=status); VERIFY_(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT(:,FTRN),  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-
+        
         call MAPL_VarWrite(unit, tilegrid, TA, mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, QA, mask=mask, rc=status); VERIFY_(STATUS)
+
         call MAPL_VarWrite(unit, tilegrid, RA(:,FSAT),  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, RA(:,FTRN),  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, RA(:,FWLT),  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, RA(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
+
         call MAPL_VarWrite(unit, tilegrid, ZTH,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DRPAR,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DFPAR,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SWNETFREE,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SWNETSNOW,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, LWDNSRF, mask=mask, rc=status); VERIFY_(STATUS)
+
         call MAPL_VarWrite(unit, tilegrid, PS*.01, mask=mask, rc=status); VERIFY_(STATUS)
+
         call MAPL_VarWrite(unit, tilegrid, LAI0,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, GRN0,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, Z2CH,  mask=mask, rc=status); VERIFY_(STATUS)
@@ -5216,7 +5251,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_VarWrite(unit, tilegrid, RDC, mask=mask, rc=status); VERIFY_(STATUS)
 
         call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DQS(:,FSAT) , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DQS(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, ALWN(:,1)   , mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, BLWN(:,1)   , mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, QSAT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
@@ -5227,7 +5262,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_VarWrite(unit, tilegrid, DQS(:,FWLT) , mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, ALWN(:,3)   , mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, BLWN(:,3)   , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSNW) , mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DQS(:,FSNW) , mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, ALWN(:,4)   , mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, BLWN(:,4)   , mask=mask, rc=status); VERIFY_(STATUS)
@@ -5247,6 +5282,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call MAPL_VarWrite(unit, tilegrid, LATS, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, DZSF, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, VEG, mask=mask, rc=status); VERIFY_(STATUS)
+
            call MAPL_VarWrite(unit, tilegrid, BF1,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF2,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF3,  mask=mask, rc=status); VERIFY_(STATUS)
@@ -5616,11 +5652,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !-------------------------------------------------------------------
 !#--------------------------------------------------
 
-    if (ntiles >0)  then 
+        if (ntiles >0) then
 
-             call CATCHMENT ( NTILES, LONS, LATS                    ,&
-             DT	      ,     PRECIPFRAC, cat_id, VEG,     DZSF     ,&
-             PCU      ,     PLSIN         ,     SNO               ,&
+             call CATCHMENT ( NTILES, LONS, LATS                  ,&
+             DT	      ,     PRECIPFRAC, cat_id, VEG, DZSF         ,&
+             PCU      ,     PLS       ,    SNO, ICE, FRZR         ,&
              UUU                                                  ,&
 
              EVSBT(:,FSAT),     DEVSBT(:,FSAT),     DEDTC(:,FSAT) ,&
@@ -5797,13 +5833,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated( WCRZ )) WCRZ   = RZMC
         if(associated( WCPR )) WCPR   = PRMC
 
-        if(associated( ACCUM)) ACCUM  = SNO - EVPICE*(1./MAPL_ALHS) - SMELT 
+        if(associated( ACCUM)) ACCUM  = SLDTOT - EVPICE*(1./MAPL_ALHS) - SMELT 
 
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
         if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
-        if(associated(PRLAND)) PRLAND = PCU+PLS+SNO
-        if(associated(SNOLAND)) SNOLAND = SNO
+        if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
+        if(associated(SNOLAND)) SNOLAND = SLDTOT     ! note, not just SNO
         if(associated(DRPARLAND)) DRPARLAND = DRPAR
         if(associated(DFPARLAND)) DFPARLAND = DFPAR
         if(associated(LHLAND)) LHLAND = HLATN
@@ -6054,6 +6090,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(FICE1 )
         deallocate(AR4)
         deallocate (PLSIN)
+        deallocate(SLDTOT )
+
         RETURN_(ESMF_SUCCESS)
 
       end subroutine Driver
