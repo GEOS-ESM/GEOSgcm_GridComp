@@ -113,13 +113,18 @@ foreach HRCODE ($dummy)
        $HRCODE != 'c'       & \
        $HRCODE != 'd'       & \
        $HRCODE != 'e'       & \
+       $HRCODE != 'c12'     & \
+       $HRCODE != 'c24'     & \
        $HRCODE != 'c48'     & \
        $HRCODE != 'c90'     & \
        $HRCODE != 'c180'    & \
        $HRCODE != 'c360'    & \
        $HRCODE != 'c720'    & \
+       $HRCODE != 'c768'    & \
        $HRCODE != 'c1000'   & \
+       $HRCODE != 'c1152'   & \
        $HRCODE != 'c1440'   & \
+       $HRCODE != 'c1536'   & \
        $HRCODE != 'c2880'   & \
        $HRCODE != 'c3072'   & \
        $HRCODE != 'c5760'   & \
@@ -147,9 +152,11 @@ echo "              ${C2}T1 --   Low-Resolution Tripolar 3   deg${CR} (MOM-Tripo
 echo "              ${C2}T2 --   Med-Resolution Tripolar 1   deg${CR} (MOM-Tripolar-Ocean:  360x200 ) "
 echo "              ${C2}T3 --  High-Resolution Tripolar 1/2 deg${CR} (MOM-Tripolar-Ocean:  720x410 ) "
 echo "              ${C2}T4 --  High-Resolution Tripolar 1/4 deg${CR} (MOM-Tripolar-Ocean: 1440x1080 ) "
+echo "              ${C2}CS --  Cubed-Sphere Ocean              ${CR} (Cubed-Sphere Data-Ocean with Old Land) "
 echo "              ${C2}NL1--   Low-Resolution Reynolds 1   deg${CR} (Lon/Lat Data-Ocean:  360x180 with New Land) "
 echo "              ${C2}NL2--   Med-Resolution Reynolds 1/4 deg${CR} (Lon/Lat Data-Ocean: 1440x720 with New Land) "
 echo "              ${C2}NL3--  High-Resolution    OSTIA 1/8 deg${CR} (Lon/Lat Data-Ocean: 2880x1440 with New Land) "
+echo "              ${C2}NCS--  Cubed-Sphere Ocean              ${CR} (Cubed-Sphere Data-Ocean with New Land) "
 set dummy = `echo $<`
 set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
 set orslvs =  $dummy[1]
@@ -163,7 +170,9 @@ foreach orslv ($dummy)
       $orslv != 'T4' & \
       $orslv != 'NL1'& \
       $orslv != 'NL2'& \
-      $orslv != 'NL3' ) goto ORSLV
+      $orslv != 'NL3'& \
+      $orslv != 'CS' & \
+      $orslv != 'NCS') goto ORSLV
   if( $orslv != "$orslvs" ) set orslvs = `echo ${orslvs} ${orslv}`
 end
 
@@ -186,13 +195,13 @@ set GLOBAL_CATCH_DATA = /discover/nobackup/ltakacs/bcs/LandSurfaceData_for_Catch
 
 foreach orslv ($orslvs)
 
-if( $orslv == NL1 ) then
+if( $orslv == NL1 | $orslv == T1 | $orslv == T2 | $orslv == T3) then
     # Great-Lakes & Caspian-Sea treated as Model LAKE tiles, Surface Temperatures will be Model Derived
     # -------------------------------------------------------------------------------------------------
     set GLOBAL_CATCH_DATA = /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GEOS5_10arcsec_mask_freshwater-lakes.nc
 endif
 
-if( $orslv == NL2 | $orslv == NL3 ) then
+if( $orslv == NL2 | $orslv == NL3 | $orslv == NCS ) then
     # Great-Lakes & Caspian-Sea treated as Model Ocean tiles, Surface Temperatures will be Model Derived
     # -------------------------------------------------------------------------------------------------
     set GLOBAL_CATCH_DATA = /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GEOS5_10arcsec_mask.nc
@@ -204,7 +213,7 @@ if( $orslv == O1 ) then
     set GLOBAL_CATCH_DATA = /discover/nobackup/ltakacs/bcs/LandSurfaceData_for_Catchment_Parameters/global.cat_id.catch.ORIG.DL
 endif
 
-if( $orslv == O2 ) then
+if( $orslv == O2 | $orslv == CS ) then
     # Great-Lakes & Caspian-Sea treated as Model OCEAN tiles, Surface Temperatures will be taken from OCEAN SST Data
     # --------------------------------------------------------------------------------------------------------------
     set GLOBAL_CATCH_DATA = /discover/nobackup/ltakacs/bcs/LandSurfaceData_for_Catchment_Parameters/global.cat_id.catch.GreatLakesCaspian_Updated.DL
@@ -225,6 +234,7 @@ echo ""
 
 set LATLON_OCEAN = FALSE
 set TRIPOL_OCEAN = FALSE
+set CUBED_SPHERE_OCEAN = FALSE
 
 if( $orslv == O1 | $orslv == NL1 ) then
     @ imo = 360   # Lat/Lon Data-Ocean (Reynolds 1-deg)
@@ -265,10 +275,11 @@ if( $orslv == T1 | $orslv == T2 | $orslv == T3 | $orslv == T4 ) then
     set     DATENAME = TM
     set     POLENAME = TM
 endif
+if( $orslv == CS | $orslv == NCS ) set CUBED_SPHERE_OCEAN = TRUE
 
-# ------------------------------------
+# -------------------------------------
 # Loop over All Atmospheric Resolutions
-# ----------------------------------------
+# -------------------------------------
 
 foreach HRCODE ($HRCODES)
 
@@ -305,7 +316,16 @@ if( $HRCODE == e ) then
      set jm = 721
      set grid = latlon
 endif
-
+if( $HRCODE == c12 ) then
+     set nc = 12
+     set RC = 12x72
+     set grid = cube
+endif
+if( $HRCODE == c24 ) then
+     set nc = 24
+     set RC = 24x144
+     set grid = cube
+endif
 if( $HRCODE == c48 ) then
      set nc = 48
      set RC = 48x288
@@ -331,14 +351,29 @@ if( $HRCODE == c720 ) then
      set RC = 720x4320
      set grid = cube
 endif
+if( $HRCODE == c768 ) then
+     set nc = 768
+     set RC = 768x4608
+     set grid = cube
+endif
 if( $HRCODE == c1000 ) then
      set nc = 1000
      set RC = 1000x6000
      set grid = cube
 endif
+if( $HRCODE == c1152 ) then
+     set nc = 1152
+     set RC = 1152x6912
+     set grid = cube
+endif
 if( $HRCODE == c1440 ) then
      set nc = 1440
      set RC = 1440x8640
+     set grid = cube
+endif
+if( $HRCODE == c1536 ) then
+     set nc = 1536
+     set RC = 1536x9216
      set grid = cube
 endif
 if( $HRCODE == c2880 ) then
@@ -471,7 +506,9 @@ cd ../
                     CLM4.5_veg_typs_fracs \
                     mkCatchParam.log \
                     CLM_NDep_SoilAlb_T2m \
-                    CLM4.5_abm_peatf_gdp_hdm_fc \  
+                    CLM4.5_abm_peatf_gdp_hdm_fc \
+  		    catch_params.nc4 \
+		    catchcn_params.nc4 \
                     clsm
                 cd  ../ 
 
@@ -508,7 +545,16 @@ ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/INPUT/ data/MOM/
 ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/INPUT/ data/MOM/720x410
 ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/INPUT/ data/MOM/1440x1080
 
-set             BCNAME = CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+if( $CUBED_SPHERE_OCEAN == TRUE ) then
+	set       BCNAME = CF${NC}x6C_CF${NC}x6C
+	set     DATENAME = CF
+	set     POLENAME =    
+	set          IMO = ${NC}
+	set          JMO = 6C
+else
+	set       BCNAME = CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+endif
+
 set             BCDIR  = $BCNAME.scratch
 set             BCJOB  = $BCNAME.j
 
@@ -537,6 +583,9 @@ if( $LATLON_OCEAN == TRUE ) then
 endif
 if( $TRIPOL_OCEAN == TRUE ) then
     gmake NC=$NC IMM=$IMO JMM=$JMO MASKFILE=${MASKFILE} GLOBAL_CATCH_DATA=${GLOBAL_CATCH_DATA} OMP_NUM_THREADS=${NCPUS} | tee CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
+endif
+if( $CUBED_SPHERE_OCEAN == TRUE ) then
+    gmake NC=$NC INC=$NC MASKFILE=${MASKFILE} GLOBAL_CATCH_DATA=${GLOBAL_CATCH_DATA} OMP_NUM_THREADS=${NCPUS} | tee CF${NC}x6C_CF${NC}x6C.stdout
 endif
 
 /bin/mv clsm  clsm.C${NC}
@@ -586,6 +635,8 @@ cd ../
                     mkCatchParam.log \
                     CLM_NDep_SoilAlb_T2m \
                     CLM4.5_abm_peatf_gdp_hdm_fc \
+  		    catch_params.nc4 \
+		    catchcn_params.nc4 \
                     clsm
                 cd  ../ 
 
@@ -663,6 +714,7 @@ if ( $EVERSION == EASEv2 ) then
 setenv MASKFILE ${MASKFILE}
 bin/mkSMAPTilesPara_v2 -smap_grid ${MGRID}
 else
+setenv MASKFILE ${MASKFILE}
 bin/mkSMAPTilesPara -smap_grid ${MGRID}
 endif
 
@@ -707,6 +759,8 @@ cd ../
                          Grid2Catch_TransferData.nc \
                          CLM_NDep_SoilAlb_T2m \
                          CLM4.5_abm_peatf_gdp_hdm_fc \
+  		         catch_params.nc4 \
+		         catchcn_params.nc4 \
                          clsm
                      cd  ../ 
 

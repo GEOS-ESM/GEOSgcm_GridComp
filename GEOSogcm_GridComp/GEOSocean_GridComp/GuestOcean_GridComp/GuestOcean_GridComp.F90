@@ -29,7 +29,7 @@ module GuestOcean_GridCompMod
 ! 
 !   {\tt GuestOcean\_GridComp} is a light-weight gridded component that serves an
 !   interface to ocean/data\_ocean components. 
-!   
+!
 !EOP
 
   type :: T_PrivateState
@@ -112,7 +112,7 @@ contains
        OCEAN_NAME="MOM"
        OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOMSetServices, RC=STATUS)
        VERIFY_(STATUS)
-    end if
+    endif
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -127,8 +127,8 @@ contains
          UNITS              = '1',                                 &
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
-         RC=status  )
-    VERIFY_(status)
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
          SHORT_NAME         = 'TAUX',                              &
@@ -148,77 +148,77 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                             &
+    call MAPL_AddImportSpec(GC,                               &
         SHORT_NAME         = 'PENUVR',                            &
         LONG_NAME          = 'net_downward_penetrating_direct_UV_flux',  &
         UNITS              = 'W m-2',                             &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=status  )
+    VERIFY_(status)
 
-     call MAPL_AddImportSpec(GC,                             &
+    call MAPL_AddImportSpec(GC,                            &
         SHORT_NAME         = 'PENPAR',                            &
         LONG_NAME          = 'net_downward_penetrating_direct_PAR_flux', &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                             &
+  call MAPL_AddImportSpec(GC,                                &
         SHORT_NAME         = 'PENUVF',                            &
         LONG_NAME          = 'net_downward_penetrating_diffuse_UV_flux',  &
         UNITS              = 'W m-2',                             &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     VERIFY_(STATUS)
+  VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                             &
+  call MAPL_AddImportSpec(GC,                                &
         SHORT_NAME         = 'PENPAF',                            &
         LONG_NAME          = 'net_downward_penetrating_diffuse_PAR_flux', &
         UNITS              = 'W m-2',                             &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     VERIFY_(STATUS)
+  VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC                         ,&
+    call MAPL_AddImportSpec(GC,                               &
           LONG_NAME          = 'net_surface_downwelling_nir_beam_flux',&
           UNITS              = 'W m-2'                       ,&
           SHORT_NAME         = 'DRNIR'                       ,&
-          DIMS               = MAPL_DimsHorzOnly             ,&
-          VLOCATION          = MAPL_VLocationNone            ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC                         ,&
+    call MAPL_AddImportSpec(GC,                               &
           LONG_NAME          = 'net_surface_downwelling_nir_diffuse_flux',&
           UNITS              = 'W m-2'                       ,&
           SHORT_NAME         = 'DFNIR'                       ,&
-          DIMS               = MAPL_DimsHorzOnly             ,&
-          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddImportSpec(GC,                               &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                               &
           SHORT_NAME         = 'SWHEAT',                            &
           LONG_NAME          = 'solar_heating_rate',                &
           UNITS              = 'W m-2',                             &
           DIMS               = MAPL_DimsHorzVert,                   &
           VLOCATION          = MAPL_VLocationCenter,                &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-     
-     call MAPL_AddImportSpec(GC,                    &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                               &
           LONG_NAME          = 'river_discharge_at_ocean_points',&
           UNITS              = 'kg m-2 s-1'                ,&
           SHORT_NAME         = 'DISCHARGE'                   ,&
-          DIMS               = MAPL_DimsHorzOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
 !!$     call MAPL_AddImportSpec(GC,                             &
 !!$        SHORT_NAME         = 'TR',                                &
@@ -240,80 +240,80 @@ contains
 !!$                                                       RC=STATUS  )
 !!$     VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC                     ,&
+    call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
-        UNITS              = 'W m-2'                     ,&
+        UNITS              = 'W m-2',                             &
         SHORT_NAME         = 'LWFLX'                   ,&
-        DIMS               = MAPL_DimsHorzOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                     &
+     call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'upward_sensible_heat_flux' ,&
-        UNITS              = 'W m-2'                     ,&
+        UNITS              = 'W m-2',                             &
         SHORT_NAME         = 'SHFLX'                     ,&
-        DIMS               = MAPL_DimsHorzOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                     &
+     call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'evaporation'               ,&
         UNITS              = 'kg m-2 s-1'                ,&
         SHORT_NAME         = 'QFLUX'                   ,&
-        DIMS               = MAPL_DimsHorzOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                     &
+     call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'ocean_snowfall'            ,&
         UNITS              = 'kg m-2 s-1'                ,&
         SHORT_NAME         = 'SNOW'                   ,&
-        DIMS               = MAPL_DimsHorzOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                     &
+     
+     call MAPL_AddImportSpec(GC,                               &
         LONG_NAME          = 'ocean_rainfall'            ,&
         UNITS              = 'kg m-2 s-1'                ,&
         SHORT_NAME         = 'RAIN'                   ,&
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                            &
+     
+     call MAPL_AddImportSpec(GC,                    &
         SHORT_NAME         = 'FRESH',                         &
         LONG_NAME          = 'fresh_water_flux_due_to_ice_dynamics', &
-        UNITS              = 'kg m-2 s-1',                            &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        RC=STATUS  )
+          UNITS              = 'kg m-2 s-1'                ,&
+          DIMS               = MAPL_DimsHorzOnly           ,&
+          VLOCATION          = MAPL_VLocationNone          ,&
+          RC=STATUS  ) 
      VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                            &
+     call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'FSALT',                         &
         LONG_NAME          = 'salt_flux_due_to_ice_dynamics', &
         UNITS              = 'kg m-2 s-1',                            &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        RC=STATUS  )
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                            &
+     call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'FHOCN',                         &
         LONG_NAME          = 'heat_flux_due_to_ice_dynamics', &
         UNITS              = 'W m-2',                            &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        RC=STATUS  )
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
 !  ! Need to have this internal state to fill in orphan points:
-     
+
     call MAPL_AddInternalSpec(GC,                                 &
          SHORT_NAME         = 'TS_FOUND',                          &
          LONG_NAME          = 'foundation_temperature_for_interface_layer',&
@@ -324,10 +324,10 @@ contains
          DEFAULT            = 280.0, &
          RC=STATUS  )
     VERIFY_(STATUS)
-
+    
 
 !  !EXPORT STATE:
-
+    
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME         = 'MASKO',                            &
          LONG_NAME          = 'ocean_mask',&
@@ -337,7 +337,8 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                                 &
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME         = 'SS_FOUND',                          &
          LONG_NAME          = 'foundation_salinity_for_interface_layer',&
          UNITS              = 'PSU',                                 &
@@ -346,7 +347,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                                 &
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME         = 'FRZMLT',                            &
          LONG_NAME          = 'freeze_melt_potential',             &
          UNITS              = 'W m-2',                             &
@@ -393,13 +394,13 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                    &
+    call MAPL_AddExportSpec(GC,                               &
          LONG_NAME          = 'river_discharge_at_ocean_points',&
          UNITS              = 'kg m-2 s-1'                ,&
          SHORT_NAME         = 'DISCHARGE'                 ,&
-         DIMS               = MAPL_DimsHorzOnly           ,&
-         VLOCATION          = MAPL_VLocationNone          ,&
-         RC=STATUS  ) 
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
@@ -408,71 +409,71 @@ contains
          UNITS              = '1',                                 &
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
-         RC=status  )
-    VERIFY_(status)
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
-     call MAPL_AddExportSpec(GC                     ,&
+    call MAPL_AddExportSpec(GC,                               &
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'LWFLX'                   ,&
-        DIMS               = MAPL_DimsHorzOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddExportSpec(GC                     ,&
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
         LONG_NAME          = 'surface_net_downward_shortwave_flux',&
         UNITS              = 'W m-2'                     ,&
         SHORT_NAME         = 'SWFLX'                   ,&
-        DIMS               = MAPL_DimsHorzOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
-     VERIFY_(STATUS)
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
-     call MAPL_AddExportSpec(GC,                     &
+    call MAPL_AddExportSpec(GC,                               &
         LONG_NAME          = 'upward_sensible_heat_flux' ,&
-        UNITS              = 'W m-2'                     ,&
+         UNITS              = 'W m-2',                             &
         SHORT_NAME         = 'SHFLX'                     ,&
-        DIMS               = MAPL_DimsHorzOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
-     VERIFY_(STATUS)
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
-     call MAPL_AddExportSpec(GC,                     &
+    call MAPL_AddExportSpec(GC,                               &
         LONG_NAME          = 'evaporation'               ,&
         UNITS              = 'kg m-2 s-1'                ,&
         SHORT_NAME         = 'QFLUX'                   ,&
-        DIMS               = MAPL_DimsHorzOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
-     VERIFY_(STATUS)
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
-     call MAPL_AddExportSpec(GC,                            &
+    call MAPL_AddExportSpec(GC,                               &
         SHORT_NAME         = 'SFLX',                         &
         LONG_NAME          = 'salt_flux_due_to_ice_dynamics', &
         UNITS              = 'kg m-2 s-1',                            &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        RC=STATUS  )
-     VERIFY_(STATUS)
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
-     call MAPL_AddExportSpec(GC,                               &
+    call MAPL_AddExportSpec(GC,                               &
           SHORT_NAME         = 'RAIN',                              &
           LONG_NAME          = 'ocean_rainfall',&
           UNITS              = 'kg m-2 s-1',                        &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=status  )
+    VERIFY_(status)
 
-     call MAPL_AddExportSpec(GC,                               &
+    call MAPL_AddExportSpec(GC,                                 &
           SHORT_NAME         = 'SNOW',                              &
           LONG_NAME          = 'ocean_snowfall',&
           UNITS              = 'kg m-2 s-1',                        &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
 ! Exports of child
 
@@ -523,7 +524,7 @@ contains
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC   ,                          &
+       call MAPL_AddExportSpec ( GC   ,                               &
             SHORT_NAME = 'FRAZIL',                                    &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
@@ -549,7 +550,7 @@ contains
 !EOS
 
     if(DO_DATASEA==0) then
-       call MAPL_TerminateImport    ( GC, SHORT_NAME=&
+       call MAPL_TerminateImport    ( GC, SHORT_NAME= &
           [character(len=9) :: 'TAUX  ','TAUY  ', &
             'PENUVR','PENPAR','PENUVF','PENPAF', 'DRNIR', 'DFNIR', &
             'DISCHARGE', 'LWFLX', 'SHFLX', 'QFLUX', 'RAIN', 'SNOW', 'SFLX','SWHEAT'], &
@@ -570,7 +571,7 @@ contains
 !---------------------------------------------------------------------------------------
 
     call MAPL_GenericSetServices    ( GC, RC=STATUS )
-    VERIFY_(STATUS)
+  VERIFY_(STATUS)
 
 ! Set the Profiling timers
 ! ------------------------
@@ -736,9 +737,7 @@ contains
     call MAPL_TimerOn (STATE,"TOTAL"     )
 
     if(DO_DATASEA==0) then
-
        call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,RC=STATUS); VERIFY_(STATUS)     
-
        call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(GEX(OCN), DH, 'DH', RC=STATUS); VERIFY_(STATUS)
        
@@ -791,7 +790,7 @@ contains
 
     type (MAPL_MetaComp),     pointer   :: STATE 
     type (ESMF_Time)                    :: EndTime
-    type (ESMF_Time)                    :: MyTime
+    type (ESMF_Time)                    :: MyTime,ct
     type (T_PrivateState),    pointer   :: PrivateSTATE
     type (T_PrivateState_Wrap)          :: WRAP
     type (ESMF_GridComp    ), pointer   :: GCS(:)
@@ -883,6 +882,7 @@ contains
     real, pointer     :: LATS  (:,:)
     real, parameter   :: OrphanSalinity=34.0
     real              :: Tfreeze
+    character(len=ESMF_MAXSTR) :: replayMode
 
 ! Get the component's name and set-up traceback handle.
 ! -----------------------------------------------------
@@ -936,6 +936,25 @@ contains
     call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
     VERIFY_(status)
 
+    call MAPL_GetResource(state,ReplayMode,  'REPLAY_MODE:',  default="NoReplay", RC=STATUS )
+    if (DO_DATASEA /=0 .and. trim(replayMode)=="Regular" ) then
+       if (myTime > EndTime) then
+          call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_REVERSE,rc=status)
+          VERIFY_(status)
+          do
+            call ESMF_ClockAdvance(PrivateState%Clock,rc=status)
+            VERIFY_(status)
+            call ESMF_ClockGet(PrivateState%Clock,currTime=ct,rc=status)
+            VERIFY_(status)
+            if (ct==endTime) exit
+          enddo
+          call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_FORWARD,rc=status)
+          VERIFY_(status)
+          call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
+          VERIFY_(status)
+       end if
+    end if
+
     if( MyTime <= EndTime ) then ! Time to run
 
 ! We get the ocean-land mask (now computed in Initialize of Plug)  
@@ -948,7 +967,7 @@ contains
           MASK3D=1.0
           allocate(MASK(IM,JM), STAT=STATUS); VERIFY_(STATUS)
           MASK=1.0
-       end if
+       end if       
 
 ! Get ocean time step and misc. parameters
 !-----------------------------------------
@@ -982,7 +1001,7 @@ contains
 
 ! Get pointers from ImExState
 !----------------------------
-       if(Do_DATASEA==0) then
+       if(DO_DATASEA==0) then
           call MAPL_GetPointer(GIM(OCN), TAUX, 'TAUX'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), TAUY, 'TAUY'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), PENUVR, 'PENUVR'  , RC=STATUS); VERIFY_(STATUS)
@@ -1046,10 +1065,10 @@ contains
        elsewhere
           WGHT = 0.0
        end where
-       
+
        if(DO_DATASEA==0) then
-          ! Copy imports into ImEx variables
-          !---------------------------------
+! Copy imports into ImEx variables
+!---------------------------------
           PENUVR = PENUVRi * WGHT
           PENPAR = PENPARi * WGHT
           PENUVF = PENUVFi * WGHT
@@ -1063,15 +1082,15 @@ contains
           RAIN = (RAINi+FRESH) * WGHT 
           SNOW = SNOWi * WGHT
           SFLX = FSALT * WGHT
-          
-          ! This stress forces the ocean, combined with sea ice bottom stress later
+
+! This stress forces the ocean, combined with sea ice bottom stress later
 
           TAUX = TAUXi * WGHT
           TAUY = TAUYi * WGHT
 
-
-          ! Prepare radiative heating for ocean
-          !------------------------------------
+       
+! Prepare radiative heating for ocean
+!------------------------------------
 
           if(associated(RFLUX )) RFLUX  = 0.0
           do L=1,LM
@@ -1093,22 +1112,20 @@ contains
           if (associated(SNOWe)) SNOWe = SNOW
           if (associated(SFLXe)) SFLXe = SFLX
        end if !DO_DATASEA
-    
+
 ! Loop the ocean model
 !---------------------
 
        NUM = 0
        do while ( MyTime <= endTime )
-
+          
 ! Run ocean for one time step (DT)
 !---------------------------------
 
           call MAPL_TimerOff(STATE,"TOTAL")
           call MAPL_TimerOn (STATE,"--ModRun")
-
           call MAPL_GenericRun(GC, IMPORT, EXPORT, PrivateState%CLOCK, RC=STATUS)
           VERIFY_(STATUS)
-
           call MAPL_TimerOff(STATE,"--ModRun")
           call MAPL_TimerOn (STATE,"TOTAL")
 
@@ -1138,12 +1155,12 @@ contains
              end where
           else
              FRZMLT = 0.0
-          end if          
        end if
-
+       end if
+       
        where(WGHT > 0.0)
           TS_FOUND = TW
-       end where
+          end where
 
 ! Update orphan points
        if(DO_DATASEA == 0) then

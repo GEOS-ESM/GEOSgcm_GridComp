@@ -14,7 +14,12 @@ module easeV2_conv
   ! (wgs84_convert.pro, wgs84_inverse.pro) available from  
   ! ftp://sidads.colorado.edu/pub/tools/easegrid/geolocation_tools/
   !
+  ! Official references:
+  !  doi:10.3390/ijgi1010032
+  !  doi:10.3390/ijgi3031154 -- correction of M25 "map_scale_m" parameters!
+  !
   ! 04-Apr-2013 - reichle
+  ! 11-Sep-2018 - reichle, mgirotto -- added 'M25' grid parameters 
   !
   ! ==========================================================================
 
@@ -24,6 +29,7 @@ module easeV2_conv
   
   public :: easeV2_convert
   public :: easeV2_inverse
+  public :: easeV2_extent
 
   ! ***NEVER*** change these constants to GEOS-5 MAPL constants!!!!
   
@@ -87,8 +93,8 @@ contains
 
     ! local variables
     
-    integer :: cols, rows, scale
-    real*8  :: dlon, phi, lam, rho, map_scale_m, r0, s0, ms, x, y, sin_phi, q
+    integer :: cols, rows
+    real*8  :: dlon, phi, lam, map_scale_m, r0, s0, ms, x, y, sin_phi, q
     
     ! ---------------------------------------------------------------------
     
@@ -229,6 +235,14 @@ contains
           r0 = (cols-1)/2.0
           s0 = (rows-1)/2.0
 
+       else if (grid .eq. 'M25') then      ! 25 km grid  
+
+          map_scale_m = 25025.2600000      ! nominal cell size in meters (see doi:10.3390/ijgi3031154)
+          cols = 1388
+          rows =  584
+          r0 = (cols-1)/2.0
+          s0 = (rows-1)/2.0
+
        else if (grid .eq. 'M09') then      ! SMAP  9 km grid
 
           map_scale_m = 9008.055210146     ! nominal cell size in meters
@@ -276,6 +290,27 @@ contains
   
   ! *******************************************************************
   
+  subroutine easeV2_extent( grid, N_cols, N_rows )
+
+    ! simple wrapper to get N_cols (N_lon) and N_rows (N_lat)
+    
+    implicit none
+    
+    character*(*), intent(in)  :: grid
+    integer,       intent(out) :: N_cols, N_rows
+    
+    ! local variables
+    
+    real*8                     :: map_scale_m, r0, s0
+    
+    ! ------------------------------------------------
+    
+    call easeV2_get_params( grid, map_scale_m, N_cols, N_rows, r0, s0 )
+    
+  end subroutine easeV2_extent
+
+  ! *******************************************************************
+
 end module easeV2_conv
 
 ! =============================== EOF =================================

@@ -11,7 +11,9 @@
 !     -y: Size of latitude dimension of input raster.  DEFAULT: 4320
 !     -b: position of the dateline in the first box. DEFAULT: DC 
 !     -g: Gridname  (name of the .til or .rst file without file extension)  
-!     -l: Choice of LAI data set. DEFAULT : MODISV6
+!     -l: Choice of LAI data set. DEFAULT : MODGEO
+!         GLASSA  : 8-day AVHRR climatology from the period 1981-2017 on  7200x3600 grid
+!         GLASSM  : 8-day MODIS climatology from the period 2000-2017 on  7200x3600 grid
 !         MODISV6 : 8-day climatology from the period 2002.01-2016.10 on  86400x43200 grid
 !         MODGEO  : MODIS with GEOLAND2 overlaid on South America, Afirca and Australia
 !         GEOLAND2: 10-day climatology from the period 1999-2011 on 40320x20160 grid               
@@ -53,7 +55,7 @@
     integer              :: I, J, iargc, nxt
     real*8               :: dx, dy, lon0
     logical :: regrid
-    character(len=400), dimension (20) ::  Usage 
+    character(len=400), dimension (22) ::  Usage 
     character*128        ::  Grid2
     character*2 :: poles
     CHARACTER*100 :: gfile,fname,pdir,rstdir
@@ -84,21 +86,23 @@
     USAGE(3) ="     -y: Size of latitude dimension of input raster.  DEFAULT: 4320                               "
     USAGE(4) ="     -g: Gridname  (name of the .til or .rst file without file extension)                         "
     USAGE(5) ="     -b: Position of the dateline in the first grid box (DC or DE). DEFAULT: DC                   "
-    USAGE(6) ="     -l: Choice of LAI data set. DEFAULT : MODIS                                                  "
-    USAGE(7) ="         MODISV6 : 8-day climatology from the period 2002.01-2016.10 on 86400x43200 grid          "
-    USAGE(8) ="         MODGEO  : MODIS with GEOLAND2 overlaid on South America, Africa and Australia            "
-    USAGE(9) ="         GEOLAND2: 10-day climatology from the period 1999-2011 on 40320x20160 grid               "
-    USAGE(10)="         GSWP2   : Monthly climatology from the period 1982-1998 on 360x180 grid                  "
-    USAGE(11)="         GSWPH   : Monthly climatology from the period 1982-1998 on 43200x21600 grid              "
-    USAGE(12)="         MODIS   : 8-day climatology from the period 2000-2013  on 43200x21600 grid               "
-    USAGE(13)="     -s: Choice of soil data. DEFAULT :HWSD                                                       "
-    USAGE(14)="         HWSD : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten (1999) Parameters"
-    USAGE(15)="         NGDC : Reynolds soil texture classes on 4320x2160 with GSWP2  soil hydraulic parameters  "
-    USAGE(16)="     -m: Choice of MODIS Albedo data. DEFAULT : MODIS2                                            "
-    USAGE(17)="         MODIS1: 16-day Climatology from 1'x1'(21600x10800) MODIS data from the period 2000-2004  "
-    USAGE(18)="         MODIS2: 8-day Climatology from 0.5'x0.5'(43200x21600) MODIS data from the period 2001-2011"
-    USAGE(19)="     -e: EASE : This is optional if catchment.def file is available already or                    "          
-    USAGE(20)="                    the til file format is pre-Fortuna-2.                                         "           
+    USAGE(6) ="     -l: Choice of LAI data set. DEFAULT : MODGEO                                                 "
+    USAGE(7) ="         GLASSA  : 8-day AVHRR climatology from the period 1981-2017 on 7200x3600 grid            "
+    USAGE(8) ="         GLASSM  : 8-day MODIS climatology from the period 2000-2017 on 7200x3600 grid            "
+    USAGE(9) ="         MODISV6 : 8-day climatology from the period 2002.01-2016.10 on 86400x43200 grid          "
+    USAGE(10)="         MODGEO  : MODIS with GEOLAND2 overlaid on South America, Africa and Australia            "
+    USAGE(11)="         GEOLAND2: 10-day climatology from the period 1999-2011 on 40320x20160 grid               "
+    USAGE(12)="         GSWP2   : Monthly climatology from the period 1982-1998 on 360x180 grid                  "
+    USAGE(13)="         GSWPH   : Monthly climatology from the period 1982-1998 on 43200x21600 grid              "
+    USAGE(14)="         MODIS   : 8-day climatology from the period 2000-2013  on 43200x21600 grid               "
+    USAGE(15)="     -s: Choice of soil data. DEFAULT :HWSD                                                       "
+    USAGE(16)="         HWSD : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten (1999) Parameters"
+    USAGE(17)="         NGDC : Reynolds soil texture classes on 4320x2160 with GSWP2  soil hydraulic parameters  "
+    USAGE(18)="     -m: Choice of MODIS Albedo data. DEFAULT : MODIS2                                            "
+    USAGE(19)="         MODIS1: 16-day Climatology from 1'x1'(21600x10800) MODIS data from the period 2000-2004  "
+    USAGE(20)="         MODIS2: 8-day Climatology from 0.5'x0.5'(43200x21600) MODIS data from  period 2001-2011  "
+    USAGE(21)="     -e: EASE : This is optional if catchment.def file is available already or                    "          
+    USAGE(22)="                the til file format is pre-Fortuna-2.                                             "           
 
 ! Process Arguments                            
 !------------------ 
@@ -210,7 +214,9 @@
           DL = 'DE'
           write (log_file,'(a)')'Cube Grid - assuming DE'
        endif
-       
+
+       CALL open_landparam_nc4_files 
+
        ! Creating catchment.def 
        ! ----------------------
        
@@ -318,6 +324,16 @@
           if (trim(LD) == 'MODISV6') then
              lai_name = 'MCD15A2H.006/MODIS_'
              call grid2tile_modis6 (86400,43200,nc,nr,gridnamer,lai_name)  
+          endif
+
+          if (trim(LD) == 'GLASSA') then
+             lai_name = 'GLASS-LAI/AVHRR.v4/GLASS01B02.V04.AYYYY'
+             call grid2tile_glass (nc,nr,gridnamer,lai_name)  
+          endif
+
+          if (trim(LD) == 'GLASSM') then
+             lai_name = 'GLASS-LAI/MODIS.v4/GLASS01B01.V04.AYYYY'
+             call grid2tile_glass (nc,nr,gridnamer,lai_name)  
           endif
           
        endif
