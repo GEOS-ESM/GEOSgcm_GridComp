@@ -9,7 +9,9 @@ MODULE DBG_ROUTINES
   type :: c_inputs
 
       real :: PCU       
-      real :: PLS       
+      real :: PLS
+      real :: ICE       
+      real :: FRZR        
       real :: SNO       
       real :: UUU   
       real :: EVSBTS 
@@ -236,6 +238,8 @@ type(c_updates), dimension (ntiles), intent(inout) :: catchin
         read (unit) catchin%PCU      
         read (unit) catchin%PLS      
         read (unit) catchin%SNO      
+        read (unit) catchin%ICE      
+        read (unit) catchin%FRZR      
         read (unit) catchin%UUU      
         read (unit) catchin%EVSBTS 
         read (unit) catchin%DEVSBTS
