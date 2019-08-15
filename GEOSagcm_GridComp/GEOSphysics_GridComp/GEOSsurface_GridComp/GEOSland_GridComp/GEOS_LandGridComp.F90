@@ -46,6 +46,7 @@ module GEOS_LandGridCompMod
 
   integer                                 :: VEGDYN
   integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:)
+  integer  :: NUM_ENSEMBLE
 
 contains
 
@@ -86,7 +87,6 @@ contains
     character(len=ESMF_MAXSTR)              :: TMP
     type(MAPL_MetaComp),pointer             :: MAPL=>null()
     INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
-    integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
 
 !=============================================================================
 
@@ -109,15 +109,13 @@ contains
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
     tmp = ''
-    if (NUM_LDAS_ENSEMBLE >1) then
+    if (NUM_ENSEMBLE >1) then
         !landxxxx
-        tmp(1:ens_id_width)=COMP_NAME(5:5+ens_id_width-1)
+        tmp(1:4)=COMP_NAME(5:8)
     endif
 
 !------------------------------------------------------------
