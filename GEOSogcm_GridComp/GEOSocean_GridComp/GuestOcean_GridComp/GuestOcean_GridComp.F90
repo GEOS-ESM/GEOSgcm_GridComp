@@ -22,6 +22,8 @@ module GuestOcean_GridCompMod
   public SetServices
 
   character(len=ESMF_MAXSTR)  :: OCEAN_NAME
+  character(len=ESMF_MAXSTR)  :: OCEAN_MODEL_NAME  ! SA: get rid of OCEAN_NAME, and merge whatever is needed
+
   integer                     :: DO_DATASEA
   real                        :: OrphanDepth
 
@@ -103,6 +105,12 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL,       OrphanDepth,    Label="ORPHAN_DEPTH:" ,      DEFAULT=10.0, RC=STATUS)
     VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL,       OCEAN_MODEL_NAME,   Label="NAME_OCEAN_MODEL:" ,   DEFAULT="DATA_OCEAN", RC=STATUS)
+    VERIFY_(STATUS)
+    ASSERT_( ( OCEAN_MODEL_NAME == "DATA_OCEAN" ) .or. &
+             ( OCEAN_MODEL_NAME == "MOM5" )       .or. & 
+             ( OCEAN_MODEL_NAME == "MOM6" ))
 
     if(DO_DATASEA/=0) then
        OCEAN_NAME="DATASEA"
@@ -308,14 +316,25 @@ contains
 
 !  !EXPORT STATE:
     
-    call MAPL_AddExportSpec(GC,                                   &
-         SHORT_NAME         = 'MASK',                             &
-         LONG_NAME          = 'ocean_mask',                       &
-         UNITS              = '1',                                &
-         DIMS               = MAPL_DimsHorzOnly,                  &
-         VLOCATION          = MAPL_VLocationNone,                 &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+    if (OCEAN_MODEL_NAME == "MOM5" ) then 
+      call MAPL_AddExportSpec(GC,                                   &
+           SHORT_NAME         = 'MASKO',                            &
+           LONG_NAME          = 'ocean_mask',                       &
+           UNITS              = '1',                                &
+           DIMS               = MAPL_DimsHorzOnly,                  &
+           VLOCATION          = MAPL_VLocationNone,                 &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+    else if (OCEAN_MODEL_NAME == "MOM6" ) then
+      call MAPL_AddExportSpec(GC,                                   &
+           SHORT_NAME         = 'MASK',                             &
+           LONG_NAME          = 'ocean_mask',                       &
+           UNITS              = '1',                                &
+           DIMS               = MAPL_DimsHorzOnly,                  &
+           VLOCATION          = MAPL_VLocationNone,                 &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+    end if
 
 
     call MAPL_AddExportSpec(GC,                               &
@@ -364,6 +383,17 @@ contains
          VLOCATION          = MAPL_VLocationCenter,                &
          RC=STATUS  )
     VERIFY_(STATUS)
+
+    if (OCEAN_MODEL_NAME == "MOM5" ) then 
+      call MAPL_AddExportSpec(GC,                               &
+           SHORT_NAME         = 'RFLUX',                             &
+           LONG_NAME          = 'downward_radiative_heat_flux_at_ocean_bottom',&
+           UNITS              = 'W m-2',                             &
+           DIMS               = MAPL_DimsHorzOnly,                   &
+           VLOCATION          = MAPL_VLocationNone,                  &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+    endif
 
     call MAPL_AddExportSpec(GC,                               &
          LONG_NAME          = 'river_discharge_at_ocean_points',&
@@ -485,6 +515,15 @@ contains
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
        VERIFY_(STATUS)
+
+       if (OCEAN_MODEL_NAME == "MOM5" ) then 
+         call MAPL_AddExportSpec ( GC   ,                               &
+              SHORT_NAME = 'SSH',                                       &
+              CHILD_ID   = OCN,                                         &
+              RC=STATUS  )
+         VERIFY_(STATUS)
+       endif
+
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'SLV',                                       &
             CHILD_ID   = OCN,                                         &
@@ -595,8 +634,10 @@ contains
     type (ESMF_TimeInterval)            :: timeStep
     type (ESMF_Time)                    :: currTime 
 
-    real, pointer :: MASK(:,:)
-    real, pointer :: DH(:,:,:)
+    real, pointer :: MASK(:,:)     => null()
+    real, pointer :: MASKO(:,:)    => null()
+    real, pointer :: MASK3D(:,:,:) => null()
+    real, pointer :: DH(:,:,:)     => null()
 
 !=============================================================================
 
@@ -701,8 +742,18 @@ contains
     call MAPL_TimerOn (STATE,"TOTAL"     )
 
     if(DO_DATASEA==0) then
-       call MAPL_GetPointer(GEX(OCN), MASK,  'MOM_2D_MASK', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GEX(OCN), DH,    'DH',          RC=STATUS); VERIFY_(STATUS)
+      if (OCEAN_MODEL_NAME == "MOM5" ) then 
+        call MAPL_GetPointer(EXPORT,   MASKO,  'MASKO'  , alloc=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK',          RC=STATUS); VERIFY_(STATUS)
+      else if (OCEAN_MODEL_NAME == "MOM6" ) then 
+        call MAPL_GetPointer(GEX(OCN), MASK,  'MOM_2D_MASK',           RC=STATUS); VERIFY_(STATUS)
+      endif
+      call MAPL_GetPointer(GEX(OCN), DH,    'DH',                      RC=STATUS); VERIFY_(STATUS)
+
+      if (OCEAN_MODEL_NAME == "MOM5" ) then 
+         MASK => MASK3D(:,:,1)
+         if(associated(MASKO)) MASKO = MASK
+      endif
        
 ! The following sets the depth in orphan points. This is needed to calculate SWHEAT in these points.
 ! Unfortunately, frocean is zero at this point so we set OrphanDepth in all MOM land points. 
@@ -787,6 +838,7 @@ contains
 
 ! Diagnostics exports
 
+    real, pointer :: RFLUX (:,:)         => null()
     real, pointer :: TAUXe (:,:)
     real, pointer :: TAUYe (:,:)
     real, pointer :: HEATe (:,:,:)
@@ -825,6 +877,7 @@ contains
     real, pointer :: TW  (:,:)
     real, pointer :: SW  (:,:)
     real, pointer :: MASK(:,:)
+    real, pointer :: MASK3D(:,:,:)  => null()
     real, pointer :: FRAZIL(:,:)
 
 ! Locals
@@ -915,6 +968,20 @@ contains
 
     if( MyTime <= EndTime ) then ! Time to run
 
+    if (OCEAN_MODEL_NAME == "MOM5" ) then 
+!   ! We get the ocean-land mask (now computed in Initialize of Plug)  
+!   ! ---------------------------------------------------------------
+       if(DO_DATASEA==0) then
+          call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', RC=STATUS); VERIFY_(STATUS)
+          MASK => MASK3D(:,:,1)
+       else
+          allocate(MASK3D(IM,JM,LM), STAT=STATUS); VERIFY_(STATUS)
+          MASK3D=1.0
+          allocate(MASK(IM,JM), STAT=STATUS); VERIFY_(STATUS)
+          MASK=1.0
+       end if
+    end if
+
 ! Get ocean time step and misc. parameters
 !-----------------------------------------
        
@@ -982,6 +1049,9 @@ contains
 
 ! Diagnostics exports
 !---------------------------------------------------------
+       if (OCEAN_MODEL_NAME == "MOM5" ) then 
+         call MAPL_GetPointer(EXPORT, RFLUX,  'RFLUX' , RC=STATUS); VERIFY_(STATUS)
+       endif
        call MAPL_GetPointer(EXPORT, FROCEANe,'FROCEAN', RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, TAUXe,   'TAUX'   , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, TAUYe,   'TAUY'   , RC=STATUS); VERIFY_(STATUS)
@@ -1036,6 +1106,19 @@ contains
        
 ! Fill up Exports
 !----------------
+
+          if (OCEAN_MODEL_NAME == "MOM5" ) then 
+!         ! Prepare radiative heating for ocean
+!         !------------------------------------
+
+            if(associated(RFLUX )) RFLUX  = 0.0
+              do L=1,LM
+                HEAT(:,:,L) = HEATi(:,:,L)*WGHT
+                if(associated(RFLUX)) then
+                  RFLUX = RFLUX + (1.0-MASK3D(:,:,L))*HEAT(:,:,L)
+                end if
+              end do
+          endif
 
           if (associated(HEATe)) HEATe = HEAT
           if (associated(TAUXe)) TAUXe = TAUX
@@ -1095,7 +1178,10 @@ contains
           end if
        end if
 
-       TS_FOUND = 280.0  ! make sure it is initialized, use 280., same as its default value in the above internal spec.
+       if (OCEAN_MODEL_NAME == "MOM6" ) then 
+         TS_FOUND = 280.0  ! make sure it is initialized, use 280., same as its default value in the above internal spec.
+       end if
+
        where(WGHT > 0.0)
           TS_FOUND = TW
        end where
@@ -1117,6 +1203,9 @@ contains
        deallocate(WGHT, STAT=STATUS); VERIFY_(STATUS)
 
        if(DO_DATASEA/=0) then
+          if (OCEAN_MODEL_NAME == "MOM5" ) then 
+            deallocate(MASK3D, STAT=STATUS); VERIFY_(STATUS)
+          end if
           deallocate(MASK,   STAT=STATUS); VERIFY_(STATUS)
        end if
     
