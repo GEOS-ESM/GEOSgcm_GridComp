@@ -1,5 +1,5 @@
 
-# $Id$
+# $Id: GNUmakefile,v 1.7.4.2 2018/04/03 14:45:47 mathomp4 Exp $
 
 #.SILENT:
 
@@ -57,10 +57,11 @@ INCS=$(INCDIR)/Raster.h
 SRCS=$(wildcard mk*.F90 CombineRasters.F90 rmTinyTiles.F90 chk_clsm_params.F90)
 BINS=$(addprefix $(BINDIR),$(basename $(notdir $(SRCS))))
 
-SRCS_OPENMP= mkCatchParam.F90
+SRCS_OPENMP= mkCatchParam.F90  
 BINS_OPENMP=$(addsuffix _openmp, $(addprefix $(BINDIR),$(basename $(notdir $(SRCS_OPENMP)))))
 
-F90SCRS= MAPL_Constants.F90 MAPL_Sort.F90 MAPL_Hash.F90 CubedSphere_GridMod.F90 rasterize.F90 leap_year.F90 date_time_util.F90 rmTinyCatchParaMod.F90 mod_process_hres_data.F90 easeV1_conv.F90 easeV2_conv.F90
+F90SCRS= MAPL_Constants.F90 MAPL_Sort.F90 MAPL_Hash.F90 CubedSphere_GridMod.F90 rasterize.F90 leap_year.F90 date_time_util.F90\
+ rmTinyCatchParaMod.F90 mod_process_hres_data.F90 easeV1_conv.F90 easeV2_conv.F90 comp_CATCHCN_AlbScale_parameters.F90
 
 F90OBJS=$(addprefix $(BINDIR),$(addsuffix .o, $(basename $(F90SCRS))))
 F90OBJS_OPENMP=$(addprefix $(BINDIR),$(addsuffix _openmp.o, $(basename $(F90SCRS))))

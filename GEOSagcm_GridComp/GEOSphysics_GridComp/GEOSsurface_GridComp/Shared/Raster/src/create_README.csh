@@ -460,6 +460,12 @@ cat << _EOI_ > clsm/intro
    6.3 References
 `echo "$toc_rout"`
 
+8. GLOBAL COUNTRY AND US STATE MAPS
+   8.1 Data generation and processing chain
+   8.2 Data files
+	8.2.1 Country Code, US State Code, Country Name, State Name
+   8.3 References
+
 APPENDIX I - mkCatchParam tag, input options, and log ............................ A1
 
 =====================================================================================
@@ -609,10 +615,10 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 _EOI_
 if( $mysoil == HWSD ) then
 cat << _EOS1_ > clsm/soil
-		read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)')  &
+		read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
 		tile_index,pfaf_code,soil_class_top,soil_class_com,BEE,              &
 		PSIS,POROS,COND, WPWET, DP2BR, gravel,OrgCarbon_top,                 &
-		OrgCarbon_rz,sand_top,clay_top,sand_rz,clay_rz,WPWET_top, POROS_top
+		OrgCarbon_rz,sand_top,clay_top,sand_rz,clay_rz,WPWET_top, POROS_top, PMAP
 	 end do
 
 	 where for each tile:
@@ -641,6 +647,7 @@ cat << _EOS1_ > clsm/soil
 	 (17)	clay_rz [w%]	percentage clay in the root-zone layer (0-100cm)
 	 (18)	WPWET_top [-]	wilting point/porosity for the surface layer (0-30cm)
 	 (19)	POROS_top [m3/m3] soil moisture content at saturation in the surface layer (0-30cm)
+	 (20)   PMAP the fraction of cell covered bt PEATLAND
 
 
 	         ========================================================================
@@ -918,6 +925,9 @@ cat << _EOS1_ > clsm/soil
 	    An Updated Treatment of Soil Texture and Associated Hydraulic Properties in a Global 
 	    Land Modeling System. Journal of Advances in Modeling Earth Systems, 06, 
 	    doi:10.1002/2014MS000330. 
+	 Xu, Jiren and Morris, Paul J. and Liu, Junguo and Holden, Joseph (2017) PEATMAP: 
+	    Refining estimates of global peatland distribution based on a meta-analysis. 
+	    University of Leeds. [Dataset] https://doi.org/10.5518/252
 _EOS1_
 else
 cat << _EOS2_ > clsm/soil	 
@@ -1499,6 +1509,28 @@ cat << _EOF1_ > clsm/README2
          Verdin, K (2013): Final Report - High Resolution Topographic Analysis for GMAOs 
 	    Catchment LSM, pp 21, available from Global Modeling and Assimilation Office, 
 	    610.1 NASA/GSFC.
+
+=====================================================================================
+====================================== PAGE  8 ======================================
+=====================================================================================
+
+8. GLOBAL COUNTRY AND US STATE MAPS
+
+   8.1 Data generation and processing chain
+
+         A GIS shape file of global administrative areas map was obtained from (https://gadm.org) 
+	 It was rasterized to 30-arcsec and created the data/CATCH/GADM_Country_and_USStates_codes_1km.nc4 file.
+	 
+   8.2 Data files
+       8.2.1 Country Code, US State Code, Country Name, State Name
+	 file name : country_and_state_code.data
+
+	 do n = 1, ${NTILES}
+		read (10,'(i8, 2I4, 1x, a48, a20)')         &     
+                tile_index, cnt_code, st_code, CNT_NAME, ST_NAME
+  
+   8.3 References https://gadm.org
+
 	    
 _EOF1_
 endif

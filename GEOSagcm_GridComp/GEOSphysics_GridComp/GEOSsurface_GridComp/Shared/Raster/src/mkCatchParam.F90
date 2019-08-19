@@ -39,6 +39,7 @@
 
    use rmTinyCatchParaMod
    use process_hres_data
+   use comp_CATCHCN_AlbScale_parameters, ONLY : albedo4catchcn
 
   implicit none
     integer              :: NC = i_raster, NR = j_raster
@@ -437,7 +438,9 @@
        inquire(file='clsm/lnfm.dat', exist=file_exists)
        if (.not.file_exists) call CLM45_clim_parameters (nc,nr,gridnamer)   
        write (log_file,'(a)')'Done creating CLM4.5 lightening frequency clim ...........11'
-       
+
+       call country_codes (nc,nr,gridnamer)
+       call albedo4catchcn (gridnamet)
        
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'DONE creating CLSM data files...............................'

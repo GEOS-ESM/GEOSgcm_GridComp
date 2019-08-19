@@ -3093,7 +3093,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     implicit none
       real, allocatable, dimension (:)  :: a_sand,a_clay,a_silt,a_oc,  &
           atile_sand,atile_clay, tile_lon, tile_lat, grav_vec, soc_vec,&
-	  poc_vec,a_sand_surf,a_clay_surf,wpwet_surf,poros_surf
+	  poc_vec,a_sand_surf,a_clay_surf,wpwet_surf,poros_surf, pmap
 
       real, allocatable, dimension (:,:) :: good_clay, good_sand
       integer, allocatable, dimension (:,:) :: tile_add, tile_pick
@@ -3306,6 +3306,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
      allocate (a_clay_surf    (1:nbcatch))
      allocate (wpwet_surf     (1:nbcatch))
      allocate (poros_surf     (1:nbcatch))
+     allocate (pmap           (1:nbcatch))
      allocate (good_clay     (1:100,4))
      allocate (good_sand     (1:100,4))
      allocate (tile_add      (1:100,4))   
@@ -3512,12 +3513,12 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
      END DO	
 
      DO n=1,nbcatch
-         read(10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)') &
+         read(10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
 	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),         &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
 	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
 	     a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n) ,   &
-	     wpwet_surf(n),poros_surf(n)
+	     wpwet_surf(n),poros_surf(n), pmap(n)
      if((ars1(n).ne.9999.).and.(arw1(n).ne.9999.))then   
       write(20,'(i8,i8,f5.2,11(2x,e14.7))')         &
                      tindex2(n),pfaf2(n),gnu,       &
@@ -3529,12 +3530,12 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
           tsa1(n),tsa2(n),tsb1(n),tsb2(n)
 
-      write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)')  &
+      write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
 	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),      &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
 	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
 	     a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n),    &
-	     wpwet_surf(n),poros_surf(n)
+	     wpwet_surf(n),poros_surf(n), pmap(n)
 
       if (allocated (parms4file)) then
          parms4file (n, 1) = ara1(n)
@@ -3616,12 +3617,12 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
           tsa1(k),tsa2(k),tsb1(k),tsb2(k)
 
-        write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)') &
+        write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
               tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),      &
               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),       &
               grav_vec(k),soc_vec(k),poc_vec(k),                            &
               a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k) ,   &
-	      wpwet_surf(k),poros_surf(k)
+	      wpwet_surf(k),poros_surf(k), pmap (k)
 
         if (allocated (parms4file)) then
            parms4file (n, 1) = ara1(k)
@@ -3677,12 +3678,12 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
          write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
               tsa1(k),tsa2(k),tsb1(k),tsb2(k)
-         write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)')&
+         write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')&
               tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),         &
               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),       &
               grav_vec(k),soc_vec(k),poc_vec(k),                            &
               a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k) ,   &
-	      wpwet_surf(k),poros_surf(k)
+	      wpwet_surf(k),poros_surf(k), pmap(k)
 
          if (allocated (parms4file)) then
             parms4file (n, 1) = ara1(k)

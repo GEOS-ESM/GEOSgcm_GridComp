@@ -557,6 +557,9 @@ make_movies, ncat, vec2grid, 'LAI'
 make_movies, ncat, vec2grid, 'GREEN'
 make_movies, ncat, vec2grid, 'VISDF'
 make_movies, ncat, vec2grid, 'NIRDF'
+make_movies, ncat, vec2grid, 'MODIS-VIS'
+make_movies, ncat, vec2grid, 'MODIS-NIR'
+
 END
 
 ; ==============================================================================
@@ -1316,7 +1319,9 @@ if (vname eq 'LAI') then upval = 6.
 if (vname eq 'LAI')   then filename = '../lai.dat'
 if (vname eq 'GREEN') then filename = '../green.dat' 
 if (vname eq 'VISDF') then filename = '../AlbMap.WS.8-day.tile.0.3_0.7.dat'
-if (vname eq 'NIRDF') then filename = '../AlbMap.WS.8-day.tile.0.7_5.0.dat' 
+if (vname eq 'NIRDF') then filename = '../AlbMap.WS.8-day.tile.0.7_5.0.dat'
+if (vname eq 'MODIS-VIS') then filename = '../MODISVISmean.dat'
+if (vname eq 'MODIS-NIR') then filename = '../MODISNIRmean.dat'
 
 im = n_elements(vec2grid[*,0].NT)
 jm = n_elements(vec2grid[0,*].NT)
@@ -2368,7 +2373,7 @@ dx         = 1.d0/12.
 dy         = 1.d0/12.
 DATELINE   = 1
 global_bcs = 0
-WORKDIR    = '/gpfsm/dnb02/smahanam/MichelBechtold/SouthAmerica/0.125/'
+WORKDIR    = '/gpfsm/dnb02/smahanam/MichelBechtold/NorthAmerica/5-arcmin/'
 
 nc = long(360./dx)
 nr = long(180./dy)
@@ -2376,7 +2381,7 @@ nr = long(180./dy)
 openw,1,workdir + 'clsm/NLDAS-5arcmin_vec.data'
 
 if(NOT (boolean (global_bcs))) then begin
-  xylim = [25., -125., 53., -67.]
+  xylim = [35., -180., 80., -55.]
   x = indgen (nc)*dx -180. + dx/2.
   y = indgen (nr)*dy  -90. + dy/2.
   i1 = value_locate (x,  xylim(1)) + 1
