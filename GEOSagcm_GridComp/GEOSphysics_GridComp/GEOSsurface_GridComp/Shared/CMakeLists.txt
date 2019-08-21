@@ -1,6 +1,6 @@
 # Note that directory and library name do not correspond!
 esma_set_this (OVERRIDE GEOS_SurfaceShared)
-
+add_subdirectory(Raster)
 set (srcs
   StieglitzSnow.F90
   SurfParams.F90)
