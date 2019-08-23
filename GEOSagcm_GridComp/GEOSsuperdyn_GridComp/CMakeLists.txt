@@ -1,7 +1,7 @@
 esma_set_this ()
 
 set (alldirs
-  FVdycore
+  @FVdycore
   FVdycore_GridComp
   GEOSdatmodyn_GridComp
   ARIESg3_GridComp
