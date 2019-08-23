@@ -15,7 +15,7 @@ module shoc
                               rgas   => MAPL_RGAS,   &
                               rv     => MAPL_RVAP,   &
                               lcond  => MAPL_ALHL,   &
-!                              lfus   => MAPL_ALHS,   &
+                              lfus   => MAPL_ALHS,   &
                               pi     => MAPL_PI,     &
                               MAPL_H2OMW, MAPL_AIRMW
 
@@ -31,66 +31,97 @@ module shoc
 
  contains
 
- subroutine run_shoc( nx, ny, nzm, nz, dtn,                      &  ! in
+ subroutine run_shoc( nx, ny, nzm, nz, dtn, dm_inv,              &  ! in
                  prsl_inv, phii_inv, phil_inv, u_inv, v_inv,     &  ! in
-                 omega_inv, hflx, evap,                          &  ! in
-                 tabs_inv, qwv_inv, qi_inv, qc_inv, qpi_inv,     &  ! inout 
-                 qpl_inv, cld_sgs_inv,                           &  ! inout
-                 tke_inv, prnum, tkh_inv, wthv_sec_inv,          &  ! inout
+                 omega_inv, hflx, evap, buoy_mf_inv,             &  ! in
+                 tabs_inv, qwv_inv, qi_inv, qc_inv, qpi_inv,     &  ! in 
+                 qpl_inv, cld_sgs_inv, wthv_sec_inv, prnum,      &  ! in
+                 tke_inv, tkh_inv,                               &  ! inout
+                 isotropy_inv, w3_canuto_inv,                    &  ! out
                  tkesbdiss_inv, tkesbbuoy_inv,                   &  ! out
                  tkesbshear_inv,tkesbtrans_inv,                  &  ! out
-                 smixt_inv,brunt_inv,shear_inv,                  &  ! out
+                 smixt_inv,smixt_oc_inv,smixt_ic_inv,            &  ! out
+                 smixt1_inv,smixt2_inv,smixt3_inv,               &  ! out
+                 brunt_inv,shear_inv,                            &  ! out
                  LAM, TSCL, VON, CKVAL, CEFAC, CESFAC,           &  ! tuning param in
-                 THLTUN, QWTUN, QWTHLTUN, DO_TRANS  )                 
+                 THLTUN, QWTUN, QWTHLTUN, DO_TRANS, DO_CLDLEN,   &
+                 USE_MF_PDF, USE_MF_BUOY, BUOY_OPTION )                 
 
-  real, parameter :: lfus = 1.0
 
-  real, parameter :: lsub = lcond+lfus, fac_cond = lcond/cp, fac_fus = lfus/cp,      &
-                     fac_sub = lsub/cp, ggri = 1.0/ggr,      kapa = rgas/cp,         &
-                     gocp = ggr/cp,     rog = rgas*ggri,     sqrt2 = sqrt(2.0),      &
-                     sqrtpii = 1.0/sqrt(pi+pi), epsterm = rgas/rv, twoby3 = 2.0/3.0, &
-                     onebeps = 1.0/epsterm, twoby15 = 2.0 / 15.0,                    &
-                     onebrvcp= 1.0/(rv*cp), skew_facw=1.2, skew_fact=1.0,&
-                     tkef1=0.5, tkef2=1.0-tkef1, tkhmax=500.0, epsv=MAPL_H2OMW/MAPL_AIRMW
-!                    skew_facw=1.2, skew_fact=0.5
-!                    onebeps = 1.0/epsterm, twoby15 = 2.0 / 15.0, skew_facw=1.2  ! orig
+  real, parameter :: lsub = lcond+lfus,         &
+                     fac_cond = lcond/cp,       &
+                     fac_fus = lfus/cp,         &
+                     fac_sub = lsub/cp,         &
+                     ggri = 1.0/ggr,            &
+                     kapa = rgas/cp,            &
+                     gocp = ggr/cp,             &
+                     rog = rgas*ggri,           &
+                     sqrt2 = sqrt(2.0),         &
+                     sqrtpii = 1.0/sqrt(pi+pi), &
+                     epsterm = rgas/rv,         &
+                     twoby3 = 2.0/3.0,          &
+                     onebeps = 1.0/epsterm,     &
+                     twoby15 = 2.0 / 15.0,      &
+                     onebrvcp= 1.0/(rv*cp),     &
+                     tkef1=0.5,                 &
+                     tkef2=1.0-tkef1,           &
+                     tkhmax=1000.0,             & 
+                     epsv=MAPL_H2OMW/MAPL_AIRMW
 
   integer, intent(in) :: nx    ! Number of points in the physics window in the x
   integer, intent(in) :: ny    ! and y directions
 
   integer, intent(in) :: nzm   ! Number of vertical layers
   integer, intent(in) :: nz    ! Number of layer interfaces  (= nzm + 1)   
-  integer, intent(in) :: DO_TRANS  ! TKE transport term on/off
-  real,    intent(in) :: dtn   ! Physics time step, s 
-  real,    intent(in) :: hflx(nx)
-  real,    intent(in) :: evap(nx)
+  integer, intent(in) :: DO_TRANS     ! TKE transport term on/off
+  integer, intent(in) :: DO_CLDLEN    ! TKE transport term on/off
+  integer, intent(in) :: USE_MF_PDF   ! Use mass flux contrib to PDF
+  integer, intent(in) :: USE_MF_BUOY  ! Explicitly add mass flux contribution to buoyancy
+  integer, intent(in) :: BUOY_OPTION  ! choose source of TKE buoyancy term
+                                      ! 0=local stability
+                                      ! 1=single-gaussian PDF,
+                                      ! 2=double-gaussian PDF (MoistGridComp)
+  real, intent(in   ) :: dtn          ! Physics time step, s 
+  real, intent(in   ) :: hflx(nx,ny)  ! Surface sensible heat flux
+  real, intent(in   ) :: evap(nx,ny)  ! Surface evaporation
 
-  real, intent(in)    :: prsl_inv (nx,ny,nzm) ! mean layer presure   
-  real, intent(in)    :: phii_inv (nx,ny,nz ) ! interface geopotential height
-  real, intent(in)    :: phil_inv (nx,ny,nzm) ! layer geopotential height  
-  real, intent(in)    :: u_inv    (nx,ny,nzm) ! u-wind, m/s
-  real, intent(in)    :: v_inv    (nx,ny,nzm) ! v-wind, m/s
-  real, intent(in)    :: omega_inv(nx,ny,nzm) ! omega, Pa/s
+  real, intent(in   ) :: dm_inv   (nx,ny,nzm) ! mean layer mass   
+  real, intent(in   ) :: prsl_inv (nx,ny,nzm) ! mean layer presure   
+  real, intent(in   ) :: phii_inv (nx,ny,nz ) ! interface geopotential height
+  real, intent(in   ) :: phil_inv (nx,ny,nzm) ! layer geopotential height  
+  real, intent(in   ) :: u_inv    (nx,ny,nzm) ! u-wind, m/s
+  real, intent(in   ) :: v_inv    (nx,ny,nzm) ! v-wind, m/s
+  real, intent(in   ) :: omega_inv(nx,ny,nzm) ! omega, Pa/s
+  real, intent(in   ) :: buoy_mf_inv(nx,ny,nzm) ! buoyancy flux MF, K*m/s
+  real, intent(in   ) :: wthv_sec_inv(nx,ny,nzm) ! Buoyancy flux, K*m/s
 
-  real, intent(inout) :: tabs_inv   (nx,ny,nzm) ! temperature, K
-  real, intent(inout) :: qwv_inv    (nx,ny,nzm) ! water vapor mixing ratio, kg/kg
-  real, intent(inout) :: qc_inv     (nx,ny,nzm) ! cloud water mixing ratio, kg/kg
-  real, intent(inout) :: qi_inv     (nx,ny,nzm) ! cloud ice   mixing ratio, kg/kg
-  real, intent(inout) :: qpl_inv    (nx,ny,nzm) ! rain mixing ratio, kg/kg
-  real, intent(inout) :: qpi_inv    (nx,ny,nzm) ! snow mixing ratio, kg/kg
-  real, intent(inout) :: cld_sgs_inv(nx,ny,nzm) ! sgs cloud fraction
+  real, intent(in   ) :: tabs_inv   (nx,ny,nzm) ! temperature, K
+  real, intent(in   ) :: qwv_inv    (nx,ny,nzm) ! water vapor mixing ratio, kg/kg
+  real, intent(in   ) :: qc_inv     (nx,ny,nzm) ! cloud water mixing ratio, kg/kg
+  real, intent(in   ) :: qi_inv     (nx,ny,nzm) ! cloud ice   mixing ratio, kg/kg
+  real, intent(in   ) :: qpl_inv    (nx,ny,nzm) ! rain mixing ratio, kg/kg
+  real, intent(in   ) :: qpi_inv    (nx,ny,nzm) ! snow mixing ratio, kg/kg
+  real, intent(in   ) :: cld_sgs_inv(nx,ny,nzm) ! sgs cloud fraction
   real, intent(inout) :: tke_inv    (nx,ny,nzm) ! turbulent kinetic energy. m**2/s**2
   real, intent(inout) :: tkh_inv    (nx,ny,nzm) ! eddy diffusivity
-  real, intent(inout) :: prnum  (nx,ny,nzm) ! turbulent Prandtl number
-  real, intent(inout) :: wthv_sec_inv (nx,ny,nzm) ! Buoyancy flux, K*m/s
+  real, intent(inout) :: prnum      (nx,ny,nzm) ! turbulent Prandtl number
 
-  real, intent(  out) :: tkesbdiss_inv(nx,ny,nzm) ! dissipation
-  real, intent(  out) :: tkesbbuoy_inv(nx,ny,nzm) ! buoyancy production
-  real, intent(  out) :: tkesbshear_inv(nx,ny,nzm) ! shear production
-  real, intent(  out) :: tkesbtrans_inv(nx,ny,nzm) ! tke transport
-  real, intent(  out) :: smixt_inv(nx,ny,nzm) ! dissipation length scale
-  real, intent(  out) :: brunt_inv(nx,ny,nzm) ! Brunt vaisala frequency
-  real, intent(  out) :: shear_inv(nx,ny,nzm) ! Brunt vaisala frequency
+  real, intent(  out) :: isotropy_inv(nx,ny,nzm) ! return to isotropy timescale
+  real, intent(  out) :: w3_canuto_inv(nx,ny,nz) ! canuto w3 estimate
+
+  real, dimension(:,:,:), pointer :: tkesbdiss_inv  ! dissipation
+  real, dimension(:,:,:), pointer :: tkesbbuoy_inv  ! buoyancy production 
+  real, dimension(:,:,:), pointer :: tkesbshear_inv ! shear production 
+  real, dimension(:,:,:), pointer :: tkesbtrans_inv ! tke transport 
+
+  real, dimension(:,:,:), pointer :: smixt_inv    ! dissipation length scale
+  real, dimension(:,:,:), pointer :: smixt1_inv   ! length scale, term 1
+  real, dimension(:,:,:), pointer :: smixt2_inv   ! length scale, term 2
+  real, dimension(:,:,:), pointer :: smixt3_inv   ! length scale, term 3
+  real, dimension(:,:,:), pointer :: smixt_oc_inv ! dissipation length scale
+  real, dimension(:,:,:), pointer :: smixt_ic_inv ! dissipation length scale
+  real, dimension(:,:,:), pointer :: brunt_inv    ! Brunt vaisala frequency
+  real, dimension(:,:,:), pointer :: shear_inv    ! squared shear diagnostic
 
   real, intent(in   ) :: LAM, TSCL, VON, CKVAL, CEFAC,   &  ! tuning param
                          CESFAC, THLTUN, QWTUN, QWTHLTUN                 
@@ -99,10 +130,11 @@ module shoc
 
   real :: lambda
   real, parameter :: min_tke = 1e-6  ! Minumum TKE value, m**2/s**2 
-  real, parameter :: max_tke = 100.0 ! Maximum TKE value, m**2/s**2 
-! real, parameter :: max_tke = 5.    ! Maximum TKE value, m**2/s**2 
+  real, parameter :: max_tke = 10.    ! Maximum TKE value, m**2/s**2 
+
 ! Maximum turbulent eddy length scale, m
   real, parameter :: max_eddy_length_scale  = 2000. 
+
 ! Maximum "return-to-isotropy" time scale, s
   real, parameter :: max_eddy_dissipation_time_scale = 2000.  
 
@@ -111,13 +143,11 @@ module shoc
   real, parameter :: Cs  = 0.15
   real :: Ck, Ce, Ces
 
-! real, parameter :: Ce  = Ck**3/(0.7*Cs**4) 
-! real, parameter :: Ce  = Ck**3/(0.7*Cs**4) * 2.2 
-! real, parameter :: Ce  = Ck**3/(0.7*Cs**4) * 3.0 , Ces = Ce 
-! real, parameter :: Ce  = Ck**3/(0.7*Cs**4) * 2.5 , Ces = Ce * 3.0 / 2.5 
-! real, parameter :: Ces = Ce/0.7*3.0
-! real, parameter :: Ce  = Ck**3/(0.7*Cs**4), Ces = Ce*3.0/0.7 ! Commented Moor
+! Use double gaussian PDF-based buoyancy
+!  integer, parameter :: use_DG = 1
 
+! real, parameter :: Ce  = Ck**3/(0.7*Cs**4) 
+! real, parameter :: Ces = Ce/0.7*3.0
 
 ! real, parameter :: vonk=0.35  ! Von Karman constant
   real :: vonk, tscale
@@ -128,15 +158,14 @@ module shoc
 ! These parameters are a tie-in with a microphysical scheme
 ! Double check their values for the Zhao-Carr scheme.
   real, parameter :: tbgmin = 233.16    ! Minimum temperature for cloud water., K
-!  real, parameter :: tbgmin = 258.16    ! Minimum temperature for cloud water., K (ZC)
-! real, parameter :: tbgmin = 253.16    ! Minimum temperature for cloud water., K
   real, parameter :: tbgmax = 273.16    ! Maximum temperature for cloud ice, K
   real, parameter :: a_bg   = 1.0/(tbgmax-tbgmin)
-!
+
 ! Parameters to tune the second order moments-  No tuning is performed currently
   real :: thl2tune, qw2tune, qwthl2tune
-  real, parameter :: thl_tol  = 1.e-2, rt_tol = 1.e-4, basetemp  = 300.0
+  real, parameter :: thl_tol  = 1.e-2, rt_tol = 1.e-4
 
+! Number iterations for TKE solution
   integer, parameter :: nitr=6
 
 ! Local variables. Note that pressure is in millibars in the SHOC code.
@@ -147,28 +176,27 @@ module shoc
   real adzi    (nx,ny,nz)   ! level thickness i.e. zl(k)-zl(k-1) - defined at interface
  
   real hl      (nx,ny,nzm)  ! liquid/ice water static energy , K
+  real hvl     (nx,ny,nzm)  ! liquid/ice water static energy , K
   real qv      (nx,ny,nzm)  ! water vapor, kg/kg
   real qcl     (nx,ny,nzm)  ! liquid water  (condensate), kg/kg
   real qci     (nx,ny,nzm)  ! ice water  (condensate), kg/kg
   real w       (nx,ny,nzm)  ! z-wind, m/s
   real bet     (nx,ny,nzm)  ! ggr/tv0
   real gamaz   (nx,ny,nzm)  ! ggr/cp*z
-  real phii    (nx,ny,nz)  
-  real phil    (nx,ny,nzm)  
+  real dm      (nx,ny,nzm)  
   real prsl    (nx,ny,nzm)  
   real u       (nx,ny,nzm)  
   real v       (nx,ny,nzm)  
   real omega   (nx,ny,nzm)  
   real tabs    (nx,ny,nzm)
   real qwv     (nx,ny,nzm)
-  real qc      (nx,ny,nzm)
-  real qi      (nx,ny,nzm)
   real qpl     (nx,ny,nzm)
   real qpi     (nx,ny,nzm)
   real cld_sgs (nx,ny,nzm)
   real tke     (nx,ny,nzm)
   real tkh     (nx,ny,nzm)
   real wthv_sec(nx,ny,nzm)
+  real buoy_mf (nx,ny,nzm)
   real tkesbdiss(nx,ny,nzm)
   real tkesbbuoy(nx,ny,nzm)
   real tkesbshear(nx,ny,nzm)
@@ -188,53 +216,29 @@ module shoc
 
 ! Eddy length formulation 
   real smixt    (nx,ny,nzm) ! Turbulent length scale, m
+  real smixt1    (nx,ny,nzm) ! Turbulent length scale, m
+  real smixt2    (nx,ny,nzm) ! Turbulent length scale, m
+  real smixt3    (nx,ny,nzm) ! Turbulent length scale, m
+  real smixt_incld(nx,ny,nzm) ! Turbulent length scale, m
+  real smixt_outcld(nx,ny,nzm) ! Turbulent length scale, m
   real isotropy (nx,ny,nzm) ! "Return-to-isotropy" eddy dissipation time scale, s
 ! real isotropy_debug (nx,ny,nzm) ! Return to isotropy scale, s without artificial limits
   real brunt    (nx,ny,nzm) ! Moist Brunt-Vaisalla frequency, s^-1
   real conv_vel2(nx,ny,nzm) ! Convective velocity scale cubed, m^3/s^3
 
-! Output of SHOC
-  real diag_frac, diag_qn, diag_qi, diag_ql
-
-! real diag_frac(nx,ny,nzm) ! SGS cloud fraction
-! real diag_qn  (nx,ny,nzm) ! SGS cloud+ice condensate, kg/kg
-! real diag_qi  (nx,ny,nzm) ! SGS ice condensate, kg/kg
-! real diag_ql  (nx,ny,nzm) ! SGS liquid condensate, kg/kg
-
-
-! Horizontally averaged variables
-! real conv_vel(nzm)        ! Convective velocity scale cubed, m^3/s^3
-  real wqlsb   (nzm)        ! liquid water flux, kg/kg/ m/s
-  real wqisb   (nzm)        ! ice flux, kg/kg m/s
-  real thlv    (nzm)        ! Grid-scale level-average virtual potential temperature
-
 
 ! Local variables
-
-
-!, tkesbdiss, tkesbbuoy_debug   &
-!                               tkebuoy_sgs, total_water, tscale1_debug, brunt2
 
   real, dimension(nx,ny,nzm) :: total_water, brunt2, def2, thv
 
   real, dimension(nx,ny)     :: denom, numer, l_inf, cldarr
 
-  real lstarn,    depth,    omn,       betdz,    bbb,      term,   qsatt, dqsat,        &
-       thedz,     conv_var,  tkes,     skew_w,   skew_qw,  aterm,  w1_1,  w1_2,  w2_1,  &
-       w2_2,      w3var,     thl1_1,   thl1_2,   thl2_1,   thl2_2, qw1_1, qw1_2, qw2_1, &
-       qw2_2,     ql1,       ql2,      w_ql1,    w_ql2,                                 &
-       r_qwthl_1, r_wqw_1,   r_wthl_1, testvar,  s1,    s2,    std_s1,  std_s2, C1, C2, &
-       thl_first, qw_first,  w_first,  Tl1_1,    Tl1_2, betatest, pval, pkap,           &
-       w2thl,     w2qw,w2ql, w2ql_1,   w2ql_2,                                          &
-       thec,      thlsec,    qwsec,    qwthlsec, wqwsec, wthlsec, thestd,dum,           &
-       cqt1,      cthl1,     cqt2,     cthl2,    qn1,    qn2, qi1, qi2, omn1, omn2,     &
-       basetemp2, beta1,     beta2,    qs1,      qs2,                                   &
-       esval1_1,  esval2_1,  esval1_2,    esval2_2,   om1,  om2,                        &
-       lstarn1,   lstarn2,   sqrtw2,      sqrtthl,    sqrtqt,                           &
-       sqrtstd1,  sqrtstd2,  tsign, tvar, sqrtw2t,    wqls, wqis,                       &
-       sqrtqw2_1, sqrtqw2_2, sqrtthl2_1,  sqrtthl2_2, sm,   prespot,                    &
-       corrtest1, corrtest2, wrk,  wrk1, wrk2, wrk3, onema, tkeavg, dtqw, dtqi
-
+  real lstarn,    depth,    omn,      betdz,    bbb,        &
+       term,      qsatt,    dqsat,    thedz,    conv_var,   &  
+       tkes,      pval,     pkap,     thlsec,   qwsec,      &
+       qwthlsec,  wqwsec,   wthlsec,  dum,      sm,         &
+       prespot,   wrk,      wrk1,     wrk2,     wrk3,       & 
+       tkeavg,    dtqw,     dtqi
 
   integer i,j,k,km1,ku,kd,ka,kb,kinv,strt,fnsh,cnvl
 
@@ -258,7 +262,7 @@ module shoc
     do j=1,ny
       do i=1,nx
         kinv = nz-k+1
-        zi(i,j,kinv)    = phii_inv(i,j,k)
+        zi(i,j,kinv)    = phii_inv(i,j,k)-phii_inv(i,j,nz)
       enddo
     enddo
   enddo
@@ -267,85 +271,37 @@ module shoc
     do j=1,ny
       do i=1,nx
         kinv = nzm-k+1
-        zl(i,j,kinv)       = phil_inv(i,j,k)
+        zl(i,j,kinv)       = phil_inv(i,j,k)-phii_inv(i,j,nz)
         tkh(i,j,kinv)      = tkh_inv(i,j,k)
+        dm(i,j,kinv)       = dm_inv(i,j,k)
         prsl(i,j,kinv)     = prsl_inv(i,j,k)
         u(i,j,kinv)        = u_inv(i,j,k)
         v(i,j,kinv)        = v_inv(i,j,k)
         omega(i,j,kinv)    = omega_inv(i,j,k)
         tabs(i,j,kinv)     = tabs_inv(i,j,k)
         qwv(i,j,kinv)      = qwv_inv(i,j,k)
-        qc(i,j,kinv)       = qc_inv(i,j,k)
-        qi(i,j,kinv)       = qi_inv(i,j,k)
+        qcl(i,j,kinv)       = qc_inv(i,j,k)
+        qci(i,j,kinv)       = qi_inv(i,j,k)
         cld_sgs(i,j,kinv)  = cld_sgs_inv(i,j,k)
         tke(i,j,kinv)      = tke_inv(i,j,k)
         wthv_sec(i,j,kinv) = wthv_sec_inv(i,j,k)
+        buoy_mf(i,j,kinv)  = USE_MF_BUOY*buoy_mf_inv(i,j,k)
       enddo
     enddo
   enddo
-!  print *,'phil_inv=',phil_inv(50,50,:)
-!  print *,'phii_inv(1:4)=',phii_inv(20,20,1:4)
-!  print *,'phii_inv(nz-3:nz)=',phii_inv(20,20,nz-3:nz)
-!  print *,'zi(1:4)=',zi(20,20,1:4)
-!  print *,'zi(nz-3:nz)=',zi(20,20,nz-3:nz)
-!  print *,'zl=',zl(50,50,:)
-!  print *,'zi=',zi(50,50,:)
-!  print *,'prsl=',prsl(50,50,:)
-!  print *,'tabs=',tabs(50,50,:)
-!  print *,'u=',u(50,50,:)
-!  print *,'old tke(1,1,:)=',tke(1,1,:)
+  if (BUOY_OPTION==2 .and. USE_MF_PDF==1) buoy_mf = 0.0
 
-
-!
-! move water from vapor to condensate if the condensate is negative
-!
-
+           
   do k=1,nzm
     do j=1,ny
       do i=1,nx
-        if (qc(i,j,k) < 0.0) then
-          wrk = qwv(i,j,k) + qc(i,j,k)  
-          if (wrk >= 0.0) then
-            qwv(i,j,k)  = wrk
-            tabs(i,j,k) = tabs(i,j,k) - fac_cond * qc(i,j,k)  ! add heat used for condensation
-            qc(i,j,k)   = 0.0
-          else          ! if total water 0 or negative, and negative...
-            qc(i,j,k)   = 0.0
-            tabs(i,j,k) = tabs(i,j,k) + fac_cond * qwv(i,j,k)  
-            qwv(i,j,k)  = 0.0
-          endif
-        endif
-        if (qi(i,j,k) < 0.0) then
-          wrk = qwv(i,j,k) + qi(i,j,k)
-          if (wrk >= 0.0) then
-            qwv(i,j,k)  = wrk
-            tabs(i,j,k) = tabs(i,j,k) - fac_sub  * qi(i,j,k)
-            qi(i,j,k)   = 0.0
-          else
-            qi(i,j,k)   = 0.0
-            tabs(i,j,k) = tabs(i,j,k) + fac_sub  * qwv(i,j,k)
-            qwv(i,j,k)  = 0.0
-          endif
-        endif
-      enddo
-    enddo
-  enddo
-             
-  do k=1,nzm
-    do j=1,ny
-      do i=1,nx
-!        zl(i,j,k)    = phil(i,j,k) !* ggri
         wrk          = 1.0 / prsl(i,j,k)
         qv(i,j,k)    = max(qwv(i,j,k), 0.0)
         thv(i,j,k)   = tabs(i,j,k) * (1.0+epsv*qv(i,j,k))
         w(i,j,k)     = - rog * omega(i,j,k) * thv(i,j,k) * wrk
-        qcl(i,j,k)   = max(qc(i,j,k), 0.0)
-        qci(i,j,k)   = max(qi(i,j,k), 0.0)
-!
         qpl(i,j,k)     = 0.0  ! comment or remove when using with prognostic rain/snow
         qpi(i,j,k)     = 0.0  ! comment or remove when using with prognostic rain/snow
         wqp_sec(i,j,k) = 0.0  ! Turbulent flux of precipiation
-!
         total_water(i,j,k) = qcl(i,j,k) + qci(i,j,k) + qv(i,j,k)
 
         prespot        = (100000.0*wrk) ** kapa ! Exner function
@@ -358,27 +314,21 @@ module shoc
 ! Liquid/ice water static energy - ! Note the the units are degrees K
         hl(i,j,k) = tabs(i,j,k) + gamaz(i,j,k) - fac_cond*(qcl(i,j,k)+qpl(i,j,k)) &
                                                - fac_fus *(qci(i,j,k)+qpi(i,j,k))
+        hvl(i,j,k) = tabs(i,j,k)*(1.0+epsv*qv(i,j,k)-qcl(i,j,k))+gamaz(i,j,k) &
+                     - fac_cond*qcl(i,j,k) - fac_fus *qci(i,j,k)
         w3(i,j,k) = 0.0
       enddo
     enddo
   enddo
 
-!  print *,'wthv_sec/thv=',wthv_sec(20,20,:)/thv(20,20,:)
-
    
 ! Define vertical grid increments for later use in the vertical differentiation
 
-!  print *,'nx=',nx
-!  print *,'ny=',ny
-!  print *,'zl=',zl(50,50,:)
-!  print *,'zi=',zi(50,50,:)
   do k=2,nzm
     km1 = k - 1
     do j=1,ny
       do i=1,nx
         adzi(i,j,k)   = (zl(i,j,k) - zl(i,j,km1))
-!        print *,'zl(i,j,k)=',zl(i,j,k)
-!        print *,'zl(i,j,km1)=',zl(i,j,km1)
         adzl(i,j,km1) = (zi(i,j,k) - zi(i,j,km1))   ! from 1 to nzm-1
       enddo
     enddo
@@ -389,13 +339,10 @@ module shoc
       adzi(i,j,nz)  = zi(i,j,nz)-zl(i,j,nzm) ! at the top - probably unused
       adzl(i,j,nzm) = adzi(i,j,nzm)
 !
-      wthl_sec(i,j,1) = hflx(i)/cp
-      wqw_sec(i,j,1)  = evap(i)
+      wthl_sec(i,j,1) = hflx(i,j)/cp
+      wqw_sec(i,j,1)  = evap(i,j)
     enddo
   enddo
-
-!  print *,'adzi=',adzi(20,20,:)
-!  print *,'adzl=',adzl(20,20,:)
 
   call tke_shoc()        ! Integrate prognostic TKE equation forward in time
 
@@ -406,7 +353,6 @@ module shoc
 ! Redelsperger J.L., and G. Sommeria, 1986, JAS, 43, 2619-2635 sans the use of stabilty
 ! weighting functions - Result is in global variables w_sec, thl_sec, qw_sec, and qwthl_sec
     
-! call diag_moments(total_water,tke,tkh)
 
 ! Second moment of vertical velocity.
 ! Note that Eq 6 in BK13 gives a different expression that is dependent on 
@@ -480,10 +426,9 @@ module shoc
       enddo   ! j  loop
     enddo     ! k  loop
 
-!   These would be at the surface - do we need them?
     do j=1,ny
       do i=1,nx
-!       wthl_sec(i,j,1)  = wthl_sec(i,j,2)
+!       wthl_sec(i,j,1)  = wthl_sec(i,j,2)  ! these are set to surface fluxes above
 !       wqw_sec(i,j,1)   = wqw_sec(i,j,2)
         thl_sec(i,j,1)   = thl_sec(i,j,2)
         qw_sec(i,j,1)    = qw_sec(i,j,2)
@@ -496,44 +441,39 @@ module shoc
 
   call canuto()
 
-! Recover parameters of the subgrid PDF using diagnosed moments
-! and calculate SGS cloudiness, condensation and it's effects on temeperature
-! and moisture variables
 
-  call assumed_pdf()
+! If using single-gaussian PDF for buoyancy flux,
+! this will overwrite wthv_sec
+
+if (BUOY_OPTION==1) then
+  call buoyancy_single_gaussian()
+end if
 
 
-!  do k=1,nz
-!    do j=1,ny
-!      do i=1,nx
-!        kinv = nz-k+1
-!        tkh(i,j,kinv)        = tkh(i,j,k)
-!      enddo
-!    enddo
-!  enddo
-  do k=1,nzm
-    do j=1,ny
-      do i=1,nx
-        kinv = nzm-k+1
-        tabs_inv(i,j,kinv)       = tabs(i,j,k)
-        tkh_inv(i,j,kinv)        = tkh(i,j,k)
-        qwv_inv(i,j,kinv)        = qwv(i,j,k)
-        qc_inv(i,j,kinv)         = qc(i,j,k)
-        qi_inv(i,j,kinv)         = qi(i,j,k)
-        cld_sgs_inv(i,j,kinv)    = cld_sgs(i,j,k)
-        tke_inv(i,j,kinv)        = tke(i,j,k)
-        wthv_sec_inv(i,j,kinv)   = wthv_sec(i,j,k)
-        tkesbdiss_inv(i,j,kinv)  = tkesbdiss(i,j,k)
-        tkesbbuoy_inv(i,j,kinv)  = tkesbbuoy(i,j,k)
-        tkesbtrans_inv(i,j,kinv) = tkesbtrans(i,j,k)
-        tkesbshear_inv(i,j,kinv) = tkesbshear(i,j,k)
-        smixt_inv(i,j,kinv)      = smixt(i,j,k)
-        brunt_inv(i,j,kinv)      = brunt2(i,j,k)
-        shear_inv(i,j,kinv)      = def2(i,j,k)
-      enddo
-    enddo
-  enddo
+!=== Assign exports and flip vertical ===!
 
+  tkh_inv(:,:,1:nzm)       = tkh(:,:,nzm:1:-1)
+  isotropy_inv(:,:,1:nzm)  = isotropy(:,:,nzm:1:-1)
+  tke_inv(:,:,1:nzm)       = tke(:,:,nzm:1:-1)
+
+  w3_canuto_inv(:,:,1:nzm) = w3(:,:,nzm:1:-1)
+
+  if (associated(tkesbdiss_inv))  tkesbdiss_inv(:,:,1:nzm)  = tkesbdiss(:,:,nzm:1:-1)
+  if (associated(tkesbbuoy_inv))  tkesbbuoy_inv(:,:,1:nzm)  = tkesbbuoy(:,:,nzm:1:-1)
+  if (associated(tkesbshear_inv)) tkesbshear_inv(:,:,1:nzm) = tkesbshear(:,:,nzm:1:-1)
+  if (associated(tkesbtrans_inv)) tkesbtrans_inv(:,:,1:nzm) = tkesbtrans(:,:,nzm:1:-1)
+
+  if (associated(smixt_inv))    smixt_inv(:,:,1:nzm)    = smixt(:,:,nzm:1:-1)
+  if (associated(smixt1_inv))   smixt1_inv(:,:,1:nzm)   = smixt1(:,:,nzm:1:-1)
+  if (associated(smixt2_inv))   smixt2_inv(:,:,1:nzm)   = smixt2(:,:,nzm:1:-1)
+  if (associated(smixt3_inv))   smixt3_inv(:,:,1:nzm)   = smixt3(:,:,nzm:1:-1)
+  if (associated(smixt_oc_inv)) smixt_oc_inv(:,:,1:nzm) = smixt_outcld(:,:,nzm:1:-1)
+  if (associated(smixt_ic_inv)) smixt_ic_inv(:,:,1:nzm) = smixt_incld(:,:,nzm:1:-1)
+  
+  if (associated(brunt_inv))    brunt_inv(:,:,1:nzm)    = brunt2(:,:,nzm:1:-1)
+  if (associated(shear_inv))    shear_inv(:,:,1:nzm)    = def2(:,:,nzm:1:-1)
+
+!========================================!
 
 
 contains
@@ -571,33 +511,47 @@ contains
     call eddy_length()   ! Find turbulent mixing length
     call check_eddy()    ! Make sure it's reasonable
 
+!---------------------------------------------------------------
+! UWMT-style estimate of TKE transport within convective layers
+!---------------------------------------------------------------
 
-! temporary estimate of transport within convective layers
-! - need to adjust a_prod_tr to conserve tke
-! - need to make pressure weighted, rather than height
-! - add option to extend 'convection' across single stable layer
-    if (DO_TRANS /= 0) then
+    if (DO_TRANS/=0) then
     cnvl = 0
     do i=1,nx
      do j=1,ny
+      fnsh=0
       do k=1,nzm
-        if (wthv_sec(i,j,k).ge.0.01 .and. cnvl.eq.0) then
+        if (wthv_sec(i,j,k)+buoy_mf(i,j,k) .ge.0.01 .and. cnvl.eq.0) then ! if bot of conv layer
+!        if (mf(i,j,k).ge.0.001 .and. cnvl.eq.0) then ! if bot of conv layer
           cnvl = 1
           strt = k
         end if        
-        if (cnvl.eq.1 .and. wthv_sec(i,j,k).lt.0.01) then
+
+        ! if top of conv layer, relax tke within conv layer to
+        ! pressure-weighted mean tke
+        if (cnvl.eq.1 .and. wthv_sec(i,j,k)+buoy_mf(i,j,k).lt.0.01) then
+!        if (cnvl.eq.1 .and. mf(i,j,k).lt.0.001) then
           fnsh = k-1
           if (strt<fnsh) then
-            tkeavg = sum(tke(i,j,strt:fnsh)*adzl(i,j,strt:fnsh))/sum(adzl(i,j,strt:fnsh))
-            tscale1 = sqrt(tkeavg)*(fnsh-strt+1.)/max(sum(smixt(i,j,strt:fnsh)),10.)
-            tkesbtrans(i,j,strt:fnsh) = (tkeavg-tke(i,j,strt:fnsh))*tscale1
+             tkeavg = sum(tke(i,j,strt:fnsh)*dm(i,j,strt:fnsh))/sum(dm(i,j,strt:fnsh))
+             tscale1 = sqrt(tkeavg)*(fnsh-strt+1.)/max(sum(smixt(i,j,strt:fnsh)),10.)
+             tkesbtrans(i,j,strt:fnsh) = (tkeavg-tke(i,j,strt:fnsh))*tscale1
           end if
+
+          ! check above unstable layer for tkh>0
+          do while(tkh(i,j,fnsh+1).gt.0.05*maxval(tkh(i,j,strt:fnsh)) .and. fnsh.lt.nzm-2)
+            fnsh=fnsh+1
+          end do
+          ! fnsh is index of last interface with tkh>5% of max
+          ! but is index of layer above that interface
+          fnsh = fnsh-1
+
           cnvl = 0
-        end if
-      end do
-     end do
-    end do
-    end if
+        end if ! if top of conv layer
+      end do ! k loop
+     end do ! j loop
+    end do ! i loop
+    end if ! do_transport
 
 
     do k=1,nzm      
@@ -625,12 +579,10 @@ contains
 !         cek = 1.0 + 2.0 / (wrk*wrk -3.3)
 
 ! TKE boyancy production term. wthv_sec (buoyancy flux) is calculated in
-! assumed_pdf(). The value used here is from the previous time step
-! basetemp (300) is virt. temperature. Why is it constant?
+! Moist GridComp. The value used here is from the previous time step
 
-!         a_prod_bu = (ggr/basetemp)*wthv_sec(i,j,k)
 !         a_prod_bu = bet(i,j,k)*wthv_sec(i,j,k)
-          a_prod_bu = (ggr / thv(i,j,k)) * wthv_sec(i,j,k)
+          a_prod_bu = (ggr / thv(i,j,k)) * (wthv_sec(i,j,k)+buoy_mf(i,j,k))
 
 ! If wthv_sec from subgrid PDF is not available use Brunt-Vaisalla frequency from eddy_length()
 !         wrk  = (0.5*ck)  * (tkh(i,j,ku)+tkh(i,j,kd))
@@ -644,8 +596,6 @@ contains
 
 !Compute $c_k$ (variable Cee) for the TKE dissipation term following Deardorff (1980)
 
-
-
           if (buoy_sgs <= 0.0) then
             smix = grd
           else
@@ -655,14 +605,11 @@ contains
           end if
 
           ratio     = smix/grd
-          if (zl(i,j,k).gt.5000.) then   ! increase dissipation above 5 km
-            Cee = ((zl(i,j,k)-5000.)/1000.+1.)*Cek* (pt19 + pt51*ratio)
-          else    
-            Cee = Cek* (pt19 + pt51*ratio)
-          end if
-          wrk   = 0.5 * wrk * (prnum(i,j,ku) + prnum(i,j,kd))
-          a_prod_sh = min(tkhmax,(wrk+0.0001))*def2(i,j,k)           ! TKE shear production term
 
+          Cee = Cek* (pt19 + pt51*ratio)
+
+          wrk   = 0.5 * wrk * (prnum(i,j,ku) + prnum(i,j,kd))
+          a_prod_sh = min(min(tkhmax,(wrk+0.0001))*def2(i,j,k),0.001)    ! TKE shear production term
 
 ! smixt (turb. mixing lenght) is calculated in eddy_length() 
 ! Explicitly integrate TKE equation forward in time
@@ -733,6 +680,8 @@ contains
       end do ! j
     end do ! k
 
+
+
   end subroutine tke_shoc
 
  
@@ -746,13 +695,13 @@ contains
     real    txd(nx,ny)
     integer i,j,k,kb,kc
     
-!   do k=1,nzm
-!     do j=1,ny
-!       do i=1,nx
-!         def2(i,j,k) = 0.0
-!       enddo
-!     enddo
-!   enddo
+   do k=1,nzm
+     do j=1,ny
+       do i=1,nx
+         def2(i,j,k) = 0.0
+       enddo
+     enddo
+   enddo
 
 ! Calculate TKE shear production term 
 
@@ -860,7 +809,7 @@ contains
     do j=1,ny
       do i=1,nx
         if (denom(i,j) >  0.0 .and. numer(i,j) > 0.0) then
-          l_inf(i,j) = 0.1 * (numer(i,j)/denom(i,j))
+          l_inf(i,j) = max(min(0.1 * (numer(i,j)/denom(i,j)),300.),10.)
         else
           l_inf(i,j) = 100.
         endif
@@ -945,7 +894,9 @@ contains
                           + epsv*tabs(i,j,k)*(total_water(i,j,kc)-total_water(i,j,kb)) &
                           + (bbb*fac_cond-tabs(i,j,k))*(qpl(i,j,kc)-qpl(i,j,kb))       &
                           + (bbb*fac_sub -tabs(i,j,k))*(qpi(i,j,kc)-qpi(i,j,kb)) )
+
           end if
+
              
 ! Reduction of mixing length in the stable regions (where B.-V. freq. > 0) is required.
 ! Here we find regions of Brunt-Vaisalla freq. > 0 for later use. 
@@ -962,10 +913,10 @@ contains
 ! Keep the length scale adequately small near the surface following Blackadar (1984)
 ! Note that this is not documented in BK13 and was added later for SP-CAM runs
 
-!         if (k == 1) then
-!           term = 600.*tkes
-!           smixt(i,j,k) = term + (0.4*zl(i,j,k)-term)*exp(-zl(i,j,k)*0.01)
-!         else
+         if (k == 1) then
+           term = 600.*tkes
+           smixt(i,j,k) = term + (0.4*zl(i,j,k)-term)*exp(-zl(i,j,k)*0.01)
+         else
 
 ! tscale is the eddy turnover time scale in the boundary layer and is 
 ! an empirically derived constant 
@@ -973,23 +924,30 @@ contains
             if (tkes > 0.0 .and. l_inf(i,j) > 0.0) then
               wrk1 = 1.0 / (tscale*tkes*vonk*zl(i,j,k))
               wrk2 = 1.0 / (tscale*tkes*l_inf(i,j))
-!              wrk1 = 1.0 / (vonk*zl(i,j,k))
-!              wrk2 = 1.0 / (l_inf(i,j))
-              wrk1 = 1.0 / (wrk1 + wrk2 + 0.01 * brunt2(i,j,k) / tke(i,j,k))
-!             smixt(i,j,k) = min(max_eddy_length_scale, 2.8284*sqrt(wrk1)/0.3)
-              smixt(i,j,k) = min(max_eddy_length_scale,        sqrt(wrk1)/0.3)
+!              wrk1 = 1.0 / (tscale*vonk*zl(i,j,k))
+!              wrk2 = 1.0 / (tscale*l_inf(i,j))
+              smixt1(i,j,k) = wrk1
+              smixt2(i,j,k) = wrk2
+              smixt3(i,j,k) = 0.01 * brunt2(i,j,k) / tke(i,j,k)
+!              smixt3(i,j,k) = sqrt(brunt2(i,j,k)) / (0.7*tkes)
+              wrk1 = 1.0 / (wrk1 + wrk2 + smixt3(i,j,k))
+              smixt(i,j,k) = min(max_eddy_length_scale, 2.8284*sqrt(wrk1)/0.3)
+!              smixt(i,j,k) = min(max_eddy_length_scale,        sqrt(wrk1)/0.3)
 
            endif
            
-! overwrite with simple Blackadar 
-!           wrk1 = 1./200.
-!           wrk2 = 1./(vonk*zl(i,j,k))
-!           wrk1 = 1./(wrk1+wrk2)
-!           smixt(i,j,k) = min(max_eddy_length_scale, wrk1)
-       
- 
-!         end if  ! not k=1
-             
+         end if  ! not k=1
+
+         smixt_outcld(i,j,k) = smixt(i,j,k)
+  
+           
+!====== Length scale testing ======
+
+         if (zl(i,j,k).gt.5000.) smixt(i,j,k)=min(smixt(i,j,k),50.)
+
+
+!==================================
+
         end do
           
       end do
@@ -999,29 +957,32 @@ contains
 ! Now find the in-cloud turbulence length scale
 ! See Eq. 13 in BK13 (Eq. 4.18 in Pete's disseration)
     
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! Remove after coupling to subgrid PDF.
-!wthv_sec = -300/ggr*brunt*tk
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!======== Buoyancy flux from local stability ======!
+if (BUOY_OPTION==0) then
+   wthv_sec = -1.0*(thv/ggr)*brunt*tkh
+endif
+!==================================================!
     
 ! determine cubed convective velocity scale (conv_vel2) inside the cloud
 
 !   call conv_scale()         ! inlining the relevant code
 
-    do j=1,ny
-      do i=1,nx
-        conv_vel2(i,j,1) = 0. ! Convective velocity scale cubed
-      enddo
-    enddo
+!!! npa, commented out
+!    do j=1,ny
+!      do i=1,nx
+!        conv_vel2(i,j,1) = 0. ! Convective velocity scale cubed
+!      enddo
+!    enddo
                               ! Integrate velocity scale in the vertical
-    do k=2,nzm
-      do j=1,ny
-        do i=1,nx
-          conv_vel2(i,j,k) = conv_vel2(i,j,k-1)                               &
-                           + 2.5*adzi(i,j,k)*bet(i,j,k)*wthv_sec(i,j,k)
-        enddo
-      enddo
-    enddo
+!    do k=2,nzm
+!      do j=1,ny
+!        do i=1,nx
+!          conv_vel2(i,j,k) = conv_vel2(i,j,k-1)                               &
+!                           + 2.5*adzi(i,j,k)*bet(i,j,k)*wthv_sec(i,j,k)
+!        enddo
+!      enddo
+!    enddo
+!!! npa
     
     do j=1,ny
       do i=1,nx
@@ -1042,17 +1003,28 @@ contains
 ! Look for the cloud top in this column
             if (wrk > thresh .and. qcl(i,j,k+1)+qci(i,j,k+1) <= thresh) then
               ku = k
+!!! npa
 ! conv_vel2 (Cubed convective velocity scale) is calculated in conv_scale()
 ! Use the value of conv_vel2 at the top of the cloud. 
-              conv_var = conv_vel2(i,j,k)**(1./3.)
+!              conv_var = conv_vel2(i,j,k)**(1./3.)
+!!! npa
             endif
                 
 ! Compute the mixing length scale for the cloud layer that we just found
-            if (kl > 0 .and. ku > 0 .and. ku-kl > 1) then
-                
+!!! npa:  no need to exclude clouds 1 layer thick
+!            if (kl > 0 .and. ku > 0 .and. ku-kl > 1) then
+            if (kl > 0 .and. ku > 0 .and. ku-kl > 0) then
+
+              conv_var=0.
+              do kk=kl,ku
+                conv_var = conv_var+2.5*adzi(i,j,kk)*bet(i,j,kk)*wthv_sec(i,j,kk)
+              end do
+              conv_var = conv_var**(1./3.)
+
+!!! npa                
               if (conv_var > 0) then ! If convective vertical velocity scale > 0
                  
-                depth = (zl(i,j,ku)-zl(i,j,kl)) + adzl(i,j,kl)
+                depth = min((zl(i,j,ku)-zl(i,j,kl)) + adzi(i,j,kl), 1000.)
                       
                      
                 do kk=kl,ku
@@ -1062,9 +1034,14 @@ contains
 !                  wrk = wrk * wrk + 0.01*brunt2(i,j,kk)/tke(i,j,kk)
 ! JDC Modify (based on Eq 13 in BK13)
                   wrk = conv_var/(depth*depth*sqrt(tke(i,j,kk)))
+                  smixt_incld(i,j,kk) = wrk
                   wrk = wrk + 0.01*brunt2(i,j,kk)/tke(i,j,kk)
-
-                  smixt(i,j,kk) = min(max_eddy_length_scale, (1.0/0.3)*sqrt(1.0/wrk))
+                  
+! npa modify, weight in-cloud length scale by local cloud fraction
+                  if (DO_CLDLEN/=0) then
+                    smixt(i,j,kk) = (1.-cld_sgs(i,j,kk))*smixt(i,j,kk) + cld_sgs(i,j,kk)*3.3*sqrt(1.0/wrk)
+                    smixt(i,j,kk) = min(max_eddy_length_scale, smixt(i,j,kk))
+                  end if
 
                 enddo
                       
@@ -1129,13 +1106,6 @@ contains
 
     integer i, j, k, kb, ks, zend
     real    wrk
-!   real zstart, zthresh, qthresh
-
-! Temporary kludge for marine stratocumulus under very strong inversions at coarse resolution
-! Placement until some explicity PBL top is put in
-! Not used.
-!   zthresh = 100.
-!   qthresh = -6.0
 
     do k=1,nzm
 
@@ -1151,10 +1121,6 @@ contains
           wrk = 0.1*adzl(i,j,k)
                                                             ! Minimum 0.1 of local dz
           smixt(i,j,k) = max(wrk, min(max_eddy_length_scale,smixt(i,j,k))) 
-
-! If chracteristic grid dimension in the horizontal< 1000m, set lengthscale to 
-! be not larger that that. 
-!         if (sqrt(dx*dy) .le. 1000.) smixt(i,j,k)=min(sqrt(dx*dy),smixt(i,j,k)) 
 
           if (qcl(i,j,kb) == 0 .and. qcl(i,j,k) > 0 .and. brunt(i,j,k) > 1.e-4) then
 !If just above the cloud top and atmosphere is stable, set to  0.1 of local dz
@@ -1206,11 +1172,13 @@ contains
             kc = nzm
             thedz  = adzl(i,j,k)
             thedz2 = thedz
+!            thedz  = 1.0 / adzi(i,j,k)
+!            thedz2 = 1.0 / adzl(i,j,k-1)
           else
-!           thedz  = adzl(i,j,k)
-!           thedz2 = adzl(i,j,kc)+adzl(i,j,k)
-            thedz  = adzl(i,j,k)                   ! Moorthi jul08
-            thedz2 = adzl(i,j,k)+adzl(i,j,kb)      ! Moorthi jul08
+             thedz  = adzl(i,j,k)
+             thedz2 = adzl(i,j,kc)+adzl(i,j,k)
+!             thedz  = 1.0 / adzi(i,j,k)                   ! Moorthi jul08
+!             thedz2 = 1.0 / (adzl(i,j,k)+adzl(i,j,kb))      ! Moorthi jul08
           endif
 
 !          if (abs(thedz).lt.1e-20) print *,'thedz=',thedz
@@ -1219,8 +1187,6 @@ contains
           if (abs(thedz).eq.1e-10) print *,'thedz'
           if (abs(thedz2).le.1e-10) thedz2 = sign(1e-10,thedz2) 
           if (abs(thedz2).eq.1e-10) print *,'thedz2'
-          thedz     = 1. / thedz
-          thedz2    = 1. / thedz2
 
           iso       = 0.5*(isotropy(i,j,k)+isotropy(i,j,kb))
           isosqr    = iso*iso ! Two-level average of "return-to-isotropy" time scale squared
@@ -1298,7 +1264,11 @@ contains
            dum = c-1.2*X0+AA0
            if (abs(dum).le.1e-16) dum = sign(1e-16,dum)
            if (abs(dum).eq.1e-16) print *,'c-1.2*X0+AA0=',dum
-           w3(i,j,k) = max(-cond, min(cond, (AA1-1.2*X1-1.5*f5)/dum))
+!!! aab
+!           w3(i,j,k) = max(-cond, min(cond, (AA1-1.2*X1-1.5*f5)/dum))
+           w3(i,j,k) = (AA1-1.2*X1-1.5*f5)/(c-1.2*X0+AA0)
+!!! aab
+
 
 ! Implemetation of the C01 approach in this subroutine is nearly complete
 ! (the missing part are Eqs. 5c and 5e which are very simple)
@@ -1315,30 +1285,24 @@ contains
     
   end subroutine canuto
 
-  subroutine assumed_pdf()
 
-! Compute SGS buoyancy flux, SGS cloud fraction, and SGS condensation 
-! using assumed analytic double-gaussian PDF for SGS vertical velocity, 
-! moisture, and  liquid/ice water static energy, based on the 
-! general approach of  Larson et al 2002, JAS, 59, 3519-3539, 
-! and Golaz et al 2002, JAS, 59, 3540-3551
-! References in the comments in this code are given to 
-! the Appendix A of Pete Bogenschutz's dissertation. 
-    
+  subroutine buoyancy_single_gaussian()
+
+! Compute SGS buoyancy flux and SGS cloud fraction, using analytic
+! SINGLE-gaussian PDF for moisture and liquid water static energy.
+
 ! Local variables
 
     integer i,j,k,ku,kd
-    real wrk, wrk1, wrk2, wrk3, wrk4, bastoeps
-
-!   bastoeps = basetemp / epsterm
+    real a,b,c,alpha,beta,cc,s,stds
 
 
 ! Initialize for statistics
-    do k=1,nzm
-      wqlsb(k) = 0.
-      wqisb(k) = 0.
-    enddo
-    
+!    do k=1,nzm
+!      wqlsb(k) = 0.
+!      wqisb(k) = 0.
+!    enddo
+
     DO k=1,nzm
       
       kd = k
@@ -1349,423 +1313,80 @@ contains
         DO i=1,nx
 
 ! Initialize cloud variables to zero  
-          diag_qn   = 0.0
-          diag_frac = 0.0
-          diag_ql   = 0.0
-          diag_qi   = 0.0
+!          diag_qn   = 0.0
+!          diag_frac = 0.0
+!          diag_ql   = 0.0
+!          diag_qi   = 0.0
 
           pval = prsl(i,j,k)
           pkap = (pval/100000.0) ** kapa
              
 ! Read in liquid/ice static energy, total water mixing ratio, 
 ! and vertical velocity to variables PDF needs
-          thl_first = hl(i,j,k)
-          qw_first  = total_water(i,j,k)
-!         w_first   = 0.5*(w(i,j,kd)+w(i,j,ku))
-          w_first   = w(i,j,k)
-            
-             
+!          thl_first = hl(i,j,k)
+!          qw_first  = total_water(i,j,k)
+!          w_first   = w(i,j,k)
+
 ! GET ALL INPUT VARIABLES ON THE SAME GRID
 ! Points to be computed with relation to thermo point
 ! Read in points that need to be averaged
 
-          w3var    = 0.5*(w3(i,j,kd)+w3(i,j,ku))
           thlsec   = max(0., 0.5*(thl_sec(i,j,kd)+thl_sec(i,j,ku)) )
           qwsec    = max(0., 0.5*(qw_sec(i,j,kd)+qw_sec(i,j,ku)) )
           qwthlsec = 0.5 * (qwthl_sec(i,j,kd) + qwthl_sec(i,j,ku))
           wqwsec   = 0.5 * (wqw_sec(i,j,kd)   + wqw_sec(i,j,ku))
           wthlsec  = 0.5 * (wthl_sec(i,j,kd)  + wthl_sec(i,j,ku))   
 
-!         w3var    = w3(i,j,k)
-!         thlsec   = max(0.,thl_sec(i,j,k))
-!         qwsec    = max(0.,qw_sec(i,j,k))
-!         qwthlsec = qwthl_sec(i,j,k)
-!         wqwsec   = wqw_sec(i,j,k)
-!         wthlsec  = wthl_sec(i,j,k)
-  
+
 ! Compute square roots of some variables so we don't have to do it again
-          if (w_sec(i,j,k) > 0.0) then
-            sqrtw2   = sqrt(w_sec(i,j,k))
-          else
-            sqrtw2   = 0.0
-          endif
-          if (thlsec > 0.0) then
-            sqrtthl  = sqrt(thlsec)
-          else
-            sqrtthl  = 0.0
-          endif
-          if (qwsec > 0.0) then
-            sqrtqt   = sqrt(qwsec)
-          else
-            sqrtqt   = 0.0
-          endif
+!          if (w_sec(i,j,k) > 0.0) then
+!            sqrtw2   = sqrt(w_sec(i,j,k))
+!          else
+!            sqrtw2   = 0.0
+!          endif
+!          if (thlsec > 0.0) then
+!            sqrtthl  = sqrt(thlsec)
+!          else
+!            sqrtthl  = 0.0
+!          endif
+!          if (qwsec > 0.0) then
+!            sqrtqt   = sqrt(qwsec)
+!          else
+!            sqrtqt   = 0.0
+!          endif
              
+          ! following Bechtold et al 1995
+          b = tabs(i,j,k) - fac_cond*qcl(i,j,k)  ! Bechtold eqn 4
+          c = MAPL_EQsat(b,prsl(i,j,k),dtqw)      
+          s = total_water(i,j,k) - MAPL_EQsat(tabs(i,j,k),prsl(i,j,k))          
 
-! Find parameters of the double Gaussian PDF of vertical velocity
+          a = 1. / (1.+fac_cond*dtqw)            ! Bechtold eqn 6
+          b = a * (1./pkap) * dtqw
+          c = a*(total_water(i,j,k) - c)
 
-! Skewness of vertical velocity
-!         Skew_w = w3var / w_sec(i,j,k)**(3./2.)
-!         Skew_w = w3var / (sqrtw2*sqrtw2*sqrtw2)     ! Moorthi
+          alpha = 0.61 * (tabs(i,j,k)/pkap)      ! Bechtold eqn 12
+          beta = (1./pkap) * fac_cond - 1.61*(tabs(i,j,k)/pkap)
 
-          IF (w_sec(i,j,k) <= w_tol_sqd) THEN ! If variance of w is too small then
-                                              ! PDF is a sum of two delta functions
-            Skew_w = 0.
-            w1_1   = w_first
-            w1_2   = w_first
-            w2_1   = 0.
-            w2_2   = 0.
-            aterm  = 0.5
-            onema  = 0.5
-          ELSE
-                
-            Skew_w = w3var / (sqrtw2*sqrtw2*sqrtw2)     ! Moorthi
-! Proportionality coefficients between widths of each vertical velocity 
-! gaussian and the sqrt of the second moment of w
-            w2_1 = 0.4
-            w2_2 = 0.4
-                
-! Compute realtive weight of the first PDF "plume" 
-! See Eq A4 in Pete's dissertaion -  Ensure 0.01 < a < 0.99
+          ! Bechtold eqn 
+          stds = alpha**2 *qwsec + beta**2 * thlsec &
+                 - 2.*alpha*beta*qwthlsec
 
-            wrk = 1.0 - w2_1
-            aterm = max(0.01,min(0.5*(1.-Skew_w*sqrt(1./(4.*wrk*wrk*wrk+Skew_w*Skew_w))),0.99))
-            onema = 1.0 - aterm
-                
-            sqrtw2t = sqrt(wrk)
-                
-! Eq. A.5-A.6
-            wrk  =   sqrt(onema/aterm)
-            w1_1 =   sqrtw2t * wrk
-            w1_2 = - sqrtw2t / wrk
+          ! Cloud fraction, assuming single Gaussian qt distribution
+          cc = 0.5 + 0.5*erf(s/(sqrt2*stds))  
 
-            w2_1 = w2_1 * w_sec(i,j,k)
-            w2_2 = w2_2 * w_sec(i,j,k)
-
-          ENDIF
-             
-!  Find parameters of the  PDF of liquid/ice static energy
-
-          IF (thlsec <= thl_tol*thl_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN
-            thl1_1     = thl_first
-            thl1_2     = thl_first
-            thl2_1     = 0.
-            thl2_2     = 0.
-            sqrtthl2_1 = 0.
-            sqrtthl2_2 = 0.
-          ELSE
-
-            corrtest1 = max(-1.0,min(1.0,wthlsec/(sqrtw2*sqrtthl)))
-
-            thl1_1 = -corrtest1 / w1_2                 ! A.7
-            thl1_2 = -corrtest1 / w1_1                 ! A.8
-                
-            wrk1   = thl1_1 * thl1_1
-            wrk2   = thl1_2 * thl1_2
-            wrk3   = 1.0 - aterm*wrk1        - onema*wrk2
-            wrk4   = -skew_fact*Skew_w - aterm*wrk1*thl1_1 - onema*wrk2*thl1_2  ! testing - Moorthi
-!           wrk4   =     - aterm*wrk1*thl1_1 - onema*wrk2*thl1_2
-            wrk    = 3. * (thl1_2-thl1_1)
-            if (wrk /= 0.0) then
-              thl2_1 = thlsec * min(100.,max(0.,( 3.*thl1_2*wrk3-wrk4)/(aterm*wrk))) ! A.10
-              thl2_2 = thlsec * min(100.,max(0.,(-3.*thl1_1*wrk3+wrk4)/(onema*wrk))) ! A.11
-            else
-              thl2_1 = 0.0
-              thl2_2 = 0.0
-            endif
-!
-            thl1_1 = thl1_1*sqrtthl + thl_first
-            thl1_2 = thl1_2*sqrtthl + thl_first
-
-            sqrtthl2_1 = sqrt(thl2_1)
-            sqrtthl2_2 = sqrt(thl2_2)
-
-          ENDIF
-
-!  FIND PARAMETERS FOR TOTAL WATER MIXING RATIO
-
-          IF (qwsec <= rt_tol*rt_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN
-            qw1_1     = qw_first
-            qw1_2     = qw_first
-            qw2_1     = 0.
-            qw2_2     = 0.
-            sqrtqw2_1 = 0.
-            sqrtqw2_2 = 0.
-          ELSE
-
-            corrtest2 = max(-1.0,min(1.0,wqwsec/(sqrtw2*sqrtqt)))
-
-            qw1_1 = - corrtest2 / w1_2            ! A.7
-            qw1_2 = - corrtest2 / w1_1            ! A.8
-
-            tsign = abs(qw1_2-qw1_1)
-                
-            Skew_qw = skew_facw*Skew_w
-
-!           IF (tsign > 0.4) THEN
-!             Skew_qw = skew_facw*Skew_w
-!           ELSE IF (tsign <= 0.2) THEN
-!             Skew_qw = 0.
-!           ELSE
-!             Skew_qw = (skew_facw/0.2) * Skew_w * (tsign-0.2)
-!           ENDIF
-
-            wrk1  = qw1_1 * qw1_1
-            wrk2  = qw1_2 * qw1_2
-            wrk3  = 1.      - aterm*wrk1       - onema*wrk2
-            wrk4  = Skew_qw - aterm*wrk1*qw1_1 - onema*wrk2*qw1_2
-            wrk   = 3. * (qw1_2-qw1_1)
-
-            if (wrk /= 0.0) then
-              qw2_1 = qwsec * min(100.,max(0.,( 3.*qw1_2*wrk3-wrk4)/(aterm*wrk))) ! A.10
-              qw2_2 = qwsec * min(100.,max(0.,(-3.*qw1_1*wrk3+wrk4)/(onema*wrk))) ! A.11
-            else
-              qw2_1 = 0.0
-              qw2_2 = 0.0
-            endif
-!
-            qw1_1 = qw1_1*sqrtqt + qw_first
-            qw1_2 = qw1_2*sqrtqt + qw_first
-
-            sqrtqw2_1 = sqrt(qw2_1)
-            sqrtqw2_2 = sqrt(qw2_2)
-
-          ENDIF
-
-!  CONVERT FROM TILDA VARIABLES TO "REAL" VARIABLES
-
-          w1_1 = w1_1*sqrtw2 + w_first
-          w1_2 = w1_2*sqrtw2 + w_first
-
-!  FIND WITHIN-PLUME CORRELATIONS 
-
-          testvar = aterm*sqrtqw2_1*sqrtthl2_1 + onema*sqrtqw2_2*sqrtthl2_2
-
-          IF (testvar == 0) THEN
-            r_qwthl_1 = 0.
-          ELSE
-            r_qwthl_1 = max(-1.0,min(1.0,(qwthlsec-aterm*(qw1_1-qw_first)*(thl1_1-thl_first)-onema*(qw1_2-qw_first)*(thl1_2-thl_first))/testvar)) ! A.12
-          ENDIF
-
-!  BEGIN TO COMPUTE CLOUD PROPERTY STATISTICS
-
-          Tl1_1 = thl1_1 - gamaz(i,j,k) + fac_cond*qpl(i,j,k) + fac_sub*qpi(i,j,k)
-          Tl1_2 = thl1_2 - gamaz(i,j,k) + fac_cond*qpl(i,j,k) + fac_sub*qpi(i,j,k)
-
-! Now compute qs
-
-          esval1_1 = 0.
-          esval1_2 = 0.
-          esval2_1 = 0.
-          esval2_2 = 0.
-          om1      = 1.
-          om2      = 1.
-             
-! Partition based on temperature for the first plume
-
-
-          IF (Tl1_1 >= tbgmax) THEN
-!           esval1_1 = fpvs(Tl1_1)
-!!            esval1_1 = fpvsl(Tl1_1)
-            esval1_1 = MAPL_EQsat(Tl1_1)
-!           esval1_1 = esatw(Tl1_1)
-            lstarn1  = lcond
-          ELSE IF (Tl1_1 < tbgmin) THEN
-!           esval1_1 = fpvs(Tl1_1)
-!!            esval1_1 = fpvsi(Tl1_1)
-            esval1_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
-!           esval1_1 = esati(Tl1_1)
-            lstarn1  = lsub
-          ELSE
-!           esval1_1 = fpvs(Tl1_1)
-!           esval2_1 = fpvs(Tl1_1)
-!!            esval1_1 = fpvsl(Tl1_1)
-!!            esval2_1 = fpvsi(Tl1_1)
-            esval1_1 = MAPL_EQsat(Tl1_1)
-            esval2_1 = MAPL_EQsat(Tl1_1,OverIce=.TRUE.)
-!           esval1_1 = esatw(Tl1_1)
-!           esval2_1 = esati(Tl1_1)
-            om1      = max(0.,min(1.,a_bg*(Tl1_1-tbgmin)))
-            lstarn1  = lcond + (1.-om1)*lfus
-          ENDIF
-
-          qs1   =     om1  * (0.622*esval1_1/max(esval1_1,pval-0.378*esval1_1))      &
-                + (1.-om1) * (0.622*esval2_1/max(esval2_1,pval-0.378*esval2_1))
-!         qs1   =     om1  * (0.622*esval1_1/max(esval1_1,pval-esval1_1))      &
-!               + (1.-om1) * (0.622*esval2_1/max(esval2_1,pval-esval2_1))
-
-!         beta1 = (rgas/rv)*(lstarn1/(rgas*Tl1_1))*(lstarn1/(cp*Tl1_1))
-! JDC Modify: Moorthi used beta2, likely a bug. switch to beta1
-!          beta2 = (lstarn1*lstarn1*onebrvcp) / (Tl1_1*Tl1_1)              ! A.18
-          beta1 = (lstarn1*lstarn1*onebrvcp) / (Tl1_1*Tl1_1)
-
-! Are the two plumes equal?  If so then set qs and beta
-! in each column to each other to save computation
-          IF (Tl1_1 == Tl1_2) THEN
-            qs2   = qs1     
-            beta2 = beta1
-          ELSE 
-
-            IF (Tl1_2 < tbgmin) THEN
-!             esval1_2 = fpvs(Tl1_2)
-!!              esval1_2 = fpvsi(Tl1_2)
-              esval1_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
-!             esval1_2 = esati(Tl1_2)
-              lstarn2  = lsub
-            ELSE IF (Tl1_2 >= tbgmax) THEN
-!             esval1_2 = fpvs(Tl1_2)
-!!              esval1_2 = fpvsl(Tl1_2)
-              esval1_2 = MAPL_EQsat(Tl1_2)
-!             esval1_2 = esatw(Tl1_2)
-              lstarn2  = lcond
-            ELSE
-!             esval1_2 = fpvs(Tl1_2)
-!             esval2_2 = fpvs(Tl1_2)
-!!              esval1_2 = fpvsl(Tl1_2)
-!!              esval2_2 = fpvsi(Tl1_2)
-              esval1_2 = MAPL_EQsat(Tl1_2)
-              esval2_2 = MAPL_EQsat(Tl1_2,OverIce=.TRUE.)
-!             esval1_2 = esatw(Tl1_2)
-!             esval2_2 = esati(Tl1_2)
-              om2      = max(0.,min(1.,a_bg*(Tl1_2-tbgmin)))
-              lstarn2  = lcond + (1.-om2)*lfus
-            ENDIF
-               
-            qs2   =     om2  * (0.622*esval1_2/max(esval1_2,pval-0.378*esval1_2))    &
-                  + (1.-om2) * (0.622*esval2_2/max(esval2_2,pval-0.378*esval2_2))
-!           qs2   =     om2  * (0.622*esval1_2/max(esval1_2,pval-esval1_2))    &
-!                 + (1.-om2) * (0.622*esval2_2/max(esval2_2,pval-esval2_2))
-                
-!           beta2 = (rgas/rv)*(lstarn2/(rgas*Tl1_2))*(lstarn2/(cp*Tl1_2))   ! A.18
-            beta2 = (lstarn2*lstarn2*onebrvcp) / (Tl1_2*Tl1_2)              ! A.18
-                
-          ENDIF
-
-!         qs1 = qs1 * rhc(i,j,k)
-!         qs2 = qs2 * rhc(i,j,k)
-
-!  Now compute cloud stuff -  compute s term
-
-          cqt1  = 1.0 / (1.0+beta1*qs1)                                     ! A.19
-          wrk   = (1.0+beta1*qw1_1) * cqt1
-          s1    = qw1_1 - qs1* wrk                                          ! A.17
-          cthl1 = cqt1*wrk*(cp/lcond)*beta1*qs1*pkap                        ! A.20
-
-          wrk1   = cthl1 * cthl1
-          wrk2   = cqt1  * cqt1
-          std_s1 = sqrt(max(0.,wrk1*thl2_1+wrk2*qw2_1-2.*cthl1*sqrtthl2_1*cqt1*sqrtqw2_1*r_qwthl_1))
-             
-          qn1 = 0.
-          C1  = 0.
-             
-          IF (std_s1 /= 0) THEN
-            wrk = s1 / (std_s1*sqrt2)
-            C1 = 0.5*(1.+erf(wrk))                                         ! A.15
-            IF (C1 /= 0) qn1 = s1*C1 + (std_s1*sqrtpii)*exp(-wrk*wrk)      ! A.16
-          ELSEIF (s1 > 0) THEN
-            C1  = 1.0
-            qn1 = s1
-          ENDIF
-             
-! now compute non-precipitating cloud condensate 
-
-! If two plumes exactly equal, then just set many of these 
-! variables to themselves to save on computation.
-          IF (qw1_1 == qw1_2 .and. thl2_1 == thl2_2 .and. qs1 == qs2) THEN
-            s2     = s1
-            cthl2  = cthl1
-            cqt2   = cqt1
-            std_s2 = std_s1
-            C2     = C1
-            qn2    = qn1
-          ELSE
-
-            cqt2   = 1.0 / (1.0+beta2*qs2)
-            wrk    = (1.0+beta2*qw1_2) * cqt2
-            s2     = qw1_2 - qs2*wrk
-            cthl2  = wrk*cqt2*(cp/lcond)*beta2*qs2*pkap
-            wrk1   = cthl2 * cthl2
-            wrk2   = cqt2  * cqt2
-            std_s2 = sqrt(max(0.,wrk1*thl2_2+wrk2*qw2_2-2.*cthl2*sqrtthl2_2*cqt2*sqrtqw2_2*r_qwthl_1))
-
-            qn2 = 0.
-            C2  = 0.
-
-            IF (std_s2 /= 0) THEN
-              wrk = s2 / (std_s2*sqrt2)
-              C2  = 0.5*(1.+erf(wrk))
-              IF (C2 /= 0) qn2 = s2*C2 + (std_s2*sqrtpii)*exp(-wrk*wrk)
-            ELSEIF (s2 > 0) THEN
-              C2  = 1.0
-              qn2 = s2
-            ENDIF
-               
-          ENDIF
-
-! finally, compute the SGS cloud fraction
-          diag_frac = aterm*C1 + onema*C2
-             
-          om1 = max(0.,min(1.,(Tl1_1-tbgmin)*a_bg))      
-          om2 = max(0.,min(1.,(Tl1_2-tbgmin)*a_bg))
-             
-          qn1 = min(qn1,qw1_1)
-          qn2 = min(qn2,qw1_2)
-             
-          ql1 = qn1*om1
-          ql2 = qn2*om2
-             
-          qi1 = qn1 - ql1
-          qi2 = qn2 - ql2
-             
-          diag_qn = min(max(0.0, aterm*qn1 + onema*qn2), total_water(i,j,k))
-          diag_ql = min(max(0.0, aterm*ql1 + onema*ql2), diag_qn)
-          diag_qi = diag_qn - diag_ql
-
-             
-! Update temperature variable based on diagnosed cloud properties
-          om1         = max(0.,min(1.,(tabs(i,j,k)-tbgmin)*a_bg))
-          lstarn1     = lcond + (1.-om1)*lfus
-          tabs(i,j,k) = hl(i,j,k) - gamaz(i,j,k) + fac_cond*(diag_ql+qpl(i,j,k)) &
-                                                 + fac_sub *(diag_qi+qpi(i,j,k)) &
-                      + tkesbdiss(i,j,k) * (dtn/cp)      ! tke dissipative heating
-! Update moisture fields
-
-         qc(i,j,k)      = diag_ql
-         qi(i,j,k)      = diag_qi
-         qwv(i,j,k)     = total_water(i,j,k) - diag_qn
-         cld_sgs(i,j,k) = diag_frac
-
-             
-! Compute the liquid water flux
-          wqls = aterm * ((w1_1-w_first)*ql1) + onema * ((w1_2-w_first)*ql2)
-          wqis = aterm * ((w1_1-w_first)*qi1) + onema * ((w1_2-w_first)*qi2)
-             
-! Compute statistics for the fluxes so we don't have to save these variables
-          wqlsb(k) = wqlsb(k) + wqls
-          wqisb(k) = wqisb(k) + wqis
-             
-! diagnostic buoyancy flux.  Includes effects from liquid water, ice
-! condensate, liquid & ice precipitation
-!         wrk = epsv * basetemp
-          wrk = epsv * thv(i,j,k)
-
-          bastoeps = onebeps * thv(i,j,k)
-
-          wthv_sec(i,j,k) = wthlsec + wrk*wqwsec                                     &
-                          + (fac_cond-bastoeps)*wqls                                 &
-                          + (fac_sub-bastoeps) *wqis                                 &
-                          + ((lstarn1/cp)-thv(i,j,k))*0.5*(wqp_sec(i,j,kd)+wqp_sec(i,j,ku))
-
-!           wthv_sec(i,j,k) = wthlsec + wrk*wqwsec                                     &
-!                         + (fac_cond-bastoeps)*wqls                                 &
-!                         + (fac_sub-bastoeps)*wqis                                  &
-!                         + ((lstarn1/cp)-basetemp)*0.5*(wqp_sec(i,j,kd)+wqp_sec(i,j,ku))
+          wthv_sec(i,j,k) = wthlsec*( 1.+0.61*total_water(i,j,k) &
+                                     - beta*b*cc )               &
+                           + wqwsec*( alpha + beta*a*cc )
 
         ENDDO
       ENDDO
     ENDDO
-    
 
-  end subroutine assumed_pdf
+  end subroutine buoyancy_single_gaussian
+
+
+
+
 
 
 ! Saturation vapor pressure and mixing ratio subroutines
