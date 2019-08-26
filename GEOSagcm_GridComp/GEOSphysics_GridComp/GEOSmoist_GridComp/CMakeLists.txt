@@ -3,7 +3,7 @@ set (this GEOSmoist_GridComp)
 set (srcs
   CLDPARAMS.F90 RASPARAMS.F90 ras.F90 cloudnew.F90 ddf.F90 rascnvv2_v.F90
   cldmacro.F90 cldwat2m_micro.F90 wv_saturation.F90 aer_cloud.F90
-  GEOS_MoistGridComp.F90
+  GEOS_MoistGridComp.F90 partition_pdf.F90
   ConvPar_GF_GEOS5.F90 module_gate.F90 uwshcu.F90 SHLWPARAMS.F90
   aer_actv_single_moment.F90 gfdl_cloud_microphys.F90
   # files that are sometimes present?
