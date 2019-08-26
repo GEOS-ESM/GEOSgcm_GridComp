@@ -2913,6 +2913,8 @@ subroutine fv_computeMassFluxes_r8(ucI, vcI, ple, mfx, mfy, cx, cy, dt)
   integer     :: it, nsplt
 
 ! Fill Ghosted arrays and update halos
+  uc = 0d0
+  vc = 0d0
   uc(is:ie,js:je,:) = ucI
   vc(is:ie,js:je,:) = vcI
   call mpp_get_boundary(uc, vc, FV_Atm(1)%domain, &
