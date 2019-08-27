@@ -4164,7 +4164,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                     :: I, N
         integer                     :: AEROSOL_DEPOSITION
         integer                     :: N_CONST_LAND4SNWALB
-        integer                     :: DO_GOSWIM, RUN_IRRIG, IRRIG_METHOD
+        integer                     :: DO_GOSWIM, RUN_IRRIG, IRRIG_METHOD,MODIS_DVG
 
 	! dummy variables for call to get snow temp
 
