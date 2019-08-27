@@ -173,7 +173,7 @@ subroutine SetServices ( GC, RC )
     logical :: is_OFFLINE
 
     integer :: RESTART
-    integer :: DO_GOSWIM, RUN_IRRIG
+    integer :: DO_GOSWIM, RUN_IRRIG,  MODIS_DVG
 
 ! Begin...
 ! --------
@@ -211,6 +211,8 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, MODIS_DVG,        Label="MODIS_DVG:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, RUN_IRRIG, Label="RUN_IRRIG:", DEFAULT=0, RC=STATUS)
@@ -742,6 +744,34 @@ subroutine SetServices ( GC, RC )
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
     VERIFY_(STATUS)
+
+    IF (MODIS_DVG == 1) THEN 
+
+       call MAPL_AddImportSpec(gc, &
+            short_name = "MODIS_LAI", &
+            LONG_NAME  = 'MODIS Leaf Area Index',                     &
+            UNITS      = '1',                                         &
+            DIMS       = MAPL_DimsTileOnly,                           &
+            VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+       VERIFY_(STATUS)
+    
+       call MAPL_AddImportSpec(gc, &
+            short_name = "MODIS_VISDF",                               &
+            LONG_NAME  = 'MODIS albedo visible diffuse',              &
+            UNITS      = '1',                                         &
+            DIMS       = MAPL_DimsTileOnly,                           &
+            VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+       VERIFY_(STATUS)
+
+       call MAPL_AddImportSpec(gc, &
+            short_name = "MODIS_NIRDF",                               &
+            LONG_NAME  = 'MODIS albedo near infrared diffuse',        &
+            UNITS      = '1',                                         &
+            DIMS       = MAPL_DimsTileOnly,                           &
+            VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+       VERIFY_(STATUS)       
+       
+    ENDIF
 
 !  !INTERNAL STATE:
 
@@ -3028,7 +3058,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! -----------------------------------------------------
 ! IMPORT Pointers
-! ----------------------------------------------------  -
+! -----------------------------------------------------
 
     real, dimension(:),     pointer :: ITY
     real, dimension(:),     pointer :: PS
@@ -3043,6 +3073,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:),     pointer :: PCU
     real, dimension(:),     pointer :: ASCATZ0
     real, dimension(:),     pointer :: NDVI
+    real, dimension(:),     pointer :: MODIS_VISDF
+    real, dimension(:),     pointer :: MODIS_NIRDF
 
 ! -----------------------------------------------------
 ! INTERNAL Pointers
@@ -3137,7 +3169,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer                        :: CHOOSEMOSFC
     integer                        :: CHOOSEZ0
 
-   integer                         :: Z0_FORMULATION
+   integer                         :: Z0_FORMULATION, MODIS_DVG
    real                            :: SCALE4Z0
    real                            :: SCALE4ZVG
    real                            :: SCALE4Z0_u
@@ -3204,6 +3236,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, Z0_FORMULATION,Label="Z0_FORMULATION:", DEFAULT=2, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, MODIS_DVG,Label="MODIS_DVG:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGet       (VM,       mpiCommunicator =comm,   RC=STATUS)
@@ -3240,6 +3274,13 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,NDVI   , 'NDVI'   ,    RC=STATUS)
    VERIFY_(STATUS)
+
+   IF (MODIS_DVG == 1) THEN
+      if(associated(LAI)) NULLIFY(LAI)
+      call MAPL_GetPointer(IMPORT,LAI         , 'MODIS_LAI'   ,    RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,MODIS_VISDF , 'MODIS_VISDF' ,    RC=STATUS) ; VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,MODIS_NIRDF , 'MODIS_NIRDF' ,    RC=STATUS) ; VERIFY_(STATUS)
+   ENDIF
 
 ! Pointers to internals
 !----------------------
@@ -3821,6 +3862,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:,:), pointer :: SSWT
         real, dimension(:,:), pointer :: SSSD
 
+        real, dimension(:), pointer   :: MODIS_VISDF
+        real, dimension(:), pointer   :: MODIS_NIRDF
+
         ! -----------------------------------------------------
         ! INTERNAL Pointers
         ! -----------------------------------------------------
@@ -4357,6 +4401,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", DEFAULT=0, RC=STATUS)
         VERIFY_(STATUS)
+        call MAPL_GetResource ( MAPL, MODIS_DVG, Label="MODIS_DVG:", DEFAULT=0, RC=STATUS)
+        VERIFY_(STATUS)
         call ESMF_VMGet(VM, localPet=mype, rc=status)
         VERIFY_(STATUS)
 
@@ -4425,6 +4471,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,SSSV   ,'SSSV'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSWT   ,'SSWT'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
+
+        IF (MODIS_DVG == 1) THEN 
+           if(associated(LAI)) NULLIFY(LAI)
+           call MAPL_GetPointer(IMPORT, LAI         ,'MODIS_LAI'     ,RC=STATUS); VERIFY_(STATUS) 
+           call MAPL_GetPointer(IMPORT, MODIS_VISDF ,'MODIS_VISDF'   ,RC=STATUS); VERIFY_(STATUS) 
+           call MAPL_GetPointer(IMPORT, MODIS_NIRDF ,'MODIS_NIRDF'   ,RC=STATUS); VERIFY_(STATUS) 
+        ENDIF
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
@@ -4987,10 +5040,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Update raditation exports
         ! --------------------------------------------------------------------------
 
+        IF (MODIS_DVG == 0) THEN 
 
-        call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
-                       VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                       ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+           call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
+                VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
+                ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+           
+        ELSE
+           ALBVR = MODIS_VISDF
+           ALBNR = MODIS_NIRDF
+           ALBVF = MODIS_VISDF
+           ALBNF = MODIS_NIRDF
+        ENDIF
 
         ! Get TPSN1OUT1 for SNOW_ALBEDO parameterization
 
@@ -5723,11 +5784,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Update raditation exports
         ! --------------------------------------------------------------------------
 
-
         call MAPL_TimerOn(MAPL,"-ALBEDO")
-        call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
-                       VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                       ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+
+        IF (MODIS_DVG == 0) THEN 
+           call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
+                VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
+                ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles           
+        ELSE
+           ALBVR = MODIS_VISDF
+           ALBNR = MODIS_NIRDF
+           ALBVF = MODIS_VISDF
+           ALBNF = MODIS_NIRDF
+        ENDIF
 
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
@@ -6132,7 +6200,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: arw4(:)=>null()
 
   !! Miscellaneous
-  integer :: ntiles
+  integer :: ntiles, MODIS_DVG
   real, allocatable :: dummy(:)
   real :: SURFLAY
   real, allocatable :: dzsf(:), ar1(:), ar2(:), wesnn(:,:)
@@ -6156,10 +6224,17 @@ subroutine RUN0(gc, import, export, clock, rc)
   ! Pointers to IMPORTs
   call MAPL_GetPointer(import, ity, 'ITY', rc=status)
   VERIFY_(status)
-  call MAPL_GetPointer(import, lai, 'LAI', rc=status)
-  VERIFY_(status)
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
   VERIFY_(status)
+  call MAPL_GetResource ( MAPL, MODIS_DVG,        Label="MODIS_DVG:",DEFAULT=0, RC=STATUS)
+  VERIFY_(STATUS)
+  IF (MODIS_DVG == 1) THEN 
+     call MAPL_GetPointer(import, lai, 'MODIS_LAI', rc=status)
+     VERIFY_(status)
+  ELSE
+     call MAPL_GetPointer(import, lai, 'LAI', rc=status)
+     VERIFY_(status)  
+  ENDIF
 
   ! Pointers to INTERNALs
   call MAPL_GetPointer(INTERNAL, asnow, 'ASNOW', rc=status)
