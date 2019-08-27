@@ -19,3 +19,4 @@ esma_add_library (${this}
   DEPENDENCIES GEOS_SurfaceShared GEOS_Shared MAPL_Base)
 target_include_directories (${this} PUBLIC ${INC_ESMF})
 
+install(PROGRAMS process_modis.py DESTINATION bin)
