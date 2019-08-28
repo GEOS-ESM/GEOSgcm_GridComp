@@ -3522,7 +3522,14 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )  
     VERIFY_(STATUS)                                                                          
 
-
+    call MAPL_AddExportSpec(GC,                             &
+         SHORT_NAME = 'ZL',                                        &
+         LONG_NAME  = 'height',                     &
+         UNITS      = 'm',                                         &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                              &
          SHORT_NAME = 'KHX0',                                         &
@@ -5367,7 +5374,7 @@ contains
       real, pointer, dimension(:,:)   :: PGENTOT , PREVTOT
 
       !Record vars at top pf moist
-      real, pointer, dimension(:,:,:) :: Ux0, Vx0, THx0, KHx0
+      real, pointer, dimension(:,:,:) :: Ux0, Vx0, THx0, KHx0, ZL
       real, pointer, dimension(:,:)   :: TSx0, FRLANDx0
       real, pointer, dimension(:,:,:) :: Qx0, QLLSx0, QLCNx0, CLLSx0, CLCNx0, QILSx0, QICNx0, QCLSX0, QCCNX0
 
@@ -7255,6 +7262,7 @@ contains
       call MAPL_GetPointer(EXPORT, QCCNx0,  'QCCNX0'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QCLSx0,  'QCLSX0'    , RC=STATUS); VERIFY_(STATUS)
 
+      call MAPL_GetPointer(EXPORT, ZL,      'ZL'       , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, KHx0,    'KHX0'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, THx0,    'THX0'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, Ux0,     'UX0'      , RC=STATUS); VERIFY_(STATUS)
@@ -7272,6 +7280,7 @@ contains
       if(associated(QCCNx0    )) QCCNx0     = QICN+QLCN
       if(associated(QCLSx0    )) QCLSx0     = QILS+QLLS
 
+      if(associated(ZL        )) ZL         = ZLO
       if(associated(KHx0      )) KHx0       = KH
       if(associated(THx0      )) THx0       = TH
       if(associated(Ux0       )) Ux0        = U
