@@ -7280,7 +7280,6 @@ contains
       if(associated(QCCNx0    )) QCCNx0     = QICN+QLCN
       if(associated(QCLSx0    )) QCLSx0     = QILS+QLLS
 
-      if(associated(ZL        )) ZL         = ZLO
       if(associated(KHx0      )) KHx0       = KH
       if(associated(THx0      )) THx0       = TH
       if(associated(Ux0       )) Ux0        = U
@@ -7434,6 +7433,8 @@ contains
 
       TSFCAIR  = TEMP(:,:,LM) + (MAPL_GRAV/MAPL_CP)*ZLO(:,:,LM)
       DTS      = TS - TSFCAIR
+
+      if(associated(ZL        )) ZL = ZLO
 
       IF (ASSOCIATED(DTSX)) DTSX = DTS
       IF (ASSOCIATED(KHX )) KHX  = KH(:,:,0:LM-1)
