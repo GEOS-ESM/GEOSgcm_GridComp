@@ -1,13 +1,5 @@
 set (this GEOS_LandShared)
 
-set (resource_files
-    GEOS_LandGridComp.rc
-    GEOS_LandGridComp_ExtData.rc
-   ) 
-
-install( FILES ${resource_files} 
-   DESTINATION etc
-   )
 set (srcs
   catch_constants.f90 lsm_routines.F90 sibalb_coeff.f90
   )
@@ -20,3 +12,12 @@ esma_add_library (${this}
 target_include_directories (${this} PUBLIC ${INC_ESMF})
 
 install(PROGRAMS process_modis.py DESTINATION bin)
+
+set (resource_files
+    GEOS_LandGridComp.rc
+    GEOS_LandGridComp_ExtData.rc
+   ) 
+
+install( FILES ${resource_files} 
+   DESTINATION etc
+   )
