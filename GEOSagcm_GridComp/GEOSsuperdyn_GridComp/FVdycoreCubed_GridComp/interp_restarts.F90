@@ -437,7 +437,7 @@ program interp_restarts
    jsl=(npx-1)*(tile-1)+js
    jel=(npx-1)*(tile-1)+je
 
-   call ArrDescrInit(Arrdes,MPI_COMM_WORLD,npx-1,(npx-1)*6,npes_x,npes_y*6,n_readers,n_writers,isl,iel,jsl,jel,rc=status)
+   call ArrDescrInit(Arrdes,MPI_COMM_WORLD,npx-1,(npx-1)*6,npz,npes_x,npes_y*6,n_readers,n_writers,isl,iel,jsl,jel,rc=status)
    call ArrDescrSet(arrdes,offset=0_MPI_OFFSET_KIND)
    if (allocated(schmidt_parameters)) then
       csfactory = CubedSphereGridFactory(im_world=npx-1,lm=npz,nx=npes_x,ny=npes_y,stretch_factor=schmidt_parameters(3), &
