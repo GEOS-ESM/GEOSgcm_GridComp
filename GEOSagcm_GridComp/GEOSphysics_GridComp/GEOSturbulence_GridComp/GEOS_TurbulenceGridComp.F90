@@ -2496,7 +2496,7 @@ contains
 ! variables associated with SHOC
      real, dimension( IM, JM, LM )       :: PRANDTLSHOC,QPL,QPI
      integer                             :: DO_SHOC
-     integer                             :: SHC_DO_TRANS, SHC_DO_CLDLEN, SHC_USE_MF_PDF,SHC_USE_MF_BUOY,SHC_BUOY_OPTION,PDFSHAPE
+     integer                             :: SHC_DO_TRANS, SHC_DO_CLDLEN, SHC_USE_MF_PDF,SHC_USE_MF_BUOY,SHC_BUOY_OPTION !,PDFSHAPE
      real                                :: SHC_LAMBDA,SHC_TSCALE,SHC_VONK,SHC_CK, &
                                             SHC_CEFAC,SHC_CESFAC,SHC_THL2TUNE,    &
                                             SHC_QW2TUNE,SHC_QWTHL2TUNE
@@ -2593,13 +2593,13 @@ contains
        call MAPL_GetResource (MAPL, SHC_DO_CLDLEN, trim(COMP_NAME)//"_SHC_DO_CLDLEN:", default=1,     RC=STATUS)
        call MAPL_GetResource (MAPL, SHC_USE_MF_PDF, trim(COMP_NAME)//"_SHC_USE_MF_PDF:", default=1,     RC=STATUS)
        call MAPL_GetResource (MAPL, SHC_USE_MF_BUOY, trim(COMP_NAME)//"_SHC_USE_MF_BUOY:", default=0,     RC=STATUS)
-       call MAPL_GetResource (MAPL, PDFSHAPE,  'PDFSHAPE:',   DEFAULT=     1.0    )
-       if (PDFSHAPE/=5) then
-         call MAPL_GetResource (MAPL, SHC_BUOY_OPTION, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=0,     RC=STATUS)
-       else
+!       call MAPL_GetResource (MAPL, PDFSHAPE,  'PDFSHAPE:',   DEFAULT=     1.0    )
+!       if (PDFSHAPE/=5) then
+!         call MAPL_GetResource (MAPL, SHC_BUOY_OPTION, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=0,     RC=STATUS)
+!       else
          call MAPL_GetResource (MAPL, SHC_BUOY_OPTION, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,     RC=STATUS)
-       end if
-       if (SHC_BUOY_OPTION==2 .and. PDFSHAPE/=5) print *,'*** SHOC using inactive DG PDF for buoyancy!!! ***'
+!       end if
+!       if (SHC_BUOY_OPTION==2 .and. PDFSHAPE/=5) print *,'*** SHOC using inactive DG PDF for buoyancy!!! ***'
      end if
 
 ! Get pointers from export state...
