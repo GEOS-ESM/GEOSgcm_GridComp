@@ -2496,7 +2496,7 @@ contains
 ! variables associated with SHOC
      real, dimension( IM, JM, LM )       :: PRANDTLSHOC,QPL,QPI
      integer                             :: DO_SHOC
-     integer                             :: SHC_DO_TRANS, SHC_DO_CLDLEN, SHC_USE_MF_PDF,SHC_USE_MF_BUOY,SHC_BUOY_OPTION
+     integer                             :: SHC_DO_TRANS, SHC_DO_CLDLEN, SHC_USE_MF_PDF,SHC_USE_MF_BUOY,SHC_BUOY_OPTION,PDFSHAPE
      real                                :: SHC_LAMBDA,SHC_TSCALE,SHC_VONK,SHC_CK, &
                                             SHC_CEFAC,SHC_CESFAC,SHC_THL2TUNE,    &
                                             SHC_QW2TUNE,SHC_QWTHL2TUNE
