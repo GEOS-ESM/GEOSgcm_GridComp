@@ -10,7 +10,7 @@ module GEOS_OpenwaterGridCompMod
 ! !MODULE: GEOS_OpenwaterGridCompMod -- Implements slab saltwater/Water tiles.
 
 ! !DESCRIPTION:
-! 
+!
 !   {\tt GEOS\_Openwater} is a light-weight gridded component that updates
 !      the skin sub-tiles at saltwater/Water points, be they ocean, estuary, or salt
 !      lake. Currently each tile can have only two subtiles, open-water and ice.
@@ -23,7 +23,7 @@ module GEOS_OpenwaterGridCompMod
 !      ----------------------------------------------------------------------------
 !
 !      \noindent The "OPENWATERCORE" implements following AOIL.
-!      \noindent If the AOIL is OFF, near-surface temperature variations are neglected, 
+!      \noindent If the AOIL is OFF, near-surface temperature variations are neglected,
 !      $T_s = T_o$ from the ocean model, or $=T_f$ from boundary conditions.\\~\\
 !
 !      \noindent Following are the variables and fluxes used to update $T_s$
@@ -32,7 +32,7 @@ module GEOS_OpenwaterGridCompMod
 !       \item \textbf{Variables}:
 !       \begin{enumerate}
 !              \item \textbf{Coupled with Ocean model}:\\
-!               $T_o$ and $d, D, \epsilon_d = d/D,$ 
+!               $T_o$ and $d, D, \epsilon_d = d/D,$
 !               where $d$ and $D$ denote the thickness of AOIL and ocean model top level respectively
 !               \item \textbf{Uncoupled, i.e., boundary conditions}:\\
 !               $T_f$ and $d$
@@ -44,9 +44,9 @@ module GEOS_OpenwaterGridCompMod
 !               where $$Q_w = SW_{top} - SW_d + Q^{\downarrow}$$
 !               $$Q_f = SW_d - SW_D$$
 !               $SW$ and $Q^{\downarrow}$ denote solar and non-solar fluxes respectively\\
-!               \textbf{Ocean Model must always receive}  $Q_w+Q_f =  SW_{top} - SW_D + Q^{\downarrow} ;$ it should be 
-!               agnostic to the presence/absence of the AOIL. It {\it senses} AOIL via changes to the fluxes brought 
-!               about by changes to $T_s$ due to the action of AOIL; recall $T_s = T_o$ if AOIL is OFF.  
+!               \textbf{Ocean Model must always receive}  $Q_w+Q_f =  SW_{top} - SW_D + Q^{\downarrow} ;$ it should be
+!               agnostic to the presence/absence of the AOIL. It {\it senses} AOIL via changes to the fluxes brought
+!               about by changes to $T_s$ due to the action of AOIL; recall $T_s = T_o$ if AOIL is OFF.
 !               \item \textbf{Uncoupled, i.e., boundary conditions}:\\
 !               $$Q_{\sigma} = Q_w = SW_{top} - SW_d + Q^{\downarrow}$$
 !       \end{enumerate}
@@ -57,12 +57,12 @@ module GEOS_OpenwaterGridCompMod
 !               $$T_{\delta}= T_o + \left( \frac{1}{\mu} + (1-\epsilon_d) \right) \sigma_T$$
 !               \item \textbf{Uncoupled}:\\
 !               $$T_{\delta}= T_f + \left( \frac{1+\mu}{\mu}\right) \sigma_T$$
-!      \end{itemize} 
+!      \end{itemize}
 !
 !      \noindent $\sigma_T$ evolves according to
 !      $$ \frac{\partial \sigma_T}{\partial t}= \frac{Q_{\sigma}}{d\,\rho_w\,c_w} - \frac{1}{\tau_{\sigma}} \sigma_T.$$
-!      \noindent For complete details, please see Akella and Suarez, 2018, 
-!      "The Atmosphere-Ocean Interface Layer of the NASA Goddard Earth Observing System Model and Data Assimilation System." GMAO Tech Memo, Vol 51. 
+!      \noindent For complete details, please see Akella and Suarez, 2018,
+!      "The Atmosphere-Ocean Interface Layer of the NASA Goddard Earth Observing System Model and Data Assimilation System." GMAO Tech Memo, Vol 51.
 !      ----------------------------------------------------------------------------
 !
 
@@ -73,13 +73,13 @@ module GEOS_OpenwaterGridCompMod
   use MAPL_Mod
   use GEOS_UtilsMod
   use DragCoefficientsMod
-  
+
 
   implicit none
   private
 
   !integer            :: DO_GUEST
-  integer            :: DO_DATASEA   ! b.w. DO_GUEST and DO_DATASEA, we need to pick one that
+  logical            :: DO_DATASEA   ! b.w. DO_GUEST and DO_DATASEA, we need to pick one that
                                      ! works in both amip and coupled mode
   integer            :: DO_SKIN_LAYER
 
@@ -87,7 +87,7 @@ module GEOS_OpenwaterGridCompMod
 
 !EOP
 
-  integer, parameter            :: WATER        = 1      
+  integer, parameter            :: WATER        = 1
   integer, parameter            :: NUM_SUBTILES = 1             ! number of sub-tiles
   real,    parameter            :: KUVR         = 0.09
   real,    parameter            :: SALTWATERCAP  = MAPL_CAPWTR
@@ -109,7 +109,7 @@ module GEOS_OpenwaterGridCompMod
 
 ! !DESCRIPTION: This version uses the MAPL\_GenericSetServices, which sets
 !                the Initialize and Finalize services, as well as allocating
-!   our instance of a generic state and putting it in the 
+!   our instance of a generic state and putting it in the
 !   gridded component (GC). Here we only need to set the run method and
 !   add the state variable specifications (also generic) to our instance
 !   of the generic state. This is the way our true state variables get into
@@ -131,6 +131,9 @@ module GEOS_OpenwaterGridCompMod
 
     type (MAPL_MetaComp),  pointer          :: MAPL
     type (ESMF_Config)                      :: CF
+
+! Local
+    character(len=ESMF_MAXSTR)              :: OCEAN_NAME
 
 !=============================================================================
 
@@ -160,11 +163,18 @@ module GEOS_OpenwaterGridCompMod
     !call MAPL_GetResource ( MAPL, DO_GUEST,      Label="USE_GUEST_OCEAN:" , DEFAULT=0, RC=STATUS)
     !VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_DATASEA,    Label="USE_DATASEA:"     , DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, OCEAN_NAME, Label="OCEAN_MODEL:", DEFAULT="DATASEA", RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, DO_SKIN_LAYER, Label="USE_SKIN_LAYER:"  , DEFAULT=0    , RC=STATUS)
     VERIFY_(STATUS)
+
+    select case (trim(OCEAN_NAME))
+       case ("DATASEA")
+          DO_DATASEA = .true.
+       case default
+          DO_DATASEA = .false.
+    end select
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -225,7 +235,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'EVAPOUT'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -234,7 +244,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'SNOWOCN'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -243,7 +253,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'RAINOCN'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -252,7 +262,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'SHOUT'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -261,7 +271,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'SHWTR'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -270,7 +280,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'HLWUP'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                     ,&
@@ -279,7 +289,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'LWNDWTR'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                     ,&
@@ -288,7 +298,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'LWNDSRF'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                     ,&
@@ -297,7 +307,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'SWNDWTR'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                     ,&
@@ -306,7 +316,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'SWNDSRF'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -324,7 +334,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'HLATWTR'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
@@ -486,7 +496,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'Z0'                        ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
@@ -495,7 +505,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'Z0H'                       ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
@@ -594,7 +604,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'TAUXW'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
@@ -603,7 +613,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'TAUYW'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                    ,&
@@ -612,7 +622,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'W m-2'                     ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                    ,&
@@ -621,7 +631,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'W m-2'                     ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                    ,&
@@ -630,7 +640,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'W m-2'                     ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                    ,&
@@ -639,7 +649,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'W m-2'                     ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
@@ -648,7 +658,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'm'                         ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                          ,&
@@ -657,7 +667,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'm'                          ,&
           DIMS               = MAPL_DimsTileOnly            ,&
           VLOCATION          = MAPL_VLocationNone           ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                                 ,&
@@ -666,7 +676,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'K'                                 ,&
           DIMS               = MAPL_DimsTileOnly                   ,&
           VLOCATION          = MAPL_VLocationNone                  ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
@@ -675,7 +685,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'W m-2'                     ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
@@ -684,7 +694,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'W m-2'                     ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                          ,&
@@ -693,7 +703,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'W m-2'                      ,&
           DIMS               = MAPL_DimsTileOnly            ,&
           VLOCATION          = MAPL_VLocationNone           ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                          ,&
@@ -702,7 +712,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'W m-2'                      ,&
           DIMS               = MAPL_DimsTileOnly            ,&
           VLOCATION          = MAPL_VLocationNone           ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                           ,&
@@ -711,7 +721,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = '1'                           ,&
           DIMS               = MAPL_DimsTileOnly             ,&
           VLOCATION          = MAPL_VLocationNone            ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
@@ -720,7 +730,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = '1'                         ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                        ,&
@@ -729,7 +739,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'm s-1'                     ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                                  ,&
@@ -738,7 +748,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'K'                                  ,&
           DIMS               = MAPL_DimsTileOnly                    ,&
           VLOCATION          = MAPL_VLocationNone                   ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
@@ -747,7 +757,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = '1'                         ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
@@ -756,7 +766,7 @@ module GEOS_OpenwaterGridCompMod
           UNITS              = 'm+2 s-3'                   ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                        &
@@ -811,7 +821,7 @@ module GEOS_OpenwaterGridCompMod
      !   UNITS              = 'W m-2'                     ,&
      !   DIMS               = MAPL_DimsTileOnly           ,&
      !   VLOCATION          = MAPL_VLocationNone          ,&
-     !                                          RC=STATUS  ) 
+     !                                          RC=STATUS  )
      !VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -820,7 +830,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'FSURF'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
@@ -829,7 +839,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'QSAT1'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                    &
@@ -838,7 +848,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'QSAT2'                     ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      ! atmosphere-ocean fluxes
@@ -848,7 +858,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'AO_SHFLX'                  ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -857,7 +867,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'AO_QFLUX'                  ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -866,7 +876,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'AO_LWFLX'                  ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -875,7 +885,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'AO_SNOW'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                     &
@@ -884,7 +894,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'AO_RAIN'                   ,&
         DIMS               = MAPL_DimsTileOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
+                                               RC=STATUS  )
      VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC                         ,&
@@ -893,7 +903,7 @@ module GEOS_OpenwaterGridCompMod
          SHORT_NAME         = 'AO_DRNIR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC                         ,&
@@ -902,7 +912,7 @@ module GEOS_OpenwaterGridCompMod
          SHORT_NAME         = 'AO_DFNIR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
@@ -1039,7 +1049,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'DRPAR'                             ,&
         DIMS               = MAPL_DimsTileOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -1048,7 +1058,7 @@ module GEOS_OpenwaterGridCompMod
          SHORT_NAME         = 'DFPAR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -1057,7 +1067,7 @@ module GEOS_OpenwaterGridCompMod
          SHORT_NAME         = 'DRNIR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -1066,7 +1076,7 @@ module GEOS_OpenwaterGridCompMod
          SHORT_NAME         = 'DFNIR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -1075,7 +1085,7 @@ module GEOS_OpenwaterGridCompMod
          SHORT_NAME         = 'DRUVR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
@@ -1084,7 +1094,7 @@ module GEOS_OpenwaterGridCompMod
          SHORT_NAME         = 'DFUVR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+                                                  RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                             &
@@ -1221,7 +1231,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'PCU'                               ,&
         DIMS               = MAPL_DimsTileOnly                   ,&
         VLOCATION          = MAPL_VLocationNone                  ,&
-                                                       RC=STATUS  ) 
+                                                       RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC                            ,&
@@ -1230,7 +1240,7 @@ module GEOS_OpenwaterGridCompMod
         SHORT_NAME         = 'PLS'                              ,&
         DIMS               = MAPL_DimsTileOnly                  ,&
         VLOCATION          = MAPL_VLocationNone                 ,&
-                                                      RC=STATUS  ) 
+                                                      RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
@@ -1385,7 +1395,7 @@ module GEOS_OpenwaterGridCompMod
          DIMS       = MAPL_DimsTileOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
-    
+
     call MAPL_AddImportSpec(GC,                    &
           LONG_NAME          = 'river_discharge_at_ocean_points',&
           UNITS              = 'kg m-2 s-1'                ,&
@@ -1393,7 +1403,7 @@ module GEOS_OpenwaterGridCompMod
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           RESTART            = MAPL_RestartSkip            ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
     VERIFY_(STATUS)
 
 
@@ -1425,7 +1435,7 @@ module GEOS_OpenwaterGridCompMod
      !   DIMS               = MAPL_DimsTileOnly           ,&
      !   VLOCATION          = MAPL_VLocationNone          ,&
      !   DEFAULT            = 0.0                         ,&
-     !   RC=STATUS  ) 
+     !   RC=STATUS  )
      !VERIFY_(STATUS)
 
 
@@ -1440,22 +1450,22 @@ module GEOS_OpenwaterGridCompMod
     call MAPL_TimerAdd(GC,    name="RUN2"  ,                RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-OpenWater",            RC=STATUS)
-    VERIFY_(STATUS) 
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-Albedo"  ,             RC=STATUS)
     VERIFY_(STATUS)
-  
+
 
 ! Set generic init and final methods
 ! ----------------------------------
 
     call MAPL_GenericSetServices    ( GC,  RC=STATUS )
     VERIFY_(STATUS)
- 
+
 ! Set the Run entry point
 ! -----------------------
 
     RETURN_(ESMF_SUCCESS)
-  
+
   end subroutine SetServices
 
 
@@ -1468,7 +1478,7 @@ module GEOS_OpenwaterGridCompMod
 subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -1540,9 +1550,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:)    :: VWINDLMTILE => null()
    real, pointer, dimension(:)    :: UW  => null()
    real, pointer, dimension(:)    :: VW  => null()
-   real, pointer, dimension(:)    :: DZ  => null()     
+   real, pointer, dimension(:)    :: DZ  => null()
    real, pointer, dimension(:)    :: TA  => null()
-   real, pointer, dimension(:)    :: QA  => null()     
+   real, pointer, dimension(:)    :: QA  => null()
    real, pointer, dimension(:)    :: PS  => null()
    real, pointer, dimension(:)    :: PCU => null()
    real, pointer, dimension(:)    :: FI  => null()
@@ -1610,7 +1620,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real            :: QSAT_SCL
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -1653,9 +1663,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetResource ( MAPL, CHOOSEZ0,    Label="CHOOSEZ0:",    DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
 
-! Get roughness parameters 
+! Get roughness parameters
 ! -------------------------------------------------------------
-    call MAPL_GetResource ( MAPL, OCEANZ0,     Label="OCEANZ0:" ,    DEFAULT=1.0e-3, RC=STATUS) 
+    call MAPL_GetResource ( MAPL, OCEANZ0,     Label="OCEANZ0:" ,    DEFAULT=1.0e-3, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Get Thickness of AOIL (m)
@@ -1665,7 +1675,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call MAPL_GetResource ( MAPL, MinWaterDepth, Label="MIN_WATER_DEPTH:" , DEFAULT=1000., RC=STATUS)
        VERIFY_(STATUS)
-    else 
+    else
        call MAPL_GetResource ( MAPL, MaxWaterDepth, Label="MAX_WATER_DEPTH:" , DEFAULT=2.,   RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetResource ( MAPL, MinWaterDepth, Label="MIN_WATER_DEPTH:" , DEFAULT=2.,   RC=STATUS)
@@ -1679,7 +1689,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     AOIL_depth = MAX(MaxWaterDepth, MinWaterDepth)
 
-    if (DO_DATASEA==0) then
+    if ( .not. DO_DATASEA ) then
 !      Thickness of OGCM top level (m)
 !      ------------------------------
        call MAPL_GetResource ( MAPL, OGCM_top_thickness, Label="OGCM_TOP_LAYER:" , DEFAULT=10.,   RC=STATUS) ! SA: could be an export from GUEST GC
@@ -1888,7 +1898,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer(INTERNAL,TWMTF, 'TWMTF',  RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL,DELTC, 'DELTC',  RC=STATUS); VERIFY_(STATUS)
 
-      if (DO_DATASEA == 1) then                                           ! Ocean is from "data"
+      if ( DO_DATASEA ) then                                              ! Ocean is from "data"
          TS(:,WATER)= TS_FOUNDi + ((1.+MUSKIN)/MUSKIN) * TWMTF            ! Eqn.(14) of AS2018
       else                                                                ! Ocean is from a model
          TS(:,WATER)= TS_FOUNDi + (1./MUSKIN + (1.-epsilon_d)) * TWMTF    ! RHS is from Eqn.(15) of AS2018; (here) abuse of notation: T_o is from OGCM.
@@ -1896,17 +1906,17 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       TS(:,WATER) = TS(:,WATER) - DELTC                                   ! Eqn.(16) of AS2018
    endif
 
-   FR(:,WATER) = 1.0 ! parent(saltwater) will aggregate based on water/ice fraction 
+   FR(:,WATER) = 1.0 ! parent(saltwater) will aggregate based on water/ice fraction
    US(:,WATER) = UW
    VS(:,WATER) = VW
 
    ! it is a minor bug to not having the line below
    ! TS has been updated on the ocean side, so QS should too
    ! commented out for now so Santha can have zero-diff
-   !QS(:,WATER) = GEOS_QSAT(TS(:,WATER), PS, RAMP=0.0, PASCALS=.TRUE.) 
+   !QS(:,WATER) = GEOS_QSAT(TS(:,WATER), PS, RAMP=0.0, PASCALS=.TRUE.)
    call MAPL_GetResource ( MAPL, QSAT_SCL, Label="QSAT_SALTWATER_SCALING:" , DEFAULT=1.0, RC=STATUS)
    VERIFY_(STATUS)
-   QS(:,WATER) = QSAT_SCL*GEOS_QSAT(TS(:,WATER), PS, RAMP=2.0, PASCALS=.TRUE.) 
+   QS(:,WATER) = QSAT_SCL*GEOS_QSAT(TS(:,WATER), PS, RAMP=2.0, PASCALS=.TRUE.)
 
    if(associated(QSAT1)) QSAT1 = QS(:,WATER)
    !if(associated(QSAT2)) QSAT2 = 1.0/1.22*0.98*640380.0*exp(-5107.4/TS(:,WATER))
@@ -1941,9 +1951,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated( MOV2M))  MOV2M = 0.0
    if(associated(VNT)) VNT = 0.0
 
-   N = WATER  
+   N = WATER
 
-! Choose sfc layer: if CHOOSEMOSFC is 1 (default), choose helfand MO, 
+! Choose sfc layer: if CHOOSEMOSFC is 1 (default), choose helfand MO,
 !                   if CHOOSEMOSFC is 0          , choose louis
 
    sfc_layer: if(CHOOSEMOSFC.eq.0) then
@@ -1959,7 +1969,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          fakelai  = 1.e-4
          ! Approximate pressure at top of surface layer: hydrostatic, eqn of state using avg temp and press
          PSL = PSMB * (1. - (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) ) /   &
-                      (1. + (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) ) 
+                      (1. + (DZ*MAPL_GRAV)/(MAPL_RGAS*(TA+TS(:,N)) ) )
 
          call helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TS(:,N),QA,QS(:,N),PSL,PSMB,Z0(:,N),        &
                            fakelai,IWATER,DZ,niter,nt,RHO,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,  &
@@ -2087,7 +2097,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
   type(ESMF_State),    intent(inout) :: IMPORT ! Import state
   type(ESMF_State),    intent(inout) :: EXPORT ! Export state
   type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
@@ -2120,7 +2130,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -2176,7 +2186,7 @@ contains
    subroutine OPENWATERCORE(NT,RC)
    integer,           intent(IN ) :: NT
    integer, optional, intent(OUT) :: RC
-     
+
 !  Locals
 
    character(len=ESMF_MAXSTR)     :: IAm
@@ -2185,10 +2195,10 @@ contains
 ! pointers to export
 
    real, pointer, dimension(:  )  :: EMISS   => null()
-   real, pointer, dimension(:  )  :: ALBVF   => null() 
-   real, pointer, dimension(:  )  :: ALBVR   => null() 
-   real, pointer, dimension(:  )  :: ALBNF   => null() 
-   real, pointer, dimension(:  )  :: ALBNR   => null() 
+   real, pointer, dimension(:  )  :: ALBVF   => null()
+   real, pointer, dimension(:  )  :: ALBVR   => null()
+   real, pointer, dimension(:  )  :: ALBNF   => null()
+   real, pointer, dimension(:  )  :: ALBNR   => null()
    real, pointer, dimension(:  )  :: EVAPOUT => null()
    real, pointer, dimension(:  )  :: SUBLIM  => null()
    real, pointer, dimension(:  )  :: SNOWOCN => null()
@@ -2240,7 +2250,7 @@ contains
    real, pointer, dimension(:  )  :: Tdel      => null()
    real, pointer, dimension(:  )  :: TAUTW     => null()
    real, pointer, dimension(:  )  :: TS_FOUNDe => null()
-   real, pointer, dimension(:  )  :: SS_FOUNDe => null()   
+   real, pointer, dimension(:  )  :: SS_FOUNDe => null()
    real, pointer, dimension(:  )  :: ZETA_W    => null()
    real, pointer, dimension(:  )  :: TWMTFe    => null()
 
@@ -2289,13 +2299,13 @@ contains
    real, pointer, dimension(:)    :: VW => null()
    real, pointer, dimension(:)    :: KPAR => null()
    real, pointer, dimension(:)    :: TS_FOUNDi => null()
-   real, pointer, dimension(:)    :: SS_FOUNDi => null()  
+   real, pointer, dimension(:)    :: SS_FOUNDi => null()
    real, pointer, dimension(:)    :: DTSDT => null()
    real, pointer, dimension(:)    :: TF => null()
    real, pointer, dimension(:)    :: DISCHARGE_IM => null()
 
 
-   real, allocatable                   :: TS (:,:)                  ! Following 4 Variables: TS to FR need to be 
+   real, allocatable                   :: TS (:,:)                  ! Following 4 Variables: TS to FR need to be
    real, allocatable                   :: HH (:,:)                  ! allocatable because NUM_SUBTILES is NOT a parameter
    real, allocatable                   :: SS (:,:)
    real, allocatable                   :: FR (:,:)
@@ -2370,7 +2380,7 @@ contains
    real                                :: OGCM_top_thickness        ! thickness of OGCM top layer (D) in AS2018
    real                                :: epsilon_d                 ! ratio: (thickness of AOIL)/(thickness of OGCM top level) = epsilon_d in AS2018
    real                                :: F_PHI                     ! tunable parameter, used to calculate stability function in AS2018
-   real                                :: QSAT_SCL 
+   real                                :: QSAT_SCL
 
 ! following are related  to CICE
 
@@ -2541,7 +2551,7 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetResource ( MAPL, MINWATERDEPTH, Label="MIN_WATER_DEPTH:" , DEFAULT=1000., RC=STATUS)
        VERIFY_(STATUS)
-    else 
+    else
        call MAPL_GetResource ( MAPL, MAXWATERDEPTH, Label="MAX_WATER_DEPTH:" , DEFAULT=2.,   RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetResource ( MAPL, MINWATERDEPTH, Label="MIN_WATER_DEPTH:" , DEFAULT=2.,   RC=STATUS)
@@ -2560,7 +2570,7 @@ contains
 
     AOIL_depth = MAX(MaxWaterDepth, MinWaterDepth)
 
-    if (DO_DATASEA==0) then
+    if ( .not. DO_DATASEA ) then
 !      Thickness of OGCM top level (m)
 !      ------------------------------
        call MAPL_GetResource ( MAPL, OGCM_top_thickness, Label="OGCM_TOP_LAYER:" , DEFAULT=10.,   RC=STATUS) ! SA: could be an export from GUEST GC
@@ -2570,20 +2580,20 @@ contains
     end if
 
 !   --------------------------------------------------------------------------------------------------------
-!   Treatment of Marginal Ice Zone (MIZ), i.e., threshold on fraction of ice (fraci), to model the SST variations. 
+!   Treatment of Marginal Ice Zone (MIZ), i.e., threshold on fraction of ice (fraci), to model the SST variations.
 !   One can imagine at least following three possibilities:
-!   (i)  SST is NOT allowed to vary within ice extent, 
+!   (i)  SST is NOT allowed to vary within ice extent,
 !        i.e., if fraci    < fr_ice_thresh (1.e-11 default), turn AOIL off, set skin SST = TS_FOUND
-!   (ii) SST IS allowed to vary with the ice extent, 
+!   (ii) SST IS allowed to vary with the ice extent,
 !                 FRwater  > fr_ice_thresh (0.0 default),    turn AOIL on, only over water, skin SST .ne. TS_FOUND (as it was <= Jason-2_0)
 !   (iii) SST is NOT allowed to vary when SST < SST_cold, say, 15C. Turn AOIL off when the water temperature falls below some threshold.
 !
-!   As already noted, option (ii) was used in versions before and up to Jason-2_0, and (i) was tried in Jason-3_0, which 
+!   As already noted, option (ii) was used in versions before and up to Jason-2_0, and (i) was tried in Jason-3_0, which
 !   showed detriment in forecast skill (self verification tests most prominent, and a bit, with respect to ECMWF operations).
 !   Hence reverting to option (ii). The final option (iii) has not been tested, just proposed for the sake of completeness.
 !   In any case, probably, (iii) will also degrade forecast skill, just as (i) did, because (what SA thinks) -1.7C, set for water temperature is TOO COLD!
 !   Unless we understand and model all the processes, we may have to just let diurnal variability (cool-skin+diurnal warming) pick up the tab!
-!   
+!
 !   ** Revisit when coupled to ocean+sea-ice ** July, 2019.
 !   --------------------------------------------------------------------------------------------------------
 !   call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=1.e-11,    RC=STATUS)   ! above option (i)
@@ -2606,20 +2616,20 @@ contains
 
 ! Get TS from internal state exactly as in Run1
 ! ---------------------------------------------
-    if (DO_SKIN_LAYER==0) then 
+    if (DO_SKIN_LAYER==0) then
        HH(:,WATER) = 0.
        TS(:,WATER) = TS_FOUNDi
        SS(:,WATER) = SS_FOUNDi
        TWMTF       = 0.
        DELTC       = 0.
-    else 
+    else
        HH(:,WATER) = AOIL_depth*MAPL_RHO_SEAWATER
        SS(:,WATER) = SS_FOUNDi*HH(:,WATER)
 
        call MAPL_GetPointer(INTERNAL,TWMTF, 'TWMTF',  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL,DELTC, 'DELTC',  RC=STATUS); VERIFY_(STATUS)
 
-       if (DO_DATASEA == 1) then                                           ! Ocean is from "data"
+       if ( DO_DATASEA ) then                                              ! Ocean is from "data"
           TS(:,WATER)= TS_FOUNDi + ((1.+MUSKIN)/MUSKIN) * TWMTF            ! Eqn.(14) of AS2018
        else                                                                ! Ocean is from a model
           TS(:,WATER)= TS_FOUNDi + (1./MUSKIN + (1.-epsilon_d)) * TWMTF    ! RHS is from Eqn.(15) of AS2018; (here) abuse of notation: T_o is from OGCM.
@@ -2651,7 +2661,7 @@ contains
     call ESMF_VMGetCurrent ( VM, RC=STATUS )
 
         ! --------------------------------------------------------------------------
-        ! Get the current time. 
+        ! Get the current time.
         ! --------------------------------------------------------------------------
 
     call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, startTime=MODELSTART, TIMESTEP=DELT,  RC=STATUS )
@@ -2726,14 +2736,14 @@ contains
 ! Fill up exports related to shortwave absorption
 !------------------------------------------------
 
-    if(associated(PENUVR))  PENUVR  = 0.0 
-    if(associated(PENUVF))  PENUVF  = 0.0 
-    if(associated(PENPAR))  PENPAR  = 0.0 
-    if(associated(PENPAF))  PENPAF  = 0.0 
+    if(associated(PENUVR))  PENUVR  = 0.0
+    if(associated(PENUVF))  PENUVF  = 0.0
+    if(associated(PENPAR))  PENPAR  = 0.0
+    if(associated(PENPAF))  PENPAF  = 0.0
 
 ! Shortwave absorption in water
 ! -----------------------------
-    if (DO_SKIN_LAYER==0) then 
+    if (DO_SKIN_LAYER==0) then
       PEN = 1.0
     else
       PEN = exp(-KUVR*AOIL_depth)        ! UV penetration into water
@@ -2741,7 +2751,7 @@ contains
     PUR = (1.-ALBVRO)*DRUVR*PEN
     PUF = (1.-ALBVFO)*DFUVR*PEN
 
-    if (DO_SKIN_LAYER==0) then 
+    if (DO_SKIN_LAYER==0) then
       PEN = 1.0
     else
       PEN = exp(-KPAR*AOIL_depth)        ! near-IR ("blue light" 490nm?)
@@ -2750,8 +2760,8 @@ contains
     PPF = (1.-ALBVFO)*DFPAR*PEN
 
     PEN = PUR + PUF + PPR + PPF          ! total absorbed into water up to AOIL_depth
-    
-    if (DO_DATASEA == 0) then            ! in coupled mode
+
+    if ( .not. DO_DATASEA ) then            ! in coupled mode
       PEN_ocean =  exp(-KUVR*OGCM_top_thickness)
       PUR       =  (1.-ALBVRO)*DRUVR*PEN_ocean
       PUF       =  (1.-ALBVFO)*DFUVR*PEN_ocean
@@ -2762,13 +2772,13 @@ contains
     endif
 
     ! regardless of what interface layer is used, penetrative solar to ocean
-    ! always gets the surface values 
+    ! always gets the surface values
     if(associated(PENUVR)) PENUVR  = (1.-ALBVRO)*DRUVR
     if(associated(PENUVF)) PENUVF  = (1.-ALBVFO)*DFUVR
     if(associated(PENPAR)) PENPAR  = (1.-ALBVRO)*DRPAR
     if(associated(PENPAF)) PENPAF  = (1.-ALBVFO)*DFPAR
 
-! Net Solar insolation (including UV & IR, direct & diffuse) in interface layer 
+! Net Solar insolation (including UV & IR, direct & diffuse) in interface layer
 ! ------------------------------------------------------------------------------
 
     SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
@@ -2802,11 +2812,11 @@ contains
                     DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_, &
                     TS,WATER,FR,n_iter_cool,fr_ice_thresh)
 
-    DTS     = 0.           ! initialize to zero regardless of whether AOIL is on 
+    DTS     = 0.           ! initialize to zero regardless of whether AOIL is on
 
 !   AOIL near-surface temperature changes
 !----------------------------------------
-    if (DO_SKIN_LAYER==0) then 
+    if (DO_SKIN_LAYER==0) then
 
       TBAR_   = TS(:,WATER)
       TDEL_   = TS(:,WATER) + TDROP_                   ! for analysis not to die if do_skin_layer is off
@@ -2845,7 +2855,7 @@ contains
 
          TAUTW_(N) = (AOIL_depth*PHIW_(N))/(MAPL_KARMAN*USTARW_(N)*(1.+MUSKIN))
 
-         if (DO_DATASEA == 0) then
+         if ( .not. DO_DATASEA ) then
            QWARM_(N)= QWARM_(N) - (epsilon_d/(1.-epsilon_d))* (PEN(N)-PEN_ocean(N))
            TAUTW_(N)= (1.- epsilon_d) * TAUTW_(N)   ! compare \tau_{\sigma} in Eq.(22) and that in section 2.2 of AS2018
          endif
@@ -2857,7 +2867,7 @@ contains
 
          TBAR_(N) = TWMTF(N) + TS_FOUNDi(N)
 
-         if (DO_DATASEA == 1) then
+         if ( DO_DATASEA ) then
           TDEL_(N) = TS_FOUNDi(N) + ((1.+MUSKIN)/MUSKIN) * TWMTF(N)
          else
           TDEL_(N) = TS_FOUNDi(N) + (1./MUSKIN + (1.-epsilon_d)) * TWMTF(N)
@@ -2882,7 +2892,7 @@ contains
     endif
 
 !   Update Non-solar heat fluxes in interface layer that depend on TS
-!   If DO_SKIN_LAYER is off, this update simply reflects an 
+!   If DO_SKIN_LAYER is off, this update simply reflects an
 !                          updated ocean temperature via above TS_FOUNDi
 !   --------------------------------------------------------------------
 
@@ -2932,9 +2942,9 @@ contains
     if(associated(AOQFLUX)) AOQFLUX = EVP    *FRWATER
     if(associated(AOLWFLX)) AOLWFLX = (LWDNSRF-ALW-BLW*TS(:,WATER))*FRWATER
     if(associated(AORAIN )) AORAIN  = PCU + PLS
-    if(associated(AOSNOW )) AOSNOW  = SNO    *FRWATER 
-    if(associated(AODRNIR)) AODRNIR = (1.-ALBNRO)*DRNIR*FRWATER 
-    if(associated(AODFNIR)) AODFNIR = (1.-ALBNFO)*DFNIR*FRWATER 
+    if(associated(AOSNOW )) AOSNOW  = SNO    *FRWATER
+    if(associated(AODRNIR)) AODRNIR = (1.-ALBNRO)*DRNIR*FRWATER
+    if(associated(AODFNIR)) AODFNIR = (1.-ALBNFO)*DFNIR*FRWATER
     if(associated(FSURF  )) FSURF   = SWN+LWDNSRF-(ALW+BLW*TS(:,WATER))-SHF-LHF
 
     if(associated(TS_FOUNDe)) TS_FOUNDe = TS_FOUNDi
@@ -2968,7 +2978,7 @@ contains
 ! Layer thickness; liquid precip goes right thru ice.
 ! FRESHATM is useful for mass flux balance.
 ! freshwater flux from atmosphere needs to be added to HH
-! here since it carries zero enthalpy 
+! here since it carries zero enthalpy
 !---------------------------------------------------
 
     !!why do we still have this update?
@@ -2990,7 +3000,7 @@ contains
 
     if(associated(TST    )) TST     = TS(:,WATER)*FR(:,WATER)
     if(associated(QST    )) QST     = QS(:,WATER)*FR(:,WATER)
-    if(associated(HLWUP  )) HLWUP   = ALW*FR(:,WATER) 
+    if(associated(HLWUP  )) HLWUP   = ALW*FR(:,WATER)
     if(associated(HLWUP  )) HLWUP   = HLWUP   + BLW*TS(:,WATER)*FR(:,WATER)
 
     EMISS = EMSH2O*FR(:,WATER)
@@ -2999,16 +3009,16 @@ contains
     ALBNR = ALBNRO*FR(:,WATER)
     ALBNF = ALBNFO*FR(:,WATER)
 
-    if(associated(SWNDWTR)) then 
-          where( FRWATER>0.0 ) 
+    if(associated(SWNDWTR)) then
+          where( FRWATER>0.0 )
              SWNDWTR = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
-                       (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR 
+                       (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
           elsewhere
              SWNDWTR = MAPL_UNDEF
           end where
     end if
 
-    if(associated(SWNDSRF)) then 
+    if(associated(SWNDSRF)) then
        SWNDSRF = &
            (1.-ALBVR)*VSUVR + (1.-ALBVF)*VSUVF + &
            (1.-ALBNR)*DRNIR + (1.-ALBNF)*DFNIR
@@ -3045,7 +3055,7 @@ contains
        ALBVF = ALBVFO*FR(:,WATER)
        ALBNR = ALBNRO*FR(:,WATER)
        ALBNF = ALBNFO*FR(:,WATER)
-          
+
     endif
 
     call MAPL_TimerOff(MAPL,    "-Albedo")
@@ -3060,7 +3070,7 @@ contains
 !-----------
 
     RETURN_(ESMF_SUCCESS)
-             
+
   end subroutine OPENWATERCORE
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -3121,7 +3131,7 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! !IROUTINE: SIMPLE_SW_ABS - 
+! !IROUTINE: SIMPLE_SW_ABS -
 !  Implements two simple ways for the absorption of shortwave radiation,
 !  as an alternative (for "TESTING" purposes) to using KPAR & KUVR based on PEN,
 !  into an interface layer of typical depth = 2m, that is also called "depth of AOIL"
@@ -3137,7 +3147,7 @@ contains
     real,    intent(IN)    :: depth     ! depth up to which shortwave needs to be absorbed
     real,    intent(IN)    :: ZTH(:)    ! cosine of solar zenith angle
     real,    intent(IN)    :: SWN(:)    ! net shortwave at surface of ocean, or @ top of air/sea interface
-    real,    intent(OUT)   :: PEN(:)    ! shortwave penetrated below the depth    
+    real,    intent(OUT)   :: PEN(:)    ! shortwave penetrated below the depth
 
 !  local variables
     real, dimension(NT)  :: fW
@@ -3183,7 +3193,7 @@ contains
     integer, intent(IN)    :: NT             ! number of tiles
 !   real,    intent(IN)    :: FR     (:)     ! fraction of sea ice
     real,    intent(IN)    :: FR     (:,:)   ! fraction of surface (water/ice)
-    integer, intent(IN)    :: WATER          ! subtile  number assigned to surface type: "WATER" 
+    integer, intent(IN)    :: WATER          ! subtile  number assigned to surface type: "WATER"
     real,    intent(IN)    :: CM     (:,:)   ! transfer coefficient for wind
     real,    intent(IN)    :: UUA    (:)     ! zonal       wind
     real,    intent(IN)    :: VVA    (:)     ! meridional  wind
@@ -3195,14 +3205,14 @@ contains
     real,    intent(IN)    :: LWDNSRF(:)     ! downward longwave at surface
     real,    intent(IN)    :: ALW    (:)     ! for linearized \sigma T^4
     real,    intent(IN)    :: BLW    (:)     ! for linearized \sigma T^4
-    integer, intent(IN)    :: n_iter_cool    ! number of iterations to compute cool-skin layer 
+    integer, intent(IN)    :: n_iter_cool    ! number of iterations to compute cool-skin layer
     real,    intent(IN)    :: fr_ice_thresh  ! threshold on ice fraction, sort of defines Marginal Ice Zone
     real,    intent(IN)    :: TS     (:,:)   ! skin temperature
 
-    real,    intent(OUT)   :: USTARW_(:)     ! u_{*,w} 
+    real,    intent(OUT)   :: USTARW_(:)     ! u_{*,w}
     real,    intent(OUT)   :: DCOOL_ (:)     ! depth of cool-skin layer
     real,    intent(OUT)   :: TDROP_ (:)     ! temperature drop across cool-skin
-    real,    intent(OUT)   :: SWCOOL_(:)     ! shortwave radiation absorbed in cool-skin 
+    real,    intent(OUT)   :: SWCOOL_(:)     ! shortwave radiation absorbed in cool-skin
     real,    intent(OUT)   :: QCOOL_ (:)     ! net heat flux in cool layer
     real,    intent(OUT)   :: BCOOL_ (:)     ! bouyancy in cool layer
     real,    intent(OUT)   :: LCOOL_ (:)     ! Saunder's parameter in cool layer
@@ -3231,8 +3241,8 @@ contains
        TXW(N) = CM(N,WATER)*(UUA(N) - UW(N))
        TYW(N) = CM(N,WATER)*(VVA(N) - VW(N))
 
-!      if( FR(N)       < fr_ice_thresh ) then 
-       if( FR(N,WATER) > fr_ice_thresh ) then 
+!      if( FR(N)       < fr_ice_thresh ) then
+       if( FR(N,WATER) > fr_ice_thresh ) then
 
 !        Ustar in water has a floor of 2 \mu m/s
 !        ----------------------------------------
@@ -3273,13 +3283,13 @@ contains
              BCOOL_(N) = (ALPH*MAPL_GRAV*Qb) / (MAPL_RHO_SEAWATER*MAPL_CAPWTR)
 
 !            Saunders parameter
-!            BigC = (16.0 * (MAPL_CAPWTR*MAPL_RHO_SEAWATER)**2 * NU_WATER**3) / TherCond_WATER**2  
+!            BigC = (16.0 * (MAPL_CAPWTR*MAPL_RHO_SEAWATER)**2 * NU_WATER**3) / TherCond_WATER**2
 !            -------------------------------------------------------------------------------
 
              if ( BCOOL_(N) > 0.0) then  ! Eqn(14) of F96
                 LCOOL_(N)  = 6.0/( 1.0 + ( BCOOL_(N)*bigC / USTARW_(N)**4 )**0.75 )**(1./3.)
                 DCOOL_(N)  = LCOOL_(N)*NU_WATER/USTARW_(N)
-             else 
+             else
                 LCOOL_(N)  = 6.0
                 DCOOL_(N)  = min( LCOOL_(N)*NU_WATER/USTARW_(N), 1.e-2)    ! Prevent very thick cool layer depth
              end if

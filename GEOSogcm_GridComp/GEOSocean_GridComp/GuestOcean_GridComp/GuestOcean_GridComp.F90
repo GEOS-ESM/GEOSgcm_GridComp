@@ -24,7 +24,7 @@ module GuestOcean_GridCompMod
 
   character(len=ESMF_MAXSTR)  :: OCEAN_NAME
 
-  logical                     :: DO_DATASEA = .false.
+  logical                     :: DO_DATASEA
   real                        :: OrphanDepth
 
 ! !DESCRIPTION:
@@ -103,8 +103,8 @@ contains
 ! Get constants from CF
 ! ---------------------
 
-    call MAPL_GetResource ( MAPL, OrphanDepth, Label="ORPHAN_DEPTH:", DEFAULT=10.0, __RC__)
     call MAPL_GetResource ( MAPL, OCEAN_NAME,  Label="OCEAN_MODEL:",  DEFAULT="DATASEA", __RC__)
+    call MAPL_GetResource ( MAPL, OrphanDepth, Label="ORPHAN_DEPTH:", DEFAULT=10.0, __RC__)
 
 ! Add Child based on choice of Ocean Model
 ! ----------------------------------------
@@ -114,8 +114,10 @@ contains
           DO_DATASEA = .true.
        case ("MOM")
           OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOMSetServices,  __RC__)
+          DO_DATASEA = .false.
        case ("MOM6")
           OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOM6SetServices, __RC__)
+          DO_DATASEA = .false.
        case default
           charbuf_ = "OCEAN_MODEL: " // trim(OCEAN_NAME) // " is not implemented, ABORT!"
           call WRITE_PARALLEL(charbuf_)
@@ -317,7 +319,7 @@ contains
 !  !EXPORT STATE:
 
     select case (trim(OCEAN_NAME))
-        case ("MOM")
+        case ("MOM", "DATASEA")
             charbuf_ = 'MASKO'
         case ("MOM6")
             charbuf_ = 'MASK'
@@ -378,16 +380,14 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    if ( trim(OCEAN_NAME) == "MOM" ) then
-        call MAPL_AddExportSpec(GC,                               &
-             SHORT_NAME         = 'RFLUX',                             &
-             LONG_NAME          = 'downward_radiative_heat_flux_at_ocean_bottom',&
-             UNITS              = 'W m-2',                             &
-             DIMS               = MAPL_DimsHorzOnly,                   &
-             VLOCATION          = MAPL_VLocationNone,                  &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-    endif
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME         = 'RFLUX',                             &
+         LONG_NAME          = 'downward_radiative_heat_flux_at_ocean_bottom',&
+         UNITS              = 'W m-2',                             &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          LONG_NAME          = 'river_discharge_at_ocean_points',&
@@ -626,10 +626,10 @@ contains
     type (ESMF_TimeInterval)            :: timeStep
     type (ESMF_Time)                    :: currTime
 
-    real, pointer :: MASK(:,:)     => null()
-    real, pointer :: MASKO(:,:)    => null()
-    real, pointer :: MASK3D(:,:,:) => null()
-    real, pointer :: DH(:,:,:)     => null()
+    real, pointer :: MASK(:,:)
+    real, pointer :: MASKO(:,:)
+    real, pointer :: MASK3D(:,:,:)
+    real, pointer :: DH(:,:,:)
 
 !=============================================================================
 
@@ -831,7 +831,7 @@ contains
 
 ! Diagnostics exports
 
-    real, pointer :: RFLUX (:,:)         => null()
+    real, pointer :: RFLUX (:,:)
     real, pointer :: TAUXe (:,:)
     real, pointer :: TAUYe (:,:)
     real, pointer :: HEATe (:,:,:)
@@ -870,12 +870,12 @@ contains
     real, pointer :: TW  (:,:)
     real, pointer :: SW  (:,:)
     real, pointer :: MASK(:,:)
-    real, pointer :: MASK3D(:,:,:)  => null()
+    real, pointer :: MASK3D(:,:,:)
     real, pointer :: FRAZIL(:,:)
 
 ! Locals
 
-    integer           :: I,J,L
+    integer           :: L
     integer           :: IM
     integer           :: JM
     integer           :: LM
@@ -1042,8 +1042,7 @@ contains
 
 ! Diagnostics exports
 !---------------------------------------------------------
-       if ( trim(OCEAN_NAME) == "MOM" ) &
-           call MAPL_GetPointer(EXPORT, RFLUX, 'RFLUX', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, RFLUX,   'RFLUX'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, FROCEANe,'FROCEAN', RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, TAUXe,   'TAUX'   , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, TAUYe,   'TAUY'   , RC=STATUS); VERIFY_(STATUS)
@@ -1096,20 +1095,21 @@ contains
           TAUY = TAUYi * WGHT
 
 
-! Fill up Exports
-!----------------
+! Prepare radiative heating for ocean
+!------------------------------------
 
-!         ! Prepare radiative heating for ocean (MOM only)
-!         !-----------------------------------------------
-          if ( trim(OCEAN_NAME) == "MOM" ) then
-            if(associated(RFLUX )) RFLUX = 0.0
-              do L=1,LM
-                HEAT(:,:,L) = HEATi(:,:,L)*WGHT
-                if(associated(RFLUX)) then
-                  RFLUX = RFLUX + (1.0-MASK3D(:,:,L))*HEAT(:,:,L)
-                end if
-              end do
-          endif
+          if(associated(RFLUX )) RFLUX = 0.0
+          select case (trim(OCEAN_NAME))
+             case ("MOM", "DATASEA")
+                do L=1,LM
+                   HEAT(:,:,L) = HEATi(:,:,L)*WGHT
+                   if(associated(RFLUX)) then
+                      RFLUX = RFLUX + (1.0-MASK3D(:,:,L))*HEAT(:,:,L)
+                   end if
+                end do
+             case ("MOM6")
+                ! No 3D Mask from MOM6. Do nothing for now!
+          end select
 
           if (associated(HEATe)) HEATe = HEAT
           if (associated(TAUXe)) TAUXe = TAUX
@@ -1169,10 +1169,6 @@ contains
           end if
        end if
 
-       if ( trim(OCEAN_NAME) == "MOM6" ) then
-         TS_FOUND = 280.0  ! make sure it is initialized, use 280., same as its default value in the above internal spec.
-       end if
-
        where(WGHT > 0.0)
           TS_FOUND = TW
        end where
@@ -1196,7 +1192,7 @@ contains
        if ( DO_DATASEA ) then
            deallocate(MASK3D, STAT=STATUS); VERIFY_(STATUS)
            deallocate(MASK,   STAT=STATUS); VERIFY_(STATUS)
-       endif
+       end if
 
     end if ! Time to run
 
