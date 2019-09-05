@@ -319,7 +319,7 @@ contains
 !  !EXPORT STATE:
 
     select case (trim(OCEAN_NAME))
-        case ("MOM", "DATASEA")
+        case ("MOM")
             charbuf_ = 'MASKO'
         case ("MOM6")
             charbuf_ = 'MASK'
