@@ -2703,11 +2703,11 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_buoyf,  'edmf_buoyf',   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_hl2,  'edmf_hl2',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_hl2,  'edmf_hl2', ALLOC=.TRUE.,  RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_qthl, 'edmf_qthl',  RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_qthl, 'edmf_qthl', ALLOC=.TRUE.,  RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_qt2,  'edmf_qt2',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_qt2,  'edmf_qt2', ALLOC=.TRUE.,   RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_w2,  'edmf_w2',   RC=STATUS)
      VERIFY_(STATUS)
@@ -4010,15 +4010,20 @@ ENDIF
   CKSS(:,:,1:LM-1)=-KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)+0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
   CKQQ(:,:,1:LM-1)=CKSS(:,:,1:LM-1)
   CKUU(:,:,1:LM-1)=-KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)+0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)  
-  
+ 
+  BKSS = 1.0 - (CKSS+AKSS)
+  BKQQ = 1.0 - (CKQQ+AKQQ)
+  BKUU = 1.0 - (CKUU+AKUU)
+
+! Add mass flux contribution
     
-  BKSS(:,:,LM)=1.0-CKSS(:,:,LM)-AKSS(:,:,LM)-DMI(:,:,LM)*RHOAW3(:,:,LM-1)
-  BKQQ(:,:,LM)=1.0-CKQQ(:,:,LM)-AKQQ(:,:,LM)-DMI(:,:,LM)*RHOAW3(:,:,LM-1)
-  BKUU(:,:,LM)=1.0-CKUU(:,:,LM)-AKUU(:,:,LM)-DMI(:,:,LM)*RHOAW3(:,:,LM-1) 
-   
-  BKSS(:,:,1:LM-1)=1.0-CKSS(:,:,1:LM-1)-AKSS(:,:,1:LM-1)+DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1)-RHOAW3(:,:,0:LM-2))
-  BKQQ(:,:,1:LM-1)=1.0-CKQQ(:,:,1:LM-1)-AKQQ(:,:,1:LM-1)+DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1)-RHOAW3(:,:,0:LM-2))
-  BKUU(:,:,1:LM-1)=1.0-CKUU(:,:,1:LM-1)-AKUU(:,:,1:LM-1)+DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1)-RHOAW3(:,:,0:LM-2))
+  BKSS(:,:,LM) = BKSS(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
+  BKQQ(:,:,LM) = BKQQ(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
+  BKUU(:,:,LM) = BKUU(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
+
+  BKSS(:,:,1:LM-1) = BKSS(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1)-RHOAW3(:,:,0:LM-2))
+  BKQQ(:,:,1:LM-1) = BKQQ(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1)-RHOAW3(:,:,0:LM-2))
+  BKUU(:,:,1:LM-1) = BKUU(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1)-RHOAW3(:,:,0:LM-2))
 
 
 ! Y-s ... these are rhs - mean value - surface flux 
@@ -4092,7 +4097,7 @@ ENDIF
                     LAMBDA_B, C_B,  &
                     U, V, Z,        &
                     VARFLT, PLE,    &
-                    BKV, FKV        )
+                    BKV, BKUU, FKV  )
 
       call MAPL_TimerOff(MAPL,"---BELJAARS")
 
@@ -4356,13 +4361,13 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
        
        SX = S
 
-elseif (trim(name) =='S') then
+ elseif (trim(name) =='S') then
           CX => CT
           DX => DKSS
           AK => AKSS; BK => BKSS; CK => CKSS
           SX=S+YS      
-elseif (trim(name)=='Q') then
-         CX => CQ
+ elseif (trim(name)=='Q') then
+          CX => CQ
           DX => DKQQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQV
@@ -4372,7 +4377,7 @@ elseif (trim(name)=='Q') then
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQL
  elseif (trim(name)=='QILS') then
-           CX => CQ
+          CX => CQ
           DX => DKQQ
           AK => AKQQ; BK => BKQQ; CK => CKQQ
           SX=S+YQI
@@ -5398,7 +5403,7 @@ end subroutine RUN1
                        LAMBDA_B, C_B,  &
                        U, V, Z,        &
                        VARFLT, PLE,    &
-                       BKV, FKV        )
+                       BKV, BKVV, FKV  )
 
 !BOP
 !
@@ -5427,7 +5432,7 @@ end subroutine RUN1
       real,    intent(IN   ), dimension(:,:   ) :: VARFLT
       real,    intent(IN   ), dimension(:,:,0:) :: PLE
 
-      real,    intent(INOUT), dimension(:,:,: ) :: BKV
+      real,    intent(INOUT), dimension(:,:,: ) :: BKV,BKVV
 
       real,    intent(  OUT), dimension(:,:,: ) :: FKV
 
@@ -5445,6 +5450,7 @@ end subroutine RUN1
                   FKV_temp = (C_B/LAMBDA_B)*min( sqrt(U(I,J,L)**2+V(I,J,L)**2),5.0 )*FKV_temp
 
                   BKV(I,J,L) = BKV(I,J,L) + DT*FKV_temp
+                  BKVV(I,J,L) = BKVV(I,J,L) + DT*FKV_temp
                   FKV(I,J,L) = FKV_temp * (PLE(I,J,L)-PLE(I,J,L-1))
                end if
             end do
