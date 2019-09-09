@@ -6520,11 +6520,11 @@ contains
          ! Get the Kth Field from tracer bundle
          !-------------------------------------
 
-         call ESMF_FieldBundleGet(TR, K, FIELD, RC=STATUS)
+         NAME=QNAMES(K)
+
+         call ESMF_FieldBundleGet(TR, fieldName=NAME, Field=FIELD, RC=STATUS)
          _VERIFY(STATUS)
 
-         call ESMF_FieldGet(FIELD, name=NAME, RC=STATUS)
-         _VERIFY(STATUS)
 
          ! Get items friendly status (default is not friendly)
          !-----------------------------------------------------
