@@ -124,7 +124,7 @@
 
       SUBROUTINE CATCHMENT (                                                   &
                      NCH, LONS, LATS, DTSTEP, SFRAC,                           &
-                     cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, UM,                &
+                     cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
                      ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
@@ -163,7 +163,8 @@
       INTEGER, INTENT(IN), DIMENSION(NCH) :: ITYP, cat_id
 
       REAL, INTENT(IN) :: DTSTEP, SFRAC
-      REAL, INTENT(IN), DIMENSION(NCH) :: DZSF, TRAINC, TRAINL, TSNOW,  UM,    &
+      REAL, INTENT(IN), DIMENSION(NCH) :: DZSF, TRAINC, TRAINL,                &
+                     TSNOW, TICE, TFRZR,  UM,    &
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
                      ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
@@ -327,6 +328,8 @@
          write (*,*) TRAINC(n_out)    
          write (*,*) TRAINL(n_out)    
          write (*,*) TSNOW(n_out)    
+         write (*,*) TICE(n_out)    
+         write (*,*) TFRZR(n_out)    
          write (*,*) UM(n_out)  
          write (*,*) ETURB1(n_out)    
          write (*,*) DEDQA1(n_out)    
@@ -825,8 +828,8 @@
         AREA(1)= AR1(N) 
         AREA(2)= AR2(N) 
         AREA(3)= AR4(N) 
-        pr     = trainc(n)+trainl(n)+tsnow(n) 
-        snowf  = tsnow(n) 
+        pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
+        snowf  = tsnow(n)+tice(n)+tfrzr(n)
         dedea  = dedqas(n)*epsilon/psur(n) 
         dhsdea = dhsdqas(n)*epsilon/psur(n) 
         ea     = qm(n)*psur(n)/epsilon 
@@ -1506,6 +1509,8 @@
          write (*,*) TRAINC(n_out)    
          write (*,*) TRAINL(n_out)    
          write (*,*) TSNOW(n_out)    
+         write (*,*) TICE(n_out)    
+         write (*,*) TFRZR(n_out)    
          write (*,*) UM(n_out)  
          write (*,*) ETURB1(n_out)    
          write (*,*) DEDQA1(n_out)    

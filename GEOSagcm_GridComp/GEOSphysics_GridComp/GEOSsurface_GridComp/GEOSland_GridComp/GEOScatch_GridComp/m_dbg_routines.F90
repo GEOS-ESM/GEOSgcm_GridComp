@@ -11,31 +11,26 @@ MODULE DBG_ROUTINES
       real :: PCU       
       real :: PLS       
       real :: SNO       
-      real :: UUU   
-      real :: EVSBTS 
-      real :: DEVSBTS
-      real :: DEDTCS 
-      real :: SHSBTS 
-      real :: DHSDQAS
-      real :: DSHSBTS
-      real :: EVSBTT 
-      real :: DEVSBTT
-      real :: DEDTCT 
-      real :: SHSBTT 
-      real :: DHSDQAT
-      real :: DSHSBTT
-      real :: EVSBTW 
-      real :: DEVSBTW
-      real :: DEDTCW 
-      real :: SHSBTW 
-      real :: DHSDQAW
-      real :: DSHSBTW
-      real :: EVSBTN 
-      real :: DEVSBTN
-      real :: DEDTCN 
-      real :: SHSBTN 
-      real :: DHSDQAN
-      real :: DSHSBTN
+      real :: ICE       
+      real :: FRZR       
+      real :: UUU       
+      real :: EVSBTS    
+      real :: DEVSBTS   
+      real :: TILEZERO  
+      real :: SHSBTS    
+      real :: DSHSBTS   
+      real :: EVSBTT    
+      real :: DEVSBTT   
+      real :: SHSBTT    
+      real :: DSHSBTT   
+      real :: EVSBTW    
+      real :: DEVSBTW   
+      real :: SHSBTW    
+      real :: DSHSBTW   
+      real :: EVSBTSN   
+      real :: DEVSBTSN  
+      real :: SHSBTSN   
+      real :: DSHSBTSN  
       real :: TA        
       real :: QA        
       real :: RAS       
@@ -56,30 +51,21 @@ MODULE DBG_ROUTINES
       real :: RSL1      
       real :: RSL2      
       real :: RDC      
-      real :: QSATS
-      real :: DQSS 
-      real :: ALW1
-      real :: BLW1
-      real :: QSATT
-      real :: DQST 
-      real :: ALW2
-      real :: BLW2
-      real :: QSATW
-      real :: DQSW 
-      real :: ALW3
-      real :: BLW3
-      real :: QSATN
-      real :: DQSN 
-      real :: ALW4
-      real :: BLW4
+      real :: QSATS    
+      real :: DQSS     
+      real :: ALWX     
+      real :: BLWX     
+      real :: QSATT    
+      real :: DQST     
+      real :: QSATW    
+      real :: DQSW     
+      real :: QSATSN   
+      real :: DQSSN    
 
    end type c_inputs
 
    type :: c_params
 
-      real :: LONS
-      real :: LATS
-      real :: DZSF
       integer :: VEG     
       real :: BF1     
       real :: BF2     
@@ -144,10 +130,6 @@ MODULE DBG_ROUTINES
      integer, intent (in) :: ntiles,unit
      integer :: n
      type(c_params), dimension (ntiles), intent(inout) :: catchin
-
-        read (unit) catchin%LONS
-        read (unit) catchin%LATS
-        read (unit) catchin%DZSF
         read (unit) catchin%VEG
         read (unit) catchin%BF1     
         read (unit) catchin%BF2     
@@ -236,31 +218,33 @@ type(c_updates), dimension (ntiles), intent(inout) :: catchin
         read (unit) catchin%PCU      
         read (unit) catchin%PLS      
         read (unit) catchin%SNO      
+        read (unit) catchin%ICE      
+        read (unit) catchin%FRZR      
         read (unit) catchin%UUU      
-        read (unit) catchin%EVSBTS 
-        read (unit) catchin%DEVSBTS
-        read (unit) catchin%DEDTCS 
-        read (unit) catchin%SHSBTS 
-        read (unit) catchin%DHSDQAS
-        read (unit) catchin%DSHSBTS
-        read (unit) catchin%EVSBTT 
-        read (unit) catchin%DEVSBTT
-        read (unit) catchin%DEDTCT 
-        read (unit) catchin%SHSBTT 
-        read (unit) catchin%DHSDQAT
-        read (unit) catchin%DSHSBTT
-        read (unit) catchin%EVSBTW 
-        read (unit) catchin%DEVSBTW
-        read (unit) catchin%DEDTCW 
-        read (unit) catchin%SHSBTW 
-        read (unit) catchin%DHSDQAW
-        read (unit) catchin%DSHSBTW
-        read (unit) catchin%EVSBTN 
-        read (unit) catchin%DEVSBTN
-        read (unit) catchin%DEDTCN 
-        read (unit) catchin%SHSBTN 
-        read (unit) catchin%DHSDQAN
-        read (unit) catchin%DSHSBTN
+        read (unit) catchin%EVSBTS   
+        read (unit) catchin%DEVSBTS  
+        read (unit) catchin%TILEZERO 
+        read (unit) catchin%SHSBTS   
+        read (unit) catchin%TILEZERO 
+        read (unit) catchin%DSHSBTS  
+        read (unit) catchin%EVSBTT   
+        read (unit) catchin%DEVSBTT  
+        read (unit) catchin%TILEZERO 
+        read (unit) catchin%SHSBTT   
+        read (unit) catchin%TILEZERO 
+        read (unit) catchin%DSHSBTT  
+        read (unit) catchin%EVSBTW   
+        read (unit) catchin%DEVSBTW  
+        read (unit) catchin%TILEZERO 
+        read (unit) catchin%SHSBTW   
+        read (unit) catchin%TILEZERO 
+        read (unit) catchin%DSHSBTW  
+        read (unit) catchin%EVSBTSN  
+        read (unit) catchin%DEVSBTSN 
+        read (unit) catchin%TILEZERO 
+        read (unit) catchin%SHSBTSN  
+        read (unit) catchin%TILEZERO 
+        read (unit) catchin%DSHSBTSN 
         read (unit) catchin%TA       
         read (unit) catchin%QA       
         read (unit) catchin%RAS      
@@ -281,22 +265,22 @@ type(c_updates), dimension (ntiles), intent(inout) :: catchin
         read (unit) catchin%RSL1     
         read (unit) catchin%RSL2     
         read (unit) catchin%RDC      
-        read (unit) catchin%QSATS
-        read (unit) catchin%DQSS 
-        read (unit) catchin%ALW1
-        read (unit) catchin%BLW1
-        read (unit) catchin%QSATT
-        read (unit) catchin%DQST 
-        read (unit) catchin%ALW2
-        read (unit) catchin%BLW2
-        read (unit) catchin%QSATW
-        read (unit) catchin%DQSW 
-        read (unit) catchin%ALW3
-        read (unit) catchin%BLW3
-        read (unit) catchin%QSATN
-        read (unit) catchin%DQSN 
-        read (unit) catchin%ALW4
-        read (unit) catchin%BLW4
+        read (unit) catchin%QSATS    
+        read (unit) catchin%DQSS     
+        read (unit) catchin%ALWX     
+        read (unit) catchin%BLWX     
+        read (unit) catchin%QSATT    
+        read (unit) catchin%DQST     
+        read (unit) catchin%ALWX     
+        read (unit) catchin%BLWX     
+        read (unit) catchin%QSATW    
+        read (unit) catchin%DQSW     
+        read (unit) catchin%ALWX     
+        read (unit) catchin%BLWX     
+        read (unit) catchin%QSATSN   
+        read (unit) catchin%DQSSN    
+        read (unit) catchin%ALWX     
+        read (unit) catchin%BLWX     
 
       end subroutine read_catch_inputs
 
