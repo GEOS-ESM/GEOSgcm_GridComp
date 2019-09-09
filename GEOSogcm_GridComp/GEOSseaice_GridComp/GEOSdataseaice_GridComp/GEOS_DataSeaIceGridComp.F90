@@ -95,30 +95,30 @@ module GEOS_DataSeaIceGridCompMod
 
     Iam = "SetServices"
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Get constants from CF
 ! ---------------------
 
     call MAPL_GetResource ( MAPL,    DO_CICE_THERMO,     Label="USE_CICE_Thermo:" , DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 !   call MAPL_GetResource ( MAPL,    DO_SKIN_LAYER,      Label="USE_SKIN_LAYER:"  , DEFAULT=0, RC=STATUS)
-!   VERIFY_(STATUS)
+!   _VERIFY(STATUS)
    
     cice_init_: if (DO_CICE_THERMO /= 0) then
        if(MAPL_AM_I_ROOT()) print *, 'Using Data Sea Ice GC to do CICE Thermo in AMIP mode'
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
     else
        NUM_ICE_CATEGORIES = 1
        NUM_ICE_LAYERS     = 1
@@ -131,7 +131,7 @@ module GEOS_DataSeaIceGridCompMod
 ! -----------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 
 ! Set the state variable specs.
@@ -148,7 +148,7 @@ module GEOS_DataSeaIceGridCompMod
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
                                                    RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   if (DO_CICE_THERMO == 0) then
      call MAPL_AddImportSpec(GC,                                 &
@@ -158,7 +158,7 @@ module GEOS_DataSeaIceGridCompMod
           DIMS               = MAPL_DimsHorzOnly,                   &
           VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
   end if
 
   call MAPL_AddImportSpec(GC,                                 &
@@ -168,7 +168,7 @@ module GEOS_DataSeaIceGridCompMod
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
   if (DO_CICE_THERMO /= 0) then
      call MAPL_AddImportSpec(GC,                               &
@@ -179,7 +179,7 @@ module GEOS_DataSeaIceGridCompMod
           UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
           VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                                 &
           SHORT_NAME         = 'TI',                                &
@@ -189,7 +189,7 @@ module GEOS_DataSeaIceGridCompMod
           UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
           VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                                 &
           SHORT_NAME         = 'VOLICE',                            &
@@ -199,7 +199,7 @@ module GEOS_DataSeaIceGridCompMod
           UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
           VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                                 &
           SHORT_NAME         = 'VOLSNO',                            &
@@ -209,7 +209,7 @@ module GEOS_DataSeaIceGridCompMod
           UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
           VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                                 &
           SHORT_NAME         = 'ERGICE',                            &
@@ -220,7 +220,7 @@ module GEOS_DataSeaIceGridCompMod
           UNGRIDDED_DIMS     = (/NUM_ICE_LAYERS_ALL/),              &
           RESTART            = MAPL_RestartSkip,                    &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                                &
           SHORT_NAME         = 'ERGSNO',                            &
@@ -231,7 +231,7 @@ module GEOS_DataSeaIceGridCompMod
           UNGRIDDED_DIMS     = (/NUM_SNOW_LAYERS_ALL/),             &
           RESTART            = MAPL_RestartSkip,                    &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC                                ,&
           LONG_NAME          = 'melt_pond_volume'                  ,&
@@ -243,7 +243,7 @@ module GEOS_DataSeaIceGridCompMod
           RESTART            = MAPL_RestartSkip,                    &
           RC=STATUS                                                 )
 
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                                &
           SHORT_NAME         = 'TAUAGE',                            &
@@ -254,7 +254,7 @@ module GEOS_DataSeaIceGridCompMod
           VLOCATION          = MAPL_VLocationNone,                  &
           RESTART            = MAPL_RestartSkip,                    &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
   end if ! (DO_CICE_THERMO /= 0)
 
 !  !Export state:
@@ -266,7 +266,7 @@ module GEOS_DataSeaIceGridCompMod
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
                                                    RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                                 &
     SHORT_NAME         = 'VI',                                &
@@ -275,7 +275,7 @@ module GEOS_DataSeaIceGridCompMod
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
                                                    RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   if (DO_CICE_THERMO == 0) then
      call MAPL_AddExportSpec(GC,                                 &
@@ -285,7 +285,7 @@ module GEOS_DataSeaIceGridCompMod
           DIMS               = MAPL_DimsHorzOnly,                   &
           VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
   else
      call MAPL_AddExportSpec(GC,                            &
           SHORT_NAME         = 'FRACICE',                           &
@@ -295,7 +295,7 @@ module GEOS_DataSeaIceGridCompMod
           UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
           VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
   end if
 
 !  call MAPL_AddExportSpec(GC,                                    &
@@ -305,7 +305,7 @@ module GEOS_DataSeaIceGridCompMod
 !       DIMS               = MAPL_DimsHorzOnly,                   &
 !       VLOCATION          = MAPL_VLocationNone,                  &
 !                                                RC=STATUS  )
-!  VERIFY_(STATUS)
+!  _VERIFY(STATUS)
 
   if (DO_CICE_THERMO /= 0) then
      call MAPL_AddExportSpec(GC,                                     &
@@ -315,7 +315,7 @@ module GEOS_DataSeaIceGridCompMod
           DIMS               = MAPL_DimsHorzOnly,                   &
           VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddExportSpec(GC,                                 &
           SHORT_NAME         = 'HICE',                              &
@@ -324,7 +324,7 @@ module GEOS_DataSeaIceGridCompMod
           DIMS               = MAPL_DimsHorzOnly,                   &
           VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
 
      call MAPL_AddExportSpec(GC,                                 &
@@ -334,20 +334,20 @@ module GEOS_DataSeaIceGridCompMod
           DIMS               = MAPL_DimsHorzOnly,                   &
           VLOCATION          = MAPL_VLocationNone,                  &
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
   end if
 !EOS
 
   call MAPL_TimerAdd(GC,    name="RUN"     ,RC=STATUS)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_TimerAdd(GC,    name="-UPDATE" ,RC=STATUS)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 ! Set generic init and final methods
 ! ----------------------------------
 
   call MAPL_GenericSetServices    ( GC, RC=STATUS)
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   RETURN_(ESMF_SUCCESS)
   
@@ -463,20 +463,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     Iam = "Run"
     call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
 !----------------------------------
 
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_Get(MAPL,                      &
          LATS  = LATS ,                      &
          LONS  = LONS ,                      &
                                 RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Start Total timer
 !------------------
@@ -490,83 +490,83 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    if (DO_CICE_THERMO == 0) then
       call MAPL_GetPointer(IMPORT, TI    ,  'TI'   , RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
    else
       call MAPL_GetPointer(IMPORT, TI8   ,  'TI'   , RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
    end if
    call MAPL_GetPointer(IMPORT, HI      ,  'HI'   , RC=STATUS) 
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    call MAPL_GetPointer(IMPORT, SI      ,  'SI'   , RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
    if (DO_CICE_THERMO /= 0) then
      call MAPL_GetPointer(IMPORT, FR8     ,  'FRACICE', RC=STATUS)
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_GetPointer(IMPORT, VOLICE  ,  'VOLICE' , RC=STATUS)
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_GetPointer(IMPORT, ERGICE  ,  'ERGICE' , RC=STATUS)
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_GetPointer(IMPORT, VOLSNO  ,  'VOLSNO' , RC=STATUS)
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      call MAPL_GetPointer(IMPORT, ERGSNO  ,  'ERGSNO' , RC=STATUS)
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
    end if
 
 ! Check that they are friendly
 !-----------------------------
 
     call ESMF_StateGet (IMPORT, 'TI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
+    _VERIFY(STATUS)
+    _ASSERT(FRIENDLY,'needs informative message')
 
     call ESMF_StateGet (IMPORT, 'HI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
+    _VERIFY(STATUS)
+    _ASSERT(FRIENDLY,'needs informative message')
 
     call ESMF_StateGet (IMPORT, 'SI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
+    _VERIFY(STATUS)
+    _ASSERT(FRIENDLY,'needs informative message')
 
 !  Pointers to Exports
 !---------------------
 
     call MAPL_GetPointer(EXPORT,      UI  , 'UI'       , RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(EXPORT,      VI  , 'VI'       , RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(EXPORT,      FR  , 'FRACICE'  , RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 !   call MAPL_GetPointer(EXPORT,      MQ  , 'MELTQ'    , RC=STATUS)
-!   VERIFY_(STATUS)
+!   _VERIFY(STATUS)
     if (DO_CICE_THERMO /= 0) then
       call MAPL_GetPointer(EXPORT,      FRO , 'FRACICE'  , RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
     end if
 
 ! Set current time and calendar
 !------------------------------
 
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Get the file name from the resource file
 !-----------------------------------------
 
     call MAPL_GetResource(MAPL,DATAFRTFILE,LABEL="DATA_FRT_FILE:", RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! In atmospheric forecast mode we do not have future Sea Ice Conc
 !---------------------------------------------------------------
 
     call MAPL_GetResource(MAPL,IFCST,LABEL="IS_FCST:",default=0,   RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     FCST = IFCST==1
 
@@ -574,13 +574,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !--------------------
 
     call MAPL_GetResource(MAPL,TAU_SIT, LABEL="TAU_SIT:", default=86400.0,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetResource(MAPL,RUN_DT , LABEL="RUN_DT:" ,                 RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetResource(MAPL,DT     , LABEL="DT:"    , default=RUN_DT, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetResource(MAPL,CTB    , LABEL="CTB:"   , default=1.0e-4, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! If using CICE Thermodynamics in AMIP mode, get prescribed ice thickness
 ! FOR NOW, following way sets thickness to a constant value in either hemisphere- 
@@ -588,9 +588,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !----------------------------------------------------------------------------------
     if (DO_CICE_THERMO /= 0) then
       call MAPL_GetResource (MAPL, TNH, Label="PRESCRIBED_ICE_NH:" , DEFAULT=1.0, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetResource (MAPL, TSH, Label="PRESCRIBED_ICE_SH:" , DEFAULT=0.75, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
     end if
 
 !  Update the friendly skin values
@@ -600,27 +600,27 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    if (DO_CICE_THERMO /= 0) then
      call MAPL_Get(MAPL, IM=IM, JM=JM, RC=STATUS)
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
      allocate(FRT(IM,JM), FRCICE(IM,JM))
    end if
 
    if (DO_CICE_THERMO == 0) then
      if(associated(FR)) then
        call MAPL_ReadForcing(MAPL,'FRT',DATAFRTFILE, CURRENTTIME, FR, INIT_ONLY=FCST, RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
 
        if (any(FR < 0.0) .or. any(FR > 1.0)) then
           if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-          ASSERT_(.FALSE.)
+          _ASSERT(.FALSE.,'needs informative message')
        endif
      end if
    else
        call MAPL_ReadForcing(MAPL,'FRT',DATAFRTFILE, CURRENTTIME, FRT, INIT_ONLY=FCST, RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
 
        if (any(FRT < 0.0) .or. any(FRT > 1.0)) then
           if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-          ASSERT_(.FALSE.)
+          _ASSERT(.FALSE.,'needs informative message')
        endif
 
        FRCICE = real(sum(FR8,dim=3), kind=8)
@@ -671,11 +671,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !  if (DO_SKIN_LAYER < 2) then
 !     allocate(MELT(size(TW,1),size(TW,2)), stat=STATUS)
-!     VERIFY_(STATUS)
+!     _VERIFY(STATUS)
 !     allocate(F1(size(TW,1),size(TW,2)), stat=STATUS)
-!     VERIFY_(STATUS)
+!     _VERIFY(STATUS)
 !     allocate(TNEW(size(TW,1),size(TW,2)), stat=STATUS)
-!     VERIFY_(STATUS)
+!     _VERIFY(STATUS)
 !
 !     TICE=MAPL_TICE-1.8
 !     TNEW=0.0
@@ -744,7 +744,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_TimerOff(MAPL,"RUN"  )
    call MAPL_TimerOff(MAPL,"TOTAL")
 
-   RETURN_(ESMF_SUCCESS)
+   _RETURN(ESMF_SUCCESS)
 end subroutine RUN
 
 end module GEOS_DataSeaIceGridCompMod

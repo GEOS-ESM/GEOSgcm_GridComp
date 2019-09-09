@@ -140,7 +140,7 @@
 !--------------------------------------
 
     allocate(xs(ii+1),ys(jj+1),stat=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     dx = 360.0_8/float(ii)
    

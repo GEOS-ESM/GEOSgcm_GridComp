@@ -76,27 +76,27 @@ contains
 
     Iam = 'SetServices'
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
 ! Retrieve the pointer to the state
 !----------------------------------
 
    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
 !  MKIAU = MAPL_AddChild(GC, NAME='AIAU', SS=MKIAUSetServices, RC=STATUS)
-!  VERIFY_(STATUS)
+!  _VERIFY(STATUS)
 
 ! Set the Run entry point
 ! -----------------------
 
     call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run1,  &
                                       RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run2,  &
                                       RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -109,7 +109,7 @@ contains
          UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DVDT',                                      &
@@ -117,7 +117,7 @@ contains
          UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DTDT',                                      &
@@ -125,7 +125,7 @@ contains
          UNITS      = 'K',                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DPEDT',                                     &
@@ -133,7 +133,7 @@ contains
          UNITS      = 'Pa',                                        &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DQVDT',                                     &
@@ -141,7 +141,7 @@ contains
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DO3DT',                                     &
@@ -149,7 +149,7 @@ contains
          UNITS      = 'ppmv',                                      &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DTSDT',                                     &
@@ -157,7 +157,7 @@ contains
          UNITS      = 'K',                                         &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
 
 #ifdef _MAYBE_
@@ -167,7 +167,7 @@ contains
          UNITS      = 'X',                                       &
          DATATYPE   = MAPL_BundleItem,                           &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 #endif /* _MAYBE_ */
 
 ! !INTERNAL STATE:
@@ -178,7 +178,7 @@ contains
          UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec ( gc,                                  &
          SHORT_NAME = 'DVDT',                                      &
@@ -186,7 +186,7 @@ contains
          UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec ( gc,                                  &
          SHORT_NAME = 'DTDT',                                      &
@@ -194,7 +194,7 @@ contains
          UNITS      = 'K',                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec ( gc,                                  &
          SHORT_NAME = 'DPEDT',                                     &
@@ -202,7 +202,7 @@ contains
          UNITS      = 'Pa',                                        &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec ( gc,                                  &
          SHORT_NAME = 'DQVDT',                                     &
@@ -210,7 +210,7 @@ contains
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec ( gc,                                  &
          SHORT_NAME = 'DO3DT',                                     &
@@ -218,7 +218,7 @@ contains
          UNITS      = 'ppmv',                                      &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec ( gc,                                  &
          SHORT_NAME = 'DTSDT',                                     &
@@ -226,7 +226,7 @@ contains
          UNITS      = 'K',                                         &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
 ! !EXPORT STATE:
 
@@ -236,7 +236,7 @@ contains
          UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DVDT',                                      &
@@ -244,7 +244,7 @@ contains
          UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DTDT',                                      &
@@ -252,7 +252,7 @@ contains
          UNITS      = 'K',                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DPEDT',                                     &
@@ -260,7 +260,7 @@ contains
          UNITS      = 'Pa',                                        &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DQVDT',                                     &
@@ -268,7 +268,7 @@ contains
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DO3DT',                                     &
@@ -276,7 +276,7 @@ contains
          UNITS      = 'ppmv',                                      &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DTSDT',                                     &
@@ -284,15 +284,15 @@ contains
          UNITS      = 'K',                                         &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Set generic init and final methods
 ! ----------------------------------
 
     call MAPL_GenericSetServices    ( gc, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
   
   end subroutine SetServices
 
@@ -352,7 +352,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    Iam = "Run1"
    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    Iam = trim(COMP_NAME) // Iam
 
    if ( MAPL_AM_I_ROOT() ) then
@@ -363,7 +363,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !----------------------------------
 
    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
 ! Local aliases to the state, grid, and configuration
 ! ---------------------------------------------------
@@ -376,10 +376,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,    &
                    INTERNAL_ESMF_STATE=INTERNAL, &
                                        RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call ESMF_GridCompGet(GC, grid=grid, rc=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 
 ! **********************************************************************
@@ -394,58 +394,58 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !   Get pointers to internal variables
 !   ----------------------------------
     call MAPL_GetPointer(import,   du, 'DUDT',  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(import,   dv, 'DVDT',  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(import,  dtv, 'DTDT',  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(import, dple, 'DPEDT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(import,   dq, 'DQVDT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(import,  do3, 'DO3DT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(import,  dts, 'DTSDT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
 !   Extract IAU increments in import and copy then to internal
 !   ----------------------------------------------------------
 #if _MAYBE_
     call ESMF_StateGet(import, 'AGCM_Exports', bundle, rc=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call ESMFL_BundleGetPointerToData(bundle, 'DUDT',    du, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call ESMFL_BundleGetPointerToData(bundle, 'DVDT',    dv, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call ESMFL_BundleGetPointerToData(bundle, 'DTDT',   dtv, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call ESMFL_BundleGetPointerToData(bundle, 'DPEDT', dple, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call ESMFL_BundleGetPointerToData(bundle, 'DQVDT',   dq, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call ESMFL_BundleGetPointerToData(bundle, 'DO3DT',  do3, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call ESMFL_BundleGetPointerToData(bundle, 'DTSDT',  dts, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 #endif /* _MAYBE_ */
 
 !   Get pointers to internal variables
 !   ----------------------------------
     call MAPL_GetPointer(internal,   dudt, 'DUDT',  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(internal,   dvdt, 'DVDT',  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(internal,   dtdt, 'DTDT',  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(internal, dpledt, 'DPEDT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(internal,   dqdt, 'DQVDT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(internal,  do3dt, 'DO3DT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(internal,  dtsdt, 'DTSDT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     dudt   = du
     dvdt   = dv
@@ -455,7 +455,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     do3dt  = do3
     dtsdt  = dts
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
   end subroutine RUN1
 
 ! ! IROUTINE: RUN2 -- Run method for the MAKEIAU component
@@ -510,7 +510,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    Iam = "Run2"
    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
    Iam = trim(COMP_NAME) // Iam
 
    if ( MAPL_AM_I_ROOT() ) then
@@ -521,7 +521,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !----------------------------------
 
    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
 ! Local aliases to the state, grid, and configuration
 ! ---------------------------------------------------
@@ -534,10 +534,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,    &
                    INTERNAL_ESMF_STATE=INTERNAL, &
                                        RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call ESMF_GridCompGet(GC, grid=grid, rc=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 
 ! **********************************************************************
@@ -552,36 +552,36 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !   Get pointers to internal variables
 !   ----------------------------------
     call MAPL_GetPointer(internal,   dudt, 'DUDT',  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(internal,   dvdt, 'DVDT',  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(internal,   dtdt, 'DTDT',  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(internal, dpledt, 'DPEDT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(internal,  dqvdt, 'DQVDT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(internal,  do3dt, 'DO3DT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(internal,  dtsdt, 'DTSDT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
 !   Get pointers to export variables
 !   --------------------------------
     call MAPL_GetPointer(export,   ex_du, 'DUDT',  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(export,   ex_dv, 'DVDT',  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(export,   ex_dt, 'DTDT',  RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(export, ex_dple, 'DPEDT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(export,  ex_dqv, 'DQVDT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(export,  ex_do3, 'DO3DT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(export,  ex_dts, 'DTSDT', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     if (associated(ex_du)) then
        ex_du=dudt
@@ -605,6 +605,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        ex_dts=dtsdt
     endif
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
   end subroutine RUN2
 end module IAU_GridCompMod

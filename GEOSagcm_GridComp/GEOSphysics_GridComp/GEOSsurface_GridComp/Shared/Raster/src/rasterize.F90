@@ -199,9 +199,9 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
   ip = size(iTable,2)
   ng = size(GridName)
 
-  ASSERT_(IP==size(rTable,2))
-  ASSERT_(NG==size(IM))
-  ASSERT_(NG==size(JM))
+  _ASSERT(IP==size(rTable,2),'needs informative message')
+  _ASSERT(NG==size(IM),'needs informative message')
+  _ASSERT(NG==size(JM),'needs informative message')
 
   if(present(Zip)) then
      DoZip = Zip
