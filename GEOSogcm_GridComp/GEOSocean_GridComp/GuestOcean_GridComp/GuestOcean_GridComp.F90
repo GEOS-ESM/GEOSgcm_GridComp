@@ -11,8 +11,9 @@ module GuestOcean_GridCompMod
  
   use ESMF
   use MAPL_Mod
-  use MOM_GEOS5PlugMod, only: MOMSetServices => SetServices  ! this sets IRF
-  use GEOS_DataSeaGridCompMod,           only : DataSeaSetServices  => SetServices
+  use MOM_GEOS5PlugMod,        only: MOMSetServices     => SetServices  ! this sets IRF
+  use MOM6_GEOSPlugMod,        only: MOM6SetServices    => SetServices  ! this sets IRF
+  use GEOS_DataSeaGridCompMod, only: DataSeaSetServices => SetServices
 
   implicit none
   private
@@ -78,6 +79,7 @@ contains
 ! Local vars
     type (MAPL_MetaComp),  pointer     :: MAPL  
     type  (ESMF_Config)                :: CF
+    character(len=ESMF_MAXSTR)	       :: charbuf_
 
 ! Begin...
 
@@ -109,9 +111,17 @@ contains
        OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=DataSeaSetServices, RC=STATUS)
        VERIFY_(STATUS)
     else
-       OCEAN_NAME="MOM"
-       OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOMSetServices, RC=STATUS)
-       VERIFY_(STATUS)
+       call MAPL_GetResource ( MAPL, OCEAN_NAME, Label="OCEAN_NAME:", DEFAULT="MOM", __RC__ )
+       select case (trim(OCEAN_NAME))
+          case ("MOM")
+             OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOMSetServices, __RC__)
+          case ("MOM6")
+             OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOM6SetServices, __RC__)
+          case default
+             charbuf_ = "OCEAN_NAME: " // trim(OCEAN_NAME) // " is not implemented, ABORT!"
+             call WRITE_PARALLEL(charbuf_)
+             VERIFY_(999)
+       end select
     endif
 
 ! Set the state variable specs.
