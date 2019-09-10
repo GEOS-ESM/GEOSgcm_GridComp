@@ -1040,19 +1040,19 @@ contains
 
 ! Diagnostics exports
 !---------------------------------------------------------
-       call MAPL_GetPointer(EXPORT, RFLUX,  'RFLUX' , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, FROCEANe,'FROCEAN', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, TAUXe, 'TAUX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, TAUYe, 'TAUY'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, HEATe, 'SWHEAT' , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, DISCHARGEe, 'DISCHARGE'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, LWFLXe, 'LWFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SWFLXe, 'SWFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SHFLXe, 'SHFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, QFLUXe, 'QFLUX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, RAINe, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SNOWe, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SFLXe, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, RFLUX,      'RFLUX',     __RC__)
+       call MAPL_GetPointer(EXPORT, FROCEANe,   'FROCEAN',   __RC__)
+       call MAPL_GetPointer(EXPORT, TAUXe,      'TAUX',      __RC__)
+       call MAPL_GetPointer(EXPORT, TAUYe,      'TAUY',      __RC__)
+       call MAPL_GetPointer(EXPORT, HEATe,      'SWHEAT',    __RC__)
+       call MAPL_GetPointer(EXPORT, DISCHARGEe, 'DISCHARGE', __RC__)
+       call MAPL_GetPointer(EXPORT, LWFLXe,     'LWFLX',     __RC__)
+       call MAPL_GetPointer(EXPORT, SWFLXe,     'SWFLX',     __RC__)
+       call MAPL_GetPointer(EXPORT, SHFLXe,     'SHFLX',     __RC__)
+       call MAPL_GetPointer(EXPORT, QFLUXe,     'QFLUX',     __RC__)
+       call MAPL_GetPointer(EXPORT, RAINe,      'RAIN',      __RC__)
+       call MAPL_GetPointer(EXPORT, SNOWe,      'SNOW',      __RC__)
+       call MAPL_GetPointer(EXPORT, SFLXe,      'SFLX',      __RC__)
 
        if(associated(FROCEANe)) FROCEANe = FROCEAN
 
@@ -1097,12 +1097,17 @@ contains
 !------------------------------------
 
           if(associated(RFLUX )) RFLUX  = 0.0
-          do L=1,LM
-             HEAT(:,:,L) = HEATi(:,:,L)*WGHT
-             if(associated(RFLUX)) then
-                RFLUX = RFLUX + (1.0-MASK3D(:,:,L))*HEAT(:,:,L)
-             end if
-          end do
+          select case (trim(OCEAN_NAME))
+             case ("MOM", "DATASEA")
+                do L=1,LM
+                   HEAT(:,:,L) = HEATi(:,:,L)*WGHT
+                   if(associated(RFLUX)) then
+                      RFLUX = RFLUX + (1.0-MASK3D(:,:,L))*HEAT(:,:,L)
+                   end if
+                end do
+             case ("MOM6")
+                ! No 3D Mask from MOM6. Do nothing for now!
+          end select
 
           if (associated(HEATe)) HEATe = HEAT
           if (associated(TAUXe)) TAUXe = TAUX
