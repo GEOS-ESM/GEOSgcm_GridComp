@@ -1,5 +1,5 @@
 !$Id$
-  
+
 #include "MAPL_Generic.h"
 
 module GuestOcean_GridCompMod
@@ -8,11 +8,12 @@ module GuestOcean_GridCompMod
 ! !MODULE: GuestOcean_GridCompMod -- Implements ESMF wrapper to invoke the DATASEA/MIT/MOM ocean models.
 
 ! !USES:
- 
+
   use ESMF
   use MAPL_Mod
-  use MOM_GEOS5PlugMod, only: MOMSetServices => SetServices  ! this sets IRF
-  use GEOS_DataSeaGridCompMod,           only : DataSeaSetServices  => SetServices
+  use MOM_GEOS5PlugMod,        only: MOMSetServices     => SetServices  ! this sets IRF
+  use MOM6_GEOSPlugMod,        only: MOM6SetServices    => SetServices  ! this sets IRF
+  use GEOS_DataSeaGridCompMod, only: DataSeaSetServices => SetServices
 
   implicit none
   private
@@ -26,9 +27,9 @@ module GuestOcean_GridCompMod
   real :: OrphanDepth
 
 ! !DESCRIPTION:
-! 
+!
 !   {\tt GuestOcean\_GridComp} is a light-weight gridded component that serves an
-!   interface to ocean/data\_ocean components. 
+!   interface to ocean/data\_ocean components.
 !
 !EOP
 
@@ -40,7 +41,7 @@ module GuestOcean_GridCompMod
      type(T_PrivateState), pointer :: ptr
   end type T_PrivateState_Wrap
 
-  integer ::          OCN 
+  integer ::          OCN
 
 contains
 
@@ -55,29 +56,30 @@ contains
 ! !ARGUMENTS:
 
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    integer, optional	               :: RC  ! return code
+    integer, optional                  :: RC  ! return code
 
-! !DESCRIPTION: This version uses the MAPL\_GenericSetServices, 
-!       which sets the Run, Initialize, and Finalize services, 
-!       as well as allocating our instance of a generic state and putting it in the 
-!	gridded component (GC). Here we override all three methods and declare
-!       the specs for the Imports and Export States (no MAPL controlled Internal State). 
+! !DESCRIPTION: This version uses the MAPL\_GenericSetServices,
+!       which sets the Run, Initialize, and Finalize services,
+!       as well as allocating our instance of a generic state and putting it in the
+!   gridded component (GC). Here we override all three methods and declare
+!       the specs for the Imports and Export States (no MAPL controlled Internal State).
 !       GuestOcean state variables (the bulletin board and the time) are kept
-!       in the GuestOcean's Private Internal state. 
-!   
+!       in the GuestOcean's Private Internal state.
+!
 !EOP
 
 !=============================================================================
 !
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)	       :: IAm
+    character(len=ESMF_MAXSTR)         :: IAm
     integer                            :: STATUS
-    character(len=ESMF_MAXSTR)	       :: COMP_NAME
+    character(len=ESMF_MAXSTR)         :: COMP_NAME
 
 ! Local vars
-    type (MAPL_MetaComp),  pointer     :: MAPL  
+    type (MAPL_MetaComp),  pointer     :: MAPL
     type  (ESMF_Config)                :: CF
+    character(len=ESMF_MAXSTR)         :: charbuf_
 
 ! Begin...
 
@@ -109,9 +111,17 @@ contains
        OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=DataSeaSetServices, RC=STATUS)
        VERIFY_(STATUS)
     else
-       OCEAN_NAME="MOM"
-       OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOMSetServices, RC=STATUS)
-       VERIFY_(STATUS)
+       call MAPL_GetResource ( MAPL, OCEAN_NAME, Label="OCEAN_NAME:", DEFAULT="MOM", __RC__ )
+       select case (trim(OCEAN_NAME))
+          case ("MOM")
+             OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOMSetServices, __RC__)
+          case ("MOM6")
+             OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOM6SetServices, __RC__)
+          case default
+             charbuf_ = "OCEAN_NAME: " // trim(OCEAN_NAME) // " is not implemented, ABORT!"
+             call WRITE_PARALLEL(charbuf_)
+             VERIFY_(999)
+       end select
     endif
 
 ! Set the state variable specs.
@@ -220,26 +230,6 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-!!$     call MAPL_AddImportSpec(GC,                             &
-!!$        SHORT_NAME         = 'TR',                                &
-!!$        LONG_NAME          = 'tracer_mixing_ratios',              &
-!!$        UNITS              = '1',                                 &
-!!$        DIMS               = MAPL_DimsHorzVert,                   &
-!!$        VLOCATION          = MAPL_VLocationCenter,                &
-!!$        DATATYPE           = MAPL_BundleItem,                     &
-!!$                                                       RC=STATUS  )
-!!$     VERIFY_(STATUS)
-!!$
-!!$     call MAPL_AddImportSpec(GC,                             &
-!!$        SHORT_NAME         = 'TRFLUX',                            &
-!!$        LONG_NAME          = 'surface_fluxes_of_tracers',         &
-!!$        UNITS              = 'X',                                 &
-!!$        DIMS               = MAPL_DimsHorzOnly,                   &
-!!$        VLOCATION          = MAPL_VLocationNone,                  &
-!!$        DATATYPE           = MAPL_BundleItem,                     &
-!!$                                                       RC=STATUS  )
-!!$     VERIFY_(STATUS)
-
     call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
         UNITS              = 'W m-2',                             &
@@ -275,7 +265,7 @@ contains
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddImportSpec(GC,                               &
         LONG_NAME          = 'ocean_rainfall'            ,&
         UNITS              = 'kg m-2 s-1'                ,&
@@ -284,14 +274,14 @@ contains
         VLOCATION          = MAPL_VLocationNone          ,&
           RC=STATUS  )
      VERIFY_(STATUS)
-     
+
      call MAPL_AddImportSpec(GC,                    &
         SHORT_NAME         = 'FRESH',                         &
         LONG_NAME          = 'fresh_water_flux_due_to_ice_dynamics', &
           UNITS              = 'kg m-2 s-1'                ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
+          RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
@@ -324,10 +314,10 @@ contains
          DEFAULT            = 280.0, &
          RC=STATUS  )
     VERIFY_(STATUS)
-    
+
 
 !  !EXPORT STATE:
-    
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME         = 'MASKO',                            &
          LONG_NAME          = 'ocean_mask',&
@@ -534,19 +524,19 @@ contains
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
        VERIFY_(STATUS)
-       
+
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'T',                                         &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
-       VERIFY_(STATUS)       
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'S',                                         &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
        VERIFY_(STATUS)
     end if
-    
+
 !EOS
 
     if(DO_DATASEA==0) then
@@ -557,13 +547,13 @@ contains
             CHILD=OCN,                          RC=STATUS  )
        VERIFY_(STATUS)
     end if
- 
+
 ! Set the Initialize, Run, Finalize entry points
 ! ----------------------------------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=status)
     VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,        RC=status)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,    Run,        RC=status)
     VERIFY_(STATUS)
 
 !=============================================================================
@@ -582,10 +572,10 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,   name="--ModRun"   ,RC=STATUS)
     VERIFY_(STATUS)
-	
+
 ! All Done
 !---------
-	
+
     RETURN_(ESMF_SUCCESS)
   end subroutine SetServices
 
@@ -601,7 +591,7 @@ contains
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp),      intent(INOUT) :: GC     ! Gridded component 
+    type(ESMF_GridComp),      intent(INOUT) :: GC     ! Gridded component
     type(ESMF_State),         intent(INOUT) :: IMPORT ! Import state
     type(ESMF_State),         intent(INOUT) :: EXPORT ! Export state
     type(ESMF_Clock),         intent(INOUT) :: CLOCK  ! The clock
@@ -611,13 +601,13 @@ contains
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)		:: IAm
-    integer				:: STATUS
+    character(len=ESMF_MAXSTR)      :: IAm
+    integer             :: STATUS
     character(len=ESMF_MAXSTR)          :: COMP_NAME
 
 ! Local derived type aliases
-    
-    type (MAPL_MetaComp),     pointer   :: State 
+
+    type (MAPL_MetaComp),     pointer   :: State
     type (ESMF_Grid)                    :: Grid
     type (T_PrivateState),    pointer   :: PrivateSTATE
     type (T_PrivateState_Wrap)          :: WRAP
@@ -627,7 +617,7 @@ contains
     type (ESMF_State       ), pointer   :: GIM(:)
     type (ESMF_State       ), pointer   :: GEX(:)
     type (ESMF_TimeInterval)            :: timeStep
-    type (ESMF_Time)                    :: currTime 
+    type (ESMF_Time)                    :: currTime
 
     real, pointer :: MASK(:,:)
     real, pointer :: MASKO(:,:)
@@ -636,13 +626,13 @@ contains
 
 !=============================================================================
 
-! Begin... 
+! Begin...
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
     Iam = "Initialize"
-    call ESMF_GridCompGet( gc, NAME=comp_name, grid=grid, RC=status )
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, grid=GRID, RC=status )
     VERIFY_(STATUS)
     Iam = trim(comp_name) // trim(Iam)
 
@@ -670,7 +660,7 @@ contains
 
 ! Allocate the private state...
 !------------------------------
-    
+
     allocate( PrivateSTATE , stat=STATUS )
     VERIFY_(STATUS)
 
@@ -678,7 +668,7 @@ contains
 
 ! And put it in the GC
 !---------------------
-    
+
     CALL ESMF_UserCompSetInternalState( GC, TRIM(OCEAN_NAME)//'_internal_state', WRAP, STATUS )
     VERIFY_(status)
 
@@ -688,7 +678,7 @@ contains
     VERIFY_(status)
     call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, RC=STATUS) ! set Default OCEAN_DT to AGCM Heartbeat
     VERIFY_(status)
-    
+
     CALL ESMF_TimeIntervalSet(timeStep, S=NINT(DT), RC=status)
     VERIFY_(status)
 
@@ -737,20 +727,20 @@ contains
     call MAPL_TimerOn (STATE,"TOTAL"     )
 
     if(DO_DATASEA==0) then
-       call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,RC=STATUS); VERIFY_(STATUS)     
+       call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(GEX(OCN), DH, 'DH', RC=STATUS); VERIFY_(STATUS)
-       
+
        MASK => MASK3D(:,:,1)
        if(associated(MASKO)) MASKO = MASK
 
 ! The following sets the depth in orphan points. This is needed to calculate SWHEAT in these points.
-! Unfortunately, frocean is zero at this point so we set OrphanDepth in all MOM land points. 
+! Unfortunately, frocean is zero at this point so we set OrphanDepth in all MOM land points.
        where(mask == 0.0)
           DH(:,:,1) = OrphanDepth
        end where
     end if
- 
+
     call MAPL_TimerOff(STATE,"INITIALIZE")
     call MAPL_TimerOff(STATE,"TOTAL"     )
 
@@ -759,7 +749,7 @@ contains
     RETURN_(ESMF_SUCCESS)
 
   end subroutine Initialize
-  
+
 ! ========================================================
 
 !BOP
@@ -772,7 +762,7 @@ contains
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(INOUT) :: gc     ! Gridded component 
+    type(ESMF_GridComp), intent(INOUT) :: gc     ! Gridded component
     type(ESMF_State),    intent(INOUT) :: import ! Import state
     type(ESMF_State),    intent(INOUT) :: export ! Export state
     type(ESMF_Clock),    intent(INOUT) :: clock  ! The supervisor clock
@@ -782,13 +772,13 @@ contains
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)		:: IAm
-    integer				:: STATUS
+    character(len=ESMF_MAXSTR)      :: IAm
+    integer             :: STATUS
     character(len=ESMF_MAXSTR)          :: COMP_NAME
 
 ! Local derived type aliases
 
-    type (MAPL_MetaComp),     pointer   :: STATE 
+    type (MAPL_MetaComp),     pointer   :: STATE
     type (ESMF_Time)                    :: EndTime
     type (ESMF_Time)                    :: MyTime,ct
     type (T_PrivateState),    pointer   :: PrivateSTATE
@@ -820,7 +810,7 @@ contains
     real, pointer :: FSALT(:,:)
 
 ! Pointers to Exports
-    
+
     real, pointer :: TS_FOUND (:,:)
     real, pointer :: SS_FOUND (:,:)
     real, pointer :: FRZMLT(:,:)
@@ -871,7 +861,7 @@ contains
 
 ! Locals
 
-    integer           :: I,J,L
+    integer           :: L
     integer           :: IM
     integer           :: JM
     integer           :: LM
@@ -921,7 +911,7 @@ contains
 
 ! Check the clocks to set set-up the "run-to" time
 !-------------------------------------------------
-    
+
     call ESMF_ClockGet( CLOCK, currTime=endTime, RC=STATUS)
     VERIFY_(status)
 
@@ -931,7 +921,7 @@ contains
     CALL ESMF_UserCompGetInternalState( GC, TRIM(OCEAN_NAME)//'_internal_state', WRAP, STATUS )
     VERIFY_(STATUS)
 
-    PrivateSTATE => WRAP%PTR 
+    PrivateSTATE => WRAP%PTR
 
     call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
     VERIFY_(status)
@@ -957,7 +947,7 @@ contains
 
     if( MyTime <= EndTime ) then ! Time to run
 
-! We get the ocean-land mask (now computed in Initialize of Plug)  
+! We get the ocean-land mask (now computed in Initialize of Plug)
 !----------------------------------------------------------
        if(DO_DATASEA==0) then
           call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', RC=STATUS); VERIFY_(STATUS)
@@ -967,11 +957,11 @@ contains
           MASK3D=1.0
           allocate(MASK(IM,JM), STAT=STATUS); VERIFY_(STATUS)
           MASK=1.0
-       end if       
+       end if
 
 ! Get ocean time step and misc. parameters
 !-----------------------------------------
-       
+
        call MAPL_GetResource(STATE,DT,  Label="RUN_DT:",    RC=STATUS)             ! Get AGCM Heartbeat
        VERIFY_(status)
        call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, RC=STATUS) ! set Default OCEAN_DT to AGCM Heartbeat
@@ -1019,14 +1009,14 @@ contains
           call MAPL_GetPointer(GIM(OCN), SNOW, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
        end if
-       
+
        call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(GEX(OCN), SW,   'SW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
 
        if(DO_DATASEA==0) then
           call MAPL_GetPointer(GEX(OCN), FRAZIL,   'FRAZIL'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
        end if
-       
+
 ! Get pointers to exports
 !--------------------------------------------------------
 
@@ -1048,7 +1038,7 @@ contains
        call MAPL_GetPointer(EXPORT, QFLUXe, 'QFLUX'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, RAINe, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SNOWe, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SFLXe, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)       
+       call MAPL_GetPointer(EXPORT, SFLXe, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
 
        if(associated(FROCEANe)) FROCEANe = FROCEAN
 
@@ -1078,8 +1068,8 @@ contains
           DISCHARGE = DISCHARGEi * WGHT
           LWFLX = LWFLXi * WGHT
           QFLUX = QFLUXi * WGHT
-          SHFLX = (SHFLXi- FHOCN) * WGHT 
-          RAIN = (RAINi+FRESH) * WGHT 
+          SHFLX = (SHFLXi- FHOCN) * WGHT
+          RAIN = (RAINi+FRESH) * WGHT
           SNOW = SNOWi * WGHT
           SFLX = FSALT * WGHT
 
@@ -1088,18 +1078,18 @@ contains
           TAUX = TAUXi * WGHT
           TAUY = TAUYi * WGHT
 
-       
+
 ! Prepare radiative heating for ocean
 !------------------------------------
 
           if(associated(RFLUX )) RFLUX  = 0.0
           do L=1,LM
-             HEAT(:,:,L) = HEATi(:,:,L)*WGHT 
+             HEAT(:,:,L) = HEATi(:,:,L)*WGHT
              if(associated(RFLUX)) then
                 RFLUX = RFLUX + (1.0-MASK3D(:,:,L))*HEAT(:,:,L)
              end if
           end do
-          
+
           if (associated(HEATe)) HEATe = HEAT
           if (associated(TAUXe)) TAUXe = TAUX
           if (associated(TAUYe)) TAUYe = TAUY
@@ -1118,7 +1108,7 @@ contains
 
        NUM = 0
        do while ( MyTime <= endTime )
-          
+
 ! Run ocean for one time step (DT)
 !---------------------------------
 
@@ -1141,7 +1131,7 @@ contains
 
        end do
 
-       if(associated(SS_FOUND)) then 
+       if(associated(SS_FOUND)) then
           SS_FOUND = OrphanSalinity
           where(WGHT > 0.0)
              SS_FOUND = SW
@@ -1157,14 +1147,14 @@ contains
              FRZMLT = 0.0
        end if
        end if
-       
+
        where(WGHT > 0.0)
           TS_FOUND = TW
           end where
 
 ! Update orphan points
        if(DO_DATASEA == 0) then
-          WGHT=FROCEAN*(1-MASK)                    
+          WGHT=FROCEAN*(1-MASK)
           Tfreeze=MAPL_TICE-0.054*OrphanSalinity
 
           where(wght>0.0)
@@ -1173,7 +1163,7 @@ contains
              FRZMLT = (Tfreeze - TS_FOUND) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*OrphanDepth)/DT
              TS_FOUND=max(TS_FOUND, Tfreeze)
           end where
-        
+
        end if
 
        deallocate(WGHT, STAT=STATUS); VERIFY_(STATUS)
@@ -1182,7 +1172,7 @@ contains
           deallocate(MASK3D, STAT=STATUS); VERIFY_(STATUS)
           deallocate(MASK, STAT=STATUS); VERIFY_(STATUS)
        end if
-    
+
     end if ! Time to run
 
 ! Profilers
