@@ -318,8 +318,14 @@ contains
 
 !  !EXPORT STATE:
 
+    select case (trim(OCEAN_NAME))
+        case ("MOM", "DATASEA")
+            charbuf_ = 'MASKO'
+        case ("MOM6")
+            charbuf_ = 'MASK'
+    end select
     call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME         = 'MASKO',                            &
+         SHORT_NAME         = trim(charbuf_),                     &
          LONG_NAME          = 'ocean_mask',&
          UNITS              = '1',                               &
          DIMS               = MAPL_DimsHorzOnly,                   &
@@ -950,13 +956,17 @@ contains
 ! We get the ocean-land mask (now computed in Initialize of Plug)
 !----------------------------------------------------------
        if(DO_DATASEA==0) then
-          call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', RC=STATUS); VERIFY_(STATUS)
-          MASK => MASK3D(:,:,1)
+          select case(trim(OCEAN_NAME))
+             case ("MOM")
+                call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', __RC__)
+                MASK => MASK3D(:,:,1)
+             case ("MOM6")
+                call MAPL_GetPointer(GEX(OCN), MASK, 'MOM_2D_MASK', __RC__)
+             end select
        else
           allocate(MASK3D(IM,JM,LM), STAT=STATUS); VERIFY_(STATUS)
-          MASK3D=1.0
           allocate(MASK(IM,JM), STAT=STATUS); VERIFY_(STATUS)
-          MASK=1.0
+          MASK3D=1.0 ; MASK=1.0
        end if
 
 ! Get ocean time step and misc. parameters
@@ -1154,7 +1164,7 @@ contains
 
 ! Update orphan points
        if(DO_DATASEA == 0) then
-          WGHT=FROCEAN*(1-MASK)
+          WGHT=FROCEAN*(1.0-MASK)
           Tfreeze=MAPL_TICE-0.054*OrphanSalinity
 
           where(wght>0.0)
