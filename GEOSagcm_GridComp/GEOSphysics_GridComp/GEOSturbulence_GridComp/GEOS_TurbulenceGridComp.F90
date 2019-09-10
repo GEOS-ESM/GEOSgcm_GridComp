@@ -3132,8 +3132,8 @@ ELSE
     buoyf=0.0
   
     if (associated(z_conv_edmf))    z_conv_edmf=mapl_undef
-    if (associated(edmf_dry_a))     edmf_dry_a    =mapl_undef
-    if (associated(edmf_moist_a))   edmf_moist_a  =mapl_undef 
+    if (associated(edmf_dry_a))     edmf_dry_a    =0.0
+    if (associated(edmf_moist_a))   edmf_moist_a  =0.0
     if (associated(edmf_dry_w))     edmf_dry_w    =mapl_undef
     if (associated(edmf_moist_w))   edmf_moist_w  =mapl_undef 
     if (associated(edmf_dry_qt))    edmf_dry_qt   =mapl_undef
@@ -3172,6 +3172,9 @@ ENDIF
 !
 !
 !!!=================================================================
+
+      ISOTROPY = 600.   ! set default isotropy timescale,
+                        ! will be overwritten
 
       if (DO_SHOC /= 0) then
 
@@ -3827,6 +3830,18 @@ ENDIF
             (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
             TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
           enddo
+
+          ! If not running SHOC, estimate ISOTROPY from KH and TKE,
+          ! based on Eq. 7 from Bogenschutz and Krueger (2013).
+          ! This is a placeholder to allow use of the double-gaussian
+          ! PDF without SHOC, but should be tested and revised!!!
+          ISOTROPY(:,:,LM) = KH(:,:,LM-1) / (0.1*TKE(:,:,LM-1))
+          ISOTROPY(:,:,1) = KH(:,:,1) / (0.1*TKE(:,:,1))
+          do L = 2,LM-1
+            ISOTROPY(:,:,L) = (KH(:,:,L)+KH(:,:,L-1)) / (0.1*(TKE(:,:,L)+TKE(:,:,L-1)))
+          end do
+          ISOTROPY = max(10.,min(2000.,ISOTROPY))
+
         end if
       end if ! TKE
 
@@ -6040,7 +6055,7 @@ end if
         wlv=wmin+(wmax-wmin)/(real(NUP))*(real(i)-1.)
         wtv=wmin+(wmax-wmin)/(real(NUP))*real(i)
        
-        UPW(kts-1,I)=min(0.5*(wlv+wtv), 3.)  ! npa
+        UPW(kts-1,I)=min(0.5*(wlv+wtv), 5.)  ! npa
 
         UPW(kts-1,I)=0.5*(wlv+wtv) 
         UPA(kts-1,I)=0.5*ERF(wtv/(sqrt(2.)*sigmaW))-0.5*ERF(wlv/(sqrt(2.)*sigmaW))
