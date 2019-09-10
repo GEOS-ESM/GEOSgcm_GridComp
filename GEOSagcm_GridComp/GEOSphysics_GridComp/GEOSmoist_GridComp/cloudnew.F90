@@ -860,36 +860,19 @@ contains
              kd = k-1
              ku = k
              if (k==1) kd = k
-             w3var(k)    = (0.667*tke_dev(I,k))**1.5 +mf_w3_dev(I,k)
-             w2var(k)    = (0.667*tke_dev(I,k)) +mf_w2_dev(I,k)
-             thlsec(k)   = max(0., 0.5*(thl_sec(kd)+thl_sec(ku))+mf_hl2_dev(I,k))
-             qwsec(k)    = max(0., 0.5*(qw_sec(kd)+qw_sec(ku))+mf_qt2_dev(I,k))
-             qwthlsec(k) = 0.5 * (qwthl_sec(kd) + qwthl_sec(ku))+mf_qthl_dev(I,k)
-             wqwsec(k)   = 0.5 * (wqw_sec(kd)   + wqw_sec(ku))+mf_wqt_dev(I,k)
-             wthlsec(k)  = 0.5 * (wthl_sec(kd)  + wthl_sec(ku))+mf_whl_dev(I,k)
+             w3var(k)    = mf_w3_dev(I,k)   ! assume 0 skewness in environment
+             w2var(k)    = (1.0-mf_frc_dev(I,k))*(0.667*tke_dev(I,k)) +mf_w2_dev(I,k)
+             thlsec(k)   = max(0.,(1.0-mf_frc_dev(I,k))*0.5*(thl_sec(kd)+thl_sec(ku))+mf_hl2_dev(I,k))
+             qwsec(k)    = max(0.,(1.0-mf_frc_dev(I,k))*0.5*(qw_sec(kd)+qw_sec(ku))+mf_qt2_dev(I,k))
+             qwthlsec(k) = (1.0-mf_frc_dev(I,k))*0.5 * (qwthl_sec(kd) + qwthl_sec(ku))+mf_qthl_dev(I,k)
+             wqwsec(k)   = (1.0-mf_frc_dev(I,k))*0.5 * (wqw_sec(kd)   + wqw_sec(ku))+mf_wqt_dev(I,k)
+             wthlsec(k)  = (1.0-mf_frc_dev(I,k))*0.5 * (wthl_sec(kd)  + wthl_sec(ku))+mf_whl_dev(I,k)
 
-             ! Restrict QT variance 
-             if (sqrt(qw_sec(k))>0.2*QST3_dev(i,k)) qw_sec(k) = (0.2*QST3_dev(i,k))**2
-             if (sqrt(qw_sec(k))<0.05*QST3_dev(i,k)) qw_sec(k) = (0.05*QST3_dev(i,k))**2
+             ! Restrict QT variance, 5-20% of qstar 
+             qw_sec(k) = max(min(qw_sec(k),(0.2*QST3_dev(i,k))**2),(0.05*QST3_dev(i,k))**2)
              thlsec(k) = min(thlsec(k),4.0)
-             
-
-!             if (k>LM-5) then
-!               wrk1 = (0.667*tke_dev(I,k))**1.5
-!               print *,'mst w_sec1.5=',wrk1,' mf_w3=',mf_w3_dev(I,k)
-!               wrk1 = 0.5*(thl_sec(kd)+thl_sec(ku))
-!               print *,'mst thl_sec=',wrk1,' mf_hl2=',mf_hl2_dev(I,k)
-!             end if
-           end do
-
-!           print *,'mst mf_w3=',mf_w3_dev(I,LM-4:LM)
-!           print *,'mst w3var=',w3var(LM-4:LM)
-!           print *,'mst mf_hl2=',mf_hl2_dev(I,LM-4:LM)
-!           print *,'mst thlsec=',thlsec(LM-4:LM)
-!           print *,'mst qwsec=',qwsec(LM-4:LM)
-!           print *,'mst qwthlsec=',qwthlsec(LM-4:LM)
-!           print *,'mst wthlsec=',wthlsec(LM-4:LM)
-
+           end do            
+ 
          end if ! if pdfflag=5
 
 
