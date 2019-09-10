@@ -733,7 +733,6 @@ contains
     call MAPL_TimerOn (STATE,"TOTAL"     )
 
     if(DO_DATASEA==0) then
-       call MAPL_GetPointer(GEX(OCN), DH, 'DH', __RC__)
        select case (trim(OCEAN_NAME))
           case ("MOM")
              call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,__RC__)
@@ -746,6 +745,7 @@ contains
 
 ! The following sets the depth in orphan points. This is needed to calculate SWHEAT in these points.
 ! Unfortunately, frocean is zero at this point so we set OrphanDepth in all MOM land points.
+       call MAPL_GetPointer(GEX(OCN), DH, 'DH', __RC__)
        where(MASK == 0.0)
           DH(:,:,1) = OrphanDepth
        end where
@@ -958,7 +958,7 @@ contains
     if( MyTime <= EndTime ) then ! Time to run
 
 ! We get the ocean-land mask (now computed in Initialize of Plug)
-!----------------------------------------------------------
+! ---------------------------------------------------------------
        if(DO_DATASEA==0) then
           select case(trim(OCEAN_NAME))
              case ("MOM")
