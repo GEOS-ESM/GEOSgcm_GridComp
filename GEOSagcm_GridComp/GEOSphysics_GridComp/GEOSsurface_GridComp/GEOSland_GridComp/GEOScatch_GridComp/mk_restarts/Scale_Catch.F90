@@ -1,6 +1,3 @@
-#define VERIFY_(A)   IF(A/=0)THEN;PRINT *,'ERROR AT LINE ', __LINE__;STOP;ENDIF
-#define ASSERT_(A)   if(.not.A)then;print *,'Error:',__FILE__,__LINE__;stop;endif
-
   use MAPL_IOMod
   implicit none
 
@@ -115,9 +112,8 @@
   integer, allocatable, dimension(:) :: vegcls
   real,    allocatable, dimension(:) :: vegdyn
 
-  type(MAPL_NCIO) :: NCIO(3), InNCIO
-  integer :: i, rc, filetype, nVars
-  logical :: have_irrig = .false.
+  type(MAPL_NCIO) :: NCIO(3)
+  integer :: i, rc, filetype
     
 ! Usage
 ! -----
@@ -140,7 +136,7 @@
 ! -------------------------------
   read(arg(3),'(a)') fname3
 
-  call MAPL_NCIOGetFileType(fname1, filetype,rc=rc) ; VERIFY_(rc)
+  call MAPL_NCIOGetFileType(fname1, filetype,rc=rc)
 
   if (filetype == 0) then
      NCIO(1) = MAPL_NCIOOpen(trim(fname1))
@@ -148,7 +144,7 @@
   else
      open(unit=10, file=trim(fname1),  form='unformatted')
      open(unit=20, file=trim(fname2),  form='unformatted')
-!     open(unit=30, file=trim(fname3),  form='unformatted')
+     open(unit=30, file=trim(fname3),  form='unformatted')
   end if
 
 ! Get SURFLAY Value
@@ -255,29 +251,16 @@
 
 ! Write Scaled Catch
 ! ------------------
-!  if (filetype ==0) then
-!     NCIO(3) = NCIO(2)
-!     call MAPL_NCIOClose(NCIO(3))
-!     call MAPL_NCIOSet(NCIO(3),filename=fname3)
-!     call MAPL_NCIOCreateFile(NCIO(3))
-!     call writecatch_nc4 ( catch(sca), NCIO(3) )
-!  else
-!     call writecatch ( 30,catch(sca) )
-!  end if
-
-  InNCIO = MAPL_NCIOOpen('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/Catch/catch_internal_rst' ,&
-       rc=rc)                                                     ; VERIFY_(rc)
-  call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)                   ; VERIFY_(rc)
-  call MAPL_NCIOChangeRes(InNCIO,NCIO(3),tileSize=ntiles,rc=rc)   ; VERIFY_(rc)
-  call MAPL_NCIOSet(NCIO(3),filename=fname3)
-  call MAPL_NCIOCreateFile(NCIO(3))   
-  i = index(fname2,'/',back=.true.)   
-  inquire(file=trim(fname2(1:i))//"/clsm/irrigation_internal_rst",exist=have_irrig)
-  if(have_irrig) then 
-     call writecatch_nc4 ( catch(sca), NCIO(3), trim(fname2(1:i))//"/clsm/irrigation_internal_rst" )  
+  if (filetype ==0) then
+     NCIO(3) = NCIO(2)
+     call MAPL_NCIOClose(NCIO(3))
+     call MAPL_NCIOSet(NCIO(3),filename=fname3)
+     call MAPL_NCIOCreateFile(NCIO(3))
+     call writecatch_nc4 ( catch(sca), NCIO(3) )
   else
-     call writecatch_nc4 ( catch(sca), NCIO(3))  
-  endif
+     call writecatch ( 30,catch(sca) )
+  end if
+
 100 format(1x,'Total  Tiles: ',i10)
 200 format(1x,'Scaled Tiles: ',i10,2x,'(',i2.2,'%)')
 300 format(1x,'CatDef Tiles: ',i10,2x,'(',i2.2,'%)')
@@ -421,7 +404,6 @@
    subroutine readcatch (unit,catch)
    integer unit
    type(catch_rst) catch
-   integer  rc
 
        read(unit) catch%      bf1
        read(unit) catch%      bf2
@@ -484,14 +466,9 @@
    return
    end subroutine readcatch
 
-   subroutine writecatch_nc4 (catch,NCIO, irr_file)
+   subroutine writecatch_nc4 (catch,NCIO)
    type(catch_rst) catch
-   type(MAPL_NCIO) :: NCIO, IRRIO
-   character(*), intent (in), optional :: irr_file
-   integer  :: rc, ntiles
-   real, allocatable, dimension (:) :: read_data
-
-   print *,'IRR FILE : ', trim(irr_file)
+   type(MAPL_NCIO) :: NCIO
 
        call MAPL_VarWrite(NCIO,"BF1",catch%bf1)
        call MAPL_VarWrite(NCIO,"BF2",catch%bf2)
@@ -552,34 +529,8 @@
        call MAPL_VarWrite(NCIO,"FR",catch%fr)
        call MAPL_VarWrite(NCIO,"WW",catch%ww)
 
-       if (present (irr_file)) then
-          ntiles = size (catch%bf1)
-          allocate (read_data (1:ntiles))
-          IRRIO = MAPL_NCIOOpen(trim(irr_file), rc=rc) ; VERIFY_(rc)
-          call MAPL_VarRead (IRRIO,"CLMPF"    ,read_data)
-          call MAPL_VarWrite(NCIO ,"CLMPF"    ,read_data)
-          call MAPL_VarRead (IRRIO,"CLMPT"    ,read_data)
-          call MAPL_VarWrite(NCIO ,"CLMPT"    ,read_data)
-          call MAPL_VarRead (IRRIO,"CLMSF"    ,read_data)
-          call MAPL_VarWrite(NCIO ,"CLMSF"    ,read_data)
-          call MAPL_VarRead (IRRIO,"CLMST"    ,read_data)
-          call MAPL_VarWrite(NCIO ,"CLMST"    ,read_data)
-          call MAPL_VarRead (IRRIO,"LAIMAX"   ,read_data)
-          call MAPL_VarWrite(NCIO ,"LAIMAX"   ,read_data)
-          call MAPL_VarRead (IRRIO,"LAIMIN"   ,read_data)
-          call MAPL_VarWrite(NCIO ,"LAIMIN"   ,read_data)
-          call MAPL_VarRead (IRRIO,"PADDYFRAC",read_data)
-          call MAPL_VarWrite(NCIO ,"PADDYFRAC",read_data)
-          call MAPL_VarRead (IRRIO,"IRRIGFRAC",read_data)
-          call MAPL_VarWrite(NCIO ,"IRRIGFRAC",read_data)
-          deallocate (read_data)
-          call MAPL_NCIOClose(IRRIO)
-       endif
-       call MAPL_NCIOClose(NCIO)
    return
    end subroutine writecatch_nc4
-
-! -----------------------------------------
 
    subroutine writecatch (unit,catch)
    integer unit
