@@ -86,8 +86,8 @@ integer ::          ADV = -1
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(INOUT)      :: GC  ! gridded component
-    integer, optional,   intent(  OUT)      :: RC  ! return code
+    type(ESMF_GridComp)     :: GC  ! gridded component
+    integer, intent(  OUT)      :: RC  ! return code
 
 ! !DESCRIPTION:  The SetServices for the SuperDyn GC needs to register its
 !   Initialize, Run, and Finalize methods.  In addition, we need to create the   

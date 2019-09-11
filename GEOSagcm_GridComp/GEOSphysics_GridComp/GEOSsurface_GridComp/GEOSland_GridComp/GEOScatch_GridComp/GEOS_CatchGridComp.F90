@@ -130,8 +130,8 @@ subroutine SetServices ( GC, RC )
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp),intent(INOUT) :: GC
-    integer, optional,  intent(  OUT) :: RC
+    type(ESMF_GridComp) :: GC
+    integer, intent(  OUT) :: RC
 
 ! !DESCRIPTION:
 ! This version uses GEOS\_GenericSetServices, overriding

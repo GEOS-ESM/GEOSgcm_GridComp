@@ -48,8 +48,8 @@ contains
       subroutine SetServices(GC, rc)
 !
 ! !ARGUMENTS:
-      type(ESMF_GridComp), intent(inout) :: GC
-      integer, optional,   intent(  out) :: RC
+      type(ESMF_GridComp) :: GC
+      integer,  intent(  out) :: RC
 !
 ! !DESCRIPTION:
 !

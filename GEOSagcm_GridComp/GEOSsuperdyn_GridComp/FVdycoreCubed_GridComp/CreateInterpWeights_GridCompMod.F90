@@ -45,8 +45,8 @@ contains
 
 ! !ARGUMENTS:
 
-   type(ESMF_GridComp), intent(inout) :: gc     ! gridded component
-   integer, intent(out), optional     :: rc     ! return code
+   type(ESMF_GridComp) :: gc     ! gridded component
+   integer, intent(out)    :: rc     ! return code
     
 
 !EOP         

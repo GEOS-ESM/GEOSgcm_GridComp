@@ -69,8 +69,8 @@ contains
     subroutine SetServices ( GC, RC )
 
 ! !ARGUMENTS:
-    type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    integer, optional                  :: RC  ! return code
+    type(ESMF_GridComp) :: GC  ! gridded component
+    integer, intent(out)              :: RC  ! return code
     
 ! !DESCRIPTION:  {\tt GEOS\_MoistGridCompMod} uses the default Initialize and Finalize 
 !                services, but registers its own Run method.

@@ -84,8 +84,8 @@ contains
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    integer,             intent(  OUT) :: RC  ! return code
+    type(ESMF_GridComp) :: GC  ! gridded component
+    integer,   intent(OUT) :: RC  ! return code
 
 ! !DESCRIPTION:  The SetServices for the Physics GC needs to register its
 !   Initialize and Run.  It uses the MAPL\_Generic construct for defining 

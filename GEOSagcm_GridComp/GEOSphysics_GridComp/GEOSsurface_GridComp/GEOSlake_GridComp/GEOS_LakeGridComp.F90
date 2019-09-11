@@ -45,8 +45,8 @@ module GEOS_LakeGridCompMod
   subroutine SetServices ( GC, RC )
 
     !ARGUMENTS:
-    type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    integer, optional                  :: RC  ! return code
+    type(ESMF_GridComp) :: GC  ! gridded component
+    integer, intent(out)                  :: RC  ! return code
 
 !DESCRIPTION: 
 ! This version uses the MAPL\_GenericSetServices, which sets
