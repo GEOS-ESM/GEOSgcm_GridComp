@@ -2490,7 +2490,7 @@ contains
        endif
       elseif(flag.eq.2) then
        qtmode =  qtmean + (sigmaqt1-sigmaqt2)/3.
-       qtmin = max(qtmode-sigmaqt1,0.)
+       qtmin = min(qtmode-sigmaqt1,0.)
        qtmax = qtmode + sigmaqt2
        if(qtmax.lt.qstar) then
         clfrac = 0.
@@ -2546,7 +2546,7 @@ contains
        endif
       elseif(flag.eq.2) then
        qtmode =  qtmean + (sigmaqt1-sigmaqt2)/3.d0
-       qtmin = max(qtmode-sigmaqt1,0.d0)
+       qtmin = min(qtmode-sigmaqt1,0.d0)
        qtmax = qtmode + sigmaqt2
        if ( qtmax.lt.qstar ) then
         condensate = 0.d0

@@ -3,11 +3,6 @@
 # Order is important; the last matching pattern takes the most
 # precedence.
 
-# Everything in GEOSgcm_GridComp should be owned by the GCM Gatekeepers
-* @GEOS-ESM/gcm-gatekeepers
-
-# The ocean is the Ocean Team's responsibility
-/GEOSogcm_GridComp/ @GEOS-ESM/ocean-team
-
 # The GEOS CMake Team is the CODEOWNER for the CMakeLists.txt files in this repository
 CMakeLists.txt @GEOS-ESM/cmake-team
+
