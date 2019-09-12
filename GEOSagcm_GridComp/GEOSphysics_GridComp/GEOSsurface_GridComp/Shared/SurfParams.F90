@@ -74,8 +74,8 @@ module SurfParams
          LAND_FIX = .TRUE. 
          CSOIL_2  = 70000. ! Post H5_0 
          WEMIN    = 13.     
-         AICEV    = 0.107 
-         AICEN    = 19.893
+         AICEV    = 0.149 
+         AICEN    = 19.851
          FLWALPHA = 0.04
          ASTRFR   = 0.333  ! reverted 
          STEXP    = 1.     ! reverted
