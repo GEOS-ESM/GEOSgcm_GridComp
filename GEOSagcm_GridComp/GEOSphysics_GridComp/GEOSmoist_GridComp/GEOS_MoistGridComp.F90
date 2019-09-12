@@ -529,6 +529,17 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                     &
+         SHORT_NAME = 'TKESHOC',                                    &
+         LONG_NAME  = 'turbulent_kinetic_energy_from_SHOC',         &
+         UNITS      = 'm+2 s-2',                                    &
+         DIMS       = MAPL_DimsHorzVert,                            &
+         VLOCATION  = MAPL_VLocationCenter,                         &
+         AVERAGING_INTERVAL = AVRGNINT,                             &
+         REFRESH_INTERVAL   = RFRSHINT,                             &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                     &
          SHORT_NAME = 'edmf_moist_a',                               &
          LONG_NAME  = 'edmf_moist_a',                               &
          UNITS      = '1',                                          &
@@ -5319,7 +5330,7 @@ contains
 
       real, pointer, dimension(:,:,:) :: T, PLE, U, V, W, TH
       real, pointer, dimension(:,:)   :: TROPP
-      real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE
+      real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE, TKESHOC
       real, pointer, dimension(:,:,:) :: ISOTROPY,w3_canuto,edmf_wqt,edmf_whl,edmf_qt2,edmf_hl2,edmf_qthl,edmf_w2,edmf_w3,edmf_qt3,edmf_dry_a,edmf_moist_a
       real, pointer, dimension(    :) :: PREF
       real, pointer, dimension(:,:,:) :: Q, QRAIN, QSNOW, QGRAUPEL, QLLS, QLCN, CLLS, CLCN, BYNCY, QILS, QICN, QCTOT,QITOT,QLTOT
@@ -6309,6 +6320,7 @@ contains
       call MAPL_GetPointer(IMPORT, PREF,    'PREF'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, KH,      'KH'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TKE,     'TKE'     , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, TKESHOC, 'TKESHOC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, ISOTROPY,'ISOTROPY', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, w3_canuto,'w3_canuto', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, edmf_wqt, 'edmf_wqt', RC=STATUS); VERIFY_(STATUS)
@@ -10018,7 +10030,7 @@ contains
               edmf_w2           , &   ! <- turb
               edmf_w3           , &   ! <- turb
               edmf_qt3          , &   ! <- turb
-              TKE               , &   ! <- turb
+              TKESHOC           , &   ! <- turb
               DTS               , &
               CNV_MFD           , &   ! <- ras
               CNV_DQLDT         , &   ! <- ras              

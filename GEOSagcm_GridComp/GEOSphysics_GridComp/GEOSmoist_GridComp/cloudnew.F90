@@ -524,7 +524,7 @@ contains
       real, intent(in   ), dimension(IRUN,  LM) :: mf_w2_dev   !
       real, intent(in   ), dimension(IRUN,  LM) :: mf_w3_dev   !
       real, intent(in   ), dimension(IRUN,  LM) :: mf_qt3_dev  !
-      real, intent(in   ), dimension(IRUN,0:LM) :: tke_dev     !
+      real, intent(in   ), dimension(IRUN,  LM) :: tke_dev     !
       real, intent(in   ), dimension(IRUN     ) :: DTS_dev     ! DTS
       real, intent(in   ), dimension(IRUN,  LM) :: RMFDTR_dev  ! CNV_MFD
       real, intent(in   ), dimension(IRUN,  LM) :: QLWDTR_dev  ! CNV_DQLDT

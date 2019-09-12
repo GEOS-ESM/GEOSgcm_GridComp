@@ -3818,8 +3818,10 @@ ENDIF
 
       ! TKE 
       if (associated(TKE)) then         ! Reminder: TKE is on model edges
-        if (DO_SHOC /= 0) then
-          TKE = TKESHOC
+        if (DO_SHOC /= 0) then          !           TKESHOC is not.
+          TKE(:,:,1:LM-1) = 0.5*(TKESHOC(:,:,1:LM-1)+TKESHOC(:,:,2:LM))
+          TKE(:,:,0) = 0.
+          TKE(:,:,LM) = 0.
         else
           TKE = MAPL_UNDEF
           lambdadiss = 50.
