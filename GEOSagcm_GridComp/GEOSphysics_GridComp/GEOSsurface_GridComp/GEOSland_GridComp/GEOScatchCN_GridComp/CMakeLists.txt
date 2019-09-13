@@ -39,7 +39,6 @@ set (srcs
   compute_rc.F90
   catchmentCN.F90
   catchcn_iau.F90
-  getco2.F90
   GEOS_CatchCNGridComp.F90 
   )
 
