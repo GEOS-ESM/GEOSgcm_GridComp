@@ -640,7 +640,7 @@ contains
 
           tscale1    = (dtn+dtn) / a_diss        ! See Eq 8 in BK13
 
-          a_diss     = a_diss*tke(i,j,k)    ! TKE dissipation term, epsilon
+          a_diss     = (a_diss/dtn)*tke(i,j,k)    ! TKE dissipation term, epsilon
 
 
 ! Calculate "return-to-isotropy" eddy dissipation time scale, see Eq. 8 in BK13
@@ -655,7 +655,7 @@ contains
 
 ! TKE budget terms
 
-          tkesbdiss(i,j,k)       = a_diss
+          tkesbdiss(i,j,k)       = -a_diss
           tkesbshear(i,j,k)      = a_prod_sh
           tkesbbuoy(i,j,k)       = a_prod_bu
 !          tkesbtrans(i,j,k)      = a_prod_tr
