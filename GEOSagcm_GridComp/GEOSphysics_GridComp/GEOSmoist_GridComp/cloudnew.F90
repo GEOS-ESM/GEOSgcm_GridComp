@@ -869,7 +869,8 @@ contains
              wthlsec(k)  = (1.0-mf_frc_dev(I,k))*0.5 * (wthl_sec(kd)  + wthl_sec(ku))+mf_whl_dev(I,k)
 
              ! Restrict QT variance, 5-20% of qstar 
-             qw_sec(k) = max(min(qw_sec(k),(0.2*QST3_dev(i,k))**2),(0.05*QST3_dev(i,k))**2)
+             qwsec(k) = min(qwsec(k),(0.2*QST3_dev(i,k))**2)
+!             qwsec(k) = max(min(qwsec(k),(0.2*QST3_dev(i,k))**2),(0.05*QST3_dev(i,k))**2)
              thlsec(k) = min(thlsec(k),4.0)
            end do            
  
