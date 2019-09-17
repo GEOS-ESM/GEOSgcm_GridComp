@@ -68,6 +68,7 @@ module GEOS_CICE4ColumnPhysGridComp
   integer, parameter :: NUM_3D_ICE_TRACERS = 3
   integer, parameter :: NUM_SNOW_LAYERS    = 1
 
+  logical ::      DUAL_OCEAN
 
   contains
 
@@ -112,6 +113,7 @@ module GEOS_CICE4ColumnPhysGridComp
     integer                                 :: NUM_SUBTILES        ! = NUM_ICE_CATEGORIES 
     integer                                 :: NUM_ICE_LAYERS      ! set via resource parameter
     integer                                 :: NUM_ICE_CATEGORIES  ! set via resource parameter
+    integer ::      iDUAL_OCEAN
 
 !=============================================================================
 
@@ -151,6 +153,9 @@ module GEOS_CICE4ColumnPhysGridComp
     call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS    , Label="CICE_N_ICE_LAYERS:"     , RC=STATUS)
     VERIFY_(STATUS)
     NUM_SUBTILES  = NUM_ICE_CATEGORIES 
+
+    call MAPL_GetResource(MAPL, iDUAL_OCEAN, 'DUAL_OCEAN:', default=0, RC=STATUS )
+    DUAL_OCEAN = iDUAL_OCEAN /= 0
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -3278,6 +3283,10 @@ contains
 
    real,    dimension(NT)              :: FSWABS
    real                                :: YDAY 
+   real,    dimension(NT)              :: ALBVRI
+   real,    dimension(NT)              :: ALBVFI
+   real,    dimension(NT)              :: ALBNRI
+   real,    dimension(NT)              :: ALBNFI
 
    integer,            allocatable    :: TRCRTYPE      (:)
    real,               allocatable    :: TRACERS       (:,:)
@@ -3854,7 +3863,19 @@ contains
                            DRPAR,DFPAR,DRNIR,DFNIR,DRUVR,DFUVR,VSUVR,VSUVF,VOLICE,VOLSNO,APONDN,HPONDN,                      &
                            ISWABS,FSWSFC, FSWINT,FSWTHRU,SSWABS,ALBIN,ALBSN,ALBPND,ALBVRN,ALBVFN,ALBNRN,ALBNFN,              &
                            DRUVRTHRU,DFUVRTHRU,DRPARTHRU,DFPARTHRU,RC=STATUS)
-    VERIFY_(STATUS)                     
+      VERIFY_(STATUS)                     
+!!! Make this call so that during the predictor and corrector we use these albedos to send to radiation
+     if(dual_ocean) then
+      call ALBSEAICEM2 (ALBVRI,ALBVFI,ALBNRI,ALBNFI,ZTH,LATS,CURRENT_TIME)  ! GEOS albedo over sea ice
+      do N=1, NUM_ICE_CATEGORIES
+       ALBVFN(:,N) = ALBVFI(:)
+       ALBVFN(:,N) = ALBVFI(:)
+       ALBVFN(:,N) = ALBVFI(:)
+       ALBVFN(:,N) = ALBVFI(:)
+      enddo
+     else
+     endif
+
 
     if(associated(PENUVR)) PENUVR = 0.0
     if(associated(PENUVF)) PENUVF = 0.0
@@ -5530,6 +5551,9 @@ contains
           VOLSNO_TMP(:)      = VOLSNO(K,:)
           ERGICE_TMP(:,:)    = ERGICE(K,:,:)
           ERGSNO_TMP(:,:)    = ERGSNO(K,:,:)
+          FRESHLDB(:)        = 0.0_8 
+          FSALTLDB(:)        = 0.0_8
+          FHOCNLDB(:)        = 0.0_8  
 
           call cleanup_itd (1,1,1,1,1,1,DTDB, &
                             FR_TMP,           &
@@ -6026,6 +6050,139 @@ end subroutine RUN2
  
     return  
   end subroutine FreezingTemperature 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! !IROUTINE: ALBSEAICEM2 - Computes albedos as a function of  $cos(\zeta)$ over sea-ice surfaces
+
+! !INTERFACE:
+
+  subroutine ALBSEAICEM2 (ALBVR,ALBVF,ALBNR,ALBNF,ZTH,LATS,currTime)
+
+! !ARGUMENTS:
+
+    character(len=ESMF_MAXSTR)              :: IAm
+    integer                                 :: STATUS,RC
+    character(len=ESMF_MAXSTR)              :: COMP_NAME
+
+    type(ESMF_Time), intent(INOUT)    :: currTime
+    real,    intent(IN)  :: LATS(:)
+    real,    intent(IN)  :: ZTH  (:)
+    real,    intent(OUT) :: ALBVR(:) ! visible beam    albedo
+    real,    intent(OUT) :: ALBVF(:) ! visible diffuse albedo
+    real,    intent(OUT) :: ALBNR(:) ! nearIr  beam    albedo
+    real,    intent(OUT) :: ALBNF(:) ! nearIr  diffuse albedo
+
+!  !DESCRIPTION:
+!        Compute albedo for ocean points
+!          based on Heracles GEOS-AGCM
+
+      !real, parameter :: SEAICEALBVR  = .60
+      !real, parameter :: SEAICEALBVF  = .60
+      !real, parameter :: SEAICEALBNR  = .60
+      !real, parameter :: SEAICEALBNF  = .60
+      real                  :: SEAICEALBVRN
+      real                  :: SEAICEALBVFN
+      real                  :: SEAICEALBNRN
+      real                  :: SEAICEALBNFN
+
+      real                  :: SEAICEALBVRS
+      real                  :: SEAICEALBVFS
+      real                  :: SEAICEALBNRS
+      real                  :: SEAICEALBNFS
+
+      real, dimension(0:13) :: shebavis
+      real, dimension(0:13) :: shebanir
+      real, dimension(0:13) :: nday
+      real                  :: afracv,aslopev,abasev
+      real                  :: afraci,aslopei,abasei
+
+      character(len=ESMF_MAXSTR)     :: string
+      integer               :: YEAR,MONTH,DAY
+
+
+      shebavis = (/0.820,0.820,0.820,0.820,0.820,0.820,0.751, &
+       0.467,0.663,0.820,0.820,0.820,0.820,0.820/)
+      shebanir = (/0.820,0.820,0.820,0.820,0.820,0.820,0.751, &
+       0.467,0.663,0.820,0.820,0.820,0.820,0.820/)
+
+      !attempt to use spec albedoes had poor results
+      !shebavis = (/0.826,0.826,0.826,0.826,0.826,0.762,0.499, &
+      ! 0.681,0.719,0.826,0.826,0.826,0.826,0.826/)
+      !shebanir = (/0.809,0.809,0.809,0.809,0.809,0.731,0.411, &
+      ! 0.632,0.678,0.809,0.809,0.809,0.809,0.809/)
+      !Rotate albedoes by 6 months for S Hemis. -not a good idea
+      !shem = (/0.751,0.467,0.663,0.820,0.820,0.820,0.820, &
+      ! 0.820,0.820,0.820,0.820,0.820,0.751,0.467/)
+
+      nday = (/31.,31.,29.,31.,30.,31.,30.,31.,31.,30.,31.,30.,31.,31./)
+
+      call ESMF_TimeGet  ( currTime, TimeString=string  ,rc=STATUS ) ; VERIFY_(STATUS)
+      read(string( 1: 4),'(i4.4)') YEAR
+      read(string( 6: 7),'(i2.2)') MONTH
+      read(string( 9:10),'(i2.2)') DAY
+
+      if(mod(YEAR,4).eq.0) then
+        nday(2)=29.
+      else
+        nday(2)=28.
+      endif
+
+
+
+      if(DAY.ge.15) then
+        afracv=(float(DAY)-15.)/nday(MONTH)
+        aslopev=(shebavis(MONTH+1)-shebavis(MONTH))/nday(MONTH)
+        abasev=shebavis(MONTH)
+        afraci=(float(DAY)-15.)/nday(MONTH)
+        aslopei=(shebanir(MONTH+1)-shebanir(MONTH))/nday(MONTH)
+        abasei=shebanir(MONTH)
+      else
+        afracv=(float(DAY)+nday(MONTH-1)-15.)/nday(MONTH-1)
+        aslopev=(shebavis(MONTH)-shebavis(MONTH-1))/nday(MONTH-1)
+        abasev=shebavis(MONTH-1)
+        afraci=(float(DAY)+nday(MONTH-1)-15.)/nday(MONTH-1)
+        aslopei=(shebanir(MONTH)-shebanir(MONTH-1))/nday(MONTH-1)
+        abasei=shebanir(MONTH-1)
+      endif
+
+  
+      SEAICEALBVRN=abasev+aslopev*afracv
+      SEAICEALBVFN=abasev+aslopev*afracv
+      SEAICEALBNRN=abasei+aslopei*afraci
+      SEAICEALBNFN=abasei+aslopei*afraci
+
+      SEAICEALBVRS=0.6
+      SEAICEALBVFS=0.6
+      SEAICEALBNRS=0.6
+      SEAICEALBNFS=0.6
+
+      where(LATS.ge.0.)
+! Beam albedos
+!-------------
+        ALBVR = SEAICEALBVRN
+        ALBNR = SEAICEALBNRN
+
+! Diffuse albedos
+!----------------
+        ALBVF = SEAICEALBVFN
+        ALBNF = SEAICEALBNFN
+      elsewhere
+! Beam albedos
+!-------------
+        ALBVR = SEAICEALBVRS
+        ALBNR = SEAICEALBNRS
+
+! Diffuse albedos
+!----------------
+        ALBVF = SEAICEALBVFS
+        ALBNF = SEAICEALBNFS
+      end where
+
+
+   RETURN_(ESMF_SUCCESS)
+  end subroutine ALBSEAICEM2
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
