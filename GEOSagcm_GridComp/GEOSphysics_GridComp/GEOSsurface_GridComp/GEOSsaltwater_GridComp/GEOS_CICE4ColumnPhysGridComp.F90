@@ -3868,10 +3868,10 @@ contains
      if(dual_ocean) then
       call ALBSEAICEM2 (ALBVRI,ALBVFI,ALBNRI,ALBNFI,ZTH,LATS,CURRENT_TIME)  ! GEOS albedo over sea ice
       do N=1, NUM_ICE_CATEGORIES
+       ALBVRN(:,N) = ALBVRI(:)
        ALBVFN(:,N) = ALBVFI(:)
-       ALBVFN(:,N) = ALBVFI(:)
-       ALBVFN(:,N) = ALBVFI(:)
-       ALBVFN(:,N) = ALBVFI(:)
+       ALBNRN(:,N) = ALBNRI(:)
+       ALBNFN(:,N) = ALBNFI(:)
       enddo
      else
      endif

@@ -1404,6 +1404,9 @@ contains
     real, pointer, dimension(:,:,:) :: ERGSNOO => null()
     real, pointer, dimension(:,:)   :: DAIDTNUDG => null()
     real, pointer, dimension(:,:)   :: DVIDTNUDG => null()
+    real, pointer, dimension(:,:)   :: AICEDO => null()
+    real, pointer, dimension(:,:)   :: HICEDO => null()
+    real, pointer, dimension(:,:)   :: HSNODO => null()
 
     real, pointer, dimension(:,:,:) :: VOLICEOd => null()
     real, pointer, dimension(:,:,:) :: VOLSNOOd => null()
@@ -1757,6 +1760,12 @@ contains
         call MAPL_GetPointer(GEX(SEAICE), DAIDTNUDG , 'DAIDTNUDG' , alloc=.TRUE., RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetPointer(GEX(SEAICE), DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(GEX(SEAICE), AICEDO , 'AICE' , RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(GEX(SEAICE), HICEDO , 'HICE' , RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(GEX(SEAICE), HSNODO , 'HSNO' , RC=STATUS)
         VERIFY_(STATUS)
        endif
     endif
@@ -2195,6 +2204,21 @@ contains
                             salinity = SS_FOUNDO,          &
                             ai_tend = DAIDTNUDG,           &
                             vi_tend = DVIDTNUDG )
+           if(associated(AICEDO)) then
+               where(AICEDO/=MAPL_UNDEF)
+                   AICEDO = sum(FRO8d, dim=3)
+               endwhere
+           endif  
+           if(associated(HICEDO)) then
+               where(HICEDO/=MAPL_UNDEF)
+                   HICEDO = sum(VOLICEOd, dim=3)
+               endwhere
+           endif  
+           if(associated(HSNODO)) then
+               where(HSNODO/=MAPL_UNDEF)
+                   HSNODO = sum(VOLSNOOd, dim=3)
+               endwhere
+           endif  
         endif
     endif 
 
