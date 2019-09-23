@@ -1,4 +1,4 @@
-! $Id$
+! $Id: GEOS_GcmGridComp.F90,v 1.34.30.1 2018/02/26 17:44:50 wputman Exp $
 
 #include "MAPL_Generic.h"
 
@@ -17,15 +17,22 @@ module GEOS_GcmGridCompMod
    use MAPL_Mod
 
    use GEOS_dataatmGridCompMod,  only:  DATAATM_SetServices => SetServices
-   use GEOS_AgcmGridCompMod,     only:  AGCM_SetServices => SetServices
+   use ModelE_MAPL, only: AGCM_SetServices => SetServices
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
    use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
    use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices
    use m_chars,                  only:  uppercase
 
+   use modele_grid, only: MODELE_ATMGridCreate
+   use dist_grid_mod, only: npes_world
 
   implicit none
   private
+
+#ifdef USE_ODAS
+    integer :: chdir, flag = 0
+    external chdir 
+#endif
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -36,8 +43,7 @@ module GEOS_GcmGridCompMod
   integer, parameter :: NUM_SNOW_LAYERS=1
   integer            :: DO_CICE_THERMO  
   integer            :: DO_DATAATM
-  integer            :: DO_OBIO
-  integer            :: DO_DATASEA
+  integer            :: DO_OBIO 
 
 !=============================================================================
 
@@ -120,8 +126,6 @@ contains
     type (MAPL_MetaComp),  pointer      :: MAPL
     character(len=ESMF_MAXSTR)          :: ReplayMode
     character(len=ESMF_MAXSTR)          :: ReplayNudge
-    character(len=ESMF_MAXSTR)          :: CONVPAR_OPTION
-    character(len=ESMF_MAXSTR)          :: AERO_PROVIDER
     logical                             :: rplRegular
 
     type (ESMF_Config)                  :: CF
@@ -152,6 +156,12 @@ contains
     VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=STATUS )
     VERIFY_(STATUS)
+#ifdef USE_ODAS
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,  Finalize, RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_WRITERESTART, Record,   RC=status)
+    VERIFY_(STATUS)
+#endif
 
 ! Get my MAPL_Generic state
 !--------------------------
@@ -165,7 +175,7 @@ contains
     call MAPL_GetResource ( MAPL,       DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,       DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    if (DO_CICE_THERMO /= 0) then
+    if (DO_CICE_THERMO /= 0) then     ! Before merging CICEthermo with SaltWater, following were set as integer parameters
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
@@ -179,30 +189,6 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DO_DATAATM,     Label="USE_DATAATM:" ,     DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_DATASEA,       Label="USE_DATASEA:" , DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
-
-
-! Get/Set Default RUN Parameters used by Multiple Gridded Components
-!-------------------------------------------------------------------
-    call MAPL_GetResource( MAPL, CONVPAR_OPTION, Label="CONVPAR_OPTION:", default="NULL", RC=STATUS)
-    VERIFY_(STATUS)
-    if( trim(CONVPAR_OPTION) == "NULL" ) then
-             CONVPAR_OPTION  =  "RAS"
-        call MAPL_ConfigSetAttribute(  CF, CONVPAR_OPTION, Label="CONVPAR_OPTION:", RC=STATUS)
-        VERIFY_(STATUS)
-        IF(MAPL_AM_I_ROOT()) PRINT *,'Setting CONVPAR_OPTION to ',trim(CONVPAR_OPTION)
-    endif
-
-    call MAPL_GetResource( MAPL, AERO_PROVIDER, Label="AERO_PROVIDER:", default="NULL", RC=STATUS)
-    VERIFY_(STATUS)
-    if( trim(AERO_PROVIDER) == "NULL" ) then
-             AERO_PROVIDER  =  "GOCART.data"
-        call MAPL_ConfigSetAttribute(  CF, AERO_PROVIDER, Label="AERO_PROVIDER:", RC=STATUS)
-        VERIFY_(STATUS)
-        IF(MAPL_AM_I_ROOT()) PRINT *,'Setting AERO_PROVIDER to ',trim(AERO_PROVIDER)
-    endif
-
 
 ! Create childrens gridded components and invoke their SetServices
 ! ----------------------------------------------------------------
@@ -218,8 +204,8 @@ contains
        ADFI = MAPL_AddChild(GC, NAME='ADFI', SS=ADFI_SetServices, RC=STATUS)
        VERIFY_(STATUS)
     endif
-    OGCM = MAPL_AddChild(GC, NAME='OGCM', SS=Ogcm_SetServices, RC=STATUS)
-    VERIFY_(STATUS)
+    ! OGCM = MAPL_AddChild(GC, NAME='OGCM', SS=Ogcm_SetServices, RC=STATUS)
+    ! VERIFY_(STATUS)
 
 ! Get RUN Parameters (MERRA-2 Defaults) and Initialize for use in other Components (e.g., AGCM_GridComp and MKIAU_GridComp)
 !--------------------------------------------------------------------------------------------------------------------------
@@ -316,6 +302,124 @@ contains
     endif
 
 ! Borrow exports from children
+#ifdef USE_ODAS
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'MOM_3D_MASK',                          &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'skin_T',                               &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'skin_S',                               &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'T',                                    &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'S',                                    &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'U',                                    &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'V',                                    &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'Z',                                    &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'RHO',                                  &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'SLV',                                  &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'SSH',                                  &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'PBO',                                  &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'TX',                                   &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'TY',                                   &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'MLD',                                  &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'PSI',                                  &
+         CHILD_ID   = OGCM,                                   &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+ 
+    if (DO_CICE_THERMO /= 0) then
+       call MAPL_AddExportSpec ( GC   ,                          &
+            SHORT_NAME = 'AICE',                                 &
+            CHILD_ID   = OGCM,                                   &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+       
+       call MAPL_AddExportSpec ( GC   ,                          &
+            SHORT_NAME = 'HICE',                                 &
+            CHILD_ID   = OGCM,                                   &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+    end if
+ 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'CHLOROPHYLL',                          &
+         CHILD_ID   = OGCM,                                   &
+
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+#else
 
 ! Export for IAU and/or Analysis purposes
 ! ---------------------------------------
@@ -476,6 +580,7 @@ contains
             RC=STATUS                )
        VERIFY_(STATUS)
     endif
+#endif
 
     if(DO_DATAATM==0) then
        call MAPL_AddConnectivity ( GC,                              &
@@ -493,8 +598,8 @@ contains
        VERIFY_(STATUS)
 
        call MAPL_AddConnectivity ( GC,                              &
-            SRC_NAME  = (/'Q            ','TROPP_BLENDED'/),        &
-            DST_NAME  = (/'QV           ','TROPP_BLENDED'/),        &
+            SRC_NAME  = 'Q', &
+            DST_NAME  = 'QV', &
             DST_ID = AIAU,                                          &
             SRC_ID = AGCM,                                          &
             RC=STATUS  )
@@ -509,61 +614,65 @@ contains
        VERIFY_(STATUS)
     endif
 
-! Next vars are explicitly connected through exchange grid transforms Run
+! Next 17 vars are explicitly connected through exchange grid transforms Run
 !---------------------------------------------------------------------------
 
 
-     call MAPL_TerminateImport    ( GC,   &
-          SHORT_NAME = [character(len=7) :: &
-                         'TAUXW  ','TAUYW  ','TAUXI  ','TAUYI  ',   &
-                         'OUSTAR3','PS     ',                       &
-                         'HI     ','TI     ','SI     ' ,            &
-                         'PENUVR ','PENUVF ','PENPAR ','PENPAF ',   &
-                         'CO2SC  ','DUDP   ','DUWT   ','DUSD   ',   &
-                         'DISCHRG', 'LWFLX', 'SHFLX', 'QFLUX', &
-                         'DRNIR'  , 'DFNIR',                     &
-                         'SNOW', 'RAIN', 'FRESH', 'FSALT',    &
-                         'FHOCN'],                                 &
-          CHILD      = OGCM,           &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+     ! call MAPL_TerminateImport    ( GC,   &
+     !      SHORT_NAME = (/'TAUXW  ','TAUYW  ','TAUXI  ','TAUYI  ',   &
+     !                     'OUSTAR3','PS     ',                       &
+     !                     'HW     ','TW     ','SW     ',             &
+     !                     'HI     ','TI     ','SI     ' ,            &
+     !                     'PENUVR ','PENUVF ','PENPAR ','PENPAF ',   &
+     !                     'DISCHRG'/), &
+     !      CHILD      = OGCM,           &
+     !      RC=STATUS  )
+     ! VERIFY_(STATUS)
 
-     call MAPL_TerminateImport    ( GC,   &
-          SHORT_NAME = (/'UU'/),                                    &
-          CHILD      = OGCM,                                        &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+     ! call MAPL_TerminateImport    ( GC,   &
+     !      SHORT_NAME = (/'UU'/),                                    &
+     !      CHILD      = OGCM,                                        &
+     !      RC=STATUS  )
+     ! VERIFY_(STATUS)
 
-     if(DO_DATAATM==0) then
-        call MAPL_TerminateImport    ( GC,                             &
-             SHORT_NAME = (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),         &
-             CHILD      = OGCM,                                        &
-             RC=STATUS  )
-        VERIFY_(STATUS)
+     ! if(DO_DATAATM==0) then
+     !    call MAPL_TerminateImport    ( GC,                             &
+     !         SHORT_NAME = (/'CO2SC'/),                                 &
+     !         CHILD      = OGCM,                                        &
+     !         RC=STATUS  )
+     !    VERIFY_(STATUS)
 
-        call MAPL_TerminateImport    ( GC,                             &
-             SHORT_NAME = (/'FSWBAND  ', 'FSWBANDNA'/),                &
-             CHILD      = OGCM,                                        &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-     else
-        call MAPL_TerminateImport    ( GC,   & 
-             SHORT_NAME = (/'KPAR   ','UW     ','VW     ','UI     ', &
-             'VI     ','TAUXBOT','TAUYBOT'/),         &
-             CHILD      = AGCM,           &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-     end if
+     !    call MAPL_TerminateImport    ( GC,                             &
+     !         SHORT_NAME = (/'DUDP', 'DUWT', 'DUSD',                    &
+     !         'BCDP', 'BCWT',                            &
+     !         'OCDP', 'OCWT' /),                         &
+     !         CHILD      = OGCM,                                        &
+     !         RC=STATUS  )
+     !    VERIFY_(STATUS)
 
-    if (DO_CICE_THERMO /= 0) then  
-       call MAPL_TerminateImport    ( GC,   &
-          SHORT_NAME = (/ &
-                         'FRACICE', 'VOLICE ', 'VOLSNO ',              &
-                         'ERGICE ', 'ERGSNO ', 'TAUAGE ', 'MPOND  '/),   &
-          CHILD      = OGCM,           &
-          RC=STATUS  )
-       VERIFY_(STATUS)
-   endif 
+     !    call MAPL_TerminateImport    ( GC,                             &
+     !         SHORT_NAME = (/'FSWBAND  ', 'FSWBANDNA'/),                &
+     !         CHILD      = OGCM,                                        &
+     !         RC=STATUS  )
+     !    VERIFY_(STATUS)
+     ! else
+     !    call MAPL_TerminateImport    ( GC,   & 
+     !         SHORT_NAME = (/'KPAR   ','UW     ','VW     ','UI     ', &
+     !         'VI     ','TAUXBOT','TAUYBOT'/),         &
+     !         CHILD      = AGCM,           &
+     !         RC=STATUS  )
+     !    VERIFY_(STATUS)
+     ! end if
+
+   !  if (DO_CICE_THERMO /= 0) then  
+   !     call MAPL_TerminateImport    ( GC,   &
+   !        SHORT_NAME = (/ &
+   !                       'FRACICE', 'VOLICE ', 'VOLSNO ',              &
+   !                       'ERGICE ', 'ERGSNO ', 'TAUAGE ', 'MPOND  '/),   &
+   !        CHILD      = OGCM,           &
+   !        RC=STATUS  )
+   !     VERIFY_(STATUS)
+   ! endif 
 
 ! Allocate this instance of the internal state and put it in wrapper.
 ! -------------------------------------------------------------------
@@ -696,6 +805,8 @@ contains
     integer                             :: rep_M
     integer                             :: rep_S
 
+    integer :: nx, ny, nz
+
 !=============================================================================
 
 ! Begin... 
@@ -734,55 +845,71 @@ contains
 
 ! Create Atmospheric grid
 !------------------------
-    call MAPL_GridCreate(GCS(AGCM), rc=status)
-    VERIFY_(STATUS)
+
+    call MAPL_GetResource(mapl, nx, label = "AGCM_IM:", rc = rc)
+    VERIFY_(rc)
+    
+    call MAPL_GetResource(mapl, ny, label = "AGCM_JM:", rc = rc)
+    VERIFY_(rc)
+
+    call MAPL_GetResource(mapl, nz, label = "AGCM_LM:", rc = rc)
+    VERIFY_(rc)
+    
+    agrid = MODELE_ATMGridCreate(-180._ESMF_KIND_R8, & 
+         -90._ESMF_KIND_R8, & 
+         180._ESMF_KIND_R8, 90._ESMF_KIND_R8, nx, ny, npes_world, & 
+         half_polar_cell=.true., rc=rc)
+    VERIFY_(rc)
+    
+    call ESMF_AttributeSet(agrid, name='GRID_LM', value=nz, rc=rc)
+    VERIFY_(rc)
 
 ! Create Ocean grid
 !------------------
-    call MAPL_GridCreate(GCS(OGCM), rc=status)
-    VERIFY_(STATUS)
-    call ESMF_GridCompGet(GCS(OGCM),  grid=ogrid, rc=status)
-    VERIFY_(STATUS)
+    ! call MAPL_GridCreate(GCS(OGCM), rc=status)
+    ! VERIFY_(STATUS)
+    ! call ESMF_GridCompGet(GCS(OGCM),  grid=ogrid, rc=status)
+    ! VERIFY_(STATUS)
 
-    call ESMF_GridCompGet(GCS(AGCM),  grid=agrid, rc=status)
-    VERIFY_(STATUS)
-    call ESMF_GridGet(agrid, DistGrid=distgrid, rc=status)
-    VERIFY_(STATUS)
-    call ESMF_DistGridGet(distGRID, deLayout=layout, RC=STATUS)
-    VERIFY_(STATUS)
+    ! call ESMF_GridCompGet(GCS(AGCM),  grid=agrid, rc=status)
+    ! VERIFY_(STATUS)
+    ! call ESMF_GridGet(agrid, DistGrid=distgrid, rc=status)
+    ! VERIFY_(STATUS)
+    ! call ESMF_DistGridGet(distGRID, deLayout=layout, RC=STATUS)
+    ! VERIFY_(STATUS)
 
 ! Create exchange grids from tile file
 !-------------------------------------
 
-    call MAPL_GetResource(MAPL, TILINGFILE, 'TILING_FILE:', &
-         default="tile.data", RC=STATUS)
-    VERIFY_(STATUS)
+    ! call MAPL_GetResource(MAPL, TILINGFILE, 'TILING_FILE:', &
+    !      default="tile.data", RC=STATUS)
+    ! VERIFY_(STATUS)
 
-    call MAPL_LocStreamCreate(exchA, LAYOUT=layout, FILENAME=TILINGFILE, &
-                              NAME='MAIN_Atm',                           &
-                              grid=agrid, RC=STATUS)
-    VERIFY_(STATUS)
+    ! call MAPL_LocStreamCreate(exchA, LAYOUT=layout, FILENAME=TILINGFILE, &
+    !                           NAME='MAIN_Atm',                           &
+    !                           grid=agrid, RC=STATUS)
+    ! VERIFY_(STATUS)
 
-    call MAPL_LocStreamCreate(exchO, LAYOUT=layout, FILENAME=TILINGFILE, &
-                              NAME='MAIN_Ocn',  mask=(/ MAPL_OCEAN /),   &
-                              grid=ogrid, RC=STATUS)
-    VERIFY_(STATUS)
+    ! call MAPL_LocStreamCreate(exchO, LAYOUT=layout, FILENAME=TILINGFILE, &
+    !                           NAME='MAIN_Ocn',  mask=(/ MAPL_OCEAN /),   &
+    !                           grid=ogrid, RC=STATUS)
+    ! VERIFY_(STATUS)
 
 ! ------------------------------------------------------
 ! Add default exchange grid to both Atm and Ocn
 ! ------------------------------------------------------
 
-    call MAPL_ExchangeGridSet(GCS(AGCM), exchA, rc=status)
-    VERIFY_(STATUS)
-    call MAPL_ExchangeGridSet(GCS(OGCM), exchO, rc=status)
-    VERIFY_(STATUS)
+    ! call MAPL_ExchangeGridSet(GCS(AGCM), exchA, rc=status)
+    ! VERIFY_(STATUS)
+    ! call MAPL_ExchangeGridSet(GCS(OGCM), exchO, rc=status)
+    ! VERIFY_(STATUS)
 
 ! Recursive setup of grids (should be disabled)
     call ESMF_GridCompSet(GCS(AGCM),  grid=agrid, rc=status)
     VERIFY_(STATUS)
-    call ESMF_GridCompSet(GCS(OGCM),  grid=ogrid, rc=status)
-    VERIFY_(STATUS)
-
+    
+    ! call ESMF_GridCompSet(GCS(OGCM),  grid=ogrid, rc=status)
+    ! VERIFY_(STATUS)
     if(DO_DATAATM==0) then
        call ESMF_GridCompSet(GCS(AIAU),  grid=agrid, rc=status)
        VERIFY_(STATUS)
@@ -792,10 +919,14 @@ contains
 
 !ALT we need a grid for GCM - we put either the Agrid or the Ogrid
 ! depending of what exports are we propagating up
-
+#ifdef USE_ODAS
+    call ESMF_GridCompSet(GC, grid=ogrid, rc=status)
+    VERIFY_(STATUS)
+#else
     call ESMF_GridCompSet(GC, grid=agrid, rc=status)
     VERIFY_(STATUS)
-    
+#endif
+
     GCM_INTERNAL_STATE%checkpointRequested = .false.
 
     if(gcm_internal_state%rplRegular) then
@@ -928,9 +1059,20 @@ contains
 ! **********************************************************************
 
     call MAPL_TimerOff(MAPL,"TOTAL")
-
+#ifdef USE_ODAS
+   if(COMP_NAME(1:3) == "ens") then
+      status = chdir("restarts." // comp_name(5:7));
+      VERIFY_(STATUS) 
+   end if
+#endif
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
+#ifdef USE_ODAS
+   if(COMP_NAME(1:3) == "ens") then 
+      status = chdir("..");
+      VERIFY_(STATUS)
+   end if
+#endif
 
     call MAPL_TimerOn(MAPL,"TOTAL")
 
@@ -943,109 +1085,94 @@ contains
        skinname = 'SALTWATER'
     endif
 
-   call MAPL_GetResource(MAPL, bypass_ogcm, "BYPASS_OGCM:", &
-        default=0, rc=status)
-   VERIFY_(STATUS)
+   ! call MAPL_GetResource(MAPL, bypass_ogcm, "BYPASS_OGCM:", &
+   !      default=0, rc=status)
+   ! VERIFY_(STATUS)
 
-   if (bypass_ogcm == 0) then
-   call MAPL_GetChildLocstream(GCS(AGCM), locstA, skinname, rc=STATUS)
-   VERIFY_(STATUS)
+   ! if (bypass_ogcm == 0) then
+   ! call MAPL_GetChildLocstream(GCS(AGCM), locstA, skinname, rc=STATUS)
+   ! VERIFY_(STATUS)
 
-   call MAPL_LocStreamCreateXform ( XFORM=GCM_INTERNAL_STATE%XFORM_A2O, &
-                                    LocStreamOut=exchO, &
-                                    LocStreamIn=locstA, &
-                                    NAME='XFORM_A2O', &
-                                    RC=STATUS )
-   VERIFY_(STATUS)
+   ! call MAPL_LocStreamCreateXform ( XFORM=GCM_INTERNAL_STATE%XFORM_A2O, &
+   !                                  LocStreamOut=exchO, &
+   !                                  LocStreamIn=locstA, &
+   !                                  NAME='XFORM_A2O', &
+   !                                  RC=STATUS )
+   ! VERIFY_(STATUS)
 
-   call MAPL_LocStreamCreateXform ( XFORM=GCM_INTERNAL_STATE%XFORM_O2A, &
-                                    LocStreamOut=locstA, &
-                                    LocStreamIn=exchO, &
-                                    NAME='XFORM_O2A', &
-                                    RC=STATUS )
-   VERIFY_(STATUS)
-   end if
+   ! call MAPL_LocStreamCreateXform ( XFORM=GCM_INTERNAL_STATE%XFORM_O2A, &
+   !                                  LocStreamOut=locstA, &
+   !                                  LocStreamIn=exchO, &
+   !                                  NAME='XFORM_O2A', &
+   !                                  RC=STATUS )
+   ! VERIFY_(STATUS)
+   ! end if
 
-! This part has some explicit hierarchy built in...
+! This part has some explicit hierarchy build in...
 !--------------------------------------------------------------
 
-   call MAPL_ExportStateGet ( (/ GEX(AGCM) /), skinname, &
-                               GCM_INTERNAL_STATE%expSKIN, rc=status )
-   VERIFY_(STATUS)
+   ! call MAPL_ExportStateGet ( (/ GEX(AGCM) /), skinname, &
+   !                             GCM_INTERNAL_STATE%expSKIN, rc=status )
+   ! VERIFY_(STATUS)
 
-   call MAPL_ImportStateGet ( GCS(AGCM) , GIM(AGCM), skinname,  &
-                              GCM_INTERNAL_STATE%impSKIN, rc=status )
-   VERIFY_(STATUS)
+   ! call MAPL_ImportStateGet ( GCS(AGCM) , GIM(AGCM), skinname,  &
+   !                            GCM_INTERNAL_STATE%impSKIN, rc=status )
+   ! VERIFY_(STATUS)
 
-   call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
-        [ character(len=8) :: &
-        'TAUXO    ', 'TAUYO    ','TAUXI    ', 'TAUYI    ', &
-        'PENPAR   ', 'PENPAF   ','PENUVR   ', 'PENUVF   ', &
-        'OUSTAR3  ', 'PS       ', &
-        'AO_LWFLX', 'AO_SHFLX', 'AO_QFLUX', &
-        'AO_SNOW', 'AO_RAIN', 'AO_DRNIR', 'AO_DFNIR', &
-        'FRESH', 'FSALT','FHOCN'], &
-        RC=STATUS)
-   VERIFY_(STATUS)
+   ! call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
+   !      (/'TAUXO    ', 'TAUYO    ','TAUXI    ', 'TAUYI    ', &
+   !      'PENPAR   ', 'PENPAF   ','PENUVR   ', 'PENUVF   ', &
+   !      'OUSTAR3  ', 'PS       '/), &
+   !      RC=STATUS)
+   ! VERIFY_(STATUS)
 
-   if (DO_CICE_THERMO /= 0) then  
-      call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
-           (/'TAUXW    ', 'TAUYW    '/), &
-           RC=STATUS)
-      VERIFY_(STATUS)
-   end if
+   ! if (DO_CICE_THERMO /= 0) then  
+   !    call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
+   !         (/'TAUXW    ', 'TAUYW    ', &
+   !         'DISCHARGE'/), &
+   !         RC=STATUS)
+   !    VERIFY_(STATUS)
+   ! end if
 
-   call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
-        (/'DISCHARGE'/), &
-        RC=STATUS)
-   VERIFY_(STATUS)
-
-   if(DO_OBIO/=0) then
-      call AllocateExports( GCM_INTERNAL_STATE%expSKIN,                   &
-           (/'UU'/),                                     &
-           RC=STATUS )
-      VERIFY_(STATUS)
-
-      call AllocateExports( GCM_INTERNAL_STATE%expSKIN,                   &
-           (/'CO2SC'/),                                  &
-           RC=STATUS )
-      VERIFY_(STATUS)
-
-      call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
-              (/'DUDP', 'DUWT', 'DUSD'/),             &
-              RC=STATUS )
-         VERIFY_(STATUS)
+   ! if(DO_OBIO/=0) then
+   !    call AllocateExports( GCM_INTERNAL_STATE%expSKIN,                   &
+   !         (/'UU'/),                                     &
+   !         RC=STATUS )
+   !    VERIFY_(STATUS)
+   !    if(DO_DATAATM==0) then
+   !       call AllocateExports( GCM_INTERNAL_STATE%expSKIN,                   &
+   !            (/'CO2SC'/),                                  &
+   !            RC=STATUS )
+   !       VERIFY_(STATUS)
          
-      if(DO_DATAATM==0) then
+   !       call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
+   !            (/'DUDP', 'DUWT', 'DUSD',                 &
+   !            'BCDP', 'BCWT',                         &
+   !            'OCDP', 'OCWT' /),                      &
+   !            RC=STATUS )
+   !       VERIFY_(STATUS)
          
-         call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
-              (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),                           &
-              RC=STATUS )
-         VERIFY_(STATUS)
-         
-         call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
-              (/'FSWBAND  ', 'FSWBANDNA'/),               &
-              RC=STATUS )
-         VERIFY_(STATUS)
-      endif
-   endif
+   !       call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
+   !            (/'FSWBAND  ', 'FSWBANDNA'/),               &
+   !            RC=STATUS )
+   !       VERIFY_(STATUS)
+   !    endif
+   ! endif
 
-   call AllocateExports(GEX(OGCM), (/'UW      ', 'VW      ', &
-                                     'UI      ', 'VI      ', & 
-                                     'FRZMLT  ', 'KPAR    ', & 
-                                     'TS_FOUND', 'SS_FOUND' /), RC=STATUS)
-   VERIFY_(STATUS)
-
-   if (DO_CICE_THERMO == 0) then  
-      call AllocateExports(GEX(OGCM), (/'FRACICE '/), RC=STATUS)
-      VERIFY_(STATUS)
-   else
-      call AllocateExports(GEX(OGCM), (/'TAUXIBOT', 'TAUYIBOT'/), RC=STATUS)
-   end if
+   ! call AllocateExports(GEX(OGCM), (/'UW      ', 'VW      ', &
+   !                                   'UI      ', 'VI      ', & 
+   !                                   'KPAR    ', 'TS_FOUND' /), RC=STATUS)
+   ! VERIFY_(STATUS)
+   ! if (DO_CICE_THERMO == 0) then  
+   !    call AllocateExports(GEX(OGCM), (/'FRACICE '/), RC=STATUS)
+   !    VERIFY_(STATUS)
+   ! else
+   !    call AllocateExports(GEX(OGCM), (/'TAUXIBOT', 'TAUYIBOT'/), RC=STATUS)
+   ! end if
     
-   call ESMF_ClockGetAlarm(clock, alarmname=trim(GCNAMES(OGCM)) // '_Alarm', &
-                           alarm=GCM_INTERNAL_STATE%alarmOcn, rc=status)
-   VERIFY_(STATUS)
+   ! call ESMF_ClockGetAlarm(clock, alarmname=trim(GCNAMES(OGCM)) // '_Alarm', &
+   !                         alarm=GCM_INTERNAL_STATE%alarmOcn, rc=status)
+   ! VERIFY_(STATUS)
 
 #ifdef PRINT_STATES
     call WRITE_PARALLEL ( trim(Iam)//": IMPORT State" )
@@ -1138,7 +1265,9 @@ contains
 
     type (MAPL_LocStreamXFORM)           :: XFORM_A2O
     type (MAPL_LocStreamXFORM)           :: XFORM_O2A
-
+#ifdef USE_ODAS
+    type(MAPL_LocStream)                 :: LOCSTREAM_O, LOCSTREAM_A
+#endif
     type(ESMF_State)           :: impSKIN
     type(ESMF_State)           :: expSKIN
 
@@ -1207,8 +1336,7 @@ contains
 
     do N=1,NUM_ICE_CATEGORIES
        SUBINDEXO(N) = N
-       !SUBINDEXA(N) = N+1
-       SUBINDEXA(N) = N
+       SUBINDEXA(N) = N+1
     enddo
 
 ! Get children and their im/ex states from my generic state.
@@ -1217,7 +1345,12 @@ contains
     call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX,&
                                 RC=STATUS )
     VERIFY_(STATUS)
-
+#ifdef USE_ODAS
+    call MAPL_ExchangeGridGet(GCS(OGCM), EXCH=LOCSTREAM_O, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_ExchangeGridGet(GCS(AGCM), EXCH=LOCSTREAM_A, RC=STATUS)
+    VERIFY_(STATUS)
+#endif
     if(DO_DATAATM==0) then
        ! replay-mode stuff
        ! -----------------
@@ -1236,7 +1369,6 @@ contains
           VERIFY_(STATUS)
           timeForRpl = ESMF_AlarmIsRinging(GCM_INTERNAL_STATE%replayStartAlarm, RC=STATUS)
           VERIFY_(STATUS)
-
           if (timeForRpl .and. .not. shutoffRpl ) then
 
              ! clear Atm IAU tendencies first
@@ -1267,7 +1399,6 @@ contains
              VERIFY_(STATUS)
              call ESMF_ClockGetAlarmList(clock, alarmListFlag=ESMF_ALARMLIST_ALL, alarmList=alarmList, alarmCount = nalarms, rc=status)
              VERIFY_(STATUS)
-
              DO I = 1, nalarms
                 call ESMF_AlarmGet(alarmList(I), ringTime=alarmRingTime(I), ringing=ringingState(I), rc=status)
                 VERIFY_(STATUS)
@@ -1294,11 +1425,9 @@ contains
                 call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
                 VERIFY_(STATUS)
 
-                if(DO_DATASEA /= 0) then
-                   call RUN_OCEAN(RC=STATUS)
-                   VERIFY_(STATUS)
-                end if
-                
+                ! call RUN_OCEAN(RC=STATUS)
+                ! VERIFY_(STATUS)
+
                 ! Advance the Clock
                 ! -----------------
 
@@ -1431,33 +1560,23 @@ contains
 
 
     call MAPL_TimerOn(MAPL,"--ATMOSPHERE"  )
-
-    if(DO_DATAATM/=0) then
-      call MAPL_TimerOn(MAPL,"DATAATM"     )
-    else
-      call MAPL_TimerOn(MAPL,"AGCM"        )
-    endif
+    call MAPL_TimerOn(MAPL,"AGCM"          )
    
     call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
     VERIFY_(STATUS)
 
-    if(DO_DATAATM/=0) then
-      call MAPL_TimerOff(MAPL,"DATAATM"     )
-    else
-      call MAPL_TimerOff(MAPL,"AGCM"        )
-    endif
-
+    call MAPL_TimerOff(MAPL,"AGCM"          )
     call MAPL_TimerOff(MAPL,"--ATMOSPHERE"  )
 
-    if(DO_DATAATM==0) then
-       ! Accumulate for digital filter
-       ! -----------------------------
-       call ESMF_GridCompRun ( GCS(ADFI), importState=GIM(ADFI), exportState=GEX(ADFI), clock=clock, userRC=status )
-       VERIFY_(STATUS)
-    endif
+    ! if(DO_DATAATM==0) then
+    !    ! Accumulate for digital filter
+    !    ! -----------------------------
+    !    call ESMF_GridCompRun ( GCS(ADFI), importState=GIM(ADFI), exportState=GEX(ADFI), clock=clock, userRC=status )
+    !    VERIFY_(STATUS)
+    ! endif
 
-    call RUN_OCEAN(RC=STATUS)
-    VERIFY_(STATUS)
+    ! call RUN_OCEAN(RC=STATUS)
+    ! VERIFY_(STATUS)
     
 
      call MAPL_TimerOff(MAPL,"RUN"  )
@@ -1491,17 +1610,23 @@ contains
 
 ! get tilevars and transform them
 ! SURFACE exports to OGCM imports
-! Example how to do TI, we need to do all of the OCGMimports
+! Example how to do TW, we need to do all of the OCGMimports
 
 ! Copy attributes to deal with friendliness
 !------------------------------------------
+
+       call MAPL_CopyFriendliness(GIM(OGCM),'TW',expSKIN,'TSKINW', RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_CopyFriendliness(GIM(OGCM),'HW',expSKIN,'HSKINW', RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_CopyFriendliness(GIM(OGCM),'SW',expSKIN,'SSKINW', RC=STATUS)
+       VERIFY_(STATUS)
        call MAPL_CopyFriendliness(GIM(OGCM),'TI',expSKIN,'TSKINI' , RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_CopyFriendliness(GIM(OGCM),'HI',expSKIN,'HSKINI', RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_CopyFriendliness(GIM(OGCM),'SI',expSKIN,'SSKINI', RC=STATUS)
        VERIFY_(STATUS)
-
        if (DO_CICE_THERMO /= 0) then  
           call MAPL_CopyFriendliness(GIM(OGCM),'FRACICE',expSKIN,'FR', RC=STATUS)
           VERIFY_(STATUS)
@@ -1521,11 +1646,17 @@ contains
        
 ! Do the routing between the atm and ocean's decompositions of the exchage grid
 !------------------------------------------------------------------------------
+
+       call DO_A2O(GIM(OGCM),'TW'     ,expSKIN,'TSKINW' , RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O(GIM(OGCM),'HW'     ,expSKIN,'HSKINW' , RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O(GIM(OGCM),'SW'     ,expSKIN,'SSKINW' , RC=STATUS)
+       VERIFY_(STATUS)
        call DO_A2O(GIM(OGCM),'HI'     ,expSKIN,'HSKINI' , RC=STATUS)
        VERIFY_(STATUS)
        call DO_A2O(GIM(OGCM),'SI'     ,expSKIN,'SSKINI' , RC=STATUS)
        VERIFY_(STATUS)
-
        if (DO_CICE_THERMO == 0) then
           call DO_A2O(GIM(OGCM),'TI'     ,expSKIN,'TSKINI' , RC=STATUS)
           VERIFY_(STATUS)
@@ -1587,39 +1718,18 @@ contains
        VERIFY_(STATUS)
        call DO_A2O(GIM(OGCM),'DISCHRG',expSKIN,'DISCHARGE', RC=STATUS)
        VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'LWFLX',expSKIN,'AO_LWFLX', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'SHFLX',expSKIN,'AO_SHFLX', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'QFLUX',expSKIN,'AO_QFLUX', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'SNOW',expSKIN,'AO_SNOW', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'RAIN',expSKIN,'AO_RAIN', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'DRNIR',expSKIN,'AO_DRNIR', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'DFNIR',expSKIN,'AO_DFNIR', RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'FRESH'  ,expSKIN,'FRESH'  , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'FSALT'  ,expSKIN,'FSALT'  , RC=STATUS)
-       VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'FHOCN'  ,expSKIN,'FHOCN'  , RC=STATUS)
-       VERIFY_(STATUS)
-
        if(DO_OBIO/=0) then
           call DO_A2O(GIM(OGCM),'UU'     ,expSKIN,'UU'     , RC=STATUS)
           VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM),'CO2SC'  ,expSKIN,'CO2SC'  , RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O_UGD(GIM(OGCM), 'DUDP', expSKIN, 'DUDP', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O_UGD(GIM(OGCM), 'DUWT', expSKIN, 'DUWT', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O_UGD(GIM(OGCM), 'DUSD', expSKIN, 'DUSD', RC=STATUS)
-          VERIFY_(STATUS)
           if(DO_DATAATM==0) then
+             call DO_A2O(GIM(OGCM),'CO2SC'  ,expSKIN,'CO2SC'  , RC=STATUS)
+             VERIFY_(STATUS)
+             call DO_A2O_UGD(GIM(OGCM), 'DUDP', expSKIN, 'DUDP', RC=STATUS)
+             VERIFY_(STATUS)
+             call DO_A2O_UGD(GIM(OGCM), 'DUWT', expSKIN, 'DUWT', RC=STATUS)
+             VERIFY_(STATUS)
+             call DO_A2O_UGD(GIM(OGCM), 'DUSD', expSKIN, 'DUSD', RC=STATUS)
+             VERIFY_(STATUS)
              call DO_A2O_UGD(GIM(OGCM), 'BCDP', expSKIN, 'BCDP', RC=STATUS)
              VERIFY_(STATUS)
              call DO_A2O_UGD(GIM(OGCM), 'BCWT', expSKIN, 'BCWT', RC=STATUS)
@@ -1635,7 +1745,6 @@ contains
              VERIFY_(STATUS)
           endif
        endif
-
        call MAPL_TimerOff(MAPL,"--A2O"  )
        
 !--
@@ -1655,13 +1764,27 @@ contains
 
 
        call MAPL_TimerOn (MAPL,"--O2A"  )
-
+#ifdef USE_ODAS
+       call MAPL_GetResource(MAPL, flag, Label = "surface_winds_to_iOdas:", default = 0, rc = status)
+       VERIFY_(STATUS)
+       if(flag > 0) then
+           call DO_A2OG(GEX(OGCM), 'TX', expSKIN, 'U10M', RC=STATUS)
+           VERIFY_(STATUS)
+           call DO_A2OG(GEX(OGCM), 'TY', expSKIN, 'V10M', RC=STATUS)
+           VERIFY_(STATUS)
+       endif  
+#endif
+       call DO_O2A(expSKIN, 'TSKINW'   , GIM(OGCM), 'TW'    , RC=STATUS)
+       VERIFY_(STATUS)
        if (DO_CICE_THERMO == 0) then
          call DO_O2A(expSKIN, 'TSKINI'   , GIM(OGCM), 'TI'    , RC=STATUS)
          VERIFY_(STATUS)
        endif
-
+       call DO_O2A(expSKIN, 'HSKINW'   , GIM(OGCM), 'HW'    , RC=STATUS)
+       VERIFY_(STATUS)
        call DO_O2A(expSKIN, 'HSKINI'   , GIM(OGCM), 'HI'    , RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_O2A(expSKIN, 'SSKINW'   , GIM(OGCM), 'SW'    , RC=STATUS)
        VERIFY_(STATUS)
        call DO_O2A(expSKIN, 'SSKINI'   , GIM(OGCM), 'SI'    , RC=STATUS)
        VERIFY_(STATUS)
@@ -1717,15 +1840,9 @@ contains
        call DO_O2A(impSKIN, 'VI'       , GEX(OGCM), 'VI'    , RC=STATUS)
        VERIFY_(STATUS)
 
-! OGCM export of TS_FOUND and SS_FOUND to SKIN
-!---------------------------------------------
+! OGCM export of TS_FOUND to SKIN
+!---------------------------------
         call DO_O2A(impSKIN, 'TS_FOUND' , GEX(OGCM), 'TS_FOUND' , RC=STATUS)
-        VERIFY_(STATUS)
-
-        call DO_O2A(impSKIN, 'SS_FOUND' , GEX(OGCM), 'SS_FOUND' , RC=STATUS)
-        VERIFY_(STATUS)
-
-        call DO_O2A(impSKIN, 'FRZMLT'   , GEX(OGCM), 'FRZMLT'   , RC=STATUS)
         VERIFY_(STATUS)
 
         call ESMF_AlarmRingerOff(GCM_INTERNAL_STATE%alarmOcn, RC=STATUS)
@@ -2072,7 +2189,208 @@ contains
      RETURN_(ESMF_SUCCESS)
    end subroutine DO_O2A_SUBTILES2D_R8R4
 
- end subroutine Run
+#ifdef USE_ODAS
+   subroutine DO_A2OG(STATEO,NAMEO,STATEA,NAMEA,RC)
+     type(ESMF_State)          , intent(INOUT) ::  STATEO
+     type(ESMF_State)          , intent(INOUT) ::  STATEA
+     character(len=*)          , intent(IN   ) ::  NAMEO
+     character(len=*)          , intent(IN   ) ::  NAMEA
+     integer, optional,          intent(  OUT) ::  RC
 
+     character(len=ESMF_MAXSTR), parameter :: IAm="DO_A2O"
+     integer                               :: STATUS
+
+     real,    pointer  :: ptrA(:) => null()
+     real,    pointer  :: ptrO_2d(:,:) => null()
+     real, allocatable :: varO(:)
+     integer           :: nt
+
+     call MAPL_GetPointer(STATEO, ptrO_2d, NAMEO, notFoundOK=.true., RC=STATUS)
+     VERIFY_(STATUS)
+     if (.not. associated(ptrO_2d)) then
+        RETURN_(ESMF_SUCCESS)
+     end if
+
+     call MAPL_GetPointer(STATEA, ptrA, NAMEA, notFoundOK=.true., RC=STATUS)
+     VERIFY_(STATUS)
+     if (.not. associated(ptrA)) then
+        RETURN_(ESMF_SUCCESS)
+     end if
+
+     call MAPL_LocStreamGet( LOCSTREAM_O, nt_local=nt, RC=STATUS ) 
+     VERIFY_(STATUS)
+     allocate(varO(NT), stat=status)
+     VERIFY_(STATUS)
+
+     call ESMF_VMBarrier(VM, rc=status)
+     VERIFY_(STATUS)
+!    T2T (atmosphere-to-ocean tile)
+     call MAPL_LocStreamTransform( varO, XFORM_A2O, ptrA, RC=STATUS ) 
+     VERIFY_(STATUS)
+!    T2G (ocean-tile-to-ocean-grid)
+     call MAPL_LocStreamTransform( LOCSTREAM_O, ptrO_2d, varO, RC=STATUS ) 
+     VERIFY_(STATUS)
+
+     call ESMF_VMBarrier(VM, rc=status)
+     VERIFY_(STATUS)
+     deallocate(varO)
+     
+
+     RETURN_(ESMF_SUCCESS)
+   end subroutine DO_A2OG
+
+
+
+   subroutine DO_O2AG(STATEA,NAMEA,STATEO,NAMEO,RC)
+     type(ESMF_State)          , intent(INOUT) ::  STATEA
+     type(ESMF_State)          , intent(INOUT) ::  STATEO
+     character(len=*)          , intent(IN   ) ::  NAMEA
+     character(len=*)          , intent(IN   ) ::  NAMEO
+     integer, optional,          intent(  OUT) ::  RC
+
+     character(len=ESMF_MAXSTR), parameter :: IAm="DO_O2A"
+     integer                               :: STATUS
+
+     real,    pointer  :: ptrO(:) => null()
+     real,    pointer  :: ptrA_2d(:,:) => null()
+     real, allocatable :: varA(:)
+     integer           :: nt
+
+     call MAPL_GetPointer(STATEA, ptra_2d, NAMEA, notFoundOK=.true., RC=STATUS)
+     VERIFY_(STATUS)
+     if (.not. associated(ptra_2d)) then
+        RETURN_(ESMF_SUCCESS)
+     end if
+
+     call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
+     VERIFY_(STATUS)
+     if (.not. associated(ptrO)) then
+        RETURN_(ESMF_SUCCESS)
+     end if
+
+     call MAPL_LocStreamGet( LOCSTREAM_A, nt_local=nt, RC=STATUS ) 
+     VERIFY_(STATUS)
+     allocate(varA(NT), stat=status)
+     VERIFY_(STATUS)
+
+     call ESMF_VMBarrier(VM, rc=status)
+     VERIFY_(STATUS)
+!    T2T (ocean-to-atmosphere tile)
+     call MAPL_LocStreamTransform( varA, XFORM_O2A, ptrO, RC=STATUS ) 
+     VERIFY_(STATUS)
+!    T2G (atmosphere-tile-to-atmosphere-grid)
+     call MAPL_LocStreamTransform( LOCSTREAM_A, ptrA_2d, varA, RC=STATUS ) 
+     VERIFY_(STATUS)
+
+     call ESMF_VMBarrier(VM, rc=status)
+     VERIFY_(STATUS)
+     deallocate(varA)
+     
+
+     RETURN_(ESMF_SUCCESS)
+   end subroutine DO_O2AG
+#endif
+
+ end subroutine Run
+#ifdef USE_ODAS
+   subroutine Finalize ( GC, IMPORT, EXPORT, CLOCK, RC )
+
+! !ARGUMENTS:
+
+     type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+     type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+     type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+     type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+     integer, optional,   intent(  out) :: RC     ! Error code
+     
+! !DESCRIPTION: The Finalize method of GCM.
+
+!EOP
+
+! ErrLog Variables
+
+     character(len=ESMF_MAXSTR)          :: IAm 
+     integer                             :: STATUS
+     character(len=ESMF_MAXSTR)          :: COMP_NAME
+     
+      Iam = "Finalize"
+      call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
+      VERIFY_(STATUS)
+      Iam = trim(COMP_NAME) // Iam
+
+
+      if(COMP_NAME(1:3) == "ens") then 
+         status = chdir("restarts." // comp_name(5:7));
+         VERIFY_(STATUS)
+      end if
+      
+      call MAPL_GenericFinalize ( GC, IMPORT, EXPORT, CLOCK, rc = STATUS)
+      VERIFY_(STATUS)
+
+      if(COMP_NAME(1:3) == "ens") then 
+         status = chdir("..");
+         VERIFY_(STATUS) 
+      end if
+      
+      RETURN_(ESMF_SUCCESS)
+
+   end subroutine Finalize
+
+  subroutine Record ( gc, import, export, clock, rc )
+
+! !ARGUMENTS:
+
+  type(ESMF_GridComp), intent(INOUT) :: gc     ! Gridded component 
+  type(ESMF_State),    intent(INOUT) :: import ! Import state
+  type(ESMF_State),    intent(INOUT) :: export ! Export state
+  type(ESMF_Clock),    intent(INOUT) :: clock  ! The supervisor clock
+  integer, optional,   intent(  OUT) :: rc     ! Error code:
+
+!EOP
+
+    type (MAPL_MetaComp), pointer    :: MAPL => null()
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)	     :: IAm
+    integer			     :: STATUS
+    character(len=ESMF_MAXSTR)       :: COMP_NAME
+
+! Locals
+    logical                          :: doRecord
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    Iam = "Record"
+    call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
+    VERIFY_(STATUS)
+    Iam = trim(comp_name) // Iam
+
+! Get my internal MAPL_Generic state
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=status)
+    VERIFY_(STATUS)
+
+    doRecord = MAPL_RecordAlarmIsRinging(MAPL, RC=status)
+    VERIFY_(STATUS)
+
+    if (doRecord) then
+      status = chdir("restarts." // comp_name(5:7));
+      VERIFY_(STATUS) 
+    end if
+
+    call MAPL_GenericRecord ( GC, IMPORT, EXPORT, CLOCK, rc = STATUS)
+    VERIFY_(STATUS)
+
+    if (doRecord) then
+      status = chdir("..");
+      VERIFY_(STATUS) 
+    end if
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine Record
+
+#endif
 end module GEOS_GcmGridCompMod
 
