@@ -3242,8 +3242,10 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
         ! -----------------------------------------------------------------------
         vi0 = vi_fac * ( lsc_icefall*(1.0-cnv_fraction) + anv_icefall*(cnv_fraction) )
         do k = ktop, kbot
+          ! vi1 = 0.01 * vi0
           ! vi1 = 0.01 * MIN(vi0,SIN(0.5*pi*MIN(1.0,10000./pl(k)))) ! WMP: Ramp fall speed from surface to 100mb (10000Pa)
-            vi1 = 0.01 * MIN(vi0,MAX(MIN(1.0,cnv_fraction*10000.),SIN(0.5*pi*MIN(1.0,10000./pl(k))))) ! WMP: Ramp fall speed from surface to 100mb (10000Pa)
+          ! vi1 = 0.01 * MIN(vi0,MAX(MIN(1.0,cnv_fraction*10000.),SIN(0.5*pi*MIN(1.0,10000./pl(k))))) ! WMP: Ramp fall speed from surface to 100mb (10000Pa)
+            vi1 = 0.01 * MIN(vi0,SIN(0.5*pi*MIN(1.0,30000./pl(k)))) ! WMP: Ramp fall speed from surface to 300mb (30000Pa)
             if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
                 vti (k) = vf_min
             else
