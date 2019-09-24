@@ -3568,38 +3568,31 @@ subroutine fv_getUpdraftHelicity(uh25)
 end subroutine fv_getUpdraftHelicity
 
 subroutine fv_getEPV(pt, vort, ua, va, epv)
-  real(REAL8), intent(IN)  ::    pt(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%flagstruct%npz)
-  real(FVPRC), intent(IN)  ::  vort(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%flagstruct%npz)
-  real(REAL8), intent(IN)  ::    ua(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%flagstruct%npz)
-  real(REAL8), intent(IN)  ::    va(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%flagstruct%npz)
-  real(REAL8), intent(OUT) ::   epv(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%flagstruct%npz)
+  real(REAL8), intent(IN)  ::    pt(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%npz)
+  real(FVPRC), intent(IN)  ::  vort(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%npz)
+  real(REAL8), intent(IN)  ::    ua(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%npz)
+  real(REAL8), intent(IN)  ::    va(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%npz)
+  real(REAL8), intent(OUT) ::   epv(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%npz)
 
-  real(FVPRC) :: dz_g(FV_Atm(1)%bd%isd:FV_Atm(1)%bd%ied,FV_Atm(1)%bd%jsd:FV_Atm(1)%bd%jed,1:FV_Atm(1)%flagstruct%npz)
+  real(REAL8) :: pt_g(FV_Atm(1)%bd%isd:FV_Atm(1)%bd%ied,FV_Atm(1)%bd%jsd:FV_Atm(1)%bd%jed,1:FV_Atm(1)%npz  )
+  real(REAL8) :: pt_e(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%npz+1)
 
-  real(FVPRC) :: pt_g(FV_Atm(1)%bd%isd:FV_Atm(1)%bd%ied,FV_Atm(1)%bd%jsd:FV_Atm(1)%bd%jed,1:FV_Atm(1)%flagstruct%npz)
-  real(FVPRC) :: pt_e(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%flagstruct%npz+1)
+  real(REAL8) ::   vt(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%npz)
+  real(REAL8) :: ua_e(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%npz+1)
+  real(REAL8) :: va_e(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%npz+1)
 
-  real(FVPRC) :: ua_e(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%flagstruct%npz+1)
-  real(FVPRC) :: va_e(FV_Atm(1)%bd%isc:FV_Atm(1)%bd%iec,FV_Atm(1)%bd%jsc:FV_Atm(1)%bd%jec,1:FV_Atm(1)%flagstruct%npz+1)
-
-  real(FVPRC) :: vtcorr
-  real(FVPRC) :: pt_l, pt_r, pt_b, pt_t, dptdx, dptdy, dptdp
-  real(FVPRC) :: w_l, w_r, w_b, w_t, dwdx, dwdy, dudp, dvdp
-
-  real(FVPRC) :: dudz, dvdz, dptdz, area_dxdz, area_dydz, area_dxdy
-  real(FVPRC) :: w_im1, w_jm1, w_ip1, w_jp1
-  real(FVPRC) :: pt_im1, pt_jm1, pt_ip1, pt_jp1
-  real(FVPRC) :: dz_im1, dz_jm1, dz_ip1, dz_jp1
-  real(FVPRC) :: vort_i, vort_j, vort_k
-
+  real(REAL8) :: vtcorr
+  real(REAL8) :: pt_l, pt_r, pt_b, pt_t, dptdx, dptdy, dptdp
+  real(REAL8) :: w_l, w_r, w_b, w_t, dwdx, dwdy, dudp, dvdp 
   integer isc,iec,jsc,jec
   integer npz
   integer i,j,k
+
   isc=FV_Atm(1)%bd%isc ; iec=FV_Atm(1)%bd%iec
   jsc=FV_Atm(1)%bd%jsc ; jec=FV_Atm(1)%bd%jec
   npz = FV_Atm(1)%npz
 
-   pt_g(isc:iec,jsc:jec,:) = pt(isc:iec,jsc:jec,:)
+   pt_g(isc:iec,jsc:jec,:) = pt
    call mpp_update_domains(pt_g, FV_Atm(1)%domain, complete=.true.)
 ! Get PT/UA/VA at layer edges
    do j=jsc,jec
@@ -3609,51 +3602,54 @@ subroutine fv_getEPV(pt, vort, ua, va, epv)
    enddo
 
    if (.not. FV_HYDROSTATIC) then
-      dz_g(isc:iec,jsc:jec,:) = FV_Atm(1)%delz(isc:iec,jsc:jec,:)
-      call mpp_update_domains(dz_g, FV_Atm(1)%domain, complete=.false.)
       call mpp_update_domains(FV_Atm(1)%w,  FV_Atm(1)%domain, complete=.true.)
       do k=1,npz
         do j=jsc,jec
           do i=isc,iec
-! get all dz and areas needed
-             dz_im1 = 0.5*(dz_g(i,j,k) + dz_g(i-1,j,k))
-             dz_ip1 = 0.5*(dz_g(i,j,k) + dz_g(i+1,j,k))
-             dz_jm1 = 0.5*(dz_g(i,j,k) + dz_g(i,j-1,k))
-             dz_jp1 = 0.5*(dz_g(i,j,k) + dz_g(i,j+1,k))
-             area_dxdz = fv_atm(1)%gridstruct%dxa(i,j) * 0.5 * ( dz_im1 + dz_ip1 )
-             area_dydz = fv_atm(1)%gridstruct%dya(i,j) * 0.5 * ( dz_jm1 + dz_jp1 )
-             area_dxdy = fv_atm(1)%gridstruct%area(i,j)
-! Get W on center of horizontal-cell edges
-             w_im1 = (fv_atm(1)%gridstruct%dxa(i-1,j)*FV_Atm(1)%w(i-1,j,k) + fv_atm(1)%gridstruct%dxa(i  ,j)*FV_Atm(1)%w(i  ,j,k))/(fv_atm(1)%gridstruct%dxa(i-1,j)+fv_atm(1)%gridstruct%dxa(i  ,j))
-             w_ip1 = (fv_atm(1)%gridstruct%dxa(i  ,j)*FV_Atm(1)%w(i  ,j,k) + fv_atm(1)%gridstruct%dxa(i+1,j)*FV_Atm(1)%w(i+1,j,k))/(fv_atm(1)%gridstruct%dxa(i  ,j)+fv_atm(1)%gridstruct%dxa(i+1,j))
-             w_jm1 = (fv_atm(1)%gridstruct%dya(i,j-1)*FV_Atm(1)%w(i,j-1,k) + fv_atm(1)%gridstruct%dya(i,j  )*FV_Atm(1)%w(i,j  ,k))/(fv_atm(1)%gridstruct%dya(i,j-1)+fv_atm(1)%gridstruct%dya(i,j  ))
-             w_jp1 = (fv_atm(1)%gridstruct%dya(i,j  )*FV_Atm(1)%w(i,j  ,k) + fv_atm(1)%gridstruct%dya(i,j+1)*FV_Atm(1)%w(i,j+1,k))/(fv_atm(1)%gridstruct%dya(i,j  )+fv_atm(1)%gridstruct%dya(i,j+1))
-! Get PT on center of horizontal-cell edges
-             pt_im1 = (fv_atm(1)%gridstruct%dxa(i-1,j)*pt_g(i-1,j,k) + fv_atm(1)%gridstruct%dxa(i  ,j)*pt_g(i  ,j,k))/(fv_atm(1)%gridstruct%dxa(i-1,j)+fv_atm(1)%gridstruct%dxa(i  ,j))
-             pt_ip1 = (fv_atm(1)%gridstruct%dxa(i  ,j)*pt_g(i  ,j,k) + fv_atm(1)%gridstruct%dxa(i+1,j)*pt_g(i+1,j,k))/(fv_atm(1)%gridstruct%dxa(i  ,j)+fv_atm(1)%gridstruct%dxa(i+1,j))
-             pt_jm1 = (fv_atm(1)%gridstruct%dya(i,j-1)*pt_g(i,j-1,k) + fv_atm(1)%gridstruct%dya(i,j  )*pt_g(i,j  ,k))/(fv_atm(1)%gridstruct%dya(i,j-1)+fv_atm(1)%gridstruct%dya(i,j  ))
-             pt_jp1 = (fv_atm(1)%gridstruct%dya(i,j  )*pt_g(i,j  ,k) + fv_atm(1)%gridstruct%dya(i,j+1)*pt_g(i,j+1,k))/(fv_atm(1)%gridstruct%dya(i,j  )+fv_atm(1)%gridstruct%dya(i,j+1))
+! d(u)/dp
+             dudp = (ua_e(i,j,k)-ua_e(i,j,k+1))/FV_Atm(1)%delp(i,j,k)
+! d(v)/dp
+             dvdp = (va_e(i,j,k)-va_e(i,j,k+1))/FV_Atm(1)%delp(i,j,k)
+! d(w)/dx
+             w_l = (fv_atm(1)%gridstruct%dxa(i-1,j)*FV_Atm(1)%w(i-1,j,k) + &
+                    fv_atm(1)%gridstruct%dxa(i  ,j)*FV_Atm(1)%w(i  ,j,k))/ &
+                   (fv_atm(1)%gridstruct%dxa(i-1,j)+fv_atm(1)%gridstruct%dxa(i  ,j))
+             w_r = (fv_atm(1)%gridstruct%dxa(i  ,j)*FV_Atm(1)%w(i  ,j,k) + &
+                    fv_atm(1)%gridstruct%dxa(i+1,j)*FV_Atm(1)%w(i+1,j,k))/ &
+                   (fv_atm(1)%gridstruct%dxa(i  ,j)+fv_atm(1)%gridstruct%dxa(i+1,j))
+             dwdx = (w_r-w_l)/fv_atm(1)%gridstruct%dxa(i,j)
+! d(w)/dy
+             w_b = (fv_atm(1)%gridstruct%dya(i,j-1)*FV_Atm(1)%w(i,j-1,k) + &
+                    fv_atm(1)%gridstruct%dya(i,j  )*FV_Atm(1)%w(i,j  ,k))/ &
+                   (fv_atm(1)%gridstruct%dya(i,j-1)+fv_atm(1)%gridstruct%dya(i,j  ))
+             w_t = (fv_atm(1)%gridstruct%dya(i,j  )*FV_Atm(1)%w(i,j  ,k) + &
+                    fv_atm(1)%gridstruct%dya(i,j+1)*FV_Atm(1)%w(i,j+1,k))/ &
+                   (fv_atm(1)%gridstruct%dya(i,j  )+fv_atm(1)%gridstruct%dya(i,j+1))
+             dwdy = (w_t-w_b)/fv_atm(1)%gridstruct%dya(i,j)
 ! d(pt)/dx
-             dptdx = (pt_ip1      - pt_im1       )/fv_atm(1)%gridstruct%dxa(i,j)
+             pt_l = (fv_atm(1)%gridstruct%dxa(i-1,j)*pt_g(i-1,j,k) + &
+                     fv_atm(1)%gridstruct%dxa(i  ,j)*pt_g(i  ,j,k))/ &
+                    (fv_atm(1)%gridstruct%dxa(i-1,j)+fv_atm(1)%gridstruct%dxa(i  ,j))
+             pt_r = (fv_atm(1)%gridstruct%dxa(i  ,j)*pt_g(i  ,j,k) + &
+                     fv_atm(1)%gridstruct%dxa(i+1,j)*pt_g(i+1,j,k))/ &
+                    (fv_atm(1)%gridstruct%dxa(i  ,j)+fv_atm(1)%gridstruct%dxa(i+1,j))
+             dptdx = (pt_r-pt_l)/fv_atm(1)%gridstruct%dxa(i,j)
 ! d(pt)/dy
-             dptdy = (pt_jp1      - pt_jm1       )/fv_atm(1)%gridstruct%dya(i,j)
-! d(pt)/dz
-             dptdz = (pt_e(i,j,k) - pt_e(i,j,k+1))/dz_g(i,j,k)
-! i-component of EPV
-             vort_i = (1./area_dydz) * ( va_e(i,j,k+1)*fv_atm(1)%gridstruct%dya(i,j) - va_e(i,j,k)*fv_atm(1)%gridstruct%dya(i,j) - &
-                                                 w_jm1*dz_jm1   +       w_jp1*dz_jp1 )
-! j-component of EPV 
-             vort_j = (1./area_dxdz) * ( ua_e(i,j,k)*fv_atm(1)%gridstruct%dxa(i,j)   - ua_e(i,j,k+1)*fv_atm(1)%gridstruct%dxa(i,j) - &
-                                                 w_ip1*dz_ip1   +       w_im1*dz_im1 ) + &
-                                         2.*MAPL_OMEGA*COS(FV_Atm(1)%gridstruct%agrid(i,j,2))
-! k-component of EPV (pre-computed and passed in to this subroutine)
-             vort_k = (vort(i,j,k)+FV_Atm(1)%gridstruct%f0(i,j))
-           ! vort_k = (1./area_dxdy) * (FV_Atm(1)%u(i,j,k)*dx(i,j)-FV_Atm(1)%u(i,j+1,k)*dx(i,j+1)  - &
-           !                            FV_Atm(1)%v(i,j,k)*dy(i,j)+FV_Atm(1)%v(i+1,j,k)*dy(i+1,j)) + &
-           !                            f0(i,j)
-! Complete full non-hydrostatic EPV calculation
-             epv(i,j,k) = MAPL_GRAV * ( FV_Atm(1)%delz(i,j,k)/FV_Atm(1)%delp(i,j,k) ) * &
-                                      ( vort_i*dptdx + vort_j*dptdy + vort_k*dptdz )
+             pt_b = (fv_atm(1)%gridstruct%dya(i,j-1)*pt_g(i,j-1,k) + &
+                     fv_atm(1)%gridstruct%dya(i,j  )*pt_g(i,j  ,k))/ &
+                    (fv_atm(1)%gridstruct%dya(i,j-1)+fv_atm(1)%gridstruct%dya(i,j  ))
+             pt_t = (fv_atm(1)%gridstruct%dya(i,j  )*pt_g(i,j  ,k) + &
+                     fv_atm(1)%gridstruct%dya(i,j+1)*pt_g(i,j+1,k))/ &
+                    (fv_atm(1)%gridstruct%dya(i,j  )+fv_atm(1)%gridstruct%dya(i,j+1))
+             dptdy = (pt_t-pt_b)/fv_atm(1)%gridstruct%dya(i,j)
+! d(pt)/dp
+             dptdp = (pt_e(i,j,k)-pt_e(i,j,k+1))/FV_Atm(1)%delp(i,j,k)
+! Vorticity Correction to account for changes in theta along isobaric surfaces
+! Included non-hydrostatic and theta surface corrections in vorticity
+             vtcorr = (dwdy - dvdp)*dptdx + &
+                      (2.*MAPL_OMEGA*COS(FV_Atm(1)%gridstruct%agrid(i,j,2)) + dudp - dwdx)*dptdy + &
+                      (vort(i,j,k)+FV_Atm(1)%gridstruct%f0(i,j))*dptdp
+             epv(i,j,k) = MAPL_GRAV*vtcorr
           enddo
         enddo
       enddo
@@ -3666,12 +3662,20 @@ subroutine fv_getEPV(pt, vort, ua, va, epv)
 ! d(v)/dp
              dvdp = (va_e(i,j,k)-va_e(i,j,k+1))/FV_Atm(1)%delp(i,j,k)
 ! d(pt)/dx
-             pt_l = (fv_atm(1)%gridstruct%dxa(i-1,j)*pt_g(i-1,j,k) + fv_atm(1)%gridstruct%dxa(i  ,j)*pt_g(i  ,j,k))/(fv_atm(1)%gridstruct%dxa(i-1,j)+fv_atm(1)%gridstruct%dxa(i  ,j))
-             pt_r = (fv_atm(1)%gridstruct%dxa(i  ,j)*pt_g(i  ,j,k) + fv_atm(1)%gridstruct%dxa(i+1,j)*pt_g(i+1,j,k))/(fv_atm(1)%gridstruct%dxa(i  ,j)+fv_atm(1)%gridstruct%dxa(i+1,j))
+             pt_l = (fv_atm(1)%gridstruct%dxa(i-1,j)*pt_g(i-1,j,k) + &
+                     fv_atm(1)%gridstruct%dxa(i  ,j)*pt_g(i  ,j,k))/ &
+                    (fv_atm(1)%gridstruct%dxa(i-1,j)+fv_atm(1)%gridstruct%dxa(i  ,j))
+             pt_r = (fv_atm(1)%gridstruct%dxa(i  ,j)*pt_g(i  ,j,k) + &
+                     fv_atm(1)%gridstruct%dxa(i+1,j)*pt_g(i+1,j,k))/ &
+                    (fv_atm(1)%gridstruct%dxa(i  ,j)+fv_atm(1)%gridstruct%dxa(i+1,j))
              dptdx = (pt_r-pt_l)/fv_atm(1)%gridstruct%dxa(i,j)
 ! d(pt)/dy
-             pt_b = (fv_atm(1)%gridstruct%dya(i,j-1)*pt_g(i,j-1,k) + fv_atm(1)%gridstruct%dya(i,j  )*pt_g(i,j  ,k))/(fv_atm(1)%gridstruct%dya(i,j-1)+fv_atm(1)%gridstruct%dya(i,j  ))
-             pt_t = (fv_atm(1)%gridstruct%dya(i,j  )*pt_g(i,j  ,k) + fv_atm(1)%gridstruct%dya(i,j+1)*pt_g(i,j+1,k))/(fv_atm(1)%gridstruct%dya(i,j  )+fv_atm(1)%gridstruct%dya(i,j+1))
+             pt_b = (fv_atm(1)%gridstruct%dya(i,j-1)*pt_g(i,j-1,k) + &
+                     fv_atm(1)%gridstruct%dya(i,j  )*pt_g(i,j  ,k))/ &
+                    (fv_atm(1)%gridstruct%dya(i,j-1)+fv_atm(1)%gridstruct%dya(i,j  ))
+             pt_t = (fv_atm(1)%gridstruct%dya(i,j  )*pt_g(i,j  ,k) + &
+                     fv_atm(1)%gridstruct%dya(i,j+1)*pt_g(i,j+1,k))/ &
+                    (fv_atm(1)%gridstruct%dya(i,j  )+fv_atm(1)%gridstruct%dya(i,j+1))
              dptdy = (pt_t-pt_b)/fv_atm(1)%gridstruct%dya(i,j)
 ! d(pt)/dp
              dptdp = (pt_e(i,j,k)-pt_e(i,j,k+1))/FV_Atm(1)%delp(i,j,k)
@@ -4001,11 +4005,11 @@ end subroutine fv_getAgridWinds_2D
 
 ! !INPUT PARAMETERS:
       integer,  intent(in)     ::  im, km
-      real(REAL8)         , intent(in)     ::  p(im,km)
+      real(REAL8), intent(in)     ::  p(im,km)
       real(FVPRC), intent(in)     ::  delp(im,km)
 
 ! !INPUT/OUTPUT PARAMETERS:
-      real(FVPRC), intent(out)    ::  qe(im,km+1)
+      real(REAL8), intent(out)    ::  qe(im,km+1)
 
 ! !DESCRIPTION:
 !
