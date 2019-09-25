@@ -1682,6 +1682,13 @@ contains
     call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                                RC=STATUS )
     VERIFY_(STATUS)
 
+    call ESMF_StateGet    (GEX(TURBL),  'TKESHOC'   , FIELD,    RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+    VERIFY_(STATUS)
+
 ! Add Friendlies from Moist (We assume QV is among these, all others are treated as default)
 
     call MAPL_GridCompGetFriendlies(GCS(MOIST) , "TURBULENCE", BUNDLE, RC=STATUS )
