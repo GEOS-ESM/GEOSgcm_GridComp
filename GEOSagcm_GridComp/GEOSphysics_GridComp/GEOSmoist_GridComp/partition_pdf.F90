@@ -152,6 +152,9 @@ module partition_pdf
    real, parameter :: kapa = rgas / cp
    real, parameter :: epsv=MAPL_H2OMW/MAPL_AIRMW
 
+   real, parameter :: use_aterm_memory = 0.
+
+
 ! define conserved variables
 gamaz = gocp * zl
 !hl = tabs + gamaz - fac_cond*(qc+qpl) - fac_fus*(qi+qpi)
@@ -194,9 +197,10 @@ w_first = - rog * omega * thv / pval
 
 ! Skewness of vertical velocity
 
-          Skew_w = w3var / (sqrtw2*sqrtw2*sqrtw2)
+         Skew_w = w3var / (sqrtw2*sqrtw2*sqrtw2)
 
-          aterm = pdf_a
+         if (use_aterm_memory/=0) then   ! use memory in aterm and qt skewness
+!          aterm = pdf_a
 !          if (pval>90000.) print *,'before skew_qw=',skew_qw,'  aterm=',aterm,' mffrc=',mffrc
 
           if (mffrc>=0.01) then                ! if active updraft this timestep
@@ -217,15 +221,22 @@ w_first = - rog * omega * thv / pval
               skew_qw = skew_facw*Skew_w
             end if
           end if
-!! overwrite the above
-!          aterm = mffrc
-!          aterm = max(0.01,min(0.99,aterm))
 
 !          if (pval>90000.) print *,'after skew_qw=',skew_qw,'  aterm=',aterm
 
-          onema = 1.0 - aterm
+         else  ! don't use memory in aterm and qt skewness
+ 
+           aterm = mffrc
+           aterm = max(0.01,min(0.99,aterm))
 
-!          skew_qw = skew_facw*skew_w
+           onema = 1.0 - aterm
+
+! two options for qt skewness:
+           skew_qw = skew_facw*skew_w
+!           skew_qw = mfqt3/sqrtqt**3
+         end if
+
+!        if (pval>90000.) print *,'after skew_qw=',skew_qw,'  aterm=',aterm
 
 !          if (sqrtqt>1e-5) then
 !            skew_qw = 1.0+mfqt3/sqrtqt**3
@@ -233,8 +244,6 @@ w_first = - rog * omega * thv / pval
 !            skew_qw = 1.0
 !          end if
 
-!!! TEMPORARY
-!          aterm = 0.01
 
           IF (w_sec <= w_tol_sqd .or. aterm<=0.01) THEN ! If variance of w is too small then
 !          IF (w_sec <= w_tol_sqd ) THEN ! If variance of w is too small then
