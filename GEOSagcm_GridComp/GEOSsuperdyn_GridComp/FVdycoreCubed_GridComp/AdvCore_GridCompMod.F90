@@ -316,6 +316,7 @@ contains
       !--------------------------------------------------
       if (.NOT. FV3_DynCoreIsRunning) then
          call fv_init2(FV_Atm, dt, grids_on_my_pe, p_split)
+         call register_grid_and_regridders() 
       end if
 
       ! Ending with a Generic SetServices call is a MAPL requirement 
@@ -933,6 +934,30 @@ subroutine global_integral (QG,Q,PLE,IM,JM,KM,NQ)
      deallocate( qsum1 )
 
 end subroutine global_integral
+
+subroutine register_grid_and_regridders()
+    use MAPL_GridManagerMod, only: grid_manager
+    use CubedSphereGridFactoryMod, only: CubedSphereGridFactory
+    use MAPL_RegridderManagerMod, only: regridder_manager
+    use MAPL_RegridderSpecMod, only: REGRID_METHOD_BILINEAR
+    use LatLonToCubeRegridderMod
+    use CubeToLatLonRegridderMod
+    use CubeToCubeRegridderMod
+
+    type (CubedSphereGridFactory) :: factory
+
+    type (CubeToLatLonRegridder) :: cube_to_latlon_prototype
+    type (LatLonToCubeRegridder) :: latlon_to_cube_prototype
+    type (CubeToCubeRegridder) :: cube_to_cube_prototype
+
+    call grid_manager%add_prototype('Cubed-Sphere',factory)
+    associate (method => REGRID_METHOD_BILINEAR, mgr => regridder_manager)
+      call mgr%add_prototype('Cubed-Sphere', 'LatLon', method, cube_to_latlon_prototype)
+      call mgr%add_prototype('LatLon', 'Cubed-Sphere', method, latlon_to_cube_prototype)
+      call mgr%add_prototype('Cubed-Sphere', 'Cubed-Sphere', method, cube_to_cube_prototype)
+    end associate
+
+  end subroutine register_grid_and_regridders
 
 !EOC
 !------------------------------------------------------------------------------
