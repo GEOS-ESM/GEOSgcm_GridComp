@@ -1,4 +1,6 @@
   use MAPL_IOMod
+  use lsm_routines, ONLY: catch_calc_tp,  catch_calc_ght, DZGT
+  USE CATCH_CONSTANTS,   ONLY: N_GT              => CATCH_N_GT
   implicit none
 
   character(256)    :: fname1, fname2, fname3
@@ -111,6 +113,7 @@
   real,    allocatable, dimension(:) :: sfmc, rzmc, prmc, werror, sfmcun, rzmcun, prmcun, dzsf
   integer, allocatable, dimension(:) :: vegcls
   real,    allocatable, dimension(:) :: vegdyn
+  real,    allocatable, dimension(:,:) :: TP_IN, GHT_IN, FICE
 
   type(MAPL_NCIO) :: NCIO(3)
   integer :: i, rc, filetype
@@ -202,23 +205,52 @@
 ! Create Scaled Catch
 ! -------------------
   sca = 3
+
+! 1) soil moisture prognostics
+! ----------------------------
+
   catch(sca) = catch(new)
 
-  n = count( (catch(old)%catdef .gt. catch(old)%cdcr1) .and. &
-             (catch(new)%cdcr2  .gt. catch(old)%cdcr2) )
+!  n = count( (catch(old)%catdef .gt. catch(old)%cdcr1) .and. &
+!             (catch(new)%cdcr2  .gt. catch(old)%cdcr2) )
+!
+!  write(6,200) n,100*n/ntiles
+!
+!  where( (catch(old)%catdef .gt. catch(old)%cdcr1) .and. &
+!         (catch(new)%cdcr2  .gt. catch(old)%cdcr2) )
+! 
+!      catch(sca)%rzexc  = catch(old)%rzexc * ( catch(new)%vgwmax / &
+!                                               catch(old)%vgwmax )
+!
+!      catch(sca)%catdef = catch(new)%cdcr1 +                     &
+!                        ( catch(old)%catdef-catch(old)%cdcr1 ) / &
+!                        ( catch(old)%cdcr2 -catch(old)%cdcr1 ) * &
+!                        ( catch(new)%cdcr2 -catch(new)%cdcr1 )
+!  end where
 
+  n =count((catch(old)%catdef .gt. catch(old)%cdcr1))
+  
   write(6,200) n,100*n/ntiles
 
-  where( (catch(old)%catdef .gt. catch(old)%cdcr1) .and. &
-         (catch(new)%cdcr2  .gt. catch(old)%cdcr2) )
- 
-      catch(sca)%rzexc  = catch(old)%rzexc * ( catch(new)%vgwmax / &
+! Scale rxexc regardless of CDCR1, CDCR2 differences
+! --------------------------------------------------
+  catch(sca)%rzexc  = catch(old)%rzexc * ( catch(new)%vgwmax / &
                                                catch(old)%vgwmax )
 
+! Scale catdef regardless of whether CDCR2 is larger or smaller in the new situation
+! ----------------------------------------------------------------------------------
+  where (catch(old)%catdef .gt. catch(old)%cdcr1)
+ 
       catch(sca)%catdef = catch(new)%cdcr1 +                     &
                         ( catch(old)%catdef-catch(old)%cdcr1 ) / &
                         ( catch(old)%cdcr2 -catch(old)%cdcr1 ) * &
                         ( catch(new)%cdcr2 -catch(new)%cdcr1 )
+  end where
+
+! Scale catdef also for the case where catdef le cdcr1.
+! -----------------------------------------------------
+  where( (catch(old)%catdef .le. catch(old)%cdcr1))
+      catch(sca)%catdef = catch(old)%catdef * (catch(new)%cdcr1 / catch(old)%cdcr1)
   end where
 
 ! Sanity Check
@@ -248,6 +280,35 @@
   write(6,400) n,100*n/ntiles
   n = count( catch(sca)%rzexc  .ne. catch(new)%rzexc  )
   write(6,400) n,100*n/ntiles
+
+! (2) Ground heat
+! ---------------
+
+  allocate (TP_IN  (N_GT, Ntiles))
+  allocate (GHT_IN (N_GT, Ntiles))
+  allocate (FICE   (N_GT, NTILES))
+
+  GHT_IN (1,:) = catch(old)%ghtcnt1
+  GHT_IN (2,:) = catch(old)%ghtcnt2
+  GHT_IN (3,:) = catch(old)%ghtcnt3
+  GHT_IN (4,:) = catch(old)%ghtcnt4
+  GHT_IN (5,:) = catch(old)%ghtcnt5
+  GHT_IN (6,:) = catch(old)%ghtcnt6
+  
+  call catch_calc_tp ( NTILES, catch(old)%poros, GHT_IN, tp_in, FICE)
+
+  do n = 1, ntiles
+     do i = 1, N_GT
+        call catch_calc_ght(dzgt(i), catch(new)%poros(n), tp_in(i,n), fice(i,n),  GHT_IN(i,n))
+     end do
+  end do
+
+  catch(sca)%ghtcnt1 = GHT_IN (1,:)
+  catch(sca)%ghtcnt2 = GHT_IN (2,:)
+  catch(sca)%ghtcnt3 = GHT_IN (3,:)
+  catch(sca)%ghtcnt4 = GHT_IN (4,:)
+  catch(sca)%ghtcnt5 = GHT_IN (5,:)
+  catch(sca)%ghtcnt6 = GHT_IN (6,:)  
 
 ! Write Scaled Catch
 ! ------------------
