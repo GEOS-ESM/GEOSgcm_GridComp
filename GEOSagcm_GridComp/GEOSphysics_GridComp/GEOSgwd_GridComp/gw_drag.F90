@@ -56,103 +56,103 @@ contains
 
 !===============================================================================
 
-  subroutine gw_intr   (pcols,        pver,         dt,         pgwv,              &
-          pint_dev,     t_dev,        u_dev,        v_dev,      sgh_dev, pref_dev, &
-          pmid_dev,     pdel_dev,     rpdel_dev,    lnpint_dev, zm_dev,  rlat_dev, &
-          dudt_gwd_dev, dvdt_gwd_dev, dtdt_gwd_dev,                                &
-          dudt_org_dev, dvdt_org_dev, dtdt_org_dev,                                &
-          taugwdx_dev,  taugwdy_dev,  tauox_dev,    tauoy_dev,  feo_dev,           &
-          taubkgx_dev,  taubkgy_dev,  taubx_dev,    tauby_dev,  feb_dev,           &
-          fepo_dev,     fepb_dev,     utbsrc_dev,   vtbsrc_dev, ttbsrc_dev,        &
-          bgstressmax,  effgworo,     effgwbkg,     rc            )
+  subroutine gw_intr   (pcols,    pver,     dt,     pgwv,         &
+          pint,         t,        u,        v,      sgh,    pref, &
+          pmid,         pdel,     rpdel,    lnpint, zm,     rlat, &
+          dudt_gwd,     dvdt_gwd, dtdt_gwd,                       &
+          dudt_org,     dvdt_org, dtdt_org,                       &
+          taugwdx,      taugwdy,  tauox,    tauoy,  feo,          &
+          taubkgx,      taubkgy,  taubx,    tauby,  feb,          &
+          fepo,         fepb,     utbsrc,   vtbsrc, ttbsrc,       &
+          bgstressmax,  effgworo, effgwbkg, rc                    )
 
 !-----------------------------------------------------------------------
 ! Interface for multiple gravity wave drag parameterization.
 !-----------------------------------------------------------------------
 
 !------------------------------Arguments--------------------------------
-    integer, intent(in   ) :: pcols                    ! number of columns
-    integer, intent(in   ) :: pver                     ! number of vertical layers
-    real,    intent(in   ) :: dt                       ! time step
-    integer, intent(in   ) :: pgwv                     ! number of waves allowed                (Default = 4, 0 nullifies)
-    real,    intent(in   ) :: bgstressmax              ! Max of equatorial profile of BG stress factor
-    real,    intent(in   ) :: effgwbkg                 ! tendency efficiency for background gwd (Default = 0.125)
-    real,    intent(in   ) :: effgworo                 ! tendency efficiency for orographic gwd (Default = 0.125)
-    real,    intent(in   ) :: pint_dev(pcols,pver+1)   ! pressure at the layer edges
-    real,    intent(in   ) :: t_dev(pcols,pver)        ! temperature at layers
-    real,    intent(in   ) :: u_dev(pcols,pver)        ! zonal wind at layers
-    real,    intent(in   ) :: v_dev(pcols,pver)        ! meridional wind at layers
-    real,    intent(in   ) :: sgh_dev(pcols)           ! standard deviation of orography
-    real,    intent(in   ) :: pref_dev(pver+1)         ! reference pressure at the layeredges
-    real,    intent(in   ) :: pmid_dev(pcols,pver)     ! pressure at the layers
-    real,    intent(in   ) :: pdel_dev(pcols,pver)     ! pressure thickness at the layers
-    real,    intent(in   ) :: rpdel_dev(pcols,pver)    ! 1.0 / pdel
-    real,    intent(in   ) :: lnpint_dev(pcols,pver+1) ! log(pint)
-    real,    intent(in   ) :: zm_dev(pcols,pver)       ! height above surface at layers
-    real,    intent(in   ) :: rlat_dev(pcols)          ! latitude in radian
+    integer, intent(in   ) :: pcols                ! number of columns
+    integer, intent(in   ) :: pver                 ! number of vertical layers
+    real,    intent(in   ) :: dt                   ! time step
+    integer, intent(in   ) :: pgwv                 ! number of waves allowed                (Default = 4, 0 nullifies)
+    real,    intent(in   ) :: bgstressmax          ! Max of equatorial profile of BG stress factor
+    real,    intent(in   ) :: effgwbkg             ! tendency efficiency for background gwd (Default = 0.125)
+    real,    intent(in   ) :: effgworo             ! tendency efficiency for orographic gwd (Default = 0.125)
+    real,    intent(in   ) :: pint(pcols,pver+1)   ! pressure at the layer edges
+    real,    intent(in   ) :: t(pcols,pver)        ! temperature at layers
+    real,    intent(in   ) :: u(pcols,pver)        ! zonal wind at layers
+    real,    intent(in   ) :: v(pcols,pver)        ! meridional wind at layers
+    real,    intent(in   ) :: sgh(pcols)           ! standard deviation of orography
+    real,    intent(in   ) :: pref(pver+1)         ! reference pressure at the layeredges
+    real,    intent(in   ) :: pmid(pcols,pver)     ! pressure at the layers
+    real,    intent(in   ) :: pdel(pcols,pver)     ! pressure thickness at the layers
+    real,    intent(in   ) :: rpdel(pcols,pver)    ! 1.0 / pdel
+    real,    intent(in   ) :: lnpint(pcols,pver+1) ! log(pint)
+    real,    intent(in   ) :: zm(pcols,pver)       ! height above surface at layers
+    real,    intent(in   ) :: rlat(pcols)          ! latitude in radian
     
-    real,    intent(  out) :: dudt_gwd_dev(pcols,pver) ! zonal wind tendency at layer 
-    real,    intent(  out) :: dvdt_gwd_dev(pcols,pver) ! meridional wind tendency at layer 
-    real,    intent(  out) :: dtdt_gwd_dev(pcols,pver) ! temperature tendency at layer
-    real,    intent(  out) :: dudt_org_dev(pcols,pver) ! zonal wind tendency at layer due to orography GWD
-    real,    intent(  out) :: dvdt_org_dev(pcols,pver) ! meridional wind tendency at layer  due to orography GWD
-    real,    intent(  out) :: dtdt_org_dev(pcols,pver) ! temperature tendency at layer  due to orography GWD
-    real,    intent(  out) :: taugwdx_dev(pcols)       ! zonal      gravity wave surface    stress
-    real,    intent(  out) :: taugwdy_dev(pcols)       ! meridional gravity wave surface    stress
-    real,    intent(  out) :: tauox_dev(pcols,pver+1)  ! zonal      orographic gravity wave stress
-    real,    intent(  out) :: tauoy_dev(pcols,pver+1)  ! meridional orographic gravity wave stress
-    real,    intent(  out) :: feo_dev  (pcols,pver+1)  ! energy flux of orographic gravity waves
-    real,    intent(  out) :: fepo_dev (pcols,pver+1)  ! pseudoenergy flux of orographic gravity waves
-    real,    intent(  out) :: taubkgx_dev(pcols)       ! zonal      gravity wave background stress
-    real,    intent(  out) :: taubkgy_dev(pcols)       ! meridional gravity wave background stress
-    real,    intent(  out) :: taubx_dev(pcols,pver+1)  ! zonal      background gravity wave stress
-    real,    intent(  out) :: tauby_dev(pcols,pver+1)  ! meridional background gravity wave stress
-    real,    intent(  out) :: feb_dev  (pcols,pver+1)  ! energy flux of background gravity waves
-    real,    intent(  out) :: fepb_dev (pcols,pver+1)  ! pseudoenergy flux of background gravity waves
-    real,    intent(  out) :: utbsrc_dev(pcols,pver)   ! dU/dt below background launch level
-    real,    intent(  out) :: vtbsrc_dev(pcols,pver)   ! dV/dt below background launch level
-    real,    intent(  out) :: ttbsrc_dev(pcols,pver)   ! dT/dt below background launch level
+    real,    intent(  out) :: dudt_gwd(pcols,pver) ! zonal wind tendency at layer 
+    real,    intent(  out) :: dvdt_gwd(pcols,pver) ! meridional wind tendency at layer 
+    real,    intent(  out) :: dtdt_gwd(pcols,pver) ! temperature tendency at layer
+    real,    intent(  out) :: dudt_org(pcols,pver) ! zonal wind tendency at layer due to orography GWD
+    real,    intent(  out) :: dvdt_org(pcols,pver) ! meridional wind tendency at layer  due to orography GWD
+    real,    intent(  out) :: dtdt_org(pcols,pver) ! temperature tendency at layer  due to orography GWD
+    real,    intent(  out) :: taugwdx(pcols)       ! zonal      gravity wave surface    stress
+    real,    intent(  out) :: taugwdy(pcols)       ! meridional gravity wave surface    stress
+    real,    intent(  out) :: tauox(pcols,pver+1)  ! zonal      orographic gravity wave stress
+    real,    intent(  out) :: tauoy(pcols,pver+1)  ! meridional orographic gravity wave stress
+    real,    intent(  out) :: feo  (pcols,pver+1)  ! energy flux of orographic gravity waves
+    real,    intent(  out) :: fepo (pcols,pver+1)  ! pseudoenergy flux of orographic gravity waves
+    real,    intent(  out) :: taubkgx(pcols)       ! zonal      gravity wave background stress
+    real,    intent(  out) :: taubkgy(pcols)       ! meridional gravity wave background stress
+    real,    intent(  out) :: taubx(pcols,pver+1)  ! zonal      background gravity wave stress
+    real,    intent(  out) :: tauby(pcols,pver+1)  ! meridional background gravity wave stress
+    real,    intent(  out) :: feb  (pcols,pver+1)  ! energy flux of background gravity waves
+    real,    intent(  out) :: fepb (pcols,pver+1)  ! pseudoenergy flux of background gravity waves
+    real,    intent(  out) :: utbsrc(pcols,pver)   ! dU/dt below background launch level
+    real,    intent(  out) :: vtbsrc(pcols,pver)   ! dV/dt below background launch level
+    real,    intent(  out) :: ttbsrc(pcols,pver)   ! dT/dt below background launch level
 
-    integer, optional, intent(out) :: RC               ! return code
+    integer, optional, intent(out) :: RC           ! return code
 
 !---------------------------Local storage-------------------------------
 
-    integer :: i,k,kc                   ! loop indexes
-    integer :: kbotoro                  ! launch-level index for orographic
-    integer :: kbotbg                   ! launch-level index for background
-    integer :: ktopbg, ktoporo          ! top interface of gwd region
-    integer :: kldv                     ! top interface of low level stress divergence region
-    integer :: kldvmn                   ! min value of kldv
-    integer :: ksrc                     ! index of top interface of source region
-    integer :: ksrcmn                   ! min value of ksrc
+    integer :: i,k,kc                 ! loop indexes
+    integer :: kbotoro                ! launch-level index for orographic
+    integer :: kbotbg                 ! launch-level index for background
+    integer :: ktopbg, ktoporo        ! top interface of gwd region
+    integer :: kldv                   ! top interface of low level stress divergence region
+    integer :: kldvmn                 ! min value of kldv
+    integer :: ksrc                   ! index of top interface of source region
+    integer :: ksrcmn                 ! min value of ksrc
 
-    real    :: ttgw(pver)            ! temperature tendency
-    real    :: utgw(pver)            ! zonal wind tendency
-    real    :: vtgw(pver)            ! meridional wind tendency
+    real    :: ttgw(pver)             ! temperature tendency
+    real    :: utgw(pver)             ! zonal wind tendency
+    real    :: vtgw(pver)             ! meridional wind tendency
 
-    real    :: ni(0:pver)                   ! interface Brunt-Vaisalla frequency
-    real    :: nm(pver)                     ! midpoint Brunt-Vaisalla frequency
-    real    :: rdpldv                              ! 1/dp across low level divergence region
-    real    :: rhoi(0:pver)                 ! interface density
+    real    :: ni(0:pver)             ! interface Brunt-Vaisalla frequency
+    real    :: nm(pver)               ! midpoint Brunt-Vaisalla frequency
+    real    :: rdpldv                 ! 1/dp across low level divergence region
+    real    :: rhoi(0:pver)           ! interface density
     real    :: tau(-pgwv:pgwv,0:pver) ! wave Reynolds stress
-    real    :: tau0x                               ! c=0 sfc. stress (zonal)
-    real    :: tau0y                               ! c=0 sfc. stress (meridional)
-    real    :: ti(0:pver)                   ! interface temperature
-    real    :: ubi(0:pver)                  ! projection of wind at interfaces
-    real    :: ubm(pver)                    ! projection of wind at midpoints
-    real    :: xv                                  ! unit vectors of source wind (x)
-    real    :: yv                                  ! unit vectors of source wind (y)
+    real    :: tau0x                  ! c=0 sfc. stress (zonal)
+    real    :: tau0y                  ! c=0 sfc. stress (meridional)
+    real    :: ti(0:pver)             ! interface temperature
+    real    :: ubi(0:pver)            ! projection of wind at interfaces
+    real    :: ubm(pver)              ! projection of wind at midpoints
+    real    :: xv                     ! unit vectors of source wind (x)
+    real    :: yv                     ! unit vectors of source wind (y)
 
     real    :: utosrc(pver)
     real    :: vtosrc(pver)
     real    :: ttosrc(pver)
 
-    real    :: alpha(0:pver)     ! newtonian cooling coefficients
-    real    :: dback(0:pver)     ! newtonian cooling coefficients
-    real    :: c  (-pgwv:pgwv)      ! wave phase speeds
+    real    :: alpha(0:pver)          ! newtonian cooling coefficients
+    real    :: dback(0:pver)          ! newtonian cooling coefficients
+    real    :: c(-pgwv:pgwv)          ! wave phase speeds
     real    :: c4
-    real    :: cw (-pgwv:pgwv)      ! wave phase speeds
-    real    :: cw4(-pgwv:pgwv)      ! wave phase speeds
+    real    :: cw(-pgwv:pgwv)         ! wave phase speeds
+    real    :: cw4(-pgwv:pgwv)        ! wave phase speeds
 
 !-----------------------------------------------------------------------------
 
@@ -192,16 +192,16 @@ contains
        kbotoro = pver
 
        do k = 0, pver
-          if (pref_dev(k+1) .lt. 40000.) then
+          if (pref(k+1) .lt. 40000.) then
              kbotbg = k    ! spectrum source at 400 mb
           end if
        end do
 
        do k = 0, pver
 ! Profiles of background state variables
-          call gw_prof(i,     k,     pcols,    pver,      &
-               u_dev,  v_dev, t_dev, pmid_dev, pint_dev,  &
-               rhoi,   ni,    ti,    nm                   )
+          call gw_prof(i, k,  pcols, pver,       &
+               u,         v,  t,     pmid, pint, &
+               rhoi,      ni, ti,    nm          )
        end do
 
 !-----------------------------------------------------------------------------
@@ -211,58 +211,58 @@ contains
 
 ! Determine the wave source for a background spectrum at ~400 mb
 
-          call gw_bgnd  (i,         pcols,      pver,     cw,       &
-               u_dev,    v_dev,     t_dev,      pmid_dev, pint_dev, &
-               pdel_dev, rpdel_dev, lnpint_dev, rlat_dev, kldv,     &
-               kldvmn,   ksrc,      ksrcmn,     rdpldv,   tau,      &
-               ubi,      ubm,       xv,         yv,       pgwv,     &
-               kbotbg, bgstressmax    )
+          call gw_bgnd(i,          pcols,  pver,   cw,   &
+               u,      v,          t,      pmid,   pint, &
+               pdel,   rpdel,      lnpint, rlat,   kldv, &
+               kldvmn, ksrc,       ksrcmn, rdpldv, tau,  &
+               ubi,    ubm,        xv,     yv,     pgwv, &
+               kbotbg, bgstressmax )
 
 ! Solve for the drag profile
 
-          call gw_drag_prof     (i,        pcols,     pver,                 &
-               pgwv,     pgwv,   kbotbg,   ktopbg,    c,         u_dev,     &
-               v_dev,    t_dev,  pint_dev, pdel_dev,  rpdel_dev, lnpint_dev,&
-               rlat_dev, rhoi,   ni,       ti,        nm,        dt,        &
-               alpha,    dback,  kldv,     kldvmn,    ksrc,      ksrcmn,    &
-               rdpldv,   tau,    ubi,      ubm,       xv,        yv,        &
-               utgw,     vtgw,   ttgw,     taubx_dev, tauby_dev, feb_dev,   &
-               fepb_dev, utosrc, vtosrc,   ttosrc,                          &
-               tau0x,    tau0y,  effgwbkg )
+          call gw_drag_prof(i,      pcols,  pver,   &
+               pgwv,        pgwv,   kbotbg, ktopbg, c,     u,      &
+               v,           t,      pint,   pdel,   rpdel, lnpint, &
+               rlat,        rhoi,   ni,     ti,     nm,    dt,     &
+               alpha,       dback,  kldv,   kldvmn, ksrc,  ksrcmn, &
+               rdpldv,      tau,    ubi,    ubm,    xv,    yv,     &
+               utgw,        vtgw,   ttgw,   taubx,  tauby, feb,    &
+               fepb,        utosrc, vtosrc, ttosrc, &
+               tau0x,       tau0y,  effgwbkg )
 
 ! Add the momentum tendencies to the output tendency arrays
 
           do k = 1, pver
-             utbsrc_dev(i,k) = utosrc(k)
-             vtbsrc_dev(i,k) = vtosrc(k)
-             ttbsrc_dev(i,k) = ttosrc(k)
+             utbsrc(i,k) = utosrc(k)
+             vtbsrc(i,k) = vtosrc(k)
+             ttbsrc(i,k) = ttosrc(k)
 
-             dudt_gwd_dev(i,k) = utgw(k) + utosrc(k)
-             dvdt_gwd_dev(i,k) = vtgw(k) + vtosrc(k)
-             dtdt_gwd_dev(i,k) = ttgw(k) + ttosrc(k)
+             dudt_gwd(i,k) = utgw(k) + utosrc(k)
+             dvdt_gwd(i,k) = vtgw(k) + vtosrc(k)
+             dtdt_gwd(i,k) = ttgw(k) + ttosrc(k)
           end do
 
-          taubkgx_dev(i) = tau0x
-          taubkgy_dev(i) = tau0y
+          taubkgx(i) = tau0x
+          taubkgy(i) = tau0y
 
        else
 
 ! zero net tendencies if no spectrum computed
 
           do k = 1, pver
-            dudt_gwd_dev(i,k) = 0.
-            dvdt_gwd_dev(i,k) = 0.
-            dtdt_gwd_dev(i,k) = 0.
-              utbsrc_dev(i,k) = 0.
-              vtbsrc_dev(i,k) = 0.
-              ttbsrc_dev(i,k) = 0.
-               taubx_dev(i,k) = 0.
-               tauby_dev(i,k) = 0.
-                 feb_dev(i,k) = 0.
-                fepb_dev(i,k) = 0.
+            dudt_gwd(i,k) = 0.
+            dvdt_gwd(i,k) = 0.
+            dtdt_gwd(i,k) = 0.
+              utbsrc(i,k) = 0.
+              vtbsrc(i,k) = 0.
+              ttbsrc(i,k) = 0.
+               taubx(i,k) = 0.
+               tauby(i,k) = 0.
+                 feb(i,k) = 0.
+                fepb(i,k) = 0.
           end do
-          taubkgx_dev(i) = 0.
-          taubkgy_dev(i) = 0.
+          taubkgx(i) = 0.
+          taubkgy(i) = 0.
 
        end if
 
@@ -272,39 +272,39 @@ contains
 
 ! Determine the orographic wave source
 
-       call gw_oro   (i,        pcols,  pver,    pgwv,     &
-            u_dev,    v_dev,    t_dev,  sgh_dev, pmid_dev, &
-            pint_dev, pdel_dev, zm_dev, nm,                &
-            kldv,     kldvmn,   ksrc,   ksrcmn,  rdpldv,   &
-            tau,      ubi,      ubm,    xv,      yv,       &
-            kbotoro,  rlat_dev  )
+       call gw_oro(i, pcols,  pver, pgwv,   &
+            u,        v,      t,    sgh,    pmid,   &
+            pint,     pdel,   zm,   nm,     &
+            kldv,     kldvmn, ksrc, ksrcmn, rdpldv, &
+            tau,      ubi,    ubm,  xv,     yv,     &
+            kbotoro,  rlat  )
 
 ! Solve for the drag profile
 
-       call gw_drag_prof     (i,        pcols,     pver,                 &
-            pgwv,     0,      kbotoro,  ktoporo,   c,         u_dev,     &
-            v_dev,    t_dev,  pint_dev, pdel_dev,  rpdel_dev, lnpint_dev,&
-            rlat_dev, rhoi,   ni,       ti,        nm,        dt,        &
-            alpha,    dback,  kldv,     kldvmn,    ksrc,      ksrcmn,    &
-            rdpldv,   tau,    ubi,      ubm,       xv,        yv,        &
-            utgw,     vtgw,   ttgw,     tauox_dev, tauoy_dev, feo_dev,   &
-            fepo_dev, utosrc, vtosrc,   ttosrc,                          &
-            tau0x,    tau0y,  effgworo )
+       call gw_drag_prof(i, pcols,  pver,    &
+            pgwv,           0,      kbotoro, ktoporo, c,     u,      &
+            v,              t,      pint,    pdel,    rpdel, lnpint, &
+            rlat,           rhoi,   ni,      ti,      nm,    dt,     &
+            alpha,          dback,  kldv,    kldvmn,  ksrc,  ksrcmn, &
+            rdpldv,         tau,    ubi,     ubm,     xv,    yv,     &
+            utgw,           vtgw,   ttgw,    tauox,   tauoy, feo,    &
+            fepo,           utosrc, vtosrc,  ttosrc,  &
+            tau0x,          tau0y,  effgworo )
 
 ! Add the orographic tendencies to the spectrum tendencies
 ! Compute the temperature tendency from energy conservation (includes spectrum).
 
        do k = 1, pver
-          dudt_org_dev(i,k) =                     utgw(k)
-          dvdt_org_dev(i,k) =                     vtgw(k)
-          dtdt_org_dev(i,k) =                     ttgw(k)
-          dudt_gwd_dev(i,k) = dudt_gwd_dev(i,k) + utgw(k)
-          dvdt_gwd_dev(i,k) = dvdt_gwd_dev(i,k) + vtgw(k)
-          dtdt_gwd_dev(i,k) = dtdt_gwd_dev(i,k) + ttgw(k)
+          dudt_org(i,k) =                 utgw(k)
+          dvdt_org(i,k) =                 vtgw(k)
+          dtdt_org(i,k) =                 ttgw(k)
+          dudt_gwd(i,k) = dudt_gwd(i,k) + utgw(k)
+          dvdt_gwd(i,k) = dvdt_gwd(i,k) + vtgw(k)
+          dtdt_gwd(i,k) = dtdt_gwd(i,k) + ttgw(k)
        end do
 
-       taugwdx_dev(i) = tau0x
-       taugwdy_dev(i) = tau0y
+       taugwdx(i) = tau0x
+       taugwdy(i) = tau0y
 
     end do I_LOOP
     rc = 0
