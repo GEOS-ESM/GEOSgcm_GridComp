@@ -56,7 +56,7 @@ contains
 
 !===============================================================================
 
-  subroutine gw_intr   (pcols,    pver,     dt,     pgwv,         &
+  subroutine gw_intr   (pver,     dt,       pgwv,                 &
           pint,         t,        u,        v,      sgh,    pref, &
           pmid,         pdel,     rpdel,    lnpint, zm,     rlat, &
           dudt_gwd,     dvdt_gwd, dtdt_gwd,                       &
@@ -71,53 +71,52 @@ contains
 !-----------------------------------------------------------------------
 
 !------------------------------Arguments--------------------------------
-    integer, intent(in   ) :: pcols                ! number of columns
     integer, intent(in   ) :: pver                 ! number of vertical layers
     real,    intent(in   ) :: dt                   ! time step
     integer, intent(in   ) :: pgwv                 ! number of waves allowed                (Default = 4, 0 nullifies)
     real,    intent(in   ) :: bgstressmax          ! Max of equatorial profile of BG stress factor
     real,    intent(in   ) :: effgwbkg             ! tendency efficiency for background gwd (Default = 0.125)
     real,    intent(in   ) :: effgworo             ! tendency efficiency for orographic gwd (Default = 0.125)
-    real,    intent(in   ) :: pint(pcols,pver+1)   ! pressure at the layer edges
-    real,    intent(in   ) :: t(pcols,pver)        ! temperature at layers
-    real,    intent(in   ) :: u(pcols,pver)        ! zonal wind at layers
-    real,    intent(in   ) :: v(pcols,pver)        ! meridional wind at layers
-    real,    intent(in   ) :: sgh(pcols)           ! standard deviation of orography
+    real,    intent(in   ) :: pint(pver+1)   ! pressure at the layer edges
+    real,    intent(in   ) :: t(pver)        ! temperature at layers
+    real,    intent(in   ) :: u(pver)        ! zonal wind at layers
+    real,    intent(in   ) :: v(pver)        ! meridional wind at layers
+    real,    intent(in   ) :: sgh           ! standard deviation of orography
     real,    intent(in   ) :: pref(pver+1)         ! reference pressure at the layeredges
-    real,    intent(in   ) :: pmid(pcols,pver)     ! pressure at the layers
-    real,    intent(in   ) :: pdel(pcols,pver)     ! pressure thickness at the layers
-    real,    intent(in   ) :: rpdel(pcols,pver)    ! 1.0 / pdel
-    real,    intent(in   ) :: lnpint(pcols,pver+1) ! log(pint)
-    real,    intent(in   ) :: zm(pcols,pver)       ! height above surface at layers
-    real,    intent(in   ) :: rlat(pcols)          ! latitude in radian
+    real,    intent(in   ) :: pmid(pver)     ! pressure at the layers
+    real,    intent(in   ) :: pdel(pver)     ! pressure thickness at the layers
+    real,    intent(in   ) :: rpdel(pver)    ! 1.0 / pdel
+    real,    intent(in   ) :: lnpint(pver+1) ! log(pint)
+    real,    intent(in   ) :: zm(pver)       ! height above surface at layers
+    real,    intent(in   ) :: rlat          ! latitude in radian
     
-    real,    intent(  out) :: dudt_gwd(pcols,pver) ! zonal wind tendency at layer 
-    real,    intent(  out) :: dvdt_gwd(pcols,pver) ! meridional wind tendency at layer 
-    real,    intent(  out) :: dtdt_gwd(pcols,pver) ! temperature tendency at layer
-    real,    intent(  out) :: dudt_org(pcols,pver) ! zonal wind tendency at layer due to orography GWD
-    real,    intent(  out) :: dvdt_org(pcols,pver) ! meridional wind tendency at layer  due to orography GWD
-    real,    intent(  out) :: dtdt_org(pcols,pver) ! temperature tendency at layer  due to orography GWD
-    real,    intent(  out) :: taugwdx(pcols)       ! zonal      gravity wave surface    stress
-    real,    intent(  out) :: taugwdy(pcols)       ! meridional gravity wave surface    stress
-    real,    intent(  out) :: tauox(pcols,pver+1)  ! zonal      orographic gravity wave stress
-    real,    intent(  out) :: tauoy(pcols,pver+1)  ! meridional orographic gravity wave stress
-    real,    intent(  out) :: feo  (pcols,pver+1)  ! energy flux of orographic gravity waves
-    real,    intent(  out) :: fepo (pcols,pver+1)  ! pseudoenergy flux of orographic gravity waves
-    real,    intent(  out) :: taubkgx(pcols)       ! zonal      gravity wave background stress
-    real,    intent(  out) :: taubkgy(pcols)       ! meridional gravity wave background stress
-    real,    intent(  out) :: taubx(pcols,pver+1)  ! zonal      background gravity wave stress
-    real,    intent(  out) :: tauby(pcols,pver+1)  ! meridional background gravity wave stress
-    real,    intent(  out) :: feb  (pcols,pver+1)  ! energy flux of background gravity waves
-    real,    intent(  out) :: fepb (pcols,pver+1)  ! pseudoenergy flux of background gravity waves
-    real,    intent(  out) :: utbsrc(pcols,pver)   ! dU/dt below background launch level
-    real,    intent(  out) :: vtbsrc(pcols,pver)   ! dV/dt below background launch level
-    real,    intent(  out) :: ttbsrc(pcols,pver)   ! dT/dt below background launch level
+    real,    intent(  out) :: dudt_gwd(pver) ! zonal wind tendency at layer 
+    real,    intent(  out) :: dvdt_gwd(pver) ! meridional wind tendency at layer 
+    real,    intent(  out) :: dtdt_gwd(pver) ! temperature tendency at layer
+    real,    intent(  out) :: dudt_org(pver) ! zonal wind tendency at layer due to orography GWD
+    real,    intent(  out) :: dvdt_org(pver) ! meridional wind tendency at layer  due to orography GWD
+    real,    intent(  out) :: dtdt_org(pver) ! temperature tendency at layer  due to orography GWD
+    real,    intent(  out) :: taugwdx       ! zonal      gravity wave surface    stress
+    real,    intent(  out) :: taugwdy       ! meridional gravity wave surface    stress
+    real,    intent(  out) :: tauox(pver+1)  ! zonal      orographic gravity wave stress
+    real,    intent(  out) :: tauoy(pver+1)  ! meridional orographic gravity wave stress
+    real,    intent(  out) :: feo  (pver+1)  ! energy flux of orographic gravity waves
+    real,    intent(  out) :: fepo (pver+1)  ! pseudoenergy flux of orographic gravity waves
+    real,    intent(  out) :: taubkgx       ! zonal      gravity wave background stress
+    real,    intent(  out) :: taubkgy       ! meridional gravity wave background stress
+    real,    intent(  out) :: taubx(pver+1)  ! zonal      background gravity wave stress
+    real,    intent(  out) :: tauby(pver+1)  ! meridional background gravity wave stress
+    real,    intent(  out) :: feb  (pver+1)  ! energy flux of background gravity waves
+    real,    intent(  out) :: fepb (pver+1)  ! pseudoenergy flux of background gravity waves
+    real,    intent(  out) :: utbsrc(pver)   ! dU/dt below background launch level
+    real,    intent(  out) :: vtbsrc(pver)   ! dV/dt below background launch level
+    real,    intent(  out) :: ttbsrc(pver)   ! dT/dt below background launch level
 
     integer, optional, intent(out) :: RC           ! return code
 
 !---------------------------Local storage-------------------------------
 
-    integer :: i,k,kc                 ! loop indexes
+    integer :: k,kc                 ! loop indexes
     integer :: kbotoro                ! launch-level index for orographic
     integer :: kbotbg                 ! launch-level index for background
     integer :: ktopbg, ktoporo        ! top interface of gwd region
@@ -175,96 +174,94 @@ contains
 
     cw = cw*(sum(cw4)/sum(cw))
 
-    I_LOOP: do i = 1, pcols
-
 ! Assign newtonian cooling coefficients
 ! -------------------------------------
-       do k = 0, pver
-          alpha(k) = 0.0
-          dback(k) = 0.0
-       end do
+    do k = 0, pver
+       alpha(k) = 0.0
+       dback(k) = 0.0
+    end do
 
 ! Determine the bounds of the background and orographic stress regions
-       ktoporo = 0
+    ktoporo = 0
 
-       ktopbg  = 0
+    ktopbg  = 0
 
-       kbotoro = pver
+    kbotoro = pver
 
-       do k = 0, pver
-          if (pref(k+1) .lt. 40000.) then
-             kbotbg = k    ! spectrum source at 400 mb
-          end if
-       end do
+    do k = 0, pver
+       if (pref(k+1) .lt. 40000.) then
+          kbotbg = k    ! spectrum source at 400 mb
+       end if
+    end do
 
-       do k = 0, pver
+    do k = 0, pver
 ! Profiles of background state variables
-          call gw_prof(i, k,  pcols, pver,       &
-               u,         v,  t,     pmid, pint, &
-               rhoi,      ni, ti,    nm          )
-       end do
+       call gw_prof(k,  pver,       &
+          u,         v,  t,     pmid, pint, &
+          rhoi,      ni, ti,    nm          )
+    end do
 
 !-----------------------------------------------------------------------------
 ! Non-orographic backgound gravity wave spectrum
 !-----------------------------------------------------------------------------
-       if (pgwv > 0) then
+    if (pgwv > 0) then
 
 ! Determine the wave source for a background spectrum at ~400 mb
 
-          call gw_bgnd(i,          pcols,  pver,   cw,   &
-               u,      v,          t,      pmid,   pint, &
-               pdel,   rpdel,      lnpint, rlat,   kldv, &
-               kldvmn, ksrc,       ksrcmn, rdpldv, tau,  &
-               ubi,    ubm,        xv,     yv,     pgwv, &
-               kbotbg, bgstressmax )
+       call gw_bgnd(pver,       cw,           &
+          u,      v,          t,      pmid,   pint, &
+          pdel,   rpdel,      lnpint, rlat,   kldv, &
+          kldvmn, ksrc,       ksrcmn, rdpldv, tau,  &
+          ubi,    ubm,        xv,     yv,     pgwv, &
+          kbotbg, bgstressmax )
 
 ! Solve for the drag profile
 
-          call gw_drag_prof(i,      pcols,  pver,   &
-               pgwv,        pgwv,   kbotbg, ktopbg, c,     u,      &
-               v,           t,      pint,   pdel,   rpdel, lnpint, &
-               rlat,        rhoi,   ni,     ti,     nm,    dt,     &
-               alpha,       dback,  kldv,   kldvmn, ksrc,  ksrcmn, &
-               rdpldv,      tau,    ubi,    ubm,    xv,    yv,     &
-               utgw,        vtgw,   ttgw,   taubx,  tauby, feb,    &
-               fepb,        utosrc, vtosrc, ttosrc, &
-               tau0x,       tau0y,  effgwbkg )
+       call gw_drag_prof(pver,                                   &
+          pgwv,        pgwv,   kbotbg,  ktopbg, c,     u,      &
+          v,           t,      pint,    pdel,   rpdel, lnpint, &
+          rlat,        rhoi,   ni,      ti,     nm,    dt,     &
+          alpha,       dback,  kldv,    kldvmn, ksrc,  ksrcmn, &
+          rdpldv,      tau,    ubi,     ubm,    xv,    yv,     &
+          utgw,        vtgw,   ttgw,    taubx,  tauby, feb,    &
+          fepb,        utosrc, vtosrc,  ttosrc,                &
+          tau0x,       tau0y,  effgwbkg )
 
 ! Add the momentum tendencies to the output tendency arrays
 
-          do k = 1, pver
-             utbsrc(i,k) = utosrc(k)
-             vtbsrc(i,k) = vtosrc(k)
-             ttbsrc(i,k) = ttosrc(k)
+       do k = 1, pver
+          utbsrc(k) = utosrc(k)
+          vtbsrc(k) = vtosrc(k)
+          ttbsrc(k) = ttosrc(k)
 
-             dudt_gwd(i,k) = utgw(k) + utosrc(k)
-             dvdt_gwd(i,k) = vtgw(k) + vtosrc(k)
-             dtdt_gwd(i,k) = ttgw(k) + ttosrc(k)
-          end do
+          dudt_gwd(k) = utgw(k) + utosrc(k)
+          dvdt_gwd(k) = vtgw(k) + vtosrc(k)
+          dtdt_gwd(k) = ttgw(k) + ttosrc(k)
+       end do
 
-          taubkgx(i) = tau0x
-          taubkgy(i) = tau0y
+       taubkgx = tau0x
+       taubkgy = tau0y
 
-       else
+    else
 
 ! zero net tendencies if no spectrum computed
 
-          do k = 1, pver
-            dudt_gwd(i,k) = 0.
-            dvdt_gwd(i,k) = 0.
-            dtdt_gwd(i,k) = 0.
-              utbsrc(i,k) = 0.
-              vtbsrc(i,k) = 0.
-              ttbsrc(i,k) = 0.
-               taubx(i,k) = 0.
-               tauby(i,k) = 0.
-                 feb(i,k) = 0.
-                fepb(i,k) = 0.
-          end do
-          taubkgx(i) = 0.
-          taubkgy(i) = 0.
+       do k = 1, pver
+          dudt_gwd(k) = 0.
+          dvdt_gwd(k) = 0.
+          dtdt_gwd(k) = 0.
+            utbsrc(k) = 0.
+            vtbsrc(k) = 0.
+            ttbsrc(k) = 0.
+            taubx(k) = 0.
+            tauby(k) = 0.
+               feb(k) = 0.
+               fepb(k) = 0.
+       end do
+       taubkgx = 0.
+       taubkgy = 0.
 
-       end if
+    end if
 
 !-----------------------------------------------------------------------------
 ! Orographic stationary gravity wave
@@ -272,48 +269,47 @@ contains
 
 ! Determine the orographic wave source
 
-       call gw_oro(i, pcols,  pver, pgwv,   &
-            u,        v,      t,    sgh,    pmid,   &
-            pint,     pdel,   zm,   nm,     &
-            kldv,     kldvmn, ksrc, ksrcmn, rdpldv, &
-            tau,      ubi,    ubm,  xv,     yv,     &
-            kbotoro,  rlat  )
+    call gw_oro(pver, pgwv,   &
+       u,        v,      t,    sgh,    pmid,   &
+       pint,     pdel,   zm,   nm,     &
+       kldv,     kldvmn, ksrc, ksrcmn, rdpldv, &
+       tau,      ubi,    ubm,  xv,     yv,     &
+       kbotoro,  rlat  )
 
 ! Solve for the drag profile
 
-       call gw_drag_prof(i, pcols,  pver,    &
-            pgwv,           0,      kbotoro, ktoporo, c,     u,      &
-            v,              t,      pint,    pdel,    rpdel, lnpint, &
-            rlat,           rhoi,   ni,      ti,      nm,    dt,     &
-            alpha,          dback,  kldv,    kldvmn,  ksrc,  ksrcmn, &
-            rdpldv,         tau,    ubi,     ubm,     xv,    yv,     &
-            utgw,           vtgw,   ttgw,    tauox,   tauoy, feo,    &
-            fepo,           utosrc, vtosrc,  ttosrc,  &
-            tau0x,          tau0y,  effgworo )
+    call gw_drag_prof(pver, &
+       pgwv,        0,      kbotoro, ktoporo, c,     u,      &
+       v,           t,      pint,    pdel,    rpdel, lnpint, &
+       rlat,        rhoi,   ni,      ti,      nm,    dt,     &
+       alpha,       dback,  kldv,    kldvmn,  ksrc,  ksrcmn, &
+       rdpldv,      tau,    ubi,     ubm,     xv,    yv,     &
+       utgw,        vtgw,   ttgw,    tauox,   tauoy, feo,    &
+       fepo,        utosrc, vtosrc,  ttosrc,  &
+       tau0x,       tau0y,  effgworo )
 
 ! Add the orographic tendencies to the spectrum tendencies
 ! Compute the temperature tendency from energy conservation (includes spectrum).
 
-       do k = 1, pver
-          dudt_org(i,k) =                 utgw(k)
-          dvdt_org(i,k) =                 vtgw(k)
-          dtdt_org(i,k) =                 ttgw(k)
-          dudt_gwd(i,k) = dudt_gwd(i,k) + utgw(k)
-          dvdt_gwd(i,k) = dvdt_gwd(i,k) + vtgw(k)
-          dtdt_gwd(i,k) = dtdt_gwd(i,k) + ttgw(k)
-       end do
+    do k = 1, pver
+       dudt_org(k) =               utgw(k)
+       dvdt_org(k) =               vtgw(k)
+       dtdt_org(k) =               ttgw(k)
+       dudt_gwd(k) = dudt_gwd(k) + utgw(k)
+       dvdt_gwd(k) = dvdt_gwd(k) + vtgw(k)
+       dtdt_gwd(k) = dtdt_gwd(k) + ttgw(k)
+    end do
 
-       taugwdx(i) = tau0x
-       taugwdy(i) = tau0y
+    taugwdx = tau0x
+    taugwdy = tau0y
 
-    end do I_LOOP
     rc = 0
 
     return
   end subroutine gw_intr
 
 !================================================================================
-  subroutine gw_prof (i, k, pcols, pver, u, v, t, pm, pi, rhoi, ni, ti, nm)
+  subroutine gw_prof (k, pver, u, v, t, pm, pi, rhoi, ni, ti, nm)
 !-----------------------------------------------------------------------
 ! Compute profiles of background state quantities for the multiple
 ! gravity wave drag parameterization.
@@ -322,16 +318,14 @@ contains
 ! concentrations are negligible in determining the density.
 !-----------------------------------------------------------------------
 !------------------------------Arguments--------------------------------
-    integer, intent(in)  :: i                  ! current atmospheric column
     integer, intent(in)  :: k                  ! current atmospheric layer
-    integer, intent(in)  :: pcols              ! number of atmospheric columns
     integer, intent(in)  :: pver               ! number of vertical layers
 
-    real,    intent(in)  :: u(pcols,pver)      ! midpoint zonal wind
-    real,    intent(in)  :: v(pcols,pver)      ! midpoint meridional wind
-    real,    intent(in)  :: t(pcols,pver)      ! midpoint temperatures
-    real,    intent(in)  :: pm(pcols,pver)     ! midpoint pressures
-    real,    intent(in)  :: pi(pcols,0:pver)   ! interface pressures
+    real,    intent(in)  :: u(pver)      ! midpoint zonal wind
+    real,    intent(in)  :: v(pver)      ! midpoint meridional wind
+    real,    intent(in)  :: t(pver)      ! midpoint temperatures
+    real,    intent(in)  :: pm(pver)     ! midpoint pressures
+    real,    intent(in)  :: pi(0:pver)   ! interface pressures
 
     real,    intent(out) :: rhoi(0:pver)       ! interface density
     real,    intent(out) :: ni(0:pver)         ! interface Brunt-Vaisalla frequency
@@ -350,23 +344,23 @@ contains
 ! The top interface values are calculated assuming an isothermal atmosphere 
 ! above the top level.
     if (k == 0) then
-       ti(k)   = t(i,k+1)
-       rhoi(k) = pi(i,k) / (MAPL_RGAS*ti(k))
+       ti(k)   = t(k+1)
+       rhoi(k) = pi(k) / (MAPL_RGAS*ti(k))
        ni(k)   = sqrt (MAPL_GRAV*MAPL_GRAV / (MAPL_CP*ti(k)))
 
 ! Interior points use centered differences
     else if (k > 0 .and. k < pver) then
-       ti(k)   = 0.5 * (t(i,k) + t(i,k+1))
-       rhoi(k) = pi(i,k) / (MAPL_RGAS*ti(k))
-       dtdp    = (t(i,k+1)-t(i,k)) / (pm(i,k+1)-pm(i,k))
+       ti(k)   = 0.5 * (t(k) + t(k+1))
+       rhoi(k) = pi(k) / (MAPL_RGAS*ti(k))
+       dtdp    = (t(k+1)-t(k)) / (pm(k+1)-pm(k))
        n2      = MAPL_GRAV*MAPL_GRAV/ti(k) * (1./MAPL_CP - rhoi(k)*dtdp)
        ni(k)   = sqrt (max (N2MIN, n2))
 
 ! Bottom interface uses bottom level temperature, density; next interface
 ! B-V frequency.
     else if (k == pver) then
-       ti(k)   = t(i,k)
-       rhoi(k) = pi(i,k) / (MAPL_RGAS*ti(k))
+       ti(k)   = t(k)
+       rhoi(k) = pi(k) / (MAPL_RGAS*ti(k))
        ni(k)   = ni(k-1)
     end if
 
@@ -382,7 +376,7 @@ contains
 
 !================================================================================
 
-  subroutine gw_oro (i, pcols, pver, pgwv, &
+  subroutine gw_oro (pver, pgwv, &
        u, v, t, sgh, pm, pi, dpm, zm, nm,  &
        kldv, kldvmn, ksrc, ksrcmn, rdpldv, &
        tau, ubi, ubm, xv, yv, kbot, rlat)
@@ -393,19 +387,17 @@ contains
 ! For points where the orographic variance is small (including ocean),
 ! the returned stress is zero. 
 !------------------------------Arguments--------------------------------
-    integer, intent(in)  :: i                    ! number of current column
-    integer, intent(in)  :: pcols                ! number of atmospheric columns
-    integer, intent(in)  :: pver                 ! number of atmospheric columns
+    integer, intent(in)  :: pver                 ! number of atmospheric layers
     integer, intent(in)  :: pgwv                 ! number of waves allowed
 
-    real,    intent(in)  :: u(pcols,pver)        ! midpoint zonal wind
-    real,    intent(in)  :: v(pcols,pver)        ! midpoint meridional wind
-    real,    intent(in)  :: t(pcols,pver)        ! midpoint temperatures
-    real,    intent(in)  :: sgh(pcols)           ! standard deviation of orography
-    real,    intent(in)  :: pm(pcols,pver)       ! midpoint pressures
-    real,    intent(in)  :: pi(pcols,0:pver)     ! interface pressures
-    real,    intent(in)  :: dpm(pcols,pver)      ! midpoint delta p (pi(k)-pi(k-1))
-    real,    intent(in)  :: zm(pcols,pver)       ! midpoint heights
+    real,    intent(in)  :: u(pver)        ! midpoint zonal wind
+    real,    intent(in)  :: v(pver)        ! midpoint meridional wind
+    real,    intent(in)  :: t(pver)        ! midpoint temperatures
+    real,    intent(in)  :: sgh           ! standard deviation of orography
+    real,    intent(in)  :: pm(pver)       ! midpoint pressures
+    real,    intent(in)  :: pi(0:pver)     ! interface pressures
+    real,    intent(in)  :: dpm(pver)      ! midpoint delta p (pi(k)-pi(k-1))
+    real,    intent(in)  :: zm(pver)       ! midpoint heights
     real,    intent(in)  :: nm(pver)             ! midpoint Brunt-Vaisalla frequency
 
     integer, intent(out) :: kldv                 ! top interface of low level stress div region
@@ -420,7 +412,7 @@ contains
     real,    intent(out) :: xv                   ! unit vectors of source wind (x)
     real,    intent(out) :: yv                   ! unit vectors of source wind (y)
     integer, intent(inout) :: kbot
-    real,    intent(in)    :: rlat(pcols)
+    real,    intent(in)    :: rlat
 
 !---------------------------Local storage-------------------------------
     integer :: k                                 ! loop indexes
@@ -453,29 +445,29 @@ contains
 
     ksrc = pver-1
     kldv = pver-1
-    psrc = pi(i,pver-1)
-    rsrc = pm(i,pver)/(MAPL_RGAS*t(i,pver)) * dpm(i,pver)
-    usrc = u(i,pver) * dpm(i,pver)
-    vsrc = v(i,pver) * dpm(i,pver)
-    nsrc = nm(pver)* dpm(i,pver)
-    hdsp = 2.0 * sgh(i)
+    psrc = pi(pver-1)
+    rsrc = pm(pver)/(MAPL_RGAS*t(pver)) * dpm(pver)
+    usrc = u(pver) * dpm(pver)
+    vsrc = v(pver) * dpm(pver)
+    nsrc = nm(pver)* dpm(pver)
+    hdsp = 2.0 * sgh
 
     do k = pver-1, pver/2, -1
-       if (hdsp > sqrt(zm(i,k)*zm(i,k+1))) then
+       if (hdsp > sqrt(zm(k)*zm(k+1))) then
           ksrc = k-1
           kldv = k-1
-          psrc = pi(i,k-1)
-          rsrc = rsrc + pm(i,k) / (MAPL_RGAS*t(i,k))* dpm(i,k)
-          usrc = usrc + u(i,k) * dpm(i,k)
-          vsrc = vsrc + v(i,k) * dpm(i,k)
-          nsrc = nsrc + nm(k)* dpm(i,k)
+          psrc = pi(k-1)
+          rsrc = rsrc + pm(k) / (MAPL_RGAS*t(k))* dpm(k)
+          usrc = usrc + u(k) * dpm(k)
+          vsrc = vsrc + v(k) * dpm(k)
+          nsrc = nsrc + nm(k)* dpm(k)
        end if
     end do
 
-    rsrc = rsrc / (pi(i,pver) - psrc)
-    usrc = usrc / (pi(i,pver) - psrc)
-    vsrc = vsrc / (pi(i,pver) - psrc)
-    nsrc = nsrc / (pi(i,pver) - psrc)
+    rsrc = rsrc / (pi(pver) - psrc)
+    usrc = usrc / (pi(pver) - psrc)
+    vsrc = vsrc / (pi(pver) - psrc)
+    nsrc = nsrc / (pi(pver) - psrc)
 
     if ( usrc == 0. .and. vsrc == 0. ) then
        ubsrc = sqrt(UBMC2MN)
@@ -489,7 +481,7 @@ contains
 
 ! Project the local wind at midpoints onto the source wind.
     do k = 1, pver
-       ubm(k) = u(i,k) * xv + v(i,k) * yv
+       ubm(k) = u(k) * xv + v(k) * yv
     end do
 
 ! Compute the interface wind projection by averaging the midpoint winds.
@@ -544,11 +536,11 @@ contains
 !      if (kbot .lt. pver) then
 !         kldv = kbot
 !      else
-!         zldv    = max (pblh(i), sgh(i)
+!         zldv    = max (pblh(i), sgh
 !         zldv    = max (zdlv(i), ZLDVCON * sqrt(tau(0,k)/rsrc) / nsrc)
 !         kldv = pver-1
 !         do k = pver-1, pver/2, -1
-!            if (zldv .gt. sqrt(zm(i,k)*zm(i,k+1))) kldv = k-1
+!            if (zldv .gt. sqrt(zm(k)*zm(k+1))) kldv = k-1
 !         end do
 !      end if
 
@@ -563,7 +555,7 @@ contains
     kldvmn = min(kldvmn, kldv)
     
     if (kldv .ne. pver) then
-       rdpldv = 1. / (pi(i,kldv) - pi(i,pver))
+       rdpldv = 1. / (pi(kldv) - pi(pver))
     end if
 ! kldvmn is always pver because FRACLDV == 0.
     if (FRACLDV .le. 0.) kldvmn = pver
@@ -572,7 +564,7 @@ contains
   end subroutine gw_oro
 
 !===============================================================================
-  subroutine gw_bgnd (i, pcols, pver, cw,       &
+  subroutine gw_bgnd (pver, cw,                 &
        u, v, t, pm, pi, dpm, rdpm, piln, rlat,  &
        kldv, kldvmn, ksrc, ksrcmn, rdpldv, tau, &
        ubi, ubm, xv, yv, ngwv, kbot, bgstressmax)
@@ -583,22 +575,20 @@ contains
 ! concentrations are negligible in determining the density.
 !-----------------------------------------------------------------------
 !------------------------------Arguments--------------------------------
-    integer, intent(in)  :: i                     ! number of current column
-    integer, intent(in)  :: pcols                 ! number of atmospheric columns
-    integer, intent(in)  :: pver                  ! number of atmospheric columns
+    integer, intent(in)  :: pver                  ! number of atmospheric layers
 
     integer, intent(in)  :: kbot                  ! index of bottom (source) interface
     integer, intent(in)  :: ngwv                  ! number of gravity waves to use
     real,    intent(in)  :: cw(-ngwv:ngwv)        ! wave weights
-    real,    intent(in)  :: u(pcols,pver)         ! midpoint zonal wind
-    real,    intent(in)  :: v(pcols,pver)         ! midpoint meridional wind
-    real,    intent(in)  :: t(pcols,pver)         ! midpoint temperatures
-    real,    intent(in)  :: pm(pcols,pver)        ! midpoint pressures
-    real,    intent(in)  :: pi(pcols,0:pver)      ! interface pressures
-    real,    intent(in)  :: dpm(pcols,pver)       ! midpoint delta p (pi(k)-pi(k-1))
-    real,    intent(in)  :: rdpm(pcols,pver)      ! 1. / (pi(k)-pi(k-1))
-    real,    intent(in)  :: piln(pcols,0:pver)    ! ln(interface pressures)
-    real,    intent(in)  :: rlat(pcols)           ! latitude in radians for columns
+    real,    intent(in)  :: u(pver)         ! midpoint zonal wind
+    real,    intent(in)  :: v(pver)         ! midpoint meridional wind
+    real,    intent(in)  :: t(pver)         ! midpoint temperatures
+    real,    intent(in)  :: pm(pver)        ! midpoint pressures
+    real,    intent(in)  :: pi(0:pver)      ! interface pressures
+    real,    intent(in)  :: dpm(pver)       ! midpoint delta p (pi(k)-pi(k-1))
+    real,    intent(in)  :: rdpm(pver)      ! 1. / (pi(k)-pi(k-1))
+    real,    intent(in)  :: piln(0:pver)    ! ln(interface pressures)
+    real,    intent(in)  :: rlat           ! latitude in radians for columns
 
     integer, intent(out) :: kldv                  ! top interface of low level stress divergence region
     integer, intent(out) :: kldvmn                ! min value of kldv
@@ -634,8 +624,8 @@ contains
 
     ksrc  = kbot
     kldv  = kbot
-    usrc  = 0.5*(u(i,kbot+1)+u(i,kbot))
-    vsrc  = 0.5*(v(i,kbot+1)+v(i,kbot))
+    usrc  = 0.5*(u(kbot+1)+u(kbot))
+    vsrc  = 0.5*(v(kbot+1)+v(kbot))
     ubsrc = max(sqrt (usrc**2 + vsrc**2), sqrt (UBMC2MN))
     if (usrc == 0. .and. vsrc == 0.) then
        xv = 1.0
@@ -647,7 +637,7 @@ contains
 
 ! Project the local wind at midpoints onto the source wind.
     do k = 1, pver
-       ubm(k) = u(i,k) * xv + v(i,k) * yv
+       ubm(k) = u(k) * xv + v(k) * yv
     end do
 
 ! Compute the bottom interface wind projection using the midpoint winds.
@@ -665,7 +655,7 @@ contains
 
 ! Include dependence on latitude:
 
-    latdeg = rlat(i)*180./PI_GWD
+    latdeg = rlat*180./PI_GWD
 !
     if (-15.3 < latdeg .and. latdeg < 15.3) then
 !!AMM  flat_gw = 1.2*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
@@ -710,7 +700,7 @@ contains
   end subroutine gw_bgnd
 
 !===============================================================================
-  subroutine gw_drag_prof (i,     pcols, pver,           &
+  subroutine gw_drag_prof (pver,                         &
              pgwv,  ngwv,  kbot,  ktop,  c,     u,       &
              v,     t,     pi,    dpm,   rdpm,  piln,    &
              rlat,  rhoi,  ni,    ti,    nm,    dt,      &
@@ -730,9 +720,7 @@ contains
 !     => adjust stress on interface below to reflect actual bounded tendency
 !-----------------------------------------------------------------------
 !------------------------------Arguments--------------------------------
-    integer, intent(in) :: i                     ! number of current column
-    integer, intent(in) :: pcols                 ! number of atmospheric columns
-    integer, intent(in) :: pver                  ! number of atmospheric columns
+    integer, intent(in) :: pver                  ! number of atmospheric layers
     integer, intent(in) :: kbot                  ! index of bottom (source) interface
     integer, intent(in) :: ktop                  ! index of top interface of gwd region
     integer, intent(in) :: pgwv                  ! number of gravity waves possible
@@ -743,14 +731,14 @@ contains
     integer, intent(in) :: ksrcmn                ! min value of ksrc
 
     real,    intent(in) :: c(-pgwv:pgwv)         ! wave phase speeds
-    real,    intent(in) :: u(pcols,pver)         ! midpoint zonal wind
-    real,    intent(in) :: v(pcols,pver)         ! midpoint meridional wind
-    real,    intent(in) :: t(pcols,pver)         ! midpoint temperatures
-    real,    intent(in) :: pi(pcols,0:pver)      ! interface pressures
-    real,    intent(in) :: dpm(pcols,pver)       ! midpoint delta p (pi(k)-pi(k-1))
-    real,    intent(in) :: rdpm(pcols,pver)      ! 1. / (pi(k)-pi(k-1))
-    real,    intent(in) :: piln(pcols,0:pver)    ! ln(interface pressures)
-    real,    intent(in) :: rlat(pcols)
+    real,    intent(in) :: u(pver)         ! midpoint zonal wind
+    real,    intent(in) :: v(pver)         ! midpoint meridional wind
+    real,    intent(in) :: t(pver)         ! midpoint temperatures
+    real,    intent(in) :: pi(0:pver)      ! interface pressures
+    real,    intent(in) :: dpm(pver)       ! midpoint delta p (pi(k)-pi(k-1))
+    real,    intent(in) :: rdpm(pver)      ! 1. / (pi(k)-pi(k-1))
+    real,    intent(in) :: piln(0:pver)    ! ln(interface pressures)
+    real,    intent(in) :: rlat
     real,    intent(in) :: rhoi(0:pver)          ! interface density
     real,    intent(in) :: ni(0:pver)            ! interface Brunt-Vaisalla frequency
     real,    intent(in) :: ti(0:pver)            ! interface temperature
@@ -770,10 +758,10 @@ contains
     real,    intent(out) :: ut(pver)             ! zonal wind tendency
     real,    intent(out) :: vt(pver)             ! meridional wind tendency
     real,    intent(out) :: tt(pver)             ! temperature tendency
-    real,    intent(out) :: taugwx(pcols,0:pver) ! Total zonal GW momentum flux
-    real,    intent(out) :: taugwy(pcols,0:pver) ! Total meridional GW momentum flux
-    real,    intent(out) :: fegw (pcols,0:pver)  ! Total GW energy flux
-    real,    intent(out) :: fepgw(pcols,0:pver)  ! Total GW pseudo energy flux
+    real,    intent(out) :: taugwx(0:pver) ! Total zonal GW momentum flux
+    real,    intent(out) :: taugwy(0:pver) ! Total meridional GW momentum flux
+    real,    intent(out) :: fegw (0:pver)  ! Total GW energy flux
+    real,    intent(out) :: fepgw(0:pver)  ! Total GW pseudo energy flux
     real,    intent(out) :: dusrc(pver)          ! Total U tendency below launch level
     real,    intent(out) :: dvsrc(pver)          ! Total V tendency below launch level
     real,    intent(out) :: dtsrc(pver)          ! Total V tendency below launch level
@@ -787,7 +775,6 @@ contains
     real    :: dscal                             ! fraction of dsat to use
     real    :: mi                                ! imaginary part of vertical wavenumber
     real    :: taudmp                            ! stress after damping
-    !real    :: taumax(pcols)                     ! max(tau) for any l
     real    :: tausat                            ! saturation stress
     real    :: ubmc                              ! (ub-c)
     real    :: ubmc2                             ! (ub-c)**2
@@ -836,10 +823,10 @@ contains
 ! Initialize total momentum and energy fluxes to zero
 
     do k=0,pver
-       taugwx(i,k) = 0. 
-       taugwy(i,k) = 0. 
-       fegw  (i,k) = 0. 
-       fepgw (i,k) = 0.
+       taugwx(k) = 0. 
+       taugwy(k) = 0. 
+       fegw  (k) = 0. 
+       fepgw (k) = 0.
     end do
 
 ! Initialize surface wave stress at c = 0 to zero
@@ -864,14 +851,14 @@ contains
 
              if ( ngwv > 0 ) then
                 effkwvmap = FCRIT2*KWVB*  &
-                            (0.5*(1.0+tanh( (rlat(i)*180./PI_GWD-20.0)/6.0)) +  &
-                             0.5*(1.0+tanh(-(rlat(i)*180./PI_GWD+20.0)/6.0)))
-                if (-15.0 < rlat(i)*180./PI_GWD .and. rlat(i)*180./PI_GWD < 15.0) then
+                            (0.5*(1.0+tanh( (rlat*180./PI_GWD-20.0)/6.0)) +  &
+                             0.5*(1.0+tanh(-(rlat*180./PI_GWD+20.0)/6.0)))
+                if (-15.0 < rlat*180./PI_GWD .and. rlat*180./PI_GWD < 15.0) then
                    effkwvmap = FCRIT2*KWVBEQ
                 end if
              else
-                if (pi(i,k) < 1000.0) then
-                   zfac = (pi(i,k)/1000.0)**3
+                if (pi(k) < 1000.0) then
+                   zfac = (pi(k)/1000.0)**3
                 else
                    zfac = 1.0
                 end if
@@ -917,7 +904,7 @@ contains
 !         if (ngwv == 0 .and. k .ge. kldvmn) then
 !            if (k .ge. kldv) then
 !               tau(0,k) = min (tau(0,k), tau(0,kbot)  * &
-!                    (1. - FRACLDV * (pi(i,k)-pi(i,pver)) * rdpldv))
+!                    (1. - FRACLDV * (pi(k)-pi(pver)) * rdpldv))
 !            end if
 !         end if
 
@@ -938,7 +925,7 @@ contains
           if (k <= kbot) then
 
 ! Determine the wind tendency including excess stress carried down from above.
-             ubtl = MAPL_GRAV * (tau(l,k)-tau(l,k-1)) * rdpm(i,k)
+             ubtl = MAPL_GRAV * (tau(l,k)-tau(l,k-1)) * rdpm(k)
 
 ! Calculate the sign of wind tendency
              utl = sign(ubtl, c(l)-ubi(k))
@@ -974,10 +961,10 @@ contains
        if (k >= kbot+1) then
 
 ! Define layer pressure and density
-          pm   = (pi(i,k-1)+pi(i,k))*0.5
-          rhom = pm/(MAPL_RGAS*t(i,k))
+          pm   = (pi(k-1)+pi(k))*0.5
+          rhom = pm/(MAPL_RGAS*t(k))
 
-          zlb  = zlb + dpm(i,k)/MAPL_GRAV/rhom
+          zlb  = zlb + dpm(k)/MAPL_GRAV/rhom
        end if
     end do
 
@@ -1005,10 +992,10 @@ contains
              end if
 
              ! Record outputs for GW fluxes
-             taugwx(i,k) = taugwx(i,k) + fpmx
-             taugwy(i,k) = taugwy(i,k) + fpmy
-             fegw  (i,k) = fegw  (i,k) + fe
-             fepgw (i,k) = fepgw (i,k) + fpe
+             taugwx(k) = taugwx(k) + fpmx
+             taugwy(k) = taugwy(k) + fpmy
+             fegw  (k) = fegw  (k) + fe
+             fepgw (k) = fepgw (k) + fpe
           end if
        end do
 
@@ -1016,8 +1003,8 @@ contains
           if (k >= kbot+1) then
 
 ! Define layer pressure and density
-             pm   = (pi(i,k-1)+pi(i,k))*0.5
-             rhom = pm/(MAPL_RGAS*t(i,k))
+             pm   = (pi(k-1)+pi(k))*0.5
+             rhom = pm/(MAPL_RGAS*t(k))
 
              dusrcl = - (fpml-fpmt)/(rhom*zlb)*xv
              dvsrcl = - (fpml-fpmt)/(rhom*zlb)*yv

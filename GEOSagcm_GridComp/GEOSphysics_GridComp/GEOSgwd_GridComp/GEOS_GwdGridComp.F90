@@ -1034,16 +1034,19 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_TimerOn(MAPL,"-INTR")
     if (.not. USE_NCEP_GWD) then
-       call gw_intr   (IM*JM,      LM,         DT,                  &
-            PGWV,                                                   &
-            PLE,       T,          U,          V,      SGH,   PREF, &
-            PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
-            DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
-            DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
-            TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
-            TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
-            FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
-            BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
+       do i = 1, IM
+          do j = 1, JM
+             call gw_intr(LM,      DT,              PGWV,            &
+                  PLE(i,j,:),      T(i,j,:),        U(i,j,:),        V(i,j,:),        SGH(i,j),        PREF(:),   &
+                  PMID(i,j,:),     PDEL(i,j,:),     RPDEL(i,j,:),    PILN(i,j,:),     ZM(i,j,:),       LATS(i,j), &
+                  DUDT_GWD(i,j,:), DVDT_GWD(i,j,:), DTDT_GWD(i,j,:), &
+                  DUDT_ORG(i,j,:), DVDT_ORG(i,j,:), DTDT_ORG(i,j,:), &
+                  TAUXO_TMP(i,j),  TAUYO_TMP(i,j),  TAUXO_3D(i,j,:), TAUYO_3D(i,j,:), FEO_3D(i,j,:),   &
+                  TAUXB_TMP(i,j),  TAUYB_TMP(i,j),  TAUXB_3D(i,j,:), TAUYB_3D(i,j,:), FEB_3D(i,j,:),   &
+                  FEPO_3D(i,j,:),  FEPB_3D(i,j,:),  DUBKGSRC(i,j,:), DVBKGSRC(i,j,:), DTBKGSRC(i,j,:), &
+                  BGSTRESSMAX,     effgworo,        effgwbkg,        RC=STATUS        )
+          end do
+       end do
        VERIFY_(STATUS)
     else
        ! get pointers from INTERNAL:HPRIME,OC,OA4,CLX4,THETA,SIGMA,GAMMA,ELVMAX
