@@ -50,10 +50,10 @@ module GEOS_SurfaceGridCompMod
   use MAPL_Mod
   use GEOS_UtilsMod
 
-  use GEOS_LakeGridCompMod,      only : LakeSetServices     => SetServices
-  use GEOS_LandiceGridCompMod,   only : LandiceSetServices  => SetServices
-  use GEOS_LandGridCompMod,      only : LandSetServices     => SetServices
-  use GEOS_SaltwaterGridCompMod, only : OceanSetServices    => SetServices
+  !use GEOS_LakeGridCompMod,      only : LakeSetServices     => SetServices
+  !use GEOS_LandiceGridCompMod,   only : LandiceSetServices  => SetServices
+  !use GEOS_LandGridCompMod,      only : LandSetServices     => SetServices
+  !use GEOS_SaltwaterGridCompMod, only : OceanSetServices    => SetServices
 
   use m_mpif90, only: MP_INTEGER, MP_REAL, MP_STATUS_SIZE
   use StieglitzSnow, only : NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD, &
@@ -75,7 +75,7 @@ module GEOS_SurfaceGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 !EOP
 
@@ -148,7 +148,7 @@ module GEOS_SurfaceGridCompMod
 
 ! !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
 
@@ -196,6 +196,11 @@ module GEOS_SurfaceGridCompMod
     type (MAPL_MetaComp    ), pointer       :: MAPL
     INTEGER                                 :: LSM_CHOICE, RUN_ROUTE
     INTEGER                                 :: catchswim,landicegoswim
+
+    character(len=ESMF_MAXSTR)              :: land_sharedObj
+    character(len=ESMF_MAXSTR)              :: lake_sharedObj
+    character(len=ESMF_MAXSTR)              :: landice_sharedObj
+    character(len=ESMF_MAXSTR)              :: ocean_sharedObj
 
 !=============================================================================
 
@@ -3042,14 +3047,25 @@ module GEOS_SurfaceGridCompMod
      VERIFY_(STATUS)
 !EOS
 
-    OCEAN    = MAPL_AddChild(GC, NAME='SALTWATER', SS=OceanSetServices, RC=STATUS)
+    call MAPL_GetResource ( MAPL, ocean_sharedObj, Label="SALTWATER.SETSERVICES:", DEFAULT="libGEOSsaltwater_GridComp.so", RC=STATUS)
+    VERIFY_(STATUS)
+    OCEAN    = MAPL_AddChild(GC, NAME='SALTWATER', procName="setservices", sharedObj=ocean_sharedObj, RC=STATUS)
     VERIFY_(STATUS)
 #ifndef AQUA_PLANET
-    LAKE     = MAPL_AddChild(GC, NAME='LAKE', SS=LakeSetServices, RC=STATUS)
+    call MAPL_GetResource ( MAPL, lake_sharedObj, Label="LAKE.SETSERVICES:", DEFAULT="libGEOSlake_GridComp.so", RC=STATUS)
     VERIFY_(STATUS)
-    LANDICE  = MAPL_AddChild(GC, NAME='LANDICE', SS=LandiceSetServices, RC=STATUS)
+    LAKE     = MAPL_AddChild(GC, NAME='LAKE', procName="setservices", sharedObj=lake_sharedObj, RC=STATUS)
     VERIFY_(STATUS)
-    LAND     = MAPL_AddChild(GC, NAME='LAND', SS=LandSetServices, RC=STATUS)
+
+    call MAPL_GetResource ( MAPL, landice_sharedObj, Label="LANDICE.SETSERVICES:", DEFAULT="libGEOSlandice_GridComp.so", RC=STATUS)
+    VERIFY_(STATUS)
+    LANDICE  = MAPL_AddChild(GC, NAME='LANDICE', procName="setservices", sharedObj=landice_sharedObj, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, land_sharedObj, Label="LAND.SETSERVICES:", DEFAULT="libGEOSland_GridComp.so", RC=STATUS)
+    VERIFY_(STATUS)
+
+    LAND     = MAPL_AddChild(GC, NAME='LAND', procName="setservices", sharedObj=land_sharedObj, RC=STATUS)
     VERIFY_(STATUS)
 #endif
 

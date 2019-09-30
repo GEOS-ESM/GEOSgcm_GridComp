@@ -37,7 +37,7 @@ module GEOS_SatsimGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 ! Private State
   TYPE SatSim_State
@@ -66,7 +66,7 @@ contains
 ! !IROUTINE: SetServices -- Sets ESMF services for this component
 
 ! !INTERFACE:
-    subroutine SetServices ( GC, RC )
+    subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
     type(ESMF_GridComp) :: GC  ! gridded component

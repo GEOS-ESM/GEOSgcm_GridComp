@@ -92,7 +92,7 @@ module GEOS_LandiceGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 ! !DESCRIPTION:
 ! 
@@ -109,7 +109,7 @@ module GEOS_LandiceGridCompMod
 
 !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
     !ARGUMENTS:
 

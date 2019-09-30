@@ -29,108 +29,33 @@ module GEOS_LandGridCompMod
   USE MAPL_BaseMod
 
 !  use GEOS_VegdynGridCompMod,  only : VegdynSetServices   => SetServices
-  use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices
-  use GEOS_CatchCNGridCompMod, only : CatchCNSetServices  => SetServices
-!  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
+!  use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices
+!  use GEOS_CatchCNGridCompMod, only : CatchCNSetServices  => SetServices
+!!  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
 
   implicit none
   private
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 
 !EOP
-  integer(c_int), parameter :: rtld_lazy=1 ! value extracte from the C header file
-  integer(c_int), parameter :: rtld_now=2 ! value extracte from the C header file
 
   integer                                 :: VEGDYN
   integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:)
   integer  :: NUM_ENSEMBLE
 
-  interface
-
-    subroutine setservice_interface(GC, RC) bind(c)
-       use ESMF
-       use iso_c_binding
-       implicit none
-       type(ESMF_GridComp)  :: GC  ! gridded component
-       integer, intent(out):: RC  ! return code
-    end subroutine setservice_interface
-
-    function dlopen(filename,mode) bind(c,name="dlopen")
-       ! void *dlopen(const char *filename, int mode);
-       use iso_c_binding
-       implicit none
-       type(c_ptr) :: dlopen
-       character(c_char), intent(in) :: filename(*)
-       integer(c_int), value :: mode
-    end function
-
-    function dlsym(handle,name) bind(c,name="dlsym")
-       ! void *dlsym(void *handle, const char *name);
-       use iso_c_binding
-       implicit none
-       type(c_funptr) :: dlsym
-       type(c_ptr), value :: handle
-       character(c_char), intent(in) :: name(*)
-    end function
-
-    function dlclose(handle) bind(c,name="dlclose")
-       ! int dlclose(void *handle);
-       use iso_c_binding
-       implicit none
-       integer(c_int) :: dlclose
-       type(c_ptr), value :: handle
-    end function
-  end interface
-
 contains
 
 !BOP
 
- subroutine child_setservice(GC, RC)
-    use :: iso_c_binding
-    implicit none
-    type(ESMF_GridComp)  :: GC  ! gridded component
-    integer, intent(out)                  :: RC  ! return code
-    character(len=ESMF_MAXSTR)         :: shared_lib
-    character(len=ESMF_MAXSTR)         :: proc_name
-    character(len=ESMF_MAXSTR)         :: Iam
-    type(c_funptr) :: proc_addr
-    type(c_ptr) :: handle
-    integer(c_int) :: status
-
-    procedure(setservice_interface), bind(c), pointer :: proc
-
-    Iam = "child_setservice"
-    shared_lib = "libGEOSvegdyn_GridComp.so"
-    proc_name  = "vegdyn_setservices"
-
-    handle=dlopen(trim(shared_lib)//c_null_char, RTLD_LAZY)
-    if (.not. c_associated(handle))then
-        print*, 'Unable to load shared lib '//trim(shared_lib)
-        stop
-    end if
-    !
-    proc_addr=dlsym(handle, trim(proc_name)//c_null_char)
-    if (.not. c_associated(proc_addr))then
-        write(*,*) 'Unable to load the procedure '//trim(shared_lib)//":"//trim(proc_name)
-        stop
-    end if
-
-    call c_f_procpointer( proc_addr, proc )
-    call proc(GC,RC=status)
-    VERIFY_(STATUS)
-
-    RETURN_(ESMF_SUCCESS)
- end subroutine child_setservice
 ! !IROUTINE: SetServices -- Sets ESMF services for this component
 
 ! !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
 
@@ -161,6 +86,10 @@ contains
     character(len=ESMF_MAXSTR)              :: TMP
     type(MAPL_MetaComp),pointer             :: MAPL=>null()
     INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
+
+    character(len=ESMF_MAXSTR)              :: vegdyn_sharedObj
+    character(len=ESMF_MAXSTR)              :: catch_sharedObj
+    character(len=ESMF_MAXSTR)              :: catchcn_sharedObj
 
 !=============================================================================
 
@@ -214,7 +143,12 @@ contains
 !------------------------------------------------------------
 
     !VEGDYN  = MAPL_AddChild(GC, NAME='VEGDYN'//trim(tmp), SS=VegdynSetServices, RC=STATUS)
-    VEGDYN  = MAPL_AddChild(GC, NAME='VEGDYN'//trim(tmp), SS=child_setservice, RC=STATUS)
+    !VEGDYN  = MAPL_AddChild(GC, NAME='VEGDYN'//trim(tmp), SS=child_setservice, RC=STATUS)
+
+    call ESMF_ConfigGetAttribute ( CF, vegdyn_sharedObj, Label="VEGYDYN.SETSERVICES:", default='libGEOSvegdyn_GridComp.so', RC=STATUS)
+    VERIFY_(STATUS)
+
+    VEGDYN  = MAPL_AddChild(GC, NAME='VEGDYN'//trim(tmp), procName='setservices', sharedObj=trim(vegdyn_sharedObj), RC=STATUS)
     VERIFY_(STATUS)
 
 ! Get CHOICE OF  Land Surface Model (1:Catch, 2:Catch-CN)
@@ -233,13 +167,19 @@ contains
        allocate (CATCH(NUM_CATCH), stat=status)
        VERIFY_(STATUS)
        if (NUM_CATCH == 1) then
-          CATCH(1) = MAPL_AddChild(GC, NAME='CATCH'//trim(tmp), SS=CatchSetServices, RC=STATUS)
+          !CATCH(1) = MAPL_AddChild(GC, NAME='CATCH'//trim(tmp), SS=CatchSetServices, RC=STATUS)
+          call ESMF_ConfigGetAttribute ( CF, catch_sharedObj, Label="CATCH.SETSERVICES:", default='libGEOScatch_GridComp.so', RC=STATUS)
+          VERIFY_(STATUS)
+          CATCH(1) = MAPL_AddChild(GC, NAME='CATCH'//trim(tmp), procName='setservices', sharedObj= trim(catch_sharedObj), RC=STATUS)
           VERIFY_(STATUS)
        else
           do I = 1, NUM_CATCH
              WRITE(TMP,'(I3.3)') I
              GCName  = 'ens' // trim(TMP) // ':CATCH'
-             CATCH(I) = MAPL_AddChild(GC, NAME=GCName, SS=CatchSetServices, RC=STATUS)
+            ! CATCH(I) = MAPL_AddChild(GC, NAME=GCName, SS=CatchSetServices, RC=STATUS)
+             call ESMF_ConfigGetAttribute ( CF, catch_sharedObj, Label="CATCH.SETSERVICES:", default='libGEOScatch_GridComp.so', RC=STATUS)
+             VERIFY_(STATUS)
+             CATCH(I) = MAPL_AddChild(GC, NAME=GCName, procName='setservices', sharedObj=trim(catch_sharedObj), RC=STATUS)
              VERIFY_(STATUS)
           end do
        end if
@@ -249,13 +189,18 @@ contains
        allocate (CATCHCN(NUM_CATCH), stat=status)
        VERIFY_(STATUS)
        if (NUM_CATCH == 1) then
-          CATCHCN(1) = MAPL_AddChild(GC, NAME='CATCHCN'//trim(tmp), SS=CatchCNSetServices, RC=STATUS)
+          call ESMF_ConfigGetAttribute ( CF, catchcn_sharedObj, Label="CATCHCN.SETSERVICES:", default='libGEOScatchCN_GridComp.so', RC=STATUS)
+          VERIFY_(STATUS)
+          CATCHCN(1) = MAPL_AddChild(GC, NAME='CATCHCN'//trim(tmp), procName='setservices', sharedObj=trim(catchcn_sharedObj), RC=STATUS)
+          !CATCHCN(1) = MAPL_AddChild(GC, NAME='CATCHCN'//trim(tmp), SS=CatchCNSetServices, RC=STATUS)
           VERIFY_(STATUS)
        else
           do I = 1, NUM_CATCH
              WRITE(TMP,'(I3.3)') I
              GCName  = 'ens' // trim(TMP) // ':CATCHCN'
-             CATCHCN(I) = MAPL_AddChild(GC, NAME=GCName, SS=CatchCNSetServices, RC=STATUS)
+             call ESMF_ConfigGetAttribute ( CF, catchcn_sharedObj, Label="LAND.CATCHCN.SETSERVICES:", default='libGEOScatchCN_GridComp.so', RC=STATUS)
+             VERIFY_(STATUS)
+             CATCHCN(I) = MAPL_AddChild(GC, NAME=GCName, procName='setservices', sharedObj=trim(catchcn_sharedObj), RC=STATUS)
              VERIFY_(STATUS)
           end do
        end if

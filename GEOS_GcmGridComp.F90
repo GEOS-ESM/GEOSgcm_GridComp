@@ -17,7 +17,7 @@ module GEOS_GcmGridCompMod
    use MAPL_Mod
 
    use GEOS_dataatmGridCompMod,  only:  DATAATM_SetServices => SetServices
-   use GEOS_AgcmGridCompMod,     only:  AGCM_SetServices => SetServices
+!   use GEOS_AgcmGridCompMod,     only:  AGCM_SetServices => SetServices
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
    use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
    use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices
@@ -29,7 +29,7 @@ module GEOS_GcmGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
   integer            :: NUM_ICE_CATEGORIES
   integer            :: NUM_ICE_LAYERS
@@ -88,12 +88,12 @@ contains
 
 ! !INTERFACE:
 
-    subroutine SetServices ( GC, RC )
+    subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
 
     type(ESMF_GridComp) :: GC  ! gridded component
-    integer, intent(out)               :: RC  ! return code
+    integer, intent(out) :: RC  ! return code
 
 ! !DESCRIPTION:  The SetServices for the PhysicsGcm GC needs to register its
 !   Initialize and Run.  It uses the MAPL\_Generic construct for defining 
@@ -133,6 +133,7 @@ contains
     integer                             :: REPLAY_FILE_FREQUENCY
     integer                             :: REPLAY_BKGAVE
 
+    character(len=ESMF_MAXSTR)          :: agcm_sharedObj
 !=============================================================================
 
 ! Begin...
@@ -211,7 +212,10 @@ contains
        AGCM = MAPL_AddChild(GC, NAME='DATAATM', SS=DATAATM_SetServices, RC=STATUS)
        VERIFY_(STATUS)
     else
-       AGCM = MAPL_AddChild(GC, NAME='AGCM', SS=Agcm_SetServices, RC=STATUS)
+       call MAPL_GetResource ( MAPL, agcm_sharedObj,       Label="AGCM.SETSERVICES:" , DEFAULT="libGEOSagcm_GridComp.so", RC=STATUS)
+       VERIFY_(STATUS)
+       !AGCM = MAPL_AddChild(GC, NAME='AGCM', SS=Agcm_SetServices, RC=STATUS)
+       AGCM = MAPL_AddChild(GC, NAME='AGCM', procName="setservices", sharedObj=agcm_SharedObj, RC=STATUS)
        VERIFY_(STATUS)
        AIAU = MAPL_AddChild(GC, NAME='AIAU', SS=AIAU_SetServices, RC=STATUS)
        VERIFY_(STATUS)

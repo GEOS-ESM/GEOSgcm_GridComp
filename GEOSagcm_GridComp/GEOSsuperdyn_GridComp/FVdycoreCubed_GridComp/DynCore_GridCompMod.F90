@@ -70,7 +70,7 @@
   integer :: NXQ = 0
   logical :: overwrite_Q = .true.
 
-  public  SetServices      ! Register component methods
+!  public  SetServices      ! Register component methods
 
 ! !DESCRIPTION: This module implements the Dynamical Core as
 !               an ESMF gridded component.
@@ -315,7 +315,7 @@ contains
 !
 ! !INTERFACE:
 
-   Subroutine SetServices ( gc, rc )
+   Subroutine SetServices ( gc, rc ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
 

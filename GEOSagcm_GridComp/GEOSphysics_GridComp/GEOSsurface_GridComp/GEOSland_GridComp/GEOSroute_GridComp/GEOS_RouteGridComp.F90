@@ -62,7 +62,7 @@ module GEOS_RouteGridCompMod
   
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 !EOP
 

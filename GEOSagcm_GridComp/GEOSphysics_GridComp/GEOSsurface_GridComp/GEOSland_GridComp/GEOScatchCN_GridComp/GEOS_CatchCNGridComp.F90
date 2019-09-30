@@ -69,7 +69,7 @@ private
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-public SetServices
+!public SetServices
 
 !
 !EOP
@@ -177,7 +177,7 @@ contains
 ! !IROUTINE: SetServices -- Sets ESMF services for component
 ! !INTERFACE:
 
-subroutine SetServices ( GC, RC )
+subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
 

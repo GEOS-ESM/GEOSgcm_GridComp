@@ -133,7 +133,7 @@ module GEOS_MoistGridCompMod
 
   ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
   ! !DESCRIPTION:
   ! 
@@ -157,7 +157,7 @@ contains
 
   ! !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
     ! !ARGUMENTS:
 

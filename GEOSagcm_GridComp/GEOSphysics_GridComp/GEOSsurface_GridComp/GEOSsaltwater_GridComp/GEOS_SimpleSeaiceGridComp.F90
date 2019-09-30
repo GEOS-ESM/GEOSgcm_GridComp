@@ -36,7 +36,7 @@ module GEOS_SimpleSeaiceGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+  !public SetServices
 
 !EOP
 
@@ -52,7 +52,7 @@ module GEOS_SimpleSeaiceGridCompMod
 
 ! !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="simpleseaice_setservices")
 
     !ARGUMENTS:
 

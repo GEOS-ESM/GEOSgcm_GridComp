@@ -20,12 +20,12 @@ module GEOS_PhysicsGridCompMod
   use m_chars,  only: uppercase
   use stoch_module
 
-  use GEOS_SurfaceGridCompMod,    only : SurfSetServices      => SetServices
-  use GEOS_MoistGridCompMod,      only : MoistSetServices     => SetServices
-  use GEOS_TurbulenceGridCompMod, only : TurblSetServices     => SetServices
-  use GEOS_RadiationGridCompMod,  only : RadiationSetServices => SetServices
+!  use GEOS_SurfaceGridCompMod,    only : SurfSetServices      => SetServices
+!  use GEOS_MoistGridCompMod,      only : MoistSetServices     => SetServices
+!  use GEOS_TurbulenceGridCompMod, only : TurblSetServices     => SetServices
+!  use GEOS_RadiationGridCompMod,  only : RadiationSetServices => SetServices
   use GEOS_ChemGridCompMod,       only : AChemSetServices     => SetServices
-  use GEOS_GwdGridCompMod,        only : GwdSetServices       => SetServices
+!  use GEOS_GwdGridCompMod,        only : GwdSetServices       => SetServices
 
   use GEOS_UtilsMod, only: GEOS_Qsat
 
@@ -40,7 +40,7 @@ module GEOS_PhysicsGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 !=============================================================================
 
@@ -80,7 +80,7 @@ contains
 
 ! !INTERFACE:
 
-    subroutine SetServices ( GC, RC )
+    subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
 
@@ -113,6 +113,14 @@ contains
     integer                                 :: DO_OBIO, DO_CO2CNNEE, DO_CO2SC
 
     real                                    :: SYNCTQ
+
+    character(len=ESMF_MAXSTR)              :: surface_sharedObj
+    character(len=ESMF_MAXSTR)              :: moist_sharedObj
+    character(len=ESMF_MAXSTR)              :: turbulence_sharedObj
+    character(len=ESMF_MAXSTR)              :: chem_sharedObj
+    character(len=ESMF_MAXSTR)              :: gwd_sharedObj
+    character(len=ESMF_MAXSTR)              :: radiation_sharedObj
+
 !=============================================================================
 
 ! Begin...
@@ -140,17 +148,36 @@ contains
 ! a change to put the fields in the AERO_DP bundle. Otherwise when
 ! surface reads the import restart AERO_DP will be empty and it will
 ! not be properly restarted
-    GWD = MAPL_AddChild(GC, NAME='GWD', SS=GwdSetServices, RC=STATUS)
+
+    call ESMF_ConfigGetAttribute ( CF, gwd_sharedObj, Label="GWD.SETSERVICES:", default='libGEOSgwd_GridComp.so', RC=STATUS)
+    VERIFY_(STATUS) 
+    call ESMF_ConfigGetAttribute ( CF, moist_sharedObj, Label="MOIST.SETSERVICES:", default='libGEOSmoist_GridComp.so', RC=STATUS)
+    VERIFY_(STATUS) 
+    call ESMF_ConfigGetAttribute ( CF, chem_sharedObj, Label="CHEM.SETSERVICES:", default='libGEOSchem_GridComp.so', RC=STATUS)
+    VERIFY_(STATUS) 
+    call ESMF_ConfigGetAttribute ( CF, turbulence_sharedObj, Label="TURBULENCE.SETSERVICES:", default='libGEOSturbulence_GridComp.so', RC=STATUS)
+    VERIFY_(STATUS) 
+    call ESMF_ConfigGetAttribute ( CF, surface_sharedObj, Label="SURFACE.SETSERVICES:", default='libGEOSsurface_GridComp.so', RC=STATUS)
+    VERIFY_(STATUS) 
+    call ESMF_ConfigGetAttribute ( CF, radiation_sharedObj, Label="RADIATION.SETSERVICES:", default='libGEOSradiation_GridComp.so', RC=STATUS)
+    VERIFY_(STATUS) 
+
+    !GWD = MAPL_AddChild(GC, NAME='GWD', SS=GwdSetServices, RC=STATUS)
+    GWD = MAPL_AddChild(GC, NAME='GWD', procName='setservices', sharedObj=gwd_sharedObj, RC=STATUS)
     VERIFY_(STATUS)
-    MOIST = MAPL_AddChild(GC, NAME='MOIST', SS=MoistSetServices, RC=STATUS)
+    !MOIST = MAPL_AddChild(GC, NAME='MOIST', SS=MoistSetServices, RC=STATUS)
+    MOIST = MAPL_AddChild(GC, NAME='MOIST', procName='setservices', sharedObj=moist_sharedObj, RC=STATUS)
     VERIFY_(STATUS)
-    TURBL = MAPL_AddChild(GC, NAME='TURBULENCE', SS=TurblSetServices, RC=STATUS)
+    !TURBL = MAPL_AddChild(GC, NAME='TURBULENCE', SS=TurblSetServices, RC=STATUS)
+    TURBL = MAPL_AddChild(GC, NAME='TURBULENCE', procName='setservices', sharedObj=turbulence_sharedObj, RC=STATUS)
     VERIFY_(STATUS)
     CHEM = MAPL_AddChild(GC, NAME='CHEMISTRY', SS=AChemSetServices, RC=STATUS)
     VERIFY_(STATUS)
-    SURF = MAPL_AddChild(GC, NAME='SURFACE', SS=SurfSetServices, RC=STATUS)
+    !SURF = MAPL_AddChild(GC, NAME='SURFACE', SS=SurfSetServices, RC=STATUS)
+    SURF = MAPL_AddChild(GC, NAME='SURFACE', procName='setservices', sharedObj=surface_sharedObj, RC=STATUS)
     VERIFY_(STATUS)
-    RAD = MAPL_AddChild(GC, NAME='RADIATION', SS=RadiationSetServices, RC=STATUS)
+    !RAD = MAPL_AddChild(GC, NAME='RADIATION', SS=RadiationSetServices, RC=STATUS)
+    RAD = MAPL_AddChild(GC, NAME='RADIATION', procName='setservices', sharedObj=radiation_sharedObj, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Set the state variable specs.

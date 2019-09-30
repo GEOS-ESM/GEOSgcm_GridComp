@@ -15,15 +15,15 @@
 
       use ESMF
       use MAPL_Mod
-      use AdvCore_GridCompMod,    only : AdvCoreSetServices   => SetServices
-      use FVdycoreCubed_GridComp, only : DynCoreSetServices   => SetServices
+!      use AdvCore_GridCompMod,    only : AdvCoreSetServices   => SetServices
+!      use FVdycoreCubed_GridComp, only : DynCoreSetServices   => SetServices
 
       implicit none
       private
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-      public SetServices
+!      public SetServices
 !
       integer :: DynCore  = -1
       integer :: AdvCore  = -1
@@ -45,7 +45,7 @@ contains
 !
 ! !INTERFACE:
 !
-      subroutine SetServices(GC, rc)
+      subroutine SetServices(GC, rc) bind(c, name="dynadv_setservices")
 !
 ! !ARGUMENTS:
       type(ESMF_GridComp) :: GC
@@ -63,6 +63,9 @@ contains
       character(len=ESMF_MAXSTR)              :: IAm
       integer                                 :: STATUS
       character(len=ESMF_MAXSTR)              :: COMP_NAME
+      type (MAPL_MetaComp),      pointer      :: MAPL
+      character(len=ESMF_MAXSTR)              :: advcore_sharedObj
+      character(len=ESMF_MAXSTR)              :: dyncore_sharedObj
 
 !=============================================================================
 
@@ -74,6 +77,9 @@ contains
       call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
       VERIFY_(STATUS)
       Iam = trim(COMP_NAME) // 'SetServices'
+
+      call MAPL_GetObjectFromGC (GC, MAPL,  RC=STATUS )
+      VERIFY_(STATUS)
 
 ! Register methods with MAPL
 ! --------------------------
@@ -87,11 +93,18 @@ contains
 
       ! Create childrens gridded components and invoke their SetServices
       !-----------------------------------------------------------------
-
-      DynCore = MAPL_AddChild(GC, NAME='DYN',   SS=DynCoreSetServices, RC=status)
+      call MAPL_GetResource(MAPL, dyncore_sharedObj, 'FV3.SETSERVICES:', default="libFVdycoreCubed_GridComp.so", RC=STATUS )
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, advcore_sharedObj, 'ADV.SETSERVICES:', default="libFVdycoreCubed_GridComp.so", RC=STATUS )
       VERIFY_(STATUS)
 
-      AdvCore = MAPL_AddChild(GC, NAME='ADV',   SS=AdvCoreSetServices, RC=status)
+
+      !DynCore = MAPL_AddChild(GC, NAME='DYN',   SS=DynCoreSetServices, RC=status)
+      DynCore = MAPL_AddChild(GC, NAME='DYN',  procName="setservices", sharedObj=dyncore_sharedObj, RC=status)
+      VERIFY_(STATUS)
+
+      !AdvCore = MAPL_AddChild(GC, NAME='ADV',   SS=AdvCoreSetServices, RC=status)
+      AdvCore=MAPL_AddChild(GC,NAME='ADV',procName="advcore_setservices", sharedObj=advcore_sharedObj, RC=status)
       VERIFY_(STATUS)
 
       call MAPL_TimerAdd(GC, name="INITIALIZE"    ,RC=STATUS)

@@ -5,7 +5,7 @@
 
 program StandAlone_FV3_Dycore
    use MAPL_Mod
-   use FVdycoreCubed_GridComp,      only: SetServices
+!   use FVdycoreCubed_GridComp,      only: SetServices
    use MAPL_CapOptionsMod
    use MAPL_FlapCapOptionsMod
    implicit none
@@ -22,7 +22,11 @@ program StandAlone_FV3_Dycore
 
    cap_options = MAPL_FlapCapOptions(description = 'FV Standalone Dycore',&
                                      authors      =  'S.J. Lin, R. Rood, W. Putman')
-   cap = MAPL_Cap('GCM', SetServices, cap_options = cap_options)
+   !cap = MAPL_Cap('GCM', SetServices, cap_options = cap_options)
+   ! comment this out and configure in command line
+   cap_options%shared_obj='libFVdycoreCubed_GridComp.so'
+   cap_options%proc_name="setservices"
+   cap = MAPL_Cap('GCM', cap_options = cap_options)
    call cap%run(_RC)
 
  end Program StandAlone_FV3_Dycore

@@ -34,9 +34,9 @@ module GEOS_SaltwaterGridCompMod
   use GEOS_UtilsMod
   !use DragCoefficientsMod
 
-  use GEOS_OpenwaterGridCompMod,            only : OpenWaterSetServices       => SetServices
-  use GEOS_SimpleSeaiceGridCompMod,         only : SimpleSeaiceSetServices    => SetServices
-  use GEOS_CICE4ColumnPhysGridComp,         only : CICE4ColumnPhysSetServices => SetServices
+ ! use GEOS_OpenwaterGridCompMod,            only : OpenWaterSetServices       => SetServices
+ ! use GEOS_SimpleSeaiceGridCompMod,         only : SimpleSeaiceSetServices    => SetServices
+ ! use GEOS_CICE4ColumnPhysGridComp,         only : CICE4ColumnPhysSetServices => SetServices
   
 
   implicit none
@@ -44,7 +44,7 @@ module GEOS_SaltwaterGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+  !public SetServices
 
 !EOP
 
@@ -75,7 +75,7 @@ module GEOS_SaltwaterGridCompMod
 
 ! !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
     !ARGUMENTS:
 
@@ -111,6 +111,9 @@ module GEOS_SaltwaterGridCompMod
     integer                                 :: DO_CICE_THERMO  ! default (=0) is to run saltwater, with no LANL CICE Thermodynamics
 !!$    integer                                 :: DO_GUEST        ! default (=0) is to run saltwater, with Data (fake) ocean, i.e., SST and SSS from existing data products
 
+    character(len=ESMF_MAXSTR)              :: openwater_sharedObj
+    character(len=ESMF_MAXSTR)              :: simpleseaice_sharedObj
+    character(len=ESMF_MAXSTR)              :: CICE4column_sharedObj
 
 !=============================================================================
 
@@ -155,15 +158,27 @@ module GEOS_SaltwaterGridCompMod
     ! sea-ice first and openwater second 
     ! changing order requires also changing indices of ICE and WATER (sub-tiles at the top)
     if(DO_CICE_THERMO /= 0) then
-       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=CICE4ColumnPhysSetServices, RC=STATUS)
+      ! I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=CICE4ColumnPhysSetServices, RC=STATUS)
+      ! VERIFY_(STATUS)
+       call MAPL_GetResource ( MAPL, CICE4Column_sharedObj, Label="CICE4COLUMNPHYS.SETSERVICES:",DEFAULT="libGEOSsaltwater_GridComp.so", RC=STATUS)
+       VERIFY_(STATUS)
+       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', procName="cice4column_setservices", sharedObj=CICE4Column_sharedObj, RC=STATUS)
        VERIFY_(STATUS)
     else
-       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=SimpleSeaiceSetServices,    RC=STATUS)
+       !I = MAPL_AddChild(GC, NAME='SEAICETHERMO', SS=SimpleSeaiceSetServices,    RC=STATUS)
+       !VERIFY_(STATUS)
+       call MAPL_GetResource ( MAPL, simpleseaice_sharedObj, Label="SIMPLESEAICE.SETSERVICES:",DEFAULT="libGEOSsaltwater_GridComp.so", RC=STATUS)
+       VERIFY_(STATUS)
+       I = MAPL_AddChild(GC, NAME='SEAICETHERMO', procName="simpleseaice_setservices", sharedObj=simpleseaice_sharedObj, RC=STATUS)
        VERIFY_(STATUS)
     endif  
 
-    I = MAPL_AddChild(GC,    NAME='OPENWATER'   , SS=OpenWaterSetServices   ,    RC=STATUS)
+    call MAPL_GetResource ( MAPL, openwater_sharedObj, Label="OPENWATER.SETSERVICES:",DEFAULT="libGEOSsaltwater_GridComp.so", RC=STATUS)
     VERIFY_(STATUS)
+    I = MAPL_AddChild(GC, NAME='OPENWATER', procName="openwater_setservices", sharedObj=openwater_sharedObj, RC=STATUS)
+    VERIFY_(STATUS)
+    !I = MAPL_AddChild(GC,    NAME='OPENWATER'   , SS=OpenWaterSetServices   ,    RC=STATUS)
+    !VERIFY_(STATUS)
 
 ! Set the state variable specs.
 ! -----------------------------

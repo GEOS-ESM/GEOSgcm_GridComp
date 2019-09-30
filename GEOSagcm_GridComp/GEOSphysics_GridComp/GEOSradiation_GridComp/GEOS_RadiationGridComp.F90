@@ -44,16 +44,16 @@ module GEOS_RadiationGridCompMod
   use ESMF
   use MAPL_Mod
 
-  use GEOS_SolarGridCompMod,  only : solarSetServices  => SetServices
-  use GEOS_IrradGridCompMod,  only : irradSetServices  => SetServices
-  use GEOS_SatsimGridCompMod, only : satsimSetServices => SetServices
+!  use GEOS_SolarGridCompMod,  only : solarSetServices  => SetServices
+!  use GEOS_IrradGridCompMod,  only : irradSetServices  => SetServices
+!  use GEOS_SatsimGridCompMod, only : satsimSetServices => SetServices
 
   implicit none
   private
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 !EOP
 
@@ -69,7 +69,7 @@ module GEOS_RadiationGridCompMod
 
 ! !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
 
@@ -116,6 +116,9 @@ module GEOS_RadiationGridCompMod
     integer                                 :: I
     type (MAPL_MetaComp),      pointer      :: MAPL
 
+    character(len=ESMF_MAXSTR)              :: solar_sharedObj
+    character(len=ESMF_MAXSTR)              :: irrad_sharedObj
+    character(len=ESMF_MAXSTR)              :: satsim_sharedObj
 
 ! Begin...
 
@@ -141,9 +144,16 @@ module GEOS_RadiationGridCompMod
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=STATUS)
     VERIFY_(STATUS)
 
-    SOL = MAPL_AddChild(GC, NAME='SOLAR', SS=solarSetServices, RC=STATUS)
+    call MAPL_GetResource(MAPL,solar_sharedObj,LABEL="SOLAR.SETSERVICES:",default="libGEOSsolar_GridComp.so",   RC=STATUS)
     VERIFY_(STATUS)
-    IRR = MAPL_AddChild(GC, NAME='IRRAD', SS=irradSetServices, RC=STATUS)
+    call MAPL_GetResource(MAPL,irrad_sharedObj,LABEL="IRRAD.SETSERVICES:",default="libGEOSirrad_GridComp.so",   RC=STATUS)
+    VERIFY_(STATUS)
+
+    !SOL = MAPL_AddChild(GC, NAME='SOLAR', SS=solarSetServices, RC=STATUS)
+    SOL = MAPL_AddChild(GC, NAME='SOLAR', procName='setservices', sharedObj=solar_sharedObj, RC=STATUS)
+    VERIFY_(STATUS)
+    !IRR = MAPL_AddChild(GC, NAME='IRRAD', SS=irradSetServices, RC=STATUS)
+    IRR = MAPL_AddChild(GC, NAME='IRRAD', procName='setservices', sharedObj=irrad_sharedObj, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource(MAPL,USE_SATSIM,LABEL="USE_SATSIM:",default=0,   RC=STATUS)
@@ -169,7 +179,10 @@ module GEOS_RadiationGridCompMod
    USE_SATSIM = USE_SATSIM + USE_SATSIM_ISCCP + USE_SATSIM_MODIS + USE_SATSIM_RADAR + USE_SATSIM_LIDAR + USE_SATSIM_MISR 
 
    if (USE_SATSIM > 0 ) then
-       STM = MAPL_AddChild(GC, NAME='SATSIM', SS=satsimSetServices, RC=STATUS)
+       call MAPL_GetResource(MAPL,satsim_sharedObj,LABEL="SATSIM.SETSERVICES:",default="libGEOSsatsim_GridComp.so",   RC=STATUS)
+       VERIFY_(STATUS)
+       !STM = MAPL_AddChild(GC, NAME='SATSIM', SS=satsimSetServices, RC=STATUS)
+       STM = MAPL_AddChild(GC, NAME='SATSIM', procName='setservices', sharedObj=satsim_sharedObj, RC=STATUS)
        VERIFY_(STATUS)
    end if    
 

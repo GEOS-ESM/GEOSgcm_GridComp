@@ -20,7 +20,7 @@
   implicit none
   private
 
-  public  SetServices      ! Register component methods
+!  public  SetServices      ! Register component methods
 !EOP
 
 contains
@@ -41,7 +41,7 @@ contains
 !
 ! !INTERFACE:
 
-   Subroutine SetServices ( gc, rc )
+   Subroutine SetServices ( gc, rc ) bind(c, name="createinterp_setservices")
 
 ! !ARGUMENTS:
 

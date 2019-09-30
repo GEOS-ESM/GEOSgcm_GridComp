@@ -16,18 +16,18 @@ module GEOS_SuperdynGridCompMod
   use ESMF
   use MAPL_Mod
 
-  use FVdycore_GridCompMod,     only :    FV_SetServices => SetServices
-  use FVdycoreCubed_GridComp,   only :   FV3_SetServices => SetServices
-  use ARIESg3_GridCompMod,      only : ARIES_SetServices => SetServices
-  use GEOS_DatmoDynGridCompMod, only : DATMO_SetServices => SetServices
-  use AdvCore_GridCompMod,      only :   ADV_SetServices => SetServices
+!  use FVdycore_GridCompMod,     only :    FV_SetServices => SetServices
+!  use FVdycoreCubed_GridComp,   only :   FV3_SetServices => SetServices
+!  use ARIESg3_GridCompMod,      only : ARIES_SetServices => SetServices
+!  use GEOS_DatmoDynGridCompMod, only : DATMO_SetServices => SetServices
+!  use AdvCore_GridCompMod,      only :   ADV_SetServices => SetServices
 
   implicit none
   private
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 ! !DESCRIPTION: This gridded component (GC) combines the Dynamics GC and
 !   the Gravity Wave Drag GC into a new composite SuperDyn GC.
@@ -82,7 +82,7 @@ integer ::          ADV = -1
 
 ! !INTERFACE:
 
-    subroutine SetServices ( GC, RC )
+    subroutine SetServices ( GC, RC ) bind(c, name='setservices')
 
 ! !ARGUMENTS:
 
@@ -107,6 +107,11 @@ integer ::          ADV = -1
     type (MAPL_MetaComp),      pointer      :: MAPL
     character(len=ESMF_MAXSTR)              :: DYCORE
 
+    character(len=ESMF_MAXSTR)              :: fv_sharedObj
+    character(len=ESMF_MAXSTR)              :: fv3_sharedObj
+    character(len=ESMF_MAXSTR)              :: ARIES_sharedObj
+    character(len=ESMF_MAXSTR)              :: DATMO_sharedObj
+    character(len=ESMF_MAXSTR)              :: ADV_sharedObj
 
 !=============================================================================
 
@@ -141,26 +146,43 @@ integer ::          ADV = -1
 !EOR
     VERIFY_(STATUS)
 
+    call MAPL_GetResource(MAPL, fv_sharedObj, 'FV.SETSERVICES:', default="libFVdycore_GridComp.so", RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, fv3_sharedObj, 'FV3.SETSERVICES:', default="libFVdycoreCubed_GridComp.so", RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, ARIES_sharedObj, 'ARIES.SETSERVICES:', default="libARIESg3_GridComp.so ", RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, DATMO_sharedObj, 'DATMO.SETSERVICES:', default="libGEOSdatmodyn_GridComp.so", RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, ADV_sharedObj, 'ADV.SETSERVICES:', default="libFVdycoreCubed_GridComp.so", RC=STATUS )
+    VERIFY_(STATUS)
+
     if(adjustl(DYCORE)=="FV"   ) then
-                  DYN =  MAPL_AddChild(GC, NAME='DYN', SS=   FV_SetServices, RC=STATUS)
+                  !DYN =  MAPL_AddChild(GC, NAME='DYN', SS=   FV_SetServices, RC=STATUS)
+                  DYN =  MAPL_AddChild(GC, NAME='DYN', procName='setservices', sharedObj=fv_sharedObj, RC=STATUS)
                   VERIFY_(STATUS)
     endif
     if(adjustl(DYCORE)=="FV3"  ) then
-                  DYN =  MAPL_AddChild(GC, NAME='DYN', SS=  FV3_SetServices, RC=STATUS)
+                  !DYN =  MAPL_AddChild(GC, NAME='DYN', SS=  FV3_SetServices, RC=STATUS)
+                  DYN =  MAPL_AddChild(GC, NAME='DYN', procName='setservices', sharedObj=fv3_sharedObj, RC=STATUS)
                   VERIFY_(STATUS)
     endif
     if(adjustl(DYCORE)=="FV3+ADV"  ) then
-                  DYN =  MAPL_AddChild(GC, NAME='DYN', SS=  FV3_SetServices, RC=STATUS)
+                  !DYN =  MAPL_AddChild(GC, NAME='DYN', SS=  FV3_SetServices, RC=STATUS)
+                  DYN =  MAPL_AddChild(GC, NAME='DYN', procName='setservices', sharedObj=fv3_sharedObj, RC=STATUS)
                   VERIFY_(STATUS)
-                  ADV =  MAPL_AddChild(GC, NAME='ADV', SS=  ADV_SetServices, RC=STATUS)
+                  !ADV =  MAPL_AddChild(GC, NAME='ADV', SS=  ADV_SetServices, RC=STATUS)
+                  ADV =  MAPL_AddChild(GC, NAME='ADV', procName='advcore_setservices', sharedObj=ADV_sharedObj, RC=STATUS)
                   VERIFY_(STATUS)
     endif
     if(adjustl(DYCORE)=="ARIES") then
-                  DYN =  MAPL_AddChild(GC, NAME='DYN', SS=ARIES_SetServices, RC=STATUS)
+                  !DYN =  MAPL_AddChild(GC, NAME='DYN', SS=ARIES_SetServices, RC=STATUS)
+                  DYN =  MAPL_AddChild(GC, NAME='DYN', procName='setservices', sharedObj=ARIES_sharedObj, RC=STATUS)
                   VERIFY_(STATUS)
     endif
     if(adjustl(DYCORE)=="DATMO") then
-                  DYN =  MAPL_AddChild(GC, NAME='DYN', SS=DATMO_SetServices, RC=STATUS)
+                  !DYN =  MAPL_AddChild(GC, NAME='DYN', SS=DATMO_SetServices, RC=STATUS)
+                  DYN =  MAPL_AddChild(GC, NAME='DYN', procName='setservices', sharedObj=DATMO_sharedObj, RC=STATUS)
                   VERIFY_(STATUS)
     endif
 

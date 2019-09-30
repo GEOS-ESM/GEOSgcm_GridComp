@@ -34,9 +34,9 @@ module GEOS_AgcmGridCompMod
   use MAPL_Mod
   use GEOS_TopoGetMod
 
-  use GEOS_superdynGridCompMod,  only:  SDYN_SetServices => SetServices
-  use GEOS_physicsGridCompMod,   only:  PHYS_SetServices => SetServices
-  use MAPL_OrbGridCompMod,       only:  ORB_SetServices => SetServices
+!  use GEOS_superdynGridCompMod,  only:  SDYN_SetServices => SetServices
+!  use GEOS_physicsGridCompMod,   only:  PHYS_SetServices => SetServices
+!  use MAPL_OrbGridCompMod,       only:  ORB_SetServices => SetServices
   use m_chars,                   only:  uppercase
   use MAPL_GridManagerMod, only: grid_manager
   use MAPL_RegridderManagerMod, only: regridder_manager
@@ -52,7 +52,7 @@ module GEOS_AgcmGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 !=============================================================================
 
@@ -115,7 +115,7 @@ contains
 
 ! !INTERFACE:
 
-    subroutine SetServices ( GC, RC )
+    subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
 
@@ -152,6 +152,9 @@ contains
     type (CONNECT_IAUcoeffs), pointer :: iau_coeffs_internal_state
     type (IAU_coeffs)                 :: wrap_iau_coeffs
 
+    character(len=ESMF_MAXSTR)              :: phys_sharedObj
+    character(len=ESMF_MAXSTR)              :: sdyn_sharedObj
+    character(len=ESMF_MAXSTR)              :: orb_sharedObj
 !=============================================================================
 
 ! Begin...
@@ -667,17 +670,29 @@ contains
 
 ! Create childrens gridded components and invoke their SetServices
 ! ----------------------------------------------------------------
-#ifdef SCM
-    SDYN = MAPL_AddChild(GC, NAME='SCMDYNAMICS', SS=SDYN_SetServices, RC=STATUS)
+   
+    call MAPL_GetResource(MAPL, sdyn_sharedObj, Label="SDYN.SETSERVICES:", default="libGEOSsuperdyn_GridComp.so", RC=STATUS)
     VERIFY_(STATUS)
-#else
-    SDYN = MAPL_AddChild(GC, NAME='SUPERDYNAMICS', SS=SDYN_SetServices, RC=STATUS)
+    call MAPL_GetResource(MAPL, phys_sharedObj, Label="PHYS.SETSERVICES:", default="libGEOSphysics_GridComp.so", RC=STATUS)
     VERIFY_(STATUS)
-#endif
-    PHYS = MAPL_AddChild(GC, NAME='PHYSICS', SS=PHYS_SetServices, RC=STATUS)
+    call MAPL_GetResource(MAPL, orb_sharedObj, Label="ORB.SETSERVICES:", default="libMAPL_Base.so", RC=STATUS)
     VERIFY_(STATUS)
 
-    ORB  = MAPL_AddChild(GC, NAME='ORBIT', SS=ORB_SetServices, RC=STATUS)
+#ifdef SCM
+    !SDYN = MAPL_AddChild(GC, NAME='SCMDYNAMICS', SS=SDYN_SetServices, RC=STATUS)
+    SDYN = MAPL_AddChild(GC, NAME='SCMDYNAMICS', procName="setservices", sharedObj=sdyn_sharedObj, RC=STATUS)
+    VERIFY_(STATUS)
+#else
+    !SDYN = MAPL_AddChild(GC, NAME='SUPERDYNAMICS', SS=SDYN_SetServices, RC=STATUS)
+    SDYN = MAPL_AddChild(GC, NAME='SUPERDYNAMICS', procName="setservices", sharedObj=sdyn_sharedObj, RC=STATUS)
+    VERIFY_(STATUS)
+#endif
+    !PHYS = MAPL_AddChild(GC, NAME='PHYSICS', SS=PHYS_SetServices, RC=STATUS)
+    PHYS = MAPL_AddChild(GC, NAME='PHYSICS', procName="setservices", sharedObj=phys_sharedObj, RC=STATUS)
+    VERIFY_(STATUS)
+
+    !ORB  = MAPL_AddChild(GC, NAME='ORBIT', SS=ORB_SetServices, RC=STATUS)
+    ORB  = MAPL_AddChild(GC, NAME='ORBIT', procName="orb_setservices", sharedObj=orb_sharedObj, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Export for IAU or Analysis purposes

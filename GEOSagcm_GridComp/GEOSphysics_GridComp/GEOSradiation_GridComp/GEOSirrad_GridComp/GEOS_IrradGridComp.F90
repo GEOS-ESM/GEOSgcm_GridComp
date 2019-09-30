@@ -130,7 +130,7 @@ module GEOS_IrradGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 !EOP
 
@@ -154,7 +154,7 @@ contains
 ! !IROUTINE: SetServices -- Sets ESMF services for this component
 
 ! !INTERFACE:
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
     type(ESMF_GridComp) :: GC  ! gridded component

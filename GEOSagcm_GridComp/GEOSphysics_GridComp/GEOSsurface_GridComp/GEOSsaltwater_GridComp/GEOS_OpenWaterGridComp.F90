@@ -83,7 +83,7 @@ module GEOS_OpenwaterGridCompMod
                                      ! works in both amip and coupled mode
   integer            :: DO_SKIN_LAYER
 
-  public SetServices
+  !public SetServices
 
 !EOP
 
@@ -100,7 +100,7 @@ module GEOS_OpenwaterGridCompMod
 
 ! !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="openwater_setservices")
 
     !ARGUMENTS:
 

@@ -23,7 +23,7 @@ module GEOS_DatmoDynGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 ! !DESCRIPTION:
 ! 
@@ -40,12 +40,12 @@ contains
 
 ! !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
 
     type(ESMF_GridComp) :: GC  ! gridded component
-    integer,             intent(  OUT) :: RC  ! return code
+    integer, intent(OUT) :: RC  ! return code
     
 ! !DESCRIPTION: This version uses the GEOS\_GenericSetServices. This function sets
 !                the Initialize and Finalize services, as well as allocating

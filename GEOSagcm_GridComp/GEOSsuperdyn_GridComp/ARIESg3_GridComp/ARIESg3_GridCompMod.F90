@@ -27,7 +27,7 @@
   implicit none
   private
 
-  public  SetServices      ! Register component methods
+!  public  SetServices      ! Register component methods
 
 ! !DESCRIPTION: This module implements the FVCAM Dynamical Core as
 !               an ESMF gridded component.
@@ -249,7 +249,7 @@ contains
  
 ! !INTERFACE:
 
-   Subroutine SetServices ( gc, rc )
+   Subroutine SetServices ( gc, rc ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
 

@@ -92,7 +92,7 @@ module AdvCore_GridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-      public SetServices
+!      public SetServices
       logical, allocatable, save :: grids_on_my_pe(:)
 
 !EOP
@@ -105,7 +105,7 @@ contains
 !
 ! !INTERFACE:
 !
-      subroutine SetServices(GC, rc)
+      subroutine SetServices(GC, rc) bind(c, name="advcore_setservices")
 !
 ! !ARGUMENTS:
       type(ESMF_GridComp) :: GC

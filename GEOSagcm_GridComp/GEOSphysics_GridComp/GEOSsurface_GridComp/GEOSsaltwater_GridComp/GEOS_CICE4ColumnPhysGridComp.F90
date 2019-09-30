@@ -60,7 +60,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+  !public SetServices
 
 !EOP
 
@@ -77,7 +77,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
 ! !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="cice4column_setservices")
 
     !ARGUMENTS:
 

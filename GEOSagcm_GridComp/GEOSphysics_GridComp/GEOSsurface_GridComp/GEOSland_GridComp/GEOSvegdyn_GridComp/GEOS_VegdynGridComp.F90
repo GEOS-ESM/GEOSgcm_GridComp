@@ -73,7 +73,7 @@ contains
 
 ! !INTERFACE:
 
-  subroutine SetServices ( GC, RC ) bind(c, name="vegdyn_setservices")
+  subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
 

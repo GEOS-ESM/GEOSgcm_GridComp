@@ -233,7 +233,7 @@ module GEOS_SolarGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 ! !GLOBAL PARAMETERS
   INTEGER, PARAMETER :: NB_CHOU_UV  = 5 ! Number of UV bands
@@ -269,7 +269,7 @@ contains
 
 ! !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
 ! !ARGUMENTS:
 

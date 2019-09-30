@@ -26,7 +26,7 @@ module GEOS_LakeGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+!  public SetServices
 
 ! !DESCRIPTION:
 ! 
@@ -42,7 +42,7 @@ module GEOS_LakeGridCompMod
 
 !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+  subroutine SetServices ( GC, RC ) bind(c, name="setservices")
 
     !ARGUMENTS:
     type(ESMF_GridComp) :: GC  ! gridded component

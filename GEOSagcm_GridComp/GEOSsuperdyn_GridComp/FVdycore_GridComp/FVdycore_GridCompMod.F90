@@ -187,7 +187,7 @@
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public  SetServices      ! Register component methods
+!  public  SetServices      ! Register component methods
 !EOP
 
 ! !REVISION HISTORY:
@@ -249,7 +249,7 @@ contains
 ! !IROUTINE: SetServices --- Set services for FVCAM Dynamical Core
  
   !INTERFACE:
-   Subroutine SetServices ( gc, rc )
+   Subroutine SetServices ( gc, rc ) bind(c, name="setservices")
 
      !ARGUMENTS:
      type(ESMF_GridComp) :: gc     ! gridded component
