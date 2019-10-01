@@ -1,7 +1,6 @@
 esma_set_this ()
 
 set (srcs
-  getco2.F90
   radconstants.F90
   gettau.F90
   )
