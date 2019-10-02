@@ -89,7 +89,7 @@
 !--------------------------------------
 
     allocate(xs(ncells+1,(ncells+1)*6), ys(ncells+1,(ncells+1)*6),stat=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 
     call Get_CubedSphere_Grid(ncells+1, (ncells+1)*6, xs, ys, 0, .true.)
@@ -100,7 +100,7 @@
 !------------------------------------------------
 
 !!$    allocate(xv(ncells,ncells*6,4), yv(ncells,ncells*6,4),stat=STATUS)
-!!$    VERIFY_(STATUS)
+!!$    _VERIFY(STATUS)
 !!$
 !!$    do n=0,5
 !!$       do j=1,ncells

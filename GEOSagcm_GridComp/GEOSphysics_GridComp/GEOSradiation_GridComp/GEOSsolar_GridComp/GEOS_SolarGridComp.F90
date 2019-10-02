@@ -319,26 +319,26 @@ contains
 ! ---------------------------------------
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam = trim(COMP_NAME) // 'SetServices'
 
     ! save pointer to the wrapped RRTMGP internal state in the GC
     allocate(rrtmgp_state, __STAT__)
     wrap%ptr => rrtmgp_state
     call ESMF_UserCompSetInternalState(GC, 'RRTMGP_state', wrap, status)
-    VERIFY_(status)
+    _VERIFY(status)
 
 ! Get the configuration
 ! ---------------------
 
     call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Get the intervals; "heartbeat" must exist
 ! -----------------------------------------
 
     call ESMF_ConfigGetAttribute(CF, DT, Label="RUN_DT:"                          , RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     RUN_DT = nint(DT)
 
@@ -346,7 +346,7 @@ contains
 ! ---------------------------------------
 
     call ESMF_ConfigGetAttribute(CF, DT, Label=trim(COMP_NAME)//"_DT:", default=DT, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     MY_STEP = nint(DT)
 
@@ -354,7 +354,7 @@ contains
 !-------------------------------------------------
 
     call ESMF_ConfigGetAttribute(CF, DT, Label=trim(COMP_NAME)//'Avrg:',default=DT,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     ACCUMINT = nint(DT)
 
@@ -401,7 +401,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME          = 'surface_skin_temperature',                      &
@@ -412,7 +412,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME          = 'methane_concentration',                         &
@@ -423,7 +423,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME          = 'nitrous_oxide_concentration',                   &
@@ -434,7 +434,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'air_temperature',                                       &
@@ -445,7 +445,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'specific_humidity',                                     &
@@ -456,7 +456,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'mass_fraction_of_cloud_liquid_water_in_air',            &
@@ -467,7 +467,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'mass_fraction_of_cloud_ice_in_air',                     &
@@ -478,7 +478,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'mass_fraction_of_rain_water_in_air',                    &
@@ -489,7 +489,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'mass_fraction_of_snow_in_air',                          &
@@ -500,7 +500,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'effective_radius_of_cloud_liquid_water_particles',      &
@@ -511,7 +511,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'effective_radius_of_cloud_ice_particles',               &
@@ -522,7 +522,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'effective_radius_of_rain_particles',                    &
@@ -533,7 +533,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'effective_radius_of_snow_particles',                    &
@@ -544,7 +544,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'odd-oxygen_volume_mixing_ratio',                        &
@@ -555,7 +555,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'cloud_area_fraction',                                   &
@@ -566,7 +566,7 @@ contains
        AVERAGING_INTERVAL = ACCUMINT,                                        &
        REFRESH_INTERVAL   = MY_STEP,                                         &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'aerosols',                                              &
@@ -577,7 +577,7 @@ contains
        DATATYPE   = MAPL_StateItem,                                          &
        RESTART    = MAPL_RestartSkip,                                        &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo_for_visible_beam',                       &
@@ -586,7 +586,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo_for_visible_diffuse',                    &
@@ -595,7 +595,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo_for_near_infrared_beam',                 &
@@ -604,7 +604,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo_for_near_infrared_diffuse',              &
@@ -613,7 +613,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        SHORT_NAME = 'PREF',                                                  &
@@ -622,7 +622,7 @@ contains
        DIMS       = MAPL_DimsVertOnly,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 
 !  Solar does not have a "real" state. We keep an internal variable
@@ -639,7 +639,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  ='normalized_net_downward_shortwave_flux_in_air_assuming_clear_sky',&
@@ -648,7 +648,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  ='normalized_upward_shortwave_flux_in_air',                &
@@ -657,7 +657,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  ='normalized_upward_shortwave_flux_in_air_assuming_clear_sky',&
@@ -666,7 +666,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME      = 'normalized_net_surface_downward_shortwave_flux_per_band_in_air', &
@@ -676,7 +676,7 @@ contains
        UNGRIDDED_DIMS = (/ NUM_BANDS_SOLAR /),                               &
        VLOCATION      = MAPL_VLocationNone,                                  &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'normalized_surface_downwelling_ultraviolet_beam_flux',  &
@@ -685,7 +685,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'normalized_surface_downwelling_ultraviolet_diffuse_flux', &
@@ -694,7 +694,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'normalized_surface_downwelling_par_beam_flux',          &
@@ -703,7 +703,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'normalized_surface_downwelling_par_diffuse_flux',       &
@@ -712,7 +712,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'normalized_surface_downwelling_nearinfrared_beam_flux', &
@@ -721,7 +721,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'normalized_surface_downwelling_nearinfrared_diffuse_flux', &
@@ -730,7 +730,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  ='normalized_net_downward_shortwave_flux_in_air_assuming_no_aerosol', &
@@ -739,7 +739,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  ='normalized_net_downward_shortwave_flux_in_air_assuming_clear_sky_and_no_aerosol',&
@@ -748,7 +748,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  ='normalized_upward_shortwave_flux_in_air_assuming_no_aerosol', &
@@ -757,7 +757,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  ='normalized_upward_shortwave_flux_in_air_assuming_clear_sky_and_no_aerosol',&
@@ -766,7 +766,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME      = 'normalized_net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol', &
@@ -776,7 +776,7 @@ contains
        UNGRIDDED_DIMS = (/ NUM_BANDS_SOLAR /),                               &
        VLOCATION      = MAPL_VLocationNone,                                  &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 
 !  !EXPORT STATE:
@@ -789,7 +789,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  ='net_downward_shortwave_flux_in_air_assuming_clear_sky',  &
@@ -798,7 +798,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  ='net_downward_shortwave_flux_in_air_assuming_no_aerosol', &
@@ -807,7 +807,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  ='net_downward_shortwave_flux_in_air_assuming_clear_sky_and_no_aerosol',&
@@ -816,7 +816,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  ='downward_shortwave_flux_in_air',                         &
@@ -825,7 +825,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  ='downward_shortwave_flux_in_air_assuming_clear_sky',      &
@@ -834,7 +834,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  ='downward_shortwave_flux_in_air_assuming_no_aerosol',     &
@@ -843,7 +843,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  ='downward_shortwave_flux_in_air_assuming_clear_sky_and_no_aerosol',&
@@ -852,7 +852,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  ='upward_shortwave_flux_in_air',                           &
@@ -861,7 +861,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  ='upward_shortwave_flux_in_air_assuming_clear_sky',        &
@@ -870,7 +870,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  ='upward_shortwave_flux_in_air_assuming_no_aerosol',       &
@@ -879,7 +879,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  ='upward_shortwave_flux_in_air_assuming_clear_sky_and_no_aerosol',&
@@ -888,7 +888,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME      = 'net_surface_downward_shortwave_flux_per_band_in_air', &
@@ -898,7 +898,7 @@ contains
        UNGRIDDED_DIMS = (/ NUM_BANDS_SOLAR /),                               &
        VLOCATION      = MAPL_VLocationNone,                                  &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME      = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol', &
@@ -908,7 +908,7 @@ contains
        UNGRIDDED_DIMS = (/ NUM_BANDS_SOLAR /),                               &
        VLOCATION      = MAPL_VLocationNone,                                  &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'normalized_surface_downwelling_ultraviolet_beam_flux',  &
@@ -917,7 +917,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'normalized_surface_downwelling_ultraviolet_diffuse_flux', &
@@ -926,7 +926,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'normalized_surface_downwelling_par_beam_flux',          &
@@ -935,7 +935,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'normalized_surface_downwelling_par_diffuse_flux',       &
@@ -944,7 +944,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'normalized_surface_downwelling_nearinfrared_beam_flux', &
@@ -953,7 +953,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'normalized_surface_downwelling_nearinfrared_diffuse_flux', &
@@ -962,7 +962,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_downwelling_ultraviolet_beam_normal_flux',      &
@@ -971,7 +971,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_downwelling_par_beam_normal_flux',              &
@@ -980,7 +980,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_downwelling_nearinfrared_beam_normal_flux',     &
@@ -989,7 +989,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_downwelling_ultraviolet_beam_flux',             &
@@ -998,7 +998,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_downwelling_ultraviolet_diffuse_flux',          &
@@ -1007,7 +1007,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_downwelling_par_beam_flux',                     &
@@ -1016,7 +1016,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_downwelling_par_diffuse_flux',                  &
@@ -1025,7 +1025,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_downwelling_nearinfrared_beam_flux',            &
@@ -1034,7 +1034,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_downwelling_nearinfrared_diffuse_flux',         &
@@ -1043,7 +1043,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'cloud_area_fraction',                                   &
@@ -1052,7 +1052,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'cloud_area_fraction_for_low_clouds',                    &
@@ -1061,7 +1061,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'cloud_area_fraction_for_middle_clouds',                 &
@@ -1070,7 +1070,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'cloud_area_fraction_for_high_clouds',                   &
@@ -1079,7 +1079,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'total_cloud_area_fraction',                             &
@@ -1088,7 +1088,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_of_low_clouds',              &
@@ -1097,7 +1097,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_of_middle_clouds',           &
@@ -1106,7 +1106,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_of_high_clouds(EXPORT)',     &
@@ -1115,7 +1115,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_of_all_clouds',              &
@@ -1124,7 +1124,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_for_ice_clouds',             &
@@ -1133,7 +1133,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_for_liquid_clouds',          &
@@ -1142,7 +1142,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_for_falling_rain',           &
@@ -1151,7 +1151,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'in_cloud_optical_thickness_for_falling_snow',           &
@@ -1160,7 +1160,7 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_net_downward_shortwave_flux_assuming_clear_sky',&
@@ -1169,7 +1169,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_net_downward_shortwave_flux',                   &
@@ -1178,7 +1178,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_net_downward_shortwave_flux_assuming_clear_sky_and_no_aerosol',&
@@ -1187,7 +1187,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_net_downward_shortwave_flux_assuming_no_aerosol',&
@@ -1196,7 +1196,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_incoming_shortwave_flux',                       &
@@ -1205,7 +1205,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_incoming_shortwave_flux_assuming_clear_sky',    &
@@ -1214,7 +1214,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_incoming_shortwave_flux_assuming_clean_sky',    &
@@ -1223,7 +1223,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_incoming_shortwave_flux_assuming_clear_clean_sky',&
@@ -1232,7 +1232,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_outgoing_shortwave_flux',                       &
@@ -1241,7 +1241,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_outgoing_shortwave_flux_assuming_clear_sky',    &
@@ -1250,7 +1250,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_outgoing_shortwave_flux_assuming_clean_sky',    &
@@ -1259,7 +1259,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_outgoing_shortwave_flux_assuming_clear_clean_sky',&
@@ -1268,7 +1268,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 !END CAR
 
     call MAPL_AddExportSpec(GC,                                              &
@@ -1278,7 +1278,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'toa_outgoing_shortwave_flux_assuming_clear_sky',        &
@@ -1287,7 +1287,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'toa_outgoing_shortwave_flux_no_aerosol',                &
@@ -1296,7 +1296,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'toa_outgoing_shortwave_flux_no_aerosol__clear_sky',     &
@@ -1305,7 +1305,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 !END CAR
 
     call MAPL_AddExportSpec(GC,                                              &
@@ -1315,7 +1315,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'toa_net_downward_shortwave_flux_assuming_clear_sky',    &
@@ -1324,7 +1324,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'toa_net_downward_shortwave_flux_assuming_no_aerosol',   &
@@ -1333,7 +1333,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'toa_net_downward_shortwave_flux_assuming_clear_sky_and_no_aerosol',&
@@ -1342,7 +1342,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'toa_incoming_shortwave_flux',                           &
@@ -1351,7 +1351,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo',                                        &
@@ -1360,7 +1360,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo_for_visible_beam',                       &
@@ -1369,7 +1369,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo_for_visible_diffuse',                    &
@@ -1378,7 +1378,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo_for_near_infrared_beam',                 &
@@ -1387,7 +1387,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo_for_near_infrared_diffuse',              &
@@ -1396,7 +1396,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'cosine_of_the_solar_zenith_angle',                      &
@@ -1405,7 +1405,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'mean_cosine_of_the_solar_zenith_angle',                 &
@@ -1414,7 +1414,7 @@ contains
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
         SHORT_NAME = 'CLDTMP',                                               &
@@ -1423,7 +1423,7 @@ contains
         DIMS       = MAPL_DimsHorzOnly,                                      &
         VLOCATION  = MAPL_VLocationNone,                                     &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
         SHORT_NAME = 'CLDPRS',                                               &
@@ -1432,7 +1432,7 @@ contains
         DIMS       = MAPL_DimsHorzOnly,                                      &
         VLOCATION  = MAPL_VLocationNone,                                     &
                                                                   RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 !EOS
 
@@ -1440,33 +1440,33 @@ contains
 ! ------------------------
 
     call MAPL_TimerAdd(GC, name="PRELIMS"     ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="REFRESH"     ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="-AEROSOLS"   ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="-SORAD"      ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="--SORAD_RUN" ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="--SORAD_DATA",RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="---SORAD_DATA_DEVICE"    ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="---SORAD_DATA_CONST"    ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="--SORAD_ALLOC"    ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="--SORAD_DEALLOC"    ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="-RRTMG" ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="--RRTMG_RUN" ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="--RRTMG_INIT" ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="--RRTMG_FLIP" ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_TimerAdd(GC, name="-RRTMGP"                 , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMGP_SETUP_1"        , __RC__)
@@ -1485,30 +1485,30 @@ contains
     call MAPL_TimerAdd(GC, name="--RRTMGP_POST"           , __RC__)
 
     call MAPL_TimerAdd(GC, name="-BALANCE"    ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="--CREATE"    ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="--DISTRIBUTE"    ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="--RETRIEVE"    ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="--DESTROY"    ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="-MISC"       ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="UPDATE"      ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
 ! Set Run method and use generic init and final methods
 ! -----------------------------------------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GenericSetServices    ( GC, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
-    RETURN_(ESMF_SUCCESS)  
+    _RETURN(ESMF_SUCCESS)  
   end subroutine SetServices
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1675,16 +1675,16 @@ contains
 ! -----------------------------------------------------------
 
     call ESMF_GridCompGet( GC, name=COMP_NAME, GRID=ESMFGRID, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam = trim(COMP_NAME) // "Run"
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
-    call MAPL_GetObjectFromGC    (GC, MAPL,    RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC    (GC, MAPL,    RC=STATUS); _VERIFY(STATUS)
 
-    call MAPL_TimerOn (MAPL,"TOTAL"  ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_TimerOn (MAPL,"PRELIMS",RC=STATUS); VERIFY_(STATUS)
+    call MAPL_TimerOn (MAPL,"TOTAL"  ,RC=STATUS); _VERIFY(STATUS)
+    call MAPL_TimerOn (MAPL,"PRELIMS",RC=STATUS); _VERIFY(STATUS)
 
 ! Get parameters from generic state.
 !-----------------------------------
@@ -1703,21 +1703,21 @@ contains
          EXPORTspec          = EXPORTspec,                             &
          INTERNAL_ESMF_STATE = INTERNAL,                               &
                                                              RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Get parameters from configuration
 !----------------------------------
     
     call MAPL_GetResource( MAPL, PRS_LOW_MID,    'PRS_LOW_MID_CLOUDS:' ,   DEFAULT=70000.,      RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetResource( MAPL, PRS_MID_HIGH,   'PRS_MID_HIGH_CLOUDS:',   DEFAULT=40000.,      RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetResource( MAPL, CO2,            'CO2:',                                        RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetResource( MAPL, SC,             'SOLAR_CONSTANT:',                             RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetResource( MAPL, SUNFLAG,        'SUN_FLAG:',              DEFAULT=0,           RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Should we load balance solar radiation?
 ! For the single-column model, we always use the
@@ -1726,10 +1726,10 @@ contains
 !---------------------------------------------
 
     call MAPL_GetResource( MAPL, DYCORE,            'DYCORE:'                       , RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GetResource( MAPL, SOLAR_LOAD_BALANCE,'SOLAR_LOAD_BALANCE:', DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     if (adjustl(DYCORE)=="DATMO" .OR. SOLAR_LOAD_BALANCE==0) then
        LoadBalance = .FALSE. 
@@ -1741,9 +1741,9 @@ contains
 !---------------------
 
     call ESMF_ClockGet(CLOCK, currTIME=CURRENTTIME,       RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call ESMF_TimeGet (CURRENTTIME, YY=YY, DayOfYear=DOY, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     if(CO2<0.0) then
        CO2 = GETCO2(YY,DOY)
@@ -1758,7 +1758,7 @@ contains
           endif
        endif
        call ESMF_LogWrite(MSGSTRING, ESMF_LOGMSG_INFO, rc=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
     end if
 
 ! Decide which radiation to use
@@ -1804,7 +1804,7 @@ contains
 !----------------------------------------------------------------------
 
     call MAPL_GetResource( MAPL, NUM_BANDS ,'NUM_BANDS:', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     TOTAL_RAD_BANDS = NUM_BANDS_SOLAR
     if (USE_RRTMGP_IRRAD) then
@@ -1822,30 +1822,30 @@ contains
          write (*,*) "    IRRAD RRTMG: ", USE_RRTMGP_IRRAD, USE_RRTMG_IRRAD, USE_CHOU_IRRAD
          write (*,*) "Please check that your optics tables and NUM_BANDS are correct."
       end if
-      ASSERT_(.FALSE.)
+      _ASSERT(.FALSE.,'needs informative message')
    end if
 
 ! Decide how to do solar forcing
 !-------------------------------
 
     call MAPL_GetResource( MAPL, SolCycFileName, "SOLAR_CYCLE_FILE_NAME:", DEFAULT='/dev/null', RC=STATUS)
-    VERIFY_(STATUS) 
+    _VERIFY(STATUS) 
 
     if(SolCycFileName /= '/dev/null') THEN
 
        call MAPL_GetResource( MAPL, USE_NRLSSI2, "USE_NRLSSI2:", DEFAULT=.TRUE., RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
 
        if (USE_NRLSSI2) then
 
          ! For now only use with RRTMG[P] SW
-         ASSERT_(USE_RRTMG .or. USE_RRTMGP)
+         _ASSERT(USE_RRTMG .or. USE_RRTMGP,'needs informative message')
 
          call MAPL_GetResource( MAPL, PersistSolar, "PERSIST_SOLAR:", DEFAULT=.TRUE., RC=STATUS)
-         VERIFY_(STATUS) 
+         _VERIFY(STATUS) 
 
          call MAPL_SunGetSolarConstant(CLOCK,trim(SolCycFileName),SC,MG,SB,PersistSolar=PersistSolar,rc=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          ! write(MSGSTRING,'(A,I4,A,I3,A,F8.3,A,F8.6,A,F9.4)') &                                          !
@@ -1861,12 +1861,12 @@ contains
          !    endif                                                                                       !
          ! endif                                                                                          !
          ! call ESMF_LogWrite(MSGSTRING, ESMF_LOGMSG_INFO, rc=STATUS)                                     !
-         ! VERIFY_(STATUS)                                                                                !
+         ! _VERIFY(STATUS)                                                                                !
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
        else
          call MAPL_SunGetSolarConstant(CLOCK,trim(SolCycFileName),SC,HK=HK,rc=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
 
          HK_UV_TEMP = HK(:5)
    
@@ -1876,7 +1876,7 @@ contains
        end if
     else if(SC<0.0) then
        call MAPL_SunGetSolarConstant(CURRENTTIME,SC,HK, rc=STATUS)
-       VERIFY_(STATUS) 
+       _VERIFY(STATUS) 
 
        HK_UV_TEMP = HK(:5)
  
@@ -1895,7 +1895,7 @@ contains
           endif
        endif
        call ESMF_LogWrite(MSGSTRING, ESMF_LOGMSG_INFO, rc=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
     else
        HK_UV_TEMP = HK_UV_OLD
        HK_IR_TEMP = HK_IR_OLD
@@ -1906,13 +1906,13 @@ contains
 !-------------------------------------------------------------------------
 
     call MAPL_GetPointer(IMPORT, PREF, 'PREF', RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Determine the model level seperating high-middle and low-middle clouds
 !-----------------------------------------------------------------------
 
-    ASSERT_(PRS_LOW_MID >  PRS_MID_HIGH)
-    ASSERT_(PRS_LOW_MID <  PREF(LM)    )
+    _ASSERT(PRS_LOW_MID >  PRS_MID_HIGH,'needs informative message')
+    _ASSERT(PRS_LOW_MID <  PREF(LM)    ,'needs informative message')
     
     K = 1
     do while ( PREF(K) < PRS_MID_HIGH )
@@ -1924,7 +1924,7 @@ contains
     end do
     LCLDLM = K
 
-    call MAPL_TimerOff(MAPL,"PRELIMS",RC=STATUS); VERIFY_(STATUS)
+    call MAPL_TimerOff(MAPL,"PRELIMS",RC=STATUS); _VERIFY(STATUS)
 
 ! Determine calling sequence
 ! This getresource is a kludge for now and needs to be fixed 
@@ -1933,10 +1933,10 @@ contains
 ! right now it is always the last, which is only correct for called_last=1.
 !---------------------------
 
-    call MAPL_TimerOn (MAPL,"UPDATE",  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_TimerOn (MAPL,"UPDATE",  RC=STATUS); _VERIFY(STATUS)
 
     call MAPL_GetResource(MAPL,CalledLast,'CALLED_LAST:', default=1, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     UPDATE_FIRST = CalledLast /= 0
 
@@ -1944,80 +1944,80 @@ contains
 ! --------------------------------------------------------
    
     if(UPDATE_FIRST) then
-       call UPDATE_EXPORT(IM,JM,LM,     RC=STATUS); VERIFY_(STATUS)
+       call UPDATE_EXPORT(IM,JM,LM,     RC=STATUS); _VERIFY(STATUS)
     end if
 
-    call MAPL_TimerOff(MAPL,"UPDATE",  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_TimerOff(MAPL,"UPDATE",  RC=STATUS); _VERIFY(STATUS)
 
 ! If its time, refresh the internal state
 ! ---------------------------------------
 
     REFRESH_FLUXES = ESMF_AlarmIsRinging( ALARM, rc=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
        
     REFRESH: if ( REFRESH_FLUXES ) then
-       call MAPL_TimerOn (MAPL,"REFRESH", RC=STATUS); VERIFY_(STATUS)
+       call MAPL_TimerOn (MAPL,"REFRESH", RC=STATUS); _VERIFY(STATUS)
 
-       call ESMF_AlarmRingerOff(ALARM,                 RC=STATUS); VERIFY_(STATUS)
-       call ESMF_ClockGet(CLOCK, currTIME=CURRENTTIME, RC=STATUS); VERIFY_(STATUS)
+       call ESMF_AlarmRingerOff(ALARM,                 RC=STATUS); _VERIFY(STATUS)
+       call ESMF_ClockGet(CLOCK, currTIME=CURRENTTIME, RC=STATUS); _VERIFY(STATUS)
 
        if(UPDATE_FIRST) then
-          call ESMF_ClockGet(CLOCK, timeSTEP=INTDT,    RC=STATUS); VERIFY_(STATUS)
+          call ESMF_ClockGet(CLOCK, timeSTEP=INTDT,    RC=STATUS); _VERIFY(STATUS)
        else
-          call ESMF_TimeIntervalSet(INTDT, s=0,        RC=STATUS); VERIFY_(STATUS)
+          call ESMF_TimeIntervalSet(INTDT, s=0,        RC=STATUS); _VERIFY(STATUS)
        end if
 
-       call MAPL_TimerOn (MAPL,"-AEROSOLS", RC=STATUS); VERIFY_(STATUS)
+       call MAPL_TimerOn (MAPL,"-AEROSOLS", RC=STATUS); _VERIFY(STATUS)
 
        call ESMF_StateGet(IMPORT, 'AERO', AERO, RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
 
        call ESMF_AttributeGet(aero, name='implements_aerosol_optics_method', &
                                 value=implements_aerosol_optics, RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
 
        RADIATIVELY_ACTIVE_AEROSOLS: if (implements_aerosol_optics) then
 
            ! set RH for aerosol optics
            call ESMF_AttributeGet(AERO, name='relative_humidity_for_aerosol_optics', value=AS_FIELD_NAME, RC=STATUS)
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
 
            if (AS_FIELD_NAME /= '') then
                call MAPL_GetPointer(IMPORT, AS_PTR_PLE, 'PLE',  RC=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
 
                call MAPL_GetPointer(IMPORT, AS_PTR_Q,   'QV',   RC=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
 
                call MAPL_GetPointer(IMPORT, AS_PTR_T,   'T',    RC=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
 
                allocate(AS_ARR_RH(IM,JM,LM), AS_ARR_PL(IM,JM,LM), stat=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
 
                AS_ARR_PL = 0.5*(AS_PTR_PLE(:,:,1:LM) + AS_PTR_PLE(:,:,0:LM-1))
 
                AS_ARR_RH = AS_PTR_Q / MAPL_EQSAT(AS_PTR_T, PL=AS_ARR_PL)
      
                call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME), RC=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
 
                AS_PTR_3D = AS_ARR_RH
       
                deallocate(AS_ARR_RH, AS_ARR_PL, stat=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
            end if
 
            ! set PLE for aerosol optics
            call ESMF_AttributeGet(AERO, name='air_pressure_for_aerosol_optics', value=AS_FIELD_NAME, RC=STATUS)
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
 
            if (AS_FIELD_NAME /= '') then
                call MAPL_GetPointer(IMPORT, AS_PTR_PLE, 'PLE',  RC=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
 
                call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME), RC=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
            
                AS_PTR_3D = AS_PTR_PLE
            end if
@@ -2026,7 +2026,7 @@ contains
            allocate(AEROSOL_EXT(IM,JM,LM,NUM_BANDS_SOLAR),  &
                     AEROSOL_SSA(IM,JM,LM,NUM_BANDS_SOLAR),  &
                     AEROSOL_ASY(IM,JM,LM,NUM_BANDS_SOLAR),  stat=STATUS)
-           VERIFY_(STATUS)
+           _VERIFY(STATUS)
 
            AEROSOL_EXT = 0.0
            AEROSOL_SSA = 0.0
@@ -2035,20 +2035,20 @@ contains
            ! compute aerosol optics at all solar bands
            SOLAR_BANDS: do band = 1, NUM_BANDS_SOLAR
                call ESMF_AttributeSet(AERO, name='band_for_aerosol_optics', value=(BANDS_SOLAR_OFFSET+band), RC=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
 
                ! execute the aero provider's optics method 
                call ESMF_MethodExecute(AERO, label="aerosol_optics", userRC=AS_STATUS, RC=STATUS)
-               VERIFY_(AS_STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(AS_STATUS)
+               _VERIFY(STATUS)
 
                ! EXT from AERO_PROVIDER
                call ESMF_AttributeGet(AERO, name='extinction_in_air_due_to_ambient_aerosol', value=AS_FIELD_NAME, RC=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
 
                if (AS_FIELD_NAME /= '') then
                    call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME),  RC=STATUS)
-                   VERIFY_(STATUS)
+                   _VERIFY(STATUS)
 
                    if (associated(AS_PTR_3D)) then
                        AEROSOL_EXT(:,:,:,band) = AS_PTR_3D
@@ -2057,11 +2057,11 @@ contains
 
                ! SSA from AERO_PROVIDER
                call ESMF_AttributeGet(AERO, name='single_scattering_albedo_of_ambient_aerosol', value=AS_FIELD_NAME, RC=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
 
                if (AS_FIELD_NAME /= '') then
                    call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME),  RC=STATUS)
-                   VERIFY_(STATUS)
+                   _VERIFY(STATUS)
 
                    if (associated(AS_PTR_3D)) then 
                        AEROSOL_SSA(:,:,:,band) = AS_PTR_3D
@@ -2070,11 +2070,11 @@ contains
 
                ! ASY from AERO_PROVIDER
                call ESMF_AttributeGet(AERO, name='asymmetry_parameter_of_ambient_aerosol', value=AS_FIELD_NAME, RC=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
 
                if (AS_FIELD_NAME /= '') then
                    call MAPL_GetPointer(AERO, AS_PTR_3D, trim(AS_FIELD_NAME),  RC=STATUS)
-                   VERIFY_(STATUS)
+                   _VERIFY(STATUS)
 
                    if (associated(AS_PTR_3D)) then 
                        AEROSOL_ASY(:,:,:,band) = AS_PTR_3D
@@ -2084,7 +2084,7 @@ contains
 
        end if RADIATIVELY_ACTIVE_AEROSOLS
 
-       call MAPL_TimerOff(MAPL,"-AEROSOLS", RC=STATUS); VERIFY_(STATUS)
+       call MAPL_TimerOff(MAPL,"-AEROSOLS", RC=STATUS); _VERIFY(STATUS)
 
 ! No aerosol diagnostics
 !-----------------------
@@ -2141,7 +2141,7 @@ contains
                       CURRTIME = CURRENTTIME+INTDT,&
                       LoadBalance = LoadBalance,   &
                       __RC__)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
 
        if (implements_aerosol_optics) then
            deallocate(AEROSOL_EXT, __STAT__)
@@ -2178,16 +2178,16 @@ contains
 ! --------------------------------------------------------
     
     if(.not.UPDATE_FIRST) then
-       call MAPL_TimerOn (MAPL,"UPDATE",  RC=STATUS); VERIFY_(STATUS)
-          call UPDATE_EXPORT(IM,JM,LM,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_TimerOff(MAPL,"UPDATE",  RC=STATUS); VERIFY_(STATUS)
+       call MAPL_TimerOn (MAPL,"UPDATE",  RC=STATUS); _VERIFY(STATUS)
+          call UPDATE_EXPORT(IM,JM,LM,    RC=STATUS); _VERIFY(STATUS)
+       call MAPL_TimerOff(MAPL,"UPDATE",  RC=STATUS); _VERIFY(STATUS)
     end if
 
 ! All done
 !---------
 
-    call MAPL_TimerOff(MAPL,"TOTAL",RC=STATUS); VERIFY_(STATUS)
-    RETURN_(ESMF_SUCCESS)
+    call MAPL_TimerOff(MAPL,"TOTAL",RC=STATUS); _VERIFY(STATUS)
+    _RETURN(ESMF_SUCCESS)
 
   contains
 
@@ -2424,7 +2424,7 @@ contains
 
 ! helper for testing RRTMGP error status on return;
 ! allows line number reporting cf. original call method
-#define TEST_(A) error_msg = A; if (trim(error_msg)/="") then; write(*,*) "RRTMGP Error: ", trim(error_msg); ASSERT_(.false.); endif
+#define TEST_(A) error_msg = A; if (trim(error_msg)/="") then; write(*,*) "RRTMGP Error: ", trim(error_msg); _ASSERT(.false.,'needs informative message'); endif
 
 !  Begin...
 !----------
@@ -2506,15 +2506,15 @@ contains
 !------------------------------------------------------------------------------------
 
       call ESMF_VMGetCurrent(VM, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call ESMF_VMGet(VM, mpiCommunicator=COMM, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOn(MAPL,"--CREATE")
 
       call MAPL_BalanceCreate(OrgLen=NUMLIT, Comm=COMM, Handle=SolarBalanceHandle, BalLen=NUM2DO, BufLen=NUMMAX, rc=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOff(MAPL,"--CREATE")
 
@@ -2530,7 +2530,7 @@ contains
 
       allocate(SLICESimp(NumImp), NAMESimp(NumImp), &
                SLICESint(NumInt), NAMESint(NumInt), stat=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       HorzDims = (/IM,JM/)
 
@@ -2544,7 +2544,7 @@ contains
 
          if(K < NumImp-4) then
             call MAPL_VarSpecGet(IMPORTspec(K), SHORT_NAME=NAMESimp(K), DIMS=DIMS, RC=STATUS)
-            VERIFY_(STATUS)
+            _VERIFY(STATUS)
          else if (K == NumImp-4) then
             NAMESimp(K) = "Ig"
             DIMS = MAPL_DIMSHORZONLY
@@ -2598,7 +2598,7 @@ contains
                   SLICESimp(K) = 1
 
                case default
-                  ASSERT_(.false.)
+                  _ASSERT(.false.,'needs informative message')
                end select
 
             end if  ! Special treatment for AERO Import Bundle
@@ -2614,7 +2614,7 @@ contains
 !------------------------------------------------------------------------
 
       allocate(BUFIMP(BUFLEN),stat=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       BUFIMP = MAPL_UNDEF
 
@@ -2631,14 +2631,14 @@ contains
 
             if (NAMESimp(K)=="AERO") then
 
-               ASSERT_(size(AEROSOL_EXT,3)==LM)
-               ASSERT_(size(AEROSOL_SSA,3)==LM)
-               ASSERT_(size(AEROSOL_ASY,3)==LM)
+               _ASSERT(size(AEROSOL_EXT,3)==LM,'needs informative message')
+               _ASSERT(size(AEROSOL_SSA,3)==LM,'needs informative message')
+               _ASSERT(size(AEROSOL_ASY,3)==LM,'needs informative message')
 
                allocate(BUF_AEROSOL(size(AEROSOL_EXT,1), &
                                     size(AEROSOL_EXT,2), &
                                     size(AEROSOL_EXT,3)), stat=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
 
                BUF_AEROSOL = MAPL_UNDEF
                do J=1,NUM_BANDS_SOLAR
@@ -2684,11 +2684,11 @@ contains
                BUFIMP_AEROSOL_ASY => PTR3(1:NUM2DO,:,:)
 
                deallocate(BUF_AEROSOL, stat=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
             else
                if (SLICESimp(K) /= 1) then
                   call ESMFL_StateGetPointerToData(IMPORT, PTR3, NAMESimp(K), RC=STATUS)
-                  VERIFY_(STATUS)
+                  _VERIFY(STATUS)
                   call ReOrder(BUFIMP(L1),Ptr3,DAYTIME,NUMMAX,HorzDims,size(Ptr3,3),PACKIT)
 
                   LN = L1 + NUMMAX*size(PTR3,3) - 1
@@ -2785,7 +2785,7 @@ contains
       call MAPL_TimerOn(MAPL,"--DISTRIBUTE")
 
       call MAPL_BalanceWork(BUFIMP, NUMMAX, Direction=MAPL_Distribute, Handle=SolarBalanceHandle, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOff(MAPL,"--DISTRIBUTE")
 
@@ -2796,7 +2796,7 @@ contains
       OUTPUT_VARS_1: do K=1,NumInt
 
          call MAPL_VarSpecGet(INTERNALspec(K),DIMS=DIMS,SHORT_NAME=NAMESint(K),RC=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
 
          if(        NO_AERO .and.                                           &
                  ( 'FSWN'      ==trim(NAMESint(K)) .or.    'FSCN'==trim(NAMESint(K)) .or. &       
@@ -2818,7 +2818,7 @@ contains
               NAMESint(K)=='FSWBANDNAN'    ) then
 
             call ESMFL_StateGetPointerToData(INTERNAL, PTR3, NAMESint(K), RC=STATUS)
-            VERIFY_(STATUS)
+            _VERIFY(STATUS)
 
             SLICESint(K) = size(PTR3,3)
 
@@ -2826,7 +2826,7 @@ contains
             SLICESint(K) = 1            
 
          else
-            ASSERT_(.false.)
+            _ASSERT(.false.,'needs informative message')
 
          end if
 
@@ -2837,7 +2837,7 @@ contains
 !--------------------------------------------------------------
 
       allocate(BUFINT(NUMMAX*sum(SLICESint)),stat=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
 ! Handles for the working output (Internal) variables.
 !  These have an inner dimension of the balanced work. 
@@ -2906,19 +2906,19 @@ contains
       end if
 
       allocate(QQ3(size(Q,1),size(Q,2),4),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       allocate(RR3(size(Q,1),size(Q,2),4),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       allocate(RH (size(Q,1),size(Q,2)  ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       allocate(PL (size(Q,1),size(Q,2)  ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       allocate(O3 (size(Q,1),size(Q,2)  ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       PL = 0.5*(PLE(:,:UBOUND(PLE,2)-1)+PLE(:,LBOUND(PLE,2)+1:))
       RH = Q/MAPL_EQSAT(T,PL=PL)
@@ -3035,7 +3035,7 @@ contains
 
       ! access RRTMGP internal state from the GC
       call ESMF_UserCompGetInternalState(GC, 'RRTMGP_state', wrap, status)
-      VERIFY_(status)
+      _VERIFY(status)
       rrtmgp_state => wrap%ptr
 
       ! initialize k-distribution if not already done
@@ -3048,7 +3048,7 @@ contains
           rrtmgp_state%k_dist, trim(k_dist_file), gas_concs)
         if (.not. rrtmgp_state%k_dist%source_is_external()) then
           write(*,*) "RRTMGP-SW: does not seem to be SW"
-          ASSERT_(.false.)
+          _ASSERT(.false.,'needs informative message')
         endif
         rrtmgp_state%initialized = .true.
       endif
@@ -3063,7 +3063,7 @@ contains
       ! spectral dimensions
       ngpt = k_dist%get_ngpt()
       nbnd = k_dist%get_nband()
-      ASSERT_(nbnd == NB_RRTMGP)
+      _ASSERT(nbnd == NB_RRTMGP,'needs informative message')
       ! note: use k_dist%get_band_lims_wavenumber()
       !   to access band limits.
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3127,7 +3127,7 @@ contains
       ! RRTMGP's rte_sw takes a vertical ordering flag
       ! (no need to flip columns as with RRTMG)
       top_at_1 = p_lay(1, 1) < p_lay(1, LM)
-      ASSERT_(top_at_1) ! for GEOS-5
+      _ASSERT(top_at_1,'needs informative message') ! for GEOS-5
 
       ! layer pressure thicknesses used for cloud water path calculations
       ! (better to do before any KLUGE to top pressure)
@@ -3143,13 +3143,13 @@ contains
         if (press_ref_min - ptop <= ptop * ptop_increase_OK_fraction) then
           where (p_lev(:,1) < press_ref_min) p_lev(:,1) = press_ref_min
           ! make sure no pressure ordering issues were created
-          ASSERT_(all(p_lev(:,1) < p_lay(:,1)))
+          _ASSERT(all(p_lev(:,1) < p_lay(:,1)),'needs informative message')
         else
           write(*,*) 'Error: Model top too high for RRTMGP:'
           write(*,*) ' A ', ptop_increase_OK_fraction, &
                        ' fractional increase of ptop was insufficient'
           write(*,*) ' RRTMGP, GEOS-5 top (Pa)', press_ref_min, ptop
-          ASSERT_(.false.)
+          _ASSERT(.false.,'needs informative message')
         endif
       endif
 
@@ -3170,7 +3170,7 @@ contains
           write(*,*) ' A ', tmin_increase_OK_Kelvin, &
                        'K increase of tmin was insufficient'
           write(*,*) ' RRTMGP, GEOS-5 t_min (K)', temp_ref_min, tmin
-          ASSERT_(.false.)
+          _ASSERT(.false.,'needs informative message')
         endif
       endif
 
@@ -3424,7 +3424,7 @@ contains
 
       call MAPL_GetResource( MAPL, &
         rrtmgp_blockSize, "RRTMGP_SW_BLOCKSIZE:", DEFAULT=4, __RC__)
-      ASSERT_(rrtmgp_blockSize >= 1)
+      _ASSERT(rrtmgp_blockSize >= 1,'needs informative message')
 
       ! number of full blocks by integer division
       nBlocks = ncol/rrtmgp_blockSize
@@ -3653,93 +3653,93 @@ contains
       call MAPL_TimerOn(MAPL,"-RRTMG")
 
       allocate(TLEV  (size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(TLEV_R(size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(PLE_R (size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(FCLD_R(size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(CLIQWP(size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(CICEWP(size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(RELIQ (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(REICE (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(TAUCLD(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(SSACLD(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(ASMCLD(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(FSFCLD(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       allocate(TAUAER(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(SSAAER(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(ASMAER(size(Q,1),size(Q,2),NB_RRTMG),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate( ECAER(size(Q,1),size(Q,2),6),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(DPR   (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(PL_R  (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(ZL_R  (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(T_R   (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(Q_R   (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(O2_R  (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(O3_R  (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(CO2_R (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(CH4_R (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(N2O_R (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       allocate(SWUFLX (size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(SWDFLX (size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(SWHR   (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(SWUFLXC(size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(SWDFLXC(size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(SWHRC  (size(Q,1),size(Q,2)   ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       allocate(SWUFLXR (size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(SWDFLXR (size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(SWUFLXCR(size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(SWDFLXCR(size(Q,1),size(Q,2)+1 ),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       allocate(NIRR_R  (size(Q,1)),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(NIRF_R  (size(Q,1)),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(PARR_R  (size(Q,1)),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(PARF_R  (size(Q,1)),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(UVRR_R  (size(Q,1)),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(UVRF_R  (size(Q,1)),STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
 ! Code to convert units, flip, and interpolate T, etc.
 ! Prepare Input for RRTMG
@@ -3859,7 +3859,7 @@ contains
       call MAPL_TimerOn (MAPL,"--RRTMG_RUN")
 
       call MAPL_GetResource( MAPL, RPART, 'RRTMGSW_PARTITION_SIZE:',  DEFAULT=0, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       IAER = 10    ! Per AER: 
                    !  0: Turns off aerosols
@@ -3874,7 +3874,7 @@ contains
                    ! in the current day of year.
 
       call MAPL_GetResource( MAPL, ISOLVAR ,'ISOLVAR:', DEFAULT=0, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
                    ! ISOLVAR:
                    ! Flag for solar variability method
@@ -3922,7 +3922,7 @@ contains
             write (*,*) "ISOLVAR==1 is currently unsupported as we have no"
             write (*,*) "way of correctly setting solcycfrac."
          end if
-         ASSERT_(.FALSE.)
+         _ASSERT(.FALSE.,'needs informative message')
       end if
 
       !INDSOLVAR =  Facular and sunspot amplitude 
@@ -3939,9 +3939,9 @@ contains
       else
 
          call MAPL_GetResource( MAPL, INDSOLVAR(1) ,'INDSOLVAR_1:', DEFAULT=1.0, RC=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
          call MAPL_GetResource( MAPL, INDSOLVAR(2) ,'INDSOLVAR_2:', DEFAULT=1.0, RC=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
 
       end if
 
@@ -3959,7 +3959,7 @@ contains
       !      to avoid an optional variable on GPUs
 
       call MAPL_GetResource( MAPL, SOLCYCFRAC ,'SOLCYCFRAC:', DEFAULT=1.0, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call RRTMG_SW (                                           &
             RPART   ,NCOL    ,LM      ,ICLD    ,IAER    ,       &
@@ -4062,7 +4062,7 @@ contains
    else
 
       ! Something is wrong. We've selected neither Chou nor RRTMG
-      ASSERT_(.FALSE.)
+      _ASSERT(.FALSE.,'needs informative message')
 
    end if SCHEME
 
@@ -4086,7 +4086,7 @@ contains
       call MAPL_TimerOn(MAPL,"--RETRIEVE")
 
       call MAPL_BalanceWork(BUFINT, NUMMAX, Direction=MAPL_Retrieve, Handle=SolarBalanceHandle, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOff(MAPL,"--RETRIEVE")
 
@@ -4101,11 +4101,11 @@ contains
 
             if(SLICESint(K)>1) then
                call ESMFL_StateGetPointerToData(INTERNAL, PTR3, NAMESint(K), RC=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
                call ReOrder(BUFINT(L1),PTR3,DAYTIME,NUMMAX,HorzDims,size(Ptr3,3),UNPACKIT)
             else
                call ESMFL_StateGetPointerToData(INTERNAL, PTR2, NAMESint(K), RC=STATUS)
-               VERIFY_(STATUS)
+               _VERIFY(STATUS)
                call ReOrder(BUFINT(L1),PTR2,DAYTIME,NUMMAX,HorzDims,1           ,UNPACKIT)
             end if
 
@@ -4118,12 +4118,12 @@ contains
 !-----------------------------------------------------------------------
 
       deallocate(BUFIMP,BUFINT,SLICESimp,SLICESint,NAMESimp,NAMESint,STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOn(MAPL,"--DESTROY")
 
       call MAPL_BalanceDestroy(Handle=SolarBalanceHandle, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOff(MAPL,"--DESTROY")
 
@@ -4132,7 +4132,7 @@ contains
 !  All done
 !-----------
 
-      RETURN_(ESMF_SUCCESS)
+      _RETURN(ESMF_SUCCESS)
     end subroutine SORADCORE
 
 
@@ -4201,17 +4201,17 @@ contains
 #ifdef _CUDA
 
       call MAPL_GetResource(MAPL,BLOCKSIZE,'BLOCKSIZE:',DEFAULT=128,RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       ! Set up the CUDA Model variables
       Block = dim3(blocksize,1,1)
       Grid = dim3(ceiling(real(IRUN)/real(blocksize)),1,1)
 
-      ASSERT_(LN <= GPU_MAXLEVS) ! If this is tripped, ESMA_arch.mk must
+      _ASSERT(LN <= GPU_MAXLEVS,'needs informative message') ! If this is tripped, ESMA_arch.mk must
                                  ! be edited.
 
       call MAPL_TimerOn(MAPL,"--SORAD_ALLOC",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       ! ----------------------
       ! Allocate device arrays
@@ -4221,29 +4221,29 @@ contains
       ! ------
 
       ALLOCATE(COSZ_DEV(IRUN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(PL_DEV(IRUN,LN+1), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(TA_DEV(IRUN,LN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(WA_DEV(IRUN,LN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(OA_DEV(IRUN,LN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(CWC_DEV(IRUN,LN,4), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(FCLD_DEV(IRUN,LN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(REFF_DEV(IRUN,LN,4), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(RSUVBM_DEV(IRUN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(RSUVDF_DEV(IRUN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(RSIRBM_DEV(IRUN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(RSIRDF_DEV(IRUN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       ! Constant Tables in Device Memory
       ! --------------------------------
@@ -4253,99 +4253,99 @@ contains
       !     threads. Plus, being in global means caching could occur.
 
       ALLOCATE(COA(62,101), STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(CAH(43,37), STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(CAIB(11,9,11), STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(CAIF(9,11), STAT=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       ! Aerosol Inputs
       ! --------------
 
       ALLOCATE(TAUA_DEV(IRUN,LN,NB_CHOU), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(SSAA_DEV(IRUN,LN,NB_CHOU), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(ASYA_DEV(IRUN,LN,NB_CHOU), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       ! Outputs
       ! -------
 
       ALLOCATE(FLX_DEV(IRUN,LN+1), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(FLC_DEV(IRUN,LN+1), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(FLXU_DEV(IRUN,LN+1), stat = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(FLCU_DEV(IRUN,LN+1), stat = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(FDIRUV_DEV(IRUN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(FDIFUV_DEV(IRUN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(FDIRPAR_DEV(IRUN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(FDIFPAR_DEV(IRUN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(FDIRIR_DEV(IRUN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(FDIFIR_DEV(IRUN), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       ALLOCATE(FLX_SFC_BAND_DEV(IRUN,NB_CHOU), STAT = STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOff(MAPL,"--SORAD_ALLOC",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       ! Copy host inputs to device
       ! --------------------------
 
       call MAPL_TimerOn(MAPL,"--SORAD_DATA",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOn(MAPL,"---SORAD_DATA_DEVICE",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       ! Inputs
       ! ------
 
       STATUS = cudaMemcpy(COSZ_DEV,COSZ,IRUN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(PL_DEV,PLTMP,IRUN*(LN+1))
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(TA_DEV,TA,IRUN*LN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(WA_DEV,WA,IRUN*LN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(OA_DEV,OA,IRUN*LN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(CWC_DEV,CWC,IRUN*LN*4)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(FCLD_DEV,FCLD,IRUN*LN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(REFF_DEV,REFF,IRUN*LN*4)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(RSUVBM_DEV,RGBUV,IRUN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(RSUVDF_DEV,RGFUV,IRUN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(RSIRBM_DEV,RGBIR,IRUN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(RSIRDF_DEV,RGFIR,IRUN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       ! Aerosol Inputs
       ! --------------
 
       STATUS = cudaMemcpy(TAUA_DEV,TAUA,IRUN*LN*NB_CHOU)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(SSAA_DEV,SSAA,IRUN*LN*NB_CHOU)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(ASYA_DEV,ASYA,IRUN*LN*NB_CHOU)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       ! Constant Tables in Device Memory
       ! --------------------------------
@@ -4356,10 +4356,10 @@ contains
       CAIF = CAIF_CONST
 
       call MAPL_TimerOff(MAPL,"---SORAD_DATA_DEVICE",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOn(MAPL,"---SORAD_DATA_CONST",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       ! Load constants in constant memory
       ! ---------------------------------
@@ -4390,62 +4390,62 @@ contains
       ARG_NIR=ARG_NIR_CONST
 
       call MAPL_TimerOff(MAPL,"---SORAD_DATA_CONST",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOff(MAPL,"--SORAD_DATA",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOn(MAPL,"--SORAD_RUN",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call sorad<<<Grid, Block>>>(IRUN,LN,NB_CHOU,CO2,ICT,ICB)
       STATUS = cudaGetLastError()
       if (STATUS /= 0) then
          write (*,*) "Error code from SORAD kernel call: ", STATUS
          write (*,*) "Kernel Call failed: ", cudaGetErrorString(STATUS)
-         ASSERT_(.FALSE.)
+         _ASSERT(.FALSE.,'needs informative message')
       end if
 
       call MAPL_TimerOff(MAPL,"--SORAD_RUN",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOn(MAPL,"--SORAD_DATA",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOn(MAPL,"---SORAD_DATA_DEVICE",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       STATUS = cudaMemcpy(FLX,FLX_DEV,IRUN*(LN+1))
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(FLC,FLC_DEV,IRUN*(LN+1))
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(FLXU,FLXU_DEV,IRUN*(LN+1))
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(FLCU,FLCU_DEV,IRUN*(LN+1))
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(FDIRUV,FDIRUV_DEV,IRUN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(FDIFUV,FDIFUV_DEV,IRUN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(FDIRPAR,FDIRPAR_DEV,IRUN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(FDIFPAR,FDIFPAR_DEV,IRUN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(FDIRIR,FDIRIR_DEV,IRUN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(FDIFIR,FDIFIR_DEV,IRUN)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       STATUS = cudaMemcpy(FLXBAND,FLX_SFC_BAND_DEV,IRUN*NB_CHOU)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOff(MAPL,"---SORAD_DATA_DEVICE",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOff(MAPL,"--SORAD_DATA",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_TimerOn(MAPL,"--SORAD_DEALLOC",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       ! ------------------------
       ! Deallocate device arrays
@@ -4498,12 +4498,12 @@ contains
       DEALLOCATE(FLX_SFC_BAND_DEV)
 
       call MAPL_TimerOff(MAPL,"--SORAD_DEALLOC",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
 #else
 
       call MAPL_TimerOn(MAPL,"--SORAD_RUN",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call SORAD (IRUN,LN,NB_CHOU,COSZ,PLTMP,TA,WA,OA,CO2,      &
            CWC,FCLD,ICT,ICB,REFF,HK_UV_TEMP,  HK_IR_TEMP,       &
            TAUA,SSAA,ASYA,                                      &
@@ -4512,13 +4512,13 @@ contains
            FLXU,FLCU,                                           &
            FLXBAND  )
       call MAPL_TimerOff(MAPL,"--SORAD_RUN",RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
 #endif
 
       call MAPL_TimerOff(MAPL,"-SORAD")
 
-      RETURN_(ESMF_SUCCESS)
+      _RETURN(ESMF_SUCCESS)
 
     end subroutine SHRTWAVE
 
@@ -4603,7 +4603,7 @@ contains
       Iam  = trim(COMP_NAME)//"SolarUpdateExport"
 
       call ESMF_ClockGet(CLOCK, TIMESTEP=DELT, currTIME=CURRENTTIME, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_SunGetInsolation(LONS, LATS, &
               ORBIT, ZTH, SLR, &
@@ -4612,7 +4612,7 @@ contains
               TIME = SUNFLAG,  &
               ZTHN = ZTHN,     &
               RC=STATUS )
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       ZTH = max(ZTH,0.0)
       SLR = SLR * SC
@@ -4624,192 +4624,192 @@ contains
       end where
 
       call MAPL_GetPointer(INTERNAL, FSWN,       'FSWN',       RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, FSCN,       'FSCN',       RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, FSWNAN,     'FSWNAN',     RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, FSCNAN,     'FSCNAN',     RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, FSWUN,      'FSWUN',      RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, FSCUN,      'FSCUN',      RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, FSWUNAN,    'FSWUNAN',    RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, FSCUNAN,    'FSCUNAN',    RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, FSWBANDN,   'FSWBANDN',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, FSWBANDNAN, 'FSWBANDNAN', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_GetPointer(INTERNAL, DRUVRN,  'DRUVRN', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, DFUVRN,  'DFUVRN', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, DRPARN,  'DRPARN', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, DFPARN,  'DFPARN', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, DRNIRN,  'DRNIRN', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(INTERNAL, DFNIRN,  'DFNIRN', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
 
       call MAPL_GetPointer(EXPORT  , FSW,       'FSW',       RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSC,       'FSC',       RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSWNA,     'FSWNA',     RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSCNA,     'FSCNA',     RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSWD,      'FSWD',      RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSCD,      'FSCD',      RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSWDNA,    'FSWDNA',    RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSCDNA,    'FSCDNA',    RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSWU,      'FSWU',      RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSCU,      'FSCU',      RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSWUNA,    'FSWUNA',    RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSCUNA,    'FSCUNA',    RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSWBAND,   'FSWBAND',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , FSWBANDNA, 'FSWBANDNA', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_GetPointer(EXPORT  , DRUVR,   'DRUVR',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , DFUVR,   'DFUVR',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , DRPAR,   'DRPAR',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , DFPAR,   'DFPAR',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , DRNIR,   'DRNIR',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , DFNIR,   'DFNIR',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,   RSR,     'RSR',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,   RSC,     'RSC',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , RSRNA,   'RSRNA',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , RSCNA,   'RSCNA',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , SLRTP,   'SLRTP',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,  RSCS,    'RSCS',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,  RSRS,    'RSRS',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,RSCSNA,  'RSCSNA',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,RSRSNA,  'RSRSNA',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , SLRSF,   'SLRSF',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,SLRSFC,  'SLRSFC',  RC=STATUS)
-      VERIFY_(STATUS) 
+      _VERIFY(STATUS) 
       call MAPL_GetPointer(EXPORT  ,SLRSFNA,'SLRSFNA',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,SLRSFCNA,'SLRSFCNA',RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , SLRSUF,  'SLRSUF', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,SLRSUFC, 'SLRSUFC', RC=STATUS)
-      VERIFY_(STATUS) 
+      _VERIFY(STATUS) 
       call MAPL_GetPointer(EXPORT  ,SLRSUFNA,'SLRSUFNA',RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,SLRSUFCNA,'SLRSUFCNA',RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,   OSR,    'OSR',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,OSRCLR, 'OSRCLR',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , OSRNA,  'OSRNA',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,OSRCNA, 'OSRCNA',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,ALBEDO, 'ALBEDO',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,  COSZ,   'COSZ',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  , MCOSZ,  'MCOSZ',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,DRNUVR, 'DRNUVR',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,DRNPAR, 'DRNPAR',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,DRNNIR, 'DRNNIR',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
 
       call MAPL_GetPointer(IMPORT,CLIN,   'FCLD',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(IMPORT, PLL,    'PLE',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(IMPORT, RRI,     'RI',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(IMPORT, RRL,     'RL',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(IMPORT, RRR,     'RR',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(IMPORT, RRS,     'RS',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(IMPORT, RQI,     'QI',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(IMPORT, RQL,     'QL',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(IMPORT, RQR,     'QR',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(IMPORT, RQS,     'QS',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(IMPORT, T,       'T',    RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(IMPORT, Q,       'QV',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_GetPointer(EXPORT  ,FCLD,   'FCLD',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,TAUI, 'TAUCLI',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,TAUW, 'TAUCLW',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,TAUR, 'TAUCLR',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,TAUS, 'TAUCLS',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,CLDL,  'CLDLO',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,CLDM,  'CLDMD',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,CLDH,  'CLDHI',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,CLDT,  'CLDTT',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,TAUL,  'TAULO',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,TAUM,  'TAUMD',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,TAUH,  'TAUHI',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,TAUT,  'TAUTT',   RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,CLDTMP,'CLDTMP',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetPointer(EXPORT  ,CLDPRS,'CLDPRS',  RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       if(associated(FCLD)) FCLD = CLIN
 
@@ -4859,13 +4859,13 @@ contains
          associated(CLDTMP).or.associated(CLDPRS)    ) then
 
          allocate(   TAUCLD(IM,JM,LM,4), stat=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
          allocate(HYDROMETS(IM,JM,LM,4), stat=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
          allocate(     REFF(IM,JM,LM,4), stat=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
          allocate(       DP(IM,JM,LM  ), stat=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
 
          DP = PLL(:,:,1:LM)-PLL(:,:,0:LM-1)
 
@@ -4937,7 +4937,7 @@ contains
 
          if(associated(CLDTMP).or.associated(CLDPRS)) then
             call MAPL_GetResource( MAPL, TAUCRIT , 'TAUCRIT:', DEFAULT=0.10, RC=STATUS)
-            VERIFY_(STATUS)
+            _VERIFY(STATUS)
 
             if(associated(CLDTMP)) CLDTMP = MAPL_UNDEF
             if(associated(CLDPRS)) CLDPRS = MAPL_UNDEF
@@ -4967,11 +4967,11 @@ contains
 ! Visible/UV diffuse
 
       call MAPL_GetPointer(EXPORT,   ALBEXP, 'ALBVF', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       if(associated(ALBEXP)) then
          call MAPL_GetPointer(IMPORT,   ALBIMP, 'ALBVF', RC=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
          where(SLR>0)
             ALBEXP = ALBIMP * FAC
          elsewhere
@@ -4982,11 +4982,11 @@ contains
 ! Visible/UV direct
 
       call MAPL_GetPointer(EXPORT,   ALBEXP, 'ALBVR', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       if(associated(ALBEXP)) then
          call MAPL_GetPointer(IMPORT,   ALBIMP, 'ALBVR', RC=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
          where(SLR>0)
             ALBEXP = ALBIMP * FAC
          elsewhere
@@ -4997,11 +4997,11 @@ contains
 ! NIR diffuse
 
       call MAPL_GetPointer(EXPORT,   ALBEXP, 'ALBNF', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       if(associated(ALBEXP)) then
          call MAPL_GetPointer(IMPORT,   ALBIMP, 'ALBNF', RC=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
          where(SLR>0)
             ALBEXP = ALBIMP * FAC
          elsewhere
@@ -5012,11 +5012,11 @@ contains
 ! NIR direct
 
       call MAPL_GetPointer(EXPORT,   ALBEXP, 'ALBNR', RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       if(associated(ALBEXP)) then
          call MAPL_GetPointer(IMPORT,   ALBIMP, 'ALBNR', RC=STATUS)
-         VERIFY_(STATUS)
+         _VERIFY(STATUS)
          where(SLR>0)
             ALBEXP = ALBIMP * FAC
          elsewhere
@@ -5160,7 +5160,7 @@ contains
       if(associated( MCOSZ))  MCOSZ = ZTH
       if(associated(  COSZ))   COSZ = ZTHN
 
-      RETURN_(ESMF_SUCCESS)
+      _RETURN(ESMF_SUCCESS)
     end subroutine UPDATE_EXPORT
 
 

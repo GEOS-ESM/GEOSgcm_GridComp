@@ -121,14 +121,14 @@
 !  Initialize the raster array
 !-----------------------------
 
-   allocate(RASTER(nc,nr)  ,stat=STATUS); VERIFY_(STATUS)
+   allocate(RASTER(nc,nr)  ,stat=STATUS); _VERIFY(STATUS)
    RASTER = RASTERUNDEF
 
 ! Allocate space for symmetric version of coordinates
 !----------------------------------------------------
 
-   allocate(XG(NX    ,NY    ),stat=STATUS); VERIFY_(STATUS)
-   allocate(YG(NX    ,NY    ),stat=STATUS); VERIFY_(STATUS)
+   allocate(XG(NX    ,NY    ),stat=STATUS); _VERIFY(STATUS)
+   allocate(YG(NX    ,NY    ),stat=STATUS); _VERIFY(STATUS)
 
 ! Set pointers to coordinates of four corners (asymmetric)
 !---------------------------------------------------------
@@ -146,8 +146,8 @@
 ! Allocate space for contigous vertices of one face
 !--------------------------------------------------
 
-   allocate(Xv(6*(NX-1),NY-1,4),stat=STATUS); VERIFY_(STATUS)
-   allocate(Yv(6*(NX-1),NY-1,4),stat=STATUS); VERIFY_(STATUS)
+   allocate(Xv(6*(NX-1),NY-1,4),stat=STATUS); _VERIFY(STATUS)
+   allocate(Yv(6*(NX-1),NY-1,4),stat=STATUS); _VERIFY(STATUS)
 
    FACES: do K=1,NFACES
 

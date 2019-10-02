@@ -157,13 +157,13 @@
        RstFile = trim(rstdir)//trim(Gridname)//'.rst'
     end if
 
-    allocate(cc(nx),       stat=STATUS); VERIFY_(STATUS)
-    allocate(ss(nx),       stat=STATUS); VERIFY_(STATUS)
+    allocate(cc(nx),       stat=STATUS); _VERIFY(STATUS)
+    allocate(ss(nx),       stat=STATUS); _VERIFY(STATUS)
 
     allocate(iTable(0:3,maxtiles),stat=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     allocate(rTable(1:4,maxtiles),stat=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Compute ys and xs at centers of raster cell
 
@@ -323,12 +323,12 @@
        IceID  = 6200000
        ! Input file: (formatted for now)
 
-       allocate(raster0(nx0,ny0),stat=STATUS); VERIFY_(STATUS)
+       allocate(raster0(nx0,ny0),stat=STATUS); _VERIFY(STATUS)
 
        regrid = nx/=nx0 .or. ny/=ny0
        
        if(regrid) then
-          allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
+          allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
        else
           raster => raster0
        end if

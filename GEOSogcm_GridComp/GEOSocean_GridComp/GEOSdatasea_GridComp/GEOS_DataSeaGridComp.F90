@@ -81,7 +81,7 @@ module GEOS_DataSeaGridCompMod
 
     Iam = "SetServices"
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
 
@@ -89,7 +89,7 @@ module GEOS_DataSeaGridCompMod
 ! -----------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 
 ! Set the state variable specs.
@@ -109,7 +109,7 @@ module GEOS_DataSeaGridCompMod
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
                                                    RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                                 &
     SHORT_NAME         = 'VW',                                &
@@ -118,7 +118,7 @@ module GEOS_DataSeaGridCompMod
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
                                                    RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                                 &
     SHORT_NAME         = 'TW',                          &
@@ -127,7 +127,7 @@ module GEOS_DataSeaGridCompMod
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
                                                    RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC,                                 &
     SHORT_NAME         = 'SW',                          &
@@ -136,7 +136,7 @@ module GEOS_DataSeaGridCompMod
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
                                                    RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 ! import
 
@@ -147,22 +147,22 @@ module GEOS_DataSeaGridCompMod
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                    RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 !EOS
 
     call MAPL_TimerAdd(GC,    name="RUN"     ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC,    name="-UPDATE" ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Set generic init and final methods
 ! ----------------------------------
 
     call MAPL_GenericSetServices    ( GC, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
   
   end subroutine SetServices
 
@@ -237,14 +237,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     Iam = "Run"
     call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
 !----------------------------------
 
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Start Total timer
 !------------------
@@ -255,46 +255,46 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Pointers to Imports
 !--------------------
     call MAPL_GetPointer(IMPORT,      FI  , 'FRACICE'  , RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 !  Pointers to Exports
 !---------------------
 
     call MAPL_GetPointer(EXPORT,      UW  , 'UW'       , RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(EXPORT,      VW  , 'VW'       , RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(EXPORT,      TW  , 'TW'       , RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetPointer(EXPORT,      SW  , 'SW'       , RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Set current time and calendar
 !------------------------------
 
     call ESMF_ClockGet(CLOCK, currTime=CurrentTime, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Get the SST bcs file name from the resource file
 !-------------------------------------------------
 
     call MAPL_GetResource(MAPL,DATASeaFILE,LABEL="DATA_SST_FILE:", RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Get the SSS bcs file name from the resource file
 !-------------------------------------------------
 
 !   call MAPL_GetResource(MAPL,DATASeaSalFILE,LABEL="DATA_SSS_FILE:",  RC=STATUS)
-!   VERIFY_(STATUS)
+!   _VERIFY(STATUS)
 
 ! In atmospheric forecast mode we do not have future SST and SSS
 !--------------------------------------------------------------
 
     call MAPL_GetResource(MAPL,IFCST,LABEL="IS_FCST:",default=0,    RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GetResource(MAPL,adjSST,LABEL="SST_ADJ_UND_ICE:",default=0,    RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     FCST = IFCST==1
 
@@ -302,16 +302,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !------------------------------------------------
 
    call MAPL_Get(MAPL, IM=IM, JM=JM, RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
    allocate(SST(IM,JM), stat=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
 ! SSS is usually bulk SSS
 !--------------------------
 
 !  allocate(SSS(IM, JM), stat=STATUS)
-!  VERIFY_(STATUS)
+!  _VERIFY(STATUS)
 
 !  Update the friendly skin values
 !---------------------------------
@@ -322,13 +322,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !------------------------------
 
    call MAPL_ReadForcing(MAPL,'SST',DATASeaFILE, CURRENTTIME, SST, INIT_ONLY=FCST, RC=STATUS)
-   VERIFY_(STATUS)
+   _VERIFY(STATUS)
 
 !  Read bulk SSS from retrieval
 !------------------------------
 
 !  call MAPL_ReadForcing(MAPL,'SSS',DATASeaSalFILE, CURRENTTIME, SSS, INIT_ONLY=FCST, RC=STATUS)
-!  VERIFY_(STATUS)
+!  _VERIFY(STATUS)
 
    call MAPL_TimerOff(MAPL,"-UPDATE" )
 
@@ -347,17 +347,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    if (adjSST == 2) then
 
       call MAPL_GetResource(MAPL,CTB    , LABEL="CTB:"   , default=1.0e-4, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       call MAPL_GetResource(MAPL,RUN_DT , LABEL="RUN_DT:" ,                 RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       call MAPL_GetResource(MAPL,DT     , LABEL="DT:"    , default=RUN_DT, RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       allocate(TNEW(size(TW,1),size(TW,2)), stat=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       allocate(F1  (size(TW,1),size(TW,2)), stat=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
 
       TNEW=0.0
       F1  =0.0
@@ -391,8 +391,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Clean-up
 !---------
 
-   deallocate(SST,     STAT=STATUS); VERIFY_(STATUS)
-!  deallocate(SSS,     STAT=STATUS); VERIFY_(STATUS)
+   deallocate(SST,     STAT=STATUS); _VERIFY(STATUS)
+!  deallocate(SSS,     STAT=STATUS); _VERIFY(STATUS)
 
 !  All done
 !-----------
@@ -400,7 +400,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_TimerOff(MAPL,"RUN"  )
    call MAPL_TimerOff(MAPL,"TOTAL")
 
-   RETURN_(ESMF_SUCCESS)
+   _RETURN(ESMF_SUCCESS)
 end subroutine RUN
 
 end module GEOS_DataSeaGridCompMod

@@ -92,7 +92,7 @@ contains
 
     Iam = 'SetServices'
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
 
@@ -100,20 +100,20 @@ contains
 ! -----------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Get constants from CF
 ! ---------------------
 
     call MAPL_GetResource ( MAPL,       DO_DATASEA,     Label="USE_DATASEA:" ,       DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetResource ( MAPL,       OrphanDepth,    Label="ORPHAN_DEPTH:" ,       DEFAULT=10.0, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     if(DO_DATASEA/=0) then
        OCEAN_NAME="DATASEA"
        OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=DataSeaSetServices, RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
     else
        call MAPL_GetResource ( MAPL, OCEAN_NAME, Label="OCEAN_NAME:", DEFAULT="MOM", __RC__ )
        select case (trim(OCEAN_NAME))
@@ -124,7 +124,7 @@ contains
           case default
              charbuf_ = "OCEAN_NAME: " // trim(OCEAN_NAME) // " is not implemented, ABORT!"
              call WRITE_PARALLEL(charbuf_)
-             VERIFY_(999)
+             _VERIFY(999)
        end select
     endif
 
@@ -134,7 +134,7 @@ contains
     OCNd = 0
     if (dual_ocean) then
        OCNd = MAPL_AddChild(GC, NAME="DATASEA", SS=DataSeaSetServices, RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
     endif
 
 ! Set the state variable specs.
@@ -151,7 +151,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
          SHORT_NAME         = 'TAUX',                              &
@@ -160,7 +160,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
          SHORT_NAME         = 'TAUY',                              &
@@ -169,7 +169,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
         SHORT_NAME         = 'PENUVR',                            &
@@ -178,7 +178,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=status  )
-    VERIFY_(status)
+    _VERIFY(status)
 
     call MAPL_AddImportSpec(GC,                            &
         SHORT_NAME         = 'PENPAR',                            &
@@ -187,7 +187,7 @@ contains
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                    RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC,                                &
         SHORT_NAME         = 'PENUVF',                            &
@@ -196,7 +196,7 @@ contains
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC,                                &
         SHORT_NAME         = 'PENPAF',                            &
@@ -205,7 +205,7 @@ contains
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
           LONG_NAME          = 'net_surface_downwelling_nir_beam_flux',&
@@ -214,7 +214,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
           LONG_NAME          = 'net_surface_downwelling_nir_diffuse_flux',&
@@ -223,7 +223,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
           SHORT_NAME         = 'SWHEAT',                            &
@@ -232,7 +232,7 @@ contains
           DIMS               = MAPL_DimsHorzVert,                   &
           VLOCATION          = MAPL_VLocationCenter,                &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
           LONG_NAME          = 'river_discharge_at_ocean_points',&
@@ -241,7 +241,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 !!$     call MAPL_AddImportSpec(GC,                             &
 !!$        SHORT_NAME         = 'TR',                                &
@@ -251,7 +251,7 @@ contains
 !!$        VLOCATION          = MAPL_VLocationCenter,                &
 !!$        DATATYPE           = MAPL_BundleItem,                     &
 !!$                                                       RC=STATUS  )
-!!$     VERIFY_(STATUS)
+!!$     _VERIFY(STATUS)
 !!$
 !!$     call MAPL_AddImportSpec(GC,                             &
 !!$        SHORT_NAME         = 'TRFLUX',                            &
@@ -261,7 +261,7 @@ contains
 !!$        VLOCATION          = MAPL_VLocationNone,                  &
 !!$        DATATYPE           = MAPL_BundleItem,                     &
 !!$                                                       RC=STATUS  )
-!!$     VERIFY_(STATUS)
+!!$     _VERIFY(STATUS)
 
     call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
@@ -270,7 +270,7 @@ contains
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'upward_sensible_heat_flux' ,&
@@ -279,7 +279,7 @@ contains
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'evaporation'               ,&
@@ -288,7 +288,7 @@ contains
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'ocean_snowfall'            ,&
@@ -297,7 +297,7 @@ contains
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                               &
         LONG_NAME          = 'ocean_rainfall'            ,&
@@ -306,7 +306,7 @@ contains
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                    &
         SHORT_NAME         = 'FRESH',                         &
@@ -315,7 +315,7 @@ contains
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'FSALT',                         &
@@ -324,7 +324,7 @@ contains
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'FHOCN',                         &
@@ -333,7 +333,7 @@ contains
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     VERIFY_(STATUS)
+     _VERIFY(STATUS)
 
 !  ! Need to have this internal state to fill in orphan points:
 
@@ -346,7 +346,7 @@ contains
          FRIENDLYTO         = trim(COMP_NAME), &
          DEFAULT            = 280.0, &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 !ALT Note the FRACICE from datasea is inhereted (in AMIP or dual_ocean)
 
@@ -365,7 +365,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 
     call MAPL_AddExportSpec(GC,                               &
@@ -375,7 +375,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME         = 'FRZMLT',                            &
@@ -384,7 +384,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Diagnostics exports
 
@@ -395,7 +395,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME         = 'TAUY',                              &
@@ -404,7 +404,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME         = 'SWHEAT',                            &
@@ -413,7 +413,7 @@ contains
          DIMS               = MAPL_DimsHorzVert,                   &
          VLOCATION          = MAPL_VLocationCenter,                &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME         = 'RFLUX',                             &
@@ -422,7 +422,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          LONG_NAME          = 'river_discharge_at_ocean_points',&
@@ -431,7 +431,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME         = 'FROCEAN',                           &
@@ -440,7 +440,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
@@ -449,7 +449,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
         LONG_NAME          = 'surface_net_downward_shortwave_flux',&
@@ -458,7 +458,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
         LONG_NAME          = 'upward_sensible_heat_flux' ,&
@@ -467,7 +467,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
         LONG_NAME          = 'evaporation'               ,&
@@ -476,7 +476,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
         SHORT_NAME         = 'SFLX',                         &
@@ -485,7 +485,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
           SHORT_NAME         = 'RAIN',                              &
@@ -494,7 +494,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=status  )
-    VERIFY_(status)
+    _VERIFY(status)
 
     call MAPL_AddExportSpec(GC,                                 &
           SHORT_NAME         = 'SNOW',                              &
@@ -503,7 +503,7 @@ contains
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Exports of child
 
@@ -511,70 +511,70 @@ contains
          SHORT_NAME = 'TW',                                        &
          CHILD_ID   = OCN,                                         &
                                                         RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_AddExportSpec ( GC   ,                          &
          SHORT_NAME = 'SW',                                        &
          CHILD_ID   = OCN,                                         &
                                                         RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_AddExportSpec ( GC   ,                          &
          SHORT_NAME = 'UW',                                        &
          CHILD_ID   = OCN,                                         &
                                                         RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_AddExportSpec ( GC   ,                          &
          SHORT_NAME = 'VW',                                        &
          CHILD_ID   = OCN,                                         &
                                                         RC=STATUS  )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     if(DO_DATASEA==0) then
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'DH',                                        &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'UWB',                                        &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'VWB',                                        &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'SSH',                                       &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'SLV',                                       &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        call MAPL_AddExportSpec ( GC   ,                               &
             SHORT_NAME = 'FRAZIL',                                    &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        call MAPL_AddExportSpec ( GC   ,                               &
             SHORT_NAME = 'PBO',                                       &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
 
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'T',                                         &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'S',                                         &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
     end if
 
 !EOS
@@ -585,21 +585,21 @@ contains
             'PENUVR','PENPAR','PENUVF','PENPAF', 'DRNIR', 'DFNIR', &
             'DISCHARGE', 'LWFLX', 'SHFLX', 'QFLUX', 'RAIN', 'SNOW', 'SFLX','SWHEAT'], &
             CHILD=OCN,                          RC=STATUS  )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
     end if
 
 ! Set the Initialize, Run, Finalize entry points
 ! ----------------------------------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 ! phase 1
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,        RC=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 ! phase 2 - this is only used in the predictor part of the replay for dual ocean
     if (DUAL_OCEAN) then
        call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,        RC=status)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
     end if
 
 ! terminate child's import for a temperature correction - we will fill it here, if we run in dual_ocean mode, otherwise nobody needs this variable
@@ -608,7 +608,7 @@ contains
             SHORT_NAME = (/'DEL_TEMP'/),                                    &
             CHILD      = OCN,                                        &
             RC=STATUS  )
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
     endif
 
 
@@ -617,17 +617,17 @@ contains
 !---------------------------------------------------------------------------------------
 
     call MAPL_GenericSetServices    ( GC, RC=STATUS )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 ! Set the Profiling timers
 ! ------------------------
 
     call MAPL_TimerAdd(GC,   name="INITIALIZE" ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC,   name="RUN"        ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC,   name="--ModRun"   ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! All Done
 !---------
@@ -689,20 +689,20 @@ contains
 
     Iam = "Initialize"
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, grid=GRID, RC=status )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam = trim(comp_name) // trim(Iam)
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, State, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Profilers
 !----------
 
-    call MAPL_TimerOn(STATE,"TOTAL"     )
     call MAPL_TimerOn(STATE,"INITIALIZE")
+    call MAPL_TimerOn(STATE,"TOTAL"     )
 
 ! Get info from the Generic state
 !--------------------------------
@@ -711,14 +711,14 @@ contains
          GIM       = GIM,                        &
          GEX       = GEX,                        &
                                        RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 
 ! Allocate the private state...
 !------------------------------
 
     allocate( PrivateSTATE , stat=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     wrap%ptr => PrivateState
 
@@ -726,25 +726,25 @@ contains
 !---------------------
 
     CALL ESMF_UserCompSetInternalState( GC, TRIM(OCEAN_NAME)//'_internal_state', WRAP, STATUS )
-    VERIFY_(status)
+    _VERIFY(status)
 
 ! Initialize the PrivateState. First the time...
 !-----------------------------------------------
     call MAPL_GetResource(STATE,DT,  Label="RUN_DT:",    RC=STATUS)             ! Get AGCM Heartbeat
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, RC=STATUS) ! set Default OCEAN_DT to AGCM Heartbeat
-    VERIFY_(status)
+    _VERIFY(status)
 
     CALL ESMF_TimeIntervalSet(timeStep, S=NINT(DT), RC=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     call ESMF_ClockGet(CLOCK, currTIME=currTime, RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 !ALT: check with Max about moving the clock 1 step forward
     PrivateState%clock = ESMF_ClockCreate(NAME = TRIM(OCEAN_NAME)//"Clock", &
          timeStep=timeStep, startTime=currTime, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
 
 ! Initialize the Ocean Model.
@@ -770,7 +770,7 @@ contains
          JM=JM, &
          LM=LM, &
          RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 ! Once we know we have a valid  ESMF grid, we can call MAPL_GenericInitialize.
 ! This will allow us to use the built-in checkpoint/restart for our states.
@@ -779,7 +779,7 @@ contains
 
     call MAPL_TimerOff(STATE,"TOTAL"     )
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=status )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerOn (STATE,"TOTAL"     )
 
     if(DO_DATASEA==0) then
@@ -800,13 +800,13 @@ contains
           DH(:,:,1) = OrphanDepth
        end where
     end if
-
-    call MAPL_TimerOff(STATE,"INITIALIZE")
+ 
     call MAPL_TimerOff(STATE,"TOTAL"     )
+    call MAPL_TimerOff(STATE,"INITIALIZE")
 
 ! All Done
 !---------
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
 
   end subroutine Initialize
 
@@ -949,20 +949,20 @@ contains
 
     Iam = "Run"
     call ESMF_GridCompGet( gc, NAME=comp_name, currentPhase=PHASE, RC=status )
-    VERIFY_(status)
+    _VERIFY(status)
     Iam = trim(comp_name) // Iam
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, STATE, RC=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
 ! Profilers
 !----------
 
-    call MAPL_TimerOn (STATE,"TOTAL")
     call MAPL_TimerOn (STATE,"RUN"  )
+    call MAPL_TimerOn (STATE,"TOTAL")
 
 ! Get child's import ad export to use as a bulletin board
 !--------------------------------------------------------
@@ -976,42 +976,42 @@ contains
          JM        = JM,                         &
          LM        = LM,                         &
                                        RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
 
 ! Check the clocks to set set-up the "run-to" time
 !-------------------------------------------------
 
     call ESMF_ClockGet( CLOCK, currTime=endTime, RC=STATUS)
-    VERIFY_(status)
+    _VERIFY(status)
 
 ! Get GuestModel's private internal state
 !---------------------------------
 
     CALL ESMF_UserCompGetInternalState( GC, TRIM(OCEAN_NAME)//'_internal_state', WRAP, STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     PrivateSTATE => WRAP%PTR
 
     call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
-    VERIFY_(status)
+    _VERIFY(status)
 
     call MAPL_GetResource(state,ReplayMode,  'REPLAY_MODE:',  default="NoReplay", RC=STATUS )
     if (trim(replayMode)=="Regular" ) then
        if (myTime > EndTime) then
           call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_REVERSE,rc=status)
-          VERIFY_(status)
+          _VERIFY(status)
           do
             call ESMF_ClockAdvance(PrivateState%Clock,rc=status)
-            VERIFY_(status)
+            _VERIFY(status)
             call ESMF_ClockGet(PrivateState%Clock,currTime=ct,rc=status)
-            VERIFY_(status)
+            _VERIFY(status)
             if (ct==endTime) exit
           enddo
           call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_FORWARD,rc=status)
-          VERIFY_(status)
+          _VERIFY(status)
           call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
-          VERIFY_(status)
+          _VERIFY(status)
        end if
     end if
 
@@ -1028,9 +1028,9 @@ contains
                 call MAPL_GetPointer(GEX(OCN), MASK, 'MOM_2D_MASK', __RC__)
              end select
        else
-          allocate(MASK3D(IM,JM,LM), STAT=STATUS); VERIFY_(STATUS)
+          allocate(MASK3D(IM,JM,LM), STAT=STATUS); _VERIFY(STATUS)
           MASK3D=1.0
-          allocate(MASK(IM,JM), STAT=STATUS); VERIFY_(STATUS)
+          allocate(MASK(IM,JM), STAT=STATUS); _VERIFY(STATUS)
           MASK=1.0
        end if
 
@@ -1038,93 +1038,93 @@ contains
 !-----------------------------------------
 
        call MAPL_GetResource(STATE,DT,  Label="RUN_DT:",    RC=STATUS)             ! Get AGCM Heartbeat
-       VERIFY_(status)
+       _VERIFY(status)
        call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, RC=STATUS) ! set Default OCEAN_DT to AGCM Heartbeat
-       VERIFY_(status)
+       _VERIFY(status)
 
 ! Get pointers to imports
 !--------------------------------------------------------------------------------
-       call MAPL_GetPointer(IMPORT, FROCEAN, 'FROCEAN', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, TAUXi, 'TAUX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, TAUYi, 'TAUY'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, PENUVRi, 'PENUVR'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, PENPARi, 'PENPAR'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, PENUVFi, 'PENUVF'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, PENPAFi, 'PENPAF'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, DRNIRi, 'DRNIR'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, DFNIRi, 'DFNIR'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, HEATi, 'SWHEAT' , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, DISCHARGEi, 'DISCHARGE'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, LWFLXi, 'LWFLX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, SHFLXi, 'SHFLX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, QFLUXi, 'QFLUX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, SNOWi, 'SNOW'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, RAINi, 'RAIN'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FHOCN, 'FHOCN'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FRESH, 'FRESH'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FSALT, 'FSALT'   , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT, FROCEAN, 'FROCEAN', RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, TAUXi, 'TAUX'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, TAUYi, 'TAUY'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, PENUVRi, 'PENUVR'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, PENPARi, 'PENPAR'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, PENUVFi, 'PENUVF'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, PENPAFi, 'PENPAF'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, DRNIRi, 'DRNIR'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, DFNIRi, 'DFNIR'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, HEATi, 'SWHEAT' , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, DISCHARGEi, 'DISCHARGE'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, LWFLXi, 'LWFLX'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, SHFLXi, 'SHFLX'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, QFLUXi, 'QFLUX'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, SNOWi, 'SNOW'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, RAINi, 'RAIN'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, FHOCN, 'FHOCN'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, FRESH, 'FRESH'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(IMPORT, FSALT, 'FSALT'   , RC=STATUS); _VERIFY(STATUS)
 
 ! Get pointers from ImExState
 !----------------------------
        if(DO_DATASEA==0) then
-          call MAPL_GetPointer(GIM(OCN), TAUX, 'TAUX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), TAUY, 'TAUY'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PENUVR, 'PENUVR'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PENPAR, 'PENPAR'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PENUVF, 'PENUVF'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PENPAF, 'PENPAF'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), DRNIR, 'DRNIR'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), DFNIR, 'DFNIR'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), HEAT, 'SWHEAT', RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), DISCHARGE, 'DISCHARGE'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), LWFLX, 'LWFLX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), SHFLX, 'SHFLX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), QFLUX, 'QFLUX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), RAIN, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), SNOW, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), TAUX, 'TAUX'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), TAUY, 'TAUY'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), PENUVR, 'PENUVR'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), PENPAR, 'PENPAR'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), PENUVF, 'PENUVF'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), PENPAF, 'PENPAF'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), DRNIR, 'DRNIR'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), DFNIR, 'DFNIR'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), HEAT, 'SWHEAT', RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), DISCHARGE, 'DISCHARGE'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), LWFLX, 'LWFLX'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), SHFLX, 'SHFLX'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), QFLUX, 'QFLUX'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), RAIN, 'RAIN'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), SNOW, 'SNOW'  , RC=STATUS); _VERIFY(STATUS)
+          call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); _VERIFY(STATUS)
        end if
 
-       call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GEX(OCN), SW,   'SW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(GEX(OCN), SW,   'SW'  , alloc=.true., RC=STATUS); _VERIFY(STATUS)
 
        if (dual_ocean) then
-          call MAPL_GetPointer(GEX(OCNd), TWd,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GEX(OCNd), TWd,   'TW'  , alloc=.true., RC=STATUS); _VERIFY(STATUS)
        end if
        
        if(DO_DATASEA==0) then
-          call MAPL_GetPointer(GEX(OCN), FRAZIL,   'FRAZIL'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GEX(OCN), FRAZIL,   'FRAZIL'  , alloc=.true., RC=STATUS); _VERIFY(STATUS)
        end if
 
 ! Get pointers to exports
 !--------------------------------------------------------
 
-       call MAPL_GetPointer(EXPORT, TS_FOUND,'TS_FOUND', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SS_FOUND,'SS_FOUND', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, FRZMLT,'FRZMLT', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, TS_FOUND,'TS_FOUND', RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, SS_FOUND,'SS_FOUND', RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, FRZMLT,'FRZMLT', RC=STATUS); _VERIFY(STATUS)
 
 ! Diagnostics exports
 !---------------------------------------------------------
-       call MAPL_GetPointer(EXPORT, RFLUX,  'RFLUX' , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, FROCEANe,'FROCEAN', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, TAUXe, 'TAUX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, TAUYe, 'TAUY'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, HEATe, 'SWHEAT' , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, DISCHARGEe, 'DISCHARGE'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, LWFLXe, 'LWFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SWFLXe, 'SWFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SHFLXe, 'SHFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, QFLUXe, 'QFLUX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, RAINe, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SNOWe, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SFLXe, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, RFLUX,  'RFLUX' , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, FROCEANe,'FROCEAN', RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, TAUXe, 'TAUX'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, TAUYe, 'TAUY'   , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, HEATe, 'SWHEAT' , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, DISCHARGEe, 'DISCHARGE'  , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, LWFLXe, 'LWFLX'  , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, SWFLXe, 'SWFLX'  , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, SHFLXe, 'SHFLX'  , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, QFLUXe, 'QFLUX'  , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, RAINe, 'RAIN'  , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, SNOWe, 'SNOW'  , RC=STATUS); _VERIFY(STATUS)
+       call MAPL_GetPointer(EXPORT, SFLXe, 'SFLX'  , RC=STATUS); _VERIFY(STATUS)
 
        if(associated(FROCEANe)) FROCEANe = FROCEAN
 
 ! Allocate space for temporary arrays
 !------------------------------------
 
-       allocate(WGHT(IM,JM), STAT=STATUS); VERIFY_(STATUS)
+       allocate(WGHT(IM,JM), STAT=STATUS); _VERIFY(STATUS)
 
 ! Weight for ocean grid
 !----------------------
@@ -1201,39 +1201,39 @@ contains
 
           if (.not. DUAL_OCEAN) then
              call MAPL_GenericRun(GC, IMPORT, EXPORT, PrivateState%CLOCK, RC=STATUS)
-             VERIFY_(STATUS)
+             _VERIFY(STATUS)
           else
              if (PHASE == 1) then
                 ! corrector
                 call ESMF_GridCompRun( GCS(OCNd), importState=GIM(OCNd), &
                      exportState=GEX(OCNd), clock=CLOCK, phase=1, userRC=STATUS)
-                VERIFY_(STATUS)
+                _VERIFY(STATUS)
                 call MAPL_GenericRunCouplers( STATE, CHILD=OCNd, CLOCK=CLOCK, RC=STATUS )
-                VERIFY_(STATUS)
+                _VERIFY(STATUS)
                 call ESMF_GridCompRun( GCS(OCN), importState=GIM(OCN), &
                      exportState=GEX(OCN), clock=CLOCK, phase=1, userRC=STATUS)
-                VERIFY_(STATUS)
+                _VERIFY(STATUS)
                 call MAPL_GenericRunCouplers( STATE, CHILD=OCN, CLOCK=CLOCK, RC=STATUS )
-                VERIFY_(STATUS)
+                _VERIFY(STATUS)
              else
                 ! predictor
                 call ESMF_GridCompRun( GCS(OCNd), importState=GIM(OCNd), &
                      exportState=GEX(OCNd), clock=CLOCK, phase=1, userRC=STATUS)
-                VERIFY_(STATUS)
+                _VERIFY(STATUS)
                 call MAPL_GenericRunCouplers( STATE, CHILD=OCNd, CLOCK=CLOCK, RC=STATUS )
-                VERIFY_(STATUS)
+                _VERIFY(STATUS)
              end if
           end if
 
           if (DUAL_OCEAN .and. PHASE == 1) then
              ! calculate temperature correction to send back to MOM
              call MAPL_GetPointer(GIM(OCN), DEL_TEMP, 'DEL_TEMP', RC=STATUS)
-             VERIFY_(STATUS)
+             _VERIFY(STATUS)
              call MAPL_GetPointer(GIM(OCNd), FI , 'FRACICE'  , RC=STATUS)
-             VERIFY_(STATUS)
+             _VERIFY(STATUS)
              
              call MAPL_GetResource(STATE,TAU_SST, Label="TAU_SST:", default=86400.0 ,RC=STATUS)
-             VERIFY_(status)
+             _VERIFY(status)
 
              ! we should have valid pointers to TW and TWd by now
              
@@ -1248,7 +1248,7 @@ contains
              ! put it back to MOM
              call ESMF_GridCompRun( GCS(OCN), importState=GIM(OCN), &
                exportState=GEX(OCN), clock=CLOCK, phase=2, userRC=STATUS )
-             VERIFY_(STATUS)
+             _VERIFY(STATUS)
           end if
           
           call MAPL_TimerOff(STATE,"--ModRun")
@@ -1258,9 +1258,9 @@ contains
 !------------------------------------
 
           call ESMF_ClockAdvance( PrivateState%clock,                    rc=status)
-          VERIFY_(status)
+          _VERIFY(status)
           call ESMF_ClockGet    ( PrivateState%clock, currTime= myTime , rc=status)
-          VERIFY_(status)
+          _VERIFY(status)
 
           NUM = NUM + 1
 
@@ -1286,7 +1286,7 @@ contains
        if (DUAL_OCEAN) then
           !ALT we might not have FI yet, so let get it again
           call MAPL_GetPointer(GIM(OCNd), FI , 'FRACICE'  , RC=STATUS)
-          VERIFY_(STATUS)
+          _VERIFY(STATUS)
           where(WGHT > 0.0)
              where(FI < 0.05)
                 TS_FOUND = TWd
@@ -1314,11 +1314,11 @@ contains
 
        end if
 
-       deallocate(WGHT, STAT=STATUS); VERIFY_(STATUS)
+       deallocate(WGHT, STAT=STATUS); _VERIFY(STATUS)
 
        if(DO_DATASEA/=0) then
-          deallocate(MASK3D, STAT=STATUS); VERIFY_(STATUS)
-          deallocate(MASK, STAT=STATUS); VERIFY_(STATUS)
+          deallocate(MASK3D, STAT=STATUS); _VERIFY(STATUS)
+          deallocate(MASK, STAT=STATUS); _VERIFY(STATUS)
        end if
 
     end if ! Time to run
@@ -1326,13 +1326,13 @@ contains
 ! Profilers
 !----------
 
-    call MAPL_TimerOff(STATE,"RUN"  )
     call MAPL_TimerOff(STATE,"TOTAL")
+    call MAPL_TimerOff(STATE,"RUN"  )
 
 ! All Done
 !---------
 
-    RETURN_(ESMF_SUCCESS)
+    _RETURN(ESMF_SUCCESS)
 
   end subroutine Run
 

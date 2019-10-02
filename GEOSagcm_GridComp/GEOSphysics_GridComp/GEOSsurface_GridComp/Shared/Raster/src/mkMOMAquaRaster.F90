@@ -120,20 +120,20 @@ contains
 
     ITMP = NF_INQ_VARID    (NCID,  NAME, ID )
 !    print *, name
-    ASSERT_(ITMP==NF_NOERR)
+    _ASSERT(ITMP==NF_NOERR,'needs informative message')
 
     ITMP = NF_INQ_VARNDIMS (NCID, ID, ndims)
 !    print *, ndims
-    ASSERT_(ITMP==NF_NOERR)
-    !ASSERT_(ndims==2)
+    _ASSERT(ITMP==NF_NOERR,'needs informative message')
+    !_ASSERT(ndims==2,'needs informative message')
 
     itmp = NF_INQ_VARDIMID (NCID, ID, diMId)
 !    print *, dimid
-    ASSERT_(ITMP==NF_NOERR)
+    _ASSERT(ITMP==NF_NOERR,'needs informative message')
 
     itmp = NF_INQ_DIMLEN   (NCID, DIMID(nn),XY)
 !    print *, Xy
-    ASSERT_(ITMP==NF_NOERR)
+    _ASSERT(ITMP==NF_NOERR,'needs informative message')
 
     return
   end subroutine FieldSize
@@ -152,7 +152,7 @@ contains
     integer :: ID, ITMP
 
     Status=NF_OPEN(FILE,NF_NOWRITE,NCID)
-    ASSERT_(STATUS==NF_NOERR)
+    _ASSERT(STATUS==NF_NOERR,'needs informative message')
 
     ITMP = NF_INQ_VARID    (NCID, 'x_vert_T', ID )
     newstyle = ITMP==NF_NOERR
@@ -164,19 +164,19 @@ contains
        call fieldSize(NCID,'y_vert_T',SIZ_YVERT_Y,2)
 
        allocate(XVERT(SIZ_XVERT_X,SIZ_YVERT_Y,4),stat=STATUS)
-       ASSERT_(STATUS==0)
+       _ASSERT(STATUS==0,'needs informative message')
        allocate(YVERT(SIZ_XVERT_X,SIZ_YVERT_Y,4),stat=STATUS)
-       ASSERT_(STATUS==0)
+       _ASSERT(STATUS==0,'needs informative message')
 
        STATUS = NF_INQ_VARID     (NCID,  'x_vert_T', VARID )
-       ASSERT_(STATUS==NF_NOERR)
+       _ASSERT(STATUS==NF_NOERR,'needs informative message')
        status = NF_GET_VAR_DOUBLE(NCID, VARID, XVERT)
-       ASSERT_(STATUS==NF_NOERR)
+       _ASSERT(STATUS==NF_NOERR,'needs informative message')
 
        STATUS = NF_INQ_VARID     (NCID,  'y_vert_T', VARID )
-       ASSERT_(STATUS==NF_NOERR)
+       _ASSERT(STATUS==NF_NOERR,'needs informative message')
        STATUS = NF_GET_VAR_DOUBLE(NCID, VARID, YVERT)
-       ASSERT_(STATUS==NF_NOERR)
+       _ASSERT(STATUS==NF_NOERR,'needs informative message')
 
 !!$       print *, 'Newstyle'
 !!$       print *, 'xs: ',xvert(1,1,:)
@@ -188,9 +188,9 @@ contains
        call fieldSize(NCID,'geolat_vert_t',SIZ_YVERT_Y,2)
 
        allocate(VERTX(SIZ_XVERT_X,SIZ_YVERT_Y),stat=STATUS)
-       ASSERT_(STATUS==0)
+       _ASSERT(STATUS==0,'needs informative message')
        allocate(VERTY(SIZ_XVERT_X,SIZ_YVERT_Y),stat=STATUS)
-       ASSERT_(STATUS==0)
+       _ASSERT(STATUS==0,'needs informative message')
 
 !       print *, SIZ_XVERT_X,SIZ_YVERT_Y
 
@@ -198,19 +198,19 @@ contains
        SIZ_YVERT_Y = SIZ_YVERT_Y-1
 
        allocate(XVERT(SIZ_XVERT_X,SIZ_YVERT_Y,4),stat=STATUS)
-       ASSERT_(STATUS==0)
+       _ASSERT(STATUS==0,'needs informative message')
        allocate(YVERT(SIZ_XVERT_X,SIZ_YVERT_Y,4),stat=STATUS)
-       ASSERT_(STATUS==0)
+       _ASSERT(STATUS==0,'needs informative message')
 
        STATUS = NF_INQ_VARID     (NCID,  'geolon_vert_t', VARID )
-       ASSERT_(STATUS==NF_NOERR)
+       _ASSERT(STATUS==NF_NOERR,'needs informative message')
        status = NF_GET_VAR_DOUBLE(NCID, VARID, VERTX)
-       ASSERT_(STATUS==NF_NOERR)
+       _ASSERT(STATUS==NF_NOERR,'needs informative message')
 
        STATUS = NF_INQ_VARID     (NCID,  'geolat_vert_t', VARID )
-       ASSERT_(STATUS==NF_NOERR)
+       _ASSERT(STATUS==NF_NOERR,'needs informative message')
        STATUS = NF_GET_VAR_DOUBLE(NCID, VARID, VERTY)
-       ASSERT_(STATUS==NF_NOERR)
+       _ASSERT(STATUS==NF_NOERR,'needs informative message')
 
 !!$       print *, 'Oldstyle'
 !!$       print *, 'xs: ',vertx(1,1),vertx(2,1),vertx(2,2),vertx(1,2)

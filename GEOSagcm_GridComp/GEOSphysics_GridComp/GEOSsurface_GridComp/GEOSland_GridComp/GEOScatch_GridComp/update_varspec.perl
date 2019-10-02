@@ -81,7 +81,7 @@ foreach $line (@importlist) {
     push @varspec_code,  padline("  IMPORT             = .true.", $linelength);
     push @varspec_code,  '  RC=STATUS  ) '."\n";
     push @varspec_code,  "\n";
-    push @varspec_code,  'VERIFY_(STATUS)'."\n";
+    push @varspec_code,  '_VERIFY(STATUS)'."\n";
     push @varspec_code,  "\n";
 
     push @retrieval_code, padline("call GET_POINTER(IMPORT",$linelength);
@@ -89,7 +89,7 @@ foreach $line (@importlist) {
     push @retrieval_code, padline("                 '$shortname'",$linelength);
     push @retrieval_code,         '                 RC=STATUS  ) '."\n";
     push @retrieval_code, "\n";
-    push @retrieval_code, 'VERIFY_(STATUS)'."\n";
+    push @retrieval_code, '_VERIFY(STATUS)'."\n";
     push @retrieval_code, "\n";
 
     if ($dimensiontag eq 'TileOnly') {
@@ -138,7 +138,7 @@ foreach $line (@internallist) {
     push @varspec_code,  padline("  INTERNAL           = .true.", $linelength);
     push @varspec_code,  '  RC=STATUS  ) '."\n";
     push @varspec_code,  "\n";
-    push @varspec_code,  'VERIFY_(STATUS)'."\n";
+    push @varspec_code,  '_VERIFY(STATUS)'."\n";
     push @varspec_code,  "\n";
 
     push @retrieval_code, padline("call GET_POINTER(INTERNAL",$linelength);
@@ -146,7 +146,7 @@ foreach $line (@internallist) {
     push @retrieval_code, padline("                 '$shortname'",$linelength);
     push @retrieval_code,         '                 RC=STATUS  ) '."\n";
     push @retrieval_code, "\n";
-    push @retrieval_code, 'VERIFY_(STATUS)'."\n";
+    push @retrieval_code, '_VERIFY(STATUS)'."\n";
     push @retrieval_code, "\n";
     
     if ($dimensiontag eq 'TileOnly') {
@@ -195,7 +195,7 @@ foreach $line (@exportlist) {
     push @varspec_code,  padline("  EXPORT             = .true.", $linelength);
     push @varspec_code,  '  RC=STATUS  ) '."\n";
     push @varspec_code,  "\n";
-    push @varspec_code,  'VERIFY_(STATUS)'."\n";
+    push @varspec_code,  '_VERIFY(STATUS)'."\n";
     push @varspec_code,  "\n";
 
     push @retrieval_code, padline("call GET_POINTER(EXPORT",$linelength);
@@ -204,7 +204,7 @@ foreach $line (@exportlist) {
     push @retrieval_code, padline("                  alloc=.true.",$linelength);
     push @retrieval_code,         '                 RC=STATUS  ) '."\n";
     push @retrieval_code, "\n";
-    push @retrieval_code, 'VERIFY_(STATUS)'."\n";
+    push @retrieval_code, '_VERIFY(STATUS)'."\n";
     push @retrieval_code, "\n";
 
     if ($dimensiontag eq 'TileOnly') {
