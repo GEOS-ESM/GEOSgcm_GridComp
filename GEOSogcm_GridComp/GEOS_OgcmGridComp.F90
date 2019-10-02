@@ -2108,7 +2108,7 @@ contains
     call MAPL_TimerOff(MAPL,"TOTAL"     )
 
     if (.not. DUAL_OCEAN) then
-       call MAPL_GenericRun(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
+       call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
        _VERIFY(STATUS)
     else
        if (PHASE == 1) then

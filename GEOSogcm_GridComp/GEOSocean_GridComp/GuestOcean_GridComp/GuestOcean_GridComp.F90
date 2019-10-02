@@ -1200,7 +1200,7 @@ contains
           call MAPL_TimerOn (STATE,"--ModRun")
 
           if (.not. DUAL_OCEAN) then
-             call MAPL_GenericRun(GC, IMPORT, EXPORT, PrivateState%CLOCK, RC=STATUS)
+             call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, PrivateState%CLOCK, RC=STATUS)
              _VERIFY(STATUS)
           else
              if (PHASE == 1) then
