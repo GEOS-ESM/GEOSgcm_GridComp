@@ -5339,10 +5339,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: SLR   => NULL()
 
 ! for reading "forced" precip
-
-    real, pointer, dimension(:,:) :: PCUe => NULL()
     real, pointer, dimension(:,:) :: PTTe => NULL()
-    real, pointer, dimension(:,:) :: SNOe => NULL()
 
 ! interpolate wind for wind stress 
     real, pointer, dimension(:,:) :: UUA     => NULL()
@@ -5364,7 +5361,8 @@ module GEOS_SurfaceGridCompMod
     integer  :: USE_PP_TAPER
     real     :: PP_TAPER_LAT_LOW,PP_TAPER_LAT_HIGH, FACT
     INTEGER                                 :: LSM_CHOICE, RUN_ROUTE
-
+    real, allocatable :: PCSCALE(:,:)
+    real, allocatable :: PRECSUM(:,:)
     character(len=ESMF_MAXPATHLEN) :: SolCycFileName
     logical :: PersistSolar
     
@@ -5761,48 +5759,63 @@ module GEOS_SurfaceGridCompMod
 
        call MAPL_CFIORead( PRECIP_FILE, CurrentTime, Bundle, RC=STATUS)
        _VERIFY(STATUS)
-       call ESMFL_BundleGetPointerToData(Bundle,'PRECCON',PCUe, RC=STATUS)
-       _VERIFY(STATUS)
        call ESMFL_BundleGetPointerToData(Bundle,'PRECTOT',PTTe, RC=STATUS)
        _VERIFY(STATUS)
-       call ESMFL_BundleGetPointerToData(Bundle,'PRECSNO',SNOe, RC=STATUS)
-       _VERIFY(STATUS)
 
-! Ensure Interpolated Fields are Physically Realistic
-! ---------------------------------------------------
-
-       where(PTTe /= MAPL_UNDEF .and. SNOe > PTTe )
-          SNOe = PTTe
-       endwhere
-
-       where(PTTe /= MAPL_UNDEF .and. PCUe > PTTe )
-          PCUe = PTTe
-       endwhere
 
 ! Catchment required convective and large-scale rain and total snowfall,
 !  but files were created for convective precip, total precip, and total
-!  snowfall. The following is an approximate partitioning of the rain
-!  from the available precips.
+!  snowfall. The following scales model precips (including additions of
+!  ICE and FRZR) by the total file precip.
+!
+! Per 05/2019 discussions with Rolf Reichle and Andrea Molod, the
+! following treatment is applied:       
+!   In the case of tiny (< 0.1 mm/day) model precip, corrected precip
+!   is divided by the freezing point. Future development using a ramp
+!   or more sophisticated approach is desired.
+!   Note the original correction precip threshold of 1-4 mm/d was
+!   deemed too small, and a 273.15 K temperature threshold instead of
+!   MAPL_ICE ( = 273.16 K )
 !-----------------------------------------------------------------------
 
-       where(PTTe == MAPL_UNDEF)
+       allocate( PCSCALE(IM,JM), stat=STATUS )
+       _VERIFY(STATUS)
+       allocate( PRECSUM(IM,JM), stat=STATUS )
+       _VERIFY(STATUS)
+
+       PRECSUM = RCU+RLS+SNO+ICE+FRZR
+       
+       where (PTTe == MAPL_UNDEF)
           RCU = PCU
           RLS = PLS
           SNO = SNOFL
           ICE = ICEFL
           FRZR= FRZRFL
-       elsewhere
+       elsewhere (PTTe <= 0.0)         ! PTTe /= MAPL_UNDEF .AND. PTTe <= 0.0
           RCU = 0.
           RLS = 0.
           SNO = 0.
           ICE = 0.
           FRZR= 0.
-       endwhere
-
-       where(PTTe /= MAPL_UNDEF .and. PTTe > 0.0 )
-          RCU = PCUe * (1.0-SNOe/PTTe)
-          RLS = PTTe - RCU - SNOe
-          SNO = SNOe
+       elsewhere (PRECSUM > 1.15741e-6)  ! Above is not true .AND. model precip > 0.1  mm/day
+          PCSCALE = PTTe / PRECSUM
+          RCU  = PCSCALE*RCU
+          RLS  = PCSCALE*RLS
+          SNO  = PCSCALE*SNO
+          ICE  = PCSCALE*ICE
+          FRZR = PCSCALE*FRZR                   
+       elsewhere (TA > MAPL_TICE)    ! Above is not true .AND. model is warmer than freezing
+          RCU = 0.
+          RLS = PTTe
+          SNO = 0.
+          ICE = 0.
+          FRZR= 0.
+       elsewhere (TA <= MAPL_TICE)
+          RCU = 0.
+          RLS = 0.
+          SNO = PTTe
+          ICE = 0.
+          FRZR= 0.          
        endwhere
 
        where(RLS<0.0)
@@ -5810,13 +5823,14 @@ module GEOS_SurfaceGridCompMod
           RLS = 0.0
        endwhere
 
+       deallocate(PCSCALE,PRECSUM)
 ! Destroy the bundle and its fields
 !----------------------------------
 
        call ESMF_FieldBundleDestroy(bundle, rc=STATUS)
        _VERIFY(STATUS)
 
-       deallocate(PCUe, PTTe, SNOe)
+       deallocate(PTTe)
 
 ! Apply latitude taper to replace the model-generated precip
 !  only at low latitudes,
@@ -6759,9 +6773,8 @@ module GEOS_SurfaceGridCompMod
             DEFAULT="null", RC=STATUS)
        _VERIFY(STATUS)
 
-       if(Precip_File /= "null" .and. DischargeAdjustFile /= "null") then
-
-          ! Do not correct the precip over ocean tiles
+       ! Do not correct the precip over ocean tiles
+       if(Precip_File /= "null") then
 
           call MAPL_LocStreamTransform( LOCSTREAM, TMPTILE  , PCU,     RC=STATUS); _VERIFY(STATUS)
           where(tiletype == MAPL_OCEAN)  PCUTILE = TMPTILE
@@ -6778,7 +6791,10 @@ module GEOS_SurfaceGridCompMod
           call MAPL_LocStreamTransform( LOCSTREAM, TMPTILE  , FRZRFL,   RC=STATUS); _VERIFY(STATUS)
           where(tiletype == MAPL_OCEAN)  FRZRFLTILE = TMPTILE
 
-          ! Adjust the discharge going to the ocean
+       end if
+
+       ! Adjust the discharge going to the ocean
+       if(Precip_File /= "null" .and. DischargeAdjustFile /= "null") then
 
           call MAPL_GetPointer(INTERNAL, DISCHARGE_ADJUST, 'DISCHARGE_ADJUST',  RC=STATUS)
           _VERIFY(STATUS)

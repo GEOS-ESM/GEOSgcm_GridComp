@@ -1,5 +1,3 @@
-  !  $Id$
-
 #include "MAPL_Generic.h"
 
 !=============================================================================
@@ -27,6 +25,7 @@ module GEOS_CatchGridCompMod
   use GEOS_Mod
   use MAPL_ConstantsMod
   use GEOS_UtilsMod
+  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
   use DragCoefficientsMod
   use CATCHMENT_MODEL, ONLY :                 &
        catchment
@@ -84,7 +83,7 @@ integer,parameter :: NUM_SUBTILES=4
 !                  7:  BARE SOIL
 !                  8:  DESERT
 
-integer           :: NUM_ENSEMBLE, USE_ASCATZ0
+integer           :: NUM_LDAS_ENSEMBLE, USE_ASCATZ0
 integer,parameter :: NTYPS = MAPL_NUMVEGTYPES
 
 ! Veg-dep. vector SAI factor for scaling of rough length (now exp(-.5) )
@@ -185,7 +184,7 @@ subroutine SetServices ( GC, RC )
 
     is_OFFLINE = wrap%ptr%CATCH_OFFLINE
 
-    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     _VERIFY(STATUS)
 
     call MAPL_GetResource ( MAPL, USE_ASCATZ0, Label="USE_ASCATZ0:", DEFAULT=0, RC=STATUS)
@@ -3116,7 +3115,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated( MOU2M))  MOU2M = 0.0
    if(associated( MOV2M))  MOV2M = 0.0
 
-   ! JP editted:
    select case (Z0_FORMULATION)
       case (0)  ! no scaled at all
          SCALE4ZVG   = 1
@@ -3138,7 +3136,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          SCALE4Z0    = 1
          SCALE4Z0_u  = 1
          MIN_VEG_HEIGHT = 0.01         
-      case (4) ! JP testing
+      case (4) 
          SCALE4ZVG   = 1
          SCALE4Z0    = 2
          SCALE4Z0_u  = 2
@@ -3792,9 +3790,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:)   :: VISDF
         real,pointer,dimension(:)   :: NIRDF
         character (len=ESMF_MAXSTR) :: VISDFFILE
-        character (len=ESMF_MAXSTR) :: VISDFlabel
+        character (len=ESMF_MAXSTR) :: VISDFtpl
         character (len=ESMF_MAXSTR) :: NIRDFFILE
-        character (len=ESMF_MAXSTR) :: NIRDFlabel
+        character (len=ESMF_MAXSTR) :: NIRDFtpl
         real                        :: FAC
 
         real,parameter              :: PRECIPFRAC=1.0
@@ -3837,6 +3835,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
         real, pointer               :: QA1_0(:), QA2_0(:),  QA4_0(:)
 
+        integer                     :: ens_id_width
+        
         ! --------------------------------------------------------------------------
         ! Lookup tables
         ! --------------------------------------------------------------------------
@@ -3913,27 +3913,55 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Get name of albedo files from configuration
         ! --------------------------------------------------------------------------
 
-        VISDFlabel='VISDF_FILE:'
-        NIRDFlabel='NIRDF_FILE:'
-        if(NUM_ENSEMBLE > 1) then
+        if(NUM_LDAS_ENSEMBLE > 1) then
+           call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
+           _VERIFY(STATUS)           
            !comp_name should be catchxxxx
-           VISDFlabel='VISDF'//comp_name(6:9)//'_FILE:'
-           NIRDFlabel='NIRDF'//comp_name(6:9)//'_FILE:'
+           call MAPL_GetResource(MAPL   ,&
+              VISDFtpl                  ,&
+              label   = 'VISDF'//comp_name(6:6+ens_id_width-1)//'_FILE:',&
+              RC=STATUS )
+           call MAPL_GetResource(MAPL    ,&
+              NIRDFtpl                   ,&
+              label   = 'NIRDF'//comp_name(6:6+ens_id_width-1)//'_FILE:' ,&
+              RC=STATUS )
+
+           if (STATUS/=ESMF_SUCCESS) then
+              call MAPL_GetResource(MAPL     ,&
+                   VISDFtpl                  ,&
+                   label   = 'VISDF_FILE:'   ,&
+                   default = '../input/visdf%s.data'      ,&
+                   RC=STATUS )
+              _VERIFY(STATUS)
+
+              call MAPL_GetResource(MAPL       ,&
+                  NIRDFtpl                     ,&
+              label   = 'NIRDF_FILE:'          ,&
+              default = '../input/nirdf%s.data',&
+              RC=STATUS )
+              _VERIFY(STATUS)
         endif
+
+           call ESMF_CFIOStrTemplate(VISDFFILE, VISDFtpl,'GRADS', xid=comp_name(6:6+ens_id_width-1), stat=status)
+           _VERIFY(STATUS)
+           call ESMF_CFIOStrTemplate(NIRDFFILE, NIRDFtpl,'GRADS', xid=comp_name(6:6+ens_id_width-1), stat=status)
+           _VERIFY(STATUS) 
+        else
 
         call MAPL_GetResource(MAPL      ,&
              VISDFFILE                  ,&
-             label   = trim(VISDFlabel) ,&
+              label   = 'VISDF_FILE:'     ,&
              default = 'visdf.dat'      ,&
              RC=STATUS )
         _VERIFY(STATUS)
 
         call MAPL_GetResource(MAPL       ,&
              NIRDFFILE                   ,&
-             label   = trim(NIRDFlabel)  ,&
+              label   = 'NIRDF_FILE:'     ,&
              default = 'nirdf.dat'       ,&
              RC=STATUS )
         _VERIFY(STATUS)
+        endif
 
         ! Get parameters to zero the deposition rate 
         ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
