@@ -995,17 +995,6 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME = 'MTRI',                                       &
-         LONG_NAME  = 'tracer_tendencies_due_to_moist',             &
-         UNITS      = 'X s-1',                                      &
-         !        TYPE       = MAPL_BUNDLE,                                &
-         DATATYPE   = MAPL_BundleItem,                             &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,                        &
-         RC=STATUS )
-    VERIFY_(STATUS)                                                                           
-
     call MAPL_AddExportSpec(GC,                              &
          SHORT_NAME = 'DTHDT ',                                     &
          LONG_NAME = 'pressure_weighted_potential_temperature_tendency_due_to_moist',&
@@ -4973,7 +4962,6 @@ contains
 
       type (ESMF_TimeInterval)        :: TINT
       type (RAS_Tracer_T ), pointer   :: TRPtrs (:)
-      type (RAS_Tracer_T ), pointer   :: TRIPtrs(:)
 
       !  LOCAL COPY OF VARIABLES
 
@@ -5036,7 +5024,7 @@ contains
       real, pointer, dimension(:,:  ) :: PTYPE,FRZR,ICE,SNR,PRECU,PRELS,TS,SNOMAS,FRLANDICE,FRLAND,FROCEAN
       real, pointer, dimension(:,:  ) :: IWP,LWP,CWP,TPW,CAPE,ZPBLCN,INHB,ZLCL,ZLFC,ZCBL,CCWP , KPBLIN, KPBLSC
       real, pointer, dimension(:,:  ) :: TVQ0,TVQ1,TVE0,TVE1,TVEX,DCPTE, TVQX2, TVQX1, CCNCOLUMN, NDCOLUMN, NCCOLUMN  !DONIF
-      real, pointer, dimension(:,:,:,:) :: XHO, XHOI
+      real, pointer, dimension(:,:,:,:) :: XHO
       real, pointer, dimension(:,:  ) ::  MXDIAM, RH600, Q600, QCBL, QRATIO, CNV_FRC
 
       real, pointer, dimension(:,:  ) :: RAS_TIME, RAS_TRG, RAS_TOKI, RAS_PBL, RAS_WFN 
@@ -6311,8 +6299,6 @@ contains
 
       call MAPL_GetPointer(EXPORT, SDMZ,      'SDMZ'    , RC=STATUS); VERIFY_(STATUS)
 
-      call ESMF_StateGet(EXPORT, 'MTRI',    TRI,        RC=STATUS); VERIFY_(STATUS)
-
 
       call MAPL_GetPointer(EXPORT, DDF_RH1,    'DDF_RH1'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DDF_RH2,    'DDF_RH2'   , RC=STATUS); VERIFY_(STATUS)
@@ -6467,12 +6453,6 @@ contains
       call ESMF_FieldBundleGet(TR,FieldCount=KM , RC=STATUS)
       VERIFY_(STATUS)
 
-      ! ...and make sure the other bundles are the same.
-      !-------------------------------------------------
-
-      call ESMF_FieldBundleGet(TRI,FieldCount=K , RC=STATUS)
-      VERIFY_(STATUS)
-      ASSERT_(KM==K)
 
       ! Allocate tracer stuff
       !----------------------
@@ -6482,8 +6462,6 @@ contains
       allocate(IS_WEIGHTED(KM),stat=STATUS)
       VERIFY_(STATUS)
       allocate(TRPtrs     (KM),stat=STATUS)
-      VERIFY_(STATUS)
-      allocate(TRIPtrs    (KM),stat=STATUS)
       VERIFY_(STATUS)
       allocate(FSCAV_     (KM),stat=STATUS)
       VERIFY_(STATUS)
@@ -6588,8 +6566,6 @@ contains
             ITRCR = ITRCR + 1
             call ESMFL_BundleGetPointerToData(TR    ,      NAME,         TRPtrs (K)%Q, RC=STATUS)
             VERIFY_(STATUS)
-            call ESMFL_BundleGetPointerToData(TRI   , trim(NAME)//'IM' , TRIPtrs(K)%Q, RC=STATUS)
-            VERIFY_(STATUS)
          end if
 
       end do
@@ -6599,8 +6575,6 @@ contains
       !---------------------------
 
       allocate(XHO (IM,JM,LM,ITRCR),stat=STATUS)
-      VERIFY_(STATUS)
-      allocate(XHOI(IM,JM,LM,ITRCR),stat=STATUS)
       VERIFY_(STATUS)
       !     FSCAV changes dimensions of FSCAV_
       allocate(FSCAV(ITRCR),stat=STATUS)
@@ -7459,9 +7433,6 @@ contains
             FSCAV(KK) = FSCAV_(K)
             !PRINT *, QNAMES(K), FSCAV_(K), FSCAV(KK)
             XHO(:,:,:,KK) = TRPtrs(K)%Q(:,:,:)
-            if(associated(TRIPtrs(K)%Q)) then
-               XHOI(:,:,:,KK) = TRPtrs(K)%Q(:,:,:)
-            end if
          end if
       end do
 
@@ -8205,21 +8176,14 @@ contains
          endif
       end do
 
-      ! Fill in tracer tendencies
-      !--------------------------
+      ! Update MTR pointers
+      !--------------------
 
       KK=0
       do K=1,KM
          if(IS_FRIENDLY(K)) then
             KK = KK+1
             TRPtrs(K)%Q(:,:,:) =  XHO(:,:,:,KK)
-            if(associated(TRIPtrs(K)%Q)) then
-               !PRINT *, "TRIPtrs is associated"
-               TRIPtrs(K)%Q(:,:,:) = (XHO(:,:,:,KK) - XHOI(:,:,:,KK)) / DT_MOIST
-               if(IS_WEIGHTED(K)) then
-                  TRIPtrs(K)%Q(:,:,:) = TRIPtrs(K)%Q(:,:,:)*DP(:,:,:)
-               end if
-            end if
          end if
       end do
 
@@ -8353,11 +8317,7 @@ contains
       VERIFY_(STATUS)
       deallocate(TRPtrs     ,stat=STATUS)
       VERIFY_(STATUS)
-      deallocate(TRIPtrs    ,stat=STATUS)
-      VERIFY_(STATUS)
       deallocate(XHO        ,stat=STATUS)
-      VERIFY_(STATUS)
-      deallocate(XHOI       ,stat=STATUS)
       VERIFY_(STATUS)
       ! CAR 12/5/08
       deallocate(FSCAV      ,stat=STATUS)
