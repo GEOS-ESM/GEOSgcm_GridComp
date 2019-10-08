@@ -80,6 +80,8 @@ type GCM_WRAP
    type (T_GCM_STATE), pointer :: PTR => null()
 end type GCM_WRAP
 
+logical ::      DUAL_OCEAN
+
 contains
 
 !BOP
@@ -133,6 +135,8 @@ contains
     integer                             :: REPLAY_FILE_FREQUENCY
     integer                             :: REPLAY_BKGAVE
 
+    integer                             :: iDUAL_OCEAN
+
 !=============================================================================
 
 ! Begin...
@@ -182,6 +186,16 @@ contains
     call MAPL_GetResource ( MAPL, DO_DATASEA,       Label="USE_DATASEA:" , DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
+    VERIFY_(STATUS)
+
+    ! Default is not to do dual_ocean
+    call MAPL_GetResource(MAPL, iDUAL_OCEAN, 'DUAL_OCEAN:', default=0, RC=STATUS )
+    VERIFY_(STATUS)
+    DUAL_OCEAN = iDUAL_OCEAN /= 0
+    if (DUAL_OCEAN) then
+       ASSERT_( adjustl(ReplayMode)=="Regular" )
+    endif
 
 ! Get/Set Default RUN Parameters used by Multiple Gridded Components
 !-------------------------------------------------------------------
@@ -1294,8 +1308,13 @@ contains
                 call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
                 VERIFY_(STATUS)
 
-                if(DO_DATASEA /= 0) then
-                   call RUN_OCEAN(RC=STATUS)
+                if (.not. DUAL_OCEAN) then
+                   if(DO_DATASEA /= 0) then
+                      call RUN_OCEAN(RC=STATUS)
+                      VERIFY_(STATUS)
+                   end if
+                else
+                   call RUN_OCEAN(Phase=2, RC=STATUS)
                    VERIFY_(STATUS)
                 end if
                 
@@ -1466,7 +1485,8 @@ contains
 
      RETURN_(ESMF_SUCCESS)
    contains
-     subroutine RUN_OCEAN(rc)
+     subroutine RUN_OCEAN(phase, rc)
+       integer, optional, intent(IN)  :: phase
        integer, optional, intent(OUT) :: rc
        integer :: status
        character(len=ESMF_MAXSTR) :: Iam='Run_Ocean'
@@ -1647,7 +1667,7 @@ contains
        call MAPL_TimerOn(MAPL,"--OCEAN"  )
        call MAPL_TimerOn(MAPL,"OGCM"     )
 
-       call ESMF_GridCompRun ( GCS(OGCM), importState=gim(OGCM), exportState=gex(OGCM), clock=clock, userRC=status )
+       call ESMF_GridCompRun ( GCS(OGCM), importState=gim(OGCM), exportState=gex(OGCM), clock=clock, phase=phase, userRC=status )
        VERIFY_(STATUS)
 
        call MAPL_TimerOff(MAPL,"OGCM"     )
