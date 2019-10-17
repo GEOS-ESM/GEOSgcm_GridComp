@@ -2818,14 +2818,14 @@ end subroutine SetServices
        VERIFY_(STATUS)
 
 
-       IAU_NAMES = (/"TCFSAT_IAU", "TCFTRN_IAU", "TCFWLT_IAU", &
+       IAU_NAMES = [character(len=11) :: "TCFSAT_IAU", "TCFTRN_IAU", "TCFWLT_IAU", &
                      "QCFSAT_IAU", "QCFTRN_IAU", "QCFWLT_IAU", &
                      "CAPAC_IAU" , "CATDEF_IAU", "RZEXC_IAU" , "SRFEXC_IAU", &
                      "GHTCNT1_IAU", "GHTCNT2_IAU", "GHTCNT3_IAU", &
                      "GHTCNT4_IAU", "GHTCNT5_IAU", "GHTCNT6_IAU", &
                      "WESNN1_IAU", "WESNN2_IAU", "WESNN3_IAU", &
                      "HTSNNN1_IAU", "HTSNNN2_IAU", "HTSNNN3_IAU", &
-                     "SNDZN1_IAU", "SNDZN2_IAU", "SNDZN3_IAU"/)
+                     "SNDZN1_IAU", "SNDZN2_IAU", "SNDZN3_IAU"]
 
        DIMS = MAPL_DimsTileOnly
        HW = 0
