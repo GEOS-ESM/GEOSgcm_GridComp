@@ -12,7 +12,7 @@ use lib ("$Bin");
 #-----------------
 my ($saltwater, $openwater, $seaice, $lake, $landice, $catch, $catchcn, $route);
 my ($surflay, $rsttime, $grpID, $numtasks, $walltime, $rescale, $qos, $yyyymm);
-my ($mk_catchcn_j, $mk_catchcn_log);
+my ($mk_catchcn_j, $mk_catchcn_log, $weminIN, $weminOUT, $weminDFLT);
 my ($zoom);
 
 # mk_catchcn job and log file names
@@ -27,10 +27,10 @@ $mk_catchcn_log = "mk_catchcn.log";
 
     init();
 
-    #----------------
-    # catchcn restart
-    #----------------
-    if ($catchcn) {
+    #---------------------------
+    # catch and catchcn restarts
+    #---------------------------
+    if ($catch or $catchcn) {
         write_mk_catchcn_j() unless -e $mk_catchcn_j;
 
         # run interactively if already on interactive job nodes
@@ -97,17 +97,6 @@ $mk_catchcn_log = "mk_catchcn.log";
     }
 
     #--------------
-    # catch restart
-    #--------------
-    if ($catch) {
-        $cmd = "$Bin/mk_CatchRestarts "
-            .       "OutData/\*.til "
-            .       "InData/\*.til "
-            .       "InData/\*catch_internal_rst\* $surflay $zoom";
-        system_($cmd);
-    }
-
-    #--------------
     # route restart
     #--------------
     if ($route) {
@@ -134,6 +123,8 @@ sub init {
                 "landice"   => \$landice,
                 "catch"     => \$catch,
                 "catchcn"   => \$catchcn,
+                "wemin=i"   => \$weminIN,
+                "wemout=i"  => \$weminOUT,
                 "route"     => \$route,
 
                 "surflay=i" => \$surflay,
@@ -146,11 +137,17 @@ sub init {
                 "qos=s"     => \$qos,
                 "zoom=i"    => \$zoom,
                 "h|help"    => \$help );
-    usage() if $help;
-
-    # zoom value default
-    #-------------------
+    # defaults
+    #---------
+    $catch = 0 unless $catch;
+    $catchcn = 0 unless $catchcn;
+    $rescale = 0 unless $rescale;
+    $weminDFLT = 26;
+    $weminIN = $weminDFLT unless defined($weminIN);
+    $weminOUT = $weminDFLT unless defined($weminOUT);
     $zoom = 8 unless $zoom;
+
+    usage() if $help;
 
     # error if no restart specified
     #------------------------------
@@ -170,7 +167,6 @@ sub init {
         }
         unless ($walltime) { $walltime = "1:00:00" }
         unless ($numtasks) { $numtasks = 84 }
-        unless ($rescale)  { $rescale  = 0 }
         $qos = "" unless $qos;
     }
 
@@ -223,32 +219,59 @@ set echo
 #limit stacksize unlimited
 unlimit
 
-set mk_CatchCNRestarts_X = $Bin/mk_CatchCNRestarts
-set Scale_CatchCN_X      = $Bin/Scale_CatchCN
-set rescale = $rescale
+set catchFLG   = $catch
+set catchcnFLG = $catchcn
+set weminIN  = $weminIN
+set weminOUT = $weminOUT
+set rescaleFLG = $rescale
+
+set numtasks   = $numtasks
+set rsttime    = $rsttime
+set surflay    = $surflay
+set zoom       = $zoom
+
+set esma_mpirun_X = ( $Bin/esma_mpirun -np \$numtasks )
+set mk_CatchRestarts_X   = ( \$esma_mpirun_X $Bin/mk_CatchRestarts )
+set mk_CatchCNRestarts_X = ( \$esma_mpirun_X $Bin/mk_CatchCNRestarts )
+set Scale_Catch_X   = $Bin/Scale_Catch
+set Scale_CatchCN_X = $Bin/Scale_CatchCN
 
 set OUT_til   = OutData/\*.til
 set IN_til    = InData/\*.til
-set catchcnIN = InData/\*catchcn_\*
 
-set numtasks = $numtasks
-set surflay  = $surflay
-set rsttime  = $rsttime
-set zoom     = $zoom
-set params = ( \$OUT_til \$IN_til \$catchcnIN \$surflay \$rsttime \$zoom)
+if (\$catchFLG) then
+    set catchIN = InData/\*catch_internal_rst\*
+    set params = ( \$OUT_til \$IN_til \$catchIN \$surflay \$zoom )
+    \$mk_CatchRestarts_X \$params
 
-$Bin/esma_mpirun -np \$numtasks \$mk_CatchCNRestarts_X \$params
+    if (\$rescaleFLG) then
+        set catch_regrid = OutData/\$catchIN:t
+        set catch_scaled = \${catch_regrid}.scaled
+        set params = ( \$catchIN \$catch_regrid \$catch_scaled \$surflay )
+        set params = ( \$params \$weminIN \$weminOUT )
+        \$Scale_Catch_X \$params
 
-if (\$rescale) then
-    set catchcn_regrid = OutData/\$catchcnIN:t
-    set catchcn_scaled = \${catchcn_regrid}.scaled
-    \$Scale_CatchCN_X \$catchcnIN \$catchcn_regrid \$catchcn_scaled \$surflay
-
-    set catchcn = \$catchcn_regrid
-    mv \$catchcn \${catchcn}.1
-    mv \$catchcn_scaled \$catchcn
+        mv \$catch_regrid \${catch_regrid}.1
+        mv \$catch_scaled \$catch_regrid
+    endif
 endif
 
+if (\$catchcnFLG) then
+    set catchcnIN = InData/\*catchcn_internal_rst\*
+    set params = ( \$OUT_til \$IN_til \$catchcnIN \$surflay \$rsttime \$zoom )
+    \$mk_CatchCNRestarts_X \$params
+
+    if (\$rescaleFLG) then
+        set catchcn_regrid = OutData/\$catchcnIN:t
+        set catchcn_scaled = \${catchcn_regrid}.scaled
+        set params = ( \$catchcnIN \$catchcn_regrid \$catchcn_scaled \$surflay )
+        set params = ( \$params \$weminIN \$weminOUT )
+        \$Scale_CatchCN_X \$params
+
+        mv \$catchcn_regrid \${catchcn_regrid}.1
+        mv \$catchcn_scaled \$catchcn_regrid
+    endif
+endif
 exit
 EOF
 ;
@@ -306,26 +329,28 @@ sub usage {
 usage $name [-saltwater] [-lake] [-landice] [-catch] [-h]
 
 option flags
-   -saltwater     regrid saltwater internal restart
-   -lake          regrid lake internal restart
-   -landice       regrid landice internal restart
-   -catch         regrid catchment internal restart
-   -catchcn       regrid catchment CN internal restart
-   -route         create the route internal restart
+   -saltwater       regrid saltwater internal restart
+   -lake            regrid lake internal restart
+   -landice         regrid landice internal restart
+   -catch           regrid catchment internal restart
+   -catchcn         regrid catchment CN internal restart
+   -wemin weminIN   minimum water snow water equivalent for input catch/cn [$weminDFLT]
+   -wemout weminOUT minimum water snow water equivalent for output catch/cn [$weminDFLT]
+   -route           create the route internal restart
 
-   -surflay n     number of surface layers (catch & catchcn)
-   -rsttime n10   restart time in format, yyyymmddhh (catchcn) or yyyymm (route)
-   -grpID grpID   group ID for batch submittal (catchcn)
+   -surflay n       number of surface layers (catch & catchcn)
+   -rsttime n10     restart time in format, yyyymmddhh (catchcn) or yyyymm (route)
+   -grpID grpID     group ID for batch submittal (catchcn)
 
-   -ntasks nt     number of tasks to assign to catchcn batch job [112]
-   -walltime wt   walltime in format \"hh:mm:ss\" for catchcn batch job [1:00:00]
+   -ntasks nt       number of tasks to assign to catchcn batch job [112]
+   -walltime wt     walltime in format \"hh:mm:ss\" for catchcn batch job [1:00:00]
    -rescale
-   -qos val       use \"SBATCH --qos=val directive\" for batch jobs;
-                  \"-qos debug\" will not work unless these conditions are met
-                       -> numtasks <= 532
-                       -> walltime le \"1:00:00\"
-   -zoom n        zoom value to send to land regridding codes [8]
-   -h             print usage information
+   -qos val         use \"SBATCH --qos=val directive\" for batch jobs;
+                    \"-qos debug\" will not work unless these conditions are met
+                         -> numtasks <= 532
+                         -> walltime le \"1:00:00\"
+   -zoom n          zoom value to send to land regridding codes [8]
+   -h               print usage information
 
 EOF
 exit;
