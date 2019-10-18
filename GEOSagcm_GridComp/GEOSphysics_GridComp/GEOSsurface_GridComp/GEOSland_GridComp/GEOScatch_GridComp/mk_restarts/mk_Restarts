@@ -156,7 +156,7 @@ sub init {
 
     # rsttime and grpID values are needed for catchcn
     #----------------------------------------------
-    if ($catchcn) {
+    if ($catch or $catchcn) {
         die "Error. Must specify rsttime for catchcn;" unless $rsttime;
         die "Error. rsttime not in yyyymmddhh format: $rsttime;"
             unless $rsttime =~ m/^\d{10}$/;
