@@ -349,9 +349,9 @@ contains
    call MAPL_IOChangeRes(InCfg(1),OutCfg,(/'tile'/),(/ntiles/),rc=rc)
 
    call OutFmt%create(trim(out_rst_file),rc=rc)
-
    call OutFmt%write(OutCfg,rc=rc)
-   call OutFmt%close(rc=rc)
+
+   call inFmt%close(rc=rc)
    deallocate(InCfg)
 
 
@@ -565,6 +565,7 @@ contains
       call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSN1(:), WESN1(:), var2, var1)
       var2 = var2 + 273.16
       call MAPL_VarWrite(OutFmt,'TC' ,var2, offset1=4)
+      call OutFmt%close(rc=rc)
       deallocate (var1, var2)
    else
       
