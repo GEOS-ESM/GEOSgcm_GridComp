@@ -156,11 +156,12 @@ sub init {
 
     # rsttime and grpID values are needed for catchcn
     #----------------------------------------------
-    if ($catch or $catchcn) {
+    if ($catchcn) {
         die "Error. Must specify rsttime for catchcn;" unless $rsttime;
         die "Error. rsttime not in yyyymmddhh format: $rsttime;"
             unless $rsttime =~ m/^\d{10}$/;
-
+    }
+    if ($catch or $catchcn) {
         unless ($grpID) {
             $grpID = `$Bin/getsponsor.pl -d`;
             print "Using default grpID = $grpID\n";
