@@ -322,6 +322,9 @@
      call writecatch ( 30,catch(sca) )
   end if
 
+
+  deallocate (TP_IN,GHT_IN,FICE)
+  
 100 format(1x,'Total  Tiles: ',i10)
 200 format(1x,'Scaled Tiles: ',i10,2x,'(',i2.2,'%)')
 300 format(1x,'CatDef Tiles: ',i10,2x,'(',i2.2,'%)')
