@@ -1,6 +1,6 @@
 ! $Id$
 
-! _VERIFY and _RETURN macros for error handling.
+! VERIFY_ and RETURN_ macros for error handling.
 
 #include "MAPL_Generic.h"
 
@@ -581,7 +581,7 @@ contains
          DIMS       =  MAPL_DimsHorzVert,                                          &
          VLOCATION  =  MAPL_VLocationCenter,                                       &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                                    &
          SHORT_NAME = 'DYNF_T',                                                    &
@@ -590,7 +590,7 @@ contains
          DIMS       =  MAPL_DimsHorzVert,                                          &
          VLOCATION  =  MAPL_VLocationCenter,                                       &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                                    &
          SHORT_NAME = 'DYNF_PLE',                                                  &
@@ -599,7 +599,7 @@ contains
          DIMS       =  MAPL_DimsHorzVert,                                          &
          VLOCATION  =  MAPL_VLocationEdge,                                         &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                                    &
          SHORT_NAME = 'DYNF_UA',                                                    &
@@ -608,7 +608,7 @@ contains
          DIMS       =  MAPL_DimsHorzVert,                                          &
          VLOCATION  =  MAPL_VLocationCenter,                                       &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                                    &
          SHORT_NAME = 'DYNF_VA',                                                    &
@@ -617,7 +617,7 @@ contains
          DIMS       =  MAPL_DimsHorzVert,                                          &
          VLOCATION  =  MAPL_VLocationCenter,                                       &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     
 !    call MAPL_AddExportSpec ( gc,                                  &
 !         SHORT_NAME = 'T_N',                                       &
@@ -625,21 +625,21 @@ contains
 !         UNITS      = 'K',                                         &
 !         DIMS       = MAPL_DimsHorzVert,                           &
 !         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-!     _VERIFY(STATUS)
+!     VERIFY_(STATUS)
      call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'Q_N',                                       &
          LONG_NAME  = 'spec_humidity_at_begin_of_time_step',       &
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 !     call MAPL_AddExportSpec ( gc,                                 &
 !         SHORT_NAME = 'PLE_N',                                     &
 !         LONG_NAME  = 'edge_pressure at begin of time step',       &
 !         UNITS      = 'Pa',                                        &
 !         DIMS       = MAPL_DimsHorzVert,                           &
 !         VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-!     _VERIFY(STATUS)
+!     VERIFY_(STATUS)
 !     call MAPL_AddExportSpec ( gc,                                 &
 !         SHORT_NAME = 'U_N',                                       &
 !         LONG_NAME  = 'eastward_wind at begin of time step',       &
@@ -647,7 +647,7 @@ contains
 !         DIMS       = MAPL_DimsHorzVert,                           &
 !         FIELD_TYPE = MAPL_VectorField,                            &
 !         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-!     _VERIFY(STATUS)
+!     VERIFY_(STATUS)
 
 !    call MAPL_AddExportSpec ( gc,                                  &
 !         SHORT_NAME = 'V_N',                                       &
@@ -656,7 +656,7 @@ contains
 !         DIMS       = MAPL_DimsHorzVert,                           &
 !         FIELD_TYPE = MAPL_VectorField,                            &
 !         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-!     _VERIFY(STATUS)
+!     VERIFY_(STATUS)
 !-srf-gf-scheme
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'QV_DYN_IN',                                 &
@@ -664,7 +664,7 @@ contains
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'T_DYN_IN',                                 &
@@ -672,7 +672,7 @@ contains
          UNITS      = 'K',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'U_DYN_IN',                                 &
@@ -680,7 +680,7 @@ contains
          UNITS      = 'm s-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'V_DYN_IN',                                 &
@@ -688,7 +688,7 @@ contains
          UNITS      = 'm s-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'PLE_DYN_IN',                                 &
@@ -696,7 +696,7 @@ contains
          UNITS      = 'Pa',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                 &
          SHORT_NAME = 'PKE',                                 &
@@ -704,7 +704,7 @@ contains
          UNITS      = 'Pa',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
    
 
@@ -959,7 +959,7 @@ contains
          UNITS      = 'm'  ,                                       &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DYC',                                       &
@@ -967,7 +967,7 @@ contains
          UNITS      = 'm'  ,                                       &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
 
     call MAPL_AddExportSpec ( gc,                                  &
@@ -983,7 +983,7 @@ contains
          UNITS      = '1',                                         &
          DIMS       = MAPL_DimsVertOnly,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'BK',                                        &
@@ -991,7 +991,7 @@ contains
          UNITS      = '1',                                         &
          DIMS       = MAPL_DimsVertOnly,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'U_CGRID',                                   &
@@ -999,7 +999,7 @@ contains
          UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'V_CGRID',                                   &
@@ -1007,7 +1007,7 @@ contains
          UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'U_DGRID',                                   &
@@ -1015,7 +1015,7 @@ contains
          UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'V_DGRID',                                   &
@@ -1023,7 +1023,7 @@ contains
          UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                &
          SHORT_NAME = 'PT',                                        &
@@ -1031,7 +1031,7 @@ contains
          UNITS      = 'K Pa$^{-\kappa}$',                          &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                &
          SHORT_NAME = 'PE',                                        &
@@ -1039,7 +1039,7 @@ contains
          UNITS      = 'Pa',                                        &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DELP',                                      &
@@ -1047,7 +1047,7 @@ contains
          UNITS      = 'Pa',                                        &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 !EOS
 
 
@@ -1061,7 +1061,7 @@ contains
 ! ----------------------------------
     call MAPL_GenericSetServices    ( GC, __RC__)
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
      
   end subroutine SetServices
 
@@ -1301,27 +1301,27 @@ contains
 
     if ( CFMIP .and. CFMIP2) then
             print *, " Error - SCM_CFMIP and SCM_CFMIP2 cannot be set at the same time  "  ! This should never happen
-            _RETURN(ESMF_FAILURE)
+            RETURN_(ESMF_FAILURE)
     end if
 
     if ( ( CFMIP .or. CFMIP2) .and. USE_ASCII_DATA ) then
             print *, " Error - USE_ASCII_DATA cannot be set at the same time as  SCM_CFMIP or SCM_CFMIP2  "  ! This should never happen
-            _RETURN(ESMF_FAILURE)
+            RETURN_(ESMF_FAILURE)
     end if
 
     if ( NT == 0 ) then
             print *, " Error - SCM_NT == 0 -- experiment configuration is wrong (should be set in AGCM.rc ) "  ! This should never happen
-            _RETURN(ESMF_FAILURE)
+            RETURN_(ESMF_FAILURE)
     end if
 
     if ( NLEVEL == 0 ) then
             print *, " Error - SCM_NLEVEL == 0 -- experiment configuration is wrong (should be set in AGCM.rc )"  ! This should never happen
-            _RETURN(ESMF_FAILURE)
+            RETURN_(ESMF_FAILURE)
     end if
 
     if ( NT > 1 .and. ( CFMIP .or. CFMIP2 ) ) then
             print *, " Error - SCM_NT > 1 not allowed with CFMIP cases -- experiment configuration is wrong (set in AGCM.rc )"  ! This should never happen
-            _RETURN(ESMF_FAILURE)
+            RETURN_(ESMF_FAILURE)
     end if
 
 
@@ -1448,7 +1448,7 @@ contains
        do K=1,nq-1 
          if (.not. FRIENDLY_arr(K) ) then
             print *, trim(QNAMEarr(k)), " unfriendly var in dynamics bundle - Error "  ! This should never happen
-            _RETURN(ESMF_FAILURE)
+            RETURN_(ESMF_FAILURE)
          endif
        enddo                    
         
@@ -1914,7 +1914,7 @@ contains
       DEALLOCATE( FRIENDLY_arr )
       DEALLOCATE( QNAMEarr )
 
-   _RETURN(ESMF_SUCCESS)
+   RETURN_(ESMF_SUCCESS)
 
    contains
 
@@ -1963,7 +1963,7 @@ contains
           call upvert1( WF(i,j,1:LM+1) , XXX, PP, DT, 1 , LM  )
          else
           print *,' INVALID VERTICAL ADVECTION SCHEME - DID NOT DO ADVECTION '
-          _RETURN(ESMF_FAILURE)
+          RETURN_(ESMF_FAILURE)
          endif
           QTEST(i,j,1:LM) = XXX
        end do
@@ -1980,7 +1980,7 @@ contains
           call upvert1( WF(i,j,1:LM+1) , XXX, PP, DT, 1 , LM  )
          else
           print *,' INVALID VERTICAL ADVECTION SCHEME - DID NOT DO ADVECTION '
-          _RETURN(ESMF_FAILURE)
+          RETURN_(ESMF_FAILURE)
          endif
           Q(i,j,1:LM) = XXX
        end do
@@ -1997,7 +1997,7 @@ contains
           call upvert1( WF(i,j,1:LM+1) , XXX, PP, DT, 1 , LM  )
          else
           print *,' INVALID VERTICAL ADVECTION SCHEME - DID NOT DO ADVECTION '
-          _RETURN(ESMF_FAILURE)
+          RETURN_(ESMF_FAILURE)
          endif
           TH(i,j,1:LM) = XXX
        end do
@@ -2020,7 +2020,7 @@ contains
           call upvert1( WF(i,j,1:LM+1) , XXX, PP, DT, 1 , LM  )
          else
             print *,' INVALID VERTICAL ADVECTION SCHEME - DID NOT DO ADVECTION '
-            _RETURN(ESMF_FAILURE)
+            RETURN_(ESMF_FAILURE)
          endif
          TRCarr(itr)%ptr3(i,j,1:LM) = XXX
          end do
@@ -2114,7 +2114,7 @@ contains
      
          else 
          write(*,*) " No good data "
-         _RETURN(ESMF_FAILURE)
+         RETURN_(ESMF_FAILURE)
          
         end if
       ALREADY_HAVE_DATA=.TRUE.
@@ -2217,7 +2217,7 @@ contains
 
     S  = MAPL_GRAV * ZLO + MAPL_CP * T
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
 
   end subroutine RunAddIncs
 

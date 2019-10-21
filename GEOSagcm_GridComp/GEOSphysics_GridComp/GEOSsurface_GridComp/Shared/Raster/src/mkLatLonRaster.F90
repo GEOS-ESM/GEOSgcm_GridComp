@@ -127,7 +127,7 @@
 !--------------------------------------
 
     allocate(xs(ii+1),ys(jj+1),stat=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     dx = 360.0_8/float(ii)
    
@@ -179,7 +179,7 @@
 !------------------------------------------------
 
     allocate(xv(ii,jj,4), yv(ii,jj,4),stat=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     do j=1,jj
        xv(:,j,1) = xs(1:ii  )

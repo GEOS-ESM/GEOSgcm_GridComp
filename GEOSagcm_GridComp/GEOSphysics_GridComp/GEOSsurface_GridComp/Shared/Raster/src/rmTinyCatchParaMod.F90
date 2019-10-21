@@ -190,7 +190,7 @@ implicit none
     close (10,status='keep')
 
     if(regrid) then
-       allocate(raster(nc,nr),stat=STATUS); _VERIFY(STATUS)
+       allocate(raster(nc,nr),stat=STATUS); VERIFY_(STATUS)
     else
        raster => gswp2_mask
     end if
@@ -373,7 +373,7 @@ lai   = 0.
 count = 0.
 
 if(regrid) then
-    allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
+    allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
 else
     raster => lai_grid
 end if
@@ -629,7 +629,7 @@ END SUBROUTINE modis_lai
           endif
              
 	  if(regrid) then
-	      allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
+	      allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
           else
               raster => soil_high
           end if
@@ -1218,7 +1218,7 @@ END SUBROUTINE modis_lai
     allocate(alb_out(1:maxcat)) 
     allocate(alb_count(1:maxcat)) 
     if(regrid) then
-	allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
+	allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
      else
         raster => alb_in
     end if
@@ -1728,7 +1728,7 @@ END SUBROUTINE modis_scale_para
     close (10,status='keep')
 
     if(regrid) then
-       allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
+       allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
     else
        raster => q0
     end if
@@ -2239,7 +2239,7 @@ END SUBROUTINE modis_scale_para
     close (10,status='keep')
     sib_veg = sib_veg2
     if(regrid) then
-       allocate(raster(nx,ny),stat=STATUS); _VERIFY(STATUS)
+       allocate(raster(nx,ny),stat=STATUS); VERIFY_(STATUS)
     else
        raster => sib_veg
     end if
@@ -6749,8 +6749,8 @@ END SUBROUTINE compute_stats
       allocate (z0_grid   (1 : NC         , 1 : NR))
       allocate (data_grid (1 : N_lon_ascat, 1 : N_lat_ascat)) 
 
-      status  = NF_INQ_VARID (ncid,'roughness',VarID) ; _VERIFY(STATUS)
-      status  = NF_GET_VARA_REAL (ncid,VarID, (/1,1,1/),(/N_lon_ascat, N_lat_ascat,1/), data_grid) ; _VERIFY(STATUS)
+      status  = NF_INQ_VARID (ncid,'roughness',VarID) ; VERIFY_(STATUS)
+      status  = NF_GET_VARA_REAL (ncid,VarID, (/1,1,1/),(/N_lon_ascat, N_lat_ascat,1/), data_grid) ; VERIFY_(STATUS)
 
       call RegridRasterReal(data_grid, z0_grid)
 
@@ -6838,8 +6838,8 @@ END SUBROUTINE compute_stats
       allocate (z2_grid   (1 : NC         , 1 : NR))
       allocate (data_grid (1 : N_lon_jpl, 1 : N_lat_jpl)) 
 
-      status  = NF_INQ_VARID (ncid,'CanopyHeight',VarID) ; _VERIFY(STATUS)
-      status  = NF_GET_VARA_INT (ncid,VarID, (/1,1/),(/N_lon_jpl, N_lat_jpl/), data_grid) ; _VERIFY(STATUS)
+      status  = NF_INQ_VARID (ncid,'CanopyHeight',VarID) ; VERIFY_(STATUS)
+      status  = NF_GET_VARA_INT (ncid,VarID, (/1,1/),(/N_lon_jpl, N_lat_jpl/), data_grid) ; VERIFY_(STATUS)
       
       call RegridRaster(data_grid, z2_grid)
 

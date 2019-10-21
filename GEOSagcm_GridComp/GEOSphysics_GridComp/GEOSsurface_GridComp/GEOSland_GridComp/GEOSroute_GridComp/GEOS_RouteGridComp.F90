@@ -122,7 +122,7 @@ contains
                           NAME=COMP_NAME			   ,&
                           RC=STATUS )
 
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     Iam = trim(COMP_NAME) // 'SetServices'
 
@@ -131,9 +131,9 @@ contains
 ! -----------------------------------------------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint (GC, ESMF_METHOD_RUN, Run, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 !------------------------------------------------------------
 ! Set generic final method 
@@ -145,7 +145,7 @@ contains
 ! -----------------------------------------------------------
 ! 
     call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 !
 ! -----------------------------------------------------------
 ! Get the intervals
@@ -155,7 +155,7 @@ contains
                                   Label="RUN_DT:"                ,&
                                   RC=STATUS)
 
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     RUN_DT = nint(DT)
 
@@ -165,7 +165,7 @@ contains
 
     call ESMF_ConfigGetAttribute ( CF, DT, Label=trim(COMP_NAME)//"_DT:", &
          default=DT, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! -----------------------------------------------------------
 ! Set the state variable specs.
@@ -184,7 +184,7 @@ contains
          DIMS               = MAPL_DimsTileOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
          RC=STATUS  ) 
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! -----------------------------------------------------------
 !   INTERNAL STATE
@@ -283,9 +283,9 @@ contains
 !EOS
 
     call MAPL_TimerAdd(GC,    name="RUN"  ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-RRM" ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 
 
@@ -293,30 +293,30 @@ contains
 ! -------------------------------------------------------------------
 
     allocate( route_internal_state, stat=status )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     wrap%ptr => route_internal_state
     
 ! Save pointer to the wrapped internal state in the GC
 ! ----------------------------------------------------
 
     call ESMF_UserCompSetInternalState ( GC, 'RiverRoute_state',wrap,status )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Clocks
 !-------
 
     call MAPL_TimerAdd(GC, name="INITIALIZE"    ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! All done
 !---------
     
     call MAPL_GenericSetServices(GC, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   
   end subroutine SetServices
 
@@ -379,21 +379,21 @@ contains
     ! begin
     
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     route => wrap%ptr
 
     ! get vm
     ! extract comm
     call ESMF_VMGetCurrent(VM,                                RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call ESMF_VMGet       (VM,       mpiCommunicator =comm,   RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call ESMF_VMGet       (VM, localpet=MYPE, petcount=nDEs,  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     route%comm = comm
     route%ndes = ndes
@@ -408,11 +408,11 @@ contains
     
     ! get LocStream
     call MAPL_Get(MAPL, LocStream = locstream, RC=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     ! extract Pfaf (TILEI on the "other" grid)
     call MAPL_LocStreamGet(locstream, tilei=pfaf, OnAttachedGrid=.false., &
          tileGrid=tilegrid, nt_global=nt_global, RC=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     
     ! exchange Pfaf across PEs
 
@@ -428,13 +428,13 @@ contains
     end do ! global tile loop
 
     distgrid = ESMF_DistGridCreate(arbSeqIndexList=arbSeq, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     newTileGRID = ESMF_GridEmptyCreate(rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
          
     allocate(arbIndex(nTiles,1), stat=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     arbIndex(:,1) = arbSeq
 
@@ -449,24 +449,24 @@ contains
          minIndex=(/1/), &
          maxIndex=(/NT_GLOBAL/), &
          rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     deallocate(arbIndex)
 
     call ESMF_GridCommit(newTileGrid, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 
     ! now create a "catch" grid to be the "native" grid for this component
     distgrid = ESMF_DistGridCreate(arbSeqIndexList=(/minCatch:maxCatch/), &
          rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     catchGRID = ESMF_GridEmptyCreate(rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     allocate(arbIndex(ims(myPE+1),1), stat=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     arbIndex(:,1) = (/minCatch:maxCatch/)
          
@@ -481,43 +481,43 @@ contains
          minIndex=(/1/), &
          maxIndex=(/N_CatG/), &
          rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     deallocate(arbIndex)
 
     call ESMF_GridCommit(catchGrid, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call ESMF_GridCompSet(gc, grid=catchGrid, RC=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_LocStreamGet(locstream, TILEAREA = tile_area_src, RC=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     field0 = ESMF_FieldCreate(grid=tilegrid, datacopyflag=ESMF_DATACOPY_VALUE, &
          farrayPtr=tile_area_src, name='TILE_AREA_SRC', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     ! create field on the "new" tile grid
     allocate(tile_area(ntiles), stat=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     field = ESMF_FieldCreate(grid=newtilegrid, datacopyflag=ESMF_DATACOPY_VALUE, &
          farrayPtr=tile_area, name='TILE_AREA', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     ! create routehandle
     call ESMF_FieldRedistStore(srcField=field0, dstField=field, &
                 routehandle=route%routehandle, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
  
     ! redist tile_area
     call ESMF_FieldRedist(srcField=FIELD0, dstField=FIELD, &
          routehandle=route%routehandle, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call ESMF_FieldDestroy(field, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call ESMF_FieldDestroy(field0, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 #ifdef __GFORTRAN__
     deallocate(tile_area_src)
@@ -531,16 +531,16 @@ contains
     route%maxCatch = maxCatch
 
     allocate(ptr2(ntiles), stat=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     route%field = ESMF_FieldCreate(grid=newtilegrid, datacopyflag=ESMF_DATACOPY_VALUE, &
          farrayPtr=ptr2, name='RUNOFF', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     
     deallocate(ims)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   end subroutine INITIALIZE
   
 ! -----------------------------------------------------------
@@ -636,7 +636,7 @@ contains
     ! begin
     
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     route => wrap%ptr
 
@@ -644,7 +644,7 @@ contains
 ! -----------------------------------------------------------
 
     call ESMF_GridCompGet(GC, name=COMP_NAME, CONFIG=CF, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
   
     Iam = trim(COMP_NAME) // "RUN"
 
@@ -652,10 +652,10 @@ contains
 ! -----------------------------------------------------------
 
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_Get(MAPL, HEARTBEAT = HEARTBEAT, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Start timers
 ! ------------
@@ -666,22 +666,22 @@ contains
 ! ---------------------------------
 
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
-    _VERIFY(STATUS) 
+    VERIFY_(STATUS) 
     
 ! get pointers to inputs variables
 ! ----------------------------------
 
     ! get the field from IMPORT
     call ESMF_StateGet(IMPORT, 'RUNOFF', field=runoff_src, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     ! redist RunOff
     call ESMF_FieldRedist(srcField=runoff_src, dstField=route%field, &
                 routehandle=route%routehandle, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call ESMF_FieldGet(route%field, farrayPtr=RUNOFF, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     pfaf_code => route%pfaf
     tile_area => route%tile_area
@@ -690,34 +690,34 @@ contains
 ! ----------------------------------
   
     call MAPL_GetPointer(INTERNAL, AREACAT , 'AREACAT', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, LENGSC  , 'LENGSC',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, DNSTR   , 'DNSTR'  , RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, WSTREAM , 'WSTREAM', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, WRIVER  , 'WRIVER' , RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, LRIVERMOUTH, 'LRIVERMOUTH' , RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, ORIVERMOUTH, 'ORIVERMOUTH' , RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! get pointers to EXPORTS
 ! -----------------------
 
     call MAPL_GetPointer(EXPORT, QSFLOW,   'QSFLOW'  , RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, QINFLOW,  'QINFLOW' , RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, QOUTFLOW, 'QOUTFLOW', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
  
     call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
-    _VERIFY(STATUS)    
+    VERIFY_(STATUS)    
 
     call MAPL_TimerOn  ( MAPL, "-RRM" )
 
@@ -780,7 +780,7 @@ contains
        call InitializeRiverRouting(MYPE, nDEs, MAPL_am_I_root(vm),pfaf_code, & 
             AllActive, DstCatchID, srcProcsID, LocDstCatchID, rc=STATUS)
 
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
 
        N_Active = count (srcProcsID == MYPE)
 
@@ -993,7 +993,7 @@ contains
 
     call MAPL_TimerOff(MAPL,"RUN")
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
 
   end subroutine RUN
 
@@ -1115,6 +1115,6 @@ contains
     
     deallocate (global_buff, scounts, rdispls, rcounts, LocalActive)
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   end subroutine InitializeRiverRouting
 end module GEOS_RouteGridCompMod

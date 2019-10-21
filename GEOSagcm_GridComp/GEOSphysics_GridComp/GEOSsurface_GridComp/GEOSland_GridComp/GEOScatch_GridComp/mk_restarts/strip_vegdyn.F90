@@ -1,4 +1,4 @@
-#define _VERIFY(A) if(A /=0)then;print *,'ERROR code',A,'at',__LINE__;call exit(3);endif
+#define VERIFY_(A) if(A /=0)then;print *,'ERROR code',A,'at',__LINE__;call exit(3);endif
 
 program checkVegDyn
   implicit none
@@ -58,7 +58,7 @@ program checkVegDyn
   rewind(unit)
 
   allocate(a(nt), stat=status)
-  _VERIFY(status)
+  VERIFY_(status)
 
 ! Read and copy first record
   read (unit) a
@@ -72,7 +72,7 @@ program checkVegDyn
   stop
 
 ! If we are here, something must have gone wrong
-200 _VERIFY(200)
+200 VERIFY_(200)
 
 end program checkVegDyn
 

@@ -1,9 +1,9 @@
 
-      call ESMF_ClockGet(CLOCK, TIMESTEP=DELT, RC=STATUS);_VERIFY(STATUS)
+      call ESMF_ClockGet(CLOCK, TIMESTEP=DELT, RC=STATUS);VERIFY_(STATUS)
       call GEOS_SunGetInsolation(LONS, LATS,ORBIT, ZTH, SLR, &
       INTV = DELT,CLOCK = CLOCK,RC=STATUS )
-      _VERIFY(STATUS)
-      call ESMF_GridCompGet( GC, grid=GRID,  RC=STATUS );_VERIFY(STATUS)
+      VERIFY_(STATUS)
+      call ESMF_GridCompGet( GC, grid=GRID,  RC=STATUS );VERIFY_(STATUS)
       ZTH = max(ZTH,0.0)
 !
       pfull = 0.5*(PLE(:,:,0:LM-1) +  PLE(:,:,1:LM ) )
@@ -59,7 +59,7 @@
         end do
         end do
 ! output
-        unit=GETFILE( "Cloud_ISCCP.data", form="unformatted", RC=STATUS);_VERIFY(STATUS)
+        unit=GETFILE( "Cloud_ISCCP.data", form="unformatted", RC=STATUS);VERIFY_(STATUS)
 	do jq = 1, 7
 	do iq = 1, 7
 	do j  = 1, JM
@@ -68,7 +68,7 @@
 	out_wk(i,j) = fq_isccp(IWK,iq, jq)
 	end do
 	end do
-	call GEOS_VarWrite(unit,GRID,out_wk(:,:),rc=status); _VERIFY(STATUS)
+	call GEOS_VarWrite(unit,GRID,out_wk(:,:),rc=status); VERIFY_(STATUS)
 	end do
 	end do
 ! totalcldarea
@@ -78,7 +78,7 @@
 	out_wk(i,j) = totalcldarea(IWK)
 	end do
 	end do
-        call GEOS_VarWrite(unit,GRID,out_wk(:,:),rc=status); _VERIFY(STATUS)
+        call GEOS_VarWrite(unit,GRID,out_wk(:,:),rc=status); VERIFY_(STATUS)
 ! meanptop
         do j = 1, JM
         do i = 1, IM
@@ -86,7 +86,7 @@
         out_wk(i,j) = meanptop(IWK)
         end do
         end do
-        call GEOS_VarWrite(unit,GRID,out_wk(:,:),rc=status); _VERIFY(STATUS)
+        call GEOS_VarWrite(unit,GRID,out_wk(:,:),rc=status); VERIFY_(STATUS)
 ! meantaucld
         do j = 1, JM
         do i = 1, IM
@@ -94,7 +94,7 @@
         out_wk(i,j) = meantaucld(IWK)
         end do
         end do
-        call GEOS_VarWrite(unit,GRID,out_wk(:,:),rc=status); _VERIFY(STATUS)
-!       call WRITE_PARALLEL(boxtau,      unit=unit,rc=status); _VERIFY(STATUS)
-!       call WRITE_PARALLEL(boxptop,     unit=unit,rc=status); _VERIFY(STATUS)
+        call GEOS_VarWrite(unit,GRID,out_wk(:,:),rc=status); VERIFY_(STATUS)
+!       call WRITE_PARALLEL(boxtau,      unit=unit,rc=status); VERIFY_(STATUS)
+!       call WRITE_PARALLEL(boxptop,     unit=unit,rc=status); VERIFY_(STATUS)
 

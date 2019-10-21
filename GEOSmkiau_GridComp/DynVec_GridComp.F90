@@ -82,19 +82,19 @@ contains
 
     Iam = 'SetServices'
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
 ! Retrieve the pointer to the state
 !----------------------------------
 
    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
 
 ! Set the Run entry point
 ! -----------------------
     call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,   Run1, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -107,7 +107,7 @@ contains
          UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DVDT',                                      &
@@ -115,7 +115,7 @@ contains
          UNITS      = 'm s-1',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DTDT',                                      &
@@ -123,7 +123,7 @@ contains
          UNITS      = 'K',                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'DPEDT',                                     &
@@ -131,7 +131,7 @@ contains
          UNITS      = 'Pa',                                        &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'QTOT',                                      &
@@ -150,7 +150,7 @@ contains
          PRECISION  = ESMF_KIND_R8,                                &
          DIMS       = MAPL_DimsVertOnly,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec ( gc,                                &
          SHORT_NAME = 'BK',                                        &
@@ -159,7 +159,7 @@ contains
          PRECISION  = ESMF_KIND_R8,                                &
          DIMS       = MAPL_DimsVertOnly,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec ( gc,                                &
          SHORT_NAME = 'U',                                         &
@@ -168,7 +168,7 @@ contains
          PRECISION  = ESMF_KIND_R8,                                &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec ( gc,                                &
          SHORT_NAME = 'V',                                         &
@@ -177,7 +177,7 @@ contains
          PRECISION  = ESMF_KIND_R8,                                &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
     call MAPL_AddInternalSpec ( gc,                                &
          SHORT_NAME = 'PT',                                        &
          LONG_NAME  = 'scaled_potential_temperature',              &
@@ -185,7 +185,7 @@ contains
          PRECISION  = ESMF_KIND_R8,                                &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec ( gc,                                &
          SHORT_NAME = 'PE',                                        &
@@ -194,7 +194,7 @@ contains
          PRECISION  = ESMF_KIND_R8,                                &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec ( gc,                                &
          SHORT_NAME = 'PKZ',                                       &
@@ -229,7 +229,7 @@ contains
 !        PRECISION  = ESMF_KIND_R8,                                &
          DIMS       = MAPL_DimsVertOnly,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'BK',                                        &
@@ -238,7 +238,7 @@ contains
 !        PRECISION  = ESMF_KIND_R8,                                &
          DIMS       = MAPL_DimsVertOnly,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'U',                                         &
@@ -247,7 +247,7 @@ contains
 !        PRECISION  = ESMF_KIND_R8,                                &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'V',                                         &
@@ -256,7 +256,7 @@ contains
 !        PRECISION  = ESMF_KIND_R8,                                &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'PT',                                        &
@@ -265,7 +265,7 @@ contains
 !        PRECISION  = ESMF_KIND_R8,                                &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'PE',                                        &
@@ -274,7 +274,7 @@ contains
 !        PRECISION  = ESMF_KIND_R8,                                &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'PKZ',                                       &
@@ -304,9 +304,9 @@ contains
 ! ----------------------------------
 
     call MAPL_GenericSetServices    ( gc, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   
   end subroutine SetServices
 
@@ -407,7 +407,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    Iam = "Run1"
    call ESMF_GridCompGet( GC, name=COMP_NAME, CONFIG=CF, RC=STATUS )
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
    Iam = trim(COMP_NAME) // Iam
 
    if ( MAPL_AM_I_ROOT() ) then
@@ -418,7 +418,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !----------------------------------
 
    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
 
 ! Local aliases to the state, grid, and configuration
 ! ---------------------------------------------------
@@ -431,10 +431,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,    &
                    INTERNAL_ESMF_STATE=INTERNAL, &
                                        RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call ESMF_GridCompGet(GC, grid=grid, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! **********************************************************************
 ! ****               Get Pointers to BKG Import Data                ****
@@ -448,64 +448,64 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !   Get pointers to import variables
 !   --------------------------------
     call MAPL_GetPointer(import,       du, 'DUDT',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(import,       dv, 'DVDT',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(import,       dt, 'DTDT',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(import,      dpe,'DPEDT',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(import, qtot_bkg, 'QTOT',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 !   Get pointers to internal variables
 !   ----------------------------------
     call MAPL_GetPointer(internal,        ak, 'AK',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(internal,        bk, 'BK',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(internal,     bkg_u,  'U',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(internal,     bkg_v,  'V',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(internal,    bkg_pt, 'PT',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(internal,    bkg_pe, 'PE', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(internal,   bkg_pkz,'PKZ', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(internal,    bkg_dz, 'DZ', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(internal,     bkg_w,  'W', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call ESMF_ConfigGetAttribute( CF, incremental, label ='INCREMENTAL:', default='NO', rc=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 #ifdef _REALLY_UPDATE_
 
 !   Calculate background dry mass
 !   -----------------------------
     allocate( bkg_pl(IM,JM,LM),STAT=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     allocate( bkg_dp(IM,JM,LM),STAT=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     allocate( sumq(IM,JM),STAT=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     allocate( qint(IM,JM),STAT=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     allocate( area(IM,JM),STAT=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call ESMF_ConfigGetAttribute( CF, areafn, label ='AREA_FILENAME:', default='NONE', rc=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     lu = GETFILE( trim(areafn), form="unformatted", RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_VarRead(lu, grid, area, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call FREE_FILE(lu, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 !   bkg_pl  = 0.5*(bkg_pe(:,:,1:LM)+bkg_pe(:,:,0:LM-1))
 !   bkg_dp  =      bkg_pe(:,:,1:LM)-bkg_pe(:,:,0:LM-1)
@@ -518,7 +518,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     enddo
     qint = bkg_pe(:,:,LM)-sumq
     bkg_pdry = 0.0_r8
-    call MAPL_AreaMean( bkg_pdry, qint, area, grid, rc=STATUS ); _VERIFY(STATUS)
+    call MAPL_AreaMean( bkg_pdry, qint, area, grid, rc=STATUS ); VERIFY_(STATUS)
     if ( MAPL_AM_I_ROOT() ) then
        print *, 'Background Total Dry Mass: ', bkg_pdry
     endif
@@ -681,23 +681,23 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !   Get pointers to export variables
 !   --------------------------------
     call MAPL_GetPointer(export,       ak4, 'AK',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,       bk4, 'BK',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,     ana_u,  'U',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,     ana_v,  'V',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,    ana_pt, 'PT',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,    ana_pe, 'PE', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,   ana_pkz,'PKZ', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,    ana_dz, 'DZ', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,     ana_w,  'W', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     if (associated(ak4)) then
        ak4 = ak
@@ -727,7 +727,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
        ana_w = bkg_w
     end if
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   end subroutine RUN1
 
 end module DynVec_GridCompMod

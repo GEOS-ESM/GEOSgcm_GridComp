@@ -1,6 +1,6 @@
 ! $Id$
 
-! _VERIFY and _RETURN macros for error handling.
+! VERIFY_ and RETURN_ macros for error handling.
 
 #include "MAPL_Generic.h"
 
@@ -116,21 +116,21 @@ integer ::          ADV = -1
 ! ---------------------------------------
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // 'SetServices'
 
     call MAPL_GetObjectFromGC (GC, MAPL,  RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Register services for this component
 ! ------------------------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE,  Initialize, RC=status )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,   Run,        RC=status )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,   RunAddIncs, RC=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 
 ! Create children's gridded components and invoke their SetServices
@@ -139,15 +139,15 @@ integer ::          ADV = -1
 !BOR
     call MAPL_GetResource(MAPL, DYCORE, 'DYCORE:', default="FV3", RC=STATUS )
 !EOR
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     if(adjustl(DYCORE)=="FV"   ) then
                   DYN =  MAPL_AddChild(GC, NAME='DYN', SS=   FV_SetServices, RC=STATUS)
-                  _VERIFY(STATUS)
+                  VERIFY_(STATUS)
     endif
     if(adjustl(DYCORE)=="FV3"  ) then
                   DYN =  MAPL_AddChild(GC, NAME='DYN', SS=  FV3_SetServices, RC=STATUS)
-                  _VERIFY(STATUS)
+                  VERIFY_(STATUS)
     endif
     if(adjustl(DYCORE)=="FV3+ADV"  ) then
                   DYN =  MAPL_AddChild(GC, NAME='DYN', SS=  FV3_SetServices, RC=STATUS)
@@ -157,11 +157,11 @@ integer ::          ADV = -1
     endif
     if(adjustl(DYCORE)=="ARIES") then
                   DYN =  MAPL_AddChild(GC, NAME='DYN', SS=ARIES_SetServices, RC=STATUS)
-                  _VERIFY(STATUS)
+                  VERIFY_(STATUS)
     endif
     if(adjustl(DYCORE)=="DATMO") then
                   DYN =  MAPL_AddChild(GC, NAME='DYN', SS=DATMO_SetServices, RC=STATUS)
-                  _VERIFY(STATUS)
+                  VERIFY_(STATUS)
     endif
 
 ! Set IMPORT specs for the Composite GC. These are the sums of the Phys and Ana tendencies
@@ -174,7 +174,7 @@ integer ::          ADV = -1
          UNITS      = 'm s-2',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( GC,                                  &
          SHORT_NAME = 'DVDT',                                      &
@@ -182,7 +182,7 @@ integer ::          ADV = -1
          UNITS      = 'm s-2',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( GC,                                  &
          SHORT_NAME = 'DWDT',                                      &
@@ -190,7 +190,7 @@ integer ::          ADV = -1
          UNITS      = 'm s-2',                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( GC,                                  &
          SHORT_NAME = 'DTDT',                                      &
@@ -198,7 +198,7 @@ integer ::          ADV = -1
          UNITS      = 'Pa K s-1',                                  &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
 ! Add Exports promoted from child (FV) exports
 ! --------------------------------------------
@@ -207,277 +207,277 @@ integer ::          ADV = -1
          SHORT_NAME = 'U',                                         &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'V',                                         &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'W',                                         &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'T',                                         &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'S',                                         &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'TH',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PLE',                                       &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PL',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'ZLE',                                       &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PREF',                                      &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'AK',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'BK',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PLK',                                       &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PKE',                                       &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PS',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DELP',                                      &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'TA',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'QA',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'SPEED',                                     &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
  
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DZ',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'TROPP_BLENDED',                             &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PV',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'TV',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'OMEGA',                                     &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'EPV',                                       &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PEANA',                                     &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DTHVDTANAINT',                              &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PEPHY',                                     &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DTHVDTPHYINT',                              &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DQVDTANAINT',                               &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DQLDTANAINT',                               &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DQIDTANAINT',                               &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DOXDTANAINT',                               &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'AREA',                                      &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
  
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'U_DGRID',                                   &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'V_DGRID',                                   &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PT',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PE',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'QV_DYN_IN',                                 &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'T_DYN_IN',                                 &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'U_DYN_IN',                                 &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'V_DYN_IN',                                 &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'PLE_DYN_IN',                                 &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DTDTDYN',                                   &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DQVDTDYN',                                   &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 !needed for NCEP GWD
     call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'DXC',                                       &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 !EOS
 
 ! Create DYN+ADV connectivities
@@ -499,15 +499,15 @@ integer ::          ADV = -1
          SHORT_NAME  = (/'DUDT','DVDT','DTDT','DWDT' /),      &
          CHILD = DYN,                                  &
          RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
 ! Set the Profiling timers
 ! ------------------------
 
     call MAPL_GenericSetServices    ( GC, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   
   end subroutine SetServices
 
@@ -568,37 +568,37 @@ integer ::          ADV = -1
 
     Iam = "Initialize"
     call ESMF_GridCompGet ( GC, name=COMP_NAME, config=CF, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // trim(Iam)
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Extract Dynamics ESMF GRID
 !---------------------------
 
     call ESMF_GridCompGet ( GC, GRID=GRID, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Call Generic Initialize for SuperDyn GC
 !----------------------------------------
 
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Get parameters from generic state.
 !-----------------------------------
 
     call MAPL_Get ( MAPL, GIM=GIM, GEX=GEX, &
                                 INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! We will need the Q Export from Dynamics to compute Tv Tendencies from Physics
 ! -----------------------------------------------------------------------------
-    call MAPL_GetPointer(GEX(DYN), PTR3, 'Q', ALLOC=.TRUE., RC=STATUS); _VERIFY(STATUS)
+    call MAPL_GetPointer(GEX(DYN), PTR3, 'Q', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
 #ifdef PRINT_STATES
     call WRITE_PARALLEL ( trim(Iam)//": IMPORT State" )
@@ -610,7 +610,7 @@ integer ::          ADV = -1
 ! All done
 !---------
 
-   _RETURN(ESMF_SUCCESS)
+   RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
 
 
@@ -669,30 +669,30 @@ integer ::          ADV = -1
 
     Iam = "Run"
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // trim(Iam)
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, &
          INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_TimerOn  (MAPL,"TOTAL")
 
-    call MAPL_GetPointer( IMPORT,   dudt_imp, 'DUDT',  RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_GetPointer( IMPORT,   dvdt_imp, 'DVDT',  RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_GetPointer( IMPORT,   dtdt_imp, 'DTDT',  RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_GetPointer( IMPORT,   dwdt_imp, 'DWDT',  RC=STATUS ); _VERIFY(STATUS)
+    call MAPL_GetPointer( IMPORT,   dudt_imp, 'DUDT',  RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_GetPointer( IMPORT,   dvdt_imp, 'DVDT',  RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_GetPointer( IMPORT,   dtdt_imp, 'DTDT',  RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_GetPointer( IMPORT,   dwdt_imp, 'DWDT',  RC=STATUS ); VERIFY_(STATUS)
 
-    call MAPL_GetPointer( GIM(DYN), dudt_dyn, 'DUDT',  RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_GetPointer( GIM(DYN), dvdt_dyn, 'DVDT',  RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_GetPointer( GIM(DYN), dtdt_dyn, 'DTDT',  RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_GetPointer( GIM(DYN), dwdt_dyn, 'DWDT',  RC=STATUS ); _VERIFY(STATUS)
+    call MAPL_GetPointer( GIM(DYN), dudt_dyn, 'DUDT',  RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_GetPointer( GIM(DYN), dvdt_dyn, 'DVDT',  RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_GetPointer( GIM(DYN), dtdt_dyn, 'DTDT',  RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_GetPointer( GIM(DYN), dwdt_dyn, 'DWDT',  RC=STATUS ); VERIFY_(STATUS)
 
 ! Add my (SuperDyn) Import tendencies to FV Import tendencies.
 !------------------------------------------------------------
@@ -705,7 +705,7 @@ integer ::          ADV = -1
 ! Call Run Method for Children (FV & ADV)
 !----------------------------------
     call ESMF_GridCompRun(GCS(DYN), importState=GIM(DYN), exportState=GEX(DYN), clock=CLOCK, PHASE=1, userRC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     if (ADV /= -1) then
       call ESMF_GridCompRun(GCS(ADV), importState=GIM(ADV), exportState=GEX(ADV), clock=CLOCK, userRC=STATUS)
@@ -716,7 +716,7 @@ integer ::          ADV = -1
 !---------
 
     call MAPL_TimerOff (MAPL,"TOTAL")
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   end subroutine Run
 
 
@@ -767,14 +767,14 @@ integer ::          ADV = -1
 
     Iam = "RunAddIncs"
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // trim(Iam)
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_TimerOn  (MAPL,"TOTAL")
 
@@ -782,17 +782,17 @@ integer ::          ADV = -1
 !-------------------------------------------------
 
     call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
-    call MAPL_GetPointer( IMPORT,   dudt_imp, 'DUDT',  RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_GetPointer( IMPORT,   dvdt_imp, 'DVDT',  RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_GetPointer( IMPORT,   dtdt_imp, 'DTDT',  RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_GetPointer( IMPORT,   dwdt_imp, 'DWDT',  RC=STATUS ); _VERIFY(STATUS)
+    call MAPL_GetPointer( IMPORT,   dudt_imp, 'DUDT',  RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_GetPointer( IMPORT,   dvdt_imp, 'DVDT',  RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_GetPointer( IMPORT,   dtdt_imp, 'DTDT',  RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_GetPointer( IMPORT,   dwdt_imp, 'DWDT',  RC=STATUS ); VERIFY_(STATUS)
 
-    call MAPL_GetPointer( GIM(DYN), dudt_dyn, 'DUDT',  RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_GetPointer( GIM(DYN), dvdt_dyn, 'DVDT',  RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_GetPointer( GIM(DYN), dtdt_dyn, 'DTDT',  RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_GetPointer( GIM(DYN), dwdt_dyn, 'DWDT',  RC=STATUS ); _VERIFY(STATUS)
+    call MAPL_GetPointer( GIM(DYN), dudt_dyn, 'DUDT',  RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_GetPointer( GIM(DYN), dvdt_dyn, 'DVDT',  RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_GetPointer( GIM(DYN), dtdt_dyn, 'DTDT',  RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_GetPointer( GIM(DYN), dwdt_dyn, 'DWDT',  RC=STATUS ); VERIFY_(STATUS)
 
 ! Add my (SuperDyn) Import tendencies to FV Import tendencies.
 !------------------------------------------------------------
@@ -803,10 +803,10 @@ integer ::          ADV = -1
     DWDT_DYN = DWDT_IMP
 
     call ESMF_GridCompRun(GCS(DYN), importState=GIM(DYN), exportState=GEX(DYN), clock=CLOCK, PHASE=2, userRC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_TimerOff  (MAPL,"TOTAL")
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   end subroutine RunAddIncs
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
