@@ -8,7 +8,7 @@ $editfile=$ARGV[0];
 
 @spacebefore=('call ', '\=\s*GEOS\_', '\=\s*ESMF\_');
 @spaceboth=('end ','^\s*where','^\s*contains', '^\s*private', '^\s*public', '^\s*subroutine', '^\s*if.*then', '^\s*do');
-@spaceafter=('_VERIFY');
+@spaceafter=('VERIFY_');
 
 # --------------------------------------------------------------
 # 1. Consolidation:  this part of the program compresses all

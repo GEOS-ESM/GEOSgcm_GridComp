@@ -1,4 +1,4 @@
-#define _VERIFY(A) if(A /=0)then;print *,'ERROR code',A,'at',__LINE__;call exit(3);endif
+#define VERIFY_(A) if(A /=0)then;print *,'ERROR code',A,'at',__LINE__;call exit(3);endif
 
 program newcatch
   implicit none
@@ -69,7 +69,7 @@ program newcatch
      rsize = (epos-bpos)/4-2    ! record size (in 4 byte words; 
      bpos = epos
      allocate(a(rsize), stat=status)
-     _VERIFY(status)
+     VERIFY_(status)
      read (10) a
      if (m < 57 .or. m > 60) then
         print *,'Writing record ',m
@@ -85,7 +85,7 @@ program newcatch
   stop
 
 ! If we are here something must have gone wrong
-200 _VERIFY(200)
+200 VERIFY_(200)
 
 end program newcatch
 

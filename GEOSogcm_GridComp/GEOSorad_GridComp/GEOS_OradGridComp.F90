@@ -74,14 +74,14 @@ module GEOS_OradGridCompMod
 ! ---------------------------------------
 
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // 'SetServices'
 
 ! Set the Run entry point
 ! -----------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -100,7 +100,7 @@ module GEOS_OradGridCompMod
         REFRESH_INTERVAL   = -1, &! kludgy flag to indicate time not set
         RC=STATUS                                                            )
 
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
    call MAPL_AddInternalSpec(GC                                        ,&
         LONG_NAME          = 'KPAR_next'                                    ,&
@@ -111,7 +111,7 @@ module GEOS_OradGridCompMod
         REFRESH_INTERVAL   = -1, & ! kludgy flag to indicate time not set
         RC=STATUS                                                            )
 
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
 !  !EXPORT STATE:
 
@@ -122,7 +122,7 @@ module GEOS_OradGridCompMod
         DIMS               = MAPL_DimsHorzVert,                   &
         VLOCATION          = MAPL_VLocationCenter,                &
                                                        RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'KPAR',                              &
@@ -131,7 +131,7 @@ module GEOS_OradGridCompMod
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
 
 !  !IMPORT STATE:
@@ -143,7 +143,7 @@ module GEOS_OradGridCompMod
         DIMS       = MAPL_DimsHorzOnly,                               &
         VLOCATION  = MAPL_VLocationNone,                              &
                                                            RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'PENUVR',                            &
@@ -152,7 +152,7 @@ module GEOS_OradGridCompMod
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'PENPAR',                            &
@@ -161,7 +161,7 @@ module GEOS_OradGridCompMod
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'PENUVF',                            &
@@ -170,7 +170,7 @@ module GEOS_OradGridCompMod
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'PENPAF',                            &
@@ -179,7 +179,7 @@ module GEOS_OradGridCompMod
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC                         ,&
           LONG_NAME          = 'net_surface_downwelling_nir_beam_flux',&
@@ -188,7 +188,7 @@ module GEOS_OradGridCompMod
           DIMS               = MAPL_DimsHorzOnly             ,&
           VLOCATION          = MAPL_VLocationNone            ,&
           RC=STATUS  ) 
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC                         ,&
           LONG_NAME          = 'net_surface_downwelling_nir_diffuse_flux',&
@@ -197,7 +197,7 @@ module GEOS_OradGridCompMod
           DIMS               = MAPL_DimsHorzOnly             ,&
           VLOCATION          = MAPL_VLocationNone            ,&
           RC=STATUS  ) 
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                 &
         SHORT_NAME = 'FROCEAN',                                       &
@@ -206,7 +206,7 @@ module GEOS_OradGridCompMod
         DIMS       = MAPL_DimsHorzOnly,                               &
         VLOCATION  = MAPL_VLocationNone,                              &
                                                            RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                 &
         SHORT_NAME = 'DH',                                            &
@@ -215,7 +215,7 @@ module GEOS_OradGridCompMod
         DIMS       = MAPL_DimsHorzVert,                               &
         VLOCATION  = MAPL_VLocationCenter,                            &
                                                            RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
 
      call MAPL_AddExportSpec(GC,                             &
@@ -225,7 +225,7 @@ module GEOS_OradGridCompMod
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'PENPAR',                            &
@@ -234,7 +234,7 @@ module GEOS_OradGridCompMod
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'PENUVF',                            &
@@ -243,7 +243,7 @@ module GEOS_OradGridCompMod
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'PENPAF',                            &
@@ -252,7 +252,7 @@ module GEOS_OradGridCompMod
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'net_surface_downwelling_nir_beam_flux',&
@@ -261,7 +261,7 @@ module GEOS_OradGridCompMod
           DIMS               = MAPL_DimsHorzOnly             ,&
           VLOCATION          = MAPL_VLocationNone            ,&
           RC=STATUS  ) 
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'net_surface_downwelling_nir_diffuse_flux',&
@@ -270,7 +270,7 @@ module GEOS_OradGridCompMod
           DIMS               = MAPL_DimsHorzOnly             ,&
           VLOCATION          = MAPL_VLocationNone            ,&
           RC=STATUS  ) 
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                     ,&
         LONG_NAME          = 'surface_net_downward_shortwave_flux',&
@@ -279,7 +279,7 @@ module GEOS_OradGridCompMod
         DIMS               = MAPL_DimsHorzOnly           ,&
         VLOCATION          = MAPL_VLocationNone          ,&
         RC=STATUS  ) 
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                                 &
         SHORT_NAME = 'FROCEAN',                                       &
@@ -288,7 +288,7 @@ module GEOS_OradGridCompMod
         DIMS       = MAPL_DimsHorzOnly,                               &
         VLOCATION  = MAPL_VLocationNone,                              &
                                                            RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                                 &
         SHORT_NAME = 'DH',                                            &
@@ -297,7 +297,7 @@ module GEOS_OradGridCompMod
         DIMS       = MAPL_DimsHorzVert,                               &
         VLOCATION  = MAPL_VLocationCenter,                            &
                                                            RC=STATUS  )
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
 
 !EOS
 
@@ -305,18 +305,18 @@ module GEOS_OradGridCompMod
 ! ------------------------
 
     call MAPL_TimerAdd(GC,    name="RUN"   ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
   
 ! Set generic init and final methods
 ! ----------------------------------
 
     call MAPL_GenericSetServices    ( GC, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 !  All done
 !-----------
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   
   end subroutine SetServices
 
@@ -400,14 +400,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------------------------------------------------
 
     call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // "Run"
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Start Total timer
 !------------------
@@ -418,8 +418,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Pointers to outputs
 !--------------------
 
-   call MAPL_GetPointer(EXPORT,QSW   , 'SWHEAT'  ,    RC=STATUS); _VERIFY(STATUS)
-   call MAPL_GetPointer(EXPORT,KPARX , 'KPAR'    ,    RC=STATUS); _VERIFY(STATUS)
+   call MAPL_GetPointer(EXPORT,QSW   , 'SWHEAT'  ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,KPARX , 'KPAR'    ,    RC=STATUS); VERIFY_(STATUS)
 
 ! Our only possible exports are the heating rates
 !------------------------------------------------
@@ -427,28 +427,28 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Pointers to inputs
 !-------------------
    
-   call MAPL_GetPointer(IMPORT,COSZ  , 'COSZ'    ,    RC=STATUS); _VERIFY(STATUS)
-   call MAPL_GetPointer(IMPORT,FR    , 'FROCEAN' ,    RC=STATUS); _VERIFY(STATUS)
-   call MAPL_GetPointer(IMPORT,PRUVF , 'PENUVF'  ,    RC=STATUS); _VERIFY(STATUS)
-   call MAPL_GetPointer(IMPORT,PRPAF , 'PENPAF'  ,    RC=STATUS); _VERIFY(STATUS)
-   call MAPL_GetPointer(IMPORT,PRUVR , 'PENUVR'  ,    RC=STATUS); _VERIFY(STATUS)
-   call MAPL_GetPointer(IMPORT,PRPAR , 'PENPAR'  ,    RC=STATUS); _VERIFY(STATUS)
-   call MAPL_GetPointer(IMPORT,DRNIR , 'DRNIR'  ,    RC=STATUS); _VERIFY(STATUS)
-   call MAPL_GetPointer(IMPORT,DFNIR , 'DFNIR'  ,    RC=STATUS); _VERIFY(STATUS)
-   call MAPL_GetPointer(IMPORT,H     , 'DH'      ,    RC=STATUS); _VERIFY(STATUS)
+   call MAPL_GetPointer(IMPORT,COSZ  , 'COSZ'    ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,FR    , 'FROCEAN' ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,PRUVF , 'PENUVF'  ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,PRPAF , 'PENPAF'  ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,PRUVR , 'PENUVR'  ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,PRPAR , 'PENPAR'  ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,DRNIR , 'DRNIR'  ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,DFNIR , 'DFNIR'  ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(IMPORT,H     , 'DH'      ,    RC=STATUS); VERIFY_(STATUS)
 
 ! Pointers to exports
 !-------------------
    
-   call GET_POINTER(EXPORT,FRx    , 'FROCEAN' ,    RC=STATUS); _VERIFY(STATUS)
-   call GET_POINTER(EXPORT,PRUVFx , 'PENUVF'  ,    RC=STATUS); _VERIFY(STATUS)
-   call GET_POINTER(EXPORT,PRPAFx , 'PENPAF'  ,    RC=STATUS); _VERIFY(STATUS)
-   call GET_POINTER(EXPORT,PRUVRx , 'PENUVR'  ,    RC=STATUS); _VERIFY(STATUS)
-   call GET_POINTER(EXPORT,PRPARx , 'PENPAR'  ,    RC=STATUS); _VERIFY(STATUS)
-   call GET_POINTER(EXPORT,DRNIRx , 'DRNIR'  ,    RC=STATUS); _VERIFY(STATUS)
-   call GET_POINTER(EXPORT,DFNIRx , 'DFNIR'  ,    RC=STATUS); _VERIFY(STATUS)
-   call GET_POINTER(EXPORT,SWFLX , 'SWFLX'  ,    RC=STATUS); _VERIFY(STATUS)
-   call GET_POINTER(EXPORT, Hx , 'DH'  ,    RC=STATUS); _VERIFY(STATUS)
+   call GET_POINTER(EXPORT,FRx    , 'FROCEAN' ,    RC=STATUS); VERIFY_(STATUS)
+   call GET_POINTER(EXPORT,PRUVFx , 'PENUVF'  ,    RC=STATUS); VERIFY_(STATUS)
+   call GET_POINTER(EXPORT,PRPAFx , 'PENPAF'  ,    RC=STATUS); VERIFY_(STATUS)
+   call GET_POINTER(EXPORT,PRUVRx , 'PENUVR'  ,    RC=STATUS); VERIFY_(STATUS)
+   call GET_POINTER(EXPORT,PRPARx , 'PENPAR'  ,    RC=STATUS); VERIFY_(STATUS)
+   call GET_POINTER(EXPORT,DRNIRx , 'DRNIR'  ,    RC=STATUS); VERIFY_(STATUS)
+   call GET_POINTER(EXPORT,DFNIRx , 'DFNIR'  ,    RC=STATUS); VERIFY_(STATUS)
+   call GET_POINTER(EXPORT,SWFLX , 'SWFLX'  ,    RC=STATUS); VERIFY_(STATUS)
+   call GET_POINTER(EXPORT, Hx , 'DH'  ,    RC=STATUS); VERIFY_(STATUS)
 
 ! Grid sizes
 !-----------
@@ -461,32 +461,32 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       KPAR => KPARX
    else
       allocate(KPAR(IM,JM), stat=STATUS)
-      _VERIFY(STATUS)
+      VERIFY_(STATUS)
    end if
 
    allocate(   Z(IM,JM), stat=STATUS)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
    allocate(UVR (IM,JM), stat=STATUS)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
    allocate(PAR (IM,JM), stat=STATUS)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
    allocate(NIR (IM,JM), stat=STATUS)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
 
 ! Get current time from clock
 !----------------------------
 
    call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
 
 ! Get KPAR from data file
 !------------------------
 
    call MAPL_GetResource(MAPL,DATAFILE,LABEL="KPAR_FILE:"     , RC=STATUS)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
 
    call MAPL_ReadForcing(MAPL,'KPAR',DATAFILE,CURRENTTIME,KPAR, RC=STATUS)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
 
 ! Use Beer'S Law to compute flux divergence
 !------------------------------------------
@@ -536,7 +536,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_TimerOff(MAPL,"RUN" )
    call MAPL_TimerOff(MAPL,"TOTAL")
 
-   _RETURN(ESMF_SUCCESS)
+   RETURN_(ESMF_SUCCESS)
 
  end subroutine RUN
 

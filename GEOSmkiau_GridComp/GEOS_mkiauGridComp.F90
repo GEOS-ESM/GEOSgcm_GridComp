@@ -106,27 +106,27 @@ contains
 
     Iam = 'SetServices'
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
 ! Retrieve the pointer to the state
 !----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Set the Run entry points (phase 1 for regular IAU and phase 2 for clearing
 ! --------------------------------------------------------------------------
 
     call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run,  &
                                       RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Clear,  &
                                       RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 
 ! Set the state variable specs.
@@ -141,7 +141,7 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,                          &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( GC,                                  &
          SHORT_NAME = 'AK',                                        &
@@ -150,7 +150,7 @@ contains
          DIMS       = MAPL_DimsVertOnly,                           &
          VLOCATION  = MAPL_VLocationEdge,                          &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( GC,                                  &
          SHORT_NAME = 'BK',                                        &
@@ -159,7 +159,7 @@ contains
          DIMS       = MAPL_DimsVertOnly,                           &
          VLOCATION  = MAPL_VLocationEdge,                          &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'PS',                                        &
@@ -168,7 +168,7 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,                          &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'DELP',                                      &
@@ -177,7 +177,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'TV',                                        &
@@ -186,7 +186,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'U',                                         &
@@ -195,7 +195,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'V',                                         &
@@ -204,7 +204,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'O3PPMV',                                    &
@@ -213,7 +213,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec ( gc,                                  &
          SHORT_NAME = 'TS',                                        &
@@ -222,7 +222,7 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,                          &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                               &
          SHORT_NAME = 'QV',                                        &
@@ -231,7 +231,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     if( BLEND_QV_AT_TP ) then
     call MAPL_AddImportSpec(GC,                                        &
@@ -241,7 +241,7 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                               &
          VLOCATION  = MAPL_VLocationNone,                              &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     endif
 
 
@@ -254,7 +254,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          FIELD_TYPE = MAPL_VectorField,                            &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DVDT',                                      &
@@ -263,7 +263,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          FIELD_TYPE = MAPL_VectorField,                            &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DTDT',                                      &
@@ -271,7 +271,7 @@ contains
          UNITS      = 'K',                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DPEDT',                                     &
@@ -279,7 +279,7 @@ contains
          UNITS      = 'Pa',                                        &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DQVDT',                                     &
@@ -287,7 +287,7 @@ contains
          UNITS      = 'kg kg-1',                                   &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DO3DT',                                     &
@@ -295,7 +295,7 @@ contains
          UNITS      = 'ppmv',                                      &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DTSDT',                                     &
@@ -303,7 +303,7 @@ contains
          UNITS      = 'K',                                         &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DUWINDFIX',                                 &
@@ -312,7 +312,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          FIELD_TYPE = MAPL_VectorField,                            &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'DVWINDFIX',                                 &
@@ -321,7 +321,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          FIELD_TYPE = MAPL_VectorField,                            &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'PSBKG',                                     &
@@ -330,7 +330,7 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,                          &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'DELPBKG',                                   &
@@ -339,7 +339,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'TVBKG',                                     &
@@ -348,7 +348,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'UBKG',                                      &
@@ -358,7 +358,7 @@ contains
          FIELD_TYPE = MAPL_VectorField,                            &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'VBKG',                                      &
@@ -368,7 +368,7 @@ contains
          FIELD_TYPE = MAPL_VectorField,                            &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'QVBKG',                                     &
@@ -377,7 +377,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
  
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME = 'O3PPMVBKG',                                 &
@@ -386,7 +386,7 @@ contains
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                  &
          SHORT_NAME = 'TSBKG',                                     &
@@ -395,7 +395,7 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,                          &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                                                &
          SHORT_NAME = 'VINTDIV_ANA',                                                             &
@@ -404,7 +404,7 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                                                         &
          VLOCATION  = MAPL_VLocationNone,                                                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                                                &
          SHORT_NAME = 'VINTDIV_BKG',                                                             &
@@ -413,7 +413,7 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                                                         &
          VLOCATION  = MAPL_VLocationNone,                                                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                                                &
          SHORT_NAME = 'VINTDIV_COR',                                                             &
@@ -422,7 +422,7 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                                                         &
          VLOCATION  = MAPL_VLocationNone,                                                        &
          RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     
 ! Internal State (None)
@@ -433,38 +433,38 @@ contains
 ! ------------------------
 
     call MAPL_TimerAdd(GC, name="INITIALIZE" ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="DRIVER"  ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-INTR"   ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-RUN"   ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-REGRIDSPC"   ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="--WINDFIX"    ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Allocate this instance of the internal state and put it in wrapper.
 ! -------------------------------------------------------------------
 
     allocate( mkiau_internal_state, stat=status )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     wrap%ptr => mkiau_internal_state
  
 ! Save pointer to the wrapped internal state in the GC
 ! ----------------------------------------------------
 
     call ESMF_UserCompSetInternalState ( GC, 'MKIAU_state', wrap, status )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Set generic init and final methods
 ! ----------------------------------
 
     call MAPL_GenericSetServices    ( gc, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   
   end subroutine SetServices
 
@@ -705,14 +705,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    Iam = "Run"
    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
    Iam = trim(COMP_NAME) // Iam
 
 ! Retrieve the pointer to the state
 !----------------------------------
 
    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
 
 ! Local aliases to the state, grid, and configuration
 ! ---------------------------------------------------
@@ -726,7 +726,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !-------------------------------------------------------------
 
     call ESMF_UserCompGetInternalState(gc, 'MKIAU_state', wrap, status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     mkiau_internal_state => wrap%ptr
 
 ! Get parameters from generic background state
@@ -735,13 +735,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get( MAPL, IM=IMbkg, JM=JMbkg, LM=LMbkg, &
                    INTERNAL_ESMF_STATE=INTERNAL,       &
                                        RC=STATUS       )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call ESMF_GridCompGet(GC, grid=GRIDbkg, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GridGet(GRIDbkg, globalCellCountPerDim=DIMS, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     IMbkg_World=DIMS(1)
     JMbkg_World=DIMS(2)
     L_CUBE = JMbkg_World==6*IMbkg_World
@@ -749,26 +749,26 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get Resource Parameters
 !------------------------
     call MAPL_GetResource(MAPL, GRIDINC,     LABEL="REPLAY_GRIDINC:", default="ANA",  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     GRIDINC = ESMF_UtilStringUpperCase(GRIDINC)
     _ASSERT( trim(GRIDINC) == "ANA" .or. trim(GRIDINC) == "BKG" ,'needs informative message')
 
     call MAPL_GetResource(MAPL, REPLAY_TIME_INTERP, LABEL="REPLAY_TIME_INTERP:", default="LINEAR",  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     REPLAY_TIME_INTERP = ESMF_UtilStringUpperCase(REPLAY_TIME_INTERP)
     _ASSERT( trim(REPLAY_TIME_INTERP) == "LINEAR" .or. trim(REPLAY_TIME_INTERP) == "CUBIC" ,'needs informative message')
 
 
     call MAPL_GetResource(MAPL, REPLAY_MODE, LABEL="REPLAY_MODE:",    default="NULL", RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, FILETMPL,    LABEL="REPLAY_FILE:",    default="NULL", RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CREMAP,      LABEL="REPLAY_REMAP:",   default="yes",  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, FIXWIND,     LABEL="REPLAY_WINDFIX:", default="yes",  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, K,           Label="ANALYZE_TS:",     default=0,      RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
         ANALYZE_TS = (K /= 0)
     if( ANALYZE_TS ) then
@@ -778,37 +778,37 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     endif
 
     call MAPL_GetResource(MAPL, IHAVEAINC,     Label='REPLAY_TO_ANAINC:', default=0,  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_PHIS,   Label="REPLAY_PHIS:",   default='YES',           RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_TS,     Label="REPLAY_TS:",     default=trim(REPLAY_TS), RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_P ,     Label="REPLAY_P:",      default='YES',           RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_PS,     Label="REPLAY_PS:",     default='YES',           RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_DP,     Label="REPLAY_DP:",     default='YES',           RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_U ,     Label="REPLAY_U:",      default='YES',           RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_V ,     Label="REPLAY_V:",      default='YES',           RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_T ,     Label="REPLAY_T:",      default='YES',           RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_QV,     Label="REPLAY_QV:",     default='YES',           RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_O3,     Label="REPLAY_O3:",     default='YES',           RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_T_TYPE, Label="REPLAY_T_TYPE:", default='NULL',          RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
-    call MAPL_GetResource(MAPL, REPLAY_P_FACTOR,  Label="REPLAY_P_FACTOR:",  default=1.0 , RC=STATUS) ; _VERIFY(STATUS)
-    call MAPL_GetResource(MAPL, REPLAY_U_FACTOR,  Label="REPLAY_U_FACTOR:",  default=1.0 , RC=STATUS) ; _VERIFY(STATUS)
-    call MAPL_GetResource(MAPL, REPLAY_V_FACTOR,  Label="REPLAY_V_FACTOR:",  default=1.0 , RC=STATUS) ; _VERIFY(STATUS)
-    call MAPL_GetResource(MAPL, REPLAY_T_FACTOR,  Label="REPLAY_T_FACTOR:",  default=1.0 , RC=STATUS) ; _VERIFY(STATUS)
-    call MAPL_GetResource(MAPL, REPLAY_QV_FACTOR, Label="REPLAY_QV_FACTOR:", default=1.0 , RC=STATUS) ; _VERIFY(STATUS)
-    call MAPL_GetResource(MAPL, REPLAY_O3_FACTOR, Label="REPLAY_O3_FACTOR:", default=1.0 , RC=STATUS) ; _VERIFY(STATUS)
-    call MAPL_GetResource(MAPL, REPLAY_TS_FACTOR, Label="REPLAY_TS_FACTOR:", default=1.0 , RC=STATUS) ; _VERIFY(STATUS)
+    call MAPL_GetResource(MAPL, REPLAY_P_FACTOR,  Label="REPLAY_P_FACTOR:",  default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, REPLAY_U_FACTOR,  Label="REPLAY_U_FACTOR:",  default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, REPLAY_V_FACTOR,  Label="REPLAY_V_FACTOR:",  default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, REPLAY_T_FACTOR,  Label="REPLAY_T_FACTOR:",  default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, REPLAY_QV_FACTOR, Label="REPLAY_QV_FACTOR:", default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, REPLAY_O3_FACTOR, Label="REPLAY_O3_FACTOR:", default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, REPLAY_TS_FACTOR, Label="REPLAY_TS_FACTOR:", default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
 
       REPLAY_PHIS   = ESMF_UtilStringUpperCase(REPLAY_PHIS)
       REPLAY_TS     = ESMF_UtilStringUpperCase(REPLAY_TS)
@@ -830,20 +830,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     L_REPLAY_O3     = trim(REPLAY_O3)    .ne.'NO' .and. trim(REPLAY_O3)    .ne.'NULL'
 
     call MAPL_GetResource(MAPL, DAMPBEG,  LABEL="REPLAY_DAMPBEG:", default=1.0, RC=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, DAMPEND,  LABEL="REPLAY_DAMPEND:", default=1.0, RC=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     _ASSERT(DAMPBEG.le.DAMPEND   ,'needs informative message')
 
     call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
        CREMAP = ESMF_UtilStringUpperCase(CREMAP)
       FIXWIND = ESMF_UtilStringUpperCase(FIXWIND)
     DOWINDFIX = trim(FIXWIND)=="YES"
 
      CALL MAPL_GetResource(MAPL,JCAP,LABEL="MKIAU_JCAP:",default=-1,RC=STATUS)
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
      USE_SPECFILT = (JCAP /= -1)
 
     if( DOWINDFIX .or. USE_SPECFILT ) then
@@ -855,15 +855,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! **********************************************************************
 
     call ESMF_ClockGet(clock, currTime=currTime, calendar=cal, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call ESMF_TimeGet(currTIME, timeString=DATE, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call strToInt(DATE, nymd, nhms)
 
     call MAPL_GetResource(MAPL,FileFreq_SEC, Label="REPLAY_FILE_FREQUENCY:",      default=-999,   rc=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource(MAPL,FileReft_HMS, Label="REPLAY_FILE_REFERENCE_TIME:", default=000000, rc=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     if( FileFreq_SEC == -999 ) then
         REPLAY_TIME  = currTime
@@ -872,7 +872,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
         FileReft_SEC =   mod( FileReft_SEC,FileFreq_SEC )
 
         call ESMF_TimeIntervalSet( FileFreq, S=FileFreq_SEC, rc=STATUS )
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         REPLAY_TIME = currTime + ( FileFreq / 2 )
 
         call ESMF_TimeGet( REPLAY_TIME, YY = CUR_YY, &
@@ -882,7 +882,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                                          M = CUR_M , &
                                          S = CUR_S , &
                                         rc = STATUS  )
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         TOTAL_SEC = CUR_H * 3600 + CUR_M * 60 + CUR_S
         TOTAL_SEC = FileFreq_SEC * ( TOTAL_SEC/FileFreq_SEC ) + FileReft_SEC
 
@@ -897,7 +897,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                                          M = CUR_M , &
                                          S = CUR_S , &
                           calendar=cal, rc = STATUS  )
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
     endif
 
 ! --------------------------------------------------------------------------------------------------------
@@ -906,7 +906,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
         REPLAY_TIMEP0 = REPLAY_TIME
 
         call ESMF_CFIOstrTemplate ( REPLAY_FILEP0, FILETMPL, 'GRADS', nymd=nymd, nhms=nhms, stat=STATUS )
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
 
         if(MAPL_AM_I_ROOT() ) then
            print *, 'Current nymd: ',nymd,'  nhms: ',nhms,'  FAC:  1.00000'
@@ -929,28 +929,28 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
         endif
 
         call ESMF_TimeGet(REPLAY_TIMEP1, timeString=DATE, RC=STATUS)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         call strToInt(DATE, nymdp1, nhmsp1)
         call ESMF_CFIOstrTemplate ( REPLAY_FILEP1, FILETMPL, 'GRADS', nymd=nymdp1, nhms=nhmsp1, stat=STATUS )
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
 
         call ESMF_TimeGet(REPLAY_TIMEP0, timeString=DATE, RC=STATUS)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         call strToInt(DATE, nymdp0, nhmsp0)
         call ESMF_CFIOstrTemplate ( REPLAY_FILEP0, FILETMPL, 'GRADS', nymd=nymdp0, nhms=nhmsp0, stat=STATUS )
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
 
         call ESMF_TimeGet(REPLAY_TIMEM1, timeString=DATE, RC=STATUS)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         call strToInt(DATE, nymdm1, nhmsm1)
         call ESMF_CFIOstrTemplate ( REPLAY_FILEM1, FILETMPL, 'GRADS', nymd=nymdm1, nhms=nhmsm1, stat=STATUS )
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
 
         call ESMF_TimeGet(REPLAY_TIMEM2, timeString=DATE, RC=STATUS)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         call strToInt(DATE, nymdm2, nhmsm2)
         call ESMF_CFIOstrTemplate ( REPLAY_FILEM2, FILETMPL, 'GRADS', nymd=nymdm2, nhms=nhmsm2, stat=STATUS )
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
 
         if( REPLAY_TIME_INTERP == "CUBIC" ) then
         facp1 = ( (currTime-REPLAY_TIMEP0) / (REPLAY_TIMEP1-REPLAY_TIMEP0) ) &
@@ -994,16 +994,16 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! --------------------------------------------------------------------------------------------------------
 
     call CFIO_Open       ( REPLAY_FILEP0, 1, fid, STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call CFIO_DimInquire ( fid, IMana_World, JMana_world, LMana, nt, nvars, natts, rc=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call CFIO_Close      ( fid, STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetResource( MAPL, NX,  Label="NX:", RC=status )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, NY,  Label="NY:", RC=status )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     do_transforms = ( IMbkg_World /= IMana_World ) .or. &
                     ( JMbkg_World /= JMana_World ) .or. &
@@ -1024,9 +1024,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        if (.not. first) then
           call WRITE_PARALLEL("Destroying GRIDana...")
           call ESMF_GridDestroy(mkiau_internal_state%GRIDana, rc=status)
-          _VERIFY(STATUS)
+          VERIFY_(STATUS)
           call ESMF_GridDestroy(mkiau_internal_state%GRIDrep, rc=status)
-          _VERIFY(STATUS)
+          VERIFY_(STATUS)
        end if
 
        call WRITE_PARALLEL("Creating GRIDana...")
@@ -1036,22 +1036,22 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
        ! Get grid_dimensions from file.
        call CFIO_Open(REPLAY_FILEP0, 1, fid, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
        call CFIO_DimInquire (fid, IMana_World, JMana_World, LMana, nt, nvars, natts, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
        call CFIO_Close(fid, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
 
        block
          use MAPL_LatLonGridFactoryMod
          GRIDrep = grid_manager%make_grid(                                                 &
                    LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMana, &
                    nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
-         _VERIFY(STATUS)
+         VERIFY_(STATUS)
          GRIDana = grid_manager%make_grid(                                                 &
                    LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMbkg, &
                    nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
-         _VERIFY(STATUS)
+         VERIFY_(STATUS)
        end block
          
        mkiau_internal_state%im      =   IMana_World
@@ -1061,27 +1061,27 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        mkiau_internal_state%GRIDrep = GRIDrep
 
        call MAPL_GetResource(MAPL, K, Label="BKG2ANACNSRV:", default=0, RC=STATUS)
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        BKG2ANAConsrv = (K /= 0)
 
        call MAPL_GetResource(MAPL, K, Label="ANA2BKGCNSRV:", default=0, RC=STATUS)
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        ANA2BKGConsrv = (K /= 0)
 
        if (ana2bkgconsrv) then
           mkiau_internal_state%ana2bkg_regridder => regridder_manager%make_regridder(GRIDana, GRIDbkg, REGRID_METHOD_CONSERVE, rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
        else
           mkiau_internal_state%ana2bkg_regridder => regridder_manager%make_regridder(GRIDana, GRIDbkg, REGRID_METHOD_BILINEAR, rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
        end if
 
        if (bkg2anaConsrv) then
           mkiau_internal_state%bkg2ana_regridder => regridder_manager%make_regridder(GRIDbkg, GRIDana, REGRID_METHOD_CONSERVE, rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
        else
           mkiau_internal_state%bkg2ana_regridder => regridder_manager%make_regridder(GRIDbkg, GRIDana, REGRID_METHOD_BILINEAR, rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
        end if
 
     else
@@ -1093,9 +1093,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     !ALT: Get current VM and the mpi communicator
     !--------------------------------------------
     call ESMF_VMGetCurrent(vm, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call ESMF_VmGet(VM, mpicommunicator=vm_comm, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
    
     ANA2BKG => mkiau_internal_state%ANA2BKG_regridder
     BKG2ANA => mkiau_internal_state%BKG2ANA_regridder
@@ -1103,13 +1103,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !   Set Local Dimensions to GRIDana and GRIDbkg
 !   -------------------------------------------
     call MAPL_GridGet(GRIDrep, localCellCountPerDim=DIMS, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     IMana   = DIMS(1)
     JMana   = DIMS(2)
     LMana   = DIMS(3)
 
     call MAPL_GridGet(GRIDbkg, localCellCountPerDim=DIMS, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     IMbkg   = DIMS(1)
     JMbkg   = DIMS(2)
     LMbkg   = DIMS(3)
@@ -1136,7 +1136,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_TimerOff(MAPL,"-RUN")
     call MAPL_TimerOff(MAPL,"TOTAL")
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
 
 CONTAINS
 
@@ -1172,30 +1172,30 @@ CONTAINS
 ! *****************************************************************************
 
     RBUNDLEP0 = ESMF_FieldBundleCreate( RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDana, rc=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0, RC=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call ESMF_FieldBundleGet ( RBUNDLEP0, fieldCount=NQ, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 !   Get pointers to hold IAU increment
 !   ----------------------------------
     call MAPL_GetPointer(export,   du, 'DUDT',  alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,   dv, 'DVDT',  alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,   dt, 'DTDT',  alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,   dq, 'DQVDT', alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,  do3, 'DO3DT', alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export, dple, 'DPEDT', alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,  dts, 'DTSDT', alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 !   Convert increment fields to background grid
 !   -------------------------------------------
@@ -1217,7 +1217,7 @@ CONTAINS
            if (do_transforms) then
                qdum2(:,:,1)=aptr2d
                call mkiau_internal_state%ana2bkg_regridder%regrid(qdum2, qdum1, rc=status)
-               _VERIFY(status)
+               VERIFY_(status)
                gptr2d=qdum1(:,:,1)
            else
                gptr2d=aptr2d
@@ -1243,7 +1243,7 @@ CONTAINS
            else
            if (do_transforms) then
                call mkiau_internal_state%ana2bkg_regridder%regrid(aptr3d, gptr3d, rc=status)
-               _VERIFY(status)
+               VERIFY_(status)
            else
                gptr3d=aptr3d
            endif
@@ -1264,12 +1264,12 @@ CONTAINS
     if (do_transforms) then
        if( L_CUBE ) then
           call mkiau_internal_state%ana2bkg_regridder%regrid(uptr, vptr, du, dv, rotate=.false., rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
        else
           call mkiau_internal_state%ana2bkg_regridder%regrid(uptr, du, rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
           call mkiau_internal_state%ana2bkg_regridder%regrid(vptr, dv, rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
           call POLEFIX ( du,dv,VM,GRIDbkg )
        endif
     else
@@ -1285,9 +1285,9 @@ CONTAINS
     enddo
 
     call MAPL_GetPointer( import, tv_bkg, 'TV',   RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer( import, q_bkg,'QV',   RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 !   Convert virtual temperature increment into dry temperature increment
 !   -------------------------------------------------------------------
@@ -1296,7 +1296,7 @@ CONTAINS
 !   Clean up
 !   --------
     call MAPL_FieldBundleDestroy ( RBUNDLEP0, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     deallocate(dp)
     deallocate(gptr2d)
     deallocate(gptr3d)
@@ -1329,26 +1329,26 @@ CONTAINS
 ! **********************************************************************
 
     call MAPL_GetPointer( import, uptr3d, 'U',    RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer( export, temp3d, 'UBKG', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     if( associated(temp3d) ) temp3d = uptr3d
 
     call MAPL_GetPointer( import, vptr3d, 'V',    RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer( export, temp3d, 'VBKG', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     if( associated(temp3d) ) temp3d = vptr3d
 
     if ( trim(GRIDINC)=="ANA" .and. do_transforms) then
        if (L_CUBE) then
           call mkiau_internal_state%bkg2ana_regridder%regrid(uptr3d, vptr3d, u_bkg, v_bkg, rotate=.false., rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
        else
           call mkiau_internal_state%bkg2ana_regridder%regrid(uptr3d, u_bkg, rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
           call mkiau_internal_state%bkg2ana_regridder%regrid(vptr3d, v_bkg, rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
           call POLEFIX ( u_bkg,v_bkg,VM,GRIDana )
       endif
    else
@@ -1357,50 +1357,50 @@ CONTAINS
    endif
 
     call MAPL_GetPointer( import, ptr3d,  'TV',   RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer( export, temp3d, 'TVBKG', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     if( associated(temp3d) ) temp3d = ptr3d
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
        call mkiau_internal_state%bkg2ana_regridder%regrid(ptr3d, tv_bkg, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
     else
        tv_bkg=ptr3d
     endif
 
     call MAPL_GetPointer( import, ptr3d,  'DELP',    RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer( export, temp3d, 'DELPBKG', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     if( associated(temp3d) ) temp3d = ptr3d
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
        call mkiau_internal_state%bkg2ana_regridder%regrid(ptr3d, dp_bkg, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
     else
        dp_bkg=ptr3d
     endif
 
     call MAPL_GetPointer( import, ptr3d,  'O3PPMV',    RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer( export, temp3d, 'O3PPMVBKG', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     if( associated(temp3d) ) temp3d = ptr3d
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
        call mkiau_internal_state%bkg2ana_regridder%regrid(ptr3d, o3_bkg, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
     else
         o3_bkg=ptr3d
     endif
 
     call MAPL_GetPointer(import,  ptr3d,   'QV',   RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer( export, temp3d, 'QVBKG', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     if( associated(temp3d) ) temp3d = ptr3d
 
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
        call mkiau_internal_state%bkg2ana_regridder%regrid(ptr3d, q_bkg, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
     else
        q_bkg=ptr3d
     endif
@@ -1410,25 +1410,25 @@ CONTAINS
     qdum1=0.0
 
     call MAPL_GetPointer( import, ptr2d, 'PHIS', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     qdum1(:,:,1) = ptr2d
     call MAPL_GetPointer( import, ptr2d,  'TS',    RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer( export, temp2d, 'TSBKG', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     if( associated(temp2d) ) temp2d = ptr2d
     qdum1(:,:,2) = ptr2d
 
     call MAPL_GetPointer( import, ptr2d,  'PS',    RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer( export, temp2d, 'PSBKG', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     if( associated(temp2d) ) temp2d = ptr2d
     qdum1(:,:,3) = ptr2d
 
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
        call mkiau_internal_state%bkg2ana_regridder%regrid(qdum1, qdum2, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
     else
        qdum2=qdum1
     endif
@@ -1440,9 +1440,9 @@ CONTAINS
     deallocate ( qdum2 )
 
     call MAPL_GetPointer(import, ak, 'AK', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(import, bk, 'BK', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! BKG Pressure Variables
 ! ----------------------
@@ -1461,80 +1461,80 @@ CONTAINS
 
     if( NEED_BUNDLEP0 ) then
         RBUNDLEP0 = ESMF_FieldBundleCreate( RC=STATUS)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDrep, rc=status)
         if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP0, grid=GRIDbkg, rc=status)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         FILE_TIMEP0 = REPLAY_TIMEP0
         NEED_BUNDLEP0 = .FALSE.
     else if( FILE_TIMEP0 .ne. REPLAY_TIMEP0 ) then
         call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         FILE_TIMEP0 = REPLAY_TIMEP0
     endif
 
     if( currTime /= REPLAY_TIMEP0 ) then 
         if( NEED_BUNDLEM1 ) then 
             RBUNDLEM1 = ESMF_FieldBundleCreate( RC=STATUS)
-            _VERIFY(STATUS)
+            VERIFY_(STATUS)
             if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDrep, rc=status)
             if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEM1, grid=GRIDbkg, rc=status)
-            _VERIFY(STATUS)
+            VERIFY_(STATUS)
             call MAPL_CFIORead ( REPLAY_FILEM1, REPLAY_TIMEM1, RBUNDLEM1 , RC=status)
-            _VERIFY(STATUS)
+            VERIFY_(STATUS)
             FILE_TIMEM1 = REPLAY_TIMEM1
             NEED_BUNDLEM1 = .FALSE.
         else if ( FILE_TIMEM1 .ne. REPLAY_TIMEM1 ) then
             call MAPL_CFIORead ( REPLAY_FILEM1, REPLAY_TIMEM1, RBUNDLEM1 , RC=status)
-            _VERIFY(STATUS)
+            VERIFY_(STATUS)
             FILE_TIMEM1 = REPLAY_TIMEM1
         endif
 
         if( REPLAY_TIME_INTERP == "CUBIC" ) then
             if( NEED_BUNDLEP1 ) then 
                 RBUNDLEP1 = ESMF_FieldBundleCreate( RC=STATUS)
-                _VERIFY(STATUS)
+                VERIFY_(STATUS)
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDrep, rc=status)
                 if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEP1, grid=GRIDbkg, rc=status)
-                _VERIFY(STATUS)
+                VERIFY_(STATUS)
                 call MAPL_CFIORead ( REPLAY_FILEP1, REPLAY_TIMEP1, RBUNDLEP1 , RC=status)
-                _VERIFY(STATUS)
+                VERIFY_(STATUS)
                 FILE_TIMEP1 = REPLAY_TIMEP1
                 NEED_BUNDLEP1 = .FALSE.
             else if ( FILE_TIMEP1 .ne. REPLAY_TIMEP1 ) then
                 call MAPL_CFIORead ( REPLAY_FILEP1, REPLAY_TIMEP1, RBUNDLEP1 , RC=status)
-                _VERIFY(STATUS)
+                VERIFY_(STATUS)
                 FILE_TIMEP1 = REPLAY_TIMEP1
             endif
 
             if( NEED_BUNDLEM2 ) then 
                 RBUNDLEM2 = ESMF_FieldBundleCreate( RC=STATUS)
-                _VERIFY(STATUS)
+                VERIFY_(STATUS)
                 if ( trim(GRIDINC)=="ANA" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDrep, rc=status)
                 if ( trim(GRIDINC)=="BKG" ) call ESMF_FieldBundleSet(RBUNDLEM2, grid=GRIDbkg, rc=status)
-                _VERIFY(STATUS)
+                VERIFY_(STATUS)
                 call MAPL_CFIORead ( REPLAY_FILEM2, REPLAY_TIMEM2, RBUNDLEM2 , RC=status)
-                _VERIFY(STATUS)
+                VERIFY_(STATUS)
                 FILE_TIMEM2 = REPLAY_TIMEM2
                 NEED_BUNDLEM2 = .FALSE.
             else if ( FILE_TIMEM2 .ne. REPLAY_TIMEM2 ) then
                 call MAPL_CFIORead ( REPLAY_FILEM2, REPLAY_TIMEM2, RBUNDLEM2 , RC=status)
-                _VERIFY(STATUS)
+                VERIFY_(STATUS)
                 FILE_TIMEM2 = REPLAY_TIMEM2
             endif
         endif
     endif
 
     call ESMF_FieldBundleGet ( RBUNDLEP0, fieldCount=NQ, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     if( .not.allocated( rnames ) ) then
          allocate( RNAMES(NQ),STAT=STATUS )
-         _VERIFY(STATUS)
+         VERIFY_(STATUS)
          call ESMF_FieldBundleGet ( RBUNDLEP0, fieldNameList=RNAMES, rc=STATUS )
-         _VERIFY(STATUS)
+         VERIFY_(STATUS)
          if( first ) then
              if(MAPL_AM_I_ROOT() ) then
              print *
@@ -1616,14 +1616,14 @@ CONTAINS
                           ts_ana =  ptr2d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr2d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               ts_ana =  facp0*ts_ana + facm1*ptr2d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr2d, RC=STATUS)
-                                  _VERIFY(STATUS)
+                                  VERIFY_(STATUS)
                                   ts_ana =  ts_ana + facp1*ptr2d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr2d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               ts_ana =  ts_ana + facm2*ptr2d
                           endif
                           endif
@@ -1636,7 +1636,7 @@ CONTAINS
         if( .not.FOUND .and. L_REPLAY_TS ) then
            write(STRING,'(A)') "ANA Variable: TS Not Found!"
            call WRITE_PARALLEL( trim(STRING)   )
-           _RETURN(ESMF_FAILURE)
+           RETURN_(ESMF_FAILURE)
         endif
 
 ! ANA Surface Geopotential Heights
@@ -1655,7 +1655,7 @@ CONTAINS
         if( .not.FOUND .and. L_REPLAY_PHIS ) then
            write(STRING,'(A)') "ANA Variable: PHIS Not Found!"
            call WRITE_PARALLEL( trim(STRING)   )
-           _RETURN(ESMF_FAILURE)
+           RETURN_(ESMF_FAILURE)
         endif
 
 ! ANA Surface Pressure
@@ -1668,14 +1668,14 @@ CONTAINS
                           ps_ana =  ptr2d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr2d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               ps_ana =  facp0*ps_ana + facm1*ptr2d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr2d, RC=STATUS)
-                                  _VERIFY(STATUS)
+                                  VERIFY_(STATUS)
                                   ps_ana =  ps_ana + facp1*ptr2d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr2d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               ps_ana =  ps_ana + facm2*ptr2d
                           endif
                           endif
@@ -1688,7 +1688,7 @@ CONTAINS
         if( .not.FOUND .and. L_REPLAY_P ) then
            write(STRING,'(A)') "ANA Variable: PS Not Found!"
            call WRITE_PARALLEL( trim(STRING)   )
-           _RETURN(ESMF_FAILURE)
+           RETURN_(ESMF_FAILURE)
         endif
 
 ! ANA Pressure Thickness
@@ -1701,14 +1701,14 @@ CONTAINS
                           dp_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               dp_rep =  facp0*dp_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
-                                  _VERIFY(STATUS)
+                                  VERIFY_(STATUS)
                                   dp_rep =  dp_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               dp_rep =  dp_rep + facm2*ptr3d
                           endif
                           endif
@@ -1721,7 +1721,7 @@ CONTAINS
         if( .not.FOUND .and. L_REPLAY_P ) then
            write(STRING,'(A)') "ANA Variable: DP Not Found!"
            call WRITE_PARALLEL( trim(STRING)   )
-           _RETURN(ESMF_FAILURE)
+           RETURN_(ESMF_FAILURE)
         endif
 
 ! ANA U-Wind
@@ -1734,14 +1734,14 @@ CONTAINS
                           u_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               u_rep =  facp0*u_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
-                                  _VERIFY(STATUS)
+                                  VERIFY_(STATUS)
                                   u_rep =  u_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               u_rep =  u_rep + facm2*ptr3d
                           endif
                           endif
@@ -1754,7 +1754,7 @@ CONTAINS
         if( .not.FOUND .and. L_REPLAY_U ) then
            write(STRING,'(A)') "ANA Variable: U Not Found!"
            call WRITE_PARALLEL( trim(STRING)   )
-           _RETURN(ESMF_FAILURE)
+           RETURN_(ESMF_FAILURE)
         endif
 
 ! ANA V-Wind
@@ -1767,14 +1767,14 @@ CONTAINS
                           v_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               v_rep =  facp0*v_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
-                                  _VERIFY(STATUS)
+                                  VERIFY_(STATUS)
                                   v_rep =  v_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               v_rep =  v_rep + facm2*ptr3d
                           endif
                           endif
@@ -1787,7 +1787,7 @@ CONTAINS
         if( .not.FOUND .and. L_REPLAY_V ) then
            write(STRING,'(A)') "ANA Variable: V Not Found!"
            call WRITE_PARALLEL( trim(STRING)   )
-           _RETURN(ESMF_FAILURE)
+           RETURN_(ESMF_FAILURE)
         endif
 
    ! the following assumes GRIDana is lat-lon
@@ -1804,14 +1804,14 @@ CONTAINS
                           q_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               q_rep =  facp0*q_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
-                                  _VERIFY(STATUS)
+                                  VERIFY_(STATUS)
                                   q_rep =  q_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               q_rep =  q_rep + facm2*ptr3d
                           !   q_rep =  max( q_rep, 0.0 )
                           endif
@@ -1825,7 +1825,7 @@ CONTAINS
         if( .not.FOUND .and. L_REPLAY_QV ) then
            write(STRING,'(A)') "ANA Variable: QV Not Found!"
            call WRITE_PARALLEL( trim(STRING)   )
-           _RETURN(ESMF_FAILURE)
+           RETURN_(ESMF_FAILURE)
         endif
 
 ! ANA Ozone
@@ -1838,14 +1838,14 @@ CONTAINS
                           o3_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               o3_rep =  facp0*o3_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
-                                  _VERIFY(STATUS)
+                                  VERIFY_(STATUS)
                                   o3_rep =  o3_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               o3_rep =  o3_rep + facm2*ptr3d
                             ! o3_rep =  max( o3_rep, 0.0 )
                           endif
@@ -1859,7 +1859,7 @@ CONTAINS
         if( .not.FOUND .and. L_REPLAY_O3 ) then
            write(STRING,'(A)') "ANA Variable: O3 Not Found!"
            call WRITE_PARALLEL( trim(STRING)   )
-           _RETURN(ESMF_FAILURE)
+           RETURN_(ESMF_FAILURE)
         endif
 
 ! ANA Pressure Variables
@@ -1892,7 +1892,7 @@ CONTAINS
                print *, 'REPLAY_T_TYPE OPTIONS:  T, TV, TH, THV'
                print *
             endif
-            _RETURN(ESMF_FAILURE)
+            RETURN_(ESMF_FAILURE)
         endif
         endif
 
@@ -1905,14 +1905,14 @@ CONTAINS
                           t_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               t_rep =  facp0*t_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
-                                  _VERIFY(STATUS)
+                                  VERIFY_(STATUS)
                                   t_rep =  t_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               t_rep =  t_rep + facm2*ptr3d
                           endif
                           endif
@@ -1929,14 +1929,14 @@ CONTAINS
                           t_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               t_rep =  facp0*t_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
-                                  _VERIFY(STATUS)
+                                  VERIFY_(STATUS)
                                   t_rep =  t_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               t_rep =  t_rep + facm2*ptr3d
                           endif
                           endif
@@ -1954,14 +1954,14 @@ CONTAINS
                           t_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               t_rep =  facp0*t_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
-                                  _VERIFY(STATUS)
+                                  VERIFY_(STATUS)
                                   t_rep =  t_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               t_rep =  t_rep + facm2*ptr3d
                           endif
                           endif
@@ -1979,14 +1979,14 @@ CONTAINS
                           t_rep =  ptr3d
                           if( currTime /= REPLAY_TIMEP0 ) then
                               call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               t_rep =  facp0*t_rep + facm1*ptr3d
                               if( REPLAY_TIME_INTERP == "CUBIC" ) then
                                   call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
-                                  _VERIFY(STATUS)
+                                  VERIFY_(STATUS)
                                   t_rep =  t_rep + facp1*ptr3d
                               call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
-                              _VERIFY(STATUS)
+                              VERIFY_(STATUS)
                               t_rep =  t_rep + facm2*ptr3d
                               endif
                           endif
@@ -2001,7 +2001,7 @@ CONTAINS
         if( .not.FOUND .and. L_REPLAY_T ) then
             write(STRING,'(A)') "ANA Variable: T Not Found!"
             call WRITE_PARALLEL( trim(STRING)   )
-            _RETURN(ESMF_FAILURE)
+            RETURN_(ESMF_FAILURE)
         endif
 
 ! Test for Re-Mapping
@@ -2011,7 +2011,7 @@ CONTAINS
         if( LMana.eq.LMbkg ) then
             NPHIS = count( phis_ana.ne.phis_bkg )
             call MAPL_CommsAllReduceMax(vm,sendbuf=NPHIS,recvbuf=NPHIS_MAX,cnt=1,rc=status)
-            _VERIFY(STATUS)
+            VERIFY_(STATUS)
         else
             NPHIS_MAX = 999 ! Force Vertical Remapping when LMana != LMbkg
         endif
@@ -2099,12 +2099,12 @@ CONTAINS
              pdum1=0.0
 
              call MAPL_GetPointer(import, ptr2d, 'TROPP_BLENDED', RC=STATUS)
-             _VERIFY(STATUS)
+             VERIFY_(STATUS)
              pdum1(:,:,1) = ptr2d
 
              if (trim(GRIDINC)=="ANA" .and. do_transforms) then
                 call mkiau_internal_state%bkg2ana_regridder%regrid(pdum1, pdum2, RC=STATUS)
-                _VERIFY(STATUS)
+                VERIFY_(STATUS)
              else
                 pdum2=pdum1
              endif
@@ -2159,48 +2159,48 @@ CONTAINS
     call MAPL_TimerON(MAPL,"-REGRIDSPC")
 
     call MAPL_GetPointer(export,   du, 'DUDT',  alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,   dv, 'DVDT',  alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,   dt, 'DTDT',  alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,   dq, 'DQVDT', alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,  do3, 'DO3DT', alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export, dple, 'DPEDT', alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,  dts, 'DTSDT', alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     
     call MAPL_GetPointer(export,duwindfix, 'DUWINDFIX', alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export,dvwindfix, 'DVWINDFIX', alloc=.TRUE., RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     allocate(  ptr3d(IM,JM,LMbkg),stat=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     allocate( uptr3d(IM,JM,LMbkg),stat=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     allocate( vptr3d(IM,JM,LMbkg),stat=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     uptr3d = du_fix
     vptr3d = dv_fix
 
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. (L_REPLAY_U .or. L_REPLAY_V) ) then
         call Spectrans_VectorPar (im,jm,LMbkg,uptr3d,vptr3d,JCAP,GRIDana,RC=STATUS)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
     endif
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
        if( L_CUBE ) then
           call mkiau_internal_state%ana2bkg_regridder%regrid(uptr3d, vptr3d, duwindfix, dvwindfix, rotate=.false., rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
        else
           call mkiau_internal_state%ana2bkg_regridder%regrid(uptr3d, duwindfix,rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
           call mkiau_internal_state%ana2bkg_regridder%regrid(vptr3d, dvwindfix,rc=status)
-          _VERIFY(status)
+          VERIFY_(status)
           call POLEFIX ( duwindfix,dvwindfix,VM,GRIDbkg )
        endif
     else
@@ -2222,17 +2222,17 @@ CONTAINS
 
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. (L_REPLAY_U .or. L_REPLAY_V) ) then
         call Spectrans_VectorPar (im,jm,LMbkg,uptr3d,vptr3d,JCAP,GRIDana,RC=STATUS)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
     endif
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
        if( L_CUBE ) then
           call mkiau_internal_state%ana2bkg_regridder%regrid(uptr3d, vptr3d, du, dv, rotate=.false., rc=status)
-          _VERIFY(STATUS)
+          VERIFY_(STATUS)
        else
           call mkiau_internal_state%ana2bkg_regridder%regrid(uptr3d, du, rc=status)
-          _VERIFY(STATUS)
+          VERIFY_(STATUS)
           call mkiau_internal_state%ana2bkg_regridder%regrid(vptr3d, dv, rc=status)
-          _VERIFY(STATUS)
+          VERIFY_(STATUS)
           call POLEFIX ( du,dv,VM,GRIDbkg )
        endif
     else
@@ -2250,11 +2250,11 @@ CONTAINS
     endif
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. L_REPLAY_T) then
         call Spectrans_ScalarPar (im,jm,LMbkg,ptr3d,JCAP,GRIDana,RC=STATUS)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
     endif
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
        call mkiau_internal_state%ana2bkg_regridder%regrid(ptr3d, dt, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
     else
        dt=ptr3d
     endif
@@ -2268,11 +2268,11 @@ CONTAINS
     endif
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. L_REPLAY_QV) then
         call Spectrans_ScalarPar (im,jm,LMbkg,ptr3d,JCAP,GRIDana,RC=STATUS)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
     endif
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
        call mkiau_internal_state%ana2bkg_regridder%regrid(ptr3d, dq, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
     else
        dq=ptr3d
     endif
@@ -2286,11 +2286,11 @@ CONTAINS
     endif
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. L_REPLAY_O3) then
         call Spectrans_ScalarPar (im,jm,LMbkg,ptr3d,JCAP,GRIDana,RC=STATUS)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
     endif
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
        call mkiau_internal_state%ana2bkg_regridder%regrid(ptr3d, do3, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
     else
        do3=ptr3d
     endif
@@ -2299,7 +2299,7 @@ CONTAINS
 ! ---
     deallocate( ptr3d )
       allocate( ptr3d(IM,JM,0:LMbkg),stat=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     if( L_REPLAY_P ) then
         ptr3d = ple_ana-ple_bkg
     else
@@ -2307,11 +2307,11 @@ CONTAINS
     endif
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. L_REPLAY_P) then
         call Spectrans_ScalarPar (im,jm,lmp1,ptr3d,JCAP,GRIDana,RC=STATUS)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
     endif
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
        call mkiau_internal_state%ana2bkg_regridder%regrid(ptr3d, dple, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
     else
        dple=ptr3d
     endif
@@ -2329,11 +2329,11 @@ CONTAINS
     endif
     if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. L_REPLAY_TS) then
         call Spectrans_ScalarPar (im,jm,1,qdum2(1,1,1),JCAP,GRIDana,RC=STATUS)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
     endif
     if (trim(GRIDINC)=="ANA" .and. do_transforms) then
        call mkiau_internal_state%ana2bkg_regridder%regrid(qdum2, qdum1, rc=status)
-       _VERIFY(status)
+       VERIFY_(status)
     else
        qdum1=qdum2
     endif
@@ -2342,21 +2342,21 @@ CONTAINS
 ! Vertically Integrated Divergence Increment Diagnostics
 ! ------------------------------------------------------
     call MAPL_GetPointer(export, vintdiv_ana, 'VINTDIV_ANA', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export, vintdiv_bkg, 'VINTDIV_BKG', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(export, vintdiv_cor, 'VINTDIV_COR', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     if( associated(vintdiv_ana) ) then
         qdum2(:,:,1) = vintdiva
         if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. (L_REPLAY_U .or. L_REPLAY_V) ) then
             call Spectrans_ScalarPar (im,jm,1,qdum2(1,1,1),JCAP,GRIDana,RC=STATUS)
-            _VERIFY(STATUS)
+            VERIFY_(STATUS)
         endif
         if (trim(GRIDINC)=="ANA" .and. do_transforms) then
            call mkiau_internal_state%ana2bkg_regridder%regrid(qdum2, qdum1, rc=status)
-           _VERIFY(status)
+           VERIFY_(status)
         else
            qdum1 = qdum2
         endif
@@ -2367,11 +2367,11 @@ CONTAINS
         qdum2(:,:,1) = vintdivb
         if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. (L_REPLAY_U .or. L_REPLAY_V) ) then
             call Spectrans_ScalarPar (im,jm,1,qdum2(1,1,1),JCAP,GRIDana,RC=STATUS)
-            _VERIFY(STATUS)
+            VERIFY_(STATUS)
         endif
         if (trim(GRIDINC)=="ANA" .and. do_transforms) then
            call mkiau_internal_state%ana2bkg_regridder%regrid(qdum2, qdum1, rc=status)
-           _VERIFY(status)
+           VERIFY_(status)
         else
            qdum1 = qdum2
         endif
@@ -2382,11 +2382,11 @@ CONTAINS
         qdum2(:,:,1) = vintdivc
         if (trim(GRIDINC)=="ANA" .and. USE_SPECFILT .and. (L_REPLAY_U .or. L_REPLAY_V) ) then
             call Spectrans_ScalarPar (im,jm,1,qdum2(1,1,1),JCAP,GRIDana,RC=STATUS)
-            _VERIFY(STATUS)
+            VERIFY_(STATUS)
         endif
         if (trim(GRIDINC)=="ANA" .and. do_transforms) then
            call mkiau_internal_state%ana2bkg_regridder%regrid(qdum2, qdum1, rc=status)
-           _VERIFY(status)
+           VERIFY_(status)
         else
            qdum1 = qdum2
         endif
@@ -2502,14 +2502,14 @@ CONTAINS
 
    Iam = "Clear"
    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
    Iam = trim(COMP_NAME) // Iam
 
 ! Retrieve the pointer to the state
 !----------------------------------
 
    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
 
 ! Local aliases to the state, grid, and configuration
 ! ---------------------------------------------------
@@ -2519,29 +2519,29 @@ CONTAINS
 ! get all export names; for each of them get pointer and zero it out
 
     call ESMF_StateGet(EXPORT, ITEMCOUNT=N, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     allocate(itemNameList(N), STAT=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call ESMF_StateGet(EXPORT, ItemNameList=itemNameList, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     do I = 1, N
        call ESMF_StateGet(Export, itemNameList(i), FIELD, RC=STATUS)
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call ESMF_FieldGet(field, status=fieldStatus, rc=status)
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        if (fieldStatus /= ESMF_FIELDSTATUS_COMPLETE) cycle
        call ESMF_FieldGet(FIELD, dimCount=fieldRank, RC=status)
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        if(fieldRank == 2) then
           call ESMF_FieldGet(field, farrayPtr=ptr2d, rc=status)
-          _VERIFY(STATUS)
+          VERIFY_(STATUS)
           if(associated(ptr2d)) ptr2d = 0.0
        else if (fieldRank == 3) then
           call ESMF_FieldGet(field, farrayPtr=ptr3d, rc=status)
-          _VERIFY(STATUS)
+          VERIFY_(STATUS)
           if(associated(ptr3d)) ptr3d = 0.0
        else
           _ASSERT(.false.,'needs informative message') ! not yet implemented
@@ -2552,7 +2552,7 @@ CONTAINS
 
     call MAPL_TimerOff(MAPL,"TOTAL")
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   end subroutine CLEAR
 
 
@@ -2732,9 +2732,9 @@ CONTAINS
      IAM = "POLEFIX"
     
      call ESMF_VMGet  (VM, localpet=myid, RC=STATUS)
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
      call MAPL_GridGet(GRID, globalCellCountPerDim=DIMS, RC=STATUS)
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
      IMG = DIMS(1)
      JMG = DIMS(2)
      LM  = DIMS(3)
@@ -2753,9 +2753,9 @@ CONTAINS
 
      do L=1,LM
         call ArrayGather (local_array= ua(:,:,L),global_array= uglo(:,:), grid=GRID, rc=status)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         call ArrayGather (local_array= va(:,:,L),global_array= vglo(:,:), grid=GRID, rc=status)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         if( myid.eq.0 ) then
             do m = 1,2
                        N = (-1)**m
@@ -2776,9 +2776,9 @@ CONTAINS
             enddo
         endif
         call ArrayScatter (local_array=ua(:,:,L), global_array=uglo(:,:), grid=GRID, rc=status)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
         call ArrayScatter (local_array=va(:,:,L), global_array=vglo(:,:), grid=GRID, rc=status)
-        _VERIFY(STATUS)
+        VERIFY_(STATUS)
      enddo
 
      deallocate( uglo )
@@ -2883,7 +2883,7 @@ CONTAINS
   IAm='spectrans_vector'
 ! Get global dimensions
   call MAPL_GridGet(GRID, globalCellCountPerDim=DIMS, RC=STATUS)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
   IM_WORLD = DIMS(1)
   JM_WORLD = DIMS(2)
   nc = (jcap+1)*(jcap+2)
@@ -2894,9 +2894,9 @@ CONTAINS
   do k=1,lm
 ! gather array
    call ArrayGather(var1(:,:,k),var_world1,grid,rc=status)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
    call ArrayGather(var2(:,:,k),var_world2,grid,rc=status)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
    if (MAPL_AM_I_ROOT()) then
     allocate(grd1(im_world*jm_world))
     allocate(spc1(nc))
@@ -2918,15 +2918,15 @@ CONTAINS
 
 ! scatter array
    call ArrayScatter(var1(:,:,k),var_world1,grid,rc=status)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
    call ArrayScatter(var2(:,:,k),var_world2,grid,rc=status)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
   enddo
 
   call destroy_spec_vars
   deallocate(var_world1)
   deallocate(var_world2)
-  _RETURN(ESMF_SUCCESS)
+  RETURN_(ESMF_SUCCESS)
   end subroutine spectrans_vector
 
   subroutine spectrans_vectorpar(im,jm,lm,var1,var2,jcap,GRID,RC)
@@ -2951,7 +2951,7 @@ CONTAINS
   IAm='spectrans_vectorpar'
 ! Get global dimensions
   call MAPL_GridGet(GRID, globalCellCountPerDim=DIMS, RC=STATUS)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
   IM_WORLD = DIMS(1)
   JM_WORLD = DIMS(2)
   nc = (jcap+1)*(jcap+2)
@@ -2961,28 +2961,28 @@ CONTAINS
   nullify(InGlob1)
   nullify(InGlob2)
   call MAPL_CollectiveGather3D(grid,var1,InGlob1,rc=status)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
   call MAPL_CollectiveGather3D(grid,var2,InGlob2,rc=status)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
 
   if (size(InGlob1) > 1) then
      allocate(OutGlob1(Im_World,JM_World,size(InGlob1,3)),stat=status)
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
      allocate(OutGlob2(Im_World,JM_World,size(InGlob2,3)),stat=status)
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
      call spectrans_vectorglob(InGlob1,InGlob2,OutGlob1,OutGlob2,jcap,rc=status)
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
   end if
 
   deallocate(InGlob1)
   deallocate(InGlob2)
   call MAPL_CollectiveScatter3d(Grid,OutGlob1,var1,rc=status)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
   call MAPL_CollectiveScatter3d(Grid,OutGlob2,var2,rc=status)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
 
   call destroy_spec_vars
-  _RETURN(ESMF_SUCCESS)
+  RETURN_(ESMF_SUCCESS)
   end subroutine spectrans_vectorpar
 
   subroutine spectrans_vectorglob(InGlob1,InGlob2,OutGlob1,OutGlob2,jcap,RC)
@@ -3008,13 +3008,13 @@ CONTAINS
   nc = (jcap+1)*(jcap+2)
 
   allocate(grd1(im_world*jm_world),stat=status)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
   allocate(spc1(nc),stat=status)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
   allocate(grd2(im_world*jm_world),stat=status)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
   allocate(spc2(nc),stat=status)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
   do k=1,size(InGlob1,3)
     grd1 = reshape(InGlob1(:,:,k),(/im_world*jm_world/))
     grd2 = reshape(InGlob2(:,:,k),(/im_world*jm_world/))
@@ -3030,7 +3030,7 @@ CONTAINS
   deallocate(grd2)
   deallocate(spc2)
 
-  _RETURN(ESMF_SUCCESS)
+  RETURN_(ESMF_SUCCESS)
   end subroutine spectrans_vectorglob
 
   subroutine spectrans_scalar(im,jm,lm,var,jcap,GRID,RC)
@@ -3052,7 +3052,7 @@ CONTAINS
   IAm='spectrans_scalar'
 ! Get global dimensions
   call MAPL_GridGet(GRID, globalCellCountPerDim=DIMS, RC=STATUS)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
   IM_WORLD = DIMS(1)
   JM_WORLD = DIMS(2)
   nc = (jcap+1)*(jcap+2)
@@ -3062,7 +3062,7 @@ CONTAINS
   do k=1,lm
    ! gather array
    call ArrayGather(var(:,:,k),var_world,grid,rc=status)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
    if (MAPL_AM_I_ROOT()) then
     allocate(grd(im_world*jm_world))
     allocate(spc(nc))
@@ -3077,12 +3077,12 @@ CONTAINS
 
    ! scatter array
    call ArrayScatter(var(:,:,k),var_world,grid,rc=status)
-   _VERIFY(STATUS)
+   VERIFY_(STATUS)
   enddo
 
   call destroy_spec_vars
   deallocate(var_world)
-  _RETURN(ESMF_SUCCESS)
+  RETURN_(ESMF_SUCCESS)
   end subroutine spectrans_scalar
 
   logical function check_list_(name,vars)
@@ -3117,7 +3117,7 @@ CONTAINS
   IAm='spectrans_scalarpar'
 ! Get global dimensions
   call MAPL_GridGet(GRID, globalCellCountPerDim=DIMS, RC=STATUS)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
   IM_WORLD = DIMS(1)
   JM_WORLD = DIMS(2)
   isinitialized=.false.
@@ -3125,21 +3125,21 @@ CONTAINS
 
   nullify(InGlob)
   call MAPL_CollectiveGather3D(grid,var,InGlob,rc=status)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
 
   if (size(InGlob) > 1) then
      allocate(OutGlob(Im_World,JM_World,size(InGlob,3)),stat=status)
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
      call spectrans_scalarglob(InGlob,OutGlob,jcap,rc=status)
-     _VERIFY(STATUS)
+     VERIFY_(STATUS)
   end if
 
   deallocate(InGlob)
   call MAPL_CollectiveScatter3d(Grid,OutGlob,var,rc=status)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
 
   call destroy_spec_vars
-  _RETURN(ESMF_SUCCESS)
+  RETURN_(ESMF_SUCCESS)
   end subroutine spectrans_scalarpar
 
   ! perform scalar spectral transform on global data
@@ -3163,9 +3163,9 @@ CONTAINS
   im_world = size(InGlob,1)
   jm_world = size(InGlob,2)
   allocate(grd(im_world*jm_world),stat=status)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
   allocate(spc(nc),stat=status)
-  _VERIFY(STATUS)
+  VERIFY_(STATUS)
   do k=1,size(InGlob,3)
    ! gather array
     grd = reshape(InGlob(:,:,k),(/im_world*jm_world/))
@@ -3177,7 +3177,7 @@ CONTAINS
   deallocate(grd)
   deallocate(spc)
 
-  _RETURN(ESMF_SUCCESS)
+  RETURN_(ESMF_SUCCESS)
   end subroutine spectrans_scalarglob
 
       subroutine myremap ( ple_in,ple_out,    &

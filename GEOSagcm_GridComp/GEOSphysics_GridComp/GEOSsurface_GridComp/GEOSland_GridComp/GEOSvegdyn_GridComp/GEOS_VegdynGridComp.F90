@@ -114,7 +114,7 @@ contains
                           NAME=COMP_NAME                 ,&
                           RC=STATUS )
 
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     Iam = trim(COMP_NAME) // 'SetServices'
 
@@ -123,20 +123,20 @@ contains
 ! -----------------------------------------------------------
 
     call MAPL_GridCompSetEntryPoint (GC, ESMF_METHOD_RUN, Run, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! -----------------------------------------------------------
 ! Get the configuration
 ! -----------------------------------------------------------
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! -----------------------------------------------------------
 ! Get the intervals
 ! -----------------------------------------------------------
 
     !call MAPL_GetResource ( MAPL,DT, Label="RUN_DT:", RC=STATUS)
-    !_VERIFY(STATUS)
+    !VERIFY_(STATUS)
 
     !RUN_DT = nint(DT)
 
@@ -145,7 +145,7 @@ contains
 ! Use Simard et al. canopy height data, or overwrite?
 ! -----------------------------------------------------------     
     call MAPL_GetResource ( MAPL, IGNORE_HEIGHTS, Label="IGNORE_VEG_HEIGHTS:", DEFAULT=0, RC=STATUS)
-    _VERIFY(STATUS) 
+    VERIFY_(STATUS) 
     
 ! -----------------------------------------------------------
 ! At the moment, this will refresh when the land parent 
@@ -153,7 +153,7 @@ contains
 !
 !    call ESMF_ConfigGetFloat ( CF, DT, Label=trim(COMP_NAME)//&
 !    "_DT:", default=DT, RC=STATUS)
-!     _VERIFY(STATUS)
+!     VERIFY_(STATUS)
 !
 !    MY_STEP = nint(DT)
 !
@@ -183,7 +183,7 @@ contains
          VLOCATION  = MAPL_VLocationNone                        ,&
          FRIENDLYTO = trim(COMP_NAME)                           ,&
          RC=STATUS  )
-    _VERIFY(STATUS)  
+    VERIFY_(STATUS)  
 
     call MAPL_AddInternalSpec(GC                                ,&
          SHORT_NAME = 'Z2CH'                                    ,&
@@ -193,7 +193,7 @@ contains
          VLOCATION  = MAPL_VLocationNone                        ,&
          FRIENDLYTO = trim(COMP_NAME)                           ,&
          RC=STATUS  )
-    _VERIFY(STATUS)  
+    VERIFY_(STATUS)  
 
     call MAPL_AddInternalSpec(GC                                ,&
          SHORT_NAME = 'ASCATZ0'                                 ,&
@@ -203,7 +203,7 @@ contains
          VLOCATION  = MAPL_VLocationNone                        ,&
          FRIENDLYTO = trim(COMP_NAME)                           ,&
          RC=STATUS  )
-    _VERIFY(STATUS)  
+    VERIFY_(STATUS)  
 
 ! -----------------------------------------------------------
 ! These are variables that are considered time-independent
@@ -222,7 +222,7 @@ contains
        VLOCATION  = MAPL_VLocationNone                        ,&
        RC=STATUS  )
 
-    _VERIFY(STATUS)  
+    VERIFY_(STATUS)  
 
     call MAPL_AddExportSpec(GC                                ,&
        SHORT_NAME = 'GRN'                                     ,&
@@ -232,7 +232,7 @@ contains
        VLOCATION  = MAPL_VLocationNone                        ,&
        RC=STATUS  )
 
-    _VERIFY(STATUS)  	 
+    VERIFY_(STATUS)  	 
 
     call MAPL_AddExportSpec(GC                                ,&
        SHORT_NAME = 'ROOTL'                                   ,&
@@ -242,7 +242,7 @@ contains
        VLOCATION  = MAPL_VLocationNone                        ,&
        RC=STATUS  )
 
-    _VERIFY(STATUS)  	 
+    VERIFY_(STATUS)  	 
 
     call MAPL_AddExportSpec(GC                                ,&
        SHORT_NAME = 'NDVI'                                    ,&
@@ -252,7 +252,7 @@ contains
        VLOCATION  = MAPL_VLocationNone                        ,&
        RC=STATUS  )
 
-    _VERIFY(STATUS)  
+    VERIFY_(STATUS)  
 
 !EOS
 
@@ -261,9 +261,9 @@ contains
 !------------------------------------------------------------
 
     call MAPL_GenericSetServices(GC, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   
   end subroutine SetServices
 
@@ -326,7 +326,7 @@ contains
 ! -----------------------------------------------------------
 
     call ESMF_GridCompGet(GC, name=COMP_NAME, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
   
     Iam = trim(COMP_NAME) // "Run"
 
@@ -334,17 +334,17 @@ contains
 ! -----------------------------------------------------------
 
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_TimerOn(MAPL,"TOTAL")
 
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
-    _VERIFY(STATUS) 
+    VERIFY_(STATUS) 
 
     call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! -----------------------------------------------------------
 ! Get file names from configuration
@@ -362,65 +362,65 @@ contains
        if (STATUS/=ESMF_SUCCESS) then
           call MAPL_GetResource(MAPL, LAItpl, label = 'LAI_FILE:', &
                default = '../input/lai%s.data', RC=STATUS )
-          _VERIFY(STATUS)
+          VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, GRNtpl, label = 'GREEN_FILE:', &
                default = '../input/green%s.data', RC=STATUS )
-          _VERIFY(STATUS)
+          VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, NDVItpl, label = 'NDVI_FILE:', &
                 default = '../input/ndvi%s.data', RC=STATUS )
        endif
 
        call ESMF_CFIOStrTemplate(LAIFILE, LAItpl,'GRADS', xid=comp_name(7:7+ens_id_width-1), stat=status)
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call ESMF_CFIOStrTemplate(GRNFILE, GRNtpl,'GRADS', xid=comp_name(7:7+ens_id_width-1), stat=status)
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call ESMF_CFIOStrTemplate(NDVIFILE,NDVItpl,'GRADS',xid=comp_name(7:7+ens_id_width-1), stat=status)
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
     else
        call MAPL_GetResource(MAPL, LAIFILE, label = 'LAI_FILE:', &
          default = 'lai.dat', RC=STATUS )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, GRNFILE, label = 'GREEN_FILE:', &
          default = 'green.dat', RC=STATUS )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_GetResource(MAPL, NDVIFILE, label = 'NDVI_FILE:', &
           default = 'ndvi.dat', RC=STATUS )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
    endif
 
 ! get pointers to internal variables
 ! ----------------------------------
   
     call MAPL_GetPointer(INTERNAL,      ITY,      'ITY' , RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,      Z2CH,     'Z2CH', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,   ASCATZ0,  'ASCATZ0', RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! get pointers to EXPORTS
 ! -----------------------
 
     call MAPL_GetPointer(EXPORT, LAI,   'LAI',    RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, GRN,   'GRN',    RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, ROOTL, 'ROOTL',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, NDVI,   'NDVI',  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Do the lai greeness and ndvi interpolation
 ! ------------------------------------------
 
     call ESMF_ClockGet  ( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_ReadForcing(MAPL,'LAI',LAIFILE,CURRENT_TIME,LAI,ON_TILES=.true.,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_ReadForcing(MAPL,'GRN',GRNFILE,CURRENT_TIME,GRN,ON_TILES=.true.,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_ReadForcing(MAPL,'NDVI',NDVIFILE,CURRENT_TIME,NDVI,ON_TILES=.true.,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Vegetation types used to index into tables
 ! Root length density no longer depends on time of year
@@ -439,7 +439,7 @@ contains
 
     call MAPL_TimerOff(MAPL,"TOTAL")
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   end subroutine RUN
 
 end module GEOS_VegdynGridCompMod

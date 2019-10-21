@@ -100,7 +100,7 @@ contains
                           NAME=COMP_NAME	             ,&
                           CONFIG=CF                          ,&
                                                     RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     Iam = trim(COMP_NAME) // 'SetServices'
 
@@ -108,11 +108,11 @@ contains
 !--------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     tmp = ''
     if (NUM_LDAS_ENSEMBLE >1) then
@@ -125,16 +125,16 @@ contains
 !------------------------------------------------------------
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, Run1, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN, Run2, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call ESMF_ConfigGetAttribute ( CF, NUM_CATCH, Label="NUM_CATCH_ENSEMBLES:", default=1, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call ESMF_ConfigGetAttribute ( CF, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", default=0, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 !------------------------------------------------------------
 ! Create children's gridded components and invoke their 
@@ -142,48 +142,48 @@ contains
 !------------------------------------------------------------
 
     VEGDYN  = MAPL_AddChild(GC, NAME='VEGDYN'//trim(tmp), SS=VegdynSetServices, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Get CHOICE OF  Land Surface Model (1:Catch, 2:Catch-CN)
 ! and Runoff Routing Model (0: OFF, 1: ON)
 ! -------------------------------------------------------
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, RUN_ROUTE, Label="RUN_ROUTE:", DEFAULT=0, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     SELECT CASE (LSM_CHOICE)
 
     CASE (1) 
     
        allocate (CATCH(NUM_CATCH), stat=status)
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        if (NUM_CATCH == 1) then
           CATCH(1) = MAPL_AddChild(GC, NAME='CATCH'//trim(tmp), SS=CatchSetServices, RC=STATUS)
-          _VERIFY(STATUS)
+          VERIFY_(STATUS)
        else
           do I = 1, NUM_CATCH
              WRITE(TMP,'(I3.3)') I
              GCName  = 'ens' // trim(TMP) // ':CATCH'
              CATCH(I) = MAPL_AddChild(GC, NAME=GCName, SS=CatchSetServices, RC=STATUS)
-             _VERIFY(STATUS)
+             VERIFY_(STATUS)
           end do
        end if
        
     CASE (2) 
        
        allocate (CATCHCN(NUM_CATCH), stat=status)
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        if (NUM_CATCH == 1) then
           CATCHCN(1) = MAPL_AddChild(GC, NAME='CATCHCN'//trim(tmp), SS=CatchCNSetServices, RC=STATUS)
-          _VERIFY(STATUS)
+          VERIFY_(STATUS)
        else
           do I = 1, NUM_CATCH
              WRITE(TMP,'(I3.3)') I
              GCName  = 'ens' // trim(TMP) // ':CATCHCN'
              CATCHCN(I) = MAPL_AddChild(GC, NAME=GCName, SS=CatchCNSetServices, RC=STATUS)
-             _VERIFY(STATUS)
+             VERIFY_(STATUS)
           end do
        end if
        
@@ -192,13 +192,13 @@ contains
 !    IF(RUN_ROUTE == 1) THEN
 !       if (NUM_CATCH == 1) then
 !          ROUTE(1) = MAPL_AddChild(GC, NAME='ROUTE', SS=RouteSetServices, RC=STATUS)
-!          _VERIFY(STATUS)
+!          VERIFY_(STATUS)
 !       else
 !          do I = 1, NUM_CATCH
 !             WRITE(TMP,'(I3.3)') I
 !             GCName  = 'ens' // trim(TMP) // ':ROUTE'
 !             ROUTE(I) = MAPL_AddChild(GC, NAME=GCName, SS=RouteSetServices, RC=STATUS)
-!             _VERIFY(STATUS)
+!             VERIFY_(STATUS)
 !          end do
 !       end if
 !    ENDIF
@@ -226,482 +226,482 @@ contains
             SHORT_NAME = 'LST', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TST', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'QST', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'DELTS', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'DELQS', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'ALBVR', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'ALBVF', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'ALBNR', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'ALBNF', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'EMIS', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SNOWMASS', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SNOWDP', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'GHFLX', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TPUNST', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TPSURF', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TPSNOW', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TPWLT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TPSAT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'ASNOW', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SHSNOW', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'AVETSNOW', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'FRSAT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'FRUST', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'FRWLT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'WET1', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'WET2', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'WET3', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'WCSF', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'WCRZ', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'WCPR', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TP1', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TP2', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TP3', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TP4', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TP5', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TP6', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'EVAPOUT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SUBLIM', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SHOUT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'RUNOFF', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'EVPINT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'EVPSOI', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'EVPVEG',  &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'EVPICE', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'WAT10CM', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'WATSOI', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'ICESOI', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'EVPSNO', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'BASEFLOW', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'RUNSURF', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SMELT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'HLWUP',&
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SWNDSRF', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'LWNDSRF', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'HLATN', &
             CHILD_ID = CATCH(1),&
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'QINFIL', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'ACCUM', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'EVLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'PRLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SNOLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'DRPARLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'DFPARLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'LHSNOW', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SWNETSNOW', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'LWUPSNOW', &
             CHILD_ID = CATCH(1) ,&
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'LWDNSNOW', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TCSORIG', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TPSN1IN', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TPSN1OUT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'LHLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SHLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SWLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SWDOWNLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'LWLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'GHLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'GHSNOW', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'GHTSKIN', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SMLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TWLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TELAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TSLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'DWLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'DHLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SPLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SPWATR', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SPSNOW', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'WESNN1', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'WESNN2', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'WESNN3', &
             CHILD_ID = CATCH(1),   &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'CAPAC',&
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'COND' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'PSIS' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BEE'  , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'GNU'  , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VGWMAX',CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF1'  , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF2'  , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF3'  , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR1', CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS1' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS2' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS3' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA1' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA2' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA3' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA4' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW1' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW2' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW3' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW4' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSA1' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSA2' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSB1' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSB2' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ATAU' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BTAU' , CHILD_ID = CATCH(1), RC=STATUS); _VERIFY(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'COND' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'PSIS' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BEE'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'GNU'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VGWMAX',CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF1'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF2'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF3'  , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR1', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS1' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS2' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS3' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA1' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA2' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA3' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA4' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW1' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW2' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW3' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW4' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSA1' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSA2' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSB1' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSB2' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ATAU' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BTAU' , CHILD_ID = CATCH(1), RC=STATUS); VERIFY_(STATUS)
 
 !   From catment grid internal to be perturbed by land_pert grid
 !   WESNN1-3 are originally exported
@@ -709,592 +709,592 @@ contains
                               SHORT_NAME = 'TC', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'QC', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'CATDEF', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'RZEXC', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'SRFEXC', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'HTSNNN1', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'HTSNNN2', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'HTSNNN3', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'SNDZN1', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'SNDZN2', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'SNDZN3', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'GHTCNT1', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'GHTCNT2', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'GHTCNT3', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'GHTCNT4', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'GHTCNT5', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'GHTCNT6', &
                               CHILD_ID = CATCH(1), &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 !   Ther are from the first catchment instance
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'TH', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'QH', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'CHT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'CQT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'CMT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'CNT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'RIT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'Z0', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'D0', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'Z0H', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'VENT', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'GUST', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'MOU50M', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'MOV50M', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'MOT10M', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'MOQ10M', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'MOU10M', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'MOV10M', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'MOT2M', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'MOQ2M', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'MOU2M', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'MOV2M', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'ITY', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
 
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU001', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU002', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU003', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)      
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU004', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU005', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC001', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC002', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC001', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)  
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU003', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)      
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU004', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU005', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)  
 
        if (DO_GOSWIM /= 0) then
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU002', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU003', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)      
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU004', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU005', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RBC001', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RBC002', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC001', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC002', CHILD_ID = CATCH(1), RC=STATUS) ; _VERIFY(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU003', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)      
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU004', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU005', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RBC001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RBC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        end if
 
     CASE (2) 
        
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LST',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TST',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'QST',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DELTS',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DELQS',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ALBVR',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ALBVF',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ALBNR',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ALBNF',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EMIS',     CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNOWMASS', CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNOWDP',   CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GHFLX',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TPUNST',   CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TPSURF',   CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TPSNOW',   CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TPWLT',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TPSAT',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ASNOW',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SHSNOW',   CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'AVETSNOW', CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FRSAT',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FRUST',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FRWLT',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WET1',     CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WET2',     CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WET3',     CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WCSF',     CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WCRZ',     CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WCPR',     CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TP1',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TP2',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TP3',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TP4',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TP5',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TP6',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EVAPOUT',  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SUBLIM' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SHOUT'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RUNOFF' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EVPINT' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EVPSOI' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EVPVEG' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EVPICE' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WAT10CM',  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WATSOI' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ICESOI' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EVPSNO' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'BASEFLOW', CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RUNSURF',  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SMELT'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'HLWUP'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SWNDSRF',  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LWNDSRF',  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)                                                                         
+       VERIFY_(STATUS)                                                                         
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'HLATN'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'QINFIL' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ACCUM'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'EVLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PRLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNOLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DRPARLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DFPARLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LHSNOW' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SWNETSNOW' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LWUPSNOW' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LWDNSNOW' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TCSORIG' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TPSN1IN' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TPSN1OUT' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LHLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SHLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SWLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SWDOWNLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LWLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GHLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GHSNOW' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GHTSKIN' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SMLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TWLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TELAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TSLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DWLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DHLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPWATR' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPSNOW' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WESNN1' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WESNN2' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WESNN3' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CAPAC'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'COND' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'PSIS' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BEE'  , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'GNU'  , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VGWMAX',CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF1'  , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF2'  , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF3'  , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR1', CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS1' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS2' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS3' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA1' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA2' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA3' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA4' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW1' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW2' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW3' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW4' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSA1' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSA2' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSB1' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSB2' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ATAU' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BTAU' , CHILD_ID = CATCHCN(1), RC=STATUS); _VERIFY(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'POROS', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'COND' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'PSIS' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BEE'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'WPWET', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'GNU'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VGWMAX',CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF1'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF2'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BF3'  , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR1', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'CDCR2', CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS1' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS2' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARS3' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA1' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA2' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA3' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARA4' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW1' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW2' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW3' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ARW4' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSA1' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSA2' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSB1' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSB2' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ATAU' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'BTAU' , CHILD_ID = CATCHCN(1), RC=STATUS); VERIFY_(STATUS)
 
 
 !   From catmentcn grid internal to be perturbed by land_pert grid
 !   WESNN1-3 are originally exported
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TC'     , CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TG'     , CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'QC'     , CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CATDEF' , CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RZEXC'  , CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SRFEXC' , CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'HTSNNN1', CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'HTSNNN2', CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'HTSNNN3', CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNDZN1' , CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNDZN2' , CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNDZN3' , CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GHTCNT1', CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GHTCNT2', CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GHTCNT3', CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GHTCNT4', CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GHTCNT5', CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GHTCNT6', CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        
        ! Unified CN from RUN2 of the first catchment instance
        
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNLAI'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNTLAI' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNSAI'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNTOTC' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNVEGC' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNROOT' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNNPP'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNGPP'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNSR'   ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNNEE'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNXSMR' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNADD'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNLOSS' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNBURN' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PARABS' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PARINC' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SCSAT'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SCUNS'  ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'BTRANT' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SIF'    ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNFSEL' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'TH',       CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'QH',       CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CHT',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CQT',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CMT',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'CNT',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RIT',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'Z0',       CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'D0',       CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'Z0H',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'VENT',     CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'GUST',     CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'MOU50M',   CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'MOV50M',   CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'MOT10M',   CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'MOQ10M',   CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'MOU10M',   CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'MOV10M',   CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'MOT2M',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'MOQ2M',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'MOU2M',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'MOV2M',    CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ITY',      CHILD_ID = CATCHCN(1), RC=STATUS  )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
 
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU001', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU002', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU003', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)      
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU004', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU005', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC001', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC001', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)  
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU003', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)      
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU004', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTDU005', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)  
 
        if (DO_GOSWIM /= 0) then
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU002', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU003', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)      
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU004', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU005', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RBC001', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RBC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC001', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
-          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; _VERIFY(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU003', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)      
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU004', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU005', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RBC001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RBC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
+          call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
        endif
 
     END SELECT
@@ -1304,33 +1304,33 @@ contains
                               SHORT_NAME = 'LAI', &
                               CHILD_ID = VEGDYN, &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'GRN', &
                               CHILD_ID = VEGDYN, &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'ROOTL', &
                               CHILD_ID = VEGDYN, &
                               RC=STATUS  )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'NDVI', &
                               CHILD_ID = VEGDYN,&
                               RC=STATUS  )
-    _VERIFY(STATUS) 
+    VERIFY_(STATUS) 
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'Z2CH', &
                               CHILD_ID = VEGDYN,&
                               RC=STATUS  )
-    _VERIFY(STATUS) 
+    VERIFY_(STATUS) 
 !    IF(RUN_ROUTE == 1) THEN
 !       call MAPL_AddExportSpec ( GC, &
 !            SHORT_NAME = 'QOUTFLOW', &
 !            CHILD_ID = ROUTE(1),     &
 !            RC=STATUS  )
-!       _VERIFY(STATUS)       
+!       VERIFY_(STATUS)       
 !    ENDIF
 
 !EOS
@@ -1355,7 +1355,7 @@ contains
             DST_ID =  CATCH(I)                                 ,         &
             SRC_ID =  VEGDYN                                   ,         &
                                                       RC=STATUS )
-          _VERIFY(STATUS)
+          VERIFY_(STATUS)
 
 !          IF(RUN_ROUTE == 1) THEN
 !             call MAPL_AddConnectivity (                              &
@@ -1365,7 +1365,7 @@ contains
 !                  DST_ID =  ROUTE(I)                                 ,&
 !                  
 !                  RC=STATUS )
-!             _VERIFY(STATUS)            
+!             VERIFY_(STATUS)            
 !          ENDIF
 
        CASE (2)
@@ -1385,27 +1385,27 @@ contains
 !                  DST_ID =  ROUTE(I)                                 ,&
 !                  
 !                  RC=STATUS )
-!             _VERIFY(STATUS)            
+!             VERIFY_(STATUS)            
 !          ENDIF
        END SELECT
     END DO
 
 
     call MAPL_TimerAdd(GC, name="INITIALIZE"    ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC, name="RUN1"          ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC, name="RUN2"          ,RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 
     call MAPL_GenericSetServices(GC, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     if (allocated(CATCH)) deallocate(CATCH)
     if (allocated(CATCHCN)) deallocate(CATCHCN)
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   
   end subroutine SetServices
 
@@ -1458,45 +1458,45 @@ contains
 ! -----------------------------------------------------------
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // "Initialize"
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
-    call MAPL_TimerOn(MAPL,"INITIALIZE", RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_TimerOn(MAPL,"TOTAL", RC=STATUS ); _VERIFY(STATUS)
+    call MAPL_TimerOn(MAPL,"INITIALIZE", RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_TimerOn(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
 
 ! Get the land tilegrid and the child components
 !----------------------------------------------- 
 
     call MAPL_Get (MAPL, LOCSTREAM=LOCSTREAM, GCS=GCS, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Place the land tilegrid in the generic state of each child component
 !---------------------------------------------------------------------
 
     do I = 1, SIZE(GCS)
        call MAPL_GetObjectFromGC( GCS(I), CHILD_MAPL, RC=STATUS )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
        call MAPL_Set (CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
-       _VERIFY(STATUS)
+       VERIFY_(STATUS)
     end do
 
-    call MAPL_TimerOff(MAPL,"TOTAL", RC=STATUS ); _VERIFY(STATUS)
+    call MAPL_TimerOff(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
 
 ! Call Initialize for every Child
 !--------------------------------
 
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
-    call MAPL_TimerOff(MAPL,"INITIALIZE", RC=STATUS ); _VERIFY(STATUS)
+    call MAPL_TimerOff(MAPL,"INITIALIZE", RC=STATUS ); VERIFY_(STATUS)
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
 
 
@@ -1541,36 +1541,36 @@ contains
 ! -----------------------------------------------------------
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // "Run1"
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
-    call MAPL_TimerOn(MAPL,"TOTAL", RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_TimerOn(MAPL,"RUN1", RC=STATUS ); _VERIFY(STATUS)
+    call MAPL_TimerOn(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_TimerOn(MAPL,"RUN1", RC=STATUS ); VERIFY_(STATUS)
 
     call MAPL_Get (MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCnames=GCnames,rc=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Call the children's RUN methods
 !--------------------------------
 
     DO I = 1, size(GCS)
-       call MAPL_TimerOn(MAPL,trim(GCnames(i)), RC=STATUS ); _VERIFY(STATUS)
+       call MAPL_TimerOn(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
        call ESMF_GridCompRun(GCS(I), importState=GIM(I), exportState=GEX(I), &
                              CLOCK=CLOCK, PHASE=1, userRC=STATUS)
-       _VERIFY(STATUS)
-       call MAPL_TimerOff(MAPL,trim(GCnames(i)), RC=STATUS ); _VERIFY(STATUS)
+       VERIFY_(STATUS)
+       call MAPL_TimerOff(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
     END DO
 
-    call MAPL_TimerOff(MAPL,"RUN1", RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_TimerOff(MAPL,"TOTAL", RC=STATUS ); _VERIFY(STATUS)
+    call MAPL_TimerOff(MAPL,"RUN1", RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_TimerOff(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
 
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
 
   end subroutine Run1
 
@@ -1615,36 +1615,36 @@ contains
 ! -----------------------------------------------------------
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // "Run2"
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
-    call MAPL_TimerOn(MAPL,"TOTAL", RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_TimerOn(MAPL,"RUN2", RC=STATUS ); _VERIFY(STATUS)
+    call MAPL_TimerOn(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_TimerOn(MAPL,"RUN2", RC=STATUS ); VERIFY_(STATUS)
 
     call MAPL_Get (MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCnames=GCnames,rc=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! Call the children's RUN methods
 !--------------------------------
     DO I=1,size(GCS)
        if (I == VEGDYN) cycle
-       call MAPL_TimerOn(MAPL,trim(GCnames(i)), RC=STATUS ); _VERIFY(STATUS)
+       call MAPL_TimerOn(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
        call ESMF_GridCompRun(GCS(I), importState=GIM(I), exportState=GEX(I), &
                              CLOCK=CLOCK, PHASE=2, userRC=STATUS)
-       _VERIFY(STATUS)
-       call MAPL_TimerOff(MAPL,trim(GCnames(i)), RC=STATUS ); _VERIFY(STATUS)
+       VERIFY_(STATUS)
+       call MAPL_TimerOff(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
     END DO
 
-    call MAPL_TimerOff(MAPL,"RUN2", RC=STATUS ); _VERIFY(STATUS)
-    call MAPL_TimerOff(MAPL,"TOTAL", RC=STATUS ); _VERIFY(STATUS)
+    call MAPL_TimerOff(MAPL,"RUN2", RC=STATUS ); VERIFY_(STATUS)
+    call MAPL_TimerOff(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
     
-    _RETURN(ESMF_SUCCESS)
+    RETURN_(ESMF_SUCCESS)
 
   end subroutine Run2
 

@@ -181,20 +181,20 @@ program mkOverlaySimple
     endif
 
     allocate(iTable(0:nvars,maxtiles),stat=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     allocate(rTable(1:rvars,maxtiles),stat=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     allocate(rst1(nx,ny),             stat=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     allocate(cc(nx),ss(nx), rst2(nx), stat=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
     allocate(Table1(6,ip1),         stat=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
     allocate(Table2(6,ip2),           stat=status)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 ! The rasters cover the sphere in lat-lon 
 
@@ -372,7 +372,7 @@ program mkOverlaySimple
 ! Done with some space and with hash
 
 !    deallocate(Table1,Table2,Rst2,ss,cc,stat=STATUS)
-    _VERIFY(STATUS)
+    VERIFY_(STATUS)
 
 !    call MAPL_HashDestroy(Hash)
 
