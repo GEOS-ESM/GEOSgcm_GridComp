@@ -733,7 +733,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !--------------------------------------------
 
     call MAPL_TimerOff(MAPL,"TOTAL")
-    call MAPL_GenericRun (GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
+    call MAPL_GenericRunChildren (GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     VERIFY_(STATUS)
     call MAPL_TimerOn (MAPL,"TOTAL")
 

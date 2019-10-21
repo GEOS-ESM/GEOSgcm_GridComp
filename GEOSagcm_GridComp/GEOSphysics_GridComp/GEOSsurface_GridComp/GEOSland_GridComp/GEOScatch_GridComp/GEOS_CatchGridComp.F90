@@ -3088,7 +3088,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !--------------------------------------------
 
    VEG = nint(ITY(:))
-   ASSERT_((count(VEG>NTYPS.or.VEG<1)==0))
+   _ASSERT((count(VEG>NTYPS.or.VEG<1)==0),'needs informative message')
 
 !  Clear the output tile accumulators
 !------------------------------------
@@ -4700,9 +4700,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	! driver
 	! --------------------------------------------------------------------------
 
-        ASSERT_(count(PLS<0.)==0)
-        ASSERT_(count(PCU<0.)==0)
-        ASSERT_(count(SLDTOT<0.)==0)
+        _ASSERT(count(PLS<0.)==0,'needs informative message')
+        _ASSERT(count(PCU<0.)==0,'needs informative message')
+        _ASSERT(count(SLDTOT<0.)==0,'needs informative message')
 
         LAI0  = max(0.0001     , LAI)
         GRN0  = max(0.0001     , GRN)		
@@ -4919,7 +4919,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             if( NMAX.ne.0 ) then
                 print *, 'CATCH_INTERNAL_RST is NOT consistent with VEGDYN Data'
             endif
-            ASSERT_(NMAX==0)
+            _ASSERT(NMAX==0,'needs informative message')
             check_ity = .false.
         endif
 ! ----------------------------------------------------------------------------------------

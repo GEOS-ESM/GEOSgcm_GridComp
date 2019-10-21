@@ -332,6 +332,8 @@ contains
    call MAPL_GetResource( MAPL, FilterType, Label="FILTER_TYPE:"   , default="NULL" , RC=STATUS)
    VERIFY_(STATUS)
    if (trim(FilterType) /= 'DFI' ) then ! nothing to do otherwise
+       call MAPL_TimerOff(MAPL,"TOTAL")
+       call MAPL_TimerOff(MAPL,"INITIALIZE")
        RETURN_(ESMF_SUCCESS)
    endif 
 

@@ -500,19 +500,19 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
+    _ASSERT(FRIENDLY,'needs informative message')
 
     call ESMF_StateGet (IMPORT, 'HI', FIELD, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
+    _ASSERT(FRIENDLY,'needs informative message')
 
     call ESMF_StateGet (IMPORT, 'SI', FIELD, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
+    _ASSERT(FRIENDLY,'needs informative message')
 
 !  Pointers to Exports
 !---------------------
@@ -585,7 +585,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
        if (any(FR < 0.0) .or. any(FR > 1.0)) then
           if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-          ASSERT_(.FALSE.)
+          _ASSERT(.FALSE.,'needs informative message')
        endif
      end if
    else
@@ -599,7 +599,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
              if (f==MAPL_UNDEF) cycle
              if ((f < 0.0) .or. (f > 1.0)) then
                 print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-                ASSERT_(.FALSE.)
+                _ASSERT(.FALSE.,'needs informative message')
              end if
           end do
        end do

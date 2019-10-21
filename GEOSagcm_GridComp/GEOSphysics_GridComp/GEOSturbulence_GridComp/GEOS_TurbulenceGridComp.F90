@@ -2298,7 +2298,7 @@ contains
 
 #ifdef _CUDA
 
-         ASSERT_(LM <= GPU_MAXLEVS) !If this is tripped, GNUmakefile
+         _ASSERT(LM <= GPU_MAXLEVS,'needs informative message') !If this is tripped, GNUmakefile
                                     !must be changed
 
          call MAPL_GetResource(MAPL,BLOCKSIZE_X,'BLOCKSIZE_X:',DEFAULT=16,__RC__)
@@ -2483,7 +2483,7 @@ contains
          if (STATUS /= 0) then 
             write (*,*) "Error code from ENTRAIN kernel call: ", STATUS
             write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
-            ASSERT_(.FALSE.)
+            _ASSERT(.FALSE.,'needs informative message')
          end if
 
          ! --------------
@@ -3153,16 +3153,16 @@ contains
 
     call ESMF_FieldBundleGet(TRI,    FieldCount=K , RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(KM==K)
+    _ASSERT(KM==K,'needs informative message')
     call ESMF_FieldBundleGet(TRG,    FieldCount=K , RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(KM==K)
+    _ASSERT(KM==K,'needs informative message')
     call ESMF_FieldBundleGet(FSTAR,  FieldCount=K , RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(KM==K)
+    _ASSERT(KM==K,'needs informative message')
     call ESMF_FieldBundleGet(DFSTAR, FieldCount=K , RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(KM==K)
+    _ASSERT(KM==K,'needs informative message')
 
 ! Pressure thickness of layers
 !-----------------------------
@@ -3222,7 +3222,7 @@ contains
 ! The quantity must exist; others are optional.
 !----------------------------------------------
 
-       ASSERT_(associated(S ))
+       _ASSERT(associated(S ),'needs informative message')
 
 ! If the surface values does not exists, we assume zero flux.
 !------------------------------------------------------------
@@ -3609,7 +3609,7 @@ end subroutine RUN1
       call ESMF_FieldBundleGet(DTG, FieldCount=K , RC=STATUS)
       VERIFY_(STATUS)
 
-      ASSERT_(KM==K)
+      _ASSERT(KM==K,'needs informative message')
 
 ! KK gives the order in which quantities will be process.
 !--------------------------------------------------------
@@ -3682,7 +3682,7 @@ end subroutine RUN1
             end if
          end do
 
-         ASSERT_(KS /= 0 )
+         _ASSERT(KS /= 0 ,'needs informative message')
 
 ! SHVC super-layers
 !------------------
