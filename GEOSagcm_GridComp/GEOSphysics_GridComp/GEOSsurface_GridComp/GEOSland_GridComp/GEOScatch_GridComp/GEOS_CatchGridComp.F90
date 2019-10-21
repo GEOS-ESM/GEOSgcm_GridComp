@@ -5446,6 +5446,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                    HTSNNN_IAU(1,:) = HTSNNN1_IAU
                    HTSNNN_IAU(2,:) = HTSNNN2_IAU
                    HTSNNN_IAU(3,:) = HTSNNN3_IAU
+                   SNDZN_IAU (1,:) = SNDZN1_IAU
+                   SNDZN_IAU (2,:) = SNDZN2_IAU
+                   SNDZN_IAU (3,:) = SNDZN3_IAU
+                   
                    call WRITE_PARALLEL('LDAS_coupling: Calling apply_catch_iau ')
 
                    call apply_catch_iau(NTILES,   &
