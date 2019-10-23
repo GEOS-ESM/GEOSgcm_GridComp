@@ -2711,7 +2711,7 @@ end subroutine SetServices
 
 !#sqz_for_ldas_coupling 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! !IROUTINE: Initialize -- Initialize method for the GEOS Surface component
+! !IROUTINE: Initialize -- Initialize method for the GEOS catchment component
 
 ! !INTERFACE:
 
@@ -4116,7 +4116,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         type(MAPL_NCIO)               :: InNCIO
         integer                       :: nv, nVars
-        integer                       :: filetype
         integer                       :: nDims,dimSizes(3)
         character(len=ESMF_MAXSTR)    :: vname
 !#---
@@ -5340,9 +5339,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
                     VERIFY_(STATUS)
 
-                    call MAPL_NCIOGetFileType(LDASINC_FILE,filetype,rc=rc)
 
-                    if (filetype == 0 ) then
                        call WRITE_PARALLEL('LDAS_coupling: load nc LDAS increment file')
                        InNCIO = MAPL_NCIOOpen(LDASINC_FILE,rc=rc)
                        call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
@@ -5392,37 +5389,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        call MAPL_NCIOClose(InNCIO)
                        call WRITE_PARALLEL('LDAS_coupling:loaded nc LDAS increment file')
 
-                    else  !filetype \=0 
-                       call WRITE_PARALLEL('LDAS_coupling:load binary LDAS increment file')
-                       unit = getfile(trim(LDASINC_FILE),form="unformatted",rc=status)
-
-                       call MAPL_VarRead(unit,tilegrid,tcfsat_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,tcftrn_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,tcfwlt_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,qcfsat_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,qcftrn_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,qcfwlt_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,capac_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,catdef_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,rzexc_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,srfexc_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,ghtcnt1_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,ghtcnt2_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,ghtcnt3_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,ghtcnt4_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,ghtcnt5_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,ghtcnt6_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,wesnn1_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,wesnn2_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,wesnn3_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,htsnnn1_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,htsnnn2_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,htsnnn3_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,sndzn1_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,sndzn2_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call MAPL_VarRead(unit,tilegrid,sndzn3_iau,mask=mask,rc=status) ; VERIFY_(STATUS)
-                       call FREE_FILE(unit)
-                    endif !filetype:nc/binary 
                     deallocate(mask)
 
 
@@ -5446,6 +5412,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     HTSNNN_IAU(1,:) = HTSNNN1_IAU
                     HTSNNN_IAU(2,:) = HTSNNN2_IAU
                     HTSNNN_IAU(3,:) = HTSNNN3_IAU
+
                     SNDZN_IAU (1,:) = SNDZN1_IAU
                     SNDZN_IAU (2,:) = SNDZN2_IAU
                     SNDZN_IAU (3,:) = SNDZN3_IAU
