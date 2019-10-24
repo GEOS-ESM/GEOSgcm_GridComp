@@ -213,7 +213,7 @@ sub write_mk_catchcn_j {
 #SBATCH --ntasks=$numtasks
 #SBATCH --time=$walltime
 #SBATCH --job-name=catchcnj
-#SBATCH --constraint=hasw
+#SBATCH --constraint=sky
 #SBATCH --output=$mk_catchcn_log
 #$QOSline
 

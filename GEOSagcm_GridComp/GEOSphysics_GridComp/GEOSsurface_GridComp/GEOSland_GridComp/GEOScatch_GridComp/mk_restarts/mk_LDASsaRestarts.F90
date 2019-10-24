@@ -209,7 +209,7 @@ PROGRAM mk_LDASsaRestarts
         write(10,'(a)')'#SBATCH --time=1:00:00'
         write(10,'(a)')'#SBATCH --ntasks=56'
         write(10,'(a)')'#SBATCH --job-name=mkLDAS'
-        write(10,'(a)')'#SBATCH --constraint=hasw'
+        write(10,'(a)')'#SBATCH --constraint=sky'
         write(10,'(a)')'#SBATCH --output=mkLDAS.o'
         write(10,'(a)')'#SBATCH --error=mkLDAS.e'
         write(10,'(a)')' ' 
