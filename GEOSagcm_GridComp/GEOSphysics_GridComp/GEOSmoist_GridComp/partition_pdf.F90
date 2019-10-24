@@ -56,7 +56,7 @@ module partition_pdf
                               qwthlsec,     & 
                               w3var,        &   
                               w_sec,        & 
-                              mfqt3,        &
+                              qt3,        &
                               mffrc,        &
                               skew_qw,      &  ! INOUT                      
                               PDF_A,        &
@@ -73,6 +73,7 @@ module partition_pdf
                               PDF_QT2,      &
                               PDF_RQTTH,    &
                               wthv_sec,     &
+                              wqls,         &
                               cld_sgs)
 
    real, intent(   in)  :: DT          ! timestep [s]
@@ -93,7 +94,7 @@ module partition_pdf
    real, intent(   in)  :: qwsec 
    real, intent(   in)  :: qwthlsec 
    real, intent(   in)  :: w3var       ! 3rd moment vertical velocity [m3 s-3]
-   real, intent(   in)  :: mfqt3       ! 3rd moment qt from mass flux
+   real, intent(   in)  :: qt3       ! 3rd moment qt from mass flux
    real, intent(   in)  :: w_sec       ! 2nd moment vertical velocity [m2 s-2]
    real, intent(   in)  :: mffrc       ! total EDMF updraft fraction
 !   real, intent(inout)  :: qi         ! ice condensate [kg kg-1]
@@ -113,12 +114,14 @@ module partition_pdf
                               PDF_QT2,      & ! mean total water of 2nd gaussian [kg kg-1]
                               PDF_RQTTH       ! QT-TH correlation coeff
    real, intent(  out)  :: wthv_sec
+   real, intent(  out)  :: wqls
+
 
 ! Local variables
 
    integer i,j,k,ku,kd
    real wrk, wrk1, wrk2, wrk3, wrk4, bastoeps
-   real gamaz, thv, wqlsb, wqisb
+   real gamaz, thv, rwqt, rwthl, wql1, wql2
    real pkap, diag_qn, diag_frac, diag_ql, diag_qi,w_first,                     &
         sqrtw2, sqrtthl, sqrtqt, w1_1, w1_2, w2_1, w2_2, thl1_1, thl1_2,        &
         thl2_1, thl2_2, qw1_1, qw1_2, qw2_1, qw2_2, aterm, onema, sm,           &
@@ -127,7 +130,7 @@ module partition_pdf
         tsign, testvar, r_qwthl_1, Tl1_1, Tl1_2, esval1_1, esval1_2, esval2_1,  &
         esval2_2, om1, om2, lstarn1, lstarn2, qs1, qs2, beta1, beta2, cqt1,     &
         cqt2, s1, s2, cthl1, cthl2, std_s1, std_s2, qn1, qn2, C1, C2, ql1, ql2, &
-        qi1, qi2, wqls, wqis
+        qi1, qi2, wqis
 
 
 ! Set constants and parameters
@@ -152,7 +155,7 @@ module partition_pdf
    real, parameter :: kapa = rgas / cp
    real, parameter :: epsv=MAPL_H2OMW/MAPL_AIRMW
 
-   real, parameter :: use_aterm_memory = 0.
+   real, parameter :: use_aterm_memory = 1.
 
 
 ! define conserved variables
@@ -200,67 +203,68 @@ w_first = - rog * omega * thv / pval
          Skew_w = w3var / (sqrtw2*sqrtw2*sqrtw2)
 
          if (use_aterm_memory/=0) then   ! use memory in aterm and qt skewness
-!          aterm = pdf_a
+          aterm = pdf_a
 !          if (pval>90000.) print *,'before skew_qw=',skew_qw,'  aterm=',aterm,' mffrc=',mffrc
 
           if (mffrc>=0.01) then                ! if active updraft this timestep
             if (aterm<0.5) then                ! if distribution is skewed (recent updrafts) 
-              aterm = aterm*(1.-DT/900.)
-              skew_qw = 1.0 + (skew_qw-1.)*(1.-DT/900.) 
-              skew_qw = (aterm*skew_qw + mffrc*skew_facw*Skew_w)/(aterm+mffrc)
-              aterm = aterm + mffrc 
+!              aterm = aterm*(1.-DT/900.)
+!              skew_qw = 1.0 + (skew_qw-1.)*(1.-DT/900.) 
+!              skew_qw = (aterm*skew_qw + mffrc*skew_facw*Skew_w)/(aterm+mffrc)
+!              aterm = aterm + mffrc 
+              aterm = mffrc  
+              skew_qw = skew_facw*Skew_w
             else                               ! if distribution unskewed
               aterm = mffrc
               skew_qw = skew_facw*Skew_w
             end if
           else                                 ! if no active updraft
             if (aterm/=0.5) then               ! but there is residual skewness
-              aterm = aterm*(1.-DT/900.)
-              skew_qw = 1.0 + (skew_qw-1.)*(1.-DT/900.)
+              aterm = aterm*max(1.-DT/1200.,0.0)
+              skew_qw = skew_qw*max(1.-DT/1200.,0.0)
             else
-              skew_qw = skew_facw*Skew_w
+!              aterm = aterm*max(1.-DT/1200.,0.0)
+              skew_qw = skew_qw*max(1.-DT/1200.,0.0)
+!              skew_qw = skew_facw*Skew_w
             end if
           end if
-
-!          if (pval>90000.) print *,'after skew_qw=',skew_qw,'  aterm=',aterm
 
          else  ! don't use memory in aterm and qt skewness
  
            aterm = mffrc
            aterm = max(0.01,min(0.99,aterm))
 
-           onema = 1.0 - aterm
-
 ! two options for qt skewness:
            skew_qw = skew_facw*skew_w
-!           skew_qw = mfqt3/sqrtqt**3
+!           skew_qw = qt3/sqrtqt**3
          end if
+         onema = 1.0 - aterm
 
 !        if (pval>90000.) print *,'after skew_qw=',skew_qw,'  aterm=',aterm
 
 !          if (sqrtqt>1e-5) then
-!            skew_qw = 1.0+mfqt3/sqrtqt**3
+!            skew_qw = 1.0+qt3/sqrtqt**3
 !          else
 !            skew_qw = 1.0
 !          end if
 
 
-          IF (w_sec <= w_tol_sqd .or. aterm<=0.01) THEN ! If variance of w is too small then
+          IF (w_sec <= w_tol_sqd .or. aterm<=0.01 .or. aterm>0.499) THEN ! If variance of w is too small then
 !          IF (w_sec <= w_tol_sqd ) THEN ! If variance of w is too small then
                                               ! PDF is a sum of two delta functions
             Skew_w = 0.
-            w1_1   = w_first
-            w1_2   = w_first
-            w2_1   = 0.
-            w2_2   = 0.
+            w1_1   = 0.  ! normalized value of sqrt(w2)
+            w1_2   = 0.
+            w2_1   = w_sec
+            w2_2   = w_sec
             aterm  = 0.5
             onema  = 0.5
           ELSE
 
 ! Proportionality coefficients between widths of each vertical velocity 
 ! gaussian and the sqrt of the second moment of w
-            w2_1 = 0.4
-            w2_2 = 0.4
+ !           w2_1 = 0.4
+ !           w2_2 = 0.4
                 
 ! analytic double gaussian 2, variable sigma_w
 
@@ -270,7 +274,7 @@ w_first = - rog * omega * thv / pval
             w2_1 = (onema/(aterm*(1.+wrk2**2)))**0.5
             w2_2 = (aterm/(onema*(1.+wrk2**2)))**0.5
 
-            w1_1 = wrk2*w2_1
+            w1_1 = wrk2*w2_1             ! w1_tilde in A.23
             w1_2 = -wrk2*w2_2
 
 ! Compute realtive weight of the first PDF "plume" 
@@ -286,8 +290,8 @@ w_first = - rog * omega * thv / pval
 !            w1_1 =   sqrtw2t * wrk  ! w1tilde (A.5)
 !            w1_2 = - sqrtw2t / wrk  ! w2tilde (A.6)
 
-!            w2_1 = w2_1 * w_sec  ! sigma_w1 **2
-!            w2_2 = w2_2 * w_sec  ! sigma_w2 **2
+            w2_1 = w2_1 * w_sec  ! sigma_w1 **2
+            w2_2 = w2_2 * w_sec  ! sigma_w2 **2
 
           ENDIF
 
@@ -297,10 +301,10 @@ w_first = - rog * omega * thv / pval
           IF (thlsec <= thl_tol*thl_tol .or. abs(w1_2-w1_1) <= w_thresh) THEN
             thl1_1     = thl_first
             thl1_2     = thl_first
-            thl2_1     = 0.
-            thl2_2     = 0.
-            sqrtthl2_1 = 0.
-            sqrtthl2_2 = 0.
+            thl2_1     = thlsec
+            thl2_2     = thlsec
+            sqrtthl2_1 = sqrt(thlsec)
+            sqrtthl2_2 = sqrtthl2_1
 
           ELSE
 
@@ -391,7 +395,7 @@ w_first = - rog * omega * thv / pval
 !  CONVERT FROM TILDA VARIABLES TO "REAL" VARIABLES
 
           w1_1 = w1_1*sqrtw2 + w_first    ! using A.5 and A.6
-          w1_2 = w1_2*sqrtw2 + w_first
+          w1_2 = w1_2*sqrtw2 + w_first    ! note: this is already done for w2_x
 
 
 !=== Assign PDF diagnostics ===!
@@ -591,8 +595,8 @@ w_first = - rog * omega * thv / pval
 ! Update temperature variable based on diagnosed cloud properties
           om1         = max(0.,min(1.,(tabs-tbgmin)*a_bg))
           lstarn1     = lcond + (1.-om1)*lfus
-          tabs = thl_first - gamaz + fac_cond*(diag_ql) &
-                            + fac_sub *(diag_qi) !&
+!          tabs = thl_first - gamaz + fac_cond*(diag_ql) &
+!                            + fac_sub *(diag_qi) !&
                     !  + tkesbdiss(i,j,k) * (dtn/cp)      ! tke dissipative heating
 ! Update moisture fields
 
@@ -603,20 +607,28 @@ w_first = - rog * omega * thv / pval
 !         qwv     = total_water - diag_qn
          cld_sgs = diag_frac
 
-             
+         if (sqrtqt>0.0 .AND. sqrtw2>0.0) then
+            rwqt = wqwsec/(sqrtqt*sqrtw2)
+         else
+            rwqt = 0.0
+         end if
+         if (sqrtthl>0.0 .AND. sqrtw2>0.0) then
+            rwthl = wthlsec/(sqrtthl*sqrtw2)
+         else
+            rwthl = 0.0
+         end if
+
+         wql1 = C1*(cqt1*sqrt(w2_1)*sqrt(qw2_1)*rwqt-cthl1*sqrt(w2_1)*sqrt(thl2_1)*rwthl)
+         wql2 = C2*(cqt2*sqrt(w2_2)*sqrt(qw2_2)*rwqt-cthl2*sqrt(w2_2)*sqrt(thl2_2)*rwthl)
+
+
 ! Compute the liquid water flux
-          wqls = aterm * ((w1_1-w_first)*ql1) + onema * ((w1_2-w_first)*ql2)
+          wqls = aterm * ((w1_1-w_first)*ql1+wql1) + onema * ((w1_2-w_first)*ql2+wql2)
+!          wqls = aterm * ((w1_1-w_first)*ql1) + onema * ((w1_2-w_first)*ql2)
           wqis = aterm * ((w1_1-w_first)*qi1) + onema * ((w1_2-w_first)*qi2)
              
 !         if (pval>95000.) print *,'aterm=',aterm,'  onema=',onema
-!         if (pval>95000.) print *,'w1_1=',w1_1,'  w1_2=',w1_2
-!         if (pval>95000.) print *,'ql1=',ql1,'  qi1=',qi1
-!         if (pval>95000.) print *,'ql2=',ql2,'  qi2=',qi2
 
-
-! Compute statistics for the fluxes so we don't have to save these variables
-!          wqlsb(k) = wqlsb(k) + wqls
-!          wqisb(k) = wqisb(k) + wqis
              
 ! diagnostic buoyancy flux.  Includes effects from liquid water, ice
 ! condensate, liquid & ice precipitation

@@ -394,16 +394,15 @@ contains
          FRLAND_dev       , &
          KH_dev           , &
          ISOTROPY_dev     , &
-         w3_dev           , & ! w3_canuto
          mf_frc_dev       , &
-         mf_wqt_dev       , &
-         mf_whl_dev       , &
-         mf_qt2_dev       , &
-         mf_hl2_dev       , &
-         mf_qthl_dev      , &
-         mf_w2_dev        , &
-         mf_w3_dev        , &
-         mf_qt3_dev       , &
+         wqt_dev          , &
+         whl_dev          , &
+         qt2_dev          , &
+         hl2_dev          , &
+         hlqt_dev         , &
+         w2_dev           , &
+         w3_dev           , &
+         qt3_dev          , &
          TKE_dev          , &
          DTS_dev          , &
          RMFDTR_dev       , &
@@ -484,7 +483,7 @@ contains
          PDF_A_dev, PDF_SIGW_dev, PDF_W1_dev, PDF_W2_dev, & 
          PDF_SIGTH1_dev, PDF_SIGTH2_dev, PDF_TH1_dev, PDF_TH2_dev, &
          PDF_SIGQT1_dev, PDF_SIGQT2_dev, PDF_QT1_dev, PDF_QT2_dev, &
-         PDF_RQTTH_dev, WTHV2_dev, SKEW_QT_dev, &
+         PDF_RQTTH_dev, WTHV2_dev, wql_dev, SKEW_QT_dev, &
          TEMPOR_dev, DOSHLW, &
          NACTL_dev,    &
          NACTI_dev,    &
@@ -514,17 +513,16 @@ contains
       real, intent(in   ), dimension(IRUN     ) :: FRLAND_dev  ! FRLAND
       real, intent(in   ), dimension(IRUN,0:LM) :: KH_dev      ! KH
       real, intent(in   ), dimension(IRUN,  LM) :: ISOTROPY_dev! ISOTROPY
-      real, intent(in   ), dimension(IRUN,  LM) :: w3_dev      ! w3_canuto
       real, intent(in   ), dimension(IRUN,  LM) :: mf_frc_dev  !
-      real, intent(in   ), dimension(IRUN,  LM) :: mf_wqt_dev  !
-      real, intent(in   ), dimension(IRUN,  LM) :: mf_whl_dev  !
-      real, intent(in   ), dimension(IRUN,  LM) :: mf_qt2_dev  !
-      real, intent(in   ), dimension(IRUN,  LM) :: mf_hl2_dev  !
-      real, intent(in   ), dimension(IRUN,  LM) :: mf_qthl_dev !
-      real, intent(in   ), dimension(IRUN,  LM) :: mf_w2_dev   !
-      real, intent(in   ), dimension(IRUN,  LM) :: mf_w3_dev   !
-      real, intent(in   ), dimension(IRUN,  LM) :: mf_qt3_dev  !
-      real, intent(in   ), dimension(IRUN,  LM) :: tke_dev     !
+      real, intent(in   ), dimension(IRUN,  LM) :: wqt_dev  !
+      real, intent(in   ), dimension(IRUN,  LM) :: whl_dev  !
+      real, intent(in   ), dimension(IRUN,  LM) :: qt2_dev  !
+      real, intent(in   ), dimension(IRUN,  LM) :: hl2_dev  !
+      real, intent(in   ), dimension(IRUN,  LM) :: hlqt_dev !
+      real, intent(in   ), dimension(IRUN,  LM) :: w2_dev   !
+      real, intent(in   ), dimension(IRUN,  LM) :: w3_dev   !
+      real, intent(in   ), dimension(IRUN,  LM) :: qt3_dev  !
+      real, intent(in   ), dimension(IRUN,  LM) :: tke_dev  !
       real, intent(in   ), dimension(IRUN     ) :: DTS_dev     ! DTS
       real, intent(in   ), dimension(IRUN,  LM) :: RMFDTR_dev  ! CNV_MFD
       real, intent(in   ), dimension(IRUN,  LM) :: QLWDTR_dev  ! CNV_DQLDT
@@ -643,6 +641,7 @@ contains
       real, intent(  out), dimension(IRUN,  LM) :: PDF_QT2_dev
       real, intent(  out), dimension(IRUN,  LM) :: PDF_RQTTH_dev
       real, intent(  out), dimension(IRUN,  LM) :: WTHV2_dev
+      real, intent(  out), dimension(IRUN,  LM) :: wql_dev
       real, intent(inout), dimension(IRUN,  LM) :: SKEW_QT_dev
       real, intent(in   ), dimension(IRUN,  LM) :: NACTL_dev  ! NACTL
       real, intent(in   ), dimension(IRUN,  LM) :: NACTI_dev  ! NACTI
@@ -793,6 +792,7 @@ contains
 
       use_autoconv_timescale = .false.
       wthv2_dev = 0.0
+      wql_dev = 0.0
 
 #ifdef _CUDA
       i = (blockidx%x - 1) * blockdim%x + threadidx%x
@@ -806,76 +806,6 @@ contains
        !   to remove some resolution sensitivity in low-level stratus clouds
 !         MINRHCRIT  = MAXRHCRIT*(1.0-CNV_FRACTION_dev(I)) + MINRHCRIT_I*(CNV_FRACTION_dev(I))
          MINRHCRIT = MINRHCRIT_I
-
-         !----- Set up for double gaussian PDF -------!
-         if (PDFFLAG==5) then
-
-           hl = EXNP_dev(I,:)*TH_dev(I,:) + (mapl_grav/mapl_cp)*ZZ_dev(I,:) - &
-                fac_cond*QLW_LS_dev(I,:) - fac_fus*QIW_LS_dev(I,:) 
-           total_water = max(0.0, Q_dev(I,:) + QLW_LS_dev(I,:) + QIW_LS_dev(I,:) &
-                                             + QLW_AN_dev(I,:) + QIW_AN_dev(I,:) )
-
-           ! define resolved gradients on edges
-           do k=1,LM-1
-
-             wrk1 = 1.0 / (ZZ_dev(I,k)-ZZ_dev(I,k+1))
-             wrk3 = KH_dev(I,k) * wrk1
-
-             sm   = 0.5*(isotropy_dev(I,k)+isotropy_dev(I,k+1))*wrk1*wrk3 ! Tau*Kh/dz^2
-
-            ! SGS vertical flux liquid/ice water static energy. Eq 1 in BK13
-             wrk1            = hl(k) - hl(k+1)
-             wthl_sec(k) = - wrk3 * wrk1
-
-            ! SGS vertical flux of total water. Eq 2 in BK13
-             wrk2           = total_water(k) - total_water(k+1)
-             wqw_sec(k) = - wrk3 * wrk2
-
-            ! Second moment of liquid/ice water static energy. Eq 4 in BK13
-             thl_sec(k) = thl2tune * sm * wrk1 * wrk1
-
-            ! Second moment of total water mixing ratio.  Eq 3 in BK13
-             qw_sec(k) = qw2tune * sm * wrk2 * wrk2 
-  
-            ! Covariance of total water mixing ratio and liquid/ice water static energy.
-            ! Eq 5 in BK13
-
-             qwthl_sec(k) = qwthl2tune * sm * wrk1 * wrk2
-
-           end do   
-           wthl_sec(LM) = wthl_sec(LM-1)
-           wqw_sec(LM)  = wqw_sec(LM-1)
-           thl_sec(LM)  = thl_sec(LM-1)
-           qw_sec(LM)   = qw_sec(LM-1)
-           qwthl_sec(LM)= qwthl_sec(LM-1)
-
-           ! average edge-values onto centers, add MF contribution
-           w3var = 0.
-           thlsec = 0.
-           qwsec = 0.
-           qwthlsec = 0.
-           wqwsec = 0.
-           wthlsec = 0.
-           do k=1,LM
-             kd = k-1
-             ku = k
-             if (k==1) kd = k
-             w3var(k)    = mf_w3_dev(I,k)   ! assume 0 skewness in environment
-             w2var(k)    = (1.0-mf_frc_dev(I,k))*(0.667*tke_dev(I,k)) +mf_w2_dev(I,k)
-             thlsec(k)   = max(0.,(1.0-mf_frc_dev(I,k))*0.5*(thl_sec(kd)+thl_sec(ku))+mf_hl2_dev(I,k))
-             qwsec(k)    = max(0.,(1.0-mf_frc_dev(I,k))*0.5*(qw_sec(kd)+qw_sec(ku))+mf_qt2_dev(I,k))
-             qwthlsec(k) = (1.0-mf_frc_dev(I,k))*0.5 * (qwthl_sec(kd) + qwthl_sec(ku))+mf_qthl_dev(I,k)
-             wqwsec(k)   = (1.0-mf_frc_dev(I,k))*0.5 * (wqw_sec(kd)   + wqw_sec(ku))+mf_wqt_dev(I,k)
-             wthlsec(k)  = (1.0-mf_frc_dev(I,k))*0.5 * (wthl_sec(kd)  + wthl_sec(ku))+mf_whl_dev(I,k)
-
-             ! Restrict QT variance, 5-20% of qstar 
-             qwsec(k) = min(qwsec(k),(0.2*QST3_dev(i,k))**2)
-!             qwsec(k) = max(min(qwsec(k),(0.2*QST3_dev(i,k))**2),(0.05*QST3_dev(i,k))**2)
-             thlsec(k) = min(thlsec(k),4.0)
-           end do            
- 
-         end if ! if pdfflag=5
-
 
 
          K_LOOP: DO K = 1, LM         
@@ -1157,16 +1087,15 @@ contains
                   ANVFRC_dev(I,K), &
                   NACTL_dev(I,K),  &
                   NACTI_dev(I,K),  &
-!                  hl(K),           &
-                  wthlsec(K),      &
-                  wqwsec(K),       &
-                  thlsec(K),       &
-                  qwsec(K),        &
-                  qwthlsec(K),     & 
-                  w3var(K),        &
-                  w2var(K),        &
-                  mf_qt3_dev(I,K), &
-                  mf_frc_dev(I,K), &
+                  whl_dev(I,K),        &
+                  wqt_dev(I,K),        &
+                  hl2_dev(I,K),        &
+                  qt2_dev(I,K),        &
+                  hlqt_dev(I,K),       & 
+                  w3_dev(I,K),         &
+                  w2_dev(I,K),         &
+                  qt3_dev(I,K),        &
+                  mf_frc_dev(I,K),     &
                   PDF_A_dev(I,K),      &  ! can remove these after development
                   PDF_SIGW_dev(I,K),   &
                   PDF_W1_dev(I,K),     &
@@ -1181,6 +1110,7 @@ contains
                   PDF_QT2_dev(I,K),    &
                   PDF_RQTTH_dev(I,K),  &
                   WTHV2_dev(I,K),      &
+                  wql_dev(I,K),        &
                   SKEW_QT_dev(I,K),    &
                   CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I)  )
             else
@@ -2139,12 +2069,11 @@ contains
          AF          , &
          NL          , &
          NI          , &
-!         SL         , &
-         WSL2       , &
+         WSL2        , &
          WQW2        , &
-         SL2        , &
+         SL2         , &
          QW2         , &
-         QWSL2      , & 
+         QWSL2       , & 
          W3          , &
          W2          , &
          MFQT3       , &
@@ -2163,6 +2092,7 @@ contains
          PDF_QT2,    &
          PDF_RQTSL,  &
          WTHV2,      &
+         WQL,        &
          SKEW_QT,    &
          CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND)
 
@@ -2176,7 +2106,7 @@ contains
                              PDF_SIGSL1, PDF_SIGSL2, PDF_SL1, PDF_SL2, &
                              PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
                              PDF_RQTSL
-      real, intent(out)   :: WTHV2
+      real, intent(out)   :: WTHV2, WQL
 
       ! internal arrays
       real :: QCO, QVO, CFO, QAO, TAU,SL
@@ -2309,9 +2239,19 @@ contains
                                  PDF_QT2,      &
                                  PDF_RQTSL,    &
                                  WTHV2,        &
+                                 WQL,          &
                                  CFn)
 
            fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+
+
+! TEMP:  overwrite ADG with uniform PDF
+!           sigmaqt1  = ALPHA*QSn
+!           sigmaqt2  = ALPHA*QSn
+!           qt = qvp+qcp
+!           call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,CFn)
+!           call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,QCn)
+! end TEMP
 
          endif
 
