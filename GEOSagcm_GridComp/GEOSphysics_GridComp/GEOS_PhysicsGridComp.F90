@@ -1235,13 +1235,14 @@ contains
 ! Moist Imports
 !--------------
 
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'KH      ', 'KPBL    ', 'KPBL_SC  ',      &
-                         'TKE     ', 'ISOTROPY', 'w3_canuto',      &
-                         'TKESHOC ',                               &
-                         'edmf_qt2', 'edmf_qt3', 'edmf_hl2', 'edmf_w2  ',      &
-                         'edmf_w3 ', 'edmf_wqt', 'edmf_dry_a',     &
-                         'edmf_moist_a', 'edmf_qthl', 'edmf_whl'/), &
+    call MAPL_AddConnectivity ( GC,                                          &
+         SHORT_NAME  = (/'KH          ', 'KPBL        ', 'KPBL_SC     ',     &
+                         'TKE         ', 'ISOTROPY    ', 'w3_canuto   ',     &
+                         'TKESHOC     ',                                     &
+                         'edmf_qt2    ', 'edmf_qt3    ', 'edmf_hl2    ',     &
+                         'edmf_w3     ', 'edmf_wqt    ', 'edmf_dry_a  ',     &
+                         'edmf_moist_a', 'edmf_qthl   ', 'edmf_whl    ',     &
+                         'edmf_w2     '/), &
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )
