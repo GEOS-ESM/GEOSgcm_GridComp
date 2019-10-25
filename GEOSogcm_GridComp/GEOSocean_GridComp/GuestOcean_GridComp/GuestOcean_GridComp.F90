@@ -41,7 +41,10 @@ module GuestOcean_GridCompMod
      type(T_PrivateState), pointer :: ptr
   end type T_PrivateState_Wrap
 
-  integer :: OCN
+  integer ::          OCN 
+  integer ::          OCNd 
+  logical ::      DUAL_OCEAN
+
 
 contains
 
@@ -79,6 +82,7 @@ contains
 ! Local vars
     type  (MAPL_MetaComp), pointer     :: MAPL
     type  (ESMF_Config)                :: CF
+    integer ::      iDUAL_OCEAN
     character(len=ESMF_MAXSTR)         :: charbuf_
 
 ! Begin...
@@ -122,6 +126,15 @@ contains
              call WRITE_PARALLEL(charbuf_)
              VERIFY_(999)
        end select
+    endif
+
+    call MAPL_GetResource(MAPL, iDUAL_OCEAN, 'DUAL_OCEAN:', default=0, RC=STATUS )
+    DUAL_OCEAN = iDUAL_OCEAN /= 0
+
+    OCNd = 0
+    if (dual_ocean) then
+       OCNd = MAPL_AddChild(GC, NAME="DATASEA", SS=DataSeaSetServices, RC=STATUS)
+       VERIFY_(STATUS)
     endif
 
 ! Set the state variable specs.
@@ -335,6 +348,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+!ALT Note the FRACICE from datasea is inhereted (in AMIP or dual_ocean)
 
 !  !EXPORT STATE:
 
@@ -579,8 +593,24 @@ contains
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=status)
     VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,    Run,        RC=status)
+! phase 1
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,        RC=status)
     VERIFY_(STATUS)
+! phase 2 - this is only used in the predictor part of the replay for dual ocean
+    if (DUAL_OCEAN) then
+       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,        RC=status)
+       VERIFY_(STATUS)
+    end if
+
+! terminate child's import for a temperature correction - we will fill it here, if we run in dual_ocean mode, otherwise nobody needs this variable
+    if(DUAL_OCEAN) then
+       call MAPL_TerminateImport    ( GC,   &
+            SHORT_NAME = (/'DEL_TEMP'/),                                    &
+            CHILD      = OCN,                                        &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+    endif
+
 
 !=============================================================================
 ! Generic SetServices--This creates the generic state and calls SetServices for children
@@ -880,6 +910,7 @@ contains
     real, pointer :: RAIN(:,:)
     real, pointer :: SNOW(:,:)
     real, pointer :: SFLX(:,:)
+    real, pointer :: FI(:,:)
 
 ! Pointers to exports of child
 
@@ -889,26 +920,35 @@ contains
     real, pointer :: MASK3D(:,:,:)
     real, pointer :: FRAZIL(:,:)
 
+    real, pointer :: TWd  (:,:)
+    real, pointer :: DEL_TEMP (:,:)
+
 ! Locals
 
-    integer           :: L
+    integer           :: I,J,L
     integer           :: IM
     integer           :: JM
     integer           :: LM
     integer           :: NUM
     real, allocatable :: WGHT(:,:)
-    real              :: DT
+    real              :: DT, TAU_SST
     real, pointer     :: LONS  (:,:)
     real, pointer     :: LATS  (:,:)
     real, parameter   :: OrphanSalinity=34.0
     real              :: Tfreeze
+
+    integer :: ID
+    integer :: PHASE
+    integer, allocatable :: PREDICTOR_CHLD(:)
+    real, pointer     :: FR(:,:) => null()
+    real, pointer     :: FRI(:,:,:) => null()
     character(len=ESMF_MAXSTR) :: replayMode
 
 ! Get the component's name and set-up traceback handle.
 ! -----------------------------------------------------
 
     Iam = "Run"
-    call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
+    call ESMF_GridCompGet( gc, NAME=comp_name, currentPhase=PHASE, RC=status )
     VERIFY_(status)
     Iam = trim(comp_name) // Iam
 
@@ -957,7 +997,7 @@ contains
     VERIFY_(status)
 
     call MAPL_GetResource(state,ReplayMode,  'REPLAY_MODE:',  default="NoReplay", RC=STATUS )
-    if (DO_DATASEA /=0 .and. trim(replayMode)=="Regular" ) then
+    if (trim(replayMode)=="Regular" ) then
        if (myTime > EndTime) then
           call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_REVERSE,rc=status)
           VERIFY_(status)
@@ -1048,6 +1088,10 @@ contains
        call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(GEX(OCN), SW,   'SW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
 
+       if (dual_ocean) then
+          call MAPL_GetPointer(GEX(OCNd), TWd,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       end if
+       
        if(DO_DATASEA==0) then
           call MAPL_GetPointer(GEX(OCN), FRAZIL,   'FRAZIL'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
        end if
@@ -1154,8 +1198,59 @@ contains
 
           call MAPL_TimerOff(STATE,"TOTAL")
           call MAPL_TimerOn (STATE,"--ModRun")
-          call MAPL_GenericRun(GC, IMPORT, EXPORT, PrivateState%CLOCK, RC=STATUS)
-          VERIFY_(STATUS)
+
+          if (.not. DUAL_OCEAN) then
+             call MAPL_GenericRun(GC, IMPORT, EXPORT, PrivateState%CLOCK, RC=STATUS)
+             VERIFY_(STATUS)
+          else
+             if (PHASE == 1) then
+                ! corrector
+                call ESMF_GridCompRun( GCS(OCNd), importState=GIM(OCNd), &
+                     exportState=GEX(OCNd), clock=CLOCK, phase=1, userRC=STATUS)
+                VERIFY_(STATUS)
+                call MAPL_GenericRunCouplers( STATE, CHILD=OCNd, CLOCK=CLOCK, RC=STATUS )
+                VERIFY_(STATUS)
+                call ESMF_GridCompRun( GCS(OCN), importState=GIM(OCN), &
+                     exportState=GEX(OCN), clock=CLOCK, phase=1, userRC=STATUS)
+                VERIFY_(STATUS)
+                call MAPL_GenericRunCouplers( STATE, CHILD=OCN, CLOCK=CLOCK, RC=STATUS )
+                VERIFY_(STATUS)
+             else
+                ! predictor
+                call ESMF_GridCompRun( GCS(OCNd), importState=GIM(OCNd), &
+                     exportState=GEX(OCNd), clock=CLOCK, phase=1, userRC=STATUS)
+                VERIFY_(STATUS)
+                call MAPL_GenericRunCouplers( STATE, CHILD=OCNd, CLOCK=CLOCK, RC=STATUS )
+                VERIFY_(STATUS)
+             end if
+          end if
+
+          if (DUAL_OCEAN .and. PHASE == 1) then
+             ! calculate temperature correction to send back to MOM
+             call MAPL_GetPointer(GIM(OCN), DEL_TEMP, 'DEL_TEMP', RC=STATUS)
+             VERIFY_(STATUS)
+             call MAPL_GetPointer(GIM(OCNd), FI , 'FRACICE'  , RC=STATUS)
+             VERIFY_(STATUS)
+             
+             call MAPL_GetResource(STATE,TAU_SST, Label="TAU_SST:", default=86400.0 ,RC=STATUS)
+             VERIFY_(status)
+
+             ! we should have valid pointers to TW and TWd by now
+             
+             DEL_TEMP = 0.0 ! we do not want uninitiazed variables
+             where(MASK > 0.0 .and. FI < 0.05)
+
+                ! what about relaxation
+                DEL_TEMP = (TWd - TW)*DT/(DT+TAU_SST)
+
+             end where
+
+             ! put it back to MOM
+             call ESMF_GridCompRun( GCS(OCN), importState=GIM(OCN), &
+               exportState=GEX(OCN), clock=CLOCK, phase=2, userRC=STATUS )
+             VERIFY_(STATUS)
+          end if
+          
           call MAPL_TimerOff(STATE,"--ModRun")
           call MAPL_TimerOn (STATE,"TOTAL")
 
@@ -1185,12 +1280,25 @@ contains
              end where
           else
              FRZMLT = 0.0
-       end if
+          end if          
        end if
 
-       where(WGHT > 0.0)
-          TS_FOUND = TW
+       if (DUAL_OCEAN) then
+          !ALT we might not have FI yet, so let get it again
+          call MAPL_GetPointer(GIM(OCNd), FI , 'FRACICE'  , RC=STATUS)
+          VERIFY_(STATUS)
+          where(WGHT > 0.0)
+             where(FI < 0.05)
+                TS_FOUND = TWd
+             elsewhere
+                TS_FOUND = TW
+             end where
           end where
+       else
+          where(WGHT > 0.0)
+             TS_FOUND = TW
+          end where
+       end if
 
 ! Update orphan points
        if(DO_DATASEA == 0) then
