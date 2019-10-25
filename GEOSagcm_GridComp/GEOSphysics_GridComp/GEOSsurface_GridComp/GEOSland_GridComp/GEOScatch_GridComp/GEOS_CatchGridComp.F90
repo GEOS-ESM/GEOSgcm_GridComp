@@ -52,7 +52,7 @@ module GEOS_CatchGridCompMod
   USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
 
 !#sqz_for_ldas_coupling 
-  use catch_iau
+  use catch_incr
   use ESMF_CFIOMOD, only:  StrTemplate => ESMF_CFIOstrTemplate
   use ESMF_CFIOUtilMod, only: strToInt
 !#--
@@ -2743,16 +2743,16 @@ end subroutine SetServices
     type (ESMF_Alarm           )            :: ALARM_L, ALARM_C
     type (ESMF_TimeInterval    )            :: Interval_l, Interval_c
 
-    integer , parameter                     :: N_IAU =25
+    integer , parameter                     :: N_INCR =25
     integer                                 :: KND, DIMS, HW, LOCATION
-    character(len=ESMF_MAXSTR)              :: IAU_NAMES(25)
+    character(len=ESMF_MAXSTR)              :: INCR_NAMES(25)
     type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
     type (CATCH_wrap)                       :: WRAP2
     type (ESMF_Field)                       :: FIELD
     integer                                 :: I
     integer                                 :: LDAS_INTERVAL, ADAS_INTERVAL
     integer                                 :: LDAS_INTERVAL_CENTER
-    integer                                 :: LDAS_IAU
+    integer                                 :: LDAS_INCR
 
 !=============================================================================
 
@@ -2798,12 +2798,12 @@ end subroutine SetServices
          DEFAULT=10800, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, LDAS_IAU, Label="LDAS_IAU:", &
+    call MAPL_GetResource ( MAPL, LDAS_INCR, Label="LDAS_INCR:", &
          DEFAULT=0, RC=STATUS)
 
-    if(LDAS_IAU > 0) then
+    if(LDAS_INCR > 0) then
 
-       call WRITE_PARALLEL( 'LDAS_coupling: LDAS_IAU>0 initializeCatchGC  ')
+       call WRITE_PARALLEL( 'LDAS_coupling: LDAS_INCR>0 initializeCatchGC  ')
        ! Get the grid
        call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
        VERIFY_(STATUS)
@@ -2818,14 +2818,14 @@ end subroutine SetServices
        VERIFY_(STATUS)
 
 
-       IAU_NAMES = [character(len=11) :: "TCFSAT_IAU", "TCFTRN_IAU", "TCFWLT_IAU", &
-                     "QCFSAT_IAU", "QCFTRN_IAU", "QCFWLT_IAU", &
-                     "CAPAC_IAU" , "CATDEF_IAU", "RZEXC_IAU" , "SRFEXC_IAU", &
-                     "GHTCNT1_IAU", "GHTCNT2_IAU", "GHTCNT3_IAU", &
-                     "GHTCNT4_IAU", "GHTCNT5_IAU", "GHTCNT6_IAU", &
-                     "WESNN1_IAU", "WESNN2_IAU", "WESNN3_IAU", &
-                     "HTSNNN1_IAU", "HTSNNN2_IAU", "HTSNNN3_IAU", &
-                     "SNDZN1_IAU", "SNDZN2_IAU", "SNDZN3_IAU"]
+       INCR_NAMES = [character(len=11) :: "TCFSAT_INCR", "TCFTRN_INCR", "TCFWLT_INCR", &
+                     "QCFSAT_INCR", "QCFTRN_INCR", "QCFWLT_INCR", &
+                     "CAPAC_INCR" , "CATDEF_INCR", "RZEXC_INCR" , "SRFEXC_INCR", &
+                     "GHTCNT1_INCR", "GHTCNT2_INCR", "GHTCNT3_INCR", &
+                     "GHTCNT4_INCR", "GHTCNT5_INCR", "GHTCNT6_INCR", &
+                     "WESNN1_INCR", "WESNN2_INCR", "WESNN3_INCR", &
+                     "HTSNNN1_INCR", "HTSNNN2_INCR", "HTSNNN3_INCR", &
+                     "SNDZN1_INCR", "SNDZN2_INCR", "SNDZN3_INCR"]
 
        DIMS = MAPL_DimsTileOnly
        HW = 0
@@ -2835,9 +2835,9 @@ end subroutine SetServices
         ASSERT_(.FALSE.)
        ENDIF
 
-       ! Fields of LIAU list  
-       DO I=1, N_IAU
-        FIELD = MAPL_FieldCreateEmpty(TRIM(IAU_NAMES(I)),grid=TILEGRID,RC=STATUS)
+       ! Fields of Land INCR list  
+       DO I=1, N_INCR
+        FIELD = MAPL_FieldCreateEmpty(TRIM(INCR_NAMES(I)),grid=TILEGRID,RC=STATUS)
         VERIFY_(STATUS)
         CALL MAPL_FieldAllocCommit(FIELD,DIMS,LOCATION,KND,HW,RC=STATUS)
         VERIFY_(STATUS)
@@ -2890,7 +2890,7 @@ end subroutine SetServices
        VERIFY_(STATUS)
 
        call WRITE_PARALLEL( 'LDAS_coupling: complete initialze ')
-       endif !LDAS_IAU>0 
+       endif !LDAS_INCR>0 
 
    call MAPL_TimerOff(MAPL,"INITIALIZE")
 
@@ -4064,37 +4064,37 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
         type (CATCH_WRAP)                       :: wrap2
 
-        ! local variables for LDAS iau increment (25) 
-        real, pointer, dimension(:) :: tcfsat_iau
-        real, pointer, dimension(:) :: tcftrn_iau
-        real, pointer, dimension(:) :: tcfwlt_iau
-        real, pointer, dimension(:) :: qcfsat_iau
-        real, pointer, dimension(:) :: qcftrn_iau
-        real, pointer, dimension(:) :: qcfwlt_iau
-        real, pointer, dimension(:) :: capac_iau
-        real, pointer, dimension(:) :: catdef_iau
-        real, pointer, dimension(:) :: rzexc_iau
-        real, pointer, dimension(:) :: srfexc_iau
-        real, pointer, dimension(:) :: ghtcnt1_iau
-        real, pointer, dimension(:) :: ghtcnt2_iau
-        real, pointer, dimension(:) :: ghtcnt3_iau
-        real, pointer, dimension(:) :: ghtcnt4_iau
-        real, pointer, dimension(:) :: ghtcnt5_iau
-        real, pointer, dimension(:) :: ghtcnt6_iau
-        real, pointer, dimension(:) :: wesnn1_iau
-        real, pointer, dimension(:) :: wesnn2_iau
-        real, pointer, dimension(:) :: wesnn3_iau
-        real, pointer, dimension(:) :: htsnnn1_iau
-        real, pointer, dimension(:) :: htsnnn2_iau
-        real, pointer, dimension(:) :: htsnnn3_iau
-        real, pointer, dimension(:) :: sndzn1_iau
-        real, pointer, dimension(:) :: sndzn2_iau
-        real, pointer, dimension(:) :: sndzn3_iau 
+        ! local variables for LDAS increment (25) 
+        real, pointer, dimension(:) :: tcfsat_incr
+        real, pointer, dimension(:) :: tcftrn_incr
+        real, pointer, dimension(:) :: tcfwlt_incr
+        real, pointer, dimension(:) :: qcfsat_incr
+        real, pointer, dimension(:) :: qcftrn_incr
+        real, pointer, dimension(:) :: qcfwlt_incr
+        real, pointer, dimension(:) :: capac_incr
+        real, pointer, dimension(:) :: catdef_incr
+        real, pointer, dimension(:) :: rzexc_incr
+        real, pointer, dimension(:) :: srfexc_incr
+        real, pointer, dimension(:) :: ghtcnt1_incr
+        real, pointer, dimension(:) :: ghtcnt2_incr
+        real, pointer, dimension(:) :: ghtcnt3_incr
+        real, pointer, dimension(:) :: ghtcnt4_incr
+        real, pointer, dimension(:) :: ghtcnt5_incr
+        real, pointer, dimension(:) :: ghtcnt6_incr
+        real, pointer, dimension(:) :: wesnn1_incr
+        real, pointer, dimension(:) :: wesnn2_incr
+        real, pointer, dimension(:) :: wesnn3_incr
+        real, pointer, dimension(:) :: htsnnn1_incr
+        real, pointer, dimension(:) :: htsnnn2_incr
+        real, pointer, dimension(:) :: htsnnn3_incr
+        real, pointer, dimension(:) :: sndzn1_incr
+        real, pointer, dimension(:) :: sndzn2_incr
+        real, pointer, dimension(:) :: sndzn3_incr
 
-        real, pointer, dimension(:,:) :: ghtcnt_iau
-        real, pointer, dimension(:,:) :: wesnn_iau
-        real, pointer, dimension(:,:) :: htsnnn_iau
-        real, pointer, dimension(:,:) :: sndzn_iau
+        real, pointer, dimension(:,:) :: ghtcnt_incr
+        real, pointer, dimension(:,:) :: wesnn_incr
+        real, pointer, dimension(:,:) :: htsnnn_incr
+        real, pointer, dimension(:,:) :: sndzn_incr
 
         type(ESMF_Field)              :: Field
         integer                       :: unit
@@ -4108,7 +4108,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character(len=ESMF_MAXSTR)    :: DATE
         integer                       :: nymd, nhms
         integer                       :: LDAS_INTERVAL
-        integer                       :: LDAS_IAU
+        integer                       :: LDAS_INCR
         logical                       :: fexist
 
         character(len=8)              :: cymd
@@ -5226,12 +5226,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              DEFAULT=10800, RC=STATUS)
         VERIFY_(STATUS)
 
-        call MAPL_GetResource ( MAPL, LDAS_IAU, Label="LDAS_IAU:", &
+        call MAPL_GetResource ( MAPL, LDAS_INCR, Label="LDAS_INCR:", &
              DEFAULT=0, RC=STATUS)
         VERIFY_(STATUS)
-        if(LDAS_IAU >0 )  then
+        if(LDAS_INCR >0 )  then
 
-           call WRITE_PARALLEL(' LDAS_coupling: LDAS_IAU =1,apply correction')
+           call WRITE_PARALLEL(' LDAS_coupling: LDAS_INCR =1,apply correction')
            ! get ADAS CORRECTOR ALARM 
            call MAPL_StateAlarmGet(MAPL,CORRECTOR_ALARM,"CORRECTOR_ALARM",RC=STATUS)
            VERIFY_(STATUS)
@@ -5254,56 +5254,56 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            if (CATCH_INTERNAL_STATE%LDAS_CORRECTOR) then
               call WRITE_PARALLEL (' LDAS_coupling: LDAS_CORRECTOR true ' )
               ! field list 
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFSAT_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,tcfsat_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFTRN_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,tcftrn_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFWLT_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,tcfwlt_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"QCFSAT_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,qcfsat_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"QCFTRN_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,qcftrn_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"QCFWLT_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,qcfwlt_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"CAPAC_IAU",field=field,RC=STATUS) ;  VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,capac_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"CATDEF_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,catdef_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"RZEXC_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,rzexc_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SRFEXC_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,srfexc_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT1_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,ghtcnt1_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT2_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,ghtcnt2_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT3_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,ghtcnt3_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT4_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,ghtcnt4_iau,RC=STATUS) ;  VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT5_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,ghtcnt5_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT6_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,ghtcnt6_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"WESNN1_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,wesnn1_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"WESNN2_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,wesnn2_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"WESNN3_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,wesnn3_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"HTSNNN1_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,htsnnn1_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"HTSNNN2_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,htsnnn2_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"HTSNNN3_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,htsnnn3_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SNDZN1_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,sndzn1_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SNDZN2_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,sndzn2_iau,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SNDZN3_IAU",field=field,RC=STATUS) ; VERIFY_(STATUS)
-              call ESMF_FieldGet(field,0,sndzn3_iau,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFSAT_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,tcfsat_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFTRN_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,tcftrn_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFWLT_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,tcfwlt_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"QCFSAT_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,qcfsat_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"QCFTRN_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,qcftrn_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"QCFWLT_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,qcfwlt_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"CAPAC_INCR",field=field,RC=STATUS) ;  VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,capac_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"CATDEF_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,catdef_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"RZEXC_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,rzexc_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SRFEXC_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,srfexc_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT1_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,ghtcnt1_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT2_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,ghtcnt2_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT3_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,ghtcnt3_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT4_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,ghtcnt4_incr,RC=STATUS) ;  VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT5_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,ghtcnt5_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"GHTCNT6_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,ghtcnt6_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"WESNN1_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,wesnn1_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"WESNN2_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,wesnn2_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"WESNN3_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,wesnn3_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"HTSNNN1_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,htsnnn1_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"HTSNNN2_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,htsnnn2_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"HTSNNN3_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,htsnnn3_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SNDZN1_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,sndzn1_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SNDZN2_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,sndzn2_incr,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"SNDZN3_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
+              call ESMF_FieldGet(field,0,sndzn3_incr,RC=STATUS) ; VERIFY_(STATUS)
 
               ! get LDAS ALARM  
               call MAPL_StateAlarmGet(MAPL,LDAS_ALARM,"LDAS_ALARM",RC=STATUS)
@@ -5346,43 +5346,44 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        do nv=1,nVars
                           call MAPL_NCIOGetVarName(InNCIO,nv,vname)
                           call MAPL_NCIOVarGetDims(InNCIO,vname,nDims,dimSizes)
-                          if ( trim(vname) == "TCFSAT_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcfsat_iau)
-                          if ( trim(vname) == "TCFTRN_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcftrn_iau)
-                          if ( trim(vname) == "TCFWLT_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcfwlt_iau)
-                          if ( trim(vname) == "QCFSAT_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcftrn_iau)
-                          if ( trim(vname) == "QCFTRN_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcftrn_iau)
-                          if ( trim(vname) == "QCFWLT_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcfwlt_iau )
-                          if ( trim(vname) == "CAPAC_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), catdef_iau )
-                          if ( trim(vname) == "CATDEF_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), catdef_iau )
-                          if ( trim(vname) == "RZEXC_IAU" )  &
-                               call MAPL_VarRead ( InNCIO,trim(vname), rzexc_iau )
-                          if ( trim(vname) == "SRFEXC_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), srfexc_iau )
-                          if ( trim(vname) == "GHTCNT1_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt1_iau )
-                          if ( trim(vname) == "GHTCNT2_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt2_iau )
-                          if ( trim(vname) == "GHTCNT3_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt3_iau )
-                          if ( trim(vname) == "GHTCNT4_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt4_iau )
-                          if ( trim(vname) == "GHTCNT5_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt5_iau )
-                          call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt6_iau )
-                          if ( trim(vname) == "WESNN1_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn1_iau )
-                          if ( trim(vname) == "WESNN2_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn2_iau )
-                          if ( trim(vname) == "WESNN3_IAU" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn3_iau )
+                          if ( trim(vname) == "TCFSAT_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname),tcfsat_incr)
+                          if ( trim(vname) == "TCFTRN_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname),tcftrn_incr)
+                          if ( trim(vname) == "TCFWLT_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname),tcfwlt_incr)
+                          if ( trim(vname) == "QCFSAT_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname),qcftrn_incr)
+                          if ( trim(vname) == "QCFTRN_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname),qcftrn_incr)
+                          if ( trim(vname) == "QCFWLT_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname),qcfwlt_incr )
+                          if ( trim(vname) == "CAPAC_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname), catdef_incr )
+                          if ( trim(vname) == "CATDEF_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname), catdef_incr )
+                          if ( trim(vname) == "RZEXC_INCR" )  &
+                               call MAPL_VarRead ( InNCIO,trim(vname), rzexc_incr )
+                          if ( trim(vname) == "SRFEXC_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname), srfexc_incr )
+                          if ( trim(vname) == "GHTCNT1_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt1_incr )
+                          if ( trim(vname) == "GHTCNT2_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt2_incr )
+                          if ( trim(vname) == "GHTCNT3_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt3_incr )
+                          if ( trim(vname) == "GHTCNT4_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt4_incr )
+                          if ( trim(vname) == "GHTCNT5_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt5_incr )
+                          if ( trim(vname) == "GHTCNT6_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt6_incr )
+                          if ( trim(vname) == "WESNN1_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn1_incr )
+                          if ( trim(vname) == "WESNN2_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn2_incr )
+                          if ( trim(vname) == "WESNN3_INCR" ) &
+                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn3_incr )
                        enddo !nv
 
 
@@ -5393,56 +5394,57 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 
                     ! consolidate increment arrays  
-                    allocate(ghtcnt_iau(6,NTILES))
-                    allocate(wesnn_iau(3,NTILES))
-                    allocate(htsnnn_iau(3,NTILES))
-                    allocate(sndzn_iau(3,NTILES))
+                    allocate(ghtcnt_incr(6,NTILES))
+                    allocate(wesnn_incr(3,NTILES))
+                    allocate(htsnnn_incr(3,NTILES))
+                    allocate(sndzn_incr(3,NTILES))
 
-                    GHTCNT_IAU(1,:) = GHTCNT1_IAU
-                    GHTCNT_IAU(2,:) = GHTCNT2_IAU
-                    GHTCNT_IAU(3,:) = GHTCNT3_IAU
-                    GHTCNT_IAU(4,:) = GHTCNT4_IAU
-                    GHTCNT_IAU(5,:) = GHTCNT5_IAU
-                    GHTCNT_IAU(6,:) = GHTCNT6_IAU
+                    GHTCNT_INCR(1,:) = GHTCNT1_INCR
+                    GHTCNT_INCR(2,:) = GHTCNT2_INCR
+                    GHTCNT_INCR(3,:) = GHTCNT3_INCR
+                    GHTCNT_INCR(4,:) = GHTCNT4_INCR
+                    GHTCNT_INCR(5,:) = GHTCNT5_INCR
+                    GHTCNT_INCR(6,:) = GHTCNT6_INCR
 
-                    WESNN_IAU (1,:) = WESNN1_IAU
-                    WESNN_IAU (2,:) = WESNN2_IAU
-                    WESNN_IAU (3,:) = WESNN3_IAU
+                    WESNN_INCR (1,:) = WESNN1_INCR
+                    WESNN_INCR (2,:) = WESNN2_INCR
+                    WESNN_INCR (3,:) = WESNN3_INCR
 
-                    HTSNNN_IAU(1,:) = HTSNNN1_IAU
-                    HTSNNN_IAU(2,:) = HTSNNN2_IAU
-                    HTSNNN_IAU(3,:) = HTSNNN3_IAU
+                    HTSNNN_INCR(1,:) = HTSNNN1_INCR
+                    HTSNNN_INCR(2,:) = HTSNNN2_INCR
+                    HTSNNN_INCR(3,:) = HTSNNN3_INCR
 
-                    SNDZN_IAU (1,:) = SNDZN1_IAU
-                    SNDZN_IAU (2,:) = SNDZN2_IAU
-                    SNDZN_IAU (3,:) = SNDZN3_IAU
+                    SNDZN_INCR (1,:) = SNDZN1_INCR
+                    SNDZN_INCR (2,:) = SNDZN2_INCR
+                    SNDZN_INCR (3,:) = SNDZN3_INCR
 
-                    call WRITE_PARALLEL('LDAS_coupling: Calling apply_catch_iau ')
 
-                    call apply_catch_iau(NTILES,   &
+                    call WRITE_PARALLEL('LDAS_coupling: Calling apply_catch_incr ')
+
+                    call apply_catch_incr(NTILES,   &
                          VEG, DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,           &
                          ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4,   &
-                         TCFSAT_IAU, TCFTRN_IAU, TCFWLT_IAU, QCFSAT_IAU, QCFTRN_IAU, QCFWLT_IAU,   &
-                         CAPAC_IAU, CATDEF_IAU, RZEXC_IAU, SRFEXC_IAU,                       &
-                         GHTCNT_IAU, WESNN_IAU, HTSNNN_IAU, SNDZN_IAU,                       &
+                         TCFSAT_INCR, TCFTRN_INCR, TCFWLT_INCR, QCFSAT_INCR, QCFTRN_INCR, QCFWLT_INCR,   &
+                         CAPAC_INCR, CATDEF_INCR, RZEXC_INCR, SRFEXC_INCR,                       &
+                         GHTCNT_INCR, WESNN_INCR, HTSNNN_INCR, SNDZN_INCR,                       &
                          TC(:,FSAT),TC(:,FTRN), TC(:,FWLT), QC(:,FSAT), QC(:,FTRN), QC(:,FWLT),  &
                          CAPAC, CATDEF, RZEXC, SRFEXC,                                       &
                          GHTCNT, WESNN, HTSNNN, SNDZN  )
 
-                    deallocate(ghtcnt_iau,wesnn_iau,htsnnn_iau,sndzn_iau)
+                    deallocate(ghtcnt_incr,wesnn_incr,htsnnn_incr,sndzn_incr)
 
                  else
 
-                    call WRITE_PARALLEL('LDAS_coupling:  LDAS_IAU file does not exist. No increment added.')
+                    call WRITE_PARALLEL('LDAS_coupling:  LDAS_incr file does not exist. No increment added.')
 
-                 endif !if LDAS IAU file exist  
+                 endif !if LDAS_incr file exist  
 
               else
-                 !call WRITE_PARALLEL(' LDAS_coupleing: LDAS_ALARM not ringing.')
+                 !call WRITE_PARALLEL(' LDAS_coupling: LDAS_ALARM not ringing.')
               endif ! if LDAS alarm  ring
 
            endif ! if CatchInternalState%LDAS_CORRECTOR=.true.
-        endif ! if LDAS_IAU=1 
+        endif ! if LDAS_INCR=1 
 !-------------------------------------------------------------------
 !#----
 
