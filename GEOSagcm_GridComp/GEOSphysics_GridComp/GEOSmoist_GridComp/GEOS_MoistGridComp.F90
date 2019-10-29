@@ -101,7 +101,8 @@ module GEOS_MoistGridCompMod
   USE ConvPar_GF_GEOS5, only: gf_geos5_interface &
       ,maxiens, icumulus_gf, closure_choice, deep, shal, mid&
       ,DEBUG_GF,USE_SCALE_DEP,DICYCLE,Hcts&
-      ,USE_TRACER_TRANSP,USE_TRACER_SCAVEN, TAU_DEEP, TAU_MID
+      ,USE_TRACER_TRANSP,USE_TRACER_SCAVEN, TAU_DEEP, TAU_MID&
+      ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
 !-srf-gf-scheme
 
 !ALT-protection for GF
@@ -4793,8 +4794,6 @@ contains
         VERIFY_(STATUS) 
         call MAPL_GetResource(MAPL, closure_choice(mid) , 'CLOSURE_CONGESTUS:', default= 3, RC=STATUS )
         VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,USE_TRACER_TRANSP_UW,'USE_TRACER_TRANSP_UW:',default= 1, RC=STATUS )
-        VERIFY_(STATUS)
         call MAPL_GetResource(MAPL,USE_TRACER_TRANSP   ,'USE_TRACER_TRANSP:',default= 0, RC=STATUS )
         VERIFY_(STATUS)
         call MAPL_GetResource(MAPL,USE_TRACER_SCAVEN   ,'USE_TRACER_SCAVEN:',default= 0, RC=STATUS )
@@ -4808,14 +4807,14 @@ contains
         call MAPL_GetResource(MAPL,TAU_MID    ,'TAU_MID:' ,default= 3600.0, RC=STATUS )
         VERIFY_(STATUS)
 
+        call MAPL_GetResource(MAPL, USE_FLUX_FORM   ,'USE_FLUX_FORM:'   ,default= 1,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_FCT         ,'USE_FCT:'	        ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_TRACER_EVAP ,'USE_TRACER_EVAP:' ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, ALP1            ,'ALP1:'            ,default= 0., RC=STATUS );VERIFY_(STATUS)
+
         IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP == 1) THEN
            call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for GF")
            USE_TRACER_TRANSP = 0
-        END IF
-
-        IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP_UW == 1) THEN
-           call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for UW")
-           USE_TRACER_TRANSP_UW = 0
         END IF
 
         IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_SCAVEN == 1) THEN
@@ -4832,6 +4831,12 @@ contains
 
     ENDIF
 !-srf-gf-scheme
+    call MAPL_GetResource(MAPL,USE_TRACER_TRANSP_UW,'USE_TRACER_TRANSP_UW:',default= 1, RC=STATUS )
+    VERIFY_(STATUS)
+    IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP_UW == 1) THEN
+           call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for UW")
+           USE_TRACER_TRANSP_UW = 0
+    END IF
 
     ! All done
     !---------
