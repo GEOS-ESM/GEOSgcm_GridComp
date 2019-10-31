@@ -2252,7 +2252,16 @@ contains
 !           call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,CFn)
 !           call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,QCn)
 ! end TEMP
-
+         elseif (pdfflag == 6) then ! Single gaussian
+            ! Update the liquid water static energy
+            ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
+            SL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
+!                fac_cond*QLW_LS_dev(I,:) - fac_fus*QIW_LS_dev(I,:)
+            QT = QVn + QCn
+            
+            call gaussian(ZL, 100.*PL, SL, QT, SL2, QW2, QWSL2, TEn, QCn, CFn)
+            
+            fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
          endif
 
 !         if (abs(QVn+QCn-QVp-QCp)>1e-6*(QVp+QCp) .and. QVp>0.0001) print *,'total water not conserved!'
@@ -2413,6 +2422,45 @@ contains
 
    end subroutine hystpdf_new
 
+   ! Single-gaussian cloud pdf
+   subroutine gaussian(z, p, hl, qt, hl2, qt2, qthl, T, ql, ac)
+
+     use MAPL_SatVaporMod,  only: MAPL_EQsat
+     use MAPL_ConstantsMod, only: MAPL_CP, MAPL_ALHL, MAPL_GRAV, MAPL_RDRY, MAPL_RVAP, MAPL_PI
+
+     real, intent(in)    :: z, p, hl, qt, hl2, qt2, qthl
+     real, intent(inout) :: T, ql, ac
+!     real, intent(out)   :: a, b                                                                                                            
+
+     real :: qs, dqs, fac_cond, Tl, s, sigma_s, exner, Q, a, b
+
+     exner    = (p*1.E-5)**(MAPL_RDRY/MAPL_CP) ! Exner function                                                                              
+     fac_cond = MAPL_ALHL/MAPL_CP              ! lv/cp                                                                                       
+
+     Tl = hl - (MAPL_GRAV/MAPL_CP)*z
+!     Tl = T - fac_cond*ql        ! liquid water temperature                                                                                 
+     qs = MAPL_EQsat(Tl, p, dqs) ! saturation specific humidity                                                                              
+     s  = qt - qs                ! saturation excess/deficit                                                                                 
+
+     a = 1./( 1. + fac_cond*dqs )
+     b = a*exner*dqs
+
+     sigma_s = sqrt( a**2.*qt2 - 2*a*b*(qthl/exner) + b**2.*(hl2/exner**2.) )
+
+     ! Diagnose cloud properties                                                                                                             
+     if (sigma_s > 0.) then
+        Q = a*(qt - qs)/sigma_s
+
+        ac = 0.5*( 1. + erf(Q/sqrt(2.)) )
+        ql = sigma_s*( ac*Q + exp(-0.5*Q**2.)/sqrt(2.*MAPL_PI) )
+     else
+        ac = 0.
+        ql = 0.
+     end if
+
+     T = hl + (MAPL_ALHL/MAPL_CP)*ql - (MAPL_GRAV/MAPL_CP)*z ! Update temperature                                                            
+
+   end subroutine gaussian
 
 #ifdef _CUDA
    attributes(device) &

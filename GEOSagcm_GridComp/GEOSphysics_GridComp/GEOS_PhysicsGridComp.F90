@@ -552,6 +552,46 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    ! Turbulence tendencies of second-order moments
+    !
+    call MAPL_AddExportSpec(GC,                                                 &
+         SHORT_NAME = 'TKE_NEWIT',                                              &
+         LONG_NAME  = 'tendency_of_turbulent_kinetic_energy_due_to_turbulence', &
+         UNITS      = 'm+2 s-3',                                                &
+         DIMS       = MAPL_DimsHorzVert,                                        &
+         VLOCATION  = MAPL_VLocationEdge,                                       &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+        call MAPL_AddExportSpec(GC,                        &
+         SHORT_NAME = 'HL2IT',                             &
+         LONG_NAME  = 'tendency_of_HL2_due_to_turbulence', &
+         UNITS      = 'K+2s-1',                            &
+         DIMS       = MAPL_DimsHorzVert,                   &
+         VLOCATION  = MAPL_VLocationEdge,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                            &
+         SHORT_NAME = 'QT2IT',                             &
+         LONG_NAME  = 'tendency_of_QT2_due_to_turbulence', &
+         UNITS      = 'kg+2kg-2s-1',                       &
+         DIMS       = MAPL_DimsHorzVert,                   &
+         VLOCATION  = MAPL_VLocationEdge,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                             &
+         SHORT_NAME = 'HLQTIT',                             &
+         LONG_NAME  = 'tendency_of_HLQT_due_to_turbulence', &
+         UNITS      = 'K+2s-1',                             &
+         DIMS       = MAPL_DimsHorzVert,                    &
+         VLOCATION  = MAPL_VLocationEdge,                   &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    !
+    ! End second-order moment tendencies
+
     call MAPL_AddExportSpec(GC,                                      &
          SHORT_NAME = 'TIF',                                         &
          LONG_NAME  = 'tendency_of_air_temperature_due_to_friction', &
@@ -1038,7 +1078,7 @@ contains
 
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'QV  ','QLLS','QILS','QLCN',              &
-                         'QICN','CLLS','CLCN','WTHV2' /),          &
+                         'QICN','CLLS','CLCN','WTHV2'/),           &
          DST_ID      = TURBL,                                      &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
@@ -1242,7 +1282,8 @@ contains
                          'edmf_qt2    ', 'edmf_qt3    ', 'edmf_hl2    ',     &
                          'edmf_w3     ', 'edmf_wqt    ', 'edmf_dry_a  ',     &
                          'edmf_moist_a', 'edmf_qthl   ', 'edmf_whl    ',     &
-                         'edmf_w2     '/), &
+                         'edmf_w2     ',                                     &
+                         'HL2         ', 'QT2         ', 'HLQT        '/),   &
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )
@@ -1689,6 +1730,38 @@ contains
     VERIFY_(STATUS)
     call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
     VERIFY_(STATUS)
+
+    ! Bundles for prognostic second-order moments for SL3
+    !
+    call ESMF_StateGet    (GEX(TURBL),  'TKE_NEW'   , FIELD,    RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+    VERIFY_(STATUS)
+
+    call ESMF_StateGet    (GEX(TURBL),  'HL2'   , FIELD,    RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+    VERIFY_(STATUS)
+
+    call ESMF_StateGet    (GEX(TURBL),  'QT2'   , FIELD,    RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+    VERIFY_(STATUS)
+
+    call ESMF_StateGet    (GEX(TURBL),  'HLQT'   , FIELD,    RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+    VERIFY_(STATUS)
+    !
+    ! End bundles for SL3
 
 ! Add Friendlies from Moist (We assume QV is among these, all others are treated as default)
 

@@ -4,6 +4,7 @@ set (srcs
   GEOS_TurbulenceGridComp.F90
   LockEntrain.F90
   shoc.F90
+  sl3.F90
   )
 
 esma_add_library (${this}

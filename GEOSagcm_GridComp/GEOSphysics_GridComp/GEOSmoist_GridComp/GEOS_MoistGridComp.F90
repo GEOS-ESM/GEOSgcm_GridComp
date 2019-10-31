@@ -671,6 +671,43 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    ! Import prognostic variables representing covariability of heat and moisture
+    !
+    call MAPL_AddImportSpec(GC,                                  &
+       SHORT_NAME = 'HL2',                                       &
+       LONG_NAME  = 'variance_of_liquid_water_static_energy',    &
+       UNITS      = 'K+2',                                       &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,                          &
+       AVERAGING_INTERVAL = AVRGNINT,                            &
+       REFRESH_INTERVAL   = RFRSHINT,                            &
+       RC=STATUS )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                  &
+       SHORT_NAME = 'QT2',                                       &
+       LONG_NAME  = 'variance_of_total_water_specific_humidity', &
+       UNITS      = '1',                                         &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,                          &
+       AVERAGING_INTERVAL = AVRGNINT,                            &
+       REFRESH_INTERVAL   = RFRSHINT,                            &
+       RC=STATUS )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                  &
+       SHORT_NAME = 'HLQT',                                      &
+       LONG_NAME  = 'covariance_of_liquid_water_static_energy_and_total_water_specific_humidity', &
+       UNITS      = 'K',                                         &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,                          &
+       AVERAGING_INTERVAL = AVRGNINT,                            &
+       REFRESH_INTERVAL   = RFRSHINT,                            &
+       RC=STATUS )
+    VERIFY_(STATUS)
+    !
+    ! End import of prognostic variables
+
     call MAPL_AddImportSpec(GC,                             &
          SHORT_NAME = 'TH',                                        &
          LONG_NAME  = 'potential_temperature',                     &
@@ -1244,7 +1281,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       SHORT_NAME = 'QT2',                                                   &
+       SHORT_NAME = 'QT2SHOC',                                               &
        LONG_NAME  = 'Total_water_variance',                                  &
        UNITS      = 'kg2 kg-2',                                              &
        DIMS       = MAPL_DimsHorzVert,                                       &
@@ -1271,7 +1308,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       SHORT_NAME = 'HL2',                                                   &
+       SHORT_NAME = 'HL2SHOC',                                               &
        LONG_NAME  = 'Liquid_water_static_energy_variance',                   &
        UNITS      = 'K2',                                                    &
        DIMS       = MAPL_DimsHorzVert,                                       &
@@ -1280,7 +1317,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       SHORT_NAME = 'HLQT',                                                  &
+       SHORT_NAME = 'HLQTSHOC',                                              &
        LONG_NAME  = 'Liquid_static_energy_total_water_covariance',           &
        UNITS      = 'K kg kg-1',                                                    &
        DIMS       = MAPL_DimsHorzVert,                                       &
@@ -5378,13 +5415,13 @@ contains
                                           SKEW_QT,    &
                                           SKEW_QTX
 
-    real, dimension(:,:,:),pointer     :: QT2,   &
-                                          HL2,   &
-                                          W2,    &
-                                          W3,    &
-                                          HLQT,  &
-                                          WQT,   &
-                                          WQL,   &
+    real, dimension(:,:,:),pointer     :: QT2SHOC,   &
+                                          HL2SHOC,   &
+                                          W2,        &
+                                          W3,        &
+                                          HLQTSHOC,  &
+                                          WQT,       &
+                                          WQL,       &
                                           WHL 
 
     real, dimension(:,:,:),pointer     :: WTHV2
@@ -5415,6 +5452,7 @@ contains
       real, pointer, dimension(:,:)   :: TROPP
       real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE, TKESHOC
       real, pointer, dimension(:,:,:) :: ISOTROPY,w3_canuto,edmf_wqt,edmf_whl,edmf_qt2,edmf_hl2,edmf_qthl,edmf_w2,edmf_w3,edmf_qt3,edmf_dry_a,edmf_moist_a
+      real, pointer, dimension(:,:,:) :: HL2, QT2, HLQT
       real, pointer, dimension(    :) :: PREF
       real, pointer, dimension(:,:,:) :: Q, QRAIN, QSNOW, QGRAUPEL, QLLS, QLCN, CLLS, CLCN, BYNCY, QILS, QICN, QCTOT,QITOT,QLTOT
       real, pointer, dimension(:,:,:) :: QPTOTLS, QRTOT, QSTOT, NCPL,NCPI, CFLIQ, CFICE !DONIF
@@ -6173,6 +6211,8 @@ contains
 
 #endif
 
+      integer :: DO_SL3
+
       !  Begin...
       !----------
       Iam = trim(COMP_NAME) // 'Convect_Driver'
@@ -6441,6 +6481,11 @@ contains
       call MAPL_GetPointer(IMPORT, EVAP     ,'EVAP '   ,RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, T        ,'T'       ,RC=STATUS); VERIFY_(STATUS)
 
+      ! Get pointers to prognostics second-order moments
+      call MAPL_GetPointer(IMPORT, HL2 ,   'HL2',    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, QT2  ,  'QT2',    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, HLQT,   'HLQT',   RC=STATUS); VERIFY_(STATUS)
+
       ! define EDMF updraft fraction on full levels
       edmf_frc = 0.5*(edmf_dry_a(:,:,0:LM-1)+edmf_moist_a(:,:,0:LM-1)+edmf_dry_a(:,:,1:LM)+edmf_moist_a(:,:,1:LM))
       edmf_mstfrc = 0.5*(edmf_moist_a(:,:,0:LM-1)+edmf_moist_a(:,:,1:LM))
@@ -6582,21 +6627,21 @@ contains
      call MAPL_GetPointer(EXPORT,  WTHV2,      'WTHV2',     ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS) 
 
-     call MAPL_GetPointer(EXPORT, QT2,    'QT2',    RC=STATUS)
+     call MAPL_GetPointer(EXPORT, QT2SHOC,  'QT2SHOC',  RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, HL2,    'HL2',    RC=STATUS)
+     call MAPL_GetPointer(EXPORT, HL2SHOC,  'HL2SHOC',  RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, W2,     'W2',     RC=STATUS)
+     call MAPL_GetPointer(EXPORT, W2,       'W2',       RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, W3,     'W3',     RC=STATUS)
+     call MAPL_GetPointer(EXPORT, W3,       'W3',       RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, HLQT,   'HLQT',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT, HLQTSHOC, 'HLQTSHOC', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, WQT,    'WQT',    RC=STATUS)
+     call MAPL_GetPointer(EXPORT, WQT,      'WQT',      RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, WQL,    'WQL',    RC=STATUS)
+     call MAPL_GetPointer(EXPORT, WQL,      'WQL',      RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, WHL,    'WHL',    RC=STATUS)
+     call MAPL_GetPointer(EXPORT, WHL,      'WHL',      RC=STATUS)
      VERIFY_(STATUS)
 
 !!! shallow vars
@@ -8805,6 +8850,9 @@ contains
 
 !=== Calculate higher moments for double-gaussian cloud PDF ===!
 
+       call MAPL_GetResource(STATE, DO_SL3, 'TURBULENCE_DO_SL3:', default=0, RC=STATUS)
+       VERIFY_(STATUS)      
+
        ! Liquid water static energy (over cp)
        hl = TEMP + (mapl_grav*ZLO - mapl_alhl*QLLS - mapl_alhf*QILS)/mapl_cp
 
@@ -8826,16 +8874,22 @@ contains
           wrk2        = total_water(:,:,k) - total_water(:,:,k+1) 
           wqt_sec(:,:,k) = - wrk3 * wrk2
 
-	! Second moment of liquid/ice water static energy. Eq 4 in BK13
-	  hl2_sec(:,:,k) = hl2tune * sm * wrk1 * wrk1
+          if (DO_SL3 == 1) then
+             hl2_sec(:,:,k)  = HL2(:,:,k)
+             qt2_sec(:,:,k)  = QT2(:,:,k)
+             qthl_sec(:,:,k) = HLQT(:,:,k)
+          else
+             ! Second moment of liquid/ice water static energy. Eq 4 in BK13
+             hl2_sec(:,:,k) = hl2tune * sm * wrk1 * wrk1
 
-	! Second moment of total water mixing ratio.  Eq 3 in BK13 
-          qt2_sec(:,:,k) = qt2tune * sm * wrk2 * wrk2 
+             ! Second moment of total water mixing ratio.  Eq 3 in BK13 
+             qt2_sec(:,:,k) = qt2tune * sm * wrk2 * wrk2 
 
-	! Covariance of total water mixing ratio and liquid/ice water static
-	! energy.  Eq 5 in BK13
+             ! Covariance of total water mixing ratio and liquid/ice water static
+             ! energy.  Eq 5 in BK13
 
-	 qthl_sec(:,:,k) = hlqt2tune * sm * wrk1 * wrk2
+             qthl_sec(:,:,k) = hlqt2tune * sm * wrk1 * wrk2
+         end if
 
        end do   
 
@@ -8882,13 +8936,13 @@ contains
        end do  
 
        ! Fill the exports
-       if (associated(QT2))  QT2  = qwsec
-       if (associated(HL2))  HL2  = thlsec
-       if (associated(W2))   W2   = w2var
-       if (associated(W3))   W3   = w3var
-       if (associated(HLQT)) HLQT = qwthlsec
-       if (associated(WQT))  WQT  = wqtsec
-       if (associated(WHL))  WHL  = whlsec
+       if (associated(QT2SHOC))  QT2SHOC  = qwsec
+       if (associated(HL2SHOC))  HL2SHOC  = thlsec
+       if (associated(W2))       W2       = w2var
+       if (associated(W3))       W3       = w3var
+       if (associated(HLQTSHOC)) HLQTSHOC = qwthlsec
+       if (associated(WQT))      WQT      = wqtsec
+       if (associated(WHL))      WHL      = whlsec
 
 
 
