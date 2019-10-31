@@ -2818,7 +2818,7 @@ end subroutine SetServices
        VERIFY_(STATUS)
 
 
-       INCR_NAMES = [character(len=11) :: "TCFSAT_INCR", "TCFTRN_INCR", "TCFWLT_INCR", &
+       INCR_NAMES = [character(len=12) :: "TCFSAT_INCR", "TCFTRN_INCR", "TCFWLT_INCR", &
                      "QCFSAT_INCR", "QCFTRN_INCR", "QCFWLT_INCR", &
                      "CAPAC_INCR" , "CATDEF_INCR", "RZEXC_INCR" , "SRFEXC_INCR", &
                      "GHTCNT1_INCR", "GHTCNT2_INCR", "GHTCNT3_INCR", &
