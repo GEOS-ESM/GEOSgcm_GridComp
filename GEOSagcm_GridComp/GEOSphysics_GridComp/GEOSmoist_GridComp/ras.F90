@@ -38,7 +38,7 @@ CONTAINS
          KCBL,WGT0,WGT1,ZCBL,MXDIAM,TPERT,QPERT,          &
          THO, QHO, UHO, VHO,                              & 
          QSS, DQS, CNV_FRACTION, RASAL2_2d,               &
-         CO_AUTO,                                         &
+         CO_AUTO,  CCNSCALE,                                       &
          pko, plo, phio, phie, qlo, qio,                  &
          PLE, PKE, CLW, FLX, FLXD, FLXC,                  &
          CNV_PRC3,                                        &
@@ -62,7 +62,7 @@ CONTAINS
          
          ITRCR, IRC, XHO,                                  &
          TRIEDLEV_DIAG,                                   &
-         FSCAV , DISSKE                                   )
+         FSCAV , DISSKE                            )
 
 
       !*********************************************************************
@@ -185,7 +185,7 @@ CONTAINS
       INTEGER, DIMENSION (IDIM,2), INTENT(IN   ) ::  SEEDRAS
       INTEGER, DIMENSION (IDIM  ), INTENT(IN   ) ::  IRAS,JRAS,KCBL
       REAL, DIMENSION (IDIM     ), INTENT(IN   ) ::  ZCBL,TPERT,QPERT
-      REAL, DIMENSION (IDIM     ), INTENT(IN   ) ::  CO_AUTO
+      REAL, DIMENSION (IDIM     ), INTENT(IN   ) ::  CO_AUTO, CCNSCALE
       REAL, DIMENSION (IDIM     ), INTENT(  OUT) ::  MXDIAM
       REAL, DIMENSION (IDIM     ), INTENT(  OUT) ::  PRECU
       REAL, DIMENSION (IDIM,K0  ), INTENT(IN   ) ::  WGT0,WGT1
@@ -986,7 +986,7 @@ CONTAINS
      
                TEM     = (HCLD(L)-HST(L) )/ (1.0+LBCP*DQQ(L))  
                TminusTa = max(min(TEM/CP, 5.0), 0.0) !limit DT to 5 K. According to Wei, JAS, 1998   
-	     TEM =0.33*TminusTa*CO_AUTO(I)/TE_A !Bouyancy term, effciency =0.5 mwr Roode et al    	     
+	           TEM =0.33*TminusTa/TE_A !Bouyancy term, effciency =0.5 mwr Roode et al    	     
 
                BK2(L)  = BK2(L+1) + GRAV * TEM*(ZET(L)-ZET(L+1)) 
                BK2(L) = BK2(L) - (ZET(L)-ZET(L+1))*(BK2(L+1)*ALM + CLI*GRAV)  !Account for drag from entrainment of stagnat air and condesate loading
@@ -1045,14 +1045,14 @@ CONTAINS
                   end do
 
                   !initial conditions     
-                  call ARGact(Tparcel, CVW_X, NDROP_ACT, NDROP_AMB, NDUST_AMB, NSOOT_AMB, L,  .true., DDUST_AMB, DSOOT_AMB, ECRIT) !cloud droplet number and INsource at cloud base 
+                  call ARGact(Tparcel, CVW_X, NDROP_ACT, NDROP_AMB, NDUST_AMB, NSOOT_AMB, L,  .true., DDUST_AMB, DSOOT_AMB, ECRIT, CCNSCALE(I)) !cloud droplet number and INsource at cloud base 
                   NDUST=NDUST_AMB
                   NSOOT=NSOOT_AMB
                   DDUST=DDUST_AMB
                   DSOOT=DSOOT_AMB                                     
 
                else 
-                  call ARGact(Tparcel, CVW_X, NDROP_ACT, NDROP_AMB, NDUST_AMB, NSOOT_AMB, L, .false., DDUST_AMB, DSOOT_AMB, ECRIT) !cloud droplet number above cloud base  
+                  call ARGact(Tparcel, CVW_X, NDROP_ACT, NDROP_AMB, NDUST_AMB, NSOOT_AMB, L, .false., DDUST_AMB, DSOOT_AMB, ECRIT, CCNSCALE(I)) !cloud droplet number above cloud base  
 
                end if
 
@@ -1892,11 +1892,11 @@ CONTAINS
       !!donifan.o.barahona@nasa.gov
 !!!!!!!!!!!!!!====================================
 
-      SUBROUTINE ARGact (TEMP, WX, NCPL_ACT, NCPL_AMB,  CDUST, CSOOT, LEV, ISBASE, DDUSTAMB, DSOOTAMB, ENT_PARAM)
+      SUBROUTINE ARGact (TEMP, WX, NCPL_ACT, NCPL_AMB,  CDUST, CSOOT, LEV, ISBASE, DDUSTAMB, DSOOTAMB, ENT_PARAM, CCNSC)
          !
          Integer, intent(in)     ::  LEV    
          LOGICAL,  intent(in)     ::   ISBASE
-
+         real, intent (in) :: CCNSC
          REAL, intent(inout)     ::   TEMP, WX, ENT_PARAM
          REAL, intent(out)     ::   NCPL_ACT, NCPL_AMB, CSOOT, DSOOTAMB
          REAL, DIMENSION(NDUSTMAX), INTENT(OUT) :: CDUST, DDUSTAMB
@@ -1948,7 +1948,7 @@ CONTAINS
 
 !!!!!!!!!!activate aerosol transported from cloud base 
              NMODES =  AER_BASE%nmods
-             TPI(1:nmodes) = AER_BASE%num(1:nmodes)
+             TPI(1:nmodes) = AER_BASE%num(1:nmodes)*CCNSC !!new 2019 Not all CCN get into the plume
              SIGI(1:nmodes) = AER_BASE%sig(1:nmodes)                          
 
              

@@ -75,9 +75,12 @@
            real               :: SLOPERHCRIT           ! 60
            real               :: MIN_LTS               ! 61
            integer            :: CFPBL_EXP             ! 62
-           real               :: DISP_FACTOR_LIQ       ! 63
-           real               :: DISP_FACTOR_ICE       ! 63
-           real               :: SCLM_SHW       ! 63
+           real               :: DISP_FACTOR_LIQ       ! 64
+           real               :: DISP_FACTOR_ICE       ! 65
+           real               :: SCLM_SHW       ! 66
+           real               :: ANV_TO_LS_CU        ! 67
+           real               :: ANV_TO_LS_ST        ! 67
+            
       endtype CLDPARAM_TYPE
 
   end module CLDPARAMS

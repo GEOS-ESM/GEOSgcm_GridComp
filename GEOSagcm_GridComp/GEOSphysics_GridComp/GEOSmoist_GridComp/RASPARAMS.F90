@@ -37,6 +37,7 @@
            real               :: FDROP_SOOT            ! 30
            real               :: FDROP_SEASALT            ! 30
            real               :: RASAL_SLOPE
+           real               :: CCNFRAC
       endtype RASPARAM_TYPE
 
   end module RASPARAMS

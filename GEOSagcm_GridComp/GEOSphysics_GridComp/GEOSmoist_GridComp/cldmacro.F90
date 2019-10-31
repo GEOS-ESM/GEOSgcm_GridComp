@@ -58,7 +58,8 @@ module cldmacro
    real    :: ANV_SDQV2
    real    :: ANV_SDQV3
    real    :: ANV_SDQVT1
-   real    :: ANV_TO_LS
+   real    :: ANV_TO_LS_ST
+   real    :: ANV_TO_LS_CU
    real    :: N_WARM
    real    :: N_ICE
    real    :: N_ANVIL
@@ -313,7 +314,7 @@ contains
       real :: PRN_CU_above, PSN_CU_above
       real :: EVAP_DD_CU_above, SUBL_DD_CU_above
 
-      real :: NIX, TOTAL_WATER, fQi, QRN_XS, QSN_XS
+      real :: NIX, TOTAL_WATER, fQi, QRN_XS, QSN_XS, AUX, AUX2
 
       logical :: use_autoconv_timescale
 
@@ -338,7 +339,8 @@ contains
       ANV_SDQV2     = CLDPARAMS%ANV_SUND_INTER
       ANV_SDQV3     = CLDPARAMS%ANV_SUND_COLD
       ANV_SDQVT1    = CLDPARAMS%ANV_SUND_TEMP1
-      ANV_TO_LS     = CLDPARAMS%ANV_TO_LS_TIME
+      ANV_TO_LS_ST     = CLDPARAMS%ANV_TO_LS_ST
+      ANV_TO_LS_CU     = CLDPARAMS%ANV_TO_LS_CU
       N_WARM        = CLDPARAMS%NCCN_WARM
       N_ICE         = CLDPARAMS%NCCN_ICE
       N_ANVIL       = CLDPARAMS%NCCN_ANVIL
@@ -465,9 +467,20 @@ contains
             DNCCNV_dev(I, K) = NCPI_dev(I, K)
 
 
+            if (FRLAND_dev(I) < 0.1) then 
+
+              AUX  = SCLMFDFR
+              AUX2 = SCLM_SHW
+              else
+              AUX= 1.0
+              AUX2 = 1.0 ! increase over land 
+              end if
+              
+
             CALL cnvsrc (DT             , &
                   CNVICEPARAM    , &
-                  SCLMFDFR       , &
+                  AUX       , &
+                  AUX2       , &
                   MASS           , & 
                   iMASS          , &
                   PP_dev(I,K)    , &
@@ -612,7 +625,9 @@ contains
             SUBLC_dev(I,K) = QIW_LS_dev(I,K)+QIW_AN_dev(I,K)
 
              ! 'Anvil' partition from RAS/Parameterized not done in hystpdf
+if (.false.) then 
 
+            
             call evap3(            &
                   DT             , &
                   RHCRIT         , &
@@ -640,6 +655,7 @@ contains
                   NCPL_dev(I,K) , &
                   NCPI_dev(I,K) , &
                   QST3_dev(I,K)  ) 
+end if 
 
             EVAPC_dev(I,K) = ( EVAPC_dev(I,K) - (QLW_LS_dev(I,K)+QLW_AN_dev(I,K)) ) / DT
             SUBLC_dev(I,K) = ( SUBLC_dev(I,K) - (QIW_LS_dev(I,K)+QIW_AN_dev(I,K)) ) / DT
@@ -671,8 +687,8 @@ contains
                TEMP      = TEMP + QSN_CU*(MAPL_ALHS-MAPL_ALHL) / MAPL_CP
             end if
 
-            QRN_CU_1D = QRN_CU_1D + QRN_SC_dev(I,K) + QRN_XS!! add any excess precip to convective 
-            QSN_CU    = QSN_CU    + QSN_SC_dev(I,K) + QSN_XS
+            QRN_CU_1D = QRN_CU_1D + QRN_SC_dev(I,K)*DT !+ QRN_XS!! add any excess precip to convective 
+            QSN_CU    = QSN_CU    + QSN_SC_dev(I,K)*DT !+ QSN_XS
 
             !        
 !	    fQi=  ICE_FRACTION(TEMP)	    
@@ -1220,16 +1236,53 @@ contains
       maxalpha=1.0-minrhcrit 
 
       QC = QCl + QCi
-      QA = QAl + QAi
-      QT  =  QC  + QA + QV  !Total water after microphysics
-      CFALL  = AF+CF
+      QA = QAl + QAi           
+      CFALL  = AF+CF      
       FQA = 0.0
-      if (QA+QC .gt. tiny(1.0))  FQA=QA/(QA+QC)
+      tmpARR = 0.0
+      QAx = 0.0
 
-      SHOM=2.349-(TE/259.0) !hom threeshold Si according to Ren & McKenzie, 2005
-
+      
+      if (QA+QC .gt. tiny(1.0)) then 
+        FQA=QA/(QA+QC)
+       
+       else
+        CF = 0.0
+        AF  = 0.0  
+        CALL fix_up_clouds(    &
+                  QV     , &
+                  TE           , &
+                  QCl, & 
+                  QCi, & 
+                  CF, &   
+                  QAl, & 
+                  QAi, & 
+                  AF)                               
+       return
+      end if 
+      
+      
+      
+      if ( AF < 1.0 )   then 
+       tmpARR = 1./(1.-AF)            
+       else
+         CF  = 0.0
+          CALL fix_up_clouds(    &
+                  QV     , &
+                  TE           , &
+                  QCl, & 
+                  QCi, & 
+                  CF, &   
+                  QAl, & 
+                  QAi, & 
+                  AF)       
+         return
+      end if 
+       
+       
       !================================================
-      ! First find the cloud fraction that would correspond to the current condensate 
+      ! Find combined QS 
+      
       QSLIQ  = QSATLQ(         &
             TE   , &
             PL*100.0 , DQ=DQx )
@@ -1239,18 +1292,17 @@ contains
             TE   , &
             PL*100.0 , DQ=DQx )
 
-      if ((QC+QA) .gt. 1.0e-13) then 
-         QSx=((QCl+QAl)*QSLIQ + QSICE*(QCi+QAi))/(QC+QA)               
-      else
-         DQSx  = DQSAT(         &
-               TE   , &
-               PL ,  35.0, QSAT=QSx     ) !use ramp to -40 
-      end if
 
-
+      QSx=((QCl+QAl)*QSLIQ + QSICE*(QCi+QAi))/(QC+QA)     
       
       if (TE .gt. T_ICE_ALL)   SCICE = 1.0
-      QCx=QC+QA   
+      SHOM=2.349-(TE/259.0) !hom threeshold Si according to Ren & McKenzie, 2005
+      
+       
+      CFx = CF*tmpARR
+      QCx = QC*tmpARR
+      QVx = ( QV - QSx*AF )*tmpARR
+      QT  =  QCx  + QVx  ! large scale only      
       QX=QT-QSx*SCICE
       CFo=0.
       
@@ -1261,7 +1313,7 @@ contains
       
       !=======================
 
-     DELQ=max(min(2.0*maxalpha*QSx, 0.5*QT), 1.0e-12)   
+      DELQ=max(min(2.0*maxalpha*QSx, 0.5*QT), 1.0e-12)   
       
       if  ((QX .le. QCx)  .and. (QCx .gt. tiny(1.0)))  then          
          CFo =  (1.0+SQRT(1.0-(QX/QCx)))
@@ -1272,9 +1324,9 @@ contains
             CFo = 0.0
          end if
       elseif (QCx .gt. tiny(1.0)) then  
-         !   CFo = 1.0  !Outside of distribution but still with condensate         
-        DELQ=max(min(2.0*maxalpha*QSx, 0.5*QT), 1.0e-12)          
-        CFo = SQRT(2.0*QCx/DELQ)        
+            CFo = 1.0  !Outside of distribution but still with condensate         
+        !DELQ=max(min(2.0*maxalpha*QSx, 0.5*QT), 1.0e-12)          
+        !CFo = SQRT(2.0*QCx/DELQ)        
       else
         CFo = 0.0         
       end if
@@ -1285,17 +1337,32 @@ contains
          RHCmicro = 0.0
       end if
 
-      CFALL   = max(CFo, 0.0) 
-      CFALL   = min(CFo, 1.0) 
+       CF  = min(CFo, 1.0) * ( 1.-AF)
+      
+      
+      !CFALL   = max(CFo, 0.0) 
+      !CFALL   = min(CFo, 1.0) !
 
-      CF=CFALL*(1.0-FQA)
-      AF=CFALL*FQA
+!      CF=CFALL*(1.0-FQA)
+!      AF=CFALL*FQA
 
+
+   CALL fix_up_clouds(    &
+                  QV     , &
+                  TE           , &
+                  QCl, & 
+                  QCi, & 
+                  CF, &   
+                  QAl, & 
+                  QAi, & 
+                  AF)
+                  
+                  
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      ! return 
+       return 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    
 
-      !if ((TE .le. T_ICE_ALL))  return !don't do anything else for cirrus
+       if ((TE .le. T_ICE_ALL))  return !don't do anything else for cirrus
 
 
       !================================================
@@ -1630,7 +1697,7 @@ subroutine hystpdf_new( &
        endif
       elseif(flag.eq.2) then
        qtmode =  qtmean + (sigmaqt1-sigmaqt2)/3.
-       qtmin = min(qtmode-sigmaqt1,0.)
+       qtmin = max(qtmode-sigmaqt1,0.)
        qtmax = qtmode + sigmaqt2
        if(qtmax.lt.qstar) then
         clfrac = 0.
@@ -1683,7 +1750,7 @@ subroutine hystpdf_new( &
        endif
       elseif(flag.eq.2) then
        qtmode =  qtmean + (sigmaqt1-sigmaqt2)/3.d0
-       qtmin = min(qtmode-sigmaqt1,0.d0)
+       qtmin = max(qtmode-sigmaqt1,0.d0)
        qtmax = qtmode + sigmaqt2
        if ( qtmax.lt.qstar ) then
         condensate = 0.d0
@@ -1714,7 +1781,8 @@ subroutine hystpdf_new( &
    subroutine cnvsrc( & 
          DT      , &
          ICEPARAM, &
-         SCLMFDFR, &
+         SC_FDFR, &
+         SC_SHW, &
          MASS    , &
          iMASS   , &
          PL      , &
@@ -1747,7 +1815,7 @@ subroutine hystpdf_new( &
       !                 by fuzziness of cloud boundaries and existence of PDF of condensates (for choices
       !                 0.-1.0) or by subgrid layering (for choices >1.0) 
 
-      real, intent(in)    :: DT,ICEPARAM,SCLMFDFR
+      real, intent(in)    :: DT,ICEPARAM,SC_FDFR, SC_SHW
       real, intent(in)    :: MASS,iMASS,QS
       real, intent(in)    :: DMF,PL
       real, intent(in)    :: DCF,CF,DCIFshlw,DCLFshlw,DMFshlw
@@ -1761,7 +1829,7 @@ subroutine hystpdf_new( &
       
       character(LEN=*), INTENT(IN) :: CONVPAR_OPTION
 
-      real :: TEND,QVx,QCA,fQi, fqi_gf
+      real :: TEND,QVx,QCA,fQi, fqi_gf, aux, ANV_TO_LS
 
       ! real, parameter :: RL  = 12.0e-6
       ! real, parameter :: RI  = 50.0e-6
@@ -1823,13 +1891,31 @@ subroutine hystpdf_new( &
 
       QCA  = QLA + QIA
 
+
+      TEND=(DMF*SC_FDFR+DMFshlw*SCLM_SHW)*iMASS    
+
+
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !! Tiedtke-style anvil fraction !!
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      TEND=(DMF*SCLMFDFR+DMFshlw*SCLM_SHW)*iMASS    
-      AF = AF + TEND*DT
-      AF = MIN( AF , 0.99 ) 
+      
+      !AF = AF + TEND*DT
+      !AF = MIN( AF , 0.99 ) 
 
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !! GERARD2009 MWR !! Do not include convective core for now
+      !! IN this case large scale processess do not further modify CLCN
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      
+      aux = min(max((0.03 - CNV_FRACTION)/0.005, -20.0), 20.0) 
+      aux=  1.0/(1.0 + exp(aux))
+      
+      ANV_TO_LS =  ANV_TO_LS_ST*(1.0-aux) + ANV_TO_LS_CU*aux
+      
+      AF = min(1.0, AF*EXP(-DT/ANV_TO_LS) + TEND*DT)
+      
+      
       ! where ( (AF+CF) > 1.00 )
       !    AF=1.00-CF
       ! endwhere
@@ -2303,18 +2389,18 @@ subroutine hystpdf_new( &
       if(taneff) then
          !reproduces the atan profile but is less messy
 
-         aux = min(max((pl- PCBL)/10.0, -20.0), 20.0) 
-         aux = 1.0/(1.0+exp(-aux))
-         envfrac = ENVFC + (1.0-ENVFC)*aux   !ENVFC is the minimum exposed area. Below cloud base envfrac becomes 1.    
+        ! aux = min(max((pl- PCBL)/10.0, -20.0), 20.0) 
+        ! aux = 1.0/(1.0+exp(-aux))
+        ! envfrac = ENVFC + (1.0-ENVFC)*aux   !ENVFC is the minimum exposed area. Below cloud base envfrac becomes 1.    
 
 
-         !if (pl .le. 600.) then
-         !   envfrac = 0.25
-         !else
-         !   envfrac = 0.25 + (1.-0.25)/(19.) *                    &
-         !         ((atan( (2.*(pl-600.)/(900.-600.)-1.) *       &
-         !         tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
-         ! end if
+         if (pl .le. 600.) then
+            envfrac = 0.25
+         else
+            envfrac = 0.25 + (1.-0.25)/(19.) *                    &
+                  ((atan( (2.*(pl-600.)/(900.-600.)-1.) *       &
+                  tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
+          end if
 
 
          envfrac = min(envfrac,1.)
