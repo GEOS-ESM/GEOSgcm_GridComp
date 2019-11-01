@@ -3959,11 +3959,9 @@ IF(USE_TRACER_TRANSP==1)  THEN
              trash_ (ispc) =   trash_(ispc)+ (out_chem (ispc,i,k) - evap_(ispc) + wetdep_(ispc))*dp/g 
              trash2_(ispc) =   trash2_(ispc)+ se_chem(ispc,i,k)*dp/g 
            enddo
-           if(abs(trash_(ispc)) >1.e-6 ) then
-             if (MAPL_AM_I_ROOT())  write(6,*)'=> mass_cons=',trash_(ispc),spacing(trash2_(ispc)),trim(CHEM_NAME(ispc)),trim(cumulus)
-             !if(abs(trash_(ispc))>1.e-6 ) write(6,*)'=> WARNING=',whoami_all,trash_(ispc),trim(CHEM_NAME(ispc)),trim(cumulus) 
-	     !stop "not conserving tracer mass"
-           endif
+           !if(abs(trash_(ispc)) >1.e-6 ) then
+           !  if (MAPL_AM_I_ROOT())  write(6,*)'=> mass_cons=',trash_(ispc),spacing(trash2_(ispc)),trim(CHEM_NAME(ispc)),trim(cumulus)
+           !endif
         enddo
 
    

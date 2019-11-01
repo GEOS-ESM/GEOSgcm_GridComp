@@ -4812,15 +4812,15 @@ contains
         call MAPL_GetResource(MAPL, USE_TRACER_EVAP ,'USE_TRACER_EVAP:' ,default= 1,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, ALP1            ,'ALP1:'            ,default= 1., RC=STATUS );VERIFY_(STATUS)
 
-        IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP == 1) THEN
-           call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for GF")
-           USE_TRACER_TRANSP = 0
-        END IF
+       ! IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP == 1) THEN
+       !    call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for GF")
+       !    USE_TRACER_TRANSP = 0
+       ! END IF
 
-        IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_SCAVEN == 1) THEN
-           call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling scavenging for GF")
-           USE_TRACER_SCAVEN = 0
-        END IF
+       ! IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_SCAVEN == 1) THEN
+       !    call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling scavenging for GF")
+       !    USE_TRACER_SCAVEN = 0
+       ! END IF
 
        !IF(USE_TRACER_TRANSP == 1) THEN
        !    call WRITE_PARALLEL ("GEOS_MoistGridCompMod: GF tracer transport detected, disabling transport in GOCART")
@@ -4833,10 +4833,10 @@ contains
 !-srf-gf-scheme
     call MAPL_GetResource(MAPL,USE_TRACER_TRANSP_UW,'USE_TRACER_TRANSP_UW:',default= 1, RC=STATUS )
     VERIFY_(STATUS)
-    IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP_UW == 1) THEN
-           call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for UW")
-           USE_TRACER_TRANSP_UW = 0
-    END IF
+    !IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP_UW == 1) THEN
+    !       call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for UW")
+    !       USE_TRACER_TRANSP_UW = 0
+    !END IF
 
     ! All done
     !---------
