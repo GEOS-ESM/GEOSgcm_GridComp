@@ -1674,11 +1674,8 @@ TIME_TO_REPLAY: if(is_ringing) then
                  !    print *
                  ! endif
 
-                   unit = getfile(ReplayFile, FORM="unformatted", all_pes=.true., rc=status)
-                   VERIFY_(STATUS) 
-                   call MAPL_VarRead(UNIT=UNIT, STATE=IMPORT, RC=STATUS)
-                   VERIFY_(STATUS) 
-                   call FREE_FILE(unit, rc=status)
+                   call MAPL_ESMFStateReadFromFile(STATE=IMPORT, CLOCK=CLOCK, FILENAME=ReplayFile,&
+                        MPL=STATE, HDR=.FALSE., RC=STATUS)
                    VERIFY_(STATUS) 
 
                 end if TIME_TO_REPLAY
