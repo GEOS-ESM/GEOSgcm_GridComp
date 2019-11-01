@@ -520,11 +520,10 @@ cd ../
 /bin/mv rst DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
 /bin/mv til DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
 
-cd ../
+cd ../../
 /bin/mv    $BCDIR/$BCNAME .
-/bin/mv    $BCDIR/$BCNAME.stdout $BCNAME
 /bin/mv    $BCJOB                $BCNAME
-/bin/rm -r $BCDIR
+/bin/rm -r $OUTDIR
 
 _EOF_
 chmod 755 $BCJOB
@@ -666,12 +665,11 @@ cd ../
 
 /bin/mv rst CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
 /bin/mv til CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
-
-cd ../
+/bin/mv $BCJOB CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+cd ../../
 /bin/mv    $BCDIR/$BCNAME .
-/bin/mv    $BCDIR/$BCNAME.stdout $BCNAME
 /bin/mv    $BCJOB                $BCNAME
-/bin/rm -r $BCDIR
+/bin/rm -r $OUTDIR
 
 _EOF_
 chmod 755 $BCJOB
@@ -775,11 +773,10 @@ cd ../
 /bin/mv rst  SMAP_${EVERSION}_${MGRID}
 /bin/mv til  SMAP_${EVERSION}_${MGRID}
 
-cd ../
+cd ../../
 /bin/mv    $BCDIR/$BCNAME .
-/bin/mv    $BCDIR/$BCNAME.stdout $BCNAME
 /bin/mv    $BCJOB                $BCNAME
-/bin/rm -r $BCDIR
+/bin/rm -r $OUTDIR
 
 _EOF_
 chmod 755 $BCJOB

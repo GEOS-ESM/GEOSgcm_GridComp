@@ -982,7 +982,7 @@ endif
 cat << _EOV1_ > clsm/veg1
 	 Dirmeyer, P. and Oki, T. (2002): The Second Global Soil Wetness project (GSWP-2) 
 	    Science 2 and Implementation Plan. IGPO Publication Series No. 37, 64p.	
-         Verdin, K (2013): Final Report - High Resolution Topographic Analysis for GMAO's 
+         Verdin, K (2013): Final Report - High Resolution Topographic Analysis for GMAOs 
 	    Catchment LSM, pp 21, available from Global Modeling and Assimilation Office, 
 	    610.1 NASA/GSFC.
 
@@ -1592,7 +1592,7 @@ cat clsm/intro clsm/soil clsm/veg1 clsm/veg2 clsm/README1 clsm/README2 clsm/READ
 #################################################################################
 
 mkdir -p clsm/plots
-/bin/cp src/clsm_plots.pro clsm/plots/.
+/bin/cp bin/clsm_plots.pro clsm/plots/.
 
 cd clsm/plots/
 
