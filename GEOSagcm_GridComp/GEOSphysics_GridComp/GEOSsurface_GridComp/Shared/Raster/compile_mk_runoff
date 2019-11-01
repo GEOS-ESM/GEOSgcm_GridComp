@@ -1,0 +1,1 @@
+f90 -o ../bin/mk_runofftbl -p. MAPL_Hash.F90 MAPL_Sort.F90 sort.c hash.c mk_runofftbl.F90 -lU77
