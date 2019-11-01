@@ -4794,9 +4794,9 @@ contains
         VERIFY_(STATUS) 
         call MAPL_GetResource(MAPL, closure_choice(mid) , 'CLOSURE_CONGESTUS:', default= 3, RC=STATUS )
         VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,USE_TRACER_TRANSP   ,'USE_TRACER_TRANSP:',default= 0, RC=STATUS )
+        call MAPL_GetResource(MAPL,USE_TRACER_TRANSP   ,'USE_TRACER_TRANSP:',default= 1, RC=STATUS )
         VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,USE_TRACER_SCAVEN   ,'USE_TRACER_SCAVEN:',default= 0, RC=STATUS )
+        call MAPL_GetResource(MAPL,USE_TRACER_SCAVEN   ,'USE_TRACER_SCAVEN:',default= 2, RC=STATUS )
         VERIFY_(STATUS)
         call MAPL_GetResource(MAPL,USE_SCALE_DEP       ,'USE_SCALE_DEP:'    ,default= 1, RC=STATUS )
         VERIFY_(STATUS)
@@ -4809,8 +4809,8 @@ contains
 
         call MAPL_GetResource(MAPL, USE_FLUX_FORM   ,'USE_FLUX_FORM:'   ,default= 1,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, USE_FCT         ,'USE_FCT:'	        ,default= 0,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, USE_TRACER_EVAP ,'USE_TRACER_EVAP:' ,default= 0,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, ALP1            ,'ALP1:'            ,default= 0., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_TRACER_EVAP ,'USE_TRACER_EVAP:' ,default= 1,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, ALP1            ,'ALP1:'            ,default= 1., RC=STATUS );VERIFY_(STATUS)
 
         IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP == 1) THEN
            call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for GF")
@@ -4822,12 +4822,12 @@ contains
            USE_TRACER_SCAVEN = 0
         END IF
 
-        IF(USE_TRACER_TRANSP == 1) THEN
-           call WRITE_PARALLEL ("GEOS_MoistGridCompMod: GF tracer transport detected, disabling transport in GOCART")
-           call Disable_Convection
-        ELSE
-           call WRITE_PARALLEL ("GEOS_MoistGridCompMod: Using GOCART for tracer transport")
-        END IF
+       !IF(USE_TRACER_TRANSP == 1) THEN
+       !    call WRITE_PARALLEL ("GEOS_MoistGridCompMod: GF tracer transport detected, disabling transport in GOCART")
+       !    call Disable_Convection
+       ! ELSE
+       !    call WRITE_PARALLEL ("GEOS_MoistGridCompMod: Using GOCART for tracer transport")
+       !END IF
 
     ENDIF
 !-srf-gf-scheme
@@ -6533,11 +6533,11 @@ contains
          IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
            Vect_Hcts(:)=-99.
 	   call ESMF_AttributeGet  (FIELD,"SetofHenryLawCts",Vect_Hcts,  RC=STATUS)
-           !.. if (MAPL_AM_I_ROOT()) then
-		!.. PRINT*,"spcname=",k,trim(QNAMES(K)),FSCAV_(K)
-	        !.. print*,"Vect_Hcts=",Vect_Hcts(:),statUS
-		!.. call flush(6)
-	   !.. ENDIF
+           !if (MAPL_AM_I_ROOT()) then
+	   !   PRINT*,"spcname=",k,trim(QNAMES(K)),FSCAV_(K)
+	   !   print*,"Vect_Hcts=",Vect_Hcts(:),statUS
+	   !   call flush(6)
+	   !ENDIF
 	   IF(STATUS == ESMF_SUCCESS) then 
 	      Hcts(k)%hstar = Vect_Hcts(1)
               Hcts(k)%dhr   = Vect_Hcts(2)
@@ -8061,12 +8061,9 @@ contains
         MFD_SC = 0.0
       end where
  
-      !  If not transporting tracers in UW, 
-      !  add mass flux for transport in GOCART
+      !  add mass flux
       !--------------------------------------------------------------
-      if (USE_TRACER_TRANSP_UW == 0) then
-        CNV_MFC = CNV_MFC + UMF_SC 
-      end if
+      CNV_MFC = CNV_MFC + UMF_SC 
 
       ! Option to add detrained condensate to large scale cloud 
       ! instead of anvil.
@@ -11393,12 +11390,9 @@ do K= 1, LM
 
 
       !--------------------------------------------------------------
-      !  If not transporting tracers in UW, 
       !  add ShallowCu contribution to detraining mass flux export
       !--------------------------------------------------------------
-      if (USE_TRACER_TRANSP_UW == 0) then
-         CNV_MFD = CNV_MFD + MFD_SC
-      end if
+      CNV_MFD = CNV_MFD + MFD_SC
       !--------------------------------------------------------------
 
 ! For 2 moment, move some LS precip/flux into the CN precip/flux category for use by chemistry

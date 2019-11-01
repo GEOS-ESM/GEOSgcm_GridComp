@@ -10143,13 +10143,21 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
       !return
       IF( MAPL_AM_I_ROOT() .and. irun == 0)THEN
          irun = 1  
-         write(10,*)"================= table of tracers in the GF conv transport ==================="
-         write(10,*)" SPC,  CHEM_NAME,  FSCAV               - the four Henrys law cts"
+         print*,"=========================================================================";call flush(6)
+         print*," the following tracers will be transport by GF scheme                    ";call flush(6)
+	 
+	 write(10,*)"================= table of tracers in the GF conv transport ==================="
+         write(10,*)" SPC,  CHEM_NAME,  FSCAV               - the four Henrys law cts  -   Transport Flag"
          do ispc=1,mtp
           write(10,121) ispc,trim(chem_name(ispc)), FSCAV_INT(ispc),Hcts(ispc)%hstar &
-	               ,Hcts(ispc)%dhr,Hcts(ispc)%ak0  ,Hcts(ispc)%dak 
-         enddo
-121	 format(1x,I4,A10,5F14.5)
+	               ,Hcts(ispc)%dhr,Hcts(ispc)%ak0  ,Hcts(ispc)%dak , CHEM_NAME_MASK     (ispc)
+          if( CHEM_NAME_MASK     (ispc) == 1) then 
+	    print*,"GF is doing transp and wet removal of: ",trim(chem_name(ispc))
+	    call flush(6)
+          endif
+	 enddo
+         print*,"=========================================================================";call flush(6)
+121	 format(1x,I4,A10,5F14.5,I4)
       ENDIF
     END subroutine interface_aerchem
 !-----------------------------------------------------------------------------------------      
