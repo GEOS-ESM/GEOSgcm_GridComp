@@ -5,6 +5,7 @@ program SaltImpConverter
   use netcdf
   use MAPL_HashMod
   use MAPL_IOMod
+  use pFIO
 
   implicit none
 
@@ -32,8 +33,14 @@ program SaltImpConverter
   integer              :: bpos, epos, ntot
   integer              :: foutID, status, TimID, TileID 
   integer, allocatable :: nrecs(:), mrecs(:)
-  type(MAPL_NCIO)      :: InImpNCIO, OutNCIO
-  type(MAPL_NCIO)      :: InIntNCIO
+  type(Netcdf4_Fileformatter) :: InImpFmt,OutFmt,InIntFmt
+  type(FileMetadata)   :: InImpCfg,OutCfg,InIntCfg
+  type(StringVariableMap), pointer :: variables
+  type(Variable), pointer :: myVariable
+  type(StringVariableMapIterator) :: var_iter
+  type(StringVector), pointer :: var_dimensions
+  type(Attribute), pointer :: attr
+  character(len=:), pointer :: var_name
   integer              :: ndims
   character*256        :: OutFileName
   integer              :: dimSizes(3)
@@ -127,8 +134,10 @@ program SaltImpConverter
 
   if (filetype == 0) then
 
-     InImpNCIO = MAPL_NCIOOpen(InImpRestart,rc=rc)
-     InIntNCIO = MAPL_NCIOOpen(InIntRestart,rc=rc)
+     call InImpFmt%open(InImpRestart,pFIO_READ,rc=rc)
+     call InIntFmt%open(InIntRestart,pFIO_READ,rc=rc)
+     InIntCfg=InIntFmt%read(rc=rc)
+     InImpCfg=InImpFmt%read(rc=rc)
 
      i = index(InImpRestart,'/',back=.true.)
      OutFileName = "OutData/"//trim(InImpRestart(i+1:))
@@ -136,32 +145,39 @@ program SaltImpConverter
      status = NF_DEF_DIM(FOutID, 'tile', itiles, TileID)
      status = NF_DEF_DIM(FOutID, 'time'   , 1 , TimID)
 
-     call MAPL_NCIOGetDimSizes(InIntNCIO,nVars=nVars)
-     do n=1,nVars
-        call MAPL_NCIOGetVarName(InIntNCIO,n,vname)
-        if(vname(1:6) == 'TSKINW') & 
-           call MAPL_VarRead(InIntNCIO,vname,TW)
-        if(vname(1:6) == 'SSKINW') & 
-           call MAPL_VarRead(InIntNCIO,vname,SW)
+     variables => InIntCfg%get_variables()
+     var_iter = variables%begin()
+     do while (var_iter /= variables%end())
+        var_name => var_iter%key()
+        if(var_name(1:6) == 'TSKINW') & 
+           call MAPL_VarRead(InIntFmt,var_name,TW)
+        if(var_name(1:6) == 'SSKINW') & 
+           call MAPL_VarRead(InIntFmt,var_name,SW)
+        call var_iter%next()
      enddo   
 
-     call MAPL_NCIOGetDimSizes(InImpNCIO,nVars=nVars)
-     do n=1,nVars
+     variables => InImpCfg%get_variables()
+     var_iter = variables%begin()
+     do while (var_iter /= variables%end())
  
-        call MAPL_NCIOGetVarName(InImpNCIO,n,vname)
-
-        call MAPL_NCIOVarGetDims(InImpNCIO,vname,nDims,dimSizes)
+        var_name => var_iter%key()
+        myVariable => var_iter%value()
+        var_dimensions => myVariable%get_dimensions()
+        ndims = var_dimensions%size()      
         if (ndims == 1) then
-           status = NF_DEF_VAR(FOutID, vname , NF_FLOAT, 1 , TileID , varid)
+           status = NF_DEF_VAR(FOutID, var_name , NF_FLOAT, 1 , TileID , varid)
+           attr => myVariable%get_attribute('long_name')
            status = NF_PUT_ATT_TEXT(FOutID, varid, 'long_name', &
-                    LEN_TRIM(InImpNCIO%vars(n)%long_name),           &
-                    trim(InImpNCIO%vars(n)%long_name)) 
+                    LEN_TRIM(attr%get_string()),           &
+                    trim(attr%get_string())) 
+           attr => myVariable%get_attribute('units')
            status = NF_PUT_ATT_TEXT(FOutID, varid, 'units',     &
-                    LEN_TRIM(InImpNCIO%vars(n)%units), trim(InImpNCIO%vars(n)%units))        
+                    LEN_TRIM(attr%get_string()), trim(attr%get_string()) )  
         else 
-           write(*,*)"Import States are all TileOnly:, ",trim(vname), " is not?"
+           write(*,*)"Import States are all TileOnly:, ",trim(var_name), " is not?"
            stop
         endif
+        call var_iter%next()
      enddo
 
      vname = "SS_FOUND"
@@ -175,23 +191,31 @@ program SaltImpConverter
               LEN_TRIM(units), trim(units))        
      status = NF_ENDDEF(FOutID)  
 
-     do n=1,nVars
-        call MAPL_NCIOGetVarName(InImpNCIO,n,vname)
-        write(*,*)"Writing ",trim(vname)
-        call MAPL_NCIOVarGetDims(InImpNCIO,vname,nDims,dimSizes)
+     
+     
+     variables => InImpCfg%get_variables()
+     var_iter = variables%begin()
+     do while (var_iter /= variables%end())
+        var_name => var_iter%key()
+        write(*,*)"Writing ",trim(var_name)
+        myVariable => var_iter%value()
+        var_dimensions => myVariable%get_dimensions()
+        ndims = var_dimensions%size()      
+        write(*,*)"Writing ",trim(var_name)
         if (ndims == 1) then
-           call MAPL_VarRead(InImpNCIO,vname,varIn)
+           call MAPL_VarRead(InImpFmt,var_name,varIn)
            if(vname(1:8) == 'TS_FOUND') then 
               varOut(:) = TW(:)    
            else
               varOut(:) = varIn(:)    
            endif 
-           STATUS = NF_INQ_VARID (FoutID, trim(VNAME) ,VarID)
+           STATUS = NF_INQ_VARID (FoutID, trim(var_name) ,VarID)
            STATUS = NF_PUT_VARA_REAL(FOutID,VarID, (/1/), (/itiles/), varOut)
         else 
            write(*,*)"Import States are all TileOnly:, ",trim(vname), " is not?"
            stop
         endif
+        call var_iter%next()
      enddo
      vname = "SS_FOUND"
      STATUS = NF_INQ_VARID (FoutID, trim(VNAME) ,VarID)

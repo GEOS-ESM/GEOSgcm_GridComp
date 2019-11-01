@@ -215,7 +215,7 @@ implicit none
 
     iret = NF_OPEN(trim(c_data)//trim(vname)//'_uk.nc',NF_NOWRITE, ncid)
 
-    ASSERT_(iret==NF_NOERR)
+    _ASSERT(iret==NF_NOERR,'needs informative message')
 
     if (present (merge)) then
        open (31,file='clsm/lai.dat.gswp2',  &
@@ -235,7 +235,7 @@ implicit none
           imon=imon+1
 	  
 	  iret = NF_GET_VARA_REAL(ncid, 6,(/1,mon/),(/MAX_NOF_GRID,1/),vecforc)
-	  ASSERT_(iret==NF_NOERR)		          
+	  _ASSERT(iret==NF_NOERR,'needs informative message')		          
 	  catforc =1.e-20
 	  catcount=0
           DO j =1,nr
@@ -258,7 +258,7 @@ implicit none
        END DO  
     END DO ! Year
     iret = NF_CLOSE(ncid)
-    ASSERT_(iret==NF_NOERR)
+    _ASSERT(iret==NF_NOERR,'needs informative message')
 
     fname='clsm/catchment.def'
 
@@ -595,15 +595,15 @@ END SUBROUTINE modis_lai
           if (present(F25Tag)) then 
 
              iret = NF_OPEN('data/CATCH/SoilDepth.nc',NF_NOWRITE, ncid)
-             ASSERT_(iret==NF_NOERR)
+             _ASSERT(iret==NF_NOERR,'needs informative message')
              allocate (soildepth_gswp2(1: ncat_gswp2))
              allocate (land_gswp2     (1: ncat_gswp2)) 
              iret = NF_GET_VARA_INT (ncid, 3,(/1/),(/ncat_gswp2/),land_gswp2)
-	     ASSERT_(iret==NF_NOERR)	
+	     _ASSERT(iret==NF_NOERR,'needs informative message')	
              iret = NF_GET_VARA_REAL(ncid, 4,(/1/),(/ncat_gswp2/),soildepth_gswp2)
-	     ASSERT_(iret==NF_NOERR)		          
+	     _ASSERT(iret==NF_NOERR,'needs informative message')		          
              iret = NF_CLOSE(ncid)
-             ASSERT_(iret==NF_NOERR)
+             _ASSERT(iret==NF_NOERR,'needs informative message')
 
              k1 = i_raster/360
 
