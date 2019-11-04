@@ -822,11 +822,14 @@ contains
             RHX_dev(I,K) = MAPL_UNDEF
             REV_LS_dev(I,K) = MAPL_UNDEF
             REV_AN_dev(I,K) = MAPL_UNDEF
-            REV_CN_dev(I,K) = MAPL_UNDEF
+!srf                                    REV_CN_dev(I,K) = MAPL_UNDEF
+            IF(CONVPAR_OPTION .ne. 'GF')REV_CN_dev(I,K) = MAPL_UNDEF
+
             REV_SC_dev(I,K) = MAPL_UNDEF
             RSU_LS_dev(I,K) = MAPL_UNDEF
             RSU_AN_dev(I,K) = MAPL_UNDEF
-            RSU_CN_dev(I,K) = MAPL_UNDEF
+!srf                                    RSU_CN_dev(I,K) = MAPL_UNDEF
+            IF(CONVPAR_OPTION .ne. 'GF')RSU_CN_dev(I,K) = MAPL_UNDEF
             RSU_SC_dev(I,K) = MAPL_UNDEF
             ACLL_CN_dev(I,K) = MAPL_UNDEF
             ACIL_CN_dev(I,K) = MAPL_UNDEF
