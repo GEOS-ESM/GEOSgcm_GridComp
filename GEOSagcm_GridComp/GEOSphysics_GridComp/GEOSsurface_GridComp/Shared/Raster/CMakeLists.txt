@@ -26,6 +26,7 @@ target_compile_options(${this} PRIVATE ${OpenMP_Fortran_FLAGS})
 ecbuild_add_executable (TARGET chk_clsm_params.x SOURCES chk_clsm_params.F90  LIBS MAPL_Base ${this})
 ecbuild_add_executable (TARGET CombineRasters.x SOURCES CombineRasters.F90 LIBS MAPL_Base ${this})
 ecbuild_add_executable (TARGET mkCatchParam.x SOURCES mkCatchParam.F90 LIBS MAPL_Base ${this} ${OpenMP_Fortran_LIBRARIES})
+set_target_properties(mkCatchParam.x PROPERTIES COMPILE_FLAGS "${OpenMP_Fortran_FLAGS}")
 set_target_properties(mkCatchParam.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
 
 ecbuild_add_executable (TARGET mkCubeFVRaster.x SOURCES mkCubeFVRaster.F90 LIBS MAPL_Base ${this})
