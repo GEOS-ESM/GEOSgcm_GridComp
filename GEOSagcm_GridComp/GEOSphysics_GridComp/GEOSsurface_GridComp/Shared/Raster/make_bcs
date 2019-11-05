@@ -477,6 +477,14 @@ cd clsm.${IM}x${JM}
    /bin/mv green.dat green_clim_${RS}_DC.data
    /bin/mv lnfm.dat   lnfm_clim_${RS}_DC.data
    /bin/mv ndvi.dat   ndvi_clim_${RS}_DC.data
+   /bin/mv MODELFPARmean.dat MODELFPARmean_${RS}_DC.dat 
+   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RS}_DC.dat  
+   /bin/mv MODISFPARmean.dat MODISFPARmean_${RS}_DC.dat 
+   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RS}_DC.dat  
+   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RS}_DC.dat  
+   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RS}_DC.dat   
+   /bin/mv MODISVISmean.dat  MODISVISmean_${RS}_DC.dat  
+   /bin/mv MODISVISstd.dat   MODISVISstd_${RS}_DC.dat   
 
 /bin/rm -f sedfile
 cat > sedfile << EOF
@@ -623,6 +631,14 @@ cd clsm.C${NC}
    /bin/mv green.dat green_clim_${RC}.data
    /bin/mv lnfm.dat   lnfm_clim_${RC}.data
    /bin/mv ndvi.dat   ndvi_clim_${RC}.data
+   /bin/mv MODELFPARmean.dat MODELFPARmean_${RS}.dat 
+   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RS}.dat  
+   /bin/mv MODISFPARmean.dat MODISFPARmean_${RS}.dat 
+   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RS}.dat  
+   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RS}.dat  
+   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RS}.dat   
+   /bin/mv MODISVISmean.dat  MODISVISmean_${RS}.dat  
+   /bin/mv MODISVISstd.dat   MODISVISstd_${RS}.dat   
 
 /bin/rm -f sedfile
 cat > sedfile << EOF
@@ -719,9 +735,17 @@ source bin/g5_modules
 if ( $EVERSION == EASEv2 ) then
 setenv MASKFILE ${MASKFILE}
 bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID}
+setenv OMP_NUM_THREADS ${NCPUS}
+head -1 clsm/mkCatchParam.log > smap_cmd
+chmod 755 smap_cmd
+./smap_cmd
 else
 setenv MASKFILE ${MASKFILE}
 bin/mkSMAPTilesPara.x -smap_grid ${MGRID}
+setenv OMP_NUM_THREADS ${NCPUS}
+head -1 clsm/mkCatchParam.log > smap_cmd
+chmod 755 smap_cmd
+./smap_cmd
 endif
 
 /bin/mv clsm  clsm.${IM}x${JM}
@@ -735,6 +759,15 @@ cd clsm.${IM}x${JM}
    /bin/mv green.dat green_clim_${RS}_DE.data
    /bin/mv lnfm.dat   lnfm_clim_${RS}_DE.data
    /bin/mv ndvi.dat   ndvi_clim_${RS}_DE.data
+   /bin/mv MODELFPARmean.dat MODELFPARmean_${RS}_DE.dat 
+   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RS}_DE.dat  
+   /bin/mv MODISFPARmean.dat MODISFPARmean_${RS}_DE.dat 
+   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RS}_DE.dat  
+   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RS}_DE.dat  
+   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RS}_DE.dat   
+   /bin/mv MODISVISmean.dat  MODISVISmean_${RS}_DE.dat  
+   /bin/mv MODISVISstd.dat   MODISVISstd_${RS}_DE.dat   
+
 
 cd ../
 

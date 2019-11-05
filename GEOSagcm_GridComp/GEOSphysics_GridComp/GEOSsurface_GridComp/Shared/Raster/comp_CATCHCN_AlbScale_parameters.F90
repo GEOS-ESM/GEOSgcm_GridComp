@@ -382,7 +382,7 @@ integer :: n_threads=1
       inquire(file='data/CATCH/CATCHCN_fPAR_Alb_stats2.nc4', exist=file_exists)
       if(.not. file_exists) call create_stat_file
 
-      open (99,file='clsm/comp_CATCHCN_AlbScale_parameters.log', form ='formatted', action='write', status= 'unknown')
+!      open (99,file='clsm/comp_CATCHCN_AlbScale_parameters.log', form ='formatted', action='write', status= 'unknown')
 
       STATUS = NF_OPEN ('data/CATCH/CATCHCN_fPAR_Alb_stats2.nc4', NF_WRITE,NCOutID) ; VERIFY_(STATUS)
 
@@ -411,9 +411,9 @@ integer :: n_threads=1
          write (YYYY ,'(i4.4)')  year
          open (10 + year - yearB, file = trim(InBCSDIR)//'MODIS6/'//YYYY//'//visdf.dat', form = 'unformatted', action = 'read')
          open (30 + year - yearB, file = trim(InBCSDIR)//'MODIS6/'//YYYY//'//nirdf.dat', form = 'unformatted', action = 'read')
-         WRITE (99,*)10 + year - yearB, YYYY//'//visdf.dat'  
-         WRITE (99,*)30 + year - yearB, YYYY//'//nirdf.dat'
-         WRITE (99,*) ' '
+!         WRITE (99,*)10 + year - yearB, YYYY//'//visdf.dat'  
+!         WRITE (99,*)30 + year - yearB, YYYY//'//nirdf.dat'
+!         WRITE (99,*) ' '
          WRITE (*,*)10 + year - yearB, YYYY//'//visdf.dat'  
          WRITE (*,*)30 + year - yearB, YYYY//'//nirdf.dat'
          WRITE (*,*) ' '
@@ -437,7 +437,7 @@ integer :: n_threads=1
          MODEL_fPAR  = 0.
 
          if(NT == NOCTAD) ND = 5
-         WRITE (99,*) NT, ND, yearB, yearE
+!         WRITE (99,*) NT, ND, yearB, yearE
          print *, NT, ND, yearB, yearE
 
          READ_YEARS : DO year = YearB, YearE
@@ -454,7 +454,7 @@ integer :: n_threads=1
                write (DD  , '(i2.2)') octad_time(year - yearB + 1)%day
 
                YYYYMMDD = YYYY//MM//DD
-               WRITE (99,*) trim(EXNAME)//'.ens_avg.ldas_tile_daily_out.'//YYYYMMDD//'.bin'
+!               WRITE (99,*) trim(EXNAME)//'.ens_avg.ldas_tile_daily_out.'//YYYYMMDD//'.bin'
                print *, trim(EXNAME)//'.ens_avg.ldas_tile_daily_out.'//YYYYMMDD//'.bin'
                open (60, file = trim(EXPDIR)//'cat/ens_avg/Y'//YYYY//'/M'//MM//'/'// &
                    trim(EXNAME)//'.ens_avg.ldas_tile_daily_out.'//YYYYMMDD//'.bin',  &
@@ -514,15 +514,15 @@ integer :: n_threads=1
          open (10 + year - yearB1, file = trim(InBCSDIR)//'MODIS6/'//YYYY//'//visdf.dat', form = 'unformatted', action = 'read')
          open (30 + year - yearB1, file = trim(InBCSDIR)//'MODIS6/'//YYYY//'//nirdf.dat', form = 'unformatted', action = 'read')
          open (50 + year - yearB1, file = trim(InBCSDIR)//'MODIS6/'//YYYY//'//fpar.dat', form = 'unformatted', action = 'read')
-         WRITE (99,*) "              "
-         WRITE (99,*) "MODIS FPAR"
-         WRITE (99,*) "=========="
-         WRITE (99,*) "              "
+!         WRITE (99,*) "              "
+!         WRITE (99,*) "MODIS FPAR"
+!         WRITE (99,*) "=========="
+!         WRITE (99,*) "              "
 
-         WRITE (99,*)10 + year - yearB1, YYYY//'//visdf.dat'  
-         WRITE (99,*)30 + year - yearB1, YYYY//'//nirdf.dat'
-         WRITE (99,*)50 + year - yearB1, YYYY//'//fpar.dat'
-         WRITE (99,*) ' '
+!         WRITE (99,*)10 + year - yearB1, YYYY//'//visdf.dat'  
+!         WRITE (99,*)30 + year - yearB1, YYYY//'//nirdf.dat'
+!         WRITE (99,*)50 + year - yearB1, YYYY//'//fpar.dat'
+!         WRITE (99,*) ' '
          WRITE (*,*)10 + year - yearB1, YYYY//'//visdf.dat'  
          WRITE (*,*)30 + year - yearB1, YYYY//'//nirdf.dat'
          WRITE (*,*)50 + year - yearB1, YYYY//'//fpar.dat'
@@ -551,7 +551,7 @@ integer :: n_threads=1
          MODEL_fPAR  = 0.
 
          if(NT == NOCTAD) ND = 5
-         WRITE (99,*) NT, ND, yearB1, yearE
+!         WRITE (99,*) NT, ND, yearB1, yearE
          print *, NT, ND, yearB1, yearE
          READ_YEARS2 : DO year = YearB1, YearE
 
