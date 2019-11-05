@@ -1534,6 +1534,10 @@ cat << _EOF1_ > clsm/README2
          Verdin, K (2013): Final Report - High Resolution Topographic Analysis for GMAOs 
 	    Catchment LSM, pp 21, available from Global Modeling and Assimilation Office, 
 	    610.1 NASA/GSFC.
+	    
+_EOF1_
+endif
+cat << _EOF2_ > clsm/README3
 
 =====================================================================================
 ====================================== PAGE  8 ======================================
@@ -1555,11 +1559,6 @@ cat << _EOF1_ > clsm/README2
                 tile_index, cnt_code, st_code, CNT_NAME, ST_NAME
   
    8.3 References https://gadm.org
-
-	    
-_EOF1_
-endif
-cat << _EOF2_ > clsm/README3
 
 =====================================================================================
 ====================================== PAGE A1 ======================================

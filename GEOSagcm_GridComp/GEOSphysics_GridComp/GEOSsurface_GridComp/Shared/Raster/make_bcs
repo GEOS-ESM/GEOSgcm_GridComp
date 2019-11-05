@@ -522,6 +522,7 @@ cd ../
                     CLM4.5_abm_peatf_gdp_hdm_fc \
   		    catch_params.nc4 \
 		    catchcn_params.nc4 \
+		    country_and_state_code.data \
                     clsm
                 cd  ../ 
 
@@ -676,6 +677,7 @@ cd ../
                     CLM4.5_abm_peatf_gdp_hdm_fc \
   		    catch_params.nc4 \
 		    catchcn_params.nc4 \
+		    country_and_state_code.data \
                     clsm
                 cd  ../ 
 
@@ -800,6 +802,7 @@ cd ../
                          CLM4.5_abm_peatf_gdp_hdm_fc \
   		         catch_params.nc4 \
 		         catchcn_params.nc4 \
+			 country_and_state_code.data \
                          clsm
                      cd  ../ 
 
