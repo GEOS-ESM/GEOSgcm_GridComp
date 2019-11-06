@@ -3180,7 +3180,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       else
          fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.dat'
       endif
-       open (11, file=trim(fname), form='formatted',status='old', &
+      open (11, file=trim(fname), form='formatted',status='old', &
               action = 'read')
       read (11,'(a)')fout           
       losfile =trim(c_data)//'/Woesten_SoilParam/loss_pd_top/loss_perday_rz1m_'
@@ -3417,7 +3417,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 !$OMP        taberr1,taberr2,normerr1,normerr2,         &
 !$OMP        taberr3,taberr4,normerr3,normerr4,         &
 !$OMP        gwatdep,gwan,grzexcn,gfrc,soil_class_com,  &
-!$OMP        n_threads, low_ind, upp_ind )              &
+!$OMP        n_threads, low_ind, upp_ind, process_peat )&
 !$OMP PRIVATE(k,li,ui,n,i,watdep,wan,rzexcn,frc,ST,AC,  &
 !$OMP COESKEW,profdep)
 
