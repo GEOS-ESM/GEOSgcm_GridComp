@@ -192,8 +192,9 @@ contains
     integer ::  DOSHLW
     real :: MGVERSION, DOGRAUPEL
     
-    character(len=ESMF_MAXSTR) :: FRIENDLIES_2MOM, FRIENDLIES_MG3, FRIENDLIES_GRAUPEL
-    character(len=ESMF_MAXSTR) :: FRIENDLIES_GFDL
+    character(len=ESMF_MAXSTR) :: FRIENDLIES_NCPL , FRIENDLIES_NCPI , &
+                                  FRIENDLIES_NRAIN, FRIENDLIES_NSNOW, FRIENDLIES_NGRAUPEL
+    character(len=ESMF_MAXSTR) :: FRIENDLIES_QRAIN, FRIENDLIES_QSNOW, FRIENDLIES_QGRAUPEL
 
     !=============================================================================
 
@@ -285,32 +286,34 @@ contains
     call ESMF_ConfigGetAttribute( CF, DOSHLW, Label="DOSHLW:",  default=0, RC=STATUS)
     
 
-       !call MAPL_GetResource(STATE, DOSHLW,             'DOSHLW:'  ,DEFAULT=0,        RC=STATUS)
-
-
-    FRIENDLIES_2MOM = trim(COMP_NAME)
-    FRIENDLIES_GRAUPEL = trim(COMP_NAME)
-    FRIENDLIES_MG3 =   trim(COMP_NAME)    
-    FRIENDLIES_GFDL =  trim(COMP_NAME)
-    
-    if(adjustl(CLDMICRO)=="2MOMENT") then    
+    FRIENDLIES_NCPI     = trim(COMP_NAME)
+    FRIENDLIES_NCPL     = trim(COMP_NAME)
+    FRIENDLIES_NRAIN    = trim(COMP_NAME)    
+    FRIENDLIES_NSNOW    = trim(COMP_NAME)
+    FRIENDLIES_NGRAUPEL = trim(COMP_NAME)
+    FRIENDLIES_QRAIN    = trim(COMP_NAME)
+    FRIENDLIES_QSNOW    = trim(COMP_NAME)
+    FRIENDLIES_QGRAUPEL = trim(COMP_NAME)
    
-       FRIENDLIES_2MOM = 'DYNAMICS:TURBULENCE'      
-      
+ 
+    if(adjustl(CLDMICRO)=="2MOMENT") then    
+      FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'      
+      FRIENDLIES_NCPL = 'DYNAMICS:TURBULENCE'
       if (MGVERSION .gt. 1.0) then          
-        FRIENDLIES_GFDL =  FRIENDLIES_2MOM
-        FRIENDLIES_MG3 =  FRIENDLIES_2MOM        
-        if (DOGRAUPEL .gt. 0.0) FRIENDLIES_GRAUPEL  =  FRIENDLIES_2MOM               
+        FRIENDLIES_NRAIN = 'DYNAMICS:TURBULENCE'
+        FRIENDLIES_QRAIN = 'DYNAMICS:TURBULENCE'
+        FRIENDLIES_NSNOW = 'DYNAMICS:TURBULENCE'
+        FRIENDLIES_QSNOW = 'DYNAMICS:TURBULENCE'
+        call ESMF_ConfigGetAttribute( CF, DOGRAUPEL, Label="DOGRAUPEL:",  default=0.0, RC=STATUS)
+        if (DOGRAUPEL .gt. 0.0) FRIENDLIES_NGRAUPEL = 'DYNAMICS:TURBULENCE'               
+        if (DOGRAUPEL .gt. 0.0) FRIENDLIES_QGRAUPEL = 'DYNAMICS:TURBULENCE'  
       end if 
     endif
 
-    
-
     if(adjustl(CLDMICRO)=="GFDL") then
-      FRIENDLIES_GFDL = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_GRAUPEL  = FRIENDLIES_GFDL
-    else
-      FRIENDLIES_GFDL = trim(COMP_NAME)
+      FRIENDLIES_QRAIN = 'DYNAMICS:TURBULENCE'
+      FRIENDLIES_QSNOW = 'DYNAMICS:TURBULENCE'
+      FRIENDLIES_QGRAUPEL = 'DYNAMICS:TURBULENCE'
     endif
 
     ! !INTERNAL STATE:
@@ -390,7 +393,7 @@ contains
          SHORT_NAME ='NCPL',                                       &
          LONG_NAME  ='particle_number_for_liquid_cloud',           &
          UNITS      ='kg-1',                                       &
-         FRIENDLYTO = trim(FRIENDLIES_2MOM),                       &
+         FRIENDLYTO = trim(FRIENDLIES_NCPL),                       &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,          &
          DEFAULT = 50.0e6 ,   RC=STATUS  )  
@@ -401,7 +404,7 @@ contains
          SHORT_NAME ='NCPI',                                       &
          LONG_NAME  ='particle_number_for_ice_cloud',              &
          UNITS      ='kg-1',                                       &
-         FRIENDLYTO = trim(FRIENDLIES_2MOM),                       &
+         FRIENDLYTO = trim(FRIENDLIES_NCPI),                       &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,        &
          DEFAULT = 1.0e3,   RC=STATUS  )  
@@ -413,7 +416,7 @@ contains
          SHORT_NAME ='NRAIN',                                       &
          LONG_NAME  ='particle_number_for_rain',           &
          UNITS      ='kg-1',                                       &
-         FRIENDLYTO = trim(FRIENDLIES_MG3),                       &
+         FRIENDLYTO = trim(FRIENDLIES_NRAIN),                       &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,          &
          DEFAULT = 0.0 ,   RC=STATUS  )  
@@ -424,7 +427,7 @@ contains
          SHORT_NAME ='NSNOW',                                       &
          LONG_NAME  ='particle_number_for_snow',              &
          UNITS      ='kg-1',                                       &
-         FRIENDLYTO = trim(FRIENDLIES_MG3),                       &
+         FRIENDLYTO = trim(FRIENDLIES_NSNOW),                       &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,        &
          DEFAULT = 0.0,   RC=STATUS  )  
@@ -435,7 +438,7 @@ contains
          SHORT_NAME ='NGRAUPEL',                                       &
          LONG_NAME  ='particle_number_for_graupel',              &
          UNITS      ='kg-1',                                       &
-         FRIENDLYTO = trim(FRIENDLIES_MG3),                       &
+         FRIENDLYTO = trim(FRIENDLIES_NGRAUPEL),                       &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,        &
          DEFAULT = 0.0,   RC=STATUS  )  
@@ -447,7 +450,7 @@ contains
          SHORT_NAME = 'QRAIN',                                     &
          LONG_NAME  = 'mass_fraction_of_rain',                     & 
          UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = trim(FRIENDLIES_GFDL),                       &
+         FRIENDLYTO = trim(FRIENDLIES_QRAIN),                       &
          default    = 0.0,                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -457,7 +460,7 @@ contains
          SHORT_NAME = 'QSNOW',                                     &
          LONG_NAME  = 'mass_fraction_of_snow',                     &
          UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = trim(FRIENDLIES_GFDL),                       &
+         FRIENDLYTO = trim(FRIENDLIES_QSNOW),                       &
          default    = 0.0,                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -467,7 +470,7 @@ contains
          SHORT_NAME = 'QGRAUPEL',                                  &
          LONG_NAME  = 'mass_fraction_of_graupel',                  &
          UNITS      = 'kg kg-1',                                   &
-         FRIENDLYTO = trim(FRIENDLIES_GRAUPEL),                       &
+         FRIENDLYTO = trim(FRIENDLIES_QGRAUPEL),                       &
          default    = 0.0,                                         &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
@@ -637,6 +640,17 @@ contains
     call MAPL_AddImportSpec(GC,                             &
          SHORT_NAME = 'FRLANDICE',                                    &
          LONG_NAME  = 'areal_landice_fraction',                       &
+         UNITS      = '1',                                     &
+         DIMS       = MAPL_DimsHorzOnly,                           &
+         VLOCATION  = MAPL_VLocationNone,                        &
+         AVERAGING_INTERVAL = AVRGNINT,                            &
+         REFRESH_INTERVAL   = RFRSHINT,                            &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                             &
+         SHORT_NAME = 'FRACI',                                    &
+         LONG_NAME  = 'areal_seaice_fraction',                       &
          UNITS      = '1',                                     &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,                        &
@@ -5122,7 +5136,7 @@ contains
       integer                         :: YEAR, MONTH, DAY, HR, SE, MN
       type (ESMF_Time)                :: CurrentTime
       real, pointer, dimension(:,:  ) :: LS_ARF, CN_ARF, AN_ARF, SC_ARF
-      real, pointer, dimension(:,:  ) :: PTYPE,FRZR,ICE,SNR,PRECU,PRELS,TS,SNOMAS,FRLANDICE,FRLAND,FROCEAN
+      real, pointer, dimension(:,:  ) :: PTYPE,FRZR,ICE,SNR,PRECU,PRELS,TS,SNOMAS,FRLANDICE,FRLAND,FROCEAN,FRACI
       real, pointer, dimension(:,:  ) :: IWP,LWP,CWP,TPW,CAPE,ZPBLCN,INHB,ZLCL,ZLFC,ZCBL,CCWP , KPBLIN, KPBLSC
       real, pointer, dimension(:,:  ) :: TVQ0,TVQ1,TVE0,TVE1,TVEX,DCPTE, TVQX2, TVQX1, CCNCOLUMN, NDCOLUMN, NCCOLUMN  !DONIF
       real, pointer, dimension(:,:,:,:) :: XHO, XHOI
@@ -5798,6 +5812,9 @@ contains
       real, dimension(IM,JM)      :: VMIP
       real, dimension(IM,JM,LM+1) :: ZET
 
+      ! Combined LAND+SEA ICE
+      real   , dimension(IM,JM) :: FRLNDSEAICE
+
       ! Convective Fraction
       integer, dimension(IM,JM)           :: L600
       real   , dimension(IM,JM)           :: RHat600, QV600, QVCBL
@@ -6153,6 +6170,7 @@ contains
       call MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , RC=STATUS); VERIFY_(STATUS)
       ! frland =0.0
       call MAPL_GetPointer(IMPORT, FROCEAN, 'FROCEAN' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, FRACI,   'FRACI'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TS,      'TS'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TROPP,   'TROPP'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, KPBLIN,  'KPBL'    , RC=STATUS); VERIFY_(STATUS)
@@ -7243,6 +7261,13 @@ contains
 
       RASPARAMS%CLDMICRO = 0.0
 
+      ! Combine LAND+SEA ice
+      DO J=1, JM
+        DO I=1, IM
+          FRLNDSEAICE(I,J)=MIN(1.0,MAX(FRLANDICE(I,J),FRACI(I,J)))
+        END DO
+      END DO
+
       ! Some export work prior to doing calculations
       !---------------------------------------------
       if(associated(CNV_MFC)) CNV_MFC(:,:,LM) = 0.
@@ -8230,10 +8255,6 @@ contains
         CNV_MFC = CNV_MFC + UMF_SC 
       end if
 
-      ! Option to add detrained condensate to large scale cloud 
-      ! instead of anvil.
-      !-------------------------------------------------------------
-      if (DOCLDMACRO/=0) then   
       !  Convert detrained water units before passing to cloud
       !---------------------------------------------------------------
         QLENT_SC = 0.
@@ -8254,7 +8275,6 @@ contains
       !-------------------------------------------------------------
         QLLS = QLLS + (QLSUB_SC+QLENT_SC)*DT_MOIST
         QILS = QILS + (QISUB_SC+QIENT_SC)*DT_MOIST
-      end if  ! DOCLDMACRO switch
 
       !  Calculate updraft core fraction from cumulus fraction.
       !  CUFRC is assumed in compute_uwshcu to be twice updraft frac
@@ -8391,7 +8411,7 @@ contains
           do J=1,JM
            do I=1,IM
             IFRC = ICE_FRACTION( TEMP(I,J,K), CNV_FRACTION(I,J), &
-                                 SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J) )
+                                 SNOMAS(I,J), FRLNDSEAICE(I,J), FRLAND(I,J) )
             TEND = CNV_DQLDT(I,J,K)*iMASS(I,J,K)*DT_MOIST
             QLCN(I,J,K) = QLCN(I,J,K) + (1.0-IFRC)*TEND
             QICN(I,J,K) = QICN(I,J,K) +      IFRC *TEND
@@ -8405,9 +8425,9 @@ contains
        ! add DeepCu Clouds to Convective
         CLCN = CLCN + CNV_MFD*iMASS*DT_MOIST
        ! add ShallowCu CL/QL/QI tendencies to Large-Scale
-        CLLS = CLLS +  MFD_SC*iMASS*DT_MOIST
-        QLLS = QLLS + (QLSUB_SC+QLDET_SC)*DT_MOIST
-        QILS = QILS + (QISUB_SC+QIDET_SC)*DT_MOIST
+        CLLS = CLLS +   MFD_SC*iMASS*DT_MOIST
+        QLLS = QLLS + QLDET_SC*iMASS*DT_MOIST
+        QILS = QILS + QIDET_SC*iMASS*DT_MOIST
        ! add ShallowCu rain/snow tendencies
         QRAIN = QRAIN + SHLW_PRC3*DT_MOIST
         QSNOW = QSNOW + SHLW_SNO3*DT_MOIST
@@ -8422,6 +8442,10 @@ contains
         end if
      ! Clean up clouds before microphysics
         CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN )
+     ! Meltfrz
+        CALL MELTFRZ_ALL ( IM, JM, LM, DT_MOIST, TEMP, Q1, &
+                           QLLS, QLCN, QILS, QICN, CNV_FRACTION, &
+                           SNOMAS, FRLNDSEAICE, FRLAND)
      ! Clean up any negative specific humidity
         CALL FILLQ2ZERO( Q1, MASS, FILLQ  )
         DTDT_macro=  (TEMP-DTDT_macro)/DT_MOIST
@@ -8576,9 +8600,9 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%TANHRHCRIT,     'TANHRHCRIT:',     DEFAULT= 1.0     )
       call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
       if (adjustl(CLDMICRO) =="GFDL") then
-        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
+        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.5     )
         call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
-        call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     )
+        call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     ) ! irrelevant
       else
         if( LM .le. 72 ) then
           call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
@@ -8611,31 +8635,44 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%MAXRHCRITLAND, 'MAXRHCRITLAND:', DEFAULT= 1.0 )
 
       if(adjustl(CLDMICRO) =="2MOMENT") then
-         call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 1.0   )
-         call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 0.5   )
-         call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT,     'TURNRHCRIT:',     DEFAULT= 884.0 )
+         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
+         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT= 15.e-6  )
+         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
+         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 1.0     )
+         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT= 5.e-6   )
+         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 150.e-6 )
+         call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 1.0     )
+         call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 0.5     )
+         call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT,     'TURNRHCRIT:',     DEFAULT= 884.0   )
+      elseif (adjustl(CLDMICRO) =="GFDL") then
+         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 0.75    )
+         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT= 15.e-6  )
+         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
+         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 1.0     )
+         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT= 5.e-6   )
+         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 150.e-6 )
+         call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 0.0     )
+         call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 1.0     ) ! irrelevant
+         call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT,     'TURNRHCRIT:',     DEFAULT= 750.0   ) ! irrelevant
       else
-         call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 0.0   )
-         call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 1.0   )
-         call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT,     'TURNRHCRIT:',     DEFAULT= 750.0 )
+         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
+         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT= 15.e-6  )
+         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
+         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 1.0     )
+         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT= 5.e-6   )
+         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 150.e-6 )
+         call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 0.0     )
+         call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 1.0     )
+         call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT,     'TURNRHCRIT:',     DEFAULT= 750.0   )
       end if
 
-     call MAPL_GetResource( STATE, CLOUD_CTL%SCLMFDFR,       'SCLMFDFR:',       DEFAULT= 1.0   )
-     call MAPL_GetResource( STATE, CLDPARAMS%SCLM_SHW,       'SCLM_SHW:',       DEFAULT= 1.0   )
-     
+      call MAPL_GetResource( STATE, CLOUD_CTL%SCLMFDFR,       'SCLMFDFR:',       DEFAULT= 1.0   )
+      call MAPL_GetResource( STATE, CLDPARAMS%SCLM_SHW,       'SCLM_SHW:',       DEFAULT= 1.0   )
      
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_ENVF,  'CNV_ENVF:',   DEFAULT= 1.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%ANV_ENVF,  'ANV_ENVF:',   DEFAULT= 1.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%SC_ENVF,    'SC_ENVF:',   DEFAULT= 1.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%LS_ENVF,    'LS_ENVF:',   DEFAULT= 1.0     )
-
-      call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI, 'FAC_RI:',     DEFAULT=   1.0   )
-      call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI, 'MIN_RI:',     DEFAULT=  15.e-6 )
-      call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI, 'MAX_RI:',     DEFAULT= 150.e-6 )
-
-      call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,    'MIN_RL:',     DEFAULT=   5.e-6 )
-      call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,    'MAX_RL:',     DEFAULT=  21.e-6 )
-      call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,    'FAC_RL:',     DEFAULT=   1.0   )
 
       call MAPL_GetResource( STATE, CLDPARAMS%FR_LS_WAT, 'FR_LS_WAT:',  DEFAULT= 1.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%FR_AN_WAT, 'FR_AN_WAT:',  DEFAULT= 1.0    )
@@ -8788,7 +8825,7 @@ contains
          do K=1,LM
           do J=1,JM
            do I=1,IM
-             CNV_FICE(I,J,K) = ICE_FRACTION( TEMP(I,J,K), CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J) )
+             CNV_FICE(I,J,K) = ICE_FRACTION( TEMP(I,J,K), CNV_FRACTION(I,J), SNOMAS(I,J), FRLNDSEAICE(I,J), FRLAND(I,J) )
            enddo
           enddo
          enddo
@@ -8805,7 +8842,7 @@ contains
               CNV_PLE           , &
               PK                , &
               SNOMAS            , &   ! <- surf
-              FRLANDICE         , &   ! <- surf
+              FRLNDSEAICE       , &   ! <- surf
               FRLAND            , &   ! <- surf
               KH                , &   ! <- turb
               CNV_MFD_X         , &   ! <- ras/gf
@@ -8986,6 +9023,10 @@ contains
          QILS = RAD_QI*(1.0-FQAi)
      ! Clean up clouds after microphysics
          CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN )
+     ! Meltfrz
+         CALL MELTFRZ_ALL ( IM, JM, LM, DT_MOIST, TEMP, Q1, &
+                            QLLS, QLCN, QILS, QICN, CNV_FRACTION, &
+                            SNOMAS, FRLNDSEAICE, FRLAND)
      ! Clean up any negative specific humidity
          CALL FILLQ2ZERO( Q1, MASS, FILLQ  )
      ! Convert back to PT
@@ -11365,7 +11406,11 @@ contains
       ! Compute DBZ radar reflectivity
       if (associated(DBZ) .OR. associated(DBZ_MAX)) then
          if(adjustl(CLDMICRO)=="2MOMENT") then
-           call CALCDBZ(DBZ3D,100*PLO,TEMP,Q1,QRN,QSN,QSN*0,IM,JM,LM,1,0,0)
+           IF (MGVERSION > 1.0) then
+             call CALCDBZ(DBZ3D,100*PLO,TEMP,Q1,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,0)
+           else
+             call CALCDBZ(DBZ3D,100*PLO,TEMP,Q1,QRN,QSN,QSN*0,IM,JM,LM,1,0,0)
+           endif
          elseif(adjustl(CLDMICRO)=="1MOMENT") then
            call CALCDBZ(DBZ3D,100*PLO,TEMP,Q1,QRN*RAD_CF,QSN*RAD_CF,QSN*RAD_CF,IM,JM,LM,1,0,0)
          else
@@ -13362,16 +13407,16 @@ contains
     RETURN_(ESMF_SUCCESS)
   end subroutine VertInterp
 
-   subroutine meltfrz_all  ( IM, JM, LM, Dt, TE, QV, QL, QI, &
-                             CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND)
+   subroutine MELTFRZ_ALL  ( IM, JM, LM, Dt, TE, QV, QLLS, QLCN, QILS, QICN, &
+                             CNV_FRACTION, SNOMAS, FRLNDSEAICE, FRLAND)
 
       integer,                   intent(in)    :: IM, JM, LM
-      real, dimension(IM,JM,LM), intent(inout) :: TE,QV,QL,QI
+      real, dimension(IM,JM,LM), intent(inout) :: TE,QV,QLLS,QLCN,QILS,QICN
       real,                      intent(in)    :: Dt
-      real, dimension(IM,JM),    intent(in)    :: CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
-      real                   :: fQi,dQil,DQmax, QLTOT, QITOT, FQA
+      real, dimension(IM,JM),    intent(in)    :: CNV_FRACTION, SNOMAS, FRLNDSEAICE, FRLAND
+      real                   :: fQi,dQil,DQmax, QLTOT, QITOT, FQAi, FQAl
       integer                :: i, j, k, n
-      integer, parameter     :: MaxIterations=1
+      integer, parameter     :: MaxIterations=10
       logical                :: converged
       real                   :: taufrz=450 ! timescale for freezing (seconds)
 
@@ -13379,42 +13424,60 @@ contains
         do j=1,JM
           do i=1,IM
 
+    ! store condensate fractions for later
+      FQAi = 0.0
+      QITOT = QILS(i,j,k)+QICN(i,j,k)
+      if (QITOT .gt. 0.0) then
+         FQAi = QICN(i,j,k)/QITOT
+      end if
+      FQAl = 0.0
+      QLTOT = QLLS(i,j,k)+QLCN(i,j,k)
+      if (QLTOT .gt. 0.0) then
+         FQAl = QLCN(i,j,k)/QLTOT
+      end if
+
       convergence: do n=1,MaxIterations
 
       ! melt ice using ICE_FRACTION
-      fQi = ice_fraction( TE(i,j,k), CNV_FRACTION(i,j), SNOMAS(i,j), FRLANDICE(i,j), FRLAND(i,j) )
+      fQi = ice_fraction( TE(i,j,k), CNV_FRACTION(i,j), SNOMAS(i,j), FRLNDSEAICE(i,j), FRLAND(i,j) )
       if ( fQi < 1.0 ) then
          DQmax = (TE(i,j,k)-MAPL_TICE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
-         dQil  = QI(i,j,k)*(1.0-fQi)
+         dQil  = QITOT*(1.0-fQi)
          dQil  = min(dQil, DQmax)
          dQil  = max(  0., dQil )
-         QL(i,j,k) = max(QL(i,j,k)+dQil, 0.)
-         QI(i,j,k) = max(QI(i,j,k)-dQil, 0.)
+         QLTOT = max(QLTOT+dQil, 0.)
+         QITOT = max(QITOT-dQil, 0.)
          TE(i,j,k) = TE(i,j,k) - (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
       end if
 
       ! freeze liquid using ICE_FRACTION 
-      fQi = ice_fraction( TE(i,j,k), CNV_FRACTION(i,j), SNOMAS(i,j), FRLANDICE(i,j), FRLAND(i,j) )
+      fQi = ice_fraction( TE(i,j,k), CNV_FRACTION(i,j), SNOMAS(i,j), FRLNDSEAICE(i,j), FRLAND(i,j) )
       if ( fQi > 0.0 ) then
          DQmax = (MAPL_TICE-TE(i,j,k))*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
-         dQil  = QL(i,j,k)*(1.0 - EXP( -Dt * fQi / taufrz ) )
+         dQil  = QLTOT*(1.0 - EXP( -Dt * fQi / taufrz ) )
          dQil  = min(dQil, DQmax)
          dQil  = max(  0., dQil )
-         QLTOT = max(QL(i,j,k)-dQil, 0.)
-         QITOT = max(QI(i,j,k)+dQil, 0.)
+         QLTOT = max(QLTOT-dQil, 0.)
+         QITOT = max(QITOT+dQil, 0.)
          TE(i,j,k) = TE(i,j,k) + (MAPL_ALHS-MAPL_ALHL)*dQil/MAPL_CP
       end if
 
-      converged = (ABS(dQil/QL(i,j,k)) <= 0.01) ! Converge at <=1% of liquid changing phase 
+      converged = (ABS(dQil/QLTOT) <= 0.01) ! Converge at <=1% of liquid changing phase 
       if (converged) exit convergence     
 
       end do convergence
+
+    ! Parse into new LS and CN partitions based on previous fractions (FQA)
+      QILS(i,j,k) = QITOT*(1.0-FQAi)
+      QICN(i,j,k) = QITOT*FQAi
+      QLLS(i,j,k) = QLTOT*(1.0-FQAl)
+      QLCN(i,j,k) = QLTOT*FQAl
 
           enddo
         enddo
       enddo
 
-   end subroutine meltfrz_all
+   end subroutine MELTFRZ_ALL
 
    function LDRADIUS(PL,TE,QC,NN,RHX,NNL,NNI,ITYPE) RESULT(RADIUS)
    

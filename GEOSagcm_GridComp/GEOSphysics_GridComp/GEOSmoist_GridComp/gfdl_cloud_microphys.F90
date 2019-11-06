@@ -209,7 +209,7 @@ module gfdl2_cloud_microphys_mod
     real :: tau_l2v = 300. !< cloud water to water vapor (evaporation)
     real :: tau_g2v = 900. !< graupel sublimation
     real :: tau_v2g = 21600. !< graupel deposition -- make it a slow process
-    
+    real :: tau_revp = 150. !< rain re-evaporation
     ! horizontal subgrid variability
     
     real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
@@ -309,7 +309,7 @@ module gfdl2_cloud_microphys_mod
         vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max,    &
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
         const_vs, const_vg, const_vr, use_ccn, rthresh, ccn_l, ccn_o, qc_crt, &
-        tau_g2v, tau_v2g, sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v,      &
+        tau_g2v, tau_v2g, tau_revp, sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v,      &
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs,           &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin, tice,        &
         rad_snow, rad_graupel, rad_rain, cld_min, use_ppm, mono_prof,         &
@@ -321,7 +321,7 @@ module gfdl2_cloud_microphys_mod
         vs_max, vg_max, vr_max, qs_mlt, qs0_crt, qi_gen, ql0_max, qi0_max,    &
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
         const_vs, const_vg, const_vr, use_ccn, rthresh, ccn_l, ccn_o, qc_crt, &
-        tau_g2v, tau_v2g, sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v,      &
+        tau_g2v, tau_v2g, tau_revp, sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v,      &
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs,           &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin, tice,        &
         rad_snow, rad_graupel, rad_rain, cld_min, use_ppm, mono_prof,         &
@@ -1292,7 +1292,7 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, den, denfac, 
     
     real :: dqv, qsat, dqsdt, evap, t2, qden, q_plus, q_minus, sink
     real :: qpz, dq, dqh, tin
-    
+    real :: fac_revp 
     integer :: k
     
     do k = ktop, kbot
@@ -1341,7 +1341,9 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, den, denfac, 
                 t2 = tin * tin
                 evap = crevp (1) * t2 * dq * (crevp (2) * sqrt (qden) + crevp (3) * &
                     exp (0.725 * log (qden))) / (crevp (4) * t2 + crevp (5) * qsat * den (k))
-                evap = min (qr (k), dt * evap, dqv / (1. + lcpk (k) * dqsdt))
+                fac_revp = 1. - exp (- dt / tau_revp)
+                evap = min (qr (k), dt * fac_revp * evap, dqv / (1. + lcpk (k) * dqsdt))
+              !!evap = min (qr (k), dt * evap, dqv / (1. + lcpk (k) * dqsdt))
                 ! -----------------------------------------------------------------------
                 ! alternative minimum evap in dry environmental air
                 ! sink = min (qr (k), dim (rh_rain * qsat, qv (k)) / (1. + lcpk (k) * dqsdt))
@@ -3237,15 +3239,12 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
     else
 #define GFDL_ICE_FALL
 #ifdef GFDL_ICE_FALL
-        ! -----------------------------------------------------------------------
-        ! use deng and mace (2008, grl), which gives smaller fall speed than hd90 formula
-        ! -----------------------------------------------------------------------
-        vi0 = vi_fac * ( lsc_icefall*(1.0-cnv_fraction) + anv_icefall*(cnv_fraction) )
+       !vi0 = ( lsc_icefall*(1.0-cnv_fraction) + anv_icefall*(cnv_fraction) )
         do k = ktop, kbot
-          ! vi1 = 0.01 * vi0
-          ! vi1 = 0.01 * MIN(vi0,SIN(0.5*pi*MIN(1.0,10000./pl(k)))) ! WMP: Ramp fall speed from surface to 100mb (10000Pa)
-          ! vi1 = 0.01 * MIN(vi0,MAX(MIN(1.0,cnv_fraction*10000.),SIN(0.5*pi*MIN(1.0,10000./pl(k))))) ! WMP: Ramp fall speed from surface to 100mb (10000Pa)
-            vi1 = 0.01 * MIN(vi0,SIN(0.5*pi*MIN(1.0,30000./pl(k)))) ! WMP: Ramp fall speed from surface to 300mb (30000Pa)
+          ! vi1 = 0.01 * vi_fac * vi0
+          ! vi1 = 0.01 * vi_fac * ( lsc_icefall*(1.0-cnv_fraction) + anv_icefall*(cnv_fraction) )
+          ! vi1 = 0.01 * MAX(vi0,(vi_fac*MIN(1.0,pl(k)/60000.)**2)) ! WMP: pressure dependent icefall speeds
+            vi1 = 0.01 * vi_fac * MAX(anv_icefall,SQRT(MIN(lsc_icefall,pl(k)/60000.)))
             if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
                 vti (k) = vf_min
             else
