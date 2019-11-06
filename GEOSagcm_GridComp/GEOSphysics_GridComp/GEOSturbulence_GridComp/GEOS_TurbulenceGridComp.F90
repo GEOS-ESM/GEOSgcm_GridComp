@@ -2782,7 +2782,7 @@ contains
                                             edmf_w3, edmf_wqt, edmf_qthl, & 
                                             edmf_whl, edmf_qt3, w3_canuto  
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
-   real, dimension(IM,JM,0:LM)          ::  awhl3, awqt3, awthv3 ! for EMDF contribution to SL3
+   real, dimension(IM,JM,0:LM)          ::  awhl3, awqt3, awthv3 ! for EDMF contribution to SL3
 
    real, dimension(:,:), pointer        :: z_conv_edmf
 
@@ -2827,6 +2827,8 @@ contains
      integer :: NumUp,ET
      real :: pwmin,pwmax,AlphaW,AlphaQT,AlphaTH,L0,L0fac,ENT0,EDfac
      real                            :: DOMF,DOMFCOND 
+     integer :: EDMF_IMPLICIT      ! 0: explicit, 1: implicit discretization of mass flux terms  
+     integer :: EDMF_DISCRETE_TYPE ! 0: centered, 1: upwind   discretization of mass flux terms 
      real,dimension(IM,JM) :: L02
      
 
@@ -3271,6 +3273,8 @@ contains
     call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0.,  RC=STATUS)
     call MAPL_GetResource (MAPL, DOMFCOND, "EDMF_COND:", default=0.,  RC=STATUS)
     call MAPL_GetResource (MAPL,EntWFac,"EDMF_ENTWFAC:",default=0.3333, RC=STATUS)  
+    call MAPL_GetResource (MAPL, EDMF_DISCRETE_TYPE, "EDMF_DISCRETE_TYPE:", default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_IMPLICIT, "EDMF_IMPLICIT:", default=1,  RC=STATUS)
 
 ! get ice ramp
    call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0   )
@@ -3304,7 +3308,7 @@ if (ETr .eq. 1.) then
 
     L02=L0
 
-    call EDMF(1,IM*JM,1,LM,DT,ZLE,PLE,NumUp,U,V,THL,THV,QT,USTAR,SH,EVAP,ZPBL,ice_ramp, &   
+    call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,NumUp,U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,ZPBL,ice_ramp, &   
              edmfdrya,edmfmoista, &
              edmfdryw,edmfmoistw, &
              edmfdryqt,edmfmoistqt, &
@@ -3316,7 +3320,8 @@ if (ETr .eq. 1.) then
              awhl3,awqt3,awthv3, & ! for SL3
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L02,ENT0,EDfac,EntWFac,buoyf,&
-             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras)
+             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
+             EDMF_DISCRETE_TYPE, EDMF_IMPLICIT)
     
     edmfZCLD=0.
   
@@ -3335,7 +3340,7 @@ if (ETr .eq. 1.) then
 ! negative L02 means no entrainment for the updrafts
      L02=-9.
  
-     call EDMF(1,IM*JM,1,LM,DT,ZLE,PLE,1,U,V,THL,THV,QT,USTAR,SH,EVAP,ZPBL,ice_ramp, &   
+     call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,1,U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,ZPBL,ice_ramp, &   
              edmfdrya,edmfmoista, &
              edmfdryw,edmfmoistw, &
              edmfdryqt,edmfmoistqt, &
@@ -3347,7 +3352,8 @@ if (ETr .eq. 1.) then
              awhl3,awqt3,awthv3, & ! for SL3
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L02,ENT0,EDfac,EntWFac,buoyf,&
-             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras)
+             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
+             EDMF_DISCRETE_TYPE, EDMF_IMPLICIT)
  
  
     ! compute the depth of the convective layer  
@@ -3381,7 +3387,7 @@ if (ETr .eq. 1.) then
  ! now the real call to the mass-flux
  !
  
-     call EDMF(1,IM*JM,1,LM,DT,ZLE,PLE,NumUp,U,V,THL,THV,QT,USTAR,SH,EVAP,ZPBL,ice_ramp, &   
+     call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,NumUp,U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,ZPBL,ice_ramp, &   
              edmfdrya,edmfmoista, &
              edmfdryw,edmfmoistw, &
              edmfdryqt,edmfmoistqt, &
@@ -3393,7 +3399,8 @@ if (ETr .eq. 1.) then
              awhl3,awqt3,awthv3, & ! for SL3
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L02,ENT0,EDfac,EntWFac,buoyf,&
-             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras)
+             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
+             EDMF_DISCRETE_TYPE, EDMF_IMPLICIT)
   
  else
     write (*,*) "Error: wrong EDMF_ET "
@@ -4394,40 +4401,60 @@ ENDIF
 
 ! print *,'rhoaw3',rhoaw3
 
-  AKSS(:,:,2:LM)=-KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM)-0.5*DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
-  AKQQ=AKSS
-  AKUU(:,:,2:LM)=-KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM)-0.5*DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
-
+  if (EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE_TYPE == 0) then
+     AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM) - 0.5*DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
+     AKUU(:,:,2:LM) = -KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM) - 0.5*DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
+  else
+     AKSS(:,:,2:LM) = -KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM)
+     AKUU(:,:,2:LM) = -KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM)
+  end if
+  AKQQ = AKSS
 
   CKSS(:,:,LM)=-CT*DMI(:,:,LM)
   CKQQ(:,:,LM)=-CQ*DMI(:,:,LM)
   CKUU(:,:,LM)=-CU*DMI(:,:,LM)
   
-  CKSS(:,:,1:LM-1)=-KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)+0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
-  CKQQ(:,:,1:LM-1)=CKSS(:,:,1:LM-1)
-  CKUU(:,:,1:LM-1)=-KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)+0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)  
+  if (EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE_TYPE == 0) then
+     CKSS(:,:,1:LM-1) = -KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1) + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
+     CKUU(:,:,1:LM-1) = -KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1) + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
+  else
+     CKSS(:,:,1:LM-1) = -KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)
+     CKUU(:,:,1:LM-1) = -KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)
+  end if
+  CKQQ(:,:,1:LM-1) = CKSS(:,:,1:LM-1)  
  
   BKSS = 1.0 - (CKSS+AKSS)
   BKQQ = 1.0 - (CKQQ+AKQQ)
   BKUU = 1.0 - (CKUU+AKUU)
 
 ! Add mass flux contribution
-    
-  BKSS(:,:,LM) = BKSS(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
-  BKQQ(:,:,LM) = BKQQ(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
-  BKUU(:,:,LM) = BKUU(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
+  
+  if (EDMF_IMPLICIT == 1) then
+     if (EDMF_DISCRETE_TYPE == 0) then
+        BKSS(:,:,LM) = BKSS(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
+        BKQQ(:,:,LM) = BKQQ(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
+        BKUU(:,:,LM) = BKUU(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
 
-  BKSS(:,:,1:LM-1) = BKSS(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1)-RHOAW3(:,:,0:LM-2))
-  BKQQ(:,:,1:LM-1) = BKQQ(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1)-RHOAW3(:,:,0:LM-2))
-  BKUU(:,:,1:LM-1) = BKUU(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1)-RHOAW3(:,:,0:LM-2))
+        BKSS(:,:,1:LM-1) = BKSS(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2))
+        BKQQ(:,:,1:LM-1) = BKQQ(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2))
+        BKUU(:,:,1:LM-1) = BKUU(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2))
+     else if (EDMF_DISCRETE_TYPE == 1) then
+        AKSS(:,:,2:LM) = AKSS(:,:,2:LM) - DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
+        AKQQ(:,:,2:LM) = AKQQ(:,:,2:LM) - DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
+        AKUU(:,:,2:LM) = AKUU(:,:,2:LM) - DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
 
+        BKSS(:,:,2:LM-1) = BKSS(:,:,2:LM-1) + DMI(:,:,2:LM-1)*RHOAW3(:,:,2:LM-1)
+        BKQQ(:,:,2:LM-1) = BKQQ(:,:,2:LM-1) + DMI(:,:,2:LM-1)*RHOAW3(:,:,2:LM-1)
+        BKUU(:,:,2:LM-1) = BKUU(:,:,2:LM-1) + DMI(:,:,2:LM-1)*RHOAW3(:,:,2:LM-1)
+     end if
+  end if
 
 ! Y-s ... these are rhs - mean value - surface flux 
 ! (these are added in the diffuse and vrtisolve)
 
-   YS(:,:,LM)=-DMI(:,:,LM)*AWS3(:,:,LM-1)*RHOE(:,:,LM-1)
-   YQV(:,:,LM)=-DMI(:,:,LM)*AWQV3(:,:,LM-1)*RHOE(:,:,LM-1)
-   YQL(:,:,LM)=-DMI(:,:,LM)*AWQL3(:,:,LM-1)*RHOE(:,:,LM-1)
+   YS(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWS3(:,:,LM-1)  + WS_CG(:,:,LM-1) )
+   YQV(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWQV3(:,:,LM-1) + WQV_CG(:,:,LM-1) )
+   YQL(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWQL3(:,:,LM-1) + WQL_CG(:,:,LM-1) )
    YQI(:,:,LM)=-DMI(:,:,LM)*AWQI3(:,:,LM-1)*RHOE(:,:,LM-1)
    YU(:,:,LM)=-DMI(:,:,LM)*AWU3(:,:,LM-1)*RHOE(:,:,LM-1)
    YV(:,:,LM)=-DMI(:,:,LM)*AWV3(:,:,LM-1)*RHOE(:,:,LM-1)
@@ -4436,9 +4463,12 @@ ENDIF
 !
 ! 2:LM -> 1:LM-1, 1:LM-1 -> 0:LM-2
 !
-   YS(:,:,1:LM-1)=DMI(:,:,1:LM-1)*(AWS3(:,:,1:LM-1)*RHOE(:,:,1:LM-1)-RHOE(:,:,0:LM-2)*AWS3(:,:,0:LM-2))
-   YQV(:,:,1:LM-1)=DMI(:,:,1:LM-1)*(AWQV3(:,:,1:LM-1)*RHOE(:,:,1:LM-1)-RHOE(:,:,0:LM-2)*AWQV3(:,:,0:LM-2))
-   YQL(:,:,1:LM-1)=DMI(:,:,1:LM-1)*(AWQL3(:,:,1:LM-1)*RHOE(:,:,1:LM-1)-RHOE(:,:,0:LM-2)*AWQL3(:,:,0:LM-2))
+   YS(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWS3(:,:,1:LM-1)  + WS_CG(:,:,1:LM-1) ) &
+                                      - RHOE(:,:,0:LM-2)*( AWS3(:,:,0:LM-2)  + WS_CG(:,:,0:LM-2) ))
+   YQV(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWQV3(:,:,1:LM-1) + WQV_CG(:,:,1:LM-1) ) &
+                                      - RHOE(:,:,0:LM-2)*( AWQV3(:,:,0:LM-2) + WQV_CG(:,:,0:LM-2) ))
+   YQL(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWQL3(:,:,1:LM-1) + WQL_CG(:,:,1:LM-1) ) &
+                                      - RHOE(:,:,0:LM-2)*( AWQL3(:,:,0:LM-2) + WQL_CG(:,:,0:LM-2) ))
    YQI(:,:,1:LM-1)=DMI(:,:,1:LM-1)*(AWQI3(:,:,1:LM-1)*RHOE(:,:,1:LM-1)-RHOE(:,:,0:LM-2)*AWQI3(:,:,0:LM-2))
    YU(:,:,1:LM-1)=DMI(:,:,1:LM-1)*(AWU3(:,:,1:LM-1)*RHOE(:,:,1:LM-1)-RHOE(:,:,0:LM-2)*AWU3(:,:,0:LM-2))
    YV(:,:,1:LM-1)=DMI(:,:,1:LM-1)*(AWV3(:,:,1:LM-1)*RHOE(:,:,1:LM-1)-RHOE(:,:,0:LM-2)*AWV3(:,:,0:LM-2))
@@ -6232,8 +6262,8 @@ enddo
 
 end subroutine ComputeZPBL
 
-SUBROUTINE EDMF(its,ite,kts,kte,dt,zw3,pw3,nup,&
-              u3,v3,thl3,thv3,qt3,&
+SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,nup,&
+              u3,v3,thl3,thv3,qt3,qv3,ql3,qi3,&
               ust2,wthl2,wqt2,pblh2,ice_ramp, &
             ! outputs - tendencies
            !  &dth,dqv,dqc,du,dv,&
@@ -6250,7 +6280,8 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zw3,pw3,nup,&
              awhl3,awqt3,awthv3, & ! for SL3
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L0,ENT0,EDfac,EntWFac,buoyf,&
-             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras)
+             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
+             edmf_discrete_type, edmf_implicit)
 
 
 
@@ -6286,11 +6317,12 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zw3,pw3,nup,&
 
 
        INTEGER, INTENT(IN) :: ITS,ITE,KTS,KTE,NUP
-       REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: U3,V3,THL3,QT3,THV3
+       REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: U3,V3,THL3,QT3,THV3,QV3,QL3,QI3,ZLO3
        ! zw .. heights of the updraft levels (edges of boxes)
       ! REAL,DIMENSION(ITS:ITE,KTS:KTE+1), INTENT(IN) :: ZW
        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(IN) :: ZW3,PW3
        REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2
+       INTEGER, INTENT(IN) :: edmf_discrete_type, edmf_implicit
        REAL, INTENT(IN)                     :: ICE_RAMP  
        REAL :: DT,EntWFac
        INTEGER,DIMENSION(ITS:ITE) :: iras,jras
@@ -6318,9 +6350,9 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zw3,pw3,nup,&
 
 ! internal flipped variables (GEOS5)
 
-       REAL,DIMENSION(KTS:KTE) :: U,V,THL,QT,THV
+       REAL,DIMENSION(KTS:KTE) :: U,V,THL,QT,THV,QV,QL,QI,ZLO
        REAL,DIMENSION(KTS-1:KTE)  :: ZW,P,THLI,QTI
-       REAL,DIMENSION(KTS-1:KTE) :: THVI ! for SL3               
+       REAL,DIMENSION(KTS-1:KTE) :: UI, VI, THVI, QVI, QLI, QII ! for SL3               
 
 ! internal surface cont
       REAL :: UST,WTHL,WQT,PBLH
@@ -6429,24 +6461,54 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
 !
 
   DO k=kts,kte
+      zlo(k)=zlo3(IH,kte-k+kts)
       u(k)=u3(IH,kte-k+kts)
       v(k)=v3(IH,kte-k+kts)
       thl(k)=thl3(IH,kte-k+kts)
       thv(k)=thv3(IH,kte-k+kts)
       qt(k)=qt3(IH,kte-k+kts)
+      qv(k)=qv3(IH,kte-k+kts)
+      ql(k)=ql3(IH,kte-k+kts)
+      qi(k)=qi3(IH,kte-k+kts)
       if (k<kte) then
-        thli(k) =0.5*(thl3(IH,kte-k+kts)+thl3(IH,kte-k+kts-1))
-        qti(k)  =0.5*(qt3(IH,kte-k+kts)+qt3(IH,kte-k+kts-1))
+         if (edmf_discrete_type == 0) then
+            ui(k)   = 0.5*( u3(IH,kte-k+kts)   + u3(IH,kte-k+kts-1) )
+            vi(k)   = 0.5*( v3(IH,kte-k+kts)   + v3(IH,kte-k+kts-1) )
+            thli(k) = 0.5*( thl3(IH,kte-k+kts) + thl3(IH,kte-k+kts-1) )
+            qti(k)  = 0.5*( qt3(IH,kte-k+kts)  + qt3(IH,kte-k+kts-1) )
+            qvi(k)  = 0.5*( qv3(IH,kte-k+kts)  + qv3(IH,kte-k+kts-1) )
+            qli(k)  = 0.5*( ql3(IH,kte-k+kts)  + ql3(IH,kte-k+kts-1) )
+            qii(k)  = 0.5*( qi3(IH,kte-k+kts)  + qi3(IH,kte-k+kts-1) )
+            thvi(k) = 0.5*( thv3(IH,kte-k+kts) + thv3(IH,kte-k+kts-1) )
+         else
+            ui(k)   = u3(IH,kte-k+kts-1)
+            vi(k)   = v3(IH,kte-k+kts-1)
+            thli(k) = thl3(IH,kte-k+kts-1)
+            qti(k)  = qt3(IH,kte-k+kts-1)
+            qvi(k)  = qv3(IH,kte-k+kts-1)
+            qli(k)  = ql3(IH,kte-k+kts-1)
+            qii(k)  = qi3(IH,kte-k+kts-1)
+            thvi(k) = thv3(IH,kte-k+kts-1)
+         end if
 !        thli(k) = 0.5*( thl(k) + thl(k+1) )  ! avg neighboring levels
 !        qti(k)  = 0.5*( qt(k)  + qt(k+1)  )
-        thvi(k) = 0.5*( thv3(IH,kte-k+kts) + thv3(IH,kte-k+kts-1) )
       end if
   ENDDO
+  ui(kte)     = u(kte)
+  vi(kte)     = v(kte)
   thli(kte)   = thl(kte)
   qti(kte)    = qt(kte)
+  qvi(kte)    = qv(kte)
+  qli(kte)    = ql(kte)
+  qii(kte)    = qi(kte)
   thvi(kte)   = thvi(kte)
+  ui(kts-1)   = u(kts)
+  vi(kts-1)   = v(kts)
   thli(kts-1) = thl(kts)  ! approximate
   qti(kts-1)  = qt(kts)
+  qvi(kts-1)  = qv(kts)
+  qli(kts-1)  = ql(kts)
+  qii(kts-1)  = qi(kts)
   thvi(kts-1) = thvi(kts)
 
 DO k=kts-1,kte
@@ -6761,18 +6823,29 @@ end if
           s_aqt2(K)=s_aqt2(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPQT(K,I)-QTI(K))
           s_aqt3(K)=s_aqt3(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))**3
           s_aqthl(K)=s_aqthl(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPTHL(K,i)-THLI(K))
-          stmp=exfh(k)*mapl_cp*UPTHL(K,i)+UPQI(K,I)*mapl_alhs+UPQL(K,i)*mapl_alhl+mapl_grav*zw(k)
+          if (edmf_implicit == 1) then
+             stmp=exfh(k)*mapl_cp*UPTHL(K,i)+UPQI(K,I)*mapl_alhs+UPQL(K,i)*mapl_alhl+mapl_grav*zw(k)
+          else
+             stmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl + mapl_grav*zw(k) - exf(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl - mapl_grav*zlo(K)
+          end if
           ltm=exfh(k)*(UPTHL(K,i)-THLI(K)) !+mapl_grav*zw(k)/mapl_cp
           s_aws(k)=s_aws(K)+UPA(K,i)*UPW(K,i)*stmp
           s_ahl2(k)=s_ahl2(K)+UPA(K,i)*ltm*ltm
           s_awhl(k)=s_awhl(K)+UPA(K,i)*UPW(K,I)*ltm
-          s_awqv(k)=s_awqv(K)+UPA(K,i)*UPW(K,I)*(UPQT(K,I)-UPQI(K,I)-UPQL(K,I))
-          s_awql(k)=s_awql(K)+UPA(K,i)*UPW(K,I)*UPQL(K,I)
-          s_awqi(k)=s_awqi(K)+UPA(K,i)*UPW(K,I)*UPQI(K,I)
-          s_awqt(k)=s_awqt(K)+UPA(K,i)*UPW(K,I)*(UPQT(K,I)-QTI(K))
-          s_awu(k)=s_awu(K)+UPA(K,i)*UPW(K,I)*UPU(K,I)
-          s_awv(k)=s_awv(K)+UPA(K,i)*UPW(K,I)*UPV(K,I)
-
+          if (edmf_implicit == 1) then
+             s_awu(k)  = s_awu(K)  + UPA(K,i)*UPW(K,I)*UPU(K,I)
+             s_awv(k)  = s_awv(K)  + UPA(K,i)*UPW(K,I)*UPV(K,I)
+             s_awqv(k) = s_awqv(K) + UPA(K,i)*UPW(K,I)*(UPQT(K,I) - UPQI(K,I) - UPQL(K,I))
+             s_awql(k) = s_awql(K) + UPA(K,i)*UPW(K,I)*UPQL(K,I)
+             s_awqi(k) = s_awqi(K) + UPA(K,i)*UPW(K,I)*UPQI(K,I)
+          else
+             s_awu(k)  = s_awu(K)  + UPA(K,i)*UPW(K,I)*(UPU(K,I) - UI(K))
+             s_awv(k)  = s_awv(K)  + UPA(K,i)*UPW(K,I)*(UPV(K,I) - VI(K))
+             s_awqv(k) = s_awqv(K) + UPA(K,i)*UPW(K,I)*(UPQT(K,I) - UPQI(K,I) - UPQL(K,I) - QVI(K))
+             s_awql(k) = s_awql(K) + UPA(K,i)*UPW(K,I)*(UPQL(K,I) - QLI(K))
+             s_awqi(k) = s_awqi(K) + UPA(K,i)*UPW(K,I)*(UPQI(K,I) - QII(K))
+          end if
+          s_awqt(k)  = s_awqt(K)  + UPA(K,i)*UPW(K,I)*(UPQT(K,I) - QTI(K))
           s_awthv(K) = s_awthv(K) + UPA(K,I)*UPW(K,I)*(UPTHV(K,I) - THVI(K))
          ENDDO  
    
