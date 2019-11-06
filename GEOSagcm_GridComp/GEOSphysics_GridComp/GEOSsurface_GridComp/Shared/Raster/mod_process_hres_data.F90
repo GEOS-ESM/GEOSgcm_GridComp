@@ -4202,8 +4202,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	allocate(btau_2cm(1:n_SoilClasses))
         allocate(a_wpsurf(1:n_SoilClasses))
         allocate(a_porosurf(1:n_SoilClasses))
-
-      fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.peatmap'
+      if(process_peat) then 
+         fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.peatmap'
+      else
+         fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.dat'
+      endif
       table_map = 0
       open (11, file=trim(fname), form='formatted',status='old', &
            action = 'read')
@@ -4580,9 +4583,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          fac_surf = soil_class_top(n)
 	 fac      = soil_class_com(n)
 
-         if(pmap (n) > pmap_thresh) then
-            fac_surf = 253
-            fac      = 253
+         if(process_peat) then 
+            if(pmap (n) > pmap_thresh) then
+               fac_surf = 253
+               fac      = 253
+            endif
          endif
 
          wp_wetness = a_wp(fac) /a_poros(fac)

@@ -27,6 +27,7 @@ module rmTinyCatchParaMod
   include 'netcdf.inc'	
   logical :: preserve_soiltype = .false.
   character*100 :: c_data = 'data/CATCH/'
+  logical :: process_peat = .false.
 
   private
 
@@ -39,7 +40,7 @@ module rmTinyCatchParaMod
   public mineral_perc, process_gswp2_veg,center_pix, soil_class
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats, c_data	
-  public :: ascat_r0, jpl_canoph,  NC_VarID 
+  public :: ascat_r0, jpl_canoph,  NC_VarID,  process_peat 
   logical, parameter, public :: jpl_height = .false.
 
 type :: mineral_perc
@@ -3173,9 +3174,14 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   !$OMP ENDPARALLEL
       
 !c-------------------------------------------------------------------------
-      fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.peatmap' 
-      open (11, file=trim(fname), form='formatted',status='old', &
-           action = 'read')
+
+      if(process_peat) then 
+         fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.peatmap' 
+      else
+         fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.dat'
+      endif
+       open (11, file=trim(fname), form='formatted',status='old', &
+              action = 'read')
       read (11,'(a)')fout           
       losfile =trim(c_data)//'/Woesten_SoilParam/loss_pd_top/loss_perday_rz1m_'
 
@@ -3193,8 +3199,13 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          write (fout,'(i2.2,i2.2,i4.4)')nint(a_sand(n)),nint(a_clay(n)),nint(100*a_oc(n))
 
          if(n == n_SoilClasses) then 
-            open (120,file=trim(losfile)//trim(fout)//'.peat',  &
+            if(process_peat) then
+               open (120,file=trim(losfile)//trim(fout)//'.peat',  &
+                    form='formatted',status='old')
+            else
+               open (120,file=trim(losfile)//trim(fout),  &
                  form='formatted',status='old')
+            endif
          else
             open (120,file=trim(losfile)//trim(fout),  &
                  form='formatted',status='old')
@@ -3457,26 +3468,27 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       if(POROS(n) >= 0.8) then
 
          ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
-
-         ars1(n) = -7.9514018e-03
-         ars2(n) = 6.2297356e-02 
-         ars3(n) = 1.9187240e-03                   
-         ara1(n) = 8.9551220e+00 
-         ara2(n) = 9.8149664e+02 
-         ara3(n) = 8.9551220e+00 
-         ara4(n) = 9.8149664e+02 
-         arw1(n) = 9.9466055e-03 
-         arw2(n) = 1.0881960e-02 
-         arw3(n) = 1.5309287e-05 
-         arw4(n) = 1.0000000e-04 
-         
-         bf1(n) = 4.6088086e+02  
-         bf2(n) = 1.4237401e-01  
-         bf3(n) = 6.9803000e+00
-
+         if(process_peat) then
+            ars1(n) = -7.9514018e-03
+            ars2(n) = 6.2297356e-02 
+            ars3(n) = 1.9187240e-03                   
+            ara1(n) = 8.9551220e+00 
+            ara2(n) = 9.8149664e+02 
+            ara3(n) = 8.9551220e+00 
+            ara4(n) = 9.8149664e+02 
+            arw1(n) = 9.9466055e-03 
+            arw2(n) = 1.0881960e-02 
+            arw3(n) = 1.5309287e-05 
+            arw4(n) = 1.0000000e-04 
+            
+            bf1(n) = 4.6088086e+02  
+            bf2(n) = 1.4237401e-01  
+            bf3(n) = 6.9803000e+00
+            
+         endif
       endif
-     END DO
-     END DO
+   END DO
+   END DO
           !$OMP ENDPARALLELDO
 
      CF1 =0

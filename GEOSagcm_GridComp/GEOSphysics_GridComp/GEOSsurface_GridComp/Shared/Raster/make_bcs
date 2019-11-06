@@ -632,14 +632,14 @@ cd clsm.C${NC}
    /bin/mv green.dat green_clim_${RC}.data
    /bin/mv lnfm.dat   lnfm_clim_${RC}.data
    /bin/mv ndvi.dat   ndvi_clim_${RC}.data
-   /bin/mv MODELFPARmean.dat MODELFPARmean_${RS}.dat 
-   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RS}.dat  
-   /bin/mv MODISFPARmean.dat MODISFPARmean_${RS}.dat 
-   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RS}.dat  
-   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RS}.dat  
-   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RS}.dat   
-   /bin/mv MODISVISmean.dat  MODISVISmean_${RS}.dat  
-   /bin/mv MODISVISstd.dat   MODISVISstd_${RS}.dat   
+   /bin/mv MODELFPARmean.dat MODELFPARmean_${RC}.dat 
+   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RC}.dat  
+   /bin/mv MODISFPARmean.dat MODISFPARmean_${RC}.dat 
+   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RC}.dat  
+   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RC}.dat  
+   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RC}.dat   
+   /bin/mv MODISVISmean.dat  MODISVISmean_${RC}.dat  
+   /bin/mv MODISVISstd.dat   MODISVISstd_${RC}.dat   
 
 /bin/rm -f sedfile
 cat > sedfile << EOF
