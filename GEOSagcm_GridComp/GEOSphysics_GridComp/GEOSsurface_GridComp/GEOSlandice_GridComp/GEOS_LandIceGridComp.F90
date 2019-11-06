@@ -88,7 +88,7 @@ module GEOS_LandiceGridCompMod
 
   integer,    parameter :: TAR_PE     = 43
   integer,    parameter :: TAR_TILE   = 1
-  integer               :: DO_GOSWIM
+  integer               :: DO_GOSWIM, AEROSOL_DEPOSITION, N_CONST_LANDICE4SNWALB
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -141,6 +141,8 @@ module GEOS_LandiceGridCompMod
 !=============================================================================
 
     type(MAPL_MetaComp), pointer            :: MAPL
+    character(len=ESMF_MAXSTR)              :: LANDRC
+    type (ESMF_Config)                      :: LCF
 
 ! Begin...
 
@@ -164,8 +166,18 @@ module GEOS_LandiceGridCompMod
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL,DO_GOSWIM,Label="N_CONST_LANDICE4SNWALB:",default=0,RC=STATUS)
-    VERIFY_(STATUS)
+
+    call MAPL_GetResource (MAPL, LANDRC, label = 'LANDRC:', default = 'GEOS_LandGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    LCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(LCF,LANDRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LANDICE4SNWALB:', value=DO_GOSWIM,   DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='AEROSOL_DEPOSITION:'  , value=AEROSOL_DEPOSITION  , DEFAULT=0, __RC__ ) 
+
+    ! GOSWIM ANOW_ALBEDO 
+    ! 0 : GOSWIM snow albedo scheme is turned off
+    ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme
+    call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LANDICE4SNWALB:'  , value=N_CONST_LANDICE4SNWALB , DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigDestroy      (LCF, __RC__)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -2458,22 +2470,6 @@ contains
 !----------
 
    IAm =  trim(COMP_NAME) // "LANDICECORE"
-
-!----- GOSWIM related setting in AGCM.rc -----
-! Get parameters to zero the deposition rate 
-! 0: Use all GOCART aerosol values, 1: turn OFF everythying, 
-! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
-! __________________________________________
-
-   call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", DEFAULT=0, RC=STATUS)
-   VERIFY_(STATUS)
-
-! GOSWIM ANOW_ALBEDO 
-! 0 : GOSWIM snow albedo scheme is turned off
-! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme
- 
-   call MAPL_GetResource ( MAPL, N_CONST_LANDICE4SNWALB, Label="N_CONST_LANDICE4SNWALB:", DEFAULT=0, RC=STATUS)
-   VERIFY_(STATUS)
 
 ! Pointers to inputs
 !-------------------
