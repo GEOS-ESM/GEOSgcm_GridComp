@@ -225,8 +225,8 @@ if( $orslv == T1 ) then
     @ jmo = 65    # MOM Tripolar-Ocean
 endif
 if( $orslv == T2 ) then
-    @ imo = 0360  # MOM Tripolar-Ocean
-    @ jmo = 0200  # MOM Tripolar-Ocean
+    @ imo = 360  # MOM Tripolar-Ocean
+    @ jmo = 200  # MOM Tripolar-Ocean
 endif
 if( $orslv == T3 ) then
     @ imo = 720   # MOM Tripolar-Ocean
@@ -243,7 +243,7 @@ if( $orslv == NL1 | $orslv == NL2 | $orslv == NL3 | $orslv == O1 | $orslv == O2|
     set     POLENAME = PE
 endif
 if( $orslv == T1 | $orslv == T2 | $orslv == T3 | $orslv == T4 ) then
-    set TRIPOL_OCEAN = TRUE1
+    set TRIPOL_OCEAN = TRUE
     set     DATENAME = TM
     set     POLENAME = TM
 endif
@@ -457,9 +457,10 @@ if( $LATLON_OCEAN == TRUE ) then
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g DC${IM}xPC${JM}_DE${IMO}xPE${JMO}-Pfafstetter
 endif
 if( $TRIPOL_OCEAN == TRUE ) then
-    bin/mkMOMAquaRaster.x -x $NX -y $NY  data/MOM/${IMO}x${JMO}/grid_spec.nc > /dev/null
-    bin/CombineRasters.x -f 0 -t ${NT} DE${IMO}xPE${JMO} Pfafstetter >/dev/null
-    bin/CombineRasters.x -t ${NT} DE${IMO}xPE${JMO} DE${IMO}xPE${JMO}-Pfafstetter
+    bin/mkMOMAquaRaster.x -x $NX -y $NY  data/MOM/${imo}x${jmo}/grid_spec.nc > /dev/null
+    bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
+    bin/CombineRasters.x -t ${NT} DC${IM}xPC${JM} ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    bin/mk_runofftbl.x DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g DE${IMO}xPE${JMO}_DE${IMO}xPE${JMO}-Pfafstetter
     setenv OMP_NUM_THREADS ${NCPUS}
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g DE${IMO}xPE${JMO}_DE${IMO}xPE${JMO}-Pfafstetter
@@ -604,12 +605,13 @@ if( $LATLON_OCEAN == TRUE ) then
 endif
 
 if( $TRIPOL_OCEAN == TRUE ) then
-    bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/MOM/${IMO}x${JMO}/grid_spec.nc > /dev/null
-    bin/CombineRasters.x -f 0 -t ${NT} CF${NC}x6C Pfafstetter >/dev/null
-    bin/CombineRasters.x -t ${NT} CF${NC}x6C CF${NC}x6C-Pfafstetter
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter
+    bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/MOM/${imo}x${jmo}/grid_spec.nc > /dev/null
+    bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
+    bin/CombineRasters.x -t ${NT} CF${NC}x6C ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    bin/mk_runofftbl.x CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
     setenv OMP_NUM_THREADS ${NCPUS}
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
 endif
 
 if( $CUBED_SPHERE_OCEAN == TRUE ) then
@@ -642,6 +644,15 @@ cd clsm.C${NC}
    /bin/mv MODISVISstd.dat   MODISVISstd_${RC}.dat   
 
 /bin/rm -f sedfile
+if( $CUBED_SPHERE_OCEAN == TRUE ) then
+cat > sedfile << EOF
+s/${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter/OC${nc}x${nc6}-CF/g
+s/CF${NC}x6C/PE${nc}x${nc6}-CF/g
+EOF
+sed -f sedfile       CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til > tile.file
+/bin/mv -f tile.file CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til
+/bin/rm -f sedfile
+else
 cat > sedfile << EOF
 s/CF${NC}x6C/PE${nc}x${nc6}-CF/g
 s/${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter/PE${imo}x${jmo}-${DATENAME}/g
@@ -649,6 +660,7 @@ EOF
 sed -f sedfile       CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til > tile.file
 /bin/mv -f tile.file CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til
 /bin/rm -f sedfile
+endif
 
 cd ../
 
