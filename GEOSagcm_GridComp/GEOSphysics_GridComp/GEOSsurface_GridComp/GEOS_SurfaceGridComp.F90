@@ -195,7 +195,7 @@ module GEOS_SurfaceGridCompMod
     type (SURF_wrap)                        :: WRAP
     type (MAPL_MetaComp    ), pointer       :: MAPL
     INTEGER                                 :: LSM_CHOICE, RUN_ROUTE
-    INTEGER                                 :: catchswim,landicegoswim
+    INTEGER                                 :: catchswim,landicegoswim, MODIS_DVG
 
 !=============================================================================
 
@@ -230,7 +230,7 @@ module GEOS_SurfaceGridCompMod
     else
        do_goswim=.false.
     endif
-    
+    call MAPL_GetResource ( MAPL, MODIS_DVG,        Label="MODIS_DVG:",DEFAULT=0, RC=STATUS)
 
 ! Set the Run entry point
 ! -----------------------
@@ -631,6 +631,37 @@ module GEOS_SurfaceGridCompMod
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
+
+    IF (MODIS_DVG == 1) THEN 
+
+       call MAPL_AddImportSpec(gc, &
+            short_name = "MODIS_LAI", &
+            LONG_NAME  = 'MODIS Leaf Area Index',                     &
+            UNITS      = '1',                                         &
+            RESTART    = MAPL_RestartSkip,                            &
+            DIMS       = MAPL_DimsHorzOnly,                           &
+            VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+       VERIFY_(STATUS)
+    
+       call MAPL_AddImportSpec(gc, &
+            short_name = "MODIS_VISDF",                               &
+            LONG_NAME  = 'MODIS albedo visible diffuse',              &
+            UNITS      = '1',                                         &
+            RESTART    = MAPL_RestartSkip,                            &
+            DIMS       = MAPL_DimsHorzOnly,                           &
+            VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+       VERIFY_(STATUS)
+
+       call MAPL_AddImportSpec(gc, &
+            short_name = "MODIS_NIRDF",                               &
+            LONG_NAME  = 'MODIS albedo near infrared diffuse',        &
+            UNITS      = '1',                                         &
+            RESTART    = MAPL_RestartSkip,                            &
+            DIMS       = MAPL_DimsHorzOnly,                           &
+            VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+       VERIFY_(STATUS)       
+
+    ENDIF
 
 !  !EXPORT STATE:
 
@@ -4793,6 +4824,9 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:,:) :: FSWBAND   => NULL()
     real, pointer, dimension(:,:,:) :: FSWBANDNA => NULL()
     real, pointer, dimension(:,:)   :: DTSDT     => NULL()
+    real, pointer, dimension(:,:)   :: MODIS_LAI => NULL()
+    real, pointer, dimension(:,:)   :: MODIS_VISDF => NULL()
+    real, pointer, dimension(:,:)   :: MODIS_NIRDF => NULL()
 
 ! Pointers to internals
 
@@ -5099,6 +5133,9 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: FSWBANDTILE   => NULL()
     real, pointer, dimension(:,:) :: FSWBANDNATILE => NULL()
     real, pointer, dimension(:)   :: DTSDTTILE     => NULL()
+    real, pointer, dimension(:)   :: MODIS_LAITILE   => NULL()
+    real, pointer, dimension(:)   :: MODIS_VISDFTILE => NULL()
+    real, pointer, dimension(:)   :: MODIS_NIRDFTILE => NULL()
 
 ! These are tile versions of internals
 
@@ -5351,7 +5388,7 @@ module GEOS_SurfaceGridCompMod
 
     integer  :: USE_PP_TAPER
     real     :: PP_TAPER_LAT_LOW,PP_TAPER_LAT_HIGH, FACT
-    INTEGER                                 :: LSM_CHOICE, RUN_ROUTE
+    INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, MODIS_DVG
     real, allocatable :: PCSCALE(:,:)
     real, allocatable :: PRECSUM(:,:)
     character(len=ESMF_MAXPATHLEN) :: SolCycFileName
@@ -5417,6 +5454,8 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, RUN_ROUTE, Label="RUN_ROUTE:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, MODIS_DVG, Label="MODIS_DVG:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Pointers to gridded imports
 !----------------------------
@@ -5440,6 +5479,12 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(IMPORT  , ALW     , 'ALW'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , BLW     , 'BLW'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , DTSDT   , 'DTSDT' ,   RC=STATUS); VERIFY_(STATUS)
+
+    IF (MODIS_DVG == 1) THEN
+       call MAPL_GetPointer(IMPORT  , MODIS_LAI   , 'MODIS_LAI'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT  , MODIS_VISDF , 'MODIS_VISDF', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(IMPORT  , MODIS_NIRDF , 'MODIS_NIRDF', RC=STATUS); VERIFY_(STATUS)
+    ENDIF
 
 ! Horizontal dimensions needed to allocate local arrays
 !------------------------------------------------------
@@ -6381,6 +6426,13 @@ module GEOS_SurfaceGridCompMod
     allocate(  DTSDTTILE(NT), STAT=STATUS)
     VERIFY_(STATUS)
 
+    IF (MODIS_DVG == 1) THEN
+       allocate(MODIS_LAITILE   (NT), STAT=STATUS) ; VERIFY_(STATUS)
+       allocate(MODIS_VISDFTILE (NT), STAT=STATUS) ; VERIFY_(STATUS)
+       allocate(MODIS_NIRDFTILE (NT), STAT=STATUS) ; VERIFY_(STATUS)
+    ENDIF
+
+
 ! Transform imports to the tiles
 !-------------------------------
 
@@ -6408,6 +6460,12 @@ module GEOS_SurfaceGridCompMod
     call MAPL_LocStreamTransform( LOCSTREAM, ALWTILE  , ALW,     RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM, BLWTILE  , BLW,     RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM, DTSDTTILE, DTSDT,   RC=STATUS); VERIFY_(STATUS)
+
+    IF (MODIS_DVG == 1) THEN 
+       call MAPL_LocStreamTransform( LOCSTREAM, MODIS_LAITILE,   MODIS_LAI  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_LocStreamTransform( LOCSTREAM, MODIS_VISDFTILE, MODIS_VISDF, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_LocStreamTransform( LOCSTREAM, MODIS_NIRDFTILE, MODIS_NIRDF, RC=STATUS); VERIFY_(STATUS)
+    ENDIF
 
     if (DO_GOSWIM) then
        do K = 1, NUM_DUDP
@@ -7845,7 +7903,10 @@ module GEOS_SurfaceGridCompMod
     if(associated(  FSWBANDTILE)) deallocate(  FSWBANDTILE)
     if(associated(FSWBANDNATILE)) deallocate(FSWBANDNATILE)
 
-    if(associated(     DTSDTTILE)) deallocate(      DTSDTTILE)
+    if(associated( DTSDTTILE))       deallocate( DTSDTTILE)
+    if(associated( MODIS_LAITILE))   deallocate( MODIS_LAITILE)
+    if(associated( MODIS_VISDFTILE)) deallocate( MODIS_VISDFTILE)
+    if(associated( MODIS_NIRDFTILE)) deallocate( MODIS_NIRDFTILE)
 
     if(associated(TSTILE      )) deallocate(TSTILE      )
     if(associated(QSTILE      )) deallocate(QSTILE      )
@@ -8129,6 +8190,11 @@ module GEOS_SurfaceGridCompMod
       call FILLIN_TILE(GIM(type), 'ALW',    ALWTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'BLW',    BLWTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'DTSDT', DTSDTTILE,XFORM, RC=STATUS); VERIFY_(STATUS)
+      IF (MODIS_DVG == 1) THEN
+         call FILLIN_TILE(GIM(type), 'MODIS_LAI'  , MODIS_LAITILE  ,XFORM, RC=STATUS); VERIFY_(STATUS)
+         call FILLIN_TILE(GIM(type), 'MODIS_VISDF', MODIS_VISDFTILE,XFORM, RC=STATUS); VERIFY_(STATUS)
+         call FILLIN_TILE(GIM(type), 'MODIS_NIRDF', MODIS_NIRDFTILE,XFORM, RC=STATUS); VERIFY_(STATUS)
+      ENDIF
       call FILLIN_TILE(GIM(type), 'DUDP', DUDPTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'DUSV', DUSVTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'DUWT', DUWTTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
