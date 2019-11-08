@@ -1,4 +1,4 @@
-!  $Id$
+!  $Id$ 
 
 #include "MAPL_Generic.h"
 
@@ -96,7 +96,7 @@ integer,parameter :: NUM_SUBTILES=4
 !                  7:  BARE SOIL
 !                  8:  DESERT
 
-integer           :: NUM_ENSEMBLE, USE_ASCATZ0, ATM_CO2
+integer           :: NUM_ENSEMBLE
 integer,parameter :: NTYPS = MAPL_NUMVEGTYPES
 
 real,   parameter :: HPBL           = 1000.
@@ -170,6 +170,12 @@ type OFFLINE_WRAP
    type(T_OFFLINE_MODE), pointer :: ptr=>null()
 end type OFFLINE_WRAP
 
+integer :: DO_GOSWIM, RUN_IRRIG, USE_ASCATZ0, Z0_FORMULATION, IRRIG_METHOD, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
+integer :: ATM_CO2, PRESCRIBE_DVG, SCALE_ALBFPAR
+real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
+                                !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
+real    :: CO2
+
 contains
 
 !BOP
@@ -205,7 +211,8 @@ subroutine SetServices ( GC, RC )
     integer :: OFFLINE_MODE
     logical :: is_OFFLINE
     integer :: RESTART
-    integer :: DO_GOSWIM, PRESCRIBE_DVG, RUN_IRRIG
+    character(len=ESMF_MAXSTR)              :: LANDRC
+    type(ESMF_Config)                       :: LCF 
 
 ! Begin...
 ! --------
@@ -239,25 +246,55 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, USE_ASCATZ0, Label="USE_ASCATZ0:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, LANDRC, label = 'LANDRC:', default = 'GEOS_LandGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
+    LCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(LCF,LANDRC,rc=status) ; VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, ATM_CO2,        Label="ATM_CO2:",DEFAULT=2, RC=STATUS)
-    VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (LCF, label='SURFLAY:'            , value=SURFLAY,             DEFAULT=50., __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='Z0_FORMULATION:'     , value=Z0_FORMULATION,      DEFAULT=2  , __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,         DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='RUN_IRRIG:'          , value=RUN_IRRIG,           DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='IRRIG_METHOD:'       , value=IRRIG_METHOD,        DEFAULT=0  , __RC__ )
+
+    ! GOSWIM ANOW_ALBEDO 
+    ! 0 : GOSWIM snow albedo scheme is turned off
+    ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
+    call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LAND4SNWALB:', value=N_CONST_LAND4SNWALB, DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='DO_GOSWIM:', value=DO_GOSWIM,           DEFAULT=0  , __RC__ )
+
+    ! Get parameters to zero the deposition rate 
+    ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
+    ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
+    ! __________________________________________
+    call ESMF_ConfigGetAttribute (LCF, label='AEROSOL_DEPOSITION:' , value=AEROSOL_DEPOSITION,  DEFAULT=0  , __RC__ )
+
+    ! CATCHCN
+    ! ATM_CO2
     ! 0: uses a fix value defined by CO2
     ! 1: CT tracker monthly mean diurnal cycle
     ! 2: CT tracker monthly mean diurnal cycle scaled to match EEA global average CO2
     ! 3: spatially fixed interannually varyiing CMIP from getco2.F90 look up table (AGCM only)
     ! 4: import AGCM model CO2 (AGCM only)
+    call ESMF_ConfigGetAttribute (LCF, label='ATM_CO2:' , value=ATM_CO2,  DEFAULT=2  , __RC__ )
 
-    call MAPL_GetResource ( MAPL, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    ! PRESCRIBE_DVG :  Prescribe daily LAI and SAI data from an archived CATCHCN simulation 
+    ! 0--NO Run CN Model interactively
+    ! 1--YES Prescribe interannually varying LAI and SAI
+    ! 2--YES Prescribe climatological LAI and SAI
+    ! 3--Estimated LAI/SAI using anomalies at the beginning of the foeecast and climatological LAI/SAI
+    ! 4--Write LAI/SAI anomalies in catchcn_internal_rst for above option 3
+    call ESMF_ConfigGetAttribute (LCF, label='PRESCRIBE_DVG:' , value=PRESCRIBE_DVG,  DEFAULT=0  , __RC__ )
 
-    call MAPL_GetResource ( MAPL, PRESCRIBE_DVG, Label="PRESCRIBE_DVG:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    ! SCALE_ALBFPAR: Scale CATCHCN ALBEDO and FPAR
+    ! 0-- NO scaling is performed
+    ! 1-- Scale albedo to match interannually varying MODIS NIRDF and VISDF anomaly
+    ! 2-- Scale albedo to match CDFs of model fPAR to MODIS CDFs of fPAR 
+    ! 3-- Pefform above both 1 and 2 scalings 
+    call ESMF_ConfigGetAttribute (LCF, label='SCALE_ALBFPAR:' , value=SCALE_ALBFPAR,  DEFAULT=0  , __RC__ )
 
-    call MAPL_GetResource ( MAPL, RUN_IRRIG, Label="RUN_IRRIG:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    ! Globam mean CO2 
+    call ESMF_ConfigGetAttribute (LCF, label='CO2:' , value=CO2,  DEFAULT=350.e-6, __RC__ )
+    call ESMF_ConfigDestroy      (LCF, __RC__)
 
 ! Set the Run entry points
 ! ------------------------
@@ -3866,7 +3903,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer                        :: niter
 
    integer                        :: CHOOSEMOSFC
-   integer                        :: CHOOSEZ0, PRESCRIBE_DVG
+   integer                        :: CHOOSEZ0
    real                           :: SCALE4Z0
 
 ! gkw: for CN model
@@ -3937,9 +3974,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, SCALE4Z0, Label="SCALE4Z0:", DEFAULT=0.5, RC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_GetResource ( MAPL, PRESCRIBE_DVG, Label="PRESCRIBE_DVG:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Pointers to inputs
@@ -4510,9 +4544,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, RC=STATUS)
-    VERIFY_(STATUS)
-
     call MAPL_GetResource ( MAPL, SCALE4Z0, Label="SCALE4Z0:", DEFAULT=0.5, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -4978,7 +5009,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         logical                     :: debugzth
         real                        :: FAC
 
-        real,parameter              :: PRECIPFRAC=1.0
+        real                        :: PRECIPFRAC
         real                        :: DT
         integer                     :: NTILES
         integer                     :: I, J, K, N
@@ -5056,9 +5087,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, allocatable, dimension(:,:,:) :: ityp
     real, allocatable, dimension(:) :: car1, car2, car4
     real, allocatable, dimension(:) :: para
-    real, allocatable, dimension(:) :: npp, gpp, sr, nee, padd, root, vegc, xsmr
+    real, allocatable, dimension(:) :: npp, gpp, sr, padd, root, vegc, xsmr
     real, allocatable, dimension(:) :: burn, fsel, closs
     real, allocatable, dimension(:) :: dayl, dayl_fac
+    real, allocatable, dimension(:), save :: nee
 
     ! ***************************************************************************************************************************************************************
     ! Begin Carbon Tracker variables
@@ -5101,7 +5133,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! prescribe DYNVEG parameters
     ! ---------------------------
-    INTEGER                       :: PRESCRIBE_DVG
 
     real, parameter :: dtc = 0.03 ! canopy temperature perturbation (K) [approx 1:10000]
     real, parameter :: dea = 0.10 ! vapor pressure perturbation (Pa) [approx 1:10000]
@@ -5125,7 +5156,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, save :: year_prev = -9999
     real :: dtcn ! carbon model time step
 
-    integer :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr
+    integer :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr, sofmin
     logical, save :: first = .true.
     integer*8, save :: istep = 1 ! gkw: legacy variable from offline
 
@@ -5147,17 +5178,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     real, save,allocatable,dimension (:,:,:,:) :: Kappa, Lambda, Mu
     real, save,allocatable,dimension (:,:,:)   :: MnVal, MxVal
-    real, save,allocatable,dimension (:,:,:)   :: VISmean, VISstd, NIRmean, NIRstd, FPARmean, FPARstd
     integer, save, allocatable, dimension (:)  :: modis_tid, ThisMIndex
-    integer                                    :: n_modis, NTCurrent, CDFfile, infos, comms, SCALE_ALBFPAR
+    integer                                    :: n_modis, NTCurrent, CDFfile, infos, comms
     integer, allocatable, dimension (:,:)      :: modis_index
     integer, allocatable, dimension (:)        :: modis2cat
     real   , allocatable, dimension (:)        :: m_lons, m_lats
-    real   , allocatable, dimension (:,:)      :: scaled_fpar, parav, parzone
+    real   , allocatable, dimension (:,:)      :: scaled_fpar, parav, parzone, unscaled_fpar
     REAL   , PARAMETER                         :: TILEINT = 2.
     integer, PARAMETER                         :: NOCTAD = 46, NSETS = 2
     real                                       :: CLM4_fpar, CLM4_cdf, MODIS_fpar, tmparr(1,1,1,2), &
-         ThisK, ThisL, ThisM, ThisMin, ThisMax, tmparr2(1,1,1), ThisAlb, ThisMu, Thisstd, FPARmu, FPARsig, ThisFPAR  
+         ThisK, ThisL, ThisM, ThisMin, ThisMax, tmparr2(1,1,1), ThisFPAR, ZFPAR  
+    character (len=ESMF_MAXSTR)   :: VISMEANFILE, VISSTDFILE, NIRMEANFILE, NIRSTDFILE, FPARMEANFILE, FPARSTDFILE
+    real, allocatable, dimension (:)           :: MODISVISmean, MODISVISstd, MODISNIRmean, MODISNIRstd, MODELFPARmean, MODELFPARstd
     logical, save :: first_fpar = .true.
 
         IAm=trim(COMP_NAME)//"::RUN2::Driver"
@@ -5189,15 +5221,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              RC=STATUS )
         VERIFY_(STATUS)
 
-        call MAPL_GetResource ( MAPL, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
-
-        call MAPL_GetResource ( MAPL, PRESCRIBE_DVG, Label="PRESCRIBE_DVG:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
-
-        call MAPL_GetResource ( MAPL, RUN_IRRIG, Label="RUN_IRRIG:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource ( MAPL, IRRIG_METHOD, Label="IRRIG_METHOD:", DEFAULT=0, RC=STATUS)
+        call MAPL_GetResource ( MAPL, PRECIPFRAC, Label="PRECIPFRAC:", DEFAULT=1.0, RC=STATUS)
         VERIFY_(STATUS)
 
         ! Get component's private internal state
@@ -5220,21 +5244,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              TILELONS  = LONS                             ,&
              INTERNAL_ESMF_STATE = INTERNAL               ,&
              RC=STATUS )
-        VERIFY_(STATUS)
-
-        ! Get parameters to zero the deposition rate 
-        ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
-	! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
-        ! __________________________________________
-
-        call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", DEFAULT=1, RC=STATUS)
-        VERIFY_(STATUS)
-
-        ! GOSWIM ANOW_ALBEDO 
-        ! 0 : GOSWIM snow albedo scheme is turned off
-        ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme
- 
-        call MAPL_GetResource ( MAPL, N_CONST_LAND4SNWALB, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
         VERIFY_(STATUS)
 
         ! -----------------------------------------------------
@@ -5710,11 +5719,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     
  ! OPTIONAL FPAR SCALING
 ! ---------------------
-
-    call MAPL_GetResource ( MAPL, SCALE_ALBFPAR, Label="SCALE_ALBFPAR:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
  
-    if  (SCALE_ALBFPAR >= 1) then 
+    if  (SCALE_ALBFPAR >= 2) then 
        IF (ntiles > 0) THEN
           INTILALIZE_FPAR_PARAM : if(first_fpar) then
              
@@ -5790,22 +5796,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              allocate (Mu    (1: NUNQ, 1: NUMPFT, 1 : NOCTAD, 1 : 2))
              allocate (MnVal (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
              allocate (MxVal (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (VISmean (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (VISstd  (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (NIRmean (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (NIRstd  (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (FPARmean(1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (FPARstd (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
 
              Kappa    = -9999.
              Lambda   = -9999.
              Mu       = -9999.
-             VISmean  = -9999.
-             VISstd   = -9999.
-             NIRmean  = -9999.
-             NIRstd   = -9999.
-             FPARmean = -9999.
-             FPARstd  = -9999.
 
              do i = 1, NUNQ
                 
@@ -5827,18 +5821,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                          MnVal(i,N,K)  = tmparr2 (1,1,1)               
                          STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MaxVal'),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);VERIFY_(STATUS)
                          MxVal(i,N,K) = tmparr2 (1,1,1)             
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISVISmean' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         VISmean (i,N,K) = tmparr2 (1,1,1) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISNIRmean' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         NIRmean (i,N,K) = tmparr2 (1,1,1) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISVISstd' ),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         VISstd (i,N,K) = tmparr2 (1,1,1)                        
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISNIRstd' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         NIRstd (i,N,K) = tmparr2 (1,1,1) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODELFPARmean' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         FPARmean (i,N,K) = tmparr2 (1,1,1) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODELFPARstd'  ),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         FPARstd (i,N,K) = tmparr2 (1,1,1)                        
                       ENDIF
                    end do
                 end do
@@ -6369,12 +6351,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate( parzone(ntiles,nveg) )
     allocate(    para(ntiles) )
     allocate(   parav(ntiles,nveg) )
-    allocate (scaled_fpar (NTILES,NVEG))
+    allocate (scaled_fpar  (NTILES,NVEG))
+    allocate (unscaled_fpar(NTILES,NVEG))
     allocate(  totwat(ntiles) )
     allocate(     npp(ntiles) )
     allocate(     gpp(ntiles) )
     allocate(      sr(ntiles) )
-    allocate(     nee(ntiles) )
+    if(.not. allocated(nee)) allocate(     nee(ntiles) )
     allocate(    padd(ntiles) )
     allocate(    root(ntiles) )
     allocate(    vegc(ntiles) )
@@ -6426,6 +6409,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     AGCM_S = AGCM_S + 60 * AGCM_MI + 3600 * AGCM_HH
+    sofmin = AGCM_S
 
 ! declination  gkw: this is ugly... get someone to make ZS & ZC available as optional arg for MAPL_SunGetInsolation
 ! -----------                                                                              or MAPL_SunOrbitQuery
@@ -6651,8 +6635,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! get CO2
 ! -------
-    call MAPL_GetResource( MAPL, CO2, 'CO2:', default=350.e-6, RC=STATUS)
-    VERIFY_(STATUS)
+
 
     if(ATM_CO2 == 3) CO2 = GETCO2(AGCM_YY,dofyr)
 
@@ -6814,14 +6797,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         end do
       endif
 
-    end do
+   end do
+
+   do nv = 1,nveg
+      unscaled_fpar (:,nv) = parav (:,nv)/ (DRPAR(:) + DFPAR(:) + 1.e-20)
+   end do
 
    NTCurrent = CEILING (real (dofyr) / 8.)
     
    ! FPAR scaling to match MODIS CDF
    ! -------------------------------
    
-    DO_FS1 : if  (SCALE_ALBFPAR == 2) then
+    DO_FS1 : if  (SCALE_ALBFPAR >= 2) then
 
         IF (ntiles > 0) THEN
            
@@ -6957,6 +6944,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
      endif DO_FS1
 
+     ! Below we are recycling the scaled_fpar array - from this point, it contains fpar scaled or otherwise
+     ! ----------------------------------------------------------------------------------------------------
+
      do nv = 1,nveg
         scaled_fpar (:,nv) = parav (:,nv)/ (DRPAR(:) + DFPAR(:) + 1.e-20)
      end do
@@ -6984,37 +6974,37 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
          ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )         ! instantaneous snow-free albedos on tiles
 
-    if  (SCALE_ALBFPAR >= 1) then 
+    if  ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then 
+
+       if(.not.allocated (MODISVISmean )) allocate (MODISVISmean  (1:NTILES))
+       if(.not.allocated (MODISVISstd  )) allocate (MODISVISstd   (1:NTILES))
+       if(.not.allocated (MODISNIRmean )) allocate (MODISNIRmean  (1:NTILES))
+       if(.not.allocated (MODISNIRstd  )) allocate (MODISNIRstd   (1:NTILES))
+       if(.not.allocated (MODELFPARmean)) allocate (MODELFPARmean (1:NTILES))
+       if(.not.allocated (MODELFPARstd )) allocate (MODELFPARstd  (1:NTILES))
+
        if(ntiles > 0) then
-          do n = 1,NTILES
-             if(FVG(N,1) >= FVG(N,2)) then
-                k = NINT(ITY(N,1)) 
-             else
-                k = NINT(ITY(N,2)) 
-             endif
-             
-             ThisMu    = VISmean (modis_tid (n), k, NTCurrent)
-             ThisStd   = VISstd  (modis_tid (n), k, NTCurrent)
-             FPARmu    = FPARmean(modis_tid (n), k, NTCurrent)
-             FPARsig   = FPARstd (modis_tid (n), k, NTCurrent)
-             ThisFPAR  = (scaled_fpar(n,1)*FVG(N,1) + scaled_fpar(n,2)*FVG(N,2))/(FVG(N,1) + FVG(N,2) + 1.e-20)
+                    
+          call MAPL_GetResource(MAPL,VISMEANFILE  , label = 'VISMEAN_FILE:' , default = 'MODISVISmean.dat'  , RC=STATUS )  ; VERIFY_(STATUS)    
+          call MAPL_GetResource(MAPL,VISSTDFILE   , label = 'VISSTD_FILE:'  , default = 'MODISVISstd.dat'   , RC=STATUS )  ; VERIFY_(STATUS)      
+          call MAPL_GetResource(MAPL,NIRMEANFILE  , label = 'NIRMEAN_FILE:' , default = 'MODISNIRmean.dat'  , RC=STATUS )  ; VERIFY_(STATUS)     
+          call MAPL_GetResource(MAPL,NIRSTDFILE   , label = 'NIRSTD_FILE:'  , default = 'MODISNIRstd.dat'   , RC=STATUS )  ; VERIFY_(STATUS) 
 
-             ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig
+          call MAPL_GetResource(MAPL,FPARMEANFILE , label = 'MODELFPARMEAN_FILE:', default = 'MODELFPARmean.dat' , RC=STATUS )  ; VERIFY_(STATUS)     
+          call MAPL_GetResource(MAPL,FPARSTDFILE  , label = 'MODELFPARSTD_FILE:' , default = 'MODELFPARstd.dat'  , RC=STATUS )  ; VERIFY_(STATUS)      
+           
+          call MAPL_ReadForcing(MAPL,'MODISVISmean' ,VISMEANFILE ,CURRENT_TIME,MODISVISmean  ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
+          call MAPL_ReadForcing(MAPL,'MODISVISstd'  ,VISSTDFILE  ,CURRENT_TIME,MODISVISstd   ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
+          call MAPL_ReadForcing(MAPL,'MODISNIRmean' ,NIRMEANFILE ,CURRENT_TIME,MODISNIRmean  ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
+          call MAPL_ReadForcing(MAPL,'MODISNIRstd'  ,NIRSTDFILE  ,CURRENT_TIME,MODISNIRstd   ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
+          call MAPL_ReadForcing(MAPL,'MODELFPARmean',FPARMEANFILE,CURRENT_TIME,MODELFPARmean ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
+          call MAPL_ReadForcing(MAPL,'MODELFPARstd' ,FPARSTDFILE ,CURRENT_TIME,MODELFPARstd  ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
 
-             if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                ALBVR(n) = ThisAlb
-                ALBVF(n) = ThisAlb
-             endif
-             
-             ThisMu    = NIRmean (modis_tid (n), k, NTCurrent)
-             ThisStd   = NIRstd  (modis_tid (n), k, NTCurrent)
-
-             ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig
-
-             if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                ALBNR(n) = ThisAlb
-                ALBNF(n) = ThisAlb
-             endif
+         do n = 1,NTILES
+            ThisFPAR = (unscaled_fpar(n,1)*FVG(N,1) + unscaled_fpar(n,2)*FVG(N,2))/(FVG(N,1) + FVG(N,2) + 1.e-20)
+            ZFPAR    = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
+            ALBVF(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))
+            ALBNF(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISNIRstd(n) + MODISNIRmean (n)))                
           end do
        endif
     endif
@@ -7034,37 +7024,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
          ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp, MODIS_SCALE=.TRUE. ) ! instantaneous snow-free albedos on tiles
   
-    if  (SCALE_ALBFPAR >= 1) then 
+    if ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then 
        if(ntiles > 0) then
           do n = 1,NTILES
-             if(FVG(N,3) >= FVG(N,4)) then
-                k = NINT(ITY(N,3)) 
-             else
-                k = NINT(ITY(N,4)) 
-             endif
-                          
-             ThisMu    = VISmean (modis_tid (n), k, NTCurrent)
-             ThisStd   = VISstd  (modis_tid (n), k, NTCurrent)
-             FPARmu    = FPARmean(modis_tid (n), k, NTCurrent)
-             FPARsig   = FPARstd (modis_tid (n), k, NTCurrent)
-             ThisFPAR  = (scaled_fpar(n,3)*FVG(N,3) + scaled_fpar(n,4)*FVG(N,4))/(FVG(N,3) + FVG(N,4) + 1.e-20)
-
-             ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig
-
-             if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                ALBVR_tmp(n) = ThisAlb
-                ALBVF_tmp(n) = ThisAlb
-             endif
-
-             ThisMu    = NIRmean (modis_tid (n), k, NTCurrent)
-             ThisStd   = NIRstd  (modis_tid (n), k, NTCurrent)
-
-             ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig
-
-             if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                ALBNR_tmp(n) = ThisAlb
-                ALBNF_tmp(n) = ThisAlb
-             endif
+             ThisFPAR  = (unscaled_fpar(n,3)*FVG(N,3) + unscaled_fpar(n,4)*FVG(N,4))/(FVG(N,3) + FVG(N,4) + 1.e-20)
+             ZFPAR    = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
+             ALBVF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))
+             ALBNF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISNIRstd(n) + MODISNIRmean (n)))          
           end do
        endif
     endif
@@ -7217,7 +7183,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           if(associated(CNNPP )) cnnpp  = 1.e-3*npp   * cnsum
           if(associated(CNGPP )) cngpp  = 1.e-3*gpp   * cnsum
           if(associated(CNSR  )) cnsr   = 1.e-3*sr    * cnsum
-          if(associated(CNNEE )) cnnee  = 1.e-3*nee   * cnsum
+          if(associated(CNNEE )) cnnee  = 1.e-3*nee   ! * cnsum
           if(associated(CNXSMR)) cnxsmr = 1.e-3*xsmr  * cnsum
           if(associated(CNADD )) cnadd  = 1.e-3*padd  * cnsum
           if(associated(CNLOSS)) cnloss = 1.e-3*closs * cnsum ! total fire C loss (kg/m2/s)
@@ -7250,7 +7216,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           if(associated(CNNPP )) cnnpp  = 0.
           if(associated(CNGPP )) cngpp  = 0.
           if(associated(CNSR  )) cnsr   = 0.
-          if(associated(CNNEE )) cnnee  = 0.
+          if(associated(CNNEE )) cnnee  = 1.e-3*nee 
           if(associated(CNXSMR)) cnxsmr = 0.
           if(associated(CNADD )) cnadd  = 0.
           if(associated(CNLOSS)) cnloss = 0.
@@ -7406,7 +7372,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             srfexc,rzexc,catdef, CAR1, CAR2, CAR4, sfmc, rzmc, prmc)
        
        call irrigation_rate (IRRIG_METHOD,                                 & 
-            NTILES, AGCM_HH, AGCM_MI, AGCM_S, lons, IRRIGFRAC, PADDYFRAC,  &
+            NTILES, AGCM_HH, AGCM_MI, sofmin, lons, IRRIGFRAC, PADDYFRAC,  &
             CLMPT,CLMST, CLMPF, CLMSF, LAIMAX, LAIMIN, LAI0,               &
             POROS, WPWET, VGWMAX, RZMC, IRRIGRATE)
        
@@ -7721,39 +7687,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
                        ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )         ! instantaneous snow-free albedos on tiles
 
-        if  (SCALE_ALBFPAR >= 1) then 
+        if ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then
            do n = 1,NTILES
-              if(FVG(N,1) >= FVG(N,2)) then
-                 k = NINT(ITY(N,1)) 
-              else
-                 k = NINT(ITY(N,2)) 
-              endif
-
-              if(modis_tid (n) >= 1) then
-
-                 ThisMu    = VISmean (modis_tid (n), k, NTCurrent)
-                 ThisStd   = VISstd  (modis_tid (n), k, NTCurrent)
-                 FPARmu    = FPARmean(modis_tid (n), k, NTCurrent)
-                 FPARsig   = FPARstd (modis_tid (n), k, NTCurrent)
-                 ThisFPAR  = (scaled_fpar(n,1)*FVG(N,1) + scaled_fpar(n,2)*FVG(N,2))/(FVG(N,1) + FVG(N,2) + 1.e-20)
-                 
-                 ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig
-
-                 if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                    ALBVR(n) = ThisAlb
-                    ALBVF(n) = ThisAlb
-                 endif
-                 
-                 ThisMu    = NIRmean (modis_tid (n), k, NTCurrent)
-                 ThisStd   = NIRstd  (modis_tid (n), k, NTCurrent)
-                 
-                 ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig
-
-                 if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                    ALBNR(n) = ThisAlb
-                    ALBNF(n) = ThisAlb
-                 endif
-              endif
+              ThisFPAR  = (unscaled_fpar(n,1)*FVG(N,1) + unscaled_fpar(n,2)*FVG(N,2))/(FVG(N,1) + FVG(N,2) + 1.e-20)
+              ZFPAR     = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
+              ALBVF(n)  = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))                      
            end do
         endif
 
@@ -7772,42 +7710,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
                        ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp, MODIS_SCALE=.TRUE.  ) ! instantaneous snow-free albedos on tiles
 
-        if  (SCALE_ALBFPAR >= 1) then
+        if ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then
            if(ntiles > 0) then
               do n = 1,NTILES
-                 if(FVG(N,3) >= FVG(N,4)) then
-                    k = NINT(ITY(N,3)) 
-                 else
-                    k = NINT(ITY(N,4)) 
-                 endif
-
-                 if(modis_tid (n) >= 1) then
-
-                    ThisMu    = VISmean (modis_tid (n), k, NTCurrent)
-                    ThisStd   = VISstd  (modis_tid (n), k, NTCurrent)
-                    FPARmu    = FPARmean(modis_tid (n), k, NTCurrent)
-                    FPARsig   = FPARstd (modis_tid (n), k, NTCurrent)
-                    ThisFPAR  = (scaled_fpar(n,3)*FVG(N,3) + scaled_fpar(n,4)*FVG(N,4))/(FVG(N,3) + FVG(N,4) + 1.e-20)
-
-                    ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig                    
-
-                    if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                       ALBVR_tmp(n) = ThisAlb
-                       ALBVF_tmp(n) = ThisAlb
-                    endif
-
-                    ThisMu    = NIRmean (modis_tid (n), k, NTCurrent)
-                    ThisStd   = NIRstd  (modis_tid (n), k, NTCurrent)
-                    
-                    ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig                    
-
-                    if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                       ALBNR_tmp(n) = ThisAlb
-                       ALBNF_tmp(n) = ThisAlb
-                    endif
-                 endif
+                 ThisFPAR  = (unscaled_fpar(n,3)*FVG(N,3) + unscaled_fpar(n,4)*FVG(N,4))/(FVG(N,3) + FVG(N,4) + 1.e-20)
+                 ZFPAR    = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
+                 ALBVF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))
+                 ALBNF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISNIRstd(n) + MODISNIRmean (n)))          
               end do
            endif
+           if(allocated (MODISVISmean)) deallocate (MODISVISmean, MODISVISstd, MODISNIRmean, MODISNIRstd, MODELFPARmean, MODELFPARstd)
         endif
 
         call   SNOW_ALBEDO(NTILES,N_snow, N_CONST_LAND4SNWALB, VEG2, LAI2, ZTH,        &
@@ -8151,12 +8063,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	deallocate( parzone )
 	deallocate(    para )
         deallocate(   parav )
-        deallocate (scaled_fpar)      
+        deallocate (scaled_fpar)
+        deallocate (UNscaled_fpar)
 	deallocate(  totwat )
 	deallocate(     npp )
 	deallocate(     gpp )
 	deallocate(      sr )
-	deallocate(     nee )
+!	deallocate(     nee )
 	deallocate(    padd )
 	deallocate(    root )
 	deallocate(    vegc )
@@ -8414,7 +8327,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: arw4(:)=>null()
 
   !! Miscellaneous
-  integer :: ntiles, nv, nz, PRESCRIBE_DVG
+  integer :: ntiles, nv, nz
   real, allocatable :: dummy(:)
   real :: SURFLAY
   real, allocatable :: dzsf(:), ar1(:), ar2(:), wesnn(:,:)
@@ -8514,8 +8427,6 @@ subroutine RUN0(gc, import, export, clock, rc)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, catdef, 'CATDEF', rc=status)
   VERIFY_(status)
-  call MAPL_GetResource ( MAPL, PRESCRIBE_DVG, Label="PRESCRIBE_DVG:", DEFAULT=0, RC=STATUS)
-  VERIFY_(STATUS)
 
   ! Number of tiles and a dummy real array
   ntiles = size(HTSNNN1)
@@ -9060,45 +8971,45 @@ REAL FUNCTION TSLAI (ITYP, SMONTH, LS)
   
   REAL, DIMENSION (12,NUMPFT) :: LAITS, SAITS
 
-  DATA LAITS (:, 1) /  2572.288, 1362.748, 1045.156,  937.509, 1172.632, 1428.511, 1751.826, 2498.046, 3558.060, 4754.125, 5503.130, 3956.031/
-  DATA LAITS (:, 2) / 48584.598,15113.026, 2112.996, 1098.942,  922.270, 1678.113, 2750.321, 4968.556,10591.866,32710.854,94070.078,84046.633/
-  DATA LAITS (:, 3) /     0.000,    0.000,    0.000,    0.000,   67.946,  171.818,  812.057,    0.000,    0.000,    0.000,    0.000,    0.000/
-  DATA LAITS (:, 4) /  3210.051, 3430.298, 3845.873, 4290.017, 3642.667, 2746.233, 2044.920, 1869.236, 2158.786, 2654.108, 3284.401, 3467.917/
-  DATA LAITS (:, 5) /  1668.523, 2309.184, 2990.000, 3980.876, 4064.969, 3119.845, 2495.209, 1983.262, 1615.039, 1350.225, 1262.773, 1436.168/
-  DATA LAITS (:, 6) /  3595.736, 3584.612, 3474.539, 3619.409, 3731.446, 3652.585, 2829.034, 2438.076, 2771.116, 3567.152, 4245.505, 4153.013/
-  DATA LAITS (:, 7) /   846.743,  382.404,   98.259,  146.337,  246.225,  746.207, 1784.396,  160.702,   79.861,  107.468,  286.832,  601.423/
-  DATA LAITS (:, 8) /  2692.352, 2290.066,   64.351,  141.382,  105.978,  263.253,  952.408,   48.666,   78.573,  118.136,  210.956,  957.030/
-  DATA LAITS (:, 9) /  1121.236, 1242.829, 1237.771,  883.818,  765.715,  538.231,  442.713,  598.128,  939.588, 1455.461, 1224.841, 1051.097/
-  DATA LAITS (:,10) /   442.940,   72.872,   52.349,   60.113,  186.350,  497.894,  451.799,  161.100,   52.189,   74.195,  188.701,  855.044/
-  DATA LAITS (:,11) /   689.069,  598.369,  554.040,  519.820,  494.695,  527.892,  552.348,  579.694,  584.311,  610.445,  676.816,  733.210/
-  DATA LAITS (:,12) /  1669.043,  953.264,  118.749,  104.645,   93.464,  143.959,  148.126,   81.281,  101.899,  108.066,  188.515,  726.085/
-  DATA LAITS (:,13) /   384.560,  146.275,   79.272,   80.883,  103.328,  189.060,  129.590,   93.085,   77.608,   67.503,   68.718,  308.558/
-  DATA LAITS (:,14) /   434.634,   59.747,   54.344,   70.477,  128.217,  532.608,  651.646,  105.327,   52.583,   56.155,  305.787,  746.148/
-  DATA LAITS (:,15) /   409.423,  386.349,  462.273,  590.245,  713.953,  814.538,  765.886,  594.693,  443.723,  410.362,  391.410,  437.522/
-  DATA LAITS (:,16) /   618.507,   79.595,   52.885,   47.152,   96.027,  408.657,  572.662,  229.806,   54.234,   53.856,   56.657,12340.311/
-  DATA LAITS (:,17) /   751.909,  690.982,  686.686,  706.686,  793.229,  860.760,  857.985,  784.938,  754.882,  770.330,  807.177,  834.459/
-  DATA LAITS (:,18) /   330.089,   72.171,   52.264,   77.956,  145.273,  510.315,  588.607,   97.716,   50.863,   64.529,  234.244,  767.170/
-  DATA LAITS (:,19) /   455.884,  391.388,  490.491,  678.433, 1011.810, 1190.593, 1080.030,  835.043,  647.742,  513.119,  474.832,  527.400/
-                                                                                                                                    
-  DATA SAITS (:, 1) /   154.039,  148.090,  147.445,  171.159,  162.369,  151.637,  161.661,  164.075,  136.072,  147.967,  148.678,  142.664/
-  DATA SAITS (:, 2) /    93.276,  132.718,   88.336,   85.927,   88.476,   74.680,  175.131,  177.706,  151.663,  112.695,  154.712,   84.387/
-  DATA SAITS (:, 3) /   160.315,  191.827,  111.484,   67.693,    0.000,    0.000,    0.000,    0.000,    0.000,    0.000,  206.057,   69.349/
-  DATA SAITS (:, 4) /  1061.729, 1216.216, 1268.717, 1147.347, 1132.795, 1257.603, 1200.110, 1114.963, 1033.436,  840.392,  787.752,  868.604/
-  DATA SAITS (:, 5) /   388.994,  385.405,  438.445,  543.178,  837.061,  726.069,  595.750,  533.152,  480.837,  394.586,  402.593,  428.126/
-  DATA SAITS (:, 6) /   913.828, 1159.557, 1229.299, 1057.764, 1031.205, 1095.924, 1082.304, 1098.676, 1111.107,  912.891,  808.009,  830.415/
-  DATA SAITS (:, 7) /   432.379,   92.154,   54.345,    0.000,  157.415, 7518.433, 1292.533,  199.139,   85.377,    0.000,  438.890, 4946.960/
-  DATA SAITS (:, 8) /   152.645,  400.277,  162.857, 3665.824,  296.801, 1422.724,  283.713,  591.451, 1033.308, 3606.411,13018.765,  872.723/
-  DATA SAITS (:, 9) /   155.542,  214.349,  174.011,  150.033,  115.885,  108.388,  100.745,   98.046,  109.379,  112.261,  147.311,  132.414/
-  DATA SAITS (:,10) /   124.585,   85.395,   85.254,   60.388,  237.092,  382.170,  290.137,   51.886,   60.971,   77.056,  175.951,  186.024/
-  DATA SAITS (:,11) /   196.484,  209.680,  203.823,  191.682,  207.121,  223.417,  223.779,  223.863,  192.577,  175.771,  172.302,  176.724/
-  DATA SAITS (:,12) /   205.765,  128.294,   64.570,   49.029,   48.508,   57.161,   58.064,   51.972,   57.645,   88.857,  123.793,  163.256/
-  DATA SAITS (:,13) /   150.021,  101.986,   54.782,   50.932,   45.130,   55.986,   53.219,   48.268,   52.027,   74.364,  104.983,  147.860/
-  DATA SAITS (:,14) /    57.375,   43.406,   47.003,   64.247,  105.465,  127.227,   79.931,   68.054,   45.296,   44.861,   68.675,   86.277/
-  DATA SAITS (:,15) /   104.631,  102.266,  111.372,  109.660,  119.993,  135.575,  125.164,  104.375,   89.890,   83.661,   88.039,   95.476/
-  DATA SAITS (:,16) /   136.502,   32.786,    0.000,    0.000,  205.816,    0.000,    0.000,    0.000,   57.040,   34.075,  170.489,  244.528/
-  DATA SAITS (:,17) /   159.261,  157.479,  160.025,  156.656,  159.991,  187.828,  182.446,  159.891,  137.539,  143.082,  141.027,  138.480/
-  DATA SAITS (:,18) /    91.000,   35.339,   28.581,   40.302,   97.786,  782.317,  142.127,   25.671,   26.488,   50.944,   97.274,  145.152/
-  DATA SAITS (:,19) /   212.613,  198.448,  214.659,  228.442,  238.677,  255.165,  276.606,  277.767,  257.112,  223.192,  208.083,  225.051/
+  DATA LAITS (:, 1) /   2938.671,   1703.214,   1218.992,    989.745,   1023.555,   1243.818,   1513.783,   2135.020,   3172.746,   4790.270,   5531.646,   4010.347/
+  DATA LAITS (:, 2) /  69795.391,  28537.859,   2272.353,    997.676,    723.385,   1194.828,   2072.303,   4124.063,   9919.098,  44651.770, 157986.547, 127441.438/
+  DATA LAITS (:, 3) /      0.000,      0.000,      0.000,      0.000,     67.414,    200.217,    990.057,      0.000,      0.000,      0.000,      0.000,      0.000/
+  DATA LAITS (:, 4) /   2015.124,   2230.545,   2539.680,   2885.798,   2460.280,   1928.556,   1523.661,   1398.747,   1492.193,   1679.618,   1911.172,   1948.057/
+  DATA LAITS (:, 5) /   1392.846,   1637.630,   1853.108,   2167.965,   1997.427,   1626.865,   1516.447,   1507.380,   1408.701,   1186.145,   1045.981,   1158.065/
+  DATA LAITS (:, 6) /   3411.306,   3525.113,   3349.763,   3370.082,   3189.629,   3142.207,   2573.186,   2387.604,   2470.387,   2701.219,   2850.708,   3071.156/
+  DATA LAITS (:, 7) /    752.924,    404.184,    105.170,    156.788,    288.937,    747.374,   1283.792,    129.322,     85.009,    119.228,    269.670,    581.764/
+  DATA LAITS (:, 8) /   1478.526,    247.332,     74.058,    144.986,    118.949,    297.104,    858.512,     39.730,    201.244,     95.643,    186.163,    469.378/
+  DATA LAITS (:, 9) /    887.470,    984.260,   1197.346,    926.618,    807.862,    627.423,    532.757,    710.885,   1119.184,   1525.271,   1203.125,    955.703/
+  DATA LAITS (:,10) /    427.971,     77.199,     53.993,     58.973,    155.403,    402.566,    420.889,    158.569,     53.848,     69.331,    188.980,   1133.033/
+  DATA LAITS (:,11) /    693.410,    591.061,    547.764,    513.616,    501.643,    536.699,    569.842,    588.881,    588.342,    607.343,    659.312,    716.439/
+  DATA LAITS (:,12) /   1576.536,    940.612,    152.002,    126.508,    108.119,    163.747,    203.844,     98.958,    123.367,    135.084,    192.891,    709.225/
+  DATA LAITS (:,13) /    441.599,    144.793,     70.475,     70.259,     95.195,    210.619,    164.148,    101.477,     71.655,     63.164,     61.715,    374.426/
+  DATA LAITS (:,14) /    410.132,     62.296,     55.010,     67.725,    120.379,    457.500,    564.759,    113.907,     52.373,     56.389,    273.110,    769.576/
+  DATA LAITS (:,15) /    448.125,    426.954,    514.158,    617.684,    707.633,    790.015,    769.619,    650.975,    491.860,    459.468,    441.120,    473.951/
+  DATA LAITS (:,16) /    420.924,     57.870,     53.152,     59.108,    111.509,    508.259,    641.459,    331.120,     53.559,     55.392,     67.203,   5811.124/
+  DATA LAITS (:,17) /    760.057,    700.927,    699.944,    703.478,    767.613,    814.678,    817.368,    784.784,    759.681,    746.426,    752.065,    789.767/
+  DATA LAITS (:,18) /    350.679,     75.986,     52.425,     75.525,    140.260,    441.184,    497.458,    101.640,     51.313,     64.659,    217.237,    880.205/
+  DATA LAITS (:,19) /    561.547,    508.533,    605.617,    785.206,   1024.693,   1160.436,   1080.907,    914.494,    723.374,    591.482,    527.680,    601.251/
+                                                                                                                                                         
+  DATA SAITS (:, 1) /    230.315,    313.693,    276.539,    274.875,    258.847,    243.109,    302.606,    238.944,    225.218,    243.603,    255.616,    251.875/
+  DATA SAITS (:, 2) /    229.890,    137.614,    230.997,    885.396,  34366.480,  20680.762,  15364.336, 179264.391, 106621.625,    511.944,    144.913,    112.001/
+  DATA SAITS (:, 3) /    160.335,    208.863,    100.725,     61.128,      0.000,      0.000,      0.000,      0.000,      0.000,      0.000,    309.396,     67.304/
+  DATA SAITS (:, 4) /    841.035,    975.111,    944.408,    825.486,    799.643,    892.486,    946.068,    891.572,    741.352,    619.509,    594.351,    667.353/
+  DATA SAITS (:, 5) /    282.603,    286.126,    337.061,    405.378,    582.170,    527.165,    458.823,    379.705,    318.623,    243.743,    243.360,    261.337/
+  DATA SAITS (:, 6) /    540.718,    688.578,    723.944,    581.460,    625.967,    715.761,    745.801,    668.694,    526.761,    427.821,    396.987,    432.233/
+  DATA SAITS (:, 7) /   1054.735,    244.129,    339.480,      0.000,    155.208,   9998.467,   1123.824,    298.109,     70.775,      0.000,    316.463,   3617.774/
+  DATA SAITS (:, 8) /    341.703,    203.918,    198.034,   2703.103,    461.967,   2371.453,    901.374,   1001.270,   1019.283,    661.610,  10851.539,   1044.646/
+  DATA SAITS (:, 9) /    188.120,    225.566,    184.943,    140.310,     97.080,     95.836,     95.192,     90.871,     86.489,     89.438,    112.988,    120.050/
+  DATA SAITS (:,10) /    158.143,     88.208,     50.798,     66.993,    314.352,    897.925,    525.455,     95.297,     56.950,     52.494,    225.088,    199.817/
+  DATA SAITS (:,11) /    192.893,    211.842,    204.606,    188.132,    199.539,    214.700,    231.347,    218.899,    182.859,    161.711,    161.695,    174.822/
+  DATA SAITS (:,12) /    187.547,    120.499,     74.804,     67.735,     63.598,     70.080,     72.900,     68.453,     68.211,     89.312,    117.100,    160.318/
+  DATA SAITS (:,13) /    113.931,     79.577,     56.178,     58.576,     51.515,     61.443,     57.071,     50.591,     49.337,     62.633,     78.857,    137.055/
+  DATA SAITS (:,14) /     58.460,     43.689,     45.824,     64.373,    114.885,    140.412,    119.989,     69.780,     45.139,     45.016,     69.364,     88.677/
+  DATA SAITS (:,15) /    119.650,    116.520,    128.038,    132.468,    137.251,    174.534,    157.563,    109.637,     97.837,     97.455,    104.156,    106.594/
+  DATA SAITS (:,16) /    114.686,     56.264,     55.149,     41.942,    279.915,   1357.135,      0.000,      0.000,     51.040,     37.574,    187.939,    250.501/
+  DATA SAITS (:,17) /    170.847,    194.819,    191.218,    156.952,    150.084,    170.734,    193.540,    165.291,    142.388,    142.235,    141.490,    153.336/
+  DATA SAITS (:,18) /     95.563,     33.916,     26.510,     39.303,    102.695,    784.872,    151.246,     26.027,     26.348,     53.420,    104.175,    155.367/
+  DATA SAITS (:,19) /    247.494,    265.714,    277.912,    294.943,    310.404,    318.397,    333.875,    305.355,    270.572,    243.369,    236.336,    263.910/
 
   IF (LS == 1) TSLAI = LAITS (ITYP, SMONTH)
   IF (LS == 2) TSLAI = SAITS (ITYP, SMONTH)

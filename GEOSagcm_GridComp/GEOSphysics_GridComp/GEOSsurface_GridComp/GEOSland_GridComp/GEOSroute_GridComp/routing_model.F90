@@ -24,10 +24,11 @@ MODULE routing_model
     REAL,    INTENT(OUT),  DIMENSION (NCAT) :: QSFLOW,QOUTFLOW
 
     REAL,   PARAMETER    :: K_SIMPLE = 0.111902, K_RES_MAX = 0.8                       ! m1_r2com_c1
-    REAL                 :: P1 = 0.136305, P2 = 0.965619, P3 = 0.364546, P4 = 0.000578 ! m4_r2com_c3  
+    REAL,   PARAMETER    :: P1 = 0.010611, P2 = 0.188556, P3 = 0.096864,   &
+                            P4 = 0.691310, P5 = 0.365747, P6 = 0.009831    ! m5_calib_240
 
     INTEGER :: N,I,J 
-    REAL    :: COEFF, LS 
+    REAL    :: COEFF, LS, COEFF1, COEFF2,ROFF 
 
     ! Routing Model Input Parameters
     ! ------------------------------
@@ -58,8 +59,15 @@ MODULE routing_model
        
        WSTREAM(N)    = WSTREAM(N)  + RUNCATCH(N) * REAL (ROUTE_DT)
        LS            = AREACAT(N) / (AMAX1(1.,LENGSC (N)))
-       COEFF         = RESCONST (LS, P1, P2)   
-       
+       ROFF          = RUNCATCH(N) * AREACAT(N)
+       IF(ROFF < 2. ) COEFF = RESCONST (LS, P1, P2)    
+       IF(ROFF > 10.) COEFF = RESCONST (LS, P3, P4)   
+       IF ((ROFF >= 2.).AND.(ROFF <= 10.)) THEN
+          COEFF1 = RESCONST (LS, P1, P2)    
+          COEFF2 = RESCONST (LS, P3, P4)   
+          COEFF  = COEFF1 + (ROFF - 2.)*(COEFF2 - COEFF1)/8.
+       ENDIF
+
        IF(COEFF > K_RES_MAX) COEFF = K_SIMPLE
  
        QSFLOW(N)     = COEFF * WSTREAM(N)
@@ -70,7 +78,7 @@ MODULE routing_model
        ! Updating WRIVER
        
        LS            = AMAX1(1.,LENGSC (N)) 
-       COEFF         = RESCONST (LS, P3, P4)
+       COEFF         = RESCONST (LS, P5, P6)
        IF(COEFF > K_RES_MAX) COEFF = K_SIMPLE 
 
        QOUTFLOW(N)   = COEFF * WRIVER(N)

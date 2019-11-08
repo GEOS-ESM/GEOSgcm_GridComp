@@ -80,13 +80,14 @@ contains
 ! Locals
     
     character(len=ESMF_MAXSTR)              :: GCName
-    type(ESMF_Config)                       :: CF
+    type(ESMF_Config)                       :: CF, LCF
     integer                                 :: NUM_CATCH
     integer                                 :: I
     character(len=ESMF_MAXSTR)              :: TMP
     type(MAPL_MetaComp),pointer             :: MAPL=>null()
     INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
     integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
+    character(len=ESMF_MAXSTR)              :: LANDRC
 
 !=============================================================================
 
@@ -133,8 +134,6 @@ contains
 
     call ESMF_ConfigGetAttribute ( CF, NUM_CATCH, Label="NUM_CATCH_ENSEMBLES:", default=1, RC=STATUS)
     VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute ( CF, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", default=0, RC=STATUS)
-    VERIFY_(STATUS)
 
 !------------------------------------------------------------
 ! Create children's gridded components and invoke their 
@@ -150,8 +149,12 @@ contains
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, RUN_ROUTE, Label="RUN_ROUTE:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, LANDRC, label = 'LANDRC:', default = 'GEOS_LandGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    LCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(LCF,LANDRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (LCF, label='RUN_ROUTE:'  , value=RUN_ROUTE  , DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='DO_GOSWIM:'  , value=DO_GOSWIM  , DEFAULT=0, __RC__ )
+    call ESMF_ConfigDestroy      (LCF, __RC__)
 
     SELECT CASE (LSM_CHOICE)
 
