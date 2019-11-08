@@ -17,6 +17,8 @@ MODULE lsm_routines
 ! Justin, 16 Apr 2018  - replaced LAND_UPD ifdef with LAND_FIX from SurfParams, CSOIL_2 now called
 !                        from SurfParams, as well as others
 ! Sarith, 14 Aug 2018  - Added irrigation routines, considered experimental
+! Sarith, 8 Oct 2019   - moved SUBROUTINE SRUNOFF here and changed to a generic call for old (single precip component)
+!                        and new (2 precip components)
 
   USE MAPL_BaseMod,      ONLY:                &
        NTYPS             => MAPL_NumVegTypes, &
@@ -64,7 +66,7 @@ MODULE lsm_routines
   PUBLIC :: INTERC, BASE, PARTITION, RZEQUIL, gndtp0
   PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_subtile2tile
   PUBLIC :: gndtmp, catch_calc_tp,  catch_calc_ght, catch_calc_FT, catch_calc_wtotl
-  PUBLIC :: dampen_tc_oscillations, lsmroutines_echo_constants, irrigation_rate
+  PUBLIC :: dampen_tc_oscillations, lsmroutines_echo_constants, irrigation_rate, SRUNOFF
 
   ! layer depth associated with snow-free land temperatures
   !
@@ -91,8 +93,8 @@ MODULE lsm_routines
   ! constants for interception routine (interc())
   ! Areal fraction of canopy leaves onto which precipitation falls:
 
-  REAL,    PARAMETER :: FWETL    = 0.02   ! for large-scale precipitation
-  REAL,    PARAMETER :: FWETC    = 0.02   ! for convective precipitation
+  ! REAL,    PARAMETER :: FWETL    = 0.02   ! for large-scale precipitation
+  ! REAL,    PARAMETER :: FWETC    = 0.02   ! for convective precipitation
 
   ! ---------------------------------------------------------------------------
   !
@@ -127,6 +129,16 @@ MODULE lsm_routines
 
   REAL,    PARAMETER :: ZERO     = 0.
   REAL,    PARAMETER :: ONE      = 1.
+  
+  INTERFACE SRUNOFF
+     MODULE PROCEDURE SRUNOFF_1P
+     MODULE PROCEDURE SRUNOFF_2P
+  END INTERFACE
+
+  INTERFACE INTERC
+     MODULE PROCEDURE INTERC_1P
+     MODULE PROCEDURE INTERC_2P
+  END INTERFACE
 
   CONTAINS
 
@@ -137,7 +149,7 @@ MODULE lsm_routines
 !****
 !**** [ BEGIN INTERC ]
 !****
-      SUBROUTINE INTERC (                                                      &
+      SUBROUTINE INTERC_1P (                                                   &
                          NCH, DTSTEP, TRAINL, TRAINC,SMELT,                    &
                          SATCAP, SFRAC,BUG,                                    &
                          CAPAC,                                                &
@@ -164,8 +176,8 @@ MODULE lsm_routines
       INTEGER CHNO
       REAL WETINT, WATADD, CAVAIL, THRUC, TIMFRL, TIMFRC,                      &
            THRU1, THRU2, THRUL, XTCORR,SMPERS
-
-!      DATA FWETL /0.02/, FWETC /0.02/
+      REAL,    PARAMETER :: FWETL    = 0.02   ! for large-scale precipitation
+      REAL,    PARAMETER :: FWETC    = 0.02   ! for convective precipitation      
       DATA TIMFRL/1.00/
       DATA TIMFRC/0.333/
 ! value for GSWP
@@ -258,11 +270,336 @@ MODULE lsm_routines
  100  CONTINUE
 !****
       RETURN
-      END SUBROUTINE INTERC
+      END SUBROUTINE INTERC_1P
+
+! -----------------------------------------------------------------------------
+
+      SUBROUTINE INTERC_2P (                                                      &
+                         NCH, DTSTEP, TRAINL, TRAINC,SMELT,                    &
+                         SATCAP, SFRAC,BUG,                                    &
+                         CAPAC,                                                &
+                         THRUL, THRUC                                          &
+                        )
+!****
+!**** THIS ROUTINE USES THE PRECIPITATION FORCING TO DETERMINE
+!**** CHANGES IN INTERCEPTION AND SOIL MOISTURE STORAGE.
+!**** Changes in snowcover are not treated here anymore.
+!****
+      IMPLICIT NONE
+
+!****
+      INTEGER, INTENT(IN) ::  NCH
+      REAL, INTENT(IN) :: DTSTEP, SFRAC
+      REAL, INTENT(IN), DIMENSION(NCH) :: TRAINL, TRAINC, SMELT, SATCAP
+      LOGICAL, INTENT(IN) :: BUG
+
+      REAL, INTENT(INOUT), DIMENSION(NCH) :: CAPAC
+
+      REAL, INTENT(OUT), DIMENSION(NCH) :: THRUC, THRUL
+      REAL, DIMENSION(NCH)              :: THRU
+
+      INTEGER CHNO
+      REAL WETINT, WATADD, CAVAIL, TIMFRL, TIMFRC,                      &
+           THRU1, THRU2, XTCORR,SMPERS
+      ! if you change FWETL FWETC remember to change SRUNOFF_2P too
+      REAL,    PARAMETER :: FWETL    = 1.0   ! for large-scale precipitation
+      REAL,    PARAMETER :: FWETC    = 0.2   ! for convective precipitation
+
+      DATA TIMFRL/1.00/
+      DATA TIMFRC/0.333/
+! value for GSWP
+!      TIMFRC/0.125/
+
+!****
+!**** ------------------------------------------------------------------
+!**** LOOP OVER CHIPS:
+      DO 100 CHNO = 1, NCH
+
+!**** =======================================================
+!****
+!**** LOAD INTERCEPTION RESERVOIR.  STEP 1: LARGE SCALE CONDENSATION.
+!****
+!**** DETERMINE XTCORR, THE FRACTION OF A STORM THAT FALLS ON A PREVIOUSLY
+!**** WET SURFACE DUE TO THE TIME CORRELATION OF PRECIPITATION POSITION.
+!**** (TIME SCALE TIMFRL FOR LARGE SCALE STORMS SET TO ONE FOR FWETL=1
+!**** TO REFLECT THE EFFECTIVE LOSS OF "POSITION MEMORY" WHEN STORM
+!**** COVERS ENTIRE GRID SQUARE.)
+
+      XTCORR= (1.-TIMFRL) *                                                    &
+            AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/(FWETL*SFRAC) )
+
+!****
+!**** FILL INTERCEPTION RESERVOIR WITH PRECIPITATION.
+!**** THRU1 IS FIRST CALCULATED AS THE AMOUNT FALLING THROUGH THE
+!****    CANOPY UNDER THE ASSUMPTION THAT ALL RAIN FALLS RANDOMLY.
+!****    ONLY A FRACTION 1-XTCORR FALLS RANDOMLY, THOUGH, SO THE RESULT
+!****    IS MULTIPLIED BY 1-XTCORR.
+!****
+      WATADD = TRAINL(CHNO)*DTSTEP + SMELT(CHNO)*DTSTEP
+      CAVAIL = ( SATCAP(CHNO) - CAPAC(CHNO) ) * (FWETL*SFRAC)
+      WETINT = CAPAC(CHNO)/SATCAP(CHNO)
+      IF( WATADD*(1.-WETINT) .LT. CAVAIL ) THEN
+          THRU1 = WATADD*WETINT
+        ELSE
+          THRU1 = (WATADD - CAVAIL)
+        ENDIF
+      THRU1=THRU1*(1.-XTCORR)
+
+!**** THRU2 IS THE AMOUNT THAT FALLS IMMEDIATELY THROUGH THE CANOPY DUE
+!**** TO 'POSITION MEMORY'.
+
+      THRU2=XTCORR*WATADD
+
+      THRUL(CHNO)=THRU1+THRU2
+
+      CAPAC(CHNO)=CAPAC(CHNO)+WATADD-THRU1-THRU2
+
+!****
+!**** ---------------------------------------------------
+!****
+!**** STEP 2: MOIST CONVECTIVE PRECIPITATION.
+!****
+!**** DETERMINE XTCORR, THE FRACTION OF A STORM THAT FALLS ON A PREVIOUSLY
+!**** WET SURFACE DUE TO THE TIME CORRELATION OF PRECIPITATION POSITION.
+
+      XTCORR= (1.-TIMFRC) *                                                    &
+           AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/(FWETC*SFRAC) )
+
+!****
+!**** FILL INTERCEPTION RESERVOIR WITH PRECIPITATION.
+!**** THRU1 IS FIRST CALCULATED AS THE AMOUNT FALLING THROUGH THE
+!****    CANOPY UNDER THE ASSUMPTION THAT ALL RAIN FALLS RANDOMLY.
+!****    ONLY A FRACTION 1-XTCORR FALLS RANDOMLY, THOUGH, SO THE RESULT
+!****    IS MULTIPLIED BY 1-XTCORR.
+!****
+      WATADD = TRAINC(CHNO)*DTSTEP
+      CAVAIL = ( SATCAP(CHNO) - CAPAC(CHNO) ) * (FWETC*SFRAC)
+      WETINT = CAPAC(CHNO)/SATCAP(CHNO)
+      IF( WATADD*(1.-WETINT) .LT. CAVAIL ) THEN
+          THRU1 = WATADD*WETINT
+        ELSE
+          THRU1 = (WATADD - CAVAIL)
+        ENDIF
+      THRU1=THRU1*(1.-XTCORR)
+
+!**** THRU2 IS THE AMOUNT THAT FALLS IMMEDIATELY THROUGH THE CANOPY DUE
+!**** TO 'POSITION MEMORY'.
+
+      THRU2=XTCORR*WATADD
+
+      THRUC(CHNO)=THRU1+THRU2
+      CAPAC(CHNO)=CAPAC(CHNO)+WATADD-THRU1-THRU2
+!****
+      IF (THRUL(CHNO)+THRUC(CHNO) .LT. -1.e-8) WRITE(*,*) 'THRU= ',                        &
+          THRUL(CHNO), THRUC(CHNO), TRAINC(CHNO), TRAINL(CHNO), SMELT(CHNO)
+      THRUL(CHNO)=AMAX1(0., THRUL(CHNO))
+      THRUC(CHNO)=AMAX1(0., THRUC(CHNO))
+      THRU(CHNO)= THRUL(CHNO) + THRUC(CHNO)
+      
+ 100  CONTINUE
+!****
+      RETURN
+      END SUBROUTINE INTERC_2P
+
 !****
 !**** [ END INTERC ]
 !****
 !****
+!**** ===================================================
+!**** ///////////////////////////////////////////////////
+!**** ===================================================
+
+      SUBROUTINE SRUNOFF_1P (                                                  &
+                          NCH,DTSTEP,AR1,ar2,ar4, THRU,frice,tp1,srfmx,BUG,    &
+                          SRFEXC,RUNSRF,                                       &
+                          QINFIL,RZEXC,VGWMAX,RZEQ,POROS                       &
+                         )
+
+      IMPLICIT NONE
+
+
+      INTEGER, INTENT(IN) :: NCH
+      REAL, INTENT(IN) :: DTSTEP
+      REAL, INTENT(IN), DIMENSION(NCH) :: AR1, ar2, ar4, THRU, frice, tp1,     &
+             srfmx,VGWMAX,RZEQ,POROS
+      LOGICAL, INTENT(IN) :: BUG
+
+      REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC ,RUNSRF,RZEXC
+
+      REAL, INTENT(OUT), DIMENSION(NCH) :: QINFIL
+
+      INTEGER N
+      REAL PTOTAL,srun0,frun,qin
+
+!**** - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+      DO N=1,NCH
+        IF (POROS(N) .LE. 0.8) THEN
+           PTOTAL=THRU(N)
+           frun=AR1(N)
+           if(srfexc(n) .gt. 0.) then
+              !          frun=frun+ar2(n)*(srfexc(n)/(srfmx(n)+1.e-20))
+              !         frun=frun+ar4(n)*(srfexc(n)/(srfmx(n)+1.e-20))**2
+           endif
+           !        frun=frun+(1-frun)*frice(n)
+           srun0=PTOTAL*frun
+           
+           !**** Comment out this line in order to allow moisture
+           !**** to infiltrate soil:
+           !       if(tp1(n) .lt. 0.) srun0=ptotal
+           
+           if(ptotal-srun0 .gt. srfmx(n)-srfexc(n))                               &
+                srun0=ptotal-(srfmx(n)-srfexc(n)) 
+           
+           if (srun0 .gt. ptotal) then
+              !rr          write(*,*) 'srun0 > ptotal: N=',N
+              !rr          write(*,*) ' frice=',frice(n),' ar1=',ar1(n),' ptotal=',
+              !rr     &           ptotal,' tp1=',tp1(n)
+              !rr          write(*,*) ' ar2=',ar2(n),' ar4=',ar4(n),' srfexc=',
+              !rr     &           srfexc(n),' srfmx=',srfmx(n),' thru=',thru(n),
+              !rr     &           ' rzexc=',rzexc(n)
+              !rr          write(*,*) '=====> CORRECTION'
+              srun0=ptotal
+           endif
+           
+           RUNSRF(N)=RUNSRF(N)+srun0
+           QIN=PTOTAL-srun0
+           
+           SRFEXC(N)=SRFEXC(N)+QIN
+           RUNSRF(N)=RUNSRF(N)/DTSTEP
+           QINFIL(N)=QIN/DTSTEP
+         ELSE
+          ! peat
+          ! MB: no Hortonian surface runoff
+          PTOTAL=THRU(N)
+          srun0 = 0.
+          ! handling numerical instability due to exceptional snow melt events at some pixels
+          IF (AR1(N)>0.50) srun0=PTOTAL
+          ! MB: even no surface runoff when srfmx is exceeded (activating macro-pore flow)
+          if (ptotal-srun0 .gt. srfmx(n)-srfexc(n)) then                               
+             ! MB: check if VGWMAX is exceeded
+             IF(RZEQ(N) + RZEXC(N) .GT. (VGWMAX(N))) THEN
+                srun0 = srun0 + RZEQ(N)+RZEXC(N)-VGWMAX(N)
+                RZEXC(N)=VGWMAX(N)-RZEQ(N)
+             ENDIF
+          endif
+          if (srun0 .gt. ptotal) then
+             srun0=ptotal
+          endif
+          RUNSRF(N)=RUNSRF(N)+srun0
+          QIN=PTOTAL-srun0
+          SRFEXC(N)=amin1(SRFEXC(N)+QIN,srfmx(n))
+          RUNSRF(N)=RUNSRF(N)/DTSTEP
+          QINFIL(N)=QIN/DTSTEP  
+         ENDIF
+      ENDDO
+      
+      RETURN
+      END SUBROUTINE SRUNOFF_1P
+
+      ! -----------------------------------------------------------------------
+
+      SUBROUTINE SRUNOFF_2P (                                                  &
+                          NCH,DTSTEP,AR1,ar2,ar4, THRUL,THRUC, frice,tp1,      &
+                          srfmx,SFRAC, BUG,SRFEXC,RUNSRF,                      &
+                          QINFIL,RZEXC,VGWMAX,RZEQ,POROS                       &
+                         )
+
+      IMPLICIT NONE
+
+
+      INTEGER, INTENT(IN) :: NCH
+      REAL, INTENT(IN) :: DTSTEP, SFRAC
+      REAL, INTENT(IN), DIMENSION(NCH) :: AR1, ar2, ar4, frice, tp1,     &
+             srfmx, THRUL, THRUC,VGWMAX,RZEQ,POROS
+      LOGICAL, INTENT(IN) :: BUG
+
+      REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC ,RUNSRF,RZEXC
+
+      REAL, INTENT(OUT), DIMENSION(NCH) :: QINFIL
+      REAL,    PARAMETER :: FWETL    = 1.0   ! for large-scale precipitation
+      REAL,    PARAMETER :: FWETC    = 0.2   ! for convective precipitation
+
+      INTEGER N
+      REAL deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, srunc, srunl, ptotal
+
+!**** - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+      DO N=1,NCH
+
+         IF (POROS(N) .LE. 0.8) THEN
+
+            !**** Compute runoff from large-scale and convective storms separately:
+            
+            deficit=srfmx(n)-srfexc(n)
+            
+            srunl=AR1(n)*THRUL(n)
+            qinfil_l=(1.-ar1(n))*THRUL(n)
+            qcapac=deficit*SFRAC*FWETL
+            
+            if(qinfil_l .gt. qcapac) then
+               excess_infil=qinfil_l-qcapac
+               srunl=srunl+excess_infil
+               qinfil_l=qinfil_l-excess_infil
+            endif
+            
+            srunc=AR1(n)*THRUC(n)
+            qinfil_c=(1.-ar1(n))*THRUC(n)
+            qcapac=deficit*SFRAC*FWETC
+            
+            if(qinfil_c .gt. qcapac) then
+               excess_infil=qinfil_c-qcapac
+               srunc=srunc+excess_infil
+               qinfil_c=qinfil_c-excess_infil
+            endif
+            
+            !**** Comment out this line in order to allow moisture
+            !**** to infiltrate soil:
+            !       if(tp1(n) .lt. 0.) srun0=ptotal
+            
+            if (srunl .gt. THRUL(n)) then
+               srunl=THRUL(n)
+            endif
+            
+            if (srunc .gt. THRUC(n)) then
+               srunc=THRUC(n)
+            endif
+            
+            RUNSRF(N)=RUNSRF(N)+srunl+srunc
+            QIN=THRUL(n)+THRUC(n)-(srunl+srunc)
+            
+            SRFEXC(N)=SRFEXC(N)+QIN
+            RUNSRF(N)=RUNSRF(N)/DTSTEP
+            QINFIL(N)=QIN/DTSTEP
+         ELSE
+            ! peat
+            ! MB: no Hortonian surface runoff
+            PTOTAL=THRUL(N) + THRUC(N)
+            srun0 = 0.
+            ! handling numerical instability due to exceptional snow melt events at some pixels
+            IF (AR1(N)>0.50) srun0=PTOTAL
+            ! MB: even no surface runoff when srfmx is exceeded (activating macro-pore flow)
+            if (ptotal-srun0 .gt. srfmx(n)-srfexc(n)) then                              
+               ! MB: check if VGWMAX is exceeded
+               IF(RZEQ(N) + RZEXC(N) .GT. (VGWMAX(N))) THEN
+                  srun0 = srun0 + RZEQ(N)+RZEXC(N)-VGWMAX(N)
+                  RZEXC(N)=VGWMAX(N)-RZEQ(N)
+               ENDIF
+            endif
+            if (srun0 .gt. ptotal) then
+               srun0=ptotal
+            endif
+            RUNSRF(N)=RUNSRF(N)+srun0
+            QIN=PTOTAL-srun0
+            SRFEXC(N)=amin1(SRFEXC(N)+QIN,srfmx(n))
+            RUNSRF(N)=RUNSRF(N)/DTSTEP
+            QINFIL(N)=QIN/DTSTEP  
+         ENDIF
+      END DO
+
+      RETURN
+      END SUBROUTINE SRUNOFF_2P
+
 !**** -----------------------------------------------------------------
 !**** /////////////////////////////////////////////////////////////////
 !**** -----------------------------------------------------------------
@@ -270,7 +607,7 @@ MODULE lsm_routines
       SUBROUTINE BASE (                                                        &
                        NCH,DTSTEP,BF1,BF2,BF3,CDCR1,FRICE,COND,GNU,            &
                        CATDEF,                                                 &
-                       BFLOW                                                   &
+                       BFLOW, AR1, POROS                                       &
                       )
 
       IMPLICIT NONE
@@ -279,7 +616,7 @@ MODULE lsm_routines
       INTEGER, INTENT(IN) :: NCH
       REAL, INTENT(IN) :: DTSTEP
       REAL, INTENT(IN), DIMENSION(NCH) :: BF1, BF2, BF3, CDCR1, FRICE, COND,   &
-          GNU
+          GNU, AR1, POROS        
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: CATDEF
 
@@ -287,7 +624,7 @@ MODULE lsm_routines
 
 
       INTEGER N
-      REAL ZBAR, ashift
+      REAL ZBAR, ashift, CFRICE,Ksz_zero,m_Ivanov,v_slope,Ta,dztmp,NOMTMP,SYSOIL1,SYSOIL2,SYSOIL,BFLOW_CATDEF
 
       data ashift/0./
 
@@ -295,20 +632,80 @@ MODULE lsm_routines
       DO N=1,NCH
          ! note intentionally opposite sign w.r.t. zbar defined above, - reichle, 16 Nov 2015
         ZBAR=SQRT(1.e-20+catdef(n)/bf1(n))-bf2(n)
-        BFLOW(N)=(1.-FRICE(N))*1000.*                                          &
-              cond(n)*exp(-(bf3(n)-ashift)-gnu(n)*zbar)/gnu(n)
-! *1000 is to convert from m/s to mm/s
-        IF (CATDEF(N) .GE. CDCR1(N)) BFLOW(N)=0.
-!#ifdef LAND_UPD
-	IF (LAND_FIX) THEN
+        IF (POROS(N) .LE. 0.9) THEN
+           BFLOW(N)=(1.-FRICE(N))*1000.*                                          &
+                cond(n)*exp(-(bf3(n)-ashift)-gnu(n)*zbar)/gnu(n)
+           ! *1000 is to convert from m/s to mm/s
+           IF (CATDEF(N) .GE. CDCR1(N)) BFLOW(N)=0.
+           !#ifdef LAND_UPD
+           IF (LAND_FIX) THEN
 	      bflow(n)=amin1(1000.*cond(n),bflow(n))
-	ELSE
-!#else
-	      bflow(n)=amin1(cond(n),bflow(n))
-	END IF
-!#endif
-        CATDEF(N)=CATDEF(N)+BFLOW(N)*dtstep
-        ENDDO
+           ELSE
+              !#else
+              bflow(n)=amin1(cond(n),bflow(n))
+           END IF
+           !#endif
+
+           CATDEF(N)=CATDEF(N)+BFLOW(N)*dtstep
+        ELSE
+                     ! PEAT  
+          ! BFLOW in mm/s
+          CFRICE=amin1(0.9999,FRICE(N))
+          ! based on Ivanov 1981
+          ! Ksz0  in  m/s
+          ! m_Ivanov [-]  value depends on unit of Ksz0 and z
+          ! v_slope in m^(-1)
+          Ksz_zero=10.
+          m_Ivanov=3.0
+          v_slope = 1.5e-07
+          ! Ta in m2/d
+          Ta = (Ksz_zero*(1.+100.*amax1(0.,ZBAR))**(1.-m_Ivanov))/(100.*(m_Ivanov-1.))
+          BFLOW(N)=v_slope*Ta*1000
+          ! handling numerical instability due to exceptional snow melt events at some pixels
+          IF (ZBAR .GE. 0.05) BFLOW(N)=(1.-CFRICE)*BFLOW(N)
+
+          ! MB: Remove water from CATDEF and surface water storage
+          IF (BFLOW(N) .NE. 0.0) THEN
+            dztmp = BFLOW(N)*dtstep/0.5
+            dztmp = amax1(0.1,dztmp)
+            NOMTMP=(1000.*(amax1(AR1(N),2.E-10) - 1)*(CATDEF(N) + dztmp - BF1(N)*BF2(N)**2. - &
+            BF1(N)*ZBAR**2. - AR1(N)*CATDEF(N) - 2.*BF1(N)*BF2(N)*ZBAR + AR1(N)*BF1(N)*BF2(N)**2. + &
+            AR1(N)*BF1(N)*ZBAR**2. + 2.*AR1(N)*BF1(N)*BF2(N)*ZBAR))
+            IF (NOMTMP .EQ. 0.0) THEN
+              NOMTMP = 1.E-20
+            ENDIF
+
+            SYSOIL1 = -(1000.*AR1(N)**2.*CATDEF(N) + dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + &
+            BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - 2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + &
+            1000.*AR1(N)*BF1(N)*ZBAR - 1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - &
+            1000.*AR1(N)**2.*BF1(N)*ZBAR)**(0.5) - 1000.*AR1(N)*CATDEF(N) - 500*AR1(N)*dztmp + &
+            BF1(N)*BF2(N)*dztmp + BF1(N)*dztmp*ZBAR + 1000.*AR1(N)*BF1(N)*BF2(N)**2. + &
+            1000.*AR1(N)*BF1(N)*ZBAR**2. - 1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. - 1000.*AR1(N)**2.*BF1(N)*ZBAR**2. - &
+            AR1(N)*BF1(N)*BF2(N)*dztmp + 2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR - AR1(N)*BF1(N)*dztmp*ZBAR - &
+            2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR)/NOMTMP
+
+            NOMTMP=(1000.*(amax1(AR1(N),2.E-10) - 1)*(CATDEF(N) + dztmp - BF1(N)*BF2(N)**2. - &
+            BF1(N)*ZBAR**2. - AR1(N)*CATDEF(N) - 2.*BF1(N)*BF2(N)*ZBAR + AR1(N)*BF1(N)*BF2(N)**2. + &
+            AR1(N)*BF1(N)*ZBAR**2. + 2.*AR1(N)*BF1(N)*BF2(N)*ZBAR))
+            IF (NOMTMP .EQ. 0.0) THEN
+              NOMTMP = 1.E-20
+            ENDIF
+
+            SYSOIL2 = (dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - &
+            2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*ZBAR - &
+            1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - 1000.*AR1(N)**2.*BF1(N)*ZBAR)**(0.5) - &
+            1000.*AR1(N)**2.*CATDEF(N) + 1000.*AR1(N)*CATDEF(N) + 500*AR1(N)*dztmp - BF1(N)*BF2(N)*dztmp - &
+            BF1(N)*dztmp*ZBAR - 1000.*AR1(N)*BF1(N)*BF2(N)**2. - 1000.*AR1(N)*BF1(N)*ZBAR**2. + &
+            1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. + 1000.*AR1(N)**2.*BF1(N)*ZBAR**2. + AR1(N)*BF1(N)*BF2(N)*dztmp - &
+            2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR + AR1(N)*BF1(N)*dztmp*ZBAR + &
+            2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR)/NOMTMP
+
+            SYSOIL = AMAX1(1.e-5,AMAX1(SYSOIL1,SYSOIL2))
+            BFLOW_CATDEF = (1-AR1(N))*SYSOIL*BFLOW(N)/(1.0*AR1(N)+SYSOIL*(1-AR1(N)))
+            CATDEF(N)=CATDEF(N)+BFLOW_CATDEF*dtstep
+          ENDIF
+        ENDIF
+     ENDDO
 
 
       RETURN
@@ -324,6 +721,7 @@ MODULE lsm_routines
       SUBROUTINE PARTITION (                                                   &
                             NCH,DTSTEP,DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,     &
                             PSIS,BEE,poros,WPWET,                              &
+                            BF1, BF2,                                          &
                             ars1,ars2,ars3,ara1,ara2,ara3,ara4,                &
                             arw1,arw2,arw3,arw4,BUG,                           &
                             srfexc,catdef,runsrf,                              &
@@ -340,7 +738,7 @@ MODULE lsm_routines
       REAL, INTENT(IN), DIMENSION(NCH) :: DZSF,RZEXC,RZEQ,VGWMAX,CDCR1,CDCR2,  &
                                           PSIS,BEE,poros,WPWET,                &
                                           ars1,ars2,ars3,ara1,ara2,ara3,ara4,  &
-                                          arw1,arw2,arw3,arw4
+                                          arw1,arw2,arw3,arw4, BF1, BF2
 
       LOGICAL, INTENT(IN) :: BUG
 ! -------------------------------------------------------------------
@@ -358,7 +756,7 @@ MODULE lsm_routines
               ARG1, EXPARG1, ARG2, EXPARG2, ARG3, EXPARG3  !, surflay
 
       LOGICAL :: LSTRESS
-
+      REAL    :: ZBAR, ARREST 
 
       DATA LSTRESS/.FALSE./    !,surflay/20./
 
@@ -493,23 +891,46 @@ MODULE lsm_routines
             AR4(N)=1.-FACTOR
             ENDIF
 
-          ENDIF
+         ENDIF
+
+         IF (POROS(N) .GE. 0.9) THEN
+            ! peat
+            ! MB: AR4 (wilting fraction) for peatland depending on water table depth
+            !ZBAR defined here positive below ground and in meter
+            ZBAR=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
+            AR4(N)=amax1(0.,amin1(1.0,(ZBAR-0.30)/(1.0)))   
+            ARREST = 1.0 - AR1(N)
+            AR4(N)=amin1(ARREST,AR4(N))
+            AR2(N)=1.0-AR4(n)-AR1(N)
+         ENDIF
 
         RZI(N)=RZEQYI
-
         SWSRF1(N)=1.
 !mjs: changed .001 temporarily because of large bee.
-        SWSRF2(N)=AMIN1(1., AMAX1(0.01, RZEQYI))
-        SWSRF4(N)=AMIN1(1., AMAX1(0.01, WILT))
+        IF (POROS(N) .LE. 0.9) THEN
+           SWSRF2(N)=AMIN1(1., AMAX1(0.01, RZEQYI))
+           SWSRF4(N)=AMIN1(1., AMAX1(0.01, WILT))
+           
+           !**** EXTRAPOLATION OF THE SURFACE WETNESSES
+           
+           ! 1st step: surface wetness in the unstressed fraction without considering
+           !           the surface excess; we just assume an equilibrium profile from
+           !           the middle of the root zone to the surface.
+           
+           SWSRF2(N)=((SWSRF2(N)**(-BEE(N))) - (.5/PSIS(N)))**(-1./BEE(N))
+           SWSRF4(N)=((SWSRF4(N)**(-BEE(N))) - (.5/PSIS(N)))**(-1./BEE(N))
 
-!**** EXTRAPOLATION OF THE SURFACE WETNESSES
-
-! 1st step: surface wetness in the unstressed fraction without considering
-!           the surface excess; we just assume an equilibrium profile from
-!           the middle of the root zone to the surface.
-
-        SWSRF2(N)=((SWSRF2(N)**(-BEE(N))) - (.5/PSIS(N)))**(-1./BEE(N))
-        SWSRF4(N)=((SWSRF4(N)**(-BEE(N))) - (.5/PSIS(N)))**(-1./BEE(N))
+        ELSE
+          ! PEAT
+          ! MB: for peatlands integrate across surface soil moisture distribution
+          ! coefficients fitted for equilibrium conditions
+          ! SWSRF2 and SWSRF4 as wetness (not moisture)
+          ! MB: bug April 2018, AMIN1 function due to problems when spin up from
+          ! scratch (i.e. dry soil at time=0)
+          SWSRF2(N)=0.79437 - 0.99996*AMIN1(1.5,ZBAR) + 0.68801*(AMIN1(1.5,ZBAR))**2 + & 
+                     0.04186*(AMIN1(1.5,ZBAR))**3 - 0.15042*(AMIN1(1.5,ZBAR))**4
+          SWSRF4(N)=SWSRF2(N)           
+        ENDIF
 
 ! srfmx is the maximum amount of water that can be added to the surface layer
 ! The choice of defining SWSRF4 like SWSRF2 needs to be better examined.
@@ -1261,9 +1682,9 @@ MODULE lsm_routines
   subroutine catch_calc_soil_moist( &
        NTILES,vegcls,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet, &
        ars1,ars2,ars3,ara1,ara2, &
-       ara3,ara4,arw1,arw2,arw3,arw4, &
+       ara3,ara4,arw1,arw2,arw3,arw4, bf1, bf2, &
        srfexc,rzexc,catdef, &
-       ar1, ar2, ar4, &
+       ar1, ar2, ar4,  &
        sfmc, rzmc, prmc,  &
        werror, sfmcun, rzmcun, prmcun )
 
@@ -1316,7 +1737,7 @@ MODULE lsm_routines
 
     real,    dimension(NTILES), intent(in) :: dzsf,vgwmax,cdcr1,cdcr2
     real,    dimension(NTILES), intent(in) :: wpwet,poros,psis
-    real,    dimension(NTILES), intent(in) :: bee,ars1
+    real,    dimension(NTILES), intent(in) :: bee,ars1, bf1, bf2
     real,    dimension(NTILES), intent(in) :: ars2,ars3,ara1,ara2,ara3
     real,    dimension(NTILES), intent(in) :: ara4,arw1,arw2,arw3,arw4
 
@@ -1415,7 +1836,7 @@ MODULE lsm_routines
     call partition( &
          NTILES,dtstep_dummy,dzsf,rzexc, &
          rzeq,vgwmax,cdcr1,cdcr2, &
-         psis,bee,poros,wpwet, &
+         psis,bee,poros,wpwet, bf1, bf2, &
          ars1,ars2,ars3, &
          ara1,ara2,ara3,ara4, &
          arw1,arw2,arw3,arw4,.false., &
@@ -2174,8 +2595,6 @@ MODULE lsm_routines
     write (logunit,*)
     write (logunit,*) 'DZTC          = ', DZTC
     write (logunit,*)
-    write (logunit,*) 'FWETL         = ', FWETL
-    write (logunit,*) 'FWETC         = ', FWETC
     write (logunit,*) 'SATCAPFR      = ', SATCAPFR
     write (logunit,*)
     write (logunit,*) 'DZGT          = ', DZGT
