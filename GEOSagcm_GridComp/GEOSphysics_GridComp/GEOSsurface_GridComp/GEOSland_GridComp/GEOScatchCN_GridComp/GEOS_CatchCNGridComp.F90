@@ -6499,8 +6499,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! gkw: obtain catchment area fractions and soil moisture
 ! ------------------------------------------------------
-    call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet, &
-                              ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,    &
+    call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,           &
+                              ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,    &
                               srfexc, rzexc, catdef, car1, car2, car4, sfmc, rzmc, prmc )
                               
 ! obtain saturated canopy resistance following Farquhar, CLM4 implementation    
@@ -7404,7 +7404,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        
        CALL CATCH_CALC_SOIL_MOIST (                                     &
             NTILES,VEG1,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,   &
-            ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,     &
+            ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,bf1,bf2,    &
             srfexc,rzexc,catdef, CAR1, CAR2, CAR4, sfmc, rzmc, prmc)
        
        call irrigation_rate (IRRIG_METHOD,                                 & 
@@ -8414,6 +8414,8 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: arw2(:)=>null()
   real, pointer :: arw3(:)=>null()
   real, pointer :: arw4(:)=>null()
+  real, pointer :: bf1(:)=>null()
+  real, pointer :: bf2(:)=>null()
 
   !! Miscellaneous
   integer :: ntiles, nv, nz, PRESCRIBE_DVG
@@ -8509,6 +8511,10 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(INTERNAL, arw3, 'ARW3', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, arw4, 'ARW4', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, bf1, 'BF1', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, bf2, 'BF2', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, srfexc, 'SRFEXC', rc=status)
   VERIFY_(status)
@@ -8650,7 +8656,7 @@ subroutine RUN0(gc, import, export, clock, rc)
        psis, bee, poros, wpwet,                                                 &
        ars1, ars2, ars3,                                                        &
        ara1, ara2, ara3, ara4,                                                  &
-       arw1, arw2, arw3, arw4,                                                  &
+       arw1, arw2, arw3, arw4, bf1, bf2,                                        &
        ! intent(inout)
        ! from process_cat
        srfexccp, rzexccp, catdefcp,                                             &
