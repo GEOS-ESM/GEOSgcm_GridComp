@@ -89,7 +89,7 @@ integer,parameter :: NUM_SUBTILES=4
 !                  7:  BARE SOIL
 !                  8:  DESERT
 
-integer           :: NUM_LDAS_ENSEMBLE
+integer           :: NUM_LDAS_ENSEMBLE, USE_ASCATZ0
 integer,parameter :: NTYPS = MAPL_NUMVEGTYPES
 
 ! Veg-dep. vector SAI factor for scaling of rough length (now exp(-.5) )
@@ -780,6 +780,34 @@ subroutine SetServices ( GC, RC )
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
     VERIFY_(STATUS)
+
+    IF (MODIS_DVG == 1) THEN 
+
+       call MAPL_AddImportSpec(gc, &
+            short_name = "MODIS_LAI", &
+            LONG_NAME  = 'MODIS Leaf Area Index',                     &
+            UNITS      = '1',                                         &
+            DIMS       = MAPL_DimsTileOnly,                           &
+            VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+       VERIFY_(STATUS)
+    
+       call MAPL_AddImportSpec(gc, &
+            short_name = "MODIS_VISDF",                               &
+            LONG_NAME  = 'MODIS albedo visible diffuse',              &
+            UNITS      = '1',                                         &
+            DIMS       = MAPL_DimsTileOnly,                           &
+            VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+       VERIFY_(STATUS)
+
+       call MAPL_AddImportSpec(gc, &
+            short_name = "MODIS_NIRDF",                               &
+            LONG_NAME  = 'MODIS albedo near infrared diffuse',        &
+            UNITS      = '1',                                         &
+            DIMS       = MAPL_DimsTileOnly,                           &
+            VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+       VERIFY_(STATUS)       
+       
+    ENDIF
 
 !  !INTERNAL STATE:
 
@@ -2976,6 +3004,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:),     pointer :: PCU
     real, dimension(:),     pointer :: ASCATZ0
     real, dimension(:),     pointer :: NDVI
+    real, dimension(:),     pointer :: MODIS_LAI
 
 ! -----------------------------------------------------
 ! INTERNAL Pointers
@@ -3070,11 +3099,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer                        :: CHOOSEMOSFC
     integer                        :: CHOOSEZ0
 
+   integer                         :: MODIS_DVG
    real                            :: SCALE4Z0
    real                            :: SCALE4ZVG
    real                            :: SCALE4Z0_u
    real                            :: MIN_VEG_HEIGHT 
-   
+   real,   allocatable             :: LAI0 (:)
    ! Offline mode
    type(OFFLINE_WRAP) :: wrap
    logical :: is_OFFLINE
@@ -3134,6 +3164,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, MODIS_DVG,Label="MODIS_DVG:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGet       (VM,       mpiCommunicator =comm,   RC=STATUS)
@@ -3170,6 +3202,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,NDVI   , 'NDVI'   ,    RC=STATUS)
    VERIFY_(STATUS)
+   IF (MODIS_DVG == 1) THEN
+      call MAPL_GetPointer(IMPORT,MODIS_LAI, 'MODIS_LAI', RC=STATUS) ; VERIFY_(STATUS)
+   ENDIF
 
 ! Pointers to internals
 !----------------------
@@ -3325,12 +3360,15 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
    allocate(IWATER(NT),STAT=STATUS)
    VERIFY_(STATUS)
+   allocate(LAI0 (NT),STAT=STATUS) ; VERIFY_(STATUS)
 
 !  Vegetation types used to index into tables
 !--------------------------------------------
 
    VEG = nint(ITY(:))
    ASSERT_((count(VEG>NTYPS.or.VEG<1)==0))
+   LAI0 = LAI
+   IF (MODIS_DVG == 1) LAI0  = min(7., max(0.0001, MODIS_LAI))
 
 !  Clear the output tile accumulators
 !------------------------------------
@@ -3395,9 +3433,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       if (Z0_FORMULATION == 4) then
          ! make canopy height >= min veg height:
          Z2CH = max(Z2CH,MIN_VEG_HEIGHT)
-         ZVG  = Z2CH - SAI4ZVG(VEG)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI)
+         ZVG  = Z2CH - SAI4ZVG(VEG)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI0)
       else
-         ZVG  = Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI)
+         ZVG  = Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI0)
          !Z0T(:,N)  = Z0_BY_ZVEG*ZVG*SCALE4Z0 
       endif
 
@@ -3428,7 +3466,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    WW(:,N) = 0.
    CM(:,N) = 0.
 
-    call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
+         call louissurface(3,N,UU,WW,PS,TA,TC,QA,QC,PCU,LAI0,Z0T,DZE,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE,DCH,DCQ)
 
    elseif (CHOOSEMOSFC.eq.1)then
   
@@ -3538,6 +3576,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    deallocate(IWATER)
    deallocate(PSMB)
    deallocate(PSL)
+   deallocate(LAI0)
 
 !  All done
 ! ------------------------------------------------------------------------------
@@ -3744,6 +3783,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:,:), pointer :: SSSV
         real, dimension(:,:), pointer :: SSWT
         real, dimension(:,:), pointer :: SSSD
+
+        real, dimension(:), pointer   :: MODIS_VISDF
+        real, dimension(:), pointer   :: MODIS_NIRDF
+        real, dimension(:), pointer   :: MODIS_LAI
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
@@ -4252,6 +4295,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         VERIFY_(STATUS)
         endif
 
+        call MAPL_GetResource ( MAPL, MODIS_DVG, Label="MODIS_DVG:", DEFAULT=0, RC=STATUS)
+        VERIFY_(STATUS)
+
         call ESMF_VMGet(VM, localPet=mype, rc=status)
         VERIFY_(STATUS)
  
@@ -4315,6 +4361,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,SSSV   ,'SSSV'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSWT   ,'SSWT'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
+
+        IF (MODIS_DVG == 1) THEN 
+           call MAPL_GetPointer(IMPORT, MODIS_LAI   ,'MODIS_LAI'     ,RC=STATUS); VERIFY_(STATUS) 
+           call MAPL_GetPointer(IMPORT, MODIS_VISDF ,'MODIS_VISDF'   ,RC=STATUS); VERIFY_(STATUS) 
+           call MAPL_GetPointer(IMPORT, MODIS_NIRDF ,'MODIS_NIRDF'   ,RC=STATUS); VERIFY_(STATUS) 
+        ENDIF
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
@@ -4594,6 +4646,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
 
+        LAI0  = min(7., max(0.0001, LAI))
+        IF(MODIS_DVG == 1) LAI0  = min(7., max(0.0001, MODIS_LAI))
+ 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! --------------------------------------------------------------------------
         ! Catchment Id and vegetation types used to index into tables
@@ -4716,9 +4771,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
      if (Z0_FORMULATION == 4) then
         ! make canopy height >= min veg height:
         Z2CH = max(Z2CH,MIN_VEG_HEIGHT)
-        ZVG  = Z2CH - SAI4ZVG(VEG)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI)         
+        ZVG  = Z2CH - SAI4ZVG(VEG)*SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI0)         
      else
-        ZVG  = Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI)
+        ZVG  = Z2CH - SCALE4ZVG*(Z2CH - MIN_VEG_HEIGHT)*exp(-LAI0)
      endif
 
      Z0   = Z0_BY_ZVEG*ZVG*SCALE4Z0_u
@@ -4860,17 +4915,26 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Update raditation exports
         ! --------------------------------------------------------------------------
 
+     IF (MODIS_DVG == 0) THEN
 
-        call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
-                       VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                       ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+        call    SIBALB(NTILES, VEG, LAI0, GRN, ZTH, & 
+             VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
+             ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+     ELSE
+
+        ALBVR = MIN (1., MAX(0.001,MODIS_VISDF))
+        ALBNR = MIN (1., MAX(0.001,MODIS_NIRDF))
+        ALBVF = MIN (1., MAX(0.001,MODIS_VISDF))
+        ALBNF = MIN (1., MAX(0.001,MODIS_NIRDF))  
+        
+     ENDIF
 
         ! Get TPSN1OUT1 for SNOW_ALBEDO parameterization
 
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)    
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
-        call   SNOW_ALBEDO(NTILES, N_snow, N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+        call   SNOW_ALBEDO(NTILES, N_snow, N_CONST_LAND4SNWALB, VEG, LAI0, ZTH, &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
@@ -4913,7 +4977,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Correction to RDC formulation -Randy Koster, 4/1/2011
 !        RDC = max(VGRDA(VEG)*min(VGRDB(VEG),LAI),0.001)
-        RDC = max(VGRDA(VEG)*min(1., LAI/VGRDB(VEG)),0.001)
+        RDC = max(VGRDA(VEG)*min(1., LAI0/VGRDB(VEG)),0.001)
         RHO = PS/(MAPL_RGAS*(TA*(1+MAPL_VIREPS*QA)))
 
         DEDTC=0.0
@@ -4979,7 +5043,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ASSERT_(count(PCU<0.)==0)
         ASSERT_(count(SLDTOT<0.)==0)
 
-        LAI0  = max(0.0001     , LAI)
         GRN0  = max(0.0001     , GRN)		
         ZTH   = max(0.0001     , ZTH)
 
@@ -5529,7 +5592,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! update subtile fractions
         ! --------------------------------------------------------------------------
 
-        EMIS    = EMSVEG(VEG) + (EMSBARESOIL - EMSVEG(VEG))*exp(-LAI)
+        EMIS    = EMSVEG(VEG) + (EMSBARESOIL - EMSVEG(VEG))*exp(-LAI0)
 
         EMIS    = EMIS     *(1.-ASNOW) + EMSSNO   *ASNOW
 
@@ -5548,14 +5611,26 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 
         call MAPL_TimerOn(MAPL,"-ALBEDO")
-        call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
-                       VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                       ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+
+        IF (MODIS_DVG == 0) THEN
+
+        call    SIBALB(NTILES, VEG, LAI0, GRN, ZTH, & 
+             VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
+             ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles           
+
+        ELSE
+
+           ALBVR = MIN (1., MAX(0.001,MODIS_VISDF))
+           ALBNR = MIN (1., MAX(0.001,MODIS_NIRDF))
+           ALBVF = MIN (1., MAX(0.001,MODIS_VISDF))
+           ALBNF = MIN (1., MAX(0.001,MODIS_NIRDF))  
+           
+        ENDIF
 
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
-        call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+        call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI0, ZTH, &
                  RHOFS,                                              &   
                  SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
                  WESNN, HTSNNN, SNDZN,                               &
@@ -5916,11 +5991,12 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: arw4(:)=>null()
 
   !! Miscellaneous
-  integer :: ntiles
+  integer :: ntiles, MODIS_DVG
   real, allocatable :: dummy(:)
   real :: SURFLAY
   real, allocatable :: dzsf(:), ar1(:), ar2(:), wesnn(:,:)
   real, allocatable :: catdefcp(:), srfexccp(:), rzexccp(:)
+  real, allocatable :: lai0(:)
 
   ! Begin...
 
@@ -5940,10 +6016,17 @@ subroutine RUN0(gc, import, export, clock, rc)
   ! Pointers to IMPORTs
   call MAPL_GetPointer(import, ity, 'ITY', rc=status)
   VERIFY_(status)
-  call MAPL_GetPointer(import, lai, 'LAI', rc=status)
-  VERIFY_(status)
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
   VERIFY_(status)
+  call MAPL_GetResource ( MAPL, MODIS_DVG,        Label="MODIS_DVG:",DEFAULT=0, RC=STATUS)
+  VERIFY_(STATUS)
+  IF (MODIS_DVG == 1) THEN 
+     call MAPL_GetPointer(import, lai, 'MODIS_LAI', rc=status)
+     VERIFY_(status)
+  ELSE
+     call MAPL_GetPointer(import, lai, 'LAI', rc=status)
+     VERIFY_(status)  
+  ENDIF
 
   ! Pointers to INTERNALs
   call MAPL_GetPointer(INTERNAL, asnow, 'ASNOW', rc=status)
@@ -6016,7 +6099,9 @@ subroutine RUN0(gc, import, export, clock, rc)
   ! Number of tiles and a dummy real array
   ntiles = size(HTSNNN1)
   allocate(dummy(ntiles), stat=status)
-  VERIFY_(status)
+  allocate(lai0(ntiles) , stat=status)
+
+  LAI0 = MIN (7., MAX(0.0001,LAI))
 
   ! Reset WW
   WW = 0.
@@ -6028,7 +6113,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   wesnn(2,:) = wesnn2
   wesnn(3,:) = wesnn3
   call StieglitzSnow_calc_asnow(3, ntiles, wesnn, asnow)
-  emis = EMSVEG(nint(ity)) + (EMSBARESOIL - EMSVEG(nint(ity)))*exp(-lai)
+  emis = EMSVEG(nint(ity)) + (EMSBARESOIL - EMSVEG(nint(ity)))*exp(-lai0)
   emis = emis*(1.-asnow) + EMSSNO*asnow
 
   ! Compute FR
@@ -6097,7 +6182,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   if (allocated(ar1)) deallocate(ar1)
   if (allocated(ar2)) deallocate(ar2)
   if (allocated(wesnn)) deallocate(wesnn)
-
+  if (allocated(lai0)) deallocate(lai0)
   ! All done
   RETURN_(ESMF_SUCCESS)
 

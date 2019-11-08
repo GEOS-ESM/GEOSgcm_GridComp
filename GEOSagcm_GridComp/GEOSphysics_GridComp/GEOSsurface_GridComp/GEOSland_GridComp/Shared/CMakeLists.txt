@@ -18,3 +18,10 @@ esma_add_library (${this}
   DEPENDENCIES GEOS_SurfaceShared GEOS_Shared MAPL_Base)
 target_include_directories (${this} PUBLIC ${INC_ESMF})
 
+set (resource_files
+    GEOS_LandGridComp_ExtData.rc
+   ) 
+
+install( FILES ${resource_files} 
+   DESTINATION etc
+   )
