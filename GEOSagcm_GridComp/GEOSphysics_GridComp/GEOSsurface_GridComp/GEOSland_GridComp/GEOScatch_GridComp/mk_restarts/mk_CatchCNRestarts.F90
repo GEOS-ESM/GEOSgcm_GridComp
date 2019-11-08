@@ -1,6 +1,6 @@
 program  mk_CatchCNRestarts
 
-!  $Id$
+!  $Id: 
 
 !  Usage : mk_CatchCNRestarts OutTileFile InTileFile InRestart SURFLAY RestartTime
 !  Version 1 : Sarith Mahanama 
@@ -278,6 +278,11 @@ program  mk_CatchCNRestarts
   integer, pointer  :: Pf(:), Id(:), loni(:),lono(:), lati(:), lato(:)
   real    :: SURFLAY
   type(MAPL_NCIO) :: InNCIO, OutNCIO
+
+  interface GetIds   
+     procedure GetIds_fast_1p
+     procedure GetIds_accurate_mpi
+  end interface
 
   call init_MPI()
 
@@ -565,6 +570,7 @@ if (RegridSMAP) then
    
 endif
 
+call MPI_BARRIER( MPI_COMM_WORLD, mpierr)
 call MPI_FINALIZE(mpierr)
   
 contains
@@ -1217,10 +1223,10 @@ contains
     logical, allocatable, dimension(:)   :: mask
     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl
     real    :: dw, min_lon, max_lon, min_lat, max_lat, fveg_new, sub_dist
-    integer :: n,i,j, k, nplus, nv, nx, nz, iv, offl_cell, ityp_new, STATUS,NCFID
+    integer :: n,i,j, k, nplus, nv, nx, nz, iv, offl_cell, ityp_new, STATUS,NCFID, req
     integer :: outid, local_id
     integer, allocatable, dimension (:) :: sub_tid, sub_ityp1, sub_ityp2,icl_ityp1
-    real   , allocatable, dimension (:) :: sub_lon, sub_lat, rev_dist, sub_fevg1, sub_fevg2,&
+    real   , pointer, dimension (:) :: sub_lon, sub_lat, rev_dist, sub_fevg1, sub_fevg2,&
          lonc, latc, LATT, LONN, DAYX, long, latg, var_dum, TILE_ID, var_dum2
     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:) 
     real, allocatable :: var_col_out (:,:,:), var_pft_out (:,:,:,:) 
@@ -1277,7 +1283,7 @@ contains
        allocate (latg   (ntiles))
        allocate (DAYX   (NTILES))
 
-       call ReadCNTilFile (OutTileFile, ntiles, long, latg)
+       call ReadCNTilFile (OutTileFile, i, long, latg)
 
        ! Compute DAYX
        ! ------------
@@ -1290,20 +1296,39 @@ contains
        ! Read exact lonc, latc from offline .til File 
        ! ---------------------------------------------
 
-       call ReadCNTilFile(InCNTilFile,ntiles_cn,lonc,latc)
+       call ReadCNTilFile(InCNTilFile,i,lonc,latc)
 
     endif
 
-    call MPI_SCATTERV (                    &
-         long,nt_local,low_ind-1,MPI_real, &
-         lonn,size(lonn),MPI_real  , &
-         0,MPI_COMM_WORLD, mpierr )
+!    call MPI_SCATTERV (                    &
+!         long,nt_local,low_ind-1,MPI_real, &
+!         lonn,size(lonn),MPI_real  , &
+!         0,MPI_COMM_WORLD, mpierr )
+!
+!    call MPI_SCATTERV (                    &
+!         latg,nt_local,low_ind-1,MPI_real, &
+!         latt,nt_local(myid+1),MPI_real  , &
+!         0,MPI_COMM_WORLD, mpierr )
 
-    call MPI_SCATTERV (                    &
-         latg,nt_local,low_ind-1,MPI_real, &
-         latt,nt_local(myid+1),MPI_real  , &
-         0,MPI_COMM_WORLD, mpierr )
-
+    do i = 1, numprocs
+       if((I == 1).and.(myid == 0)) then
+          lonn(:) = long(low_ind(i) : upp_ind(i))
+          latt(:) = latg(low_ind(i) : upp_ind(i))
+       else if (I > 1) then
+          if(I-1 == myid) then
+             ! receiving from root
+             call MPI_RECV(lonn,nt_local(i) , MPI_REAL, 0,995,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+             call MPI_RECV(latt,nt_local(i) , MPI_REAL, 0,994,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+          else if (myid == 0) then
+             ! root sends
+             call MPI_ISend(long(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,995,MPI_COMM_WORLD,req,mpierr)
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+             call MPI_ISend(latg(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,994,MPI_COMM_WORLD,req,mpierr)
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr) 
+          endif
+       endif
+    end do
+    
     if(master_proc) deallocate (long, latg)
  
     call MPI_BCAST(lonc,ntiles_cn,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
@@ -1570,11 +1595,26 @@ contains
            
      do nv = 1, nveg
         call MPI_Barrier(MPI_COMM_WORLD, STATUS)
-        call MPI_GATHERV( &
-                   id_loc (:,nv), nt_local(myid+1)  , MPI_real, &
-                   id_vec, nt_local,low_ind-1, MPI_real, &
-                   0, MPI_COMM_WORLD, mpierr )
-        
+!        call MPI_GATHERV( &
+!                   id_loc (:,nv), nt_local(myid+1)  , MPI_real, &
+!                   id_vec, nt_local,low_ind-1, MPI_real, &
+!                   0, MPI_COMM_WORLD, mpierr )
+
+        do i = 1, numprocs
+           if((I == 1).and.(myid == 0)) then
+              id_vec(low_ind(i) : upp_ind(i)) = Id_loc(:,nv)
+           else if (I > 1) then
+              if(I-1 == myid) then
+                 ! send to root
+                 call MPI_ISend(id_loc(:,nv),nt_local(i),MPI_INTEGER,0,993,MPI_COMM_WORLD,req,mpierr)
+                 call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+              else if (myid == 0) then
+                 ! root receives
+                 call MPI_RECV(id_vec(low_ind(i) : upp_ind(i)),nt_local(i) , MPI_INTEGER, i-1,993,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+              endif
+           endif
+        end do
+       
         if(master_proc) id_glb (:,nv) = id_vec
         
      end do
@@ -2020,7 +2060,7 @@ contains
     real    :: fveg_new, dist, dmin, distance
     integer :: n,nn,i,j,ip, nv, nx, nz, iv, offl_cell, ityp_new, STATUS,NCFID, kx
     integer :: outid
-    real   , allocatable, dimension (:) :: lonc, latc, LATT, LONN, DAYX 
+    real   , pointer, dimension (:) :: lonc, latc, LATT, LONN, DAYX 
     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:) 
     real, allocatable :: var_col_out (:,:,:), var_pft_out (:,:,:,:) 
     integer, allocatable :: low_ind(:), upp_ind(:)
@@ -2108,7 +2148,7 @@ integer :: n_threads=1
     ! Read extract lonn, latt from output .til file 
     ! --------------------------------------------
     
-    call ReadCNTilFile (OutTileFile, ntiles, lonn, latt)
+    call ReadCNTilFile (OutTileFile, i, lonn, latt)
     
     ! Compute DAYX
     ! ------------
@@ -2121,7 +2161,7 @@ integer :: n_threads=1
     ! Read exact lonc, latc from offline .til File 
     ! ---------------------------------------------
 
-    call ReadCNTilFile(InCNTilFile,ntiles_cn,lonc,latc)
+    call ReadCNTilFile(InCNTilFile, i,lonc,latc)
 
     !Convert to radians
 
@@ -2728,78 +2768,6 @@ integer :: n_threads=1
      
    end subroutine orbit_create
 
-  ! *****************************************************************************
-
-   function to_radian(degree) result(rad)
-
-     ! degrees to radians
-     real,intent(in) :: degree
-     real :: rad
-
-     rad = degree*MAPL_PI/180.
-
-   end function to_radian
-
-   ! *****************************************************************************
-   
-   real function haversine(deglat1,deglon1,deglat2,deglon2)
-     ! great circle distance -- adapted from Matlab 
-     real,intent(in) :: deglat1,deglon1,deglat2,deglon2
-     real :: a,c, dlat,dlon,lat1,lat2
-     real,parameter :: radius = MAPL_radius
-     
-!     dlat = to_radian(deglat2-deglat1)
-!     dlon = to_radian(deglon2-deglon1)
-     !     lat1 = to_radian(deglat1)
-!     lat2 = to_radian(deglat2)
-     dlat = deglat2-deglat1
-     dlon = deglon2-deglon1
-     lat1 = deglat1
-     lat2 = deglat2     
-     a = (sin(dlat/2))**2 + cos(lat1)*cos(lat2)*(sin(dlon/2))**2
-     if(a>=0. .and. a<=1.) then
-        c = 2*atan2(sqrt(a),sqrt(1-a))
-        haversine = radius*c / 1000.
-     else
-        haversine = 1.e20
-     endif
-   end function
-   
-   ! *****************************************************************************
-
-   subroutine ReadCNTilFile (InCNTileFile, nt, xlon, xlat)
-
-     implicit none
-     character(*), intent (in) ::  InCNTileFile
-     integer , intent (in) :: nt
-     real, dimension (nt), intent(inout) :: xlon, xlat
-     integer :: n,icnt,ityp
-     real    :: xval,yval, pf
-     
-   open(11,file=InCNTileFile, &
-        form='formatted',action='read',status='old')
-
-   do n = 1,8 ! skip header
-      read(11,*)
-   end do
-   
-   icnt = 0
-   ityp = 100
-
-   do while (ityp == 100) ! loop over land tiles
-      read(11,*) ityp,pf,xval,yval
-      if(ityp == 100) then
-         icnt = icnt + 1
-         xlon(icnt) = xval
-         xlat(icnt) = yval
-      endif
-   end do
-
-   close(11)
-    
-
-   end subroutine ReadCNTilFile
-
  ! ***************************************************************************** 
 
   SUBROUTINE NCDF_reshape_getOput (NCFID,CID,col,pft, get_var) 
@@ -2863,26 +2831,6 @@ integer :: n_threads=1
     IF ((STATUS .NE. NF_NOERR).and.(.not.get_var)) CALL HANDLE_ERR(STATUS, 'In : NCDF_whole_getOput')  
 
   END SUBROUTINE NCDF_whole_getOput
-
-  ! *****************************************************************************
-  
-  subroutine init_MPI()
-    
-    ! initialize MPI
-    
-    call MPI_INIT(mpierr)
-    
-    call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
-    call MPI_COMM_SIZE( MPI_COMM_WORLD, numprocs, mpierr )
-
-    if (myid .ne. 0)  master_proc = .false.
-    
-!    call init_MPI_types()
-    
-    write (*,*) "MPI process ", myid, " of ", numprocs, " is alive"    
-    write (*,*) "MPI process ", myid, ": master_proc=", master_proc
-
-  end subroutine init_MPI
   
   ! -----------------------------------------------------------------------
 
@@ -2926,10 +2874,10 @@ integer :: n_threads=1
     real   , allocatable, dimension(:)   :: tmp_var
     logical, allocatable, dimension(:)   :: mask
     real    :: dw, min_lon, max_lon, min_lat, max_lat, sub_dist
-    integer :: n,i,j, nplus, nv, nx, offl_cell, STATUS,NCFID
+    integer :: n,i,j, nplus, nv, nx, offl_cell, STATUS,NCFID, req
     integer :: outid, local_id
     integer, allocatable, dimension (:) :: sub_tid
-    real   , allocatable, dimension (:) :: sub_lon, sub_lat, rev_dist, lonc, latc, LATT, LONN, long, latg
+    real   , pointer, dimension (:) :: sub_lon, sub_lat, rev_dist, lonc, latc, LATT, LONN, long, latg
     integer, allocatable :: low_ind(:), upp_ind(:), nt_local (:)
     type(MAPL_NCIO) :: InNCIO, OutNCIO
     logical :: all_found
@@ -2970,13 +2918,13 @@ integer :: n_threads=1
        allocate (latg   (ntiles))
        allocate (ld_reorder(ntiles_cn)) 
 
-       call ReadCNTilFile (OutTileFile, ntiles, long, latg)
+       call ReadCNTilFile (OutTileFile, i, long, latg)
 
        ! ---------------------------------------------
        ! Read exact lonc, latc from offline .til File 
        ! ---------------------------------------------
 
-       call ReadCNTilFile(trim(InCNTilFile),ntiles_cn,lonc,latc)
+       call ReadCNTilFile(trim(InCNTilFile), i,lonc,latc)
 
        STATUS = NF_OPEN (trim(InCNRestart),NF_NOWRITE,NCFID)
        STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TILE_ID'   ), (/1/), (/NTILES_CN/),tmp_var)
@@ -2993,15 +2941,34 @@ integer :: n_threads=1
 
     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 
-    call MPI_SCATTERV (                    &
-         long,nt_local,low_ind-1,MPI_real, &
-         lonn,size(lonn),MPI_real  , &
-         0,MPI_COMM_WORLD, mpierr )
+    do i = 1, numprocs
+       if((I == 1).and.(myid == 0)) then
+          lonn(:) = long(low_ind(i) : upp_ind(i))
+          latt(:) = latg(low_ind(i) : upp_ind(i))
+       else if (I > 1) then
+          if(I-1 == myid) then
+             ! receiving from root
+             call MPI_RECV(lonn,nt_local(i) , MPI_REAL, 0,995,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+             call MPI_RECV(latt,nt_local(i) , MPI_REAL, 0,994,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+          else if (myid == 0) then
+             ! root sends
+             call MPI_ISend(long(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,995,MPI_COMM_WORLD,req,mpierr)
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+             call MPI_ISend(latg(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,994,MPI_COMM_WORLD,req,mpierr)
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr) 
+          endif
+       endif
+    end do
 
-    call MPI_SCATTERV (                    &
-         latg,nt_local,low_ind-1,MPI_real, &
-         latt,nt_local(myid+1),MPI_real  , &
-         0,MPI_COMM_WORLD, mpierr )
+!    call MPI_SCATTERV (                    &
+!         long,nt_local,low_ind-1,MPI_real, &
+!         lonn,size(lonn),MPI_real  , &
+!         0,MPI_COMM_WORLD, mpierr )
+!
+!    call MPI_SCATTERV (                    &
+!         latg,nt_local,low_ind-1,MPI_real, &
+!         latt,nt_local(myid+1),MPI_real  , &
+!         0,MPI_COMM_WORLD, mpierr )
 
     if(master_proc) deallocate (long, latg)
      
@@ -3103,10 +3070,26 @@ integer :: n_threads=1
      if(master_proc)  allocate (id_glb  (ntiles))
 
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
-     call MPI_GATHERV( &
-                   id_loc, nt_local(myid+1)  , MPI_real, &
-                   id_glb, nt_local,low_ind-1, MPI_real, &
-                   0, MPI_COMM_WORLD, mpierr )
+
+     do i = 1, numprocs
+        if((I == 1).and.(myid == 0)) then
+           id_glb(low_ind(i) : upp_ind(i)) = Id_loc(:)
+        else if (I > 1) then
+           if(I-1 == myid) then
+              ! send to root
+              call MPI_ISend(id_loc,nt_local(i),MPI_INTEGER,0,993,MPI_COMM_WORLD,req,mpierr)
+              call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+           else if (myid == 0) then
+              ! root receives
+              call MPI_RECV(id_glb(low_ind(i) : upp_ind(i)),nt_local(i) , MPI_INTEGER, i-1,993,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           endif
+        endif
+     end do     
+
+!     call MPI_GATHERV( &
+!                   id_loc, nt_local(myid+1)  , MPI_real, &
+!                   id_glb, nt_local,low_ind-1, MPI_real, &
+!                   0, MPI_COMM_WORLD, mpierr )
         
     if (master_proc) call put_land_vars  (NTILES, id_glb, ld_reorder, OutNCIO)
 
@@ -3621,6 +3604,23 @@ integer :: n_threads=1
    END SUBROUTINE reorder_LDASsa_rst
 
   ! *****************************************************************************
-   
+  subroutine init_MPI()
+    
+    ! initialize MPI
+    
+    call MPI_INIT(mpierr)
+    
+    call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
+    call MPI_COMM_SIZE( MPI_COMM_WORLD, numprocs, mpierr )
+
+    if (myid .ne. 0)  master_proc = .false.
+    
+!    write (*,*) "MPI process ", myid, " of ", numprocs, " is alive"    
+!    write (*,*) "MPI process ", myid, ": master_proc=", master_proc
+
+  end subroutine init_MPI
+
+  ! *****************************************************************************
+     
 end program mk_CatchCNRestarts
 

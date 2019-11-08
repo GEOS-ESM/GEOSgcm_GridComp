@@ -1,10 +1,11 @@
 program mk_CiceRestart
 
-! $Id$
+! $Id:
 
 ! This utility will work with CICE saltwater internal restart from Fortuna-2_4.
 ! For CICE import restart use mk_LakeLandiceSaltRestarts.
 
+  use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
   use MAPL_HashMod
 
   implicit none
@@ -15,7 +16,6 @@ program mk_CiceRestart
   character*128 :: InRestart
   character*128 :: arg
 
-
   integer :: i, iargc, n,j,ntiles,k
   integer, pointer  :: Lono(:), Lato(:), Id(:), Pf(:)
   integer, pointer  :: Loni(:), Lati(:)
@@ -23,6 +23,11 @@ program mk_CiceRestart
   real*8, allocatable :: var8(:)
 
   integer, parameter ::  zoom=2
+
+  interface GetIds   
+     procedure GetIds_fast_1p
+     procedure GetIds_accurate_mpi
+  end interface
 
 !---------------------------------------------------------------------------
 
