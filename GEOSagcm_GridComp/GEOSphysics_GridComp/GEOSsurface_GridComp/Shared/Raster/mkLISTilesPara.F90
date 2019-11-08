@@ -1,4 +1,3 @@
-#include "Raster.h"
 PROGRAM mkLISTilesPara
  
   use process_hres_data
@@ -9,7 +8,7 @@ PROGRAM mkLISTilesPara
 
   implicit none
   integer  , parameter :: nc_esa = 129600, nr_esa = 64800, SRTM_maxcat = 291284
-  real     , parameter :: pi= RASTER_PI
+  real     , parameter :: pi= MAPL_PI
   integer  , parameter :: HYDRO1k_maxcat = 6000000
   integer, parameter   :: nc_gswp2 = 360, nr_gswp2 = 180, n_gswp2 =15238 
   integer, parameter :: max_pfaf_smap = 100

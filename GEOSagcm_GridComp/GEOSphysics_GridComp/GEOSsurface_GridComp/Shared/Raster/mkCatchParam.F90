@@ -1,5 +1,3 @@
-#include "Raster.h"
-
  PROGRAM mkCatchParam
 
 ! !INTERFACE:
@@ -39,6 +37,7 @@
 
    use rmTinyCatchParaMod
    use process_hres_data
+   use comp_CATCHCN_AlbScale_parameters, ONLY : albedo4catchcn
 
   implicit none
     integer              :: NC = i_raster, NR = j_raster
@@ -68,15 +67,47 @@
     integer, parameter :: log_file = 998
     include 'netcdf.inc'	
     type (regrid_map), allocatable, dimension (:,:) :: maparc30, mapgeoland2,maparc60
-    logical :: running_omp = .false.
     character*200 :: tmpstring, tmpstring1, tmpstring2
 
-    ! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
-    !
-    ! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
+! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
+!
+! NOTE: "!$" is for conditional compilation
+!
+logical :: running_omp = .false.
+!
+!$ integer :: omp_get_thread_num, omp_get_num_threads
+!
+integer :: n_threads=1
 
+! ----------- OpenMP PARALLEL ENVIRONMENT ----------------------------
+!
+! FIND OUT WHETHER -omp FLAG HAS BEEN SET DURING COMPILATION
+!
 !$ running_omp = .true.         ! conditional compilation
+!
+! ECHO BASIC OMP VARIABLES
+!
+!$OMP PARALLEL DEFAULT(NONE) SHARED(running_omp,n_threads) 
+!
+!$OMP SINGLE
+!
+!$ n_threads = omp_get_num_threads()
+!
+!$ write (*,*) 'running_omp = ', running_omp
+!$ write (*,*)
+!$ write (*,*) 'parallel OpenMP with ', n_threads, 'threads'
+!$ write (*,*)
+!$OMP ENDSINGLE
+!
+!$OMP CRITICAL
+!$ write (*,*) 'thread ', omp_get_thread_num(), ' alive'
+!$OMP ENDCRITICAL
+!
+!$OMP BARRIER
+!
+!$OMP ENDPARALLEL
 
+    print *, running_omp , n_threads
 
 !   call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
 !   call system('cd ..')
@@ -194,7 +225,7 @@
       GridnameT='til/'//trim(Gridname)  
     endif 
 
-    if(running_omp .eq. .false.) then
+    if(n_threads == 1) then
 
        write (log_file,'(a)')trim(LD)
        write (log_file,'(a)')trim(MA)
@@ -390,6 +421,7 @@
        tmpstring = 'bin/mkCatchParam_openmp '//trim(tmpstring2)//' '//trim(tmpstring1)
 
     else      
+ 
        if(SD=='NGDC') call create_soil_types_files (nc,nr,ease_grid,gridnamet,gridnamer)    
        if(SD=='NGDC') write (log_file,'(a)')'Done creating NGDC soil types file .......................7a'	   
        
@@ -437,13 +469,15 @@
        inquire(file='clsm/lnfm.dat', exist=file_exists)
        if (.not.file_exists) call CLM45_clim_parameters (nc,nr,gridnamer)   
        write (log_file,'(a)')'Done creating CLM4.5 lightening frequency clim ...........11'
-       
-       
+
+       call country_codes (nc,nr,gridnamer)
+       call albedo4catchcn (gridnamet)
+
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'DONE creating CLSM data files...............................'
        write (log_file,'(a)')'============================================================'
               
-       call system ('chmod 755 src/create_README.csh ; src/create_README.csh')
+       call system ('chmod 755 bin/create_README.csh ; bin/create_README.csh')
     endif
 
     close (log_file,status='keep') 
