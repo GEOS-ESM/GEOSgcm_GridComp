@@ -89,7 +89,7 @@ integer,parameter :: NUM_SUBTILES=4
 !                  7:  BARE SOIL
 !                  8:  DESERT
 
-integer           :: NUM_LDAS_ENSEMBLE, USE_ASCATZ0
+integer           :: NUM_LDAS_ENSEMBLE
 integer,parameter :: NTYPS = MAPL_NUMVEGTYPES
 
 ! Veg-dep. vector SAI factor for scaling of rough length (now exp(-.5) )
@@ -136,7 +136,7 @@ type CATCH_WRAP
 end type CATCH_WRAP
 !#--
 
-integer :: DO_GOSWIM, RUN_IRRIG, USE_ASCATZ0, Z0_FORMULATION, IRRIG_METHOD, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
+integer :: MODIS_DVG, DO_GOSWIM, RUN_IRRIG, USE_ASCATZ0, Z0_FORMULATION, IRRIG_METHOD, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 
@@ -232,6 +232,9 @@ subroutine SetServices ( GC, RC )
     ! __________________________________________
     call ESMF_ConfigGetAttribute (LCF, label='AEROSOL_DEPOSITION:' , value=AEROSOL_DEPOSITION,  DEFAULT=0  , __RC__ )
     call ESMF_ConfigDestroy      (LCF, __RC__)
+
+    call MAPL_GetResource ( MAPL, MODIS_DVG,Label="MODIS_DVG:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)    
 
 ! Set the Run entry points
 ! ------------------------
@@ -3099,7 +3102,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer                        :: CHOOSEMOSFC
     integer                        :: CHOOSEZ0
 
-   integer                         :: MODIS_DVG
    real                            :: SCALE4Z0
    real                            :: SCALE4ZVG
    real                            :: SCALE4Z0_u
@@ -3163,8 +3165,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, MODIS_DVG,Label="MODIS_DVG:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
     VERIFY_(STATUS)
@@ -4076,7 +4076,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real                        :: PRECIPFRAC
         real                        :: DT
         integer                     :: NTILES
-        integer                     :: I, N
+        integer                     :: I, N 
 
 	! dummy variables for call to get snow temp
 
@@ -4297,9 +4297,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              RC=STATUS )
         VERIFY_(STATUS)
         endif
-
-        call MAPL_GetResource ( MAPL, MODIS_DVG, Label="MODIS_DVG:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
 
         call ESMF_VMGet(VM, localPet=mype, rc=status)
         VERIFY_(STATUS)
@@ -5996,7 +5993,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: bf2(:)=>null()
 
   !! Miscellaneous
-  integer :: ntiles, MODIS_DVG
+  integer :: ntiles
   real, allocatable :: dummy(:)
   real :: SURFLAY
   real, allocatable :: dzsf(:), ar1(:), ar2(:), wesnn(:,:)
@@ -6023,8 +6020,7 @@ subroutine RUN0(gc, import, export, clock, rc)
   VERIFY_(status)
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
   VERIFY_(status)
-  call MAPL_GetResource ( MAPL, MODIS_DVG,        Label="MODIS_DVG:",DEFAULT=0, RC=STATUS)
-  VERIFY_(STATUS)
+
   IF (MODIS_DVG == 1) THEN 
      call MAPL_GetPointer(import, lai, 'MODIS_LAI', rc=status)
      VERIFY_(status)

@@ -195,7 +195,7 @@ module GEOS_SurfaceGridCompMod
     type (SURF_wrap)                        :: WRAP
     type (MAPL_MetaComp    ), pointer       :: MAPL
     INTEGER                                 :: LSM_CHOICE
-    INTEGER                                 :: catchswim,landicegoswim
+    INTEGER                                 :: catchswim,landicegoswim, MODIS_DVG
     character(len=ESMF_MAXSTR)              :: LANDRC
     type(ESMF_Config)                       :: LCF 
 
