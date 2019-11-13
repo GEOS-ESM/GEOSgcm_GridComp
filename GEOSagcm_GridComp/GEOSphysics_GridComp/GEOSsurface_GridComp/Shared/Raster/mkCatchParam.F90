@@ -416,9 +416,9 @@ integer :: n_threads=1
        endif
        
        write (log_file,'(a,a,a)')'Done computing ',trim(MA), ' scale factors .......................6'
-       tmpstring1 = '-e EASE -g '//trim(gfile) 
-       write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
-       tmpstring = 'bin/mkCatchParam_openmp '//trim(tmpstring2)//' '//trim(tmpstring1)
+!       tmpstring1 = '-e EASE -g '//trim(gfile) 
+!       write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
+!       tmpstring = 'bin/mkCatchParam_openmp '//trim(tmpstring2)//' '//trim(tmpstring1)
 
     else      
  

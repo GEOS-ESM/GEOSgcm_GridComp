@@ -6302,7 +6302,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       integer :: CNT_CODE, ST_CODE
       integer :: i(GC),j(GR), k,n, status, ncid, varid, maxcat, I0(1), j0(1)
       INTEGER, TARGET, ALLOCATABLE, dimension (:,:):: ST_grid, cnt_grid
-      real :: dxy, lat_mn, lat_mx, lon_mn, lon_mx, y0, x0, XG (GC), YG(GR)
+      real    :: lat_mn, lat_mx, lon_mn, lon_mx
+      real (kind =8) :: XG(GC),YG(GR), y0, x0, dxy
                   
       DATA ST_NAME  /             &
            'AK  1 Alaska          ' ,&
@@ -6895,7 +6896,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       status  = NF_INQ_VARID (ncid,'UNIT_CODE',VarID) ; VERIFY_(STATUS)
       status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,1/),(/GC, GR,1/), cnt_grid) ; VERIFY_(STATUS)
       status  = NF_GET_VARA_INT (ncid,VarID, (/1,1,2/),(/GC, GR,1/), st_grid) ; VERIFY_(STATUS)
-      
+      where (st_grid == 0) st_grid = 999
       status = NF_CLOSE(ncid)
 
       open (10,file='clsm/country_and_state_code.data',  &
@@ -6927,7 +6928,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          if(cnt_code > 300) then
             CNT_CODE = 257
          endif
-         if(st_code < 300) then
+
+         if(st_code <= 50) then
             write (10, '(i8, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), ST_NAME (ST_CODE)
          else
             write (10, '(i8, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), 'OUTSIDE USA'
