@@ -23,6 +23,12 @@ include_directories(${INC_NETCDF})
 esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL_Base)
 target_compile_options(${this} PRIVATE ${OpenMP_Fortran_FLAGS})
 
+# MAT NOTE This should use find_package(ZLIB) but Baselibs currently
+#     confuses find_package(). This is a hack until Baselibs is
+#     reorganized.
+set (INC_ZLIB ${BASEDIR}/include/zlib)
+target_include_directories(${this} PRIVATE ${INC_ZLIB})
+
 ecbuild_add_executable (TARGET chk_clsm_params.x SOURCES chk_clsm_params.F90  LIBS MAPL_Base ${this})
 ecbuild_add_executable (TARGET CombineRasters.x SOURCES CombineRasters.F90 LIBS MAPL_Base ${this})
 ecbuild_add_executable (TARGET mkCatchParam.x SOURCES mkCatchParam.F90 LIBS MAPL_Base ${this} ${OpenMP_Fortran_LIBRARIES})
