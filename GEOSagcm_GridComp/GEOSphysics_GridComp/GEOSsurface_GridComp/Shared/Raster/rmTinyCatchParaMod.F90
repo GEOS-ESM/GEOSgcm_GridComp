@@ -3016,7 +3016,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                    exit
                 endif
                 
-                if((k==1).and.not(picked)) then
+                if((k==1) .and. (.not. picked)) then
                    print *,'Warning ar.new is bad at n=',n
                    print *,'Call Sarith ......'
                    stop
