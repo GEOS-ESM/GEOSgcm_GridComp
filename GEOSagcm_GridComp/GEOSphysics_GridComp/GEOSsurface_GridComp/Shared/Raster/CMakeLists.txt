@@ -16,12 +16,19 @@ zip.c
 util.c
 )  
 
+if(NOT FORTRAN_COMPILER_SUPPORTS_FINDLOC)
+   list(APPEND srcs findloc.F90)
+endif ()
 
 include_directories(${INC_ESMF})
 include_directories(${INC_NETCDF})
 
 esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL_Base)
 target_compile_options(${this} PRIVATE ${OpenMP_Fortran_FLAGS})
+
+if(NOT FORTRAN_COMPILER_SUPPORTS_FINDLOC)
+   target_compile_definitions(${this} PRIVATE USE_EXTERNAL_FINDLOC)
+endif ()
 
 # MAT NOTE This should use find_package(ZLIB) but Baselibs currently
 #     confuses find_package(). This is a hack until Baselibs is

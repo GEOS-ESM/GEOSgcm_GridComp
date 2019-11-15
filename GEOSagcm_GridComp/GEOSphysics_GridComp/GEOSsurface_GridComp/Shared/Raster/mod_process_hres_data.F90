@@ -14,6 +14,10 @@ use date_time_util
 use leap_year
 use MAPL_ConstantsMod
 
+#if defined USE_EXTERNAL_FINDLOC
+use findloc_mod, only: findloc
+#endif
+
 implicit none
 
 include 'netcdf.inc'	
