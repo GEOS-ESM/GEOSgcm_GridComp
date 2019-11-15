@@ -2012,7 +2012,7 @@ loop1:  do n=1,maxiens
      real, dimension (kts:kte)             ::  aa,bb,cc,ddu,ddv,ddh,ddq,fp,fm
      real, dimension (its:ite,kts:kte)     ::  massflx,zenv
      real                                  ::  evap_(mtp),wetdep_(mtp),trash_(mtp),trash2_(mtp) &
-                                              ,massi,massf,dtime_max
+                                              ,massi,massf,dtime_max,residu_(mtp),evap,wetdep
 !----------------------------------------------------------------------
      integer, dimension (its:ite)      ,intent (inout)  :: &
               ierr              &
@@ -2840,7 +2840,7 @@ ENDIF
 !
       call cup_dd_moisture(cumulus,ierrc,zdo,hcdo,heso_cup,qcdo,qeso_cup, &
            pwdo,qo_cup,zo_cup,dd_massentro,dd_massdetro,jmin,ierr,gammao_cup, &
-           pwevo,bu,qrcdo,qo,heo,tn_cup,1, itf,ktf,its,ite, kts,kte)
+           pwevo,pwavo,bu,qrcdo,qo,heo,tn_cup,1, itf,ktf,its,ite, kts,kte)
 !
 !
 !--- calculate workfunctions for updrafts
@@ -3752,13 +3752,13 @@ IF(USE_TRACER_TRANSP==1)  THEN
    !- note: here "sc_up_chem" stores the total in-cloud tracer mixing ratio (i.e., including the portion
    !        embedded in the condensates).
    call get_incloud_sc_chem_up(cumulus,FSCAV,mtp,se_chem,se_cup_chem,sc_up_chem,pw_up_chem,tot_pw_up_chem      &
-                             ,zo_cup,rho,po,p_cup,qrco,tempco,pwo,zuo,up_massentro,up_massdetro                &
+                             ,zo_cup,rho,po,po_cup,qrco,tempco,pwo,zuo,up_massentro,up_massdetro                &
                              ,vvel2d,vvel1d,k22,kbcon,ktop,klcl,ierr,itf,ktf,its,ite, kts,kte)
 
 ! b) chem - downdraft
    call get_incloud_sc_chem_dd(cumulus,FSCAV,mtp,se_chem,se_cup_chem,sc_dn_chem,pw_dn_chem ,pw_up_chem,sc_up_chem &
                              ,tot_pw_up_chem,tot_pw_dn_chem                                                       & 
-                             ,zo_cup,rho,p_cup,qrcdo,pwdo,pwevo,edto,zdo,dd_massentro,dd_massdetro ,pwavo,pwo     &
+                             ,zo_cup,rho,po_cup,qrcdo,pwdo,pwevo,edto,zdo,dd_massentro,dd_massdetro ,pwavo,pwo     &
                              ,jmin,ierr,itf,ktf,its,ite, kts,kte)
 !
 !-3) determine the vertical transport including mixing, scavenging and evaporation
@@ -3952,14 +3952,36 @@ IF(USE_TRACER_TRANSP==1)  THEN
  	  if(CHEM_NAME_MASK (ispc) == 0 ) CYCLE
           trash_ (:) = 0.
           trash2_(:) = 0.
+	  evap_  (:) = 0.
+	  wetdep_(:) = 0.
+	  residu_(:) = 0.
           do k=kts,ktop(i)
              dp=100.*(po_cup(i,k)-po_cup(i,k+1))
-             evap_  (ispc) =  -0.5*(zdo(i,k)*pw_dn_chem(ispc,i,k)+zdo(i,k+1)*pw_dn_chem(ispc,i,k+1))*g/dp*edto(i) 
-             wetdep_(ispc) =   0.5*(zuo(i,k)*pw_up_chem(ispc,i,k)+zuo(i,k+1)*pw_up_chem(ispc,i,k+1))*g/dp
-             trash_ (ispc) =   trash_(ispc)+ (out_chem (ispc,i,k) - evap_(ispc) + wetdep_(ispc))*dp/g 
-             trash2_(ispc) =   trash2_(ispc)+ se_chem(ispc,i,k)*dp/g 
+             evap   =  -0.5*(zdo(i,k)*pw_dn_chem(ispc,i,k)+zdo(i,k+1)*pw_dn_chem(ispc,i,k+1))*g/dp*edto(i) 
+             wetdep =   0.5*(zuo(i,k)*pw_up_chem(ispc,i,k)+zuo(i,k+1)*pw_up_chem(ispc,i,k+1))*g/dp
+
+             evap_  (ispc) =   evap_  (ispc) + evap  *dp/g 
+             wetdep_(ispc) =   wetdep_(ispc) + wetdep*dp/g 
+	     residu_(ispc) =   residu_(ispc) + (wetdep - evap)*dp/g
+	     	 
+!            trash_ (ispc) =   trash_ (ispc) + (out_chem (ispc,i,k) - evap + wetdep)*dp/g 
+             trash_ (ispc) =   trash_ (ispc) + (out_chem (ispc,i,k)                )*dp/g 
+
+             trash2_(ispc) =   trash2_(ispc) + se_chem(ispc,i,k)*dp/g 
            enddo
-           !if(abs(trash_(ispc)) >1.e-6 ) then
+	   if(residu_(ispc) < 0.) then 
+	     beta1 = g/(po_cup(i,kts)-po_cup(i,ktop(i)+1)) 
+	     do k=kts,ktop(i)
+	        out_chem(ispc,i,k)=out_chem(ispc,i,k)+residu_(ispc)*beta1
+             enddo
+	   endif
+	   !if (MAPL_AM_I_ROOT())  then
+           !if(evap_  (ispc) > wetdep_(ispc)) then
+	   !print*,"budget=",ispc,evap_  (ispc), wetdep_(ispc),trash_ (ispc),trim(CHEM_NAME(ispc))!,trash_ (ispc),trash2_(ispc)
+	   !call flush(6)
+	   !endif
+           !if(evap_  (ispc) > wetdep_(ispc)) stop " eva<wet "
+	   !if(abs(trash_(ispc)) >1.e-6 ) then
            !  if (MAPL_AM_I_ROOT())  write(6,*)'=> mass_cons=',trash_(ispc),spacing(trash2_(ispc)),trim(CHEM_NAME(ispc)),trim(cumulus)
            !endif
         enddo
@@ -4248,7 +4270,7 @@ ENDIF !- end of section for atmospheric composition
 
    SUBROUTINE cup_dd_moisture(cumulus,ierrc,zd,hcd,hes_cup,qcd,qes_cup,    &
               pwd,q_cup,z_cup,dd_massentr,dd_massdetr,jmin,ierr,   &
-              gamma_cup,pwev,bu,qrcd, q,he,t_cup,iloop,            &
+              gamma_cup,pwev,pwavo,bu,qrcd, q,he,t_cup,iloop,            &
               itf,ktf,its,ite, kts,kte                              )
 
      IMPLICIT NONE
@@ -4271,6 +4293,8 @@ ENDIF !- end of section for atmospheric composition
   ! pwev = total normalized integrated evaoprate (I2)
   ! entr= entrainment rate
   !
+     real,    dimension (its:ite) ,intent (in  )          ::           &
+        pwavo       
      real,    dimension (its:ite,kts:kte) ,intent (in   ) ::           &
         zd,t_cup,hes_cup,hcd,qes_cup,q_cup,z_cup,                      &
         dd_massentr,dd_massdetr,gamma_cup,q,he
@@ -4301,7 +4325,6 @@ ENDIF !- end of section for atmospheric composition
 !
       DO 100 i=its,itf
         IF(ierr(I) /= 0) cycle
-    !print*,"================================= JMIN=",jmin(i)
         k=jmin(i)
         dz=z_cup(i,k+1)-z_cup(i,k)
         qcd(i,k)=q_cup(i,k)
@@ -4317,8 +4340,7 @@ ENDIF !- end of section for atmospheric composition
         pwd (i,jmin(i))= zd(i,jmin(i))*min(0.,qcd(i,k)-qrcd(i,k))
         qcd (i,k)      = qrcd(i,k)
         pwev(i)        = pwev(i)+pwd(i,jmin(i))
-        !print*,'DD1',k,dh,qrcd(i,k)*1000,qcd(i,k)*1000,pwd(i,k)*1000;call flush(6)
-!
+
         bu(i)=dz*dh
         do ki=jmin(i)-1,1,-1
 
@@ -4346,22 +4368,23 @@ ENDIF !- end of section for atmospheric composition
             qrcd(i,ki)=qcd(i,ki)
            endif
            pwd(i,ki)=zd(i,ki)*dqeva ! amount of liq water evaporated
-                           ! kg[water vapor]/kg[air]
-           !print*,'DD2',ki,dh,qrcd(i,ki)*1000,qcd(i,ki)*1000,pwd(i,ki)*1000;call flush(6)
+                                    ! kg[water vapor]/kg[air]
 
            qcd(i,ki)=qrcd(i,ki)     ! water vapor in downdraft
            pwev(i)=pwev(i)+pwd(i,ki)
         enddo
 !
         if(pwev(I).eq.0.and.iloop.eq.1)then
-!        print *,'problem with buoy in cup_dd_moisture',i
-         ierr(i)=7
+         ierr(i)=70
          ierrc(i)="problem with buoy in cup_dd_moisture"
         endif
         if(BU(I).GE.0.and.iloop.eq.1)then
-!        print *,'problem with buoy in cup_dd_moisture',i
-         ierr(i)=7
+         ierr(i)=73
          ierrc(i)="problem2 with buoy in cup_dd_moisture"
+        endif
+        if(abs(pwev(i)) > pwavo(i) )then
+         ierr(i)=77
+         ierrc(i)="problem 3 with evap in cup_dd_moisture"
         endif
 
 100    continue!--- end loop over i
@@ -8957,36 +8980,19 @@ loop2:        DO while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
      real   , parameter :: f=2., C_d=0.506, gam=0.5, beta=1.875
      logical, parameter :: smooth=.true.
      integer, parameter :: n_smooth=3
-  !
 
-  !  initialize arrays to zero.
-      vvel1d(:  ) = 0.
-      vvel2d(:,:) = 0.
-
-      do i=its,itf
-        if(ierr(i) /= 0)cycle
-        vvel2d(i,kts:kbcon(i))= 1.!max(1.,zws(i)**2)
+     do i=its,itf
+        !-- initialize arrays to zero.
+        vvel1d(i  ) = 0.0
+        vvel2d(i,:) = 0.0
+      
+        if(ierr(i) /= 0) cycle
+        vvel2d(i,kts:kbcon(i))= max(1.,zws(i)**2)
 
 loop0:  do k= kbcon(i),ktop(i)
 
           dz=z_cup(i,k+1)-z_cup(i,k)
 
-
-!---- version 1
-!          BU=0.5*(zu(i,k  )*(g/(cp*t_cup(i,k  )))*dby(i,k  )/(1.+gamma_cup(i,k  ))+&
-!                  zu(i,k+1)*(g/(cp*t_cup(i,k+1)))*dby(i,k+1)/(1.+gamma_cup(i,k+1)))
-!          !-1st term
-!          dw1 = 2.*ctea * BU * dz
-!          !-2nd term
-!          kx=cteb*max(entr_rate_2d(i,k),cd(i,k))*dz
-!
-!          !kx=cteb*0.5*(entr_rate_2d(i,k)+cd(i,k))*dz
-!          !kx=cteb*entr_rate_2d(i,k)*dz
-!          !dw2=((1.-kx)*vvel2d(i,k))
-!          dw2 =  abs(vvel2d(i,k)) -2.*kx * abs(vvel2d(i,k))
-!          vvel2d(i,k+1)=(dw1+dw2)/(1.+kx)
-!
-!---- version 2
           Tve= 0.5* ( t_cup (i,k  )*(1.+(qo (i,k  )/eps)/(1.+qo (i,k  ))) + &
                       t_cup (i,k+1)*(1.+(qo (i,k+1)/eps)/(1.+qo (i,k+1))))
 
@@ -9011,38 +9017,41 @@ loop0:  do k= kbcon(i),ktop(i)
           endif
 
         enddo loop0
-      enddo
-      if(smooth) then
+     enddo
+     if(smooth) then
        do i=its,itf
          if(ierr(i) /= 0)cycle
          do k=kts,ktop(i)-2
            nvs=0; vs =0.
-	   !print*,"=================",k,n_smooth,ktop(i)
 	   do k1 = max(k-n_smooth,kts),min(k+n_smooth,ktf)
 	     nvs = nvs + 1
 	      vs =  vs + vvel2d(i,k1)
-              !print*,"k1=",k,k1,nvs,vvel2d(i,k1)
 	   enddo
-           !print*,"fv=",nvs,vs,vvel2d(i,k),vs/(1.e-16+float(nvs))
 	   vvel2d(i,k) = vs/(1.e-16+float(nvs))
          enddo 
        enddo 
      endif
+     
      !-- convert to vertical velocity
-      do i=its,itf
-        if(ierr(i) /= 0)cycle
-        vvel2d(i,:)= sqrt( vvel2d(i,:))
-
-        do k= kbcon(i),ktop(i)
-          dz=z_cup(i,k+1)-z_cup(i,k)
-          vvel1d(i)=vvel1d(i)+vvel2d(i,k)*dz
-        enddo
-        vvel1d(i)=vvel1d(i)/(z_cup(i,ktop(i))-z_cup(i,kbcon(i)))
-      enddo
+     do i=its,itf
+         if(ierr(i) /= 0)cycle
+         vvel2d(i,:)= sqrt(vvel2d(i,:))
+         
+	 !-- sanity check
+         where(vvel2d(i,:) < 1. ) vvel2d(i,:)=1.
+         where(vvel2d(i,:) > 20.) vvel2d(i,:)=20.
+	 
+	 !-- get the column average vert velocity
+	 do k= kbcon(i),ktop(i)
+            dz=z_cup(i,k+1)-z_cup(i,k)
+            vvel1d(i)=vvel1d(i)+vvel2d(i,k)*dz
+         enddo
+         vvel1d(i)=vvel1d(i)/(z_cup(i,ktop(i)+1)-z_cup(i,kbcon(i)))
+	 vvel1d(i)=max(1.,vvel1d(i))
+     enddo
 
    end subroutine cup_up_vvel
 
-!
 !------------------------------------------------------------------------------------
    SUBROUTINE cup_output_ens_3d(name,xff_mid,xf_ens,ierr,dellat,dellaq,dellaqc,  &
               outtem,outq,outqc,     &
@@ -9779,7 +9788,7 @@ ENDIF
 
 !------------------------------------------------------------------------------------
   SUBROUTINE get_incloud_sc_chem_up(cumulus,fscav,mtp,se,se_cup,sc_up,pw_up,tot_pw_up_chem&
-                                   ,z_cup,rho,po,p_cup  &
+                                   ,z_cup,rho,po,po_cup  &
                                    ,qrco,tempco,pwo,zuo,up_massentro,up_massdetro,vvel2d,vvel1d  &
                                    ,k22,kbcon,ktop,klcl,ierr,itf,ktf,its,ite, kts,kte)
      IMPLICIT NONE
@@ -9790,7 +9799,7 @@ ENDIF
      character *(*)                        ,intent (in)  :: cumulus
      real, dimension (mtp)                 ,intent (in)  :: FSCAV
      real, dimension (mtp ,its:ite,kts:kte),intent (in)  :: se,se_cup
-     real, dimension (its:ite,kts:kte)     ,intent (in)  :: z_cup,rho,p_cup,qrco,tempco,pwo,zuo &
+     real, dimension (its:ite,kts:kte)     ,intent (in)  :: z_cup,rho,po_cup,qrco,tempco,pwo,zuo &
                                                            ,up_massentro,up_massdetro,po     
                             
      
@@ -9806,7 +9815,7 @@ ENDIF
      integer, dimension (its:ite) :: start_level
      real   , dimension (mtp ,its:ite) ::  sc_b
      real   , dimension (mtp) :: conc_mxr
-     real :: x_add,dz,XZZ,XZD,XZE,denom,henry_coef,w_upd,fliq
+     real :: x_add,dz,XZZ,XZD,XZE,denom,henry_coef,w_upd,fliq,dp
      integer :: i,k,ispc
      real, parameter :: cte_w_upd = 10. ! m/s
      real, parameter :: kc = 5.e-3  ! s-1
@@ -9894,11 +9903,11 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                                         
                     !--formulation 1 as in GOCART with RAS conv_par
                     if(USE_TRACER_SCAVEN==1) & 
-                    pw_up(ispc,i,k) = sc_up(ispc,i,k)*(1.-exp(- FSCAV(ispc) * (dz/1000.))) 
+                    pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- FSCAV(ispc) * (dz/1000.))))
         
                     !--formulation 2 as in GOCART                    
                     if(USE_TRACER_SCAVEN==2) & 
-                    pw_up(ispc,i,k) = sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k)
+                    pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
 
                     !--formulation 3 - orignal GF conv_par
                     if(USE_TRACER_SCAVEN==3) then
@@ -9910,6 +9919,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 
                     !---(in cloud) total mixing ratio in gas and aqueous phases
                     sc_up(ispc,i,k) = sc_up(ispc,i,k) - pw_up(ispc,i,k)
+
                     !
                 ELSEIF(Hcts(ispc)%hstar>1.e-6) THEN ! tracer gas phase scavenging
 
@@ -9929,7 +9939,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
  		      fliq = henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k))
 
                       !---   aqueous-phase concentration in rain water
-                      pw_up(ispc,i,k) = sc_up(ispc,i,k)*(1.-exp(-fliq*kc*dz/w_upd))!*factor_temp(ispc,i,k)
+                      pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(-fliq*kc*dz/w_upd)))!*factor_temp(ispc,i,k))
 
                     endif		    
 		    
@@ -9942,8 +9952,10 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                 ENDIF
             enddo
 	    !
-	    !-- total aerosol/gas in the rain water
-	    tot_pw_up_chem(:,i) = tot_pw_up_chem(:,i) + pw_up(:,i,k)
+	    !-- total aerosol/gas in the rain water             
+	    dp=100.*(po_cup(i,k)-po_cup(i,k+1))
+
+	    tot_pw_up_chem(:,i) = tot_pw_up_chem(:,i) + pw_up(:,i,k)*dp/g
           enddo loopk
            !
            !----- get back the in-cloud updraft gas-phase mixing ratio : sc_up(ispc,k)
@@ -9954,7 +9966,6 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 !          enddo
      ENDDO
   END SUBROUTINE get_incloud_sc_chem_up
-
 !---------------------------------------------------------------------------------------------------
   FUNCTION henry(ispc,temp,rhoair) RESULT(henry_coef)
   !--- calculate Henry's constant for solubility of gases into cloud water
@@ -10001,7 +10012,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 !---------------------------------------------------------------------------------------------------
   SUBROUTINE get_incloud_sc_chem_dd(cumulus,FSCAV,mtp,se,se_cup,sc_dn,pw_dn ,pw_up,sc_up                          &
                                    ,tot_pw_up_chem,tot_pw_dn_chem                                                 &
-                                   ,z_cup,rho,p_cup,qrcdo,pwdo,pwevo,edto,zdo,dd_massentro,dd_massdetro,pwavo,pwo &
+                                   ,z_cup,rho,po_cup,qrcdo,pwdo,pwevo,edto,zdo,dd_massentro,dd_massdetro,pwavo,pwo &
                                    ,jmin,ierr,itf,ktf,its,ite, kts,kte)
      IMPLICIT NONE
      !-inputs
@@ -10012,7 +10023,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
      real, dimension (mtp ,its:ite,kts:kte),intent (in)  :: se,se_cup,pw_up,sc_up
      real, dimension (mtp)                 ,intent (in)  :: FSCAV
      real, dimension (its:ite)             ,intent (in)  :: edto,pwavo,pwevo
-     real, dimension (its:ite,kts:kte)     ,intent (in)  :: z_cup,rho,p_cup&
+     real, dimension (its:ite,kts:kte)     ,intent (in)  :: z_cup,rho,po_cup&
                        ,qrcdo,pwdo,zdo,dd_massentro,dd_massdetro,pwo
      real, dimension (mtp ,its:ite        ),intent (in)  :: tot_pw_up_chem
 
@@ -10022,7 +10033,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 
      !-locals
      real   , dimension (mtp) :: conc_mxr
-     real :: x_add,dz,XZZ,XZD,XZE,denom, evaporate,pwdper,x1
+     real :: x_add,dz,XZZ,XZD,XZE,denom, evaporate,pwdper,x1,frac_evap,dp,xkk
      integer :: i,k,ispc
 
      sc_dn          = 0.0
@@ -10032,21 +10043,27 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
      
      do i=its,itf
        if(ierr(i) /= 0) cycle
-
+       
+       !--- fration of the total rain that was evaporated
+       frac_evap = - pwevo(i)/(1.e-16+pwavo(i)) 
+       
        !--- scalar concentration in-cloud - downdraft
        
        !--- at k=jmim
        k=jmin(i)
-       pwdper = pwdo(i,k)/(1.e-16+pwevo(i)) ! > 0        
+       pwdper = pwdo(i,k)/(1.e-16+pwevo(i)) *frac_evap  ! > 0        
        if(USE_TRACER_EVAP == 0 ) pwdper = 0.0
-       
+
+       dp= 100.*(po_cup(i,k)-po_cup(i,k+1))
+
        do ispc=1,mtp
         !--downdrafts will be initiate with a mixture of 50% environmental and in-cloud concentrations
               sc_dn(ispc,i,k) = se_cup(ispc,i,k)
              !sc_dn(ispc,i,k) = 0.9*se_cup(ispc,i,k)+0.1*sc_up(ispc,i,k)
            
-	      pw_dn(ispc,i,k) = - pwdper * tot_pw_up_chem(ispc,i)
+	      pw_dn(ispc,i,k) = - pwdper * tot_pw_up_chem(ispc,i)*g/dp
               sc_dn(ispc,i,k) = sc_dn(ispc,i,k) - pw_dn(ispc,i,k) 
+              tot_pw_dn_chem(ispc,i) = tot_pw_dn_chem(ispc,i) + pw_dn(ispc,i,k)*dp/g
        enddo
        !
        !--- calculate downdraft mass terms
@@ -10065,28 +10082,38 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
         !
         !-- evaporation term
         if(USE_TRACER_EVAP == 0 )cycle
-        
-           !-- fraction of evaporated precip 
-           pwdper   = pwdo(i,k)/(1.e-16+pwevo(i)) ! > 0
+           
+	   dp= 100.*(po_cup(i,k)-po_cup(i,k+1))
+           
+	   !-- fraction of evaporated precip per layer
+           pwdper   = pwdo(i,k)/(1.e-16+pwevo(i))! > 0
+           
+	   !-- fraction of the total precip that was actually evaporated at layer k
+           pwdper   = pwdper * frac_evap
+           
+	   !-- sanity check
            pwdper   = min(1.,max(pwdper,0.))
 
            do ispc=1,mtp
               !-- amount evaporated by the downdraft from the precipitation
-	      pw_dn(ispc,i,k) = - pwdper * tot_pw_up_chem (ispc,i)! < 0. => source term for the downdraft tracer concentration
+	      pw_dn(ispc,i,k) = - pwdper * tot_pw_up_chem (ispc,i)*g/dp ! < 0. => source term for the downdraft tracer concentration
               
-	      !if(ispc==1) print*,"pw=",pwdper,tot_pw_up_chem (ispc,i),pw_dn(ispc,i,k),sc_dn(ispc,i,k),sc_dn(ispc,i,k) - pw_dn(ispc,i,k)
+	      !if(ispc==1) print*,"pw=",pwdper,tot_pw_up_chem (ispc,i),pwevo(i)/pwavo(i),pwdo(i,k)/(1.e-16+pwo(i,k))
 
               !-- final tracer in the downdraft
               sc_dn(ispc,i,k) = sc_dn(ispc,i,k) - pw_dn(ispc,i,k) ! observe that -pw_dn is > 0.
               
               !-- total evaporated tracer 
-              tot_pw_dn_chem(ispc,i) = tot_pw_dn_chem(ispc,i) + pw_dn(ispc,i,k)
+              tot_pw_dn_chem(ispc,i) = tot_pw_dn_chem(ispc,i) + pw_dn(ispc,i,k)*dp/g
+	      
+	      !print*,"to=",k,tot_pw_dn_chem(ispc,i),pwdo(i,k)/(1.e-16+pwevo(i)),frac_evap,tot_pw_dn_chem(ispc,i)/tot_pw_up_chem (ispc,i)
+	      
            enddo
         enddo
         !
      ENDDO
     END SUBROUTINE get_incloud_sc_chem_dd
- !---------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------
     subroutine interface_aerchem(mtp,itrcr,aer_chem_mech, cnames,qnames, fscav, fscav_int)
       IMPLICIT NONE
       INTEGER, INTENT(IN) :: mtp,ITRCR
