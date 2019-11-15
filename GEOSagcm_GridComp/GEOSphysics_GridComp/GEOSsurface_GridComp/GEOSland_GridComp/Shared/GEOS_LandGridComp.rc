@@ -3,7 +3,7 @@
 #    V24_C05 : DEFAULT for GEOSldas_m4-17_0
 #    NRv7.2  : Current DEFAULT beginning with GEOSldas_m4-17_6
 #
-# LAND_PARAMS: NRv7.2
+LAND_PARAMS: NRv7.2
 
 # ---- Formulation for turbulent roughness length (Z0):
 #    0 : Fortuna,      SMAP NRv3
