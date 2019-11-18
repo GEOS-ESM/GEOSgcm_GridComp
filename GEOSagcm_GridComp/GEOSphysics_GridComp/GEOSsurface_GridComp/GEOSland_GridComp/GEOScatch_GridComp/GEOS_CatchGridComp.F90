@@ -4090,15 +4090,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 #ifdef DBG_CATCH_INPUTS
         ! vars for debugging purposes
-        type(ESMF_Grid)                 :: TILEGRID
-        type (MAPL_LocStream)           :: LOCSTREAM
-        integer, pointer                :: mask(:)
         integer                         :: nt
         integer, save                   :: unit_i=0
         logical, save                   :: firsttime=.true.
-        integer                         :: unit
 	integer 			:: NT_GLOBAL
-
 #endif
 
         ! Offline case
