@@ -8,7 +8,7 @@
 #    V24_C05 : DEFAULT for GEOSldas_m4-17_0
 #    NRv7.2  : Current DEFAULT beginning with GEOSldas_m4-17_6
 #
-LAND_PARAMS: NRv7.2
+#LAND_PARAMS: NRv7.2
 
 # ---- Formulation for turbulent roughness length (Z0):
 #    0 : Fortuna,      SMAP NRv3
@@ -16,8 +16,8 @@ LAND_PARAMS: NRv7.2
 #    2 : Heracles-4_3, Icarus (AGCM default)
 #    3 :               SMAP NRv5/NRv7.2
 #    4 : JP testing
-Z0_FORMULATION: 4
-IGNORE_VEG_HEIGHTS: 1
+#Z0_FORMULATION: 4
+#IGNORE_VEG_HEIGHTS: 1
 
 # ---- ASCAT-derived roughness length:
 #    0 : Default - do not use ASCAT information.
