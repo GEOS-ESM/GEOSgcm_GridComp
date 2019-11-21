@@ -136,7 +136,7 @@ type CATCH_WRAP
 end type CATCH_WRAP
 !#--
 
-integer :: MODIS_DVG, DO_GOSWIM, RUN_IRRIG, USE_ASCATZ0, Z0_FORMULATION, IRRIG_METHOD, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
+integer :: MODIS_DVG, DO_GOSWIM, USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 
@@ -217,8 +217,6 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (LCF, label='SURFLAY:'            , value=SURFLAY,             DEFAULT=50., __RC__ )
     call ESMF_ConfigGetAttribute (LCF, label='Z0_FORMULATION:'     , value=Z0_FORMULATION,      DEFAULT=2  , __RC__ )
     call ESMF_ConfigGetAttribute (LCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,         DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='RUN_IRRIG:'          , value=RUN_IRRIG,           DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='IRRIG_METHOD:'       , value=IRRIG_METHOD,        DEFAULT=0  , __RC__ )
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
@@ -3478,7 +3476,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     PSL = PSMB * (1. - (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) ) /   &
                (1. + (DZE*MAPL_GRAV)/(MAPL_RGAS*(TA+TC(:,N)) ) )
   
-    CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai,  &
+    CALL helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TC(:,N),QA,QC(:,N),PSL,PSMB,Z0T(:,N),lai0,  &
                       IWATER,DZE,niter,nt,RHOH,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,  &
                       t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
   
@@ -4093,7 +4091,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                         :: nt
         integer, save                   :: unit_i=0
         logical, save                   :: firsttime=.true.
-	integer 			:: NT_GLOBAL
+	    integer 			            :: NT_GLOBAL
 #endif
 
         ! Offline case
@@ -4641,7 +4639,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
 
-        LAI0  = min(7., max(0.0001, LAI))
+        LAI0  = LAI
         IF(MODIS_DVG == 1) LAI0  = min(7., max(0.0001, MODIS_LAI))
  
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
@@ -5038,6 +5036,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ASSERT_(count(PCU<0.)==0)
         ASSERT_(count(SLDTOT<0.)==0)
 
+        IF(MODIS_DVG == 0) LAI0  = max(0.0001     , LAI) ! for zero-diff
         GRN0  = max(0.0001     , GRN)		
         ZTH   = max(0.0001     , ZTH)
 
@@ -5587,8 +5586,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! update subtile fractions
         ! --------------------------------------------------------------------------
 
-        EMIS    = EMSVEG(VEG) + (EMSBARESOIL - EMSVEG(VEG))*exp(-LAI0)
-
+        IF(MODIS_DVG == 0) THEN ! For zero-diff
+             EMIS    = EMSVEG(VEG) + (EMSBARESOIL - EMSVEG(VEG))*exp(-LAI) 
+        ELSE
+             EMIS    = EMSVEG(VEG) + (EMSBARESOIL - EMSVEG(VEG))*exp(-LAI0) 
+        ENDIF
         EMIS    = EMIS     *(1.-ASNOW) + EMSSNO   *ASNOW
 
         call MAPL_SunGetInsolation(LONS, LATS,      &
@@ -5607,12 +5609,23 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         call MAPL_TimerOn(MAPL,"-ALBEDO")
 
+        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
+        TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
+
         IF (MODIS_DVG == 0) THEN
 
-        call    SIBALB(NTILES, VEG, LAI0, GRN, ZTH, & 
-             VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-             ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles           
+           call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
+                VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
+                ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles           
 
+           call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+                RHOFS,                                              &   
+                SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
+                WESNN, HTSNNN, SNDZN,                               &
+                ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
+                SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
+                RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
+           
         ELSE
 
            ALBVR = MIN (1., MAX(0.001,MODIS_VISDF))
@@ -5620,18 +5633,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            ALBVF = MIN (1., MAX(0.001,MODIS_VISDF))
            ALBNF = MIN (1., MAX(0.001,MODIS_NIRDF))  
            
+           call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI0, ZTH, &
+                RHOFS,                                              &   
+                SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
+                WESNN, HTSNNN, SNDZN,                               &
+                ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
+                SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
+                RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
+           
         ENDIF
-
-        call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
-        TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
-
-        call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI0, ZTH, &
-                 RHOFS,                                              &   
-                 SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
-                 WESNN, HTSNNN, SNDZN,                               &
-                 ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
-                 SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
-                 RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
 
         ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
@@ -6101,7 +6111,9 @@ subroutine RUN0(gc, import, export, clock, rc)
   allocate(dummy(ntiles), stat=status)
   allocate(lai0(ntiles) , stat=status)
 
-  LAI0 = MIN (7., MAX(0.0001,LAI))
+  LAI0 = LAI
+  
+  IF (MODIS_DVG == 1) LAI0  = min(7., max(0.0001, LAI0))
 
   ! Reset WW
   WW = 0.

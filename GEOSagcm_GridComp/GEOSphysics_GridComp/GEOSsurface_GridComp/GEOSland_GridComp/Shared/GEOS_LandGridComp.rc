@@ -1,3 +1,8 @@
+# ---- SURFLAY (Surface soil layer thickness
+# SURFLAY: 50.0 for New Soil Params (default, Ganymed-4 and later)
+# SURFLAY: 20.0 Old Soil Params  (Ganymed-3 and earlier)
+# SURFLAY: 50  
+ 
 # ---- Choose land model version
 #    Icarus  : Current DEFAULT for the Icarus AGCM (Scientifically close to MERRA-2)
 #    V24_C05 : DEFAULT for GEOSldas_m4-17_0
