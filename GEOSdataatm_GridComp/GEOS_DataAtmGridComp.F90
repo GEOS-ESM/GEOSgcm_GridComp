@@ -74,6 +74,8 @@ module GEOS_DataAtmGridCompMod
   integer            :: NUM_ICE_LAYERS
   integer, parameter :: NUM_SNOW_LAYERS=1
 
+  integer, parameter :: NUM_TAUA = 33
+
   integer, parameter :: WATER = 1
   integer, parameter :: ICE   = 2
   integer            :: NUM_SUBTILES
@@ -1310,7 +1312,7 @@ module GEOS_DataAtmGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-    do k=1, 33
+    do k=1, NUM_TAUA
      write(unit = suffix, fmt = '(i2.2)') k
      call MAPL_AddExportSpec(GC,                                  &
         SHORT_NAME = 'TAUA_'//suffix,                             &
@@ -1623,13 +1625,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(  :)       :: rh => null()
   real, pointer, dimension(  :)       :: oz => null()
   real, pointer, dimension(  :)       :: wv => null()
-  real, pointer, dimension(  :)       :: taua => null()
-  real, pointer, dimension(  :)       :: asymp => null()
-  real, pointer, dimension(  :)       :: ssalb => null()
   real, pointer, dimension(  :)       :: co2sc
-  type(bandptr), dimension( 33)       :: ataua
-  type(bandptr), dimension( 33)       :: aasymp
-  type(bandptr), dimension( 33)       :: assalb
+  type(bandptr), dimension( NUM_TAUA)       :: ataua
+  type(bandptr), dimension( NUM_TAUA)       :: aasymp
+  type(bandptr), dimension( NUM_TAUA)       :: assalb
   real, pointer, dimension(:,:)  :: dry_clayx => null()
   real, pointer, dimension(:,:)  :: wet_clayx => null()
   real, pointer, dimension(:,:)  :: sed_clayx => null()
@@ -1644,9 +1643,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:)  :: asympx => null()
   real, pointer, dimension(:)  :: ssalbx => null()
   real, pointer, dimension(:)  :: co2scx
-  type(bandptr), dimension(33) :: atauax
-  type(bandptr), dimension(33) :: aasympx
-  type(bandptr), dimension(33) :: assalbx
+  type(bandptr), dimension(NUM_TAUA) :: atauax
+  type(bandptr), dimension(NUM_TAUA) :: aasympx
+  type(bandptr), dimension(NUM_TAUA) :: assalbx
 
 ! Temporary vars
   real, pointer, dimension(  :)       :: var1 => null()
@@ -2164,9 +2163,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(rh(NT),STAT=STATUS);    VERIFY_(STATUS)
     allocate(oz(NT),STAT=STATUS);    VERIFY_(STATUS)
     allocate(wv(NT),STAT=STATUS);    VERIFY_(STATUS)
-    allocate(taua(NT),STAT=STATUS);  VERIFY_(STATUS)
-    allocate(asymp(NT),STAT=STATUS); VERIFY_(STATUS)
-    allocate(ssalb(NT),STAT=STATUS); VERIFY_(STATUS)
 
     allocate(FRZMLT(NT),STAT=STATUS);  VERIFY_(STATUS)
     allocate(SHF(NT),STAT=STATUS);  VERIFY_(STATUS)
@@ -2262,7 +2258,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MK_GRID_OUT(EXPORT, GNAME='RHg',     TNAME='RH',     RC=STATUS)
     call MK_GRID_OUT(EXPORT, GNAME='OZg',     TNAME='OZ',     RC=STATUS)
     call MK_GRID_OUT(EXPORT, GNAME='WVg',     TNAME='WV',     RC=STATUS)
-    do k=1, 33
+    do k=1, NUM_TAUA
      write(unit = suffix, fmt = '(i2.2)') k
      call MK_GRID_OUT(EXPORT, GNAME='TAUA_'//suffix//'g',  &
                       TNAME='TAUA_'//suffix, RC=STATUS)
@@ -2351,7 +2347,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call GET_POINTER(EXPORT, ozx,     'OZ',     RC=STATUS); VERIFY_(STATUS)
     call GET_POINTER(EXPORT, wvx,     'WV',     RC=STATUS); VERIFY_(STATUS)
     call GET_POINTER(EXPORT, co2scx, 'CO2SC', RC=STATUS); VERIFY_(STATUS)
-    do k=1, 33
+    do k=1, NUM_TAUA
      write(unit = suffix, fmt = '(i2.2)') k
      call GET_POINTER(EXPORT, tauax, 'TAUA_'//suffix, RC=STATUS)
      atauax(k)%b => tauax
@@ -2604,31 +2600,31 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Read MODIS Aerosols (Atmospheric Optics)
 !-----------------------------------------
 
-    do k=1, 33
+    do k=1, NUM_TAUA
      write(unit = suffix, fmt = '(i2.2)') k
      call MAPL_GetResource( STATE, DATAfile, LABEL='TAUA_FILE:', default = 'none', RC=STATUS )
      VERIFY_(STATUS)
-     if(trim(datafile) == 'none') then; taua = 0.0
-     else; call MAPL_ReadForcing( STATE, 'TAUA_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, taua, RC=STATUS)
+     allocate(ataua(k)%b(NT),STAT=STATUS);  VERIFY_(STATUS)
+     if(trim(datafile) == 'none') then; ataua(k)%b = 0.0
+     else; call MAPL_ReadForcing( STATE, 'TAUA_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, ataua(k)%b, RC=STATUS)
          VERIFY_(STATUS)
      endif;
-     ataua(k)%b => taua
 
      call MAPL_GetResource( STATE, DATAfile, LABEL='ASYMP_FILE:', default = 'none', RC=STATUS )
      VERIFY_(STATUS)
-     if(trim(datafile) == 'none') then; asymp = 0.0
-     else; call MAPL_ReadForcing( STATE, 'ASYMP_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, asymp, RC=STATUS)
+     allocate(aasymp(k)%b(NT),STAT=STATUS); VERIFY_(STATUS)
+     if(trim(datafile) == 'none') then; aasymp(k)%b = 0.0
+     else; call MAPL_ReadForcing( STATE, 'ASYMP_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, aasymp(k)%b, RC=STATUS)
          VERIFY_(STATUS)
      endif;  
-     aasymp(k)%b => asymp
 
      call MAPL_GetResource( STATE, DATAfile, LABEL='SSALB_FILE:', default = 'none', RC=STATUS )
      VERIFY_(STATUS)
-     if(trim(datafile) == 'none') then; ssalb = 0.0
-     else; call MAPL_ReadForcing( STATE, 'SSALB_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, ssalb, RC=STATUS)
+     allocate(assalb(k)%b(NT),STAT=STATUS); VERIFY_(STATUS)
+     if(trim(datafile) == 'none') then; assalb(k)%b = 0.0
+     else; call MAPL_ReadForcing( STATE, 'SSALB_' // suffix, trim(DATAFILE) // suffix, CURRENTTIME, assalb(k)%b, RC=STATUS)
          VERIFY_(STATUS)
      endif;
-     assalb(k)%b => ssalb
     enddo
 
 
@@ -2881,7 +2877,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if ( associated(rhx)     ) rhx     = rh
     if ( associated(ozx)     ) ozx     = oz
     if ( associated(wvx)     ) wvx     = wv
-    do k=1, 33
+    do k=1, NUM_TAUA
      if ( associated(atauax(k)%b)  ) atauax(k)%b  = ataua(k)%b
      if ( associated(aasympx(k)%b) ) aasympx(k)%b = aasymp(k)%b
      if ( associated(assalbx(k)%b) ) assalbx(k)%b = assalb(k)%b
@@ -3099,7 +3095,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call T2G_Regrid(EXPORT, LOCSTREAM, GNAME='RHg',     TNAME='RH',     RC=STATUS)
     call T2G_Regrid(EXPORT, LOCSTREAM, GNAME='OZg',     TNAME='OZ',     RC=STATUS)
     call T2G_Regrid(EXPORT, LOCSTREAM, GNAME='WVg',     TNAME='WV',     RC=STATUS)
-    do k=1, 33
+    do k=1, NUM_TAUA
      write(unit = suffix, fmt = '(i2.2)') k
      call T2G_Regrid(EXPORT, LOCSTREAM, GNAME='TAUA_'//suffix//'g', &
                      TNAME='TAUA_'//suffix,  RC=STATUS)
@@ -3939,9 +3935,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    deallocate(dry_clay)
    deallocate(wet_clay)
    deallocate(sed_clay)
-   deallocate(taua)
-   deallocate(asymp)
-   deallocate(ssalb)
+
+   do k = 1, NUM_TAUA
+      deallocate(ataua(k)%b)
+      deallocate(aasymp(k)%b)
+      deallocate(assalb(k)%b)
+   end do
    deallocate(co2sc)
    deallocate(ccovm)
    deallocate(cldtcm)
