@@ -117,7 +117,6 @@ real,   parameter :: EMSSNO        =    0.99999
 ! moved SURFLAY from catchment.F90 to enable run-time changes for off-line system
 ! - reichle, 29 Oct 2010
 
-! real,   parameter :: SURFLAY = 20.  ! moved to GetResource in RUN2  LLT:12Jul3013
 
 ! ROOTL import from GEOS_VegdynGridComp was disabled and brought the look up table 
 ! in order to obtain ROOTL for primary and secondary types.
@@ -170,11 +169,13 @@ type OFFLINE_WRAP
    type(T_OFFLINE_MODE), pointer :: ptr=>null()
 end type OFFLINE_WRAP
 
-integer :: DO_GOSWIM, RUN_IRRIG, USE_ASCATZ0, Z0_FORMULATION, IRRIG_METHOD, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
+integer :: RUN_IRRIG, USE_ASCATZ0, Z0_FORMULATION, IRRIG_METHOD, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
 integer :: ATM_CO2, PRESCRIBE_DVG, SCALE_ALBFPAR
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 real    :: CO2
+integer :: CO2_YEAR_IN          ! years when atmospheric carbon dioxide concentration increases, starting from 1850
+real    :: DTCN                 ! Time step for carbon/nitrogen routines in CatchmentCN model (default 5400)
 
 contains
 
@@ -260,7 +261,6 @@ subroutine SetServices ( GC, RC )
     ! 0 : GOSWIM snow albedo scheme is turned off
     ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
     call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LAND4SNWALB:', value=N_CONST_LAND4SNWALB, DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='DO_GOSWIM:', value=DO_GOSWIM,           DEFAULT=0  , __RC__ )
 
     ! Get parameters to zero the deposition rate 
     ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
@@ -269,6 +269,7 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (LCF, label='AEROSOL_DEPOSITION:' , value=AEROSOL_DEPOSITION,  DEFAULT=0  , __RC__ )
 
     ! CATCHCN
+    call ESMF_ConfigGetAttribute (LCF, label='DTCN:' , value=DTCN,  DEFAULT=5400. , __RC__ )
     ! ATM_CO2
     ! 0: uses a fix value defined by CO2
     ! 1: CT tracker monthly mean diurnal cycle
@@ -293,7 +294,8 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (LCF, label='SCALE_ALBFPAR:' , value=SCALE_ALBFPAR,  DEFAULT=0  , __RC__ )
 
     ! Globam mean CO2 
-    call ESMF_ConfigGetAttribute (LCF, label='CO2:' , value=CO2,  DEFAULT=350.e-6, __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='CO2:'     , value=CO2,         DEFAULT=350.e-6, __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='CO2_YEAR:', value=CO2_YEAR_IN, DEFAULT=  -9999, __RC__ )
     call ESMF_ConfigDestroy      (LCF, __RC__)
 
 ! Set the Run entry points
@@ -1960,7 +1962,7 @@ subroutine SetServices ( GC, RC )
 
   !---------- GOSWIM snow impurity related variables ----------
 
-  if (DO_GOSWIM /= 0) then 
+  if (N_CONST_LAND4SNWALB /= 0) then 
   
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_1'   ,&
@@ -4510,8 +4512,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(ESMF_Alarm)                :: ALARM
 
     integer :: IM,JM
-    real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
-                                    !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
     integer :: CHOOSEMOSFC
     integer :: incl_Louis_extra_derivs
 
@@ -5013,9 +5013,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real                        :: DT
         integer                     :: NTILES
         integer                     :: I, J, K, N
-        integer                     :: AEROSOL_DEPOSITION
-        integer                     :: N_CONST_LAND4SNWALB
-        integer                     :: DO_GOSWIM, RUN_IRRIG, IRRIG_METHOD
 
 	! dummy variables for call to get snow temp
 
@@ -5100,7 +5097,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! cycle * 280ppm/389.8899ppm, fzeng, Apr 2017.
     ! EEA global average CO2 is from http://www.eea.europa.eu/data-and-maps/figures/atmospheric-concentration-of-co2-ppm-1  
     ! --------------------------------------------------------------------------------------------------------------------  
-    integer            :: CO2_YEAR             ! years when atmospheric carbon dioxide concentration increases, starting from 1850
+
     real               :: co2g                 ! global average atmospheric carbon dioxide concentration, varies after 1850
     integer, parameter :: byr_co2g  = 1851     ! year global average atmospheric CO2 concentration began to increase from 280.e-6 
     integer, parameter :: myr_co2g  = 1950     ! year global average atmospheric CO2 concentration reached 311.e-6 
@@ -5118,7 +5115,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, parameter :: CT_grid_N_lon  = 120  ! lon dimension CarbonTracker CO2 data
     integer, parameter :: CT_grid_N_lat  =  90  ! lat dimension CarbonTracker CO2 data
     real, parameter    :: CT_grid_dlon = 360./real(CT_grid_N_lon), CT_grid_dlat = 180./real(CT_grid_N_lat)
-    INTEGER            ::  info, comm, CTfile, Y1, M1, This3H, ThisCO2_Year, NUNQ
+    INTEGER            ::  info, comm, CTfile, Y1, M1, This3H, ThisCO2_Year, NUNQ, CO2_YEAR
     logical, allocatable, dimension (:)        :: unq_mask
     integer, allocatable, dimension (:,:)      :: CT_index
     integer, allocatable, dimension (:)        :: ct2cat, ThisIndex, loc_int
@@ -5154,7 +5151,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     integer :: ntile, nv, dpy, ierr, iok, ndt
     integer, save :: year_prev = -9999
-    real :: dtcn ! carbon model time step
+ 
 
     integer :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr, sofmin
     logical, save :: first = .true.
@@ -5221,8 +5218,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              RC=STATUS )
         VERIFY_(STATUS)
 
-        call MAPL_GetResource ( MAPL, PRECIPFRAC, Label="PRECIPFRAC:", DEFAULT=1.0, RC=STATUS)
-        VERIFY_(STATUS)
         call MAPL_GetResource ( MAPL, PRECIPFRAC, Label="PRECIPFRAC:", DEFAULT=1.0, RC=STATUS)
         VERIFY_(STATUS)
 
@@ -5395,7 +5390,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); VERIFY_(STATUS)
         ENDIF
  
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU003     ,'RDU003'     , RC=STATUS); VERIFY_(STATUS)
@@ -6181,7 +6176,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! --------------- GOSWIM PROGRNOSTICS ---------------------------
 
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
 
            ! Conversion of the masses of the snow impurities
            ! Note: Explanations of each variable
@@ -6659,8 +6654,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     CALC_CTCO2_SF: IF(ATM_CO2 == 2)  THEN
 
        ! Compute scale factor to scale CarbonTracker CO2 monthly mean diurnal cycle (3-hourly)
-       
-       call MAPL_GetResource ( MAPL, CO2_YEAR, Label="CO2_YEAR:", DEFAULT=AGCM_YY, RC=STATUS); VERIFY_(status) 
+       CO2_YEAR = AGCM_YY
+       IF(CO2_YEAR_IN > 0) CO2_YEAR = CO2_YEAR_IN
 
        ! update EEA global average CO2 and co2 scalar at the beginning of each year, fz, 26 Sep 2016
        ! -------------------------------------------------------------------------------------------
@@ -7075,12 +7070,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     endif
 
     RUN_CLM : IF((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN
-
-       ! set time step for CN model
-       ! --------------------------
-       
-       call MAPL_GetResource ( MAPL, DTCN, Label="DTCN:", DEFAULT=5400., RC=STATUS)
-       VERIFY_(STATUS)
        
        ! CN time step over 4 hours may fail; limit to 4 hours; verify that DTCN is a multiple of DT
        ! ------------------------------------------------------------------------------------------
@@ -7918,7 +7907,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN2  = SNDZN (2,:)
         SNDZN3  = SNDZN (3,:)
 
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            RDU001(:,:) = RCONSTIT(:,:,1) 
            RDU002(:,:) = RCONSTIT(:,:,2) 
            RDU003(:,:) = RCONSTIT(:,:,3) 
@@ -8333,7 +8322,6 @@ subroutine RUN0(gc, import, export, clock, rc)
   !! Miscellaneous
   integer :: ntiles, nv, nz
   real, allocatable :: dummy(:)
-  real :: SURFLAY
   real, allocatable :: dzsf(:), ar1(:), ar2(:), wesnn(:,:)
   real, allocatable :: catdefcp(:), srfexccp(:), rzexccp(:)
   real, allocatable :: VEG1(:), VEG2(:)
@@ -8539,8 +8527,6 @@ subroutine RUN0(gc, import, export, clock, rc)
   ! Step 3: compute fr
 
   ! -step-1-
-  call MAPL_GetResource(MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, rc=status)
-  VERIFY_(status)
   allocate(dzsf(ntiles), stat=status)
   VERIFY_(status)
   dzsf = SURFLAY
@@ -8632,7 +8618,7 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
   integer, parameter   :: nveg  = num_veg ! number of vegetation types
   integer, parameter   :: nzone = num_zon ! number of stress zones
   integer, intent (in) :: NTILES, PRESCRIBE_DVG
-  REAL                 :: LAI_TSCALE, TIMELAG
+  REAL                 :: TIMELAG
   INTEGER              :: BYEAR, BMON, BDAY, BHOUR, dSecs
   type(ESMF_TimeInterval) :: TIMEDIF 
 
@@ -8839,7 +8825,7 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
 
      ! Forecast mode
      call MAPL_GetResource(MAPL, FCAST_BEGTIME , label = 'FCAST_BEGTIME:', default = ''  , RC=STATUS) ; VERIFY_(STATUS)
-     call MAPL_GetResource(MAPL, LAI_TSCALE    , label = 'LAI_TSCALE:'   , default = 180., RC=STATUS) ; VERIFY_(STATUS)
+
      FTIME = ADJUSTL (FCAST_BEGTIME)
      READ (FTIME ( 1: 4), '(i4)', IOSTAT = STATUS ) BYEAR  ; VERIFY_(STATUS)
      READ (FTIME ( 5: 6), '(i2)', IOSTAT = STATUS ) BMON   ; VERIFY_(STATUS)

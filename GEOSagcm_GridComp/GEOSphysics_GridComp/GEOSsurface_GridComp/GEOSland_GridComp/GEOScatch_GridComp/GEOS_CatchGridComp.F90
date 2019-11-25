@@ -136,7 +136,7 @@ type CATCH_WRAP
 end type CATCH_WRAP
 !#--
 
-integer :: MODIS_DVG, DO_GOSWIM, USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
+integer :: MODIS_DVG, USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 
@@ -222,9 +222,7 @@ subroutine SetServices ( GC, RC )
     ! 0 : GOSWIM snow albedo scheme is turned off
     ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
     call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LAND4SNWALB:', value=N_CONST_LAND4SNWALB, DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='DO_GOSWIM:', value=DO_GOSWIM,           DEFAULT=0  , __RC__ )
 
-    ! Get parameters to zero the deposition rate 
     ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
     ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
     ! __________________________________________
@@ -1470,7 +1468,7 @@ subroutine SetServices ( GC, RC )
 
   !---------- GOSWIM snow impurity related variables ----------
  
-  if (DO_GOSWIM /= 0) then 
+  if (N_CONST_LAND4SNWALB /= 0) then 
 
      call MAPL_AddInternalSpec(GC                  ,&
        LONG_NAME          = 'dust_mass_in_snow_bin_1'   ,&
@@ -4422,7 +4420,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'         ,RC=STATUS); VERIFY_(STATUS)
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU003     ,'RDU003'     , RC=STATUS); VERIFY_(STATUS)
@@ -4884,7 +4882,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! RCONSTIT(NTILES,N,14): Sea salt mass from size bin 4 in layer N
 ! RCONSTIT(NTILES,N,15): Sea salt mass from size bin 5 in layer N
 
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            RCONSTIT(:,:,1) = RDU001(:,:)
            RCONSTIT(:,:,2) = RDU002(:,:)
            RCONSTIT(:,:,3) = RDU003(:,:)
@@ -5810,7 +5808,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN2  = SNDZN (2,:)
         SNDZN3  = SNDZN (3,:)
 
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            RDU001(:,:) = RCONSTIT(:,:,1) 
            RDU002(:,:) = RCONSTIT(:,:,2) 
            RDU003(:,:) = RCONSTIT(:,:,3) 

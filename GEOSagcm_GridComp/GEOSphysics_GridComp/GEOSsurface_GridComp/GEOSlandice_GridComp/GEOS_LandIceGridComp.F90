@@ -88,7 +88,7 @@ module GEOS_LandiceGridCompMod
 
   integer,    parameter :: TAR_PE     = 43
   integer,    parameter :: TAR_TILE   = 1
-  integer               :: DO_GOSWIM, AEROSOL_DEPOSITION, N_CONST_LANDICE4SNWALB
+  integer               :: N_CONST_LANDICE4SNWALB, AEROSOL_DEPOSITION
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -136,13 +136,13 @@ module GEOS_LandiceGridCompMod
     character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
-
+    character(len=ESMF_MAXSTR)              :: LANDRC
+    type(ESMF_Config)                       :: LCF 
 
 !=============================================================================
 
     type(MAPL_MetaComp), pointer            :: MAPL
-    character(len=ESMF_MAXSTR)              :: LANDRC
-    type (ESMF_Config)                      :: LCF
+
 
 ! Begin...
 
@@ -170,13 +170,8 @@ module GEOS_LandiceGridCompMod
     call MAPL_GetResource (MAPL, LANDRC, label = 'LANDRC:', default = 'GEOS_LandGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     LCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(LCF,LANDRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LANDICE4SNWALB:', value=DO_GOSWIM,   DEFAULT=0, __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='AEROSOL_DEPOSITION:'  , value=AEROSOL_DEPOSITION  , DEFAULT=0, __RC__ ) 
-
-    ! GOSWIM ANOW_ALBEDO 
-    ! 0 : GOSWIM snow albedo scheme is turned off
-    ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme
-    call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LANDICE4SNWALB:'  , value=N_CONST_LANDICE4SNWALB , DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LANDICE4SNWALB:', value=N_CONST_LANDICE4SNWALB, DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='AEROSOL_DEPOSITION:'    , value=AEROSOL_DEPOSITION  , DEFAULT=0, __RC__ ) 
     call ESMF_ConfigDestroy      (LCF, __RC__)
 
 ! Set the state variable specs.
@@ -1052,7 +1047,7 @@ module GEOS_LandiceGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-     if (DO_GOSWIM /=0) then
+     if (N_CONST_LANDICE4SNWALB /=0) then
 
         call MAPL_AddInternalSpec(GC,                                &
           SHORT_NAME         = 'IRDU001',                            &
@@ -2452,8 +2447,6 @@ contains
 
    integer                        :: N, NT
    integer                        :: K, L, KL
-   integer                        :: AEROSOL_DEPOSITION
-   integer                        :: N_CONST_LANDICE4SNWALB
 
    ! vars for debugging
    type(ESMF_VM)                  ::  VM
@@ -2532,7 +2525,7 @@ contains
    call MAPL_GetPointer(INTERNAL,HTSN , 'HTSN'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,SNDZ , 'SNDZ'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,TICE , 'TICE'   , RC=STATUS); VERIFY_(STATUS)
-   if (DO_GOSWIM /= 0) then
+   if (N_CONST_LANDICE4SNWALB /= 0) then
       call MAPL_GetPointer(INTERNAL,IRDU001 ,'IRDU001', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL,IRDU002 ,'IRDU002', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL,IRDU003 ,'IRDU003', RC=STATUS); VERIFY_(STATUS)
@@ -2874,7 +2867,7 @@ contains
 ! RCONSTIT(NT,N,14): Sea salt mass from size bin 4 in layer N
 ! RCONSTIT(NT,N,15): Sea salt mass from size bin 5 in layer N
 
-    if (DO_GOSWIM /=0) then
+    if (N_CONST_LANDICE4SNWALB /=0) then
         RCONSTIT(:,:,1) = IRDU001(:,:)
         RCONSTIT(:,:,2) = IRDU002(:,:)
         RCONSTIT(:,:,3) = IRDU003(:,:)
@@ -3115,7 +3108,7 @@ contains
                    MAXSNDZ, RHOFRESH, DZMAX)
 
           ! Snow impurities update
-           if (DO_GOSWIM /= 0) then
+           if (N_CONST_LANDICE4SNWALB /= 0) then
               if(associated(IRDU001)) IRDU001(k,:) = RCONSTIT(k,:,1) 
               if(associated(IRDU002)) IRDU002(k,:) = RCONSTIT(k,:,2) 
               if(associated(IRDU003)) IRDU003(k,:) = RCONSTIT(k,:,3) 
