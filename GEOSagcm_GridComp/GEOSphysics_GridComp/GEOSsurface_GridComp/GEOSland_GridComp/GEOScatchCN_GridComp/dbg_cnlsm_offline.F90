@@ -24,7 +24,9 @@ type :: c_inputs
    
    real :: PCU       
    real :: PLS       
-   real :: SNO       
+   real :: SNO  
+   real :: ICE
+   real :: FRZR
    real :: UUU   
    real :: EVSBTS 
    real :: DEVSBTS
@@ -397,7 +399,7 @@ do t = 1,ntsteps
 
       call  CATCHCN ( NTILES, c_param%LONS, c_param%LATS, DT, PFRAC, cat_id, &
            c_param%VEG1,c_param%VEG2,c_param%FVEG1,c_param%FVEG2,c_param%DZSF   ,&
-           c_input%PCU, c_input%PLS, c_input%SNO, c_input%UUU                   ,&
+           c_input%PCU, c_input%PLS, c_input%SNO, c_input%ICE, c_input%FRZR, c_input%UUU                   ,&
            c_input%EVSBTS ,c_input%DEVSBTS ,c_input%DEDTCS   ,&
            c_input%SHSBTS ,c_input%DHSDQAS ,c_input%DSHSBTS  ,&  
            c_input%EVSBTT ,c_input%DEVSBTT ,c_input%DEDTCT   ,&
@@ -464,7 +466,8 @@ do t = 1,ntsteps
       FR(:,4) =                     ASNOW
       
       DWLAND = WCHANGE
-      PRLAND = c_input%PCU+c_input%PLS+c_input%SNO
+      PRLAND = c_input%PCU+c_input%PLS+c_input%SNO &
+            + c_input%ICE +  + c_input%FRZR
       EVLAND = EVAPOUT-EVACC
       BFLOW  = BFLOW
       SPWATR = EVACC 
@@ -490,7 +493,8 @@ do t = 1,ntsteps
       call CATCHCN ( 1, c_param(tid:tid)%lons, c_param(tid:tid)%lats                ,&
            DT	    , pfrac      , cat_id(tid:tid), c_param(tid:tid)%VEG1, c_param(tid:tid)%VEG2, &
            c_param(tid:tid)%FVEG1, c_param(tid:tid)%FVEG2, c_param(tid:tid)%DZSF    ,& 
-           c_input(tid:tid)%PCU ,c_input(tid:tid)%PLS ,c_input(tid:tid)%SNO ,c_input(tid:tid)%UUU,&
+           c_input(tid:tid)%PCU ,c_input(tid:tid)%PLS ,c_input(tid:tid)%SNO , &
+           c_input(tid:tid)%ICE, c_input(tid:tid)%FRZR, c_input(tid:tid)%UUU, &
            c_input(tid:tid)%EVSBTS ,c_input(tid:tid)%DEVSBTS ,c_input(tid:tid)%DEDTCS   ,&
            c_input(tid:tid)%SHSBTS ,c_input(tid:tid)%DHSDQAS ,c_input(tid:tid)%DSHSBTS  ,&  
            c_input(tid:tid)%EVSBTT ,c_input(tid:tid)%DEVSBTT ,c_input(tid:tid)%DEDTCT   ,&
@@ -558,7 +562,8 @@ do t = 1,ntsteps
       FR(:,4) =                     ASNOW(tid:tid)
       
       DWLAND(:) = WCHANGE(tid:tid)
-      PRLAND(:) = c_input(tid:tid)%PCU + c_input(tid:tid)%PLS + c_input(tid:tid)%SNO
+      PRLAND(:) = c_input(tid:tid)%PCU + c_input(tid:tid)%PLS + c_input(tid:tid)%SNO &
+            + c_input(tid:tid)%ICE +  + c_input(tid:tid)%FRZR
       EVLAND(:) = EVAPOUT(tid:tid)-EVACC(tid:tid)
       SPWATR(:) = EVACC(tid:tid)
       SUBLIM(:) = EVPICE(tid:tid)*(1./MAPL_ALHS)*FR(tid,4)
@@ -694,7 +699,9 @@ contains
     
     read (unit) catchin%PCU      
     read (unit) catchin%PLS      
-    read (unit) catchin%SNO      
+    read (unit) catchin%SNO    
+    read (unit) catchin%ICE
+    read (unit) catchin%FRZR  
     read (unit) catchin%UUU      
     read (unit) catchin%EVSBTS 
     read (unit) catchin%DEVSBTS

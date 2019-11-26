@@ -93,9 +93,17 @@ MODULE lsm_routines
   ! constants for interception routine (interc())
   ! Areal fraction of canopy leaves onto which precipitation falls:
 
-  ! REAL,    PARAMETER :: FWETL    = 0.02   ! for large-scale precipitation
-  ! REAL,    PARAMETER :: FWETC    = 0.02   ! for convective precipitation
+  ! (1) use with large scale through fall ONLY parameterization
+   REAL,    PARAMETER :: FWETL_1P    = 0.02   ! for large-scale precipitation
+   REAL,    PARAMETER :: FWETC_1P    = 0.02   ! for convective precipitation
 
+  ! (2) use for seperate large and convective through fall parameterization
+   REAL,    PARAMETER :: FWETL_2P    = 1.0   ! for large-scale precipitation
+   REAL,    PARAMETER :: FWETC_2P    = 0.2   ! for convective precipitation
+
+   REAL,    PARAMETER :: TIMFRL = 1.0
+   REAL,    PARAMETER :: TIMFRC = 0.333
+  
   ! ---------------------------------------------------------------------------
   !
   ! constants for ground temperature routine (gndtp0() and gndtmp())
@@ -174,14 +182,10 @@ MODULE lsm_routines
 
 
       INTEGER CHNO
-      REAL WETINT, WATADD, CAVAIL, THRUC, TIMFRL, TIMFRC,                      &
+      REAL WETINT, WATADD, CAVAIL, THRUC,                       &
            THRU1, THRU2, THRUL, XTCORR,SMPERS
-      REAL,    PARAMETER :: FWETL    = 0.02   ! for large-scale precipitation
-      REAL,    PARAMETER :: FWETC    = 0.02   ! for convective precipitation      
-      DATA TIMFRL/1.00/
-      DATA TIMFRC/0.333/
-! value for GSWP
-!      TIMFRC/0.125/
+      REAL :: FWETL    = FWETL_1P   ! for large-scale precipitation
+      REAL :: FWETC    = FWETC_1P   ! for convective precipitation      
 
 !****
 !**** ------------------------------------------------------------------
@@ -299,16 +303,10 @@ MODULE lsm_routines
       REAL, DIMENSION(NCH)              :: THRU
 
       INTEGER CHNO
-      REAL WETINT, WATADD, CAVAIL, TIMFRL, TIMFRC,                      &
-           THRU1, THRU2, XTCORR,SMPERS
-      ! if you change FWETL FWETC remember to change SRUNOFF_2P too
-      REAL,    PARAMETER :: FWETL    = 1.0   ! for large-scale precipitation
-      REAL,    PARAMETER :: FWETC    = 0.2   ! for convective precipitation
+      REAL WETINT, WATADD, CAVAIL, THRU1, THRU2, XTCORR,SMPERS
 
-      DATA TIMFRL/1.00/
-      DATA TIMFRC/0.333/
-! value for GSWP
-!      TIMFRC/0.125/
+      REAL :: FWETL = FWETL_2P    ! for large-scale precipitation
+      REAL :: FWETC = FWETC_2P   ! for convective precipitation
 
 !****
 !**** ------------------------------------------------------------------
@@ -517,8 +515,9 @@ MODULE lsm_routines
       REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC ,RUNSRF,RZEXC
 
       REAL, INTENT(OUT), DIMENSION(NCH) :: QINFIL
-      REAL,    PARAMETER :: FWETL    = 1.0   ! for large-scale precipitation
-      REAL,    PARAMETER :: FWETC    = 0.2   ! for convective precipitation
+
+      REAL :: FWETL = FWETL_2P    ! for large-scale precipitation
+      REAL :: FWETC = FWETC_2P   ! for convective precipitation
 
       INTEGER N
       REAL deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, srunc, srunl, ptotal

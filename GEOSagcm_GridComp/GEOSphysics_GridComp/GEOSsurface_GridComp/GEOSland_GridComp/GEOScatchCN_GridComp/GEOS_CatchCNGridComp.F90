@@ -398,6 +398,26 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'icefall'                     ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'ICE'                         ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'freezing_rain_fall'          ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'FRZR'                        ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_par_beam_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'DRPAR'                       ,&
@@ -4595,11 +4615,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: PCU
         real, dimension(:),   pointer :: PLS
         real, dimension(:),   pointer :: SNO
+
         real, dimension(:),   pointer :: THATM
         real, dimension(:),   pointer :: QHATM
         real, dimension(:),   pointer :: CTATM
         real, dimension(:),   pointer :: CQATM
-
+        real, dimension(:),   pointer :: ICE
+        real, dimension(:),   pointer :: FRZR
         real, dimension(:),   pointer :: drpar
         real, dimension(:),   pointer :: dfpar
         real, dimension(:),   pointer :: drnir
@@ -4938,6 +4960,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: LHACC, SUMEV
 	real,pointer,dimension(:) :: fveg1, fveg2
         real,pointer,dimension(:) :: FICE1
+        real,pointer,dimension(:) :: SLDTOT
 
 !       real*8,pointer,dimension(:) :: fsum
 
@@ -5255,6 +5278,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,PCU    ,'PCU'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,PLS    ,'PLS'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SNO    ,'SNO'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,ICE    ,'ICE'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,FRZR   ,'FRZR'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DRPAR  ,'DRPAR'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DFPAR  ,'DFPAR'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DRNIR  ,'DRNIR'  ,RC=STATUS); VERIFY_(STATUS)
@@ -5903,6 +5928,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	allocate(fveg1     (NTILES))
 	allocate(fveg2     (NTILES))
         allocate(FICE1     (NTILES)) 
+        allocate(SLDTOT    (NTILES)) 
 
         allocate(SHSBT    (NTILES,NUM_SUBTILES))
         allocate(DSHSBT   (NTILES,NUM_SUBTILES))
@@ -6290,13 +6316,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         QC(:,FSNW) = QSAT(:,FSNW)
 
 	! --------------------------------------------------------------------------
+        ! get total solid precip
+        ! --------------------------------------------------------------------------
+
+        SLDTOT = SNO+ICE+FRZR
+
+	! --------------------------------------------------------------------------
 	! protect the forcing from unsavory values, as per practice in offline
 	! driver
 	! --------------------------------------------------------------------------
 
         ASSERT_(count(PLS<0.)==0)
         ASSERT_(count(PCU<0.)==0)
-        ASSERT_(count(SNO<0.)==0)
+        ASSERT_(count(SLDTOT<0.)==0)
 
         LAI0  = max(0.0001     , LAI)
         GRN0  = max(0.0001     , GRN)		
@@ -7401,6 +7433,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_VarWrite(unit, tilegrid, PCU, mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, PLS, mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SNO, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ICE,  mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, FRZR, mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, UUU, mask=mask, rc=status); VERIFY_(STATUS)
 
         call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
@@ -7567,7 +7601,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            call CATCHCN ( NTILES, LONS, LATS                         ,&
                 DT	,PRECIPFRAC, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF   ,&
-                PCU      ,     PLSIN         ,     SNO               ,&
+                PCU      ,     PLSIN ,     SNO, ICE, FRZR            ,&
                 UUU                                                  ,&
 
                 EVSBT(:,FSAT),     DEVSBT(:,FSAT),     DEDTC(:,FSAT) ,&
@@ -7788,13 +7822,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated( WCRZ )) WCRZ   = RZMC
         if(associated( WCPR )) WCPR   = PRMC
 
-        if(associated( ACCUM)) ACCUM  = SNO - EVPICE*(1./MAPL_ALHS) - SMELT 
+        if(associated( ACCUM)) ACCUM  = SLDTOT - EVPICE*(1./MAPL_ALHS) - SMELT 
 
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
         if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
-        if(associated(PRLAND)) PRLAND = PCU+PLS+SNO
-        if(associated(SNOLAND)) SNOLAND = SNO
+        if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
+        if(associated(SNOLAND)) SNOLAND = SLDTOT
         if(associated(DRPARLAND)) DRPARLAND = DRPAR
         if(associated(DFPARLAND)) DFPARLAND = DFPAR
         if(associated(LHLAND)) LHLAND = HLATN
@@ -8024,6 +8058,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(TOTDEPOS )
         deallocate(RMELT    )
         deallocate(FICE1    )
+        deallocate(SLDTOT )
+
         deallocate(   btran )
 	deallocate(     wgt )
 	deallocate(     bt1 )
