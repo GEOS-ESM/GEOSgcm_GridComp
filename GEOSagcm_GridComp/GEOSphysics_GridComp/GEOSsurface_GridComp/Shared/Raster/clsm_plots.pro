@@ -289,7 +289,7 @@ close,1
 plot_tiles,nc,nr,ncat,gfile,path
 
 ; plot countr_codes
-;country_codes, tile_id
+country_codes, tile_id
 
 ; (5) Plot canopy height
 ; ----------------------
@@ -2984,14 +2984,8 @@ end
 
 ; ====================================================================================
 pro country_codes, tile_id
+
 load_random_colors
-tmp_data = read_ascii ("../country_and_state_code.data")
-cnt_code = tmp_data.field1(1,*)
-st_code  = tmp_data.field1(2,*)
-us_ind   = where (cnt_code eq 243)
-cnt_code (us_ind) = st_code (us_ind)
-cnt_code (where (cnt_code eq 257)) =  !VALUES.F_NAN
-tmp_data = 0
 
 im = n_elements(tile_id[*,0])
 jm = n_elements(tile_id[0,*])
@@ -3003,6 +2997,29 @@ x = indgen(im)*dx -180. +  dx/2.
 y = indgen(jm)*dy -90.  +  dy/2.
 cnt_grid = intarr (im,jm)
 cnt_grid (*,*) =  !VALUES.F_NAN
+
+N_tiles = 0l
+openr,1,'../catchment.def'
+readf,1,N_tiles
+close,1 
+cnt_code = intarr (N_tiles)
+st_code  = intarr (N_tiles)
+
+openr,1,"../country_and_state_code.data"
+k = 0l
+i1 = 0
+i2 = 0
+
+for n = 0l, N_Tiles -1l do begin
+readf,1,k,i1,i2
+cnt_code (n) = i1
+st_code  (n) = i2
+endfor
+close,1
+us_ind   = where (cnt_code eq 243)
+cnt_code (us_ind) = st_code (us_ind)
+cnt_code (where (cnt_code eq 257)) =  !VALUES.F_NAN
+tmp_data = 0
 
 for j = 0l, jm -1l do begin
    for i = 0l, im -1 do begin
