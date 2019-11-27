@@ -17,13 +17,13 @@ module findloc_mod
 
       num_elements = size(array)
 
+      findloc(1) = 0
       do i = 1, num_elements
          if (array(i) == value) then
                findloc(1) = i
                exit
          endif
       end do
-      findloc(1) = 0
 
    end function findloc
 
