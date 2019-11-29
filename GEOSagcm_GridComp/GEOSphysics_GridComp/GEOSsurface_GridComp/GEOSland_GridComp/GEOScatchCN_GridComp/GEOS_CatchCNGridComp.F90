@@ -397,18 +397,18 @@ subroutine SetServices ( GC, RC )
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC                         ,&
-         LONG_NAME          = 'icefall'                     ,&
-         UNITS              = 'kg m-2 s-1'                  ,&
-         SHORT_NAME         = 'ICE'                         ,&
-         DIMS               = MAPL_DimsTileOnly             ,&
-         VLOCATION          = MAPL_VLocationNone            ,&
-         RC=STATUS  )
-
-    VERIFY_(STATUS)
-
     if(.not. is_OFFLINE) then
 
+       call MAPL_AddImportSpec(GC                         ,&
+            LONG_NAME          = 'icefall'                     ,&
+            UNITS              = 'kg m-2 s-1'                  ,&
+            SHORT_NAME         = 'ICE'                         ,&
+            DIMS               = MAPL_DimsTileOnly             ,&
+            VLOCATION          = MAPL_VLocationNone            ,&
+            RC=STATUS  )
+       
+       VERIFY_(STATUS)
+              
        call MAPL_AddImportSpec(GC                         ,&
             LONG_NAME          = 'freezing_rain_fall'          ,&
             UNITS              = 'kg m-2 s-1'                  ,&
@@ -418,7 +418,9 @@ subroutine SetServices ( GC, RC )
             RC=STATUS  )
        
        VERIFY_(STATUS)
-       
+
+    endif
+
        call MAPL_AddImportSpec(GC                         ,&
             LONG_NAME          = 'surface_downwelling_par_beam_flux',&
             UNITS              = 'W m-2'                       ,&
@@ -427,8 +429,6 @@ subroutine SetServices ( GC, RC )
             VLOCATION          = MAPL_VLocationNone            ,&
             RC=STATUS  ) 
        VERIFY_(STATUS)
-
-    endif
 
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_par_diffuse_flux',&
