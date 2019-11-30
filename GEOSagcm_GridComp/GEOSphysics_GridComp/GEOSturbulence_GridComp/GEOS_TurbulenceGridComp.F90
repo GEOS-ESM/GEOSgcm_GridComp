@@ -18,6 +18,7 @@ module GEOS_TurbulenceGridCompMod
   use LockEntrain
   use shoc
   use sl3
+  use mynn
 
 #ifdef _CUDA
   use cudafor
@@ -2055,6 +2056,16 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'TKET_T',                                    &
+       LONG_NAME  = 'turbulent_transport_of_tke',                &
+       UNITS      = 'm+2 s-3',                                   &
+       DEFAULT    = 0.0,                                         &
+       FRIENDLYTO = 'TURBULENCE',                                &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
        SHORT_NAME = 'HL2T_M',                                    &
        LONG_NAME  = 'mean-gradient_production_of_liquid_water_static_energy_variance', &
        UNITS      = 'K+2s-1',                                    &
@@ -2127,6 +2138,16 @@ contains
     call MAPL_AddInternalSpec(GC,                                &
        SHORT_NAME = 'K_TKE',                                        &
        LONG_NAME  = 'turbulent_tke_diffusivity',                 &
+       UNITS      = 'm+2 s-1',                                   &
+       DEFAULT    = 0.0,                                         &
+       FRIENDLYTO = 'TURBULENCE',                                &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'K_TPE',                                        &
+       LONG_NAME  = 'turbulent_tpe_diffusivity',                 &
        UNITS      = 'm+2 s-1',                                   &
        DEFAULT    = 0.0,                                         &
        FRIENDLYTO = 'TURBULENCE',                                &
@@ -2407,9 +2428,9 @@ contains
 
 ! SL3-related variables
     real, dimension(:,:,:), pointer :: TKE_NEW, HL2, QT2, HLQT, &
-                                       TKET_M, TKET_B, TKET_D, &
+                                       TKET_M, TKET_B, TKET_D, TKET_T, &
                                        HL2T_M, HL2T_D, QT2T_M, QT2T_D, HLQTT_M, HLQTT_D, &
-                                       ITAU_TURB, K_TKE, WS_CG, WQV_CG, WQL_CG, &
+                                       ITAU_TURB, K_TKE, K_TPE, WS_CG, WQV_CG, WQL_CG, &
                                        AKTKE, BKTKE, CKTKE, AKTPE, BKTPE, CKTPE, &
                                        YTKE, YHL2, YQT2, YHLQT
 
@@ -2494,6 +2515,8 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, TKET_D,    'TKET_D',    RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, TKET_T,    'TKET_T',    RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, HL2T_M,    'HL2T_M',    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, HL2T_D,    'HL2T_D',    RC=STATUS)
@@ -2509,6 +2532,8 @@ contains
     call MAPL_GetPointer(INTERNAL, ITAU_TURB, 'ITAU_TURB', RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, K_TKE,     'K_TKE',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, K_TPE,     'K_TPE',     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, AKTKE,     'AKTKE',     RC=STATUS)
     VERIFY_(STATUS)
@@ -2829,6 +2854,7 @@ contains
      real                            :: DOMF,DOMFCOND 
      integer :: EDMF_IMPLICIT      ! 0: explicit, 1: implicit discretization of mass flux terms  
      integer :: EDMF_DISCRETE_TYPE ! 0: centered, 1: upwind   discretization of mass flux terms 
+     integer :: MYNN_LEVEL         ! 2: Level-2.5 3: Level-3
      real,dimension(IM,JM) :: L02
      
 
@@ -3275,6 +3301,7 @@ contains
     call MAPL_GetResource (MAPL,EntWFac,"EDMF_ENTWFAC:",default=0.3333, RC=STATUS)  
     call MAPL_GetResource (MAPL, EDMF_DISCRETE_TYPE, "EDMF_DISCRETE_TYPE:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_IMPLICIT, "EDMF_IMPLICIT:", default=1,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
 
 ! get ice ramp
    call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0   )
@@ -3629,13 +3656,20 @@ ENDIF
            KM(:,:,1:LM) = TKH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
 
         else ! SL3
-           call run_sl3(IM, JM, LM, &
-                        ZLE, Z, PLE, PLO, &
-                        U, V, T, Q, QL, TKE_NEW, HL2, QT2, HLQT, &
-                        USTAR, QA, awhl3, awqt3, awthv3, &
-                        KH, KM, K_TKE, ITAU_TURB, &
-                        WS_CG, WQV_CG, WQL_CG, &
-                        TKET_M, TKET_B, HL2T_M, QT2T_M, HLQTT_M)
+!!$           call run_sl3(IM, JM, LM, &
+!!$                        ZLE, Z, PLE, PLO, &
+!!$                        U, V, T, Q, QL, TKE_NEW, HL2, QT2, HLQT, &
+!!$                        USTAR, QA, awhl3, awqt3, awthv3, &
+!!$                        KH, KM, K_TKE, ITAU_TURB, &
+!!$                        WS_CG, WQV_CG, WQL_CG, &
+!!$                        TKET_M, TKET_B, HL2T_M, QT2T_M, HLQTT_M)
+           call run_mynn(IM, JM, LM, &
+                         PLE, ZLE, Z, &
+                         U, V, T, Q, QL, QI, TKE_NEW, HL2, QT2, HLQT, &
+                         USTAR, SH, EVAP, THV, QA, awhl3, awqt3, awthv3, &
+                         KH, KM, K_TKE, K_TPE, ITAU_TURB, WS_CG, WQV_CG, WQL_CG, &
+                         TKET_M, TKET_B, HL2T_M, QT2T_M, HLQTT_M, &
+                         DOMF, MYNN_LEVEL)
         end if
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
@@ -4485,8 +4519,13 @@ ENDIF
    CKTKE(:,:,1:LM-1) = -K_TKE(:,:,2:LM)*RDZ_HALF(:,:,2:LM)*DMI_HALF(:,:,1:LM-1)
    CKTKE(:,:,LM)     = 0.
 
-   AKTPE = AKTKE
-   CKTPE = CKTKE
+   AKTPE(:,:,0)      = 0.
+   AKTPE(:,:,1:LM-1) = -K_TPE(:,:,1:LM-1)*RDZ_HALF(:,:,1:LM-1)*DMI_HALF(:,:,1:LM-1)
+   AKTPE(:,:,LM)     = 0.
+
+   CKTPE(:,:,0)      = 0.
+   CKTPE(:,:,1:LM-1) = -K_TPE(:,:,2:LM)*RDZ_HALF(:,:,2:LM)*DMI_HALF(:,:,1:LM-1)
+   CKTPE(:,:,LM)     = 0.
 
    BKTKE(:,:,0)      = 1.
    BKTKE(:,:,1:LM-1) = 1. + DT*ITAU_TURB(:,:,1:LM-1)/24. - (CKTKE(:,:,1:LM-1) + AKTKE(:,:,1:LM-1))
@@ -4701,6 +4740,8 @@ ENDIF
     real,               dimension(IM,JM,LM) :: DP
     real(kind=MAPL_R8), dimension(IM,JM,LM) :: SX
     real(kind=MAPL_R8), dimension(IM,JM,0:LM) :: SX_HALF ! pointer for solving at half levels
+
+    integer :: i, j, ll
 
 ! AMM pointer to export of S after diffuse
     real, dimension(:,:,:), pointer     :: SAFDIFFUSE

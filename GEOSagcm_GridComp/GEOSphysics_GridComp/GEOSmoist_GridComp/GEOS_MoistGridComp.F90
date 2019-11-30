@@ -8875,6 +8875,14 @@ contains
           wqt_sec(:,:,k) = - wrk3 * wrk2
 
           if (DO_SL3 == 1) then
+             ! Ensure realizibility
+             do j = 1,JM
+             do i = 1,IM
+                HLQT(i,j,k) = sign( min( abs(HLQT(i,j,k)), sqrt(HL2(i,j,k)*QT2(i,j,k)) ), HLQT(i,j,k) )
+             end do
+             end do
+
+             ! Ensure realizibility
              hl2_sec(:,:,k)  = HL2(:,:,k)
              qt2_sec(:,:,k)  = QT2(:,:,k)
              qthl_sec(:,:,k) = HLQT(:,:,k)
