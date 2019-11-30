@@ -4,7 +4,7 @@
 
 !=============================================================================
 
-module GEOS_DataAtmGridCompMod
+module GEOS_DataAtmGridCompMod_pseudoCode
 !BOP
 
 ! !MODULE: GEOS_DataAtm -- An ``atmospheric" component for ocean-only simulations, 
@@ -34,7 +34,7 @@ module GEOS_DataAtmGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  public SetServices
+! public SetServices
 
 !=============================================================================
 
@@ -57,12 +57,12 @@ module GEOS_DataAtmGridCompMod
 
 ! !INTERFACE:
 
-  subroutine SetServices ( GC, RC )
+! subroutine SetServices ( GC, RC )
 
 ! !ARGUMENTS:
 
-    type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    integer, optional                  :: RC  ! return code
+!   type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
+!   integer, optional                  :: RC  ! return code
 
 !  !DESCRIPTION:
 ! 
@@ -76,14 +76,14 @@ module GEOS_DataAtmGridCompMod
 ! ErrLog Variables
 
 
-    character(len=ESMF_MAXSTR)              :: IAm
-    integer                                 :: STATUS
-    character(len=ESMF_MAXSTR)              :: COMP_NAME
+!   character(len=ESMF_MAXSTR)              :: IAm
+!   integer                                 :: STATUS
+!   character(len=ESMF_MAXSTR)              :: COMP_NAME
 
 ! Local derived type aliases
 
-    type (ESMF_Config)                      :: CF
-    type (MAPL_MetaComp),  pointer          :: MAPL
+!   type (ESMF_Config)                      :: CF
+!   type (MAPL_MetaComp),  pointer          :: MAPL
 
 !=============================================================================
 
@@ -92,26 +92,26 @@ module GEOS_DataAtmGridCompMod
 ! Get my name and set-up traceback handle
 ! ---------------------------------------
 
-    Iam = "SetServices"
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
-    VERIFY_(STATUS)
-    Iam = trim(COMP_NAME) // Iam
+!   Iam = "SetServices"
+!   call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
+!   VERIFY_(STATUS)
+!   Iam = trim(COMP_NAME) // Iam
 
 ! Get my MAPL_Generic state
 !--------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+!   call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+!   VERIFY_(STATUS)
 
 ! Set the Initialize and Run entry points
 ! ---------------------------------------
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,        Run, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,  Finalize, RC=STATUS )
-    VERIFY_(STATUS)
+!   call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,        Run, RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,  Finalize, RC=STATUS )
+!   VERIFY_(STATUS)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -138,22 +138,22 @@ module GEOS_DataAtmGridCompMod
 
 !EOS
 
-    call MAPL_TimerAdd(GC,    name="INITIALIZE",RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="RUN"       ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,    name="FINALIZE"  ,RC=STATUS)
-    VERIFY_(STATUS)
+!   call MAPL_TimerAdd(GC,    name="INITIALIZE",RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_TimerAdd(GC,    name="RUN"       ,RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_TimerAdd(GC,    name="FINALIZE"  ,RC=STATUS)
+!   VERIFY_(STATUS)
 
 ! Set generic init and final methods
 ! ----------------------------------
 
-    call MAPL_GenericSetServices    ( GC, RC=STATUS)
-    VERIFY_(STATUS)
+!   call MAPL_GenericSetServices    ( GC, RC=STATUS)
+!   VERIFY_(STATUS)
 
-    RETURN_(ESMF_SUCCESS)
+!   RETURN_(ESMF_SUCCESS)
   
-  end subroutine SetServices
+! end subroutine SetServices
 
 !BOP
 
@@ -161,15 +161,15 @@ module GEOS_DataAtmGridCompMod
 
 ! !INTERFACE:
 
-subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
+!subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
-  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-  type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-  integer, optional,   intent(  out) :: RC     ! Error code:
+! type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+! type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+! type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+! type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+! integer, optional,   intent(  out) :: RC     ! Error code:
 
 ! !DESCRIPTION: 
 
@@ -177,15 +177,15 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! ErrLog Variables
 
-  character(len=ESMF_MAXSTR)      :: IAm
-  integer                         :: STATUS
-  character(len=ESMF_MAXSTR)      :: COMP_NAME
+! character(len=ESMF_MAXSTR)      :: IAm
+! integer                         :: STATUS
+! character(len=ESMF_MAXSTR)      :: COMP_NAME
 
 ! Locals
 
-  type (MAPL_MetaComp), pointer   :: STATE => null()
-  type (MAPL_LocStream)           :: LOCSTREAM
-  type (MAPL_LocStream)           :: EXCH
+! type (MAPL_MetaComp), pointer   :: STATE => null()
+! type (MAPL_LocStream)           :: LOCSTREAM
+! type (MAPL_LocStream)           :: EXCH
 
 ! 
 ! integer                         :: ...
@@ -199,29 +199,29 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
-    Iam = "Initialize"
-    call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
-    Iam = trim(COMP_NAME) // Iam
+!   Iam = "Initialize"
+!   call ESMF_GridCompGet( GC, name=COMP_NAME, RC=STATUS )
+!   VERIFY_(STATUS)
+!   Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
 !----------------------------------
 
-    call MAPL_GetObjectFromGC(GC, STATE, STATUS)
-    VERIFY_(STATUS)
+!   call MAPL_GetObjectFromGC(GC, STATE, STATUS)
+!   VERIFY_(STATUS)
 
 ! Start Total timer
 !------------------
 
-    call MAPL_TimerOn (STATE,"TOTAL")
-    call MAPL_TimerOn (STATE,"INITIALIZE"  )
+!   call MAPL_TimerOn (STATE,"TOTAL")
+!   call MAPL_TimerOn (STATE,"INITIALIZE"  )
 
 ! Change the location stream to just the ocean part
 !--------------------------------------------------
 
-    call MAPL_Get(STATE, EXCHANGEGRID=EXCH,        RC=STATUS ); VERIFY_(STATUS)
-    call MAPL_LocStreamCreate(LOCSTREAM, EXCH, NAME='OCEAN', MASK=(/MAPL_OCEAN/), RC=STATUS ); VERIFY_(STATUS)
-    call MAPL_Set(STATE, LOCSTREAM=LOCSTREAM,   RC=STATUS ); VERIFY_(STATUS)
+!   call MAPL_Get(STATE, EXCHANGEGRID=EXCH,        RC=STATUS ); VERIFY_(STATUS)
+!   call MAPL_LocStreamCreate(LOCSTREAM, EXCH, NAME='OCEAN', MASK=(/MAPL_OCEAN/), RC=STATUS ); VERIFY_(STATUS)
+!   call MAPL_Set(STATE, LOCSTREAM=LOCSTREAM,   RC=STATUS ); VERIFY_(STATUS)
 
 !
 !   Set resource parameters. Follow 
@@ -239,15 +239,15 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/05bf4235504b5b654dc2c388d6b7d5383b61f7fc/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSsaltwater_GridComp/GEOS_CICE4ColumnPhysGridComp.F90#L2083
 !
 
-    call MAPL_TimerOff(STATE,"INITIALIZE"  )
-    call MAPL_TimerOff(STATE,"TOTAL")
+!   call MAPL_TimerOff(STATE,"INITIALIZE"  )
+!   call MAPL_TimerOff(STATE,"TOTAL")
 
-    call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
-    VERIFY_(STATUS)
+!   call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
+!   VERIFY_(STATUS)
 
-    RETURN_(ESMF_SUCCESS)
+!   RETURN_(ESMF_SUCCESS)
 
-  end subroutine INITIALIZE
+! end subroutine INITIALIZE
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -257,15 +257,15 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !INTERFACE:
 
-subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
+!subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
-  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
-  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
-  type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
-  integer, optional,   intent(  out) :: RC     ! Error code:
+! type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+! type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+! type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+! type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+! integer, optional,   intent(  out) :: RC     ! Error code:
 
 ! !DESCRIPTION:
 ! 
@@ -276,9 +276,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! ErrLog Variables
 
-  character(len=ESMF_MAXSTR)      :: IAm
-  integer                         :: STATUS
-  character(len=ESMF_MAXSTR)      :: COMP_NAME
+! character(len=ESMF_MAXSTR)      :: IAm
+! integer                         :: STATUS
+! character(len=ESMF_MAXSTR)      :: COMP_NAME
 
 !
 ! 
@@ -290,29 +290,29 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Locals
 
-  type (MAPL_MetaComp), pointer   :: STATE => null()
-  type (MAPL_SunOrbit)            :: ORBIT
-  type (ESMF_State)               :: INTERNAL
-! type (ESMF_logical)             :: FRIENDLY     -- NO MORE of SUCH TYPE!
-  type (ESMF_FIELD)               :: FIELD
-  type (ESMF_Time)                :: CurrentTime
-  type (ESMF_GRID)                :: GRID
-  type (ESMF_Config  )            :: CF
-  character(len=ESMF_MAXSTR)      :: DATAFILE
+! type (MAPL_MetaComp), pointer   :: STATE => null()
+! type (MAPL_SunOrbit)            :: ORBIT
+! type (ESMF_State)               :: INTERNAL
+!!type (ESMF_logical)             :: FRIENDLY     -- NO MORE of SUCH TYPE!
+! type (ESMF_FIELD)               :: FIELD
+! type (ESMF_Time)                :: CurrentTime
+! type (ESMF_GRID)                :: GRID
+! type (ESMF_Config  )            :: CF
+! character(len=ESMF_MAXSTR)      :: DATAFILE
 
-  integer                         :: NT
-  integer                         :: IFCST
-  logical                         :: FCST
+! integer                         :: NT
+! integer                         :: IFCST
+! logical                         :: FCST
 !
 !
 ! Need a separate interface to handle all the tiled variables
 !
-  type(MAPL_LocStream)            :: LOCSTREAM
-  real, pointer, dimension(  :)   :: TILELONS => null()
-  real, pointer, dimension(  :)   :: TILELATS => null()
+! type(MAPL_LocStream)            :: LOCSTREAM
+! real, pointer, dimension(  :)   :: TILELONS => null()
+! real, pointer, dimension(  :)   :: TILELATS => null()
 
-  type(ESMF_VM)                   :: VM
-  integer                         :: MYPE
+! type(ESMF_VM)                   :: VM
+! integer                         :: MYPE
 !
 ! declare pointers to all the "atmospheric" fields that will be read in from file(s)
 ! e.g.
@@ -320,7 +320,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! real, pointer, dimension(  :)   :: rain => null()
 !
 
-  real                             :: DT
+! real                             :: DT
 
 !
 ! pointers to import states
@@ -351,41 +351,41 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
-    Iam = "Run"
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, GRID=GRID, RC=STATUS )
-    VERIFY_(STATUS)
-    Iam = trim(COMP_NAME) // Iam
+!   Iam = "Run"
+!   call ESMF_GridCompGet( GC, NAME=COMP_NAME, GRID=GRID, RC=STATUS )
+!   VERIFY_(STATUS)
+!   Iam = trim(COMP_NAME) // Iam
 
 ! Get my MAPL_Generic (GG) state
 !-------------------------------
 
-    call MAPL_GetObjectFromGC(GC, STATE, STATUS)
-    VERIFY_(STATUS)
+!   call MAPL_GetObjectFromGC(GC, STATE, STATUS)
+!   VERIFY_(STATUS)
 
-    call MAPL_Get(STATE, LOCSTREAM=LOCSTREAM,   RC=STATUS )
-    VERIFY_(STATUS)
+!   call MAPL_Get(STATE, LOCSTREAM=LOCSTREAM,   RC=STATUS )
+!   VERIFY_(STATUS)
 
 ! Start timers
 !-------------
 
-    call MAPL_TimerOn(STATE,"TOTAL")
-    call MAPL_TimerOn(STATE,"RUN" )
+!   call MAPL_TimerOn(STATE,"TOTAL")
+!   call MAPL_TimerOn(STATE,"RUN" )
 
 ! Get info from the GG state
 !---------------------------
 
-    call MAPL_Get(STATE,                        &
-        INTERNAL_ESMF_STATE = INTERNAL,         &
-        TILELONS=TILELONS,                      &
-        TILELATS=TILELATS,                      &
-        ORBIT   = ORBIT,                        &
-                                      RC=STATUS )
-    VERIFY_(STATUS)
+!   call MAPL_Get(STATE,                        &
+!       INTERNAL_ESMF_STATE = INTERNAL,         &
+!       TILELONS=TILELONS,                      &
+!       TILELATS=TILELATS,                      &
+!       ORBIT   = ORBIT,                        &
+!                                     RC=STATUS )
+!   VERIFY_(STATUS)
 
 ! The number of tiles we are working on
 !--------------------------------------
 
-    NT = size(TILELONS)
+!   NT = size(TILELONS)
 
 ! Temporary space for reading forcings
 !-------------------------------------
@@ -395,15 +395,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get the time step
 ! -----------------
 
-    call MAPL_GetResource ( STATE, DT, Label="RUN_DT:"        , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( STATE, DT, Label="DT:", DEFAULT=DT, RC=STATUS)
-    VERIFY_(STATUS)
+!   call MAPL_GetResource ( STATE, DT, Label="RUN_DT:"        , RC=STATUS)
+!   VERIFY_(STATUS)
+!   call MAPL_GetResource ( STATE, DT, Label="DT:", DEFAULT=DT, RC=STATUS)
+!   VERIFY_(STATUS)
 
 ! Get current time from clock
 !----------------------------
-    call ESMF_ClockGet(CLOCK, currTime=CurrentTime, TIMESTEP=DELT, RC=STATUS)
-    VERIFY_(STATUS)
+!   call ESMF_ClockGet(CLOCK, currTime=CurrentTime, TIMESTEP=DELT, RC=STATUS)
+!   VERIFY_(STATUS)
 
 !
 ! ANY work (getting pointers to import, exports, internals, etc) 
@@ -520,78 +520,78 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  All done
 !-----------
 
-    call MAPL_TimerOff(STATE,"RUN"  )
-    call MAPL_TimerOff(STATE,"TOTAL")
+!   call MAPL_TimerOff(STATE,"RUN"  )
+!   call MAPL_TimerOff(STATE,"TOTAL")
 
-    RETURN_(ESMF_SUCCESS)
+!   RETURN_(ESMF_SUCCESS)
 
-end subroutine RUN
+!end subroutine RUN
 
-subroutine T2G_Regrid(STATE, LOCSTREAM, GNAME, TNAME, RC)
-  type(ESMF_State)     :: STATE
-  type(MAPL_LocStream) :: LOCSTREAM
-  character(len=*)     :: GNAME
-  character(len=*)     :: TNAME
-  integer, optional    :: RC
-  
-  real, pointer :: GVAR(:,:) => null()
-  real, pointer :: TVAR(:)   => null()
-  
-  character(len=ESMF_MAXSTR)   :: IAm='T2G_Regrid'
-  integer                      :: STATUS
- 
-  call GET_POINTER(STATE, GVAR, GNAME, RC=STATUS)
-  VERIFY_(STATUS)
-  if(associated(GVAR)) then
-     call GET_POINTER(STATE, TVAR, TNAME, RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_LocStreamTransform( LOCSTREAM, GVAR, TVAR, RC=STATUS) 
-     VERIFY_(STATUS)
-  endif
-  RETURN_(ESMF_SUCCESS)
-end subroutine T2G_Regrid
+!subroutine T2G_Regrid(STATE, LOCSTREAM, GNAME, TNAME, RC)
+!  type(ESMF_State)     :: STATE
+!  type(MAPL_LocStream) :: LOCSTREAM
+!  character(len=*)     :: GNAME
+!  character(len=*)     :: TNAME
+!  integer, optional    :: RC
+!  
+!  real, pointer :: GVAR(:,:) => null()
+!  real, pointer :: TVAR(:)   => null()
+!  
+!  character(len=ESMF_MAXSTR)   :: IAm='T2G_Regrid'
+!  integer                      :: STATUS
+! 
+!  call GET_POINTER(STATE, GVAR, GNAME, RC=STATUS)
+!  VERIFY_(STATUS)
+!  if(associated(GVAR)) then
+!     call GET_POINTER(STATE, TVAR, TNAME, RC=STATUS)
+!     VERIFY_(STATUS)
+!     call MAPL_LocStreamTransform( LOCSTREAM, GVAR, TVAR, RC=STATUS) 
+!     VERIFY_(STATUS)
+!  endif
+!  RETURN_(ESMF_SUCCESS)
+!end subroutine T2G_Regrid
 
-subroutine MK_GRID_OUT(STATE, GNAME, TNAME, RC)
-  type(ESMF_State) :: STATE
-  character(len=*) :: GNAME
-  character(len=*) :: TNAME
-  integer, optional, intent(OUT) :: RC
+!subroutine MK_GRID_OUT(STATE, GNAME, TNAME, RC)
+!  type(ESMF_State) :: STATE
+!  character(len=*) :: GNAME
+!  character(len=*) :: TNAME
+!  integer, optional, intent(OUT) :: RC
   
-  real, pointer                  :: GVAR(:,:) => null()
-  real, pointer                  :: TVAR(:) => null()
-  character(len=ESMF_MAXSTR)     :: IAm='MK_GRID_OUT'
-  integer                        :: STATUS
-  
-  call GET_POINTER(STATE, GVAR, GNAME, RC=STATUS)
-  VERIFY_(STATUS)
-
-  if(associated(GVAR)) then
-     call GET_POINTER(STATE, TVAR, TNAME, alloc=.true., RC=STATUS)
-     VERIFY_(STATUS)
-     TVAR = MAPL_Undef
-  end if
-  
-  RETURN_(ESMF_SUCCESS)
-end subroutine MK_GRID_OUT
+!  real, pointer                  :: GVAR(:,:) => null()
+!!  real, pointer                  :: TVAR(:) => null()
+!  character(len=ESMF_MAXSTR)     :: IAm='MK_GRID_OUT'
+!  integer                        :: STATUS
+!  
+!  call GET_POINTER(STATE, GVAR, GNAME, RC=STATUS)
+!  VERIFY_(STATUS)
+!
+!  if(associated(GVAR)) then
+!     call GET_POINTER(STATE, TVAR, TNAME, alloc=.true., RC=STATUS)
+!     VERIFY_(STATUS)
+!     TVAR = MAPL_Undef
+!  end if
+!  
+!  RETURN_(ESMF_SUCCESS)
+!end subroutine MK_GRID_OUT
 
 !----------------------------------------------------------------------------------------------------------------------------------
 
-    function renamefile(name, time) result(name0)
+!   function renamefile(name, time) result(name0)
 
-      CHARACTER(len = *),       intent(in) :: name
-      CHARACTER(len = len(name))           :: name0 
-      TYPE(esmf_time), intent(inout)       :: time
+!     CHARACTER(len = *),       intent(in) :: name
+!     CHARACTER(len = len(name))           :: name0 
+!     TYPE(esmf_time), intent(inout)       :: time
 
-      integer :: year, month, day, status, i
-          
-        name0 = trim(name)
-        i = index(string = name, substring = "yyyymmdd")
-        if(i == 0) return
+!     integer :: year, month, day, status, i
+!         
+!       name0 = trim(name)
+!       i = index(string = name, substring = "yyyymmdd")
+!       if(i == 0) return
 
-        call ESMF_TIMEGET(TIME, YY = year, MM = month, DD = day, RC = status) 
-        WRITE(unit = name0(i:i + 7), fmt = "(i4,i2.2,i2.2)") year, month, day
+!       call ESMF_TIMEGET(TIME, YY = year, MM = month, DD = day, RC = status) 
+!       WRITE(unit = name0(i:i + 7), fmt = "(i4,i2.2,i2.2)") year, month, day
 
-    end function
+!   end function
 
 !----------------------------------------------------------------------------------------------------------------------------------
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -600,61 +600,61 @@ end subroutine MK_GRID_OUT
 
 ! !INTERFACE:
 
-  subroutine Finalize ( gc, import, export, clock, rc ) 
+! subroutine Finalize ( GC, IMPORT, EXPORT, CLOCK, RC ) 
 
 ! !ARGUMENTS:
 
-  type(ESMF_GridComp), intent(INOUT) :: gc     ! Gridded component 
-  type(ESMF_State),    intent(INOUT) :: import ! Import state
-  type(ESMF_State),    intent(INOUT) :: export ! Export state
-  type(ESMF_Clock),    intent(INOUT) :: clock  ! The supervisor clock
-  integer, optional,   intent(  OUT) :: rc     ! Error code:
+! type(ESMF_GridComp), intent(INOUT) :: GC     ! Gridded component 
+! type(ESMF_State),    intent(INOUT) :: IMPORT ! Import state
+! type(ESMF_State),    intent(INOUT) :: EXPORT ! Export state
+! type(ESMF_Clock),    intent(INOUT) :: CLOCK  ! The supervisor clock
+! integer, optional,   intent(  OUT) :: RC     ! Error code:
 
 !EOP
 
-    type (MAPL_MetaComp), pointer:: MAPL 
+!   type (MAPL_MetaComp), pointer:: MAPL 
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)       :: IAm
-    integer                          :: STATUS
-    character(len=ESMF_MAXSTR)       :: COMP_NAME
+!   character(len=ESMF_MAXSTR)       :: IAm
+!   integer                          :: STATUS
+!   character(len=ESMF_MAXSTR)       :: COMP_NAME
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
-    Iam = "Finalize"
-    call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
-    VERIFY_(STATUS)
-    Iam = trim(comp_name) // Iam
+!   Iam = "Finalize"
+!   call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
+!   VERIFY_(STATUS)
+!   Iam = trim(comp_name) // Iam
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=status)
-    VERIFY_(STATUS)
+!   call MAPL_GetObjectFromGC ( GC, MAPL, RC=status)
+!   VERIFY_(STATUS)
 
 ! Profilers
 !----------
 
-    call MAPL_TimerOn(MAPL,"TOTAL"   )
-    call MAPL_TimerOn(MAPL,"FINALIZE")
+!   call MAPL_TimerOn(MAPL,"TOTAL"   )
+!   call MAPL_TimerOn(MAPL,"FINALIZE")
 
 
-    call MAPL_TimerOff(MAPL,"FINALIZE")
-    call MAPL_TimerOff(MAPL,"TOTAL"   )
+!   call MAPL_TimerOff(MAPL,"FINALIZE")
+!   call MAPL_TimerOff(MAPL,"TOTAL"   )
 
 ! Generic Finalize
 ! ------------------
     
-    call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, RC=status )
-    VERIFY_(STATUS)
+!   call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, RC=status )
+!   VERIFY_(STATUS)
 
 
 ! All Done
 !---------
 
-    RETURN_(ESMF_SUCCESS)
-  end subroutine Finalize
+!   RETURN_(ESMF_SUCCESS)
+! end subroutine Finalize
 
-end module GEOS_DataAtmGridCompMod
+end module GEOS_DataAtmGridCompMod_pseudoCode
