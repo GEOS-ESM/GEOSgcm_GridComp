@@ -8877,7 +8877,7 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
   IF (PRESCRIBE_DVG == 3) THEN
 
      ! Forecast mode
-     call MAPL_GetResource(MAPL, FCAST_BEGTIME , label = 'RECORD_REF_DATE:', default = ''  , RC=STATUS) ; VERIFY_(STATUS)
+     call MAPL_GetResource(MAPL, FCAST_BEGTIME , label = 'FCAST_BEGTIME:', default = ''  , RC=STATUS) ; VERIFY_(STATUS)
 
      FTIME = ADJUSTL (FCAST_BEGTIME)
      READ (FTIME ( 1: 4), '(i4)', IOSTAT = STATUS ) BYEAR  ; VERIFY_(STATUS)
