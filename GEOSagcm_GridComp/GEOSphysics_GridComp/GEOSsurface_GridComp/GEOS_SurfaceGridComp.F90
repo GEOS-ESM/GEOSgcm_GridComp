@@ -229,6 +229,7 @@ module GEOS_SurfaceGridCompMod
     call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LAND4SNWALB:', value=catchswim, DEFAULT=0, __RC__ ) 
     call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LANDICE4SNWALB:', value=landicegoswim, DEFAULT=0, __RC__ ) 
     call ESMF_ConfigGetAttribute (LCF, label='LAND_PARAMS:', value=LAND_PARAMS, DEFAULT="Icarus", __RC__ ) 
+    call ESMF_ConfigGetAttribute (LCF, label='MODIS_DVG:'  , value=MODIS_DVG  , DEFAULT=0, __RC__ ) 
     call ESMF_ConfigDestroy      (LCF, __RC__)
 
     if ( (catchswim/=0) .or. (landicegoswim/=0) .or. (DO_OBIO/=0)) then
@@ -236,7 +237,6 @@ module GEOS_SurfaceGridCompMod
     else
        do_goswim=.false.
     endif
-    call MAPL_GetResource ( MAPL, MODIS_DVG,        Label="MODIS_DVG:",DEFAULT=0, RC=STATUS)
 
 ! Set the Run entry point
 ! -----------------------

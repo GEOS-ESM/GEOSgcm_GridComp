@@ -217,6 +217,7 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (LCF, label='SURFLAY:'            , value=SURFLAY,             DEFAULT=50., __RC__ )
     call ESMF_ConfigGetAttribute (LCF, label='Z0_FORMULATION:'     , value=Z0_FORMULATION,      DEFAULT=2  , __RC__ )
     call ESMF_ConfigGetAttribute (LCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,         DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='MODIS_DVG:'  , value=MODIS_DVG  , DEFAULT=0, __RC__ ) 
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
@@ -228,9 +229,6 @@ subroutine SetServices ( GC, RC )
     ! __________________________________________
     call ESMF_ConfigGetAttribute (LCF, label='AEROSOL_DEPOSITION:' , value=AEROSOL_DEPOSITION,  DEFAULT=0  , __RC__ )
     call ESMF_ConfigDestroy      (LCF, __RC__)
-
-    call MAPL_GetResource ( MAPL, MODIS_DVG,Label="MODIS_DVG:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)    
 
 ! Set the Run entry points
 ! ------------------------
