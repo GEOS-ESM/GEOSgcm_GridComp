@@ -3366,7 +3366,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VEG = nint(ITY(:))
    ASSERT_((count(VEG>NTYPS.or.VEG<1)==0))
    LAI0 = LAI
-   IF (MODIS_DVG == 1) LAI0  = min(7., max(0.0001, MODIS_LAI))
+   IF (MODIS_DVG == 1) THEN
+      LAI0  = min(7., max(0.0001, MODIS_LAI))
+      LAI   = LAI0
+   ENDIF
 
 !  Clear the output tile accumulators
 !------------------------------------
