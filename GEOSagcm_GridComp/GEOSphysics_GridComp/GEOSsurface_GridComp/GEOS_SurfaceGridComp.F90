@@ -95,6 +95,7 @@ module GEOS_SurfaceGridCompMod
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
   integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
   integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
+  INTEGER            :: catchswim,landicegoswim, MODIS_DVG
 
   character(len=ESMF_MAXSTR), pointer :: GCNames(:)
   integer                    :: CHILD_MASK(NUM_CHILDREN)
@@ -195,7 +196,6 @@ module GEOS_SurfaceGridCompMod
     type (SURF_wrap)                        :: WRAP
     type (MAPL_MetaComp    ), pointer       :: MAPL
     INTEGER                                 :: LSM_CHOICE
-    INTEGER                                 :: catchswim,landicegoswim, MODIS_DVG
     character(len=ESMF_MAXSTR)              :: LANDRC
     type(ESMF_Config)                       :: LCF 
 
@@ -662,8 +662,8 @@ module GEOS_SurfaceGridCompMod
             RESTART    = MAPL_RestartSkip,                            &
             DIMS       = MAPL_DimsHorzOnly,                           &
             VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-       VERIFY_(STATUS)       
-
+       VERIFY_(STATUS)
+       
     ENDIF
 
 !  !EXPORT STATE:
@@ -5390,7 +5390,7 @@ module GEOS_SurfaceGridCompMod
 
     integer  :: USE_PP_TAPER
     real     :: PP_TAPER_LAT_LOW,PP_TAPER_LAT_HIGH, FACT
-    INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, MODIS_DVG
+    INTEGER                                 :: LSM_CHOICE
     real, allocatable :: PCSCALE(:,:)
     real, allocatable :: PRECSUM(:,:)
     character(len=ESMF_MAXPATHLEN) :: SolCycFileName
@@ -5453,10 +5453,6 @@ module GEOS_SurfaceGridCompMod
 ! -------------------------------------------------------
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, RUN_ROUTE, Label="RUN_ROUTE:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, MODIS_DVG, Label="MODIS_DVG:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Pointers to gridded imports
@@ -6752,7 +6748,7 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(RMELTBC002 ,RMELTBC002TILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RMELTOC001 ,RMELTOC001TILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RMELTOC002 ,RMELTOC002TILE ,NT,RC=STATUS); VERIFY_(STATUS)
-    
+
     IF (LSM_CHOICE ==2) THEN
        call MKTILE(CNLAI   ,CNLAITILE   ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNTLAI  ,CNTLAITILE  ,NT,RC=STATUS); VERIFY_(STATUS)

@@ -46,6 +46,7 @@ module GEOS_LandGridCompMod
 
   integer                                 :: VEGDYN
   integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:)
+  INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
 
 contains
 
@@ -85,7 +86,6 @@ contains
     integer                                 :: I
     character(len=ESMF_MAXSTR)              :: TMP
     type(MAPL_MetaComp),pointer             :: MAPL=>null()
-    INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
     integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
     character(len=ESMF_MAXSTR)              :: LANDRC
 

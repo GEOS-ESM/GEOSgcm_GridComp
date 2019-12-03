@@ -16,7 +16,7 @@ module GEOS_VegdynGridCompMod
 !   necessary interpolation to provide refreshed values of the 
 !   dynamic vegetation values prescribed by external data/observations.\\
 !
-! There are no imports to this routine.
+! Added MODIS_LAI as an IMPORT.
 ! Exports from this routine are the instaneous values of the
 ! vegetation parameters on tilespace to be used in other components
 ! of the land subroutine.  All exports and imports are stored on the
@@ -56,6 +56,7 @@ module GEOS_VegdynGridCompMod
 !EOP
 
   integer :: IGNORE_HEIGHTS  ! Do not use JPL lidar veg heights
+  integer :: MODIS_DVG
   integer, parameter		     :: NTYPS = MAPL_NumVegTypes
   real,    dimension(   NTYPS)       :: VGRT
   real,    dimension(   NTYPS)       :: VGZ2   ! VGZ2 replaces lidar heights with old values,
@@ -150,6 +151,7 @@ contains
     LCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(LCF,LANDRC,rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigGetAttribute (LCF, label='IGNORE_VEG_HEIGHTS:'  , value=IGNORE_HEIGHTS , DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='MODIS_DVG:'  , value=MODIS_DVG  , DEFAULT=0, __RC__ ) 
     call ESMF_ConfigDestroy      (LCF, __RC__)
     
 ! -----------------------------------------------------------
@@ -173,8 +175,19 @@ contains
 
 ! -----------------------------------------------------------
 !   Import States
-! None at the moment
 ! -----------------------------------------------------------
+
+    IF (MODIS_DVG == 1) THEN
+
+       call MAPL_AddImportSpec(gc, &
+            short_name = "MODIS_LAI", &
+            LONG_NAME  = 'MODIS Leaf Area Index',                     &
+            UNITS      = '1',                                         &
+            DIMS       = MAPL_DimsTileOnly,                           &
+            VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+       VERIFY_(STATUS)
+      
+    ENDIF
 
 ! -----------------------------------------------------------
 ! Internal State 
@@ -306,6 +319,10 @@ contains
     real, dimension(:), pointer :: Z2CH
     real, dimension(:), pointer :: ASCATZ0
 
+! IMPORT Pointers
+
+    real, dimension(:), pointer :: MODIS_LAI
+
 ! EXPORT pointers 
 
     real, dimension(:), pointer :: LAI
@@ -403,6 +420,13 @@ contains
     call MAPL_GetPointer(INTERNAL,   ASCATZ0,  'ASCATZ0', RC=STATUS)
     VERIFY_(STATUS)
 
+! pointer to IMPORT
+! -----------------
+
+    IF (MODIS_DVG == 1) THEN
+       call MAPL_GetPointer(IMPORT,MODIS_LAI, 'MODIS_LAI', RC=STATUS) ; VERIFY_(STATUS)
+    ENDIF
+    
 ! get pointers to EXPORTS
 ! -----------------------
 
@@ -420,8 +444,14 @@ contains
 
     call ESMF_ClockGet  ( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
     VERIFY_(STATUS)
-    call MAPL_ReadForcing(MAPL,'LAI',LAIFILE,CURRENT_TIME,LAI,ON_TILES=.true.,RC=STATUS)
-    VERIFY_(STATUS)
+
+    IF (MODIS_DVG == 0) THEN
+       call MAPL_ReadForcing(MAPL,'LAI',LAIFILE,CURRENT_TIME,LAI,ON_TILES=.true.,RC=STATUS)
+       VERIFY_(STATUS)
+    ELSE
+       LAI = MODIS_LAI
+    ENDIF
+
     call MAPL_ReadForcing(MAPL,'GRN',GRNFILE,CURRENT_TIME,GRN,ON_TILES=.true.,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_ReadForcing(MAPL,'NDVI',NDVIFILE,CURRENT_TIME,NDVI,ON_TILES=.true.,RC=STATUS)

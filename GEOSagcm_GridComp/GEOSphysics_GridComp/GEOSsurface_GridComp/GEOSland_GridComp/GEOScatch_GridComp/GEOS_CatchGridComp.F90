@@ -214,10 +214,10 @@ subroutine SetServices ( GC, RC )
     LCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(LCF,LANDRC,rc=status) ; VERIFY_(STATUS)
 
-    call ESMF_ConfigGetAttribute (LCF, label='SURFLAY:'            , value=SURFLAY,             DEFAULT=50., __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='Z0_FORMULATION:'     , value=Z0_FORMULATION,      DEFAULT=2  , __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,         DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='MODIS_DVG:'  , value=MODIS_DVG  , DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (LCF, label='SURFLAY:'       , value=SURFLAY,        DEFAULT=50., __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='Z0_FORMULATION:', value=Z0_FORMULATION, DEFAULT=2  , __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='USE_ASCATZ0:'   , value=USE_ASCATZ0,    DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (LCF, label='MODIS_DVG:'     , value=MODIS_DVG,      DEFAULT=0  , __RC__ ) 
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
@@ -783,14 +783,6 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     IF (MODIS_DVG == 1) THEN 
-
-       call MAPL_AddImportSpec(gc, &
-            short_name = "MODIS_LAI", &
-            LONG_NAME  = 'MODIS Leaf Area Index',                     &
-            UNITS      = '1',                                         &
-            DIMS       = MAPL_DimsTileOnly,                           &
-            VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-       VERIFY_(STATUS)
     
        call MAPL_AddImportSpec(gc, &
             short_name = "MODIS_VISDF",                               &
@@ -3005,7 +2997,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:),     pointer :: PCU
     real, dimension(:),     pointer :: ASCATZ0
     real, dimension(:),     pointer :: NDVI
-    real, dimension(:),     pointer :: MODIS_LAI
 
 ! -----------------------------------------------------
 ! INTERNAL Pointers
@@ -3200,9 +3191,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,NDVI   , 'NDVI'   ,    RC=STATUS)
    VERIFY_(STATUS)
-   IF (MODIS_DVG == 1) THEN
-      call MAPL_GetPointer(IMPORT,MODIS_LAI, 'MODIS_LAI', RC=STATUS) ; VERIFY_(STATUS)
-   ENDIF
+
 
 ! Pointers to internals
 !----------------------
@@ -3366,10 +3355,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VEG = nint(ITY(:))
    ASSERT_((count(VEG>NTYPS.or.VEG<1)==0))
    LAI0 = LAI
-   IF (MODIS_DVG == 1) THEN
-      LAI0  = min(7., max(0.0001, MODIS_LAI))
-      LAI   = LAI0
-   ENDIF
+   IF (MODIS_DVG == 1) LAI0  = min(7., max(0.0001, LAI))
 
 !  Clear the output tile accumulators
 !------------------------------------
@@ -3787,7 +3773,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         real, dimension(:), pointer   :: MODIS_VISDF
         real, dimension(:), pointer   :: MODIS_NIRDF
-        real, dimension(:), pointer   :: MODIS_LAI
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
@@ -4361,7 +4346,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
 
         IF (MODIS_DVG == 1) THEN 
-           call MAPL_GetPointer(IMPORT, MODIS_LAI   ,'MODIS_LAI'     ,RC=STATUS); VERIFY_(STATUS) 
            call MAPL_GetPointer(IMPORT, MODIS_VISDF ,'MODIS_VISDF'   ,RC=STATUS); VERIFY_(STATUS) 
            call MAPL_GetPointer(IMPORT, MODIS_NIRDF ,'MODIS_NIRDF'   ,RC=STATUS); VERIFY_(STATUS) 
         ENDIF
@@ -4571,12 +4555,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RSL2     (NTILES)) 
         allocate(SQSCAT   (NTILES))
         allocate(RDC      (NTILES))  
-        allocate(VISDF    (NTILES))
-        allocate(NIRDF    (NTILES))
+        IF (MODIS_DVG == 0) THEN
+           allocate(VISDF    (NTILES))
+           allocate(NIRDF    (NTILES))
+        ENDIF
 	allocate(UUU      (NTILES))
 	allocate(RHO      (NTILES))
 	allocate(ZVG      (NTILES))
-	allocate(LAI0     (NTILES))
 	allocate(GRN0     (NTILES))
 	allocate(Z0       (NTILES))
 	allocate(D0       (NTILES))
@@ -4643,6 +4628,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RCONSTIT (NTILES,N_SNOW,N_constit))
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
+        allocate(LAI0 (NTILES),STAT=STATUS) ; VERIFY_(STATUS)
 
         if (is_OFFLINE) then
            allocate (ICE  (NTILES))
@@ -4652,7 +4638,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         endif
 
         LAI0  = LAI
-        IF(MODIS_DVG == 1) LAI0  = min(7., max(0.0001, MODIS_LAI))
+        IF(MODIS_DVG == 1) LAI0  = min(7., max(0.0001, LAI))
  
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! --------------------------------------------------------------------------
@@ -4703,16 +4689,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          print *,' start time of clock '
          CALL ESMF_TimePrint ( MODELSTART, OPTIONS="string", RC=STATUS )
         endif
-
-        ! ----------------------------------------------------------------------------------
-        ! Update the interpolation limits for MODIS albedo corrections
-        ! in the internal state and get their midmonth times
-        ! ----------------------------------------------------------------------------------
-
-        call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
-        VERIFY_(STATUS)
 
         ! --------------------------------------------------------------------------
         ! retrieve the zenith angle
@@ -4921,6 +4897,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
 
      IF (MODIS_DVG == 0) THEN
+
+        ! ----------------------------------------------------------------------------------
+        ! Update the interpolation limits for MODIS albedo corrections
+        ! in the internal state and get their midmonth times
+        ! ----------------------------------------------------------------------------------
+
+        call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
+        VERIFY_(STATUS)
+      
 
         call    SIBALB(NTILES, VEG, LAI0, GRN, ZTH, & 
              VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
@@ -5891,9 +5878,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(ECHANGE  )
         deallocate(HSNACC   )
         deallocate(EVACC    )
-        deallocate(SHACC    )
-        deallocate(VISDF    )
-        deallocate(NIRDF    )
+        deallocate(SHACC    ) 
+        if(MODIS_DVG == 0) THEN
+           deallocate(VISDF    )
+           deallocate(NIRDF    )
+        endif
         deallocate(VSUVR    )
         deallocate(VSUVF    )
         deallocate(SNOVR    )
@@ -6041,13 +6030,8 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
   VERIFY_(status)
 
-  IF (MODIS_DVG == 1) THEN 
-     call MAPL_GetPointer(import, lai, 'MODIS_LAI', rc=status)
-     VERIFY_(status)
-  ELSE
-     call MAPL_GetPointer(import, lai, 'LAI', rc=status)
-     VERIFY_(status)  
-  ENDIF
+  call MAPL_GetPointer(import, lai, 'LAI', rc=status)
+  VERIFY_(status)  
 
   ! Pointers to INTERNALs
   call MAPL_GetPointer(INTERNAL, asnow, 'ASNOW', rc=status)

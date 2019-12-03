@@ -111,7 +111,6 @@
 # 1--YES Prescribe interannually varying LAI and SAI
 # 2--YES Prescribe climatological LAI and SAI
 # 3--Estimated LAI/SAI using anomalies at the beginning of the foeecast and climatological LAI/SAI
-# 4--Write LAI/SAI anomalies in catchcn_internal_rst for above option 3
 #
 # PRESCRIBE_DVG: 0
 
@@ -120,5 +119,6 @@
 # 1-- Scale albedo to match interannually varying MODIS NIRDF and VISDF anomaly
 # 2-- Scale albedo to match CDFs of model fPAR to MODIS CDFs of fPAR 
 # 3-- Pefform above both 1 and 2 scalings 
+#
 # SCALE_ALBFPAR: 0
 

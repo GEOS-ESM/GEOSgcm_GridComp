@@ -278,12 +278,11 @@ subroutine SetServices ( GC, RC )
     ! 4: import AGCM model CO2 (AGCM only)
     call ESMF_ConfigGetAttribute (LCF, label='ATM_CO2:' , value=ATM_CO2,  DEFAULT=2  , __RC__ )
 
-    ! PRESCRIBE_DVG :  Prescribe daily LAI and SAI data from an archived CATCHCN simulation 
+    ! PRESCRIBE_DVG: Prescribe daily LAI and SAI data from an archived CATCHCN simulation 
     ! 0--NO Run CN Model interactively
     ! 1--YES Prescribe interannually varying LAI and SAI
     ! 2--YES Prescribe climatological LAI and SAI
     ! 3--Estimated LAI/SAI using anomalies at the beginning of the foeecast and climatological LAI/SAI
-    ! 4--Write LAI/SAI anomalies in catchcn_internal_rst for above option 3
     call ESMF_ConfigGetAttribute (LCF, label='PRESCRIBE_DVG:' , value=PRESCRIBE_DVG,  DEFAULT=0  , __RC__ )
 
     ! SCALE_ALBFPAR: Scale CATCHCN ALBEDO and FPAR
@@ -1600,159 +1599,155 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  IF ((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN 
-
-     ! Interactive CN model or write out anomalies
-
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'column_rst_vars'           ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'CNCOL'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          UNGRIDDED_DIMS     = (/NUM_ZON*VAR_COL/)         ,&
-          RESTART            = MAPL_RestartRequired        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'PFT_rst_vars'              ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'CNPFT'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          UNGRIDDED_DIMS     = (/NUM_ZON*NUM_VEG*VAR_PFT/) ,&
-          RESTART            = MAPL_RestartRequired        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for ground temp'    ,&
-          UNITS              = 'K'                         ,&
-          SHORT_NAME         = 'TGWM'                      ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          UNGRIDDED_DIMS     = (/NUM_ZON/)                 ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for soil moisture'  ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'RZMM'                      ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          UNGRIDDED_DIMS     = (/NUM_ZON/)                 ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for sfc soil moist' ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'SFMCM'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for baseflow'       ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          SHORT_NAME         = 'BFLOWM'                    ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for total water'    ,&
-          UNITS              = 'kg m-2'                    ,&
-          SHORT_NAME         = 'TOTWATM'                   ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for air temperature',&
-          UNITS              = 'K'                         ,&
-          SHORT_NAME         = 'TAIRM'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for soil temp'      ,&
-          UNITS              = 'K'                         ,&
-          SHORT_NAME         = 'TPM'                       ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN summing counter'        ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'CNSUM'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for sunlit photosyn',&
-          UNITS              = 'umol m-2 s-1'              ,&
-          SHORT_NAME         = 'PSNSUNM'                   ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for shaded photosyn',&
-          UNITS              = 'umol m-2 s-1'              ,&
-          SHORT_NAME         = 'PSNSHAM'                   ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for snow depth'     ,&
-          UNITS              = 'm'                         ,&
-          SHORT_NAME         = 'SNDZM'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+  ! Interactive CN model or write out anomalies
   
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for area snow cover',&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'ASNOWM'                    ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-  ENDIF
-
-  IF (PRESCRIBE_DVG >= 3) THEN
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'column_rst_vars'           ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'CNCOL'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_ZON*VAR_COL/)         ,&
+       RESTART            = MAPL_RestartRequired        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'PFT_rst_vars'              ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'CNPFT'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_ZON*NUM_VEG*VAR_PFT/) ,&
+       RESTART            = MAPL_RestartRequired        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for ground temp'    ,&
+       UNITS              = 'K'                         ,&
+       SHORT_NAME         = 'TGWM'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_ZON/)                 ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for soil moisture'  ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'RZMM'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_ZON/)                 ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for sfc soil moist' ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'SFMCM'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for baseflow'       ,&
+       UNITS              = 'kg m-2 s-1'                ,&
+       SHORT_NAME         = 'BFLOWM'                    ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for total water'    ,&
+       UNITS              = 'kg m-2'                    ,&
+       SHORT_NAME         = 'TOTWATM'                   ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for air temperature',&
+       UNITS              = 'K'                         ,&
+       SHORT_NAME         = 'TAIRM'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for soil temp'      ,&
+       UNITS              = 'K'                         ,&
+       SHORT_NAME         = 'TPM'                       ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN summing counter'        ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'CNSUM'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for sunlit photosyn',&
+       UNITS              = 'umol m-2 s-1'              ,&
+       SHORT_NAME         = 'PSNSUNM'                   ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for shaded photosyn',&
+       UNITS              = 'umol m-2 s-1'              ,&
+       SHORT_NAME         = 'PSNSHAM'                   ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for snow depth'     ,&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'SNDZM'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for area snow cover',&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'ASNOWM'                    ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  IF (PRESCRIBE_DVG == 3) THEN
      ! Add ESAI (NTILES,NV,NZ)
      ! LAI/SAI in forecast system: 3 S2S reading ; 4 GEOSldas writing 
 
@@ -4051,13 +4046,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
    VERIFY_(STATUS)
-   IF ((PRESCRIBE_DVG == 0) .OR.(PRESCRIBE_DVG == 4)) THEN 
-      call MAPL_GetPointer(INTERNAL,CNCOL  ,'CNCOL'  ,   RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL,CNPFT  ,'CNPFT'  ,   RC=STATUS)
-      VERIFY_(STATUS)
-   ENDIF
-
+   call MAPL_GetPointer(INTERNAL,CNCOL  ,'CNCOL'  ,   RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,CNPFT  ,'CNPFT'  ,   RC=STATUS)
+   VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,DCH  , 'DCH'     ,    RC=STATUS)
    VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,DCQ  , 'DCQ'     ,    RC=STATUS)
@@ -4261,8 +4253,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
    if(first) then
-     if ((PRESCRIBE_DVG == 0) .OR.(PRESCRIBE_DVG == 4)) then 
-        call CN_init(istep,nt,nveg,nzone,ityp,fveg,var_col,var_pft,cncol=cncol,cnpft=cnpft)     
+     if ((PRESCRIBE_DVG == 0) .OR.(PRESCRIBE_DVG == 3)) then 
+        call CN_init(istep,nt,nveg,nzone,ityp,fveg,var_col,var_pft,cncol=cncol,cnpft=cnpft)  
+        call get_CN_LAI(nt,nveg,nzone,ityp,fveg,elai,esai=esai)  
+        if(PRESCRIBE_DVG == 3) call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NT, elai,esai)
      else
         call CN_init(istep,nt,nveg,nzone,ityp,fveg,var_col,var_pft)  
      endif
@@ -4279,10 +4273,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! obtain LAI from previous time step (from CN model)
 ! --------------------------------------------------
 
-   IF((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN
+   IF(PRESCRIBE_DVG == 0) THEN
       call get_CN_LAI(nt,nveg,nzone,ityp,fveg,elai,esai=esai)
    ELSE
-      call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NT, PRESCRIBE_DVG, elai,esai   )
+      call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NT, elai,esai)
    ENDIF
       
    lai1 = 0.
@@ -5404,22 +5398,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,BGALBVF    ,'BGALBVF'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,BGALBNR    ,'BGALBNR'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,BGALBNF    ,'BGALBNF'    ,RC=STATUS); VERIFY_(STATUS)
-        IF ((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN 
-           call MAPL_GetPointer(INTERNAL,CNCOL      ,'CNCOL'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CNPFT      ,'CNPFT'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,TGWM       ,'TGWM'       ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,RZMM       ,'RZMM'       ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,SFMCM      ,'SFMCM'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,BFLOWM     ,'BFLOWM'     ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,TOTWATM    ,'TOTWATM'    ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,TAIRM      ,'TAIRM'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,TPM        ,'TPM'        ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CNSUM      ,'CNSUM'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,PSNSUNM    ,'PSNSUNM'    ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,PSNSHAM    ,'PSNSHAM'    ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); VERIFY_(STATUS)
-        ENDIF
+        call MAPL_GetPointer(INTERNAL,CNCOL      ,'CNCOL'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,CNPFT      ,'CNPFT'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,TGWM       ,'TGWM'       ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,RZMM       ,'RZMM'       ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,SFMCM      ,'SFMCM'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,BFLOWM     ,'BFLOWM'     ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,TOTWATM    ,'TOTWATM'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,TAIRM      ,'TAIRM'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,TPM        ,'TPM'        ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,CNSUM      ,'CNSUM'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,PSNSUNM    ,'PSNSUNM'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,PSNSHAM    ,'PSNSHAM'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); VERIFY_(STATUS)
  
         if (N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
@@ -5619,7 +5611,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       wtzone(:,nz) = CN_zone_weight(nz)
     end do
 
-    IF((PRESCRIBE_DVG == 0) .OR.(PRESCRIBE_DVG == 4)) THEN
+    IF(PRESCRIBE_DVG == 0) THEN
 
        ! obtain LAI from previous time step (from CN model)
        ! --------------------------------------------------
@@ -5630,7 +5622,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! read from daily files
        ! ---------------------
 
-       call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NTILES, PRESCRIBE_DVG, elai,esai)
+       call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NTILES, elai,esai)
 
     endif
 
@@ -5658,9 +5650,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(associated(CNLAI41)) CNLAI41 = elai(:,4,1)
     if(associated(CNLAI42)) CNLAI42 = elai(:,4,2)
     if(associated(CNLAI43)) CNLAI43 = elai(:,4,3)
-
-    ! GEOSldas : write out LAI/SAI anomalies for PRESCRIBE_DVG = 3
-    IF(PRESCRIBE_DVG == 4) call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NTILES, PRESCRIBE_DVG, elai,esai)
 
 ! OPTIONAL IMPOSE MONTHLY MEAN DIURNAL CYCLE FROM NOAA CARBON TRACKER
 ! -------------------------------------------------------------------
@@ -7114,7 +7103,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       year_prev = AGCM_YY
     endif
 
-    RUN_CLM : IF((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN
+    RUN_CLM : IF(PRESCRIBE_DVG == 0) THEN
        
        ! CN time step over 4 hours may fail; limit to 4 hours; verify that DTCN is a multiple of DT
        ! ------------------------------------------------------------------------------------------
@@ -8509,12 +8498,12 @@ subroutine RUN0(gc, import, export, clock, rc)
      wtzone(:,nz) = CN_zone_weight(nz)
    end do
 
-   IF((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN
+   IF(PRESCRIBE_DVG == 0) THEN
       ! obtain LAI from previous time step (from CN model)
       ! --------------------------------------------------
       call get_CN_LAI(ntiles,num_veg,num_zon,ityp,fveg,elai,esai=esai)
    ELSE
-      call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NTILES, PRESCRIBE_DVG, elai,esai)
+      call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NTILES, elai,esai)
    ENDIF
 
    lai1 = 0.
@@ -8656,7 +8645,7 @@ end subroutine RUN0
 ! READ PRESCRIBED LAI and SAI
 ! ---------------------------
 
-SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, elai, esai)
+SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES, elai, esai)
 
   implicit none
   character(len=ESMF_MAXSTR)        :: FCAST_BEGTIME, FTIME
@@ -8670,10 +8659,12 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
 
   integer, parameter   :: nveg  = num_veg ! number of vegetation types
   integer, parameter   :: nzone = num_zon ! number of stress zones
-  integer, intent (in) :: NTILES, PRESCRIBE_DVG
+  integer, intent (in) :: NTILES
   REAL                 :: TIMELAG
   INTEGER              :: BYEAR, BMON, BDAY, BHOUR, dSecs
   type(ESMF_TimeInterval) :: TIMEDIF 
+  type(ESMF_VM)        :: VM
+  logical, save        :: first = .true.
 
   real, dimension (NTILES, nveg, nzone), intent (inout) :: elai,esai
   real, dimension(:),   pointer :: CNSAI11
@@ -8772,7 +8763,7 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
   VERIFY_(STATUS)
   Iam=trim(COMP_NAME)//"::read_prescribed_LAI"
 
-  IF (PRESCRIBE_DVG >= 3) THEN
+  IF (PRESCRIBE_DVG == 3) THEN
      call MAPL_GetPointer(INTERNAL,ITY     , 'ITY'      ,   RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(INTERNAL,CNSAI11A, 'CNSAI11A' ,   RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(INTERNAL,CNSAI12A, 'CNSAI12A' ,   RC=STATUS); VERIFY_(STATUS)
@@ -8891,6 +8882,68 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
      call ESMF_TimeIntervalGet (TIMEDIF, s = dSecs, rc=status); VERIFY_(STATUS) 
      timelag = real (dSecs) / 86400.
 
+     IF((timelag == 0).and. (first)) THEN
+        first = .false.
+        if (MAPL_AM_I_Root(VM)) then
+         print *,'PRESCRIBE_DVG CURRENT TIME:  '
+         CALL ESMF_TimePrint ( CURRENT_TIME, OPTIONS="string", RC=STATUS )
+         print *,'PRESCRIBE_DVG START TIME:  '
+         CALL ESMF_TimePrint ( TIME0, OPTIONS="string", RC=STATUS )
+        endif
+        ! Compute initial anomaly and save with internals
+        
+        where (CNSAI11 > 20.) CNSAI11 = 20.
+        where (CNSAI12 > 20.) CNSAI12 = 20.
+        where (CNSAI13 > 20.) CNSAI13 = 20.
+        where (CNSAI21 > 20.) CNSAI21 = 20.
+        where (CNSAI22 > 20.) CNSAI22 = 20.
+        where (CNSAI23 > 20.) CNSAI23 = 20.
+        where (CNSAI31 > 20.) CNSAI31 = 20.
+        where (CNSAI32 > 20.) CNSAI32 = 20.
+        where (CNSAI33 > 20.) CNSAI33 = 20.
+        where (CNSAI41 > 20.) CNSAI41 = 20.
+        where (CNSAI42 > 20.) CNSAI42 = 20.
+        where (CNSAI43 > 20.) CNSAI43 = 20.
+        where (CNLAI11 > 20.) CNLAI11 = 20.
+        where (CNLAI12 > 20.) CNLAI12 = 20.
+        where (CNLAI13 > 20.) CNLAI13 = 20.
+        where (CNLAI21 > 20.) CNLAI21 = 20.
+        where (CNLAI22 > 20.) CNLAI22 = 20.
+        where (CNLAI23 > 20.) CNLAI23 = 20.
+        where (CNLAI31 > 20.) CNLAI31 = 20.
+        where (CNLAI32 > 20.) CNLAI32 = 20.
+        where (CNLAI33 > 20.) CNLAI33 = 20.
+        where (CNLAI41 > 20.) CNLAI41 = 20.
+        where (CNLAI42 > 20.) CNLAI42 = 20.
+        where (CNLAI43 > 20.) CNLAI43 = 20.
+           
+        where ((CNSAI11 >= 0.) .and. (CNSAI11 <= 20.)) CNSAI11A = esai(:,1,1) - CNSAI11
+        where ((CNSAI12 >= 0.) .and. (CNSAI12 <= 20.)) CNSAI12A = esai(:,1,2) - CNSAI12
+        where ((CNSAI13 >= 0.) .and. (CNSAI13 <= 20.)) CNSAI13A = esai(:,1,3) - CNSAI13
+        where ((CNSAI21 >= 0.) .and. (CNSAI21 <= 20.)) CNSAI21A = esai(:,2,1) - CNSAI21
+        where ((CNSAI22 >= 0.) .and. (CNSAI22 <= 20.)) CNSAI22A = esai(:,2,2) - CNSAI22
+        where ((CNSAI23 >= 0.) .and. (CNSAI23 <= 20.)) CNSAI23A = esai(:,2,3) - CNSAI23
+        where ((CNSAI31 >= 0.) .and. (CNSAI31 <= 20.)) CNSAI31A = esai(:,3,1) - CNSAI31
+        where ((CNSAI32 >= 0.) .and. (CNSAI32 <= 20.)) CNSAI32A = esai(:,3,2) - CNSAI32
+        where ((CNSAI33 >= 0.) .and. (CNSAI33 <= 20.)) CNSAI33A = esai(:,3,3) - CNSAI33
+        where ((CNSAI41 >= 0.) .and. (CNSAI41 <= 20.)) CNSAI41A = esai(:,4,1) - CNSAI41
+        where ((CNSAI42 >= 0.) .and. (CNSAI42 <= 20.)) CNSAI42A = esai(:,4,2) - CNSAI42
+        where ((CNSAI43 >= 0.) .and. (CNSAI43 <= 20.)) CNSAI43A = esai(:,4,3) - CNSAI43
+        where ((CNLAI11 >= 0.) .and. (CNLAI11 <= 20.)) CNLAI11A = elai(:,1,1) - CNLAI11
+        where ((CNLAI12 >= 0.) .and. (CNLAI12 <= 20.)) CNLAI12A = elai(:,1,2) - CNLAI12
+        where ((CNLAI13 >= 0.) .and. (CNLAI13 <= 20.)) CNLAI13A = elai(:,1,3) - CNLAI13
+        where ((CNLAI21 >= 0.) .and. (CNLAI21 <= 20.)) CNLAI21A = elai(:,2,1) - CNLAI21
+        where ((CNLAI22 >= 0.) .and. (CNLAI22 <= 20.)) CNLAI22A = elai(:,2,2) - CNLAI22
+        where ((CNLAI23 >= 0.) .and. (CNLAI23 <= 20.)) CNLAI23A = elai(:,2,3) - CNLAI23
+        where ((CNLAI31 >= 0.) .and. (CNLAI31 <= 20.)) CNLAI31A = elai(:,3,1) - CNLAI31
+        where ((CNLAI32 >= 0.) .and. (CNLAI32 <= 20.)) CNLAI32A = elai(:,3,2) - CNLAI32
+        where ((CNLAI33 >= 0.) .and. (CNLAI33 <= 20.)) CNLAI33A = elai(:,3,3) - CNLAI33
+        where ((CNLAI41 >= 0.) .and. (CNLAI41 <= 20.)) CNLAI41A = elai(:,4,1) - CNLAI41
+        where ((CNLAI42 >= 0.) .and. (CNLAI42 <= 20.)) CNLAI42A = elai(:,4,2) - CNLAI42
+        where ((CNLAI43 >= 0.) .and. (CNLAI43 <= 20.)) CNLAI43A = elai(:,4,3) - CNLAI43    
+      
+     ENDIF
+
      DO N = 1, NTILES
 
         esai(n,1,1)  = CNSAI11(n) + CNSAI11A(n) * EXP (-TIMELAG/TSLAI (NINT(ITY(N,1)),BMON,2))
@@ -8925,62 +8978,6 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
 
   ENDIF
      
-  IF (PRESCRIBE_DVG == 4) THEN
-
-     ! GEOSldas computing anomalies internal variables
-
-     where (CNSAI11 > 20.) CNSAI11 = 20.
-     where (CNSAI12 > 20.) CNSAI12 = 20.
-     where (CNSAI13 > 20.) CNSAI13 = 20.
-     where (CNSAI21 > 20.) CNSAI21 = 20.
-     where (CNSAI22 > 20.) CNSAI22 = 20.
-     where (CNSAI23 > 20.) CNSAI23 = 20.
-     where (CNSAI31 > 20.) CNSAI31 = 20.
-     where (CNSAI32 > 20.) CNSAI32 = 20.
-     where (CNSAI33 > 20.) CNSAI33 = 20.
-     where (CNSAI41 > 20.) CNSAI41 = 20.
-     where (CNSAI42 > 20.) CNSAI42 = 20.
-     where (CNSAI43 > 20.) CNSAI43 = 20.
-     where (CNLAI11 > 20.) CNLAI11 = 20.
-     where (CNLAI12 > 20.) CNLAI12 = 20.
-     where (CNLAI13 > 20.) CNLAI13 = 20.
-     where (CNLAI21 > 20.) CNLAI21 = 20.
-     where (CNLAI22 > 20.) CNLAI22 = 20.
-     where (CNLAI23 > 20.) CNLAI23 = 20.
-     where (CNLAI31 > 20.) CNLAI31 = 20.
-     where (CNLAI32 > 20.) CNLAI32 = 20.
-     where (CNLAI33 > 20.) CNLAI33 = 20.
-     where (CNLAI41 > 20.) CNLAI41 = 20.
-     where (CNLAI42 > 20.) CNLAI42 = 20.
-     where (CNLAI43 > 20.) CNLAI43 = 20.
-
-     where ((CNSAI11 >= 0.) .and. (CNSAI11 <= 20.)) CNSAI11A = esai(:,1,1) - CNSAI11
-     where ((CNSAI12 >= 0.) .and. (CNSAI12 <= 20.)) CNSAI12A = esai(:,1,2) - CNSAI12
-     where ((CNSAI13 >= 0.) .and. (CNSAI13 <= 20.)) CNSAI13A = esai(:,1,3) - CNSAI13
-     where ((CNSAI21 >= 0.) .and. (CNSAI21 <= 20.)) CNSAI21A = esai(:,2,1) - CNSAI21
-     where ((CNSAI22 >= 0.) .and. (CNSAI22 <= 20.)) CNSAI22A = esai(:,2,2) - CNSAI22
-     where ((CNSAI23 >= 0.) .and. (CNSAI23 <= 20.)) CNSAI23A = esai(:,2,3) - CNSAI23
-     where ((CNSAI31 >= 0.) .and. (CNSAI31 <= 20.)) CNSAI31A = esai(:,3,1) - CNSAI31
-     where ((CNSAI32 >= 0.) .and. (CNSAI32 <= 20.)) CNSAI32A = esai(:,3,2) - CNSAI32
-     where ((CNSAI33 >= 0.) .and. (CNSAI33 <= 20.)) CNSAI33A = esai(:,3,3) - CNSAI33
-     where ((CNSAI41 >= 0.) .and. (CNSAI41 <= 20.)) CNSAI41A = esai(:,4,1) - CNSAI41
-     where ((CNSAI42 >= 0.) .and. (CNSAI42 <= 20.)) CNSAI42A = esai(:,4,2) - CNSAI42
-     where ((CNSAI43 >= 0.) .and. (CNSAI43 <= 20.)) CNSAI43A = esai(:,4,3) - CNSAI43
-     where ((CNLAI11 >= 0.) .and. (CNLAI11 <= 20.)) CNLAI11A = elai(:,1,1) - CNLAI11
-     where ((CNLAI12 >= 0.) .and. (CNLAI12 <= 20.)) CNLAI12A = elai(:,1,2) - CNLAI12
-     where ((CNLAI13 >= 0.) .and. (CNLAI13 <= 20.)) CNLAI13A = elai(:,1,3) - CNLAI13
-     where ((CNLAI21 >= 0.) .and. (CNLAI21 <= 20.)) CNLAI21A = elai(:,2,1) - CNLAI21
-     where ((CNLAI22 >= 0.) .and. (CNLAI22 <= 20.)) CNLAI22A = elai(:,2,2) - CNLAI22
-     where ((CNLAI23 >= 0.) .and. (CNLAI23 <= 20.)) CNLAI23A = elai(:,2,3) - CNLAI23
-     where ((CNLAI31 >= 0.) .and. (CNLAI31 <= 20.)) CNLAI31A = elai(:,3,1) - CNLAI31
-     where ((CNLAI32 >= 0.) .and. (CNLAI32 <= 20.)) CNLAI32A = elai(:,3,2) - CNLAI32
-     where ((CNLAI33 >= 0.) .and. (CNLAI33 <= 20.)) CNLAI33A = elai(:,3,3) - CNLAI33
-     where ((CNLAI41 >= 0.) .and. (CNLAI41 <= 20.)) CNLAI41A = elai(:,4,1) - CNLAI41
-     where ((CNLAI42 >= 0.) .and. (CNLAI42 <= 20.)) CNLAI42A = elai(:,4,2) - CNLAI42
-     where ((CNLAI43 >= 0.) .and. (CNLAI43 <= 20.)) CNLAI43A = elai(:,4,3) - CNLAI43
-
-  ENDIF
-
   deallocate (CNSAI11)
   deallocate (CNSAI12)
   deallocate (CNSAI13)
