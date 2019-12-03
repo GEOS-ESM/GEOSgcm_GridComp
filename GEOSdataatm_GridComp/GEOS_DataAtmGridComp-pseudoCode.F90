@@ -344,7 +344,6 @@ module GEOS_DataAtmGridCompMod_pseudoCode
 
 ! local real allocatables, parameters, chars, ints, logicals, ...
 
-
 !  Begin...
 !----------
 
@@ -429,6 +428,7 @@ module GEOS_DataAtmGridCompMod_pseudoCode
 ! XX= t10m, q10m, u10m, v10m, etc; includes aerosols and others for ocean bio application(s)
 !-------------------------------------------------------------------------------------------
 
+     call read_atmospheric(state, currenttime)
 !   such calls as following >>>>
 !
 !   call MAPL_GetResource(STATE, DataFile, LABEL = "XX_FILE:", DEFAULT = "none", RC = status)
@@ -656,5 +656,47 @@ module GEOS_DataAtmGridCompMod_pseudoCode
 
 !   RETURN_(ESMF_SUCCESS)
 ! end subroutine Finalize
+
+
+
+     subroutine read_atmospheric(state, time, rc)
+       use MAPL ! MAPL_ForcingSpecificationMod
+       type(ESMF_State), intent(in) :: state
+       type(ESMF_Time), intent(in) :: time
+       integer, optional, intent(out) :: rc
+
+       type (ForcingSpecification) :: spec
+       integer :: k
+       integer :: status
+     
+       spec = ForcingSpec(state, time)
+       call spec%read_forcing(t10, 'T10', rc=status); VERIFY_(status)
+       call spec%read_forcing(t10, 'Q10', default=2.0e-6, rc=status); VERIFY_(status)
+       call spec%read_forcing(u10, 'U10', rc=status); VERIFY_(status)
+       call spec%read_forcing(u10, 'V10', rc=status); VERIFY_(status)
+       ...
+       
+       
+       spec = ForcingSpec(state, currenttime, &
+            & label_format='(%a,i3.3,"_FILE:")', &
+            & var_name_format = '(%a,i3.3)')
+       
+       call spec%read_forcing(dry_clayx, 'DUPD', rc=status); VERIFY_(status)
+       call spec%read_forcing(wet_clayx, 'DUWT', rc=status); VERIFY_(status)
+       call spec%read_forcing(sed_clayx, 'DUSD', rc=status); VERIFY_(status)
+       
+       spec = ForcingSpec(state, currenttime, &
+            & var_name_format = '(%a,"_",i3.3)')
+       
+       ! Wasteful - find the same datafile in each iteration
+       ! The extra complexity does not seem worth addressing it though.
+       do k = 1, NUM_TAUA
+          call spec%read_forcing( ataua(k)%b,  'TAUA', bin=k, rc=status); VERIFY_(status)
+          call spec%read_forcing(aasymp(k)%b, 'ASYMP', bin=k, rc=status); VERIFY_(status)
+          call spec%read_forcing(assalb(k)%b, 'SSALB', bin=k, rc=status); VERIFY_(status)
+       end do
+       
+     end subroutine read_atmospheric
+
 
 end module GEOS_DataAtmGridCompMod_pseudoCode
