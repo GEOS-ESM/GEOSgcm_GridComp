@@ -9,7 +9,7 @@ set (srcs
   dbmemory.F90
   )
 
-esma_add_library (${this} SRCS ${srcs} DEPENDENCIES GEOS_Shared MAPL_Base)
+esma_add_library (${this} SRCS ${srcs} DEPENDENCIES GEOS_Shared MAPL)
 
 file (COPY _gpudef.inc DESTINATION ${esma_include}/RRTMG)
 file (COPY _memdef.inc DESTINATION ${esma_include}/RRTMG)

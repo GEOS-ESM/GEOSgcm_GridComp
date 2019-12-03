@@ -193,11 +193,8 @@ program  mk_CatchCNRestarts
 ! 1092-1103: PSNSUNM (n,nz*nv)
 ! 1104-1115: PSNSHAM (n,nz*nv)
 
-  use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
-  use MAPL_HashMod
-  use MAPL_IOMod
+  use MAPL
   use ieee_arithmetic, only: isnan => ieee_is_nan
-  use pFIO
 
   implicit none
   include 'mpif.h'

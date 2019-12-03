@@ -5,7 +5,7 @@ MODULE DDF
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 use ESMF
-use MAPL_Mod
+use MAPL
 use GEOS_UtilsMod, only : DQSAT=>GEOS_DQsat, QSAT=>GEOS_Qsat
 
 

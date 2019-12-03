@@ -14,7 +14,7 @@ module GEOS_GcmGridCompMod
 ! !USES:
 
    use ESMF
-   use MAPL_Mod
+   use MAPL
 
    use GEOS_dataatmGridCompMod,  only:  DATAATM_SetServices => SetServices
    use GEOS_AgcmGridCompMod,     only:  AGCM_SetServices => SetServices

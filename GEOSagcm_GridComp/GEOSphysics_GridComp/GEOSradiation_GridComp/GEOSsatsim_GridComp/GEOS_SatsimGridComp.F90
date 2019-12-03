@@ -22,7 +22,7 @@ module GEOS_SatsimGridCompMod
 #define USE_MAPL_UNDEF
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
 
   use gettau

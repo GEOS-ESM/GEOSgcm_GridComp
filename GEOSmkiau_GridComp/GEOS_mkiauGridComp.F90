@@ -14,16 +14,11 @@ module GEOS_mkiauGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
-  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
+  use MAPL
   use ESMF_CFIOFileMod
   use GEOS_UtilsMod
 ! use GEOS_RemapMod, only: myremap => remap
   use m_set_eta, only: set_eta
-  use MAPL_GridManagerMod, only: grid_manager
-  use MAPL_RegridderManagerMod, only: regridder_manager
-  use MAPL_AbstractRegridderMod
-  use MAPL_RegridderSpecMod
   implicit none
   private
 

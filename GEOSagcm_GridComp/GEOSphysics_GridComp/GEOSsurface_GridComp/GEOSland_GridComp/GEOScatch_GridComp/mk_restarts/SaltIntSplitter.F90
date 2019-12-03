@@ -3,9 +3,7 @@ program SaltIntSplitter
 ! $Id$
 
   use netcdf
-  use MAPL_HashMod
-  use MAPL_IOMod
-  use pFIO
+  use MAPL
 
   implicit none
 

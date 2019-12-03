@@ -16,7 +16,7 @@ module GEOS_PhysicsGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use stoch_module
 
   use GEOS_SurfaceGridCompMod,    only : SurfSetServices      => SetServices

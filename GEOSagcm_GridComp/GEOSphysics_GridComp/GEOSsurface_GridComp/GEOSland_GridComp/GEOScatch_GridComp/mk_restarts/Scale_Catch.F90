@@ -1,5 +1,4 @@
-  use MAPL_IOMod
-  use pFIO
+  use MAPL
   implicit none
 
   character(256)    :: fname1, fname2, fname3

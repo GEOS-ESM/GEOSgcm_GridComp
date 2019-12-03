@@ -14,7 +14,7 @@ module DynVec_GridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use fv_statemod, only: INTERP_AGRID_TO_DGRID
   use fv_statemod, only: fv_getpkz
   

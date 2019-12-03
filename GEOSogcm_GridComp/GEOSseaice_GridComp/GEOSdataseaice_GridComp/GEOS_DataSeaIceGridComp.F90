@@ -14,7 +14,7 @@ module GEOS_DataSeaIceGridCompMod
 ! !USES: 
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
 
   use ice_state,          only: nt_Tsfc, nt_iage, nt_volpn, init_trcr_depend
   use ice_prescribed_mod

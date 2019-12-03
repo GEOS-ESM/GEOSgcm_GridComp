@@ -56,16 +56,16 @@ module GEOS_CatchCNGridCompMod
        NUM_ZON, NUM_VEG, VAR_COL, VAR_PFT,    &
        CN_zone_weight, map_cat, firefac, numpft
  
-  USE MAPL_BaseMod
+  USE MAPL
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI 
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist, irrigation_rate
-  USE MAPL_SortMod
-  USE ESMF_CFIOFileMOD
 
 implicit none
 private
+
+  include "netcdf.inc"
 
 ! !PUBLIC MEMBER FUNCTIONS:
 

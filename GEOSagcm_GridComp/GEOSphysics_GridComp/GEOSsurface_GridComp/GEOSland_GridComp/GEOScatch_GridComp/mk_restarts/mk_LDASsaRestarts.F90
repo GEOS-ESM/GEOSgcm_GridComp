@@ -13,10 +13,7 @@ PROGRAM mk_LDASsaRestarts
 ! --------------------------------------------------------------------------------------------
 ! mpirun -np 1 bin/mk_LDASsaRestarts -b BCSDIR  -d YYYYMMDD -e EXPNAME -l EXPDIR -m MODEL -s SURFLAY(20/50) -r Y -t TILFILE
 
-  use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius, MAPL_TICE
-  use MAPL_HashMod
-  use MAPL_IOMod
-  use pFIO
+  use MAPL
   use ieee_arithmetic, only: isnan => ieee_is_nan
   USE STIEGLITZSNOW,   ONLY :                 &
        StieglitzSnow_calc_tpsnow 

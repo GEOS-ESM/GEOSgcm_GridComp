@@ -18,7 +18,7 @@
 ! !USES:
 
    use ESMF                ! ESMF base class
-   use MAPL_Mod            ! GEOS base class
+   use MAPL                ! GEOS base class
    use dynamics_vars, only : T_TRACERS, T_FVDYCORE_VARS, &
                              T_FVDYCORE_GRID, T_FVDYCORE_STATE
 

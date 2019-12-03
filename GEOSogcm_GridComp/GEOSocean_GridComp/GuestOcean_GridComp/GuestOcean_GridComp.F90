@@ -10,7 +10,7 @@ module GuestOcean_GridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use MOM_GEOS5PlugMod, only: MOMSetServices  => SetServices  ! this sets IRF
   use MOM6_GEOSPlugMod, only: MOM6SetServices => SetServices  ! this sets IRF
   use GEOS_DataSeaGridCompMod, only: DataSeaSetServices  => SetServices

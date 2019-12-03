@@ -178,8 +178,7 @@ module GEOS_SolarGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
-  use MAPL_ShmemMod, only: MAPL_CoresPerNodeGet
+  use MAPL
 
   ! for RRTMGP
   use mo_gas_optics, only: ty_gas_optics

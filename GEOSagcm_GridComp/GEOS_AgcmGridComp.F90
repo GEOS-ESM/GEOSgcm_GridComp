@@ -31,16 +31,12 @@ module GEOS_AgcmGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_TopoGetMod
 
   use GEOS_superdynGridCompMod,  only:  SDYN_SetServices => SetServices
   use GEOS_physicsGridCompMod,   only:  PHYS_SetServices => SetServices
   use MAPL_OrbGridCompMod,       only:  ORB_SetServices => SetServices
-  use MAPL_GridManagerMod, only: grid_manager
-  use MAPL_RegridderManagerMod, only: regridder_manager
-  use MAPL_AbstractRegridderMod
-  use MAPL_RegridderSpecMod
 
   use GEOS_RemapMod, only: myremap => remap
 
@@ -2994,7 +2990,6 @@ TIME_TO_REPLAY: if(is_ringing) then
     
     subroutine update_ainc_(RC)
 
-    use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
     use ESMF_CFIOFileMod
     use GEOS_UtilsMod
     use GEOS_RemapMod, only: myremap => remap
@@ -3990,8 +3985,6 @@ TIME_TO_REPLAY: if(is_ringing) then
 
 
     subroutine make_ana_grid(myANA, IM_world, JM_world, NX, NY, LM, rc)
-       use MAPL_ConfigMod
-       use MAPL_LatLonGridFactoryMod
        type (CONNECT_AnanBKG), intent(inout) :: myANA
        integer, intent(in) :: IM_world
        integer, intent(in) :: JM_world
@@ -4120,10 +4113,6 @@ TIME_TO_REPLAY: if(is_ringing) then
 
   subroutine GET_REPLAY_TIME ( MAPL, CLOCK, REPLAY_TIME, RC )
 
-  use ESMF
-  use MAPL_Mod
-  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
-  use ESMF_CFIOFileMod
 
     type(ESMF_Clock),    intent(inout) :: CLOCK
     type(ESMF_Time),     intent(  out) :: REPLAY_TIME

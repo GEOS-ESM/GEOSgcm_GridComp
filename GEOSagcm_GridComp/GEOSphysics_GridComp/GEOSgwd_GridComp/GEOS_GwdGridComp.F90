@@ -31,7 +31,7 @@ module GEOS_GwdGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
 
 #ifdef _CUDA
   use gw_drag, only: &

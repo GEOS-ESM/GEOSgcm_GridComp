@@ -14,7 +14,7 @@ module GEOS_TurbulenceGridCompMod
 
   use ESMF
   use GEOS_Mod
-  use MAPL_Mod
+  use MAPL
   use LockEntrain
   use shoc
 

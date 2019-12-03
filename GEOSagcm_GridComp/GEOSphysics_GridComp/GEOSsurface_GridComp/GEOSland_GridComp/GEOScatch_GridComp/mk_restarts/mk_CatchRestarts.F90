@@ -2,9 +2,7 @@ program  mk_CatchRestarts
 
 !  $Id$
 
-  use MAPL_HashMod
-  use MAPL_IOMod
-  use pFIO
+  use MAPL
 
   implicit none
 

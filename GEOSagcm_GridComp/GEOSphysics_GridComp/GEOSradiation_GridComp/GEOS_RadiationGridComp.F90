@@ -42,7 +42,7 @@ module GEOS_RadiationGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
 
   use GEOS_SolarGridCompMod,  only : solarSetServices  => SetServices
   use GEOS_IrradGridCompMod,  only : irradSetServices  => SetServices

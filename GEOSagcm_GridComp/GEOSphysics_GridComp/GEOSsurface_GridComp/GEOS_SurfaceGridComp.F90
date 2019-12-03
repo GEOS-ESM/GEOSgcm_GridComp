@@ -47,7 +47,7 @@ module GEOS_SurfaceGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
 
   use GEOS_LakeGridCompMod,      only : LakeSetServices     => SetServices

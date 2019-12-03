@@ -22,10 +22,9 @@ module GEOS_CatchGridCompMod
 
   use sfclayer  ! using module that contains sfc layer code
   use ESMF
+  use MAPL
   use GEOS_Mod
-  use MAPL_ConstantsMod
   use GEOS_UtilsMod
-  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
   use DragCoefficientsMod
   use CATCHMENT_MODEL, ONLY :                 &
        catchment
@@ -48,13 +47,10 @@ module GEOS_CatchGridCompMod
   USE SURFPARAMS,     ONLY:                   &
        LAND_FIX
 
-  USE MAPL_BaseMod
-  USE pFIO
   USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
 
 !#sqz_for_ldas_coupling 
   use catch_incr
-  use ESMF_CFIOMOD, only:  StrTemplate => ESMF_CFIOstrTemplate
   use ESMF_CFIOUtilMod, only: strToInt
 !#--
   

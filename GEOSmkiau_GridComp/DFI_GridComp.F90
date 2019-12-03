@@ -13,7 +13,7 @@ module DFI_GridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   
   implicit none
   private

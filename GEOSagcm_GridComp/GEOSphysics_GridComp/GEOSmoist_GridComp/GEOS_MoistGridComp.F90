@@ -87,9 +87,8 @@ module GEOS_MoistGridCompMod
   use DDF
 
   use ESMF
-  use MAPL_Mod
+  use MAPL, r8 => MAPL_R8
   use GEOS_UtilsMod
-  use MAPL_Mod, r8 => MAPL_R8
   use cldwat2m_micro
   use cldmacro
   use aer_cloud

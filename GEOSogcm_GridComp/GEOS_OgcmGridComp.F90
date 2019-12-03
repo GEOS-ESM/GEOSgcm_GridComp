@@ -13,7 +13,7 @@ module GEOS_OgcmGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
 
   use GEOS_OceanBioGeoChemGridCompMod,   only : ObioSetServices   => SetServices
   use GEOS_OceanBioGridCompMod,          only : ObioSimpleSetServices => SetServices

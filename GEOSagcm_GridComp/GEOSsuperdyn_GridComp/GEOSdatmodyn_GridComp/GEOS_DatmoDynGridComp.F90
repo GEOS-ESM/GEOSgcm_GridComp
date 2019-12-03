@@ -14,7 +14,7 @@ module GEOS_DatmoDynGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use PPM
   use cfmip_data_mod
   

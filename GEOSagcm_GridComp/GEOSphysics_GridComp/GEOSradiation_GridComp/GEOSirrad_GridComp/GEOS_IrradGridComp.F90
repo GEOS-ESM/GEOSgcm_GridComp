@@ -62,9 +62,8 @@ module GEOS_IrradGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
-  use MAPL_ShmemMod, only: MAPL_CoresPerNodeGet
 
   use rrtmg_lw_rad, only: rrtmg_lw  !  RRTMG Code
   use rrtmg_lw_init, only: rrtmg_lw_ini
