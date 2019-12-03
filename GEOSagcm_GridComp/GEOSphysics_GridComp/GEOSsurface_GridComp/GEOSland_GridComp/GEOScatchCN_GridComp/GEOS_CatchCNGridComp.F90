@@ -8881,15 +8881,20 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES, elai, esai)
      TIMEDIF = CURRENT_TIME - TIME0 
      call ESMF_TimeIntervalGet (TIMEDIF, s = dSecs, rc=status); VERIFY_(STATUS) 
      timelag = real (dSecs) / 86400.
+!     if (MAPL_AM_I_Root(VM)) then
+!        print *,'PRESCRIBE_DVG CURRENT TIME:  '
+!         CALL ESMF_TimePrint ( CURRENT_TIME, OPTIONS="string", RC=STATUS )
+!         print *,'PRESCRIBE_DVG TIME LAG:  ', timelag
+!     endif
 
      IF((timelag == 0).and. (first)) THEN
         first = .false.
-        if (MAPL_AM_I_Root(VM)) then
-         print *,'PRESCRIBE_DVG CURRENT TIME:  '
-         CALL ESMF_TimePrint ( CURRENT_TIME, OPTIONS="string", RC=STATUS )
-         print *,'PRESCRIBE_DVG START TIME:  '
-         CALL ESMF_TimePrint ( TIME0, OPTIONS="string", RC=STATUS )
-        endif
+!        if (MAPL_AM_I_Root(VM)) then
+!         print *,'PRESCRIBE_DVG FIRST ENTRY CURRENT TIME:  '
+!         CALL ESMF_TimePrint ( CURRENT_TIME, OPTIONS="string", RC=STATUS )
+!         print *,'PRESCRIBE_DVG FIRST ENTRY START TIME:  '
+!         CALL ESMF_TimePrint ( TIME0, OPTIONS="string", RC=STATUS )
+!        endif
         ! Compute initial anomaly and save with internals
         
         where (CNSAI11 > 20.) CNSAI11 = 20.
