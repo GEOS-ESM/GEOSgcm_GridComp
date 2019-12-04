@@ -2205,6 +2205,22 @@ contains
               STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'PSNSHAM'), (/1,nz,nv/), (/NTILES,1,1/),VAR_DUM(:)) 
            end do
         end do
+        VAR_DUM = 0.1
+        do i = 1,4
+           STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'WW'), (/1,i/), (/NTILES,1 /),VAR_DUM(:))
+        end do
+        
+        VAR_DUM = 0.25
+        do i = 1,4
+           STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'FR'), (/1,i/), (/NTILES,1 /),VAR_DUM(:))
+        end do
+        
+        VAR_DUM = 0.001
+        do i = 1,4
+           STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'CH'), (/1,i/), (/NTILES,1 /),VAR_DUM(:))
+           STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'CM'), (/1,i/), (/NTILES,1 /),VAR_DUM(:))
+           STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'CQ'), (/1,i/), (/NTILES,1 /),VAR_DUM(:))
+        end do
 
         STATUS = NF_CLOSE (NCFID)
         STATUS = NF_CLOSE (OutID)

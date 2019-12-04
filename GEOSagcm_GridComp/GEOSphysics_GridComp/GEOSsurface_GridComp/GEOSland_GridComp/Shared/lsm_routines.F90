@@ -1685,7 +1685,8 @@ MODULE lsm_routines
        srfexc,rzexc,catdef, &
        ar1, ar2, ar4,  &
        sfmc, rzmc, prmc,  &
-       werror, sfmcun, rzmcun, prmcun )
+       werror, sfmcun, rzmcun, prmcun, &
+       swsrf1out, swsrf2out, swsrf4out )
 
     ! Calculate diagnostic soil moisture content from prognostic
     ! excess/deficit variables.
@@ -1751,6 +1752,7 @@ MODULE lsm_routines
     real,    dimension(NTILES), intent(out), optional :: sfmcun
     real,    dimension(NTILES), intent(out), optional :: rzmcun
     real,    dimension(NTILES), intent(out), optional :: prmcun
+    real,    dimension(NTILES), intent(out), optional :: swsrf1out, swsrf2out, swsrf4out    
 
     ! ----------------------------
     !
@@ -1843,6 +1845,10 @@ MODULE lsm_routines
          ar1, ar2, ar4,srfmx,srfmn, &
          swsrf1,swsrf2,swsrf4,rzi &
          )
+
+    if(present(swsrf1out)) swsrf1out = swsrf1
+    if(present(swsrf2out)) swsrf2out = swsrf2
+    if(present(swsrf4out)) swsrf4out = swsrf4
 
     ! compute surface, root zone, and profile soil moisture
 
