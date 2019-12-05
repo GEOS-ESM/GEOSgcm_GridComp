@@ -1064,18 +1064,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        ANA2BKGConsrv = (K /= 0)
 
        if (ana2bkgconsrv) then
-          mkiau_internal_state%ana2bkg_regridder => regridder_manager%make_regridder(GRIDana, GRIDbkg, REGRID_METHOD_CONSERVE, rc=status)
+          mkiau_internal_state%ana2bkg_regridder => new_regridder_manager%make_regridder(GRIDana, GRIDbkg, REGRID_METHOD_CONSERVE, rc=status)
           VERIFY_(status)
        else
-          mkiau_internal_state%ana2bkg_regridder => regridder_manager%make_regridder(GRIDana, GRIDbkg, REGRID_METHOD_BILINEAR, rc=status)
+          mkiau_internal_state%ana2bkg_regridder => new_regridder_manager%make_regridder(GRIDana, GRIDbkg, REGRID_METHOD_BILINEAR, rc=status)
           VERIFY_(status)
        end if
 
        if (bkg2anaConsrv) then
-          mkiau_internal_state%bkg2ana_regridder => regridder_manager%make_regridder(GRIDbkg, GRIDana, REGRID_METHOD_CONSERVE, rc=status)
+          mkiau_internal_state%bkg2ana_regridder => new_regridder_manager%make_regridder(GRIDbkg, GRIDana, REGRID_METHOD_CONSERVE, rc=status)
           VERIFY_(status)
        else
-          mkiau_internal_state%bkg2ana_regridder => regridder_manager%make_regridder(GRIDbkg, GRIDana, REGRID_METHOD_BILINEAR, rc=status)
+          mkiau_internal_state%bkg2ana_regridder => new_regridder_manager%make_regridder(GRIDbkg, GRIDana, REGRID_METHOD_BILINEAR, rc=status)
           VERIFY_(status)
        end if
 
