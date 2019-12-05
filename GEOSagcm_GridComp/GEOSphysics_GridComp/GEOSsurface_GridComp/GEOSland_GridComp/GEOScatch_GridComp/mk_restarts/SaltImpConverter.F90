@@ -1,7 +1,5 @@
 program SaltImpConverter
 
-! $Id: 
-
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
   use netcdf
   use MAPL_HashMod

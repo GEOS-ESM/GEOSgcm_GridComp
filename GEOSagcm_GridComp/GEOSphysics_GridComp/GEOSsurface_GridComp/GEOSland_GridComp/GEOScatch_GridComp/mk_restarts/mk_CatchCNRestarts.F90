@@ -1,7 +1,5 @@
 program  mk_CatchCNRestarts
 
-!  $Id: 
-
 !  Usage : mk_CatchCNRestarts OutTileFile InTileFile InRestart SURFLAY RestartTime
 !  Version 1 : Sarith Mahanama 
 !              sarith.p.mahanama@nasa.gov (Feb 19, 2016) 

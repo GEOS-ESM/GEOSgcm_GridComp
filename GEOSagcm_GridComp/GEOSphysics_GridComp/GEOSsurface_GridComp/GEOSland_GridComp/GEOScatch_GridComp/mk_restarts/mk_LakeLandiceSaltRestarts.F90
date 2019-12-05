@@ -1,7 +1,5 @@
 program mk_LakeLandiceSaltRestarts
 
-! $Id: 
-
   use netcdf
 
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius

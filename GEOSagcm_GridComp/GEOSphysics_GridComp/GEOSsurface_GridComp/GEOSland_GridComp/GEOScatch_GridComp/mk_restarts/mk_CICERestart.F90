@@ -1,7 +1,5 @@
 program mk_CiceRestart
 
-! $Id:
-
 ! This utility will work with CICE saltwater internal restart from Fortuna-2_4.
 ! For CICE import restart use mk_LakeLandiceSaltRestarts.
 
