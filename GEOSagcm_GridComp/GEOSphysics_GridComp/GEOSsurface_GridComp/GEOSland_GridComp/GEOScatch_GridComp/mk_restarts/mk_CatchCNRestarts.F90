@@ -194,6 +194,7 @@ program  mk_CatchCNRestarts
 ! 1104-1115: PSNSHAM (n,nz*nv)
 
   use MAPL
+  use gFTL_StringVector
   use ieee_arithmetic, only: isnan => ieee_is_nan
 
   implicit none
