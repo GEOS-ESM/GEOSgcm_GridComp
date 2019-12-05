@@ -123,8 +123,8 @@ sub init {
                 "landice"   => \$landice,
                 "catch"     => \$catch,
                 "catchcn"   => \$catchcn,
-                "wemin=i"   => \$weminIN,
-                "wemout=i"  => \$weminOUT,
+                "weminin=i" => \$weminIN,
+                "weminout=i"=> \$weminOUT,
                 "route"     => \$route,
 
                 "surflay=i" => \$surflay,
@@ -330,28 +330,28 @@ sub usage {
 usage $name [-saltwater] [-lake] [-landice] [-catch] [-h]
 
 option flags
-   -saltwater       regrid saltwater internal restart
-   -lake            regrid lake internal restart
-   -landice         regrid landice internal restart
-   -catch           regrid catchment internal restart
-   -catchcn         regrid catchment CN internal restart
-   -wemin weminIN   minimum water snow water equivalent for input catch/cn [$weminDFLT]
-   -wemout weminOUT minimum water snow water equivalent for output catch/cn [$weminDFLT]
-   -route           create the route internal restart
+   -saltwater         regrid saltwater internal restart
+   -lake              regrid lake internal restart
+   -landice           regrid landice internal restart
+   -catch             regrid catchment internal restart
+   -catchcn           regrid catchment CN internal restart
+   -weminin weminIN   minimum snow water equivalent threshold for input catch/cn [$weminDFLT]
+   -wemouout weminOUT minimum snow water equivalent threshold for output catch/cn [$weminDFLT]
+   -route             create the route internal restart
 
-   -surflay n       number of surface layers (catch & catchcn)
-   -rsttime n10     restart time in format, yyyymmddhh (catchcn) or yyyymm (route)
-   -grpID grpID     group ID for batch submittal (catchcn)
+   -surflay n         number of surface layers (catch & catchcn)
+   -rsttime n10       restart time in format, yyyymmddhh (catchcn) or yyyymm (route)
+   -grpID grpID       group ID for batch submittal (catchcn)
 
-   -ntasks nt       number of tasks to assign to catchcn batch job [112]
-   -walltime wt     walltime in format \"hh:mm:ss\" for catchcn batch job [1:00:00]
+   -ntasks nt         number of tasks to assign to catchcn batch job [112]
+   -walltime wt       walltime in format \"hh:mm:ss\" for catchcn batch job [1:00:00]
    -rescale
-   -qos val         use \"SBATCH --qos=val directive\" for batch jobs;
-                    \"-qos debug\" will not work unless these conditions are met
+   -qos val           use \"SBATCH --qos=val directive\" for batch jobs;
+                      \"-qos debug\" will not work unless these conditions are met
                          -> numtasks <= 532
                          -> walltime le \"1:00:00\"
-   -zoom n          zoom value to send to land regridding codes [8]
-   -h               print usage information
+   -zoom n            zoom value to send to land regridding codes [8]
+   -h                 print usage information
 
 EOF
 exit;
