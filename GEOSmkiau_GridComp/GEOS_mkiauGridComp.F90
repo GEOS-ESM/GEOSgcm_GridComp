@@ -995,10 +995,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call CFIO_Close      ( fid, STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, NX,  Label="NX:", RC=status )
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, NY,  Label="NY:", RC=status )
-    VERIFY_(STATUS)
+    call MAPL_MakeDecomposition(nx,ny,rc=status)
+    VERIFY_(status)
 
     do_transforms = ( IMbkg_World /= IMana_World ) .or. &
                     ( JMbkg_World /= JMana_World ) .or. &
