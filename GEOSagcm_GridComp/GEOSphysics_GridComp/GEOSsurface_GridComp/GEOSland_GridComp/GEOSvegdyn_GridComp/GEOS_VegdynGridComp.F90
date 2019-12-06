@@ -450,6 +450,7 @@ contains
        VERIFY_(STATUS)
     ELSE
        LAI = MODIS_LAI
+       LAI = min(7., max(0.0001, LAI))
     ENDIF
 
     call MAPL_ReadForcing(MAPL,'GRN',GRNFILE,CURRENT_TIME,GRN,ON_TILES=.true.,RC=STATUS)

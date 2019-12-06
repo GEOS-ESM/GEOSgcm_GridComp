@@ -3355,7 +3355,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VEG = nint(ITY(:))
    ASSERT_((count(VEG>NTYPS.or.VEG<1)==0))
    LAI0 = LAI
-   IF (MODIS_DVG == 1) LAI0  = min(7., max(0.0001, LAI))
 
 !  Clear the output tile accumulators
 !------------------------------------
@@ -4638,7 +4637,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         endif
 
         LAI0  = LAI
-        IF(MODIS_DVG == 1) LAI0  = min(7., max(0.0001, LAI))
  
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! --------------------------------------------------------------------------
@@ -5035,7 +5033,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ASSERT_(count(PCU<0.)==0)
         ASSERT_(count(SLDTOT<0.)==0)
 
-        IF(MODIS_DVG == 0) LAI0  = max(0.0001     , LAI) ! for zero-diff
+        LAI0  = max(0.0001     , LAI) ! for zero-diff
         GRN0  = max(0.0001     , GRN)		
         ZTH   = max(0.0001     , ZTH)
 
@@ -6111,8 +6109,6 @@ subroutine RUN0(gc, import, export, clock, rc)
   allocate(lai0(ntiles) , stat=status)
 
   LAI0 = LAI
-  
-  IF (MODIS_DVG == 1) LAI0  = min(7., max(0.0001, LAI0))
 
   ! Reset WW
   WW = 0.
