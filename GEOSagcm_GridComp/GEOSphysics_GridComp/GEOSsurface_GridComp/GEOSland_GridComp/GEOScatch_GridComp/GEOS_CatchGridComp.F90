@@ -1347,7 +1347,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = RESTART                    ,&
+    RESTART            = MAPL_RestartOptional        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -1358,7 +1358,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = RESTART                     ,&
+    RESTART            = MAPL_RestartOptional        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -1369,7 +1369,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = RESTART                     ,&
+    RESTART            = MAPL_RestartOptional        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -1380,7 +1380,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = RESTART                     ,&
+    RESTART            = MAPL_RestartOptional        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -1388,10 +1388,10 @@ subroutine SetServices ( GC, RC )
     SHORT_NAME         = 'WW',                        &
     LONG_NAME          = 'vertical_velocity_scale_squared', &
     UNITS              = 'm+2 s-2',                   &
-    DIMS               = MAPL_DimsTileTile,           &
+    DIMS               = MAPL_DimsTileTile           ,&
     NUM_SUBTILES       = NUM_SUBTILES                ,&
-    VLOCATION          = MAPL_VLocationNone,          &
-    RESTART            = RESTART                     ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RESTART            = MAPL_RestartOptional        ,&
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
