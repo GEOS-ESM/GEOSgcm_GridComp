@@ -1,4 +1,4 @@
-set (this GEOSradiation_GridComp)
+esma_set_this()
 
 set (alldirs
   GEOS_RadiationShared
