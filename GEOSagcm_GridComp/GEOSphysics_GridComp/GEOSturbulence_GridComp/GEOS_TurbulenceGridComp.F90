@@ -17,8 +17,7 @@ module GEOS_TurbulenceGridCompMod
   use MAPL_Mod
   use LockEntrain
   use shoc
-  use sl3
-  use mynn
+  use mynn, only : run_mynn, B1, B2
 
 #ifdef _CUDA
   use cudafor
@@ -1983,7 +1982,7 @@ contains
        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
     VERIFY_(STATUS)
 
-    ! Start SL3-related variables
+    ! Start MYNN-related variables
     !
     call MAPL_AddInternalSpec(GC,                                &
        SHORT_NAME = 'TKE_NEW',                                   &
@@ -2019,6 +2018,26 @@ contains
        SHORT_NAME = 'HLQT',                                      &
        LONG_NAME  = 'covariance_of_liquid_water_static_energy_and_total_water_specific_humidity_from_SHOC', &
        UNITS      = 'K',                                         &
+       DEFAULT    = 0.0,                                         &
+       FRIENDLYTO = 'TURBULENCE',                                &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'BETA_HL',                                      &
+       LONG_NAME  = '', &
+       UNITS      = '',                                         &
+       DEFAULT    = 0.0,                                         &
+       FRIENDLYTO = 'TURBULENCE',                                &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'BETA_QT',                                      &
+       LONG_NAME  = '', &
+       UNITS      = '',                                         &
        DEFAULT    = 0.0,                                         &
        FRIENDLYTO = 'TURBULENCE',                                &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -2285,7 +2304,7 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
     !
-    ! End SL3-related variables
+    ! End MYNN-related variables
 
 !EOS
 
@@ -2426,8 +2445,9 @@ contains
                                            SHEARSHOC,WTHV2,&
                                            TKEBUOY,TKESHEAR,TKEDISS,TKETRANS
 
-! SL3-related variables
+! MYNN-related variables
     real, dimension(:,:,:), pointer :: TKE_NEW, HL2, QT2, HLQT, &
+                                       BETA_HL, BETA_QT, &
                                        TKET_M, TKET_B, TKET_D, TKET_T, &
                                        HL2T_M, HL2T_D, QT2T_M, QT2T_D, HLQTT_M, HLQTT_D, &
                                        ITAU_TURB, K_TKE, K_TPE, WS_CG, WQV_CG, WQL_CG, &
@@ -2499,7 +2519,7 @@ contains
     call MAPL_GetPointer(IMPORT, WTHV2, 'WTHV2',    RC=STATUS)
     VERIFY_(STATUS)
 
-! SL3-related variables
+! MYNN-related variables
 !----------------------
     call MAPL_GetPointer(INTERNAL, TKE_NEW,   'TKE_NEW',   RC=STATUS)
     VERIFY_(STATUS)
@@ -2508,6 +2528,10 @@ contains
     call MAPL_GetPointer(INTERNAL, QT2,       'QT2',       RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, HLQT,      'HLQT',      RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, BETA_HL,   'BETA_HL',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, BETA_QT,   'BETA_QT',   RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, TKET_M,    'TKET_M',    RC=STATUS)
     VERIFY_(STATUS)
@@ -2807,11 +2831,12 @@ contains
                                             edmf_w3, edmf_wqt, edmf_qthl, & 
                                             edmf_whl, edmf_qt3, w3_canuto  
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
-   real, dimension(IM,JM,0:LM)          ::  awhl3, awqt3, awthv3 ! for EDMF contribution to SL3
+   real, dimension(IM,JM,0:LM)          ::  awhl3, awqt3, awthv3 ! for EDMF contribution to MYNN
+   real, dimension(IM,JM)               :: tke_surf, hl2_surf, qt2_surf, hlqt_surf ! LBCs for MYNN
 
    real, dimension(:,:), pointer        :: z_conv_edmf
 
-   integer :: DO_SL3
+   integer :: DO_MYNN
 
 ! SHOC PDF variables
 !    real, dimension(:,:,:),pointer     :: PDF_A,      &
@@ -2855,6 +2880,8 @@ contains
      integer :: EDMF_IMPLICIT      ! 0: explicit, 1: implicit discretization of mass flux terms  
      integer :: EDMF_DISCRETE_TYPE ! 0: centered, 1: upwind   discretization of mass flux terms 
      integer :: MYNN_LEVEL         ! 2: Level-2.5 3: Level-3
+     integer :: WQL_TYPE           ! 0: no counter-gradient liquid water flux (level-3) 1: else
+     integer :: WRF_CG_FLAG        ! 1: do not allow positive counter-gradient fluxes (like WRF-MYNN) 0: else
      real,dimension(IM,JM) :: L02
      
 
@@ -2968,7 +2995,7 @@ contains
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",      default=0,            RC=STATUS)
      if (DO_SHOC /= 0) then
-       call MAPL_GetResource (MAPL, DO_SL3,       trim(COMP_NAME)//"_DO_SL3:",       default=0,          RC=STATUS)
+       call MAPL_GetResource (MAPL, DO_MYNN,      trim(COMP_NAME)//"_DO_SL3:",       default=0,          RC=STATUS)
        call MAPL_GetResource (MAPL, SHC_LAMBDA,   trim(COMP_NAME)//"_SHC_LAMBDA:",   default=0.04,       RC=STATUS)
        call MAPL_GetResource (MAPL, SHC_TSCALE,   trim(COMP_NAME)//"_SHC_TSCALE:",   default=400.,       RC=STATUS)
        call MAPL_GetResource (MAPL, SHC_VONK,     trim(COMP_NAME)//"_SHC_VONK:",     default=0.4,        RC=STATUS)
@@ -3302,6 +3329,8 @@ contains
     call MAPL_GetResource (MAPL, EDMF_DISCRETE_TYPE, "EDMF_DISCRETE_TYPE:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_IMPLICIT, "EDMF_IMPLICIT:", default=1,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
+    call MAPL_GetResource (MAPL, WQL_TYPE, "TURBULENCE_WQL_TYPE:", default=1,  RC=STATUS)
+    call MAPL_GetResource (MAPL, WRF_CG_FLAG, "TURBULENCE_WRF_CG_FLAG:", default=0,  RC=STATUS)
 
 ! get ice ramp
    call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0   )
@@ -3344,7 +3373,7 @@ if (ETr .eq. 1.) then
              edmfdryv,edmfmoistv,  &
              edmfmoistqc,             &
              ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             awhl3,awqt3,awthv3, & ! for SL3
+             awhl3,awqt3,awthv3, & ! for MYNN
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L02,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
@@ -3376,7 +3405,7 @@ if (ETr .eq. 1.) then
              edmfdryv,edmfmoistv,  &
              edmfmoistqc,             &
              ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             awhl3,awqt3,awthv3, & ! for SL3
+             awhl3,awqt3,awthv3, & ! for MYNN
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L02,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
@@ -3423,7 +3452,7 @@ if (ETr .eq. 1.) then
              edmfdryv,edmfmoistv,  &
              edmfmoistqc,             &
              ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             awhl3,awqt3,awthv3, & ! for SL3
+             awhl3,awqt3,awthv3, & ! for MYNN
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L02,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
@@ -3587,7 +3616,7 @@ ENDIF
         call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
 
-        if (DO_SL3 == 0) then
+        if (DO_MYNN == 0) then
            ! for now just use fixed values
            QPI = 0.
            QPL = 0.
@@ -3655,21 +3684,16 @@ ENDIF
            KH(:,:,1:LM) = TKH(:,:,1:LM)
            KM(:,:,1:LM) = TKH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
 
-        else ! SL3
-!!$           call run_sl3(IM, JM, LM, &
-!!$                        ZLE, Z, PLE, PLO, &
-!!$                        U, V, T, Q, QL, TKE_NEW, HL2, QT2, HLQT, &
-!!$                        USTAR, QA, awhl3, awqt3, awthv3, &
-!!$                        KH, KM, K_TKE, ITAU_TURB, &
-!!$                        WS_CG, WQV_CG, WQL_CG, &
-!!$                        TKET_M, TKET_B, HL2T_M, QT2T_M, HLQTT_M)
+        else ! MYNN
            call run_mynn(IM, JM, LM, &
                          PLE, ZLE, Z, &
                          U, V, T, Q, QL, QI, TKE_NEW, HL2, QT2, HLQT, &
                          USTAR, SH, EVAP, THV, QA, awhl3, awqt3, awthv3, &
                          KH, KM, K_TKE, K_TPE, ITAU_TURB, WS_CG, WQV_CG, WQL_CG, &
+                         BETA_HL, BETA_QT, &
                          TKET_M, TKET_B, HL2T_M, QT2T_M, HLQTT_M, &
-                         DOMF, MYNN_LEVEL)
+                         TKE_SURF, HL2_SURF, QT2_SURF, HLQT_SURF, &
+                         DOMF, MYNN_LEVEL, WQL_TYPE, WRF_CG_FLAG)
         end if
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
@@ -4528,28 +4552,28 @@ ENDIF
    CKTPE(:,:,LM)     = 0.
 
    BKTKE(:,:,0)      = 1.
-   BKTKE(:,:,1:LM-1) = 1. + DT*ITAU_TURB(:,:,1:LM-1)/24. - (CKTKE(:,:,1:LM-1) + AKTKE(:,:,1:LM-1))
+   BKTKE(:,:,1:LM-1) = 1. + DT*ITAU_TURB(:,:,1:LM-1)/B1 - (CKTKE(:,:,1:LM-1) + AKTKE(:,:,1:LM-1))
    BKTKE(:,:,LM)     = 1.
 
    BKTPE(:,:,0)      = 1.
-   BKTPE(:,:,1:LM-1) = 1. + DT*ITAU_TURB(:,:,1:LM-1)/15. - (CKTPE(:,:,1:LM-1) + AKTPE(:,:,1:LM-1))
+   BKTPE(:,:,1:LM-1) = 1. + DT*ITAU_TURB(:,:,1:LM-1)/B2 - (CKTPE(:,:,1:LM-1) + AKTPE(:,:,1:LM-1))
    BKTPE(:,:,LM)     = 1.
 
    YTKE(:,:,0)      = 0.
    YTKE(:,:,1:LM-1) = DT*( TKET_M(:,:,1:LM-1) + TKET_B(:,:,1:LM-1) )
-   YTKE(:,:,LM)     = 0.
+   YTKE(:,:,LM)     = TKE_SURF(:,:)
 
    YHL2(:,:,0)      = 0.
    YHL2(:,:,1:LM-1) = DT*HL2T_M(:,:,1:LM-1)
-   YHL2(:,:,LM)     = 0.
+   YHL2(:,:,LM)     = HL2_SURF(:,:)
 
    YQT2(:,:,0)      = 0.
    YQT2(:,:,1:LM-1) = DT*QT2T_M(:,:,1:LM-1)
-   YQT2(:,:,LM)     = 0.
+   YQT2(:,:,LM)     = QT2_SURF(:,:)
 
    YHLQT(:,:,0)      = 0.
    YHLQT(:,:,1:LM-1) = DT*HLQTT_M(:,:,1:LM-1)
-   YHLQT(:,:,LM)     = 0.
+   YHLQT(:,:,LM)     = HLQT_SURF(:,:)
 
       ! Add the topographic roughness term
       ! ----------------------------------
@@ -6318,7 +6342,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,nup,&
              moist_qc3, &
             ! outputs - variables needed for solver 
              ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             awhl3,awqt3,awthv3, & ! for SL3
+             awhl3,awqt3,awthv3, & ! for MYNN
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L0,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
@@ -6393,7 +6417,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,nup,&
 
        REAL,DIMENSION(KTS:KTE) :: U,V,THL,QT,THV,QV,QL,QI,ZLO
        REAL,DIMENSION(KTS-1:KTE)  :: ZW,P,THLI,QTI
-       REAL,DIMENSION(KTS-1:KTE) :: UI, VI, THVI, QVI, QLI, QII ! for SL3               
+       REAL,DIMENSION(KTS-1:KTE) :: UI, VI, THVI, QVI, QLI, QII ! for MYNN               
 
 ! internal surface cont
       REAL :: UST,WTHL,WQT,PBLH
@@ -6402,7 +6426,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,nup,&
         REAL,DIMENSION(KTS-1:KTE) :: s_aw,s_aws,s_awqv,s_awql,s_awqi,s_awu,s_awv
         REAL,DIMENSION(KTS:KTE) ::  s_buoyf
         REAL,DIMENSION(KTS-1:KTE) :: s_aw2,s_aw3,s_aqt3,s_aqt2,s_aqthl,s_awqt,s_ahl2,s_awhl
-        REAL,DIMENSION(KTS-1:KTE) :: s_awthv ! for SL3
+        REAL,DIMENSION(KTS-1:KTE) :: s_awthv ! for MYNN
 ! exner function
         REAL,DIMENSION(KTS:KTE) :: exf 
         REAL,DIMENSION(KTS-1:KTE) :: exfh

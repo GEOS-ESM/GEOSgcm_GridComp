@@ -1731,8 +1731,19 @@ contains
     call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
     VERIFY_(STATUS)
 
-    ! Bundles for prognostic second-order moments for SL3
-    !
+! Add Friendlies from Moist (We assume QV is among these, all others are treated as default)
+
+    call MAPL_GridCompGetFriendlies(GCS(MOIST) , "TURBULENCE", BUNDLE, RC=STATUS )
+    VERIFY_(STATUS)
+
+! Add Friendlies from Chem (These are default tracers--zero surface flux)
+
+    call MAPL_GridCompGetFriendlies(GCS(CHEM), "TURBULENCE", BUNDLE, RC=STATUS )
+    VERIFY_(STATUS)
+
+! Bundles for prognostic second-order moments for MYNN
+! These should be defined last (after first-order moments)
+
     call ESMF_StateGet    (GEX(TURBL),  'TKE_NEW'   , FIELD,    RC=STATUS )
     VERIFY_(STATUS)
     call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
@@ -1759,18 +1770,6 @@ contains
     call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
     VERIFY_(STATUS)
     call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
-    VERIFY_(STATUS)
-    !
-    ! End bundles for SL3
-
-! Add Friendlies from Moist (We assume QV is among these, all others are treated as default)
-
-    call MAPL_GridCompGetFriendlies(GCS(MOIST) , "TURBULENCE", BUNDLE, RC=STATUS )
-    VERIFY_(STATUS)
-
-! Add Friendlies from Chem (These are default tracers--zero surface flux)
-
-    call MAPL_GridCompGetFriendlies(GCS(CHEM), "TURBULENCE", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
 
 #ifdef PRINT_STATES
