@@ -1,5 +1,5 @@
 
-!  $Id$
+!  $Id: GEOS_GwdGridComp.F90,v 1.34.38.5.20.1 2018/12/11 15:58:05 wputman Exp $
 
 #include "MAPL_Generic.h"
 
@@ -76,7 +76,8 @@ module GEOS_GwdGridCompMod
   public SetServices
 
 !EOP
-  logical, parameter :: USE_NCEP_GWD = .false.
+  character(len=ESMF_MAXSTR) ::  USE_NCEP_GWD ! TRUE or FALSE
+  logical                    :: LUSE_NCEP_GWD
 
 contains
 
@@ -107,6 +108,7 @@ contains
     character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
+    type (ESMF_Config)                      :: CF
 
 !=============================================================================
 
@@ -116,7 +118,7 @@ contains
 ! ---------------------------------------
 
     Iam = 'SetServices'
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
+    call ESMF_GridCompGet( GC, CONFIG = CF, NAME=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
@@ -543,7 +545,12 @@ contains
          VLOCATION  = MAPL_VLocationNone,                                                     RC=STATUS  )
      VERIFY_(STATUS)
 
-     if (USE_NCEP_GWD) then
+     call ESMF_ConfigGetAttribute( CF, USE_NCEP_GWD, Label="USE_NCEP_GWD:",  default="FALSE", RC=STATUS)
+     VERIFY_(STATUS)
+     if (adjustl(USE_NCEP_GWD)=="TRUE" ) LUSE_NCEP_GWD=.true.
+     if (adjustl(USE_NCEP_GWD)=="FALSE") LUSE_NCEP_GWD=.false.
+
+     if (LUSE_NCEP_GWD) then
 !ALT: Reminder for myself: we need connections in Physics
 ! We need some new imports
 ! from turbulance
@@ -795,38 +802,40 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Gravity wave drag
 ! -----------------
 
-    if (USE_NCEP_GWD) then
+
+
+    if (LUSE_NCEP_GWD) then
 ! NCEP  FV3 values
 ! C768:  cdmbgwd="3.500,0.25"
 ! C384:  cdmbgwd="1.000,1.20"
 ! C192:  cdmbgwd="0.200,2.50"
 ! C96 :  cdmbgwd="0.125,3.00"
 ! C48 :  cdmbgwd="0.062,3.50"
-    if ( imsize.lt.270 ) then
+    if ( imsize.lt.360 ) then
       call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=0.062, RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=3.500, RC=STATUS)
       VERIFY_(STATUS)
     endif
-    if ( imsize.ge.270 .and. imsize.lt.540 ) then
+    if ( imsize.ge.360 .and. imsize.lt.720 ) then
       call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=0.125, RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=3.000, RC=STATUS)
       VERIFY_(STATUS)
     endif
-    if ( imsize.ge.540 .and. imsize.lt.1080 ) then
+    if ( imsize.ge.720 .and. imsize.lt.1440 ) then
       call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=0.200, RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=2.500, RC=STATUS)
       VERIFY_(STATUS)
     endif
-    if ( imsize.ge.1080 .and. imsize.lt.3240 ) then
+    if ( imsize.ge.1440 .and. imsize.lt.2880 ) then
       call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=1.000, RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=1.200, RC=STATUS)
       VERIFY_(STATUS)
     endif
-    if ( imsize.ge.3240 ) then
+    if ( imsize.ge.2880 ) then
       call MAPL_GetResource( MAPL, CDMBGWD1, Label="CDMBGWD1:", default=3.500, RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=0.250, RC=STATUS)
@@ -836,8 +845,32 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_GetResource( MAPL, effgworo, Label="EFFGWORO:", default=0.250, RC=STATUS)
     VERIFY_(STATUS)
+#ifdef SCALE_EFFGWBKG
+   ! Make BKG GWD resolution dependent as we begin to explicitly resolve convective gravity waves
+    if ( imsize.lt.1440 ) then ! >= 50km
+      call MAPL_GetResource( MAPL, effgwbkg, Label="EFFGWBKG:", default=0.125, RC=STATUS)
+      VERIFY_(STATUS)
+    endif
+    if ( imsize.ge.1440 .and. imsize.lt.2880 ) then ! 25km
+      call MAPL_GetResource( MAPL, effgwbkg, Label="EFFGWBKG:", default=0.0625, RC=STATUS)
+      VERIFY_(STATUS)
+    endif
+    if ( imsize.ge.2880 .and. imsize.lt.5760 ) then ! 12km
+      call MAPL_GetResource( MAPL, effgwbkg, Label="EFFGWBKG:", default=0.03125, RC=STATUS)
+      VERIFY_(STATUS)
+    endif
+    if ( imsize.ge.5760 .and. imsize.lt.11520 ) then ! 6km
+      call MAPL_GetResource( MAPL, effgwbkg, Label="EFFGWBKG:", default=0.015625, RC=STATUS)
+      VERIFY_(STATUS)
+    endif
+    if ( imsize.ge.11520 ) then ! <= 3km
+      call MAPL_GetResource( MAPL, effgwbkg, Label="EFFGWBKG:", default=0.0, RC=STATUS)
+      VERIFY_(STATUS)
+    endif
+#else
     call MAPL_GetResource( MAPL, effgwbkg, Label="EFFGWBKG:", default=0.125, RC=STATUS)
     VERIFY_(STATUS)
+#endif
 
     if( LM .le. 72 ) then
         call MAPL_GetResource( MAPL, pgwv,        Label="PGWV:",        default=4,    RC=STATUS)
@@ -1469,7 +1502,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !---------------------------------------------------------
 
     call MAPL_TimerOn(MAPL,"-INTR")
-    if (.not. USE_NCEP_GWD) then
+    if (.not. LUSE_NCEP_GWD) then
        call gw_intr   (IM*JM,      LM,         DT,                  &
             PGWV,                                                   &
             PLE,       T,          U,          V,      SGH,   PREF, &

@@ -2285,6 +2285,29 @@ contains
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='STOCH_CNV',                                     &
+         LONG_NAME ='stochastic_factor_for_convection',               &
+         UNITS     =''  ,                                         &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='SIGMA_DEEP',                                     &
+         LONG_NAME ='sigma_for_deep_in_convection',               &
+         UNITS     =''  ,                                         &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='SIGMA_MID',                                     &
+         LONG_NAME ='sigma_for_mid_in_convection',               &
+         UNITS     =''  ,                                         &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='RAS_TIME',                                     & 
@@ -5144,6 +5167,7 @@ contains
 
       real, pointer, dimension(:,:  ) :: RAS_TIME, RAS_TRG, RAS_TOKI, RAS_PBL, RAS_WFN 
       real, pointer, dimension(:,:,:) :: RAS_ALPHA, RAS_TAU
+      real, pointer, dimension(:,:  ) :: STOCH_CNV, SIGMA_DEEP, SIGMA_MID
 
 !!$      real, pointer, dimension(:,:,:) :: LIQANMOVE, ICEANMOVE, DANCLD, DLSCLD
 !!$      real, pointer, dimension(:,:,:) :: CURAINMOVE, CUSNOWMOVE
@@ -5521,6 +5545,7 @@ contains
       real,    dimension(IM,JM)       :: RASPRCP
       real,    dimension(IM,JM)       :: CO_AUTO, CCNSCALE
       integer, dimension(IM,JM,2)     :: SEEDRAS
+      real,    dimension(IM,JM)       :: SEEDCNV
       integer, dimension(IM,JM)       :: KLCL, KLFC, KPBL, KPBL_SC
 
       real,    dimension(IM,JM)       :: LS_ARFX,CN_ARFX,AN_ARFX,SC_ARFX,QSSFC,IKEX,IKEX2
@@ -5823,7 +5848,10 @@ contains
       real                                :: CNV_FRACTION_MAX
       real                                :: CNV_FRACTION_EXP
       real                                :: GF_MIN_AREA
+      ! Control for stochasticity in CNV
+      integer                             :: STOCHASTIC_CNV
 
+      real :: FAC_RI_CN, FAC_RI_LS
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
 
       real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU
@@ -6432,6 +6460,9 @@ contains
       call MAPL_GetPointer(EXPORT, THRAS,     'THRAS'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, URAS,      'URAS '   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, VRAS,      'VRAS '   , RC=STATUS); VERIFY_(STATUS)
+
+      call MAPL_GetPointer(EXPORT, SIGMA_DEEP,  'SIGMA_DEEP' , ALLOC=.TRUE., RC=STATUS); _VERIFY(STATUS)
+      call MAPL_GetPointer(EXPORT, SIGMA_MID,  'SIGMA_MID' , ALLOC=.TRUE., RC=STATUS); _VERIFY(STATUS)
 
       call MAPL_GetPointer(EXPORT, RAS_TIME,  'RAS_TIME' , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, RAS_TRG,   'RAS_TRG'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -7356,6 +7387,8 @@ contains
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 9.e6, RC=STATUS)
         VERIFY_(STATUS)
+        call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
+        VERIFY_(STATUS)
       else
         call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
         VERIFY_(STATUS)
@@ -7364,6 +7397,8 @@ contains
         call MAPL_GetResource(STATE,CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT= 1.0, RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 1.e6, RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
         VERIFY_(STATUS)
       endif
 
@@ -7788,6 +7823,7 @@ contains
        elsewhere
           TPERT = MIN( TPERT , CBL_TPERT_MXLND ) ! land
        end where
+      end if
 
        ! Myong-In I just   
        ! put these 100s    
@@ -7796,7 +7832,36 @@ contains
        ! to keep them               V                         V
        SEEDRAS(:,:,1) = 1000000 * ( 100*TEMP(:,:,LM)   - INT( 100*TEMP(:,:,LM) ) )
        SEEDRAS(:,:,2) = 1000000 * ( 100*TEMP(:,:,LM-1) - INT( 100*TEMP(:,:,LM-1) ) )
-      end if
+
+      if (STOCHASTIC_CNV) then
+      ! Create bit-processor-reproducible random white noise for convection [0:1]
+       SEEDCNV(:,:)   = SEEDRAS(:,:,1)/1000000.0
+       where (SEEDCNV > 1.0)
+          SEEDCNV = 1.0
+       end where
+       where (SEEDCNV < 0.0)
+          SEEDCNV = 0.0
+       end where 
+   !!! call RANDOM_NUMBER(SEEDCNV)
+     ! SEEDCNV = (SEEDCNV**3)*(4.0-1.0)+1.0 ! Random range from 4.0 : 1.0
+
+    ! vvvv this line was used Aug24-Aug27 for 03km case
+    !  SEEDCNV = (SEEDCNV**((1.0-CNV_FRACTION)*(1.75-0.25)+0.25))*(1.875-0.125)+0.125 
+    ! ^^^^ this line was used Aug24-Aug27 for 03km case
+
+    ! vvvv this line was used Aug27-Aug28 for 03km case
+    !  SEEDCNV = SEEDCNV*(1.875-0.125)+0.125
+    ! ^^^^ this line was used Aug27-Aug28 for 03km case
+
+       SEEDCNV = SEEDCNV*(1.875-0.5)+0.5
+
+      else
+       SEEDCNV(:,:) = 1.0
+      endif
+
+       CALL MAPL_GetPointer(EXPORT, STOCH_CNV,  'STOCH_CNV', RC=STATUS)
+       VERIFY_(STATUS)
+       if (associated(STOCH_CNV)) STOCH_CNV = SEEDCNV
 
       if(adjustl(CLDMICRO)=="2MOMENT") then
        if (NPRE_FRAC > 0.0) then
@@ -7966,10 +8031,11 @@ contains
                                  ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC , CLCN         &                           
                                  ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
-                                 ,FRLAND, GF_AREA,USTAR,TSTAR,QSTAR,T2M                &
+                                 ,FRLAND, GF_AREA,USTAR,TSTAR,QSTAR,T2M             &
                                  ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS                       &
                                  ,KPBLIN    &
                                  ,MAPL_GRAV &
+                                 ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
                                  ,DQDT_GF,DTDT_GF,MUPDP,MUPSH,MUPMD                 &
                                  ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
@@ -8600,7 +8666,7 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%TANHRHCRIT,     'TANHRHCRIT:',     DEFAULT= 1.0     )
       call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
       if (adjustl(CLDMICRO) =="GFDL") then
-        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.5     )
+        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.75    )
         call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
         call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     ) ! irrelevant
       else
@@ -8645,7 +8711,9 @@ contains
          call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 0.5     )
          call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT,     'TURNRHCRIT:',     DEFAULT= 884.0   )
       elseif (adjustl(CLDMICRO) =="GFDL") then
-         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 0.75    )
+         call MAPL_GetResource( STATE, FAC_RI_CN,                'FAC_RI_CN:',      DEFAULT= 1.0     )
+         call MAPL_GetResource( STATE, FAC_RI_LS,                'FAC_RI_LS:',      DEFAULT= 0.5     )
+         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
          call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT= 15.e-6  )
          call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
          call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 1.0     )
@@ -9097,8 +9165,9 @@ contains
                                         NACTL(I,J,K),  &
                                         NACTI(I,J,K),  &
                                         2)
-           ! apply limits
-            CLDREFFI(I,J,K) = CLDREFFI(I,J,K)*CLDPARAMS%FAC_RI
+           ! apply limits and convective dependence
+            CLDREFFI(I,J,K) = CLDREFFI(I,J,K)*CLDPARAMS%FAC_RI*( &
+                              FAC_RI_CN*CNV_FRACTION(I,J) + FAC_RI_LS*(1-CNV_FRACTION(I,J)))
             CLDREFFI(I,J,K) = MAX( CLDPARAMS%MIN_RI, MIN(CLDREFFI(I,J,K), CLDPARAMS%MAX_RI) )
            enddo
           enddo

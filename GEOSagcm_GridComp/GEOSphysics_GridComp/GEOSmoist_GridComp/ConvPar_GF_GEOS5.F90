@@ -164,6 +164,7 @@ CONTAINS
                                ,TA      ,QA    ,SH    ,EVAP  ,PHIS                &
                                ,KPBLIN         &
                                ,MAPL_GRAV      &
+                               ,STOCHASTIC_SIG, SIGMA_DEEP, SIGMA_MID             &
                                ,DQDT_GF,DTDT_GF,MUPDP,MUPSH,MUPMD                 &
                                ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
@@ -196,7 +197,9 @@ CONTAINS
 
     REAL   ,DIMENSION(MXP,MYP)       ,INTENT(IN)   :: FRLAND ,AREA ,USTAR ,TSTAR ,QSTAR &
                                                      ,T2M ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS  &
-                                                     ,KPBLIN,LONS,LATS
+                                                     ,KPBLIN,LONS,LATS                  &
+                                                     ,STOCHASTIC_SIG
+    REAL   ,DIMENSION(MXP,MYP)       ,INTENT(OUT)  :: SIGMA_DEEP, SIGMA_MID
     REAL   ,DIMENSION(MXP,MYP)       ,INTENT(OUT)  :: CNPCPRATE ! kg m-2 s-1
 
     REAL                             ,INTENT(IN)   :: DT_moist ,MAPL_GRAV, qcrit, c0_auto
@@ -525,6 +528,7 @@ CONTAINS
                      ,mynum       &
                      ,dt_moist    &
                      ,dx2d        &
+                     ,stochastic_sig &
                      ,zm3d        &
                      ,zt3d        &
 		     ,dm3d        &
@@ -594,6 +598,10 @@ CONTAINS
                      ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC &
                      )
   !
+
+  ! Fill sigma exports
+    SIGMA_DEEP = sigma4d(:,:,deep)
+    SIGMA_MID  = sigma4d(:,:,mid )
 
  IF(FEED_3DMODEL)THEN
       !-- update GEOS-5 model state with the feedback from cumulus convection
@@ -884,6 +892,7 @@ ENDIF
               ,mynum                 &
               ,dt                    &
               ,dx2d                  &
+              ,stochastic_sig        &
               ,zm                    &
               ,zt                    &
 	      ,dm                    &
@@ -979,7 +988,8 @@ ENDIF
 
    INTEGER, DIMENSION(its:ite,jts:jte), INTENT(IN) :: kpbl
    REAL,    DIMENSION(its:ite,jts:jte), INTENT(IN) :: topt ,aot500 ,temp2m ,sfc_press &
-                                                     ,sflux_r ,sflux_t ,xland,lons,lats,dx2d
+                                                     ,sflux_r ,sflux_t ,xland,lons,lats,dx2d &
+                                                     ,stochastic_sig
    REAL,    DIMENSION(kts:kte,its:ite,jts:jte), INTENT(IN) ::        &
                                                          rthften  &
                                                         ,rqvften  &
@@ -1399,6 +1409,7 @@ ENDIF
                   ,use_excess     (deep)             &
                   ! input data
                   ,dx2d(:,j)                         &
+                  ,stochastic_sig(:,j)               &
                   ,dt                                &
                   ,kpbli                             &
                   ,ztexec                            &
@@ -1506,6 +1517,7 @@ ENDIF
                   ,use_excess    (mid)              &
                   ! input data
                   ,dx2d(:,j)                        &
+                  ,stochastic_sig(:,j)              &
                   ,dt                               &
                   ,kpbli                            &
                   ,ztexec                           &
@@ -1689,6 +1701,7 @@ loop1:  do n=1,maxiens
                      ,use_excess        &
                      !input data
                      ,dx                &
+                     ,stochastic_sig    &
                      ,dtime             &
                      ,kpbl              &
                      ,ztexec            &
@@ -1788,7 +1801,8 @@ loop1:  do n=1,maxiens
      REAL,    DIMENSION (its:ite,kts:kte)       ,INTENT (INOUT)    ::   &
          q,qo
      REAL,    DIMENSION (its:ite)               ,INTENT (IN   )    ::   &
-        ccn,Z1,PSUR,xland,xlons,xlats, h_sfc_flux,le_sfc_flux,tsur,dx 
+        ccn,Z1,PSUR,xland,xlons,xlats, h_sfc_flux,le_sfc_flux,tsur,dx,  &
+        stochastic_sig 
      REAL,    DIMENSION (its:ite)               ,INTENT (INOUT)    ::   &
         zws,ztexec,zqexec
      REAL                                       ,INTENT (IN   )    ::   &
@@ -2283,7 +2297,7 @@ l_SIG:DO fase = 1,2
              do i=its,itf
 	      sig(i) = 0.
               if(ierr(i) /= 0) cycle
-              sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1000.))
+              sig(i)= (1.0-0.9839*exp(-0.09835*(dx(i)/1000.)))**stochastic_sig(i)
               sig(i)= max(0.001,min(sig(i),1.))
               !print*,"FORM2=",sig(i),dx(i)
              enddo
