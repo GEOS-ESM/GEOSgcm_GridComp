@@ -141,7 +141,7 @@ module GEOS_SaltwaterGridCompMod
 ! Atmosphere-Ocean Interface Layer compatibility: on/off?
 !-------------------------------------------------------
 
-    call MAPL_GetResource( MAPL,  AOIL_COMP_SWITCH,        Label="AOIL_COMP_SWITCH:",     DEFAULT="OFF", RC=STATUS)
+    call MAPL_GetResource( MAPL,  AOIL_COMP_SWITCH,        Label="AOIL_COMP_SWITCH:",     DEFAULT="ON", RC=STATUS)
     VERIFY_(STATUS)
 
 ! Ocean biology and chemistry: using OBIO or not?
