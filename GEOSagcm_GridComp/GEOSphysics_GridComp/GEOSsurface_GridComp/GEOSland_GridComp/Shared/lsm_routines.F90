@@ -432,7 +432,7 @@ MODULE lsm_routines
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - 
 
       DO N=1,NCH
-        IF (POROS(N) .LE. 0.8) THEN
+        IF (POROS(N) .LE. 0.9) THEN
            PTOTAL=THRU(N)
            frun=AR1(N)
            if(srfexc(n) .gt. 0.) then
@@ -526,7 +526,7 @@ MODULE lsm_routines
 
       DO N=1,NCH
 
-         IF (POROS(N) .LE. 0.8) THEN
+         IF (POROS(N) .LE. 0.9) THEN
 
             !**** Compute runoff from large-scale and convective storms separately:
             
