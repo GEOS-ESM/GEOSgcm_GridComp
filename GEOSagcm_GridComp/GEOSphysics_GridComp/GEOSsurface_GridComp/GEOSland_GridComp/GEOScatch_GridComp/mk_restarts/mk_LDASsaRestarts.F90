@@ -45,9 +45,9 @@ PROGRAM mk_LDASsaRestarts
   integer, parameter :: VAR_COL = 40 ! number of CN column restart variables
   integer, parameter :: VAR_PFT = 74 ! number of CN PFT variables per column
   integer, parameter :: npft    = 19  
-  integer, parameter :: npft_clm45    = 27  
-  integer, parameter :: VAR_COL_CLM45 = 39 ! number of CN column restart variables
-  integer, parameter :: VAR_PFT_CLM45 = 104 ! number of CN PFT variables per column
+  integer, parameter :: npft_clm45    =  19
+  integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
+  integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column
 
   real,    parameter :: nan = O'17760000000'
   real,    parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
@@ -69,7 +69,9 @@ PROGRAM mk_LDASsaRestarts
        InCatRestart= '/gpfsm/dnb42/projects/p16/ssd/land/l_data/LandRestarts_for_Regridding/Catch/M09/20170101/catch_internal_rst', &
        InCatTilFile= '/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/' &
                       //'SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'            
-
+       InCatRest45 = '/gpfsm/dnb42/projects/p16/ssd/land/l_data/LandRestarts_for_Regridding/Catch/M09/20170101/catch_internal_rst', &
+       InCatTil45  = '/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/' &
+                      //'SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'            
   real        :: SURFLAY = 50
   integer     :: STATUS
 
@@ -2250,7 +2252,8 @@ contains
     ! ===============================================================================================
 
     integer :: iclass(npft_clm45) = &
-         (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,11,11,11,11,11,11,11,11,11/)
+         (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/) 
+         !real 27 type mapping  (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,11,11,11,11,11,11,11,11,11/)
     integer, allocatable, dimension(:,:) :: Id_glb, Id_loc
     integer, allocatable, dimension(:)   :: tid_offl, id_vec
     logical, allocatable, dimension(:)   :: mask
@@ -2521,7 +2524,7 @@ contains
                 icl_ityp1 = iclass(sub_ityp1)
                 
                 do i = 1,nplus
-                   if((sub_ityp1(i)>fmin .and. (ityp_new ==sub_ityp1(i) .or.   &
+                   if((sub_fevg1(i)>fmin .and. (ityp_new ==sub_ityp1(i) .or.   &
                         iclass(ityp_new) ==iclass(sub_ityp1(i)))) .or.             &
                         (sub_fevg2(i)>fmin .and. (ityp_new ==sub_ityp2(i) .or. &
                         iclass(ityp_new)==iclass(sub_ityp2(i))))) then
@@ -2902,16 +2905,22 @@ contains
            ! 27 cns%decomp_npools_vr(:,1,7)   ! soil3n
            ! 28 cns%decomp_npools_vr(:,1,8)   ! soil4n
            ! 29 cns%totcoln             
-           ! 30 cps%altmax              
+           ! 30 cps%fpg                          
            ! 31 cps%annsum_counter      
            ! 32 cps%cannavg_t2m         
            ! 33 cps%cannsum_npp         
-           ! 34 cps%farea_burned        
-           ! 35 cps%altmax_lastyear     
-           ! 36 cps%altmax_indx         
-           ! 37 cps%fpg                 
-           ! 38 cps%fpi_vr          (:,1)  
-           ! 39 cps%altmax_lastyear_indx        
+           ! 34 cps%farea_burned                                    
+           ! 35 cps%fpi_vr          (:,1)              
+! OLD           ! 30 cps%altmax              
+! OLD           ! 31 cps%annsum_counter      
+! OLD           ! 32 cps%cannavg_t2m         
+! OLD           ! 33 cps%cannsum_npp         
+! OLD           ! 34 cps%farea_burned        
+! OLD           ! 35 cps%altmax_lastyear     
+! OLD           ! 36 cps%altmax_indx         
+! OLD           ! 37 cps%fpg                 
+! OLD           ! 38 cps%fpi_vr          (:,1)  
+! OLD           ! 39 cps%altmax_lastyear_indx        
            
            
            ! PFT vars
@@ -2989,37 +2998,38 @@ contains
            ! 71 pps%hbot                  
            ! 72 pps%htop                  
            ! 73 pps%tlai                  
-           ! 74 pps%tsai                  
-           ! 75 pps%gddplant              
-           ! 76 pps%gddtsoi               
-           ! 77 pps%peaklai               
-           ! 78 pps%idop                  
-           ! 79 pps%aleaf                 
-           ! 80 pps%aleafi                
-           ! 81 pps%astem                 
-           ! 82 pps%astemi                
-           ! 83 pps%htmx                  
-           ! 84 pps%hdidx                 
-           ! 85 pps%vf                    
-           ! 86 pps%cumvd                 
-           ! 87 pps%croplive              
-           ! 88 pps%cropplant             
-           ! 89 pps%harvdate              
-           ! 90 pps%gdd1020               
-           ! 91 pps%gdd820                
-           ! 92 pps%gdd020                
-           ! 93 pps%gddmaturity           
-           ! 94 pps%huileaf               
-           ! 95 pps%huigrain              
-           ! 96 pcs%grainc                
-           ! 97 pcs%grainc_storage        
-           ! 98 pcs%grainc_xfer           
-           ! 99 pns%grainn                
-           !100 pns%grainn_storage        
-           !101 pns%grainn_xfer           
-           !102 pepv%fert_counter         
-           !103 pnf%fert                  
-           !104 pepv%grain_flag           
+           ! 74 pps%tsai      
+           ! 75 pepv%plant_ndemand                      
+! OLD           ! 75 pps%gddplant              
+! OLD           ! 76 pps%gddtsoi               
+! OLD           ! 77 pps%peaklai               
+! OLD           ! 78 pps%idop                  
+! OLD           ! 79 pps%aleaf                 
+! OLD           ! 80 pps%aleafi                
+! OLD           ! 81 pps%astem                 
+! OLD           ! 82 pps%astemi                
+! OLD           ! 83 pps%htmx                  
+! OLD           ! 84 pps%hdidx                 
+! OLD           ! 85 pps%vf                    
+! OLD           ! 86 pps%cumvd                 
+! OLD           ! 87 pps%croplive              
+! OLD           ! 88 pps%cropplant             
+! OLD           ! 89 pps%harvdate              
+! OLD           ! 90 pps%gdd1020               
+! OLD           ! 91 pps%gdd820                
+! OLD           ! 92 pps%gdd020                
+! OLD           ! 93 pps%gddmaturity           
+! OLD           ! 94 pps%huileaf               
+! OLD           ! 95 pps%huigrain              
+! OLD           ! 96 pcs%grainc                
+! OLD           ! 97 pcs%grainc_storage        
+! OLD           ! 98 pcs%grainc_xfer           
+! OLD           ! 99 pns%grainn                
+! OLD           !100 pns%grainn_storage        
+! OLD           !101 pns%grainn_xfer           
+! OLD           !102 pepv%fert_counter         
+! OLD           !103 pnf%fert                  
+! OLD           !104 pepv%grain_flag           
            
         end do OUT_TILE
         
@@ -3028,8 +3038,6 @@ contains
         do nv = 1,VAR_COL_CLM45
            do nz = 1,nzone
               STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNCOL'), (/1,i/), (/NTILES,1 /),var_col_out(:, nz,nv))
-              if((nv == 30).OR.(nv == 35).OR.(nv == 36).OR.(nv == 39)) &
-                 STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNCOL'), (/1,i/), (/NTILES,1 /),var_dum)  
               i = i + 1
            end do
         end do
@@ -3077,10 +3085,6 @@ contains
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'WINDM'), (/1/), (/NTILES/),VAR_DUM(:))
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC10D'), (/1/), (/NTILES/),VAR_DUM(:))
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC60D'), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2M1H'), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'GDD0'), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'GDD8'), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'GDD10'), (/1/), (/NTILES/),VAR_DUM(:))
  
         do nv = 1,nzone
            do nz = 1,nveg
@@ -3091,18 +3095,6 @@ contains
 
         VAR_DUM = MAPL_TICE + 20.
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2M10D'), (/1/), (/NTILES/),VAR_DUM(:))
-
-        VAR_DUM = -1.e36
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2MMAXI'), (/1/), (/NTILES/),VAR_DUM(:))
-
-        VAR_DUM = 1.e36
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2MMAX'), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2MMINI'), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2MMIN'), (/1/), (/NTILES/),VAR_DUM(:))
-
-        VAR_DUM = MAPL_TICE
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2MIN5D'), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2MIN10D'), (/1/), (/NTILES/),VAR_DUM(:))
 
         STATUS = NF_CLOSE (NCFID)
         STATUS = NF_CLOSE (OutID)
