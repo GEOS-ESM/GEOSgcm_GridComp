@@ -263,7 +263,7 @@
               XFICE, FH21, FH21W, FH21I, FH21D, DFH21W, DFH21I, DFH21D,        &
               EVSN, SHFLS, HUPS, HCORR, SWNET0, HLWDWN0, TMPSNW, HLWTC,        &
               DHLWTC, HSTURB, DHSDEA, DHSDTC, ESATTC, ETURB, DEDEA, DEDTC,     &
-              SNOWF, TS, fh31w, fh31i, fh31d, pr, ea, desdtc, areasc,          &
+              SNOWF, solidf, TS, fh31w, fh31i, fh31d, pr, ea, desdtc, areasc,    &
               pre, dummy1, dummy2, dummy3, areasc0, EDIF, EINTX,               &
               SCLAI, tsn1, tsn2, tsn3, hold, hnew, emaxrz, dedtc0,             &
               dhsdtc0, alhfsn, ADJ, raddn, zc1, tsnowsrf, dum, tsoil,          &
@@ -828,8 +828,9 @@
         AREA(1)= AR1(N) 
         AREA(2)= AR2(N) 
         AREA(3)= AR4(N) 
-        pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
-        snowf  = tsnow(n)+tice(n)+tfrzr(n)
+        pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)  ! total precip
+        snowf  = tsnow(n)                                       ! snow
+        solidf = tice(n)+tfrzr(n)                               ! non-snow solid precip
         dedea  = dedqas(n)*epsilon/psur(n) 
         dhsdea = dhsdqas(n)*epsilon/psur(n) 
         ea     = qm(n)*psur(n)/epsilon 
@@ -902,7 +903,7 @@
 
         CALL SNOWRT(                                                           &
                    N_sm, N_snow,     MAPL_Land,                                &
-                   t1,area,tkgnd,pr,snowf,ts,DTSTEP,                           &
+                   t1,area,tkgnd,pr,snowf,solidf,ts,DTSTEP,                      &
                    eturbs(n),dedtc0,hsturb,dhsdtc0,hlwtc,dhlwtc,               &
                    desdtc,hups,raddn,zc1, totdep1,  wss,                       &
                    wesn,htsnn,sndz,   fices,tpsn,RCONSTIT1, RMELT1,            &

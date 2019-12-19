@@ -358,6 +358,26 @@ subroutine SetServices ( GC, RC )
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
+     call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'icefall'                     ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'ICE'                         ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'freezing_rain_fall'          ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'FRZR'                        ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+
+    VERIFY_(STATUS)
+    
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_par_beam_flux',&
          UNITS              = 'W m-2'                       ,&
@@ -4907,6 +4927,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: LHACC, SUMEV
 	real,pointer,dimension(:) :: fveg1, fveg2
         real,pointer,dimension(:) :: FICE1
+        real,pointer,dimension(:) :: SLDTOT
 
 !       real*8,pointer,dimension(:) :: fsum
 
@@ -5924,6 +5945,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	allocate(fveg1     (NTILES))
 	allocate(fveg2     (NTILES))
         allocate(FICE1     (NTILES)) 
+        allocate(SLDTOT    (NTILES))             ! total solid precip
 
         allocate(SHSBT    (NTILES,NUM_SUBTILES))
         allocate(DSHSBT   (NTILES,NUM_SUBTILES))
@@ -6311,13 +6333,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         QC(:,FSNW) = QSAT(:,FSNW)
 
 	! --------------------------------------------------------------------------
+        ! get total solid precip
+        ! --------------------------------------------------------------------------
+
+        SLDTOT = SNO+ICE+FRZR
+        
+	! --------------------------------------------------------------------------
 	! protect the forcing from unsavory values, as per practice in offline
 	! driver
 	! --------------------------------------------------------------------------
 
         ASSERT_(count(PLS<0.)==0)
         ASSERT_(count(PCU<0.)==0)
-        ASSERT_(count(SNO<0.)==0)
+        ASSERT_(count(SLDTOT<0.)==0)
 
         LAI0  = max(0.0001     , LAI)
         GRN0  = max(0.0001     , GRN)		
@@ -7609,8 +7637,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if (ntiles > 0) then
 
            call CATCHCN ( NTILES, LONS, LATS                         ,&
-                DT	,PRECIPFRAC, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF   ,&
-                PCU      ,     PLSIN         ,     SNO               ,&
+                DT	, PRECIPFRAC, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF   ,&
+                PCU     , PLS       , SNO, ICE, FRZR                 ,&
                 UUU                                                  ,&
 
                 EVSBT(:,FSAT),     DEVSBT(:,FSAT),     DEDTC(:,FSAT) ,&
@@ -7885,13 +7913,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated( WCRZ )) WCRZ   = RZMC
         if(associated( WCPR )) WCPR   = PRMC
 
-        if(associated( ACCUM)) ACCUM  = SNO - EVPICE*(1./MAPL_ALHS) - SMELT 
+        if(associated( ACCUM)) ACCUM  = SLDTOT - EVPICE*(1./MAPL_ALHS) - SMELT 
 
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
         if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
-        if(associated(PRLAND)) PRLAND = PCU+PLS+SNO
-        if(associated(SNOLAND)) SNOLAND = SNO
+        if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
+        if(associated(SNOLAND)) SNOLAND = SLDTOT
         if(associated(DRPARLAND)) DRPARLAND = DRPAR
         if(associated(DFPARLAND)) DFPARLAND = DFPAR
         if(associated(LHLAND)) LHLAND = HLATN
@@ -8121,6 +8149,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(TOTDEPOS )
         deallocate(RMELT    )
         deallocate(FICE1    )
+        deallocate(SLDTOT   )
         deallocate(   btran )
 	deallocate(     wgt )
 	deallocate(     bt1 )

@@ -131,7 +131,7 @@ CONTAINS
   SUBROUTINE CATCHCN (                                                     &
        NCH, LONS, LATS, DTSTEP, SFRAC, cat_id,                   &
        ITYP1,ITYP2,FVEG1,FVEG2,                                  &
-       DZSF, TRAINC,TRAINL, TSNOW, UM,                           &
+       DZSF, TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,              &
        ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
        ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
        ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
@@ -172,7 +172,8 @@ CONTAINS
     INTEGER, INTENT(IN), DIMENSION(:) :: ITYP1, ITYP2, cat_id
     
     REAL, INTENT(IN) :: DTSTEP, SFRAC
-    REAL, INTENT(IN), DIMENSION(:) :: DZSF, TRAINC, TRAINL, TSNOW,  UM,    &
+    REAL, INTENT(IN), DIMENSION(:) :: DZSF,                        &
+         TRAINC, TRAINL, TSNOW, TICE, TFRZR, UM,                   &
          FVEG1,   FVEG2,                                           &
          ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
          ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
@@ -269,11 +270,11 @@ CONTAINS
     
     REAL, DIMENSION(N_SM) :: T1, AREA, tkgnd, fhgnd
     
-    REAL :: TG1SN, TG2SN, TG4SN, DTG1SN,DTG2SN,DTG4SN, ZBAR, THETAF,         &
+    REAL :: TG1SN, TG2SN, TG4SN, DTG1SN,DTG2SN,DTG4SN, ZBAR, THETAF,      &
          XFICE, FH21, FH21W, FH21I, FH21D, DFH21W, DFH21I, DFH21D,        &
          EVSN, SHFLS, HUPS, HCORR, SWNET0, HLWDWN0, TMPSNW, HLWTC,        &
          DHLWTC, HSTURB, DHSDEA, DHSDTC, ESATTC, ETURB, DEDEA, DEDTC,     &
-         SNOWF, TS, fh31w, fh31i, fh31d, pr, ea, desdtc, areasc,          &
+         SNOWF, solidf,TS, fh31w, fh31i, fh31d, pr, ea, desdtc, areasc,   &
          pre, dummy1, dummy2, dummy3, areasc0, EDIF, EINTX,               &
          SCLAI, tsn1, tsn2, tsn3, hold, hnew, dedtc0,                     &
          dhsdtc0, alhfsn, ADJ, raddn, zc1, tsnowsrf, dum, tsoil,          &
@@ -343,6 +344,8 @@ CONTAINS
           write (*,*) TRAINC(n_out)    
           write (*,*) TRAINL(n_out)    
           write (*,*) TSNOW(n_out)    
+          write (*,*) TICE(n_out)    
+          write (*,*) TFRZR(n_out)
           write (*,*) UM(n_out)  
           write (*,*) ETURB1(n_out)    
           write (*,*) DEDQA1(n_out)    
@@ -790,9 +793,10 @@ CONTAINS
         T1(3)  = TG4(N)-TF
         AREA(1)= AR1(N) 
         AREA(2)= AR2(N) 
-        AREA(3)= AR4(N) 
-        pr     = trainc(n)+trainl(n)+tsnow(n) 
-        snowf  = tsnow(n) 
+        AREA(3)= AR4(N)
+        pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)  ! total precip
+        snowf  = tsnow(n)                                       ! snow
+        solidf = tice(n)+tfrzr(n)                               ! non-snow solid precip
         dedea  = dedqas(n)*epsilon/psur(n) 
         dhsdea = dhsdqas(n)*epsilon/psur(n) 
         ea     = qm(n)*psur(n)/epsilon 
@@ -865,7 +869,7 @@ CONTAINS
 
         CALL SNOWRT(                                                           &
                    N_sm, N_snow, MAPL_Land,                                    &
-                   t1,area,tkgnd,pr,snowf,ts,DTSTEP,                           &
+                   t1,area,tkgnd,pr,snowf,solidf,ts,DTSTEP,                    &
                    eturbs(n),dedtc0,hsturb,dhsdtc0,hlwtc,dhlwtc,               &
                    desdtc,hups,raddn,zc1, totdep1, wss,                        &
                    wesn,htsnn,sndz,   fices,tpsn,RCONSTIT1, RMELT1,            &
@@ -1484,7 +1488,9 @@ CONTAINS
          write (*,*) FVEG2(n_out)  
          write (*,*) TRAINC(n_out)    
          write (*,*) TRAINL(n_out)    
-         write (*,*) TSNOW(n_out)    
+         write (*,*) TSNOW(n_out)
+         write (*,*) TICE(n_out)    
+         write (*,*) TFRZR(n_out)  
          write (*,*) UM(n_out)  
          write (*,*) ETURB1(n_out)    
          write (*,*) DEDQA1(n_out)    

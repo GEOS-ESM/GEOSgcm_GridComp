@@ -180,7 +180,7 @@ module StieglitzSnow
 contains
 
      subroutine snowrt(N_zones, N_snow, tileType,                              &
-           t1,area,tkgnd,precip,snowf,ts,dts, eturb,dedtc,hsturb,dhsdtc,       &
+           t1,area,tkgnd,precip,snowf,solidf,ts,dts, eturb,dedtc,hsturb,dhsdtc,  &
            hlwtc,dhlwtc,desdtc,hlwout,raddn,zc1,totdepos,wss,                  &
            wesn,htsnn,sndz,fices,tpsn, rconstit,rmelt,                         &
            areasc,areasc0,pre,fhgnd,evap,shflux,lhflux,hcorr,ghfluxsno         &
@@ -202,8 +202,9 @@ contains
 !  t1     : Temperature of catchment zones  [C]
 !  ts     : Air temperature [K]
 !  area   : Fraction of snow-free area in each catchment zone [0-1]
-!  precip : Precipitation (Rain+snowfall) [kg/m^2/s == mm/s]
+!  precip : Precipitation (Rain+snowfall+ice+freezing rain) [kg/m^2/s == mm/s]
 !  snowf  : Snowfall per unit area of catchment [kg/m^2/s == mm/s]
+!  solidf : non-snow solid precip (freezing rain, hail, graupel, etc.) per unit area of catchment [kg/m^2/s == mm/s]
 !  dts    : Time step  [s]
 !  eturb  : Evaporation per unit area of snow [kg/m^2/s == mm/s]
 !  dedtc  : d(eturb)/d(ts) [kg/m^2/s/K]
@@ -286,7 +287,7 @@ contains
       integer, intent(in)  :: N_zones, N_snow, tileType
       real,    intent(in ) :: t1(N_zones),area(N_zones),tkgnd(N_zones)
       real,    intent(in)  :: totdepos(N_constit)
-      real,    intent(in ) :: ts,precip,snowf,dts,dedtc,raddn,hlwtc
+      real,    intent(in ) :: ts,precip,snowf,solidf,dts,dedtc,raddn,hlwtc
       real,    intent(in ) :: dhsdtc,desdtc,dhlwtc,eturb,hsturb,zc1,wss
       real,    intent(inout):: wesn(N_snow),htsnn(N_snow),sndz(N_snow)
       real,    intent(inout):: rconstit(N_snow,N_constit)
@@ -373,7 +374,7 @@ contains
        excs   = 0.
        hcorr  = 0.
        dens   = rhofs
-       rainf  = precip - snowf   ! [kg/m^2/s]
+       rainf  = precip - snowf - solidf   ! [kg/m^2/s]
 
        !wesnsc = 0.
        sndzsc = 0.
@@ -408,17 +409,18 @@ contains
             enddo
           rconstit(:,:) = 0.
 
-          if(snowf > 0.) then   ! only initialize with non-liquid part of precip
+          if(snowf+solidf > 0.) then   ! only initialize with non-liquid part of precip
                                 ! liquid part runs off (above)
 
-             wesn    = snowf*dts/float(N_snow)  
+             wesn    = (snowf+solidf)*dts/float(N_snow)  
              htsnn   = (tsx-alhm)*wesn
-             areasc0 = min((snowf*dts)/wemin,1.)
+             areasc0 = min(((snowf+solidf)*dts)/wemin,1.)
              !sndz = wesn/rhofs
              !*** should have fractional snow cover taken into account
-             sndz = wesn/(max(areasc0,small)*rhofs)
+!             sndz = wesn/(max(areasc0,small)*rhofs)
+             sndz = (snowf*dts/(max(areasc0,small)*rhofs) + solidf*dts/(max(areasc0,small)*rhoma))/float(N_snow)  
 !             hcorr  = hcorr - (tsx-alhm)*snowf    ! randy
-             hcorr  = hcorr - tsx*snowf           ! randy
+             hcorr  = hcorr - tsx*(snowf+solidf)           ! randy
              !call relayer(N_snow, htsnn, wesn, sndz)
              select case (tileType)
                 case (MAPL_LANDICE)
@@ -701,14 +703,14 @@ contains
 
 !**** Add rainwater at 0 C, snow at ts., bal. budget with shflux.
 
-       wesn (1) = wesn (1) + (rainf*areasc+snowf)*dts
-       htsnn(1) = htsnn(1) + (tsx -alhm)*(snowf*dts)
-       sndz (1) = sndz (1) + (snowf/rhofs)*dts
-       wesnprec = (rainf*areasc+snowf)*dts
-       sndzprec = (snowf/rhofs)*dts
+       wesn (1) = wesn (1) + (rainf*areasc+(snowf+solidf))*dts
+       htsnn(1) = htsnn(1) + (tsx -alhm)*((snowf+solidf)*dts)
+       sndz (1) = sndz (1) + (snowf/rhofs)*dts + (solidf/rhoma)*dts
+       wesnprec = (rainf*areasc+(snowf+solidf))*dts
+       sndzprec = (snowf/rhofs)*dts + (solidf/rhoma)*dts
 !       shflux  = shflux   + tsx*snowf          ! randy
 !       hcorr   = hcorr   - (tsx-alhm)*snowf     ! randy
-        hcorr   = hcorr   -  tsx*snowf          ! randy
+        hcorr   = hcorr   -  tsx*(snowf+solidf)          ! randy
        
        snowd=sum(wesn)
 
@@ -957,7 +959,7 @@ contains
  
 !**** Final check for water balance.
 
-       waterin   = (rainf*areasc+snowf)*dts + max(dw,0.)
+       waterin   = (rainf*areasc+(snowf+solidf))*dts + max(dw,0.)
        waterout  = pre*dts - min(dw,0.)
        snowout   = sum(wesn) + sum(excs) + excswe
        waterbal  = snowin + waterin - waterout - snowout
