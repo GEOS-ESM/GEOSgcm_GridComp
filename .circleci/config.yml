@@ -1,0 +1,28 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: gmao/geos-build-env:3.0.0
+    working_directory: /root/project
+    steps:
+      - run:
+          name: "GEOSgcm_GridComp branch"
+          command: echo ${CIRCLE_BRANCH}
+      - checkout
+      - run:
+          name: "Checkout GEOSgcm fixture and update GEOSgcm_GridComp branch"
+          command: |
+            cd ${CIRCLE_WORKING_DIRECTORY}
+            git clone git@github.com:GEOS-ESM/GEOSgcm.git
+            cd GEOSgcm
+            checkout_externals -e Develop.cfg
+            cd src/Components/\@GEOSgcm_GridComp
+            git checkout ${CIRCLE_BRANCH}
+      - run:
+          name: "Build"
+          command: |
+            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSgcm
+            mkdir build
+            cd build
+            cmake .. -DBASEDIR=$BASEDIR/Linux -DCMAKE_Fortran_COMPILER=gfortran -DCMAKE_BUILD_TYPE=Debug
+            make -j2 install

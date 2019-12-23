@@ -995,17 +995,6 @@ contains
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME = 'MTRI',                                       &
-         LONG_NAME  = 'tracer_tendencies_due_to_moist',             &
-         UNITS      = 'X s-1',                                      &
-         !        TYPE       = MAPL_BUNDLE,                                &
-         DATATYPE   = MAPL_BundleItem,                             &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationCenter,                        &
-         RC=STATUS )
-    VERIFY_(STATUS)                                                                           
-
     call MAPL_AddExportSpec(GC,                              &
          SHORT_NAME = 'DTHDT ',                                     &
          LONG_NAME = 'pressure_weighted_potential_temperature_tendency_due_to_moist',&
@@ -4973,7 +4962,6 @@ contains
 
       type (ESMF_TimeInterval)        :: TINT
       type (RAS_Tracer_T ), pointer   :: TRPtrs (:)
-      type (RAS_Tracer_T ), pointer   :: TRIPtrs(:)
 
       !  LOCAL COPY OF VARIABLES
 
@@ -5036,7 +5024,7 @@ contains
       real, pointer, dimension(:,:  ) :: PTYPE,FRZR,ICE,SNR,PRECU,PRELS,TS,SNOMAS,FRLANDICE,FRLAND,FROCEAN
       real, pointer, dimension(:,:  ) :: IWP,LWP,CWP,TPW,CAPE,ZPBLCN,INHB,ZLCL,ZLFC,ZCBL,CCWP , KPBLIN, KPBLSC
       real, pointer, dimension(:,:  ) :: TVQ0,TVQ1,TVE0,TVE1,TVEX,DCPTE, TVQX2, TVQX1, CCNCOLUMN, NDCOLUMN, NCCOLUMN  !DONIF
-      real, pointer, dimension(:,:,:,:) :: XHO, XHOI
+      real, pointer, dimension(:,:,:,:) :: XHO
       real, pointer, dimension(:,:  ) ::  MXDIAM, RH600, Q600, QCBL, QRATIO, CNV_FRC
 
       real, pointer, dimension(:,:  ) :: RAS_TIME, RAS_TRG, RAS_TOKI, RAS_PBL, RAS_WFN 
@@ -5689,6 +5677,9 @@ contains
 
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
 
+      real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU
+      real   , dimension(IM,JM)           :: CMDUcarma, CMSScarma
+
       ! MATMAT CUDA Variables
 #ifdef _CUDA
       type(dim3) :: Grid, Block
@@ -6311,8 +6302,6 @@ contains
 
       call MAPL_GetPointer(EXPORT, SDMZ,      'SDMZ'    , RC=STATUS); VERIFY_(STATUS)
 
-      call ESMF_StateGet(EXPORT, 'MTRI',    TRI,        RC=STATUS); VERIFY_(STATUS)
-
 
       call MAPL_GetPointer(EXPORT, DDF_RH1,    'DDF_RH1'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DDF_RH2,    'DDF_RH2'   , RC=STATUS); VERIFY_(STATUS)
@@ -6467,12 +6456,6 @@ contains
       call ESMF_FieldBundleGet(TR,FieldCount=KM , RC=STATUS)
       VERIFY_(STATUS)
 
-      ! ...and make sure the other bundles are the same.
-      !-------------------------------------------------
-
-      call ESMF_FieldBundleGet(TRI,FieldCount=K , RC=STATUS)
-      VERIFY_(STATUS)
-      ASSERT_(KM==K)
 
       ! Allocate tracer stuff
       !----------------------
@@ -6482,8 +6465,6 @@ contains
       allocate(IS_WEIGHTED(KM),stat=STATUS)
       VERIFY_(STATUS)
       allocate(TRPtrs     (KM),stat=STATUS)
-      VERIFY_(STATUS)
-      allocate(TRIPtrs    (KM),stat=STATUS)
       VERIFY_(STATUS)
       allocate(FSCAV_     (KM),stat=STATUS)
       VERIFY_(STATUS)
@@ -6518,11 +6499,11 @@ contains
          ! Get the Kth Field from tracer bundle
          !-------------------------------------
 
-         call ESMF_FieldBundleGet(TR, K, FIELD, RC=STATUS)
+         NAME = trim(QNAMES(K))
+
+         call ESMF_FieldBundleGet(TR, fieldName=trim(NAME), Field=FIELD, RC=STATUS)
          VERIFY_(STATUS)
 
-         call ESMF_FieldGet(FIELD, name=NAME, RC=STATUS)
-         VERIFY_(STATUS)
 
          ! Get items friendly status (default is not friendly)
          !-----------------------------------------------------
@@ -6586,10 +6567,11 @@ contains
 
          if (IS_FRIENDLY(K)) then
             ITRCR = ITRCR + 1
-            call ESMFL_BundleGetPointerToData(TR    ,      NAME,         TRPtrs (K)%Q, RC=STATUS)
+            call ESMFL_BundleGetPointerToData(TR    , trim(NAME),        TRPtrs (K)%Q, RC=STATUS)
             VERIFY_(STATUS)
-            call ESMFL_BundleGetPointerToData(TRI   , trim(NAME)//'IM' , TRIPtrs(K)%Q, RC=STATUS)
-            VERIFY_(STATUS)
+         else
+            ASSERT_(.not.associated(TRPtrs (K)%Q))
+            TRPtrs(K)%Q  => null()
          end if
 
       end do
@@ -6599,8 +6581,6 @@ contains
       !---------------------------
 
       allocate(XHO (IM,JM,LM,ITRCR),stat=STATUS)
-      VERIFY_(STATUS)
-      allocate(XHOI(IM,JM,LM,ITRCR),stat=STATUS)
       VERIFY_(STATUS)
       !     FSCAV changes dimensions of FSCAV_
       allocate(FSCAV(ITRCR),stat=STATUS)
@@ -7459,9 +7439,6 @@ contains
             FSCAV(KK) = FSCAV_(K)
             !PRINT *, QNAMES(K), FSCAV_(K), FSCAV(KK)
             XHO(:,:,:,KK) = TRPtrs(K)%Q(:,:,:)
-            if(associated(TRIPtrs(K)%Q)) then
-               XHOI(:,:,:,KK) = TRPtrs(K)%Q(:,:,:)
-            end if
          end if
       end do
 
@@ -7646,7 +7623,7 @@ contains
 
       ! Compute initial mass loading for aerosols; CAR 12/19/08
       ! -------------------------------------------------------
-      !! First initialize everything to zero, just in case
+      !! First initialize everything to zero
       if(associated(DDUDT)) DDUDT =  0.0
       if(associated(DSSDT)) DSSDT =  0.0
       if(associated(DBCDT)) DBCDT =  0.0
@@ -7654,6 +7631,14 @@ contains
       if(associated(DSUDT)) DSUDT =  0.0
       if(associated(DDUDTcarma)) DDUDTcarma =  0.0
       if(associated(DSSDTcarma)) DSSDTcarma =  0.0
+
+      CMDU = 0.0
+      CMSS = 0.0
+      CMOC = 0.0
+      CMBC = 0.0
+      CMSU = 0.0
+      CMDUcarma = 0.0
+      CMSScarma = 0.0
 
       !! Now loop over tracers and accumulate initial column loading
       !! tendency  kg/m2/s CAR
@@ -7668,23 +7653,23 @@ contains
                SELECT CASE (QNAME(1:3))
                CASE ('du0')
                   if(associated(DDUDT)) then
-                     DDUDT = DDUDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST)
+                     CMDU = CMDU + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('ss0')
                   if(associated(DSSDT)) then
-                     DSSDT = DSSDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST)
+                     CMSS = CMSS + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('BCp')
                   if(associated(DBCDT)) then
-                     DBCDT = DBCDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST)
+                     CMBC = CMBC + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('OCp')
                   if(associated(DOCDT)) then
-                     DOCDT = DOCDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST)
+                     CMOC = CMOC + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('SO4')
                   if(associated(DSUDT)) then
-                     DSUDT = DSUDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST)
+                     CMSU = CMSU + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                END SELECT
             endif
@@ -7698,11 +7683,11 @@ contains
                      SELECT CASE (QNAME(1:4))
                      CASE ('dust') ! CARMA DUST
                         if(associated(DDUDTcarma)) then
-                           DDUDTcarma = DDUDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST)
+                           CMDUcarma = CMDUcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
                         end if
                      CASE ('seas') ! CARMA SEASALT
                         if(associated(DSSDTcarma)) then
-                           DSSDTcarma = DSSDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST)
+                           CMSScarma = CMSScarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                         end if
                      END SELECT
                   endif
@@ -8155,28 +8140,23 @@ contains
                SELECT CASE (QNAME(1:3))
                CASE ('du0')
                   if(associated(DDUDT)) then
-                     DDUDT = DDUDT - (sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST))
-                     where (DDUDT <= 0) DDUDT = 0.0
+                     DDUDT = DDUDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('ss0')
                   if(associated(DSSDT)) then
-                     DSSDT = DSSDT - (sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST))
-                     where (DSSDT <= 0) DSSDT = 0.0
+                     DSSDT = DSSDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('BCp')
                   if(associated(DBCDT)) then
-                     DBCDT = DBCDT - (sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST))
-                     where (DBCDT <= 0) DBCDT = 0.0
+                     DBCDT = DBCDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('OCp')
                   if(associated(DOCDT)) then
-                     DOCDT = DOCDT - (sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST))
-                     where (DOCDT <= 0) DOCDT = 0.0
+                     DOCDT = DOCDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('SO4')
                   if(associated(DSUDT)) then
-                     DSUDT = DSUDT - (sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST))
-                     where (DSUDT <= 0) DSUDT = 0.0
+                     DSUDT = DSUDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                END SELECT
             endif
@@ -8191,13 +8171,11 @@ contains
                   SELECT CASE (QNAME(1:4))
                   CASE ('dust') ! CARMA DUST
                      if(associated(DDUDTcarma)) then
-                        DDUDTcarma = DDUDTcarma - (sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST))
-                        where (DDUDTcarma <= 0) DDUDTcarma = 0.0
+                        DDUDTcarma = DDUDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                      end if
                   CASE ('seas') ! CARMA SEASALT
                      if(associated(DSSDTcarma)) then
-                        DSSDTcarma = DSSDTcarma - (sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)/(MAPL_GRAV*DT_MOIST))
-                        where (DSSDTcarma <= 0) DSSDTcarma = 0.0
+                        DSSDTcarma = DSSDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                      end if
                   END SELECT
                endif
@@ -8205,21 +8183,24 @@ contains
          endif
       end do
 
-      ! Fill in tracer tendencies
-      !--------------------------
+      if (associated(DDUDT))  DDUDT = (DDUDT - CMDU) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DSSDT))  DSSDT = (DSSDT - CMSS) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DBCDT))  DBCDT = (DBCDT - CMBC) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DOCDT))  DOCDT = (DOCDT - CMOC) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DSUDT))  DSUDT = (DSUDT - CMSU) / (MAPL_GRAV*DT_MOIST)
+
+      if (associated(DDUDTcarma))  DDUDTcarma = (DDUDTcarma - CMDUcarma) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DSSDTcarma))  DSSDTcarma = (DSSDTcarma - CMSScarma) / (MAPL_GRAV*DT_MOIST)
+
+
+      ! Update MTR pointers
+      !--------------------
 
       KK=0
       do K=1,KM
          if(IS_FRIENDLY(K)) then
             KK = KK+1
             TRPtrs(K)%Q(:,:,:) =  XHO(:,:,:,KK)
-            if(associated(TRIPtrs(K)%Q)) then
-               !PRINT *, "TRIPtrs is associated"
-               TRIPtrs(K)%Q(:,:,:) = (XHO(:,:,:,KK) - XHOI(:,:,:,KK)) / DT_MOIST
-               if(IS_WEIGHTED(K)) then
-                  TRIPtrs(K)%Q(:,:,:) = TRIPtrs(K)%Q(:,:,:)*DP(:,:,:)
-               end if
-            end if
          end if
       end do
 
@@ -8353,11 +8334,7 @@ contains
       VERIFY_(STATUS)
       deallocate(TRPtrs     ,stat=STATUS)
       VERIFY_(STATUS)
-      deallocate(TRIPtrs    ,stat=STATUS)
-      VERIFY_(STATUS)
       deallocate(XHO        ,stat=STATUS)
-      VERIFY_(STATUS)
-      deallocate(XHOI       ,stat=STATUS)
       VERIFY_(STATUS)
       ! CAR 12/5/08
       deallocate(FSCAV      ,stat=STATUS)

@@ -1566,6 +1566,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated( MOU2M))  MOU2M = 0.0
    if(associated( MOV2M))  MOV2M = 0.0
    if(associated(VNT)) VNT = 0.0
+   if(associated(GST)) GST = 0.0
 
 ! Call the childrens' RUN1
 !-------------------------
