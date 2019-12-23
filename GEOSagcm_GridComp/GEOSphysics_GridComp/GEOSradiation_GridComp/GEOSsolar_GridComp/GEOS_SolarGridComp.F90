@@ -1646,6 +1646,7 @@ contains
     real    :: PRS_MID_HIGH
     real    :: SC, HK(8), HK_IR_TEMP(3,10), HK_UV_TEMP(5), MG, SB
     integer :: SUNFLAG
+    logical :: EOT
     real, pointer, dimension(:  )   :: PREF
 
     logical :: REFRESH_FLUXES
@@ -1717,6 +1718,9 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, SUNFLAG,        'SUN_FLAG:',              DEFAULT=0,           RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, EOT,            'EOT:',                   DEFAULT=.FALSE.,     RC=STATUS)
+    VERIFY_(STATUS)
+
 
 ! Should we load balance solar radiation?
 ! For the single-column model, we always use the
@@ -2441,6 +2445,7 @@ contains
               INTV = TINT,         &
               currTime = currTime, &
               TIME = SUNFLAG,      &
+              EOT = EOT,           &
               DIST = DIST,         &
               __RC__)
 
@@ -4609,6 +4614,7 @@ contains
               INTV  = DELT,    &
               CLOCK = CLOCK,   &
               TIME = SUNFLAG,  &
+              EOT = EOT,       &
               ZTHN = ZTHN,     &
               RC=STATUS )
       VERIFY_(STATUS)
