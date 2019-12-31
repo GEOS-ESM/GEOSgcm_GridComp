@@ -466,29 +466,31 @@ MODULE lsm_routines
            SRFEXC(N)=SRFEXC(N)+QIN
            RUNSRF(N)=RUNSRF(N)/DTSTEP
            QINFIL(N)=QIN/DTSTEP
-         ELSE
-          ! peat
-          ! MB: no Hortonian surface runoff
-          PTOTAL=THRU(N)
-          srun0 = 0.
-          ! handling numerical instability due to exceptional snow melt events at some pixels
-          IF (AR1(N)>0.50) srun0=PTOTAL
-          ! MB: even no surface runoff when srfmx is exceeded (activating macro-pore flow)
-          if (ptotal-srun0 .gt. srfmx(n)-srfexc(n)) then                               
-             ! MB: check if VGWMAX is exceeded
-             IF(RZEQ(N) + RZEXC(N) .GT. (VGWMAX(N))) THEN
-                srun0 = srun0 + RZEQ(N)+RZEXC(N)-VGWMAX(N)
-                RZEXC(N)=VGWMAX(N)-RZEQ(N)
-             ENDIF
-          endif
-          if (srun0 .gt. ptotal) then
+
+         ELSE      
+           ! peat
+           ! MB: no Hortonian surface runoff
+           PTOTAL=THRU(N)
+           srun0 = 0.
+           ! handling numerical instability due to exceptional snow melt events at some pixels
+           ! avoid AR1 to increase much higher than > 0.5 by enabling runoff
+           IF (AR1(N)>0.50) srun0=PTOTAL
+           ! MB: even no surface runoff when srfmx is exceeded (activating macro-pore flow)
+           if (ptotal-srun0 .gt. srfmx(n)-srfexc(n))                               &
+                      rzexc(n)=rzexc(n) + (ptotal-srun0-(srfmx(n)-srfexc(n))) 
+           ! MB: check if VGWMAX is exceeded
+           IF(RZEQ(N) + RZEXC(N) .GT. (VGWMAX(N))) THEN
+             srun0 = srun0 + RZEQ(N)+RZEXC(N)-VGWMAX(N)
+             RZEXC(N)=VGWMAX(N)-RZEQ(N)
+           ENDIF
+           if (srun0 .gt. ptotal) then
              srun0=ptotal
-          endif
-          RUNSRF(N)=RUNSRF(N)+srun0
-          QIN=PTOTAL-srun0
-          SRFEXC(N)=amin1(SRFEXC(N)+QIN,srfmx(n))
-          RUNSRF(N)=RUNSRF(N)/DTSTEP
-          QINFIL(N)=QIN/DTSTEP  
+           endif
+           RUNSRF(N)=RUNSRF(N)+srun0
+           QIN=PTOTAL-srun0
+           SRFEXC(N)=amin1(SRFEXC(N)+QIN,srfmx(n))
+           RUNSRF(N)=RUNSRF(N)/DTSTEP
+           QINFIL(N)=QIN/DTSTEP  
          ENDIF
       ENDDO
       
@@ -520,7 +522,7 @@ MODULE lsm_routines
       REAL :: FWETC = FWETC_2P   ! for convective precipitation
 
       INTEGER N
-      REAL deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, srunc, srunl, ptotal
+      REAL deficit,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, srunc, srunl
 
 !**** - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -571,28 +573,55 @@ MODULE lsm_routines
             RUNSRF(N)=RUNSRF(N)/DTSTEP
             QINFIL(N)=QIN/DTSTEP
          ELSE
-            ! peat
-            ! MB: no Hortonian surface runoff
-            PTOTAL=THRUL(N) + THRUC(N)
-            srun0 = 0.
-            ! handling numerical instability due to exceptional snow melt events at some pixels
-            IF (AR1(N)>0.50) srun0=PTOTAL
-            ! MB: even no surface runoff when srfmx is exceeded (activating macro-pore flow)
-            if (ptotal-srun0 .gt. srfmx(n)-srfexc(n)) then                              
-               ! MB: check if VGWMAX is exceeded
-               IF(RZEQ(N) + RZEXC(N) .GT. (VGWMAX(N))) THEN
-                  srun0 = srun0 + RZEQ(N)+RZEXC(N)-VGWMAX(N)
-                  RZEXC(N)=VGWMAX(N)-RZEQ(N)
-               ENDIF
+           ! peat
+            deficit=srfmx(n)-srfexc(n)
+           ! MB: no Hortonian surface runoff
+           ! handling numerical instability due to exceptional snow melt events at some pixels
+           ! avoid AR1 to increase much higher than > 0.5 by enabling runoff
+            srunl =0.
+            srunc =0.
+            IF (AR1(N)>0.50) srunl=AR1(n)*THRUL(n)
+            qinfil_l=(1.-ar1(n))*THRUL(n)
+            qcapac=deficit*SFRAC*FWETL
+            
+            if(qinfil_l .gt. qcapac) then
+               excess_infil=qinfil_l-qcapac
+               srunl=srunl+excess_infil
+               qinfil_l=qinfil_l-excess_infil
             endif
-            if (srun0 .gt. ptotal) then
-               srun0=ptotal
+            
+            IF (AR1(N)>0.50) srunc=AR1(n)*THRUC(n)
+            qinfil_c=(1.-ar1(n))*THRUC(n)
+            qcapac=deficit*SFRAC*FWETC
+            
+            if(qinfil_c .gt. qcapac) then
+               excess_infil=qinfil_c-qcapac
+               srunc=srunc+excess_infil
+               qinfil_c=qinfil_c-excess_infil
             endif
-            RUNSRF(N)=RUNSRF(N)+srun0
-            QIN=PTOTAL-srun0
-            SRFEXC(N)=amin1(SRFEXC(N)+QIN,srfmx(n))
-            RUNSRF(N)=RUNSRF(N)/DTSTEP
-            QINFIL(N)=QIN/DTSTEP  
+
+            if (srunl .gt. THRUL(n)) then
+               srunl=THRUL(n)
+            endif
+            
+            if (srunc .gt. THRUC(n)) then
+               srunc=THRUC(n)
+            endif
+
+           ! MB: even no surface runoff when srfmx is exceeded (activating macro-pore flow)
+           if (((THRUL(n) + THRUC(n))- (srunl + srunc)) .gt. srfmx(n)-srfexc(n))                               &
+                      rzexc(n)=rzexc(n) + (THRUL(n) + THRUC(n)- srunl + srunc-(srfmx(n)-srfexc(n))) 
+           ! MB: check if VGWMAX is exceeded
+           IF(RZEQ(N) + RZEXC(N) .GT. (VGWMAX(N))) THEN
+             srunl = srunl + RZEQ(N)+RZEXC(N)-VGWMAX(N)
+             RZEXC(N)=VGWMAX(N)-RZEQ(N)
+           ENDIF
+
+           RUNSRF(N)=RUNSRF(N)+srunl + srunc
+           QIN=THRUL(n)+THRUC(n)-(srunl+srunc)
+           SRFEXC(N)=amin1(SRFEXC(N)+QIN,srfmx(n))
+           RUNSRF(N)=RUNSRF(N)/DTSTEP
+           QINFIL(N)=QIN/DTSTEP  
          ENDIF
       END DO
 
@@ -647,63 +676,70 @@ MODULE lsm_routines
 
            CATDEF(N)=CATDEF(N)+BFLOW(N)*dtstep
         ELSE
-                     ! PEAT  
-          ! BFLOW in mm/s
-          CFRICE=amin1(0.9999,FRICE(N))
-          ! based on Ivanov 1981
-          ! Ksz0  in  m/s
-          ! m_Ivanov [-]  value depends on unit of Ksz0 and z
-          ! v_slope in m^(-1)
-          Ksz_zero=10.
-          m_Ivanov=3.0
-          v_slope = 1.5e-07
-          ! Ta in m2/d
-          Ta = (Ksz_zero*(1.+100.*amax1(0.,ZBAR))**(1.-m_Ivanov))/(100.*(m_Ivanov-1.))
-          BFLOW(N)=v_slope*Ta*1000
-          ! handling numerical instability due to exceptional snow melt events at some pixels
-          IF (ZBAR .GE. 0.05) BFLOW(N)=(1.-CFRICE)*BFLOW(N)
-
-          ! MB: Remove water from CATDEF and surface water storage
-          IF (BFLOW(N) .NE. 0.0) THEN
-            dztmp = BFLOW(N)*dtstep/0.5
-            dztmp = amax1(0.1,dztmp)
-            NOMTMP=(1000.*(amax1(AR1(N),2.E-10) - 1)*(CATDEF(N) + dztmp - BF1(N)*BF2(N)**2. - &
-            BF1(N)*ZBAR**2. - AR1(N)*CATDEF(N) - 2.*BF1(N)*BF2(N)*ZBAR + AR1(N)*BF1(N)*BF2(N)**2. + &
-            AR1(N)*BF1(N)*ZBAR**2. + 2.*AR1(N)*BF1(N)*BF2(N)*ZBAR))
-            IF (NOMTMP .EQ. 0.0) THEN
-              NOMTMP = 1.E-20
-            ENDIF
-
-            SYSOIL1 = -(1000.*AR1(N)**2.*CATDEF(N) + dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + &
-            BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - 2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + &
-            1000.*AR1(N)*BF1(N)*ZBAR - 1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - &
-            1000.*AR1(N)**2.*BF1(N)*ZBAR)**(0.5) - 1000.*AR1(N)*CATDEF(N) - 500*AR1(N)*dztmp + &
-            BF1(N)*BF2(N)*dztmp + BF1(N)*dztmp*ZBAR + 1000.*AR1(N)*BF1(N)*BF2(N)**2. + &
-            1000.*AR1(N)*BF1(N)*ZBAR**2. - 1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. - 1000.*AR1(N)**2.*BF1(N)*ZBAR**2. - &
-            AR1(N)*BF1(N)*BF2(N)*dztmp + 2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR - AR1(N)*BF1(N)*dztmp*ZBAR - &
-            2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR)/NOMTMP
-
-            NOMTMP=(1000.*(amax1(AR1(N),2.E-10) - 1)*(CATDEF(N) + dztmp - BF1(N)*BF2(N)**2. - &
-            BF1(N)*ZBAR**2. - AR1(N)*CATDEF(N) - 2.*BF1(N)*BF2(N)*ZBAR + AR1(N)*BF1(N)*BF2(N)**2. + &
-            AR1(N)*BF1(N)*ZBAR**2. + 2.*AR1(N)*BF1(N)*BF2(N)*ZBAR))
-            IF (NOMTMP .EQ. 0.0) THEN
-              NOMTMP = 1.E-20
-            ENDIF
-
-            SYSOIL2 = (dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - &
-            2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*ZBAR - &
-            1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - 1000.*AR1(N)**2.*BF1(N)*ZBAR)**(0.5) - &
-            1000.*AR1(N)**2.*CATDEF(N) + 1000.*AR1(N)*CATDEF(N) + 500*AR1(N)*dztmp - BF1(N)*BF2(N)*dztmp - &
-            BF1(N)*dztmp*ZBAR - 1000.*AR1(N)*BF1(N)*BF2(N)**2. - 1000.*AR1(N)*BF1(N)*ZBAR**2. + &
-            1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. + 1000.*AR1(N)**2.*BF1(N)*ZBAR**2. + AR1(N)*BF1(N)*BF2(N)*dztmp - &
-            2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR + AR1(N)*BF1(N)*dztmp*ZBAR + &
-            2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR)/NOMTMP
-
-            SYSOIL = AMAX1(1.e-5,AMAX1(SYSOIL1,SYSOIL2))
-            BFLOW_CATDEF = (1-AR1(N))*SYSOIL*BFLOW(N)/(1.0*AR1(N)+SYSOIL*(1-AR1(N)))
-            CATDEF(N)=CATDEF(N)+BFLOW_CATDEF*dtstep
-          ENDIF
-        ENDIF
+           ! PEAT
+           ! MB:  
+           IF (FRICE(N) .GE. 0.9999) THEN
+             CFRICE = 1.
+           ELSE
+             CFRICE = FRICE(N)
+           ENDIF
+           ! BFLOW in mm/s
+           ! based on Ivanov 1981
+           ! Ksz0  in  m/s
+           ! m_Ivanov [-]  value depends on unit of Ksz0 and z
+           ! v_slope in m^(-1)
+           IF (POROS(N) .GE. 0.9) THEN
+             Ksz_zero=10.
+             m_Ivanov=3.0
+             v_slope = 1.5e-05
+           ENDIF
+           ! Ta in m2/s, BFLOW in mm/s
+           Ta = (Ksz_zero*(1.+100.*amax1(0.,ZBAR))**(1.-m_Ivanov))/(100.*(m_Ivanov-1.))
+           BFLOW(N)=v_slope*Ta*1000
+           ! handling numerical instability due to extrene snow melt events on partly frozen ground
+           ! --> allow BFLOW/DISCHARGE for zbar .LE. 0.05
+           IF (ZBAR .GE. 0.05) BFLOW(N)=(1.-CFRICE)*BFLOW(N)
+ 
+           ! MB: Remove water from CATDEF and surface water storage
+           IF (BFLOW(N) .NE. 0.0) THEN
+             dztmp = BFLOW(N)*dtstep/0.5
+             dztmp = amax1(0.1,dztmp)
+             NOMTMP=(1000.*(amax1(AR1(N),2.E-10) - 1)*(CATDEF(N) + dztmp - BF1(N)*BF2(N)**2. - &
+             BF1(N)*ZBAR**2. - AR1(N)*CATDEF(N) - 2.*BF1(N)*BF2(N)*ZBAR + AR1(N)*BF1(N)*BF2(N)**2. + &
+             AR1(N)*BF1(N)*ZBAR**2. + 2.*AR1(N)*BF1(N)*BF2(N)*ZBAR))
+             IF (NOMTMP .NE. 0.0) THEN
+ 
+               SYSOIL1 = -(1000.*AR1(N)**2.*CATDEF(N) + dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + &
+               BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - 2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + &
+               1000.*AR1(N)*BF1(N)*ZBAR - 1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - &
+               1000.*AR1(N)**2.*BF1(N)*ZBAR)**(0.5) - 1000.*AR1(N)*CATDEF(N) - 500*AR1(N)*dztmp + &
+               BF1(N)*BF2(N)*dztmp + BF1(N)*dztmp*ZBAR + 1000.*AR1(N)*BF1(N)*BF2(N)**2. + &
+               1000.*AR1(N)*BF1(N)*ZBAR**2. - 1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. - 1000.*AR1(N)**2.*BF1(N)*ZBAR**2. - &
+               AR1(N)*BF1(N)*BF2(N)*dztmp + 2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR - AR1(N)*BF1(N)*dztmp*ZBAR - &
+               2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR)/NOMTMP
+ 
+               SYSOIL2 = (dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - &
+               2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*ZBAR - &
+               1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - 1000.*AR1(N)**2.*BF1(N)*ZBAR)**(0.5) - &
+               1000.*AR1(N)**2.*CATDEF(N) + 1000.*AR1(N)*CATDEF(N) + 500*AR1(N)*dztmp - BF1(N)*BF2(N)*dztmp - &
+               BF1(N)*dztmp*ZBAR - 1000.*AR1(N)*BF1(N)*BF2(N)**2. - 1000.*AR1(N)*BF1(N)*ZBAR**2. + &
+               1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. + 1000.*AR1(N)**2.*BF1(N)*ZBAR**2. + AR1(N)*BF1(N)*BF2(N)*dztmp - &
+               2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR + AR1(N)*BF1(N)*dztmp*ZBAR + &
+               2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR)/NOMTMP
+ 
+               ! MB: To be checked and improved: happened sporadically that SYSOIL got
+               ! unrealistically small. Not clear for which combination of
+               ! conditions. Cutoff applied.
+               SYSOIL = AMAX1(1.e-5,AMAX1(SYSOIL1,SYSOIL2))
+             ELSE
+               ! To improve: happened that NOMTMP got zero, here handled
+               ! use an average value
+               SYSOIL = 0.2
+             ENDIF
+             BFLOW_CATDEF = (1-AR1(N))*SYSOIL*BFLOW(N)/(1.0*AR1(N)+SYSOIL*(1-AR1(N)))
+             CATDEF(N)=CATDEF(N)+BFLOW_CATDEF*dtstep
+           ENDIF
+         ENDIF
      ENDDO
 
 
@@ -755,7 +791,7 @@ MODULE lsm_routines
               ARG1, EXPARG1, ARG2, EXPARG2, ARG3, EXPARG3  !, surflay
 
       LOGICAL :: LSTRESS
-      REAL    :: ZBAR, ARREST 
+      REAL    :: ZBAR, ARREST, WMIN_TEST 
 
       DATA LSTRESS/.FALSE./    !,surflay/20./
 
@@ -787,11 +823,24 @@ MODULE lsm_routines
           else
             ax=ara1(n)*CATDEFX+ara2(n)
           endif
-
-        WMIN=AMIN1(1.,AMAX1(0.,arw4(n)+(1.-arw4(n))*                           &
-                 (1.+arw1(n)*CATDEFX)                                          &
-                 /(1.+arw2(n)*CATDEFX+arw3(n)*CATDEFX*CATDEFX)))
-
+          IF (POROS(N) .GE. 0.9) THEN
+             WMIN=AMIN1(1.,AMAX1(0.,arw4(n)+(1.-arw4(n))*                           &
+                  (1.+arw1(n)*CATDEFX)                                          &
+                  /(1.+arw2(n)*CATDEFX+arw3(n)*CATDEFX*CATDEFX)))
+          ELSE
+           ! PEAT
+           WMIN_TEST = (1.+arw2(n)*CATDEFX+arw3(n)*CATDEFX*CATDEFX)
+           if (WMIN_TEST.gt.1.E-6 .or. WMIN_TEST.lt.(-1.E-6)) then
+             WMIN=AMIN1(1.,AMAX1(0.,arw4(n)+(1.-arw4(n))*(1.+arw1(n)*CATDEFX)     &
+                  /(1.+arw2(n)*CATDEFX+arw3(n)*CATDEFX*CATDEFX)))
+           else
+!             print*,'n: ',n
+!             print*,'WMIN_TEST: ',WMIN_TEST
+             WMIN=AMIN1(1.,AMAX1(0.,arw4(n)+(1.-arw4(n))*(1.+arw1(n)*CATDEFX)     &
+                  /1.0e-6))
+!             print*,'WMIN: ',WMIN
+           endif
+          ENDIF
 !**** CRITICAL VALUE 1: AVERAGE MOISTURE IN ROOT ZONE AT WMIN
 !**** ASSOCIATED WITH CATDEF.
         ARG1=AMAX1(-40., AMIN1(40., -AX*(1.-WMIN)))
@@ -1008,7 +1057,7 @@ MODULE lsm_routines
       REAL, INTENT(OUT), DIMENSION(NCH) :: RZEQ
 
       INTEGER N
-      REAL AX,WMIN,ASCALE,cdi,wilt,catdefx,factor,ARG1,EXPARG1
+      REAL AX,WMIN,ASCALE,cdi,wilt,catdefx,factor,ARG1,EXPARG1,WMIN_TEST
 
 ! ----------------------------------------------------------------------
 
@@ -1030,8 +1079,21 @@ MODULE lsm_routines
             ax=ara1(n)*CATDEFX+ara2(n)
           endif
 
-        WMIN=AMIN1(1.,AMAX1(0.,arw4(n)+(1.-arw4(n))*(1.+arw1(n)*CATDEFX)       &
-                 /(1.+arw2(n)*CATDEFX+arw3(n)*CATDEFX*CATDEFX)))
+!        WMIN=AMIN1(1.,AMAX1(0.,arw4(n)+(1.-arw4(n))*(1.+arw1(n)*CATDEFX)       &
+!                 /(1.+arw2(n)*CATDEFX+arw3(n)*CATDEFX*CATDEFX)))
+          ! 20170814 - Michel Bechtold
+          ! exception for division by zero
+         WMIN_TEST = (1.+arw2(n)*CATDEFX+arw3(n)*CATDEFX*CATDEFX)
+         if (WMIN_TEST.gt.1.E-6 .or. WMIN_TEST.lt.(-1.E-6)) then
+           WMIN=AMIN1(1.,AMAX1(0.,arw4(n)+(1.-arw4(n))*(1.+arw1(n)*CATDEFX)     &
+                /(1.+arw2(n)*CATDEFX+arw3(n)*CATDEFX*CATDEFX)))
+         else
+           print*,'n: ',n
+           print*,'WMIN_TEST: ',WMIN_TEST
+           WMIN=AMIN1(1.,AMAX1(0.,arw4(n)+(1.-arw4(n))*(1.+arw1(n)*CATDEFX)     &
+                /1.0e-6))
+           print*,'WMIN: ',WMIN
+         endif
 
         ARG1=AMAX1(-40., AMIN1(40., -AX*(1.-WMIN)))
         EXPARG1=EXP(ARG1)
@@ -2188,7 +2250,14 @@ MODULE lsm_routines
       do l=lstart,N_GT
          xfice=xfice+fice(l)
          enddo
-      xfice=xfice/((N_GT+1)-lstart)
+
+       IF (phi .LE. 0.9) THEN
+         xfice=xfice/((N_GT+1)-lstart)
+       ELSE
+         !PEAT
+         !MB: only first layer for total runoff reduction
+         xfice=AMIN1(1.0,fice(1))      
+       ENDIF
 
       Return
 

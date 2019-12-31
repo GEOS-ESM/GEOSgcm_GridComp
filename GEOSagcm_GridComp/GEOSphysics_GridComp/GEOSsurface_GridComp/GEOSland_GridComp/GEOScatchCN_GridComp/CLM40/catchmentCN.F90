@@ -800,7 +800,7 @@ CONTAINS
         T1(1)  = TG1(N)-TF
         T1(2)  = TG2(N)-TF
         T1(3)  = TG4(N)-TF
-        AREA(1)= AR1(N) 
+        AREA(1)= amax1(AR1(N),2.E-20) 
         AREA(2)= AR2(N) 
         AREA(3)= AR4(N) 
         pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
@@ -1216,7 +1216,7 @@ CONTAINS
           sfmc, rzmc, prmc,                                                    &
           werror, sfmcun, rzmcun, prmcun  )
 
-! Add differences due to adjustments to land moisture prognostics
+! Add differences due to adjustments to land mosture prognostics
       do n=1,nch
          if(werror(n) .le. 0.) runsrf(n)=runsrf(n)-werror(n)/dtstep
          if(werror(n) .gt. 0.) then
@@ -1689,130 +1689,147 @@ CONTAINS
 
       DO 100 N=1,NCH
 
-        IF (POROS(N) .LE. 0.9) THEN
-           !****   Compute equivalent of root zone excess in non-saturated area:
-           rztot=rzeq(n)+rzexc(n)
-           if(ar1(n).ne.1.) then
+       
+         !****   Compute equivalent of root zone excess in non-saturated area:
+         rztot=rzeq(n)+rzexc(n)
+         if(ar1(n).ne.1.) then
 !!! rzave=(rztot-ar1(n)*vgwmax(n))/(1.-ar1(n))
 !!! rzave=rzave*poros(n)/vgwmax(n)
-              rzave=rztot*poros(n)/vgwmax(n)
-           else
-              rzave=poros(n)
-           endif
-           
-           ! updated warning statement, reichle+koster, 12 Aug 2014
-           !
-           ! Impose minimum of 1.e-4, rather than leaving positive values <1.e-4 unchanged.
-           ! -reichle, 15 Jan 2016
-           if (rzave .le. 1.e-4) then
-              rzave=1.e-4
-              print*,'problem: rzave <= 1.e-4 in catchment',n
-           end if
-           
-           btaux=btau(n)
-           if (srfexc(n) .lt. 0.) btaux=btau(n)*(poros(n)/rzave)
-           rz0=amax1(0.001,rzave-srfexc(n)/(1000.*(-btaux)))
-           tsc0=atau(n)/(rz0**3.)
-           
-           tsc0=tsc0*3600.
-           if(tsc0.lt.dtstep) tsc0=dtstep
-           
-           ! ---------------------------------------------------------------------
-           
-           SRFLW=SRFEXC(N)*DTSTEP/TSC0
-           IF(SRFLW < 0.    ) SRFLW = 0.005 * SRFLW ! C05 change
-           !rr   following inserted by koster Sep 22, 2003
-           rzdif=rzave/poros(n)-wpwet(n)
-           !**** No moisture transport up if rz at wilting; employ ramping.
-           if(rzdif.le.0. .and. srflw.lt.0.)  srflw=0.
-           if(rzdif.gt.0. .and. rzdif.lt.0.01                                     &
-                .and. srflw.lt.0.) srflw=srflw*(rzdif/0.01)
-           RZEXC(N)=RZEXC(N)+SRFLW
-           SRFEXC(N)=SRFEXC(N)-SRFLW
-           
-           !**** Topography-dependent tsc2, between rzex and catdef
-           
-           rzx=rzexc(n)/vgwmax(n)
-           
-           if(rzx .gt. .01) then
-              ax=tsa1(n)
-              bx=tsb1(n)
-           elseif(rzx .lt. -.01) then
-              ax=tsa2(n)
-              bx=tsb2(n)
-           else
-              ax=tsa2(n)+(rzx+.01)*(tsa1(n)-tsa2(n))/.02
-              bx=tsb2(n)+(rzx+.01)*(tsb1(n)-tsb2(n))/.02
-           endif
-           
-           tsc2=exp(ax+bx*catdef(n))
-           rzflw=rzexc(n)*tsc2*dtstep/3600.
-           
-           IF (CATDEF(N)-RZFLW .GT. CDCR2(N)) then
-              RZFLW=CATDEF(N)-CDCR2(N)
-           end if
-           
-           CATDEF(N)=CATDEF(N)-RZFLW
+            rzave=rztot*poros(n)/vgwmax(n)
+         else
+            rzave=poros(n)
+         endif
+         
+         ! updated warning statement, reichle+koster, 12 Aug 2014
+         !
+         ! Impose minimum of 1.e-4, rather than leaving positive values <1.e-4 unchanged.
+         ! -reichle, 15 Jan 2016
+         if (rzave .le. 1.e-4) then
+            rzave=1.e-4
+            print*,'problem: rzave <= 1.e-4 in catchment',n
+         end if
+         
+         btaux=btau(n)
+         if (srfexc(n) .lt. 0.) btaux=btau(n)*(poros(n)/rzave)
+         rz0=amax1(0.001,rzave-srfexc(n)/(1000.*(-btaux)))
+         tsc0=atau(n)/(rz0**3.)
+         
+         tsc0=tsc0*3600.
+         if(tsc0.lt.dtstep) tsc0=dtstep
+         
+         ! ---------------------------------------------------------------------
+         
+         SRFLW=SRFEXC(N)*DTSTEP/TSC0
+         IF (POROS(N) .LE. 0.9) THEN
+            IF(SRFLW < 0.    ) SRFLW = 0.005 * SRFLW ! C05 change
+         ENDIF
+         !rr   following inserted by koster Sep 22, 2003
+         rzdif=rzave/poros(n)-wpwet(n)
+         !**** No moisture transport up if rz at wilting; employ ramping.
+         if(rzdif.le.0. .and. srflw.lt.0.)  srflw=0.
+         if(rzdif.gt.0. .and. rzdif.lt.0.01                                     &
+              .and. srflw.lt.0.) srflw=srflw*(rzdif/0.01)
+         RZEXC(N)=RZEXC(N)+SRFLW
+         SRFEXC(N)=SRFEXC(N)-SRFLW
+         
+         !**** Topography-dependent tsc2, between rzex and catdef
+         
+         rzx=rzexc(n)/vgwmax(n)
+         
+         if(rzx .gt. .01) then
+            ax=tsa1(n)
+            bx=tsb1(n)
+         elseif(rzx .lt. -.01) then
+            ax=tsa2(n)
+            bx=tsb2(n)
+         else
+            ax=tsa2(n)+(rzx+.01)*(tsa1(n)-tsa2(n))/.02
+            bx=tsb2(n)+(rzx+.01)*(tsb1(n)-tsb2(n))/.02
+         endif
+         
+         tsc2=exp(ax+bx*catdef(n))
+         rzflw=rzexc(n)*tsc2*dtstep/3600.
+         
+         IF (CATDEF(N)-RZFLW .GT. CDCR2(N)) then
+            RZFLW=CATDEF(N)-CDCR2(N)
+         end if
+
+         IF (POROS(N) .LE. 0.9) THEN
+            ! Mineral soil
+            CATDEF(N)=CATDEF(N)-RZFLW
+            RZEXC(N)=RZEXC(N)-RZFLW
+            
+         ELSE
+
+           ! PEAT
+           ! MB: accounting for water ponding on AR1
+           ! calculate SYSOIL (see Dettmann and Bechtold, VZJ, 2016, for detailed theory)
+           ! RZFLOW partitioned into flux into ponding water volume and soil storage
+           ! Specific yield of ponding water surface fraction is 1.0
+           !!! SYSOIL derived from system of equations --> solved in matlab for SYSOIL:
+ 					!!! ASSUMPTION: The surface water level of the ponded water column is assumed always to be in equilibrium 
+ 					!!! with the groundwater table in the soil profile of the unsubmerged area (AR2 and AR4).
+ 					!!! The surface water storage is not explicitly calculated and saved, and not contributing to catdef! 
+ 					! Equation 1: the general specific yield equation for whole system (ponded SY + soil SY)
+ 					! DZBAR is water level change in m
+           ! DZBAR=(RZFLOW/(1.0*AR1(N)+SYSOIL*(1-AR1)))/1000.
+ 					! Equation 2: New water level is ZBAR2
+           ! ZBAR2=ZBAR1+DZBAR
+ 					! Equation 3: New catdef is CATDEF2
+           ! CATDEF2 = ((ZBAR2 + BF2(N))**2.0-1.e-20)*BF1(N)
+ 	        ! Equation 4: SYSOIL is defined by change in catdef and resulting groundwater table change
+           ! SYSOIL = ((CATDEF2-CATDEF(N))/DZBAR)/1000.0
+           ! Note: zbar defined here positive below ground
+           ZBAR1=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
+           ! assuming a small dz increment (DZBAR) for derivation of SYSOIL by linear approximation
+           ! first estimate of dztmp (mm) assuming a total specific yield of 0.5 
+           dztmp = RZFLW/0.5
+           ! dztmp should be at least 0.1 mm for SYSOIL calculation below 
+           dztmp = amax1(0.1,dztmp)
+ 
+ 					! calculate denominator of SYSOIL equation          
+           NOMTMP=(1000.*(amax1(AR1(N),2.E-10) - 1)*(CATDEF(N) + dztmp - BF1(N)*BF2(N)**2. - &
+           BF1(N)*ZBAR1**2. - AR1(N)*CATDEF(N) - 2.*BF1(N)*BF2(N)*ZBAR1 + AR1(N)*BF1(N)*BF2(N)**2. + &
+           AR1(N)*BF1(N)*ZBAR1**2. + 2.*AR1(N)*BF1(N)*BF2(N)*ZBAR1))
+ 					! handle if 0, I believe it occurred for very low RZFLOW        
+           IF (NOMTMP .NE. 0.0) THEN
+ 
+   					! Two possible solutions for SYSOIL, we need the positive one
+             SYSOIL1 = -(1000.*AR1(N)**2.*CATDEF(N) + dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + &
+             BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - 2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + &
+             1000.*AR1(N)*BF1(N)*ZBAR1 - 1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - &
+             1000.*AR1(N)**2.*BF1(N)*ZBAR1)**(0.5) - 1000.*AR1(N)*CATDEF(N) - 500*AR1(N)*dztmp + &
+             BF1(N)*BF2(N)*dztmp + BF1(N)*dztmp*ZBAR1 + 1000.*AR1(N)*BF1(N)*BF2(N)**2. + &
+             1000.*AR1(N)*BF1(N)*ZBAR1**2. - 1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. - 1000.*AR1(N)**2.*BF1(N)*ZBAR1**2. - &
+             AR1(N)*BF1(N)*BF2(N)*dztmp + 2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR1 - AR1(N)*BF1(N)*dztmp*ZBAR1 - &
+             2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR1)/NOMTMP
+ 
+             SYSOIL2 = (dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - &
+             2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*ZBAR1 - &
+             1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - 1000.*AR1(N)**2.*BF1(N)*ZBAR1)**(0.5) - &
+             1000.*AR1(N)**2.*CATDEF(N) + 1000.*AR1(N)*CATDEF(N) + 500*AR1(N)*dztmp - BF1(N)*BF2(N)*dztmp - &
+             BF1(N)*dztmp*ZBAR1 - 1000.*AR1(N)*BF1(N)*BF2(N)**2. - 1000.*AR1(N)*BF1(N)*ZBAR1**2. + &
+             1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. + 1000.*AR1(N)**2.*BF1(N)*ZBAR1**2. + AR1(N)*BF1(N)*BF2(N)*dztmp - &
+             2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR1 + AR1(N)*BF1(N)*dztmp*ZBAR1 + &
+             2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR1)/NOMTMP
+ 
+               ! MB: To be checked and improved: happened sporadically that SYSOIL got
+               ! unrealistically small. Not clear for which combination of
+               ! conditions. Cutoff applied.
+             SYSOIL = AMAX1(1.e-5,AMAX1(SYSOIL1,SYSOIL2))
+           ELSE
+             ! To improve: happened that NOMTMP got zero, here handled
+             ! use an average value
+             SYSOIL = 0.2
+           ENDIF
+
+ 					! Calculate fraction of RZFLW removed/added to catdef
+           RZFLW_CATDEF = (1-AR1(N))*SYSOIL*RZFLW/(1.0*AR1(N)+SYSOIL*(1-AR1(N)))
+           CATDEF(N)=CATDEF(N)-RZFLW_CATDEF
+           ! MB: remove all RZFLW from RZEXC because the other part 
+           ! flows into the surface water storage (microtopgraphy)
            RZEXC(N)=RZEXC(N)-RZFLW
-           
-        ELSE
-          ! PEAT
-          ! MB: take into account water ponding on AR1
-          ! calculate SYSOIL (Dettmann and Bechtold, VZJ, 2016)
-          ! RZFLOW splitted between open water 
-          ! reservoir and soil storage
-          ! specific yield of open water is 1.0
-          ! CATDEF2 needed to calculate specific yield
-          !!! Set of equations solved in matlab for SYSOIL:
-          ! DZBAR=(RZFLOW/(1.0*AR1(N)+SYSOIL*(1-AR1)))/1000.
-          ! ZBAR2=ZBAR1+DZBAR
-          ! CATDEF2 = ((ZBAR2 + BF2(N))**2.0-1.e-20)*BF1(N)
-          ! SYSOIL = ((CATDEF2-CATDEF(N))/DZBAR)/1000.0
-          ! Note: zbar definition here positive below ground
-          ZBAR1=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
-          ! assume a dztmp (linear approximation)
-          dztmp = RZFLW/0.5
-          dztmp = amax1(0.1,dztmp)
 
-          NOMTMP=(1000.*(amax1(AR1(N),2.E-10) - 1)*(CATDEF(N) + dztmp - BF1(N)*BF2(N)**2. - &
-          BF1(N)*ZBAR1**2. - AR1(N)*CATDEF(N) - 2.*BF1(N)*BF2(N)*ZBAR1 + AR1(N)*BF1(N)*BF2(N)**2. + &
-          AR1(N)*BF1(N)*ZBAR1**2. + 2.*AR1(N)*BF1(N)*BF2(N)*ZBAR1))
-          IF (NOMTMP .EQ. 0.0) THEN
-            NOMTMP = 1.E-20
-          ENDIF
-
-          SYSOIL1 = -(1000.*AR1(N)**2.*CATDEF(N) + dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + &
-          BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - 2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + &
-          1000.*AR1(N)*BF1(N)*ZBAR1 - 1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - &
-          1000.*AR1(N)**2.*BF1(N)*ZBAR1)**(0.5) - 1000.*AR1(N)*CATDEF(N) - 500*AR1(N)*dztmp + &
-          BF1(N)*BF2(N)*dztmp + BF1(N)*dztmp*ZBAR1 + 1000.*AR1(N)*BF1(N)*BF2(N)**2. + &
-          1000.*AR1(N)*BF1(N)*ZBAR1**2. - 1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. - 1000.*AR1(N)**2.*BF1(N)*ZBAR1**2. - &
-          AR1(N)*BF1(N)*BF2(N)*dztmp + 2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR1 - AR1(N)*BF1(N)*dztmp*ZBAR1 - &
-          2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR1)/NOMTMP
-
-          NOMTMP=(1000.*(amax1(AR1(N),2.E-10) - 1)*(CATDEF(N) + dztmp - BF1(N)*BF2(N)**2. - &
-          BF1(N)*ZBAR1**2. - AR1(N)*CATDEF(N) - 2.*BF1(N)*BF2(N)*ZBAR1 + AR1(N)*BF1(N)*BF2(N)**2. + &
-          AR1(N)*BF1(N)*ZBAR1**2. + 2.*AR1(N)*BF1(N)*BF2(N)*ZBAR1))
-          IF (NOMTMP .EQ. 0.0) THEN
-            NOMTMP = 1.E-20
-          ENDIF
-
-          SYSOIL2 = (dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - &
-          2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*ZBAR1 - &
-          1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - 1000.*AR1(N)**2.*BF1(N)*ZBAR1)**(0.5) - &
-          1000.*AR1(N)**2.*CATDEF(N) + 1000.*AR1(N)*CATDEF(N) + 500*AR1(N)*dztmp - BF1(N)*BF2(N)*dztmp - &
-          BF1(N)*dztmp*ZBAR1 - 1000.*AR1(N)*BF1(N)*BF2(N)**2. - 1000.*AR1(N)*BF1(N)*ZBAR1**2. + &
-          1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. + 1000.*AR1(N)**2.*BF1(N)*ZBAR1**2. + AR1(N)*BF1(N)*BF2(N)*dztmp - &
-          2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR1 + AR1(N)*BF1(N)*dztmp*ZBAR1 + &
-          2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR1)/NOMTMP
-
-          SYSOIL = AMAX1(1.e-5,AMAX1(SYSOIL1,SYSOIL2))
-
-          RZFLW_CATDEF = (1-AR1(N))*SYSOIL*RZFLW/(1.0*AR1(N)+SYSOIL*(1-AR1(N)))
-          CATDEF(N)=CATDEF(N)-RZFLW_CATDEF
-          ! MB: IMPORTANT: remove all RZFLW from RZEXC because the other part 
-          ! is in the surface water storage (microtopgraphy)
-          RZEXC(N)=RZEXC(N)-RZFLW
         ENDIF
 
 !****   REMOVE ANY EXCESS FROM MOISTURE RESERVOIRS:
@@ -1822,29 +1839,33 @@ CONTAINS
           CAPAC(N)=SATCAP(N)
           ENDIF
 
-        IF(RZEQ(N) + RZEXC(N) .GT. VGWMAX(N)) THEN
-          EXCESS=RZEQ(N)+RZEXC(N)-VGWMAX(N)
-          RZEXC(N)=VGWMAX(N)-RZEQ(N)
-          IF (POROS(N) .LE. 0.9) THEN
-             CATDEF(N)=CATDEF(N)-EXCESS
-          ELSE
-            ! PEAT
-            ! MB: as for RZFLW
-            EXCESS_CATDEF=(1-AR1(N))*SYSOIL*EXCESS/(1.0*AR1(N)+SYSOIL*(1-AR1(N)))
-            CATDEF(N)=CATDEF(N)-EXCESS_CATDEF
-            !MB: CATDEF Threshold at zbar=0
-            ! handling numerical instability due to exceptional snow melt events at some pixels
-            CATDEF_PEAT_THRESHOLD = ((BF2(N))**2.0-1.e-20)*BF1(N)
-            IF(CATDEF(N) .LT. CATDEF_PEAT_THRESHOLD) THEN
-              RUNSRF(N)=RUNSRF(N) + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
-              ! runoff from AR1 for zbar>0
-              RZFLW_AR1 = RZFLW - RZFLW_CATDEF + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
-              ! AR1=0.5 at zbar=0
-              ! SYsurface=0.5 at zbar=0
-              RUNSRF(N) = RUNSRF(N) + amax1(0.0, RZFLW_AR1 - 0.5*1000*ZBAR1)
-              ! 
-              CATDEF(N)=CATDEF_PEAT_THRESHOLD
-            ENDIF             
+          IF(RZEQ(N) + RZEXC(N) .GT. VGWMAX(N)) THEN
+             EXCESS=RZEQ(N)+RZEXC(N)-VGWMAX(N)
+             RZEXC(N)=VGWMAX(N)-RZEQ(N)
+             IF (POROS(N) .LE. 0.9) THEN
+                CATDEF(N)=CATDEF(N)-EXCESS
+             ELSE
+             
+             ! PEAT
+             ! MB: like for RZFLW --> EXCESS_CATDEF is the fraction in/out of catdef
+             EXCESS_CATDEF=(1-AR1(N))*SYSOIL*EXCESS/(1.0*AR1(N)+SYSOIL*(1-AR1(N)))
+             CATDEF(N)=CATDEF(N)-EXCESS_CATDEF
+             ! MB: CATDEF Threshold at zbar=0
+             ! water table not allowed to rise higher (numerically instable) 
+             ! zbar<0 only occurred due to extreme infiltration rates
+             ! (only snow melt, very few locations and times)
+ 						! (--> NOTE: PEATCLSM has no Hortonian runoff for zbar > 0)            
+             CATDEF_PEAT_THRESHOLD = ((BF2(N))**2.0-1.e-20)*BF1(N)
+             IF(CATDEF(N) .LT. CATDEF_PEAT_THRESHOLD) THEN
+               RUNSRF(N)=RUNSRF(N) + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
+               ! runoff from AR1 for zbar>0
+               RZFLW_AR1 = RZFLW - RZFLW_CATDEF + (CATDEF_PEAT_THRESHOLD - CATDEF(N))
+               ! AR1=0.5 at zbar=0
+               ! SYsurface=0.5 at zbar=0
+               RUNSRF(N) = RUNSRF(N) + amax1(0.0, RZFLW_AR1 - 0.5*1000*ZBAR1)
+               ! 
+               CATDEF(N)=CATDEF_PEAT_THRESHOLD
+             ENDIF
           ENDIF
        ENDIF
 
@@ -2384,22 +2405,23 @@ CONTAINS
 !****
       INTEGER, INTENT(IN) :: NCH
       REAL, INTENT(IN) :: DTSTEP
-      REAL, INTENT(IN), DIMENSION(NCH) :: EVAP,  SATCAP, TC, RA, RC, AR1,   &
+      REAL, INTENT(IN), DIMENSION(NCH) :: SATCAP, TC, RA, RC, AR1,   &
             AR2, AR4, CDCR1, ESATFR, RZEQ, SRFMN, WPWET, VGWMAX, POROS, BF1, BF2
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: CAPAC, RZEXC, CATDEF,          &
-            SRFEXC, EVROOT, EVSURF, EVINT
+            SRFEXC, EVROOT, EVSURF, EVINT, EVAP
 
       REAL, INTENT(OUT), DIMENSION(NCH) :: ECORR
 
       INTEGER  N
       REAL  EGRO,CNDSAT,CNDUNS,CNDV,CNDS,WILT,EGROMX,RZEMAX
-      REAL :: ZBAR1,dztmp,NOMTMP,SYSOIL1,SYSOIL2,SYSOIL,ET_CATDEF
+      REAL :: ET_CATDEF,AR2p,AR4p,ARREST,ZBAR1,SYSOIL,SYSOIL1,SYSOIL2,RZFLW,DZTMP,   &
+         NOMTMP
 !****
 !**** -----------------------------------------------------------------
 
       DO 100 N = 1, NCH
-
+      ZBAR1=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
 !****
 !**** PARTITION EVAP BETWEEN INTERCEPTION AND GROUND RESERVOIRS.
 !****
@@ -2448,50 +2470,50 @@ CONTAINS
              CATDEF(N) = CATDEF(N) + (EVSURF(N) + EVROOT(N))*ESATFR(N)*DTSTEP
              ! 05.12.98: FIRST ATTEMPT TO INCLUDE BEDROCK
           ELSE
-             ! PEAT
-             ! MB: same approach as for RZFLW
-             ZBAR1=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
-             ! Evaporation from AR1 (directly from CATDEF)
-             IF (((EVSURF(N) + EVROOT(N))*ESATFR(N)) .NE. 0.0) THEN
-                ! assume a dztmp (linear approximation)
-                dztmp = (EVSURF(N) + EVROOT(N))*ESATFR(N)/0.5
-                dztmp = amax1(0.1,dztmp)
-                
-                NOMTMP=(1000.*(amax1(AR1(N),2.E-10) - 1)*(CATDEF(N) + dztmp - BF1(N)*BF2(N)**2. - &
-                     BF1(N)*ZBAR1**2. - AR1(N)*CATDEF(N) - 2.*BF1(N)*BF2(N)*ZBAR1 + AR1(N)*BF1(N)*BF2(N)**2. + &
-                     AR1(N)*BF1(N)*ZBAR1**2. + 2.*AR1(N)*BF1(N)*BF2(N)*ZBAR1))
-                IF (NOMTMP .EQ. 0.0) THEN
-                   NOMTMP = 1.E-20
-                ENDIF
-                
-                SYSOIL1 = -(1000.*AR1(N)**2.*CATDEF(N) + dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + &
-                     BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - 2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + &
-                     1000.*AR1(N)*BF1(N)*ZBAR1 - 1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - &
-                     1000.*AR1(N)**2.*BF1(N)*ZBAR1)**(0.5) - 1000.*AR1(N)*CATDEF(N) - 500*AR1(N)*dztmp + &
-                     BF1(N)*BF2(N)*dztmp + BF1(N)*dztmp*ZBAR1 + 1000.*AR1(N)*BF1(N)*BF2(N)**2. + &
-                     1000.*AR1(N)*BF1(N)*ZBAR1**2. - 1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. - 1000.*AR1(N)**2.*BF1(N)*ZBAR1**2. - &
-                     AR1(N)*BF1(N)*BF2(N)*dztmp + 2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR1 - AR1(N)*BF1(N)*dztmp*ZBAR1 - &
-                     2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR1)/NOMTMP
-                
-                NOMTMP=(1000.*(amax1(AR1(N),2.E-10) - 1)*(CATDEF(N) + dztmp - BF1(N)*BF2(N)**2. - &
-                     BF1(N)*ZBAR1**2. - AR1(N)*CATDEF(N) - 2.*BF1(N)*BF2(N)*ZBAR1 + AR1(N)*BF1(N)*BF2(N)**2. + &
-                     AR1(N)*BF1(N)*ZBAR1**2. + 2.*AR1(N)*BF1(N)*BF2(N)*ZBAR1))
-                IF (NOMTMP .EQ. 0.0) THEN
-                   NOMTMP = 1.E-20
-                ENDIF
-                SYSOIL2 = (dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - &
-                     2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*ZBAR1 - &
-                     1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - 1000.*AR1(N)**2.*BF1(N)*ZBAR1)**(0.5) - &
-                     1000.*AR1(N)**2.*CATDEF(N) + 1000.*AR1(N)*CATDEF(N) + 500*AR1(N)*dztmp - BF1(N)*BF2(N)*dztmp - &
-                     BF1(N)*dztmp*ZBAR1 - 1000.*AR1(N)*BF1(N)*BF2(N)**2. - 1000.*AR1(N)*BF1(N)*ZBAR1**2. + &
-                     1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. + 1000.*AR1(N)**2.*BF1(N)*ZBAR1**2. + AR1(N)*BF1(N)*BF2(N)*dztmp - &
-                     2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR1 + AR1(N)*BF1(N)*dztmp*ZBAR1 + &
-                     2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR1)/NOMTMP
-                
-                SYSOIL = AMAX1(1.e-5,AMAX1(SYSOIL1,SYSOIL2))
-                
-                ET_CATDEF = SYSOIL*(EVSURF(N) + EVROOT(N))*ESATFR(N)/(1.0*AR1(N)+SYSOIL*(1-AR1(N)))
-                CATDEF(N) = CATDEF(N) + (1-AR1(N))*ET_CATDEF
+
+           ! PEAT
+           ! MB: same approach as for RZFLW (see subroutine RZDRAIN for
+           ! comments)
+           ZBAR1=SQRT(1.e-20+CATDEF(N)/BF1(N))-BF2(N)
+           IF (((EVSURF(N) + EVROOT(N))*ESATFR(N)) .NE. 0.0) THEN
+             dztmp = (EVSURF(N) + EVROOT(N))*ESATFR(N)/0.5
+             dztmp = amax1(0.1,dztmp)
+ 
+             NOMTMP=(1000.*(amax1(AR1(N),2.E-10) - 1)*(CATDEF(N) + dztmp - BF1(N)*BF2(N)**2. - &
+             BF1(N)*ZBAR1**2. - AR1(N)*CATDEF(N) - 2.*BF1(N)*BF2(N)*ZBAR1 + AR1(N)*BF1(N)*BF2(N)**2. + &
+             AR1(N)*BF1(N)*ZBAR1**2. + 2.*AR1(N)*BF1(N)*BF2(N)*ZBAR1))
+             IF (NOMTMP .NE. 0.0) THEN
+ 
+               SYSOIL1 = -(1000.*AR1(N)**2.*CATDEF(N) + dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + &
+               BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - 2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + &
+               1000.*AR1(N)*BF1(N)*ZBAR1 - 1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - &
+               1000.*AR1(N)**2.*BF1(N)*ZBAR1)**(0.5) - 1000.*AR1(N)*CATDEF(N) - 500*AR1(N)*dztmp + &
+               BF1(N)*BF2(N)*dztmp + BF1(N)*dztmp*ZBAR1 + 1000.*AR1(N)*BF1(N)*BF2(N)**2. + &
+               1000.*AR1(N)*BF1(N)*ZBAR1**2. - 1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. - 1000.*AR1(N)**2.*BF1(N)*ZBAR1**2. - &
+               AR1(N)*BF1(N)*BF2(N)*dztmp + 2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR1 - AR1(N)*BF1(N)*dztmp*ZBAR1 - &
+               2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR1)/NOMTMP
+   
+               SYSOIL2 = (dztmp*(250000.*AR1(N)**2. + BF1(N)*CATDEF(N) + BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*BF2(N) - &
+               2.*AR1(N)*BF1(N)*CATDEF(N) - AR1(N)*BF1(N)*dztmp + 1000.*AR1(N)*BF1(N)*ZBAR1 - &
+               1000.*AR1(N)**2.*BF1(N)*BF2(N) + AR1(N)**2.*BF1(N)*CATDEF(N) - 1000.*AR1(N)**2.*BF1(N)*ZBAR1)**(0.5) - &
+               1000.*AR1(N)**2.*CATDEF(N) + 1000.*AR1(N)*CATDEF(N) + 500*AR1(N)*dztmp - BF1(N)*BF2(N)*dztmp - &
+               BF1(N)*dztmp*ZBAR1 - 1000.*AR1(N)*BF1(N)*BF2(N)**2. - 1000.*AR1(N)*BF1(N)*ZBAR1**2. + &
+               1000.*AR1(N)**2.*BF1(N)*BF2(N)**2. + 1000.*AR1(N)**2.*BF1(N)*ZBAR1**2. + AR1(N)*BF1(N)*BF2(N)*dztmp - &
+               2000.*AR1(N)*BF1(N)*BF2(N)*ZBAR1 + AR1(N)*BF1(N)*dztmp*ZBAR1 + &
+               2000.*AR1(N)**2.*BF1(N)*BF2(N)*ZBAR1)/NOMTMP
+ 
+               ! MB: To be checked and improved: happened sporadically that SYSOIL got
+               ! unrealistically small. Not clear for which combination of
+               ! conditions. Cutoff applied.
+               SYSOIL = AMAX1(1.e-5,AMAX1(SYSOIL1,SYSOIL2))
+             ELSE
+               ! To improve: happened that NOMTMP got zero, here handled
+               ! use an average value
+               SYSOIL = 0.2
+             ENDIF
+ 
+             ET_CATDEF = SYSOIL*(EVSURF(N) + EVROOT(N))*ESATFR(N)/(1.0*AR1(N)+SYSOIL*(1-AR1(N)))
+             CATDEF(N) = CATDEF(N) + (1-AR1(N))*ET_CATDEF
              ENDIF
           ENDIF
         ELSE

@@ -68,11 +68,11 @@ PROGRAM mk_LDASsaRestarts
        InCNTilFile = '/discover/nobackup/ltakacs/bcs/Heracles-NL/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til',                        &
        InCatRestart= '/gpfsm/dnb42/projects/p16/ssd/land/l_data/LandRestarts_for_Regridding/Catch/M09/20170101/catch_internal_rst', &
        InCatTilFile= '/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/' &
-                      //'SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'            
+                      //'SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til',                                                   &        
        InCatRest45 = '/gpfsm/dnb42/projects/p16/ssd/land/l_data/LandRestarts_for_Regridding/Catch/M09/20170101/catch_internal_rst', &
        InCatTil45  = '/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/' &
                       //'SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'            
-  real        :: SURFLAY = 50
+  REAL        :: SURFLAY = 50.
   integer     :: STATUS
 
   character(len=256), parameter :: CatNames   (57) = &

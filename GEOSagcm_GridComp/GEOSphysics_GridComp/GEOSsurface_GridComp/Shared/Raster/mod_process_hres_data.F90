@@ -3745,8 +3745,9 @@ END SUBROUTINE modis_scale_para_high
       ! A specific treatment of peatland hydrology in the NASA Catchment Land Surface Model. J. Adv. Model. Earth Sys., 11,
       ! 2130-2162. doi: 10.1029/2018MS001574. 
 
-      REAL, PARAMETER  :: p_poros = 0.93, p_bee = 3.5, p_psis = -0.03, p_ks = 2.8e-5, pmap_thresh = 0.3, p_wp = 0.3672
-      REAL, DIMENSION (:), POINTER      :: PMAP
+      REAL, PARAMETER  :: p_poros = 0.93, p_bee = 3.5, p_psis = -0.03, p_ks = 2.8e-5, pmap_thresh = 1./2., p_wp = 0.3672
+      REAL, ALLOCATABLE, DIMENSION (:,:) :: PMAPR
+      REAL, POINTER, DIMENSION (:)       :: PMAP      
       REAL :: d_poros, d_bee, d_psis, d_ks
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
@@ -4012,6 +4013,24 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	    endif
 	 end do 
       end do
+
+      if(process_peat) then 
+         allocate(pmapr (1:i_highd,1:j_highd))  
+         status  = NF_OPEN ('data/CATCH/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
+         status  = NF_GET_VARA_REAL (ncid,NC_VarID(NCID,'PEATMAP'), (/1,1/),(/i_highd, j_highd/), pmapr) ; VERIFY_(STATUS)             
+         where (oc_top*sf >= cF_lim(4))
+            oc_top = NINT(8./sf)
+         endwhere
+         where (oc_sub*sf >= cF_lim(4))
+            oc_sub = NINT(8./sf)
+         endwhere 
+         where (pmapr >= pmap_thresh)
+           oc_top = NINT(33.0/sf)
+!           oc_sub = NINT(33.0/sf)
+         endwhere         
+         deallocate (pmapr)
+         status = NF_CLOSE(ncid)
+      endif
 
       deallocate (net_data1)
       deallocate (net_data2)
@@ -4587,11 +4606,8 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          fac_surf = soil_class_top(n)
 	 fac      = soil_class_com(n)
 
-         if(process_peat) then 
-            if(pmap (n) > pmap_thresh) then
-               fac_surf = 253
-               fac      = 253
-            endif
+         if(process_peat) then
+            if(fac_surf == 253) fac = 253
          endif
 
          wp_wetness = a_wp(fac) /a_poros(fac)

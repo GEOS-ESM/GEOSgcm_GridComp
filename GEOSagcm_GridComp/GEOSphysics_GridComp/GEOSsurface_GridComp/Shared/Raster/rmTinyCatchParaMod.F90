@@ -27,7 +27,7 @@ module rmTinyCatchParaMod
   include 'netcdf.inc'	
   logical :: preserve_soiltype = .false.
   character*100 :: c_data = 'data/CATCH/'
-  logical :: process_peat = .false.
+  logical :: process_peat = .true.
 
   private
 
@@ -3469,6 +3469,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
          ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
          if(process_peat) then
+
             ars1(n) = -7.9514018e-03
             ars2(n) = 6.2297356e-02 
             ars3(n) = 1.9187240e-03                   
@@ -3484,6 +3485,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             bf1(n) = 4.6088086e+02  
             bf2(n) = 1.4237401e-01  
             bf3(n) = 6.9803000e+00
+
+            tsa1(n) = -2.417581e+00
+            tsa2(n) = -4.784762e+00
+            tsb1(n) = -3.700285e-03
+            tsb2(n) = -2.392484e-03
             
          endif
       endif
