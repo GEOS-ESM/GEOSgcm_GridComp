@@ -1054,11 +1054,11 @@ contains
 ! -----------------------------------------------------------------
 
      call MAPL_AddConnectivity ( GC,                               &
-         SHORT_NAME  = (/'AERO'/),                                 &
+         SHORT_NAME  = (/'AERO','AEROng'/),                        & !AEROng is GOCART2G's AERO state
          DST_ID      =  RAD,                                       &
          SRC_ID      =  CHEM,                                      &
                                                         RC=STATUS  )
-     VERIFY_(STATUS)
+
 
      call MAPL_AddConnectivity ( GC,                               &
          SRC_NAME    = 'TS',                                       &
