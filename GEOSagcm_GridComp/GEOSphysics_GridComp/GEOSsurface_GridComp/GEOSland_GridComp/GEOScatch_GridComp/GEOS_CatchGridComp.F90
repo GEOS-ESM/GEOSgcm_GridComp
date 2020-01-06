@@ -1869,7 +1869,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_depth_in_snow_covered_area' ,&
+    LONG_NAME          = 'snow_depth_within_snow_covered_area_fraction'   ,&
     UNITS              = 'm'                         ,&
     SHORT_NAME         = 'SNOWDP'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
