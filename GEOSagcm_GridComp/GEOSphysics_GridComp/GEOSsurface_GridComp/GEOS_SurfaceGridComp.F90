@@ -1361,7 +1361,7 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC                             ,&
-        LONG_NAME          = 'snow_depth'                        ,&
+        LONG_NAME          = 'snow_depth_within_snow_covered_area_fraction'   ,&
         UNITS              = 'm'                                 ,&
         SHORT_NAME         = 'SNOWDP'                            ,&
         DIMS               = MAPL_DimsHorzOnly                   ,&
