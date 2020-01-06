@@ -17,7 +17,7 @@ module GEOS_TurbulenceGridCompMod
   use MAPL_Mod
   use LockEntrain
   use shoc
-  use mynn, only : run_mynn, B1, B2
+  use mynn, only : run_mynn, implicit_M, B1, B2
 
 #ifdef _CUDA
   use cudafor
@@ -2144,6 +2144,36 @@ contains
        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddInternalSpec(GC,                                              &
+       LONG_NAME  = 'edmf_whl_contribution',                                 &
+       UNITS      = 'm+1s-1K+1',                                             &
+       SHORT_NAME = 'WHL_MF'    ,                                            &
+       DEFAULT    = 0.,                                                      &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                              &
+       LONG_NAME  = 'edmf_wqt_contribution',                                 &
+       UNITS      = 'm+1s-1kg+1kg-1',                                        &
+       SHORT_NAME = 'WQT_MF'    ,                                            &
+       DEFAULT    = 0.,                                                      &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                              &
+       LONG_NAME  = 'edmf_wthv_contribution',                                &
+       UNITS      = 'm+1s-1K+1',                                             &
+       SHORT_NAME = 'WTHV_MF'    ,                                           &
+       DEFAULT    = 0.,                                                      &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddInternalSpec(GC,                                &
        SHORT_NAME = 'ITAU_TURB',                                 &
        LONG_NAME  = 'inverse_of_turbulence_time_scale_for_tke',  &
@@ -2452,7 +2482,8 @@ contains
                                        HL2T_M, HL2T_D, QT2T_M, QT2T_D, HLQTT_M, HLQTT_D, &
                                        ITAU_TURB, K_TKE, K_TPE, WS_CG, WQV_CG, WQL_CG, &
                                        AKTKE, BKTKE, CKTKE, AKTPE, BKTPE, CKTPE, &
-                                       YTKE, YHL2, YQT2, YHLQT
+                                       YTKE, YHL2, YQT2, YHLQT, &
+                                       WHL_MF, WQT_MF, WTHV_MF
 
     real, dimension(:,:), pointer       :: EVAP, SH
 
@@ -2552,6 +2583,12 @@ contains
     call MAPL_GetPointer(INTERNAL, HLQTT_M,   'HLQTT_M',   RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, HLQTT_D,   'HLQTT_D',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, WHL_MF,    'WHL_MF',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, WQT_MF,    'WQT_MF',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, WTHV_MF,   'WTHV_MF',   RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, ITAU_TURB, 'ITAU_TURB', RC=STATUS)
     VERIFY_(STATUS)
@@ -2831,7 +2868,7 @@ contains
                                             edmf_w3, edmf_wqt, edmf_qthl, & 
                                             edmf_whl, edmf_qt3, w3_canuto  
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
-   real, dimension(IM,JM,0:LM)          ::  awhl3, awqt3, awthv3 ! for EDMF contribution to MYNN
+!   real, dimension(IM,JM,0:LM)          ::  awhl3, awqt3, awthv3 ! for EDMF contribution to MYNN
    real, dimension(IM,JM)               :: tke_surf, hl2_surf, qt2_surf, hlqt_surf ! LBCs for MYNN
 
    real, dimension(:,:), pointer        :: z_conv_edmf
@@ -2882,6 +2919,8 @@ contains
      integer :: MYNN_LEVEL         ! 2: Level-2.5 3: Level-3
      integer :: WQL_TYPE           ! 0: no counter-gradient liquid water flux (level-3) 1: else
      integer :: WRF_CG_FLAG        ! 1: do not allow positive counter-gradient fluxes (like WRF-MYNN) 0: else
+     integer :: IMPLICIT_M_FLAG    ! 1: implicit mean-gradient production 0: else
+     integer :: MYNN_DEBUG_FLAG    ! 1: print internal variables in MYNN subroutine 0: else
      real,dimension(IM,JM) :: L02
      
 
@@ -3331,7 +3370,8 @@ contains
     call MAPL_GetResource (MAPL, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
     call MAPL_GetResource (MAPL, WQL_TYPE, "TURBULENCE_WQL_TYPE:", default=1,  RC=STATUS)
     call MAPL_GetResource (MAPL, WRF_CG_FLAG, "TURBULENCE_WRF_CG_FLAG:", default=0,  RC=STATUS)
-
+    call MAPL_GetResource (MAPL, IMPLICIT_M_FLAG, "TURBULENCE_IMPLICIT_M_FLAG:", default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_DEBUG_FLAG, "TURBULENCE_MYNN_DEBUG_FLAG:", default=0,  RC=STATUS)
 ! get ice ramp
    call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0   )
 
@@ -3373,7 +3413,7 @@ if (ETr .eq. 1.) then
              edmfdryv,edmfmoistv,  &
              edmfmoistqc,             &
              ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             awhl3,awqt3,awthv3, & ! for MYNN
+             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L02,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
@@ -3405,7 +3445,7 @@ if (ETr .eq. 1.) then
              edmfdryv,edmfmoistv,  &
              edmfmoistqc,             &
              ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             awhl3,awqt3,awthv3, & ! for MYNN
+             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L02,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
@@ -3452,7 +3492,7 @@ if (ETr .eq. 1.) then
              edmfdryv,edmfmoistv,  &
              edmfmoistqc,             &
              ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             awhl3,awqt3,awthv3, & ! for MYNN
+             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L02,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
@@ -3558,9 +3598,9 @@ ELSE
     awv3=0.0
     buoyf=0.0
 
-    awhl3  = 0.
-    awqt3  = 0.
-    awthv3 = 0.
+    WHL_MF  = 0.
+    WQT_MF  = 0.
+    WTHV_MF = 0.
   
     if (associated(z_conv_edmf))    z_conv_edmf=mapl_undef
     if (associated(edmf_dry_a))     edmf_dry_a    =0.0
@@ -3688,12 +3728,13 @@ ENDIF
            call run_mynn(IM, JM, LM, &
                          PLE, ZLE, Z, &
                          U, V, T, Q, QL, QI, TKE_NEW, HL2, QT2, HLQT, &
-                         USTAR, SH, EVAP, THV, QA, awhl3, awqt3, awthv3, &
+                         USTAR, SH, EVAP, THV, QA, &
+                         WHL_MF, WQT_MF, WTHV_MF, &
                          KH, KM, K_TKE, K_TPE, ITAU_TURB, WS_CG, WQV_CG, WQL_CG, &
                          BETA_HL, BETA_QT, &
                          TKET_M, TKET_B, HL2T_M, QT2T_M, HLQTT_M, &
                          TKE_SURF, HL2_SURF, QT2_SURF, HLQT_SURF, &
-                         DOMF, MYNN_LEVEL, WQL_TYPE, WRF_CG_FLAG)
+                         MYNN_DEBUG_FLAG, DOMF, MYNN_LEVEL, WQL_TYPE, WRF_CG_FLAG)
         end if
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
@@ -4543,37 +4584,39 @@ ENDIF
    CKTKE(:,:,1:LM-1) = -K_TKE(:,:,2:LM)*RDZ_HALF(:,:,2:LM)*DMI_HALF(:,:,1:LM-1)
    CKTKE(:,:,LM)     = 0.
 
-   AKTPE(:,:,0)      = 0.
-   AKTPE(:,:,1:LM-1) = -K_TPE(:,:,1:LM-1)*RDZ_HALF(:,:,1:LM-1)*DMI_HALF(:,:,1:LM-1)
-   AKTPE(:,:,LM)     = 0.
-
-   CKTPE(:,:,0)      = 0.
-   CKTPE(:,:,1:LM-1) = -K_TPE(:,:,2:LM)*RDZ_HALF(:,:,2:LM)*DMI_HALF(:,:,1:LM-1)
-   CKTPE(:,:,LM)     = 0.
-
    BKTKE(:,:,0)      = 1.
    BKTKE(:,:,1:LM-1) = 1. + DT*ITAU_TURB(:,:,1:LM-1)/B1 - (CKTKE(:,:,1:LM-1) + AKTKE(:,:,1:LM-1))
    BKTKE(:,:,LM)     = 1.
-
-   BKTPE(:,:,0)      = 1.
-   BKTPE(:,:,1:LM-1) = 1. + DT*ITAU_TURB(:,:,1:LM-1)/B2 - (CKTPE(:,:,1:LM-1) + AKTPE(:,:,1:LM-1))
-   BKTPE(:,:,LM)     = 1.
 
    YTKE(:,:,0)      = 0.
    YTKE(:,:,1:LM-1) = DT*( TKET_M(:,:,1:LM-1) + TKET_B(:,:,1:LM-1) )
    YTKE(:,:,LM)     = TKE_SURF(:,:)
 
-   YHL2(:,:,0)      = 0.
-   YHL2(:,:,1:LM-1) = DT*HL2T_M(:,:,1:LM-1)
-   YHL2(:,:,LM)     = HL2_SURF(:,:)
+   if (MYNN_LEVEL == 3) then
+      AKTPE(:,:,0)      = 0.
+      AKTPE(:,:,1:LM-1) = -K_TPE(:,:,1:LM-1)*RDZ_HALF(:,:,1:LM-1)*DMI_HALF(:,:,1:LM-1)
+      AKTPE(:,:,LM)     = 0.
 
-   YQT2(:,:,0)      = 0.
-   YQT2(:,:,1:LM-1) = DT*QT2T_M(:,:,1:LM-1)
-   YQT2(:,:,LM)     = QT2_SURF(:,:)
+      BKTPE(:,:,0)      = 1.
+      BKTPE(:,:,1:LM-1) = 1. + DT*ITAU_TURB(:,:,1:LM-1)/B2 - (CKTPE(:,:,1:LM-1) + AKTPE(:,:,1:LM-1))
+      BKTPE(:,:,LM)     = 1.
 
-   YHLQT(:,:,0)      = 0.
-   YHLQT(:,:,1:LM-1) = DT*HLQTT_M(:,:,1:LM-1)
-   YHLQT(:,:,LM)     = HLQT_SURF(:,:)
+      CKTPE(:,:,0)      = 0.
+      CKTPE(:,:,1:LM-1) = -K_TPE(:,:,2:LM)*RDZ_HALF(:,:,2:LM)*DMI_HALF(:,:,1:LM-1)
+      CKTPE(:,:,LM)     = 0.
+
+      YHL2(:,:,0)      = 0.
+      YHL2(:,:,1:LM-1) = DT*HL2T_M(:,:,1:LM-1)
+      YHL2(:,:,LM)     = HL2_SURF(:,:)
+
+      YQT2(:,:,0)      = 0.
+      YQT2(:,:,1:LM-1) = DT*QT2T_M(:,:,1:LM-1)
+      YQT2(:,:,LM)     = QT2_SURF(:,:)
+
+      YHLQT(:,:,0)      = 0.
+      YHLQT(:,:,1:LM-1) = DT*HLQTT_M(:,:,1:LM-1)
+      YHLQT(:,:,LM)     = HLQT_SURF(:,:)
+   end if
 
       ! Add the topographic roughness term
       ! ----------------------------------
@@ -4757,6 +4800,12 @@ ENDIF
     real, dimension(:,:,:), pointer     :: DX
     real, dimension(:,:,:), pointer     :: AK, BK, CK
 
+    ! For implicit mean-gradient production of second-order moments option
+    integer                             :: IMPLICIT_M_FLAG, MYNN_LEVEL
+    real                                :: DOMF
+    real, dimension(:,:,:), pointer     :: KM_MYNN, KH_MYNN
+    real, dimension(:,:,:), allocatable :: U, V, H, QV, QLLS, QLCN, ZLO, QL 
+
     integer                             :: KM, K,L
     logical                             :: FRIENDLY
     logical                             :: WEIGHTED
@@ -4812,6 +4861,13 @@ ENDIF
 !-----------------------------
 
     DP = PLE(:,:,1:LM)-PLE(:,:,0:LM-1)
+
+! Allocate arrays for implicit mean-gradient production option
+    call MAPL_GetResource(MAPL, IMPLICIT_M_FLAG, "TURBULENCE_IMPLICIT_M_FLAG:", default=0,  RC=STATUS)
+    if (IMPLICIT_M_FLAG == 1) then
+       allocate(U(IM,JM,LM), V(IM,JM,LM), H(IM,JM,LM), QV(IM,JM,LM), &
+                QLCN(IM,JM,LM), QLLS(IM,JM,LM), ZLO(IM,JM,LM), QL(IM,JM,LM))
+    end if
 
 ! Loop over all quantities to be diffused.
 !----------------------------------------
@@ -4878,6 +4934,52 @@ ENDIF
           VERIFY_(STATUS)
        end if
 
+! Compute implicit mean-gradient production terms.
+! This assumes second-order moments are solved for last, and TKE_NEW is the first
+! second-order moment to be solved for.
+if (trim(name) == 'TKE_NEW' .and. IMPLICIT_M_FLAG == 1) then
+   call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0.,  RC=STATUS)
+   VERIFY_(STATUS)
+
+   call MAPL_GetPointer(EXPORT, KH_MYNN, 'KH', ALLOC=.TRUE., RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT, KM_MYNN, 'KM', ALLOC=.TRUE., RC=STATUS)
+   VERIFY_(STATUS)
+
+   ZLO = 0.5*( ZLE(:,:,0:LM-1) + ZLE(:,:,1:LM) )
+   QL  = QLCN + QLLS
+
+   call implicit_M(IM, JM, LM, &
+                   ZLO, U, V, H, QV, QL, &
+                   Beta_hl, Beta_qt, KM_MYNN, KH_MYNN, &
+                   ws_cg, wqv_cg, wql_cg, WHL_MF, WQT_MF, WTHV_MF, &
+                   TKET_M, TKET_B, HL2T_M, QT2T_M, HLQTT_M, &
+                   DOMF)
+
+   YTKE(:,:,0)      = 0.
+   YTKE(:,:,1:LM-1) = DT*( TKET_M(:,:,1:LM-1) + TKET_B(:,:,1:LM-1) )
+!      YTKE(:,:,LM)     = TKE_SURF(:,:)
+   YTKE(:,:,LM)     = 0.
+
+   call MAPL_GetResource (MAPL, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
+   if (MYNN_LEVEL == 3) then
+      YHL2(:,:,0)      = 0.
+      YHL2(:,:,1:LM-1) = DT*HL2T_M(:,:,1:LM-1)
+!      YHL2(:,:,LM)     = HL2_SURF(:,:)
+      YHL2(:,:,LM)     = 0.
+
+      YQT2(:,:,0)      = 0.
+      YQT2(:,:,1:LM-1) = DT*QT2T_M(:,:,1:LM-1)
+!      YQT2(:,:,LM)     = QT2_SURF(:,:)
+      YQT2(:,:,LM)     = 0.
+
+      YHLQT(:,:,0)      = 0.
+      YHLQT(:,:,1:LM-1) = DT*HLQTT_M(:,:,1:LM-1)
+!      YHLQT(:,:,LM)     = HLQT_SURF(:,:)
+      YHLQT(:,:,LM)     = 0.
+   end if
+end if
+
 ! Pick the right exchange coefficients
 !-------------------------------------
 
@@ -4942,28 +5044,33 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
          SX_HALF(:,:,0)      = 0.
          SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YTKE(:,:,1:LM-1)
          SX_HALF(:,:,LM)     = 0.
- elseif (trim(name)=='HL2') then
-         AK => AKTPE; BK => BKTPE; CK => CKTPE
-         SX_HALF(:,:,0)      = 0.
-         SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YHL2(:,:,1:LM-1)
-         SX_HALF(:,:,LM)     = 0.
- elseif (trim(name)=='QT2') then
-         AK => AKTPE; BK => BKTPE; CK => CKTPE
-         SX_HALF(:,:,0)      = 0.
-         SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YQT2(:,:,1:LM-1)
-         SX_HALF(:,:,LM)     = 0.
- elseif (trim(name)=='HLQT') then
-         AK => AKTPE; BK => BKTPE; CK => CKTPE
-         SX_HALF(:,:,0)      = 0.
-         SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YHLQT(:,:,1:LM-1)
-         SX_HALF(:,:,LM)     = 0.
- endif
+ elseif (MYNN_LEVEL == 3) then
+    if (trim(name)=='HL2') then
+       AK => AKTPE; BK => BKTPE; CK => CKTPE
+       SX_HALF(:,:,0)      = 0.
+       SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YHL2(:,:,1:LM-1)
+       SX_HALF(:,:,LM)     = 0.
+    elseif (trim(name)=='QT2') then
+       AK => AKTPE; BK => BKTPE; CK => CKTPE
+       SX_HALF(:,:,0)      = 0.
+       SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YQT2(:,:,1:LM-1)
+       SX_HALF(:,:,LM)     = 0.
+    elseif (trim(name)=='HLQT') then
+       AK => AKTPE; BK => BKTPE; CK => CKTPE
+       SX_HALF(:,:,0)      = 0.
+       SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YHLQT(:,:,1:LM-1)
+       SX_HALF(:,:,LM)     = 0.
+    endif
+ end if
 
 
 ! Solve for semi-implicit changes. This modifies SX
 ! -------------------------------------------------
 
-       if (trim(name) == 'TKE_NEW' .or. trim(name) == 'HL2' .or. trim(name) == 'QT2' .or. trim(name) == 'HLQT') then
+       if (trim(name) == 'TKE_NEW') then
+          call VTRISOLVE(AK,BK,CK,SX_HALF,SG)
+          SX_HALF = max(0., SX_HALF)
+       else if (MYNN_LEVEL == 3 .and. ( trim(name) == 'HL2' .or. trim(name) == 'QT2' .or. trim(name) == 'HLQT' ) ) then
           call VTRISOLVE(AK,BK,CK,SX_HALF,SG)
           if (trim(name) /= 'HLQT') then
              SX_HALF = max(0., SX_HALF)
@@ -4989,12 +5096,12 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
        if(associated(SOI)) then
           if( WEIGHTED ) then
              SOI = ( (SX - S)/DT )*DP
+          elseif (trim(name) == 'TKE_NEW') then
+             SOI = ( (SX_HALF - S)/DT )
+          else if (MYNN_LEVEL == 3 .and. (trim(name) == 'HL2' .or. trim(name) == 'QT2' .or. trim(name) == 'HLQT')) then
+             SOI = ( (SX_HALF - S)/DT )
           else
-             if (trim(name) == 'TKE_NEW' .or. trim(name) == 'HL2' .or. trim(name) == 'QT2' .or. trim(name) == 'HLQT') then
-                SOI = ( (SX_HALF - S)/DT )
-             else
-                SOI = ( (SX - S)/DT )
-             end if
+             SOI = ( (SX - S)/DT )
           endif
        end if
 
@@ -5013,11 +5120,30 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
           HLQTT_D(:,:,1:LM-1) = -ITAU_TURB(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/15.
        end if
 
+       ! Save updated mean state variables for implicit mean-gradient production option
+       if (IMPLICIT_M_FLAG == 1) then
+          if (trim(name) == 'U') then
+             U = SX
+          else if (trim(name) == 'V') then
+             V = SX
+          else if (trim(name) == 'S') then
+             H = SX
+          else if (trim(name) == 'Q') then
+             QV = SX
+          else if (trim(name) == 'QLCN') then
+             QLCN = SX
+          else if (trim(name) == 'QLLS') then
+             QLLS = SX
+          end if
+       end if
+
 ! Update friendlies
 !------------------
 
        if(FRIENDLY) then
-          if (trim(name) == 'TKE_NEW' .or. trim(name) == 'HL2' .or. trim(name) == 'QT2' .or. trim(name) == 'HLQT') then
+          if (trim(name) == 'TKE_NEW') then
+             S = SX_HALF
+          elseif (MYNN_LEVEL == 3 .and. (trim(name) == 'HL2' .or. trim(name) == 'QT2' .or. trim(name) == 'HLQT')) then
              S = SX_HALF
           else
              S = SX

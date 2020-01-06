@@ -178,12 +178,13 @@ subroutine run_mynn(IM, JM, LM, &
                     Beta_hl, Beta_qt, &
                     tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
                     tke_surf, hl2_surf, qt2_surf, hlqt_surf, &
-                    DOMF, MYNN_LEVEL, WQL_TYPE, WRF_CG_FLAG)
+                    DEBUG_FLAG, DOMF, MYNN_LEVEL, WQL_TYPE, WRF_CG_FLAG)
 
   use MAPL_ConstantsMod, only: MAPL_KARMAN
   use MAPL_SatVaporMod, only: MAPL_EQsat
 
-  integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, WQL_TYPE, WRF_CG_FLAG
+  integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, WQL_TYPE, WRF_CG_FLAG, &
+                                                DEBUG_FLAG
   real, intent(in)                           :: DOMF
   real, dimension(IM,JM), intent(in)         :: u_star, H, E
   real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, T, qv, ql, qi, ac, thv
@@ -339,18 +340,23 @@ subroutine run_mynn(IM, JM, LM, &
 !        Lq          = L(i,j,k)*q(i,j,k)
 !        itau(i,j,k) = sqrt(2.*tke(i,j,k))/L(i,j,k)
 
+        ! Compute thermodyanamic (co-)variances from level-2.5 closure
+        hl2_25  = qdiv*B2*L2*Sh*dhldz**2.
+        qt2_25  = qdiv*B2*L2*Sh*dqtdz**2.
+        hlqt_25 = qdiv*B2*L2*Sh*dhldz*dqtdz
+
         ! Compute counter-gradient fluxes of conserved variables
         if ( MYNN_LEVEL == 2 ) then
            ! No counter-gradient flux
            whl_cg = 0.
            wqt_cg = 0.
            wb_cg  = 0.           
-        else
-           ! Compute thermodyanamic (co-)variances from level-2.5 closure
-           hl2_25  = qdiv*B2*L2*Sh*dhldz**2.
-           qt2_25  = qdiv*B2*L2*Sh*dqtdz**2.
-           hlqt_25 = qdiv*B2*L2*Sh*dhldz*dqtdz
-           
+
+           ! Update thermodynamic second-order moments
+           hl2(i,j,k)  = hl2_25
+           qt2(i,j,k)  = qt2_25
+           hlqt(i,j,k) = hlqt_25
+        else           
            ! Compute buoyancy (co-)variances
            hlthv_25 = Beta_hl(i,j,k)*hl2_25  + Beta_qt(i,j,k)*hlqt_25
            qtthv_25 = Beta_hl(i,j,k)*hlqt_25 + Beta_qt(i,j,k)*qt2_25
@@ -451,17 +457,32 @@ subroutine run_mynn(IM, JM, LM, &
         hlqtt_M(i,j,k) = -whl*dqtdz - wqt*dhldz
 
         ! Start test
-        tau_test = L(i,j,k)/q(i,j,k)
-        w2_test  = q(i,j,k)**2./3. + 2.*A1*tau_test*( -Km(i,j,k)*S2(i,j,k) ) &
-                                   + 4.*A1*( 1. - C2 )*tau_test*( -Kh(i,j,k)*N2(i,j,k) + wb_cg)
-        wb_test  = 3.*A2*tau_test*( -w2_test*N2(i,j,k) + ( 1. - C3 )*goth002*( thv2_25  + thv2_p ) )
-        rho_test = ple(i,j,k)/(MAPL_RGAS*( thv(i,j,k+1) + ifac*( thv(i,j,k) - thv(i,j,k+1) ) ))
+        if (DEBUG_FLAG == 1) then
+           tau_test = L(i,j,k)/q(i,j,k)
+           w2_test  = q(i,j,k)**2./3. + 2.*A1*tau_test*( -Km(i,j,k)*S2(i,j,k) ) &
+                                      + 4.*A1*( 1. - C2 )*tau_test*( -Kh(i,j,k)*N2(i,j,k) + wb_cg)
+           if (MYNN_LEVEL == 2) then
+              hlthv_25 = Beta_hl(i,j,k)*hl2_25  + Beta_qt(i,j,k)*hlqt_25
+              qtthv_25 = Beta_hl(i,j,k)*hlqt_25 + Beta_qt(i,j,k)*qt2_25
+              thv2_25  = max(0.d0, Beta_hl(i,j,k)*hlthv_25 + Beta_qt(i,j,k)*qtthv_25)
+              wb_test  = 3.*A2*tau_test*( -w2_test*N2(i,j,k) + ( 1. - C3 )*goth002*thv2_25 )
+           else
+              wb_test  = 3.*A2*tau_test*(-w2_test*N2(i,j,k) + ( 1. - C3 )*goth002*( thv2_25  + thv2_p ) )
+           end if
+           rho_test = ple(i,j,k)/(MAPL_RGAS*( thv(i,j,k+1) + ifac*( thv(i,j,k) - thv(i,j,k+1) ) ))
 
-        write(*,*) real(tke(i,j,k), 4), &
-                   real(MAPL_CP*rho_test*( -Kh(i,j,k)*N2(i,j,k) + wb_cg ), 4), &
-                   real(MAPL_CP*rho_test*wb_test, 4), &
-                   real(qdiv, 4)
-        ! End test
+           write(*,*) tke(i,j,k), &
+                      !hl2(i,j,k), &
+                      !qt2(i,j,k), &
+                      !hlqt(i,j,k)/(sqrt(hl2(i,j,k))*sqrt(qt2(i,j,k)))
+                      !hlqt(i,j,k), &
+                      !real(Lq, 4), &
+                      !real(Sh, 4), &
+                      real(MAPL_CP*rho_test*( -Kh(i,j,k)*N2(i,j,k) + wb_cg ), 4), &
+                      real(MAPL_CP*rho_test*wb_test, 4), &
+                      real(qdiv, 4)!, &
+                      !ac(i,j,k)
+        end if
      end do
      end do
   end do
@@ -625,5 +646,73 @@ subroutine mynn_length(IM, JM, LM, wb_surf, zle, zlo, q, N2, LMO, L, w_star)
   end do
 
 end subroutine mynn_length
+
+!
+!
+!
+subroutine implicit_M(IM, JM, LM, &
+                      zlo, u, v, h, qv, ql, &
+                      Beta_hl, Beta_qt, Km, Kh, &
+                      ws_cg, wqv_cg, wql_cg, whl_mf, wqt_mf, wthv_mf, &
+                      tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
+                      DOMF)
+
+  integer, intent(in)                      :: IM, JM, LM
+  real, intent(in)                         :: DOMF
+  real, dimension(IM,JM,LM), intent(in)    :: zlo, u, v, h, qv, ql 
+  real, dimension(IM,JM,0:LM), intent(in)  :: Beta_hl, Beta_qt, Km, Kh, &
+                                              ws_cg, wqv_cg, wql_cg, whl_mf, wqt_mf, wthv_mf
+  real, dimension(IM,JM,0:LM), intent(out) :: tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M
+
+  integer          :: i, j, k, kp1
+  double precision :: N2, S2, idzlo, dhldz, dqtdz, whl, wqt, whl_cg, wqt_cg, wb_cg
+  double precision, dimension(IM,JM,LM) :: hl, qt
+
+  ! Compute conserved thermodynamic properties 
+  do k = 1,LM
+     do j = 1,JM
+     do i = 1,IM
+!        hl(i,j,k) = T(i,j,k) + gocp*zlo(i,j,k) - lvocp*ql(i,j,k) 
+        hl(i,j,k) = h(i,j,k)/MAPL_CP - lvocp*ql(i,j,k)
+        qt(i,j,k) = qv(i,j,k) + ql(i,j,k)
+     end do
+     end do
+  end do
+
+  do k = 1,LM-1
+
+     kp1 = k + 1
+     do j = 1,JM
+     do i = 1,IM
+        idzlo = 1./( zlo(i,j,k) - zlo(i,j,kp1) )
+        dhldz = ( hl(i,j,k) - hl(i,j,kp1) )*idzlo
+        dqtdz = ( qt(i,j,k) - qt(i,j,kp1) )*idzlo
+
+        N2 = goth00*( Beta_hl(i,j,k)*dhldz + Beta_qt(i,j,k)*dqtdz )
+        S2 = (( u(i,j,k) - u(i,j,kp1) )*idzlo)**2. + ( (v(i,j,k) - v(i,j,kp1) )*idzlo)**2.
+
+        whl_cg = ws_cg(i,j,k)/MAPL_CP - lvocp*wql_cg(i,j,k)
+        wqt_cg = wqv_cg(i,j,k) + wql_cg(i,j,k)
+        wb_cg  = Beta_hl(i,j,k)*whl_cg + Beta_qt(i,j,k)*wqt_cg
+
+        if (DOMF /= 0.) then
+           whl           = -Kh(i,j,k)*dhldz + whl_cg + whl_mf(i,j,k)
+           wqt           = -Kh(i,j,k)*dqtdz + wqt_cg + wqt_mf(i,j,k)
+           tket_B(i,j,k) = -Kh(i,j,k)*N2 + wb_cg + goth00*wthv_mf(i,j,k)
+        else
+           whl           = -Kh(i,j,k)*dhldz + whl_cg
+           wqt           = -Kh(i,j,k)*dqtdz + wqt_cg
+           tket_B(i,j,k) = -Kh(i,j,k)*N2 + wb_cg
+        end if
+
+        tket_M(i,j,k)  = Km(i,j,k)*S2
+        hl2t_M(i,j,k)  = -2.*whl*dhldz
+        qt2t_M(i,j,k)  = -2.*wqt*dqtdz
+        hlqtt_M(i,j,k) = -whl*dqtdz - wqt*dhldz
+     end do
+     end do
+  end do
+
+end subroutine implicit_M
 
 end module mynn
