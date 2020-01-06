@@ -1,4 +1,4 @@
-  use MAPL_IOMod
+  use MAPL
   implicit none
 
   character(256)    :: fname1, fname2, fname3
@@ -126,7 +126,8 @@
   real,    allocatable, dimension(:) :: sfmc, rzmc, prmc, werror, sfmcun, rzmcun, prmcun, dzsf
   real,    allocatable, dimension(:) :: vegdyn
 
-  type(MAPL_NCIO) :: NCIO(3)
+  type(Netcdf4_fileformatter) :: formatter(3)
+  type(Filemetadata) :: cfg(3)
   integer :: i, rc, filetype
     
 ! Usage
@@ -153,8 +154,10 @@
   call MAPL_NCIOGetFileType(fname1, filetype,rc=rc)
 
   if (filetype == 0) then
-     NCIO(1) = MAPL_NCIOOpen(trim(fname1))
-     NCIO(2) = MAPL_NCIOOpen(trim(fname2))
+     call formatter(1)%open(trim(fname1),pFIO_READ,rc=rc)
+     call formatter(2)%open(trim(fname2),pFIO_READ,rc=rc)
+     cfg(1)=formatter(1)%read(rc=rc)
+     cfg(2)=formatter(2)%read(rc=rc)
   else
      open(unit=10, file=trim(fname1),  form='unformatted')
      open(unit=20, file=trim(fname2),  form='unformatted')
@@ -175,7 +178,7 @@
 
   if (filetype ==0) then
 
-     call MAPL_NCIOGetDimSizes(NCIO(1),tile=ntiles)
+     ntiles = cfg(1)%get_dimension('tile',rc=rc)
 
   else
 
@@ -203,8 +206,8 @@
   new = 2
   
   if (filetype ==0) then
-     call readcatch_nc4 ( catch(old), NCIO(old) )
-     call readcatch_nc4 ( catch(new), NCIO(new) )
+     call readcatch_nc4 ( catch(old), formatter(old), cfg(old) )
+     call readcatch_nc4 ( catch(new), formatter(new), cfg(new) )
   else
      call readcatch ( 10,catch(old) )
      call readcatch ( 20,catch(new) )
@@ -263,11 +266,10 @@
 ! Write Scaled Catch
 ! ------------------
   if (filetype ==0) then
-     NCIO(3) = NCIO(2)
-     call MAPL_NCIOClose(NCIO(3))
-     call MAPL_NCIOSet(NCIO(3),filename=fname3)
-     call MAPL_NCIOCreateFile(NCIO(3))
-     call writecatch_nc4 ( catch(sca), NCIO(3) )
+     cfg(3) = cfg(2)
+     call formatter(3)%create(fname3,rc=rc)
+     call formatter(3)%write(cfg(3),rc=rc)
+     call writecatch_nc4 ( catch(sca), formatter(3) ,cfg(3) )
   else
      call writecatch ( 30,catch(sca) )
   end if
@@ -358,91 +360,96 @@
    return
    end subroutine allocatch
 
-   subroutine readcatch_nc4 (catch,NCIO)
+   subroutine readcatch_nc4 (catch,formatter,cfg)
    type(catch_rst) catch
-   type(MAPL_NCIO) :: NCIO
-   integer :: j, ndims, dimSizes(3)
+   type(Filemetadata) :: cfg
+   type(Netcdf4_Fileformatter) :: formatter
+   integer :: j, dim1,dim2
+   type(Variable), pointer :: myVariable
+   character(len=:), pointer :: dname
    
 
-       call MAPL_VarRead(NCIO,"BF1",catch%bf1)
-       call MAPL_VarRead(NCIO,"BF2",catch%bf2)
-       call MAPL_VarRead(NCIO,"BF3",catch%bf3)
-       call MAPL_VarRead(NCIO,"VGWMAX",catch%vgwmax)
-       call MAPL_VarRead(NCIO,"CDCR1",catch%cdcr1)
-       call MAPL_VarRead(NCIO,"CDCR2",catch%cdcr2)
-       call MAPL_VarRead(NCIO,"PSIS",catch%psis)
-       call MAPL_VarRead(NCIO,"BEE",catch%bee)
-       call MAPL_VarRead(NCIO,"POROS",catch%poros)
-       call MAPL_VarRead(NCIO,"WPWET",catch%wpwet)
-       call MAPL_VarRead(NCIO,"COND",catch%cond)
-       call MAPL_VarRead(NCIO,"GNU",catch%gnu)
-       call MAPL_VarRead(NCIO,"ARS1",catch%ars1)
-       call MAPL_VarRead(NCIO,"ARS2",catch%ars2)
-       call MAPL_VarRead(NCIO,"ARS3",catch%ars3)
-       call MAPL_VarRead(NCIO,"ARA1",catch%ara1)
-       call MAPL_VarRead(NCIO,"ARA2",catch%ara2)
-       call MAPL_VarRead(NCIO,"ARA3",catch%ara3)
-       call MAPL_VarRead(NCIO,"ARA4",catch%ara4)
-       call MAPL_VarRead(NCIO,"ARW1",catch%arw1)
-       call MAPL_VarRead(NCIO,"ARW2",catch%arw2)
-       call MAPL_VarRead(NCIO,"ARW3",catch%arw3)
-       call MAPL_VarRead(NCIO,"ARW4",catch%arw4)
-       call MAPL_VarRead(NCIO,"TSA1",catch%tsa1)
-       call MAPL_VarRead(NCIO,"TSA2",catch%tsa2)
-       call MAPL_VarRead(NCIO,"TSB1",catch%tsb1)
-       call MAPL_VarRead(NCIO,"TSB2",catch%tsb2)
-       call MAPL_VarRead(NCIO,"ATAU",catch%atau)
-       call MAPL_VarRead(NCIO,"BTAU",catch%btau)
+       call MAPL_VarRead(formatter,"BF1",catch%bf1)
+       call MAPL_VarRead(formatter,"BF2",catch%bf2)
+       call MAPL_VarRead(formatter,"BF3",catch%bf3)
+       call MAPL_VarRead(formatter,"VGWMAX",catch%vgwmax)
+       call MAPL_VarRead(formatter,"CDCR1",catch%cdcr1)
+       call MAPL_VarRead(formatter,"CDCR2",catch%cdcr2)
+       call MAPL_VarRead(formatter,"PSIS",catch%psis)
+       call MAPL_VarRead(formatter,"BEE",catch%bee)
+       call MAPL_VarRead(formatter,"POROS",catch%poros)
+       call MAPL_VarRead(formatter,"WPWET",catch%wpwet)
+       call MAPL_VarRead(formatter,"COND",catch%cond)
+       call MAPL_VarRead(formatter,"GNU",catch%gnu)
+       call MAPL_VarRead(formatter,"ARS1",catch%ars1)
+       call MAPL_VarRead(formatter,"ARS2",catch%ars2)
+       call MAPL_VarRead(formatter,"ARS3",catch%ars3)
+       call MAPL_VarRead(formatter,"ARA1",catch%ara1)
+       call MAPL_VarRead(formatter,"ARA2",catch%ara2)
+       call MAPL_VarRead(formatter,"ARA3",catch%ara3)
+       call MAPL_VarRead(formatter,"ARA4",catch%ara4)
+       call MAPL_VarRead(formatter,"ARW1",catch%arw1)
+       call MAPL_VarRead(formatter,"ARW2",catch%arw2)
+       call MAPL_VarRead(formatter,"ARW3",catch%arw3)
+       call MAPL_VarRead(formatter,"ARW4",catch%arw4)
+       call MAPL_VarRead(formatter,"TSA1",catch%tsa1)
+       call MAPL_VarRead(formatter,"TSA2",catch%tsa2)
+       call MAPL_VarRead(formatter,"TSB1",catch%tsb1)
+       call MAPL_VarRead(formatter,"TSB2",catch%tsb2)
+       call MAPL_VarRead(formatter,"ATAU",catch%atau)
+       call MAPL_VarRead(formatter,"BTAU",catch%btau)
 
-       call MAPL_NCIOVarGetDims(NCIO,"ITY",nDims,dimSizes)
-       do j=1,dimSizes(2)
-          call MAPL_VarRead(NCIO,"ITY",catch%ity(:,j),offset1=j)
-          call MAPL_VarRead(NCIO,"FVG",catch%fvg(:,j),offset1=j)
+       myVariable => cfg%get_variable("ITY")
+       dname => myVariable%get_ith_dimension(2)
+       dim1 = cfg%get_dimension(dname)
+       do j=1,dim1
+          call MAPL_VarRead(formatter,"ITY",catch%ity(:,j),offset1=j)
+          call MAPL_VarRead(formatter,"FVG",catch%fvg(:,j),offset1=j)
        enddo
 
-       call MAPL_VarRead(NCIO,"TC",catch%tc)
-       call MAPL_VarRead(NCIO,"QC",catch%qc)
-       call MAPL_VarRead(NCIO,"TG",catch%tg)
-       call MAPL_VarRead(NCIO,"CAPAC",catch%capac)
-       call MAPL_VarRead(NCIO,"CATDEF",catch%catdef)
-       call MAPL_VarRead(NCIO,"RZEXC",catch%rzexc)
-       call MAPL_VarRead(NCIO,"SRFEXC",catch%srfexc)
-       call MAPL_VarRead(NCIO,"GHTCNT1",catch%ghtcnt1)
-       call MAPL_VarRead(NCIO,"GHTCNT2",catch%ghtcnt2)
-       call MAPL_VarRead(NCIO,"GHTCNT3",catch%ghtcnt3)
-       call MAPL_VarRead(NCIO,"GHTCNT4",catch%ghtcnt4)
-       call MAPL_VarRead(NCIO,"GHTCNT5",catch%ghtcnt5)
-       call MAPL_VarRead(NCIO,"GHTCNT6",catch%ghtcnt6)
-       call MAPL_VarRead(NCIO,"TSURF",catch%tsurf)
-       call MAPL_VarRead(NCIO,"WESNN1",catch%wesnn1)
-       call MAPL_VarRead(NCIO,"WESNN2",catch%wesnn2)
-       call MAPL_VarRead(NCIO,"WESNN3",catch%wesnn3)
-       call MAPL_VarRead(NCIO,"HTSNNN1",catch%htsnnn1)
-       call MAPL_VarRead(NCIO,"HTSNNN2",catch%htsnnn2)
-       call MAPL_VarRead(NCIO,"HTSNNN3",catch%htsnnn3)
-       call MAPL_VarRead(NCIO,"SNDZN1",catch%sndzn1)
-       call MAPL_VarRead(NCIO,"SNDZN2",catch%sndzn2)
-       call MAPL_VarRead(NCIO,"SNDZN3",catch%sndzn3)
-       call MAPL_VarRead(NCIO,"CH",catch%ch)
-       call MAPL_VarRead(NCIO,"CM",catch%cm)
-       call MAPL_VarRead(NCIO,"CQ",catch%cq)
-       call MAPL_VarRead(NCIO,"FR",catch%fr)
-       call MAPL_VarRead(NCIO,"WW",catch%ww)
-       call MAPL_VarRead(NCIO,"TILE_ID",catch%TILE_ID)
-       call MAPL_VarRead(NCIO,"NDEP",catch%ndep)
-       call MAPL_VarRead(NCIO,"CLI_T2M",catch%t2)
-       call MAPL_VarRead(NCIO,"BGALBVR",catch%BGALBVR)
-       call MAPL_VarRead(NCIO,"BGALBVF",catch%BGALBVF)
-       call MAPL_VarRead(NCIO,"BGALBNR",catch%BGALBNR)
-       call MAPL_VarRead(NCIO,"BGALBNF",catch%BGALBNF)
-
-       call MAPL_NCIOVarGetDims(NCIO,"CNCOL",nDims,dimSizes)
-       do j=1,dimSizes(2)
-          call MAPL_VarRead(NCIO,"CNCOL",catch%CNCOL(:,j),offset1=j)
+       call MAPL_VarRead(formatter,"TC",catch%tc)
+       call MAPL_VarRead(formatter,"QC",catch%qc)
+       call MAPL_VarRead(formatter,"TG",catch%tg)
+       call MAPL_VarRead(formatter,"CAPAC",catch%capac)
+       call MAPL_VarRead(formatter,"CATDEF",catch%catdef)
+       call MAPL_VarRead(formatter,"RZEXC",catch%rzexc)
+       call MAPL_VarRead(formatter,"SRFEXC",catch%srfexc)
+       call MAPL_VarRead(formatter,"GHTCNT1",catch%ghtcnt1)
+       call MAPL_VarRead(formatter,"GHTCNT2",catch%ghtcnt2)
+       call MAPL_VarRead(formatter,"GHTCNT3",catch%ghtcnt3)
+       call MAPL_VarRead(formatter,"GHTCNT4",catch%ghtcnt4)
+       call MAPL_VarRead(formatter,"GHTCNT5",catch%ghtcnt5)
+       call MAPL_VarRead(formatter,"GHTCNT6",catch%ghtcnt6)
+       call MAPL_VarRead(formatter,"TSURF",catch%tsurf)
+       call MAPL_VarRead(formatter,"WESNN1",catch%wesnn1)
+       call MAPL_VarRead(formatter,"WESNN2",catch%wesnn2)
+       call MAPL_VarRead(formatter,"WESNN3",catch%wesnn3)
+       call MAPL_VarRead(formatter,"HTSNNN1",catch%htsnnn1)
+       call MAPL_VarRead(formatter,"HTSNNN2",catch%htsnnn2)
+       call MAPL_VarRead(formatter,"HTSNNN3",catch%htsnnn3)
+       call MAPL_VarRead(formatter,"SNDZN1",catch%sndzn1)
+       call MAPL_VarRead(formatter,"SNDZN2",catch%sndzn2)
+       call MAPL_VarRead(formatter,"SNDZN3",catch%sndzn3)
+       call MAPL_VarRead(formatter,"CH",catch%ch)
+       call MAPL_VarRead(formatter,"CM",catch%cm)
+       call MAPL_VarRead(formatter,"CQ",catch%cq)
+       call MAPL_VarRead(formatter,"FR",catch%fr)
+       call MAPL_VarRead(formatter,"WW",catch%ww)
+       call MAPL_VarRead(formatter,"TILE_ID",catch%TILE_ID)
+       call MAPL_VarRead(formatter,"NDEP",catch%ndep)
+       call MAPL_VarRead(formatter,"CLI_T2M",catch%t2)
+       call MAPL_VarRead(formatter,"BGALBVR",catch%BGALBVR)
+       call MAPL_VarRead(formatter,"BGALBVF",catch%BGALBVF)
+       call MAPL_VarRead(formatter,"BGALBNR",catch%BGALBNR)
+       call MAPL_VarRead(formatter,"BGALBNF",catch%BGALBNF)
+       myVariable => cfg%get_variable("CNCOL")
+       dname => myVariable%get_ith_dimension(2)
+       dim1 = cfg%get_dimension(dname)
+       do j=1,dim1
+          call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j)
        enddo
-       call MAPL_NCIOVarGetDims(NCIO,"CNPFT",nDims,dimSizes)
-       do j=1,dimSizes(2)
-          call MAPL_VarRead(NCIO,"CNPFT",catch%CNPFT(:,j),offset1=j)
+       do j=1,dim1
+          call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j)
        enddo
    return
    end subroutine readcatch_nc4
@@ -534,121 +541,134 @@
    return
    end subroutine readcatch
 
-   subroutine writecatch_nc4 (catch,NCIO)
+   subroutine writecatch_nc4 (catch,formatter,cfg)
    type(catch_rst) catch
-   type(MAPL_NCIO) :: NCIO
-   integer :: i,j, ndims, dimSizes(3)
+   type(Netcdf4_fileformatter) :: formatter
+   type(filemetadata) :: cfg
+   integer :: i,j, dim1,dim2
    real, dimension (:), allocatable :: var
+   type(Variable), pointer :: myVariable
+   character(len=:), pointer :: dname
 
-       call MAPL_VarWrite(NCIO,"BF1",catch%bf1)
-       call MAPL_VarWrite(NCIO,"BF2",catch%bf2)
-       call MAPL_VarWrite(NCIO,"BF3",catch%bf3)
-       call MAPL_VarWrite(NCIO,"VGWMAX",catch%vgwmax)
-       call MAPL_VarWrite(NCIO,"CDCR1",catch%cdcr1)
-       call MAPL_VarWrite(NCIO,"CDCR2",catch%cdcr2)
-       call MAPL_VarWrite(NCIO,"PSIS",catch%psis)
-       call MAPL_VarWrite(NCIO,"BEE",catch%bee)
-       call MAPL_VarWrite(NCIO,"POROS",catch%poros)
-       call MAPL_VarWrite(NCIO,"WPWET",catch%wpwet)
-       call MAPL_VarWrite(NCIO,"COND",catch%cond)
-       call MAPL_VarWrite(NCIO,"GNU",catch%gnu)
-       call MAPL_VarWrite(NCIO,"ARS1",catch%ars1)
-       call MAPL_VarWrite(NCIO,"ARS2",catch%ars2)
-       call MAPL_VarWrite(NCIO,"ARS3",catch%ars3)
-       call MAPL_VarWrite(NCIO,"ARA1",catch%ara1)
-       call MAPL_VarWrite(NCIO,"ARA2",catch%ara2)
-       call MAPL_VarWrite(NCIO,"ARA3",catch%ara3)
-       call MAPL_VarWrite(NCIO,"ARA4",catch%ara4)
-       call MAPL_VarWrite(NCIO,"ARW1",catch%arw1)
-       call MAPL_VarWrite(NCIO,"ARW2",catch%arw2)
-       call MAPL_VarWrite(NCIO,"ARW3",catch%arw3)
-       call MAPL_VarWrite(NCIO,"ARW4",catch%arw4)
-       call MAPL_VarWrite(NCIO,"TSA1",catch%tsa1)
-       call MAPL_VarWrite(NCIO,"TSA2",catch%tsa2)
-       call MAPL_VarWrite(NCIO,"TSB1",catch%tsb1)
-       call MAPL_VarWrite(NCIO,"TSB2",catch%tsb2)
-       call MAPL_VarWrite(NCIO,"ATAU",catch%atau)
-       call MAPL_VarWrite(NCIO,"BTAU",catch%btau)
+       call MAPL_VarWrite(formatter,"BF1",catch%bf1)
+       call MAPL_VarWrite(formatter,"BF2",catch%bf2)
+       call MAPL_VarWrite(formatter,"BF3",catch%bf3)
+       call MAPL_VarWrite(formatter,"VGWMAX",catch%vgwmax)
+       call MAPL_VarWrite(formatter,"CDCR1",catch%cdcr1)
+       call MAPL_VarWrite(formatter,"CDCR2",catch%cdcr2)
+       call MAPL_VarWrite(formatter,"PSIS",catch%psis)
+       call MAPL_VarWrite(formatter,"BEE",catch%bee)
+       call MAPL_VarWrite(formatter,"POROS",catch%poros)
+       call MAPL_VarWrite(formatter,"WPWET",catch%wpwet)
+       call MAPL_VarWrite(formatter,"COND",catch%cond)
+       call MAPL_VarWrite(formatter,"GNU",catch%gnu)
+       call MAPL_VarWrite(formatter,"ARS1",catch%ars1)
+       call MAPL_VarWrite(formatter,"ARS2",catch%ars2)
+       call MAPL_VarWrite(formatter,"ARS3",catch%ars3)
+       call MAPL_VarWrite(formatter,"ARA1",catch%ara1)
+       call MAPL_VarWrite(formatter,"ARA2",catch%ara2)
+       call MAPL_VarWrite(formatter,"ARA3",catch%ara3)
+       call MAPL_VarWrite(formatter,"ARA4",catch%ara4)
+       call MAPL_VarWrite(formatter,"ARW1",catch%arw1)
+       call MAPL_VarWrite(formatter,"ARW2",catch%arw2)
+       call MAPL_VarWrite(formatter,"ARW3",catch%arw3)
+       call MAPL_VarWrite(formatter,"ARW4",catch%arw4)
+       call MAPL_VarWrite(formatter,"TSA1",catch%tsa1)
+       call MAPL_VarWrite(formatter,"TSA2",catch%tsa2)
+       call MAPL_VarWrite(formatter,"TSB1",catch%tsb1)
+       call MAPL_VarWrite(formatter,"TSB2",catch%tsb2)
+       call MAPL_VarWrite(formatter,"ATAU",catch%atau)
+       call MAPL_VarWrite(formatter,"BTAU",catch%btau)
 
-       call MAPL_NCIOVarGetDims(NCIO,"ITY",nDims,dimSizes)
-       do j=1,dimSizes(2)
-          call MAPL_VarWrite(NCIO,"ITY",catch%ity(:,j),offset1=j)
-          call MAPL_VarWrite(NCIO,"FVG",catch%fvg(:,j),offset1=j)
+       myVariable => cfg%get_variable("ITY")
+       dname => myVariable%get_ith_dimension(2)
+       dim1 = cfg%get_dimension(dname)
+       do j=1,dim1
+          call MAPL_VarWrite(formatter,"ITY",catch%ity(:,j),offset1=j)
+          call MAPL_VarWrite(formatter,"FVG",catch%fvg(:,j),offset1=j)
        enddo
 
-       call MAPL_VarWrite(NCIO,"TC",catch%tc)
-       call MAPL_VarWrite(NCIO,"QC",catch%qc)
-       call MAPL_VarWrite(NCIO,"TG",catch%TG)
-       call MAPL_VarWrite(NCIO,"CAPAC",catch%capac)
-       call MAPL_VarWrite(NCIO,"CATDEF",catch%catdef)
-       call MAPL_VarWrite(NCIO,"RZEXC",catch%rzexc)
-       call MAPL_VarWrite(NCIO,"SRFEXC",catch%srfexc)
-       call MAPL_VarWrite(NCIO,"GHTCNT1",catch%ghtcnt1)
-       call MAPL_VarWrite(NCIO,"GHTCNT2",catch%ghtcnt2)
-       call MAPL_VarWrite(NCIO,"GHTCNT3",catch%ghtcnt3)
-       call MAPL_VarWrite(NCIO,"GHTCNT4",catch%ghtcnt4)
-       call MAPL_VarWrite(NCIO,"GHTCNT5",catch%ghtcnt5)
-       call MAPL_VarWrite(NCIO,"GHTCNT6",catch%ghtcnt6)
-       call MAPL_VarWrite(NCIO,"TSURF",catch%tsurf)
-       call MAPL_VarWrite(NCIO,"WESNN1",catch%wesnn1)
-       call MAPL_VarWrite(NCIO,"WESNN2",catch%wesnn2)
-       call MAPL_VarWrite(NCIO,"WESNN3",catch%wesnn3)
-       call MAPL_VarWrite(NCIO,"HTSNNN1",catch%htsnnn1)
-       call MAPL_VarWrite(NCIO,"HTSNNN2",catch%htsnnn2)
-       call MAPL_VarWrite(NCIO,"HTSNNN3",catch%htsnnn3)
-       call MAPL_VarWrite(NCIO,"SNDZN1",catch%sndzn1)
-       call MAPL_VarWrite(NCIO,"SNDZN2",catch%sndzn2)
-       call MAPL_VarWrite(NCIO,"SNDZN3",catch%sndzn3)
-       call MAPL_VarWrite(NCIO,"CH",catch%ch)
-       call MAPL_VarWrite(NCIO,"CM",catch%cm)
-       call MAPL_VarWrite(NCIO,"CQ",catch%cq)
-       call MAPL_VarWrite(NCIO,"FR",catch%fr)
-       call MAPL_VarWrite(NCIO,"WW",catch%ww)
-       call MAPL_VarWrite(NCIO,"TILE_ID",catch%TILE_ID)
-       call MAPL_VarWrite(NCIO,"NDEP",catch%NDEP)
-       call MAPL_VarWrite(NCIO,"CLI_T2M",catch%t2)
-       call MAPL_VarWrite(NCIO,"BGALBVR",catch%BGALBVR)
-       call MAPL_VarWrite(NCIO,"BGALBVF",catch%BGALBVF)
-       call MAPL_VarWrite(NCIO,"BGALBNR",catch%BGALBNR)
-       call MAPL_VarWrite(NCIO,"BGALBNF",catch%BGALBNF)
-       call MAPL_NCIOVarGetDims(NCIO,"CNCOL",nDims,dimSizes)
-       do j=1,dimSizes(2)
-          call MAPL_VarWrite(NCIO,"CNCOL",catch%CNCOL(:,j),offset1=j)
+       call MAPL_VarWrite(formatter,"TC",catch%tc)
+       call MAPL_VarWrite(formatter,"QC",catch%qc)
+       call MAPL_VarWrite(formatter,"TG",catch%TG)
+       call MAPL_VarWrite(formatter,"CAPAC",catch%capac)
+       call MAPL_VarWrite(formatter,"CATDEF",catch%catdef)
+       call MAPL_VarWrite(formatter,"RZEXC",catch%rzexc)
+       call MAPL_VarWrite(formatter,"SRFEXC",catch%srfexc)
+       call MAPL_VarWrite(formatter,"GHTCNT1",catch%ghtcnt1)
+       call MAPL_VarWrite(formatter,"GHTCNT2",catch%ghtcnt2)
+       call MAPL_VarWrite(formatter,"GHTCNT3",catch%ghtcnt3)
+       call MAPL_VarWrite(formatter,"GHTCNT4",catch%ghtcnt4)
+       call MAPL_VarWrite(formatter,"GHTCNT5",catch%ghtcnt5)
+       call MAPL_VarWrite(formatter,"GHTCNT6",catch%ghtcnt6)
+       call MAPL_VarWrite(formatter,"TSURF",catch%tsurf)
+       call MAPL_VarWrite(formatter,"WESNN1",catch%wesnn1)
+       call MAPL_VarWrite(formatter,"WESNN2",catch%wesnn2)
+       call MAPL_VarWrite(formatter,"WESNN3",catch%wesnn3)
+       call MAPL_VarWrite(formatter,"HTSNNN1",catch%htsnnn1)
+       call MAPL_VarWrite(formatter,"HTSNNN2",catch%htsnnn2)
+       call MAPL_VarWrite(formatter,"HTSNNN3",catch%htsnnn3)
+       call MAPL_VarWrite(formatter,"SNDZN1",catch%sndzn1)
+       call MAPL_VarWrite(formatter,"SNDZN2",catch%sndzn2)
+       call MAPL_VarWrite(formatter,"SNDZN3",catch%sndzn3)
+       call MAPL_VarWrite(formatter,"CH",catch%ch)
+       call MAPL_VarWrite(formatter,"CM",catch%cm)
+       call MAPL_VarWrite(formatter,"CQ",catch%cq)
+       call MAPL_VarWrite(formatter,"FR",catch%fr)
+       call MAPL_VarWrite(formatter,"WW",catch%ww)
+       call MAPL_VarWrite(formatter,"TILE_ID",catch%TILE_ID)
+       call MAPL_VarWrite(formatter,"NDEP",catch%NDEP)
+       call MAPL_VarWrite(formatter,"CLI_T2M",catch%t2)
+       call MAPL_VarWrite(formatter,"BGALBVR",catch%BGALBVR)
+       call MAPL_VarWrite(formatter,"BGALBVF",catch%BGALBVF)
+       call MAPL_VarWrite(formatter,"BGALBNR",catch%BGALBNR)
+       call MAPL_VarWrite(formatter,"BGALBNF",catch%BGALBNF)
+       myVariable => cfg%get_variable("CNCOL")
+       dname => myVariable%get_ith_dimension(2)
+       dim1 = cfg%get_dimension(dname)
+       do j=1,dim1
+          call MAPL_VarWrite(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j)
        enddo
-       call MAPL_NCIOVarGetDims(NCIO,"CNPFT",nDims,dimSizes)
-       do j=1,dimSizes(2)
-          call MAPL_VarWrite(NCIO,"CNPFT",catch%CNPFT(:,j),offset1=j)
+       myVariable => cfg%get_variable("CNPFT")
+       dname => myVariable%get_ith_dimension(2)
+       dim1 = cfg%get_dimension(dname)
+       do j=1,dim1
+          call MAPL_VarWrite(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j)
        enddo
 
-       call MAPL_NCIOVarGetDims(NCIO,"SFMCM",nDims,dimSizes)
-       allocate (var (1:dimSizes(1)))
+       dim1 = cfg%get_dimension('tile')
+       allocate (var (dim1))
        var = 0.
 
-       call MAPL_VarWrite(NCIO,"SFMCM",  var)
-       call MAPL_VarWrite(NCIO,"BFLOWM", var)
-       call MAPL_VarWrite(NCIO,"TOTWATM",var)
-       call MAPL_VarWrite(NCIO,"TAIRM",  var)
-       call MAPL_VarWrite(NCIO,"TPM",    var)
-       call MAPL_VarWrite(NCIO,"CNSUM",  var)
-       call MAPL_VarWrite(NCIO,"SNDZM",  var)
-       call MAPL_VarWrite(NCIO,"ASNOWM", var)
+       call MAPL_VarWrite(formatter,"SFMCM",  var)
+       call MAPL_VarWrite(formatter,"BFLOWM", var)
+       call MAPL_VarWrite(formatter,"TOTWATM",var)
+       call MAPL_VarWrite(formatter,"TAIRM",  var)
+       call MAPL_VarWrite(formatter,"TPM",    var)
+       call MAPL_VarWrite(formatter,"CNSUM",  var)
+       call MAPL_VarWrite(formatter,"SNDZM",  var)
+       call MAPL_VarWrite(formatter,"ASNOWM", var)
 
-       call MAPL_NCIOVarGetDims(NCIO,"TGWM",nDims,dimSizes)
-
-       do j=1,dimSizes(2)
-          call MAPL_VarWrite(NCIO,"TGWM",var,offset1=j)
-          call MAPL_VarWrite(NCIO,"RZMM",var,offset1=j)
+       myVariable => cfg%get_variable("TGWM")
+       dname => myVariable%get_ith_dimension(2)
+       dim1 = cfg%get_dimension(dname)
+       do j=1,dim1
+          call MAPL_VarWrite(formatter,"TGWM",var,offset1=j)
+          call MAPL_VarWrite(formatter,"RZMM",var,offset1=j)
        end do
 
-       call MAPL_NCIOVarGetDims(NCIO,"PSNSUNM",nDims,dimSizes)
-
-       do i=1,dimSizes(3) 
-          do j=1,dimSizes(2)
-             call MAPL_VarWrite(NCIO,"PSNSUNM",var,offset1=j,offset2=i)
-             call MAPL_VarWrite(NCIO,"PSNSHAM",var,offset1=j,offset2=i)
+       myVariable => cfg%get_variable("PSNSUNM")
+       dname => myVariable%get_ith_dimension(2)
+       dim1 = cfg%get_dimension(dname)
+       dname => myVariable%get_ith_dimension(2)
+       dim2 = cfg%get_dimension(dname)
+       do i=1,dim2 
+          do j=1,dim1
+             call MAPL_VarWrite(formatter,"PSNSUNM",var,offset1=j,offset2=i)
+             call MAPL_VarWrite(formatter,"PSNSHAM",var,offset1=j,offset2=i)
           end do
        end do
-       call MAPL_NCIOClose      (NCIO)
+       call formatter%close()
    return
    end subroutine writecatch_nc4
 

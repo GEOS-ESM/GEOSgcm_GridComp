@@ -10,7 +10,7 @@ module GuestOcean_GridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use MOM_GEOS5PlugMod, only: MOMSetServices  => SetServices  ! this sets IRF
   use MOM6_GEOSPlugMod, only: MOM6SetServices => SetServices  ! this sets IRF
   use GEOS_DataSeaGridCompMod, only: DataSeaSetServices  => SetServices
@@ -701,8 +701,8 @@ contains
 ! Profilers
 !----------
 
-    call MAPL_TimerOn(STATE,"TOTAL"     )
     call MAPL_TimerOn(STATE,"INITIALIZE")
+    call MAPL_TimerOn(STATE,"TOTAL"     )
 
 ! Get info from the Generic state
 !--------------------------------
@@ -800,9 +800,9 @@ contains
           DH(:,:,1) = OrphanDepth
        end where
     end if
-
-    call MAPL_TimerOff(STATE,"INITIALIZE")
+ 
     call MAPL_TimerOff(STATE,"TOTAL"     )
+    call MAPL_TimerOff(STATE,"INITIALIZE")
 
 ! All Done
 !---------
@@ -961,8 +961,8 @@ contains
 ! Profilers
 !----------
 
-    call MAPL_TimerOn (STATE,"TOTAL")
     call MAPL_TimerOn (STATE,"RUN"  )
+    call MAPL_TimerOn (STATE,"TOTAL")
 
 ! Get child's import ad export to use as a bulletin board
 !--------------------------------------------------------
@@ -1200,7 +1200,7 @@ contains
           call MAPL_TimerOn (STATE,"--ModRun")
 
           if (.not. DUAL_OCEAN) then
-             call MAPL_GenericRun(GC, IMPORT, EXPORT, PrivateState%CLOCK, RC=STATUS)
+             call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, PrivateState%CLOCK, RC=STATUS)
              VERIFY_(STATUS)
           else
              if (PHASE == 1) then
@@ -1326,8 +1326,8 @@ contains
 ! Profilers
 !----------
 
-    call MAPL_TimerOff(STATE,"RUN"  )
     call MAPL_TimerOff(STATE,"TOTAL")
+    call MAPL_TimerOff(STATE,"RUN"  )
 
 ! All Done
 !---------

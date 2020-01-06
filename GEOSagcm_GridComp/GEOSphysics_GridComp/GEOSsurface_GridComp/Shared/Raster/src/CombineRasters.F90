@@ -167,8 +167,8 @@ program mkOverlaySimple
 
 ! Both grids must be based on same shape rasters
 
-    ASSERT_(NX1==NX)
-    ASSERT_(NY1==NY)
+    _ASSERT(NX1==NX,'needs informative message')
+    _ASSERT(NY1==NY,'needs informative message')
 
 ! allocate space
 

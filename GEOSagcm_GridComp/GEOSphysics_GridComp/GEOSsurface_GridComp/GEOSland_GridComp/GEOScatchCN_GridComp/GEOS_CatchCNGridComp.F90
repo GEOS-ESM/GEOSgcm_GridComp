@@ -56,16 +56,16 @@ module GEOS_CatchCNGridCompMod
        NUM_ZON, NUM_VEG, VAR_COL, VAR_PFT,    &
        CN_zone_weight, map_cat, firefac, numpft
  
-  USE MAPL_BaseMod
+  USE MAPL
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI 
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist, irrigation_rate
-  USE MAPL_SortMod
-  USE ESMF_CFIOFileMOD
 
 implicit none
 private
+
+  include "netcdf.inc"
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -4165,8 +4165,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     elsewhere
      VEG2 = map_cat(nint(ITY(:,4)))  ! gkw: secondary CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
    endwhere
-   ASSERT_((count(VEG1>NTYPS.or.VEG1<1)==0))
-   ASSERT_((count(VEG2>NTYPS.or.VEG2<1)==0))
+   _ASSERT((count(VEG1>NTYPS.or.VEG1<1)==0),'needs informative message')
+   _ASSERT((count(VEG2>NTYPS.or.VEG2<1)==0),'needs informative message')
 
    ! At this point, bare soil is not allowed in CatchCN. FVEG in BCs 
    ! files do not have bare soil either. However, at times, tiny bare 
@@ -6437,8 +6437,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     IDAY = YEAR*int(YEAR_LENGTH)+dofyr
     IDAYP1 = mod(IDAY,DAYS_PER_CYCLE) + 1
 
-    ASSERT_(IDAY   <= 1461 .AND. IDAY   > 0)
-    ASSERT_(IDAYP1 <= 1461 .AND. IDAYP1 > 0)
+    _ASSERT(IDAY   <= 1461 .AND. IDAY   > 0,'needs informative message')
+    _ASSERT(IDAYP1 <= 1461 .AND. IDAYP1 > 0,'needs informative message')
 
     FAC = real(AGCM_S)/86400.
 
@@ -8596,8 +8596,8 @@ subroutine RUN0(gc, import, export, clock, rc)
     elsewhere
      VEG2 = map_cat(nint(ITY(:,4)))  ! gkw: secondary CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
    endwhere
-   ASSERT_((count(VEG1>NTYPS.or.VEG1<1)==0)) 
-   ASSERT_((count(VEG2>NTYPS.or.VEG2<1)==0))
+   _ASSERT((count(VEG1>NTYPS.or.VEG1<1)==0),'needs informative message') 
+   _ASSERT((count(VEG2>NTYPS.or.VEG2<1)==0),'needs informative message')
    fveg1(:) = fvg(:,1) + fvg(:,2) ! sum veg fractions (primary)   gkw: NUM_VEG specific
    fveg2(:) = fvg(:,3) + fvg(:,4) ! sum veg fractions (secondary) gkw: fveg1+fveg2=1
 

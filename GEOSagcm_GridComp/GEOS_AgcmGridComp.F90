@@ -31,17 +31,12 @@ module GEOS_AgcmGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_TopoGetMod
 
   use GEOS_superdynGridCompMod,  only:  SDYN_SetServices => SetServices
   use GEOS_physicsGridCompMod,   only:  PHYS_SetServices => SetServices
   use MAPL_OrbGridCompMod,       only:  ORB_SetServices => SetServices
-  use m_chars,                   only:  uppercase
-  use MAPL_GridManagerMod, only: grid_manager
-  use MAPL_RegridderManagerMod, only: regridder_manager
-  use MAPL_AbstractRegridderMod
-  use MAPL_RegridderSpecMod
 
   use GEOS_RemapMod, only: myremap => remap
 
@@ -199,7 +194,7 @@ contains
     if(ANA_TS .and. ( adjustl(ReplayMode) /= "Exact_3D" .and. &
                       adjustl(ReplayMode) /= "Exact_4D" .and. &
                       adjustl(ReplayMode) /= "Regular" ) ) then
-             ASSERT_( adjustl(ReplayMode) == "NoReplay"  )
+             _ASSERT( adjustl(ReplayMode) == "NoReplay"  ,'needs informative message')
     endif
  
 !BOS
@@ -1274,7 +1269,7 @@ contains
       VERIFY_(STATUS)
       call ESMF_AlarmRingerOn(ALARM, rc=status)
       VERIFY_(STATUS)
-      ASSERT_(POFFSET == RPL_INTERVAL)
+      _ASSERT(POFFSET == RPL_INTERVAL,'needs informative message')
    end if
 
 !  Create 4dIAU alarm
@@ -1568,9 +1563,9 @@ contains
 
     call MAPL_GetResource( STATE, ANA_IS_WEIGHTED, Label="ANA_IS_WEIGHTED:", default='NO', RC=STATUS)
     VERIFY_(STATUS)
-         ANA_IS_WEIGHTED = uppercase(ANA_IS_WEIGHTED)
+         ANA_IS_WEIGHTED = ESMF_UtilStringUpperCase(ANA_IS_WEIGHTED)
              IS_WEIGHTED =   adjustl(ANA_IS_WEIGHTED)=="YES" .or. adjustl(ANA_IS_WEIGHTED)=="NO"
-    ASSERT_( IS_WEIGHTED )
+    _ASSERT( IS_WEIGHTED ,'needs informative message')
              IS_WEIGHTED =   adjustl(ANA_IS_WEIGHTED)=="YES"
 
     call MAPL_GetResource( STATE, STRING, LABEL="IMPORT_RESTART_FILE:", RC=STATUS)
@@ -1699,7 +1694,7 @@ TIME_TO_REPLAY: if(is_ringing) then
     call ESMF_FieldBundleGet(BUNDLE,FieldCount=NumFriendly,   RC=STATUS)
     VERIFY_(STATUS)
 
-    ASSERT_(NumFriendly==2)
+    _ASSERT(NumFriendly==2,'needs informative message')
 
     allocate(Names(NumFriendly), stat=STATUS)
     VERIFY_(STATUS)
@@ -2658,7 +2653,7 @@ TIME_TO_REPLAY: if(is_ringing) then
 
       case default
 
-         ASSERT_(.false.)
+         _ASSERT(.false.,'needs informative message')
 
       end select
 
@@ -2728,7 +2723,7 @@ TIME_TO_REPLAY: if(is_ringing) then
 
       case default
 
-         ASSERT_(.false.)
+         _ASSERT(.false.,'needs informative message')
 
       end select
 
@@ -2840,7 +2835,7 @@ TIME_TO_REPLAY: if(is_ringing) then
 
       case default
 
-         ASSERT_(.false.)
+         _ASSERT(.false.,'needs informative message')
 
       end select
 
@@ -2906,7 +2901,6 @@ TIME_TO_REPLAY: if(is_ringing) then
     end subroutine FILL_FRIENDLY
 
     subroutine get_iau_coeff( TNDCoeff )
-    use m_chars,       only:  uppercase
     implicit none
 
     real, intent(OUT) :: TNDCoeff
@@ -2929,7 +2923,7 @@ TIME_TO_REPLAY: if(is_ringing) then
  
     call MAPL_GetResource(STATE, STRING, LABEL="IAU_DIGITAL_FILTER:", default="YES", RC=STATUS)
     VERIFY_(STATUS)
-    STRING = uppercase(STRING)
+    STRING = ESMF_UtilStringUpperCase(STRING)
     IAU_DIGITAL_FILTER = trim(STRING)=="YES"
 
 !   Standard Constant IAU Scaling (1/TAU)
@@ -2996,11 +2990,9 @@ TIME_TO_REPLAY: if(is_ringing) then
     
     subroutine update_ainc_(RC)
 
-    use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
     use ESMF_CFIOFileMod
     use GEOS_UtilsMod
     use GEOS_RemapMod, only: myremap => remap
-    use m_chars,  only: uppercase
     implicit none
 
     integer,optional, intent(OUT) :: RC
@@ -3236,27 +3228,27 @@ TIME_TO_REPLAY: if(is_ringing) then
 
     call MAPL_GetResource(STATE, NUDGE,    LABEL="NUDGE_STATE:", default="NO", RC=STATUS)
     VERIFY_(STATUS)
-    NUDGE = uppercase(NUDGE)
+    NUDGE = ESMF_UtilStringUpperCase(NUDGE)
     l_nudge=trim(NUDGE)=="YES"
 
     call MAPL_GetResource(STATE, NUDGE_REMAP, LABEL="NUDGE_REMAP:", default="YES", RC=STATUS)
     VERIFY_(STATUS)
-    NUDGE_REMAP = uppercase(NUDGE_REMAP)
+    NUDGE_REMAP = ESMF_UtilStringUpperCase(NUDGE_REMAP)
     l_remap=trim(NUDGE_REMAP)=="YES"
 
     call MAPL_GetResource(STATE, NUDGE_WINDFIX, LABEL="NUDGE_WINDFIX:", default="YES", RC=STATUS)
     VERIFY_(STATUS)
-    NUDGE_WINDFIX = uppercase(NUDGE_WINDFIX)
+    NUDGE_WINDFIX = ESMF_UtilStringUpperCase(NUDGE_WINDFIX)
     l_windfix=trim(NUDGE_WINDFIX)=="YES"
 
     call MAPL_GetResource(STATE, USE_ANA_DELP, LABEL="USE_ANA_DELP:", default="NO", RC=STATUS)
     VERIFY_(STATUS)
-    USE_ANA_DELP = uppercase(USE_ANA_DELP)
+    USE_ANA_DELP = ESMF_UtilStringUpperCase(USE_ANA_DELP)
     l_use_ana_delp=trim(USE_ANA_DELP)=="YES"
 
     call MAPL_GetResource(STATE, NUDGE_STORE_TRANSFORMS, LABEL="NUDGE_STORE_TRANSFORMS:", default="YES", RC=STATUS)
     VERIFY_(STATUS)
-    NUDGE_STORE_TRANSFORMS = uppercase(NUDGE_STORE_TRANSFORMS)
+    NUDGE_STORE_TRANSFORMS = ESMF_UtilStringUpperCase(NUDGE_STORE_TRANSFORMS)
     l_store_transforms=trim(NUDGE_STORE_TRANSFORMS)=="YES"
 
     IMbkg=IM
@@ -3993,8 +3985,6 @@ TIME_TO_REPLAY: if(is_ringing) then
 
 
     subroutine make_ana_grid(myANA, IM_world, JM_world, NX, NY, LM, rc)
-       use MAPL_ConfigMod
-       use MAPL_LatLonGridFactoryMod
        type (CONNECT_AnanBKG), intent(inout) :: myANA
        integer, intent(in) :: IM_world
        integer, intent(in) :: JM_world
@@ -4123,10 +4113,6 @@ TIME_TO_REPLAY: if(is_ringing) then
 
   subroutine GET_REPLAY_TIME ( MAPL, CLOCK, REPLAY_TIME, RC )
 
-  use ESMF
-  use MAPL_Mod
-  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
-  use ESMF_CFIOFileMod
 
     type(ESMF_Clock),    intent(inout) :: CLOCK
     type(ESMF_Time),     intent(  out) :: REPLAY_TIME

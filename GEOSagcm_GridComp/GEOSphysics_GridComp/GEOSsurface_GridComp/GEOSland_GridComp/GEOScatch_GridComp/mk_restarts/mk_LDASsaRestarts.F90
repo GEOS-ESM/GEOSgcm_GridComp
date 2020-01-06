@@ -13,9 +13,8 @@ PROGRAM mk_LDASsaRestarts
 ! --------------------------------------------------------------------------------------------
 ! mpirun -np 1 bin/mk_LDASsaRestarts -b BCSDIR  -d YYYYMMDD -e EXPNAME -l EXPDIR -m MODEL -s SURFLAY(20/50) -r Y -t TILFILE
 
-  use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius, MAPL_TICE
-  use MAPL_HashMod
-  use MAPL_IOMod
+  use MAPL
+  use gFTL_StringVector
   use ieee_arithmetic, only: isnan => ieee_is_nan
   USE STIEGLITZSNOW,   ONLY :                 &
        StieglitzSnow_calc_tpsnow 
@@ -284,14 +283,22 @@ contains
 
     real, intent (in)         :: SURFLAY
     character(*), intent (in) :: BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, ENS
-    character(256)            :: tile_coord, vname
+    character(256)            :: tile_coord
     character(300)            :: rst_file, out_rst_file
-    type(MAPL_NCIO)           :: InNCIO, OutNCIO
+    type(Netcdf4_FileFormatter) :: InFmt,OutFmt
+    type(FileMetadata)        :: OutCfg
+    type(FileMetadata), allocatable :: InCfg(:)
     integer                   :: NTILES, nVars, i,j,k,n, ndims,dimSizes(3)
     integer, allocatable      :: LDAS2BCS (:), g2d(:), tile_id(:)
     real, allocatable         :: var1(:), var2(:),wesn1(:), htsn1(:)
+    integer                   :: dim1,dim2
+    type(StringVariableMap), pointer :: variables
+    type(Variable), pointer :: var
+    type(StringVariableMapIterator) :: var_iter
+    type(StringVector), pointer :: var_dimensions
+    character(len=:), pointer :: vname,dname
     logical :: fexist, bin_out = .false.
-
+ 
     if(trim(MODEL) == 'CATCH') then
         rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'  &
            //trim(ExpName)//'.ens'//ENS//'.catch_ldas_rst.'// &
@@ -311,7 +318,6 @@ contains
        return
     endif
 
- 
    open (10,file =trim(BCSDIR)//"clsm/catchment.def",status='old',form='formatted')
    read (10,*) ntiles
    close (10, status = 'keep')  
@@ -326,18 +332,25 @@ contains
       stop
    endif
 
-   if(trim(MODEL) == 'CATCH') &
-        InNCIO = MAPL_NCIOOpen('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/Catch/catch_internal_rst' , rc=rc) 
-   if(trim(MODEL) == 'CATCHCN') &
-        InNCIO = MAPL_NCIOOpen('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy' , rc=rc) 
+   if(trim(MODEL) == 'CATCH') then
+        call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/Catch/catch_internal_rst' , pFIO_READ,rc=rc)
+        allocate(InCfg(1))
+        InCfg = InFmt%read(rc=rc)
+   end if
+   if(trim(MODEL) == 'CATCHCN') then
+        call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy' , pFIO_READ, rc=rc) 
+        allocate(InCfg(1))
+        InCfg = InFmt%read(rc=rc)
+   end if
 
-   call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
-   call MAPL_NCIOChangeRes(InNCIO,OutNCIO,tileSize=ntiles,rc=rc)
+   call MAPL_IOCountNonDimVars(InCfg(1),nVars)
+   call MAPL_IOChangeRes(InCfg(1),OutCfg,(/'tile'/),(/ntiles/),rc=rc)
 
-   call MAPL_NCIOSet( OutNCIO,filename=trim(out_rst_file))
+   call OutFmt%create(trim(out_rst_file),rc=rc)
+   call OutFmt%write(OutCfg,rc=rc)
 
-   call MAPL_NCIOCreateFile(OutNCIO)   
-   call MAPL_NCIOClose ( InNCIO)
+   call inFmt%close(rc=rc)
+   deallocate(InCfg)
 
 
    allocate (tile_id  (1:ntiles))
@@ -359,19 +372,19 @@ contains
    ! WW
    var1 = 0.1
    do j = 1,4
-      call MAPL_VarWrite(OutNCIO,'WW',var1 ,offset1=j)  
+      call MAPL_VarWrite(OutFmt,'WW',var1 ,offset1=j)  
    end do
    ! FR
    var1 = 0.25
    do j = 1,4
-      call MAPL_VarWrite(OutNCIO,'FR',var1 ,offset1=j)  
+      call MAPL_VarWrite(OutFmt,'FR',var1 ,offset1=j)  
    end do
    ! CH CM CQ 
    var1 = 0.001
    do j = 1,4
-      call MAPL_VarWrite(OutNCIO,'CH',var1 ,offset1=j)  
-      call MAPL_VarWrite(OutNCIO,'CM',var1 ,offset1=j)  
-      call MAPL_VarWrite(OutNCIO,'CQ',var1 ,offset1=j)  
+      call MAPL_VarWrite(OutFmt,'CH',var1 ,offset1=j)  
+      call MAPL_VarWrite(OutFmt,'CM',var1 ,offset1=j)  
+      call MAPL_VarWrite(OutFmt,'CQ',var1 ,offset1=j)  
    end do
    
    tile_id = LDAS2BCS
@@ -389,107 +402,107 @@ contains
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'TILE_ID' ,var2)
+      call MAPL_VarWrite(OutFmt,'TILE_ID' ,var2)
 
       read(10) var1
       var2 = var1 (tile_id)
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'TC' ,var2, offset1=1)
+      call MAPL_VarWrite(OutFmt,'TC' ,var2, offset1=1)
       read(10) var1
       var2 = var1 (tile_id)
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'TC' ,var2, offset1=2)
+      call MAPL_VarWrite(OutFmt,'TC' ,var2, offset1=2)
       read(10) var1
       var2 = var1 (tile_id)
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'TC' ,var2, offset1=3)
+      call MAPL_VarWrite(OutFmt,'TC' ,var2, offset1=3)
       
       read(10) var1
       var2 = var1 (tile_id)
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'QC' ,var2, offset1=1)
+      call MAPL_VarWrite(OutFmt,'QC' ,var2, offset1=1)
       read(10) var1
       var2 = var1 (tile_id)
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'QC' ,var2, offset1=2)
+      call MAPL_VarWrite(OutFmt,'QC' ,var2, offset1=2)
       read(10) var1
       var2 = var1 (tile_id)
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'QC' ,var2, offset1=3)
-      call MAPL_VarWrite(OutNCIO,'QC' ,var2, offset1=4)
+      call MAPL_VarWrite(OutFmt,'QC' ,var2, offset1=3)
+      call MAPL_VarWrite(OutFmt,'QC' ,var2, offset1=4)
       
       read(10) var1
       var2 = var1 (tile_id)
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'CAPAC' ,var2)
+      call MAPL_VarWrite(OutFmt,'CAPAC' ,var2)
       read(10) var1
       var2 = var1 (tile_id)
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'CATDEF' ,var2)
+      call MAPL_VarWrite(OutFmt,'CATDEF' ,var2)
       read(10) var1
       var2 = var1 (tile_id)
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'RZEXC' ,var2)
+      call MAPL_VarWrite(OutFmt,'RZEXC' ,var2)
       read(10) var1
       var2 = var1 (tile_id)
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'SRFEXC' ,var2)
+      call MAPL_VarWrite(OutFmt,'SRFEXC' ,var2)
       read(10) var1
       var2 = var1 (tile_id)
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'GHTCNT1' ,var2)     
+      call MAPL_VarWrite(OutFmt,'GHTCNT1' ,var2)     
       read(10) var1
       var2 = var1 (tile_id) 
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'GHTCNT2' ,var2) 
+      call MAPL_VarWrite(OutFmt,'GHTCNT2' ,var2) 
       read(10) var1
       var2 = var1 (tile_id) 
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'GHTCNT3' ,var2) 
+      call MAPL_VarWrite(OutFmt,'GHTCNT3' ,var2) 
       read(10) var1
       var2 = var1 (tile_id)   
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'GHTCNT4' ,var2) 
+      call MAPL_VarWrite(OutFmt,'GHTCNT4' ,var2) 
       read(10) var1
       var2 = var1 (tile_id)  
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'GHTCNT5' ,var2)   
+      call MAPL_VarWrite(OutFmt,'GHTCNT5' ,var2)   
       read(10) var1
       var2 = var1 (tile_id)  
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'GHTCNT6' ,var2)   
+      call MAPL_VarWrite(OutFmt,'GHTCNT6' ,var2)   
       read(10) var1
       var2 = var1 (tile_id)   
       
@@ -497,80 +510,86 @@ contains
          var2(n) = var1(g2d(n))
       end do
       wesn1 = var2
-      call MAPL_VarWrite(OutNCIO,'WESNN1' ,var2)
+      call MAPL_VarWrite(OutFmt,'WESNN1' ,var2)
       read(10) var1
       var2 = var1 (tile_id) 
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'WESNN2' ,var2)
+      call MAPL_VarWrite(OutFmt,'WESNN2' ,var2)
       read(10) var1
       var2 = var1 (tile_id) 
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'WESNN3' ,var2)
+      call MAPL_VarWrite(OutFmt,'WESNN3' ,var2)
       read(10) var1
       var2 = var1 (tile_id)  
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
       htsn1 = var2
-      call MAPL_VarWrite(OutNCIO,'HTSNNN1' ,var2)
+      call MAPL_VarWrite(OutFmt,'HTSNNN1' ,var2)
       read(10) var1
       var2 = var1 (tile_id)   
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'HTSNNN2' ,var2)
+      call MAPL_VarWrite(OutFmt,'HTSNNN2' ,var2)
       read(10) var1
       var2 = var1 (tile_id)   
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'HTSNNN3' ,var2)
+      call MAPL_VarWrite(OutFmt,'HTSNNN3' ,var2)
       read(10) var1
       var2 = var1 (tile_id)   
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'SNDZN1' ,var2)
+      call MAPL_VarWrite(OutFmt,'SNDZN1' ,var2)
       read(10) var1
       var2 = var1 (tile_id)   
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'SNDZN2' ,var2)
+      call MAPL_VarWrite(OutFmt,'SNDZN2' ,var2)
       read(10) var1
       var2 = var1 (tile_id)   
       do n = 1,  NTILES 
          var2(n) = var1(g2d(n))
       end do
-      call MAPL_VarWrite(OutNCIO,'SNDZN3' ,var2)
+      call MAPL_VarWrite(OutFmt,'SNDZN3' ,var2)
       call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSN1(:), WESN1(:), var2, var1)
       var2 = var2 + 273.16
-      call MAPL_VarWrite(OutNCIO,'TC' ,var2, offset1=4)
+      call MAPL_VarWrite(OutFmt,'TC' ,var2, offset1=4)
+      call OutFmt%close(rc=rc)
       deallocate (var1, var2)
-      call MAPL_NCIOClose (OutNCIO)
-      close(10)
-
    else
-     
-      InNCIO = MAPL_NCIOOpen(trim(rst_file), rc=rc) 
-      call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
-      call MAPL_VarRead ( InNCIO,'TILE_ID',var1)
-      if(sum (nint(var1) - LDAS2BCS) /= 0) then
+      
+       call InFmt%open(trim(rst_file),pFIO_READ,rc=rc)
+       allocate(InCfg(1))
+       InCfg(1)=InFmt%read(rc=rc)
+       call MAPL_IOCountNonDimVars(InCfg(1),nVars)
+
+       call MAPL_VarRead ( InFmt,'TILE_ID',var1)
+       if(sum (nint(var1) - LDAS2BCS) /= 0) then
           print *, 'Tile order mismatch ', sum(var1)/ntiles, sum(LDAS2BCS)/ntiles 
           stop
       endif
 
-       do k=1,nVars
+       variables => InCfg(1)%get_variables()
+       var_iter = variables%begin()
+       do while (var_iter /= variables%end())
           
-          call MAPL_NCIOGetVarName(InNCIO,k,vname)
-          
-          call MAPL_NCIOVarGetDims(InNCIO,vname,nDims,dimSizes)
+          vname => var_iter%key()
+          var => var_iter%value()
+          var_dimensions => var%get_dimensions()
+
+          ndims = var_dimensions%size()
+ 
           if (ndims == 1) then
-             call MAPL_VarRead ( InNCIO,vname,var1)
+             call MAPL_VarRead ( InFmt,vname,var1)
              var2 = var1 (tile_id)   
              do n = 1,  NTILES 
                 var2(n) = var1(g2d(n))
@@ -585,12 +604,14 @@ contains
              if(trim(vname) == 'ASNOWM' ) var2 = 0.
              if(trim(vname) == 'TSURF'  ) var2 = 0.
              
-             call MAPL_VarWrite(OutNCIO,vname,var2)
+             call MAPL_VarWrite(OutFmt,vname,var2)
           
        else if (ndims == 2) then
           
-          do j=1,dimSizes(2)
-             call MAPL_VarRead ( InNCIO,vname,var1 ,offset1=j)
+          dname => var%get_ith_dimension(2)
+          dim1=InCfg(1)%get_dimension(dname)
+          do j=1,dim1
+             call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j)
              var2 = var1 (tile_id)
              do n = 1,  NTILES 
                 var2(n) = var1(g2d(n))
@@ -605,40 +626,45 @@ contains
              if(trim(vname) == 'CH'    ) var2 = 0.001 
 
 
-             call MAPL_VarWrite(OutNCIO,vname,var2 ,offset1=j)
+             call MAPL_VarWrite(OutFmt,vname,var2 ,offset1=j)
           enddo
           
        else if (ndims == 3) then
           
-          do i=1,dimSizes(3)
-             do j=1,dimSizes(2)
-                call MAPL_VarRead ( InNCIO,vname,var1 ,offset1=j,offset2=i)
+          dname => var%get_ith_dimension(2)
+          dim1=InCfg(1)%get_dimension(dname)
+          dname => var%get_ith_dimension(3)
+          dim2=InCfg(1)%get_dimension(dname)
+          do i=1,dim2
+             do j=1,dim1
+                call MAPL_VarRead ( InFmt,vname,var1 ,offset1=j,offset2=i)
                 var2 = var1 (tile_id)
                 do n = 1,  NTILES 
                    var2(n) = var1(g2d(n))
                 end do
                 if(trim(vname) == 'PSNSUNM'  ) var2 = 0.
                 if(trim(vname) == 'PSNSHAM'  ) var2 = 0.
-                call MAPL_VarWrite(OutNCIO,vname,var2 ,offset1=j,offset2=i)
+                call MAPL_VarWrite(OutFmt,vname,var2 ,offset1=j,offset2=i)
              enddo
           enddo
           
        end if
+       call var_iter%next()
     enddo
  
     deallocate (var1, var2, tile_id)
   
-    call MAPL_NCIOClose      (InNCIO)
-    call MAPL_NCIOClose      (OutNCIO)
+    call InFmt%close()
+    call OutFmt%close()
     
    endif
 
    call read_bcs_data (ntiles, SURFLAY, trim(MODEL), trim(BCSDIR)//'/clsm/',trim(out_rst_file))
 
    if(bin_out) then
-      OutNCIO  = MAPL_NCIOOpen(trim(out_rst_file))
+      call OutFmt%open(trim(out_rst_file),pFIO_READ,rc=rc)
       open(unit=30, file=trim(out_rst_file)//'.bin',  form='unformatted')  
-      call write_bin (30, OutNCIO, NTILES)
+      call write_bin (30, OutFmt, NTILES)
    endif
 
   END SUBROUTINE reorder_LDASsa_restarts
@@ -886,7 +912,7 @@ contains
     real          :: rdum, zdep1, zdep2, zdep3, zmet, term1, term2, bare,fvg(4)
     logical       :: NEWLAND
     logical       :: file_exists
-    type(MAPL_NCIO) :: NCIOCatch, NCIOCatchCN
+    type(NetCDF4_Fileformatter) :: CatchFmt,CatchCNFmt
    
     allocate (   BF1(ntiles),    BF2 (ntiles),     BF3(ntiles)  )
     allocate (VGWMAX(ntiles),   CDCR1(ntiles),   CDCR2(ntiles)  ) 
@@ -916,62 +942,63 @@ contains
     if(file_exists) then
 
        print *,'FILE FORMAT FOR LAND BCS IS NC4'
-       NCIOCatch   = MAPL_NCIOOpen(trim(DataDir)//'/catch_params.nc4',rc=rc) 
-       NCIOCatchCN = MAPL_NCIOOpen(trim(DataDir)//'/catchcn_params.nc4',rc=rc) 
-       call MAPL_VarRead ( NCIOCatch ,'OLD_ITY', RITY)
+       call CatchFmt%open(trim(DataDir)//'/catch_params.nc4',pFIO_READ,rc=rc)
+       call CatchCNFmt%open(trim(DataDir)//'/catchcn_params.nc4',pFIO_READ,rc=rc)
+ 
+       call MAPL_VarRead ( CatchFmt ,'OLD_ITY', RITY)
        ITY = NINT (RITY)
-       call MAPL_VarRead ( NCIOCatch ,'ARA1', ARA1)
-       call MAPL_VarRead ( NCIOCatch ,'ARA2', ARA2)
-       call MAPL_VarRead ( NCIOCatch ,'ARA3', ARA3)
-       call MAPL_VarRead ( NCIOCatch ,'ARA4', ARA4)
-       call MAPL_VarRead ( NCIOCatch ,'ARS1', ARS1)
-       call MAPL_VarRead ( NCIOCatch ,'ARS2', ARS2)
-       call MAPL_VarRead ( NCIOCatch ,'ARS3', ARS3)
-       call MAPL_VarRead ( NCIOCatch ,'ARW1', ARW1)
-       call MAPL_VarRead ( NCIOCatch ,'ARW2', ARW2)
-       call MAPL_VarRead ( NCIOCatch ,'ARW3', ARW3)
-       call MAPL_VarRead ( NCIOCatch ,'ARW4', ARW4)
+       call MAPL_VarRead ( CatchFmt ,'ARA1', ARA1)
+       call MAPL_VarRead ( CatchFmt ,'ARA2', ARA2)
+       call MAPL_VarRead ( CatchFmt ,'ARA3', ARA3)
+       call MAPL_VarRead ( CatchFmt ,'ARA4', ARA4)
+       call MAPL_VarRead ( CatchFmt ,'ARS1', ARS1)
+       call MAPL_VarRead ( CatchFmt ,'ARS2', ARS2)
+       call MAPL_VarRead ( CatchFmt ,'ARS3', ARS3)
+       call MAPL_VarRead ( CatchFmt ,'ARW1', ARW1)
+       call MAPL_VarRead ( CatchFmt ,'ARW2', ARW2)
+       call MAPL_VarRead ( CatchFmt ,'ARW3', ARW3)
+       call MAPL_VarRead ( CatchFmt ,'ARW4', ARW4)
 
        if( SURFLAY.eq.20.0 ) then
-          call MAPL_VarRead ( NCIOCatch ,'ATAU2', ATAU2)
-          call MAPL_VarRead ( NCIOCatch ,'BTAU2', BTAU2)
+          call MAPL_VarRead ( CatchFmt ,'ATAU2', ATAU2)
+          call MAPL_VarRead ( CatchFmt ,'BTAU2', BTAU2)
        endif
 
        if( SURFLAY.eq.50.0 ) then
-          call MAPL_VarRead ( NCIOCatch ,'ATAU5', ATAU2)
-          call MAPL_VarRead ( NCIOCatch ,'BTAU5', BTAU2)
+          call MAPL_VarRead ( CatchFmt ,'ATAU5', ATAU2)
+          call MAPL_VarRead ( CatchFmt ,'BTAU5', BTAU2)
        endif
 
-       call MAPL_VarRead ( NCIOCatch ,'PSIS', PSIS)
-       call MAPL_VarRead ( NCIOCatch ,'BEE', BEE)
-       call MAPL_VarRead ( NCIOCatch ,'BF1', BF1)
-       call MAPL_VarRead ( NCIOCatch ,'BF2', BF2)
-       call MAPL_VarRead ( NCIOCatch ,'BF3', BF3)
-       call MAPL_VarRead ( NCIOCatch ,'TSA1', TSA1)
-       call MAPL_VarRead ( NCIOCatch ,'TSA2', TSA2)
-       call MAPL_VarRead ( NCIOCatch ,'TSB1', TSB1)
-       call MAPL_VarRead ( NCIOCatch ,'TSB2', TSB2)
-       call MAPL_VarRead ( NCIOCatch ,'COND', COND)
-       call MAPL_VarRead ( NCIOCatch ,'GNU', GNU)
-       call MAPL_VarRead ( NCIOCatch ,'WPWET', WPWET)
-       call MAPL_VarRead ( NCIOCatch ,'DP2BR', DP2BR)
-       call MAPL_VarRead ( NCIOCatch ,'POROS', POROS)
-       call MAPL_VarRead ( NCIOCatchCN ,'BGALBNF', BNIRDF)
-       call MAPL_VarRead ( NCIOCatchCN ,'BGALBNR', BNIRDR)
-       call MAPL_VarRead ( NCIOCatchCN ,'BGALBVF', BVISDF)
-       call MAPL_VarRead ( NCIOCatchCN ,'BGALBVR', BVISDR)
-       call MAPL_VarRead ( NCIOCatchCN ,'NDEP', NDEP)
-       call MAPL_VarRead ( NCIOCatchCN ,'T2_M', T2)
-       call MAPL_VarRead(NCIOCatchCN,'ITY',CLMC_pt1,offset1=1)     !  30
-       call MAPL_VarRead(NCIOCatchCN,'ITY',CLMC_pt2,offset1=2)     !  31
-       call MAPL_VarRead(NCIOCatchCN,'ITY',CLMC_st1,offset1=3)     !  32
-       call MAPL_VarRead(NCIOCatchCN,'ITY',CLMC_st2,offset1=4)     !  33
-       call MAPL_VarRead(NCIOCatchCN,'FVG',CLMC_pf1,offset1=1)     !  34
-       call MAPL_VarRead(NCIOCatchCN,'FVG',CLMC_pf2,offset1=2)     !  35
-       call MAPL_VarRead(NCIOCatchCN,'FVG',CLMC_sf1,offset1=3)     !  36
-       call MAPL_VarRead(NCIOCatchCN,'FVG',CLMC_sf2,offset1=4)     !  37
-       call MAPL_NCIOClose (NCIOCatch  )
-       call MAPL_NCIOClose (NCIOCatchCN)
+       call MAPL_VarRead ( CatchFmt ,'PSIS', PSIS)
+       call MAPL_VarRead ( CatchFmt ,'BEE', BEE)
+       call MAPL_VarRead ( CatchFmt ,'BF1', BF1)
+       call MAPL_VarRead ( CatchFmt ,'BF2', BF2)
+       call MAPL_VarRead ( CatchFmt ,'BF3', BF3)
+       call MAPL_VarRead ( CatchFmt ,'TSA1', TSA1)
+       call MAPL_VarRead ( CatchFmt ,'TSA2', TSA2)
+       call MAPL_VarRead ( CatchFmt ,'TSB1', TSB1)
+       call MAPL_VarRead ( CatchFmt ,'TSB2', TSB2)
+       call MAPL_VarRead ( CatchFmt ,'COND', COND)
+       call MAPL_VarRead ( CatchFmt ,'GNU', GNU)
+       call MAPL_VarRead ( CatchFmt ,'WPWET', WPWET)
+       call MAPL_VarRead ( CatchFmt ,'DP2BR', DP2BR)
+       call MAPL_VarRead ( CatchFmt ,'POROS', POROS)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBNF', BNIRDF)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBNR', BNIRDR)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBVF', BVISDF)
+       call MAPL_VarRead ( CatchCNFmt ,'BGALBVR', BVISDR)
+       call MAPL_VarRead ( CatchCNFmt ,'NDEP', NDEP)
+       call MAPL_VarRead ( CatchCNFmt ,'T2_M', T2)
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt1,offset1=1)     !  30
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_pt2,offset1=2)     !  31
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st1,offset1=3)     !  32
+       call MAPL_VarRead(CatchCNFmt,'ITY',CLMC_st2,offset1=4)     !  33
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf1,offset1=1)     !  34
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_pf2,offset1=2)     !  35
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf1,offset1=3)     !  36
+       call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf2,offset1=4)     !  37
+       call CatchFmt%close() 
+       call CatchCNFmt%close()
       
     else
        open(unit=21, file=trim(DataDir)//'mosaic_veg_typs_fracs',form='formatted') 
@@ -3010,34 +3037,42 @@ contains
      integer, intent (in)       :: id_glb(NTILES), ld_reorder (ntiles_smap)
      integer                    :: k
      real   , dimension (:), allocatable :: var_get, var_put
-     type(MAPL_NCIO) :: InNCIO2, InNCIO,  InCLM45Dummy, InNCIO3 
+     type(Netcdf4_FileFormatter) :: InFmt2,InFmt3,InFmt,InCLM
+     type(FileMetadata) :: InCfg2,InCfg3,InCfg,InCfgCLM
      integer         :: nVars, STATUS, NCFID,nVars45
 
      allocate (var_get (NTILES_SMAP))
      allocate (var_put (NTILES))
    
      ! create output catchcn_internal_rst
-     if(trim(model) == 'CATCHCN') InNCIO = MAPL_NCIOOpen(trim(InCNRestart ) ,rc=rc) 
-     if(trim(model) == 'CATCH'  ) InNCIO = MAPL_NCIOOpen(trim(InCatRestart) ,rc=rc) 
-     call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
-     call MAPL_NCIOChangeRes(InNCIO,InNCIO2,tileSize=ntiles,rc=rc)
-
+     if (trim(model) == 'CATCHCN') then
+        call InFmt%open(trim(InCNRestart),pFIO_READ,rc=rc)
+        InCfg = InFmt%read(rc=rc)
+     end if
+     if (trim(model) == 'CATCH') then
+        call InFmt%open(trim(InCatRestart),pFIO_READ,rc=rc)
+        InCfg = InFmt%read(rc=rc)
+     end if
+     call MAPL_IOCountNonDimVars(InCfg,nVars)
+     call MAPL_IOChangeRes(InCfg,InCfg2,(/'tile'/),(/ntiles/),rc=rc)
+       
      if(trim(model) == 'CATCHCN') OutFileName = "OutData1/catchcn_internal_rst"
      if(trim(model) == 'CATCH'  ) OutFileName = "OutData1/catch_internal_rst"
-     call MAPL_NCIOSet( InNCIO2,filename=OutFileName )
-     call MAPL_NCIOCreateFile(InNCIO2) 
-     call MAPL_NCIOClose ( InNCIO)
+     call InFmt2%create(OutFileName,rc=rc)
+     call InFmt2%write(InCfg2,rc=rc)
+     call InFmt%close()
     
      if(CLM45) then
         ! create output catchcn_internal_clm45
-        InCLM45Dummy = MAPL_NCIOOpen('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45', rc=rc)
-        call MAPL_NCIOGetDimSizes(InCLM45Dummy, nVars=nVars45)
-        call MAPL_NCIOChangeRes(InCLM45Dummy, InNCIO3, tileSize=ntiles,rc=rc)
-        
+        call InCLM%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',pFIO_READ,rc=rc)
+        InCfgClm = InCLM%read(rc=rc)
+        call MAPL_IOCountNonDimVars(InCfgCLM,nVars45)
+        call MAPL_IOChangeRes(InCfgCLM,InCfg3,(/'tile'/),(/ntiles/),rc=rc)
+       
         OutFileName = "OutData1/catchcn_internal_clm45"
-        call MAPL_NCIOSet(InNCIO3 ,filename=OutFileName )
-        call MAPL_NCIOCreateFile(InNCIO3) 
-        call MAPL_NCIOClose (InCLM45Dummy)
+        call InFmt3%create(OutFileName,rc=rc)
+        call InFmt3%write(InCfg3,rc=rc)
+        call InCLM%close()
      endif
 
      ! Read catparam
@@ -3049,204 +3084,204 @@ contains
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'POROS',var_put)
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'POROS',var_put)
+     call MAPL_VarWrite(InFmt2,'POROS',var_put)
+     if(CLM45) call MAPL_VarWrite(InFmt3,'POROS',var_put)
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'COND'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'COND',var_put)
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'COND',var_put)
+     call MAPL_VarWrite(InFmt2,'COND',var_put)
+     if(CLM45) call MAPL_VarWrite(InFmt3,'COND',var_put)
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'PSIS'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'PSIS',var_put)
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'PSIS',var_put)
+     call MAPL_VarWrite(InFmt2,'PSIS',var_put)
+     if(CLM45) call MAPL_VarWrite(InFmt3,'PSIS',var_put)
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'BEE'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'BEE',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'BEE',var_put) 
+     call MAPL_VarWrite(InFmt2,'BEE',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'BEE',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'WPWET'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'WPWET',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'WPWET',var_put) 
+     call MAPL_VarWrite(InFmt2,'WPWET',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'WPWET',var_put) 
     
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GNU'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'GNU',var_put)
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'GNU',var_put)
+     call MAPL_VarWrite(InFmt2,'GNU',var_put)
+     if(CLM45) call MAPL_VarWrite(InFmt3,'GNU',var_put)
  
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'VGWMAX'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'VGWMAX',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'VGWMAX',var_put) 
+     call MAPL_VarWrite(InFmt2,'VGWMAX',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'VGWMAX',var_put) 
  
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'BF1'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'BF1',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'BF1',var_put) 
+     call MAPL_VarWrite(InFmt2,'BF1',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'BF1',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'BF2'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'BF2',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'BF2',var_put) 
+     call MAPL_VarWrite(InFmt2,'BF2',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'BF2',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'BF3'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'BF3',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'BF3',var_put) 
+     call MAPL_VarWrite(InFmt2,'BF3',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'BF3',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CDCR1'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'CDCR1',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'CDCR1',var_put) 
+     call MAPL_VarWrite(InFmt2,'CDCR1',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'CDCR1',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CDCR2'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'CDCR2',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'CDCR2',var_put) 
+     call MAPL_VarWrite(InFmt2,'CDCR2',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'CDCR2',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARS1'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'ARS1',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'ARS1',var_put) 
+     call MAPL_VarWrite(InFmt2,'ARS1',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'ARS1',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARS2'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'ARS2',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'ARS2',var_put) 
+     call MAPL_VarWrite(InFmt2,'ARS2',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'ARS2',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARS3'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'ARS3',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'ARS3',var_put) 
+     call MAPL_VarWrite(InFmt2,'ARS3',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'ARS3',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARA1'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'ARA1',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'ARA1',var_put) 
+     call MAPL_VarWrite(InFmt2,'ARA1',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'ARA1',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARA2'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'ARA2',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'ARA2',var_put) 
+     call MAPL_VarWrite(InFmt2,'ARA2',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'ARA2',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARA3'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'ARA3',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'ARA3',var_put) 
+     call MAPL_VarWrite(InFmt2,'ARA3',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'ARA3',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARA4'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'ARA4',var_put)
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'ARA4',var_put)
+     call MAPL_VarWrite(InFmt2,'ARA4',var_put)
+     if(CLM45) call MAPL_VarWrite(InFmt3,'ARA4',var_put)
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARW1'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'ARW1',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'ARW1',var_put) 
+     call MAPL_VarWrite(InFmt2,'ARW1',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'ARW1',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARW2'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'ARW2',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'ARW2',var_put) 
+     call MAPL_VarWrite(InFmt2,'ARW2',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'ARW2',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARW3'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'ARW3',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'ARW3',var_put) 
+     call MAPL_VarWrite(InFmt2,'ARW3',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'ARW3',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ARW4'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'ARW4',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'ARW4',var_put) 
+     call MAPL_VarWrite(InFmt2,'ARW4',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'ARW4',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TSA1'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'TSA1',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'TSA1',var_put) 
+     call MAPL_VarWrite(InFmt2,'TSA1',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'TSA1',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TSA2'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'TSA2',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'TSA2',var_put) 
+     call MAPL_VarWrite(InFmt2,'TSA2',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'TSA2',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TSB1'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'TSB1',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'TSB1',var_put) 
+     call MAPL_VarWrite(InFmt2,'TSB1',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'TSB1',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TSB2'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'TSB2',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'TSB2',var_put) 
+     call MAPL_VarWrite(InFmt2,'TSB2',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'TSB2',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ATAU'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'ATAU',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'ATAU',var_put) 
+     call MAPL_VarWrite(InFmt2,'ATAU',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'ATAU',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'BTAU'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'BTAU',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'BTAU',var_put) 
+     call MAPL_VarWrite(InFmt2,'BTAU',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'BTAU',var_put) 
 
      if(trim(model) == 'CATCHCN') then
 
@@ -3254,51 +3289,51 @@ contains
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(InNCIO2,'ITY',var_put, offset1=1) 
-        if(CLM45) call MAPL_VarWrite(InNCIO3,'ITY',var_put, offset1=1) 
+        call MAPL_VarWrite(InFmt2,'ITY',var_put, offset1=1) 
+        if(CLM45) call MAPL_VarWrite(InFmt3,'ITY',var_put, offset1=1) 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ITY'   ), (/1,2/), (/NTILES_SMAP,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(InNCIO2,'ITY',var_put, offset1=2) 
-        if(CLM45) call MAPL_VarWrite(InNCIO3,'ITY',var_put, offset1=2) 
+        call MAPL_VarWrite(InFmt2,'ITY',var_put, offset1=2) 
+        if(CLM45) call MAPL_VarWrite(InFmt3,'ITY',var_put, offset1=2) 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ITY'   ), (/1,3/), (/NTILES_SMAP,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(InNCIO2,'ITY',var_put, offset1=3) 
-        if(CLM45) call MAPL_VarWrite(InNCIO3,'ITY',var_put, offset1=3) 
+        call MAPL_VarWrite(InFmt2,'ITY',var_put, offset1=3) 
+        if(CLM45) call MAPL_VarWrite(InFmt3,'ITY',var_put, offset1=3) 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ITY'   ), (/1,4/), (/NTILES_SMAP,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(InNCIO2,'ITY',var_put, offset1=4)
-        if(CLM45) call MAPL_VarWrite(InNCIO3,'ITY',var_put, offset1=4)
+        call MAPL_VarWrite(InFmt2,'ITY',var_put, offset1=4)
+        if(CLM45) call MAPL_VarWrite(InFmt3,'ITY',var_put, offset1=4)
         
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'FVG'   ), (/1,1/), (/NTILES_SMAP,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(InNCIO2,'FVG',var_put, offset1=1) 
-        if(CLM45) call MAPL_VarWrite(InNCIO3,'FVG',var_put, offset1=1) 
+        call MAPL_VarWrite(InFmt2,'FVG',var_put, offset1=1) 
+        if(CLM45) call MAPL_VarWrite(InFmt3,'FVG',var_put, offset1=1) 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'FVG'   ), (/1,2/), (/NTILES_SMAP,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(InNCIO2,'FVG',var_put, offset1=2) 
-        if(CLM45) call MAPL_VarWrite(InNCIO3,'FVG',var_put, offset1=2) 
+        call MAPL_VarWrite(InFmt2,'FVG',var_put, offset1=2) 
+        if(CLM45) call MAPL_VarWrite(InFmt3,'FVG',var_put, offset1=2) 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'FVG'   ), (/1,3/), (/NTILES_SMAP,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(InNCIO2,'FVG',var_put, offset1=3) 
-        if(CLM45) call MAPL_VarWrite(InNCIO3,'FVG',var_put, offset1=3) 
+        call MAPL_VarWrite(InFmt2,'FVG',var_put, offset1=3) 
+        if(CLM45) call MAPL_VarWrite(InFmt3,'FVG',var_put, offset1=3) 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'FVG'   ), (/1,4/), (/NTILES_SMAP,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(InNCIO2,'FVG',var_put, offset1=4)
-        if(CLM45) call MAPL_VarWrite(InNCIO3,'FVG',var_put, offset1=4)
+        call MAPL_VarWrite(InFmt2,'FVG',var_put, offset1=4)
+        if(CLM45) call MAPL_VarWrite(InFmt3,'FVG',var_put, offset1=4)
 
 
      ! read restart and regrid
@@ -3308,22 +3343,22 @@ contains
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(InNCIO2,'TG',var_put, offset1=1)  ! if you see offset1=1 it is a 2-D var
-        if(CLM45) call MAPL_VarWrite(InNCIO3,'TG',var_put, offset1=1)  ! if you see offset1=1 it is a 2-D var
+        call MAPL_VarWrite(InFmt2,'TG',var_put, offset1=1)  ! if you see offset1=1 it is a 2-D var
+        if(CLM45) call MAPL_VarWrite(InFmt3,'TG',var_put, offset1=1)  ! if you see offset1=1 it is a 2-D var
         
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TG'   ), (/1,2/), (/NTILES_SMAP,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(InNCIO2,'TG',var_put, offset1=2) 
-        if(CLM45) call MAPL_VarWrite(InNCIO3,'TG',var_put, offset1=2) 
+        call MAPL_VarWrite(InFmt2,'TG',var_put, offset1=2) 
+        if(CLM45) call MAPL_VarWrite(InFmt3,'TG',var_put, offset1=2) 
         
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TG'   ), (/1,3/), (/NTILES_SMAP,1/),var_get)
         do k = 1, NTILES
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
-        call MAPL_VarWrite(InNCIO2,'TG',var_put, offset1=3) 
-        if(CLM45) call MAPL_VarWrite(InNCIO3,'TG',var_put, offset1=3) 
+        call MAPL_VarWrite(InFmt2,'TG',var_put, offset1=3) 
+        if(CLM45) call MAPL_VarWrite(InFmt3,'TG',var_put, offset1=3) 
 
      endif
         
@@ -3332,179 +3367,179 @@ contains
            VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
         end do
        
-     call MAPL_VarWrite(InNCIO2,'TC',var_put, offset1=1) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'TC',var_put, offset1=1) 
+     call MAPL_VarWrite(InFmt2,'TC',var_put, offset1=1) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'TC',var_put, offset1=1) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TC'   ), (/1,2/), (/NTILES_SMAP,1/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'TC',var_put, offset1=2) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'TC',var_put, offset1=2) 
+     call MAPL_VarWrite(InFmt2,'TC',var_put, offset1=2) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'TC',var_put, offset1=2) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TC'   ), (/1,3/), (/NTILES_SMAP,1/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'TC',var_put, offset1=3) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'TC',var_put, offset1=3) 
+     call MAPL_VarWrite(InFmt2,'TC',var_put, offset1=3) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'TC',var_put, offset1=3) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'QC'   ), (/1,1/), (/NTILES_SMAP,1/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'QC',var_put, offset1=1) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'QC',var_put, offset1=1) 
+     call MAPL_VarWrite(InFmt2,'QC',var_put, offset1=1) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'QC',var_put, offset1=1) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'QC'   ), (/1,2/), (/NTILES_SMAP,1/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'QC',var_put, offset1=2)
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'QC',var_put, offset1=2)
+     call MAPL_VarWrite(InFmt2,'QC',var_put, offset1=2)
+     if(CLM45) call MAPL_VarWrite(InFmt3,'QC',var_put, offset1=2)
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'QC'   ), (/1,3/), (/NTILES_SMAP,1/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'QC',var_put, offset1=3)
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'QC',var_put, offset1=3)
+     call MAPL_VarWrite(InFmt2,'QC',var_put, offset1=3)
+     if(CLM45) call MAPL_VarWrite(InFmt3,'QC',var_put, offset1=3)
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CAPAC'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'CAPAC',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'CAPAC',var_put) 
+     call MAPL_VarWrite(InFmt2,'CAPAC',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'CAPAC',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'CATDEF'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'CATDEF',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'CATDEF',var_put) 
+     call MAPL_VarWrite(InFmt2,'CATDEF',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'CATDEF',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'RZEXC'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'RZEXC',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'RZEXC',var_put) 
+     call MAPL_VarWrite(InFmt2,'RZEXC',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'RZEXC',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'SRFEXC'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'SRFEXC',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'SRFEXC',var_put) 
+     call MAPL_VarWrite(InFmt2,'SRFEXC',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'SRFEXC',var_put) 
      
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GHTCNT1'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'GHTCNT1',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'GHTCNT1',var_put) 
+     call MAPL_VarWrite(InFmt2,'GHTCNT1',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'GHTCNT1',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GHTCNT2'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'GHTCNT2',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'GHTCNT2',var_put) 
+     call MAPL_VarWrite(InFmt2,'GHTCNT2',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'GHTCNT2',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GHTCNT3'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'GHTCNT3',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'GHTCNT3',var_put) 
+     call MAPL_VarWrite(InFmt2,'GHTCNT3',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'GHTCNT3',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GHTCNT4'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'GHTCNT4',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'GHTCNT4',var_put) 
+     call MAPL_VarWrite(InFmt2,'GHTCNT4',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'GHTCNT4',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GHTCNT5'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'GHTCNT5',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'GHTCNT5',var_put) 
+     call MAPL_VarWrite(InFmt2,'GHTCNT5',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'GHTCNT5',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'GHTCNT6'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'GHTCNT6',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'GHTCNT6',var_put) 
+     call MAPL_VarWrite(InFmt2,'GHTCNT6',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'GHTCNT6',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'WESNN1'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'WESNN1',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'WESNN1',var_put) 
+     call MAPL_VarWrite(InFmt2,'WESNN1',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'WESNN1',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'WESNN2'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'WESNN2',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'WESNN2',var_put) 
+     call MAPL_VarWrite(InFmt2,'WESNN2',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'WESNN2',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'WESNN3'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'WESNN3',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'WESNN3',var_put) 
+     call MAPL_VarWrite(InFmt2,'WESNN3',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'WESNN3',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'HTSNNN1'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'HTSNNN1',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'HTSNNN1',var_put) 
+     call MAPL_VarWrite(InFmt2,'HTSNNN1',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'HTSNNN1',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'HTSNNN2'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'HTSNNN2',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'HTSNNN2',var_put) 
+     call MAPL_VarWrite(InFmt2,'HTSNNN2',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'HTSNNN2',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'HTSNNN3'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'HTSNNN3',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'HTSNNN3',var_put) 
+     call MAPL_VarWrite(InFmt2,'HTSNNN3',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'HTSNNN3',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'SNDZN1'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'SNDZN1',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'SNDZN1',var_put) 
+     call MAPL_VarWrite(InFmt2,'SNDZN1',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'SNDZN1',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'SNDZN2'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'SNDZN2',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'SNDZN2',var_put) 
+     call MAPL_VarWrite(InFmt2,'SNDZN2',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'SNDZN2',var_put) 
 
      STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'SNDZN3'   ), (/1/), (/NTILES_SMAP/),var_get)
      do k = 1, NTILES
         VAR_PUT(k) = var_get(ld_reorder(id_glb(k)))
      end do
-     call MAPL_VarWrite(InNCIO2,'SNDZN3',var_put) 
-     if(CLM45) call MAPL_VarWrite(InNCIO3,'SNDZN3',var_put) 
+     call MAPL_VarWrite(InFmt2,'SNDZN3',var_put) 
+     if(CLM45) call MAPL_VarWrite(InFmt3,'SNDZN3',var_put) 
 
-     call MAPL_NCIOClose ( InNCIO2)
-     if(CLM45) call MAPL_NCIOClose ( InNCIO3)
+     call InFmt2%close()
+     if(CLM45) call InFmt3%close()
      STATUS = NF_CLOSE ( NCFID)
 
      deallocate (var_get, var_put)
@@ -3900,12 +3935,12 @@ contains
 
    ! ----------------------------------------------------------------------------
    
-   SUBROUTINE write_bin (unit, NCIO, NTILES)
+   SUBROUTINE write_bin (unit,formatter, NTILES)
 
      implicit none
      integer :: ntiles
      integer :: unit
-     type(MAPL_NCIO) :: NCIO
+     type(NetCDF4_Fileformatter) :: formatter
 
 
      real ::       bf1(ntiles)
@@ -3966,64 +4001,64 @@ contains
      real ::        fr(ntiles,4)
      real ::        ww(ntiles,4)
 
-        call MAPL_VarRead(NCIO,"BF1",bf1)
-       call MAPL_VarRead(NCIO,"BF2",bf2)
-       call MAPL_VarRead(NCIO,"BF3",bf3)
-       call MAPL_VarRead(NCIO,"VGWMAX",vgwmax)
-       call MAPL_VarRead(NCIO,"CDCR1",cdcr1)
-       call MAPL_VarRead(NCIO,"CDCR2",cdcr2)
-       call MAPL_VarRead(NCIO,"PSIS",psis)
-       call MAPL_VarRead(NCIO,"BEE",bee)
-       call MAPL_VarRead(NCIO,"POROS",poros)
-       call MAPL_VarRead(NCIO,"WPWET",wpwet)
-       call MAPL_VarRead(NCIO,"COND",cond)
-       call MAPL_VarRead(NCIO,"GNU",gnu)
-       call MAPL_VarRead(NCIO,"ARS1",ars1)
-       call MAPL_VarRead(NCIO,"ARS2",ars2)
-       call MAPL_VarRead(NCIO,"ARS3",ars3)
-       call MAPL_VarRead(NCIO,"ARA1",ara1)
-       call MAPL_VarRead(NCIO,"ARA2",ara2)
-       call MAPL_VarRead(NCIO,"ARA3",ara3)
-       call MAPL_VarRead(NCIO,"ARA4",ara4)
-       call MAPL_VarRead(NCIO,"ARW1",arw1)
-       call MAPL_VarRead(NCIO,"ARW2",arw2)
-       call MAPL_VarRead(NCIO,"ARW3",arw3)
-       call MAPL_VarRead(NCIO,"ARW4",arw4)
-       call MAPL_VarRead(NCIO,"TSA1",tsa1)
-       call MAPL_VarRead(NCIO,"TSA2",tsa2)
-       call MAPL_VarRead(NCIO,"TSB1",tsb1)
-       call MAPL_VarRead(NCIO,"TSB2",tsb2)
-       call MAPL_VarRead(NCIO,"ATAU",atau)
-       call MAPL_VarRead(NCIO,"BTAU",btau)
-       call MAPL_VarRead(NCIO,"OLD_ITY",ity)
-       call MAPL_VarRead(NCIO,"TC",tc)
-       call MAPL_VarRead(NCIO,"QC",qc)
-       call MAPL_VarRead(NCIO,"OLD_ITY",ity)
-       call MAPL_VarRead(NCIO,"CAPAC",capac)
-       call MAPL_VarRead(NCIO,"CATDEF",catdef)
-       call MAPL_VarRead(NCIO,"RZEXC",rzexc)
-       call MAPL_VarRead(NCIO,"SRFEXC",srfexc)
-       call MAPL_VarRead(NCIO,"GHTCNT1",ghtcnt1)
-       call MAPL_VarRead(NCIO,"GHTCNT2",ghtcnt2)
-       call MAPL_VarRead(NCIO,"GHTCNT3",ghtcnt3)
-       call MAPL_VarRead(NCIO,"GHTCNT4",ghtcnt4)
-       call MAPL_VarRead(NCIO,"GHTCNT5",ghtcnt5)
-       call MAPL_VarRead(NCIO,"GHTCNT6",ghtcnt6)
-       call MAPL_VarRead(NCIO,"TSURF",tsurf)
-       call MAPL_VarRead(NCIO,"WESNN1",wesnn1)
-       call MAPL_VarRead(NCIO,"WESNN2",wesnn2)
-       call MAPL_VarRead(NCIO,"WESNN3",wesnn3)
-       call MAPL_VarRead(NCIO,"HTSNNN1",htsnnn1)
-       call MAPL_VarRead(NCIO,"HTSNNN2",htsnnn2)
-       call MAPL_VarRead(NCIO,"HTSNNN3",htsnnn3)
-       call MAPL_VarRead(NCIO,"SNDZN1",sndzn1)
-       call MAPL_VarRead(NCIO,"SNDZN2",sndzn2)
-       call MAPL_VarRead(NCIO,"SNDZN3",sndzn3)
-       call MAPL_VarRead(NCIO,"CH",ch)
-       call MAPL_VarRead(NCIO,"CM",cm)
-       call MAPL_VarRead(NCIO,"CQ",cq)
-       call MAPL_VarRead(NCIO,"FR",fr)
-       call MAPL_VarRead(NCIO,"WW",ww)
+        call MAPL_VarRead(Formatter,"BF1",bf1)
+       call MAPL_VarRead(Formatter,"BF2",bf2)
+       call MAPL_VarRead(Formatter,"BF3",bf3)
+       call MAPL_VarRead(Formatter,"VGWMAX",vgwmax)
+       call MAPL_VarRead(Formatter,"CDCR1",cdcr1)
+       call MAPL_VarRead(Formatter,"CDCR2",cdcr2)
+       call MAPL_VarRead(Formatter,"PSIS",psis)
+       call MAPL_VarRead(Formatter,"BEE",bee)
+       call MAPL_VarRead(Formatter,"POROS",poros)
+       call MAPL_VarRead(Formatter,"WPWET",wpwet)
+       call MAPL_VarRead(Formatter,"COND",cond)
+       call MAPL_VarRead(Formatter,"GNU",gnu)
+       call MAPL_VarRead(Formatter,"ARS1",ars1)
+       call MAPL_VarRead(Formatter,"ARS2",ars2)
+       call MAPL_VarRead(Formatter,"ARS3",ars3)
+       call MAPL_VarRead(Formatter,"ARA1",ara1)
+       call MAPL_VarRead(Formatter,"ARA2",ara2)
+       call MAPL_VarRead(Formatter,"ARA3",ara3)
+       call MAPL_VarRead(Formatter,"ARA4",ara4)
+       call MAPL_VarRead(Formatter,"ARW1",arw1)
+       call MAPL_VarRead(Formatter,"ARW2",arw2)
+       call MAPL_VarRead(Formatter,"ARW3",arw3)
+       call MAPL_VarRead(Formatter,"ARW4",arw4)
+       call MAPL_VarRead(Formatter,"TSA1",tsa1)
+       call MAPL_VarRead(Formatter,"TSA2",tsa2)
+       call MAPL_VarRead(Formatter,"TSB1",tsb1)
+       call MAPL_VarRead(Formatter,"TSB2",tsb2)
+       call MAPL_VarRead(Formatter,"ATAU",atau)
+       call MAPL_VarRead(Formatter,"BTAU",btau)
+       call MAPL_VarRead(Formatter,"OLD_ITY",ity)
+       call MAPL_VarRead(Formatter,"TC",tc)
+       call MAPL_VarRead(Formatter,"QC",qc)
+       call MAPL_VarRead(Formatter,"OLD_ITY",ity)
+       call MAPL_VarRead(Formatter,"CAPAC",capac)
+       call MAPL_VarRead(Formatter,"CATDEF",catdef)
+       call MAPL_VarRead(Formatter,"RZEXC",rzexc)
+       call MAPL_VarRead(Formatter,"SRFEXC",srfexc)
+       call MAPL_VarRead(Formatter,"GHTCNT1",ghtcnt1)
+       call MAPL_VarRead(Formatter,"GHTCNT2",ghtcnt2)
+       call MAPL_VarRead(Formatter,"GHTCNT3",ghtcnt3)
+       call MAPL_VarRead(Formatter,"GHTCNT4",ghtcnt4)
+       call MAPL_VarRead(Formatter,"GHTCNT5",ghtcnt5)
+       call MAPL_VarRead(Formatter,"GHTCNT6",ghtcnt6)
+       call MAPL_VarRead(Formatter,"TSURF",tsurf)
+       call MAPL_VarRead(Formatter,"WESNN1",wesnn1)
+       call MAPL_VarRead(Formatter,"WESNN2",wesnn2)
+       call MAPL_VarRead(Formatter,"WESNN3",wesnn3)
+       call MAPL_VarRead(Formatter,"HTSNNN1",htsnnn1)
+       call MAPL_VarRead(Formatter,"HTSNNN2",htsnnn2)
+       call MAPL_VarRead(Formatter,"HTSNNN3",htsnnn3)
+       call MAPL_VarRead(Formatter,"SNDZN1",sndzn1)
+       call MAPL_VarRead(Formatter,"SNDZN2",sndzn2)
+       call MAPL_VarRead(Formatter,"SNDZN3",sndzn3)
+       call MAPL_VarRead(Formatter,"CH",ch)
+       call MAPL_VarRead(Formatter,"CM",cm)
+       call MAPL_VarRead(Formatter,"CQ",cq)
+       call MAPL_VarRead(Formatter,"FR",fr)
+       call MAPL_VarRead(Formatter,"WW",ww)
     
       write(unit)       bf1
        write(unit)       bf2
@@ -4084,7 +4119,7 @@ contains
        write(unit)        ww
        
        close (unit)
-       call MAPL_NCIOClose      (NCIO)
+       call Formatter%close()
   
    END SUBROUTINE write_bin
 

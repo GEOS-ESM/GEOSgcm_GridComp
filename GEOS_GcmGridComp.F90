@@ -14,14 +14,13 @@ module GEOS_GcmGridCompMod
 ! !USES:
 
    use ESMF
-   use MAPL_Mod
+   use MAPL
 
    use GEOS_dataatmGridCompMod,  only:  DATAATM_SetServices => SetServices
    use GEOS_AgcmGridCompMod,     only:  AGCM_SetServices => SetServices
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
    use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
    use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices
-   use m_chars,                  only:  uppercase
 
 
   implicit none
@@ -64,6 +63,7 @@ type T_GCM_STATE
    type(ESMF_Alarm)           :: replayStartAlarm
    type(ESMF_Alarm)           :: replayStopAlarm
    type(ESMF_Alarm)           :: replayShutoffAlarm
+   type(ESMF_Alarm)           :: PredictorIsActive
    type(ESMF_TimeInterval)    :: replayDuration
    integer                    :: rpldur
    integer                    :: rplfreq
@@ -95,7 +95,7 @@ contains
 ! !ARGUMENTS:
 
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    integer, optional                  :: RC  ! return code
+    integer, intent(out)               :: RC  ! return code
 
 ! !DESCRIPTION:  The SetServices for the PhysicsGcm GC needs to register its
 !   Initialize and Run.  It uses the MAPL\_Generic construct for defining 
@@ -296,8 +296,8 @@ contains
     call MAPL_GetResource(MAPL, ReplayNudge, 'REPLAY_NUDGE:', default="NO",       RC=STATUS )
     VERIFY_(STATUS)
 
-    ReplayNudge = uppercase(ReplayNudge)
-    ASSERT_( adjustl(ReplayNudge)=='YES' .or.  adjustl(ReplayNudge)=='NO' )
+    ReplayNudge = ESMF_UtilStringUpperCase(ReplayNudge)
+    _ASSERT( adjustl(ReplayNudge)=='YES' .or.  adjustl(ReplayNudge)=='NO' ,'needs informative message')
 
 ! -------------------------------------------
     ! We need to know if we are doing "regular" replay
@@ -921,6 +921,7 @@ contains
        GCM_INTERNAL_STATE%replayStartAlarm = replayStartAlarm
        GCM_INTERNAL_STATE%replayStopAlarm = replayStopAlarm
        GCM_INTERNAL_STATE%replayShutoffAlarm = replayShutoffAlarm
+       GCM_INTERNAL_STATE%PredictorIsActive = PredictorIsActive
        GCM_INTERNAL_STATE%replayDuration = Duration
 
        call MAPL_GetResource(MAPL, tmpStr, "REPLAY_CHECKPOINT_FILE:", &
@@ -1178,9 +1179,6 @@ contains
     integer, dimension(NUM_ICE_CATEGORIES) :: SUBINDEXO, SUBINDEXA
     integer                                :: N
 
-! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
-    TYPE(ESMF_Alarm)                    :: PredictorIsActive
-! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
 !=============================================================================
 
 ! Begin... 
@@ -1202,8 +1200,8 @@ contains
     VERIFY_(STATUS)
 
 
-    call MAPL_TimerON(MAPL,"TOTAL")
     call MAPL_TimerON(MAPL,"RUN"  )
+    call MAPL_TimerON(MAPL,"TOTAL")
 
 
 ! Get my internal private state. This contains the transforms
@@ -1265,11 +1263,11 @@ contains
              VERIFY_(STATUS)
 
 ! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
-          CALL ESMF_ClockGetAlarm(CLOCK, "PredictorActive", PredictorIsActive, RC=STATUS)
+          CALL ESMF_ClockGetAlarm(CLOCK, "PredictorActive", GCM_INTERNAL_STATE%PredictorIsActive, RC=STATUS)
           VERIFY_(STATUS)
-          CALL ESMF_AlarmRingerOn(PredictorIsActive, RC=STATUS)
+          CALL ESMF_AlarmRingerOn(GCM_INTERNAL_STATE%PredictorIsActive, RC=STATUS)
           VERIFY_(STATUS)
-!         IF(MAPL_AM_I_ROOT()) PRINT *,TRIM(Iam)//": Start of Predictor ringing is ",ESMF_AlarmIsRinging(PredictorIsActive)
+!         IF(MAPL_AM_I_ROOT()) PRINT *,TRIM(Iam)//": Start of Predictor ringing is ",ESMF_AlarmIsRinging(GCM_INTERNAL_STATE%PredictorIsActive)
 ! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
 
              replayTime = ct
@@ -1435,15 +1433,16 @@ contains
           call ESMF_AlarmRingerOff(GCM_INTERNAL_STATE%replayStartAlarm, rc=status)
           VERIFY_(STATUS)
 
+! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
+          IF(ESMF_AlarmIsRinging(GCM_INTERNAL_STATE%PredictorIsActive)) CALL ESMF_AlarmRingerOff(GCM_INTERNAL_STATE%PredictorIsActive, RC=STATUS)
+          VERIFY_(STATUS)
+!         IF(MAPL_AM_I_ROOT()) PRINT *,TRIM(Iam)//": Start of Predictor ringing is ",ESMF_AlarmIsRinging(GCM_INTERNAL_STATE%PredictorIsActive)
+! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
+
           call MAPL_TimerOff(MAPL,"--REPLAY"  )
        end if REPLAY
     endif
 
-! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
-          IF(ESMF_AlarmIsRinging(PredictorIsActive)) CALL ESMF_AlarmRingerOff(PredictorIsActive, RC=STATUS)
-          VERIFY_(STATUS)
-!         IF(MAPL_AM_I_ROOT()) PRINT *,TRIM(Iam)//": Start of Predictor ringing is ",ESMF_AlarmIsRinging(PredictorIsActive)
-! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
 
     ! the usual time step
     !--------------------
@@ -1479,8 +1478,8 @@ contains
     VERIFY_(STATUS)
     
 
-     call MAPL_TimerOff(MAPL,"RUN"  )
      call MAPL_TimerOff(MAPL,"TOTAL")
+     call MAPL_TimerOff(MAPL,"RUN"  )
 
 
      RETURN_(ESMF_SUCCESS)
@@ -1867,7 +1866,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -1906,7 +1905,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -1948,7 +1947,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -1989,7 +1988,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -2028,7 +2027,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -2069,7 +2068,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)

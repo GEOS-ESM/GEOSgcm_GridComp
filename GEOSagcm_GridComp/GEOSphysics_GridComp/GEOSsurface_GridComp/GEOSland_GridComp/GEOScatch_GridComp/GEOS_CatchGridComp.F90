@@ -22,10 +22,9 @@ module GEOS_CatchGridCompMod
 
   use sfclayer  ! using module that contains sfc layer code
   use ESMF
+  use MAPL
   use GEOS_Mod
-  use MAPL_ConstantsMod
   use GEOS_UtilsMod
-  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
   use DragCoefficientsMod
   use CATCHMENT_MODEL, ONLY :                 &
        catchment
@@ -48,12 +47,10 @@ module GEOS_CatchGridCompMod
   USE SURFPARAMS,     ONLY:                   &
        LAND_FIX
 
-  USE MAPL_BaseMod
   USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
 
 !#sqz_for_ldas_coupling 
   use catch_incr
-  use ESMF_CFIOMOD, only:  StrTemplate => ESMF_CFIOstrTemplate
   use ESMF_CFIOUtilMod, only: strToInt
 !#--
   
@@ -3311,7 +3308,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !--------------------------------------------
 
    VEG = nint(ITY(:))
-   ASSERT_((count(VEG>NTYPS.or.VEG<1)==0))
+   _ASSERT((count(VEG>NTYPS.or.VEG<1)==0),'needs informative message')
 
 !  Clear the output tile accumulators
 !------------------------------------
@@ -4114,10 +4111,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character(len=8)              :: cymd
         character(len=6)              :: chms
 
-        type(MAPL_NCIO)               :: InNCIO
+        type(Netcdf4_Fileformatter)   :: InFmt
+        type(FileMetadata)            :: InCfg
+        type(StringVariableMap), pointer :: variables
+        type(StringVariableMapIterator) :: var_iter
+        character(len=:), pointer :: vname
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
-        character(len=ESMF_MAXSTR)    :: vname
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4983,9 +4983,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	! driver
 	! --------------------------------------------------------------------------
 
-        ASSERT_(count(PLS<0.)==0)
-        ASSERT_(count(PCU<0.)==0)
-        ASSERT_(count(SLDTOT<0.)==0)
+        _ASSERT(count(PLS<0.)==0,'needs informative message')
+        _ASSERT(count(PCU<0.)==0,'needs informative message')
+        _ASSERT(count(SLDTOT<0.)==0,'needs informative message')
 
         LAI0  = max(0.0001     , LAI)
         GRN0  = max(0.0001     , GRN)		
@@ -5202,7 +5202,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             if( NMAX.ne.0 ) then
                 print *, 'CATCH_INTERNAL_RST is NOT consistent with VEGDYN Data'
             endif
-            ASSERT_(NMAX==0)
+            _ASSERT(NMAX==0,'needs informative message')
             check_ity = .false.
         endif
 ! ----------------------------------------------------------------------------------------
@@ -5341,53 +5341,56 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 
                        call WRITE_PARALLEL('LDAS_coupling: load nc LDAS increment file')
-                       InNCIO = MAPL_NCIOOpen(LDASINC_FILE,rc=rc)
-                       call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
-                       do nv=1,nVars
-                          call MAPL_NCIOGetVarName(InNCIO,nv,vname)
-                          call MAPL_NCIOVarGetDims(InNCIO,vname,nDims,dimSizes)
+                       call InFmt%open(LDASINC_File,pFIO_READ,rc=status)
+                       VERIFY_(status)
+                       InCfg=InFmt%read(rc=status)
+                       VERIFY_(status)
+                       variables => InCfg%get_variables()
+                       var_iter = variables%begin()
+                       do while (var_iter/=variables%end())
+                          vname => var_iter%key()
                           if ( trim(vname) == "TCFSAT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcfsat_incr)
+                               call MAPL_VarRead ( InFmt,trim(vname),tcfsat_incr)
                           if ( trim(vname) == "TCFTRN_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcftrn_incr)
+                               call MAPL_VarRead ( InFmt,trim(vname),tcftrn_incr)
                           if ( trim(vname) == "TCFWLT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcfwlt_incr)
+                               call MAPL_VarRead ( InFmt,trim(vname),tcfwlt_incr)
                           if ( trim(vname) == "QCFSAT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcftrn_incr)
+                               call MAPL_VarRead ( InFmt,trim(vname),qcftrn_incr)
                           if ( trim(vname) == "QCFTRN_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcftrn_incr)
+                               call MAPL_VarRead ( InFmt,trim(vname),qcftrn_incr)
                           if ( trim(vname) == "QCFWLT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcfwlt_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname),qcfwlt_incr )
                           if ( trim(vname) == "CAPAC_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), catdef_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), catdef_incr )
                           if ( trim(vname) == "CATDEF_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), catdef_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), catdef_incr )
                           if ( trim(vname) == "RZEXC_INCR" )  &
-                               call MAPL_VarRead ( InNCIO,trim(vname), rzexc_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), rzexc_incr )
                           if ( trim(vname) == "SRFEXC_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), srfexc_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), srfexc_incr )
                           if ( trim(vname) == "GHTCNT1_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt1_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt1_incr )
                           if ( trim(vname) == "GHTCNT2_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt2_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt2_incr )
                           if ( trim(vname) == "GHTCNT3_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt3_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt3_incr )
                           if ( trim(vname) == "GHTCNT4_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt4_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt4_incr )
                           if ( trim(vname) == "GHTCNT5_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt5_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt5_incr )
                           if ( trim(vname) == "GHTCNT6_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt6_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt6_incr )
                           if ( trim(vname) == "WESNN1_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn1_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), wesnn1_incr )
                           if ( trim(vname) == "WESNN2_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn2_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), wesnn2_incr )
                           if ( trim(vname) == "WESNN3_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn3_incr )
-                       enddo !nv
+                               call MAPL_VarRead ( InFmt,trim(vname), wesnn3_incr )
+                       enddo 
 
 
-                       call MAPL_NCIOClose(InNCIO)
+                       call inFmt%close()
                        call WRITE_PARALLEL('LDAS_coupling:loaded nc LDAS increment file')
 
                     deallocate(mask)
