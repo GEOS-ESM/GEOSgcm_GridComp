@@ -24,6 +24,17 @@ module GEOS_LakeGridCompMod
   integer, parameter :: WATER = 2
   integer, parameter :: NUM_SUBTILES = 2
 
+  type T_LAKE_STATE
+     private
+     logical :: InitDone
+     logical, pointer :: mask(:)
+     character(len=ESMF_MAXSTR) :: SSTFILE
+  end type T_LAKE_STATE
+  
+  type LAKE_WRAP
+     type (T_LAKE_STATE), pointer :: PTR
+  end type LAKE_WRAP
+  
 ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -69,6 +80,9 @@ module GEOS_LakeGridCompMod
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
 
+! Local vars
+    type (T_LAKE_STATE), pointer           :: LAKE_INTERNAL_STATE
+    type (LAKE_wrap)                       :: WRAP
 
 !=============================================================================
 
@@ -840,6 +854,22 @@ module GEOS_LakeGridCompMod
     call MAPL_TimerAdd(GC,    name="RUN2"  ,RC=STATUS)
     VERIFY_(STATUS)
   
+
+! Allocate this instance of the internal state and put it in wrapper.
+! -------------------------------------------------------------------
+
+    allocate( LAKE_INTERNAL_STATE, stat=STATUS )
+    VERIFY_(STATUS)
+    LAKE_INTERNAL_STATE%InitDone = .false.
+    WRAP%PTR => LAKE_INTERNAL_STATE
+
+! Save pointer to the wrapped internal state in the GC
+! ----------------------------------------------------
+
+    call ESMF_UserCompSetInternalState ( GC, 'LAKE_STATE',wrap,status )
+    VERIFY_(STATUS)
+
+
 ! Set generic init and final methods
 ! ----------------------------------
 
@@ -1520,7 +1550,15 @@ contains
    real, parameter :: LAKECAP      = (MAPL_RHOWTR*MAPL_CAPWTR*LAKEDEPTH    )
    real, parameter :: LAKEICECAP   = (MAPL_RHOWTR*MAPL_CAPWTR*LAKEICEDEPTH )
 
+   logical :: datalake
+   integer :: dlk
+   real, allocatable :: SST(:)
+   character(len=ESMF_MAXSTR) :: maskfile
+   real, parameter :: tice = MAPL_TICE - 1.8
 
+   type (T_LAKE_STATE), pointer           :: LAKE_INTERNAL_STATE
+   type (LAKE_WRAP)                       :: wrap
+   
 !  Begin...
 !----------
 
@@ -1680,6 +1718,60 @@ contains
     if(associated(QST    )) QST     = 0.0
     if(associated(HLWUP  )) HLWUP   = ALW 
     if(associated(LWNDSRF)) LWNDSRF = LWDNSRF - ALW
+    ! datalake addition
+    !==================
+
+    ! check resource if datalake is enabled
+    call MAPL_GetResource ( MAPL, DLK, Label="DATALAKE:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+    DATALAKE = (DLK /= 0)
+
+    if (datalake) then
+        call ESMF_UserCompGetInternalState(GC, 'LAKE_STATE', wrap, status)
+        VERIFY_(STATUS)
+
+        LAKE_INTERNAL_STATE => WRAP%PTR
+
+        ! next section is done only once. We do it here since the Initalize
+        ! method of this component defaults to MAPL_GenericInitialize
+        
+        if (.not. LAKE_INTERNAL_STATE%InitDone) then
+           LAKE_INTERNAL_STATE%InitDone = .true.
+           call MAPL_GetResource ( MAPL, LAKE_INTERNAL_STATE%SSTFILE, &
+                Label="LAKE_SST_FILE:", DEFAULT="sst.data", RC=STATUS)
+           VERIFY_(STATUS)
+
+           ! Initialize a mask where we apply the SST from Reynolds/Ostia
+           allocate(LAKE_INTERNAL_STATE%mask(NT), stat=status); VERIFY_(STATUS)
+
+           LAKE_INTERNAL_STATE%mask = .false.
+           
+           call MAPL_GetResource ( MAPL, MASKFILE, &
+                Label="DATALAKE_MASK_FILE:", DEFAULT="DataLakeMask.data", RC=STATUS)
+           VERIFY_(STATUS)
+
+           !ALT: For now we are reading the entire mask from a file
+           ! we might decide later to use a different strategy (for example
+           ! Santha suggested lat-lon based description)
+
+           call DataLakeReadMask(MAPL, LAKE_INTERNAL_STATE%mask, &
+                maskfile, RC=status)
+           VERIFY_(STATUS)
+        end if
+
+
+       allocate(SST(NT), stat=status); VERIFY_(STATUS)
+       call MAPL_ReadForcing(MAPL, 'SST', LAKE_INTERNAL_STATE%SSTFILE,&
+            CURRENT_TIME, SST, ON_TILES=.true., RC=STATUS)
+       VERIFY_(STATUS)
+
+       where(LAKE_INTERNAL_STATE%mask)
+          TS(:,WATER) = SST
+          TS(:,ICE)   = TICE
+       end where
+
+       deallocate(SST)
+    end if
 
     do N=1,NUM_SUBTILES
        CFT = (CH(:,N)/CTATM)
@@ -1885,6 +1977,55 @@ contains
 
 
 end subroutine RUN2
+
+subroutine DataLakeReadMask(mapl, msk, maskfile, rc)
+  implicit none
+  ! arguments
+  type (MAPL_MetaComp), pointer  :: MAPL
+  logical, intent(OUT)           :: msk(:)
+  character(len=*), intent(IN)   :: maskfile
+  integer, optional, intent(OUT) :: rc
+
+  ! errlog vars
+  integer :: status
+  character(len=ESMF_MAXSTR), parameter :: Iam='DataLakeRedMask'
+  
+  ! local vars
+  integer                       :: unit
+  integer, pointer              :: tilemask(:) => null()
+  type(ESMF_Grid)               :: TILEGRID
+  type(MAPL_LocStream)          :: LOCSTREAM
+  integer :: NT
+  real, allocatable :: imask(:)
+
+  ! this is the first attempt to read the mask. For now we support binary
+  call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+  VERIFY_(STATUS)
+
+  call MAPL_TileMaskGet(tilegrid, tilemask, rc=status)
+  VERIFY_(STATUS)
+
+  nt = size(tilemask)
+  allocate(imask(nt), stat=status)
+
+  unit = GETFILE( maskfile, form="unformatted", RC=STATUS )
+  VERIFY_(STATUS)
+
+  call MAPL_VarRead(unit, tilegrid, imask,  mask=tilemask, rc=status)
+  VERIFY_(STATUS)
+
+  call FREE_FILE(unit, RC=STATUS)
+  VERIFY_(STATUS)
+
+  msk = (imask /= 0.0)
+  deallocate(imask)
+  deallocate(tilemask)
+
+
+  RETURN_(ESMF_SUCCESS)
+end subroutine DataLakeReadMask
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
