@@ -3354,6 +3354,16 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
            stop
         endif
 
+        if(process_peat) then
+           if(POROS(n) >= 0.9) then
+              meanlu = 9.3 
+              stdev  = 0.12
+              minlu  = 8.5
+              maxlu  = 11.5
+              coesk  = 0.25
+           endif
+        endif
+
         if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
            TOPMEAN(n) = meanlu
         else
@@ -3465,7 +3475,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           tsa1(n),tsa2(n),tsb1(n),tsb2(n)  &
           )
 
-      if(POROS(n) >= 0.8) then
+      if(POROS(n) >= 0.9) then
 
          ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
          if(process_peat) then
@@ -3486,10 +3496,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             bf2(n) = 1.4237401e-01  
             bf3(n) = 6.9803000e+00
 
-            tsa1(n) = -2.417581e+00
-            tsa2(n) = -4.784762e+00
-            tsb1(n) = -3.700285e-03
-            tsb2(n) = -2.392484e-03
+!            tsa1(n) = -2.417581e+00
+!            tsa2(n) = -4.784762e+00
+!            tsb1(n) = -3.700285e-03
+!            tsb2(n) = -2.392484e-03
             
          endif
       endif
