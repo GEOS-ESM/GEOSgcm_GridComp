@@ -1,4 +1,4 @@
-set (this GEOSmoist_GridComp)
+esma_set_this()
 
 set (srcs
   CLDPARAMS.F90 RASPARAMS.F90 ras.F90 cloudnew.F90 ddf.F90 rascnvv2_v.F90
