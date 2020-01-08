@@ -111,7 +111,7 @@ contains
     integer                                 :: I
     type (ESMF_Config)                      :: CF
 
-    integer                                 :: DO_OBIO, DO_CO2CNNEE, DO_CO2SC, nCols, NQ
+    integer                                 :: DO_OBIO, DO_CO2CNNEE, DO_CO2SC, nCols, NQ, MYNN_LEVEL
 
     real                                    :: SYNCTQ
     character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
@@ -174,6 +174,9 @@ contains
     call MAPL_GetResource ( MAPL, SYNCTQ, Label="SYNCTQ:", DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
 !BOS
+
+    ! To decide whether to create tendencies of thermodynamic second-order moments
+    call MAPL_GetResource (MAPL, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
 
 ! !IMPORT STATE:
 
@@ -563,32 +566,34 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-        call MAPL_AddExportSpec(GC,                        &
-         SHORT_NAME = 'HL2IT',                             &
-         LONG_NAME  = 'tendency_of_HL2_due_to_turbulence', &
-         UNITS      = 'K+2s-1',                            &
-         DIMS       = MAPL_DimsHorzVert,                   &
-         VLOCATION  = MAPL_VLocationEdge,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+    if (MYNN_LEVEL == 3) then
+       call MAPL_AddExportSpec(GC,                        &
+            SHORT_NAME = 'HL2IT',                             &
+            LONG_NAME  = 'tendency_of_HL2_due_to_turbulence', &
+            UNITS      = 'K+2s-1',                            &
+            DIMS       = MAPL_DimsHorzVert,                   &
+            VLOCATION  = MAPL_VLocationEdge,                  &
+            RC=STATUS  )
+       VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                            &
-         SHORT_NAME = 'QT2IT',                             &
-         LONG_NAME  = 'tendency_of_QT2_due_to_turbulence', &
-         UNITS      = 'kg+2kg-2s-1',                       &
-         DIMS       = MAPL_DimsHorzVert,                   &
-         VLOCATION  = MAPL_VLocationEdge,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+       call MAPL_AddExportSpec(GC,                            &
+            SHORT_NAME = 'QT2IT',                             &
+            LONG_NAME  = 'tendency_of_QT2_due_to_turbulence', &
+            UNITS      = 'kg+2kg-2s-1',                       &
+            DIMS       = MAPL_DimsHorzVert,                   &
+            VLOCATION  = MAPL_VLocationEdge,                  &
+            RC=STATUS  )
+       VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                             &
-         SHORT_NAME = 'HLQTIT',                             &
-         LONG_NAME  = 'tendency_of_HLQT_due_to_turbulence', &
-         UNITS      = 'K+2s-1',                             &
-         DIMS       = MAPL_DimsHorzVert,                    &
-         VLOCATION  = MAPL_VLocationEdge,                   &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+       call MAPL_AddExportSpec(GC,                             &
+            SHORT_NAME = 'HLQTIT',                             &
+            LONG_NAME  = 'tendency_of_HLQT_due_to_turbulence', &
+            UNITS      = 'K+2s-1',                             &
+            DIMS       = MAPL_DimsHorzVert,                    &
+            VLOCATION  = MAPL_VLocationEdge,                   &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+    end if
     !
     ! End second-order moment tendencies
 
@@ -1578,6 +1583,7 @@ contains
    character(len=ESMF_MAXSTR)          :: myNAME
    character(len=ESMF_MAXSTR)          ::  iNAME
    character(len=ESMF_MAXSTR)          :: fieldname
+   integer                             :: MYNN_LEVEL
 
 ! Variables needed for GPU initialization
 
@@ -1751,26 +1757,29 @@ contains
     call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
     VERIFY_(STATUS)
 
-    call ESMF_StateGet    (GEX(TURBL),  'HL2'   , FIELD,    RC=STATUS )
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetResource (STATE, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
+    if (MYNN_LEVEL == 3) then
+       call ESMF_StateGet    (GEX(TURBL),  'HL2'   , FIELD,    RC=STATUS )
+       VERIFY_(STATUS)
+       call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+       VERIFY_(STATUS)
+       call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+       VERIFY_(STATUS)
 
-    call ESMF_StateGet    (GEX(TURBL),  'QT2'   , FIELD,    RC=STATUS )
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
-    VERIFY_(STATUS)
+       call ESMF_StateGet    (GEX(TURBL),  'QT2'   , FIELD,    RC=STATUS )
+       VERIFY_(STATUS)
+       call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+       VERIFY_(STATUS)
+       call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+       VERIFY_(STATUS)
 
-    call ESMF_StateGet    (GEX(TURBL),  'HLQT'   , FIELD,    RC=STATUS )
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
-    VERIFY_(STATUS)
+       call ESMF_StateGet    (GEX(TURBL),  'HLQT'   , FIELD,    RC=STATUS )
+       VERIFY_(STATUS)
+       call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+       VERIFY_(STATUS)
+       call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+       VERIFY_(STATUS)
+    end if
 
 #ifdef PRINT_STATES
     call WRITE_PARALLEL ( trim(Iam)//": Turbulence Tracer Bundle" )

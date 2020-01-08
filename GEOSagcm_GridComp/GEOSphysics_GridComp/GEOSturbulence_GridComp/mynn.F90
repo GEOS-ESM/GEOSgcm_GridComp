@@ -174,7 +174,7 @@ subroutine run_mynn(IM, JM, LM, &
                     ple, zle, zlo, &
                     u, v, T, qv, ql, qi, tke, hl2, qt2, hlqt, &
                     u_star, H, E, thv, ac, whl_mf, wqt_mf, wthv_mf, &
-                    Kh, Km, K_tke, K_tpe, itau, ws_cg, wqv_cg, wql_cg, &
+                    Kh, Km, K_tke, itau, ws_cg, wqv_cg, wql_cg, &
                     Beta_hl, Beta_qt, &
                     tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
                     tke_surf, hl2_surf, qt2_surf, hlqt_surf, &
@@ -193,7 +193,7 @@ subroutine run_mynn(IM, JM, LM, &
   real, dimension(IM,JM), intent(out)        :: tke_surf, hl2_surf, qt2_surf, hlqt_surf
   real, dimension(IM,JM,0:LM), intent(out)   :: Kh, Km, itau, ws_cg, wqv_cg, wql_cg, &
                                                 tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M
-  real, dimension(IM,JM,LM), intent(out)     :: K_tke, K_tpe
+  real, dimension(IM,JM,LM), intent(out)     :: K_tke
 
   integer :: i, j, k, kp1, km1
   double precision :: GH, GM, dhldz, dqtdz, dqldz, idzlo, exner, ifac, iexner, &
@@ -432,18 +432,20 @@ subroutine run_mynn(IM, JM, LM, &
         end if
 
         ! Compute counter-gradient fluxes of GEOS variables
-        if (WQL_TYPE == 0) then
-           wql_cg(i,j,k) = 0.
-        else
-           ifac    = (zle(i,j,k) - zlo(i,j,k+1))*idzlo
-           ac_half = ac(i,j,k+1) + ifac*(ac(i,j,k) - ac(i,j,k+1))
-           wql     = ac_half*(  A(i,j,k)*( -Kh(i,j,k)*dqtdz + wqt_cg ) &
-                              - B(i,j,k)*( -Kh(i,j,k)*dhldz + whl_cg ) )
-
-           wql_cg(i,j,k) = wql + Kh(i,j,k)*dqldz
+        if (MYNN_LEVEL == 3) then
+           if (WQL_TYPE == 0) then
+              wql_cg(i,j,k) = 0.
+           else
+              ifac    = (zle(i,j,k) - zlo(i,j,k+1))*idzlo
+              ac_half = ac(i,j,k+1) + ifac*(ac(i,j,k) - ac(i,j,k+1))
+              wql     = ac_half*(  A(i,j,k)*( -Kh(i,j,k)*dqtdz + wqt_cg ) &
+                                 - B(i,j,k)*( -Kh(i,j,k)*dhldz + whl_cg ) )
+              
+              wql_cg(i,j,k) = wql + Kh(i,j,k)*dqldz
+           end if
+           ws_cg(i,j,k)  = MAPL_CP*whl_cg + MAPL_ALHL*wql_cg(i,j,k)
+           wqv_cg(i,j,k) = wqt_cg - wql_cg(i,j,k)
         end if
-        ws_cg(i,j,k)  = MAPL_CP*whl_cg + MAPL_ALHL*wql_cg(i,j,k)
-        wqv_cg(i,j,k) = wqt_cg - wql_cg(i,j,k)
 
         ! Compute budget terms for second-order moments
         tket_M(i,j,k) = Km(i,j,k)*S2(i,j,k)
@@ -499,19 +501,15 @@ subroutine run_mynn(IM, JM, LM, &
 
   ! Compute TKE diffusivity
   do k = 2,LM-1
-
      km1 = k - 1
      do j = 1,JM
      do i = 1,IM
         K_tke(i,j,k) = 1.5*( Km(i,j,k) + Km(i,j,km1) )
-        K_tpe(i,j,k) = 0.5*( Km(i,j,k) + Km(i,j,km1) )
      end do
      end do
   end do
   K_tke(:,:,1)  = K_tke(:,:,2)
-  K_tpe(:,:,1)  = K_tpe(:,:,2)
   K_tke(:,:,LM) = K_tke(:,:,LM-1)
-  K_tpe(:,:,LM) = K_tpe(:,:,LM-1)
 
 end subroutine run_mynn
 
@@ -655,9 +653,9 @@ subroutine implicit_M(IM, JM, LM, &
                       Beta_hl, Beta_qt, Km, Kh, &
                       ws_cg, wqv_cg, wql_cg, whl_mf, wqt_mf, wthv_mf, &
                       tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
-                      DOMF)
+                      MYNN_LEVEL, DOMF)
 
-  integer, intent(in)                      :: IM, JM, LM
+  integer, intent(in)                      :: IM, JM, LM, MYNN_LEVEL
   real, intent(in)                         :: DOMF
   real, dimension(IM,JM,LM), intent(in)    :: zlo, u, v, h, qv, ql 
   real, dimension(IM,JM,0:LM), intent(in)  :: Beta_hl, Beta_qt, Km, Kh, &
@@ -691,24 +689,34 @@ subroutine implicit_M(IM, JM, LM, &
         N2 = goth00*( Beta_hl(i,j,k)*dhldz + Beta_qt(i,j,k)*dqtdz )
         S2 = (( u(i,j,k) - u(i,j,kp1) )*idzlo)**2. + ( (v(i,j,k) - v(i,j,kp1) )*idzlo)**2.
 
-        whl_cg = ws_cg(i,j,k)/MAPL_CP - lvocp*wql_cg(i,j,k)
-        wqt_cg = wqv_cg(i,j,k) + wql_cg(i,j,k)
-        wb_cg  = Beta_hl(i,j,k)*whl_cg + Beta_qt(i,j,k)*wqt_cg
+        if (MYNN_LEVEL == 3) then
+           whl_cg = ws_cg(i,j,k)/MAPL_CP - lvocp*wql_cg(i,j,k)
+           wqt_cg = wqv_cg(i,j,k) + wql_cg(i,j,k)
+           wb_cg  = Beta_hl(i,j,k)*whl_cg + Beta_qt(i,j,k)*wqt_cg
+        else
+           wb_cg  = 0.
+        end if
 
         if (DOMF /= 0.) then
-           whl           = -Kh(i,j,k)*dhldz + whl_cg + whl_mf(i,j,k)
-           wqt           = -Kh(i,j,k)*dqtdz + wqt_cg + wqt_mf(i,j,k)
+           if (MYNN_LEVEL == 3) then
+              whl = -Kh(i,j,k)*dhldz + whl_cg + whl_mf(i,j,k)
+              wqt = -Kh(i,j,k)*dqtdz + wqt_cg + wqt_mf(i,j,k)
+           end if
            tket_B(i,j,k) = -Kh(i,j,k)*N2 + wb_cg + goth00*wthv_mf(i,j,k)
         else
-           whl           = -Kh(i,j,k)*dhldz + whl_cg
-           wqt           = -Kh(i,j,k)*dqtdz + wqt_cg
+           if (MYNN_LEVEL == 3) then
+              whl = -Kh(i,j,k)*dhldz + whl_cg
+              wqt = -Kh(i,j,k)*dqtdz + wqt_cg
+           end if
            tket_B(i,j,k) = -Kh(i,j,k)*N2 + wb_cg
         end if
 
-        tket_M(i,j,k)  = Km(i,j,k)*S2
-        hl2t_M(i,j,k)  = -2.*whl*dhldz
-        qt2t_M(i,j,k)  = -2.*wqt*dqtdz
-        hlqtt_M(i,j,k) = -whl*dqtdz - wqt*dhldz
+        tket_M(i,j,k) = Km(i,j,k)*S2
+        if (MYNN_LEVEL == 3) then
+           hl2t_M(i,j,k)  = -2.*whl*dhldz
+           qt2t_M(i,j,k)  = -2.*wqt*dqtdz
+           hlqtt_M(i,j,k) = -whl*dqtdz - wqt*dhldz
+        end if
      end do
      end do
   end do
