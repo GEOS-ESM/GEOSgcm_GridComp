@@ -121,6 +121,8 @@ subroutine GetStencil(ii,jj,st)
 
 end subroutine GetStencil
 
+ ! *****************************************************************************
+
 subroutine GetIds_fast_1p (loni,lati,lon,lat,Id)
   integer, dimension(:), intent( IN) :: loni,lati,lon,lat
   integer, dimension(:), intent(OUT) :: Id
@@ -303,6 +305,167 @@ subroutine GetIds_fast_1p (loni,lati,lon,lat,Id)
 
  end subroutine GetIds_accurate_mpi
 
+ ! ***************************************************************************** 
+
+ subroutine GetIds_carbon (loni,lati,lono,lato,Id, tid_in, &
+      CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
+      fveg_offl, ityp_offl)
+   
+   implicit none
+   integer, parameter :: npft    = 19 
+   integer, parameter :: nveg    = 4
+   real,    parameter :: fmin= 1.e-4 ! ignore vegetation fractions at or below this value
+   integer :: iclass(npft) = (/1,1,2,3,3,4,5,5,6,7,8,9,10,11,12,11,12,11,12/)
+   integer :: NT_IN, NT_OUT, n, i, nplus,nv, nx, ityp_new 
+   integer, dimension (:), intent (in) :: tid_in 
+   integer, dimension (:,:), intent (inout) :: id
+   real, dimension (:), intent (in) :: loni,lati,lono,lato
+   real, dimension (:), intent (in) :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
+        CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2
+   real, dimension(:,:), intent (in)   :: fveg_offl, ityp_offl
+   logical                             :: tile_found
+   logical, allocatable, dimension (:) :: mask
+   integer, allocatable, dimension (:) :: sub_tid
+   real   , allocatable, dimension (:) :: sub_lon, sub_lat, rev_dist, sub_fevg1, sub_fevg2
+   integer, allocatable, dimension (:) :: sub_ityp1, sub_ityp2,icl_ityp1
+   real                                :: dw, dx, dy, min_lon, max_lon, min_lat, max_lat, fveg_new, sub_dist
+   
+   NT_IN  = SIZE (loni)
+   NT_OUT = SIZE (lono)
+   
+   allocate (mask   (1:  NT_IN))
+   
+   Id = -9999
+   
+   OUT_TILES : do n = 1,  NT_OUT
+      
+      dw = 0.5
+      
+      ZOOMOUT : do  
+         
+         tile_found = .false. 
+         
+         ! Min/Max lon/lat of the working window
+         ! -------------------------------------
+         
+         min_lon = MAX(lono (n) - dw, -180.)
+         max_lon = MIN(lono (n) + dw,  180.)
+         min_lat = MAX(lato (n) - dw,  -90.)
+         max_lat = MIN(lato (n) + dw,   90.) 
+         
+         mask = .false.
+         mask =  ((lati >= min_lat .and. lati <= max_lat).and.(loni >= min_lon .and. loni <= max_lon))
+         nplus =  count(mask = mask)
+         
+         if(nplus < 0) then
+            dw = dw + 0.5
+            CYCLE
+         endif
+         
+         allocate (sub_tid   (1:nplus))
+         allocate (sub_lon   (1:nplus))
+         allocate (sub_lat   (1:nplus))
+         allocate (rev_dist  (1:nplus))
+         allocate (sub_ityp1 (1:nplus))
+         allocate (sub_fevg1 (1:nplus))
+         allocate (sub_ityp2 (1:nplus))
+         allocate (sub_fevg2 (1:nplus))
+         allocate (icl_ityp1 (1:nplus))
+         
+         sub_tid = PACK (tid_in , mask= mask) 
+         sub_lon = PACK (loni   , mask= mask)
+         sub_lat = PACK (lati   , mask= mask)
+         
+         ! compute distance from the tile
+         
+         sub_lat = sub_lat * MAPL_PI/180.
+         sub_lon = sub_lon * MAPL_PI/180.
+
+         NV_LOOP: do nv = 1, nveg
+            
+	    if (nv == 1) ityp_new = CLMC_pt1(n)
+            if (nv == 1) fveg_new = CLMC_pf1(n)
+            if (nv == 2) ityp_new = CLMC_pt2(n)
+            if (nv == 2) fveg_new = CLMC_pf2(n)
+            if (nv == 3) ityp_new = CLMC_st1(n)
+            if (nv == 3) fveg_new = CLMC_sf1(n)
+            if (nv == 4) ityp_new = CLMC_st2(n) 
+            if (nv == 4) fveg_new = CLMC_sf2(n)
+     
+            SEEK : if((Id (n, nv) < 0).and.(fveg_new > fmin)) then
+        
+               if(nv <= 2) then ! index for secondary PFT index if primary or primary if secondary
+                  nx = nv + 2
+               else
+                  nx = nv - 2
+               endif
+               
+               sub_ityp1 = ityp_offl (sub_tid,nv)
+               sub_fevg1 = fveg_offl (sub_tid,nv)
+               sub_ityp2 = ityp_offl (sub_tid,nx)
+               sub_fevg2 = fveg_offl (sub_tid,nx)
+               
+               rev_dist  = 1.e20
+               icl_ityp1 = iclass(sub_ityp1)
+               
+               do i = 1,nplus
+                  if((sub_ityp1(i)>fmin .and. (ityp_new ==sub_ityp1(i) .or.   &
+                       iclass(ityp_new) ==iclass(sub_ityp1(i)))) .or.             &
+                       (sub_fevg2(i)>fmin .and. (ityp_new ==sub_ityp2(i) .or. &
+                       iclass(ityp_new)==iclass(sub_ityp2(i))))) then
+                     
+                     sub_dist = haversine(to_radian(lato(n)), to_radian(lono(n)), &
+                          sub_lat(i), sub_lon(i))
+                     
+                     if(ityp_new == sub_ityp1(i) .and. sub_fevg1(i) >fmin) then
+                        rev_dist(i) = 1.*sub_dist     ! give priority to same (primary if primary, secondary if secondary)   
+                        ! gkw: these weights are tunable
+                     else if(ityp_new ==sub_ityp2(i) .and. sub_fevg2(i)>fmin) then
+                        rev_dist(i) = 2.*sub_dist     ! lower priority if not same (secondary if primary, primary if secondary)
+                     else if(iclass(ityp_new)==iclass(sub_ityp1(i)) .and. sub_fevg1(i)>fmin) then
+                        rev_dist(i) = 3.*sub_dist     ! even lower priority if same of some other PFT in same class
+                     else if(sub_fevg2(i)>fmin) then
+                        rev_dist(i) = 4.*sub_dist     ! even lower priority if not same of some other PFT in same class
+                     else
+                        rev_dist(i) = 1.e20
+                     endif
+                  endif
+                  
+               end do
+               
+               FOUND : if(minval (rev_dist) < 1.e19) then               
+                  Id (n, nv) = sub_tid(minloc(rev_dist,1)) 
+                  
+               endif FOUND
+                
+            endif SEEK
+         end do NV_LOOP
+
+          deallocate (sub_tid, sub_lon, sub_lat, icl_ityp1)
+          deallocate (sub_ityp1, sub_fevg1, sub_ityp2, sub_fevg2, rev_dist)  
+
+          tile_found = .true.   
+          if((tile_found).and.((CLMC_pf1(n) > fmin).and.(Id(n,1) < 0))) tile_found = .false.
+          if((tile_found).and.((CLMC_pf2(n) > fmin).and.(Id(n,2) < 0))) tile_found = .false.
+          if((tile_found).and.((CLMC_sf1(n) > fmin).and.(Id(n,3) < 0))) tile_found = .false.
+          if((tile_found).and.((CLMC_sf2(n) > fmin).and.(Id(n,4) < 0))) tile_found = .false.          
+
+          if(tile_found) GO TO 100
+        
+          ! if not increase the window size
+          dw = dw + 0.5
+          
+       end do ZOOMOUT
+       
+100    continue
+      
+!       if(mod (n,10000) == 0)  print *, id(n), loni(id(n)), lono(n), lati(id(n)), lato(n)
+    END do OUT_TILES
+
+  deallocate (mask)
+  
+ end subroutine GetIds_carbon
+
   ! *****************************************************************************
 
    function to_radian(degree) result(rad)
@@ -383,8 +546,8 @@ subroutine GetIds_fast_1p (loni,lati,lon,lat,Id)
    close(11)
     
    Ntiles = icnt
-   allocate(xlon(Ntiles))
-   allocate(xlat(Ntiles))
+   if(.not.associated (xlon)) allocate(xlon(Ntiles))
+   if(.not.associated (xlat)) allocate(xlat(Ntiles))
    xlon = ln1(:Ntiles)
    xlat = lt1(:Ntiles) 
 
