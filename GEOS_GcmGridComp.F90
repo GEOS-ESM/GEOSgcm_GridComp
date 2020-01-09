@@ -545,8 +545,8 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_TerminateImport( GC,                                 &
-          SHORT_NAME = (/'CCOVM', 'CDREM', 'RLWPM', 'CLDTCM',       &
-                         'RH', 'OZ', 'WV'/),                        &
+          SHORT_NAME = (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM',    &
+                         'RH    ', 'OZ    ', 'WV    '/),            &
           CHILD      = OGCM,                                        &
           RC=STATUS  )
      VERIFY_(STATUS)
@@ -1058,9 +1058,9 @@ contains
               RC=STATUS )
       VERIFY_(STATUS)
 
-      call AllocateExports(GCM_INTERNAL_STATE%expSKIN,                  &
-                        (/'CCOVM', 'CDREM', 'RLWPM', 'CLDTCM', 'RH', &
-                          'OZ', 'WV'/),                              &
+      call AllocateExports(GCM_INTERNAL_STATE%expSKIN,                      &
+                        (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM', 'RH    ', &
+                          'OZ    ', 'WV    '/),                             &
                         RC=STATUS)
       VERIFY_(STATUS)
          
