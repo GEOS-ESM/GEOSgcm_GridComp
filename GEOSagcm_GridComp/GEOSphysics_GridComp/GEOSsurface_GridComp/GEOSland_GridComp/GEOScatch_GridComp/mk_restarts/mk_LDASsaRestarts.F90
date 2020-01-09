@@ -208,7 +208,7 @@ PROGRAM mk_LDASsaRestarts
 
   if(trim(REORDER) == 'Y') then
 
-     ! This call is to reorder a LDASsa restart file
+     ! This call is to reorder a LDASsa restart file (RESTART: 1)
 
      call reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, ENS)
 
@@ -216,7 +216,7 @@ PROGRAM mk_LDASsaRestarts
 
   elseif (trim(REORDER) == 'R') then
 
-     ! This call is to reorder a LDASsa restart file
+     ! This call is to regrid LDASsa/GEOSldas restarts from a different grid (RESTART: 2)
 
      call regrid_from_xgrid (SURFLAY, BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, PFILE)
  
@@ -225,6 +225,8 @@ PROGRAM mk_LDASsaRestarts
      stop
 
   else
+
+     ! The user does now have restarts, thus cold start (RESTART: 0)
 
      if(JOBFILE == 'N') then
 
@@ -2255,87 +2257,84 @@ contains
                                                    ! OLD           ! 37 cps%fpg                  
                                                    ! OLD           ! 38 cps%fpi_vr          (:,1)
                                                    ! OLD           ! 39 cps%altmax_lastyear_indx 
-        
-        
+               
         ! PFT vars CLM40                                CLM45    
         ! --------------                                -----
-        !  1 clm3%g%l%c%p%pcs%cpool	                   ! PFT vars                     
-        !  2 clm3%g%l%c%p%pcs%deadcrootc	           ! --------                     
-        !  3 clm3%g%l%c%p%pcs%deadcrootc_storage	   !  1 pcs%cpool                 
-        !  4 clm3%g%l%c%p%pcs%deadcrootc_xfer              !  2 pcs%deadcrootc            
-        !  5 clm3%g%l%c%p%pcs%deadstemc 	           !  3 pcs%deadcrootc_storage    
-        !  6 clm3%g%l%c%p%pcs%deadstemc_storage 	   !  4 pcs%deadcrootc_xfer       
-        !  7 clm3%g%l%c%p%pcs%deadstemc_xfer               !  5 pcs%deadstemc             
-        !  8 clm3%g%l%c%p%pcs%frootc	                   !  6 pcs%deadstemc_storage     
-        !  9 clm3%g%l%c%p%pcs%frootc_storage               !  7 pcs%deadstemc_xfer        
-        ! 10 clm3%g%l%c%p%pcs%frootc_xfer                  !  8 pcs%frootc                
-        ! 11 clm3%g%l%c%p%pcs%gresp_storage                !  9 pcs%frootc_storage        
-        ! 12 clm3%g%l%c%p%pcs%gresp_xfer	           ! 10 pcs%frootc_xfer           
-        ! 13 clm3%g%l%c%p%pcs%leafc	                   ! 11 pcs%gresp_storage         
-        ! 14 clm3%g%l%c%p%pcs%leafc_storage	           ! 12 pcs%gresp_xfer            
-        ! 15 clm3%g%l%c%p%pcs%leafc_xfer	           ! 13 pcs%leafc                 
-        ! 16 clm3%g%l%c%p%pcs%livecrootc		   ! 14 pcs%leafc_storage         
-        ! 17 clm3%g%l%c%p%pcs%livecrootc_storage	   ! 15 pcs%leafc_xfer            
-        ! 18 clm3%g%l%c%p%pcs%livecrootc_xfer              ! 16 pcs%livecrootc            
-        ! 19 clm3%g%l%c%p%pcs%livestemc 	           ! 17 pcs%livecrootc_storage    
-        ! 20 clm3%g%l%c%p%pcs%livestemc_storage 	   ! 18 pcs%livecrootc_xfer       
-        ! 21 clm3%g%l%c%p%pcs%livestemc_xfer               ! 19 pcs%livestemc             
-        ! 22 clm3%g%l%c%p%pcs%pft_ctrunc	           ! 20 pcs%livestemc_storage     
-        ! 23 clm3%g%l%c%p%pcs%xsmrpool                     ! 21 pcs%livestemc_xfer        
-        ! 24 clm3%g%l%c%p%pepv%annavg_t2m                  ! 22 pcs%pft_ctrunc            
-        ! 25 clm3%g%l%c%p%pepv%annmax_retransn             ! 23 pcs%xsmrpool              
-        ! 26 clm3%g%l%c%p%pepv%annsum_npp                  ! 24 pepv%annavg_t2m           
-        ! 27 clm3%g%l%c%p%pepv%annsum_potential_gpp        ! 25 pepv%annmax_retransn      
-        ! 28 clm3%g%l%c%p%pepv%dayl	                   ! 26 pepv%annsum_npp           
-        ! 29 clm3%g%l%c%p%pepv%days_active                 ! 27 pepv%annsum_potential_gpp 
-        ! 30 clm3%g%l%c%p%pepv%dormant_flag                ! 28 pepv%dayl                 
-        ! 31 clm3%g%l%c%p%pepv%offset_counter              ! 29 pepv%days_active          
-        ! 32 clm3%g%l%c%p%pepv%offset_fdd                  ! 30 pepv%dormant_flag         
-        ! 33 clm3%g%l%c%p%pepv%offset_flag                 ! 31 pepv%offset_counter       
-        ! 34 clm3%g%l%c%p%pepv%offset_swi                  ! 32 pepv%offset_fdd           
-        ! 35 clm3%g%l%c%p%pepv%onset_counter               ! 33 pepv%offset_flag          
-        ! 36 clm3%g%l%c%p%pepv%onset_fdd	           ! 34 pepv%offset_swi           
-        ! 37 clm3%g%l%c%p%pepv%onset_flag                  ! 35 pepv%onset_counter        
-        ! 38 clm3%g%l%c%p%pepv%onset_gdd	           ! 36 pepv%onset_fdd            
-        ! 39 clm3%g%l%c%p%pepv%onset_gddflag               ! 37 pepv%onset_flag           
-        ! 40 clm3%g%l%c%p%pepv%onset_swi	           ! 38 pepv%onset_gdd            
-        ! 41 clm3%g%l%c%p%pepv%prev_frootc_to_litter       ! 39 pepv%onset_gddflag        
-        ! 42 clm3%g%l%c%p%pepv%prev_leafc_to_litter        ! 40 pepv%onset_swi            
-        ! 43 clm3%g%l%c%p%pepv%tempavg_t2m                 ! 41 pepv%prev_frootc_to_litter
-        ! 44 clm3%g%l%c%p%pepv%tempmax_retransn 	   ! 42 pepv%prev_leafc_to_litter 
-        ! 45 clm3%g%l%c%p%pepv%tempsum_npp                 ! 43 pepv%tempavg_t2m          
-        ! 46 clm3%g%l%c%p%pepv%tempsum_potential_gpp       ! 44 pepv%tempmax_retransn     
-        ! 47 clm3%g%l%c%p%pepv%xsmrpool_recover 	   ! 45 pepv%tempsum_npp          
-        ! 48 clm3%g%l%c%p%pns%deadcrootn	           ! 46 pepv%tempsum_potential_gpp
-        ! 49 clm3%g%l%c%p%pns%deadcrootn_storage	   ! 47 pepv%xsmrpool_recover     
-        ! 50 clm3%g%l%c%p%pns%deadcrootn_xfer              ! 48 pns%deadcrootn            
-        ! 51 clm3%g%l%c%p%pns%deadstemn 	           ! 49 pns%deadcrootn_storage    
-        ! 52 clm3%g%l%c%p%pns%deadstemn_storage 	   ! 50 pns%deadcrootn_xfer       
-        ! 53 clm3%g%l%c%p%pns%deadstemn_xfer               ! 51 pns%deadstemn             
-        ! 54 clm3%g%l%c%p%pns%frootn	                   ! 52 pns%deadstemn_storage     
-        ! 55 clm3%g%l%c%p%pns%frootn_storage               ! 53 pns%deadstemn_xfer        
-        ! 56 clm3%g%l%c%p%pns%frootn_xfer                  ! 54 pns%frootn                
-        ! 57 clm3%g%l%c%p%pns%leafn	                   ! 55 pns%frootn_storage        
-        ! 58 clm3%g%l%c%p%pns%leafn_storage                ! 56 pns%frootn_xfer           
-        ! 59 clm3%g%l%c%p%pns%leafn_xfer	           ! 57 pns%leafn                 
-        ! 60 clm3%g%l%c%p%pns%livecrootn	           ! 58 pns%leafn_storage         
-        ! 61 clm3%g%l%c%p%pns%livecrootn_storage	   ! 59 pns%leafn_xfer            
-        ! 62 clm3%g%l%c%p%pns%livecrootn_xfer              ! 60 pns%livecrootn            
-        ! 63 clm3%g%l%c%p%pns%livestemn 	           ! 61 pns%livecrootn_storage    
-        ! 64 clm3%g%l%c%p%pns%livestemn_storage 	   ! 62 pns%livecrootn_xfer       
-        ! 65 clm3%g%l%c%p%pns%livestemn_xfer               ! 63 pns%livestemn             
-        ! 66 clm3%g%l%c%p%pns%npool	                   ! 64 pns%livestemn_storage     
-        ! 67 clm3%g%l%c%p%pns%pft_ntrunc		   ! 65 pns%livestemn_xfer         
-        ! 68 clm3%g%l%c%p%pns%retransn	                   ! 66 pns%npool                 
-        ! 69 clm3%g%l%c%p%pps%elai 	                   ! 67 pns%pft_ntrunc            
-        ! 70 clm3%g%l%c%p%pps%esai 	                   ! 68 pns%retransn              
-        ! 71 clm3%g%l%c%p%pps%hbot 	                   ! 69 pps%elai                  
-        ! 72 clm3%g%l%c%p%pps%htop 	                   ! 70 pps%esai                  
-        ! 73 clm3%g%l%c%p%pps%tlai 	                   ! 71 pps%hbot                  
-        ! 74 clm3%g%l%c%p%pps%tsai 	                   ! 72 pps%htop                  
-                                                           ! 73 pps%tlai                  
-                                                           ! 74 pps%tsai                  
-                                                           ! 75 pepv%plant_ndemand        
+        !  1 clm3%g%l%c%p%pcs%cpool	                   !  1 pcs%cpool                           
+        !  2 clm3%g%l%c%p%pcs%deadcrootc	           !  2 pcs%deadcrootc                      
+        !  3 clm3%g%l%c%p%pcs%deadcrootc_storage	   !  3 pcs%deadcrootc_storage              
+        !  4 clm3%g%l%c%p%pcs%deadcrootc_xfer              !  4 pcs%deadcrootc_xfer                 
+        !  5 clm3%g%l%c%p%pcs%deadstemc 	           !  5 pcs%deadstemc                       
+        !  6 clm3%g%l%c%p%pcs%deadstemc_storage 	   !  6 pcs%deadstemc_storage               
+        !  7 clm3%g%l%c%p%pcs%deadstemc_xfer               !  7 pcs%deadstemc_xfer                  
+        !  8 clm3%g%l%c%p%pcs%frootc	                   !  8 pcs%frootc                          
+        !  9 clm3%g%l%c%p%pcs%frootc_storage               !  9 pcs%frootc_storage                  
+        ! 10 clm3%g%l%c%p%pcs%frootc_xfer                  ! 10 pcs%frootc_xfer                     
+        ! 11 clm3%g%l%c%p%pcs%gresp_storage                ! 11 pcs%gresp_storage                   
+        ! 12 clm3%g%l%c%p%pcs%gresp_xfer	           ! 12 pcs%gresp_xfer                      
+        ! 13 clm3%g%l%c%p%pcs%leafc	                   ! 13 pcs%leafc                           
+        ! 14 clm3%g%l%c%p%pcs%leafc_storage	           ! 14 pcs%leafc_storage                   
+        ! 15 clm3%g%l%c%p%pcs%leafc_xfer	           ! 15 pcs%leafc_xfer                      
+        ! 16 clm3%g%l%c%p%pcs%livecrootc		   ! 16 pcs%livecrootc                      
+        ! 17 clm3%g%l%c%p%pcs%livecrootc_storage	   ! 17 pcs%livecrootc_storage              
+        ! 18 clm3%g%l%c%p%pcs%livecrootc_xfer              ! 18 pcs%livecrootc_xfer                 
+        ! 19 clm3%g%l%c%p%pcs%livestemc 	           ! 19 pcs%livestemc                       
+        ! 20 clm3%g%l%c%p%pcs%livestemc_storage 	   ! 20 pcs%livestemc_storage               
+        ! 21 clm3%g%l%c%p%pcs%livestemc_xfer               ! 21 pcs%livestemc_xfer                  
+        ! 22 clm3%g%l%c%p%pcs%pft_ctrunc	           ! 22 pcs%pft_ctrunc                      
+        ! 23 clm3%g%l%c%p%pcs%xsmrpool                     ! 23 pcs%xsmrpool                        
+        ! 24 clm3%g%l%c%p%pepv%annavg_t2m                  ! 24 pepv%annavg_t2m                     
+        ! 25 clm3%g%l%c%p%pepv%annmax_retransn             ! 25 pepv%annmax_retransn                
+        ! 26 clm3%g%l%c%p%pepv%annsum_npp                  ! 26 pepv%annsum_npp                     
+        ! 27 clm3%g%l%c%p%pepv%annsum_potential_gpp        ! 27 pepv%annsum_potential_gpp           
+        ! 28 clm3%g%l%c%p%pepv%dayl	                   ! 28 pepv%dayl                           
+        ! 29 clm3%g%l%c%p%pepv%days_active                 ! 29 pepv%days_active                    
+        ! 30 clm3%g%l%c%p%pepv%dormant_flag                ! 30 pepv%dormant_flag                   
+        ! 31 clm3%g%l%c%p%pepv%offset_counter              ! 31 pepv%offset_counter                 
+        ! 32 clm3%g%l%c%p%pepv%offset_fdd                  ! 32 pepv%offset_fdd                     
+        ! 33 clm3%g%l%c%p%pepv%offset_flag                 ! 33 pepv%offset_flag                    
+        ! 34 clm3%g%l%c%p%pepv%offset_swi                  ! 34 pepv%offset_swi                     
+        ! 35 clm3%g%l%c%p%pepv%onset_counter               ! 35 pepv%onset_counter                  
+        ! 36 clm3%g%l%c%p%pepv%onset_fdd	           ! 36 pepv%onset_fdd                      
+        ! 37 clm3%g%l%c%p%pepv%onset_flag                  ! 37 pepv%onset_flag                     
+        ! 38 clm3%g%l%c%p%pepv%onset_gdd	           ! 38 pepv%onset_gdd                      
+        ! 39 clm3%g%l%c%p%pepv%onset_gddflag               ! 39 pepv%onset_gddflag                  
+        ! 40 clm3%g%l%c%p%pepv%onset_swi	           ! 40 pepv%onset_swi                      
+        ! 41 clm3%g%l%c%p%pepv%prev_frootc_to_litter       ! 41 pepv%prev_frootc_to_litter          
+        ! 42 clm3%g%l%c%p%pepv%prev_leafc_to_litter        ! 42 pepv%prev_leafc_to_litter           
+        ! 43 clm3%g%l%c%p%pepv%tempavg_t2m                 ! 43 pepv%tempavg_t2m                    
+        ! 44 clm3%g%l%c%p%pepv%tempmax_retransn 	   ! 44 pepv%tempmax_retransn               
+        ! 45 clm3%g%l%c%p%pepv%tempsum_npp                 ! 45 pepv%tempsum_npp                    
+        ! 46 clm3%g%l%c%p%pepv%tempsum_potential_gpp       ! 46 pepv%tempsum_potential_gpp          
+        ! 47 clm3%g%l%c%p%pepv%xsmrpool_recover 	   ! 47 pepv%xsmrpool_recover               
+        ! 48 clm3%g%l%c%p%pns%deadcrootn	           ! 48 pns%deadcrootn                      
+        ! 49 clm3%g%l%c%p%pns%deadcrootn_storage	   ! 49 pns%deadcrootn_storage              
+        ! 50 clm3%g%l%c%p%pns%deadcrootn_xfer              ! 50 pns%deadcrootn_xfer                 
+        ! 51 clm3%g%l%c%p%pns%deadstemn 	           ! 51 pns%deadstemn                       
+        ! 52 clm3%g%l%c%p%pns%deadstemn_storage 	   ! 52 pns%deadstemn_storage               
+        ! 53 clm3%g%l%c%p%pns%deadstemn_xfer               ! 53 pns%deadstemn_xfer                  
+        ! 54 clm3%g%l%c%p%pns%frootn	                   ! 54 pns%frootn                          
+        ! 55 clm3%g%l%c%p%pns%frootn_storage               ! 55 pns%frootn_storage                  
+        ! 56 clm3%g%l%c%p%pns%frootn_xfer                  ! 56 pns%frootn_xfer                     
+        ! 57 clm3%g%l%c%p%pns%leafn	                   ! 57 pns%leafn                           
+        ! 58 clm3%g%l%c%p%pns%leafn_storage                ! 58 pns%leafn_storage                   
+        ! 59 clm3%g%l%c%p%pns%leafn_xfer	           ! 59 pns%leafn_xfer                      
+        ! 60 clm3%g%l%c%p%pns%livecrootn	           ! 60 pns%livecrootn                      
+        ! 61 clm3%g%l%c%p%pns%livecrootn_storage	   ! 61 pns%livecrootn_storage              
+        ! 62 clm3%g%l%c%p%pns%livecrootn_xfer              ! 62 pns%livecrootn_xfer                 
+        ! 63 clm3%g%l%c%p%pns%livestemn 	           ! 63 pns%livestemn                       
+        ! 64 clm3%g%l%c%p%pns%livestemn_storage 	   ! 64 pns%livestemn_storage               
+        ! 65 clm3%g%l%c%p%pns%livestemn_xfer               ! 65 pns%livestemn_xfer                  
+        ! 66 clm3%g%l%c%p%pns%npool	                   ! 66 pns%npool                           
+        ! 67 clm3%g%l%c%p%pns%pft_ntrunc		   ! 67 pns%pft_ntrunc                      
+        ! 68 clm3%g%l%c%p%pns%retransn	                   ! 68 pns%retransn                        
+        ! 69 clm3%g%l%c%p%pps%elai 	                   ! 69 pps%elai                            
+        ! 70 clm3%g%l%c%p%pps%esai 	                   ! 70 pps%esai                            
+        ! 71 clm3%g%l%c%p%pps%hbot 	                   ! 71 pps%hbot                            
+        ! 72 clm3%g%l%c%p%pps%htop 	                   ! 72 pps%htop                            
+        ! 73 clm3%g%l%c%p%pps%tlai 	                   ! 73 pps%tlai                            
+        ! 74 clm3%g%l%c%p%pps%tsai 	                   ! 74 pps%tsai                            
+                                                           ! 75 pepv%plant_ndemand                  
                                                            ! OLD           ! 75 pps%gddplant        
                                                            ! OLD           ! 76 pps%gddtsoi         
                                                            ! OLD           ! 77 pps%peaklai         
@@ -2366,6 +2365,7 @@ contains
                                                            ! OLD           !102 pepv%fert_counter   
                                                            ! OLD           !103 pnf%fert            
                                                            ! OLD           !104 pepv%grain_flag     
+                                                                                                                      
      end do OUT_TILE
      
      i = 1
