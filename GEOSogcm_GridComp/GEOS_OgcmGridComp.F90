@@ -1002,7 +1002,8 @@ contains
 !   by OGCM from exchange grid quantities.
 
   if(DO_OBIO /= 0) then
-     call MAPL_TerminateImport(GC, SHORT_NAME = ['PS','UU','OZ','WV','RH','CCOVM','CLDTCM','RLWPM','CDREM'], CHILD=ORAD, RC=STATUS  )
+     call MAPL_TerminateImport(GC, SHORT_NAME = ['PS    ','UU    ','OZ    ','WV    ',&
+          'RH    ','CCOVM ','CLDTCM','RLWPM ','CDREM '], CHILD=ORAD, RC=STATUS  )
      VERIFY_(STATUS)
   end if
   
