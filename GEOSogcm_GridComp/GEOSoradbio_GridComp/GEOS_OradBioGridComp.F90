@@ -50,8 +50,9 @@ module GEOS_OradBioGridCompMod
   type bandptr
     real, pointer, dimension(:,:) :: b => null()
   end type bandptr
-  character(len=66)  :: f_no = '010203040506070809101112131415161718192021222324252627282930313233'
+
   integer :: nl
+  character(len = 2) :: suffix
 
 !========================================================================
 
@@ -344,35 +345,36 @@ module GEOS_OradBioGridCompMod
     VERIFY_(STATUS)
 
     do nl = 1,nlt
+     write(unit = suffix, fmt = '(i2.2)') nl
      call MAPL_AddImportSpec(GC,                              &
-     SHORT_NAME = 'TAUA_'//f_no(nl*2-1:nl*2),                 &
+     SHORT_NAME = 'TAUA_'//suffix,                            &
      LONG_NAME  = 'aerosol optical thickness',                &
      UNITS      = '',                                         &
      DIMS       = MAPL_DimsHorzOnly,                          &
      VLOCATION  = MAPL_VLocationNone,                         &
      RESTART    = MAPL_RestartSkip,                           &
      RC=STATUS  )
-    VERIFY_(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                              &
-     SHORT_NAME = 'SSALB_'//f_no(nl*2-1:nl*2),                &
+     SHORT_NAME = 'SSALB_'//suffix,                           &
      LONG_NAME  = 'single scattering albedo',                 &
      UNITS      = '',                                         &
      DIMS       = MAPL_DimsHorzOnly,                          &
      VLOCATION  = MAPL_VLocationNone,                         &
      RESTART    = MAPL_RestartSkip,                           &
      RC=STATUS  )
-    VERIFY_(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                              &
-     SHORT_NAME = 'ASYMP_'//f_no(nl*2-1:nl*2),                &
+     SHORT_NAME = 'ASYMP_'//suffix,                           &
      LONG_NAME  = 'asymmetry parameter',                      &
      UNITS      = '',                                         &
      DIMS       = MAPL_DimsHorzOnly,                          &
      VLOCATION  = MAPL_VLocationNone,                         &
      RESTART    = MAPL_RestartSkip,                           &
      RC=STATUS  )
-    VERIFY_(STATUS)
+     VERIFY_(STATUS)
     enddo
 
     call MAPL_AddImportSpec(GC,                               &
@@ -857,12 +859,13 @@ module GEOS_OradBioGridCompMod
     call MAPL_GetPointer(IMPORT, RH,        'RH',        RC=STATUS)
     VERIFY_(STATUS)
     do nl = 1,nlt
-      call MAPL_GetPointer(IMPORT, TAUA_T, 'TAUA_'//f_no(nl*2-1:nl*2),  RC=STATUS)
-    VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, SSALB_T,'SSALB_'//f_no(nl*2-1:nl*2), RC=STATUS)
-    VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, ASYMP_T,'ASYMP_'//f_no(nl*2-1:nl*2), RC=STATUS)
-    VERIFY_(STATUS)
+      write(unit = suffix, fmt = '(i2.2)') nl
+      call MAPL_GetPointer(IMPORT, TAUA_T, 'TAUA_'//suffix,  RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, SSALB_T,'SSALB_'//suffix, RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, ASYMP_T,'ASYMP_'//suffix, RC=STATUS)
+      VERIFY_(STATUS)
       TAUA(nl)%b => TAUA_T
       SSALB(nl)%b => SSALB_T
       ASYMP(nl)%b => ASYMP_T

@@ -85,7 +85,7 @@ module GEOS_OgcmGridCompMod
 
   logical ::      DUAL_OCEAN
 
-  character(len=66)  :: f_no = '010203040506070809101112131415161718192021222324252627282930313233'
+  character(len = 2) :: suffix
   integer            :: k
   type bandptr
    real, pointer, dimension(:) :: b
@@ -397,8 +397,9 @@ contains
   VERIFY_(STATUS)
 
   do k=1, 33
+   write(unit = suffix, fmt = '(i2.2)') k
    call MAPL_AddImportSpec(GC,                                &
-      SHORT_NAME = 'TAUA_'//f_no(k*2-1:k*2),                  &
+      SHORT_NAME = 'TAUA_'//suffix,                           &
       LONG_NAME  = 'aerosol optical thickness',               &
       UNITS      = '',                                        &
       DIMS       = MAPL_DimsTileOnly,                         &
@@ -407,7 +408,7 @@ contains
    VERIFY_(STATUS)
 
    call MAPL_AddImportSpec(GC,                                &
-      SHORT_NAME = 'ASYMP_'//f_no(k*2-1:k*2),                 &
+      SHORT_NAME = 'ASYMP_'//suffix,                          &
       LONG_NAME  = 'asymmetry parameter',                     &
       UNITS      = '',                                        &
       DIMS       = MAPL_DimsTileOnly,                         &
@@ -416,7 +417,7 @@ contains
    VERIFY_(STATUS)
 
    call MAPL_AddImportSpec(GC,                                &
-      SHORT_NAME = 'SSALB_'//f_no(k*2-1:k*2),                 &
+      SHORT_NAME = 'SSALB_'//suffix,                          &
       LONG_NAME  = 'single scattering albedo',                &
       UNITS      = '',                                        &
       DIMS       = MAPL_DimsTileOnly,                         &
@@ -1681,11 +1682,12 @@ contains
     VERIFY_(STATUS)
 
     do k=1, 33
-     call MAPL_GetPointer(IMPORT, ATAUA(k)%b,'TAUA_'//f_no(k*2-1:k*2),   RC=STATUS)
+     write(unit = suffix, fmt = '(i2.2)') k
+     call MAPL_GetPointer(IMPORT, ATAUA(k)%b,'TAUA_'//suffix,   RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, AASYMP(k)%b,'ASYMP_'//f_no(k*2-1:k*2), RC=STATUS)
+     call MAPL_GetPointer(IMPORT, AASYMP(k)%b,'ASYMP_'//suffix, RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, ASSALB(k)%b,'SSALB_'//f_no(k*2-1:k*2), RC=STATUS)
+     call MAPL_GetPointer(IMPORT, ASSALB(k)%b,'SSALB_'//suffix, RC=STATUS)
      VERIFY_(STATUS)
     enddo
 
@@ -1827,9 +1829,10 @@ contains
        call MAPL_GetPointer(GIM(OBIO ), CO2SCB  ,  'CO2SC'    , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
 
        do k=1, 33
-          call MAPL_GetPointer(GIM(ORAD ), ATAUAO(k)%b, 'TAUA_'//f_no(k*2-1:k*2) , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(ORAD ), AASYMPO(k)%b,'ASYMP_'//f_no(k*2-1:k*2), notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(ORAD ), ASSALBO(k)%b,'SSALB_'//f_no(k*2-1:k*2), notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+          write(unit = suffix, fmt = '(i2.2)') k
+          call MAPL_GetPointer(GIM(ORAD ), ATAUAO(k)%b, 'TAUA_'//suffix , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(ORAD ), AASYMPO(k)%b,'ASYMP_'//suffix, notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(ORAD ), ASSALBO(k)%b,'SSALB_'//suffix, notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
        enddo
        call MAPL_GetPointer(GIM(ORAD ), UUO     ,  'UU'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(GIM(ORAD ), PSO     ,  'PS'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)

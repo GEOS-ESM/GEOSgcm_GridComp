@@ -54,7 +54,7 @@ integer ::       ADFI
 
 integer :: bypass_ogcm
 integer ::       k
-character(len=66)  :: f_no = '010203040506070809101112131415161718192021222324252627282930313233'
+character(len = 2) :: suffix
 
 type T_GCM_STATE
    private
@@ -558,10 +558,11 @@ contains
      VERIFY_(STATUS)
 
      do k=1, 33
+      write(unit = suffix, fmt = '(i2.2)') k
       call MAPL_TerminateImport( GC,                                &
-           SHORT_NAME = (/'TAUA_'//f_no(k*2-1:k*2),                 &
-                          'ASYMP_'//f_no(k*2-1:k*2),                &
-                          'SSALB_'//f_no(k*2-1:k*2)/),              &
+           SHORT_NAME = (/'TAUA_'//suffix,                          &
+                          'ASYMP_'//suffix,                         &
+                          'SSALB_'//suffix/),                       &
            CHILD      = OGCM,                                       &
            RC=STATUS  )
        VERIFY_(STATUS)
@@ -1045,10 +1046,11 @@ contains
       VERIFY_(STATUS)
 
       do k=1, 33
+         write(unit = suffix, fmt = '(i2.2)') k
          call AllocateExports(GCM_INTERNAL_STATE%expSKIN,                &
-                         (/'TAUA_'//f_no(k*2-1:k*2),                 &
-                           'ASYMP_'//f_no(k*2-1:k*2),                &
-                           'SSALB_'//f_no(k*2-1:k*2)/),              &
+                         (/'TAUA_'//suffix,                 &
+                           'ASYMP_'//suffix,                &
+                           'SSALB_'//suffix/),              &
                          RC=STATUS)
          VERIFY_(STATUS)
       enddo
@@ -1668,11 +1670,12 @@ contains
           call DO_A2O(GIM(OGCM),'CO2SC'  ,expSKIN,'CO2SC'  , RC=STATUS)
           VERIFY_(STATUS)
           do k=1, 33
-             call DO_A2O(GIM(OGCM), 'TAUA_'//f_no(k*2-1:k*2), expSKIN, 'TAUA_'//f_no(k*2-1:k*2), RC=STATUS)
+             write(unit = suffix, fmt = '(i2.2)') k
+             call DO_A2O(GIM(OGCM), 'TAUA_'//suffix, expSKIN, 'TAUA_'//suffix, RC=STATUS)
              VERIFY_(STATUS)
-             call DO_A2O(GIM(OGCM), 'SSALB_'//f_no(k*2-1:k*2), expSKIN, 'SSALB_'//f_no(k*2-1:k*2), RC=STATUS)
+             call DO_A2O(GIM(OGCM), 'SSALB_'//suffix, expSKIN, 'SSALB_'//suffix, RC=STATUS)
              VERIFY_(STATUS)
-             call DO_A2O(GIM(OGCM), 'ASYMP_'//f_no(k*2-1:k*2), expSKIN, 'ASYMP_'//f_no(k*2-1:k*2), RC=STATUS)
+             call DO_A2O(GIM(OGCM), 'ASYMP_'//suffix, expSKIN, 'ASYMP_'//suffix, RC=STATUS)
              VERIFY_(STATUS)
           enddo
 
