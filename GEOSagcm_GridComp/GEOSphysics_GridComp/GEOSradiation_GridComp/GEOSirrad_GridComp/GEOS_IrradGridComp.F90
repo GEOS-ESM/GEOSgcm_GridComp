@@ -527,7 +527,7 @@ contains
     call MAPL_AddImportSpec(GC,                                   &
        LONG_NAME  = 'aerosols_from_GOCART2G',                     &
        UNITS      = 'kg kg-1',                                    &
-       SHORT_NAME = 'AEROng',                                     &
+       SHORT_NAME = 'AERO2G_RAD',                                 &
        DIMS       = MAPL_DimsHorzVert,                            &
        VLOCATION  = MAPL_VLocationCenter,                         &
        DATATYPE   = MAPL_StateItem,                               &
@@ -1525,12 +1525,12 @@ contains
 
    integer                              :: band
 
-! AEROng varaibles
+! AERO2G varaibles
 ! -----------------------
-   type (ESMF_State)                    :: AEROng
-   real, allocatable, dimension(:,:,:,:):: AEROSOLng_EXT
-   real, allocatable, dimension(:,:,:,:):: AEROSOLng_SSA
-   real, allocatable, dimension(:,:,:,:):: AEROSOLng_ASY
+   type (ESMF_State)                    :: AERO2G
+   real, allocatable, dimension(:,:,:,:):: AEROSOL2G_EXT
+   real, allocatable, dimension(:,:,:,:):: AEROSOL2G_SSA
+   real, allocatable, dimension(:,:,:,:):: AEROSOL2G_ASY
    character (len=ESMF_MAXSTR), allocatable :: AEROlist(:)
 
 
@@ -2012,42 +2012,45 @@ if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
 
 
 
-! BEGIN GOCARTng AEROng callback 
+! BEGIN GOCARTng AERO2G callback 
 ! ================================================================
 
-   call ESMF_StateGet(IMPORT, 'AEROng', AEROng, __RC__)
+   call ESMF_StateGet(IMPORT, 'AERO2G_RAD', AERO2G, __RC__)
 
-   call ESMF_AttributeGet (AEROng, name='active_aerosol_instances', itemCount=i, __RC__)
-   allocate (AEROlist(i), __STAT__)
-   call ESMF_AttributeGet (AEROng, name='active_aerosol_instances', valueList=AEROlist, __RC__)
+!   call ESMF_AttributeGet (AERO2G, name='active_aerosol_instances', itemCount=i, __RC__)
+!   allocate (AEROlist(i), __STAT__)
+!   call ESMF_AttributeGet (AERO2G, name='active_aerosol_instances', valueList=AEROlist, __RC__)
 
-   if (mapl_am_i_root()) print*,'IRRAD AEROlist = ', AEROlist
+!   call ESMF_StateGet (AERO2G, itemCount=i, __RC__)
+!   allocate (AEROlist(i), __STAT__)
+!   call ESMF_StateGet (AERO2G, itemNameList=AEROlist, __RC__)
+!   if (mapl_am_i_root()) print*,'IRRAD AEROlist = ', AEROlist
 
 
 !   ! allocate memory for total aerosol ext, ssa and asy at all solar bands
-    allocate(AEROSOLng_EXT(IM,JM,LM,NB_IRRAD),  &
-             AEROSOLng_SSA(IM,JM,LM,NB_IRRAD),  &
-             AEROSOLng_ASY(IM,JM,LM,NB_IRRAD), __STAT__)
+    allocate(AEROSOL2G_EXT(IM,JM,LM,NB_IRRAD),  &
+             AEROSOL2G_SSA(IM,JM,LM,NB_IRRAD),  &
+             AEROSOL2G_ASY(IM,JM,LM,NB_IRRAD), __STAT__)
 
-    AEROSOLng_EXT = 0.0
-    AEROSOLng_SSA = 0.0
-    AEROSOLng_ASY = 0.0
+    AEROSOL2G_EXT = 0.0
+    AEROSOL2G_SSA = 0.0
+    AEROSOL2G_ASY = 0.0
 
 
 !       ! set RH for aerosol optics
-         call ESMF_AttributeGet(AEROng, name='relative_humidity_for_aerosol_optics', value=AS_FIELD_NAME, __RC__)
+         call ESMF_AttributeGet(AERO2G, name='relative_humidity_for_aerosol_optics', value=AS_FIELD_NAME, __RC__)
 
          if (AS_FIELD_NAME /= '') then
-             call MAPL_GetPointer(AEROng, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
+             call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
              AS_PTR_3D = RH
          end if
 
 !       ! set PLE for aerosol optics
-         call ESMF_AttributeGet(AEROng, name='air_pressure_for_aerosol_optics', value=AS_FIELD_NAME, RC=STATUS)
+         call ESMF_AttributeGet(AERO2G, name='air_pressure_for_aerosol_optics', value=AS_FIELD_NAME, RC=STATUS)
          VERIFY_(STATUS)
 
          if (AS_FIELD_NAME /= '') then
-             call MAPL_GetPointer(AEROng, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
+             call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
              AS_PTR_3D = PLE
          end if
 
@@ -2058,60 +2061,60 @@ if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
 
          do band = 1, NB_IRRAD
 
-             call ESMF_AttributeSet(AEROng, name='band_for_aerosol_optics', value=(OFFSET+band), __RC__)
+             call ESMF_AttributeSet(AERO2G, name='band_for_aerosol_optics', value=(OFFSET+band), __RC__)
 
 !            ! execute the aero provider's optics method
-             call ESMF_MethodExecute(AEROng, label="run_aerosol_optics", __RC__)
+             call ESMF_MethodExecute(AERO2G, label="run_aerosol_optics", __RC__)
 
 !            ! EXT from AERO_PROVIDER
-             call ESMF_AttributeGet(AEROng, name='extinction_in_air_due_to_ambient_aerosol', value=AS_FIELD_NAME, __RC__)
+             call ESMF_AttributeGet(AERO2G, name='extinction_in_air_due_to_ambient_aerosol', value=AS_FIELD_NAME, __RC__)
 
              if (AS_FIELD_NAME /= '') then
-                 call MAPL_GetPointer(AEROng, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
+                 call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
 
                  if (associated(AS_PTR_3D)) then
-                     AEROSOLng_EXT(:,:,:,band) = AEROSOLng_EXT(:,:,:,band) + AS_PTR_3D
+                     AEROSOL2G_EXT(:,:,:,band) = AEROSOL2G_EXT(:,:,:,band) + AS_PTR_3D
                  end if
              end if
 
 !            ! SSA from AERO_PROVIDER
-             call ESMF_AttributeGet(AEROng, name='single_scattering_albedo_of_ambient_aerosol', value=AS_FIELD_NAME, RC=STATUS)
+             call ESMF_AttributeGet(AERO2G, name='single_scattering_albedo_of_ambient_aerosol', value=AS_FIELD_NAME, RC=STATUS)
              VERIFY_(STATUS)
 
              if (AS_FIELD_NAME /= '') then
-                call MAPL_GetPointer(AEROng, AS_PTR_3D, trim(AS_FIELD_NAME),  RC=STATUS); VERIFY_(STATUS)
+                call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME),  RC=STATUS); VERIFY_(STATUS)
 
                 if (associated(AS_PTR_3D)) then
-                   AEROSOLng_SSA(:,:,:,band) = AEROSOLng_SSA(:,:,:,band) + AS_PTR_3D
+                   AEROSOL2G_SSA(:,:,:,band) = AEROSOL2G_SSA(:,:,:,band) + AS_PTR_3D
                 end if
              end if
 
 !            ! ASY from AERO_PROVIDER
-             call ESMF_AttributeGet(AEROng, name='asymmetry_parameter_of_ambient_aerosol', value=AS_FIELD_NAME, RC=STATUS)
+             call ESMF_AttributeGet(AERO2G, name='asymmetry_parameter_of_ambient_aerosol', value=AS_FIELD_NAME, RC=STATUS)
              VERIFY_(STATUS)
 
              if (AS_FIELD_NAME /= '') then
-                call MAPL_GetPointer(AEROng, AS_PTR_3D, trim(AS_FIELD_NAME),  RC=STATUS)
+                call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME),  RC=STATUS)
                 VERIFY_(STATUS)
 
                 if (associated(AS_PTR_3D)) then
-                   AEROSOLng_ASY(:,:,:,band) = AEROSOLng_ASY(:,:,:,band) + AS_PTR_3D
+                   AEROSOL2G_ASY(:,:,:,band) = AEROSOL2G_ASY(:,:,:,band) + AS_PTR_3D
                 end if
              end if
          end do !band = 1,...
 
 
-if (mapl_am_i_root()) print*,'AEROSOLng_EXT = ', sum(AEROSOLng_EXT)
-if (mapl_am_i_root()) print*,'AEROSOLng_SSA = ', sum(AEROSOLng_SSA)
-if (mapl_am_i_root()) print*,'AEROSOLng_ASY = ', sum(AEROSOLng_ASY)
+if (mapl_am_i_root()) print*,'AEROSOL2G_EXT = ', sum(AEROSOL2G_EXT)
+if (mapl_am_i_root()) print*,'AEROSOL2G_SSA = ', sum(AEROSOL2G_SSA)
+if (mapl_am_i_root()) print*,'AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY)
 
-!      deallocate(AEROSOLng_EXT, __STAT__)
-!      deallocate(AEROSOLng_SSA, __STAT__)
-!      deallocate(AEROSOLng_ASY, __STAT__)
+!     deallocate(AEROSOL2G_EXT, __STAT__)
+!     deallocate(AEROSOL2G_SSA, __STAT__)
+!      deallocate(AEROSOL2G_ASY, __STAT__)
 
 
 
-! END GOCARTng AEROng callback
+! END GOCARTng AERO2G callback
 ! ================================================================
 
 
