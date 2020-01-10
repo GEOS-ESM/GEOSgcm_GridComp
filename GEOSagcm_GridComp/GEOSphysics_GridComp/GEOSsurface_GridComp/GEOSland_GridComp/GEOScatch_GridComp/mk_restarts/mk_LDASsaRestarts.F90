@@ -340,31 +340,46 @@ contains
     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl,  fveg_tmp,  ityp_tmp
     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:) 
 
-! 1) construct reorder transformation
-! 2) regrid_hyd_vars also carbon
-!    if LDASsa big_endian and param seperate
-!    if GEOSldas nc4
-! 3) copy out1 to out2
-! 4) read_bcs
-! exit
-! run scale_catch
-
-    ! read NTILES from BCs and tile_coord from LDASsa experiment
+    ! read NTILES from output BCs and tile_coord from GEOSldas/LDASsa input restarts
 
     open (10,file =trim(BCSDIR)//"clsm/catchment.def",status='old',form='formatted')
     read (10,*) ntiles
     close (10, status = 'keep')  
-    
-    tile_coord = trim(EXPDIR)//'rc_out/'//trim(expname)//'.ldas_tilecoord.bin'
-    open (10,file =trim(tile_coord),status='old',form='unformatted', action = 'read')
-    read (10) NTILES_RST
 
-    if ((NTILES_RST < 0).or.(NTILES_RST > 5000000)) then
-       close(10, status = 'keep')
-       open (10, file = trim(tile_coord),status='old',form='unformatted', convert = 'big_endian')
-       read (10) NTILES_RST
-       lendian = .false.
+    tile_coord = trim(EXPDIR)//'rc_out/'//trim(expname)//'.ldas_tilecoord.bin'
+
+    ! Determine whether LDASsa or GEOSldas
+    if(trim(MODEL) == 'CATCH') then
+       rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
+                   '.ens'//ENS//'.catch_internal_rst.'//trim(YYYYMMDD)//'_0000'  
+       inquire(file =  trim(rst_file), exist=fexist)
+       if (.not.fexist) then
+          rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'  &
+               //trim(ExpName)//'.ens'//ENS//'.catch_ldas_rst.'// &
+               YYYYMMDD(1:8)//'_0000z.bin'          
+          open (10,file =trim(tile_coord),status='old',form='unformatted', action = 'read', convert ='big_endian')
+          lendian = .false.
+       endif
+    else
+       rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
+            '.catchcn_internal_rst.'//trim(YYYYMMDD)//'_0000' 
+       inquire(file =  trim(rst_file), exist=fexist)
+       if (.not. fexist) then
+          rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
+               '.ens'//ENS//'.catchcn_ldas_rst.'//trim(YYYYMMDD)//'_0000z'          
+          lendian = .false.
+       endif
     endif
+
+    ! Open input tile_coord
+
+    if(lendian) then
+       open (10,file =trim(tile_coord),status='old',form='unformatted', action = 'read')
+    else
+       open (10,file =trim(tile_coord),status='old',form='unformatted', action = 'read', convert ='big_endian')
+    endif
+
+    read (10) NTILES_RST
     
     if(master_proc) then
        print *,'NTILES in BCs      : ',NTILES
@@ -488,30 +503,11 @@ contains
      deallocate (id_loc)
 
      if(master_proc)  then 
-        
-        if(trim(MODEL) == 'CATCH') then
-           if(lendian) then          
-              rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
-                   '.ens'//ENS//'.catch_internal_rst.'//trim(YYYYMMDD)//'_0000'          
-           else
-              rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'  &
-                   //trim(ExpName)//'.ens'//ENS//'.catch_ldas_rst.'// &
-                   YYYYMMDD(1:8)//'_0000z.bin'
-           endif
-        else
-           if(lendian) then  
-              rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
-                   '.catchcn_internal_rst.'//trim(YYYYMMDD)//'_0000'
-           else
-              rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
-                   '.ens'//ENS//'.catchcn_ldas_rst.'//trim(YYYYMMDD)//'_0000z'
-           endif
-        endif
-        
+                
         inquire(file =  trim(rst_file), exist=fexist)
         if (.not. fexist) then
            print*, "WARNING!!"
-           print*, rst_file // "does not exsit"
+           print*, trim(rst_file) // " does not exist .. !"
            stop
         endif
 
