@@ -346,8 +346,6 @@ contains
     read (10,*) ntiles
     close (10, status = 'keep')  
 
-    tile_coord = trim(EXPDIR)//'rc_out/'//trim(expname)//'.ldas_tilecoord.bin'
-
     ! Determine whether LDASsa or GEOSldas
     if(trim(MODEL) == 'CATCH') then
        rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
@@ -357,7 +355,6 @@ contains
           rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'  &
                //trim(ExpName)//'.ens'//ENS//'.catch_ldas_rst.'// &
                YYYYMMDD(1:8)//'_0000z.bin'          
-          open (10,file =trim(tile_coord),status='old',form='unformatted', action = 'read', convert ='big_endian')
           lendian = .false.
        endif
     else
@@ -372,7 +369,7 @@ contains
     endif
 
     ! Open input tile_coord
-
+    tile_coord = trim(EXPDIR)//'rc_out/'//trim(expname)//'.ldas_tilecoord.bin'
     if(lendian) then
        open (10,file =trim(tile_coord),status='old',form='unformatted', action = 'read')
     else
