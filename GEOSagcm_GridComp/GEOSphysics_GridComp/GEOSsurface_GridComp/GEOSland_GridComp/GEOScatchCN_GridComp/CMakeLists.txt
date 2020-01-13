@@ -45,7 +45,10 @@ set (srcs
 esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES MAPL_Base GEOS_Shared GEOS_LandShared)
+
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
+#target_compile_definitions (${this} PRIVATE DBG_CATCH_INPUTS)
+# ecbuild_add_executable (TARGET dbg_cnlsm_offline.x SOURCES dbg_cnlsm_offline.F90  LIBS MAPL_Base GEOS_LandShared ${this})
 
 if (is_openmp)
   target_compile_options(${this} PRIVATE ${OpenMP_Fortran_FLAGS})

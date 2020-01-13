@@ -1,5 +1,12 @@
-esma_set_this(OVERRIDE GEOS_LandShared)
+set (this GEOS_LandShared)
 
+set (resource_files
+    GEOS_LandGridComp.rc
+   ) 
+
+install( FILES ${resource_files} 
+   DESTINATION etc
+   )
 set (srcs
   catch_constants.f90 lsm_routines.F90 sibalb_coeff.f90
   )
@@ -10,4 +17,3 @@ esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES GEOS_SurfaceShared GEOS_Shared MAPL_Base)
 target_include_directories (${this} PUBLIC ${INC_ESMF})
-
