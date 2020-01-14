@@ -1,11 +1,12 @@
 
 module CubedSphere_GridMod
+use MAPL_ConstantsMod
 
 #define r8 kind=8
 
   implicit none
 
-  real(r8) :: pi = 3.14159265358979323846 
+  real(r8) :: pi = MAPL_PI
 
   public Get_CubedSphere_Grid
   private
