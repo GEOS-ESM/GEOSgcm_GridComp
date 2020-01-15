@@ -1,4 +1,4 @@
-set (this RRTMG_mods)
+esma_set_this(OVERRIDE RRTMG_mods)
 
 set (srcs
   parrrtm.F90 rrlw_cld.F90 rrlw_con.F90 rrlw_kg01.F90

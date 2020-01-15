@@ -1,4 +1,5 @@
 
+! -----------------------------------------------------------------------------------
 
 subroutine ReadTileFile(Tf,Pf,Id,lon,lat,mask)
   character*(*), intent(IN) :: Tf
@@ -120,7 +121,7 @@ subroutine GetStencil(ii,jj,st)
 
 end subroutine GetStencil
 
-subroutine GetIds(loni,lati,lon,lat,Id)
+subroutine GetIds_fast_1p (loni,lati,lon,lat,Id)
   integer, dimension(:), intent( IN) :: loni,lati,lon,lat
   integer, dimension(:), intent(OUT) :: Id
 
@@ -201,4 +202,192 @@ subroutine GetIds(loni,lati,lon,lat,Id)
   print *, 'Used extreme measures ', iex, ' times'
   print *
 
-end subroutine GetIds
+ end subroutine GetIds_fast_1p
+
+ ! ***************************************************************************** 
+
+  subroutine GetIds_accurate_mpi (loni,lati,lono,lato,Id, tid_in)
+  
+  implicit none
+
+  integer                             :: NT_IN, NT_OUT, n, i, nplus
+  real,    dimension (:), intent (in) :: loni,lati,lono,lato
+  integer, dimension (:), intent (in) :: tid_in 
+  integer, dimension (:), intent (inout) :: id
+
+  logical                             :: tile_found
+  logical, allocatable, dimension(:)  :: mask
+  integer, allocatable, dimension (:) :: sub_tid
+  real   , allocatable, dimension (:) :: sub_lon, sub_lat, rev_dist
+  real                                :: dw, dx, dy, min_lon, max_lon, min_lat, max_lat
+
+  NT_IN  = SIZE (loni)
+  NT_OUT = SIZE (lono)
+
+  allocate (mask   (1:  NT_IN))
+
+  Id = -9999
+
+  OUT_TILES : do n = 1,  NT_OUT
+	 
+     dw = 0.5
+
+     ZOOMOUT : do  
+
+        tile_found = .false. 
+        
+        ! Min/Max lon/lat of the working window
+        ! -------------------------------------
+        
+        min_lon = MAX(lono (n) - dw, -180.)
+        max_lon = MIN(lono (n) + dw,  180.)
+        min_lat = MAX(lato (n) - dw,  -90.)
+        max_lat = MIN(lato (n) + dw,   90.) 
+
+        mask = .false.
+        mask =  ((lati >= min_lat .and. lati <= max_lat).and.(loni >= min_lon .and. loni <= max_lon))
+        nplus =  count(mask = mask)
+        
+        if(nplus < 0) then
+           dw = dw + 0.5
+           CYCLE
+        endif
+        
+        allocate (sub_tid (1:nplus))
+        allocate (sub_lon (1:nplus))
+        allocate (sub_lat (1:nplus))
+        allocate (rev_dist  (1:nplus))
+        
+        sub_tid = PACK (tid_in , mask= mask) 
+        sub_lon = PACK (loni   , mask= mask)
+        sub_lat = PACK (lati   , mask= mask)
+        
+        ! compute distance from the tile
+        
+        sub_lat = sub_lat * MAPL_PI/180.
+        sub_lon = sub_lon * MAPL_PI/180.
+        
+        SEEK : if(Id (n) < 0) then
+           
+           rev_dist  = 1.e20
+           
+           do i = 1,nplus
+              
+              rev_dist(i) = haversine(to_radian(lato(n)), to_radian(lono(n)), &
+                   sub_lat(i), sub_lon(i))
+              
+           end do
+           
+           FOUND : if(minval (rev_dist) < 1.e19) then               
+              Id (n) = sub_tid(minloc(rev_dist,1)) 
+              tile_found = .true.                  
+           endif FOUND
+                
+        endif SEEK
+          
+        deallocate (sub_tid, sub_lon, sub_lat, rev_dist)
+        
+        if(tile_found) GO TO 100
+        
+        ! if not increase the window size
+        dw = dw + 0.5
+           
+     end do ZOOMOUT
+ 
+100  continue
+      
+      if(mod (n,10000) == 0)  print *, id(n), loni(id(n)), lono(n), lati(id(n)), lato(n)
+  END do OUT_TILES
+
+  deallocate (mask)
+
+ end subroutine GetIds_accurate_mpi
+
+  ! *****************************************************************************
+
+   function to_radian(degree) result(rad)
+
+     ! degrees to radians
+     real,intent(in) :: degree
+     real :: rad
+
+     rad = degree*MAPL_PI/180.
+
+   end function to_radian
+
+   ! *****************************************************************************
+   
+   real function haversine(deglat1,deglon1,deglat2,deglon2)
+     ! great circle distance -- adapted from Matlab 
+     real,intent(in) :: deglat1,deglon1,deglat2,deglon2
+     real :: a,c, dlat,dlon,lat1,lat2
+     real,parameter :: radius = MAPL_radius
+     
+!     dlat = to_radian(deglat2-deglat1)
+!     dlon = to_radian(deglon2-deglon1)
+     !     lat1 = to_radian(deglat1)
+!     lat2 = to_radian(deglat2)
+     dlat = deglat2-deglat1
+     dlon = deglon2-deglon1
+     lat1 = deglat1
+     lat2 = deglat2     
+     a = (sin(dlat/2))**2 + cos(lat1)*cos(lat2)*(sin(dlon/2))**2
+     if(a>=0. .and. a<=1.) then
+        c = 2*atan2(sqrt(a),sqrt(1-a))
+        haversine = radius*c / 1000.
+     else
+        haversine = 1.e20
+     endif
+   end function
+   
+   ! *****************************************************************************
+
+   subroutine ReadCNTilFile (InCNTileFile, ntiles, xlon, xlat,mask)
+
+     implicit none
+     character(*), intent (in) :: InCNTileFile
+     integer , intent (inout)  :: ntiles
+     real, pointer, dimension (:)    :: xlon, xlat
+     integer, optional, intent(IN) :: mask
+     integer :: n,icnt,ityp, nt, umask, i
+     real    :: xval,yval, pf
+     real,  allocatable :: ln1(:), lt1(:)
+   
+   if(present(mask)) then
+     umask = mask
+   else
+     umask = 100
+   endif
+
+   open(11,file=InCNTileFile, &
+        form='formatted',action='read',status='old')
+   read (11,*, iostat=n) Nt
+
+   allocate(ln1(Nt),lt1(Nt))
+	  
+   do n = 1,7 ! skip header
+      read(11,*)
+   end do
+  
+   icnt = 0
+
+   do i=1,Nt
+      read(11,*) ityp,pf,xval,yval
+      if(ityp == umask) then
+         icnt = icnt + 1
+         ln1(icnt) = xval
+         Lt1(icnt) = yval
+      endif
+   end do
+
+   close(11)
+    
+   Ntiles = icnt
+   allocate(xlon(Ntiles))
+   allocate(xlat(Ntiles))
+   xlon = ln1(:Ntiles)
+   xlat = lt1(:Ntiles) 
+
+   end subroutine ReadCNTilFile
+
+

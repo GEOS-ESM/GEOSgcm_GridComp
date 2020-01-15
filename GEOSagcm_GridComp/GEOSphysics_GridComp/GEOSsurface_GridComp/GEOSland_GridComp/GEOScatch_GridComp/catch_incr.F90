@@ -1,5 +1,5 @@
 
-module catch_iau
+module catch_incr
 
   ! module for "incremental analysis update" of Catchment in tile-space
   
@@ -15,13 +15,13 @@ module catch_iau
   
   private
   
-  public :: apply_catch_iau, check_catch_progn
+  public :: apply_catch_incr, check_catch_progn
   
 contains
   
   ! ***********************************************************************
   
-  subroutine apply_catch_iau( NTILES,                                      & 
+  subroutine apply_catch_incr( NTILES,                                      & 
        VEG, DZSF, VGWMAX, CDCR1, CDCR2, PSIS, BEE, POROS, WPWET,           & 
        ARS1, ARS2, ARS3, ARA1, ARA2, ARA3, ARA4, ARW1, ARW2, ARW3, ARW4,   & 
        TC1_INC, TC2_INC, TC4_INC, QC1_INC, QC2_INC, QC4_INC,               & 
@@ -93,7 +93,7 @@ contains
          CAPAC, CATDEF, RZEXC, SRFEXC, 	                                     &  
          GHTCNT, WESNN, HTSNNN, SNDZN  )
     
-  end subroutine apply_catch_iau
+  end subroutine apply_catch_incr
   
   ! ***********************************************************************
   
@@ -218,7 +218,7 @@ contains
     
   end subroutine check_catch_progn
 
-end module catch_iau
+end module catch_incr
 
 
 ! ==================== EOF ================================================

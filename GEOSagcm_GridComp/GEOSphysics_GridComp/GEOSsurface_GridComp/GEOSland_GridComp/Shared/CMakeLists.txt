@@ -1,4 +1,4 @@
-set (this GEOS_LandShared)
+esma_set_this(OVERRIDE GEOS_LandShared)
 
 set (srcs
   catch_constants.f90 lsm_routines.F90 sibalb_coeff.f90

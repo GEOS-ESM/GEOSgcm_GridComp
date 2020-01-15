@@ -1,4 +1,4 @@
-set (this GEOSsaltwater_GridComp)
+esma_set_this()
 
 set (srcs
   GEOS_CICE4ColumnPhysGridComp.F90 GEOS_OpenWaterGridComp.F90

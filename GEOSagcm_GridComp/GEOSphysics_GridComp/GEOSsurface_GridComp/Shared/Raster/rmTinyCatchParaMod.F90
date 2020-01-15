@@ -1,6 +1,5 @@
-
-#include "Raster.h"
-
+#define VERIFY_(A)   IF(A/=0)THEN;PRINT *,'ERROR AT LINE ', __LINE__;STOP;ENDIF
+#define ASSERT_(A)   if(.not.A)then;print *,'Error:',__FILE__,__LINE__;stop;endif
 !
 ! A Collection subroutines needed by mkCatchParam.F90
 !   Contact: Sarith Mahanama  sarith.p.mahanama@nasa.gov
@@ -12,7 +11,6 @@ module rmTinyCatchParaMod
   use leap_year
   use MAPL_ConstantsMod
   
-
   implicit none
   logical, parameter :: error_file=.true.
   integer, parameter :: n_SoilClasses = 253
@@ -29,6 +27,7 @@ module rmTinyCatchParaMod
   include 'netcdf.inc'	
   logical :: preserve_soiltype = .false.
   character*100 :: c_data = 'data/CATCH/'
+  logical :: process_peat = .false.
 
   private
 
@@ -41,7 +40,7 @@ module rmTinyCatchParaMod
   public mineral_perc, process_gswp2_veg,center_pix, soil_class
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats, c_data	
-  public :: ascat_r0, jpl_canoph,  NC_VarID 
+  public :: ascat_r0, jpl_canoph,  NC_VarID,  process_peat 
   logical, parameter, public :: jpl_height = .false.
 
 type :: mineral_perc
@@ -234,7 +233,7 @@ implicit none
        do mon=smon+1,smon+12
           imon=imon+1
 	  
-	  iret = NF_GET_VARA_REAL(ncid, 6,(/1,mon/),(/MAX_NOF_GRID,1/),vecforc)
+	  iret = NF_GET_VARA_REAL(ncid, 6,(/1,mon/),(/MAX_NOF_GRID,1/),vecforc); VERIFY_(IRET)
 	  ASSERT_(iret==NF_NOERR)		          
 	  catforc =1.e-20
 	  catcount=0
@@ -257,8 +256,8 @@ implicit none
 
        END DO  
     END DO ! Year
-    iret = NF_CLOSE(ncid)
-    ASSERT_(iret==NF_NOERR)
+    iret = NF_CLOSE(ncid); VERIFY_(iret)
+    ASSERT_(iret==NF_NOERR); VERIFY_(STATUS)
 
     fname='clsm/catchment.def'
 
@@ -594,7 +593,7 @@ END SUBROUTINE modis_lai
           
           if (present(F25Tag)) then 
 
-             iret = NF_OPEN('data/CATCH/SoilDepth.nc',NF_NOWRITE, ncid)
+             iret = NF_OPEN('data/CATCH/SoilDepth.nc',NF_NOWRITE, ncid); VERIFY_(iret)
              ASSERT_(iret==NF_NOERR)
              allocate (soildepth_gswp2(1: ncat_gswp2))
              allocate (land_gswp2     (1: ncat_gswp2)) 
@@ -730,7 +729,7 @@ END SUBROUTINE modis_lai
     INTEGER :: ip,ip2,nc_gcm,nr_gcm,nc_ocean,nr_ocean,pick_val,k,nc,nr
     INTEGER :: typ,pfs,ig,jg,indx,indx_old,j_dum,ierr,n,count,count_remain,i_dum
     REAL :: lat,lon,mx_frac,da,tarea
-    REAL_ :: fr_gcm,fr_ocean,fr_cat,lats,dx,dy,d2r
+    REAL(KIND=8) :: fr_gcm,fr_ocean,fr_cat,lats,dx,dy,d2r
     INTEGER :: im,jm,i,j,jk,ik,jx
     INTEGER :: l,imn,imx,jmn,jmx
     CHARACTER*30 :: version
@@ -738,7 +737,7 @@ END SUBROUTINE modis_lai
     character*300 :: string1, string2
     integer(kind=4), allocatable, dimension(:,:) :: grid
     integer(kind=4), allocatable, dimension(:,:) :: grida
-    REAL (kind=8), PARAMETER :: threshold=0.01,RADIUS=MAPL_RADIUS,pi= RASTER_PI !3.1415926535898, 6371000.	
+    REAL (kind=8), PARAMETER :: threshold=0.01,RADIUS=MAPL_RADIUS,pi= MAPL_PI 
     real(kind=8), allocatable, dimension(:) :: tile_frac,total_area,pfaf,tile_area(:),lon_c(:),lat_c(:),int_c(:)
     character*2 :: dateline,poles
     integer, allocatable, dimension(:) :: rev_indx
@@ -1698,7 +1697,7 @@ END SUBROUTINE modis_scale_para
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
     INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
-    REAL (kind=8), PARAMETER :: RADIUS=MAPL_RADIUS,pi= RASTER_PI !6371000.	
+    REAL (kind=8), PARAMETER :: RADIUS=MAPL_RADIUS,pi= MAPL_PI 
     character*100 :: path,fname,fout,metpath,gtopo30
     character (*) :: gfilet,gfiler
     character*10 :: dline
@@ -3017,7 +3016,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                    exit
                 endif
                 
-                if((k==1).and.not(picked)) then
+                if((k==1) .and. (.not. picked)) then
                    print *,'Warning ar.new is bad at n=',n
                    print *,'Call Sarith ......'
                    stop
@@ -3093,7 +3092,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
     implicit none
       real, allocatable, dimension (:)  :: a_sand,a_clay,a_silt,a_oc,  &
           atile_sand,atile_clay, tile_lon, tile_lat, grav_vec, soc_vec,&
-	  poc_vec,a_sand_surf,a_clay_surf,wpwet_surf,poros_surf
+	  poc_vec,a_sand_surf,a_clay_surf,wpwet_surf,poros_surf, pmap
 
       real, allocatable, dimension (:,:) :: good_clay, good_sand
       integer, allocatable, dimension (:,:) :: tile_add, tile_pick
@@ -3175,9 +3174,14 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   !$OMP ENDPARALLEL
       
 !c-------------------------------------------------------------------------
-      fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.dat' 
+
+      if(process_peat) then 
+         fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.peatmap' 
+      else
+         fname = trim(c_data)//'SoilClasses-SoilHyd-TauParam.dat'
+      endif
       open (11, file=trim(fname), form='formatted',status='old', &
-           action = 'read')
+              action = 'read')
       read (11,'(a)')fout           
       losfile =trim(c_data)//'/Woesten_SoilParam/loss_pd_top/loss_perday_rz1m_'
 
@@ -3192,9 +3196,20 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       
       do n =1,n_SoilClasses
          read (11,'(4f7.3)')a_sand(n),a_clay(n),a_silt(n),a_oc(n)
-      write (fout,'(i2.2,i2.2,i4.4)')nint(a_sand(n)),nint(a_clay(n)),nint(100*a_oc(n))
-	   open (120,file=trim(losfile)//trim(fout),  &
-           form='formatted',status='old')
+         write (fout,'(i2.2,i2.2,i4.4)')nint(a_sand(n)),nint(a_clay(n)),nint(100*a_oc(n))
+
+         if(n == n_SoilClasses) then 
+            if(process_peat) then
+               open (120,file=trim(losfile)//trim(fout)//'.peat',  &
+                    form='formatted',status='old')
+            else
+               open (120,file=trim(losfile)//trim(fout),  &
+                 form='formatted',status='old')
+            endif
+         else
+            open (120,file=trim(losfile)//trim(fout),  &
+                 form='formatted',status='old')
+         endif
 
 	   do iwt=1,nwt
 	      do irz=1,nrz
@@ -3306,6 +3321,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
      allocate (a_clay_surf    (1:nbcatch))
      allocate (wpwet_surf     (1:nbcatch))
      allocate (poros_surf     (1:nbcatch))
+     allocate (pmap           (1:nbcatch))
      allocate (good_clay     (1:100,4))
      allocate (good_sand     (1:100,4))
      allocate (tile_add      (1:100,4))   
@@ -3401,7 +3417,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 !$OMP        taberr1,taberr2,normerr1,normerr2,         &
 !$OMP        taberr3,taberr4,normerr3,normerr4,         &
 !$OMP        gwatdep,gwan,grzexcn,gfrc,soil_class_com,  &
-!$OMP        n_threads, low_ind, upp_ind )              &
+!$OMP        n_threads, low_ind, upp_ind, process_peat )&
 !$OMP PRIVATE(k,li,ui,n,i,watdep,wan,rzexcn,frc,ST,AC,  &
 !$OMP COESKEW,profdep)
 
@@ -3449,8 +3465,30 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           tsa1(n),tsa2(n),tsb1(n),tsb2(n)  &
           )
 
-     END DO
-     END DO
+      if(POROS(n) >= 0.8) then
+
+         ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
+         if(process_peat) then
+            ars1(n) = -7.9514018e-03
+            ars2(n) = 6.2297356e-02 
+            ars3(n) = 1.9187240e-03                   
+            ara1(n) = 8.9551220e+00 
+            ara2(n) = 9.8149664e+02 
+            ara3(n) = 8.9551220e+00 
+            ara4(n) = 9.8149664e+02 
+            arw1(n) = 9.9466055e-03 
+            arw2(n) = 1.0881960e-02 
+            arw3(n) = 1.5309287e-05 
+            arw4(n) = 1.0000000e-04 
+            
+            bf1(n) = 4.6088086e+02  
+            bf2(n) = 1.4237401e-01  
+            bf3(n) = 6.9803000e+00
+            
+         endif
+      endif
+   END DO
+   END DO
           !$OMP ENDPARALLELDO
 
      CF1 =0
@@ -3512,12 +3550,12 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
      END DO	
 
      DO n=1,nbcatch
-         read(10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)') &
+         read(10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
 	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),         &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
 	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
 	     a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n) ,   &
-	     wpwet_surf(n),poros_surf(n)
+	     wpwet_surf(n),poros_surf(n), pmap(n)
      if((ars1(n).ne.9999.).and.(arw1(n).ne.9999.))then   
       write(20,'(i8,i8,f5.2,11(2x,e14.7))')         &
                      tindex2(n),pfaf2(n),gnu,       &
@@ -3529,12 +3567,12 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
           tsa1(n),tsa2(n),tsb1(n),tsb2(n)
 
-      write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)')  &
+      write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
 	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),      &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
 	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
 	     a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n),    &
-	     wpwet_surf(n),poros_surf(n)
+	     wpwet_surf(n),poros_surf(n), pmap(n)
 
       if (allocated (parms4file)) then
          parms4file (n, 1) = ara1(n)
@@ -3616,12 +3654,12 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
           tsa1(k),tsa2(k),tsb1(k),tsb2(k)
 
-        write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)') &
+        write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
               tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),      &
               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),       &
               grav_vec(k),soc_vec(k),poc_vec(k),                            &
               a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k) ,   &
-	      wpwet_surf(k),poros_surf(k)
+	      wpwet_surf(k),poros_surf(k), pmap (k)
 
         if (allocated (parms4file)) then
            parms4file (n, 1) = ara1(k)
@@ -3677,12 +3715,12 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
          write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
               tsa1(k),tsa2(k),tsb1(k),tsb2(k)
-         write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)')&
+         write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')&
               tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),         &
               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),       &
               grav_vec(k),soc_vec(k),poc_vec(k),                            &
               a_sand_surf(k),a_clay_surf(k),atile_sand(k),atile_clay(k) ,   &
-	      wpwet_surf(k),poros_surf(k)
+	      wpwet_surf(k),poros_surf(k), pmap(k)
 
          if (allocated (parms4file)) then
             parms4file (n, 1) = ara1(k)
@@ -5971,7 +6009,7 @@ subroutine RegridRaster(Rin,Rout)
   integer, intent(IN)  :: Rin(:,:)
   integer, intent(OUT) :: Rout(:,:)
 
-  REAL_  :: xx, yy
+  REAL(KIND=8) :: xx, yy
   integer :: i,j,ii,jj
 
   xx = size(Rin ,1)/float(size(Rout,1))
@@ -5994,7 +6032,7 @@ subroutine RegridRaster1(Rin,Rout)
   integer*1, intent(IN)  :: Rin(:,:)
   integer*1, intent(OUT) :: Rout(:,:)
 
-  REAL_  :: xx, yy
+  REAL(KIND=8) :: xx, yy
   integer :: i,j,ii,jj
 
   xx = size(Rin ,1)/float(size(Rout,1))
@@ -6018,7 +6056,7 @@ subroutine RegridRaster2(Rin,Rout)
   integer(kind=2), intent(IN)  :: Rin(:,:)
   integer(kind=2), intent(OUT) :: Rout(:,:)
 
-  REAL_  :: xx, yy
+  REAL(KIND=8) :: xx, yy
   integer :: i,j,ii,jj
 
   xx = size(Rin ,1)/float(size(Rout,1))
@@ -6042,7 +6080,7 @@ subroutine RegridRasterReal(Rin,Rout)
   real, intent(IN)  :: Rin(:,:)
   real, intent(OUT) :: Rout(:,:)
 
-  REAL_  :: xx, yy
+  REAL(KIND=8) :: xx, yy
   integer :: i,j,ii,jj
 
   xx = size(Rin ,1)/float(size(Rout,1))

@@ -1,4 +1,6 @@
   use MAPL_IOMod
+  use lsm_routines, ONLY: catch_calc_tp,  catch_calc_ght, DZGT
+  USE CATCH_CONSTANTS,   ONLY: N_GT              => CATCH_N_GT
   implicit none
 
   character(256)    :: fname1, fname2, fname3
@@ -11,12 +13,13 @@
   integer           :: iargc
   real              :: SURFLAY        ! (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                       ! (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
-  character*256     :: arg(4)
+  character*256     :: arg(6)
 
   integer, parameter :: nveg = 4
   integer, parameter :: nzone = 3
   integer, parameter :: VAR_COL = 40 ! number of CN column restart variables
   integer, parameter :: VAR_PFT = 74 ! number of CN PFT variables per column
+  real               :: WEMIN_IN, WEMIN_OUT
   
   type catch_rst
        real, pointer ::        bf1(:)
@@ -125,18 +128,20 @@
 
   real,    allocatable, dimension(:) :: sfmc, rzmc, prmc, werror, sfmcun, rzmcun, prmcun, dzsf
   real,    allocatable, dimension(:) :: vegdyn
+  real,    allocatable, dimension(:,:) :: TP_IN, GHT_IN, FICE, GHT_OUT, TP_OUT
+  real,    allocatable, dimension(:) :: swe_in,depth_in,areasc_in,areasc_out, depth_out
 
   type(MAPL_NCIO) :: NCIO(3)
   integer :: i, rc, filetype
     
 ! Usage
 ! -----
-  if (iargc() /= 4) then
-     write(*,*) "Usage: Scale_CatchCN <Input_Catch> <Regridded_Catch> <Scaled_Catch> <SURFLAY>"
+  if (iargc() /= 6) then
+     write(*,*) "Usage: Scale_CatchCN <Input_Catch> <Regridded_Catch> <Scaled_Catch> <SURFLAY> <WEMIN_IN> <WEMIN_OUT>"
      call exit(2)
   end if
 
-  do n=1,4
+  do n=1,6
   call getarg(n,arg(n))
   enddo
 
@@ -164,6 +169,8 @@
 ! Get SURFLAY Value
 ! -----------------
   read(arg(4),*) SURFLAY
+  read(arg(5),*) WEMIN_IN
+  read(arg(6),*) WEMIN_OUT
 
   if (SURFLAY.ne.20 .and. SURFLAY.ne.50) then
      print *, "You must supply a valid SURFLAY value:"
@@ -215,21 +222,48 @@
   sca = 3
   catch(sca) = catch(new)
 
-  n = count( (catch(old)%catdef .gt. catch(old)%cdcr1) .and. &
-             (catch(new)%cdcr2  .gt. catch(old)%cdcr2) )
+! 1) soil moisture prognostics
+! ----------------------------
+!  n = count( (catch(old)%catdef .gt. catch(old)%cdcr1) .and. &
+!             (catch(new)%cdcr2  .gt. catch(old)%cdcr2) )
+!
+!  write(6,200) n,100*n/ntiles
+!
+!  where( (catch(old)%catdef .gt. catch(old)%cdcr1) .and. &
+!         (catch(new)%cdcr2  .gt. catch(old)%cdcr2) )
+! 
+!      catch(sca)%rzexc  = catch(old)%rzexc * ( catch(new)%vgwmax / &
+!                                               catch(old)%vgwmax )
+!
+!      catch(sca)%catdef = catch(new)%cdcr1 +                     &
+!                        ( catch(old)%catdef-catch(old)%cdcr1 ) / &
+!                        ( catch(old)%cdcr2 -catch(old)%cdcr1 ) * &
+!                        ( catch(new)%cdcr2 -catch(new)%cdcr1 )
+!  end where
 
+  n =count((catch(old)%catdef .gt. catch(old)%cdcr1))
+  
   write(6,200) n,100*n/ntiles
 
-  where( (catch(old)%catdef .gt. catch(old)%cdcr1) .and. &
-         (catch(new)%cdcr2  .gt. catch(old)%cdcr2) )
- 
-      catch(sca)%rzexc  = catch(old)%rzexc * ( catch(new)%vgwmax / &
+! Scale rxexc regardless of CDCR1, CDCR2 differences
+! --------------------------------------------------
+  catch(sca)%rzexc  = catch(old)%rzexc * ( catch(new)%vgwmax / &
                                                catch(old)%vgwmax )
 
+! Scale catdef regardless of whether CDCR2 is larger or smaller in the new situation
+! ----------------------------------------------------------------------------------
+  where (catch(old)%catdef .gt. catch(old)%cdcr1)
+ 
       catch(sca)%catdef = catch(new)%cdcr1 +                     &
                         ( catch(old)%catdef-catch(old)%cdcr1 ) / &
                         ( catch(old)%cdcr2 -catch(old)%cdcr1 ) * &
                         ( catch(new)%cdcr2 -catch(new)%cdcr1 )
+  end where
+
+! Scale catdef also for the case where catdef le cdcr1.
+! -----------------------------------------------------
+  where( (catch(old)%catdef .le. catch(old)%cdcr1))
+      catch(sca)%catdef = catch(old)%catdef * (catch(new)%cdcr1 / catch(old)%cdcr1)
   end where
 
 ! Sanity Check
@@ -259,6 +293,105 @@
   write(6,400) n,100*n/ntiles
   n = count( catch(sca)%rzexc  .ne. catch(new)%rzexc  )
   write(6,400) n,100*n/ntiles
+
+! (2) Ground heat
+! ---------------
+
+  allocate (TP_IN  (N_GT, Ntiles))
+  allocate (GHT_IN (N_GT, Ntiles))
+  allocate (GHT_OUT(N_GT, Ntiles))
+  allocate (FICE   (N_GT, NTILES))
+  allocate (TP_OUT (N_GT, Ntiles))
+
+  GHT_IN (1,:) = catch(old)%ghtcnt1
+  GHT_IN (2,:) = catch(old)%ghtcnt2
+  GHT_IN (3,:) = catch(old)%ghtcnt3
+  GHT_IN (4,:) = catch(old)%ghtcnt4
+  GHT_IN (5,:) = catch(old)%ghtcnt5
+  GHT_IN (6,:) = catch(old)%ghtcnt6
+  
+  call catch_calc_tp ( NTILES, catch(old)%poros, GHT_IN, tp_in, FICE)
+  GHT_OUT = GHT_IN
+
+!  open (99,file='ght.diff', form = 'formatted')
+
+  do n = 1, ntiles
+     do i = 1, N_GT
+        call catch_calc_ght(dzgt(i), catch(new)%poros(n), tp_in(i,n), fice(i,n),  GHT_IN(i,n))
+!        if (i == N_GT) then
+!           if (GHT_IN(i,n) /= GHT_OUT(i,n)) write (99,*)n,catch(old)%poros(n),catch(new)%poros(n),ABS(GHT_IN(i,n)-GHT_OUT(i,n))
+!        endif
+     end do
+  end do
+
+  catch(sca)%ghtcnt1 = GHT_IN (1,:)
+  catch(sca)%ghtcnt2 = GHT_IN (2,:)
+  catch(sca)%ghtcnt3 = GHT_IN (3,:)
+  catch(sca)%ghtcnt4 = GHT_IN (4,:)
+  catch(sca)%ghtcnt5 = GHT_IN (5,:)
+  catch(sca)%ghtcnt6 = GHT_IN (6,:) 
+
+! Deep soil temp sanity check
+! ---------------------------
+
+  call catch_calc_tp ( NTILES, catch(new)%poros, GHT_IN, tp_out, FICE)
+
+  print *, 'Percent tiles TP Layer 1 differ : ', 100.* count(ABS(tp_out(1,:) - tp_in(1,:)) > 1.e-5) /float (Ntiles)
+  print *, 'Percent tiles TP Layer 2 differ : ', 100.* count(ABS(tp_out(2,:) - tp_in(2,:)) > 1.e-5) /float (Ntiles)
+  print *, 'Percent tiles TP Layer 3 differ : ', 100.* count(ABS(tp_out(3,:) - tp_in(3,:)) > 1.e-5) /float (Ntiles)
+  print *, 'Percent tiles TP Layer 4 differ : ', 100.* count(ABS(tp_out(4,:) - tp_in(4,:)) > 1.e-5) /float (Ntiles)
+  print *, 'Percent tiles TP Layer 5 differ : ', 100.* count(ABS(tp_out(5,:) - tp_in(5,:)) > 1.e-5) /float (Ntiles)
+  print *, 'Percent tiles TP Layer 6 differ : ', 100.* count(ABS(tp_out(6,:) - tp_in(6,:)) > 1.e-5) /float (Ntiles)
+
+
+! SNOW scaling
+! ------------
+
+  if(wemin_out /= wemin_in) then
+
+     allocate (swe_in     (Ntiles))
+     allocate (depth_in   (Ntiles))
+     allocate (depth_out  (Ntiles))
+     allocate (areasc_in  (Ntiles))
+     allocate (areasc_out (Ntiles))
+
+     swe_in    = catch(new)%wesnn1 + catch(new)%wesnn2 + catch(new)%wesnn3
+     depth_in  = catch(new)%sndzn1 + catch(new)%sndzn2 + catch(new)%sndzn3
+     areasc_in = min(swe_in/wemin_in, 1.)
+     areasc_out= min(swe_in/wemin_out,1.)
+
+     !  catch(sca)%sndzn1=catch(old)%sndzn1
+     !  catch(sca)%sndzn2=catch(old)%sndzn2
+     !  catch(sca)%sndzn3=catch(old)%sndzn3     
+     !     do i = 1, ntiles
+     !         if((swe_in(i) > 0.).and. ((areasc_in(i) < 1.).OR.(areasc_out(i) < 1.))) then
+     !        print *, i, areasc_in(i), depth_in(i)
+     !        density_in(i)= swe_in(i)/(areasc_in(i) *  depth_in(i))
+     !        depth_out(i) = swe_in(i)/(areasc_out(i)*density_in(i))
+     !        depth_out(i) = areasc_in(i) *  depth_in(i)/(areasc_out(i) + 1.e-20)
+     !            print *, catch(sca)%sndzn1(i), catch(old)%sndzn1(i),wemin_out/wemin_in
+     !            catch(sca)%sndzn1(i) = catch(new)%sndzn1(i)*wemin_out/wemin_in   ! depth_out(i)/3.
+     !            catch(sca)%sndzn2(i) = catch(new)%sndzn2(i)*wemin_out/wemin_in   ! depth_out(i)/3.
+     !            catch(sca)%sndzn3(i) = catch(new)%sndzn3(i)*wemin_out/wemin_in   ! depth_out(i)/3.
+     !         endif 
+     !      end do
+     
+     where (swe_in .gt. 0.)
+        where (areasc_in .lt. 1. .or. areasc_out .lt. 1.)
+           !      density_in= swe_in/(areasc_in *  depth_in + 1.e-20)
+           !      depth_out = swe_in/(areasc_out*density_in)
+           depth_out = areasc_in *  depth_in/(areasc_out + 1.e-20)
+           catch(sca)%sndzn1 = depth_out/3.
+           catch(sca)%sndzn2 = depth_out/3.
+           catch(sca)%sndzn3 = depth_out/3.
+        endwhere
+     endwhere
+
+     print *, 'Snow scaling summary'
+     print *, '....................'
+     print *, 'Percent tiles SNDZ scaled : ', 100.* count (catch(sca)%sndzn3 .ne. catch(old)%sndzn3) /float (count (catch(sca)%sndzn3 > 0.)) 
+          
+  endif
 
 ! Write Scaled Catch
 ! ------------------

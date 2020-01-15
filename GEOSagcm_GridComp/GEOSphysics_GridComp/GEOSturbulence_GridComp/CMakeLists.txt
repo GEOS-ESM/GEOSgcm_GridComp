@@ -1,4 +1,4 @@
-set (this GEOSturbulence_GridComp)
+esma_set_this()
 
 set (srcs
   GEOS_TurbulenceGridComp.F90

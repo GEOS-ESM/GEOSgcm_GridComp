@@ -5,7 +5,7 @@ string (REPLACE GEOScatch_GridComp_ "" is_openmp ${this})
 set (srcs
   GEOS_CatchGridComp.F90
   catchment.F90
-  catch_iau.F90         
+  catch_incr.F90         
   )
 
 esma_add_library (${this}

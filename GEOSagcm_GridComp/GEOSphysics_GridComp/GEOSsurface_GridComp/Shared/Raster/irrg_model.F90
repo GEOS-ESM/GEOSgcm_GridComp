@@ -1,7 +1,5 @@
 #define VERIFY_(A)   IF(A/=0)THEN;PRINT *,'ERROR AT LINE ', __LINE__;STOP;ENDIF
 #define ASSERT_(A)   if(.not.A)then;print *,'Error:',__FILE__,__LINE__;stop;endif
-#include "Raster.h"
-
 
 PROGRAM irrg_model
 

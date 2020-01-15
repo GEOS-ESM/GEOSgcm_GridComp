@@ -1,4 +1,4 @@
-! $Id$
+! $Id: GEOS_AgcmGridComp.F90,v 1.85.12.25.2.1.18.1.2.1.6.1.8.1 2019/07/23 15:30:31 mmanyin Exp $
 
 #include "MAPL_Generic.h"
 
@@ -46,6 +46,7 @@ module GEOS_AgcmGridCompMod
   use GEOS_RemapMod, only: myremap => remap
 
   use Chem_GroupMod
+  use Bundle_IncrementMod
 
   implicit none
   private
@@ -664,6 +665,15 @@ contains
          VLOCATION        = MAPL_VLocationNone,                RC=STATUS  )
      VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec ( GC,                                         &
+         SHORT_NAME       = 'TRADVI',                                     &
+         LONG_NAME        = 'advected_quantities_tendencies',             &
+         units            = 'dX s-1',                                     &
+         DIMS             = MAPL_DimsHorzVert,                            &
+         DATATYPE         = MAPL_BundleItem,                              &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
 
 ! Create childrens gridded components and invoke their SetServices
 ! ----------------------------------------------------------------
@@ -1108,6 +1118,12 @@ contains
 
     call MAPL_Get ( STATE, GIM=GIM, GEX=GEX, RC=STATUS )
     VERIFY_(STATUS)
+
+! Initialize the advection increments bundle (TRADVI)
+! with tracer increment names 
+!-----------------------------------------------------
+
+    call Initialize_IncBundle_init(GC, GEX(PHYS), EXPORT, DYNinc, __RC__)
 
 ! Make sure that the physics tendencies are allocated
 !----------------------------------------------------
@@ -1659,11 +1675,8 @@ TIME_TO_REPLAY: if(is_ringing) then
                  !    print *
                  ! endif
 
-                   unit = getfile(ReplayFile, FORM="unformatted", all_pes=.true., rc=status)
-                   VERIFY_(STATUS) 
-                   call MAPL_VarRead(UNIT=UNIT, STATE=IMPORT, RC=STATUS)
-                   VERIFY_(STATUS) 
-                   call FREE_FILE(unit, rc=status)
+                   call MAPL_ESMFStateReadFromFile(STATE=IMPORT, CLOCK=CLOCK, FILENAME=ReplayFile,&
+                        MPL=STATE, HDR=.FALSE., RC=STATUS)
                    VERIFY_(STATUS) 
 
                 end if TIME_TO_REPLAY
@@ -2117,6 +2130,10 @@ TIME_TO_REPLAY: if(is_ringing) then
         VERIFY_(STATUS)
      endif
 
+! Initialize TRADVI bundle with TRADV bundle
+!--------------------------------------------
+    call Initialize_IncBundle_run(GEX(PHYS), EXPORT, DYNinc, __RC__)
+
 ! Call basic run phase for both Child
 !-------------------------------------
 
@@ -2142,6 +2159,10 @@ TIME_TO_REPLAY: if(is_ringing) then
 !   if(DYN_TIME<0) then
 !      DYN_TIME = DYN_TIME + COUNT_MAX
 !   endif
+
+! Compute Tracer Advection increments
+!-------------------------------------
+    call Compute_IncBundle(GEX(PHYS), EXPORT, DYNinc, STATE, __RC__)
 
     call Unpack_Chem_Groups( GEX(PHYS), PLE, AREA )  ! Finish transporting chemical families
 

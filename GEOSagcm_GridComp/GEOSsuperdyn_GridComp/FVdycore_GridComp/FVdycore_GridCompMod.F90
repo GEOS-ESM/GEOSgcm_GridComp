@@ -1,4 +1,4 @@
-!  $Id$
+!  $Id: FVdycore_GridCompMod.F90,v 1.268.106.1.2.1 2019/07/23 15:32:49 mmanyin Exp $
 
 #include "MAPL_Generic.h"
 
@@ -2475,7 +2475,7 @@ end subroutine FV_INITSTATE
     integer  :: NKE, NPHI
     integer  :: NUMVARS
     integer  :: ifirstxy, ilastxy, jfirstxy, jlastxy
-    integer  :: I, J, K, L, n
+    integer  :: I, J, K, L, n, pos
     logical, parameter :: convt = .false. ! Until this is run with full physics
     logical  :: is_ringing
 
@@ -2908,8 +2908,11 @@ end subroutine FV_INITSTATE
       call PULL_Q ( STATE, IMPORT, qqq, NXQ, rc )
 
       do k=1,size(names)
-         if( trim(names(k))=='OX' ) then
-            ooo = vars%tracer(k)
+         pos = index(names(k),'::')
+         if(pos > 0) then
+           if( (names(k)(pos+2:))=='OX' ) then
+              ooo = vars%tracer(k)
+           endif
          endif
          if( trim(names(k))=='Q'  ) then
             qqq = vars%tracer(k)
@@ -3223,12 +3226,15 @@ end subroutine FV_INITSTATE
 
                   ox = 0.0d0  ! Initialize in case no OX advection
       do k=1,size(names)
-         if( trim(names(k))=='OX' ) then
+         pos = index(names(k),'::')
+         if(pos > 0) then
+           if( (names(k)(pos+2:))=='OX' ) then
              if ( ooo%is_r4 ) then
                   ox = ooo%content_r4
              else
                   ox = ooo%content
              endif
+           endif
          endif
          if( trim(names(k))=='Q'  ) then
              if ( qqq%is_r4 ) then
@@ -3459,12 +3465,15 @@ end subroutine FV_INITSTATE
 !--------------------------------------------------------------------
 
       do k=1,size(names)
-         if( trim(names(k))=='OX' ) then
+         pos = index(names(k),'::')
+         if(pos > 0) then
+           if( (names(k)(pos+2:))=='OX' ) then
              if ( ooo%is_r4 ) then
                   ox = ooo%content_r4
              else
                   ox = ooo%content
              endif
+           endif
          endif
          if( trim(names(k))=='Q'  ) then
              if ( qqq%is_r4 ) then
@@ -3659,12 +3668,15 @@ end subroutine FV_INITSTATE
       if( associated(doxdt) ) then
           doxdt = 0.0
           do N = 1,size(names)
-             if( trim(names(N)).eq.'OX' ) then
+             pos = index(names(N),'::')
+             if(pos > 0) then
+               if( (names(N)(pos+2:))=='OX' ) then
                  if( state%vars%tracer(N)%is_r4 ) then 
                      doxdt = doxdt - state%vars%tracer(N)%content_r4
                  else
                      doxdt = doxdt - state%vars%tracer(N)%content
                  endif
+               endif
              endif
           enddo
       endif
@@ -3726,7 +3738,9 @@ end subroutine FV_INITSTATE
       if( associated(temp2D) ) then
           temp2d = 0.0
           do N = 1,size(names)
-             if( trim(names(N)).eq.'OX' ) then
+             pos = index(names(N),'::')
+             if(pos > 0) then
+               if( (names(N)(pos+2:))=='OX' ) then
                  if( state%vars%tracer(N)%is_r4 ) then 
                      do k=1,km
                      temp2d = temp2d - state%vars%tracer(N)%content_r4(:,:,k)*delp(:,:,k)
@@ -3736,6 +3750,7 @@ end subroutine FV_INITSTATE
                      temp2d = temp2d - state%vars%tracer(N)%content(:,:,k)*delp(:,:,k)
                      enddo
                  endif
+               endif
              endif
           enddo
       endif
@@ -4062,12 +4077,15 @@ end subroutine FV_INITSTATE
 
       if( associated(doxdt) ) then
           do N = 1,size(names)
-             if( trim(names(N)).eq.'OX' ) then
+             pos = index(names(N),'::')
+             if(pos > 0) then
+               if( (names(N)(pos+2:))=='OX' ) then
                  if( state%vars%tracer(N)%is_r4 ) then 
                      doxdt = doxdt + state%vars%tracer(N)%content_r4
                  else
                      doxdt = doxdt + state%vars%tracer(N)%content
                  endif
+               endif
              endif
           enddo
           doxdt = doxdt/dt
@@ -4129,7 +4147,9 @@ end subroutine FV_INITSTATE
       VERIFY_(STATUS)
       if( associated(temp2D) ) then
           do N = 1,size(names)
-             if( trim(names(N)).eq.'OX' ) then
+             pos = index(names(N),'::')
+             if(pos > 0) then
+               if( (names(N)(pos+2:))=='OX' ) then
                  if( state%vars%tracer(N)%is_r4 ) then 
                      do k=1,km
                      temp2d = temp2d + state%vars%tracer(N)%content_r4(:,:,k)*delp(:,:,k)
@@ -4139,6 +4159,7 @@ end subroutine FV_INITSTATE
                      temp2d = temp2d + state%vars%tracer(N)%content(:,:,k)*delp(:,:,k)
                      enddo
                  endif
+               endif
              endif
           enddo
           temp2d = temp2d * (MAPL_O3MW/MAPL_AIRMW) / (MAPL_GRAV*DT)

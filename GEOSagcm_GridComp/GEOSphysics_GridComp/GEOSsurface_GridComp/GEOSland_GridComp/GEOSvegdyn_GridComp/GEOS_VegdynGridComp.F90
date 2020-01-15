@@ -45,7 +45,7 @@ module GEOS_VegdynGridCompMod
 
   use ESMF
   use MAPL_Mod
-
+  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
   implicit none
   private
 
@@ -55,7 +55,6 @@ module GEOS_VegdynGridCompMod
 
 !EOP
 
-  integer :: NUM_ENSEMBLE
   integer :: IGNORE_HEIGHTS  ! Do not use JPL lidar veg heights
   integer, parameter		     :: NTYPS = MAPL_NumVegTypes
   real,    dimension(   NTYPS)       :: VGRT
@@ -135,8 +134,6 @@ contains
 ! -----------------------------------------------------------
 ! Get the intervals
 ! -----------------------------------------------------------
-    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS) 
 
     !call MAPL_GetResource ( MAPL,DT, Label="RUN_DT:", RC=STATUS)
     !VERIFY_(STATUS)
@@ -319,10 +316,11 @@ contains
 
     character(len=ESMF_MAXSTR)         :: LAIFile
     character(len=ESMF_MAXSTR)         :: GRNFile
-    character(len=ESMF_MAXSTR)         :: LAIlabel
-    character(len=ESMF_MAXSTR)         :: GREENlabel
     character(len=ESMF_MAXSTR)         :: NDVIFile
-    character(len=ESMF_MAXSTR)         :: NDVIlabel
+    character(len=ESMF_MAXSTR)         :: LAItpl
+    character(len=ESMF_MAXSTR)         :: GRNtpl
+    character(len=ESMF_MAXSTR)         :: NDVItpl
+    integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -343,29 +341,52 @@ contains
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
     VERIFY_(STATUS) 
 
+    call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
 ! -----------------------------------------------------------
 ! Get file names from configuration
 ! -----------------------------------------------------------
 
-    LAIlabel='LAI_FILE:'
-    GREENlabel='GREEN_FILE:'
-    NDVIlabel='NDVI_FILE:'
-    if(NUM_ENSEMBLE > 1) then
-        !comp_name should be vegdynxxxx....
-        LAIlabel='LAI'//comp_name(7:10)//'_FILE:'
-        GREENlabel='GREEN'//comp_name(7:10)//'_FILE:'
-        NDVIlabel='NDVI'//comp_name(7:10)//'_FILE:'
-    endif
+    if(NUM_LDAS_ENSEMBLE > 1) then
+       !comp_name should be vegdynxxxx....
+       call MAPL_GetResource(MAPL, LAItpl, label = 'LAI'//comp_name(7:7+ens_id_width-1)//'_FILE:', &
+            RC=STATUS )
+       call MAPL_GetResource(MAPL, GRNtpl, label = 'GREEN'//comp_name(7:7+ens_id_width-1)//'_FILE:', &
+            RC=STATUS )
+       call MAPL_GetResource(MAPL, NDVItpl, label = 'NDVI'//comp_name(7:7+ens_id_width-1)//'_FILE:', &
+            RC=STATUS )
 
-    call MAPL_GetResource(MAPL, LAIFILE, label = trim(LAIlabel), &
+       if (STATUS/=ESMF_SUCCESS) then
+          call MAPL_GetResource(MAPL, LAItpl, label = 'LAI_FILE:', &
+               default = '../input/lai%s.data', RC=STATUS )
+          VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, GRNtpl, label = 'GREEN_FILE:', &
+               default = '../input/green%s.data', RC=STATUS )
+          VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, NDVItpl, label = 'NDVI_FILE:', &
+                default = '../input/ndvi%s.data', RC=STATUS )
+       endif
+
+       call ESMF_CFIOStrTemplate(LAIFILE, LAItpl,'GRADS', xid=comp_name(7:7+ens_id_width-1), stat=status)
+       VERIFY_(STATUS)
+       call ESMF_CFIOStrTemplate(GRNFILE, GRNtpl,'GRADS', xid=comp_name(7:7+ens_id_width-1), stat=status)
+       VERIFY_(STATUS)
+       call ESMF_CFIOStrTemplate(NDVIFILE,NDVItpl,'GRADS',xid=comp_name(7:7+ens_id_width-1), stat=status)
+       VERIFY_(STATUS)
+    else
+       call MAPL_GetResource(MAPL, LAIFILE, label = 'LAI_FILE:', &
          default = 'lai.dat', RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, GRNFILE, label = trim(GREENlabel), &
+       VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, GRNFILE, label = 'GREEN_FILE:', &
          default = 'green.dat', RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, NDVIFILE, label = trim(NDVIlabel), &
-         default = 'ndvi.dat', RC=STATUS )
-    VERIFY_(STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetResource(MAPL, NDVIFILE, label = 'NDVI_FILE:', &
+          default = 'ndvi.dat', RC=STATUS )
+       VERIFY_(STATUS)
+   endif
 
 ! get pointers to internal variables
 ! ----------------------------------

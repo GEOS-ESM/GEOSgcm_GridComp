@@ -1,4 +1,4 @@
-set (this RRTMG)
+esma_set_this(OVERRIDE RRTMG)
 
 set (srcs
   mcica_random_numbers.F90 rrtmg_lw_init.F90

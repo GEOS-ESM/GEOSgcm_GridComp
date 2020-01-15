@@ -1,4 +1,4 @@
-#!/bin/csh
+#!/bin/csh 
 
 ####################################
 ##  Setting environment variables ##
@@ -6,7 +6,7 @@
 
 setenv gfile `head -1 clsm/mkCatchParam.log | cut -d 'g' -f2 | cut -d '.' -f1`
 setenv workdir `pwd`
-setenv NC `head -1 clsm/mkCatchParam.log | cut -d'x' -f2 | cut -d'-' -f1`
+setenv NC `head -1 clsm/mkCatchParam.log | cut -d'x' -f3 | cut -d'-' -f1`
 setenv NR `head -1 clsm/mkCatchParam.log | cut -d'y' -f2 | cut -d'-' -f1`
 setenv ease `head -1 clsm/mkCatchParam.log | cut -d 'e' -f2 | cut -d '-' -f1`
 
@@ -460,6 +460,12 @@ cat << _EOI_ > clsm/intro
    6.3 References
 `echo "$toc_rout"`
 
+8. GLOBAL COUNTRY AND US STATE MAPS
+   8.1 Data generation and processing chain
+   8.2 Data files
+	8.2.1 Country Code, US State Code, Country Name, State Name
+   8.3 References
+
 APPENDIX I - mkCatchParam tag, input options, and log ............................ A1
 
 =====================================================================================
@@ -545,6 +551,15 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 	 interpolated onto 30-arcsec pixels. The interpolated soil depth data were averaged
 	 across a given catchment land element to determine that catchment’s effective soil 
 	 depth.
+
+	 Sixteen ARC/GIS shapefiles were obtained from Xu et al. (2017). Canada and 
+	 Hokaido-Mongolia-NorthKorea provided peat fractions inside designated polygons. All 
+	 other regional shape files give exact perimeter of of the peatland. A global 30-arcsec
+	 raster array (43200x21600) of peatland fraction was constructed using those 16 shapefiles.
+	 Soil types derived on tiles are now further updated using the peatmap data. If the computed
+	 fractional coverage of peatland based on PEATMAP data at a given catchment-tile excceeds 0.3, 
+	 we assume the dominant soil type is as peatland. Soil hydraulic parameters for all
+	 peatland tiles are now obtained from Bechtold et al. (2019).
          
    2.2 Data files and images
 
@@ -609,10 +624,10 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 _EOI_
 if( $mysoil == HWSD ) then
 cat << _EOS1_ > clsm/soil
-		read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)')  &
+		read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
 		tile_index,pfaf_code,soil_class_top,soil_class_com,BEE,              &
 		PSIS,POROS,COND, WPWET, DP2BR, gravel,OrgCarbon_top,                 &
-		OrgCarbon_rz,sand_top,clay_top,sand_rz,clay_rz,WPWET_top, POROS_top
+		OrgCarbon_rz,sand_top,clay_top,sand_rz,clay_rz,WPWET_top, POROS_top, PMAP
 	 end do
 
 	 where for each tile:
@@ -641,6 +656,7 @@ cat << _EOS1_ > clsm/soil
 	 (17)	clay_rz [w%]	percentage clay in the root-zone layer (0-100cm)
 	 (18)	WPWET_top [-]	wilting point/porosity for the surface layer (0-30cm)
 	 (19)	POROS_top [m3/m3] soil moisture content at saturation in the surface layer (0-30cm)
+	 (20)   PMAP the fraction of cell covered bt PEATLAND
 
 
 	         ========================================================================
@@ -903,6 +919,7 @@ cat << _EOS1_ > clsm/soil
  		  6.667  6.667 86.667  1.123  2.6893 -1.0407  0.4470  0.0699  0.51317E-06
  		  3.333  3.333 93.333  1.123  2.2797 -1.3816  0.4436  0.0563  0.32091E-06
                  PEAT   (N/A)         >=8.72  3.4130 -1.7600  0.8000  0.2162  0.78600E-06
+                 PEAT,Bechtold et al. PEATMAP 3.5000 -0.0300  0.9300  0.3672  0.28000E-06
 		 ------------------------------------------------------------------------
 
 		 Table 1: Soil Hydraulic Properties for 253 soil classes (adapted from De 
@@ -918,6 +935,16 @@ cat << _EOS1_ > clsm/soil
 	    An Updated Treatment of Soil Texture and Associated Hydraulic Properties in a Global 
 	    Land Modeling System. Journal of Advances in Modeling Earth Systems, 06, 
 	    doi:10.1002/2014MS000330. 
+	 Xu, Jiren and Morris, Paul J. and Liu, Junguo and Holden, Joseph (2017) PEATMAP: 
+	    Refining estimates of global peatland distribution based on a meta-analysis. 
+	    University of Leeds. [Dataset] https://doi.org/10.5518/252
+	 Bechtold, M., G. J. M. De Lannoy, R. D. Koster, R. H. Reichle, S. Mahanama, 
+	    W. Bleuten, M.A. Bourgault, C. Brümmer, I. Burdun, A. R. Desai, K. Devito, 
+	    T. Grünwald, M. Grygoruk, E. R. Humphreys, J. Klatt, J. Kurbatova, A. Lohila, 
+	    T. M. Munir, M.B. Nilsson, J. S. Price, M. Röhl, A. Schneider, and B. Tiemeyer, 2019. 
+	    PEAT-CLSM: A specific treatment of peatland hydrology in the NASA Catchment Land 
+	    Surface Model. J. Adv. Model. Earth Sys., 11, 2130-2162. doi: 10.1029/2018MS001574. 
+
 _EOS1_
 else
 cat << _EOS2_ > clsm/soil	 
@@ -955,7 +982,7 @@ endif
 cat << _EOV1_ > clsm/veg1
 	 Dirmeyer, P. and Oki, T. (2002): The Second Global Soil Wetness project (GSWP-2) 
 	    Science 2 and Implementation Plan. IGPO Publication Series No. 37, 64p.	
-         Verdin, K (2013): Final Report - High Resolution Topographic Analysis for GMAO's 
+         Verdin, K (2013): Final Report - High Resolution Topographic Analysis for GMAOs 
 	    Catchment LSM, pp 21, available from Global Modeling and Assimilation Office, 
 	    610.1 NASA/GSFC.
 
@@ -1329,6 +1356,8 @@ cat << _EOF0_ > clsm/README1
 	 to Ducharne et al. (2000) for a description of the CLSM parameter generation process
 	 and for definitions of the parameters themselves. 
 
+	 The reader is referred to Bechtold et al.(2019) for model parameters for the peatland tiles.
+
    6.2 Data files ONLY (NO images)
 
        In the descriptions below, equation and figure numbers refer to those in Ducharne et al. (2000). 
@@ -1397,6 +1426,12 @@ cat << _EOF0_ > clsm/README1
 	    A catchment-based approach to modeling land surface processes in a general 
 	    circulation model: 2. Parameter estimation and model demonstration, 
 	    J. Geophys. Res., 105(D20), 2482324838, doi:10.1029/2000JD900328.
+	Bechtold, M., G. J. M. De Lannoy, R. D. Koster, R. H. Reichle, S. Mahanama, 
+	    W. Bleuten, M.A. Bourgault, C. Brümmer, I. Burdun, A. R. Desai, K. Devito, 
+	    T. Grünwald, M. Grygoruk, E. R. Humphreys, J. Klatt, J. Kurbatova, A. Lohila, 
+	    T. M. Munir, M.B. Nilsson, J. S. Price, M. Röhl, A. Schneider, and B. Tiemeyer, 2019. 
+	    PEAT-CLSM: A specific treatment of peatland hydrology in the NASA Catchment Land 
+	    Surface Model. J. Adv. Model. Earth Sys., 11, 2130-2162. doi: 10.1029/2018MS001574. 
 _EOF0_
 if( $MYMASK == GEOS5_10arcsec_mask.nc | $MYMASK == GEOS5_10arcsec_mask | $MYMASK == GEOS5_10arcsec_mask_freshwater-lakes.nc ) then
 cat << _EOF1_ > clsm/README2
@@ -1505,6 +1540,27 @@ endif
 cat << _EOF2_ > clsm/README3
 
 =====================================================================================
+====================================== PAGE  8 ======================================
+=====================================================================================
+
+8. GLOBAL COUNTRY AND US STATE MAPS
+
+   8.1 Data generation and processing chain
+
+         A GIS shape file of global administrative areas map was obtained from (https://gadm.org) 
+	 It was rasterized to 30-arcsec and created the data/CATCH/GADM_Country_and_USStates_codes_1km.nc4 file.
+	 
+   8.2 Data files
+       8.2.1 Country Code, US State Code, Country Name, State Name
+	 file name : country_and_state_code.data
+
+	 do n = 1, ${NTILES}
+		read (10,'(i8, 2I4, 1x, a48, a20)')         &     
+                tile_index, cnt_code, st_code, CNT_NAME, ST_NAME
+  
+   8.3 References https://gadm.org
+
+=====================================================================================
 ====================================== PAGE A1 ======================================
 =====================================================================================
 
@@ -1535,7 +1591,7 @@ cat clsm/intro clsm/soil clsm/veg1 clsm/veg2 clsm/README1 clsm/README2 clsm/READ
 #################################################################################
 
 mkdir -p clsm/plots
-/bin/cp src/clsm_plots.pro clsm/plots/.
+/bin/cp bin/clsm_plots.pro clsm/plots/.
 
 cd clsm/plots/
 

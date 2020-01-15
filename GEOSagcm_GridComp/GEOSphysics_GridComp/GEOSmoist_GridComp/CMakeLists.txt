@@ -1,4 +1,4 @@
-set (this GEOSmoist_GridComp)
+esma_set_this()
 
 set (srcs
   CLDPARAMS.F90 RASPARAMS.F90 ras.F90 cloudnew.F90 ddf.F90 rascnvv2_v.F90
@@ -10,7 +10,7 @@ set (srcs
   # ras00.F90 cloud.F90
   )
 
-get_target_property (extra_incs GFDL_fms_r4 INCLUDE_DIRECTORIES)
+get_target_property (extra_incs fms_r4 INCLUDE_DIRECTORIES)
 
 esma_add_library (${this}
   SRCS ${srcs}

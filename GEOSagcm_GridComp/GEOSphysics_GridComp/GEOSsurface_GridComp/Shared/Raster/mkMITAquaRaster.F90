@@ -1,7 +1,4 @@
 
-
-!  $Id$
-
 #include "Raster.h"
 
       program MAIN

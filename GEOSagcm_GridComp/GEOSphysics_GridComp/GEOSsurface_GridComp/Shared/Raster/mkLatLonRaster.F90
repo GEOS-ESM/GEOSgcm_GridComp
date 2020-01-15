@@ -1,10 +1,16 @@
+!   $Id: 
+
 #include "Raster.h"
 
- PROGRAM rmTinyTiles
+  program mkLatLonRaster
+
+! BOP
+
+! !PROGRAM:  mkLatLonRaster -- Rasterizes a regular lat-lon grid
 
 ! !INTERFACE:
 !
-!     rmTinyTiles -x nx -y ny -b lon0 -p pos -T type  im jm
+!     mkLatLonRaster -x nx -y ny -b lon0 -p pos -T type  im jm
 !
 ! !ARGUMENTS:
 !
@@ -27,19 +33,21 @@
 !     im: Size of longitude (1st) dimension of grid.
 !     jm: Size of latitude  (2nd) dimension of grid.
 !
-! This program removes tiny tiles in
-! DC${IM}xPC${JM}_DE0360xPE0180-Pfafstetter.til/
-! DC${IM}xPC${JM}_DE0360xPE0180-Pfafstetter.rst, and 
-! creates a new pair, 
-! DC${IM}xPC${JM}_DE0360xPE0180-Pfaf.update.til/ 
-! DC${IM}xPC${JM}_DE0360xPE0180-Pfaf.update.rst  
-!  
-! Sarith Mahanama - Feb 6, 2010
-! Email: sarith.p.mahanama@nasa.gov
+! Program to rasterize define a regular lat-lon grid. 
+! On the raster file each pixel will contain the 32-bit, integer:
+! i*10000 + j, where i and j are the indeces of the grid box that
+! contains the pixel. The raster file is oriented so that the left
+! (west) edge of the first pixel is the dateline and the botton (south)
+! edge is the South Pole. In the default raster, pixels are 2.5 minute
+! squares. The file is written as ry Fortran records, one for each 
+! zonal row of pixels. Records are written south to north, and pixels
+! in records are ordered west to east. The file is little endian.
+! The rasterization fails if there are not an integer number of pixels
+! in each box.
 
-   use rmTinyCatchParaMod
+    use LogRectRasterizeMod
 
-  implicit none
+    implicit none
 
     integer              :: NC = 8640, NR = 4320
     character*20         :: DQ = 'DC'
@@ -53,18 +61,10 @@
     logical              :: Here = .false.
     integer              :: I, J, status, iargc, nxt
     real*8               :: dx, dy, lon0
-    real*8,  allocatable :: xs(:), ys(:)
+    real*8,  allocatable :: xs(:), ys(:), xv(:,:,:), yv(:,:,:)
     character*128        :: &
-      Usage = "rmTinyTiles -x nx -y ny -v -h -z -g Gridname -b lon0 -p pos -t type  im jm"
-    character*2 :: dateline,poles	 
+      Usage = "mkLatLonRaster -x nx -y ny -v -h -z -g Gridname -b lon0 -p pos -t type  im jm"
 
-     CHARACTER*128 :: Grid2
-
-    print *,'>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>'
-    print *,'Begin removing tiny tiles.................................:'
-    print *,'>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>'
-
- 
 ! Process Arguments
 !------------------
 
@@ -77,9 +77,7 @@
     end if
 
     nxt = 1
-
     call getarg(nxt,arg)
-
     do while(arg(1:1)=='-')
        opt=arg(2:2)
        if(len(trim(arg))==2) then
@@ -125,17 +123,6 @@
 
     read(arg,'(i5)') jj
 
-    nxt = nxt + 1
-    call getarg(nxt,arg)
-    Grid2 = ARG
- 
-    if(trim(Gridname) == '') then
-       write(Gridname,'(A2,I4.4,A1,A2,I4.4)') dq(1:2),ii,"x",pt(1:2),jj
-    endif
- 
-    write (dateline,'(A2)')dq(1:2)
-    write (poles,   '(A2)')pt(1:2)
-
 ! Allocate and define the Cell vertices
 !--------------------------------------
 
@@ -178,16 +165,55 @@
        call exit(1)
     end select
 
-    Gridname =trim(Gridname)//'_'//adjustl(Grid2)
-    print *,'Input tile space....:','til/'//trim(Gridname)//'-Pfafstetter'
+    if(trim(Gridname) == '') then
+       write(Gridname,'(A2,I4.4,A1,A2,I4.4)') dq(1:2),ii,"x",pt(1:2),jj
+    endif
 
-    call remove_tiny_tiles (                         &
-       dateline,poles,Gridname)
+    if(DoZip) GridName = trim(Gridname)//'.gz'
 
-    print *,'============================================================'
-    print *,'DONE removing tiny tiles....................................'
-    print *,'============================================================'
+    do j=3,jj
+       ys(j) = ys(2) + (j-2)*dy
+    enddo
 
+! Allocate and define 2-D array of quadrilaterals
+!------------------------------------------------
 
-END PROGRAM rmTinyTiles
+    allocate(xv(ii,jj,4), yv(ii,jj,4),stat=STATUS)
+    VERIFY_(STATUS)
+
+    do j=1,jj
+       xv(:,j,1) = xs(1:ii  )
+       xv(:,j,2) = xs(2:ii+1)
+       xv(:,j,3) = xs(2:ii+1)
+       xv(:,j,4) = xs(1:ii  )
+    end do
+
+    do i=1,ii
+       yv(i,:,1) = ys(1:jj  )
+       yv(i,:,4) = ys(2:jj+1)
+       yv(i,:,3) = ys(2:jj+1)
+       yv(i,:,2) = ys(1:jj  )
+    end do
+
+! Free the space for the vertices
+!--------------------------------
+
+    deallocate(xs,ys)
+
+! Produce the .rst and .til files
+!--------------------------------
+
+    if(UseType) then
+       call  LRRasterize(GridName,xv,yv,nc=nc,nr=nr,Here=Here,Verb=Verb,   &
+                         SurfaceType=Type                                  )
+    else
+       call  LRRasterize(GridName,xv,yv,nc=nc,nr=nr,Here=Here,Verb=Verb    )
+    end if
+
+! All Done
+!---------
+
+    call Exit(0)
+
+  end program MkLatLonRaster
 

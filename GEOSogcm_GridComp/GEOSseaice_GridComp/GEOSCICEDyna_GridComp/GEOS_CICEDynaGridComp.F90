@@ -1170,6 +1170,24 @@ module GEOS_CICEDynaGridCompMod
                                                    RC=STATUS  )
   VERIFY_(STATUS)
 
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'DAIDTNUDG',                         &
+    LONG_NAME          = 'ice_area_tendency_due_to_nudging',  &
+    UNITS              = '% day-1',                           &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'DVIDTNUDG',                         &
+    LONG_NAME          = 'ice_volume_tendency_due_to_nudging',&
+    UNITS              = 'cm day-1',                          &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
 ! category dimensional exports
   call MAPL_AddExportSpec(GC,                            &
     SHORT_NAME         = 'AICEN',                           &
