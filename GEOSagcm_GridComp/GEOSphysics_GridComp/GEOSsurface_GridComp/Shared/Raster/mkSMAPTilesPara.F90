@@ -1,11 +1,11 @@
-PROGRAM mkSMAPTilesPara_v2
+PROGRAM mkSMAPTilesPara_v1
 !     This program constructs land and lake tiles for the SMAP-EASE-M09 and M36 grids (just set MGRID) 
 !         for CLSM implementation.
 !     f90 -c create_smap_tiles.f90
 !     f90 -c smapconv.f
 !     f90 -o create_smap_tiles create_smap_tiles.o smapconv.o
 !
-      use easeV2_conv
+      use easeV1_conv
       use rmTinyCatchParaMod
       use process_hres_data
       use MAPL_SortMod
@@ -64,8 +64,8 @@ PROGRAM mkSMAPTilesPara_v2
       N_args = iargc()
 
       if(N_args < 1) then
-        print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX'
-	print *,'Allowed SMAP grids are: M01 M03 M09 M25 M36'
+        print *,'USAGE : bin/mkSMAPTiles_v1 -smap_grid MXX'
+	print *,'Allowed SMAP grids are: M25'
         stop
       end if
 
@@ -98,52 +98,13 @@ PROGRAM mkSMAPTilesPara_v2
       ! Setting SMAP Grid specifications
       ! --------------------------------
       
-      if (trim(MGRID) == 'M09') then
-         
-         CELL_km = 9.008055210146     ! nominal cell size in kilometers
-         nc_smap = 3856
-         nr_smap = 1624
-         gfile = 'SMAP_EASEv2_'//trim(MGRID)//'_3856x1624'
+      if (trim(MGRID) == 'M25') then
+         CELL_km = 25.067525         ! nominal cell size in kilometers
+         nc_smap = 1383
+         nr_smap = 586
+         gfile = 'SMAP_EASE_M25_1383x586'
          EASE_grid_area = CELL_km*CELL_km
-         
-      elseif(trim(MGRID) == 'M36') then
-         
-         CELL_km = 36.032220840584    ! nominal cell size in kilometers
-         nc_smap = 964
-         nr_smap = 406
-         gfile = 'SMAP_EASEv2_'//trim(MGRID)//'_964x406'
-         EASE_grid_area = CELL_km*CELL_km
-         
-    elseif(trim(MGRID) == 'M25') then
- 
-     	 CELL_km = 25.0252600081    ! nominal cell size in kilometers		 
-         nc_smap = 1388
-         nr_smap = 584
-         gfile = 'SMAP_EASEv2_M25_1388x584'
-         EASE_grid_area = CELL_km*CELL_km
-         
-      else if (trim(MGRID) .eq. 'M03') then ! SMAP  3 km grid
-         CELL_km = 3.0026850700487     ! nominal cell size in kilometers
-         nc_smap = 11568
-         nr_smap = 4872
-         gfile = 'SMAP_EASEv2_M03_11568x4872'
-         EASE_grid_area = CELL_km*CELL_km
-         regrid = .true.
-         NC = 21600
-         NR = 10800
-         NT = 500000000
-         
-      else if (trim(MGRID) .eq. 'M01') then ! SMAP  1 km grid
-         CELL_km = 1.00089502334956     ! nominal cell size in kilometers
-         nc_smap = 34704
-         nr_smap = 14616
-         gfile = 'SMAP_EASEv2_M01_34704x14616'
-         EASE_grid_area = CELL_km*CELL_km
-         regrid = .true.
-         NC = 43200
-         NR = 21600   
-         NT = 1500000000
-         
+                           
       else  !
          
          print *,'Unknown SMAP Grid stopping..'
@@ -277,7 +238,7 @@ PROGRAM mkSMAPTilesPara_v2
 
                   ! count in if this is i,j pixel is a land, lake or ice within ind_col,ind_row SMAP grid cell
                   
-                  call easeV2_convert(trim(MGRID), clat, clon, r_smap, s_smap)
+                  call easeV1_convert(trim(MGRID), clat, clon, r_smap, s_smap)
                   
                   ind_col = nint(r_smap) + 1 
                   ind_row = nint(s_smap) + 1
@@ -433,7 +394,7 @@ PROGRAM mkSMAPTilesPara_v2
             do j =nr ,1 ,-1
                
                clat = -90. + float(j-1)*dy + dy/2.
-               call easeV2_convert(trim(MGRID), clat, clon, r_smap, s_smap)
+               call easeV1_convert(trim(MGRID), clat, clon, r_smap, s_smap)
                
                ind_col = nint(r_smap) + 1 
                ind_row = nint(s_smap) + 1
@@ -525,7 +486,7 @@ PROGRAM mkSMAPTilesPara_v2
          do j =nr ,1 ,-1
             lats = -90._8 + (j - 0.5_8)*dy
             clat = -90. + float(j-1)*dy + dy/2.
-            call easeV2_convert(trim(MGRID), clat, clon, r_smap, s_smap)
+            call easeV1_convert(trim(MGRID), clat, clon, r_smap, s_smap)
             
             ind_col = nint(r_smap) + 1 
             ind_row = nint(s_smap) + 1
@@ -665,20 +626,20 @@ PROGRAM mkSMAPTilesPara_v2
 
          if (l <= l_index) then 
             typ = 100
-            call easeV2_inverse (trim(MGRID), real(ig-1),real(jg-1), clat, clon) 
+            call easeV1_inverse (trim(MGRID), real(ig-1),real(jg-1), clat, clon) 
             
             mnx = clon - 180./real(nc_smap)
             mxx = clon + 180./real(nc_smap)
             
             jgv = real(jg-1) + 0.5
             
-            call easeV2_inverse (trim(MGRID), real(ig-1),jgv, clat, clon) 
+            call easeV1_inverse (trim(MGRID), real(ig-1),jgv, clat, clon) 
 
             mny = clat
          
             jgv = real(jg-1) - 0.5
          
-            call easeV2_inverse (trim(MGRID), real(ig-1),jgv, clat, clon) 
+            call easeV1_inverse (trim(MGRID), real(ig-1),jgv, clat, clon) 
 
             mxy = clat 
 
@@ -686,7 +647,7 @@ PROGRAM mkSMAPTilesPara_v2
 
          endif
 
-         call easeV2_inverse (trim(MGRID), real(ig-1),  real(jg-1), clat, clon)
+         call easeV1_inverse (trim(MGRID), real(ig-1),  real(jg-1), clat, clon)
          
          fr_gcm= tile_area(l)/smap_grid_area(jg*ND +  ig)
 
@@ -719,17 +680,17 @@ PROGRAM mkSMAPTilesPara_v2
       ! create Grid2Catch transfer file
       ! -------------------------------
 
-       CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), MGRID=MGRID)  
+      CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), MGRID=MGRID)  
       
       ! now run mkCatchParam
       ! --------------------
 
       tmpstring1 = '-e EASE -g '//trim(gfile)
       write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
-      tmpstring = 'bin/mkCatchParam '//trim(tmpstring2)//' '//trim(tmpstring1)
+      tmpstring = 'bin/mkCatchParam.x '//trim(tmpstring2)//' '//trim(tmpstring1)
       print *,trim(tmpstring)
       
       call system (tmpstring)   
 
-   END PROGRAM mkSMAPTilesPara_v2
+   END PROGRAM mkSMAPTilesPara_v1
 
