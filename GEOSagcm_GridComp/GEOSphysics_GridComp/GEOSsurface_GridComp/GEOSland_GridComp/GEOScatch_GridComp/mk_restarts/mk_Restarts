@@ -139,7 +139,7 @@ sub init {
                 "h|help"    => \$help );
     # defaults
     #---------
-    $rsttime = 0;
+    $rsttime = 0 unless $rsttime;
     $catch = 0 unless $catch;
     $catchcn = 0 unless $catchcn;
     $rescale = 0 unless $rescale;
