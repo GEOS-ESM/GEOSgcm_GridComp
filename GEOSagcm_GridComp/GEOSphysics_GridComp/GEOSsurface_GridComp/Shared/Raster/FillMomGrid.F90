@@ -1,10 +1,13 @@
-#include "Raster.h"
+#define VERIFY_(A)   IF(A/=0)THEN;PRINT *,'ERROR AT LINE ', __LINE__;STOP;ENDIF
+#define ASSERT_(A)   if(.not.A)then;print *,'Error:',__FILE__,__LINE__;stop;endif
 
 program FillMomGrid
 
   use LogRectRasterizeMod
   use MAPL_SortMod
   use MAPL_HashMod
+  use MAPL_ConstantsMod
+  use, intrinsic :: iso_fortran_env, only: REAL64
 
 ! Modifies Pfafstetter.rst such that for every pixel within a MOM ocean
 ! grid cell, its value is redirected pointing to ocean (surf type 0) in 
@@ -20,7 +23,7 @@ program FillMomGrid
   integer, parameter     :: TILUNIT1  = 22
   integer, parameter     :: TILUNIT2  = 23
 
-  REAL_,   parameter     :: PI        = RASTER_PI
+  REAL(KIND=8),   parameter     :: PI        = MAPL_PI
 
   integer                :: IARGC
   integer                :: nxt, argl, fill
@@ -33,19 +36,19 @@ program FillMomGrid
   integer                :: LineOcn 
   integer                :: count0,count1,count_rate
 
-  REAL_,     pointer     :: MOMLAT(:,:)          ! Lats of MOM's T-cell centers
-  REAL_,     pointer     :: MOMWET(:,:)          ! TMASK of MOM's grid cells
+  REAL(KIND=8),     pointer     :: MOMLAT(:,:)          ! Lats of MOM's T-cell centers
+  REAL(KIND=8),     pointer     :: MOMWET(:,:)          ! TMASK of MOM's grid cells
 
   integer,   allocatable :: RST1(:,:)
   integer,   allocatable :: RST2(:  )
   integer,   allocatable :: iTable(:,:)
 
-  REAL_ ,    allocatable :: Table1(:,:) 
-  REAL_ ,    allocatable :: Table2(:,:) 
-  REAL_ ,    allocatable :: rTable(:,:)
-  REAL_ ,    allocatable :: cc(:), ss(:)
-  REAL_                  :: dx, dy, area, xc, yc, d2r, vv(4)
-  REAL_                  :: lats, lons, da
+  REAL(KIND=8) ,    allocatable :: Table1(:,:) 
+  REAL(KIND=8) ,    allocatable :: Table2(:,:) 
+  REAL(KIND=8) ,    allocatable :: rTable(:,:)
+  REAL(KIND=8) ,    allocatable :: cc(:), ss(:)
+  REAL(KIND=8)                  :: dx, dy, area, xc, yc, d2r, vv(4)
+  REAL(KIND=8)                  :: lats, lons, da
 
   logical                :: DoZip
   logical                :: Verb
@@ -317,8 +320,8 @@ contains
   subroutine ReadGridFile(FILE, LAT, WET)
     
     character*(*),      intent(IN ) :: FILE
-    REAL_, pointer                  :: LAT(:,:)
-    REAL_, pointer                  :: WET(:,:)
+    REAL(KIND=8), pointer                  :: LAT(:,:)
+    REAL(KIND=8), pointer                  :: WET(:,:)
 
     integer :: STATUS, NCID, VARID, j
     integer :: SIZ_XVERT_X, SIZ_XVERT_Y
