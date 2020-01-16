@@ -7,6 +7,7 @@ use strict;
 use warnings;
 use FindBin qw($Bin);
 use lib ("$Bin");
+use Cwd;
 
 # global variables
 #-----------------
@@ -36,7 +37,8 @@ $mk_catchcn_log = "mk_catchcn.log";
         # run interactively if already on interactive job nodes
         #------------------------------------------------------
         if (-x $mk_catchcn_j) {
-            $cmd = $mk_catchcn_j;
+            my $cwd = getcwd;
+            $cmd = "$cwd/$mk_catchcn_j";
             system_($cmd);
         }
         else {
