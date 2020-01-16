@@ -396,29 +396,26 @@ subroutine SetServices ( GC, RC )
                                                   RC=STATUS  ) 
     VERIFY_(STATUS)
 
-    if(.not. is_OFFLINE) then
+    call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'icefall'                     ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'ICE'                         ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+    
+    VERIFY_(STATUS)
+    
+    call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'freezing_rain_fall'          ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'FRZR'                        ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+    
+    VERIFY_(STATUS)
 
-       call MAPL_AddImportSpec(GC                         ,&
-            LONG_NAME          = 'icefall'                     ,&
-            UNITS              = 'kg m-2 s-1'                  ,&
-            SHORT_NAME         = 'ICE'                         ,&
-            DIMS               = MAPL_DimsTileOnly             ,&
-            VLOCATION          = MAPL_VLocationNone            ,&
-            RC=STATUS  )
-       
-       VERIFY_(STATUS)
-              
-       call MAPL_AddImportSpec(GC                         ,&
-            LONG_NAME          = 'freezing_rain_fall'          ,&
-            UNITS              = 'kg m-2 s-1'                  ,&
-            SHORT_NAME         = 'FRZR'                        ,&
-            DIMS               = MAPL_DimsTileOnly             ,&
-            VLOCATION          = MAPL_VLocationNone            ,&
-            RC=STATUS  )
-       
-       VERIFY_(STATUS)
-
-    endif
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_par_beam_flux',&
          UNITS              = 'W m-2'                       ,&
@@ -5733,10 +5730,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,PCU    ,'PCU'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,PLS    ,'PLS'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SNO    ,'SNO'    ,RC=STATUS); VERIFY_(STATUS)
-        if ( .not. is_OFFLINE) then
-           call MAPL_GetPointer(IMPORT,ICE    ,'ICE'    ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(IMPORT,FRZR   ,'FRZR'   ,RC=STATUS); VERIFY_(STATUS)
-        endif
+        call MAPL_GetPointer(IMPORT,ICE    ,'ICE'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,FRZR   ,'FRZR'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DRPAR  ,'DRPAR'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DFPAR  ,'DFPAR'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DRNIR  ,'DRNIR'  ,RC=STATUS); VERIFY_(STATUS)
@@ -6477,13 +6472,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(QA2_0    (NTILES))
         allocate(QA4_0    (NTILES))
         allocate(PLSIN    (NTILES))
-
-        if (is_OFFLINE) then
-           allocate (ICE  (NTILES))
-           allocate (FRZR (NTILES))
-           ICE = 0.
-           FRZR= 0.
-        endif
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! --------------------------------------------------------------------------
@@ -8830,11 +8818,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(RMELT    )
         deallocate(FICE1    )
         deallocate(SLDTOT )
-
-        if (is_OFFLINE) then
-           deallocate (ICE, FRZR)
-        endif
-
         deallocate(             btran )
 	deallocate(               wgt )
 	deallocate(               bt1 )
