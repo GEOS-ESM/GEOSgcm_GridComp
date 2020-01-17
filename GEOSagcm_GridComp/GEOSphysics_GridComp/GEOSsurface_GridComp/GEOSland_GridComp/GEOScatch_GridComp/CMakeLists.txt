@@ -10,7 +10,7 @@ set (srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL_Base GEOS_LandShared)
+  DEPENDENCIES MAPL GEOS_LandShared)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
 add_subdirectory(mk_restarts)

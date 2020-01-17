@@ -70,7 +70,7 @@ module GEOS_OpenwaterGridCompMod
 
   use sfclayer  ! using module that contains sfc layer code
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
   
