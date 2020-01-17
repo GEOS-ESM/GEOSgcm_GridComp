@@ -684,7 +684,7 @@ contains
     real   , allocatable, dimension(:)   :: tmp_var
     logical, allocatable, dimension(:)   :: mask
     real    :: dw, min_lon, max_lon, min_lat, max_lat
-    integer :: n,i,nplus, STATUS,NCFID
+    integer :: n,i,nplus, STATUS,NCFID, req
     integer :: local_id, ntiles_smap
     integer, allocatable, dimension (:) :: sub_tid
     real   , allocatable, dimension (:) :: sub_lon, sub_lat, rev_dist, lonc, latc, LATT, LONN, long, latg
@@ -756,15 +756,34 @@ contains
 
     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 
-    call MPI_SCATTERV (                    &
-         long,nt_local,low_ind-1,MPI_real, &
-         lonn,size(lonn),MPI_real  , &
-         0,MPI_COMM_WORLD, mpierr )
+    do i = 1, numprocs
+       if((I == 1).and.(myid == 0)) then
+          lonn(:) = long(low_ind(i) : upp_ind(i))
+          latt(:) = latg(low_ind(i) : upp_ind(i))
+       else if (I > 1) then
+          if(I-1 == myid) then
+             ! receiving from root
+             call MPI_RECV(lonn,nt_local(i) , MPI_REAL, 0,995,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+             call MPI_RECV(latt,nt_local(i) , MPI_REAL, 0,994,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+          else if (myid == 0) then
+             ! root sends
+             call MPI_ISend(long(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,995,MPI_COMM_WORLD,req,mpierr)
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+             call MPI_ISend(latg(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,994,MPI_COMM_WORLD,req,mpierr)
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr) 
+          endif
+       endif
+    end do
 
-    call MPI_SCATTERV (                    &
-         latg,nt_local,low_ind-1,MPI_real, &
-         latt,nt_local(myid+1),MPI_real  , &
-         0,MPI_COMM_WORLD, mpierr )
+!    call MPI_SCATTERV (                    &
+!         long,nt_local,low_ind-1,MPI_real, &
+!         lonn,size(lonn),MPI_real  , &
+!         0,MPI_COMM_WORLD, mpierr )
+!
+!    call MPI_SCATTERV (                    &
+!         latg,nt_local,low_ind-1,MPI_real, &
+!         latt,nt_local(myid+1),MPI_real  , &
+!         0,MPI_COMM_WORLD, mpierr )
 
     if(master_proc) deallocate (long, latg)
      
@@ -865,10 +884,24 @@ contains
      if(master_proc)  allocate (id_glb  (ntiles))
 
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
-     call MPI_GATHERV( &
-                   id_loc, nt_local(myid+1)  , MPI_real, &
-                   id_glb, nt_local,low_ind-1, MPI_real, &
-                   0, MPI_COMM_WORLD, mpierr )
+!     call MPI_GATHERV( &
+!                   id_loc, nt_local(myid+1)  , MPI_real, &
+!                   id_glb, nt_local,low_ind-1, MPI_real, &
+!                   0, MPI_COMM_WORLD, mpierr )
+     do i = 1, numprocs
+        if((I == 1).and.(myid == 0)) then
+           id_glb(low_ind(i) : upp_ind(i)) = Id_loc(:)
+        else if (I > 1) then
+           if(I-1 == myid) then
+              ! send to root
+              call MPI_ISend(id_loc,nt_local(i),MPI_INTEGER,0,993,MPI_COMM_WORLD,req,mpierr)
+              call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+           else if (myid == 0) then
+              ! root receives
+              call MPI_RECV(id_glb(low_ind(i) : upp_ind(i)),nt_local(i) , MPI_INTEGER, i-1,993,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+           endif
+        endif
+     end do     
         
     if (master_proc) call put_land_vars  (NTILES, ntiles_smap, id_glb, ld_reorder, model)
 
@@ -1421,7 +1454,7 @@ contains
     logical, allocatable, dimension(:)   :: mask
     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl
     real    :: dw, min_lon, max_lon, min_lat, max_lat, fveg_new, sub_dist
-    integer :: n,i,j, k, nplus, nv, nx, nz, iv, offl_cell, ityp_new, STATUS,NCFID
+    integer :: n,i,j, k, nplus, nv, nx, nz, iv, offl_cell, ityp_new, STATUS,NCFID, req
     integer :: outid, local_id
     integer, allocatable, dimension (:) :: sub_tid, sub_ityp1, sub_ityp2,icl_ityp1
     real   , allocatable, dimension (:) :: sub_lon, sub_lat, rev_dist, sub_fevg1, sub_fevg2,&
@@ -1498,15 +1531,35 @@ contains
 
     endif
 
-    call MPI_SCATTERV (                    &
-         long,nt_local,low_ind-1,MPI_real, &
-         lonn,size(lonn),MPI_real  , &
-         0,MPI_COMM_WORLD, mpierr )
+!    call MPI_SCATTERV (                    &
+!         long,nt_local,low_ind-1,MPI_real, &
+!         lonn,size(lonn),MPI_real  , &
+!         0,MPI_COMM_WORLD, mpierr )
 
-    call MPI_SCATTERV (                    &
-         latg,nt_local,low_ind-1,MPI_real, &
-         latt,nt_local(myid+1),MPI_real  , &
-         0,MPI_COMM_WORLD, mpierr )
+!    call MPI_SCATTERV (                    &
+!         latg,nt_local,low_ind-1,MPI_real, &
+!         latt,nt_local(myid+1),MPI_real  , &
+!         0,MPI_COMM_WORLD, mpierr )
+
+    do i = 1, numprocs
+       if((I == 1).and.(myid == 0)) then
+          lonn(:) = long(low_ind(i) : upp_ind(i))
+          latt(:) = latg(low_ind(i) : upp_ind(i))
+       else if (I > 1) then
+          if(I-1 == myid) then
+             ! receiving from root
+             call MPI_RECV(lonn,nt_local(i) , MPI_REAL, 0,995,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+             call MPI_RECV(latt,nt_local(i) , MPI_REAL, 0,994,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+          else if (myid == 0) then
+             ! root sends
+             call MPI_ISend(long(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,995,MPI_COMM_WORLD,req,mpierr)
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+             call MPI_ISend(latg(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,994,MPI_COMM_WORLD,req,mpierr)
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr) 
+          endif
+       endif
+    end do
+    
 
     if(master_proc) deallocate (long, latg)
  
@@ -1747,10 +1800,25 @@ contains
            
      do nv = 1, nveg
         call MPI_Barrier(MPI_COMM_WORLD, STATUS)
-        call MPI_GATHERV( &
-                   id_loc (:,nv), nt_local(myid+1)  , MPI_real, &
-                   id_vec, nt_local,low_ind-1, MPI_real, &
-                   0, MPI_COMM_WORLD, mpierr )
+!        call MPI_GATHERV( &
+!                   id_loc (:,nv), nt_local(myid+1)  , MPI_real, &
+!                   id_vec, nt_local,low_ind-1, MPI_real, &
+!                   0, MPI_COMM_WORLD, mpierr )
+
+        do i = 1, numprocs
+           if((I == 1).and.(myid == 0)) then
+              id_vec(low_ind(i) : upp_ind(i)) = Id_loc(:,nv)
+           else if (I > 1) then
+              if(I-1 == myid) then
+                 ! send to root
+                 call MPI_ISend(id_loc(:,nv),nt_local(i),MPI_INTEGER,0,993,MPI_COMM_WORLD,req,mpierr)
+                 call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+              else if (myid == 0) then
+                 ! root receives
+                 call MPI_RECV(id_vec(low_ind(i) : upp_ind(i)),nt_local(i) , MPI_INTEGER, i-1,993,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+              endif
+           endif
+        end do
         
         if(master_proc) id_glb (:,nv) = id_vec
         
@@ -2199,7 +2267,7 @@ contains
     logical, allocatable, dimension(:)   :: mask
     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl
     real    :: dw, min_lon, max_lon, min_lat, max_lat, fveg_new, sub_dist
-    integer :: n,i,j, k, nplus, nv, nx, nz, iv, offl_cell, ityp_new, STATUS,NCFID
+    integer :: n,i,j, k, nplus, nv, nx, nz, iv, offl_cell, ityp_new, STATUS,NCFID, req
     integer :: outid, local_id
     integer, allocatable, dimension (:) :: sub_tid, sub_ityp1, sub_ityp2,icl_ityp1
     real   , allocatable, dimension (:) :: sub_lon, sub_lat, rev_dist, sub_fevg1, sub_fevg2,&
@@ -2276,15 +2344,34 @@ contains
 
     endif
 
-    call MPI_SCATTERV (                    &
-         long,nt_local,low_ind-1,MPI_real, &
-         lonn,size(lonn),MPI_real  , &
-         0,MPI_COMM_WORLD, mpierr )
+!    call MPI_SCATTERV (                    &
+!         long,nt_local,low_ind-1,MPI_real, &
+!         lonn,size(lonn),MPI_real  , &
+!         0,MPI_COMM_WORLD, mpierr )
 
-    call MPI_SCATTERV (                    &
-         latg,nt_local,low_ind-1,MPI_real, &
-         latt,nt_local(myid+1),MPI_real  , &
-         0,MPI_COMM_WORLD, mpierr )
+!    call MPI_SCATTERV (                    &
+!         latg,nt_local,low_ind-1,MPI_real, &
+!         latt,nt_local(myid+1),MPI_real  , &
+!         0,MPI_COMM_WORLD, mpierr )
+
+    do i = 1, numprocs
+       if((I == 1).and.(myid == 0)) then
+          lonn(:) = long(low_ind(i) : upp_ind(i))
+          latt(:) = latg(low_ind(i) : upp_ind(i))
+       else if (I > 1) then
+          if(I-1 == myid) then
+             ! receiving from root
+             call MPI_RECV(lonn,nt_local(i) , MPI_REAL, 0,995,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+             call MPI_RECV(latt,nt_local(i) , MPI_REAL, 0,994,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+          else if (myid == 0) then
+             ! root sends
+             call MPI_ISend(long(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,995,MPI_COMM_WORLD,req,mpierr)
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+             call MPI_ISend(latg(low_ind(i) : upp_ind(i)),nt_local(i),MPI_REAL,i-1,994,MPI_COMM_WORLD,req,mpierr)
+             call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr) 
+          endif
+        endif
+     end do
 
     if(master_proc) deallocate (long, latg)
  
@@ -2525,11 +2612,26 @@ contains
            
      do nv = 1, nveg
         call MPI_Barrier(MPI_COMM_WORLD, STATUS)
-        call MPI_GATHERV( &
-                   id_loc (:,nv), nt_local(myid+1)  , MPI_real, &
-                   id_vec, nt_local,low_ind-1, MPI_real, &
-                   0, MPI_COMM_WORLD, mpierr )
-        
+!        call MPI_GATHERV( &
+!                   id_loc (:,nv), nt_local(myid+1)  , MPI_real, &
+!                   id_vec, nt_local,low_ind-1, MPI_real, &
+!                   0, MPI_COMM_WORLD, mpierr )
+
+        do i = 1, numprocs
+           if((I == 1).and.(myid == 0)) then
+              id_vec(low_ind(i) : upp_ind(i)) = Id_loc(:,nv)
+           else if (I > 1) then
+              if(I-1 == myid) then
+                 ! send to root
+                 call MPI_ISend(id_loc(:,nv),nt_local(i),MPI_INTEGER,0,993,MPI_COMM_WORLD,req,mpierr)
+                 call MPI_WAIT (req,MPI_STATUS_IGNORE,mpierr)    
+              else if (myid == 0) then
+                 ! root receives
+                 call MPI_RECV(id_vec(low_ind(i) : upp_ind(i)),nt_local(i) , MPI_INTEGER, i-1,993,MPI_COMM_WORLD,MPI_STATUS_IGNORE,mpierr)
+              endif
+           endif
+        end do
+       
         if(master_proc) id_glb (:,nv) = id_vec
         
      end do

@@ -1,12 +1,10 @@
 program SaltImpConverter
 
-! $Id$
-
+  use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
   use netcdf
   use MAPL
   use gFTL_StringVector
   implicit none
-
 
   character*256 :: Usage="SaltImpConverter InTileFile InImpRestart InIntRestart"
   character*256 :: InTileFile
@@ -14,7 +12,6 @@ program SaltImpConverter
   character*256 :: InImpRestart
   character*256 :: InIntRestart
   character*256 :: arg
-
 
   integer :: i, rc, jc, iostat, iargc, n, mask,j,k,otiles,nsubtiles,l,itiles,nwords
   integer, pointer  :: Lono(:), Lato(:), Id(:), Pf(:)
@@ -49,6 +46,10 @@ program SaltImpConverter
   character*256        :: units
   character*256        :: impNames(39)
 
+  interface GetIds   
+     procedure GetIds_fast_1p
+     procedure GetIds_accurate_mpi
+  end interface
 
 
   INCLUDE 'netcdf.inc'
