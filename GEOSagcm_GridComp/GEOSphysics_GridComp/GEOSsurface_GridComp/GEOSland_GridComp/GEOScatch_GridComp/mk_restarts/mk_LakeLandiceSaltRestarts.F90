@@ -1,19 +1,18 @@
 program mk_LakeLandiceSaltRestarts
 
-! $Id$
+  use netcdf
 
   use MAPL
+  use PFIO
   use gFTL_StringVector
 
   implicit none
-
 
   character*256 :: Usage="mk_LakeLandiceSaltRestarts OutTileFile InTileFile InRestart mask"
   character*256 :: OutTileFile
   character*256 :: InTileFile
   character*256 :: InRestart
   character*256 :: arg
-
 
   integer :: i, rc, jc, iostat, iargc, n, mask,j,k,otiles,nsubtiles,l,itiles,nwords
   integer, pointer  :: Lono(:), Lato(:), Id(:), Pf(:)
@@ -43,6 +42,11 @@ program mk_LakeLandiceSaltRestarts
   type(StringVector), pointer :: var_dimensions
   character(len=:), pointer :: vname,dname
   integer :: dataType
+
+  interface GetIds   
+     procedure GetIds_fast_1p
+     procedure GetIds_accurate_mpi
+  end interface
 
 !---------------------------------------------------------------------------
 

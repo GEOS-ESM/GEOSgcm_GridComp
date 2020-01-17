@@ -1,4 +1,4 @@
-! $Id$
+! $Id: GEOS_GcmGridComp.F90,v 1.30.2.1.4.4.2.2.2.1.2.11.6.1.4.1.2.1.2.1.14.2 2019/12/18 20:23:25 ltakacs Exp $
 
 #include "MAPL_Generic.h"
 
@@ -62,12 +62,14 @@ type T_GCM_STATE
    type(ESMF_Alarm)           :: alarmOcn
    type(ESMF_Alarm)           :: replayStartAlarm
    type(ESMF_Alarm)           :: replayStopAlarm
+   type(ESMF_Alarm)           :: replayCycleAlarm
+   type(ESMF_Alarm)           :: Regular_Replay09Alarm
+   type(ESMF_Alarm)           :: replayMKIAUAlarm
    type(ESMF_Alarm)           :: replayShutoffAlarm
-   type(ESMF_Alarm)           :: PredictorIsActive
-   type(ESMF_TimeInterval)    :: replayDuration
-   integer                    :: rpldur
+   integer                    :: cordur
+   integer                    :: predur
    integer                    :: rplfreq
-   integer                    :: rplbkgave
+   integer                    :: rplreft
    logical                    :: rplRegular
    logical                    :: checkpointRequested = .false.
    character(len=ESMF_MAXSTR) :: checkpointFilename = ''
@@ -121,7 +123,6 @@ contains
     type (EXTDATA_wrap)                 :: ExtDataWrap
     type (MAPL_MetaComp),  pointer      :: MAPL
     character(len=ESMF_MAXSTR)          :: ReplayMode
-    character(len=ESMF_MAXSTR)          :: ReplayNudge
     character(len=ESMF_MAXSTR)          :: CONVPAR_OPTION
     character(len=ESMF_MAXSTR)          :: AERO_PROVIDER
     logical                             :: rplRegular
@@ -130,11 +131,11 @@ contains
     integer                             :: heartbeat
 
     integer                             :: ASSIMILATION_CYCLE
-    integer                             :: PREDICTOR_DURATION
     integer                             :: CORRECTOR_DURATION
+    integer                             :: MKIAU_FREQUENCY
+    integer                             :: MKIAU_REFERENCE_TIME
     integer                             :: REPLAY_FILE_FREQUENCY
-    integer                             :: REPLAY_BKGAVE
-
+    integer                             :: REPLAY_FILE_REFERENCE_TIME
     integer                             :: iDUAL_OCEAN
 
 !=============================================================================
@@ -179,11 +180,11 @@ contains
        NUM_ICE_LAYERS     = 1  
     endif
 
-    call MAPL_GetResource ( MAPL, DO_OBIO,        Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_OBIO,     Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_DATAATM,     Label="USE_DATAATM:" ,     DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_DATAATM,  Label="USE_DATAATM:" ,        DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_DATASEA,       Label="USE_DATASEA:" , DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_DATASEA,  Label="USE_DATASEA:" ,        DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
@@ -235,6 +236,7 @@ contains
     OGCM = MAPL_AddChild(GC, NAME='OGCM', SS=Ogcm_SetServices, RC=STATUS)
     VERIFY_(STATUS)
 
+
 ! Get RUN Parameters (MERRA-2 Defaults) and Initialize for use in other Components (e.g., AGCM_GridComp and MKIAU_GridComp)
 !--------------------------------------------------------------------------------------------------------------------------
 
@@ -243,8 +245,8 @@ contains
     call MAPL_GetResource( MAPL, heartbeat, Label="RUN_DT:", RC=STATUS)
     VERIFY_(STATUS)
 
-  ! Get ASSIMILATION_CYCLE Duration.  If NOT_PRESENT, Initialize and Set Attribute.
-  !--------------------------------------------------------------------------------
+  ! Get ASSIMILATION_CYCLE Duration.  If NOT_PRESENT, Initialize to MERRA-2 Default and Set Attribute.
+  !---------------------------------------------------------------------------------------------------
     call MAPL_GetResource( MAPL, ASSIMILATION_CYCLE, Label="ASSIMILATION_CYCLE:", default=-999, RC=STATUS)
     VERIFY_(STATUS)
     if( ASSIMILATION_CYCLE .eq. -999 ) then
@@ -254,8 +256,8 @@ contains
         IF(MAPL_AM_I_ROOT()) PRINT *,'Setting ASSIMILATION_CYCLE to ',ASSIMILATION_CYCLE
     endif
 
-  ! Get CORRECTOR_DURATION.  If NOT_PRESENT, Initialize and Set Attribute.
-  ! ----------------------------------------------------------------------
+  ! Get CORRECTOR_DURATION.  If NOT_PRESENT, Initialize to MERRA-2 Default and Set Attribute.
+  ! -----------------------------------------------------------------------------------------
     call MAPL_GetResource( MAPL, CORRECTOR_DURATION, Label="CORRECTOR_DURATION:", default=-999, RC=STATUS)
     VERIFY_(STATUS)
     if( CORRECTOR_DURATION .eq. -999 ) then
@@ -265,39 +267,82 @@ contains
         IF(MAPL_AM_I_ROOT()) PRINT *,'Setting CORRECTOR_DURATION, to ',CORRECTOR_DURATION
     endif
 
-  ! Get PREDICTOR_DURATION.  If NOT_PRESENT, Initialize and Set Attribute.
-  ! ----------------------------------------------------------------------
-    call MAPL_GetResource( MAPL, PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", default=-999, RC=STATUS)
+
+
+
+  ! Get REPLAY Frequency and Reference Time Associated with Forcing Files
+  ! ---------------------------------------------------------------------
+    call MAPL_GetResource(MAPL,REPLAY_FILE_FREQUENCY,      Label="REPLAY_FILE_FREQUENCY:",      default=-999, rc=STATUS )
     VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL,REPLAY_FILE_REFERENCE_TIME, Label="REPLAY_FILE_REFERENCE_TIME:", default=-999, rc=STATUS )
     VERIFY_(STATUS)
-    if( PREDICTOR_DURATION .eq. -999 ) then
-        PREDICTOR_DURATION = CORRECTOR_DURATION/2
-        call MAPL_ConfigSetAttribute(  CF, PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", RC=STATUS)
-        VERIFY_(STATUS)
-        IF(MAPL_AM_I_ROOT()) PRINT *,'Setting PREDICTOR_DURATION, to ',PREDICTOR_DURATION
+
+  ! Get MKIAU Frequency and Reference Time Associated with MKIAU Updates
+  ! --------------------------------------------------------------------
+    call MAPL_GetResource(MAPL,MKIAU_FREQUENCY,      Label="MKIAU_FREQUENCY:",      default=-999, rc=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL,MKIAU_REFERENCE_TIME, Label="MKIAU_REFERENCE_TIME:", default=-999, rc=STATUS )
+    VERIFY_(STATUS)
+
+
+
+  ! Set MKIAU_FREQUENCY and REPLAY_FILE_FREQUENCY Defaults
+  ! ------------------------------------------------------
+    if( (MKIAU_FREQUENCY .eq. -999) .and. (REPLAY_FILE_FREQUENCY .eq. -999) ) then
+            REPLAY_FILE_FREQUENCY = CORRECTOR_DURATION
+                  MKIAU_FREQUENCY = CORRECTOR_DURATION
+            call MAPL_ConfigSetAttribute(  CF, MKIAU_FREQUENCY, Label="MKIAU_FREQUENCY:", RC=STATUS)
+            VERIFY_(STATUS)
+            call MAPL_ConfigSetAttribute(  CF, REPLAY_FILE_FREQUENCY, Label="REPLAY_FILE_FREQUENCY:", RC=STATUS)
+            VERIFY_(STATUS)
+            IF(MAPL_AM_I_ROOT()) PRINT *,'Setting MKIAU_FREQUENCY, to ',MKIAU_FREQUENCY
+            IF(MAPL_AM_I_ROOT()) PRINT *,'Setting REPLAY_FILE_FREQUENCY, to ',REPLAY_FILE_FREQUENCY
+
+    else if( MKIAU_FREQUENCY .eq. -999 ) then
+             MKIAU_FREQUENCY = REPLAY_FILE_FREQUENCY
+             call MAPL_ConfigSetAttribute(  CF, MKIAU_FREQUENCY, Label="MKIAU_FREQUENCY:", RC=STATUS)
+             VERIFY_(STATUS)
+             IF(MAPL_AM_I_ROOT()) PRINT *,'Setting MKIAU_FREQUENCY, to ',MKIAU_FREQUENCY
+
+    else if( REPLAY_FILE_FREQUENCY .eq. -999 ) then
+             REPLAY_FILE_FREQUENCY = MKIAU_FREQUENCY
+             call MAPL_ConfigSetAttribute(  CF, REPLAY_FILE_FREQUENCY, Label="REPLAY_FILE_FREQUENCY:", RC=STATUS)
+             VERIFY_(STATUS)
+             IF(MAPL_AM_I_ROOT()) PRINT *,'Setting REPLAY_FILE_FREQUENCY, to ',REPLAY_FILE_FREQUENCY
     endif
 
-  ! Get REPLAY_FILE_FREQUENCY.  If NOT_PRESENT, Initialize and Set Attribute.
-  ! -------------------------------------------------------------------------
-    call MAPL_GetResource(MAPL, REPLAY_FILE_FREQUENCY, Label="REPLAY_FILE_FREQUENCY:", default=-999, RC=STATUS)
-    VERIFY_(STATUS)
-    if( REPLAY_FILE_FREQUENCY .eq. -999 ) then
-        REPLAY_FILE_FREQUENCY = CORRECTOR_DURATION
-        call MAPL_ConfigSetAttribute(  CF, REPLAY_FILE_FREQUENCY, Label="REPLAY_FILE_FREQUENCY:", RC=STATUS)
-        VERIFY_(STATUS)
-        IF(MAPL_AM_I_ROOT()) PRINT *,'Setting REPLAY_FILE_FREQUENCY, to ',REPLAY_FILE_FREQUENCY
+
+  ! Set MKIAU_REFERENCE_TIME and REPLAY_FILE_REFERENCE_TIME Defaults
+  ! ----------------------------------------------------------------
+    if( (MKIAU_REFERENCE_TIME .eq. -999) .and. (REPLAY_FILE_REFERENCE_TIME .eq. -999) ) then
+            REPLAY_FILE_REFERENCE_TIME = 000000
+                  MKIAU_REFERENCE_TIME = 000000
+            call MAPL_ConfigSetAttribute(  CF, MKIAU_REFERENCE_TIME, Label="MKIAU_REFERENCE_TIME:", RC=STATUS)
+            VERIFY_(STATUS)
+            call MAPL_ConfigSetAttribute(  CF, REPLAY_FILE_REFERENCE_TIME, Label="REPLAY_FILE_REFERENCE_TIME:", RC=STATUS)
+            VERIFY_(STATUS)
+            IF(MAPL_AM_I_ROOT()) PRINT *,'Setting MKIAU_REFERENCE_TIME, to ',MKIAU_REFERENCE_TIME
+            IF(MAPL_AM_I_ROOT()) PRINT *,'Setting REPLAY_FILE_REFERENCE_TIME, to ',REPLAY_FILE_REFERENCE_TIME
+
+    else if( MKIAU_REFERENCE_TIME .eq. -999 ) then
+             MKIAU_REFERENCE_TIME = REPLAY_FILE_REFERENCE_TIME
+             call MAPL_ConfigSetAttribute(  CF, MKIAU_REFERENCE_TIME, Label="MKIAU_REFERENCE_TIME:", RC=STATUS)
+             VERIFY_(STATUS)
+             IF(MAPL_AM_I_ROOT()) PRINT *,'Setting MKIAU_REFERENCE_TIME, to ',MKIAU_REFERENCE_TIME
+
+    else if( REPLAY_FILE_REFERENCE_TIME .eq. -999 ) then
+             REPLAY_FILE_REFERENCE_TIME = MKIAU_REFERENCE_TIME
+             call MAPL_ConfigSetAttribute(  CF, REPLAY_FILE_REFERENCE_TIME, Label="REPLAY_FILE_REFERENCE_TIME:", RC=STATUS)
+             VERIFY_(STATUS)
+             IF(MAPL_AM_I_ROOT()) PRINT *,'Setting REPLAY_FILE_REFERENCE_TIME, to ',REPLAY_FILE_REFERENCE_TIME
     endif
+
 
 
 ! Get REPLAY Parameters
 ! ---------------------
     call MAPL_GetResource(MAPL, ReplayMode,  'REPLAY_MODE:',  default="NoReplay", RC=STATUS )
     VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, ReplayNudge, 'REPLAY_NUDGE:', default="NO",       RC=STATUS )
-    VERIFY_(STATUS)
-
-    ReplayNudge = ESMF_UtilStringUpperCase(ReplayNudge)
-    _ASSERT( adjustl(ReplayNudge)=='YES' .or.  adjustl(ReplayNudge)=='NO' ,'needs informative message')
 
 ! -------------------------------------------
     ! We need to know if we are doing "regular" replay
@@ -306,27 +351,8 @@ contains
 
     if(adjustl(ReplayMode)=="Regular") then
        rplRegular = .true.
-
-       call MAPL_GetResource(MAPL, REPLAY_BKGAVE, Label="REPLAY_BKGAVE:", default=0, rc=status)
-       VERIFY_(STATUS)
-
-       if( adjustl(ReplayNudge) == "YES" ) then
-           CORRECTOR_DURATION = heartbeat
-           PREDICTOR_DURATION = 0
-                REPLAY_BKGAVE = 0
-       endif
-
-       ! we need to add/change all of MKIAU import specs
-       if (REPLAY_BKGAVE /= 0) then
-          call MAPL_ChildAddAttribToImportSpec ( MAPL,   CHILD_ID = AIAU ,                           &
-                                                 REFRESH_INTERVAL = CORRECTOR_DURATION ,             &
-                                               AVERAGING_INTERVAL =      REPLAY_BKGAVE + heartbeat , &
-                                                           OFFSET = PREDICTOR_DURATION +(REPLAY_BKGAVE/2), RC=status )
-          VERIFY_(STATUS)
-       end if
     else    
        rplRegular = .false.
-          REPLAY_BKGAVE = 0
     endif
 
 ! Borrow exports from children
@@ -587,9 +613,9 @@ contains
     wrap%ptr => gcm_internal_state
 
     gcm_internal_state%rplRegular = rplRegular
-    gcm_internal_state%rpldur     = PREDICTOR_DURATION
-    gcm_internal_state%rplfreq    = CORRECTOR_DURATION
-    gcm_internal_state%rplbkgave  = REPLAY_BKGAVE
+    gcm_internal_state%cordur     = CORRECTOR_DURATION
+    gcm_internal_state%rplfreq    = MKIAU_FREQUENCY
+    gcm_internal_state%rplreft    = MKIAU_REFERENCE_TIME
 
 ! If doing regular replay make state to "borrow" gc and import to ExtData
 ! -----------------------------------------------------------------------
@@ -668,9 +694,11 @@ contains
     type(MAPL_LocStream):: locstA
 
     type(ESMF_DELayout) :: layout
+    type (ESMF_Config)  :: CF
 
-    type (MAPL_MetaComp),  pointer  :: MAPL => null()
-    type (MAPL_MetaComp),  pointer  :: CMAPL => null()
+    type (ESMF_VM)                      :: VM
+    type (MAPL_MetaComp),      pointer  :: MAPL => null()
+    type (MAPL_MetaComp),      pointer  :: CMAPL => null()
     type (ESMF_GridComp),      pointer  :: GCS(:) => null()
     type (ESMF_State),         pointer  :: GIM(:) => null()
     type (ESMF_State),         pointer  :: GEX(:) => null()
@@ -684,23 +712,27 @@ contains
     
     type(ESMF_Calendar)                 :: cal
     type(ESMF_Time)                     :: rep_StartTime
+    type(ESMF_Time)                     :: rep_RefTime
     type(ESMF_Time)                     :: currTime
     type(ESMF_Time)                     :: ringTime
-    type(ESMF_TimeInterval)             :: Frequency
-    type(ESMF_TimeInterval)             :: Duration
+    type(ESMF_TimeInterval)             :: CORRECTOR_DURATION
+    type(ESMF_TimeInterval)             :: PREDICTOR_DURATION
+    type(ESMF_TimeInterval)             :: MKIAU_FREQUENCY
     type(ESMF_TimeInterval)             :: Shutoff
-    type(ESMF_TimeInterval)             :: halfRplBkgAve
     type(ESMF_Alarm)                    :: replayStartAlarm
     type(ESMF_Alarm)                    :: replayStopAlarm
+    type(ESMF_Alarm)                    :: replayCycleAlarm
+    type(ESMF_Alarm)                    ::   Exact_Replay09Alarm
+    type(ESMF_Alarm)                    :: Regular_Replay09Alarm
+    type(ESMF_Alarm)                    :: replayMKIAUAlarm
     type(ESMF_Alarm)                    :: replayShutoffAlarm
-! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
     TYPE(ESMF_Alarm)                    :: PredictorIsActive
-! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
     type(ESMF_Alarm)                    :: alarms(1)
     type(ESMF_DistGrid)                 :: distGRID
-    integer                             :: PREDICTOR_DURATION
-    integer                             :: CORRECTOR_DURATION
-    integer                             :: REPLAY_BKGAVE
+    integer                             :: i_CORRECTOR_DURATION
+    integer                             :: i_PREDICTOR_DURATION
+    integer                             :: i_MKIAU_FREQUENCY
+    integer                             ::   MKIAU_REFERENCE_TIME
     integer                             :: rplshut
     integer                             :: rep_startdate(2)
     integer                             :: rep_YY
@@ -709,6 +741,9 @@ contains
     integer                             :: rep_H
     integer                             :: rep_M
     integer                             :: rep_S
+    integer                             :: MKIAU_RingDate
+    integer                             :: MKIAU_RingTime
+    logical                             :: FileExists
 
 !=============================================================================
 
@@ -717,7 +752,7 @@ contains
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
-    call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // "Initialize"
 
@@ -733,16 +768,14 @@ contains
 ! Get my internal private state. This contains the transforms
 !  between the exchange grid and the atmos grid.
 !-------------------------------------------------------------
-
     call ESMF_UserCompGetInternalState(gc, 'GCM_state', wrap, status)
     VERIFY_(STATUS)
     gcm_internal_state => wrap%ptr
 
+
 ! Get children and their im/ex states from my generic state.
 !----------------------------------------------------------
-
-    call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCNAMES=GCNAMES,&
-                                RC=STATUS )
+    call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCNAMES=GCNAMES, RC=STATUS )
     VERIFY_(STATUS)
 
 
@@ -796,7 +829,6 @@ contains
     VERIFY_(STATUS)
     call ESMF_GridCompSet(GCS(OGCM),  grid=ogrid, rc=status)
     VERIFY_(STATUS)
-
     if(DO_DATAATM==0) then
        call ESMF_GridCompSet(GCS(AIAU),  grid=agrid, rc=status)
        VERIFY_(STATUS)
@@ -809,39 +841,33 @@ contains
 
     call ESMF_GridCompSet(GC, grid=agrid, rc=status)
     VERIFY_(STATUS)
-    
+
     GCM_INTERNAL_STATE%checkpointRequested = .false.
 
-    if(gcm_internal_state%rplRegular) then
-
-       call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
-       VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
+    VERIFY_(STATUS)
 
 ! ALT replay: create alarms
-       PREDICTOR_DURATION = gcm_internal_state%rplDur
-       CORRECTOR_DURATION = gcm_internal_state%rplFreq
-          REPLAY_BKGAVE = gcm_internal_state%rplbkgave
+! -------------------------
+       i_CORRECTOR_DURATION         = gcm_internal_state%corDur
+
+       i_MKIAU_FREQUENCY      = gcm_internal_state%rplfreq
+         MKIAU_REFERENCE_TIME = gcm_internal_state%rplreft
+
        call MAPL_GetResource(MAPL, rplshut, Label="REPLAY_SHUTOFF:", default=-3600, rc=status)
        VERIFY_(STATUS)
        call ESMF_ClockGet(clock, currTime=currTime, calendar=cal, rc=status)
        VERIFY_(STATUS)
 
-       call ESMF_TimeIntervalSet(Duration,  S=PREDICTOR_DURATION, rc=status)
+       call ESMF_TimeIntervalSet(CORRECTOR_DURATION,    S=i_CORRECTOR_DURATION, rc=status)
        VERIFY_(STATUS)
-       call ESMF_TimeIntervalSet(Frequency, S=CORRECTOR_DURATION, rc=status)
-       VERIFY_(STATUS)
-       call ESMF_TimeIntervalSet(Shutoff, S=abs(rplshut), rc=status)
-       VERIFY_(STATUS)
-       call ESMF_TimeIntervalSet(halfRplBkgAve, S=REPLAY_BKGAVE/2, rc=status)
+       call ESMF_TimeIntervalSet(MKIAU_FREQUENCY, S=i_MKIAU_FREQUENCY, rc=status)
        VERIFY_(STATUS)
 
-       ! Offset REPLAY_STARTTIME by REPLAY_FREQUENCY when running PREDICTOR_DURATION=0 with AGCM_IMPORT
-       ! --------------------------------------------------------------------------------------------
+       call ESMF_TimeIntervalSet(Shutoff, S=abs(rplshut), rc=status)
+       VERIFY_(STATUS)
+
        rep_StartTime = currTime
-       if( PREDICTOR_DURATION == 0 ) then
-           call MAPL_GetResource( MAPL, tmpStr, LABEL="AGCM_IMPORT_RESTART_FILE:", RC=STATUS)
-           if (STATUS == ESMF_SUCCESS) rep_StartTime = currTime + Frequency
-       endif
 
        ! UNPACK REPLAY_STARTTIME
        ! -----------------------
@@ -881,59 +907,237 @@ contains
                           calendar=cal,  rc = STATUS  )
        VERIFY_(STATUS)
 
-       RingTime = rep_StartTime !LLT: this depends on type of REPLAY being used
+       rep_H =     MKIAU_REFERENCE_TIME/10000
+       rep_M = mod(MKIAU_REFERENCE_TIME,10000)/100
+       rep_S = mod(MKIAU_REFERENCE_TIME,100)
 
-       replayStartAlarm = ESMF_AlarmCreate( name="startReplay", clock=clock, &
-            RingTime=ringTime, RingInterval=Frequency, sticky=.true., rc=status )
+     ! Set ESMF Replay Reference Time
+     ! ------------------------------
+       call ESMF_TimeSet( rep_RefTime,  YY = rep_YY, &
+                                        MM = rep_MM, &
+                                        DD = rep_DD, &
+                                         H = rep_H , &
+                                         M = rep_M , &
+                                         S = rep_S , &
+                          calendar=cal, rc = STATUS  )
        VERIFY_(STATUS)
-       if(ringTime == currTime) then
-          call ESMF_AlarmRingerOn(replayStartAlarm, rc=status)
+
+
+     ! Compute Time of First Call to MKIAU
+     ! -----------------------------------
+       if (rep_RefTime < currTime ) then
+           rep_RefTime = rep_RefTime + ( INT( (currTime-rep_RefTime)/MKIAU_FREQUENCY ) )*MKIAU_FREQUENCY
+       if (rep_RefTime < currTime ) then
+           rep_RefTime = rep_RefTime + MKIAU_FREQUENCY
+       endif
+       endif
+       replayMKIAUAlarm = ESMF_AlarmCreate( name="ReplayMKIAU", clock=clock,                                &
+                                            RingTime     = rep_RefTime,                                     &
+                                            RingInterval = MKIAU_FREQUENCY, sticky=.false., rc=status )
+       VERIFY_(STATUS)
+       if(rep_RefTime == currTime) then
+          call ESMF_AlarmRingerOn( replayMKIAUAlarm, rc=status )
           VERIFY_(STATUS)
        end if
 
-       replayStopAlarm = ESMF_AlarmCreate(name="stopReplay", clock=clock, &
-            RingTime=ringTime+Duration+halfRplBkgAve, RingInterval=Frequency, &
-            sticky=.false., rc=status )
+
+     ! Create Alarms for REPLAYs Requiring 09 files
+     ! --------------------------------------------
+              ! EXACT REPLAY may require Correct_Step: agcm09_import
+              ! ----------------------------------------------------
+                Exact_Replay09Alarm = ESMF_AlarmCreate( name="ExactReplay09", clock=clock,                                            &
+                                                        RingTime     = rep_StartTime + CORRECTOR_DURATION - MKIAU_FREQUENCY/2 , &
+                                                        RingInterval = CORRECTOR_DURATION, sticky=.false., rc=status )
+                VERIFY_(STATUS)
+
+              ! REGULAR REPLAY may require Predictor_Step: ana09.eta 
+              ! ----------------------------------------------------
+                Regular_Replay09Alarm = ESMF_AlarmCreate( name="RegularReplay09", clock=clock,               &
+                                                          RingTime     = rep_StartTime + CORRECTOR_DURATION, &
+                                                          RingInterval = CORRECTOR_DURATION, sticky=.false., rc=status )
+                VERIFY_(STATUS)
+
+
+     ! Compute PREDICTOR Duration
+     ! --------------------------
+       PREDICTOR_DURATION = rep_RefTime - currTime
+                 RingTime = rep_RefTime
+       do while( RingTime + MKIAU_FREQUENCY <= rep_StartTime + CORRECTOR_DURATION )
+                 RingTime  = RingTime + MKIAU_FREQUENCY
+       PREDICTOR_DURATION  = PREDICTOR_DURATION + MKIAU_FREQUENCY
+       end do
+
+
+     ! Check for User-Defined PREDICTOR_DURATION, and Check for Consistency with Computed Value
+     ! ----------------------------------------------------------------------------------------
+       call MAPL_GetResource( MAPL, i_PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", default=-999, RC=STATUS)
+       VERIFY_(STATUS)
+       if( i_PREDICTOR_DURATION .eq. -999 ) then
+           call ESMF_TimeIntervalGet( PREDICTOR_DURATION, S=i_PREDICTOR_DURATION, rc=status )
+           call MAPL_ConfigSetAttribute(  CF, i_PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", RC=STATUS)
+           VERIFY_(STATUS)
+           IF(MAPL_AM_I_ROOT()) PRINT *,'Setting PREDICTOR_DURATION, to ',i_PREDICTOR_DURATION
+       else
+           call ESMF_TimeIntervalGet( PREDICTOR_DURATION, S=rep_S, rc=status )
+           if( rep_S .ne. i_PREDICTOR_DURATION ) then
+               IF(MAPL_AM_I_ROOT()) then
+                  PRINT * 
+                  PRINT *,'ERROR!             User-Defined PREDICTOR_DURATION: ',i_PREDICTOR_DURATION
+                  PRINT *,'is INCONSISTENT with Calculated PREDICTOR_DURATION: ',rep_S
+                  PRINT * 
+               endif
+               VERIFY_(ESMF_FAILURE)
+           endif
+       endif
+       gcm_internal_state%predur = i_PREDICTOR_DURATION
+
+       ! NOTE:  When using PREDICTOR_DURATION=0 or calling MKIAU at Beginning of Run,
+       !        you must include AIAU_IMPORT_RESTARTS to begin the cycle
+       ! ----------------------------------------------------------------------------
+       if( (adjustl(ReplayMode)=="Regular") .and.                         &
+           ( (i_PREDICTOR_DURATION == 0) .or. (rep_RefTime == currTime) ) ) then
+           call MAPL_GetResource( MAPL, tmpStr, LABEL="AIAU_IMPORT_RESTART_FILE:", RC=STATUS)
+           if (STATUS /= ESMF_SUCCESS) then
+               IF(MAPL_AM_I_ROOT()) then
+                                                  PRINT *,' '
+                                                  PRINT *,'ERROR! ...'
+                  if( i_PREDICTOR_DURATION == 0 ) PRINT *,'Using PREDICTOR_DURATION = 0 requires AIAU_IMPORT_RESTART'
+                  if( rep_RefTime == currTime   ) PRINT *,'Calling MKIAU at Beginning of Run requires AIAU_IMPORT_RESTART'
+                                                  PRINT *,' '
+               endif
+               VERIFY_(STATUS)
+           else
+               call ESMF_VMGetCurrent ( VM=vm, RC=STATUS )
+               VERIFY_(STATUS)
+               IF(MAPL_AM_I_ROOT()) then
+                  Inquire(FILE = tmpStr, EXIST=FileExists)
+               ENDIF
+               call MAPL_CommsBcast(vm, FileExists, n=1, ROOT=MAPL_Root, rc=status)
+               VERIFY_(status)
+               if( .not.FileExists ) then
+                   IF(MAPL_AM_I_ROOT()) then
+                                                      PRINT *,' '
+                                                      PRINT *,'ERROR! ...'
+                      if( i_PREDICTOR_DURATION == 0 ) PRINT *,'Using PREDICTOR_DURATION = 0 requires AIAU_IMPORT_RESTART'
+                      if( rep_RefTime == currTime   ) PRINT *,'Calling MKIAU at Beginning of Run requires AIAU_IMPORT_RESTART'
+                                                      PRINT *,' '
+                   endif
+                   RETURN_(ESMF_FAILURE)
+               endif
+           endif
+       endif
+
+
+       ! Creating REPLAY Alarms
+       ! ----------------------
+       RingTime = rep_StartTime
+
+       replayStartAlarm = ESMF_AlarmCreate( name="startReplay", clock=clock, &
+                                            RingTime     = ringTime,         & 
+                                            RingInterval = CORRECTOR_DURATION, sticky=.true., rc=status )
        VERIFY_(STATUS)
 
-       replayShutoffAlarm = ESMF_AlarmCreate(name='ReplayShutOff', &
-            clock=clock, ringInterval=Shutoff, sticky=.false., RC=STATUS )
+       if(ringTime == currTime) then
+          call ESMF_AlarmRingerOn( replayStartAlarm, rc=status )
+          VERIFY_(STATUS)
+       end if
+
+       replayCycleAlarm = ESMF_AlarmCreate( name="replayCycle", clock=clock, &
+                                            RingTime     = ringTime,                                     &
+                                            RingInterval = CORRECTOR_DURATION, sticky=.false., rc=status )
        VERIFY_(STATUS)
+
+       replayStopAlarm = ESMF_AlarmCreate( name="stopReplay", clock=clock, &
+                                           RingTime     = ringTime + PREDICTOR_DURATION,                &
+                                           RingInterval = CORRECTOR_DURATION, sticky=.false., rc=status )
+       VERIFY_(STATUS)
+
+       replayShutoffAlarm = ESMF_AlarmCreate( name='ReplayShutOff', clock=clock, &
+                                              RingInterval = Shutoff, sticky=.false., RC=STATUS )
+       VERIFY_(STATUS)
+
+
+     ! Put MKIAU_RingDate and MKIAU_RingTime into MAPL Config
+     ! ------------------------------------------------------
+       call MAPL_GetResource(MAPL, MKIAU_RingDate, Label="MKIAU_RingDate:", default=-999, RC=STATUS)
+       VERIFY_(STATUS)
+       if( MKIAU_RingDate .eq. -999 ) then
+           call ESMF_TimeGet  ( rep_RefTime, YY = rep_YY, &
+                                             MM = rep_MM, &
+                                             DD = rep_DD, &
+                                             H  = rep_H , &
+                                             M  = rep_M , &
+                                             S  = rep_S, rc=status )
+           VERIFY_(STATUS)
+
+           MKIAU_RingDate = 10000*rep_YY + 100*rep_MM + rep_DD
+           MKIAU_RingTime = 10000*rep_H  + 100*rep_M  + rep_S 
+
+           call MAPL_ConfigSetAttribute(  CF, MKIAU_RingDate, Label="MKIAU_RingDate:", RC=STATUS)
+           VERIFY_(STATUS)
+           call MAPL_ConfigSetAttribute(  CF, MKIAU_RingTime, Label="MKIAU_RingTime:", RC=STATUS)
+           VERIFY_(STATUS)
+
+           IF(MAPL_AM_I_ROOT()) PRINT *,'Setting MKIAU_RingDate/Time to ',MKIAU_RingDate,MKIAU_RingTime
+       else
+           IF(MAPL_AM_I_ROOT()) PRINT *,'Setting MKIAU_RingDate and MKIAU_RingTime not allowed!'
+           VERIFY_(ESMF_FAILURE)
+       endif
+
        if (rplshut <= 0) then ! this is a "flag" to never use Shutoff alarm
           call ESMF_AlarmDisable(replayShutoffAlarm, RC=STATUS)
           VERIFY_(STATUS)
        end if
 
-! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
+       ! Create Active PREDICTOR_STEP Alarm (Note: Sticky, so OFF & ON are set Explicitly)
+       ! ---------------------------------------------------------------------------------
        PredictorIsActive = ESMF_AlarmCreate(NAME="PredictorActive", CLOCK=clock, RingTime=currTime, STICKY=.TRUE., RC=STATUS)
        VERIFY_(STATUS)
+
+       ! Set Active PREDICTOR_STEP Alarm to OFF
+       ! --------------------------------------
        CALL ESMF_AlarmRingerOff(PredictorIsActive, RC=STATUS)
        VERIFY_(STATUS)
-!      IF(MAPL_AM_I_ROOT()) PRINT *,TRIM(Iam)//": Predictor Alarm is ringing? ",ESMF_AlarmIsRinging(PredictorIsActive)
-! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
+     ! IF(MAPL_AM_I_ROOT()) PRINT *,TRIM(Iam)//": Predictor Alarm is ringing? ",ESMF_AlarmIsRinging(PredictorIsActive)
        
+
+    if(gcm_internal_state%rplRegular) then
+
        call MAPL_GetObjectFromGC ( GCS(AGCM), CMAPL, RC=STATUS)
        VERIFY_(STATUS)
        Alarms(1) = replayStartAlarm
        call MAPL_AddRecord(CMAPL, ALARMS, (/MAPL_Write2Ram/), rc=status)
        VERIFY_(STATUS)
 
-       GCM_INTERNAL_STATE%replayStartAlarm = replayStartAlarm
-       GCM_INTERNAL_STATE%replayStopAlarm = replayStopAlarm
-       GCM_INTERNAL_STATE%replayShutoffAlarm = replayShutoffAlarm
-       GCM_INTERNAL_STATE%PredictorIsActive = PredictorIsActive
-       GCM_INTERNAL_STATE%replayDuration = Duration
+       GCM_INTERNAL_STATE%replayStartAlarm      = replayStartAlarm
+       GCM_INTERNAL_STATE%replayStopAlarm       = replayStopAlarm
+       GCM_INTERNAL_STATE%replayCycleAlarm      = replayCycleAlarm
+       GCM_INTERNAL_STATE%replayMKIAUAlarm      = replayMKIAUAlarm
+       GCM_INTERNAL_STATE%replayShutoffAlarm    = replayShutoffAlarm
+       GCM_INTERNAL_STATE%Regular_Replay09Alarm = Regular_Replay09Alarm
 
-       call MAPL_GetResource(MAPL, tmpStr, "REPLAY_CHECKPOINT_FILE:", &
-            default="", rc=status)
+       call MAPL_GetResource(MAPL, tmpStr, "MKIAU_CHECKPOINT_FILE:", default="NULL", rc=status)
        VERIFY_(STATUS)
-       if (tmpStr /= "") then
+
+       if (tmpStr /= "NULL" .or. (PREDICTOR_DURATION.gt.MKIAU_FREQUENCY/2) ) then
           GCM_INTERNAL_STATE%checkpointRequested = .true.
-          GCM_INTERNAL_STATE%checkpointFilename = tmpStr
-          call MAPL_GetResource(MAPL, tmpStr, "REPLAY_CHECKPOINT_TYPE:", &
-               default="binary", rc=status)
-          VERIFY_(STATUS)
-          GCM_INTERNAL_STATE%checkpointFileType = tmpStr
+          if (tmpStr /= "NULL" ) then
+              GCM_INTERNAL_STATE%checkpointFilename = tmpStr
+              call MAPL_GetResource(MAPL, tmpStr, "MKIAU_CHECKPOINT_TYPE:", default="pnc4", rc=status)
+              VERIFY_(STATUS)
+              GCM_INTERNAL_STATE%checkpointFileType = tmpStr
+          else
+              GCM_INTERNAL_STATE%checkpointFilename = "mkiau_checkpoint"
+              GCM_INTERNAL_STATE%checkpointFileType = "pnc4"
+              call MAPL_ConfigSetAttribute(  CF, trim(GCM_INTERNAL_STATE%checkpointFilename), Label="MKIAU_CHECKPOINT_FILE:", RC=STATUS)
+              VERIFY_(STATUS)
+              call MAPL_ConfigSetAttribute(  CF, trim(GCM_INTERNAL_STATE%checkpointFileType), Label="MKIAU_CHECKPOINT_TYPE:", RC=STATUS)
+              VERIFY_(STATUS)
+              IF(MAPL_AM_I_ROOT()) then
+                 PRINT *,'Setting MKIAU_CHECKPOINT_FILE to ',trim(GCM_INTERNAL_STATE%checkpointFilename)
+                 PRINT *,'Setting MKIAU_CHECKPOINT_TYPE to ',trim(GCM_INTERNAL_STATE%checkpointFileType)
+              ENDIF
+          endif
        endif
 
     end if
@@ -1009,7 +1213,6 @@ contains
            RC=STATUS)
       VERIFY_(STATUS)
    end if
-
    call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
         (/'DISCHARGE'/), &
         RC=STATUS)
@@ -1050,7 +1253,6 @@ contains
                                      'FRZMLT  ', 'KPAR    ', & 
                                      'TS_FOUND', 'SS_FOUND' /), RC=STATUS)
    VERIFY_(STATUS)
-
    if (DO_CICE_THERMO == 0) then  
       call AllocateExports(GEX(OGCM), (/'FRACICE '/), RC=STATUS)
       VERIFY_(STATUS)
@@ -1167,17 +1369,24 @@ contains
     type(ESMF_Alarm), allocatable :: AlarmList(:)
     type(ESMF_Time),  allocatable :: AlarmRingTime(:)
     type(ESMF_Time)               :: ct, replayTime
+    type (ESMF_Time)              :: REPLAY_TIME
+
     logical,          allocatable :: ringingState(:)
     integer                       :: i, nalarms
     logical                       :: done
     logical                       :: shutoffRpl
     logical                       :: timeForRpl
+    logical                       :: timeForMKIAU
+    character(len=ESMF_MAXSTR)    :: FileName
+    character(len=ESMF_MAXSTR)    :: FileType
     character(len=ESMF_MAXSTR)    :: ReplayMode
     character(len=ESMF_MAXSTR)    :: record_fname
     character(len=14)             :: DATESTAMP !YYYYMMDD_HHMMz
 
     integer, dimension(NUM_ICE_CATEGORIES) :: SUBINDEXO, SUBINDEXA
     integer                                :: N
+
+    TYPE(ESMF_Alarm)              :: PredictorIsActive
 
 !=============================================================================
 
@@ -1219,24 +1428,24 @@ contains
 
     do N=1,NUM_ICE_CATEGORIES
        SUBINDEXO(N) = N
-       !SUBINDEXA(N) = N+1
+      !SUBINDEXA(N) = N+1
        SUBINDEXA(N) = N
     enddo
 
 ! Get children and their im/ex states from my generic state.
 !----------------------------------------------------------
 
-    call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX,&
-                                RC=STATUS )
+    call MAPL_Get ( MAPL, GCS=GCS, GIM=GIM, GEX=GEX, RC=STATUS )
     VERIFY_(STATUS)
 
+    ! Check for Default DO_DATAATM=0 (FALSE) mode
+    ! -------------------------------------------
     if(DO_DATAATM==0) then
-       ! replay-mode stuff
-       ! -----------------
+
        call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
        VERIFY_(STATUS)
 
-       REPLAY: if(adjustl(ReplayMode)=="Regular") then
+ REPLAY: if(adjustl(ReplayMode)=="Regular") then
 
           call MAPL_TimerON(MAPL,"--REPLAY"  )
 
@@ -1248,11 +1457,14 @@ contains
           VERIFY_(STATUS)
           timeForRpl = ESMF_AlarmIsRinging(GCM_INTERNAL_STATE%replayStartAlarm, RC=STATUS)
           VERIFY_(STATUS)
-
           if (timeForRpl .and. .not. shutoffRpl ) then
 
              ! clear Atm IAU tendencies first
-             if( MAPL_AM_I_Root() ) print *, 'Zeroing   IAU forcing ...'
+             ! ------------------------------
+             if( MAPL_AM_I_Root() ) then
+                 PRINT *
+                 PRINT *,TRIM(Iam)//":  Zeroing IAU forcing ..."
+             endif
              call ESMF_GridCompRun ( GCS(AIAU), importState=GIM(AIAU), exportState=GEX(AIAU), clock=clock, phase=2, userRC=status )
              VERIFY_(STATUS)
 
@@ -1262,40 +1474,78 @@ contains
              call ESMF_ClockGet(clock, currTime=ct, rc=status)
              VERIFY_(STATUS)
 
-! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
-          CALL ESMF_ClockGetAlarm(CLOCK, "PredictorActive", GCM_INTERNAL_STATE%PredictorIsActive, RC=STATUS)
-          VERIFY_(STATUS)
-          CALL ESMF_AlarmRingerOn(GCM_INTERNAL_STATE%PredictorIsActive, RC=STATUS)
-          VERIFY_(STATUS)
-!         IF(MAPL_AM_I_ROOT()) PRINT *,TRIM(Iam)//": Start of Predictor ringing is ",ESMF_AlarmIsRinging(GCM_INTERNAL_STATE%PredictorIsActive)
-! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
-
-             replayTime = ct
+             ! Set Active PREDICTOR_STEP Alarm to ON
+             ! -------------------------------------
+             CALL ESMF_ClockGetAlarm(CLOCK, "PredictorActive", PredictorIsActive, RC=STATUS)
+             VERIFY_(STATUS)
+             CALL ESMF_AlarmRingerOn(PredictorIsActive, RC=STATUS)
+             VERIFY_(STATUS)
 
              ! save alarms' states
+             ! -------------------
              call ESMF_ClockGet(clock, alarmCount = nalarms, rc=status)
              VERIFY_(STATUS)
              allocate (alarmList(nalarms), alarmRingTime(nalarms), ringingState(nalarms), stat = status)
              VERIFY_(STATUS)
              call ESMF_ClockGetAlarmList(clock, alarmListFlag=ESMF_ALARMLIST_ALL, alarmList=alarmList, alarmCount = nalarms, rc=status)
              VERIFY_(STATUS)
-
              DO I = 1, nalarms
                 call ESMF_AlarmGet(alarmList(I), ringTime=alarmRingTime(I), ringing=ringingState(I), rc=status)
                 VERIFY_(STATUS)
              END DO
 
-             ! fix the predictor alarm
+             ! fix the predictor alarm (huh?)
+             ! ------------------------------
              call ESMF_ClockGetAlarm(clock, 'PredictorAlarm', alarm, rc=status)
              VERIFY_(STATUS)
              call ESMF_AlarmRingerOn(alarm, RC=STATUS)
              VERIFY_(STATUS)
 
 
-           ! time loop
-             if( gcm_internal_state%rplDur.ne.0 ) then
-             TIME_LOOP: do
+             replayTime = ct
 
+           ! Check Need for MKIAU at beginning of REPLAY Time Loop
+           ! -----------------------------------------------------
+                timeForMKIAU = ESMF_AlarmIsRinging( GCM_INTERNAL_STATE%replayMKIAUAlarm, RC=STATUS )
+                VERIFY_(STATUS)
+
+                if( timeForMKIAU ) then
+
+                    ! Ensure Regular_Replay09Alarm is OFF at Beginning of PREDICTOR Loop
+                    ! ------------------------------------------------------------------
+                    call ESMF_AlarmRingerOff(GCM_INTERNAL_STATE%Regular_Replay09Alarm, RC=STATUS)
+                    VERIFY_(STATUS)
+
+                    if( MAPL_AM_I_Root() ) then
+                        PRINT *,TRIM(Iam)//":  Running MKIAU at Beginning of Predictor Loop, Creating IAU forcing ..."
+                        PRINT *
+                    endif
+                    call ESMF_GridCompRun ( GCS(AIAU), importState=GIM(AIAU), exportState=GEX(AIAU), clock=clock, phase=1, userRC=status )
+                    VERIFY_(STATUS)
+
+                    if( gcm_internal_state%checkpointRequested ) then
+                        call MAPL_GetObjectFromGC ( GCS(AGCM), MAPL_AGCM, RC=STATUS)
+                        VERIFY_(STATUS)
+
+                        call MAPL_GetResource( MAPL_AGCM, FileName, "MKIAU_CHECKPOINT_FILE:", rc=status)
+                        VERIFY_(STATUS)
+                        call MAPL_GetResource( MAPL_AGCM, FileType, "MKIAU_CHECKPOINT_TYPE:", rc=status)
+                        VERIFY_(STATUS)
+
+                        call MAPL_DateStampGet(clock, datestamp, rc=status)
+                        VERIFY_(STATUS)
+                        if( FileType == 'binary' ) RECORD_FNAME = trim(FileName) // '.' // DATESTAMP // '.bin'
+                        if( FileType == 'pnc4'   ) RECORD_FNAME = trim(Filename) // '.' // DATESTAMP // '.nc4'
+
+                        if( MAPL_AM_I_Root() ) PRINT *,TRIM(Iam)//":  Creating MKIAU Checkpoint ..."
+                        call MAPL_CheckpointState( GIM(AGCM), CLOCK, RECORD_FNAME, Filetype, MAPL_AGCM, .FALSE., RC=STATUS )
+                        if( MAPL_AM_I_Root() ) PRINT *
+                        VERIFY_(STATUS)
+                    endif
+                endif
+
+             if( gcm_internal_state%predur .ne. 0 ) then
+             PREDICTOR_TIME_LOOP: do
                 ! Run the ExtData Gridded Component
                 ! ---------------------------------
                 call ESMF_GridCompRun ( ExtData_internal_state%gc, importState=dummy, exportState=ExtData_internal_state%ExpState, clock=clock, userRC=status )
@@ -1303,8 +1553,12 @@ contains
 
                 ! Run the AGCM Gridded Component
                 ! ------------------------------
-                call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
-                VERIFY_(STATUS)
+                !    Ensure IAU tendencies are zero when running Predictor
+                !    if( MAPL_AM_I_Root() ) print *, 'Zeroing   IAU forcing ...'
+                     call ESMF_GridCompRun ( GCS(AIAU), importState=GIM(AIAU), exportState=GEX(AIAU), clock=clock, phase=2, userRC=status )
+                     VERIFY_(STATUS)
+                     call ESMF_GridCompRun ( GCS(AGCM), importState=GIM(AGCM), exportState=GEX(AGCM), clock=clock, userRC=status )
+                     VERIFY_(STATUS)
 
                 if (.not. DUAL_OCEAN) then
                    if(DO_DATASEA /= 0) then
@@ -1323,10 +1577,44 @@ contains
                 VERIFY_(STATUS)
                 call MAPL_DateStampGet(clock, datestamp, rc=status)
                 VERIFY_(STATUS)
-                if( MAPL_AM_I_Root() ) print *, 'Advancing AGCM  1-Model TimeStep ... ',datestamp
+                if( MAPL_AM_I_Root() ) PRINT *,TRIM(Iam)//":  Advancing AGCM  1-Model TimeStep ... ",datestamp
 
                 call MAPL_GenericRunCouplers( MAPL, CHILD=AGCM, CLOCK=clock, RC=status )
                 VERIFY_(STATUS)
+
+                ! check for MKIAU
+                ! ---------------
+                timeForMKIAU = ESMF_AlarmIsRinging( GCM_INTERNAL_STATE%replayMKIAUAlarm, RC=STATUS )
+                VERIFY_(STATUS)
+
+                if( timeForMKIAU ) then
+                    if( MAPL_AM_I_Root() ) then
+                        PRINT *
+                        PRINT *,TRIM(Iam)//":  Running MKIAU Within Predictor Loop, Creating IAU forcing ..."
+                    endif
+                    call ESMF_GridCompRun ( GCS(AIAU), importState=GIM(AIAU), exportState=GEX(AIAU), clock=clock, phase=1, userRC=status )
+                    VERIFY_(STATUS)
+
+                    if( gcm_internal_state%checkpointRequested ) then
+                        call MAPL_GetObjectFromGC ( GCS(AGCM), MAPL_AGCM, RC=STATUS)
+                        VERIFY_(STATUS)
+
+                        call MAPL_GetResource( MAPL_AGCM, FileName, "MKIAU_CHECKPOINT_FILE:", rc=status)
+                        VERIFY_(STATUS)
+                        call MAPL_GetResource( MAPL_AGCM, FileType, "MKIAU_CHECKPOINT_TYPE:", rc=status)
+                        VERIFY_(STATUS)
+
+                        call MAPL_DateStampGet(clock, datestamp, rc=status)
+                        VERIFY_(STATUS)
+                        if( FileType == 'binary' ) RECORD_FNAME = trim(FileName) // '.' // DATESTAMP // '.bin'
+                        if( FileType == 'pnc4'   ) RECORD_FNAME = trim(Filename) // '.' // DATESTAMP // '.nc4'
+
+                        if( MAPL_AM_I_Root() ) PRINT *,TRIM(Iam)//":  Creating MKIAU Checkpoint ..."
+                        call MAPL_CheckpointState( GIM(AGCM), CLOCK, RECORD_FNAME, Filetype, MAPL_AGCM, .FALSE., RC=STATUS )
+                        VERIFY_(STATUS)
+                        if( MAPL_AM_I_Root() ) PRINT *
+                    endif
+                endif
 
                 call ESMF_VMBarrier(VM, rc=status)
                 VERIFY_(STATUS)
@@ -1335,41 +1623,35 @@ contains
                 VERIFY_(STATUS)
                 if ( DONE ) exit
 
-             enddo TIME_LOOP ! end of time loop
+             enddo PREDICTOR_TIME_LOOP
              endif
 
-             ! set clock to mid-point on bkg-ave
-             call ESMF_ClockSet(clock, currTime=replayTime+GCM_INTERNAL_STATE%replayDuration, rc=status)
-             VERIFY_(STATUS)
-
-             ! call make Atm IAU
-             if( MAPL_AM_I_Root() ) print *, 'Creating  IAU forcing ...'
-             call ESMF_GridCompRun ( GCS(AIAU), importState=GIM(AIAU), exportState=GEX(AIAU), clock=clock, phase=1, userRC=status )
-             VERIFY_(STATUS)
 
              ! rewind the clock
              ! --------------------------------------------------------------
              call ESMF_ClockSet(clock, direction=ESMF_DIRECTION_REVERSE, rc=status)
              VERIFY_(STATUS)
 
-             if( gcm_internal_state%rplDur.ne.0 ) then
+             if( gcm_internal_state%predur .ne. 0 ) then
                  do
                    call ESMF_ClockAdvance ( clock, rc=status )
                    VERIFY_(STATUS)
                    call MAPL_DateStampGet(clock, datestamp, rc=status)
                    VERIFY_(STATUS)
-                   if( MAPL_AM_I_Root() ) print *, 'Rewinding Clock 1-Model TimeStep ... ',datestamp
+                   if( MAPL_AM_I_Root() ) PRINT *,TRIM(Iam)//":  Rewinding Clock 1-Model TimeStep ... ",datestamp
                    call ESMF_ClockGet(clock, currTime=ct, rc=status)
                    VERIFY_(STATUS)
                    if (ct ==replayTime) exit
                  enddo
              endif
              if( MAPL_AM_I_Root() ) then
+                print *
                 print *, 'Continue  AGCM Replay ...'
                 print *
              endif
 
              ! restore the state of the alarms
+             ! -------------------------------
              call ESMF_ClockSet(clock, direction=ESMF_DIRECTION_FORWARD, rc=status)
              VERIFY_(STATUS)
              DO I = 1, nalarms
@@ -1380,6 +1662,7 @@ contains
              deallocate(alarmList, alarmRingTime, ringingState)
 
              ! restore import and internal states
+             ! ----------------------------------
              call MAPL_GenericRefresh( GCS(AGCM), GIM(AGCM), GEX(AGCM), clock, rc=status )
              VERIFY_(STATUS)
              call MAPL_GenericRefresh( GCS(OGCM), GIM(OGCM), GEX(OGCM), clock, rc=status )
@@ -1390,41 +1673,21 @@ contains
              VERIFY_(STATUS)
 
           end if
-          if (shutoffRpl ) then
 
+          if (shutoffRpl ) then
              ! clear IAU tendencies
-             if( MAPL_AM_I_Root() ) print *, 'Zeroing   IAU forcing ...'
+             ! --------------------
+             if( MAPL_AM_I_Root() ) PRINT *,TRIM(Iam)//":  Zeroing IAU forcing ..."
              call ESMF_GridCompRun ( GCS(AIAU), importState=GIM(AIAU), exportState=GEX(AIAU), clock=clock, phase=2, userRC=status )
              VERIFY_(STATUS)
              call MAPL_GetObjectFromGC ( GCS(AGCM), MAPL_AGCM, RC=STATUS)
              VERIFY_(STATUS)
              call MAPL_DisableRecord(MAPL_AGCM,"startReplay",rc=status)
              VERIFY_(STATUS)
-
           end if
 
-          if (timeForRpl .and. gcm_internal_state%checkpointRequested) then
-             !ALT: this is done here, 
-             !     so that the tendensies are already either computed or cleared,
-             !     and this guaranties identical results after "EXACT" replay(s).
-             !     Also the clock had been rewound, and time stamping is correct.
-
-             ! add timestamp to filename
-             call MAPL_DateStampGet(clock, datestamp, rc=status)
-             VERIFY_(STATUS)
-
-             RECORD_FNAME = trim(gcm_internal_state%checkpointFilename) // '.' // DATESTAMP // '.bin'
-
-             call MAPL_GetObjectFromGC ( GCS(AGCM), MAPL_AGCM, RC=STATUS)
-             VERIFY_(STATUS)
-
-             call MAPL_CheckpointState(GIM(AGCM), CLOCK, RECORD_FNAME, &
-                  gcm_internal_state%checkpointFiletype, &
-                  MAPL_AGCM, .FALSE., RC=STATUS)
-             VERIFY_(STATUS)
-          end if
-
-          ! fix the predictor alarm
+          ! Set Active PREDICTOR_STEP Alarm to OFF
+          ! --------------------------------------
           call ESMF_ClockGetAlarm(clock, 'PredictorAlarm', alarm, rc=status)
           VERIFY_(STATUS)
           call ESMF_AlarmRingerOff(alarm, RC=STATUS)
@@ -1433,23 +1696,19 @@ contains
           call ESMF_AlarmRingerOff(GCM_INTERNAL_STATE%replayStartAlarm, rc=status)
           VERIFY_(STATUS)
 
-! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
-          IF(ESMF_AlarmIsRinging(GCM_INTERNAL_STATE%PredictorIsActive)) CALL ESMF_AlarmRingerOff(GCM_INTERNAL_STATE%PredictorIsActive, RC=STATUS)
-          VERIFY_(STATUS)
-!         IF(MAPL_AM_I_ROOT()) PRINT *,TRIM(Iam)//": Start of Predictor ringing is ",ESMF_AlarmIsRinging(GCM_INTERNAL_STATE%PredictorIsActive)
-! ---------------- Alarm for detecting active PREDICTOR step ---------------- !
-
           call MAPL_TimerOff(MAPL,"--REPLAY"  )
        end if REPLAY
     endif
 
+    ! Ensure Active PREDICTOR_STEP Alarm of OFF
+    ! -----------------------------------------
+    IF(ESMF_AlarmIsRinging(PredictorIsActive)) CALL ESMF_AlarmRingerOff(PredictorIsActive, RC=STATUS)
+    VERIFY_(STATUS)
 
     ! the usual time step
     !--------------------
 
-
     call MAPL_TimerOn(MAPL,"--ATMOSPHERE"  )
-
     if(DO_DATAATM/=0) then
       call MAPL_TimerOn(MAPL,"DATAATM"     )
     else
@@ -1464,7 +1723,6 @@ contains
     else
       call MAPL_TimerOff(MAPL,"AGCM"        )
     endif
-
     call MAPL_TimerOff(MAPL,"--ATMOSPHERE"  )
 
     if(DO_DATAATM==0) then
@@ -1520,7 +1778,6 @@ contains
        VERIFY_(STATUS)
        call MAPL_CopyFriendliness(GIM(OGCM),'SI',expSKIN,'SSKINI', RC=STATUS)
        VERIFY_(STATUS)
-
        if (DO_CICE_THERMO /= 0) then  
           call MAPL_CopyFriendliness(GIM(OGCM),'FRACICE',expSKIN,'FR', RC=STATUS)
           VERIFY_(STATUS)
@@ -1544,7 +1801,6 @@ contains
        VERIFY_(STATUS)
        call DO_A2O(GIM(OGCM),'SI'     ,expSKIN,'SSKINI' , RC=STATUS)
        VERIFY_(STATUS)
-
        if (DO_CICE_THERMO == 0) then
           call DO_A2O(GIM(OGCM),'TI'     ,expSKIN,'TSKINI' , RC=STATUS)
           VERIFY_(STATUS)
@@ -1654,7 +1910,6 @@ contains
              VERIFY_(STATUS)
           endif
        endif
-
        call MAPL_TimerOff(MAPL,"--A2O"  )
        
 !--
