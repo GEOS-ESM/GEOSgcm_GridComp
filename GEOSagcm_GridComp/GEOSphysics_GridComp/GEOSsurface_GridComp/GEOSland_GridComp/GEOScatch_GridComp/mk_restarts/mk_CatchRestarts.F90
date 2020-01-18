@@ -680,21 +680,21 @@ contains
        
        do n=1,2
           read (50) var2
-          write(40) ((var2(id(i),j),i=1,ntiles),j=1,4)
+          write(40) ((var2(idx(i),j),i=1,ntiles),j=1,4)
        end do
        
        !CAPAC CATDEF RZEXC SRFEXC ... SNDZN3
        
        do n=1,20
           read (50) var1
-          write(40) var1(Id)
+          write(40) var1(Idx)
        enddo
        
        ! CH CM CQ FR
        
        do n=1,4
           read (50) var2
-          write(40) ((var2(id(i),j),i=1,ntiles),j=1,4)
+          write(40) ((var2(idx(i),j),i=1,ntiles),j=1,4)
        end do
        
        ! These are the 2 prev/next pairs that dont are not
@@ -711,14 +711,14 @@ contains
        if(OutIsOld) then
           var1 = 0.0
           do n=1,4
-             write(40) var1(1:ntiles)
+             write(40) (var1(idx(i)),i = 1, ntiles)
           end do
        endif
        
        ! WW
        
        read (50) var2
-       write(40) ((var2(id(i),j),i=1,ntiles),j=1,4)
+       write(40) ((var2(idx(i),j),i=1,ntiles),j=1,4)
     end if
     
   END SUBROUTINE read_and_write_rst
