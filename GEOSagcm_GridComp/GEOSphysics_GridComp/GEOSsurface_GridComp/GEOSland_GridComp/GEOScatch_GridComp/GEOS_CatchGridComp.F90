@@ -118,7 +118,7 @@ type T_OFFLINE_MODE
    ! change logical to integer
    ! 0 --- false (DEFAULT for GCM)
    ! 1 --- true  (DEFAULT gor GEOSldas)
-   ! 2 new options for internal WW 
+   ! 2 new options for internal WW,CH,CM,CQ,FR 
    integer :: CATCH_OFFLINE
 end type T_OFFLINE_MODE
 type OFFLINE_WRAP
