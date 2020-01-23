@@ -115,7 +115,11 @@ real,   parameter :: EMSSNO        =    0.99999
 ! Internal state and its wrapper
 type T_OFFLINE_MODE
    private
-   logical :: CATCH_OFFLINE
+   ! change logical to integer
+   ! 0 --- false (DEFAULT for GCM)
+   ! 1 --- true  (DEFAULT gor GEOSldas)
+   ! 2 new options for internal WW 
+   integer :: CATCH_OFFLINE
 end type T_OFFLINE_MODE
 type OFFLINE_WRAP
    type(T_OFFLINE_MODE), pointer :: ptr=>null()
@@ -166,7 +170,6 @@ subroutine SetServices ( GC, RC )
     type(T_OFFLINE_MODE), pointer :: internal=>null()
     type(OFFLINE_WRAP) :: wrap
     integer :: OFFLINE_MODE
-    logical :: is_OFFLINE
     integer :: RESTART
     integer :: DO_GOSWIM
 
@@ -195,9 +198,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(status)
     call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    wrap%ptr%CATCH_OFFLINE = OFFLINE_MODE /= 0
-
-    is_OFFLINE = wrap%ptr%CATCH_OFFLINE
+    wrap%ptr%CATCH_OFFLINE = OFFLINE_MODE
 
     call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
@@ -759,10 +760,14 @@ subroutine SetServices ( GC, RC )
 !  !INTERNAL STATE:
 
 ! if is_offline, some variables ( in the last) are not required
-  if (is_OFFLINE) then
+  if      ( OFFLINE_MODE == 1 ) then
      RESTART = MAPL_RestartSkip
-  else
+  elseif  ( OFFLINE_MODE == 2 ) then 
+     RESTART = MAPL_RestartOptional
+  elseif  ( OFFLINE_MODE == 0 ) then
      RESTART = MAPL_RestartRequired
+  else
+     ASSERT_(.FALSE.)
   endif
 
   call MAPL_AddInternalSpec(GC                  ,&
@@ -1792,18 +1797,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  if (is_OFFLINE) then
-     call MAPL_AddInternalSpec(GC,                       &
-       LONG_NAME          = 'fractional_area_of_land_snowcover',&
-       UNITS              = '1'                         ,&
-       SHORT_NAME         = 'ASNOW'                     ,&
-       DIMS               = MAPL_DimsTileOnly           ,&
-       VLOCATION          = MAPL_VLocationNone          ,&
-       RESTART            = MAPL_RestartSkip            ,&
-       FRIENDLYTO         = trim(COMP_NAME)             ,&
-                                           RC=STATUS  )
-     VERIFY_(STATUS)
-  else
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'fractional_area_of_land_snowcover',&
     UNITS              = '1'                         ,&
@@ -1812,7 +1805,6 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-  endif
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'downward_heat_flux_into_snow',&
@@ -1985,18 +1977,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  if (is_OFFLINE) then
-     call MAPL_AddInternalSpec(GC,                       &
-        LONG_NAME          = 'surface_emissivity'        ,&
-        UNITS              = '1'                         ,&
-        SHORT_NAME         = 'EMIS'                      ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RESTART            = MAPL_RestartSkip            ,&
-        FRIENDLYTO         = trim(COMP_NAME)             ,&
-                                           RC=STATUS  )
-     VERIFY_(STATUS)
-  else
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_emissivity'        ,&
     UNITS              = '1'                         ,&
@@ -2005,7 +1985,6 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-  endif
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_albedo_visible_beam',&
@@ -2683,7 +2662,7 @@ subroutine SetServices ( GC, RC )
 
     call MAPL_TimerAdd(GC,    name="RUN1"  ,RC=STATUS)
     VERIFY_(STATUS)
-    if (is_OFFLINE) then
+    if (OFFLINE_MODE /= 0) then
        call MAPL_TimerAdd(GC,    name="-RUN0"  ,RC=STATUS)
        VERIFY_(status)
     end if
@@ -3053,7 +3032,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    
    ! Offline mode
    type(OFFLINE_WRAP) :: wrap
-   logical :: is_OFFLINE
+   integer :: OFFLINE_MODE
    integer                        ::  comm, mype
 
 !=============================================================================
@@ -3084,12 +3063,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! Get component's offline mode from its pvt internal state
     call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
     VERIFY_(status)
-    is_OFFLINE = wrap%ptr%CATCH_OFFLINE
+    OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
 
     call ESMF_VMGetCurrent ( VM, RC=STATUS ) 
     
     ! For the OFFLINE case, first update some diagnostic vars
-    if (is_OFFLINE) then
+    if (OFFLINE_MODE /=0) then
        call MAPL_TimerOn(MAPL, "-RUN0")
        call RUN0(gc, import, export, clock, rc)
        call MAPL_TimerOff(MAPL, "-RUN0")
@@ -4049,7 +4028,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Offline case
 
         type(OFFLINE_WRAP)          :: wrap
-        logical                     :: is_OFFLINE
+        integer                     :: OFFLINE_MODE
         real,dimension(:,:),allocatable :: ALWN, BLWN
         ! un-adelterated TC's and QC's
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
@@ -4176,7 +4155,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! Component's offline mode
-        is_OFFLINE = wrap%ptr%CATCH_OFFLINE
+        OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
 
         ! --------------------------------------------------------------------------
         ! Get parameters from generic state.
@@ -4430,11 +4409,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,TPUST,  'TPUNST' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TPSAT,  'TPSAT'  ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TPWLT,  'TPWLT'  ,             RC=STATUS); VERIFY_(STATUS)
-        if (is_OFFLINE) then
-           call MAPL_GetPointer(INTERNAL, ASNOW, 'ASNOW', RC=STATUS); VERIFY_(STATUS)
-        else
-           call MAPL_GetPointer(EXPORT,ASNOW,  'ASNOW'  ,             RC=STATUS); VERIFY_(STATUS)
-        endif
+        call MAPL_GetPointer(EXPORT,ASNOW,  'ASNOW'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SHSNOW, 'SHSNOW' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,AVETSNOW,'AVETSNOW',           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,FRSAT,  'FRSAT'  ,             RC=STATUS); VERIFY_(STATUS)
@@ -4446,11 +4421,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,TP4,    'TP4'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TP5,    'TP5'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TP6,    'TP6'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        if (is_OFFLINE) then
-           call MAPL_GetPointer(INTERNAL, EMIS, 'EMIS', RC=STATUS);   VERIFY_(STATUS)
-        else
-           call MAPL_GetPointer(EXPORT,EMIS,   'EMIS'   ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        endif
+        call MAPL_GetPointer(EXPORT,EMIS,   'EMIS'   ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBVR,  'ALBVR'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBVF,  'ALBVF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBNR,  'ALBNR'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
@@ -4927,7 +4898,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         DEDTC=0.0
         DHSDQA=0.0
 
-        if(is_OFFLINE) then
+        if(OFFLINE_MODE /=0) then
            do N=1,NUM_SUBTILES
               CFT   (:,N) = 1.0
               CFQ   (:,N) = 1.0
@@ -5525,7 +5496,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         call MAPL_TimerOff ( MAPL, "-CATCH" )
 
-        if (is_OFFLINE) then
+        if (OFFLINE_MODE /=0) then
            TC(:,FSAT) = TC1_0
            TC(:,FTRN) = TC2_0
            TC(:,FWLT) = TC4_0
@@ -5610,7 +5581,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            QST     = QST   +           QC(:,N)          *FR(:,N)
         end do
 
-        if ( .not. is_OFFLINE) then
+        if (OFFLINE_MODE == 0) then
 !amm add correction term to latent heat diagnostics (HLATN is always allocated)
 !    this will impact the export LHLAND
         HLATN = HLATN - LHACC
