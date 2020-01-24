@@ -6615,8 +6615,6 @@ contains
             ITRCR = ITRCR + 1
             call ESMFL_BundleGetPointerToData(TR    , trim(NAME),        TRPtrs (K)%Q, RC=STATUS)
             VERIFY_(STATUS)
-            call ESMFL_BundleGetPointerToData(TRI   , trim(NAME)//'IM' , TRIPtrs(K)%Q, RC=STATUS)
-            VERIFY_(STATUS)
          else
             ASSERT_(.not.associated(TRPtrs (K)%Q))
             TRPtrs(K)%Q  => null()
