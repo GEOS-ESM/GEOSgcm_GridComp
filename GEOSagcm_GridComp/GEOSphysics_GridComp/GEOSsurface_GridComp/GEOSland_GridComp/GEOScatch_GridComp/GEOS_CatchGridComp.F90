@@ -5929,11 +5929,13 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
   VERIFY_(status)
 
+  ! Pointers to EXPOERTs
+  call MAPL_GetPointer(export, asnow, 'ASNOW', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(export, emis, 'EMIS', rc=status)
+  VERIFY_(status)
+
   ! Pointers to INTERNALs
-  call MAPL_GetPointer(INTERNAL, asnow, 'ASNOW', rc=status)
-  VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, emis, 'EMIS', rc=status)
-  VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, fr, 'FR', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, ww, 'WW', rc=status)
