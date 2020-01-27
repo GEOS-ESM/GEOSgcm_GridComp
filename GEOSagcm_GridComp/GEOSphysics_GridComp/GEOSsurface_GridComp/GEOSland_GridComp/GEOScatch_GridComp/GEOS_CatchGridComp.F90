@@ -4021,9 +4021,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer, save                   :: unit_i=0
         logical, save                   :: firsttime=.true.
         integer                         :: unit
-	integer 			:: NT_GLOBAL
 
 #endif
+        integer :: NT_GLOBAL
 
         ! Offline case
 
@@ -4066,6 +4066,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:) :: sndzn1_incr
         real, pointer, dimension(:) :: sndzn2_incr
         real, pointer, dimension(:) :: sndzn3_incr
+        real, allocatable, dimension(:) :: global_tmp_incr, local_tmp_incr
 
         real, pointer, dimension(:,:) :: ghtcnt_incr
         real, pointer, dimension(:,:) :: wesnn_incr
@@ -5310,60 +5311,52 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
                     VERIFY_(STATUS)
 
+                    call WRITE_PARALLEL('LDAS_coupling: load nc LDAS increment file')
+                    call InFmt%open(LDASINC_File,pFIO_READ,rc=status)
+                    VERIFY_(status)
+                    InCfg=InFmt%read(rc=status)
+                    VERIFY_(status)
+                    variables => InCfg%get_variables()
+                    var_iter = variables%begin()
 
-                       call WRITE_PARALLEL('LDAS_coupling: load nc LDAS increment file')
-                       call InFmt%open(LDASINC_File,pFIO_READ,rc=status)
-                       VERIFY_(status)
-                       InCfg=InFmt%read(rc=status)
-                       VERIFY_(status)
-                       variables => InCfg%get_variables()
-                       var_iter = variables%begin()
-                       do while (var_iter/=variables%end())
-                          vname => var_iter%key()
-                          if ( trim(vname) == "TCFSAT_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname),tcfsat_incr)
-                          if ( trim(vname) == "TCFTRN_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname),tcftrn_incr)
-                          if ( trim(vname) == "TCFWLT_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname),tcfwlt_incr)
-                          if ( trim(vname) == "QCFSAT_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname),qcftrn_incr)
-                          if ( trim(vname) == "QCFTRN_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname),qcftrn_incr)
-                          if ( trim(vname) == "QCFWLT_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname),qcfwlt_incr )
-                          if ( trim(vname) == "CAPAC_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname), catdef_incr )
-                          if ( trim(vname) == "CATDEF_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname), catdef_incr )
-                          if ( trim(vname) == "RZEXC_INCR" )  &
-                               call MAPL_VarRead ( InFmt,trim(vname), rzexc_incr )
-                          if ( trim(vname) == "SRFEXC_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname), srfexc_incr )
-                          if ( trim(vname) == "GHTCNT1_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt1_incr )
-                          if ( trim(vname) == "GHTCNT2_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt2_incr )
-                          if ( trim(vname) == "GHTCNT3_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt3_incr )
-                          if ( trim(vname) == "GHTCNT4_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt4_incr )
-                          if ( trim(vname) == "GHTCNT5_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt5_incr )
-                          if ( trim(vname) == "GHTCNT6_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt6_incr )
-                          if ( trim(vname) == "WESNN1_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname), wesnn1_incr )
-                          if ( trim(vname) == "WESNN2_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname), wesnn2_incr )
-                          if ( trim(vname) == "WESNN3_INCR" ) &
-                               call MAPL_VarRead ( InFmt,trim(vname), wesnn3_incr )
-                       enddo 
+                    NT_GLOBAL = size(mask)
+                    allocate(global_tmp_incr(NT_GLOBAL),source =0.0)
+                    allocate(local_tmp_incr(NTILES), source = 0.0)
 
+                    do while (var_iter/=variables%end())
+                       vname => var_iter%key()
+                       if (MAPL_AM_I_Root(VM)) then
+                            call MAPL_VarRead ( InFmt,trim(vname), global_tmp_incr)
+                       endif
+                       call ArrayScatter(local_tmp_incr, global_tmp_incr, tilegrid, mask=mask, rc=status)
+                       VERIFY_(STATUS)
 
-                       call inFmt%close()
-                       call WRITE_PARALLEL('LDAS_coupling:loaded nc LDAS increment file')
+                       if ( trim(vname) == "TCFSAT_INCR" )   tcfsat_incr = local_tmp_incr
+                       if ( trim(vname) == "TCFTRN_INCR" )   tcftrn_incr = local_tmp_incr
+                       if ( trim(vname) == "TCFWLT_INCR" )   tcfwlt_incr = local_tmp_incr
+                       if ( trim(vname) == "QCFSAT_INCR" )   qcfsat_incr = local_tmp_incr
+                       if ( trim(vname) == "QCFTRN_INCR" )   qcftrn_incr = local_tmp_incr
+                       if ( trim(vname) == "QCFWLT_INCR" )   qcfwlt_incr = local_tmp_incr
+                       if ( trim(vname) == "CAPAC_INCR" )    capac_incr  = local_tmp_incr
+                       if ( trim(vname) == "CATDEF_INCR" )   catdef_incr = local_tmp_incr
+                       if ( trim(vname) == "RZEXC_INCR" )    rzexc_incr  = local_tmp_incr
+                       if ( trim(vname) == "SRFEXC_INCR" )   srfexc_incr = local_tmp_incr
+                       if ( trim(vname) == "GHTCNT1_INCR" )  ghtcnt1_incr= local_tmp_incr
+                       if ( trim(vname) == "GHTCNT2_INCR" )  ghtcnt2_incr= local_tmp_incr
+                       if ( trim(vname) == "GHTCNT3_INCR" )  ghtcnt3_incr= local_tmp_incr
+                       if ( trim(vname) == "GHTCNT4_INCR" )  ghtcnt4_incr= local_tmp_incr
+                       if ( trim(vname) == "GHTCNT5_INCR" )  ghtcnt5_incr= local_tmp_incr
+                       if ( trim(vname) == "GHTCNT6_INCR" )  ghtcnt6_incr= local_tmp_incr
+                       if ( trim(vname) == "WESNN1_INCR" )   wesnn1_incr = local_tmp_incr
+                       if ( trim(vname) == "WESNN2_INCR" )   wesnn2_incr = local_tmp_incr
+                       if ( trim(vname) == "WESNN3_INCR" )   wesnn3_incr = local_tmp_incr
 
+                       call var_iter%next()
+                    enddo 
+
+                    call inFmt%close()
+                    call WRITE_PARALLEL('LDAS_coupling:loaded nc LDAS increment file')
+                    deallocate(local_tmp_incr, global_tmp_incr)
                     deallocate(mask)
 
 
