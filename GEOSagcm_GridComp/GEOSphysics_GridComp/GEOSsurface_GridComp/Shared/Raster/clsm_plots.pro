@@ -121,6 +121,59 @@ return,return_value
 
 END
 
+;===========================================================
+;+
+; NAME:
+;        SHUFFLE
+;
+; PURPOSE:
+;        This function returns the uniformly-shuffled elements of an array.
+;
+; CATEGORY:
+;        Math.
+;
+; CALLING SEQUENCE:
+;
+;        Result = SHUFFLE( A [, Num])
+;
+; INPUTS:
+;        A:        Array containing the elements to shuffle (e.g. INDGEN(100))
+;
+; OPTIONAL INPUTS:
+;        Num:      Number of shuffled elements to return. Must be < N_ELEMENTS(A)+1
+;
+; OPTIONAL INPUT KEYWORD PARAMETERS:
+;        SEED:     Number used to seed the random number generator, RANDOMU.
+;
+; OUTPUTS:
+;        Returns the Num shuffled elements of the A array.
+;
+; OPTIONAL OUTPUT KEYWORD PARAMETERS:
+;
+;        INDICES:  Array of indices pointing to the shuffled elements of A.
+;
+; EXAMPLE:
+;        Pick 10 unique random integers between the numbers 1..100:
+;
+;        i = INDGEN(100)
+;        j = SHUFFLE(i,10)
+;
+; MODIFICATION HISTORY:
+;        Written by:    Han Wen, January 1997.
+;-
+function SHUFFLE, A, Num, INDICES=Indices, SEED=Seed
+
+         NP   = N_PARAMS()
+         N    = N_ELEMENTS(A)
+         if (N eq 0) then message, $
+              'Must be called with 1-2 parameters: A [,Num]'
+         if (NP eq 1) then Num = N
+
+         r         = RANDOMU(Seed, N)
+         Indices   = SORT(r)
+         return, A(Indices(0:Num-1))
+end
+
 ; #########################################################
 
 PRO clsm_plots
@@ -235,6 +288,9 @@ close,1
 
 plot_tiles,nc,nr,ncat,gfile,path
 
+; plot countr_codes
+country_codes, tile_id
+
 ; (5) Plot canopy height
 ; ----------------------
 
@@ -293,7 +349,7 @@ clm45_file = '../CLM4.5_veg_typs_fracs'
 
 if (file_test (clm_file) or file_test (clm45_file))  then begin
 
-spawn, "/bin/cp /discover/nobackup/smahanam/GEOS5_misc/mask/images/ESA_LandCover_mask.jpg ." 
+;spawn, "/bin/cp /discover/nobackup/smahanam/GEOS5_misc/mask/images/ESA_LandCover_mask.jpg ." 
 
 if (file_test (clm_file)) then begin
 plot_clm   , ncat, tile_id
@@ -557,6 +613,9 @@ make_movies, ncat, vec2grid, 'LAI'
 make_movies, ncat, vec2grid, 'GREEN'
 make_movies, ncat, vec2grid, 'VISDF'
 make_movies, ncat, vec2grid, 'NIRDF'
+make_movies, ncat, vec2grid, 'MODIS-VIS'
+make_movies, ncat, vec2grid, 'MODIS-NIR'
+
 END
 
 ; ==============================================================================
@@ -1316,7 +1375,9 @@ if (vname eq 'LAI') then upval = 6.
 if (vname eq 'LAI')   then filename = '../lai.dat'
 if (vname eq 'GREEN') then filename = '../green.dat' 
 if (vname eq 'VISDF') then filename = '../AlbMap.WS.8-day.tile.0.3_0.7.dat'
-if (vname eq 'NIRDF') then filename = '../AlbMap.WS.8-day.tile.0.7_5.0.dat' 
+if (vname eq 'NIRDF') then filename = '../AlbMap.WS.8-day.tile.0.7_5.0.dat'
+if (vname eq 'MODIS-VIS') then filename = '../MODISVISmean.dat'
+if (vname eq 'MODIS-NIR') then filename = '../MODISNIRmean.dat'
 
 im = n_elements(vec2grid[*,0].NT)
 jm = n_elements(vec2grid[0,*].NT)
@@ -2368,7 +2429,7 @@ dx         = 1.d0/12.
 dy         = 1.d0/12.
 DATELINE   = 1
 global_bcs = 0
-WORKDIR    = '/gpfsm/dnb02/smahanam/MichelBechtold/SouthAmerica/0.125/'
+WORKDIR    = ''
 
 nc = long(360./dx)
 nr = long(180./dy)
@@ -2376,7 +2437,7 @@ nr = long(180./dy)
 openw,1,workdir + 'clsm/NLDAS-5arcmin_vec.data'
 
 if(NOT (boolean (global_bcs))) then begin
-  xylim = [25., -125., 53., -67.]
+  xylim = [35., -180., 80., -55.]
   x = indgen (nc)*dx -180. + dx/2.
   y = indgen (nr)*dy  -90. + dy/2.
   i1 = value_locate (x,  xylim(1)) + 1
@@ -2703,6 +2764,26 @@ Write_JPEG, 'lai.jpg', image24, True=1, Quality=100
 end
  
 ;_____________________________________________________________________
+
+pro load_random_colors
+
+R = shuffle(indgen(256))
+G = shuffle(indgen(256))
+B = shuffle(indgen(256))
+
+R (255) = 255
+G (255) = 255
+B (255) = 255
+R (0) = 0
+G (0) = 0
+B (0) = 0
+
+TVLCT,R ,G ,B
+
+end
+
+
+
 ;_____________________________________________________________________
 
 pro load_colors
@@ -2901,6 +2982,92 @@ Write_JPEG, 'Canopy_Height_onTiles.jpg', image24, True=1, Quality=100
 
 end
 
+; ====================================================================================
+pro country_codes, tile_id
+
+load_random_colors
+
+im = n_elements(tile_id[*,0])
+jm = n_elements(tile_id[0,*])
+
+dx = 360. / im
+dy = 180. / jm
+
+x = indgen(im)*dx -180. +  dx/2.
+y = indgen(jm)*dy -90.  +  dy/2.
+cnt_grid = intarr (im,jm)
+cnt_grid (*,*) =  !VALUES.F_NAN
+
+N_tiles = 0l
+openr,1,'../catchment.def'
+readf,1,N_tiles
+close,1 
+cnt_code = intarr (N_tiles)
+st_code  = intarr (N_tiles)
+
+openr,1,"../country_and_state_code.data"
+k = 0l
+i1 = 0
+i2 = 0
+
+for n = 0l, N_Tiles -1l do begin
+readf,1,k,i1,i2
+cnt_code (n) = i1
+st_code  (n) = i2
+endfor
+close,1
+us_ind   = where (cnt_code eq 243)
+cnt_code (us_ind) = st_code (us_ind)
+cnt_code (where (cnt_code eq 257)) =  !VALUES.F_NAN
+tmp_data = 0
+
+for j = 0l, jm -1l do begin
+   for i = 0l, im -1 do begin
+      if(tile_id[i,j] gt 0) then begin
+	cnt_grid(i,j) =  cnt_code(tile_id[i,j] -1) + 1
+      endif	
+   endfor
+endfor
+
+colors = indgen(256)
+levels = colors
+limits = [-60,-180,90,180]
+thisDevice = !D.Name
+set_plot,'Z'
+Device, Set_Resolution=[800,400], Z_Buffer=0
+Erase,255
+!p.background = 255
+!P.position=0
+!P.Multi = [0, 1, 1, 0, 0]
+
+MAP_SET,/CYLINDRICAL,/hires,color= 0,/NoErase,limit=limits,/ISOTROPIC,/NOBORDER
+for j = 0l, jm -1l do begin
+   for i = 0l, im -1 do begin
+      if((cnt_grid[i,j] gt 0) and (cnt_grid[i,j] le 255)) then begin
+	   yu = -90. + j*dy + dy
+           yl = -90. + j*dy 
+	   xl= -180. + i*dx 
+           xr= -180. + i*dx +dx
+           xx=fltarr(5)
+           yy=fltarr(5)
+           xx=[xl,xl,xr,xr,xl]
+           yy=[yu,yl,yl,yu,yu]
+           oplot,[xl,xr],[yl,yl],color =cnt_grid[i,j]           
+      endif
+   endfor
+endfor
+
+MAP_CONTINENTS,/COASTS,color=0,MLINETHICK=2
+snapshot = TVRD()
+TVLCT, r, g, b, /Get
+Device, Z_Buffer=1
+Set_Plot, thisDevice
+image24 = BytArr(3, 800,400)
+image24[0,*,*] = r[snapshot]
+image24[1,*,*] = g[snapshot]
+image24[2,*,*] = b[snapshot]
+Write_JPEG, 'Country_codes.jpg', image24, True=1, Quality=100
+end
 ; ====================================================================================
 
 pro compute_zo, pname, SCALE4Z0, ASZ0, Z2CH, tile_id
