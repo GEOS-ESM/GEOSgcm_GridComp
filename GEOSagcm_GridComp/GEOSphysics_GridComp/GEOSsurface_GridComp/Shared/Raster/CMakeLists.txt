@@ -24,7 +24,7 @@ include_directories(${INC_ESMF})
 include_directories(${INC_NETCDF})
 
 esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL_Base)
-target_compile_options(${this} PRIVATE ${OpenMP_Fortran_FLAGS})
+target_link_libraries(${this} PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
 
 if(NOT FORTRAN_COMPILER_SUPPORTS_FINDLOC)
    target_compile_definitions(${this} PRIVATE USE_EXTERNAL_FINDLOC)
