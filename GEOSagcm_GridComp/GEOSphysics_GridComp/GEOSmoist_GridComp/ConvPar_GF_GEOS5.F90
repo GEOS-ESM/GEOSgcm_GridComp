@@ -11,8 +11,7 @@ MODULE ConvPar_GF_GEOS5
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 USE module_gate
-USE MAPL_Mod, only : MAPL_AM_I_ROOT
-use MAPL_ConstantsMod
+USE MAPL
 !
 USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 !.. USE GTMP_2_GFCONVPAR, only : GTMP_2_GFCONVPAR_interface

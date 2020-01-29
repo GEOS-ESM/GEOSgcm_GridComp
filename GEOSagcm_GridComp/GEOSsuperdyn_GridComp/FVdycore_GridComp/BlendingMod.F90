@@ -14,7 +14,7 @@ module  BlendingMod
 
 ! !USES:
 
-    use MAPL_Mod, only : MAPL_CP, MAPL_KAPPA
+    use MAPL, only : MAPL_CP, MAPL_KAPPA
 
 
     implicit none
