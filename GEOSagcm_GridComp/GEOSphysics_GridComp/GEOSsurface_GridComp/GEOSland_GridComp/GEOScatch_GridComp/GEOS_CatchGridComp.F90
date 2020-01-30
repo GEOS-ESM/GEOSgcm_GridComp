@@ -4018,10 +4018,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         type (MAPL_LocStream)           :: LOCSTREAM
         integer, pointer                :: mask(:)
         integer                         :: nt
-        integer, save                   :: unit_i=0
         logical, save                   :: firsttime=.true.
+        integer, save                   :: unit_i=0
         integer                         :: unit
-
 #endif
         integer :: NT_GLOBAL
 
@@ -4074,7 +4073,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:,:) :: sndzn_incr
 
         type(ESMF_Field)              :: Field
-        integer                       :: unit
         type(ESMF_Grid)               :: TILEGRID
         type(MAPL_LocStream)          :: LOCSTREAM
         integer, pointer              :: mask(:)
@@ -5203,7 +5201,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         VERIFY_(STATUS)
         if(LDAS_INCR >0 )  then
 
-           call WRITE_PARALLEL(' LDAS_coupling: LDAS_INCR =1,apply correction')
+           !call WRITE_PARALLEL(' LDAS_coupling: LDAS_INCR =1,apply correction')
            ! get ADAS CORRECTOR ALARM 
            call MAPL_StateAlarmGet(MAPL,CORRECTOR_ALARM,"CORRECTOR_ALARM",RC=STATUS)
            VERIFY_(STATUS)
@@ -5224,7 +5222,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            endif ! CORRECTOR_ALARM ring 
            if (CATCH_INTERNAL_STATE%LDAS_CORRECTOR) then
-              call WRITE_PARALLEL (' LDAS_coupling: LDAS_CORRECTOR true ' )
+              !call WRITE_PARALLEL (' LDAS_coupling: LDAS_CORRECTOR true ' )
               ! field list 
               call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFSAT_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,tcfsat_incr,RC=STATUS) ; VERIFY_(STATUS)
@@ -5350,6 +5348,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        if ( trim(vname) == "WESNN1_INCR" )   wesnn1_incr = local_tmp_incr
                        if ( trim(vname) == "WESNN2_INCR" )   wesnn2_incr = local_tmp_incr
                        if ( trim(vname) == "WESNN3_INCR" )   wesnn3_incr = local_tmp_incr
+                       if ( trim(vname) == "HTSNNN1_INCR" )  htsnnn1_incr = local_tmp_incr
+                       if ( trim(vname) == "HTSNNN2_INCR" )  htsnnn2_incr = local_tmp_incr
+                       if ( trim(vname) == "HTSNNN3_INCR" )  htsnnn3_incr = local_tmp_incr
+                       if ( trim(vname) == "SNDZN1_INCR" )   sndzn1_incr = local_tmp_incr
+                       if ( trim(vname) == "SNDZN2_INCR" )   sndzn2_incr = local_tmp_incr
+                       if ( trim(vname) == "SNDZN3_INCR" )   sndzn3_incr = local_tmp_incr
 
                        call var_iter%next()
                     enddo 
