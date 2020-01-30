@@ -11109,9 +11109,9 @@ do K= 1, LM
 
      IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
          REV_CN_X = REV_CN_GF
-	 RSU_CN_X = RSU_CN_GF
-	ACLL_CN_X = PFL_CN_GF
-	ACIL_CN_X = PFI_CN_GF
+         RSU_CN_X = RSU_CN_GF
+         ACLL_CN_X = 0.5*(PFL_CN_GF(:,:,0:LM-1) + PFL_CN_GF(:,:,1:LM))
+         ACIL_CN_X = 0.5*(PFI_CN_GF(:,:,0:LM-1) + PFI_CN_GF(:,:,1:LM))
      ENDIF 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
