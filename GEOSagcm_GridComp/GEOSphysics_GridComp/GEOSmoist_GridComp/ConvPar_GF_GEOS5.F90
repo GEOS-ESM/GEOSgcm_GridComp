@@ -5139,7 +5139,7 @@ ENDIF !- end of section for atmospheric composition
           psum (i)=0.
           psumh(i)=0.
         enddo
-        do k=kts,ktf
+        do k=kts,kte
          do i=its,itf
           pw      (i,k)=0.
           pwh     (i,k)=0.
