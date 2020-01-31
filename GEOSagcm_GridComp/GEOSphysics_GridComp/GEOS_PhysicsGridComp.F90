@@ -1144,7 +1144,8 @@ contains
                          'REV_LS  ',  'REV_AN  ',                 &
                          'BYNCY   ',  'DQIDT   ', 'QI      ',     &
                          'DQRC    ',  'CNV_CVW ', 'QLLS    ',     &
-                         'QILS    ',  'DQRL    ', 'CNV_FRC ' /),  &
+                         'QILS    ',  'DQRL    ', 'CNV_FRC ',     & 
+                         'QV      '          /),  &                  !added for GOCART2G's children
         DST_ID      = CHEM,                                       &
         SRC_ID      = MOIST,                                      &
                                                        RC=STATUS  )
