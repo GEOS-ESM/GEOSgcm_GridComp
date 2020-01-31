@@ -2032,9 +2032,9 @@ if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
              AEROSOL2G_SSA(IM,JM,LM,NB_IRRAD),  &
              AEROSOL2G_ASY(IM,JM,LM,NB_IRRAD), __STAT__)
 
-    AEROSOL2G_EXT = 0.0
-    AEROSOL2G_SSA = 0.0
-    AEROSOL2G_ASY = 0.0
+    AEROSOL2G_EXT = 0.0d0
+    AEROSOL2G_SSA = 0.0d0
+    AEROSOL2G_ASY = 0.0d0
 
 
 !       ! set RH for aerosol optics
@@ -2117,6 +2117,18 @@ if (mapl_am_i_root()) print*,'AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY)
 ! END GOCARTng AERO2G callback
 ! ================================================================
 
+if (mapl_am_i_root()) print*,'diff AEROSOL2G_EXT = ', sum(AEROSOL2G_EXT - AEROSOL_EXT)
+if (mapl_am_i_root()) print*,'diff AEROSOL2G_SSA = ', sum(AEROSOL2G_SSA - AEROSOL_SSA)
+if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSOL_ASY)
+
+!if (mapl_am_i_root()) print*,'TEST aerosol2g_ext = ', aerosol2g_ext
+!if (mapl_am_i_root()) print*,'TEST aerosol_ext   = ', aerosol_ext
+
+!if (mapl_am_i_root()) print*,'TEST aerosol2g_ssa = ', aerosol2g_ssa
+!if (mapl_am_i_root()) print*,'TEST aerosol_ssa   = ', aerosol_ssa
+
+!if (mapl_am_i_root()) print*,'TEST aerosol2g_asy = ', aerosol2g_asy
+!if (mapl_am_i_root()) print*,'TEST aerosol_asy   = ', aerosol_asy
 
 
       NA = 3
