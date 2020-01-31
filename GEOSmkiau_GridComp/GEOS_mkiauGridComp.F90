@@ -1,4 +1,4 @@
-!  $Id$
+!  $Id: GEOS_mkiauGridComp.F90,v 1.38.2.21.18.5.2.5 2019/10/22 20:53:09 ltakacs Exp $
 
 #include "MAPL_Generic.h"
 
@@ -586,11 +586,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   real, parameter                     :: EPS = MAPL_RVAP/MAPL_RGAS-1.0
 
-  character(len=ESMF_MAXSTR)          :: REPLAY_TIME_INTERP
+  character(len=ESMF_MAXSTR), save    :: FILEP1
+  character(len=ESMF_MAXSTR), save    :: FILEP0
+  character(len=ESMF_MAXSTR), save    :: FILEM1
+  character(len=ESMF_MAXSTR), save    :: FILEM2
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEP1
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEP0
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEM1
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEM2
+  character(len=ESMF_MAXSTR)          :: REPLAY_TIME_INTERP
   character(len=ESMF_MAXSTR)          :: FILETMPL
   character(len=ESMF_MAXSTR)          :: GRIDINC
   character(len=ESMF_MAXSTR)          :: cremap
@@ -609,6 +613,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_Time)                     :: REPLAY_TIMEP0
   type(ESMF_Time)                     :: REPLAY_TIMEM1
   type(ESMF_Time)                     :: REPLAY_TIMEM2
+
+  type(ESMF_Alarm)                    :: ALARM
+  logical                             :: is_RegularReplay09_ringing
 
   integer                                 :: K,NQ,FID
   character(len=ESMF_MAXSTR), ALLOCATABLE :: RNAMES(:)
@@ -759,10 +766,29 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     REPLAY_TIME_INTERP = uppercase(REPLAY_TIME_INTERP)
     ASSERT_( trim(REPLAY_TIME_INTERP) == "LINEAR" .or. trim(REPLAY_TIME_INTERP) == "CUBIC" )
 
+! Check for 09 Files
+! ------------------
+    call ESMF_ClockGetAlarm(Clock,'RegularReplay09',Alarm,rc=Status)
+    if(STATUS==ESMF_SUCCESS) then
+       is_RegularReplay09_ringing = ESMF_AlarmIsRinging( Alarm,rc=status )
+       VERIFY_(status)
+       if( is_RegularReplay09_ringing ) then
+           call MAPL_GetResource(MAPL, FILETMPL, LABEL="REPLAY_FILE09:", default="NULL", RC=STATUS)
+           VERIFY_(STATUS)
+           if( trim(FILETMPL) == "NULL" ) then
+           call MAPL_GetResource(MAPL, FILETMPL, LABEL="REPLAY_FILE:", RC=STATUS)
+           VERIFY_(STATUS)
+           endif
+       else
+           call MAPL_GetResource(MAPL, FILETMPL, LABEL="REPLAY_FILE:", RC=STATUS)
+           VERIFY_(STATUS)
+       endif
+    else
+           call MAPL_GetResource(MAPL, FILETMPL, LABEL="REPLAY_FILE:", RC=STATUS)
+           VERIFY_(STATUS)
+    endif
 
     call MAPL_GetResource(MAPL, REPLAY_MODE, LABEL="REPLAY_MODE:",    default="NULL", RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, FILETMPL,    LABEL="REPLAY_FILE:",    default="NULL", RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CREMAP,      LABEL="REPLAY_REMAP:",   default="yes",  RC=STATUS)
     VERIFY_(STATUS)
@@ -911,7 +937,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if(MAPL_AM_I_ROOT() ) then
            print *, 'Current nymd: ',nymd,'  nhms: ',nhms,'  FAC:  1.00000'
-           print *
         endif
 
     else
@@ -1001,10 +1026,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call CFIO_Close      ( fid, STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, NX,  Label="NX:", RC=status )
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, NY,  Label="NY:", RC=status )
-    VERIFY_(STATUS)
+    call MAPL_MakeDecomposition(nx,ny,rc=status)
+    VERIFY_(status)
 
     do_transforms = ( IMbkg_World /= IMana_World ) .or. &
                     ( JMbkg_World /= JMana_World ) .or. &
@@ -1468,11 +1491,13 @@ CONTAINS
         VERIFY_(STATUS)
         call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
         VERIFY_(STATUS)
+             FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
         NEED_BUNDLEP0 = .FALSE.
-    else if( FILE_TIMEP0 .ne. REPLAY_TIMEP0 ) then
+    else if( (FILE_TIMEP0 .ne. REPLAY_TIMEP0) .or. (FILEP0 .ne. REPLAY_FILEP0) ) then
         call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
         VERIFY_(STATUS)
+             FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
     endif
 
@@ -1485,11 +1510,13 @@ CONTAINS
             VERIFY_(STATUS)
             call MAPL_CFIORead ( REPLAY_FILEM1, REPLAY_TIMEM1, RBUNDLEM1 , RC=status)
             VERIFY_(STATUS)
+                 FILEM1 = REPLAY_FILEM1
             FILE_TIMEM1 = REPLAY_TIMEM1
             NEED_BUNDLEM1 = .FALSE.
-        else if ( FILE_TIMEM1 .ne. REPLAY_TIMEM1 ) then
+        else if ( (FILE_TIMEM1 .ne. REPLAY_TIMEM1) .or. (FILEM1 .ne. REPLAY_FILEM1) ) then
             call MAPL_CFIORead ( REPLAY_FILEM1, REPLAY_TIMEM1, RBUNDLEM1 , RC=status)
             VERIFY_(STATUS)
+                 FILEM1 = REPLAY_FILEM1
             FILE_TIMEM1 = REPLAY_TIMEM1
         endif
 
@@ -1502,11 +1529,13 @@ CONTAINS
                 VERIFY_(STATUS)
                 call MAPL_CFIORead ( REPLAY_FILEP1, REPLAY_TIMEP1, RBUNDLEP1 , RC=status)
                 VERIFY_(STATUS)
+                     FILEP1 = REPLAY_FILEP1
                 FILE_TIMEP1 = REPLAY_TIMEP1
                 NEED_BUNDLEP1 = .FALSE.
-            else if ( FILE_TIMEP1 .ne. REPLAY_TIMEP1 ) then
+            else if ( FILE_TIMEP1 .ne. REPLAY_TIMEP1 .or. (FILEP1 .ne. REPLAY_FILEP1) ) then
                 call MAPL_CFIORead ( REPLAY_FILEP1, REPLAY_TIMEP1, RBUNDLEP1 , RC=status)
                 VERIFY_(STATUS)
+                     FILEP1 = REPLAY_FILEP1
                 FILE_TIMEP1 = REPLAY_TIMEP1
             endif
 
@@ -1518,11 +1547,13 @@ CONTAINS
                 VERIFY_(STATUS)
                 call MAPL_CFIORead ( REPLAY_FILEM2, REPLAY_TIMEM2, RBUNDLEM2 , RC=status)
                 VERIFY_(STATUS)
+                     FILEM2 = REPLAY_FILEM2
                 FILE_TIMEM2 = REPLAY_TIMEM2
                 NEED_BUNDLEM2 = .FALSE.
-            else if ( FILE_TIMEM2 .ne. REPLAY_TIMEM2 ) then
+            else if ( FILE_TIMEM2 .ne. REPLAY_TIMEM2 .or. (FILEM2 .ne. REPLAY_FILEM2) ) then
                 call MAPL_CFIORead ( REPLAY_FILEM2, REPLAY_TIMEM2, RBUNDLEM2 , RC=status)
                 VERIFY_(STATUS)
+                     FILEM2 = REPLAY_FILEM2
                 FILE_TIMEM2 = REPLAY_TIMEM2
             endif
         endif

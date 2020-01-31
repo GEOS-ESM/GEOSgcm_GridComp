@@ -1,4 +1,4 @@
-! $Id$
+! $Id: GEOS_PhysicsGridComp.F90,v 1.119.4.3.2.7.2.1.8.1.2.13.6.1.20.1.2.1.2.5.2.2.2.1.12.1 2019/07/23 15:30:41 mmanyin Exp $
 
 #include "MAPL_Generic.h"
 
@@ -28,6 +28,7 @@ module GEOS_PhysicsGridCompMod
   use GEOS_GwdGridCompMod,        only : GwdSetServices       => SetServices
 
   use GEOS_UtilsMod, only: GEOS_Qsat
+  use Bundle_IncrementMod
 
 ! PGI Module that contains the initialization 
 ! routines for the GPUs
@@ -110,9 +111,11 @@ contains
     integer                                 :: I
     type (ESMF_Config)                      :: CF
 
-    integer                                 :: DO_OBIO, DO_CO2CNNEE, DO_CO2SC
+    integer                                 :: DO_OBIO, DO_CO2CNNEE, DO_CO2SC, nCols, NQ
 
     real                                    :: SYNCTQ
+    character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
+    character(len=ESMF_MAXSTR)              :: TendUnits
 !=============================================================================
 
 ! Begin...
@@ -339,6 +342,45 @@ contains
 
 ! !EXPORT STATE:
 
+!   Add export states for turbulence increments
+!-------------------------------------------------
+    call ESMF_ConfigGetDim (cf, NQ, nCols, label=('TRI_increments::'), rc=STATUS)
+
+    if (NQ > 0) then
+      call ESMF_ConfigFindLabel (cf, ('TRI_increments::'), rc=STATUS)
+      VERIFY_(STATUS)
+
+      allocate (NAMES(NQ), stat=STATUS)
+      VERIFY_(STATUS)
+
+      do i = 1, NQ
+        call ESMF_ConfigNextLine(cf, rc=STATUS)
+        VERIFY_(STATUS)
+        call ESMF_ConfigGetAttribute(cf, NAMES(i), rc=STATUS)
+        VERIFY_(STATUS)
+      enddo
+
+      do i = 1, NQ
+        if (NAMES(i) == 'AOADAYS') then
+          TendUnits = 'days s-1'
+        else
+          TendUnits = 'UNITS'
+        end if
+
+        call MAPL_AddExportSpec(GC,                                           &
+          SHORT_NAME =  trim(NAMES(i))//'IT',                                 &
+          LONG_NAME  = 'tendency_of_'//trim(NAMES(i))//'_due_to_turbulence',  &
+          UNITS      =  TendUnits,                                            &
+          DIMS       =  MAPL_DimsHorzVert,                                    &
+          VLOCATION  =  MAPL_VLocationCenter,                                 &
+          RC=STATUS  )
+        VERIFY_(STATUS)
+      end do
+      deallocate(NAMES)
+    end if !NQ > 0
+
+!-----------------------------------------------------------
+
     call MAPL_AddExportSpec(GC,                                                       &
          SHORT_NAME = 'DTDT',                                                         &
          LONG_NAME  = 'pressure_weighted_tendency_of_air_temperature_due_to_physics', &
@@ -510,24 +552,6 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                                          &
-         SHORT_NAME = 'OXIT',                                            &
-         LONG_NAME  = 'tendency_of_odd_oxygen_due_to_turbulence',        &
-         UNITS      = 'mol mol-1 s-1',                                   &
-         DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                          &
-         SHORT_NAME = 'OXIM',                                            &
-         LONG_NAME  = 'tendency_of_odd_oxygen_due_to_moist_processes',   &
-         UNITS      = 'mol mol-1 s-1',                                   &
-         DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
     call MAPL_AddExportSpec(GC,                                      &
          SHORT_NAME = 'TIF',                                         &
          LONG_NAME  = 'tendency_of_air_temperature_due_to_friction', &
@@ -541,6 +565,22 @@ contains
          SHORT_NAME = 'TRADV ',                                    &
          LONG_NAME  = 'advected_quantities',                       &
          UNITS      = 'X',                                         &
+         DATATYPE   = MAPL_BundleItem,                             &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'H2ORTRI',                                   &
+         LONG_NAME  = 'H2O_rescale_increments',                    &
+         UNITS      = 'UNITS s-1',                                 &
+         DATATYPE   = MAPL_BundleItem,                             &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'MTRI',                                      &
+         LONG_NAME  = 'moist_quantities',                          &
+         UNITS      = 'UNITS s-1',                                 &
          DATATYPE   = MAPL_BundleItem,                             &
          RC=STATUS  )
     VERIFY_(STATUS)
@@ -1483,7 +1523,7 @@ contains
    type (ESMF_State),          pointer :: GIM(:)
    type (ESMF_State),          pointer :: GEX(:)
    type (ESMF_FieldBundle)             :: BUNDLE, iBUNDLE
-   type (ESMF_Field)                   :: FIELD
+   type (ESMF_Field)                   :: FIELD, TempField
    type (ESMF_Grid)                    :: GRID
 
    integer                             :: NUM_TRACERS
@@ -1492,6 +1532,7 @@ contains
    character(len=ESMF_MAXSTR), pointer :: NAMES(:)
    character(len=ESMF_MAXSTR)          :: myNAME
    character(len=ESMF_MAXSTR)          ::  iNAME
+   character(len=ESMF_MAXSTR)          :: fieldname
 
 ! Variables needed for GPU initialization
 
@@ -1815,6 +1856,10 @@ contains
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
 #endif
 
+! Initialize Water rescale tendency bundle
+!--------------------------------------------
+    call Initialize_IncBundle_init(GC, EXPORT, EXPORT, H2Oinc, __RC__)
+
 ! Fill export bundle of child quantities to be analyzed
 !------------------------------------------------------
 
@@ -1846,22 +1891,7 @@ contains
 ! Fill the moist increments bundle
 !---------------------------------
 
-    call ESMF_StateGet   (GEX(MOIST), 'MTRI', iBUNDLE, RC=STATUS )
-    VERIFY_(STATUS)
-    call ESMF_FieldBundleGet(BUNDLE, FieldCount=NA, RC=STATUS)
-    VERIFY_(STATUS)
-
-    do I=1,NA
-       call ESMF_FieldBundleGet(BUNDLE,   I,   FIELD,  RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_FieldGet (FIELD, NAME=myNAME,  RC=STATUS)
-       VERIFY_(STATUS)
-
-       iNAME = trim(myNAME) // 'IM'
-
-       call ESMFL_StateGetField  (EXPORT, (/iNAME/), iBUNDLE, RC=STATUS )
-       VERIFY_(STATUS)
-    end do
+    call Initialize_IncBundle_init(GC, GIM(MOIST), EXPORT, MTRIinc, __RC__)
 
 #ifdef PRINT_STATES
     call WRITE_PARALLEL ( trim(Iam)//": Convective Transport Tendency Bundle" )
@@ -2428,6 +2458,8 @@ contains
 ! Moist Processes
 !----------------
 
+    call Initialize_IncBundle_run(GIM(MOIST), EXPORT, MTRIinc, __RC__)
+
 !
 !  AMM - compute TH using T after GWD and write on moist import state TH
     if ( SYNCTQ.eq.1. ) then
@@ -2442,6 +2474,8 @@ contains
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
+
+    call Compute_IncBundle(GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)
 
 ! Surface Stage 1
 !----------------
@@ -2786,6 +2820,10 @@ contains
        call ESMF_FieldBundleGet ( BUNDLE, fieldNameList=NAMES, rc=STATUS )
        VERIFY_(STATUS)
 
+       !Re-initialize water rescale increment bundle
+       !----------------------------------------------
+       call Initialize_IncBundle_run(EXPORT, EXPORT, H2Oinc, __RC__)
+
        ! Add diagnostic for scaling tendency of QI and QL -> fill diagnostic with "before" value
        ! ------------------------------------------------
        if( associated(DQVDTSCL) ) DQVDTSCL =  QV
@@ -2840,6 +2878,10 @@ contains
  1001     format(1x,'PSDRY_OLD: ',g21.14,'  PSDRY_NEW: ',g21.14,'  RATIO: ',g25.18,'  DIF: ',g21.14)
        endif
 #endif
+
+       ! Compute water rescale increments
+       !----------------------------------
+       call Compute_IncBundle(EXPORT, EXPORT, H2Oinc, STATE, __RC__)
 
        ! Add diagnostic for scaling tendency of QI and QL -> update diagnostic with "after" value
        ! ------------------------------------------------
