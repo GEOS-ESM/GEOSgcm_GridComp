@@ -6466,8 +6466,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! ----------------------------------------------
     cat_id = nint(tile_id) ! gkw: temporary for debugging
 
-! compute daylength (and daylength factor) gkw: LATS is in radians, OB in degrees
+! compute daylength (and daylength factor)
 ! ----------------------------------------
+    if (.TRUE.) then
+
+    ! gkw: LATS is in radians, OB in degrees
     call MAPL_SunOrbitQuery(ORBIT,           & ! gkw: this is the correct way to obtain obliquity
                             OBLIQUITY=OB,    & ! gkw: ideally, ZS & ZC would be obtained this way
 			    rc=status )
@@ -6494,6 +6497,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !write(6,845) cat_id(1),lats(1),lons(1),dayl(1),-(sin(lats(1))*sin(declin))/(cos(lats(1))*cos(declin)), &
 !                                               -(sin(lats(1))*zs)/(cos(lats(1))*zc),ob,dayl_fac(1)
 !845 format('dayl:',i6,2f10.5,f9.2,2f10.6,f7.3,f8.5)
+
+    else
+
+      ! current daylight duration
+      call MAPL_SunGetDaylightDuration(ORBIT,lats,dayl,currTime=CURRENT_TIME,RC=STATUS)
+      VERIFY_(STATUS)
+      ! maximum daylight duration (at solstice)
+      call MAPL_SunGetDaylightDurationMax(ORBIT,lats,dayl_fac,currTime=CURRENT_TIME,RC=STATUS)
+      VERIFY_(STATUS)
+      ! dayl_fac is ratio current:maximum dayl squared (min 0.01 [gkw: from CLM4])
+      dayl_fac = min(1.,max(0.01,(dayl/dayl_fac)**2))
+
+    end if
 
 ! gkw: obtain catchment area fractions and soil moisture
 ! ------------------------------------------------------
