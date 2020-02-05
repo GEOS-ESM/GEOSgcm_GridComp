@@ -613,10 +613,19 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    ! Needed for LFR calculation
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'LWI',                                       &
-         LONG_NAME  = 'land(1)_water(0)_ice(2)_flag',              &
+         SHORT_NAME = 'FRLAKE',                                    &
+         LONG_NAME  = 'fraction_of_lake',                          &
+         UNITS      = '1',                                         &
+         DIMS       = MAPL_DimsHorzOnly,                           &
+         VLOCATION  = MAPL_VLocationNone,                          &
+         AVERAGING_INTERVAL = AVRGNINT,                            &
+         REFRESH_INTERVAL   = RFRSHINT,                            &
+         RC=STATUS  )
+
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'FRACI',                                     &
+         LONG_NAME  = 'ice_covered_fraction_of_tile',              &
          UNITS      = '1',                                         &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,                          &
@@ -11882,6 +11891,7 @@ do K= 1, LM
                                    ZLE,         &
                                    CNV_MFC,     &
                                    AREA,        &
+                                   TS,          &
                                    LFR_GCC,     &
                                           __RC__ )
          CALL MAPL_TimerOff(STATE,"--FLASH", __RC__ )
@@ -12886,7 +12896,8 @@ do K= 1, LM
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  SUBROUTINE Get_hemcoFlashrate ( STATE, IMPORT, IM, JM, LM, T, PLE, ZLE, CNV_MFC, AREA, LFR, RC )
+  SUBROUTINE Get_hemcoFlashrate ( STATE, IMPORT, IM, JM, LM, T, PLE, ZLE, CNV_MFC, &
+                                  AREA,  TS, LFR, RC )
 
     !=====================================================================================
     !BOP
@@ -12908,6 +12919,7 @@ do K= 1, LM
     REAL, DIMENSION(IM,JM,0:LM),  INTENT(IN)    :: ZLE
     REAL, DIMENSION(IM,JM,LM),    INTENT(IN)    :: CNV_MFC
     REAL, DIMENSION(IM,JM),       INTENT(IN)    :: AREA
+    REAL, DIMENSION(IM,JM),       INTENT(IN)    :: TS
     REAL, DIMENSION(:,:),         POINTER       :: LFR
     INTEGER,                      INTENT(INOUT) :: RC
 
@@ -12915,17 +12927,28 @@ do K= 1, LM
     INTEGER                          :: AGCM_IM
     REAL, ALLOCATABLE                :: LONS(:,:)
     REAL, ALLOCATABLE                :: LATS(:,:)
+    REAL, ALLOCATABLE                :: LWI(:,:)
     real, pointer, dimension(:,:)    :: LONS_RAD
     real, pointer, dimension(:,:)    :: LATS_RAD
-    REAL, DIMENSION(:,:), POINTER    :: LWI
+    real, pointer, dimension(:,:)    :: FROCEAN 
+    real, pointer, dimension(:,:)    :: FRLAKE 
+    real, pointer, dimension(:,:)    :: FRACI
     REAL, SAVE                       :: OTDLISSCAL = -1.0
 
 !---Initialize
     __Iam__('Get_hemcoFlashrate')
     LFR = 0.0
 
-!---Imports
-    call MAPL_GetPointer(IMPORT, LWI, 'LWI' , __RC__ )
+!---Calculate LWI, following legacy code in surface component
+    CALL MAPL_GetPointer(IMPORT, FROCEAN, 'FROCEAN' , __RC__ ) 
+    CALL MAPL_GetPointer(IMPORT, FRLAKE,  'FRLAKE'  , __RC__ ) 
+    CALL MAPL_GetPointer(IMPORT, FRACI,   'FRACI'   , __RC__ ) 
+    ALLOCATE(LWI(IM,JM),STAT=RC)
+    ASSERT_(RC==0)
+                                     LWI = 1.0  ! Land
+    where ( FROCEAN+FRLAKE >= 0.6  ) LWI = 0.0  ! Water
+    where ( LWI==0 .and. FRACI>0.5 ) LWI = 2.0  ! Ice
+    where ( LWI==0 .and. TS<271.40 ) LWI = 2.0  ! Ice
 
 !---Get lat/lon in degrees
     ALLOCATE(LONS(IM,JM),LATS(IM,JM),STAT=RC)
@@ -12983,6 +13006,7 @@ do K= 1, LM
 !---Cleanup
     IF(ALLOCATED(LONS)) DEALLOCATE(LONS)
     IF(ALLOCATED(LATS)) DEALLOCATE(LATS)
+    IF(ALLOCATED(LWI))  DEALLOCATE(LWI)
     RETURN_(ESMF_SUCCESS)
 
 END SUBROUTINE Get_hemcoFlashrate

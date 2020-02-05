@@ -1244,7 +1244,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'TS ', 'LWI'/),                           &
+         SHORT_NAME  = (/'TS' /),                                  &
          DST_ID      = MOIST,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
@@ -1252,7 +1252,7 @@ contains
 
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'SNOMAS   ','FRLAND   ','FROCEAN  ',      &
-                         'FRLANDICE'/),                            &
+                         'FRLANDICE','FRLAKE   ','FRACI    '/),    &
          DST_ID      = MOIST,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
