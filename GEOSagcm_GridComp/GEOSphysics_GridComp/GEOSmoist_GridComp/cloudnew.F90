@@ -453,6 +453,9 @@ contains
          QDDF3_dev        , &
          CNV_FRACTION_dev , &
          TROPP_dev        , &
+         A_cloud          , &
+         B_cloud          , &
+         qsat             , &
          RHX_dev          , &
          REV_LS_dev       , &
          REV_AN_dev       , &
@@ -487,7 +490,7 @@ contains
          TEMPOR_dev, DOSHLW, &
          NACTL_dev,    &
          NACTI_dev,    &
-         CONVPAR_OPTION )
+         CONVPAR_OPTION)
 #endif
 
       implicit none
@@ -645,7 +648,9 @@ contains
       real, intent(inout), dimension(IRUN,  LM) :: SKEW_QT_dev
       real, intent(in   ), dimension(IRUN,  LM) :: NACTL_dev  ! NACTL
       real, intent(in   ), dimension(IRUN,  LM) :: NACTI_dev  ! NACTI
-
+      real, intent(  out), dimension(IRUN,  LM) :: A_cloud
+      real, intent(  out), dimension(IRUN,  LM) :: B_cloud
+      real, intent(  out), dimension(IRUN,  LM) :: qsat
 
 !!$      real, intent(  out), dimension(IRUN,  LM) :: LIQANMOVE_dev  ! LIQANMOVE
 !!$      real, intent(  out), dimension(IRUN,  LM) :: ICEANMOVE_dev  ! ICEANMOVE
@@ -1112,7 +1117,11 @@ contains
                   WTHV2_dev(I,K),      &
                   wql_dev(I,K),        &
                   SKEW_QT_dev(I,K),    &
-                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I)  )
+                  CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I), &
+                  A_cloud(I,K),        &
+                  B_cloud(I,K),        &
+                  qsat(I,K))
+ 
             else
             call hystpdf(          &
                   DT             , &
@@ -2094,7 +2103,10 @@ contains
          WTHV2,      &
          WQL,        &
          SKEW_QT,    &
-         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND)
+         CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, &
+         A_cloud,    &
+         B_cloud,    &
+         qsat)
 
       real, intent(in)    :: DT,ALPHA,PL,ZL
       integer, intent(in) :: pdfshape
@@ -2107,6 +2119,7 @@ contains
                              PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
                              PDF_RQTSL
       real, intent(out)   :: WTHV2, WQL
+      real, intent(out)   :: A_cloud, B_cloud, qsat
 
       ! internal arrays
       real :: QCO, QVO, CFO, QAO, TAU,SL
@@ -2259,7 +2272,9 @@ contains
 !                fac_cond*QLW_LS_dev(I,:) - fac_fus*QIW_LS_dev(I,:)
             QT = QVn + QCn
             
-            call gaussian(ZL, 100.*PL, SL, QT, SL2, QW2, QWSL2, TEn, QCn, CFn)
+            call gaussian(ZL, 100.*PL, SL, QT, SL2, QW2, QWSL2, &
+                          TEn, QCn, CFn, &
+                          A_cloud, B_cloud, qsat)
             
             fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
          endif
@@ -2423,33 +2438,34 @@ contains
    end subroutine hystpdf_new
 
    ! Single-gaussian cloud pdf
-   subroutine gaussian(z, p, hl, qt, hl2, qt2, qthl, T, ql, ac)
+   subroutine gaussian(z, p, hl, qt, hl2, qt2, qthl, &
+                       T, ql, ac, &
+                       A, B, qs)
 
      use MAPL_SatVaporMod,  only: MAPL_EQsat
      use MAPL_ConstantsMod, only: MAPL_CP, MAPL_ALHL, MAPL_GRAV, MAPL_RDRY, MAPL_RVAP, MAPL_PI
 
      real, intent(in)    :: z, p, hl, qt, hl2, qt2, qthl
      real, intent(inout) :: T, ql, ac
-!     real, intent(out)   :: a, b                                                                                                            
+     real, intent(out)   :: A, B, qs                                                                                                            
+     real :: dqs, fac_cond, Tl, s, sigma_s, exner, Q
 
-     real :: qs, dqs, fac_cond, Tl, s, sigma_s, exner, Q, a, b
-
-     exner    = (p*1.E-5)**(MAPL_RDRY/MAPL_CP) ! Exner function                                                                              
-     fac_cond = MAPL_ALHL/MAPL_CP              ! lv/cp                                                                                       
+     exner    = (p*1.E-5)**(MAPL_RDRY/MAPL_CP) ! Exner function
+     fac_cond = MAPL_ALHL/MAPL_CP              ! lv/cp 
 
      Tl = hl - (MAPL_GRAV/MAPL_CP)*z
-!     Tl = T - fac_cond*ql        ! liquid water temperature                                                                                 
-     qs = MAPL_EQsat(Tl, p, dqs) ! saturation specific humidity                                                                              
-     s  = qt - qs                ! saturation excess/deficit                                                                                 
+!     Tl = T - fac_cond*ql        ! liquid water temperature                   
+     qs = MAPL_EQsat(Tl, p, dqs) ! saturation specific humidity 
+     s  = qt - qs                ! saturation excess/deficit 
 
-     a = 1./( 1. + fac_cond*dqs )
-     b = a*exner*dqs
+     A = 1./( 1. + fac_cond*dqs )
+     B = a*exner*dqs
 
-     sigma_s = sqrt( a**2.*qt2 - 2*a*b*(qthl/exner) + b**2.*(hl2/exner**2.) )
+     sigma_s = sqrt( A**2.*qt2 - 2*A*B*(qthl/exner) + B**2.*(hl2/exner**2.) )
 
-     ! Diagnose cloud properties                                                                                                             
+     ! Diagnose cloud properties 
      if (sigma_s > 0.) then
-        Q = a*(qt - qs)/sigma_s
+        Q = A*(qt - qs)/sigma_s
 
         ac = 0.5*( 1. + erf(Q/sqrt(2.)) )
         ql = sigma_s*( ac*Q + exp(-0.5*Q**2.)/sqrt(2.*MAPL_PI) )
@@ -2458,7 +2474,7 @@ contains
         ql = 0.
      end if
 
-     T = hl + (MAPL_ALHL/MAPL_CP)*ql - (MAPL_GRAV/MAPL_CP)*z ! Update temperature                                                            
+     T = hl + (MAPL_ALHL/MAPL_CP)*ql - (MAPL_GRAV/MAPL_CP)*z ! Update temperature 
 
    end subroutine gaussian
 

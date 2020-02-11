@@ -4972,6 +4972,32 @@ contains
         VERIFY_(STATUS)
 !--kml--- activation for single-moment uphysics
 
+! Coefficients for determining relative contribution of sensible and latent
+! heat fluxes to bouyancy flux
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 'A_cloud',                            &
+         LONG_NAME          = 'A-coefficient_for_moist_turbulence', & 
+         UNITS              = '?',                                  &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 'B_cloud',                            &
+         LONG_NAME          = 'B-coefficient_for_moist_turbulence', & 
+         UNITS              = '?',                                  &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 'qsat',                               &
+         LONG_NAME          = 'Saturation_specific_humidity',       & 
+         UNITS              = 'kg+1kg-1',                           &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
 !========================================================================================             
 
 
@@ -5601,6 +5627,8 @@ contains
       real, pointer, dimension(:,:,:)       :: NACTL,NACTI
 !--kml--- activation for single-moment uphysics
 
+      real, pointer, dimension(:,:,:)       :: A_cloud, B_cloud, qsat
+
       ! Aerosol-Cloud interactions
 
       real, pointer, dimension(:,:,:) :: SMAXL, WSUB, CCN01, CCN04, CCN1, SMAXI, & !DONIF
@@ -6211,7 +6239,7 @@ contains
 
 #endif
 
-      integer :: DO_SL3
+      integer :: DO_MYNN, EDMF_CONSISTENT_TYPE
 
       !  Begin...
       !----------
@@ -6974,6 +7002,10 @@ contains
         call MAPL_GetPointer(EXPORT, NACTI,'NACTI' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);NACTI=0.0
 !!!      endif
 !--kml-----------------------------------------------------------------------------
+
+      call MAPL_GetPointer(EXPORT, A_cloud, 'A_cloud', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, B_cloud, 'B_cloud', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT,    qsat,    'qsat', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
       ! Count the fields in TR...
       !--------------------------
@@ -8850,8 +8882,10 @@ contains
 
 !=== Calculate higher moments for double-gaussian cloud PDF ===!
 
-       call MAPL_GetResource(STATE, DO_SL3, 'TURBULENCE_DO_SL3:', default=0, RC=STATUS)
+       call MAPL_GetResource(STATE, DO_MYNN, 'TURBULENCE_DO_MYNN:', default=0, RC=STATUS)
        VERIFY_(STATUS)      
+       call MAPL_GetResource(STATE, EDMF_CONSISTENT_TYPE, 'EDMF_CONSISTENT_TYPE:', DEFAULT=0)
+       VERIFY_(STATUS)
 
        ! Liquid water static energy (over cp)
        hl = TEMP + (mapl_grav*ZLO - mapl_alhl*QLLS - mapl_alhf*QILS)/mapl_cp
@@ -8861,32 +8895,23 @@ contains
        ! define resolved gradients on edges 
        do k=1,LM-1
 
-	  wrk1 = 1.0 / (ZLO(:,:,k)-ZLO(:,:,k+1)) 
-          wrk3 = KH(:,:,k) * wrk1
+          ! Ensure realizibility of HLQT (this should be moved to DIFFUSE in Turbulence in the future)
+          HLQT(:,:,k) = sign( min( abs(HLQT(:,:,k)), sqrt(HL2(:,:,k)*QT2(:,:,k)) ), HLQT(:,:,k) )
 
-	  sm   = 0.5*(isotropy(:,:,k)+isotropy(:,:,k+1))*wrk1*wrk3 !Tau*Kh/dz^2
+          if (DO_MYNN == 0) then
+             wrk1 = 1.0 / (ZLO(:,:,k)-ZLO(:,:,k+1)) 
+             wrk3 = KH(:,:,k) * wrk1
 
-	! SGS vertical flux liquid/ice water static energy. Eq 1 in BK13 
-          wrk1 = hl(:,:,k) - hl(:,:,k+1) 
-          whl_sec(:,:,k) = - wrk3 * wrk1
+             sm   = 0.5*(isotropy(:,:,k)+isotropy(:,:,k+1))*wrk1*wrk3 !Tau*Kh/dz^2
 
-	! SGS vertical flux of total water. Eq 2 in BK13 
-          wrk2        = total_water(:,:,k) - total_water(:,:,k+1) 
-          wqt_sec(:,:,k) = - wrk3 * wrk2
+             ! SGS vertical flux liquid/ice water static energy. Eq 1 in BK13 
+             wrk1 = hl(:,:,k) - hl(:,:,k+1) 
+             whl_sec(:,:,k) = - wrk3 * wrk1
 
-          if (DO_SL3 == 1) then
-             ! Ensure realizibility
-             do j = 1,JM
-             do i = 1,IM
-                HLQT(i,j,k) = sign( min( abs(HLQT(i,j,k)), sqrt(HL2(i,j,k)*QT2(i,j,k)) ), HLQT(i,j,k) )
-             end do
-             end do
+             ! SGS vertical flux of total water. Eq 2 in BK13 
+             wrk2        = total_water(:,:,k) - total_water(:,:,k+1) 
+             wqt_sec(:,:,k) = - wrk3 * wrk2
 
-             ! Ensure realizibility
-             hl2_sec(:,:,k)  = HL2(:,:,k)
-             qt2_sec(:,:,k)  = QT2(:,:,k)
-             qthl_sec(:,:,k) = HLQT(:,:,k)
-          else
              ! Second moment of liquid/ice water static energy. Eq 4 in BK13
              hl2_sec(:,:,k) = hl2tune * sm * wrk1 * wrk1
 
@@ -8895,10 +8920,12 @@ contains
 
              ! Covariance of total water mixing ratio and liquid/ice water static
              ! energy.  Eq 5 in BK13
-
              qthl_sec(:,:,k) = hlqt2tune * sm * wrk1 * wrk2
+          else
+             hl2_sec(:,:,k)  = HL2(:,:,k)
+             qt2_sec(:,:,k)  = QT2(:,:,k)
+             qthl_sec(:,:,k) = HLQT(:,:,k)
          end if
-
        end do   
 
        ! set values at bottom edge
@@ -8907,8 +8934,6 @@ contains
        hl2_sec(:,:,LM)  = hl2_sec(:,:,LM-1) 
        qt2_sec(:,:,LM)  = qt2_sec(:,:,LM-1) 
        qthl_sec(:,:,LM) = qthl_sec(:,:,LM-1)
-
-
 
        ! average edge-values onto centers, add MF contribution 
        w3var = 0.
@@ -8922,24 +8947,48 @@ contains
           ku = k 
           if (k==1) kd = k 
 
-          w3var(:,:,k)    = edmf_w3(:,:,k)    ! assume 0 skewness in environment 
-
-          w2var(:,:,k)    = (1.0-edmf_frc(:,:,k))*(0.667*tkeshoc(:,:,k))+edmf_w2(:,:,k) 
-
-          thlsec(:,:,k)   = max(0.,(1.0-edmf_frc(:,:,k))*0.5*(hl2_sec(:,:,kd)+hl2_sec(:,:,ku))+edmf_hl2(:,:,k))
-
-          qwsec(:,:,k)    = max(0.,(1.0-edmf_frc(:,:,k))*0.5*(qt2_sec(:,:,kd)+qt2_sec(:,:,ku))+edmf_qt2(:,:,k))
-
-          qwthlsec(:,:,k) = (1.0-edmf_frc(:,:,k))*0.5*(qthl_sec(:,:,kd) + qthl_sec(:,:,ku))+edmf_qthl(:,:,k) 
-
-          wqtsec(:,:,k)   = (1.0-edmf_frc(:,:,k))*0.5*(wqt_sec(:,:,kd)  + wqt_sec(:,:,ku))+edmf_wqt(:,:,k)
-
-          whlsec(:,:,k)  = (1.0-edmf_frc(:,:,k))*0.5*(whl_sec(:,:,kd) + whl_sec(:,:,ku))+edmf_whl(:,:,k)
+          if ( DO_MYNN == 0 ) then 
+             w3var(:,:,k) = edmf_w3(:,:,k)    ! assume 0 skewness in environment 
+             w2var(:,:,k) = ( 1.0 - edmf_frc(:,:,k) )*(0.667*tkeshoc(:,:,k)) &
+                            + edmf_w2(:,:,k) 
+             thlsec(:,:,k) = max( 0., ( 1.0 - edmf_frc(:,:,k) )*0.5*( hl2_sec(:,:,kd) + hl2_sec(:,:,ku) )&
+                                      + edmf_hl2(:,:,k) )
+             qwsec(:,:,k) = max( 0., ( 1.0 - edmf_frc(:,:,k) )*0.5*( qt2_sec(:,:,kd) + qt2_sec(:,:,ku) )&
+                                     + edmf_qt2(:,:,k) )
+             qwthlsec(:,:,k) = ( 1.0 - edmf_frc(:,:,k) )*0.5*( qthl_sec(:,:,kd) + qthl_sec(:,:,ku) )&
+                               + edmf_qthl(:,:,k) 
+             wqtsec(:,:,k) = ( 1.0 - edmf_frc(:,:,k) )*0.5*( wqt_sec(:,:,kd) + wqt_sec(:,:,ku) )&
+                             + edmf_wqt(:,:,k)
+             whlsec(:,:,k) = ( 1.0 -edmf_frc(:,:,k) )*0.5*( whl_sec(:,:,kd) + whl_sec(:,:,ku) )&
+                             + edmf_whl(:,:,k)
+          else
+             if ( EDMF_CONSISTENT_TYPE /= 1 ) then
+                w3var(:,:,k)    = 0. ! unused for this option 
+                w2var(:,:,k)    = 0. ! unused for this option 
+                thlsec(:,:,k)   = max( 0., 0.5*( hl2_sec(:,:,kd) + hl2_sec(:,:,ku) ) )
+                qwsec(:,:,k)    = max( 0., 0.5*( qt2_sec(:,:,kd) + qt2_sec(:,:,ku) ) )
+                qwthlsec(:,:,k) = 0.5*( qthl_sec(:,:,kd) + qthl_sec(:,:,ku) )
+                wqtsec(:,:,k)   = 0.5*( wqt_sec(:,:,kd) + wqt_sec(:,:,ku) )
+                whlsec(:,:,k)   = 0.5*( whl_sec(:,:,kd) + whl_sec(:,:,ku) )
+             else ! for "naive" consistent partitioning
+                w3var(:,:,k)    = 0. ! unused for this option 
+                w2var(:,:,k)    = 0. ! unused for this option 
+                thlsec(:,:,k)   = max( 0., 0.5*( hl2_sec(:,:,kd) + hl2_sec(:,:,ku) ) + edmf_hl2(:,:,k) )
+                qwsec(:,:,k)    = max( 0., 0.5*( qt2_sec(:,:,kd) + qt2_sec(:,:,ku) ) + edmf_qt2(:,:,k) )
+                qwthlsec(:,:,k) = 0.5*( qthl_sec(:,:,kd) + qthl_sec(:,:,ku) ) + edmf_qthl(:,:,k) 
+                wqtsec(:,:,k)   = 0.5*( wqt_sec(:,:,kd) + wqt_sec(:,:,ku) )   + edmf_wqt(:,:,k)
+                whlsec(:,:,k)   = 0.5*( whl_sec(:,:,kd) + whl_sec(:,:,ku) )   + edmf_whl(:,:,k)
+             end if
+          end if
 
           ! Restrict QT variance, 5-20% of qstar.
           qwsec(:,:,k) = min(qwsec(:,:,k),(0.2*QSS(:,:,k))**2)
 !          qwsec(k) = max(min(qwsec(:,:,k),(0.2*QSS(:,:,k))**2),(0.05*QSS(:,:,k))**2)
           thlsec(:,:,k) = min(thlsec(:,:,k),4.0) 
+
+          ! Ensure realizibility 
+          qwthlsec(:,:,k) = sign( min( abs(qwthlsec(:,:,k)), sqrt(thlsec(:,:,k)*qwsec(:,:,k)) ), qwthlsec(:,:,k) )
+
 
        end do  
 
@@ -10349,6 +10398,9 @@ contains
               QDDF3             , &
               CNV_FRACTION      , &
               TROPP             , &
+              A_cloud           , &
+              B_cloud           , &
+              qsat              , &
                                 ! Diagnostics
               RHX_X             , &
               REV_LS_X          , &
