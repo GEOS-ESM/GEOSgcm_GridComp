@@ -5263,8 +5263,6 @@ ENDIF
           YTKE(:,:,1:LM-1) = DT*( TKET_M(:,:,1:LM-1) + TKET_B(:,:,1:LM-1) + TKET_T(:,:,1:LM-1) )
           YTKE(:,:,LM)     = TKE_SURF(:,:)
 
-          write(*,*) '*', TKE_SURF(:,:), '*'
-
           call MAPL_GetResource (MAPL, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
           if (MYNN_LEVEL == 3) then
              YHL2(:,:,0)      = 0.
