@@ -13,7 +13,7 @@ module GEOS_DataAtmGridCompMod
 ! !USES: 
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use ncar_ocean_fluxes_mod
 
   use ice_kinds_mod

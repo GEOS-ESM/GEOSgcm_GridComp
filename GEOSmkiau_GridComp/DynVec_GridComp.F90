@@ -14,7 +14,7 @@ module DynVec_GridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use fv_statemod, only: INTERP_AGRID_TO_DGRID
   use fv_statemod, only: fv_getpkz
   
@@ -571,7 +571,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
            if ( MAPL_AM_I_ROOT() ) then
               print *, 'Update leading to negative pressures, aborting'
            end if
-           ASSERT_(.FALSE.)
+           _ASSERT(.FALSE.,'needs informative message')
          endif
 
          deallocate( dpkz )
@@ -610,7 +610,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
            if ( MAPL_AM_I_ROOT() ) then
               print *, 'Update leading to negative pressures, aborting'
            end if
-           ASSERT_(.FALSE.)
+           _ASSERT(.FALSE.,'needs informative message')
          endif
          pkxy = bkg_pe**kappa
          do L=1,LM
@@ -635,7 +635,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          if ( MAPL_AM_I_ROOT() ) then
             print *, 'Update leading to negative pressures, aborting'
          end if
-         ASSERT_(.FALSE.)
+         _ASSERT(.FALSE.,'needs informative message')
        endif
 
 !      Update p-to-the-kappa

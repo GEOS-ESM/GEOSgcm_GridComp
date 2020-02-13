@@ -30,7 +30,7 @@ module GEOS_SaltwaterGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
   !use DragCoefficientsMod
 
