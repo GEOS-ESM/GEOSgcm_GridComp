@@ -683,7 +683,7 @@ contains
     call MAPL_GridCreate(GCS(AGCM), rc=status)
     VERIFY_(STATUS)
 
-    call MAPL_GridCompGEt(GCS(AGCM), grid=agrid, rc=status)
+    call ESMF_GridCompGet(GCS(AGCM), grid=agrid, rc=status)
     VERIFY_(status)
 
     if(DO_DATAATM==0) then
