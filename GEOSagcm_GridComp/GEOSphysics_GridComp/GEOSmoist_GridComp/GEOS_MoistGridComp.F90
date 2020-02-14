@@ -1143,6 +1143,35 @@ contains
     VERIFY_(STATUS)
 !-srf-gf-scheme
 
+!-mynn-edmf
+    call MAPL_AddImportSpec(GC,                                              &
+       LONG_NAME  = 'updraft_area_fraction',                                 &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'au'    ,                                                &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                              &
+       LONG_NAME  = 'sub-environmental_hl',                                  &
+       UNITS      = 'K',                                                     &
+       SHORT_NAME = 'hle',                                                   &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                              &
+       LONG_NAME  = 'sub-environmental_qt',                                  &
+       UNITS      = 'kg+1kg-1',                                              &
+       SHORT_NAME = 'qte',                                                   &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+!-mynn-edmf
+
     ! !EXPORT STATE:
 
     call MAPL_AddExportSpec(GC,                                   &
@@ -5477,7 +5506,7 @@ contains
       real, pointer, dimension(:,:,:) :: T, PLE, U, V, W, TH
       real, pointer, dimension(:,:)   :: TROPP
       real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE, TKESHOC
-      real, pointer, dimension(:,:,:) :: ISOTROPY,w3_canuto,edmf_wqt,edmf_whl,edmf_qt2,edmf_hl2,edmf_qthl,edmf_w2,edmf_w3,edmf_qt3,edmf_dry_a,edmf_moist_a
+      real, pointer, dimension(:,:,:) :: ISOTROPY,w3_canuto,edmf_wqt,edmf_whl,edmf_qt2,edmf_hl2,edmf_hlqt,edmf_w2,edmf_w3,edmf_qt3,edmf_dry_a,edmf_moist_a
       real, pointer, dimension(:,:,:) :: HL2, QT2, HLQT
       real, pointer, dimension(    :) :: PREF
       real, pointer, dimension(:,:,:) :: Q, QRAIN, QSNOW, QGRAUPEL, QLLS, QLCN, CLLS, CLCN, BYNCY, QILS, QICN, QCTOT,QITOT,QLTOT
@@ -5619,6 +5648,7 @@ contains
       real, pointer, dimension(:,:,:)       :: DTDT_BL
       real, pointer, dimension(:,:,:)       :: DQDT_BL
       real, pointer, dimension(:,:,:)       :: DQDT_GF,DTDT_GF,MUPDP,MUPSH,MUPMD,DTRDT_GF
+      real, pointer, dimension(:,:,:)       :: au, hle, qte ! for MYNN-EDMF
       real, pointer, dimension(:,:  )       :: USTAR,TSTAR,QSTAR,T2M,Q2M,TA,QA,SH,EVAP,PHIS
       real, pointer, dimension(:,:  )       :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
       real, pointer, dimension(:,:  )       :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
@@ -6150,8 +6180,8 @@ contains
 
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
 
-      real, dimension(IM,JM,LM) :: hl,total_water,w3var,w2var,thlsec,qwsec,qwthlsec,wqtsec,whlsec,wqlsec
-      real, dimension(IM,JM,LM) :: whl_sec,wqt_sec,hl2_sec,qt2_sec,qthl_sec
+      real, dimension(IM,JM,LM) :: hl,total_water,w3var,w2var,hlsec,qtsec,hlqtsec,wqtsec,whlsec,wqlsec
+      real, dimension(IM,JM,LM) :: whl_sec,wqt_sec,hl2_sec,qt2_sec,hlqt_sec, au_full
       real, dimension(IM,JM)    :: sm,wrk1,wrk2,wrk3
       real kd,ku,qt2tune,hl2tune,hlqt2tune
 
@@ -6485,7 +6515,7 @@ contains
       call MAPL_GetPointer(IMPORT, edmf_moist_a, 'edmf_moist_a', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, edmf_qt2, 'edmf_qt2', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, edmf_hl2, 'edmf_hl2', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, edmf_qthl,'edmf_qthl', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, edmf_hlqt,'edmf_qthl', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, edmf_w2,  'edmf_w2', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, edmf_w3,  'edmf_w3', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, edmf_qt3, 'edmf_qt3', RC=STATUS); VERIFY_(STATUS)
@@ -6513,6 +6543,11 @@ contains
       call MAPL_GetPointer(IMPORT, HL2 ,   'HL2',    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, QT2  ,  'QT2',    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, HLQT,   'HLQT',   RC=STATUS); VERIFY_(STATUS)
+
+      ! Get pointers to sub-environmental properties
+      call MAPL_GetPointer(IMPORT,   au,   'au', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,  hle,  'hle', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,  qte,  'qte', RC=STATUS); VERIFY_(STATUS)
 
       ! define EDMF updraft fraction on full levels
       edmf_frc = 0.5*(edmf_dry_a(:,:,0:LM-1)+edmf_moist_a(:,:,0:LM-1)+edmf_dry_a(:,:,1:LM)+edmf_moist_a(:,:,1:LM))
@@ -8920,11 +8955,11 @@ contains
 
              ! Covariance of total water mixing ratio and liquid/ice water static
              ! energy.  Eq 5 in BK13
-             qthl_sec(:,:,k) = hlqt2tune * sm * wrk1 * wrk2
+             hlqt_sec(:,:,k) = hlqt2tune * sm * wrk1 * wrk2
           else
              hl2_sec(:,:,k)  = HL2(:,:,k)
              qt2_sec(:,:,k)  = QT2(:,:,k)
-             qthl_sec(:,:,k) = HLQT(:,:,k)
+             hlqt_sec(:,:,k) = HLQT(:,:,k)
          end if
        end do   
 
@@ -8933,13 +8968,13 @@ contains
        wqt_sec(:,:,LM)  = EVAP(:,:)          !
        hl2_sec(:,:,LM)  = hl2_sec(:,:,LM-1) 
        qt2_sec(:,:,LM)  = qt2_sec(:,:,LM-1) 
-       qthl_sec(:,:,LM) = qthl_sec(:,:,LM-1)
+       hlqt_sec(:,:,LM) = hlqt_sec(:,:,LM-1)
 
        ! average edge-values onto centers, add MF contribution 
        w3var = 0.
-       thlsec = 0.  
-       qwsec = 0.  
-       qwthlsec = 0.   
+       hlsec = 0.  
+       qtsec = 0.  
+       hlqtsec = 0.   
        wqtsec = 0.  
        whlsec = 0.  
        do k=1,LM 
@@ -8947,16 +8982,18 @@ contains
           ku = k 
           if (k==1) kd = k 
 
+          au_full(:,:,k) = 0.5*( au(:,:,kd) + au(:,:,ku) )
+
           if ( DO_MYNN == 0 ) then 
              w3var(:,:,k) = edmf_w3(:,:,k)    ! assume 0 skewness in environment 
              w2var(:,:,k) = ( 1.0 - edmf_frc(:,:,k) )*(0.667*tkeshoc(:,:,k)) &
                             + edmf_w2(:,:,k) 
-             thlsec(:,:,k) = max( 0., ( 1.0 - edmf_frc(:,:,k) )*0.5*( hl2_sec(:,:,kd) + hl2_sec(:,:,ku) )&
+             hlsec(:,:,k) = max( 0., ( 1.0 - edmf_frc(:,:,k) )*0.5*( hl2_sec(:,:,kd) + hl2_sec(:,:,ku) )&
                                       + edmf_hl2(:,:,k) )
-             qwsec(:,:,k) = max( 0., ( 1.0 - edmf_frc(:,:,k) )*0.5*( qt2_sec(:,:,kd) + qt2_sec(:,:,ku) )&
+             qtsec(:,:,k) = max( 0., ( 1.0 - edmf_frc(:,:,k) )*0.5*( qt2_sec(:,:,kd) + qt2_sec(:,:,ku) )&
                                      + edmf_qt2(:,:,k) )
-             qwthlsec(:,:,k) = ( 1.0 - edmf_frc(:,:,k) )*0.5*( qthl_sec(:,:,kd) + qthl_sec(:,:,ku) )&
-                               + edmf_qthl(:,:,k) 
+             hlqtsec(:,:,k) = ( 1.0 - edmf_frc(:,:,k) )*0.5*( hlqt_sec(:,:,kd) + hlqt_sec(:,:,ku) )&
+                               + edmf_hlqt(:,:,k) 
              wqtsec(:,:,k) = ( 1.0 - edmf_frc(:,:,k) )*0.5*( wqt_sec(:,:,kd) + wqt_sec(:,:,ku) )&
                              + edmf_wqt(:,:,k)
              whlsec(:,:,k) = ( 1.0 -edmf_frc(:,:,k) )*0.5*( whl_sec(:,:,kd) + whl_sec(:,:,ku) )&
@@ -8965,39 +9002,39 @@ contains
              if ( EDMF_CONSISTENT_TYPE /= 1 ) then
                 w3var(:,:,k)    = 0. ! unused for this option 
                 w2var(:,:,k)    = 0. ! unused for this option 
-                thlsec(:,:,k)   = max( 0., 0.5*( hl2_sec(:,:,kd) + hl2_sec(:,:,ku) ) )
-                qwsec(:,:,k)    = max( 0., 0.5*( qt2_sec(:,:,kd) + qt2_sec(:,:,ku) ) )
-                qwthlsec(:,:,k) = 0.5*( qthl_sec(:,:,kd) + qthl_sec(:,:,ku) )
+                hlsec(:,:,k)    = max( 0., 0.5*( hl2_sec(:,:,kd) + hl2_sec(:,:,ku) ) )
+                qtsec(:,:,k)    = max( 0., 0.5*( qt2_sec(:,:,kd) + qt2_sec(:,:,ku) ) )
+                hlqtsec(:,:,k)  = 0.5*( hlqt_sec(:,:,kd) + hlqt_sec(:,:,ku) )
                 wqtsec(:,:,k)   = 0.5*( wqt_sec(:,:,kd) + wqt_sec(:,:,ku) )
                 whlsec(:,:,k)   = 0.5*( whl_sec(:,:,kd) + whl_sec(:,:,ku) )
              else ! for "naive" consistent partitioning
                 w3var(:,:,k)    = 0. ! unused for this option 
                 w2var(:,:,k)    = 0. ! unused for this option 
-                thlsec(:,:,k)   = max( 0., 0.5*( hl2_sec(:,:,kd) + hl2_sec(:,:,ku) ) + edmf_hl2(:,:,k) )
-                qwsec(:,:,k)    = max( 0., 0.5*( qt2_sec(:,:,kd) + qt2_sec(:,:,ku) ) + edmf_qt2(:,:,k) )
-                qwthlsec(:,:,k) = 0.5*( qthl_sec(:,:,kd) + qthl_sec(:,:,ku) ) + edmf_qthl(:,:,k) 
+                hlsec(:,:,k)    = max( 0., 0.5*( hl2_sec(:,:,kd) + hl2_sec(:,:,ku) ) + edmf_hl2(:,:,k) )
+                qtsec(:,:,k)    = max( 0., 0.5*( qt2_sec(:,:,kd) + qt2_sec(:,:,ku) ) + edmf_qt2(:,:,k) )
+                hlqtsec(:,:,k)  = 0.5*( hlqt_sec(:,:,kd) + hlqt_sec(:,:,ku) ) + edmf_hlqt(:,:,k) 
                 wqtsec(:,:,k)   = 0.5*( wqt_sec(:,:,kd) + wqt_sec(:,:,ku) )   + edmf_wqt(:,:,k)
                 whlsec(:,:,k)   = 0.5*( whl_sec(:,:,kd) + whl_sec(:,:,ku) )   + edmf_whl(:,:,k)
              end if
           end if
 
           ! Restrict QT variance, 5-20% of qstar.
-          qwsec(:,:,k) = min(qwsec(:,:,k),(0.2*QSS(:,:,k))**2)
-!          qwsec(k) = max(min(qwsec(:,:,k),(0.2*QSS(:,:,k))**2),(0.05*QSS(:,:,k))**2)
-          thlsec(:,:,k) = min(thlsec(:,:,k),4.0) 
+          qtsec(:,:,k) = min(qtsec(:,:,k),(0.2*QSS(:,:,k))**2)
+!          qtsec(k) = max(min(qtsec(:,:,k),(0.2*QSS(:,:,k))**2),(0.05*QSS(:,:,k))**2)
+          hlsec(:,:,k) = min(hlsec(:,:,k),4.0) 
 
           ! Ensure realizibility 
-          qwthlsec(:,:,k) = sign( min( abs(qwthlsec(:,:,k)), sqrt(thlsec(:,:,k)*qwsec(:,:,k)) ), qwthlsec(:,:,k) )
+          hlqtsec(:,:,k) = sign( min( abs(hlqtsec(:,:,k)), sqrt(hlsec(:,:,k)*qtsec(:,:,k)) ), hlqtsec(:,:,k) )
 
 
        end do  
 
        ! Fill the exports
-       if (associated(QT2SHOC))  QT2SHOC  = qwsec
-       if (associated(HL2SHOC))  HL2SHOC  = thlsec
+       if (associated(QT2SHOC))  QT2SHOC  = qtsec
+       if (associated(HL2SHOC))  HL2SHOC  = hlsec
        if (associated(W2))       W2       = w2var
        if (associated(W3))       W3       = w3var
-       if (associated(HLQTSHOC)) HLQTSHOC = qwthlsec
+       if (associated(HLQTSHOC)) HLQTSHOC = hlqtsec
        if (associated(WQT))      WQT      = wqtsec
        if (associated(WHL))      WHL      = whlsec
 
@@ -10340,11 +10377,17 @@ contains
               KH                , &   ! <- turb
               ISOTROPY          , &   ! <- turb
               edmf_frc          , &   ! <- turb
+              au_full           , &   ! <- turb
+              hle               , &   ! <- turb
+              qte               , &   ! <- turb
+              edmf_hl2          , &   ! <- turb
+              edmf_qt2          , &   ! <- turb
+              edmf_hlqt         , &   ! <- turb
               wqtsec            , &   ! <- turb
               whlsec            , &   ! <- turb
-              qwsec             , &   ! <- turb
-              thlsec            , &   ! <- turb
-              qwthlsec          , &   ! <- turb
+              qtsec             , &   ! <- turb
+              hlsec             , &   ! <- turb
+              hlqtsec           , &   ! <- turb
               w2var             , &   ! <- turb
               w3var             , &   ! <- turb
               edmf_qt3          , &   ! <- turb

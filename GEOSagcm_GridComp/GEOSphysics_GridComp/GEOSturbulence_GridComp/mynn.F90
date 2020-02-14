@@ -164,7 +164,13 @@ subroutine run_mynn(IM, JM, LM, &                                               
      wb_surf(i,j) = goth00*( H_surf(i,j)/(MAPL_CP*rhoe(i,j,LM)) + ep2*th00*E_surf(i,j)/rhoe(i,j,LM) )
      LMO(i,j)     = -u_star(i,j)**3./(MAPL_KARMAN*wb_surf(i,j))
 
-     tket_B(i,j,LM)  = wb_surf(i,j)
+     Km(i,j,0)  = 0.
+     Km(i,j,LM) = 0.
+
+     Kh(i,j,0)  = 0.
+     Kh(i,j,LM) = 0.
+
+     tket_B(i,j,LM) = wb_surf(i,j)
   end do
   end do
 
@@ -390,10 +396,10 @@ subroutine run_mynn(IM, JM, LM, &                                               
            end if
 
            write(*,*) &
-!                      tke(i,j,k), &
+                      tke(i,j,k), &
                       ac(i,j,k),  &
-                      real(MAPL_CP*rhoe(i,j,k)*( -Kh(i,j,k)*N2(i,j,k) + wb_cg ), 4), &
-                      real(MAPL_CP*rhoe(i,j,k)*wb_test, 4), &
+!                      real(MAPL_CP*rhoe(i,j,k)*( -Kh(i,j,k)*N2(i,j,k) + wb_cg ), 4), &
+!                      real(MAPL_CP*rhoe(i,j,k)*wb_test, 4), &
                       real(qdiv, 4)
 !                      rhoe(i,j,k), &
 !                      omega(i,j,k)!, &
@@ -424,18 +430,6 @@ subroutine run_mynn(IM, JM, LM, &                                               
      do j = 1,JM
      do i = 1,IM
         K_tke(i,j,k) = 1.5*( Km(i,j,k) + Km(i,j,km1) )
-
-!!$        if (CONSISTENT_TYPE == 2) then
-!!$           we    = -au(i,j,k)*wu(i,j,k)/( 1. - au(i,j,k) )
-!!$           we_up = -au(i,j,km1)*wu(i,j,km1)/( 1. - au(i,j,km1) )
-!!$
-!!$           tket_M(i,j,k)  =   Km(i,j,k)*S2(i,j,k) &
-!!$                            - ( 1. - au(i,j,km1) )*w2e(i,j,km1)*( we_up - we )*idzle
-!!$           tket_T(i,j,k)  = (  0.5*( Mu(i,j,km1)*w2e(i,j,km1) - Mu(i,j,k)*w2e(i,j,k) )*idzle &
-!!$                             - 0.5*max(0., E(i,j,k))*w2e(i,j,k) &
-!!$                             + 0.5*max(0., D(i,j,k))*( wu(i,j,k) - we )**2.&
-!!$                            )/rhoe(i,j,k)
-!!$        end if
      end do
      end do
   end do

@@ -1289,7 +1289,8 @@ contains
                          'edmf_w3     ', 'edmf_wqt    ', 'edmf_dry_a  ',     &
                          'edmf_moist_a', 'edmf_qthl   ', 'edmf_whl    ',     &
                          'edmf_w2     ',                                     &
-                         'HL2         ', 'QT2         ', 'HLQT        '/),   &
+                         'HL2         ', 'QT2         ', 'HLQT        ',     &
+                         'au          ', 'hle         ', 'qte         '/),    &
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )

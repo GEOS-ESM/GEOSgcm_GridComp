@@ -18,6 +18,7 @@ module GEOS_TurbulenceGridCompMod
   use LockEntrain
   use shoc
   use mynn, only : run_mynn, implicit_M, B1, B2
+  use edmf_mod, only : run_edmf, th00
 
 #ifdef _CUDA
   use cudafor
@@ -862,9 +863,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'sub-environmental_thl',                                 &
+       LONG_NAME  = 'sub-environmental_hl',                                  &
        UNITS      = 'K',                                                     &
-       SHORT_NAME = 'thle',                                                  &
+       SHORT_NAME = 'hle',                                                   &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -3029,9 +3030,9 @@ contains
                                             edmf_dry_v,edmf_moist_v,  &
                                             edmf_moist_qc,edmf_buoyf,edmf_mf, &
                                             edmf_w2, edmf_qt2, edmf_hl2, & 
-                                            edmf_w3, edmf_wqt, edmf_qthl, & 
+                                            edmf_w3, edmf_wqt, edmf_hlqt, & 
                                             edmf_whl, edmf_qt3, w3_canuto, &
-                                            thle, qte, &
+                                            hle, qte, &
                                             A_cloud, B_cloud, qsat
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
 !   real, dimension(IM,JM,0:LM)          ::  awhl3, awqt3, awthv3 ! for EDMF contribution to MYNN
@@ -3108,7 +3109,7 @@ contains
      real, dimension(im,jm)    :: rhodz,edmfZCLD
      real, dimension(im,jm,0:lm) :: RHOE,RHOAW3
      real, dimension(im,jm) :: ZPBLmf,KPBLmf   
-     real,dimension(im,jm,lm) :: buoyf,mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl
+     real,dimension(im,jm,lm) :: buoyf,mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl
      real :: ice_ramp,EntWFac
      integer, dimension(IM,JM)       :: IRAS, JRAS
      real,               dimension(LM+1) :: temparray, htke
@@ -3141,6 +3142,9 @@ contains
      real(kind=MAPL_R8), dimension(IM,JM,0:LM) :: AKIX, BKIX ! Coefficients for solving at half levels
 
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
+
+     ! test
+     real, dimension(IM,JM) :: zpbl_test
 
 #ifdef _CUDA
      type(dim3) :: Grid, Block
@@ -3333,7 +3337,7 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_hl2,  'edmf_hl2', ALLOC=.TRUE.,  RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,  edmf_qthl, 'edmf_qthl', ALLOC=.TRUE.,  RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  edmf_hlqt, 'edmf_qthl', ALLOC=.TRUE.,  RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  edmf_qt2,  'edmf_qt2', ALLOC=.TRUE.,   RC=STATUS)
      VERIFY_(STATUS)
@@ -3438,7 +3442,7 @@ contains
      call MAPL_GetPointer(EXPORT,     D_org,     'D_org', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
 
-     call MAPL_GetPointer(EXPORT,  thle,  'thle', ALLOC=.TRUE., RC=STATUS)
+     call MAPL_GetPointer(EXPORT,  hle,   'hle', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  qte,   'qte',  ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
@@ -3585,7 +3589,7 @@ contains
      call MAPL_TimerOn(MAPL,"---MASSFLUX")
 
 mfhl2 = 0.0
-mfqthl = 0.0
+mfhlqt = 0.0
 mfqt2 = 0.0
 mfw2 = 0.0
 mfw3 = 0.0
@@ -3595,7 +3599,7 @@ mfwhl = 0.0
 
 edmf_hl2 = 0.0
 edmf_qt2 = 0.0
-edmf_qthl = 0.0
+edmf_hlqt = 0.0
 
 IF(DoMF .eq. 1.) then
     
@@ -3610,23 +3614,78 @@ if (ETr .eq. 1.) then
 
     L02=L0
 
-    call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,NumUp,&
-             U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,ZPBL,ice_ramp, &   
-             edmfdrya,edmfmoista, &
-             edmfdryw,edmfmoistw, &
-             edmfdryqt,edmfmoistqt, &
-             edmfdrythl,edmfmoistthl, &
-             edmfdryu,edmfmoistu,  &
-             edmfdryv,edmfmoistv,  &
-             edmfmoistqc,             &
-             ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN
-             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
-             ET,L02,ENT0,EDfac,EntWFac,buoyf,&
-             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
-             au, Mu, E, D, thle, qte, &
-             EDMF_DISCRETE_TYPE, EDMF_IMPLICIT)
-    
+!!$    zpbl_test = zpbl
+!!$    call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,NumUp,&
+!!$             U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,ZPBL,ice_ramp, &   
+!!$             edmfdrya,edmfmoista, &
+!!$             edmfdryw,edmfmoistw, &
+!!$             edmfdryqt,edmfmoistqt, &
+!!$             edmfdrythl,edmfmoistthl, &
+!!$             edmfdryu,edmfmoistu,  &
+!!$             edmfdryv,edmfmoistv,  &
+!!$             edmfmoistqc,             &
+!!$             ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
+!!$             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN
+!!$             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
+!!$             ET,L02,ENT0,EDfac,EntWFac,buoyf,&
+!!$             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
+!!$             au, Mu, E, D, hle, qte, &
+!!$             EDMF_DISCRETE_TYPE, EDMF_IMPLICIT)
+!!$    zpbl = zpbl_test
+
+!!$    write(*,*) 'foo1'
+!!$    do l = 1,LM
+!!$       do j = 1,JM
+!!$       do i = 1,IM
+!!$          write(*,*) l, wthv_mf(i,j,l), Mu(i,j,l), E(i,j,l)
+!!$!          write(*,*) l, whl_mf(i,j,l), wqt_mf(i,j,l), wthv_mf(i,j,l)
+!!$!          write(*,*) l, ae3(i,j,l), aw3(i,j,l), aws3(i,j,l)
+!!$!          write(*,*) l, awqv3(i,j,l), awql3(i,j,l), awqi3(i,j,l)
+!!$!          write(*,*) l, awu3(i,j,l), awv3(i,j,l)
+!!$!          write(*,*) l, mfhl2(i,j,l), mfqt2(i,j,l), mfhlqt(i,j,l)
+!!$!          write(*,*) l, Mu(i,j,l), E(i,j,l), D(i,j,l)
+!!$!          write(*,*) l, au(i,j,l), Mu(i,j,l)
+!!$       end do
+!!$       end do
+!!$    end do
+!!$    write(*,*) 'foo2'
+
+    call run_edmf(IM, JM, LM, numup,                             & ! in                                                                      
+                  edmf_discrete_type, edmf_implicit,             & ! in                                                                      
+                  dt, z, zle, ple, rhoe,                         & ! in                                                                      
+                  u, v, thl, thv, qt, q, ql, qi,                 & ! in                                                                      
+                  ustar, sh, evap, zpbl, ice_ramp,               & ! in                                                                      
+                  pwmin, pwmax, AlphaW, AlphaQT, AlphaTH,        & ! in                                                                      
+                  ET, L02, ENT0, EDfac, EntWFac,                  & ! in                                                                      
+                  edmfdrya, edmfmoista, &
+                  edmfdryw, edmfmoistw, &
+                  edmfdryqt, edmfmoistqt, &
+                  edmfdrythl, edmfmoistthl, &
+                  edmfdryu, edmfmoistu,  &
+                  edmfdryv, edmfmoistv,  &
+                  edmfmoistqc, &
+                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3,                      & ! out (for solver)         
+                  whl_mf, wqt_mf, wthv_mf,                                      & ! out (for MYNN-EDMF)                                      
+                  buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for Moist)                                          
+                  iras, jras, &
+                  au, wu, Mu, E, D)
+
+!!$    do l = 1,LM
+!!$       do j = 1,JM
+!!$       do i = 1,IM
+!!$          write(*,*) l, wthv_mf(i,j,l), Mu(i,j,l), E(i,j,l)
+!!$!          write(*,*) l, whl_mf(i,j,l), wqt_mf(i,j,l), wthv_mf(i,j,l)
+!!$!          write(*,*) l, ae3(i,j,l), aw3(i,j,l), aws3(i,j,l)
+!!$!          write(*,*) l, awqv3(i,j,l), awql3(i,j,l), awqi3(i,j,l)
+!!$!          write(*,*) l, awu3(i,j,l), awv3(i,j,l)
+!!$!          write(*,*) l, mfhl2(i,j,l), mfqt2(i,j,l), mfhlqt(i,j,l)
+!!$!          write(*,*) l, Mu(i,j,l), E(i,j,l), D(i,j,l)
+!!$!          write(*,*) l, au(i,j,l), Mu(i,j,l)
+!!$       end do
+!!$       end do
+!!$    end do
+!!$    write(*,*) 'foo3'
+
     edmfZCLD=0.
   
       DO I=1,IM
@@ -3644,23 +3703,25 @@ if (ETr .eq. 1.) then
 ! negative L02 means no entrainment for the updrafts
      L02=-9.
  
-     call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,1,&
-             U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,ZPBL,ice_ramp, &   
-             edmfdrya,edmfmoista, &
-             edmfdryw,edmfmoistw, &
-             edmfdryqt,edmfmoistqt, &
-             edmfdrythl,edmfmoistthl, &
-             edmfdryu,edmfmoistu,  &
-             edmfdryv,edmfmoistv,  &
-             edmfmoistqc,             &
-             ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN
-             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
-             ET,L02,ENT0,EDfac,EntWFac,buoyf,&
-             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
-             au, Mu, E, D, thle, qte, &
-             EDMF_DISCRETE_TYPE, EDMF_IMPLICIT)
- 
+    call run_edmf(IM, JM, LM, 1,                             & ! in                                                                      
+                  edmf_discrete_type, edmf_implicit,             & ! in                                                                      
+                  dt, z, zle, ple, rhoe,                         & ! in                                                                 
+                  u, v, thl, thv, qt, q, ql, qi,                 & ! in                                                                      
+                  ustar, sh, evap, zpbl, ice_ramp,               & ! in                                                                      
+                  pwmin, pwmax, AlphaW, AlphaQT, AlphaTH,        & ! in                                                                      
+                  ET, L02, ENT0, EDfac, EntWFac,                  & ! in                                                                      
+                  edmfdrya, edmfmoista, &
+                  edmfdryw, edmfmoistw, &
+                  edmfdryqt, edmfmoistqt, &
+                  edmfdrythl, edmfmoistthl, &
+                  edmfdryu, edmfmoistu,  &
+                  edmfdryv, edmfmoistv,  &
+                  edmfmoistqc, &
+                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3,                      & ! out (for solver)         
+                  whl_mf, wqt_mf, wthv_mf,                                      & ! out (for MYNN-EDMF)                                      
+                  buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for Moist)                                          
+                  iras, jras, &
+                  au, wu, Mu, E, D)
  
     ! compute the depth of the convective layer  
     ! the height where the convective mass-flux is zero
@@ -3693,22 +3754,25 @@ if (ETr .eq. 1.) then
  ! now the real call to the mass-flux
  !
  
-     call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,NumUp,&
-             U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,ZPBL,ice_ramp, &   
-             edmfdrya,edmfmoista, &
-             edmfdryw,edmfmoistw, &
-             edmfdryqt,edmfmoistqt, &
-             edmfdrythl,edmfmoistthl, &
-             edmfdryu,edmfmoistu,  &
-             edmfdryv,edmfmoistv,  &
-             edmfmoistqc,             &
-             ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN
-             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
-             ET,L02,ENT0,EDfac,EntWFac,buoyf,&
-             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
-             au, Mu, E, D, thle, qte, &
-             EDMF_DISCRETE_TYPE, EDMF_IMPLICIT)
+    call run_edmf(IM, JM, LM, numup,                             & ! in                                                                      
+                  edmf_discrete_type, edmf_implicit,             & ! in                                                                      
+                  dt, z, zle, ple, rhoe,                         & ! in                                                                      
+                  u, v, thl, thv, qt, q, ql, qi,                 & ! in                                                                      
+                  ustar, sh, evap, zpbl, ice_ramp,               & ! in                                                                      
+                  pwmin, pwmax, AlphaW, AlphaQT, AlphaTH,        & ! in                                                                      
+                  ET, L02, ENT0, EDfac, EntWFac,                  & ! in                                                                      
+                  edmfdrya, edmfmoista, &
+                  edmfdryw, edmfmoistw, &
+                  edmfdryqt, edmfmoistqt, &
+                  edmfdrythl, edmfmoistthl, &
+                  edmfdryu, edmfmoistu,  &
+                  edmfdryv, edmfmoistv,  &
+                  edmfmoistqc, &
+                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3,                      & ! out (for solver)         
+                  whl_mf, wqt_mf, wthv_mf,                                      & ! out (for MYNN-EDMF)                                      
+                  buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for Moist)                                          
+                  iras, jras, &
+                  au, wu, Mu, E, D)
   
  else
     write (*,*) "Error: wrong EDMF_ET "
@@ -3790,7 +3854,7 @@ end if
      if (associated(edmf_w3)) edmf_w3=mfw3
      if (associated(edmf_qt3)) edmf_qt3=mfqt3
      if (associated(edmf_wqt)) edmf_wqt=mfwqt
-     if (associated(edmf_qthl)) edmf_qthl=mfqthl
+     if (associated(edmf_hlqt)) edmf_hlqt=mfhlqt
      if (associated(edmf_whl)) edmf_whl=mfwhl
      if (associated(edmf_mf)) edmf_mf=edmfmoista*edmfmoistw+edmfdrya*edmfdryw 
 
@@ -3836,7 +3900,7 @@ ELSE
     if (associated(edmf_w3))        edmf_w3       =mfw3
     if (associated(edmf_qt3))       edmf_qt3      =mfqt3
     if (associated(edmf_wqt))       edmf_wqt      =mfwqt
-    if (associated(edmf_qthl))      edmf_qthl     =mfqthl
+    if (associated(edmf_hlqt))      edmf_hlqt     =mfhlqt
     if (associated(edmf_whl))       edmf_whl      =mfwhl
 
     ZPBLmf=0.
@@ -5340,24 +5404,24 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
          SX=S+YV        
  elseif (trim(name)=='TKE_NEW') then
          AK => AKTKE; BK => BKTKE; CK => CKTKE
-         SX_HALF(:,:,0)      = 0.
+         SX_HALF(:,:,0)      = 0
          SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YTKE(:,:,1:LM-1)
-         SX_HALF(:,:,LM)     = 0.
+         SX_HALF(:,:,LM)     = YTKE(:,:,LM)
  elseif (trim(name)=='HL2') then
        AK => AKTPE; BK => BKTPE; CK => CKTPE
        SX_HALF(:,:,0)      = 0.
        SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YHL2(:,:,1:LM-1)
-       SX_HALF(:,:,LM)     = 0.
+       SX_HALF(:,:,LM)     = YHL2(:,:,LM)
  elseif (trim(name)=='QT2') then
        AK => AKTPE; BK => BKTPE; CK => CKTPE
        SX_HALF(:,:,0)      = 0.
        SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YQT2(:,:,1:LM-1)
-       SX_HALF(:,:,LM)     = 0.
+       SX_HALF(:,:,LM)     = YQT2(:,:,LM)
  elseif (trim(name)=='HLQT') then
        AK => AKTPE; BK => BKTPE; CK => CKTPE
        SX_HALF(:,:,0)      = 0.
        SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YHLQT(:,:,1:LM-1)
-       SX_HALF(:,:,LM)     = 0.
+       SX_HALF(:,:,LM)     = YHLQT(:,:,LM)
  end if
 
 
@@ -6781,8 +6845,8 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
              awhl3,awqt3,awthv3, & ! for MYNN
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L0,ENT0,EDfac,EntWFac,buoyf,&
-             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfqthl,mfwhl,iras,jras, &
-             au, Mu, E, D, thle, qte, &
+             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
+             au, Mu, E, D, hle, qte, &
              edmf_discrete_type, edmf_implicit)
 
 
@@ -6840,7 +6904,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
         REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(OUT) :: au, Mu
    ! output - buoyancy flux: sum_i a_i*w_i*(thv_i-<thv>) ... for TKE equation
          REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(OUT) :: buoyf,mfw2,mfw3,mfqt3,mfqt2,mfwqt,mfhl2,&
-                                                         mfqthl,mfwhl, thle, qte, E, D     
+                                                         mfhlqt,mfwhl, hle, qte, E, D     
 ! updraft properties
       REAL,DIMENSION(KTS-1:KTE,1:NUP) :: UPW,UPTHL,UPQT,UPQL,UPQI,UPA,UPU,UPV,UPTHV
  ! entrainment variables     
@@ -6864,7 +6928,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
                dry_qt,moist_qt,dry_thl,moist_thl,dry_u,moist_u,dry_v,moist_v, moist_qc 
         REAL,DIMENSION(KTS-1:KTE) :: s_aw,s_aws,s_awqv,s_awql,s_awqi,s_awu,s_awv
         REAL,DIMENSION(KTS:KTE) ::  s_buoyf
-        REAL,DIMENSION(KTS-1:KTE) :: s_aw2,s_aw3,s_aqt3,s_aqt2,s_aqthl,s_awqt,s_ahl2,s_awhl
+        REAL,DIMENSION(KTS-1:KTE) :: s_aw2,s_aw3,s_aqt3,s_aqt2,s_ahlqt,s_awqt,s_ahl2,s_awhl
         REAL,DIMENSION(KTS-1:KTE) :: s_awthv ! for MYNN
 ! exner function
         REAL,DIMENSION(KTS:KTE) :: exf 
@@ -6872,7 +6936,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
 
         real                      :: au_full, thlu_full, qtu_full
         REAL,DIMENSION(KTS-1:KTE) :: rhoe, au_flip, wu_flip, Mu_flip, thlu, qtu
-        REAL,DIMENSION(KTS:KTE)   :: E_flip, D_flip, thle_flip, qte_flip
+        REAL,DIMENSION(KTS:KTE)   :: E_flip, D_flip, hle_flip, qte_flip
 !  
         REAL :: stmp,ltm,QTsrfF,THVsrfF,mft,mfthvt
         INTEGER, DIMENSION(2) :: seedmf,the_seed
@@ -6929,7 +6993,7 @@ real, dimension(its:ite) :: L0
       mfqt2=0.
       mfwqt=0.
       mfhl2=0.
-      mfqthl=0.
+      mfhlqt=0.
       mfwhl=0.
 
    ! this is the environmental area - by default 1.
@@ -7071,7 +7135,7 @@ if (L0(IH) .gt. 0. ) then
    do i=1,Nup   
     do k=kts,kte
      ENT(k,i)=real(ENTi(k,i))*Ent0/(ZW(k)-ZW(k-1))
-    ! ENT(k,i)=ENTf(k,i)*Ent0/(ZW(k)-ZW(k-1)) 
+!     ENT(k,i)=ENTf(k,i)*Ent0/(ZW(k)-ZW(k-1)) ! test
    enddo
    enddo
 
@@ -7102,7 +7166,7 @@ end if
  !
  ! surface conditions
  !      
-   wstar=max(wstarmin,(mapl_grav/thv(1)*wthv*pblh)**(1./3.))
+   wstar=max(wstarmin,(mapl_grav/th00*wthv*pblh)**(1./3.))
    qstar=wqt/wstar
    thstar=wthv/wstar
 
@@ -7268,7 +7332,7 @@ end if
             ENDIF
 
             if ( k >= KTS ) then
-               E_flip(k) = E_flip(k) + UPA(K-1,I)*UPW(K-1,I)*Ent(K,I)
+               E_flip(k) = E_flip(k) + rhoe(k-1)*UPA(K-1,I)*UPW(K-1,I)*Ent(K,I)
             end if
          ENDDO  ! first sum over all i-updrafts
          
@@ -7334,11 +7398,12 @@ end if
       qtu_full  = 0.5*( qtu(k-1)     + qtu(k) )
 
       if ( au_full > 0. ) then
-         thle_flip(k) = ( thl(k) - au_full*thlu_full )/( 1. - au_full )
-         qte_flip(k)  = ( qt(k)  - au_full*qtu_full  )/( 1. - au_full )
+         hle_flip(k) =   exf(k)*( thl(k) - au_full*thlu_full )/( 1. - au_full ) &
+                       + (mapl_grav/mapl_cp)*zlo(k)
+         qte_flip(k) = ( qt(k)  - au_full*qtu_full  )/( 1. - au_full )
       else
-         thle_flip(k) = thl(k)
-         qte_flip(k)  = qt(k)
+         hle_flip(k) = exf(k)*thl(k) + (mapl_grav/mapl_cp)*zlo(k)
+         qte_flip(k) = qt(k)
       end if
    end do
     
@@ -7362,7 +7427,7 @@ end if
      s_aqt3=0.
      s_ahl2=0.
      s_awhl=0.
-     s_aqthl=0.
+     s_ahlqt=0.
 
      s_awthv=0.
 
@@ -7374,11 +7439,15 @@ end if
           s_aw3(K)=s_aw3(K)+UPA(K,I)*UPW(K,I)*UPW(K,I)*UPW(K,I)
           s_aqt2(K)=s_aqt2(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPQT(K,I)-QTI(K))
           s_aqt3(K)=s_aqt3(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))**3
-          s_aqthl(K)=s_aqthl(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPTHL(K,i)-THLI(K))
+          s_ahlqt(K)=s_ahlqt(K)+exfh(k)*UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPTHL(K,i)-THLI(K))
           if (edmf_implicit == 1) then
-             stmp=exfh(k)*mapl_cp*UPTHL(K,i)+UPQI(K,I)*mapl_alhs+UPQL(K,i)*mapl_alhl+mapl_grav*zw(k)
+             stmp = mapl_cp*exfh(k)*UPTHL(K,i) + mapl_grav*zw(k) + mapl_alhl*UPQL(K,i) + UPQI(K,I)*mapl_alhs
           else
-             stmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl + mapl_grav*zw(k) - exf(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl - mapl_grav*zlo(K)
+!             stmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl + mapl_grav*zw(k) - exf(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl - mapl_grav*zlo(K)
+!             stmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl - exfh(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl
+             stmp =   mapl_cp*exfh(k)*( UPTHL(K,i) - THLI(K) ) &
+                    + mapl_alhl*( UPQL(K,i) - QLI(K) ) &
+                    + mapl_alhs*( UPQI(K,I) - QII(K) ) 
           end if
           ltm=exfh(k)*(UPTHL(K,i)-THLI(K)) !+mapl_grav*zw(k)/mapl_cp
           s_aws(k)=s_aws(K)+UPA(K,i)*UPW(K,i)*stmp
@@ -7460,13 +7529,13 @@ end if
       mfqt2(IH,K)=0.5*(s_aqt2(KTE+KTS-K-1)+s_aqt2(KTE+KTS-K))
       mfqt3(IH,K)=0.5*(s_aqt3(KTE+KTS-K-1)+s_aqt3(KTE+KTS-K))
       mfwqt(IH,K)=0.5*(s_awqt(KTE+KTS-K-1)+s_awqt(KTE+KTS-K))
-      mfqthl(IH,K)=0.5*(s_aqthl(KTE+KTS-K-1)+s_aqthl(KTE+KTS-K))
+      mfhlqt(IH,K)=0.5*(s_ahlqt(KTE+KTS-K-1)+s_ahlqt(KTE+KTS-K))
       mfwhl(IH,K)=0.5*(s_awhl(KTE+KTS-K-1)+s_awhl(KTE+KTS-K))
 
-      E(IH,K)    = E_flip(KTE+KTS-K)
-      D(IH,K)    = D_flip(KTE+KTS-K)
-      thle(IH,K) = thle_flip(KTE+KTS-K)
-      qte(IH,K)  = qte_flip(KTE+KTS-K)
+      E(IH,K)   = E_flip(KTE+KTS-K)
+      D(IH,K)   = D_flip(KTE+KTS-K)
+      hle(IH,K) = hle_flip(KTE+KTS-K)
+      qte(IH,K) = qte_flip(KTE+KTS-K)
   ENDDO  
     
 !   print *,'buoyf',buoyf 
