@@ -2,9 +2,8 @@ program  mk_CatchRestarts
 
 !  $Id: 
 
-  use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
-  use MAPL_HashMod
-  use MAPL_IOMod
+  use MAPL
+  use gFTL_StringVector
 
   implicit none
   include 'mpif.h'
@@ -276,7 +275,6 @@ contains
     
     real              :: zdep1, zdep2, zdep3, zmet, term1, term2, rdum
     real, allocatable :: var1(:),var2(:,:)
-    type(MAPL_NCIO)   :: InNCIO, OutNCIO, NCIOCatch 
     character*256     :: vname
     character*256     :: OutFileName
     integer           :: rc, i, n, j,k,ncatch,idum
@@ -286,6 +284,14 @@ contains
     logical             :: file_exists
     integer, pointer    :: Ido(:), idx(:), id(:)
     logical             :: InIsOld
+    type(NetCDF4_Fileformatter) :: InFmt,OutFmt,CatchFmt
+    type(FileMetadata) :: InCfg,OutCfg
+    type(StringVariableMap), pointer :: variables
+    type(Variable), pointer :: myVariable
+    type(StringVariableMapIterator) :: var_iter
+    character(len=:), pointer :: var_name,dname
+    type(StringVector), pointer :: var_dimensions
+    integer :: dim1, dim2
 
     print *, 'SURFLAY: ',SURFLAY 
 
@@ -297,17 +303,18 @@ contains
     call MAPL_NCIOGetFileType(InRestart, filetype,rc=rc)
 
     if (filetype == 0) then
-       
-       InNCIO = MAPL_NCIOOpen(InRestart,rc=rc)
-       
-       call MAPL_NCIOChangeRes(InNCIO,OutNCIO,tileSize=ntiles,rc=rc)
+      
+       call InFmt%open(InRestart,pFIO_READ,rc=rc)
+       InCfg=InFmt%read(rc=rc)
+       call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/ntiles/),rc=rc)
        i = index(InRestart,'/',back=.true.)
        OutFileName = "OutData/"//trim(InRestart(i+1:))
-       call MAPL_NCIOSet( OutNCIO,filename=OutFileName )
-       call MAPL_NCIOCreateFile(OutNCIO)
-       call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
+       call OutFmt%create(OutFileName,rc=rc)
+       call OutFmt%write(OutCfg,rc=rc)
+       call MAPL_IOCountNonDimVars(OutCfg,nvars,rc=rc)
+
        allocate(written(nvars))
-       written=.false.
+       written=.false. 
        
     else
        
@@ -369,45 +376,45 @@ contains
        
        if(file_exists) then
           print *,'FILE FORMAT FOR LAND BCS IS NC4'
-          NCIOCatch   = MAPL_NCIOOpen(trim(DataDir)//'/catch_params.nc4',rc=rc) 
-          call MAPL_VarRead ( NCIOCatch ,'OLD_ITY', rity)
-          call MAPL_VarRead ( NCIOCatch ,'ARA1', ARA1)
-          call MAPL_VarRead ( NCIOCatch ,'ARA2', ARA2)
-          call MAPL_VarRead ( NCIOCatch ,'ARA3', ARA3)
-          call MAPL_VarRead ( NCIOCatch ,'ARA4', ARA4)
-          call MAPL_VarRead ( NCIOCatch ,'ARS1', ARS1)
-          call MAPL_VarRead ( NCIOCatch ,'ARS2', ARS2)
-          call MAPL_VarRead ( NCIOCatch ,'ARS3', ARS3)
-          call MAPL_VarRead ( NCIOCatch ,'ARW1', ARW1)
-          call MAPL_VarRead ( NCIOCatch ,'ARW2', ARW2)
-          call MAPL_VarRead ( NCIOCatch ,'ARW3', ARW3)
-          call MAPL_VarRead ( NCIOCatch ,'ARW4', ARW4)
+          call CatchFmt%open(trim(DataDir)//'/catch_params.nc4',pFIO_Read,rc=rc) 
+          call MAPL_VarRead ( catchFmt ,'OLD_ITY', rity)
+          call MAPL_VarRead ( catchFmt ,'ARA1', ARA1)
+          call MAPL_VarRead ( catchFmt ,'ARA2', ARA2)
+          call MAPL_VarRead ( catchFmt ,'ARA3', ARA3)
+          call MAPL_VarRead ( catchFmt ,'ARA4', ARA4)
+          call MAPL_VarRead ( catchFmt ,'ARS1', ARS1)
+          call MAPL_VarRead ( catchFmt ,'ARS2', ARS2)
+          call MAPL_VarRead ( catchFmt ,'ARS3', ARS3)
+          call MAPL_VarRead ( catchFmt ,'ARW1', ARW1)
+          call MAPL_VarRead ( catchFmt ,'ARW2', ARW2)
+          call MAPL_VarRead ( catchFmt ,'ARW3', ARW3)
+          call MAPL_VarRead ( catchFmt ,'ARW4', ARW4)
 
           if( SURFLAY.eq.20.0 ) then
-             call MAPL_VarRead ( NCIOCatch ,'ATAU2', ATAU2)
-             call MAPL_VarRead ( NCIOCatch ,'BTAU2', BTAU2)
+             call MAPL_VarRead ( catchFmt ,'ATAU2', ATAU2)
+             call MAPL_VarRead ( catchFmt ,'BTAU2', BTAU2)
           endif
           
           if( SURFLAY.eq.50.0 ) then
-             call MAPL_VarRead ( NCIOCatch ,'ATAU5', ATAU2)
-             call MAPL_VarRead ( NCIOCatch ,'BTAU5', BTAU2)
+             call MAPL_VarRead ( catchFmt ,'ATAU5', ATAU2)
+             call MAPL_VarRead ( catchFmt ,'BTAU5', BTAU2)
           endif
           
-          call MAPL_VarRead ( NCIOCatch ,'PSIS', PSIS)
-          call MAPL_VarRead ( NCIOCatch ,'BEE', BEE)
-          call MAPL_VarRead ( NCIOCatch ,'BF1', BF1)
-          call MAPL_VarRead ( NCIOCatch ,'BF2', BF2)
-          call MAPL_VarRead ( NCIOCatch ,'BF3', BF3)
-          call MAPL_VarRead ( NCIOCatch ,'TSA1', TSA1)
-          call MAPL_VarRead ( NCIOCatch ,'TSA2', TSA2)
-          call MAPL_VarRead ( NCIOCatch ,'TSB1', TSB1)
-          call MAPL_VarRead ( NCIOCatch ,'TSB2', TSB2)
-          call MAPL_VarRead ( NCIOCatch ,'COND', COND)
-          call MAPL_VarRead ( NCIOCatch ,'GNU', GNU)
-          call MAPL_VarRead ( NCIOCatch ,'WPWET', WPWET)
-          call MAPL_VarRead ( NCIOCatch ,'DP2BR', DP2BR)
-          call MAPL_VarRead ( NCIOCatch ,'POROS', POROS)
-          call MAPL_NCIOClose (NCIOCatch  )  
+          call MAPL_VarRead ( catchFmt ,'PSIS', PSIS)
+          call MAPL_VarRead ( catchFmt ,'BEE', BEE)
+          call MAPL_VarRead ( catchFmt ,'BF1', BF1)
+          call MAPL_VarRead ( catchFmt ,'BF2', BF2)
+          call MAPL_VarRead ( catchFmt ,'BF3', BF3)
+          call MAPL_VarRead ( catchFmt ,'TSA1', TSA1)
+          call MAPL_VarRead ( catchFmt ,'TSA2', TSA2)
+          call MAPL_VarRead ( catchFmt ,'TSB1', TSB1)
+          call MAPL_VarRead ( catchFmt ,'TSB2', TSB2)
+          call MAPL_VarRead ( catchFmt ,'COND', COND)
+          call MAPL_VarRead ( catchFmt ,'GNU', GNU)
+          call MAPL_VarRead ( catchFmt ,'WPWET', WPWET)
+          call MAPL_VarRead ( catchFmt ,'DP2BR', DP2BR)
+          call MAPL_VarRead ( catchFmt ,'POROS', POROS)
+          call catchFmt%close(rc=rc)
 
        else
           open(unit=21, file=trim(DataDir)//"mosaic_veg_typs_fracs",status='old',form='formatted')
@@ -492,38 +499,38 @@ contains
        
        if (filetype == 0) then
           
-          call MAPL_VarRead(InNCIO,names(1),BF1)
-          call MAPL_VarRead(InNCIO,names(2),BF2)
-          call MAPL_VarRead(InNCIO,names(3),BF3)
-          call MAPL_VarRead(InNCIO,names(4),VGWMAX)
-          call MAPL_VarRead(InNCIO,names(5),CDCR1)
-          call MAPL_VarRead(InNCIO,names(6),CDCR2)
-          call MAPL_VarRead(InNCIO,names(7),PSIS)
-          call MAPL_VarRead(InNCIO,names(8),BEE)
-          call MAPL_VarRead(InNCIO,names(9),POROS)
-          call MAPL_VarRead(InNCIO,names(10),WPWET)
+          call MAPL_VarRead(InFmt,names(1),BF1)
+          call MAPL_VarRead(InFmt,names(2),BF2)
+          call MAPL_VarRead(InFmt,names(3),BF3)
+          call MAPL_VarRead(InFmt,names(4),VGWMAX)
+          call MAPL_VarRead(InFmt,names(5),CDCR1)
+          call MAPL_VarRead(InFmt,names(6),CDCR2)
+          call MAPL_VarRead(InFmt,names(7),PSIS)
+          call MAPL_VarRead(InFmt,names(8),BEE)
+          call MAPL_VarRead(InFmt,names(9),POROS)
+          call MAPL_VarRead(InFmt,names(10),WPWET)
           
-          call MAPL_VarRead(InNCIO,names(11),COND)
-          call MAPL_VarRead(InNCIO,names(12),GNU)
-          call MAPL_VarRead(InNCIO,names(13),ARS1)
-          call MAPL_VarRead(InNCIO,names(14),ARS2)
-          call MAPL_VarRead(InNCIO,names(15),ARS3)
-          call MAPL_VarRead(InNCIO,names(16),ARA1)
-          call MAPL_VarRead(InNCIO,names(17),ARA2)
-          call MAPL_VarRead(InNCIO,names(18),ARA3)
-          call MAPL_VarRead(InNCIO,names(19),ARA4)
-          call MAPL_VarRead(InNCIO,names(20),ARW1)
+          call MAPL_VarRead(InFmt,names(11),COND)
+          call MAPL_VarRead(InFmt,names(12),GNU)
+          call MAPL_VarRead(InFmt,names(13),ARS1)
+          call MAPL_VarRead(InFmt,names(14),ARS2)
+          call MAPL_VarRead(InFmt,names(15),ARS3)
+          call MAPL_VarRead(InFmt,names(16),ARA1)
+          call MAPL_VarRead(InFmt,names(17),ARA2)
+          call MAPL_VarRead(InFmt,names(18),ARA3)
+          call MAPL_VarRead(InFmt,names(19),ARA4)
+          call MAPL_VarRead(InFmt,names(20),ARW1)
           
-          call MAPL_VarRead(InNCIO,names(21),ARW2)
-          call MAPL_VarRead(InNCIO,names(22),ARW3)
-          call MAPL_VarRead(InNCIO,names(23),ARW4)
-          call MAPL_VarRead(InNCIO,names(24),TSA1)
-          call MAPL_VarRead(InNCIO,names(25),TSA2)
-          call MAPL_VarRead(InNCIO,names(26),TSB1)
-          call MAPL_VarRead(InNCIO,names(27),TSB2)
-          call MAPL_VarRead(InNCIO,names(28),ATAU2)
-          call MAPL_VarRead(InNCIO,names(29),BTAU2)
-          call MAPL_VarRead(InNCIO,'OLD_ITY',rITY)
+          call MAPL_VarRead(InFmt,names(21),ARW2)
+          call MAPL_VarRead(InFmt,names(22),ARW3)
+          call MAPL_VarRead(InFmt,names(23),ARW4)
+          call MAPL_VarRead(InFmt,names(24),TSA1)
+          call MAPL_VarRead(InFmt,names(25),TSA2)
+          call MAPL_VarRead(InFmt,names(26),TSB1)
+          call MAPL_VarRead(InFmt,names(27),TSB2)
+          call MAPL_VarRead(InFmt,names(28),ATAU2)
+          call MAPL_VarRead(InFmt,names(29),BTAU2)
+          call MAPL_VarRead(InFmt,'OLD_ITY',rITY)
           
        else
           
@@ -567,77 +574,105 @@ contains
     endif HAVE
 
     if (filetype == 0) then
-       call MAPL_VarWrite(OutNCIO,names(1),BF1(Idx))
-       call MAPL_VarWrite(OutNCIO,names(2),BF2(Idx))
-       call MAPL_VarWrite(OutNCIO,names(3),BF3(Idx))
-       call MAPL_VarWrite(OutNCIO,names(4),VGWMAX(Idx))
-       call MAPL_VarWrite(OutNCIO,names(5),CDCR1(Idx))
-       call MAPL_VarWrite(OutNCIO,names(6),CDCR2(Idx))
-       call MAPL_VarWrite(OutNCIO,names(7),PSIS(Idx))
-       call MAPL_VarWrite(OutNCIO,names(8),BEE(Idx))
-       call MAPL_VarWrite(OutNCIO,names(9),POROS(Idx))
-       call MAPL_VarWrite(OutNCIO,names(10),WPWET(Idx))
-       call MAPL_VarWrite(OutNCIO,names(11),COND(Idx))
-       call MAPL_VarWrite(OutNCIO,names(12),GNU(Idx))
-       call MAPL_VarWrite(OutNCIO,names(13),ARS1(Idx))
-       call MAPL_VarWrite(OutNCIO,names(14),ARS2(Idx))
-       call MAPL_VarWrite(OutNCIO,names(15),ARS3(Idx))
-       call MAPL_VarWrite(OutNCIO,names(16),ARA1(Idx))
-       call MAPL_VarWrite(OutNCIO,names(17),ARA2(Idx))
-       call MAPL_VarWrite(OutNCIO,names(18),ARA3(Idx))
-       call MAPL_VarWrite(OutNCIO,names(19),ARA4(Idx))
-       call MAPL_VarWrite(OutNCIO,names(20),ARW1(Idx))
-       call MAPL_VarWrite(OutNCIO,names(21),ARW2(Idx))
-       call MAPL_VarWrite(OutNCIO,names(22),ARW3(Idx))
-       call MAPL_VarWrite(OutNCIO,names(23),ARW4(Idx))
-       call MAPL_VarWrite(OutNCIO,names(24),TSA1(Idx))
-       call MAPL_VarWrite(OutNCIO,names(25),TSA2(Idx))
-       call MAPL_VarWrite(OutNCIO,names(26),TSB1(Idx))
-       call MAPL_VarWrite(OutNCIO,names(27),TSB2(Idx))
-       call MAPL_VarWrite(OutNCIO,names(28),ATAU2(Idx))
-       call MAPL_VarWrite(OutNCIO,names(29),BTAU2(Idx))
-       call MAPL_VarWrite(OutNCIO,'OLD_ITY',rity(Idx))
-       
-       call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
-       do i=1,nvars
-          call MAPL_NCIOGetVarName(InNCIO,i,vname)
+       call MAPL_VarWrite(OutFmt,names(1),BF1(Idx))
+       call MAPL_VarWrite(OutFmt,names(2),BF2(Idx))
+       call MAPL_VarWrite(OutFmt,names(3),BF3(Idx))
+       call MAPL_VarWrite(OutFmt,names(4),VGWMAX(Idx))
+       call MAPL_VarWrite(OutFmt,names(5),CDCR1(Idx))
+       call MAPL_VarWrite(OutFmt,names(6),CDCR2(Idx))
+       call MAPL_VarWrite(OutFmt,names(7),PSIS(Idx))
+       call MAPL_VarWrite(OutFmt,names(8),BEE(Idx))
+       call MAPL_VarWrite(OutFmt,names(9),POROS(Idx))
+       call MAPL_VarWrite(OutFmt,names(10),WPWET(Idx))
+       call MAPL_VarWrite(OutFmt,names(11),COND(Idx))
+       call MAPL_VarWrite(OutFmt,names(12),GNU(Idx))
+       call MAPL_VarWrite(OutFmt,names(13),ARS1(Idx))
+       call MAPL_VarWrite(OutFmt,names(14),ARS2(Idx))
+       call MAPL_VarWrite(OutFmt,names(15),ARS3(Idx))
+       call MAPL_VarWrite(OutFmt,names(16),ARA1(Idx))
+       call MAPL_VarWrite(OutFmt,names(17),ARA2(Idx))
+       call MAPL_VarWrite(OutFmt,names(18),ARA3(Idx))
+       call MAPL_VarWrite(OutFmt,names(19),ARA4(Idx))
+       call MAPL_VarWrite(OutFmt,names(20),ARW1(Idx))
+       call MAPL_VarWrite(OutFmt,names(21),ARW2(Idx))
+       call MAPL_VarWrite(OutFmt,names(22),ARW3(Idx))
+       call MAPL_VarWrite(OutFmt,names(23),ARW4(Idx))
+       call MAPL_VarWrite(OutFmt,names(24),TSA1(Idx))
+       call MAPL_VarWrite(OutFmt,names(25),TSA2(Idx))
+       call MAPL_VarWrite(OutFmt,names(26),TSB1(Idx))
+       call MAPL_VarWrite(OutFmt,names(27),TSB2(Idx))
+       call MAPL_VarWrite(OutFmt,names(28),ATAU2(Idx))
+       call MAPL_VarWrite(OutFmt,names(29),BTAU2(Idx))
+       call MAPL_VarWrite(OutFmt,'OLD_ITY',rity(Idx))
+
+
+       call MAPL_IOCountNonDimVars(InCfg,nvars)
+
+       variables => InCfg%get_variables()
+       var_iter = variables%begin()
+       i = 0
+       do while (var_iter /= variables%end())
+
+          var_name => var_iter%key()
+          i=i+1
           do j=1,29
-             if ( trim(vname) == trim(names(j)) ) written(i) = .true.
+             if ( trim(var_name) == trim(names(j)) ) written(i) = .true.
           enddo
-          if (trim(vname) == "OLD_ITY" ) written(i) = .true.
+          if (trim(var_name) == "OLD_ITY" ) written(i) = .true.
+
+          call var_iter%next()
+
        enddo
 
+       variables => InCfg%get_variables()
+       var_iter = variables%begin()
+       n=0
        allocate(var1(NTILES_IN))
-       
-       do n=1,nVars
-          
-          if (.not.written(n) ) then
-             
-             call MAPL_NCIOGetVarName(InNCIO,n,vname)             
-             call MAPL_NCIOVarGetDims(InNCIO,vname,nDims,dimSizes)
+       do while (var_iter /= variables%end())
 
-             if (ndims == 1) then
-                call MAPL_VarRead(InNCIO,vname,var1)
-                call MAPL_VarWrite(OutNCIO,vname,var1(idx))
-             else if (ndims == 2) then
-                
-                do j=1,dimSizes(2)
-                   call MAPL_VarRead(InNCIO,vname,var1,offset1=j)
-                   call MAPL_VarWrite(OutNCIO,vname,var1(idx),offset1=j)
-                enddo
-             else if (ndims == 3) then
-                
-                do k=1,dimSizes(3)
-                   do j=1,dimSizes(2)
-                      call MAPL_VarRead(InNCIO,vname,var1,offset1=j,offset2=k)
-                      call MAPL_VarWrite(OutNCIO,vname,var1(idx),offset1=j,offset2=k)
+          var_name => var_iter%key()
+          myVariable => var_iter%value()
+
+          if (.not.InCfg%is_coordinate_variable(var_name)) then
+
+             n=n+1
+             if (.not.written(n) ) then
+
+                var_dimensions => myVariable%get_dimensions()
+
+                ndims = var_dimensions%size()
+
+                if (ndims == 1) then
+                   call MAPL_VarRead(InFmt,var_name,var1)
+                   call MAPL_VarWrite(OutFmt,var_name,var1(idx))
+                else if (ndims == 2) then
+
+                   dname => myVariable%get_ith_dimension(2)
+                   dim1=InCfg%get_dimension(dname)
+                   do j=1,dim1
+                      call MAPL_VarRead(InFmt,var_name,var1,offset1=j)
+                      call MAPL_VarWrite(OutFmt,var_name,var1(idx),offset1=j)
                    enddo
-                enddo                
+                else if (ndims == 3) then
+
+                   dname => myVariable%get_ith_dimension(2)
+                   dim1=InCfg%get_dimension(dname)
+                   dname => myVariable%get_ith_dimension(3)
+                   dim2=InCfg%get_dimension(dname)
+                   do k=1,dim2
+                      do j=1,dim1
+                         call MAPL_VarRead(InFmt,var_name,var1,offset1=j,offset2=k)
+                         call MAPL_VarWrite(OutFmt,var_name,var1(idx),offset1=j,offset2=k)
+                      enddo
+                   enddo
+
+                end if
+
              end if
           end if
-       enddo
+          call var_iter%next()
 
-       call MAPL_NCIOClose      (InNCIO)
+       enddo
 
     else
        

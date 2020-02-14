@@ -22,4 +22,4 @@ endif ()
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared MAPL_Base RRTMG_mods)
+  DEPENDENCIES GEOS_Shared MAPL RRTMG_mods)

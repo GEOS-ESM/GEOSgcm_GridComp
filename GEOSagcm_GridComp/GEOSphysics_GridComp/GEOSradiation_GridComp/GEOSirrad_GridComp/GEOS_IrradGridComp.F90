@@ -62,9 +62,8 @@ module GEOS_IrradGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
-  use MAPL_ShmemMod, only: MAPL_CoresPerNodeGet
 
   use rrtmg_lw_rad, only: rrtmg_lw  !  RRTMG Code
   use rrtmg_lw_init, only: rrtmg_lw_ini
@@ -1705,7 +1704,7 @@ contains
 
 ! helper for testing RRTMGP error status on return;
 ! allows line number reporting cf. original call method
-#define TEST_(A) error_msg = A; if (trim(error_msg)/="") then; write(*,*) "RRTMGP Error: ", trim(error_msg); ASSERT_(.false.); endif
+#define TEST_(A) error_msg = A; if (trim(error_msg)/="") then; write(*,*) "RRTMGP Error: ", trim(error_msg); _ASSERT(.false.,'needs informative message'); endif
 
 #ifdef _CUDA
 ! MATMAT CUDA Variables
@@ -1821,7 +1820,7 @@ if (mapl_am_i_root()) print*,'RAD nb_irrad1 = ', nb_irrad1
          write (*,*) "    SORAD RRTMG: ", USE_RRTMGP_SORAD, USE_RRTMG_SORAD, USE_CHOU_SORAD
          write (*,*) "Please check that your optics tables and NUM_BANDS are correct."
       end if
-      ASSERT_(.FALSE.)
+      _ASSERT(.FALSE.,'needs informative message')
    end if
 
 ! Compute surface air temperature ("2 m") adiabatically
@@ -2160,9 +2159,9 @@ if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSO
       Block = dim3(blocksize,1,1)
       Grid = dim3(ceiling(real(IM*JM)/real(blocksize)),1,1)
 
-      ASSERT_(LM <= GPU_MAXLEVS) ! If this is tripped, ESMA_arch.mk must be edited.
+      _ASSERT(LM <= GPU_MAXLEVS,'needs informative message') ! If this is tripped, ESMA_arch.mk must be edited.
 
-      ASSERT_(NS == MAXNS) ! If this is tripped, the local GNUmakefile
+      _ASSERT(NS == MAXNS,'needs informative message') ! If this is tripped, the local GNUmakefile
                            ! must be edited.
 
       call MAPL_TimerOn(MAPL,"---IRRAD_ALLOC",RC=STATUS)
@@ -2420,7 +2419,7 @@ if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSO
       if (STATUS /= 0) then
          write (*,*) "Error code from IRRAD kernel call: ", STATUS
          write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
-         ASSERT_(.FALSE.)
+         _ASSERT(.FALSE.,'needs informative message')
       end if
 
       call MAPL_TimerOff(MAPL,"---IRRAD_RUN",RC=STATUS)
@@ -2618,7 +2617,7 @@ if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSO
           rrtmgp_state%k_dist, trim(k_dist_file), gas_concs)
         if (.not. rrtmgp_state%k_dist%source_is_internal()) then
           write(*,*) "RRTMGP-LW: does not seem to be LW"
-          ASSERT_(.false.)
+          _ASSERT(.false.,'needs informative message')
         endif
         rrtmgp_state%initialized = .true.
       endif
@@ -2633,7 +2632,7 @@ if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSO
       ! spectral dimensions
       ngpt = k_dist%get_ngpt()
       nbnd = k_dist%get_nband()
-      ASSERT_(nbnd == NB_RRTMGP)
+      _ASSERT(nbnd == NB_RRTMGP,'needs informative message')
 
       ! note: use k_dist%get_band_lims_wavenumber()
       !   to access band limits.
@@ -2669,7 +2668,7 @@ if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSO
       ! RRTMGP's rte_lw takes a vertical ordering flag
       ! (no need to flip columns as with RRTMG)
       top_at_1 = p_lay(1, 1) < p_lay(1, LM)
-      ASSERT_(top_at_1) ! for GEOS-5
+      _ASSERT(top_at_1,'needs informative message') ! for GEOS-5
 
       ! pmn: KLUGE 
       ! Because currently k_dist%press_ref_min ~ 1.005 > GEOS-5 ptop of 1.0 Pa.
@@ -2681,13 +2680,13 @@ if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSO
         if (press_ref_min - ptop <= ptop * ptop_increase_OK_fraction) then
           where (p_lev(:,1) < press_ref_min) p_lev(:,1) = press_ref_min
           ! make sure no pressure ordering issues were created
-          ASSERT_(all(p_lev(:,1) < p_lay(:,1)))
+          _ASSERT(all(p_lev(:,1) < p_lay(:,1)),'needs informative message')
         else
           write(*,*) 'Error: Model top too high for RRTMGP:'
           write(*,*) ' A ', ptop_increase_OK_fraction, &
                        ' fractional increase of ptop was insufficient'
           write(*,*) ' RRTMGP, GEOS-5 top (Pa)', press_ref_min, ptop
-          ASSERT_(.false.)
+          _ASSERT(.false.,'needs informative message')
         endif
       endif
 
@@ -2710,7 +2709,7 @@ if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSO
           write(*,*) ' A ', tmin_increase_OK_Kelvin, &
                        'K increase of tmin was insufficient'
           write(*,*) ' RRTMGP, GEOS-5 t_min (K)', temp_ref_min, tmin
-          ASSERT_(.false.)
+          _ASSERT(.false.,'needs informative message')
         endif
       endif
 
@@ -3116,7 +3115,7 @@ if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSO
 
       call MAPL_GetResource( MAPL, &
         rrtmgp_blockSize, "RRTMGP_LW_BLOCKSIZE:", DEFAULT=4, __RC__)
-      ASSERT_(rrtmgp_blockSize >= 1)
+      _ASSERT(rrtmgp_blockSize >= 1,'needs informative message')
 
       ! number of full blocks by integer division
       nBlocks = ncol/rrtmgp_blockSize
@@ -3710,7 +3709,7 @@ if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSO
    else
 
       ! Something is wrong. We've selected neither Chou or RRTMG
-      ASSERT_(.false.)
+      _ASSERT(.false.,'needs informative message')
 
    end if SCHEME
 
@@ -4243,7 +4242,7 @@ if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSO
 
    ! error checking
    if (present(RC)) RC = ESMF_SUCCESS
-   ASSERT_(wn > 0.)
+   _ASSERT(wn > 0.,'needs informative message')
 
    ! invert Planck function for temp
    T = alT * wn / log(bigC * wn**3 / Bwn + 1.0d0)
@@ -4274,8 +4273,8 @@ if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSO
 
    ! error checking
    if (present(RC)) RC = ESMF_SUCCESS
-   ASSERT_(wn2 > wn1)
-   ASSERT_(Nits >= 1)
+   _ASSERT(wn2 > wn1,'needs informative message')
+   _ASSERT(Nits >= 1,'needs informative message')
 
    ! iterate from first guess Tbr to better estimate
    alTwn1 = alT * wn1
