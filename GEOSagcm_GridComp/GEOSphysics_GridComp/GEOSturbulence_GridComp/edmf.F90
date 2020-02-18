@@ -18,30 +18,30 @@ contains
 !
 ! edmf
 !
-subroutine run_edmf(IM, JM, LM, numup,                             & ! in
-                    edmf_discrete_type, edmf_implicit,             & ! in
-                    dt, z, zle, ple, rhoe,                         & ! in
-                    u, v, thl, thv, qt, qv, ql, qi,                & ! in         
-                    ustar, sh, evap, zpbl, ice_ramp,               & ! in
-                    pwmin, pwmax, AlphaW, AlphaQT, AlphaTH,        & ! in
-                    ET, L0, ENT0, EDfac, EntWFac,                  & ! in
-                    edmfdrya, edmfmoista, &
-                    edmfdryw, edmfmoistw, &
-                    edmfdryqt, edmfmoistqt, &
-                    edmfdrythl, edmfmoistthl, &
-                    edmfdryu, edmfmoistu,  &
-                    edmfdryv, edmfmoistv,  &
-                    edmfmoistqc, &
-                    ae, awu, awv, aw, aws, awqv, awql, awqi,                      & ! out (for solver)
-                    whl_mf, wqt_mf, wthv_mf,                                      & ! out (for MYNN-EDMF)
-                    buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfqthl, mfwhl, & ! out (for Moist)
-                    iras, jras, &
-                    au, wu, Mu, E, D)                                        ! out
+subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
+                    edmf_discrete_type, edmf_implicit, &                            ! in
+                    dt, z, zle, ple, rhoe, exf, &                                   ! in
+                    u, v, thl, thv, qt, qv, ql, qi, &                               ! in         
+                    ustar, sh, evap, ice_ramp, &                                    ! in
+                    pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in
+                    ET, L0, ENT0, EDfac, EntWFac, &                                 ! in
+                    zpbl, &                                                         ! inout
+                    edmfdrya, edmfmoista, &                                         ! out
+                    edmfdryw, edmfmoistw, &                                         ! out
+                    edmfdryqt, edmfmoistqt, &                                       ! out
+                    edmfdrythl, edmfmoistthl, &                                     ! out
+                    edmfdryu, edmfmoistu,  &                                        ! out
+                    edmfdryv, edmfmoistv,  &                                        ! out
+                    edmfmoistqc, &                                                  ! out
+                    ae, awu, awv, aw, aws, awqv, awql, awqi, &                      ! out (for solver)
+                    whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)
+                    buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfqthl, mfwhl, & ! out (for SHOC)
+                    au, wu, Mu, E, D)                                               ! out
   
   ! Inputs
   integer, intent(in)                     :: IM, JM, LM, numup, edmf_discrete_type, edmf_implicit, ET
   integer, dimension(IM,JM), intent(in)   :: iras, jras
-  real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, z
+  real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, z, exf
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe
   real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, L0
   real, dimension(IM,JM), intent(inout)   :: zpbl
@@ -63,7 +63,7 @@ subroutine run_edmf(IM, JM, LM, numup,                             & ! in
 
   real :: wthv, wstar, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
           B, QTn, THLn, THVn, QCn, Un, Vn, Wn2, EntEXP, EntEXPU, EntW, wf, &
-          stmp, ltm, QTsrfF, THVsrfF, mft, mfthvt, dzle, ifac, test
+          stmp, ltm, QTsrfF, THVsrfF, mft, mfthvt, dzle, ifac, test, mft_work, mfthvt_work
 
   ! Temporary (too slow; need to figure out how random number generator works)
   integer, dimension(numup,IM,JM,LM)  :: enti
@@ -157,8 +157,6 @@ subroutine run_edmf(IM, JM, LM, numup,                             & ! in
         end do
      end do
 
-     call Poisson(1, LM, 1, numup, entf(:,i,j,:), enti(:,i,j,:), the_seed)
-     
      ! Treat TOA and surface properties the same as the nearest grid cell
      ui(i,j,0)   = u(i,j,1)
      vi(i,j,0)   = v(i,j,1)
@@ -192,24 +190,27 @@ subroutine run_edmf(IM, JM, LM, numup,                             & ! in
         exfh(i,j,k) = (ple(i,j,k)/mapl_p00)**mapl_kappa
 
         if (edmf_discrete_type == 0) then
-           ifac = ( zle(i,j,k) - z(i,j,kp1) )/( z(i,j,k) - z(i,j,kp1) )
+           if (edmf_implicit == 0) then
+              ifac = ( zle(i,j,k) - z(i,j,kp1) )/( z(i,j,k) - z(i,j,kp1) )
 
-!!$           ui(i,j,k)   = u(i,j,kp1)   + ifac*( u(i,j,k)   - u(i,j,kp1) )
-!!$           vi(i,j,k)   = v(i,j,kp1)   + ifac*( v(i,j,k)   - v(i,j,kp1) )
-!!$           thli(i,j,k) = thl(i,j,kp1) + ifac*( thl(i,j,k) - thl(i,j,kp1) )
-!!$           qti(i,j,k)  = qt(i,j,kp1)  + ifac*( qt(i,j,k)  - qt(i,j,kp1) )
-!!$           qvi(i,j,k)  = qv(i,j,kp1)  + ifac*( qv(i,j,k)  - qv(i,j,kp1) )
-!!$           qli(i,j,k)  = ql(i,j,kp1)  + ifac*( ql(i,j,k)  - ql(i,j,kp1) )
-!!$           qii(i,j,k)  = qi(i,j,kp1)  + ifac*( qi(i,j,k)  - qi(i,j,kp1) )
-!!$           thvi(i,j,k) = thv(i,j,kp1) + ifac*( thv(i,j,k) - thv(i,j,kp1) )
-           ui(i,j,k)   = 0.5*( u(i,j,kp1)   + u(i,j,k) )
-           vi(i,j,k)   = 0.5*( v(i,j,kp1)   + v(i,j,k) )
-           thli(i,j,k) = 0.5*( thl(i,j,kp1) + thl(i,j,k) )
-           qti(i,j,k)  = 0.5*( qt(i,j,kp1)  + qt(i,j,k) )
-           qvi(i,j,k)  = 0.5*( qv(i,j,kp1)  + qv(i,j,k) )
-           qli(i,j,k)  = 0.5*( ql(i,j,kp1)  + ql(i,j,k) )
-           qii(i,j,k)  = 0.5*( qi(i,j,kp1)  + qi(i,j,k) )
-           thvi(i,j,k) = 0.5*( thv(i,j,kp1) + thv(i,j,k) )
+              ui(i,j,k)   = u(i,j,kp1)   + ifac*( u(i,j,k)   - u(i,j,kp1) )
+              vi(i,j,k)   = v(i,j,kp1)   + ifac*( v(i,j,k)   - v(i,j,kp1) )
+              thli(i,j,k) = thl(i,j,kp1) + ifac*( thl(i,j,k) - thl(i,j,kp1) )
+              qti(i,j,k)  = qt(i,j,kp1)  + ifac*( qt(i,j,k)  - qt(i,j,kp1) )
+              qvi(i,j,k)  = qv(i,j,kp1)  + ifac*( qv(i,j,k)  - qv(i,j,kp1) )
+              qli(i,j,k)  = ql(i,j,kp1)  + ifac*( ql(i,j,k)  - ql(i,j,kp1) )
+              qii(i,j,k)  = qi(i,j,kp1)  + ifac*( qi(i,j,k)  - qi(i,j,kp1) )
+              thvi(i,j,k) = thv(i,j,kp1) + ifac*( thv(i,j,k) - thv(i,j,kp1) )
+           else ! This is temporary until I fix the interplation for implicit mass flux discretization
+              ui(i,j,k)   = 0.5*( u(i,j,kp1)   + u(i,j,k) )
+              vi(i,j,k)   = 0.5*( v(i,j,kp1)   + v(i,j,k) )
+              thli(i,j,k) = 0.5*( thl(i,j,kp1) + thl(i,j,k) )
+              qti(i,j,k)  = 0.5*( qt(i,j,kp1)  + qt(i,j,k) )
+              qvi(i,j,k)  = 0.5*( qv(i,j,kp1)  + qv(i,j,k) )
+              qli(i,j,k)  = 0.5*( ql(i,j,kp1)  + ql(i,j,k) )
+              qii(i,j,k)  = 0.5*( qi(i,j,kp1)  + qi(i,j,k) )
+              thvi(i,j,k) = 0.5*( thv(i,j,kp1) + thv(i,j,k) )
+           end if
         else
            ui(i,j,k)   = u(i,j,k)
            vi(i,j,k)   = v(i,j,k)
@@ -305,11 +306,18 @@ subroutine run_edmf(IM, JM, LM, numup,                             & ! in
      do i = 1,IM
         dzle = zle(i,j,km1) - zle(i,j,k)
         
+        mfthvt = 0.
+        mft    = 0.
+
         do iup = 1,numup
            if (active_updraft(iup,i,j)) then
               !
               ! Sample updraft statistics
               !
+
+              ! Buoyancy flux at full levels for SHOC
+              mfthvt_work = upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j)
+              mft_work    = upa(iup,i,j)*upw(iup,i,j)
 
               ! Statistics required for solver
               ltm = exfh(i,j,k)*( upthl(iup,i,j) - thli(i,j,k) )
@@ -374,7 +382,8 @@ subroutine run_edmf(IM, JM, LM, numup,                             & ! in
               ! Compute fractional entrainment rate
               !
 
-              ! The random number generator should operate here
+              ! Random number generator for stochastic entrainment
+              call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
 
               if ( L0(i,j) > 0. ) then
                  ent(iup,i,j,k) = real(enti(iup,i,j,k))*ent0/dzle
@@ -429,11 +438,19 @@ subroutine run_edmf(IM, JM, LM, numup,                             & ! in
                  upqi(iup,i,j)  = QCn*( 1. - wf )
                  upu(iup,i,j)   = Un
                  upv(iup,i,j)   = Vn
+
+                 mfthvt = mfthvt + 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) + mfthvt_work )
+                 mft    = mft    + 0.5*( upa(iup,i,j)*upw(iup,i,j) + mft_work )
               else
+                 mfthvt = mfthvt + 0.5*mfthvt_work
+                 mft    = mft    +  0.5*mft_work
+
                  active_updraft(iup,i,j) = .false.
               end if
            end if ! active_updraft(iup,i,j)
         end do ! iup = 1,numup
+
+        buoyf(i,j,k) = buoyf(i,j,k) + exf(i,j,k)*( mfthvt - mft*thv(i,j,k) )
 
         ! Average updraft samples
         if ( edmfdrya(i,j,k) > 0. ) then
@@ -489,7 +506,7 @@ subroutine run_edmf(IM, JM, LM, numup,                             & ! in
      do i = 1,IM
         D(i,j,k) = E(i,j,k) - ( Mu(i,j,km1) - Mu(i,j,k) )/( zle(i,j,km1) - zle(i,j,k) )
 
-!        buoyf(i,j,k) = s_buoyf(KTE+KTS-K)
+        buoyf(i,j,k) = buoyf(i,j,k) + exf(i,j,k)*( mfthvt - mft*thv(i,j,k) )
         
         mfw2(i,j,k)   = 0.5*( aw2(i,j,k)    + aw2(i,j,km1) )
         mfw3(i,j,k)   = 0.5*( aw3(i,j,k)    + aw3(i,j,km1) )

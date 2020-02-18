@@ -2997,7 +2997,7 @@ contains
      real, dimension(:    ), pointer     :: PREF
 
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
-     real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA
+     real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA!, THV_MYNN
      real, dimension(IM,JM,0:LM)         :: PKE
 
      ! Quantities for solving at half levels
@@ -3142,9 +3142,6 @@ contains
      real(kind=MAPL_R8), dimension(IM,JM,0:LM) :: AKIX, BKIX ! Coefficients for solving at half levels
 
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
-
-     ! test
-     real, dimension(IM,JM) :: zpbl_test
 
 #ifdef _CUDA
      type(dim3) :: Grid, Block
@@ -3514,6 +3511,8 @@ contains
       TV  = T *( 1.0 + MAPL_VIREPS * Q - QL - QI ) 
       THV = TV*(TH/T)
 
+!      THV_MYNN = THV ! This variable is NOT smoothed in the lowest 5 layers
+
       TVE = (TV(:,:,1:LM-1) + TV(:,:,2:LM))*0.5
 
       ! Miscellaneous factors
@@ -3614,77 +3613,25 @@ if (ETr .eq. 1.) then
 
     L02=L0
 
-!!$    zpbl_test = zpbl
-!!$    call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,NumUp,&
-!!$             U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,ZPBL,ice_ramp, &   
-!!$             edmfdrya,edmfmoista, &
-!!$             edmfdryw,edmfmoistw, &
-!!$             edmfdryqt,edmfmoistqt, &
-!!$             edmfdrythl,edmfmoistthl, &
-!!$             edmfdryu,edmfmoistu,  &
-!!$             edmfdryv,edmfmoistv,  &
-!!$             edmfmoistqc,             &
-!!$             ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, &
-!!$             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN
-!!$             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
-!!$             ET,L02,ENT0,EDfac,EntWFac,buoyf,&
-!!$             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
-!!$             au, Mu, E, D, hle, qte, &
-!!$             EDMF_DISCRETE_TYPE, EDMF_IMPLICIT)
-!!$    zpbl = zpbl_test
-
-!!$    write(*,*) 'foo1'
-!!$    do l = 1,LM
-!!$       do j = 1,JM
-!!$       do i = 1,IM
-!!$          write(*,*) l, wthv_mf(i,j,l), Mu(i,j,l), E(i,j,l)
-!!$!          write(*,*) l, whl_mf(i,j,l), wqt_mf(i,j,l), wthv_mf(i,j,l)
-!!$!          write(*,*) l, ae3(i,j,l), aw3(i,j,l), aws3(i,j,l)
-!!$!          write(*,*) l, awqv3(i,j,l), awql3(i,j,l), awqi3(i,j,l)
-!!$!          write(*,*) l, awu3(i,j,l), awv3(i,j,l)
-!!$!          write(*,*) l, mfhl2(i,j,l), mfqt2(i,j,l), mfhlqt(i,j,l)
-!!$!          write(*,*) l, Mu(i,j,l), E(i,j,l), D(i,j,l)
-!!$!          write(*,*) l, au(i,j,l), Mu(i,j,l)
-!!$       end do
-!!$       end do
-!!$    end do
-!!$    write(*,*) 'foo2'
-
-    call run_edmf(IM, JM, LM, numup,                             & ! in                                                                      
-                  edmf_discrete_type, edmf_implicit,             & ! in                                                                      
-                  dt, z, zle, ple, rhoe,                         & ! in                                                                      
-                  u, v, thl, thv, qt, q, ql, qi,                 & ! in                                                                      
-                  ustar, sh, evap, zpbl, ice_ramp,               & ! in                                                                      
-                  pwmin, pwmax, AlphaW, AlphaQT, AlphaTH,        & ! in                                                                      
-                  ET, L02, ENT0, EDfac, EntWFac,                  & ! in                                                                      
-                  edmfdrya, edmfmoista, &
-                  edmfdryw, edmfmoistw, &
-                  edmfdryqt, edmfmoistqt, &
-                  edmfdrythl, edmfmoistthl, &
-                  edmfdryu, edmfmoistu,  &
-                  edmfdryv, edmfmoistv,  &
-                  edmfmoistqc, &
-                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3,                      & ! out (for solver)         
-                  whl_mf, wqt_mf, wthv_mf,                                      & ! out (for MYNN-EDMF)                                      
-                  buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for Moist)                                          
-                  iras, jras, &
-                  au, wu, Mu, E, D)
-
-!!$    do l = 1,LM
-!!$       do j = 1,JM
-!!$       do i = 1,IM
-!!$          write(*,*) l, wthv_mf(i,j,l), Mu(i,j,l), E(i,j,l)
-!!$!          write(*,*) l, whl_mf(i,j,l), wqt_mf(i,j,l), wthv_mf(i,j,l)
-!!$!          write(*,*) l, ae3(i,j,l), aw3(i,j,l), aws3(i,j,l)
-!!$!          write(*,*) l, awqv3(i,j,l), awql3(i,j,l), awqi3(i,j,l)
-!!$!          write(*,*) l, awu3(i,j,l), awv3(i,j,l)
-!!$!          write(*,*) l, mfhl2(i,j,l), mfqt2(i,j,l), mfhlqt(i,j,l)
-!!$!          write(*,*) l, Mu(i,j,l), E(i,j,l), D(i,j,l)
-!!$!          write(*,*) l, au(i,j,l), Mu(i,j,l)
-!!$       end do
-!!$       end do
-!!$    end do
-!!$    write(*,*) 'foo3'
+    call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
+                  edmf_discrete_type, edmf_implicit, &                            ! in
+                  dt, z, zle, ple, rhoe, exf, &                                   ! in
+                  u, v, thl, thv, qt, q, ql, qi, &                                ! in
+                  ustar, sh, evap, ice_ramp, &                                    ! in                                         
+                  pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
+                  ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
+                  zpbl, &                                                         ! inout
+                  edmfdrya, edmfmoista, &                                         ! out
+                  edmfdryw, edmfmoistw, &                                         ! out
+                  edmfdryqt, edmfmoistqt, &                                       ! out
+                  edmfdrythl, edmfmoistthl, &                                     ! out
+                  edmfdryu, edmfmoistu,  &                                        ! out
+                  edmfdryv, edmfmoistv,  &                                        ! out
+                  edmfmoistqc, &                                                  ! out
+                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
+                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
+                  buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
+                  au, wu, Mu, E, D)                                               ! out
 
     edmfZCLD=0.
   
@@ -3703,25 +3650,25 @@ if (ETr .eq. 1.) then
 ! negative L02 means no entrainment for the updrafts
      L02=-9.
  
-    call run_edmf(IM, JM, LM, 1,                             & ! in                                                                      
-                  edmf_discrete_type, edmf_implicit,             & ! in                                                                      
-                  dt, z, zle, ple, rhoe,                         & ! in                                                                 
-                  u, v, thl, thv, qt, q, ql, qi,                 & ! in                                                                      
-                  ustar, sh, evap, zpbl, ice_ramp,               & ! in                                                                      
-                  pwmin, pwmax, AlphaW, AlphaQT, AlphaTH,        & ! in                                                                      
-                  ET, L02, ENT0, EDfac, EntWFac,                  & ! in                                                                      
-                  edmfdrya, edmfmoista, &
-                  edmfdryw, edmfmoistw, &
-                  edmfdryqt, edmfmoistqt, &
-                  edmfdrythl, edmfmoistthl, &
-                  edmfdryu, edmfmoistu,  &
-                  edmfdryv, edmfmoistv,  &
-                  edmfmoistqc, &
-                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3,                      & ! out (for solver)         
-                  whl_mf, wqt_mf, wthv_mf,                                      & ! out (for MYNN-EDMF)                                      
-                  buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for Moist)                                          
-                  iras, jras, &
-                  au, wu, Mu, E, D)
+    call run_edmf(IM, JM, LM, 1, iras, jras, &                                    ! in
+                  edmf_discrete_type, edmf_implicit, &                            ! in
+                  dt, z, zle, ple, rhoe, exf, &                                   ! in
+                  u, v, thl, thv, qt, q, ql, qi, &                                ! in
+                  ustar, sh, evap, ice_ramp, &                                    ! in                                         
+                  pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
+                  ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
+                  zpbl, &                                                         ! inout
+                  edmfdrya, edmfmoista, &                                         ! out
+                  edmfdryw, edmfmoistw, &                                         ! out
+                  edmfdryqt, edmfmoistqt, &                                       ! out
+                  edmfdrythl, edmfmoistthl, &                                     ! out
+                  edmfdryu, edmfmoistu,  &                                        ! out
+                  edmfdryv, edmfmoistv,  &                                        ! out
+                  edmfmoistqc, &                                                  ! out
+                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
+                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
+                  buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
+                  au, wu, Mu, E, D)                                               ! ou
  
     ! compute the depth of the convective layer  
     ! the height where the convective mass-flux is zero
@@ -3754,25 +3701,25 @@ if (ETr .eq. 1.) then
  ! now the real call to the mass-flux
  !
  
-    call run_edmf(IM, JM, LM, numup,                             & ! in                                                                      
-                  edmf_discrete_type, edmf_implicit,             & ! in                                                                      
-                  dt, z, zle, ple, rhoe,                         & ! in                                                                      
-                  u, v, thl, thv, qt, q, ql, qi,                 & ! in                                                                      
-                  ustar, sh, evap, zpbl, ice_ramp,               & ! in                                                                      
-                  pwmin, pwmax, AlphaW, AlphaQT, AlphaTH,        & ! in                                                                      
-                  ET, L02, ENT0, EDfac, EntWFac,                  & ! in                                                                      
-                  edmfdrya, edmfmoista, &
-                  edmfdryw, edmfmoistw, &
-                  edmfdryqt, edmfmoistqt, &
-                  edmfdrythl, edmfmoistthl, &
-                  edmfdryu, edmfmoistu,  &
-                  edmfdryv, edmfmoistv,  &
-                  edmfmoistqc, &
-                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3,                      & ! out (for solver)         
-                  whl_mf, wqt_mf, wthv_mf,                                      & ! out (for MYNN-EDMF)                                      
-                  buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for Moist)                                          
-                  iras, jras, &
-                  au, wu, Mu, E, D)
+    call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
+                  edmf_discrete_type, edmf_implicit, &                            ! in
+                  dt, z, zle, ple, rhoe, exf, &                                   ! in
+                  u, v, thl, thv, qt, q, ql, qi, &                                ! in
+                  ustar, sh, evap, ice_ramp, &                                    ! in                                         
+                  pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
+                  ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
+                  zpbl, &                                                         ! inout
+                  edmfdrya, edmfmoista, &                                         ! out
+                  edmfdryw, edmfmoistw, &                                         ! out
+                  edmfdryqt, edmfmoistqt, &                                       ! out
+                  edmfdrythl, edmfmoistthl, &                                     ! out
+                  edmfdryu, edmfmoistu,  &                                        ! out
+                  edmfdryv, edmfmoistv,  &                                        ! out
+                  edmfmoistqc, &                                                  ! out
+                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
+                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
+                  buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
+                  au, wu, Mu, E, D)                                               
   
  else
     write (*,*) "Error: wrong EDMF_ET "
@@ -7079,7 +7026,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
   qvi(kts-1)  = qv(kts)
   qli(kts-1)  = ql(kts)
   qii(kts-1)  = qi(kts)
-  thvi(kts-1) = thvi(kts)
+  thvi(kts-1) = thv(kts)
 
 DO k=kts-1,kte
    rhoe(k) = rhoe3(IH,kte-k+kts-1)
