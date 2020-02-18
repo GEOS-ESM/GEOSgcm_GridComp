@@ -233,11 +233,6 @@ CONTAINS
 
       REAL, DIMENSION(IDIM,K0) :: LAMBDSV2
 
-#ifdef MEM_DEBUG
-      ! MEM - for vertical bounds in PRINT statements
-      INTEGER LLL,UUU
-#endif
-
       REAL TX2, TX3, UHT, VHT, AKM, ACR, ALM, TTH, QQH, SHTRG, WSPBL, DQX
       REAL WFN, TEM, TRG, TRGEXP, EVP, WLQ, QCC,MTKW_MAX !, BKE
       REAL SHTRG_FAC, SIGE_MINHOL, WFNOG
@@ -496,18 +491,6 @@ CONTAINS
 
 
                IF( ICL > ICMIN ) THEN
-#ifdef MEM_DEBUG
-! MEM TESTING  - reduced this count to zero
-             IF (DO_TRACERS) THEN
-             lll = lbound(xoi,1)
-             uuu = ubound(xoi,1)
-                      DO ITR=1,ITRCR 
-                      DO L=lll,uuu
-                        IF ( XOI(L,ITR) < 0.0 ) PRINT*,'XOI=NEG!!',ITR,L
-                      END DO
-                      END DO
-             ENDIF
-#endif
                   CALL CLOUDE(ICL)
                ENDIF
 
@@ -1385,15 +1368,6 @@ CONTAINS
             WFN     = WFN*0.5 *1.0           !*FRICFAC*0.5
             TEM     = WFN*PRI(K)
 
-#ifdef MEM_DEBUG
-! MEM TESTING  - reduced this count to zero
-            DO ITR=1,ITRCR 
-               DO L=IC,K
-                  IF ( XOI(L,ITR) < 0.0 ) PRINT*,'XOI_NEG!!',ITR,L
-               ENDDO
-            ENDDO
-#endif
-
             DO ITR=1,ITRCR 
                XCU(K,ITR) =  XCU(K,ITR) + TEM * (XOI(K-1,ITR) - XOI(K,ITR))
             END DO
@@ -1712,12 +1686,6 @@ CONTAINS
             DQQ(ICMIN:K) = DQS(I,ICMIN:K)
 
             IF (DO_TRACERS) THEN 
-
-#ifdef MEM_DEBUG
-               ! If debug statements print uninitialized fields, the program may crash
-               XOI(:,:) = 999.0
-#endif
-
                DO ITR=1,ITRCR 
                   XOI(ICMIN:K,ITR) = XHO(I,ICMIN:K,ITR)  ! Init the column from 30 hPa down to KCBL
                END DO
@@ -1954,23 +1922,6 @@ CONTAINS
             IRC (I,ICMIN:K-1) = RC(ICMIN:K-1)
 
             IF(ALLOCATED(ICL_V)) DEALLOCATE( ICL_V )
-
-#ifdef MEM_DEBUG
-
-! NO NEGATIVES now that fill_z is included
-
-             lll = lbound(xoi,2)   !  = 1
-             uuu = ubound(xoi,2)   !  = ITRCR
-
-             lll = lbound(xoi,1)
-             uuu = ubound(xoi,1)
-                      DO ITR=1,ITRCR 
-!                     DO L=ICMIN,K
-                      DO L=lll,uuu
-                        IF ( XOI(L,ITR) < 0.0 ) PRINT*,'XOI--neg',ITR,L
-                      END DO
-                      END DO
-#endif
 
          ENDIF
 
@@ -2764,14 +2715,6 @@ CONTAINS
 
    do ic=1,nq
 
-#ifdef MEM_DEBUG
-      do k=1,km
-        IF ( q(k,ic) < 0. ) THEN
-          PRINT*,'RAS_NEGLEV', iic+k-1, q(k,ic), ' ',ic
-        ENDIF
-      enddo
-#endif
-
       zfix = .false.
 
 ! Top layer
@@ -2851,15 +2794,6 @@ CONTAINS
 
 ! Perform final check and non-local fix if needed
          if ( zfix ) then
-
-#ifdef MEM_DEBUG
-           do k=1,km
-             IF ( q(k,ic) < 0. ) THEN
-               ! print level (1 to 72), species value, species index
-               PRINT*,'RASNEGLEV', iic+k-1, q(k,ic), ' ',ic
-             ENDIF
-           enddo
-#endif
 
            sum0 = 0.
            do k=km,1,-1
