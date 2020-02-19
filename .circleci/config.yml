@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: gmao/geos-build-env:3.0.0
+      - image: gmao/geos-build-env:6.0.4
     working_directory: /root/project
     steps:
       - run:
@@ -15,14 +15,25 @@ jobs:
             cd ${CIRCLE_WORKING_DIRECTORY}
             git clone git@github.com:GEOS-ESM/GEOSgcm.git
             cd GEOSgcm
-            checkout_externals -e Develop.cfg
-            cd src/Components/\@GEOSgcm_GridComp
-            git checkout ${CIRCLE_BRANCH}
+            mepo init
+            mepo clone
+            mepo develop GEOSgcm_GridComp GEOSgcm_App
+            mepo checkout ${CIRCLE_BRANCH} GEOSgcm_GridComp
+            mepo status
       - run:
-          name: "Build"
+          name: "Fix linker flags"
+          command: |
+            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSgcm
+            sed -i -e '$aset(CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS}    -Wl,--unresolved-symbols=ignore-all")' ./@cmake/GNU.cmake
+      - run:
+          name: "CMake"
           command: |
             cd ${CIRCLE_WORKING_DIRECTORY}/GEOSgcm
             mkdir build
             cd build
             cmake .. -DBASEDIR=$BASEDIR/Linux -DCMAKE_Fortran_COMPILER=gfortran -DCMAKE_BUILD_TYPE=Debug
+      - run:
+          name: "Build"
+          command: |
+            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSgcm/build
             make -j2 install
