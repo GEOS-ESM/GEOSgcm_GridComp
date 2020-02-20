@@ -3,6 +3,7 @@ program SaltIntSplitter
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
   use netcdf
   use MAPL
+  use mk_sharedMod
   use gFTL_StringVector
 
   implicit none
@@ -43,11 +44,6 @@ program SaltIntSplitter
   integer              :: dimSizes(3)
   integer              :: filetype,nVars
 
-  interface GetIds   
-     procedure GetIds_fast_1p
-     procedure GetIds_accurate_mpi
-  end interface
-
 !---------------------------------------------------------------------------
 
   I = iargc()
@@ -64,7 +60,7 @@ program SaltIntSplitter
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table
 
-  call ReadTileFile(InTileFile ,Pf,Id,loni,lati, 0)
+  call ReadTileFile(InTileFile ,Pf,Id,loni,lati,zoom,0)
   deallocate(Pf,Id)
 
   nullify(Pf)
@@ -291,8 +287,6 @@ program SaltIntSplitter
   deallocate( varInR8, varOutR8 )
 
 contains
-
-#include "getids.H"
 
 end program SaltIntSplitter
 

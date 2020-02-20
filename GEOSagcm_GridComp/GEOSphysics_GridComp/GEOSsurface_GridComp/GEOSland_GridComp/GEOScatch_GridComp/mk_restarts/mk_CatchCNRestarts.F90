@@ -194,6 +194,7 @@ program  mk_CatchCNRestarts
   use MAPL
   use gFTL_StringVector
   use ieee_arithmetic, only: isnan => ieee_is_nan
+  use mk_sharedMod
 
   implicit none
   include 'mpif.h'
@@ -277,11 +278,6 @@ program  mk_CatchCNRestarts
   type(Netcdf4_Fileformatter) :: InFmt,OutFmt
   type(FileMetadata) :: InCfg,OutCfg
 
-  interface GetIds   
-     procedure GetIds_fast_1p
-     procedure GetIds_accurate_mpi
-  end interface
-
   call init_MPI()
 
   !-----------------------------------------------------
@@ -341,7 +337,7 @@ program  mk_CatchCNRestarts
      
      ! Check # of tiles in OutTile
      
-     call ReadTileFile (OutTileFile,Pf,Id,lono,lato)
+     call ReadTileFile (OutTileFile,Pf,Id,lono,lato,zoom)
      
      ntiles = size(Pf) ! # of land tiles in OutTileFile
  
@@ -353,7 +349,7 @@ program  mk_CatchCNRestarts
         stop
      endif
 
-     call ReadTileFile (InTileFile,Pf,Id,lono,lato)
+     call ReadTileFile (InTileFile,Pf,Id,lono,lato,zoom)
      
      ntiles_in = size(Pf) ! # of land tiles in InTileFile must be that of OutTileFile
  
@@ -408,7 +404,7 @@ program  mk_CatchCNRestarts
      ! INPUT/OUTPUT Mapping since InTileFile =/ OutTileFile
      ! ----------------------------------------------------
      
-     call ReadTileFile (OutTileFile,Pf,Id,lono,lato)
+     call ReadTileFile (OutTileFile,Pf,Id,lono,lato,zoom)
      
      ntiles = size(Pf) ! # of land tiles in OutTileFile
      
@@ -417,7 +413,7 @@ program  mk_CatchCNRestarts
      ! Read input Tile File 
      ! -------------------------------------------
 
-     call ReadTileFile (InTileFile,Pf,Id,loni,lati)
+     call ReadTileFile (InTileFile,Pf,Id,loni,lati,zoom)
      ntiles_in = size(pf)
      
      deallocate (Pf, id)
@@ -426,7 +422,7 @@ program  mk_CatchCNRestarts
      ! ----------------
      
      allocate (Id(ntiles))  ! Id contains corresponding InTileID after mapping InTiles on to OutTile
-     call GetIds(loni,lati,lono,lato,Id)
+     call GetIds(loni,lati,lono,lato,zoom,Id)
      
      deallocate (loni,lati,lono,lato)
  
@@ -573,8 +569,6 @@ call MPI_BARRIER( MPI_COMM_WORLD, mpierr)
 call MPI_FINALIZE(mpierr)
   
 contains
-
-#include "getids.H"
 
   ! *****************************************************************************
   

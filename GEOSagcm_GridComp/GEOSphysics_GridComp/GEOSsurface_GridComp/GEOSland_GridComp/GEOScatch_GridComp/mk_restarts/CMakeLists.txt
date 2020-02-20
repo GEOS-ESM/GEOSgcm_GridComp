@@ -8,7 +8,6 @@ set (srcs
   mk_CICERestart.F90		    
   mk_CatchCNRestarts.F90		    
   mk_CatchRestarts.F90		    
-  mk_LDASsaRestarts.F90		    
   mk_LakeLandiceSaltRestarts.F90	    
   mk_RouteRestarts.F90		    
 #  mk_catch_restart.F90		    
