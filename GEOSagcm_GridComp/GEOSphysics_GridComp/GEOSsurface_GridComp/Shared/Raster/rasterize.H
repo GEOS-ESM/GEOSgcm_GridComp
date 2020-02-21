@@ -108,7 +108,7 @@
 !---------------------------------------------------------------
 
     allocate(Raster(Unc,Unr),stat=STATUS)
-    ASSERT_(STATUS==0)
+    _ASSERT(STATUS==0,'needs informative message')
 
     Raster = RASTERUNDEF
 
@@ -300,21 +300,21 @@
 ! Polygon sizes
 
     NV     = POLYSIZE
-    ASSERT_(NV > 1)
+    _ASSERT(NV > 1,'needs informative message')
 
 #ifdef MESH
     IM     = size(xv,1)-1
     JM     = size(xv,2)-1*useg
 
-    ASSERT_(IM == size(yv,1)-1)
-    ASSERT_(JM == size(yv,2)-1*useg)
+    _ASSERT(IM == size(yv,1)-1,'needs informative message')
+    _ASSERT(JM == size(yv,2)-1*useg,'needs informative message')
 #else
     IM     = size(xv,1)
     JM     = size(xv,2)
 
-    ASSERT_(IM == size(yv,1))
-    ASSERT_(JM == size(yv,2))
-    ASSERT_(NV == size(yv,3))
+    _ASSERT(IM == size(yv,1),'needs informative message')
+    _ASSERT(JM == size(yv,2),'needs informative message')
+    _ASSERT(NV == size(yv,3),'needs informative message')
 #endif
 
 
@@ -390,7 +390,7 @@
 
     fill = 1
     fq = 1
-    ASSERT_(mod(jm,useg)==0)	
+    _ASSERT(mod(jm,useg)==0,'needs informative message')	
     jn = jm/useg	
 
      if (useg > 1) then

@@ -47,7 +47,7 @@ module GEOS_SurfaceGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
 
   use GEOS_LakeGridCompMod,      only : LakeSetServices     => SetServices
@@ -3061,7 +3061,7 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_Get(MAPL, GCNAMES = GCNames, RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(NUM_CHILDREN == size(GCNames))
+    _ASSERT(NUM_CHILDREN == size(GCNames),'needs informative message')
 
     CHILD_MASK(OCEAN  ) = MAPL_OCEAN
 #ifndef AQUA_PLANET
@@ -3629,7 +3629,7 @@ module GEOS_SurfaceGridCompMod
           LocalRoutings(i)%srcPE = myPE
           LocalRoutings(i)%dstPE = myPE
        else
-          ASSERT_(.FALSE.)
+          _ASSERT(.FALSE.,'needs informative message')
        end if
     end do
 
@@ -4505,15 +4505,24 @@ module GEOS_SurfaceGridCompMod
 ! These cannot be verified, because they dont exists in all children.
 !-------------------------------------------------------------------
 
-        call MAPL_GetPointer(GEX(type), dum,   'LAI', ALLOC=associated(  LAITILE))
-        call MAPL_GetPointer(GEX(type), dum,   'GRN', ALLOC=associated(  GRNTILE))
-        call MAPL_GetPointer(GEX(type), dum, 'ROOTL', ALLOC=associated(ROOTLTILE))
-        call MAPL_GetPointer(GEX(type), dum,  'Z2CH', ALLOC=associated( Z2CHTILE))
-        call MAPL_GetPointer(GEX(type), dum,    'D0', ALLOC=associated(   D0TILE))
-        call MAPL_GetPointer(GEX(type), dum,    'UH', ALLOC=associated(   UHTILE))
-        call MAPL_GetPointer(GEX(type), dum,    'VH', ALLOC=associated(   VHTILE))
-        call MAPL_GetPointer(GEX(type), dum,   'RET', ALLOC=associated(   RETILE))
-        call MAPL_GetPointer(GEX(type), dum,   'ITY', ALLOC=associated(  ITYTILE))
+        call MAPL_GetPointer(GEX(type), dum,   'LAI', ALLOC=associated(  LAITILE), notFoundOK=.true., RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(GEX(type), dum,   'GRN', ALLOC=associated(  GRNTILE), notFoundOK=.true., RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(GEX(type), dum, 'ROOTL', ALLOC=associated(ROOTLTILE), notFoundOK=.true., RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(GEX(type), dum,  'Z2CH', ALLOC=associated( Z2CHTILE), notFoundOK=.true., RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(GEX(type), dum,    'D0', ALLOC=associated(   D0TILE), notFoundOK=.true., RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(GEX(type), dum,    'UH', ALLOC=associated(   UHTILE), notFoundOK=.true., RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(GEX(type), dum,    'VH', ALLOC=associated(   VHTILE), notFoundOK=.true., RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(GEX(type), dum,   'RET', ALLOC=associated(   RETILE), notFoundOK=.true., RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(GEX(type), dum,   'ITY', ALLOC=associated(  ITYTILE), notFoundOK=.true., RC=STATUS)
+        VERIFY_(STATUS)
 
 ! Call Child
 !-----------
@@ -5839,7 +5848,7 @@ module GEOS_SurfaceGridCompMod
           PP_TAPER_LAT_LOW  = PP_TAPER_LAT_LOW *(MAPL_PI/180.)
           PP_TAPER_LAT_HIGH = PP_TAPER_LAT_HIGH*(MAPL_PI/180.)
 
-          ASSERT_(PP_TAPER_LAT_HIGH > PP_TAPER_LAT_LOW)
+          _ASSERT(PP_TAPER_LAT_HIGH > PP_TAPER_LAT_LOW,'needs informative message')
 
           FACT = 1.0/(PP_TAPER_LAT_HIGH-PP_TAPER_LAT_LOW)
 
@@ -6134,7 +6143,7 @@ module GEOS_SurfaceGridCompMod
 !-----------------------------------------------------------------------
 
     if (associated(DISCHARGE)) then
-       ASSERT_(associated(SURF_INTERNAL_STATE%LocalRoutings))
+       _ASSERT(associated(SURF_INTERNAL_STATE%LocalRoutings),'needs informative message')
 !ALT       call MAPL_GetPointer(EXPORT, RUNOFF, 'RUNOFF', alloc=.true.,  RC=STATUS)
 !ALT       VERIFY_(STATUS)
     end if
@@ -8174,183 +8183,355 @@ module GEOS_SurfaceGridCompMod
 
 ! Some cannot be verified, because some children don't produce them
 
-      call MAPL_GetPointer(GEX(type), dum, 'LST'     , ALLOC=associated(LSTTILE     ))
-      call MAPL_GetPointer(GEX(type), dum, 'TP1'     , ALLOC=associated(TSOIL1TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TP2'     , ALLOC=associated(TSOIL2TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TP3'     , ALLOC=associated(TSOIL3TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TP4'     , ALLOC=associated(TSOIL4TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TP5'     , ALLOC=associated(TSOIL5TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TP6'     , ALLOC=associated(TSOIL6TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'ASNOW'   , ALLOC=associated(ASNOWTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'SHSNOW'  , ALLOC=associated(SHSNOWTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'AVETSNOW', ALLOC=associated(AVETSNOWTILE))
-      call MAPL_GetPointer(GEX(type), dum, 'TPSNOW'  , ALLOC=associated(TPSNOTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'TPUNST'  , ALLOC=associated(TPUSTTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'TPSAT'   , ALLOC=associated(TPSATTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'TPWLT'   , ALLOC=associated(TPWLTTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'TPSURF'  , ALLOC=associated(TPSURFTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'FRSAT'   , ALLOC=associated(FRSATTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'FRUST'   , ALLOC=associated(FRUSTTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'FRWLT'   , ALLOC=associated(FRWLTTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'SNOWMASS', ALLOC=associated(SNOWTILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'SNOWDP'  , ALLOC=associated(SNODTILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'WET1'    , ALLOC=associated(WET1TILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'WET2'    , ALLOC=associated(WET2TILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'WET3'    , ALLOC=associated(WET3TILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'WCSF'    , ALLOC=associated(WCSFTILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'WCRZ'    , ALLOC=associated(WCRZTILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'WCPR'    , ALLOC=associated(WCPRTILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'WESNN1'  , ALLOC=associated(WESNN1TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'WESNN2'  , ALLOC=associated(WESNN2TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'WESNN3'  , ALLOC=associated(WESNN3TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'CAPAC'   , ALLOC=associated(CAPACTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'RUNOFF'  , ALLOC=associated(RUNOFFTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'RUNSURF' , ALLOC=associated(RUNSURFTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'BASEFLOW', ALLOC=associated(BASEFLOWTILE))
-      call MAPL_GetPointer(GEX(type), dum, 'ACCUM'   , ALLOC=associated(ACCUMTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'SMELT'   , ALLOC=associated(SMELTTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'EVPVEG'  , ALLOC=associated(EVEGTILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'EVPINT'  , ALLOC=associated(EINTTILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'EVPICE'  , ALLOC=associated(EICETILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'EVPSNO'  , ALLOC=associated(ESNOTILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'EVPSOI'  , ALLOC=associated(ESOITILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'WAT10CM' , ALLOC=associated(WAT10CMTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'WATSOI'  , ALLOC=associated(WATSOITILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'ICESOI'  , ALLOC=associated(ICESOITILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'EVLAND'  , ALLOC=associated(EVLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'PRLAND'  , ALLOC=associated(PRLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'SNOLAND'  , ALLOC=associated(SNOLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'DRPARLAND'  , ALLOC=associated(DRPARLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'DFPARLAND'  , ALLOC=associated(DFPARLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'LHSNOW'  , ALLOC=associated(LHSNOWTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'SWNETSNOW'  , ALLOC=associated(SWNETSNOWTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'LWUPSNOW'  , ALLOC=associated(LWUPSNOWTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'LWDNSNOW'  , ALLOC=associated(LWDNSNOWTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TCSORIG'  , ALLOC=associated(TCSORIGTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TPSN1IN'  , ALLOC=associated(TPSN1INTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TPSN1OUT'  , ALLOC=associated(TPSN1OUTTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'GHSNOW'  , ALLOC=associated(GHSNOWTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'LHLAND'  , ALLOC=associated(LHLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'SHLAND'  , ALLOC=associated(SHLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'SWLAND'  , ALLOC=associated(SWLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'SWDOWNLAND'  , ALLOC=associated(SWDOWNLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'LWLAND'  , ALLOC=associated(LWLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'GHLAND'  , ALLOC=associated(GHLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'GHTSKIN' , ALLOC=associated(GHTSKINTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'SMLAND'  , ALLOC=associated(SMLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'QINFIL'  , ALLOC=associated(QINFILTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TWLAND'  , ALLOC=associated(TWLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TELAND'  , ALLOC=associated(TELANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TSLAND'  , ALLOC=associated(TSLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'DWLAND'  , ALLOC=associated(DWLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'DHLAND'  , ALLOC=associated(DHLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'SPLAND'  , ALLOC=associated(SPLANDTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'SPWATR'  , ALLOC=associated(SPWATRTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'SPSNOW'  , ALLOC=associated(SPSNOWTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'FRACI'   , ALLOC=associated(   FRTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'RDU001'  , ALLOC=associated(RDU001TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'RDU002'  , ALLOC=associated(RDU002TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'RDU003'  , ALLOC=associated(RDU003TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'RDU004'  , ALLOC=associated(RDU004TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'RDU005'  , ALLOC=associated(RDU005TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'RBC001'  , ALLOC=associated(RBC001TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'RBC002'  , ALLOC=associated(RBC002TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'ROC001'  , ALLOC=associated(ROC001TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'ROC002'  , ALLOC=associated(ROC002TILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'RMELTDU001' , ALLOC=associated(RMELTDU001TILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'RMELTDU002' , ALLOC=associated(RMELTDU002TILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'RMELTDU003' , ALLOC=associated(RMELTDU003TILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'RMELTDU004' , ALLOC=associated(RMELTDU004TILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'RMELTDU005' , ALLOC=associated(RMELTDU005TILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'RMELTBC001' , ALLOC=associated(RMELTBC001TILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'RMELTBC002' , ALLOC=associated(RMELTBC002TILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'RMELTOC001' , ALLOC=associated(RMELTOC001TILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'RMELTOC002' , ALLOC=associated(RMELTOC002TILE ))
+      call MAPL_GetPointer(GEX(type), dum, 'LST'     , ALLOC=associated(LSTTILE     ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TP1'     , ALLOC=associated(TSOIL1TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TP2'     , ALLOC=associated(TSOIL2TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TP3'     , ALLOC=associated(TSOIL3TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TP4'     , ALLOC=associated(TSOIL4TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TP5'     , ALLOC=associated(TSOIL5TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TP6'     , ALLOC=associated(TSOIL6TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'ASNOW'   , ALLOC=associated(ASNOWTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SHSNOW'  , ALLOC=associated(SHSNOWTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'AVETSNOW', ALLOC=associated(AVETSNOWTILE), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TPSNOW'  , ALLOC=associated(TPSNOTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TPUNST'  , ALLOC=associated(TPUSTTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TPSAT'   , ALLOC=associated(TPSATTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TPWLT'   , ALLOC=associated(TPWLTTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TPSURF'  , ALLOC=associated(TPSURFTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'FRSAT'   , ALLOC=associated(FRSATTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'FRUST'   , ALLOC=associated(FRUSTTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'FRWLT'   , ALLOC=associated(FRWLTTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SNOWMASS', ALLOC=associated(SNOWTILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SNOWDP'  , ALLOC=associated(SNODTILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WET1'    , ALLOC=associated(WET1TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WET2'    , ALLOC=associated(WET2TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WET3'    , ALLOC=associated(WET3TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WCSF'    , ALLOC=associated(WCSFTILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WCRZ'    , ALLOC=associated(WCRZTILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WCPR'    , ALLOC=associated(WCPRTILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WESNN1'  , ALLOC=associated(WESNN1TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WESNN2'  , ALLOC=associated(WESNN2TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WESNN3'  , ALLOC=associated(WESNN3TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'CAPAC'   , ALLOC=associated(CAPACTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RUNOFF'  , ALLOC=associated(RUNOFFTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RUNSURF' , ALLOC=associated(RUNSURFTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'BASEFLOW', ALLOC=associated(BASEFLOWTILE), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'ACCUM'   , ALLOC=associated(ACCUMTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SMELT'   , ALLOC=associated(SMELTTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'EVPVEG'  , ALLOC=associated(EVEGTILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'EVPINT'  , ALLOC=associated(EINTTILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'EVPICE'  , ALLOC=associated(EICETILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'EVPSNO'  , ALLOC=associated(ESNOTILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'EVPSOI'  , ALLOC=associated(ESOITILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WAT10CM' , ALLOC=associated(WAT10CMTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'WATSOI'  , ALLOC=associated(WATSOITILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'ICESOI'  , ALLOC=associated(ICESOITILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'EVLAND'  , ALLOC=associated(EVLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'PRLAND'  , ALLOC=associated(PRLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SNOLAND'  , ALLOC=associated(SNOLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DRPARLAND'  , ALLOC=associated(DRPARLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DFPARLAND'  , ALLOC=associated(DFPARLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'LHSNOW'  , ALLOC=associated(LHSNOWTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SWNETSNOW'  , ALLOC=associated(SWNETSNOWTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'LWUPSNOW'  , ALLOC=associated(LWUPSNOWTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'LWDNSNOW'  , ALLOC=associated(LWDNSNOWTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TCSORIG'  , ALLOC=associated(TCSORIGTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TPSN1IN'  , ALLOC=associated(TPSN1INTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TPSN1OUT'  , ALLOC=associated(TPSN1OUTTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'GHSNOW'  , ALLOC=associated(GHSNOWTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'LHLAND'  , ALLOC=associated(LHLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SHLAND'  , ALLOC=associated(SHLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SWLAND'  , ALLOC=associated(SWLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SWDOWNLAND'  , ALLOC=associated(SWDOWNLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'LWLAND'  , ALLOC=associated(LWLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'GHLAND'  , ALLOC=associated(GHLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'GHTSKIN' , ALLOC=associated(GHTSKINTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SMLAND'  , ALLOC=associated(SMLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'QINFIL'  , ALLOC=associated(QINFILTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TWLAND'  , ALLOC=associated(TWLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TELAND'  , ALLOC=associated(TELANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TSLAND'  , ALLOC=associated(TSLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DWLAND'  , ALLOC=associated(DWLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DHLAND'  , ALLOC=associated(DHLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SPLAND'  , ALLOC=associated(SPLANDTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SPWATR'  , ALLOC=associated(SPWATRTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SPSNOW'  , ALLOC=associated(SPSNOWTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'FRACI'   , ALLOC=associated(   FRTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RDU001'  , ALLOC=associated(RDU001TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RDU002'  , ALLOC=associated(RDU002TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RDU003'  , ALLOC=associated(RDU003TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RDU004'  , ALLOC=associated(RDU004TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RDU005'  , ALLOC=associated(RDU005TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RBC001'  , ALLOC=associated(RBC001TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RBC002'  , ALLOC=associated(RBC002TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'ROC001'  , ALLOC=associated(ROC001TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'ROC002'  , ALLOC=associated(ROC002TILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RMELTDU001' , ALLOC=associated(RMELTDU001TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RMELTDU002' , ALLOC=associated(RMELTDU002TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RMELTDU003' , ALLOC=associated(RMELTDU003TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RMELTDU004' , ALLOC=associated(RMELTDU004TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RMELTDU005' , ALLOC=associated(RMELTDU005TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RMELTBC001' , ALLOC=associated(RMELTBC001TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RMELTBC002' , ALLOC=associated(RMELTBC002TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RMELTOC001' , ALLOC=associated(RMELTOC001TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RMELTOC002' , ALLOC=associated(RMELTOC002TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
 
       IF (LSM_CHOICE ==2) THEN
-         call MAPL_GetPointer(GEX(type), dum, 'CNLAI'   , ALLOC=associated(CNLAITILE   ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNTLAI'  , ALLOC=associated(CNTLAITILE  ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNSAI'   , ALLOC=associated(CNSAITILE   ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNTOTC'  , ALLOC=associated(CNTOTCTILE  ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNVEGC'  , ALLOC=associated(CNVEGCTILE  ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNROOT'  , ALLOC=associated(CNROOTTILE  ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNNPP'   , ALLOC=associated(CNNPPTILE   ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNGPP'   , ALLOC=associated(CNGPPTILE   ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNSR'    , ALLOC=associated(CNSRTILE    ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNNEE'   , ALLOC=associated(CNNEETILE   ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNXSMR'  , ALLOC=associated(CNXSMRTILE  ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNADD'   , ALLOC=associated(CNADDTILE   ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNLOSS'  , ALLOC=associated(CNLOSSTILE  ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNBURN'  , ALLOC=associated(CNBURNTILE  ))
-         call MAPL_GetPointer(GEX(type), dum, 'PARABS'  , ALLOC=associated(PARABSTILE  ))
-         call MAPL_GetPointer(GEX(type), dum, 'PARINC'  , ALLOC=associated(PARINCTILE  ))
-         call MAPL_GetPointer(GEX(type), dum, 'SCSAT'   , ALLOC=associated(SCSATTILE   ))
-         call MAPL_GetPointer(GEX(type), dum, 'SCUNS'   , ALLOC=associated(SCUNSTILE   ))
-         call MAPL_GetPointer(GEX(type), dum, 'BTRANT'  , ALLOC=associated(BTRANTTILE  ))
-         call MAPL_GetPointer(GEX(type), dum, 'SIF'     , ALLOC=associated(SIFTILE     ))
-         call MAPL_GetPointer(GEX(type), dum, 'CNFSEL'  , ALLOC=associated(CNFSELTILE  ))   
+         call MAPL_GetPointer(GEX(type), dum, 'CNLAI'   , ALLOC=associated(CNLAITILE   ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNTLAI'  , ALLOC=associated(CNTLAITILE  ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNSAI'   , ALLOC=associated(CNSAITILE   ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNTOTC'  , ALLOC=associated(CNTOTCTILE  ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNVEGC'  , ALLOC=associated(CNVEGCTILE  ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNROOT'  , ALLOC=associated(CNROOTTILE  ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNNPP'   , ALLOC=associated(CNNPPTILE   ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNGPP'   , ALLOC=associated(CNGPPTILE   ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNSR'    , ALLOC=associated(CNSRTILE    ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNNEE'   , ALLOC=associated(CNNEETILE   ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNXSMR'  , ALLOC=associated(CNXSMRTILE  ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNADD'   , ALLOC=associated(CNADDTILE   ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNLOSS'  , ALLOC=associated(CNLOSSTILE  ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNBURN'  , ALLOC=associated(CNBURNTILE  ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'PARABS'  , ALLOC=associated(PARABSTILE  ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'PARINC'  , ALLOC=associated(PARINCTILE  ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'SCSAT'   , ALLOC=associated(SCSATTILE   ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'SCUNS'   , ALLOC=associated(SCUNSTILE   ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'BTRANT'  , ALLOC=associated(BTRANTTILE  ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'SIF'     , ALLOC=associated(SIFTILE     ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetPointer(GEX(type), dum, 'CNFSEL'  , ALLOC=associated(CNFSELTILE  ), notFoundOK=.true., RC=STATUS)
+         VERIFY_(STATUS)
       END IF
-      call MAPL_GetPointer(GEX(type), dum, 'HLATWTR' , ALLOC=associated(HLATWTRTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'HLATICE' , ALLOC=associated(HLATICETILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'SHWTR'   , ALLOC=associated(  SHWTRTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'SHICE'   , ALLOC=associated(  SHICETILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'TAUXW'   , ALLOC=associated(  TAUXWTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'TAUXI'   , ALLOC=associated(  TAUXITILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'TAUYW'   , ALLOC=associated(  TAUYWTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'TAUYI'   , ALLOC=associated(  TAUYITILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'LWNDWTR' , ALLOC=associated(LWNDWTRTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'SWNDWTR' , ALLOC=associated(SWNDWTRTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'LWNDICE' , ALLOC=associated(LWNDICETILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'SWNDICE' , ALLOC=associated(SWNDICETILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'RAINOCN' , ALLOC=associated(RAINOCNTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'SNOWOCN' , ALLOC=associated(SNOWOCNTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'TSKINW', ALLOC=associated(TSKINWTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TSKINI', ALLOC=associated(TSKINITILE  ))
+      call MAPL_GetPointer(GEX(type), dum, 'HLATWTR' , ALLOC=associated(HLATWTRTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'HLATICE' , ALLOC=associated(HLATICETILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SHWTR'   , ALLOC=associated(  SHWTRTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SHICE'   , ALLOC=associated(  SHICETILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TAUXW'   , ALLOC=associated(  TAUXWTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TAUXI'   , ALLOC=associated(  TAUXITILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TAUYW'   , ALLOC=associated(  TAUYWTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TAUYI'   , ALLOC=associated(  TAUYITILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'LWNDWTR' , ALLOC=associated(LWNDWTRTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SWNDWTR' , ALLOC=associated(SWNDWTRTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'LWNDICE' , ALLOC=associated(LWNDICETILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SWNDICE' , ALLOC=associated(SWNDICETILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'RAINOCN' , ALLOC=associated(RAINOCNTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SNOWOCN' , ALLOC=associated(SNOWOCNTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TSKINW', ALLOC=associated(TSKINWTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TSKINI', ALLOC=associated(TSKINITILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
 
-      call MAPL_GetPointer(GEX(type), dum, 'DCOOL' ,   ALLOC=associated(DCOOL_TILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'DWARM' ,   ALLOC=associated(DWARM_TILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'TDROP' ,   ALLOC=associated(TDROP_TILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'QCOOL' ,   ALLOC=associated(QCOOL_TILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'SWCOOL',   ALLOC=associated(SWCOOL_TILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'USTARW' ,  ALLOC=associated(USTARW_TILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'TBAR'  ,   ALLOC=associated(TBAR_TILE     ))
-      call MAPL_GetPointer(GEX(type), dum, 'LCOOL' ,   ALLOC=associated(LCOOL_TILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'BCOOL' ,   ALLOC=associated(BCOOL_TILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'TDEL'    , ALLOC=associated(TDEL_TILE     ))
-      call MAPL_GetPointer(GEX(type), dum, 'TS_FOUND', ALLOC=associated(TS_FOUND_TILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'QWARM',    ALLOC=associated(QWARM_TILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'SWWARM',   ALLOC=associated(SWWARM_TILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'LANGM',    ALLOC=associated(LANGM_TILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'PHIW',     ALLOC=associated(PHIW_TILE     ))
-      call MAPL_GetPointer(GEX(type), dum, 'TAUTW',    ALLOC=associated(TAUTW_TILE    ))
-      call MAPL_GetPointer(GEX(type), dum, 'ZETA_W',   ALLOC=associated(ZETA_W_TILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'TWMTF',    ALLOC=associated(TWMTF_TILE    ))
+      call MAPL_GetPointer(GEX(type), dum, 'DCOOL' ,   ALLOC=associated(DCOOL_TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DWARM' ,   ALLOC=associated(DWARM_TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TDROP' ,   ALLOC=associated(TDROP_TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'QCOOL' ,   ALLOC=associated(QCOOL_TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SWCOOL',   ALLOC=associated(SWCOOL_TILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'USTARW' ,  ALLOC=associated(USTARW_TILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TBAR'  ,   ALLOC=associated(TBAR_TILE     ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'LCOOL' ,   ALLOC=associated(LCOOL_TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'BCOOL' ,   ALLOC=associated(BCOOL_TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TDEL'    , ALLOC=associated(TDEL_TILE     ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TS_FOUND', ALLOC=associated(TS_FOUND_TILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'QWARM',    ALLOC=associated(QWARM_TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SWWARM',   ALLOC=associated(SWWARM_TILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'LANGM',    ALLOC=associated(LANGM_TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'PHIW',     ALLOC=associated(PHIW_TILE     ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TAUTW',    ALLOC=associated(TAUTW_TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'ZETA_W',   ALLOC=associated(ZETA_W_TILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TWMTF',    ALLOC=associated(TWMTF_TILE    ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
 
-      call MAPL_GetPointer(GEX(type), dum, 'HICE'  , ALLOC=associated(HICETILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'HSNO'  , ALLOC=associated(HSNOTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'FRZMLT', ALLOC=associated(FRZMLTTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'TSKINWCICE', ALLOC=associated(TSKINWCICETILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'ISTSFC', ALLOC=associated(ISTSFCTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'SSKINW2',ALLOC=associated(SSKINWTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'MELTT', ALLOC=associated(MELTTTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'MELTB', ALLOC=associated(MELTBTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'MELTS', ALLOC=associated(MELTSTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'MELTL', ALLOC=associated(MELTLTILE  ))
-      call MAPL_GetPointer(GEX(type), dum, 'FRAZIL',ALLOC=associated(FRAZILTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'CONGEL',ALLOC=associated(CONGELTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'SNOICE',ALLOC=associated(SNOICETILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'DAIDTT',ALLOC=associated(DAIDTTTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'DVIDTT',ALLOC=associated(DVIDTTTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'DAIDTD',ALLOC=associated(DAIDTDTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'DVIDTD',ALLOC=associated(DVIDTDTILE ))
-      call MAPL_GetPointer(GEX(type), dum, 'FBOT'  ,ALLOC=associated(FBOTTILE   ))
-      call MAPL_GetPointer(GEX(type), dum, 'HFLUX' ,ALLOC=associated(HFLUXTILE  ))
-      call MAPL_GetPointer(GEX(type), dum,'WATERFLUX',ALLOC=associated(WFLUXTILE))
-      call MAPL_GetPointer(GEX(type), dum, 'SALTFLUX',ALLOC=associated(SFLUXTILE))
-      call MAPL_GetPointer(GEX(type), dum, 'FSWTHRU',ALLOC=associated(FSWTHRUTILE))
-      call MAPL_GetPointer(GEX(type), dum, 'FSWABS',ALLOC=associated(FSWABSTILE))
-      call MAPL_GetPointer(GEX(type), dum, 'USTARI',ALLOC=associated(USTARITILE))
-      call MAPL_GetPointer(GEX(type), dum, 'FHOCN' ,ALLOC=associated(FHOCNTILE ))
+      call MAPL_GetPointer(GEX(type), dum, 'HICE'  , ALLOC=associated(HICETILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'HSNO'  , ALLOC=associated(HSNOTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'FRZMLT', ALLOC=associated(FRZMLTTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TSKINWCICE', ALLOC=associated(TSKINWCICETILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'ISTSFC', ALLOC=associated(ISTSFCTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SSKINW2',ALLOC=associated(SSKINWTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'MELTT', ALLOC=associated(MELTTTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'MELTB', ALLOC=associated(MELTBTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'MELTS', ALLOC=associated(MELTSTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'MELTL', ALLOC=associated(MELTLTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'FRAZIL',ALLOC=associated(FRAZILTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'CONGEL',ALLOC=associated(CONGELTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SNOICE',ALLOC=associated(SNOICETILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DAIDTT',ALLOC=associated(DAIDTTTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DVIDTT',ALLOC=associated(DVIDTTTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DAIDTD',ALLOC=associated(DAIDTDTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'DVIDTD',ALLOC=associated(DVIDTDTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'FBOT'  ,ALLOC=associated(FBOTTILE   ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'HFLUX' ,ALLOC=associated(HFLUXTILE  ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum,'WATERFLUX',ALLOC=associated(WFLUXTILE), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SALTFLUX',ALLOC=associated(SFLUXTILE), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'FSWTHRU',ALLOC=associated(FSWTHRUTILE), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'FSWABS',ALLOC=associated(FSWABSTILE), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'USTARI',ALLOC=associated(USTARITILE), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'FHOCN' ,ALLOC=associated(FHOCNTILE ), notFoundOK=.true., RC=STATUS)
+      VERIFY_(STATUS)
 
 ! All children can produce these                       
                                                                                        
@@ -9179,26 +9360,31 @@ module GEOS_SurfaceGridCompMod
     integer                      :: STATUS
     real, pointer                :: PTR(:)
     type (ESMF_Field)            :: field
+    type (ESMF_StateItem_Flag)   :: itemType
 
-    call ESMF_StateGet(state, name, Field, rc=status)
+    call ESMF_StateGet(state, name, itemType=itemType, rc=status)
+    VERIFY_(STATUS)
+
+    if (itemType == ESMF_STATEITEM_NOTFOUND) then
 
 ! If the field is not in the state being filled, we do nothing.
 !--------------------------------------------------------------      
+      RETURN_(ESMF_SUCCESS)
 
-    if (STATUS/=ESMF_SUCCESS) then
-       RETURN_(ESMF_SUCCESS)
-    endif
+    else
 
 ! Get the pointer to the variable to be filled.
 !----------------------------------------------
 
-    call MAPL_GetPointer(STATE, PTR, NAME, RC=STATUS)
+      call MAPL_GetPointer(STATE, PTR, NAME, RC=STATUS)
+      VERIFY_(STATUS)
 
 ! Fill the variable from the provided stream variable.
 !-----------------------------------------------------
 
-    call MAPL_LocStreamTransform( PTR, XFORM, TILE, RC=STATUS ) 
-    VERIFY_(STATUS)
+      call MAPL_LocStreamTransform( PTR, XFORM, TILE, RC=STATUS ) 
+      VERIFY_(STATUS)
+    end if
 
     RETURN_(ESMF_SUCCESS)
 
@@ -9218,28 +9404,33 @@ module GEOS_SurfaceGridCompMod
     real, pointer                :: PTR(:,:)
     integer                      :: I
     type (ESMF_Field)            :: field
+    type (ESMF_StateItem_Flag)   :: itemType
 
-    call ESMF_StateGet(state, name, Field, rc=status)
+    call ESMF_StateGet(state, name, itemType=itemType, rc=status)
+    VERIFY_(STATUS)
+
+    if (itemType == ESMF_STATEITEM_NOTFOUND) then
 
 ! If the field is not in the state being filled, we do nothing.
 !--------------------------------------------------------------      
 
-    if (STATUS/=ESMF_SUCCESS) then
        RETURN_(ESMF_SUCCESS)
-    endif
 
 ! Get the pointer to the variable to be filled.
 !----------------------------------------------
+    else
 
-    call MAPL_GetPointer(STATE, PTR, NAME, RC=STATUS)
+      call MAPL_GetPointer(STATE, PTR, NAME, RC=STATUS)
+      VERIFY_(STATUS)
 
 ! Fill the variable from the provided stream variable.
 !-----------------------------------------------------
 
-    do I = 1, SIZE(PTR,2)
-       call MAPL_LocStreamTransform( PTR(:,I), XFORM, TILE(:,I), RC=STATUS )
-       VERIFY_(STATUS)
-    end do
+      do I = 1, SIZE(PTR,2)
+         call MAPL_LocStreamTransform( PTR(:,I), XFORM, TILE(:,I), RC=STATUS )
+         VERIFY_(STATUS)
+      end do
+    end if
 
     RETURN_(ESMF_SUCCESS)
 
@@ -9258,22 +9449,31 @@ module GEOS_SurfaceGridCompMod
     integer                      :: STATUS
     real, pointer                :: PTR(:)
     type (ESMF_Field)            :: field
+    type (ESMF_StateItem_Flag)   :: itemType
 
-    call ESMF_StateGet(STATE, NAME, FIELD, RC=STATUS)
+    call ESMF_StateGet(state, name, itemType=itemType, rc=status)
+    VERIFY_(STATUS)
+
+    if (itemType == ESMF_STATEITEM_NOTFOUND) then
 
 ! If the field is not in the state being filled, we do nothing.
 !--------------------------------------------------------------      
 
-    if (STATUS/=ESMF_SUCCESS) then
        RETURN_(ESMF_SUCCESS)
-    endif
 
-    call MAPL_GetPointer(STATE, PTR, NAME, RC=STATUS)
+    else
 
-    ASSERT_(associated(PTR))
+      call MAPL_GetPointer(STATE, PTR, NAME, RC=STATUS)
+      VERIFY_(STATUS)
 
-    call MAPL_LocStreamTransform( TILE, XFORM, PTR, RC=STATUS ) 
-    VERIFY_(STATUS)
+      _ASSERT(associated(PTR),'needs informative message')
+
+      call MAPL_LocStreamTransform( TILE, XFORM, PTR, RC=STATUS ) 
+      VERIFY_(STATUS)
+
+    end if
+
+    RETURN_(ESMF_SUCCESS)
 
   end subroutine FILLOUT_TILE1D
 
@@ -9291,27 +9491,35 @@ module GEOS_SurfaceGridCompMod
     real, pointer                :: PTR(:,:)
     integer                      :: I
     type (ESMF_Field)            :: field
+    type (ESMF_StateItem_Flag)   :: itemType
 
-    call ESMF_StateGet(STATE, NAME, FIELD, RC=STATUS)
+    call ESMF_StateGet(state, name, itemType=itemType, rc=status)
+    VERIFY_(STATUS)
+
+    if (itemType == ESMF_STATEITEM_NOTFOUND) then
 
 ! If the field is not in the state being filled, we do nothing.
 !--------------------------------------------------------------      
 
-    if (STATUS/=ESMF_SUCCESS) then
        RETURN_(ESMF_SUCCESS)
-    endif
 
-    call MAPL_GetPointer(STATE, PTR, NAME, RC=STATUS)
-
-    ASSERT_(associated(PTR))
-    if (size(tile,2)==0) then
-       RETURN_(ESMF_SUCCESS)
     else
-       do I = 1, SIZE(PTR,2)
-          call MAPL_LocStreamTransform( TILE(:,I), XFORM, PTR(:,I), RC=STATUS ) 
-          VERIFY_(STATUS)
-       enddo
+
+      call MAPL_GetPointer(STATE, PTR, NAME, RC=STATUS)
+      VERIFY_(STATUS)
+
+      _ASSERT(associated(PTR),'needs informative message')
+      if (size(tile,2)==0) then
+         RETURN_(ESMF_SUCCESS)
+      else
+         do I = 1, SIZE(PTR,2)
+            call MAPL_LocStreamTransform( TILE(:,I), XFORM, PTR(:,I), RC=STATUS ) 
+            VERIFY_(STATUS)
+         enddo
+      end if
     end if
+
+    RETURN_(ESMF_SUCCESS)
 
   end subroutine FILLOUT_UNGRIDDED
 
@@ -9356,7 +9564,7 @@ module GEOS_SurfaceGridCompMod
                VERIFY_(STATUS)
                Discharge(Routing(i)%DstIndex) = Discharge(Routing(i)%DstIndex) + TileDischarge
             else
-               ASSERT_(.false.)
+               _ASSERT(.false.,'needs informative message')
             end if
          end if
       end do

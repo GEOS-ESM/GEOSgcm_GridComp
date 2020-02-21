@@ -14,14 +14,13 @@ module GEOS_GcmGridCompMod
 ! !USES:
 
    use ESMF
-   use MAPL_Mod
+   use MAPL
 
    use GEOS_dataatmGridCompMod,  only:  DATAATM_SetServices => SetServices
    use GEOS_AgcmGridCompMod,     only:  AGCM_SetServices => SetServices
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
    use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
    use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices
-   use m_chars,                  only:  uppercase
 
 
   implicit none
@@ -100,7 +99,7 @@ contains
 ! !ARGUMENTS:
 
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    integer, optional                  :: RC  ! return code
+    integer, intent(out)               :: RC  ! return code
 
 ! !DESCRIPTION:  The SetServices for the PhysicsGcm GC needs to register its
 !   Initialize and Run.  It uses the MAPL\_Generic construct for defining 
@@ -1446,8 +1445,8 @@ contains
     VERIFY_(STATUS)
 
 
-    call MAPL_TimerON(MAPL,"TOTAL")
     call MAPL_TimerON(MAPL,"RUN"  )
+    call MAPL_TimerON(MAPL,"TOTAL")
 
 
 ! Get my internal private state. This contains the transforms
@@ -1737,12 +1736,10 @@ contains
        end if REPLAY
     endif
 
-
     ! Ensure Active PREDICTOR_STEP Alarm of OFF
     ! -----------------------------------------
     IF(ESMF_AlarmIsRinging(PredictorIsActive)) CALL ESMF_AlarmRingerOff(PredictorIsActive, RC=STATUS)
     VERIFY_(STATUS)
-
 
     ! the usual time step
     !--------------------
@@ -1775,8 +1772,8 @@ contains
     VERIFY_(STATUS)
     
 
-     call MAPL_TimerOff(MAPL,"RUN"  )
      call MAPL_TimerOff(MAPL,"TOTAL")
+     call MAPL_TimerOff(MAPL,"RUN"  )
 
 
      RETURN_(ESMF_SUCCESS)
@@ -2185,7 +2182,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -2224,7 +2221,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -2266,7 +2263,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -2307,7 +2304,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -2346,7 +2343,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -2387,7 +2384,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)

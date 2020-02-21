@@ -18,7 +18,7 @@ if (CMAKE_BUILD_TYPE MATCHES Release)
 endif ()
 
 esma_add_library (${this} SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared MAPL_Base RRTMG_SW_mods)
+   DEPENDENCIES GEOS_Shared MAPL RRTMG_SW_mods)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
 

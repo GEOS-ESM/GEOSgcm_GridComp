@@ -233,7 +233,7 @@ implicit none
        do mon=smon+1,smon+12
           imon=imon+1
 	  
-	  iret = NF_GET_VARA_REAL(ncid, 6,(/1,mon/),(/MAX_NOF_GRID,1/),vecforc); VERIFY_(IRET)
+	  iret = NF_GET_VARA_REAL(ncid, 6,(/1,mon/),(/MAX_NOF_GRID,1/),vecforc)
 	  ASSERT_(iret==NF_NOERR)		          
 	  catforc =1.e-20
 	  catcount=0
@@ -256,8 +256,8 @@ implicit none
 
        END DO  
     END DO ! Year
-    iret = NF_CLOSE(ncid); VERIFY_(iret)
-    ASSERT_(iret==NF_NOERR); VERIFY_(STATUS)
+    iret = NF_CLOSE(ncid)
+    ASSERT_(iret==NF_NOERR)
 
     fname='clsm/catchment.def'
 
@@ -593,7 +593,7 @@ END SUBROUTINE modis_lai
           
           if (present(F25Tag)) then 
 
-             iret = NF_OPEN('data/CATCH/SoilDepth.nc',NF_NOWRITE, ncid); VERIFY_(iret)
+             iret = NF_OPEN('data/CATCH/SoilDepth.nc',NF_NOWRITE, ncid)
              ASSERT_(iret==NF_NOERR)
              allocate (soildepth_gswp2(1: ncat_gswp2))
              allocate (land_gswp2     (1: ncat_gswp2)) 

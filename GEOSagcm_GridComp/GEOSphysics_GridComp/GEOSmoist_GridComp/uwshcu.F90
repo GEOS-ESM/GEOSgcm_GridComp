@@ -3,7 +3,7 @@ module uwshcu
 !#define UWDIAG 1
 
    use GEOS_Mod, only: write_parallel
-   use MAPL_Mod, only: MAPL_UNDEF
+   use MAPL,     only: MAPL_UNDEF
 
    use GEOS_UtilsMod, only: GEOS_QSAT, GEOS_DQSAT
    use SHLWPARAMS
