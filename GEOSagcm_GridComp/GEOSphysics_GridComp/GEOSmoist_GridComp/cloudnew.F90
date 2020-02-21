@@ -2347,10 +2347,6 @@ contains
             end if
 
             fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
-
-            !
-!            write(*,*) au, HL, HLU, HLE
-!            write(*,*) au, QT, QTU, QTE
          endif
 
 !         if (abs(QVn+QCn-QVp-QCp)>1e-6*(QVp+QCp) .and. QVp>0.0001) print *,'total water not conserved!'

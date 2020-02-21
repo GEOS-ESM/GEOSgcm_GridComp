@@ -10,17 +10,97 @@ real, parameter ::     &
      Wb       = 1.5,   &
      WSTARmin = 1.e-3, &
      zpblmin  = 100.,  &
-     onethird = 1./3., &
-     th00     = 300.
+     onethird = 1./3.
 
 contains
+
+!
+! A_star_closure
+!
+subroutine A_star_closure(IM, JM, LM, zle, zlo, thv, & ! in
+                          izsl, A_star)                ! out
+
+  integer, intent(in)                     :: IM, JM, LM
+  real, dimension(IM,JM,LM), intent(in)   :: zlo, thv
+  real, dimension(IM,JM,0:LM), intent(in) :: zle
+  integer, dimension(IM,JM), intent(out)  :: izsl
+  real, dimension(IM,JM,LM), intent(out)  :: A_star
+
+  integer :: i, j, k, km1, kp1
+  real :: dthvdz, foo
+  real, dimension(IM,JM) :: A_star_sum
+  logical, dimension(IM,JM) :: conv_flag, sl_flag
+
+  A_star(:,:,:)   = 0.
+  A_star_sum(:,:) = 0.
+
+  ! Determine if column is convective (surface-driven) and compute A_star
+  ! (before normalization) at first model level
+  do j = 1,JM
+  do i = 1,IM
+     conv_flag(i,j) = thv(i,j,LM-1) - thv(i,j,LM) < 0.
+     sl_flag(i,j)   = conv_flag(i,j)
+  end do
+  end do
+
+  ! Compute A_star (before normalization) and find top of surface layer
+  do k = LM,1,-1
+     km1 = k - 1
+     kp1 = k + 1
+
+     do j = 1,JM
+     do i = 1,IM
+        if ( sl_flag(i,j) ) then
+           dthvdz = ( thv(i,j,km1) - thv(i,j,k) )/( zlo(i,j,km1) - zlo(i,j,k) )
+
+           if ( dthvdz < 0. ) then
+              A_star(i,j,k)   = -sqrt(zle(i,j,km1))*dthvdz
+              A_star_sum(i,j) = A_star_sum(i,j) + A_star(i,j,k)*( zle(i,j,km1) - zle(i,j,k) )
+           else
+              izsl(i,j) = k
+
+              sl_flag(i,j) = .false.
+           end if
+        end if
+     end do
+     end do
+  end do
+
+  ! Normalize A_star
+  ! Note: this loop needs to be refactored for column-major order
+  do j = 1,JM
+  do i = 1,IM
+     if ( conv_flag(i,j) ) then
+        do k = LM,izsl(i,j)+1,-1
+           A_star(i,j,k) = A_star(i,j,k)/A_star_sum(i,j)
+        end do
+     end if
+  end do
+  end do
+
+  ! Test
+  do j = 1,JM
+  do i = 1,IM
+     foo = 0.
+     if ( conv_flag(i,j) ) then
+        do k = LM,izsl(i,j),-1
+           foo = foo + A_star(i,j,k)*( zle(i,j,km1) - zle(i,j,k) ) 
+           write(*,*) k, foo, A_star(i,j,k), zle(i,j,km1) - zle(i,j,k)
+        end do
+     end if
+  end do
+  end do
+
+  
+
+end subroutine A_star_closure
 
 !
 ! edmf
 !
 subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
-                    edmf_discrete_type, edmf_implicit, &                            ! in
-                    dt, z, zle, ple, rhoe, exf, &                                   ! in
+                    edmf_discrete_type, edmf_implicit, thermal_plume_flag, &        ! in
+                    th00, dt, z, zle, ple, rhoe, exf, &                             ! in
                     u, v, thl, thv, qt, qv, ql, qi, &                               ! in         
                     ustar, sh, evap, ice_ramp, &                                    ! in
                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in
@@ -36,16 +116,16 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                     ae, awu, awv, aw, aws, awqv, awql, awqi, &                      ! out (for solver)
                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)
                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfqthl, mfwhl, & ! out (for SHOC)
-                    au, wu, Mu, E, D)                                               ! out
+                    au, wu, Mu, E, D, hle, qte)                                     ! out
   
   ! Inputs
-  integer, intent(in)                     :: IM, JM, LM, numup, edmf_discrete_type, edmf_implicit, ET
+  integer, intent(in)                     :: IM, JM, LM, numup, edmf_discrete_type, edmf_implicit, thermal_plume_flag, ET
   integer, dimension(IM,JM), intent(in)   :: iras, jras
   real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, z, exf
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe
   real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, L0
   real, dimension(IM,JM), intent(inout)   :: zpbl
-  real, intent(in)                        :: ice_ramp, dt, EntWFac, ENT0, pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, EDfac
+  real, intent(in)                        :: th00, ice_ramp, dt, EntWFac, ENT0, pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, EDfac
  
   ! Outputs
   real, dimension(IM,JM,0:LM), intent(out) :: edmfdrya, edmfmoista, edmfdryw, edmfmoistw, &
@@ -54,8 +134,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                                               edmfmoistqc, &
                                               ae, aw, aws, awqv, awql, awqi, awu, awv, &
                                               whl_mf, wqt_mf, wthv_mf, au, Mu, wu
-  real, dimension(IM,JM,LM), intent(out)   :: buoyf, mfw2, mfw3, mfqt3, mfqt2, mfwqt, mfhl2, mfqthl, mfwhl, &
-                                              E, D
+  real, dimension(IM,JM,LM), intent(out)   :: buoyf, mfw2, mfw3, mfqt3, mfqt2, mfwqt, &
+                                              mfhl2, mfqthl, mfwhl, E, D, hle, qte
 
   real, dimension(numup,IM,JM) :: upw, upthl, upqt, upql, upqi, upa, upu, upv, upthv
 
@@ -63,11 +143,14 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
   real :: wthv, wstar, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
           B, QTn, THLn, THVn, QCn, Un, Vn, Wn2, EntEXP, EntEXPU, EntW, wf, &
-          stmp, ltm, QTsrfF, THVsrfF, mft, mfthvt, dzle, ifac, test, mft_work, mfthvt_work
+          stmp, ltm, QTsrfF, THVsrfF, mft, mfthvt, dzle, ifac, test, mft_work, mfthvt_work, &
+          au_full, thlu_full, qtu_full
 
   ! Temporary (too slow; need to figure out how random number generator works)
   integer, dimension(numup,IM,JM,LM)  :: enti
   real, dimension(numup,IM,JM,LM)     :: entf, ent
+
+  real, dimension(IM,JM,LM) :: thlu, qtu
 
   real, dimension(IM,JM,0:LM) :: aw2, ahl2, aqt2, aw3, aqt3, aqthl, &
                                  ui, vi, thvi, qvi, qli, qii, exfh, thli, qti 
@@ -484,16 +567,27 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
         end if
 
         au(i,j,k) = edmfdrya(i,j,k) + edmfmoista(i,j,k)
-        ae(i,j,k) = ( 1. - edmfdrya(i,j,k) - edmfmoista(i,j,k) )*EDfac 
-
-        if ( edmfmoista(i,j,k) > 0. ) then
-           wu(i,j,k) = ( edmfdrya(i,j,k)*edmfdryw(i,j,k)  + edmfmoista(i,j,k)*edmfmoistw(i,j,k) )/au(i,j,k)
-        elseif ( edmfdrya(i,j,k) > 0. ) then
-           wu(i,j,k) = edmfdryw(i,j,k)
+        if ( au(i,j,k) > 0. ) then
+           if ( edmfmoista(i,j,k) > 0. ) then
+              wu(i,j,k)   = (  edmfdrya(i,j,k)*edmfdryw(i,j,k)  &
+                             + edmfmoista(i,j,k)*edmfmoistw(i,j,k) )/au(i,j,k)
+              thlu(i,j,k) = (  edmfdrya(i,j,k)*edmfdrythl(i,j,k)  &
+                             + edmfmoista(i,j,k)*edmfmoistthl(i,j,k) )/au(i,j,k)
+              qtu(i,j,k)  = (  edmfdrya(i,j,k)*edmfdryqt(i,j,k)  &
+                             + edmfmoista(i,j,k)*edmfmoistqt(i,j,k) )/au(i,j,k)
+           else
+              wu(i,j,k)   = edmfdryw(i,j,k)
+              thlu(i,j,k) = edmfdrythl(i,j,k)
+              qtu(i,j,k)  = edmfdryqt(i,j,k)
+           end if
         else
-           wu(i,j,k) = 0.
+           wu(i,j,k)   = 0.
+           thlu(i,j,k) = thli(i,j,k)
+           qtu(i,j,k)  = qti(i,j,k)
         end if
         Mu(i,j,k) = rhoe(i,j,k)*au(i,j,k)*wu(i,j,k)
+
+        ae(i,j,k) = ( 1. - edmfdrya(i,j,k) - edmfmoista(i,j,k) )*EDfac 
 
      end do ! i = 1,IM
      end do ! j = 1,JM
@@ -504,6 +598,19 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
      do j = 1,JM
      do i = 1,IM
+        au_full   = 0.5*( au(i,j,k) + au(i,j,km1) )
+        thlu_full = 0.5*( thlu(i,j,k) + thlu(i,j,km1) )
+        qtu_full  = 0.5*( qtu(i,j,k) + qtu(i,j,km1) )
+
+        if ( au_full > 0. ) then 
+           hle(i,j,k) =   exf(i,j,k)*( thl(i,j,k) - au_full*thlu_full )/( 1. - au_full ) &
+                        + (mapl_grav/mapl_cp)*z(i,j,k)
+           qte(i,j,k) = ( qt(i,j,k) - au_full*qtu_full )/( 1. - au_full )
+        else
+           hle(i,j,k) = exf(i,j,k)*thl(i,j,k) + (mapl_grav/mapl_cp)*z(i,j,k)
+           qte(i,j,k) = qt(i,j,k)
+        end if
+
         D(i,j,k) = E(i,j,k) - ( Mu(i,j,km1) - Mu(i,j,k) )/( zle(i,j,km1) - zle(i,j,k) )
 
         buoyf(i,j,k) = buoyf(i,j,k) + exf(i,j,k)*( mfthvt - mft*thv(i,j,k) )
@@ -544,7 +651,6 @@ diff=2.e-5
 
 EXN=(P/mapl_p00)**mapl_kappa
 QC=0. 
-
 T=EXN*THL
 
 do i=1,NITER

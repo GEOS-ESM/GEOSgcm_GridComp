@@ -18,7 +18,7 @@ module GEOS_TurbulenceGridCompMod
   use LockEntrain
   use shoc
   use mynn, only : run_mynn, implicit_M, B1, B2
-  use edmf_mod, only : run_edmf, th00
+  use edmf_mod, only : run_edmf, A_star_closure
 
 #ifdef _CUDA
   use cudafor
@@ -182,6 +182,8 @@ module GEOS_TurbulenceGridCompMod
 !   is called immediately before the first run stage of {\tt GEOS\_TurbulenceGridComp}.
 !
 !EOP
+
+    real, parameter :: th00 = 300. ! Anelastic mean state potential temperature
 
     logical                             :: dflt_false = .false.
     character(len=ESMF_MAXSTR)          :: dflt_q     = 'Q'
@@ -1726,8 +1728,32 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-         SHORT_NAME = 'TKET_T_MF',                               &
-         LONG_NAME  = 'dissipation_of_turbulent kinetic energy', &
+         SHORT_NAME = 'TKET_M_VERT',                               &
+         LONG_NAME  = 'vertical_component_mean-gradient_production_of_turbulent kinetic energy', &
+         UNITS      = 'm+2s-3',                                    &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                &
+         SHORT_NAME = 'TKET_T_ADV',                               &
+         LONG_NAME  = 'convective_advection_of_turbulent kinetic energy', &
+         UNITS      = 'm+2s-3',                                    &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                &
+         SHORT_NAME = 'TKET_T_ENT',                               &
+         LONG_NAME  = 'tendency_of_turbulent_kinetic_energy_due_to_entrainment', &
+         UNITS      = 'm+2s-3',                                    &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                &
+         SHORT_NAME = 'TKET_T_DET',                               &
+         LONG_NAME  = 'tendency_of_turbulent_kinetic_energy_due_to_detrainment', &
          UNITS      = 'm+2s-3',                                    &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
@@ -3039,7 +3065,8 @@ contains
 
    real, dimension(:,:), pointer        :: z_conv_edmf
 
-   real, dimension(:,:,:), pointer ::  K_TKE, TKET_M, TKET_B, TKET_T_MF, HL2T_M, QT2T_M, HLQTT_M
+   real, dimension(:,:,:), pointer ::  K_TKE, TKET_M, TKET_B, HL2T_M, QT2T_M, HLQTT_M, &
+                                       TKET_M_VERT, TKET_T_ADV, TKET_T_ENT, TKET_T_DET
    real, dimension(:,:,:), pointer :: au, wu, Mu, E, D, D_org
 
    integer :: DO_MYNN
@@ -3083,14 +3110,25 @@ contains
      integer :: NumUp,ET
      real :: pwmin,pwmax,AlphaW,AlphaQT,AlphaTH,L0,L0fac,ENT0,EDfac
      real                            :: DOMF,DOMFCOND 
-     integer :: EDMF_IMPLICIT      ! 0: explicit, 1: implicit discretization of mass flux terms  
-     integer :: EDMF_DISCRETE_TYPE ! 0: centered, 1: upwind   discretization of mass flux terms 
-     integer :: EDMF_CONSISTENT_TYPE ! 0: conventional (inconsistent) EDMF, 1: "naive" consistent partitioning, 2: fully consistent
-     integer :: MYNN_LEVEL         ! 2: Level-2.5 3: Level-3
-     integer :: WQL_TYPE           ! 0: no counter-gradient liquid water flux (level-3) 1: else
-     integer :: WRF_CG_FLAG        ! 1: do not allow positive counter-gradient fluxes (like WRF-MYNN) 0: else
-     integer :: IMPLICIT_M_FLAG    ! 1: implicit mean-gradient production 0: else
-     integer :: MYNN_DEBUG_FLAG    ! 1: print internal variables in MYNN subroutine 0: else
+     integer :: EDMF_IMPLICIT        ! 1 (default): implicit discretization of mass flux terms
+                                     ! 0: explicit
+     integer :: EDMF_DISCRETE_TYPE   ! 0 (default): centered mass flux discretization in solver
+                                     ! 1: upwind discretization 
+     integer :: EDMF_CONSISTENT_TYPE ! 0 (default): conventional (inconsistent) EDMF
+                                     ! 1: "naive" consistent partitioning 
+                                     ! 2: fully consistent partitioning
+     integer :: EDMF_THERMAL_PLUME   ! 0 (default): JPL mass flux scheme
+                                     ! 1: Thermal plume model
+     integer :: MYNN_LEVEL           ! 2 (default): Level-2.5 
+                                     ! 3: Level-3
+     integer :: WQL_TYPE             ! 1 (default): counter-gradient liquid water flux (level-3 closure only)
+                                     ! 0: no counter-gradient liquid water flux
+     integer :: WRF_CG_FLAG          ! 1: (default): do not allow positive counter-gradient fluxes (like WRF-MYNN) 
+                                     ! 0: else
+     integer :: IMPLICIT_M_FLAG      ! 1 (default): implicit mean-gradient and buoyancy production of TKE
+                                     ! 0: explicit
+     integer :: MYNN_DEBUG_FLAG      ! 0 (default): no debugging output in MYNN
+                                     ! 1: print internal variables in MYNN subroutine
      real,dimension(IM,JM) :: L02
      
 
@@ -3142,6 +3180,10 @@ contains
      real(kind=MAPL_R8), dimension(IM,JM,0:LM) :: AKIX, BKIX ! Coefficients for solving at half levels
 
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
+
+     ! A_star closure test
+     real, dimension(IM,JM,LM) :: A_star 
+     integer, dimension(IM,JM) :: izsl
 
 #ifdef _CUDA
      type(dim3) :: Grid, Block
@@ -3415,8 +3457,6 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, TKET_B,   'TKET_B', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, TKET_T_MF,'TKET_T_MF', RC=STATUS)
-     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, HL2T_M,   'HL2T_M', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, QT2T_M,   'QT2T_M', ALLOC=.TRUE., RC=STATUS)
@@ -3424,6 +3464,15 @@ contains
      call MAPL_GetPointer(EXPORT, HLQTT_M, 'HLQTT_M', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, K_TKE,     'K_TKE', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+
+     call MAPL_GetPointer(EXPORT, TKET_M_VERT, 'TKET_M_VERT', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, TKET_T_ADV,  'TKET_T_ADV', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, TKET_T_ENT,  'TKET_T_ENT', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, TKET_T_DET,  'TKET_T_DET', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
 
      call MAPL_GetPointer(EXPORT,        au,        'au', ALLOC=.TRUE., RC=STATUS)
@@ -3576,6 +3625,7 @@ contains
     call MAPL_GetResource (MAPL, EDMF_DISCRETE_TYPE, "EDMF_DISCRETE_TYPE:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_CONSISTENT_TYPE, "EDMF_CONSISTENT_TYPE:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_IMPLICIT, "EDMF_IMPLICIT:", default=1,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME, "EDMF_THERMAL_PLUME:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
     call MAPL_GetResource (MAPL, WQL_TYPE, "TURBULENCE_WQL_TYPE:", default=1,  RC=STATUS)
     call MAPL_GetResource (MAPL, WRF_CG_FLAG, "TURBULENCE_WRF_CG_FLAG:", default=1,  RC=STATUS)
@@ -3611,13 +3661,31 @@ if (ETr .eq. 1.) then
 
 ! use the L0 to be constant
 
+!!$   ! Test
+!!$   call  A_star_closure(IM, JM, LM, zle, z, thv, & ! in
+!!$                        izsl, A_star)                ! out
+!!$
+!!$   do j = 1,JM
+!!$   do i = 1,IM
+!!$      write(*,*) izsl(i,j)
+!!$   end do
+!!$   end do
+!!$
+!!$   do l = 1,LM
+!!$      do j = 1,JM
+!!$      do i = 1,IM
+!!$         write(*,*) l, A_star(i,j,l), thv(i,j,l-1)-thv(i,j,l)
+!!$      end do
+!!$      end do
+!!$   end do
+
     L02=L0
 
     call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
-                  edmf_discrete_type, edmf_implicit, &                            ! in
-                  dt, z, zle, ple, rhoe, exf, &                                   ! in
+                  edmf_discrete_type, edmf_implicit, edmf_thermal_plume, &        ! in
+                  th00, dt, z, zle, ple, rhoe, exf, &                             ! in
                   u, v, thl, thv, qt, q, ql, qi, &                                ! in
-                  ustar, sh, evap, ice_ramp, &                                    ! in                                         
+                  ustar, sh, evap, ice_ramp, &                                    ! in 
                   pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
                   ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
                   zpbl, &                                                         ! inout
@@ -3628,10 +3696,10 @@ if (ETr .eq. 1.) then
                   edmfdryu, edmfmoistu,  &                                        ! out
                   edmfdryv, edmfmoistv,  &                                        ! out
                   edmfmoistqc, &                                                  ! out
-                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
-                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
+                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)
+                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)
                   buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
-                  au, wu, Mu, E, D)                                               ! out
+                  au, wu, Mu, E, D, hle, qte)                                     ! out
 
     edmfZCLD=0.
   
@@ -3651,10 +3719,10 @@ if (ETr .eq. 1.) then
      L02=-9.
  
     call run_edmf(IM, JM, LM, 1, iras, jras, &                                    ! in
-                  edmf_discrete_type, edmf_implicit, &                            ! in
-                  dt, z, zle, ple, rhoe, exf, &                                   ! in
+                  edmf_discrete_type, edmf_implicit, edmf_thermal_plume, &        ! in
+                  th00, dt, z, zle, ple, rhoe, exf, &                             ! in
                   u, v, thl, thv, qt, q, ql, qi, &                                ! in
-                  ustar, sh, evap, ice_ramp, &                                    ! in                                         
+                  ustar, sh, evap, ice_ramp, &                                    ! in 
                   pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
                   ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
                   zpbl, &                                                         ! inout
@@ -3665,10 +3733,10 @@ if (ETr .eq. 1.) then
                   edmfdryu, edmfmoistu,  &                                        ! out
                   edmfdryv, edmfmoistv,  &                                        ! out
                   edmfmoistqc, &                                                  ! out
-                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
-                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
+                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)
+                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)
                   buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
-                  au, wu, Mu, E, D)                                               ! ou
+                  au, wu, Mu, E, D, hle, qte)                                     ! out
  
     ! compute the depth of the convective layer  
     ! the height where the convective mass-flux is zero
@@ -3702,10 +3770,10 @@ if (ETr .eq. 1.) then
  !
  
     call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
-                  edmf_discrete_type, edmf_implicit, &                            ! in
-                  dt, z, zle, ple, rhoe, exf, &                                   ! in
+                  edmf_discrete_type, edmf_implicit, edmf_thermal_plume, &        ! in
+                  th00, dt, z, zle, ple, rhoe, exf, &                             ! in
                   u, v, thl, thv, qt, q, ql, qi, &                                ! in
-                  ustar, sh, evap, ice_ramp, &                                    ! in                                         
+                  ustar, sh, evap, ice_ramp, &                                    ! in 
                   pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
                   ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
                   zpbl, &                                                         ! inout
@@ -3716,10 +3784,10 @@ if (ETr .eq. 1.) then
                   edmfdryu, edmfmoistu,  &                                        ! out
                   edmfdryv, edmfmoistv,  &                                        ! out
                   edmfmoistqc, &                                                  ! out
-                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
-                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
+                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)
+                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)
                   buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
-                  au, wu, Mu, E, D)                                               
+                  au, wu, Mu, E, D, hle, qte)                                     ! out          
   
  else
     write (*,*) "Error: wrong EDMF_ET "
@@ -3951,7 +4019,7 @@ ENDIF
            call run_mynn(IM, JM, LM, &                                                ! in      
                          MYNN_DEBUG_FLAG, DOMF, MYNN_LEVEL, &                         ! in      
                          EDMF_CONSISTENT_TYPE, WQL_TYPE, WRF_CG_FLAG, &               ! in      
-                         PLE, RHOE, ZLE, Z, &                                         ! in      
+                         th00, PLE, RHOE, ZLE, Z, &                                   ! in      
                          U, V, OMEGA, T, Q, QL, QI, QA, THL, QT, THV, &               ! in      
                          USTAR, SH, EVAP, &                                           ! in      
                          WHL_MF, WQT_MF, WTHV_MF, au, Mu, wu, E, D, &                 ! in      
@@ -3960,12 +4028,11 @@ ENDIF
                          KM_MYNN, KH_MYNN, K_TKE, ITAU_TURB, WS_CG, WQV_CG, WQL_CG, & ! out     
                          BETA_HL, BETA_QT, &                                          ! out     
                          TKET_M, TKET_B, TKET_T, HL2T_M, QT2T_M, HLQTT_M, &           ! out     
+                         TKET_M_VERT, TKET_T_ADV, TKET_T_ENT, TKET_T_DET, &           ! out
                          TKE_SURF, HL2_SURF, QT2_SURF, HLQT_SURF)                     ! out  
 
            KM = KM_MYNN
            KH = KH_MYNN
-
-           if (associated(TKET_T_MF)) TKET_T_MF = TKET_T
         end if
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
@@ -4809,15 +4876,18 @@ ENDIF
 
 ! Y-s ... these are rhs - mean value - surface flux 
 ! (these are added in the diffuse and vrtisolve)
-   if (MYNN_LEVEL == 3) then
-      YS(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWS3(:,:,LM-1)  + WS_CG(:,:,LM-1) )
-      YQV(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWQV3(:,:,LM-1) + WQV_CG(:,:,LM-1) )
-      YQL(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWQL3(:,:,LM-1) + WQL_CG(:,:,LM-1) )
-   else
-      YS(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWS3(:,:,LM-1)
-      YQV(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWQV3(:,:,LM-1)
-      YQL(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWQL3(:,:,LM-1)
-   end if
+   YS(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWS3(:,:,LM-1)  + WS_CG(:,:,LM-1) )
+   YQV(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWQV3(:,:,LM-1) + WQV_CG(:,:,LM-1) )
+   YQL(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWQL3(:,:,LM-1) + WQL_CG(:,:,LM-1) )
+!!$   if (MYNN_LEVEL == 3) then
+!!$      YS(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWS3(:,:,LM-1)  + WS_CG(:,:,LM-1) )
+!!$      YQV(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWQV3(:,:,LM-1) + WQV_CG(:,:,LM-1) )
+!!$      YQL(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWQL3(:,:,LM-1) + WQL_CG(:,:,LM-1) )
+!!$   else
+!!$      YS(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWS3(:,:,LM-1)
+!!$      YQV(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWQV3(:,:,LM-1)
+!!$      YQL(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWQL3(:,:,LM-1)
+!!$   end if
    YQI(:,:,LM)=-DMI(:,:,LM)*AWQI3(:,:,LM-1)*RHOE(:,:,LM-1)
    YU(:,:,LM)=-DMI(:,:,LM)*AWU3(:,:,LM-1)*RHOE(:,:,LM-1)
    YV(:,:,LM)=-DMI(:,:,LM)*AWV3(:,:,LM-1)*RHOE(:,:,LM-1)
@@ -4825,21 +4895,27 @@ ENDIF
 !
 ! 2:LM -> 1:LM-1, 1:LM-1 -> 0:LM-2
 !
-   if (MYNN_LEVEL == 3) then
-      YS(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWS3(:,:,1:LM-1)  + WS_CG(:,:,1:LM-1) ) &
-                                         - RHOE(:,:,0:LM-2)*( AWS3(:,:,0:LM-2)  + WS_CG(:,:,0:LM-2) ))
-      YQV(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWQV3(:,:,1:LM-1) + WQV_CG(:,:,1:LM-1) ) &
-                                         - RHOE(:,:,0:LM-2)*( AWQV3(:,:,0:LM-2) + WQV_CG(:,:,0:LM-2) ))
-      YQL(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWQL3(:,:,1:LM-1) + WQL_CG(:,:,1:LM-1) ) &
-                                         - RHOE(:,:,0:LM-2)*( AWQL3(:,:,0:LM-2) + WQL_CG(:,:,0:LM-2) ))
-   else
-      YS(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*AWS3(:,:,1:LM-1) &
-                                         - RHOE(:,:,0:LM-2)*AWS3(:,:,0:LM-2) )
-      YQV(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*AWQV3(:,:,1:LM-1) &
-                                         - RHOE(:,:,0:LM-2)*AWQV3(:,:,0:LM-2) )
-      YQL(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*AWQL3(:,:,1:LM-1) &
-                                         - RHOE(:,:,0:LM-2)*AWQL3(:,:,0:LM-2) )
-   end if
+   YS(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWS3(:,:,1:LM-1)  + WS_CG(:,:,1:LM-1) ) &
+                                      - RHOE(:,:,0:LM-2)*( AWS3(:,:,0:LM-2)  + WS_CG(:,:,0:LM-2) ))
+   YQV(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWQV3(:,:,1:LM-1) + WQV_CG(:,:,1:LM-1) ) &
+                                      - RHOE(:,:,0:LM-2)*( AWQV3(:,:,0:LM-2) + WQV_CG(:,:,0:LM-2) ))
+   YQL(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWQL3(:,:,1:LM-1) + WQL_CG(:,:,1:LM-1) ) &
+                                      - RHOE(:,:,0:LM-2)*( AWQL3(:,:,0:LM-2) + WQL_CG(:,:,0:LM-2) ))
+!!$   if (MYNN_LEVEL == 3) then
+!!$      YS(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWS3(:,:,1:LM-1)  + WS_CG(:,:,1:LM-1) ) &
+!!$                                         - RHOE(:,:,0:LM-2)*( AWS3(:,:,0:LM-2)  + WS_CG(:,:,0:LM-2) ))
+!!$      YQV(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWQV3(:,:,1:LM-1) + WQV_CG(:,:,1:LM-1) ) &
+!!$                                         - RHOE(:,:,0:LM-2)*( AWQV3(:,:,0:LM-2) + WQV_CG(:,:,0:LM-2) ))
+!!$      YQL(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWQL3(:,:,1:LM-1) + WQL_CG(:,:,1:LM-1) ) &
+!!$                                         - RHOE(:,:,0:LM-2)*( AWQL3(:,:,0:LM-2) + WQL_CG(:,:,0:LM-2) ))
+!!$   else
+!!$      YS(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*AWS3(:,:,1:LM-1) &
+!!$                                         - RHOE(:,:,0:LM-2)*AWS3(:,:,0:LM-2) )
+!!$      YQV(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*AWQV3(:,:,1:LM-1) &
+!!$                                         - RHOE(:,:,0:LM-2)*AWQV3(:,:,0:LM-2) )
+!!$      YQL(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*AWQL3(:,:,1:LM-1) &
+!!$                                         - RHOE(:,:,0:LM-2)*AWQL3(:,:,0:LM-2) )
+!!$   end if
    YQI(:,:,1:LM-1)=DMI(:,:,1:LM-1)*(AWQI3(:,:,1:LM-1)*RHOE(:,:,1:LM-1)-RHOE(:,:,0:LM-2)*AWQI3(:,:,0:LM-2))
    YU(:,:,1:LM-1)=DMI(:,:,1:LM-1)*(AWU3(:,:,1:LM-1)*RHOE(:,:,1:LM-1)-RHOE(:,:,0:LM-2)*AWU3(:,:,0:LM-2))
    YV(:,:,1:LM-1)=DMI(:,:,1:LM-1)*(AWV3(:,:,1:LM-1)*RHOE(:,:,1:LM-1)-RHOE(:,:,0:LM-2)*AWV3(:,:,0:LM-2))
@@ -5264,7 +5340,7 @@ ENDIF
           QL  = QLCN + QLLS
 
           call implicit_M(IM, JM, LM, &
-                          ZLO, U, V, H, QV, QL, &
+                          th00, ZLO, U, V, H, QV, QL, &
                           Beta_hl, Beta_qt, KM_MYNN, KH_MYNN, &
                           ws_cg, wqv_cg, wql_cg, WHL_MF, WQT_MF, WTHV_MF, &
                           TKET_M, TKET_B, HL2T_M, QT2T_M, HLQTT_M, &
@@ -7113,7 +7189,7 @@ end if
  !
  ! surface conditions
  !      
-   wstar=max(wstarmin,(mapl_grav/th00*wthv*pblh)**(1./3.))
+   wstar=max(wstarmin,(mapl_grav/300.*wthv*pblh)**(1./3.))
    qstar=wqt/wstar
    thstar=wthv/wstar
 
