@@ -4028,6 +4028,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME='TPERT_SC',                                          & 
+         LONG_NAME ='Shallow_convection_source_air_temperature_perturbation', &
+         UNITS     ='K',                                             &
+         DIMS      = MAPL_DimsHorzOnly,                                  &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME='QPERT_SC',                                          & 
+         LONG_NAME ='Shallow_convection_source_air_humidity_perturbation', &
+         UNITS     ='kg kg-1',                                             &
+         DIMS      = MAPL_DimsHorzOnly,                                  &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME='RHCmicro',                                          & 
          LONG_NAME ='Corrected RHc after micro', &
          UNITS     ='1',                                             &
@@ -5021,7 +5037,7 @@ contains
                                          ENTR_SC, DETR_SC, XC_SC,QLDET_SC, &
                                          QIDET_SC, QLENT_SC, QIENT_SC, &
                                          QLSUB_SC, QISUB_SC, SC_NDROP, SC_NICE
-      real, pointer, dimension(:,:  ) :: CBMF_SC
+      real, pointer, dimension(:,:  ) :: CBMF_SC, TPERT_SC, QPERT_SC
       real, pointer, dimension(:,:  ) :: CIN_SC, PINV_SC, PLCL_SC, PLFC_SC, &
                                          PREL_SC, PBUP_SC
       real, pointer, dimension(:,:  ) :: WLCL_SC, QTSRC_SC, THLSRC_SC, &
@@ -5392,8 +5408,6 @@ contains
        DEPSCALE, MAPL, RRTMG_IRRAD, RRTMG_SORAD, SCWST 
         
     
-!!! MODIFIED : remove when done testing shallow
-      real                            :: THLSRC_PERT, QTSRC_PERT
       real                            :: PMIN_CBL
 
       real                            :: CBL_TPERTi, CBL_TPERT, CBL_QPERT, RASAL1, RASAL2
@@ -5606,6 +5620,8 @@ contains
       logical :: ALLOC_QISUB
       logical :: ALLOC_NDROP
       logical :: ALLOC_NICE
+      logical :: ALLOC_TPERT
+      logical :: ALLOC_QPERT
 
       !---------------------------------------------------
 
@@ -5945,9 +5961,6 @@ contains
       call MAPL_GetResource(STATE,CBL_TPERT_MXOCN, 'CBL_TPERT_MXOCN:',     DEFAULT= 2.0   , RC=STATUS)
       call MAPL_GetResource(STATE,CBL_TPERT_MXLND, 'CBL_TPERT_MXLND:',     DEFAULT= 0.0   , RC=STATUS)
 
-     !!! MODIFIED by npa: remove when done testing shallow
-      call MAPL_GetResource(STATE,THLSRC_PERT, 'THLSRC_PERT:',     DEFAULT= 0.0   , RC=STATUS)     
-      call MAPL_GetResource(STATE,QTSRC_PERT, 'QTSRC_PERT:',     DEFAULT= 1.0   , RC=STATUS)     
 
       KSTRAP = INT( RASPARAMS%STRAPPING )
 
@@ -5970,20 +5983,23 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_MOMENFLX,     'USE_MOMENFLX:'   ,DEFAULT=1, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_CUMPENENT,    'USE_CUMPENENT:'   ,DEFAULT=1, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%SCVERBOSE,        'SCVERBOSE:',      DEFAULT=0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RPEN,    'RPEN:'    ,DEFAULT=3.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RLE,     'RLE:'     ,DEFAULT=0.1, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RKM,     'RKM:'     ,DEFAULT=12.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'   ,DEFAULT=1.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RMAXFRAC,'RMAXFRAC:',DEFAULT=0.1,  RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%MUMIN1,  'MUMIN1:'  ,DEFAULT=0.906, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RBUOY,   'RBUOY:'   ,DEFAULT=1.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RDRAG,   'RDRAG:'   ,DEFAULT=1.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%EPSVARW, 'EPSVARW:' ,DEFAULT=5.e-4, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%PGFC,    'PGFC:'    ,DEFAULT=0.7, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,   'CRIQC:'   ,DEFAULT=1.0e-3, RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:',DEFAULT=0.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%KEVP,    'KEVP:'    ,DEFAULT=2.e-6,    RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,   'SHLW_RDROP:',DEFAULT=8.e-6,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RPEN,      'RPEN:'      ,DEFAULT=3.0, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RLE,       'RLE:'       ,DEFAULT=0.1, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'       ,DEFAULT=10.0, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%MIXSCALE,  'MIXSCALE:'  ,DEFAULT=1.0, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,     'RKFRE:'     ,DEFAULT=1.0, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RMAXFRAC,  'RMAXFRAC:'  ,DEFAULT=0.1,  RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%MUMIN1,    'MUMIN1:'    ,DEFAULT=0.906, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RBUOY,     'RBUOY:'     ,DEFAULT=1.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RDRAG,     'RDRAG:'     ,DEFAULT=1.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%EPSVARW,   'EPSVARW:'   ,DEFAULT=5.e-4,  RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%PGFC,      'PGFC:'      ,DEFAULT=0.7,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,     'CRIQC:'     ,DEFAULT=1.0e-3, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,  'FRC_RASN:'  ,DEFAULT=0.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%KEVP,      'KEVP:'      ,DEFAULT=2.e-6,  RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,     'SHLW_RDROP:',DEFAULT=8.e-6,  RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%THLSRC_FAC,'THLSRC_FAC:',DEFAULT=2.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%QTSRC_FAC, 'QTSRC_FAC:' ,DEFAULT=0.0,    RC=STATUS)
 
       if(adjustl(CLDMICRO)=="GFDL") then
         call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:'  ,DEFAULT=0, RC=STATUS)
@@ -6216,6 +6232,8 @@ contains
       call MAPL_GetPointer(EXPORT, SC_NDROP, 'SC_NDROP' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, SC_NICE,  'SC_NICE' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, SC_PRCP,  'SC_PRCP'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, TPERT_SC, 'TPERT_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QPERT_SC, 'QPERT_SC' , RC=STATUS); VERIFY_(STATUS)
 
 
 !      call MAPL_GetPointer(EXPORT, LIQANMOVE, 'LIQANMOVE' , RC=STATUS); VERIFY_(STATUS)
@@ -7040,6 +7058,8 @@ contains
       ALLOC_QISUB  = .not.associated(QISUB_SC   )
       ALLOC_NDROP  = .not.associated(SC_NDROP   )
       ALLOC_NICE   = .not.associated(SC_NICE    )
+      ALLOC_TPERT  = .not.associated(TPERT_SC   )
+      ALLOC_QPERT  = .not.associated(QPERT_SC   )
 
       if(ALLOC_UMF)    allocate( UMF_SC(IM,JM,0:LM) )
       if(ALLOC_MFD)    allocate( MFD_SC(IM,JM,LM) )
@@ -7088,6 +7108,8 @@ contains
       if(ALLOC_QISUB)  allocate( QISUB_SC(IM,JM,LM) )
       if(ALLOC_NDROP)  allocate( SC_NDROP(IM,JM,LM) )
       if(ALLOC_NICE)   allocate( SC_NICE(IM,JM,LM)  )
+      if(ALLOC_TPERT)  allocate( TPERT_SC(IM,JM)  )
+      if(ALLOC_QPERT)  allocate( QPERT_SC(IM,JM)  )
 
       IDIM = IM*JM
       IRUN = IM*JM
@@ -8101,13 +8123,13 @@ contains
       call compute_uwshcu_inv(IDIM, K0, ITRCR, DT_MOIST,  & ! IN
             PLO*100., ZLO, PK, PLE, ZLE, PKE, DP,         &
             U1, V1, Q1, QLLS, QILS, TH1, TKE, KPBLSC,     &
-            THLSRC_PERT,                                  &
+            SH, EVAP,                                     &
             CUSH, XHO,                                    & ! INOUT
             UMF_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC,         & ! OUT
             DTHDT_SC, DUDT_SC, DVDT_SC, DQRDT_SC,         &
             DQSDT_SC, CUFRC_SC, ENTR_SC, DETR_SC,         &
             QLDET_SC, QIDET_SC, QLSUB_SC, QISUB_SC,       &
-            SC_NDROP, SC_NICE,                            &
+            SC_NDROP, SC_NICE, TPERT_SC, QPERT_SC,        &
 #ifdef UWDIAG 
             QCU_SC, QLU_SC,                               & ! DIAG ONLY 
             QIU_SC, CBMF_SC, DQCDT_SC, CNT_SC, CNB_SC,    &
@@ -11972,6 +11994,8 @@ do K= 1, LM
       if(ALLOC_QISUB)  deallocate( QISUB_SC )
       if(ALLOC_NDROP)  deallocate( SC_NDROP )
       if(ALLOC_NICE)   deallocate( SC_NICE )
+      if(ALLOC_TPERT)  deallocate( TPERT_SC )
+      if(ALLOC_QPERT)  deallocate( QPERT_SC )
 
       if(adjustl(CLDMICRO)=="GFDL") then
          if(ALLOC_PRCP_RAIN  )  deallocate(PRCP_RAIN  )

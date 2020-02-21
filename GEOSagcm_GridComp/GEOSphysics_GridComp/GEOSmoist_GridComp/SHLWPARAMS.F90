@@ -17,6 +17,7 @@
            real     :: rpen               ! Pen
            real     :: rle
            real     :: rkm
+           real     :: mixscale           ! Controls vertical structure of mixing
            real     :: rkfre              ! Vertical velocity fraction of tke
            real     :: rmaxfrac           ! Maximum core updraft fraction
            real     :: mumin1             ! 
@@ -28,7 +29,8 @@
            real     :: frc_rasn           ! Precip fraction of expelled condensate
            real     :: kevp               ! Evaporative efficiency
            real     :: rdrop              ! liquid drop radius
-
+           real     :: thlsrc_fac         ! Scaling factor for thlsrc perturbation
+           real     :: qtsrc_fac          ! Scaling factor for qtsrc perturbation
       endtype SHLWPARAM_TYPE
 
   end module SHLWPARAMS
