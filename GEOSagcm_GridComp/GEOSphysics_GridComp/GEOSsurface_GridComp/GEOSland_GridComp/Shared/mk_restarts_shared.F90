@@ -1,4 +1,4 @@
-module mk_sharedMod
+module mk_restarts_sharedMod
   use MAPL
   implicit none
 ! -----------------------------------------------------------------------------------
@@ -572,4 +572,4 @@ contains
    
       end subroutine ReadCNTilFile
 
-end module mk_sharedMod
+end module mk_restarts_sharedMod

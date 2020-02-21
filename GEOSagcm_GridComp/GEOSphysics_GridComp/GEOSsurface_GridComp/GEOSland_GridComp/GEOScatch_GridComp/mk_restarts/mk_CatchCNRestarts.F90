@@ -194,7 +194,7 @@ program  mk_CatchCNRestarts
   use MAPL
   use gFTL_StringVector
   use ieee_arithmetic, only: isnan => ieee_is_nan
-  use mk_sharedMod
+  use mk_restarts_sharedMod
 
   implicit none
   include 'mpif.h'

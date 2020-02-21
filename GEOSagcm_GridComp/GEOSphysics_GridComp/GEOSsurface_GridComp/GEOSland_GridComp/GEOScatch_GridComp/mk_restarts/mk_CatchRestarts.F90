@@ -3,7 +3,7 @@ program  mk_CatchRestarts
 !  $Id: 
 
   use MAPL
-  use mk_sharedMod
+  use mk_restarts_sharedMod
   use gFTL_StringVector
 
   implicit none

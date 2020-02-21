@@ -5,7 +5,7 @@ program mk_CiceRestart
 
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
   use MAPL_HashMod
-  use mk_sharedMod
+  use mk_restarts_sharedMod
 
   implicit none
 
