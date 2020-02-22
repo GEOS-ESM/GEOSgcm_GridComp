@@ -100,7 +100,8 @@ module GEOS_MoistGridCompMod
   USE ConvPar_GF_GEOS5, only: gf_geos5_interface &
       ,maxiens, icumulus_gf, closure_choice, deep, shal, mid&
       ,DEBUG_GF,USE_SCALE_DEP,DICYCLE,Hcts&
-      ,USE_TRACER_TRANSP,USE_TRACER_SCAVEN, TAU_DEEP, TAU_MID
+      ,USE_TRACER_TRANSP,USE_TRACER_SCAVEN, TAU_DEEP, TAU_MID&
+      ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
 !-srf-gf-scheme
 
 !ALT-protection for GF
@@ -2401,6 +2402,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='REV_CN_GF',                                   & 
+         LONG_NAME ='evaporation_of_convective_precipitation',     &
+         UNITS     ='kg kg-1 s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='REV_SC',                                      & 
          LONG_NAME ='evaporation_of_shallow_precipitation',     &
          UNITS     ='kg kg-1 s-1',                                 &
@@ -2426,6 +2435,14 @@ contains
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='RSU_CN',                                      & 
+         LONG_NAME ='sublimation_of_convective_precipitation',     &
+         UNITS     ='kg kg-1 s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='RSU_CN_GF',                                   & 
          LONG_NAME ='sublimation_of_convective_precipitation',     &
          UNITS     ='kg kg-1 s-1',                                 &
          DIMS      = MAPL_DimsHorzVert,                            &
@@ -2537,6 +2554,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='PFI_CN_GF',                                   & 
+         LONG_NAME ='3D_flux_of_ice_convective_precipitation',     &
+         UNITS     ='kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='PFI_SC',                                      & 
          LONG_NAME ='3D_flux_of_ice_shallow_convective_precipitation',     &
          UNITS     ='kg m-2 s-1',                                  &
@@ -2571,6 +2596,14 @@ contains
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME='PFL_CN',                                      & 
          LONG_NAME ='3D_flux_of_liquid_convective_precipitation',     &
+         UNITS     ='kg m-2 s-1',                                   &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME='PFL_CN_GF',                                    & 
+         LONG_NAME ='3D_flux_of_liquid_convective_precipitation',   &
          UNITS     ='kg m-2 s-1',                                   &
          DIMS      = MAPL_DimsHorzVert,                            &
          VLOCATION = MAPL_VLocationEdge,              RC=STATUS  )
@@ -3445,6 +3478,14 @@ contains
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DSUDT ',                                         &
          LONG_NAME ='sulfate_tendency_due_to_conv_scav',              &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DNIDT',                                          &
+         LONG_NAME ='nitrate_tendency_due_to_conv_scav',              &
          UNITS     ='kg m-2 s-1',                                     &
          DIMS      = MAPL_DimsHorzOnly,                               &
          RC=STATUS  )
@@ -4792,11 +4833,9 @@ contains
         VERIFY_(STATUS) 
         call MAPL_GetResource(MAPL, closure_choice(mid) , 'CLOSURE_CONGESTUS:', default= 3, RC=STATUS )
         VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,USE_TRACER_TRANSP_UW,'USE_TRACER_TRANSP_UW:',default= 1, RC=STATUS )
+        call MAPL_GetResource(MAPL,USE_TRACER_TRANSP   ,'USE_TRACER_TRANSP:',default= 1, RC=STATUS )
         VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,USE_TRACER_TRANSP   ,'USE_TRACER_TRANSP:',default= 0, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,USE_TRACER_SCAVEN   ,'USE_TRACER_SCAVEN:',default= 0, RC=STATUS )
+        call MAPL_GetResource(MAPL,USE_TRACER_SCAVEN   ,'USE_TRACER_SCAVEN:',default= 2, RC=STATUS )
         VERIFY_(STATUS)
         call MAPL_GetResource(MAPL,USE_SCALE_DEP       ,'USE_SCALE_DEP:'    ,default= 1, RC=STATUS )
         VERIFY_(STATUS)
@@ -4807,30 +4846,36 @@ contains
         call MAPL_GetResource(MAPL,TAU_MID    ,'TAU_MID:' ,default= 3600.0, RC=STATUS )
         VERIFY_(STATUS)
 
-        IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP == 1) THEN
-           call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for GF")
-           USE_TRACER_TRANSP = 0
-        END IF
+        call MAPL_GetResource(MAPL, USE_FLUX_FORM   ,'USE_FLUX_FORM:'   ,default= 1,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_FCT         ,'USE_FCT:'	        ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_TRACER_EVAP ,'USE_TRACER_EVAP:' ,default= 1,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, ALP1            ,'ALP1:'            ,default= 1., RC=STATUS );VERIFY_(STATUS)
 
-        IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP_UW == 1) THEN
-           call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for UW")
-           USE_TRACER_TRANSP_UW = 0
-        END IF
+       ! IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP == 1) THEN
+       !    call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for GF")
+       !    USE_TRACER_TRANSP = 0
+       ! END IF
 
-        IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_SCAVEN == 1) THEN
-           call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling scavenging for GF")
-           USE_TRACER_SCAVEN = 0
-        END IF
+       ! IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_SCAVEN == 1) THEN
+       !    call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling scavenging for GF")
+       !    USE_TRACER_SCAVEN = 0
+       ! END IF
 
-        IF(USE_TRACER_TRANSP == 1) THEN
-           call WRITE_PARALLEL ("GEOS_MoistGridCompMod: GF tracer transport detected, disabling transport in GOCART")
-           call Disable_Convection
-        ELSE
-           call WRITE_PARALLEL ("GEOS_MoistGridCompMod: Using GOCART for tracer transport")
-        END IF
+       !IF(USE_TRACER_TRANSP == 1) THEN
+       !    call WRITE_PARALLEL ("GEOS_MoistGridCompMod: GF tracer transport detected, disabling transport in GOCART")
+       !    call Disable_Convection
+       ! ELSE
+       !    call WRITE_PARALLEL ("GEOS_MoistGridCompMod: Using GOCART for tracer transport")
+       !END IF
 
     ENDIF
 !-srf-gf-scheme
+    call MAPL_GetResource(MAPL,USE_TRACER_TRANSP_UW,'USE_TRACER_TRANSP_UW:',default= 1, RC=STATUS )
+    VERIFY_(STATUS)
+    !IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP_UW == 1) THEN
+    !       call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for UW")
+    !       USE_TRACER_TRANSP_UW = 0
+    !END IF
 
     ! All done
     !---------
@@ -5049,7 +5094,7 @@ contains
       ! Aerosol convective scavenging internal pointers (2D column-averages);  must deallocate!!!
       ! CAR 
       real, pointer, dimension(:,: )                           :: DDUDT, &
-           DSSDT, DOCDT, DBCDT, DSUDT, DDUDTcarma, DSSDTcarma
+           DSSDT, DOCDT, DBCDT, DSUDT,  DNIDT, DDUDTcarma, DSSDTcarma
       character(len=ESMF_MAXSTR)                               :: QNAME,  CNAME, ENAME
       character(len=ESMF_MAXSTR), pointer, dimension(:)        :: QNAMES, CNAMES
       integer                                                  :: ind
@@ -5150,6 +5195,7 @@ contains
       real, pointer, dimension(:,:  )       :: USTAR,TSTAR,QSTAR,T2M,Q2M,TA,QA,SH,EVAP,PHIS
       real, pointer, dimension(:,:  )       :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
       real, pointer, dimension(:,:  )       :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
+      real, pointer, dimension(:,:,:)       :: RSU_CN_GF,REV_CN_GF,PFL_CN_GF,PFI_CN_GF
 !-srf-gf-scheme    
 !--kml--- activation for single-moment uphysics
       real, pointer, dimension(:,:,:)       :: NACTL,NACTI
@@ -5678,7 +5724,7 @@ contains
 
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
 
-      real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU
+      real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU, CMNI
       real   , dimension(IM,JM)           :: CMDUcarma, CMSScarma
 
       ! MATMAT CUDA Variables
@@ -6325,6 +6371,7 @@ contains
       call MAPL_GetPointer(EXPORT, DBCDT,     'DBCDT'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DOCDT,     'DOCDT'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DSUDT,     'DSUDT'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DNIDT,     'DNIDT'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DDUDTcarma,  'DDUDTcarma'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DSSDTcarma,  'DSSDTcarma'    , RC=STATUS); VERIFY_(STATUS)
 
@@ -6504,7 +6551,6 @@ contains
 
          call ESMF_FieldBundleGet(TR, fieldName=trim(NAME), Field=FIELD, RC=STATUS)
          VERIFY_(STATUS)
-
 
          ! Get items friendly status (default is not friendly)
          !-----------------------------------------------------
@@ -7650,6 +7696,7 @@ contains
       if(associated(DBCDT)) DBCDT =  0.0
       if(associated(DOCDT)) DOCDT =  0.0
       if(associated(DSUDT)) DSUDT =  0.0
+      if(associated(DNIDT)) DNIDT =  0.0
       if(associated(DDUDTcarma)) DDUDTcarma =  0.0
       if(associated(DSSDTcarma)) DSSDTcarma =  0.0
 
@@ -7658,6 +7705,7 @@ contains
       CMOC = 0.0
       CMBC = 0.0
       CMSU = 0.0
+      CMNI = 0.0
       CMDUcarma = 0.0
       CMSScarma = 0.0
 
@@ -7672,7 +7720,7 @@ contains
             CNAME = trim(CNAMES(K))
             if(CNAME == 'GOCART') then   ! Diagnostics for GOCART tracers
                SELECT CASE (QNAME(1:3))
-               CASE ('du0')
+                              CASE ('du0')
                   if(associated(DDUDT)) then
                      CMDU = CMDU + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
@@ -7692,6 +7740,10 @@ contains
                   if(associated(DSUDT)) then
                      CMSU = CMSU + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
+               CASE ('NO3')
+                  if(associated(DNIDT)) then
+                     CMNI = CMNI + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
                END SELECT
             endif
             if(CNAME == 'CARMA') then   ! Diagnostics for CARMA tracers
@@ -7704,11 +7756,11 @@ contains
                      SELECT CASE (QNAME(1:4))
                      CASE ('dust') ! CARMA DUST
                         if(associated(DDUDTcarma)) then
-                           CMDUcarma = CMDUcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
+                           CMDUcarma = CMDUcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                         end if
                      CASE ('seas') ! CARMA SEASALT
                         if(associated(DSSDTcarma)) then
-                           CMSScarma = CMSScarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                           CMSScarma = CMSScarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
                         end if
                      END SELECT
                   endif
@@ -7769,6 +7821,11 @@ contains
           call MAPL_GetPointer(EXPORT, ERRSH  ,'ERRSH'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRSH=0.0
           call MAPL_GetPointer(EXPORT, ERRMD  ,'ERRMD'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRMD=0.0
     
+          call MAPL_GetPointer(EXPORT, RSU_CN_GF  ,'RSU_CN_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);RSU_CN_GF=0.0
+          call MAPL_GetPointer(EXPORT, REV_CN_GF  ,'REV_CN_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);REV_CN_GF=0.0
+          call MAPL_GetPointer(EXPORT, PFI_CN_GF  ,'PFI_CN_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);PFI_CN_GF=0.0
+          call MAPL_GetPointer(EXPORT, PFL_CN_GF  ,'PFL_CN_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);PFL_CN_GF=0.0
+
           call MAPL_GetPointer(EXPORT, AA0      ,'AA0'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA0=0.0
           call MAPL_GetPointer(EXPORT, AA1      ,'AA1'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1=0.0
           call MAPL_GetPointer(EXPORT, AA2      ,'AA2'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA2=0.0
@@ -7807,7 +7864,8 @@ contains
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE, CLDMICRO &
                                  ,RASPARAMS%QC_CRIT_CN, AUTOC_CN_OCN                &
-                                 ,XHO,FSCAV,CNAMES,QNAMES,DTRDT_GF )
+                                 ,XHO,FSCAV,CNAMES,QNAMES,DTRDT_GF                  &
+				 ,RSU_CN_GF,REV_CN_GF, PFI_CN_GF, PFL_CN_GF)
                                                                    
          HHO      =  0.0
          HSO      =  0.0    
@@ -8077,12 +8135,9 @@ contains
         MFD_SC = 0.0
       end where
  
-      !  If not transporting tracers in UW, 
-      !  add mass flux for transport in GOCART
+      !  add mass flux
       !--------------------------------------------------------------
-      if (USE_TRACER_TRANSP_UW == 0) then
         CNV_MFC = CNV_MFC + UMF_SC 
-      end if
 
       ! Option to add detrained condensate to large scale cloud 
       ! instead of anvil.
@@ -8179,6 +8234,10 @@ contains
                   if(associated(DSUDT)) then
                      DSUDT = DSUDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
+               CASE ('NO3')
+                  if(associated(DNIDT)) then
+                     DNIDT = DNIDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
                END SELECT
             endif
          end if
@@ -8192,11 +8251,11 @@ contains
                   SELECT CASE (QNAME(1:4))
                   CASE ('dust') ! CARMA DUST
                      if(associated(DDUDTcarma)) then
-                        DDUDTcarma = DDUDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                        DDUDTcarma = DDUDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
                      end if
                   CASE ('seas') ! CARMA SEASALT
                      if(associated(DSSDTcarma)) then
-                        DSSDTcarma = DSSDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                        DSSDTcarma = DSSDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
                      end if
                   END SELECT
                endif
@@ -8209,13 +8268,14 @@ contains
       if (associated(DBCDT))  DBCDT = (DBCDT - CMBC) / (MAPL_GRAV*DT_MOIST)
       if (associated(DOCDT))  DOCDT = (DOCDT - CMOC) / (MAPL_GRAV*DT_MOIST)
       if (associated(DSUDT))  DSUDT = (DSUDT - CMSU) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DNIDT))  DNIDT = (DNIDT - CMNI) / (MAPL_GRAV*DT_MOIST)
 
       if (associated(DDUDTcarma))  DDUDTcarma = (DDUDTcarma - CMDUcarma) / (MAPL_GRAV*DT_MOIST)
       if (associated(DSSDTcarma))  DSSDTcarma = (DSSDTcarma - CMSScarma) / (MAPL_GRAV*DT_MOIST)
 
 
-      ! Update MTR pointers
-      !--------------------
+      ! Fill in tracer tendencies
+      !--------------------------
 
       KK=0
       do K=1,KM
@@ -11068,6 +11128,13 @@ do K= 1, LM
       LWC_X = (QLLS+QLCN)*CFX
       IWC_X = (QILS+QICN)*CFX    
 
+     IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
+         REV_CN_X = REV_CN_GF
+         RSU_CN_X = RSU_CN_GF
+         ACLL_CN_X = 0.5*(PFL_CN_GF(:,:,0:LM-1) + PFL_CN_GF(:,:,1:LM))
+         ACIL_CN_X = 0.5*(PFI_CN_GF(:,:,0:LM-1) + PFI_CN_GF(:,:,1:LM))
+     ENDIF 
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!       
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!     
@@ -11409,12 +11476,9 @@ do K= 1, LM
 
 
       !--------------------------------------------------------------
-      !  If not transporting tracers in UW, 
       !  add ShallowCu contribution to detraining mass flux export
       !--------------------------------------------------------------
-      if (USE_TRACER_TRANSP_UW == 0) then
-         CNV_MFD = CNV_MFD + MFD_SC
-      end if
+      CNV_MFD = CNV_MFD + MFD_SC
       !--------------------------------------------------------------
 
 ! For 2 moment, move some LS precip/flux into the CN precip/flux category for use by chemistry
