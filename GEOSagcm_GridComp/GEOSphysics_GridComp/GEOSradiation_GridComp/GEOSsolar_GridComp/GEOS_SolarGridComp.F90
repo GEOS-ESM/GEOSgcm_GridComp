@@ -1474,7 +1474,6 @@ contains
     call MAPL_TimerAdd(GC, name="--RRTMGP_IO_1"           , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMGP_IO_2"           , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMGP_CLOUD_OPTICS"   , __RC__)
-    call MAPL_TimerAdd(GC, name="--RRTMGP_PRNG_SETUP"     , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMGP_AEROSOL_SETUP"  , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMGP_SUBSET"         , __RC__)
     call MAPL_TimerAdd(GC, name="--RRTMGP_MCICA"          , __RC__)
@@ -2345,7 +2344,8 @@ contains
       ! RRTMGP locals
       logical :: top_at_1, partial_block, need_aer_optical_props
       integer :: nbnd, ngpt, nmom, icergh
-      integer :: ib, b, nBlocks, colS, colE, ncols_subset, partial_blockSize
+      integer :: ib, b, nBlocks, colS, colE, ncols_subset, &
+                 partial_blockSize, icol, isub
       character(len=ESMF_MAXPATHLEN) :: k_dist_file, cloud_optics_file
       character(len=ESMF_MAXSTR)     :: error_msg
       character(len=128)             :: cloud_optics_type, cloud_overlap_type
@@ -2360,8 +2360,8 @@ contains
       ! gridcolum presence of liq and ice clouds (ncol,nlay)
       real(wp), dimension(:,:), allocatable :: clwp, ciwp
 
-      ! a random number generator for each column
-      type(ty_rng_mklvsl_plus), dimension(:), allocatable :: rngs
+      ! a column random number generator
+      type(ty_rng_mklvsl_plus) :: rng
       integer, dimension(:), allocatable :: seeds
 
       ! uniform random numbers need by mcICA (ngpt,nlay,cols)
@@ -3264,13 +3264,17 @@ contains
 
       call MAPL_TimerOff(MAPL,"--RRTMGP_CLOUD_OPTICS",__RC__)
 
+      ! note: have made cloud_props for all ncol columns
+      !   and will subset below into blocks ... we can also
+      !   look at option of making cloud_props for each block 
+      !   as its needed ... same for aer_props
+
       ! read desired cloud overlap type
       call MAPL_GetResource( &
         MAPL, cloud_overlap_type, "RRTMGP_CLOUD_OVERLAP_TYPE_SW:", &
         DEFAULT='MAX_RAN_OVERLAP', __RC__)
 
-!?
-      call MAPL_TimerOn(MAPL,"--RRTMGP_PRNG_SETUP",__RC__)
+      call MAPL_TimerOn(MAPL,"--RRTMGP_MCICA",__RC__)
 
       ! ===============================================================================
       ! Random number setup:
@@ -3320,8 +3324,9 @@ contains
       ! LM * ngpt <~ 132 * 256 = 33,792 < 2^16 = 65,536
       ! ===============================================================================
 
-      allocate(rngs(ncol),__STAT__)  ! one independent RNG per column
-      allocate(seeds(3),__STAT__)    ! 2-word key plus word1 of counter
+      allocate(seeds(3),__STAT__) ! 2-word key plus word1 of counter
+
+      ! seed(1), the column part (word1) of key is set later
 
       ! get time part (word2) of key
       call ESMF_TimeSet (ReferenceTime, yy=2000, mm=1, dd=1, __RC__)
@@ -3331,31 +3336,7 @@ contains
       ! for SW start at counter=65,536
       seeds(3) = 65536
 
-      ! initialize the Philox PRNG
-      do i=1,ncol
-        ! set word1 of key based on global location
-        ! 32-bits can hold all forseeable resolutions
-        seeds(1) = int(Jg1D(i)) * IM_World + int(Ig1D(i))
-        ! instantiate a random number stream for each column
-        call rngs(i)%init(VSL_BRNG_PHILOX4X32X10,seeds)
-      end do
-
-      ! End of random number setup
-
-      call MAPL_TimerOff(MAPL,"--RRTMGP_PRNG_SETUP",__RC__)
-
-      ! free up rngs space
-      do i = 1, ncol
-        call rngs(i)%end()
-      end do
-      deallocate(seeds,__STAT__)
-      deallocate(rngs,__STAT__)
-!?
-
-      ! note: have made cloud_props for all ncol columns
-      !   and will subset below into blocks ... we can also
-      !   look at option of making cloud_props for each block 
-      !   as its needed ... same for aer_props
+      call MAPL_TimerOff(MAPL,"--RRTMGP_MCICA",__RC__)
 
       ! get aerosol optical properties
       need_aer_optical_props = (.not. NO_AERO .and. implements_aerosol_optics)
@@ -3410,7 +3391,7 @@ contains
       _ASSERT(rrtmgp_blockSize >= 1, 'bad RRTMGP_SW_BLOCKSIZE')
 
       ! for random numbers, for efficiency, reserve the maximum possible
-      ! subset of subcolumns (rrtmgp_blockSize) since column index is last
+      ! subset of columns (rrtmgp_blockSize) since column index is last
       allocate(urand(ngpt,LM,rrtmgp_blocksize), __STAT__)
 
       ! number of full blocks by integer division
@@ -3493,7 +3474,6 @@ contains
           TEST_(aer_props%get_subset(colS, ncols_subset, aer_props_subset))
         end if
 
-!?
         ! get column subset of the band-space in-cloud optical properties
         TEST_(cloud_props%get_subset(colS, ncols_subset, cloud_props_subset))
 
@@ -3503,9 +3483,20 @@ contains
 
         ! generate McICA random numbers for subset
         ! Note: really only needed where cloud fraction > 0 (speedup?)
-! I think we will later put rng declaration here
-        do i = 1, ncols_subset
-          urand(:,:,i) = reshape(rngs(colS+i-1)%get_random(ngpt*LM),(/ngpt,LM/))
+        ! Also, perhaps later this can be parallelized?
+        do isub = 1, ncols_subset
+          ! local 1d column index
+          icol = colS + isub - 1
+          ! initialize the Philox PRNG
+          ! set word1 of key based on GLOBAL location
+          ! 32-bits can hold all forseeable resolutions
+          seeds(1) = nint(Jg1D(icol)) * IM_World + nint(Ig1D(icol))
+          ! instantiate a random number stream for the column
+          call rng%init(VSL_BRNG_PHILOX4X32X10,seeds)
+          ! draw the random numbers for the column
+          urand(:,:,isub) = reshape(rng%get_random(ngpt*LM),(/ngpt,LM/))
+          ! free the rng
+          call rng%end()
         end do
 
         ! cloud sampling to gpoints
@@ -3649,6 +3640,7 @@ contains
       end if
       call cloud_props_gpt%finalize()
       call cloud_props_subset%finalize()
+      deallocate(seeds,__STAT__)
       deallocate(urand, __STAT__)
       deallocate(cld_mask, __STAT__)
       call cloud_props%finalize()
