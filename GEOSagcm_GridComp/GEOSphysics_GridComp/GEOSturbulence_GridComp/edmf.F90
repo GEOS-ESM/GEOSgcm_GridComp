@@ -134,6 +134,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                                               edmfmoistqc, &
                                               ae, aw, aws, awqv, awql, awqi, awu, awv, &
                                               whl_mf, wqt_mf, wthv_mf, au, Mu, wu
+
   real, dimension(IM,JM,LM), intent(out)   :: buoyf, mfw2, mfw3, mfqt3, mfqt2, mfwqt, &
                                               mfhl2, mfqthl, mfwhl, E, D, hle, qte
 
@@ -567,6 +568,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
         end if
 
         au(i,j,k) = edmfdrya(i,j,k) + edmfmoista(i,j,k)
+
         if ( au(i,j,k) > 0. ) then
            if ( edmfmoista(i,j,k) > 0. ) then
               wu(i,j,k)   = (  edmfdrya(i,j,k)*edmfdryw(i,j,k)  &

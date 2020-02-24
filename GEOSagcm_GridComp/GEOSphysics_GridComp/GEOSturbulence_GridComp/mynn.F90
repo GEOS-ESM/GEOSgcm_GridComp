@@ -96,6 +96,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
   integer :: i, j, k, kp1, km1
   real :: goth00, goth002
+
   double precision :: GH, GM, dhldz, dqtdz, dqldz, idzlo, ifac, iexner, &
                       Sm2, Sh2, Sm, Sh, Cw_low, Cw_high, wrk1, &
                       Cw_25, whl, wqt, Ri, Rf, &
@@ -365,6 +366,21 @@ subroutine run_mynn(IM, JM, LM, &                                               
         ws_cg(i,j,k)  = MAPL_CP*whl_cg + MAPL_ALHL*wql_cg(i,j,k)
         wqv_cg(i,j,k) = wqt_cg - wql_cg(i,j,k)
 
+        if (MYNN_LEVEL == 3) then
+           if (WQL_TYPE == 0) then
+              wql_cg(i,j,k) = 0.
+           else
+              ifac    = (zle(i,j,k) - zlo(i,j,k+1))*idzlo
+              ac_half = ac(i,j,k+1) + ifac*(ac(i,j,k) - ac(i,j,k+1))
+              wql     = ac_half*(  A(i,j,k)*( -Kh(i,j,k)*dqtdz + wqt_cg ) &
+                                 - B(i,j,k)*( -Kh(i,j,k)*dhldz + whl_cg ) )
+              
+              wql_cg(i,j,k) = wql + Kh(i,j,k)*dqldz
+           end if
+           ws_cg(i,j,k)  = MAPL_CP*whl_cg + MAPL_ALHL*wql_cg(i,j,k)
+           wqv_cg(i,j,k) = wqt_cg - wql_cg(i,j,k)
+        end if
+
         !         
         idzle = 1./( zle(i,j,km1) - zle(i,j,k) )
 
@@ -433,7 +449,6 @@ subroutine run_mynn(IM, JM, LM, &                                               
   do j = 1,JM
   do i = 1,IM
      tke_surf(i,j)  = B1**twothirds*u_star(i,j)**2.
-!     tke_surf(i,j)  = 0.
      hl2_surf(i,j)  = 0.
      qt2_surf(i,j)  = 0.
      hlqt_surf(i,j) = 0.

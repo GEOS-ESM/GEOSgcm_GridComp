@@ -18,7 +18,7 @@ module GEOS_TurbulenceGridCompMod
   use LockEntrain
   use shoc
   use mynn, only : run_mynn, implicit_M, B1, B2
-  use edmf_mod, only : run_edmf, A_star_closure
+  use edmf_mod, only : run_edmf
 
 #ifdef _CUDA
   use cudafor
@@ -555,7 +555,7 @@ contains
     call MAPL_AddImportSpec(GC,                                    &
        SHORT_NAME = 'A_cloud',                                     &
        LONG_NAME  = 'A-coefficient_for_moist_turbulence',          &
-       UNITS      = '?',                                           &
+       UNITS      = '1',                                           &
        DIMS       = MAPL_DimsHorzVert,                             &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
@@ -563,7 +563,7 @@ contains
     call MAPL_AddImportSpec(GC,                                    &
        SHORT_NAME = 'B_cloud',                                     &
        LONG_NAME  = 'B-coefficient_for_moist_turbulence',          &
-       UNITS      = '?',                                           &
+       UNITS      = '1',                                           &
        DIMS       = MAPL_DimsHorzVert,                             &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
@@ -3067,6 +3067,7 @@ contains
 
    real, dimension(:,:,:), pointer ::  K_TKE, TKET_M, TKET_B, HL2T_M, QT2T_M, HLQTT_M, &
                                        TKET_M_VERT, TKET_T_ADV, TKET_T_ENT, TKET_T_DET
+
    real, dimension(:,:,:), pointer :: au, wu, Mu, E, D, D_org
 
    integer :: DO_MYNN
@@ -3110,6 +3111,7 @@ contains
      integer :: NumUp,ET
      real :: pwmin,pwmax,AlphaW,AlphaQT,AlphaTH,L0,L0fac,ENT0,EDfac
      real                            :: DOMF,DOMFCOND 
+
      integer :: EDMF_IMPLICIT        ! 1 (default): implicit discretization of mass flux terms
                                      ! 0: explicit
      integer :: EDMF_DISCRETE_TYPE   ! 0 (default): centered mass flux discretization in solver
@@ -3129,6 +3131,7 @@ contains
                                      ! 0: explicit
      integer :: MYNN_DEBUG_FLAG      ! 0 (default): no debugging output in MYNN
                                      ! 1: print internal variables in MYNN subroutine
+
      real,dimension(IM,JM) :: L02
      
 
@@ -3438,11 +3441,11 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, LSHOC,   'LSHOC',    RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, LSHOC1,  'LSHOC1',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT, LSHOC1,  'LSHOC1', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, LSHOC2,  'LSHOC2',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT, LSHOC2,  'LSHOC2', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, LSHOC3,  'LSHOC3',   RC=STATUS)
+     call MAPL_GetPointer(EXPORT, LSHOC3,  'LSHOC3', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, LSHOC_CLR,'LSHOC_CLR', RC=STATUS)
      VERIFY_(STATUS)
@@ -3457,6 +3460,7 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, TKET_B,   'TKET_B', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
+
      call MAPL_GetPointer(EXPORT, HL2T_M,   'HL2T_M', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, QT2T_M,   'QT2T_M', ALLOC=.TRUE., RC=STATUS)
@@ -3784,10 +3788,10 @@ if (ETr .eq. 1.) then
                   edmfdryu, edmfmoistu,  &                                        ! out
                   edmfdryv, edmfmoistv,  &                                        ! out
                   edmfmoistqc, &                                                  ! out
-                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)
-                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)
+                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
+                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
                   buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
-                  au, wu, Mu, E, D, hle, qte)                                     ! out          
+                  au, wu, Mu, E, D, hle, qte)                                     ! out
   
  else
     write (*,*) "Error: wrong EDMF_ET "

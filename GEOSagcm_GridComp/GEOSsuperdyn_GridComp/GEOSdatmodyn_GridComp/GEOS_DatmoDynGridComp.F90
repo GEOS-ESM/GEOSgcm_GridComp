@@ -1863,29 +1863,31 @@ contains
       CFMIPRLX = 0.00
 
 !    print *,'CFMIP3',CFMIP3
+!    Forcing based on Phase 2 of CGILS intercomparison. See Blossey et al. (2016)
 
-       if ( CFMIP3 ) then  
-       ! cgils case 11
-          ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
+      if ( CFMIP3 ) then  
 
-!       print *,'cfmip3'         
-!       print *,'cfcse',cfcse
+         ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
+
+!        print *,'cfmip3'         
+!        print *,'cfcse',cfcse
          if (CFCSE .eq. 12) then
            zrel=1200.
            zrelp=1500.
-           qfloor=0.003561
-        elseif (CFCSE .eq. 11) then
+!           qfloor=0.003561
+           qfloor=0.003581839
+         elseif (CFCSE .eq. 11) then
            zrel=2500.
            zrelp=3000.
            qfloor=3.55e-3
-        elseif (CFCSE .eq. 6) then
+         elseif (CFCSE .eq. 6) then
            zrel=4000.
            zrelp=4800.
            qfloor=0.
-        else
+         else
            print *,'error - define the right case'
            RETURN_(ESMF_FAILURE)
-        endif
+         endif
          
 
 !        print *,'CFCSE',CFCSE
@@ -1915,7 +1917,7 @@ contains
          if (associated(DTDTDYN))   DTDTDYN  = DTDTDYN  - CFMIPRLX * ( T - TOBS )
          if (associated(DQVDTDYN))  DQVDTDYN = DQVDTDYN - CFMIPRLX * ( Q - QOBS )-CFMIPRLX1*(Q-qfloor)*DT
 !      print *,'modified T and Q'   
-   end if
+   end if  ! CFMIP3 switch
 
 
 
