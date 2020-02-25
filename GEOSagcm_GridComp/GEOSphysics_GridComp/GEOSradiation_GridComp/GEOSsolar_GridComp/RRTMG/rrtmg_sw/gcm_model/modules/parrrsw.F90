@@ -29,7 +29,7 @@
       integer , parameter :: mg     = 16     !jpg
       integer , parameter :: nbndsw = 14     !jpsw, ksw
       integer , parameter :: naerec  = 6     !jpaer
-      integer , parameter :: mxmol  = 38
+      integer , parameter :: mxmol  = 39
       integer , parameter :: nstr   = 2
       integer , parameter :: nmol   = 7
 ! Use for 112 g-point model   
