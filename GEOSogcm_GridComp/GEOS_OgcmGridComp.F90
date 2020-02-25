@@ -13,7 +13,7 @@ module GEOS_OgcmGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
 
   use GEOS_OceanBioGeoChemGridCompMod,   only : ObioSetServices   => SetServices
   use GEOS_OceanBioGridCompMod,          only : ObioSimpleSetServices => SetServices
@@ -184,12 +184,12 @@ contains
     VERIFY_(STATUS)
     
     if (DO_DATAATM/=0) then
-       ASSERT_(DO_DATASEAONLY==0)
+       _ASSERT(DO_DATASEAONLY==0,'needs informative message')
     end if
     if (DO_DATASEAONLY/=0) then
-       ASSERT_(DO_CICE_THERMO==0)
-       ASSERT_(DO_DATAICE/=0)
-       ASSERT_(DO_OBIO==0)
+       _ASSERT(DO_CICE_THERMO==0,'needs informative message')
+       _ASSERT(DO_DATAICE/=0,'needs informative message')
+       _ASSERT(DO_OBIO==0,'needs informative message')
     end if
 
 ! Set the Run and initialize entry points
@@ -1000,11 +1000,13 @@ contains
     integer :: iInterp
     integer, pointer :: GRIDIM(:)=> null()
     integer, pointer :: GRIDJM(:)=> null()
-    character(len=ESMF_MAXSTR)          :: GRIDNAME
-    character(len=ESMF_MAXSTR), pointer :: GNAMES(:)=> null()
+    character(len=MAPL_TileNameLength)          :: GRIDNAME
+    character(len=MAPL_TileNameLength), pointer :: GNAMES(:)=> null()
 
     type (T_OGCM_STATE), pointer        :: ogcm_internal_state => null() 
     type (OGCM_wrap)                    :: wrap
+
+    type (ESMF_StateItem_Flag) :: itemType
 
 !=============================================================================
 
@@ -1024,8 +1026,8 @@ contains
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_TimerOn(MAPL,"TOTAL"     )
     call MAPL_TimerOn(MAPL,"INITIALIZE")
+    call MAPL_TimerOn(MAPL,"TOTAL"     )
 
     call ESMF_UserCompGetInternalState(gc, 'OGCM_state', wrap, status)
     VERIFY_(STATUS)
@@ -1155,8 +1157,11 @@ contains
     VERIFY_(STATUS)
 
     do I = 1, size(GIM)
-       call ESMF_StateGet(GIM(I), 'FROCEAN', FIELD, RC=STATUS)
-       if (STATUS == ESMF_SUCCESS) then
+       call ESMF_StateGet(GIM(I), 'FROCEAN', itemType=itemType, RC=STATUS)
+       VERIFY_(STATUS)
+       if (itemType == ESMF_STATEITEM_FIELD) then
+          call ESMF_StateGet(GIM(I), 'FROCEAN', FIELD, RC=STATUS)
+          VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(I), FROCEAN, 'FROCEAN',   RC=STATUS)
           VERIFY_(STATUS)
           call MAPL_LocStreamFracArea( EXCH, MAPL_OCEAN, FROCEAN, RC=STATUS) 
@@ -1187,7 +1192,7 @@ contains
     VERIFY_(STATUS)
 !   query exchange grid for ngrids
     ngrids = size(gnames)
-    ASSERT_(ngrids==2)
+    _ASSERT(ngrids==2,'needs informative message')
 
     
 !   validate that gridname is there
@@ -1198,7 +1203,7 @@ contains
           exit
        ENDIF
     ENDDO
-    ASSERT_(FOUND)
+    _ASSERT(FOUND,'needs informative message')
 
     O_IDX = I
     A_IDX = 3-I
@@ -1236,8 +1241,8 @@ contains
 ! All Done
 !---------
 
-    call MAPL_TimerOff(MAPL,"INITIALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"     )
+    call MAPL_TimerOff(MAPL,"INITIALIZE")
 
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
@@ -1473,8 +1478,8 @@ contains
 ! Start Total timer
 !------------------
 
-    call MAPL_TimerOn(MAPL,"TOTAL")
     call MAPL_TimerOn(MAPL,"RUN"  )
+    call MAPL_TimerOn(MAPL,"TOTAL")
 
 ! Get parameters from generic state.
 !-----------------------------------
@@ -1592,19 +1597,19 @@ contains
     VERIFY_(STATUS)
     call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
+    _ASSERT(FRIENDLY,'needs informative message')
 
     call ESMF_StateGet (IMPORT, 'SI', FIELD, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
+    _ASSERT(FRIENDLY,'needs informative message')
 
     call ESMF_StateGet (IMPORT, 'HI', FIELD, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
+    _ASSERT(FRIENDLY,'needs informative message')
 
     if(DO_CICE_THERMO/=0) then
        call ESMF_StateGet (IMPORT, 'FRACICE', FIELD, RC=STATUS)
@@ -1612,43 +1617,43 @@ contains
 
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
 
        call ESMF_StateGet (IMPORT, 'VOLICE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
 
        call ESMF_StateGet (IMPORT, 'VOLSNO', FIELD, RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
 
        call ESMF_StateGet (IMPORT, 'ERGICE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
 
        call ESMF_StateGet (IMPORT, 'ERGSNO', FIELD, RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
 
        call ESMF_StateGet (IMPORT, 'TAUAGE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
 
        call ESMF_StateGet (IMPORT, 'MPOND', FIELD, RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
     end if
     
 ! Children's Imports
@@ -2103,7 +2108,7 @@ contains
     call MAPL_TimerOff(MAPL,"TOTAL"     )
 
     if (.not. DUAL_OCEAN) then
-       call MAPL_GenericRun(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
+       call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
        VERIFY_(STATUS)
     else
        if (PHASE == 1) then
@@ -2351,8 +2356,8 @@ contains
 !  All done
 !-----------
 
-    call MAPL_TimerOff(MAPL,"RUN" )
     call MAPL_TimerOff(MAPL,"TOTAL")
+    call MAPL_TimerOff(MAPL,"RUN" )
 
     RETURN_(ESMF_SUCCESS)
 

@@ -2702,7 +2702,23 @@ end do
 ! vapor self-continuum is interpolated (in temperature) separately.  
 
       strrat = 6.67029e-07
-      layreffr = 58
+
+! Per Eli:
+!  Robin Hogan recently sent me some results that showed that the
+!  stratopause heating rates in RRTMG in the 38000-5000 cm-1 band are
+!  negatively biased wrt to LBL calculations in that same region, so
+!  invoking an additional spectral region for the issue you are seeing
+!  may not be necessary.  He hacked the code to get the correct answer in
+!  this band by removing the FS interpolation in taumol for band 28 and
+!  replacing it by always using the values in the 5th (i.e. last) location
+!  in the solar irradiance array. My analysis suggested a different (and
+!  better, assuming it works) remedy, which he hasn’t yet commented on or
+!  tried. (note:  I sent him this suggestion just yesterday.) I think I may
+!  have set the reference solar mapping layer (LAYREFFR) too high in that
+!  band. Instead of 58, I think I should have set it around 40. I suggest
+!  you try that and see if it gets rid of the bias.
+
+      layreffr = 40
 
 ! Lower atmosphere loop
       do lay = 1, laytrop(iplon) 
