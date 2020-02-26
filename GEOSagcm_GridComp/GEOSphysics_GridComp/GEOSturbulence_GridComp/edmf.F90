@@ -145,16 +145,15 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   real :: wthv, wstar, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
           B, QTn, THLn, THVn, QCn, Un, Vn, Wn2, EntEXP, EntEXPU, EntW, wf, &
           stmp, ltm, QTsrfF, THVsrfF, mft, mfthvt, dzle, ifac, test, mft_work, mfthvt_work, &
-          au_full, thlu_full, qtu_full
+          thlu_full, qtu_full
 
   ! Temporary (too slow; need to figure out how random number generator works)
   integer, dimension(numup,IM,JM,LM)  :: enti
   real, dimension(numup,IM,JM,LM)     :: entf, ent
 
-  real, dimension(IM,JM,LM) :: thlu, qtu
-
   real, dimension(IM,JM,0:LM) :: aw2, ahl2, aqt2, aw3, aqt3, aqthl, &
-                                 ui, vi, thvi, qvi, qli, qii, exfh, thli, qti 
+                                 ui, vi, thvi, qvi, qli, qii, exfh, thli, qti, &
+                                 thlu, qtu
 
   integer, dimension(2)  :: seedmf, the_seed
 
@@ -600,14 +599,13 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
      do j = 1,JM
      do i = 1,IM
-        au_full   = 0.5*( au(i,j,k) + au(i,j,km1) )
         thlu_full = 0.5*( thlu(i,j,k) + thlu(i,j,km1) )
         qtu_full  = 0.5*( qtu(i,j,k) + qtu(i,j,km1) )
 
-        if ( au_full > 0. ) then 
-           hle(i,j,k) =   exf(i,j,k)*( thl(i,j,k) - au_full*thlu_full )/( 1. - au_full ) &
+        if ( au(i,j,k) > 0. ) then 
+           hle(i,j,k) =   exf(i,j,k)*( thl(i,j,k) - au(i,j,k)*thlu_full )/( 1. - au(i,j,k) ) &
                         + (mapl_grav/mapl_cp)*z(i,j,k)
-           qte(i,j,k) = ( qt(i,j,k) - au_full*qtu_full )/( 1. - au_full )
+           qte(i,j,k) = ( qt(i,j,k) - au(i,j,k)*qtu_full )/( 1. - au(i,j,k) )
         else
            hle(i,j,k) = exf(i,j,k)*thl(i,j,k) + (mapl_grav/mapl_cp)*z(i,j,k)
            qte(i,j,k) = qt(i,j,k)
