@@ -1,4 +1,4 @@
-! $Id: GEOS_AgcmGridComp.F90,v 1.85.12.25.2.1.18.1.2.1.6.1.8.1 2019/07/23 15:30:31 mmanyin Exp $
+! $Id: GEOS_AgcmGridComp.F90,v 1.85.12.25.2.1.18.1.2.1.6.1.10.10.2.1 2019/11/18 21:20:23 ltakacs Exp $
 
 #include "MAPL_Generic.h"
 
@@ -196,8 +196,7 @@ contains
 
     call MAPL_GetResource(MAPL, ReplayMode, Label='REPLAY_MODE:', default="NoReplay", RC=STATUS )
     VERIFY_(STATUS)
-    if(ANA_TS .and. ( adjustl(ReplayMode) /= "Exact_3D" .and. &
-                      adjustl(ReplayMode) /= "Exact_4D" .and. &
+    if(ANA_TS .and. ( adjustl(ReplayMode) /= "Exact"      .and. &
                       adjustl(ReplayMode) /= "Regular" ) ) then
              ASSERT_( adjustl(ReplayMode) == "NoReplay"  )
     endif
@@ -1079,6 +1078,8 @@ contains
    real                                :: RPL_INTERVAL
    real                                :: RPL_SHUTOFF
    real                                :: IAU4dFREQ
+   integer                             :: PREDICTOR_DURATION
+   integer                             :: MKIAU_FREQUENCY
    character(len=ESMF_MAXSTR), parameter :: INITIALIZED_EXPORTS(3) = &
         (/'PHIS  ', 'SGH   ', 'VARFLT' /)
 
@@ -1215,20 +1216,33 @@ contains
    call ESMF_TimeIntervalSet(TIMEINT,  S=nint(DT) , RC=STATUS)
    VERIFY_(STATUS)
 
-   ALARM = ESMF_AlarmCreate( name='PredictorAlarm', &
-                             CLOCK = CLOCK, &
-                             RingInterval = TIMEINT  ,  &
+   ALARM = ESMF_AlarmCreate( name='PredictorAlarm',    &
+                             CLOCK = CLOCK,            &
                              RingTime     = ringTime,  & 
-                             RC           = STATUS      )
+                             RingInterval = TIMEINT,   &
+                             RC           = STATUS     )
    VERIFY_(STATUS)
    if(ringTime == currTime) then
       call ESMF_AlarmRingerOn(Alarm, rc=status)
       VERIFY_(STATUS)
    end if
 
-   ! Detect if running DasMode
-   ! -------------------------
+ ! if(MAPL_AM_I_ROOT() ) then
+ !    PRINT *
+ !    PRINT *,TRIM(Iam)//": PredictorAlarm settings"
+ !    call ESMF_TimeGet( currTIME, timeString=String, RC=STATUS)
+ !    VERIFY_(STATUS)
+ !    PRINT *,TRIM(Iam)//": CurrTime: ",trim(string)
+ !    call ESMF_TimeGet( RingTIME, timeString=String, RC=STATUS)
+ !    VERIFY_(STATUS)
+ !    PRINT *,TRIM(Iam)//": RingTime: ",trim(string)
+ !    PRINT *,TRIM(Iam)//": Is Ringing: ", ESMF_AlarmIsRinging(ALARM)
+ !    PRINT *
+ ! endif
 
+
+   ! Detect if running DasMode (Checking for AGCM_IMPORT)
+   ! ----------------------------------------------------
    call MAPL_GetResource( STATE, STRING, LABEL="IMPORT_RESTART_FILE:", RC=STATUS)
    IF (STATUS == ESMF_SUCCESS) THEN
       DasMode = .true.
@@ -1236,18 +1250,18 @@ contains
       DasMode = .false.
    END IF
 
+   ! Detect if running REPLAY
+   ! ------------------------
    call MAPL_GetResource( STATE, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
    VERIFY_(STATUS)
 
-! NoReplay, Exact, Intermittent, Regular
-   rplMode = adjustl(ReplayMode)
-   if(rplMode=="Regular" .or. rplMode == "Exact_3D" .or. rplMode == "Exact_4D") then
-      DasMode = .true.
+       rplMode = adjustl(ReplayMode)
+   if( rplMode=="Regular" .or. rplMode == "Exact" ) then
+       DasMode = .true.
    end if
 
    ! Disable the predictor alarm if not dasmode
    ! ------------------------------------------
-
    if (.not. DasMode) then
       call ESMF_AlarmDisable(ALARM, rc=status)
       VERIFY_(STATUS)
@@ -1256,7 +1270,14 @@ contains
    call MAPL_StateAlarmAdd(STATE,ALARM,RC=status)
    VERIFY_(STATUS)
 
-   if(adjustl(ReplayMode)=="Exact_3D" .or. adjustl(ReplayMode)=="Exact_4D") then
+  ! Note: PREDICTOR_DURATION and MKIAU_FREQUENCY are Initialized in GCM_GridComp
+  ! ----------------------------------------------------------------------------
+    call MAPL_GetResource( STATE, PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", RC=STATUS ) ; VERIFY_(STATUS)
+    call MAPL_GetResource( STATE, MKIAU_FREQUENCY,    Label="MKIAU_FREQUENCY:",    RC=STATUS ) ; VERIFY_(STATUS)
+
+   if(   (adjustl(ReplayMode)=="Exact"  ) .or.   &
+       ( (adjustl(ReplayMode)=="Regular") .and. (PREDICTOR_DURATION.gt.MKIAU_FREQUENCY/2) )  ) then
+
       call MAPL_GetResource(STATE, RPL_SHUTOFF, 'REPLAY_SHUTOFF:', default=4000*21600., RC=STATUS ) ! Default: 1000 days
       VERIFY_(STATUS)
       call ESMF_TimeIntervalSet(TIMEINT, S=nint(RPL_SHUTOFF), RC=STATUS)
@@ -1460,8 +1481,11 @@ contains
    integer                             :: NumFriendly
    integer                             :: K
    integer                             :: I
+   integer                             :: PREDICTOR_DURATION
+   integer                             :: MKIAU_FREQUENCY
    logical                             :: DasMode
    logical                             :: DO_PREDICTOR
+   logical                             :: Begin_REPLAY_Cycle
    logical                             :: LAST_CORRECTOR
    integer                             :: CONSTRAIN_DAS
    real                                :: ALPHA, BETA, TAUANL, DTX, IAUcoeff
@@ -1483,10 +1507,15 @@ contains
 
    integer                             :: unit
    logical                             :: is_ringing
+   logical                             ::   is_ExactReplay09_ringing
+   logical                             :: is_RegularReplay09_ringing
    logical,save                        :: is_shutoff=.false.
    character(len=ESMF_MAXSTR)          :: FILENAME
+   character(len=ESMF_MAXSTR)          :: FILETYPE
    character(len=ESMF_MAXSTR)          :: FileTmpl
+   character(len=ESMF_MAXSTR)          :: FileTmpl09
    character(len=ESMF_MAXSTR)          :: replayFile
+   character(len=ESMF_MAXSTR)          :: replayFile09
    character(len=ESMF_MAXSTR)          :: replayMode
    character(len=ESMF_MAXSTR)          :: rplMode
    type(ESMF_Time)                     :: currTime
@@ -1533,23 +1562,17 @@ contains
 !----------------------------------------------------------
 
     call MAPL_Get ( STATE, GCS=GCS, GIM=GIM, GEX=GEX,  &
-                                INTERNAL_ESMF_STATE=INTERNAL,      &
-                                IM=IM, JM=JM, LM=LM,               & 
-                                RC=STATUS )
+                    INTERNAL_ESMF_STATE=INTERNAL,      &
+                    IM=IM, JM=JM, LM=LM,               & 
+                    RC=STATUS )
     VERIFY_(STATUS)
 
     call ESMF_GridCompGet(GC, grid=grid, rc=status)
     VERIFY_(STATUS)
 
-! Get the specific 4dIAU alarm
-!-----------------------------
+! Get the 4DIAU alarm
+!--------------------
     call ESMF_ClockGetAlarm(clock, alarmname='4DIAUalarm', alarm=Alarm4D, rc=status)
-    VERIFY_(STATUS)
-
-! Get the specific IAU alarm
-!---------------------------
-
-    call MAPL_StateAlarmGet(STATE, ALARM, NAME='PredictorAlarm', RC=STATUS)
     VERIFY_(STATUS)
 
 ! Set the various time scales
@@ -1566,6 +1589,11 @@ contains
     call MAPL_GetResource( STATE, ISFCST,          Label="IS_FCST:",       default=0,      RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( STATE, CONSTRAIN_DAS,   Label="CONSTRAIN_DAS:", default=1,      RC=STATUS); VERIFY_(STATUS)
 
+  ! Note: PREDICTOR_DURATION and MKIAU_FREQUENCY are Initialized in GCM_GridComp
+  ! ----------------------------------------------------------------------------
+    call MAPL_GetResource( STATE, PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", RC=STATUS ) ; VERIFY_(STATUS)
+    call MAPL_GetResource( STATE, MKIAU_FREQUENCY,    Label="MKIAU_FREQUENCY:",    RC=STATUS ) ; VERIFY_(STATUS)
+
     call MAPL_GetResource( STATE, ANA_IS_WEIGHTED, Label="ANA_IS_WEIGHTED:", default='NO', RC=STATUS)
     VERIFY_(STATUS)
          ANA_IS_WEIGHTED = uppercase(ANA_IS_WEIGHTED)
@@ -1573,6 +1601,9 @@ contains
     ASSERT_( IS_WEIGHTED )
              IS_WEIGHTED =   adjustl(ANA_IS_WEIGHTED)=="YES"
 
+
+   ! Detect if running DasMode (Checking for AGCM_IMPORT)
+   ! ----------------------------------------------------
     call MAPL_GetResource( STATE, STRING, LABEL="IMPORT_RESTART_FILE:", RC=STATUS)
     IF (STATUS == ESMF_SUCCESS) THEN
        DasMode = .true.
@@ -1580,12 +1611,12 @@ contains
        DasMode = .false.
     END IF
 
+   ! Detect if running REPLAY
+   ! ------------------------
     call MAPL_GetResource( STATE, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
     VERIFY_(STATUS)
-
-! NoReplay, Exact, Intermittent, Regular
-    rplMode = adjustl(ReplayMode)
-    if(rplMode=="Regular" .or. rplMode == "Exact_3D" .or. rplMode == "Exact_4D") then
+       rplMode = adjustl(ReplayMode)
+    if(rplMode=="Regular" .or. rplMode == "Exact") then
        DasMode = .true.
     end if
 
@@ -1599,29 +1630,56 @@ contains
        TYPE = FREERUN
     else
 
-       DO_PREDICTOR = ESMF_AlarmIsRinging( ALARM, rc=status)
+    ! Get the specific IAU alarm
+    !---------------------------
+       call MAPL_StateAlarmGet(STATE, ALARM, NAME='PredictorAlarm', RC=STATUS)
+       VERIFY_(STATUS)
+
+       DO_PREDICTOR   = ESMF_AlarmIsRinging   ( ALARM, rc=status)
        VERIFY_(STATUS)
        LAST_CORRECTOR = ESMF_AlarmWillRingNext( ALARM, rc=status)
        VERIFY_(STATUS)
 
-REPLAYING: if (rplMode == "Regular") then
-!----------------------------------------
+REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
+!-----------------------------------------------------------------------
                call ESMF_ClockGetAlarm(clock, 'startReplay', alarm, rc=status)
                VERIFY_(STATUS)
                LAST_CORRECTOR = ESMF_AlarmWillRingNext( ALARM, rc=status)
                VERIFY_(STATUS)
 
-           else if (rplMode == "Exact_3D" .or. rplMode == "Exact_4D") then
+           else if(  (rplMode=="Exact")   .or.  & 
+                   ( (rplMode=="Regular") .and. (PREDICTOR_DURATION.gt.MKIAU_FREQUENCY/2) )  ) then
 
+               ! Set Active PREDICTOR_STEP Alarm to OFF
+               ! --------------------------------------
                call ESMF_AlarmRingerOff(ALARM, RC=STATUS)
                VERIFY_(STATUS)
                DO_PREDICTOR = .FALSE.
-               call MAPL_GetResource ( STATE, FileTmpl,'REPLAY_FILE:', RC=STATUS )
-               VERIFY_(STATUS)
+
+               ! Get file template for READING Exact REPLAY Increment Files
+               ! ----------------------------------------------------------
+               if ( rplMode=="Exact" ) then
+                    call MAPL_GetResource ( STATE, FileTmpl,  'REPLAY_FILE:',                   RC=STATUS )
+                    VERIFY_(STATUS)
+                    call MAPL_GetResource ( STATE, FileTmpl09,'REPLAY_FILE09:', DEFAULT='NULL', RC=STATUS )
+                    VERIFY_(STATUS)
+               endif
+
+               ! Get file template for READING Regular REPLAY Increment Files produced during PREDICTOR Step
+               ! (This should be consistent with any USER-Supplied MKIAU_CHECKPOINT file)
+               ! -------------------------------------------------------------------------------------------
+               if ( rplMode=="Regular" .and. (PREDICTOR_DURATION.gt.MKIAU_FREQUENCY/2) ) then
+                    call MAPL_GetResource( STATE, FileName, "MKIAU_CHECKPOINT_FILE:", rc=status)
+                    VERIFY_(STATUS)
+                    call MAPL_GetResource( STATE, FileType, "MKIAU_CHECKPOINT_TYPE:", rc=status)
+                    VERIFY_(STATUS)
+                    if( FileType == 'binary' ) FileTmpl = trim(FileName) // '.%y4%m2%d2_%h2%n2z.' // 'bin'
+                    if( FileType == 'pnc4'   ) FileTmpl = trim(Filename) // '.%y4%m2%d2_%h2%n2z.' // 'nc4'
+                    FileTmpl09 = 'NULL'
+               endif
 
 ! If replay alarm is ringing, we need to reset state
 !---------------------------------------------------
-
                if (is_shutoff) then ! once this alarm rings, is_shutoff will remain true for the rest of the run 
                !  if ( MAPL_am_I_root() ) print *, 'Zeroing AGCM_IMPORT'
                   call MAPL_GetPointer(IMPORT,ptr3d,'DUDT' ,RC=STATUS) ; ptr3d=0.0
@@ -1638,15 +1696,36 @@ REPLAYING: if (rplMode == "Regular") then
                   VERIFY_(status)
                endif
 
-               call ESMF_ClockGetAlarm(Clock,'ExactReplay',Alarm,rc=Status)
+             ! Check for Beginning of REPLAY cycle
+             ! -----------------------------------
+               call ESMF_ClockGetAlarm(Clock,'replayCycle',Alarm,rc=Status)
+               VERIFY_(status) 
+               Begin_REPLAY_Cycle = ESMF_AlarmIsRinging( Alarm,rc=status )
                VERIFY_(status) 
 
+             ! Check Alarm for Beginning of EXACT_REPLAY09 cycle
+             ! -------------------------------------------------
+               call ESMF_ClockGetAlarm(Clock,'ExactReplay09',Alarm,rc=Status)
+               VERIFY_(status) 
+               is_ExactReplay09_ringing = ESMF_AlarmIsRinging( Alarm,rc=status )
+               VERIFY_(status) 
+
+             ! Check Alarm for REGULAR_REPLAY09 cycle
+             ! --------------------------------------
+               call ESMF_ClockGetAlarm(Clock,'RegularReplay09',Alarm,rc=Status)
+               VERIFY_(status) 
+               is_RegularReplay09_ringing = ESMF_AlarmIsRinging( Alarm,rc=status )
+               VERIFY_(status) 
+
+             ! Check for Last Corrector
+             ! -------------------------------------
+               call ESMF_ClockGetAlarm(Clock,'ExactReplay',Alarm,rc=Status)
+               VERIFY_(status) 
                LAST_CORRECTOR = ESMF_AlarmWillRingNext( ALARM, rc=status)
                VERIFY_(STATUS)
 
-               is_ringing = ESMF_AlarmIsRinging( Alarm,rc=status )
-               VERIFY_(status) 
-
+! Force IS_RINGING to be TRUE at Start-Up
+! ---------------------------------------
                if( first ) then
                    call ESMF_ClockGet(Clock, CurrTime=currTime, rc=Status)
                    VERIFY_(status) 
@@ -1657,29 +1736,51 @@ REPLAYING: if (rplMode == "Regular") then
 
                    first = .FALSE.
                endif
-               call GET_REPLAY_TIME ( STATE, CLOCK, REPLAY_TIME, RC )
+               call GET_REPLAY_TIME ( STATE, CLOCK, REPLAY_TIME, Begin_REPLAY_Cycle, RC )
                is_ringing = REPLAY_TIME /= REPLAY_TIME0
 
-               is_ringing = is_ringing .and. (.not. is_shutoff)
+               is_ringing = ( is_ringing .or. Begin_REPLAY_Cycle ) .and. (.not. is_shutoff)
 
-TIME_TO_REPLAY: if(is_ringing) then
-! ---------------------------------
-                   ! read import from file
-                   ! ---------------------
+               if(is_ringing) then
+               ! -----------------
+                   ! Read REPLAY file
+                   ! ----------------
 
                    REPLAY_TIME0 = REPLAY_TIME
-                   call MAPL_GetCurrentFile(FILETMPL=filetmpl, TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
-                   VERIFY_(status) 
-                 ! if(MAPL_AM_I_ROOT() ) then
-                 !    write(6,'(1x,a,a)') 'REPLAY File: ',trim(ReplayFile)
-                 !    print *
-                 ! endif
 
-                   call MAPL_ESMFStateReadFromFile(STATE=IMPORT, CLOCK=CLOCK, FILENAME=ReplayFile,&
-                        MPL=STATE, HDR=.FALSE., RC=STATUS)
-                   VERIFY_(STATUS) 
+                   if( rplMode=="Exact" ) then
+                       if( is_ExactReplay09_ringing ) then
+                           if( filetmpl09.ne.'NULL' ) then
+                               call MAPL_GetCurrentFile(FILETMPL=filetmpl09, TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
+                               VERIFY_(status) 
+                           else
+                               call MAPL_GetCurrentFile(FILETMPL=filetmpl,   TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
+                               VERIFY_(status) 
+                           endif
+                       else
+                               call MAPL_GetCurrentFile(FILETMPL=filetmpl,   TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
+                               VERIFY_(status) 
+                       endif
+                   endif
 
-                end if TIME_TO_REPLAY
+                   if( (rplMode=="Regular") .and. (PREDICTOR_DURATION.gt.MKIAU_FREQUENCY/2) ) then
+                       if( is_RegularReplay09_ringing ) then
+                           if( filetmpl09.ne.'NULL' ) then
+                               call MAPL_GetCurrentFile(FILETMPL=filetmpl09, TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
+                               VERIFY_(status) 
+                           else
+                               call MAPL_GetCurrentFile(FILETMPL=filetmpl,   TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
+                               VERIFY_(status) 
+                           endif
+                       else
+                               call MAPL_GetCurrentFile(FILETMPL=filetmpl,   TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
+                               VERIFY_(status) 
+                       endif
+                   endif
+
+                   call MAPL_ESMFStateReadFromFile(STATE=IMPORT, CLOCK=CLOCK, FILENAME=ReplayFile, MPL=STATE, HDR=.FALSE., RC=STATUS)
+                   VERIFY_(STATUS)
+               endif
 
            end if REPLAYING
 
@@ -1773,14 +1874,12 @@ TIME_TO_REPLAY: if(is_ringing) then
     ALF = ALPHA
     BET = BETA
 
-!   if(MAPL_AM_I_ROOT() ) print *, 'TYPE: ',TYPE,' PRED: ',PREDICTOR,' CORR: ',CORRECTOR,' FORE: ',FORECAST
-
 ! Get IAU Scaling Coefficient
 ! ---------------------------
     if( TYPE /= CORRECTOR ) then
         IAUcoeff = 1.0    ! Do NOT modify Forecast/Predictor forcing term
     else
-        call get_iau_coeff( IAUcoeff )
+        call get_iau_coeff( IAUcoeff,CLOCK )
 
       ! If 4DIAU, overwrite increments from analysis by recreating them on the fly
       ! --------------------------------------------------------------------------
@@ -2905,16 +3004,26 @@ TIME_TO_REPLAY: if(is_ringing) then
 
     end subroutine FILL_FRIENDLY
 
-    subroutine get_iau_coeff( TNDCoeff )
+    subroutine get_iau_coeff( TNDCoeff,CLOCK )
     use m_chars,       only:  uppercase
     implicit none
 
     real, intent(OUT) :: TNDCoeff
+    type(ESMF_Clock), intent(inout) :: CLOCK
+    type(ESMF_Time)                 :: currtime
+    type(ESMF_Time)                 :: MKIAU_RefTime
+    type(ESMF_Calendar)             :: cal
+    type(ESMF_TimeInterval)         :: MKIAU_HALF_FREQUENCY
+    type(ESMF_TimeInterval)         :: TIME_Offset
 
+    real*8  :: TIME_Fraction
     integer :: nsteps
     integer :: kstep, kshift
-    integer :: PREDICTOR_DURATION
-    integer :: CORRECTOR_DURATION
+    integer :: MKIAU_RingDate
+    integer :: MKIAU_RingTime
+    integer :: rep_YY, rep_MM, rep_DD 
+    integer :: rep_H,  rep_M,  rep_S 
+    integer :: MKIAU_FREQUENCY
     logical :: IAU_DIGITAL_FILTER
 
     character(len=ESMF_MAXSTR) :: STRING
@@ -2923,6 +3032,9 @@ TIME_TO_REPLAY: if(is_ringing) then
     type (CONNECT_IAUcoeffs), pointer :: myCoeffs => NULL()
     type (IAU_coeffs)                 :: wrap
     real, allocatable                 :: shifted_dfi(:)
+
+    call ESMF_ClockGet( CLOCK, currTime=currTime, calendar=cal, RC=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetResource(STATE, REPLAY_MODE, Label='REPLAY_MODE:', default="NoReplay", RC=STATUS )
     VERIFY_(STATUS)
@@ -2945,26 +3057,51 @@ TIME_TO_REPLAY: if(is_ringing) then
        VERIFY_(STATUS)
        myCoeffs => wrap%ptr
 
-     ! Note: PREDICTOR and CORRECTOR Durations are Initialized in GCM_GridComp
-     ! -----------------------------------------------------------------------
-       call MAPL_GetResource( STATE, CORRECTOR_DURATION, Label="CORRECTOR_DURATION:", RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetResource( STATE, PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", RC=STATUS )
+     ! Note: MKIAU_FREQUENCY is Initialized in GCM_GridComp
+     ! ----------------------------------------------------------
+       call MAPL_GetResource( STATE,MKIAU_FREQUENCY, Label="MKIAU_FREQUENCY:", rc=STATUS )
        VERIFY_(STATUS)
 
-       nsteps = nint( CORRECTOR_DURATION/DT ) + 1
+       nsteps = nint( MKIAU_FREQUENCY/DT ) + 1
 
        if (.not.associated(myCoeffs%dfi)) then
             allocate(myCoeffs%dfi(nsteps))
             myCoeffs%istep=0
 
-            call dfi_coeffs (DT,CORRECTOR_DURATION,TAUANL,nsteps,myCoeffs%dfi) 
+            call dfi_coeffs (DT,MKIAU_FREQUENCY,TAUANL,nsteps,myCoeffs%dfi) 
 
         ! Shift DFI Coefficients if Necessary
         ! -----------------------------------
-                                                    kshift = 0
-           if( adjustl(REPLAY_MODE) == "Exact_4D" ) kshift = (nsteps-1)/2
-           if( adjustl(REPLAY_MODE) == "Regular"  ) kshift = abs( 0.5 - float(PREDICTOR_DURATION)/float(CORRECTOR_DURATION) )*(nsteps-1)
+           call MAPL_GetResource( STATE, MKIAU_RingDate, Label="MKIAU_RingDate:", RC=STATUS )
+           VERIFY_(STATUS)
+           call MAPL_GetResource( STATE, MKIAU_RingTime, Label="MKIAU_RingTime:", RC=STATUS )
+           VERIFY_(STATUS)
+
+           call ESMF_TimeIntervalSet( MKIAU_HALF_FREQUENCY, S=MKIAU_FREQUENCY/2, rc=STATUS )
+           VERIFY_(STATUS)
+
+         ! REPACK MKIAU_RingDate and MKIAU_RingTime
+         ! ----------------------------------------
+           rep_YY =     MKIAU_RingDate /10000
+           rep_MM = mod(MKIAU_RingDate ,10000)/100
+           rep_DD = mod(MKIAU_RingDate ,100)
+           rep_H  =     MKIAU_RingTime /10000
+           rep_M  = mod(MKIAU_RingTime ,10000)/100
+           rep_S  = mod(MKIAU_RingTime ,100)
+
+           call ESMF_TimeSet( MKIAU_RefTime, YY = rep_YY, &
+                                             MM = rep_MM, &
+                                             DD = rep_DD, &
+                                              H = rep_H , &
+                                              M = rep_M , &
+                                              S = rep_S , &
+                              calendar=cal,  rc = STATUS  )
+           VERIFY_(STATUS)
+
+           TIME_Offset   = MKIAU_RefTime - CurrTime
+           TIME_Fraction = Time_Offset   / MKIAU_HALF_FREQUENCY
+
+           kshift = abs( 1.0 - Time_Fraction )*(nsteps-1)/2
 
            allocate( shifted_dfi(nsteps) )
            do i=1,nsteps-1
@@ -4046,14 +4183,13 @@ TIME_TO_REPLAY: if(is_ringing) then
     enddo
     end function check_list_
 
-    subroutine dfi_coeffs (DT,CORR,TAUIAU,nsteps,dfi)
-!   This subroutine belongs to GEOS_Shared, but for now it lives here
+    subroutine dfi_coeffs (DT,FILE_FREQUENCY,TAUIAU,nsteps,dfi)
     implicit none
 
     real,   intent(in)  :: DT     ! model time step
-    integer,intent(in)  :: CORR   ! Corrector Duration
     real,   intent(in)  :: TAUIAU ! IAU time scale
-    integer,intent(in)  :: nsteps ! number of steps:  Corrector_Duration/DT+1
+    integer,intent(in)  :: nsteps         ! number of steps:  FILE_FREQUENCY/DT+1
+    integer,intent(in)  :: FILE_FREQUENCY
     real,   intent(out) :: dfi(nsteps)
 
     real pi,arg,wc
@@ -4067,9 +4203,9 @@ TIME_TO_REPLAY: if(is_ringing) then
        n   = k-nhlf
        arg = n*pi/nhlf            
        wc  = sin(arg)/arg ! Lanczos window
-       dfi(k) = wc*sin(n*2.0*pi*DT/CORR)/(n*pi)
+       dfi(k) = wc*sin(n*2.0*pi*DT/FILE_FREQUENCY)/(n*pi)
     end do
-    dfi(nhlf) = 2*DT/CORR
+    dfi(nhlf) = 2*DT/FILE_FREQUENCY
     do i = nhlf+1, nsteps
        dfi(i) = dfi(nsteps-i+1)
     end do
@@ -4077,7 +4213,7 @@ TIME_TO_REPLAY: if(is_ringing) then
 !   Normalize coefficients
 !   ----------------------
     dfi = dfi/sum(dfi)
-    dfi = dfi*(CORR/TAUIAU)/DT ! remember: dynamics multiplies by DT
+    dfi = dfi*(FILE_FREQUENCY/TAUIAU)/DT ! remember: dynamics multiplies by DT
 
    end subroutine dfi_coeffs
 
@@ -4121,7 +4257,7 @@ TIME_TO_REPLAY: if(is_ringing) then
   endif
   end function my_nearest_time
 
-  subroutine GET_REPLAY_TIME ( MAPL, CLOCK, REPLAY_TIME, RC )
+  subroutine GET_REPLAY_TIME ( MAPL, CLOCK, REPLAY_TIME, Begin_REPLAY_Cycle, RC )
 
   use ESMF
   use MAPL_Mod
@@ -4130,6 +4266,7 @@ TIME_TO_REPLAY: if(is_ringing) then
 
     type(ESMF_Clock),    intent(inout) :: CLOCK
     type(ESMF_Time),     intent(  out) :: REPLAY_TIME
+    logical                               Begin_REPLAY_Cycle
     integer, optional,   intent(  out) :: RC
 
 ! Locals
@@ -4149,11 +4286,12 @@ TIME_TO_REPLAY: if(is_ringing) then
     integer                             ::    TOTAL_SEC
 
     integer                             :: PREDICTOR_DURATION
-    integer                             :: CORRECTOR_DURATION
     real*8                              :: facp0, facm1
     integer                             :: CUR_YY,CUR_MM,CUR_DD,CUR_H,CUR_M,CUR_S
     integer                             :: nymd,  nhms
     integer                             :: rymd,  rhms
+    integer                             :: Pymd,  Phms
+    integer                             :: Mymd,  Mhms
     integer                             :: STATUS
     integer nsecf
             nsecf(nhms) = nhms/10000*3600 + mod(nhms,10000)/100*60 + mod(nhms,100)
@@ -4162,17 +4300,15 @@ TIME_TO_REPLAY: if(is_ringing) then
 
    Iam = 'REPLAY_Time'
 
-! Note: REPLAY_FILE_FREQUENCY should be initialized within GEOS_GcmGridComp
-! -------------------------------------------------------------------------
-   call MAPL_GetResource( MAPL,FileFreq_SEC, Label="REPLAY_FILE_FREQUENCY:",                      rc=STATUS )
+! Note: MKIAU_FREQUENCY and MKIAU_REFERENCE_TIME are initialized within GEOS_GcmGridComp
+! --------------------------------------------------------------------------------------
+   call MAPL_GetResource( MAPL,FileFreq_SEC, Label="MKIAU_FREQUENCY:",      rc=STATUS )
    VERIFY_(STATUS)
-   call MAPL_GetResource( MAPL,FileReft_HMS, Label="REPLAY_FILE_REFERENCE_TIME:", default=000000, rc=STATUS )
+   call MAPL_GetResource( MAPL,FileReft_HMS, Label="MKIAU_REFERENCE_TIME:", rc=STATUS )
    VERIFY_(STATUS)
 
- ! Note: PREDICTOR and CORRECTOR Durations are Initialized in GCM_GridComp
- ! -----------------------------------------------------------------------
-   call MAPL_GetResource( MAPL, CORRECTOR_DURATION, Label="CORRECTOR_DURATION:", RC=STATUS )
-   VERIFY_(STATUS)
+ ! Note: PREDICTOR Duration is Initialized in GCM_GridComp
+ ! -------------------------------------------------------
    call MAPL_GetResource( MAPL, PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", RC=STATUS )
    VERIFY_(STATUS)
 
@@ -4212,7 +4348,7 @@ TIME_TO_REPLAY: if(is_ringing) then
 
 ! --------------------------------------------------------------------------------------------------------
 
-    if( currTime /= REPLAY_TIME ) then
+    if( currTime /= REPLAY_TIME .or. Begin_REPLAY_Cycle ) then
 
         if( currTime < REPLAY_TIME ) then
             REPLAY_TIMEP0 = REPLAY_TIME
@@ -4227,33 +4363,33 @@ TIME_TO_REPLAY: if(is_ringing) then
 
       ! Backward Time
       ! -------------
-        if( PREDICTOR_DURATION == 0 ) then
-            if( facm1 > 0.0 ) then
-                REPLAY_TIME = REPLAY_TIMEM1
-            else
-                REPLAY_TIME = REPLAY_TIMEP0
-            endif
-        endif
+      ! if( PREDICTOR_DURATION == 0 ) then
+      !     if( facm1 > 0.0 ) then
+      !         REPLAY_TIME = REPLAY_TIMEM1
+      !     else
+      !         REPLAY_TIME = REPLAY_TIMEP0
+      !     endif
+      ! endif
 
       ! Forward Time
       ! ------------
-        if( PREDICTOR_DURATION == CORRECTOR_DURATION ) then
-            if( facp0 > 0.0 ) then
-                REPLAY_TIME = REPLAY_TIMEP0
-            else
-                REPLAY_TIME = REPLAY_TIMEM1
-            endif
-        endif
+      ! if( PREDICTOR_DURATION == FileFreq_SEC ) then
+      !     if( facp0 > 0.0 ) then
+      !         REPLAY_TIME = REPLAY_TIMEP0
+      !     else
+      !         REPLAY_TIME = REPLAY_TIMEM1
+      !     endif
+      ! endif
 
       ! Nearest Time
       ! ------------
-        if( PREDICTOR_DURATION == CORRECTOR_DURATION/2 ) then
+      ! if( PREDICTOR_DURATION == FileFreq_SEC/2 ) then
             if( facm1 > 0.5 ) then
                 REPLAY_TIME = REPLAY_TIMEM1
             else
                 REPLAY_TIME = REPLAY_TIMEP0
             endif
-        endif
+      ! endif
 
     endif
 
@@ -4266,7 +4402,19 @@ TIME_TO_REPLAY: if(is_ringing) then
  !   VERIFY_(STATUS)
  !   call strToInt(TimeString, rymd, rhms)
 
- !   write(6,'(1x,a,i8.8,a,i6.6,a,i8.8,a,i6.6)') 'Current_Time  nymd: ',nymd , '  nhms: ',nhms,'  Replay_Time: ',rymd,' ',rhms 
+ !   call ESMF_TimeGet(REPLAY_TIMEP0, timeString=TimeString, RC=STATUS)
+ !   VERIFY_(STATUS)
+ !   call strToInt(TimeString, Pymd, Phms)
+
+ !   call ESMF_TimeGet(REPLAY_TIMEM1, timeString=TimeString, RC=STATUS)
+ !   VERIFY_(STATUS)
+ !   call strToInt(TimeString, Mymd, Mhms)
+
+ !   write(6,'(1x,a,i8.8,a,i6.6,a,f5.3,a,a,i8.8,a,i6.6,a,i8.8,a,i6.6,a,i8.8,a,i6.6,a,f5.3,a,l)') &
+ !                                            ' Current_Time: ',nymd,' ',nhms,' (',facm1,') ', &
+ !                                            ' -Replay_Time: ',Mymd,' ',Mhms, & 
+ !                                            '  Replay_Time: ',rymd,' ',rhms, & 
+ !                                            ' +Replay_Time: ',Pymd,' ',Phms,' (',facp0,') Begin_REPLAY_Cycle: ',Begin_REPLAY_Cycle
  ! endif
 
 ! --------------------------------------------------------------------------------------------------------
