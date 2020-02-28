@@ -531,8 +531,8 @@ contains
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)		   :: IAm
-    integer				                  :: STATUS
+    character(len=ESMF_MAXSTR)	       :: IAm
+    integer			       :: STATUS
     character(len=ESMF_MAXSTR)         :: COMP_NAME
 
 ! Locals
