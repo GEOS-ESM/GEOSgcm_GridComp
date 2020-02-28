@@ -544,11 +544,11 @@ contains
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC   ,                          &
-            SHORT_NAME = 'SSH',                                       &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
+!!$       call MAPL_AddExportSpec ( GC   ,                          &
+!!$            SHORT_NAME = 'SSH',                                       &
+!!$            CHILD_ID   = OCN,                                         &
+!!$            RC=STATUS  )
+!!$       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'SLV',                                       &
             CHILD_ID   = OCN,                                         &
@@ -559,11 +559,11 @@ contains
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC   ,                               &
-            SHORT_NAME = 'PBO',                                       &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
+!!$       call MAPL_AddExportSpec ( GC   ,                               &
+!!$            SHORT_NAME = 'PBO',                                       &
+!!$            CHILD_ID   = OCN,                                         &
+!!$            RC=STATUS  )
+!!$       VERIFY_(STATUS)
 
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'T',                                         &
