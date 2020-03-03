@@ -5147,6 +5147,9 @@ contains
 
       real, pointer, dimension(:,:  ) :: LFR,A1X1,A2X2,A3X3,A4X4,A5X5
 
+      !Whether to guard against negatives
+      logical                         :: RAS_NO_NEG
+
       !Trajectory for Moist TLM/ADJ
       real, pointer, dimension(:,:,:) :: TH_moist, Q_moist
       real, pointer, dimension(:,:  ) :: KCBL_moist, TS_moist, ctop_moist, KHu_moist, KHl_moist
@@ -5817,6 +5820,9 @@ contains
       ! Get parameters from configuration
       !----------------------------------
       call ESMF_ConfigGetAttribute (CF, HEARTBEAT, Label="RUN_DT:", RC=STATUS)
+      VERIFY_(STATUS)
+
+      call ESMF_ConfigGetAttribute( CF, RAS_NO_NEG, Label='RAS_NO_NEG:', default=.FALSE. , RC=STATUS)
       VERIFY_(STATUS)
 
       call MAPL_GetResource(STATE, CLEANUP_RH,               'CLEANUP_RH:',     DEFAULT= 1,     RC=STATUS)
@@ -7979,6 +7985,7 @@ contains
            RASPRCP              , &
            
            RASPARAMS            , & ! params
+           RAS_NO_NEG           , &
            RAS_TIME, RAS_TRG, RAS_TOKI, RAS_PBL, RAS_WFN, &
            RAS_TAU        , &
 
