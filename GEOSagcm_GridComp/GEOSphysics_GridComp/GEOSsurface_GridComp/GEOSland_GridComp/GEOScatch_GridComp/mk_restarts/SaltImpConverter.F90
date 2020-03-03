@@ -3,7 +3,7 @@ program SaltImpConverter
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
   use netcdf
   use MAPL
-  use mk_restarts_sharedMod
+  use mk_restarts_getidsMod
   use gFTL_StringVector
   implicit none
 
