@@ -3,7 +3,7 @@ program  mk_CatchRestarts
 !  $Id: 
 
   use MAPL
-  use mk_restarts_getidsMod
+  use mk_restarts_getidsMod, only: GetIDs,ReadCNTilFile
   use gFTL_StringVector
 
   implicit none

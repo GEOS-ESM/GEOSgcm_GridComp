@@ -3,7 +3,7 @@ program mk_LakeLandiceSaltRestarts
   use netcdf
 
   use MAPL
-  use mk_restarts_getidsMod
+  use mk_restarts_getidsMod, only: GetIDS,ReadTileFile
   use PFIO
   use gFTL_StringVector
 

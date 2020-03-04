@@ -194,7 +194,7 @@ program  mk_CatchCNRestarts
   use MAPL
   use gFTL_StringVector
   use ieee_arithmetic, only: isnan => ieee_is_nan
-  use mk_restarts_getidsMod
+  use mk_restarts_getidsMod, only: GetIDs, to_radian, haversine, ReadCNTilFile,ReadTileFile
 
   implicit none
   include 'mpif.h'

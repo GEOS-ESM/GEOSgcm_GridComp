@@ -11,9 +11,9 @@ module mk_restarts_getidsMod
   public :: haversine
 
   interface GetIds
-     procedure GetIds_fast_1p
-     procedure GetIds_accurate_mpi
-     procedure GetIds_carbon
+     module procedure GetIds_fast_1p
+     module procedure GetIds_accurate_mpi
+     module procedure GetIds_carbon
   end interface
 
 contains
