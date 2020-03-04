@@ -1606,7 +1606,7 @@ contains
    real(wp) :: press_ref_min, ptop
    real(wp) ::  temp_ref_min, tmin
    real(wp), parameter :: ptop_increase_OK_fraction = 0.01_wp
-   real(wp), parameter :: tmin_increase_OK_Kelvin   = 5.0_wp
+   real(wp), parameter :: tmin_increase_OK_Kelvin   = 10.0_wp
 
    ! block size for column processing
    ! set for efficiency from resource file
@@ -2506,8 +2506,8 @@ contains
 
       ! pmn: temperature KLUGE 
       ! Currently k_dist%temp_ref_min = 160K but GEOS-5 has a global minimum
-      ! temperature below this ~0.4% of the time (but not by much --- minimum
-      ! seen is so far 157K). Consequently we will limit min(t_lay) to 160K.
+      ! temperature below this occasionally (< 1% of time). (The lowest temp
+      ! seen is so far 151K). Consequently we will limit min(t_lay) to 160K.
       ! Find better solution, perhaps getting AER to produce a table with a
       ! lower minimum temperature.
       ! note: add 0.01K to lower limit so that t_lev calculated below will
