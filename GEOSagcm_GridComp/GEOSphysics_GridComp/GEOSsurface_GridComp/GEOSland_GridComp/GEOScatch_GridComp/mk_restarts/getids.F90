@@ -5,8 +5,8 @@ module mk_restarts_getidsMod
   private
 
   public :: GetIds
-  public :: ReadTileFile_IntLatLon 
-  public :: ReadTileFile_RealLatLon 
+  public :: ReadTileFile_IntLatLon    ! returns integer lat/lon for fast but inaccurate processing
+  public :: ReadTileFile_RealLatLon   ! returns real lat/lon for slow but accurate processing
   public :: to_radian 
   public :: haversine
 
