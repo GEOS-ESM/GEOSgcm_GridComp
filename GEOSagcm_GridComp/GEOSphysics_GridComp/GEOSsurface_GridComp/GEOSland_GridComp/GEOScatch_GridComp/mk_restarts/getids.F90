@@ -19,6 +19,9 @@ module mk_restarts_getidsMod
 contains
 
    subroutine ReadTileFile_IntLatLon(Tf,Pf,Id,lon,lat,zoom,mask)
+   
+     ! read *.til tile definition file, return integer lat/lon for fast but inaccurate processing
+
      character*(*), intent(IN) :: Tf
      integer, pointer          :: Pf(:), Id(:), lon(:), lat(:)
      integer, intent(in)       :: zoom
@@ -525,6 +528,8 @@ contains
       ! *****************************************************************************
    
       subroutine ReadTileFile_RealLatLon (InCNTileFile, ntiles, xlon, xlat,mask)
+   
+        ! read *.til tile definition file, return *real* lat/lon for slow but accurate processing
    
         implicit none
         character(*), intent (in) :: InCNTileFile
