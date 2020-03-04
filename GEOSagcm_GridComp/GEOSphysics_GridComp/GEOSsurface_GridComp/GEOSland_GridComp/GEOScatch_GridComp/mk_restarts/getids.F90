@@ -7,8 +7,20 @@ module mk_restarts_getidsMod
   public :: GetIds
   public :: ReadTileFile_IntLatLon    ! returns integer lat/lon for fast but inaccurate processing
   public :: ReadTileFile_RealLatLon   ! returns real lat/lon for slow but accurate processing
-  public :: to_radian 
+  public :: to_radian                 ! should really be replaced with "MAPL_DEGREES_TO_RADIANS" 
   public :: haversine
+
+  ! Copies of the following subroutines 
+  !
+  !    to_radian()
+  !    haversine()
+  !    ReadCNTilFile()   [renamed here to ReadTileFile_RealLatLon()]
+  !
+  ! also exist in
+  !   
+  !   ./GEOSsurface_GridComp/Shared/Raster/comp_CATCHCN_AlbScale_parameters.F90
+  !
+  ! - reichle, 4 Mar 2020
 
   interface GetIds
      module procedure GetIds_fast_1p
@@ -20,8 +32,13 @@ contains
 
    subroutine ReadTileFile_IntLatLon(Tf,Pf,Id,lon,lat,zoom,mask)
    
-     ! read *.til tile definition file, return integer lat/lon for fast but inaccurate processing
-
+     ! Read *.til tile definition file, return integer lat/lon for fast but inaccurate processing.
+     ! Can handle "old" format of *.til files, but that is probably obsolete as of March 2020 and
+     !   not used in related subroutine ReadTileFile_RealLatLon().
+     ! WARNING: Do NOT use returned "Pf" values.  The content of the 2nd column of the *.til file
+     !          that is read into "Pf" depends on whether the file is for EASE or cube-sphere grid tiles!
+     ! - reichle, 4 Mar 2020
+     
      character*(*), intent(IN) :: Tf
      integer, pointer          :: Pf(:), Id(:), lon(:), lat(:)
      integer, intent(in)       :: zoom
@@ -492,6 +509,9 @@ contains
    
       function to_radian(degree) result(rad)
    
+        ! should really be replaced with "MAPL_DEGREES_TO_RADIANS" (but note single vs double precision)
+        ! - reichle, 4 Mar 2020
+   
         ! degrees to radians
         real,intent(in) :: degree
         real :: rad
@@ -530,7 +550,7 @@ contains
       subroutine ReadTileFile_RealLatLon (InCNTileFile, ntiles, xlon, xlat,mask)
    
         ! read *.til tile definition file, return *real* lat/lon for slow but accurate processing
-   
+      
         implicit none
         character(*), intent (in) :: InCNTileFile
         integer , intent (inout)  :: ntiles
