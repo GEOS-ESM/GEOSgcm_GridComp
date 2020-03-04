@@ -5,8 +5,8 @@ module mk_restarts_getidsMod
   private
 
   public :: GetIds
-  public :: ReadTileFile 
-  public :: ReadCNTilFile 
+  public :: ReadTileFile_IntLatLon 
+  public :: ReadTileFile_RealLatLon 
   public :: to_radian 
   public :: haversine
 
@@ -18,7 +18,7 @@ module mk_restarts_getidsMod
 
 contains
 
-   subroutine ReadTileFile(Tf,Pf,Id,lon,lat,zoom,mask)
+   subroutine ReadTileFile_IntLatLon(Tf,Pf,Id,lon,lat,zoom,mask)
      character*(*), intent(IN) :: Tf
      integer, pointer          :: Pf(:), Id(:), lon(:), lat(:)
      integer, intent(in)       :: zoom
@@ -90,7 +90,7 @@ contains
      deallocate(Pf1,Id1,ln1,lt1)
    
      return
-   end subroutine ReadTileFile
+   end subroutine ReadTileFile_IntLatLon
    
    subroutine GetStencil(ii,jj,st)
      integer, intent(OUT) :: ii(0:), jj(0:)
@@ -524,7 +524,7 @@ contains
       
       ! *****************************************************************************
    
-      subroutine ReadCNTilFile (InCNTileFile, ntiles, xlon, xlat,mask)
+      subroutine ReadTileFile_RealLatLon (InCNTileFile, ntiles, xlon, xlat,mask)
    
         implicit none
         character(*), intent (in) :: InCNTileFile
@@ -570,6 +570,6 @@ contains
       xlon = ln1(:Ntiles)
       xlat = lt1(:Ntiles) 
    
-      end subroutine ReadCNTilFile
+      end subroutine ReadTileFile_RealLatLon
 
 end module mk_restarts_getidsMod

@@ -3,7 +3,7 @@ program mk_LakeLandiceSaltRestarts
   use netcdf
 
   use MAPL
-  use mk_restarts_getidsMod, only: GetIDS,ReadTileFile
+  use mk_restarts_getidsMod, only: GetIDS,ReadTileFile_IntLatLon
   use PFIO
   use gFTL_StringVector
 
@@ -65,10 +65,10 @@ program mk_LakeLandiceSaltRestarts
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table
 
-  call ReadTileFile(OutTileFile,Pf,Id,lono,lato,zoom,mask)
+  call ReadTileFile_IntLatLon(OutTileFile,Pf,Id,lono,lato,zoom,mask)
   deallocate(Pf,Id)
 
-  call ReadTileFile(InTileFile ,Pf,Id,loni,lati,zoom,mask)
+  call ReadTileFile_IntLatLon(InTileFile ,Pf,Id,loni,lati,zoom,mask)
   deallocate(Pf,Id)
 
   nullify(Pf)

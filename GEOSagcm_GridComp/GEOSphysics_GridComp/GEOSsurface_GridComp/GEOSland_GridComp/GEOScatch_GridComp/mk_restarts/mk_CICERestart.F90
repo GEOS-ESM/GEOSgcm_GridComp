@@ -5,7 +5,7 @@ program mk_CiceRestart
 
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
   use MAPL_HashMod
-  use mk_restarts_getidsMod, only: GetIDs,ReadTileFile
+  use mk_restarts_getidsMod, only: GetIDs,ReadTileFile_IntLatLon
 
   implicit none
 
@@ -40,10 +40,10 @@ program mk_CiceRestart
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table
 
-  call ReadTileFile(OutTileFile,Pf,Id,lono,lato,zoom,0)
+  call ReadTileFile_IntLatLon(OutTileFile,Pf,Id,lono,lato,zoom,0)
   deallocate(Pf,Id)
 
-  call ReadTileFile(InTileFile ,Pf,Id,loni,lati,zoom,0)
+  call ReadTileFile_IntLatLon(InTileFile ,Pf,Id,loni,lati,zoom,0)
   deallocate(Pf,Id)
 
   nullify(Pf)

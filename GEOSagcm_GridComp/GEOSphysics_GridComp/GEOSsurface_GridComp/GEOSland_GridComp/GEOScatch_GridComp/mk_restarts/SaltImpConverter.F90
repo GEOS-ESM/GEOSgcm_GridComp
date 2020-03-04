@@ -3,7 +3,7 @@ program SaltImpConverter
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
   use netcdf
   use MAPL
-  use mk_restarts_getidsMod, only: ReadTileFile
+  use mk_restarts_getidsMod, only: ReadTileFile_IntLatLon
   use gFTL_StringVector
   implicit none
 
@@ -109,7 +109,7 @@ program SaltImpConverter
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table
 
-  call ReadTileFile(InTileFile ,Pf,Id,loni,lati,zoom, 0)
+  call ReadTileFile_IntLatLon(InTileFile ,Pf,Id,loni,lati,zoom, 0)
   deallocate(Pf,Id)
 
   nullify(Pf)
