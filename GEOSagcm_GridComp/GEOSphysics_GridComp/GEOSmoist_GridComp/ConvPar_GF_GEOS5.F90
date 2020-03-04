@@ -4065,6 +4065,22 @@ IF(USE_TRACER_TRANSP==1)  THEN
 !--only for debug
 !ENDIF
 
+!-4) convert back mass fluxes, etc...
+   do i=its,itf
+        if(ierr(i) /= 0) cycle
+            pwavo       (i)   = pwavo (i)  / (xmb(i) + 1.e-16)
+            pwevo       (i)   = pwevo (i)  / (xmb(i) + 1.e-16)
+            zuo         (i,:) = zuo   (i,:)/ (xmb(i) + 1.e-16)
+            zdo         (i,:) = zdo   (i,:)/ (xmb(i) + 1.e-16)
+            pwo         (i,:) = pwo   (i,:)/ (xmb(i) + 1.e-16)
+            pwdo        (i,:) = pwdo  (i,:)/ (xmb(i) + 1.e-16)
+            up_massentro(i,:) = up_massentro(i,:)/ (xmb(i) + 1.e-16)
+            up_massdetro(i,:) = up_massdetro(i,:)/ (xmb(i) + 1.e-16)
+            dd_massentro(i,:) = dd_massentro(i,:)/ (xmb(i) + 1.e-16)
+            dd_massdetro(i,:) = dd_massdetro(i,:)/ (xmb(i) + 1.e-16)
+            zenv        (i,:) = zenv  (i,:)/ (xmb(i) + 1.e-16)
+   enddo
+
 !--------------------------------------------------------------------------------------------!
 ENDIF !- end of section for atmospheric composition
 !--------------------------------------------------------------------------------------------!
@@ -4435,10 +4451,10 @@ ENDIF !- end of section for atmospheric composition
          ierr(i)=73
          ierrc(i)="problem2 with buoy in cup_dd_moisture"
         endif
-        if(abs(pwev(i)) > pwavo(i) )then
-         ierr(i)=77
-         ierrc(i)="problem 3 with evap in cup_dd_moisture"
-        endif
+     !  if(abs(pwev(i)) > pwavo(i) )then
+     !   ierr(i)=77
+     !   ierrc(i)="problem 3 with evap in cup_dd_moisture"
+     !  endif
 
 100    continue!--- end loop over i
 
@@ -6503,6 +6519,14 @@ IF(USE_TRACER_TRANSP==1) THEN
 !   enddo
 !19 FORMAT(1x,I3,1x,5E14.3);18 FORMAT(1x,I3,1x,4E14.3);20 FORMAT(1x,I3,1x,11E16.6)
 !-- for debug only
+!-4) convert back mass fluxes
+   do i=its,itf
+        if(ierr(i) /= 0) cycle
+            zuo         (i,:) = zuo(i,:)          / (xmb(i) + 1.e-16)                                          
+            up_massentro(i,:) = up_massentro(i,:) / (xmb(i) + 1.e-16)        
+            up_massdetro(i,:) = up_massdetro(i,:) / (xmb(i) + 1.e-16)         
+            zenv        (i,:) = zenv        (i,:) / (xmb(i) + 1.e-16)        
+   enddo
 !
 !--------------------------------------------------------------------------------------------!
 ENDIF !- end of section for atmospheric composition
