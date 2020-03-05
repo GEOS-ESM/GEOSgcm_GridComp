@@ -7348,7 +7348,8 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        CALL CATCH_CALC_SOIL_MOIST (                                     &
             NTILES,VEG1,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,   &
             ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,     &
-       
+            srfexc,rzexc,catdef, CAR1, CAR2, CAR4, sfmc, rzmc, prmc)
+	    
        call irrigation_rate (IRRIG_METHOD,                                 & 
             NTILES, AGCM_HH, AGCM_MI, sofmin, lons, IRRIGFRAC, PADDYFRAC,  &
             CLMPT,CLMST, CLMPF, CLMSF, LAIMAX, LAIMIN, LAI0,               &
