@@ -22,10 +22,9 @@ module GEOS_CatchGridCompMod
 
   use sfclayer  ! using module that contains sfc layer code
   use ESMF
+  use MAPL
   use GEOS_Mod
-  use MAPL_ConstantsMod
   use GEOS_UtilsMod
-  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
   use DragCoefficientsMod
   use CATCHMENT_MODEL, ONLY :                 &
        catchment
@@ -48,12 +47,10 @@ module GEOS_CatchGridCompMod
   USE SURFPARAMS,     ONLY:                   &
        LAND_FIX
 
-  USE MAPL_BaseMod
   USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
 
 !#sqz_for_ldas_coupling 
   use catch_incr
-  use ESMF_CFIOMOD, only:  StrTemplate => ESMF_CFIOstrTemplate
   use ESMF_CFIOUtilMod, only: strToInt
 !#--
   
@@ -118,7 +115,11 @@ real,   parameter :: EMSSNO        =    0.99999
 ! Internal state and its wrapper
 type T_OFFLINE_MODE
    private
-   logical :: CATCH_OFFLINE
+   ! change logical to integer
+   ! 0 --- false (DEFAULT for GCM)
+   ! 1 --- true  (DEFAULT gor GEOSldas)
+   ! 2 new options for internal WW,CH,CM,CQ,FR 
+   integer :: CATCH_OFFLINE
 end type T_OFFLINE_MODE
 type OFFLINE_WRAP
    type(T_OFFLINE_MODE), pointer :: ptr=>null()
@@ -173,7 +174,6 @@ subroutine SetServices ( GC, RC )
     type(T_OFFLINE_MODE), pointer :: internal=>null()
     type(OFFLINE_WRAP) :: wrap
     integer :: OFFLINE_MODE
-    logical :: is_OFFLINE
     integer :: RESTART
     character(len=ESMF_MAXSTR)              :: LANDRC
     type(ESMF_Config)                       :: LCF 
@@ -203,9 +203,7 @@ subroutine SetServices ( GC, RC )
     VERIFY_(status)
     call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    wrap%ptr%CATCH_OFFLINE = OFFLINE_MODE /= 0
-
-    is_OFFLINE = wrap%ptr%CATCH_OFFLINE
+    wrap%ptr%CATCH_OFFLINE = OFFLINE_MODE
 
     call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
@@ -780,10 +778,14 @@ subroutine SetServices ( GC, RC )
 !  !INTERNAL STATE:
 
 ! if is_offline, some variables ( in the last) are not required
-  if (is_OFFLINE) then
+  if      ( OFFLINE_MODE == 1 ) then
      RESTART = MAPL_RestartSkip
-  else
+  elseif  ( OFFLINE_MODE == 2 ) then 
+     RESTART = MAPL_RestartOptional
+  elseif  ( OFFLINE_MODE == 0 ) then
      RESTART = MAPL_RestartRequired
+  else
+     ASSERT_(.FALSE.)
   endif
 
   call MAPL_AddInternalSpec(GC                  ,&
@@ -1813,18 +1815,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  if (is_OFFLINE) then
-     call MAPL_AddInternalSpec(GC,                       &
-       LONG_NAME          = 'fractional_area_of_land_snowcover',&
-       UNITS              = '1'                         ,&
-       SHORT_NAME         = 'ASNOW'                     ,&
-       DIMS               = MAPL_DimsTileOnly           ,&
-       VLOCATION          = MAPL_VLocationNone          ,&
-       RESTART            = MAPL_RestartSkip            ,&
-       FRIENDLYTO         = trim(COMP_NAME)             ,&
-                                           RC=STATUS  )
-     VERIFY_(STATUS)
-  else
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'fractional_area_of_land_snowcover',&
     UNITS              = '1'                         ,&
@@ -1833,7 +1823,6 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-  endif
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'downward_heat_flux_into_snow',&
@@ -2006,18 +1995,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  if (is_OFFLINE) then
-     call MAPL_AddInternalSpec(GC,                       &
-        LONG_NAME          = 'surface_emissivity'        ,&
-        UNITS              = '1'                         ,&
-        SHORT_NAME         = 'EMIS'                      ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RESTART            = MAPL_RestartSkip            ,&
-        FRIENDLYTO         = trim(COMP_NAME)             ,&
-                                           RC=STATUS  )
-     VERIFY_(STATUS)
-  else
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_emissivity'        ,&
     UNITS              = '1'                         ,&
@@ -2026,7 +2003,6 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-  endif
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_albedo_visible_beam',&
@@ -2704,7 +2680,7 @@ subroutine SetServices ( GC, RC )
 
     call MAPL_TimerAdd(GC,    name="RUN1"  ,RC=STATUS)
     VERIFY_(STATUS)
-    if (is_OFFLINE) then
+    if (OFFLINE_MODE /= 0) then
        call MAPL_TimerAdd(GC,    name="-RUN0"  ,RC=STATUS)
        VERIFY_(status)
     end if
@@ -3073,7 +3049,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    
    ! Offline mode
    type(OFFLINE_WRAP) :: wrap
-   logical :: is_OFFLINE
+   integer :: OFFLINE_MODE
    integer                        ::  comm, mype
 
 !=============================================================================
@@ -3104,12 +3080,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! Get component's offline mode from its pvt internal state
     call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
     VERIFY_(status)
-    is_OFFLINE = wrap%ptr%CATCH_OFFLINE
+    OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
 
     call ESMF_VMGetCurrent ( VM, RC=STATUS ) 
     
     ! For the OFFLINE case, first update some diagnostic vars
-    if (is_OFFLINE) then
+    if (OFFLINE_MODE /=0) then
        call MAPL_TimerOn(MAPL, "-RUN0")
        call RUN0(gc, import, export, clock, rc)
        call MAPL_TimerOff(MAPL, "-RUN0")
@@ -3326,7 +3302,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !--------------------------------------------
 
    VEG = nint(ITY(:))
-   ASSERT_((count(VEG>NTYPS.or.VEG<1)==0))
+   _ASSERT((count(VEG>NTYPS.or.VEG<1)==0),'needs informative message')
 
 !  Clear the output tile accumulators
 !------------------------------------
@@ -4052,7 +4028,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Offline case
 
         type(OFFLINE_WRAP)          :: wrap
-        logical                     :: is_OFFLINE
+        integer                     :: OFFLINE_MODE
         real,dimension(:,:),allocatable :: ALWN, BLWN
         ! un-adelterated TC's and QC's
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
@@ -4114,10 +4090,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character(len=8)              :: cymd
         character(len=6)              :: chms
 
-        type(MAPL_NCIO)               :: InNCIO
+        type(Netcdf4_Fileformatter)   :: InFmt
+        type(FileMetadata)            :: InCfg
+        type(StringVariableMap), pointer :: variables
+        type(StringVariableMapIterator) :: var_iter
+        character(len=:), pointer :: vname
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
-        character(len=ESMF_MAXSTR)    :: vname
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4176,7 +4155,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! Component's offline mode
-        is_OFFLINE = wrap%ptr%CATCH_OFFLINE
+        OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
 
         ! --------------------------------------------------------------------------
         ! Get parameters from generic state.
@@ -4416,11 +4395,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,TPUST,  'TPUNST' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TPSAT,  'TPSAT'  ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TPWLT,  'TPWLT'  ,             RC=STATUS); VERIFY_(STATUS)
-        if (is_OFFLINE) then
-           call MAPL_GetPointer(INTERNAL, ASNOW, 'ASNOW', RC=STATUS); VERIFY_(STATUS)
-        else
-           call MAPL_GetPointer(EXPORT,ASNOW,  'ASNOW'  ,             RC=STATUS); VERIFY_(STATUS)
-        endif
+        call MAPL_GetPointer(EXPORT,ASNOW,  'ASNOW'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SHSNOW, 'SHSNOW' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,AVETSNOW,'AVETSNOW',           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,FRSAT,  'FRSAT'  ,             RC=STATUS); VERIFY_(STATUS)
@@ -4432,11 +4407,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,TP4,    'TP4'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TP5,    'TP5'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TP6,    'TP6'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        if (is_OFFLINE) then
-           call MAPL_GetPointer(INTERNAL, EMIS, 'EMIS', RC=STATUS);   VERIFY_(STATUS)
-        else
-           call MAPL_GetPointer(EXPORT,EMIS,   'EMIS'   ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        endif
+        call MAPL_GetPointer(EXPORT,EMIS,   'EMIS'   ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBVR,  'ALBVR'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBVF,  'ALBVF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBNR,  'ALBNR'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
@@ -4915,7 +4886,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         DEDTC=0.0
         DHSDQA=0.0
 
-        if(is_OFFLINE) then
+        if(OFFLINE_MODE /=0) then
            do N=1,NUM_SUBTILES
               CFT   (:,N) = 1.0
               CFQ   (:,N) = 1.0
@@ -4971,9 +4942,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	! driver
 	! --------------------------------------------------------------------------
 
-        ASSERT_(count(PLS<0.)==0)
-        ASSERT_(count(PCU<0.)==0)
-        ASSERT_(count(SLDTOT<0.)==0)
+        _ASSERT(count(PLS<0.)==0,'needs informative message')
+        _ASSERT(count(PCU<0.)==0,'needs informative message')
+        _ASSERT(count(SLDTOT<0.)==0,'needs informative message')
 
         LAI0  = max(0.0001     , LAI)
         GRN0  = max(0.0001     , GRN)		
@@ -5188,7 +5159,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             if( NMAX.ne.0 ) then
                 print *, 'CATCH_INTERNAL_RST is NOT consistent with VEGDYN Data'
             endif
-            ASSERT_(NMAX==0)
+            _ASSERT(NMAX==0,'needs informative message')
             check_ity = .false.
         endif
 ! ----------------------------------------------------------------------------------------
@@ -5327,53 +5298,56 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 
                        call WRITE_PARALLEL('LDAS_coupling: load nc LDAS increment file')
-                       InNCIO = MAPL_NCIOOpen(LDASINC_FILE,rc=rc)
-                       call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
-                       do nv=1,nVars
-                          call MAPL_NCIOGetVarName(InNCIO,nv,vname)
-                          call MAPL_NCIOVarGetDims(InNCIO,vname,nDims,dimSizes)
+                       call InFmt%open(LDASINC_File,pFIO_READ,rc=status)
+                       VERIFY_(status)
+                       InCfg=InFmt%read(rc=status)
+                       VERIFY_(status)
+                       variables => InCfg%get_variables()
+                       var_iter = variables%begin()
+                       do while (var_iter/=variables%end())
+                          vname => var_iter%key()
                           if ( trim(vname) == "TCFSAT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcfsat_incr)
+                               call MAPL_VarRead ( InFmt,trim(vname),tcfsat_incr)
                           if ( trim(vname) == "TCFTRN_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcftrn_incr)
+                               call MAPL_VarRead ( InFmt,trim(vname),tcftrn_incr)
                           if ( trim(vname) == "TCFWLT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcfwlt_incr)
+                               call MAPL_VarRead ( InFmt,trim(vname),tcfwlt_incr)
                           if ( trim(vname) == "QCFSAT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcftrn_incr)
+                               call MAPL_VarRead ( InFmt,trim(vname),qcftrn_incr)
                           if ( trim(vname) == "QCFTRN_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcftrn_incr)
+                               call MAPL_VarRead ( InFmt,trim(vname),qcftrn_incr)
                           if ( trim(vname) == "QCFWLT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcfwlt_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname),qcfwlt_incr )
                           if ( trim(vname) == "CAPAC_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), catdef_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), catdef_incr )
                           if ( trim(vname) == "CATDEF_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), catdef_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), catdef_incr )
                           if ( trim(vname) == "RZEXC_INCR" )  &
-                               call MAPL_VarRead ( InNCIO,trim(vname), rzexc_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), rzexc_incr )
                           if ( trim(vname) == "SRFEXC_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), srfexc_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), srfexc_incr )
                           if ( trim(vname) == "GHTCNT1_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt1_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt1_incr )
                           if ( trim(vname) == "GHTCNT2_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt2_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt2_incr )
                           if ( trim(vname) == "GHTCNT3_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt3_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt3_incr )
                           if ( trim(vname) == "GHTCNT4_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt4_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt4_incr )
                           if ( trim(vname) == "GHTCNT5_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt5_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt5_incr )
                           if ( trim(vname) == "GHTCNT6_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt6_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), ghtcnt6_incr )
                           if ( trim(vname) == "WESNN1_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn1_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), wesnn1_incr )
                           if ( trim(vname) == "WESNN2_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn2_incr )
+                               call MAPL_VarRead ( InFmt,trim(vname), wesnn2_incr )
                           if ( trim(vname) == "WESNN3_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn3_incr )
-                       enddo !nv
+                               call MAPL_VarRead ( InFmt,trim(vname), wesnn3_incr )
+                       enddo 
 
 
-                       call MAPL_NCIOClose(InNCIO)
+                       call inFmt%close()
                        call WRITE_PARALLEL('LDAS_coupling:loaded nc LDAS increment file')
 
                     deallocate(mask)
@@ -5508,7 +5482,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         call MAPL_TimerOff ( MAPL, "-CATCH" )
 
-        if (is_OFFLINE) then
+        if (OFFLINE_MODE /=0) then
            TC(:,FSAT) = TC1_0
            TC(:,FTRN) = TC2_0
            TC(:,FWLT) = TC4_0
@@ -5593,7 +5567,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            QST     = QST   +           QC(:,N)          *FR(:,N)
         end do
 
-        if ( .not. is_OFFLINE) then
+        if (OFFLINE_MODE == 0) then
 !amm add correction term to latent heat diagnostics (HLATN is always allocated)
 !    this will impact the export LHLAND
         HLATN = HLATN - LHACC
@@ -5941,11 +5915,13 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
   VERIFY_(status)
 
+  ! Pointers to EXPOERTs
+  call MAPL_GetPointer(export, asnow, 'ASNOW', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(export, emis, 'EMIS', rc=status)
+  VERIFY_(status)
+
   ! Pointers to INTERNALs
-  call MAPL_GetPointer(INTERNAL, asnow, 'ASNOW', rc=status)
-  VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, emis, 'EMIS', rc=status)
-  VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, fr, 'FR', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, ww, 'WW', rc=status)

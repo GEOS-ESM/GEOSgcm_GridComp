@@ -34,7 +34,7 @@ module GEOS_LandiceGridCompMod
        NUM_SUDP, NUM_SUSV, NUM_SUWT, NUM_SUSD, &
        NUM_SSDP, NUM_SSSV, NUM_SSWT, NUM_SSSD
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
   

@@ -44,8 +44,7 @@ module GEOS_VegdynGridCompMod
 ! !USES: 
 
   use ESMF
-  use MAPL_Mod
-  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
+  use MAPL
   implicit none
   private
 

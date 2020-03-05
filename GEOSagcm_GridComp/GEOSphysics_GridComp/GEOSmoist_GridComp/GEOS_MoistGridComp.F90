@@ -87,9 +87,8 @@ module GEOS_MoistGridCompMod
   use DDF
 
   use ESMF
-  use MAPL_Mod
+  use MAPL, r8 => MAPL_R8
   use GEOS_UtilsMod
-  use MAPL_Mod, r8 => MAPL_R8
   use cldwat2m_micro
   use cldmacro
   use aer_cloud
@@ -257,7 +256,7 @@ contains
     call ESMF_ConfigGetAttribute( CF, CLDMICRO, Label="CLDMICRO:",  default="1MOMENT", RC=STATUS)
     VERIFY_(STATUS)
     LCLDMICRO = adjustl(CLDMICRO)=="1MOMENT" .or. adjustl(CLDMICRO)=="2MOMENT" .or. adjustl(CLDMICRO)=="GFDL"
-    ASSERT_( LCLDMICRO )
+    _ASSERT( LCLDMICRO, 'needs informative message' )
 
     call ESMF_ConfigGetAttribute( CF, HYDROSTATIC, Label="HYDROSTATIC:",  default="TRUE", RC=STATUS)
     VERIFY_(STATUS)
@@ -4782,7 +4781,7 @@ contains
     call MAPL_GetResource(MAPL, CLDMICRO, 'CLDMICRO:', default="1MOMENT", RC=STATUS )
     VERIFY_(STATUS)
     LCLDMICRO = adjustl(CLDMICRO)=="1MOMENT" .or. adjustl(CLDMICRO)=="2MOMENT" .or. adjustl(CLDMICRO)=="GFDL"
-    ASSERT_( LCLDMICRO )
+    _ASSERT( LCLDMICRO, 'needs informative message' )
 
     if(adjustl(CLDMICRO)=="GFDL") then
        call gfdl_cloud_microphys_init()
@@ -4841,7 +4840,7 @@ contains
         call MAPL_GetResource(MAPL,USE_SCALE_DEP       ,'USE_SCALE_DEP:'    ,default= 1, RC=STATUS )
         VERIFY_(STATUS)
         call MAPL_GetResource(MAPL,DICYCLE             ,'DICYCLE:'          ,default= 1, RC=STATUS )
-        VERIFY_(STATUS)
+        VERIFY_(STATUS)	
         call MAPL_GetResource(MAPL,TAU_DEEP   ,'TAU_DEEP:',default= 5400.0, RC=STATUS )
         VERIFY_(STATUS)
         call MAPL_GetResource(MAPL,TAU_MID    ,'TAU_MID:' ,default= 3600.0, RC=STATUS )
@@ -5148,6 +5147,9 @@ contains
 
       real, pointer, dimension(:,:  ) :: LFR,A1X1,A2X2,A3X3,A4X4,A5X5
 
+      !Whether to guard against negatives
+      logical                         :: RAS_NO_NEG
+
       !Trajectory for Moist TLM/ADJ
       real, pointer, dimension(:,:,:) :: TH_moist, Q_moist
       real, pointer, dimension(:,:  ) :: KCBL_moist, TS_moist, ctop_moist, KHu_moist, KHl_moist
@@ -5436,6 +5438,8 @@ contains
 
       type (T_CLOUD_CTL)              :: CLOUD_CTL
       type (T_DDF_CTL)                :: DDF_CTL
+
+      logical                         :: isPresent
 
   real, dimension(:,:,:,:,:), allocatable :: buffer
 
@@ -5818,6 +5822,9 @@ contains
       call ESMF_ConfigGetAttribute (CF, HEARTBEAT, Label="RUN_DT:", RC=STATUS)
       VERIFY_(STATUS)
 
+      call ESMF_ConfigGetAttribute( CF, RAS_NO_NEG, Label='RAS_NO_NEG:', default=.FALSE. , RC=STATUS)
+      VERIFY_(STATUS)
+
       call MAPL_GetResource(STATE, CLEANUP_RH,               'CLEANUP_RH:',     DEFAULT= 1,     RC=STATUS)
       call MAPL_GetResource(STATE, RASPARAMS%CUFRICFAC,      'CUFRICFAC:',      DEFAULT= 1.000, RC=STATUS)
       call MAPL_GetResource(STATE, RASPARAMS%SHR_LAMBDA_FAC, 'SHR_LAMBDA_FAC:', DEFAULT= 0.05,  RC=STATUS)
@@ -5836,7 +5843,7 @@ contains
       call MAPL_GetResource(STATE, CLDMICRO, 'CLDMICRO:', default="1MOMENT", RC=STATUS )
       VERIFY_(STATUS)
       LCLDMICRO = adjustl(CLDMICRO)=="1MOMENT" .or. adjustl(CLDMICRO)=="2MOMENT" .or. adjustl(CLDMICRO)=="GFDL"
-      ASSERT_( LCLDMICRO )
+      _ASSERT( LCLDMICRO, 'needs informative message' )
 
       !======================================================================
       !2-M microphysics "tuning nobs"
@@ -6554,37 +6561,57 @@ contains
          ! Get items friendly status (default is not friendly)
          !-----------------------------------------------------
 
-         call ESMF_AttributeGet  (FIELD, NAME="FriendlyToMOIST",VALUE=IS_FRIENDLY(K), RC=STATUS)
-         if(STATUS /= ESMF_SUCCESS) IS_FRIENDLY(K) = .false.
+         call ESMF_AttributeGet  (FIELD, NAME="FriendlyToMOIST",isPresent=isPresent, RC=STATUS)
+         VERIFY_(STATUS)
+         if(isPresent) then
+            call ESMF_AttributeGet  (FIELD, NAME="FriendlyToMOIST",VALUE=IS_FRIENDLY(K), RC=STATUS)
+            VERIFY_(STATUS)
+         else
+            IS_FRIENDLY(K) = .false.
+         end if
 
          ! Get items weighting (default is unweighted tendencies)
          !--------------------------------------------------------
 
-         call ESMF_AttributeGet  (FIELD, NAME="WeightedTendency",VALUE=IS_WEIGHTED(K), RC=STATUS)
-         if(STATUS /= ESMF_SUCCESS) IS_WEIGHTED(K) = .false.
+         call ESMF_AttributeGet  (FIELD, NAME="WeightedTendency",isPresent=isPresent, RC=STATUS)
+         VERIFY_(STATUS)
+         if(isPresent) then
+            call ESMF_AttributeGet  (FIELD, NAME="WeightedTendency",VALUE=IS_WEIGHTED(K), RC=STATUS)
+            VERIFY_(STATUS)
+         else
+            IS_WEIGHTED(K) = .false.
+         end if
 
          ! Get items scavenging fraction
          !-------------------------------
 
-         call ESMF_AttributeGet  (FIELD, NAME="ScavengingFractionPerKm",VALUE=FSCAV_(K), RC=STATUS)
-         if(STATUS /= ESMF_SUCCESS) FSCAV_(K) = 0.0 ! no scavenging
+         call ESMF_AttributeGet  (FIELD, NAME="ScavengingFractionPerKm",isPresent=isPresent, RC=STATUS)
+         VERIFY_(STATUS)
+         if(isPresent) then
+            call ESMF_AttributeGet  (FIELD, NAME="ScavengingFractionPerKm",VALUE=FSCAV_(K), RC=STATUS)
+            VERIFY_(STATUS)
+         else
+            FSCAV_(K) = 0.0 ! no scavenging
+         end if
 
          ! Get items for the wet removal parameterization for gases based on the Henry's Law
          !-------------------------------
          IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
            Vect_Hcts(:)=-99.
-	   call ESMF_AttributeGet  (FIELD,"SetofHenryLawCts",Vect_Hcts,  RC=STATUS)
-           !.. if (MAPL_AM_I_ROOT()) then
-		!.. PRINT*,"spcname=",k,trim(QNAMES(K)),FSCAV_(K)
-	        !.. print*,"Vect_Hcts=",Vect_Hcts(:),statUS
-		!.. call flush(6)
-	   !.. ENDIF
-	   IF(STATUS == ESMF_SUCCESS) then 
-	      Hcts(k)%hstar = Vect_Hcts(1)
+           call ESMF_AttributeGet  (FIELD,"SetofHenryLawCts",isPresent=isPresent,  RC=STATUS)
+           VERIFY_(STATUS)
+           if (isPresent) then
+              call ESMF_AttributeGet  (FIELD,"SetofHenryLawCts",Vect_Hcts,  RC=STATUS)
+              !.. if (MAPL_AM_I_ROOT()) then
+                 !.. PRINT*,"spcname=",k,trim(QNAMES(K)),FSCAV_(K)
+                 !.. print*,"Vect_Hcts=",Vect_Hcts(:),statUS
+                 !.. call flush(6)
+              !.. ENDIF
+              Hcts(k)%hstar = Vect_Hcts(1)
               Hcts(k)%dhr   = Vect_Hcts(2)
               Hcts(k)%ak0   = Vect_Hcts(3)
               Hcts(k)%dak   = Vect_Hcts(4)
-	   ENDIF
+           ENDIF
          ENDIF
 
          ! Check aerosol names
@@ -7958,6 +7985,7 @@ contains
            RASPRCP              , &
            
            RASPARAMS            , & ! params
+           RAS_NO_NEG           , &
            RAS_TIME, RAS_TRG, RAS_TOKI, RAS_PBL, RAS_WFN, &
            RAS_TAU        , &
 
@@ -9403,7 +9431,7 @@ contains
          if (STATUS /= 0) then 
             write (*,*) "Error code from PROGNO_CLOUD kernel call: ", STATUS
             write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
-            ASSERT_(.FALSE.)
+            _ASSERT(.FALSE.,'needs informative message')
          end if
 
          call MAPL_TimerOff(STATE,"--CLOUD_RUN",RC=STATUS)
@@ -13037,7 +13065,7 @@ do K= 1, LM
     km   = size(ple,3)-1
     edge = size(v3,3)==km+1
 
-    ASSERT_(edge .or. size(v3,3)==km)
+    _ASSERT(edge .or. size(v3,3)==km,'needs informative message')
 
     v2   = MAPL_UNDEF
 
