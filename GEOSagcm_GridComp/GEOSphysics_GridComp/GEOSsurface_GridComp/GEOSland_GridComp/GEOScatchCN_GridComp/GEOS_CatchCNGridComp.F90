@@ -6466,8 +6466,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! gkw: obtain catchment area fractions and soil moisture
 ! ------------------------------------------------------
-    call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,           &
-                              ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4, bf1, bf2,    &
+call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,           &
+                              ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,              &
                               srfexc, rzexc, catdef, car1, car2, car4, sfmc, rzmc, prmc )
                               
 ! obtain saturated canopy resistance following Farquhar, CLM4 implementation    
@@ -7347,8 +7347,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        
        CALL CATCH_CALC_SOIL_MOIST (                                     &
             NTILES,VEG1,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,   &
-            ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,bf1,bf2,    &
-            srfexc,rzexc,catdef, CAR1, CAR2, CAR4, sfmc, rzmc, prmc)
+            ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,     &
        
        call irrigation_rate (IRRIG_METHOD,                                 & 
             NTILES, AGCM_HH, AGCM_MI, sofmin, lons, IRRIGFRAC, PADDYFRAC,  &
@@ -8546,7 +8545,7 @@ subroutine RUN0(gc, import, export, clock, rc)
        psis, bee, poros, wpwet,                                                 &
        ars1, ars2, ars3,                                                        &
        ara1, ara2, ara3, ara4,                                                  &
-       arw1, arw2, arw3, arw4, bf1, bf2,                                        &
+       arw1, arw2, arw3, arw4,                                                  &
        ! intent(inout)
        ! from process_cat
        srfexccp, rzexccp, catdefcp,                                             &
@@ -8556,7 +8555,6 @@ subroutine RUN0(gc, import, export, clock, rc)
        ar1, ar2, dummy                                                          &
        )
 
-  ! -step-3-
   fr(:,FSAT) =           ar1  * (1-asnow)
   fr(:,FTRN) =           ar2  * (1-asnow)
   fr(:,FWLT) = (1.0-(ar1+ar2))* (1-asnow)
