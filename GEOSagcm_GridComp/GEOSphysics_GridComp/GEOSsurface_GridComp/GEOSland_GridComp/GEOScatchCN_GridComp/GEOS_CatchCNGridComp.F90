@@ -289,7 +289,7 @@ subroutine SetServices ( GC, RC )
     ! 3-- Pefform above both 1 and 2 scalings 
     call ESMF_ConfigGetAttribute (LCF, label='SCALE_ALBFPAR:' , value=SCALE_ALBFPAR,  DEFAULT=0  , __RC__ )
 
-    ! Globam mean CO2 
+    ! Global mean CO2 
     call ESMF_ConfigGetAttribute (LCF, label='CO2:'     , value=CO2,         DEFAULT=350.e-6, __RC__ )
     call ESMF_ConfigGetAttribute (LCF, label='CO2_YEAR:', value=CO2_YEAR_IN, DEFAULT=  -9999, __RC__ )
     call ESMF_ConfigDestroy      (LCF, __RC__)
