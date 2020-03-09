@@ -7735,7 +7735,7 @@ contains
        SEEDRAS(:,:,1) = 1000000 * ( 100*TEMP(:,:,LM)   - INT( 100*TEMP(:,:,LM) ) )
        SEEDRAS(:,:,2) = 1000000 * ( 100*TEMP(:,:,LM-1) - INT( 100*TEMP(:,:,LM-1) ) )
 
-       if (STOCHASTIC_CNV /= 0) then
+      if (STOCHASTIC_CNV /= 0) then
       ! Create bit-processor-reproducible random white noise for convection [0:1]
        SEEDCNV(:,:)   = SEEDRAS(:,:,1)/1000000.0
        where (SEEDCNV > 1.0)
