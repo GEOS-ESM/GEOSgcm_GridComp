@@ -59,7 +59,6 @@ module GEOS_VegdynGridCompMod
   real,    dimension(   NTYPS)       :: VGZ2   
   character(len=ESMF_MAXSTR)         :: LANDRC 
   type(ESMF_Config)                  :: LCF
-  integer                            :: IGNORE_HEIGHTS  ! replace VGZ2 in vegdyn_IMxJM with Dorman Sellers lookup table values      
 
   data VGRT  / 19700., 7000., 9400., 7000., 7000., 14000./
   data VGZ2 / 35.0, 20.0, 17.0, 0.6, 0.5, 0.6/ ! Dorman and Sellers (1989)
@@ -139,17 +138,6 @@ contains
     !VERIFY_(STATUS)
 
     !RUN_DT = nint(DT)
-
-   
-! -----------------------------------------------------------
-! Use Simard et al. canopy height data, or overwrite?
-! -----------------------------------------------------------     
-    call MAPL_GetResource (MAPL, LANDRC, label = 'LANDRC:', default = 'GEOS_LandGridComp.rc', RC=STATUS) ; VERIFY_(STATUS) 
-    LCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile(LCF,LANDRC,rc=status) ; VERIFY_(STATUS)
-
-    call ESMF_ConfigGetAttribute (LCF, label='IGNORE_VEG_HEIGHTS:', value=IGNORE_HEIGHTS, DEFAULT=0, __RC__ )  
-    call ESMF_ConfigDestroy      (LCF, __RC__)    
     
 ! -----------------------------------------------------------
 ! At the moment, this will refresh when the land parent 
@@ -431,12 +419,6 @@ contains
 ! -----------------------------------------------------
 
     ROOTL = VGRT(nint(ITY))
-
-! overwrite canopy heights?
-! -------------------------    
-    if (IGNORE_HEIGHTS == 1) then
-       Z2CH = VGZ2(nint(ITY)) 
-    end if
     
 !  All done
 ! ---------

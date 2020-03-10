@@ -11,7 +11,7 @@
 # SURFLAY: 50.0 for New Soil Params (default, Ganymed-4 and later)
 # SURFLAY: 20.0 Old Soil Params  (Ganymed-3 and earlier)
 #
-# SURFLAY: 50.0
+# GEOSldas=>SURFLAY: 50.0
 
  
 # ---- Choose land model version
@@ -19,7 +19,7 @@
 #    V24_C05 : DEFAULT for GEOSldas_m4-17_0
 #    NRv7.2  : Current DEFAULT beginning with GEOSldas_m4-17_6 (same in NRv8.1)
 #
-#LAND_PARAMS: NRv7.2
+# GEOSldas=>LAND_PARAMS: NRv7.2
 
 # ---- Formulation for turbulent roughness length (Z0):
 #    0 : Fortuna,      SMAP NRv3
@@ -29,23 +29,22 @@
 #    4 : Icarus-NLv3 (f525_fp)
 #                      SMAP NRv8.1
 #
-#Z0_FORMULATION: 4
-#IGNORE_VEG_HEIGHTS: 1
+# GEOSldas=>Z0_FORMULATION: 4
 
 # ---- ASCAT-derived roughness length:
 #    0 : Default - do not use ASCAT information.
 #    1 : Replace model roughness length with ASCAT Z0 where climatological NDVI<0.2.
 #
-# USE_ASCATZ0: 0
+# GEOSldas=>USE_ASCATZ0: 0
 
 # ---- Prescribe interannually varying MODIS V006  LAI, VISDF, and NIRDF
 #    0 : DEFAULT climatologies in BCSDIR are used
-#    1 : prescribe interannually varying  MCD43GF.006 LAI and MCD43GF.006 VISDF and NIRDF albedo
+#    1 : prescribe interannually varying  MCD15A2H.006 LAI and MCD43GF.006 VISDF and NIRDF albedo
 #
 # MODIS_DVG: 0
 
 #--------------------------------------------------------#
-#           Aerosol Depositions on surface snow          #
+#    GOSWIM Aerosol Depositions on surface snow          #
 #--------------------------------------------------------#
 
 # ---- Aerosol deposition on snow (available only with MERRA-2 forcings):
@@ -55,14 +54,14 @@
 #    3 : GOCART Black Carbon is NOT used
 #    4 : GOCART Organic Carbon is NOT used
 #
-# AEROSOL_DEPOSITION: 0
+# GEOSldas=>AEROSOL_DEPOSITION: 0
 
 # ---- Number of constituents for GOSWIM (the GOddard SnoW Impurity Module)
 # Note 2 separate parameters for LAND and LANDICE
 #    0 : Default, GOSWIM snow albedo scheme is turned OFF for land
 #    9 : GOSWIM snow albedo scheme is turned ON for land
 #
-# N_CONST_LAND4SNWALB: 0
+# GEOSldas=>N_CONST_LAND4SNWALB: 0
 # N_CONST_LANDICE4SNWALB: 0 
 
 #--------------------------------------------------------#
@@ -73,14 +72,14 @@
 #    0 : Default - NO Do not run the irrigation model
 #    1 : YES run the irrigation model
 #
-# RUN_IRRIG: 0
+# GEOSldas=>RUN_IRRIG: 0
 
 # ---- irrigation model method :
 #    0 : Default - Sprinkler and Flood irrigation combined
 #    1 : sprinkler irrigation only
 #    2 : flood irrigation only
 #
-# IRRIG_METHOD: 0
+# GEOSldas=>IRRIG_METHOD: 0
 
 #--------------------------------------------------------#
 #                   River Routing Model                  #
@@ -90,11 +89,11 @@
 #    0 : Default - NO
 #    1 : YES
 #
-# RUN_ROUTE: 0
+# GEOSldas=>RUN_ROUTE: 0
 
 # ---- Time step for river routing
 #
-# RRM_DT: 3600 # 1-hourly
+# GEOSldas=>RRM_DT: 3600 # 1-hourly
 
 #--------------------------------------------------------#
 #             CatchCN Model specific parameters          #
@@ -103,7 +102,7 @@
 # ---- Time step for carbon/nitrogen routines in CatchmentCN model (default 5400):
 #      (Time step for water/energy routines is controlled by HEARTBEAT_DT in CAP.rc)
 #
-# DTCN: 5400
+# GEOSldas=>DTCN: 5400
 
 #  ---- Atmospheric CO2
 #    0: use a fix value as defined by below CO2 (default=350.e-6)
@@ -126,7 +125,7 @@
 #    3 : Estimated LAI/SAI using anomalies at the beginning of the foeecast and climatological LAI/SAI
 #    4 : Write LAI/SAI anomalies in catchcn_internal_rst for above option 3
 #
-# PRESCRIBE_DVG: 0
+# GEOSldas=>PRESCRIBE_DVG: 0
 
 # ---- Scale CATCHCN ALBEDO and FPAR
 #    0: NO scaling is performed (default)
@@ -134,4 +133,4 @@
 #    2: Scale albedo to match CDFs of model fPAR to MODIS CDFs of fPAR 
 #    3: Perform both 1 and 2 above 
 #
-# SCALE_ALBFPAR: 0
+# GEOSldas=>SCALE_ALBFPAR: 0

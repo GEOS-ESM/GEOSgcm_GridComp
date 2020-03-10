@@ -5076,10 +5076,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, allocatable, dimension(:,:,:) :: ityp
     real, allocatable, dimension(:) :: car1, car2, car4
     real, allocatable, dimension(:) :: para
-    real, allocatable, dimension(:) :: npp, gpp, sr, padd, root, vegc, xsmr
-    real, allocatable, dimension(:) :: burn, fsel, closs
     real, allocatable, dimension(:) :: dayl, dayl_fac
-    real, allocatable, dimension(:), save :: nee
+    real, allocatable, dimension(:), save :: nee, npp, gpp, sr, padd, root, vegc, xsmr,burn, closs , fsel
 
     ! ***************************************************************************************************************************************************************
     ! Begin Carbon Tracker variables
@@ -6338,18 +6336,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate(   parav(ntiles,nveg) )
     allocate (scaled_fpar  (NTILES,NVEG))
     allocate (unscaled_fpar(NTILES,NVEG))
-    allocate(  totwat(ntiles) )
-    allocate(     npp(ntiles) )
-    allocate(     gpp(ntiles) )
-    allocate(      sr(ntiles) )
-    if(.not. allocated(nee)) allocate(     nee(ntiles) )
-    allocate(    padd(ntiles) )
-    allocate(    root(ntiles) )
-    allocate(    vegc(ntiles) )
-    allocate(    xsmr(ntiles) )
-    allocate(    burn(ntiles) )
-    allocate(    fsel(ntiles) )
-    allocate(   closs(ntiles) )
+    allocate (  totwat(ntiles) )
+    if(.not. allocated(npp )) allocate(     npp(ntiles) )
+    if(.not. allocated(gpp )) allocate(     gpp(ntiles) )
+    if(.not. allocated(sr  )) allocate(      sr(ntiles) )
+    if(.not. allocated(nee )) allocate(     nee(ntiles) )
+    if(.not. allocated(padd)) allocate(    padd(ntiles) )
+    if(.not. allocated(root)) allocate(    root(ntiles) )
+    if(.not. allocated(vegc)) allocate(    vegc(ntiles) )
+    if(.not. allocated(xsmr)) allocate(    xsmr(ntiles) )
+    if(.not. allocated(burn)) allocate(    burn(ntiles) )
+    if(.not. allocated(fsel)) allocate(    fsel(ntiles) )
+    if(.not. allocated(closs))allocate(   closs(ntiles) )
     allocate(    dayl(ntiles) )
     allocate(dayl_fac(ntiles) )
     allocate(CO2V    (ntiles) )
@@ -7157,18 +7155,6 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
              cntotc(:) = cntotc(:) * cnsum
           endif
           
-          if(associated(CNVEGC)) cnvegc = 1.e-3*vegc  * cnsum
-          if(associated(CNROOT)) cnroot = 1.e-3*root  * cnsum
-          if(associated(CNNPP )) cnnpp  = 1.e-3*npp   * cnsum
-          if(associated(CNGPP )) cngpp  = 1.e-3*gpp   * cnsum
-          if(associated(CNSR  )) cnsr   = 1.e-3*sr    * cnsum
-          if(associated(CNNEE )) cnnee  = 1.e-3*nee   ! * cnsum
-          if(associated(CNXSMR)) cnxsmr = 1.e-3*xsmr  * cnsum
-          if(associated(CNADD )) cnadd  = 1.e-3*padd  * cnsum
-          if(associated(CNLOSS)) cnloss = 1.e-3*closs * cnsum ! total fire C loss (kg/m2/s)
-          if(associated(CNBURN)) cnburn = burn        * cnsum ! area fractional fire burn rate (s-1)
-          if(associated(CNFSEL)) cnfsel = fsel        * cnsum ! fire season length (days)
-          
           ! reset summing arrays
           ! --------------------
           tgwm    = 0.
@@ -7190,19 +7176,24 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
           if(associated(CNTLAI)) cntlai = 0.
           if(associated(CNSAI )) cnsai  = 0.
           if(associated(CNTOTC)) cntotc = 0.
-          if(associated(CNVEGC)) cnvegc = 0.
-          if(associated(CNROOT)) cnroot = 0.
-          if(associated(CNNPP )) cnnpp  = 0.
-          if(associated(CNGPP )) cngpp  = 0.
-          if(associated(CNSR  )) cnsr   = 0.
-          if(associated(CNNEE )) cnnee  = 1.e-3*nee 
-          if(associated(CNXSMR)) cnxsmr = 0.
-          if(associated(CNADD )) cnadd  = 0.
-          if(associated(CNLOSS)) cnloss = 0.
-          if(associated(CNBURN)) cnburn = 0.
-          if(associated(CNFSEL)) cnfsel = 0.
           
        endif
+
+       ! CN_Driver outputs at DTCN are saved and used to populate below exports
+       !                        uniformly outside DTCN.  
+       ! -----------------------------------------------------------------------
+
+       if(associated(CNVEGC)) cnvegc = 1.e-3*vegc  ! * cnsum
+       if(associated(CNROOT)) cnroot = 1.e-3*root  ! * cnsum
+       if(associated(CNNPP )) cnnpp  = 1.e-3*npp   ! * cnsum
+       if(associated(CNGPP )) cngpp  = 1.e-3*gpp   ! * cnsum
+       if(associated(CNSR  )) cnsr   = 1.e-3*sr    ! * cnsum
+       if(associated(CNNEE )) cnnee  = 1.e-3*nee   ! * cnsum
+       if(associated(CNXSMR)) cnxsmr = 1.e-3*xsmr  ! * cnsum
+       if(associated(CNADD )) cnadd  = 1.e-3*padd  ! * cnsum
+       if(associated(CNLOSS)) cnloss = 1.e-3*closs ! * cnsum ! total fire C loss (kg/m2/s)
+       if(associated(CNBURN)) cnburn = burn        ! * cnsum ! area fractional fire burn rate (s-1)
+       if(associated(CNFSEL)) cnfsel = fsel        ! * cnsum ! fire season length (days)
        
        ! copy CN_restart vars to catch_internal_rst gkw: only do if stopping
        ! ------------------------------------------
@@ -8048,17 +8039,6 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         deallocate (scaled_fpar)
         deallocate (UNscaled_fpar)
 	deallocate(  totwat )
-	deallocate(     npp )
-	deallocate(     gpp )
-	deallocate(      sr )
-!	deallocate(     nee )
-	deallocate(    padd )
-	deallocate(    root )
-	deallocate(    vegc )
-	deallocate(    xsmr )
-	deallocate(    burn )
-	deallocate(    fsel )
-	deallocate(   closs )
 	deallocate(    dayl )
 	deallocate(dayl_fac )
 
