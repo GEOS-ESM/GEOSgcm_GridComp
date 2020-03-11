@@ -58,7 +58,6 @@ module GEOS_VegdynGridCompMod
   real,    dimension(   NTYPS)       :: VGRT
   real,    dimension(   NTYPS)       :: VGZ2   
   character(len=ESMF_MAXSTR)         :: LANDRC 
-  type(ESMF_Config)                  :: LCF
 
   data VGRT  / 19700., 7000., 9400., 7000., 7000., 14000./
   data VGZ2 / 35.0, 20.0, 17.0, 0.6, 0.5, 0.6/ ! Dorman and Sellers (1989)

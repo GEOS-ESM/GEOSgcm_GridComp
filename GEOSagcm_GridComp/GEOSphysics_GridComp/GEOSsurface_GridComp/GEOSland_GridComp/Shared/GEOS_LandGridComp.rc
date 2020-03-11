@@ -12,7 +12,6 @@
 # SURFLAY: 20.0 Old Soil Params  (Ganymed-3 and earlier)
 #
 # GEOSldas=>SURFLAY: 50.0
-
  
 # ---- Choose land model version
 #    Icarus  : Current DEFAULT for the Icarus AGCM (Scientifically close to MERRA-2)
@@ -39,9 +38,10 @@
 
 # ---- Prescribe interannually varying MODIS V006  LAI, VISDF, and NIRDF
 #    0 : DEFAULT climatologies in BCSDIR are used
-#    1 : prescribe interannually varying  MCD15A2H.006 LAI and MCD43GF.006 VISDF and NIRDF albedo
+#    1 : prescribe interannually varying  MCD15A2H.006 LAI and MCD43GF.006 VISDF and NIRDF albedo 
+#        NOTE: This option is not yet available in GEOSldas.
 #
-# MODIS_DVG: 0
+# GEOSldas!=MODIS_DVG: 0
 
 #--------------------------------------------------------#
 #    GOSWIM Aerosol Depositions on surface snow          #
@@ -62,7 +62,7 @@
 #    9 : GOSWIM snow albedo scheme is turned ON for land
 #
 # GEOSldas=>N_CONST_LAND4SNWALB: 0
-# N_CONST_LANDICE4SNWALB: 0 
+# GEOSldas!=N_CONST_LANDICE4SNWALB: 0 
 
 #--------------------------------------------------------#
 #                       Irrigation Model                 #
