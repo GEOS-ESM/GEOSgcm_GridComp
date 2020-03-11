@@ -41,7 +41,7 @@
 #    1 : prescribe interannually varying  MCD15A2H.006 LAI and MCD43GF.006 VISDF and NIRDF albedo 
 #        NOTE: This option is not yet available in GEOSldas.
 #
-# GEOSldas!=MODIS_DVG: 0
+# MODIS_DVG: 0                     #GEOSldas!=
 
 #--------------------------------------------------------#
 #    GOSWIM Aerosol Depositions on surface snow          #
@@ -62,7 +62,7 @@
 #    9 : GOSWIM snow albedo scheme is turned ON for land
 #
 # GEOSldas=>N_CONST_LAND4SNWALB: 0
-# GEOSldas!=N_CONST_LANDICE4SNWALB: 0 
+# N_CONST_LANDICE4SNWALB: 0        #GEOSldas!=
 
 #--------------------------------------------------------#
 #                       Irrigation Model                 #
