@@ -17,6 +17,40 @@
 #################################################################################### 
 
 
+# ---- Using Catchment/CatchmentCN offline?
+#
+#    0: DEFAULT for GCM,      (WW,CH,CM,CQ,FR) are required in Catchment restart file 
+#    1: DEFAULT for GEOSldas, (WW,CH,CM,CQ,FR) are optional
+#    2: Option  for GEOSldas, (WW,CH,CM,CQ,FR) are optional for input restart but will be in output
+#                               restart; select when using GEOSldas to create restarts for the GCM.
+#
+# CATCHMENT_OFFLINE: 0
+# GEOSldas=>CATCHMENT_OFFLINE: 1
+
+# ---- Choice of land surface model
+#
+#    1 : Catchment model   (default)
+#    2 : CatchmentCN model
+#
+# LSM_CHOICE: 1
+# GEOSldas=>LSM_CHOICE: 1
+
+# ---- Surface layer turbulence scheme
+#
+#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2)
+#    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
+#
+# CHOOSEMOSFC: 1
+# GEOSldas=>CHOOSEMOSFC: 0
+
+# ---- Area fraction of each tile on which precipitation falls (0. < value <= 1.)  
+#
+#    1.0   : default value for AGCM and GEOSldas 
+#    0.025 : recommended value to deal with AGCM's drizzle
+# 
+# PRECIPFRAC: 1.
+# GEOSldas=>PRECIPFRAC: 1.
+
 # ---- Thickness of surface layer for soil moisture [mm]
 #
 #    50.0 : Ganymed-4 and later, SMAP L4_SM 
