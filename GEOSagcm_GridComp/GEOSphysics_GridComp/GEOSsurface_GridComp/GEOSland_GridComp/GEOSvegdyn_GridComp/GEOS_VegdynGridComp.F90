@@ -56,11 +56,11 @@ module GEOS_VegdynGridCompMod
 
   integer, parameter		     :: NTYPS = MAPL_NumVegTypes
   real,    dimension(   NTYPS)       :: VGRT
-  real,    dimension(   NTYPS)       :: VGZ2   
-  character(len=ESMF_MAXSTR)         :: LANDRC 
+  ! real,    dimension(   NTYPS)       :: VGZ2   
 
   data VGRT  / 19700., 7000., 9400., 7000., 7000., 14000./
-  data VGZ2 / 35.0, 20.0, 17.0, 0.6, 0.5, 0.6/ ! Dorman and Sellers (1989)
+  ! commented out legacy look-up table for veg heights, which are now always from bcs via restarts, - reichle, 17 March 2020
+  ! data VGZ2 / 35.0, 20.0, 17.0, 0.6, 0.5, 0.6/ ! Dorman and Sellers (1989)   
   
 contains
 
