@@ -1,15 +1,16 @@
 #################################################################################### 
 #                                                                                  #
-#    Resource file for land parameters used by the GCM *and* GEOSldas.             #     
+#    Resource file for land parameters, *jointly* used by the GCM and GEOSldas.    #     
 #                                                                                  #
-#    For GEOSldas, this file is processed by "ldas_setup".                         #
+#    Different default values for the GCM and GEOSldas are supported as follows:   #
 #                                                                                  #
-#    Default values for the GCM and GEOSldas may differ:                           #
-#                                                                                  #
-#    - Lines that are NOT comments are ignored by GEOSldas and can be used         #
-#       to specify GCM defaults as needed.                                         #
+#    - Lines that are NOT commented out can be used to specify GCM defaults as     #
+#        needed, because they are ignored by GEOSldas.                             #
 #                                                                                  #
 #    - The string "GEOSldas=>" identifies the GEOSldas default.                    # 
+#                                                                                  #
+#    This works because this resource file is processed by the GEOSldas            #
+#      script "ldas_setup".                                                        #
 #                                                                                  #
 #    NOTE: For the GCM, there must NOT be white space between the resource         #
 #          parameter name and the colon.                                           #                                         
@@ -17,46 +18,12 @@
 #################################################################################### 
 
 
-# ---- Using Catchment/CatchmentCN offline?
-#
-#    0: DEFAULT for GCM,      (WW,CH,CM,CQ,FR) are required in Catchment restart file 
-#    1: DEFAULT for GEOSldas, (WW,CH,CM,CQ,FR) are optional
-#    2: Option  for GEOSldas, (WW,CH,CM,CQ,FR) are optional for input restart but will be in output
-#                               restart; select when using GEOSldas to create restarts for the GCM.
-#
-# CATCHMENT_OFFLINE: 0
-# GEOSldas=>CATCHMENT_OFFLINE: 1
-
-# ---- Choice of land surface model
-#
-#    1 : Catchment model   (default)
-#    2 : CatchmentCN model
-#
-# LSM_CHOICE: 1
-# GEOSldas=>LSM_CHOICE: 1
-
-# ---- Surface layer turbulence scheme
-#
-#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2)
-#    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
-#
-# CHOOSEMOSFC: 1
-# GEOSldas=>CHOOSEMOSFC: 0
-
-# ---- Area fraction of each tile on which precipitation falls (0. < value <= 1.)  
-#
-#    1.0   : default value for AGCM and GEOSldas 
-#    0.025 : recommended value to deal with AGCM's drizzle
-# 
-# PRECIPFRAC: 1.
-# GEOSldas=>PRECIPFRAC: 1.
-
 # ---- Thickness of surface layer for soil moisture [mm]
 #
 #    50.0 : Ganymed-4 and later, SMAP L4_SM 
 #    20.0 : Ganymed-3 and earlier
 #
-# SURFLAY: 50.0
+# GEOSagcm=>SURFLAY: 50.0
 # GEOSldas=>SURFLAY: 50.0
  
 # ---- Version of assorted Catchment/snow model parameters
@@ -65,7 +32,7 @@
 #    V24_C05 : GEOSldas_m4-17_0
 #    NRv7.2  : SMAP L4_SM Version 4, f525_fp
 #
-# LAND_PARAMS: Icarus
+# GEOSagcm=>LAND_PARAMS: NRv7.2
 # GEOSldas=>LAND_PARAMS: NRv7.2
 
 # ---- Formulation for turbulent roughness length (z0)
@@ -77,7 +44,7 @@
 #    4 : Icarus-NLv3 (f525_fp)
 #                      SMAP NRv8.1
 #
-# Z0_FORMULATION: 2
+# GEOSagcm=>Z0_FORMULATION: 4
 # GEOSldas=>Z0_FORMULATION: 4
 
 # ---- ASCAT-derived turbulent roughness length
@@ -85,7 +52,7 @@
 #    0 : Default - do not use ASCAT information.
 #    1 : Replace model roughness length with ASCAT z0 where climatological NDVI<0.2.
 #
-# USE_ASCATZ0: 0
+# GEOSagcm=>USE_ASCATZ0: 0
 # GEOSldas=>USE_ASCATZ0: 0
 
 # ---- Prescribe interannually varying LAI, VISDF, and NIRDF from MODIS V006
@@ -95,7 +62,7 @@
 #    0 : DEFAULT climatologies in BCSDIR are used
 #    1 : Prescribe interannually varying  MCD15A2H.006 LAI and MCD43GF.006 VISDF and NIRDF albedo 
 #
-# MODIS_DVG: 0                     # NOT yet used in GEOSldas
+# GEOSagcm=>MODIS_DVG: 0                     # NOT yet used in GEOSldas
 
 
 #--------------------------------------------------------#
@@ -110,7 +77,7 @@
 #    3 : Use GOCART aerosols *except* black carbon 
 #    4 : Use GOCART aerosols *except* organic carbon
 #
-# AEROSOL_DEPOSITION: 0
+# GEOSagcm=>AEROSOL_DEPOSITION: 0
 # GEOSldas=>AEROSOL_DEPOSITION: 0
 
 # ---- Number of constituents for GOSWIM (the GOddard SnoW Impurity Module)
@@ -120,10 +87,10 @@
 #    0 : Default, GOSWIM snow albedo scheme is turned OFF for land/landice
 #    9 : GOSWIM snow albedo scheme is turned ON for land/landice
 #
-# N_CONST_LAND4SNWALB: 0
+# GEOSagcm=>N_CONST_LAND4SNWALB: 0
 # GEOSldas=>N_CONST_LAND4SNWALB: 0
 #
-# N_CONST_LANDICE4SNWALB: 0        # NOT yet used in GEOSldas
+# GEOSagcm=>N_CONST_LANDICE4SNWALB: 0        # NOT yet used in GEOSldas
 
 
 #--------------------------------------------------------#
@@ -135,7 +102,7 @@
 #    0 : Do NOT run irrigation module (default)
 #    1 : YES, run irrigation module
 #
-# RUN_IRRIG: 0
+# GEOSagcm=>RUN_IRRIG: 0
 # GEOSldas=>RUN_IRRIG: 0
 
 # ---- Irrigation model method 
@@ -144,7 +111,7 @@
 #    1 : Sprinkler irrigation only
 #    2 : Flood irrigation only
 #
-# IRRIG_METHOD: 0
+# GEOSagcm=>IRRIG_METHOD: 0
 # GEOSldas=>IRRIG_METHOD: 0
 
 
@@ -157,12 +124,12 @@
 #    0 : Default - NO
 #    1 : YES
 #
-# RUN_ROUTE: 0
+# GEOSagcm=>RUN_ROUTE: 0
 # GEOSldas=>RUN_ROUTE: 0
 
 # ---- Time step for river routing [s]
 #
-# RRM_DT: 3600
+# GEOSagcm=>RRM_DT: 3600
 # GEOSldas=>RRM_DT: 3600 
 
 
@@ -174,7 +141,7 @@
 #
 # NOTE: Time step for water/energy routines is controlled by HEARTBEAT_DT in CAP.rc.
 #
-# DTCN: 5400
+# GEOSagcm=>DTCN: 5400
 # GEOSldas=>DTCN: 5400
 
 # ---- Atmospheric CO2
@@ -189,9 +156,9 @@
 #    3: CMIP5 recommended annual average global mean concentrations from getco2.F90 (1765-2150)
 #    4: Import AGCM model CO2 (GCM only, does not work with GEOSldas!)
 #
-# ATM_CO2: 2
-# CO2: 350.e-6
-# CO2_YEAR:
+# GEOSagcm=>ATM_CO2: 2
+# GEOSagcm=>CO2: 350.e-6
+# GEOSagcm=>CO2_YEAR:
 # GEOSldas=>ATM_CO2: 2
 # GEOSldas=>CO2: 350.e-6
 # GEOSldas=>CO2_YEAR:
@@ -204,7 +171,7 @@
 #    3 : Estimated LAI/SAI using anomalies at the beginning of the forecast and climatological LAI/SAI
 #    4 : Write LAI/SAI anomalies in catchcn_internal_rst for above option 3
 #
-# PRESCRIBE_DVG: 0
+# GEOSagcm=>PRESCRIBE_DVG: 0
 # GEOSldas=>PRESCRIBE_DVG: 0
 
 # ---- Scale CATCHCN ALBEDO and FPAR
@@ -214,5 +181,5 @@
 #    2 : Scale albedo to match CDFs of model fPAR to MODIS CDFs of fPAR 
 #    3 : Perform both 1 and 2 above 
 #
-# SCALE_ALBFPAR: 0
+# GEOSagcm=>SCALE_ALBFPAR: 0
 # GEOSldas=>SCALE_ALBFPAR: 0
