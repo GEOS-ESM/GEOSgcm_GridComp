@@ -3,6 +3,7 @@ program SaltImpConverter
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
   use netcdf
   use MAPL
+  use mk_restarts_getidsMod, only: ReadTileFile_IntLatLon
   use gFTL_StringVector
   implicit none
 
@@ -45,12 +46,6 @@ program SaltImpConverter
   character*256        :: longname
   character*256        :: units
   character*256        :: impNames(39)
-
-  interface GetIds   
-     procedure GetIds_fast_1p
-     procedure GetIds_accurate_mpi
-  end interface
-
 
   INCLUDE 'netcdf.inc'
 !---------------------------------------------------------------------------
@@ -114,7 +109,7 @@ program SaltImpConverter
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table
 
-  call ReadTileFile(InTileFile ,Pf,Id,loni,lati, 0)
+  call ReadTileFile_IntLatLon(InTileFile ,Pf,Id,loni,lati,zoom, 0)
   deallocate(Pf,Id)
 
   nullify(Pf)
@@ -313,7 +308,6 @@ program SaltImpConverter
 
 contains
 
-#include "getids.H"
   SUBROUTINE create_salt_import_nc4 (ntiles, fileName, NCFOutID)
 
     implicit none
