@@ -158,10 +158,10 @@
 #
 # GEOSagcm=>ATM_CO2: 2
 # GEOSagcm=>CO2: 350.e-6
-# GEOSagcm=>CO2_YEAR:
 # GEOSldas=>ATM_CO2: 2
 # GEOSldas=>CO2: 350.e-6
-# GEOSldas=>CO2_YEAR:
+# This is an optinal parameter for GEOSldas (see above (2))
+# CO2_YEAR:
 
 # ---- Prescribe daily LAI and SAI data from an archived CATCHCN simulation
 #
