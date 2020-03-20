@@ -176,6 +176,7 @@ CONTAINS
                                ,TA      ,QA    ,SH    ,EVAP  ,PHIS                &
                                ,KPBLIN         &
                                ,MAPL_GRAV      &
+                               ,STOCHASTIC_SIG, SIGMA_DEEP, SIGMA_MID             &
                                ,DQDT_GF,DTDT_GF,MUPDP,MUPSH,MUPMD                 &
                                ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
@@ -212,7 +213,9 @@ CONTAINS
 
     REAL   ,DIMENSION(MXP,MYP)       ,INTENT(IN)   :: FRLAND ,AREA ,USTAR ,TSTAR ,QSTAR &
                                                      ,T2M ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS  &
-                                                     ,KPBLIN,LONS,LATS
+                                                     ,KPBLIN,LONS,LATS                  &
+                                                     ,STOCHASTIC_SIG
+    REAL   ,DIMENSION(MXP,MYP)       ,INTENT(OUT)  :: SIGMA_DEEP, SIGMA_MID
     REAL   ,DIMENSION(MXP,MYP)       ,INTENT(OUT)  :: CNPCPRATE ! kg m-2 s-1
 
     REAL                             ,INTENT(IN)   :: DT_moist ,MAPL_GRAV, qcrit, c0_auto
@@ -545,6 +548,7 @@ CONTAINS
                      ,mynum       &
                      ,dt_moist    &
                      ,dx2d        &
+                     ,stochastic_sig &
                      ,zm3d        &
                      ,zt3d        &
 		     ,dm3d        &
@@ -616,6 +620,10 @@ CONTAINS
                      ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC &
                      )
   !
+
+  ! Fill sigma exports
+    SIGMA_DEEP = sigma4d(:,:,deep)
+    SIGMA_MID  = sigma4d(:,:,mid )
 
  IF(FEED_3DMODEL)THEN
       !-- update GEOS-5 model state with the feedback from cumulus convection
@@ -915,6 +923,7 @@ ENDIF
               ,mynum                 &
               ,dt                    &
               ,dx2d                  &
+              ,stochastic_sig        &
               ,zm                    &
               ,zt                    &
 	      ,dm                    &
@@ -1012,7 +1021,8 @@ ENDIF
 
    INTEGER, DIMENSION(its:ite,jts:jte), INTENT(IN) :: kpbl
    REAL,    DIMENSION(its:ite,jts:jte), INTENT(IN) :: topt ,aot500 ,temp2m ,sfc_press &
-                                                     ,sflux_r ,sflux_t ,xland,lons,lats,dx2d
+                                                     ,sflux_r ,sflux_t ,xland,lons,lats,dx2d &
+                                                     ,stochastic_sig
    REAL,    DIMENSION(kts:kte,its:ite,jts:jte), INTENT(IN) ::        &
                                                          rthften  &
                                                         ,rqvften  &
@@ -1470,6 +1480,7 @@ ENDIF
                   ,use_excess     (deep)             &
                   ! input data
                   ,dx2d(:,j)                         &
+                  ,stochastic_sig(:,j)               &
                   ,dt                                &
                   ,kpbli                             &
                   ,ztexec                            &
@@ -1579,6 +1590,7 @@ ENDIF
                   ,use_excess    (mid)              &
                   ! input data
                   ,dx2d(:,j)                        &
+                  ,stochastic_sig(:,j)              &
                   ,dt                               &
                   ,kpbli                            &
                   ,ztexec                           &
@@ -1769,6 +1781,7 @@ loop1:  do n=1,maxiens
                      ,use_excess        &
                      !input data
                      ,dx                &
+                     ,stochastic_sig    &
                      ,dtime             &
                      ,kpbl              &
                      ,ztexec            &
@@ -1870,7 +1883,8 @@ loop1:  do n=1,maxiens
      REAL,    DIMENSION (its:ite,kts:kte)       ,INTENT (INOUT)    ::   &
          q,qo
      REAL,    DIMENSION (its:ite)               ,INTENT (IN   )    ::   &
-        ccn,Z1,PSUR,xland,xlons,xlats, h_sfc_flux,le_sfc_flux,tsur,dx 
+        ccn,Z1,PSUR,xland,xlons,xlats, h_sfc_flux,le_sfc_flux,tsur,dx,  &
+        stochastic_sig 
      REAL,    DIMENSION (its:ite)               ,INTENT (INOUT)    ::   &
         zws,ztexec,zqexec
      REAL                                       ,INTENT (IN   )    ::   &
@@ -2381,7 +2395,10 @@ l_SIG:DO fase = 1,2
              do i=its,itf
 	      sig(i) = 0.
               if(ierr(i) /= 0) cycle
-              sig(i)= 1.0-0.9839*exp(-0.09835*(dx(i)/1000.))
+              sig(i)= (1.0-0.9839*exp(-0.09835*(dx(i)/1000.)))
+              if (stochastic_sig(i) /= 1.0) then
+                sig(i) = sig(i)**(stochastic_sig(i)*MAX(1.0,2.5*sig(i)))
+              endif
               sig(i)= max(0.001,min(sig(i),1.))
               !print*,"FORM2=",sig(i),dx(i)
              enddo
@@ -4066,6 +4083,22 @@ IF(USE_TRACER_TRANSP==1)  THEN
 !--only for debug
 !ENDIF
 
+!-4) convert back mass fluxes, etc...
+   do i=its,itf
+        if(ierr(i) /= 0) cycle
+            pwavo       (i)   = pwavo (i)  / (xmb(i) + 1.e-16)
+            pwevo       (i)   = pwevo (i)  / (xmb(i) + 1.e-16)
+            zuo         (i,:) = zuo   (i,:)/ (xmb(i) + 1.e-16)
+            zdo         (i,:) = zdo   (i,:)/ (xmb(i) + 1.e-16)
+            pwo         (i,:) = pwo   (i,:)/ (xmb(i) + 1.e-16)
+            pwdo        (i,:) = pwdo  (i,:)/ (xmb(i) + 1.e-16)
+            up_massentro(i,:) = up_massentro(i,:)/ (xmb(i) + 1.e-16)
+            up_massdetro(i,:) = up_massdetro(i,:)/ (xmb(i) + 1.e-16)
+            dd_massentro(i,:) = dd_massentro(i,:)/ (xmb(i) + 1.e-16)
+            dd_massdetro(i,:) = dd_massdetro(i,:)/ (xmb(i) + 1.e-16)
+            zenv        (i,:) = zenv  (i,:)/ (xmb(i) + 1.e-16)
+   enddo
+
 !--------------------------------------------------------------------------------------------!
 ENDIF !- end of section for atmospheric composition
 !--------------------------------------------------------------------------------------------!
@@ -4436,10 +4469,11 @@ ENDIF !- end of section for atmospheric composition
          ierr(i)=73
          ierrc(i)="problem2 with buoy in cup_dd_moisture"
         endif
-        if(abs(pwev(i)) > pwavo(i) )then
-         ierr(i)=77
-         ierrc(i)="problem 3 with evap in cup_dd_moisture"
-        endif
+     ! Ensure that precip re-evaporation does not excede total precip
+     !  if(abs(pwev(i)) > pwavo(i) )then
+     !   ierr(i)=77
+     !   ierrc(i)="problem 3 with evap in cup_dd_moisture"
+     !  endif
 
 100    continue!--- end loop over i
 
@@ -6504,6 +6538,14 @@ IF(USE_TRACER_TRANSP==1) THEN
 !   enddo
 !19 FORMAT(1x,I3,1x,5E14.3);18 FORMAT(1x,I3,1x,4E14.3);20 FORMAT(1x,I3,1x,11E16.6)
 !-- for debug only
+!-4) convert back mass fluxes
+   do i=its,itf
+        if(ierr(i) /= 0) cycle
+            zuo         (i,:) = zuo(i,:)          / (xmb(i) + 1.e-16)                                          
+            up_massentro(i,:) = up_massentro(i,:) / (xmb(i) + 1.e-16)        
+            up_massdetro(i,:) = up_massdetro(i,:) / (xmb(i) + 1.e-16)         
+            zenv        (i,:) = zenv        (i,:) / (xmb(i) + 1.e-16)        
+   enddo
 !
 !--------------------------------------------------------------------------------------------!
 ENDIF !- end of section for atmospheric composition

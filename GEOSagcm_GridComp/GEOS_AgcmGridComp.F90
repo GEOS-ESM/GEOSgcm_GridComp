@@ -1278,14 +1278,6 @@ contains
    if(   (adjustl(ReplayMode)=="Exact"  ) .or.   &
        ( (adjustl(ReplayMode)=="Regular") .and. (PREDICTOR_DURATION.gt.MKIAU_FREQUENCY/2) )  ) then
 
-      call MAPL_GetResource(STATE, RPL_SHUTOFF, 'REPLAY_SHUTOFF:', default=4000*21600., RC=STATUS ) ! Default: 1000 days
-      VERIFY_(STATUS)
-      call ESMF_TimeIntervalSet(TIMEINT, S=nint(RPL_SHUTOFF), RC=STATUS)
-      VERIFY_(STATUS)
-
-      ALARM = ESMF_AlarmCreate ( name='ReplayShutOff', clock=CLOCK, ringInterval=TIMEINT, sticky=.false., RC=STATUS )
-      VERIFY_(STATUS)
-
       call MAPL_GetResource(STATE, RPL_INTERVAL, 'REPLAY_INTERVAL:', default=21600., RC=STATUS )
       VERIFY_(STATUS)
       call ESMF_TimeIntervalSet(TIMEINT, S=nint(RPL_INTERVAL), RC=STATUS)
