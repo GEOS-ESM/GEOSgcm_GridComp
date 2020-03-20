@@ -1,8 +1,5 @@
 set (this GEOS_LandShared)
 
-install( FILES ${resource_files} 
-   DESTINATION etc
-   )
 set (srcs
   catch_constants.f90 lsm_routines.F90 sibalb_coeff.f90
   )
