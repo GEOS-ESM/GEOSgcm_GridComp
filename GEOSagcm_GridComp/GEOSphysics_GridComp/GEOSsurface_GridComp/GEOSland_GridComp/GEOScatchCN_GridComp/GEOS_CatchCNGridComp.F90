@@ -3913,7 +3913,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! Offline mode
 
    type(OFFLINE_WRAP)             :: wrap
-   integer                        :: OFFLINE_MODE
+   integer                        :: OFFLINE_MODE, CHOOSEZ0
 
 !=============================================================================
 ! Begin...

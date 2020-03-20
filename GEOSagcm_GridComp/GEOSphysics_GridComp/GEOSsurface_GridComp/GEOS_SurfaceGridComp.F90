@@ -99,7 +99,7 @@ module GEOS_SurfaceGridCompMod
 
   character(len=ESMF_MAXSTR), pointer :: GCNames(:)
   integer                    :: CHILD_MASK(NUM_CHILDREN)
-  integer :: DO_OBIO, ATM_CO2 
+  integer :: DO_OBIO, ATM_CO2, CHOOSEMOSFC 
   logical :: DO_GOSWIM
 
   character(len=ESMF_MAXSTR) :: LAND_PARAMS ! land parameter option
@@ -195,7 +195,7 @@ module GEOS_SurfaceGridCompMod
     type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE 
     type (SURF_wrap)                        :: WRAP
     type (MAPL_MetaComp    ), pointer       :: MAPL
-    INTEGER                                 :: LSM_CHOICE, CHOOSEMOSFC
+    INTEGER                                 :: LSM_CHOICE
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF 
 
