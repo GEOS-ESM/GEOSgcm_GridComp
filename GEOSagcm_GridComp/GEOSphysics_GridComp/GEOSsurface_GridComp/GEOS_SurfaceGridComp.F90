@@ -195,9 +195,9 @@ module GEOS_SurfaceGridCompMod
     type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE 
     type (SURF_wrap)                        :: WRAP
     type (MAPL_MetaComp    ), pointer       :: MAPL
-    INTEGER                                 :: LSM_CHOICE
-    character(len=ESMF_MAXSTR)              :: LANDRC
-    type(ESMF_Config)                       :: LCF 
+    INTEGER                                 :: LSM_CHOICE, CHOOSEMOSFC
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)                       :: SCF 
 
 !=============================================================================
 
@@ -218,18 +218,19 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
 ! Create Land Config
-    call MAPL_GetResource (MAPL, LANDRC, label = 'LANDRC:', default = 'GEOS_LandGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
-    LCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile(LCF,LANDRC,rc=status) ; VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, DO_OBIO,        Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    call ESMF_ConfigGetAttribute (LCF, label='ATM_CO2:', value=ATM_CO2,   DEFAULT=0, __RC__ ) 
-    call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LAND4SNWALB:', value=catchswim, DEFAULT=0, __RC__ ) 
-    call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LANDICE4SNWALB:', value=landicegoswim, DEFAULT=0, __RC__ ) 
-    call ESMF_ConfigGetAttribute (LCF, label='LAND_PARAMS:', value=LAND_PARAMS, DEFAULT="Icarus", __RC__ ) 
-    call ESMF_ConfigDestroy      (LCF, __RC__)
+    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2,   DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:', value=catchswim, DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LANDICE4SNWALB:', value=landicegoswim, DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='LAND_PARAMS:', value=LAND_PARAMS, DEFAULT="Icarus", __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=CHOOSEMOSFC, DEFAULT=1, __RC__ ) 
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
     if ( (catchswim/=0) .or. (landicegoswim/=0) .or. (DO_OBIO/=0)) then
        do_goswim=.true.
@@ -3872,7 +3873,6 @@ module GEOS_SurfaceGridCompMod
     integer    :: iUseInterp
     logical    :: UseInterp
 
-    integer    :: CHOOSEMOSFC
     integer    :: IM, JM, YEAR, MONTH, DAY, HR, SE, MN
 
 !=============================================================================
@@ -3924,11 +3924,6 @@ module GEOS_SurfaceGridCompMod
                        YY=YEAR, MM=MONTH, DD=DAY, &
                        H=HR,    M=MN,     S=SE,   &
                                         RC=STATUS )
-
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
 
 ! Pointers to imports
 !--------------------
@@ -5354,8 +5349,6 @@ module GEOS_SurfaceGridCompMod
     integer                       :: I, N
     integer :: YEAR, MONTH, DAY, HR, MN, SE
 
-    integer                        :: CHOOSEMOSFC
-
     integer  :: iUseInterp
     logical  :: UseInterp
 
@@ -5413,11 +5406,6 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
     SURF_INTERNAL_STATE => WRAP%PTR
-
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
 
 ! Get CHOICE OF  Land Surface Model (1:Catch, 2:Catch-CN)
 ! and Runoff Routing Model (0: OFF, 1: ON)

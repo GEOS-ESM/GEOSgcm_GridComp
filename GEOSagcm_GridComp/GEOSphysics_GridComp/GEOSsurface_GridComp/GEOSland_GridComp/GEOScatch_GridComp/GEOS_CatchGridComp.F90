@@ -137,7 +137,7 @@ type CATCH_WRAP
 end type CATCH_WRAP
 !#--
 
-integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
+integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB,CHOOSEMOSFC
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 
@@ -175,8 +175,8 @@ subroutine SetServices ( GC, RC )
     type(OFFLINE_WRAP) :: wrap
     integer :: OFFLINE_MODE
     integer :: RESTART
-    character(len=ESMF_MAXSTR)              :: LANDRC
-    type(ESMF_Config)                       :: LCF 
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)                       :: SCF 
 
 ! Begin...
 ! --------
@@ -208,24 +208,25 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource (MAPL, LANDRC, label = 'LANDRC:', default = 'GEOS_LandGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
-    LCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile(LCF,LANDRC,rc=status) ; VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
-    call ESMF_ConfigGetAttribute (LCF, label='SURFLAY:'       , value=SURFLAY,        DEFAULT=50., __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='Z0_FORMULATION:', value=Z0_FORMULATION, DEFAULT=2  , __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='USE_ASCATZ0:'   , value=USE_ASCATZ0,    DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='SURFLAY:'       , value=SURFLAY,        DEFAULT=50., __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='Z0_FORMULATION:', value=Z0_FORMULATION, DEFAULT=2  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'   , value=USE_ASCATZ0,    DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'   , value=CHOOSEMOSFC,    DEFAULT=1  , __RC__ )
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
     ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
-    call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LAND4SNWALB:', value=N_CONST_LAND4SNWALB, DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:', value=N_CONST_LAND4SNWALB, DEFAULT=0  , __RC__ )
 
     ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
     ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
     ! __________________________________________
-    call ESMF_ConfigGetAttribute (LCF, label='AEROSOL_DEPOSITION:' , value=AEROSOL_DEPOSITION,  DEFAULT=0  , __RC__ )
-    call ESMF_ConfigDestroy      (LCF, __RC__)
+    call ESMF_ConfigGetAttribute (SCF, label='AEROSOL_DEPOSITION:' , value=AEROSOL_DEPOSITION,  DEFAULT=0  , __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
 ! Set the Run entry points
 ! ------------------------
@@ -3023,29 +3024,27 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable              :: Q2M (:)
    real, allocatable              :: U2M (:)
    real, allocatable              :: V2M (:)
-    real, allocatable              :: RHOH(:)
-    real, allocatable              :: VKH(:)
-    real, allocatable              :: VKM(:)
-    real, allocatable              :: USTAR(:)
-    real, allocatable              :: XX(:)
-    real, allocatable              :: YY(:)
-    real, allocatable              :: CU(:)
-    real, allocatable              :: CT(:)
-    real, allocatable              :: RIB(:)
-    real, allocatable              :: ZETA(:)
-    real, allocatable              :: WS(:)
-    integer, allocatable           :: IWATER(:)
-    real, allocatable              :: PSMB(:)
-    real, allocatable              :: PSL(:)
-    integer                        :: niter
+   real, allocatable              :: RHOH(:)
+   real, allocatable              :: VKH(:)
+   real, allocatable              :: VKM(:)
+   real, allocatable              :: USTAR(:)
+   real, allocatable              :: XX(:)
+   real, allocatable              :: YY(:)
+   real, allocatable              :: CU(:)
+   real, allocatable              :: CT(:)
+   real, allocatable              :: RIB(:)
+   real, allocatable              :: ZETA(:)
+   real, allocatable              :: WS(:)
+   integer, allocatable           :: IWATER(:)
+   real, allocatable              :: PSMB(:)
+   real, allocatable              :: PSL(:)
+   integer                        :: niter
 
-    integer                        :: CHOOSEMOSFC
-    integer                        :: CHOOSEZ0
-
-   real                            :: SCALE4Z0
-   real                            :: SCALE4ZVG
-   real                            :: SCALE4Z0_u
-   real                            :: MIN_VEG_HEIGHT 
+   integer                        :: CHOOSEZ0
+   real                           :: SCALE4Z0
+   real                           :: SCALE4ZVG
+   real                           :: SCALE4Z0_u
+   real                           :: MIN_VEG_HEIGHT 
    
    ! Offline mode
    type(OFFLINE_WRAP) :: wrap
@@ -3097,11 +3096,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get ( MAPL                          ,&
                                 INTERNAL_ESMF_STATE=INTERNAL   ,&
                                                       RC=STATUS )
-    VERIFY_(STATUS)
-
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
@@ -3392,9 +3386,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Compute the three surface exchange coefficients
 !-------------------------------------------------
 
-! Choose sfc layer: if CHOOSEMOSFC is 1, choose helfand MO,
-!                   if CHOOSEMOSFC is 0 (default), choose louis
-
    call MAPL_TimerOn(MAPL,"-SURF")
    if(CHOOSEMOSFC.eq.0) then
    WW(:,N) = 0.
@@ -3553,7 +3544,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(ESMF_Alarm)                :: ALARM
 
     integer :: IM,JM
-    integer :: CHOOSEMOSFC
     integer :: incl_Louis_extra_derivs
     real                           :: SCALE4ZVG
     real                           :: SCALE4Z0_u
@@ -3582,10 +3572,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS)
     VERIFY_(STATUS)
 
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 

@@ -88,7 +88,7 @@ module GEOS_LandiceGridCompMod
 
   integer,    parameter :: TAR_PE     = 43
   integer,    parameter :: TAR_TILE   = 1
-  integer               :: N_CONST_LANDICE4SNWALB, AEROSOL_DEPOSITION
+  integer               :: N_CONST_LANDICE4SNWALB, AEROSOL_DEPOSITION, CHOOSEMOSFC
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -136,8 +136,8 @@ module GEOS_LandiceGridCompMod
     character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
-    character(len=ESMF_MAXSTR)              :: LANDRC
-    type(ESMF_Config)                       :: LCF 
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)                       :: SCF 
 
 !=============================================================================
 
@@ -167,12 +167,13 @@ module GEOS_LandiceGridCompMod
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource (MAPL, LANDRC, label = 'LANDRC:', default = 'GEOS_LandGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
-    LCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile(LCF,LANDRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LANDICE4SNWALB:', value=N_CONST_LANDICE4SNWALB, DEFAULT=0, __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='AEROSOL_DEPOSITION:'    , value=AEROSOL_DEPOSITION  , DEFAULT=0, __RC__ ) 
-    call ESMF_ConfigDestroy      (LCF, __RC__)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LANDICE4SNWALB:', value=N_CONST_LANDICE4SNWALB, DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='AEROSOL_DEPOSITION:'    , value=AEROSOL_DEPOSITION  ,   DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'           , value=CHOOSEMOSFC,            DEFAULT=1  , __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -1758,7 +1759,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, parameter :: LANDICEBAREZ0  = 0.005
    real, parameter :: LANDICESNOWZ0  = 0.001
 
-   integer                        :: CHOOSEMOSFC
    integer                        :: CHOOSEZ0
 !=============================================================================
 
@@ -1789,11 +1789,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL,             &
          INTERNAL_ESMF_STATE = INTERNAL,         &
                                        RC=STATUS )
-    VERIFY_(STATUS)
-
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
@@ -1988,9 +1983,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    QST = 0.0
 
    do N=1,NUM_SUBTILES
-
-! Choose sfc layer: if CHOOSEMOSFC is 1, choose helfand MO,
-!                   if CHOOSEMOSFC is 0 (default), choose louis
 
    if(CHOOSEMOSFC.eq.0) then
 

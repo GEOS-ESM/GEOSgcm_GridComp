@@ -80,13 +80,13 @@ contains
 ! Locals
     
     character(len=ESMF_MAXSTR)              :: GCName
-    type(ESMF_Config)                       :: CF, LCF
+    type(ESMF_Config)                       :: CF, SCF
     integer                                 :: NUM_CATCH
     integer                                 :: I
     character(len=ESMF_MAXSTR)              :: TMP
     type(MAPL_MetaComp),pointer             :: MAPL=>null()
     integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
-    character(len=ESMF_MAXSTR)              :: LANDRC
+    character(len=ESMF_MAXSTR)              :: SURFRC
 
 !=============================================================================
 
@@ -148,12 +148,12 @@ contains
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource (MAPL, LANDRC, label = 'LANDRC:', default = 'GEOS_LandGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
-    LCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile(LCF,LANDRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (LCF, label='RUN_ROUTE:'  , value=RUN_ROUTE  , DEFAULT=0, __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, __RC__ )
-    call ESMF_ConfigDestroy      (LCF, __RC__)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='RUN_ROUTE:'  , value=RUN_ROUTE  , DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
     SELECT CASE (LSM_CHOICE)
 

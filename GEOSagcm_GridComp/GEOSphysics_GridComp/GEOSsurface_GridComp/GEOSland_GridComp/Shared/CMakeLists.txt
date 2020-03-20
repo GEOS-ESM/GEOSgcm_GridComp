@@ -1,9 +1,5 @@
 set (this GEOS_LandShared)
 
-set (resource_files
-    GEOS_LandGridComp.rc
-   ) 
-
 install( FILES ${resource_files} 
    DESTINATION etc
    )

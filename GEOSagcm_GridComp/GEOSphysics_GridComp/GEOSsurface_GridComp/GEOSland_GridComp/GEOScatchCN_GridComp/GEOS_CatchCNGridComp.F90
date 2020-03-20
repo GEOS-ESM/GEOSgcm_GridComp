@@ -170,7 +170,7 @@ type OFFLINE_WRAP
 end type OFFLINE_WRAP
 
 integer :: RUN_IRRIG, USE_ASCATZ0, Z0_FORMULATION, IRRIG_METHOD, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
-integer :: ATM_CO2, PRESCRIBE_DVG, SCALE_ALBFPAR
+integer :: ATM_CO2, PRESCRIBE_DVG, SCALE_ALBFPAR,CHOOSEMOSFC
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 real    :: CO2
@@ -211,8 +211,8 @@ subroutine SetServices ( GC, RC )
     type(OFFLINE_WRAP) :: wrap
     integer :: OFFLINE_MODE
     integer :: RESTART
-    character(len=ESMF_MAXSTR)              :: LANDRC
-    type(ESMF_Config)                       :: LCF 
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)                       :: SCF 
 
 ! Begin...
 ! --------
@@ -244,55 +244,56 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource (MAPL, LANDRC, label = 'LANDRC:', default = 'GEOS_LandGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
-    LCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile(LCF,LANDRC,rc=status) ; VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
-    call ESMF_ConfigGetAttribute (LCF, label='SURFLAY:'            , value=SURFLAY,             DEFAULT=50., __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='Z0_FORMULATION:'     , value=Z0_FORMULATION,      DEFAULT=2  , __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,         DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='RUN_IRRIG:'          , value=RUN_IRRIG,           DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='IRRIG_METHOD:'       , value=IRRIG_METHOD,        DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='SURFLAY:'            , value=SURFLAY,             DEFAULT=50., __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='Z0_FORMULATION:'     , value=Z0_FORMULATION,      DEFAULT=2  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,         DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'          , value=RUN_IRRIG,           DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='IRRIG_METHOD:'       , value=IRRIG_METHOD,        DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,         DEFAULT=1, __RC__ ) 
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
     ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
-    call ESMF_ConfigGetAttribute (LCF, label='N_CONST_LAND4SNWALB:', value=N_CONST_LAND4SNWALB, DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:', value=N_CONST_LAND4SNWALB, DEFAULT=0  , __RC__ )
 
     ! Get parameters to zero the deposition rate 
     ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
     ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
     ! __________________________________________
-    call ESMF_ConfigGetAttribute (LCF, label='AEROSOL_DEPOSITION:' , value=AEROSOL_DEPOSITION,  DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='AEROSOL_DEPOSITION:' , value=AEROSOL_DEPOSITION,  DEFAULT=0  , __RC__ )
 
     ! CATCHCN
-    call ESMF_ConfigGetAttribute (LCF, label='DTCN:' , value=DTCN,  DEFAULT=5400. , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='DTCN:' , value=DTCN,  DEFAULT=5400. , __RC__ )
     ! ATM_CO2
     ! 0: uses a fix value defined by CO2
     ! 1: CT tracker monthly mean diurnal cycle
     ! 2: CT tracker monthly mean diurnal cycle scaled to match EEA global average CO2
     ! 3: spatially fixed interannually varyiing CMIP from getco2.F90 look up table (AGCM only)
     ! 4: import AGCM model CO2 (AGCM only)
-    call ESMF_ConfigGetAttribute (LCF, label='ATM_CO2:' , value=ATM_CO2,  DEFAULT=2  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:' , value=ATM_CO2,  DEFAULT=2  , __RC__ )
 
     ! PRESCRIBE_DVG: Prescribe daily LAI and SAI data from an archived CATCHCN simulation 
     ! 0--NO Run CN Model interactively
     ! 1--YES Prescribe interannually varying LAI and SAI
     ! 2--YES Prescribe climatological LAI and SAI
     ! 3--Estimated LAI/SAI using anomalies at the beginning of the foeecast and climatological LAI/SAI
-    call ESMF_ConfigGetAttribute (LCF, label='PRESCRIBE_DVG:' , value=PRESCRIBE_DVG,  DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='PRESCRIBE_DVG:' , value=PRESCRIBE_DVG,  DEFAULT=0  , __RC__ )
 
     ! SCALE_ALBFPAR: Scale CATCHCN ALBEDO and FPAR
     ! 0-- NO scaling is performed
     ! 1-- Scale albedo to match interannually varying MODIS NIRDF and VISDF anomaly
     ! 2-- Scale albedo to match CDFs of model fPAR to MODIS CDFs of fPAR 
     ! 3-- Pefform above both 1 and 2 scalings 
-    call ESMF_ConfigGetAttribute (LCF, label='SCALE_ALBFPAR:' , value=SCALE_ALBFPAR,  DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='SCALE_ALBFPAR:' , value=SCALE_ALBFPAR,  DEFAULT=0  , __RC__ )
 
     ! Global mean CO2 
-    call ESMF_ConfigGetAttribute (LCF, label='CO2:'     , value=CO2,         DEFAULT=350.e-6, __RC__ )
-    call ESMF_ConfigGetAttribute (LCF, label='CO2_YEAR:', value=CO2_YEAR_IN, DEFAULT=  -9999, __RC__ )
-    call ESMF_ConfigDestroy      (LCF, __RC__)
+    call ESMF_ConfigGetAttribute (SCF, label='CO2:'     , value=CO2,         DEFAULT=350.e-6, __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='CO2_YEAR:', value=CO2_YEAR_IN, DEFAULT=  -9999, __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
 ! Set the Run entry points
 ! ------------------------
@@ -3894,8 +3895,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable              :: PSL(:)
    integer                        :: niter
 
-   integer                        :: CHOOSEMOSFC
-   integer                        :: CHOOSEZ0
    real                           :: SCALE4Z0
 
 ! gkw: for CN model
@@ -3955,11 +3954,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get ( MAPL                          ,&
                                 INTERNAL_ESMF_STATE=INTERNAL   ,&
                                                       RC=STATUS )
-    VERIFY_(STATUS)
-
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
@@ -4333,9 +4327,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Compute the three surface exchange coefficients
 !-------------------------------------------------
 
-! Choose sfc layer: if CHOOSEMOSFC is 1, choose helfand MO,
-!                   if CHOOSEMOSFC is 0 (default), choose louis
-
    call MAPL_TimerOn(MAPL,"-SURF")
    if(CHOOSEMOSFC.eq.0) then
    WW(:,N) = 0.
@@ -4501,7 +4492,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(ESMF_Alarm)                :: ALARM
 
     integer :: IM,JM
-    integer :: CHOOSEMOSFC
     integer :: incl_Louis_extra_derivs
 
     real    :: SCALE4Z0
@@ -4527,10 +4517,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS)
     VERIFY_(STATUS)
 
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, SCALE4Z0, Label="SCALE4Z0:", DEFAULT=0.5, RC=STATUS)
