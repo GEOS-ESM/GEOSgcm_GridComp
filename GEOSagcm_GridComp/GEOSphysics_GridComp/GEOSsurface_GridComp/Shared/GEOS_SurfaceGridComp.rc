@@ -17,6 +17,19 @@
 #                                                                                  #
 #################################################################################### 
 
+#################################################################################### 
+#                                                                                  #
+#                            W A R N I N G ! ! !                                   #
+#                                                                                  #
+#    Many of the parameter options described below may NOT work as intended, or    # 
+#      at all...                                                                   #
+#                                                                                  #
+#    Choosing values other than the suggested defaults is NOT recommended for      #
+#      general users.                                                              #
+#                                                                                  #
+#################################################################################### 
+
+
 # ---- Surface layer turbulence scheme
 #
 #    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2)
@@ -54,11 +67,12 @@
 # GEOSagcm=>Z0_FORMULATION: 4
 # GEOSldas=>Z0_FORMULATION: 4
 
-# ---- Fraction of AGCM grid cell that precipitation falls on
-# 
-#    1     : default 
-#    0.025 : recomended value for future reduce drizzle
-# PRECIPFRAC: 0.025
+# ---- Area fraction of each tile on which precipitation falls (0. < value <= 1.)  	
+#	
+#    1.0   : default value for AGCM and GEOSldas 	
+# 	
+# GEOSagcm=>PRECIPFRAC: 1.	
+# GEOSldas=>PRECIPFRAC: 1.
 
 # ---- ASCAT-derived turbulent roughness length
 #
@@ -171,10 +185,11 @@
 #
 # GEOSagcm=>ATM_CO2: 2
 # GEOSagcm=>CO2: 350.e-6
+#
 # GEOSldas=>ATM_CO2: 2
 # GEOSldas=>CO2: 350.e-6
-# This is an optinal parameter for GEOSldas (see above (2))
-# CO2_YEAR:
+# 
+# GEOSldas=>CO2_YEAR:       # Only for GEOSldas with ATM_C02=2
 
 # ---- Prescribe daily LAI and SAI data from an archived CATCHCN simulation
 #
