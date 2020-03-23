@@ -16,7 +16,7 @@ module cldwat2m_micro
 
 
 #ifdef GEOS5
-   use MAPL_ConstantsMod, r8 => MAPL_R4
+   use MAPL_ConstantsMod, r8 => MAPL_R8
    use wv_saturation,  only: estblf, hlatv, tmin, hlatf, rgasv, pcf, cp, epsqs, ttrice, &
          vqsatd2, vqsatd2_single,polysvp,gestbl
    use aer_cloud, only:  gammp
@@ -87,7 +87,7 @@ module cldwat2m_micro
    logical, public :: liu_in = .true.   ! True = Liu et al 2007/Barahona and Nenes 2010 Ice nucleation  
    ! False = cooper fixed ice nucleation (MG2008)
 
-   public :: ini_micro, mmicro_pcond,gamma,derf
+   public :: ini_micro, mmicro_pcond,gamma,derf, set_qcvar
 
    !constants remaped
    real(r8), private::  g              !gravity
@@ -169,15 +169,29 @@ module cldwat2m_micro
 
    real(r8), private:: csmin,csmax,minrefl,mindbz
 
+   !  If constant cloud ice number is set (nicons = .true.),
+    ! then all microphysical processes except mass transfer due to ice nucleation
+    ! (mnuccd) are based on the fixed cloud ice number. Calculation of
+    ! mnuccd follows from the prognosed ice crystal number ni.
 
+    logical  :: nccons  ! nccons = .true. to specify constant cloud droplet number
+    logical  :: nicons  ! nicons = .true. to specify constant cloud ice number
+    logical  :: ngcons  ! ngcons = .true. to specify constant graupel number
 
+    ! specified ice and droplet number concentrations
+    ! note: these are local in-cloud values, not grid-mean
+    real(r8)  :: ncnst  ! droplet num concentration when nccons=.true. (m-3)
+    real(r8)  :: ninst  ! ice num concentration when nicons=.true. (m-3)
+    real(r8)  :: ngnst  ! graupel num concentration when ngcons=.true. (m-3)
 
+    real(r8)           :: micro_mg_berg_eff_factor     ! berg efficiency factor
 
 contains
 
    !===============================================================================
 
-   subroutine ini_micro(Dcs_, QCVAR_)
+   subroutine ini_micro(micro_mg_dcs, micro_mg_berg_eff_factor_in, &
+                         nccons_in, nicons_in, ncnst_in, ninst_in, QCVAR_)
 
       !----------------------------------------------------------------------- 
       ! 
@@ -192,7 +206,7 @@ contains
 #ifndef GEOS5
       use cloud_fraction, only: cldfrc_getparams
 #endif
-      real(r8), intent(in) :: Dcs_, QCVAR_
+      real(r8), intent(in) ::  QCVAR_
 
 
       integer k
@@ -207,68 +221,24 @@ contains
       logical           :: history_microphysics     ! output variables for microphysics diagnostics package
 
 
-
-#ifndef GEOS5
-      ! Query the PBL eddy scheme. Why still needed? (jtb 08/18/10)
-      call phys_getopts(eddy_scheme_out              = eddy_scheme,           &
-            history_microphysics_out     = history_microphysics   )
-
-      ! diagnostic precip
-      call addfld ('QRAIN   ','kg/kg   ',pver, 'A','Diagnostic grid-mean rain mixing ratio'         ,phys_decomp)   
-      call addfld ('QSNOW   ','kg/kg   ',pver, 'A','Diagnostic grid-mean snow mixing ratio'         ,phys_decomp)   
-      call addfld ('NRAIN   ','m-3     ',pver, 'A','Diagnostic grid-mean rain number conc'         ,phys_decomp)   
-      call addfld ('NSNOW   ','m-3     ',pver, 'A','Diagnostic grid-mean snow number conc'         ,phys_decomp)   
-
-      ! size of precip
-      call addfld ('RERCLD   ','m      ',pver, 'A','Diagnostic effective radius of Liquid Cloud and Rain' ,phys_decomp)
-
-      call addfld ('DSNOW   ','m       ',pver, 'A','Diagnostic grid-mean snow diameter'         ,phys_decomp)   
-
-      ! precip flux variables for ciccs (instrument simulator package)
-      call addfld ('MGFLXPRC   ','kg/m2/s   ',pver+1, 'A','Diagnostic grid-mean rain flux at layer interface', phys_decomp)   
-      call addfld ('MGFLXSNW   ','kg/m2/s   ',pver+1, 'A','Diagnostic grid-mean snow flux at layer interface', phys_decomp)
-
-      ! diagnostic radar reflectivity, cloud-averaged 
-      call addfld ('REFL  ','DBz  ',pver, 'A','94 GHz radar reflectivity'       ,phys_decomp)
-      call addfld ('AREFL  ','DBz  ',pver, 'A','Average 94 GHz radar reflectivity'       ,phys_decomp)
-      call addfld ('FREFL  ','fraction  ',pver, 'A','Fractional occurance of radar reflectivity'       ,phys_decomp)
-
-      call addfld ('CSRFL  ','DBz  ',pver, 'A','94 GHz radar reflectivity (CloudSat thresholds)'       ,phys_decomp)
-      call addfld ('ACSRFL  ','DBz  ',pver, 'A','Average 94 GHz radar reflectivity (CloudSat thresholds)'       ,phys_decomp)
-      call addfld ('FCSRFL  ','fraction  ',pver, 'A','Fractional occurance of radar reflectivity (CloudSat thresholds)' &
-            ,phys_decomp)
-
-      call addfld ('AREFLZ ','mm^6/m^3 ',pver, 'A','Average 94 GHz radar reflectivity'       ,phys_decomp)
-
-      ! Aerosol information
-      call addfld ('NCAL    ','#/m3   ',pver, 'A','Number Concentation Activated for Liquid',phys_decomp)
-      call addfld ('NCAI    ','#/m3   ',pver, 'A','Number Concentation Activated for Ice',phys_decomp)
+ 
+ 
+      real(r8),         intent(in)  :: micro_mg_berg_eff_factor_in     ! berg efficiency factor
+      logical, intent(in)   :: nccons_in
+      logical, intent(in)   :: nicons_in
+      real(r8), intent(in)  :: ncnst_in
+      real(r8), intent(in)  :: ninst_in
+      real(r8), intent(in)  :: micro_mg_dcs
 
 
-      ! Average rain and snow mixing ratio (Q), number (N) and diameter (D), with frequency
-      call addfld ('AQRAIN   ','kg/kg   ',pver, 'A','Average rain mixing ratio'         ,phys_decomp)   
-      call addfld ('AQSNOW   ','kg/kg   ',pver, 'A','Average snow mixing ratio'         ,phys_decomp)   
-      call addfld ('ANRAIN   ','m-3     ',pver, 'A','Average rain number conc'         ,phys_decomp)   
-      call addfld ('ANSNOW   ','m-3     ',pver, 'A','Average snow number conc'         ,phys_decomp)
-      call addfld ('ADRAIN   ','Micron  ',pver, 'A','Average rain effective Diameter'         ,phys_decomp)   
-      call addfld ('ADSNOW   ','Micron  ',pver, 'A','Average snow effective Diameter'         ,phys_decomp)
-      call addfld ('FREQR  ','fraction  ',pver, 'A','Fractional occurance of rain'       ,phys_decomp)
-      call addfld ('FREQS  ','fraction  ',pver, 'A','Fractional occurance of snow'       ,phys_decomp)
-
-      if ( history_microphysics) then
-         call add_default ('AQSNOW   ', 1, ' ')
-         call add_default ('FREQR    ', 1, ' ')
-         call add_default ('FREQS    ', 1, ' ')
-         call add_default ('AQRAIN   ', 1, ' ')
-         call add_default ('AQSNOW   ', 1, ' ')
-         call add_default ('ANRAIN   ', 1, ' ')
-         call add_default ('ANSNOW   ', 1, ' ')
-      end if
-
-#endif 
-      !--jtb commented out when GEOS5
 
       !declarations for morrison codes (transforms variable names)
+
+       nccons = nccons_in
+       nicons = nicons_in
+       ncnst  = ncnst_in
+       ninst  = ninst_in
+       micro_mg_berg_eff_factor    = micro_mg_berg_eff_factor_in
 
       g= gravit                  !gravity
       r= rair                !Dry air Gas constant: note units(phys_constants are in J/K/kmol)
@@ -353,7 +323,7 @@ contains
       ! autoconversion size threshold for cloud ice to snow (m)
 
       !Dcs = 250.e-6_r8   !
-      Dcs=Dcs_
+      Dcs = micro_mg_dcs
       ! smallest mixing ratio considered in microphysics
 
       qsmall = 1.e-18_r8  
@@ -459,13 +429,33 @@ contains
    end subroutine ini_micro
 
    !===============================================================================
+   
+   subroutine set_qcvar (qcvar_) !!DONIF
+
+   real(r8), intent(in) ::  qcvar_
+      
+      qcvar =  qcvar_
+      
+      cons2=gamma(qcvar+2.47_r8)
+      cons3=gamma(qcvar)
+      cons9=gamma(qcvar+2._r8)     
+      cons10=gamma(qcvar+1._r8)
+      cons12=gamma(qcvar+1.15_r8)
+      cons15=gamma(qcvar+bc/3._r8)
+      cons18=qcvar**2.47_r8
+      cons19=qcvar**2
+      cons20=qcvar**1.15_r8
+      cons21=qcvar**(bc/3._r8)
+    end subroutine set_qcvar !!DONIF  
+    
+    
+   !===============================================================================
    !microphysics routine for each timestep goes here...
 
    subroutine mmicro_pcond (                   &
          lchnk, ncol, deltatin, tn, ttend,        &
-#ifdef GEOS5
+
          pcols, pver,                             &
-#endif
          qn, qtend, cwtend, qc, qi,               &
          nc, ni, p, pdel, cldn,                   &
          liqcldf, icecldf,                        &
@@ -483,15 +473,11 @@ contains
          prao,prco,mnuccco,mnuccto,msacwio,psacwso,&
          bergso,bergo,melto,homoo,qcreso,prcio,praio,qireso,&
          mnuccro,pracso,meltsdt,frzrdt, ncal, ncai, mnuccdo, &
-         nnuccto &
-#ifdef GEOS5
-         ,nsout2, nrout2, ncnst,  ninst, nimm, miu_disp, &
-         nsoot, rnsoot, ui_scale, dcrit, &
+         nnuccto ,nsout2, nrout2, nimm, miu_disp, &
+         nsoot, rnsoot, ui_scale, dcrit, mtimesc, &
          nnuccdo, nnuccco, nsacwio, nsubio, nprcio, &
-         npraio, npccno, npsacwso, nsubco, nprao, nprc1o, tlataux,  nbincontactdust,  &
-         ts_auto_ice, ktrop_min, rflx, sflx, dep_scale &
-#endif
-      )
+         npraio, npccno, npsacwso, nsubco, nprao, nprc1o, nbincontactdust,  &
+         ts_auto_ice, rflx, sflx)
 
 
       !Author: Hugh Morrison, Andrew Gettelman, NCAR
@@ -510,12 +496,10 @@ contains
       ! input arguments
 #ifdef GEOS5
       integer,  intent (in) :: pcols, pver    
-      real(r8), intent (in) :: ncnst   ! specified value (m-3) droplet num concentration (in-cloud not grid-mean) DONIF
-      real(r8), intent (in) :: ninst   ! specified value (m-3) ice num concentration (in-cloud not grid-mean) 
       real(r8), intent (in) :: nimm (pcols,pver)    ! immersion ice nuclei concentration tendency (kg-1 s-1) 
-      real(r8), intent (in) :: miu_disp , ui_scale, dcrit, ts_auto_ice, dep_scale ! miu value in Liu autoconversion. Ui scale is used to tune olrcf by decreasing uised  
+      real(r8), intent (in) :: miu_disp , ui_scale, dcrit, mtimesc, ts_auto_ice! miu value in Liu autoconversion. Ui scale is used to tune olrcf by decreasing uised  
       real(r8), intent (in) :: nsoot (pcols,pver) , rnsoot (pcols,pver)  
-      integer,  intent(in) :: ktrop_min !upper level for tropospheric calculations
+
 
       !!integer,  parameter  :: pverp=pver+1
 #endif
@@ -565,7 +549,7 @@ contains
 
       real(r8), intent(out) :: tlat(pcols,pver)    ! latent heating rate       (W/kg)
 
-      real(r8), intent(out) :: tlataux(pcols,pver)    ! dummy latent heating rate       (W/kg)
+      real(r8) :: tlataux(pcols,pver)    ! dummy latent heating rate       (W/kg)
 
       real(r8), intent(out) :: qvlat(pcols,pver)   ! microphysical tendency qv (1/s)
       real(r8), intent(out) :: qctend(pcols,pver)  ! microphysical tendency qc (1/s) 
@@ -968,7 +952,7 @@ contains
       real(r8), parameter :: cdnl    = 0.e6_r8    ! cloud droplet number limiter
 
       integer              ::   auto_option !0, kk, default DONIF 
-      real(r8)             :: beta6, xs, nssoot, nsdust, taux, psc, Bh, vaux, aux, LW, NW !DONIF constants for LIu autoconversion
+      real(r8)             :: beta6, xs, nssoot, nsdust, taux, psc, Bh, vaux, aux, auxx, LW, NW !DONIF constants for LIu autoconversion
 
       ! hm add 6/2/11 switch for specification of droplet and crystal number
       ! note: number will be adjusted as needed to keep mean size within bounds,
@@ -980,14 +964,7 @@ contains
       ! processes are consistent with the specified constant ice number if
       ! this switch is turned on.
 
-      logical :: nccons,nicons  
-
-      ! hm add 6/2/11 switch for specification of droplet and crystal number
-      ! nccons = true to specify constant cloud droplet number
-      ! ncicons = true to specify constant cloud ice number
-
-      nccons=.false.
-      nicons=.false.    
+     
 
       !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
@@ -1110,6 +1087,9 @@ contains
 
             ! hm note: npccn is no longer needed below this code - so this can  
             ! be rewwritten and this parameters can be removed
+            
+            !************ Donifan            
+            !It might be unrealistic to apply full microphysics to droplet form on this time step
 
             lcldm(i,k)=max(liqcldf(i,k),mincld)
             if (qc(i,k).ge.qsmall) then                
@@ -1117,7 +1097,7 @@ contains
                npccn(k) = max(0._r8,npccn(k))         
                ! hm update with activation tendency, keep old nc for later
                ncold(i,k)=nc(i,k)              
-               nc(i,k)=nc(i,k)+npccn(k)*deltat                         
+               nc(i,k)=nc(i,k)+npccn(k)*deltat                        ! *****************DONIF19*******************
             else
                npccn(k)=0._r8
             end if
@@ -1363,9 +1343,12 @@ contains
 
                      !     transfer of existing cloud liquid to ice
 
-                     berg(i,k)=max(0._r8,prd)*dep_scale
+                     berg(i,k)=max(0._r8,prd)
 
                   end if  !end liquid exists bergeron
+
+                    berg(i,k)=berg(i,k)*micro_mg_berg_eff_factor  !DONIF
+
 
                   if (berg(i,k).gt.0._r8) then
                      bergtsf=max(0._r8,(qc(i,k)/berg(i,k))/deltat) 
@@ -1373,6 +1356,9 @@ contains
                      if(bergtsf.lt.1._r8) berg(i,k) = max(0._r8,qc(i,k)/deltat)
 
                   endif
+
+
+                
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -1582,7 +1568,8 @@ contains
 
       !        note: mtime for bulk aerosols was set to: mtime=deltat/1200._r8
 
-      mtime=1._r8
+      !mtime=1._r8
+       mtime=deltat_micro/mtimesc
       rate1ord_cw2pr_st(:,:)=0._r8 ! rce 2010/05/01
 
 !!!! skip calculations if no cloud water
@@ -1836,33 +1823,40 @@ contains
                   ncic(i,k)=min(ncic(i,k),qcic(i,k)*1.e20_r8)
 
                   ncic(i,k)=max(ncic(i,k),cdnl/rho(i,k)) ! sghan minimum in #/cm  
+                  
+                  
+                  pgam(k) = pgam_calc(ncic(i,k), qcic(i,k), rho(i,k))
+                  
+                  
+                  
+                  
 
                   ! get pgam from fit to observations of martin et al. 1994
 
-                  pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
+                   !pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
 
                   !DONIF (08/05/15) relative dispersion from Yangang Liu et al 2008 Environ. Res. Lett. 3 045021 doi:10.1088/1748-9326/3/4/045021
                   !***************************    
 
-                  if (.true.) then
-                     if ((ncic(i,k) .gt. 1.0e-3) .and. (qcic(i, k) .gt. 1.0e-11))  then 
-                        xs=0.07_r8*(1000._r8*qcic(i, k)/ncic(i,k))**(-0.14_r8)
-                     else 
-                        xs=1.2
-                     end if
+                 ! if (.true.) then
+                 !    if ((ncic(i,k) .gt. 1.0e-3) .and. (qcic(i, k) .gt. 1.0e-11))  then 
+                 !       xs=0.07_r8*(1000._r8*qcic(i, k)/ncic(i,k))**(-0.14_r8)
+                 !    else 
+                 !       xs=1.2
+                 !    end if
 
-                     xs=max(min(xs, 1.7_r8), 1.1_r8)         
-                     xs=xs*xs*xs   
-                     xs = (xs + sqrt(xs+8.0_r8)*sqrt(xs) - 4.0_r8)/8.0_r8 ! from Eq. 2 (gives e^2)      
-                     pgam(k)=sqrt(xs)
+!                     xs=max(min(xs, 1.7_r8), 1.1_r8)         
+!                     xs=xs*xs*xs   
+!                     xs = (xs + sqrt(xs+8.0_r8)*sqrt(xs) - 4.0_r8)/8.0_r8 ! from Eq. 2 (gives e^2)      
+!                     pgam(k)=sqrt(xs)
 
-                  end if
+!                  end if
 
 
-                  !******************************************   
-                  pgam(k)=1._r8/(pgam(k)**2)-1._r8
-                  pgam(k)=max(pgam(k),2._r8)
-                  pgam(k)=min(pgam(k),15._r8) !DONIF Changed to avoid numerical instability
+ !                 !******************************************   
+ !                 pgam(k)=1._r8/(pgam(k)**2)-1._r8
+ !                 pgam(k)=max(pgam(k),2._r8)
+ !                 pgam(k)=min(pgam(k),15._r8) !DONIF Changed to avoid numerical instability
 
 
                   ! calculate lamc
@@ -2615,7 +2609,8 @@ contains
                   bergs(k)=0._r8
                end if
 
-
+                 bergs(k)=bergs(k)*micro_mg_berg_eff_factor !DONIF
+ 
 
                !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
                ! conservation to ensure no negative values of cloud water/precipitation
@@ -3411,10 +3406,14 @@ contains
                dumnc(i,k)=min(dumnc(i,k),dumc(i,k)*1.e20_r8)
                ! add lower limit to in-cloud number concentration
                dumnc(i,k)=max(dumnc(i,k),cdnl/rho(i,k)) ! sghan minimum in #/cm3 
-               pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
-               pgam(k)=1._r8/(pgam(k)**2)-1._r8
-               pgam(k)=max(pgam(k),2._r8)
-               pgam(k)=min(pgam(k),15._r8)
+               
+               
+               pgam(k) = pgam_calc(dumnc(i,k), dumc(i,k), rho(i,k))
+                
+               !pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
+               !pgam(k)=1._r8/(pgam(k)**2)-1._r8
+               !pgam(k)=max(pgam(k),2._r8)
+               !pgam(k)=min(pgam(k),15._r8)
 
                lamc(k) = (pi/6._r8*rhow*dumnc(i,k)*gamma(pgam(k)+4._r8)/ &
                      (dumc(i,k)*gamma(pgam(k)+1._r8)))**(1._r8/3._r8)
@@ -3865,15 +3864,20 @@ contains
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-               pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
-               pgam(k)=1._r8/(pgam(k)**2)-1._r8
-               pgam(k)=max(pgam(k),2._r8)
-               pgam(k)=min(pgam(k),15._r8)
+              
+               pgam(k) = pgam_calc(ncic(i,k), qcic(i,k), rho(i,k))
+               
+              ! pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
+              ! pgam(k)=1._r8/(pgam(k)**2)-1._r8
+              ! pgam(k)=max(pgam(k),2._r8)
+              ! pgam(k)=min(pgam(k),15._r8)
 
                lamc(k) = (pi/6._r8*rhow*dumnc(i,k)*gamma(pgam(k)+4._r8)/ &
                      (dumc(i,k)*gamma(pgam(k)+1._r8)))**(1._r8/3._r8)
                lammin = (pgam(k)+1._r8)/50.e-6_r8
                lammax = (pgam(k)+1._r8)/2.e-6_r8
+               
+               
                if (lamc(k).lt.lammin) then
                   lamc(k) = lammin
                   ncic(i,k) = 6._r8*lamc(k)**3*dumc(i,k)* &
@@ -3916,10 +3920,13 @@ contains
             dumnc(i,k)=1.e8
 
             if (dumc(i,k).ge.qsmall) then
-               pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
-               pgam(k)=1._r8/(pgam(k)**2)-1._r8
-               pgam(k)=max(pgam(k),2._r8)
-               pgam(k)=min(pgam(k),15._r8)
+             
+              pgam(k) = pgam_calc(dumnc(i,k), dumc(i,k), rho(i,k))
+              
+             !  pgam(k)=0.0005714_r8*(ncic(i,k)/1.e6_r8*rho(i,k))+0.2714_r8
+             !  pgam(k)=1._r8/(pgam(k)**2)-1._r8
+             !  pgam(k)=max(pgam(k),2._r8)
+             !  pgam(k)=min(pgam(k),15._r8)
 
                lamc(k) = (pi/6._r8*rhow*dumnc(i,k)*gamma(pgam(k)+4._r8)/ &
                      (dumc(i,k)*gamma(pgam(k)+1._r8)))**(1._r8/3._r8)
@@ -4838,6 +4845,61 @@ contains
          !
 
 
+
+                  
+         !cccccccccccccccccccccDONIFccccccccccccccccccccccccccccccccccccccccccccccccc
+         !Returns the value of the dispersion parameter for liquid using either Martin 2004 or Liu 2008.
+         ! Written by Donifan Barahona donifan.barahona@nasa.gov
+         ! NIC=in cloud drop number Kg-1
+         ! QIC= incloud liquid condensate  Kg/Kg
+         ! dair = air density Kg m-3
+         !**********************************
+
+
+
+           FUNCTION pgam_calc(NIC, QIC, dair)
+           
+           real(r8) :: pgam_calc
+           REAL(r8), intent(in)  :: NIC, QIC, dair
+           real(r8) :: pgam_aux, xs
+           integer, parameter :: drop_disp = 1 !0 - Martin et al. 2004 1- Liu et al 2008
+           
+            
+
+            if (drop_disp .lt. 1) then            
+
+                  pgam_aux=0.0005714_r8*(NIC/1.e6_r8*dair)+0.2714_r8
+            else
+
+                  !DONIF (08/05/15) relative dispersion from Yangang Liu et al 2008 Environ. Res. Lett. 3 045021 doi:10.1088/1748-9326/3/4/045021
+                  !***************************    
+
+                 
+                     if ((NIC .gt. 1.0e-3) .and. (QIC .gt. 1.0e-11))  then 
+                        xs=0.07_r8*(1000._r8*QIC/NIC)**(-0.14_r8)
+                     else 
+                        xs=1.2
+                     end if
+
+                     xs=max(min(xs, 1.7_r8), 1.1_r8)         
+                     xs=xs*xs*xs   
+                     xs = (xs + sqrt(xs+8.0_r8)*sqrt(xs) - 4.0_r8)/8.0_r8 ! from Eq. 2 (gives e^2)      
+                     pgam_aux=sqrt(xs)
+
+            end if
+
+
+                  !******************************************   
+                  pgam_aux=1._r8/(pgam_aux**2)-1._r8
+                  pgam_aux=max(pgam_aux,1.5_r8)
+                  pgam_aux=min(pgam_aux,15._r8) !DONIF Changed to avoid numerical instability
+                  
+                  pgam_calc = pgam_aux
+                  
+            END FUNCTION pgam_calc 
+            
+            
+                  
          !cccccccccccccccccccccDONIFccccccccccccccccccccccccccccccccccccccccccccccccc
          !Returns the value of the dispersion parameter according to Heymsfield et al 2002, Table3.
          !T is in K
