@@ -11,8 +11,7 @@ module GEOS_OceanbiogeochemGridCompMod
 
 ! !USES:
   use ESMF
-  use MAPL_Mod
-  use MAPL_ConstantsMod, only : MAPL_TICE, MAPL_RHOWTR
+  use MAPL
 #ifdef USE_ODAS
       use obio_iodas_iau_mod
 #endif

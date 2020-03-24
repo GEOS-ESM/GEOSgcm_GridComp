@@ -178,8 +178,7 @@ module GEOS_SolarGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
-  use MAPL_ShmemMod, only: MAPL_CoresPerNodeGet
+  use MAPL
 
   ! for RRTMGP
   use mo_gas_optics, only: ty_gas_optics
@@ -1822,7 +1821,7 @@ contains
          write (*,*) "    IRRAD RRTMG: ", USE_RRTMGP_IRRAD, USE_RRTMG_IRRAD, USE_CHOU_IRRAD
          write (*,*) "Please check that your optics tables and NUM_BANDS are correct."
       end if
-      ASSERT_(.FALSE.)
+      _ASSERT(.FALSE.,'needs informative message')
    end if
 
 ! Decide how to do solar forcing
@@ -1839,7 +1838,7 @@ contains
        if (USE_NRLSSI2) then
 
          ! For now only use with RRTMG[P] SW
-         ASSERT_(USE_RRTMG .or. USE_RRTMGP)
+         _ASSERT(USE_RRTMG .or. USE_RRTMGP,'needs informative message')
 
          call MAPL_GetResource( MAPL, PersistSolar, "PERSIST_SOLAR:", DEFAULT=.TRUE., RC=STATUS)
          VERIFY_(STATUS) 
@@ -1911,8 +1910,8 @@ contains
 ! Determine the model level seperating high-middle and low-middle clouds
 !-----------------------------------------------------------------------
 
-    ASSERT_(PRS_LOW_MID >  PRS_MID_HIGH)
-    ASSERT_(PRS_LOW_MID <  PREF(LM)    )
+    _ASSERT(PRS_LOW_MID >  PRS_MID_HIGH,'needs informative message')
+    _ASSERT(PRS_LOW_MID <  PREF(LM)    ,'needs informative message')
     
     K = 1
     do while ( PREF(K) < PRS_MID_HIGH )
@@ -2424,7 +2423,7 @@ contains
 
 ! helper for testing RRTMGP error status on return;
 ! allows line number reporting cf. original call method
-#define TEST_(A) error_msg = A; if (trim(error_msg)/="") then; write(*,*) "RRTMGP Error: ", trim(error_msg); ASSERT_(.false.); endif
+#define TEST_(A) error_msg = A; if (trim(error_msg)/="") then; write(*,*) "RRTMGP Error: ", trim(error_msg); _ASSERT(.false.,'needs informative message'); endif
 
 !  Begin...
 !----------
@@ -2598,7 +2597,7 @@ contains
                   SLICESimp(K) = 1
 
                case default
-                  ASSERT_(.false.)
+                  _ASSERT(.false.,'needs informative message')
                end select
 
             end if  ! Special treatment for AERO Import Bundle
@@ -2631,9 +2630,9 @@ contains
 
             if (NAMESimp(K)=="AERO") then
 
-               ASSERT_(size(AEROSOL_EXT,3)==LM)
-               ASSERT_(size(AEROSOL_SSA,3)==LM)
-               ASSERT_(size(AEROSOL_ASY,3)==LM)
+               _ASSERT(size(AEROSOL_EXT,3)==LM,'needs informative message')
+               _ASSERT(size(AEROSOL_SSA,3)==LM,'needs informative message')
+               _ASSERT(size(AEROSOL_ASY,3)==LM,'needs informative message')
 
                allocate(BUF_AEROSOL(size(AEROSOL_EXT,1), &
                                     size(AEROSOL_EXT,2), &
@@ -2826,7 +2825,7 @@ contains
             SLICESint(K) = 1            
 
          else
-            ASSERT_(.false.)
+            _ASSERT(.false.,'needs informative message')
 
          end if
 
@@ -3048,7 +3047,7 @@ contains
           rrtmgp_state%k_dist, trim(k_dist_file), gas_concs)
         if (.not. rrtmgp_state%k_dist%source_is_external()) then
           write(*,*) "RRTMGP-SW: does not seem to be SW"
-          ASSERT_(.false.)
+          _ASSERT(.false.,'needs informative message')
         endif
         rrtmgp_state%initialized = .true.
       endif
@@ -3063,7 +3062,7 @@ contains
       ! spectral dimensions
       ngpt = k_dist%get_ngpt()
       nbnd = k_dist%get_nband()
-      ASSERT_(nbnd == NB_RRTMGP)
+      _ASSERT(nbnd == NB_RRTMGP,'needs informative message')
       ! note: use k_dist%get_band_lims_wavenumber()
       !   to access band limits.
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3127,7 +3126,7 @@ contains
       ! RRTMGP's rte_sw takes a vertical ordering flag
       ! (no need to flip columns as with RRTMG)
       top_at_1 = p_lay(1, 1) < p_lay(1, LM)
-      ASSERT_(top_at_1) ! for GEOS-5
+      _ASSERT(top_at_1,'needs informative message') ! for GEOS-5
 
       ! layer pressure thicknesses used for cloud water path calculations
       ! (better to do before any KLUGE to top pressure)
@@ -3143,13 +3142,13 @@ contains
         if (press_ref_min - ptop <= ptop * ptop_increase_OK_fraction) then
           where (p_lev(:,1) < press_ref_min) p_lev(:,1) = press_ref_min
           ! make sure no pressure ordering issues were created
-          ASSERT_(all(p_lev(:,1) < p_lay(:,1)))
+          _ASSERT(all(p_lev(:,1) < p_lay(:,1)),'needs informative message')
         else
           write(*,*) 'Error: Model top too high for RRTMGP:'
           write(*,*) ' A ', ptop_increase_OK_fraction, &
                        ' fractional increase of ptop was insufficient'
           write(*,*) ' RRTMGP, GEOS-5 top (Pa)', press_ref_min, ptop
-          ASSERT_(.false.)
+          _ASSERT(.false.,'needs informative message')
         endif
       endif
 
@@ -3170,7 +3169,7 @@ contains
           write(*,*) ' A ', tmin_increase_OK_Kelvin, &
                        'K increase of tmin was insufficient'
           write(*,*) ' RRTMGP, GEOS-5 t_min (K)', temp_ref_min, tmin
-          ASSERT_(.false.)
+          _ASSERT(.false.,'needs informative message')
         endif
       endif
 
@@ -3424,7 +3423,7 @@ contains
 
       call MAPL_GetResource( MAPL, &
         rrtmgp_blockSize, "RRTMGP_SW_BLOCKSIZE:", DEFAULT=4, __RC__)
-      ASSERT_(rrtmgp_blockSize >= 1)
+      _ASSERT(rrtmgp_blockSize >= 1,'needs informative message')
 
       ! number of full blocks by integer division
       nBlocks = ncol/rrtmgp_blockSize
@@ -3922,7 +3921,7 @@ contains
             write (*,*) "ISOLVAR==1 is currently unsupported as we have no"
             write (*,*) "way of correctly setting solcycfrac."
          end if
-         ASSERT_(.FALSE.)
+         _ASSERT(.FALSE.,'needs informative message')
       end if
 
       !INDSOLVAR =  Facular and sunspot amplitude 
@@ -4062,7 +4061,7 @@ contains
    else
 
       ! Something is wrong. We've selected neither Chou nor RRTMG
-      ASSERT_(.FALSE.)
+      _ASSERT(.FALSE.,'needs informative message')
 
    end if SCHEME
 
@@ -4207,7 +4206,7 @@ contains
       Block = dim3(blocksize,1,1)
       Grid = dim3(ceiling(real(IRUN)/real(blocksize)),1,1)
 
-      ASSERT_(LN <= GPU_MAXLEVS) ! If this is tripped, ESMA_arch.mk must
+      _ASSERT(LN <= GPU_MAXLEVS,'needs informative message') ! If this is tripped, ESMA_arch.mk must
                                  ! be edited.
 
       call MAPL_TimerOn(MAPL,"--SORAD_ALLOC",RC=STATUS)
@@ -4403,7 +4402,7 @@ contains
       if (STATUS /= 0) then
          write (*,*) "Error code from SORAD kernel call: ", STATUS
          write (*,*) "Kernel Call failed: ", cudaGetErrorString(STATUS)
-         ASSERT_(.FALSE.)
+         _ASSERT(.FALSE.,'needs informative message')
       end if
 
       call MAPL_TimerOff(MAPL,"--SORAD_RUN",RC=STATUS)

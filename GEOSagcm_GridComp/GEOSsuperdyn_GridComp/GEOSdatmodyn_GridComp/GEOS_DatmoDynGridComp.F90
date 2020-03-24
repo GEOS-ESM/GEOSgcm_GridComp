@@ -14,7 +14,7 @@ module GEOS_DatmoDynGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use PPM
   use cfmip_data_mod
   
@@ -1435,8 +1435,12 @@ contains
          ! Get item's friendly status (default is not friendly)
          !-----------------------------------------------------
 
-         call ESMF_AttributeGet  (FIELD, NAME="FriendlyToDYNAMICS",VALUE=FRIENDLY, __RC__)
-         if(STATUS /= ESMF_SUCCESS) FRIENDLY = .false.
+         call ESMF_AttributeGet  (FIELD, NAME="FriendlyToDYNAMICS",isPresent=isPresent, __RC__)
+         if(isPresent) then
+            call ESMF_AttributeGet  (FIELD, NAME="FriendlyToDYNAMICS",VALUE=FRIENDLY, __RC__)
+         else
+            FRIENDLY = .false.
+         end if
 
          if( trim(QNAME).eq.'Q') then
            call ESMF_FieldGet (FIELD, 0, Q, __RC__)
@@ -1652,7 +1656,7 @@ contains
 
       I_time_step = I_time_step+1
 
-      ASSERT_( .NOT. ((USE_ASCII_DATA .eqv. .FALSE.) .AND. (RELAX_TO_OBS > 0.) ) )
+      _ASSERT( .NOT. ((USE_ASCII_DATA .eqv. .FALSE.) .AND. (RELAX_TO_OBS > 0.) ) ,'needs informative message')
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! If USE_ASCII_DATA=.T. then data exists to drive run, i.e. NT>1

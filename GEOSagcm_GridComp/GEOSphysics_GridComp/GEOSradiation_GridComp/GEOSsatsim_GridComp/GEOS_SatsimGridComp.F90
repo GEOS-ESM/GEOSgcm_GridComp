@@ -22,7 +22,7 @@ module GEOS_SatsimGridCompMod
 #define USE_MAPL_UNDEF
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
 
   use gettau
@@ -105,6 +105,7 @@ contains
     integer, pointer              :: ungridded_dims(:) => null()
     character(len=ESMF_MAXSTR)    :: exportName(1)
     type(MAPL_VarSpec), pointer :: ExportSpec(:) => null()
+    logical :: found
    
 !=============================================================================
 
@@ -2362,8 +2363,10 @@ contains
 ! parse resource file for masks
     CF = ESMF_ConfigCreate(rc=status)
     VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile ( CF,'SatSim.rc',rc=status)
-    if (status == ESMF_SUCCESS) then
+    inquire(file='SatSim.rc',exist=found)
+    if (found) then
+       call ESMF_ConfigLoadFile ( CF,'SatSim.rc',rc=status)
+       VERIFY_(STATUS) 
        call ESMF_ConfigGetDim(CF, nLines,nCols, LABEL='Masked_Exports::',RC=STATUS)
        if (status== ESMF_SUCCESS) then
           self%nmask_vars = nLines

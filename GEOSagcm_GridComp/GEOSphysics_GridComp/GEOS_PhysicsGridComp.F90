@@ -16,8 +16,7 @@ module GEOS_PhysicsGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
-  use m_chars,  only: uppercase
+  use MAPL
   use stoch_module
 
   use GEOS_SurfaceGridCompMod,    only : SurfSetServices      => SetServices
@@ -1642,7 +1641,7 @@ contains
     STATUS = cudaGetDeviceCount(num_devices)
     if (STATUS /= 0) then
        write (*,*) "cudaGetDeviceCount failed: ", cudaGetErrorString(STATUS)
-       ASSERT_(.FALSE.)
+       _ASSERT(.FALSE.,'needs informative message')
     end if
 
     devicenum = mod(MYID, num_devices)
@@ -1650,13 +1649,13 @@ contains
     STATUS = cudaSetDevice(devicenum)
     if (STATUS /= 0) then
        write (*,*) "cudaSetDevice failed: ", cudaGetErrorString(STATUS)
-       ASSERT_(.FALSE.)
+       _ASSERT(.FALSE.,'needs informative message')
     end if
 
     STATUS = cudaDeviceSetCacheConfig(cudaFuncCachePreferL1)
     if (STATUS /= 0) then
        write (*,*) "cudaDeviceSetCacheConfig failed: ", cudaGetErrorString(STATUS)
-       ASSERT_(.FALSE.)
+       _ASSERT(.FALSE.,'needs informative message')
     end if
 
     call MAPL_TimerOff(STATE,"-GPUINIT")
@@ -2179,7 +2178,7 @@ contains
 
     call MAPL_GetResource(STATE, DUMMY, Label="DPEDT_PHYS:", default='YES', RC=STATUS)
     VERIFY_(STATUS)
-         DUMMY = uppercase(DUMMY)
+         DUMMY = ESMF_UtilStringUpperCase(DUMMY)
     DPEDT_PHYS = TRIM(DUMMY).eq.'YES'
 
 ! Get the children`s states from the generic state
@@ -2213,7 +2212,7 @@ contains
          allocate( NAMES(NQ),STAT=STATUS )
          VERIFY_(STATUS)
          call ESMF_FieldBundleGet ( BUNDLE, itemorderflag=ESMF_ITEMORDER_ADDORDER, fieldNameList=NAMES, rc=STATUS )
-       VERIFY_(STATUS)
+         VERIFY_(STATUS)
          do N = 1,size(NAMES)
             if( trim(NAMES(N)).eq.'Q'        ) NWAT=NWAT+1
             if( trim(NAMES(N)).eq.'QLCN'     ) NWAT=NWAT+1
@@ -2604,8 +2603,8 @@ contains
     I=CHEM
 
     call MAPL_TimerOn (STATE,GCNames(I))
-    call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, phase=1, userRC=STATUS ); VERIFY_(STATUS)
-    call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
+     call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, phase=1, userRC=STATUS ); VERIFY_(STATUS)
+     call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
