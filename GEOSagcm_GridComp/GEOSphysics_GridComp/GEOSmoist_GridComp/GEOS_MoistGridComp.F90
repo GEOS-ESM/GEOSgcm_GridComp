@@ -6275,7 +6275,7 @@ contains
       real, dimension(IM,JM)    :: sm,wrk1,wrk2,wrk3
       real kd,ku,qt2tune,hl2tune,hlqt2tune,radbuoyfac
 
-      real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU
+      real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU, CMNI
       real   , dimension(IM,JM)           :: CMDUcarma, CMSScarma
 
       ! MATMAT CUDA Variables

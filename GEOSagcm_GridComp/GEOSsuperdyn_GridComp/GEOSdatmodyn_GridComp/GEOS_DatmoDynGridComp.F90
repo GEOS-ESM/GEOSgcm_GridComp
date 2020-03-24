@@ -1223,7 +1223,7 @@ contains
       INTEGER :: NT, NLEVEL,I,J,VERTADV, useana, advscheme
       real :: zrel,zrelp,qfloor       
 
-      LOGICAL :: USE_ASCII_DATA, AT_START, CFMIP, CFMIP2,CFMIP3
+      LOGICAL :: USE_ASCII_DATA, AT_START, CFMIP, CFMIP2, CFMIP3, ispresent 
       LOGICAL, SAVE :: ALREADY_HAVE_DATA
       integer, save :: I_time_step,cfcse
       real blendwgt
