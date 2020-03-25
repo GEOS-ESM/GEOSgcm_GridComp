@@ -1702,7 +1702,9 @@ contains
 
     ! Ensure Active PREDICTOR_STEP Alarm of OFF
     ! -----------------------------------------
-    IF(ESMF_AlarmIsRinging(PredictorIsActive)) CALL ESMF_AlarmRingerOff(PredictorIsActive, RC=STATUS)
+    if(ESMF_AlarmIsCreated(PredictorIsActive)) then
+       IF(ESMF_AlarmIsRinging(PredictorIsActive)) CALL ESMF_AlarmRingerOff(PredictorIsActive, RC=STATUS)
+    end if
     VERIFY_(STATUS)
 
     ! the usual time step
