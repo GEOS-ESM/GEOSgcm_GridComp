@@ -132,6 +132,7 @@ module GEOS_MoistGridCompMod
 
   integer :: DOSHLW
   real    :: MGVERSION
+  integer :: DOGRAUPEL
 
   private
 
@@ -146,7 +147,7 @@ module GEOS_MoistGridCompMod
   !   as large-scale condensation, convective clouds, and all rain and cloud
   !   formation. Its state consists of water vapor, various types of condensate,
   !   and fractions of various cloud types. 
-  !   two moment cloud microphysics (Barahona et al., GMD, 2014.) can be run by setting CLDMACRO==MG1. 
+  !   two moment cloud microphysics (Barahona et al., GMD, 2014.) can be run by setting CLDMACRO==2MOMENT. 
   !   When using 2-moment microphysics the number concentration of ice crystals and cloud droplets 
   !   are part of the state.
   !
@@ -256,21 +257,16 @@ contains
     call ESMF_ConfigGetAttribute( CF, AVRGNINT, Label='AVERAGING_INTERVAL:',default=RFRSHINT, RC=STATUS)
     VERIFY_(STATUS)
 
-    ! Inititialize cloud microphysics (Options: 1MOMENT, MG1, MG2, MG3 or GFDL)
+    ! Inititialize cloud microphysics (Options: 1MOMENT, 2MOMENT or GFDL)
     !--------------------------------------------------------------
     call ESMF_ConfigGetAttribute( CF, CLDMICRO, Label="CLDMICRO:",  default="1MOMENT", RC=STATUS)
     VERIFY_(STATUS)
-    if (adjustl(CLDMICRO)=="2MOMENT") CLDMICRO = 'MG1'
     LCLDMICRO = adjustl(CLDMICRO)=="1MOMENT" .or. &
-                adjustl(CLDMICRO)=="MG1" .or. &
-                adjustl(CLDMICRO)=="MG2" .or. &
-                adjustl(CLDMICRO)=="MG3" .or. &
+                adjustl(CLDMICRO)=="2MOMENT" .or. &
                 adjustl(CLDMICRO)=="GFDL"
     _ASSERT( LCLDMICRO, 'needs informative message' )
-    if (adjustl(CLDMICRO)=="MG1") then
+    if (adjustl(CLDMICRO)=="2MOMENT") then
       call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=0.0, RC=STATUS)
-    elseif ( (adjustl(CLDMICRO)=="MG2") .or. (adjustl(CLDMICRO)=="MG3") ) then
-      call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=2.0, RC=STATUS)
     endif
     call ESMF_ConfigGetAttribute( CF, DOSHLW, Label="DOSHLW:",  default=0, RC=STATUS)
 
@@ -298,27 +294,31 @@ contains
     FRIENDLIES_QSNOW    = trim(COMP_NAME)
     FRIENDLIES_QGRAUPEL = trim(COMP_NAME)
    
-    if(adjustl(CLDMICRO)=="MG1") then    
-      FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'      
-      FRIENDLIES_NCPL = 'DYNAMICS:TURBULENCE'
-    endif
-    if(adjustl(CLDMICRO)=="MG2") then
-      FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_NCPL = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_NRAIN = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_QRAIN = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_NSNOW = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_QSNOW = 'DYNAMICS:TURBULENCE'
-    endif
-    if(adjustl(CLDMICRO)=="MG3") then 
-      FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_NCPL = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_NRAIN = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_QRAIN = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_NSNOW = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_QSNOW = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_NGRAUPEL = 'DYNAMICS:TURBULENCE'
-      FRIENDLIES_QGRAUPEL = 'DYNAMICS:TURBULENCE'
+    if(adjustl(CLDMICRO)=="2MOMENT") then
+      if (MGVERSION==0) then    
+        FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'      
+        FRIENDLIES_NCPL = 'DYNAMICS:TURBULENCE'
+      endif
+      if(MGVERSION==2) then
+        call ESMF_ConfigGetAttribute( CF, DOGRAUPEL, Label="DOGRAUPEL:",  default=0, RC=STATUS)
+        if (DOGRAUPEL == 0) then
+          FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_NCPL = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_NRAIN = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_QRAIN = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_NSNOW = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_QSNOW = 'DYNAMICS:TURBULENCE'
+        else
+          FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_NCPL = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_NRAIN = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_QRAIN = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_NSNOW = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_QSNOW = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_NGRAUPEL = 'DYNAMICS:TURBULENCE'
+          FRIENDLIES_QGRAUPEL = 'DYNAMICS:TURBULENCE'
+        endif
+      endif
     endif
     if(adjustl(CLDMICRO)=="GFDL") then
       FRIENDLIES_QRAIN = 'DYNAMICS:TURBULENCE'
@@ -4851,21 +4851,16 @@ contains
     call MAPL_Get ( MAPL, GIM=GIM, GEX=GEX, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS )
     VERIFY_(STATUS)
 
-    ! Inititialize cloud microphysics (Options: 1MOMENT, MG1, MG2, MG3 or GFDL)
+    ! Inititialize cloud microphysics (Options: 1MOMENT, 2MOMENT or GFDL)
     !--------------------------------------------------------------
     call MAPL_GetResource( MAPL, CLDMICRO, Label="CLDMICRO:",  default="1MOMENT", RC=STATUS)
     VERIFY_(STATUS)
-    if (adjustl(CLDMICRO)=="2MOMENT") CLDMICRO = 'MG1'
     LCLDMICRO = adjustl(CLDMICRO)=="1MOMENT" .or. &
-                adjustl(CLDMICRO)=="MG1" .or. &
-                adjustl(CLDMICRO)=="MG2" .or. &
-                adjustl(CLDMICRO)=="MG3" .or. &
+                adjustl(CLDMICRO)=="2MOMENT" .or. &
                 adjustl(CLDMICRO)=="GFDL"
     _ASSERT( LCLDMICRO, 'needs informative message' )
-    if (adjustl(CLDMICRO)=="MG1") then
+    if (adjustl(CLDMICRO)=="2MOMENT") then
       call MAPL_GetResource( MAPL, MGVERSION, Label="MGVERSION:",  default=0.0, RC=STATUS)
-    elseif ( (adjustl(CLDMICRO)=="MG2") .or. (adjustl(CLDMICRO)=="MG3") ) then
-      call MAPL_GetResource( MAPL, MGVERSION, Label="MGVERSION:",  default=2.0, RC=STATUS)
     endif
     call MAPL_GetResource( MAPL, DOSHLW, Label="DOSHLW:",  default=0, RC=STATUS)
  
@@ -4889,10 +4884,11 @@ contains
        call WRITE_PARALLEL ("INITIALIZED GFDL microphysics in non-generic GC INIT")
     end if
 
-    if( (adjustl(CLDMICRO)=="MG1") .or. (adjustl(CLDMICRO)=="MG2") .or. (adjustl(CLDMICRO)=="MG3") ) then
+    if(adjustl(CLDMICRO)=="2MOMENT") then
 
-                                     do_graupel = .false.
-       if (adjustl(CLDMICRO)=="MG3") do_graupel = .true.
+       call MAPL_GetResource( MAPL, DOGRAUPEL, Label="DOGRAUPEL:",  default=0, RC=STATUS)
+                         do_graupel = .false.
+       if (DOGRAUPEL/=0) do_graupel = .true.
 
        call MAPL_GetResource(MAPL, DCS, 'DCS:', default=350.0e-6, RC=STATUS )
        VERIFY_(STATUS)    
@@ -5210,7 +5206,7 @@ contains
       real, pointer, dimension(:,:)   :: CU2DRAINMOVE, CU2DSNOWMOVE
 
       real, pointer, dimension(:,:  ) :: KEMST,KEMST2
-      real, pointer, dimension(:,:,:) :: QPLS
+      real, pointer, dimension(:,:,:) :: QSN, QRN, QPLS
 
       logical, pointer                :: IS_FRIENDLY(:)
       logical, pointer                :: IS_WEIGHTED(:)
@@ -6877,7 +6873,7 @@ contains
 
       if(ALLOC_DQRC  ) allocate ( DQRC     (IM,JM,LM))
 
-      ! MAT These are MG exports that are now necessary
+      ! MAT These are 2MOMENT exports that are now necessary
       !     inside of RASE
       ALLOC_CNV_FICE     = .not.associated(CNV_FICE)
       ALLOC_CNV_NDROP    = .not.associated(CNV_NDROP)
@@ -6904,7 +6900,7 @@ contains
          if(ALLOC_PRCP_GRAUPEL  ) allocate(PRCP_GRAUPEL (IM,JM))
       endif
 
-      if(adjustl(CLDMICRO)=="MG1" .or. adjustl(CLDMICRO)=="MG2" .or. adjustl(CLDMICRO)=="MG3" .or. adjustl(CLDMICRO)=="GFDL") then
+      if(adjustl(CLDMICRO)=="2MOMENT" .or. adjustl(CLDMICRO)=="GFDL") then
          ALLOC_DQVDT_micro     = .not.associated(DQVDT_micro)
          ALLOC_DQIDT_micro     = .not.associated(DQIDT_micro)
          ALLOC_DQLDT_micro     = .not.associated(DQLDT_micro)
@@ -6943,7 +6939,7 @@ contains
       allocate(FQA(IM,JM,LM), stat=STATUS)
       VERIFY_(STATUS)
 
-      if(adjustl(CLDMICRO)=="MG1" .or. adjustl(CLDMICRO)=="MG2" .or. adjustl(CLDMICRO)=="MG3") then
+      if(adjustl(CLDMICRO)=="2MOMENT") then
 
          allocate(QCNTOT(IM,JM,LM), stat=STATUS)
          VERIFY_(STATUS)
@@ -7110,13 +7106,17 @@ contains
              
 	   
 
-      end if ! MG
+      end if ! 2MOMENT
 
 
       !-----------------------------------------------------------------
 
       !  Allocate local space for some diagnostics that have to be in arg list to progno_cloud
+      allocate(QSN(IM,JM,LM))
+      allocate(QRN(IM,JM,LM))
       allocate(QPLS(IM,JM,LM))
+      QSN = 0.
+      QRN = 0.
       QPLS  = 0.
 
       ! Recording of import/internal vars into export if desired
@@ -7494,7 +7494,7 @@ contains
 #endif
 
 !--kml
-      if(adjustl(CLDMICRO)=="MG1" .or. adjustl(CLDMICRO)=="MG2" .or. adjustl(CLDMICRO)=="MG3" .or. USE_AEROSOL_NN) then
+      if(adjustl(CLDMICRO)=="2MOMENT" .or. USE_AEROSOL_NN) then
 !--kml
 
       call MAPL_TimerOn(STATE,"--USE_AEROSOL_NN1")
@@ -7889,7 +7889,7 @@ contains
        VERIFY_(STATUS)
        if (associated(STOCH_CNV)) STOCH_CNV = SEEDCNV
 
-      if(adjustl(CLDMICRO)=="MG1" .or. adjustl(CLDMICRO)=="MG2" .or. adjustl(CLDMICRO)=="MG3") then
+      if(adjustl(CLDMICRO)=="2MOMENT") then
        if (NPRE_FRAC > 0.0) then
          NPRE_FRAC_2d(:,:) = NPRE_FRAC
        else
@@ -8603,7 +8603,7 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!AER_CLOOUD
 
-      if(adjustl(CLDMICRO)=="MG1" .or. adjustl(CLDMICRO)=="MG2" .or. adjustl(CLDMICRO)=="MG3") then
+      if(adjustl(CLDMICRO)=="2MOMENT") then
 
         KCT = 20 !default upper limit. Less than 20 makes no difference
          ! Find Convective Cloud Top
@@ -8717,7 +8717,7 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%MAXRHCRIT    , 'MAXRHCRIT:'    , DEFAULT= 1.0 )
       call MAPL_GetResource( STATE, CLDPARAMS%MAXRHCRITLAND, 'MAXRHCRITLAND:', DEFAULT= 1.0 )
 
-      if(adjustl(CLDMICRO)=="MG1" .or. adjustl(CLDMICRO)=="MG2" .or. adjustl(CLDMICRO)=="MG3") then
+      if(adjustl(CLDMICRO)=="2MOMENT") then
          call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
          call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT= 15.e-6  )
          call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
@@ -8730,12 +8730,12 @@ contains
       elseif (adjustl(CLDMICRO) =="GFDL") then
          call MAPL_GetResource( STATE, FAC_RI_CN,                'FAC_RI_CN:',      DEFAULT= 1.0     )
          call MAPL_GetResource( STATE, FAC_RI_LS,                'FAC_RI_LS:',      DEFAULT= 0.5     )
-         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
+         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 0.5     )
          call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT= 15.e-6  )
          call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
          call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 1.0     )
          call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT= 5.e-6   )
-         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 150.e-6 )
+         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 21.e-6  )
          call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 0.0     )
          call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 1.0     ) ! irrelevant
          call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT,     'TURNRHCRIT:',     DEFAULT= 750.0   ) ! irrelevant
@@ -8836,7 +8836,7 @@ contains
      
      
       !==========AER_CLOUD===================microphysics "if"===========================
-      if(adjustl(CLDMICRO) == "1MOMENT" .or. adjustl(CLDMICRO) == "GFDL") then
+      if(adjustl(CLDMICRO) /="2MOMENT") then
 
         if(USE_AEROSOL_NN) then
 !--kml--- aerosol activation (single-moment uphysics)      
@@ -9966,8 +9966,8 @@ contains
               RAD_QV            , &
               RAD_QL            , &
               RAD_QI            , &
-              RAD_QR            , &
-              RAD_QS            , &
+              QRN               , &
+              QSN               , &
               QPLS              , &
               CLDREFFL          , &
               CLDREFFI          , &
@@ -10056,29 +10056,32 @@ contains
           where( CFPBL > 0.0 )
              RAD_QL = RAD_QL*(RAD_CF/CFPBL)
              RAD_QI = RAD_QI*(RAD_CF/CFPBL)
-             RAD_QR = RAD_QR*(RAD_CF/CFPBL)
-             RAD_QS = RAD_QS*(RAD_CF/CFPBL)
+             QRN    = QRN   *(RAD_CF/CFPBL)
+             QSN    = QSN   *(RAD_CF/CFPBL)
           endwhere
           RAD_CF = CFPBL
          endif
 
          RAD_QL = MIN( RAD_QL , 0.001 )  ! Still a ridiculously large
          RAD_QI = MIN( RAD_QI , 0.001 )  ! value.
-         RAD_QR = MIN( RAD_QR, 0.01 )  ! value.
-         RAD_QS = MIN( RAD_QS, 0.01 )  ! value.
-         RAD_QG = 0.
+         QRN    = MIN( QRN   , 0.01 )  ! value.
+         QSN    = MIN( QSN   , 0.01 )  ! value.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         QRAIN = RAD_QR*RAD_CF
-         QSNOW = RAD_QS*RAD_CF
-         if (associated(QRTOT)) QRTOT = QRAIN
-         if (associated(QSTOT)) QSTOT = QSNOW
-         if (associated(QPTOTLS)) QPTOTLS = QPLS
+
          ! Set rain water for radiation to 0 if preciprad flag is off (set to 0)
          if(CLDPARAMS%PRECIPRAD.eq.0.) then
             RAD_QR = 0.
             RAD_QS = 0.
             RAD_QG = 0.
+         else
+            RAD_QR = QRN
+            RAD_QS = QSN
          endif
+
+         if (associated(QRTOT)) QRTOT = QRN*RAD_CF
+         if (associated(QSTOT)) QSTOT = QSN*RAD_CF
+
+         if (associated(QPTOTLS)) QPTOTLS = QPLS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          CLDREFFR = 100.e-6
          CLDREFFS = 140.e-6
@@ -11612,7 +11615,11 @@ do K= 1, LM
 
       ! Compute DBZ radar reflectivity
       if (associated(DBZ) .OR. associated(DBZ_MAX)) then
-         call CALCDBZ(DBZ3D,100*PLO,TEMP,Q1,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,0)
+         if(adjustl(CLDMICRO)=="1MOMENT") then
+           call CALCDBZ(DBZ3D,100*PLO,TEMP,Q1,QRN*RAD_CF,QSN*RAD_CF,QSN*RAD_CF,IM,JM,LM,1,0,0)
+         else
+           call CALCDBZ(DBZ3D,100*PLO,TEMP,Q1,QRAIN,QSNOW,QGRAUPEL,IM,JM,LM,1,0,0)
+         endif
          if (associated(DBZ)) DBZ = DBZ3D
          if (associated(DBZ_MAX)) then
             DBZ_MAX=-9999.0
@@ -11777,7 +11784,7 @@ do K= 1, LM
          
 
          !-----If using 2-moment microphysics, allow for supersaturation w.r.t ice ---
-         if(adjustl(CLDMICRO)=="MG1" .or. adjustl(CLDMICRO)=="MG2" .or. adjustl(CLDMICRO)=="MG3") then
+         if(adjustl(CLDMICRO)=="2MOMENT") then
 
             QSS=GEOS_QsatICE (TH1*PK, PLO*100.0)
             where (CFICE .lt. 0.99 .and. QSS .gt. 1.0e-20)            
@@ -11831,7 +11838,7 @@ do K= 1, LM
       ! Clean up any negative specific humidity
       !-----------------------------------------
 
-      if(adjustl(CLDMICRO)=="MG1" .or. adjustl(CLDMICRO)=="MG2" .or. adjustl(CLDMICRO)=="MG3") then
+      if(adjustl(CLDMICRO)=="2MOMENT") then
          call FILLQ2ZERO2( Q1, MASS, FILLQ ) !Slightly different formulation
       else
          call FILLQ2ZERO( Q1, MASS, FILLQ ) 
@@ -11908,10 +11915,6 @@ do K= 1, LM
          endif
       endif
 
-
-
-
-
       if (associated(LS_ARF ))   LS_ARF  = LS_ARFX
       if (associated(AN_ARF ))   AN_ARF  = AN_ARFX
       if (associated(CN_ARF ))   CN_ARF  = CN_ARFX
@@ -11941,13 +11944,11 @@ do K= 1, LM
 
     
 
-      if(adjustl(CLDMICRO)=="MG1" .or. adjustl(CLDMICRO)=="MG2" .or. adjustl(CLDMICRO)=="MG3") then
+      if(adjustl(CLDMICRO)=="2MOMENT") then
          if (associated(CCNCOLUMN    ))   CCNCOLUMN      = SUM(CCN1*MASS/(100.*PLO*r_air/TEMP) , 3)
          if (associated(NDCOLUMN    ))    NDCOLUMN      =  SUM(NCPL_VOL*MASS/(100.*PLO*r_air/TEMP) , 3)
          if (associated(NCCOLUMN    ))    NCCOLUMN      =SUM(NCPI_VOL*MASS/(100.*PLO*r_air/TEMP) , 3)
       end if
-
-
 
       if (associated(PRECU  ))   PRECU   = CN_PRC2 + SC_PRC2
       if (associated(PRELS  ))   PRELS   = LS_PRC2 + AN_PRC2
@@ -11987,7 +11988,7 @@ do K= 1, LM
 
 ! For 2 moment, move some LS precip/flux into the CN precip/flux category for use by chemistry
 ! --------------------------------------------------------------------------------------------
-      if(adjustl(CLDMICRO)=="MG1" .or. adjustl(CLDMICRO)=="MG2" .or. adjustl(CLDMICRO)=="MG3") then
+      if(adjustl(CLDMICRO)=="2MOMENT") then
 
       call MAPL_GetPointer(EXPORT, CU2DRAINMOVE,'CU2DRAINMOVE', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, CU2DSNOWMOVE,'CU2DSNOWMOVE', RC=STATUS); VERIFY_(STATUS)
@@ -12415,6 +12416,8 @@ do K= 1, LM
 
       if(ALLOC_ENTLAM )    deallocate ( ENTLAM )
 
+      deallocate ( QRN )
+      deallocate ( QSN )
       deallocate ( QPLS )
 
       if(ALLOC_CNV_FICE)  deallocate(CNV_FICE)
@@ -12483,7 +12486,7 @@ do K= 1, LM
          if(ALLOC_PRCP_GRAUPEL  )  deallocate(PRCP_GRAUPEL  )
       endif
 
-      if(adjustl(CLDMICRO)=="MG1" .or. adjustl(CLDMICRO)=="MG2" .or. adjustl(CLDMICRO)=="MG3" .or. adjustl(CLDMICRO)=="GFDL") then
+      if(adjustl(CLDMICRO)=="2MOMENT" .or. adjustl(CLDMICRO)=="GFDL") then
          if(ALLOC_DQVDT_micro  )  deallocate(DQVDT_micro )
          if(ALLOC_DQIDT_micro  )  deallocate(DQIDT_micro )
          if(ALLOC_DQLDT_micro  )  deallocate(DQLDT_micro )
@@ -12507,7 +12510,7 @@ do K= 1, LM
       deallocate(FQA, stat=STATUS)
       VERIFY_(STATUS)
 
-      if(adjustl(CLDMICRO)=="MG1" .or. adjustl(CLDMICRO)=="MG2" .or. adjustl(CLDMICRO)=="MG3") then
+      if(adjustl(CLDMICRO)=="2MOMENT") then
 
          deallocate(QCNTOT, stat=STATUS)
          VERIFY_(STATUS)
