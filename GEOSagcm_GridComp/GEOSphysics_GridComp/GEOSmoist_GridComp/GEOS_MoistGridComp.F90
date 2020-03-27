@@ -287,17 +287,12 @@ contains
     if (adjustl(DIAGNOSE_PRECIP_TYPE)=="TRUE" ) LDIAGNOSE_PRECIP_TYPE=.true.
     if (adjustl(DIAGNOSE_PRECIP_TYPE)=="FALSE") LDIAGNOSE_PRECIP_TYPE=.false.
 
-<<<<<<< HEAD
     call ESMF_ConfigGetAttribute( CF, DOSHLW, Label="DOSHLW:",  default=0, RC=STATUS)
 
     call ESMF_ConfigGetAttribute( CF, DO_MYNN, Label="TURBULENCE_DO_MYNN:",  default=0, RC=STATUS)
 
        !call MAPL_GetResource(STATE, DOSHLW,             'DOSHLW:'  ,DEFAULT=0,        RC=STATUS)
 
-
-
-
-=======
     FRIENDLIES_NCPI     = trim(COMP_NAME)
     FRIENDLIES_NCPL     = trim(COMP_NAME)
     FRIENDLIES_NRAIN    = trim(COMP_NAME)    
@@ -306,8 +301,7 @@ contains
     FRIENDLIES_QRAIN    = trim(COMP_NAME)
     FRIENDLIES_QSNOW    = trim(COMP_NAME)
     FRIENDLIES_QGRAUPEL = trim(COMP_NAME)
-   
->>>>>>> develop
+
     if(adjustl(CLDMICRO)=="2MOMENT") then
       if (MGVERSION==0) then    
         FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'      
@@ -6040,15 +6034,10 @@ contains
             c2_gw, fcn, cfaux    
 	   
       real, dimension (1, 0:LM) :: pi_gw, rhoi_gw, ni_gw, ti_gw
-<<<<<<< HEAD
-      real                      :: maxkhpbl, tausurf_gw, overscale, fracover, zcldtop,maxradf,density,E
- 
-      real (ESMF_KIND_R8)       :: tauxr8, fsoot_drop, fdust_drop, sigma_nuc_r8, rh1_r8, frachet_dust, frachet_bc, frachet_org, frachet_ss
-=======
-      real                      :: maxkhpbl, tausurf_gw, overscale, fracover, cfc_aux 
+      real                      :: maxkhpbl, tausurf_gw, overscale, fracover, cfc_aux, zcldtop, maxradf, density, E
+
       real (ESMF_KIND_R8)       :: tauxr8, fsoot_drop, fdust_drop, sigma_nuc_r8, rh1_r8, frachet_dust, &
                                    frachet_bc, frachet_org, frachet_ss
->>>>>>> develop
       logical                   :: ismarine, is_stable, use_average_v                  
       real                      :: Nct, Wct, DX, ksa1, Xscale
 
@@ -6104,12 +6093,8 @@ contains
       real,    dimension(IM,JM,  LM)  :: KEX, DKEX
       real,    dimension(IM,JM,  LM)  :: Q1, W1, U1, V1, TH1, CNV_PRC3,fQi,CFPBL,CNV_HAIL
 
-<<<<<<< HEAD
-      real                            :: IMPOSECLD_TOP,IMPOSECLD_BOT,IMPOSECLD_QCMIN,IMPOSECLD_FRCMIN
-      integer                         :: DOSHLW,SHLWDIAG
-=======
+      real                            :: IMPOSECLD_TOP, IMPOSECLD_BOT, IMPOSECLD_QCMIN, IMPOSECLD_FRCMIN
       integer                         :: SHLWDIAG
->>>>>>> develop
       real,    dimension(IM,JM,  LM)  :: SHLW_PRC3,SHLW_SNO3,UFRC_SC
       real,    dimension(IM,JM,0:LM)  :: CNV_PLE,ZLE
       real,    dimension(      0:LM)  :: SIGE
@@ -6732,16 +6717,12 @@ contains
       call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL, NCPL,     'NCPL'    , RC=STATUS); VERIFY_(STATUS)  !DONIF
       call MAPL_GetPointer(INTERNAL, NCPI,     'NCPI'    , RC=STATUS); VERIFY_(STATUS)
-<<<<<<< HEAD
-     call MAPL_GetPointer(INTERNAL,  PDF_AX,   'PDF_AX'  , RC=STATUS); VERIFY_(STATUS) 
-     call MAPL_GetPointer(INTERNAL,  SKEW_QTX, 'SKEW_QTX', RC=STATUS); VERIFY_(STATUS) 
-      
-=======
+      call MAPL_GetPointer(INTERNAL, PDF_AX,   'PDF_AX'  , RC=STATUS); VERIFY_(STATUS) 
+      call MAPL_GetPointer(INTERNAL, SKEW_QTX, 'SKEW_QTX', RC=STATUS); VERIFY_(STATUS) 
       call MAPL_GetPointer(INTERNAL, NRAIN,    'NRAIN'    , RC=STATUS); VERIFY_(STATUS)  
       call MAPL_GetPointer(INTERNAL, NSNOW,    'NSNOW'    , RC=STATUS); VERIFY_(STATUS)      
       call MAPL_GetPointer(INTERNAL, NGRAUPEL, 'NGRAUPEL'    , RC=STATUS); VERIFY_(STATUS)
-       
->>>>>>> develop
+
       if (DOSHLW /= 0) then
        call MAPL_GetPointer(INTERNAL, CUSH,  'CUSH'    , RC=STATUS); VERIFY_(STATUS)  !DONIF
       end if
