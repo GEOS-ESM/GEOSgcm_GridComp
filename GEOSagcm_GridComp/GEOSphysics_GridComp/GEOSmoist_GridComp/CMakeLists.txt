@@ -6,6 +6,7 @@ set (srcs
   GEOS_MoistGridComp.F90 partition_pdf.F90
   ConvPar_GF_GEOS5.F90 module_gate.F90 uwshcu.F90 SHLWPARAMS.F90
   aer_actv_single_moment.F90 gfdl_cloud_microphys.F90
+  micro_mg3_0.F90 micro_mg_utils.F90 wv_sat_methods.F90
   # files that are sometimes present?
   # ras00.F90 cloud.F90
   )
