@@ -25,8 +25,7 @@ module GEOS_LandGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
-  USE MAPL_BaseMod
+  use MAPL
 
   use GEOS_VegdynGridCompMod,  only : VegdynSetServices   => SetServices
   use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices

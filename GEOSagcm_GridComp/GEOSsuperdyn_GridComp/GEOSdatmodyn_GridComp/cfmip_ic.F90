@@ -1,6 +1,6 @@
 module cfmip_data_mod
 
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod, only : GEOS_Qsat, GEOS_DQsat
 
   implicit none

@@ -30,7 +30,7 @@ module GEOS_SaltwaterGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
   !use DragCoefficientsMod
 
@@ -66,6 +66,8 @@ module GEOS_SaltwaterGridCompMod
   integer, parameter :: NB_CHOU_NIR = 3                        ! number of near-IR bands
   integer, parameter :: NB_CHOU     = NB_CHOU_UV + NB_CHOU_NIR ! total number of bands
 
+  character(len=7)   :: AOIL_COMP_SWITCH                       ! Atmosphere-Ocean Interface Layer, compatibility: on/off
+                                                               ! defualt: OFF, so AOIL is incompatible with "old" interface
 
    contains
 
@@ -134,6 +136,12 @@ module GEOS_SaltwaterGridCompMod
 !-------------------------------------------------------
 
     call MAPL_GetResource ( MAPL, DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,    DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+! Atmosphere-Ocean Interface Layer compatibility: on/off?
+!-------------------------------------------------------
+
+    call MAPL_GetResource( MAPL,  AOIL_COMP_SWITCH,        Label="AOIL_COMP_SWITCH:",     DEFAULT="ON", RC=STATUS)
     VERIFY_(STATUS)
 
 ! Ocean biology and chemistry: using OBIO or not?
@@ -586,15 +594,6 @@ module GEOS_SaltwaterGridCompMod
                                                RC=STATUS  ) 
      VERIFY_(STATUS)
 
-     call MAPL_AddExportSpec(GC,                             &
-        LONG_NAME          = 'surface_pressure',                  &
-        UNITS              = 'Pa',                                &
-        SHORT_NAME         = 'PS',                                &
-        DIMS               = MAPL_DimsTileOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
 !!$  if (DO_GUEST /= 0) then    
   ! this export is here in saltwater only for the sake of 
   ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
@@ -607,6 +606,16 @@ module GEOS_SaltwaterGridCompMod
           RC=STATUS  ) 
      VERIFY_(STATUS)
 !!$  endif ! DO_GUEST
+
+     call MAPL_AddExportSpec(GC,                             &
+        LONG_NAME          = 'surface_pressure',                  &
+        UNITS              = 'Pa',                                &
+        SHORT_NAME         = 'PS',                                &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+     VERIFY_(STATUS)
+
 
 
   if (DO_OBIO /= 0) then    
@@ -935,45 +944,127 @@ module GEOS_SaltwaterGridCompMod
 
   endif !DO_OBIO
 
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'GHTSKIN'   , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
+  if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINW'    , CHILD_ID = WATER, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINW'    , CHILD_ID = WATER, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINW'    , CHILD_ID = WATER, RC=STATUS)
+    VERIFY_(STATUS)  
+  end if
 
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINI'    , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINI'    , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINI'    , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINI'    , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINI'    , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINI'    , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
      
   if(DO_CICE_THERMO /= 0) then ! additional exports from CICE4 sea ice thermodynamics
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'FR'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLICE' , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLSNO' , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ERGICE' , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ERGSNO' , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLPOND', CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS) 
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUAGE' , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS) 
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'FR'     , CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLICE' , CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLSNO' , CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ERGICE' , CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ERGSNO' , CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLPOND', CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUAGE' , CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
   endif 
 
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUXI'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUYI'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SUBLIM'    , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HLATICE'   , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWNDICE'   , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LWNDICE'   , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SHICE'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FRESH'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSALT'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FHOCN'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
+  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENUVF'    , CHILD_ID = WATER, RC=STATUS)
+  !VERIFY_(STATUS)
+  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENUVR'    , CHILD_ID = WATER, RC=STATUS)
+  !VERIFY_(STATUS)
+  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENPAF'    , CHILD_ID = WATER, RC=STATUS)
+  !VERIFY_(STATUS)
+  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENPAR'    , CHILD_ID = WATER, RC=STATUS)
+  !VERIFY_(STATUS)
 
-  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENUVF'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENUVR'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENPAF'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENPAR'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUXW'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUYW'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HLATWTR'   , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWNDWTR'   , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LWNDWTR'   , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SHWTR'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SNOWOCN'   , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'RAINOCN'   , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUXW'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUYW'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HLATWTR'   , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWNDWTR'   , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LWNDWTR'   , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SHWTR'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SNOWOCN'   , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'RAINOCN'   , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+
+! Atmosphere-Ocean Interface Layer (AOIL) specific variables
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'DCOOL'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'DWARM'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TDROP'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'QCOOL'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'QWARM'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWCOOL'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWWARM'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'PHIW'      , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LANGM'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'USTARW'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TBAR'      , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LCOOL'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCOOL'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TDEL'      , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TS_FOUND'  , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SS_FOUND'  , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUTW'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'ZETA_W'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TWMTF'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUXI'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUYI'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SUBLIM'    , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HLATICE'   , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWNDICE'   , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LWNDICE'   , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SHICE'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'GHTSKIN'   , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FRESH'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSALT'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FHOCN'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
 
 ! Atmosphere-Ocean Fluxes
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_SHFLX'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
@@ -984,28 +1075,18 @@ module GEOS_SaltwaterGridCompMod
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_DRNIR'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_DFNIR'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
 
-! Atmosphere-Ocean Interface Layer (AOIL) specific variables
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'DCOOL'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'DWARM'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TDROP'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'QCOOL'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'QWARM'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWCOOL'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS) 
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWWARM'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS) 
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'PHIW'      , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS) 
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LANGM'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)  
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'USTARW'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)  
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TBAR'      , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)  
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LCOOL'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCOOL'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TDEL'      , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TS_FOUND'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SS_FOUND'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUTW'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'ZETA_W'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TWMTF'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
+
 
 !EOS
+
+  if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
+    call MAPL_AddConnectivity ( GC,   &
+         SHORT_NAME  = (/'TSKINW','SSKINW'/),  &
+         DST_ID = ICE,                &
+         SRC_ID = WATER,              &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+  endif
 
   !call MAPL_AddConnectivity ( GC,   &
   !     SHORT_NAME  = (/'FRZMLT'/),  &
@@ -1485,6 +1566,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated( MOU2M))  MOU2M = 0.0
    if(associated( MOV2M))  MOV2M = 0.0
    if(associated(VNT)) VNT = 0.0
+   if(associated(GST)) GST = 0.0
 
 ! Call the childrens' RUN1
 !-------------------------
