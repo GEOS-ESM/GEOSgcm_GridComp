@@ -85,7 +85,7 @@ subroutine A_star_closure(IM, JM, LM, zle, zlo, thv, & ! in
      if ( conv_flag(i,j) ) then
         do k = LM,izsl(i,j),-1
            foo = foo + A_star(i,j,k)*( zle(i,j,km1) - zle(i,j,k) ) 
-           write(*,*) k, foo, A_star(i,j,k), zle(i,j,km1) - zle(i,j,k)
+!           write(*,*) k, foo, A_star(i,j,k), zle(i,j,km1) - zle(i,j,k)
         end do
      end if
   end do
@@ -469,8 +469,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
 
               if ( L0(i,j) > 0. ) then
-                 ent(iup,i,j,k) = real(enti(iup,i,j,k))*ent0/dzle
-!                 ent(iup,i,j,k) = entf(iup,i,j,k)*ent0/dzle ! test
+!                 ent(iup,i,j,k) = real(enti(iup,i,j,k))*ent0/dzle
+                 ent(iup,i,j,k) = entf(iup,i,j,k)*ent0/dzle ! test
 
                  ! increase entrainment if local minimum of thv
                  if ( ( thv(i,j,k) < thv(i,j,kp1) ) .and. ( thv(i,j,k) < thv(i,j,km1) ) ) then

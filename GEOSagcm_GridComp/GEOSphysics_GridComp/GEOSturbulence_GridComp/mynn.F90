@@ -67,7 +67,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
                     u, v, omega, T, qv, ql, qi, ac, thl, qt, thv, &                         ! in
                     u_star, H_surf, E_surf, &                                               ! in
                     whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, &                            ! in
-                    A_cloud, B_cloud, qsat, &                                               ! in
+                    A_mynn, B_mynn, qsat_mynn, &                                               ! in
                     tke, hl2, qt2, hlqt, &                                                  ! inout
                     Km, Kh, K_tke, itau, ws_cg, wqv_cg, wql_cg, &                           ! out
                     Beta_hl, Beta_qt, &                                                     ! out
@@ -84,7 +84,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
   real, intent(in)                           :: th00, DOMF
   real, dimension(IM,JM), intent(in)         :: u_star, H_surf, E_surf
   real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, T, qv, ql, qi, ac, thv, thl, qt, E, D, &
-                                                A_cloud, B_cloud, qsat
+                                                A_mynn, B_mynn, qsat_mynn
   real, dimension(IM,JM,0:LM), intent(in)    :: ple, zle, rhoe, omega, whl_mf, wqt_mf, wthv_mf, &
                                                 au, Mu, wu
   real, dimension(IM,JM,0:LM), intent(inout) :: tke, hl2, qt2, hlqt
@@ -141,10 +141,10 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
         ifac = ( zle(i,j,k) - zlo(i,j,kp1) )*idzlo
 
-!        if ( qt(i,j,k) >= qsat(i,j,k) ) then
+!        if ( qt(i,j,k) >= qsat_mynn(i,j,k) ) then
            ac_half =      ac(i,j,kp1) + ifac*( ac(i,j,k) - ac(i,j,kp1) )
-           A_half  = A_cloud(i,j,kp1) + ifac*( A_cloud(i,j,k) - A_cloud(i,j,kp1) )
-           B_half  = B_cloud(i,j,kp1) + ifac*( B_cloud(i,j,k) - B_cloud(i,j,kp1) )
+           A_half  = A_mynn(i,j,kp1) + ifac*( A_mynn(i,j,k) - A_mynn(i,j,kp1) )
+           B_half  = B_mynn(i,j,kp1) + ifac*( B_mynn(i,j,k) - B_mynn(i,j,kp1) )
 !!$        else
 !!$           ac_half = 0.
 !!$           A_half  = 0.
@@ -152,7 +152,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
 !!$        end if
 
         ! Test
-!!$        if ( qt(i,j,k) > qsat(i,j,k) ) then
+!!$        if ( qt(i,j,k) > qsat_mynn(i,j,k) ) then
 !!$           write(*,*) k, ac(i,j,k) - ac(i,j,kp1), ac(i,j,k-1) - ac(i,j,k), '*' 
 !!$        else
 !!$           write(*,*) k, ac(i,j,k) - ac(i,j,kp1), ac(i,j,k-1) - ac(i,j,k)
