@@ -1094,9 +1094,11 @@ contains
 
      call MAPL_AddConnectivity ( GC,                               &
          SHORT_NAME  = (/'AERO','AERO2G_RAD'/),                    & !AERO2G_RAD is GOCART2G's AERO state
+!         SHORT_NAME  = (/'AERO'/),                                 & 
          DST_ID      =  RAD,                                       &
          SRC_ID      =  CHEM,                                      &
                                                         RC=STATUS  )
+    VERIFY_(STATUS)
 
 
      call MAPL_AddConnectivity ( GC,                               &
@@ -1184,7 +1186,7 @@ contains
                          'BYNCY   ',  'DQIDT   ', 'QI      ',     &
                          'DQRC    ',  'CNV_CVW ', 'QLLS    ',     &
                          'QILS    ',  'DQRL    ', 'CNV_FRC ',     & 
-                         'QV      '          /),  &                  !added for GOCART2G's children
+                         'QV      '            /),  &                  !added for GOCART2G's children
         DST_ID      = CHEM,                                       &
         SRC_ID      = MOIST,                                      &
                                                        RC=STATUS  )
