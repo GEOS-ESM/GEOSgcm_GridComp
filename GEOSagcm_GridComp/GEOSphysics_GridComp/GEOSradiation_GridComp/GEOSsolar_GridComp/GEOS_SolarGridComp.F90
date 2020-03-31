@@ -586,8 +586,8 @@ contains
        VLOCATION  = MAPL_VLocationCenter,                         &
        DATATYPE   = MAPL_StateItem,                               &
        RESTART    = MAPL_RestartSkip,                             &
-                                                       RC=STATUS  )
-    VERIFY_(STATUS)
+                                                       __RC__  )
+
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo_for_visible_beam',                       &
@@ -2106,7 +2106,6 @@ if (mapl_am_i_root()) print*,'BANDS_SOLAR_OFFSET     = ',BANDS_SOLAR_OFFSET
 
        end if RADIATIVELY_ACTIVE_AEROSOLS
 
-
 ! BEGIN GOCARTng AERO2G callback
 ! ================================================================
 
@@ -2241,7 +2240,6 @@ if (mapl_am_i_root()) print*,'SOLAR AEROSOL_ASY diff = ', sum(AEROSOL_ASY-AEROSO
 
 ! END GOCARTng AERO2G callback
 ! ================================================================
-
 
 
        call MAPL_TimerOff(MAPL,"-AEROSOLS", RC=STATUS); VERIFY_(STATUS)
