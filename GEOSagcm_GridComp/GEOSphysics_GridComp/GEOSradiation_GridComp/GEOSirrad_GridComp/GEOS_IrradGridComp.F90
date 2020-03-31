@@ -531,8 +531,7 @@ contains
        VLOCATION  = MAPL_VLocationCenter,                         &
        DATATYPE   = MAPL_StateItem,                               &
        RESTART    = MAPL_RestartSkip,                             &
-                                                       RC=STATUS  )
-    VERIFY_(STATUS)
+                                                       __RC__  )
 
 
 !  !EXPORT STATE:
