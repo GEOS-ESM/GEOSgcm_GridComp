@@ -49,6 +49,7 @@ CONTAINS
          CLAN,                                            &
          HHO, HSO,PRECU,                                  &
          RASPARAMS,                                       &
+         RAS_NO_NEG,                                      &
      !!  RAS Relaxation Diagnostics
          RAS_TIME, RAS_TRG, RAS_TOKI, RAS_PBL, RAS_WFN,   &
          RAS_TAU,                                         &
@@ -192,6 +193,7 @@ CONTAINS
 
       !     REAL, DIMENSION(:),          INTENT(IN   ) ::  RASPARAMS
       type (RASPARAM_TYPE),        INTENT(IN   ) ::  RASPARAMS
+      LOGICAL,                     INTENT(IN   ) ::  RAS_NO_NEG  ! Whether to guard against negatives
 
       REAL, DIMENSION (IDIM     ), INTENT(  OUT) :: RAS_TIME, RAS_TRG, RAS_TOKI, RAS_PBL, RAS_WFN 
 
@@ -205,6 +207,7 @@ CONTAINS
 
       !  LOCALS
 
+      REAL, DIMENSION (IDIM,K0)  ::  DELP   ! MEM - needed for fill_z
 
       REAL,  DIMENSION(K0) :: POI_SV, QOI_SV, UOI_SV, VOI_SV
       REAL,  DIMENSION(K0) :: POI, QOI, UOI, VOI,  DQQ, BET, GAM, CLL
@@ -219,7 +222,8 @@ CONTAINS
 
       REAL,  DIMENSION(ITRCR) :: XHT
 
-      REAL,  DIMENSION(K0,ITRCR) :: XOI, XCU, XOI_SV
+      ! MEM - added XFF for unpacking in STRAP
+      REAL,  DIMENSION(K0,ITRCR) :: XOI, XCU, XOI_SV, XFF
 
       REAL,  DIMENSION(K0+1) :: PRJ, PRS, QHT, SHT ,ZET, XYD, XYD0
 
@@ -228,7 +232,6 @@ CONTAINS
       INTEGER :: K,MY_PE
 
       REAL, DIMENSION(IDIM,K0) :: LAMBDSV2
-
 
       REAL TX2, TX3, UHT, VHT, AKM, ACR, ALM, TTH, QQH, SHTRG, WSPBL, DQX
       REAL WFN, TEM, TRG, TRGEXP, EVP, WLQ, QCC,MTKW_MAX !, BKE
@@ -439,6 +442,9 @@ CONTAINS
       wfnc   = 0.0
 
 #endif
+
+      ! MEM
+      DELP(:,ICMIN:K0) = PLE(:,ICMIN+1:K0+1) - PLE(:,ICMIN:K0)
 
       DO I=1,IRUN
 
@@ -684,7 +690,7 @@ CONTAINS
 	      alph_e, beta_e, RH_AMB, ECRIT
 
          real :: lamb, minh, maxh, max_alpha, min_alpha
-          
+
          REAL, DIMENSION (NDUSTMAX) :: NDUST, NDUST_AMB, INDUST, DDUST_AMB, DDUST 
          INTEGER :: INX, naux, INDEX
 
@@ -1369,6 +1375,7 @@ CONTAINS
             DO ITR=1,ITRCR 
                DO L=K-1,IC+1,-1
                   TEM    = WFN*PRI(L)
+                  ! MEM - note that TEM and ETA are always POSITIVE
                   XCU(L,ITR) = XCU(L,ITR) + TEM *                        &
                         ( (XOI(L-1,ITR) - XOI(L,ITR  )) * ETA(L)   &
                         + (XOI(L,ITR  ) - XOI(L+1,ITR)) * ETA(L+1) )
@@ -1388,6 +1395,10 @@ CONTAINS
                   XOI(L,ITR) = XOI(L,ITR) + XCU(L,ITR)
                ENDDO
             ENDDO
+
+            ! MEM
+            IF (RAS_NO_NEG) call fill_z(K-IC+1, ITRCR, XOI(IC:K,:), DELP(I,IC:K), IC, K )
+
          else 
             WFN     = WFN*0.5 *1.0           !*FRICFAC*0.5
          endif
@@ -1613,9 +1624,22 @@ CONTAINS
 
       SUBROUTINE STRAP(FINAL)
 
+! MEM - these are inherited from the current scope:
+!   K = KCBL  e.g. level of PBL
+!   icmin = extreme level of conv detrainment ?  30 hPa
+!   PRJ = PKE for the column
+
+!   POI = THO for the column
+!   QOI = QHO for the column
+!   UOI = UHO for the column
+!   VOI = VHO for the column
+
+! MEM - added these:
+!   XFF(L,ITR) = for range of layers KCBL to surface, record the weighted value / range total 
+!   WW(L)  = level by level weighting, for unpacking
 
          INTEGER :: FINAL
-         REAL , DIMENSION(K0)  :: WGHT, MASSF
+         REAL , DIMENSION(K0)  :: WGHT, MASSF, WW
 
          REAL :: WGHT0, PRCBL
 
@@ -1663,7 +1687,7 @@ CONTAINS
 
             IF (DO_TRACERS) THEN 
                DO ITR=1,ITRCR 
-                  XOI(ICMIN:K,ITR) = XHO(I,ICMIN:K,ITR)
+                  XOI(ICMIN:K,ITR) = XHO(I,ICMIN:K,ITR)  ! Init the column from 30 hPa down to KCBL
                END DO
             END IF
 
@@ -1718,12 +1742,33 @@ CONTAINS
 
 
                IF (DO_TRACERS) THEN 
-                  XOI(K,:)=0.
-                  DO ITR=1,ITRCR
-                     DO L=K,K0
-                        XOI(K,ITR) = XOI(K,ITR) + WGHT(L)*XHO(I,L,ITR)
+                  IF (RAS_NO_NEG) THEN 
+                     XOI(K,:)=0.                                           ! Init for accumulation
+                     XFF(:,:)=0.
+                     DO ITR=1,ITRCR
+                        DO L=K,K0                                          ! From KCBL down to surface
+                           XFF(L,ITR) =              WGHT(L)*XHO(I,L,ITR)  ! Record weighted tracer value
+                           XOI(K,ITR) = XOI(K,ITR) + WGHT(L)*XHO(I,L,ITR)  ! Accumulate values in KCBL
+                        END DO
+
+                        IF ( XOI(K,ITR) .LT. 1.0e-25 ) THEN
+!                         Cannot divide by the very small total
+                          XFF(K:K0,ITR) = 1.0 / (K0-K+1)                     ! Divide equally among levels
+                        ELSE
+                          DO L=K,K0                                          ! From KCBL down to surface
+                             XFF(L,ITR) = XFF(L,ITR) / XOI(K,ITR)            ! Divide weighted tracers by total
+                          END DO
+                        END IF
                      END DO
-                  END DO
+                     ! MEM - at this point, there are no negatives in XOI
+                  ELSE
+                     XOI(K,:)=0.
+                     DO ITR=1,ITRCR
+                        DO L=K,K0
+                           XOI(K,ITR) = XOI(K,ITR) + WGHT(L)*XHO(I,L,ITR)
+                        END DO
+                     END DO
+                  END IF
                END IF
 
                DQQ(K) = DQSAT( POI(K)*PRH(K) , POL(K), qsat=QST(K) )
@@ -1814,8 +1859,10 @@ CONTAINS
 
             !! Scale properly by layer masses
             wght0 = 0.
+            WW(:) = 0.
             DO L=K,K0 
-               wght0 = wght0 + WGHT(L)* ( PLE(I,L+1) - PLE(I,L) )
+               wght0 = wght0 +              WGHT(L)* ( PLE(I,L+1) - PLE(I,L) )
+               WW(L) = (PRS(K+1) - PRS(K))/(WGHT(L)* ( PLE(I,L+1) - PLE(I,L) ))
             END DO
 
             wght0 = ( PRS(K+1)   - PRS(K)  )/wght0
@@ -1832,11 +1879,21 @@ CONTAINS
 
             IF (DO_TRACERS) THEN 
                XHO(I,ICMIN:K-1,:) = XOI(ICMIN:K-1,:) 
-               DO ITR=1,ITRCR
-                  DO L=K,K0
-                     XHO(I,L,ITR) =  XHO(I,L,ITR) + WGHT(L)*(XOI(K,ITR) - XOI_SV(K,ITR))
+               IF ( RAS_NO_NEG ) THEN
+!                 MEM - proportionally distributed:
+                  DO ITR=1,ITRCR
+                     DO L=K,K0                       !  For levels KCBL down to the surface
+                        XHO(I,L,ITR) =  XFF(L,ITR) * XOI(K,ITR) * WW(L)
+                     END DO
                   END DO
-               END DO
+               ELSE
+!                 Previous approach:
+                  DO ITR=1,ITRCR
+                     DO L=K,K0                       !  For levels KCBL down to the surface
+                        XHO(I,L,ITR) =  XHO(I,L,ITR) + WGHT(L)*(XOI(K,ITR) - XOI_SV(K,ITR))
+                     END DO
+                  END DO
+               END IF
             END IF
 
 
@@ -2639,6 +2696,128 @@ CONTAINS
       end if
 
    end function ERFAPP
+
+! Manyin - Adapted from: fv_fill.F90
+!    Modified it to work bottom-up
+!>@brief The subroutine 'fill_z' is for mass-conservative filling of nonphysical negative values in the tracers. 
+!>@details This routine takes mass from adjacent cells in the same column to fill negatives, if possible.
+ subroutine fill_z(km, nq, q, dp, iic, iik)
+   integer,  intent(in   ):: km                !< No. of levels
+   integer,  intent(in   ):: nq                !< Total number of tracers
+   real ,    intent(inout)::  q(km,nq)         !< tracer mixing ratio
+   real ,    intent(in   ):: dp(km)            !< pressure thickness
+   integer,  intent(in   ):: iic, iik          !< Top level, bottom level [in the range of 1 to 72 (or 132)]
+! LOCAL VARIABLES:
+   logical :: zfix
+   real    :: dm(km)
+   integer :: i, k, ic
+   real    :: dq, sum0, sum1, fac
+
+   do ic=1,nq
+
+      zfix = .false.
+
+! Top layer
+      if( q(1,ic) < 0. ) then
+          q(2,ic) = q(2,ic) + q(1,ic)*dp(1)/dp(2)
+          q(1,ic) = 0.
+      endif
+
+! Bottom layer
+      k = km
+!     if( q(k,ic)<0. .and. q(k-1,ic)>0.) then
+!         zfix = .true.
+! Borrow from above
+!         dq = min ( q(k-1,ic)*dp(k-1), -q(k,ic)*dp(k) )
+!         q(k-1,ic) = q(k-1,ic) - dq/dp(k-1)
+!         q(k  ,ic) = q(k  ,ic) + dq/dp(k  )
+!     endif
+      if( q(k  ,ic) < 0. ) then
+          q(k-1,ic) = q(k-1,ic) + q(k,ic)*dp(k)/dp(k-1)
+          q(k  ,ic) = 0.
+      endif
+
+! Interior
+
+#if 0
+    IF ( SUM(q(2:2+(km/4),ic)*dp(2:2+(km/4))) > SUM(q(km-(1+km/4):km-1,ic)*dp(km-(1+km/4):km-1)) ) THEN
+
+! Top-down
+      do k=2,km-1
+
+         if ( q(k,ic)<0.0) zfix = .true.
+
+         if ( q(k,ic)<0.0 .and. q(k-1,ic)>0. ) then
+! Borrow from above
+            dq =  min ( q(k-1,ic)*dp(k-1), -q(k,ic)*dp(k) )
+            q(k-1,ic) = q(k-1,ic) - dq/dp(k-1)
+            q(k  ,ic) = q(k  ,ic) + dq/dp(k  )
+         endif
+
+         if ( q(k,ic)<0.0 .and. q(k+1,ic)>0. ) then
+! Borrow from below:
+            dq =  min ( q(k+1,ic)*dp(k+1), -q(k,ic)*dp(k) )
+            q(k+1,ic) = q(k+1,ic) - dq/dp(k+1)
+            q(k  ,ic) = q(k  ,ic) + dq/dp(k  )
+         endif
+
+      enddo
+
+    ELSE
+#endif
+
+! Bottom-up
+      do k=km-1,2,-1
+
+         if ( q(k,ic)<0.0) zfix = .true.
+
+         if ( q(k,ic)<0.0 .and. q(k+1,ic)>0. ) then
+! Borrow from below:
+            dq =  min ( q(k+1,ic)*dp(k+1), -q(k,ic)*dp(k) )
+            q(k+1,ic) = q(k+1,ic) - dq/dp(k+1)
+            q(k  ,ic) = q(k  ,ic) + dq/dp(k  )
+         endif
+
+         if ( q(k,ic)<0.0 .and. q(k-1,ic)>0. ) then
+! Borrow from above
+            dq =  min ( q(k-1,ic)*dp(k-1), -q(k,ic)*dp(k) )
+            q(k-1,ic) = q(k-1,ic) - dq/dp(k-1)
+            q(k  ,ic) = q(k  ,ic) + dq/dp(k  )
+         endif
+
+      enddo
+
+#if 0
+    END IF
+#endif
+
+
+! Perform final check and non-local fix if needed
+         if ( zfix ) then
+
+           sum0 = 0.
+           do k=km,1,-1
+              dm(k) = q(k,ic)*dp(k)
+              sum0 = sum0 + dm(k)
+           enddo
+
+           if ( sum0 > 0. ) then
+! PRINT*,'RAS NEGATIVES SPREAD IN Z', iic, iik
+             sum1 = 0.
+             do k=km,1,-1
+                sum1 = sum1 + max(0., dm(k))
+             enddo
+             fac = sum0 / sum1
+             do k=km,1,-1
+                q(k,ic) = max(0., fac*dm(k)/dp(k))
+             enddo
+           endif
+
+         endif
+
+   enddo
+ end subroutine fill_z
+
 
 
 END MODULE RAS

@@ -5,6 +5,7 @@ program mk_CiceRestart
 
   use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
   use MAPL_HashMod
+  use mk_restarts_getidsMod, only: GetIDs,ReadTileFile_IntLatLon
 
   implicit none
 
@@ -21,11 +22,6 @@ program mk_CiceRestart
   real*8, allocatable :: var8(:)
 
   integer, parameter ::  zoom=2
-
-  interface GetIds   
-     procedure GetIds_fast_1p
-     procedure GetIds_accurate_mpi
-  end interface
 
 !---------------------------------------------------------------------------
 
@@ -44,10 +40,10 @@ program mk_CiceRestart
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table
 
-  call ReadTileFile(OutTileFile,Pf,Id,lono,lato,0)
+  call ReadTileFile_IntLatLon(OutTileFile,Pf,Id,lono,lato,zoom,0)
   deallocate(Pf,Id)
 
-  call ReadTileFile(InTileFile ,Pf,Id,loni,lati,0)
+  call ReadTileFile_IntLatLon(InTileFile ,Pf,Id,loni,lati,zoom,0)
   deallocate(Pf,Id)
 
   nullify(Pf)
@@ -75,7 +71,7 @@ program mk_CiceRestart
 
   allocate(Id (ntiles))
 
-  call GetIds(loni,lati,lono,lato,Id)
+  call GetIds(loni,lati,lono,lato,zoom,Id)
 
   do n=1,18
      read (50) var4(:)
@@ -96,10 +92,6 @@ program mk_CiceRestart
 
   close(40)
   close(50)
-
-contains
-
-#include "getids.H"
 
 end program mk_CiceRestart
 
