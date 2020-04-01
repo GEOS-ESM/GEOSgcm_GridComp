@@ -89,7 +89,8 @@
 #    0 : DEFAULT climatologies in BCSDIR are used
 #    1 : Prescribe interannually varying  MCD15A2H.006 LAI and MCD43GF.006 VISDF and NIRDF albedo 
 #
-# GEOSagcm=>MODIS_DVG: 0                     # NOT yet used in GEOSldas
+# GEOSagcm=>MODIS_DVG: 0                     
+# GEOSldas=>MODIS_DVG: 0
 
 
 #--------------------------------------------------------#
