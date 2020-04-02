@@ -8442,7 +8442,7 @@ module GEOS_SurfaceGridCompMod
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'TSKINW', ALLOC=associated(TSKINWTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'TSKINI', ALLOC=associated(TSKINITILE  ), notFoundOK=.true., RC=STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'TSKINICE', ALLOC=associated(TSKINITILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
 
       call MAPL_GetPointer(GEX(type), dum, 'DCOOL' ,   ALLOC=associated(DCOOL_TILE    ), notFoundOK=.true., RC=STATUS)
@@ -9110,7 +9110,7 @@ module GEOS_SurfaceGridCompMod
          VERIFY_(STATUS)
       end if
       if(associated(TSKINITILE)) then
-         call FILLOUT_TILE(GEX(type), 'TSKINI',TSKINITILE, XFORM, RC=STATUS)
+         call FILLOUT_TILE(GEX(type), 'TSKINICE',TSKINITILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
 
