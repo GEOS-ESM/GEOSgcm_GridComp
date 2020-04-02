@@ -1052,8 +1052,7 @@ contains
                                            RingInterval = CORRECTOR_DURATION, sticky=.false., rc=status )
        VERIFY_(STATUS)
 
-       replayShutoffAlarm = ESMF_AlarmCreate( name='ReplayShutOff', clock=clock, &
-                                              RingInterval = Shutoff, sticky=.false., RC=STATUS )
+       replayShutoffAlarm = ESMF_AlarmCreate( name='ReplayShutOff', clock=clock, RingInterval = Shutoff, sticky=.true., RC=STATUS )
        VERIFY_(STATUS)
 
 
@@ -1677,7 +1676,7 @@ contains
           if (shutoffRpl ) then
              ! clear IAU tendencies
              ! --------------------
-             if( MAPL_AM_I_Root() ) PRINT *,TRIM(Iam)//":  Zeroing IAU forcing ..."
+             ! if( MAPL_AM_I_Root() ) PRINT *,TRIM(Iam)//":  Zeroing IAU forcing ..."
              call ESMF_GridCompRun ( GCS(AIAU), importState=GIM(AIAU), exportState=GEX(AIAU), clock=clock, phase=2, userRC=status )
              VERIFY_(STATUS)
              call MAPL_GetObjectFromGC ( GCS(AGCM), MAPL_AGCM, RC=STATUS)
