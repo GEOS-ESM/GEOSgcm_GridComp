@@ -8,6 +8,7 @@ esma_add_library (${this}
   SRCS ${SRCS}
   SUBCOMPONENTS @mom6
   DEPENDENCIES MAPL_Base
+  TYPE SHARED
   )
 
 # Specs for r8 version
