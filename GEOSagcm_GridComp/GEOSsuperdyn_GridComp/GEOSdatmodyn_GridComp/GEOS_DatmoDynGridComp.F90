@@ -1159,6 +1159,11 @@ contains
     real, pointer, dimension(:,:)   :: DUMMYDXC,DUMMYDYC
     real, pointer, dimension(:,:,:) :: DUMMYW,DUMMYPLK
     real, pointer, dimension(:,:,:) :: PKEOUT
+    real, pointer, dimension(:,:,:) :: QVDYN
+    real, pointer, dimension(:,:,:) :: TDYN
+    real, pointer, dimension(:,:,:) :: UDYN
+    real, pointer, dimension(:,:,:) :: VDYN
+    real, pointer, dimension(:,:,:) :: PLEDYN
     real, pointer, dimension(:)     :: AK,BK
     real, pointer, dimension(:,:,:) :: U_CGRID,V_CGRID
     real, pointer, dimension(:,:,:) :: U_DGRID,V_DGRID
@@ -1519,6 +1524,11 @@ contains
       call MAPL_GetPointer(EXPORT, DUMMYW,  'W' , __RC__)
       call MAPL_GetPointer(EXPORT, DUMMYPLK,  'PLK' , __RC__)
       call MAPL_GetPointer(EXPORT, PKEOUT,  'PKE' , __RC__)
+      call MAPL_GetPointer(EXPORT, QVDYN,  'QV_DYN_IN' , __RC__)
+      call MAPL_GetPointer(EXPORT, TDYN,  'T_DYN_IN' , __RC__)
+      call MAPL_GetPointer(EXPORT, UDYN,  'U_DYN_IN' , __RC__)
+      call MAPL_GetPointer(EXPORT, VDYN,  'V_DYN_IN' , __RC__)
+      call MAPL_GetPointer(EXPORT, PLEDYN,  'PLE_DYN_IN' , __RC__)
       call MAPL_GetPointer(EXPORT, DUMMYDXC,  'DXC' , __RC__)
       call MAPL_GetPointer(EXPORT, DUMMYDYC,  'DYC' , __RC__)
       call MAPL_GetPointer(EXPORT, AK,  'AK' , __RC__)
@@ -1762,6 +1772,12 @@ contains
       endif     
       TH = T * ( ( MAPL_P00 / PLO )**MAPL_KAPPA )
       OM = OMOBS
+
+      if (associated(QVDYN))  QVDYN = Q
+      if (associated(TDYN))   TDYN = T
+      if (associated(UDYN))   UDYN = U
+      if (associated(VDYN))   VDYN = V
+      if (associated(PLEDYN)) PLEDYN = PLE
 
       call MAPL_GetPointer(IMPORT, PHIS,  'PHIS' , __RC__)
       ZLE(:,:,LM) = PHIS / MAPL_GRAV
