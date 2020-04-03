@@ -1,19 +1,17 @@
 program SaltIntSplitter
 
-! $Id$
-
+  use MAPL_ConstantsMod,only: MAPL_PI,  MAPL_radius
   use netcdf
   use MAPL
+  use mk_restarts_getidsMod, only: ReadTileFile_IntLatLon
   use gFTL_StringVector
 
   implicit none
-
 
   character*256 :: Usage="SaltIntSplitter InTileFile InRestart"
   character*256 :: InTileFile
   character*256 :: InRestart
   character*256 :: arg
-
 
   integer :: i, rc, jc, iostat, iargc, n, mask,j,k,otiles,nsubtiles,l,itiles,nwords
   integer, pointer  :: Lono(:), Lato(:), Id(:), Pf(:)
@@ -62,7 +60,7 @@ program SaltIntSplitter
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table
 
-  call ReadTileFile(InTileFile ,Pf,Id,loni,lati, 0)
+  call ReadTileFile_IntLatLon(InTileFile ,Pf,Id,loni,lati,zoom,0)
   deallocate(Pf,Id)
 
   nullify(Pf)
@@ -289,8 +287,6 @@ program SaltIntSplitter
   deallocate( varInR8, varOutR8 )
 
 contains
-
-#include "getids.H"
 
 end program SaltIntSplitter
 

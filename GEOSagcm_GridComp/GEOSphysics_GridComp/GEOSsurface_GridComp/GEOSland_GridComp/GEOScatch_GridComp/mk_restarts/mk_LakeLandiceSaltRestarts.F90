@@ -1,19 +1,19 @@
 program mk_LakeLandiceSaltRestarts
 
-! $Id$
+  use netcdf
 
   use MAPL
+  use mk_restarts_getidsMod, only: GetIDS,ReadTileFile_IntLatLon
+  use PFIO
   use gFTL_StringVector
 
   implicit none
-
 
   character*256 :: Usage="mk_LakeLandiceSaltRestarts OutTileFile InTileFile InRestart mask"
   character*256 :: OutTileFile
   character*256 :: InTileFile
   character*256 :: InRestart
   character*256 :: arg
-
 
   integer :: i, rc, jc, iostat, iargc, n, mask,j,k,otiles,nsubtiles,l,itiles,nwords
   integer, pointer  :: Lono(:), Lato(:), Id(:), Pf(:)
@@ -65,10 +65,10 @@ program mk_LakeLandiceSaltRestarts
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table
 
-  call ReadTileFile(OutTileFile,Pf,Id,lono,lato,mask)
+  call ReadTileFile_IntLatLon(OutTileFile,Pf,Id,lono,lato,zoom,mask)
   deallocate(Pf,Id)
 
-  call ReadTileFile(InTileFile ,Pf,Id,loni,lati,mask)
+  call ReadTileFile_IntLatLon(InTileFile ,Pf,Id,loni,lati,zoom,mask)
   deallocate(Pf,Id)
 
   nullify(Pf)
@@ -78,7 +78,7 @@ program mk_LakeLandiceSaltRestarts
   otiles = size(lono)  ! Output Tile Size
   allocate(Id (otiles))
 
-  call GetIds(loni,lati,lono,lato,Id)
+  call GetIds(loni,lati,lono,lato,zoom,Id)
 
   call MAPL_NCIOGetFileType(InRestart, filetype,rc=rc)
 
@@ -245,8 +245,6 @@ program mk_LakeLandiceSaltRestarts
   end if
 
 contains
-
-#include "getids.H"
 
 end program mk_LakeLandiceSaltRestarts
 
