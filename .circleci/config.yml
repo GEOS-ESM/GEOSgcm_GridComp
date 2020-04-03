@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: gmao/geos-build-env:6.0.4
+      - image: gmao/geos-build-env-gcc-source:6.0.4
     working_directory: /root/project
     steps:
       - run:
@@ -18,13 +18,8 @@ jobs:
             mepo init
             mepo clone
             mepo develop GEOSgcm_GridComp GEOSgcm_App
-            mepo checkout ${CIRCLE_BRANCH} GEOSgcm_GridComp
+            mepo checkout-if-exists ${CIRCLE_BRANCH}
             mepo status
-      - run:
-          name: "Fix linker flags"
-          command: |
-            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSgcm
-            sed -i -e '$aset(CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS}    -Wl,--unresolved-symbols=ignore-all")' ./@cmake/GNU.cmake
       - run:
           name: "CMake"
           command: |

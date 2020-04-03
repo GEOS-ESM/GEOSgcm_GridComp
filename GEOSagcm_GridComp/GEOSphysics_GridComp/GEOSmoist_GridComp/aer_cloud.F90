@@ -2,7 +2,7 @@
 
  use MAPL_ConstantsMod, r8 => MAPL_R8
  use m_fpe, only: isnan
-!use m_zeit
+
  !This module calculates the number cocentration of activated aerosol particles for liquid and ice clouds, 
 ! according to the models of Nenes & Seinfeld (2003), Fountoukis and Nenes (2005) and Barahona and Nenes (2008, 2009).
 ! *** Code Developer: Donifan Barahona donifan.o.barahona@nasa.gov
@@ -281,7 +281,8 @@
 					   ndust_immr8, ndust_depr8,  nlimr8, use_average_v, CCN_param, IN_param, &                       
                        so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc, &                                                                           
                        fd_dust, fd_soot, &
-					   pfrz_inc_r8,  rhi_cell, frachet_dust, frachet_bc, frachet_org, frachet_ss)
+					   pfrz_inc_r8,  rhi_cell, frachet_dust, frachet_bc, frachet_org, frachet_ss, &
+                       Immersion_param)
 
 
 
@@ -294,15 +295,15 @@
 					   npre_in, dpre_in, Ndropr8, qc, fd_soot, fd_dust,  rhi_cell, &
                        frachet_dust, frachet_bc, frachet_org, frachet_ss
                        
-      integer,  intent(in) :: CCN_param, IN_param					   
+      integer,  intent(in) :: CCN_param, IN_param, Immersion_param !IN param is now only for cirrus					   
             
       real(r8), dimension(:), intent(inout) :: ccn_diagr8 
       
       real(r8), intent(out)  :: cdncr8, smaxliqr8, incr8, smaxicer8, nheticer8, &
 					   INimmr8, dINimmr8, Ncdepr8, sc_icer8, &
 					   ndust_immr8, ndust_depr8,  nlimr8, pfrz_inc_r8
-                        &
-      real, intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
+                        
+      real(r8), intent(out) :: so4_conc, seasalt_conc, dust_conc, org_conc, bc_conc            
 
       type(AerProps) :: Aeraux       
        
@@ -452,9 +453,8 @@
       act_param = CCN_param
 
 !============== Calculate cloud droplet number concentration===================
-!   		       call zeit_ci("MOIST::aero::pdfactiv")
-               
-  if  (tparc .gt. 245.0) then  ! lower T for liquid water activation 
+   
+  if  (tparc .gt. 235.0) then  ! lower T for liquid water activation 
       if (antot .gt. 1.0) then !only if aerosol is present
        ! Get CCN spectra   		    	
        call ccnspec (tparc,pparc,nmodes)	            
@@ -472,8 +472,6 @@
 	   
          cdncr8 = max(nact/air_den, zero_par)!kg-1
          smaxliqr8=max(smax, zero_par)
-   
-   !call zeit_co("MOIST::aero::pdfactiv")
    
 !============ Calculate diagnostic CCN number concentration==================
 
@@ -597,8 +595,8 @@
   
 !===========Calculate nucleated crystal number. Follows Barahona and Nenes (2008, 2009)==============
 
-      !First, define Heteroegeneous spectrum =============================== 
-
+      !First, define Heteroegeneous spectrum for cirrus =============================== 
+           
             typeofspec_ice= IN_param
 
        
@@ -608,12 +606,17 @@
        ! 3- Barahona (2009) Asumme a maximum freezing fraction then scales it according to CNT
        ! 4- PDA08, using fixed size distributions.
        ! 5- Phillips 2013. Assumes monodisperse for bc and organics 
-
+       ! 6 - Ulrich 2017 (default) 
        purehet_ice= .FALSE.  !True supresses homogeneous nucleation      
-       purehom_ice= .FALSE.   ! True supresses heteronenous nucleation   
+       purehom_ice= .FALSE.   ! True supresses heterogeneous nucleation   
 
- !call zeit_ci("MOIST::aero::iceparam")
-if (antot .gt. 1.0e2) then !only if aer is present  
+
+       
+       
+   
+
+
+     if (antot .gt. 1.0e2) then !only if aer is present  
     if (tparc .lt. To_ice)  then !only if T below freezing  
     
           CALL prop_ice(tparc, pparc)
@@ -630,10 +633,11 @@ if (antot .gt. 1.0e2) then !only if aer is present
 		 
 		 if (sum(ndust_ice)+ norg_ice+ nbc_ice .gt. 1.e3) then !only if IN are present 
 			 !Only immersion freezing considered for mixed-phase regime)		            
-			 call  INimmersion(INimm, dINimm, waux_ice) 		 
+			 call  INimmersion(INimm, dINimm, waux_ice,  Immersion_param) 		 
 
 	        	   ndust_ice =max(ndust_ice*(1.0-fdrop_dust), 0.0)
 			       nbc_ice   =max(nbc_ice*(1.0-fdrop_bc), 0.0)  
+                  
 
    	        	  !call IceParam (sigwparc,  &
                 	!	     nhet, nice, smaxice, nlim) ! don not call deposition above 235 K
@@ -648,8 +652,6 @@ if (antot .gt. 1.0e2) then !only if aer is present
 	
 	end if	
 
-! call zeit_co("MOIST::aero::iceparam")
- 
 	! the distribution of relative humidity is assumed normal centered around the RH mean%
 
 	          
@@ -1139,7 +1141,7 @@ subroutine getINsubset(typ, aerin, aerout)
   	       bin=bin+1  
 	       call copy_mode(aerout,aerin, k,bin)
 	    end if  
-       elseif   (typ .eq. 3)  then  !soot
+       elseif   (typ .eq. 3)  then  !organics
              if (aerin%forg(k) .gt. 0.9) then 	   
   	       bin=bin+1  
 	       call copy_mode(aerout,aerin, k,bin)
@@ -2194,29 +2196,63 @@ END
 
 !*************************************************************
 !    Subroutine Het_freezing. Use only for mixed phase clouds . Inputs: Wpar, T, and P all SI units)
-!    Output Nc=Nhet (m-3)
+!    Output Nc (m-3), dNc/dT (m-3 K-1)
 ! !    Written by Donifan Barahona
 !************************************************************ 
 
 
-      SUBROUTINE Het_freezing(nhet, nice, smax) 
+      SUBROUTINE Het_freezing(nhet, dnhet, smax, param) 
       
-      real*8, intent(out) :: nice,  nhet, smax  
+      real*8, intent(out) :: nhet, smax, dnhet  
 
-      real*8 ::  I, SX, NHET_, DSH
-     
+      real*8 ::  I, SX, NHET_, DSH, dN, dpi, dpw, dsx
+      integer,  intent(in) :: param
+      integer :: type_aux
+      
+      type_aux = typeofspec_ice
+
+      typeofspec_ice  = param
+      
+      call prop_ice(T_ice, P_ice)
+      
        nhet=zero_par
        smax=zero_par
-       nice=zero_par
-       		       
+    
+        dpw = dvpreswater_ice(T_ice)
+        dpi  = dvpresice(T_ice) 
+        
         SX=vpresw_ice/vpresi_ice !assume wat saturation
+        
+        if  (vpresi_ice .gt. 0.0) then 
+          dsx =  (dpw*vpresi_ice - dpi*vpresw_ice)/vpresi_ice
+        else
+          nhet = 0.0
+          dnhet = 0.0 
+          return
+        end  if  
+        
+         
         call      INSPEC_ice(SX-1.0, NHET_, DSH)
-	sc_ice=1.0
-	nhet=max(NHET_, zero_par)
-	nice=nhet
-	smax=max(SX-1.0, zero_par)
-      
-      
+ 	    sc_ice=1.0
+        if (SX .gt. 1.0) then 
+         if ((SX-1.0) .lt. DSH) then 
+              dN = NHET_*DSH
+           else
+              dN  =  NHET_/SX  
+         end if 
+        else
+          dN =zero_par     
+        end if 
+        
+     	nhet=max(NHET_, zero_par)
+        
+	    smax=max(SX-1.0, zero_par)
+        dnhet = max(-dN*dsx, 0.0)
+        
+ 
+        typeofspec_ice  = type_aux      
+        call prop_ice(T_ice, P_ice)
+        
  END SUBROUTINE Het_freezing
  
       
@@ -2258,8 +2294,8 @@ END
 	  DSH =0.d0
 	  FDS=1.d0
       ! here we need to decide what the supersaturation level inside an ice cloud  must be to nucleate ice.      
-        !sc_ice = 1.d0
-        	  sc_ice = shom_ice + 1.d0
+        sc_ice = 1.d0
+        	 ! sc_ice = shom_ice + 1.d0
        
       !  sc_ice =  1.d0 + shom_ice*max(min((Thom - T_ice)/(Thom-210d0), 1.0d0), 0.0d0)
       
@@ -2538,6 +2574,44 @@ if (.false.) then
       return
       END function VPRESWATER_ice
 
+
+!*************************************************************
+!    Function dVPRESWATER. Calculates the derivative of the saturated vapor pressure
+!    of water (Pa) according to Murphy & Koop (2005)
+!    T in K (173.15-373.15)
+!************************************************************    
+      
+      real*8 function dVPRESWATER_ice(T)
+    
+      real*8, intent(in) :: T
+      real*8 :: A(0:9) 
+      real*8 :: pw, auxx1, auxx2,auxx3, auxx4
+      
+      DATA A/54.842763d0, -6763.22d0,  -4.21d0, 0.000367d0, &
+           0.0415d0, 218.8d0, 53.878d0, -1331.22d0, -9.44523d0,  &
+            0.014025d0/
+
+
+      pw = A(0)+(A(1)/T)+(A(2)*LOG(T))+(A(3)*T)+ &
+      (TANH(A(4)*(T-A(5)))*((A(6)+(A(7)/T))+ &
+      (A(8)*LOG(T))+ (A(9)*T))) 
+     
+      pw=EXP(pw)
+      
+      auxx1  = A(4)*(1.0- (TANH(A(4)*(T-A(5)))**2))
+      auxx2 = (A(6)+(A(7)/T)+ (A(8)*LOG(T))+ (A(9)*T))
+      auxx3 = TANH(A(4)*(T-A(5)))
+      auxx4 = (-A(7)/T/T)+ (A(8)/T)+ A(9)
+      
+      
+          dVPRESWATER_ice =  pw*((-A(1)/T/T)+(A(2)/T)+ A(3) + &
+          auxx1*auxx2 + auxx3*auxx4)
+          
+      return
+      END function dVPRESWATER_ice
+
+
+
 !*************************************************************
 !    Function VPRESICE. Calculates the saturated vapor pressure
 !    of ice (pa) according to Murphy & Koop (2005)
@@ -2557,6 +2631,27 @@ if (.false.) then
       
       return
       END function VPRESICE
+      
+!*************************************************************
+!    Function dVPRESICE. Calculates the t derivative of the saturated vapor pressure
+!    of ice (pa) according to Murphy & Koop (2005)
+!    T in K (>110)
+!************************************************************         
+
+      real*8 function dVPRESICE(T)
+      
+      real*8, intent(in) :: T
+      real*8 :: A(0:3)
+      
+      DATA A/9.550426d0, -5723.265d0, 3.53068d0, -0.00728332d0/
+
+    
+      dVPRESICE = A(0)+(A(1)/T)+(A(2)*LOG(T))+(A(3)*T)
+      dVPRESICE=EXP(dVPRESICE)*((-A(1)/T/T) + (A(2)/T) + A(3))
+            
+      return
+      END function dVPRESICE
+      
       
 !*************************************************************
 !    Function DHSUB. Calculates the latent heat of sublimation
@@ -2907,6 +3002,7 @@ if (.false.) then
       
       real*8, intent(in) :: six
       real*8, intent(out) :: N, Dsh
+      
       real*8 ::  Nd, Nbc, aux, Si_, SW, del0, ddel0, &
                  fc, delw0, ddelw0, SW0, Hdust, Hbc, &
                  Nbase, dNd, dNbc, dNbase, dH, &
@@ -2937,6 +3033,8 @@ if (.false.) then
       dNbc = zero_par
       dNorg = zero_par
       dNglassy = zero_par
+      N=0d0
+      Dsh=si
       
       if ((six .lt. 0.02) .or. (T_ice .gt. 270.0)) then 
        N=0d0
@@ -3005,6 +3103,9 @@ if (.false.) then
 	               Dsh=0.0
 	             end if 
 	 
+     
+                ndust_dep = Nd
+     
       case(4) !PDA2008. Allows multiple lognormal modes for dust. Single mode lognormal distributions are assumed for bc and organics
 	
                   ! Dust
@@ -3209,7 +3310,7 @@ if (.false.) then
          aux =  (pi_par*0.5- atan(aux))/pi_par         
          fT = (cos(betax*(T_ice -gammax))**2.0)*aux
          ns=exp(alfax*(six**0.25)*fT)
-         dns= 0.25*alfax*fT*(six**-0.75)*ns
+         dns= 0.25*alfax*fT*(six**(-0.75))*ns
          
          Nd = 0.0
          dNd  = 0.0
@@ -3231,7 +3332,7 @@ if (.false.) then
          aux =  (pi_par*0.5- atan(aux))/pi_par         
          fT = (cos(betax*(T_ice -gammax))**2.0)*aux
          ns=exp(alfax*(six**0.25)*fT)
-         dns= 0.25*alfax*fT*(six**-0.75)*ns
+         dns= 0.25*alfax*fT*(six**(-0.75))*ns
          ahet =areabc_ice
          
                   aux =exp(-ahet*ns) 	           
@@ -3261,10 +3362,11 @@ if (.false.) then
        Dsh=si
       end if 
       
-      if (T_ice .gt. 255.0) then !new 02/10/14 no deposition IN above this T
+      if (T_ice .gt. 272.0) then 
        N=zero_par
        Dsh=zero_par
       end if
+
 
       end subroutine INSPEC_ice
       
@@ -3276,105 +3378,178 @@ if (.false.) then
 !      donifan.o.barahona@nasa.gov
 !========================================
 
-      subroutine INimmersion(INconc, dINconc, wparcel)
+      subroutine INimmersion(INconc, dINconc, wparcel, typeofspec_immersion)
       
       real*8, intent (in)  ::  wparcel 
       real*8, intent (out) ::  INconc, dINconc
       real*8               ::  Nd, Nd_unc, Nd_coa, Nbc, ahet, frac, dfrac,  &
                                Naux,dNaux, Tx, nssoot, nsdust, ninbkg, SX , &
 			       dnsd, dnss, dNd, dNbc, coolr, min_ns_dust, min_ns_soot, dninbkg, &
-                   nsss, Nsea, dNsea, dnsss, min_ns_seasalt 
+                   nsss, Nsea, dNsea, dnsss, min_ns_seasalt, n05, ndust05, auxx, DT 
       
       real*8, dimension(3) :: sig_array, the_array, frac_array 		 
-      integer              :: index, kindex, mode
+      integer              :: index, kindex, mode, typeofspec_immersion
       
       if (T_ice .lt. Thom) then 
-        INconc  = zero_par
-	dINconc = zero_par
-	return
+          INconc  = zero_par
+	      dINconc = zero_par
+	      return
       end if
       
-      if (T_ice .ge. To_ice) then 
+     if (T_ice .ge. To_ice) then 
         INconc  = zero_par
-	   dINconc = zero_par
-	return
-      end if     
+	    dINconc = zero_par
+	    return
+     end if     
        
        Tx=T_ice -273.16
+       DT = -Tx
        coolr=5.0e-3*wparcel
        min_ns_dust= 3.75e6 !limits ice nucleation to below -12 C !new 02/10/14 
        min_ns_soot= 3.75e9 !limits ice nucleation to below -18 C
        min_ns_seasalt = 4.0e2 !limits ice nucleation to -5
        
-      SX=(vpresw_ice/vpresi_ice)-1.0 !assume wat saturation
+       SX=(vpresw_ice/vpresi_ice)-1.0 !assume wat saturation
       
       
           ninbkg = 0.0 !some background IN different from DUST and SOOT
-	  dninbkg=0.0
+	      dninbkg=0.0
           
-	  !if (T_ice .lt. 260.0) ninbkg=coolr*42.8*exp(3.88*SX)*0.1*0 !this may be overestimated
-          
-	     if (typeofspec_ice < 6) then
-                  !dust     
-                       nsdust= max(exp(-0.517*Tx + 8.934)-min_ns_dust, 0.0) !From Niemand 2012
-                       dnsd  = max(0.517*nsdust, 0.0)
-                   !soot   
-                       nssoot= max(1.0e4*exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) !Murray (review_ 2012)
-                       dnss  = max(-(-2.0*0.0101*Tx -0.8525)*nssoot, 0.0)
+             Naux=zero_par
+          dNaux=zero_par
+          !*************************************************************
+! Options ! si is assumed at  water saturation 
 
-        else!Ulrich et al. 2016
+! 1  Meyers et. al. 1992
+! 2  Meyers scaled following Phillips et. al. 2007
+! 3  Barahona 2009 
+! 4  Phillips et. al. 2008 
+! 5  Phillips et. al. 2013 
+! 6  Ulrich et. al. 2018 
+! 7  Murray 2012
+! 8  DeMott 2010   
+
+!************************************************************  
+
     
+	  !if (T_ice .lt. 260.0) ninbkg=coolr*42.8*exp(3.88*SX)*0.1*0 !this may be overestimated
+    
+      Nbc = 0.0
+      dNbc = 0.0
+      Nd = 0.0
+      dNd = 0.0
+      
+      Select case (typeofspec_immersion)
+            
+        case (:5)
+          
+        
+          call      Het_freezing(Nd, dNd, Sx, typeofspec_immersion) 
+          ndust_imm = ndust_dep
+          dNd =         dNd*coolr
+          
+        case (6)
                        nsdust= max(exp(-0.517*T_ice + 150.577)-min_ns_dust, 0.0)
                        dnsd  = max(0.517*nsdust, 0.0)
 
                        nssoot= 7.463*max(1.0e4*exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) 
                        dnss  = max(-(-2.0*0.0101*Tx -0.8525)*nssoot, 0.0)
-          end if 
+                       
+
+		           DO index =1,nbindust_ice                
+        	               !ahet= ddust_ice(index)*ddust_ice(index)*pi_ice*4.0 !Assume spheres by now
+  		               ahet=areadust_ice(index)               
+		               Naux=(1.0-exp(-nsdust*ahet))*ndust_ice(index)+Naux
+		               dNaux = exp(-nsdust*ahet)*ndust_ice(index)*dnsd*coolr*ahet+dNaux	       
+		            END DO 		      
+                !dust
+                    Nd=Naux*fdrop_dust
+                    dNd=dNaux*fdrop_dust	   
+                ! soot    
+
+                    ahet=areabc_ice  
+                    Nbc=nbc_ice*(1.0-exp(-nssoot*ahet))*fdrop_bc
+                    dNbc= nbc_ice*exp(-nssoot*ahet)*fdrop_bc*dnss*coolr*ahet
+                    
+                    
+
+        case (7) !Murray 2012
+        
+                    !dust     
+                       nsdust= max(exp(-0.517*Tx + 8.934)-min_ns_dust, 0.0) !From Niemand 2012
+                       dnsd  = max(0.517*nsdust, 0.0)
+                   !soot   
+                       nssoot= max(1.0e4*exp(-0.0101*Tx*Tx - 0.8525*Tx + 0.7667)-min_ns_soot, 0.0) !Murray (review_ 2012)
+                       dnss  = max(-(-2.0*0.0101*Tx -0.8525)*nssoot, 0.0)
+                        
+                        
+		       DO index =1,nbindust_ice                
+        	           !ahet= ddust_ice(index)*ddust_ice(index)*pi_ice*4.0 !Assume spheres by now
+  		           ahet=areadust_ice(index)               
+		           Naux=(1.0-exp(-nsdust*ahet))*ndust_ice(index)+Naux
+		           dNaux = exp(-nsdust*ahet)*ndust_ice(index)*dnsd*coolr*ahet+dNaux	       
+		        END DO 		      
+            !dust
+                Nd=Naux*fdrop_dust
+                dNd=dNaux*fdrop_dust	   
+            ! soot    
+
+                ahet=areabc_ice  
+                Nbc=nbc_ice*(1.0-exp(-nssoot*ahet))*fdrop_bc
+                dNbc= nbc_ice*exp(-nssoot*ahet)*fdrop_bc*dnss*coolr*ahet
+                ndust_imm = Nd
+
+	    case (8) ! DeMott 2010
+        
+        
+                     n05 = 0.0
+                     ndust05 = 0.0                       
+			            DO index =1, nmodes	 
+				            frac=0.5d0*(1d0-erfapp(log(0.5e-6/dpg_par(index)) & !fraction above 0.5 microns
+					                   /sig_par(index)/sq2_par))
+				             n05  = frac*tp_par(index) + n05					 	
+			            end do 	
+                               
+                               
+                               
+		            DO index =1,nbindust_ice   
+				            frac=0.5d0*(1d0-erfapp(log(0.5e-6/ddust_ice(index)) & !fraction above 0.5 microns
+					                   /sigdust_ice(index)/sq2_par))    
+                            ndust05  = frac*ndust_ice(index) + ndust05
+                                                
+
+  		           END DO 
+                  
+                        
+                        
+                        if (n05 .gt. zero_par) then 
+                            auxx = 0.0264*DT + 0.0033
+                            Nd = 1.0e3*5.94e-5*(DT**3.33)*((n05*1.0e-6)**auxx)
+                            dNd = max(coolr*Nd *((3.33/(DT**3.33)) + 0.0264), 0.0)
+                            Nbc = 0.0
+                            ndust_imm = Nd*(ndust05/n05)
+                         end if 
+                         
+                            		   
+       end select 
        
-
-      ! sea salt
-
-
-    	nsss =  -0.459*T_ice +128.6235 ! from Demott et al. PNAS, 2015
+       !===============================================================
+       ! Sea salt******************** added for all cases
+       
+	      nsss =  -0.459*T_ice +128.6235 ! from Demott et al. PNAS, 2015
         ! Demott 2015 reports nss over total area, so it may be greatly underestimated.
-        
-        
-        nsss=  max(exp(nsss)-min_ns_seasalt, 0.0)*INSSfactor       
-    	dnsss=  0.459*nsss
-
-       Naux=zero_par
-       dNaux=zero_par
-	
-
-		   DO index =1,nbindust_ice                
-        	       !ahet= ddust_ice(index)*ddust_ice(index)*pi_ice*4.0 !Assume spheres by now
-  		       ahet=areadust_ice(index)               
-		       Naux=(1.0-exp(-nsdust*ahet))*ndust_ice(index)+Naux
-		       dNaux = exp(-nsdust*ahet)*ndust_ice(index)*dnsd*coolr*ahet+dNaux	       
-		   END DO 
-		
-      
-   !dust
-       Nd=Naux*fdrop_dust
-       dNd=dNaux*fdrop_dust	   
-   ! soot    
-   
-      ahet=areabc_ice  
-      Nbc=nbc_ice*(1.0-exp(-nssoot*ahet))*fdrop_bc
-      dNbc= nbc_ice*exp(-nssoot*ahet)*fdrop_bc*dnss*coolr*ahet
-	   
-       ! Sea salt
-	  
-       Nsea=nsss*aseasalt
-       dNsea= dnsss*coolr*aseasalt
-	  
+          nsss=  max(exp(nsss)-min_ns_seasalt, 0.0)*INSSfactor       
+    	  dnsss=  0.459*nsss
+          Nsea=nsss*aseasalt
+          dNsea= dnsss*coolr*aseasalt
+	   !===============================================================
+             
+             
       !Nbc=zero_par !!!!!!!!!!!!!!!deactivate soot 
       !Total =====================
       INconc=Nbc+ Nd + Nsea !remember background IN were included  
       dINconc=dNbc+dNd + dNsea
-      ndust_imm = Nd
-      
-
+ 
    end subroutine INimmersion    
       
 !

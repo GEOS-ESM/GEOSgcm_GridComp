@@ -2718,7 +2718,10 @@ end do
 !  band. Instead of 58, I think I should have set it around 40. I suggest
 !  you try that and see if it gets rid of the bias.
 
-      layreffr = 40
+! Followup from Eli:
+!  RRTMG_SW v4.10 has this set to 42
+
+      layreffr = 42
 
 ! Lower atmosphere loop
       do lay = 1, laytrop(iplon) 

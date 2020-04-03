@@ -3,6 +3,7 @@ program  mk_CatchRestarts
 !  $Id: 
 
   use MAPL
+  use mk_restarts_getidsMod, only: GetIDs,ReadTileFile_RealLatLon
   use gFTL_StringVector
 
   implicit none
@@ -33,11 +34,6 @@ program  mk_CatchRestarts
   logical, allocatable, dimension(:)  :: mask
   integer, allocatable, dimension (:) :: sub_tid
   real   , allocatable, dimension (:) :: sub_lon, sub_lat
-
-  interface GetIds   
-     procedure GetIds_fast_1p
-     procedure GetIds_accurate_mpi
-  end interface
 
   call init_MPI()
 
@@ -79,8 +75,8 @@ program  mk_CatchRestarts
   if (master_proc) then
 
      ! Read Output/Input  .til files
-     call ReadCNTilFile(OutTileFile, ntiles, lono, lato)  
-     call ReadCNTilFile(InTileFile,ntiles_in,loni,lati)
+     call ReadTileFile_RealLatLon(OutTileFile, ntiles, lono, lato)  
+     call ReadTileFile_RealLatLon(InTileFile,ntiles_in,loni,lati)
      allocate(Id (ntiles))
  !    allocate(mask   (ntiles_in))
  !    allocate(tid_in (ntiles_in))
@@ -244,8 +240,6 @@ program  mk_CatchRestarts
   call MPI_FINALIZE(mpierr)   
 
 contains
-
-#include "getids.H"
 
   SUBROUTINE read_and_write_rst (NTILES,  SURFLAY, OutIsOld, NTILES_IN, idi)
 

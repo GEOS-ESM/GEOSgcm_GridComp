@@ -2116,14 +2116,14 @@ subroutine hystpdf_new( &
           IF(USE_AEROSOL_NN) THEN
             !- cloud drop number concentration 
             !- from the aerosol model + ....
-            NNX = NNL * 1.e-6  !#/cm3
+            NNX = max(NNL, 1.0) * 1.e-6  !#/cm3
           ELSE
             !- cloud drop number concentration :u[NNX]= #/cm^3
             NNX = NN * 1.e-6  !#/cm3
           ENDIF
 
           !- liquid water content : u[lwl] = g/m3
-          WC = RHO*QC* 1.e+3  !g/m3
+          WC = RHO*max(QC, 1.0e-9)* 1.e+3  !g/m3
       
           !- radius in micrometers
           RADIUS= bx *  ( WC /NNX)**r13bbeta*abeta*6.92 !6.92=(1.e-6)**bbeta	      
@@ -2137,12 +2137,13 @@ subroutine hystpdf_new( &
   
        ELSEIF(ITYPE == ICE) THEN
 
-        IF (adjustl(CLDMICRO)=="GFDL") THEN
+        IF ((adjustl(CLDMICRO)=="GFDL") .or. (adjustl(CLDMICRO)=="2MOMENT"))  THEN
 
          RHO = 100.*PL / (MAPL_RGAS*TE )
          !- ice water content
-         WC = RHO*QC  !kg/m3
-
+         WC = RHO*max(QC, 1.0e-9)  !kg/m3
+      
+         
          IF( (.not. USE_AEROSOL_NN) ) THEN 
 
             !------ice cloud effective radius ----- [klaus wyser, 1998]
@@ -2158,7 +2159,7 @@ subroutine hystpdf_new( &
             !-- NNI  !#/m^3	 
             !-- RIV in micrometers
 
-            RIV  = 1.E+6*((3.*WC)/(4.*MAPL_PI*densic*NNI))**0.33333  
+            RIV  = 1.E+6*((3.*WC)/(4.*MAPL_PI*densic*max(NNI, 1.0)))**0.33333  
             RIV  = MAX(RIV, 8.22)
             RADIUS= ((((RIV**3.-betai)**2.-gamai))/deltai)**0.33333
             

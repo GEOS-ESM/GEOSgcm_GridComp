@@ -6,7 +6,7 @@
 !
 module wv_saturation
 
-  use MAPL_ConstantsMod, r8 => MAPL_R4
+  use MAPL_ConstantsMod, r8 => MAPL_R8
 
     
 !++jtb (comm out)
