@@ -684,16 +684,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'FRLAKE',                                    &
-         LONG_NAME  = 'fraction_of_lake',                          &
-         UNITS      = '1',                                         &
-         DIMS       = MAPL_DimsHorzOnly,                           &
-         VLOCATION  = MAPL_VLocationNone,                          &
-         AVERAGING_INTERVAL = AVRGNINT,                            &
-         REFRESH_INTERVAL   = RFRSHINT,                            &
-         RC=STATUS  )
-
-    call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'FRACI',                                     &
          LONG_NAME  = 'ice_covered_fraction_of_tile',              &
          UNITS      = '1',                                         &
@@ -13456,7 +13446,7 @@ do K= 1, LM
     real, pointer, dimension(:,:)    :: LONS_RAD
     real, pointer, dimension(:,:)    :: LATS_RAD
     real, pointer, dimension(:,:)    :: FROCEAN 
-    real, pointer, dimension(:,:)    :: FRLAKE 
+    real, pointer, dimension(:,:)    :: FRLAND 
     real, pointer, dimension(:,:)    :: FRACI
     REAL, SAVE                       :: OTDLISSCAL = -1.0
 
@@ -13464,16 +13454,16 @@ do K= 1, LM
     __Iam__('Get_hemcoFlashrate')
     LFR = 0.0
 
-!---Calculate LWI, following legacy code in surface component
+!---Calculate LWI, make water default value 
     CALL MAPL_GetPointer(IMPORT, FROCEAN, 'FROCEAN' , __RC__ ) 
-    CALL MAPL_GetPointer(IMPORT, FRLAKE,  'FRLAKE'  , __RC__ ) 
+    CALL MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , __RC__ ) 
     CALL MAPL_GetPointer(IMPORT, FRACI,   'FRACI'   , __RC__ ) 
     ALLOCATE(LWI(IM,JM),STAT=RC)
     ASSERT_(RC==0)
-                                     LWI = 1.0  ! Land
-    where ( FROCEAN+FRLAKE >= 0.6  ) LWI = 0.0  ! Water
-    where ( LWI==0 .and. FRACI>0.5 ) LWI = 2.0  ! Ice
-    where ( LWI==0 .and. TS<271.40 ) LWI = 2.0  ! Ice
+                                       LWI = 0.0  ! Water 
+    where ( FRLAND > 0.4 )             LWI = 1.0  ! Land
+    where ( LWI==0.0 .and. FRACI>0.5 ) LWI = 2.0  ! Ice
+    where ( LWI==0.0 .and. TS<271.40 ) LWI = 2.0  ! Ice
 
 !---Get lat/lon in degrees
     ALLOCATE(LONS(IM,JM),LATS(IM,JM),STAT=RC)
