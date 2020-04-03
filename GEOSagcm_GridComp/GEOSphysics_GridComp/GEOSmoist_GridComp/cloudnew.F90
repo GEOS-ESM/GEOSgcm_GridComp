@@ -880,8 +880,8 @@ contains
 
             iMASS = 1.0 / MASS
 
-            QRN_SC_1D = QRN_SC_dev(I,K)
-            QSN_SC_1D = QSN_SC_dev(I,K)
+            QRN_SC_1D = QRN_SC_dev(I,K)*DT
+            QSN_SC_1D = QSN_SC_dev(I,K)*DT
 
             TEMP =  EXNP_dev(I,K) * TH_dev(I,K) 
 
