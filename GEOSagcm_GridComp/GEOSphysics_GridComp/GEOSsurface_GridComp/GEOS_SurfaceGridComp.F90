@@ -95,10 +95,11 @@ module GEOS_SurfaceGridCompMod
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
   integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
   integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
+  INTEGER            :: catchswim,landicegoswim
 
   character(len=ESMF_MAXSTR), pointer :: GCNames(:)
   integer                    :: CHILD_MASK(NUM_CHILDREN)
-  integer :: DO_OBIO, DO_CO2SC
+  integer :: DO_OBIO, ATM_CO2, CHOOSEMOSFC 
   logical :: DO_GOSWIM
 
   character(len=ESMF_MAXSTR) :: LAND_PARAMS ! land parameter option
@@ -194,8 +195,9 @@ module GEOS_SurfaceGridCompMod
     type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE 
     type (SURF_wrap)                        :: WRAP
     type (MAPL_MetaComp    ), pointer       :: MAPL
-    INTEGER                                 :: LSM_CHOICE, RUN_ROUTE
-    INTEGER                                 :: catchswim,landicegoswim
+    INTEGER                                 :: LSM_CHOICE
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)                       :: SCF 
 
 !=============================================================================
 
@@ -215,23 +217,27 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
+! Create Land Config
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+
     call MAPL_GetResource ( MAPL, DO_OBIO,        Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_CO2SC,        Label="USE_CO2SC:",DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2,   DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:', value=catchswim, DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LANDICE4SNWALB:', value=landicegoswim, DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='LAND_PARAMS:', value=LAND_PARAMS, DEFAULT="Icarus", __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=CHOOSEMOSFC, DEFAULT=1, __RC__ ) 
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
-    call MAPL_GetResource ( MAPL, catchswim,        Label="N_CONST_LAND4SNWALB:",DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, landicegoswim,        Label="N_CONST_LANDICE4SNWALB:",DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
     if ( (catchswim/=0) .or. (landicegoswim/=0) .or. (DO_OBIO/=0)) then
        do_goswim=.true.
     else
        do_goswim=.false.
     endif
     
-
 ! Set the Run entry point
 ! -----------------------
 
@@ -262,9 +268,6 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, RUN_ROUTE, Label="RUN_ROUTE:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -577,7 +580,7 @@ module GEOS_SurfaceGridCompMod
                                                        RC=STATUS  )
     VERIFY_(STATUS)
 
-    if((DO_OBIO/=0).OR. (DO_CO2SC /= 0)) then
+    if((DO_OBIO/=0).OR. (ATM_CO2 == 4)) then
 
        call MAPL_AddImportSpec(GC,                              &
             SHORT_NAME         = 'CO2SC',                             &
@@ -3367,8 +3370,7 @@ module GEOS_SurfaceGridCompMod
 
 ! Init land and snow constants, currently different in Icarus and GEOSldas
 !-----------------------------------------------------------------------
-    call MAPL_GetResource(MAPL, LAND_PARAMS,Label="LAND_PARAMS:",DEFAULT="Icarus",RC=STATUS)
-    VERIFY_(STATUS)
+
     call SurfParams_init(LAND_PARAMS)
 
 ! Handle river routing (if required)
@@ -3871,7 +3873,6 @@ module GEOS_SurfaceGridCompMod
     integer    :: iUseInterp
     logical    :: UseInterp
 
-    integer    :: CHOOSEMOSFC
     integer    :: IM, JM, YEAR, MONTH, DAY, HR, SE, MN
 
 !=============================================================================
@@ -3923,11 +3924,6 @@ module GEOS_SurfaceGridCompMod
                        YY=YEAR, MM=MONTH, DD=DAY, &
                        H=HR,    M=MN,     S=SE,   &
                                         RC=STATUS )
-
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
 
 ! Pointers to imports
 !--------------------
@@ -5353,14 +5349,12 @@ module GEOS_SurfaceGridCompMod
     integer                       :: I, N
     integer :: YEAR, MONTH, DAY, HR, MN, SE
 
-    integer                        :: CHOOSEMOSFC
-
     integer  :: iUseInterp
     logical  :: UseInterp
 
     integer  :: USE_PP_TAPER
     real     :: PP_TAPER_LAT_LOW,PP_TAPER_LAT_HIGH, FACT
-    INTEGER                                 :: LSM_CHOICE, RUN_ROUTE
+    INTEGER                                 :: LSM_CHOICE
     real, allocatable :: PCSCALE(:,:)
     real, allocatable :: PRECSUM(:,:)
     character(len=ESMF_MAXPATHLEN) :: SolCycFileName
@@ -5413,18 +5407,11 @@ module GEOS_SurfaceGridCompMod
 
     SURF_INTERNAL_STATE => WRAP%PTR
 
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
-
 ! Get CHOICE OF  Land Surface Model (1:Catch, 2:Catch-CN)
 ! and Runoff Routing Model (0: OFF, 1: ON)
 ! -------------------------------------------------------
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, RUN_ROUTE, Label="RUN_ROUTE:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Pointers to gridded imports
@@ -5458,7 +5445,7 @@ module GEOS_SurfaceGridCompMod
 
     NUM_AERO_DP = 0
 
-    if((DO_OBIO/=0)  .OR. (DO_CO2SC /= 0)) then
+    if((DO_OBIO/=0)  .OR. (ATM_CO2 == 4)) then
        call MAPL_GetPointer(IMPORT  , CO2SC   , 'CO2SC'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA', RC=STATUS); VERIFY_(STATUS)
@@ -6374,7 +6361,7 @@ module GEOS_SurfaceGridCompMod
     allocate(SSSDTILE(NT,NUM_SSSD), STAT=STATUS)
     VERIFY_(STATUS)
 
-    if((DO_OBIO/=0) .OR. (DO_CO2SC /= 0)) then
+    if((DO_OBIO/=0) .OR. (ATM_CO2 == 4)) then
        allocate(CO2SCTILE(NT), STAT=STATUS)
        VERIFY_(STATUS)
        allocate(FSWBANDTILE(  NT,NB_CHOU), STAT=STATUS)
@@ -6481,7 +6468,7 @@ module GEOS_SurfaceGridCompMod
        end do
     end if
 
-    if((DO_OBIO/=0) .OR. (DO_CO2SC /= 0)) then
+    if((DO_OBIO/=0) .OR. (ATM_CO2 == 4)) then
 
        call MAPL_LocStreamTransform(LOCSTREAM, CO2SCTILE, CO2SC,    RC=STATUS); VERIFY_(STATUS)
 
@@ -8163,7 +8150,7 @@ module GEOS_SurfaceGridCompMod
          call FILLIN_TILE(GIM(type), 'DISCHARGE',  DISCHARGETILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
       end if
 
-      if((DO_OBIO/=0) .OR. (DO_CO2SC /= 0)) then 
+      if((DO_OBIO/=0) .OR. (ATM_CO2 == 4)) then 
          call FILLIN_TILE(GIM(type), 'CO2SC',  CO2SCTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
          call FILLIN_TILE(GIM(type), 'FSWBAND'  , FSWBANDTILE  , XFORM, RC=STATUS); VERIFY_(STATUS)
          call FILLIN_TILE(GIM(type), 'FSWBANDNA', FSWBANDNATILE, XFORM, RC=STATUS); VERIFY_(STATUS)
