@@ -2,6 +2,14 @@
 esma_set_this (OVERRIDE GEOS_SurfaceShared)
 esma_add_subdirectories (Raster)
 
+set (resource_files
+    GEOS_SurfaceGridComp.rc
+   ) 
+
+install( FILES ${resource_files} 
+   DESTINATION etc
+   )
+
 set (srcs
   StieglitzSnow.F90
   SurfParams.F90)
