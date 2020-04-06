@@ -2299,7 +2299,7 @@ contains
             HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
 !                fac_cond*QLW_LS_dev(I,:) - fac_fus*QIW_LS_dev(I,:)
             QT = QVn + QCn
-            
+
             call gaussian(ZL, 100.*PL, HL, QT, HL2, QT2, HLQT, &
                           TEn, QCn, CFn, &
                           A_mynn, B_mynn, qsat_mynn)
