@@ -679,6 +679,11 @@ contains
 
     call ocean_model_init  (Ocean, Ocean_state, Time, Time)  ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
                                                              ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
+    print *, 'MOM6 plug: finished init'
+    print *, 'Ocean_state%grid%isc = ', Ocean_state%grid%isc
+    print *, 'Ocean_state%grid%jsc = ', Ocean_state%grid%jsc
+    print *, 'Ocean_state%grid%iec = ', Ocean_state%grid%iec
+    print *, 'Ocean_state%grid%jsc = ', Ocean_state%grid%jec
 
 ! Check local sizes of two horizontal dimensions
 !-----------------------------------------------
