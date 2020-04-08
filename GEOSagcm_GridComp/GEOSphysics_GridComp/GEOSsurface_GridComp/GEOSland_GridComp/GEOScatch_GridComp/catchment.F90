@@ -96,7 +96,7 @@
           INTERC, BASE, PARTITION, RZEQUIL, gndtp0, &   
           catch_calc_soil_moist, gndtmp,            &
           catch_calc_wtotl, dampen_tc_oscillations, &
-          PHIGT, DZTC 
+          PHIGT, DZTC, SRUNOFF 
       
       USE SIBALB_COEFF,  ONLY: coeffsib
 
@@ -234,7 +234,7 @@
             RC, SATCAP, SNWFRC, POTFRC,  ESNFRC, EVSNOW, SHFLUXS, HLWUPS,      &
             HFTDS1, HFTDS2, HFTDS4, DHFT1, DHFT2, DHFT4, TPSNB,                &
             QSATTC, DQSDTC, SWSRF1, SWSRF2, SWSRF4, AR4, RX11, RX21, RX12,     &
-            RX14, RX24, RX22, EIRFRC, FCAN, THRU, RZEQOL, frice, srfmx,        &
+            RX14, RX24, RX22, EIRFRC, FCAN, THRUL, THRUC,RZEQOL, frice, srfmx, &
             srfmn, RCST, EVAPFR, RCUN, PAR, PDIR, RDCX, EVAP1, EVAP2,          &
             EVAP4, SHFLUX1, SHFLUX2, SHFLUX4, HLWUP1, HLWUP2, HLWUP4,          &
             GHFLUX1, GHFLUX2, GHFLUX4, RZI, TC1SF, TC2SF, TC4SF, ar1old,       &
@@ -1144,13 +1144,21 @@
         ENDIF
 
 !**** UPDATE CANOPY INTERCEPTION; DETERMINE THROUGHFALL RATES.
-
-      CALL INTERC (                                                            &
-                   NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
-                   SATCAP, SFRAC,BUG,                                          &
-                   CAPAC,                                                      &
-                   THRU                                                        &
-                  )
+      IF(SFRAC == 1.) THEN
+         CALL INTERC (                                                    &
+              NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
+              SATCAP, SFRAC,BUG,                                          &
+              CAPAC,                                                      &
+              THRUL                                                       &
+              )
+      ELSE
+         CALL INTERC (                                                    &
+              NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
+              SATCAP, SFRAC,BUG,                                          &
+              CAPAC,                                                      &
+              THRUL, THRUC                                                &
+              )
+      ENDIF
 
       IF (BUG) THEN
         WRITE(*,*) 'INTERC OK'
@@ -1158,11 +1166,19 @@
 
 !**** DETERMINE SURFACE RUNOFF AND INFILTRATION RATES:
 
-      CALL SRUNOFF (                                                           &
-                    NCH,DTSTEP,AR1,ar2,ar4,THRU,frice,tp1,srfmx,BUG,           &
-                    SRFEXC,RUNSRF,                                             &
-                    QINFIL                                                     &
+      IF(SFRAC == 1.) THEN
+         CALL SRUNOFF (                                                  &
+              NCH,DTSTEP,AR1,ar2,ar4,THRUL,frice,tp1,srfmx,BUG,          &
+              SRFEXC,RUNSRF,                                             &
+              QINFIL                                                     &
                    )
+      ELSE
+         CALL SRUNOFF (                                                  &
+              NCH,DTSTEP,AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,SFRAC, &
+              BUG,SRFEXC,RUNSRF,                                         &
+              QINFIL                                                     &
+              )
+      ENDIF
 
       IF (BUG) THEN
         WRITE(*,*) 'SRUNOFF'
@@ -1791,74 +1807,6 @@
       RETURN
       END SUBROUTINE RZDRAIN
 
-!**** ===================================================
-!**** ///////////////////////////////////////////////////
-!**** ===================================================
-
-      SUBROUTINE SRUNOFF (                                                     &
-                          NCH,DTSTEP,AR1,ar2,ar4, THRU,frice,tp1,srfmx,BUG,    &
-                          SRFEXC,RUNSRF,                                       &
-                          QINFIL                                               &
-                         )
-
-      IMPLICIT NONE
-
-
-      INTEGER, INTENT(IN) :: NCH
-      REAL, INTENT(IN) :: DTSTEP
-      REAL, INTENT(IN), DIMENSION(NCH) :: AR1, ar2, ar4, THRU, frice, tp1,     &
-             srfmx
-      LOGICAL, INTENT(IN) :: BUG
-
-      REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC ,RUNSRF
-
-      REAL, INTENT(OUT), DIMENSION(NCH) :: QINFIL
-
-      INTEGER N
-      REAL PTOTAL,srun0,frun,qin
-
-!**** - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-      DO N=1,NCH
-
-        PTOTAL=THRU(N)
-        frun=AR1(N)
-        if(srfexc(n) .gt. 0.) then
-!          frun=frun+ar2(n)*(srfexc(n)/(srfmx(n)+1.e-20))
-!         frun=frun+ar4(n)*(srfexc(n)/(srfmx(n)+1.e-20))**2
-          endif
-!        frun=frun+(1-frun)*frice(n)
-        srun0=PTOTAL*frun
-
-!**** Comment out this line in order to allow moisture
-!**** to infiltrate soil:
-!       if(tp1(n) .lt. 0.) srun0=ptotal
-
-        if(ptotal-srun0 .gt. srfmx(n)-srfexc(n))                               &
-                      srun0=ptotal-(srfmx(n)-srfexc(n)) 
-
-        if (srun0 .gt. ptotal) then
-!rr          write(*,*) 'srun0 > ptotal: N=',N
-!rr          write(*,*) ' frice=',frice(n),' ar1=',ar1(n),' ptotal=',
-!rr     &           ptotal,' tp1=',tp1(n)
-!rr          write(*,*) ' ar2=',ar2(n),' ar4=',ar4(n),' srfexc=',
-!rr     &           srfexc(n),' srfmx=',srfmx(n),' thru=',thru(n),
-!rr     &           ' rzexc=',rzexc(n)
-!rr          write(*,*) '=====> CORRECTION'
-          srun0=ptotal
-          endif
-
-        RUNSRF(N)=RUNSRF(N)+srun0
-        QIN=PTOTAL-srun0
-
-        SRFEXC(N)=SRFEXC(N)+QIN
-        RUNSRF(N)=RUNSRF(N)/DTSTEP
-        QINFIL(N)=QIN/DTSTEP
-         
-        ENDDO
-      
-      RETURN
-      END SUBROUTINE SRUNOFF
 
 !****
 !**** -----------------------------------------------------------------
