@@ -92,7 +92,11 @@ MODULE CATCHMENT_CN_MODEL
 
 
   
-  USE lsm_routines
+  USE lsm_routines, only :                          &
+          INTERC, BASE, PARTITION, RZEQUIL, gndtp0, &   
+          catch_calc_soil_moist, gndtmp,            &
+          catch_calc_wtotl, dampen_tc_oscillations, &
+          PHIGT, DZTC, DZGT, FSN, SRUNOFF
   
   USE SIBALB_COEFF,  ONLY: coeffsib
   
@@ -129,7 +133,7 @@ CONTAINS
   ! and the most recent version of the "unified" model (from Sept. 20, 2006).
   
   SUBROUTINE CATCHCN (                                           &
-       NCH, LONS, LATS, DTSTEP, SFRAC, cat_id,                   &
+       NCH, LONS, LATS, DTSTEP, PRECIPFRAC, cat_id,              &
        ITYP1,ITYP2,FVEG1,FVEG2,                                  &
        DZSF, TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,              &
        ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
@@ -171,7 +175,7 @@ CONTAINS
     INTEGER, INTENT(IN) :: NCH
     INTEGER, INTENT(IN), DIMENSION(:) :: ITYP1, ITYP2, cat_id
     
-    REAL, INTENT(IN) :: DTSTEP, SFRAC
+    REAL, INTENT(IN) :: DTSTEP, PRECIPFRAC
     REAL, INTENT(IN), DIMENSION(:) :: DZSF, TRAINC, TRAINL, TSNOW, &
          TICE, TFRZR, UM, FVEG1,   FVEG2,                          &
          ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
@@ -335,7 +339,7 @@ CONTAINS
           
           write (*,*) NCH  
           write (*,*) DTSTEP  
-          write (*,*) SFRAC  
+          write (*,*) PRECIPFRAC  
           write (*,*) ITYP1(n_out)  
           write (*,*) ITYP2(n_out)  
           write (*,*) FVEG1(n_out)  
@@ -1128,19 +1132,19 @@ CONTAINS
         ENDIF
 
 !**** UPDATE CANOPY INTERCEPTION; DETERMINE THROUGHFALL RATES.
-      IF(SFRAC == 1.) THEN
+      IF(PRECIPFRAC <= 0.998) THEN  
          CALL INTERC (                                                    &
               NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
-              SATCAP, SFRAC,BUG,                                          &
+              SATCAP, PRECIPFRAC,BUG,                                     &
               CAPAC,                                                      &
-              THRUL                                                       &
+              THRUL, THRUC                                                &
               )
       ELSE
          CALL INTERC (                                                    &
               NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
-              SATCAP, SFRAC,BUG,                                          &
+              SATCAP, PRECIPFRAC,BUG,                                     &
               CAPAC,                                                      &
-              THRUL, THRUC                                                &
+              THRUL                                                       &
               )
       ENDIF
 
@@ -1150,18 +1154,18 @@ CONTAINS
 
 !**** DETERMINE SURFACE RUNOFF AND INFILTRATION RATES:
 
-      IF(SFRAC == 1.) THEN
+      IF(PRECIPFRAC <= 0.998) THEN
+         CALL SRUNOFF (NCH,DTSTEP,                                       &
+              AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,PRECIPFRAC,       &
+              BUG,SRFEXC,RUNSRF,                                         &
+              QINFIL                                                     &
+              )
+      ELSE
          CALL SRUNOFF (                                                  &
               NCH,DTSTEP,AR1,ar2,ar4,THRUL,frice,tp1,srfmx,BUG,          &
               SRFEXC,RUNSRF,                                             &
               QINFIL                                                     &
                    )
-      ELSE
-         CALL SRUNOFF (                                                  &
-              NCH,DTSTEP,AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,SFRAC, &
-              BUG,SRFEXC,RUNSRF,                                         &
-              QINFIL                           &
-              )
       ENDIF
 
       IF (BUG) THEN
@@ -1495,7 +1499,7 @@ CONTAINS
          
          write (*,*) NCH  
          write (*,*) DTSTEP  
-         write (*,*) SFRAC  
+         write (*,*) PRECIPFRAC  
          write (*,*) ITYP1(n_out)  
          write (*,*) ITYP2(n_out)  
          write (*,*) FVEG1(n_out)  

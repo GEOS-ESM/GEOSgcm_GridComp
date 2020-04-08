@@ -123,7 +123,7 @@
       CONTAINS
 
       SUBROUTINE CATCHMENT (                                                   &
-                     NCH, LONS, LATS, DTSTEP, SFRAC,                           &
+                     NCH, LONS, LATS, DTSTEP, PRECIPFRAC,                      &
                      cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
@@ -162,7 +162,7 @@
       INTEGER, INTENT(IN) :: NCH
       INTEGER, INTENT(IN), DIMENSION(NCH) :: ITYP, cat_id
 
-      REAL, INTENT(IN) :: DTSTEP, SFRAC
+      REAL, INTENT(IN) :: DTSTEP, PRECIPFRAC
       REAL, INTENT(IN), DIMENSION(NCH) :: DZSF, TRAINC, TRAINL,                &
                      TSNOW, TICE, TFRZR,  UM,    &
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
@@ -323,7 +323,7 @@
          
          write (*,*) NCH  
          write (*,*) DTSTEP  
-         write (*,*) SFRAC  
+         write (*,*) PRECIPFRAC  
          write (*,*) ITYP(n_out)  
          write (*,*) TRAINC(n_out)    
          write (*,*) TRAINL(n_out)    
@@ -1144,19 +1144,19 @@
         ENDIF
 
 !**** UPDATE CANOPY INTERCEPTION; DETERMINE THROUGHFALL RATES.
-      IF(SFRAC == 1.) THEN
+      IF(PRECIPFRAC <= 0.998) THEN
          CALL INTERC (                                                    &
               NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
-              SATCAP, SFRAC,BUG,                                          &
+              SATCAP, PRECIPFRAC,BUG,                                     &
               CAPAC,                                                      &
-              THRUL                                                       &
+              THRUL, THRUC                                                &
               )
       ELSE
          CALL INTERC (                                                    &
               NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
-              SATCAP, SFRAC,BUG,                                          &
+              SATCAP, PRECIPFRAC,BUG,                                     &
               CAPAC,                                                      &
-              THRUL, THRUC                                                &
+              THRUL                                                       &
               )
       ENDIF
 
@@ -1166,18 +1166,18 @@
 
 !**** DETERMINE SURFACE RUNOFF AND INFILTRATION RATES:
 
-      IF(SFRAC == 1.) THEN
+      IF(PRECIPFRAC <= 0.998) THEN
+         CALL SRUNOFF ( NCH,DTSTEP,                                      &
+              AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,PRECIPFRAC,       & 
+              BUG,SRFEXC,RUNSRF,                                         &
+              QINFIL                                                     &
+              )
+      ELSE
          CALL SRUNOFF (                                                  &
               NCH,DTSTEP,AR1,ar2,ar4,THRUL,frice,tp1,srfmx,BUG,          &
               SRFEXC,RUNSRF,                                             &
               QINFIL                                                     &
                    )
-      ELSE
-         CALL SRUNOFF (                                                  &
-              NCH,DTSTEP,AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,SFRAC, &
-              BUG,SRFEXC,RUNSRF,                                         &
-              QINFIL                                                     &
-              )
       ENDIF
 
       IF (BUG) THEN
@@ -1520,7 +1520,7 @@
          
          write (*,*) NCH  
          write (*,*) DTSTEP  
-         write (*,*) SFRAC  
+         write (*,*) PRECIPFRAC  
          write (*,*) ITYP(n_out)  
          write (*,*) TRAINC(n_out)    
          write (*,*) TRAINL(n_out)    
