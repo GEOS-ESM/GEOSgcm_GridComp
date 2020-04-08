@@ -176,6 +176,7 @@ real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 f
 real    :: CO2
 integer :: CO2_YEAR_IN          ! years when atmospheric carbon dioxide concentration increases, starting from 1850
 real    :: DTCN                 ! Time step for carbon/nitrogen routines in CatchmentCN model (default 5400)
+real    :: PRECIPFRAC
 
 contains
 
@@ -253,7 +254,8 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,         DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'          , value=RUN_IRRIG,           DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='IRRIG_METHOD:'       , value=IRRIG_METHOD,        DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,         DEFAULT=1, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,         DEFAULT=1  , __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='PRECIPFRAC:'         , value=PRECIPFRAC,          DEFAULT=1. , __RC__ )
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
@@ -4987,7 +4989,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         logical                     :: debugzth
         real                        :: FAC
 
-        real                        :: PRECIPFRAC
         real                        :: DT
         integer                     :: NTILES
         integer                     :: I, J, K, N
@@ -5192,9 +5193,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              Label   = trim(COMP_NAME)//"_DT:"     ,&
              Default = DT                          ,&
              RC=STATUS )
-        VERIFY_(STATUS)
-
-        call MAPL_GetResource ( MAPL, PRECIPFRAC, Label="PRECIPFRAC:", DEFAULT=1.0, RC=STATUS)
         VERIFY_(STATUS)
 
         ! Get component's private internal state
