@@ -10,4 +10,3 @@ esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES GEOS_SurfaceShared GEOS_Shared MAPL)
 target_include_directories (${this} PUBLIC ${INC_ESMF})
-
