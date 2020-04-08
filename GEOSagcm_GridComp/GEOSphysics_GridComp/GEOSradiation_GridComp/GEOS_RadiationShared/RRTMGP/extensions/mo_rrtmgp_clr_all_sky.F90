@@ -43,12 +43,11 @@ contains
   !   pressures, temperatures, and gas amounts for the gas contribution
   !
   ! --------------------------------------------------
-! pmn: k_dist contains spectral info and nature of source (int or ext) 
   function rte_lw(k_dist, gas_concs, p_lay, t_lay, p_lev,    &
                      t_sfc, sfc_emis, cloud_props,           &
                      allsky_fluxes, clrsky_fluxes,           &
                      aer_props, col_dry, t_lev, inc_flux, n_gauss_angles) result(error_msg)
-    type(ty_gas_optics), intent(in   ) :: k_dist       !< derived type with spectral information
+    class(ty_gas_optics),              intent(in   ) :: k_dist       !< derived type with spectral information
     type(ty_gas_concs),                intent(in   ) :: gas_concs    !< derived type encapsulating gas concentrations
     real(wp), dimension(:,:),          intent(in   ) :: p_lay, t_lay !< pressure [Pa], temperature [K] at layer centers (ncol,nlay)
     real(wp), dimension(:,:),          intent(in   ) :: p_lev        !< pressure at levels/interfaces [Pa] (ncol,nlay+1)
@@ -115,7 +114,6 @@ contains
     ! ------------------------------------------------------------------------------------
     ! Optical properties arrays
     !
-! pmn: cloud optical properties determine the stream-ness of the whole RT
     select type(cloud_props)
       class is (ty_optical_props_1scl) ! No scattering
         allocate(ty_optical_props_1scl::optical_props)
@@ -126,8 +124,6 @@ contains
         nstr = size(cloud_props%tau,1)
     end select
 
-! pmn: initialize optical properties with spectral info
-! pmn: and then allocate for requested stream-ness
     error_msg = optical_props%init(k_dist)
     if(len_trim(error_msg) > 0) return
     select type (optical_props)
@@ -143,7 +139,6 @@ contains
     !
     ! Source function
     !
-! pmn: initialize the lw sources with k_dist and allocate
     error_msg = sources%init(k_dist)
     error_msg = sources%alloc(ncol, nlay)
     if (error_msg /= '') return
@@ -152,7 +147,6 @@ contains
     !
     ! Gas optical depth -- pressure need to be expressed as Pa
     !
-! pmn: get the gas_optics into optical_properties and sources
     error_msg = k_dist%gas_optics(p_lay, p_lev, t_lay, t_sfc, gas_concs, &
                                   optical_props, sources,                &
                                   col_dry, t_lev)
@@ -160,7 +154,6 @@ contains
     ! ----------------------------------------------------
     ! Clear sky is gases + aerosols (if they're supplied)
     !
-! pmn: add aero_props to optical_props
     if(present(aer_props)) error_msg = aer_props%increment(optical_props)
     if(error_msg /= '') return
 
@@ -171,7 +164,6 @@ contains
     ! ------------------------------------------------------------------------------------
     ! All-sky fluxes = clear skies + clouds
     !
-! pmn: add cloud optical properties to optical_properties
     error_msg = cloud_props%increment(optical_props)
     if(error_msg /= '') return
 
@@ -186,7 +178,7 @@ contains
                                  mu0, sfc_alb_dir, sfc_alb_dif, cloud_props, &
                                  allsky_fluxes, clrsky_fluxes,           &
                                  aer_props, col_dry, inc_flux, tsi_scaling) result(error_msg)
-    type(ty_gas_optics), intent(in   ) :: k_dist       !< derived type with spectral information
+    class(ty_gas_optics),              intent(in   ) :: k_dist       !< derived type with spectral information
     type(ty_gas_concs),                intent(in   ) :: gas_concs    !< derived type encapsulating gas concentrations
     real(wp), dimension(:,:),          intent(in   ) :: p_lay, t_lay !< pressure [Pa], temperature [K] at layer centers (ncol,nlay)
     real(wp), dimension(:,:),          intent(in   ) :: p_lev        !< pressure at levels/interfaces [Pa] (ncol,nlay+1)

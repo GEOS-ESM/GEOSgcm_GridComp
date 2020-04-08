@@ -70,7 +70,7 @@ module GEOS_IrradGridCompMod
   use parrrtm, only: ngptlw
 
   ! for RRTMGP
-  use mo_gas_optics, only: ty_gas_optics
+  use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
 
 #ifdef _CUDA
   use cudafor
@@ -139,7 +139,7 @@ module GEOS_IrradGridCompMod
   type ty_RRTMGP_state
     private
     logical :: initialized = .false.
-    type (ty_gas_optics) :: k_dist
+    type (ty_gas_optics_rrtmgp) :: k_dist
   end type ty_RRTMGP_state
 
   ! wrapper to access RRTMGP internal state
@@ -1100,8 +1100,6 @@ contains
     call MAPL_TimerAdd(GC, name="---RRTMGP_IO_1"           , __RC__)
     call MAPL_TimerAdd(GC, name="---RRTMGP_IO_2"           , __RC__)
     call MAPL_TimerAdd(GC, name="---RRTMGP_CLOUD_OPTICS"   , __RC__)
-    call MAPL_TimerAdd(GC, name="---RRTMGP_PRNG_SETUP"     , __RC__)
-    call MAPL_TimerAdd(GC, name="---RRTMGP_CLOUD_SAMPLING" , __RC__)
     call MAPL_TimerAdd(GC, name="---RRTMGP_AEROSOL_SETUP"  , __RC__)
     call MAPL_TimerAdd(GC, name="---RRTMGP_SUBSET"         , __RC__)
     call MAPL_TimerAdd(GC, name="---RRTMGP_MCICA"          , __RC__)
@@ -1370,18 +1368,19 @@ contains
    subroutine Lw_Driver(IM,JM,LM,LATS,LONS,CoresPerNode,RC)
 
    ! RRTMGP module uses
-   use mo_rte_kind,           only: wp
-   use mo_gas_concentrations, only: ty_gas_concs
-   use mo_cloud_optics,       only: ty_cloud_optics
-   use mo_cloud_sampling,     only: set_overlap, sample_clouds, RAN_OVERLAP, MAX_OVERLAP, MAX_RAN_OVERLAP
-   use mo_optical_props,      only: ty_optical_props, &
-                                    ty_optical_props_arry, ty_optical_props_1scl, &
-                                    ty_optical_props_2str, ty_optical_props_nstr
-   use mo_source_functions,   only: ty_source_func_lw
-   use mo_fluxes,             only: ty_fluxes_broadband
-   use mo_rte_lw,             only: rte_lw
-   use mo_load_coefficients,  only: load_and_init
-   use mo_load_cloud_optics,  only: load_and_init_cloud_optics
+   use mo_rte_kind,                only: wp
+   use mo_gas_concentrations,      only: ty_gas_concs
+   use mo_cloud_optics,            only: ty_cloud_optics
+   use mo_cloud_sampling,          only: draw_samples, &
+                                         sampled_mask_max_ran, sampled_mask_exp_ran
+   use mo_optical_props,           only: ty_optical_props, &
+                                         ty_optical_props_arry, ty_optical_props_1scl, &
+                                         ty_optical_props_2str, ty_optical_props_nstr
+   use mo_source_functions,        only: ty_source_func_lw
+   use mo_fluxes,                  only: ty_fluxes_broadband
+   use mo_rte_lw,                  only: rte_lw
+   use mo_load_coefficients,       only: load_and_init
+   use mo_load_cloud_coefficients, only: load_cld_lutcoeff, load_cld_padecoeff
 
    ! Type of MKL VSL Basic RNGs
    ! (1) Mersenne Twister types
@@ -1536,7 +1535,7 @@ contains
    real(wp), parameter :: cwp_fac = real(1000./MAPL_GRAV,kind=wp)
 
    ! input arrays: dimensions (col, lay)
-   real(wp), dimension(:,:), allocatable         :: p_lay, t_lay, p_lev, dp_wp
+   real(wp), dimension(:,:), allocatable         :: p_lay, t_lay, p_lev, dp_wp, cf_wp
    real(wp), dimension(:,:), allocatable, target :: t_lev
 
    ! surface input arrays
@@ -1550,7 +1549,7 @@ contains
                                                     flux_up_allnoa, flux_dn_allnoa, dfupdts_allnoa
 
    ! derived types for interacting with RRTMGP
-   type(ty_gas_optics), pointer                  :: k_dist
+   type(ty_gas_optics_rrtmgp), pointer           :: k_dist
    type(ty_gas_concs)                            :: gas_concs, gas_concs_subset
    type(ty_cloud_optics)                         :: cloud_optics
    type(ty_source_func_lw)                       :: sources, sources_plus
@@ -1572,11 +1571,13 @@ contains
    class(ty_optical_props_arry), allocatable :: clean_optical_props, dirty_optical_props
 
    ! RRTMGP locals
-   logical :: top_at_1, partial_block, need_dirty_optical_props, need_cloud_optical_props
+   logical :: top_at_1, u2s, partial_block
+   logical :: need_dirty_optical_props, need_cloud_optical_props
    logical :: export_clrnoa, export_clrsky, export_allnoa, export_allsky
    logical ::   calc_clrnoa,   calc_clrsky,   calc_allnoa,   calc_allsky
-   integer :: ncol, nbnd, ngpt, nmom, nga, nrghice, icergh, ioverlap
-   integer :: b, nBlocks, colS, colE, ncols_subset, partial_blockSize
+   integer :: ncol, nbnd, ngpt, nmom, nga, icergh
+   integer :: b, nBlocks, colS, colE, ncols_subset, &
+              partial_blockSize, icol, isub
    integer :: iBeg, iEnd, jBeg, jEnd
    integer :: IM_World, JM_World, dims(3)
    character(len=ESMF_MAXPATHLEN) :: k_dist_file, cloud_optics_file
@@ -1590,20 +1591,22 @@ contains
 
    ! gridcolum presence of liq and ice clouds (ncol,nlay)
    real(wp), dimension(:,:), allocatable :: clwp, ciwp
-   logical,  dimension(:,:), allocatable :: liqmsk, icemsk
 
-   ! a random number generator for each column
-   type(ty_rng_mklvsl_plus), dimension(:), allocatable :: rngs
+   ! a column random number generator
+   type(ty_rng_mklvsl_plus) :: rng
    integer, dimension(:), allocatable :: seeds
 
-   ! Cloud mask from overlap scheme (ngpt,nlay,ncol)
+   ! uniform random numbers need by mcICA (ngpt,nlay,cols)
+   real(wp), dimension(:,:,:), allocatable :: urand
+
+   ! Cloud mask from overlap scheme (cols,nlay,ngpt)
    logical,  dimension(:,:,:), allocatable :: cld_mask
 
    ! TEMP ... see below
    real(wp) :: press_ref_min, ptop
    real(wp) ::  temp_ref_min, tmin
    real(wp), parameter :: ptop_increase_OK_fraction = 0.01_wp
-   real(wp), parameter :: tmin_increase_OK_Kelvin   = 5.0_wp
+   real(wp), parameter :: tmin_increase_OK_Kelvin   = 10.0_wp
 
    ! block size for column processing
    ! set for efficiency from resource file
@@ -2392,11 +2395,12 @@ contains
 
       call MAPL_TimerOn(MAPL,"---RRTMGP_SETUP_1",__RC__)
 
+      ! absorbing gas names
+      error_msg = gas_concs%init([character(3) :: &
+        'h2o','co2','o3','n2o','co','ch4','o2','n2'])
+      TEST_(error_msg)
+
       ! load gas concentrations (volume mixing ratios)
-      ! (pmn: load_and_init of k_dist needs these. Actually it only uses the gas names
-      !    so it would probably be better to have an option to just intialize the names,
-      !    and do the vmr initialization after the pressure and temperature setup)
-      call gas_concs%reset()
       ! "constant" gases
       TEST_(gas_concs%set_vmr('n2' , real(N2 ,kind=wp)))
       TEST_(gas_concs%set_vmr('o2' , real(O2 ,kind=wp)))
@@ -2423,12 +2427,11 @@ contains
         MAPL, k_dist_file, "RRTMGP_DATA_LW:", &
         DEFAULT='rrtmgp-data-lw.nc',__RC__)
       if (.not. rrtmgp_state%initialized) then
-        ! gas_concs needed only to access model's available gas names
+        ! gas_concs needed only to access required gas names
         call load_and_init( &
           rrtmgp_state%k_dist, trim(k_dist_file), gas_concs)
         if (.not. rrtmgp_state%k_dist%source_is_internal()) then
-          write(*,*) "RRTMGP-LW: does not seem to be LW"
-          _ASSERT(.false.,'needs informative message')
+          TEST_("RRTMGP-LW: does not seem to be LW")
         endif
         rrtmgp_state%initialized = .true.
       endif
@@ -2443,7 +2446,7 @@ contains
       ! spectral dimensions
       ngpt = k_dist%get_ngpt()
       nbnd = k_dist%get_nband()
-      _ASSERT(nbnd == NB_RRTMGP,'needs informative message')
+      _ASSERT(nbnd == NB_RRTMGP, 'RRTMGP-LW: expected different number of bands')
 
       ! note: use k_dist%get_band_lims_wavenumber()
       !   to access band limits.
@@ -2462,7 +2465,7 @@ contains
 
       ! allocate input arrays
       allocate(t_sfc(ncol), emis_sfc(nbnd,ncol), __STAT__)
-      allocate(p_lay(ncol,LM), t_lay(ncol,LM), dp_wp(ncol,LM), &
+      allocate(p_lay(ncol,LM), t_lay(ncol,LM), dp_wp(ncol,LM), cf_wp(ncol,LM), &
                p_lev(ncol,LM+1), t_lev(ncol,LM+1), __STAT__)
 
       ! load input arrays ...
@@ -2472,55 +2475,54 @@ contains
       emis_sfc = real(spread(reshape(EMIS,(/ncol/)),1,nbnd),kind=wp)
 
       ! basic profiles
-      p_lay = real(reshape(PL ,(/ncol,LM  /)), kind=wp)
-      t_lay = real(reshape(T  ,(/ncol,LM  /)), kind=wp)
-      p_lev = real(reshape(PLE,(/ncol,LM+1/)), kind=wp)
+      p_lay = real(reshape(PL  ,(/ncol,LM  /)), kind=wp)
+      t_lay = real(reshape(T   ,(/ncol,LM  /)), kind=wp)
+      p_lev = real(reshape(PLE ,(/ncol,LM+1/)), kind=wp)
+      cf_wp = real(reshape(FCLD,(/ncol,LM  /)), kind=wp)
 
       ! RRTMGP's rte_lw takes a vertical ordering flag
       ! (no need to flip columns as with RRTMG)
       top_at_1 = p_lay(1, 1) < p_lay(1, LM)
-      _ASSERT(top_at_1,'needs informative message') ! for GEOS-5
+      _ASSERT(top_at_1, 'unexpected vertical ordering')
 
-      ! pmn: KLUGE 
+      ! pmn: pressure KLUGE 
       ! Because currently k_dist%press_ref_min ~ 1.005 > GEOS-5 ptop of 1.0 Pa.
       ! Find better solution, perhaps getting AER to add a higher top.
-      press_ref_min = k_dist%get_press_ref_min()
+      press_ref_min = k_dist%get_press_min()
       ptop = minval(p_lev(:,1))
       if (press_ref_min > ptop) then
         ! allow a small increase of ptop
         if (press_ref_min - ptop <= ptop * ptop_increase_OK_fraction) then
           where (p_lev(:,1) < press_ref_min) p_lev(:,1) = press_ref_min
           ! make sure no pressure ordering issues were created
-          _ASSERT(all(p_lev(:,1) < p_lay(:,1)),'needs informative message')
+          _ASSERT(all(p_lev(:,1) < p_lay(:,1)), 'pressure kluge causes misordering')
         else
-          write(*,*) 'Error: Model top too high for RRTMGP:'
           write(*,*) ' A ', ptop_increase_OK_fraction, &
                        ' fractional increase of ptop was insufficient'
           write(*,*) ' RRTMGP, GEOS-5 top (Pa)', press_ref_min, ptop
-          _ASSERT(.false.,'needs informative message')
+          TEST_('Model top too high for RRTMGP')
         endif
       endif
 
-      ! pmn: KLUGE 
+      ! pmn: temperature KLUGE 
       ! Currently k_dist%temp_ref_min = 160K but GEOS-5 has a global minimum
-      ! temperature below this ~0.4% of the time (but not by much --- minimum
-      ! seen is so far 157K). Consequently we will limit min(t_lay) to 160K.
+      ! temperature below this occasionally (< 1% of time). (The lowest temp
+      ! seen is so far 151K). Consequently we will limit min(t_lay) to 160K.
       ! Find better solution, perhaps getting AER to produce a table with a
       ! lower minimum temperature.
       ! note: add 0.01K to lower limit so that t_lev calculated below will
-      !   not fall below k_dist%get_temp_ref_min() due to roundoff issues.
-      temp_ref_min = k_dist%get_temp_ref_min() + 0.01_wp
+      !   not fall below k_dist%get_temp_min() due to roundoff issues.
+      temp_ref_min = k_dist%get_temp_min() + 0.01_wp
       tmin = minval(t_lay)
       if (temp_ref_min > tmin) then
         ! allow a small increase of tmin
         if (temp_ref_min - tmin <= tmin_increase_OK_Kelvin) then
           where (t_lay < temp_ref_min) t_lay = temp_ref_min
         else
-          write(*,*) 'Error: found excessively cold model temperature for RRTMGP:'
           write(*,*) ' A ', tmin_increase_OK_Kelvin, &
                        'K increase of tmin was insufficient'
           write(*,*) ' RRTMGP, GEOS-5 t_min (K)', temp_ref_min, tmin
-          _ASSERT(.false.,'needs informative message')
+          TEST_('Found excessively cold model temperature for RRTMGP')
         endif
       endif
 
@@ -2659,12 +2661,31 @@ contains
       ! options are: 1scl (no scattering), 2str (2-stream), or nstr (n-stream)
       ! For 1scl, must also specify the number of Gauss angles (nga) below.
       ! For nstr, must also specify the number of phase function moments (nmom) below.
+      ! After Feb2020 update:
+      ! For 2str, the default rte method is to use rescaled LW transport to account for
+      !   scattering (in which case nga is used). To explicity use 2 stream scattering,
+      !   must select u2s = .true.
+      ! NB: u2s does choose 2str optical_props. It only selects use_stream if 2str 
+      !   is explicitly hardwired by a allocate(ty_optical_props_2str ... ) below.
       ! =======================================================================================
 
       ! instantiate clean_optical_props with desired streams
       allocate(ty_optical_props_2str::clean_optical_props,__STAT__)
-      nga  = 1 ! Used only if 1scl, in which case must be >= 1
+      nga  = 1 ! Used if 1scl or (2str but .not. use_2stream), in which case must be >= 1
       nmom = 2 ! Used only if nstr, in which case must be >= 2
+      u2s = .true. ! forces explicit 2-stream scattering if optical_props_2str
+
+      ! allow user selection of nga and u2s as appropriate
+      select type(clean_optical_props)
+        class is (ty_optical_props_1scl)
+          call MAPL_GetResource( &
+            MAPL, nga ,'RRTMGP_LW_N_GAUSS_ANGLES:', DEFAULT=nga, __RC__)
+        class is (ty_optical_props_2str)
+          call MAPL_GetResource( &
+            MAPL, nga ,'RRTMGP_LW_N_GAUSS_ANGLES:', DEFAULT=nga, __RC__)
+          call MAPL_GetResource( &
+            MAPL, u2s ,'RRTMGP_LW_USE_2STREAM:',    DEFAULT=u2s, __RC__)
+      end select
 
       ! the dirty_optical_props have the same number of streams
       if (need_dirty_optical_props) then
@@ -2705,10 +2726,13 @@ contains
         call MAPL_GetResource( &
           MAPL, cloud_optics_type, "RRTMGP_CLOUD_OPTICS_TYPE_LW:", &
           DEFAULT='LUT', __RC__)
-        call load_and_init_cloud_optics( &
-          cloud_optics, trim(cloud_optics_file), cloud_optics_type, &
-          k_dist%get_band_lims_wavenumber())
-        nrghice = cloud_optics%get_num_ice_roughness_types()
+        if (trim(cloud_optics_type)=='LUT') then
+          call load_cld_lutcoeff (cloud_optics, cloud_optics_file)
+        elseif (trim(cloud_optics_type)=='PADE') then
+          call load_cld_padecoeff(cloud_optics, cloud_optics_file)
+        else
+          TEST_('unknown cloud_optics_type: '//trim(cloud_optics_file))
+        end if
 
         call MAPL_TimerOff(MAPL,"---RRTMGP_IO_2",__RC__)
 
@@ -2741,37 +2765,30 @@ contains
         call MAPL_TimerOn(MAPL,"---RRTMGP_CLOUD_OPTICS",__RC__)
 
         ! make band in-cloud optical properties from cloud_optics
-        allocate(  clwp(ncol,LM),  ciwp(ncol,LM),__STAT__)
-        allocate(liqmsk(ncol,LM),icemsk(ncol,LM),__STAT__)
+        allocate(clwp(ncol,LM), ciwp(ncol,LM),__STAT__)
         clwp = real(reshape(CWC(:,:,:,KLIQUID),(/ncol,LM/)),kind=wp) * dp_wp * cwp_fac ! in-cloud [g/m2]
         ciwp = real(reshape(CWC(:,:,:,KICE   ),(/ncol,LM/)),kind=wp) * dp_wp * cwp_fac ! in-cloud [g/m2]
-        liqmsk = (clwp > 0._wp) ! use a tiny non-zero min?
-        icemsk = (ciwp > 0._wp) ! use a tiny non-zero min?
-        TEST_(cloud_optics%cloud_optics( ncol, LM, nbnd, nrghice, liqmsk, icemsk, clwp, ciwp, real(reshape(REFF(:,:,:,KLIQUID),(/ncol,LM/)),kind=wp), real(reshape(REFF(:,:,:,KICE   ),(/ncol,LM/)),kind=wp), cloud_props))
-        deallocate(  clwp,   ciwp, __STAT__)
-        deallocate(liqmsk, icemsk, __STAT__)
+        error_msg = cloud_optics%cloud_optics( &
+          clwp, ciwp, &
+          real(reshape(REFF(:,:,:,KLIQUID),(/ncol,LM/)),kind=wp), &
+          real(reshape(REFF(:,:,:,KICE   ),(/ncol,LM/)),kind=wp), &
+          cloud_props)
+        TEST_(error_msg)
+        deallocate(clwp, ciwp, __STAT__)
 
         call MAPL_TimerOff(MAPL,"---RRTMGP_CLOUD_OPTICS",__RC__)
 
+        ! note: have made cloud_props for all ncol columns
+        !   and will subset below into blocks ... we can also
+        !   look at option of making cloud_props for each block 
+        !   as its needed ... same for aer_props
+
         ! set desired cloud overlap type
-        ! set_overlap wants a defined integer, but this is not available in resource file
-        ! so convert a human readible string to the required overlap integer
         call MAPL_GetResource( &
           MAPL, cloud_overlap_type, "RRTMGP_CLOUD_OVERLAP_TYPE_LW:", &
           DEFAULT='MAX_RAN_OVERLAP', __RC__)
-        select case (cloud_overlap_type)
-          case ("RAN_OVERLAP")
-            ioverlap = RAN_OVERLAP
-          case ("MAX_OVERLAP")
-            ioverlap = MAX_OVERLAP
-          case ("MAX_RAN_OVERLAP")
-            ioverlap = MAX_RAN_OVERLAP
-          case default
-            TEST_('RRTMGP_LW: unknown cloud overlap')
-        end select
-        TEST_(set_overlap(ioverlap))
 
-        call MAPL_TimerOn(MAPL,"---RRTMGP_PRNG_SETUP",__RC__)
+        call MAPL_TimerOn(MAPL,"---RRTMGP_MCICA",__RC__)
 
         ! ===============================================================================
         ! Random number setup:
@@ -2821,8 +2838,13 @@ contains
         ! LM * ngpt <~ 132 * 256 = 33,792 < 2^16 = 65,536
         ! ===============================================================================
 
-        allocate(rngs(ncol),__STAT__)  ! one independent RNG per column
-        allocate(seeds(3),__STAT__)    ! 2-word key plus word1 of counter
+        allocate(seeds(3),__STAT__) ! 2-word key plus word1 of counter
+
+        ! seed(1), the column part (word1) of key is set later
+        ! but get required global indicies of local rectangular grid here
+        call MAPL_GridGet(ESMFGRID, globalCellCountPerDim=dims, __RC__)
+        IM_World = dims(1); JM_World = dims(2)
+        call MAPL_GridGetInterior (ESMFGRID,iBeg,iEnd,jBeg,jEnd)
 
         ! get time part (word2) of key
         call ESMF_ClockGet(CLOCK, currTIME=CurrentTime, __RC__)
@@ -2833,47 +2855,7 @@ contains
         ! for LW start at counter=0
         seeds(3) = 0
 
-        ! get indicies of local rectangular grid
-        call MAPL_GridGet(ESMFGRID, globalCellCountPerDim=dims, __RC__)
-        IM_World = dims(1); JM_World = dims(2)
-        call MAPL_GridGetInterior (ESMFGRID,iBeg,iEnd,jBeg,jEnd)
-
-        ! initialize the Philox PRNG
-        IJ = 0
-        do J=1,JM
-          do I=1,IM
-            IJ = IJ + 1
-            ! set word1 of key based on global location
-            ! 32-bits can hold all forseeable resolutions
-            seeds(1) = (jBeg + J - 1) * IM_World + (iBeg + I - 1)
-            ! instantiate a random number stream for each column
-            call rngs(IJ)%init(VSL_BRNG_PHILOX4X32X10,seeds)
-          end do
-        end do
-
-        ! End of random number setup
-
-        call MAPL_TimerOff(MAPL,"---RRTMGP_PRNG_SETUP",__RC__)
-
-        call MAPL_TimerOn(MAPL,"---RRTMGP_CLOUD_SAMPLING",__RC__)
-
-        ! cloud sampling
-        allocate(cld_mask(ngpt,LM,ncol),__STAT__)
-        TEST_(sample_clouds(ncol, LM, ngpt, rngs, real(reshape(FCLD,(/ncol,LM/)),kind=wp), top_at_1, cld_mask))
-
-        call MAPL_TimerOff(MAPL,"---RRTMGP_CLOUD_SAMPLING",__RC__)
-
-        ! free up rngs space
-        do i = 1, ncol
-          call rngs(i)%end()
-        end do
-        deallocate(seeds,__STAT__)
-        deallocate(rngs,__STAT__)
-
-        ! note: have made cloud_props for all ncol columns
-        !   and will subset below into blocks ... we can also
-        !   look at option of making cloud_props for each block 
-        !   as its needed ... same for aer_props
+        call MAPL_TimerOn(MAPL,"---RRTMGP_MCICA",__RC__)
 
       end if ! need_cloud_optical_props
 
@@ -2928,6 +2910,10 @@ contains
         rrtmgp_blockSize, "RRTMGP_LW_BLOCKSIZE:", DEFAULT=4, __RC__)
       _ASSERT(rrtmgp_blockSize >= 1,'needs informative message')
 
+      ! for random numbers, for efficiency, reserve the maximum possible
+      ! subset of subcolumns (rrtmgp_blockSize) since column index is last
+      allocate(urand(ngpt,LM,rrtmgp_blocksize), __STAT__)
+
       ! number of full blocks by integer division
       nBlocks = ncol/rrtmgp_blockSize
 
@@ -2950,6 +2936,10 @@ contains
         end select
         TEST_(sources%alloc(ncols_subset, LM))
         TEST_(sources_plus%alloc(ncols_subset, LM))
+        if (allocated(cld_mask)) then
+          deallocate(cld_mask, __STAT__)
+        endif
+        allocate(cld_mask(ncols_subset, LM, ngpt), __STAT__)
 
         call MAPL_TimerOff(MAPL,"---RRTMGP_SUBSET",__RC__)
 
@@ -2980,6 +2970,10 @@ contains
           end select
           TEST_(sources%alloc(ncols_subset, LM))
           TEST_(sources_plus%alloc(ncols_subset, LM))
+          if (allocated(cld_mask)) then
+            deallocate(cld_mask, __STAT__)
+          endif
+        allocate(cld_mask(ncols_subset, LM, ngpt), __STAT__)
         endif
 
         ! prepare block
@@ -2993,40 +2987,60 @@ contains
         call MAPL_TimerOff(MAPL,"---RRTMGP_SUBSET",__RC__)
 
         if (need_cloud_optical_props) then
+
           ! get column subset of the band-space in-cloud optical properties
           call MAPL_TimerOn(MAPL,"---RRTMGP_SUBSET",__RC__)
           TEST_(cloud_props%get_subset(colS, ncols_subset, cloud_props_subset))
-          call MAPL_TimerOff(MAPL,"---RRTMGP_SUBSET",__RC__)
-          ! put this subset into g-point space so can apply cld_mask for mcICA
-          ! (succinct way is to increment a zero g-state by the band-state)
+          call MAPL_TimerOff(MAPL,"--RRTMGP_SUBSET",__RC__)
+
+          call MAPL_TimerOn(MAPL,"--RRTMGP_MCICA",__RC__)
+
+          ! generate McICA random numbers for subset
+          ! Note: really only needed where cloud fraction > 0 (speedup?)
+          ! Also, perhaps later this can be parallelized?
+          do isub = 1, ncols_subset
+            ! local 1d column index
+            icol = colS + isub - 1
+            ! local 2d indicies
+            J = (icol-1) / IM + 1
+            I = icol - (J-1) * IM
+            ! initialize the Philox PRNG
+            ! set word1 of key based on GLOBAL location
+            ! 32-bits can hold all forseeable resolutions
+            seeds(1) = (jBeg + J - 1) * IM_World + (iBeg + I - 1)
+            ! instantiate a random number stream for the column
+            call rng%init(VSL_BRNG_PHILOX4X32X10,seeds)
+            ! draw the random numbers for the column
+            urand(:,:,isub) = reshape(rng%get_random(ngpt*LM),(/ngpt,LM/))
+            ! free the rng
+            call rng%end()
+          end do
+
+          ! cloud sampling to gpoints
+          select case (cloud_overlap_type)
+            case ("MAX_RAN_OVERLAP")
+              error_msg = sampled_mask_max_ran( &
+                urand(:,:,1:ncols_subset), cf_wp(colS:colE,:), cld_mask)
+              TEST_(error_msg)
+            case ("EXP_RAN_OVERLAP")
+              TEST_('EXP_RAN_OVERLAP not yet implemnted')
+              !error_msg = (sampled_mask_exp_ran())
+              !TEST_(error_msg)
+            case default
+              TEST_('RRTMGP_LW: unknown cloud overlap')
+          end select
+
+          ! draw McICA optical property samples (band->gpt)
           select type (cloud_props_gpt)
             class is (ty_optical_props_2str)
-              call MAPL_TimerOn(MAPL,"---RRTMGP_MCICA",__RC__)
-              ! make a zero g-state
               TEST_(cloud_props_gpt%alloc_2str(ncols_subset, LM, k_dist))
-              cloud_props_gpt%tau = 0._wp
-              cloud_props_gpt%ssa = 0._wp
-              cloud_props_gpt%  g = 0._wp
-              ! increment it by the band state
-              TEST_(cloud_props_subset%increment(cloud_props_gpt))
-              ! finally mask out clear areas
-              ! note implicit reorder of cld_mask to be consistent
-              !   with optical properties (ncols_subset,LM,ngpt)
-              do j = 1, ngpt
-                do k = 1, LM
-                  do i = 1, ncols_subset
-                    if (.not. cld_mask(j,k,colS+i-1)) then
-                      cloud_props_gpt%tau(i,k,j) = 0._wp
-                      cloud_props_gpt%ssa(i,k,j) = 0._wp
-                      cloud_props_gpt%  g(i,k,j) = 0._wp
-                    end if  
-                  end do
-                end do
-              end do
-              call MAPL_TimerOff(MAPL,"---RRTMGP_MCICA",__RC__)
             class default
               TEST_('cloud_props_gpt hardwired 2-stream for now')
           end select
+          TEST_(draw_samples(cld_mask, cloud_props_subset, cloud_props_gpt))
+
+          call MAPL_TimerOff(MAPL,"--RRTMGP_MCICA",__RC__)
+
         end if
 
         call MAPL_TimerOn(MAPL,"---RRTMGP_GAS_OPTICS",__RC__)
@@ -3035,12 +3049,21 @@ contains
         ! NOTE: t_sfc only effects sources_plus.
         !       clean_optical_props is dummy here.
         if (delTS /= 0._wp) then
-          TEST_(k_dist%gas_optics(p_lay(colS:colE,:), p_lev(colS:colE,:), t_lay(colS:colE,:), t_sfc(colS:colE) + delTS, gas_concs_subset, clean_optical_props, sources_plus, tlev = t_lev(colS:colE,:)))
+          error_msg = k_dist%gas_optics( &
+            p_lay(colS:colE,:), p_lev(colS:colE,:), t_lay(colS:colE,:), &
+            t_sfc(colS:colE) + delTS, &
+            gas_concs_subset, clean_optical_props, sources_plus, &
+            tlev = t_lev(colS:colE,:))
+          TEST_(error_msg)
         end if
 
         ! get gas optical properties and sources
         ! this will just overwrite the previous dummy clean_optical_props
-        TEST_(k_dist%gas_optics(p_lay(colS:colE,:), p_lev(colS:colE,:), t_lay(colS:colE,:), t_sfc(colS:colE), gas_concs_subset, clean_optical_props, sources, tlev = t_lev(colS:colE,:)))
+        error_msg = k_dist%gas_optics( &
+          p_lay(colS:colE,:), p_lev(colS:colE,:), t_lay(colS:colE,:), &
+          t_sfc(colS:colE), gas_concs_subset, clean_optical_props, sources, &
+          tlev = t_lev(colS:colE,:))
+        TEST_(error_msg)
 
         call MAPL_TimerOff(MAPL,"---RRTMGP_GAS_OPTICS",__RC__)
 
@@ -3050,11 +3073,19 @@ contains
         if (calc_clrnoa) then
           fluxes_clrnoa%flux_up => flux_up_clrnoa(colS:colE,:)
           fluxes_clrnoa%flux_dn => flux_dn_clrnoa(colS:colE,:)
-          TEST_(rte_lw(clean_optical_props, top_at_1, sources, emis_sfc(:,colS:colE), fluxes_clrnoa, n_gauss_angles=nga))
+          error_msg = rte_lw( &
+            clean_optical_props, &
+            top_at_1, sources, emis_sfc(:,colS:colE), &
+            fluxes_clrnoa, n_gauss_angles=nga, use_2stream=u2s)
+          TEST_(error_msg)
           ! numerical derivative of fup wrt t_sfc
           if (delTS /= 0._wp) then
             fluxes_plus%flux_up => dfupdts_clrnoa(colS:colE,:)
-            TEST_(rte_lw(clean_optical_props, top_at_1, sources_plus, emis_sfc(:,colS:colE), fluxes_plus, n_gauss_angles=nga))
+            error_msg = rte_lw( &
+              clean_optical_props, &
+              top_at_1, sources_plus, emis_sfc(:,colS:colE), &
+              fluxes_plus, n_gauss_angles=nga, use_2stream=u2s)
+            TEST_(error_msg)
             dfupdts_clrnoa(colS:colE,:) = (fluxes_plus%flux_up - fluxes_clrnoa%flux_up) / delTS
           else
             dfupdts_clrnoa(colS:colE,:) = 0._wp
@@ -3095,11 +3126,19 @@ contains
           ! clean all-sky RT
           fluxes_allnoa%flux_up => flux_up_allnoa(colS:colE,:)
           fluxes_allnoa%flux_dn => flux_dn_allnoa(colS:colE,:)
-          TEST_(rte_lw(clean_optical_props, top_at_1, sources, emis_sfc(:,colS:colE), fluxes_allnoa, n_gauss_angles=nga))
+          error_msg = rte_lw( &
+            clean_optical_props, &
+            top_at_1, sources, emis_sfc(:,colS:colE), &
+            fluxes_allnoa, n_gauss_angles=nga, use_2stream=u2s)
+          TEST_(error_msg)
           ! numerical derivative of fup wrt t_sfc
           if (delTS /= 0._wp) then
             fluxes_plus%flux_up => dfupdts_allnoa(colS:colE,:)
-            TEST_(rte_lw(clean_optical_props, top_at_1, sources_plus, emis_sfc(:,colS:colE), fluxes_plus, n_gauss_angles=nga))
+            error_msg = rte_lw( &
+              clean_optical_props, &
+              top_at_1, sources_plus, emis_sfc(:,colS:colE), &
+              fluxes_plus, n_gauss_angles=nga, use_2stream=u2s)
+            TEST_(error_msg)
             dfupdts_allnoa(colS:colE,:) = (fluxes_plus%flux_up - fluxes_allnoa%flux_up) / delTS
           else
             dfupdts_allnoa(colS:colE,:) = 0._wp
@@ -3119,11 +3158,19 @@ contains
             if (calc_clrsky) then
               fluxes_clrsky%flux_up => flux_up_clrsky(colS:colE,:)
               fluxes_clrsky%flux_dn => flux_dn_clrsky(colS:colE,:)
-              TEST_(rte_lw(dirty_optical_props, top_at_1, sources, emis_sfc(:,colS:colE), fluxes_clrsky, n_gauss_angles=nga))
+              error_msg = rte_lw( &
+                dirty_optical_props, &
+                top_at_1, sources, emis_sfc(:,colS:colE), &
+                fluxes_clrsky, n_gauss_angles=nga, use_2stream=u2s)
+              TEST_(error_msg)
               ! numerical derivative of fup wrt t_sfc
               if (delTS /= 0._wp) then
                 fluxes_plus%flux_up => dfupdts_clrsky(colS:colE,:)
-                TEST_(rte_lw(dirty_optical_props, top_at_1, sources_plus, emis_sfc(:,colS:colE), fluxes_plus, n_gauss_angles=nga))
+                error_msg = rte_lw( &
+                  dirty_optical_props, &
+                  top_at_1, sources_plus, emis_sfc(:,colS:colE), &
+                  fluxes_plus, n_gauss_angles=nga, use_2stream=u2s)
+                TEST_(error_msg)
                 dfupdts_clrsky(colS:colE,:) = (fluxes_plus%flux_up - fluxes_clrsky%flux_up) / delTS
               else
                 dfupdts_clrsky(colS:colE,:) = 0._wp
@@ -3139,11 +3186,19 @@ contains
               ! dirty all-sky RT
               fluxes_allsky%flux_up => flux_up_allsky(colS:colE,:)
               fluxes_allsky%flux_dn => flux_dn_allsky(colS:colE,:)
-              TEST_(rte_lw(dirty_optical_props, top_at_1, sources, emis_sfc(:,colS:colE), fluxes_allsky, n_gauss_angles=nga))
+              error_msg = rte_lw( &
+                dirty_optical_props, &
+                top_at_1, sources, emis_sfc(:,colS:colE), &
+                fluxes_allsky, n_gauss_angles=nga, use_2stream=u2s)
+              TEST_(error_msg)
               ! numerical derivative of fup wrt t_sfc
               if (delTS /= 0._wp) then
                 fluxes_plus%flux_up => dfupdts_allsky(colS:colE,:)
-                TEST_(rte_lw(dirty_optical_props, top_at_1, sources_plus, emis_sfc(:,colS:colE), fluxes_plus, n_gauss_angles=nga))
+                error_msg = rte_lw( &
+                  dirty_optical_props,  &
+                  top_at_1, sources_plus, emis_sfc(:,colS:colE),  &
+                  fluxes_plus, n_gauss_angles=nga, use_2stream=u2s)
+                TEST_(error_msg)
                 dfupdts_allsky(colS:colE,:) = (fluxes_plus%flux_up - fluxes_allsky%flux_up) / delTS
               else
                 dfupdts_allsky(colS:colE,:) = 0._wp
@@ -3216,6 +3271,8 @@ contains
       if (need_cloud_optical_props) then
         call cloud_props_gpt%finalize()
         call cloud_props_subset%finalize()
+        deallocate(seeds,__STAT__)
+        deallocate(urand, __STAT__)
         deallocate(cld_mask,__STAT__)
         call cloud_props%finalize()
         call cloud_optics%finalize()
@@ -3232,7 +3289,7 @@ contains
       if (calc_allsky) then
         deallocate(flux_up_allsky, flux_dn_allsky, dfupdts_allsky, __STAT__)
       end if
-      deallocate(p_lay, t_lay, p_lev, t_lev, dp_wp, __STAT__)
+      deallocate(p_lay, t_lay, p_lev, t_lev, dp_wp, cf_wp, __STAT__)
       deallocate(t_sfc, emis_sfc, __STAT__)
 
       call MAPL_TimerOff(MAPL,"---RRTMGP_POST",__RC__)
