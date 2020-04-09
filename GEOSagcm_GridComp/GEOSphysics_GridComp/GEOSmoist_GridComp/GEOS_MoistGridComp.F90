@@ -114,6 +114,9 @@ module GEOS_MoistGridCompMod
 !--kml--------------
 !  use m_zeit
 
+ ! External lightning module
+ USE Lightning_mod, ONLY : hemcoFlashrate
+
   implicit none
 
 !-srf-gf-scheme
@@ -672,6 +675,17 @@ contains
     call MAPL_AddImportSpec(GC,                             &
          SHORT_NAME = 'FROCEAN',                                   &
          LONG_NAME  = 'areal_ocean_fraction',                      &
+         UNITS      = '1',                                         &
+         DIMS       = MAPL_DimsHorzOnly,                           &
+         VLOCATION  = MAPL_VLocationNone,                          &
+         AVERAGING_INTERVAL = AVRGNINT,                            &
+         REFRESH_INTERVAL   = RFRSHINT,                            &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'FRACI',                                     &
+         LONG_NAME  = 'ice_covered_fraction_of_tile',              &
          UNITS      = '1',                                         &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,                          &
@@ -3665,6 +3679,15 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='LFR_GCC',                                        &
+         LONG_NAME ='lightning_flash_rate_for_GEOSCHEMchem',          &
+         UNITS     ='km-2 s-1',                                       &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         VLOCATION = MAPL_VLocationNone,                              &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME='THMOIST',                                     & 
          LONG_NAME ='potential_temperature_after_all_of_moist',   &
@@ -5272,6 +5295,7 @@ contains
       real, pointer, dimension(:,:,:) :: FRZ_TT, DCNVL, DCNVi,QSATi,QSATl,RCCODE,TRIEDLV,QVRAS
 
       real, pointer, dimension(:,:  ) :: LFR,A1X1,A2X2,A3X3,A4X4,A5X5
+      real, pointer, dimension(:,:  ) :: LFR_GCC
 
       !Whether to guard against negatives
       logical                         :: RAS_NO_NEG
@@ -12371,6 +12395,25 @@ do K= 1, LM
        VERIFY_(STATUS)
       end if
 
+      ! Calculate flash rate following Murray et al. (2012), as used by GEOS-Chem 
+      !-------------------------------------------------------------------------------------
+      CALL MAPL_GetPointer( EXPORT, LFR_GCC, 'LFR_GCC', NotFoundOk=.TRUE., __RC__ )
+      IF ( ASSOCIATED( LFR_GCC ) ) THEN
+         CALL MAPL_TimerOn (STATE,"--FLASH", __RC__ )
+         CALL Get_hemcoFlashrate ( STATE,       &
+                                   IMPORT,      &
+                                   IM, JM, LM,  &
+                                   T,           &
+                                   PLE,         &
+                                   ZLE,         &
+                                   CNV_MFC,     &
+                                   AREA,        &
+                                   TS,          &
+                                   LFR_GCC,     &
+                                          __RC__ )
+         CALL MAPL_TimerOff(STATE,"--FLASH", __RC__ )
+      ENDIF
+
       ! Deallocate temp space if necessary
       !-----------------------------------
 
@@ -13367,6 +13410,122 @@ do K= 1, LM
   END SUBROUTINE flash_rate
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  SUBROUTINE Get_hemcoFlashrate ( STATE, IMPORT, IM, JM, LM, T, PLE, ZLE, CNV_MFC, &
+                                  AREA,  TS, LFR, RC )
+
+    !=====================================================================================
+    !BOP
+    ! !DESCRIPTION:
+    !  Wrapper routine to call HEMCO flashrate, which computes the lightning flash rate
+    !  following Murray et al. 2012. 
+    !
+    !EOP
+    ! !REVISION HISTORY
+    ! 15 Jan 2020 - christoph.a.keller@nasa.gov - Initial version 
+    !=====================================================================================
+
+    ! Args
+    TYPE(MAPL_MetaComp),          POINTER       :: STATE       ! Internal MAPL_Generic state
+    type(ESMF_State),             INTENT(INOUT) :: IMPORT      ! Import state
+    INTEGER,                      INTENT(IN)    :: IM, JM, LM
+    REAL, DIMENSION(IM,JM,LM),    INTENT(IN)    :: T
+    REAL, DIMENSION(IM,JM,0:LM),  INTENT(IN)    :: PLE
+    REAL, DIMENSION(IM,JM,0:LM),  INTENT(IN)    :: ZLE
+    REAL, DIMENSION(IM,JM,LM),    INTENT(IN)    :: CNV_MFC
+    REAL, DIMENSION(IM,JM),       INTENT(IN)    :: AREA
+    REAL, DIMENSION(IM,JM),       INTENT(IN)    :: TS
+    REAL, DIMENSION(:,:),         POINTER       :: LFR
+    INTEGER,                      INTENT(INOUT) :: RC
+
+    ! Local variables
+    INTEGER                          :: AGCM_IM
+    REAL, ALLOCATABLE                :: LONS(:,:)
+    REAL, ALLOCATABLE                :: LATS(:,:)
+    REAL, ALLOCATABLE                :: LWI(:,:)
+    real, pointer, dimension(:,:)    :: LONS_RAD
+    real, pointer, dimension(:,:)    :: LATS_RAD
+    real, pointer, dimension(:,:)    :: FROCEAN 
+    real, pointer, dimension(:,:)    :: FRLAND 
+    real, pointer, dimension(:,:)    :: FRACI
+    REAL, SAVE                       :: OTDLISSCAL = -1.0
+
+!---Initialize
+    __Iam__('Get_hemcoFlashrate')
+    LFR = 0.0
+
+!---Calculate LWI, make water default value 
+    CALL MAPL_GetPointer(IMPORT, FROCEAN, 'FROCEAN' , __RC__ ) 
+    CALL MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , __RC__ ) 
+    CALL MAPL_GetPointer(IMPORT, FRACI,   'FRACI'   , __RC__ ) 
+    ALLOCATE(LWI(IM,JM),STAT=RC)
+    ASSERT_(RC==0)
+                                       LWI = 0.0  ! Water 
+    where ( FRLAND > 0.4 )             LWI = 1.0  ! Land
+    where ( LWI==0.0 .and. FRACI>0.5 ) LWI = 2.0  ! Ice
+    where ( LWI==0.0 .and. TS<271.40 ) LWI = 2.0  ! Ice
+
+!---Get lat/lon in degrees
+    ALLOCATE(LONS(IM,JM),LATS(IM,JM),STAT=RC)
+    ASSERT_(RC==0)
+    CALL MAPL_Get( STATE, lons=LONS_RAD, lats=LATS_RAD, __RC__ )
+    LONS = LONS_RAD * MAPL_RADIANS_TO_DEGREES
+    LATS = LATS_RAD * MAPL_RADIANS_TO_DEGREES
+
+!---Scale factor
+    IF ( OTDLISSCAL < 0.0 ) THEN
+       CALL MAPL_GetResource(STATE,OTDLISSCAL,'LFR_GCC_OTDLISSCAL:',DEFAULT=-1.0, __RC__ )
+       ! Estimate it from grid resolution
+       IF ( OTDLISSCAL < 0.0 ) THEN
+          CALL MAPL_GetResource(STATE,AGCM_IM,'AGCM_IM:', __RC__ )
+          SELECT CASE ( AGCM_IM )
+             CASE ( 48 )
+                OTDLISSCAL = 0.355
+             CASE ( 90 )
+                OTDLISSCAL = 0.1
+             CASE ( 180 )
+                OTDLISSCAL = 1.527e-2
+             CASE ( 360 )
+                OTDLISSCAL = 6.32e-3
+             CASE ( 720 )
+                OTDLISSCAL = 1.4152e-3
+             CASE DEFAULT
+                OTDLISSCAL = -999.0
+          END SELECT
+       ENDIF
+       IF ( OTDLISSCAL < 0.0 ) THEN
+          WRITE(*,*) 'Invalid OTDLISSCAL scaling factor, needed to compute flash rate for GEOSCHEMchem'
+          WRITE(*,*) 'Please specify parameter "LFR_GCC_OTD_LISSCAL" or make sure that there is a default'
+          WRITE(*,*) 'values for this grid resolution in GEOS_MoistGridComp.F90.'
+          CALL FLUSH()
+          ASSERT_(OTDLISSCAL>0.0)
+       ENDIF
+       IF ( MAPL_AM_I_ROOT() ) THEN
+          WRITE(*,*) TRIM(Iam),': OTD-LIS scale factor for GCC LFR = ',OTDLISSCAL
+       ENDIF 
+    ENDIF
+
+!---Get flashrate
+    CALL hemcoFlashrate (cellArea=AREA,          &
+                         lwi=LWI,                &
+                         lonslocal=LONS,         &
+                         latslocal=LATS,         &
+                         airTemp=T,              &
+                         ple=PLE,                &
+                         geoPotHeight=ZLE,       &
+                         cnvMfc=CNV_MFC,         &
+                         otdLisScale=OTDLISSCAL, &
+                         flashRate=LFR,          &
+                                           __RC__ )
+
+!---Cleanup
+    IF(ALLOCATED(LONS)) DEALLOCATE(LONS)
+    IF(ALLOCATED(LATS)) DEALLOCATE(LATS)
+    IF(ALLOCATED(LWI))  DEALLOCATE(LWI)
+    RETURN_(ESMF_SUCCESS)
+
+END SUBROUTINE Get_hemcoFlashrate
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
