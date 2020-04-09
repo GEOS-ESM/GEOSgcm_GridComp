@@ -37,7 +37,7 @@ $mk_catch_log = "mk_catch.log";
         # run interactively if already on interactive job nodes
         #------------------------------------------------------
         if (-x $mk_catch_j) {
-            $cmd = $mk_catch_j;
+            $cmd = "./$mk_catch_j";
             system_($cmd);
         }
         else {
