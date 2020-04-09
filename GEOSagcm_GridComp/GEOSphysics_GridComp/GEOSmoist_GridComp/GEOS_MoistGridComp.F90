@@ -12244,6 +12244,7 @@ do K= 1, LM
       if (associated(ER_PRCP))   ER_PRCP = ER_PRC2 
       if (associated(FILLNQV))   FILLNQV = FILLQ / DT_MOIST 
       if (associated(DQDT   ))   DQDT    = (Q1  - Q )/DT_MOIST
+      if (associated(DTDT_MOIST)) DTDT_MOIST = (TEMP - DTDT_MOIST)/DT_MOIST
       !!if(associated(QSATI   ))   DQS      = GEOS_DQSAT(TEMP, PLO, qsat=QSATi, OVER_ICE=.TRUE. )
       !!if(associated(QSATl   ))   DQS      = GEOS_DQSAT(TEMP, PLO, qsat=QSATl, OVER_LIQUID=.TRUE. )
       if (associated(TI     ))   TI      = (TH1 - TH)*(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))/DT_MOIST
