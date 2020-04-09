@@ -1293,8 +1293,10 @@ contains
 !-------------------------------------------------
 
     if (DO_DATASEAONLY==0) then
-       call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
-       VERIFY_(STATUS)
+! SA: commenting for MOM6. Also we do not need this bundle thing, even with MOM5. 
+!     Get rid of it.
+!      call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
+!      VERIFY_(STATUS)
        call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )
        VERIFY_(STATUS)
     end if
