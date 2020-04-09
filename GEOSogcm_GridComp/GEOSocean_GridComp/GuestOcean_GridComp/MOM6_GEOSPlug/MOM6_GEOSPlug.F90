@@ -45,7 +45,8 @@ module MOM6_GEOSPlugMod
   use time_manager_mod,         only: set_time, set_date
   use time_manager_mod,         only: JULIAN
 
-  use ocean_model_mod,          only: ocean_model_init, update_ocean_model, ocean_model_end, ocean_model_restart
+  use ocean_model_mod,          only: ocean_model_init,   ocean_model_init_sfc, &
+                                      update_ocean_model, ocean_model_end, ocean_model_restart
   use ocean_model_mod,          only: ocean_model_data_get
   use ocean_model_mod,          only: ocean_public_type, ocean_state_type
   use MOM_surface_forcing,      only: ice_ocean_boundary_type
@@ -374,7 +375,10 @@ contains
          SHORT_NAME         = 'MOM_2D_MASK',                       &
          LONG_NAME          = 'MOM_ocean_mask_at_t-points',        &
          UNITS              = '1',                                 &
-         DIMS               = MAPL_DimsHorzVert,                   &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+!SA: following horz dims is wrong.
+!        DIMS               = MAPL_DimsHorzVert,                   &
+!
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
     VERIFY_(STATUS)
@@ -562,6 +566,7 @@ contains
     type(ice_ocean_boundary_type), pointer :: Boundary                => null()
     type(ocean_public_type),       pointer :: Ocean                   => null()
     type(ocean_state_type),        pointer :: Ocean_State             => null()
+    type(domain2d),                pointer :: OceanDomain             => null()
     type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state => null()
     type(MOM_MAPLWrap_Type)                :: wrap
 
@@ -647,6 +652,8 @@ contains
 
     Boundary => MOM_MAPL_internal_state%Ice_ocean_boundary
     Ocean    => MOM_MAPL_internal_state%Ocean
+!SA: what to be done for:
+!   Ocean_State ??
 
 ! FMS initialization using the communicator from the VM
 !------------------------------------------------------
@@ -665,11 +672,11 @@ contains
     call field_manager_init                                  ! FMS/field_manager/field_manager.F90           [MOM6 GEOS]
                                                              ! mom/src/shared/field_manager/field_manager.F90[MOM5 GEOS]
 
-    call diag_manager_init                                   ! FMS/diag_manager/diag_manager.F90             [MOM6 GEOS] SA: could pass time_init, not available before (MOM5)
-                                                             ! mom/src/shared/diag_manager/diag_manager.F90  [MOM5 GEOS]
-
     call set_calendar_type ( JULIAN)                         ! FMS/time_manager/time_manager.F90             [MOM6 GEOS]
                                                              ! mom/src/shared/time_manager/time_manager.F90  [MOM5 GEOS]
+
+    call diag_manager_init                                   ! FMS/diag_manager/diag_manager.F90             [MOM6 GEOS] SA: could pass time_init, not available before (MOM5)
+                                                             ! mom/src/shared/diag_manager/diag_manager.F90  [MOM5 GEOS]
 
     DT   = set_time (DT_OCEAN, 0)                            ! FMS/time_manager/time_manager.F90             [MOM6 GEOS]
                                                              ! mom/src/shared/time_manager/time_manager.F90  [MOM5 GEOS]
@@ -677,21 +684,31 @@ contains
     Time = set_date (YEAR,MONTH,DAY,HR,MN,SC)                ! FMS/time_manager/time_manager.F90             [MOM6 GEOS]
                                                              ! mom/src/shared/time_manager/time_manager.F90  [MOM5 GEOS]
 
+    Ocean%is_ocean_pe = .true.
     call ocean_model_init  (Ocean, Ocean_state, Time, Time)  ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
                                                              ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
-    print *, 'MOM6 plug: finished init'
-    print *, 'Ocean_state%grid%isc = ', Ocean_state%grid%isc
-    print *, 'Ocean_state%grid%jsc = ', Ocean_state%grid%jsc
-    print *, 'Ocean_state%grid%iec = ', Ocean_state%grid%iec
-    print *, 'Ocean_state%grid%jsc = ', Ocean_state%grid%jec
 
-! Check local sizes of two horizontal dimensions
-!-----------------------------------------------
+! you probably need this as well? Check with Alistair, Bob.
+    call ocean_model_init_sfc(Ocean_state, Ocean)
+
+! Check local sizes of horizontal dimensions
+!--------------------------------------------
 
 !   call mom4_get_dimensions(isc, iec, jsc, jec, nk_out=LM)          ! mom/src/mom5/ocean_core/ocean_model.F90    [MOM5 GEOS]
 
-    isc = Ocean_state%grid%isc; iec = Ocean_state%grid%iec           ! SA: Seems to be no mom6_get_dimensions in MOM6.
-    jsc = Ocean_state%grid%jsc; jec = Ocean_state%grid%jec
+    OceanDomain => Ocean%Domain
+    call mpp_get_compute_domain(OceanDomain, isc, iec, jsc, jec)            ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
+
+!   print *, '[isc, iec], [jsc, jec] = ', '[', isc, iec, ']', '[', jsc, jec, ']'
+
+!   following is incorrect
+!   isc = Ocean_state%grid%isc; iec = Ocean_state%grid%iec           ! SA: Seems to be no mom6_get_dimensions in MOM6.
+!   jsc = Ocean_state%grid%jsc; jec = Ocean_state%grid%jec
+
+!   print *, 'Ocean_state%grid%isc = ', Ocean_state%grid%isc
+!   print *, 'Ocean_state%grid%jsc = ', Ocean_state%grid%jsc
+!   print *, 'Ocean_state%grid%iec = ', Ocean_state%grid%iec
+!   print *, 'Ocean_state%grid%jec = ', Ocean_state%grid%jec
 
     call MAPL_GridGet(GRID, localCellCountPerDim=counts, RC=status)
     VERIFY_(STATUS)
@@ -934,8 +951,8 @@ contains
 
     real, allocatable                  :: U(:,:)
     real, allocatable                  :: V(:,:)
-    real, allocatable                  :: H(:,:,:)
-    real, allocatable                  :: G(:,:,:)
+!   real, allocatable                  :: H(:,:,:) ! SA: not used
+!   real, allocatable                  :: G(:,:,:) ! SA: not used
     real, allocatable                  :: cos_rot(:,:)
     real, allocatable                  :: sin_rot(:,:)
     real                               :: EPSLN
@@ -969,7 +986,6 @@ contains
 
 ! Begin
 !------
-
 
 ! Get the component name and set-up traceback handle.
 ! -----------------------------------------------------
@@ -1019,21 +1035,31 @@ contains
     call mpp_get_compute_domain(OceanDomain, isc, iec, jsc, jec)            ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
 !   call get_ocean_domain(OceanDomain)                                      ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
 !   call mom4_get_dimensions(isc, iec, jsc, jec, isd, ied, jsd, jed, LM)    ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
+    print *, '[isc, iec], [jsc, jec]:', '[', isc, iec, ']', '[', jsc, jec, ']'
 
-    isd = Ocean_state%grid%isd; ied = Ocean_state%grid%ied
-    jsd = Ocean_state%grid%jsd; jed = Ocean_state%grid%jed
+! these [ (isd, ied), (jsd, jed)] need to filled but NOT following way.
+! since ocean_state isn't yet specified.  
+!   isd = Ocean_state%grid%isd; ied = Ocean_state%grid%ied
+!   jsd = Ocean_state%grid%jsd; jed = Ocean_state%grid%jed
+
+!   print *, 'Ocean_state%grid%isd = ', Ocean_state%grid%isd
+!   print *, 'Ocean_state%grid%jsd = ', Ocean_state%grid%jsd
+!   print *, 'Ocean_state%grid%ied = ', Ocean_state%grid%ied
+!   print *, 'Ocean_state%grid%jed = ', Ocean_state%grid%jed
 
     IM=iec-isc+1
     JM=jec-jsc+1
-    LM=Ocean_state%GV%ke
+!   LM=Ocean_state%GV%ke
+    LM=50
+    print *, 'IM, JM, LM=', IM, JM, LM
 
 ! Temporaries with MOM default reals
 !-----------------------------------
 
     allocate(U(IM,JM   ),    stat=STATUS); VERIFY_(STATUS)
     allocate(V(IM,JM   ),    stat=STATUS); VERIFY_(STATUS)
-    allocate(H(IM,JM,LM),    stat=STATUS); VERIFY_(STATUS)
-    allocate(G(IM,JM,LM),    stat=STATUS); VERIFY_(STATUS)  ! SA: this is not needed ??
+!   allocate(H(IM,JM,LM),    stat=STATUS); VERIFY_(STATUS)  ! SA: this is not needed ??
+!   allocate(G(IM,JM,LM),    stat=STATUS); VERIFY_(STATUS)  ! SA: this is not needed ??
     allocate(cos_rot(IM,JM), stat=STATUS); VERIFY_(STATUS)
     allocate(sin_rot(IM,JM), stat=STATUS); VERIFY_(STATUS)
 
@@ -1106,15 +1132,17 @@ contains
 !--------------------------------------------
     U = 0.0
     V = 0.0
-    call transformA2B( real(TAUX,kind=kind(U)), real(TAUY,kind=kind(V)), U, V)
+! comment for now
+!   call transformA2B( real(TAUX,kind=kind(U)), real(TAUY,kind=kind(V)), U, V)
 
 ! Rotate input stress over water along i,j of tripolar grid, and combine with stress under ice
 !---------------------------------------------------------------------------------------------
     call ocean_model_data_get(Ocean_State, Ocean, 'cos_rot', cos_rot, isc, jsc)    ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
     call ocean_model_data_get(Ocean_State, Ocean, 'sin_rot', sin_rot, isc, jsc)    ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
 
-    Boundary%U_flux =  (U*cos_rot + V*sin_rot)*(1.-AICEU) - STROCNXB
-    Boundary%V_flux = (-U*sin_rot + V*cos_rot)*(1.-AICEU) - STROCNYB
+! comment for now
+!   Boundary%U_flux =  (U*cos_rot + V*sin_rot)*(1.-AICEU) - STROCNXB
+!   Boundary%V_flux = (-U*sin_rot + V*cos_rot)*(1.-AICEU) - STROCNYB
 
 ! Set the time for MOM
 !---------------------
@@ -1147,7 +1175,10 @@ contains
     ! SA: steady_state_ocean is not needed. Call update_ocean_model with additional args now available with MOM6
     if(steady_state_ocean == 0) then
 
+      print *, 'plug: Run: call update_ocean_model'
       call update_ocean_model(Boundary, Ocean_State, Ocean, Time, DT)  ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
+      print *, 'plug: Run: called update_ocean_model'
+      ASSERT_(.FALSE.)
                                                                        ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
     endif
 
@@ -1269,8 +1300,8 @@ contains
 !      call ocean_model_data_get(Ocean_State, Ocean, 'geodepth_zt', H, isc, jsc) ! mom/src/mom5/ocean_core/ocean_model.F90 [MOM5 GEOS]
     end if
 
-    deallocate(H)
-    deallocate(G)
+!   deallocate(H)
+!   deallocate(G)
     deallocate(U,V)
     deallocate(cos_rot,sin_rot)
 
