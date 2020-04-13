@@ -1554,8 +1554,7 @@ contains
    type(ty_cloud_optics)                         :: cloud_optics
    type(ty_source_func_lw)                       :: sources
    type(ty_fluxes_broadband)                     :: fluxes_clrsky, fluxes_clrnoa, &
-                                                    fluxes_allsky, fluxes_allnoa, &
-                                                    fluxes_plus
+                                                    fluxes_allsky, fluxes_allnoa
 
    ! The band-space (ncol,nlay,nbnd) aerosol and in-cloud optical properties
    ! Polymorphic with dynamic type (#streams) defined later
@@ -2673,7 +2672,7 @@ contains
       ! default values
       nga  = 1 ! Used if 1scl or (2str but .not. u2s), in which case must be >= 1
       nmom = 2 ! Used only if nstr, in which case must be >= 2
-      u2s = .true. ! forces explicit 2-stream scattering if optical_props_2str
+      u2s = .false. ! forces explicit 2-stream scattering if optical_props_2str
 
       ! allow user selection of nga and u2s as appropriate
       select type(clean_optical_props)
@@ -2685,6 +2684,7 @@ contains
             MAPL, nga ,'RRTMGP_LW_N_GAUSS_ANGLES:', DEFAULT=nga, __RC__)
           call MAPL_GetResource( &
             MAPL, u2s ,'RRTMGP_LW_USE_2STREAM:',    DEFAULT=u2s, __RC__)
+          _ASSERT(.not.u2s,'lw_solver_2stream() does not currently support Jacobians')
       end select
 
       ! the dirty_optical_props have the same number of streams
