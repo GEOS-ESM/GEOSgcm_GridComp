@@ -236,6 +236,7 @@ subroutine INITIALIZE ( GC, IMPORT, EXPORT, CLOCK, RC )
 !-----------
 
    call MAPL_TimerOff(MAPL,"INITIALIZE")
+   call MAPL_TimerOff(MAPL,"TOTAL")
 
    RETURN_(ESMF_SUCCESS)
 
