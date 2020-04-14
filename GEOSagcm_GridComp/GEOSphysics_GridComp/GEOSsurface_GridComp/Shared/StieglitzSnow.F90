@@ -1166,7 +1166,7 @@ contains
 !**** Step 1: Do top layer
       ihigh=1
       do k=1,N_snow
-        if(bol_old(k) .lt. bol_new(1)) ihigh=k+1
+        if(bol_old(k) .lt. bol_new(1)) ihigh=MIN(k+1,N_snow)
         enddo
 
       do k=1,ihigh
@@ -1182,11 +1182,9 @@ contains
 
          ilow=ihigh
          do k=ilow,N_snow
-            if(bol_old(k) .lt. bol_new(i)) ihigh=k+1
+            if(bol_old(k) .lt. bol_new(i)) ihigh=MIN(k+1,N_snow)
             enddo
 
-         if(ihigh .eq. N_snow+1)  ihigh=N_snow ! Account for potential truncation problem 
-      
          do k=ilow,ihigh
            if(k .eq. ilow .and. k .lt. ihigh) dz=bol_old(k)-tol_new(i)
            if(k .eq. ilow .and. k .eq. ihigh) dz=bol_new(i)-tol_new(i)
