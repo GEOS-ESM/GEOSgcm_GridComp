@@ -1,0 +1,17 @@
+rrtmgp/mo_gas_concentrations.F90:
+  vmr is assumed to be moles of the gas per moles of dry air in other parts of code
+rte/kernels/mo_rte_solver_kernels.F90:
+  I'm pretty sure flux_up, flux_dn are both fluxes [W/m2]
+----
+discover15/discover/nobackup/pnorris/RRTMGP-Dev/RRTMGP-Dev-Feb2020/GEOSgcm/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSradiation_GridComp/GEOS_RadiationShared/RRTMGP/extensions>grep pmn mo_rrtmgp_clr_all_sky.F90
+! pmn: k_dist contains spectral info and nature of source (int or ext) 
+! pmn: cloud optical properties determine the stream-ness of the whole RT
+! pmn: initialize optical properties with spectral info
+! pmn: and then allocate for requested stream-ness
+! pmn: initialize the lw sources with k_dist and allocate
+! pmn: get the gas_optics into optical_properties and sources
+! pmn: add aero_props to optical_props
+! pmn: add cloud optical properties to optical_properties
+discover15/discover/nobackup/pnorris/RRTMGP-Dev/RRTMGP-Dev-Feb2020/GEOSgcm/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSradiation_GridComp/GEOS_RadiationShared/RRTMGP/extensions>cp -p mo_rrtmgp_clr_all_sky.F90 $ARCHIVE/code/mo_rrtmgp_clr_all_sky.F90.b4.20200212
+discover15/discover/nobackup/pnorris/RRTMGP-Dev/RRTMGP-Dev-Feb2020/GEOSgcm/src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSradiation_GridComp/GEOS_RadiationShared/RRTMGP/extensions>
+----

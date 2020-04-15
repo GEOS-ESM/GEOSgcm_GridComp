@@ -404,6 +404,19 @@ module GEOS_SaltwaterGridCompMod
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
+!
+! https://github.com/GEOS-ESM/GEOSgcm/issues/115
+!
+! TSKINI export is filled with children's version
+!
+     call MAPL_AddExportSpec(GC,                         &
+        SHORT_NAME         = 'TSKINICE',                    &
+        LONG_NAME          = 'snow_or_ice_surface_temperature',&
+        UNITS              = 'K'                         ,&
+        DIMS               = MAPL_DimsTileOnly           ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+                                                      RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'FRACI',                             &
@@ -1815,6 +1828,7 @@ contains
    real, pointer, dimension(:  )  :: USTR3  => null()
    real, pointer, dimension(:  )  :: UUEX   => null()
    real, pointer, dimension(:  )  :: PSEX   => null()
+   real, pointer, dimension(:  )  :: TSKINI => null()
    real, pointer, dimension(:  )  :: FRI    => null()
    real, pointer, dimension(:  )  :: FRW    => null()
 
@@ -1885,6 +1899,7 @@ contains
    integer                             :: N
    integer                             :: NSUB, I, K, L
    integer                             :: DO_OBIO
+   integer                             :: DO_CICE_THERMO
 !!$   integer                             :: DO_GUEST
 
 !  -------------------------------------------------------------------
@@ -1895,6 +1910,8 @@ contains
    IAm =  trim(COMP_NAME) // "SALTWATERCORE"
 
    call MAPL_GetResource ( MAPL, DO_OBIO,    Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetResource ( MAPL, DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,    DEFAULT=0, RC=STATUS)
    VERIFY_(STATUS)
 
 ! Pointers to inputs
@@ -1944,6 +1961,7 @@ contains
    call MAPL_GetPointer(EXPORT,HLWUP  , 'HLWUP'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,LWNDSRF, 'LWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SWNDSRF, 'SWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,TSKINI , 'TSKINICE',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FRI    , 'FRACI'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FRW    , 'FRACW'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,PENUVR , 'PENUVR'  ,    RC=STATUS); VERIFY_(STATUS)
@@ -2040,6 +2058,13 @@ contains
      endif  
    enddo
 
+   if(DO_CICE_THERMO /= 0) then
+      if(associated(TSKINI)) then
+         call MAPL_GetPointer(GEX(ICE), dummy, 'ISTSFC' , alloc=.true., RC=STATUS)
+         VERIFY_(STATUS)
+      endif
+   endif
+
 ! Call the childrens' RUN2
 !-------------------------
 
@@ -2067,6 +2092,17 @@ contains
 
     if(associated(FRI)) FRI = FRNEW(:,  ICE)
     if(associated(FRW)) FRW = FRNEW(:,WATER)
+
+    if(associated(TSKINI)) then
+       if(DO_CICE_THERMO /= 0) then
+          call MAPL_GetPointer(GEX(ICE), TSKINI, 'ISTSFC' ,  RC=STATUS)
+          VERIFY_(STATUS)
+          TSKINI = TSKINI + MAPL_TICE ! convert to K
+       else
+          call MAPL_GetPointer(GEX(ICE), TSKINI, 'TSKINI' ,  RC=STATUS)
+          VERIFY_(STATUS)
+       endif
+    endif
 
                             EMISS   = 0.0
                             ALBVR   = 0.0
