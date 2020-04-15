@@ -3158,7 +3158,8 @@ contains
                                         edmfdrythl,edmfmoistthl, &
                                         edmfdryu,edmfmoistu,  &
                                         edmfdryv,edmfmoistv,  &
-                                        edmfmoistqc 
+                                        edmfmoistqc,          &
+                                        WHL_tmp,WQT_tmp,WTHV_tmp 
      real, dimension(im,jm,lm) :: sdry,sdrya,sdryb,sdryc
      real, dimension(im,jm,lm) :: zlo,zlot,pk
      real, dimension(im,jm)    :: rhodz,edmfZCLD
@@ -3663,6 +3664,9 @@ mfw3 = 0.0
 mfqt3 = 0.0
 mfwqt = 0.0
 mfwhl = 0.0
+WHL_tmp = 0.0
+WQT_tmp = 0.0
+WTHV_tmp = 0.0
 
 edmf_hl2 = 0.0
 edmf_qt2 = 0.0
@@ -3710,8 +3714,9 @@ if (ETr .eq. 1.) then
              edmfdryu,edmfmoistu,  &
              edmfdryv,edmfmoistv,  &
              edmfmoistqc,             &
-             ae3_test, aw3_test, aws3_test, awqv3_test, awql3_test, awqi3_test, awu3_test, awv3_test, &
-             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
+             ae3, aw3, aws3, awqv3, awql3, awqi3, awu3, awv3, &
+!             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
+             WHL_tmp,WQT_tmp,WTHV_tmp, & ! for MYNN  
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L02,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
@@ -3814,8 +3819,9 @@ if (ETr .eq. 1.) then
              edmfdryu,edmfmoistu,  &
              edmfdryv,edmfmoistv,  &
              edmfmoistqc,             &
-             ae3_test, aw3_test, aws3_test, awqv3_test, awql3_test, awqi3_test, awu3_test, awv3_test, &
-             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
+             ae3, aw3, aws3, awqv3, awql3, awqi3, awu3, awv3, &
+!             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
+             WHL_tmp,WQT_tmp,WTHV_tmp, & ! for MYNN  
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L02,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
@@ -3884,8 +3890,9 @@ if (ETr .eq. 1.) then
              edmfdryu,edmfmoistu,  &
              edmfdryv,edmfmoistv,  &
              edmfmoistqc,             &
-             ae3_test, aw3_test, aws3_test, awqv3_test, awql3_test, awqi3_test, awu3_test, awv3_test, &
-             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
+             ae3, aw3, aws3, awqv3, awql3, awqi3, awu3, awv3, &
+!             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
+             WHL_tmp,WQT_tmp,WTHV_tmp, & ! for MYNN  
              pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
              ET,L02,ENT0,EDfac,EntWFac,buoyf,&
              mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
@@ -3979,6 +3986,9 @@ end if
      if (associated(edmf_moist_v)) edmf_moist_v=edmfmoistv 
      if (associated(edmf_moist_qc)) edmf_moist_qc=edmfmoistqc 
      if (associated(edmf_buoyf)) edmf_buoyf=buoyf 
+     if (associated(WHL_MF))  WHL_MF  = WHL_tmp
+     if (associated(WQT_MF))  WQT_MF  = WQT_tmp
+     if (associated(WTHV_MF)) WTHV_MF = WTHV_tmp
 
 !     mfhl2 = 0.
 !     mfqt2 = 0.
@@ -4012,11 +4022,14 @@ ELSE
     awv3  = 0.0
     buoyf = 0.0
 
-    if ( DO_MYNN /= 0 ) then
-       WHL_MF  = 0.
-       WQT_MF  = 0.
-       WTHV_MF = 0.
-    end if
+!    if ( DO_MYNN /= 0 ) then
+!       WHL_MF  = 0.
+!       WQT_MF  = 0.
+!       WTHV_MF = 0.
+!    end if
+     if (associated(WHL_MF))  WHL_MF  = WHL_tmp
+     if (associated(WQT_MF))  WQT_MF  = WQT_tmp
+     if (associated(WTHV_MF)) WTHV_MF = WTHV_tmp
   
     if (associated(z_conv_edmf))    z_conv_edmf=mapl_undef
     if (associated(edmf_dry_a))     edmf_dry_a    =0.0
@@ -7143,25 +7156,25 @@ real, dimension(its:ite) :: L0
       moist_v3=mapl_undef
       moist_qc3=mapl_undef
       ! outputs - variables needed for solver 
-      aw3=0.
-      aws3=0.
-      awqv3=0.
-      awql3=0.
-      awqi3=0.
-      awu3=0.
-      awv3=0.
-      awhl3=0.
-      awqt3=0.
-      awthv3=0.
-      buoyf=0.
-      mfw2=0.
-      mfw3=0.
-      mfqt3=0.
-      mfqt2=0.
-      mfwqt=0.
-      mfhl2=0.
+      aw3   =0.
+      aws3  =0.
+      awqv3 =0.
+      awql3 =0.
+      awqi3 =0.
+      awu3  =0.
+      awv3  =0.
+      awhl3 =0. !
+      awqt3 =0. !
+      awthv3=0. !
+      buoyf =0.
+      mfw2  =0.
+      mfw3  =0.
+      mfqt3 =0.
+      mfqt2 =0.
+      mfwqt =0.
+      mfhl2 =0.
       mfhlqt=0.
-      mfwhl=0.
+      mfwhl =0.
 
    ! this is the environmental area - by default 1.
 
@@ -7238,7 +7251,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
   qvi(kte)    = qv(kte)
   qli(kte)    = ql(kte)
   qii(kte)    = qi(kte)
-  thvi(kte)   = thvi(kte)
+  thvi(kte)   = thv(kte)
   ui(kts-1)   = u(kts)
   vi(kts-1)   = v(kts)
   thli(kts-1) = thl(kts)  ! approximate

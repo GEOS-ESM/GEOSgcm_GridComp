@@ -128,6 +128,10 @@ subroutine run_mynn(IM, JM, LM, &                                               
      end do
   end do
 
+  q = 0.
+  N2 = 0.
+  S2 = 0.
+
   ! Compute some quantities on half elevels
   do k = 1,LM-1
 
@@ -608,6 +612,7 @@ subroutine mynn_length(IM, JM, LM, wb_surf, zle, zlo, q, N2, LMO, L, w_star)
      end do
      end do
   end do
+  L(:,:,LM) = L(:,:,LM-1)
 
 end subroutine mynn_length
 
