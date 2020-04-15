@@ -583,16 +583,19 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-     do k=1, 33
-      write(unit = suffix, fmt = '(i2.2)') k
-      call MAPL_TerminateImport( GC,                                &
-           SHORT_NAME = (/'TAUA_'//suffix,                          &
-                          'ASYMP_'//suffix,                         &
-                          'SSALB_'//suffix/),                       &
-           CHILD      = OGCM,                                       &
-           RC=STATUS  )
-       VERIFY_(STATUS)
-     enddo
+     if (DO_OBIO/=0) then
+      do k=1, 33
+         write(unit = suffix, fmt = '(i2.2)') k
+         call MAPL_TerminateImport( GC,           &
+            SHORT_NAME = [ character(len=(8)) ::  &
+               'TAUA_'//suffix,                   &
+               'ASYMP_'//suffix,                  &
+               'SSALB_'//suffix ],                &
+            CHILD      = OGCM,                    &
+            RC=STATUS  )
+         VERIFY_(STATUS)
+      enddo
+     end if
 
      if(DO_DATAATM==0) then
         call MAPL_TerminateImport    ( GC,                             &
@@ -1250,11 +1253,12 @@ contains
 
       do k=1, 33
          write(unit = suffix, fmt = '(i2.2)') k
-         call AllocateExports(GCM_INTERNAL_STATE%expSKIN,                &
-                         (/'TAUA_'//suffix,                 &
-                           'ASYMP_'//suffix,                &
-                           'SSALB_'//suffix/),              &
-                         RC=STATUS)
+         call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
+            [ character(len=8) ::                         &
+               'TAUA_'//suffix,                           &
+               'ASYMP_'//suffix,                          &
+               'SSALB_'//suffix] ,                        &
+            RC=STATUS)
          VERIFY_(STATUS)
       enddo
 

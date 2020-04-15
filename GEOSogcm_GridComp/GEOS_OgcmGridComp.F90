@@ -396,6 +396,7 @@ contains
        RC=STATUS  ) 
   VERIFY_(STATUS)
 
+  if (DO_OBIO/=0) then
   do k=1, 33
    write(unit = suffix, fmt = '(i2.2)') k
    call MAPL_AddImportSpec(GC,                                &
@@ -425,6 +426,7 @@ contains
       RC=STATUS  )
    VERIFY_(STATUS)
   enddo
+  end if
 
   call MAPL_AddImportSpec(GC,                             &
        LONG_NAME          = 'Dust Dry Deposition'        ,&
@@ -1686,6 +1688,7 @@ contains
     call MAPL_GetPointer(IMPORT, CO2SC   ,  'CO2SC'  , RC=STATUS)
     VERIFY_(STATUS)
 
+    if (DO_OBIO/=0) then
     do k=1, 33
      write(unit = suffix, fmt = '(i2.2)') k
      call MAPL_GetPointer(IMPORT, ATAUA(k)%b,'TAUA_'//suffix,   RC=STATUS)
@@ -1695,6 +1698,7 @@ contains
      call MAPL_GetPointer(IMPORT, ASSALB(k)%b,'SSALB_'//suffix, RC=STATUS)
      VERIFY_(STATUS)
     enddo
+    endif
 
     call MAPL_GetPointer(IMPORT, DUDP    ,  'DUDP'   , RC=STATUS)
     VERIFY_(STATUS)
@@ -2019,6 +2023,7 @@ contains
        VERIFY_(STATUS)
     endif
 
+    if (DO_OBIO/=0) then
     do k=1, 33
      if ( associated(ATAUAO(k)%b) ) then
         call MAPL_LocStreamTransform( ExchGrid, ATAUAO(k)%b, ATAUA(k)%b, RC=STATUS)
@@ -2033,6 +2038,7 @@ contains
         VERIFY_(STATUS)
      endif
     enddo
+    endif
 
     if(associated(DUDPB)) then
        do N = 1, NUM_DUDP
