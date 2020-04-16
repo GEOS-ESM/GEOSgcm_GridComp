@@ -98,11 +98,13 @@ module GEOS_MoistGridCompMod
   use micro_mg3_0
  
 !-srf-gf-scheme
-  USE ConvPar_GF_GEOS5, only: gf_geos5_interface &
-      ,maxiens, icumulus_gf, closure_choice, deep, shal, mid&
-      ,DEBUG_GF,USE_SCALE_DEP,DICYCLE,Hcts&
-      ,USE_TRACER_TRANSP,USE_TRACER_SCAVEN, TAU_DEEP, TAU_MID&
-      ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
+  USE ConvPar_GF_GEOS5, only: GF_GEOS5_INTERFACE, MAXIENS, ICUMULUS_GF, CLOSURE_CHOICE, DEEP, SHAL, MID &
+                             ,USE_SCALE_DEP,DICYCLE,TAU_DEEP,TAU_MID,HCTS                               &
+                             ,USE_TRACER_TRANSP, USE_TRACER_SCAVEN,USE_MEMORY,CONVECTION_TRACER         &
+	                     ,USE_FLUX_FORM,USE_TRACER_EVAP,DOWNDRAFT,USE_FCT                           &
+			     ,USE_REBCB, VERT_DISCR, SATUR_CALC, CLEV_GRID, APPLY_SUB_MP, ALP1          &
+			     ,SGS_W_TIMESCALE, LIGHTNING_DIAG,AUTOCONV, BC_METH,OVERSHOOT,USE_WETBULB   &
+                             ,HEI_DOWN,HEI_UPDF,C1,C0_DEEP, QRC_CRIT,LAMBAU_DEEP,LAMBAU_SHDN,C0_MID
 !-srf-gf-scheme
 
 !ALT-protection for GF
@@ -228,9 +230,7 @@ contains
 
     call ESMF_ConfigGetAttribute( CF, CONVPAR_OPTION, Label='CONVPAR_OPTION:', RC=STATUS) ! Note: Default set in GEOS_GcmGridComp.F90
     VERIFY_(STATUS)
-    !~ call ESMF_ConfigGetAttribute( CF, DEBUG_GF, Label='DEBUG_GF:', default=0,RC=STATUS)
-    !~ VERIFY_(STATUS)
-    !ALT
+    
 
     call ESMF_ConfigGetAttribute( CF, AERO_PROVIDER, Label='AERO_PROVIDER:', RC=STATUS) ! Note: Default set in GEOS_GcmGridComp.F90
     VERIFY_(STATUS)
@@ -515,6 +515,22 @@ contains
          VERIFY_(STATUS)                         
     
   end if 
+  
+  !srf-- convective memory/cold pool  --->
+  if ( ADJUSTL(CONVPAR_OPTION) == 'GF' .and. CONVECTION_TRACER == 1) then
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME ='CNV_TR',                                     &
+         LONG_NAME  ='convection_tracer',                          &
+         UNITS      ='1',                                          &
+!        FRIENDLYTO = 'DYNAMICS:TURBULENCE',                       &
+         FRIENDLYTO = 'DYNAMICS',                                  &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+	 RESTART = MAPL_RestartSkip,                               &
+         DEFAULT    = 0.0,   RC=STATUS  )  
+         VERIFY_(STATUS)                                                   
+  end if
+  !srf-----------------------------------<
   
     ! !IMPORT STATE:
 
@@ -4524,7 +4540,7 @@ contains
     VERIFY_(STATUS)
     
 !-srf-gf-scheme
-    IF(DEBUG_GF==1 .and. (CONVPAR_OPTION=='GF' .or. CONVPAR_OPTION=='BOTH')) THEN
+    IF(CONVPAR_OPTION=='GF' .or. CONVPAR_OPTION=='BOTH') THEN
 
        call MAPL_AddExportSpec(GC,                                     &
          SHORT_NAME = 'DTRDT_GF',                                    &
@@ -4687,6 +4703,30 @@ contains
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
+        VERIFY_(STATUS)
+
+	call MAPL_AddExportSpec(GC,                                &
+         SHORT_NAME='TPWI',                                        & 
+         LONG_NAME ='initial_total_precipitable_water',            &
+         UNITS     ='kg m-2'  ,                                    &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+         VERIFY_(STATUS)
+        
+	call MAPL_AddExportSpec(GC,                                &
+         SHORT_NAME='TPWI_star',                                   & 
+         LONG_NAME ='saturation_initial_total_precipitable_water', &
+         UNITS     ='kg m-2'  ,                                    &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+         VERIFY_(STATUS)
+
+	call MAPL_AddExportSpec(GC,                                &
+         SHORT_NAME='LFR_GF',                                 & 
+         LONG_NAME ='lightning_flash_density ',                    &
+         UNITS     ='km-2 day-1'  ,                                &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
         VERIFY_(STATUS)
 
     ENDIF
@@ -4965,35 +5005,46 @@ contains
     ! Inititialize configuration parameters for GF convection scheme 
     IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
         ! Inititialize parameters of convection scheme GF
-        call MAPL_GetResource(MAPL, icumulus_gf(deep), 'DEEP:'     , default=1, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, icumulus_gf(shal), 'SHALLOW:'  , default=1, RC=STATUS )
-        VERIFY_(STATUS) 
-        call MAPL_GetResource(MAPL, icumulus_gf(mid) , 'CONGESTUS:', default=1, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, closure_choice(deep), 'CLOSURE_DEEP:'     , default= 0, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, closure_choice(shal), 'CLOSURE_SHALLOW:'  , default= 7, RC=STATUS )
-        VERIFY_(STATUS) 
-        call MAPL_GetResource(MAPL, closure_choice(mid) , 'CLOSURE_CONGESTUS:', default= 3, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,USE_TRACER_TRANSP   ,'USE_TRACER_TRANSP:',default= 1, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,USE_TRACER_SCAVEN   ,'USE_TRACER_SCAVEN:',default= 2, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,USE_SCALE_DEP       ,'USE_SCALE_DEP:'    ,default= 1, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,DICYCLE             ,'DICYCLE:'          ,default= 1, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,TAU_DEEP   ,'TAU_DEEP:',default= 5400.0, RC=STATUS )
-        VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL,TAU_MID    ,'TAU_MID:' ,default= 3600.0, RC=STATUS )
-        VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, icumulus_gf(deep)   ,'DEEP:'             ,default= 1, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, icumulus_gf(shal)   ,'SHALLOW:'          ,default= 1, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, icumulus_gf(mid)    ,'CONGESTUS:'        ,default= 1, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, closure_choice(deep),'CLOSURE_DEEP:'     ,default= 0, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, closure_choice(shal),'CLOSURE_SHALLOW:'  ,default= 7, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, closure_choice(mid) ,'CLOSURE_CONGESTUS:',default= 3, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL,USE_TRACER_TRANSP    ,'USE_TRACER_TRANSP:',default= 1, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL,USE_TRACER_SCAVEN    ,'USE_TRACER_SCAVEN:',default= 2, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL,USE_SCALE_DEP        ,'USE_SCALE_DEP:'    ,default= 1, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL,DICYCLE              ,'DICYCLE:'          ,default= 1, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL,TAU_DEEP             ,'TAU_DEEP:'         ,default= 5400.0, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL,TAU_MID              ,'TAU_MID:'          ,default= 3600.0, RC=STATUS );VERIFY_(STATUS)
 
-        call MAPL_GetResource(MAPL, USE_FLUX_FORM   ,'USE_FLUX_FORM:'   ,default= 1,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, USE_FCT         ,'USE_FCT:'	        ,default= 0,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, USE_TRACER_EVAP ,'USE_TRACER_EVAP:' ,default= 1,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, ALP1            ,'ALP1:'            ,default= 1., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_MEMORY       ,'USE_MEMORY:'       ,default=-1,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL ,CONVECTION_TRACER,'CONVECTION_TRACER:',default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, DOWNDRAFT       , 'DOWNDRAFT:'        ,default= 1,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_REBCB       , 'USE_REBCB:'        ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_FLUX_FORM   , 'USE_FLUX_FORM:'    ,default= 1,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_FCT         , 'USE_FCT:'	  ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_TRACER_EVAP , 'USE_TRACER_EVAP:'  ,default= 1,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CLEV_GRID       , 'CLEV_GRID:'        ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, VERT_DISCR      , 'VERT_DISCR:'       ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, SATUR_CALC      , 'SATUR_CALC:'       ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, SGS_W_TIMESCALE , 'SGS_W_TIMESCALE:'  ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, APPLY_SUB_MP    , 'APPLY_SUB_MP:'     ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, ALP1            , 'ALP1:'             ,default= 1., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, LIGHTNING_DIAG  , 'LIGHTNING_DIAG:'   ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, AUTOCONV	    , 'AUTOCONV:'         ,default= 1,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, BC_METH	    , 'BC_METH:'          ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, OVERSHOOT	    , 'OVERSHOOT:'        ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_WETBULB     , 'USE_WETBULB:'      ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, HEI_DOWN        , 'HEI_DOWN:'         ,default= 0.50,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, HEI_UPDF        , 'HEI_UPDF:'         ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, C0_DEEP         , 'C0_DEEP:'          ,default= 2.e-3, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, C1              , 'C1:'               ,default= 1.e-3, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, C0_MID          , 'C0_MID:'	          ,default= 2.e-3, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, QRC_CRIT        , 'QRC_CRIT:'	  ,default= 2.e-4, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, LAMBAU_DEEP     , 'LAMBAU_DEEP:'	  ,default= 2.0,   RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, LAMBAU_SHDN     , 'LAMBAU_SHDN:'	  ,default= 2.0,   RC=STATUS );VERIFY_(STATUS)
+
 
        ! IF(ADJUSTL(AERO_PROVIDER) == 'GOCART.data' .AND. USE_TRACER_TRANSP == 1) THEN
        !    call WRITE_PARALLEL ("AERO_PROVIDER: GOCART.data detected, disabling tracer transport for GF")
@@ -5348,7 +5399,9 @@ contains
       real, pointer, dimension(:,:  )       :: USTAR,TSTAR,QSTAR,T2M,Q2M,TA,QA,SH,EVAP,PHIS
       real, pointer, dimension(:,:  )       :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
       real, pointer, dimension(:,:  )       :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
+      real, pointer, dimension(:,:  )       :: TPWI,TPWI_star,LFR_GF
       real, pointer, dimension(:,:,:)       :: RSU_CN_GF,REV_CN_GF,PFL_CN_GF,PFI_CN_GF
+      real, pointer, dimension(:,:,:)       :: CNV_TR ! tracer memory
 !-srf-gf-scheme    
 !--kml--- activation for single-moment uphysics
       real, pointer, dimension(:,:,:)       :: NACTL,NACTI
@@ -6209,6 +6262,11 @@ contains
       if (DOSHLW /= 0) then
        call MAPL_GetPointer(INTERNAL, CUSH,  'CUSH'    , RC=STATUS); VERIFY_(STATUS)  !DONIF
       end if
+!srf-- convective memory/cold pool  --->
+      if(ADJUSTL(CONVPAR_OPTION) == 'GF' .and. CONVECTION_TRACER == 1) then
+       call MAPL_GetPointer(INTERNAL, CNV_TR,'CNV_TR'  , RC=STATUS); VERIFY_(STATUS)
+      endif
+!srf-----------------------------------<
       ! Pointers to imports
       !--------------------
       !==AER_CLOUD===
@@ -8044,36 +8102,39 @@ contains
          call MAPL_GetPointer(IMPORT, PLE_DYN_IN,'PLE_DYN_IN',RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(IMPORT, DTDT_BL  ,'DTDT_BL'  ,RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(IMPORT, DQDT_BL  ,'DQDT_BL'  ,RC=STATUS); VERIFY_(STATUS)
-         
-         IF(DEBUG_GF==1) THEN
-          call MAPL_GetPointer(EXPORT, DTRDT_GF,'DTRDT_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);DTRDT_GF=0.0
-          call MAPL_GetPointer(EXPORT, DQDT_GF,'DQDT_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);DQDT_GF=0.0
-          call MAPL_GetPointer(EXPORT, DTDT_GF,'DTDT_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);DTDT_GF=0.0
-          call MAPL_GetPointer(EXPORT, MUPDP  ,'MUPDP'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPDP=0.0
-          call MAPL_GetPointer(EXPORT, MUPSH  ,'MUPSH'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPSH=0.0
-          call MAPL_GetPointer(EXPORT, MUPMD  ,'MUPMD'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPMD=0.0
-          call MAPL_GetPointer(EXPORT, MFDP   ,'MFDP'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFDP=0.0
-          call MAPL_GetPointer(EXPORT, MFSH   ,'MFSH'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFSH=0.0
-          call MAPL_GetPointer(EXPORT, MFMD   ,'MFMD'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFMD=0.0
-          call MAPL_GetPointer(EXPORT, ERRDP  ,'ERRDP'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRDP=0.0
-          call MAPL_GetPointer(EXPORT, ERRSH  ,'ERRSH'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRSH=0.0
-          call MAPL_GetPointer(EXPORT, ERRMD  ,'ERRMD'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRMD=0.0
-    
-          call MAPL_GetPointer(EXPORT, RSU_CN_GF  ,'RSU_CN_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);RSU_CN_GF=0.0
-          call MAPL_GetPointer(EXPORT, REV_CN_GF  ,'REV_CN_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);REV_CN_GF=0.0
-          call MAPL_GetPointer(EXPORT, PFI_CN_GF  ,'PFI_CN_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);PFI_CN_GF=0.0
-          call MAPL_GetPointer(EXPORT, PFL_CN_GF  ,'PFL_CN_GF'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);PFL_CN_GF=0.0
+	 call MAPL_GetPointer(EXPORT, TPWI,     'TPWI'      ,ALLOC = .TRUE. , RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(EXPORT, TPWI_star,'TPWI_star' ,ALLOC = .TRUE. , RC=STATUS); VERIFY_(STATUS)
+         TPWI       = SUM( Q1*MASS, 3 )
+         TPWI_star  = SUM( GEOS_QSAT(TH1*PK, PLO)*MASS, 3 )
 
-          call MAPL_GetPointer(EXPORT, AA0      ,'AA0'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA0=0.0
-          call MAPL_GetPointer(EXPORT, AA1      ,'AA1'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1=0.0
-          call MAPL_GetPointer(EXPORT, AA2      ,'AA2'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA2=0.0
-          call MAPL_GetPointer(EXPORT, AA3      ,'AA3'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA3=0.0
-          call MAPL_GetPointer(EXPORT, AA1_BL   ,'AA1_BL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1_BL =0.0
-          call MAPL_GetPointer(EXPORT, AA1_CIN  ,'AA1_CIN' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1_CIN=0.0
-          call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);TAU_BL =0.0
-          call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);TAU_EC =0.0
-          !print*,"sizes=",size(ERRMD),size(MUPMD);call flush(6)
-         ENDIF
+         call MAPL_GetPointer(EXPORT, LFR_GF   ,'LFR_GF'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);LFR_GF=0.0
+         call MAPL_GetPointer(EXPORT, DTRDT_GF,'DTRDT_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);DTRDT_GF=0.0
+         call MAPL_GetPointer(EXPORT, DQDT_GF,'DQDT_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);DQDT_GF=0.0
+         call MAPL_GetPointer(EXPORT, DTDT_GF,'DTDT_GF' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);DTDT_GF=0.0
+         call MAPL_GetPointer(EXPORT, MUPDP  ,'MUPDP'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPDP=0.0
+         call MAPL_GetPointer(EXPORT, MUPSH  ,'MUPSH'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPSH=0.0
+         call MAPL_GetPointer(EXPORT, MUPMD  ,'MUPMD'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPMD=0.0
+         call MAPL_GetPointer(EXPORT, MFDP   ,'MFDP'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFDP=0.0
+         call MAPL_GetPointer(EXPORT, MFSH   ,'MFSH'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFSH=0.0
+         call MAPL_GetPointer(EXPORT, MFMD   ,'MFMD'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFMD=0.0
+         call MAPL_GetPointer(EXPORT, ERRDP  ,'ERRDP'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRDP=0.0
+         call MAPL_GetPointer(EXPORT, ERRSH  ,'ERRSH'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRSH=0.0
+         call MAPL_GetPointer(EXPORT, ERRMD  ,'ERRMD'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);ERRMD=0.0
+    
+         call MAPL_GetPointer(EXPORT, RSU_CN_GF  ,'RSU_CN_GF'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);RSU_CN_GF=0.0
+         call MAPL_GetPointer(EXPORT, REV_CN_GF  ,'REV_CN_GF'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);REV_CN_GF=0.0
+         call MAPL_GetPointer(EXPORT, PFI_CN_GF  ,'PFI_CN_GF'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);PFI_CN_GF=0.0
+         call MAPL_GetPointer(EXPORT, PFL_CN_GF  ,'PFL_CN_GF'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);PFL_CN_GF=0.0
+
+         call MAPL_GetPointer(EXPORT, AA0      ,'AA0'	  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA0=0.0
+         call MAPL_GetPointer(EXPORT, AA1      ,'AA1'	  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1=0.0
+         call MAPL_GetPointer(EXPORT, AA2      ,'AA2'	  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA2=0.0
+         call MAPL_GetPointer(EXPORT, AA3      ,'AA3'	  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA3=0.0
+         call MAPL_GetPointer(EXPORT, AA1_BL   ,'AA1_BL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1_BL =0.0
+         call MAPL_GetPointer(EXPORT, AA1_CIN  ,'AA1_CIN' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1_CIN=0.0
+         call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);TAU_BL =0.0
+         call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);TAU_EC =0.0
+        
 
 ! WMP
 ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRACTION dependence
@@ -8085,26 +8146,25 @@ contains
 ! WMP
          
          !- call GF/GEOS5 interface routine
-         call GF_GEOS5_Interface( IM,JM,LM,KM,ITRCR,LONS,LATS,DT_MOIST                       &
-                                 ,T, PLE, PLO, ZLE, ZLO, PK, U, V, OMEGA            & 
+         call GF_GEOS5_Interface( IM,JM,LM,KM,ITRCR,LONS,LATS,DT_MOIST              &  
+                                 ,T, PLE, PLO, ZLE, ZLO, PK, U, V, OMEGA, KH        & 
                                  ,TH1, Q1, U1, V1, QLCN, QICN,QLLS,QILS, RASPRCP    &
                                  ,CNV_MF0, CNV_PRC3, CNV_MFD, CNV_DQLDT,ENTLAM      &
-                                 ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC , CLCN         &                           
+                                 ,CNV_MFC, CNV_UPDF, CNV_CVW, CNV_QC , CLCN,CLLS    &                           
                                  ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
                                  ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
                                  ,FRLAND, GF_AREA,USTAR,TSTAR,QSTAR,T2M             &
                                  ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS                       &
-                                 ,KPBLIN    &
-                                 ,MAPL_GRAV &
+                                 ,KPBLIN                                            &
                                  ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
                                  ,DQDT_GF,DTDT_GF,MUPDP,MUPSH,MUPMD                 &
                                  ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
                                  ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
                                  ,DTDTDYN,DQVDTDYN                                  &
                                  ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE, CLDMICRO &
-                                 ,RASPARAMS%QC_CRIT_CN, AUTOC_CN_OCN                &
                                  ,XHO,FSCAV,CNAMES,QNAMES,DTRDT_GF                  &
-				 ,RSU_CN_GF,REV_CN_GF, PFI_CN_GF, PFL_CN_GF)
+				 ,RSU_CN_GF,REV_CN_GF, PFI_CN_GF, PFL_CN_GF         &
+				 ,TPWI,TPWI_star,LFR_GF) !,CNV_TR)
                                                                    
          HHO      =  0.0
          HSO      =  0.0    
