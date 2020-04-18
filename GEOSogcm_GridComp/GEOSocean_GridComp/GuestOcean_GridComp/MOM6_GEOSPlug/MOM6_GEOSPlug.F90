@@ -869,7 +869,6 @@ contains
     MASK = real(Tmp2, kind=G5KIND)
 
     call ocean_model_data_get(Ocean_State, Ocean, 't_surf', Tmp2, g_isc, g_jsc)     ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: in K
-! replace above with Ocean_State%t_surf or Ocean%t_surf
 !   call mom4_get_Tsurf(Ocean,Tmp2)                                             ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
     where(MASK(:,:) > 0.0)
        TW = real(Tmp2, kind=G5KIND) + MAPL_TICE  ! because c to K was subtract
@@ -1156,30 +1155,40 @@ contains
     Boundary%salt_flux (isc:iec,jsc:jec) =-real(SFLX,      kind=KIND(Boundary%p)) ! Salt flux: MOM positive up, GEOS positive down
     Boundary%runoff  (isc:iec,jsc:jec)   = real(DISCHARGE, kind=KIND(Boundary%p)) ! mass flux of liquid runoff [kg m-2 s-1]
 
-! All shortwave components are positive down  in MOM and in GEOS
-!---------------------------------------------------------------
+! All shortwave components are positive down in MOM and in GEOS
+!--------------------------------------------------------------
     Boundary%sw_flux_vis_dir (isc:iec,jsc:jec) = real(PENUVR+PENPAR, kind=KIND(Boundary%p)) ! direct visible sw radiation        [W m-2]
     Boundary%sw_flux_vis_dif  (isc:iec,jsc:jec)= real(PENUVF+PENPAF, kind=KIND(Boundary%p)) ! diffuse visible sw radiation       [W m-2]
     Boundary%sw_flux_nir_dir  (isc:iec,jsc:jec)= real(DRNIR,         kind=KIND(Boundary%p)) ! direct Near InfraRed sw radiation  [W m-2]
     Boundary%sw_flux_nir_dif  (isc:iec,jsc:jec)= real(DFNIR,         kind=KIND(Boundary%p)) ! diffuse Near InfraRed sw radiation [W m-2]
 
-! Convert input stresses over water to B grid
-!--------------------------------------------
-!   U = 0.0
-!   V = 0.0
-! comment for now. It dies in transformA2B because the arrays are incorrectly set up: array sizes/indices.
+! Convert input stresses over water to MOM staggering
+!----------------------------------------------------
+
+! Initialize to be safe
+    Boundary%U_flux = 0.
+    Boundary%V_flux = 0.
+
+! A-grid
+! From Atanas (Apr 17, 2020): 
+! "Our stresses are produced on the A-grid points (and defined in respect to north and east). 
+!  For these we do not need to mess up with cos_rot and sin_rot (or set cos_rot to 1 and sin_rot to 0)"
+ 
+!   cos_rot = 1.
+    call ocean_model_data_get(Ocean_State, Ocean, 'cos_rot', cos_rot, isc, jsc)
+!   sin_rot = 0.
+    call ocean_model_data_get(Ocean_State, Ocean, 'sin_rot', sin_rot, isc, jsc)
+
+    U = real( TAUX, kind=kind(U))
+    V = real( TAUY, kind=kind(V))
+
+! B-grid
 !   call transformA2B( real(TAUX,kind=kind(U)), real(TAUY,kind=kind(V)), U, V)
 
 ! Rotate input stress over water along i,j of tripolar grid, and combine with stress under ice
 !---------------------------------------------------------------------------------------------
-!   call ocean_model_data_get(Ocean_State, Ocean, 'cos_rot', cos_rot, isc, jsc)    ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
-!   call ocean_model_data_get(Ocean_State, Ocean, 'sin_rot', sin_rot, isc, jsc)    ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
-
-! comment for now
-!   Boundary%U_flux =  (U*cos_rot + V*sin_rot)*(1.-AICEU) - STROCNXB
-!   Boundary%V_flux = (-U*sin_rot + V*cos_rot)*(1.-AICEU) - STROCNYB
-    Boundary%U_flux = 0.
-    Boundary%V_flux = 0.
+    Boundary%U_flux  (isc:iec,jsc:jec)= real( (U*cos_rot + V*sin_rot)*(1.-AICEU) - STROCNXB, kind=KIND(Boundary%p))
+    Boundary%V_flux  (isc:iec,jsc:jec)= real((-U*sin_rot + V*cos_rot)*(1.-AICEU) - STROCNYB, kind=KIND(Boundary%p))
 
 ! Set the time for MOM
 !---------------------
@@ -1263,15 +1272,14 @@ contains
 
 ! Get the A grid currents at MOM precision
 !-----------------------------------------
-! SA: like MOM5, MOM6 also runs with Bgrid staggering (default) for currents. So currents are on Bgrid. Need B to A grid.
-!     something like... mct_driver/ocn_cap_methods.F90 "rotate ssh gradients from local coordinates..." which is what happens in mom4_get_latlon_UVsurf
     if(associated(UW) .or. associated(VW)) then
-       U = 0.0; V = 0.0 ! SA: for now!
-!      call mom4_get_latlon_UVsurf(OCEAN, U, V, STATUS)    ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
-!      VERIFY_(STATUS)
+!      ! initialize
+       U = 0.0; V = 0.0
+       call ocean_model_data_get(Ocean_State, Ocean, 'u_surf', U, isc, jsc) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: in PSU
+       call ocean_model_data_get(Ocean_State, Ocean, 'v_surf', V, isc, jsc) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: in PSU
     endif
 
-    if(associated(UW  )) then
+    if(associated(UW )) then
        where(MASK(:,:) > 0.0)
           UW = real(U, kind=G5KIND)
        elsewhere
@@ -1279,7 +1287,7 @@ contains
        end where
      endif
 
-    if(associated(VW  )) then
+    if(associated(VW )) then
        where(MASK(:,:) > 0.0)
           VW = real(V, kind=G5KIND)
        elsewhere
@@ -1289,6 +1297,8 @@ contains
 
 ! Get the B grid currents at MOM precision
 !-----------------------------------------
+! SA: like MOM5, MOM6 also runs with Bgrid staggering (default) for currents. So currents are on Bgrid.
+!     something like... mct_driver/ocn_cap_methods.F90 "rotate ssh gradients from local coordinates..." which is what happens in mom4_get_latlon_UVsurf
 
     if(associated(UWB) .or. associated(VWB)) then
 !      UWB = Ocean%u_surf  ! MOM6 run with Bgrid staggering (its default) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
@@ -1314,23 +1324,21 @@ contains
     end if
 
     if(associated(SLV)) then
-!      call ocean_model_data_get(Ocean_State, Ocean, 'sea_lev', U, isc, jsc) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: in PSU
-!      call ocean_model_data_get(Ocean_State, Ocean, 'sea_lev', U, isc, jsc) ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
-!      where(MASK(:,:)>0.0)
-!         SLV = real(U, kind = G5KIND)
-!      elsewhere
-!         SLV=0.0
-!      end where
+       call ocean_model_data_get(Ocean_State, Ocean, 'sea_lev', U, isc, jsc)
+       where(MASK(:,:)>0.0)
+          SLV = real(U, kind = G5KIND)
+       elsewhere
+          SLV=0.0
+       end where
     end if
 
     if(associated(FRAZIL)) then
-!      FRAZIL = Ocean%frazil                                                ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
-!      call ocean_model_data_get(Ocean_State, Ocean, 'frazil', U, isc, jsc) ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
-!      where(MASK(:,:)>0.0)
-!         FRAZIL = real(U, kind = G5KIND)
-!      elsewhere
-!         FRAZIL=0.0
-!      end where
+       call ocean_model_data_get(Ocean_State, Ocean, 'frazil', U, isc, jsc) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: in PSU
+       where(MASK(:,:)>0.0)
+          FRAZIL = real(U, kind = G5KIND)
+       elsewhere
+          FRAZIL=0.0
+       end where
     end if
 
 !   if(associated(DEPTH)) then
