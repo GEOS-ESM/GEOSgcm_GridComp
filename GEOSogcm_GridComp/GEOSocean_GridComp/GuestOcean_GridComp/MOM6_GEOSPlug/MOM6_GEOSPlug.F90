@@ -723,31 +723,29 @@ contains
     isc  = Ocean_grid%isc   ; iec  = Ocean_grid%iec    ; jsc  = Ocean_grid%jsc   ; jec  = Ocean_grid%jec
     isd  = Ocean_grid%isd   ; ied  = Ocean_grid%ied    ; jsd  = Ocean_grid%jsd   ; jed  = Ocean_grid%jed
 
-    print *, 'R2 [isc, iec], [jsc, jec] = ', isc, iec, jsc, jec
-    print *, 'R2 [isd, ied], [jsd, jed] = ', isd, ied, jsd, jed
+!   print *, 'R2 [isc, iec], [jsc, jec] = ', isc, iec, jsc, jec
+!   print *, 'R2 [isd, ied], [jsd, jed] = ', isd, ied, jsd, jed
 
-    isc = isc -isd + 1;
-    iec = iec -isd + 1;
-    ied = ied -isd + 1;
-    isd = 1
+!   isc = isc -isd + 1;
+!   iec = iec -isd + 1;
+!   ied = ied -isd + 1;
+!   isd = 1
 
-    jsc = jsc -jsd + 1;
-    jec = jec -jsd + 1;
-    jed = jed -jsd + 1;
-    jsd = 1
+!   jsc = jsc -jsd + 1;
+!   jec = jec -jsd + 1;
+!   jed = jed -jsd + 1;
+!   jsd = 1
 
     print *, 'R3 [isc, iec], [jsc, jec] = ', isc, iec, jsc, jec
     print *, 'R3 [isd, ied], [jsd, jed] = ', isd, ied, jsd, jed
 
     call mpp_get_compute_domain(Ocean%Domain, g_isc, g_iec, g_jsc, g_jec)
     g_isd  = Ocean_grid%isd_global; g_jsd  = Ocean_grid%jsd_global
-
-    g_ied = ied +g_isd -1       ! local + global -1
-    g_jed = jed +g_jsd -1       ! local + global -1
+    ! local + global -1
+    g_ied = ied +g_isd -1;          g_jed = jed +g_jsd -1
 
     print *, 'R4 [g_isc, g_iec], [g_jsc, g_jec] = ', g_isc, g_iec, g_jsc, g_jec
     print *, 'R4 [g_isd, g_ied], [g_jsd, g_jed] = ', g_isd, g_ied, g_jsd, g_jed
-
 
     call MAPL_GridGet(GRID, localCellCountPerDim=counts, RC=status)
     VERIFY_(STATUS)
