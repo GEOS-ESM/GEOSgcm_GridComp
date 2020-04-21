@@ -42,7 +42,7 @@ module GEOS_RadiationGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
 
   use GEOS_SolarGridCompMod,  only : solarSetServices  => SetServices
   use GEOS_IrradGridCompMod,  only : irradSetServices  => SetServices
@@ -733,7 +733,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !--------------------------------------------
 
     call MAPL_TimerOff(MAPL,"TOTAL")
-    call MAPL_GenericRun (GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
+    call MAPL_GenericRunChildren (GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
     VERIFY_(STATUS)
     call MAPL_TimerOn (MAPL,"TOTAL")
 

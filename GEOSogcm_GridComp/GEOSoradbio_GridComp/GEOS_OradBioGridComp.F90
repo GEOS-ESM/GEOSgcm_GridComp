@@ -1,4 +1,4 @@
-!  $Id$
+!  $Id: GEOS_OradBioGridComp.F90,v 1.8.2.2.4.1.2.5.6.2.4.2 2018/10/15 12:27:11 croussea Exp $
 
 #include "MAPL_Generic.h"
 !=============================================================================
@@ -13,7 +13,7 @@ module GEOS_OradBioGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   
   implicit none
   private
@@ -50,8 +50,9 @@ module GEOS_OradBioGridCompMod
   type bandptr
     real, pointer, dimension(:,:) :: b => null()
   end type bandptr
-  character(len=66)  :: f_no = '010203040506070809101112131415161718192021222324252627282930313233'
+
   integer :: nl
+  character(len = 2) :: suffix
 
 !========================================================================
 
@@ -343,37 +344,38 @@ module GEOS_OradBioGridCompMod
     RC=STATUS  )
     VERIFY_(STATUS)
 
-!    do nl = 1,nlt
-!     call MAPL_AddImportSpec(GC,                              &
-!     SHORT_NAME = 'TAUA_'//f_no(nl*2-1:nl*2),                 &
-!     LONG_NAME  = 'aerosol optical thickness',                &
-!     UNITS      = '',                                         &
-!     DIMS       = MAPL_DimsHorzOnly,                          &
-!     VLOCATION  = MAPL_VLocationNone,                         &
-!     RESTART    = MAPL_RestartSkip,                           &
-!     RC=STATUS  )
-!    VERIFY_(STATUS)
-!
-!     call MAPL_AddImportSpec(GC,                              &
-!     SHORT_NAME = 'SSALB_'//f_no(nl*2-1:nl*2),                &
-!     LONG_NAME  = 'single scattering albedo',                 &
-!     UNITS      = '',                                         &
-!     DIMS       = MAPL_DimsHorzOnly,                          &
-!     VLOCATION  = MAPL_VLocationNone,                         &
-!     RESTART    = MAPL_RestartSkip,                           &
-!     RC=STATUS  )
-!    VERIFY_(STATUS)
-!
-!     call MAPL_AddImportSpec(GC,                              &
-!     SHORT_NAME = 'ASYMP_'//f_no(nl*2-1:nl*2),                &
-!     LONG_NAME  = 'asymmetry parameter',                      &
-!     UNITS      = '',                                         &
-!     DIMS       = MAPL_DimsHorzOnly,                          &
-!     VLOCATION  = MAPL_VLocationNone,                         &
-!     RESTART    = MAPL_RestartSkip,                           &
-!     RC=STATUS  )
-!    VERIFY_(STATUS)
-!    enddo
+    do nl = 1,nlt
+     write(unit = suffix, fmt = '(i2.2)') nl
+     call MAPL_AddImportSpec(GC,                              &
+     SHORT_NAME = 'TAUA_'//suffix,                            &
+     LONG_NAME  = 'aerosol optical thickness',                &
+     UNITS      = '',                                         &
+     DIMS       = MAPL_DimsHorzOnly,                          &
+     VLOCATION  = MAPL_VLocationNone,                         &
+     RESTART    = MAPL_RestartSkip,                           &
+     RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                              &
+     SHORT_NAME = 'SSALB_'//suffix,                           &
+     LONG_NAME  = 'single scattering albedo',                 &
+     UNITS      = '',                                         &
+     DIMS       = MAPL_DimsHorzOnly,                          &
+     VLOCATION  = MAPL_VLocationNone,                         &
+     RESTART    = MAPL_RestartSkip,                           &
+     RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                              &
+     SHORT_NAME = 'ASYMP_'//suffix,                           &
+     LONG_NAME  = 'asymmetry parameter',                      &
+     UNITS      = '',                                         &
+     DIMS       = MAPL_DimsHorzOnly,                          &
+     VLOCATION  = MAPL_VLocationNone,                         &
+     RESTART    = MAPL_RestartSkip,                           &
+     RC=STATUS  )
+     VERIFY_(STATUS)
+    enddo
 
     call MAPL_AddImportSpec(GC,                               &
     SHORT_NAME = 'CCOVM',                                     &
@@ -850,32 +852,33 @@ module GEOS_OradBioGridCompMod
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, WSM,       'UU',        RC=STATUS)
     VERIFY_(STATUS)
-!    call MAPL_GetPointer(IMPORT, OZ,        'OZ',        RC=STATUS)
-!    VERIFY_(STATUS)
-!    call MAPL_GetPointer(IMPORT, WV,        'WV',        RC=STATUS)
-!    VERIFY_(STATUS)
-!    call MAPL_GetPointer(IMPORT, RH,        'RH',        RC=STATUS)
-!    VERIFY_(STATUS)
-!    do nl = 1,nlt
-!      call MAPL_GetPointer(IMPORT, TAUA_T, 'TAUA_'//f_no(nl*2-1:nl*2),  RC=STATUS)
-!    VERIFY_(STATUS)
-!      call MAPL_GetPointer(IMPORT, SSALB_T,'SSALB_'//f_no(nl*2-1:nl*2), RC=STATUS)
-!    VERIFY_(STATUS)
-!      call MAPL_GetPointer(IMPORT, ASYMP_T,'ASYMP_'//f_no(nl*2-1:nl*2), RC=STATUS)
-!    VERIFY_(STATUS)
-!      TAUA(nl)%b => TAUA_T
-!      SSALB(nl)%b => SSALB_T
-!      ASYMP(nl)%b => ASYMP_T
-!    enddo
-!
-!    call MAPL_GetPointer(IMPORT, CCOV,      'CCOVM',     RC=STATUS)
-!    VERIFY_(STATUS)
-!    call MAPL_GetPointer(IMPORT, CLDTC,     'CLDTCM',    RC=STATUS)
-!    VERIFY_(STATUS)
-!    call MAPL_GetPointer(IMPORT, RLWP,      'RLWPM',     RC=STATUS)
-!    VERIFY_(STATUS)
-!    call MAPL_GetPointer(IMPORT, CDRE,      'CDREM',     RC=STATUS)
-!    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, OZ,        'OZ',        RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, WV,        'WV',        RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, RH,        'RH',        RC=STATUS)
+    VERIFY_(STATUS)
+    do nl = 1,nlt
+      write(unit = suffix, fmt = '(i2.2)') nl
+      call MAPL_GetPointer(IMPORT, TAUA_T, 'TAUA_'//suffix,  RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, SSALB_T,'SSALB_'//suffix, RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, ASYMP_T,'ASYMP_'//suffix, RC=STATUS)
+      VERIFY_(STATUS)
+      TAUA(nl)%b => TAUA_T
+      SSALB(nl)%b => SSALB_T
+      ASYMP(nl)%b => ASYMP_T
+    enddo
+
+    call MAPL_GetPointer(IMPORT, CCOV,      'CCOVM',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, CLDTC,     'CLDTCM',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, RLWP,      'RLWPM',     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, CDRE,      'CDREM',     RC=STATUS)
+    VERIFY_(STATUS)
 !
 ! Get solar zenith angle
 !-----------------------
@@ -898,7 +901,7 @@ module GEOS_OradBioGridCompMod
 ! Allocate 4D array for phytoplankton
 !----------------------------------------------
 
-!    allocate(PHYTO(LM,ntyp), __STAT__)
+    allocate(PHYTO(LM,ntyp), __STAT__)
 
 ! Invoke radiation code
 !----------------------
@@ -914,66 +917,67 @@ hr=1.0
     do j = 1, JM
      do i = 1, IM
       if (DH(i,j,1) < 1.0E10 .and. COSZ(i,j) > 0.0)then
-!       slp = PS(i,j)*0.01  ! convert from Pa to mbar
-!       wspd = WSM(i,j)
-!       ozone = OZ(i,j)
-!       wvapor = WV(i,j)
-!       relhum = RH(i,j)
-!       do nl = 1,nlt
-!        ta(nl) = TAUA(nl)%b(i,j)
-!        wa(nl) = SSALB(nl)%b(i,j)
-!        asym(nl) = ASYMP(nl)%b(i,j)
-!       enddo
-!       cov = CCOV(i,j)
-!       cldtau = CLDTC(i,j)
-!       clwp = RLWP(i,j)
-!       cldre = CDRE(i,j)
-!
-!!  There are mismatches between the ocean, land and atmosphere in GEOS-5
-!!  and live ocean points for MOM that do not have a corresponding
-!!  atmosphere.  These are called "grottoes" because they are assumed
-!!  to have ocean underneath with land overhead.  Set irradiance to 0
-!!  to represent this condition.
-!       if (slp < 0.0 .or. slp >1.0E10)then
-!        Ed = 0.0
-!        Es = 0.0
-!        TIRRQ(i,j,:) = 0.0
-!        CDOMABSQ(i,j,:) = 0.0
-!        AVGQ(i,j,:) = 0.0
-!       else
-!!   Spectral irradiance just above surface
-!        call sfcirr(State%lam,State%Fobar,State%thray,State%oza,       &
-!                    State%awv,State%ao,State%aco2,                     &
-!                    State%asl,State%bsl,State%csl,State%dsl,           &
-!                    State%esl,State%fsl,State%ica,                     &
-!                    daycor,COSZ(i,j),                                  &
-!                    slp,wspd,ozone,wvapor,relhum,                      &
-!                    ta,wa,asym,State%am,State%Vi,                      &
-!                    cov,cldtau,clwp,cldre,Ed,Es)
-!!   Spectral irradiance just below surface
-!        sunz = acos(COSZ(i,j))*State%rad
-!        call ocalbedo(State%rad,State%lam,State%aw,State%bw,State%wfac, &
-!         sunz,wspd,rod,ros)
-!        do nl = 1,nlt
-!         Ed(nl) = Ed(nl)*(1.0-rod(nl))
-!         Es(nl) = Es(nl)*(1.0-ros(nl))
-!        enddo
-!
-!        PHYTO(:,1) = DIATOM(i,j,:)
-!        PHYTO(:,2) = CHLORO(i,j,:)
-!        PHYTO(:,3) = CYANO(i,j,:)
-!        PHYTO(:,4) = COCCO(i,j,:)
-!        PHYTO(:,5) = DINO(i,j,:)
-!        PHYTO(:,6) = PHAEO(i,j,:)
-!!   Spectral irradiance in the water column
-!        call glight(LM, IS_MIDNIGHT, COSZ(i,j),                        &
-!             State%lam,State%aw,State%bw,State%ac,State%bc,State%bpic, &
-!             State%excdom,State%exdet,State%WtoQ,                      &
-!             Ed,Es,DH(i,j,:),PHYTO,CDET(i,j,:),PIC(i,j,:),CDC(i,j,:),  &
-!             TIRRQ(i,j,:),CDOMABSQ(i,j,:),AVGQ(i,j,:),DT)
-TIRRQ(i,j,:) = 1.0
-CDOMABSQ(i,j,:) = 0.0
-!       endif
+       slp = PS(i,j)*0.01  ! convert from Pa to mbar
+       wspd = WSM(i,j)
+       ozone = OZ(i,j)
+       wvapor = WV(i,j)
+       relhum = RH(i,j)
+       do nl = 1,nlt
+        ta(nl) = TAUA(nl)%b(i,j)
+        wa(nl) = SSALB(nl)%b(i,j)
+        asym(nl) = ASYMP(nl)%b(i,j)
+       enddo
+       cov = CCOV(i,j)
+       cldtau = CLDTC(i,j)
+       clwp = RLWP(i,j)
+       cldre = CDRE(i,j)
+
+!  There are mismatches between the ocean, land and atmosphere in GEOS-5
+!  and live ocean points for MOM that do not have a corresponding
+!  atmosphere.  These are called "grottoes" because they are assumed
+!  to have ocean underneath with land overhead.  Set irradiance to 0
+!  to represent this condition.
+       if (slp < 0.0 .or. slp >1.0E10)then
+        Ed = 0.0
+        Es = 0.0
+        TIRRQ(i,j,:) = 0.0
+        CDOMABSQ(i,j,:) = 0.0
+        AVGQ(i,j,:) = 0.0
+       else
+!   Spectral irradiance just above surface
+        call sfcirr(State%lam,State%Fobar,State%thray,State%oza,       &
+                    State%awv,State%ao,State%aco2,                     &
+                    State%asl,State%bsl,State%csl,State%dsl,           &
+                    State%esl,State%fsl,State%ica,                     &
+                    daycor,COSZ(i,j),                                  &
+                    slp,wspd,ozone,wvapor,relhum,                      &
+                    ta,wa,asym,State%am,State%Vi,                      &
+                    cov,cldtau,clwp,cldre,Ed,Es)
+
+!   Spectral irradiance just below surface
+        sunz = acos(COSZ(i,j))*State%rad
+        call ocalbedo(State%rad,State%lam,State%aw,State%bw,State%wfac, &
+         sunz,wspd,rod,ros)
+        do nl = 1,nlt
+         Ed(nl) = Ed(nl)*(1.0-rod(nl))
+         Es(nl) = Es(nl)*(1.0-ros(nl))
+        enddo
+
+        PHYTO(:,1) = DIATOM(i,j,:)
+        PHYTO(:,2) = CHLORO(i,j,:)
+        PHYTO(:,3) = CYANO(i,j,:)
+        PHYTO(:,4) = COCCO(i,j,:)
+        PHYTO(:,5) = DINO(i,j,:)
+        PHYTO(:,6) = PHAEO(i,j,:)
+!   Spectral irradiance in the water column
+        call glight(LM, IS_MIDNIGHT, COSZ(i,j),                        &
+             State%lam,State%aw,State%bw,State%ac,State%bc,State%bpic, &
+             State%excdom,State%exdet,State%WtoQ,                      &
+             Ed,Es,DH(i,j,:),PHYTO,CDET(i,j,:),PIC(i,j,:),CDC(i,j,:),  &
+             TIRRQ(i,j,:),CDOMABSQ(i,j,:),AVGQ(i,j,:),DT)
+!TIRRQ(i,j,:) = 1.0
+!CDOMABSQ(i,j,:) = 0.0
+       endif
       endif
      enddo
     enddo
@@ -983,7 +987,7 @@ CDOMABSQ(i,j,:) = 0.0
 
     if( .not. associated(KPARX) ) deallocate(KPAR)
 
-!    deallocate(PHYTO, __STAT__)
+    deallocate(PHYTO, __STAT__)
     deallocate(COSZ,  __STAT__)
     deallocate(SLR,   __STAT__)
 

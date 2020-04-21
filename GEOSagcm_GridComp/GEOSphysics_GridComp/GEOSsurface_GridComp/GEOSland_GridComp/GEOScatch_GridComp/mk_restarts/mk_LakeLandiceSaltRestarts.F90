@@ -1,20 +1,19 @@
 program mk_LakeLandiceSaltRestarts
 
-! $Id$
-
   use netcdf
-  use MAPL_HashMod
-  use MAPL_IOMod
+
+  use MAPL
+  use mk_restarts_getidsMod, only: GetIDS,ReadTileFile_IntLatLon
+  use PFIO
+  use gFTL_StringVector
 
   implicit none
-
 
   character*256 :: Usage="mk_LakeLandiceSaltRestarts OutTileFile InTileFile InRestart mask"
   character*256 :: OutTileFile
   character*256 :: InTileFile
   character*256 :: InRestart
   character*256 :: arg
-
 
   integer :: i, rc, jc, iostat, iargc, n, mask,j,k,otiles,nsubtiles,l,itiles,nwords
   integer, pointer  :: Lono(:), Lato(:), Id(:), Pf(:)
@@ -31,12 +30,19 @@ program mk_LakeLandiceSaltRestarts
 #endif
   integer              :: bpos, epos, ntot
   integer, allocatable :: nrecs(:), mrecs(:)
-  type(MAPL_NCIO)    :: InNCIO, OutNCIO
+  type(Netcdf4_Fileformatter) :: InFmt, OutFmt
+  type(FileMetadata) :: InCfg, OutCfg
+  integer :: dim1, dim2
   integer              :: ndims
   character*256        :: OutFileName
   integer              :: dimSizes(3)
   integer              :: filetype,nVars
-  character*256        :: vname
+  type(StringVariableMap), pointer :: variables
+  type(Variable), pointer :: myVariable
+  type(StringVariableMapIterator) :: var_iter
+  type(StringVector), pointer :: var_dimensions
+  character(len=:), pointer :: vname,dname
+  integer :: dataType
 
 !---------------------------------------------------------------------------
 
@@ -59,10 +65,10 @@ program mk_LakeLandiceSaltRestarts
 ! Read Output Tile File .til file
 ! to get the index into the pfafsttater table
 
-  call ReadTileFile(OutTileFile,Pf,Id,lono,lato,mask)
+  call ReadTileFile_IntLatLon(OutTileFile,Pf,Id,lono,lato,zoom,mask)
   deallocate(Pf,Id)
 
-  call ReadTileFile(InTileFile ,Pf,Id,loni,lati,mask)
+  call ReadTileFile_IntLatLon(InTileFile ,Pf,Id,loni,lati,zoom,mask)
   deallocate(Pf,Id)
 
   nullify(Pf)
@@ -72,87 +78,108 @@ program mk_LakeLandiceSaltRestarts
   otiles = size(lono)  ! Output Tile Size
   allocate(Id (otiles))
 
-  call GetIds(loni,lati,lono,lato,Id)
+  call GetIds(loni,lati,lono,lato,zoom,Id)
 
   call MAPL_NCIOGetFileType(InRestart, filetype,rc=rc)
 
   if (filetype == 0) then
 
-     InNCIO = MAPL_NCIOOpen(InRestart,rc=rc)
+     call InFmt%open(InRestart,pFIO_READ,rc=rc)
+     InCfg = InFmt%read(rc=rc)
+     call MAPL_IOChangeRes(InCfg,OutCfg,(/'tile'/),(/otiles/),rc=rc)
 
-     call MAPL_NCIOChangeRes(InNCIO,OutNCIO,tileSize=otiles,rc=rc)
      i = index(InRestart,'/',back=.true.)
      OutFileName = "OutData/"//trim(InRestart(i+1:))
-     call MAPL_NCIOSet( OutNCIO,filename=OutFileName )
-     call MAPL_NCIOCreateFile(OutNCIO)
+     call OutFmt%create(OutFileName,rc=rc)
+     call OutFmt%write(OutCfg,rc=rc)
 
      allocate( varIn(itiles) )
      allocate( varOut(otiles) )
      allocate( varIn8(itiles) )
      allocate( varOut8(otiles) )
 
-     call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
-     do n=1,nVars
- 
-        call MAPL_NCIOGetVarName(InNCIO,n,vname)
+     call MAPL_IOCountNonDimVars(InCfg,nVars)
+     variables => InCfg%get_variables()
+     var_iter = variables%begin()
+     do while (var_iter /= variables%end())
 
-        write(*,*)"Writing ",trim(vname)
-        call MAPL_NCIOVarGetDims(InNCIO,vname,nDims,dimSizes)
-        if (ndims == 1) then
-           if(InNCIO%vars(n)%ncDataType == NF90_DOUBLE) then ! R8 vars only from coupled 
-              call MAPL_VarRead(InNCIO,vname,varIn8)
-              do i=1,otiles
-                 varOut8(i) = varIn8(id(i))
-              enddo
-              call MAPL_VarWrite(OutNCIO,vname,varOut8)
-           else
-              call MAPL_VarRead(InNCIO,vname,varIn)
-              do i=1,otiles
-                 varOut(i) = varIn(id(i))
-              enddo
-              call MAPL_VarWrite(OutNCIO,vname,varOut)
-           endif
-        else if (ndims == 2) then
-           
-           do j=1,dimSizes(2)
-              if(InNCIO%vars(n)%ncDataType == NF90_DOUBLE) then ! R8 vars only from coupled 
-                call MAPL_VarRead(InNCIO,vname,varIn8,offset1=j)
-                do i=1,otiles
-                   varOut8(i) = varIn8(id(i))
-                enddo
-                call MAPL_VarWrite(OutNCIO,vname,varOut8,offset1=j)
+        vname => var_iter%key()
+        myVariable => var_iter%value()
+        var_dimensions => myVariable%get_dimensions()
+        dataType = myVariable%get_type()
+
+        if (.not.InCfg%is_coordinate_variable(vname)) then
+
+           ndims = var_dimensions%size()
+
+           write(*,*)"Writing ",trim(vname)
+           if (ndims == 1) then
+              if (dataType == pFIO_REAL64) then
+                 call MAPL_VarRead(InFmt,vname,varIn8)
+                 do i=1,otiles
+                    varOut8(i) = varIn8(id(i))
+                 enddo
+                 call MAPL_VarWrite(OutFmt,vname,varOut8)
               else
-                call MAPL_VarRead(InNCIO,vname,varIn,offset1=j)
-                do i=1,otiles
-                   varOut(i) = varIn(id(i))
-                enddo
-                call MAPL_VarWrite(OutNCIO,vname,varOut,offset1=j)
+                 call MAPL_VarRead(InFmt,vname,varIn)
+                 do i=1,otiles
+                    varOut(i) = varIn(id(i))
+                 enddo
+                 call MAPL_VarWrite(OutFmt,vname,varOut)
               endif
-           enddo
-        else if (ndims == 3) then
+           else if (ndims == 2) then
            
-           do k=1,dimSizes(3)
-              do j=1,dimSizes(2)
-                 if(InNCIO%vars(n)%ncDataType == NF90_DOUBLE) then ! R8 vars only from coupled 
-                    call MAPL_VarRead(InNCIO,vname,varIn8,offset1=j,offset2=k)
+              dname => myVariable%get_ith_dimension(2)
+              dim1=InCfg%get_dimension(dname)
+        
+              do j=1,dim1
+                 if (dataType == pFIO_REAL64) then
+                    call MAPL_VarRead(InFmt,vname,varIn8,offset1=j)
                     do i=1,otiles
                        varOut8(i) = varIn8(id(i))
                     enddo
-                    call MAPL_VarWrite(OutNCIO,vname,varOut8,offset1=j,offset2=k)
+                    call MAPL_VarWrite(OutFmt,vname,varOut8,offset1=j)
                  else
-                    call MAPL_VarRead(InNCIO,vname,varIn,offset1=j,offset2=k)
+                    call MAPL_VarRead(InFmt,vname,varIn,offset1=j)
                     do i=1,otiles
                        varOut(i) = varIn(id(i))
                     enddo
-                    call MAPL_VarWrite(OutNCIO,vname,varOut,offset1=j,offset2=k)
+                    call MAPL_VarWrite(OutFmt,vname,varOut,offset1=j)
                  endif
               enddo
-           enddo
-        
+           else if (ndims == 3) then
+              
+              dname => myVariable%get_ith_dimension(2)
+              dim1=InCfg%get_dimension(dname)
+              dname => myVariable%get_ith_dimension(3)
+              dim2=InCfg%get_dimension(dname)
+
+              do k=1,dim2
+                 do j=1,dim1
+                    if (dataType == pFIO_REAL64) then
+                       call MAPL_VarRead(InFmt,vname,varIn8,offset1=j,offset2=k)
+                       do i=1,otiles
+                          varOut8(i) = varIn8(id(i))
+                       enddo
+                       call MAPL_VarWrite(OutFmt,vname,varOut8,offset1=j,offset2=k)
+                    else
+                       call MAPL_VarRead(InFmt,vname,varIn,offset1=j,offset2=k)
+                       do i=1,otiles
+                          varOut(i) = varIn(id(i))
+                       enddo
+                       call MAPL_VarWrite(OutFmt,vname,varOut,offset1=j,offset2=k)
+                    endif
+                 enddo
+              enddo
+           
+           end if
+
         end if
-        
+       
+        call var_iter%next() 
      enddo
 
+     call OutFmt%close()
      deallocate( varIn, varOut )
      deallocate( varIn8, varOut8 )
 
@@ -218,8 +245,6 @@ program mk_LakeLandiceSaltRestarts
   end if
 
 contains
-
-#include "getids.H"
 
 end program mk_LakeLandiceSaltRestarts
 

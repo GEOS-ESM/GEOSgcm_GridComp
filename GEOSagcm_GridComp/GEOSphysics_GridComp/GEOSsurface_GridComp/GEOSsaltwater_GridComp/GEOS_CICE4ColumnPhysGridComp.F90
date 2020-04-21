@@ -27,7 +27,7 @@ module GEOS_CICE4ColumnPhysGridComp
 
   use sfclayer  ! using module that contains sfc layer code
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
   
@@ -2294,6 +2294,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer         :: PRES_ICE
    integer         :: CHOOSEMOSFC
    integer         :: CHOOSEZ0
+   character(len=ESMF_MAXSTR)     :: SURFRC
+   type(ESMF_Config)              :: SCF 
+
 !=============================================================================
 
 ! Begin... 
@@ -2337,8 +2340,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=CHOOSEMOSFC, DEFAULT=1, __RC__ ) 
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0,    Label="CHOOSEZ0:",    DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
@@ -2662,7 +2668,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
             IDUM,            JDUM,         &    
             limit_aice_in=.true.)  
 
-       ASSERT_(.not.L_STOP)
+       _ASSERT(.not.L_STOP,'needs informative message')
 
        FR(K,ICE:)    = FR_TMP(:)
        VOLICE(K,:)   = VOLICE_TMP(:)
@@ -4800,7 +4806,7 @@ contains
           print*, 'CICE_PREP_THERMO: Failing at LAT = ', LATSD, 'LON = ', LONSD
        endif
 
-       ASSERT_(.not.L_STOP)
+       _ASSERT(.not.L_STOP,'needs informative message')
 
        FRESHL(K)    = REAL(FRESHLDB(1),                     kind=MAPL_R4)
        FSALTL(K)    = REAL(FSALTLDB(1),                     kind=MAPL_R4)
@@ -5065,7 +5071,7 @@ contains
              print*, 'CICE_THERMO1: Failing at LAT = ', LATSD, 'LON = ', LONSD
           endif
 
-          ASSERT_(.not.L_STOP)
+          _ASSERT(.not.L_STOP,'needs informative message')
 
           ERGICE(K,:,NSUB)   = ERGICE_TMP(:)
           ERGSNO(K,:,NSUB)   = ERGSNO_TMP(:)
@@ -5288,7 +5294,7 @@ contains
              print*, 'CICE_THERMO2_STEP1: after linear_itd. Failing at LAT = ', LATSD, 'LON = ', LONSD
           endif
 
-          ASSERT_(.not.L_STOP)
+          _ASSERT(.not.L_STOP,'needs informative message')
 
        endif 
        
@@ -5321,7 +5327,7 @@ contains
           print*, 'CICE_THERMO2_STEP1: after add_new_ice. Failing at LAT = ', LATSD, 'LON = ', LONSD
        endif
 
-       ASSERT_(.not.L_STOP)
+       _ASSERT(.not.L_STOP,'needs informative message')
 
        FRAZLN(K)   =  FRAZLNDB (1)     
 
@@ -5376,7 +5382,7 @@ contains
                          limit_aice_in=.true. &
                          ,punynum=puny)
 
-       ASSERT_(.not.L_STOP)
+       _ASSERT(.not.L_STOP,'needs informative message')
 
        FR(K,ICE:)    = FR_TMP(:)
        VOLICE(K,:)   = VOLICE_TMP(:)
@@ -5576,7 +5582,7 @@ contains
              print*, 'CICE_THERMO2_STEP2: Failing at LAT = ', LATSD, 'LON = ', LONSD
           endif
 
-          ASSERT_(.not.L_STOP)
+          _ASSERT(.not.L_STOP,'needs informative message')
 
           FR(K,ICE:)    = FR_TMP(:)
           VOLICE(K,:)   = VOLICE_TMP(:)

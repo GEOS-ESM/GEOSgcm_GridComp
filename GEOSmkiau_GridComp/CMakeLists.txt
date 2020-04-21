@@ -8,7 +8,7 @@ set (srcs
   DynVec_GridComp.F90
   )
 
-set(dependencies MAPL_cfio_r4 NCEP_sp_r4i4 GEOS_Shared GMAO_mpeu MAPL_Base FVdycoreCubed_GridComp)
+set(dependencies MAPL_cfio_r4 NCEP_sp_r4i4 GEOS_Shared GMAO_mpeu MAPL FVdycoreCubed_GridComp)
 esma_add_library (${this} SRCS ${srcs} DEPENDENCIES ${dependencies})
 target_include_directories (${this} PUBLIC ${include_INC_ESMF})
 target_include_directories (${this} PUBLIC ${INC_NETCDF})

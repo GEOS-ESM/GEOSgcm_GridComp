@@ -1,4 +1,4 @@
-! $Id$
+! $Id: GEOS_PhysicsGridComp.F90,v 1.119.4.3.2.7.2.1.8.1.2.13.6.1.20.1.2.1.2.5.2.2.2.1.12.1 2019/07/23 15:30:41 mmanyin Exp $
 
 #include "MAPL_Generic.h"
 
@@ -16,8 +16,7 @@ module GEOS_PhysicsGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
-  use m_chars,  only: uppercase
+  use MAPL
   use stoch_module
 
   use GEOS_SurfaceGridCompMod,    only : SurfSetServices      => SetServices
@@ -28,6 +27,7 @@ module GEOS_PhysicsGridCompMod
   use GEOS_GwdGridCompMod,        only : GwdSetServices       => SetServices
 
   use GEOS_UtilsMod, only: GEOS_Qsat
+  use Bundle_IncrementMod
 
 ! PGI Module that contains the initialization 
 ! routines for the GPUs
@@ -110,9 +110,14 @@ contains
     integer                                 :: I
     type (ESMF_Config)                      :: CF
 
-    integer                                 :: DO_OBIO, DO_CO2CNNEE, DO_CO2SC
+    integer                                 :: DO_OBIO, DO_CO2CNNEE, ATM_CO2, nCols, NQ
 
     real                                    :: SYNCTQ
+    character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
+    character(len=ESMF_MAXSTR)              :: TendUnits
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)                       :: SCF 
+
 !=============================================================================
 
 ! Begin...
@@ -161,10 +166,17 @@ contains
 
     call MAPL_GetResource ( MAPL, DO_OBIO, Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_CO2CNNEE, Label="USE_CNNEE:",DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_CO2SC, Label="USE_CO2SC:",DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:',   value=ATM_CO2,   DEFAULT=0, __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
+
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,'CO2_GridComp.rc',rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='USE_CNNEE:', value=DO_CO2CNNEE,   DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
 ! AMM - get SYNCTQ flag from config to know whether to terminate some imports
 ! ---------------------------------------------------------------------------
@@ -339,6 +351,45 @@ contains
 
 ! !EXPORT STATE:
 
+!   Add export states for turbulence increments
+!-------------------------------------------------
+    call ESMF_ConfigGetDim (cf, NQ, nCols, label=('TRI_increments::'), rc=STATUS)
+
+    if (NQ > 0) then
+      call ESMF_ConfigFindLabel (cf, ('TRI_increments::'), rc=STATUS)
+      VERIFY_(STATUS)
+
+      allocate (NAMES(NQ), stat=STATUS)
+      VERIFY_(STATUS)
+
+      do i = 1, NQ
+        call ESMF_ConfigNextLine(cf, rc=STATUS)
+        VERIFY_(STATUS)
+        call ESMF_ConfigGetAttribute(cf, NAMES(i), rc=STATUS)
+        VERIFY_(STATUS)
+      enddo
+
+      do i = 1, NQ
+        if (NAMES(i) == 'AOADAYS') then
+          TendUnits = 'days s-1'
+        else
+          TendUnits = 'UNITS'
+        end if
+
+        call MAPL_AddExportSpec(GC,                                           &
+          SHORT_NAME =  trim(NAMES(i))//'IT',                                 &
+          LONG_NAME  = 'tendency_of_'//trim(NAMES(i))//'_due_to_turbulence',  &
+          UNITS      =  TendUnits,                                            &
+          DIMS       =  MAPL_DimsHorzVert,                                    &
+          VLOCATION  =  MAPL_VLocationCenter,                                 &
+          RC=STATUS  )
+        VERIFY_(STATUS)
+      end do
+      deallocate(NAMES)
+    end if !NQ > 0
+
+!-----------------------------------------------------------
+
     call MAPL_AddExportSpec(GC,                                                       &
          SHORT_NAME = 'DTDT',                                                         &
          LONG_NAME  = 'pressure_weighted_tendency_of_air_temperature_due_to_physics', &
@@ -510,24 +561,6 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                                          &
-         SHORT_NAME = 'OXIT',                                            &
-         LONG_NAME  = 'tendency_of_odd_oxygen_due_to_turbulence',        &
-         UNITS      = 'mol mol-1 s-1',                                   &
-         DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                          &
-         SHORT_NAME = 'OXIM',                                            &
-         LONG_NAME  = 'tendency_of_odd_oxygen_due_to_moist_processes',   &
-         UNITS      = 'mol mol-1 s-1',                                   &
-         DIMS       = MAPL_DimsHorzVert,                                 &
-         VLOCATION  = MAPL_VLocationCenter,                              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
     call MAPL_AddExportSpec(GC,                                      &
          SHORT_NAME = 'TIF',                                         &
          LONG_NAME  = 'tendency_of_air_temperature_due_to_friction', &
@@ -541,6 +574,22 @@ contains
          SHORT_NAME = 'TRADV ',                                    &
          LONG_NAME  = 'advected_quantities',                       &
          UNITS      = 'X',                                         &
+         DATATYPE   = MAPL_BundleItem,                             &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'H2ORTRI',                                   &
+         LONG_NAME  = 'H2O_rescale_increments',                    &
+         UNITS      = 'UNITS s-1',                                 &
+         DATATYPE   = MAPL_BundleItem,                             &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'MTRI',                                      &
+         LONG_NAME  = 'moist_quantities',                          &
+         UNITS      = 'UNITS s-1',                                 &
          DATATYPE   = MAPL_BundleItem,                             &
          RC=STATUS  )
     VERIFY_(STATUS)
@@ -1095,7 +1144,7 @@ contains
                                                         RC=STATUS  )
      VERIFY_(STATUS)
 
-     IF((DO_OBIO /= 0) .OR. (DO_CO2SC /= 0)) THEN
+     IF((DO_OBIO /= 0) .OR. (ATM_CO2 == 4)) THEN
         call MAPL_AddConnectivity ( GC,                               &
              SRC_NAME    = 'CO2SC001',                                &
              DST_NAME    = 'CO2SC',                                   &
@@ -1141,10 +1190,11 @@ contains
                          'QCTOT   ',  'CNV_QC  ', 'LFR     ',     &
                          'QLTOT   ',  'QLCN    ', 'QICN    ',     &
                          'DQLDT   ',  'QITOT   ', 'REV_CN  ',     &
-                         'REV_LS  ',  'REV_AN  ',                 &
+                         'REV_LS  ',  'REV_AN  ', 'LFR_GCC ',     &
                          'BYNCY   ',  'DQIDT   ', 'QI      ',     &
                          'DQRC    ',  'CNV_CVW ', 'QLLS    ',     &
-                         'QILS    ',  'DQRL    ', 'CNV_FRC ' /),  &
+                         'QILS    ',  'DQRL    ', 'CNV_FRC ',     &
+                         'RI      ',  'RL      '            /),   &
         DST_ID      = CHEM,                                       &
         SRC_ID      = MOIST,                                      &
                                                        RC=STATUS  )
@@ -1204,7 +1254,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'TS'/),                                   &
+         SHORT_NAME  = (/'TS' /),                                  &
          DST_ID      = MOIST,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
@@ -1212,7 +1262,7 @@ contains
 
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'SNOMAS   ','FRLAND   ','FROCEAN  ',      &
-                         'FRLANDICE'/),                            &
+                         'FRLANDICE','FRACI    '/),                &
          DST_ID      = MOIST,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
@@ -1482,7 +1532,7 @@ contains
    type (ESMF_State),          pointer :: GIM(:)
    type (ESMF_State),          pointer :: GEX(:)
    type (ESMF_FieldBundle)             :: BUNDLE, iBUNDLE
-   type (ESMF_Field)                   :: FIELD
+   type (ESMF_Field)                   :: FIELD, TempField
    type (ESMF_Grid)                    :: GRID
 
    integer                             :: NUM_TRACERS
@@ -1491,6 +1541,7 @@ contains
    character(len=ESMF_MAXSTR), pointer :: NAMES(:)
    character(len=ESMF_MAXSTR)          :: myNAME
    character(len=ESMF_MAXSTR)          ::  iNAME
+   character(len=ESMF_MAXSTR)          :: fieldname
 
 ! Variables needed for GPU initialization
 
@@ -1547,7 +1598,7 @@ contains
     STATUS = cudaGetDeviceCount(num_devices)
     if (STATUS /= 0) then
        write (*,*) "cudaGetDeviceCount failed: ", cudaGetErrorString(STATUS)
-       ASSERT_(.FALSE.)
+       _ASSERT(.FALSE.,'needs informative message')
     end if
 
     devicenum = mod(MYID, num_devices)
@@ -1555,13 +1606,13 @@ contains
     STATUS = cudaSetDevice(devicenum)
     if (STATUS /= 0) then
        write (*,*) "cudaSetDevice failed: ", cudaGetErrorString(STATUS)
-       ASSERT_(.FALSE.)
+       _ASSERT(.FALSE.,'needs informative message')
     end if
 
     STATUS = cudaDeviceSetCacheConfig(cudaFuncCachePreferL1)
     if (STATUS /= 0) then
        write (*,*) "cudaDeviceSetCacheConfig failed: ", cudaGetErrorString(STATUS)
-       ASSERT_(.FALSE.)
+       _ASSERT(.FALSE.,'needs informative message')
     end if
 
     call MAPL_TimerOff(STATE,"-GPUINIT")
@@ -1814,6 +1865,10 @@ contains
     if ( MAPL_am_I_root() ) call ESMF_FieldBundlePrint ( BUNDLE, rc=STATUS )
 #endif
 
+! Initialize Water rescale tendency bundle
+!--------------------------------------------
+    call Initialize_IncBundle_init(GC, EXPORT, EXPORT, H2Oinc, __RC__)
+
 ! Fill export bundle of child quantities to be analyzed
 !------------------------------------------------------
 
@@ -1845,22 +1900,7 @@ contains
 ! Fill the moist increments bundle
 !---------------------------------
 
-    call ESMF_StateGet   (GEX(MOIST), 'MTRI', iBUNDLE, RC=STATUS )
-    VERIFY_(STATUS)
-    call ESMF_FieldBundleGet(BUNDLE, FieldCount=NA, RC=STATUS)
-    VERIFY_(STATUS)
-
-    do I=1,NA
-       call ESMF_FieldBundleGet(BUNDLE,   I,   FIELD,  RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_FieldGet (FIELD, NAME=myNAME,  RC=STATUS)
-       VERIFY_(STATUS)
-
-       iNAME = trim(myNAME) // 'IM'
-
-       call ESMFL_StateGetField  (EXPORT, (/iNAME/), iBUNDLE, RC=STATUS )
-       VERIFY_(STATUS)
-    end do
+    call Initialize_IncBundle_init(GC, GIM(MOIST), EXPORT, MTRIinc, __RC__)
 
 #ifdef PRINT_STATES
     call WRITE_PARALLEL ( trim(Iam)//": Convective Transport Tendency Bundle" )
@@ -2054,7 +2094,7 @@ contains
 
     call MAPL_GetResource(STATE, DUMMY, Label="DPEDT_PHYS:", default='YES', RC=STATUS)
     VERIFY_(STATUS)
-         DUMMY = uppercase(DUMMY)
+         DUMMY = ESMF_UtilStringUpperCase(DUMMY)
     DPEDT_PHYS = TRIM(DUMMY).eq.'YES'
 
 ! Get the children`s states from the generic state
@@ -2088,7 +2128,7 @@ contains
          allocate( NAMES(NQ),STAT=STATUS )
          VERIFY_(STATUS)
          call ESMF_FieldBundleGet ( BUNDLE, itemorderflag=ESMF_ITEMORDER_ADDORDER, fieldNameList=NAMES, rc=STATUS )
-       VERIFY_(STATUS)
+         VERIFY_(STATUS)
          do N = 1,size(NAMES)
             if( trim(NAMES(N)).eq.'Q'        ) NWAT=NWAT+1
             if( trim(NAMES(N)).eq.'QLCN'     ) NWAT=NWAT+1
@@ -2427,6 +2467,8 @@ contains
 ! Moist Processes
 !----------------
 
+    call Initialize_IncBundle_run(GIM(MOIST), EXPORT, MTRIinc, __RC__)
+
 !
 !  AMM - compute TH using T after GWD and write on moist import state TH
     if ( SYNCTQ.eq.1. ) then
@@ -2441,6 +2483,8 @@ contains
      call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
+
+    call Compute_IncBundle(GIM(MOIST), EXPORT, MTRIinc, STATE, __RC__)
 
 ! Surface Stage 1
 !----------------
@@ -2475,8 +2519,8 @@ contains
     I=CHEM
 
     call MAPL_TimerOn (STATE,GCNames(I))
-    call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, phase=1, userRC=STATUS ); VERIFY_(STATUS)
-    call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
+     call ESMF_GridCompRun (GCS(I), importState=GIM(I), exportState=GEX(I), clock=CLOCK, phase=1, userRC=STATUS ); VERIFY_(STATUS)
+     call MAPL_GenericRunCouplers (STATE, I,        CLOCK,    RC=STATUS ); VERIFY_(STATUS)
     !call ESMF_VMBarrier(VMG, rc=status); VERIFY_(STATUS)
     call MAPL_TimerOff(STATE,GCNames(I))
 
@@ -2785,6 +2829,10 @@ contains
        call ESMF_FieldBundleGet ( BUNDLE, fieldNameList=NAMES, rc=STATUS )
        VERIFY_(STATUS)
 
+       !Re-initialize water rescale increment bundle
+       !----------------------------------------------
+       call Initialize_IncBundle_run(EXPORT, EXPORT, H2Oinc, __RC__)
+
        ! Add diagnostic for scaling tendency of QI and QL -> fill diagnostic with "before" value
        ! ------------------------------------------------
        if( associated(DQVDTSCL) ) DQVDTSCL =  QV
@@ -2839,6 +2887,10 @@ contains
  1001     format(1x,'PSDRY_OLD: ',g21.14,'  PSDRY_NEW: ',g21.14,'  RATIO: ',g25.18,'  DIF: ',g21.14)
        endif
 #endif
+
+       ! Compute water rescale increments
+       !----------------------------------
+       call Compute_IncBundle(EXPORT, EXPORT, H2Oinc, STATE, __RC__)
 
        ! Add diagnostic for scaling tendency of QI and QL -> update diagnostic with "after" value
        ! ------------------------------------------------

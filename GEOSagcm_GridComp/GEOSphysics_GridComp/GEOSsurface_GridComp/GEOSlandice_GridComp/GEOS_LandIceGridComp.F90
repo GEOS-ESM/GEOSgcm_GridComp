@@ -34,7 +34,7 @@ module GEOS_LandiceGridCompMod
        NUM_SUDP, NUM_SUSV, NUM_SUWT, NUM_SUSD, &
        NUM_SSDP, NUM_SSSV, NUM_SSWT, NUM_SSSD
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
   
@@ -88,7 +88,7 @@ module GEOS_LandiceGridCompMod
 
   integer,    parameter :: TAR_PE     = 43
   integer,    parameter :: TAR_TILE   = 1
-  integer               :: DO_GOSWIM
+  integer               :: N_CONST_LANDICE4SNWALB, AEROSOL_DEPOSITION, CHOOSEMOSFC
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -136,11 +136,13 @@ module GEOS_LandiceGridCompMod
     character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
-
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)                       :: SCF 
 
 !=============================================================================
 
     type(MAPL_MetaComp), pointer            :: MAPL
+
 
 ! Begin...
 
@@ -164,8 +166,14 @@ module GEOS_LandiceGridCompMod
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL,DO_GOSWIM,Label="N_CONST_LANDICE4SNWALB:",default=0,RC=STATUS)
-    VERIFY_(STATUS)
+
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LANDICE4SNWALB:', value=N_CONST_LANDICE4SNWALB, DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='AEROSOL_DEPOSITION:'    , value=AEROSOL_DEPOSITION  ,   DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'           , value=CHOOSEMOSFC,            DEFAULT=1  , __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -1040,7 +1048,7 @@ module GEOS_LandiceGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-     if (DO_GOSWIM /=0) then
+     if (N_CONST_LANDICE4SNWALB /=0) then
 
         call MAPL_AddInternalSpec(GC,                                &
           SHORT_NAME         = 'IRDU001',                            &
@@ -1751,7 +1759,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, parameter :: LANDICEBAREZ0  = 0.005
    real, parameter :: LANDICESNOWZ0  = 0.001
 
-   integer                        :: CHOOSEMOSFC
    integer                        :: CHOOSEZ0
 !=============================================================================
 
@@ -1782,11 +1789,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL,             &
          INTERNAL_ESMF_STATE = INTERNAL,         &
                                        RC=STATUS )
-    VERIFY_(STATUS)
-
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
@@ -1981,9 +1983,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    QST = 0.0
 
    do N=1,NUM_SUBTILES
-
-! Choose sfc layer: if CHOOSEMOSFC is 1, choose helfand MO,
-!                   if CHOOSEMOSFC is 0 (default), choose louis
 
    if(CHOOSEMOSFC.eq.0) then
 
@@ -2440,8 +2439,6 @@ contains
 
    integer                        :: N, NT
    integer                        :: K, L, KL
-   integer                        :: AEROSOL_DEPOSITION
-   integer                        :: N_CONST_LANDICE4SNWALB
 
    ! vars for debugging
    type(ESMF_VM)                  ::  VM
@@ -2458,22 +2455,6 @@ contains
 !----------
 
    IAm =  trim(COMP_NAME) // "LANDICECORE"
-
-!----- GOSWIM related setting in AGCM.rc -----
-! Get parameters to zero the deposition rate 
-! 0: Use all GOCART aerosol values, 1: turn OFF everythying, 
-! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
-! __________________________________________
-
-   call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", DEFAULT=0, RC=STATUS)
-   VERIFY_(STATUS)
-
-! GOSWIM ANOW_ALBEDO 
-! 0 : GOSWIM snow albedo scheme is turned off
-! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme
- 
-   call MAPL_GetResource ( MAPL, N_CONST_LANDICE4SNWALB, Label="N_CONST_LANDICE4SNWALB:", DEFAULT=0, RC=STATUS)
-   VERIFY_(STATUS)
 
 ! Pointers to inputs
 !-------------------
@@ -2536,7 +2517,7 @@ contains
    call MAPL_GetPointer(INTERNAL,HTSN , 'HTSN'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,SNDZ , 'SNDZ'   , RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,TICE , 'TICE'   , RC=STATUS); VERIFY_(STATUS)
-   if (DO_GOSWIM /= 0) then
+   if (N_CONST_LANDICE4SNWALB /= 0) then
       call MAPL_GetPointer(INTERNAL,IRDU001 ,'IRDU001', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL,IRDU002 ,'IRDU002', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL,IRDU003 ,'IRDU003', RC=STATUS); VERIFY_(STATUS)
@@ -2878,7 +2859,7 @@ contains
 ! RCONSTIT(NT,N,14): Sea salt mass from size bin 4 in layer N
 ! RCONSTIT(NT,N,15): Sea salt mass from size bin 5 in layer N
 
-    if (DO_GOSWIM /=0) then
+    if (N_CONST_LANDICE4SNWALB /=0) then
         RCONSTIT(:,:,1) = IRDU001(:,:)
         RCONSTIT(:,:,2) = IRDU002(:,:)
         RCONSTIT(:,:,3) = IRDU003(:,:)
@@ -3119,7 +3100,7 @@ contains
                    MAXSNDZ, RHOFRESH, DZMAX)
 
           ! Snow impurities update
-           if (DO_GOSWIM /= 0) then
+           if (N_CONST_LANDICE4SNWALB /= 0) then
               if(associated(IRDU001)) IRDU001(k,:) = RCONSTIT(k,:,1) 
               if(associated(IRDU002)) IRDU002(k,:) = RCONSTIT(k,:,2) 
               if(associated(IRDU003)) IRDU003(k,:) = RCONSTIT(k,:,3) 

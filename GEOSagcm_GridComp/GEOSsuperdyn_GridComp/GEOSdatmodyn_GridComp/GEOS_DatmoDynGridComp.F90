@@ -14,7 +14,7 @@ module GEOS_DatmoDynGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use PPM
   use cfmip_data_mod
   
@@ -1159,6 +1159,11 @@ contains
     real, pointer, dimension(:,:)   :: DUMMYDXC,DUMMYDYC
     real, pointer, dimension(:,:,:) :: DUMMYW,DUMMYPLK
     real, pointer, dimension(:,:,:) :: PKEOUT
+    real, pointer, dimension(:,:,:) :: QVDYN
+    real, pointer, dimension(:,:,:) :: TDYN
+    real, pointer, dimension(:,:,:) :: UDYN
+    real, pointer, dimension(:,:,:) :: VDYN
+    real, pointer, dimension(:,:,:) :: PLEDYN
     real, pointer, dimension(:)     :: AK,BK
     real, pointer, dimension(:,:,:) :: U_CGRID,V_CGRID
     real, pointer, dimension(:,:,:) :: U_DGRID,V_DGRID
@@ -1222,7 +1227,7 @@ contains
 
       INTEGER :: NT, NLEVEL,I,J,VERTADV, useana, advscheme
 
-      LOGICAL :: USE_ASCII_DATA, AT_START, CFMIP, CFMIP2
+      LOGICAL :: USE_ASCII_DATA, AT_START, CFMIP, CFMIP2, isPresent
       LOGICAL, SAVE :: ALREADY_HAVE_DATA
       integer, save :: I_time_step
       real blendwgt
@@ -1427,8 +1432,12 @@ contains
          ! Get item's friendly status (default is not friendly)
          !-----------------------------------------------------
 
-         call ESMF_AttributeGet  (FIELD, NAME="FriendlyToDYNAMICS",VALUE=FRIENDLY, __RC__)
-         if(STATUS /= ESMF_SUCCESS) FRIENDLY = .false.
+         call ESMF_AttributeGet  (FIELD, NAME="FriendlyToDYNAMICS",isPresent=isPresent, __RC__)
+         if(isPresent) then
+            call ESMF_AttributeGet  (FIELD, NAME="FriendlyToDYNAMICS",VALUE=FRIENDLY, __RC__)
+         else
+            FRIENDLY = .false.
+         end if
 
          if( trim(QNAME).eq.'Q') then
            call ESMF_FieldGet (FIELD, 0, Q, __RC__)
@@ -1515,6 +1524,11 @@ contains
       call MAPL_GetPointer(EXPORT, DUMMYW,  'W' , __RC__)
       call MAPL_GetPointer(EXPORT, DUMMYPLK,  'PLK' , __RC__)
       call MAPL_GetPointer(EXPORT, PKEOUT,  'PKE' , __RC__)
+      call MAPL_GetPointer(EXPORT, QVDYN,  'QV_DYN_IN' , __RC__)
+      call MAPL_GetPointer(EXPORT, TDYN,  'T_DYN_IN' , __RC__)
+      call MAPL_GetPointer(EXPORT, UDYN,  'U_DYN_IN' , __RC__)
+      call MAPL_GetPointer(EXPORT, VDYN,  'V_DYN_IN' , __RC__)
+      call MAPL_GetPointer(EXPORT, PLEDYN,  'PLE_DYN_IN' , __RC__)
       call MAPL_GetPointer(EXPORT, DUMMYDXC,  'DXC' , __RC__)
       call MAPL_GetPointer(EXPORT, DUMMYDYC,  'DYC' , __RC__)
       call MAPL_GetPointer(EXPORT, AK,  'AK' , __RC__)
@@ -1643,7 +1657,7 @@ contains
 
       I_time_step = I_time_step+1
 
-      ASSERT_( .NOT. ((USE_ASCII_DATA .eqv. .FALSE.) .AND. (RELAX_TO_OBS > 0.) ) )
+      _ASSERT( .NOT. ((USE_ASCII_DATA .eqv. .FALSE.) .AND. (RELAX_TO_OBS > 0.) ) ,'needs informative message')
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! If USE_ASCII_DATA=.T. then data exists to drive run, i.e. NT>1
@@ -1758,6 +1772,12 @@ contains
       endif     
       TH = T * ( ( MAPL_P00 / PLO )**MAPL_KAPPA )
       OM = OMOBS
+
+      if (associated(QVDYN))  QVDYN = Q
+      if (associated(TDYN))   TDYN = T
+      if (associated(UDYN))   UDYN = U
+      if (associated(VDYN))   VDYN = V
+      if (associated(PLEDYN)) PLEDYN = PLE
 
       call MAPL_GetPointer(IMPORT, PHIS,  'PHIS' , __RC__)
       ZLE(:,:,LM) = PHIS / MAPL_GRAV

@@ -25,8 +25,7 @@ module GEOS_LandGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
-  USE MAPL_BaseMod
+  use MAPL
 
   use GEOS_VegdynGridCompMod,  only : VegdynSetServices   => SetServices
   use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices
@@ -46,6 +45,7 @@ module GEOS_LandGridCompMod
 
   integer                                 :: VEGDYN
   integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:)
+  INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
 
 contains
 
@@ -80,13 +80,13 @@ contains
 ! Locals
     
     character(len=ESMF_MAXSTR)              :: GCName
-    type(ESMF_Config)                       :: CF
+    type(ESMF_Config)                       :: CF, SCF
     integer                                 :: NUM_CATCH
     integer                                 :: I
     character(len=ESMF_MAXSTR)              :: TMP
     type(MAPL_MetaComp),pointer             :: MAPL=>null()
-    INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
     integer                                 :: NUM_LDAS_ENSEMBLE, ens_id_width
+    character(len=ESMF_MAXSTR)              :: SURFRC
 
 !=============================================================================
 
@@ -133,8 +133,6 @@ contains
 
     call ESMF_ConfigGetAttribute ( CF, NUM_CATCH, Label="NUM_CATCH_ENSEMBLES:", default=1, RC=STATUS)
     VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute ( CF, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", default=0, RC=STATUS)
-    VERIFY_(STATUS)
 
 !------------------------------------------------------------
 ! Create children's gridded components and invoke their 
@@ -150,8 +148,12 @@ contains
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, RUN_ROUTE, Label="RUN_ROUTE:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='RUN_ROUTE:'  , value=RUN_ROUTE  , DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
     SELECT CASE (LSM_CHOICE)
 

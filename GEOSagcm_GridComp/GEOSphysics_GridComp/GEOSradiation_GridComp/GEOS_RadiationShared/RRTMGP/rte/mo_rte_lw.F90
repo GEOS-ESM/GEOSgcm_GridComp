@@ -35,13 +35,15 @@
 ! -------------------------------------------------------------------------------------------------
 module mo_rte_lw
   use mo_rte_kind,      only: wp, wl
+  use mo_rte_util_array,only: any_vals_less_than, any_vals_outside, extents_are
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
   use mo_source_functions,   &
                         only: ty_source_func_lw
   use mo_fluxes,        only: ty_fluxes
   use mo_rte_solver_kernels, &
-                        only: apply_BC, lw_solver_noscat_GaussQuad, lw_solver_2stream
+                        only: apply_BC, lw_solver_noscat_GaussQuad, lw_solver_2stream,&
+                              lw_solver_1rescl_GaussQuad
   implicit none
   private
 
@@ -55,7 +57,7 @@ contains
   function rte_lw(optical_props, top_at_1, &
                   sources, sfc_emis,       &
                   fluxes,                  &
-                  inc_flux, n_gauss_angles) result(error_msg)
+                  inc_flux, n_gauss_angles, use_2stream) result(error_msg)
     class(ty_optical_props_arry), intent(in   ) :: optical_props     ! Array of ty_optical_props. This type is abstract
                                                                      ! and needs to be made concrete, either as an array
                                                                      ! (class ty_optical_props_arry) or in some user-defined way
@@ -66,19 +68,22 @@ contains
     class(ty_fluxes),             intent(inout) :: fluxes      ! Array of ty_fluxes. Default computes broadband fluxes at all levels
                                                                !   if output arrays are defined. Can be extended per user desires.
     real(wp), dimension(:,:),   &
-              target, optional, intent(in   ) :: inc_flux    ! incident flux at domain top [W/m2] (ncol, ngpts)
-    integer,          optional, intent(in   ) :: n_gauss_angles ! Number of angles used in Gaussian quadrature
-                                                                ! (no-scattering solution)
-    character(len=128)                        :: error_msg   ! If empty, calculation was successful
+                target, optional, intent(in   ) :: inc_flux       ! incident flux at domain top [W/m2] (ncol, ngpts)
+    integer,            optional, intent(in   ) :: n_gauss_angles ! Number of angles used in Gaussian quadrature
+                                                                  ! (no-scattering solution)
+    logical,            optional, intent(in   ) :: use_2stream    ! When 2-stream parameters (tau/ssa/g) are provided, use 2-stream methods
+                                                                  ! Default is to use re-scaled longwave transport
+    character(len=128)                          :: error_msg   ! If empty, calculation was successful
     ! --------------------------------
     !
     ! Local variables
     !
     integer :: ncol, nlay, ngpt, nband
     integer :: n_quad_angs
-    integer :: icol
+    integer :: icol, iband, igpt
     real(wp), dimension(:,:,:), allocatable :: gpt_flux_up, gpt_flux_dn
     real(wp), dimension(:,:),   allocatable :: sfc_emis_gpt
+    logical :: using_2stream
     ! --------------------------------------------------
     !
     ! Weights and angle secants for first order (k=1) Gaussian quadrature.
@@ -110,8 +115,6 @@ contains
     nband = optical_props%get_nband()
     error_msg = ""
 
-    allocate(gpt_flux_up (ncol, nlay+1, ngpt), gpt_flux_dn(ncol, nlay+1, ngpt))
-    allocate(sfc_emis_gpt(ncol,         ngpt))
     ! ------------------------------------------------------------------------------------
     !
     ! Error checking -- consistency of sizes and validity of values
@@ -132,9 +135,9 @@ contains
     !
     ! Surface emissivity
     !
-    if(any([size(sfc_emis,1), size(sfc_emis,2)] /= [nband, ncol])) &
+    if(.not. extents_are(sfc_emis, nband, ncol)) &
       error_msg = "rte_lw: sfc_emis inconsistently sized"
-    if(any(sfc_emis < 0._wp .or. sfc_emis > 1._wp)) &
+    if(any_vals_outside(sfc_emis, 0._wp, 1._wp)) &
       error_msg = "rte_lw: sfc_emis has values < 0 or > 1"
     if(len_trim(error_msg) > 0) return
 
@@ -142,9 +145,9 @@ contains
     ! Incident flux, if present
     !
     if(present(inc_flux)) then
-      if(any([size(inc_flux,1), size(inc_flux,2)] /= [ncol, ngpt])) &
+      if(.not. extents_are(inc_flux, ncol, ngpt)) &
         error_msg = "rte_lw: inc_flux inconsistently sized"
-      if(any(inc_flux < 0._wp)) &
+      if(any_vals_less_than(inc_flux, 0._wp)) &
         error_msg = "rte_lw: inc_flux has values < 0"
     end if
     if(len_trim(error_msg) > 0) return
@@ -161,6 +164,11 @@ contains
       n_quad_angs = n_gauss_angles
     end if
     !
+    ! Optionally - use 2-stream methods when low-order scattering properties are provided?
+    !
+    using_2stream = .false.
+    if(present(use_2stream)) using_2stream = use_2stream
+    !
     ! Ensure values of tau, ssa, and g are reasonable
     !
     error_msg =  optical_props%validate()
@@ -174,14 +182,20 @@ contains
     !
     !    Lower boundary condition -- expand surface emissivity by band to gpoints
     !
-    do icol = 1, ncol
-      sfc_emis_gpt(icol, 1:ngpt) = optical_props%expand(sfc_emis(:,icol))
-    end do
+    allocate(gpt_flux_up (ncol, nlay+1, ngpt), gpt_flux_dn(ncol, nlay+1, ngpt))
+    allocate(sfc_emis_gpt(ncol,         ngpt))
+    !!$acc enter data copyin(sources, sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, sources%sfc_source)
+    !$acc enter data copyin(optical_props)
+    !$acc enter data create(gpt_flux_dn, gpt_flux_up)
+    !$acc enter data create(sfc_emis_gpt)
+    call expand_and_transpose(optical_props, sfc_emis, sfc_emis_gpt)
     !
     !   Upper boundary condition
     !
     if(present(inc_flux)) then
+      !$acc enter data copyin(inc_flux)
       call apply_BC(ncol, nlay, ngpt, logical(top_at_1, wl), inc_flux, gpt_flux_dn)
+      !$acc exit data delete(inc_flux)
     else
       !
       ! Default is zero incident diffuse flux
@@ -197,21 +211,45 @@ contains
         !
         ! No scattering two-stream calculation
         !
+        !$acc enter data copyin(optical_props%tau)
+        error_msg =  optical_props%validate()
+        if(len_trim(error_msg) > 0) return
         call lw_solver_noscat_GaussQuad(ncol, nlay, ngpt, logical(top_at_1, wl), &
                               n_quad_angs, gauss_Ds(1:n_quad_angs,n_quad_angs), gauss_wts(1:n_quad_angs,n_quad_angs), &
                               optical_props%tau,                                                  &
                               sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, &
                               sfc_emis_gpt, sources%sfc_source,  &
                               gpt_flux_up, gpt_flux_dn)
+        !$acc exit data delete(optical_props%tau)
       class is (ty_optical_props_2str)
-        !
-        ! two-stream calculation with scattering
-        !
-        call lw_solver_2stream(ncol, nlay, ngpt, logical(top_at_1, wl), &
-                               optical_props%tau, optical_props%ssa, optical_props%g,              &
-                               sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, &
-                               sfc_emis_gpt, sources%sfc_source,       &
-                               gpt_flux_up, gpt_flux_dn)
+        if (using_2stream) then
+          !
+          ! two-stream calculation with scattering
+          !
+          !$acc enter data copyin(optical_props%tau, optical_props%ssa, optical_props%g)
+          error_msg =  optical_props%validate()
+          if(len_trim(error_msg) > 0) return
+          call lw_solver_2stream(ncol, nlay, ngpt, logical(top_at_1, wl), &
+                                 optical_props%tau, optical_props%ssa, optical_props%g,              &
+                                 sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, &
+                                 sfc_emis_gpt, sources%sfc_source,       &
+                                 gpt_flux_up, gpt_flux_dn)
+          !$acc exit data delete(optical_props%tau, optical_props%ssa, optical_props%g)
+        else
+          !
+          ! Re-scaled solution to account for scattering
+          !
+          !$acc enter data copyin(optical_props%tau, optical_props%ssa, optical_props%g)
+          call lw_solver_1rescl_GaussQuad(ncol, nlay, ngpt, logical(top_at_1, wl), &
+                                 n_quad_angs, gauss_Ds(1:n_quad_angs,n_quad_angs), &
+                                 gauss_wts(1:n_quad_angs,n_quad_angs), &
+                                 optical_props%tau, optical_props%ssa, optical_props%g, &
+                                 sources%lay_source, sources%lev_source_inc, &
+                                 sources%lev_source_dec, &
+                                 sfc_emis_gpt, sources%sfc_source,&
+                                 gpt_flux_up, gpt_flux_dn)
+          !$acc exit data delete(optical_props%tau, optical_props%ssa, optical_props%g)
+        endif
       class is (ty_optical_props_nstr)
         !
         ! n-stream calculation
@@ -224,5 +262,37 @@ contains
     ! ...and reduce spectral fluxes to desired output quantities
     !
     error_msg = fluxes%reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1)
+    !$acc exit data delete(sfc_emis_gpt)
+    !$acc exit data delete(gpt_flux_up,gpt_flux_dn)
+    !$acc exit data delete(optical_props)
+    !!$acc exit data delete(sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, sources%sfc_source,sources)
   end function rte_lw
+  !--------------------------------------------------------------------------------------------------------------------
+  !
+  ! Expand from band to g-point dimension, transpose dimensions (nband, ncol) -> (ncol,ngpt)
+  !
+  subroutine expand_and_transpose(ops,arr_in,arr_out)
+    class(ty_optical_props),  intent(in ) :: ops
+    real(wp), dimension(:,:), intent(in ) :: arr_in  ! (nband, ncol)
+    real(wp), dimension(:,:), intent(out) :: arr_out ! (ncol, igpt)
+    ! -------------
+    integer :: ncol, nband, ngpt
+    integer :: icol, iband, igpt
+    integer, dimension(2,ops%get_nband()) :: limits
+
+    ncol  = size(arr_in, 2)
+    nband = ops%get_nband()
+    ngpt  = ops%get_ngpt()
+    limits = ops%get_band_lims_gpoint()
+    !$acc parallel loop collapse(2) copyin(arr_in, limits)
+    do iband = 1, nband
+      do icol = 1, ncol
+        do igpt = limits(1, iband), limits(2, iband)
+          arr_out(icol, igpt) = arr_in(iband,icol)
+        end do
+      end do
+    end do
+
+  end subroutine expand_and_transpose
+  !--------------------------------------------------------------------------------------------------------------------
 end module mo_rte_lw
