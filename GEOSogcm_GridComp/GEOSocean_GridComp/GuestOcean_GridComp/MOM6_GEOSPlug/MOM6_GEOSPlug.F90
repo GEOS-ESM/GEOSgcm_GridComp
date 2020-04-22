@@ -42,7 +42,7 @@ module MOM6_GEOSPlugMod
                                       mpp_get_compute_domain,       &
                                       mpp_get_data_domain
 
-  use mpp_parameter_mod,        only: AGRID, SCALAR_PAIR
+  use mpp_parameter_mod,        only: AGRID, BGRID_NE, CGRID_NE, SCALAR_PAIR
 
   use time_manager_mod,         only: set_calendar_type, time_type
   use time_manager_mod,         only: set_time, set_date
@@ -1163,10 +1163,24 @@ contains
 ! Convert input stresses over water to MOM staggering
 !----------------------------------------------------
 
-! Initialize to be safe
+! Initialize stress to be safe
+!-----------------------------
     Boundary%U_flux = 0.
     Boundary%V_flux = 0.
 
+    if (MAPL_AM_I_Root()) then
+     print *, 'Stagger set in ocean model: '!, Ocean%stagger
+     if (Ocean%stagger == AGRID) then
+       print *, '(MOM6) AGRID'
+     elseif (Ocean%stagger == BGRID_NE) then
+       print *, '(MOM6) BGRID'
+     elseif (Ocean%stagger == CGRID_NE) then
+       print *, '(MOM6) CGRID'
+     else
+       print *, '(MOM6) stagger is invalid, stopping.'
+     endif
+    endif
+    
 ! A-grid
 ! From Atanas (Apr 17, 2020): 
 ! "Our stresses are produced on the A-grid points (and defined in respect to north and east). 
