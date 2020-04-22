@@ -140,7 +140,9 @@ end type CATCH_WRAP
 integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB,CHOOSEMOSFC
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
-real    :: PRECIPFRAC
+integer :: PRECIPFRAC
+real    :: FWETC, FWETL
+logical :: USE_FWET_FOR_RUNOFF
 
 contains
 
@@ -213,11 +215,21 @@ subroutine SetServices ( GC, RC )
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
-    call ESMF_ConfigGetAttribute (SCF, label='SURFLAY:'       , value=SURFLAY,        DEFAULT=50., __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='Z0_FORMULATION:', value=Z0_FORMULATION, DEFAULT=2  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'   , value=USE_ASCATZ0,    DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'   , value=CHOOSEMOSFC,    DEFAULT=1  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='PRECIPFRAC:'    , value=PRECIPFRAC,     DEFAULT=1. , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='SURFLAY:'            , value=SURFLAY,        DEFAULT=50., __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='Z0_FORMULATION:'     , value=Z0_FORMULATION, DEFAULT=2  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,    DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,    DEFAULT=1  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='USE_FWET_FOR_RUNOFF:', value=PRECIPFRAC,     DEFAULT=0  , __RC__ )
+    
+    if (PRECIPFRAC == 0) then
+       USE_FWET_FOR_RUNOFF = .false.
+       call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT= 0.02, __RC__ )
+       call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT= 0.02, __RC__ )
+    else
+       USE_FWET_FOR_RUNOFF = .true.
+       call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT=0.005, __RC__ )
+       call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT=0.025, __RC__ )
+    endif
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
@@ -5395,7 +5407,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if (ntiles >0) then
 
              call CATCHMENT ( NTILES, LONS, LATS                  ,&
-             DT	      ,     PRECIPFRAC, cat_id, VEG, DZSF         ,&
+             DT,USE_FWET_FOR_RUNOFF,FWETC,FWETL, cat_id, VEG, DZSF,&
              PCU      ,     PLS       ,    SNO, ICE, FRZR         ,&
              UUU                                                  ,&
 

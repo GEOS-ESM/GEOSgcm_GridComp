@@ -67,12 +67,15 @@
 # GEOSagcm=>Z0_FORMULATION: 4
 # GEOSldas=>Z0_FORMULATION: 4
 
-# ---- Area fraction of each tile on which precipitation falls (0. < value <= 1.)  	
+# ---- Compute runoff from large-scale and convective storms separately  	
 #	
-#    1.0   : default value for AGCM and GEOSldas 	
-# 	
-# GEOSagcm=>PRECIPFRAC: 1.	
-# GEOSldas=>PRECIPFRAC: 1.
+#    0   : The default value for AGCM and GEOSldas uses total throughfall to compute surface runoff, and 
+#          assumes both FWETC and FWETL as 0.02 - the areal fractions of canopy on to which convective and precipitation falls, respectively.
+#    1   : Accounts for separate convective and large-scale throufalls to compute surface runoff, and
+#          uses calibrated parameter values of FWETC = 0.005, and FWETL = 0.025. Note with USE_FWET_FOR_RUNOFF: 1 option, areal fractions can be
+#          passed to the model via this resource file using parameter labels 'FWETC:' and 'FWETL:'.   	
+# GEOSagcm=>USE_FWET_FOR_RUNOFF: 0	
+# GEOSldas=>USE_FWET_FOR_RUNOFF: 0
 
 # ---- ASCAT-derived turbulent roughness length
 #

@@ -176,7 +176,9 @@ real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 f
 real    :: CO2
 integer :: CO2_YEAR_IN          ! years when atmospheric carbon dioxide concentration increases, starting from 1850
 real    :: DTCN                 ! Time step for carbon/nitrogen routines in CatchmentCN model (default 5400)
-real    :: PRECIPFRAC
+integer :: PRECIPFRAC
+real    :: FWETC, FWETL
+logical :: USE_FWET_FOR_RUNOFF
 
 contains
 
@@ -255,7 +257,17 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'          , value=RUN_IRRIG,           DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='IRRIG_METHOD:'       , value=IRRIG_METHOD,        DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,         DEFAULT=1  , __RC__ ) 
-    call ESMF_ConfigGetAttribute (SCF, label='PRECIPFRAC:'         , value=PRECIPFRAC,          DEFAULT=1. , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='USE_FWET_FOR_RUNOFF:', value=PRECIPFRAC,     DEFAULT=0  , __RC__ )
+    
+    if (PRECIPFRAC == 0) then
+       USE_FWET_FOR_RUNOFF = .false.
+       call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT= 0.02, __RC__ )
+       call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT= 0.02, __RC__ )
+    else
+       USE_FWET_FOR_RUNOFF = .true.
+       call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT=0.005, __RC__ )
+       call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT=0.025, __RC__ )
+    endif
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
@@ -7530,8 +7542,8 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
         if (ntiles > 0) then
 
-           call CATCHCN ( NTILES, LONS, LATS                         ,&
-                DT	,PRECIPFRAC, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF   ,&
+           call CATCHCN ( NTILES, LONS, LATS, DT,USE_FWET_FOR_RUNOFF, &
+                FWETC, FWETL, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF     ,&
                 PCU      ,     PLSIN ,     SNO, ICE, FRZR            ,&
                 UUU                                                  ,&
 

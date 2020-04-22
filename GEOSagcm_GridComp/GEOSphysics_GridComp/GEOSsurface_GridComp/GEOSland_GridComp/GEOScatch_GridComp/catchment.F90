@@ -57,6 +57,7 @@
 !                        ../Shared/catch_constants.f90
 ! Justin , 19 Apr 2018  - removed LAND_UPD ifdefs, use SurfParams
 ! Justin , 11 Dec 2018  - put in ASNOW fix affecting AGCM only
+! Sarith , 20 Apr 2020  - introducing USE_FWET_FOR_RUNOFF and passing FWETL and FWETC via GEOS_SurfaceGridComp.rc
 
 
       MODULE CATCHMENT_MODEL
@@ -123,7 +124,7 @@
       CONTAINS
 
       SUBROUTINE CATCHMENT (                                                   &
-                     NCH, LONS, LATS, DTSTEP, PRECIPFRAC,                      &
+                     NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL,            &
                      cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
@@ -162,9 +163,10 @@
       INTEGER, INTENT(IN) :: NCH
       INTEGER, INTENT(IN), DIMENSION(NCH) :: ITYP, cat_id
 
-      REAL, INTENT(IN) :: DTSTEP, PRECIPFRAC
+      REAL, INTENT(IN)     :: DTSTEP, FWETC, FWETL
+      LOGICAL,  INTENT(IN) :: UFW4RO
       REAL, INTENT(IN), DIMENSION(NCH) :: DZSF, TRAINC, TRAINL,                &
-                     TSNOW, TICE, TFRZR,  UM,    &
+                     TSNOW, TICE, TFRZR,  UM,                                  &
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
                      ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
@@ -323,7 +325,7 @@
          
          write (*,*) NCH  
          write (*,*) DTSTEP  
-         write (*,*) PRECIPFRAC  
+         write (*,*) UFW4RO
          write (*,*) ITYP(n_out)  
          write (*,*) TRAINC(n_out)    
          write (*,*) TRAINL(n_out)    
@@ -1144,21 +1146,13 @@
         ENDIF
 
 !**** UPDATE CANOPY INTERCEPTION; DETERMINE THROUGHFALL RATES.
-      IF(PRECIPFRAC <= 0.998) THEN
-         CALL INTERC (                                                    &
-              NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
-              SATCAP, PRECIPFRAC,BUG,                                     &
-              CAPAC,                                                      &
-              THRUL, THRUC                                                &
-              )
-      ELSE
-         CALL INTERC (                                                    &
-              NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
-              SATCAP, PRECIPFRAC,BUG,                                     &
-              CAPAC,                                                      &
-              THRUL                                                       &
-              )
-      ENDIF
+
+        CALL INTERC (                                                    &
+             NCH, DTSTEP, FWETL, TRAINLX, TRAINCX, SMELT,                &
+             SATCAP, BUG,                                                &
+             CAPAC,                                                      &
+             THRUL, THRUC                                                &
+             )
 
       IF (BUG) THEN
         WRITE(*,*) 'INTERC OK'
@@ -1166,19 +1160,11 @@
 
 !**** DETERMINE SURFACE RUNOFF AND INFILTRATION RATES:
 
-      IF(PRECIPFRAC <= 0.998) THEN
-         CALL SRUNOFF ( NCH,DTSTEP,                                      &
-              AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,PRECIPFRAC,       & 
-              BUG,SRFEXC,RUNSRF,                                         &
-              QINFIL                                                     &
-              )
-      ELSE
-         CALL SRUNOFF (                                                  &
-              NCH,DTSTEP,AR1,ar2,ar4,THRUL,frice,tp1,srfmx,BUG,          &
-              SRFEXC,RUNSRF,                                             &
-              QINFIL                                                     &
-                   )
-      ENDIF
+        CALL SRUNOFF ( NCH,DTSTEP,UFW4RO, FWETC, FWETL,                 &
+             AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,BUG,              & 
+             SRFEXC,RUNSRF,                                             &
+             QINFIL                                                     &
+             )
 
       IF (BUG) THEN
         WRITE(*,*) 'SRUNOFF'
@@ -1520,7 +1506,7 @@
          
          write (*,*) NCH  
          write (*,*) DTSTEP  
-         write (*,*) PRECIPFRAC  
+         write (*,*) UFW4RO
          write (*,*) ITYP(n_out)  
          write (*,*) TRAINC(n_out)    
          write (*,*) TRAINL(n_out)    

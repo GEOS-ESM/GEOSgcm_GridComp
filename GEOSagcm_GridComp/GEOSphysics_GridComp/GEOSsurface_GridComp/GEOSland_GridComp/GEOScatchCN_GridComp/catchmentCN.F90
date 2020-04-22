@@ -60,6 +60,7 @@
 !                      - moved SHR, EPSILON, SCONST, CSOIL_1,  CSOIL_2, N_sm, and SATCAPFR to
 !                        ../Shared/catch_constants.f90
 ! Justin, 20 Jun 2018  - moved CSOIL_2 to SURFPARAMS
+! Sarith , 20 Apr 2020  - introducing USE_FWET_FOR_RUNOFF and passing FWETL and FWETC via GEOS_SurfaceGridComp.rc
 
 MODULE CATCHMENT_CN_MODEL
   
@@ -133,7 +134,7 @@ CONTAINS
   ! and the most recent version of the "unified" model (from Sept. 20, 2006).
   
   SUBROUTINE CATCHCN (                                           &
-       NCH, LONS, LATS, DTSTEP, PRECIPFRAC, cat_id,              &
+       NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL, cat_id,    &
        ITYP1,ITYP2,FVEG1,FVEG2,                                  &
        DZSF, TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,              &
        ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
@@ -175,7 +176,8 @@ CONTAINS
     INTEGER, INTENT(IN) :: NCH
     INTEGER, INTENT(IN), DIMENSION(:) :: ITYP1, ITYP2, cat_id
     
-    REAL, INTENT(IN) :: DTSTEP, PRECIPFRAC
+    REAL, INTENT(IN)    :: DTSTEP, FWETC, FWETL
+    LOGICAL, INTENT(IN) :: UFW4RO
     REAL, INTENT(IN), DIMENSION(:) :: DZSF, TRAINC, TRAINL, TSNOW, &
          TICE, TFRZR, UM, FVEG1,   FVEG2,                          &
          ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
@@ -339,7 +341,7 @@ CONTAINS
           
           write (*,*) NCH  
           write (*,*) DTSTEP  
-          write (*,*) PRECIPFRAC  
+          write (*,*) UFW4RO
           write (*,*) ITYP1(n_out)  
           write (*,*) ITYP2(n_out)  
           write (*,*) FVEG1(n_out)  
@@ -1132,21 +1134,13 @@ CONTAINS
         ENDIF
 
 !**** UPDATE CANOPY INTERCEPTION; DETERMINE THROUGHFALL RATES.
-      IF(PRECIPFRAC <= 0.998) THEN  
-         CALL INTERC (                                                    &
-              NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
-              SATCAP, PRECIPFRAC,BUG,                                     &
-              CAPAC,                                                      &
-              THRUL, THRUC                                                &
-              )
-      ELSE
-         CALL INTERC (                                                    &
-              NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
-              SATCAP, PRECIPFRAC,BUG,                                     &
-              CAPAC,                                                      &
-              THRUL                                                       &
-              )
-      ENDIF
+
+        CALL INTERC (                                                    &
+             NCH, DTSTEP, FWETL, TRAINLX, TRAINCX, SMELT,                &
+             SATCAP, BUG,                                                &
+             CAPAC,                                                      &
+             THRUL, THRUC                                                &
+             )
 
       IF (BUG) THEN
         WRITE(*,*) 'INTERC OK'
@@ -1154,19 +1148,11 @@ CONTAINS
 
 !**** DETERMINE SURFACE RUNOFF AND INFILTRATION RATES:
 
-      IF(PRECIPFRAC <= 0.998) THEN
-         CALL SRUNOFF (NCH,DTSTEP,                                       &
-              AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,PRECIPFRAC,       &
-              BUG,SRFEXC,RUNSRF,                                         &
-              QINFIL                                                     &
-              )
-      ELSE
-         CALL SRUNOFF (                                                  &
-              NCH,DTSTEP,AR1,ar2,ar4,THRUL,frice,tp1,srfmx,BUG,          &
-              SRFEXC,RUNSRF,                                             &
-              QINFIL                                                     &
-                   )
-      ENDIF
+        CALL SRUNOFF ( NCH,DTSTEP,UFW4RO, FWETC, FWETL,                 &
+             AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,BUG,              & 
+             SRFEXC,RUNSRF,                                             &
+             QINFIL                                                     &
+             )
 
       IF (BUG) THEN
         WRITE(*,*) 'SRUNOFF'
@@ -1499,7 +1485,7 @@ CONTAINS
          
          write (*,*) NCH  
          write (*,*) DTSTEP  
-         write (*,*) PRECIPFRAC  
+         write (*,*) UFW4RO
          write (*,*) ITYP1(n_out)  
          write (*,*) ITYP2(n_out)  
          write (*,*) FVEG1(n_out)  
