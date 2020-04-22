@@ -1136,7 +1136,7 @@ CONTAINS
 !**** UPDATE CANOPY INTERCEPTION; DETERMINE THROUGHFALL RATES.
 
         CALL INTERC (                                                    &
-             NCH, DTSTEP, FWETL, TRAINLX, TRAINCX, SMELT,                &
+             NCH, DTSTEP, FWETC, FWETL, TRAINLX, TRAINCX, SMELT,         &
              SATCAP, BUG,                                                &
              CAPAC,                                                      &
              THRUL, THRUC                                                &

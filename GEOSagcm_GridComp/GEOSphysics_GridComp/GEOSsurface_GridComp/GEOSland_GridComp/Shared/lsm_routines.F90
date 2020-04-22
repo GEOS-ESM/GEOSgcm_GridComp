@@ -139,7 +139,7 @@ MODULE lsm_routines
 !****
 
       SUBROUTINE INTERC (                                                      &
-                         NCH, DTSTEP, FWETL, TRAINL, TRAINC,SMELT,             &
+                         NCH, DTSTEP, FWETC, FWETL, TRAINL, TRAINC,SMELT,      &
                          SATCAP,BUG,                                           &
                          CAPAC,                                                &
                          THRUL, THRUC                                          &
@@ -152,7 +152,7 @@ MODULE lsm_routines
 
 !****
       INTEGER, INTENT(IN) ::  NCH
-      REAL, INTENT(IN) :: DTSTEP, FWETL
+      REAL, INTENT(IN) :: DTSTEP, FWETC, FWETL
       REAL, INTENT(IN), DIMENSION(NCH) :: TRAINL, TRAINC, SMELT, SATCAP
       LOGICAL, INTENT(IN) :: BUG
 
