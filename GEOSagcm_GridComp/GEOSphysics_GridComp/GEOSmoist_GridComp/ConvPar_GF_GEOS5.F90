@@ -9929,6 +9929,8 @@ ENDIF
             do ispc = 1,mtp
                ! - if tracer is type "carbon" then set coefficient to 0 for hydrophobic
                if( TRIM(CHEM_name (ispc)(1:len_trim('OCphobic') )) == 'OCphobic') factor_temp(ispc,:,:) = 0.0 
+               if( TRIM(CHEM_name (ispc)(1:len_trim('BRCphobic'))) == 'BRCphobic') factor_temp(ispc,:,:) = 0.0
+
 
                ! - suppress scavenging most aerosols at cold T except BCn1 (hydrophobic), dust, and HNO3
                if( TRIM(CHEM_name (ispc)(1:len_trim('BCphobic') )) == 'BCphobic') then 
