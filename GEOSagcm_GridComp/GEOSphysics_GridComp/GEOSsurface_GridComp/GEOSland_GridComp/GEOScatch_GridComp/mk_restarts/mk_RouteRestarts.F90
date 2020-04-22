@@ -297,7 +297,9 @@ PROGRAM mk_RouteRestarts
   status = NF_CLOSE (NCOUT)  
 
   deallocate (AREACAT,LENGSC, WSTREAM,WRIVER, tmp_var)
-  deallocate (DNST, DNST2, Pfaf_all)
+  deallocate (DNST)
+  deallocate (DNST2)
+!  deallocate (Pfaf_all)
 
 contains
   

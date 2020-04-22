@@ -1,4 +1,4 @@
-set (this GEOSsaltwater_GridComp)
+esma_set_this()
 
 set (srcs
   GEOS_CICE4ColumnPhysGridComp.F90 GEOS_OpenWaterGridComp.F90
@@ -6,6 +6,6 @@ set (srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared MAPL_Base LANL_cice)
+  DEPENDENCIES GEOS_Shared MAPL LANL_cice)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 

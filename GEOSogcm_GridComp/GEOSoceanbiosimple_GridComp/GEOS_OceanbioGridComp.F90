@@ -14,7 +14,7 @@ module GEOS_OceanbioGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
 #ifdef USE_ODAS
       use obio_iodas_iau_mod
 #endif

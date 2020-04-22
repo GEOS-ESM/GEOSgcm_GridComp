@@ -13,7 +13,7 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/GEOS_GcmGridComp.F90)
   esma_add_library(${this}
     SRCS GEOS_GcmGridComp.F90
     SUBCOMPONENTS ${alldirs}
-    DEPENDENCIES MAPL_Base
+    DEPENDENCIES MAPL
     INCLUDES ${INC_ESMF})
 
 else ()

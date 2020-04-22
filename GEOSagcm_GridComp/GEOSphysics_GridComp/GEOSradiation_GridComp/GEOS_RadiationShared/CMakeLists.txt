@@ -8,4 +8,4 @@ set (srcs
 esma_add_library (${this}
   SRCS ${srcs}
   SUBDIRS RRTMGP
-  DEPENDENCIES GEOS_Shared MAPL_Base)
+  DEPENDENCIES GEOS_Shared MAPL)

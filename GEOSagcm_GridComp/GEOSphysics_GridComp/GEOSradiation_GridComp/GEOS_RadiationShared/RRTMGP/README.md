@@ -1,6 +1,6 @@
 # RTE+RRTMGP
 
-This is the repository for RTE+RRTMGP, a set of codes for computing radiative fluxes in planetary atmospheres.
+This is the repository for RTE+RRTMGP, a set of codes for computing radiative fluxes in planetary atmospheres. RTE+RRTMGP is described in a [paper](https://doi.org/10.1029/2019MS001621) in [Journal of Advances in Modeling Earth Systems](http://james.agu.org).
 
 RRTMGP uses a k-distribution to provide an optical description (absorption and possibly Rayleigh optical depth) of the gaseous atmosphere, along with the relevant source functions, on a pre-determined spectral grid given temperatures, pressures, and gas concentration. The k-distribution currently distributed with this package is applicable to the Earth's atmosphere under present-day, pre-industrial, and 4xCO2 conditions.
 
@@ -8,12 +8,25 @@ RTE computes fluxes given spectrally-resolved optical descriptions and source fu
 
 Example programs and documenation are evolving - please see examples/ in the repo and Wiki on the project's Github page. Suggestions are welcome. Meanwhile for questions please contact Robert Pincus and Eli Mlawer at rrtmgp@aer.com.
 
-Various mostly minor mods are have been made from git checkout by GMAO (Peter Norris, etc.) for integration
+In the most recent revision, the default method for solution for longwave problems that include scattering has been changed from 2-stream methods to a re-scaled and refined no-scattering calculation following [Tang et al. 2018](https://doi.org/10.1175/JAS-D-18-0014.1).
 
-New build enabled by Matt Thompson via GNUmakefile and path_names, with small mods by Peter Norris:
-make install
+Various minor mods have been made from git checkout by GMAO (Matt Thompson, Peter Norris, etc.) for integration
+
+## Building the libraries.
+
+New build enabled by Matt Thompson per regular GEOS-5 build system.
+
+# Build instructions from latest git checkout
+1. `cd build`
+2. Set environment variables `FC` (the Fortran 2003 compiler) and `FCFLAGS` (compiler flags). Alternately create a Makefile.conf that sets these variables. You could also link to an existing file.
+3. Set environment variable `RTE_KERNELS` to `openacc` if you want the OpenACC kernels rather than the default.
+4. `make`
 
 Old building instruction from rte-rrtmgp git:
 1. `cd build`
 2. Create a file `Makefile.conf` defining make variables `FC` (the Fortran 2003 compiler) and `FCFLAGS` (compiler flags). Alternately  link to an existing file or set these as environment variables.
 3. `make`
+
+## Examples
+
+Two examples are provided, one for clear skies and one including clouds. See the README file and codes in each directory for further information.

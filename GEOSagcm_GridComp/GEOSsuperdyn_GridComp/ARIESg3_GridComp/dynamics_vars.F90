@@ -7,7 +7,7 @@ module dynamics_vars
    use shr_kind_mod, only: r8 => shr_kind_r8, r4 => shr_kind_r4
 #if defined( MAPL_MODE )
    use ESMF
-   use MAPL_Mod
+   use MAPL
    use G3_MPI_Util_Mod
 #endif
 

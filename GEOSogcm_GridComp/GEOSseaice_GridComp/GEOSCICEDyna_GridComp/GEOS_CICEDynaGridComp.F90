@@ -24,7 +24,7 @@ module GEOS_CICEDynaGridCompMod
 ! !USES: 
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use ice_constants,      only: rhoi, rhos, rhow, puny, Tffresh
   use ice_state,          only: nt_Tsfc, nt_iage, nt_volpn
   use ice_communicate,    only: init_communicate

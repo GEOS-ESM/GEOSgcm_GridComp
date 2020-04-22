@@ -19,7 +19,7 @@ module shoc
                               pi     => MAPL_PI,     &
                               MAPL_H2OMW, MAPL_AIRMW
 
- use MAPL_Mod,          only: MAPL_UNDEF
+ use MAPL,              only: MAPL_UNDEF
 
  use MAPL_SatVaporMod,  only: MAPL_EQsat 
 

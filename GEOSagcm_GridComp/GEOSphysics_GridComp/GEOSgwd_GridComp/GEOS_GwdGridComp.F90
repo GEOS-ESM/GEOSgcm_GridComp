@@ -31,7 +31,7 @@ module GEOS_GwdGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
 
 #ifdef _CUDA
   use gw_drag, only: &
@@ -1058,8 +1058,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 #ifdef _CUDA
 
-      ASSERT_(  LM <= GPU_MAXLEVS) ! If these are tripped GNUmakefile
-      ASSERT_(PGWV <= MAXPGWV)     ! must be modified.
+      _ASSERT(  LM <= GPU_MAXLEVS,'needs informative message') ! If these are tripped GNUmakefile
+      _ASSERT(PGWV <= MAXPGWV,'needs informative message')     ! must be modified.
 
       call MAPL_GetResource(MAPL,BLOCKSIZE,'BLOCKSIZE:',DEFAULT=128,RC=STATUS)
       VERIFY_(STATUS)
@@ -1199,7 +1199,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       if (STATUS /= 0) then 
          write (*,*) "Error code from PREGEO kernel call: ", STATUS
          write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
-         ASSERT_(.FALSE.)
+         _ASSERT(.FALSE.,'needs informative message')
       end if
 
       ! Compute ZM
@@ -1213,7 +1213,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       if (STATUS /= 0) then 
          write (*,*) "Error code from GEOPOTENTIAL kernel call: ", STATUS
          write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
-         ASSERT_(.FALSE.)
+         _ASSERT(.FALSE.,'needs informative message')
       end if
 
       call MAPL_TimerOn(MAPL,"-INTR",RC=STATUS)
@@ -1228,7 +1228,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       if (STATUS /= 0) then 
          write (*,*) "Error code from GW_INTR kernel call: ", STATUS
          write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
-         ASSERT_(.FALSE.)
+         _ASSERT(.FALSE.,'needs informative message')
       end if
   
       call MAPL_TimerOff(MAPL,"-INTR",RC=STATUS)
@@ -1269,7 +1269,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       if (STATUS /= 0) then 
          write (*,*) "Error code from POSTINTR kernel call: ", STATUS
          write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
-         ASSERT_(.FALSE.)
+         _ASSERT(.FALSE.,'needs informative message')
       end if
   
       call MAPL_TimerOff(MAPL,"-DRIVER_RUN",RC=STATUS)

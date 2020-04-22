@@ -1,4 +1,4 @@
-!  $Id$
+!  $Id: GEOS_OceanbiogeochemGridComp.F90,v 1.5.2.12.8.9.2.8.6.14.2.2.8.5.8.2.4.4 2018/10/23 13:44:33 croussea Exp $
 
 #include "MAPL_Generic.h"
 !=============================================================================
@@ -11,8 +11,7 @@ module GEOS_OceanbiogeochemGridCompMod
 
 ! !USES:
   use ESMF
-  use MAPL_Mod
-  use MAPL_ConstantsMod, only : MAPL_TICE, MAPL_RHOWTR
+  use MAPL
 #ifdef USE_ODAS
       use obio_iodas_iau_mod
 #endif
@@ -233,6 +232,15 @@ module GEOS_OceanbiogeochemGridCompMod
     RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                               &
+    SHORT_NAME = 'DISCHARGE',                                   &
+    LONG_NAME  = 'river_discharge_at_ocean_points',            &
+    UNITS      = 'kg m-2 s-1',                              &
+    DIMS       = MAPL_DimsHorzOnly,                           &
+    VLOCATION  = MAPL_VLocationNone,                          &
+    RC=STATUS  )
+    VERIFY_(STATUS)
+
 
 !  !IMPORT STATE:
 
@@ -305,6 +313,27 @@ module GEOS_OceanbiogeochemGridCompMod
     RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
     VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                               &
+    SHORT_NAME = 'FROCEAN',                                   &
+    LONG_NAME  = 'fraction_of_gridbox_covered_by_skin',                &
+    UNITS      = '1',                                         &
+    DIMS       = MAPL_DimsHorzOnly,                           &
+    VLOCATION  = MAPL_VLocationNone,                          &
+    RESTART    = MAPL_RestartSkip,                            &
+    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                               &
+    SHORT_NAME = 'MASKO',                                   &
+    LONG_NAME  = 'ocean_mask',                &
+    UNITS      = '1',                                         &
+    DIMS       = MAPL_DimsHorzOnly,                           &
+    VLOCATION  = MAPL_VLocationNone,                          &
+    RESTART    = MAPL_RestartSkip,                            &
+    RC=STATUS  )
+    VERIFY_(STATUS)
+
 
     call MAPL_AddImportSpec(GC,                               &
     SHORT_NAME              = 'DUDP',                         &
@@ -403,6 +432,15 @@ module GEOS_OceanbiogeochemGridCompMod
     RC=STATUS )
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC,                               &
+    SHORT_NAME              = 'DISCHARGE',                     &
+    LONG_NAME               = 'river_discharge_at_ocean_points',      &
+    UNITS                   = 'kg m-2 s-1',          &
+    DIMS                    = MAPL_DimsHorzOnly,              &
+    VLOCATION               = MAPL_VLocationCenter,           &
+    RESTART                 = MAPL_RestartSkip,               &
+    RC=STATUS )
+    VERIFY_(STATUS)
 
 #ifdef USE_ODAS
     call MAPL_AddInternalSpec(GC,                             &
@@ -934,6 +972,8 @@ module GEOS_OceanbiogeochemGridCompMod
     real, dimension(:,:), allocatable :: RIKD
     real, dimension(:,:), allocatable :: COSZ
     real, dimension(:,:), allocatable :: SLR
+    real, dimension(:,:), allocatable :: WGHT
+    real, dimension(:,:), allocatable :: DISCHRG
 
     real, pointer, dimension(:,:) :: LONS => null()
     real, pointer, dimension(:,:) :: LATS => null()
@@ -949,12 +989,15 @@ module GEOS_OceanbiogeochemGridCompMod
     real    :: slp,wspd,Fedep,Fe,fnoice
 real :: tq(50)
     real    :: aco2
+    real    :: discharg
     real, save :: CO2_0
     data    CO2_0 /0.0/
+!    real    :: dischrg2
+
 
 ! pointers to import
 
-    real, pointer, dimension(:,:)   :: UU => null()
+    real, pointer, dimension(:,:)   :: WSM => null()
     real, pointer, dimension(:,:)   :: PS => null()
     real, pointer, dimension(:,:,:) :: DH => null()
     real, pointer, dimension(:,:,:) :: T => null()
@@ -962,10 +1005,13 @@ real :: tq(50)
     real, pointer, dimension(:,:,:) :: TIRRQ => null()
     real, pointer, dimension(:,:,:) :: CDOMABSQ => null()
     real, pointer, dimension(:,:,:) :: FRACICE => null()
+    real, pointer, dimension(:,:)   :: FR => null()
     real, pointer, dimension(:,:,:)   :: DRY_DUST => null()
     real, pointer, dimension(:,:,:)   :: WET_DUST => null()
     real, pointer, dimension(:,:,:)   :: SED_DUST => null()
     real, pointer, dimension(:,:)   :: CO2SC => null()
+    real, pointer, dimension(:,:)   :: DISCHARGE => null()
+    real, pointer, dimension(:,:)   :: MASKO => null()
 
 
 ! pointers to export
@@ -978,6 +1024,7 @@ real :: tq(50)
     real, pointer, dimension(:,:)   :: ppCOCCO => null()
     real, pointer, dimension(:,:)   :: ppDINO => null()
     real, pointer, dimension(:,:)   :: ppPHAEO => null()
+    real, pointer, dimension(:,:)   :: dout => null()
 
 
 ! pointers to internal
@@ -1091,6 +1138,8 @@ real :: tq(50)
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, ppPHAEO,  'PPPHAEO',  RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DOUT,  'DISCHARGE',  RC=STATUS)
+    VERIFY_(STATUS)
 
 
 ! Pointers to Imports
@@ -1100,7 +1149,7 @@ real :: tq(50)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, CDOMABSQ, 'CDOMABSQ',   RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, UU,      'UU',      RC=STATUS)
+    call MAPL_GetPointer(IMPORT, WSM,      'UU',      RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PS,      'PS',      RC=STATUS)
     VERIFY_(STATUS)
@@ -1112,6 +1161,8 @@ real :: tq(50)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, FRACICE, 'FRACICE', RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, FR, 'FROCEAN', RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, DRY_DUST,'DUDP',    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, WET_DUST,'DUWT',    RC=STATUS)
@@ -1120,6 +1171,11 @@ real :: tq(50)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, CO2SC,   'CO2SC',   RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, DISCHARGE,   'DISCHARGE',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, MASKO,   'MASKO',   RC=STATUS)
+    VERIFY_(STATUS)
+
 
 ! Pointers to Internals
 !----------------------
@@ -1183,6 +1239,30 @@ real :: tq(50)
     call MAPL_GetPointer(INTERNAL, RIKPHA,   'RIKPHA',   RC=STATUS)
     VERIFY_(STATUS)
 
+! Weight for ocean grid
+!----------------------
+       allocate(WGHT(IM,JM), __STAT__)
+       allocate(DISCHRG(IM,JM), __STAT__)
+       where(MASKO>0)
+          WGHT = FR/MASKO
+       elsewhere
+          WGHT = 0.0
+       end where
+
+       where(WGHT > 0.0)
+          dischrg=discharge
+       elsewhere
+          dischrg=0.0
+       end where
+
+       if(associated(dout)) then
+          where(masko > 0.0)
+             dout=dischrg
+          elsewhere
+             dout=mapl_undef
+          end where
+       end if
+
 ! Get solar zenith angle
 !-----------------------
 
@@ -1209,8 +1289,9 @@ real :: tq(50)
     call ESMF_TimeGet (CURRENTTIME, YY=YY, DayOfYear=DOY, RC=STATUS) 
     VERIFY_(STATUS)
 
-    aco2=368.6
-
+!    aco2=368.6
+    aco2 = CO2SC(im/2,jm/2)*1.0E6
+    discharg = DISCHARGE(im,jm)
     if ( CO2_0 /= aco2 ) then
      CO2_0 = aco2
      if(mapl_am_i_root()) write(6,'(A,I4,A,I3,A,E12.5)') &
@@ -1236,9 +1317,13 @@ tq=10.0
      do i = 1, IM
       if (DH(i,j,1) < 1.0E10) then
        slp = PS(i,j)*0.01       ! convert from Pa to mbar
-       wspd = UU(i,j)
+       wspd = WSM(i,j)
+!write(6,*)'wspdcc',WSM(i,j),PS(i,j),DH(i,j,1),T(i,j,1),S(i,j,1)
        fnoice = 1.0 - FRICE(i,j)
        aco2 = CO2SC(i,j)
+       aco2 = aco2*1.0E6
+       discharg = DISCHARGE(i,j)
+
 !    Dust is assumed to have an iron fraction of 5% for clay and 1.2%
 !    for silt (Fung et al. 2000)
        Fedep = 0.05*(DRY_DUST(i,j,1)+WET_DUST(i,j,1)+SED_DUST(i,j,1))  &
@@ -1248,7 +1333,7 @@ tq=10.0
               + DRY_DUST(i,j,4)+WET_DUST(i,j,4)+SED_DUST(i,j,4)        &
               + DRY_DUST(i,j,5)+WET_DUST(i,j,5)+SED_DUST(i,j,5))
 !    Convert Fe from kg m-2 s-1 to nmol Fe m-2 s-1
-       Fe = (1.0E12/MOLWGHT_FE)*Fedep
+!       Fe = (1.0E12/MOLWGHT_FE)*Fedep
 !#ifdef DATAATM
 !!    For data atmosphere, use pre-calculated fractions and content
 !!    and use only the first fraction
@@ -1271,8 +1356,12 @@ tq=10.0
        endif
        if (fnoice < 0.0 .or. fnoice > 1.0)fnoice = 1.0
 if (aco2 > 500.0)then
-write(6,*)'i,j,co2sc,aco2 = ',i,j,co2sc(i,j),aco2
+write(6,*)'i,j,co2sc,aco2 = ',i,j,CO2SC(i,j),aco2
 endif
+
+!if (discharg > 0.0)then
+!write(6,*)'i,j,discharg = ',i,j,discharg
+!endif
 
 
        BIO(:,1)   = NITRATE(i,j,:)
@@ -1316,8 +1405,8 @@ endif
                     State%dratez1, State%dratez2,    State%regen,   &
                     State%axs,     State%rmumax,                    &
                     BIO, DH(i,j,:), Fe, fnoice, RIKD, GCMAX,        &
-                    tq, CDOMABSQ(i,j,:),aco2, wspd, slp,            &
-!                    TIRRQ(i,j,:), aco2, wspd, slp,                   &
+!                    tq, CDOMABSQ(i,j,:),aco2, wspd, slp,            &
+                    TIRRQ(i,j,:),CDOMABSQ(i,j,:), aco2, wspd, slp,  &
                     T(i,j,:)-MAPL_TICE, S(i,j,:), PCO, CFLX, PPZ)
 
 BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
@@ -1380,6 +1469,8 @@ BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
     deallocate(CCHLRATIO1 )
     deallocate(RIKD  )
     deallocate(PPZ   )
+    deallocate(WGHT)
+    deallocate(dischrg)
 
 !  All done
 !-----------

@@ -18,7 +18,7 @@ MODULE FVperf_module
 ! !USES:
    use dynamics_vars, only : T_FVDYCORE_GRID
 #if defined(MAPL_MODE)
-   use MAPL_Mod            ! MAPL base class
+   use MAPL            ! MAPL base class
 #elif defined(CAM_MODE)
    use perf_mod
 #else

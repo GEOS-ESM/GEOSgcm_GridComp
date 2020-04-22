@@ -903,20 +903,21 @@ contains
             RHX_dev(I,K) = MAPL_UNDEF
             REV_LS_dev(I,K) = MAPL_UNDEF
             REV_AN_dev(I,K) = MAPL_UNDEF
-            REV_CN_dev(I,K) = MAPL_UNDEF
+            IF(CONVPAR_OPTION .ne. 'GF')REV_CN_dev(I,K) = MAPL_UNDEF
             REV_SC_dev(I,K) = MAPL_UNDEF
             RSU_LS_dev(I,K) = MAPL_UNDEF
             RSU_AN_dev(I,K) = MAPL_UNDEF
-            RSU_CN_dev(I,K) = MAPL_UNDEF
+            IF(CONVPAR_OPTION .ne. 'GF')RSU_CN_dev(I,K) = MAPL_UNDEF
             RSU_SC_dev(I,K) = MAPL_UNDEF
-            ACLL_CN_dev(I,K) = MAPL_UNDEF
-            ACIL_CN_dev(I,K) = MAPL_UNDEF
+            IF(CONVPAR_OPTION .ne. 'GF')ACLL_CN_dev(I,K) = MAPL_UNDEF
+            IF(CONVPAR_OPTION .ne. 'GF')ACIL_CN_dev(I,K) = MAPL_UNDEF
             ACLL_SC_dev(I,K) = MAPL_UNDEF
             ACIL_SC_dev(I,K) = MAPL_UNDEF
             ACLL_AN_dev(I,K) = MAPL_UNDEF
             ACIL_AN_dev(I,K) = MAPL_UNDEF
             ACLL_LS_dev(I,K) = MAPL_UNDEF
             ACIL_LS_dev(I,K) = MAPL_UNDEF
+
             PDFL_dev(I,K) = MAPL_UNDEF
             PDFI_dev(I,K) = MAPL_UNDEF
             FIXL_dev(I,K) = MAPL_UNDEF

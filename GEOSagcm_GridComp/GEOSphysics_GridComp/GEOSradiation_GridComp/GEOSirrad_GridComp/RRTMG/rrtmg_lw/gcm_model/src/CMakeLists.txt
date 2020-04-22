@@ -1,4 +1,4 @@
-set (this RRTMG)
+esma_set_this(OVERRIDE RRTMG)
 
 set (srcs
   mcica_random_numbers.F90 rrtmg_lw_init.F90
@@ -22,4 +22,4 @@ endif ()
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared MAPL_Base RRTMG_mods)
+  DEPENDENCIES GEOS_Shared MAPL RRTMG_mods)

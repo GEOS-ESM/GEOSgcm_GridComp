@@ -14,11 +14,11 @@ module GEOS_TurbulenceGridCompMod
 
   use ESMF
   use GEOS_Mod
-  use MAPL_Mod
+  use MAPL
   use LockEntrain
   use shoc
   use mynn, only : run_mynn, implicit_M, B1, B2
-  use edmf_mod, only : run_edmf, th00
+  use edmf_mod, only : run_edmf
 
 #ifdef _CUDA
   use cudafor
@@ -185,6 +185,8 @@ module GEOS_TurbulenceGridCompMod
 
     logical                             :: dflt_false = .false.
     character(len=ESMF_MAXSTR)          :: dflt_q     = 'Q'
+
+    real, parameter :: th00 = 300. ! anelastic mean state potential temperature
 contains
 
 !=============================================================================
@@ -3615,7 +3617,7 @@ if (ETr .eq. 1.) then
 
     call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
                   edmf_discrete_type, edmf_implicit, &                            ! in
-                  dt, z, zle, ple, rhoe, exf, &                                   ! in
+                  th00, dt, z, zle, ple, rhoe, exf, &                             ! in
                   u, v, thl, thv, qt, q, ql, qi, &                                ! in
                   ustar, sh, evap, ice_ramp, &                                    ! in                                         
                   pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
@@ -3652,7 +3654,7 @@ if (ETr .eq. 1.) then
  
     call run_edmf(IM, JM, LM, 1, iras, jras, &                                    ! in
                   edmf_discrete_type, edmf_implicit, &                            ! in
-                  dt, z, zle, ple, rhoe, exf, &                                   ! in
+                  th00, dt, z, zle, ple, rhoe, exf, &                             ! in
                   u, v, thl, thv, qt, q, ql, qi, &                                ! in
                   ustar, sh, evap, ice_ramp, &                                    ! in                                         
                   pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
@@ -3703,7 +3705,7 @@ if (ETr .eq. 1.) then
  
     call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
                   edmf_discrete_type, edmf_implicit, &                            ! in
-                  dt, z, zle, ple, rhoe, exf, &                                   ! in
+                  th00, dt, z, zle, ple, rhoe, exf, &                             ! in
                   u, v, thl, thv, qt, q, ql, qi, &                                ! in
                   ustar, sh, evap, ice_ramp, &                                    ! in                                         
                   pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
@@ -3951,7 +3953,7 @@ ENDIF
            call run_mynn(IM, JM, LM, &                                                ! in      
                          MYNN_DEBUG_FLAG, DOMF, MYNN_LEVEL, &                         ! in      
                          EDMF_CONSISTENT_TYPE, WQL_TYPE, WRF_CG_FLAG, &               ! in      
-                         PLE, RHOE, ZLE, Z, &                                         ! in      
+                         th00, PLE, RHOE, ZLE, Z, &                                         ! in      
                          U, V, OMEGA, T, Q, QL, QI, QA, THL, QT, THV, &               ! in      
                          USTAR, SH, EVAP, &                                           ! in      
                          WHL_MF, WQT_MF, WTHV_MF, au, Mu, wu, E, D, &                 ! in      
@@ -4018,7 +4020,7 @@ ENDIF
 
 #ifdef _CUDA
 
-         ASSERT_(LM <= GPU_MAXLEVS) !If this is tripped, GNUmakefile
+         _ASSERT(LM <= GPU_MAXLEVS,'needs informative message') !If this is tripped, GNUmakefile
                                     !must be changed
 
          call MAPL_GetResource(MAPL,BLOCKSIZE_X,'BLOCKSIZE_X:',DEFAULT=16,__RC__)
@@ -4203,7 +4205,7 @@ ENDIF
          if (STATUS /= 0) then 
             write (*,*) "Error code from ENTRAIN kernel call: ", STATUS
             write (*,*) "Kernel call failed: ", cudaGetErrorString(STATUS)
-            ASSERT_(.FALSE.)
+            _ASSERT(.FALSE.,'needs informative message')
          end if
 
          ! --------------
@@ -5121,16 +5123,16 @@ ENDIF
 
     call ESMF_FieldBundleGet(TRI,    FieldCount=K , RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(KM==K)
+    _ASSERT(KM==K,'needs informative message')
     call ESMF_FieldBundleGet(TRG,    FieldCount=K , RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(KM==K)
+    _ASSERT(KM==K,'needs informative message')
     call ESMF_FieldBundleGet(FSTAR,  FieldCount=K , RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(KM==K)
+    _ASSERT(KM==K,'needs informative message')
     call ESMF_FieldBundleGet(DFSTAR, FieldCount=K , RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(KM==K)
+    _ASSERT(KM==K,'needs informative message')
 
 ! Pressure thickness of layers
 !-----------------------------
@@ -5198,7 +5200,7 @@ ENDIF
 ! The quantity must exist; others are optional.
 !----------------------------------------------
 
-       ASSERT_(associated(S ))
+       _ASSERT(associated(S ),'needs informative message')
 
 ! If the surface values does not exists, we assume zero flux.
 !------------------------------------------------------------
@@ -5264,7 +5266,7 @@ ENDIF
           QL  = QLCN + QLLS
 
           call implicit_M(IM, JM, LM, &
-                          ZLO, U, V, H, QV, QL, &
+                          th00, ZLO, U, V, H, QV, QL, &
                           Beta_hl, Beta_qt, KM_MYNN, KH_MYNN, &
                           ws_cg, wqv_cg, wql_cg, WHL_MF, WQT_MF, WTHV_MF, &
                           TKET_M, TKET_B, HL2T_M, QT2T_M, HLQTT_M, &
@@ -5784,7 +5786,7 @@ end subroutine RUN1
       call ESMF_FieldBundleGet(DTG, FieldCount=K , RC=STATUS)
       VERIFY_(STATUS)
 
-      ASSERT_(KM==K)
+      _ASSERT(KM==K,'needs informative message')
 
 ! KK gives the order in which quantities will be process.
 !--------------------------------------------------------
@@ -5857,7 +5859,7 @@ end subroutine RUN1
             end if
          end do
 
-         ASSERT_(KS /= 0 )
+         _ASSERT(KS /= 0 ,'needs informative message')
 
 ! SHVC super-layers
 !------------------

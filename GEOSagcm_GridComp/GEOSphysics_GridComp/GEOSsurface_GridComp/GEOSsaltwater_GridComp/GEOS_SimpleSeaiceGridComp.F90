@@ -27,7 +27,7 @@ module GEOS_SimpleSeaiceGridCompMod
 
   use sfclayer  ! using module that contains sfc layer code
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
 
@@ -43,6 +43,8 @@ module GEOS_SimpleSeaiceGridCompMod
   integer, parameter    :: ICE = 1  
   integer, parameter    :: NUM_SUBTILES = 1       
 
+  character(len=7)   :: AOIL_COMP_SWITCH                       ! Atmosphere-Ocean Interface Layer, compatibility: on/off
+                                                               ! defualt: OFF, so AOIL is incompatible with "old" interface
 
   contains
 
@@ -101,6 +103,12 @@ module GEOS_SimpleSeaiceGridCompMod
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
+
+! Atmosphere-Ocean Interface Layer compatibility: on/off?
+!-------------------------------------------------------
+
+    call MAPL_GetResource( MAPL,  AOIL_COMP_SWITCH,        Label="AOIL_COMP_SWITCH:",     DEFAULT="ON", RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Sea-Ice Thermodynamics computation: using CICE or not?
 !-------------------------------------------------------
@@ -1088,6 +1096,41 @@ module GEOS_SimpleSeaiceGridCompMod
                                                        RC=STATUS  )
    VERIFY_(STATUS)
 
+   if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
+      call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME         = 'SSKINW',                           &
+        LONG_NAME          = 'water_skin_salinity',               &
+        UNITS              = 'psu',                               &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        DEFAULT            = 30.0,                                &
+
+                                                       RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME         = 'TSKINW',                           &
+        LONG_NAME          = 'water_skin_temperature',            &
+        UNITS              = 'K',                                 &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        DEFAULT            = 280.0,                               &
+
+                                                       RC=STATUS  )
+      VERIFY_(STATUS)
+
+   endif
+
+!  call MAPL_AddImportSpec(GC                         ,&
+!         SHORT_NAME         = 'FRZMLT'                    ,&
+!         LONG_NAME          = 'freeze_melt_potential',     &
+!         UNITS              = 'W m-2'                     ,&
+!         DIMS               = MAPL_DimsTileOnly           ,&
+!         VLOCATION          = MAPL_VLocationNone          ,&
+!         DEFAULT            = 0.0,                         &
+!         RC=STATUS  )
+!  VERIFY_(STATUS)
+
    call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'SS_FOUND',                          &
         LONG_NAME          = 'foundation_salinity_for_interface_layer',               &
@@ -1118,15 +1161,6 @@ module GEOS_SimpleSeaiceGridCompMod
         RC=STATUS  )
      VERIFY_(STATUS)
 
-!  call MAPL_AddImportSpec(GC                         ,&
-!         SHORT_NAME         = 'FRZMLT'                    ,&
-!         LONG_NAME          = 'freeze_melt_potential',     &
-!         UNITS              = 'W m-2'                     ,&
-!         DIMS               = MAPL_DimsTileOnly           ,&
-!         VLOCATION          = MAPL_VLocationNone          ,&
-!         DEFAULT            = 0.0,                         &
-!         RC=STATUS  )
-!  VERIFY_(STATUS)
     
 !-------------------Exports---------------------------------------------------------------
 
@@ -1331,6 +1365,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    integer         :: CHOOSEMOSFC
    integer         :: CHOOSEZ0
+   character(len=ESMF_MAXSTR)     :: SURFRC
+   type(ESMF_Config)              :: SCF 
+
 !=============================================================================
 
 ! Begin... 
@@ -1365,8 +1402,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=CHOOSEMOSFC, DEFAULT=1, __RC__ ) 
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0,    Label="CHOOSEZ0:",    DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
@@ -1577,7 +1617,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    US(:,ICE  ) = UI
    VS(:,ICE  ) = VI
 
-   QS(:,ICE  ) = GEOS_QSAT(TS(:,ICE), PS, RAMP=0.0, PASCALS=.TRUE.) 
+!  SA -- reconcile old (x39) and new (x40)
+   if( trim(AOIL_COMP_SWITCH) == "OFF") then ! as close as possible to "x0039", while keeping everything as in "x0040"
+     QS(:,ICE  ) = GEOS_QSAT(TS(:,ICE), PS, RAMP=0.0, PASCALS=.TRUE.) 
+   endif
 
 !  Clear the output tile accumulators
 !------------------------------------
@@ -1611,9 +1654,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated(GST)) GST = 0.0
 
    N = ICE
-
-! Choose sfc layer: if CHOOSEMOSFC is 1 (default), choose helfand MO, 
-!                   if CHOOSEMOSFC is 0          , choose louis
 
       sfc_layer: if(CHOOSEMOSFC.eq.0) then
          call louissurface(1,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)
@@ -1750,7 +1790,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !BOP
-! !IROUTINE: RUN2 -- Second Run stage for the Saltwater component
+! !IROUTINE: RUN2 -- Second Run stage for the SimpleSeaice component
 
 ! !INTERFACE:
 

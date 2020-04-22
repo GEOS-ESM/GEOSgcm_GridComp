@@ -1032,7 +1032,7 @@ contains
             bu(k2-1)=(blevel(k2-1)+blevel(k2))-bd(k2-1)
 
             if(do_aerosol) then
-               xx=taant
+               xx=(1.-enn(k2-1))*taant
                yy=min(0.9999,xx)
                yy=max(0.00001,yy)
                xx=(blevel(k2-1)-blevel(k2))/alog(yy)

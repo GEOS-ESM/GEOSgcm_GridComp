@@ -27,7 +27,7 @@ SUBROUTINE BOMEX(NT, NLEVEL, NLAYR,                           &
                  Q2,                                          &
                  P_MODEL_E                                    )
 
-        use MAPL_Mod
+        use MAPL
         use GEOS_UtilsMod, only : GEOS_Qsat, GEOS_DQsat
 
         IMPLICIT NONE

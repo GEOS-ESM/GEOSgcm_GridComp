@@ -1,4 +1,4 @@
-!  $Id$
+!  $Id$ 
 
 #include "MAPL_Generic.h"
 
@@ -56,16 +56,16 @@ module GEOS_CatchCNGridCompMod
        NUM_ZON, NUM_VEG, VAR_COL, VAR_PFT,    &
        CN_zone_weight, map_cat, firefac, numpft
  
-  USE MAPL_BaseMod
+  USE MAPL
   use MAPL_ConstantsMod,only: Tzero => MAPL_TICE, pi => MAPL_PI 
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist, irrigation_rate
-  USE MAPL_SortMod
-  USE ESMF_CFIOFileMOD
 
 implicit none
 private
+
+  include "netcdf.inc"
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
@@ -96,7 +96,7 @@ integer,parameter :: NUM_SUBTILES=4
 !                  7:  BARE SOIL
 !                  8:  DESERT
 
-integer           :: NUM_ENSEMBLE, USE_ASCATZ0, ATM_CO2
+integer           :: NUM_ENSEMBLE
 integer,parameter :: NTYPS = MAPL_NUMVEGTYPES
 
 real,   parameter :: HPBL           = 1000.
@@ -117,7 +117,6 @@ real,   parameter :: EMSSNO        =    0.99999
 ! moved SURFLAY from catchment.F90 to enable run-time changes for off-line system
 ! - reichle, 29 Oct 2010
 
-! real,   parameter :: SURFLAY = 20.  ! moved to GetResource in RUN2  LLT:12Jul3013
 
 ! ROOTL import from GEOS_VegdynGridComp was disabled and brought the look up table 
 ! in order to obtain ROOTL for primary and secondary types.
@@ -164,11 +163,19 @@ real,   parameter :: EMSSNO        =    0.99999
 ! Internal state and its wrapper
 type T_OFFLINE_MODE
    private
-   logical :: CATCH_OFFLINE
+   integer :: CATCH_OFFLINE
 end type T_OFFLINE_MODE
 type OFFLINE_WRAP
    type(T_OFFLINE_MODE), pointer :: ptr=>null()
 end type OFFLINE_WRAP
+
+integer :: RUN_IRRIG, USE_ASCATZ0, Z0_FORMULATION, IRRIG_METHOD, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB
+integer :: ATM_CO2, PRESCRIBE_DVG, SCALE_ALBFPAR,CHOOSEMOSFC
+real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
+                                !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
+real    :: CO2
+integer :: CO2_YEAR_IN          ! years when atmospheric carbon dioxide concentration increases, starting from 1850
+real    :: DTCN                 ! Time step for carbon/nitrogen routines in CatchmentCN model (default 5400)
 
 contains
 
@@ -203,9 +210,9 @@ subroutine SetServices ( GC, RC )
     type(T_OFFLINE_MODE), pointer :: internal=>null()
     type(OFFLINE_WRAP) :: wrap
     integer :: OFFLINE_MODE
-    logical :: is_OFFLINE
     integer :: RESTART
-    integer :: DO_GOSWIM, PRESCRIBE_DVG, RUN_IRRIG
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)                       :: SCF 
 
 ! Begin...
 ! --------
@@ -232,32 +239,61 @@ subroutine SetServices ( GC, RC )
     VERIFY_(status)
     call MAPL_GetResource ( MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    wrap%ptr%CATCH_OFFLINE = OFFLINE_MODE /= 0
-
-    is_OFFLINE = wrap%ptr%CATCH_OFFLINE
+    wrap%ptr%CATCH_OFFLINE = OFFLINE_MODE
 
     call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, USE_ASCATZ0, Label="USE_ASCATZ0:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, ATM_CO2,        Label="ATM_CO2:",DEFAULT=2, RC=STATUS)
-    VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='SURFLAY:'            , value=SURFLAY,             DEFAULT=50., __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='Z0_FORMULATION:'     , value=Z0_FORMULATION,      DEFAULT=2  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,         DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'          , value=RUN_IRRIG,           DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='IRRIG_METHOD:'       , value=IRRIG_METHOD,        DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,         DEFAULT=1, __RC__ ) 
+
+    ! GOSWIM ANOW_ALBEDO 
+    ! 0 : GOSWIM snow albedo scheme is turned off
+    ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
+    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:', value=N_CONST_LAND4SNWALB, DEFAULT=0  , __RC__ )
+
+    ! Get parameters to zero the deposition rate 
+    ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
+    ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
+    ! __________________________________________
+    call ESMF_ConfigGetAttribute (SCF, label='AEROSOL_DEPOSITION:' , value=AEROSOL_DEPOSITION,  DEFAULT=0  , __RC__ )
+
+    ! CATCHCN
+    call ESMF_ConfigGetAttribute (SCF, label='DTCN:' , value=DTCN,  DEFAULT=5400. , __RC__ )
+    ! ATM_CO2
     ! 0: uses a fix value defined by CO2
     ! 1: CT tracker monthly mean diurnal cycle
     ! 2: CT tracker monthly mean diurnal cycle scaled to match EEA global average CO2
     ! 3: spatially fixed interannually varyiing CMIP from getco2.F90 look up table (AGCM only)
     ! 4: import AGCM model CO2 (AGCM only)
+    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:' , value=ATM_CO2,  DEFAULT=2  , __RC__ )
 
-    call MAPL_GetResource ( MAPL, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    ! PRESCRIBE_DVG: Prescribe daily LAI and SAI data from an archived CATCHCN simulation 
+    ! 0--NO Run CN Model interactively
+    ! 1--YES Prescribe interannually varying LAI and SAI
+    ! 2--YES Prescribe climatological LAI and SAI
+    ! 3--Estimated LAI/SAI using anomalies at the beginning of the foeecast and climatological LAI/SAI
+    call ESMF_ConfigGetAttribute (SCF, label='PRESCRIBE_DVG:' , value=PRESCRIBE_DVG,  DEFAULT=0  , __RC__ )
 
-    call MAPL_GetResource ( MAPL, PRESCRIBE_DVG, Label="PRESCRIBE_DVG:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    ! SCALE_ALBFPAR: Scale CATCHCN ALBEDO and FPAR
+    ! 0-- NO scaling is performed
+    ! 1-- Scale albedo to match interannually varying MODIS NIRDF and VISDF anomaly
+    ! 2-- Scale albedo to match CDFs of model fPAR to MODIS CDFs of fPAR 
+    ! 3-- Pefform above both 1 and 2 scalings 
+    call ESMF_ConfigGetAttribute (SCF, label='SCALE_ALBFPAR:' , value=SCALE_ALBFPAR,  DEFAULT=0  , __RC__ )
 
-    call MAPL_GetResource ( MAPL, RUN_IRRIG, Label="RUN_IRRIG:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    ! Global mean CO2 
+    call ESMF_ConfigGetAttribute (SCF, label='CO2:'     , value=CO2,         DEFAULT=350.e-6, __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='CO2_YEAR:', value=CO2_YEAR_IN, DEFAULT=  -9999, __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
 ! Set the Run entry points
 ! ------------------------
@@ -359,14 +395,34 @@ subroutine SetServices ( GC, RC )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'icefall'                     ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'ICE'                         ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+    
+    VERIFY_(STATUS)
+    
+    call MAPL_AddImportSpec(GC                         ,&
+         LONG_NAME          = 'freezing_rain_fall'          ,&
+         UNITS              = 'kg m-2 s-1'                  ,&
+         SHORT_NAME         = 'FRZR'                        ,&
+         DIMS               = MAPL_DimsTileOnly             ,&
+         VLOCATION          = MAPL_VLocationNone            ,&
+         RC=STATUS  )
+    
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_par_beam_flux',&
          UNITS              = 'W m-2'                       ,&
          SHORT_NAME         = 'DRPAR'                       ,&
          DIMS               = MAPL_DimsTileOnly             ,&
          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
+         RC=STATUS  ) 
     VERIFY_(STATUS)
-
+    
     call MAPL_AddImportSpec(GC                         ,&
          LONG_NAME          = 'surface_downwelling_par_diffuse_flux',&
          UNITS              = 'W m-2'                       ,&
@@ -788,10 +844,14 @@ subroutine SetServices ( GC, RC )
 !  !INTERNAL STATE:
 
 ! if is_offline, some variables ( in the last) are not required
-  if (is_OFFLINE) then
+  if      ( OFFLINE_MODE == 1 ) then
      RESTART = MAPL_RestartSkip
-  else
+  elseif  ( OFFLINE_MODE == 2 ) then
+     RESTART = MAPL_RestartOptional
+  elseif  ( OFFLINE_MODE == 0 ) then
      RESTART = MAPL_RestartRequired
+  else
+     ASSERT_(.FALSE.)
   endif
 
   call MAPL_AddInternalSpec(GC                  ,&
@@ -1537,159 +1597,155 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  IF ((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN 
-
-     ! Interactive CN model or write out anomalies
-
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'column_rst_vars'           ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'CNCOL'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          UNGRIDDED_DIMS     = (/NUM_ZON*VAR_COL/)         ,&
-          RESTART            = MAPL_RestartRequired        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'PFT_rst_vars'              ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'CNPFT'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          UNGRIDDED_DIMS     = (/NUM_ZON*NUM_VEG*VAR_PFT/) ,&
-          RESTART            = MAPL_RestartRequired        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for ground temp'    ,&
-          UNITS              = 'K'                         ,&
-          SHORT_NAME         = 'TGWM'                      ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          UNGRIDDED_DIMS     = (/NUM_ZON/)                 ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for soil moisture'  ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'RZMM'                      ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          UNGRIDDED_DIMS     = (/NUM_ZON/)                 ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for sfc soil moist' ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'SFMCM'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for baseflow'       ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          SHORT_NAME         = 'BFLOWM'                    ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for total water'    ,&
-          UNITS              = 'kg m-2'                    ,&
-          SHORT_NAME         = 'TOTWATM'                   ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for air temperature',&
-          UNITS              = 'K'                         ,&
-          SHORT_NAME         = 'TAIRM'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for soil temp'      ,&
-          UNITS              = 'K'                         ,&
-          SHORT_NAME         = 'TPM'                       ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN summing counter'        ,&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'CNSUM'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for sunlit photosyn',&
-          UNITS              = 'umol m-2 s-1'              ,&
-          SHORT_NAME         = 'PSNSUNM'                   ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for shaded photosyn',&
-          UNITS              = 'umol m-2 s-1'              ,&
-          SHORT_NAME         = 'PSNSHAM'                   ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for snow depth'     ,&
-          UNITS              = 'm'                         ,&
-          SHORT_NAME         = 'SNDZM'                     ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+  ! Interactive CN model or write out anomalies
   
-     call MAPL_AddInternalSpec(GC                       ,&
-          LONG_NAME          = 'CN sum for area snow cover',&
-          UNITS              = '1'                         ,&
-          SHORT_NAME         = 'ASNOWM'                    ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartOptional        ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-  ENDIF
-
-  IF (PRESCRIBE_DVG >= 3) THEN
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'column_rst_vars'           ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'CNCOL'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_ZON*VAR_COL/)         ,&
+       RESTART            = MAPL_RestartRequired        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'PFT_rst_vars'              ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'CNPFT'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_ZON*NUM_VEG*VAR_PFT/) ,&
+       RESTART            = MAPL_RestartRequired        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for ground temp'    ,&
+       UNITS              = 'K'                         ,&
+       SHORT_NAME         = 'TGWM'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_ZON/)                 ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for soil moisture'  ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'RZMM'                      ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_ZON/)                 ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for sfc soil moist' ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'SFMCM'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for baseflow'       ,&
+       UNITS              = 'kg m-2 s-1'                ,&
+       SHORT_NAME         = 'BFLOWM'                    ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for total water'    ,&
+       UNITS              = 'kg m-2'                    ,&
+       SHORT_NAME         = 'TOTWATM'                   ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for air temperature',&
+       UNITS              = 'K'                         ,&
+       SHORT_NAME         = 'TAIRM'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for soil temp'      ,&
+       UNITS              = 'K'                         ,&
+       SHORT_NAME         = 'TPM'                       ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN summing counter'        ,&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'CNSUM'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for sunlit photosyn',&
+       UNITS              = 'umol m-2 s-1'              ,&
+       SHORT_NAME         = 'PSNSUNM'                   ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for shaded photosyn',&
+       UNITS              = 'umol m-2 s-1'              ,&
+       SHORT_NAME         = 'PSNSHAM'                   ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       UNGRIDDED_DIMS     = (/NUM_VEG,NUM_ZON/)         ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for snow depth'     ,&
+       UNITS              = 'm'                         ,&
+       SHORT_NAME         = 'SNDZM'                     ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddInternalSpec(GC                       ,&
+       LONG_NAME          = 'CN sum for area snow cover',&
+       UNITS              = '1'                         ,&
+       SHORT_NAME         = 'ASNOWM'                    ,&
+       DIMS               = MAPL_DimsTileOnly           ,&
+       VLOCATION          = MAPL_VLocationNone          ,&
+       RESTART            = MAPL_RestartOptional        ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  IF (PRESCRIBE_DVG == 3) THEN
      ! Add ESAI (NTILES,NV,NZ)
      ! LAI/SAI in forecast system: 3 S2S reading ; 4 GEOSldas writing 
 
@@ -1923,7 +1979,7 @@ subroutine SetServices ( GC, RC )
 
   !---------- GOSWIM snow impurity related variables ----------
 
-  if (DO_GOSWIM /= 0) then 
+  if (N_CONST_LAND4SNWALB /= 0) then 
   
      call MAPL_AddInternalSpec(GC                  ,&
           LONG_NAME          = 'dust_mass_in_snow_bin_1'   ,&
@@ -2408,18 +2464,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  if (is_OFFLINE) then
-     call MAPL_AddInternalSpec(GC,                       &
-       LONG_NAME          = 'fractional_area_of_land_snowcover',&
-       UNITS              = '1'                         ,&
-       SHORT_NAME         = 'ASNOW'                     ,&
-       DIMS               = MAPL_DimsTileOnly           ,&
-       VLOCATION          = MAPL_VLocationNone          ,&
-       RESTART            = MAPL_RestartSkip            ,&
-       FRIENDLYTO         = trim(COMP_NAME)             ,&
-                                           RC=STATUS  )
-     VERIFY_(STATUS)
-  else
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'fractional_area_of_land_snowcover',&
     UNITS              = '1'                         ,&
@@ -2428,7 +2472,6 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-  endif
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'downward_heat_flux_into_snow',&
@@ -2485,7 +2528,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_depth_in_snow_covered_area' ,&
+    LONG_NAME          = 'snow_depth_within_snow_covered_area_fraction' ,&
     UNITS              = 'm'                         ,&
     SHORT_NAME         = 'SNOWDP'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -2601,18 +2644,6 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  if (is_OFFLINE) then
-     call MAPL_AddInternalSpec(GC,                       &
-        LONG_NAME          = 'surface_emissivity'        ,&
-        UNITS              = '1'                         ,&
-        SHORT_NAME         = 'EMIS'                      ,&
-        DIMS               = MAPL_DimsTileOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RESTART            = MAPL_RestartSkip            ,&
-        FRIENDLYTO         = trim(COMP_NAME)             ,&
-                                           RC=STATUS  )
-     VERIFY_(STATUS)
-  else
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_emissivity'        ,&
     UNITS              = '1'                         ,&
@@ -2621,7 +2652,6 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-  endif
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_albedo_visible_beam',&
@@ -3696,7 +3726,7 @@ subroutine SetServices ( GC, RC )
 
     call MAPL_TimerAdd(GC,    name="RUN1"  ,RC=STATUS)
     VERIFY_(STATUS)
-    if (is_OFFLINE) then
+    if (OFFLINE_MODE /=0) then
        call MAPL_TimerAdd(GC,    name="-RUN0"  ,RC=STATUS)
        VERIFY_(status)
     end if
@@ -3865,8 +3895,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable              :: PSL(:)
    integer                        :: niter
 
-   integer                        :: CHOOSEMOSFC
-   integer                        :: CHOOSEZ0, PRESCRIBE_DVG
    real                           :: SCALE4Z0
 
 ! gkw: for CN model
@@ -3885,7 +3913,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
   ! Offline mode
 
    type(OFFLINE_WRAP)             :: wrap
-   logical                        :: is_OFFLINE
+   integer                        :: OFFLINE_MODE, CHOOSEZ0
 
 !=============================================================================
 ! Begin...
@@ -3903,7 +3931,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! Get component's offline mode from its pvt internal state
     call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
     VERIFY_(status)
-    is_OFFLINE = wrap%ptr%CATCH_OFFLINE
+    OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
 
     call ESMF_VMGetCurrent ( VM, RC=STATUS ) 
     ! if (MAPL_AM_I_Root(VM)) print *, trim(Iam)//'::OFFLINE mode: ', is_OFFLINE
@@ -3928,18 +3956,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
                                                       RC=STATUS )
     VERIFY_(STATUS)
 
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
-
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, SCALE4Z0, Label="SCALE4Z0:", DEFAULT=0.5, RC=STATUS)
-    VERIFY_(STATUS)
-
-    call MAPL_GetResource ( MAPL, PRESCRIBE_DVG, Label="PRESCRIBE_DVG:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Pointers to inputs
@@ -3991,13 +4011,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
    VERIFY_(STATUS)
-   IF ((PRESCRIBE_DVG == 0) .OR.(PRESCRIBE_DVG == 4)) THEN 
-      call MAPL_GetPointer(INTERNAL,CNCOL  ,'CNCOL'  ,   RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL,CNPFT  ,'CNPFT'  ,   RC=STATUS)
-      VERIFY_(STATUS)
-   ENDIF
-
+   call MAPL_GetPointer(INTERNAL,CNCOL  ,'CNCOL'  ,   RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,CNPFT  ,'CNPFT'  ,   RC=STATUS)
+   VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,DCH  , 'DCH'     ,    RC=STATUS)
    VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,DCQ  , 'DCQ'     ,    RC=STATUS)
@@ -4165,8 +4182,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     elsewhere
      VEG2 = map_cat(nint(ITY(:,4)))  ! gkw: secondary CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
    endwhere
-   ASSERT_((count(VEG1>NTYPS.or.VEG1<1)==0))
-   ASSERT_((count(VEG2>NTYPS.or.VEG2<1)==0))
+   _ASSERT((count(VEG1>NTYPS.or.VEG1<1)==0),'needs informative message')
+   _ASSERT((count(VEG2>NTYPS.or.VEG2<1)==0),'needs informative message')
 
    ! At this point, bare soil is not allowed in CatchCN. FVEG in BCs 
    ! files do not have bare soil either. However, at times, tiny bare 
@@ -4201,8 +4218,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
    if(first) then
-     if ((PRESCRIBE_DVG == 0) .OR.(PRESCRIBE_DVG == 4)) then 
-        call CN_init(istep,nt,nveg,nzone,ityp,fveg,var_col,var_pft,cncol=cncol,cnpft=cnpft)     
+     if ((PRESCRIBE_DVG == 0) .OR.(PRESCRIBE_DVG == 3)) then 
+        call CN_init(istep,nt,nveg,nzone,ityp,fveg,var_col,var_pft,cncol=cncol,cnpft=cnpft)  
+        call get_CN_LAI(nt,nveg,nzone,ityp,fveg,elai,esai=esai)  
+        if(PRESCRIBE_DVG == 3) call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NT, elai,esai)
      else
         call CN_init(istep,nt,nveg,nzone,ityp,fveg,var_col,var_pft)  
      endif
@@ -4210,7 +4229,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    endif
 
    ! For the OFFLINE case, first update some diagnostic vars
-   if (is_OFFLINE) then
+   if (OFFLINE_MODE /=0) then
       call MAPL_TimerOn(MAPL, "-RUN0")
       call RUN0(gc, import, export, clock, rc)
       call MAPL_TimerOff(MAPL, "-RUN0")
@@ -4219,10 +4238,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! obtain LAI from previous time step (from CN model)
 ! --------------------------------------------------
 
-   IF((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN
+   IF(PRESCRIBE_DVG == 0) THEN
       call get_CN_LAI(nt,nveg,nzone,ityp,fveg,elai,esai=esai)
    ELSE
-      call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NT, PRESCRIBE_DVG, elai,esai   )
+      call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NT, elai,esai)
    ENDIF
       
    lai1 = 0.
@@ -4307,9 +4326,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !  Compute the three surface exchange coefficients
 !-------------------------------------------------
-
-! Choose sfc layer: if CHOOSEMOSFC is 1, choose helfand MO,
-!                   if CHOOSEMOSFC is 0 (default), choose louis
 
    call MAPL_TimerOn(MAPL,"-SURF")
    if(CHOOSEMOSFC.eq.0) then
@@ -4476,9 +4492,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(ESMF_Alarm)                :: ALARM
 
     integer :: IM,JM
-    real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
-                                    !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
-    integer :: CHOOSEMOSFC
     integer :: incl_Louis_extra_derivs
 
     real    :: SCALE4Z0
@@ -4504,15 +4517,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS)
     VERIFY_(STATUS)
 
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, RC=STATUS)
-    VERIFY_(STATUS)
-
     call MAPL_GetResource ( MAPL, SCALE4Z0, Label="SCALE4Z0:", DEFAULT=0.5, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -4564,11 +4570,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: PCU
         real, dimension(:),   pointer :: PLS
         real, dimension(:),   pointer :: SNO
+
         real, dimension(:),   pointer :: THATM
         real, dimension(:),   pointer :: QHATM
         real, dimension(:),   pointer :: CTATM
         real, dimension(:),   pointer :: CQATM
-
+        real, dimension(:),   pointer :: ICE
+        real, dimension(:),   pointer :: FRZR
         real, dimension(:),   pointer :: drpar
         real, dimension(:),   pointer :: dfpar
         real, dimension(:),   pointer :: drnir
@@ -4907,6 +4915,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: LHACC, SUMEV
 	real,pointer,dimension(:) :: fveg1, fveg2
         real,pointer,dimension(:) :: FICE1
+        real,pointer,dimension(:) :: SLDTOT
 
 !       real*8,pointer,dimension(:) :: fsum
 
@@ -4978,13 +4987,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         logical                     :: debugzth
         real                        :: FAC
 
-        real,parameter              :: PRECIPFRAC=1.0
+        real                        :: PRECIPFRAC
         real                        :: DT
         integer                     :: NTILES
         integer                     :: I, J, K, N
-        integer                     :: AEROSOL_DEPOSITION
-        integer                     :: N_CONST_LAND4SNWALB
-        integer                     :: DO_GOSWIM, RUN_IRRIG, IRRIG_METHOD
 
 	! dummy variables for call to get snow temp
 
@@ -5015,7 +5021,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! Offline case
 
         type(OFFLINE_WRAP)          :: wrap
-        logical                     :: is_OFFLINE
+        integer                     :: OFFLINE_MODE
         real,dimension(:,:),allocatable :: ALWN, BLWN
         ! un-adelterated TC's and QC's
         real, pointer               :: TC1_0(:), TC2_0(:),  TC4_0(:)
@@ -5056,9 +5062,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, allocatable, dimension(:,:,:) :: ityp
     real, allocatable, dimension(:) :: car1, car2, car4
     real, allocatable, dimension(:) :: para
-    real, allocatable, dimension(:) :: npp, gpp, sr, nee, padd, root, vegc, xsmr
-    real, allocatable, dimension(:) :: burn, fsel, closs
     real, allocatable, dimension(:) :: dayl, dayl_fac
+    real, allocatable, dimension(:), save :: nee, npp, gpp, sr, padd, root, vegc, xsmr,burn, closs , fsel
 
     ! ***************************************************************************************************************************************************************
     ! Begin Carbon Tracker variables
@@ -5068,7 +5073,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! cycle * 280ppm/389.8899ppm, fzeng, Apr 2017.
     ! EEA global average CO2 is from http://www.eea.europa.eu/data-and-maps/figures/atmospheric-concentration-of-co2-ppm-1  
     ! --------------------------------------------------------------------------------------------------------------------  
-    integer            :: CO2_YEAR             ! years when atmospheric carbon dioxide concentration increases, starting from 1850
+
     real               :: co2g                 ! global average atmospheric carbon dioxide concentration, varies after 1850
     integer, parameter :: byr_co2g  = 1851     ! year global average atmospheric CO2 concentration began to increase from 280.e-6 
     integer, parameter :: myr_co2g  = 1950     ! year global average atmospheric CO2 concentration reached 311.e-6 
@@ -5086,7 +5091,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, parameter :: CT_grid_N_lon  = 120  ! lon dimension CarbonTracker CO2 data
     integer, parameter :: CT_grid_N_lat  =  90  ! lat dimension CarbonTracker CO2 data
     real, parameter    :: CT_grid_dlon = 360./real(CT_grid_N_lon), CT_grid_dlat = 180./real(CT_grid_N_lat)
-    INTEGER            ::  info, comm, CTfile, Y1, M1, This3H, ThisCO2_Year, NUNQ
+    INTEGER            ::  info, comm, CTfile, Y1, M1, This3H, ThisCO2_Year, NUNQ, CO2_YEAR
     logical, allocatable, dimension (:)        :: unq_mask
     integer, allocatable, dimension (:,:)      :: CT_index
     integer, allocatable, dimension (:)        :: ct2cat, ThisIndex, loc_int
@@ -5101,7 +5106,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! prescribe DYNVEG parameters
     ! ---------------------------
-    INTEGER                       :: PRESCRIBE_DVG
 
     real, parameter :: dtc = 0.03 ! canopy temperature perturbation (K) [approx 1:10000]
     real, parameter :: dea = 0.10 ! vapor pressure perturbation (Pa) [approx 1:10000]
@@ -5123,9 +5127,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     integer :: ntile, nv, dpy, ierr, iok, ndt
     integer, save :: year_prev = -9999
-    real :: dtcn ! carbon model time step
+ 
 
-    integer :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr
+    integer :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr, sofmin
     logical, save :: first = .true.
     integer*8, save :: istep = 1 ! gkw: legacy variable from offline
 
@@ -5147,17 +5151,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     
     real, save,allocatable,dimension (:,:,:,:) :: Kappa, Lambda, Mu
     real, save,allocatable,dimension (:,:,:)   :: MnVal, MxVal
-    real, save,allocatable,dimension (:,:,:)   :: VISmean, VISstd, NIRmean, NIRstd, FPARmean, FPARstd
     integer, save, allocatable, dimension (:)  :: modis_tid, ThisMIndex
-    integer                                    :: n_modis, NTCurrent, CDFfile, infos, comms, SCALE_ALBFPAR
+    integer                                    :: n_modis, NTCurrent, CDFfile, infos, comms
     integer, allocatable, dimension (:,:)      :: modis_index
     integer, allocatable, dimension (:)        :: modis2cat
     real   , allocatable, dimension (:)        :: m_lons, m_lats
-    real   , allocatable, dimension (:,:)      :: scaled_fpar, parav, parzone
+    real   , allocatable, dimension (:,:)      :: scaled_fpar, parav, parzone, unscaled_fpar
     REAL   , PARAMETER                         :: TILEINT = 2.
     integer, PARAMETER                         :: NOCTAD = 46, NSETS = 2
     real                                       :: CLM4_fpar, CLM4_cdf, MODIS_fpar, tmparr(1,1,1,2), &
-         ThisK, ThisL, ThisM, ThisMin, ThisMax, tmparr2(1,1,1), ThisAlb, ThisMu, Thisstd, FPARmu, FPARsig, ThisFPAR  
+         ThisK, ThisL, ThisM, ThisMin, ThisMax, tmparr2(1,1,1), ThisFPAR, ZFPAR  
+    character (len=ESMF_MAXSTR)   :: VISMEANFILE, VISSTDFILE, NIRMEANFILE, NIRSTDFILE, FPARMEANFILE, FPARSTDFILE
+    real, allocatable, dimension (:)           :: MODISVISmean, MODISVISstd, MODISNIRmean, MODISNIRstd, MODELFPARmean, MODELFPARstd
     logical, save :: first_fpar = .true.
 
         IAm=trim(COMP_NAME)//"::RUN2::Driver"
@@ -5189,15 +5194,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              RC=STATUS )
         VERIFY_(STATUS)
 
-        call MAPL_GetResource ( MAPL, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
-
-        call MAPL_GetResource ( MAPL, PRESCRIBE_DVG, Label="PRESCRIBE_DVG:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
-
-        call MAPL_GetResource ( MAPL, RUN_IRRIG, Label="RUN_IRRIG:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource ( MAPL, IRRIG_METHOD, Label="IRRIG_METHOD:", DEFAULT=0, RC=STATUS)
+        call MAPL_GetResource ( MAPL, PRECIPFRAC, Label="PRECIPFRAC:", DEFAULT=1.0, RC=STATUS)
         VERIFY_(STATUS)
 
         ! Get component's private internal state
@@ -5206,7 +5203,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! Component's offline mode
-        is_OFFLINE = wrap%ptr%CATCH_OFFLINE
+        OFFLINE_MODE = wrap%ptr%CATCH_OFFLINE
         ! if (MAPL_AM_I_Root(VM)) print *, trim(Iam)//'::OFFLINE mode: ', is_OFFLINE
 
         ! --------------------------------------------------------------------------
@@ -5222,21 +5219,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              RC=STATUS )
         VERIFY_(STATUS)
 
-        ! Get parameters to zero the deposition rate 
-        ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
-	! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
-        ! __________________________________________
-
-        call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", DEFAULT=1, RC=STATUS)
-        VERIFY_(STATUS)
-
-        ! GOSWIM ANOW_ALBEDO 
-        ! 0 : GOSWIM snow albedo scheme is turned off
-        ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme
- 
-        call MAPL_GetResource ( MAPL, N_CONST_LAND4SNWALB, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
-
         ! -----------------------------------------------------
         ! IMPORT Pointers
         ! -----------------------------------------------------
@@ -5249,6 +5231,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,PCU    ,'PCU'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,PLS    ,'PLS'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SNO    ,'SNO'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,ICE    ,'ICE'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,FRZR   ,'FRZR'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DRPAR  ,'DRPAR'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DFPAR  ,'DFPAR'  ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,DRNIR  ,'DRNIR'  ,RC=STATUS); VERIFY_(STATUS)
@@ -5367,24 +5351,22 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,BGALBVF    ,'BGALBVF'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,BGALBNR    ,'BGALBNR'    ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,BGALBNF    ,'BGALBNF'    ,RC=STATUS); VERIFY_(STATUS)
-        IF ((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN 
-           call MAPL_GetPointer(INTERNAL,CNCOL      ,'CNCOL'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CNPFT      ,'CNPFT'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,TGWM       ,'TGWM'       ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,RZMM       ,'RZMM'       ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,SFMCM      ,'SFMCM'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,BFLOWM     ,'BFLOWM'     ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,TOTWATM    ,'TOTWATM'    ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,TAIRM      ,'TAIRM'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,TPM        ,'TPM'        ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,CNSUM      ,'CNSUM'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,PSNSUNM    ,'PSNSUNM'    ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,PSNSHAM    ,'PSNSHAM'    ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM'      ,RC=STATUS); VERIFY_(STATUS)
-           call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); VERIFY_(STATUS)
-        ENDIF
+        call MAPL_GetPointer(INTERNAL,CNCOL      ,'CNCOL'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,CNPFT      ,'CNPFT'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,TGWM       ,'TGWM'       ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,RZMM       ,'RZMM'       ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,SFMCM      ,'SFMCM'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,BFLOWM     ,'BFLOWM'     ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,TOTWATM    ,'TOTWATM'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,TAIRM      ,'TAIRM'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,TPM        ,'TPM'        ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,CNSUM      ,'CNSUM'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,PSNSUNM    ,'PSNSUNM'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,PSNSHAM    ,'PSNSHAM'    ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,SNDZM      ,'SNDZM'      ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(INTERNAL,ASNOWM     ,'ASNOWM'     ,RC=STATUS); VERIFY_(STATUS)
  
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU003     ,'RDU003'     , RC=STATUS); VERIFY_(STATUS)
@@ -5440,11 +5422,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,TPUST,  'TPUNST' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TPSAT,  'TPSAT'  ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TPWLT,  'TPWLT'  ,             RC=STATUS); VERIFY_(STATUS)
-        if (is_OFFLINE) then
-           call MAPL_GetPointer(INTERNAL, ASNOW, 'ASNOW', RC=STATUS); VERIFY_(STATUS)
-        else
-           call MAPL_GetPointer(EXPORT,ASNOW,  'ASNOW'  ,             RC=STATUS); VERIFY_(STATUS)
-        endif
+        call MAPL_GetPointer(EXPORT,ASNOW,  'ASNOW'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SHSNOW, 'SHSNOW' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,AVETSNOW,'AVETSNOW',           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,FRSAT,  'FRSAT'  ,             RC=STATUS); VERIFY_(STATUS)
@@ -5456,11 +5434,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,TP4,    'TP4'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TP5,    'TP5'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,TP6,    'TP6'    ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        if (is_OFFLINE) then
-           call MAPL_GetPointer(INTERNAL, EMIS, 'EMIS', RC=STATUS);   VERIFY_(STATUS)
-        else
-           call MAPL_GetPointer(EXPORT,EMIS,   'EMIS'   ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
-        endif
+        call MAPL_GetPointer(EXPORT,EMIS,   'EMIS'   ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBVR,  'ALBVR'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBVF,  'ALBVF'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,ALBNR,  'ALBNR'  ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
@@ -5582,7 +5556,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       wtzone(:,nz) = CN_zone_weight(nz)
     end do
 
-    IF((PRESCRIBE_DVG == 0) .OR.(PRESCRIBE_DVG == 4)) THEN
+    IF(PRESCRIBE_DVG == 0) THEN
 
        ! obtain LAI from previous time step (from CN model)
        ! --------------------------------------------------
@@ -5593,7 +5567,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! read from daily files
        ! ---------------------
 
-       call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NTILES, PRESCRIBE_DVG, elai,esai)
+       call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NTILES, elai,esai)
 
     endif
 
@@ -5621,9 +5595,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(associated(CNLAI41)) CNLAI41 = elai(:,4,1)
     if(associated(CNLAI42)) CNLAI42 = elai(:,4,2)
     if(associated(CNLAI43)) CNLAI43 = elai(:,4,3)
-
-    ! GEOSldas : write out LAI/SAI anomalies for PRESCRIBE_DVG = 3
-    IF(PRESCRIBE_DVG == 4) call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NTILES, PRESCRIBE_DVG, elai,esai)
 
 ! OPTIONAL IMPOSE MONTHLY MEAN DIURNAL CYCLE FROM NOAA CARBON TRACKER
 ! -------------------------------------------------------------------
@@ -5710,11 +5681,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     
  ! OPTIONAL FPAR SCALING
 ! ---------------------
-
-    call MAPL_GetResource ( MAPL, SCALE_ALBFPAR, Label="SCALE_ALBFPAR:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
  
-    if  (SCALE_ALBFPAR >= 1) then 
+    if  (SCALE_ALBFPAR >= 2) then 
        IF (ntiles > 0) THEN
           INTILALIZE_FPAR_PARAM : if(first_fpar) then
              
@@ -5790,22 +5758,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              allocate (Mu    (1: NUNQ, 1: NUMPFT, 1 : NOCTAD, 1 : 2))
              allocate (MnVal (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
              allocate (MxVal (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (VISmean (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (VISstd  (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (NIRmean (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (NIRstd  (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (FPARmean(1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
-             allocate (FPARstd (1: NUNQ, 1: NUMPFT, 1 : NOCTAD))
 
              Kappa    = -9999.
              Lambda   = -9999.
              Mu       = -9999.
-             VISmean  = -9999.
-             VISstd   = -9999.
-             NIRmean  = -9999.
-             NIRstd   = -9999.
-             FPARmean = -9999.
-             FPARstd  = -9999.
 
              do i = 1, NUNQ
                 
@@ -5827,18 +5783,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                          MnVal(i,N,K)  = tmparr2 (1,1,1)               
                          STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MaxVal'),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);VERIFY_(STATUS)
                          MxVal(i,N,K) = tmparr2 (1,1,1)             
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISVISmean' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         VISmean (i,N,K) = tmparr2 (1,1,1) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISNIRmean' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         NIRmean (i,N,K) = tmparr2 (1,1,1) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISVISstd' ),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         VISstd (i,N,K) = tmparr2 (1,1,1)                        
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODISNIRstd' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         NIRstd (i,N,K) = tmparr2 (1,1,1) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODELFPARmean' ),(/ThisIndex(i),N,K/)  , (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         FPARmean (i,N,K) = tmparr2 (1,1,1) 
-                         STATUS = NF_GET_VARA_REAL(CDFFile, VARID(CDFFile,'MODELFPARstd'  ),(/ThisIndex(i),N,K/), (/1,1,1/), tmparr2);VERIFY_(STATUS)
-                         FPARstd (i,N,K) = tmparr2 (1,1,1)                        
                       ENDIF
                    end do
                 end do
@@ -5924,6 +5868,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	allocate(fveg1     (NTILES))
 	allocate(fveg2     (NTILES))
         allocate(FICE1     (NTILES)) 
+        allocate(SLDTOT    (NTILES)) 
 
         allocate(SHSBT    (NTILES,NUM_SUBTILES))
         allocate(DSHSBT   (NTILES,NUM_SUBTILES))
@@ -6197,7 +6142,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! --------------- GOSWIM PROGRNOSTICS ---------------------------
 
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
 
            ! Conversion of the masses of the snow impurities
            ! Note: Explanations of each variable
@@ -6267,7 +6212,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         DEDTC=0.0
         DHSDQA=0.0
 
-        if(is_OFFLINE) then
+        if(OFFLINE_MODE /=0) then
            do N=1,NUM_SUBTILES
               CFT   (:,N) = 1.0
               CFQ   (:,N) = 1.0
@@ -6311,13 +6256,19 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         QC(:,FSNW) = QSAT(:,FSNW)
 
 	! --------------------------------------------------------------------------
+        ! get total solid precip
+        ! --------------------------------------------------------------------------
+
+        SLDTOT = SNO+ICE+FRZR
+
+	! --------------------------------------------------------------------------
 	! protect the forcing from unsavory values, as per practice in offline
 	! driver
 	! --------------------------------------------------------------------------
 
         ASSERT_(count(PLS<0.)==0)
         ASSERT_(count(PCU<0.)==0)
-        ASSERT_(count(SNO<0.)==0)
+        ASSERT_(count(SLDTOT<0.)==0)
 
         LAI0  = max(0.0001     , LAI)
         GRN0  = max(0.0001     , GRN)		
@@ -6369,19 +6320,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     allocate( parzone(ntiles,nveg) )
     allocate(    para(ntiles) )
     allocate(   parav(ntiles,nveg) )
-    allocate (scaled_fpar (NTILES,NVEG))
-    allocate(  totwat(ntiles) )
-    allocate(     npp(ntiles) )
-    allocate(     gpp(ntiles) )
-    allocate(      sr(ntiles) )
-    allocate(     nee(ntiles) )
-    allocate(    padd(ntiles) )
-    allocate(    root(ntiles) )
-    allocate(    vegc(ntiles) )
-    allocate(    xsmr(ntiles) )
-    allocate(    burn(ntiles) )
-    allocate(    fsel(ntiles) )
-    allocate(   closs(ntiles) )
+    allocate (scaled_fpar  (NTILES,NVEG))
+    allocate (unscaled_fpar(NTILES,NVEG))
+    allocate (  totwat(ntiles) )
+    if(.not. allocated(npp )) allocate(     npp(ntiles) )
+    if(.not. allocated(gpp )) allocate(     gpp(ntiles) )
+    if(.not. allocated(sr  )) allocate(      sr(ntiles) )
+    if(.not. allocated(nee )) allocate(     nee(ntiles) )
+    if(.not. allocated(padd)) allocate(    padd(ntiles) )
+    if(.not. allocated(root)) allocate(    root(ntiles) )
+    if(.not. allocated(vegc)) allocate(    vegc(ntiles) )
+    if(.not. allocated(xsmr)) allocate(    xsmr(ntiles) )
+    if(.not. allocated(burn)) allocate(    burn(ntiles) )
+    if(.not. allocated(fsel)) allocate(    fsel(ntiles) )
+    if(.not. allocated(closs))allocate(   closs(ntiles) )
     allocate(    dayl(ntiles) )
     allocate(dayl_fac(ntiles) )
     allocate(CO2V    (ntiles) )
@@ -6426,6 +6378,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
 
     AGCM_S = AGCM_S + 60 * AGCM_MI + 3600 * AGCM_HH
+    sofmin = AGCM_S
 
 ! declination  gkw: this is ugly... get someone to make ZS & ZC available as optional arg for MAPL_SunGetInsolation
 ! -----------                                                                              or MAPL_SunOrbitQuery
@@ -6437,8 +6390,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     IDAY = YEAR*int(YEAR_LENGTH)+dofyr
     IDAYP1 = mod(IDAY,DAYS_PER_CYCLE) + 1
 
-    ASSERT_(IDAY   <= 1461 .AND. IDAY   > 0)
-    ASSERT_(IDAYP1 <= 1461 .AND. IDAYP1 > 0)
+    _ASSERT(IDAY   <= 1461 .AND. IDAY   > 0,'needs informative message')
+    _ASSERT(IDAYP1 <= 1461 .AND. IDAYP1 > 0,'needs informative message')
 
     FAC = real(AGCM_S)/86400.
 
@@ -6497,8 +6450,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! gkw: obtain catchment area fractions and soil moisture
 ! ------------------------------------------------------
-    call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet, &
-                              ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,    &
+call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee, poros, wpwet,           &
+                              ars1, ars2, ars3, ara1, ara2, ara3, ara4, arw1, arw2, arw3, arw4,              &
                               srfexc, rzexc, catdef, car1, car2, car4, sfmc, rzmc, prmc )
                               
 ! obtain saturated canopy resistance following Farquhar, CLM4 implementation    
@@ -6651,8 +6604,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! get CO2
 ! -------
-    call MAPL_GetResource( MAPL, CO2, 'CO2:', default=350.e-6, RC=STATUS)
-    VERIFY_(STATUS)
+
 
     if(ATM_CO2 == 3) CO2 = GETCO2(AGCM_YY,dofyr)
 
@@ -6674,8 +6626,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     CALC_CTCO2_SF: IF(ATM_CO2 == 2)  THEN
 
        ! Compute scale factor to scale CarbonTracker CO2 monthly mean diurnal cycle (3-hourly)
-       
-       call MAPL_GetResource ( MAPL, CO2_YEAR, Label="CO2_YEAR:", DEFAULT=AGCM_YY, RC=STATUS); VERIFY_(status) 
+       CO2_YEAR = AGCM_YY
+       IF(CO2_YEAR_IN > 0) CO2_YEAR = CO2_YEAR_IN
 
        ! update EEA global average CO2 and co2 scalar at the beginning of each year, fz, 26 Sep 2016
        ! -------------------------------------------------------------------------------------------
@@ -6814,14 +6766,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         end do
       endif
 
-    end do
+   end do
+
+   do nv = 1,nveg
+      unscaled_fpar (:,nv) = parav (:,nv)/ (DRPAR(:) + DFPAR(:) + 1.e-20)
+   end do
 
    NTCurrent = CEILING (real (dofyr) / 8.)
     
    ! FPAR scaling to match MODIS CDF
    ! -------------------------------
    
-    DO_FS1 : if  (SCALE_ALBFPAR == 2) then
+    DO_FS1 : if  (SCALE_ALBFPAR >= 2) then
 
         IF (ntiles > 0) THEN
            
@@ -6957,6 +6913,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
      endif DO_FS1
 
+     ! Below we are recycling the scaled_fpar array - from this point, it contains fpar scaled or otherwise
+     ! ----------------------------------------------------------------------------------------------------
+
      do nv = 1,nveg
         scaled_fpar (:,nv) = parav (:,nv)/ (DRPAR(:) + DFPAR(:) + 1.e-20)
      end do
@@ -6984,37 +6943,37 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
          ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )         ! instantaneous snow-free albedos on tiles
 
-    if  (SCALE_ALBFPAR >= 1) then 
+    if  ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then 
+
+       if(.not.allocated (MODISVISmean )) allocate (MODISVISmean  (1:NTILES))
+       if(.not.allocated (MODISVISstd  )) allocate (MODISVISstd   (1:NTILES))
+       if(.not.allocated (MODISNIRmean )) allocate (MODISNIRmean  (1:NTILES))
+       if(.not.allocated (MODISNIRstd  )) allocate (MODISNIRstd   (1:NTILES))
+       if(.not.allocated (MODELFPARmean)) allocate (MODELFPARmean (1:NTILES))
+       if(.not.allocated (MODELFPARstd )) allocate (MODELFPARstd  (1:NTILES))
+
        if(ntiles > 0) then
-          do n = 1,NTILES
-             if(FVG(N,1) >= FVG(N,2)) then
-                k = NINT(ITY(N,1)) 
-             else
-                k = NINT(ITY(N,2)) 
-             endif
-             
-             ThisMu    = VISmean (modis_tid (n), k, NTCurrent)
-             ThisStd   = VISstd  (modis_tid (n), k, NTCurrent)
-             FPARmu    = FPARmean(modis_tid (n), k, NTCurrent)
-             FPARsig   = FPARstd (modis_tid (n), k, NTCurrent)
-             ThisFPAR  = (scaled_fpar(n,1)*FVG(N,1) + scaled_fpar(n,2)*FVG(N,2))/(FVG(N,1) + FVG(N,2) + 1.e-20)
+                    
+          call MAPL_GetResource(MAPL,VISMEANFILE  , label = 'VISMEAN_FILE:' , default = 'MODISVISmean.dat'  , RC=STATUS )  ; VERIFY_(STATUS)    
+          call MAPL_GetResource(MAPL,VISSTDFILE   , label = 'VISSTD_FILE:'  , default = 'MODISVISstd.dat'   , RC=STATUS )  ; VERIFY_(STATUS)      
+          call MAPL_GetResource(MAPL,NIRMEANFILE  , label = 'NIRMEAN_FILE:' , default = 'MODISNIRmean.dat'  , RC=STATUS )  ; VERIFY_(STATUS)     
+          call MAPL_GetResource(MAPL,NIRSTDFILE   , label = 'NIRSTD_FILE:'  , default = 'MODISNIRstd.dat'   , RC=STATUS )  ; VERIFY_(STATUS) 
 
-             ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig
+          call MAPL_GetResource(MAPL,FPARMEANFILE , label = 'MODELFPARMEAN_FILE:', default = 'MODELFPARmean.dat' , RC=STATUS )  ; VERIFY_(STATUS)     
+          call MAPL_GetResource(MAPL,FPARSTDFILE  , label = 'MODELFPARSTD_FILE:' , default = 'MODELFPARstd.dat'  , RC=STATUS )  ; VERIFY_(STATUS)      
+           
+          call MAPL_ReadForcing(MAPL,'MODISVISmean' ,VISMEANFILE ,CURRENT_TIME,MODISVISmean  ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
+          call MAPL_ReadForcing(MAPL,'MODISVISstd'  ,VISSTDFILE  ,CURRENT_TIME,MODISVISstd   ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
+          call MAPL_ReadForcing(MAPL,'MODISNIRmean' ,NIRMEANFILE ,CURRENT_TIME,MODISNIRmean  ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
+          call MAPL_ReadForcing(MAPL,'MODISNIRstd'  ,NIRSTDFILE  ,CURRENT_TIME,MODISNIRstd   ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
+          call MAPL_ReadForcing(MAPL,'MODELFPARmean',FPARMEANFILE,CURRENT_TIME,MODELFPARmean ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
+          call MAPL_ReadForcing(MAPL,'MODELFPARstd' ,FPARSTDFILE ,CURRENT_TIME,MODELFPARstd  ,ON_TILES=.true.,RC=STATUS) ; VERIFY_(STATUS)
 
-             if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                ALBVR(n) = ThisAlb
-                ALBVF(n) = ThisAlb
-             endif
-             
-             ThisMu    = NIRmean (modis_tid (n), k, NTCurrent)
-             ThisStd   = NIRstd  (modis_tid (n), k, NTCurrent)
-
-             ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig
-
-             if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                ALBNR(n) = ThisAlb
-                ALBNF(n) = ThisAlb
-             endif
+         do n = 1,NTILES
+            ThisFPAR = (unscaled_fpar(n,1)*FVG(N,1) + unscaled_fpar(n,2)*FVG(N,2))/(FVG(N,1) + FVG(N,2) + 1.e-20)
+            ZFPAR    = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
+            ALBVF(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))
+            ALBNF(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISNIRstd(n) + MODISNIRmean (n)))                
           end do
        endif
     endif
@@ -7034,37 +6993,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
          BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
          ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp, MODIS_SCALE=.TRUE. ) ! instantaneous snow-free albedos on tiles
   
-    if  (SCALE_ALBFPAR >= 1) then 
+    if ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then 
        if(ntiles > 0) then
           do n = 1,NTILES
-             if(FVG(N,3) >= FVG(N,4)) then
-                k = NINT(ITY(N,3)) 
-             else
-                k = NINT(ITY(N,4)) 
-             endif
-                          
-             ThisMu    = VISmean (modis_tid (n), k, NTCurrent)
-             ThisStd   = VISstd  (modis_tid (n), k, NTCurrent)
-             FPARmu    = FPARmean(modis_tid (n), k, NTCurrent)
-             FPARsig   = FPARstd (modis_tid (n), k, NTCurrent)
-             ThisFPAR  = (scaled_fpar(n,3)*FVG(N,3) + scaled_fpar(n,4)*FVG(N,4))/(FVG(N,3) + FVG(N,4) + 1.e-20)
-
-             ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig
-
-             if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                ALBVR_tmp(n) = ThisAlb
-                ALBVF_tmp(n) = ThisAlb
-             endif
-
-             ThisMu    = NIRmean (modis_tid (n), k, NTCurrent)
-             ThisStd   = NIRstd  (modis_tid (n), k, NTCurrent)
-
-             ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig
-
-             if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                ALBNR_tmp(n) = ThisAlb
-                ALBNF_tmp(n) = ThisAlb
-             endif
+             ThisFPAR  = (unscaled_fpar(n,3)*FVG(N,3) + unscaled_fpar(n,4)*FVG(N,4))/(FVG(N,3) + FVG(N,4) + 1.e-20)
+             ZFPAR    = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
+             ALBVF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))
+             ALBNF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISNIRstd(n) + MODISNIRmean (n)))          
           end do
        endif
     endif
@@ -7106,13 +7041,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
       year_prev = AGCM_YY
     endif
 
-    RUN_CLM : IF((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN
-
-       ! set time step for CN model
-       ! --------------------------
-       
-       call MAPL_GetResource ( MAPL, DTCN, Label="DTCN:", DEFAULT=5400., RC=STATUS)
-       VERIFY_(STATUS)
+    RUN_CLM : IF(PRESCRIBE_DVG == 0) THEN
        
        ! CN time step over 4 hours may fail; limit to 4 hours; verify that DTCN is a multiple of DT
        ! ------------------------------------------------------------------------------------------
@@ -7212,18 +7141,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              cntotc(:) = cntotc(:) * cnsum
           endif
           
-          if(associated(CNVEGC)) cnvegc = 1.e-3*vegc  * cnsum
-          if(associated(CNROOT)) cnroot = 1.e-3*root  * cnsum
-          if(associated(CNNPP )) cnnpp  = 1.e-3*npp   * cnsum
-          if(associated(CNGPP )) cngpp  = 1.e-3*gpp   * cnsum
-          if(associated(CNSR  )) cnsr   = 1.e-3*sr    * cnsum
-          if(associated(CNNEE )) cnnee  = 1.e-3*nee   * cnsum
-          if(associated(CNXSMR)) cnxsmr = 1.e-3*xsmr  * cnsum
-          if(associated(CNADD )) cnadd  = 1.e-3*padd  * cnsum
-          if(associated(CNLOSS)) cnloss = 1.e-3*closs * cnsum ! total fire C loss (kg/m2/s)
-          if(associated(CNBURN)) cnburn = burn        * cnsum ! area fractional fire burn rate (s-1)
-          if(associated(CNFSEL)) cnfsel = fsel        * cnsum ! fire season length (days)
-          
           ! reset summing arrays
           ! --------------------
           tgwm    = 0.
@@ -7245,19 +7162,24 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
           if(associated(CNTLAI)) cntlai = 0.
           if(associated(CNSAI )) cnsai  = 0.
           if(associated(CNTOTC)) cntotc = 0.
-          if(associated(CNVEGC)) cnvegc = 0.
-          if(associated(CNROOT)) cnroot = 0.
-          if(associated(CNNPP )) cnnpp  = 0.
-          if(associated(CNGPP )) cngpp  = 0.
-          if(associated(CNSR  )) cnsr   = 0.
-          if(associated(CNNEE )) cnnee  = 0.
-          if(associated(CNXSMR)) cnxsmr = 0.
-          if(associated(CNADD )) cnadd  = 0.
-          if(associated(CNLOSS)) cnloss = 0.
-          if(associated(CNBURN)) cnburn = 0.
-          if(associated(CNFSEL)) cnfsel = 0.
           
        endif
+
+       ! CN_Driver outputs at DTCN are saved and used to populate below exports
+       !                        uniformly outside DTCN.  
+       ! -----------------------------------------------------------------------
+
+       if(associated(CNVEGC)) cnvegc = 1.e-3*vegc  ! * cnsum
+       if(associated(CNROOT)) cnroot = 1.e-3*root  ! * cnsum
+       if(associated(CNNPP )) cnnpp  = 1.e-3*npp   ! * cnsum
+       if(associated(CNGPP )) cngpp  = 1.e-3*gpp   ! * cnsum
+       if(associated(CNSR  )) cnsr   = 1.e-3*sr    ! * cnsum
+       if(associated(CNNEE )) cnnee  = 1.e-3*nee   ! * cnsum
+       if(associated(CNXSMR)) cnxsmr = 1.e-3*xsmr  ! * cnsum
+       if(associated(CNADD )) cnadd  = 1.e-3*padd  ! * cnsum
+       if(associated(CNLOSS)) cnloss = 1.e-3*closs ! * cnsum ! total fire C loss (kg/m2/s)
+       if(associated(CNBURN)) cnburn = burn        ! * cnsum ! area fractional fire burn rate (s-1)
+       if(associated(CNFSEL)) cnfsel = fsel        ! * cnsum ! fire season length (days)
        
        ! copy CN_restart vars to catch_internal_rst gkw: only do if stopping
        ! ------------------------------------------
@@ -7404,9 +7326,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
             NTILES,VEG1,dzsf,vgwmax,cdcr1,cdcr2,psis,bee,poros,wpwet,   &
             ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4,     &
             srfexc,rzexc,catdef, CAR1, CAR2, CAR4, sfmc, rzmc, prmc)
-       
+	    
        call irrigation_rate (IRRIG_METHOD,                                 & 
-            NTILES, AGCM_HH, AGCM_MI, AGCM_S, lons, IRRIGFRAC, PADDYFRAC,  &
+            NTILES, AGCM_HH, AGCM_MI, sofmin, lons, IRRIGFRAC, PADDYFRAC,  &
             CLMPT,CLMST, CLMPF, CLMSF, LAIMAX, LAIMIN, LAI0,               &
             POROS, WPWET, VGWMAX, RZMC, IRRIGRATE)
        
@@ -7444,6 +7366,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_VarWrite(unit, tilegrid, PCU, mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, PLS, mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SNO, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ICE,  mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, FRZR, mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, UUU, mask=mask, rc=status); VERIFY_(STATUS)
 
         call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
@@ -7610,7 +7534,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            call CATCHCN ( NTILES, LONS, LATS                         ,&
                 DT	,PRECIPFRAC, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF   ,&
-                PCU      ,     PLSIN         ,     SNO               ,&
+                PCU      ,     PLSIN ,     SNO, ICE, FRZR            ,&
                 UUU                                                  ,&
 
                 EVSBT(:,FSAT),     DEVSBT(:,FSAT),     DEDTC(:,FSAT) ,&
@@ -7680,7 +7604,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         end if
 
-        if (is_OFFLINE) then
+        if (OFFLINE_MODE /=0) then
            TC(:,FSAT) = TC1_0
            TC(:,FTRN) = TC2_0
            TC(:,FWLT) = TC4_0
@@ -7721,39 +7645,11 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
                        ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )         ! instantaneous snow-free albedos on tiles
 
-        if  (SCALE_ALBFPAR >= 1) then 
+        if ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then
            do n = 1,NTILES
-              if(FVG(N,1) >= FVG(N,2)) then
-                 k = NINT(ITY(N,1)) 
-              else
-                 k = NINT(ITY(N,2)) 
-              endif
-
-              if(modis_tid (n) >= 1) then
-
-                 ThisMu    = VISmean (modis_tid (n), k, NTCurrent)
-                 ThisStd   = VISstd  (modis_tid (n), k, NTCurrent)
-                 FPARmu    = FPARmean(modis_tid (n), k, NTCurrent)
-                 FPARsig   = FPARstd (modis_tid (n), k, NTCurrent)
-                 ThisFPAR  = (scaled_fpar(n,1)*FVG(N,1) + scaled_fpar(n,2)*FVG(N,2))/(FVG(N,1) + FVG(N,2) + 1.e-20)
-                 
-                 ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig
-
-                 if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                    ALBVR(n) = ThisAlb
-                    ALBVF(n) = ThisAlb
-                 endif
-                 
-                 ThisMu    = NIRmean (modis_tid (n), k, NTCurrent)
-                 ThisStd   = NIRstd  (modis_tid (n), k, NTCurrent)
-                 
-                 ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig
-
-                 if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                    ALBNR(n) = ThisAlb
-                    ALBNF(n) = ThisAlb
-                 endif
-              endif
+              ThisFPAR  = (unscaled_fpar(n,1)*FVG(N,1) + unscaled_fpar(n,2)*FVG(N,2))/(FVG(N,1) + FVG(N,2) + 1.e-20)
+              ZFPAR     = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
+              ALBVF(n)  = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))                      
            end do
         endif
 
@@ -7772,42 +7668,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
                        ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp, MODIS_SCALE=.TRUE.  ) ! instantaneous snow-free albedos on tiles
 
-        if  (SCALE_ALBFPAR >= 1) then
+        if ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then
            if(ntiles > 0) then
               do n = 1,NTILES
-                 if(FVG(N,3) >= FVG(N,4)) then
-                    k = NINT(ITY(N,3)) 
-                 else
-                    k = NINT(ITY(N,4)) 
-                 endif
-
-                 if(modis_tid (n) >= 1) then
-
-                    ThisMu    = VISmean (modis_tid (n), k, NTCurrent)
-                    ThisStd   = VISstd  (modis_tid (n), k, NTCurrent)
-                    FPARmu    = FPARmean(modis_tid (n), k, NTCurrent)
-                    FPARsig   = FPARstd (modis_tid (n), k, NTCurrent)
-                    ThisFPAR  = (scaled_fpar(n,3)*FVG(N,3) + scaled_fpar(n,4)*FVG(N,4))/(FVG(N,3) + FVG(N,4) + 1.e-20)
-
-                    ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig                    
-
-                    if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                       ALBVR_tmp(n) = ThisAlb
-                       ALBVF_tmp(n) = ThisAlb
-                    endif
-
-                    ThisMu    = NIRmean (modis_tid (n), k, NTCurrent)
-                    ThisStd   = NIRstd  (modis_tid (n), k, NTCurrent)
-                    
-                    ThisAlb   =  ThisMu - (ThisFPAR - FPARmu) * ThisStd / FPARsig                    
-
-                    if((NINT(ThisMu) /= -9999).and.(ThisAlb > 0.) .and. (ThisAlb < 1.)) then
-                       ALBNR_tmp(n) = ThisAlb
-                       ALBNF_tmp(n) = ThisAlb
-                    endif
-                 endif
+                 ThisFPAR  = (unscaled_fpar(n,3)*FVG(N,3) + unscaled_fpar(n,4)*FVG(N,4))/(FVG(N,3) + FVG(N,4) + 1.e-20)
+                 ZFPAR    = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
+                 ALBVF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))
+                 ALBNF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISNIRstd(n) + MODISNIRmean (n)))          
               end do
            endif
+           if(allocated (MODISVISmean)) deallocate (MODISVISmean, MODISVISstd, MODISNIRmean, MODISNIRstd, MODELFPARmean, MODELFPARstd)
         endif
 
         call   SNOW_ALBEDO(NTILES,N_snow, N_CONST_LAND4SNWALB, VEG2, LAI2, ZTH,        &
@@ -7862,7 +7732,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            QST     = QST   +           QC(:,N)          *FR(:,N)
         end do
 
-        if ( .not. is_OFFLINE) then
+        if ( OFFLINE_MODE ==0 ) then
 !amm add correction term to latent heat diagnostics (HLATN is always allocated)
 !    this will impact the export LHLAND
             HLATN = HLATN - LHACC
@@ -7885,13 +7755,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated( WCRZ )) WCRZ   = RZMC
         if(associated( WCPR )) WCPR   = PRMC
 
-        if(associated( ACCUM)) ACCUM  = SNO - EVPICE*(1./MAPL_ALHS) - SMELT 
+        if(associated( ACCUM)) ACCUM  = SLDTOT - EVPICE*(1./MAPL_ALHS) - SMELT 
 
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
         if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
-        if(associated(PRLAND)) PRLAND = PCU+PLS+SNO
-        if(associated(SNOLAND)) SNOLAND = SNO
+        if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
+        if(associated(SNOLAND)) SNOLAND = SLDTOT
         if(associated(DRPARLAND)) DRPARLAND = DRPAR
         if(associated(DFPARLAND)) DFPARLAND = DFPAR
         if(associated(LHLAND)) LHLAND = HLATN
@@ -8004,7 +7874,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN2  = SNDZN (2,:)
         SNDZN3  = SNDZN (3,:)
 
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            RDU001(:,:) = RCONSTIT(:,:,1) 
            RDU002(:,:) = RCONSTIT(:,:,2) 
            RDU003(:,:) = RCONSTIT(:,:,3) 
@@ -8121,6 +7991,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(TOTDEPOS )
         deallocate(RMELT    )
         deallocate(FICE1    )
+        deallocate(SLDTOT )
         deallocate(   btran )
 	deallocate(     wgt )
 	deallocate(     bt1 )
@@ -8151,19 +8022,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 	deallocate( parzone )
 	deallocate(    para )
         deallocate(   parav )
-        deallocate (scaled_fpar)      
+        deallocate (scaled_fpar)
+        deallocate (UNscaled_fpar)
 	deallocate(  totwat )
-	deallocate(     npp )
-	deallocate(     gpp )
-	deallocate(      sr )
-	deallocate(     nee )
-	deallocate(    padd )
-	deallocate(    root )
-	deallocate(    vegc )
-	deallocate(    xsmr )
-	deallocate(    burn )
-	deallocate(    fsel )
-	deallocate(   closs )
 	deallocate(    dayl )
 	deallocate(dayl_fac )
 
@@ -8412,11 +8273,12 @@ subroutine RUN0(gc, import, export, clock, rc)
   real, pointer :: arw2(:)=>null()
   real, pointer :: arw3(:)=>null()
   real, pointer :: arw4(:)=>null()
+  real, pointer :: bf1(:)=>null()
+  real, pointer :: bf2(:)=>null()
 
   !! Miscellaneous
-  integer :: ntiles, nv, nz, PRESCRIBE_DVG
+  integer :: ntiles, nv, nz
   real, allocatable :: dummy(:)
-  real :: SURFLAY
   real, allocatable :: dzsf(:), ar1(:), ar2(:), wesnn(:,:)
   real, allocatable :: catdefcp(:), srfexccp(:), rzexccp(:)
   real, allocatable :: VEG1(:), VEG2(:)
@@ -8443,14 +8305,16 @@ subroutine RUN0(gc, import, export, clock, rc)
   call MAPL_GetPointer(import, ps, 'PS', rc=status)
   VERIFY_(status)
 
+  ! Pointers to EXPORTs
+  call MAPL_GetPointer(export, asnow, 'ASNOW', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(export, emis, 'EMIS', rc=status)
+  VERIFY_(status)
+
   ! Pointers to INTERNALs
   call MAPL_GetPointer(INTERNAL, ITY, 'ITY', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, FVG, 'FVG', rc=status)
-  VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, asnow, 'ASNOW', rc=status)
-  VERIFY_(status)
-  call MAPL_GetPointer(INTERNAL, emis, 'EMIS', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, fr, 'FR', rc=status)
   VERIFY_(status)
@@ -8508,14 +8372,16 @@ subroutine RUN0(gc, import, export, clock, rc)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, arw4, 'ARW4', rc=status)
   VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, bf1, 'BF1', rc=status)
+  VERIFY_(status)
+  call MAPL_GetPointer(INTERNAL, bf2, 'BF2', rc=status)
+  VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, srfexc, 'SRFEXC', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, rzexc, 'RZEXC', rc=status)
   VERIFY_(status)
   call MAPL_GetPointer(INTERNAL, catdef, 'CATDEF', rc=status)
   VERIFY_(status)
-  call MAPL_GetResource ( MAPL, PRESCRIBE_DVG, Label="PRESCRIBE_DVG:", DEFAULT=0, RC=STATUS)
-  VERIFY_(STATUS)
 
   ! Number of tiles and a dummy real array
   ntiles = size(HTSNNN1)
@@ -8549,12 +8415,12 @@ subroutine RUN0(gc, import, export, clock, rc)
      wtzone(:,nz) = CN_zone_weight(nz)
    end do
 
-   IF((PRESCRIBE_DVG == 0).OR.(PRESCRIBE_DVG == 4)) THEN
+   IF(PRESCRIBE_DVG == 0) THEN
       ! obtain LAI from previous time step (from CN model)
       ! --------------------------------------------------
       call get_CN_LAI(ntiles,num_veg,num_zon,ityp,fveg,elai,esai=esai)
    ELSE
-      call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NTILES, PRESCRIBE_DVG, elai,esai)
+      call  read_prescribed_LAI (INTERNAL, CLOCK, GC, NTILES, elai,esai)
    ENDIF
 
    lai1 = 0.
@@ -8596,8 +8462,8 @@ subroutine RUN0(gc, import, export, clock, rc)
     elsewhere
      VEG2 = map_cat(nint(ITY(:,4)))  ! gkw: secondary CN PFT type mapped to catchment type; ITY should be > 0 even if FVEG=0
    endwhere
-   ASSERT_((count(VEG1>NTYPS.or.VEG1<1)==0)) 
-   ASSERT_((count(VEG2>NTYPS.or.VEG2<1)==0))
+   _ASSERT((count(VEG1>NTYPS.or.VEG1<1)==0),'needs informative message') 
+   _ASSERT((count(VEG2>NTYPS.or.VEG2<1)==0),'needs informative message')
    fveg1(:) = fvg(:,1) + fvg(:,2) ! sum veg fractions (primary)   gkw: NUM_VEG specific
    fveg2(:) = fvg(:,3) + fvg(:,4) ! sum veg fractions (secondary) gkw: fveg1+fveg2=1
 
@@ -8620,8 +8486,6 @@ subroutine RUN0(gc, import, export, clock, rc)
   ! Step 3: compute fr
 
   ! -step-1-
-  call MAPL_GetResource(MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, rc=status)
-  VERIFY_(status)
   allocate(dzsf(ntiles), stat=status)
   VERIFY_(status)
   dzsf = SURFLAY
@@ -8658,7 +8522,6 @@ subroutine RUN0(gc, import, export, clock, rc)
        ar1, ar2, dummy                                                          &
        )
 
-  ! -step-3-
   fr(:,FSAT) =           ar1  * (1-asnow)
   fr(:,FTRN) =           ar2  * (1-asnow)
   fr(:,FWLT) = (1.0-(ar1+ar2))* (1-asnow)
@@ -8698,7 +8561,7 @@ end subroutine RUN0
 ! READ PRESCRIBED LAI and SAI
 ! ---------------------------
 
-SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, elai, esai)
+SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES, elai, esai)
 
   implicit none
   character(len=ESMF_MAXSTR)        :: FCAST_BEGTIME, FTIME
@@ -8712,10 +8575,12 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
 
   integer, parameter   :: nveg  = num_veg ! number of vegetation types
   integer, parameter   :: nzone = num_zon ! number of stress zones
-  integer, intent (in) :: NTILES, PRESCRIBE_DVG
-  REAL                 :: LAI_TSCALE, TIMELAG
+  integer, intent (in) :: NTILES
+  REAL                 :: TIMELAG
   INTEGER              :: BYEAR, BMON, BDAY, BHOUR, dSecs
   type(ESMF_TimeInterval) :: TIMEDIF 
+  type(ESMF_VM)        :: VM
+  logical, save        :: first = .true.
 
   real, dimension (NTILES, nveg, nzone), intent (inout) :: elai,esai
   real, dimension(:),   pointer :: CNSAI11
@@ -8814,7 +8679,7 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
   VERIFY_(STATUS)
   Iam=trim(COMP_NAME)//"::read_prescribed_LAI"
 
-  IF (PRESCRIBE_DVG >= 3) THEN
+  IF (PRESCRIBE_DVG == 3) THEN
      call MAPL_GetPointer(INTERNAL,ITY     , 'ITY'      ,   RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(INTERNAL,CNSAI11A, 'CNSAI11A' ,   RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(INTERNAL,CNSAI12A, 'CNSAI12A' ,   RC=STATUS); VERIFY_(STATUS)
@@ -8920,7 +8785,7 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
 
      ! Forecast mode
      call MAPL_GetResource(MAPL, FCAST_BEGTIME , label = 'FCAST_BEGTIME:', default = ''  , RC=STATUS) ; VERIFY_(STATUS)
-     call MAPL_GetResource(MAPL, LAI_TSCALE    , label = 'LAI_TSCALE:'   , default = 180., RC=STATUS) ; VERIFY_(STATUS)
+
      FTIME = ADJUSTL (FCAST_BEGTIME)
      READ (FTIME ( 1: 4), '(i4)', IOSTAT = STATUS ) BYEAR  ; VERIFY_(STATUS)
      READ (FTIME ( 5: 6), '(i2)', IOSTAT = STATUS ) BMON   ; VERIFY_(STATUS)
@@ -8932,6 +8797,73 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
      TIMEDIF = CURRENT_TIME - TIME0 
      call ESMF_TimeIntervalGet (TIMEDIF, s = dSecs, rc=status); VERIFY_(STATUS) 
      timelag = real (dSecs) / 86400.
+!     if (MAPL_AM_I_Root(VM)) then
+!        print *,'PRESCRIBE_DVG CURRENT TIME:  '
+!         CALL ESMF_TimePrint ( CURRENT_TIME, OPTIONS="string", RC=STATUS )
+!         print *,'PRESCRIBE_DVG TIME LAG:  ', timelag
+!     endif
+
+     IF((timelag == 0).and. (first)) THEN
+        first = .false.
+!        if (MAPL_AM_I_Root(VM)) then
+!         print *,'PRESCRIBE_DVG FIRST ENTRY CURRENT TIME:  '
+!         CALL ESMF_TimePrint ( CURRENT_TIME, OPTIONS="string", RC=STATUS )
+!         print *,'PRESCRIBE_DVG FIRST ENTRY START TIME:  '
+!         CALL ESMF_TimePrint ( TIME0, OPTIONS="string", RC=STATUS )
+!        endif
+        ! Compute initial anomaly and save with internals
+        
+        where (CNSAI11 > 20.) CNSAI11 = 20.
+        where (CNSAI12 > 20.) CNSAI12 = 20.
+        where (CNSAI13 > 20.) CNSAI13 = 20.
+        where (CNSAI21 > 20.) CNSAI21 = 20.
+        where (CNSAI22 > 20.) CNSAI22 = 20.
+        where (CNSAI23 > 20.) CNSAI23 = 20.
+        where (CNSAI31 > 20.) CNSAI31 = 20.
+        where (CNSAI32 > 20.) CNSAI32 = 20.
+        where (CNSAI33 > 20.) CNSAI33 = 20.
+        where (CNSAI41 > 20.) CNSAI41 = 20.
+        where (CNSAI42 > 20.) CNSAI42 = 20.
+        where (CNSAI43 > 20.) CNSAI43 = 20.
+        where (CNLAI11 > 20.) CNLAI11 = 20.
+        where (CNLAI12 > 20.) CNLAI12 = 20.
+        where (CNLAI13 > 20.) CNLAI13 = 20.
+        where (CNLAI21 > 20.) CNLAI21 = 20.
+        where (CNLAI22 > 20.) CNLAI22 = 20.
+        where (CNLAI23 > 20.) CNLAI23 = 20.
+        where (CNLAI31 > 20.) CNLAI31 = 20.
+        where (CNLAI32 > 20.) CNLAI32 = 20.
+        where (CNLAI33 > 20.) CNLAI33 = 20.
+        where (CNLAI41 > 20.) CNLAI41 = 20.
+        where (CNLAI42 > 20.) CNLAI42 = 20.
+        where (CNLAI43 > 20.) CNLAI43 = 20.
+           
+        where ((CNSAI11 >= 0.) .and. (CNSAI11 <= 20.)) CNSAI11A = esai(:,1,1) - CNSAI11
+        where ((CNSAI12 >= 0.) .and. (CNSAI12 <= 20.)) CNSAI12A = esai(:,1,2) - CNSAI12
+        where ((CNSAI13 >= 0.) .and. (CNSAI13 <= 20.)) CNSAI13A = esai(:,1,3) - CNSAI13
+        where ((CNSAI21 >= 0.) .and. (CNSAI21 <= 20.)) CNSAI21A = esai(:,2,1) - CNSAI21
+        where ((CNSAI22 >= 0.) .and. (CNSAI22 <= 20.)) CNSAI22A = esai(:,2,2) - CNSAI22
+        where ((CNSAI23 >= 0.) .and. (CNSAI23 <= 20.)) CNSAI23A = esai(:,2,3) - CNSAI23
+        where ((CNSAI31 >= 0.) .and. (CNSAI31 <= 20.)) CNSAI31A = esai(:,3,1) - CNSAI31
+        where ((CNSAI32 >= 0.) .and. (CNSAI32 <= 20.)) CNSAI32A = esai(:,3,2) - CNSAI32
+        where ((CNSAI33 >= 0.) .and. (CNSAI33 <= 20.)) CNSAI33A = esai(:,3,3) - CNSAI33
+        where ((CNSAI41 >= 0.) .and. (CNSAI41 <= 20.)) CNSAI41A = esai(:,4,1) - CNSAI41
+        where ((CNSAI42 >= 0.) .and. (CNSAI42 <= 20.)) CNSAI42A = esai(:,4,2) - CNSAI42
+        where ((CNSAI43 >= 0.) .and. (CNSAI43 <= 20.)) CNSAI43A = esai(:,4,3) - CNSAI43
+        where ((CNLAI11 >= 0.) .and. (CNLAI11 <= 20.)) CNLAI11A = elai(:,1,1) - CNLAI11
+        where ((CNLAI12 >= 0.) .and. (CNLAI12 <= 20.)) CNLAI12A = elai(:,1,2) - CNLAI12
+        where ((CNLAI13 >= 0.) .and. (CNLAI13 <= 20.)) CNLAI13A = elai(:,1,3) - CNLAI13
+        where ((CNLAI21 >= 0.) .and. (CNLAI21 <= 20.)) CNLAI21A = elai(:,2,1) - CNLAI21
+        where ((CNLAI22 >= 0.) .and. (CNLAI22 <= 20.)) CNLAI22A = elai(:,2,2) - CNLAI22
+        where ((CNLAI23 >= 0.) .and. (CNLAI23 <= 20.)) CNLAI23A = elai(:,2,3) - CNLAI23
+        where ((CNLAI31 >= 0.) .and. (CNLAI31 <= 20.)) CNLAI31A = elai(:,3,1) - CNLAI31
+        where ((CNLAI32 >= 0.) .and. (CNLAI32 <= 20.)) CNLAI32A = elai(:,3,2) - CNLAI32
+        where ((CNLAI33 >= 0.) .and. (CNLAI33 <= 20.)) CNLAI33A = elai(:,3,3) - CNLAI33
+        where ((CNLAI41 >= 0.) .and. (CNLAI41 <= 20.)) CNLAI41A = elai(:,4,1) - CNLAI41
+        where ((CNLAI42 >= 0.) .and. (CNLAI42 <= 20.)) CNLAI42A = elai(:,4,2) - CNLAI42
+        where ((CNLAI43 >= 0.) .and. (CNLAI43 <= 20.)) CNLAI43A = elai(:,4,3) - CNLAI43    
+      
+     ENDIF
 
      DO N = 1, NTILES
 
@@ -8967,62 +8899,6 @@ SUBROUTINE read_prescribed_LAI  (INTERNAL, CLOCK, GC, NTILES,  PRESCRIBE_DVG, el
 
   ENDIF
      
-  IF (PRESCRIBE_DVG == 4) THEN
-
-     ! GEOSldas computing anomalies internal variables
-
-     where (CNSAI11 > 20.) CNSAI11 = 20.
-     where (CNSAI12 > 20.) CNSAI12 = 20.
-     where (CNSAI13 > 20.) CNSAI13 = 20.
-     where (CNSAI21 > 20.) CNSAI21 = 20.
-     where (CNSAI22 > 20.) CNSAI22 = 20.
-     where (CNSAI23 > 20.) CNSAI23 = 20.
-     where (CNSAI31 > 20.) CNSAI31 = 20.
-     where (CNSAI32 > 20.) CNSAI32 = 20.
-     where (CNSAI33 > 20.) CNSAI33 = 20.
-     where (CNSAI41 > 20.) CNSAI41 = 20.
-     where (CNSAI42 > 20.) CNSAI42 = 20.
-     where (CNSAI43 > 20.) CNSAI43 = 20.
-     where (CNLAI11 > 20.) CNLAI11 = 20.
-     where (CNLAI12 > 20.) CNLAI12 = 20.
-     where (CNLAI13 > 20.) CNLAI13 = 20.
-     where (CNLAI21 > 20.) CNLAI21 = 20.
-     where (CNLAI22 > 20.) CNLAI22 = 20.
-     where (CNLAI23 > 20.) CNLAI23 = 20.
-     where (CNLAI31 > 20.) CNLAI31 = 20.
-     where (CNLAI32 > 20.) CNLAI32 = 20.
-     where (CNLAI33 > 20.) CNLAI33 = 20.
-     where (CNLAI41 > 20.) CNLAI41 = 20.
-     where (CNLAI42 > 20.) CNLAI42 = 20.
-     where (CNLAI43 > 20.) CNLAI43 = 20.
-
-     where ((CNSAI11 >= 0.) .and. (CNSAI11 <= 20.)) CNSAI11A = esai(:,1,1) - CNSAI11
-     where ((CNSAI12 >= 0.) .and. (CNSAI12 <= 20.)) CNSAI12A = esai(:,1,2) - CNSAI12
-     where ((CNSAI13 >= 0.) .and. (CNSAI13 <= 20.)) CNSAI13A = esai(:,1,3) - CNSAI13
-     where ((CNSAI21 >= 0.) .and. (CNSAI21 <= 20.)) CNSAI21A = esai(:,2,1) - CNSAI21
-     where ((CNSAI22 >= 0.) .and. (CNSAI22 <= 20.)) CNSAI22A = esai(:,2,2) - CNSAI22
-     where ((CNSAI23 >= 0.) .and. (CNSAI23 <= 20.)) CNSAI23A = esai(:,2,3) - CNSAI23
-     where ((CNSAI31 >= 0.) .and. (CNSAI31 <= 20.)) CNSAI31A = esai(:,3,1) - CNSAI31
-     where ((CNSAI32 >= 0.) .and. (CNSAI32 <= 20.)) CNSAI32A = esai(:,3,2) - CNSAI32
-     where ((CNSAI33 >= 0.) .and. (CNSAI33 <= 20.)) CNSAI33A = esai(:,3,3) - CNSAI33
-     where ((CNSAI41 >= 0.) .and. (CNSAI41 <= 20.)) CNSAI41A = esai(:,4,1) - CNSAI41
-     where ((CNSAI42 >= 0.) .and. (CNSAI42 <= 20.)) CNSAI42A = esai(:,4,2) - CNSAI42
-     where ((CNSAI43 >= 0.) .and. (CNSAI43 <= 20.)) CNSAI43A = esai(:,4,3) - CNSAI43
-     where ((CNLAI11 >= 0.) .and. (CNLAI11 <= 20.)) CNLAI11A = elai(:,1,1) - CNLAI11
-     where ((CNLAI12 >= 0.) .and. (CNLAI12 <= 20.)) CNLAI12A = elai(:,1,2) - CNLAI12
-     where ((CNLAI13 >= 0.) .and. (CNLAI13 <= 20.)) CNLAI13A = elai(:,1,3) - CNLAI13
-     where ((CNLAI21 >= 0.) .and. (CNLAI21 <= 20.)) CNLAI21A = elai(:,2,1) - CNLAI21
-     where ((CNLAI22 >= 0.) .and. (CNLAI22 <= 20.)) CNLAI22A = elai(:,2,2) - CNLAI22
-     where ((CNLAI23 >= 0.) .and. (CNLAI23 <= 20.)) CNLAI23A = elai(:,2,3) - CNLAI23
-     where ((CNLAI31 >= 0.) .and. (CNLAI31 <= 20.)) CNLAI31A = elai(:,3,1) - CNLAI31
-     where ((CNLAI32 >= 0.) .and. (CNLAI32 <= 20.)) CNLAI32A = elai(:,3,2) - CNLAI32
-     where ((CNLAI33 >= 0.) .and. (CNLAI33 <= 20.)) CNLAI33A = elai(:,3,3) - CNLAI33
-     where ((CNLAI41 >= 0.) .and. (CNLAI41 <= 20.)) CNLAI41A = elai(:,4,1) - CNLAI41
-     where ((CNLAI42 >= 0.) .and. (CNLAI42 <= 20.)) CNLAI42A = elai(:,4,2) - CNLAI42
-     where ((CNLAI43 >= 0.) .and. (CNLAI43 <= 20.)) CNLAI43A = elai(:,4,3) - CNLAI43
-
-  ENDIF
-
   deallocate (CNSAI11)
   deallocate (CNSAI12)
   deallocate (CNSAI13)
@@ -9060,45 +8936,45 @@ REAL FUNCTION TSLAI (ITYP, SMONTH, LS)
   
   REAL, DIMENSION (12,NUMPFT) :: LAITS, SAITS
 
-  DATA LAITS (:, 1) /  2572.288, 1362.748, 1045.156,  937.509, 1172.632, 1428.511, 1751.826, 2498.046, 3558.060, 4754.125, 5503.130, 3956.031/
-  DATA LAITS (:, 2) / 48584.598,15113.026, 2112.996, 1098.942,  922.270, 1678.113, 2750.321, 4968.556,10591.866,32710.854,94070.078,84046.633/
-  DATA LAITS (:, 3) /     0.000,    0.000,    0.000,    0.000,   67.946,  171.818,  812.057,    0.000,    0.000,    0.000,    0.000,    0.000/
-  DATA LAITS (:, 4) /  3210.051, 3430.298, 3845.873, 4290.017, 3642.667, 2746.233, 2044.920, 1869.236, 2158.786, 2654.108, 3284.401, 3467.917/
-  DATA LAITS (:, 5) /  1668.523, 2309.184, 2990.000, 3980.876, 4064.969, 3119.845, 2495.209, 1983.262, 1615.039, 1350.225, 1262.773, 1436.168/
-  DATA LAITS (:, 6) /  3595.736, 3584.612, 3474.539, 3619.409, 3731.446, 3652.585, 2829.034, 2438.076, 2771.116, 3567.152, 4245.505, 4153.013/
-  DATA LAITS (:, 7) /   846.743,  382.404,   98.259,  146.337,  246.225,  746.207, 1784.396,  160.702,   79.861,  107.468,  286.832,  601.423/
-  DATA LAITS (:, 8) /  2692.352, 2290.066,   64.351,  141.382,  105.978,  263.253,  952.408,   48.666,   78.573,  118.136,  210.956,  957.030/
-  DATA LAITS (:, 9) /  1121.236, 1242.829, 1237.771,  883.818,  765.715,  538.231,  442.713,  598.128,  939.588, 1455.461, 1224.841, 1051.097/
-  DATA LAITS (:,10) /   442.940,   72.872,   52.349,   60.113,  186.350,  497.894,  451.799,  161.100,   52.189,   74.195,  188.701,  855.044/
-  DATA LAITS (:,11) /   689.069,  598.369,  554.040,  519.820,  494.695,  527.892,  552.348,  579.694,  584.311,  610.445,  676.816,  733.210/
-  DATA LAITS (:,12) /  1669.043,  953.264,  118.749,  104.645,   93.464,  143.959,  148.126,   81.281,  101.899,  108.066,  188.515,  726.085/
-  DATA LAITS (:,13) /   384.560,  146.275,   79.272,   80.883,  103.328,  189.060,  129.590,   93.085,   77.608,   67.503,   68.718,  308.558/
-  DATA LAITS (:,14) /   434.634,   59.747,   54.344,   70.477,  128.217,  532.608,  651.646,  105.327,   52.583,   56.155,  305.787,  746.148/
-  DATA LAITS (:,15) /   409.423,  386.349,  462.273,  590.245,  713.953,  814.538,  765.886,  594.693,  443.723,  410.362,  391.410,  437.522/
-  DATA LAITS (:,16) /   618.507,   79.595,   52.885,   47.152,   96.027,  408.657,  572.662,  229.806,   54.234,   53.856,   56.657,12340.311/
-  DATA LAITS (:,17) /   751.909,  690.982,  686.686,  706.686,  793.229,  860.760,  857.985,  784.938,  754.882,  770.330,  807.177,  834.459/
-  DATA LAITS (:,18) /   330.089,   72.171,   52.264,   77.956,  145.273,  510.315,  588.607,   97.716,   50.863,   64.529,  234.244,  767.170/
-  DATA LAITS (:,19) /   455.884,  391.388,  490.491,  678.433, 1011.810, 1190.593, 1080.030,  835.043,  647.742,  513.119,  474.832,  527.400/
-                                                                                                                                    
-  DATA SAITS (:, 1) /   154.039,  148.090,  147.445,  171.159,  162.369,  151.637,  161.661,  164.075,  136.072,  147.967,  148.678,  142.664/
-  DATA SAITS (:, 2) /    93.276,  132.718,   88.336,   85.927,   88.476,   74.680,  175.131,  177.706,  151.663,  112.695,  154.712,   84.387/
-  DATA SAITS (:, 3) /   160.315,  191.827,  111.484,   67.693,    0.000,    0.000,    0.000,    0.000,    0.000,    0.000,  206.057,   69.349/
-  DATA SAITS (:, 4) /  1061.729, 1216.216, 1268.717, 1147.347, 1132.795, 1257.603, 1200.110, 1114.963, 1033.436,  840.392,  787.752,  868.604/
-  DATA SAITS (:, 5) /   388.994,  385.405,  438.445,  543.178,  837.061,  726.069,  595.750,  533.152,  480.837,  394.586,  402.593,  428.126/
-  DATA SAITS (:, 6) /   913.828, 1159.557, 1229.299, 1057.764, 1031.205, 1095.924, 1082.304, 1098.676, 1111.107,  912.891,  808.009,  830.415/
-  DATA SAITS (:, 7) /   432.379,   92.154,   54.345,    0.000,  157.415, 7518.433, 1292.533,  199.139,   85.377,    0.000,  438.890, 4946.960/
-  DATA SAITS (:, 8) /   152.645,  400.277,  162.857, 3665.824,  296.801, 1422.724,  283.713,  591.451, 1033.308, 3606.411,13018.765,  872.723/
-  DATA SAITS (:, 9) /   155.542,  214.349,  174.011,  150.033,  115.885,  108.388,  100.745,   98.046,  109.379,  112.261,  147.311,  132.414/
-  DATA SAITS (:,10) /   124.585,   85.395,   85.254,   60.388,  237.092,  382.170,  290.137,   51.886,   60.971,   77.056,  175.951,  186.024/
-  DATA SAITS (:,11) /   196.484,  209.680,  203.823,  191.682,  207.121,  223.417,  223.779,  223.863,  192.577,  175.771,  172.302,  176.724/
-  DATA SAITS (:,12) /   205.765,  128.294,   64.570,   49.029,   48.508,   57.161,   58.064,   51.972,   57.645,   88.857,  123.793,  163.256/
-  DATA SAITS (:,13) /   150.021,  101.986,   54.782,   50.932,   45.130,   55.986,   53.219,   48.268,   52.027,   74.364,  104.983,  147.860/
-  DATA SAITS (:,14) /    57.375,   43.406,   47.003,   64.247,  105.465,  127.227,   79.931,   68.054,   45.296,   44.861,   68.675,   86.277/
-  DATA SAITS (:,15) /   104.631,  102.266,  111.372,  109.660,  119.993,  135.575,  125.164,  104.375,   89.890,   83.661,   88.039,   95.476/
-  DATA SAITS (:,16) /   136.502,   32.786,    0.000,    0.000,  205.816,    0.000,    0.000,    0.000,   57.040,   34.075,  170.489,  244.528/
-  DATA SAITS (:,17) /   159.261,  157.479,  160.025,  156.656,  159.991,  187.828,  182.446,  159.891,  137.539,  143.082,  141.027,  138.480/
-  DATA SAITS (:,18) /    91.000,   35.339,   28.581,   40.302,   97.786,  782.317,  142.127,   25.671,   26.488,   50.944,   97.274,  145.152/
-  DATA SAITS (:,19) /   212.613,  198.448,  214.659,  228.442,  238.677,  255.165,  276.606,  277.767,  257.112,  223.192,  208.083,  225.051/
+  DATA LAITS (:, 1) /   2938.671,   1703.214,   1218.992,    989.745,   1023.555,   1243.818,   1513.783,   2135.020,   3172.746,   4790.270,   5531.646,   4010.347/
+  DATA LAITS (:, 2) /  69795.391,  28537.859,   2272.353,    997.676,    723.385,   1194.828,   2072.303,   4124.063,   9919.098,  44651.770, 157986.547, 127441.438/
+  DATA LAITS (:, 3) /      0.000,      0.000,      0.000,      0.000,     67.414,    200.217,    990.057,      0.000,      0.000,      0.000,      0.000,      0.000/
+  DATA LAITS (:, 4) /   2015.124,   2230.545,   2539.680,   2885.798,   2460.280,   1928.556,   1523.661,   1398.747,   1492.193,   1679.618,   1911.172,   1948.057/
+  DATA LAITS (:, 5) /   1392.846,   1637.630,   1853.108,   2167.965,   1997.427,   1626.865,   1516.447,   1507.380,   1408.701,   1186.145,   1045.981,   1158.065/
+  DATA LAITS (:, 6) /   3411.306,   3525.113,   3349.763,   3370.082,   3189.629,   3142.207,   2573.186,   2387.604,   2470.387,   2701.219,   2850.708,   3071.156/
+  DATA LAITS (:, 7) /    752.924,    404.184,    105.170,    156.788,    288.937,    747.374,   1283.792,    129.322,     85.009,    119.228,    269.670,    581.764/
+  DATA LAITS (:, 8) /   1478.526,    247.332,     74.058,    144.986,    118.949,    297.104,    858.512,     39.730,    201.244,     95.643,    186.163,    469.378/
+  DATA LAITS (:, 9) /    887.470,    984.260,   1197.346,    926.618,    807.862,    627.423,    532.757,    710.885,   1119.184,   1525.271,   1203.125,    955.703/
+  DATA LAITS (:,10) /    427.971,     77.199,     53.993,     58.973,    155.403,    402.566,    420.889,    158.569,     53.848,     69.331,    188.980,   1133.033/
+  DATA LAITS (:,11) /    693.410,    591.061,    547.764,    513.616,    501.643,    536.699,    569.842,    588.881,    588.342,    607.343,    659.312,    716.439/
+  DATA LAITS (:,12) /   1576.536,    940.612,    152.002,    126.508,    108.119,    163.747,    203.844,     98.958,    123.367,    135.084,    192.891,    709.225/
+  DATA LAITS (:,13) /    441.599,    144.793,     70.475,     70.259,     95.195,    210.619,    164.148,    101.477,     71.655,     63.164,     61.715,    374.426/
+  DATA LAITS (:,14) /    410.132,     62.296,     55.010,     67.725,    120.379,    457.500,    564.759,    113.907,     52.373,     56.389,    273.110,    769.576/
+  DATA LAITS (:,15) /    448.125,    426.954,    514.158,    617.684,    707.633,    790.015,    769.619,    650.975,    491.860,    459.468,    441.120,    473.951/
+  DATA LAITS (:,16) /    420.924,     57.870,     53.152,     59.108,    111.509,    508.259,    641.459,    331.120,     53.559,     55.392,     67.203,   5811.124/
+  DATA LAITS (:,17) /    760.057,    700.927,    699.944,    703.478,    767.613,    814.678,    817.368,    784.784,    759.681,    746.426,    752.065,    789.767/
+  DATA LAITS (:,18) /    350.679,     75.986,     52.425,     75.525,    140.260,    441.184,    497.458,    101.640,     51.313,     64.659,    217.237,    880.205/
+  DATA LAITS (:,19) /    561.547,    508.533,    605.617,    785.206,   1024.693,   1160.436,   1080.907,    914.494,    723.374,    591.482,    527.680,    601.251/
+                                                                                                                                                         
+  DATA SAITS (:, 1) /    230.315,    313.693,    276.539,    274.875,    258.847,    243.109,    302.606,    238.944,    225.218,    243.603,    255.616,    251.875/
+  DATA SAITS (:, 2) /    229.890,    137.614,    230.997,    885.396,  34366.480,  20680.762,  15364.336, 179264.391, 106621.625,    511.944,    144.913,    112.001/
+  DATA SAITS (:, 3) /    160.335,    208.863,    100.725,     61.128,      0.000,      0.000,      0.000,      0.000,      0.000,      0.000,    309.396,     67.304/
+  DATA SAITS (:, 4) /    841.035,    975.111,    944.408,    825.486,    799.643,    892.486,    946.068,    891.572,    741.352,    619.509,    594.351,    667.353/
+  DATA SAITS (:, 5) /    282.603,    286.126,    337.061,    405.378,    582.170,    527.165,    458.823,    379.705,    318.623,    243.743,    243.360,    261.337/
+  DATA SAITS (:, 6) /    540.718,    688.578,    723.944,    581.460,    625.967,    715.761,    745.801,    668.694,    526.761,    427.821,    396.987,    432.233/
+  DATA SAITS (:, 7) /   1054.735,    244.129,    339.480,      0.000,    155.208,   9998.467,   1123.824,    298.109,     70.775,      0.000,    316.463,   3617.774/
+  DATA SAITS (:, 8) /    341.703,    203.918,    198.034,   2703.103,    461.967,   2371.453,    901.374,   1001.270,   1019.283,    661.610,  10851.539,   1044.646/
+  DATA SAITS (:, 9) /    188.120,    225.566,    184.943,    140.310,     97.080,     95.836,     95.192,     90.871,     86.489,     89.438,    112.988,    120.050/
+  DATA SAITS (:,10) /    158.143,     88.208,     50.798,     66.993,    314.352,    897.925,    525.455,     95.297,     56.950,     52.494,    225.088,    199.817/
+  DATA SAITS (:,11) /    192.893,    211.842,    204.606,    188.132,    199.539,    214.700,    231.347,    218.899,    182.859,    161.711,    161.695,    174.822/
+  DATA SAITS (:,12) /    187.547,    120.499,     74.804,     67.735,     63.598,     70.080,     72.900,     68.453,     68.211,     89.312,    117.100,    160.318/
+  DATA SAITS (:,13) /    113.931,     79.577,     56.178,     58.576,     51.515,     61.443,     57.071,     50.591,     49.337,     62.633,     78.857,    137.055/
+  DATA SAITS (:,14) /     58.460,     43.689,     45.824,     64.373,    114.885,    140.412,    119.989,     69.780,     45.139,     45.016,     69.364,     88.677/
+  DATA SAITS (:,15) /    119.650,    116.520,    128.038,    132.468,    137.251,    174.534,    157.563,    109.637,     97.837,     97.455,    104.156,    106.594/
+  DATA SAITS (:,16) /    114.686,     56.264,     55.149,     41.942,    279.915,   1357.135,      0.000,      0.000,     51.040,     37.574,    187.939,    250.501/
+  DATA SAITS (:,17) /    170.847,    194.819,    191.218,    156.952,    150.084,    170.734,    193.540,    165.291,    142.388,    142.235,    141.490,    153.336/
+  DATA SAITS (:,18) /     95.563,     33.916,     26.510,     39.303,    102.695,    784.872,    151.246,     26.027,     26.348,     53.420,    104.175,    155.367/
+  DATA SAITS (:,19) /    247.494,    265.714,    277.912,    294.943,    310.404,    318.397,    333.875,    305.355,    270.572,    243.369,    236.336,    263.910/
 
   IF (LS == 1) TSLAI = LAITS (ITYP, SMONTH)
   IF (LS == 2) TSLAI = SAITS (ITYP, SMONTH)

@@ -43,5 +43,5 @@ set (srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared MAPL_Base GEOS_RadiationShared)
+  DEPENDENCIES GEOS_Shared MAPL GEOS_RadiationShared)
 

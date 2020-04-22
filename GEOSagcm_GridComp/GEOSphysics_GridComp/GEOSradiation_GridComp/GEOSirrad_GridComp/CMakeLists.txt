@@ -9,6 +9,6 @@ set (srcs
 esma_add_library (${this}
   SRCS ${srcs}
   SUBDIRS RRTMG
-  DEPENDENCIES GEOS_Shared MAPL_Base GEOS_RadiationShared RRTMG RRTMG_mods RRTMGP)
+  DEPENDENCIES GEOS_Shared MAPL GEOS_RadiationShared RRTMG RRTMG_mods RRTMGP)
 
 

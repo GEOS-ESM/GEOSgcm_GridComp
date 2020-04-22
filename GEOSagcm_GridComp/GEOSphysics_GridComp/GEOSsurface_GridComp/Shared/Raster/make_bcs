@@ -4,57 +4,20 @@
 #                     Set GEOS5/ESMADIR Variables
 #######################################################################
 
-# Set Current Working Path to make_bcs
-# ------------------------------------
-set MAKE_BCS = `which $0`
-set root = `echo $MAKE_BCS | cut -d / -f1`
-if($root == . ) set MAKE_BCS = `echo $cwd`/make_bcs
-set root = `echo $MAKE_BCS | cut -b1`
-if( "$root" != "/" ) set MAKE_BCS = `echo $cwd`/$MAKE_BCS
-
-# Set Default GEOS Build Directory
-# --------------------------------
-@ n = 1
-set root = `echo $MAKE_BCS | cut -d / -f$n`
-while( .$root == . )
-@ n = $n + 1
-set root = `echo $MAKE_BCS | cut -d / -f$n`
-end
-
-set ESMADIR = ''
-while( $root != 'src' )
-set ESMADIR = `echo ${ESMADIR}/${root}`
-@ n = $n + 1
-set root = `echo $MAKE_BCS | cut -d / -f$n`
-end
-
-# Set Raster Directory
-# --------------------------
-@ n = 1
-set root = `echo $MAKE_BCS | cut -d / -f$n`
-while( .$root == . )
-@ n = $n + 1
-set root = `echo $MAKE_BCS | cut -d / -f$n`
-end
-
-set RASTER = ''
-while( $root != 'make_bcs' )
-set RASTER = `echo ${RASTER}/${root}`
-@ n = $n + 1
-set root = `echo $MAKE_BCS | cut -d / -f$n`
-end
+set MAKE_BCS = `echo $cwd`/bin/make_bcs
+set  ESMADIR = `echo $cwd`/bin/ 
 
 echo ' '
 echo MAKE_BCS: $MAKE_BCS
 echo  ESMADIR: $ESMADIR
-echo   RASTER: $RASTER
 
-echo   $ESMADIR/src/g5_modules
-source $ESMADIR/src/g5_modules
+echo   $ESMADIR/g5_modules
+source $ESMADIR/g5_modules
 
 setenv NCPUS `/usr/bin/lscpu | grep '^CPU(s)' | cut -d ':' -f2 | head -1 `
-@ NCPUS = $NCPUS / 2
-setenv OMP_NUM_THREADS ${NCPUS}
+@ NCPUS = $NCPUS / 4
+@ NCPUS = $NCPUS * 3
+setenv OMP_NUM_THREADS 1
 
 #######################################################################
 #                            Define Colors
@@ -192,37 +155,43 @@ set make_bcs_jobs = ''
 # ------------------------------------
 
 set GLOBAL_CATCH_DATA = /discover/nobackup/ltakacs/bcs/LandSurfaceData_for_Catchment_Parameters/global.cat_id.catch.ORIG.DL
+set HOSTNAME = `hostname | rev | cut -c3- | rev`
+if ( $HOSTNAME == discover ) then
+    set l_data = /discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/
+else
+    set l_data = /nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/
+endif
 
 foreach orslv ($orslvs)
 
 if( $orslv == NL1 | $orslv == T1 | $orslv == T2 | $orslv == T3) then
     # Great-Lakes & Caspian-Sea treated as Model LAKE tiles, Surface Temperatures will be Model Derived
     # -------------------------------------------------------------------------------------------------
-    set GLOBAL_CATCH_DATA = /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GEOS5_10arcsec_mask_freshwater-lakes.nc
+    set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask_freshwater-lakes.nc
 endif
 
 if( $orslv == NL2 | $orslv == NL3 | $orslv == NCS ) then
     # Great-Lakes & Caspian-Sea treated as Model Ocean tiles, Surface Temperatures will be Model Derived
-    # -------------------------------------------------------------------------------------------------
-    set GLOBAL_CATCH_DATA = /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GEOS5_10arcsec_mask.nc
+    # --------------------------------------------------------------------------------------------------
+    set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask.nc
 endif
 
 if( $orslv == O1 ) then
     # Great-Lakes & Caspian-Sea treated as Model LAKE tiles, Surface Temperatures will be Model Derived
     # -------------------------------------------------------------------------------------------------
-    set GLOBAL_CATCH_DATA = /discover/nobackup/ltakacs/bcs/LandSurfaceData_for_Catchment_Parameters/global.cat_id.catch.ORIG.DL
+    set GLOBAL_CATCH_DATA = ${l_data}/global.cat_id.catch.DL
 endif
 
 if( $orslv == O2 | $orslv == CS ) then
     # Great-Lakes & Caspian-Sea treated as Model OCEAN tiles, Surface Temperatures will be taken from OCEAN SST Data
     # --------------------------------------------------------------------------------------------------------------
-    set GLOBAL_CATCH_DATA = /discover/nobackup/ltakacs/bcs/LandSurfaceData_for_Catchment_Parameters/global.cat_id.catch.GreatLakesCaspian_Updated.DL
+    set GLOBAL_CATCH_DATA = ${l_data}/global.cat_id.catch.GreatLakesCaspian_Updated.DL
 endif
 
 if( $orslv == O3 ) then
     # Great-Lakes & Caspian-Sea treated as Model OCEAN tiles, Surface Temperatures will be taken from OCEAN SST Data
     # --------------------------------------------------------------------------------------------------------------
-    set GLOBAL_CATCH_DATA = /discover/nobackup/ltakacs/bcs/LandSurfaceData_for_Catchment_Parameters/global.cat_id.catch.GreatLakesCaspian_Updated.DL
+    set GLOBAL_CATCH_DATA = ${l_data}/global.cat_id.catch.GreatLakesCaspian_Updated.DL
 endif
 
     set MASKFILE = `echo ${GLOBAL_CATCH_DATA} | rev | cut -d / -f1 | rev `
@@ -231,6 +200,9 @@ echo ""
     
 @ imo = 0 
 @ jmo = 0 
+@ NX = 8640
+@ NY = 4320 
+@ NT = 232000000
 
 set LATLON_OCEAN = FALSE
 set TRIPOL_OCEAN = FALSE
@@ -253,8 +225,8 @@ if( $orslv == T1 ) then
     @ jmo = 65    # MOM Tripolar-Ocean
 endif
 if( $orslv == T2 ) then
-    @ imo = 0360  # MOM Tripolar-Ocean
-    @ jmo = 0200  # MOM Tripolar-Ocean
+    @ imo = 360  # MOM Tripolar-Ocean
+    @ jmo = 200  # MOM Tripolar-Ocean
 endif
 if( $orslv == T3 ) then
     @ imo = 720   # MOM Tripolar-Ocean
@@ -355,6 +327,8 @@ if( $HRCODE == c768 ) then
      set nc = 768
      set RC = 768x4608
      set grid = cube
+     @ NX = 17280
+     @ NY = 8640
 endif
 if( $HRCODE == c1000 ) then
      set nc = 1000
@@ -370,26 +344,36 @@ if( $HRCODE == c1440 ) then
      set nc = 1440
      set RC = 1440x8640
      set grid = cube
+     @ NX = 17280
+     @ NY = 8640
 endif
 if( $HRCODE == c1536 ) then
      set nc = 1536
      set RC = 1536x9216
      set grid = cube
+     @ NX = 43200
+     @ NY = 21600
 endif
 if( $HRCODE == c2880 ) then
      set nc = 2880
      set RC = 2880x17280
      set grid = cube
+     @ NX = 21600
+     @ NY = 10800
 endif
 if( $HRCODE == c3072 ) then
      set nc = 3072
      set RC = 3072x18432
      set grid = cube
+     @ NX = 43200
+     @ NY = 21600
 endif
 if( $HRCODE == c5760 ) then
      set nc = 5760
      set RC = 5760x34560
      set grid = cube
+     @ NX = 43200
+     @ NY = 21600
 endif
 if( $HRCODE == m9 ) then
      set im = 3856
@@ -409,10 +393,18 @@ if( $HRCODE == m25 ) then
      set grid = ease
      set MGRID = M25
 endif
+if( $MASKFILE == GEOS5_10arcsec_mask_freshwater-lakes.nc | $MASKFILE == GEOS5_10arcsec_mask.nc ) then
+     @ NX = 43200
+     @ NY = 21600
+endif
+
+set OUTDIR = `date +'%Y%m%d%H%M%S'`
 
 #######################################################################
 #                        LatLon Case
 #######################################################################
+
+
 
 if( $grid == latlon ) then
 
@@ -422,16 +414,12 @@ set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
 set IMO = `echo ${imo}  | awk '{printf "%4.4i", $1}'`
 set JMO = `echo ${jmo}  | awk '{printf "%4.4i", $1}'`
 
-gmake clean
-cvs upd -d data
-/bin/rm -r data/MOM/720x410 data/MOM/360x200
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/INPUT/ data/MOM/360x200
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/INPUT/ data/MOM/720x410
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/INPUT/ data/MOM/1440x1080
-
 set             BCNAME = DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
-set             BCDIR  = $BCNAME.scratch
-set             BCJOB  = $BCNAME.j
+set             BCDIR  = $OUTDIR/$BCNAME.scratch
+set             BCJOB  = $BCDIR/$BCNAME.j
+
+if(     -e $BCDIR) /bin/rm -r $BCDIR
+mkdir -p $BCDIR
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
@@ -439,25 +427,43 @@ cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
 setenv ESMADIR $ESMADIR
-setenv BASEDIR $BASEDIR
+
 cd $pwd
-if(     -e $BCDIR) /bin/rm -r $BCDIR
-mkdir      $BCDIR
+cd $BCDIR
 
-/bin/cp -r GNUmakefile \
-           src include \
-           data $BCDIR
-cd              $BCDIR
-gunzip data/MOM/*/*.gz
+/bin/ln -s $pwd/bin
+mkdir -p til rst data/MOM clsm/plots
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/INPUT/ data/MOM/360x200
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/INPUT/ data/MOM/720x410
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/INPUT/ data/MOM/1440x1080
 
+cd data 
+ln -s $l_data CATCH
+
+cd ../
 
 if( -e DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
+setenv MASKFILE $MASKFILE
+source bin/g5_modules
+bin/mkLatLonRaster.x -x ${NX} -y ${NY}  -t -1 ${IM} ${JM} >/dev/null
+bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
 
 if( $LATLON_OCEAN == TRUE ) then
-    gmake IM=$IM JM=$JM IMO=$IMO JMO=$JMO MASKFILE=${MASKFILE} GLOBAL_CATCH_DATA=${GLOBAL_CATCH_DATA} OMP_NUM_THREADS=${NCPUS} | tee DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
+    bin/mkLatLonRaster.x -x ${NX} -y ${NY} -b DE -p PE -t 0 ${IMO} ${JMO} >/dev/null
+    bin/CombineRasters.x -f 0 -t ${NT} DE${IMO}xPE${JMO} Pfafstetter >/dev/null
+    bin/CombineRasters.x -t ${NT} DC${IM}xPC${JM} DE${IMO}xPE${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g DC${IM}xPC${JM}_DE${IMO}xPE${JMO}-Pfafstetter
+    setenv OMP_NUM_THREADS ${NCPUS}
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g DC${IM}xPC${JM}_DE${IMO}xPE${JMO}-Pfafstetter
 endif
 if( $TRIPOL_OCEAN == TRUE ) then
-    gmake IM=$IM JM=$JM IMM=$IMO JMM=$JMO MASKFILE=${MASKFILE} GLOBAL_CATCH_DATA=${GLOBAL_CATCH_DATA} OMP_NUM_THREADS=${NCPUS} | tee DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
+    bin/mkMOMAquaRaster.x -x $NX -y $NY  data/MOM/${imo}x${jmo}/grid_spec.nc > /dev/null
+    bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
+    bin/CombineRasters.x -t ${NT} DC${IM}xPC${JM} ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    bin/mk_runofftbl.x DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g DE${IMO}xPE${JMO}_DE${IMO}xPE${JMO}-Pfafstetter
+    setenv OMP_NUM_THREADS ${NCPUS}
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g DE${IMO}xPE${JMO}_DE${IMO}xPE${JMO}-Pfafstetter
 endif
 
 /bin/mv clsm  clsm.${IM}x${JM}
@@ -472,6 +478,14 @@ cd clsm.${IM}x${JM}
    /bin/mv green.dat green_clim_${RS}_DC.data
    /bin/mv lnfm.dat   lnfm_clim_${RS}_DC.data
    /bin/mv ndvi.dat   ndvi_clim_${RS}_DC.data
+   /bin/mv MODELFPARmean.dat MODELFPARmean_${RS}_DC.dat 
+   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RS}_DC.dat  
+   /bin/mv MODISFPARmean.dat MODISFPARmean_${RS}_DC.dat 
+   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RS}_DC.dat  
+   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RS}_DC.dat  
+   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RS}_DC.dat   
+   /bin/mv MODISVISmean.dat  MODISVISmean_${RS}_DC.dat  
+   /bin/mv MODISVISstd.dat   MODISVISstd_${RS}_DC.dat   
 
 /bin/rm -f sedfile
 cat > sedfile << EOF
@@ -509,17 +523,17 @@ cd ../
                     CLM4.5_abm_peatf_gdp_hdm_fc \
   		    catch_params.nc4 \
 		    catchcn_params.nc4 \
+		    country_and_state_code.data \
                     clsm
                 cd  ../ 
 
 /bin/mv rst DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
 /bin/mv til DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}
 
-cd ../
+cd ../../
 /bin/mv    $BCDIR/$BCNAME .
-/bin/mv    $BCDIR/$BCNAME.stdout $BCNAME
 /bin/mv    $BCJOB                $BCNAME
-/bin/rm -r $BCDIR
+/bin/rm -r $OUTDIR
 
 _EOF_
 chmod 755 $BCJOB
@@ -538,13 +552,6 @@ set NC  = `echo ${nc}   | awk '{printf "%4.4i", $1}'`
 set IMO = `echo ${imo}  | awk '{printf "%4.4i", $1}'`
 set JMO = `echo ${jmo}  | awk '{printf "%4.4i", $1}'`
 
-gmake clean
-cvs upd -d data
-/bin/rm -r data/MOM/720x410 data/MOM/360x200
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/INPUT/ data/MOM/360x200
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/INPUT/ data/MOM/720x410
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/INPUT/ data/MOM/1440x1080
-
 if( $CUBED_SPHERE_OCEAN == TRUE ) then
 	set       BCNAME = CF${NC}x6C_CF${NC}x6C
 	set     DATENAME = CF
@@ -555,8 +562,11 @@ else
 	set       BCNAME = CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
 endif
 
-set             BCDIR  = $BCNAME.scratch
-set             BCJOB  = $BCNAME.j
+set             BCDIR  = $OUTDIR/$BCNAME.scratch
+set             BCJOB  = $BCDIR/$BCNAME.j
+
+if(     -e $BCDIR) /bin/rm -r $BCDIR
+mkdir -p $BCDIR
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
@@ -564,28 +574,52 @@ cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
 setenv ESMADIR $ESMADIR
-setenv BASEDIR $BASEDIR
 
 cd $pwd
-if(     -e $BCDIR ) /bin/rm -r $BCDIR
-mkdir      $BCDIR
+cd $BCDIR
 
-/bin/cp -r GNUmakefile \
-           src include \
-           data $BCDIR
-cd              $BCDIR
-gunzip data/MOM/*/*.gz
+/bin/ln -s $pwd/bin
+mkdir -p til rst data/MOM clsm/plots
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/INPUT/ data/MOM/360x200
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/INPUT/ data/MOM/720x410
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/INPUT/ data/MOM/1440x1080
+
+cd data 
+ln -s $l_data CATCH
+
+cd ../
  
 if( -e CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
+setenv MASKFILE $MASKFILE
+source bin/g5_modules
+bin/mkCubeFVRaster.x -x ${NX} -y ${NY} ${NC} >/dev/null 
+bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
 
 if( $LATLON_OCEAN == TRUE ) then
-    gmake NC=$NC IMO=$IMO JMO=$JMO MASKFILE=${MASKFILE} GLOBAL_CATCH_DATA=${GLOBAL_CATCH_DATA} OMP_NUM_THREADS=${NCPUS} | tee CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
+    bin/mkLatLonRaster.x -x ${NX} -y ${NY} -b DE -p PE -t 0 ${IMO} ${JMO} >/dev/null
+    bin/CombineRasters.x -f 0 -t ${NT} DE${IMO}xPE${JMO} Pfafstetter >/dev/null
+    bin/CombineRasters.x -t ${NT} CF${NC}x6C DE${IMO}xPE${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_DE${IMO}xPE${JMO}-Pfafstetter
+    setenv OMP_NUM_THREADS ${NCPUS}
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_DE${IMO}xPE${JMO}-Pfafstetter
 endif
+
 if( $TRIPOL_OCEAN == TRUE ) then
-    gmake NC=$NC IMM=$IMO JMM=$JMO MASKFILE=${MASKFILE} GLOBAL_CATCH_DATA=${GLOBAL_CATCH_DATA} OMP_NUM_THREADS=${NCPUS} | tee CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
+    bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/MOM/${imo}x${jmo}/grid_spec.nc > /dev/null
+    bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
+    bin/CombineRasters.x -t ${NT} CF${NC}x6C ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    bin/mk_runofftbl.x CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    setenv OMP_NUM_THREADS ${NCPUS}
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
 endif
+
 if( $CUBED_SPHERE_OCEAN == TRUE ) then
-    gmake NC=$NC INC=$NC MASKFILE=${MASKFILE} GLOBAL_CATCH_DATA=${GLOBAL_CATCH_DATA} OMP_NUM_THREADS=${NCPUS} | tee CF${NC}x6C_CF${NC}x6C.stdout
+    bin/CombineRasters.x -f 0 -t ${NT} CF${NC}x6C Pfafstetter >/dev/null
+    bin/CombineRasters.x -t ${NT} CF${NC}x6C CF${NC}x6C-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter
+    setenv OMP_NUM_THREADS ${NCPUS}
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter    
 endif
 
 /bin/mv clsm  clsm.C${NC}
@@ -600,8 +634,25 @@ cd clsm.C${NC}
    /bin/mv green.dat green_clim_${RC}.data
    /bin/mv lnfm.dat   lnfm_clim_${RC}.data
    /bin/mv ndvi.dat   ndvi_clim_${RC}.data
+   /bin/mv MODELFPARmean.dat MODELFPARmean_${RC}.dat 
+   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RC}.dat  
+   /bin/mv MODISFPARmean.dat MODISFPARmean_${RC}.dat 
+   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RC}.dat  
+   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RC}.dat  
+   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RC}.dat   
+   /bin/mv MODISVISmean.dat  MODISVISmean_${RC}.dat  
+   /bin/mv MODISVISstd.dat   MODISVISstd_${RC}.dat   
 
 /bin/rm -f sedfile
+if( $CUBED_SPHERE_OCEAN == TRUE ) then
+cat > sedfile << EOF
+s/${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter/OC${nc}x${nc6}-CF/g
+s/CF${NC}x6C/PE${nc}x${nc6}-CF/g
+EOF
+sed -f sedfile       CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til > tile.file
+/bin/mv -f tile.file CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til
+/bin/rm -f sedfile
+else
 cat > sedfile << EOF
 s/CF${NC}x6C/PE${nc}x${nc6}-CF/g
 s/${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter/PE${imo}x${jmo}-${DATENAME}/g
@@ -609,6 +660,7 @@ EOF
 sed -f sedfile       CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til > tile.file
 /bin/mv -f tile.file CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til
 /bin/rm -f sedfile
+endif
 
 cd ../
 
@@ -637,17 +689,17 @@ cd ../
                     CLM4.5_abm_peatf_gdp_hdm_fc \
   		    catch_params.nc4 \
 		    catchcn_params.nc4 \
+		    country_and_state_code.data \
                     clsm
                 cd  ../ 
 
 /bin/mv rst CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
 /bin/mv til CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
-
-cd ../
+/bin/mv $BCJOB CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+cd ../../
 /bin/mv    $BCDIR/$BCNAME .
-/bin/mv    $BCDIR/$BCNAME.stdout $BCNAME
 /bin/mv    $BCJOB                $BCNAME
-/bin/rm -r $BCDIR
+/bin/rm -r $OUTDIR
 
 _EOF_
 chmod 755 $BCJOB
@@ -672,22 +724,12 @@ set RS  = ${im}x${jm}
 set IM  = `echo ${im}   | awk '{printf "%4.4i", $1}'`
 set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
 
-gmake clean
-cvs upd -d data
-/bin/rm -r data/MOM/720x410 data/MOM/360x200
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/INPUT/ data/MOM/360x200
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/INPUT/ data/MOM/720x410
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/INPUT/ data/MOM/1440x1080
-
 set             BCNAME = SMAP_${EVERSION}_${MGRID}
-set             BCDIR  = $BCNAME.scratch
-set             BCJOB  = $BCNAME.j
+set             BCDIR  = $OUTDIR/$BCNAME.scratch
+set             BCJOB  = $BCDIR/$BCNAME.j
 
-if ( -e $BCNAME ) then
-
-echo "Directory $BCNAME exists so skipping ..."
-
-else
+if(     -e $BCDIR) /bin/rm -r $BCDIR
+mkdir -p $BCDIR
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
@@ -696,26 +738,28 @@ cat << _EOF_ > $BCJOB
 
 setenv ESMADIR $ESMADIR
 cd $pwd
-if(     -e $BCDIR) /bin/rm -r $BCDIR
-mkdir      $BCDIR
+cd $BCDIR
 
-/bin/cp -r GNUmakefile \
-           src include \
-           data $BCDIR
-cd              $BCDIR
-
-gmake -C src 
-
-cd             ${pwd}/$BCDIR
-
-echo `pwd`
-
+/bin/ln -s $pwd/bin
+mkdir -p til rst data/MOM clsm/plots
+cd data 
+ln -s $l_data CATCH
+cd ../
+source bin/g5_modules
 if ( $EVERSION == EASEv2 ) then
 setenv MASKFILE ${MASKFILE}
-bin/mkSMAPTilesPara_v2 -smap_grid ${MGRID}
+bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID}
+setenv OMP_NUM_THREADS ${NCPUS}
+head -1 clsm/mkCatchParam.log > smap_cmd
+chmod 755 smap_cmd
+./smap_cmd
 else
 setenv MASKFILE ${MASKFILE}
-bin/mkSMAPTilesPara -smap_grid ${MGRID}
+bin/mkSMAPTilesPara.x -smap_grid ${MGRID}
+setenv OMP_NUM_THREADS ${NCPUS}
+head -1 clsm/mkCatchParam.log > smap_cmd
+chmod 755 smap_cmd
+./smap_cmd
 endif
 
 /bin/mv clsm  clsm.${IM}x${JM}
@@ -729,6 +773,15 @@ cd clsm.${IM}x${JM}
    /bin/mv green.dat green_clim_${RS}_DE.data
    /bin/mv lnfm.dat   lnfm_clim_${RS}_DE.data
    /bin/mv ndvi.dat   ndvi_clim_${RS}_DE.data
+   /bin/mv MODELFPARmean.dat MODELFPARmean_${RS}_DE.dat 
+   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RS}_DE.dat  
+   /bin/mv MODISFPARmean.dat MODISFPARmean_${RS}_DE.dat 
+   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RS}_DE.dat  
+   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RS}_DE.dat  
+   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RS}_DE.dat   
+   /bin/mv MODISVISmean.dat  MODISVISmean_${RS}_DE.dat  
+   /bin/mv MODISVISstd.dat   MODISVISstd_${RS}_DE.dat   
+
 
 cd ../
 
@@ -761,17 +814,17 @@ cd ../
                          CLM4.5_abm_peatf_gdp_hdm_fc \
   		         catch_params.nc4 \
 		         catchcn_params.nc4 \
+			 country_and_state_code.data \
                          clsm
                      cd  ../ 
 
 /bin/mv rst  SMAP_${EVERSION}_${MGRID}
 /bin/mv til  SMAP_${EVERSION}_${MGRID}
 
-cd ../
+cd ../../
 /bin/mv    $BCDIR/$BCNAME .
-/bin/mv    $BCDIR/$BCNAME.stdout $BCNAME
 /bin/mv    $BCJOB                $BCNAME
-/bin/rm -r $BCDIR
+/bin/rm -r $OUTDIR
 
 _EOF_
 chmod 755 $BCJOB

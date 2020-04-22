@@ -73,43 +73,43 @@
       enddo
 
 !  Compute clear sky transmittances
-      call clrtrans(lam,thray,cosunz,rm,rmp,rmo,ws,relhum,am,Vi,    &
-                    ta,wa,asym,Tdclr,Tsclr)
-      do nl = 1,nlt
-       Foinc = Fobar(nl)*daycor*cosunz
-!    Direct irradiance 
-       Edir = Foinc*Tgas(nl)*Tdclr(nl)
-!    Diffuse irradiance
-       Edif = Foinc*Tgas(nl)*Tsclr(nl)
-!    Spectral components
-       Edclr(nl) = Edir
-       Esclr(nl) = Edif
-      enddo    !end clear nl loop
-!  Compute cloudy transmittances
-!      call slingo(rmu0,cldtc(ic,jc),rlwp(ic,jc),cdre(ic,jc),
-!     *            Tdcld,Tscld)
-      call slingo(asl,bsl,csl,dsl,esl,fsl,                            &
-       rmu0,cldtau,clwp,re,Tdcld,Tscld)
-      do nl = 1,nlt
-       Foinc = Fobar(nl)*daycor*cosunz
-!    Direct irradiance 
-       Edir = Foinc*Tgas(nl)*Tdcld(ica(nl))
-!    Diffuse irradiance
-       Edif = Foinc*Tgas(nl)*Tscld(ica(nl))
-!    Spectral components
-       Edcld(nl) = Edir
-       Escld(nl) = Edif
-      enddo   !end cloudy nl loop
-
-!  Sum clear and cloudy by percent
-      ccov1 = cov*0.01  !convert from percent to fraction
-      do nl = 1,nlt
-       Ed(nl) = (1.0-ccov1)*Edclr(nl) + ccov1*Edcld(nl)
-       Es(nl) = (1.0-ccov1)*Esclr(nl) + ccov1*Escld(nl)
-      enddo
-
-!   Total short-wave (W/m2)
-!       sirrsw = sirrsw + Edir + Edif
+!      call clrtrans(lam,thray,cosunz,rm,rmp,rmo,ws,relhum,am,Vi,    &
+!                    ta,wa,asym,Tdclr,Tsclr)
+!      do nl = 1,nlt
+!       Foinc = Fobar(nl)*daycor*cosunz
+!!    Direct irradiance 
+!       Edir = Foinc*Tgas(nl)*Tdclr(nl)
+!!    Diffuse irradiance
+!       Edif = Foinc*Tgas(nl)*Tsclr(nl)
+!!    Spectral components
+!       Edclr(nl) = Edir
+!       Esclr(nl) = Edif
+!      enddo    !end clear nl loop
+!!  Compute cloudy transmittances
+!!      call slingo(rmu0,cldtc(ic,jc),rlwp(ic,jc),cdre(ic,jc),
+!!     *            Tdcld,Tscld)
+!      call slingo(asl,bsl,csl,dsl,esl,fsl,                            &
+!       rmu0,cldtau,clwp,re,Tdcld,Tscld)
+!      do nl = 1,nlt
+!       Foinc = Fobar(nl)*daycor*cosunz
+!!    Direct irradiance 
+!       Edir = Foinc*Tgas(nl)*Tdcld(ica(nl))
+!!    Diffuse irradiance
+!       Edif = Foinc*Tgas(nl)*Tscld(ica(nl))
+!!    Spectral components
+!       Edcld(nl) = Edir
+!       Escld(nl) = Edif
+!      enddo   !end cloudy nl loop
+!
+!!  Sum clear and cloudy by percent
+!      ccov1 = cov*0.01  !convert from percent to fraction
+!      do nl = 1,nlt
+!       Ed(nl) = (1.0-ccov1)*Edclr(nl) + ccov1*Edcld(nl)
+!       Es(nl) = (1.0-ccov1)*Esclr(nl) + ccov1*Escld(nl)
+!      enddo
+!
+!!   Total short-wave (W/m2)
+!!       sirrsw = sirrsw + Edir + Edif
 
 5     continue
       return

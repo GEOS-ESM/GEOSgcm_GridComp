@@ -11,7 +11,7 @@ set (srcs
 add_definitions(-DSPMD -DMAPL_MODE -DTWOD_YZ -DrFV=r4)
 
 
-esma_add_library (${this} SRCS ${srcs} DEPENDENCIES GEOS_Shared GMAO_pilgrim MAPL_Base)
+esma_add_library (${this} SRCS ${srcs} DEPENDENCIES GEOS_Shared GMAO_pilgrim MAPL)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
 if (CRAY_POINTER)

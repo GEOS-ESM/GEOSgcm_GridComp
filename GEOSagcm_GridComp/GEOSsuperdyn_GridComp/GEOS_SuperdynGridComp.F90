@@ -14,7 +14,7 @@ module GEOS_SuperdynGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
 
   use FVdycore_GridCompMod,     only :    FV_SetServices => SetServices
   use FVdycoreCubed_GridComp,   only :   FV3_SetServices => SetServices

@@ -10,14 +10,10 @@ implicit none
 double precision, parameter :: onethird  = 1./3.
 double precision, parameter :: twothirds = 2./3.
 
-double precision, parameter :: th00 = 300.
-
-double precision, parameter :: gocp    = MAPL_GRAV/MAPL_CP
-double precision, parameter :: lvocp   = MAPL_ALHL/MAPL_CP
-double precision, parameter :: kappa   = MAPL_RGAS/MAPL_CP
-double precision, parameter :: goth00  = MAPL_GRAV/th00
-double precision, parameter :: ep2     = MAPL_RVAP/MAPL_RGAS - 1.
-double precision, parameter :: goth002 = goth00**2.
+double precision, parameter :: gocp  = MAPL_GRAV/MAPL_CP
+double precision, parameter :: lvocp = MAPL_ALHL/MAPL_CP
+double precision, parameter :: kappa = MAPL_RGAS/MAPL_CP
+double precision, parameter :: ep2   = MAPL_RVAP/MAPL_RGAS - 1.
 
 ! MYNN constants 
 double precision, parameter :: Pr     = 0.74
@@ -67,7 +63,7 @@ contains
 !
 subroutine run_mynn(IM, JM, LM, &                                                           ! in
                     DEBUG_FLAG, DOMF, MYNN_LEVEL, CONSISTENT_TYPE, WQL_TYPE, WRF_CG_FLAG, & ! in
-                    ple, rhoe, zle, zlo, &                                                  ! in
+                    th00, ple, rhoe, zle, zlo, &                                            ! in
                     u, v, omega, T, qv, ql, qi, ac, thl, qt, thv, &                         ! in
                     u_star, H_surf, E_surf, &                                               ! in
                     whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, &                            ! in
@@ -84,7 +80,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
   integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, &
                                                 WQL_TYPE, WRF_CG_FLAG, DEBUG_FLAG
-  real, intent(in)                           :: DOMF
+  real, intent(in)                           :: th00, DOMF
   real, dimension(IM,JM), intent(in)         :: u_star, H_surf, E_surf
   real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, T, qv, ql, qi, ac, thv, thl, qt, E, D, &
                                                 A_cloud, B_cloud, qsat
@@ -106,7 +102,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
                       D_25, D_p, wden, qdiv, qdiv2, L2, L2GM, L2GH, &
                       hl2_25, qt2_25, hlqt_25, hlthv, qtthv, thv2, &
                       hlthv_25, qtthv_25, thv2_25, hlthv_p, qtthv_p, thv2_p, &
-                      we, we_up, idzle, A_half, B_half
+                      we, we_up, idzle, A_half, B_half, goth00, goth002
 
   double precision, dimension(IM,JM)      :: wb_surf, LMO, w_star
   real, dimension(IM,JM,LM)               :: hl
@@ -114,6 +110,9 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
   ! For debugging
   double precision :: w2_test, tau_test, wb_test
+
+  goth00  = MAPL_GRAV/th00
+  goth002 = goth00**2.
 
   ! Compute conserved thermodynamic properties
   do k = 1,LM
@@ -437,7 +436,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
   K_tke(:,:,LM) = K_tke(:,:,LM-1)
 
   call entrain_mynn(IM, JM, LM, &
-                    zlo, zle, u, thl, qt, thv, &
+                    th00, zlo, zle, u, thl, qt, thv, &
                     ac, tke, S2, N2, L)
 
 end subroutine run_mynn
@@ -578,22 +577,24 @@ end subroutine mynn_length
 !
 !
 subroutine implicit_M(IM, JM, LM, &
-                      zlo, u, v, h, qv, ql, &
+                      th00, zlo, u, v, h, qv, ql, &
                       Beta_hl, Beta_qt, Km, Kh, &
                       ws_cg, wqv_cg, wql_cg, whl_mf, wqt_mf, wthv_mf, &
                       tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
                       MYNN_LEVEL, DOMF, CONSISTENT_FLAG)
 
   integer, intent(in)                      :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_FLAG
-  real, intent(in)                         :: DOMF
+  real, intent(in)                         :: th00, DOMF
   real, dimension(IM,JM,LM), intent(in)    :: zlo, u, v, h, qv, ql 
   real, dimension(IM,JM,0:LM), intent(in)  :: Beta_hl, Beta_qt, Km, Kh, &
                                               ws_cg, wqv_cg, wql_cg, whl_mf, wqt_mf, wthv_mf
   real, dimension(IM,JM,0:LM), intent(out) :: tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M
 
   integer          :: i, j, k, kp1
-  double precision :: N2, S2, idzlo, dhldz, dqtdz, whl, wqt, whl_cg, wqt_cg, wb_cg
+  double precision :: N2, S2, idzlo, dhldz, dqtdz, whl, wqt, whl_cg, wqt_cg, wb_cg, goth00
   double precision, dimension(IM,JM,LM) :: hl, qt
+
+  goth00 = MAPL_GRAV/th00
 
   ! Compute conserved thermodynamic properties 
   do k = 1,LM
@@ -647,10 +648,11 @@ subroutine implicit_M(IM, JM, LM, &
 end subroutine implicit_M
 
 subroutine entrain_mynn(IM, JM, LM, &
-                        zl, zle, omega, thl, qt, thv, &
+                        th00, zl, zle, omega, thl, qt, thv, &
                         ac, tke, S2, N2, L)
 
 integer, intent(in)                                 :: IM, JM, LM
+real, intent(in)                                    :: th00
 real, dimension(IM,JM,LM), intent(in)               :: zl, thl, qt, thv, ac
 real, dimension(IM,JM,0:LM), intent(in)             :: zle, tke, omega
 double precision, dimension(IM,JM,0:LM), intent(in) :: S2, N2, L
@@ -659,6 +661,9 @@ integer                   :: i, j, k, kflip
 integer, dimension(IM,JM) :: ktop
 real                      :: gamma_ml, gamma_fa, a, b, c, zi, thlv_ml, thlv_fa, we, Ri, w_ml
 real, dimension(IM,JM,LM) :: thlv
+double precision          :: goth00
+
+goth00 = MAPL_GRAV/th00
 
 ! Find cloud top
 ktop(:,:) = -1

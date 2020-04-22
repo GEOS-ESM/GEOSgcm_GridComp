@@ -29,7 +29,7 @@ add_definitions(-DSPMD -DMAPL_MODE -DTWOD_YZ -DrFV=r4)
 
 
 esma_add_library (${this} SRCS ${srcs}
-  DEPENDENCIES GEOS_Shared GMAO_pilgrim MAPL_Base GMAO_transf)
+   DEPENDENCIES GEOS_Shared GMAO_pilgrim MAPL GMAO_transf)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 if (CRAY_POINTER)
   set_target_properties (${this} PROPERTIES COMPILE_FLAGS ${CRAY_POINTER})

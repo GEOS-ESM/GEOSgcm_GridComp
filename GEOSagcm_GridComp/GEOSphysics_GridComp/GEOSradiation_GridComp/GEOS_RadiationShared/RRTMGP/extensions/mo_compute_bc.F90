@@ -20,6 +20,7 @@ module mo_compute_bc
   ! The boundary condition is on diffuse flux in the LW and direct flux in the SW
   ! -------------------------------------------------------------------------------------------------
   use mo_rte_kind,           only: wp, wl
+  use mo_rte_util_array,     only: extents_are
   use mo_source_functions,   only: ty_source_func_lw
   use mo_gas_concentrations, only: ty_gas_concs
   use mo_optical_props,      only: ty_optical_props, ty_optical_props_arry, &
@@ -49,7 +50,7 @@ contains
   function compute_bc(k_dist,                      &
                       play, plev, tlay, gas_concs, &
                       flux_bc, mu0) result(error_msg)
-    type(ty_gas_optics),      intent(in   ) :: k_dist
+    class(ty_gas_optics),     intent(in   ) :: k_dist
     real(wp), dimension(:,:), intent(in   ) :: play, &    ! layer pressures [Pa, mb]; (ncol,nlay)
                                                plev, &    ! level pressures [Pa, mb]; (ncol,nlay+1)
                                                tlay       ! layer temperatures [K]; (ncol,nlay)
@@ -80,7 +81,7 @@ contains
                               allocatable :: optical_props_1lay
     type(ty_fluxes_1lev)                  :: fluxes_1lev
     type(ty_source_func_lw)               :: lw_sources_1lay
-    real(wp), dimension(size(play,1),k_dist%get_nband()) :: solar_src
+    real(wp), dimension(size(play,1),k_dist%get_ngpt()) :: solar_src
     ! ----------------------------------------------------------
     !
     ! Problem extent
@@ -88,11 +89,11 @@ contains
     ncol  = size(play, dim=1)
     nlay  = size(play, dim=2)
     ngpt  = k_dist%get_ngpt()
-    if(any([size(plev,1) /= ncol, size(plev,2) /= nlay+1])) then
+    if(.not. extents_are(plev, ncol, nlay+1)) then
       error_msg = "compute_bc: array plev has wrong dimensions"
       return
     end if
-    if(any([size(tlay,1) /= ncol, size(tlay,2) /= nlay  ])) then
+    if(.not. extents_are(tlay, ncol, nlay  )) then
       error_msg = "compute_bc: array tlay has wrong dimensions"
       return
     end if
@@ -109,7 +110,7 @@ contains
     top_at_1 = play(1, 1) < play(1, nlay)
     top_lay = merge(1, nlay, top_at_1)
     if(any(plev(:,top_lay) <= &
-           k_dist%get_press_ref_min() + 2._wp * spacing(k_dist%get_press_ref_min()))) then
+           k_dist%get_press_min() + 2._wp * spacing(k_dist%get_press_min()))) then
       error_msg = "compute_bc: pressures are too close to (or less than) min in gas optics "
       return
     end if
@@ -119,7 +120,7 @@ contains
     tlay_1lay(1:ncol,1) = tlay(1:ncol, top_lay)
     tlev_1lay(1:ncol,1) = tlay(1:ncol, top_lay)
     tlev_1lay(1:ncol,2) = tlay(1:ncol, top_lay)
-    plev_1lay(1:ncol,1) = k_dist%get_press_ref_min()
+    plev_1lay(1:ncol,1) = k_dist%get_press_min()
     plev_1lay(1:ncol,2) = plev(1:ncol, top_lay+1)
     !
     ! Maybe there are better ways to interpolate pressure but the single layer

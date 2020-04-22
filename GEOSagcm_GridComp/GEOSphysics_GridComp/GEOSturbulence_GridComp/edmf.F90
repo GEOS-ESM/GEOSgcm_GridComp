@@ -10,8 +10,7 @@ real, parameter ::     &
      Wb       = 1.5,   &
      WSTARmin = 1.e-3, &
      zpblmin  = 100.,  &
-     onethird = 1./3., &
-     th00     = 300.
+     onethird = 1./3.
 
 contains
 
@@ -20,7 +19,7 @@ contains
 !
 subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
                     edmf_discrete_type, edmf_implicit, &                            ! in
-                    dt, z, zle, ple, rhoe, exf, &                                   ! in
+                    th00, dt, z, zle, ple, rhoe, exf, &                             ! in
                     u, v, thl, thv, qt, qv, ql, qi, &                               ! in         
                     ustar, sh, evap, ice_ramp, &                                    ! in
                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in
@@ -45,7 +44,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe
   real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, L0
   real, dimension(IM,JM), intent(inout)   :: zpbl
-  real, intent(in)                        :: ice_ramp, dt, EntWFac, ENT0, pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, EDfac
+  real, intent(in)                        :: th00, ice_ramp, dt, EntWFac, ENT0, pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, EDfac
  
   ! Outputs
   real, dimension(IM,JM,0:LM), intent(out) :: edmfdrya, edmfmoista, edmfdryw, edmfmoistw, &

@@ -29,7 +29,7 @@ module MOM_GEOS5PlugMod
 
 !USES:
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use MAPL_ConstantsMod,        only: MAPL_TICE
 
 ! These MOM dependencies are all we are currently using.
