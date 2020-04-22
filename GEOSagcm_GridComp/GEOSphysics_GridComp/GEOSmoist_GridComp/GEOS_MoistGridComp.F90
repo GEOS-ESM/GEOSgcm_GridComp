@@ -3609,6 +3609,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DBRCDT',                                          &
+         LONG_NAME ='brown_carbon_tendency_due_to_conv_scav',              &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DDUDTcarma ',                                    &
          LONG_NAME ='carma_dust_tendency_due_to_conv_scav',           &
          UNITS     ='kg m-2 s-1',                                     &
@@ -5243,7 +5251,7 @@ contains
       ! Aerosol convective scavenging internal pointers (2D column-averages);  must deallocate!!!
       ! CAR 
       real, pointer, dimension(:,: )                           :: DDUDT, &
-           DSSDT, DOCDT, DBCDT, DSUDT,  DNIDT, DDUDTcarma, DSSDTcarma
+           DSSDT, DOCDT, DBCDT, DSUDT,  DNIDT, DBRCDT, DDUDTcarma, DSSDTcarma
       character(len=ESMF_MAXSTR)                               :: QNAME,  CNAME, ENAME
       character(len=ESMF_MAXSTR), pointer, dimension(:)        :: QNAMES, CNAMES
       integer                                                  :: ind
@@ -5911,7 +5919,7 @@ contains
       real :: FAC_RI_CN, FAC_RI_LS
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
 
-      real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU, CMNI
+      real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU, CMNI, CMBRC
       real   , dimension(IM,JM)           :: CMDUcarma, CMSScarma
 
       ! MATMAT CUDA Variables
@@ -6565,6 +6573,7 @@ contains
       call MAPL_GetPointer(EXPORT, DOCDT,     'DOCDT'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DSUDT,     'DSUDT'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DNIDT,     'DNIDT'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DBRCDT,    'DBRCDT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DDUDTcarma,  'DDUDTcarma'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DSSDTcarma,  'DSSDTcarma'    , RC=STATUS); VERIFY_(STATUS)
 
@@ -7935,6 +7944,7 @@ contains
       if(associated(DOCDT)) DOCDT =  0.0
       if(associated(DSUDT)) DSUDT =  0.0
       if(associated(DNIDT)) DNIDT =  0.0
+      if(associated(DBRCDT))DBRCDT=  0.0
       if(associated(DDUDTcarma)) DDUDTcarma =  0.0
       if(associated(DSSDTcarma)) DSSDTcarma =  0.0
 
@@ -7944,6 +7954,7 @@ contains
       CMBC = 0.0
       CMSU = 0.0
       CMNI = 0.0
+      CMBRC= 0.0
       CMDUcarma = 0.0
       CMSScarma = 0.0
 
@@ -7981,6 +7992,10 @@ contains
                CASE ('NO3')
                   if(associated(DNIDT)) then
                      CMNI = CMNI + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('BRC')
+                  if(associated(DBRCDT)) then
+                     CMBRC = CMBRC + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                END SELECT
             endif
@@ -8469,6 +8484,10 @@ contains
                   if(associated(DNIDT)) then
                      DNIDT = DNIDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
+               CASE ('BRC')
+                  if(associated(DBRCDT)) then
+                     DBRCDT = DBRCDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if 
                END SELECT
             endif
          end if
@@ -8500,6 +8519,7 @@ contains
       if (associated(DOCDT))  DOCDT = (DOCDT - CMOC) / (MAPL_GRAV*DT_MOIST)
       if (associated(DSUDT))  DSUDT = (DSUDT - CMSU) / (MAPL_GRAV*DT_MOIST)
       if (associated(DNIDT))  DNIDT = (DNIDT - CMNI) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DBRCDT)) DBRCDT= (DBRCDT- CMBRC)/ (MAPL_GRAV*DT_MOIST)
 
       if (associated(DDUDTcarma))  DDUDTcarma = (DDUDTcarma - CMDUcarma) / (MAPL_GRAV*DT_MOIST)
       if (associated(DSSDTcarma))  DSSDTcarma = (DSSDTcarma - CMSScarma) / (MAPL_GRAV*DT_MOIST)
