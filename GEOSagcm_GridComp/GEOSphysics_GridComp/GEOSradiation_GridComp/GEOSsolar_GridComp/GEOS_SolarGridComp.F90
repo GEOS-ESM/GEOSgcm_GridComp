@@ -242,9 +242,6 @@ module GEOS_SolarGridCompMod
   INTEGER, PARAMETER :: NB_RRTMG    = 14
   INTEGER, PARAMETER :: NB_RRTMGP   = 14
 
-#define PACKIT   1
-#define UNPACKIT 2
-
 !EOP
 
   ! RRTMGP internal state
@@ -2849,7 +2846,7 @@ contains
 
 !  DAYTIME ONLY COPY OF VARIABLES
 
-      real, pointer, dimension(:  )   :: ALBNR,ALBNF,ALBVR,ALBVF,ZT,                            &
+      real, pointer, dimension(:  )   :: ALBNR,ALBNF,ALBVR,ALBVF,ZT,SLR1D,                      &
                                          UVRR,UVRF,PARR,PARF,NIRR,NIRF,                         &
                                          Ig1D, Jg1D,                                            &
                                          HBATMTRN, HBATMRFL,                                    &
@@ -3278,8 +3275,7 @@ contains
                do J=1,NUM_BANDS_SOLAR
                    BUF_AEROSOL = AEROSOL_EXT(:,:,:,J)
 
-                   call ReOrder(BUFIMP(L1 + (J-1)*LM*NUMMAX),BUF_AEROSOL,DAYTIME,NUMMAX,&
-                        HorzDims,LM,PACKIT)
+                   call PackIt(BUFIMP(L1 + (J-1)*LM*NUMMAX),BUF_AEROSOL,DAYTIME,NUMMAX,HorzDims,LM)
                end do
 
                LN = L1 + NUMMAX*LM*NUM_BANDS_SOLAR - 1
@@ -3293,8 +3289,7 @@ contains
                do J=1,NUM_BANDS_SOLAR
                    BUF_AEROSOL = AEROSOL_SSA(:,:,:,J)
 
-                   call ReOrder(BUFIMP(L1 + (J-1)*LM*NUMMAX),BUF_AEROSOL,DAYTIME,NUMMAX,&
-                        HorzDims,LM,PACKIT)
+                   call PackIt(BUFIMP(L1 + (J-1)*LM*NUMMAX),BUF_AEROSOL,DAYTIME,NUMMAX,HorzDims,LM)
                end do
 
                LN = L1 + NUMMAX*LM*NUM_BANDS_SOLAR - 1
@@ -3308,8 +3303,7 @@ contains
                do J=1,NUM_BANDS_SOLAR
 
                    BUF_AEROSOL = AEROSOL_ASY(:,:,:,J)
-                   call ReOrder(BUFIMP(L1 + (J-1)*LM*NUMMAX),BUF_AEROSOL,DAYTIME,NUMMAX,&
-                        HorzDims,LM,PACKIT)
+                   call PackIt(BUFIMP(L1 + (J-1)*LM*NUMMAX),BUF_AEROSOL,DAYTIME,NUMMAX,HorzDims,LM)
                end do
 
                LN = L1 + NUMMAX*LM*NUM_BANDS_SOLAR - 1
@@ -3325,24 +3319,24 @@ contains
                if (SLICESimp(K) /= 1) then
                   call ESMFL_StateGetPointerToData(IMPORT, PTR3, NAMESimp(K), RC=STATUS)
                   VERIFY_(STATUS)
-                  call ReOrder(BUFIMP(L1),Ptr3,DAYTIME,NUMMAX,HorzDims,size(Ptr3,3),PACKIT)
+                  call PackIt(BUFIMP(L1),Ptr3,DAYTIME,NUMMAX,HorzDims,size(Ptr3,3))
 
                   LN = L1 + NUMMAX*size(PTR3,3) - 1
 
                else  ! case(MAPL_DIMSHORZONLY)
                   if (trim(NAMESimp(K)) == 'Ig') then
-                     call ReOrder(BUFIMP(L1),real(Ig),DAYTIME,NUMMAX,HorzDims,1,PACKIT)
+                     call PackIt(BUFIMP(L1),real(Ig),DAYTIME,NUMMAX,HorzDims,1)
                   else if (trim(NAMESimp(K)) == 'Jg') then
-                     call ReOrder(BUFIMP(L1),real(Jg),DAYTIME,NUMMAX,HorzDims,1,PACKIT)
+                     call PackIt(BUFIMP(L1),real(Jg),DAYTIME,NUMMAX,HorzDims,1)
                   else if (trim(NAMESimp(K)) == 'LATS') then
-                     call ReOrder(BUFIMP(L1),LATS,DAYTIME,NUMMAX,HorzDims,1,PACKIT)
+                     call PackIt(BUFIMP(L1),LATS,DAYTIME,NUMMAX,HorzDims,1)
                   else if (trim(NAMESimp(K)) == 'SLR') then
-                     call ReOrder(BUFIMP(L1),SLR,DAYTIME,NUMMAX,HorzDims,1,PACKIT)
+                     call PackIt(BUFIMP(L1),SLR,DAYTIME,NUMMAX,HorzDims,1)
                   else if (trim(NAMESimp(K)) == 'ZTH') then
-                     call ReOrder(BUFIMP(L1),ZTH,DAYTIME,NUMMAX,HorzDims,1,PACKIT)
+                     call PackIt(BUFIMP(L1),ZTH,DAYTIME,NUMMAX,HorzDims,1)
                   else 
                      call ESMFL_StateGetPointerToData(IMPORT, PTR2, NAMESimp(K), __RC__)
-                     call ReOrder(BUFIMP(L1),Ptr2,DAYTIME,NUMMAX,HorzDims,1,PACKIT)
+                     call PackIt(BUFIMP(L1),Ptr2,DAYTIME,NUMMAX,HorzDims,1)
                   end if
 
                   LN = L1 + NUMMAX - 1
@@ -5119,11 +5113,10 @@ contains
 
       call MAPL_TimerOff(MAPL,"--RETRIEVE")
 
-      !-----------------------------------------------------------------------
-      ! Unpack the results. ReOrder fills "masked" (night) locations with zero
-      !-----------------------------------------------------------------------
+      !--------------------------------------------------------------------------------------------
+      ! Unpack the results. Fills "masked" (night) locations with default value from internal state
+      !--------------------------------------------------------------------------------------------
       ! resulting internals are then contiguous versions
-      ! pmn: "masked" (night) locations now get a default value from internal state
 
       NumInt = size(INTERNALspec)
 
@@ -5137,11 +5130,11 @@ contains
             if(SLICESint(K)>1) then
                call ESMFL_StateGetPointerToData(INTERNAL, PTR3, NAMESint(K), RC=STATUS)
                VERIFY_(STATUS)
-               call ReOrder(BUFINT(L1),PTR3,DAYTIME,NUMMAX,HorzDims,size(Ptr3,3),UNPACKIT,DEFAULT=internalDefault)
+               call UnPackIt(BUFINT(L1),PTR3,DAYTIME,NUMMAX,HorzDims,size(Ptr3,3),DEFAULT=internalDefault)
             else
                call ESMFL_StateGetPointerToData(INTERNAL, PTR2, NAMESint(K), RC=STATUS)
                VERIFY_(STATUS)
-               call ReOrder(BUFINT(L1),PTR2,DAYTIME,NUMMAX,HorzDims,1           ,UNPACKIT,DEFAULT=internalDefault)
+               call UnPackIt(BUFINT(L1),PTR2,DAYTIME,NUMMAX,HorzDims,1           ,DEFAULT=internalDefault)
             end if
 
             L1 = L1 + NUMMAX*SLICESint(K)
@@ -6471,103 +6464,59 @@ contains
 
   end subroutine RUN
 
-subroutine PackLoc(A,B,MSK,LENA,LENB,MASKIT)
+  subroutine PackIt (Packed, UnPacked, MSK, Pdim, Udim, LM)
+    integer, intent(IN   ) :: Pdim, Udim(2), LM
+    real,    intent(INOUT) ::   Packed(Pdim,*)
+    real,    intent(IN   ) :: UnPacked(Udim(1),Udim(2),*)
+    logical, intent(IN   ) :: MSK(Udim(1),Udim(2))
 
-  implicit none
+    integer :: I, J, L, M
 
-  real,    intent(IN   ) :: A(LENA)
-  real,    intent(  OUT) :: B(LENB)
-  integer, intent(IN   ) :: LENA, LENB
-  logical, intent(IN   ) :: MSK(LENA), MASKIT
-
-  integer :: I, M
-
-  if (MASKIT) then
-     M = 1
-     do I = 1,LENA
-        if (MSK(I)) then
-           B(M) = A(I)
-           M = M+1
-           if (M>LENB) exit
-        end if
-     end do
-  else
-     if (LENA /= LENB) stop
-     B = A
-  end if
-
-end subroutine PackLoc
-
-subroutine UnPackLoc(A,B,MSK,F,LENA,LENB,MASKIT)
-
-   implicit none
-
-   real,    intent(IN   ) :: A(LENA), F
-   real,    intent(  OUT) :: B(LENB)
-   integer, intent(IN   ) :: LENA, LENB
-   logical, intent(IN   ) :: MSK(LENB), MASKIT
-
-   integer :: I, M
-
-   if(MASKIT) then
+    do L = 1,LM
       M = 1
-      do I = 1,LENB
-         if (MSK(I)) then
-            if (M>LENA) then
-               B(I) = F
-            else
-               B(I) = A(M)
-            end if
-            M = M+1
-         else
-            B(I) = F
-         end if
-      end do
-   else
-      if (LENA /= LENB) stop
-      B = A
-   end if
-
-end subroutine UnPackLoc
-
-! pmn: 2018-11-07 add DEFAULT optional
-subroutine ReOrder(Packed, UnPacked, MSK, Pdim, Udim, LM, DIR, DEFAULT)
-  integer, intent(IN   ) :: Pdim, Udim(2), LM, DIR 
-  real,    intent(INOUT) ::   Packed(Pdim,*)
-  real,    intent(INOUT) :: UnPacked(Udim(1),Udim(2),*)
-  logical, intent(IN   ) :: MSK(Udim(1),Udim(2))
-  real, optional, intent(IN) :: DEFAULT
-
-  integer :: I, J, L, M
-  real :: usableDefault
-
-  if (PRESENT(DEFAULT)) then
-    usableDefault = DEFAULT
-  else
-    usableDefault = 0
-  end if
-
-  do L = 1,LM
-     M = 1
-     do J = 1,Udim(2)
+      do J = 1,Udim(2)
         do I = 1,Udim(1)
-           if (MSK(I,J)) then
-              if(DIR==PACKIT) then
-                 Packed(M,L) = UnPacked(I,J,L)
-              else
-                 Unpacked(I,J,L) = Packed(M,L)
-              end if
-              M = M+1
-           else
-              if(DIR/=PACKIT) then
-                 UnPacked(I,J,L) = usableDefault
-              end if
-           end if
+          if (MSK(I,J)) then
+            Packed(M,L) = UnPacked(I,J,L)
+            M = M+1
+          end if
         end do
-     end do
-  end do
+      end do
+    end do
 
-end subroutine ReOrder
+  end subroutine PackIt
+
+  subroutine UnPackIt(Packed, UnPacked, MSK, Pdim, Udim, LM, DEFAULT)
+    integer, intent(IN   ) :: Pdim, Udim(2), LM
+    real,    intent(IN   ) ::   Packed(Pdim,*)
+    real,    intent(INOUT) :: UnPacked(Udim(1),Udim(2),*)
+    logical, intent(IN   ) :: MSK(Udim(1),Udim(2))
+    real, optional, intent(IN) :: DEFAULT
+
+    integer :: I, J, L, M
+    real :: usableDefault
+
+    if (PRESENT(DEFAULT)) then
+      usableDefault = DEFAULT
+    else
+      usableDefault = 0
+    end if
+
+    do L = 1,LM
+      M = 1
+      do J = 1,Udim(2)
+        do I = 1,Udim(1)
+          if (MSK(I,J)) then
+            Unpacked(I,J,L) = Packed(M,L)
+            M = M+1
+          else
+            UnPacked(I,J,L) = usableDefault
+          end if
+        end do
+      end do
+    end do
+
+  end subroutine UnPackIt
 
 end module GEOS_SolarGridCompMod
 
