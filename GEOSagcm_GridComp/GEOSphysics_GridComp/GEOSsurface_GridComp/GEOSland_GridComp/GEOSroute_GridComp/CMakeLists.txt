@@ -7,5 +7,7 @@ set (srcs
 
 include_directories (${INC_ESMF} ${INC_NETCDF})
 
-esma_add_library (${this} SRCS ${srcs} DEPENDENCIES MAPL)
+esma_add_library (${this} SRCS ${srcs} DEPENDENCIES MAPL_Base)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
+
+install(PROGRAMS build_rivernetwork.py DESTINATION bin)

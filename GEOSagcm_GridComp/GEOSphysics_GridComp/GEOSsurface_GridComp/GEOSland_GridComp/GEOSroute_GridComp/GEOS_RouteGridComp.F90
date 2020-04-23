@@ -24,7 +24,8 @@ module GEOS_RouteGridCompMod
 ! !USES: 
 
   use ESMF
-  use MAPL
+  use MAPL_Mod
+  use MAPL_ConstantsMod
   use ROUTING_MODEL,          ONLY:     &
        river_routing, ROUTE_DT
 #if 0
