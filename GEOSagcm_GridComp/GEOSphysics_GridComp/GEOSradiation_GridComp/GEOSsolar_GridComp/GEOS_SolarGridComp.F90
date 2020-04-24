@@ -4351,7 +4351,7 @@ contains
       ! PAR bands (11-12: 16000-29000 cm-1, 0.345-0.625 micron)
       PAR_DNB = 0.; PAR_DNR = 0.; PAR_UPF = 0.
       PAR_ALR = 0.; PAR_ALF = 0.
-      do ib=1,9
+      do ib=11,12
         PAR_DNB = PAR_DNB + real(bnd_flux_dn_allsky (:,:,ib))
         PAR_DNR = PAR_DNR + real(bnd_flux_dir_allsky(:,:,ib))
         PAR_UPF = PAR_UPF + real(bnd_flux_up_allsky (:,:,ib))
@@ -4362,7 +4362,7 @@ contains
       ! UVR bands (13-14: 29000-50000 cm-1, 0.200-0.345 micron)
       UVR_DNB = 0.; UVR_DNR = 0.; UVR_UPF = 0.
       UVR_ALR = 0.; UVR_ALF = 0.
-      do ib=1,9
+      do ib=13,14
         UVR_DNB = UVR_DNB + real(bnd_flux_dn_allsky (:,:,ib))
         UVR_DNR = UVR_DNR + real(bnd_flux_dir_allsky(:,:,ib))
         UVR_UPF = UVR_UPF + real(bnd_flux_up_allsky (:,:,ib))
@@ -4873,8 +4873,8 @@ contains
         ! only do for regular aerosol-inclusive calculation
 
         ! whole of atmosphere transmissivity and reflectivity
-        ! following Hogan and Bozzo (2015), JAMES v. 7, pp. 836--853
-        ! ----------------------------------------------------------
+        ! following Hogan and Bozzo (2015), JAMES, vol. 7, pp. 836--853
+        ! -------------------------------------------------------------
         allocate(V1D(size(Q,1)),__STAT__)
         V1D = 1. - FSWU(:,LM+1)**2
         HBATMTRN = ((FSW(:,LM+1) + FSWU(:,LM+1)) - FSWU(:,LM+1) * FSWU(:,1)) / V1D
