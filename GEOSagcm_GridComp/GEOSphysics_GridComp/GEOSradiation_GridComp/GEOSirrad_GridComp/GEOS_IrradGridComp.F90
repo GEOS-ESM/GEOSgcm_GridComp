@@ -2989,9 +2989,9 @@ contains
           ! get column subset of the band-space in-cloud optical properties
           call MAPL_TimerOn(MAPL,"---RRTMGP_SUBSET",__RC__)
           TEST_(cloud_props%get_subset(colS, ncols_subset, cloud_props_subset))
-          call MAPL_TimerOff(MAPL,"--RRTMGP_SUBSET",__RC__)
+          call MAPL_TimerOff(MAPL,"---RRTMGP_SUBSET",__RC__)
 
-          call MAPL_TimerOn(MAPL,"--RRTMGP_MCICA",__RC__)
+          call MAPL_TimerOn(MAPL,"---RRTMGP_MCICA",__RC__)
 
           ! generate McICA random numbers for subset
           ! Note: really only needed where cloud fraction > 0 (speedup?)
@@ -3037,7 +3037,7 @@ contains
           end select
           TEST_(draw_samples(cld_mask, cloud_props_subset, cloud_props_gpt))
 
-          call MAPL_TimerOff(MAPL,"--RRTMGP_MCICA",__RC__)
+          call MAPL_TimerOff(MAPL,"---RRTMGP_MCICA",__RC__)
 
         end if
 
