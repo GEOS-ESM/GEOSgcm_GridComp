@@ -775,7 +775,7 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-    ! Advanced Flux Update Internals
+    ! Advanced Flux Update (AFU) Internals
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'Hogan_and_Bozzo_atmospheric_transmission',              &
@@ -1310,7 +1310,8 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-    ! advanced flux updates
+    ! Advanced Flux Update (AFU) Exports
+
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'surface_downwelling_ultraviolet_beam_flux_AFU',         &
        UNITS      = 'W m-2',                                                 &
@@ -2749,7 +2750,7 @@ contains
 
        ! export direct from internals:
        !   surface downwelling normalized fluxes
-       !   and 'advanced flux update' internals
+       !   and Advanced Flux Update (AFU) internals
        list = [S_('DRUVRN'), S_('DRPARN'), S_('DRNIRN'),                                            &
                S_('DFUVRN'), S_('DFPARN'), S_('DFNIRN'),                                            &
                S_('HBATMTRN'), S_('HBATMRFL'),                                                      &
@@ -3041,9 +3042,9 @@ contains
       type(RealF90Ptr2D), allocatable :: VARSINT(:)
       type(RealF90Ptr3D), allocatable :: VARSIMP(:)
 
-      ! -------------------------
-      ! For advanced flux updates
-      ! -------------------------
+      ! ------------------------------
+      ! For Advanced Flux Update (AFU)
+      ! ------------------------------
       type(Eddington_Rayleigh_Optics) :: obkg
       type(WOA_Eddington_Rayleigh) :: Ebkg, Eana
       double precision :: b_taue, b_ssae, b_g_Ed, b_f_Ry
@@ -3642,8 +3643,8 @@ contains
       O3 = O3 * (MAPL_O3MW / MAPL_AIRMW)
       O3 = MAX(O3, 0.0)
       
-      ! Advanced Flux Update variables
-      ! ------------------------------
+      ! Advanced Flux Update (AFU) variables
+      ! ------------------------------------
 
       ! upwelling diffuse super-band fluxes
       allocate(UVR_UPF(size(Q,1),size(Q,2)+1),__STAT__)
@@ -4864,9 +4865,9 @@ contains
       deallocate (SSAA)
       deallocate (ASYA)
 
-      ! ===========================================================
-      ! bulk atmospheric characterization for advanced flux updates
-      ! ===========================================================
+      ! ================================================================
+      ! bulk atmospheric characterization for Advanced Flux Update (AFU)
+      ! ================================================================
 
       if (.not. NO_AERO) then
         ! only do for regular aerosol-inclusive calculation
@@ -6188,9 +6189,9 @@ contains
         end where
       end if
   
-      ! ----------------------------
-      ! Advanced Flux Updates (AFUs)
-      ! ----------------------------
+      ! --------------------------
+      ! Advanced Flux Update (AFU)
+      ! --------------------------
       ! Notes:
       ! 1. Must default to non-AFU case where REFRESH AFU was unsuccessful,
       ! or for UPDATEs that occur at beginning of run, before first REFRESH.
