@@ -13,7 +13,7 @@ module MOM6_GEOSPlugMod
 ! !MODULE: MOM6_GEOSPlugMod -- to couple with MOM6.
 
 !DESCRIPTION:
-! A  MAPL/ESMF Gridded Component that acts as a couple for MOM.
+! A  MAPL/ESMF Gridded Component that acts as a coupler for MOM.
 ! It uses ESMF AND MAPL. It has heavy dependencies on FMS and MOM.
 !
 ! This should be built like MOM, so that its default reals
@@ -101,7 +101,7 @@ contains
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
     integer, optional                  :: RC  ! return code
 
-! !DESCRIPTION:  The SetServices for the PhysicsGcm GC needs to register its
+! !DESCRIPTION:  The SetServices for the PhysicsGCM GC needs to register its
 !   Initialize and Run.  It uses the MAPL_Generic construct for defining
 !   state specs and couplings among its children.  In addition, it creates the
 !   children GCs (AGCM and OGCM) and runs their
@@ -300,7 +300,7 @@ contains
 
     call MAPL_AddImportSpec(GC,                                   &
         SHORT_NAME         = 'STROCNXB',                          &
-        LONG_NAME          = 'x_stress_at_base_of_ice_weighted_by_aiu',    &
+        LONG_NAME          = 'x_stress_at_base_of_ice_weighted_by_aiu_Bgrid',    &
         UNITS              = 'N m-2',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -309,7 +309,7 @@ contains
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'STROCNYB',                          &
-        LONG_NAME          = 'y_stress_at_base_of_ice_weighted_by_aiu',   &
+        LONG_NAME          = 'y_stress_at_base_of_ice_weighted_by_aiu_Bgrid',   &
         UNITS              = 'N m-2',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
@@ -387,9 +387,6 @@ contains
          LONG_NAME          = 'MOM_ocean_mask_at_t-points',        &
          UNITS              = '1',                                 &
          DIMS               = MAPL_DimsHorzOnly,                   &
-!SA: following horz dims is wrong.
-!        DIMS               = MAPL_DimsHorzVert,                   &
-!
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
     VERIFY_(STATUS)
@@ -526,7 +523,6 @@ contains
 
 !=============================================================================
 
-
 !BOP
 
 ! !IROUTINE: INITIALIZE -- Initialize method for ExternalOcean wrapper
@@ -557,11 +553,10 @@ contains
     integer                                :: Comm
     integer                                :: isc,iec,jsc,jec
     integer                                :: isd,ied,jsd,jed
-    integer                                :: IM, JM!, LM
+    integer                                :: IM, JM
     integer                                :: g_isc,g_iec,g_jsc,g_jec
     integer                                :: g_isd,g_ied,g_jsd,g_jed
 
-!   integer                                :: IMW, JMW
     integer                                :: YEAR,MONTH,DAY,HR,MN,SC
 
 ! Locals with MOM types
@@ -587,8 +582,6 @@ contains
 
     type(ocean_grid_type),         pointer :: Ocean_grid              => null()
 
-    integer                                :: DT_OCEAN
-
     REAL_, pointer                         :: TW  (:,:)        => null()
     REAL_, pointer                         :: SW  (:,:)        => null()
     REAL_, pointer                         :: AREA(:,:)        => null()
@@ -598,11 +591,7 @@ contains
 
     REAL_, pointer, dimension(:, :)        :: sea_lev          => null()
 
-!   REAL_, pointer, dimension(:, :, :)     :: DH      => null()
-!   REAL_, pointer, dimension(:, :, :)     :: TL      => null()
-!   REAL_, pointer, dimension(:, :, :)     :: SL      => null()
-
-!   integer                                :: i,j
+    integer                                :: DT_OCEAN
 
 ! Begin...
 
@@ -654,10 +643,10 @@ contains
     CALL ESMF_TimeIntervalGet(TINT, S=DT_OCEAN, RC=status)
     VERIFY_(status)
 
-! Allocate this instance of the internal state and put it in wrapper.
-! -------------------------------------------------------------------
+! Allocate this instance of the internal state and wrap
+! -----------------------------------------------------
 
-    allocate( MOM_MAPL_internal_state, stat=status )
+    allocate ( MOM_MAPL_internal_state, stat=status )
     VERIFY_(STATUS)
 
     wrap%ptr => MOM_MAPL_internal_state
@@ -670,6 +659,7 @@ contains
 
     allocate ( Boundary, stat=STATUS); VERIFY_(STATUS)
     allocate ( Ocean,    stat=STATUS); VERIFY_(STATUS)
+
     MOM_MAPL_internal_state%Ice_ocean_boundary => Boundary
     MOM_MAPL_internal_state%Ocean              => Ocean
 
@@ -679,80 +669,51 @@ contains
     call ESMF_VMGet(VM, mpiCommunicator=Comm, rc=STATUS)
     VERIFY_(STATUS)
 
-    call fms_init(Comm)                                      ! FMS/fms/fms.F90                               [MOM6 GEOS]
-                                                             ! mom/src/shared/fms/fms.F90                    [MOM5 GEOS]
+    call fms_init(Comm)
+
 ! Init MOM stuff
 !---------------
 
-    call constants_init                                      ! FMS/constants/constants.F90                   [MOM6 GEOS] SA: sync with MAPL_Constants
-                                                             ! mom/src/shared/constants/constants.F90        [MOM5 GEOS]
+    call constants_init
+    call field_manager_init
+    call set_calendar_type ( JULIAN)
+    call diag_manager_init                                   !SA: could pass time_init, not available before (MOM5)
 
-    call field_manager_init                                  ! FMS/field_manager/field_manager.F90           [MOM6 GEOS]
-                                                             ! mom/src/shared/field_manager/field_manager.F90[MOM5 GEOS]
-
-    call set_calendar_type ( JULIAN)                         ! FMS/time_manager/time_manager.F90             [MOM6 GEOS]
-                                                             ! mom/src/shared/time_manager/time_manager.F90  [MOM5 GEOS]
-
-    call diag_manager_init                                   ! FMS/diag_manager/diag_manager.F90             [MOM6 GEOS] SA: could pass time_init, not available before (MOM5)
-                                                             ! mom/src/shared/diag_manager/diag_manager.F90  [MOM5 GEOS]
-
-    DT   = set_time (DT_OCEAN, 0)                            ! FMS/time_manager/time_manager.F90             [MOM6 GEOS]
-                                                             ! mom/src/shared/time_manager/time_manager.F90  [MOM5 GEOS]
-
-    Time = set_date (YEAR,MONTH,DAY,HR,MN,SC)                ! FMS/time_manager/time_manager.F90             [MOM6 GEOS]
-                                                             ! mom/src/shared/time_manager/time_manager.F90  [MOM5 GEOS]
+    DT   = set_time (DT_OCEAN, 0)
+    Time = set_date (YEAR,MONTH,DAY,HR,MN,SC)
 
     Ocean%is_ocean_pe = .true.
-    call ocean_model_init  (Ocean, Ocean_state, Time, Time)  ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
-                                                             ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
+    call ocean_model_init  (Ocean, Ocean_state, Time, Time)
+
     MOM_MAPL_internal_state%Ocean_State => Ocean_State
 
     call ocean_model_init_sfc(Ocean_state, Ocean)
 
-! Check local sizes of horizontal dimensions
-!--------------------------------------------
-
-!   call mom4_get_dimensions(isc, iec, jsc, jec, nk_out=LM)          ! mom/src/mom5/ocean_core/ocean_model.F90    [MOM5 GEOS]
-!   call mpp_get_data_domain   (Ocean%Domain, isd, ied, jsd, jed)     ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
-
-!   print *, 'R1 [isc, iec], [jsc, jec] = ', '[', isc, iec, ']', '[', jsc, jec, ']'
-!   print *, 'R1 [isd, ied], [jsd, jed] = ', '[', isd, ied, ']', '[', jsd, jed, ']'
-
 ! Get the ocean grid and sizes of global and computational domains
+!-----------------------------------------------------------------
+
     call get_ocean_grid (Ocean_state, Ocean_grid)
-    isc  = Ocean_grid%isc   ; iec  = Ocean_grid%iec    ; jsc  = Ocean_grid%jsc   ; jec  = Ocean_grid%jec
-    isd  = Ocean_grid%isd   ; ied  = Ocean_grid%ied    ; jsd  = Ocean_grid%jsd   ; jed  = Ocean_grid%jed
+    isc  = Ocean_grid%isc; iec  = Ocean_grid%iec
+    isd  = Ocean_grid%isd; ied  = Ocean_grid%ied
 
-!   print *, 'R2 [isc, iec], [jsc, jec] = ', isc, iec, jsc, jec
-!   print *, 'R2 [isd, ied], [jsd, jed] = ', isd, ied, jsd, jed
-
-!   isc = isc -isd + 1;
-!   iec = iec -isd + 1;
-!   ied = ied -isd + 1;
-!   isd = 1
-
-!   jsc = jsc -jsd + 1;
-!   jec = jec -jsd + 1;
-!   jed = jed -jsd + 1;
-!   jsd = 1
-
-    print *, 'R3 [isc, iec], [jsc, jec] = ', isc, iec, jsc, jec
-    print *, 'R3 [isd, ied], [jsd, jed] = ', isd, ied, jsd, jed
+    jsc  = Ocean_grid%jsc; jec  = Ocean_grid%jec
+    jsd  = Ocean_grid%jsd; jed  = Ocean_grid%jed
 
     call mpp_get_compute_domain(Ocean%Domain, g_isc, g_iec, g_jsc, g_jec)
+
     g_isd  = Ocean_grid%isd_global; g_jsd  = Ocean_grid%jsd_global
-    ! local + global -1
-    g_ied = ied +g_isd -1;          g_jed = jed +g_jsd -1
+    g_ied = ied +g_isd -1;          g_jed = jed +g_jsd -1                         ! local + global -1
 
-    print *, 'R4 [g_isc, g_iec], [g_jsc, g_jec] = ', g_isc, g_iec, g_jsc, g_jec
-    print *, 'R4 [g_isd, g_ied], [g_jsd, g_jed] = ', g_isd, g_ied, g_jsd, g_jed
+    print *, 'R1 [g_isc, g_iec], [g_jsc, g_jec] = ', g_isc, g_iec, g_jsc, g_jec
+    print *, 'R1 [g_isd, g_ied], [g_jsd, g_jed] = ', g_isd, g_ied, g_jsd, g_jed
 
+! Check local sizes of horizontal dimensions
+!--------------------------------------------
     call MAPL_GridGet(GRID, localCellCountPerDim=counts, RC=status)
     VERIFY_(STATUS)
 
     IM=iec-isc+1
     JM=jec-jsc+1
-!   LM=Ocean_state%GV%ke
 
     ASSERT_(counts(1)==IM)
     ASSERT_(counts(2)==JM)
@@ -774,7 +735,7 @@ contains
                Boundary% fprec           (g_isd:g_ied,g_jsd:g_jed), &
                Boundary% runoff          (g_isd:g_ied,g_jsd:g_jed), &
                Boundary% calving         (g_isd:g_ied,g_jsd:g_jed), &
-               Boundary% stress_mag      (g_isd:g_ied,g_jsd:g_jed), &        ! SA: additions in MOM6
+               Boundary% stress_mag      (g_isd:g_ied,g_jsd:g_jed), &
                Boundary% ustar_berg      (g_isd:g_ied,g_jsd:g_jed), &
                Boundary% area_berg       (g_isd:g_ied,g_jsd:g_jed), &
                Boundary% mass_berg       (g_isd:g_ied,g_jsd:g_jed), &
@@ -803,14 +764,14 @@ contains
     Boundary%fprec           = 0.0
     Boundary%runoff          = 0.0
     Boundary%calving         = 0.0
-    Boundary%stress_mag      = 0.0   ! SA: additions in MOM6
+    Boundary%stress_mag      = 0.0
     Boundary%ustar_berg      = 0.0
     Boundary%area_berg       = 0.0
     Boundary%mass_berg       = 0.0
     Boundary%runoff_hflx     = 0.0
     Boundary%calving_hflx    = 0.0
     Boundary%p               = 0.0
-    Boundary%mi             = 0.0
+    Boundary%mi              = 0.0
     Boundary% ice_rigidity   = 0.0
 
 ! Profilers
@@ -838,44 +799,22 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, sea_lev,  'SLV',         alloc=.true., RC=STATUS)
     VERIFY_(STATUS)
-!   call MAPL_GetPointer(EXPORT, DH,       'DH'  ,        alloc=.true., RC=STATUS)
-!   VERIFY_(STATUS)
-!   call MAPL_GetPointer(EXPORT, TL,       'T',           alloc=.true., RC=STATUS)
-!   VERIFY_(STATUS)
-!   call MAPL_GetPointer(EXPORT, SL,       'S',           alloc=.true., RC=STATUS)
-!   VERIFY_(STATUS)
-
-! Get the 3-D MOM data
-!---------------------
-                                                           ! SA: cut and loose with MASK! Anyway, it is 2D now.
-!   DH = real(Ocean_state%MOM_CSp%h, kind=G5KIND)          ! mom6/src/core/MOM.F90                   [MOM6 GEOS] layer thickness [H ~> m or kg m-2]
-!   call mom4_get_thickness(Tmp3)                          ! mom/src/mom5/ocean_core/ocean_model.F90 [MOM5 GEOS] thickness (in meters) of each layer
-
-!   TL = real(Ocean_state%MOM_CSp%T + MAPL_TICE, kind=G5KIND) ! mom6/src/core/MOM.F90                   [MOM6 GEOS] potential temperature [degC]
-!   call mom4_get_prog_tracer(i,fld=Tmp3)                     ! mom/src/mom5/ocean_core/ocean_model.F90 [MOM5 GEOS]
-
-!   SL = real(Ocean_state%MOM_CSp%S, kind=G5KIND)          ! mom6/src/core/MOM.F90                   [MOM6 GEOS] in ppt
-!   call mom4_get_salinity_index(i)                        ! mom/src/mom5/ocean_core/ocean_model.F90 [MOM5 GEOS]
-!   call mom4_get_prog_tracer(i,fld=Tmp3)
 
 ! Get the 2-D MOM data
 !---------------------
     allocate(Tmp2(IM,JM), stat=status); VERIFY_(STATUS)
 
-    call ocean_model_data_get(Ocean_State, Ocean, 'mask', Tmp2, isc, jsc)       ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
-!   call mom4_get_3D_tmask(Tmp3)                                                ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS] ! SA: No need for 3D mask, 2D is good enough!
+    call ocean_model_data_get(Ocean_State, Ocean, 'mask', Tmp2, isc, jsc)
     MASK = real(Tmp2, kind=G5KIND)
 
-    call ocean_model_data_get(Ocean_State, Ocean, 't_surf', Tmp2, g_isc, g_jsc)     ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: in K
-!   call mom4_get_Tsurf(Ocean,Tmp2)                                             ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
+    call ocean_model_data_get(Ocean_State, Ocean, 't_surf', Tmp2, g_isc, g_jsc) ! this comes to us in deg C
     where(MASK(:,:) > 0.0)
-       TW = real(Tmp2, kind=G5KIND) + MAPL_TICE  ! because c to K was subtract
+       TW = real(Tmp2, kind=G5KIND) + MAPL_TICE                                 ! because C to K was subtracted in MOM
     elsewhere
        TW = MAPL_UNDEF
     end where
 
-    call ocean_model_data_get(Ocean_State, Ocean, 's_surf', Tmp2, g_isc, g_jsc)     ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: in PSU
-!   call mom4_get_Ssurf(Ocean,Tmp2)                                             ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
+    call ocean_model_data_get(Ocean_State, Ocean, 's_surf', Tmp2, g_isc, g_jsc) ! comes to us in PSU
     where(MASK(:,:) > 0.0)
        SW = real(Tmp2, kind=G5KIND)
     elsewhere
@@ -883,14 +822,12 @@ contains
     end where
 
     if(associated(area)) then
-       call ocean_model_data_get(Ocean_State, Ocean, 'area', Tmp2, g_isc, g_jsc)     ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
-                                                                                 ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
+       call ocean_model_data_get(Ocean_State, Ocean, 'area', Tmp2, g_isc, g_jsc)
        AREA = real(Tmp2, kind=G5KIND)
     end if
 
     if(associated(sea_lev)) then
-       call ocean_model_data_get(Ocean_State, Ocean, 'sea_lev', Tmp2, g_isc, g_jsc)  ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: includes Inv Baro in M
-                                                                                 ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
+       call ocean_model_data_get(Ocean_State, Ocean, 'sea_lev', Tmp2, g_isc, g_jsc) ! includes Inv Baro in M
        sea_lev = real(merge(tsource = Tmp2, fsource = real(MAPL_UNDEF), mask = (MASK(:, :) > 0.0)), kind=G5KIND)
     end if
 
@@ -932,12 +869,10 @@ contains
 
 ! Locals
 
-    integer                            :: IM, JM!, LM
-!   integer                            :: IMw, JMw
-!   integer                            :: I
-!   integer                            :: J
+    integer                            :: IM, JM
 
-    integer                            :: steady_state_ocean = 0     ! SA: Per Atanas T, "name" of this var is misleading! We run ocean model only when it = 0 !
+    integer                            :: steady_state_ocean = 0       ! SA: Per Atanas T, "name" of this var is misleading
+                                                                       ! We run ocean model only when it = 0
     logical                            :: ocean_seg_start    = .true.
     logical                            :: ocean_seg_end      = .true.
 
@@ -949,51 +884,42 @@ contains
     REAL_, pointer                     :: VW    (:,:)        => null()
     REAL_, pointer                     :: UWB   (:,:)        => null()
     REAL_, pointer                     :: VWB   (:,:)        => null()
-!   REAL_, pointer                     :: DH    (:,:,:)      => null()
     REAL_, pointer                     :: SLV   (:,:)        => null()
     REAL_, pointer                     :: FRAZIL(:,:)        => null()
     REAL_, pointer                     :: MASK  (:,:)        => null()
     REAL_, pointer                     :: AREA  (:,:)        => null()
 
 ! Optional Exports
-
-!   REAL_, pointer                     :: DEPTH (:,:,:)      => null()
-!   REAL_, pointer                     :: TL    (:,:,:)      => null()
-!   REAL_, pointer                     :: SL    (:,:,:)      => null()
-!   REAL_, pointer                     :: SWFRAC(:,:,:)      => null()
+! none
 
 ! Imports
-    REAL_, pointer                     :: TAUX(:,:)         => null()
-    REAL_, pointer                     :: TAUY(:,:)         => null()
-    REAL_, pointer                     :: PS  (:,:)         => null()
-    REAL_, pointer                     :: PICE(:,:)         => null()
-!   REAL_, pointer                     :: HEAT(:,:,:)       => null()
-    REAL_, pointer                     :: LWFLX(:,:)        => null()
-    REAL_, pointer                     :: SHFLX(:,:)        => null()
-    REAL_, pointer                     :: QFLUX(:,:)        => null()
-    REAL_, pointer                     :: RAIN(:,:)         => null()
-    REAL_, pointer                     :: SNOW(:,:)         => null()
-    REAL_, pointer                     :: SFLX(:,:)         => null()
-    REAL_, pointer                     :: PENUVR(:,:)       => null()
-    REAL_, pointer                     :: PENPAR(:,:)       => null()
-    REAL_, pointer                     :: PENUVF(:,:)       => null()
-    REAL_, pointer                     :: PENPAF(:,:)       => null()
-    REAL_, pointer                     :: DRNIR(:,:)        => null()
-    REAL_, pointer                     :: DFNIR(:,:)        => null()
-    REAL_, pointer                     :: DISCHARGE(:,:)    => null()
-    REAL_, pointer                     :: STROCNXB(:,:)     => null()
-    REAL_, pointer                     :: STROCNYB(:,:)     => null()
-    REAL_, pointer                     :: AICEU(:,:)        => null()
+    REAL_, pointer                     :: TAUX(:,:)          => null()
+    REAL_, pointer                     :: TAUY(:,:)          => null()
+    REAL_, pointer                     :: PS  (:,:)          => null()
+    REAL_, pointer                     :: PICE(:,:)          => null()
+    REAL_, pointer                     :: LWFLX(:,:)         => null()
+    REAL_, pointer                     :: SHFLX(:,:)         => null()
+    REAL_, pointer                     :: QFLUX(:,:)         => null()
+    REAL_, pointer                     :: RAIN(:,:)          => null()
+    REAL_, pointer                     :: SNOW(:,:)          => null()
+    REAL_, pointer                     :: SFLX(:,:)          => null()
+    REAL_, pointer                     :: PENUVR(:,:)        => null()
+    REAL_, pointer                     :: PENPAR(:,:)        => null()
+    REAL_, pointer                     :: PENUVF(:,:)        => null()
+    REAL_, pointer                     :: PENPAF(:,:)        => null()
+    REAL_, pointer                     :: DRNIR(:,:)         => null()
+    REAL_, pointer                     :: DFNIR(:,:)         => null()
+    REAL_, pointer                     :: DISCHARGE(:,:)     => null()
+    REAL_, pointer                     :: STROCNXB(:,:)      => null()
+    REAL_, pointer                     :: STROCNYB(:,:)      => null()
+    REAL_, pointer                     :: AICEU(:,:)         => null()
 
 ! Temporaries
 
     real, allocatable                  :: U(:,:)
     real, allocatable                  :: V(:,:)
-!   real, allocatable                  :: H(:,:,:) ! SA: not used
-!   real, allocatable                  :: G(:,:,:) ! SA: not used
     real, allocatable                  :: cos_rot(:,:)
     real, allocatable                  :: sin_rot(:,:)
-!   real                               :: EPSLN
     real, allocatable                  :: Tmp2(:,:)
 
     type(MAPL_MetaComp),           pointer :: MAPL                     => null()
@@ -1012,10 +938,8 @@ contains
     type(time_type)                        :: Time
     type(time_type)                        :: DT
 
-!   integer                                :: l
     real                                   :: pice_scaling = 1.0
-    integer           :: DT_OCEAN
-    real, parameter   :: CW = 3992.10322329649                          ! SA: should use MAPL_Constants or add to it!
+    integer                                :: DT_OCEAN
 
     type(ESMF_Time)                        :: MyTime
     type(ESMF_TimeInterval)                :: TINT
@@ -1072,25 +996,17 @@ contains
 !----------------
 
     OceanDomain => Ocean%Domain
-    call mpp_get_compute_domain(OceanDomain, isc, iec, jsc, jec)            ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
-!   call mpp_get_data_domain   (OceanDomain, isd, ied, jsd, jed)            ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
-!   call get_ocean_domain(OceanDomain)                                      ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
-!   call mom4_get_dimensions(isc, iec, jsc, jec, isd, ied, jsd, jed, LM)    ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
+    call mpp_get_compute_domain(OceanDomain, isc, iec, jsc, jec)
 
 !   print *, '[isc, iec], [jsc, jec]:', '[', isc, iec, ']', '[', jsc, jec, ']'
     IM=iec-isc+1
     JM=jec-jsc+1
-!   get rid of all 3d exports.
-!   LM=Ocean_state%GV%ke
-!   print *, 'IM, JM, LM=', IM, JM, LM
 
 ! Temporaries with MOM default reals
 !-----------------------------------
 
     allocate(U(IM,JM   ),    stat=STATUS); VERIFY_(STATUS)
     allocate(V(IM,JM   ),    stat=STATUS); VERIFY_(STATUS)
-!   allocate(H(IM,JM,LM),    stat=STATUS); VERIFY_(STATUS)  ! SA: this is not needed ??
-!   allocate(G(IM,JM,LM),    stat=STATUS); VERIFY_(STATUS)  ! SA: this is not needed ??
     allocate(cos_rot(IM,JM), stat=STATUS); VERIFY_(STATUS)
     allocate(sin_rot(IM,JM), stat=STATUS); VERIFY_(STATUS)
 
@@ -1101,7 +1017,6 @@ contains
     call MAPL_GetPointer(IMPORT, TAUY,     'TAUY'  ,    RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PS,       'PS'    ,    RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PICE,     'PICE'  ,    RC=STATUS); VERIFY_(STATUS)
-!   call MAPL_GetPointer(IMPORT, HEAT,     'SWHEAT',    RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, LWFLX,    'LWFLX'  ,   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, SHFLX,    'SHFLX'  ,   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, QFLUX,    'QFLUX'  ,   RC=STATUS); VERIFY_(STATUS)
@@ -1130,35 +1045,35 @@ contains
     call MAPL_GetPointer(EXPORT, SW,    'SW'  ,   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, SLV,   'SLV',    RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FRAZIL,'FRAZIL', RC=STATUS); VERIFY_(STATUS)
-!   call MAPL_GetPointer(EXPORT, DEPTH, 'DEPTH',  RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, MASK, 'MOM_2D_MASK', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, AREA, 'AREA',        RC=STATUS); VERIFY_(STATUS)
 
-!   call MAPL_GetPointer(EXPORT, DH,   'DH'  ,        RC=STATUS); VERIFY_(STATUS)
-!   call MAPL_GetPointer(EXPORT, TL,   'T'   ,       RC=STATUS); VERIFY_(STATUS)
-!   call MAPL_GetPointer(EXPORT, SL,   'S'   ,       RC=STATUS); VERIFY_(STATUS)
-!   call MAPL_GetPointer(EXPORT, SWFRAC, 'SWFRAC',   RC=STATUS); VERIFY_(STATUS)
-
     call MAPL_GetResource(MAPL, pice_scaling, Label = "MOM_PICE_SCALING:", default = 1.0, rc = status); VERIFY_(status)
 
-    Boundary%P (isc:iec,jsc:jec)         = pice_scaling* &
-                         real(PICE,      kind=KIND(Boundary%p)) ! Pressure of overlying ice and atmosphere
+! Fill in ocean boundary fluxes/forces
+!-------------------------------------
 
-    Boundary%lw_flux(isc:iec,jsc:jec)   = real(LWFLX,     kind=KIND(Boundary%p)) ! Long wave flux: both positive down
-    Boundary%t_flux (isc:iec,jsc:jec)    = real(SHFLX,     kind=KIND(Boundary%p)) ! Sensible heat flux: both positive up
-    Boundary%q_flux (isc:iec,jsc:jec)    = real(QFLUX,     kind=KIND(Boundary%p)) ! specific humidity flux [kg m-2 s-1] ( OR evaporation flux ?)
-    Boundary%lprec (isc:iec,jsc:jec)     = real(RAIN,      kind=KIND(Boundary%p)) ! Liquid precipitation: both positive down
-    Boundary%fprec  (isc:iec,jsc:jec)    = real(SNOW,      kind=KIND(Boundary%p)) ! Frozen precipitation: both positive down
-    Boundary%salt_flux (isc:iec,jsc:jec) =-real(SFLX,      kind=KIND(Boundary%p)) ! Salt flux: MOM positive up, GEOS positive down
-    Boundary%runoff  (isc:iec,jsc:jec)   = real(DISCHARGE, kind=KIND(Boundary%p)) ! mass flux of liquid runoff [kg m-2 s-1]
+!   Boundary%P              (isc:iec,jsc:jec)= real(PS,            kind=KIND(Boundary%p)) + & ! Pressure of overlying atmospheric
+!                               pice_scaling * real(PICE,          kind=KIND(Boundary%p))     ! and ice
+    Boundary%P              (isc:iec,jsc:jec)= &
+                                 pice_scaling* real(PICE,          kind=KIND(Boundary%p)) ! Pressure of overlying ice only
+
+
+    Boundary%lw_flux        (isc:iec,jsc:jec)= real(LWFLX,         kind=KIND(Boundary%p)) ! Long wave flux: both positive down
+    Boundary%t_flux         (isc:iec,jsc:jec)= real(SHFLX,         kind=KIND(Boundary%p)) ! Sensible heat flux: both positive up
+    Boundary%q_flux         (isc:iec,jsc:jec)= real(QFLUX,         kind=KIND(Boundary%p)) ! specific humidity flux [kg m-2 s-1] ( OR evaporation flux ?)
+    Boundary%lprec          (isc:iec,jsc:jec)= real(RAIN,          kind=KIND(Boundary%p)) ! Liquid precipitation: both positive down
+    Boundary%fprec          (isc:iec,jsc:jec)= real(SNOW,          kind=KIND(Boundary%p)) ! Frozen precipitation: both positive down
+    Boundary%salt_flux      (isc:iec,jsc:jec)=-real(SFLX,          kind=KIND(Boundary%p)) ! Salt flux: MOM positive up, GEOS positive down
+    Boundary%runoff         (isc:iec,jsc:jec)= real(DISCHARGE,     kind=KIND(Boundary%p)) ! mass flux of liquid runoff [kg m-2 s-1]
 
 ! All shortwave components are positive down in MOM and in GEOS
 !--------------------------------------------------------------
-    Boundary%sw_flux_vis_dir (isc:iec,jsc:jec) = real(PENUVR+PENPAR, kind=KIND(Boundary%p)) ! direct visible sw radiation        [W m-2]
-    Boundary%sw_flux_vis_dif  (isc:iec,jsc:jec)= real(PENUVF+PENPAF, kind=KIND(Boundary%p)) ! diffuse visible sw radiation       [W m-2]
-    Boundary%sw_flux_nir_dir  (isc:iec,jsc:jec)= real(DRNIR,         kind=KIND(Boundary%p)) ! direct Near InfraRed sw radiation  [W m-2]
-    Boundary%sw_flux_nir_dif  (isc:iec,jsc:jec)= real(DFNIR,         kind=KIND(Boundary%p)) ! diffuse Near InfraRed sw radiation [W m-2]
+    Boundary%sw_flux_vis_dir(isc:iec,jsc:jec)= real(PENUVR+PENPAR, kind=KIND(Boundary%p)) ! direct visible sw radiation        [W m-2]
+    Boundary%sw_flux_vis_dif(isc:iec,jsc:jec)= real(PENUVF+PENPAF, kind=KIND(Boundary%p)) ! diffuse visible sw radiation       [W m-2]
+    Boundary%sw_flux_nir_dir(isc:iec,jsc:jec)= real(DRNIR,         kind=KIND(Boundary%p)) ! direct Near InfraRed sw radiation  [W m-2]
+    Boundary%sw_flux_nir_dif(isc:iec,jsc:jec)= real(DFNIR,         kind=KIND(Boundary%p)) ! diffuse Near InfraRed sw radiation [W m-2]
 
 ! Convert input stresses over water to MOM staggering
 !----------------------------------------------------
@@ -1183,8 +1098,8 @@ contains
     
 ! A-grid
 ! From Atanas (Apr 17, 2020): 
-! "Our stresses are produced on the A-grid points (and defined in respect to north and east). 
-!  For these we do not need to mess up with cos_rot and sin_rot (or set cos_rot to 1 and sin_rot to 0)"
+! "GEOS stresses are on the A-grid points (and defined in respect to north and east). 
+!  For A-grid stagger, we do not need cos_rot and sin_rot (i.e., set cos_rot to 1 and sin_rot to 0)"
  
 !   cos_rot = 1.
     call ocean_model_data_get(Ocean_State, Ocean, 'cos_rot', cos_rot, isc, jsc)
@@ -1217,24 +1132,22 @@ contains
     CALL ESMF_TimeIntervalGet(TINT, S=DT_OCEAN, RC=status)
     VERIFY_(status)
 
-    DT   = set_time (DT_OCEAN, 0)                       ! FMS/time_manager/time_manager.F90             [MOM6 GEOS]
-                                                        ! mom/src/shared/time_manager/time_manager.F90  [MOM5 GEOS]
-
-    Time = set_date (YEAR,MONTH,DAY,HR,MN,SC)           ! FMS/time_manager/time_manager.F90             [MOM6 GEOS]
-                                                        ! mom/src/shared/time_manager/time_manager.F90  [MOM5 GEOS]
+    DT   = set_time (DT_OCEAN, 0)
+    Time = set_date (YEAR,MONTH,DAY,HR,MN,SC)
 
 ! Run MOM for one time step
 !--------------------------
 
-    ! steady_state_ocean is always (by default) = 0 when we have an ocean model in GEOS.
-    ! set it to non-zero only if the coupled model becomes unstable (inconsistent atmosphere - bad restart! or some instabilities) - per Atanas T
+    ! set following to non-zero only if the coupled model becomes unstable 
+    ! (inconsistent atmosphere or bad restart! or some instabilities) - per Atanas T
     call MAPL_GetResource(MAPL, steady_state_ocean, Label = "steady_state_ocean:", default = 0, rc = status); VERIFY_(status)
 
-    ! SA: steady_state_ocean is not needed. Call update_ocean_model with additional args now available with MOM6
     if(steady_state_ocean == 0) then
-
-      call update_ocean_model(Boundary, Ocean_State, Ocean, Time, DT)  ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
-                                                                       ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
+      call update_ocean_model(Boundary, Ocean_State, Ocean, Time, DT)
+    else
+      ! SA: steady_state_ocean: Call update_ocean_model with additional args now available with MOM6
+      !     though this will cause MOM_FATAL error
+      call update_ocean_model(Boundary, Ocean_State, Ocean, Time, DT, .false., .false.)
     endif
 
 ! Get export fields
@@ -1243,54 +1156,51 @@ contains
 !-----------------------------------
 
     allocate(Tmp2(IM,JM), stat=status); VERIFY_(STATUS)
-    call ocean_model_data_get(Ocean_State, Ocean, 'mask', Tmp2, isc, jsc)       ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
+    call ocean_model_data_get(Ocean_State, Ocean, 'mask', Tmp2, isc, jsc)
     MASK = real(Tmp2, kind=G5KIND)
 
 !   surface (potential) temperature (K)
     U = 0.0
-    call ocean_model_data_get(Ocean_State, Ocean, 't_surf', U, isc, jsc) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: in K
-!   call mom4_get_Tsurf(Ocean,U)                                         ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
+    call ocean_model_data_get(Ocean_State, Ocean, 't_surf', U, isc, jsc) ! this comes to us in deg C
     where(MASK(:,:) > 0.0)
-       TW = real(U, kind=G5KIND) + MAPL_TICE  ! because c to K was subtract
+       TW = real(U, kind=G5KIND) + MAPL_TICE                             ! because C to K was subtracted in MOM
     elsewhere
        TW = MAPL_UNDEF
     end where
 
 !   surface salinity (PSU)
     U = 0.0
-    call ocean_model_data_get(Ocean_State, Ocean, 's_surf', U, isc, jsc) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: in PSU
-!   call mom4_get_Ssurf(Ocean,U)                                         ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
+    call ocean_model_data_get(Ocean_State, Ocean, 's_surf', U, isc, jsc) ! this comes to us in PSU
     where(MASK(:,:) > 0.0)
        SW = real(U, kind=G5KIND)
     elsewhere
        SW = MAPL_UNDEF
     end where
 
-!   DH = real(Ocean_state%MOM_CSp%h, kind=G5KIND)  ! mom6/src/core/MOM.F90                   [MOM6 GEOS] layer thickness [H ~> m or kg m-2]
-!   call mom4_get_thickness(H)                     ! mom/src/mom5/ocean_core/ocean_model.F90 [MOM5 GEOS] thickness (in meters) of each layer
+!   sea level
+    if(associated(SLV)) then
+       call ocean_model_data_get(Ocean_State, Ocean, 'sea_lev', U, isc, jsc) ! this comes to us in m
+       where(MASK(:,:)>0.0)
+          SLV = real(U, kind = G5KIND)
+       elsewhere
+          SLV=0.0
+       end where
+    end if
 
-!   3D T, S and depth, they are not 'masked'
-!   ocean potential temperature (3D; K)
-!   TL = real(Ocean_state%MOM_CSp%T + MAPL_TICE, kind=G5KIND) ! mom6/src/core/MOM.F90                   [MOM6 GEOS] potential temperature [degC]
-!   call mom4_get_prog_tracer(i,fld=H)                        ! mom/src/mom5/ocean_core/ocean_model.F90 [MOM5 GEOS]
-
-!   ocean salinity (3D; PSU)
-!   SL = real( Ocean_state%MOM_CSp%S, kind=G5KIND) ! mom6/src/core/MOM.F90                   [MOM6 GEOS]
-!   call mom4_get_salinity_index(i)                ! mom/src/mom5/ocean_core/ocean_model.F90 [MOM5 GEOS]
-!   call mom4_get_prog_tracer(i,fld=H)
-
-! Optional Exports at GEOS precision
-!-----------------------------------
+!   frazil 
+    if(associated(FRAZIL)) then
+       call ocean_model_data_get(Ocean_State, Ocean, 'frazil', U, isc, jsc)  ! this comes to us in J/m2 
+       where(MASK(:,:)>0.0)
+          FRAZIL = real(U, kind = G5KIND)
+       elsewhere
+          FRAZIL=0.0
+       end where
+    end if
 
 ! Get the A grid currents at MOM precision
 !-----------------------------------------
-    if(associated(UW) .or. associated(VW)) then
-!      ! initialize
-       U = 0.0; V = 0.0
-       call ocean_model_data_get(Ocean_State, Ocean, 'u_surf', U, isc, jsc) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: in PSU
-       call ocean_model_data_get(Ocean_State, Ocean, 'v_surf', V, isc, jsc) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: in PSU
-    endif
-
+    U = 0.0 ! initialize to be safe
+    call ocean_model_data_get(Ocean_State, Ocean, 'u_surf', U, isc, jsc) ! this comes to us in m/s
     if(associated(UW )) then
        where(MASK(:,:) > 0.0)
           UW = real(U, kind=G5KIND)
@@ -1299,6 +1209,8 @@ contains
        end where
      endif
 
+    V = 0.0 ! initialize to be safe
+    call ocean_model_data_get(Ocean_State, Ocean, 'v_surf', V, isc, jsc) ! this comes to us in m/s
     if(associated(VW )) then
        where(MASK(:,:) > 0.0)
           VW = real(V, kind=G5KIND)
@@ -1307,8 +1219,8 @@ contains
        end where
     end if
 
-! Get the B grid currents at MOM precision
-!-----------------------------------------
+! Get the B grid currents at MOM precision, needed for CICE4 dynamics
+!--------------------------------------------------------------------
 ! SA: like MOM5, MOM6 also runs with Bgrid staggering (default) for currents. So currents are on Bgrid.
 !     something like... mct_driver/ocn_cap_methods.F90 "rotate ssh gradients from local coordinates..." which is what happens in mom4_get_latlon_UVsurf
 
@@ -1335,31 +1247,13 @@ contains
 !      end where
     end if
 
-    if(associated(SLV)) then
-       call ocean_model_data_get(Ocean_State, Ocean, 'sea_lev', U, isc, jsc)
-       where(MASK(:,:)>0.0)
-          SLV = real(U, kind = G5KIND)
-       elsewhere
-          SLV=0.0
-       end where
-    end if
+! Optional Exports at GEOS precision
+!-----------------------------------
+! none
 
-    if(associated(FRAZIL)) then
-       call ocean_model_data_get(Ocean_State, Ocean, 'frazil', U, isc, jsc) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS] ! SA: in PSU
-       where(MASK(:,:)>0.0)
-          FRAZIL = real(U, kind = G5KIND)
-       elsewhere
-          FRAZIL=0.0
-       end where
-    end if
+!   3d exports with MOM6, such as depths, T, S, U, V, etc
+!   will not be exported. If needed, write them on tri-polar grid directly from MOM6
 
-!   if(associated(DEPTH)) then
-!      DEPTH = real(Ocean_state%MOM_CSp%h, kind=G5KIND)                          ! mom6/src/core/MOM.F90                   [MOM6 GEOS] layer thickness [H ~> m or kg m-2]
-!      call ocean_model_data_get(Ocean_State, Ocean, 'geodepth_zt', H, isc, jsc) ! mom/src/mom5/ocean_core/ocean_model.F90 [MOM5 GEOS]
-!   end if
-
-!   deallocate(H)
-!   deallocate(G)
     deallocate(U,V)
     deallocate(cos_rot,sin_rot)
     deallocate(Tmp2)
@@ -1372,7 +1266,7 @@ contains
     RETURN_(ESMF_SUCCESS)
   contains
 
-    subroutine transformA2B(U, V, uvx, uvy) ! SA: Per Atanas T, GEOS "likes" winds/currents on A-grid, so we need stuff like this...
+    subroutine transformA2B(U, V, uvx, uvy)
 
       real, intent(IN)     :: U (:,:)
       real, intent(IN)     :: V (:,:)
@@ -1390,8 +1284,7 @@ contains
       tx(isc:iec, jsc:jec) = U
       ty(isc:iec, jsc:jec) = V
 
-      call mpp_update_domains(tx, ty, OceanDomain, gridtype=AGRID, flags=SCALAR_PAIR)   ! FMS/mpp/mpp_domains.F90            [MOM6 GEOS]
-                                                                                        ! mom/src/shared/mpp/mpp_domains.F90 [MOM5 GEOS]
+      call mpp_update_domains(tx, ty, OceanDomain, gridtype=AGRID, flags=SCALAR_PAIR)
 
       do j = jsc, jec
          do i = isc, iec
@@ -1518,24 +1411,13 @@ contains
          RC=STATUS )
     VERIFY_(STATUS)
 
-    Time = set_date(YEAR,MONTH,DAY,HR,MN,SC)        ! FMS/time_manager/time_manager.F90                  [MOM6 GEOS]
-                                                    ! mom/src/shared/time_manager/time_manager.F90       [MOM5 GEOS]
+    Time = set_date(YEAR,MONTH,DAY,HR,MN,SC)
 
-    call ocean_model_end (Ocean, Ocean_State, Time) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
-                                                    ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
-                                                    ! SA: unlike in mom5, this also calls ocean_model_save_restart(...)
-                                                    !     possible duplication of ocean_model_restart(...) called by below Record
+    call ocean_model_end (Ocean, Ocean_State, Time) ! SA: this also calls ocean_model_save_restart(...)
 
-    call diag_manager_end(Time )                    ! FMS/diag_manager/diag_manager.F90                  [MOM6 GEOS]
-                                                    ! mom/src/shared/diag_manager/diag_manager.F90       [MOM5 GEOS]
-
-    call field_manager_end                          ! FMS/field_manager/field_manager.F90                [MOM6 GEOS]
-                                                    ! mom/src/shared/field_manager/field_manager.F90     [MOM5 GEOS]
-
-    call fms_io_exit                                ! FMS/fms/fms_io.F90                                 [MOM6 GEOS]
-                                                    ! mom/src/shared/fms/fms_io.F90                      [MOM5 GEOS]
-
-! deallocate
+    call diag_manager_end(Time )
+    call field_manager_end
+    call fms_io_exit
 
     deallocate ( Boundary% u_flux          , &
                  Boundary% v_flux          , &
@@ -1551,7 +1433,7 @@ contains
                  Boundary% fprec           , &
                  Boundary% runoff          , &
                  Boundary% calving         , &
-                 Boundary% stress_mag      , &        ! SA: additions in MOM6
+                 Boundary% stress_mag      , &
                  Boundary% ustar_berg      , &
                  Boundary% area_berg       , &
                  Boundary% mass_berg       , &
@@ -1563,9 +1445,9 @@ contains
                                 stat=STATUS )
     VERIFY_(STATUS)
 
-    deallocate( Ocean,    STAT=STATUS); VERIFY_(STATUS)
-    deallocate( Boundary, STAT=STATUS); VERIFY_(STATUS)
-    deallocate( MOM_MAPL_internal_state, STAT=STATUS); VERIFY_(STATUS)
+    deallocate ( Ocean,                   STAT=STATUS); VERIFY_(STATUS)
+    deallocate ( Boundary,                STAT=STATUS); VERIFY_(STATUS)
+    deallocate ( MOM_MAPL_internal_state, STAT=STATUS); VERIFY_(STATUS)
 !
 
     call MAPL_TimerOff(MAPL,"FINALIZE")
@@ -1585,7 +1467,7 @@ contains
 
 !====================================================================
 
-! !IROUTINE: Record        -- Record method for GuestOcean wrapper (write intermediate restarts)
+! !IROUTINE: Record -- Record method for GuestOcean wrapper (write intermediate restarts)
 
 ! !INTERFACE:
 
@@ -1647,7 +1529,7 @@ contains
        VERIFY_(STATUS)
 
        MOM_MAPL_internal_state => WRAP%PTR
-       Ocean_State => MOM_MAPL_internal_state%Ocean_State
+       Ocean_State             => MOM_MAPL_internal_state%Ocean_State
 
        call MAPL_DateStampGet(clock, timeStamp, rc=status)
        VERIFY_(STATUS)
@@ -1655,8 +1537,8 @@ contains
 ! Write a restart
 !-----------------
 
-       call ocean_model_restart (Ocean_State, timeStamp) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
-       VERIFY_(STATUS)                                   ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
+       call ocean_model_restart (Ocean_State, timeStamp)
+       VERIFY_(STATUS)
 
     end if
 
