@@ -56,7 +56,8 @@ module MOM6_GEOSPlugMod
 
   use ocean_model_mod,          only: ocean_model_data_get, &
                                       ocean_public_type,    &
-                                      ocean_state_type
+                                      ocean_state_type,     &
+                                      ocean_model_get_UV_surf
 
   use MOM_surface_forcing,      only: ice_ocean_boundary_type
 
@@ -419,6 +420,7 @@ contains
     VERIFY_(STATUS)
 
 !  !Diagnostic exports
+!Get rid of following 3D exports
 
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME         = 'U',                                 &
@@ -447,12 +449,12 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                               &   ! SA: already have DH. Get rid of it. SOON!
-         SHORT_NAME         = 'DEPTH',                        &
-         LONG_NAME          = 'layer_depth',                  &
-         UNITS              = 'm',                            &
-         DIMS               = MAPL_DimsHorzVert,              &
-         VLOCATION          = MAPL_VLocationCenter,           &
+    call MAPL_AddExportSpec(GC,                                    & 
+         SHORT_NAME         = 'DEPTH',                             &
+         LONG_NAME          = 'layer_depth',                       &
+         UNITS              = 'm',                                 &
+         DIMS               = MAPL_DimsHorzVert,                   &
+         VLOCATION          = MAPL_VLocationCenter,                &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -718,6 +720,28 @@ contains
     ASSERT_(counts(1)==IM)
     ASSERT_(counts(2)==JM)
 
+! Check run time surface current stagger option set in MOM_input 
+! to make sure they match what is expected here:
+! BGRID_NE.
+!---------------------------------------------------------------
+
+    if (MAPL_AM_I_Root()) then
+     if (Ocean%stagger == AGRID) then
+!      print *, ' Surface velocity stagger set in ocean model: (MOM6) AGRID.'
+       print *, ' Surface velocity stagger set in ocean model: (MOM6) AGRID. This option is not supported. Exiting!'
+       ASSERT_(.false.)
+     elseif (Ocean%stagger == BGRID_NE) then
+       print *, ' Surface velocity stagger set in ocean model: (MOM6) BGRID_NE.'
+     elseif (Ocean%stagger == CGRID_NE) then
+!      print *, ' Surface velocity stagger set in ocean model: (MOM6) CGRID_NE.'
+       print *, ' Surface velocity stagger set in ocean model: (MOM6) CGRID_NE. This option is not supported. Exiting!'
+       ASSERT_(.false.)
+     else
+       print *, ' Surface velocity stagger set in ocean model: (MOM6) is invalid, stopping.'
+       ASSERT_(.false.)
+     endif
+    endif
+
 ! Allocate MOM flux bulletin board.
 !------------------------------------
 
@@ -789,11 +813,11 @@ contains
 ! Make sure exports neede by the parent prior to our run call are initialized
 !----------------------------------------------------------------------------
 
+    call MAPL_GetPointer(EXPORT, MASK,     'MOM_2D_MASK', alloc=.true., RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, TW,       'TW'  ,        alloc=.true., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, SW,       'SW'  ,        alloc=.true., RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, MASK,     'MOM_2D_MASK', alloc=.true., RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, AREA,     'AREA',        alloc=.true., RC=STATUS)
     VERIFY_(STATUS)
@@ -916,11 +940,9 @@ contains
 
 ! Temporaries
 
-    real, allocatable                  :: U(:,:)
-    real, allocatable                  :: V(:,:)
+    real, allocatable                  :: U (:,:),  V(:,:)
     real, allocatable                  :: cos_rot(:,:)
     real, allocatable                  :: sin_rot(:,:)
-    real, allocatable                  :: Tmp2(:,:)
 
     type(MAPL_MetaComp),           pointer :: MAPL                     => null()
     type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state  => null()
@@ -1075,27 +1097,18 @@ contains
     Boundary%sw_flux_nir_dir(isc:iec,jsc:jec)= real(DRNIR,         kind=KIND(Boundary%p)) ! direct Near InfraRed sw radiation  [W m-2]
     Boundary%sw_flux_nir_dif(isc:iec,jsc:jec)= real(DFNIR,         kind=KIND(Boundary%p)) ! diffuse Near InfraRed sw radiation [W m-2]
 
-! Convert input stresses over water to MOM staggering
-!----------------------------------------------------
-
 ! Initialize stress to be safe
 !-----------------------------
     Boundary%U_flux = 0.
     Boundary%V_flux = 0.
 
-    if (MAPL_AM_I_Root()) then
-     print *, 'Stagger set in ocean model: '!, Ocean%stagger
-     if (Ocean%stagger == AGRID) then
-       print *, '(MOM6) AGRID'
-     elseif (Ocean%stagger == BGRID_NE) then
-       print *, '(MOM6) BGRID'
-     elseif (Ocean%stagger == CGRID_NE) then
-       print *, '(MOM6) CGRID'
-     else
-       print *, '(MOM6) stagger is invalid, stopping.'
-     endif
-    endif
-    
+! We ought to be able to query this and act accordingly. 
+! But it is not being set properly.
+!   if (MAPL_AM_I_Root()) print *, "set stress stagger:", Boundary%wind_stagger
+
+! Convert input stresses over water to MOM suface staggering
+!-----------------------------------------------------------
+
 ! A-grid
 ! From Atanas (Apr 17, 2020): 
 ! "GEOS stresses are on the A-grid points (and defined in respect to north and east). 
@@ -1150,14 +1163,13 @@ contains
       call update_ocean_model(Boundary, Ocean_State, Ocean, Time, DT, .false., .false.)
     endif
 
-! Get export fields
+! Get required Exports at GEOS precision
+!---------------------------------------
 
-! Required Exports at GEOS precision
-!-----------------------------------
-
-    allocate(Tmp2(IM,JM), stat=status); VERIFY_(STATUS)
-    call ocean_model_data_get(Ocean_State, Ocean, 'mask', Tmp2, isc, jsc)
-    MASK = real(Tmp2, kind=G5KIND)
+!   mask
+    U = 0.0
+    call ocean_model_data_get(Ocean_State, Ocean, 'mask', U, isc, jsc)
+    MASK = real(U, kind=G5KIND)
 
 !   surface (potential) temperature (K)
     U = 0.0
@@ -1177,7 +1189,8 @@ contains
        SW = MAPL_UNDEF
     end where
 
-!   sea level
+!   sea level (m)
+    U = 0.0
     if(associated(SLV)) then
        call ocean_model_data_get(Ocean_State, Ocean, 'sea_lev', U, isc, jsc) ! this comes to us in m
        where(MASK(:,:)>0.0)
@@ -1187,7 +1200,8 @@ contains
        end where
     end if
 
-!   frazil 
+!   frazil (J/m2)
+    U = 0.0
     if(associated(FRAZIL)) then
        call ocean_model_data_get(Ocean_State, Ocean, 'frazil', U, isc, jsc)  ! this comes to us in J/m2 
        where(MASK(:,:)>0.0)
@@ -1197,66 +1211,65 @@ contains
        end where
     end if
 
-! Get the A grid currents at MOM precision
-!-----------------------------------------
-    U = 0.0 ! initialize to be safe
-    call ocean_model_data_get(Ocean_State, Ocean, 'u_surf', U, isc, jsc) ! this comes to us in m/s
-    if(associated(UW )) then
-       where(MASK(:,:) > 0.0)
+! currents (m/s)
+!---------------
+    if (Ocean%stagger == BGRID_NE) then
+
+!   B-grid currents
+      U = 0.0; V = 0.0
+      call ocean_model_data_get(Ocean_State, Ocean, 'u_surf', U, isc, jsc) ! this comes to us in m/s
+      call ocean_model_data_get(Ocean_State, Ocean, 'v_surf', V, isc, jsc) ! this comes to us in m/s
+
+      if(associated(UWB )) then
+        where(MASK(:,:) > 0.0)
+          UWB = real(U, kind=G5KIND)
+        elsewhere
+          UWB =0.0
+        end where
+      endif
+
+      if(associated(VWB )) then
+        where(MASK(:,:) > 0.0)
+          VWB = real(V, kind=G5KIND)
+        elsewhere
+          VWB =0.0
+        end where
+      end if
+
+!   A-grid currents
+      U = 0.0; V = 0.0
+      call ocean_model_get_UV_surf(Ocean_State, Ocean, 'ua', U, isc, jsc) ! this comes to us in m/s
+      call ocean_model_get_UV_surf(Ocean_State, Ocean, 'va', V, isc, jsc) ! this comes to us in m/s
+
+      if(associated(UW )) then
+        where(MASK(:,:) > 0.0)
           UW = real(U, kind=G5KIND)
-       elsewhere
+        elsewhere
           UW=0.0
-       end where
-     endif
+        end where
+      endif
 
-    V = 0.0 ! initialize to be safe
-    call ocean_model_data_get(Ocean_State, Ocean, 'v_surf', V, isc, jsc) ! this comes to us in m/s
-    if(associated(VW )) then
-       where(MASK(:,:) > 0.0)
+      if(associated(VW )) then
+        where(MASK(:,:) > 0.0)
           VW = real(V, kind=G5KIND)
-       elsewhere
+        elsewhere
           VW=0.0
-       end where
-    end if
-
-! Get the B grid currents at MOM precision, needed for CICE4 dynamics
-!--------------------------------------------------------------------
-! SA: like MOM5, MOM6 also runs with Bgrid staggering (default) for currents. So currents are on Bgrid.
-!     something like... mct_driver/ocn_cap_methods.F90 "rotate ssh gradients from local coordinates..." which is what happens in mom4_get_latlon_UVsurf
-
-    if(associated(UWB) .or. associated(VWB)) then
-!      UWB = Ocean%u_surf  ! MOM6 run with Bgrid staggering (its default) ! mom6/config_src/coupled_driver/ocean_model_MOM.F90 [MOM6 GEOS]
-!      VWB = Ocean%v_surf  ! MOM6 run with Bgrid staggering (its default)
-!      call mom4_get_UVsurfB(OCEAN, U, V, STATUS)                         ! mom/src/mom5/ocean_core/ocean_model.F90            [MOM5 GEOS]
-!      VERIFY_(STATUS)
+        end where
+      end if
+    else
+      print *, ' Nothing but B-grid (and A-grid) surface currents are supported at this moment. Exiting!'
+      ASSERT_(.false.)
     endif
-
-    if(associated(UWB  )) then
-!      where(MASK(:,:)>0.0)
-!         UWB = real(U, kind=G5KIND)
-!      elsewhere
-!         UWB=0.0
-!      end where
-     endif
-
-    if(associated(VWB  )) then
-!      where(MASK(:,:)>0.0)
-!         VWB = real(V, kind=G5KIND)
-!      elsewhere
-!         VWB=0.0
-!      end where
-    end if
+! -----------------------------------------
 
 ! Optional Exports at GEOS precision
 !-----------------------------------
 ! none
-
 !   3d exports with MOM6, such as depths, T, S, U, V, etc
 !   will not be exported. If needed, write them on tri-polar grid directly from MOM6
 
-    deallocate(U,V)
+    deallocate(U, V)
     deallocate(cos_rot,sin_rot)
-    deallocate(Tmp2)
 
     call MAPL_TimerOff(MAPL,"RUN"   )
     call MAPL_TimerOff(MAPL,"TOTAL" )
