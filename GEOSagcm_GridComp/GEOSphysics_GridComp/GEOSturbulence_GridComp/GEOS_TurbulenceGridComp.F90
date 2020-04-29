@@ -1,4 +1,4 @@
-!   $Id$
+!   $Id$stke
 
 #include "MAPL_Generic.h"
 
@@ -1704,7 +1704,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-       SHORT_NAME = 'TKET_M',                                    &
+       SHORT_NAME = 'tket_M',                                    &
        LONG_NAME  = 'shear_production_of_tke',                   &
        UNITS      = 'm+2 s-3',                                   &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -1712,7 +1712,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-       SHORT_NAME = 'TKET_B',                                    &
+       SHORT_NAME = 'tket_B',                                    &
        LONG_NAME  = 'buoyancy_production_of_tke',                &
        UNITS      = 'm+2 s-3',                                   &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -1720,7 +1720,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-         SHORT_NAME = 'TKET_D',                                    &
+         SHORT_NAME = 'tket_D',                                    &
          LONG_NAME  = 'dissipation_of_turbulent kinetic energy', &
          UNITS      = 'm+2s-3',                                    &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -1728,7 +1728,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-         SHORT_NAME = 'TKET_T_MF',                               &
+         SHORT_NAME = 'tket_T_MF',                               &
          LONG_NAME  = 'dissipation_of_turbulent kinetic energy', &
          UNITS      = 'm+2s-3',                                    &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -1736,7 +1736,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-       SHORT_NAME = 'HL2T_M',                                    &
+       SHORT_NAME = 'hl2t_M',                                    &
        LONG_NAME  = 'mean-gradient_production_of_liquid_water_static_energy_variance', &
        UNITS      = 'K+2s-1',                                    &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -1744,7 +1744,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-       SHORT_NAME = 'HL2T_T',                                    &
+       SHORT_NAME = 'hl2t_T',                                    &
        LONG_NAME  = 'turbulent_transport_of_liquid_water_static_energy_variance', &
        UNITS      = 'K+2s-1',                                    &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -1752,7 +1752,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-         SHORT_NAME = 'HL2T_D',                                    &
+         SHORT_NAME = 'hl2t_D',                                    &
          LONG_NAME  = 'dissipation_of_liquid_water_static_energy_variance', &
          UNITS      = 'K+2s-1',                                    &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -1760,7 +1760,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-       SHORT_NAME = 'QT2T_M',                                    &
+       SHORT_NAME = 'qt2t_M',                                    &
        LONG_NAME  = 'mean-gradient_production_of_total_water_specific_humidity_variance', &
        UNITS      = 's-1',                                       &
        DEFAULT    = 0.0,                                         &
@@ -1769,7 +1769,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-       SHORT_NAME = 'QT2T_T',                                    &
+       SHORT_NAME = 'qt2t_T',                                    &
        LONG_NAME  = 'turbulent_transport_of_total_water_specific_humidity_variance', &
        UNITS      = 's-1',                                       &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -1777,7 +1777,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-         SHORT_NAME = 'QT2T_D',                                    &
+         SHORT_NAME = 'qt2t_D',                                    &
          LONG_NAME  = 'dissipation_of_total_water_specific_humidity_variance', &
          UNITS      = 's-1',                                       &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -1785,7 +1785,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-       SHORT_NAME = 'HLQTT_M',                                   &
+       SHORT_NAME = 'hlqtt_M',                                   &
        LONG_NAME  = 'mean-gradient_production_of_liquid_water_static_energy-total_water_specific_humidity_covariance', &
        UNITS      = 'Ks-1',                                      &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -1793,7 +1793,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-       SHORT_NAME = 'HLQTT_T',                                   &
+       SHORT_NAME = 'hlqtt_T',                                   &
        LONG_NAME  = 'turbulent_transport_of_liquid_water_static_energy-total_water_specific_humidity_covariance', &
        UNITS      = 'Ks-1',                                      &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -1801,7 +1801,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
-         SHORT_NAME = 'HLQTT_D',                                   &
+         SHORT_NAME = 'hlqtt_D',                                   &
          LONG_NAME  = 'dissipation_of_liquid_water_static_energy-total_water_specific_humidity_covariance', &
          UNITS      = 'Ks-1',                                      &
          DIMS       = MAPL_DimsHorzVert,                           &
@@ -2200,7 +2200,7 @@ contains
     ! Start MYNN-related variables
     !
     call MAPL_AddInternalSpec(GC,                                &
-       SHORT_NAME = 'TKE_NEW',                                   &
+       SHORT_NAME = 'tke_new',                                   &
        LONG_NAME  = 'turbulent_kinetic_energy_new',              &
        UNITS      = 'm+2 s-2',                                   &
        DEFAULT    = 0.,                                          &
@@ -2210,7 +2210,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                &
-       SHORT_NAME = 'HL2',                                       &
+       SHORT_NAME = 'hl2',                                       &
        LONG_NAME  = 'variance_of_liquid_water_static_energy',    &
        UNITS      = 'K+2',                                       &
        DEFAULT    = 0.0,                                         &
@@ -2220,7 +2220,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                &
-       SHORT_NAME = 'QT2',                                       &
+       SHORT_NAME = 'qt2',                                       &
        LONG_NAME  = 'variance_of_total_water_specific_humidity', &
        UNITS      = '1',                                         &
        DEFAULT    = 0.0,                                         &
@@ -2230,7 +2230,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                &
-       SHORT_NAME = 'HLQT',                                      &
+       SHORT_NAME = 'hlqt',                                      &
        LONG_NAME  = 'covariance_of_liquid_water_static_energy_and_total_water_specific_humidity_from_SHOC', &
        UNITS      = 'K',                                         &
        DEFAULT    = 0.0,                                         &
@@ -2240,9 +2240,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                &
-       SHORT_NAME = 'BETA_HL',                                      &
-       LONG_NAME  = '', &
-       UNITS      = '',                                         &
+       SHORT_NAME = 'beta_hl',                                   &
+       LONG_NAME  = '',                                          &
+       UNITS      = '',                                          &
        DEFAULT    = 0.0,                                         &
        FRIENDLYTO = 'TURBULENCE',                                &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -2250,9 +2250,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                &
-       SHORT_NAME = 'BETA_QT',                                      &
-       LONG_NAME  = '', &
-       UNITS      = '',                                         &
+       SHORT_NAME = 'beta_qt',                                   &
+       LONG_NAME  = '',                                          &
+       UNITS      = '',                                          &
        DEFAULT    = 0.0,                                         &
        FRIENDLYTO = 'TURBULENCE',                                &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -2262,8 +2262,9 @@ contains
     call MAPL_AddInternalSpec(GC,                                              &
        LONG_NAME  = 'edmf_whl_contribution',                                 &
        UNITS      = 'm+1s-1K+1',                                             &
-       SHORT_NAME = 'WHL_MF'    ,                                            &
+       SHORT_NAME = 'whl_mf'    ,                                            &
        DEFAULT    = 0.,                                                      &
+       FRIENDLYTO = 'TURBULENCE',                                            &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -2272,8 +2273,9 @@ contains
     call MAPL_AddInternalSpec(GC,                                              &
        LONG_NAME  = 'edmf_wqt_contribution',                                 &
        UNITS      = 'm+1s-1kg+1kg-1',                                        &
-       SHORT_NAME = 'WQT_MF'    ,                                            &
+       SHORT_NAME = 'wqt_mf'    ,                                            &
        DEFAULT    = 0.,                                                      &
+       FRIENDLYTO = 'TURBULENCE',                                            &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -2282,15 +2284,16 @@ contains
     call MAPL_AddInternalSpec(GC,                                              &
        LONG_NAME  = 'edmf_wthv_contribution',                                &
        UNITS      = 'm+1s-1K+1',                                             &
-       SHORT_NAME = 'WTHV_MF'    ,                                           &
+       SHORT_NAME = 'wthv_mf'    ,                                           &
        DEFAULT    = 0.,                                                      &
+       FRIENDLYTO = 'TURBULENCE',                                            &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                &
-       SHORT_NAME = 'ITAU_TURB',                                 &
+       SHORT_NAME = 'itau_mynn',                                 &
        LONG_NAME  = 'inverse_of_turbulence_time_scale_for_tke',  &
        UNITS      = 's-1',                                       &
        DEFAULT    = 0.,                                          &
@@ -2299,9 +2302,72 @@ contains
        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddInternalSpec(GC,                                        &
+         SHORT_NAME = 'tket_T',                                          &
+         LONG_NAME  = 'turbulent_transport_of_turbulent kinetic energy', &
+         UNITS      = 'm+2 s-3',                                         &
+         FRIENDLYTO = 'TURBULENCE',                                      &
+         DEFAULT    = 0.,                                                &
+         DIMS       = MAPL_DimsHorzVert,                                 &
+         VLOCATION  = MAPL_VLocationEdge,                                &
+         RESTART    = MAPL_RestartSkip,                       RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME = 'ws_explicit',                               &
+         LONG_NAME  = 'explicit_dry_static_energy_flux',           &
+         UNITS      = 'Jms-1',                                     &
+         DEFAULT    = 0.,                                          &
+         FRIENDLYTO = 'TURBULENCE',                                &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                    &
+         SHORT_NAME = 'wqv_explicit',                                &
+         LONG_NAME  = 'explicit_water_vapor_specific_humidity_flux', &
+         UNITS      = 'kg kg-1 m s-1',                               &
+         DEFAULT    = 0.0,                                           &
+         FRIENDLYTO = 'TURBULENCE',                                  &
+         DIMS       = MAPL_DimsHorzVert,                             &
+         VLOCATION  = MAPL_VLocationEdge,                 RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddInternalSpec(GC,                                     &
+         SHORT_NAME = 'wql_explicit',                                 &
+         LONG_NAME  = 'explicit_liquid_water_specific_humidity_flux', &
+         UNITS      = 'kg kg-1 m s-1',                                &
+         DEFAULT    = 0.0,                                            &
+         FRIENDLYTO = 'TURBULENCE',                                   &
+         DIMS       = MAPL_DimsHorzVert,                              &
+         VLOCATION  = MAPL_VLocationEdge,                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'total_momentum_diffusivity_from_mynn',                  &
+       UNITS      = 'm+2 s-1',                                               &
+       DEFAULT    = 0.,                                                      &
+       FRIENDLYTO = 'TURBULENCE',                                            &
+       SHORT_NAME = 'KM_MYNN',                                               &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                            &
+       LONG_NAME  = 'total_scalar_diffusivity_from_mynn',                    &
+       UNITS      = 'm+2 s-1',                                               &
+       DEFAULT    = 0.,                                                      &
+       FRIENDLYTO = 'TURBULENCE',                                            &
+       SHORT_NAME = 'KH_MYNN',                                               &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationEdge,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'matrix_diagonal_ahat_for_tke',                          &
-       SHORT_NAME = 'AKTKE',                                                 &
+       SHORT_NAME = 'aktke',                                                 &
        UNITS      = '1',                                                     &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
@@ -2311,7 +2377,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'matrix_diagonal_bhat_for_tke',                          &
-       SHORT_NAME = 'BKTKE',                                                 &
+       SHORT_NAME = 'bktke',                                                 &
        UNITS      = '1',                                                     &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
@@ -2321,7 +2387,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'matrix_diagonal_c_for_tke',                             &
-       SHORT_NAME = 'CKTKE',                                                 &
+       SHORT_NAME = 'cktke',                                                 &
        UNITS      = '1',                                                     &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
@@ -2331,7 +2397,7 @@ contains
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'rhs_for_tke',                                           &
-       SHORT_NAME = 'YTKE',                                                  &
+       SHORT_NAME = 'ytke',                                                  &
        UNITS      = '1',                                                     &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
@@ -2342,7 +2408,7 @@ contains
     if (MYNN_LEVEL == 3) then
        call MAPL_AddInternalSpec(GC,                                            &
             LONG_NAME  = 'matrix_diagonal_ahat_for_tke',                          &
-            SHORT_NAME = 'AKTPE',                                                 &
+            SHORT_NAME = 'aktpe',                                                 &
             UNITS      = '1',                                                     &
             DIMS       = MAPL_DimsHorzVert,                                       &
             VLOCATION  = MAPL_VLocationEdge,                                      &
@@ -2352,7 +2418,7 @@ contains
 
        call MAPL_AddInternalSpec(GC,                                            &
             LONG_NAME  = 'matrix_diagonal_bhat_for_tpe',                          &
-            SHORT_NAME = 'BKTPE',                                                 &
+            SHORT_NAME = 'bktpe',                                                 &
             UNITS      = '1',                                                     &
             DIMS       = MAPL_DimsHorzVert,                                       &
             VLOCATION  = MAPL_VLocationEdge,                                      &
@@ -2362,7 +2428,7 @@ contains
 
        call MAPL_AddInternalSpec(GC,                                            &
             LONG_NAME  = 'matrix_diagonal_c_for_tpe',                             &
-            SHORT_NAME = 'CKTPE',                                                 &
+            SHORT_NAME = 'cktpe',                                                 &
             UNITS      = '1',                                                     &
             DIMS       = MAPL_DimsHorzVert,                                       &
             VLOCATION  = MAPL_VLocationEdge,                                      &
@@ -2372,7 +2438,7 @@ contains
 
        call MAPL_AddInternalSpec(GC,                                            &
             LONG_NAME  = 'rhs_for_hl2',                                           &
-            SHORT_NAME = 'YHL2',                                                  &
+            SHORT_NAME = 'yhl2',                                                  &
             UNITS      = '1',                                                     &
             DIMS       = MAPL_DimsHorzVert,                                       &
             VLOCATION  = MAPL_VLocationEdge,                                      &
@@ -2382,7 +2448,7 @@ contains
 
        call MAPL_AddInternalSpec(GC,                                            &
             LONG_NAME  = 'rhs_for_qt2',                                           &
-            SHORT_NAME = 'YQT2',                                                  &
+            SHORT_NAME = 'yqt2',                                                  &
             UNITS      = '1',                                                     &
             DIMS       = MAPL_DimsHorzVert,                                       &
             VLOCATION  = MAPL_VLocationEdge,                                      &
@@ -2392,7 +2458,7 @@ contains
 
        call MAPL_AddInternalSpec(GC,                                            &
             LONG_NAME  = 'rhs_for_hlqt',                                          &
-            SHORT_NAME = 'YHLQT',                                                 &
+            SHORT_NAME = 'yhlqt',                                                 &
             UNITS      = '1',                                                     &
             DIMS       = MAPL_DimsHorzVert,                                       &
             VLOCATION  = MAPL_VLocationEdge,                                      &
@@ -2400,64 +2466,14 @@ contains
                                                                        RC=STATUS  )
        VERIFY_(STATUS)
     end if
-    call MAPL_AddInternalSpec(GC,                                &
-         SHORT_NAME = 'WS_CG',                                     &
-         LONG_NAME  = '(potentially)_counter-gradient_dry_static_energy_flux', &
-         UNITS      = 'Jms-1',                                     &
-         DEFAULT    = 0.0,                                         &
-         FRIENDLYTO = 'TURBULENCE',                                &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
 
-    call MAPL_AddInternalSpec(GC,                                &
-         SHORT_NAME = 'WQV_CG',                                    &
-         LONG_NAME  = '(potentially)_counter-gradient_total_water_specific_humidity_flux', &
-         UNITS      = 'kg kg-1 m s-1',                                     &
-         DEFAULT    = 0.0,                                         &
-         FRIENDLYTO = 'TURBULENCE',                                &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
-    
-    call MAPL_AddInternalSpec(GC,                                &
-         SHORT_NAME = 'WQL_CG',                                    &
-         LONG_NAME  = '(potentially)_counter-gradient_liquid_water_specific_humidity_flux', &
-         UNITS      = 'kg kg-1 m s-1',                             &
-         DEFAULT    = 0.0,                                         &
-         FRIENDLYTO = 'TURBULENCE',                                &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                              &
-       LONG_NAME  = 'total_momentum_diffusivity',                            &
-       UNITS      = 'm+2 s-1',                                               &
-       DEFAULT    = 0.0,                                                     &
-       FRIENDLYTO = 'TURBULENCE',                                            &
-       SHORT_NAME = 'KM_MYNN',                                               &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'total_scalar_diffusivity',                              &
-       UNITS      = 'm+2 s-1',                                               &
-       DEFAULT    = 0.0,                                                     &
-       FRIENDLYTO = 'TURBULENCE',                                            &
-       SHORT_NAME = 'KH_MYNN',                                               &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'surface_value_for_tke',                                 &
        UNITS      = 'm+2 s-2',                                               &
        DEFAULT    = 0.0,                                                     &
        FRIENDLYTO = 'TURBULENCE',                                            &
-       SHORT_NAME = 'TKE_SURF',                                              &
+       SHORT_NAME = 'tke_surf',                                              &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
@@ -2468,7 +2484,7 @@ contains
        UNITS      = 'K+2',                                                   &
        DEFAULT    = 0.0,                                                     &
        FRIENDLYTO = 'TURBULENCE',                                            &
-       SHORT_NAME = 'HL2_SURF',                                              &
+       SHORT_NAME = 'hl2_surf',                                              &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
@@ -2479,7 +2495,7 @@ contains
        UNITS      = 'kg+2 kg-2',                                             &
        DEFAULT    = 0.0,                                                     &
        FRIENDLYTO = 'TURBULENCE',                                            &
-       SHORT_NAME = 'QT2_SURF',                                              &
+       SHORT_NAME = 'qt2_surf',                                              &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
@@ -2490,22 +2506,12 @@ contains
        UNITS      = 'K+1 kg+1 kg-1',                                         &
        DEFAULT    = 0.0,                                                     &
        FRIENDLYTO = 'TURBULENCE',                                            &
-       SHORT_NAME = 'HLQT_SURF',                                             &
+       SHORT_NAME = 'hlqt_surf',                                             &
        DIMS       = MAPL_DimsHorzOnly,                                       &
        VLOCATION  = MAPL_VLocationNone,                                      &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddInternalSpec(GC,                                &
-         SHORT_NAME = 'TKET_T',                                    &
-         LONG_NAME  = 'turbulent_transport_of_turbulent kinetic energy', &
-         UNITS      = 'm+2 s-3',                                    &
-         FRIENDLYTO = 'TURBULENCE',                             &
-         DEFAULT    = 0.0,                                                     &
-         DIMS       = MAPL_DimsHorzVert,                           &
-         VLOCATION  = MAPL_VLocationEdge,               &
-         RESTART    = MAPL_RestartSkip,                            RC=STATUS  )
-    VERIFY_(STATUS)
     !
     ! End MYNN-related variables
 
@@ -2650,16 +2656,16 @@ contains
 
 ! MYNN-related variables
     integer                         :: MYNN_LEVEL
-    real, dimension(:,:,:), pointer :: TKE_NEW, HL2, QT2, HLQT, &
-                                       BETA_HL, BETA_QT, &
-                                       TKET_T, &
-                                       ITAU_TURB, WS_CG, WQV_CG, WQL_CG, &
-                                       AKTKE, BKTKE, CKTKE, AKTPE, BKTPE, CKTPE, &
-                                       YTKE, YHL2, YQT2, YHLQT, &
-                                       WHL_MF, WQT_MF, WTHV_MF, &
+    real, dimension(:,:,:), pointer :: tke_new, hl2, qt2, hlqt, &
+                                       beta_hl, beta_qt, &
+                                       tket_T, itau_mynn, &
+                                       ws_explicit, wqv_explicit, wql_explicit, &
+                                       aktke, bktke, cktke, aktpe, bktpe, cktpe, &
+                                       ytke, yhl2, yqt2, yhlqt, &
+                                       whl_mf, wqt_mf, wthv_mf, &
                                        KM_MYNN, KH_MYNN
 
-    real, dimension(:,:), pointer   :: EVAP, SH, TKE_SURF, HL2_SURF, QT2_SURF, HLQT_SURF
+    real, dimension(:,:), pointer   :: EVAP, SH, tke_surf, hl2_surf, qt2_surf, hlqt_surf
 
 ! Begin... 
 !---------
@@ -2732,67 +2738,67 @@ contains
 
 ! MYNN-related variables
 !----------------------
-    call MAPL_GetPointer(INTERNAL, TKE_NEW,   'TKE_NEW',   RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, tke_new,   'tke_new',   RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, HL2,       'HL2',       RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, hl2,       'hl2',       RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QT2,       'QT2',       RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, qt2,       'qt2',       RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, HLQT,      'HLQT',      RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, hlqt,      'hlqt',      RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, BETA_HL,   'BETA_HL',   RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, beta_hl,   'beta_hl',   RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, BETA_QT,   'BETA_QT',   RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, beta_qt,   'beta_qt',   RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, TKET_T,    'TKET_T',    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, tket_T,    'tket_T',    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, WHL_MF,    'WHL_MF',    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, whl_mf,    'whl_mf',    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, WQT_MF,    'WQT_MF',    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, wqt_mf,    'wqt_mf',    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, WTHV_MF,   'WTHV_MF',   RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, wthv_mf,   'wthv_mf',   RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, ITAU_TURB, 'ITAU_TURB', RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, itau_mynn, 'itau_mynn', RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, AKTKE,     'AKTKE',     RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, aktke,     'aktke',     RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, BKTKE,     'BKTKE',     RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, bktke,     'bktke',     RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CKTKE,     'CKTKE',     RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, cktke,     'cktke',     RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, YTKE,      'YTKE',      RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, ytke,      'ytke',      RC=STATUS)
     VERIFY_(STATUS)
     if (MYNN_LEVEL == 3) then
-       call MAPL_GetPointer(INTERNAL, AKTPE,     'AKTPE',     RC=STATUS)
+       call MAPL_GetPointer(INTERNAL, aktpe,     'aktpe',     RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, BKTPE,     'BKTPE',     RC=STATUS)
+       call MAPL_GetPointer(INTERNAL, bktpe,     'bktpe',     RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, CKTPE,     'CKTPE',     RC=STATUS)
+       call MAPL_GetPointer(INTERNAL, cktpe,     'cktpe',     RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, YHL2,      'YHL2',      RC=STATUS)
+       call MAPL_GetPointer(INTERNAL, yhl2,      'yhl2',      RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, YQT2,      'YQT2',      RC=STATUS)
+       call MAPL_GetPointer(INTERNAL, yqt2,      'yqt2',      RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, YHLQT,     'YHLQT',     RC=STATUS)
+       call MAPL_GetPointer(INTERNAL, yhlqt,     'yhlqt',     RC=STATUS)
        VERIFY_(STATUS)
     end if
-    call MAPL_GetPointer(INTERNAL, WS_CG,     'WS_CG',     RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, ws_explicit,     'ws_explicit',     RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, WQV_CG,    'WQV_CG',    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, wqv_explicit,    'wqv_explicit',    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, WQL_CG,    'WQL_CG',    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, wql_explicit,    'wql_explicit',    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, KM_MYNN,   'KM_MYNN',   RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, KH_MYNN,   'KH_MYNN',   RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, TKE_SURF,  'TKE_SURF',  RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, tke_surf,  'tke_surf',  RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, HL2_SURF,  'HL2_SURF',  RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, hl2_surf,  'hl2_surf',  RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, QT2_SURF,  'QT2_SURF',  RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, qt2_surf,  'qt2_surf',  RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, HLQT_SURF, 'HLQT_SURF', RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, hlqt_surf, 'hlqt_surf', RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, AKS,   'AKS',     RC=STATUS)
     VERIFY_(STATUS)
@@ -3042,7 +3048,7 @@ contains
 
    real, dimension(:,:), pointer        :: z_conv_edmf
 
-   real, dimension(:,:,:), pointer ::  K_TKE, TKET_M, TKET_B, TKET_T_MF, HL2T_M, QT2T_M, HLQTT_M
+   real, dimension(:,:,:), pointer ::  K_TKE, tket_M, tket_B, tket_T_MF, hl2t_M, qt2t_M, hlqtt_M
    real, dimension(:,:,:), pointer :: au, wu, Mu, E, D, D_org
 
    integer :: DO_MYNN
@@ -3414,17 +3420,17 @@ contains
      call MAPL_GetPointer(EXPORT, SHEARSHOC,'SHEARSHOC', RC=STATUS)
      VERIFY_(STATUS)
 
-     call MAPL_GetPointer(EXPORT, TKET_M,   'TKET_M', ALLOC=.TRUE., RC=STATUS)
+     call MAPL_GetPointer(EXPORT, tket_M,   'tket_M', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, TKET_B,   'TKET_B', ALLOC=.TRUE., RC=STATUS)
+     call MAPL_GetPointer(EXPORT, tket_B,   'tket_B', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, TKET_T_MF,'TKET_T_MF', RC=STATUS)
+     call MAPL_GetPointer(EXPORT, tket_T_MF,'tket_T_MF', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, HL2T_M,   'HL2T_M', ALLOC=.TRUE., RC=STATUS)
+     call MAPL_GetPointer(EXPORT, hl2t_M,   'hl2t_M', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, QT2T_M,   'QT2T_M', ALLOC=.TRUE., RC=STATUS)
+     call MAPL_GetPointer(EXPORT, qt2t_M,   'qt2t_M', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, HLQTT_M, 'HLQTT_M', ALLOC=.TRUE., RC=STATUS)
+     call MAPL_GetPointer(EXPORT, hlqtt_M, 'hlqtt_M', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, K_TKE,     'K_TKE', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
@@ -3603,13 +3609,13 @@ edmf_hl2 = 0.0
 edmf_qt2 = 0.0
 edmf_hlqt = 0.0
 
+! Initialize MYNN-related internal variables
 whl_mf  = 0.
 wqt_mf  = 0.
 wthv_mf = 0.
-
-ws_cg  = 0.
-wqv_cg = 0.
-wql_cg = 0.
+ws_explicit   = 0.
+wqv_explicit  = 0.
+wql_explicit  = 0.
 
 IF(DoMF .eq. 1.) then
     
@@ -3832,10 +3838,6 @@ ELSE
     awv3=0.0
     buoyf=0.0
 
-    WHL_MF  = 0.
-    WQT_MF  = 0.
-    WTHV_MF = 0.
-  
     if (associated(z_conv_edmf))    z_conv_edmf=mapl_undef
     if (associated(edmf_dry_a))     edmf_dry_a    =0.0
     if (associated(edmf_moist_a))   edmf_moist_a  =0.0
@@ -3962,21 +3964,22 @@ ENDIF
            call run_mynn(IM, JM, LM, &                                                ! in      
                          MYNN_DEBUG_FLAG, DOMF, MYNN_LEVEL, &                         ! in      
                          EDMF_CONSISTENT_TYPE, WQL_TYPE, WRF_CG_FLAG, &               ! in      
-                         th00, PLE, RHOE, ZLE, Z, &                                         ! in      
+                         th00, PLE, RHOE, ZLE, Z, &                                   ! in      
                          U, V, OMEGA, T, Q, QL, QI, QA, THL, QT, THV, &               ! in      
                          USTAR, SH, EVAP, &                                           ! in      
-                         WHL_MF, WQT_MF, WTHV_MF, au, Mu, wu, E, D, &                 ! in      
+                         whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, &                 ! in      
                          A_cloud, B_cloud, qsat, &                                    ! in
-                         TKE_NEW, HL2, QT2, HLQT, &                                   ! inout   
-                         KM_MYNN, KH_MYNN, K_TKE, ITAU_TURB, WS_CG, WQV_CG, WQL_CG, & ! out     
-                         BETA_HL, BETA_QT, &                                          ! out     
-                         TKET_M, TKET_B, TKET_T, HL2T_M, QT2T_M, HLQTT_M, &           ! out     
-                         TKE_SURF, HL2_SURF, QT2_SURF, HLQT_SURF)                     ! out  
+                         tke_new, hl2, qt2, hlqt, &                                   ! inout   
+                         KM_MYNN, KH_MYNN, K_TKE, itau_mynn, &                        ! out
+                         ws_explicit, wqv_explicit, wql_explicit, &                   ! out     
+                         beta_hl, beta_qt, &                                          ! out     
+                         tket_M, tket_B, tket_T, hl2t_M, qt2t_M, hlqtt_M, &           ! out     
+                         tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                     ! out  
 
            KM = KM_MYNN
            KH = KH_MYNN
 
-           if (associated(TKET_T_MF)) TKET_T_MF = TKET_T
+           if (associated(tket_T_MF)) tket_T_MF = tket_T
         end if
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
@@ -4821,9 +4824,9 @@ ENDIF
 ! Y-s ... these are rhs - mean value - surface flux 
 ! (these are added in the diffuse and vrtisolve)
    if (MYNN_LEVEL == 3) then
-      YS(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWS3(:,:,LM-1)  + WS_CG(:,:,LM-1) )
-      YQV(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWQV3(:,:,LM-1) + WQV_CG(:,:,LM-1) )
-      YQL(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWQL3(:,:,LM-1) + WQL_CG(:,:,LM-1) )
+      YS(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWS3(:,:,LM-1)  + ws_explicit(:,:,LM-1) )
+      YQV(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWQV3(:,:,LM-1) + wqv_explicit(:,:,LM-1) )
+      YQL(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*( AWQL3(:,:,LM-1) + wql_explicit(:,:,LM-1) )
    else
       YS(:,:,LM)  = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWS3(:,:,LM-1)
       YQV(:,:,LM) = -DMI(:,:,LM)*RHOE(:,:,LM-1)*AWQV3(:,:,LM-1)
@@ -4837,12 +4840,12 @@ ENDIF
 ! 2:LM -> 1:LM-1, 1:LM-1 -> 0:LM-2
 !
    if (MYNN_LEVEL == 3) then
-      YS(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWS3(:,:,1:LM-1)  + WS_CG(:,:,1:LM-1) ) &
-                                         - RHOE(:,:,0:LM-2)*( AWS3(:,:,0:LM-2)  + WS_CG(:,:,0:LM-2) ))
-      YQV(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWQV3(:,:,1:LM-1) + WQV_CG(:,:,1:LM-1) ) &
-                                         - RHOE(:,:,0:LM-2)*( AWQV3(:,:,0:LM-2) + WQV_CG(:,:,0:LM-2) ))
-      YQL(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWQL3(:,:,1:LM-1) + WQL_CG(:,:,1:LM-1) ) &
-                                         - RHOE(:,:,0:LM-2)*( AWQL3(:,:,0:LM-2) + WQL_CG(:,:,0:LM-2) ))
+      YS(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWS3(:,:,1:LM-1)  + ws_explicit(:,:,1:LM-1) ) &
+                                         - RHOE(:,:,0:LM-2)*( AWS3(:,:,0:LM-2)  + ws_explicit(:,:,0:LM-2) ))
+      YQV(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWQV3(:,:,1:LM-1) + wqv_explicit(:,:,1:LM-1) ) &
+                                         - RHOE(:,:,0:LM-2)*( AWQV3(:,:,0:LM-2) + wqv_explicit(:,:,0:LM-2) ))
+      YQL(:,:,1:LM-1) = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*( AWQL3(:,:,1:LM-1) + wql_explicit(:,:,1:LM-1) ) &
+                                         - RHOE(:,:,0:LM-2)*( AWQL3(:,:,0:LM-2) + wql_explicit(:,:,0:LM-2) ))
    else
       YS(:,:,1:LM-1)  = DMI(:,:,1:LM-1)*(  RHOE(:,:,1:LM-1)*AWS3(:,:,1:LM-1) &
                                          - RHOE(:,:,0:LM-2)*AWS3(:,:,0:LM-2) )
@@ -4859,46 +4862,46 @@ ENDIF
    RDZ_HALF(:,:,1:LM)   = PLO(:,:,1:LM)/(MAPL_RGAS*TV(:,:,1:LM)*(ZLE(:,:,0:LM-1) - ZLE(:,:,1:LM)))
    DMI_HALF(:,:,1:LM-1) = MAPL_GRAV*DT/(PLO(:,:,2:LM) - PLO(:,:,1:LM-1))
 
-   AKTKE(:,:,0)      = 0.
-   AKTKE(:,:,1:LM-1) = -K_TKE(:,:,1:LM-1)*RDZ_HALF(:,:,1:LM-1)*DMI_HALF(:,:,1:LM-1)
-   AKTKE(:,:,LM)     = 0.
+   aktke(:,:,0)      = 0.
+   aktke(:,:,1:LM-1) = -K_TKE(:,:,1:LM-1)*RDZ_HALF(:,:,1:LM-1)*DMI_HALF(:,:,1:LM-1)
+   aktke(:,:,LM)     = 0.
 
-   CKTKE(:,:,0)      = 0.
-   CKTKE(:,:,1:LM-1) = -K_TKE(:,:,2:LM)*RDZ_HALF(:,:,2:LM)*DMI_HALF(:,:,1:LM-1)
-   CKTKE(:,:,LM)     = 0.
+   cktke(:,:,0)      = 0.
+   cktke(:,:,1:LM-1) = -K_TKE(:,:,2:LM)*RDZ_HALF(:,:,2:LM)*DMI_HALF(:,:,1:LM-1)
+   cktke(:,:,LM)     = 0.
 
-   BKTKE(:,:,0)      = 1.
-   BKTKE(:,:,1:LM-1) = 1. + DT*ITAU_TURB(:,:,1:LM-1)/B1 - ( CKTKE(:,:,1:LM-1) + AKTKE(:,:,1:LM-1) )
-   BKTKE(:,:,LM)     = 1.
+   bktke(:,:,0)      = 1.
+   bktke(:,:,1:LM-1) = 1. + DT*itau_mynn(:,:,1:LM-1)/B1 - ( cktke(:,:,1:LM-1) + aktke(:,:,1:LM-1) )
+   bktke(:,:,LM)     = 1.
 
-   YTKE(:,:,0)      = 0.
-   YTKE(:,:,1:LM-1) = DT*( TKET_M(:,:,1:LM-1) + TKET_B(:,:,1:LM-1) + TKET_T(:,:,1:LM-1) )
-   YTKE(:,:,LM)     = TKE_SURF(:,:)
+   ytke(:,:,0)      = 0.
+   ytke(:,:,1:LM-1) = DT*( tket_M(:,:,1:LM-1) + tket_B(:,:,1:LM-1) + tket_T(:,:,1:LM-1) )
+   ytke(:,:,LM)     = tke_surf(:,:)
 
    if (MYNN_LEVEL == 3) then
-      AKTPE(:,:,0)      = 0.
-      AKTPE(:,:,1:LM-1) = -K_TKE(:,:,1:LM-1)/3.*RDZ_HALF(:,:,1:LM-1)*DMI_HALF(:,:,1:LM-1)
-      AKTPE(:,:,LM)     = 0.
+      aktpe(:,:,0)      = 0.
+      aktpe(:,:,1:LM-1) = -K_TKE(:,:,1:LM-1)/3.*RDZ_HALF(:,:,1:LM-1)*DMI_HALF(:,:,1:LM-1)
+      aktpe(:,:,LM)     = 0.
 
-      CKTPE(:,:,0)      = 0.
-      CKTPE(:,:,1:LM-1) = -K_TKE(:,:,2:LM)/3.*RDZ_HALF(:,:,2:LM)*DMI_HALF(:,:,1:LM-1)
-      CKTPE(:,:,LM)     = 0.
+      cktpe(:,:,0)      = 0.
+      cktpe(:,:,1:LM-1) = -K_TKE(:,:,2:LM)/3.*RDZ_HALF(:,:,2:LM)*DMI_HALF(:,:,1:LM-1)
+      cktpe(:,:,LM)     = 0.
 
-      BKTPE(:,:,0)      = 1.
-      BKTPE(:,:,1:LM-1) = 1. + DT*ITAU_TURB(:,:,1:LM-1)/B2 - ( CKTPE(:,:,1:LM-1) + AKTPE(:,:,1:LM-1) )
-      BKTPE(:,:,LM)     = 1.
+      bktpe(:,:,0)      = 1.
+      bktpe(:,:,1:LM-1) = 1. + DT*itau_mynn(:,:,1:LM-1)/B2 - ( cktpe(:,:,1:LM-1) + aktpe(:,:,1:LM-1) )
+      bktpe(:,:,LM)     = 1.
 
-      YHL2(:,:,0)      = 0.
-      YHL2(:,:,1:LM-1) = DT*HL2T_M(:,:,1:LM-1)
-      YHL2(:,:,LM)     = HL2_SURF(:,:)
+      yhl2(:,:,0)      = 0.
+      yhl2(:,:,1:LM-1) = DT*hl2t_M(:,:,1:LM-1)
+      yhl2(:,:,LM)     = hl2_surf(:,:)
 
-      YQT2(:,:,0)      = 0.
-      YQT2(:,:,1:LM-1) = DT*QT2T_M(:,:,1:LM-1)
-      YQT2(:,:,LM)     = QT2_SURF(:,:)
+      yqt2(:,:,0)      = 0.
+      yqt2(:,:,1:LM-1) = DT*qt2t_M(:,:,1:LM-1)
+      yqt2(:,:,LM)     = qt2_surf(:,:)
 
-      YHLQT(:,:,0)      = 0.
-      YHLQT(:,:,1:LM-1) = DT*HLQTT_M(:,:,1:LM-1)
-      YHLQT(:,:,LM)     = HLQT_SURF(:,:)
+      yhlqt(:,:,0)      = 0.
+      yhlqt(:,:,1:LM-1) = DT*hlqtt_M(:,:,1:LM-1)
+      yhlqt(:,:,LM)     = hlqt_surf(:,:)
    end if
 
       ! Add the topographic roughness term
@@ -5004,18 +5007,18 @@ ENDIF
 !
 ! LU decomposition for variables at half levels
 !
-     AKIX = AKTKE
-     BKIX = BKTKE
-     call VTRILU(AKIX, BKIX, CKTKE)
-     BKTKE = BKIX
-     AKTKE = AKIX
+     AKIX = aktke
+     BKIX = bktke
+     call VTRILU(AKIX, BKIX, cktke)
+     bktke = BKIX
+     aktke = AKIX
 
      if (MYNN_LEVEL == 3) then
-        AKIX = AKTPE
-        BKIX = BKTPE
-        call VTRILU(AKIX, BKIX, CKTPE)
-        BKTPE = BKIX
-        AKTPE = AKIX
+        AKIX = aktpe
+        BKIX = bktpe
+        call VTRILU(AKIX, BKIX, cktpe)
+        bktpe = BKIX
+        aktpe = AKIX
      end if
 
 ! Get the sensitivity of solution to a unit
@@ -5088,8 +5091,8 @@ ENDIF
     ! For implicit mean-gradient production of second-order moments option
     integer                             :: IMPLICIT_M_FLAG, MYNN_LEVEL, EDMF_CONSISTENT_TYPE
     real                                :: DOMF
-    real, dimension(:,:,:), pointer     :: TKET_M, TKET_B, TKET_D, &
-                                           HL2T_M, HL2T_T, HL2T_D, QT2T_M, QT2T_T, QT2T_D, HLQTT_M, HLQTT_T, HLQTT_D
+    real, dimension(:,:,:), pointer     :: tket_M, tket_B, tket_D, &
+                                           hl2t_M, hl2t_T, hl2t_D, qt2t_M, qt2t_T, qt2t_D, hlqtt_M, hlqtt_T, hlqtt_D
     real, dimension(:,:,:), allocatable :: U, V, H, QV, QLLS, QLCN, ZLO, QL 
 
     integer                             :: KM, K,L
@@ -5222,52 +5225,52 @@ ENDIF
        end if
 
 ! Compute implicit mean-gradient production terms.
-! This assumes second-order moments are solved for last, and TKE_NEW is the first
+! This assumes second-order moments are solved for last, and tke_new is the first
 ! second-order moment to be solved for.
 ! --------------------------------------------------------------------------------
-       if (trim(name) == 'TKE_NEW' .and. IMPLICIT_M_FLAG == 1) then
+       if (trim(name) == 'tke_new' .and. IMPLICIT_M_FLAG == 1) then
           call MAPL_GetResource(MAPL, DOMF, "EDMF_DOMF:", default=0.,  RC=STATUS)
           VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, EDMF_CONSISTENT_TYPE, "EDMF_CONSISTENT_TYPE:", default=0,  RC=STATUS)
           VERIFY_(STATUS)
 
-          call MAPL_GetPointer(EXPORT, TKET_M,    'TKET_M',    ALLOC=.TRUE., RC=STATUS)
+          call MAPL_GetPointer(EXPORT, tket_M,    'tket_M',    ALLOC=.TRUE., RC=STATUS)
           VERIFY_(STATUS)
-          call MAPL_GetPointer(EXPORT, TKET_B,    'TKET_B',    ALLOC=.TRUE., RC=STATUS)
+          call MAPL_GetPointer(EXPORT, tket_B,    'tket_B',    ALLOC=.TRUE., RC=STATUS)
           VERIFY_(STATUS)
-          call MAPL_GetPointer(EXPORT, TKET_D,    'TKET_D',    ALLOC=.TRUE., RC=STATUS)
+          call MAPL_GetPointer(EXPORT, tket_D,    'tket_D',    ALLOC=.TRUE., RC=STATUS)
           VERIFY_(STATUS)
 
-          call MAPL_GetPointer(EXPORT, HL2T_M,    'HL2T_M',    ALLOC=.TRUE., RC=STATUS)
+          call MAPL_GetPointer(EXPORT, hl2t_M,    'hl2t_M',    ALLOC=.TRUE., RC=STATUS)
           VERIFY_(STATUS)
-          call MAPL_GetPointer(EXPORT, HL2T_T,    'HL2T_T', RC=STATUS)
+          call MAPL_GetPointer(EXPORT, hl2t_T,    'hl2t_T', RC=STATUS)
           VERIFY_(STATUS)
-          if ( associated(HL2T_T) ) then
-             call MAPL_GetPointer(EXPORT, HL2T_D,    'HL2T_D', ALLOC=.TRUE., RC=STATUS)
+          if ( associated(hl2t_T) ) then
+             call MAPL_GetPointer(EXPORT, hl2t_D,    'hl2t_D', ALLOC=.TRUE., RC=STATUS)
           else
-             call MAPL_GetPointer(EXPORT, HL2T_D,    'HL2T_D', RC=STATUS)
+             call MAPL_GetPointer(EXPORT, hl2t_D,    'hl2t_D', RC=STATUS)
           end if
           VERIFY_(STATUS)
 
-          call MAPL_GetPointer(EXPORT, QT2T_M,    'QT2T_M',    ALLOC=.TRUE., RC=STATUS)
+          call MAPL_GetPointer(EXPORT, qt2t_M,    'qt2t_M',    ALLOC=.TRUE., RC=STATUS)
           VERIFY_(STATUS)
-          call MAPL_GetPointer(EXPORT, QT2T_T,    'QT2T_T', RC=STATUS)
+          call MAPL_GetPointer(EXPORT, qt2t_T,    'qt2t_T', RC=STATUS)
           VERIFY_(STATUS)
-          if ( associated(QT2T_T) ) then
-             call MAPL_GetPointer(EXPORT, QT2T_D,    'QT2T_D', ALLOC=.TRUE., RC=STATUS)
+          if ( associated(qt2t_T) ) then
+             call MAPL_GetPointer(EXPORT, qt2t_D,    'qt2t_D', ALLOC=.TRUE., RC=STATUS)
           else
-             call MAPL_GetPointer(EXPORT, QT2T_D,    'QT2T_D', RC=STATUS)
+             call MAPL_GetPointer(EXPORT, qt2t_D,    'qt2t_D', RC=STATUS)
           end if
           VERIFY_(STATUS)
 
-          call MAPL_GetPointer(EXPORT, HLQTT_M,   'HLQTT_M',   ALLOC=.TRUE., RC=STATUS)
+          call MAPL_GetPointer(EXPORT, hlqtt_M,   'hlqtt_M',   ALLOC=.TRUE., RC=STATUS)
           VERIFY_(STATUS)
-          call MAPL_GetPointer(EXPORT, HLQTT_T,   'HLQTT_T', RC=STATUS)
+          call MAPL_GetPointer(EXPORT, hlqtt_T,   'hlqtt_T', RC=STATUS)
           VERIFY_(STATUS)
-          if ( associated(HLQTT_T) ) then
-             call MAPL_GetPointer(EXPORT, HLQTT_D,    'HLQTT_D', ALLOC=.TRUE., RC=STATUS)
+          if ( associated(hlqtt_T) ) then
+             call MAPL_GetPointer(EXPORT, hlqtt_D,    'hlqtt_D', ALLOC=.TRUE., RC=STATUS)
           else
-             call MAPL_GetPointer(EXPORT, HLQTT_D,    'HLQTT_D', RC=STATUS)
+             call MAPL_GetPointer(EXPORT, hlqtt_D,    'hlqtt_D', RC=STATUS)
           end if
           VERIFY_(STATUS)
           
@@ -5277,27 +5280,28 @@ ENDIF
           call implicit_M(IM, JM, LM, &
                           th00, ZLO, U, V, H, QV, QL, &
                           Beta_hl, Beta_qt, KM_MYNN, KH_MYNN, &
-                          ws_cg, wqv_cg, wql_cg, WHL_MF, WQT_MF, WTHV_MF, &
-                          TKET_M, TKET_B, HL2T_M, QT2T_M, HLQTT_M, &
+                          ws_explicit, wqv_explicit, wql_explicit, &
+                          whl_mf, wqt_mf, wthv_mf, &
+                          tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
                           MYNN_LEVEL, DOMF, EDMF_CONSISTENT_TYPE)
 
-          YTKE(:,:,0)      = 0.
-          YTKE(:,:,1:LM-1) = DT*( TKET_M(:,:,1:LM-1) + TKET_B(:,:,1:LM-1) + TKET_T(:,:,1:LM-1) )
-          YTKE(:,:,LM)     = TKE_SURF(:,:)
+          ytke(:,:,0)      = 0.
+          ytke(:,:,1:LM-1) = DT*( tket_M(:,:,1:LM-1) + tket_B(:,:,1:LM-1) + tket_T(:,:,1:LM-1) )
+          ytke(:,:,LM)     = tke_surf(:,:)
 
           call MAPL_GetResource (MAPL, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
           if (MYNN_LEVEL == 3) then
-             YHL2(:,:,0)      = 0.
-             YHL2(:,:,1:LM-1) = DT*HL2T_M(:,:,1:LM-1)
-             YHL2(:,:,LM)     = HL2_SURF(:,:)
+             yhl2(:,:,0)      = 0.
+             yhl2(:,:,1:LM-1) = DT*hl2t_M(:,:,1:LM-1)
+             yhl2(:,:,LM)     = hl2_surf(:,:)
 
-             YQT2(:,:,0)      = 0.
-             YQT2(:,:,1:LM-1) = DT*QT2T_M(:,:,1:LM-1)
-             YQT2(:,:,LM)     = QT2_SURF(:,:)
+             yqt2(:,:,0)      = 0.
+             yqt2(:,:,1:LM-1) = DT*qt2t_M(:,:,1:LM-1)
+             yqt2(:,:,LM)     = qt2_surf(:,:)
 
-             YHLQT(:,:,0)      = 0.
-             YHLQT(:,:,1:LM-1) = DT*HLQTT_M(:,:,1:LM-1)
-             YHLQT(:,:,LM)     = HLQT_SURF(:,:)
+             yhlqt(:,:,0)      = 0.
+             yhlqt(:,:,1:LM-1) = DT*hlqtt_M(:,:,1:LM-1)
+             yhlqt(:,:,LM)     = hlqt_surf(:,:)
           end if
        end if
 
@@ -5306,7 +5310,7 @@ ENDIF
 
 if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') & 
      .and. (trim(name) /= 'QILS') .and.  (trim(name) /= 'U') .and. (trim(name) /= 'V') &
-     .and. (trim(name) /= 'TKE_NEW') .and.  (trim(name) /= 'HL2') .and. (trim(name) /= 'QT2') .and. (trim(name) /= 'HLQT')) then
+     .and. (trim(name) /= 'tke_new') .and.  (trim(name) /= 'hl2') .and. (trim(name) /= 'qt2') .and. (trim(name) /= 'hlqt')) then
     
 
        if     ( TYPE=='U' ) then ! Momentum
@@ -5360,40 +5364,40 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
          DX => DKUU
          AK => AKUU; BK => BKUU; CK => CKUU
          SX=S+YV        
- elseif (trim(name)=='TKE_NEW') then
-         AK => AKTKE; BK => BKTKE; CK => CKTKE
+ elseif (trim(name)=='tke_new') then
+         AK => aktke; BK => bktke; CK => cktke
          SX_HALF(:,:,0)      = 0
-         SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YTKE(:,:,1:LM-1)
-         SX_HALF(:,:,LM)     = YTKE(:,:,LM)
- elseif (trim(name)=='HL2') then
-       AK => AKTPE; BK => BKTPE; CK => CKTPE
+         SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + ytke(:,:,1:LM-1)
+         SX_HALF(:,:,LM)     = ytke(:,:,LM)
+ elseif (trim(name)=='hl2') then
+       AK => aktpe; BK => bktpe; CK => cktpe
        SX_HALF(:,:,0)      = 0.
-       SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YHL2(:,:,1:LM-1)
-       SX_HALF(:,:,LM)     = YHL2(:,:,LM)
- elseif (trim(name)=='QT2') then
-       AK => AKTPE; BK => BKTPE; CK => CKTPE
+       SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + yhl2(:,:,1:LM-1)
+       SX_HALF(:,:,LM)     = yhl2(:,:,LM)
+ elseif (trim(name)=='qt2') then
+       AK => aktpe; BK => bktpe; CK => cktpe
        SX_HALF(:,:,0)      = 0.
-       SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YQT2(:,:,1:LM-1)
-       SX_HALF(:,:,LM)     = YQT2(:,:,LM)
- elseif (trim(name)=='HLQT') then
-       AK => AKTPE; BK => BKTPE; CK => CKTPE
+       SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + yqt2(:,:,1:LM-1)
+       SX_HALF(:,:,LM)     = yqt2(:,:,LM)
+ elseif (trim(name)=='hlqt') then
+       AK => aktpe; BK => bktpe; CK => cktpe
        SX_HALF(:,:,0)      = 0.
-       SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YHLQT(:,:,1:LM-1)
-       SX_HALF(:,:,LM)     = YHLQT(:,:,LM)
+       SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + yhlqt(:,:,1:LM-1)
+       SX_HALF(:,:,LM)     = yhlqt(:,:,LM)
  end if
 
 
 ! Solve for semi-implicit changes. This modifies SX
 ! -------------------------------------------------
 
-       if (trim(name) == 'TKE_NEW' .or. trim(name) == 'HL2' .or. trim(name) == 'QT2' .or. trim(name) == 'HLQT') then
+       if (trim(name) == 'tke_new' .or. trim(name) == 'hl2' .or. trim(name) == 'qt2' .or. trim(name) == 'hlqt') then
           call VTRISOLVE(AK,BK,CK,SX_HALF,SG)
 
           ! Ensure realizibility
-          if (trim(name) /= 'HLQT') then 
+          if (trim(name) /= 'hlqt') then 
              SX_HALF = max(0., SX_HALF)
 !          else
-!             SX_HALF = sign( min( abs(SX_HALF), sqrt(HL2*QT2) ), SX_HALF )
+!             SX_HALF = sign( min( abs(SX_HALF), sqrt(hl2*qt2) ), SX_HALF )
           end if
        else
           call VTRISOLVE(AK,BK,CK,SX,SG)
@@ -5414,8 +5418,8 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
 !------------------
 
        if(associated(SOI)) then
-          if (trim(name) == 'TKE_NEW' .or. trim(name) == 'HL2' .or. trim(name) == 'QT2' .or. trim(name\
-) == 'HLQT') then
+          if (trim(name) == 'tke_new' .or. trim(name) == 'hl2' .or. trim(name) == 'qt2' .or. trim(name\
+) == 'hlqt') then
              SOI = ( (SX_HALF - S)/DT )
           elseif ( WEIGHTED ) then
              SOI = ( (SX - S)/DT )*DP
@@ -5429,27 +5433,27 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
        end if
 
        ! Compute dissipation tendencies of second-order moments
-       if (trim(name) == 'TKE_NEW') then
-          TKET_D(:,:,1:LM-1) = -ITAU_TURB(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B1
-       else if (trim(name) == 'HL2') then
-          HL2T_D(:,:,1:LM-1) = -ITAU_TURB(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B2
-       else if (trim(name) == 'QT2') then
-          QT2T_D(:,:,1:LM-1) = -ITAU_TURB(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B2
-       else if (trim(name) == 'HLQT') then
-          HLQTT_D(:,:,1:LM-1) = -ITAU_TURB(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B2
+       if (trim(name) == 'tke_new') then
+          tket_D(:,:,1:LM-1) = -itau_mynn(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B1
+       else if (trim(name) == 'hl2') then
+          hl2t_D(:,:,1:LM-1) = -itau_mynn(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B2
+       else if (trim(name) == 'qt2') then
+          qt2t_D(:,:,1:LM-1) = -itau_mynn(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B2
+       else if (trim(name) == 'hlqt') then
+          hlqtt_D(:,:,1:LM-1) = -itau_mynn(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B2
        end if
 
        ! Compute diffusive constribution turbulent transport tendencies of second-order moments (for now just tke)
        if ( associated(SOI) ) then
-          if ( trim(name) == 'TKE_NEW' .and. associated(TKET_T) .and. associated(TKET_D) ) then
-             TKET_T(:,:,1:LM-1) = SOI(:,:,1:LM-1) - TKET_M(:,:,1:LM-1) - TKET_B(:,:,1:LM-1) - TKET_D(:,:,1:LM-1)
+          if ( trim(name) == 'tke_new' .and. associated(tket_T) .and. associated(tket_D) ) then
+             tket_T(:,:,1:LM-1) = SOI(:,:,1:LM-1) - tket_M(:,:,1:LM-1) - tket_B(:,:,1:LM-1) - tket_D(:,:,1:LM-1)
           else if ( MYNN_LEVEL == 3 ) then
-             if (trim(name) == 'HL2' .and. associated(HL2T_T) .and. associated(HL2T_D) ) then
-                HL2T_T(:,:,1:LM-1) = SOI(:,:,1:LM-1) - HL2T_M(:,:,1:LM-1) - HL2T_D(:,:,1:LM-1)
-             else if (trim(name) == 'QT2' .and. associated(QT2T_T) .and. associated(QT2T_D) ) then
-                QT2T_T(:,:,1:LM-1) = SOI(:,:,1:LM-1) - QT2T_M(:,:,1:LM-1) - QT2T_D(:,:,1:LM-1)
-             else if (trim(name) == 'HLQT' .and. associated(HLQTT_T) .and. associated(HLQTT_D) ) then
-                HLQTT_T(:,:,1:LM-1) = SOI(:,:,1:LM-1) - HLQTT_M(:,:,1:LM-1) - HLQTT_D(:,:,1:LM-1)
+             if (trim(name) == 'hl2' .and. associated(hl2t_T) .and. associated(hl2t_D) ) then
+                hl2t_T(:,:,1:LM-1) = SOI(:,:,1:LM-1) - hl2t_M(:,:,1:LM-1) - hl2t_D(:,:,1:LM-1)
+             else if (trim(name) == 'qt2' .and. associated(qt2t_T) .and. associated(qt2t_D) ) then
+                qt2t_T(:,:,1:LM-1) = SOI(:,:,1:LM-1) - qt2t_M(:,:,1:LM-1) - qt2t_D(:,:,1:LM-1)
+             else if (trim(name) == 'hlqt' .and. associated(hlqtt_T) .and. associated(hlqtt_D) ) then
+                hlqtt_T(:,:,1:LM-1) = SOI(:,:,1:LM-1) - hlqtt_M(:,:,1:LM-1) - hlqtt_D(:,:,1:LM-1)
              end if
           end if
        end if       
@@ -5475,7 +5479,7 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
 !------------------
 
        if(FRIENDLY) then
-          if (trim(name) == 'TKE_NEW' .or. trim(name) == 'HL2' .or. trim(name) == 'QT2' .or. trim(name) == 'HLQT') then
+          if (trim(name) == 'tke_new' .or. trim(name) == 'hl2' .or. trim(name) == 'qt2' .or. trim(name) == 'hlqt') then
              S = SX_HALF
           else
              S = SX
@@ -5940,7 +5944,7 @@ end subroutine RUN1
          VERIFY_(STATUS)
 
          ! Skip "TRACERS" loop if variable defined at half-level
-         if (trim(name) == 'TKE_NEW' .or. trim(name) == 'HL2' .or. trim(name) == 'QT2' .or. trim(name) == 'HLQT') cycle TRACERS
+         if (trim(name) == 'tke_new' .or. trim(name) == 'hl2' .or. trim(name) == 'qt2' .or. trim(name) == 'hlqt') cycle TRACERS
 
 ! Get item's diffusion type (U, S or Q; default is Q)
 !----------------------------------------------------

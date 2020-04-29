@@ -69,7 +69,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
                     whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, &                            ! in
                     A_cloud, B_cloud, qsat, &                                               ! in
                     tke, hl2, qt2, hlqt, &                                                  ! inout
-                    Km, Kh, K_tke, itau, ws_cg, wqv_cg, wql_cg, &                           ! out
+                    Km, Kh, K_tke, itau, ws_explicit, wqv_explicit, wql_explicit, &         ! out
                     Beta_hl, Beta_qt, &                                                     ! out
                     tket_M, tket_B, tket_T, hl2t_M, qt2t_M, hlqtt_M, &                      ! out
                     tke_surf, hl2_surf, qt2_surf, hlqt_surf)                                ! out
@@ -88,7 +88,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
                                                 au, Mu, wu
   real, dimension(IM,JM,0:LM), intent(inout) :: tke, hl2, qt2, hlqt
   real, dimension(IM,JM), intent(out)        :: tke_surf, hl2_surf, qt2_surf, hlqt_surf
-  real, dimension(IM,JM,0:LM), intent(out)   :: Km, Kh, itau, ws_cg, wqv_cg, wql_cg, Beta_hl, Beta_qt, &
+  real, dimension(IM,JM,0:LM), intent(out)   :: Km, Kh, itau, ws_explicit, wqv_explicit, wql_explicit, Beta_hl, Beta_qt, &
                                                 tket_M, tket_B, tket_T, hl2t_M, qt2t_M, hlqtt_M
   real, dimension(IM,JM,LM), intent(out)     :: K_tke
 
@@ -338,17 +338,17 @@ subroutine run_mynn(IM, JM, LM, &                                               
         ! Compute counter-gradient fluxes of GEOS variables
         if (MYNN_LEVEL == 3) then
            if (WQL_TYPE == 0) then
-              wql_cg(i,j,k) = 0.
+              wql_explicit(i,j,k) = 0.
            else
               ifac    = (zle(i,j,k) - zlo(i,j,k+1))*idzlo
               ac_half = ac(i,j,k+1) + ifac*(ac(i,j,k) - ac(i,j,k+1))
               wql     = ac_half*(  A(i,j,k)*( -Kh(i,j,k)*dqtdz + wqt_cg ) &
                                  - B(i,j,k)*( -Kh(i,j,k)*dhldz + whl_cg ) )
               
-              wql_cg(i,j,k) = wql + Kh(i,j,k)*dqldz
+              wql_explicit(i,j,k) = wql + Kh(i,j,k)*dqldz
            end if
-           ws_cg(i,j,k)  = MAPL_CP*whl_cg + MAPL_ALHL*wql_cg(i,j,k)
-           wqv_cg(i,j,k) = wqt_cg - wql_cg(i,j,k)
+           ws_explicit(i,j,k)  = MAPL_CP*whl_cg + MAPL_ALHL*wql_explicit(i,j,k)
+           wqv_explicit(i,j,k) = wqt_cg - wql_explicit(i,j,k)
         end if
 
         !         
@@ -579,7 +579,7 @@ end subroutine mynn_length
 subroutine implicit_M(IM, JM, LM, &
                       th00, zlo, u, v, h, qv, ql, &
                       Beta_hl, Beta_qt, Km, Kh, &
-                      ws_cg, wqv_cg, wql_cg, whl_mf, wqt_mf, wthv_mf, &
+                      ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf, &
                       tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
                       MYNN_LEVEL, DOMF, CONSISTENT_FLAG)
 
@@ -587,7 +587,7 @@ subroutine implicit_M(IM, JM, LM, &
   real, intent(in)                         :: th00, DOMF
   real, dimension(IM,JM,LM), intent(in)    :: zlo, u, v, h, qv, ql 
   real, dimension(IM,JM,0:LM), intent(in)  :: Beta_hl, Beta_qt, Km, Kh, &
-                                              ws_cg, wqv_cg, wql_cg, whl_mf, wqt_mf, wthv_mf
+                                              ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf
   real, dimension(IM,JM,0:LM), intent(out) :: tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M
 
   integer          :: i, j, k, kp1
@@ -618,8 +618,8 @@ subroutine implicit_M(IM, JM, LM, &
         N2 = goth00*( Beta_hl(i,j,k)*dhldz + Beta_qt(i,j,k)*dqtdz )
         S2 = (( u(i,j,k) - u(i,j,kp1) )*idzlo)**2. + ( (v(i,j,k) - v(i,j,kp1) )*idzlo)**2.
 
-        whl_cg = ws_cg(i,j,k)/MAPL_CP - lvocp*wql_cg(i,j,k)
-        wqt_cg = wqv_cg(i,j,k) + wql_cg(i,j,k)
+        whl_cg = ws_explicit(i,j,k)/MAPL_CP - lvocp*wql_explicit(i,j,k)
+        wqt_cg = wqv_explicit(i,j,k) + wql_explicit(i,j,k)
 
         if ( MYNN_LEVEL == 3 ) then
            wb_cg = Beta_hl(i,j,k)*whl_cg + Beta_qt(i,j,k)*wqt_cg

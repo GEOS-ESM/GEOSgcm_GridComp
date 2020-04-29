@@ -748,7 +748,7 @@ contains
     ! Import prognostic variables representing covariability of heat and moisture
     !
     call MAPL_AddImportSpec(GC,                                  &
-       SHORT_NAME = 'HL2',                                       &
+       SHORT_NAME = 'hl2',                                       &
        LONG_NAME  = 'variance_of_liquid_water_static_energy',    &
        UNITS      = 'K+2',                                       &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -759,7 +759,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                  &
-       SHORT_NAME = 'QT2',                                       &
+       SHORT_NAME = 'qt2',                                       &
        LONG_NAME  = 'variance_of_total_water_specific_humidity', &
        UNITS      = '1',                                         &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -770,7 +770,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                  &
-       SHORT_NAME = 'HLQT',                                      &
+       SHORT_NAME = 'hlqt',                                      &
        LONG_NAME  = 'covariance_of_liquid_water_static_energy_and_total_water_specific_humidity', &
        UNITS      = 'K',                                         &
        DIMS       = MAPL_DimsHorzVert,                           &
@@ -5696,7 +5696,7 @@ contains
       real, pointer, dimension(:,:)   :: TROPP
       real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE, TKESHOC
       real, pointer, dimension(:,:,:) :: ISOTROPY,w3_canuto,edmf_wqt,edmf_whl,edmf_qt2,edmf_hl2,edmf_hlqt,edmf_w2,edmf_w3,edmf_qt3,edmf_dry_a,edmf_moist_a
-      real, pointer, dimension(:,:,:) :: HL2, QT2, HLQT
+      real, pointer, dimension(:,:,:) :: hl2, qt2, hlqt
       real, pointer, dimension(    :) :: PREF
       real, pointer, dimension(:,:,:) :: Q, QRAIN, QSNOW, QGRAUPEL, QLLS, QLCN, CLLS, CLCN, BYNCY, QILS, QICN, QCTOT,QITOT,QLTOT
       real, pointer, dimension(:,:,:) :: QPTOTLS, QRTOT, QSTOT,  CFLIQ, CFICE !DONIF
@@ -6776,9 +6776,9 @@ contains
       call MAPL_GetPointer(IMPORT, T        ,'T'       ,RC=STATUS); VERIFY_(STATUS)
 
       ! Get pointers to prognostics second-order moments
-      call MAPL_GetPointer(IMPORT, HL2 ,   'HL2',    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, QT2  ,  'QT2',    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, HLQT,   'HLQT',   RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, hl2 ,   'hl2',    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, qt2  ,  'qt2',    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, hlqt,   'hlqt',   RC=STATUS); VERIFY_(STATUS)
 
       ! Get pointers to sub-environmental properties
       call MAPL_GetPointer(IMPORT,   au,   'au', RC=STATUS); VERIFY_(STATUS)
@@ -9242,8 +9242,8 @@ contains
        ! define resolved gradients on edges 
        do k=1,LM-1
 
-          ! Ensure realizibility of HLQT (this should be moved to DIFFUSE in Turbulence in the future)
-          HLQT(:,:,k) = sign( min( abs(HLQT(:,:,k)), sqrt(HL2(:,:,k)*QT2(:,:,k)) ), HLQT(:,:,k) )
+          ! Ensure realizibility of hlqt (this should be moved to DIFFUSE in Turbulence in the future)
+          hlqt(:,:,k) = sign( min( abs(hlqt(:,:,k)), sqrt(hl2(:,:,k)*qt2(:,:,k)) ), hlqt(:,:,k) )
 
           if (DO_MYNN == 0) then
              wrk1 = 1.0 / (ZLO(:,:,k)-ZLO(:,:,k+1)) 
@@ -9269,9 +9269,9 @@ contains
              ! energy.  Eq 5 in BK13
              hlqt_sec(:,:,k) = hlqt2tune * sm * wrk1 * wrk2
           else
-             hl2_sec(:,:,k)  = HL2(:,:,k)
-             qt2_sec(:,:,k)  = QT2(:,:,k)
-             hlqt_sec(:,:,k) = HLQT(:,:,k)
+             hl2_sec(:,:,k)  = hl2(:,:,k)
+             qt2_sec(:,:,k)  = qt2(:,:,k)
+             hlqt_sec(:,:,k) = hlqt(:,:,k)
          end if
        end do   
 
