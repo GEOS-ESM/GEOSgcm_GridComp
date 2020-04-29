@@ -2501,6 +2501,7 @@ contains
          LONG_NAME  = 'turbulent_transport_of_turbulent kinetic energy', &
          UNITS      = 'm+2 s-3',                                    &
          FRIENDLYTO = 'TURBULENCE',                             &
+         DEFAULT    = 0.0,                                                     &
          DIMS       = MAPL_DimsHorzVert,                           &
          VLOCATION  = MAPL_VLocationEdge,               &
          RESTART    = MAPL_RestartSkip,                            RC=STATUS  )
@@ -3601,6 +3602,14 @@ mfwhl = 0.0
 edmf_hl2 = 0.0
 edmf_qt2 = 0.0
 edmf_hlqt = 0.0
+
+whl_mf  = 0.
+wqt_mf  = 0.
+wthv_mf = 0.
+
+ws_cg  = 0.
+wqv_cg = 0.
+wql_cg = 0.
 
 IF(DoMF .eq. 1.) then
     
