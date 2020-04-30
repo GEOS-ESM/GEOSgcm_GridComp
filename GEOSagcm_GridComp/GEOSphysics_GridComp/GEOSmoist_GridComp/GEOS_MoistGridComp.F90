@@ -25,7 +25,7 @@ module GEOS_MoistGridCompMod
   use gfdl2_cloud_microphys_mod
 
 #ifndef _CUDA
-  use CLOUDNEW, only: PROGNO_CLOUD, ICE_FRACTION, T_CLOUD_CTL
+  use CLOUDNEW, only: PROGNO_CLOUD, ICE_FRACTION, T_CLOUD_CTL, pdfcondensate, pdffrac
 #else
   use CLOUDNEW, only: &
        ! Subroutines
@@ -5576,7 +5576,7 @@ contains
         
     
 !!! MODIFIED : remove when done testing shallow
-      real                            :: THLSRC_PERT, QTSRC_PERT
+      real                            :: THLSRC_PERT, QTSRC_PERT, UWTOLS
       real                            :: PMIN_CBL
 
       real                            :: CBL_TPERTi, CBL_TPERT, CBL_QPERT, RASAL1, RASAL2
@@ -5913,6 +5913,8 @@ contains
 
       real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU, CMNI
       real   , dimension(IM,JM)           :: CMDUcarma, CMSScarma
+       
+      real :: sigmaqt, qcn, cfn, qsatn, dqlls, dqils, qt
 
       ! MATMAT CUDA Variables
 #ifdef _CUDA
@@ -6133,9 +6135,9 @@ contains
       call MAPL_GetResource(STATE,CBL_TPERT_MXOCN, 'CBL_TPERT_MXOCN:',     DEFAULT= 2.0   , RC=STATUS)
       call MAPL_GetResource(STATE,CBL_TPERT_MXLND, 'CBL_TPERT_MXLND:',     DEFAULT= 0.0   , RC=STATUS)
 
-     !!! MODIFIED by npa: remove when done testing shallow
       call MAPL_GetResource(STATE,THLSRC_PERT, 'THLSRC_PERT:',     DEFAULT= 0.0   , RC=STATUS)     
       call MAPL_GetResource(STATE,QTSRC_PERT, 'QTSRC_PERT:',     DEFAULT= 1.0   , RC=STATUS)     
+      call MAPL_GetResource(STATE,UWTOLS, 'UWTOLS:',     DEFAULT= 0.0   , RC=STATUS)     
 
       KSTRAP = INT( RASPARAMS%STRAPPING )
 
@@ -8399,17 +8401,17 @@ contains
       !  Calculate updraft core fraction from cumulus fraction.
       !  CUFRC is assumed in compute_uwshcu to be twice updraft frac
       !--------------------------------------------------------------
-      UFRC_SC = 0.5 * CUFRC_SC
+        UFRC_SC = 0.5 * CUFRC_SC
 
       !  Number concentrations for 2-moment microphysics
       !--------------------------------------------------------------
-      SC_NDROP = SC_NDROP*MASS
-      SC_NICE = SC_NICE*MASS
+        SC_NDROP = SC_NDROP*MASS
+        SC_NICE = SC_NICE*MASS
 
       !  Precipitation
       !--------------------------------------------------------------
-      SHLW_PRC3 = DQRDT_SC    ! [kg/kg/s]
-      SHLW_SNO3 = DQSDT_SC    ! [kg/kg/s]
+        SHLW_PRC3 = DQRDT_SC    ! [kg/kg/s]
+        SHLW_SNO3 = DQSDT_SC    ! [kg/kg/s]
 
       else   ! if UW shallow scheme not called
 
@@ -8519,6 +8521,10 @@ contains
       call MAPL_TimerOff(STATE,"-POST_RAS")
 
 
+      call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 1.0    )
+
+      call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT= 300.0  )
+      call MAPL_GetResource( STATE, CLDPARAMS%SLOPERHCRIT, 'SLOPERHCRIT:', DEFAULT= 20.0  )
 
       if (DOCLDMACRO==0) then
         call MAPL_TimerOn(STATE,"---CLDMACRO")
@@ -8542,10 +8548,63 @@ contains
         enddo
        ! add DeepCu Clouds to Convective
         CLCN = CLCN + CNV_MFD*iMASS*DT_MOIST
+        if (UWTOLS/=0) then
        ! add ShallowCu CL/QL/QI tendencies to Large-Scale
-        CLLS = CLLS +   MFD_SC*iMASS*DT_MOIST
-        QLLS = QLLS + QLDET_SC*iMASS*DT_MOIST
-        QILS = QILS + QIDET_SC*iMASS*DT_MOIST
+          CLLS = CLLS +   MFD_SC*iMASS*DT_MOIST
+          QLLS = QLLS + QLDET_SC*iMASS*DT_MOIST
+          QILS = QILS + QIDET_SC*iMASS*DT_MOIST
+        else
+          CLCN = CLCN +   MFD_SC*iMASS*DT_MOIST
+          QLCN = QLCN + QLDET_SC*iMASS*DT_MOIST
+          QICN = QICN + QIDET_SC*iMASS*DT_MOIST
+
+          CLCN = max(min(CLCN,1.0),0.0)
+
+          do K=1,LM
+            do J=1,JM
+              do I=1,IM
+
+                if (CLCN(i,j,k).lt.0.99) then
+
+                  QT = Q1(i,j,k) + (QLLS(i,j,k)+QILS(i,j,k))/(1.-CLCN(i,j,k))   ! QT in non-convective area
+                 
+                  do n = 1,5
+
+                    qsatn = GEOS_QSAT( TEMP(i,j,k), PLO(i,j,k) )
+
+                    alpha = minrhcrit + (tempmaxrh-minrhcrit)/(19.) * &
+                  ((atan( (2.*(pp- turnrhcrit)/(1020.-turnrhcrit)-1.) * &
+                  tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
+
+                    sigmaqt = alpha*qsatn
+
+                    call pdffrac(2,QT,sigmaqt,sigmaqt,qsatn,cfn)
+                    call pdfcondensate(2,QT,sigmaqt,sigmaqt,qsatn,qcn)
+
+                    IFRC = ICE_FRACTION( TEMP(I,J,K), 0.0, SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J) )
+                   
+                    ! calculate change in grid mean QLLS and QILS
+                    ! delta = new QXLS - old QXLS
+                    dqils = 0.75*qcn*IFRC*(1.-CLCN(i,j,k)) - QILS(i,j,k)
+                    dqlls = 0.75*qcn*(1.-IFRC)*(1.-CLCN(i,j,k)) - QLLS(i,j,k)
+                   
+                    TEMP(i,j,k) = TEMP(i,j,k) + (MAPL_ALHL*(dqils+dqlls)+MAPL_ALHF*dqils)/ MAPL_CP
+                    Q1(i,j,k) = Q1(i,j,k) - dqils - dqlls
+                    QLLS(i,j,k) = QLLS(i,j,k) + dqlls
+                    QILS(i,j,k) = QILS(i,j,k) + dqils
+
+                  end do ! n convergence loop
+
+                  ! cfn is fraction in non-convective area. convert to grid area.
+                  CLLS(i,j,k) = cfn*(1.-CLCN(i,j,k))
+
+                end if ! if clcn<0.99
+
+              end do ! IM loop
+            end do ! JM loop
+          end do ! LM loop
+        
+        endif
        ! add ShallowCu rain/snow tendencies
         QRAIN = QRAIN + SHLW_PRC3*DT_MOIST
         QSNOW = QSNOW + SHLW_SNO3*DT_MOIST
@@ -8789,10 +8848,6 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%FR_LS_ICE, 'FR_LS_ICE:',  DEFAULT= 0.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%FR_AN_ICE, 'FR_AN_ICE:',  DEFAULT= 0.0    )
 
-      call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 1.0    )
-
-      call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT= 300.0  )
-      call MAPL_GetResource( STATE, CLDPARAMS%SLOPERHCRIT, 'SLOPERHCRIT:', DEFAULT= 20.0  )
    
       call MAPL_GetResource( STATE, CLDPARAMS%CFPBL_EXP,      'CFPBL_EXP:',      DEFAULT= 1 )
       
@@ -9117,6 +9172,7 @@ contains
          RAD_QS = RAD_QS + DQSDT_micro * DT_MOIST
          RAD_QG = RAD_QG + DQGDT_micro * DT_MOIST
          RAD_CF = RAD_CF + DQADT_micro * DT_MOIST
+         RAD_CF = max(0.0,min(1.0,RAD_CF))
      ! Fill vapor/rain/snow/graupel state
          Q1       = RAD_QV
          QRAIN    = RAD_QR

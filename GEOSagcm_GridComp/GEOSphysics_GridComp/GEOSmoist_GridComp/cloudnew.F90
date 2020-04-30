@@ -31,6 +31,8 @@ module cloudnew
    PUBLIC ICE_FRACTION
    PUBLIC T_CLOUD_CTL
    PUBLIC fix_up_clouds
+   PUBLIC pdffrac
+   PUBLIC pdfcondensate
 #endif
 
    type T_CLOUD_CTL
