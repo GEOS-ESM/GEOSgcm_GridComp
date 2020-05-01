@@ -60,13 +60,15 @@ MODULE routing_model
        WSTREAM(N)    = WSTREAM(N)  + RUNCATCH(N) * REAL (ROUTE_DT)
        LS            = AREACAT(N) / (AMAX1(1.,LENGSC (N)))
        ROFF          = RUNCATCH(N) * AREACAT(N)
-       IF(ROFF < 2. ) COEFF = RESCONST (LS, P1, P2)    
-       IF(ROFF > 10.) COEFF = RESCONST (LS, P3, P4)   
-       IF ((ROFF >= 2.).AND.(ROFF <= 10.)) THEN
-          COEFF1 = RESCONST (LS, P1, P2)    
-          COEFF2 = RESCONST (LS, P3, P4)   
-          COEFF  = COEFF1 + (ROFF - 2.)*(COEFF2 - COEFF1)/8.
-       ENDIF
+       IF(ROFF < 2. ) THEN
+             COEFF = RESCONST (LS, P1, P2)
+          ELSEIF(ROFF > 10.) THEN
+             COEFF = RESCONST (LS, P3, P4)
+          ELSE
+             COEFF1 = RESCONST (LS, P1, P2)    
+             COEFF2 = RESCONST (LS, P3, P4)   
+             COEFF  = COEFF1 + (ROFF - 2.)*(COEFF2 - COEFF1)/8.
+          ENDIF
 
        IF(COEFF > K_RES_MAX) COEFF = K_SIMPLE
  
