@@ -63,6 +63,7 @@ module MOM6_GEOSPlugMod
 
   use ocean_model_mod,          only: get_ocean_grid
   use MOM_grid,                 only: ocean_grid_type
+  use MOM_domains,              only: pass_vector
 
 ! Nothing on the MOM side is visible through this module.
 
@@ -686,7 +687,7 @@ contains
 
     Ocean%is_ocean_pe = .true.
     call ocean_model_init  (Ocean, Ocean_state, Time, Time)
-
+ 
     MOM_MAPL_internal_state%Ocean_State => Ocean_State
 
     call ocean_model_init_sfc(Ocean_state, Ocean)
@@ -701,13 +702,16 @@ contains
     jsc  = Ocean_grid%jsc; jec  = Ocean_grid%jec
     jsd  = Ocean_grid%jsd; jed  = Ocean_grid%jed
 
-    call mpp_get_compute_domain(Ocean%Domain, g_isc, g_iec, g_jsc, g_jec)
-
-    g_isd  = Ocean_grid%isd_global; g_jsd  = Ocean_grid%jsd_global
-    g_ied = ied +g_isd -1;          g_jed = jed +g_jsd -1                         ! local + global -1
-
-    print *, 'R1 [g_isc, g_iec], [g_jsc, g_jec] = ', g_isc, g_iec, g_jsc, g_jec
-    print *, 'R1 [g_isd, g_ied], [g_jsd, g_jed] = ', g_isd, g_ied, g_jsd, g_jed
+! -------
+! instead of:
+!   call mpp_get_compute_domain(Ocean%Domain, g_isc, g_iec, g_jsc, g_jec)
+!   g_isd  = Ocean_grid%isd_global;      g_jsd  = Ocean_grid%jsd_global
+!!  g_ied = ied +g_isd -1;               g_jed = jed +g_jsd -1               ! local + global -1
+!   g_ied = ied+(Ocean_grid%idg_offset); g_jed = jed+(Ocean_grid%jdg_offset)
+! do this:
+    call mpp_get_compute_domain(Ocean_grid%Domain%mpp_domain, g_isc, g_iec, g_jsc, g_jec)
+    call mpp_get_data_domain   (Ocean_grid%Domain%mpp_domain, g_isd, g_ied, g_jsd, g_jed)
+! -------
 
 ! Check local sizes of horizontal dimensions
 !--------------------------------------------
@@ -846,7 +850,7 @@ contains
     end where
 
     if(associated(area)) then
-       call ocean_model_data_get(Ocean_State, Ocean, 'area', Tmp2, g_isc, g_jsc)
+       call ocean_model_data_get(Ocean_State, Ocean, 'area', Tmp2, isc, jsc)
        AREA = real(Tmp2, kind=G5KIND)
     end if
 
@@ -891,14 +895,22 @@ contains
     integer                            :: STATUS
     character(len=ESMF_MAXSTR)         :: COMP_NAME
 
+! Locals with ESMF and MAPL types
+
+    type(MAPL_MetaComp),       pointer :: MAPL               => null()
+    type(ESMF_Time)                    :: MyTime
+    type(ESMF_TimeInterval)            :: TINT
+
 ! Locals
 
-    integer                            :: IM, JM
+    type(ice_ocean_boundary_type), pointer :: Boundary                 => null()
+    type(ocean_public_type),       pointer :: Ocean                    => null()
+    type(ocean_state_type),        pointer :: Ocean_State              => null()
+    type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state  => null()
+    type(MOM_MAPLWrap_Type)                :: wrap
 
-    integer                            :: steady_state_ocean = 0       ! SA: Per Atanas T, "name" of this var is misleading
-                                                                       ! We run ocean model only when it = 0
-    logical                            :: ocean_seg_start    = .true.
-    logical                            :: ocean_seg_end      = .true.
+    type(ocean_grid_type),         pointer :: Ocean_grid               => null()
+    type(domain2d),                pointer :: OceanDomain              => null()
 
 ! Required exports
 
@@ -944,30 +956,26 @@ contains
     real, allocatable                  :: cos_rot(:,:)
     real, allocatable                  :: sin_rot(:,:)
 
-    type(MAPL_MetaComp),           pointer :: MAPL                     => null()
-    type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state  => null()
-    type(MOM_MAPLWrap_Type)                :: wrap
+    integer                            :: IM, JM
 
-    type(ice_ocean_boundary_type), pointer :: Boundary     => null()
-    type(ocean_public_type),       pointer :: Ocean        => null()
-    type(ocean_state_type),        pointer :: Ocean_State  => null()
-    type(domain2d),                pointer :: OceanDomain  => null()
+    integer                            :: steady_state_ocean = 0       ! SA: Per Atanas T, "name" of this var is misleading
+                                                                       ! We run ocean model only when it = 0
 
-    integer                                :: isc,iec,jsc,jec
-    integer                                :: isd,ied,jsd,jed
+    logical                            :: ocean_seg_start    = .true.  ! SA: not used
+    logical                            :: ocean_seg_end      = .true.  ! SA: not used
 
-    integer                                :: YEAR,MONTH,DAY,HR,MN,SC
-    type(time_type)                        :: Time
-    type(time_type)                        :: DT
+    integer                            :: isc,iec,jsc,jec
 
-    real                                   :: pice_scaling = 1.0
-    integer                                :: DT_OCEAN
+    integer                            :: YEAR,MONTH,DAY,HR,MN,SC
+    type(time_type)                    :: Time
+    type(time_type)                    :: DT
 
-    type(ESMF_Time)                        :: MyTime
-    type(ESMF_TimeInterval)                :: TINT
+    real                               :: pice_scaling = 1.0
+    integer                            :: DT_OCEAN
 
-    REAL_, pointer, dimension(:,:)         :: LATS  => null()
-    REAL_, pointer, dimension(:,:)         :: LONS  => null()
+
+    REAL_, pointer, dimension(:,:)     :: LATS  => null()
+    REAL_, pointer, dimension(:,:)     :: LONS  => null()
 
 ! Begin
 !------
@@ -1023,6 +1031,8 @@ contains
 !   print *, '[isc, iec], [jsc, jec]:', '[', isc, iec, ']', '[', jsc, jec, ']'
     IM=iec-isc+1
     JM=jec-jsc+1
+
+    call get_ocean_grid (Ocean_state, Ocean_grid)
 
 ! Temporaries with MOM default reals
 !-----------------------------------
@@ -1102,28 +1112,32 @@ contains
     Boundary%U_flux = 0.
     Boundary%V_flux = 0.
 
-! We ought to be able to query this and act accordingly. 
-! But it is not being set properly.
-!   if (MAPL_AM_I_Root()) print *, "set stress stagger:", Boundary%wind_stagger
-
-! Convert input stresses over water to MOM suface staggering
-!-----------------------------------------------------------
-
-! A-grid
-! From Atanas (Apr 17, 2020): 
-! "GEOS stresses are on the A-grid points (and defined in respect to north and east). 
-!  For A-grid stagger, we do not need cos_rot and sin_rot (i.e., set cos_rot to 1 and sin_rot to 0)"
- 
-!   cos_rot = 1.
+! Convert input stresses over water to MOM wind stagger
+!------------------------------------------------------
+!   cos_rot = 1. ! A-grid
     call ocean_model_data_get(Ocean_State, Ocean, 'cos_rot', cos_rot, isc, jsc)
-!   sin_rot = 0.
+!   sin_rot = 0. ! A-grid
     call ocean_model_data_get(Ocean_State, Ocean, 'sin_rot', sin_rot, isc, jsc)
 
-    U = real( TAUX, kind=kind(U))
-    V = real( TAUY, kind=kind(V))
+! We ought to be able to query this and act accordingly. 
+!   if (MAPL_AM_I_Root()) print *, "set stress stagger:", Boundary%wind_stagger
+
+! A-grid
+!   if ( Boundary%wind_stagger == AGRID) then
+!     print *, ' Nothing but B-grid stress supported at this moment. Exiting!'
+!     ASSERT_(.false.)
+      U = 0.0; V = 0.0
+      U = real( TAUX, kind=kind(U))
+      V = real( TAUY, kind=kind(V))
+!   endif
 
 ! B-grid
-!   call transformA2B( real(TAUX,kind=kind(U)), real(TAUY,kind=kind(V)), U, V)
+!   if ( Boundary%wind_stagger == BGRID_NE) then
+! ****
+! ****
+!     U = 0.0; V = 0.0
+!     call transformA2B( real(TAUX,kind=kind(U)), real(TAUY,kind=kind(V)), U, V)
+!   endif
 
 ! Rotate input stress over water along i,j of tripolar grid, and combine with stress under ice
 !---------------------------------------------------------------------------------------------
@@ -1288,16 +1302,37 @@ contains
       real, INTENT(INOUT)  :: uvy(isc:,jsc:)
 
       integer              :: i, j, ii, jj, cnt
+      integer              :: isd, ied, jsd, jed
+
       real, allocatable    :: tx(:,:), ty(:,:)
       real                 :: sum
+
+      integer, parameter   :: halo = 1
+
+! we need: isd,ied,jsd,jed
+!
+!     isd = lbound( Boundary%U_flux, 1) 
+!     ied = ubound( Boundary%U_flux, 1)
+!     jsd = lbound( Boundary%U_flux, 2) 
+!     jed = ubound( Boundary%U_flux, 2)
+
+      isd = isc - 2 * halo
+      ied = iec + 2 * halo
+      jsd = jsc - 2 * halo
+      jed = jec + 2 * halo
 
       allocate(tx(isd:ied,jsd:jed), stat=STATUS); VERIFY_(STATUS)
       allocate(ty(isd:ied,jsd:jed), stat=STATUS); VERIFY_(STATUS)
 
+      tx = 0.0; ty = 0.0
+
       tx(isc:iec, jsc:jec) = U
       ty(isc:iec, jsc:jec) = V
 
-      call mpp_update_domains(tx, ty, OceanDomain, gridtype=AGRID, flags=SCALAR_PAIR)
+!     call mpp_update_domains(tx, ty, OceanDomain,                  gridtype=AGRID, flags=SCALAR_PAIR)
+      call mpp_update_domains(tx, ty, Ocean_grid%Domain%mpp_domain, gridtype=AGRID, &
+                              complete = .true., &
+                              whalo=halo, ehalo=halo, shalo=halo, nhalo=halo)
 
       do j = jsc, jec
          do i = isc, iec
