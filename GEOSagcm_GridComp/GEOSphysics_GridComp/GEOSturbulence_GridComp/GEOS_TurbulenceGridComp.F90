@@ -1,4 +1,4 @@
-!   $Id$stke
+!   $Id$
 
 #include "MAPL_Generic.h"
 
@@ -880,6 +880,30 @@ contains
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+         SHORT_NAME = 'ws_implicit',                               &
+         LONG_NAME  = 'implicit_dry_static_energy_flux',           &
+         UNITS      = 'Jms-1',                                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'wqv_implicit',                                &
+         LONG_NAME  = 'implicit_water_vapor_specific_humidity_flux', &
+         UNITS      = 'kg kg-1 m s-1',                               &
+         DIMS       = MAPL_DimsHorzVert,                             &
+         VLOCATION  = MAPL_VLocationEdge,                 RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME = 'wql_implicit',                                 &
+         LONG_NAME  = 'implicit_liquid_water_specific_humidity_flux', &
+         UNITS      = 'kg kg-1 m s-1',                                &
+         DIMS       = MAPL_DimsHorzVert,                              &
+         VLOCATION  = MAPL_VLocationEdge,                  RC=STATUS  )
     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                                  &
@@ -3970,8 +3994,8 @@ ENDIF
                          whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, &                 ! in      
                          A_cloud, B_cloud, qsat, &                                    ! in
                          tke_new, hl2, qt2, hlqt, &                                   ! inout   
+                         ws_explicit, wqv_explicit, wql_explicit, &                   ! inout     
                          KM_MYNN, KH_MYNN, K_TKE, itau_mynn, &                        ! out
-                         ws_explicit, wqv_explicit, wql_explicit, &                   ! out     
                          beta_hl, beta_qt, &                                          ! out     
                          tket_M, tket_B, tket_T, hl2t_M, qt2t_M, hlqtt_M, &           ! out     
                          tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                     ! out  
@@ -5091,11 +5115,13 @@ ENDIF
     ! For implicit mean-gradient production of second-order moments option
     integer                             :: IMPLICIT_M_FLAG, MYNN_LEVEL, EDMF_CONSISTENT_TYPE
     real                                :: DOMF
+    real, dimension(:,:), pointer       :: SH, EVAP
     real, dimension(:,:,:), pointer     :: tket_M, tket_B, tket_D, &
-                                           hl2t_M, hl2t_T, hl2t_D, qt2t_M, qt2t_T, qt2t_D, hlqtt_M, hlqtt_T, hlqtt_D
+                                           hl2t_M, hl2t_T, hl2t_D, qt2t_M, qt2t_T, qt2t_D, hlqtt_M, hlqtt_T, hlqtt_D, &
+                                           ws_implicit, wqv_implicit, wql_implicit
     real, dimension(:,:,:), allocatable :: U, V, H, QV, QLLS, QLCN, ZLO, QL 
 
-    integer                             :: KM, K,L
+    integer                             :: KM, K,L, DO_MYNN, iz
     logical                             :: FRIENDLY
     logical                             :: WEIGHTED
 
@@ -5107,6 +5133,39 @@ ENDIF
 
 ! AMM pointer to export of S after diffuse
     real, dimension(:,:,:), pointer     :: SAFDIFFUSE
+
+! Get MYNN flags
+!---------------
+    call MAPL_GetResource(MAPL, IMPLICIT_M_FLAG, "TURBULENCE_IMPLICIT_M_FLAG:", default=0,  RC=STATUS)
+    call MAPL_GetResource(MAPL, DO_MYNN, 'TURBULENCE_DO_MYNN:', default=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+! Get pointers to implicit diffusive thermodynamic fluxes
+!--------------------------------------------------------
+    call MAPL_GetPointer(EXPORT, ws_implicit, 'ws_implicit',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, wqv_implicit, 'wqv_implicit', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, wql_implicit, 'wql_implicit', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, SH,           'SH',           RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, EVAP,         'EVAP',         RC=STATUS)
+    VERIFY_(STATUS)
+
+! Initialize height of full levels
+!---------------------------------
+    if ( DO_MYNN /= 0 .and. ( IMPLICIT_M_FLAG /= 0 .or. associated(ws_implicit) .or. associated(wqv_implicit) .or. associated(wql_implicit) ) ) then
+       allocate(ZLO(IM,JM,LM))
+       ZLO = 0.5*( ZLE(:,:,0:LM-1) + ZLE(:,:,1:LM) )
+    end if
+
+! Allocate arrays for implicit mean-gradient production option
+!-------------------------------------------------------------
+    if ( DO_MYNN /= 0 .and. IMPLICIT_M_FLAG /=  0 ) then
+       allocate(U(IM,JM,LM), V(IM,JM,LM), H(IM,JM,LM), QV(IM,JM,LM), &
+                QLCN(IM,JM,LM), QLLS(IM,JM,LM), QL(IM,JM,LM))
+    end if
 
 ! Get the bundles containing the quantities to be diffused, 
 !     their tendencies, their surface values, their surface
@@ -5153,14 +5212,6 @@ ENDIF
     
 ! Loop over all quantities to be diffused.
 !----------------------------------------
-
-! Allocate arrays for implicit mean-gradient production option
-!-------------------------------------------------------------
-    call MAPL_GetResource(MAPL, IMPLICIT_M_FLAG, "TURBULENCE_IMPLICIT_M_FLAG:", default=0,  RC=STATUS)
-    if (IMPLICIT_M_FLAG == 1) then
-       allocate(U(IM,JM,LM), V(IM,JM,LM), H(IM,JM,LM), QV(IM,JM,LM), &
-                QLCN(IM,JM,LM), QLLS(IM,JM,LM), ZLO(IM,JM,LM), QL(IM,JM,LM))
-    end if
 
     do K=1,KM
 
@@ -5213,7 +5264,6 @@ ENDIF
 !----------------------------------------------
 
        _ASSERT(associated(S ),'needs informative message')
-
 ! If the surface values does not exists, we assume zero flux.
 !------------------------------------------------------------
        
@@ -5228,7 +5278,7 @@ ENDIF
 ! This assumes second-order moments are solved for last, and tke_new is the first
 ! second-order moment to be solved for.
 ! --------------------------------------------------------------------------------
-       if (trim(name) == 'tke_new' .and. IMPLICIT_M_FLAG == 1) then
+       if ( trim(name) == 'tke_new' .and. DO_MYNN /= 0 .and. IMPLICIT_M_FLAG /= 0 ) then
           call MAPL_GetResource(MAPL, DOMF, "EDMF_DOMF:", default=0.,  RC=STATUS)
           VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, EDMF_CONSISTENT_TYPE, "EDMF_CONSISTENT_TYPE:", default=0,  RC=STATUS)
@@ -5274,7 +5324,6 @@ ENDIF
           end if
           VERIFY_(STATUS)
           
-          ZLO = 0.5*( ZLE(:,:,0:LM-1) + ZLE(:,:,1:LM) )
           QL  = QLCN + QLLS
 
           call implicit_M(IM, JM, LM, &
@@ -5432,14 +5481,31 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
           SINC = ( (SX - S)/DT )
        end if
 
+       ! Compute diffusive flux of thermodynamic first-order moments
+       if ( DO_MYNN /= 0 ) then
+          if ( trim(name) == 'S' .and. associated(ws_implicit) ) then
+             ws_implicit(:,:,0)      = 0.
+             ws_implicit(:,:,1:LM-1) = -KH_MYNN(:,:,1:LM-1)*( SX(:,:,1:LM-1) - SX(:,:,2:LM) )/( ZLO(:,:,1:LM-1) - ZLO(:,:,2:LM) ) 
+             ws_implicit(:,:,LM)     = SH(:,:)
+          else if ( trim(name) == 'Q' .and. associated(wqv_implicit) ) then
+             wqv_implicit(:,:,0)      = 0.
+             wqv_implicit(:,:,1:LM-1) = -KH_MYNN(:,:,1:LM-1)*( SX(:,:,1:LM-1) - SX(:,:,2:LM) )/( ZLO(:,:,1:LM-1) - ZLO(:,:,2:LM) ) 
+             wqv_implicit(:,:,LM)     = EVAP(:,:)
+          else if ( trim(name) == 'QLLS' .and. associated(wql_implicit) ) then
+             wql_implicit(:,:,0)      = 0.
+             wql_implicit(:,:,1:LM-1) = -KH_MYNN(:,:,1:LM-1)*( SX(:,:,1:LM-1) - SX(:,:,2:LM) )/( ZLO(:,:,1:LM-1) - ZLO(:,:,2:LM) ) 
+             wql_implicit(:,:,LM)     = 0.
+          end if
+       end if
+
        ! Compute dissipation tendencies of second-order moments
-       if (trim(name) == 'tke_new') then
+       if ( DO_MYNN /= 0 .and. trim(name) == 'tke_new' ) then
           tket_D(:,:,1:LM-1) = -itau_mynn(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B1
-       else if (trim(name) == 'hl2') then
+       else if ( trim(name) == 'hl2' ) then
           hl2t_D(:,:,1:LM-1) = -itau_mynn(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B2
-       else if (trim(name) == 'qt2') then
+       else if ( trim(name) == 'qt2' ) then
           qt2t_D(:,:,1:LM-1) = -itau_mynn(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B2
-       else if (trim(name) == 'hlqt') then
+       else if ( trim(name) == 'hlqt' ) then
           hlqtt_D(:,:,1:LM-1) = -itau_mynn(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B2
        end if
 
@@ -5459,7 +5525,7 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
        end if       
 
        ! Save updated mean state variables for implicit mean-gradient production option
-       if (IMPLICIT_M_FLAG == 1) then
+       if ( DO_MYNN /= 0 .and. IMPLICIT_M_FLAG /= 0 ) then
           if (trim(name) == 'U') then
              U = SX
           else if (trim(name) == 'V') then
