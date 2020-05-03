@@ -17,7 +17,7 @@ module GEOS_TurbulenceGridCompMod
   use MAPL
   use LockEntrain
   use shoc
-  use mynn, only : run_mynn, implicit_M, B1, B2
+  use mynn, only : run_mynn, implicit_M, entrain_mynn, B1, B2
   use edmf_mod, only : run_edmf
 
 #ifdef _CUDA
@@ -1840,6 +1840,77 @@ contains
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
     VERIFY_(STATUS)
 
+!
+! Exports for testing MYNN cloud-top entrainment
+!
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'zle_turb',                              &
+       LONG_NAME  = 'zle_turb',                              &
+       UNITS      = 'm',                                         &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'thlv_turb',                              &
+       LONG_NAME  = 'thlv_turb',                              &
+       UNITS      = 'K',                                         &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'ac_turb',                                   &
+       LONG_NAME  = 'ac_turb',                                   &
+       UNITS      = '1',                                         &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'ql_turb',                                   &
+       LONG_NAME  = 'ql_turb',                                   &
+       UNITS      = 'kg/kg',                                     &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'ktop_entrain',                                          &
+       SHORT_NAME = 'ktop_entrain',                                          &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'zi_entrain',                                            &
+       SHORT_NAME = 'zi_entrain',                                            &
+       UNITS      = 'm',                                                     &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'gamma_ml_entrain',                                      &
+       SHORT_NAME = 'gamma_ml_entrain',                                      &
+       UNITS      = 'Km-1',                                                  &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'gamma_fa_entrain',                                      &
+       SHORT_NAME = 'gamma_fa_entrain',                                      &
+       UNITS      = 'Km-1',                                                  &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
 ! !INTERNAL STATE:
 
 !
@@ -3075,6 +3146,14 @@ contains
    real, dimension(:,:,:), pointer ::  K_TKE, tket_M, tket_B, tket_T_MF, hl2t_M, qt2t_M, hlqtt_M
    real, dimension(:,:,:), pointer :: au, wu, Mu, E, D, D_org
 
+   ! Exports for testing MYNN cloud-top entrainment
+   real, dimension(:,:,:),pointer  :: zle_turb_ex, thlv_turb_ex, ac_turb_ex, ql_turb_ex
+   real, dimension(:,:),pointer    :: ktop_entrain_ex, zi_entrain_ex, gamma_ml_entrain_ex, gamma_fa_entrain_ex
+
+   real, dimension(IM,JM,LM)       :: thlv_turb, ac_turb, ql_turb
+   real, dimension(IM,JM)          :: zi_entrain, gamma_ml_entrain, gamma_fa_entrain
+   integer, dimension(IM,JM)       :: ktop_entrain
+
    integer :: DO_MYNN
 
 ! SHOC PDF variables
@@ -3444,6 +3523,7 @@ contains
      call MAPL_GetPointer(EXPORT, SHEARSHOC,'SHEARSHOC', RC=STATUS)
      VERIFY_(STATUS)
 
+!========== MYNN ===========
      call MAPL_GetPointer(EXPORT, tket_M,   'tket_M', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, tket_B,   'tket_B', ALLOC=.TRUE., RC=STATUS)
@@ -3476,6 +3556,26 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,  qte,   'qte',  ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
+
+     call MAPL_GetPointer(EXPORT, zle_turb_ex,  'zle_turb',  RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, ac_turb_ex,   'ac_turb',   RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, ql_turb_ex,   'ql_turb',   RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, thlv_turb_ex, 'thlv_turb', RC=STATUS)
+     VERIFY_(STATUS)
+
+     call MAPL_GetPointer(EXPORT, ktop_entrain_ex,     'ktop_entrain',     RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, zi_entrain_ex,       'zi_entrain',       RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, gamma_ml_entrain_ex, 'gamma_ml_entrain', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, gamma_fa_entrain_ex, 'gamma_fa_entrain', RC=STATUS)
+     VERIFY_(STATUS)
+!     call MAPL_GetPointer(EXPORT, ktop_entrain_ex,     'ktop_entrain', RC=STATUS)
+!     VERIFY_(STATUS)
 
 ! Initialize some arrays
 
@@ -3985,6 +4085,23 @@ ENDIF
            KM(:,:,1:LM) = TKH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
 
         else ! MYNN
+
+           if ( associated(zle_turb_ex) ) zle_turb_ex = zle 
+           if ( associated(ac_turb_ex) )  ac_turb_ex  = QA 
+           if ( associated(ql_turb_ex) )  ql_turb_ex  = QL 
+
+           ! Cloud-top entrainment (for now only a test)
+           call entrain_mynn(IM, JM, LM, &
+                             th00, zlo, zle, omega, thl, qt, thv, qa, &
+                             thlv_turb, ktop_entrain, zi_entrain, gamma_ml_entrain, gamma_fa_entrain)
+                     
+           if ( associated(thlv_turb_ex) )        thlv_turb_ex        = thlv_turb 
+           if ( associated(ktop_entrain_ex) )     ktop_entrain_ex     = real(ktop_entrain)
+           if ( associated(zi_entrain_ex) )       zi_entrain_ex       = zi_entrain 
+           if ( associated(gamma_ml_entrain_ex) ) gamma_ml_entrain_ex = gamma_ml_entrain 
+           if ( associated(gamma_fa_entrain_ex) ) gamma_fa_entrain_ex = gamma_fa_entrain 
+
+           ! Run MYNN
            call run_mynn(IM, JM, LM, &                                                ! in      
                          MYNN_DEBUG_FLAG, DOMF, MYNN_LEVEL, &                         ! in      
                          EDMF_CONSISTENT_TYPE, WQL_TYPE, WRF_CG_FLAG, &               ! in      

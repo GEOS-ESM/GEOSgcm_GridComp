@@ -436,10 +436,6 @@ subroutine run_mynn(IM, JM, LM, &                                               
   K_tke(:,:,1)  = K_tke(:,:,2)
   K_tke(:,:,LM) = K_tke(:,:,LM-1)
 
-  call entrain_mynn(IM, JM, LM, &
-                    th00, zlo, zle, u, thl, qt, thv, &
-                    ac, tke, S2, N2, L)
-
 end subroutine run_mynn
 
 !
@@ -648,64 +644,69 @@ subroutine implicit_M(IM, JM, LM, &
 
 end subroutine implicit_M
 
+!
+! entrain_mynn
+!
 subroutine entrain_mynn(IM, JM, LM, &
-                        th00, zl, zle, omega, thl, qt, thv, &
-                        ac, tke, S2, N2, L)
+                        th00, zl, zle, omega, thl, qt, thv, ac, &
+                        thlv, ktop, zi, gamma_ml, gamma_fa)
 
-integer, intent(in)                                 :: IM, JM, LM
-real, intent(in)                                    :: th00
-real, dimension(IM,JM,LM), intent(in)               :: zl, thl, qt, thv, ac
-real, dimension(IM,JM,0:LM), intent(in)             :: zle, tke, omega
-double precision, dimension(IM,JM,0:LM), intent(in) :: S2, N2, L
+integer, intent(in)                     :: IM, JM, LM
+real, intent(in)                        :: th00
+real, dimension(IM,JM,LM), intent(in)   :: zl, thl, qt, thv, ac
+real, dimension(IM,JM,0:LM), intent(in) :: zle, omega
+real, dimension(IM,JM,LM), intent(out)  :: thlv
+integer, intent(out), dimension(IM,JM)  :: ktop
+real, intent(out),dimension(IM,JM)      :: zi, gamma_ml, gamma_fa    
 
 integer                   :: i, j, k, kflip
-integer, dimension(IM,JM) :: ktop
-real                      :: gamma_ml, gamma_fa, a, b, c, zi, thlv_ml, thlv_fa, we, Ri, w_ml
-real, dimension(IM,JM,LM) :: thlv
+real                      :: a, b, c, thlv_ml, thlv_fa, we, Ri, w_ml
 double precision          :: goth00
+logical, dimension(IM,JM) :: search_flag
 
 goth00 = MAPL_GRAV/th00
 
 ! Find cloud top
 ktop(:,:) = -1
-find_ktop: do k = 1,LM
+search_flag = .true.
+do k = 1,LM
    kflip = LM - k + 1
    do j = 1,JM
    do i = 1,IM
-      if ( ac(i,j,kflip) > 0.01 .and. N2(i,j,kflip)/max( S2(i,j,kflip), 1.d-10 ) > 0.3 ) then
-         ktop(i,j) = kflip
-         exit find_ktop
+      if ( search_flag(i,j) .and. ac(i,j,kflip) > 0.01 ) then
+         ktop(i,j)        = kflip
+         search_flag(i,j) = .false.
       end if
    end do
    end do
-end do find_ktop
+end do
 
 ! Entrainment closure
 thlv = thl*( 1. + 0.622*qt )
 do j = 1,JM
 do i = 1,IM
-   gamma_ml = ( thlv(i,j,ktop(i,j)+1) - thlv(i,j,ktop(i,j)+2) )/( zl(i,j,ktop(i,j)+1) - zl(i,j,ktop(i,j)+2) )
-   gamma_fa = ( thlv(i,j,ktop(i,j)-2) - thlv(i,j,ktop(i,j)-1) )/( zl(i,j,ktop(i,j)-2) - zl(i,j,ktop(i,j)-1) )
+   gamma_ml(i,j) = ( thlv(i,j,ktop(i,j)+1) - thlv(i,j,ktop(i,j)+2) )/( zl(i,j,ktop(i,j)+1) - zl(i,j,ktop(i,j)+2) )
+   gamma_fa(i,j) = ( thlv(i,j,ktop(i,j)-2) - thlv(i,j,ktop(i,j)-1) )/( zl(i,j,ktop(i,j)-2) - zl(i,j,ktop(i,j)-1) )
 
-   a = 0.5*( gamma_fa - gamma_ml )
-   b = - ( thlv(i,j,ktop(i,j)-1) - gamma_fa*( zl(i,j,ktop(i,j)-1) -  zle(i,j,ktop(i,j)) ) ) &
-        + ( thlv(i,j,ktop(i,j)+1) + gamma_ml*(  zle(i,j,ktop(i,j)) - zl(i,j,ktop(i,j)+1) ) )
+   a = 0.5*( gamma_fa(i,j) - gamma_ml(i,j) )
+   b = - ( thlv(i,j,ktop(i,j)-1) - gamma_fa(i,j)*( zl(i,j,ktop(i,j)-1) -  zle(i,j,ktop(i,j)) ) ) &
+        + ( thlv(i,j,ktop(i,j)+1) + gamma_ml(i,j)*(  zle(i,j,ktop(i,j)) - zl(i,j,ktop(i,j)+1) ) )
    c =  ( zle(i,j,ktop(i,j)) - zle(i,j,ktop(i,j)+1) )&
-        *( thlv(i,j,ktop(i,j)) - ( thlv(i,j,ktop(i,j)+1) + gamma_ml*( zl(i,j,ktop(i,j)) - zl(i,j,ktop(i,j)+1) ) ) )
+        *( thlv(i,j,ktop(i,j)) - ( thlv(i,j,ktop(i,j)+1) + gamma_ml(i,j)*( zl(i,j,ktop(i,j)) - zl(i,j,ktop(i,j)+1) ) ) )
 
    if ( b > 0. ) then
       b = thlv(i,j,ktop(i,j)+1) - thlv(i,j,ktop(i,j)-1)
       c = ( zle(i,j,ktop(i,j)) - zle(i,j,ktop(i,j)+1) )*( thlv(i,j,ktop(i,j)) - thlv(i,j,ktop(i,j)+1) )
 
-      zi = zle(i,j,ktop(i,j)) - c/b
+      zi(i,j) = zle(i,j,ktop(i,j)) - c/b
    else
-      zi = zle(i,j,ktop(i,j)) - ( -b - sqrt( b**2. - 4.*a*c  ) )/( 2.*a )
+      zi(i,j) = zle(i,j,ktop(i,j)) - ( -b - sqrt( b**2. - 4.*a*c  ) )/( 2.*a )
    end if
 
-   thlv_ml = thlv(i,j,ktop(i,j)+1) + gamma_ml*(             zi - zl(i,j,ktop(i,j)+1) )
-   thlv_fa = thlv(i,j,ktop(i,j)-1) - gamma_fa*( zl(i,j,ktop(i,j)-1) -             zi )
+   thlv_ml = thlv(i,j,ktop(i,j)+1) + gamma_ml(i,j)*(             zi(i,j) - zl(i,j,ktop(i,j)+1) )
+   thlv_fa = thlv(i,j,ktop(i,j)-1) - gamma_fa(i,j)*( zl(i,j,ktop(i,j)-1) -             zi(i,j) )
 
-   we = 0.16*tke(i,j,ktop(i,j))**1.5/(L(i,j,ktop(i,j))*goth00*( thlv_ml - thlv_fa ))
+!   we = 0.16*tke(i,j,ktop(i,j))**1.5/(L(i,j,ktop(i,j))*goth00*( thlv_ml - thlv_fa ))
    
    w_ml = (MAPL_RGAS/MAPL_GRAV)*omega(i,j,k)*( thv(i,j,ktop(i,j)) + thv(i,j,ktop(i,j)) )
 
