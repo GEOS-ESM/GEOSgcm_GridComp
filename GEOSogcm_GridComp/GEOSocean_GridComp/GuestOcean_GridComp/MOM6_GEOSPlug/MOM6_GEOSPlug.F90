@@ -686,7 +686,7 @@ contains
     Time = set_date (YEAR,MONTH,DAY,HR,MN,SC)
 
     Ocean%is_ocean_pe = .true.
-    call ocean_model_init  (Ocean, Ocean_state, Time, Time)
+    call ocean_model_init  (Ocean, Ocean_state, Time, Time, Boundary%wind_stagger)
  
     MOM_MAPL_internal_state%Ocean_State => Ocean_State
 
@@ -725,8 +725,28 @@ contains
     ASSERT_(counts(2)==JM)
 
 ! Check run time surface current stagger option set in MOM_input 
-! to make sure they match what is expected here:
-! BGRID_NE.
+! to make sure they match what is expected here: BGRID_NE.
+!---------------------------------------------------------------
+
+    if (MAPL_AM_I_Root()) then
+     if (Boundary%wind_stagger == AGRID) then
+!      print *, ' Surface stress stagger set in ocean model: (MOM6) AGRID.'
+       print *, ' Surface stress stagger set in ocean model: (MOM6) AGRID. This option is not supported. Exiting!'
+       ASSERT_(.false.)
+     elseif (Boundary%wind_stagger == BGRID_NE) then
+       print *, ' Surface stress stagger set in ocean model: (MOM6) BGRID_NE.'
+     elseif (Boundary%wind_stagger == CGRID_NE) then
+!      print *, ' Surface stress stagger set in ocean model: (MOM6) CGRID_NE.'
+       print *, ' Surface stress stagger set in ocean model: (MOM6) CGRID_NE. This option is not supported. Exiting!'
+       ASSERT_(.false.)
+     else
+       print *, ' Surface stress stagger set in ocean model: (MOM6) is invalid, stopping.'
+       ASSERT_(.false.)
+     endif
+    endif
+
+! Check run time surface current stagger option set in MOM_input 
+! to make sure they match what is expected here: BGRID_NE.
 !---------------------------------------------------------------
 
     if (MAPL_AM_I_Root()) then
@@ -855,7 +875,7 @@ contains
     end if
 
     if(associated(sea_lev)) then
-       call ocean_model_data_get(Ocean_State, Ocean, 'sea_lev', Tmp2, g_isc, g_jsc) ! includes Inv Baro in M
+       call ocean_model_data_get(Ocean_State, Ocean, 'sea_lev', Tmp2, g_isc, g_jsc) ! includes inv baro in M
        sea_lev = real(merge(tsource = Tmp2, fsource = real(MAPL_UNDEF), mask = (MASK(:, :) > 0.0)), kind=G5KIND)
     end if
 
@@ -960,9 +980,6 @@ contains
 
     integer                            :: steady_state_ocean = 0       ! SA: Per Atanas T, "name" of this var is misleading
                                                                        ! We run ocean model only when it = 0
-
-    logical                            :: ocean_seg_start    = .true.  ! SA: not used
-    logical                            :: ocean_seg_end      = .true.  ! SA: not used
 
     integer                            :: isc,iec,jsc,jec
 
@@ -1118,9 +1135,6 @@ contains
     call ocean_model_data_get(Ocean_State, Ocean, 'cos_rot', cos_rot, isc, jsc)
 !   sin_rot = 0. ! A-grid
     call ocean_model_data_get(Ocean_State, Ocean, 'sin_rot', sin_rot, isc, jsc)
-
-! We ought to be able to query this and act accordingly. 
-!   if (MAPL_AM_I_Root()) print *, "set stress stagger:", Boundary%wind_stagger
 
 ! A-grid
 !   if ( Boundary%wind_stagger == AGRID) then
