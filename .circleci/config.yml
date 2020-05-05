@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: gmao/geos-build-env-gcc-source:6.0.4
+      - image: gmao/geos-build-env-gcc-source:6.0.12
     working_directory: /root/project
     steps:
       - run:
@@ -18,7 +18,10 @@ jobs:
             mepo init
             mepo clone
             mepo develop GEOSgcm_GridComp GEOSgcm_App
-            mepo checkout-if-exists ${CIRCLE_BRANCH}
+            if [ "${CIRCLE_BRANCH}" != "develop" ]
+            then
+               mepo checkout-if-exists ${CIRCLE_BRANCH}
+            fi
             mepo status
       - run:
           name: "CMake"
