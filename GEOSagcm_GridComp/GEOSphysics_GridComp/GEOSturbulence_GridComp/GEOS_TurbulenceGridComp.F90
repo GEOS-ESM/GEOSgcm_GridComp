@@ -5381,6 +5381,7 @@ ENDIF
 !----------------------------------------------
 
        _ASSERT(associated(S ),'needs informative message')
+
 ! If the surface values does not exists, we assume zero flux.
 !------------------------------------------------------------
        
