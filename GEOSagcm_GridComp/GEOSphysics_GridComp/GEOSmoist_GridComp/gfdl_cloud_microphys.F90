@@ -851,25 +851,12 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! time - split warm rain processes: 1st pass
             ! -----------------------------------------------------------------------
             
-!            dum = qlz
-!            dum2 = qaz
-           
-            qlic = qlz/(qaz+1e-3)
-            qiic = qiz/(qaz+1e-3)
-            if (any(isnan(qaz))) print *,'qaz has nan before warm_rain1'
-            if (any(isnan(qlz))) print *,'qlz has nan before warm_rain1'
-            if (any(isnan(qiz))) print *,'qai has nan before warm_rain1'
-            if (any(isnan(qlic))) print *,'qlic has nan before warm_rain1'
-            if (any(isnan(qiic))) print *,'qiic has nan before warm_rain1'
+            qlic = qlz/(qaz+1e-4)
+            qiic = qiz/(qaz+1e-4)
             call warm_rain (dt_rain, ktop, kbot, dp1, dz1, tz, qvz, qlic, qrz, qiic, qsz, &
                 qgz, qaz, den, denfac, ccn, c_praut, rh_rain, vtrz, r1, m1_rain, w1, h_var)
-            if (any(isnan(qaz))) print *,'qaz has nan after warm_rain'
-            if (any(isnan(qlic))) print *,'qlic has nan after warm_rain1'
-            if (any(isnan(qiic))) print *,'qiic has nan after warm_rain1'
             qlz = qlic*qaz
             qiz = qiic*qaz
-!            qldt_wrain(i,j,:) = qldt_wrain(i,j,:) + (qlz-dum)            
-!            qadt_wrain(i,j,:) = qadt_wrain(i,j,:) + (qaz-dum2)
 
             rain (i) = rain (i) + r1
             
@@ -905,25 +892,12 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! time - split warm rain processes: 2nd pass
             ! -----------------------------------------------------------------------
             
-!            dum = qlz
-!            dum2 = qaz
-            qlic = qlz/(qaz+1e-3)
-            qiic = qiz/(qaz+1e-3)
-            if (any(isnan(qaz))) print *,'qaz has nan before warm_rain2'
-            if (any(isnan(qlz))) print *,'qlz has nan before warm_rain2'
-            if (any(isnan(qiz))) print *,'qai has nan before warm_rain2'
-            if (any(isnan(qlic))) print *,'qlic has nan before warm_rain2'
-            if (any(isnan(qiic))) print *,'qiic has nan before warm_rain2'
+            qlic = qlz/(qaz+1e-4)
+            qiic = qiz/(qaz+1e-4)
             call warm_rain (dt_rain, ktop, kbot, dp1, dz1, tz, qvz, qlic, qrz, qiic, qsz, &
                 qgz, qaz, den, denfac, ccn, c_praut, rh_rain, vtrz, r1, m1_rain, w1, h_var)
-            if (any(isnan(qaz))) print *,'qaz has nan after warm_rain'
-            if (any(isnan(qlic))) print *,'qlic has nan after warm_rain1'
-            if (any(isnan(qiic))) print *,'qiic has nan after warm_rain1'
             qlz = qlic*qaz
             qiz = qiic*qaz
-
-!            qldt_wrain(i,j,:) = qldt_wrain(i,j,:) + (qlz-dum)
-!            qadt_wrain(i,j,:) = qadt_wrain(i,j,:) + (qaz-dum2)            
 
             rain (i) = rain (i) + r1
             
@@ -1268,7 +1242,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, &
                     sink = min (dq, dt * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qa(k) ! convert sink to grid-mean
-                    qa (k) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k)+ql(k) + sink,1e-8) )
+                    if (.not. do_qa) qa (k) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k)+ql(k) + sink,1e-8) )
                 endif
             endif
         enddo
@@ -1792,6 +1766,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 sink = min (0.75 * qi, psaci + psaut)
                 qi = qi - sink
                 qs = qs + sink
+!                qa
                 
                 ! -----------------------------------------------------------------------
                 ! pgaci: accretion of cloud ice by graupel
@@ -1806,6 +1781,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                     pgaci = factor / (1. + factor) * qi
                     qi = qi - pgaci
                     qg = qg + pgaci
+!                    qa
                 endif
                 
             endif
@@ -1938,6 +1914,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 qg = qg + sink
                 qr = qr - pgacr
                 ql = ql - pgacw
+!                qa 
                 q_liq (k) = q_liq (k) - sink
                 q_sol (k) = q_sol (k) + sink
                 cvm (k) = c_air + qv * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
@@ -2079,6 +2056,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
                 qv (k) = qpz
                 ql (k) = 0.
                 qi (k) = 0.
+                if (.not. do_qa) qa (k) = 0.
                 cycle ! cloud free
             endif
         endif
@@ -2097,13 +2075,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
             ! factor = 1
             factor = min (1., fac_l2v * (10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
             evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
-            if (isnan(qa(k))) print *,'qa nan before evap in subgrid z' 
-            if (isnan(ql(k))) print *,'ql nan before evap in subgrid z' 
-            if (isnan(qi(k))) print *,'qi nan before evap in subgrid z' 
-            if (isnan(evap)) print *,'evap nan before evap in subgrid z' 
 
-            qa (k) = qa (k) * (qi(k) + ql(k)-evap) / max(qi(k)+ql(k),1e-8)
-            if (isnan(qa(k))) print *,'qa nan after evap in subgrid z' 
+            if (.not. do_qa) qa (k) = qa (k) * (qi(k) + ql(k)-evap) / max(qi(k)+ql(k),1e-8)
 !        else ! condensate all excess vapor into cloud water
 !            ! -----------------------------------------------------------------------
 !            ! evap = fac_v2l * dq0 / (1. + tcp3 (k) * dwsdt)
@@ -2280,6 +2253,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
             endif
             qg (k) = qg (k) + pgsub
             qv (k) = qv (k) - pgsub
+!            qa  
             q_sol (k) = q_sol (k) + pgsub
             cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tz (k) = tz (k) + pgsub * (lhl (k) + lhi (k)) / cvm (k)
@@ -2481,6 +2455,7 @@ subroutine revap_rac1 (hydrostatic, is, ie, dt, tz, qv, ql, qr, qi, qs, qg, den,
                 sink = dt * denfac (i) * cracw * exp (0.95 * log (qr (i) * den (i)))
                 sink = sink / (1. + sink) * ql (i)
                 ql (i) = ql (i) - sink
+!                qa
                 qr (i) = qr (i) + sink
             endif
         endif
