@@ -650,6 +650,9 @@ contains
 !     Compute total cloud condensate - qc. These are grid box mean values.
 
             qc(k) = (qlls(i,j,k) + qils(i,j,k))
+            if (zfull(i,j,k).gt.1200 .and. zfull(i,j,k).lt.1300. .and. maxval(qlls(i,j,:)).lt.0.0002) then
+              qc(k) = 0.0002
+            end if
 
 !--------------------------------------------------------------------------
 !     Compute relative humidity

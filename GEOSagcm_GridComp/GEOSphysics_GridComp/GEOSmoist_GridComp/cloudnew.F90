@@ -459,9 +459,9 @@ contains
          QDDF3_dev        , &
          CNV_FRACTION_dev , &
          TROPP_dev        , &
-         A_cloud          , &
-         B_cloud          , &
-         qsat             , &
+         A_mynn           , &
+         B_mynn           , &
+         qsat_mynn        , &
          RHX_dev          , &
          REV_LS_dev       , &
          REV_AN_dev       , &
@@ -660,9 +660,9 @@ contains
       real, intent(inout), dimension(IRUN,  LM) :: SKEW_QT_dev
       real, intent(in   ), dimension(IRUN,  LM) :: NACTL_dev  ! NACTL
       real, intent(in   ), dimension(IRUN,  LM) :: NACTI_dev  ! NACTI
-      real, intent(  out), dimension(IRUN,  LM) :: A_cloud
-      real, intent(  out), dimension(IRUN,  LM) :: B_cloud
-      real, intent(  out), dimension(IRUN,  LM) :: qsat
+      real, intent(  out), dimension(IRUN,  LM) :: A_mynn
+      real, intent(  out), dimension(IRUN,  LM) :: B_mynn
+      real, intent(  out), dimension(IRUN,  LM) :: qsat_mynn
 
 !!$      real, intent(  out), dimension(IRUN,  LM) :: LIQANMOVE_dev  ! LIQANMOVE
 !!$      real, intent(  out), dimension(IRUN,  LM) :: ICEANMOVE_dev  ! ICEANMOVE
@@ -1137,11 +1137,11 @@ contains
                   wql_dev(I,K),        &
                   SKEW_QT_dev(I,K),    &
                   CNV_FRACTION_dev(I), SNOMAS_dev(I), FRLANDICE_dev(I), FRLAND_dev(I), &
-                  A_cloud(I,K),        &
-                  B_cloud(I,K),        &
-                  qsat(I,K))
- 
+                  A_mynn(I,K),        &
+                  B_mynn(I,K),        &
+                  qsat_mynn(I,K))
             else
+
             call hystpdf(          &
                   DT             , &
                   ALPHA          , &
@@ -2129,9 +2129,9 @@ contains
          WQL,        &
          SKEW_QT,    &
          CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, &
-         A_cloud,    &
-         B_cloud,    &
-         qsat)
+         A_mynn,    &
+         B_mynn,    &
+         qsat_mynn)
 
       real, intent(in)    :: DT,ALPHA,PL,ZL
       integer, intent(in) :: pdfshape
@@ -2145,7 +2145,7 @@ contains
                              PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
                              PDF_RHLQT
       real, intent(out)   :: WTHV2, WQL
-      real, intent(out)   :: A_cloud, B_cloud, qsat
+      real, intent(out)   :: A_mynn, B_mynn, qsat_mynn
 
       ! internal arrays
       real :: QCO, QVO, CFO, QAO, TAU,HL
@@ -2299,55 +2299,55 @@ contains
             HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
 !                fac_cond*QLW_LS_dev(I,:) - fac_fus*QIW_LS_dev(I,:)
             QT = QVn + QCn
-            
+
             call gaussian(ZL, 100.*PL, HL, QT, HL2, QT2, HLQT, &
                           TEn, QCn, CFn, &
-                          A_cloud, B_cloud, qsat)
+                          A_mynn, B_mynn, qsat_mynn)
             
             fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
-         elseif (pdfflag == 7) then ! Double Gaussian with consistent partitioning
-            ! Update the liquid water static energy
-            ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
-
-            HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
-            QT = QVn + QCn
-
-            !
-            ! Updraft ensemble
-            !
-            if ( au > 0. ) then
-               HLU = ( HL - ( 1. - au )*HLE )/au
-               QTU = ( QT - ( 1. - au )*QTE )/au
-
-               call gaussian(ZL, 100.*PL, HLU, QTU, HL2U, QT2U, HLQTU, &
-                             Tcu, qlu, acu, &
-                             A_cloud, B_cloud, qsat)
-
-            end if
-
-            !
-            ! Environment
-            !
-            
-            call gaussian(ZL, 100.*PL, HLE, QTE, HL2, QT2, HLQT, &
-                          Tce, qle, ace, &
-                          A_cloud, B_cloud, qsat)
-
-            !
-            ! Combine upddraft and environment
-            !
-
-            if ( au > 0. ) then
-               TEn = au*Tcu + ( 1. - au )*Tce
-               QCn = au*qlu + ( 1. - au )*qle
-               CFn = au*acu + ( 1. - au )*ace
-            else
-               TEn = Tce
-               QCn = qle
-               CFn = ace
-            end if
-
-            fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+!!$         elseif (pdfflag == 7) then ! Double Gaussian with consistent partitioning
+!!$            ! Update the liquid water static energy
+!!$            ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
+!!$
+!!$            HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
+!!$            QT = QVn + QCn
+!!$
+!!$            !
+!!$            ! Updraft ensemble
+!!$            !
+!!$            if ( au > 0. ) then
+!!$               HLU = ( HL - ( 1. - au )*HLE )/au
+!!$               QTU = ( QT - ( 1. - au )*QTE )/au
+!!$
+!!$               call gaussian(ZL, 100.*PL, HLU, QTU, HL2U, QT2U, HLQTU, &
+!!$                             Tcu, qlu, acu, &
+!!$                             A_cloud, B_cloud, qsat)
+!!$
+!!$            end if
+!!$
+!!$            !
+!!$            ! Environment
+!!$            !
+!!$            
+!!$            call gaussian(ZL, 100.*PL, HLE, QTE, HL2, QT2, HLQT, &
+!!$                          Tce, qle, ace, &
+!!$                          A_cloud, B_cloud, qsat)
+!!$
+!!$            !
+!!$            ! Combine upddraft and environment
+!!$            !
+!!$
+!!$            if ( au > 0. ) then
+!!$               TEn = au*Tcu + ( 1. - au )*Tce
+!!$               QCn = au*qlu + ( 1. - au )*qle
+!!$               CFn = au*acu + ( 1. - au )*ace
+!!$            else
+!!$               TEn = Tce
+!!$               QCn = qle
+!!$               CFn = ace
+!!$            end if
+!!$
+!!$            fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
          endif
 
 !         if (abs(QVn+QCn-QVp-QCp)>1e-6*(QVp+QCp) .and. QVp>0.0001) print *,'total water not conserved!'

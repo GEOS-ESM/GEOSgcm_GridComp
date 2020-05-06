@@ -591,8 +591,9 @@ contains
 !Obtain Brunt-Vaisalla frequency from diagnosed SGS buoyancy flux
 !Presumably it is more precise than BV freq. calculated in  eddy_length()?
           
-          buoy_sgs = - a_prod_bu / (wrk + 0.0001)   ! tkh is eddy thermal diffussivity
-!         buoy_sgs = - a_prod_bu / (prnum*wrk + 0.0001)   ! tk is eddy viscosity
+          buoy_sgs = brunt(i,j,k)
+!          buoy_sgs = - a_prod_bu / (wrk + 0.0001)   ! tkh is eddy thermal diffussivity
+!          buoy_sgs = - a_prod_bu / (prnum*wrk + 0.0001)   ! tk is eddy viscosity
 
 !Compute $c_k$ (variable Cee) for the TKE dissipation term following Deardorff (1980)
 
@@ -913,30 +914,31 @@ contains
 ! Keep the length scale adequately small near the surface following Blackadar (1984)
 ! Note that this is not documented in BK13 and was added later for SP-CAM runs
 
-         if (k == 1) then
-           term = 600.*tkes
-           smixt(i,j,k) = term + (0.4*zl(i,j,k)-term)*exp(-zl(i,j,k)*0.01)
-         else
+!         if (k == 1) then
+!           term = 600.*tkes
+!           smixt(i,j,k) = term + (0.4*zl(i,j,k)-term)*exp(-zl(i,j,k)*0.01)
+!         else
 
 ! tscale is the eddy turnover time scale in the boundary layer and is 
 ! an empirically derived constant 
 
             if (tkes > 0.0 .and. l_inf(i,j) > 0.0) then
-              wrk1 = 1.0 / (tscale*tkes*vonk*zl(i,j,k))
-              wrk2 = 1.0 / (tscale*tkes*l_inf(i,j))
+              wrk1 = (tscale*tkes*vonk*zl(i,j,k))
+              wrk2 = (tscale*tkes*l_inf(i,j))
+              wrk3 = tke(i,j,k) /(0.01 * brunt2(i,j,k))
 !              wrk1 = 1.0 / (tscale*vonk*zl(i,j,k))
 !              wrk2 = 1.0 / (tscale*l_inf(i,j))
               smixt1(i,j,k) = wrk1
               smixt2(i,j,k) = wrk2
-              smixt3(i,j,k) = 0.01 * brunt2(i,j,k) / tke(i,j,k)
+              smixt3(i,j,k) = wrk3
 !              smixt3(i,j,k) = sqrt(brunt2(i,j,k)) / (0.7*tkes)
-              wrk1 = 1.0 / (wrk1 + wrk2 + smixt3(i,j,k))
+              wrk1 = 1.0 / (1./wrk1 + 1./wrk2 + 1./wrk3)
               smixt(i,j,k) = min(max_eddy_length_scale, 2.8284*sqrt(wrk1)/0.3)
 !              smixt(i,j,k) = min(max_eddy_length_scale,        sqrt(wrk1)/0.3)
 
            endif
            
-         end if  ! not k=1
+!         end if  ! not k=1
 
          smixt_outcld(i,j,k) = smixt(i,j,k)
   
@@ -1034,7 +1036,7 @@ endif
 !                  wrk = wrk * wrk + 0.01*brunt2(i,j,kk)/tke(i,j,kk)
 ! JDC Modify (based on Eq 13 in BK13)
                   wrk = conv_var/(depth*depth*sqrt(tke(i,j,kk)))
-                  smixt_incld(i,j,kk) = wrk
+                  smixt_incld(i,j,kk) = 1./wrk
                   wrk = wrk + 0.01*brunt2(i,j,kk)/tke(i,j,kk)
                   
 ! npa modify, weight in-cloud length scale by local cloud fraction

@@ -75,7 +75,6 @@ subroutine run_mynn(IM, JM, LM, &                                               
                     tket_M, tket_B, tket_T, hl2t_M, qt2t_M, hlqtt_M, &                      ! out
                     tke_surf, hl2_surf, qt2_surf, hlqt_surf)                                ! out
 
-
   use MAPL_ConstantsMod, only: MAPL_KARMAN
   use MAPL_SatVaporMod, only: MAPL_EQsat
 
@@ -94,6 +93,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
   real, dimension(IM,JM,LM), intent(out)     :: K_tke
 
   integer :: i, j, k, kp1, km1
+
   double precision :: GH, GM, dhldz, dqtdz, dqldz, idzlo, ifac, iexner, &
                       Sm2, Sh2, Sm, Sh, Cw_low, Cw_high, wrk1, &
                       Cw_25, whl, wqt, Ri, Rf, &
@@ -123,6 +123,10 @@ subroutine run_mynn(IM, JM, LM, &                                               
      end do
      end do
   end do
+
+  q = 0.
+  N2 = 0.
+  S2 = 0.
 
   ! Compute shear and buoyancy frequencies
   do k = 1,LM-1
@@ -158,7 +162,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
      end do
   end do
 
-  !
+  ! Compute some surface quantities
   do j = 1,JM
   do i = 1,IM
      wb_surf(i,j) = goth00*( H_surf(i,j)/(MAPL_CP*rhoe(i,j,LM)) + ep2*th00*E_surf(i,j)/rhoe(i,j,LM) )
@@ -567,6 +571,7 @@ subroutine mynn_length(IM, JM, LM, wb_surf, zle, zlo, q, N2, LMO, L, w_star)
      end do
      end do
   end do
+  L(:,:,LM) = L(:,:,LM-1)
 
 end subroutine mynn_length
 
@@ -589,6 +594,7 @@ subroutine implicit_M(IM, JM, LM, &
 
   integer          :: i, j, k, kp1
   double precision :: N2, S2, idzlo, dhldz, dqtdz, whl, wqt, whl_explicit, wqt_explicit, wb_explicit, goth00
+
   double precision, dimension(IM,JM,LM) :: hl, qt
 
   goth00 = MAPL_GRAV/th00
@@ -786,9 +792,11 @@ do k = 1,LM-2
    end do
    end do
 end do
+
 do j = 1,JM
 do i = 1,IM
    tke(i,j,LM-1)  = 0.5*u_star(i,j)**2.*(B1*pmz)**twothirds
+
    hl2(i,j,LM-1)  = phm*(flt/u_star(i,j))**2.
    qt2(i,j,LM-1)  = phm*(flq/u_star(i,j))**2.
    hlqt(i,j,LM-1) = phm*(flt/u_star(i,j))*(flq/u_star(i,j)) 
@@ -811,6 +819,7 @@ do iter = 1,niter
          L2 = L(i,j,k)**2.
 
          tke(i,j,k)  = 0.5*B1*L2*( SM(i,j,k)*GM(i,j,k) + SH(i,j,k)*GH(i,j,k) )
+
          hl2(i,j,k)  = B2*L2*SH(i,j,k)*dhldz(i,j,k)**2.
          qt2(i,j,k)  = B2*L2*SH(i,j,k)*dqtdz(i,j,k)**2.
          hlqt(i,j,k) = B2*L2*SH(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)

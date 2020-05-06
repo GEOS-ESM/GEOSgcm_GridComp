@@ -194,6 +194,8 @@ contains
     integer      :: AVRGNINT
     integer      :: IQVAINC
     real         :: DT
+
+    integer ::  DOSHLW, DO_MYNN
     
     character(len=ESMF_MAXSTR) :: FRIENDLIES_NCPL , FRIENDLIES_NCPI , &
                                   FRIENDLIES_NRAIN, FRIENDLIES_NSNOW, FRIENDLIES_NGRAUPEL
@@ -287,6 +289,12 @@ contains
     VERIFY_(STATUS)
     if (adjustl(DIAGNOSE_PRECIP_TYPE)=="TRUE" ) LDIAGNOSE_PRECIP_TYPE=.true.
     if (adjustl(DIAGNOSE_PRECIP_TYPE)=="FALSE") LDIAGNOSE_PRECIP_TYPE=.false.
+
+    call ESMF_ConfigGetAttribute( CF, DOSHLW, Label="DOSHLW:",  default=0, RC=STATUS)
+
+    call ESMF_ConfigGetAttribute( CF, DO_MYNN, Label="TURBULENCE_DO_MYNN:",  default=0, RC=STATUS)
+
+       !call MAPL_GetResource(STATE, DOSHLW,             'DOSHLW:'  ,DEFAULT=0,        RC=STATUS)
 
     FRIENDLIES_NCPI     = trim(COMP_NAME)
     FRIENDLIES_NCPL     = trim(COMP_NAME)
@@ -1388,6 +1396,15 @@ contains
     call MAPL_AddExportSpec(GC,                                              &
        SHORT_NAME = 'WTHV2',                                                 &
        LONG_NAME  = 'Buoyancy_flux_for_SHOC',                                &
+       UNITS      = '1',                                                     &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
+       SHORT_NAME = 'WTHV2_RAD',                                                 &
+       LONG_NAME  = 'Buoyancy_flux_from_rad_cooling',                                &
        UNITS      = '1',                                                     &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
@@ -5155,7 +5172,7 @@ contains
 ! Coefficients for determining relative contribution of sensible and latent
 ! heat fluxes to bouyancy flux
     call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME         = 'A_cloud',                            &
+         SHORT_NAME         = 'A_mynn',                             &
          LONG_NAME          = 'A-coefficient_for_moist_turbulence', & 
          UNITS              = '?',                                  &
          DIMS               = MAPL_DimsHorzVert,                    &
@@ -5163,7 +5180,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME         = 'B_cloud',                            &
+         SHORT_NAME         = 'B_mynn',                             &
          LONG_NAME          = 'B-coefficient_for_moist_turbulence', & 
          UNITS              = '?',                                  &
          DIMS               = MAPL_DimsHorzVert,                    &
@@ -5171,7 +5188,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME         = 'qsat',                               &
+         SHORT_NAME         = 'qsat_mynn',                          &
          LONG_NAME          = 'Saturation_specific_humidity',       & 
          UNITS              = 'kg+1kg-1',                           &
          DIMS               = MAPL_DimsHorzVert,                    &
@@ -5667,7 +5684,7 @@ contains
                                           WQL,       &
                                           WHL 
 
-    real, dimension(:,:,:),pointer     :: WTHV2
+    real, dimension(:,:,:),pointer     :: WTHV2,WTHV2_RAD
 
 
       real, pointer, dimension(:,:,:) :: CNV_DQLDT            , &
@@ -5696,7 +5713,9 @@ contains
       real, pointer, dimension(:,:)   :: TROPP
       real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE, TKESHOC
       real, pointer, dimension(:,:,:) :: ISOTROPY,w3_canuto,edmf_wqt,edmf_whl,edmf_qt2,edmf_hl2,edmf_hlqt,edmf_w2,edmf_w3,edmf_qt3,edmf_dry_a,edmf_moist_a
+
       real, pointer, dimension(:,:,:) :: hl2, qt2, hlqt
+
       real, pointer, dimension(    :) :: PREF
       real, pointer, dimension(:,:,:) :: Q, QRAIN, QSNOW, QGRAUPEL, QLLS, QLCN, CLLS, CLCN, BYNCY, QILS, QICN, QCTOT,QITOT,QLTOT
       real, pointer, dimension(:,:,:) :: QPTOTLS, QRTOT, QSTOT,  CFLIQ, CFICE !DONIF
@@ -5855,7 +5874,7 @@ contains
       real, pointer, dimension(:,:,:)       :: NACTL,NACTI
 !--kml--- activation for single-moment uphysics
 
-      real, pointer, dimension(:,:,:)       :: A_cloud, B_cloud, qsat
+      real, pointer, dimension(:,:,:)       :: A_mynn, B_mynn, qsat_mynn
 
       ! Aerosol-Cloud interactions
 
@@ -6039,7 +6058,8 @@ contains
             c2_gw, fcn, cfaux    
 	   
       real, dimension (1, 0:LM) :: pi_gw, rhoi_gw, ni_gw, ti_gw
-      real                      :: maxkhpbl, tausurf_gw, overscale, fracover, cfc_aux 
+      real                      :: maxkhpbl, tausurf_gw, overscale, fracover, cfc_aux, zcldtop, maxradf, density, E
+
       real (ESMF_KIND_R8)       :: tauxr8, fsoot_drop, fdust_drop, sigma_nuc_r8, rh1_r8, frachet_dust, &
                                    frachet_bc, frachet_org, frachet_ss
       logical                   :: ismarine, is_stable, use_average_v                  
@@ -6097,6 +6117,7 @@ contains
       real,    dimension(IM,JM,  LM)  :: KEX, DKEX
       real,    dimension(IM,JM,  LM)  :: Q1, W1, U1, V1, TH1, CNV_PRC3,fQi,CFPBL,CNV_HAIL
 
+      real                            :: IMPOSECLD_TOP, IMPOSECLD_BOT, IMPOSECLD_QCMIN, IMPOSECLD_FRCMIN
       integer                         :: SHLWDIAG
       real,    dimension(IM,JM,  LM)  :: SHLW_PRC3,SHLW_SNO3,UFRC_SC
       real,    dimension(IM,JM,0:LM)  :: CNV_PLE,ZLE
@@ -6414,10 +6435,11 @@ contains
       real :: FAC_RI_CN, FAC_RI_LS
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
 
+
       real, dimension(IM,JM,LM) :: hl,total_water,w3var,w2var,hlsec,qtsec,hlqtsec,wqtsec,whlsec,wqlsec
       real, dimension(IM,JM,LM) :: whl_sec,wqt_sec,hl2_sec,qt2_sec,hlqt_sec, au_full
       real, dimension(IM,JM)    :: sm,wrk1,wrk2,wrk3
-      real kd,ku,qt2tune,hl2tune,hlqt2tune
+      real kd,ku,qt2tune,hl2tune,hlqt2tune,radbuoyfac
 
       real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU, CMNI
       real   , dimension(IM,JM)           :: CMDUcarma, CMSScarma
@@ -6679,6 +6701,11 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%KEVP,    'KEVP:'    ,DEFAULT=2.e-6,    RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,   'SHLW_RDROP:',DEFAULT=8.e-6,    RC=STATUS)
 
+      call MAPL_GetResource(STATE, IMPOSECLD_TOP,   'IMPOSECLD_TOP:',DEFAULT=1200.,   RC=STATUS)
+      call MAPL_GetResource(STATE, IMPOSECLD_BOT,   'IMPOSECLD_BOT:',DEFAULT=1100.,   RC=STATUS)
+      call MAPL_GetResource(STATE, IMPOSECLD_QCMIN, 'IMPOSECLD_QCMIN:',DEFAULT=0.,    RC=STATUS)
+      call MAPL_GetResource(STATE, IMPOSECLD_FRCMIN,'IMPOSECLD_FRCMIN:',DEFAULT=0.,   RC=STATUS)
+
       if(adjustl(CLDMICRO)=="GFDL") then
         call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=0  , RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=1.0, RC=STATUS)
@@ -6686,6 +6713,9 @@ contains
         call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=1  , RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=0.0, RC=STATUS)
       endif
+
+      call MAPL_GetResource(STATE, DO_MYNN, 'TURBULENCE_DO_MYNN:', default=0, RC=STATUS)
+      VERIFY_(STATUS)
 
       ! Get the time step from the alarm
       !---------------------------------
@@ -6713,8 +6743,9 @@ contains
       call MAPL_GetPointer(INTERNAL, NCPL,     'NCPL'    , RC=STATUS); VERIFY_(STATUS)  !DONIF
       call MAPL_GetPointer(INTERNAL, NCPI,     'NCPI'    , RC=STATUS); VERIFY_(STATUS)
 
-     call MAPL_GetPointer(INTERNAL,  PDF_AX,   'PDF_AX'  , RC=STATUS); VERIFY_(STATUS) 
-     call MAPL_GetPointer(INTERNAL,  SKEW_QTX, 'SKEW_QTX', RC=STATUS); VERIFY_(STATUS) 
+      call MAPL_GetPointer(INTERNAL, PDF_AX,   'PDF_AX'  , RC=STATUS); VERIFY_(STATUS) 
+      call MAPL_GetPointer(INTERNAL, SKEW_QTX, 'SKEW_QTX', RC=STATUS); VERIFY_(STATUS) 
+
       call MAPL_GetPointer(INTERNAL, NRAIN,    'NRAIN'    , RC=STATUS); VERIFY_(STATUS)  
       call MAPL_GetPointer(INTERNAL, NSNOW,    'NSNOW'    , RC=STATUS); VERIFY_(STATUS)      
       call MAPL_GetPointer(INTERNAL, NGRAUPEL, 'NGRAUPEL'    , RC=STATUS); VERIFY_(STATUS)
@@ -6926,6 +6957,8 @@ contains
      call MAPL_GetPointer(EXPORT, PDF_RQTTH,  'PDF_RQTTH',  ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS) 
      call MAPL_GetPointer(EXPORT,  WTHV2,      'WTHV2',     ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS) 
+     call MAPL_GetPointer(EXPORT,  WTHV2_RAD,  'WTHV2_RAD', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS) 
 
      call MAPL_GetPointer(EXPORT, QT2SHOC,  'QT2SHOC',  RC=STATUS)
@@ -7278,9 +7311,9 @@ contains
 !!!      endif
 !--kml-----------------------------------------------------------------------------
 
-      call MAPL_GetPointer(EXPORT, A_cloud, 'A_cloud', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, B_cloud, 'B_cloud', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    qsat,    'qsat', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT,    A_mynn,    'A_mynn', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT,    B_mynn,    'B_mynn', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, qsat_mynn, 'qsat_mynn', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
       ! Count the fields in TR...
       !--------------------------
@@ -8046,6 +8079,7 @@ contains
       call MAPL_GetResource( STATE, QT2TUNE,   'QT2TUNE:',    DEFAULT= 1.0, RC=STATUS )
       call MAPL_GetResource( STATE, HL2TUNE,   'HL2TUNE:',    DEFAULT= 1.0, RC=STATUS )
       call MAPL_GetResource( STATE, HLQT2TUNE, 'HLQT2TUNE:',  DEFAULT= 1.0, RC=STATUS )
+      call MAPL_GetResource( STATE, RADBUOYFAC,'RADBUOYFAC:', DEFAULT= 1.0, RC=STATUS )
 
       if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
          if (CNV_FRACTION_MAX < 1.0) then
@@ -9240,10 +9274,6 @@ contains
 
        ! define resolved gradients on edges 
        do k=1,LM-1
-
-          ! Ensure realizibility of hlqt (this should be moved to DIFFUSE in Turbulence in the future)
-          hlqt(:,:,k) = sign( min( abs(hlqt(:,:,k)), sqrt(hl2(:,:,k)*qt2(:,:,k)) ), hlqt(:,:,k) )
-
           if (DO_MYNN == 0) then
              wrk1 = 1.0 / (ZLO(:,:,k)-ZLO(:,:,k+1)) 
              wrk3 = KH(:,:,k) * wrk1
@@ -9268,6 +9298,9 @@ contains
              ! energy.  Eq 5 in BK13
              hlqt_sec(:,:,k) = hlqt2tune * sm * wrk1 * wrk2
           else
+             ! Ensure realizibility of HLQT (this should be moved to DIFFUSE in Turbulence in the future)
+             hlqt(:,:,k) = sign( min( abs(hlqt(:,:,k)), sqrt(hl2(:,:,k)*qt2(:,:,k)) ), hlqt(:,:,k) )
+
              hl2_sec(:,:,k)  = hl2(:,:,k)
              qt2_sec(:,:,k)  = qt2(:,:,k)
              hlqt_sec(:,:,k) = hlqt(:,:,k)
@@ -9336,8 +9369,6 @@ contains
 
           ! Ensure realizibility 
           hlqtsec(:,:,k) = sign( min( abs(hlqtsec(:,:,k)), sqrt(hlsec(:,:,k)*qtsec(:,:,k)) ), hlqtsec(:,:,k) )
-
-
        end do  
 
        ! Fill the exports
@@ -10764,9 +10795,9 @@ contains
               QDDF3             , &
               CNV_FRACTION      , &
               TROPP             , &
-              A_cloud           , &
-              B_cloud           , &
-              qsat              , &
+              A_mynn            , &
+              B_mynn            , &
+              qsat_mynn         , &
                                 ! Diagnostics
               RHX_X             , &
               REV_LS_X          , &
@@ -10806,7 +10837,45 @@ contains
               CONVPAR_OPTION )
 
 
-!         print *,'MoistGC: wthv2=',wthv2(:,:,LM-5:LM)
+!        print *,'RAD_CF after progno=',RAD_CF
+
+       ! Identify cloud top and radiative cooling rate
+       ! For use in radiative buoyancy adjustment
+
+       hl = TEMP*(1.+MAPL_VIREPS*Q1-QLLS-QILS) + (mapl_grav*ZLO - mapl_alhl*QLLS - mapl_alhf*QILS)/mapl_cp
+
+       WTHV2_RAD = 0.
+       do i = 1,IM
+         do j = 1,JM
+           ! Identify cloud top index
+           ! 
+           kcldtop  = LM+1
+           do k = LM,2,-1
+             if ( ( QLLS(i,j,k)+QILS(i,j,k)  .ge. 1.0e-6 ) .and. ( QLLS(i,j,k-1)+QILS(i,j,k-1) .lt. 1.0e-6) .and. (hl(i,j,k-1) .gt. hl(i,j,k)) ) then
+                kcldtop  = k-2   
+                exit
+             end if
+           end do
+!           print *,'kcldtop=',kcldtop
+
+           ! Calculate velocity scale from rad cooling
+!           maxradf = -1.0*minval(RADLW(i,j,kcldtop-1:kcldtop+1))
+           density = 100.*PLO(i,j,kcldtop) / (MAPL_RGAS*TEMP(i,j,kcldtop))
+           maxradf = radbuoyfac*MAX(-1.0*minval(RADLW(i,j,kcldtop-1:kcldtop+1)),0.0)/density
+!           print *,'maxradf=',maxradf            
+
+           ! Set radiatively driven buoyancy perturbation
+           zcldtop = ZLO(i,j,kcldtop)
+!           E = (MAPL_ALHL/MAPL_CP)*(QLLS(i,j,kcldtop+1)+QILS(i,j,kcldtop+1)) &
+!                / (TEMP(i,j,kcldtop)*(1.+0.61*Q1(i,j,kcldtop))-TEMP(i,j,kcldtop+1)*(1.+0.61*Q1(i,j,kcldtop+1)))
+           do k = kcldtop,LM
+             WTHV2_RAD(i,j,k) = maxradf*1.5*max((zcldtop-ZLO(i,j,k))*(1.-(zcldtop-ZLO(i,j,k))/(0.66*zcldtop))**3,0.0)
+!             WTHV2_RAD(i,j,k) = 0.2*(1.+15.*E)*maxradf*(zcldtop-ZLO(i,j,k))*(1.-(zcldtop-ZLO(i,j,k))/zcldtop)**3
+             WTHV2(i,j,k) = WTHV2(i,j,k) + WTHV2_RAD(i,j,k) 
+           end do
+ 
+         end do
+       end do
 
          VERIFY_(STATUS)
 
@@ -12538,6 +12607,28 @@ do K= 1, LM
       call MAPL_TimerOn (STATE,"-MISC3")
 
       RAD_QV   = max( Q1 , 0. )
+
+      
+      
+      do i=1,IM
+        do j=1,JM
+          if (TS(i,j).le.293.) then
+          do k=1,LM
+            if (ZLO(i,j,k)>IMPOSECLD_BOT .and. ZLO(i,j,k)<IMPOSECLD_TOP) then
+              if (maxval(RAD_CF(i,j,1:k-1))<0.9) then
+                RAD_CF(i,j,k) = max(RAD_CF(i,j,k),IMPOSECLD_FRCMIN)
+                RAD_QL(i,j,k) = max(RAD_QL(i,j,k),IMPOSECLD_QCMIN)
+              end if
+            end if
+          end do
+          end if
+        end do
+      end do
+!      where (ZLO.gt.IMPOSECLD_BOT .and. ZLO.lt.IMPOSECLD_TOP) 
+!        RAD_CF = max(RAD_CF,IMPOSECLD_FRCMIN)
+!        RAD_QL = max(RAD_QL,IMPOSECLD_QCMIN)
+!      end where
+
 
       IF ( INT(CLDPARAMS%DISABLE_RAD)==1 ) THEN
          RAD_QL     = 0.
