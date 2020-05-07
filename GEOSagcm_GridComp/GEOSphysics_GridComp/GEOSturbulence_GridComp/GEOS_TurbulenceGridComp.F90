@@ -3568,7 +3568,7 @@ contains
       call MAPL_GetResource (MAPL, DO_MYNN,"TURBULENCE_DO_MYNN:", default=0, RC=STATUS)
 
       ! Make sure SHOC and MYNN are not running at the same time
-      _ASSERT( DO_SHOC /= 0 .and. DO_MYNN /= 0, 'SHOC and MYNN cannot be turned on at the same time!' )
+      _ASSERT( .not. ( DO_SHOC /= 0 .and. DO_MYNN /= 0) , 'SHOC and MYNN cannot be turned on at the same time!' )
 
 ! Get pointers from export state...
 !-----------------------------------
