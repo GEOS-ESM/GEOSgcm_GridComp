@@ -3541,11 +3541,8 @@ contains
      call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,        RC=STATUS)
      call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,            RC=STATUS)
 
-     call MAPL_GetResource (MAPL, DO_MYNN,      trim(COMP_NAME)//"_DO_MYNN:",       default=0,           RC=STATUS)
-
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS)
      if (DO_SHOC /= 0) then
-       call MAPL_GetResource (MAPL, DO_MYNN,      trim(COMP_NAME)//"_DO_MYNN:",       default=0,          RC=STATUS)
        call MAPL_GetResource (MAPL, SHC_LAMBDA,   trim(COMP_NAME)//"_SHC_LAMBDA:",   default=0.04,       RC=STATUS)
        call MAPL_GetResource (MAPL, SHC_TSCALE,   trim(COMP_NAME)//"_SHC_TSCALE:",   default=400.,       RC=STATUS)
        call MAPL_GetResource (MAPL, SHC_VONK,     trim(COMP_NAME)//"_SHC_VONK:",     default=0.4,        RC=STATUS)
@@ -3567,6 +3564,11 @@ contains
 !       end if
 !       if (SHC_BUOY_OPTION==2 .and. PDFSHAPE/=5) print *,'*** SHOC using inactive DG PDF for buoyancy!!! ***'
      end if
+
+      call MAPL_GetResource (MAPL, DO_MYNN,"TURBULENCE_DO_MYNN:", default=0, RC=STATUS)
+
+      ! Make sure SHOC and MYNN are not running at the same time
+      _ASSERT( DO_SHOC /= 0 .and. DO_MYNN /= 0, 'SHOC and MYNN cannot be turned on at the same time!' )
 
 ! Get pointers from export state...
 !-----------------------------------
@@ -4384,7 +4386,6 @@ ENDIF
 
       ISOTROPY = 600.   ! set default isotropy timescale,
                         ! will be overwritten
-
       if ( DO_SHOC /= 0 ) then
 
 !        print *,'DO_SHOC=1'
@@ -4394,117 +4395,126 @@ ENDIF
         call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
 
-        if (DO_MYNN == 0) then
-           ! for now just use fixed values
-           QPI = 0.
-           QPL = 0.
-           PRANDTLSHOC = 0.9
-           w3_canuto  = 0.0
+        ! for now just use fixed values
+        QPI = 0.
+        QPL = 0.
+        PRANDTLSHOC = 0.9
+        w3_canuto  = 0.0
 
-           call RUN_SHOC( IM, JM, LM, LM+1, DT, &
-                         !== Inputs ==
-                         DT/DMI(:,:,1:LM),      &
-                         PLO(:,:,1:LM),         &
-                         ZLE(:,:,0:LM),         &
-                         Z(:,:,1:LM),           &
-                         U(:,:,1:LM),           &
-                         V(:,:,1:LM),           &
-                         OMEGA(:,:,1:LM),       &
-                         SH(:,:),               &
-                         EVAP(:,:),             &
-                         BUOYF(:,:,1:LM),       &
-                         T(:,:,1:LM),           &
-                         Q(:,:,1:LM),           &
-                         QI(:,:,1:LM),          &
-                         QL(:,:,1:LM),          &
-                         QPI(:,:,1:LM),         &
-                         QPL(:,:,1:LM),         &
-                         QA(:,:,1:LM),          &
-                         WTHV2(:,:,1:LM),       &
-                         PRANDTLSHOC(:,:,1:LM), &
-                         !== Input-Outputs ==
-                         TKESHOC(:,:,1:LM),     &
-                         TKH(:,:,1:LM),         &
-                         !== Outputs ==
-                         ISOTROPY(:,:,1:LM),    &
-                         W3_CANUTO(:,:,1:LM),   &
-                         !== Diagnostics ==  ! not used elsewhere
-                         TKEDISS,               &
-                         TKEBUOY,               &
-                         TKESHEAR,              &
-                         TKETRANS,              &
-                         LSHOC,                 &
-                         LSHOC_CLR,             &
-                         LSHOC_CLD,             &
-                         LSHOC1,                &
-                         LSHOC2,                &
-                         LSHOC3,                &
-                         BRUNTSHOC,             &
-                         SHEARSHOC,             &
-                         !== Tuning params ==
-                         SHC_LAMBDA,            &
-                         SHC_TSCALE,            &
-                         SHC_VONK,              &
-                         SHC_CK,                &
-                         SHC_CEFAC,             &
-                         SHC_CESFAC,            &
-                         SHC_THL2TUNE,          &
-                         SHC_QW2TUNE,           &
-                         SHC_QWTHL2TUNE,        &
-                         SHC_DO_TRANS,          &
-                         SHC_DO_CLDLEN,         &
-                         SHC_USE_MF_PDF,        &
-                         SHC_USE_MF_BUOY,       &
-                         SHC_BUOY_OPTION  )
+        call RUN_SHOC( IM, JM, LM, LM+1, DT, &
+                      !== Inputs ==
+                      DT/DMI(:,:,1:LM),      &
+                      PLO(:,:,1:LM),         &
+                      ZLE(:,:,0:LM),         &
+                      Z(:,:,1:LM),           &
+                      U(:,:,1:LM),           &
+                      V(:,:,1:LM),           &
+                      OMEGA(:,:,1:LM),       &
+                      SH(:,:),               &
+                      EVAP(:,:),             &
+                      BUOYF(:,:,1:LM),       &
+                      T(:,:,1:LM),           &
+                      Q(:,:,1:LM),           &
+                      QI(:,:,1:LM),          &
+                      QL(:,:,1:LM),          &
+                      QPI(:,:,1:LM),         &
+                      QPL(:,:,1:LM),         &
+                      QA(:,:,1:LM),          &
+                      WTHV2(:,:,1:LM),       &
+                      PRANDTLSHOC(:,:,1:LM), &
+                      !== Input-Outputs ==
+                      TKESHOC(:,:,1:LM),     &
+                      TKH(:,:,1:LM),         &
+                      !== Outputs ==
+                      ISOTROPY(:,:,1:LM),    &
+                      W3_CANUTO(:,:,1:LM),   &
+                      !== Diagnostics ==  ! not used elsewhere
+                      TKEDISS,               &
+                      TKEBUOY,               &
+                      TKESHEAR,              &
+                      TKETRANS,              &
+                      LSHOC,                 &
+                      LSHOC_CLR,             &
+                      LSHOC_CLD,             &
+                      LSHOC1,                &
+                      LSHOC2,                &
+                      LSHOC3,                &
+                      BRUNTSHOC,             &
+                      SHEARSHOC,             &
+                      !== Tuning params ==
+                      SHC_LAMBDA,            &
+                      SHC_TSCALE,            &
+                      SHC_VONK,              &
+                      SHC_CK,                &
+                      SHC_CEFAC,             &
+                      SHC_CESFAC,            &
+                      SHC_THL2TUNE,          &
+                      SHC_QW2TUNE,           &
+                      SHC_QWTHL2TUNE,        &
+                      SHC_DO_TRANS,          &
+                      SHC_DO_CLDLEN,         &
+                      SHC_USE_MF_PDF,        &
+                      SHC_USE_MF_BUOY,       &
+                      SHC_BUOY_OPTION  )
 
-           TKH = max(0.,TKH)
+        TKH = max(0.,TKH)
 
-           KH(:,:,1:LM) = TKH(:,:,1:LM)
-           KM(:,:,1:LM) = TKH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
-
-        else ! MYNN
-
-           if ( associated(zle_turb_ex) ) zle_turb_ex = zle 
-           if ( associated(ac_turb_ex) )  ac_turb_ex  = QA 
-           if ( associated(ql_turb_ex) )  ql_turb_ex  = QL 
-
-           ! Cloud-top entrainment (for now only a test)
-           call entrain_mynn(IM, JM, LM, &
-                             th00, zlo, zle, omega, thl, qt, thv, qa, &
-                             thlv_turb, ktop_entrain, zi_entrain, gamma_ml_entrain, gamma_fa_entrain)
-                     
-           if ( associated(thlv_turb_ex) )        thlv_turb_ex        = thlv_turb 
-           if ( associated(ktop_entrain_ex) )     ktop_entrain_ex     = real(ktop_entrain)
-           if ( associated(zi_entrain_ex) )       zi_entrain_ex       = zi_entrain 
-           if ( associated(gamma_ml_entrain_ex) ) gamma_ml_entrain_ex = gamma_ml_entrain 
-           if ( associated(gamma_fa_entrain_ex) ) gamma_fa_entrain_ex = gamma_fa_entrain 
-
-           ! Run MYNN
-           call run_mynn(IM, JM, LM, &                                                ! in      
-                         MYNN_DEBUG_FLAG, DOMF, MYNN_LEVEL, &                         ! in      
-                         EDMF_CONSISTENT_TYPE, WQL_TYPE, WRF_CG_FLAG, &               ! in      
-                         th00, PLE, RHOE, ZLE, Z, &                                   ! in      
-                         U, V, OMEGA, T, Q, QL, QI, QA, THL, QT, THV, &               ! in      
-                         USTAR, SH, EVAP, &                                           ! in      
-                         whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, &                 ! in      
-                         A_mynn, B_mynn, qsat_mynn, &                                 ! in
-                         tke_new, hl2, qt2, hlqt, &                                   ! inout   
-                         ws_explicit, wqv_explicit, wql_explicit, &                   ! inout     
-                         KM_MYNN, KH_MYNN, K_TKE, itau_mynn, &                        ! out
-                         beta_hl, beta_qt, &                                          ! out     
-                         tket_M, tket_B, tket_T, hl2t_M, qt2t_M, hlqtt_M, &           ! out     
-                         tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                     ! out  
-
-           KM = KM_MYNN
-           KH = KH_MYNN
-
-           if (associated(tket_T_MF)) tket_T_MF = tket_T
-        end if
+        KH(:,:,1:LM) = TKH(:,:,1:LM)
+        KM(:,:,1:LM) = TKH(:,:,1:LM)*PRANDTLSHOC(:,:,1:LM)
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
 
-      end if  ! DOSHOC condition
+     end if  ! DOSHOC condition
+
+     !
+     ! MYNN
+     !
+     if ( DO_MYNN /= 0 ) then
+        LOCK_ON = 0
+
+        call MAPL_TimerOn (MAPL,name="---MYNN" ,RC=STATUS)
+        VERIFY_(STATUS)
+
+        if ( associated(zle_turb_ex) ) zle_turb_ex = zle 
+        if ( associated(ac_turb_ex) )  ac_turb_ex  = QA 
+        if ( associated(ql_turb_ex) )  ql_turb_ex  = QL 
+
+        ! Cloud-top entrainment (for now only a test)
+        call entrain_mynn(IM, JM, LM, &
+                          th00, zlo, zle, omega, thl, qt, thv, qa, &
+                          thlv_turb, ktop_entrain, zi_entrain, gamma_ml_entrain, gamma_fa_entrain)
+                     
+        if ( associated(thlv_turb_ex) )        thlv_turb_ex        = thlv_turb 
+        if ( associated(ktop_entrain_ex) )     ktop_entrain_ex     = real(ktop_entrain)
+        if ( associated(zi_entrain_ex) )       zi_entrain_ex       = zi_entrain 
+        if ( associated(gamma_ml_entrain_ex) ) gamma_ml_entrain_ex = gamma_ml_entrain 
+        if ( associated(gamma_fa_entrain_ex) ) gamma_fa_entrain_ex = gamma_fa_entrain 
+
+        ! Run MYNN
+        call run_mynn(IM, JM, LM, &                                                ! in      
+                      MYNN_DEBUG_FLAG, DOMF, MYNN_LEVEL, &                         ! in      
+                      EDMF_CONSISTENT_TYPE, WQL_TYPE, WRF_CG_FLAG, &               ! in      
+                      th00, PLE, RHOE, ZLE, Z, &                                   ! in      
+                      U, V, OMEGA, T, Q, QL, QI, QA, THL, QT, THV, &               ! in      
+                      USTAR, SH, EVAP, &                                           ! in      
+                      whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, &                 ! in      
+                      A_mynn, B_mynn, qsat_mynn, &                                 ! in
+                      tke_new, hl2, qt2, hlqt, &                                   ! inout   
+                      ws_explicit, wqv_explicit, wql_explicit, &                   ! inout     
+                      KM_MYNN, KH_MYNN, K_TKE, itau_mynn, &                        ! out
+                      beta_hl, beta_qt, &                                          ! out     
+                      tket_M, tket_B, tket_T, hl2t_M, qt2t_M, hlqtt_M, &           ! out     
+                      tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                     ! out  
+        
+        KM = KM_MYNN
+        KH = KH_MYNN
+
+        if (associated(tket_T_MF)) tket_T_MF = tket_T
+
+        call MAPL_TimerOff (MAPL,name="---MYNN" ,RC=STATUS)
+        VERIFY_(STATUS)
+     end if
 
 !   Refresh diffusivities: First compute Louis...
 !   ---------------------------------------------
@@ -4512,7 +4522,7 @@ ENDIF
       call MAPL_TimerOn (MAPL,name="---LOUIS" ,RC=STATUS)
       VERIFY_(STATUS)
 
-      if (DO_SHOC == 0) then
+      if ( DO_SHOC == 0 .and. DO_MYNN == 0 ) then
         call LOUIS_KS(                      &
             Z,ZLE(:,:,1:LM-1),THV,U,V,ZPBL, &    
             KH(:,:,1:LM-1),KM(:,:,1:LM-1),  &
@@ -5004,7 +5014,7 @@ ENDIF
 
       do I = 1, IM
          do J = 1, JM
-            if (DO_SHOC==0) then
+            if ( DO_SHOC == 0 .and. DO_MYNN == 0 ) then
               temparray(1:LM+1) = KHSFC(I,J,0:LM)
             else
               temparray(1:LM+1) = KH(I,J,0:LM)
