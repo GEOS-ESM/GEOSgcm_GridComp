@@ -2305,49 +2305,49 @@ contains
                           A_mynn, B_mynn, qsat_mynn)
             
             fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
-!!$         elseif (pdfflag == 7) then ! Double Gaussian with consistent partitioning
-!!$            ! Update the liquid water static energy
-!!$            ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
-!!$
-!!$            HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
-!!$            QT = QVn + QCn
-!!$
-!!$            !
-!!$            ! Updraft ensemble
-!!$            !
-!!$            if ( au > 0. ) then
-!!$               HLU = ( HL - ( 1. - au )*HLE )/au
-!!$               QTU = ( QT - ( 1. - au )*QTE )/au
-!!$
-!!$               call gaussian(ZL, 100.*PL, HLU, QTU, HL2U, QT2U, HLQTU, &
-!!$                             Tcu, qlu, acu, &
-!!$                             A_cloud, B_cloud, qsat)
-!!$
-!!$            end if
-!!$
-!!$            !
-!!$            ! Environment
-!!$            !
-!!$            
-!!$            call gaussian(ZL, 100.*PL, HLE, QTE, HL2, QT2, HLQT, &
-!!$                          Tce, qle, ace, &
-!!$                          A_cloud, B_cloud, qsat)
-!!$
-!!$            !
-!!$            ! Combine upddraft and environment
-!!$            !
-!!$
-!!$            if ( au > 0. ) then
-!!$               TEn = au*Tcu + ( 1. - au )*Tce
-!!$               QCn = au*qlu + ( 1. - au )*qle
-!!$               CFn = au*acu + ( 1. - au )*ace
-!!$            else
-!!$               TEn = Tce
-!!$               QCn = qle
-!!$               CFn = ace
-!!$            end if
-!!$
-!!$            fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+         elseif (pdfflag == 7) then ! Double Gaussian with consistent partitioning
+            ! Update the liquid water static energy
+            ALHX = (1.0-fQi)*MAPL_ALHL + fQi*MAPL_ALHS
+
+            HL = TEn + (mapl_grav/mapl_cp)*ZL - (ALHX/MAPL_CP)*QCn
+            QT = QVn + QCn
+
+            !
+            ! Updraft ensemble
+            !
+            if ( au > 0. ) then
+               HLU = ( HL - ( 1. - au )*HLE )/au
+               QTU = ( QT - ( 1. - au )*QTE )/au
+
+               call gaussian(ZL, 100.*PL, HLU, QTU, HL2U, QT2U, HLQTU, &
+                             Tcu, qlu, acu, &
+                             A_mynn, B_mynn, qsat_mynn)
+
+            end if
+
+            !
+            ! Environment
+            !
+            
+            call gaussian(ZL, 100.*PL, HLE, QTE, HL2, QT2, HLQT, &
+                          Tce, qle, ace, &
+                          A_mynn, B_mynn, qsat_mynn)
+
+            !
+            ! Combine upddraft and environment
+            !
+
+            if ( au > 0. ) then
+               TEn = au*Tcu + ( 1. - au )*Tce
+               QCn = au*qlu + ( 1. - au )*qle
+               CFn = au*acu + ( 1. - au )*ace
+            else
+               TEn = Tce
+               QCn = qle
+               CFn = ace
+            end if
+
+            fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
          endif
 
 !         if (abs(QVn+QCn-QVp-QCp)>1e-6*(QVp+QCp) .and. QVp>0.0001) print *,'total water not conserved!'
