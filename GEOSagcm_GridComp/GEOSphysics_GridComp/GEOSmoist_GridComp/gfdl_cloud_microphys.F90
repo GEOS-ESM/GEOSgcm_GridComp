@@ -851,8 +851,8 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! time - split warm rain processes: 1st pass
             ! -----------------------------------------------------------------------
             
-            qlic = qlz/(qaz+1e-4)
-            qiic = qiz/(qaz+1e-4)
+            qlic = qlz/(qaz+1e-6)
+            qiic = qiz/(qaz+1e-6)
             call warm_rain (dt_rain, ktop, kbot, dp1, dz1, tz, qvz, qlic, qrz, qiic, qsz, &
                 qgz, qaz, den, denfac, ccn, c_praut, rh_rain, vtrz, r1, m1_rain, w1, h_var)
             qlz = qlic*qaz
@@ -869,8 +869,13 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! sedimentation of cloud ice, snow, and graupel
             ! -----------------------------------------------------------------------
             
+            qlic = qlz/(qaz+1e-6)
+            qiic = qiz/(qaz+1e-6)
             call fall_speed (ktop, kbot, p1, cnv_fraction(i), anv_icefall, lsc_icefall, &
-                             den, qsz, qiz, qgz, qlz, tz, vtsz, vtiz, vtgz)
+                             den, qsz, qiic, qgz, qlic, tz, vtsz, vtiz, vtgz)
+
+!            qlz = qlic*qaz
+!            qiz = qiic*qaz
             
             call terminal_fall (dts, ktop, kbot, tz, qvz, qlz, qrz, qgz, qsz, qiz, &
                 dz1, dp1, den, vtgz, vtsz, vtiz, r1, g1, s1, i1, m1_sol, w1)

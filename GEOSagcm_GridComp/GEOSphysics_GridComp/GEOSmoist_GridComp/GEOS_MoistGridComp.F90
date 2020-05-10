@@ -8639,8 +8639,8 @@ contains
 
                     sigmaqt = (1.0-sigmaqt)*qsatn
 
-                    call pdffrac(1,QT,sigmaqt,sigmaqt,qsatn,cfn)
-                    call pdfcondensate(1,QT,sigmaqt,sigmaqt,qsatn,qcn)
+                    call pdffrac(INT(CLDPARAMS%PDFSHAPE),QT,sigmaqt,sigmaqt,qsatn,cfn)
+                    call pdfcondensate(INT(CLDPARAMS%PDFSHAPE),QT,sigmaqt,sigmaqt,qsatn,qcn)
 
                     IFRC = ICE_FRACTION( TEMP(I,J,K), 0.0, SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J) )
                    

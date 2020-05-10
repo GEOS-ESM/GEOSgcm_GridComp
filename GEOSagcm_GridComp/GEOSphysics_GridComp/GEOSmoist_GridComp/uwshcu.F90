@@ -316,6 +316,7 @@ contains
          endif
 
       end do
+      dcm_inv(:idim,k0) = 0.
 
    end subroutine compute_uwshcu_inv
 
@@ -2456,6 +2457,7 @@ contains
           ! ----------------------------------------------------------------- !
           ! Case 1 : When both cumulus and env. are unsaturated or saturated. !
           ! ----------------------------------------------------------------- !
+            xsat = 0.
 
             if( ( excessu .le. 0. .and. excess0 .le. 0. ) .or. ( excessu .ge. 0. .and. excess0 .ge. 0. ) ) then
                 xc = min(1.,max(0.,1.-2.*rbuoy*g*cridis/wue**2.*(1.-thvj/thv0j)))
