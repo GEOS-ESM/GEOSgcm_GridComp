@@ -777,7 +777,7 @@ subroutine SetServices ( GC, RC )
          RC=STATUS  ) 
     VERIFY_(STATUS)
 
-    IF (MODIS_DVG == 1) THEN 
+    IF (MODIS_DVG > 0) THEN 
     
        call MAPL_AddImportSpec(gc, &
             short_name = "MODIS_VISDF",                               &
@@ -4299,7 +4299,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,SSWT   ,'SSWT'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
 
-        IF (MODIS_DVG == 1) THEN 
+        IF (MODIS_DVG > 0) THEN 
            call MAPL_GetPointer(IMPORT, MODIS_VISDF ,'MODIS_VISDF'   ,RC=STATUS); VERIFY_(STATUS) 
            call MAPL_GetPointer(IMPORT, MODIS_NIRDF ,'MODIS_NIRDF'   ,RC=STATUS); VERIFY_(STATUS) 
         ENDIF

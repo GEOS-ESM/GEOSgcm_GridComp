@@ -54,7 +54,7 @@ module GEOS_VegdynGridCompMod
 
 !EOP
 
-  integer :: MODIS_DVG
+  integer :: MODIS_DVG, MDATE
   integer, parameter		     :: NTYPS = MAPL_NumVegTypes
   real,    dimension(   NTYPS)       :: VGRT
   ! real,    dimension(   NTYPS)       :: VGZ2   
@@ -144,7 +144,11 @@ contains
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='MODIS_DVG:'  , value=MODIS_DVG  , DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='MODIS_DVG:'  , value=MODIS_DVG  , DEFAULT=0, __RC__ )
+    MDATE = 0
+    IF(MODIS_DVG > 0) THEN
+       call ESMF_ConfigGetAttribute (SCF, label='MDATE:'   , value=MDATE      , DEFAULT=0, __RC__ )
+    ENDIF
     call ESMF_ConfigDestroy      (SCF, __RC__)
     
 ! -----------------------------------------------------------
@@ -326,6 +330,7 @@ contains
 ! Time attributes and placeholders
 
     type(ESMF_Time) :: CURRENT_TIME
+    type(ESMF_Alarm):: MODISALARM
 
 ! Others
 
@@ -335,7 +340,7 @@ contains
     character(len=ESMF_MAXSTR)         :: LAItpl
     character(len=ESMF_MAXSTR)         :: GRNtpl
     character(len=ESMF_MAXSTR)         :: NDVItpl
-    integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width
+    integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width, NT
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -418,6 +423,9 @@ contains
 
     IF (MODIS_DVG == 1) THEN
        call MAPL_GetPointer(IMPORT,MODIS_LAI, 'MODIS_LAI', RC=STATUS) ; VERIFY_(STATUS)
+    ELSEIF((MODIS_DVG == 2) THEN
+       NT = SIZE (ITY)
+       ALLOCATE (MODIS_LAI (1:NT))
     ENDIF
 
 ! get pointers to EXPORTS

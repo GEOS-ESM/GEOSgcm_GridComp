@@ -636,7 +636,7 @@ module GEOS_SurfaceGridCompMod
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
 
-    IF (MODIS_DVG == 1) THEN 
+    IF (MODIS_DVG >= 1) THEN 
 
        call MAPL_AddImportSpec(gc, &
             short_name = "MODIS_LAI", &
@@ -5475,7 +5475,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(IMPORT  , BLW     , 'BLW'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , DTSDT   , 'DTSDT' ,   RC=STATUS); VERIFY_(STATUS)
 
-    IF (MODIS_DVG == 1) THEN
+    IF (MODIS_DVG >= 1) THEN
        call MAPL_GetPointer(IMPORT  , MODIS_LAI   , 'MODIS_LAI'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT  , MODIS_VISDF , 'MODIS_VISDF', RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT  , MODIS_NIRDF , 'MODIS_NIRDF', RC=STATUS); VERIFY_(STATUS)
@@ -6421,7 +6421,7 @@ module GEOS_SurfaceGridCompMod
     allocate(  DTSDTTILE(NT), STAT=STATUS)
     VERIFY_(STATUS)
 
-    IF (MODIS_DVG == 1) THEN
+    IF (MODIS_DVG >= 1) THEN
        allocate(MODIS_LAITILE   (NT), STAT=STATUS) ; VERIFY_(STATUS)
        allocate(MODIS_VISDFTILE (NT), STAT=STATUS) ; VERIFY_(STATUS)
        allocate(MODIS_NIRDFTILE (NT), STAT=STATUS) ; VERIFY_(STATUS)
@@ -6455,7 +6455,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_LocStreamTransform( LOCSTREAM, BLWTILE  , BLW,     RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM, DTSDTTILE, DTSDT,   RC=STATUS); VERIFY_(STATUS)
 
-    IF (MODIS_DVG == 1) THEN 
+    IF (MODIS_DVG >= 1) THEN 
        call MAPL_LocStreamTransform( LOCSTREAM, MODIS_LAITILE,   MODIS_LAI  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_LocStreamTransform( LOCSTREAM, MODIS_VISDFTILE, MODIS_VISDF, RC=STATUS); VERIFY_(STATUS)
        call MAPL_LocStreamTransform( LOCSTREAM, MODIS_NIRDFTILE, MODIS_NIRDF, RC=STATUS); VERIFY_(STATUS)
@@ -8184,7 +8184,7 @@ module GEOS_SurfaceGridCompMod
       call FILLIN_TILE(GIM(type), 'ALW',    ALWTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'BLW',    BLWTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'DTSDT', DTSDTTILE,XFORM, RC=STATUS); VERIFY_(STATUS)
-      IF (MODIS_DVG == 1) THEN
+      IF (MODIS_DVG >= 1) THEN
          call FILLIN_TILE(GIM(type), 'MODIS_LAI'  , MODIS_LAITILE  ,XFORM, RC=STATUS); VERIFY_(STATUS)
          call FILLIN_TILE(GIM(type), 'MODIS_VISDF', MODIS_VISDFTILE,XFORM, RC=STATUS); VERIFY_(STATUS)
          call FILLIN_TILE(GIM(type), 'MODIS_NIRDF', MODIS_NIRDFTILE,XFORM, RC=STATUS); VERIFY_(STATUS)
