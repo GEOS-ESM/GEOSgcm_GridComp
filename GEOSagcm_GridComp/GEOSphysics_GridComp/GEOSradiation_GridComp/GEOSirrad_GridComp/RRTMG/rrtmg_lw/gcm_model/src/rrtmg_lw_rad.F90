@@ -586,8 +586,8 @@
          ! Atmosphere
          real  :: pavel(pncol,GPU_MAXLEVS+1)          ! layer pressures (mb) 
          real  :: tavel(pncol,GPU_MAXLEVS+1)          ! layer temperatures (K)
-         real  :: pz(pncol,0:GPU_MAXLEVS+1)           ! level (interface) pressures (hPa, mb)
-         real  :: tz(pncol,0:GPU_MAXLEVS+1)           ! level (interface) temperatures (K)
+         real  :: pz(pncol,0:GPU_MAXLEVS)           ! level (interface) pressures (hPa, mb)
+         real  :: tz(pncol,0:GPU_MAXLEVS)           ! level (interface) temperatures (K)
          real  :: tbound(pncol)                ! surface temperature (K)
          real  :: coldry(pncol,GPU_MAXLEVS+1)         ! dry air column density (mol/cm2)
          real  :: wbrodl(pncol,GPU_MAXLEVS+1)         ! broadening gas column density (mol/cm2)
