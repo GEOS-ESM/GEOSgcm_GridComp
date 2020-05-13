@@ -586,8 +586,8 @@
          ! Atmosphere
          real  :: pavel(pncol,GPU_MAXLEVS+1)          ! layer pressures (mb) 
          real  :: tavel(pncol,GPU_MAXLEVS+1)          ! layer temperatures (K)
-         real  :: pz(pncol,0:GPU_MAXLEVS+1)           ! level (interface) pressures (hPa, mb)
-         real  :: tz(pncol,0:GPU_MAXLEVS+1)           ! level (interface) temperatures (K)
+         real  :: pz(pncol,0:GPU_MAXLEVS)           ! level (interface) pressures (hPa, mb)
+         real  :: tz(pncol,0:GPU_MAXLEVS)           ! level (interface) temperatures (K)
          real  :: tbound(pncol)                ! surface temperature (K)
          real  :: coldry(pncol,GPU_MAXLEVS+1)         ! dry air column density (mol/cm2)
          real  :: wbrodl(pncol,GPU_MAXLEVS+1)         ! broadening gas column density (mol/cm2)
@@ -606,22 +606,22 @@
 
 
          ! Output
-         !real  :: totuflux(pncol,0:GPU_MAXLEVS+1)     ! upward longwave flux (w/m2)
-         !real  :: totdflux(pncol,0:GPU_MAXLEVS+1)     ! downward longwave flux (w/m2)
-         !real  :: fnet(pncol,0:GPU_MAXLEVS+1)         ! net longwave flux (w/m2)
-         !real  :: htr(pncol,0:GPU_MAXLEVS+1)          ! longwave heating rate (k/day)
-         !real  :: totuclfl(pncol,0:GPU_MAXLEVS+1)     ! clear sky upward longwave flux (w/m2)
-         !real  :: totdclfl(pncol,0:GPU_MAXLEVS+1)     ! clear sky downward longwave flux (w/m2)
-         !real  :: fnetc(pncol,0:GPU_MAXLEVS+1)        ! clear sky net longwave flux (w/m2)
-         !real  :: htrc(pncol,0:GPU_MAXLEVS+1)         ! clear sky longwave heating rate (k/day)
-         !real  :: dtotuflux_dt(pncol,0:GPU_MAXLEVS+1) ! change in upward longwave flux (w/m2/k)
+         !real  :: totuflux(pncol,0:GPU_MAXLEVS)     ! upward longwave flux (w/m2)
+         !real  :: totdflux(pncol,0:GPU_MAXLEVS)     ! downward longwave flux (w/m2)
+         !real  :: fnet(pncol,0:GPU_MAXLEVS)         ! net longwave flux (w/m2)
+         !real  :: htr(pncol,0:GPU_MAXLEVS)          ! longwave heating rate (k/day)
+         !real  :: totuclfl(pncol,0:GPU_MAXLEVS)     ! clear sky upward longwave flux (w/m2)
+         !real  :: totdclfl(pncol,0:GPU_MAXLEVS)     ! clear sky downward longwave flux (w/m2)
+         !real  :: fnetc(pncol,0:GPU_MAXLEVS)        ! clear sky net longwave flux (w/m2)
+         !real  :: htrc(pncol,0:GPU_MAXLEVS)         ! clear sky longwave heating rate (k/day)
+         !real  :: dtotuflux_dt(pncol,0:GPU_MAXLEVS) ! change in upward longwave flux (w/m2/k)
          ! with respect to surface temperature
-         !real  :: dtotuclfl_dt(pncol,0:GPU_MAXLEVS+1) ! change in clear sky upward longwave flux (w/m2/k)
+         !real  :: dtotuclfl_dt(pncol,0:GPU_MAXLEVS) ! change in clear sky upward longwave flux (w/m2/k)
          ! with respect to surface temperature
-         !real  ::  curad(pncol,ngptlw,0:GPU_MAXLEVS+1)     ! upward longwave flux (w/m2)
-         !real  ::   cdrad(pncol,ngptlw,0:GPU_MAXLEVS+1)     ! downward longwave flux (w/m2)
-         !real  ::   cclrurad(pncol,ngptlw,0:GPU_MAXLEVS+1)     ! clear sky upward longwave flux (w/m2)
-         !real  ::   cclrdrad(pncol,ngptlw,0:GPU_MAXLEVS+1)     ! clear sky downward longwave flux (w/m2)
+         !real  ::  curad(pncol,ngptlw,0:GPU_MAXLEVS)     ! upward longwave flux (w/m2)
+         !real  ::   cdrad(pncol,ngptlw,0:GPU_MAXLEVS)     ! downward longwave flux (w/m2)
+         !real  ::   cclrurad(pncol,ngptlw,0:GPU_MAXLEVS)     ! clear sky upward longwave flux (w/m2)
+         !real  ::   cclrdrad(pncol,ngptlw,0:GPU_MAXLEVS)     ! clear sky downward longwave flux (w/m2)
          !real  :: olrb10(pncol)      ! TOA OLR in band10 (W/m2)
          !real  :: dolrb10_dt(pncol)  ! change in TOA OLR in band10 (W/m2/K)
 
