@@ -5908,6 +5908,7 @@ contains
       ! Control for stochasticity in CNV
       integer                             :: STOCHASTIC_CNV
 
+      real :: icefall
       real :: FAC_RI_CN, FAC_RI_LS
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
 
