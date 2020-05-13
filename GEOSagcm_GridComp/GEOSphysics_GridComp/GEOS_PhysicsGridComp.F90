@@ -1386,8 +1386,7 @@ contains
 
      call MAPL_TerminateImport    ( GC,   &
           SHORT_NAME = (/'SH   ','TAUX ','TAUY ','EVAP ','DEWL ','FRSL ',     &
-                         'DSH  ','DFU  ','DFV  ','DEVAP','DDEWL','DFRSL',     &
-                         'UA   ','VA   '                                  /), &
+                         'DSH  ','DFU  ','DFV  ','DEVAP','DDEWL','DFRSL'/),   &
           CHILD      = SURF,           &
           RC=STATUS  )
      VERIFY_(STATUS)
@@ -2020,7 +2019,6 @@ contains
    real, pointer, dimension(:,:  )     :: PEPHY
    real, pointer, dimension(:,:  )     :: KEPHY
    real, pointer, dimension(:,:  )     :: KETND
-   real, pointer, dimension(:,:  )     :: UA, VA
    real, pointer, dimension(:,:  )     :: AREA
 
    real*8, allocatable, dimension(:,:)   :: sumq
@@ -2039,7 +2037,7 @@ contains
    real, pointer, dimension(:,:,:)     :: TGWD, DTDTGWD, TFORMOIST, THFORMOIST
    real, pointer, dimension(:,:,:)     :: SAFTERMOIST, THAFMOIST
    real, pointer, dimension(:,:,:)     :: THFORCHEM, TFORCHEM, TFORRAD
-   real, pointer, dimension(:,:)       :: TFORSURF
+   real, pointer, dimension(:,:)       :: UA, VA, TFORSURF
    real, pointer, dimension(:,:,:)     :: SFORTURB, THFORTURB, TFORTURB
    real, pointer, dimension(:,:,:)     :: SAFDIFFUSE, SAFUPDATE
    real, allocatable, dimension(:,:,:) :: PK
@@ -2394,14 +2392,9 @@ contains
        VERIFY_(STATUS)
     end if
 
-    call MAPL_GetPointer ( GIM(SURF),  UA,  'UA', RC=STATUS)
-    VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  UA,  'UA', RC=STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  VA,  'VA', RC=STATUS)
 
-    call MAPL_GetPointer ( GIM(SURF),  VA,  'VA', RC=STATUS)
-    VERIFY_(STATUS)
-
-    UA = U(:,:,LM)
-    VA = V(:,:,LM)
 !----------------------
 
     if ( SYNCTQ.eq.1. ) then

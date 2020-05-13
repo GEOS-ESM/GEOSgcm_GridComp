@@ -8705,21 +8705,18 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%LS_DDRF,        'LS_DDRF:',        DEFAULT= 0.0     )
       call MAPL_GetResource( STATE, CLDPARAMS%QC_CRIT_ANV,    'QC_CRIT_ANV:',    DEFAULT= 8.0e-4  )
       call MAPL_GetResource( STATE, CLDPARAMS%TANHRHCRIT,     'TANHRHCRIT:',     DEFAULT= 1.0     )
-      call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
-      if (adjustl(CLDMICRO) =="GFDL") then
-        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.75    )
+
+      if( LM .eq. 72 ) then
+        call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
+        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
         call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
-        call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     ) ! irrelevant
+        call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     )
       else
-        if( LM .le. 72 ) then
-          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
-          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
-          call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     )
-        else
-          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.15    )
-          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 0.15    )
-          call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.0     )
-        endif
+        icefall = 0.15*(132.0/LM)
+        call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
+        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= icefall )
+        call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= icefall )
+        call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.0     )
       endif
 
       ! Horizontal resolution dependant defaults for minimum RH crit
