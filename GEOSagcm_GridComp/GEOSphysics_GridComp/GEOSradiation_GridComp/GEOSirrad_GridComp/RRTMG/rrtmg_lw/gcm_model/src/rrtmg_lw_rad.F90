@@ -584,14 +584,14 @@
          integer  :: ig                        ! g-point loop index
          real  :: t1, t2
          ! Atmosphere
-         real  :: pavel(pncol,GPU_MAXLEVS+1)          ! layer pressures (mb) 
-         real  :: tavel(pncol,GPU_MAXLEVS+1)          ! layer temperatures (K)
+         real  :: pavel(pncol,GPU_MAXLEVS)          ! layer pressures (mb) 
+         real  :: tavel(pncol,GPU_MAXLEVS)          ! layer temperatures (K)
          real  :: pz(pncol,0:GPU_MAXLEVS)           ! level (interface) pressures (hPa, mb)
          real  :: tz(pncol,0:GPU_MAXLEVS)           ! level (interface) temperatures (K)
          real  :: tbound(pncol)                ! surface temperature (K)
-         real  :: coldry(pncol,GPU_MAXLEVS+1)         ! dry air column density (mol/cm2)
-         real  :: wbrodl(pncol,GPU_MAXLEVS+1)         ! broadening gas column density (mol/cm2)
-         real  :: wkl(pncol,mxmol,GPU_MAXLEVS+1)      ! molecular amounts (mol/cm-2)
+         real  :: coldry(pncol,GPU_MAXLEVS)         ! dry air column density (mol/cm2)
+         real  :: wbrodl(pncol,GPU_MAXLEVS)         ! broadening gas column density (mol/cm2)
+         !real  :: wkl(pncol,mxmol,GPU_MAXLEVS+1)      ! molecular amounts (mol/cm-2)
          real  :: wx(pncol,maxxsec,GPU_MAXLEVS+1)     ! cross-section amounts (mol/cm-2)
          real  :: pwvcm(pncol)                 ! precipitable water vapor (cm)
          real  :: semiss(pncol,nbndlw)         ! lw surface emissivity
@@ -625,11 +625,11 @@
          !real  :: olrb10(pncol)      ! TOA OLR in band10 (W/m2)
          !real  :: dolrb10_dt(pncol)  ! change in TOA OLR in band10 (W/m2/K)
 
-         real  :: cldfracq(pncol,GPU_MAXLEVS+1)     ! Cloud fraction
+         real  :: cldfracq(pncol,GPU_MAXLEVS)     ! Cloud fraction
          !    Dimensions: (ngptlw,ncol,nlay)
-         real  :: ciwpq(pncol,GPU_MAXLEVS+1)     ! In-cloud ice water path (g/m2)
+         real  :: ciwpq(pncol,GPU_MAXLEVS)     ! In-cloud ice water path (g/m2)
          !    Dimensions: (ngptlw,ncol,nlay)
-         real  :: clwpq(pncol,GPU_MAXLEVS+1)     ! In-cloud liquid water path (g/m2)
+         real  :: clwpq(pncol,GPU_MAXLEVS)     ! In-cloud liquid water path (g/m2)
          !    Dimensions: (ngptlw,ncol,nlay)
          real  :: reiq(pncol,GPU_MAXLEVS)       ! Cloud ice particle effective size (microns)
          !    Dimensions: (ncol,nlay)
