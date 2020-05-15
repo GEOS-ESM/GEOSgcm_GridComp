@@ -592,7 +592,7 @@
          real  :: coldry(pncol,GPU_MAXLEVS)         ! dry air column density (mol/cm2)
          real  :: wbrodl(pncol,GPU_MAXLEVS)         ! broadening gas column density (mol/cm2)
          !real  :: wkl(pncol,mxmol,GPU_MAXLEVS+1)      ! molecular amounts (mol/cm-2)
-         real  :: wx(pncol,maxxsec,GPU_MAXLEVS+1)     ! cross-section amounts (mol/cm-2)
+         !real  :: wx(pncol,maxxsec,GPU_MAXLEVS+1)     ! cross-section amounts (mol/cm-2)
          real  :: pwvcm(pncol)                 ! precipitable water vapor (cm)
          real  :: semiss(pncol,nbndlw)         ! lw surface emissivity
 
@@ -901,7 +901,7 @@
          ! (dmb 2012) Copy the needed data of to the GPU for the SetCoef and Taumol kernels
 
 
-         call copyGPUTaumol( pavel, wx, coldry, tauaer, pncol, colstart, nlay , npart)
+         call copyGPUTaumol( pavel, coldry, tauaer, pncol, colstart, nlay , npart)
 
 
 
