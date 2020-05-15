@@ -1,0 +1,36 @@
+# Object Files
+*.o
+
+# Module Files
+*.mod
+
+# Fortran Files
+driver_init_mod.FOR
+driver_run_mod.FOR
+driver_get_export_state.FOR
+driver_set_import_state.FOR
+dynvars_h_state_create_destroy_mod.F90
+dynvars_h_state_mod.F90
+dynvars_h_state_save_restore_mod.FOR
+dynvars_h_state_types_mod.F90
+export_state_create_destroy_mod.F90
+export_state_fill_mod.FOR
+export_state_mod.F90
+export_state_types_mod.F90
+ffields_h_state_mod.F90
+import_state_create_destroy_mod.F90
+import_state_fill_mod.FOR
+import_state_mod.F90
+import_state_types_mod.F90
+mitgcm_driver_mod.F90
+mitgcm_state_create_destroy_mod.F90
+mitgcm_state_getdp_mod.F90
+mitgcm_state_mod.F90
+mitgcm_state_save_restore_mod.F90
+mitgcm_state_types_mod.F90
+stackvars_state_mod.F90
+str4c.F90
+timevars_state_create_destroy_mod.F90
+timevars_state_mod.F90
+timevars_state_save_restore_mod.FOR
+timevars_state_types_mod.F90

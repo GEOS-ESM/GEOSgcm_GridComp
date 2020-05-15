@@ -1,0 +1,36 @@
+#! /usr/bin/env bash
+
+LIST_1="CPP_EEMACROS.h CPP_EEOPTIONS.h CPP_OPTIONS.h"
+LIST_2="EEPARAMS.h SEAICE_PARAMS.h"
+
+if test $# != 1 ; then
+    echo "error: need argument = directory where original src files are"
+    exit 1
+fi
+if test -d $1 ; then
+    LOC_SRC_DIR=$1
+elif test "x$1" = "xCLEAN" ; then
+    rm -f $LIST_1 $LIST_2
+    exit 0
+else
+    echo "error: need first argument to be a directory"
+    exit 2
+fi
+
+for ff in $LIST_1 ; do
+  if test -f $LOC_SRC_DIR/$ff ; then
+    echo " generate local file: $ff"
+    sed 's/^[Cc]/!/' $LOC_SRC_DIR/$ff > $ff
+  else
+    echo " missing original file: $ff"
+  fi
+done
+
+for ff in $LIST_2 ; do
+  if test -f $LOC_SRC_DIR/$ff ; then
+    echo " generate local file: $ff"
+    sed 's/ _d / D /g' $LOC_SRC_DIR/$ff > $ff
+  else
+    echo " missing original file: $ff"
+  fi
+done

@@ -13,6 +13,9 @@ module GuestOcean_GridCompMod
   use MAPL
   use MOM_GEOS5PlugMod, only: MOMSetServices  => SetServices  ! this sets IRF
   use MOM6_GEOSPlugMod, only: MOM6SetServices => SetServices  ! this sets IRF
+#ifdef BUILD_MIT_OCEAN
+  use MIT_GEOSPlugMod, only: MITSetServices => SetServices  ! this sets IRF
+#endif
   use GEOS_DataSeaGridCompMod, only: DataSeaSetServices  => SetServices
 
   implicit none
@@ -121,10 +124,13 @@ contains
              OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOMSetServices, __RC__)
           case ("MOM6")
              OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOM6SetServices, __RC__)
+#ifdef BUILD_MIT_OCEAN
+          case ("MIT")
+             OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MITSetServices, __RC__)
+#endif
           case default
              charbuf_ = "OCEAN_NAME: " // trim(OCEAN_NAME) // " is not implemented, ABORT!"
-             call WRITE_PARALLEL(charbuf_)
-             VERIFY_(999)
+             _ASSERT(.false., charbuf_)
        end select
     endif
 

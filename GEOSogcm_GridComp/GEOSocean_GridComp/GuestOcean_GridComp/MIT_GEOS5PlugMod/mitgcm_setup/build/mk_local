@@ -1,0 +1,48 @@
+#! /usr/bin/env bash
+
+LIST_1="CPP_EEMACROS.h CPP_EEOPTIONS.h CPP_OPTIONS.h"
+LIST_2="EEPARAMS.h"
+
+if test $# != 1 ; then
+    echo "error: need argument = directory where original Makefile is"
+    exit 1
+fi
+if test -d $1 ; then
+    LOC_SRC_DIR=$1
+elif test "x$1" = "xCLEAN" ; then
+    rm -f Makefile
+    exit 0
+else
+    echo "error: need first argument to be a directory"
+    exit 2
+fi
+if test -f $LOC_SRC_DIR/Makefile ; then
+    newMKF="tmp.$$"
+    AddLibs=
+   #if test "x$MPI_INC_DIR" != x ; then
+   #    if test -d $MPI_INC_DIR/../lib ; then
+   #        AddLibs=`echo $MPI_INC_DIR | sed 's:/:\\\/:g'`
+   #    fi
+   #fi
+    echo " AddLibs=$AddLibs"
+#--------------------------------------
+echo '    include g5_make_head.mk' > $newMKF
+echo '' >> $newMKF
+echo '#                  --------------------' >> $newMKF
+echo '#                  User Defined Targets' >> $newMKF
+echo '#                  --------------------' >> $newMKF
+if test "x$AddLibs" = x ; then
+    cat $LOC_SRC_DIR/Makefile >> $newMKF
+else 
+   #echo "sed 's/^LIBS = /LIBS= -L${AddLibs}\/..\/lib /' $LOC_SRC_DIR/Makefile"
+    sed "s/^LIBS = /LIBS= -L${AddLibs}\/..\/lib /" $LOC_SRC_DIR/Makefile >> $newMKF
+fi
+echo '' >> $newMKF
+echo "# Provides rule to make target 'pinstall'." >> $newMKF
+echo '  -include $(ESMADIR)/Config/ESMA_post.mk  # ESMA additional targets, macros' >> $newMKF
+#--------------------------------------
+    mv -f $newMKF Makefile
+else
+    echo "error: no Makefile in dir: $LOC_SRC_DIR => stop"
+    exit 3
+fi
