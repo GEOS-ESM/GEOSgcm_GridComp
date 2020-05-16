@@ -1,21 +1,63 @@
+cmake_minimum_required(VERSION 2.8)
+
 esma_set_this ()
 
 set (SRCS
   MIT_GEOS5PlugMod.F90
   )
 
-#if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/seawater.F90)
-#  list (APPEND SRCS seawater.F90)
-#endif ()
+SET (MIT_EXP_ID  c90_llc90_05)
+SET (MITGCM_ROOTDIR ${CMAKE_CURRENT_SOURCE_DIR}/@mit)
+SET (MITGCM_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup)
+SET (MITGCM_EXP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/experiments/${MIT_EXP_ID})
+SET (MIT_LIB_FILE libmitgcmuv.a)
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/mitgcm_setup
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+file(COPY ${MITGCM_EXP_DIR}/code
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup)
+
 
 esma_add_library (${this}
   SRCS ${SRCS}
-  SUBCOMPONENTS mitgcm_setup
-  DEPENDENCIES MAPL
+  DEPENDENCIES MAPL lib_mit
+#  LIBRARIES mit.a
   )
 
-# Specs for r8 version
-string(REPLACE " " ";" tmp ${FREAL8})
-foreach (flag ${tmp})
-  target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${flag}>)
-endforeach ()
+#  SUBCOMPONENTS mitgcm_setup
+
+
+add_custom_target(
+	make_local_build_dir
+	COMMAND mkdir local_build
+	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/
+)
+
+add_custom_target(
+	make_mit_src
+	COMMENT "building MITOCEAN ..."
+	# this runs genmake2 and "make depend"
+	COMMAND  ${MITGCM_ROOTDIR}/tools/genmake2
+                 -rootdir ${MITGCM_ROOTDIR}
+                 -mods ../code -mpi
+		 -of ${MITGCM_ROOTDIR}/tools/build_options/linux_amd64_ifort+mpi_ice_nas
+		 -ieee
+	COMMAND make depend
+	DEPENDS make_local_build_dir
+	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/local_build
+)
+
+add_custom_target(
+	make_mit_inc
+	COMMAND ./mk_local ../local_build
+	DEPENDS make_mit_src
+	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/inc
+)
+
+add_custom_target(
+	lib_mit
+	COMMAND ./mk_local ../local_build
+	DEPENDS make_mit_inc
+	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/build
+)
