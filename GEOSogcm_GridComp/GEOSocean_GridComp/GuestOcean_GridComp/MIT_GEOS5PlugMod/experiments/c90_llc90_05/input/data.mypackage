@@ -1,0 +1,6 @@
+#
+ &MYPACKAGE_PARM01
+ myPa_index1 = 1
+ myPa_param1 = 0.2  
+ &
+
