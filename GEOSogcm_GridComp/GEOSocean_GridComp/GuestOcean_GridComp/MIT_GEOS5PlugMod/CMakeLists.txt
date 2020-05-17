@@ -24,7 +24,7 @@ esma_add_library (${this}
 
 add_custom_target(
 	make_local_build_dir
-	COMMAND mkdir local_build
+	COMMAND test -e local_build || mkdir local_build
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/
 )
 
