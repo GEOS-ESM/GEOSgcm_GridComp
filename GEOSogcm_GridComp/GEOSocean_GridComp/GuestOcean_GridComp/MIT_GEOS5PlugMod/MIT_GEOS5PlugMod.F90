@@ -710,7 +710,7 @@ contains
 
 ! Temporaries
 
-    real, allocatable                      :: T(:,:)
+    REAL_, pointer                      :: T(:,:)
 
 ! Pointers to export    
     REAL_, pointer                         :: MASK(:,:,:)
@@ -779,10 +779,7 @@ contains
 ! Temporaries with MOM default reals
 !-----------------------------------
 
-    allocate(T(IM,JM), stat=STATUS); VERIFY_(STATUS)
-
-!UDI TS in MITgcm is an export, we do not have a way to write on mit export
-    call MAPL_GetPointer(EXPORT, T,  'TS',  alloc=.true., RC=STATUS)
+    call MAPL_GetPointer(EXPORT, T,  'TW', RC=STATUS)
     VERIFY_(STATUS)
 
     where(MASK(:,:,1) > 0.0) ! correct only ocean points

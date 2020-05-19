@@ -24,6 +24,7 @@
 #include "PARAMS.h"
 #include "GRID.h"
 #include "FFIELDS.h"
+#include "DYNVARS.h"
 #ifdef ALLOW_SEAICE
 # include "SEAICE_SIZE.h"
 # include "SEAICE.h"
@@ -31,7 +32,6 @@
 #endif
 #ifdef ALLOW_MYPACKAGE
 # include "MYPACKAGE.h"
-# include "PARAMS.h"
 #endif
 
 !     -- Routine arguments    --
@@ -164,7 +164,7 @@
 !     Transfer TS to theta (for dual ocean).
 !     TS      : SST in K
 !     theta   : SST in DegC
-         theta(i,j,bi,bj) = p%TS(iSLo+i,jSLo+j)-celsius2K
+         theta(i,j,1,bi,bj) = p%TS(iSLo+i,jSLo+j)-celsius2K
 
 
 !     Transfer TAUX and TAUY to fu and fv.
