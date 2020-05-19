@@ -19,8 +19,13 @@ file(COPY ${MITGCM_EXP_DIR}/code
 esma_add_library (${this}
   SRCS ${SRCS}
   DEPENDENCIES MAPL lib_mit lib_mit_interfaces
-  INCLUDES (${MITGCM_BUILD_DIR}/code_split_driver)
+  INCLUDES ${MITGCM_BUILD_DIR}/code_split_driver
   )
+
+target_link_libraries(${this} PUBLIC
+  ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/build/libmitgcmuv.a
+  ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/code_split_driver/libmitgcmuv_driver.a
+)
 
 add_custom_target(
 	make_local_build_dir

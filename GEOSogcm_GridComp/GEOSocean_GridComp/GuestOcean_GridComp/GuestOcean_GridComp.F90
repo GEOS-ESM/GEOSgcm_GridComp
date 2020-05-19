@@ -8,13 +8,13 @@ module GuestOcean_GridCompMod
 ! !MODULE: GuestOcean_GridCompMod -- Implements ESMF wrapper to invoke the DATASEA/MIT/MOM ocean models.
 
 ! !USES:
-
   use ESMF
   use MAPL
+#ifdef BUILD_MIT_OCEAN
+  use MIT_GEOS5PlugMod, only: MITSetServices => SetServices  ! this sets IRF
+#else
   use MOM_GEOS5PlugMod, only: MOMSetServices  => SetServices  ! this sets IRF
   use MOM6_GEOSPlugMod, only: MOM6SetServices => SetServices  ! this sets IRF
-#ifdef BUILD_MIT_OCEAN
-  use MIT_GEOSPlugMod, only: MITSetServices => SetServices  ! this sets IRF
 #endif
   use GEOS_DataSeaGridCompMod, only: DataSeaSetServices  => SetServices
 
@@ -120,11 +120,12 @@ contains
     else
        call MAPL_GetResource ( MAPL, OCEAN_NAME, Label="OCEAN_NAME:", DEFAULT="MOM", __RC__ )
        select case (trim(OCEAN_NAME))
+#ifndef BUILD_MIT_OCEAN
           case ("MOM")
              OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOMSetServices, __RC__)
           case ("MOM6")
              OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOM6SetServices, __RC__)
-#ifdef BUILD_MIT_OCEAN
+#else
           case ("MIT")
              OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MITSetServices, __RC__)
 #endif
