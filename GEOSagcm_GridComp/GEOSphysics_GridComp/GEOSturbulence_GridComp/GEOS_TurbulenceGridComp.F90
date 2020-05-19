@@ -3349,7 +3349,7 @@ contains
                                            edmf_thl_plume8,edmf_thl_plume9,edmf_thl_plume10
 #endif
 
-   integer :: DO_MYNN
+   integer :: DO_MYNN, DO_LOCK_MYNN
 
 ! SHOC PDF variables
 !    real, dimension(:,:,:),pointer     :: PDF_A,      &
@@ -3565,7 +3565,8 @@ contains
 !       if (SHC_BUOY_OPTION==2 .and. PDFSHAPE/=5) print *,'*** SHOC using inactive DG PDF for buoyancy!!! ***'
      end if
 
-      call MAPL_GetResource (MAPL, DO_MYNN,"TURBULENCE_DO_MYNN:", default=0, RC=STATUS)
+      call MAPL_GetResource (MAPL, DO_MYNN,      "TURBULENCE_DO_MYNN:",   default=0, RC=STATUS)
+      call MAPL_GetResource (MAPL, DO_LOCK_MYNN, "TURBULENCE_LOCK_MYNN:", default=0, RC=STATUS)
 
       ! Make sure SHOC and MYNN are not running at the same time
       _ASSERT( .not. ( DO_SHOC /= 0 .and. DO_MYNN /= 0) , 'SHOC and MYNN cannot be turned on at the same time!' )
@@ -4471,10 +4472,14 @@ ENDIF
      ! MYNN
      !
      if ( DO_MYNN /= 0 ) then
-        LOCK_ON = 0
-
         call MAPL_TimerOn (MAPL,name="---MYNN" ,RC=STATUS)
         VERIFY_(STATUS)
+
+        if ( DO_LOCK_MYNN == 0 ) then
+           LOCK_ON = 0
+        else
+           LOCK_ON = 1
+        end if
 
         if ( associated(zle_turb_ex) ) zle_turb_ex = zle 
         if ( associated(ac_turb_ex) )  ac_turb_ex  = QA 
@@ -4505,10 +4510,10 @@ ENDIF
                       KM_MYNN, KH_MYNN, K_TKE, itau_mynn, &                        ! out
                       beta_hl, beta_qt, &                                          ! out     
                       tket_M, tket_B, tket_T, hl2t_M, qt2t_M, hlqtt_M, &           ! out     
-                      tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                     ! out  
+                      tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                     ! out 
         
-        KM = KM_MYNN
         KH = KH_MYNN
+        KM = KM_MYNN
 
         if (associated(tket_T_MF)) tket_T_MF = tket_T
 
@@ -4762,7 +4767,7 @@ ENDIF
 
          ! Inoutputs - Lock
          ! ----------------
-      
+
             KM(:,:,0:LM) = DIFF_M_dev(:,:,1:LM+1)
             KH(:,:,0:LM) = DIFF_T_dev(:,:,1:LM+1)
 
@@ -5445,6 +5450,12 @@ ENDIF
       if (associated(AKVODT)) AKVODT = -AKV/DT
       if (associated(CKVODT)) CKVODT = -CKV/DT
 
+      ! Save diffusivities to compute implicit fluxes
+      if ( DO_MYNN == 0 ) then
+         KM_MYNN = KM
+         KH_MYNN = KH
+      end if
+
       call MAPL_TimerOff(MAPL,"---POSTLOCK")
 
 !BOP
@@ -5650,7 +5661,8 @@ ENDIF
 
 ! Initialize height of full levels
 !---------------------------------
-    if ( DO_MYNN /= 0 .and. ( IMPLICIT_M_FLAG /= 0 .or. associated(ws_implicit) .or. associated(wqv_implicit) .or. associated(wql_implicit) ) ) then
+!    if ( DO_MYNN /= 0 .and. ( IMPLICIT_M_FLAG /= 0 .or. associated(ws_implicit) .or. associated(wqv_implicit) .or. associated(wql_implicit) ) ) then
+    if ( IMPLICIT_M_FLAG /= 0 .or. associated(ws_implicit) .or. associated(wqv_implicit) .or. associated(wql_implicit) ) then
        allocate(ZLO(IM,JM,LM))
        ZLO = 0.5*( ZLE(:,:,0:LM-1) + ZLE(:,:,1:LM) )
     end if
@@ -5975,20 +5987,18 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
        end if
 
        ! Compute diffusive flux of thermodynamic first-order moments
-       if ( DO_MYNN /= 0 ) then
-          if ( trim(name) == 'S' .and. associated(ws_implicit) ) then
-             ws_implicit(:,:,0)      = 0.
-             ws_implicit(:,:,1:LM-1) = -KH_MYNN(:,:,1:LM-1)*( SX(:,:,1:LM-1) - SX(:,:,2:LM) )/( ZLO(:,:,1:LM-1) - ZLO(:,:,2:LM) ) 
-             ws_implicit(:,:,LM)     = SH(:,:)
-          else if ( trim(name) == 'Q' .and. associated(wqv_implicit) ) then
-             wqv_implicit(:,:,0)      = 0.
-             wqv_implicit(:,:,1:LM-1) = -KH_MYNN(:,:,1:LM-1)*( SX(:,:,1:LM-1) - SX(:,:,2:LM) )/( ZLO(:,:,1:LM-1) - ZLO(:,:,2:LM) ) 
-             wqv_implicit(:,:,LM)     = EVAP(:,:)
-          else if ( trim(name) == 'QLLS' .and. associated(wql_implicit) ) then
-             wql_implicit(:,:,0)      = 0.
-             wql_implicit(:,:,1:LM-1) = -KH_MYNN(:,:,1:LM-1)*( SX(:,:,1:LM-1) - SX(:,:,2:LM) )/( ZLO(:,:,1:LM-1) - ZLO(:,:,2:LM) ) 
-             wql_implicit(:,:,LM)     = 0.
-          end if
+       if ( trim(name) == 'S' .and. associated(ws_implicit) ) then
+          ws_implicit(:,:,0)      = 0.
+          ws_implicit(:,:,1:LM-1) = -KH_MYNN(:,:,1:LM-1)*( SX(:,:,1:LM-1) - SX(:,:,2:LM) )/( ZLO(:,:,1:LM-1) - ZLO(:,:,2:LM) ) 
+          ws_implicit(:,:,LM)     = SH(:,:)
+       else if ( trim(name) == 'Q' .and. associated(wqv_implicit) ) then
+          wqv_implicit(:,:,0)      = 0.
+          wqv_implicit(:,:,1:LM-1) = -KH_MYNN(:,:,1:LM-1)*( SX(:,:,1:LM-1) - SX(:,:,2:LM) )/( ZLO(:,:,1:LM-1) - ZLO(:,:,2:LM) ) 
+          wqv_implicit(:,:,LM)     = EVAP(:,:)
+       else if ( trim(name) == 'QLLS' .and. associated(wql_implicit) ) then
+          wql_implicit(:,:,0)      = 0.
+          wql_implicit(:,:,1:LM-1) = -KH_MYNN(:,:,1:LM-1)*( SX(:,:,1:LM-1) - SX(:,:,2:LM) )/( ZLO(:,:,1:LM-1) - ZLO(:,:,2:LM) ) 
+          wql_implicit(:,:,LM)     = 0.
        end if
 
        ! Compute dissipation tendencies of second-order moments
