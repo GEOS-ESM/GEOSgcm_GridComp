@@ -635,8 +635,6 @@ contains
 !------------------------------------
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'TAUX',   TAUX )
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'TAUY',   TAUY )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,  'TAUXI',  TAUXI )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,  'TAUYI',  TAUYI )
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,     'PS',     PS )
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr, 'SWHEAT', SWHEAT )
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'QFLX',   QFLX )
@@ -646,17 +644,6 @@ contains
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'LATS',   LATS )
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'LONS',   LONS )
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'WGHT',   WGHT )
-
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'FRACICE', FRACICE )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'VOLICE',  VOLICE )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'VOLSNO',  VOLSNO )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'ERGICE',  ERGICE )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'ERGSNO',  ERGSNO )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'MPOND',   MPOND )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'TAUAGE',  TAUAGE )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'TI',  TI )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'SI',  SI )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'HI',  HI )
 
     call MAPL_GetResource( MAPL, passive_ocean, label='STEADY_STATE_OCEAN:', &
          default=1, rc=status ) ; VERIFY_(STATUS)
@@ -715,6 +702,7 @@ contains
 
 ! Locals
 
+    integer                                :: counts(7)
     integer                                :: IM, JM
 
 ! Imports
@@ -730,6 +718,9 @@ contains
     type(MAPL_MetaComp),           pointer :: MAPL 
     TYPE(T_PrivateState_Wrap) wrap
     type(T_PrivateState), pointer :: privateState
+
+    type(ESMF_Grid)                        :: Grid
+
 
 ! Begin
 !------
@@ -791,7 +782,7 @@ contains
     allocate(T(IM,JM), stat=STATUS); VERIFY_(STATUS)
 
 !UDI TS in MITgcm is an export, we do not have a way to write on mit export
-    call MAPL_GetPointer(EXPORT, T,  'TW',  alloc=.true., RC=STATUS)
+    call MAPL_GetPointer(EXPORT, T,  'TS',  alloc=.true., RC=STATUS)
     VERIFY_(STATUS)
 
     where(MASK(:,:,1) > 0.0) ! correct only ocean points
@@ -833,21 +824,13 @@ contains
 
     type (MAPL_MetaComp), pointer:: MAPL 
     type(ESMF_Time)                  :: MyTime
-    type(MOM_MAPL_Type),     pointer :: MOM_MAPL_internal_state 
-    type(MOM_MAPLWrap_Type)          :: wrap
-    type(ocean_public_type),   pointer :: Ocean
-    type(ocean_state_type),    pointer :: Ocean_State
 
 ! ErrLog Variables
 
     character(len=ESMF_MAXSTR)	     :: IAm
     integer			     :: STATUS
     character(len=ESMF_MAXSTR)       :: COMP_NAME
-
-! Locals with MOM types
-
-    type(time_type)                  :: Time        
-    integer                          :: YEAR,MONTH,DAY,HR,MN,SC
+   
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -903,9 +886,6 @@ contains
 !EOP
 
     type (MAPL_MetaComp), pointer    :: MAPL 
-    type(MOM_MAPL_Type),     pointer :: MOM_MAPL_internal_state 
-    type(MOM_MAPLWrap_Type)          :: wrap
-    type(ocean_state_type),  pointer :: Ocean_State
 
 ! ErrLog Variables
 
@@ -938,24 +918,6 @@ contains
 
     doRecord = MAPL_RecordAlarmIsRinging(MAPL, RC=status)
     VERIFY_(STATUS)
-
-    if (doRecord) then
-
-! Get the Plug's private internal state
-!--------------------------------------
-
-       CALL ESMF_UserCompGetInternalState( GC, 'MOM_MAPL_state', WRAP, STATUS )
-       VERIFY_(STATUS)
-
-       MOM_MAPL_internal_state => WRAP%PTR 
-
-       call MAPL_DateStampGet(clock, timeStamp, rc=status)
-       VERIFY_(STATUS)
-
-       call ocean_model_restart (Ocean_State, timeStamp)
-        VERIFY_(STATUS)
-
-    end if
 
     call MAPL_TimerOff(MAPL,"TOTAL")
     RETURN_(ESMF_SUCCESS)
