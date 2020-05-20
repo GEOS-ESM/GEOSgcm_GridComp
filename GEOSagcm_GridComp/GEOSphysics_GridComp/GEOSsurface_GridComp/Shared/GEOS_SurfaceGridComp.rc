@@ -82,21 +82,15 @@
 # GEOSagcm=>USE_ASCATZ0: 0
 # GEOSldas=>USE_ASCATZ0: 0
 
-# ---- Prescribe interannually varying LAI, VISDF, and NIRDF from MODIS V006
+# ---- Prescribe interannually varying MODIS V006 LAI (20020708 - to date), VISDF, and NIRDF albedo (20000103 - 20161228)
 #
-# This option is NOT yet available in GEOSldas!
-#
-#    0 : DEFAULT climatologies in BCSDIR are used
-#    1 : Prescribe interannually varying  MCD15A2H.006 LAI and MCD43GF.006 VISDF and NIRDF albedo from 0.5 degree ExtData files. 
-#    2 : Prescribe interannually varying  MCD15A2H.006 LAI on land-tiles and MCD43GF.006 VISDF and NIRDF albedo from the 0.5 degree ExtData file.
+#    0 : Climatologies in BCSDIR are used (default as well as outside interannually varying data periods) 
+#    1 : Prescribe interannually varying  MCD15A2H.006 LAI and MCD43GF.006 VISDF and NIRDF albedo on land-tiles. 
+#    2 : Prescribe interannually varying  MCD15A2H.006 LAI on  MCD43GF.006 VISDF and NIRDF albedo via 0.5 degree ExtData files.
 #
 # GEOSagcm=>MODIS_DVG: 0                     
 # GEOSldas=>MODIS_DVG: 0
 #
-# Start dates of interannually varying LAI (LSTART) and albedo (ASTART) 
-# LSTART: 20020708
-# ASTART: 20000103
-
 
 #--------------------------------------------------------#
 #    GOSWIM aerosol deposition on surface snow           #

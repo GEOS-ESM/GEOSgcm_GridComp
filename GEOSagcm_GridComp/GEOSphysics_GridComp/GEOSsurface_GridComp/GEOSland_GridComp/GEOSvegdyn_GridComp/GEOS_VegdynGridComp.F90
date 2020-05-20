@@ -174,7 +174,7 @@ contains
 !   Import States
 ! -----------------------------------------------------------
 
-    IF (MODIS_DVG == 1) THEN
+    IF (MODIS_DVG == 2) THEN
 
        call MAPL_AddImportSpec(gc, &
             short_name = "MODIS_LAI", &
@@ -422,10 +422,10 @@ contains
 ! -----------------
 
     IF (MODIS_DVG == 1) THEN
-       call MAPL_GetPointer(IMPORT,MODIS_LAI, 'MODIS_LAI', RC=STATUS) ; VERIFY_(STATUS)
-    ELSEIF((MODIS_DVG == 2) THEN
        NT = SIZE (ITY)
        ALLOCATE (MODIS_LAI (1:NT))
+    ELSEIF((MODIS_DVG == 2) THEN
+       call MAPL_GetPointer(IMPORT,MODIS_LAI, 'MODIS_LAI', RC=STATUS) ; VERIFY_(STATUS)
     ENDIF
 
 ! get pointers to EXPORTS
