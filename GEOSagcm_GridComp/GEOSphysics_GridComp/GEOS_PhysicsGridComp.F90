@@ -1186,7 +1186,7 @@ contains
                          'BYNCY   ',  'DQIDT   ', 'QI      ',     &
                          'DQRC    ',  'CNV_CVW ', 'QLLS    ',     &
                          'QILS    ',  'DQRL    ', 'CNV_FRC ',     & 
-                         'QV      '            /),  &                  !added for GOCART2G's children
+                         'QV      '       /),  &                  !added for GOCART2G's children
         DST_ID      = CHEM,                                       &
         SRC_ID      = MOIST,                                      &
                                                        RC=STATUS  )
@@ -1545,6 +1545,10 @@ contains
    integer                             :: devicenum, inum
 #endif
 
+integer :: fieldcount
+character(len=ESMF_MAXSTR), allocatable :: fieldNameList(:)
+character(len=ESMF_MAXSTR) :: child_name
+
 !=============================================================================
 
 ! Begin... 
@@ -1883,6 +1887,18 @@ contains
     VERIFY_(STATUS)
     call MAPL_GridCompGetFriendlies(GCS, "MOIST", BUNDLE, RC=STATUS )
     VERIFY_(STATUS)
+
+do i = 1, size(gcs)
+   call ESMF_GridCompGet( GCS(I), NAME=CHILD_NAME, __RC__ )
+   if(mapl_am_i_root()) print*,'PHYSICS CHILD_NAME = ',trim(child_name) 
+end do 
+
+call ESMF_FieldBundleGet( BUNDLE, fieldcount=fieldcount, __RC__)
+allocate(fieldNameList(fieldcount), __STAT__)
+call ESMF_FieldBundleGet( BUNDLE, fieldNameList=fieldNameList, __RC__)
+if ( MAPL_am_I_root() ) print*,'PHYSICS MTR BUNDLE: ',fieldNameList
+
+
 
 #ifdef PRINT_STATES
     call WRITE_PARALLEL ( trim(Iam)//": Convective Transport Bundle" )
