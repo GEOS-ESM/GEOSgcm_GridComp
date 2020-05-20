@@ -411,7 +411,7 @@ contains
 ! ----------------------------------------
 !    call system('pushd '//trim(ocean_dir))
 !    status = chdir(trim(ocean_dir))
-    call setdir(iarr)
+    call mysetdir(iarr)
     call WRITE_PARALLEL("Calling DRIVER_INIT")
     CALL DRIVER_INIT( mitgcmIState=mitgcmIState(1)%p, myComm=Comm)
     call WRITE_PARALLEL("Done DRIVER_INIT")
@@ -648,7 +648,7 @@ contains
     call MAPL_GetResource( MAPL, passive_ocean, label='STEADY_STATE_OCEAN:', &
          default=1, rc=status ) ; VERIFY_(STATUS)
 
-    call setdir(iarr)
+    call mysetdir(iarr)
     if (passive_ocean /= 0) CALL DRIVER_RUN( PrivateState%ptr, 1 )
     deallocate(iarr)
     call popdir

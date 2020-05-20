@@ -69,7 +69,7 @@ MAPL_F90LINKPATHS=-L$(ESMADIR)/Linux/lib -lMAPL_Base -lesmf   -lmpich -lpmpich++
 
 F_MAIN=main.F
 F_SRCS=
-C_SRCS=setdir.c
+C_SRCS= setdir.c
 
 F90_FIXED_SRCS =driver/driver_init_mod.FOR         \
                 driver/driver_run_mod.FOR          \

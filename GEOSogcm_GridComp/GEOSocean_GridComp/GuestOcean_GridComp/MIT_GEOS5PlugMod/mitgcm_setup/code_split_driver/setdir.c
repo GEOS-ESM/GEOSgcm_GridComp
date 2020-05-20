@@ -11,7 +11,7 @@
 
 static char popto[4096] = "\0";
                                                                                 
-void FC_NAMEMANGLE(setdir)(char *theDir )
+void FC_NAMEMANGLE(mysetdir) (char *theDir )
 {
    char RUN_DIR[1024];
    char *rundirsetting;
@@ -31,7 +31,7 @@ void FC_NAMEMANGLE(setdir)(char *theDir )
      
    if ( rc != 0 ) {
     fprintf(stderr,"\"%s\"\n",theDir);
-    perror(strerror(rc));
+    //    perror(strerror(rc));
     exit(-1);
    }
      

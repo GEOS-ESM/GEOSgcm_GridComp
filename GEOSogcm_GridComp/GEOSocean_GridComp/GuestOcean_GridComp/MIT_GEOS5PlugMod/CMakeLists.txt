@@ -8,7 +8,6 @@ SET (MIT_EXP_ID  c90_llc90_05)
 SET (MITGCM_ROOTDIR ${CMAKE_CURRENT_SOURCE_DIR}/@mit)
 SET (MITGCM_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup)
 SET (MITGCM_EXP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/experiments/${MIT_EXP_ID})
-#SET (MIT_LIB_FILE libmitgcmuv.a libmitgcmuv_driver.a)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/mitgcm_setup
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
@@ -18,13 +17,21 @@ file(COPY ${MITGCM_EXP_DIR}/code
 
 esma_add_library (${this}
   SRCS ${SRCS}
-  DEPENDENCIES MAPL lib_mit lib_mit_interfaces
+  DEPENDENCIES MAPL mitgcmuv mitgcmuv_driver
   INCLUDES ${MITGCM_BUILD_DIR}/code_split_driver
   )
 
 target_link_libraries(${this} PUBLIC
-  ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/build/libmitgcmuv.a
-  ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/code_split_driver/libmitgcmuv_driver.a
+  libmitgcmuv_driver.a
+)
+
+target_link_libraries(${this} PUBLIC
+  libmitgcmuv.a
+)
+
+target_link_directories(${this} PUBLIC
+  ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/code_split_driver
+  ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/build
 )
 
 add_custom_target(
@@ -56,7 +63,7 @@ add_custom_target(
 )
 
 add_custom_target(
-	lib_mit
+	mitgcmuv
 	COMMAND ./mk_local ../local_build
 	COMMAND make install
 	DEPENDS fix_mit_inc
@@ -64,8 +71,8 @@ add_custom_target(
 )
 
 add_custom_target(
-	lib_mit_interfaces
+	mitgcmuv_driver
 	COMMAND make install
-	DEPENDS lib_mit
+	DEPENDS mitgcmuv
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/code_split_driver
 )
