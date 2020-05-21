@@ -1,6 +1,6 @@
 !  $Id$
 #include "MAPL_Generic.h"
-
+#define BUILD_MIT_OCEAN
 !=============================================================================
 !BOP
 
@@ -21,7 +21,11 @@ module GEOS_OgcmGridCompMod
   use GEOS_OradGridCompMod,              only : OradSetServices   => SetServices
 
   use GuestOcean_GridCompMod,            only : GuestOceanSetServices  => SetServices
+#ifdef BUILD_MIT_OCEAN
+  use GEOS_MITDynaGridCompMod,           only : SeaIceSetServices => SetServices
+#else
   use GEOS_CICEDynaGridCompMod,          only : SeaIceSetServices => SetServices
+#endif
   use GEOS_DataSeaIceGridCompMod,        only : DataSeaIceSetServices => SetServices
 
   use ice_prescribed_mod,                only : ice_nudging                     

@@ -158,6 +158,61 @@ contains
 !   Imports and exports specification
 !   ---------------------------------
 
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME         = 'UW',                                &
+         LONG_NAME          = 'surface_Agrid_eastward_velocity',   &
+         UNITS              = 'm s-1 ',                            &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME         = 'VW',                                &
+         LONG_NAME          = 'surface_Agrid_northward_velocity',  &
+         UNITS              = 'm s-1 ',                            &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME         = 'UWB',                                &
+         LONG_NAME          = 'surface_Bgrid_X_velocity',    &
+         UNITS              = 'm s-1 ',                            &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME         = 'VWB',                                &
+         LONG_NAME          = 'surface_Bgrid_Y_velocity',  &
+         UNITS              = 'm s-1 ',                            &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                   &
+         SHORT_NAME         = 'SLV',                              &
+         LONG_NAME          = 'sea_level_with_ice_loading',       &
+         UNITS              = 'm',                                &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME         = 'DH',                                &
+         LONG_NAME          = 'layer_thickness',                   &
+         UNITS              = 'm',                                 &
+         DIMS               = MAPL_DimsHorzVert,                   &
+         VLOCATION          = MAPL_VLocationCenter,                &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     nimports = 16
     allocate(imports(nimports))
     imports    = (/                                                                                                 &
