@@ -362,7 +362,7 @@ contains
 !  !EXPORT STATE:
 
     select case (trim(OCEAN_NAME))
-        case ("MOM", "DATASEA")
+        case ("MOM", "DATASEA","MIT")
             charbuf_ = 'MASKO'
         case ("MOM6")
             charbuf_ = 'MASK'
@@ -793,7 +793,7 @@ contains
 
     if(DO_DATASEA==0) then
        select case (trim(OCEAN_NAME))
-          case ("MOM")
+          case ("MOM","MIT")
              call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,__RC__)
              call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', __RC__)
              MASK => MASK3D(:,:,1)
@@ -1030,7 +1030,7 @@ contains
 ! ---------------------------------------------------------------
        if(DO_DATASEA==0) then
           select case(trim(OCEAN_NAME))
-             case ("MOM")
+             case ("MOM","MIT")
                 call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', __RC__)
                 MASK => MASK3D(:,:,1)
              case ("MOM6")

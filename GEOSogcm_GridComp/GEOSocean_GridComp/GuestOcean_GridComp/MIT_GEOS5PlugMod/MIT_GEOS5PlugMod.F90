@@ -158,61 +158,6 @@ contains
 !   Imports and exports specification
 !   ---------------------------------
 
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME         = 'UW',                                &
-         LONG_NAME          = 'surface_Agrid_eastward_velocity',   &
-         UNITS              = 'm s-1 ',                            &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-    
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME         = 'VW',                                &
-         LONG_NAME          = 'surface_Agrid_northward_velocity',  &
-         UNITS              = 'm s-1 ',                            &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME         = 'UWB',                                &
-         LONG_NAME          = 'surface_Bgrid_X_velocity',    &
-         UNITS              = 'm s-1 ',                            &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-    
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME         = 'VWB',                                &
-         LONG_NAME          = 'surface_Bgrid_Y_velocity',  &
-         UNITS              = 'm s-1 ',                            &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                   &
-         SHORT_NAME         = 'SLV',                              &
-         LONG_NAME          = 'sea_level_with_ice_loading',       &
-         UNITS              = 'm',                                &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME         = 'DH',                                &
-         LONG_NAME          = 'layer_thickness',                   &
-         UNITS              = 'm',                                 &
-         DIMS               = MAPL_DimsHorzVert,                   &
-         VLOCATION          = MAPL_VLocationCenter,                &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
     nimports = 16
     allocate(imports(nimports))
     imports    = (/                                                                                                 &
@@ -286,8 +231,8 @@ contains
     mstate('MIT_3D_MASK',  'ocean mask at t-points',         '1',         MAPL_DimsHorzVert,MAPL_VLocationCenter),  &
     mstate('DH',    'layer_thickness',                       'm',         MAPL_DimsHorzVert,MAPL_VLocationCenter),  &
     mstate('SLV',   'sea_level_with_ice_loading',            'm',         MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('USB',   'surface_Bgrid_X_velocity',            'm s-1 ',      MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('VSB',   'surface_Bgrid_Y_velocity',            'm s-1 ',      MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('UWB',   'surface_Bgrid_X_velocity',            'm s-1 ',      MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('VWB',   'surface_Bgrid_Y_velocity',            'm s-1 ',      MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
     mstate('SSH',   'sea_level_height',                    'm',           MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
     mstate('T',   'potential_temperature',                 'm',           MAPL_DimsHorzVert,MAPL_VLocationCenter),    &
     mstate('S',   'salinity',                              'psu',         MAPL_DimsHorzVert,MAPL_VLocationCenter),    &
@@ -309,6 +254,78 @@ contains
     ENDDO
 
     deallocate(exports)
+
+     call MAPL_AddImportSpec(GC                         ,&
+          LONG_NAME          = 'net_surface_downwelling_nir_beam_flux',&
+          UNITS              = 'W m-2'                       ,&
+          SHORT_NAME         = 'DRNIR'                       ,&
+          DIMS               = MAPL_DimsHorzOnly             ,&
+          VLOCATION          = MAPL_VLocationNone            ,&
+          RC=STATUS  ) 
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC                         ,&
+          LONG_NAME          = 'net_surface_downwelling_nir_diffuse_flux',&
+          UNITS              = 'W m-2'                       ,&
+          SHORT_NAME         = 'DFNIR'                       ,&
+          DIMS               = MAPL_DimsHorzOnly             ,&
+          VLOCATION          = MAPL_VLocationNone            ,&
+                                                  RC=STATUS  ) 
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                   &
+         SHORT_NAME         = 'FRAZIL',                              &
+         LONG_NAME          = 'heating_from_frazil_formation',       &
+         UNITS              = 'J m-2',                                &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC                     ,&
+        LONG_NAME          = 'surface_net_downward_longwave_flux',&
+        UNITS              = 'W m-2'                     ,&
+        SHORT_NAME         = 'LWFLX'                   ,&
+        DIMS               = MAPL_DimsHorzOnly           ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+        RC=STATUS  ) 
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                     &
+        LONG_NAME          = 'upward_sensible_heat_flux' ,&
+        UNITS              = 'W m-2'                     ,&
+        SHORT_NAME         = 'SHFLX'                     ,&
+        DIMS               = MAPL_DimsHorzOnly           ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+        RC=STATUS  ) 
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                     &
+        LONG_NAME          = 'evaporation'               ,&
+        UNITS              = 'kg m-2 s-1'                ,&
+        SHORT_NAME         = 'QFLUX'                   ,&
+        DIMS               = MAPL_DimsHorzOnly           ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+        RC=STATUS  ) 
+     VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME         = 'RAIN',                              &
+         LONG_NAME          = 'ocean_rainfall',&
+         UNITS              = 'kg m-2 s-1',                        &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                               &
+         SHORT_NAME         = 'SNOW',                              &
+         LONG_NAME          = 'ocean_snowfall',&
+         UNITS              = 'kg m-2 s-1',                        &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
 !EOS
 
