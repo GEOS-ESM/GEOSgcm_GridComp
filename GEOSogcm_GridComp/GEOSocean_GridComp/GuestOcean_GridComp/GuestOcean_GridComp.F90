@@ -793,9 +793,14 @@ contains
 
     if(DO_DATASEA==0) then
        select case (trim(OCEAN_NAME))
-          case ("MOM","MIT")
+          case ("MOM")
              call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,__RC__)
              call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', __RC__)
+             MASK => MASK3D(:,:,1)
+             if(associated(MASKO)) MASKO = MASK
+          case ("MIT")
+             call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,__RC__)
+             call MAPL_GetPointer(GEX(OCN), MASK3D, 'MIT_3D_MASK', __RC__)
              MASK => MASK3D(:,:,1)
              if(associated(MASKO)) MASKO = MASK
           case ("MOM6")
@@ -1030,8 +1035,11 @@ contains
 ! ---------------------------------------------------------------
        if(DO_DATASEA==0) then
           select case(trim(OCEAN_NAME))
-             case ("MOM","MIT")
+             case ("MOM")
                 call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', __RC__)
+                MASK => MASK3D(:,:,1)
+             case ("MIT")
+                call MAPL_GetPointer(GEX(OCN), MASK3D, 'MIT_3D_MASK', __RC__)
                 MASK => MASK3D(:,:,1)
              case ("MOM6")
                 call MAPL_GetPointer(GEX(OCN), MASK, 'MOM_2D_MASK', __RC__)

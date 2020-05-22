@@ -1286,12 +1286,12 @@ contains
 ! Put OBIO tracers into the OCEAN's tracer bundle.
 !-------------------------------------------------
 
-    if (DO_DATASEAONLY==0) then
-       call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )
-       VERIFY_(STATUS)
-    end if
+!    if (DO_DATASEAONLY==0) then
+!       call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
+!       VERIFY_(STATUS)
+!       call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )
+!       VERIFY_(STATUS)
+!    end if
 
 !   The section below attempts to make an intellegent guess of the default
 !   for INTERPOLATE_SST 

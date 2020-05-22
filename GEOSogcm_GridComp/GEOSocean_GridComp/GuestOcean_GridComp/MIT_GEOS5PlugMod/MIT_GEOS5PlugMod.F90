@@ -529,9 +529,9 @@ contains
 
     call MAPL_GetPointer(EXPORT, pMASK, trim(COMP_NAME)//'_3D_MASK',  alloc=.true., RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, TS,  'TS',  alloc=.true., RC=STATUS)
+    call MAPL_GetPointer(EXPORT, TS,  'TW',  alloc=.true., RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SS,  'SS',  alloc=.true., RC=STATUS)
+    call MAPL_GetPointer(EXPORT, SS,  'SW',  alloc=.true., RC=STATUS)
     VERIFY_(STATUS)
 
     call WRITE_PARALLEL("Calling DRIVER_Get_ExportState")
