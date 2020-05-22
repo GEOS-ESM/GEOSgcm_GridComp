@@ -598,9 +598,33 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
      do j = 1,JM
      do i = 1,IM
-        au_full   = 0.5*( au(i,j,k) + au(i,j,km1) )
-        thlu_full = 0.5*( thlu(i,j,k) + thlu(i,j,km1) )
-        qtu_full  = 0.5*( qtu(i,j,k) + qtu(i,j,km1) )
+        if ( k >= 2 ) then
+           au_full   = 0.5*( au(i,j,k)   + au(i,j,km1) )
+           thlu_full = 0.5*( thlu(i,j,k) + thlu(i,j,km1) )
+           qtu_full  = 0.5*( qtu(i,j,k)  + qtu(i,j,km1) )
+
+           mfw2(i,j,k)   = 0.5*( aw2(i,j,k)    + aw2(i,j,km1) )
+           mfw3(i,j,k)   = 0.5*( aw3(i,j,k)    + aw3(i,j,km1) )
+           mfhl2(i,j,k)  = 0.5*( ahl2(i,j,k)   + ahl2(i,j,km1) )
+           mfqt2(i,j,k)  = 0.5*( aqt2(i,j,k)   + aqt2(i,j,km1) )
+           mfqt3(i,j,k)  = 0.5*( aqt3(i,j,k)   + aqt3(i,j,km1) )
+           mfwqt(i,j,k)  = 0.5*( wqt_mf(i,j,k) + wqt_mf(i,j,km1) )
+           mfqthl(i,j,k) = 0.5*( aqthl(i,j,k)  + aqthl(i,j,km1) )
+           mfwhl(i,j,k)  = 0.5*( whl_mf(i,j,k) + whl_mf(i,j,km1) )
+        else
+           au_full   = au(i,j,2)
+           thlu_full = thlu(i,j,2)
+           qtu_full  = qtu(i,j,2)
+
+           mfw2(i,j,1)   = aw2(i,j,2)
+           mfw3(i,j,1)   = aw3(i,j,2)
+           mfhl2(i,j,1)  = ahl2(i,j,2)
+           mfqt2(i,j,1)  = aqt2(i,j,2)
+           mfqt3(i,j,1)  = aqt3(i,j,2)
+           mfwqt(i,j,1)  = wqt_mf(i,j,2)
+           mfqthl(i,j,1) = aqthl(i,j,2)
+           mfwhl(i,j,1)  = whl_mf(i,j,2)
+        end if
 
         if ( au_full > 0. ) then 
            hle(i,j,k) =   exf(i,j,k)*( thl(i,j,k) - au_full*thlu_full )/( 1. - au_full ) &
@@ -614,15 +638,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
         D(i,j,k) = E(i,j,k) - ( Mu(i,j,km1) - Mu(i,j,k) )/( zle(i,j,km1) - zle(i,j,k) )
 
         buoyf(i,j,k) = buoyf(i,j,k) + exf(i,j,k)*( mfthvt - mft*thv(i,j,k) )
-        
-        mfw2(i,j,k)   = 0.5*( aw2(i,j,k)    + aw2(i,j,km1) )
-        mfw3(i,j,k)   = 0.5*( aw3(i,j,k)    + aw3(i,j,km1) )
-        mfhl2(i,j,k)  = 0.5*( ahl2(i,j,k)   + ahl2(i,j,km1) )
-        mfqt2(i,j,k)  = 0.5*( aqt2(i,j,k)   + aqt2(i,j,km1) )
-        mfqt3(i,j,k)  = 0.5*( aqt3(i,j,k)   + aqt3(i,j,km1) )
-        mfwqt(i,j,k)  = 0.5*( wqt_mf(i,j,k) + wqt_mf(i,j,km1) )
-        mfqthl(i,j,k) = 0.5*( aqthl(i,j,k)  + aqthl(i,j,km1) )
-        mfwhl(i,j,k)  = 0.5*( whl_mf(i,j,k) + whl_mf(i,j,km1) )
      end do
      end do
   end do

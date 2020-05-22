@@ -4485,16 +4485,16 @@ ENDIF
         if ( associated(ac_turb_ex) )  ac_turb_ex  = QA 
         if ( associated(ql_turb_ex) )  ql_turb_ex  = QL 
 
-        ! Cloud-top entrainment (for now only a test)
-        call entrain_mynn(IM, JM, LM, &
-                          th00, zlo, zle, omega, thl, qt, thv, qa, &
-                          thlv_turb, ktop_entrain, zi_entrain, gamma_ml_entrain, gamma_fa_entrain)
-                     
-        if ( associated(thlv_turb_ex) )        thlv_turb_ex        = thlv_turb 
-        if ( associated(ktop_entrain_ex) )     ktop_entrain_ex     = real(ktop_entrain)
-        if ( associated(zi_entrain_ex) )       zi_entrain_ex       = zi_entrain 
-        if ( associated(gamma_ml_entrain_ex) ) gamma_ml_entrain_ex = gamma_ml_entrain 
-        if ( associated(gamma_fa_entrain_ex) ) gamma_fa_entrain_ex = gamma_fa_entrain 
+!!$        ! Cloud-top entrainment (for now only a test)
+!!$        call entrain_mynn(IM, JM, LM, &
+!!$                          th00, zlo, zle, omega, thl, qt, thv, qa, &
+!!$                          thlv_turb, ktop_entrain, zi_entrain, gamma_ml_entrain, gamma_fa_entrain)
+!!$                     
+!!$        if ( associated(thlv_turb_ex) )        thlv_turb_ex        = thlv_turb 
+!!$        if ( associated(ktop_entrain_ex) )     ktop_entrain_ex     = real(ktop_entrain)
+!!$        if ( associated(zi_entrain_ex) )       zi_entrain_ex       = zi_entrain 
+!!$        if ( associated(gamma_ml_entrain_ex) ) gamma_ml_entrain_ex = gamma_ml_entrain 
+!!$        if ( associated(gamma_fa_entrain_ex) ) gamma_fa_entrain_ex = gamma_fa_entrain 
 
         ! Run MYNN
         call run_mynn(IM, JM, LM, &                                                ! in      
