@@ -54,7 +54,7 @@ module GEOS_VegdynGridCompMod
 
 !EOP
 
-  integer :: MODIS_DVG, MDATE
+  integer :: MODIS_DVG
   integer, parameter		     :: NTYPS = MAPL_NumVegTypes
   real,    dimension(   NTYPS)       :: VGRT
   ! real,    dimension(   NTYPS)       :: VGZ2   
@@ -94,10 +94,10 @@ contains
 
 
     character(len=ESMF_MAXSTR)              :: IAm
-    integer                                 :: STATUS
+    integer                                 :: STATUS, OFFLINE_MODE
     character(len=ESMF_MAXSTR)              :: COMP_NAME
     type(ESMF_Config)                       :: SCF
-    character(len=ESMF_MAXSTR)              :: SURFRC
+    character(len=ESMF_MAXSTR)              :: SURFRC, GRIDNAME, MODIS_PATH
 
 ! Local derived type aliases
 
@@ -141,14 +141,25 @@ contains
 
     !RUN_DT = nint(DT)
 
+! -----------------------------------------------------------
+! Get experiment configuration parameters
+! -----------------------------------------------------------
+    
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='MODIS_DVG:'  , value=MODIS_DVG  , DEFAULT=0, __RC__ )
-    MDATE = 0
-    IF(MODIS_DVG > 0) THEN
-       call ESMF_ConfigGetAttribute (SCF, label='MDATE:'   , value=MDATE      , DEFAULT=0, __RC__ )
-    ENDIF
+    call ESMF_ConfigGetAttribute (SCF, label='MODIS_DVG:', value=MODIS_DVG, DEFAULT=0, __RC__ ) ; VERIFY_(STATUS)
+
+    if (MODIS_DVG == 1) then
+       call ESMF_ConfigGetAttribute (SCF, label='MODIS_PATH:', value=MODIS_PATH  , &
+            DEFAULT='/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/MCD15A2H.006/', __RC__ )
+       call MAPL_GetResource (MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
+       if (OFFLINE_MODE == 0) then
+          call MAPL_GetResource( MAPL, value = GRIDNAME, label='AGCM_GRIDNAME:', RC=STATUS ) ; VERIFY_(STATUS)
+       else
+          call MAPL_GetResource( MAPL, value = GRIDNAME, label='GRIDNAME:',      RC=STATUS ) ; VERIFY_(STATUS)
+       endif    
+    endif
     call ESMF_ConfigDestroy      (SCF, __RC__)
     
 ! -----------------------------------------------------------
@@ -162,7 +173,6 @@ contains
 !    MY_STEP = nint(DT)
 !
 ! -----------------------------------------------------------
-
 
 ! -----------------------------------------------------------
 ! Set the state variable specs.
@@ -318,7 +328,7 @@ contains
 
 ! IMPORT Pointers
 
-    real, dimension(:), pointer :: MODIS_LAI
+    real, save, dimension(:), pointer :: MODIS_LAI
 
 ! EXPORT pointers 
 
@@ -329,8 +339,9 @@ contains
   
 ! Time attributes and placeholders
 
-    type(ESMF_Time) :: CURRENT_TIME
-    type(ESMF_Alarm):: MODISALARM
+    type(ESMF_Time)         :: CURRENT_TIME, MODIS_TIME
+    type(ESMF_Time), save   :: MODIS_RING
+    type(ESMF_TimeInterval) :: M8, TIME_DIFF
 
 ! Others
 
@@ -340,8 +351,13 @@ contains
     character(len=ESMF_MAXSTR)         :: LAItpl
     character(len=ESMF_MAXSTR)         :: GRNtpl
     character(len=ESMF_MAXSTR)         :: NDVItpl
-    integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width, NT
-
+    integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width
+    integer                            :: MOD_DOY,DOY,MFDOY,CUR_YY,CUR_MM,CUR_DD, &
+                                          MOD_YY, MOD_MM, MOD_DD
+    logical, save                      :: first = .true.
+    logical                            :: b4_modis_date = .false.
+    integer                            :: MODIS_FIRSTDATE = 20020704
+    
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
@@ -418,16 +434,6 @@ contains
     call MAPL_GetPointer(INTERNAL,   ASCATZ0,  'ASCATZ0', RC=STATUS)
     VERIFY_(STATUS)
 
-! pointer to IMPORT
-! -----------------
-
-    IF (MODIS_DVG == 1) THEN
-       NT = SIZE (ITY)
-       ALLOCATE (MODIS_LAI (1:NT))
-    ELSEIF((MODIS_DVG == 2) THEN
-       call MAPL_GetPointer(IMPORT,MODIS_LAI, 'MODIS_LAI', RC=STATUS) ; VERIFY_(STATUS)
-    ENDIF
-
 ! get pointers to EXPORTS
 ! -----------------------
 
@@ -447,11 +453,58 @@ contains
     VERIFY_(STATUS)
 
     IF (MODIS_DVG == 0) THEN
+       
+       ! read lai_clim_IMxJM.data file from BCSDIR
        call MAPL_ReadForcing(MAPL,'LAI',LAIFILE,CURRENT_TIME,LAI,ON_TILES=.true.,RC=STATUS)
        VERIFY_(STATUS)
-    ELSE
+       
+    ELSE IF (MODIS_DVG == 1) THEN
+
+       ! read interannually varying LAI data on tile space
+       call ESMF_TimeIntervalSet(M8, h=24*8, rc=status ) ; VERIFY_(STATUS)
+       MOD_YY = MODIS_FIRSTDATE / 10000
+       MOD_MM = (MODIS_FIRSTDATE - MOD_YY*10000) / 100
+       MOD_DD = MODIS_FIRSTDATE - (MOD_YY*10000 + MOD_MM*100)
+       call ESMF_TimeSet (MODIS_TIME, yy=MOD_YY, mm=MOD_MM, dd=MOD_DD, rc=status) ; VERIFY_(STATUS)
+       call ESMF_TimeGet (MODIS_TIME, DayOfYear=MFDOY, RC=STATUS)                 ; VERIFY_(STATUS)
+
+       if (first) then          
+          call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, MM = CUR_MM, DD = CUR_DD, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
+          MOD_DOY = modis_date (DOY)
+          call ESMF_TimeSet(MODIS_TIME, yy=CUR_YY, mm=CUR_MM, dd=CUR_DD, rc=status) ; VERIFY_(STATUS)
+          call ESMF_TimeIntervalSet(TIME_DIFF, h=24*(DOY -MOD_DOY), rc=status )     ; VERIFY_(STATUS)
+          MODIS_RING = MODIS_TIME - TIME_DIFF
+          MODIS_RING = MODIS_RING + M8
+          
+          ALLOCATE (MODIS_LAI (1:SIZE(ITY)))
+          if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
+          call read_modis_lai (MAPL,CUR_YY, MOD_DOY, MODIS_LAI, b4_modis_date)
+          first = .false.
+       endif
+
+       if (CURRENT_TIME ==  MODIS_RING) then
+          call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
+          if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
+          call read_modis_lai (MAPL,CUR_YY, DOY, MODIS_LAI, b4_modis_date)
+          if (DOY < 361) then
+             MODIS_RING = CURRENT_TIME + M8
+          else
+             call ESMF_TimeSet(MODIS_TIME, yy=CUR_YY+1, mm=1, dd=1, rc=status) ; VERIFY_(STATUS)
+             MODIS_RING = MODIS_TIME
+          endif
+       endif
+       
        LAI = MODIS_LAI
        LAI = min(7., max(0.0001, LAI))
+       
+       
+    ELSE IF(MODIS_DVG == 2) THEN
+
+       ! import via ExtData
+       call MAPL_GetPointer(IMPORT,MODIS_LAI, 'MODIS_LAI', RC=STATUS) ; VERIFY_(STATUS)       
+       LAI = MODIS_LAI
+       LAI = min(7., max(0.0001, LAI))
+              
     ENDIF
 
     call MAPL_ReadForcing(MAPL,'GRN',GRNFILE,CURRENT_TIME,GRN,ON_TILES=.true.,RC=STATUS)
@@ -471,6 +524,95 @@ contains
     call MAPL_TimerOff(MAPL,"TOTAL")
 
     RETURN_(ESMF_SUCCESS)
+
+  contains
+
+    ! ---------------------------------------------------------------------------
+    
+    integer function modis_date (DOY) result (MOD_DOY)
+      
+      implicit none
+      integer, intent(in) :: DOY
+      integer, parameter  :: N_MODIS_DATES = 46
+      integer, dimension (N_MODIS_DATES), parameter ::  &
+           MODIS_DOYS = (/                              &
+           1  ,  9, 17, 25, 33, 41, 49, 57, 65,         &
+           73 , 81, 89, 97,105,113,121,129,137,         &
+           145,153,161,169,177,185,193,201,209,         &
+           217,225,233,241,249,257,265,273,281,         &
+           289,297,305,313,321,329,337,345,353,361/)
+      integer :: i
+      
+      if (DOY < MODIS_DOYS(N_MODIS_DATES)) then
+         do i = 1, N_MODIS_DATES
+            if (MODIS_DOYS(i) > DOY) exit
+         end do         
+         MOD_DOY = MODIS_DOYS(i-1)
+      else
+         MOD_DOY = MODIS_DOYS(N_MODIS_DATES)
+      endif
+            
+    end function modis_date
+    
+    ! ---------------------------------------------------------------------------
+
+    subroutine read_modis_lai (MAPL,CUR_YY, MOD_DOY,MODIS_LAI, b4_modis_date) 
+
+      implicit none
+      integer, intent (in)                     :: CUR_YY, MOD_DOY
+      logical, intent (in)                     :: b4_modis_date
+      real, dimension (:), intent (inout)      :: MODIS_LAI
+      type(MAPL_MetaComp),pointer, intent (in) :: MAPL
+      type(ESMF_Grid)                          :: TILEGRID
+      type(MAPL_LocStream)                     :: LOCSTREAM
+      integer, pointer                         :: mask(:)
+      integer                                  :: status, unit
+      character*300                            :: filename
+      CHARACTER(len=7)                         :: YYYYDoY
+      
+      if(b4_modis_date) then
+         WRITE (YYYYDoY,'(a4,i3.3)') 'YYYY',MOD_DOY
+      else
+         WRITE (YYYYDoY,'(i4.4,i3.3)') CUR_YY,MOD_DOY
+      endif
+      
+      filename = trim(MODIS_PATH)//'/'trim(getGID)//'/lai_data.'//YYYYDoY
+            
+      call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)            ; VERIFY_(STATUS)
+      call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS); VERIFY_(STATUS)
+      call MAPL_TileMaskGet(tilegrid,  mask, rc=status)              ; VERIFY_(STATUS)
+      unit = GETFILE(trim(filename), form="unformatted", RC=STATUS)  ; VERIFY_(STATUS)
+      call MAPL_VarRead(unit,tilegrid,MODIS_LAI,mask=mask,RC=STATUS) ; VERIFY_(STATUS)
+      call FREE_FILE(unit, RC=STATUS)                                ; VERIFY_(STATUS)
+      
+    end subroutine read_modis_lai
+    
+    ! ---------------------------------------------------------------------------
+        
+    CHARACTER(len=5) FUNCTION getGID result (GID)
+
+      implicit none
+
+      select case (trim(GRIDNAME))
+
+      case ('PE90x540-CF')
+         GID = 'CF090'
+      case ('PE180x1080-CF')
+         GID = 'CF180'
+      case ('PE360x2160-CF')
+         GID = 'CF360'
+      case ('PE720x4320-CF')
+         GID = 'CF720'
+      case ('SMAP-EASEv2-M09')
+         GID = 'M09'
+      case ('SMAP-EASEv2-M36')
+         GID = 'M36'
+      case default
+         _ASSERT(.FALSE.,'MODIS_DVG = 1 does not support '//trim(GRIDNAME))
+      end select
+      
+    END FUNCTION getGID
+
   end subroutine RUN
 
 end module GEOS_VegdynGridCompMod
