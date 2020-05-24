@@ -58,7 +58,8 @@ module GEOS_VegdynGridCompMod
   integer, parameter		     :: NTYPS = MAPL_NumVegTypes
   real,    dimension(   NTYPS)       :: VGRT
   ! real,    dimension(   NTYPS)       :: VGZ2   
-
+  character(len=ESMF_MAXSTR)         :: GRIDNAME, MODIS_PATH
+  
   data VGRT  / 19700., 7000., 9400., 7000., 7000., 14000./
   ! commented out legacy look-up table for veg heights, which are now always from bcs via restarts, - reichle, 17 March 2020
   ! data VGZ2 / 35.0, 20.0, 17.0, 0.6, 0.5, 0.6/ ! Dorman and Sellers (1989)   
@@ -97,7 +98,7 @@ contains
     integer                                 :: STATUS, OFFLINE_MODE
     character(len=ESMF_MAXSTR)              :: COMP_NAME
     type(ESMF_Config)                       :: SCF
-    character(len=ESMF_MAXSTR)              :: SURFRC, GRIDNAME, MODIS_PATH
+    character(len=ESMF_MAXSTR)              :: SURFRC
 
 ! Local derived type aliases
 
@@ -151,13 +152,13 @@ contains
     call ESMF_ConfigGetAttribute (SCF, label='MODIS_DVG:', value=MODIS_DVG, DEFAULT=0, __RC__ ) ; VERIFY_(STATUS)
 
     if (MODIS_DVG == 1) then
-       call ESMF_ConfigGetAttribute (SCF, label='MODIS_PATH:', value=MODIS_PATH  , &
+       call ESMF_ConfigGetAttribute (SCF, value= MODIS_PATH, label='MODIS_PATH:',  &
             DEFAULT='/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/MCD15A2H.006/', __RC__ )
        call MAPL_GetResource (MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
        if (OFFLINE_MODE == 0) then
-          call MAPL_GetResource( MAPL, value = GRIDNAME, label='AGCM_GRIDNAME:', RC=STATUS ) ; VERIFY_(STATUS)
+          call MAPL_GetResource( MAPL, GRIDNAME, label='AGCM_GRIDNAME:', RC=STATUS ) ; VERIFY_(STATUS)
        else
-          call MAPL_GetResource( MAPL, value = GRIDNAME, label='GRIDNAME:',      RC=STATUS ) ; VERIFY_(STATUS)
+          call MAPL_GetResource( MAPL, GRIDNAME, label='GRIDNAME:',      RC=STATUS ) ; VERIFY_(STATUS)
        endif    
     endif
     call ESMF_ConfigDestroy      (SCF, __RC__)
@@ -577,9 +578,9 @@ contains
          WRITE (YYYYDoY,'(i4.4,i3.3)') CUR_YY,MOD_DOY
       endif
       
-      filename = trim(MODIS_PATH)//'/'trim(GRIDNAME)//'/lai_data.'//YYYYDoY
+      filename = trim(MODIS_PATH)//'/'//trim(GRIDNAME)//'/lai_data.'//YYYYDoY
       inquire(file=filename, exist=file_exists)
-      if (.not. filexists) then
+      if (.not. file_exists) then
           _ASSERT(.FALSE.,'Missing : '//trim(filename))
       endif
       call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)            ; VERIFY_(STATUS)
