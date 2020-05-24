@@ -35,8 +35,7 @@ module mo_rng_mklvsl_plus
   use MKL_VSL_TYPE
   use MKL_VSL
   use mo_rte_kind, only: dp
-  !use mo_rrtmgp_errors, only: write_message ! pmn: replaced by stop_on_err
-  use mo_rng_mklvsl, only: ty_rng_mklvsl
+  use mo_rng_mklvsl, only: ty_rng_mklvsl, stop_on_err
   implicit none
   private
   public :: ty_rng_mklvsl_plus
@@ -54,16 +53,6 @@ module mo_rng_mklvsl_plus
 
 contains
 
-  subroutine stop_on_err(msg)
-    use iso_fortran_env, only : error_unit
-    character(len=*), intent(in) :: msg
-
-    if(msg /= "") then
-      write(error_unit, *) msg
-      stop
-    end if
-  end subroutine
-
   ! -------------------------------------------------------------------------------------
   ! Provide num random numbers following a uniform distribution between 0 and 1
   !
@@ -71,11 +60,12 @@ contains
 
     class(ty_rng_mklvsl_plus) :: this
     integer,  intent(in) :: num
-    real(DP), dimension(num) :: u
+    real(dp), dimension(num) :: u
 
     integer :: status
-    status = vdRngUniform(VSL_RNG_METHOD_UNIFORM_STD_ACCURATE, &
-                          this%stream, num, u, 0._dp, 1._dp)
+    status = vdRngUniform( &
+      VSL_RNG_METHOD_UNIFORM_STD_ACCURATE, &
+      this%stream, num, u, 0._dp, 1._dp)
     if (status /= VSL_STATUS_OK) &
       call stop_on_err("Error getting random numbers")
 
@@ -88,10 +78,11 @@ contains
 
     class(ty_rng_mklvsl_plus) :: this
     logical, dimension(:), intent(in) :: mask
-    real(DP), dimension(size(mask)) :: u
+    real(dp), dimension(size(mask)) :: u
 
-    u(:) = unpack(get_rng_mkl_vec_accurate(this, COUNT(mask)), &
-                  MASK = mask, FIELD = 0._dp)
+    u(:) = unpack( &
+      get_rng_mkl_vec_accurate(this, count(mask)), &
+      MASK = mask, FIELD = 0._dp)
 
   end function get_rng_mkl_mask_accurate
 

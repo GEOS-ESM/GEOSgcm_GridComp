@@ -1190,10 +1190,11 @@ contains
                          'QCTOT   ',  'CNV_QC  ', 'LFR     ',     &
                          'QLTOT   ',  'QLCN    ', 'QICN    ',     &
                          'DQLDT   ',  'QITOT   ', 'REV_CN  ',     &
-                         'REV_LS  ',  'REV_AN  ',                 &
+                         'REV_LS  ',  'REV_AN  ', 'LFR_GCC ',     &
                          'BYNCY   ',  'DQIDT   ', 'QI      ',     &
                          'DQRC    ',  'CNV_CVW ', 'QLLS    ',     &
-                         'QILS    ',  'DQRL    ', 'CNV_FRC ' /),  &
+                         'QILS    ',  'DQRL    ', 'CNV_FRC ',     &
+                         'RI      ',  'RL      '            /),   &
         DST_ID      = CHEM,                                       &
         SRC_ID      = MOIST,                                      &
                                                        RC=STATUS  )
@@ -1253,7 +1254,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'TS'/),                                   &
+         SHORT_NAME  = (/'TS' /),                                  &
          DST_ID      = MOIST,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
@@ -1261,7 +1262,7 @@ contains
 
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'SNOMAS   ','FRLAND   ','FROCEAN  ',      &
-                         'FRLANDICE'/),                            &
+                         'FRLANDICE','FRACI    '/),                &
          DST_ID      = MOIST,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
