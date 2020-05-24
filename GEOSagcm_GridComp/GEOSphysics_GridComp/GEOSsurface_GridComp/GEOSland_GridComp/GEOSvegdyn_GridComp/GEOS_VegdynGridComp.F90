@@ -569,6 +569,7 @@ contains
       integer                                  :: status, unit
       character*300                            :: filename
       CHARACTER(len=7)                         :: YYYYDoY
+      logical                                  :: file_exists
       
       if(b4_modis_date) then
          WRITE (YYYYDoY,'(a4,i3.3)') 'YYYY',MOD_DOY
@@ -576,8 +577,11 @@ contains
          WRITE (YYYYDoY,'(i4.4,i3.3)') CUR_YY,MOD_DOY
       endif
       
-      filename = trim(MODIS_PATH)//'/'trim(getGID)//'/lai_data.'//YYYYDoY
-            
+      filename = trim(MODIS_PATH)//'/'trim(GRIDNAME)//'/lai_data.'//YYYYDoY
+      inquire(file=filename, exist=file_exists)
+      if (.not. filexists) then
+          _ASSERT(.FALSE.,'Missing : '//trim(filename))
+      endif
       call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)            ; VERIFY_(STATUS)
       call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS); VERIFY_(STATUS)
       call MAPL_TileMaskGet(tilegrid,  mask, rc=status)              ; VERIFY_(STATUS)
@@ -588,31 +592,6 @@ contains
     end subroutine read_modis_lai
     
     ! ---------------------------------------------------------------------------
-        
-    CHARACTER(len=5) FUNCTION getGID result (GID)
-
-      implicit none
-
-      select case (trim(GRIDNAME))
-
-      case ('PE90x540-CF')
-         GID = 'CF090'
-      case ('PE180x1080-CF')
-         GID = 'CF180'
-      case ('PE360x2160-CF')
-         GID = 'CF360'
-      case ('PE720x4320-CF')
-         GID = 'CF720'
-      case ('SMAP-EASEv2-M09')
-         GID = 'M09'
-      case ('SMAP-EASEv2-M36')
-         GID = 'M36'
-      case default
-         _ASSERT(.FALSE.,'MODIS_DVG = 1 does not support '//trim(GRIDNAME))
-      end select
-      
-    END FUNCTION getGID
-
   end subroutine RUN
 
 end module GEOS_VegdynGridCompMod
