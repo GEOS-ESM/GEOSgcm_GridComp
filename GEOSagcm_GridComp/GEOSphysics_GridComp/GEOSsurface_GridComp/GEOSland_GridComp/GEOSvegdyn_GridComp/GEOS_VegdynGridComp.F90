@@ -485,6 +485,7 @@ contains
 
        if (CURRENT_TIME ==  MODIS_RING) then
           call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
+          MOD_DOY = modis_date (DOY)
           if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
           call read_modis_lai (MAPL,CUR_YY, DOY, MODIS_LAI, b4_modis_date)
           if (DOY < 361) then
