@@ -2,8 +2,6 @@
 
 #include "MAPL_Generic.h"
 
-#define BUILD_MIT_OCEAN
-
 module GuestOcean_GridCompMod
 
 !BOP

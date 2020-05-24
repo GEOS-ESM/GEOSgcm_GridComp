@@ -8,6 +8,10 @@ set (alldirs
   GEOSoradbio_GridComp
   )
 
+if ( BUILD_MIT_OCEAN )
+   add_definitions(-DBUILD_MIT_OCEAN=1)
+endif()
+
 set (rename_GEOSoceanbiogeochem_GridComp GEOS_OceanBioGeoChemGridComp)
 set (rename_GEOSoceanbiosimple_GridComp GEOS_OceanBioGridComp)
 set (rename_GEOSoradbio_GridComp GEOS_OradBioGridComp)

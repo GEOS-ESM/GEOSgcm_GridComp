@@ -60,12 +60,14 @@ esma_distclean distclean:
 # ESMF bits
 ESMF_F90COMPILEOPTS=#-threads
 ESMF_F90COMPILEPATHS=-I$(BASEDIR)/Linux/include/esmf
-ESMF_F90LINKLIBS=-lcprts -limf -lm -lcxa -lunwind -lrt -ldl
-ESMF_F90ESMFLINKLIBS=-lesmf   -lmpich -lpmpich++ -lcprts -limf -lm -lcxa -lunwind -lrt -ldl
-ESMF_F90LINKPATHS=-L$(BASEDIR)/Linux/lib
+
+#ESMF_F90LINKLIBS=-lcprts -limf -lm -lcxa -lunwind -lrt -ldl
+#ESMF_F90ESMFLINKLIBS=-lesmf   -lmpich -lpmpich++ -lcprts -limf -lm -lcxa -lunwind -lrt -ldl
+#ESMF_F90LINKPATHS=-L$(BASEDIR)/Linux/lib
 
 MAPL_F90COMPILEPATHS=-I$(ESMADIR)/Linux/include/MAPL_Base
-MAPL_F90LINKPATHS=-L$(ESMADIR)/Linux/lib -lMAPL_Base -lesmf   -lmpich -lpmpich++ -lcprts -limf -lm -lcxa -lunwind -lrt -ldl
+
+#MAPL_F90LINKPATHS=-L$(ESMADIR)/Linux/lib -lMAPL_Base -lesmf   -lmpich -lpmpich++ -lcprts -limf -lm -lcxa -lunwind -lrt -ldl
 
 F_MAIN=main.F
 F_SRCS=
@@ -120,10 +122,12 @@ OBJS=$(F_OBJS) \
      $(F90_OBJS)
 MAIN_OBJS=$(F_MAIN:.F=.o)
 CPP_FLAGS=-DALLOW_USE_MPI -DALWAYS_USE_MPI
-FC=mpif90
+#FC=mpif90
+FREAL8 =
+
 FC_FLAGS=-I../inc -I../build $(FIXED_SOURCE) $(EXTENDED_SOURCE) $(FREAL8) $(BIG_ENDIAN) $(ESMF_F90COMPILEOPTS) $(ESMF_F90COMPILEPATHS) $(MAPL_F90COMPILEPATHS) #-W0 -WB -assume byterecl -fpconstant 
 FC_OPT=-O3 $(ALIGNCOM)
-CC=mpicc
+#CC=mpicc
 CC_FLAGS=-I../inc -I../build
 CC_OPT=-g
 F90C=$(FC)
@@ -137,7 +141,7 @@ LIBS=-L../lib -lmitgcmuv $(ESMF_F90LINKPATHS) $(ESMF_F90ESMFLINKLIBS) $(MAPL_F90
 
 a.out: $(OBJS) $(MAIN_OBJS)
 	@ echo Linking \"$?\"
-	mpif90 $(OBJS) $(LIBS)
+	$(FC) $(OBJS) $(LIBS)
 	cp a.out ../run_split
 
 lib: libmitgcmuv_driver.a

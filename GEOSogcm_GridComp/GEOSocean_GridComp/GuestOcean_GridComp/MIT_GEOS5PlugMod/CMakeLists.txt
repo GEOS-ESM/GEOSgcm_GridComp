@@ -4,15 +4,32 @@ set (SRCS
   MIT_GEOS5PlugMod.F90
   )
 
-SET (MIT_EXP_ID  c90_llc90_05)
+if (NOT DEFINED MIT_CONFIG_ID)
+   message("You need to specify MIT_CONFIG_ID")
+   return()
+endif() 
+
 SET (MITGCM_ROOTDIR ${CMAKE_CURRENT_SOURCE_DIR}/@mit)
 SET (MITGCM_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup)
-SET (MITGCM_EXP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/experiments/${MIT_EXP_ID})
+SET (MITGCM_CONFIG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/configs/${MIT_CONFIG_ID})
+
+if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+     SET (MITGCM_BUILD_OPTIONS build_options.gnu)
+     set (FC gfortran)
+     set (CC gcc)
+elseif(CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+     SET (MITGCM_BUILD_OPTIONS build_options.intel)
+     # Path to Intel compiler to overwrite defaults for mpif90
+     set (FC ifort)
+     set (CC icc)
+endif()
+
+
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/mitgcm_setup
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-file(COPY ${MITGCM_EXP_DIR}/code
+file(COPY ${MITGCM_CONFIG_DIR}/code
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup)
 
 esma_add_library (${this}
@@ -47,7 +64,7 @@ add_custom_target(
 	COMMAND  ${MITGCM_ROOTDIR}/tools/genmake2
                  -rootdir ${MITGCM_ROOTDIR}
                  -mods ../code -mpi
-		 -of ../build_options
+		 -of ../${MITGCM_BUILD_OPTIONS}
 		 #-of ${MITGCM_ROOTDIR}/tools/build_options/linux_amd64_ifort+mpi_ice_nas
 		 -ieee
 	COMMAND make depend
@@ -72,7 +89,7 @@ add_custom_target(
 
 add_custom_target(
 	mitgcmuv_driver
-	COMMAND make install
+	COMMAND make install FC=${FC} CC=${CC}
 	DEPENDS mitgcmuv
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mitgcm_setup/code_split_driver
 )
