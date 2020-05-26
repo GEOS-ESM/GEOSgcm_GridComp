@@ -1,0 +1,586 @@
+
+# Atmospheric Model Configuration Parameters
+# ------------------------------------------
+           NX: 1
+           NY: 6
+      AGCM_IM: 12
+      AGCM_JM: 72
+      AGCM_LM: 72
+AGCM_GRIDNAME: PE12x72-CF
+
+DYCORE: FV3
+
+SOLAR_DT: 3600
+IRRAD_DT: 3600
+
+SOLARAvrg: 0
+IRRADAvrg: 0
+
+
+# Ocean Model Configuration Parameters
+# ------------------------------------
+      OGCM_NX: 6
+      OGCM_NY: 1
+      OGCM_IM: 192
+      OGCM_JM: 32
+      OGCM_LM: 15
+OGCM_GRIDNAME: CM192x32-CM
+OGCM_GRIDSPEC: mit-cube_192x32.ascii
+
+OGCM_RUN_DT: 900
+
+USE_GUEST_OCEAN: 1
+OCEAN_DIR: mitocean_run
+
+##############################################################################################
+####                                                                                      ####
+####   SST REMAPPING                                                                      ####
+####      Comparing Grid Resolutions of GRID_ocean and GRID_atmos:                        ####
+####                                                                                      ####
+####         IF(       GRID_ocean is equal  resolution to   GRID_atmos )  THEN            ####
+####             INTERPOLATE_SST = 0 ! Conservatively BIN   GRID_ocean to GRID_atmos      ####
+####         ELSE IF ( GRID_ocean is higher resolution than GRID_atmos )  THEN            ####
+####             INTERPOLATE_SST = 0 ! Conservatively BIN   GRID_ocean to GRID_atmos      ####
+####         ELSE    ( GRID_ocean is lower  resolution than GRID_atmos )                  ####
+####             INTERPOLATE_SST = 1 ! Linearly Interpolate GRID_ocean to GRID_atmos      ####
+####         ENDIF                                                                        ####
+####                                                                                      ####
+##############################################################################################
+
+# INTERPOLATE_SST: 0 or 1 # (Default based on comparison of GRID_ocean and GRID_atmos)
+
+# Print Resource Parameters (0: Non-Default values, 1: ALL values)
+#-----------------------------------------------------------------
+PRINTRC: 1
+
+# Set the number of parallel I/O processes to use when
+# RESTART_TYPE and or CHECKPOINT_TYPE are set to pbinary or pnc4
+#---------------------------------------------------------------
+PARALLEL_READFORCING: 1
+NUM_READERS: 1
+NUM_WRITERS: 1
+
+# Active observer when desired
+# ----------------------------
+BKG_FREQUENCY: 0
+
+# Resolution of state passed to atmos analysis
+# --------------------------------------------
+ANA_GRIDNAME: PC12x72-DC
+ANA_LM: 72
+
+# Restart Record Parameters
+# -------------------------
+#RECORD_FINAL:  >>>RECFINL<<<
+#RECORD_FREQUENCY: 000000       000000
+#RECORD_REF_DATE: >>>REFDATE<<< >>>FCSDATE<<<
+#RECORD_REF_TIME: >>>REFTIME<<< >>>FCSTIME<<<
+
+ 
+##############################################################################################
+####                                    Exact Replay Options                              ####
+####                                                                                      ####
+####            Exact:  Replays Identically (bit-for-bit) a previously                    ####
+####                    run GEOS-5 DAS by simply using archived IAU forcing.              ####
+####                    Do NOT use DAMP parameters (will create non-zero diffs).          ####
+####                    REPLAY File:  %s.agcm_import_rst.%y4%m2%d2_%h2z.bin               ####
+####                   (Note: %s should be replaced with EXPID you are replaying)         ####
+####                                                                                      ####
+##############################################################################################
+
+#   Exact REPLAY Mode and File
+#   --------------------------
+#   REPLAY_MODE: Exact
+#   REPLAY_FILE: %s.agcm_import_rst.%y4%m2%d2_%h2z.bin
+
+#   Exact REPLAY Mode for 4d-tendency
+#   ---------------------------------
+
+##############################################################################################
+####                                Regular Replay Options                                ####
+####                                                                                      ####
+####  Replays to an existing Analysis by simulating the IAU process (i.e., IAU=ANA-BKG)   ####
+####  Increments MAY be linearly damped between DAMPBEG & DAMPEND (Pascals) to allow      ####
+####  blending of Analysis and Background in the stratosphere.  (DEFAULT: NO BLENDING)    ####
+####                                                                                      ####
+####   REPLAY FILE MUST be on an A-Grid!                                                  ####
+####   REPLAY FILES are typically native grid analysis files                              ####
+####          (E.g.,  %s.ana.eta.%y4%m2%d2_%h2z.nc4)                                      ####
+####                                                                                      ####
+####   REPLAY Variable Defaults: p,u,v,t,qv,o3                                            ####
+####   REPLAY Variables are set to either:  YES,  NO,  or a character_string NAME.        ####
+####   The NAME is used as a means of creating an ALIAS for the REPLAY variable.          ####
+####   An ALIAS is required when the REPLAY FILE contains a variable name NOT included    ####
+####   in our standard list. (E.g.,  REPLAY_T: temperature)                               ####
+####                                                                                      ####
+####   NOTE:  When using an ALIAS for REPLAY_T, you must also supply the REPLAY_T_TYPE    ####
+####   -----  REPLAY_T_TYPE: T        # Options: T,TV,TH,THV                              ####
+####                                                                                      ####
+####   REPLAY Variables may be disabled by setting resource parameter to: NO              ####
+####          (E.g., REPLAY_QV: NO to disable REPLAY of Moisture).                        ####
+####                                                                                      ####
+####   To inhibit the Resonance of the 2/3_x_IAU_Frequency Wave:                          ####
+####   ---------------------------------------------------------                          ####
+####         Perform BKG.ETA Time Averaging (14400 => 4 Hours = 2/3 IAU_Frequency)        ####
+####                                                                                      ####
+##############################################################################################
+#
+#   Regular REPLAY Mode and File
+#   ----------------------------
+#   REPLAY_MODE: Regular
+#   REPLAY_FILE: /discover/nobackup/projects/gmao/share/gmao_ops/verification/MERRA2_MEANS/ana/Y%y4/M%m2/MERRA-2.ana.eta.%y4%m2%d2_%h2z.nc4
+
+#   BKG2ANACNSRV: 0 or 1    # (Defaults to 0:BiLinear Interpolation.  Note: Conservative Transformation creates Non-Wavenumber 1 Winds at Poles)
+#   ANA2BKGCNSRV: 0 or 1    # (Defaults to 0:BiLinear Interpolation.  Note: Conservative Transformation creates Non-Wavenumber 1 Winds at Poles)
+#   REPLAY_BKGAVE: 14400    # (BKG.ETA Time Averaging frequency to inhibit Resonance.
+#                              Default = 2/3 x REPLAY_FREQUENCY, where REPLAY_FREQUENCEY Default = 21600)
+#
+#   Regular REPLAY Variables (Change only if desired REPLAY is different from Default)
+#   ----------------------------------------------------------------------------------
+#   REPLAY_P:  YES or NO    #  (Default: YES)
+#   REPLAY_U:  YES or NO    #  (Default: YES)
+#   REPLAY_V:  YES or NO    #  (Default: YES)
+#   REPLAY_T:  YES or NO    #  (Default: YES)
+#   REPLAY_QV: YES or NO    #  (Default: YES)
+#   REPLAY_O3: YES or NO    #  (Default: YES)
+#   REPLAY_TS: YES or NO    #  (Default:  NO)
+#
+#   Regular REPLAY Remapping and Blending Variables
+#   -----------------------------------------------
+#   REPLAY_REMAP:    YES    #  Default = YES,  Remap ANA Data to BKG Topography
+#   REPLAY_DAMPBEG:  100.0  #  Default =  1,   Linearly Damp Increments between DAMPBEG & DAMPEND (Pascals)
+#   REPLAY_DAMPEND: 5000.0  #  Default =  1,   Linearly Damp Increments between DAMPBEG & DAMPEND (Pascals)
+#   REPLAY_SHUTOFF: 21600   #  ShutOff Replay after 6-hours for G5NCEP and G5ECMWF Forecasts
+#   REPLAY_WINDFIX: YES     #  Apply windfix for cases (GMAO and non-GMAO)
+#
+#
+##############################################################################################
+####                               Intermittent Replay Options                            ####
+####                                                                                      ####
+####     Intermittent:  Within this mode two possibilities are available:                 ####
+####                 1) Replay to full field:                                             ####
+####                    Replays to an existing Analysis by "Dump & Splash".               ####
+####                    RePlay File:  %s.bkg.eta.%y4%m2%d2_%h2z.NCSUFFIX                  ####
+####                    Note: BKG.ETA (hour-3) files are used since they                  ####
+####                    contain the previous full analysis increment and are              ####
+####                    well balanced.  Do not use DAMP parameters.                       ####
+####                    RePlay Name Default: uwnd,vwnd,theta,sphu,ps,delp,ozone           ####
+####                    REPLAY_GRID Options: D-GRID (Default), A-GRID                     ####
+####                    REPLAY_TVAR Options: THETAV (Default), THETA, TV, T               ####
+####                 2) Replay to an increment: (only cubed-dynamics for now)             ####
+####                    Replay to an existing Analysis Increment as e.g,                  ####
+####                    RePlay File:  %s.inc.eta.%y4%m2%d2_%h2z.NCSUFFIX                  ####
+####                    You much as specify REPLAY_IM and REPLAY_JM as                    ####
+####                    well as set REPLAY_TYPE: Incremental; this is                     ####
+####                    in addition to the MODE Intermittent. In some cases               ####
+####                    you might set the parameter REPLAY_REF_TGAP to be                 ####
+####                    equal to RUN_DT (but in HHMMSS) to avoid increment                ####
+####                    being taken one DT out of sync (this can also be used             ####
+####                    in (1) above).                                                    ####
+####                                                                                      ####
+####                    Note: RePlay Blending Options Currently Pertain                   ####
+####                    to Intermittent Mode  (see FVdycore_GridCompMod.F90)              ####
+####                                                                                      ####
+##############################################################################################
+
+##REPLAY_TYPE: Incremental
+##REPLAY_FILE: C590a.inc.eta.%y4%m2%d2_%h2z.nc4
+##REPLAY_IM: 576
+##REPLAY_JM: 361
+##REPLAY_REF_DATE: >>>ANADATE<<<
+##REPLAY_REF_TIME: >>>ANATIME<<<
+##REPLAY_REF_TGAP: 001500
+
+#REPLAY_MODE: Intermittent 
+#REPLAY_FILE: /discover/nobackup/projects/gmao/iesa/aerosol/Data/MERRA/iReplay/576x361/Y%y4/M%m2/d5_merra_jan98.bkg.eta.%y4%m2%d2_%h2z.nc4
+#REPLAY_IM:    576            # Required for Intermittent Replay on Cube
+#REPLAY_JM:    361            # Required for Intermittent Replay on Cube
+
+#REPLAY_GRID:  A-GRID      # (!! For Intermittent Replay Only !!) Standard Options: D-GRID (Default), A-GRID
+#REPLAY_TSNAME: NULL
+#REPLAY_UNAME: u
+#REPLAY_VNAME: v
+#REPLAY_TNAME: tv
+#REPLAY_TVAR:  TV             # Standard Options: THETAV (Default), THETA, TV, T
+
+#REPLAY_REMAP: NO             # Standard Options: NO  - Intermittent Replay (Cube Only)
+
+#REPLAY_BLEND: 0              # Standard Option:   0    - no blending
+#REPLAY_BLEND_P_ABOVE:  10.0  # Standard Option:  10 Pa - highest of the two blending pressure levels
+#REPLAY_BLEND_P_BELOW: 100.0  # Standard Option: 100 Pa - lowest  of the two blending pressure levels
+
+
+##############################################################################################
+####                                   REPLAY PRECIPITATION                               ####
+##############################################################################################
+#
+# REPLAY PRECIP Parameters
+# ------------------------
+# To REPLAY to CMAP-based precip files, you must symbolically link into your work area the datastreams from MERRA_LAND:
+#
+#    Option 1) CMAP-CPCU Corrected (Used for NCA Project)
+#    ----------------------------------------------------
+#    /bin/ln -s /gpfsm/dnb51/projects/p15/iau/merra_land/precip_CPCU-CMAP_corrected_MERRA/GEOSdas-2_1_4 ExtData/PCP
+#
+#         Then, you must replace the token after PRECIP_FILE with the proper datastream for the desired years:
+#         ----------------------------------------------------------------------------------------------------
+#         Years 1978-1993: d5_merra_jan79/diag/Y%y4/d5_merra_jan79.tavg1_2d_lfo_Nx_corr.%y4%m2%d2_%h230z.nc (Currently Not ONLINE)
+#         Years 1988-2001: d5_merra_jan89/diag/Y%y4/d5_merra_jan89.tavg1_2d_lfo_Nx_corr.%y4%m2%d2_%h230z.nc (Currently Not ONLINE)
+#         Years 1999-2014: d5_merra_jan98/diag/Y%y4/d5_merra_jan98.tavg1_2d_lfo_Nx_corr.%y4%m2%d2_%h230z.nc
+#         ---------------
+#
+#    Option 2) CMAP-GPCP Corrected (from MERRA-Land)
+#    -----------------------------------------------
+#    /bin/ln -s /discover/nobackup/projects/gmao/share/gmao_ops/fvInput/merra_land/precip_CPCUexcludeAfrica-CMAP_corrected_MERRA/GEOSdas-2_1_4 ExtData/PCP
+#
+#         Then, you must replace the token after PRECIP_FILE with the proper datastream:
+#         -----------------------------------------------------------------------------------------------------------
+#         Years 1979-2014: d5_merra/Y%y4/M%m2/d5_merra.tavg1_2d_lfo_Nx_corr.%y4%m2%d2_%h230z.nc
+#         ---------------
+#
+# Possible REPLAY PRECIP Files:
+# -----------------------------
+#PRECIP_FILE: ExtData/PCP/@PRECIP_FILE
+#
+# Latitudinal Tapering between 42.5 and 62.5 degrees mimics NCEP's approach of using GCM-based precip at high latitudes
+# --------------------
+#USE_PP_TAPER: 1
+
+
+##############################################################################################
+####                  CHOICE OF  Land Surface and Runoff Routing Models                   ####
+##############################################################################################
+
+# 1) Default: to run the Catchment LSM set LSM_CHOICE to 1
+# 2) to run the Catchment-CN LSM set LSM_CHOICE to 2
+
+LSM_CHOICE: 1
+
+# Set RUN_ROUTE to 1 to run the runoff routing model
+# ROUTE_INT is the frequency (in seconds) that the Runoff Routing Model is called
+# -------------------------------------------------------------------------------
+
+RUN_ROUTE: 0
+#ROUTE_INT: 3600
+#ROUTING_FILE:             runoff.bin
+
+##############################################################################################
+##############################################################################################
+
+# IAU and In-Line BIAS Correction Parameters
+# ----------------------------------------------------------------------------------
+# AGCM_IMPORT   = IAU  Analysis   Increment
+# AGCM_INTERNAL = BIAS Correction Increment: BIAS(n+1) = ALPHA*IAU(n) + BETA*BIAS(n)
+# ----------------------------------------------------------------------------------
+
+#AGCM_IMPORT_RESTART_FILE:               agcm_import_rst
+#AGCM_IMPORT_RESTART_TYPE:               binary
+
+#AGCM_INTERNAL_RESTART_FILE:             agcm_internal_rst
+#AGCM_INTERNAL_RESTART_TYPE:             pnc4
+#AGCM_INTERNAL_CHECKPOINT_FILE:          agcm_internal_checkpoint
+#AGCM_INTERNAL_CHECKPOINT_TYPE:          pnc4
+
+#AGCM_ALPHA: 0.000
+#AGCM_BETA:  1.000
+
+MAPL_ENABLE_BOOTSTRAP: YES
+
+# Required AGCM Model Restart Files
+# ---------------------------------
+DYN_INTERNAL_RESTART_FILE:              fvcore_internal_rst
+DYN_INTERNAL_RESTART_TYPE:              pnc4
+DYN_INTERNAL_CHECKPOINT_FILE:           fvcore_internal_checkpoint
+DYN_INTERNAL_CHECKPOINT_TYPE:           pnc4
+DYN_INTERNAL_HEADER:                    1
+
+LAKE_INTERNAL_RESTART_FILE:             lake_internal_rst
+LAKE_INTERNAL_RESTART_TYPE:             pnc4
+LAKE_INTERNAL_CHECKPOINT_FILE:          lake_internal_checkpoint
+LAKE_INTERNAL_CHECKPOINT_TYPE:          pnc4
+
+LANDICE_INTERNAL_RESTART_FILE:          landice_internal_rst
+LANDICE_INTERNAL_RESTART_TYPE:          pnc4
+LANDICE_INTERNAL_CHECKPOINT_FILE:       landice_internal_checkpoint
+LANDICE_INTERNAL_CHECKPOINT_TYPE:       pnc4
+
+CATCH_INTERNAL_RESTART_FILE:            catch_internal_rst
+CATCH_INTERNAL_RESTART_TYPE:            pnc4
+CATCH_INTERNAL_CHECKPOINT_FILE:         catch_internal_checkpoint
+CATCH_INTERNAL_CHECKPOINT_TYPE:         pnc4
+
+CATCHCN_INTERNAL_RESTART_FILE:            catchcn_internal_rst
+CATCHCN_INTERNAL_RESTART_TYPE:            pnc4
+CATCHCN_INTERNAL_CHECKPOINT_FILE:         catchcn_internal_checkpoint
+CATCHCN_INTERNAL_CHECKPOINT_TYPE:         pnc4
+
+MOIST_INTERNAL_RESTART_FILE:            moist_internal_rst
+MOIST_INTERNAL_RESTART_TYPE:            pnc4
+MOIST_INTERNAL_CHECKPOINT_FILE:         moist_internal_checkpoint
+MOIST_INTERNAL_CHECKPOINT_TYPE:         pnc4
+
+
+# Boot-Strapable AGCM Model Restart Files
+# ---------------------------------------
+MOIST_IMPORT_RESTART_FILE:              moist_import_rst
+MOIST_IMPORT_RESTART_TYPE:              pnc4
+MOIST_IMPORT_CHECKPOINT_FILE:           moist_import_checkpoint
+MOIST_IMPORT_CHECKPOINT_TYPE:           pnc4
+
+SURFACE_IMPORT_RESTART_FILE:            surf_import_rst
+SURFACE_IMPORT_RESTART_TYPE:            pnc4
+SURFACE_IMPORT_CHECKPOINT_FILE:         surf_import_checkpoint
+SURFACE_IMPORT_CHECKPOINT_TYPE:         pnc4
+
+SOLAR_INTERNAL_RESTART_FILE:            solar_internal_rst
+SOLAR_INTERNAL_RESTART_TYPE:            pnc4
+SOLAR_INTERNAL_CHECKPOINT_FILE:         solar_internal_checkpoint
+SOLAR_INTERNAL_CHECKPOINT_TYPE:         pnc4
+
+IRRAD_INTERNAL_RESTART_FILE:            irrad_internal_rst
+IRRAD_INTERNAL_RESTART_TYPE:            pnc4
+IRRAD_INTERNAL_CHECKPOINT_FILE:         irrad_internal_checkpoint
+IRRAD_INTERNAL_CHECKPOINT_TYPE:         pnc4
+
+TURBULENCE_INTERNAL_RESTART_FILE:       turb_internal_rst
+TURBULENCE_INTERNAL_RESTART_TYPE:       pnc4
+TURBULENCE_INTERNAL_CHECKPOINT_FILE:    turb_internal_checkpoint
+TURBULENCE_INTERNAL_CHECKPOINT_TYPE:    pnc4
+
+TURBULENCE_IMPORT_RESTART_FILE:         turb_import_rst
+TURBULENCE_IMPORT_RESTART_TYPE:         pnc4
+TURBULENCE_IMPORT_CHECKPOINT_FILE:      turb_import_checkpoint
+TURBULENCE_IMPORT_CHECKPOINT_TYPE:      pnc4
+
+PCHEM_INTERNAL_RESTART_FILE:            pchem_internal_rst
+PCHEM_INTERNAL_RESTART_TYPE:            pnc4
+PCHEM_INTERNAL_CHECKPOINT_FILE:         pchem_internal_checkpoint
+PCHEM_INTERNAL_CHECKPOINT_TYPE:         pnc4
+
+#H2O_INTERNAL_RESTART_FILE:              h2o_internal_rst
+#H2O_INTERNAL_RESTART_TYPE:              pnc4
+#H2O_INTERNAL_CHECKPOINT_FILE:           h2o_internal_checkpoint
+#H2O_INTERNAL_CHECKPOINT_TYPE:           pnc4
+
+# Chemistry/AEROSOL Model Restart Files
+# -------------------------------------
+GOCART_INTERNAL_RESTART_FILE:           gocart_internal_rst
+GOCART_INTERNAL_RESTART_TYPE:           pnc4
+GOCART_INTERNAL_CHECKPOINT_FILE:        gocart_internal_checkpoint
+GOCART_INTERNAL_CHECKPOINT_TYPE:        pnc4
+
+GOCART.data_INTERNAL_RESTART_FILE:      gocartdata_internal_rst
+GOCART.data_INTERNAL_RESTART_TYPE:      pnc4
+GOCART.data_INTERNAL_CHECKPOINT_FILE:   gocartdata_internal_checkpoint
+GOCART.data_INTERNAL_CHECKPOINT_TYPE:   pnc4
+
+#CARMA_INTERNAL_RESTART_FILE:            carma_internal_rst
+#CARMA_INTERNAL_RESTART_TYPE:            pnc4
+#CARMA_INTERNAL_CHECKPOINT_FILE:         carma_internal_checkpoint
+#CARMA_INTERNAL_CHECKPOINT_TYPE:         pnc4
+
+#STRATCHEM_INTERNAL_RESTART_FILE:        stratchem_internal_rst
+#STRATCHEM_INTERNAL_RESTART_TYPE:        pnc4
+#STRATCHEM_INTERNAL_CHECKPOINT_FILE:     stratchem_internal_checkpoint
+#STRATCHEM_INTERNAL_CHECKPOINT_TYPE:     pnc4
+
+#STRATCHEM_IMPORT_RESTART_FILE:          stratchem_import_rst
+#STRATCHEM_IMPORT_RESTART_TYPE:          pnc4
+#STRATCHEM_IMPORT_CHECKPOINT_FILE:       stratchem_import_checkpoint
+#STRATCHEM_IMPORT_CHECKPOINT_TYPE:       pnc4
+
+#GMICHEM_INTERNAL_RESTART_FILE:          gmichem_internal_rst
+#GMICHEM_INTERNAL_RESTART_TYPE:          pnc4
+#GMICHEM_INTERNAL_CHECKPOINT_FILE:       gmichem_internal_checkpoint
+#GMICHEM_INTERNAL_CHECKPOINT_TYPE:       pnc4
+
+#GMICHEM_IMPORT_RESTART_FILE:            gmichem_import_rst
+#GMICHEM_IMPORT_RESTART_TYPE:            pnc4
+#GMICHEM_IMPORT_CHECKPOINT_FILE:         gmichem_import_checkpoint
+#GMICHEM_IMPORT_CHECKPOINT_TYPE:         pnc4
+
+#MAM_INTERNAL_RESTART_FILE:              mam_internal_rst
+#MAM_INTERNAL_RESTART_TYPE:              pnc4
+#MAM_INTERNAL_CHECKPOINT_FILE:           mam_internal_checkpoint
+#MAM_INTERNAL_CHECKPOINT_TYPE:           pnc4
+
+GEOSACHEM_INTERNAL_RESTART_FILE:        geosachem_internal_rst
+GEOSACHEM_INTERNAL_RESTART_TYPE:        pnc4
+GEOSACHEM_INTERNAL_CHECKPOINT_FILE:     geosachem_internal_checkpoint
+GEOSACHEM_INTERNAL_CHECKPOINT_TYPE:     pnc4
+
+TR_INTERNAL_RESTART_FILE:               tr_internal_rst
+TR_INTERNAL_RESTART_TYPE:               pnc4
+TR_INTERNAL_CHECKPOINT_FILE:            tr_internal_checkpoint
+TR_INTERNAL_CHECKPOINT_TYPE:            pnc4
+
+TR_IMPORT_RESTART_FILE:                 tr_import_rst
+TR_IMPORT_RESTART_TYPE:                 pnc4
+TR_IMPORT_CHECKPOINT_FILE:              tr_import_checkpoint
+TR_IMPORT_CHECKPOINT_TYPE:              pnc4
+
+
+# OCEAN Model Restart Files
+# -------------------------
+SALTWATER_INTERNAL_RESTART_FILE:        saltwater_internal_rst
+SALTWATER_INTERNAL_RESTART_TYPE:        pnc4
+SALTWATER_INTERNAL_CHECKPOINT_FILE:     saltwater_internal_checkpoint
+SALTWATER_INTERNAL_CHECKPOINT_TYPE:     pnc4
+
+SALTWATER_IMPORT_RESTART_FILE:          saltwater_import_rst
+SALTWATER_IMPORT_RESTART_TYPE:          pnc4
+SALTWATER_IMPORT_CHECKPOINT_FILE:       saltwater_import_checkpoint
+SALTWATER_IMPORT_CHECKPOINT_TYPE:       pnc4
+
+#SEAICE_IMPORT_RESTART_FILE:             seaice_import_rst
+#SEAICE_IMPORT_RESTART_TYPE:             pnc4
+#SEAICE_IMPORT_CHECKPOINT_FILE:          seaice_import_checkpoint
+#SEAICE_IMPORT_CHECKPOINT_TYPE:          pnc4
+
+#SEAICE_INTERNAL_RESTART_FILE:           seaice_internal_rst
+#SEAICE_INTERNAL_RESTART_TYPE:           pnc4
+#SEAICE_INTERNAL_CHECKPOINT_FILE:        seaice_internal_checkpoint
+#SEAICE_INTERNAL_CHECKPOINT_TYPE:        pnc4
+
+ORAD_IMPORT_RESTART_FILE:               orad_import_rst
+ORAD_IMPORT_RESTART_TYPE:               pnc4
+ORAD_IMPORT_CHECKPOINT_FILE:            orad_import_checkpoint
+ORAD_IMPORT_CHECKPOINT_TYPE:            pnc4
+
+
+# Boundary Datasets
+# -----------------
+TOPO_MEAN_FILE:     topo_dynave.data
+TOPO_GWDVAR_FILE:   topo_gwdvar.data
+TOPO_TRBVAR_FILE:   topo_trbvar.data
+
+LAI_FILE:                   lai.data
+GREEN_FILE:               green.data
+TILING_FILE:                tile.bin 
+VISDF_FILE:                visdf.dat
+NIRDF_FILE:                nirdf.dat
+
+VEGDYN_INTERNAL_RESTART_FILE:  vegdyn.data
+VEGDYN_INTERNAL_RESTART_TYPE:  binary
+
+KPAR_FILE: SEAWIFS_KPAR_mon_clim.data
+
+
+# AeroChem Environment
+# --------------------
+     OX_RELAXTIME: 259200.    # Standard Options:  GCM: 259200., DAS: 0.000
+    CH4_RELAXTIME: 259200.
+    N2O_RELAXTIME: 259200.
+  CFC11_RELAXTIME: 259200.
+  CFC12_RELAXTIME: 259200.
+ HCFC22_RELAXTIME: 259200.
+    H2O_RELAXTIME: 259200.
+    OX_FRIENDLIES: ANALYSIS:DYNAMICS:TURBULENCE:MOIST
+   CH4_FRIENDLIES: DYNAMICS:TURBULENCE:MOIST
+   N2O_FRIENDLIES: DYNAMICS:TURBULENCE:MOIST
+ CFC11_FRIENDLIES: DYNAMICS:TURBULENCE:MOIST
+ CFC12_FRIENDLIES: DYNAMICS:TURBULENCE:MOIST
+   H2O_FRIENDLIES: DYNAMICS:TURBULENCE:MOIST
+HCFC22_FRIENDLIES: DYNAMICS:TURBULENCE:MOIST
+       pchem_clim: species.data
+       pchem_clim_years: 2
+
+# Age-of-Air Parameters
+# ---------------------
+#AOA_FRIENDLIES: DYNAMICS:TURBULENCE:MOIST
+
+
+# GOCART broadband aerosol optics tables
+# -----------------------------------------------------
+DU_OPTICS: ExtData/g5chem/x/opticsBands_DU.v15_3.nc
+SS_OPTICS: ExtData/g5chem/x/opticsBands_SS.v3_3.nc
+SU_OPTICS: ExtData/g5chem/x/opticsBands_SU.v1_3.nc
+OC_OPTICS: ExtData/g5chem/x/opticsBands_OC.v1_3.nc
+BC_OPTICS: ExtData/g5chem/x/opticsBands_BC.v1_3.nc
+NI_OPTICS: ExtData/g5chem/x/opticsBands_NI.v2_5.nc
+NUM_BANDS: 18
+
+DIURNAL_BIOMASS_BURNING: yes
+
+       RATS_PROVIDER: PCHEM   # options: PCHEM, GMICHEM, STRATCHEM (Radiatively active tracers)
+       AERO_PROVIDER: GOCART.data   # options: GOCART.data, GOCART, MAM, None  (Radiatively active aerosols)
+ANALYSIS_OX_PROVIDER: PCHEM   # options: PCHEM, GMICHEM, STRATCHEM, GOCART
+
+
+# Flag for real-time forecasts (persisted SST) IS_FCST: 1 (AMIP-Style Default: 0)
+# -------------------------------------------------------------------------------
+    IS_FCST: 0
+
+
+# Time step for aerosol assimilation (GAAS)
+# -----------------------------------------
+  GAAS_DT: 10800 # 3-hourly
+
+# Time step for Runoff Routing Model (RRM_RUN_DT)
+# -----------------------------------------
+  RRM_RUN_DT: 3600 # 1-hourly
+
+# DATAOCEAN Parameters for AMIP-Style Run
+# ----------------------------------------
+DATA_FRT_FILE: fraci.data
+MIN_SEAICE_DEPTH: 0.07
+MAX_SEAICE_DEPTH: 0.07
+
+
+# To compute skin SST over water (or to use SST Analysis Increment) set values to 1
+# ---------------------------------------------------------------------------------
+USE_SKIN_LAYER: 0
+    ANALYZE_TS: 0
+MAX_WATER_DEPTH: 20.0
+MIN_WATER_DEPTH: 0.5
+
+# Model Tuning Parameters (For CMIP5 recommended SOLAR_CONSTANT and CO2 values, use -1)
+# -------------------------------------------------------------------------------------
+SOLAR_CONSTANT: -1
+CO2:            -1
+
+
+# Flags for SATSIM Output
+# -----------------------
+USE_SATSIM:       0
+USE_SATSIM_ISCCP: 0
+USE_SATSIM_MODIS: 0
+USE_SATSIM_RADAR: 0
+USE_SATSIM_LIDAR: 0
+USE_SATSIM_MISR:  0
+
+
+# Section for MOM4
+# ----------------
+MOM_DT: 900
+MOM_SKINH: 2.0
+MOM_TAU_MIN: 60.0
+MOM_TAU_MAX: 86400.0
+MOM_TAU_FACTOR: 1.0
+ML_PENDEPTH: 15.0
+
+# Section for MOM4
+# ----------------
+MIT_DT: 900
+MIT_SKINH: 2.0
+MIT_TAU_MIN: 60.0
+MIT_TAU_MAX: 86400.0
+MIT_TAU_FACTOR: 1.0
+
+# Section for CICE Thermodynamics
+# -------------------------------
+USE_CICE_Thermo: 1
+CICE_N_LAYERS: 4
+CICE_N_CATEGORIES: 5
+CICE_AH_MAX: 0.3
+#CICE_COUPLE_OCEAN: 48
+
+# Section for CICE Dynamics
+# -------------------------
+#CICE_NPROCS: 24
+#CICE_DT: 900
+#CICE_GRID: grid_cice.bin
+#CICE_KMT: kmt_cice.bin
+#CICE_MU_RDG: 3.0
+#CICE_EVP_DAMPING: 1
+

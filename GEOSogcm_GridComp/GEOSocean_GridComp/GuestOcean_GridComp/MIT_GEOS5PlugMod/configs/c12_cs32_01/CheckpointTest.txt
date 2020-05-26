@@ -1,0 +1,34 @@
+Instructions for carrying out 1+1=2 checkpoint test on Lubuntu:
+
+1. Follow instructions in Heracles-5_4onLubuntu.txt up to
+   but excluding: ./gcm_run.j |&  tee gcm_run.out
+
+2. Modify JOB_SGMT in CAP.rc to 2 hours
+   JOB_SGMT:     00000000 020000
+
+3. Run the 2-hour job:
+   ./gcm_run.j |&  tee gcm_run.out
+
+4. Save GEOS and MITgcm pickup files for later comparison:
+   cp scratch/fvcore_internal_checkpoint fvcore_internal_checkpoint_6hr
+   cp scratch/mitocean_run/pickup.ckptA.data pickup.ckptA.data_6hr
+   cp scratch/mitocean_run/pickup_seaice.ckptA.data pickup_seaice.ckptA.data_6hr
+
+5. Comment out lines containing "qsub" and "gcm_run.j"
+   and line containing "exit" after third RUN_CMD in gcm_run.j
+
+6. Modify JOB_SGMT in CAP.rc to 1 hours
+   JOB_SGMT:     00000000 010000
+
+7. Run the first hour:
+   ./gcm_run.j |&  tee gcm_run.out
+
+8. Search for third RUN_CMD in gcm_run.j and reintroduce the "exit" command
+
+9. Run the second hour:
+   ./gcm_run.j |&  tee gcm_run.out
+
+10. Compare the new pickup files with the old ones:
+   cmp scratch/fvcore_internal_checkpoint fvcore_internal_checkpoint_6hr
+   cmp scratch/mitocean_run/pickup.ckptA.data pickup.ckptA.data_6hr
+   cmp scratch/mitocean_run/pickup_seaice.ckptA.data pickup_seaice.ckptA.data_6hr
