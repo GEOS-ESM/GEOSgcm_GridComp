@@ -2518,25 +2518,26 @@ contains
 
      real, intent(in)            :: z, p, hl, qt, hl2, qt2, hlqt
      real, intent(inout)         :: T, ql, ac
-     real, intent(out), optional :: A, B, qs                                                                                                            
-     real :: dqs, fac_cond, Tl, s, sigma_s, exner, Q
+     real, intent(out), optional :: A, B, qs
+
+     real             :: dqs, fac_cond, Tl, exner, Q
+     double precision :: s, sigma_s
 
      exner    = (p*1.E-5)**(MAPL_RDRY/MAPL_CP) ! Exner function
      fac_cond = MAPL_ALHL/MAPL_CP              ! lv/cp 
 
-     Tl = hl - (MAPL_GRAV/MAPL_CP)*z
-!     Tl = T - fac_cond*ql        ! liquid water temperature                   
-     qs = MAPL_EQsat(Tl, p, dqs) ! saturation specific humidity 
-     s  = qt - qs                ! saturation excess/deficit 
+     Tl = hl - (MAPL_GRAV/MAPL_CP)*z ! liquid water temperature                   
+     qs = MAPL_EQsat(Tl, p, dqs)     ! saturation specific humidity 
+     s  = qt - qs                    ! saturation excess/deficit 
 
      A = 1./( 1. + fac_cond*dqs )
      B = a*exner*dqs
 
-     sigma_s = sqrt( A**2.*qt2 - 2*A*B*(hlqt/exner) + B**2.*(hl2/exner**2.) )
+     sigma_s = max( 1.d-10, sqrt( A**2.*qt2 - 2*A*B*(hlqt/exner) + B**2.*(hl2/exner**2.) ) )
 
      ! Diagnose cloud properties 
-     if (sigma_s > 0.) then
-        Q = A*(qt - qs)/sigma_s
+     if (sigma_s > 0.d0) then
+        Q = A*( s/sigma_s )
 
         ac = 0.5*( 1. + erf(Q/sqrt(2.)) )
         ql = sigma_s*( ac*Q + exp(-0.5*Q**2.)/sqrt(2.*MAPL_PI) )

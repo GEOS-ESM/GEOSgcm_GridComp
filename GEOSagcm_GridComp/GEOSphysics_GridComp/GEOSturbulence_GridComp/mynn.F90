@@ -26,9 +26,9 @@ real, parameter :: C5     = 0.2
 
 double precision, parameter :: C3 = 0.34d0
 
-real, parameter :: A1     = B1*( 1. - 3.*gamma1 )/6.
+real, parameter :: A1 = B1*( 1. - 3.*gamma1 )/6.
 
-double precision, parameter :: C1     = gamma1 - 1./(3.*A1*B1**onethird)
+double precision, parameter :: C1 = gamma1 - 1./(3.*A1*B1**onethird)
 
 real, parameter :: A2     = A1*( gamma1 - C1 )/(gamma1*Pr)
 real, parameter :: gamma2 = B2/B1*( 1. - C3 ) + 2.*A1/B1*( 3. - 2.*C2 )
@@ -42,11 +42,10 @@ double precision, parameter :: e5c = 6.*A1**2.
 real, parameter :: eMc = 3.*A1*( 1. - C3 )
 real, parameter :: eHc = 3.*A2*( 1. - C3 )
 
+real, parameter :: F1 = B1*( gamma1 - C1 ) + 2.*A1*( 3. - 2.*C2 ) + 3.*A2*( 1. - C2 )*( 1. - C5 ) ! NN09 (A6)
+real, parameter :: F2 = B1*( gamma1 + gamma2 ) - 3.*A1*( 1. - C2 )                                ! NN09 (A7)
+
 double precision, parameter :: Rfc = gamma1/( gamma1 + gamma2 )                                    ! NN09 (A10)
-
-real, parameter :: F1  = B1*( gamma1 - C1 ) + 2.*A1*( 3. - 2.*C2 ) + 3.*A2*( 1. - C2 )*( 1. - C5 ) ! NN09 (A6)
-real, parameter :: F2  = B1*( gamma1 + gamma2 ) - 3.*A1*( 1. - C2 )                                ! NN09 (A7)
-
 double precision, parameter :: Rf1 = B1*( gamma1 - C1 )/F1                                         ! NN09 (A8)
 double precision, parameter :: Rf2 = B1*gamma1/F2                                                  ! NN09 (A9)
 
