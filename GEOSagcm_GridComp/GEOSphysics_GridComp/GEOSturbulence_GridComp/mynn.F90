@@ -7,49 +7,55 @@ use MAPL_ConstantsMod, only: MAPL_GRAV, MAPL_CP, MAPL_ALHL, MAPL_RGAS, MAPL_RVAP
 
 implicit none
 
-double precision, parameter :: onethird  = 1./3.
-double precision, parameter :: twothirds = 2./3.
+real, parameter :: onethird  = 1./3.
+real, parameter :: twothirds = 2./3.
 
-double precision, parameter :: gocp  = MAPL_GRAV/MAPL_CP
-double precision, parameter :: lvocp = MAPL_ALHL/MAPL_CP
-double precision, parameter :: kappa = MAPL_RGAS/MAPL_CP
-double precision, parameter :: ep2   = MAPL_RVAP/MAPL_RGAS - 1.
+real, parameter :: gocp  = MAPL_GRAV/MAPL_CP
+real, parameter :: lvocp = MAPL_ALHL/MAPL_CP
+real, parameter :: kappa = MAPL_RGAS/MAPL_CP
+real, parameter :: ep2   = MAPL_RVAP/MAPL_RGAS - 1.
 
 ! MYNN constants 
-double precision, parameter :: Pr     = 0.74
-double precision, parameter :: gamma1 = 0.235
-double precision, parameter :: B1     = 24.
-double precision, parameter :: B2     = 15.
-double precision, parameter :: C2     = 0.729
-double precision, parameter :: C3     = 0.34
-double precision, parameter :: C4     = 0.
-double precision, parameter :: C5     = 0.2
+real, parameter :: Pr     = 0.74
+real, parameter :: gamma1 = 0.235
+real, parameter :: B1     = 24.
+real, parameter :: B2     = 15.
+real, parameter :: C2     = 0.729
+real, parameter :: C4     = 0.
+real, parameter :: C5     = 0.2
 
-double precision, parameter :: A1     = B1*( 1. - 3.*gamma1 )/6.
+double precision, parameter :: C3 = 0.34d0
+
+real, parameter :: A1     = B1*( 1. - 3.*gamma1 )/6.
+
 double precision, parameter :: C1     = gamma1 - 1./(3.*A1*B1**onethird)
-double precision, parameter :: A2     = A1*( gamma1 - C1 )/(gamma1*Pr)
-double precision, parameter :: gamma2 = B2/B1*( 1. - C3 ) + 2.*A1/B1*( 3. - 2.*C2 )
+
+real, parameter :: A2     = A1*( gamma1 - C1 )/(gamma1*Pr)
+real, parameter :: gamma2 = B2/B1*( 1. - C3 ) + 2.*A1/B1*( 3. - 2.*C2 )
 
 double precision, parameter :: e1c = 3.*A2*B2*( 1. - C3 )
 double precision, parameter :: e2c = 9.*A1*A2*( 1. - C2 )
 double precision, parameter :: e3c = 9.*A2**2.*( 1. - C2 )*( 1. - C5 )
 double precision, parameter :: e4c = 12.*A1*A2*( 1. - C2 )
 double precision, parameter :: e5c = 6.*A1**2.
-double precision, parameter :: eMc = 3.*A1*( 1. - C3 )
-double precision, parameter :: eHc = 3.*A2*( 1. - C3 )
 
-double precision, parameter :: Rfc = gamma1/( gamma1 + gamma2 )                                                ! NN09 (A10)
-double precision, parameter :: F1  = B1*( gamma1 - C1 ) + 2.*A1*( 3. - 2.*C2 ) + 3.*A2*( 1. - C2 )*( 1. - C5 ) ! NN09 (A6)
-double precision, parameter :: F2  = B1*( gamma1 + gamma2 ) - 3.*A1*( 1. - C2 )                                ! NN09 (A7)
-double precision, parameter :: Rf1 = B1*( gamma1 - C1 )/F1                                                     ! NN09 (A8)
-double precision, parameter :: Rf2 = B1*gamma1/F2                                                              ! NN09 (A9)
+real, parameter :: eMc = 3.*A1*( 1. - C3 )
+real, parameter :: eHc = 3.*A2*( 1. - C3 )
 
-double precision, parameter :: Smc = A1/A2*F1/F2 
-double precision, parameter :: Shc = 3.*A2*( gamma1 + gamma2 )
+double precision, parameter :: Rfc = gamma1/( gamma1 + gamma2 )                                    ! NN09 (A10)
 
-double precision, parameter :: Ri1 = 0.5/Smc             ! NN09 (A12)
-double precision, parameter :: Ri2 = Rf1*Smc             ! NN09 (A13)
-double precision, parameter :: Ri3 = 4.*Rf2*Smc - 2.*Ri2 ! NN09 (A14)
+real, parameter :: F1  = B1*( gamma1 - C1 ) + 2.*A1*( 3. - 2.*C2 ) + 3.*A2*( 1. - C2 )*( 1. - C5 ) ! NN09 (A6)
+real, parameter :: F2  = B1*( gamma1 + gamma2 ) - 3.*A1*( 1. - C2 )                                ! NN09 (A7)
+
+double precision, parameter :: Rf1 = B1*( gamma1 - C1 )/F1                                         ! NN09 (A8)
+double precision, parameter :: Rf2 = B1*gamma1/F2                                                  ! NN09 (A9)
+
+real, parameter :: SMc = A1/A2*F1/F2 
+real, parameter :: SHc = 3.*A2*( gamma1 + gamma2 )
+
+double precision, parameter :: Ri1 = 0.5/SMc             ! NN09 (A12)
+double precision, parameter :: Ri2 = Rf1*SMc             ! NN09 (A13)
+double precision, parameter :: Ri3 = 4.*Rf2*SMc - 2.*Ri2 ! NN09 (A14)
 double precision, parameter :: Ri4 = Ri2**2.
 
 ! Test
@@ -94,23 +100,28 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
   integer :: i, j, k, kp1, km1
 
-  double precision :: GH, GM, dhldz, dqtdz, dqldz, idzlo, ifac, iexner, &
-                      Sm2, Sh2, Sm, Sh, Cw_low, Cw_high, wrk1, &
-                      Cw_25, whl, wqt, Ri, Rf, &
-                      whl_explicit, wqt_explicit, wb_explicit, Lq, wql, &
-                      ac_half, T_half, ql_half, Tl,&
-                      q2, q22, EM, EH, Phi1, Phi2, Phi3, Phi4, Phi5, &
-                      D_25, D_p, wden, qdiv, qdiv2, L2, L2GM, L2GH, &
-                      hl2_25, qt2_25, hlqt_25, hlthv, qtthv, thv2, &
-                      hlthv_25, qtthv_25, thv2_25, hlthv_p, qtthv_p, thv2_p, &
-                      we, we_up, idzle, A_half, B_half, goth00, goth002
+  double precision :: GH, GM, Ri, Rf, q22, goth002, &
+                      q2, EM, EH, Phi1, Phi2, Phi3, Phi4, Phi5, &
+                      D_25, D_p, wden, qdiv, qdiv2, L2, L2GM, L2GH
 
-  double precision, dimension(IM,JM)      :: wb_surf, LMO, w_star
-  real, dimension(IM,JM,LM)               :: hl
-  double precision, dimension(IM,JM,0:LM) :: S2, N2, zeta, A, B, L, q, w2e
+  real :: dhldz, dqtdz, dqldz, idzlo, ifac, iexner, &
+          SM2, SH2, SM, SH, Cw_low, Cw_high, wrk1, &
+          Cw_25, whl, wqt, &
+          whl_explicit, wqt_explicit, wb_explicit, Lq, wql, &
+          ac_half, T_half, ql_half, Tl,&
+          hl2_25, qt2_25, hlqt_25, hlthv, qtthv, thv2, &
+          hlthv_25, qtthv_25, thv2_25, hlthv_p, qtthv_p, thv2_p, &
+          we, we_up, idzle, A_half, B_half, goth00
+
+  real, dimension(IM,JM)      :: wb_surf, LMO
+  real, dimension(IM,JM,LM)   :: hl
+  real, dimension(IM,JM,0:LM) :: S2, N2, zeta, A, B, w2e
+
+  double precision, dimension(IM,JM)      :: w_star
+  double precision, dimension(IM,JM,0:LM) :: L, q
 
   ! For debugging
-  double precision :: w2_test, tau_test, wb_test
+  real :: w2_test, tau_test, wb_test
 
   goth00  = MAPL_GRAV/th00
   goth002 = goth00**2.
@@ -124,7 +135,8 @@ subroutine run_mynn(IM, JM, LM, &                                               
      end do
   end do
 
-  q = 0.
+  q = 0.d0
+
   N2 = 0.
   S2 = 0.
 
@@ -208,22 +220,22 @@ subroutine run_mynn(IM, JM, LM, &                                               
         GM   = S2(i,j,k)  ! "    "  "        GM "       "  "
         L2GH = L2*GH
         L2GM = L2*GM
-        q2   = q(i,j,k)**2.
+        q2   = q(i,j,k)**2.d0
 
         ! Compute Level-2 closure quantities
         Ri  = -GH/max( GM, 1.d-10 )
-        Rf  = min( Rfc, Ri1*( Ri + Ri2 - sqrt( Ri**2. - Ri3*Ri + Ri4 ) ) ) ! NN09 (A11)
-        Sh2 = Shc*( Rfc - Rf )/( 1. - Rf )                                 ! NN09 (A4)
-        Sm2 = Smc*( Rf1 - Rf )/( Rf2 - Rf )*Sh2                            ! NN09 (A3)
-        q22 = B1*L2*( Sm2*GM + Sh2*GH )                                    ! NN09 (A1))
+        Rf  = min( Rfc, Ri1*( Ri + Ri2 - sqrt( Ri**2.d0 - Ri3*Ri + Ri4 ) ) ) ! NN09 (A11)
+        SH2 = SHc*( ( Rfc - Rf )/( 1.d0 - Rf ) )                             ! NN09 (A4)
+        SM2 = SMc*( ( Rf1 - Rf )/( Rf2 - Rf ) )*SH2                          ! NN09 (A3)
+        q22 = B1*L2*( SM2*GM + SH2*GH )                                      ! NN09 (A1))
 
         ! Compute (1-alpha) and (1-alpha)^2 factors from HL88
         if (q2 < q22) then
            qdiv2 = q2/q22
            qdiv  = sqrt(qdiv2)
         else
-           qdiv2 = 1.
-           qdiv  = 1.
+           qdiv2 = 1.d0
+           qdiv  = 1.d0
         end if
 
         ! Compute useful intermediate quantities
@@ -236,11 +248,11 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
         ! Compute stability functions
         if (q2 < q22) then
-           Sm = qdiv*Sm2
-           Sh = qdiv*Sh2
+           SM = qdiv*SM2
+           SH = qdiv*SH2
         else
-           Sm = q2*A1*( Phi3 - 3.*C1*Phi4 )/D_25 ! NN09 (27)
-           Sh = q2*A2*( Phi2 + 3.*C1*Phi5 )/D_25 ! NN09 (28)
+           SM = q2*A1*( ( Phi3 - 3.d0*C1*Phi4 )/D_25 ) ! NN09 (27)
+           SH = q2*A2*( ( Phi2 + 3.d0*C1*Phi5 )/D_25 ) ! NN09 (28)
         end if
 
         !
@@ -250,9 +262,9 @@ subroutine run_mynn(IM, JM, LM, &                                               
 !        itau(i,j,k) = sqrt(2.*tke(i,j,k))/L(i,j,k)
 
         ! Compute thermodyanamic (co-)variances from level-2.5 closure
-        hl2_25  = qdiv*B2*L2*Sh*dhldz**2.
-        qt2_25  = qdiv*B2*L2*Sh*dqtdz**2.
-        hlqt_25 = qdiv*B2*L2*Sh*dhldz*dqtdz
+        hl2_25  = qdiv*B2*L2*SH*dhldz**2.
+        qt2_25  = qdiv*B2*L2*SH*dqtdz**2.
+        hlqt_25 = qdiv*B2*L2*SH*dhldz*dqtdz
 
         ! Compute counter-gradient fluxes of conserved variables
         if ( MYNN_LEVEL == 2 ) then
@@ -269,7 +281,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
            ! Compute buoyancy (co-)variances
            hlthv_25 = Beta_hl(i,j,k)*hl2_25  + Beta_qt(i,j,k)*hlqt_25
            qtthv_25 = Beta_hl(i,j,k)*hlqt_25 + Beta_qt(i,j,k)*qt2_25
-           thv2_25  = max(0.d0, Beta_hl(i,j,k)*hlthv_25 + Beta_qt(i,j,k)*qtthv_25)
+           thv2_25  = max(0., Beta_hl(i,j,k)*hlthv_25 + Beta_qt(i,j,k)*qtthv_25)
 
            hlthv = Beta_hl(i,j,k)*hl2(i,j,k)  + Beta_qt(i,j,k)*hlqt(i,j,k)
            qtthv = Beta_hl(i,j,k)*hlqt(i,j,k) + Beta_qt(i,j,k)*qt2(i,j,k)
@@ -283,7 +295,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
            !
            Phi2 = q2 - e2c*L2GH*qdiv2                                                  ! NN09 (34)
            D_p  = max( 1.d-20, Phi2*( Phi4 - Phi1 + q2 ) + Phi5*( Phi3 - Phi1 + q2 ) ) ! NN09 (32)
-           EH   = qdiv*eHc*( Phi2 + Phi5 )/D_p                                         ! NN09 (48)
+           EH   = qdiv*eHc*( ( Phi2 + Phi5 )/D_p )                                     ! NN09 (48)
 
            ! Compute counter-gradient flux of conserved variables
            if (WRF_CG_FLAG == 0) then
@@ -291,15 +303,15 @@ subroutine run_mynn(IM, JM, LM, &                                               
               qtthv_p = qtthv - qtthv_25
            else
               if (hlthv_25 >= 0.) then
-                 hlthv_p = max( 0.d0, hlthv - hlthv_25 )
+                 hlthv_p = max( 0., hlthv - hlthv_25 )
               else
-                 hlthv_p = min( 0.d0, hlthv - hlthv_25 )
+                 hlthv_p = min( 0., hlthv - hlthv_25 )
               end if
 
               if (qtthv_25 >= 0.) then
-                 qtthv_p = max( 0.d0, qtthv - qtthv_25 )
+                 qtthv_p = max( 0., qtthv - qtthv_25 )
               else
-                 qtthv_p = min( 0.d0, qtthv - qtthv_25 )
+                 qtthv_p = min( 0., qtthv - qtthv_25 )
               end if
            end if
            whl_explicit = Lq*EH*goth00*hlthv_p
@@ -307,14 +319,14 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
            ! Compute counter-gradient buoyancy flux, but
            ! restrict anisotropy by restricting buoyancy variance (NN09 Section 2.7)
-           thv2_p = max( 0.d0, Beta_hl(i,j,k)*hlthv_p + Beta_qt(i,j,k)*qtthv_p )
-           wden = ( 1. - C3 )*goth002*L2*qdiv2*( e4c*Phi2 - e3c*Phi5 )
-           if (wden /= 0.) then
-              Cw_25   = Phi1*( Phi2 + 3.*C1*Phi5 )/(3.*D_25) ! NN09 (59)
-              Cw_low  = q2*( 0.12 - Cw_25 )*D_p/wden
-              Cw_high = q2*( 0.76 - Cw_25 )*D_p/wden
+           thv2_p = max( 0., Beta_hl(i,j,k)*hlthv_p + Beta_qt(i,j,k)*qtthv_p )
+           wden = ( 1.d0 - C3 )*goth002*L2*qdiv2*( e4c*Phi2 - e3c*Phi5 )
+           if ( wden /= 0.d0 ) then
+              Cw_25   = Phi1*( Phi2 + 3.d0*C1*Phi5 )/(3.d0*D_25) ! NN09 (59)
+              Cw_low  = q2*( 0.12 - Cw_25 )*( D_p/wden )
+              Cw_high = q2*( 0.76 - Cw_25 )*( D_p/wden )
 
-              if (wden > 0.) then
+              if ( wden > 0.d0 ) then
                  thv2_p = min( max( thv2_p, Cw_low ), Cw_high )
               else
                  thv2_p = max( min( thv2_p, Cw_low ), Cw_high )
@@ -323,13 +335,13 @@ subroutine run_mynn(IM, JM, LM, &                                               
            wb_explicit = Lq*EH*goth002*thv2_p
 
            ! Compute level-3 momentum stability function
-           EM = qdiv*eMc*( Phi3 - Phi4 )/(D_p*L2GH) ! NN09 (47)
-           Sm = Sm + EM*L2*goth002*thv2_p
+           EM = qdiv*eMc*( ( Phi3 - Phi4 )/(D_p*L2GH) ) ! NN09 (47)
+           SM = SM + EM*L2*goth002*thv2_p
         end if
 
         ! Compute turbulent diffusivities
-        Km(i,j,k) = Lq*Sm
-        Kh(i,j,k) = Lq*Sh
+        Km(i,j,k) = Lq*SM
+        Kh(i,j,k) = Lq*SH
 
         !
         if ( DOMF /= 0. .and. CONSISTENT_TYPE == 0 ) then
@@ -412,7 +424,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
                       !hlqt(i,j,k)/(sqrt(hl2(i,j,k))*sqrt(qt2(i,j,k)))
                       !hlqt(i,j,k), &
                       !real(Lq, 4), &
-                      !real(Sh, 4), &
+                      !real(SH, 4), &
         end if
      end do
      end do
@@ -449,45 +461,46 @@ subroutine mynn_length(IM, JM, LM, wb_surf, zle, zlo, q, N2, LMO, L, w_star)
 
   use MAPL_ConstantsMod, only: MAPL_KARMAN
 
-  double precision, parameter :: alpha1 = 0.23
-  double precision, parameter :: alpha2 = 1.
-  double precision, parameter :: alpha3 = 5.
-  double precision, parameter :: alpha4 = 100.
+  double precision, parameter :: alpha1 = 0.23d0
+  double precision, parameter :: alpha2 = 1.d0
+  double precision, parameter :: alpha3 = 5.d0
+  real, parameter             :: alpha4 = 100.
 
-  double precision, parameter :: qmin = 0.
-  double precision, parameter :: zmax = 1.
+  real, parameter :: qmin = 0.
+  real, parameter :: zmax = 1.
 
-  double precision, parameter :: cns = 2.7
+  real, parameter :: cns = 2.7
 
   ! WRF-MYNN parameters
-  double precision, parameter :: minzi = 300.
-  double precision, parameter :: maxdz = 750.
-  double precision, parameter :: mindz = 300.
-  double precision, parameter :: zi2   = 10000.
-  double precision, parameter :: h1    = min( maxdz, max( mindz, 0.3*zi2 ) )
-!  double precision, parameter :: h2    = 0.5*h1
+  real, parameter :: minzi = 300.
+  real, parameter :: maxdz = 750.
+  real, parameter :: mindz = 300.
+  real, parameter :: zi2   = 10000.
+  real, parameter :: h1    = min( maxdz, max( mindz, 0.3*zi2 ) )
+!  real, parameter :: h2    = 0.5*h1
 
-  double precision, parameter :: zi2ph1 = zi2 + h1
+  real, parameter :: zi2ph1 = zi2 + h1
 
 
   integer, intent(in)                                  :: IM, JM, LM
-  double precision, dimension(IM,JM), intent(in)       :: wb_surf, LMO
+  real, dimension(IM,JM), intent(in)                   :: wb_surf, LMO
   real, dimension(IM,JM,LM), intent(in)                :: zlo
-  real, dimension(IM,JM,0:LM), intent(in)              :: zle
-  double precision, dimension(IM,JM,0:LM), intent(in)  :: q, N2
+  real, dimension(IM,JM,0:LM), intent(in)              :: zle, N2
+  double precision, dimension(IM,JM,0:LM), intent(in)  :: q
   double precision, dimension(IM,JM), intent(out)      :: w_star
   double precision, dimension(IM,JM,0:LM), intent(out) :: L
 
   integer                            :: i, j, k, kk, kkm1
-  double precision                   :: qdz, LS, LB, LF, N, zeta
+  real                               :: qdz, zeta
+  double precision                   :: LS, LB, LF, N
   double precision, dimension(IM,JM) :: work1, work2, LT
 
   ! Test
 !  double precision :: x, LST, LS_test
 
   ! Compute integrals for turbulence length scale
-  work1(:,:) = 1.E-5
-  work2(:,:) = 1.E-5
+  work1(:,:) = 1.d-5
+  work2(:,:) = 1.d-5
   do k = 1,LM
      kk = LM - k + 1
 
@@ -507,7 +520,7 @@ subroutine mynn_length(IM, JM, LM, wb_surf, zle, zlo, q, N2, LMO, L, w_star)
   ! Compute turbulence length scale and CBL vertical velocity scale
   do j = 1,JM
   do i = 1,IM
-     LT(i,j) = alpha1*work1(i,j)/work2(i,j) ! NN09 (54)
+     LT(i,j)     = alpha1*( work1(i,j)/work2(i,j) ) ! NN09 (54)
      w_star(i,j) = ( max( 0.d0, wb_surf(i,j) )*LT(i,j) )**onethird
   end do
   end do
@@ -519,15 +532,6 @@ subroutine mynn_length(IM, JM, LM, wb_surf, zle, zlo, q, N2, LMO, L, w_star)
         ! Compute non-dimensional height
         zeta = zle(i,j,k)/LMO(i,j)
 
-        ! Compute surface length scale
-!        ! NN09 (53)
-!        if (zeta >= 1.) then
-!           LS = MAPL_KARMAN*zle(i,j,k)/3.7
-!        else if (zeta >= 0.) then
-!           LS = MAPL_KARMAN*zle(i,j,k)/( 1. + cns*zeta )
-!        else
-!           LS = MAPL_KARMAN*zle(i,j,k)*( 1. - alpha4*zeta )**0.2
-!        end if
         ! WRF MYNN version
         if (zeta > 0.) then
            LS = MAPL_KARMAN*zle(i,j,k)/( 1. + cns*min(zmax, zeta) )
@@ -536,38 +540,19 @@ subroutine mynn_length(IM, JM, LM, wb_surf, zle, zlo, q, N2, LMO, L, w_star)
         end if
         
         ! Compute buoyancy length scale
-        if (N2(i,j,k) > 0.) then
-           N = sqrt(N2(i,j,k))
-           
-!           ! NN09 (55)
-!           LF = alpha2*q(i,j,k)/N
-!           if (zeta >= 0.) then
-!              LB = LF
-!           else
-!              LB = ( alpha2*q(i,j,k) + alpha3*q(i,j,k)*sqrt(w_star(i,j)/(LT(i,j)*N)) )/N
-!           end if
+        if ( N2(i,j,k) > 0. ) then
+           N = sqrt( N2(i,j,k) )
+
            ! WRF MYNN version
-           LB = alpha2*q(i,j,k)/N*( 1. + alpha3/alpha2*sqrt(w_star(i,j)/(N*LT(i,j))) )
-           LF = alpha2*q(i,j,k)/N
+           LB = alpha2*( q(i,j,k)/N )*( 1.d0 + alpha3/alpha2*sqrt( w_star(i,j)/( N*LT(i,j) ) ) )
+           LF = alpha2*( q(i,j,k)/N )
         else
-           LB = 1.E+10
+           LB = 1.d+10
            LF = LB
         end if
-
-        ! Test
-!!$        LS_test = min( LS, LT(i,j) )
-!!$        x   = LT(i,j)/( LS_test + LT(i,j) )
-!!$        LST = 1./( x/LS_test + ( 1. - x )/LT(i,j) )
-!!$        if (N2(i,j,k) > 0.) then
-!!$           x        = LST/( LB + LST )
-!!$           L(i,j,k) = 1./( x/LB + ( 1. - x )/LST )
-!!$        else
-!!$           L(i,j,k) = LST
-!!$        end if
-!!$        write(*,*) real(L(i,j,k),4), real(LS,4), real(LT(i,j),4), real(LB,4)
         
         ! Harmonically average length scales
-        L(i,j,k) = min( LF, LB/( LB/LS + LB/LT(i,j) + 1. ) ) ! NN09 (52)
+        L(i,j,k) = min( LF, LB/( LB/LS + LB/LT(i,j) + 1.d0 ) ) ! NN09 (52)
      end do
      end do
   end do
@@ -592,10 +577,10 @@ subroutine implicit_M(IM, JM, LM, &
                                               ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf
   real, dimension(IM,JM,0:LM), intent(out) :: tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M
 
-  integer          :: i, j, k, kp1
-  double precision :: N2, S2, idzlo, dhldz, dqtdz, whl, wqt, whl_explicit, wqt_explicit, wb_explicit, goth00
+  integer :: i, j, k, kp1
 
-  double precision, dimension(IM,JM,LM) :: hl, qt
+  real                      :: N2, S2, idzlo, dhldz, dqtdz, whl, wqt, whl_explicit, wqt_explicit, wb_explicit, goth00
+  real, dimension(IM,JM,LM) :: hl, qt
 
   goth00 = MAPL_GRAV/th00
 
@@ -667,7 +652,7 @@ real, intent(out),dimension(IM,JM)      :: zi, gamma_ml, gamma_fa
 
 integer                   :: i, j, k, kflip
 real                      :: a, b, c, thlv_ml, thlv_fa, we, Ri, w_ml
-double precision          :: goth00
+real                      :: goth00
 logical, dimension(IM,JM) :: search_flag
 
 goth00 = MAPL_GRAV/th00
@@ -733,25 +718,25 @@ use MAPL_ConstantsMod, only: MAPL_KARMAN
 
 integer, parameter :: niter = 5
 
-double precision, parameter :: pmz = 1.
-double precision, parameter :: phh = 1.
-double precision, parameter :: flt = 0.
-double precision, parameter :: flq = 0.
+real, parameter :: pmz = 1.
+real, parameter :: phh = 1.
+real, parameter :: flt = 0.
+real, parameter :: flq = 0.
 
-double precision, parameter :: phm = phh*B2/(B1*pmz)**twothirds
+real, parameter :: phm = phh*B2/(B1*pmz)**twothirds
        
 integer, intent(in) :: IM, JM, LM
-real, dimension(IM,JM), intent(in) :: u_star
-double precision, dimension(IM,JM), intent(in) :: wb_surf, LMO
-double precision, dimension(IM,JM,0:LM), intent(in) :: S2, N2
-real, dimension(IM,JM,LM), intent(in) :: zlo, hl, qt
-real, dimension(IM,JM,0:LM), intent(in) :: zle
+real, dimension(IM,JM), intent(in)         :: u_star, wb_surf, LMO
+real, dimension(IM,JM,0:LM), intent(in)    :: zle, S2, N2
+real, dimension(IM,JM,LM), intent(in)      :: zlo, hl, qt
 real, dimension(IM,JM,0:LM), intent(inout) :: tke, hl2, qt2, hlqt
 
-integer :: iter, i, j, k, kp1
-double precision :: idzlo, Ri, Rf, L2
-double precision, dimension(IM,JM) :: w_star 
-double precision, dimension(IM,JM,0:LM) :: GM, GH, SM, SH, L, dhldz, dqtdz, q
+integer                                 :: iter, i, j, k, kp1
+real                                    :: idzlo, L2
+double precision                        :: Ri, Rf
+double precision, dimension(IM,JM)      :: w_star
+real, dimension(IM,JM,0:LM)             :: SM, SH, dhldz, dqtdz
+double precision, dimension(IM,JM,0:LM) :: GM, GH, L, q
 
 !
 !
@@ -769,9 +754,9 @@ do k = 1,LM-1
       GM(i,j,k) = S2(i,j,k)  ! "    "  "        GM "       "  "
 
       Ri  = -GH(i,j,k)/max( GM(i,j,k), 1.d-10 )
-      Rf  = min( Rfc, Ri1*( Ri + Ri2 - sqrt( Ri**2. - Ri3*Ri + Ri4 ) ) ) ! NN09 (A11)
-      SH(i,j,k) = SHc*( Rfc - Rf )/( 1. - Rf )                           ! NN09 (A4)
-      SM(i,j,k) = SMc*( Rf1 - Rf )/( Rf2 - Rf )*SH(i,j,k)                ! NN09 (A3)
+      Rf  = min( Rfc, Ri1*( Ri + Ri2 - sqrt( Ri**2.d0 - Ri3*Ri + Ri4 ) ) ) ! NN09 (A11)
+      SH(i,j,k) = SHc*( Rfc - Rf )/( 1.d0 - Rf )                           ! NN09 (A4)
+      SM(i,j,k) = SMc*( Rf1 - Rf )/( Rf2 - Rf )*SH(i,j,k)                  ! NN09 (A3)
    end do
    end do
 end do
