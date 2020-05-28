@@ -651,17 +651,17 @@ contains
 
     PrivateState => wrap%ptr
 
-! Profilers
-!----------
-
-    call MAPL_TimerOn (MAPL,"TOTAL")
-    call MAPL_TimerOn (MAPL,"RUN"  )
-
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
+
+! Profilers
+!----------
+
+    call MAPL_TimerOn (MAPL,"TOTAL")
+    call MAPL_TimerOn (MAPL,"RUN"  )
 
 
 ! Get IMPORT pointers

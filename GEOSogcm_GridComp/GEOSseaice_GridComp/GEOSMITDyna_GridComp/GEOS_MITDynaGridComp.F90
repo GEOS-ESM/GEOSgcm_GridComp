@@ -25,6 +25,9 @@ module GEOS_MITDynaGridCompMod
 
   use ESMF
   use MAPL
+  use ice_domain_size,    only: init_domain_size
+  use ice_init,           only: alloc_dyna_arrays, dealloc_dyna_arrays
+  use ice_work,           only: init_work
 
   implicit none
   private
@@ -114,14 +117,14 @@ module GEOS_MITDynaGridCompMod
 
 ! Set the Run entry point
 ! -----------------------
-!    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
-!    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
+    VERIFY_(STATUS)
 
 !    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,        Run,        RC=STATUS)
 !    VERIFY_(STATUS)
 
-!    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,   Finalize,   RC=status)
-!    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,   Finalize,   RC=status)
+    VERIFY_(STATUS)
 
 
 ! Set the state variable specs.
@@ -1301,5 +1304,239 @@ module GEOS_MITDynaGridCompMod
     RETURN_(ESMF_SUCCESS)
   
   end subroutine SetServices
+
+! !IROUTINE: Initialize -- Initialize method for the GEOS CICE Dynamics
+
+! !INTERFACE:
+
+  subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
+
+! !ARGUMENTS:
+
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+    type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+    type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+    integer, optional,   intent(  out) :: RC     ! Error code
+
+! !DESCRIPTION: The Initialize method of the CICE dynamics Gridded Component.
+!   It does some initializing work on CICE data structures 
+!   It then does a Generic_Initialize
+
+!EOP
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)              :: IAm
+    integer                                 :: STATUS
+    character(len=ESMF_MAXSTR)              :: COMP_NAME
+
+    integer                                 :: Comm
+    integer                                 :: NDTE   ! number of subcycles
+    integer                                 :: EVP_DAMPING   
+    integer                                 :: NDYN_DT  
+    integer                                 :: STRENGTH, RDG_PARTIC, RDG_REDIST
+    real                                    :: MU_RDG, PSTAR, IODRAG
+    real                                    :: DTI 
+    real(kind=ESMF_KIND_R8)                 :: DTR
+    character(len=ESMF_MAXSTR)              :: GRIDTYPE
+    character(len=ESMF_MAXSTR)              :: GRIDFILE
+    character(len=ESMF_MAXSTR)              :: GRIDFILEFORM
+    character(len=ESMF_MAXSTR)              :: KMTFILE
+    character(len=ESMF_MAXSTR)              :: KMTFILEFORM
+    character(len=ESMF_MAXSTR)              :: PROCESSOR_SHAPE
+    character(len=ESMF_MAXSTR)              :: DISTRIBUTION_TYPE
+    character(len=ESMF_MAXSTR)              :: DISTRIBUTION_WGHT 
+    character(len=ESMF_MAXSTR)              :: EW_BOUNDARY_TYPE
+    character(len=ESMF_MAXSTR)              :: NS_BOUNDARY_TYPE
+    character(len=ESMF_MAXSTR)              :: ADVECTION
+
+! Local derived type aliases
+
+    type (ESMF_VM)                         :: VM
+    type (MAPL_MetaComp    ), pointer      :: MAPL
+    type (ESMF_State)                      :: INTERNAL
+
+    type(ESMF_Alarm)                       :: ALARM_OCNEXCH   
+    type(ESMF_Alarm)                       :: ALARM   
+    type(ESMF_TimeInterval)                :: RING_INTERVAL  
+    type(ESMF_Time)                        :: RING_TIME  
+    type(ESMF_Time)                        :: currTime  
+    integer                                :: CPLS 
+
+
+#ifdef MODIFY_TOPOGRAPHY
+    type (MAPL_LocStream       )            :: EXCH
+    real, allocatable                       :: FROCEAN(:,:)
+#endif
+
+! pointers to internal
+   real                   , pointer, dimension(:,:  ) :: ICEUMASK
+   real(kind=ESMF_KIND_R8), pointer, dimension(:,:,:) :: STRESSCOMP
+   real(kind=ESMF_KIND_R8), pointer, dimension(:,:  ) :: UVEL
+   real(kind=ESMF_KIND_R8), pointer, dimension(:,:  ) :: VVEL
+
+   logical,  allocatable          :: ICEUM(:,:) 
+
+    integer                       :: IM, JM
+    integer                       :: NXG, NYG
+    integer                       :: NPES
+    integer                       :: OGCM_IM, OGCM_JM
+    integer                       :: OGCM_NX, OGCM_NY
+!=============================================================================
+
+! Begin... 
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    Iam = "Initialize"
+    call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
+    VERIFY_(STATUS)
+    Iam = trim(COMP_NAME) // Iam
+
+! Get my internal MAPL_Generic state
+!-----------------------------------
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_TimerOn(MAPL,"INITIALIZE")
+
+! Generic initialize
+! ------------------
+
+    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=status )
+    VERIFY_(STATUS)
+
+    call MAPL_TimerOn(MAPL,"TOTAL"     )
+
+    call MAPL_Get(MAPL,             &
+                  INTERNAL_ESMF_STATE = INTERNAL,   &
+                  RUNALARM = ALARM,                 &
+                  IM=IM, &
+                  JM=JM, & 
+                  NX=NXG, & 
+                  NY=NYG, & 
+                                RC=STATUS )
+    VERIFY_(STATUS)
+
+
+! CICE grid initialization using the communicator from the VM
+!------------------------------------------------------
+    call ESMF_VMGetCurrent(VM, rc=STATUS)
+    VERIFY_(STATUS)
+    
+    call ESMF_VMGet(VM, mpiCommunicator=Comm, petCount=NPES, rc=STATUS)
+    VERIFY_(STATUS)
+
+
+    ! Get the ocean layout from the VM
+    !---------------------------------
+
+    call MAPL_GetResource( MAPL, OGCM_IM, Label="OGCM.IM_WORLD:", RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, OGCM_JM, Label="OGCM.JM_WORLD:", RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, OGCM_NX, Label="OGCM.NX:", RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, OGCM_NY, Label="OGCM.NY:", RC=STATUS)
+    VERIFY_(STATUS)
+
+    ! CICE grid initialization
+    !-------------------------
+
+    ASSERT_(mod(OGCM_IM,OGCM_NX)==0)
+    ASSERT_(mod(OGCM_JM,OGCM_NY)==0)
+ 
+    if(MAPL_AM_I_ROOT()) then
+       print*, 'Initializing CICE domain size with: '
+       print*, 'OGCM_NX = ', OGCM_NX, 'OGCM_NY = ', OGCM_NY
+       print*, 'OGCM_IM = ', OGCM_IM, 'OGCM_JM = ', OGCM_JM
+    endif
+
+    ! Do some necessary CICE initialization
+    !--------------------------------------
+
+    call init_domain_size(OGCM_IM, OGCM_JM, OGCM_NX, OGCM_NY, NPES)
+
+    call alloc_dyna_arrays( MAPL_AM_I_Root(), Iam )
+    call init_work            ! work arrays
+
+    if(MAPL_AM_I_ROOT()) then
+       print*, 'CICE work array initialized'
+    endif
+ 
+
+! All Done
+!---------
+
+    call MAPL_TimerOff(MAPL,"TOTAL"     )
+    call MAPL_TimerOff(MAPL,"INITIALIZE")
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine Initialize
+
+! !IROUTINE: Finalize        -- Finalize method for CICEDyna wrapper
+
+! !INTERFACE:
+
+  subroutine Finalize ( gc, import, export, clock, rc )
+
+! !ARGUMENTS:
+
+  type(ESMF_GridComp), intent(INOUT) :: gc     ! Gridded component 
+  type(ESMF_State),    intent(INOUT) :: import ! Import state
+  type(ESMF_State),    intent(INOUT) :: export ! Export state
+  type(ESMF_Clock),    intent(INOUT) :: clock  ! The supervisor clock
+  integer, optional,   intent(  OUT) :: rc     ! Error code:
+
+!EOP
+
+    type (MAPL_MetaComp),    pointer                   :: MAPL 
+
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)       :: IAm
+    integer                          :: STATUS
+    character(len=ESMF_MAXSTR)       :: COMP_NAME
+
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    Iam = "Finalize"
+    call ESMF_GridCompGet( gc, NAME=comp_name, RC=status )
+    VERIFY_(STATUS)
+    Iam = trim(comp_name) // Iam
+
+! Get my internal MAPL_Generic state
+!-----------------------------------
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=status)
+    VERIFY_(STATUS)
+
+! Profilers
+!----------
+
+    call MAPL_TimerOn(MAPL,"TOTAL"   )
+    call MAPL_TimerOn(MAPL,"FINALIZE")
+
+    call dealloc_dyna_arrays( MAPL_AM_I_ROOT(), Iam )
+
+    call MAPL_TimerOff(MAPL,"FINALIZE")
+    call MAPL_TimerOff(MAPL,"TOTAL"   )
+
+! Generic Finalize
+! ------------------
+    
+    call MAPL_GenericFinalize( GC, IMPORT, EXPORT, CLOCK, RC=status )
+    VERIFY_(STATUS)
+
+! All Done
+!---------
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine Finalize
 
 end module GEOS_MITDynaGridCompMod
