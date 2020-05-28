@@ -688,6 +688,7 @@ contains
     call MAPL_GetPointer(EXPORT,   SFLXe,   'SFLX', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,   WGHTe,   'WGHTe', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,   DISCHARGEe, 'DISCHARGEe', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MASK, trim(COMP_NAME)//'_3D_MASK',  alloc=.true., RC=STATUS); VERIFY_(STATUS)
 
     ! Actual copy (only if needed)
     if (associated(TAUXe)) TAUXe = TAUX
