@@ -164,7 +164,7 @@
 !     Transfer TS to theta (for dual ocean).
 !     TS      : SST in K
 !     theta   : SST in DegC
-         theta(i,j,1,bi,bj) = p%TS(iSLo+i,jSLo+j)-celsius2K
+!         theta(i,j,1,bi,bj) = p%TS(iSLo+i,jSLo+j)-celsius2K
 
 
 !     Transfer TAUX and TAUY to fu and fv.
