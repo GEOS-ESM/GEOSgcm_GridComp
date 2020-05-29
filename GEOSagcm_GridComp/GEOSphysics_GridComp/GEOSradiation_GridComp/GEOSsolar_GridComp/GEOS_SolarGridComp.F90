@@ -1834,9 +1834,7 @@ contains
        VERIFY_(STATUS)
 
        if (USE_NRLSSI2) then
-
-         ! For now only use with RRTMG[P] SW
-         _ASSERT(USE_RRTMG .or. USE_RRTMGP,'needs informative message')
+         _ASSERT(USE_RRTMG .or. USE_RRTMGP, 'only RRTMG[P] can use NRLSSI2 currently')
 
          call MAPL_GetResource( MAPL, PersistSolar, "PERSIST_SOLAR:", DEFAULT=.TRUE., RC=STATUS)
          VERIFY_(STATUS) 
@@ -3059,6 +3057,12 @@ contains
       call MAPL_TimerOff(MAPL, name="--RRTMGP_IO_1", __RC__)
 
       call MAPL_TimerOn(MAPL, name="--RRTMGP_SETUP_2", __RC__)
+
+      ! adjust sun for current faculae and sunspots (tsi scaling done later)
+      ! for the moment we are requiring MG and SB indicies from the NRLSSI2 file
+      _ASSERT(SolCycFileName /= '/dev/null' .and. USE_NRLSSI2, 'RRTMGP-SW: MG and SB not available')
+      error_msg = k_dist%set_solar_variability(real(MG,kind=wp),real(SB,kind=wp))
+      TEST_(error_msg)
 
       ! spectral dimensions
       ngpt = k_dist%get_ngpt()
