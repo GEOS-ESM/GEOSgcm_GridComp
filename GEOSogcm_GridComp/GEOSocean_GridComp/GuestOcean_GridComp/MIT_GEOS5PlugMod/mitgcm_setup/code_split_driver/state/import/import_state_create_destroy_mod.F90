@@ -41,7 +41,7 @@
       ALLOCATE ( p%TAUXI(1:snx*nSx,1:sny*nSy)  )
       ALLOCATE ( p%TAUYI(1:snx*nSx,1:sny*nSy)  )
       ALLOCATE ( p%PS(   1:snx*nSx,1:sny*nSy)  )
-      ALLOCATE ( p%SWHEAT(1:snx*nSx,1:sny*nSy,1:nr) )
+      ALLOCATE ( p%SWHEAT(1:snx*nSx,1:sny*nSy) )
       ALLOCATE ( p%QFLX( 1:snx*nSx,1:sny*nSy)  )
       ALLOCATE ( p%DISCHARGE( 1:snx*nSx,1:sny*nSy)  )
       ALLOCATE ( p%HFLX( 1:snx*nSx,1:sny*nSy)  )

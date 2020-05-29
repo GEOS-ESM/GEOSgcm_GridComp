@@ -85,6 +85,9 @@ C     == Local variables ==
       ELSEIF ( code .EQ. 'TS' ) THEN
 !     Copy fld to TS
          mitgcmIState%import%TS = fld
+      ELSEIF ( code .EQ. 'SWHEAT' ) THEN
+!      Copy fld to SWHEAT
+         mitgcmIState%import%SWHEAT = fld
       ENDIF
 
 C
@@ -106,11 +109,8 @@ C     == Routine arguments ==
 C     == Local variables ==
       INTEGER i, j, k, bi, bj, iSLo, jSLo
 
-      IF ( code .EQ. 'SWHEAT' ) THEN
-!      Copy fld to SWHEAT
-            mitgcmIState%import%SWHEAT = fld
 #ifdef ALLOW_SEAICE
-      ELSEIF ( code .EQ. 'FRACICE' ) THEN
+      IF ( code .EQ. 'FRACICE' ) THEN
 !      Copy fld to FRACICE
          mitgcmIState%import%FRAICE = fld
       ELSEIF ( code .EQ. 'TI' ) THEN
@@ -134,8 +134,8 @@ C     == Local variables ==
       ELSEIF ( code .EQ. 'TAUAGE' ) THEN
 !      Copy fld to TAUAGE
          mitgcmIState%import%TAUAGE = fld
-#endif /* ALLOW_SEAICE */
       ENDIF
+#endif /* ALLOW_SEAICE */
 
       RETURN
       END SUBROUTINE

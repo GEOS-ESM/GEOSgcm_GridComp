@@ -158,26 +158,30 @@ contains
 !   Imports and exports specification
 !   ---------------------------------
 
-    nimports = 16
+    nimports = 19
     allocate(imports(nimports))
     imports    = (/                                                                                                 &
-    mstate('TAUX',  'Agrid_eastward_stress_on_skin',         'N m-2',     MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('TAUY',  'Agrid_northward_stress_on_skin',        'N m-2',     MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('TAUXI',  'Agrid_eastward_stress_on_ice',         'N m-2',     MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('TAUYI',  'Agrid_northward_stress_on_ice',        'N m-2',     MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('PS',    'Surface Atmospheric Pressure',          'Pa',        MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('SWHEAT','solar_heating_rate',                    'W m-2',     MAPL_DimsHorzVert,MAPL_VLocationCenter),  &
-    mstate('QFLX',  'freshwater_flux_from_skin_to_ocean',    'kg m-2 s-1',MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('HFLX',  'turbulent_heat_flux_from_skin_to_ocean','W m-2',     MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('SFLX',  'salt_flux_from_skin_to_ocean',          'kg m-2 s-1',MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('PENUVR','net_downward_penetrating_direct_UV_flux','W m-2',    MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('PENPAR','net_downward_penetrating_direct_PAR_flux','W m-2',   MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('PENUVF','net_downward_penetrating_diffuse_UV_flux','W m-2',   MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('PENPAF','net_downward_penetrating_diffuse_PAR_flux','W m-2',  MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('DISCHARGE','river_discharge_at_ocean_points',  'kg m-2 s-1',  MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
-    mstate('PICE','pressure due to ice weight',             'Pa',         MAPL_DimsHorzOnly,MAPL_VLocationNone),     &
-    mstate('WGHT', 'weight_for_ocean_grid','1',     MAPL_DimsHorzOnly,MAPL_VLocationNone)    &
+    mstate('TAUX'     , 'Agrid_eastward_stress_on_skin'           , 'N m-2'     , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('TAUY'     , 'Agrid_northward_stress_on_skin'          , 'N m-2'     , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('LWFLX'    , 'surface_net_downward_longwave_flux'      , 'W m-2'     , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('SHFLX'    , 'upward_sensible_heat_flux'               , 'W m-2'     , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('QFLUX'    , 'evaporation'                             , 'kg m-2 s-1', MAPL_DimsHorzOnly,MAPL_VLocationNone),    & 
+    mstate('RAIN'     , 'ocean_rainfall'                          , 'kg m-2 s-1', MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('SNOW'     , 'ocean_snowfall'                          , 'kg m-2 s-1', MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('DISCHARGE', 'river_discharge_at_ocean_points'         , 'kg m-2 s-1', MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('SFLX'     , 'salt_flux_due_to_ice_dynamics'           , 'kg m-2 s-1', MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('PS'       , 'Surface Atmospheric Pressure'            , 'Pa'        , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('PENUVR'   ,'net_downward_penetrating_direct_UV_flux'  , 'W m-2'     , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('PENPAR'   ,'net_downward_penetrating_direct_PAR_flux' , 'W m-2'     , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('PENUVF'   ,'net_downward_penetrating_diffuse_UV_flux' , 'W m-2'     , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('PENPAF'   ,'net_downward_penetrating_diffuse_PAR_flux', 'W m-2'     , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('DRNIR'   ,'net_surface_downwelling_nir_beam_flux', 'W m-2'     , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('DFNIR'   ,'net_surface_downwelling_nir_diffuse_flux', 'W m-2'     , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('DEL_TEMP'   ,'temperature correction to top level MIT', 'W m-2'     , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('SWHEAT'   ,'solar_heating_rate'                       , 'W m-2'     , MAPL_DimsHorzVert,MAPL_VLocationCenter),  &
+    mstate('WGHT'     , 'weight_for_ocean_grid'                   , '1'         , MAPL_DimsHorzOnly,MAPL_VLocationNone)     &
     /)
+
 
     DO I=1,NIMPORTS
      CALL MAPL_AddImportSpec(GC,            &
@@ -202,18 +206,6 @@ contains
   ENDDO
     deallocate(imports)
 
-
-    if (dual_ocean) then
-       call MAPL_AddImportSpec(GC,                                &
-            SHORT_NAME         = 'DEL_TEMP',                          &
-            LONG_NAME          = 'temperature correction to top level MOM (Tsst-Tmom',   &
-            UNITS              = 'K',                                 &
-            DIMS               = MAPL_DimsHorzOnly,                   &
-            VLOCATION          = MAPL_VLocationNone,                  &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-    end if
-
 !  !EXPORT STATE:
 
 ! Run1 exports
@@ -221,7 +213,7 @@ contains
 
 !   -------------------------
 
-    nexports  = 15
+    nexports  = 17
     allocate(exports(nexports))
     exports    = (/ &
     mstate('UW',    'top_layer_Agrid_eastward_velocity',     'm s-1',     MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
@@ -238,6 +230,8 @@ contains
     mstate('S',   'salinity',                              'psu',         MAPL_DimsHorzVert,MAPL_VLocationCenter),    &
     mstate('DISCHARGEe','river_discharge_at_ocean_points',  'kg m-2 s-1',  MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
     mstate('PBO','pressure_at_bottom_of_ocean',  'N m-2',  MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('FRAZIL','heating_from_frazil_formation',  'N m-2',  MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
+    mstate('SWFLX'    , 'surface_net_downward_shortwave_flux'     , 'W m-2'     , MAPL_DimsHorzOnly,MAPL_VLocationNone),    &
     mstate('WGHTe', 'weight_for_ocean_grid','1',     MAPL_DimsHorzOnly,MAPL_VLocationNone)    &
      /)
 
@@ -255,77 +249,6 @@ contains
 
     deallocate(exports)
 
-     call MAPL_AddImportSpec(GC                         ,&
-          LONG_NAME          = 'net_surface_downwelling_nir_beam_flux',&
-          UNITS              = 'W m-2'                       ,&
-          SHORT_NAME         = 'DRNIR'                       ,&
-          DIMS               = MAPL_DimsHorzOnly             ,&
-          VLOCATION          = MAPL_VLocationNone            ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC                         ,&
-          LONG_NAME          = 'net_surface_downwelling_nir_diffuse_flux',&
-          UNITS              = 'W m-2'                       ,&
-          SHORT_NAME         = 'DFNIR'                       ,&
-          DIMS               = MAPL_DimsHorzOnly             ,&
-          VLOCATION          = MAPL_VLocationNone            ,&
-                                                  RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                   &
-         SHORT_NAME         = 'FRAZIL',                              &
-         LONG_NAME          = 'heating_from_frazil_formation',       &
-         UNITS              = 'J m-2',                                &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC                     ,&
-        LONG_NAME          = 'surface_net_downward_longwave_flux',&
-        UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'LWFLX'                   ,&
-        DIMS               = MAPL_DimsHorzOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                     &
-        LONG_NAME          = 'upward_sensible_heat_flux' ,&
-        UNITS              = 'W m-2'                     ,&
-        SHORT_NAME         = 'SHFLX'                     ,&
-        DIMS               = MAPL_DimsHorzOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                     &
-        LONG_NAME          = 'evaporation'               ,&
-        UNITS              = 'kg m-2 s-1'                ,&
-        SHORT_NAME         = 'QFLUX'                   ,&
-        DIMS               = MAPL_DimsHorzOnly           ,&
-        VLOCATION          = MAPL_VLocationNone          ,&
-        RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                               &
-         SHORT_NAME         = 'RAIN',                              &
-         LONG_NAME          = 'ocean_rainfall',&
-         UNITS              = 'kg m-2 s-1',                        &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                               &
-         SHORT_NAME         = 'SNOW',                              &
-         LONG_NAME          = 'ocean_snowfall',&
-         UNITS              = 'kg m-2 s-1',                        &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
 
 !EOS
 
@@ -414,20 +337,10 @@ contains
     integer*1, pointer                    :: iarr(:)
 
 !   Local variables used for allocating exports pointers
-    REAL_, pointer                         :: US  (:,:)
-    REAL_, pointer                         :: VS  (:,:)
     REAL_, pointer                         :: TS  (:,:)
     REAL_, pointer                         :: SS  (:,:)
     REAL_, pointer                         :: pMASK(:,:,:)
-    REAL_, pointer                         :: mMASK(:,:,:) => NULL()
-    REAL_, pointer                         :: pMASK2d(:,:)
-    REAL_, pointer                         :: mMASK2d(:,:)
     REAL_, pointer                         :: DH(:,:,:)
-    integer                                :: L
-    INTEGER :: iLoop
-    INTEGER :: myThid
-    INTEGER :: myCurrentIter
-    _RL     :: myCurrentTime
     integer :: chdir
     external chdir 
 
@@ -585,41 +498,51 @@ contains
 
     type (MAPL_MetaComp), pointer          :: MAPL 
 
-    integer :: I, J
-
-    REAL*8, POINTER :: uVel(:,:,:,:,:)
+    integer :: IM, JM
 
 !   Pointers for passing import state values to component
     REAL_, pointer                         ::   TAUX(:,:  )
     REAL_, pointer                         ::   TAUY(:,:  )
-    REAL_, pointer                         ::   TAUXI(:,:  )
-    REAL_, pointer                         ::   TAUYI(:,:  )
     REAL_, pointer                         ::     PS(:,:  )
-    REAL_, pointer                         :: SWHEAT(:,:,:)
-    REAL_, pointer                         ::   QFLX(:,:  )
-    REAL_, pointer                         ::   HFLX(:,:  )
-    REAL_, pointer                         ::   SFLX(:,:  )
+    REAL_, pointer                         ::   LWFLX(:,: )
+    REAL_, pointer                         ::   SHFLX(:,: )
+    REAL_, pointer                         ::   QFLUX(:,: )
+    REAL_, pointer                         ::   RAIN(:,: )
+    REAL_, pointer                         ::   SNOW(:,: )
     REAL_, pointer                         ::   DISCHARGE(:,:  )
+    REAL_, pointer                         ::   SFLX(:,:  )
     REAL_, pointer                         ::   LATS(:,:  )
     REAL_, pointer                         ::   LONS(:,:  )
     REAL_, pointer                         ::   WGHT(:,:  )
+    REAL_, pointer                         ::   HFLX(:,:  )
+    REAL_, pointer                         ::   QFLX(:,:  )
+    REAL_, pointer                         ::   PENUVR(:,:)
+    REAL_, pointer                         ::   PENPAR(:,:)
+    REAL_, pointer                         ::   PENUVF(:,:)
+    REAL_, pointer                         ::   PENPAF(:,:)
+    REAL_, pointer                         ::   DRNIR(:,:)
+    REAL_, pointer                         ::   DFNIR(:,:)
+
 
 !   Pointers for mirroring import state values to exports
     REAL_, pointer                         ::   TAUXe(:,:  )
     REAL_, pointer                         ::   TAUYe(:,:  )
     REAL_, pointer                         ::     PSe(:,:  )
-    REAL_, pointer                         :: SWHEATe(:,:,:)
-    REAL_, pointer                         ::   QFLXe(:,:  )
-    REAL_, pointer                         ::   HFLXe(:,:  )
-    REAL_, pointer                         ::   SFLXe(:,:  )
+    REAL_, pointer                         ::   LWFLXe(:,: )
+    REAL_, pointer                         ::   SWFLX(:,: )
+    REAL_, pointer                         ::   SHFLXe(:,: )
+    REAL_, pointer                         ::   QFLUXe(:,: )
+    REAL_, pointer                         ::   RAINe(:,: )
+    REAL_, pointer                         ::   SNOWe(:,: )
     REAL_, pointer                         ::   DISCHARGEe(:,:  )
+    REAL_, pointer                         ::   SFLXe(:,:  )
     REAL_, pointer                         ::   WGHTe(:,:  )
 
 !   Pointers for fetching export state values from component
-    REAL_, pointer                         :: US  (:,:)
-    REAL_, pointer                         :: VS  (:,:)
-    REAL_, pointer                         :: TS  (:,:)
-    REAL_, pointer                         :: SS  (:,:)
+    REAL_, pointer                         :: UW  (:,:)
+    REAL_, pointer                         :: VW  (:,:)
+    REAL_, pointer                         :: TW  (:,:)
+    REAL_, pointer                         :: SW  (:,:)
     REAL_, pointer                         :: MASK(:,:,:)
 
 !   Type for getting MITgcm internal state pointer
@@ -630,6 +553,7 @@ contains
     character(len=ESMF_MAXSTR)            :: ocean_dir
     integer*1, pointer                    :: iarr(:)
     integer                               :: passive_ocean
+    REAL*8                                :: Av
 
 ! Begin
 !------
@@ -663,40 +587,54 @@ contains
     call MAPL_TimerOn (MAPL,"TOTAL")
     call MAPL_TimerOn (MAPL,"RUN"  )
 
+    Av=2.5E6
 
 ! Get IMPORT pointers
 !--------------------
-    call MAPL_GetPointer(IMPORT,   TAUX,   'TAUX', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,   TAUY,   'TAUY', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,     PS,     'PS', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, SWHEAT, 'SWHEAT', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,   QFLX,   'QFLX', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,   HFLX,   'HFLX', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,   SFLX,   'SFLX', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   TAUX,      'TAUX' ,     RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   TAUY,      'TAUY' ,     RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   PS,        'PS'   ,     RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   LWFLX,     'LWFLX',     RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   SHFLX,     'SHFLX',     RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   QFLUX,     'QFLUX',     RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   RAIN,      'RAIN',      RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   SNOW,      'SNOW',      RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,   DISCHARGE, 'DISCHARGE', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,   WGHT,   'WGHT', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   SFLX,      'SFLX',      RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   WGHT,      'WGHT',      RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   PENUVR,    'PENUVR',    RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   PENPAR,    'PENPAR',    RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   PENUVF,    'PENUVF',    RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   PENPAF,    'PENPAF',    RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   DRNIR,     'DRNIR',     RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,   DFNIR,     'DFNIR',     RC=STATUS); VERIFY_(STATUS)
     call MAPL_Get(MAPL, LATS=LATS, LONS=LONS, RC=status); VERIFY_(STATUS)
 
 ! Get EXPORT pointers to mirror imports
 !--------------------------------------
-    call MAPL_GetPointer(EXPORT,   TAUXe,   'TAUX', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,   TAUYe,   'TAUY', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,     PSe,     'PS', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, SWHEATe, 'SWHEAT', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,   QFLXe,   'QFLX', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,   HFLXe,   'HFLX', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,   SFLXe,   'SFLX', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT,   WGHTe,   'WGHTe', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   TAUXe,      'TAUX',       RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   TAUYe,      'TAUY',       RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   PSe,        'PS',         RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   LWFLXe,     'LWFLX',      RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   SWFLX,      'SWFLX',  alloc=.true.,      RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   SHFLXe,     'SHFLX',      RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   QFLUXe,     'QFLUX',      RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   RAINe,      'RAIN',       RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   SNOWe,      'SNOW',       RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   WGHTe,      'WGHTe',      RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,   SFLXe,      'SFLX',      RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,   DISCHARGEe, 'DISCHARGEe', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, MASK, trim(COMP_NAME)//'_3D_MASK',  alloc=.true., RC=STATUS); VERIFY_(STATUS)
 
     ! Actual copy (only if needed)
     if (associated(TAUXe)) TAUXe = TAUX
     if (associated(TAUYe)) TAUYe = TAUY
-    if (associated(PSe)) PSe = PS
-    if (associated(SWHEATe)) SWHEATe = SWHEAT
-    if (associated(QFLXe)) QFLXe = QFLX
-    if (associated(HFLXe)) HFLXe = HFLX
+    if (associated(PSe))   PSe = PS
+    if (associated(LWFLXe)) LWFLXe = LWFLX
+    if (associated(SHFLXe)) SHFLXe = SHFLX
+    if (associated(QFLUXe)) QFLUXe = QFLUX
+    if (associated(RAINe)) RAINe = RAINe
+    if (associated(SNOWe)) SNOWe = SNOWe
     if (associated(SFLXe)) SFLXe = SFLX
     if (associated(DISCHARGEe)) DISCHARGEe = DISCHARGE
     if (associated(WGHTe)) WGHTe = WGHT
@@ -704,15 +642,27 @@ contains
     call MAPL_GetResource( MAPL, ocean_dir, label='OCEAN_DIR:', rc=status ) ; VERIFY_(STATUS)
     call str4c( iarr, TRIM(ocean_dir) )
 
+    IM = size(DISCHARGE,1)
+    JM = size(DISCHARGE,2)
+    allocate(HFLX(IM,JM), STAT=status)
+    allocate(QFLX(IM,JM), STAT=status)
+    VERIFY_(STATUS)
+
+    HFLX=-LWFLX+SHFLX+Av*QFLUX
+    QFLX=RAIN+SNOW-QFLUX
+    SWFLX = PENUVR+PENPAR+PENUVF+PENPAF+DRNIR+DFNIR
+
 ! Put import data into internal state
 !------------------------------------
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'TAUX',   TAUX )
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'TAUY',   TAUY )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,     'PS',     PS )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr, 'SWHEAT', SWHEAT )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'QFLX',   QFLX )
-    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'DISCHARGE',   DISCHARGE )
+    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'PS',     PS )
+    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'SWHEAT', SWFLX )
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'HFLX',   HFLX )
+    deallocate(HFLX)
+    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'DISCHARGE',   DISCHARGE )
+    CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'QFLX',   QFLX )
+    deallocate(QFLX)
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'SFLX',   SFLX )
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'LATS',   LATS )
     CALL DRIVER_SET_IMPORT_STATE( PrivateState%ptr,   'LONS',   LONS )
@@ -726,15 +676,15 @@ contains
     deallocate(iarr)
     call popdir
 
-    CALL MAPL_GetPointer(EXPORT,   US,   'UW', RC=STATUS); VERIFY_(STATUS)
-    CALL MAPL_GetPointer(EXPORT,   VS,   'VW', RC=STATUS); VERIFY_(STATUS)
-    CALL MAPL_GetPointer(EXPORT,   TS,   'TW', RC=STATUS); VERIFY_(STATUS)
-    CALL MAPL_GetPointer(EXPORT,   SS,   'SW', RC=STATUS); VERIFY_(STATUS)
+    CALL MAPL_GetPointer(EXPORT,   UW,   'UW', RC=STATUS); VERIFY_(STATUS)
+    CALL MAPL_GetPointer(EXPORT,   VW,   'VW', RC=STATUS); VERIFY_(STATUS)
+    CALL MAPL_GetPointer(EXPORT,   TW,   'TW', RC=STATUS); VERIFY_(STATUS)
+    CALL MAPL_GetPointer(EXPORT,   SW,   'SW', RC=STATUS); VERIFY_(STATUS)
 
-    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr,   'US',   US )
-    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr,   'VS',   VS )
-    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr,   'TS',   TS )
-    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr,   'SS',   SS )
+    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr,   'US',   UW )
+    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr,   'VS',   VW )
+    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr,   'TS',   TW )
+    CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr,   'SS',   SW )
     CALL DRIVER_GET_EXPORT_STATE( PrivateState%ptr, 'MASK', MASK )
 
     call MAPL_TimerOff(MAPL,"RUN"   )
@@ -964,7 +914,6 @@ contains
     character(len=ESMF_MAXSTR)       :: COMP_NAME
 
 ! Locals
-    character(len=14)                :: timeStamp
     logical                          :: doRecord
 
 ! Get the target components name and set-up traceback handle.

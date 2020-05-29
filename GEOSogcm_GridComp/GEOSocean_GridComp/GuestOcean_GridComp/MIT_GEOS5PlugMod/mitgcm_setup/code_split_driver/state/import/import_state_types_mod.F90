@@ -24,7 +24,7 @@
        _RL , POINTER :: TAUX(     :,:  ) => NULL()
        _RL , POINTER :: TAUY(     :,:  ) => NULL()
        _RL , POINTER :: PS(       :,:  ) => NULL()
-       _RL , POINTER :: SWHEAT(   :,:,:) => NULL()
+       _RL , POINTER :: SWHEAT(   :,:  ) => NULL()
        _RL , POINTER :: QFLX(     :,:  ) => NULL()
        _RL , POINTER :: DISCHARGE(:,:  ) => NULL()
        _RL , POINTER :: HFLX(     :,:  ) => NULL()
