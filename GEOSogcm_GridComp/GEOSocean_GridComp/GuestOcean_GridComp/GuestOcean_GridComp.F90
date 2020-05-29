@@ -175,10 +175,10 @@ contains
         SHORT_NAME         = 'PENUVR',                            &
         LONG_NAME          = 'net_downward_penetrating_direct_UV_flux',  &
         UNITS              = 'W m-2',                             &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=status  )
-    VERIFY_(status)
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RC=STATUS  )
+     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                            &
         SHORT_NAME         = 'PENPAR',                            &
@@ -332,8 +332,19 @@ contains
         UNITS              = 'W m-2',                            &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
+        RC=STATUS  )
      VERIFY_(STATUS)
+
+    if (dual_ocean) then
+       call MAPL_AddImportSpec(GC,                            &
+         SHORT_NAME         = 'FRACICEd',                           &
+         LONG_NAME          = 'fractional_cover_of_seaice',        &
+         UNITS              = '1',                                 &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+       VERIFY_(STATUS)
+    endif
 
 !  ! Need to have this internal state to fill in orphan points:
 
@@ -491,19 +502,30 @@ contains
           SHORT_NAME         = 'RAIN',                              &
           LONG_NAME          = 'ocean_rainfall',&
           UNITS              = 'kg m-2 s-1',                        &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=status  )
-    VERIFY_(status)
+          DIMS               = MAPL_DimsHorzOnly,                   &
+          VLOCATION          = MAPL_VLocationNone,                  &
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                 &
           SHORT_NAME         = 'SNOW',                              &
           LONG_NAME          = 'ocean_snowfall',&
           UNITS              = 'kg m-2 s-1',                        &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+          DIMS               = MAPL_DimsHorzOnly,                   &
+          VLOCATION          = MAPL_VLocationNone,                  &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
+! The following export shows how much salt do we add due to restoring surface 
+! salinity to SSS_MIN
+     call MAPL_AddExportSpec(GC,                            &
+        SHORT_NAME         = 'SRESTORE',                         &
+        LONG_NAME          = 'salt_flux_due_to_sss_restoring', &
+        UNITS              = 'kg m-2 s-1',                            &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RC=STATUS  )
+     VERIFY_(STATUS)
 
 ! Exports of child
 
@@ -890,7 +912,7 @@ contains
     real, pointer :: RAINe(:,:)
     real, pointer :: SNOWe(:,:)
     real, pointer :: SFLXe(:,:)
-
+    real, pointer :: SRESTORE(:,:)
 
 ! Pointers to imports of child
 
@@ -911,6 +933,8 @@ contains
     real, pointer :: SNOW(:,:)
     real, pointer :: SFLX(:,:)
     real, pointer :: FI(:,:)
+    real, pointer :: FId(:,:)
+    real, pointer :: DH(:,:,:)
 
 ! Pointers to exports of child
 
@@ -932,10 +956,12 @@ contains
     integer           :: NUM
     real, allocatable :: WGHT(:,:)
     real              :: DT, TAU_SST
+    real              :: TAU_SST_UNDER_ICE
     real, pointer     :: LONS  (:,:)
     real, pointer     :: LATS  (:,:)
     real, parameter   :: OrphanSalinity=34.0
     real              :: Tfreeze
+    real              :: SSS_MIN
 
     integer :: ID
     integer :: PHASE
@@ -1041,6 +1067,8 @@ contains
        VERIFY_(status)
        call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, RC=STATUS) ! set Default OCEAN_DT to AGCM Heartbeat
        VERIFY_(status)
+       call MAPL_GetResource(STATE, SSS_MIN, Label="SSS_MIN:", default=-1.0, RC=STATUS)
+       VERIFY_(status)
 
 ! Get pointers to imports
 !--------------------------------------------------------------------------------
@@ -1090,10 +1118,12 @@ contains
 
        if (dual_ocean) then
           call MAPL_GetPointer(GEX(OCNd), TWd,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(IMPORT, FId, 'FRACICEd'   , RC=STATUS); VERIFY_(STATUS)
        end if
        
        if(DO_DATASEA==0) then
           call MAPL_GetPointer(GEX(OCN), FRAZIL,   'FRAZIL'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GEX(OCN), DH, 'DH', RC=STATUS); VERIFY_(STATUS)
        end if
 
 ! Get pointers to exports
@@ -1118,8 +1148,10 @@ contains
        call MAPL_GetPointer(EXPORT, RAINe, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SNOWe, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SFLXe, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, SRESTORE, 'SRESTORE'  , RC=STATUS); VERIFY_(STATUS)
 
        if(associated(FROCEANe)) FROCEANe = FROCEAN
+       if(associated(SRESTORE)) SRESTORE = 0.0
 
 ! Allocate space for temporary arrays
 !------------------------------------
@@ -1152,8 +1184,17 @@ contains
           SNOW = SNOWi * WGHT
           SFLX = FSALT * WGHT
 
+! If salinity drops below threshold, restore it to SSS_MIN by adding SRESTORE to SFLX. 
+! Defalt is no restoring.          
+          if(associated(SRESTORE)) then
+             where(SW < SSS_MIN)
+                SRESTORE = (SSS_MIN-SW)*DH(:,:,1)*MAPL_RHO_SEAWATER*1.e-3/DT
+             end where
+             SFLX = SFLX + SRESTORE
+          end if
+          
 ! This stress forces the ocean, combined with sea ice bottom stress later
-
+!------------------------------------------------------------------------
           TAUX = TAUXi * WGHT
           TAUY = TAUYi * WGHT
 
@@ -1232,7 +1273,10 @@ contains
              call MAPL_GetPointer(GIM(OCNd), FI , 'FRACICE'  , RC=STATUS)
              VERIFY_(STATUS)
              
-             call MAPL_GetResource(STATE,TAU_SST, Label="TAU_SST:", default=86400.0 ,RC=STATUS)
+             call MAPL_GetResource(STATE,TAU_SST, Label="TAU_SST:", default=432000.0 ,RC=STATUS)
+             VERIFY_(status)
+
+             call MAPL_GetResource(STATE,TAU_SST_UNDER_ICE, Label="TAU_SST_UNDER_ICE:", default=86400.0 ,RC=STATUS)
              VERIFY_(status)
 
              ! we should have valid pointers to TW and TWd by now
@@ -1242,6 +1286,12 @@ contains
 
                 ! what about relaxation
                 DEL_TEMP = (TWd - TW)*DT/(DT+TAU_SST)
+
+             end where
+
+             where(MASK > 0.0 .and. FI >= 0.05 .and. FId > FI)
+
+                DEL_TEMP = ((-0.054*SW+MAPL_TICE) - TW)*DT/(DT+TAU_SST_UNDER_ICE)
 
              end where
 
