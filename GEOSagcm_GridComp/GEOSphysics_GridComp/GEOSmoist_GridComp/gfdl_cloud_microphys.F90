@@ -652,7 +652,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     
     real, intent (out), dimension (is:, js:, ks:) :: m2_rain, m2_sol
     
-    real, dimension (ktop:kbot) :: qvz, qlz, qrz, qiz, qsz, qlic, qiic, qgz, qaz!, evpc
+    real, dimension (ktop:kbot) :: qvz, qlz, qrz, qiz, qsz, qadum, qlic, qiic, qgz, qaz!, evpc
     real, dimension (ktop:kbot) :: vtiz, vtsz, vtgz, vtrz
     real, dimension (ktop:kbot) :: dp0, dp1, dz0, dz1
     real, dimension (ktop:kbot) :: qv0, ql0, qr0, qi0, qs0, qg0, qa0
@@ -851,12 +851,13 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! time - split warm rain processes: 1st pass
             ! -----------------------------------------------------------------------
             
-            qlic = qlz/(qaz+1e-6)
-            qiic = qiz/(qaz+1e-6)
+            qadum = max(qaz,1e-3)
+            qlic = qlz/qadum
+            qiic = qiz/qadum
             call warm_rain (dt_rain, ktop, kbot, dp1, dz1, tz, qvz, qlic, qrz, qiic, qsz, &
                 qgz, qaz, den, denfac, ccn, c_praut, rh_rain, vtrz, r1, m1_rain, w1, h_var)
-            qlz = qlic*qaz
-            qiz = qiic*qaz
+            qlz = qlic*qadum
+            qiz = qiic*qadum
 
             rain (i) = rain (i) + r1
             
@@ -897,12 +898,13 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! time - split warm rain processes: 2nd pass
             ! -----------------------------------------------------------------------
             
-            qlic = qlz/(qaz+1e-4)
-            qiic = qiz/(qaz+1e-4)
+            qadum = max(qaz,1e-3)
+            qlic = qlz/qadum
+            qiic = qiz/qadum
             call warm_rain (dt_rain, ktop, kbot, dp1, dz1, tz, qvz, qlic, qrz, qiic, qsz, &
                 qgz, qaz, den, denfac, ccn, c_praut, rh_rain, vtrz, r1, m1_rain, w1, h_var)
-            qlz = qlic*qaz
-            qiz = qiic*qaz
+            qlz = qlic*qadum
+            qiz = qiic*qadum
 
             rain (i) = rain (i) + r1
             
@@ -1095,7 +1097,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, &
     
     real, parameter :: so3 = 7. / 3.
     
-    real, dimension (ktop:kbot) :: dl, dm
+    real, dimension (ktop:kbot) :: dl, dm, qadum
     real, dimension (ktop:kbot + 1) :: ze, zt
     
     real :: sink, dq, qc0, qc
@@ -1157,11 +1159,12 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, &
         ! -----------------------------------------------------------------------
         
         ! if (.not. fast_sat_adj) &
-        ql = ql*qa ! convert to grid-mean for rain evap
-        qi = qi*qa
+        qadum = max(qa,1e-3)
+        ql = ql*qadum ! convert to grid-mean for rain evap
+        qi = qi*qadum
         call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, den, denfac, rh_rain, h_var)
-        ql = ql/(qa+1e-3)
-        qi = qi/(qa+1e-3)  ! convert back to in-cloud amount
+        ql = ql/qadum
+        qi = qi/qadum  ! convert back to in-cloud amount
         
         if (do_sedi_w) then
             do k = ktop, kbot
@@ -1211,11 +1214,11 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, &
         ! evaporation and accretion of rain for the remaing 1 / 2 time step
         ! -----------------------------------------------------------------------
         
-        ql = ql*qa ! convert back to grid-mean for rain evap
-        qi = qi*qa
+        ql = ql*qadum ! convert back to grid-mean for rain evap
+        qi = qi*qadum
         call revap_racc (ktop, kbot, dt5, tz, qv, ql, qr, qi, qs, qg, den, denfac, rh_rain, h_var)
-        ql = ql/(qa+1e-3)
-        qi = qi/(qa+1e-3)  ! convert back to in-cloud
+        ql = ql/(qadum)
+        qi = qi/(qadum)  ! convert back to in-cloud
 
     endif
     
@@ -1246,7 +1249,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, &
                 if (dq > 0.) then
                     sink = min (dq, dt * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
                     ql (k) = ql (k) - sink
-                    qr (k) = qr (k) + sink*qa(k) ! convert sink to grid-mean
+                    qr (k) = qr (k) + sink*qadum(k) ! convert sink to grid-mean
                     if (.not. do_qa) qa (k) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k)+ql(k) + sink,1e-8) )
                 endif
             endif
@@ -1286,7 +1289,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, &
                     ! --------------------------------------------------------------------
                     sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
                     ql (k) = ql (k) - sink
-                    qr (k) = qr (k) + sink*qa(k)  ! convert sink to grid-mean
+                    qr (k) = qr (k) + sink*qadum(k)  ! convert sink to grid-mean
                     qa (k ) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,1e-8 ) )
                 endif
             endif
