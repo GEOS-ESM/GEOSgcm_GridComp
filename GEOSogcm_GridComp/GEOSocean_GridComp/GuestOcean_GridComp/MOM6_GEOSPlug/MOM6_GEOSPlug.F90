@@ -535,8 +535,7 @@ contains
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE,   Initialize, RC=status)
     VERIFY_(STATUS)
-!   call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        RC=status)
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          MOM6Run,        RC=status)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,          Run,        RC=status)
     VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_FINALIZE,     Finalize,   RC=status)
     VERIFY_(STATUS)
@@ -927,8 +926,7 @@ contains
 
 ! !INTERFACE:
 
-! subroutine Run  ( GC, IMPORT, EXPORT, CLOCK, RC )
-  subroutine MOM6Run  ( GC, IMPORT, EXPORT, CLOCK, RC )
+  subroutine Run  ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! !ARGUMENTS:
 
@@ -1333,93 +1331,7 @@ contains
 ! All Done
 !---------
     RETURN_(ESMF_SUCCESS)
-  contains
-
-    subroutine transformA2B(U, V, uvx, uvy)
-
-      real, intent(IN)     :: U (:,:)
-      real, intent(IN)     :: V (:,:)
-
-      real, INTENT(INOUT)  :: uvx(isc:,jsc:)
-      real, INTENT(INOUT)  :: uvy(isc:,jsc:)
-
-      integer              :: i, j, ii, jj, cnt
-      integer              :: isd,ied,jsd,jed
-
-      real, allocatable    :: tx(:,:), ty(:,:)
-      real                 :: sum
-
-      integer, parameter   :: halo = 1
-
-      type(ocean_grid_type),  pointer :: Ocean_grid => null()
-
-! we need: {isd,ied,jsd,jed} > {isc,iec,jsc,jec}
-! -------
-! do this:
-      call get_ocean_grid (Ocean_state, Ocean_grid)
-      isd  = Ocean_grid%isd; ied  = Ocean_grid%ied
-      jsd  = Ocean_grid%jsd; jed  = Ocean_grid%jed
-! instead of:
-!     call mpp_get_data_domain   (Ocean%Domain, isd, ied, jsd, jed)
-! because this gives: {isd,ied,jsd,jed} = {isc,iec,jsc,jec}
-! -------
-
-! This will die on "(tx(i+ii,j+jj)" darn halo sizes.
-      allocate(tx(isd:ied,jsd:jed), stat=STATUS); VERIFY_(STATUS)
-      allocate(ty(isd:ied,jsd:jed), stat=STATUS); VERIFY_(STATUS)
-
-      uvx = 0.0; uvy = 0.0
-      tx  = 0.0; ty  = 0.0
-
-      tx(isc:, jsc:) = U
-      ty(isc:, jsc:) = V
-
-!     call mpp_update_domains(tx, ty, Ocean%Domain,                 gridtype=AGRID, flags=SCALAR_PAIR)
-      call mpp_update_domains(tx, ty, Ocean_grid%Domain%mpp_domain, gridtype=AGRID, &
-                              complete = .true., &
-                              whalo=halo, ehalo=halo, shalo=halo, nhalo=halo)
-
-      do j = jsc, jec
-         do i = isc, iec
-            sum = 0.0
-            cnt = 0
-            do ii = 0,1
-               do jj = 0,1
-                  if (tx(i+ii,j+jj) /= MAPL_UNDEF) then
-                     cnt = cnt+1
-                     sum = sum + tx(i+ii,j+jj)
-                  end if
-               end do
-            end do
-            if (cnt /= 0) then
-               uvx(i,j) = sum/real(cnt)
-            else
-               uvx(i,j) = 0.0
-            end if
-
-            sum = 0.0
-            cnt = 0
-            do ii = 0,1
-               do jj = 0,1
-                  if (ty(i+ii,j+jj) /= MAPL_UNDEF) then
-                     cnt = cnt+1
-                     sum = sum + ty(i+ii,j+jj)
-                  end if
-               end do
-            end do
-            if (cnt /= 0) then
-               uvy(i,j) = sum/real(cnt)
-            else
-               uvy(i,j) = 0.0
-            end if
-         enddo
-      enddo
-
-      deallocate(ty, tx)
-
-    end subroutine transformA2B
-! end subroutine Run
-  end subroutine MOM6Run
+  end subroutine Run
 
 !BOP
 
@@ -1441,13 +1353,13 @@ contains
 
 !EOP
 
-    type(MAPL_MetaComp),       pointer :: MAPL
-    type(ESMF_Time)                    :: MyTime
-    type(MOM_MAPL_Type),       pointer :: MOM_MAPL_internal_state => null()
-    type(MOM_MAPLWrap_Type)            :: wrap
-    type(ocean_public_type),   pointer :: Ocean                   => null()
-    type(ocean_state_type),    pointer :: Ocean_State             => null()
-    type(ice_ocean_boundary_type), pointer :: Boundary            => null()
+    type(MAPL_MetaComp),           pointer :: MAPL
+    type(ESMF_Time)                        :: MyTime
+    type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state => null()
+    type(MOM_MAPLWrap_Type)                :: wrap
+    type(ocean_public_type),       pointer :: Ocean                   => null()
+    type(ocean_state_type),        pointer :: Ocean_State             => null()
+    type(ice_ocean_boundary_type), pointer :: Boundary                => null()
 
 ! ErrLog Variables
 
