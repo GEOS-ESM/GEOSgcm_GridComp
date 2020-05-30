@@ -299,14 +299,13 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-
     call MAPL_AddImportSpec(GC,                                   &
         SHORT_NAME         = 'STROCNXB',                          &
         LONG_NAME          = 'x_stress_at_base_of_ice_weighted_by_aiu_Bgrid',    &
         UNITS              = 'N m-2',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
+        RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
@@ -315,8 +314,7 @@ contains
         UNITS              = 'N m-2',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-
+        RC=STATUS  )
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                   &
@@ -326,6 +324,33 @@ contains
           DIMS               = MAPL_DimsHorzOnly,                  &
           VLOCATION          = MAPL_VLocationNone,                 &
           RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                   &
+          SHORT_NAME         = 'AICE',                             &
+          LONG_NAME          = 'ice_concentration_of_grid_cell',   &
+          UNITS              = '1',                                &
+          DIMS               = MAPL_DimsHorzOnly,                  &
+          VLOCATION          = MAPL_VLocationNone,                 &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+        SHORT_NAME         = 'TAUXBOT',                            &
+        LONG_NAME          = 'eastward_stress_at_base_of_ice_Agrid',    &
+        UNITS              = 'N m-2',                              &
+        DIMS               = MAPL_DimsHorzOnly,                    &
+        VLOCATION          = MAPL_VLocationNone,                   &
+        RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+        SHORT_NAME         = 'TAUYBOT',                            &
+        LONG_NAME          = 'northward_stress_at_base_of_ice_Agrid',    &
+        UNITS              = 'N m-2',                              &
+        DIMS               = MAPL_DimsHorzOnly,                    &
+        VLOCATION          = MAPL_VLocationNone,                   &
+        RC=STATUS  )
      VERIFY_(STATUS)
 
 !  !EXPORT STATE:
@@ -417,6 +442,23 @@ contains
          UNITS              = 'J m-2',                            &
          DIMS               = MAPL_DimsHorzOnly,                  &
          VLOCATION          = MAPL_VLocationNone,                 &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME         = 'DUM1',                              &
+         LONG_NAME          = 'dummy_export1',        &
+         UNITS              = '1',                               &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME         = 'DUM2',                              &
+         LONG_NAME          = 'dummy_export2',        &
+         UNITS              = '1',                               &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -724,20 +766,15 @@ contains
     ASSERT_(counts(1)==IM)
     ASSERT_(counts(2)==JM)
 
-! Check run time surface current stagger option set in MOM_input 
-! to make sure they match what is expected here: BGRID_NE.
-!---------------------------------------------------------------
+! Check run time wind stagger option set in MOM_input 
+! to make sure it matches what is expected here
+!----------------------------------------------------
 
     if (MAPL_AM_I_Root()) then
      if (Boundary%wind_stagger == AGRID) then
-!      print *, ' Surface stress stagger set in ocean model: (MOM6) AGRID.'
-       print *, ' Surface stress stagger set in ocean model: (MOM6) AGRID. This option is not supported. Exiting!'
-       ASSERT_(.false.)
-     elseif (Boundary%wind_stagger == BGRID_NE) then
-       print *, ' Surface stress stagger set in ocean model: (MOM6) BGRID_NE.'
-     elseif (Boundary%wind_stagger == CGRID_NE) then
-!      print *, ' Surface stress stagger set in ocean model: (MOM6) CGRID_NE.'
-       print *, ' Surface stress stagger set in ocean model: (MOM6) CGRID_NE. This option is not supported. Exiting!'
+       print *, ' Surface stress stagger set in ocean model: (MOM6) AGRID.'
+     elseif ( (Boundary%wind_stagger == BGRID_NE) .or. (Boundary%wind_stagger == CGRID_NE)) then
+       print *, ' Surface stress stagger set in ocean model: (MOM6) BGRID_NE or CGRID_NE. These options are not supported. Exiting!'
        ASSERT_(.false.)
      else
        print *, ' Surface stress stagger set in ocean model: (MOM6) is invalid, stopping.'
@@ -746,20 +783,15 @@ contains
     endif
 
 ! Check run time surface current stagger option set in MOM_input 
-! to make sure they match what is expected here: BGRID_NE.
+! to make sure it matches what is expected here
 !---------------------------------------------------------------
 
     if (MAPL_AM_I_Root()) then
-     if (Ocean%stagger == AGRID) then
-!      print *, ' Surface velocity stagger set in ocean model: (MOM6) AGRID.'
-       print *, ' Surface velocity stagger set in ocean model: (MOM6) AGRID. This option is not supported. Exiting!'
+     if ( (Ocean%stagger == AGRID) .or. (Ocean%stagger == BGRID_NE)) then
+       print *, ' Surface velocity stagger set in ocean model: (MOM6) AGRID or BGRID_NE. These are not supported, try CGRID_NE. Exiting!'
        ASSERT_(.false.)
-     elseif (Ocean%stagger == BGRID_NE) then
-       print *, ' Surface velocity stagger set in ocean model: (MOM6) BGRID_NE.'
      elseif (Ocean%stagger == CGRID_NE) then
-!      print *, ' Surface velocity stagger set in ocean model: (MOM6) CGRID_NE.'
-       print *, ' Surface velocity stagger set in ocean model: (MOM6) CGRID_NE. This option is not supported. Exiting!'
-       ASSERT_(.false.)
+       print *, ' Surface velocity stagger set in ocean model: (MOM6) CGRID_NE.'
      else
        print *, ' Surface velocity stagger set in ocean model: (MOM6) is invalid, stopping.'
        ASSERT_(.false.)
@@ -930,7 +962,6 @@ contains
     type(MOM_MAPLWrap_Type)                :: wrap
 
     type(ocean_grid_type),         pointer :: Ocean_grid               => null()
-    type(domain2d),                pointer :: OceanDomain              => null()
 
 ! Required exports
 
@@ -969,6 +1000,9 @@ contains
     REAL_, pointer                     :: STROCNXB(:,:)      => null()
     REAL_, pointer                     :: STROCNYB(:,:)      => null()
     REAL_, pointer                     :: AICEU(:,:)         => null()
+    REAL_, pointer                     :: AICE(:,:)          => null()
+    REAL_, pointer                     :: TAUXBOT(:,:)       => null()
+    REAL_, pointer                     :: TAUYBOT(:,:)       => null()
 
 ! Temporaries
 
@@ -980,6 +1014,8 @@ contains
 
     integer                            :: steady_state_ocean = 0       ! SA: Per Atanas T, "name" of this var is misleading
                                                                        ! We run ocean model only when it = 0
+
+    character(len=7)                   :: pres_loading                 ! yes or no
 
     integer                            :: isc,iec,jsc,jec
 
@@ -1042,14 +1078,17 @@ contains
 ! Get domain size
 !----------------
 
-    OceanDomain => Ocean%Domain
-    call mpp_get_compute_domain(OceanDomain, isc, iec, jsc, jec)
+! -------
+! do this:
+    call mpp_get_compute_domain(Ocean%Domain, isc, iec, jsc, jec)
+! instead of:
+!   call get_ocean_grid (Ocean_state, Ocean_grid)
+!   isc  = Ocean_grid%isc; iec  = Ocean_grid%iec
+!   jsc  = Ocean_grid%jsc; jec  = Ocean_grid%jec
+! -------
 
-!   print *, '[isc, iec], [jsc, jec]:', '[', isc, iec, ']', '[', jsc, jec, ']'
     IM=iec-isc+1
     JM=jec-jsc+1
-
-    call get_ocean_grid (Ocean_state, Ocean_grid)
 
 ! Temporaries with MOM default reals
 !-----------------------------------
@@ -1082,6 +1121,9 @@ contains
     call MAPL_GetPointer(IMPORT, STROCNXB, 'STROCNXB',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, STROCNYB, 'STROCNYB',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, AICEU,    'AICEU',     RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, AICE,     'AICE',      RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, TAUXBOT,  'TAUXBOT',   RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, TAUYBOT,  'TAUYBOT',   RC=STATUS); VERIFY_(STATUS)
 
 ! Get EXPORT pointers
 !--------------------
@@ -1103,11 +1145,18 @@ contains
 ! Fill in ocean boundary fluxes/forces
 !-------------------------------------
 
-!   Boundary%P              (isc:iec,jsc:jec)= real(PS,            kind=KIND(Boundary%p)) + & ! Pressure of overlying atmospheric
-!                               pice_scaling * real(PICE,          kind=KIND(Boundary%p))     ! and ice
-    Boundary%P              (isc:iec,jsc:jec)= &
-                                 pice_scaling* real(PICE,          kind=KIND(Boundary%p)) ! Pressure of overlying ice only
+    call MAPL_GetResource( MAPL, pres_loading, Label="pres_loading:", DEFAULT="NO", RC=STATUS)
+    VERIFY_(STATUS)
 
+    ! NOTE: PICE that is available here is all = 0. This should be made realistic, for now it is from MOM5 legacy
+    !       Need to study with zero pressure loading (CTL: as now), exp1 ( with PS only), exp2 (with PS and PICE), exp3 (PICE only).
+    if ( pres_loading == "YES") then
+      Boundary%P              (isc:iec,jsc:jec)= real(PS,          kind=KIND(Boundary%p)) + & ! Pressure of overlying atmospheric
+                                  pice_scaling * real(PICE,        kind=KIND(Boundary%p))     ! and ice
+    else
+      Boundary%P              (isc:iec,jsc:jec)= &
+                                   pice_scaling* real(PICE,        kind=KIND(Boundary%p)) ! Pressure of overlying ice only
+    end if
 
     Boundary%lw_flux        (isc:iec,jsc:jec)= real(LWFLX,         kind=KIND(Boundary%p)) ! Long wave flux: both positive down
     Boundary%t_flux         (isc:iec,jsc:jec)= real(SHFLX,         kind=KIND(Boundary%p)) ! Sensible heat flux: both positive up
@@ -1124,39 +1173,25 @@ contains
     Boundary%sw_flux_nir_dir(isc:iec,jsc:jec)= real(DRNIR,         kind=KIND(Boundary%p)) ! direct Near InfraRed sw radiation  [W m-2]
     Boundary%sw_flux_nir_dif(isc:iec,jsc:jec)= real(DFNIR,         kind=KIND(Boundary%p)) ! diffuse Near InfraRed sw radiation [W m-2]
 
-! Initialize stress to be safe
-!-----------------------------
-    Boundary%U_flux = 0.
-    Boundary%V_flux = 0.
-
 ! Convert input stresses over water to MOM wind stagger
 !------------------------------------------------------
+    U = 0.0; V = 0.0
+!   Using A-grid ice stress, note ice (CICE) stress has opposite sign to atmosphere
+    U = real( TAUX*(1.-AICE) - TAUXBOT*AICE, kind=kind(U))
+    V = real( TAUY*(1.-AICE) - TAUYBOT*AICE, kind=kind(V))
+
+! Grid rotation angles - these could be saved in the first instance, rather doing every time
 !   cos_rot = 1. ! A-grid
     call ocean_model_data_get(Ocean_State, Ocean, 'cos_rot', cos_rot, isc, jsc)
 !   sin_rot = 0. ! A-grid
     call ocean_model_data_get(Ocean_State, Ocean, 'sin_rot', sin_rot, isc, jsc)
 
-! A-grid
-!   if ( Boundary%wind_stagger == AGRID) then
-!     print *, ' Nothing but B-grid stress supported at this moment. Exiting!'
-!     ASSERT_(.false.)
-      U = 0.0; V = 0.0
-      U = real( TAUX, kind=kind(U))
-      V = real( TAUY, kind=kind(V))
-!   endif
-
-! B-grid
-!   if ( Boundary%wind_stagger == BGRID_NE) then
-! ****
-! ****
-!     U = 0.0; V = 0.0
-!     call transformA2B( real(TAUX,kind=kind(U)), real(TAUY,kind=kind(V)), U, V)
-!   endif
-
 ! Rotate input stress over water along i,j of tripolar grid, and combine with stress under ice
 !---------------------------------------------------------------------------------------------
-    Boundary%U_flux  (isc:iec,jsc:jec)= real( (U*cos_rot + V*sin_rot)*(1.-AICEU) - STROCNXB, kind=KIND(Boundary%p))
-    Boundary%V_flux  (isc:iec,jsc:jec)= real((-U*sin_rot + V*cos_rot)*(1.-AICEU) - STROCNYB, kind=KIND(Boundary%p))
+    Boundary%U_flux = 0.0;  Boundary%V_flux = 0.0 ! Initialize stress
+
+    Boundary%U_flux  (isc:iec,jsc:jec)= real( (U*cos_rot + V*sin_rot), kind=KIND(Boundary%p))
+    Boundary%V_flux  (isc:iec,jsc:jec)= real((-U*sin_rot + V*cos_rot), kind=KIND(Boundary%p))
 
 ! Set the time for MOM
 !---------------------
@@ -1241,54 +1276,47 @@ contains
 
 ! currents (m/s)
 !---------------
-    if (Ocean%stagger == BGRID_NE) then
+!   A-grid currents (for the atmospheric model)
+    U = 0.0; V = 0.0
+    call ocean_model_get_UV_surf(Ocean_State, Ocean, 'ua', U, isc, jsc) ! this comes to us in m/s
+    call ocean_model_get_UV_surf(Ocean_State, Ocean, 'va', V, isc, jsc) ! this comes to us in m/s
 
-!   B-grid currents
-      U = 0.0; V = 0.0
-      call ocean_model_data_get(Ocean_State, Ocean, 'u_surf', U, isc, jsc) ! this comes to us in m/s
-      call ocean_model_data_get(Ocean_State, Ocean, 'v_surf', V, isc, jsc) ! this comes to us in m/s
-
-      if(associated(UWB )) then
-        where(MASK(:,:) > 0.0)
-          UWB = real(U, kind=G5KIND)
-        elsewhere
-          UWB =0.0
-        end where
-      endif
-
-      if(associated(VWB )) then
-        where(MASK(:,:) > 0.0)
-          VWB = real(V, kind=G5KIND)
-        elsewhere
-          VWB =0.0
-        end where
-      end if
-
-!   A-grid currents
-      U = 0.0; V = 0.0
-      call ocean_model_get_UV_surf(Ocean_State, Ocean, 'ua', U, isc, jsc) ! this comes to us in m/s
-      call ocean_model_get_UV_surf(Ocean_State, Ocean, 'va', V, isc, jsc) ! this comes to us in m/s
-
-      if(associated(UW )) then
-        where(MASK(:,:) > 0.0)
-          UW = real(U, kind=G5KIND)
-        elsewhere
-          UW=0.0
-        end where
-      endif
-
-      if(associated(VW )) then
-        where(MASK(:,:) > 0.0)
-          VW = real(V, kind=G5KIND)
-        elsewhere
-          VW=0.0
-        end where
-      end if
-    else
-      print *, ' Nothing but B-grid (and A-grid) surface currents are supported at this moment. Exiting!'
-      ASSERT_(.false.)
+    if(associated(UW )) then
+      where(MASK(:,:) > 0.0)
+        UW = real(U, kind=G5KIND)
+      elsewhere
+        UW=0.0
+      end where
     endif
-! -----------------------------------------
+
+    if(associated(VW )) then
+      where(MASK(:,:) > 0.0)
+        VW = real(V, kind=G5KIND)
+      elsewhere
+        VW=0.0
+      end where
+    end if
+
+!   B-grid currents (for CICE dynamics)
+    U = 0.0; V = 0.0
+    call ocean_model_get_UV_surf(Ocean_State, Ocean, 'ub', U, isc, jsc) ! this comes to us in m/s
+    call ocean_model_get_UV_surf(Ocean_State, Ocean, 'vb', V, isc, jsc) ! this comes to us in m/s
+
+    if(associated(UWB )) then
+      where(MASK(:,:) > 0.0)
+        UWB = real(U, kind=G5KIND)
+      elsewhere
+        UWB =0.0
+      end where
+    endif
+
+    if(associated(VWB )) then
+      where(MASK(:,:) > 0.0)
+        VWB = real(V, kind=G5KIND)
+      elsewhere
+        VWB =0.0
+      end where
+    end if
 
 ! Optional Exports at GEOS precision
 !-----------------------------------
@@ -1316,34 +1344,37 @@ contains
       real, INTENT(INOUT)  :: uvy(isc:,jsc:)
 
       integer              :: i, j, ii, jj, cnt
-      integer              :: isd, ied, jsd, jed
+      integer              :: isd,ied,jsd,jed
 
       real, allocatable    :: tx(:,:), ty(:,:)
       real                 :: sum
 
       integer, parameter   :: halo = 1
 
-! we need: isd,ied,jsd,jed
-!
-!     isd = lbound( Boundary%U_flux, 1) 
-!     ied = ubound( Boundary%U_flux, 1)
-!     jsd = lbound( Boundary%U_flux, 2) 
-!     jed = ubound( Boundary%U_flux, 2)
+      type(ocean_grid_type),  pointer :: Ocean_grid => null()
 
-      isd = isc - 2 * halo
-      ied = iec + 2 * halo
-      jsd = jsc - 2 * halo
-      jed = jec + 2 * halo
+! we need: {isd,ied,jsd,jed} > {isc,iec,jsc,jec}
+! -------
+! do this:
+      call get_ocean_grid (Ocean_state, Ocean_grid)
+      isd  = Ocean_grid%isd; ied  = Ocean_grid%ied
+      jsd  = Ocean_grid%jsd; jed  = Ocean_grid%jed
+! instead of:
+!     call mpp_get_data_domain   (Ocean%Domain, isd, ied, jsd, jed)
+! because this gives: {isd,ied,jsd,jed} = {isc,iec,jsc,jec}
+! -------
 
+! This will die on "(tx(i+ii,j+jj)" darn halo sizes.
       allocate(tx(isd:ied,jsd:jed), stat=STATUS); VERIFY_(STATUS)
       allocate(ty(isd:ied,jsd:jed), stat=STATUS); VERIFY_(STATUS)
 
-      tx = 0.0; ty = 0.0
+      uvx = 0.0; uvy = 0.0
+      tx  = 0.0; ty  = 0.0
 
-      tx(isc:iec, jsc:jec) = U
-      ty(isc:iec, jsc:jec) = V
+      tx(isc:, jsc:) = U
+      ty(isc:, jsc:) = V
 
-!     call mpp_update_domains(tx, ty, OceanDomain,                  gridtype=AGRID, flags=SCALAR_PAIR)
+!     call mpp_update_domains(tx, ty, Ocean%Domain,                 gridtype=AGRID, flags=SCALAR_PAIR)
       call mpp_update_domains(tx, ty, Ocean_grid%Domain%mpp_domain, gridtype=AGRID, &
                               complete = .true., &
                               whalo=halo, ehalo=halo, shalo=halo, nhalo=halo)

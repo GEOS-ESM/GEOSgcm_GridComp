@@ -1004,7 +1004,7 @@ contains
      
      call MAPL_AddConnectivity ( GC,  &
           SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
-          'STROCNXB', 'STROCNYB', 'AICEU   ', 'FRESH   ', 'FSALT   ', 'FHOCN   '/), &
+          'STROCNXB', 'STROCNYB', 'AICEU   ', 'FRESH   ', 'FSALT   ', 'FHOCN   ', 'AICE   '/), &
           DST_ID = OCEAN,             &
           SRC_ID = SEAICE,            &
           RC=STATUS  )
@@ -1538,6 +1538,7 @@ contains
     real, pointer, dimension(:,:) :: STROCNXB => null() 
     real, pointer, dimension(:,:) :: STROCNYB => null()
     real, pointer, dimension(:,:) :: AICEU => null()
+    real, pointer, dimension(:,:) :: AICE  => null()
     real, pointer, dimension(:,:) :: UWBO => null()
     real, pointer, dimension(:,:) :: VWBO => null()
 
@@ -1963,7 +1964,7 @@ contains
         VERIFY_(STATUS)
         call MAPL_GetPointer(GEX(SEAICE), DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., RC=STATUS)
         VERIFY_(STATUS)
-        call MAPL_GetPointer(GEX(SEAICE), AICEDO , 'AICE' , RC=STATUS)
+        call MAPL_GetPointer(GEX(SEAICE), AICEDO , 'AICE' , RC=STATUS)  ! SA: AICE needs to be looked into
         VERIFY_(STATUS)
         call MAPL_GetPointer(GEX(SEAICE), HICEDO , 'HICE' , RC=STATUS)
         VERIFY_(STATUS)
