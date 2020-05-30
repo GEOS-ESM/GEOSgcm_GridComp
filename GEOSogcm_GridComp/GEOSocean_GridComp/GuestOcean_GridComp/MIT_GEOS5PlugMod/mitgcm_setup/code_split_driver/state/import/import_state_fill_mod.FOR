@@ -97,7 +97,7 @@
 !              > 0 for decrease in theta (ocean cooling)
 !              Typical range: -350 < Qsw < 0
 !              Southwest C-grid tracer point (i.e., A-grid)
-          Qsw(i,j,bi,bj) = p%SWHEAT(iSLo+i,jSLo+j)
+          Qsw(i,j,bi,bj) = -p%SWHEAT(iSLo+i,jSLo+j)
 
 !     Transfer HFLX + SWHEAT to Qnet.
 !     HFLX   : Turbulent heat flux from skin to ocean in W/m^2.

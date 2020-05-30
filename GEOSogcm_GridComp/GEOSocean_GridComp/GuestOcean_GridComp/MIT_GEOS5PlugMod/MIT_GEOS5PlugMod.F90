@@ -648,8 +648,11 @@ contains
     allocate(QFLX(IM,JM), STAT=status)
     VERIFY_(STATUS)
 
+!US MIT gets net upward heat flux without short-wave radiation
     HFLX=-LWFLX+SHFLX+Av*QFLUX
+!US Net fresh water flux, downward positive (flip sign inside the MIT driver)
     QFLX=RAIN+SNOW-QFLUX
+!US Net short-wave raditaion, downward positive (flip sign inside the MIT driver)
     SWFLX = PENUVR+PENPAR+PENUVF+PENPAF+DRNIR+DFNIR
 
 ! Put import data into internal state
