@@ -1168,7 +1168,7 @@ contains
 !--------------------------------------------------------------
     Boundary%sw_flux_vis_dir(isc:iec,jsc:jec)= real(PENUVR+PENPAR, kind=KIND(Boundary%p)) ! direct visible sw radiation        [W m-2]
     Boundary%sw_flux_vis_dif(isc:iec,jsc:jec)= real(PENUVF+PENPAF, kind=KIND(Boundary%p)) ! diffuse visible sw radiation       [W m-2]
-    Boundary%sw_flux_nir_dir(isc:iec,jsc:jec)= real(DRNIR,         kind=KIND(Boundary%p)) ! direct Near InfraRed sw radiation  [W m-2]
+    Boundary%sw_flux_nir_dir(isc:iec,jsc:jec)= real(DRNIR,         kind=KIND(Boundary%p)) ! direct  Near InfraRed sw radiation [W m-2]
     Boundary%sw_flux_nir_dif(isc:iec,jsc:jec)= real(DFNIR,         kind=KIND(Boundary%p)) ! diffuse Near InfraRed sw radiation [W m-2]
 
 ! Convert input stresses over water to MOM wind stagger
