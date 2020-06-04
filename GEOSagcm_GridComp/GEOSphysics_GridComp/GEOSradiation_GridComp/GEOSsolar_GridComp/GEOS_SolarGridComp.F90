@@ -1416,6 +1416,15 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
+       LONG_NAME  = 'mean_non_zeroed_cosine_of_the_solar_zenith_angle',      &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'PCOSZ',                                                 &
+       DIMS       = MAPL_DimsHorzOnly,                                       &
+       VLOCATION  = MAPL_VLocationNone,                                      &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                              &
         SHORT_NAME = 'CLDTMP',                                               &
         LONG_NAME  = 'cloud_top_temperature',                                &
         UNITS      = 'K',                                                    &
@@ -4545,7 +4554,7 @@ contains
       character(len=ESMF_MAXSTR)      :: IAm
       integer                         :: STATUS
 
-      real,    dimension(IM,JM)       :: ZTH, SLR, ALB, CLD, SLN, ZTHN
+      real,    dimension(IM,JM)       :: ZTH, SLR, ALB, CLD, SLN, ZTHN, ZTHP
 
       real, pointer, dimension(:,:  ) :: ALBEXP, ALBIMP
 
@@ -4584,7 +4593,7 @@ contains
       real, pointer, dimension(:,:  ) :: DFPARN, DRPARN
       real, pointer, dimension(:,:  ) :: DFNIRN, DRNIRN
       real, pointer, dimension(:,:  ) :: ALBEDO
-      real, pointer, dimension(:,:  ) :: COSZ, MCOSZ
+      real, pointer, dimension(:,:  ) :: COSZ, MCOSZ, PCOSZ
 
       real, pointer, dimension(:,:,:)   :: FCLD,CLIN,RH
       real, pointer, dimension(:,:,:)   :: DP, PL, PLL, AERO, T, Q, RAERO
@@ -4623,6 +4632,7 @@ contains
               CLOCK = CLOCK,   &
               TIME = SUNFLAG,  &
               ZTHN = ZTHN,     &
+              ZTHP = ZTHP,     &
               RC=STATUS )
       VERIFY_(STATUS)
 
@@ -4758,6 +4768,8 @@ contains
       call MAPL_GetPointer(EXPORT  ,  COSZ,   'COSZ',   RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT  , MCOSZ,  'MCOSZ',   RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT  , PCOSZ,  'PCOSZ',   RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT  ,DRNUVR, 'DRNUVR',   RC=STATUS)
       VERIFY_(STATUS)
@@ -5171,6 +5183,7 @@ contains
 
       if(associated( MCOSZ))  MCOSZ = ZTH
       if(associated(  COSZ))   COSZ = ZTHN
+      if(associated( PCOSZ))  PCOSZ = ZTHP
 
       RETURN_(ESMF_SUCCESS)
     end subroutine UPDATE_EXPORT
