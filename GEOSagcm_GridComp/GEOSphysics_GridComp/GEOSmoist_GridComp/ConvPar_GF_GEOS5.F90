@@ -9922,6 +9922,7 @@ ENDIF
      pw_up          = 0.0
      tot_pw_up_chem = 0.0
 
+
      IF(USE_TRACER_SCAVEN==2 .and. cumulus /= 'shallow') THEN
         factor_temp = 1.
         DO i=its,itf
@@ -9938,6 +9939,7 @@ ENDIF
                if( TRIM(CHEM_name (ispc)) == 'sulfur'   .or. &
                    
                    TRIM(CHEM_name (ispc)(1:len_trim('ss') )) == 'ss'  .or. & ! 'seasalt' 
+                   TRIM(CHEM_name (ispc)(1:len_trim('SS') )) == 'SS'  .or. & ! 'seasalt 2G' 
                    
                    TRIM(CHEM_name (ispc)) == 'SO2'      .or. &
                    TRIM(CHEM_name (ispc)) == 'SO4'      .or. &
