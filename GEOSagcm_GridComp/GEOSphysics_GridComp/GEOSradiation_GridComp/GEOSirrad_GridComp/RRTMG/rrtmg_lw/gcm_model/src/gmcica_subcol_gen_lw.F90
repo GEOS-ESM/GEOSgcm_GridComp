@@ -161,8 +161,8 @@
             call tabulate_xcw_gamma(xcw)
          endif
 
-      allocate( pmidd(ncol, nlay), cldfracd(ncol, nlay+1))
-      allocate( clwpd(ncol, nlay+1), ciwpd(ncol, nlay+1), taucd(ncol, nbndlw, nlay))
+      allocate( pmidd(ncol, nlay), cldfracd(ncol, nlay))
+      allocate( clwpd(ncol, nlay), ciwpd(ncol, nlay), taucd(ncol, nbndlw, nlay))
       allocate( xcwd( n1, n2))
       allocate( alphad( ncol, nlay), rcorrd(ncol, nlay))
       allocate( cloudFlagd( ncol, 4))
