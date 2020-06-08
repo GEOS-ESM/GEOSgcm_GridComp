@@ -1263,7 +1263,9 @@ contains
              end where
 
              where(MASK > 0.0 .and. FI >= 0.05 .and. FId > FI)
-
+                ! 0.054 (C/psu) is the ratio between the freezing temperature and salinity of brine.
+                ! -0.054*SW gives salinity dependent freezing temperature 
+                ! ideally this const should be from the ocean model, but doing so is difficult here
                 DEL_TEMP = ((-0.054*SW+MAPL_TICE) - TW)*DT/(DT+TAU_SST_UNDER_ICE)
 
              end where
