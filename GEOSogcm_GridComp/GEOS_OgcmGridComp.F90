@@ -13,7 +13,7 @@ module GEOS_OgcmGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
 
   use GEOS_OceanBioGeoChemGridCompMod,   only : ObioSetServices   => SetServices
   use GEOS_OceanBioGridCompMod,          only : ObioSimpleSetServices => SetServices
@@ -84,6 +84,15 @@ module GEOS_OgcmGridCompMod
   integer ::       OCEAN
 
   logical ::      DUAL_OCEAN
+
+  character(len = 2) :: suffix
+  integer            :: k
+  type bandptr
+   real, pointer, dimension(:) :: b
+  end type bandptr
+  type bandg
+   real, pointer, dimension(:,:) :: b
+  end type bandg
 
   type T_OGCM_STATE
      private
@@ -184,12 +193,12 @@ contains
     VERIFY_(STATUS)
     
     if (DO_DATAATM/=0) then
-       ASSERT_(DO_DATASEAONLY==0)
+       _ASSERT(DO_DATASEAONLY==0,'needs informative message')
     end if
     if (DO_DATASEAONLY/=0) then
-       ASSERT_(DO_CICE_THERMO==0)
-       ASSERT_(DO_DATAICE/=0)
-       ASSERT_(DO_OBIO==0)
+       _ASSERT(DO_CICE_THERMO==0,'needs informative message')
+       _ASSERT(DO_DATAICE/=0,'needs informative message')
+       _ASSERT(DO_OBIO==0,'needs informative message')
     end if
 
 ! Set the Run and initialize entry points
@@ -386,7 +395,39 @@ contains
        RESTART            = MAPL_RestartSkip             ,&
        RC=STATUS  ) 
   VERIFY_(STATUS)
-     
+
+  if (DO_OBIO/=0) then
+  do k=1, 33
+   write(unit = suffix, fmt = '(i2.2)') k
+   call MAPL_AddImportSpec(GC,                                &
+      SHORT_NAME = 'TAUA_'//suffix,                           &
+      LONG_NAME  = 'aerosol optical thickness',               &
+      UNITS      = '',                                        &
+      DIMS       = MAPL_DimsTileOnly,                         &
+      VLOCATION  = MAPL_VLocationNone,                        &
+      RC=STATUS  )
+   VERIFY_(STATUS)
+
+   call MAPL_AddImportSpec(GC,                                &
+      SHORT_NAME = 'ASYMP_'//suffix,                          &
+      LONG_NAME  = 'asymmetry parameter',                     &
+      UNITS      = '',                                        &
+      DIMS       = MAPL_DimsTileOnly,                         &
+      VLOCATION  = MAPL_VLocationNone,                        &
+      RC=STATUS  )
+   VERIFY_(STATUS)
+
+   call MAPL_AddImportSpec(GC,                                &
+      SHORT_NAME = 'SSALB_'//suffix,                          &
+      LONG_NAME  = 'single scattering albedo',                &
+      UNITS      = '',                                        &
+      DIMS       = MAPL_DimsTileOnly,                         &
+      VLOCATION  = MAPL_VLocationNone,                        &
+      RC=STATUS  )
+   VERIFY_(STATUS)
+  enddo
+  end if
+
   call MAPL_AddImportSpec(GC,                             &
        LONG_NAME          = 'Dust Dry Deposition'        ,&
        UNITS              = 'kg m-2 s-1'                 ,&
@@ -419,7 +460,70 @@ contains
        RESTART            = MAPL_RestartSkip             ,&
        RC=STATUS  ) 
   VERIFY_(STATUS)
-     
+
+  call MAPL_AddImportSpec(GC,                                 &
+       SHORT_NAME = 'CCOVM',                                  &
+       LONG_NAME  = 'cloud cover',                            &
+       UNITS      = 'fraction (dimensionless)',               &
+       DIMS       = MAPL_DimsTileOnly,                        &
+       VLOCATION  = MAPL_VLocationNone,                       &
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                                 &
+       SHORT_NAME = 'CDREM',                                  &
+       LONG_NAME  = 'cloud droplet effective radius',         &
+       UNITS      = '',                                       &
+       DIMS       = MAPL_DimsTileOnly,                        &
+       VLOCATION  = MAPL_VLocationNone,                       &
+       RC=STATUS  )
+  VERIFY_(STATUS)
+  
+  call MAPL_AddImportSpec(GC,                                 &
+       SHORT_NAME = 'RLWPM',                                  &
+       LONG_NAME  = 'cloud liquid water path',                &
+       UNITS      = '',                                       &
+       DIMS       = MAPL_DimsTileOnly,                        &
+       VLOCATION  = MAPL_VLocationNone,                       &
+       RC=STATUS  )
+  VERIFY_(STATUS)
+  
+  call MAPL_AddImportSpec(GC,                                 &
+       SHORT_NAME = 'CLDTCM',                                 &
+       LONG_NAME  = 'cloud optical thickness',                &
+       UNITS      = '',                                       &
+       DIMS       = MAPL_DimsTileOnly,                        &
+       VLOCATION  = MAPL_VLocationNone,                       &
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                                 &
+       SHORT_NAME = 'RH',                                     &
+       LONG_NAME  = 'relative humidity',                      &
+       UNITS      = 'percent',                                &
+       DIMS       = MAPL_DimsTileOnly,                        &
+       VLOCATION  = MAPL_VLocationNone,                       &
+       RC=STATUS  )
+  VERIFY_(STATUS)     
+
+  call MAPL_AddImportSpec(GC,                                 &
+       SHORT_NAME = 'OZ',                                     &
+       LONG_NAME  = 'ozone thickness',                        &
+       UNITS      = 'Dobson units',                           &
+       DIMS       = MAPL_DimsTileOnly,                        &
+       VLOCATION  = MAPL_VLocationNone,                       &
+       RC=STATUS  )
+  VERIFY_(STATUS)
+  
+  call MAPL_AddImportSpec(GC,                                 &
+       SHORT_NAME = 'WV',                                     &
+       LONG_NAME  = 'water vapor',                            &
+       UNITS      = 'cm',                                     &
+       DIMS       = MAPL_DimsTileOnly,                        &
+       VLOCATION  = MAPL_VLocationNone,                       &
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
   if(DO_DATAATM==0) then
      call MAPL_AddImportSpec(GC,                             &
           LONG_NAME          = 'Black Carbon Dry Deposition',&
@@ -900,6 +1004,12 @@ contains
 ! Children's imports are in the ocean grid and are all satisfied
 !   by OGCM from exchange grid quantities.
 
+  if(DO_OBIO /= 0) then
+     call MAPL_TerminateImport(GC, SHORT_NAME = ['PS    ','UU    ','OZ    ','WV    ',&
+          'RH    ','CCOVM ','CLDTCM','RLWPM ','CDREM '], CHILD=ORAD, RC=STATUS  )
+     VERIFY_(STATUS)
+  end if
+  
   call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
 
 ! Set the Profiling timers
@@ -1000,11 +1110,13 @@ contains
     integer :: iInterp
     integer, pointer :: GRIDIM(:)=> null()
     integer, pointer :: GRIDJM(:)=> null()
-    character(len=ESMF_MAXSTR)          :: GRIDNAME
-    character(len=ESMF_MAXSTR), pointer :: GNAMES(:)=> null()
+    character(len=MAPL_TileNameLength)          :: GRIDNAME
+    character(len=MAPL_TileNameLength), pointer :: GNAMES(:)=> null()
 
     type (T_OGCM_STATE), pointer        :: ogcm_internal_state => null() 
     type (OGCM_wrap)                    :: wrap
+
+    type (ESMF_StateItem_Flag) :: itemType
 
 !=============================================================================
 
@@ -1024,8 +1136,8 @@ contains
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_TimerOn(MAPL,"TOTAL"     )
     call MAPL_TimerOn(MAPL,"INITIALIZE")
+    call MAPL_TimerOn(MAPL,"TOTAL"     )
 
     call ESMF_UserCompGetInternalState(gc, 'OGCM_state', wrap, status)
     VERIFY_(STATUS)
@@ -1155,8 +1267,11 @@ contains
     VERIFY_(STATUS)
 
     do I = 1, size(GIM)
-       call ESMF_StateGet(GIM(I), 'FROCEAN', FIELD, RC=STATUS)
-       if (STATUS == ESMF_SUCCESS) then
+       call ESMF_StateGet(GIM(I), 'FROCEAN', itemType=itemType, RC=STATUS)
+       VERIFY_(STATUS)
+       if (itemType == ESMF_STATEITEM_FIELD) then
+          call ESMF_StateGet(GIM(I), 'FROCEAN', FIELD, RC=STATUS)
+          VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(I), FROCEAN, 'FROCEAN',   RC=STATUS)
           VERIFY_(STATUS)
           call MAPL_LocStreamFracArea( EXCH, MAPL_OCEAN, FROCEAN, RC=STATUS) 
@@ -1187,7 +1302,7 @@ contains
     VERIFY_(STATUS)
 !   query exchange grid for ngrids
     ngrids = size(gnames)
-    ASSERT_(ngrids==2)
+    _ASSERT(ngrids==2,'needs informative message')
 
     
 !   validate that gridname is there
@@ -1198,7 +1313,7 @@ contains
           exit
        ENDIF
     ENDDO
-    ASSERT_(FOUND)
+    _ASSERT(FOUND,'needs informative message')
 
     O_IDX = I
     A_IDX = 3-I
@@ -1236,8 +1351,8 @@ contains
 ! All Done
 !---------
 
-    call MAPL_TimerOff(MAPL,"INITIALIZE")
     call MAPL_TimerOff(MAPL,"TOTAL"     )
+    call MAPL_TimerOff(MAPL,"INITIALIZE")
 
     RETURN_(ESMF_SUCCESS)
   end subroutine Initialize
@@ -1302,6 +1417,10 @@ contains
     real, pointer, dimension(:) :: SI => null()
     real, pointer, dimension(:) :: DISCHARGE => null() 
     real, pointer, dimension(:) :: CO2SC => null()
+    type(bandptr), dimension(33):: ATAUA
+    type(bandptr), dimension(33):: AASYMP
+    type(bandptr), dimension(33):: ASSALB
+
     real, pointer, dimension(:,:) :: DUDP => null()
     real, pointer, dimension(:,:) :: DUWT => null()
     real, pointer, dimension(:,:) :: DUSD => null()
@@ -1309,6 +1428,13 @@ contains
     real, pointer, dimension(:,:) :: BCWT => null()
     real, pointer, dimension(:,:) :: OCDP => null()
     real, pointer, dimension(:,:) :: OCWT => null()
+    real, pointer, dimension(:) :: CCOVM => null()
+    real, pointer, dimension(:) :: CDREM => null()
+    real, pointer, dimension(:) :: RLWPM => null()
+    real, pointer, dimension(:) :: CLDTCM => null()
+    real, pointer, dimension(:) :: RH => null()
+    real, pointer, dimension(:) :: OZ => null()
+    real, pointer, dimension(:) :: WV => null()
     real, pointer, dimension(:,:) :: FSWBAND => null()
     real, pointer, dimension(:,:) :: FSWBANDNA => null()
     real, pointer, dimension(:)   :: TI => null()
@@ -1345,8 +1471,14 @@ contains
     real, pointer, dimension(:,:) :: PSO    => null()
     real, pointer, dimension(:,:) :: USTR3B => null()
     real, pointer, dimension(:,:) :: UUB    => null()
+    real, pointer, dimension(:,:) :: UUO    => null()
     real, pointer, dimension(:,:) :: PSB    => null()
+    real, pointer, dimension(:,:) :: PSR    => null()
     real, pointer, dimension(:,:) :: CO2SCB => null()
+    type(bandg),   dimension(33)  :: ATAUAO
+    type(bandg),   dimension(33)  :: AASYMPO
+    type(bandg),   dimension(33)  :: ASSALBO
+
     real, pointer, dimension(:,:,:) :: DUDPB => null()
     real, pointer, dimension(:,:,:) :: DUWTB => null()
     real, pointer, dimension(:,:,:) :: DUSDB => null()
@@ -1354,6 +1486,13 @@ contains
     real, pointer, dimension(:,:,:) :: BCWTB => null()
     real, pointer, dimension(:,:,:) :: OCDPB => null()
     real, pointer, dimension(:,:,:) :: OCWTB => null()
+    real, pointer, dimension(:,:) :: CCOVMO => null()
+    real, pointer, dimension(:,:) :: CDREMO => null()
+    real, pointer, dimension(:,:) :: RLWPMO => null()
+    real, pointer, dimension(:,:) :: CLDTCMO => null()
+    real, pointer, dimension(:,:) :: RHO => null()
+    real, pointer, dimension(:,:) :: OZO => null()
+    real, pointer, dimension(:,:) :: WVO => null()
     real, pointer, dimension(:,:,:) :: FSWBANDR   => null()
     real, pointer, dimension(:,:,:) :: FSWBANDNAR => null()
     real, pointer, dimension(:,:) :: PENUVRO => null()
@@ -1362,6 +1501,7 @@ contains
     real, pointer, dimension(:,:) :: PENPAFO => null()
     real, pointer, dimension(:,:) :: DRNIRO  => null()
     real, pointer, dimension(:,:) :: DFNIRO  => null()
+    real, pointer, dimension(:,:) :: DISCHARGEOB => null()
 
     real, pointer, dimension(:,:) :: PENUVRM    => null()
     real, pointer, dimension(:,:) :: PENUVFM    => null()
@@ -1473,8 +1613,8 @@ contains
 ! Start Total timer
 !------------------
 
-    call MAPL_TimerOn(MAPL,"TOTAL")
     call MAPL_TimerOn(MAPL,"RUN"  )
+    call MAPL_TimerOn(MAPL,"TOTAL")
 
 ! Get parameters from generic state.
 !-----------------------------------
@@ -1547,6 +1687,19 @@ contains
     
     call MAPL_GetPointer(IMPORT, CO2SC   ,  'CO2SC'  , RC=STATUS)
     VERIFY_(STATUS)
+
+    if (DO_OBIO/=0) then
+    do k=1, 33
+     write(unit = suffix, fmt = '(i2.2)') k
+     call MAPL_GetPointer(IMPORT, ATAUA(k)%b,'TAUA_'//suffix,   RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT, AASYMP(k)%b,'ASYMP_'//suffix, RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT, ASSALB(k)%b,'SSALB_'//suffix, RC=STATUS)
+     VERIFY_(STATUS)
+    enddo
+    endif
+
     call MAPL_GetPointer(IMPORT, DUDP    ,  'DUDP'   , RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, DUWT    ,  'DUWT'   , RC=STATUS)
@@ -1567,6 +1720,21 @@ contains
        call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA' , RC=STATUS)
        VERIFY_(STATUS)
     end if
+
+    call MAPL_GetPointer(IMPORT, CCOVM,     'CCOVM',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, CDREM,     'CDREM',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, RLWPM,     'RLWPM',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, CLDTCM,    'CLDTCM',  RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, RH,        'RH',      RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, OZ,        'OZ',      RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, WV,        'WV',      RC=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetPointer(IMPORT, LWFLX, 'LWFLX', RC=STATUS)
     VERIFY_(STATUS)
@@ -1592,19 +1760,19 @@ contains
     VERIFY_(STATUS)
     call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
+    _ASSERT(FRIENDLY,'needs informative message')
 
     call ESMF_StateGet (IMPORT, 'SI', FIELD, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
+    _ASSERT(FRIENDLY,'needs informative message')
 
     call ESMF_StateGet (IMPORT, 'HI', FIELD, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
     VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
+    _ASSERT(FRIENDLY,'needs informative message')
 
     if(DO_CICE_THERMO/=0) then
        call ESMF_StateGet (IMPORT, 'FRACICE', FIELD, RC=STATUS)
@@ -1612,43 +1780,43 @@ contains
 
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
 
        call ESMF_StateGet (IMPORT, 'VOLICE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
 
        call ESMF_StateGet (IMPORT, 'VOLSNO', FIELD, RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
 
        call ESMF_StateGet (IMPORT, 'ERGICE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
 
        call ESMF_StateGet (IMPORT, 'ERGSNO', FIELD, RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
 
        call ESMF_StateGet (IMPORT, 'TAUAGE', FIELD, RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
 
        call ESMF_StateGet (IMPORT, 'MPOND', FIELD, RC=STATUS)
        VERIFY_(STATUS)
        call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
        VERIFY_(STATUS)
-       ASSERT_(FRIENDLY)
+       _ASSERT(FRIENDLY,'needs informative message')
     end if
     
 ! Children's Imports
@@ -1662,22 +1830,44 @@ contains
     call MAPL_GetPointer(GIM(OCEAN ), USTR3O  ,  'OUSTAR3', notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(GIM(OCEAN ), PSO     ,  'PS'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetPointer(GIM(OBIO ), USTR3B  ,  'OUSTAR3'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(GIM(OBIO ), UUB     ,  'UU'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(GIM(OBIO ), PSB     ,  'PS'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+    if(DO_OBIO /= 0) then
+       call MAPL_GetPointer(GIM(OBIO ), USTR3B  ,  'OUSTAR3'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(OBIO ), UUB     ,  'UU'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(OBIO ), PSB     ,  'PS'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
 
-    call MAPL_GetPointer(GIM(OBIO ), CO2SCB  ,  'CO2SC'    , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(GIM(OBIO ), DUDPB   ,  'DUDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(GIM(OBIO ), DUWTB   ,  'DUWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(GIM(OBIO ), DUSDB   ,  'DUSD'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-    if(DO_DATAATM==0) then
-       call MAPL_GetPointer(GIM(OBIO ), BCDPB   ,  'BCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), BCWTB   ,  'BCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), OCDPB   ,  'OCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), OCWTB   ,  'OCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(OBIO ), CO2SCB  ,  'CO2SC'    , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
 
-       call MAPL_GetPointer(GIM(ORAD ), FSWBANDR   , 'FSWBAND'   , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), FSWBANDNAR , 'FSWBANDNA' , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
+       do k=1, 33
+          write(unit = suffix, fmt = '(i2.2)') k
+          call MAPL_GetPointer(GIM(ORAD ), ATAUAO(k)%b, 'TAUA_'//suffix , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(ORAD ), AASYMPO(k)%b,'ASYMP_'//suffix, notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(ORAD ), ASSALBO(k)%b,'SSALB_'//suffix, notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       enddo
+       call MAPL_GetPointer(GIM(ORAD ), UUO     ,  'UU'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(ORAD ), PSO     ,  'PS'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+
+       call MAPL_GetPointer(GIM(OBIO ), DUDPB   ,  'DUDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(OBIO ), DUWTB   ,  'DUWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(OBIO ), DUSDB   ,  'DUSD'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(OBIO ), DISCHARGEOB   ,  'DISCHARGE'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+
+       if(DO_DATAATM==0) then
+          call MAPL_GetPointer(GIM(OBIO ), BCDPB   ,  'BCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OBIO ), BCWTB   ,  'BCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OBIO ), OCDPB   ,  'OCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OBIO ), OCWTB   ,  'OCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+          
+          call MAPL_GetPointer(GIM(ORAD ), FSWBANDR   , 'FSWBAND'   , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(ORAD ), FSWBANDNAR , 'FSWBANDNA' , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
+       end if
+
+       call MAPL_GetPointer(GIM(ORAD ), CCOVMO  ,  'CCOVM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(ORAD ), CDREMO  ,  'CDREM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(ORAD ), RLWPMO  ,  'RLWPM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(ORAD ), CLDTCMO ,  'CLDTCM' , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(ORAD ), RHO     ,  'RH'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(ORAD ), OZO     ,  'OZ'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(ORAD ), WVO     ,  'WV'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
     end if
     
     if(DO_DATASEAONLY==0) then
@@ -1816,15 +2006,40 @@ contains
        call MAPL_LocStreamTransform( ExchGrid, UUB     ,  UU     , RC=STATUS) 
        VERIFY_(STATUS)
     endif
+    if(associated(UUO)) then
+       call MAPL_LocStreamTransform( ExchGrid, UUO     ,  UU     , RC=STATUS)
+       VERIFY_(STATUS)
+    endif
     if(associated(PSB)) then
        call MAPL_LocStreamTransform( ExchGrid, PSB     ,  PS     , RC=STATUS) 
        VERIFY_(STATUS)
     endif
-
+    if(associated(PSR)) then
+       call MAPL_LocStreamTransform( ExchGrid, PSR     ,  PS     , RC=STATUS)
+       VERIFY_(STATUS)
+    endif
     if(associated(CO2SCB)) then
        call MAPL_LocStreamTransform( ExchGrid, CO2SCB  ,  CO2SC  , RC=STATUS) 
        VERIFY_(STATUS)
     endif
+
+    if (DO_OBIO/=0) then
+    do k=1, 33
+     if ( associated(ATAUAO(k)%b) ) then
+        call MAPL_LocStreamTransform( ExchGrid, ATAUAO(k)%b, ATAUA(k)%b, RC=STATUS)
+        VERIFY_(STATUS)
+     endif
+     if ( associated(AASYMPO(k)%b) ) then
+        call MAPL_LocStreamTransform( ExchGrid, AASYMPO(k)%b, AASYMP(k)%b, RC=STATUS)
+        VERIFY_(STATUS)
+     endif
+     if ( associated(ASSALBO(k)%b) ) then
+        call MAPL_LocStreamTransform( ExchGrid, ASSALBO(k)%b, ASSALB(k)%b, RC=STATUS)
+        VERIFY_(STATUS)
+     endif
+    enddo
+    endif
+
     if(associated(DUDPB)) then
        do N = 1, NUM_DUDP
           call MAPL_LocStreamTransform( ExchGrid, DUDPB(:,:,N), DUDP(:,N), RC=STATUS )
@@ -1881,6 +2096,34 @@ contains
           end do
        endif
     end if
+    if ( associated(CCOVMO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, CCOVMO, CCOVM, RC=STATUS)
+       VERIFY_(STATUS)
+    endif
+    if ( associated(CDREMO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, CDREMO, CDREM, RC=STATUS)
+       VERIFY_(STATUS)
+    endif
+    if ( associated(RLWPMO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, RLWPMO, RLWPM, RC=STATUS)
+       VERIFY_(STATUS)
+    endif
+    if ( associated(CLDTCMO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, CLDTCMO, CLDTCM, RC=STATUS)
+       VERIFY_(STATUS)
+    endif
+    if ( associated(RHO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, RHO, RH, RC=STATUS)
+       VERIFY_(STATUS)
+    endif
+    if ( associated(OZO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, OZO, OZ, RC=STATUS)
+       VERIFY_(STATUS)
+    endif
+    if ( associated(WVO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, WVO, WV, RC=STATUS)
+       VERIFY_(STATUS)
+    endif
     
     call MAPL_LocStreamTransform( ExchGrid, PENUVRO,  PENUVR, RC=STATUS) 
     VERIFY_(STATUS)
@@ -1907,6 +2150,11 @@ contains
        DFNIRM= DFNIRO
     end if
 
+    if ( associated(DISCHARGEOB) ) then
+       call MAPL_LocStreamTransform( ExchGrid, DISCHARGEOB, DISCHARGE, RC=STATUS)
+       VERIFY_(STATUS)
+    end if
+    
     call MAPL_LocStreamTransform( ExchGrid, SIO    ,  SI    , RC=STATUS) 
     VERIFY_(STATUS)
     call MAPL_LocStreamTransform( ExchGrid, HIO    ,  HI    , RC=STATUS)
@@ -2103,7 +2351,7 @@ contains
     call MAPL_TimerOff(MAPL,"TOTAL"     )
 
     if (.not. DUAL_OCEAN) then
-       call MAPL_GenericRun(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
+       call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, RC=STATUS)
        VERIFY_(STATUS)
     else
        if (PHASE == 1) then
@@ -2351,8 +2599,8 @@ contains
 !  All done
 !-----------
 
-    call MAPL_TimerOff(MAPL,"RUN" )
     call MAPL_TimerOff(MAPL,"TOTAL")
+    call MAPL_TimerOff(MAPL,"RUN" )
 
     RETURN_(ESMF_SUCCESS)
 

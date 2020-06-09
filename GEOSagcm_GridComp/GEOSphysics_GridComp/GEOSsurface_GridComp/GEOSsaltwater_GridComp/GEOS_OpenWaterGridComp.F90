@@ -87,7 +87,7 @@ module GEOS_OpenwaterGridCompMod
 
   use sfclayer  ! using module that contains sfc layer code
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
   
@@ -1768,6 +1768,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    integer         :: iFIX_BUG1                 ! whether to fix the "bug" with old interface? 0: no (default), 1: yes
    integer         :: iMAK_BUG                  ! whether to put a   "bug" in   new interface? 0: no (default), 1: yes
+   character(len=ESMF_MAXSTR)     :: SURFRC
+   type(ESMF_Config)              :: SCF 
+
 !=============================================================================
 
 ! Begin... 
@@ -1807,8 +1810,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=CHOOSEMOSFC, DEFAULT=1, __RC__ ) 
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0,    Label="CHOOSEZ0:",    DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
@@ -2151,9 +2157,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated(GST)) GST = 0.0
 
    N = WATER  
-
-! Choose sfc layer: if CHOOSEMOSFC is 1 (default), choose helfand MO, 
-!                   if CHOOSEMOSFC is 0          , choose louis
 
    sfc_layer: if(CHOOSEMOSFC.eq.0) then
          call louissurface(1,N,UU,WW,PS,TA,TS,QA,QS,PCU,LAI,Z0,DZ,CM,CN,RIB,ZT,ZQ,CH,CQ,UUU,UCN,RE)

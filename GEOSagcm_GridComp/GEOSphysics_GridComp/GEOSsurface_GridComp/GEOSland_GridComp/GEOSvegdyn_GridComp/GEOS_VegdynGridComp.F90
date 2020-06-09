@@ -44,8 +44,7 @@ module GEOS_VegdynGridCompMod
 ! !USES: 
 
   use ESMF
-  use MAPL_Mod
-  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
+  use MAPL
   implicit none
   private
 
@@ -55,14 +54,13 @@ module GEOS_VegdynGridCompMod
 
 !EOP
 
-  integer :: IGNORE_HEIGHTS  ! Do not use JPL lidar veg heights
   integer, parameter		     :: NTYPS = MAPL_NumVegTypes
   real,    dimension(   NTYPS)       :: VGRT
-  real,    dimension(   NTYPS)       :: VGZ2   ! VGZ2 replaces lidar heights with old values,
-                                               ! if IGNORE_HEIGHTS == 1
+  ! real,    dimension(   NTYPS)       :: VGZ2   
 
   data VGRT  / 19700., 7000., 9400., 7000., 7000., 14000./
-  data VGZ2 / 35.0, 20.0, 17.0, 0.6, 0.5, 0.6/ ! Dorman and Sellers (1989)
+  ! commented out legacy look-up table for veg heights, which are now always from bcs via restarts, - reichle, 17 March 2020
+  ! data VGZ2 / 35.0, 20.0, 17.0, 0.6, 0.5, 0.6/ ! Dorman and Sellers (1989)   
   
 contains
 
@@ -139,13 +137,6 @@ contains
     !VERIFY_(STATUS)
 
     !RUN_DT = nint(DT)
-
-   
-! -----------------------------------------------------------
-! Use Simard et al. canopy height data, or overwrite?
-! -----------------------------------------------------------     
-    call MAPL_GetResource ( MAPL, IGNORE_HEIGHTS, Label="IGNORE_VEG_HEIGHTS:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS) 
     
 ! -----------------------------------------------------------
 ! At the moment, this will refresh when the land parent 
@@ -427,12 +418,6 @@ contains
 ! -----------------------------------------------------
 
     ROOTL = VGRT(nint(ITY))
-
-! overwrite canopy heights?
-! -------------------------    
-    if (IGNORE_HEIGHTS == 1) then
-       Z2CH = VGZ2(nint(ITY)) 
-    end if
     
 !  All done
 ! ---------

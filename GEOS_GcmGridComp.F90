@@ -14,14 +14,13 @@ module GEOS_GcmGridCompMod
 ! !USES:
 
    use ESMF
-   use MAPL_Mod
+   use MAPL
 
    use GEOS_dataatmGridCompMod,  only:  DATAATM_SetServices => SetServices
    use GEOS_AgcmGridCompMod,     only:  AGCM_SetServices => SetServices
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
    use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
    use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices
-   use m_chars,                  only:  uppercase
 
 
   implicit none
@@ -53,6 +52,8 @@ integer ::       AIAU
 integer ::       ADFI
 
 integer :: bypass_ogcm
+integer ::       k
+character(len = 2) :: suffix
 
 type T_GCM_STATE
    private
@@ -98,7 +99,7 @@ contains
 ! !ARGUMENTS:
 
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
-    integer, optional                  :: RC  ! return code
+    integer, intent(out)               :: RC  ! return code
 
 ! !DESCRIPTION:  The SetServices for the PhysicsGcm GC needs to register its
 !   Initialize and Run.  It uses the MAPL\_Generic construct for defining 
@@ -569,11 +570,32 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
+     call MAPL_TerminateImport( GC,                                 &
+          SHORT_NAME = (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM',    &
+                         'RH    ', 'OZ    ', 'WV    '/),            &
+          CHILD      = OGCM,                                        &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
      call MAPL_TerminateImport    ( GC,   &
           SHORT_NAME = (/'UU'/),                                    &
           CHILD      = OGCM,                                        &
           RC=STATUS  )
      VERIFY_(STATUS)
+
+     if (DO_OBIO/=0) then
+      do k=1, 33
+         write(unit = suffix, fmt = '(i2.2)') k
+         call MAPL_TerminateImport( GC,           &
+            SHORT_NAME = [ character(len=(8)) ::  &
+               'TAUA_'//suffix,                   &
+               'ASYMP_'//suffix,                  &
+               'SSALB_'//suffix ],                &
+            CHILD      = OGCM,                    &
+            RC=STATUS  )
+         VERIFY_(STATUS)
+      enddo
+     end if
 
      if(DO_DATAATM==0) then
         call MAPL_TerminateImport    ( GC,                             &
@@ -1053,8 +1075,7 @@ contains
                                            RingInterval = CORRECTOR_DURATION, sticky=.false., rc=status )
        VERIFY_(STATUS)
 
-       replayShutoffAlarm = ESMF_AlarmCreate( name='ReplayShutOff', clock=clock, &
-                                              RingInterval = Shutoff, sticky=.false., RC=STATUS )
+       replayShutoffAlarm = ESMF_AlarmCreate( name='ReplayShutOff', clock=clock, RingInterval = Shutoff, sticky=.true., RC=STATUS )
        VERIFY_(STATUS)
 
 
@@ -1230,10 +1251,27 @@ contains
            RC=STATUS )
       VERIFY_(STATUS)
 
+      do k=1, 33
+         write(unit = suffix, fmt = '(i2.2)') k
+         call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
+            [ character(len=8) ::                         &
+               'TAUA_'//suffix,                           &
+               'ASYMP_'//suffix,                          &
+               'SSALB_'//suffix] ,                        &
+            RC=STATUS)
+         VERIFY_(STATUS)
+      enddo
+
       call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
               (/'DUDP', 'DUWT', 'DUSD'/),             &
               RC=STATUS )
-         VERIFY_(STATUS)
+      VERIFY_(STATUS)
+
+      call AllocateExports(GCM_INTERNAL_STATE%expSKIN,                      &
+                        (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM', 'RH    ', &
+                          'OZ    ', 'WV    '/),                             &
+                        RC=STATUS)
+      VERIFY_(STATUS)
          
       if(DO_DATAATM==0) then
          
@@ -1410,8 +1448,8 @@ contains
     VERIFY_(STATUS)
 
 
-    call MAPL_TimerON(MAPL,"TOTAL")
     call MAPL_TimerON(MAPL,"RUN"  )
+    call MAPL_TimerON(MAPL,"TOTAL")
 
 
 ! Get my internal private state. This contains the transforms
@@ -1678,7 +1716,7 @@ contains
           if (shutoffRpl ) then
              ! clear IAU tendencies
              ! --------------------
-             if( MAPL_AM_I_Root() ) PRINT *,TRIM(Iam)//":  Zeroing IAU forcing ..."
+             ! if( MAPL_AM_I_Root() ) PRINT *,TRIM(Iam)//":  Zeroing IAU forcing ..."
              call ESMF_GridCompRun ( GCS(AIAU), importState=GIM(AIAU), exportState=GEX(AIAU), clock=clock, phase=2, userRC=status )
              VERIFY_(STATUS)
              call MAPL_GetObjectFromGC ( GCS(AGCM), MAPL_AGCM, RC=STATUS)
@@ -1701,12 +1739,12 @@ contains
        end if REPLAY
     endif
 
-
     ! Ensure Active PREDICTOR_STEP Alarm of OFF
     ! -----------------------------------------
-    IF(ESMF_AlarmIsRinging(PredictorIsActive)) CALL ESMF_AlarmRingerOff(PredictorIsActive, RC=STATUS)
+    if(ESMF_AlarmIsCreated(PredictorIsActive)) then
+       IF(ESMF_AlarmIsRinging(PredictorIsActive)) CALL ESMF_AlarmRingerOff(PredictorIsActive, RC=STATUS)
+    end if
     VERIFY_(STATUS)
-
 
     ! the usual time step
     !--------------------
@@ -1739,8 +1777,8 @@ contains
     VERIFY_(STATUS)
     
 
-     call MAPL_TimerOff(MAPL,"RUN"  )
      call MAPL_TimerOff(MAPL,"TOTAL")
+     call MAPL_TimerOff(MAPL,"RUN"  )
 
 
      RETURN_(ESMF_SUCCESS)
@@ -1891,11 +1929,36 @@ contains
           VERIFY_(STATUS)
           call DO_A2O(GIM(OGCM),'CO2SC'  ,expSKIN,'CO2SC'  , RC=STATUS)
           VERIFY_(STATUS)
+          do k=1, 33
+             write(unit = suffix, fmt = '(i2.2)') k
+             call DO_A2O(GIM(OGCM), 'TAUA_'//suffix, expSKIN, 'TAUA_'//suffix, RC=STATUS)
+             VERIFY_(STATUS)
+             call DO_A2O(GIM(OGCM), 'SSALB_'//suffix, expSKIN, 'SSALB_'//suffix, RC=STATUS)
+             VERIFY_(STATUS)
+             call DO_A2O(GIM(OGCM), 'ASYMP_'//suffix, expSKIN, 'ASYMP_'//suffix, RC=STATUS)
+             VERIFY_(STATUS)
+          enddo
+
           call DO_A2O_UGD(GIM(OGCM), 'DUDP', expSKIN, 'DUDP', RC=STATUS)
           VERIFY_(STATUS)
           call DO_A2O_UGD(GIM(OGCM), 'DUWT', expSKIN, 'DUWT', RC=STATUS)
           VERIFY_(STATUS)
           call DO_A2O_UGD(GIM(OGCM), 'DUSD', expSKIN, 'DUSD', RC=STATUS)
+          VERIFY_(STATUS)
+
+          call DO_A2O(GIM(OGCM), 'CCOVM', expSKIN, 'CCOVM', RC=STATUS)
+          VERIFY_(STATUS)
+          call DO_A2O(GIM(OGCM), 'CDREM', expSKIN, 'CDREM', RC=STATUS)
+          VERIFY_(STATUS)
+          call DO_A2O(GIM(OGCM), 'RLWPM', expSKIN, 'RLWPM', RC=STATUS)
+          VERIFY_(STATUS)
+          call DO_A2O(GIM(OGCM), 'CLDTCM', expSKIN, 'CLDTCM', RC=STATUS)
+          VERIFY_(STATUS)
+          call DO_A2O(GIM(OGCM), 'RH', expSKIN, 'RH', RC=STATUS)
+          VERIFY_(STATUS)
+          call DO_A2O(GIM(OGCM), 'OZ', expSKIN, 'OZ', RC=STATUS)
+          VERIFY_(STATUS)
+          call DO_A2O(GIM(OGCM), 'WV', expSKIN, 'WV', RC=STATUS)
           VERIFY_(STATUS)
           if(DO_DATAATM==0) then
              call DO_A2O_UGD(GIM(OGCM), 'BCDP', expSKIN, 'BCDP', RC=STATUS)
@@ -2124,7 +2187,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -2163,7 +2226,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -2205,7 +2268,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -2246,7 +2309,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -2285,7 +2348,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)
@@ -2326,7 +2389,7 @@ contains
 
      DIMSO = size(SUBINDEXO)
      DIMSA = size(SUBINDEXA)
-     ASSERT_(DIMSO == DIMSA)
+     _ASSERT(DIMSO == DIMSA,'needs informative message')
 
      call MAPL_GetPointer(STATEO, ptrO, NAMEO, notFoundOK=.true., RC=STATUS)
      VERIFY_(STATUS)

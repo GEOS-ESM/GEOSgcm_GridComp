@@ -93,7 +93,7 @@ module LockEntrain
                                 MAPL_ALHS,  MAPL_TICE,   MAPL_VIREPS, &
                                 MAPL_P00,   MAPL_KAPPA,  MAPL_H2OMW,  &
                                 MAPL_AIRMW, MAPL_R4,     MAPL_R8
-   use MAPL_Mod,          only: MAPL_UNDEF
+   use MAPL,              only: MAPL_UNDEF
 
    implicit none
 
