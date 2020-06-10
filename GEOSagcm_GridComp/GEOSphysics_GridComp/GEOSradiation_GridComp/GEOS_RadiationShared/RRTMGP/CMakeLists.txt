@@ -18,8 +18,6 @@ set (srcs
    rrtmgp/kernels/mo_gas_optics_kernels.F90
    rrtmgp/kernels/mo_rrtmgp_util_reorder_kernels.F90
    extensions/rng/mo_rng.F90
-   extensions/rng/mo_rng_mklvsl.F90
-   extensions/rng/mo_rng_mklvsl_plus.F90
    extensions/mo_compute_bc.F90
    extensions/mo_fluxes_byband.F90
    extensions/mo_fluxes_byband_kernels.F90
@@ -35,6 +33,15 @@ set (srcs
    rte/mo_rte_sw.F90
    )
 
+if (MKL_FOUND)
+   list (APPEND srcs
+      extensions/rng/mo_rng_mklvsl.F90
+      extensions/rng/mo_rng_mklvsl_plus.F90
+      )
+else ()
+   ecbuild_warn("MKL was not found. The mklvsl rng will not be compiled. RRTMGP should not be used.")
+endif()
+
 esma_add_library(${this} 
    SRCS ${srcs})
 
@@ -43,7 +50,7 @@ foreach(flag ${tmp})
   target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${flag}>)
 endforeach()
 
-target_include_directories (${this} PUBLIC ${MKL_INCLUDE_DIRS} ${INC_NETCDF})
+target_include_directories (${this} PRIVATE ${MKL_INCLUDE_DIRS} ${INC_NETCDF})
 
 set_target_properties (${this} PROPERTIES Fortran_MODULE_DIRECTORY ${include_${this}})
 target_link_libraries (${this} ${NETCDF_LIBRARIES})
