@@ -86,7 +86,7 @@ integer,parameter :: NUM_SUBTILES=4
 !                  7:  BARE SOIL
 !                  8:  DESERT
 
-integer           :: NUM_LDAS_ENSEMBLE, USE_ASCATZ0
+integer           :: NUM_LDAS_ENSEMBLE
 integer,parameter :: NTYPS = MAPL_NUMVEGTYPES
 
 ! Veg-dep. vector SAI factor for scaling of rough length (now exp(-.5) )
@@ -137,6 +137,10 @@ type CATCH_WRAP
 end type CATCH_WRAP
 !#--
 
+integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB,CHOOSEMOSFC
+real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
+                                !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
+
 contains
 
 !BOP
@@ -171,7 +175,8 @@ subroutine SetServices ( GC, RC )
     type(OFFLINE_WRAP) :: wrap
     integer :: OFFLINE_MODE
     integer :: RESTART
-    integer :: DO_GOSWIM
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)                       :: SCF 
 
 ! Begin...
 ! --------
@@ -203,11 +208,25 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, USE_ASCATZ0, Label="USE_ASCATZ0:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)   
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='SURFLAY:'       , value=SURFLAY,        DEFAULT=50., __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='Z0_FORMULATION:', value=Z0_FORMULATION, DEFAULT=2  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'   , value=USE_ASCATZ0,    DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'   , value=CHOOSEMOSFC,    DEFAULT=1  , __RC__ )
+
+    ! GOSWIM ANOW_ALBEDO 
+    ! 0 : GOSWIM snow albedo scheme is turned off
+    ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
+    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:', value=N_CONST_LAND4SNWALB, DEFAULT=0  , __RC__ )
+
+    ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
+    ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
+    ! __________________________________________
+    call ESMF_ConfigGetAttribute (SCF, label='AEROSOL_DEPOSITION:' , value=AEROSOL_DEPOSITION,  DEFAULT=0  , __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
 ! Set the Run entry points
 ! ------------------------
@@ -1421,7 +1440,7 @@ subroutine SetServices ( GC, RC )
 
   !---------- GOSWIM snow impurity related variables ----------
  
-  if (DO_GOSWIM /= 0) then 
+  if (N_CONST_LAND4SNWALB /= 0) then 
 
      call MAPL_AddInternalSpec(GC                  ,&
        LONG_NAME          = 'dust_mass_in_snow_bin_1'   ,&
@@ -3005,30 +3024,27 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, allocatable              :: Q2M (:)
    real, allocatable              :: U2M (:)
    real, allocatable              :: V2M (:)
-    real, allocatable              :: RHOH(:)
-    real, allocatable              :: VKH(:)
-    real, allocatable              :: VKM(:)
-    real, allocatable              :: USTAR(:)
-    real, allocatable              :: XX(:)
-    real, allocatable              :: YY(:)
-    real, allocatable              :: CU(:)
-    real, allocatable              :: CT(:)
-    real, allocatable              :: RIB(:)
-    real, allocatable              :: ZETA(:)
-    real, allocatable              :: WS(:)
-    integer, allocatable           :: IWATER(:)
-    real, allocatable              :: PSMB(:)
-    real, allocatable              :: PSL(:)
-    integer                        :: niter
+   real, allocatable              :: RHOH(:)
+   real, allocatable              :: VKH(:)
+   real, allocatable              :: VKM(:)
+   real, allocatable              :: USTAR(:)
+   real, allocatable              :: XX(:)
+   real, allocatable              :: YY(:)
+   real, allocatable              :: CU(:)
+   real, allocatable              :: CT(:)
+   real, allocatable              :: RIB(:)
+   real, allocatable              :: ZETA(:)
+   real, allocatable              :: WS(:)
+   integer, allocatable           :: IWATER(:)
+   real, allocatable              :: PSMB(:)
+   real, allocatable              :: PSL(:)
+   integer                        :: niter
 
-    integer                        :: CHOOSEMOSFC
-    integer                        :: CHOOSEZ0
-
-   integer                         :: Z0_FORMULATION
-   real                            :: SCALE4Z0
-   real                            :: SCALE4ZVG
-   real                            :: SCALE4Z0_u
-   real                            :: MIN_VEG_HEIGHT 
+   integer                        :: CHOOSEZ0
+   real                           :: SCALE4Z0
+   real                           :: SCALE4ZVG
+   real                           :: SCALE4Z0_u
+   real                           :: MIN_VEG_HEIGHT 
    
    ! Offline mode
    type(OFFLINE_WRAP) :: wrap
@@ -3082,14 +3098,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
                                                       RC=STATUS )
     VERIFY_(STATUS)
 
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
-
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, Z0_FORMULATION,Label="Z0_FORMULATION:", DEFAULT=2, RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
     VERIFY_(STATUS)
@@ -3377,9 +3386,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Compute the three surface exchange coefficients
 !-------------------------------------------------
 
-! Choose sfc layer: if CHOOSEMOSFC is 1, choose helfand MO,
-!                   if CHOOSEMOSFC is 0 (default), choose louis
-
    call MAPL_TimerOn(MAPL,"-SURF")
    if(CHOOSEMOSFC.eq.0) then
    WW(:,N) = 0.
@@ -3538,11 +3544,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(ESMF_Alarm)                :: ALARM
 
     integer :: IM,JM
-    real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
-                                    !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
-    integer :: CHOOSEMOSFC
     integer :: incl_Louis_extra_derivs
-    integer                        :: Z0_FORMULATION
     real                           :: SCALE4ZVG
     real                           :: SCALE4Z0_u
     real                            :: MIN_VEG_HEIGHT
@@ -3570,17 +3572,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_Get(MAPL, RUNALARM=ALARM, RC=STATUS)
     VERIFY_(STATUS)
 
-! Get parameters (0:Louis, 1:Monin-Obukhov)
-! -----------------------------------------
-    call MAPL_GetResource ( MAPL, CHOOSEMOSFC, Label="CHOOSEMOSFC:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, incl_Louis_extra_derivs, Label="INCL_LOUIS_EXTRA_DERIVS:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, Z0_FORMULATION, Label="Z0_FORMULATION:", DEFAULT=2, RC=STATUS)
-    VERIFY_(STATUS)
     call ESMF_VMGetCurrent(VM,       rc=STATUS)
     call ESMF_VMGet       (VM,       mpiCommunicator =comm,   RC=STATUS)
     VERIFY_(STATUS)
@@ -3994,13 +3988,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character (len=ESMF_MAXSTR) :: NIRDFtpl
         real                        :: FAC
 
-        real,parameter              :: PRECIPFRAC=1.0
+        real                        :: PRECIPFRAC
         real                        :: DT
         integer                     :: NTILES
-        integer                     :: I, N
-        integer                     :: AEROSOL_DEPOSITION
-        integer                     :: N_CONST_LAND4SNWALB
-        integer                     :: DO_GOSWIM
+        integer                     :: I, N 
 
 	! dummy variables for call to get snow temp
 
@@ -4014,9 +4005,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 #ifdef DBG_CATCH_INPUTS
         ! vars for debugging purposes
-        type(ESMF_Grid)                 :: TILEGRID
-        type (MAPL_LocStream)           :: LOCSTREAM
-        integer, pointer                :: mask(:)
         integer                         :: nt
         logical, save                   :: firsttime=.true.
         integer, save                   :: unit_i=0
@@ -4145,7 +4133,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              RC=STATUS )
         VERIFY_(STATUS)
 
-        call MAPL_GetResource ( MAPL, DO_GOSWIM, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
+        call MAPL_GetResource ( MAPL, PRECIPFRAC, Label="PRECIPFRAC:", DEFAULT=1.0, RC=STATUS)
         VERIFY_(STATUS)
 
         ! Get component's private internal state
@@ -4224,21 +4212,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         VERIFY_(STATUS)
         endif
 
-        ! Get parameters to zero the deposition rate 
-        ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
-	! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
-        ! __________________________________________
-
-        call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", DEFAULT=0, RC=STATUS)
-        VERIFY_(STATUS)
         call ESMF_VMGet(VM, localPet=mype, rc=status)
-        VERIFY_(STATUS)
-
-        ! GOSWIM ANOW_ALBEDO 
-        ! 0 : GOSWIM snow albedo scheme is turned off
-        ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme
- 
-        call MAPL_GetResource ( MAPL, N_CONST_LAND4SNWALB, Label="N_CONST_LAND4SNWALB:", DEFAULT=0, RC=STATUS)
         VERIFY_(STATUS)
  
         ! -----------------------------------------------------
@@ -4363,7 +4337,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(INTERNAL,FR         ,'FR'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCQ        ,'DCQ'         ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(INTERNAL,DCH        ,'DCH'         ,RC=STATUS); VERIFY_(STATUS)
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            call MAPL_GetPointer(INTERNAL,RDU001     ,'RDU001'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU002     ,'RDU002'     , RC=STATUS); VERIFY_(STATUS)
            call MAPL_GetPointer(INTERNAL,RDU003     ,'RDU003'     , RC=STATUS); VERIFY_(STATUS)
@@ -4572,6 +4546,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
 
+        LAI0  = LAI
+ 
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
         ! --------------------------------------------------------------------------
         ! Catchment Id and vegetation types used to index into tables
@@ -4814,7 +4790,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! RCONSTIT(NTILES,N,14): Sea salt mass from size bin 4 in layer N
 ! RCONSTIT(NTILES,N,15): Sea salt mass from size bin 5 in layer N
 
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            RCONSTIT(:,:,1) = RDU001(:,:)
            RCONSTIT(:,:,2) = RDU002(:,:)
            RCONSTIT(:,:,3) = RDU003(:,:)
@@ -5006,48 +4982,44 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_VarWrite(unit, tilegrid, FRZR, mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, UUU,  mask=mask, rc=status); VERIFY_(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, EVSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, EVSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT(:,FTRN),  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, EVSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, EVSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, EVSBT (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DEVSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, SHSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, TILEZERO      ,  mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DEDTC (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, SHSBT (:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DHSDQA(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DSHSBT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         
         call MAPL_VarWrite(unit, tilegrid, TA, mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, QA, mask=mask, rc=status); VERIFY_(STATUS)
-
         call MAPL_VarWrite(unit, tilegrid, RA(:,FSAT),  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, RA(:,FTRN),  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, RA(:,FWLT),  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, RA(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
-
         call MAPL_VarWrite(unit, tilegrid, ZTH,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DRPAR,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DFPAR,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SWNETFREE,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SWNETSNOW,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, LWDNSRF, mask=mask, rc=status); VERIFY_(STATUS)
-
         call MAPL_VarWrite(unit, tilegrid, PS*.01, mask=mask, rc=status); VERIFY_(STATUS)
-
         call MAPL_VarWrite(unit, tilegrid, LAI0,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, GRN0,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, Z2CH,  mask=mask, rc=status); VERIFY_(STATUS)
@@ -5057,21 +5029,21 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_VarWrite(unit, tilegrid, RDC, mask=mask, rc=status); VERIFY_(STATUS)
 
         call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, DQS(:,FSAT), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ALWX, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, BLWX, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, DQS(:,FSAT) , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ALWN(:,1)   , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, BLWN(:,1)   , mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, QSAT(:,FTRN), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DQS(:,FTRN) , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ALWX, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, BLWX, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ALWN(:,2)   , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, BLWN(:,2)   , mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, QSAT(:,FWLT), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DQS(:,FWLT) , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ALWX, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, BLWX, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSNW) , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ALWN(:,3)   , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, BLWN(:,3)   , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, QSAT(:,FSNW), mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, DQS(:,FSNW) , mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, ALWX, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, BLWX, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, ALWN(:,4)   , mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, BLWN(:,4)   , mask=mask, rc=status); VERIFY_(STATUS)
 
 ! params
         if (firsttime) then
@@ -5084,8 +5056,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
            call WRITE_PARALLEL(PRECIPFRAC, UNIT)
+           call MAPL_VarWrite(unit, tilegrid, LONS, mask=mask, rc=status); VERIFY_(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, LATS, mask=mask, rc=status); VERIFY_(STATUS)
+           call MAPL_VarWrite(unit, tilegrid, DZSF, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, VEG, mask=mask, rc=status); VERIFY_(STATUS)
-
            call MAPL_VarWrite(unit, tilegrid, BF1,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF2,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, BF3,  mask=mask, rc=status); VERIFY_(STATUS)
@@ -5711,7 +5685,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         SNDZN2  = SNDZN (2,:)
         SNDZN3  = SNDZN (3,:)
 
-        if (DO_GOSWIM /= 0) then
+        if (N_CONST_LAND4SNWALB /= 0) then
            RDU001(:,:) = RCONSTIT(:,:,1) 
            RDU002(:,:) = RCONSTIT(:,:,2) 
            RDU003(:,:) = RCONSTIT(:,:,3) 
@@ -5899,7 +5873,6 @@ subroutine RUN0(gc, import, export, clock, rc)
   !! Miscellaneous
   integer :: ntiles
   real, allocatable :: dummy(:)
-  real :: SURFLAY
   real, allocatable :: dzsf(:), ar1(:), ar2(:), wesnn(:,:)
   real, allocatable :: catdefcp(:), srfexccp(:), rzexccp(:)
 
@@ -6020,8 +5993,6 @@ subroutine RUN0(gc, import, export, clock, rc)
   ! Step 3: compute fr
 
   ! -step-1-
-  call MAPL_GetResource(MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, rc=status)
-  VERIFY_(status)
   allocate(dzsf(ntiles), stat=status)
   VERIFY_(status)
   dzsf = SURFLAY

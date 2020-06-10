@@ -20,9 +20,9 @@ module mo_load_coefficients
   !
   ! Modules for working with rte and rrtmgp
   !
-  use mo_rte_kind,           only: wp
+  use mo_rte_kind,           only: wp, wl
   use mo_gas_concentrations, only: ty_gas_concs
-  use mo_gas_optics,         only: ty_gas_optics
+  use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
   ! --------------------------------------------------
   use mo_simple_netcdf, only: read_field, read_char_vec, read_logical_vec, var_exists, get_dim_size
   use netcdf
@@ -43,7 +43,7 @@ contains
   !--------------------------------------------------------------------------------------------------------------------
   ! read optical coefficients from NetCDF file
   subroutine load_and_init(kdist, filename, available_gases)
-    class(ty_gas_optics), intent(inout) :: kdist
+    class(ty_gas_optics_rrtmgp), intent(inout) :: kdist
     character(len=*),     intent(in   ) :: filename
     class(ty_gas_concs),  intent(in   ) :: available_gases ! Which gases does the host model have available?
     ! --------------------------------------------------
@@ -63,16 +63,19 @@ contains
     character(len=32), dimension(:),  allocatable :: gas_minor, identifier_minor
     character(len=32), dimension(:),  allocatable :: minor_gases_lower,               minor_gases_upper
     integer, dimension(:,:),          allocatable :: minor_limits_gpt_lower,          minor_limits_gpt_upper
-    logical, dimension(:),            allocatable :: minor_scales_with_density_lower, minor_scales_with_density_upper
+    logical(wl), dimension(:),        allocatable :: minor_scales_with_density_lower, minor_scales_with_density_upper
     character(len=32), dimension(:),  allocatable :: scaling_gas_lower,               scaling_gas_upper
-    logical, dimension(:),            allocatable :: scale_by_complement_lower,       scale_by_complement_upper
+    logical(wl), dimension(:),        allocatable :: scale_by_complement_lower,       scale_by_complement_upper
     integer, dimension(:),            allocatable :: kminor_start_lower,              kminor_start_upper
     real(wp), dimension(:,:,:),       allocatable :: kminor_lower,                    kminor_upper
 
     real(wp), dimension(:,:,:  ), allocatable :: rayl_lower, rayl_upper
-    real(wp), dimension(:      ), allocatable :: solar_src
+    real(wp), dimension(:      ), allocatable :: solar_quiet, solar_facular, solar_sunspot
+    real(wp)                                  :: tsi_default, mg_default, sb_default
     real(wp), dimension(:,:    ), allocatable :: totplnk
     real(wp), dimension(:,:,:,:), allocatable :: planck_frac
+    real(wp), dimension(:,:)    , allocatable :: optimal_angle_fit
+
     ! -----------------
     !
     ! Book-keeping variables
@@ -92,7 +95,8 @@ contains
                nminor_absorber_intervals_upper, &
                ncontributors_lower, &
                ncontributors_upper, &
-               ninternalSourcetemps
+               ninternalSourcetemps, &
+               nfit_coeffs
     ! --------------------------------------------------
     !
     ! How big are the various arrays?
@@ -117,6 +121,8 @@ contains
                       = get_dim_size(ncid,'temperature_Planck')
     ncontributors_lower = get_dim_size(ncid,'contributors_lower')
     ncontributors_upper = get_dim_size(ncid,'contributors_upper')
+    nfit_coeffs         = get_dim_size(ncid,'fit_coeffs') ! Will be 0 for SW
+
     ! -----------------
     !
     ! Read the many arrays
@@ -177,6 +183,7 @@ contains
       !
       totplnk     = read_field(ncid, 'totplnk', ninternalSourcetemps, nbnds)
       planck_frac = read_field(ncid, 'plank_fraction', ngpts, nmixingfracs, npress+1, ntemps)
+      optimal_angle_fit = read_field(ncid, 'optimal_angle_fit', nfit_coeffs, nbnds)
       call stop_on_err(kdist%load(available_gases, &
                                   gas_names,   &
                                   key_species, &
@@ -200,12 +207,18 @@ contains
                                   kminor_start_lower, &
                                   kminor_start_upper, &
                                   totplnk, planck_frac,       &
-                                  rayl_lower, rayl_upper))
+                                  rayl_lower, rayl_upper, &
+                                  optimal_angle_fit))
     else
       !
       ! Solar source doesn't have an dependencies yet
       !
-      solar_src = read_field(ncid, 'solar_source', ngpts)
+      solar_quiet   = read_field(ncid, 'solar_source_quiet', ngpts)
+      solar_facular = read_field(ncid, 'solar_source_facular', ngpts)
+      solar_sunspot = read_field(ncid, 'solar_source_sunspot', ngpts)
+      tsi_default   = read_field(ncid, 'tsi_default')
+      mg_default    = read_field(ncid, 'mg_default')
+      sb_default    = read_field(ncid, 'sb_default')
       call stop_on_err(kdist%load(available_gases, &
                                   gas_names,   &
                                   key_species, &
@@ -228,7 +241,8 @@ contains
                                   scale_by_complement_upper, &
                                   kminor_start_lower, &
                                   kminor_start_upper, &
-                                  solar_src, &
+                                  solar_quiet, solar_facular, solar_sunspot, &
+                                  tsi_default, mg_default, sb_default, &
                                   rayl_lower, rayl_upper))
     end if
     ! --------------------------------------------------

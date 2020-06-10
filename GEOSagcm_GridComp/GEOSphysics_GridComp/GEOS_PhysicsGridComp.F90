@@ -110,11 +110,14 @@ contains
     integer                                 :: I
     type (ESMF_Config)                      :: CF
 
-    integer                                 :: DO_OBIO, DO_CO2CNNEE, DO_CO2SC, nCols, NQ
+    integer                                 :: DO_OBIO, DO_CO2CNNEE, ATM_CO2, nCols, NQ
 
     real                                    :: SYNCTQ
     character(len=ESMF_MAXSTR), allocatable :: NAMES(:)
     character(len=ESMF_MAXSTR)              :: TendUnits
+    character(len=ESMF_MAXSTR)              :: SURFRC
+    type(ESMF_Config)                       :: SCF 
+
 !=============================================================================
 
 ! Begin...
@@ -163,10 +166,17 @@ contains
 
     call MAPL_GetResource ( MAPL, DO_OBIO, Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_CO2CNNEE, Label="USE_CNNEE:",DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_CO2SC, Label="USE_CO2SC:",DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:',   value=ATM_CO2,   DEFAULT=0, __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
+
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile(SCF,'CO2_GridComp.rc',rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='USE_CNNEE:', value=DO_CO2CNNEE,   DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
 ! AMM - get SYNCTQ flag from config to know whether to terminate some imports
 ! ---------------------------------------------------------------------------
@@ -1136,7 +1146,7 @@ contains
                                                         RC=STATUS  )
      VERIFY_(STATUS)
 
-     IF((DO_OBIO /= 0) .OR. (DO_CO2SC /= 0)) THEN
+     IF((DO_OBIO /= 0) .OR. (ATM_CO2 == 4)) THEN
         call MAPL_AddConnectivity ( GC,                               &
              SRC_NAME    = 'CO2SC001',                                &
              DST_NAME    = 'CO2SC',                                   &
@@ -1182,11 +1192,11 @@ contains
                          'QCTOT   ',  'CNV_QC  ', 'LFR     ',     &
                          'QLTOT   ',  'QLCN    ', 'QICN    ',     &
                          'DQLDT   ',  'QITOT   ', 'REV_CN  ',     &
-                         'REV_LS  ',  'REV_AN  ',                 &
+                         'REV_LS  ',  'REV_AN  ', 'LFR_GCC ',     &
                          'BYNCY   ',  'DQIDT   ', 'QI      ',     &
                          'DQRC    ',  'CNV_CVW ', 'QLLS    ',     &
-                         'QILS    ',  'DQRL    ', 'CNV_FRC ',     & 
-                         'QV      '       /),  &                  !added for GOCART2G's children
+                         'QILS    ',  'DQRL    ', 'CNV_FRC ',     &
+                         'RI      ',  'RL      ', 'QV      '/),   & !Added QV for GOCART2G
         DST_ID      = CHEM,                                       &
         SRC_ID      = MOIST,                                      &
                                                        RC=STATUS  )
@@ -1246,7 +1256,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'TS'/),                                   &
+         SHORT_NAME  = (/'TS' /),                                  &
          DST_ID      = MOIST,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
@@ -1254,7 +1264,7 @@ contains
 
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'SNOMAS   ','FRLAND   ','FROCEAN  ',      &
-                         'FRLANDICE'/),                            &
+                         'FRLANDICE','FRACI    '/),                &
          DST_ID      = MOIST,                                      &
          SRC_ID      = SURF,                                       &
                                                         RC=STATUS  )
