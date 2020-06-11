@@ -2109,7 +2109,7 @@ contains
 
     call MAPL_TimerOn(MAPL,"TOTAL")
 
-    doRecord = MAPL_RecordAlarmIsRinging(MAPL, MAPL_Write2Disk, RC=status)
+    doRecord = MAPL_RecordAlarmIsRinging(MAPL, MODE=MAPL_Write2Disk, RC=status)
     VERIFY_(STATUS)
 
     if (doRecord) then
