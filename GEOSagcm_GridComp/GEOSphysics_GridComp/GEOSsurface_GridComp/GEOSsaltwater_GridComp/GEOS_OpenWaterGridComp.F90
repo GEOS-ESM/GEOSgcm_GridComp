@@ -2864,10 +2864,12 @@ contains
        if (DO_SKIN_LAYER==0) then 
          HH(:,WATER) = 1.e+15    ! infinite heat capacity with TS = SST (from data)
          TS(:,WATER) = TS_FOUNDi
+         SS(:,WATER) = SS_FOUNDi
          TWMTF       = 0.
          DELTC       = 0.
        else 
          HH(:,WATER) = AOIL_depth*MAPL_RHO_SEAWATER
+         SS(:,WATER) = SS_FOUNDi*HH(:,WATER)
 
          call MAPL_GetPointer(INTERNAL,TWMTF, 'TWMTF',  RC=STATUS); VERIFY_(STATUS)
          call MAPL_GetPointer(INTERNAL,DELTC, 'DELTC',  RC=STATUS); VERIFY_(STATUS)
@@ -2881,7 +2883,6 @@ contains
        endif
     endif ! if( trim(AOIL_COMP_SWITCH) == "ON")
 
-    SS(:,WATER) = SS_FOUNDi
     FR(:,WATER) = 1.0
     FRWATER     = max(1.0 - FI, 0.0)
 
