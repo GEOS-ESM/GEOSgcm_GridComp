@@ -2476,6 +2476,15 @@ module GEOS_SurfaceGridCompMod
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                                    &
+       LONG_NAME          = 'foundation_salinity_for_interface_layer', &
+       UNITS              = 'PSU',                                 &
+       SHORT_NAME         = 'SS_FOUND',                          &
+       DIMS               = MAPL_DimsHorzOnly,                   &
+       VLOCATION          = MAPL_VLocationNone,                  &
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                                    &
        LONG_NAME          = 'net_heating_in_warm_layer',         &
        UNITS              = 'W m-2',                             &
        SHORT_NAME         = 'QWARM',                             &
@@ -4918,6 +4927,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: BCOOL    => NULL()
     real, pointer, dimension(:,:) :: TDEL     => NULL()
     real, pointer, dimension(:,:) :: TS_FOUND => NULL()
+    real, pointer, dimension(:,:) :: SS_FOUND => NULL()
     real, pointer, dimension(:,:) :: QWARM    => NULL()
     real, pointer, dimension(:,:) :: SWWARM   => NULL()
     real, pointer, dimension(:,:) :: LANGM    => NULL()
@@ -5188,6 +5198,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: BCOOL_TILE    => NULL()
     real, pointer, dimension(:) :: TDEL_TILE     => NULL()
     real, pointer, dimension(:) :: TS_FOUND_TILE => NULL()
+    real, pointer, dimension(:) :: SS_FOUND_TILE => NULL()
     real, pointer, dimension(:) :: QWARM_TILE    => NULL()
     real, pointer, dimension(:) :: SWWARM_TILE   => NULL()
     real, pointer, dimension(:) :: LANGM_TILE    => NULL()
@@ -5954,6 +5965,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , BCOOL   , 'BCOOL'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TDEL    , 'TDEL'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TS_FOUND, 'TS_FOUND', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , SS_FOUND, 'SS_FOUND', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , QWARM   , 'QWARM'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SWWARM  , 'SWWARM' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , LANGM   , 'LANGM'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -6579,6 +6591,7 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(BCOOL,   BCOOL_TILE  ,   NT, RC=STATUS); VERIFY_(STATUS)
     call MKTILE(TDEL,    TDEL_TILE     , NT, RC=STATUS); VERIFY_(STATUS)
     call MKTILE(TS_FOUND,TS_FOUND_TILE , NT, RC=STATUS); VERIFY_(STATUS)
+    call MKTILE(SS_FOUND,SS_FOUND_TILE , NT, RC=STATUS); VERIFY_(STATUS)
     call MKTILE(QWARM,   QWARM_TILE  ,   NT, RC=STATUS); VERIFY_(STATUS)
     call MKTILE(SWWARM,  SWWARM_TILE ,   NT, RC=STATUS); VERIFY_(STATUS)
     call MKTILE(LANGM,   LANGM_TILE ,    NT, RC=STATUS); VERIFY_(STATUS)
@@ -7113,6 +7126,11 @@ module GEOS_SurfaceGridCompMod
 
     if(associated( TS_FOUND)) then
        call MAPL_LocStreamTransform( LOCSTREAM, TS_FOUND, TS_FOUND_TILE, RC=STATUS)
+       VERIFY_(STATUS)
+    endif
+
+    if(associated( SS_FOUND)) then
+       call MAPL_LocStreamTransform( LOCSTREAM, SS_FOUND, SS_FOUND_TILE, RC=STATUS)
        VERIFY_(STATUS)
     endif
 
@@ -7912,6 +7930,7 @@ module GEOS_SurfaceGridCompMod
     if(associated(BCOOL_TILE    )) deallocate(BCOOL_TILE     )
     if(associated(TDEL_TILE     )) deallocate(TDEL_TILE      )
     if(associated(TS_FOUND_TILE )) deallocate(TS_FOUND_TILE  )
+    if(associated(SS_FOUND_TILE )) deallocate(SS_FOUND_TILE  )
     if(associated(QWARM_TILE    )) deallocate(QWARM_TILE     )
     if(associated(SWWARM_TILE   )) deallocate(SWWARM_TILE    )
     if(associated(LANGM_TILE    )) deallocate(LANGM_TILE     )
@@ -9146,6 +9165,11 @@ module GEOS_SurfaceGridCompMod
 
       if(associated(TS_FOUND_TILE)) then
          call FILLOUT_TILE(GEX(type), 'TS_FOUND', TS_FOUND_TILE, XFORM, RC=STATUS)
+         VERIFY_(STATUS)
+      end if
+
+      if(associated(SS_FOUND_TILE)) then
+         call FILLOUT_TILE(GEX(type), 'SS_FOUND', SS_FOUND_TILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
 
