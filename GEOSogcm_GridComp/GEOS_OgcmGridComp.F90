@@ -983,6 +983,16 @@ contains
           SRC_ID = SEAICE,            &
           RC=STATUS  )
   VERIFY_(STATUS)
+
+  if(DUAL_OCEAN) then 
+     call MAPL_AddConnectivity ( GC,  &
+          SRC_NAME  = (/'FRACICE'/), & 
+          DST_NAME  = (/'FRACICEd'/), & 
+          DST_ID = OCEAN,             &
+          SRC_ID = SEAICEd,           &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+  endif
   
   if(DO_DATASEAONLY==0) then
      call MAPL_AddConnectivity ( GC,  &
