@@ -23,7 +23,7 @@ endif ()
 include_directories(${INC_ESMF})
 include_directories(${INC_NETCDF})
 
-esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL_Base)
+esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL)
 target_link_libraries(${this} PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
 
 if(NOT FORTRAN_COMPILER_SUPPORTS_FINDLOC)
