@@ -788,10 +788,8 @@ contains
 !----------------------------------------------------------------------------
 
 
-    call MAPL_TimerOff(STATE,"TOTAL"     )
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=status )
     VERIFY_(STATUS)
-    call MAPL_TimerOn (STATE,"TOTAL"     )
 
     if(DO_DATASEA==0) then
        select case (trim(OCEAN_NAME))
@@ -1210,7 +1208,6 @@ contains
 ! Run ocean for one time step (DT)
 !---------------------------------
 
-          call MAPL_TimerOff(STATE,"TOTAL")
           call MAPL_TimerOn (STATE,"--ModRun")
 
           if (.not. DUAL_OCEAN) then
@@ -1277,7 +1274,6 @@ contains
           end if
           
           call MAPL_TimerOff(STATE,"--ModRun")
-          call MAPL_TimerOn (STATE,"TOTAL")
 
 ! Bump the time in the internal state
 !------------------------------------
