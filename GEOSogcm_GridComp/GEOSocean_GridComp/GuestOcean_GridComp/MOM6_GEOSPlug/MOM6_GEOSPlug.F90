@@ -636,6 +636,8 @@ contains
     REAL_, pointer, dimension(:, :)        :: sea_lev          => null()
 
     integer                                :: DT_OCEAN
+    character(len=7)                       :: wind_stagger     ! 'AGRID' or 'BGRID' or 'CGRID'
+    integer                                ::iwind_stagger     !  AGRID  or  BGRID  or  CGRID : integer values
 
 ! Begin...
 
@@ -726,8 +728,31 @@ contains
     DT   = set_time (DT_OCEAN, 0)
     Time = set_date (YEAR,MONTH,DAY,HR,MN,SC)
 
+! Check run time wind stagger option set in AGCM.rc
+! to make sure it matches what is expected here
+!----------------------------------------------------
+
+    call MAPL_GetResource( MAPL, wind_stagger, Label="ocean_wind_stagger:", DEFAULT="AGRID", RC=STATUS)
+    VERIFY_(STATUS)
+
+    if (MAPL_AM_I_Root()) then
+     if (wind_stagger == "AGRID") then
+       print *, ' Surface stress stagger for MOM6: AGRID. Its value= ', AGRID
+       iwind_stagger = AGRID
+     elseif ( (wind_stagger == "BGRID") .or. (wind_stagger == "CGRID")) then
+       print *, ' Surface stress stagger for MOM6: BGRID_NE or CGRID_NE. These options are not supported. Exiting!'
+       ASSERT_(.false.)
+     else
+       print *, ' Surface stress stagger for MOM6 is invalid, stopping.'
+       ASSERT_(.false.)
+     endif
+    endif
+
+! Initialize ocean model
+!-----------------------
+
     Ocean%is_ocean_pe = .true.
-    call ocean_model_init  (Ocean, Ocean_state, Time, Time, Boundary%wind_stagger)
+    call ocean_model_init  (Ocean, Ocean_state, Time, Time, iwind_stagger)
  
     MOM_MAPL_internal_state%Ocean_State => Ocean_State
 
@@ -764,22 +789,6 @@ contains
 
     ASSERT_(counts(1)==IM)
     ASSERT_(counts(2)==JM)
-
-! Check run time wind stagger option set in MOM_input 
-! to make sure it matches what is expected here
-!----------------------------------------------------
-
-    if (MAPL_AM_I_Root()) then
-     if (Boundary%wind_stagger == AGRID) then
-       print *, ' Surface stress stagger set in ocean model: (MOM6) AGRID.'
-     elseif ( (Boundary%wind_stagger == BGRID_NE) .or. (Boundary%wind_stagger == CGRID_NE)) then
-       print *, ' Surface stress stagger set in ocean model: (MOM6) BGRID_NE or CGRID_NE. These options are not supported. Exiting!'
-       ASSERT_(.false.)
-     else
-       print *, ' Surface stress stagger set in ocean model: (MOM6) is invalid, stopping.'
-       ASSERT_(.false.)
-     endif
-    endif
 
 ! Check run time surface current stagger option set in MOM_input 
 ! to make sure it matches what is expected here
@@ -959,7 +968,7 @@ contains
     type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state  => null()
     type(MOM_MAPLWrap_Type)                :: wrap
 
-    type(ocean_grid_type),         pointer :: Ocean_grid               => null()
+!   type(ocean_grid_type),         pointer :: Ocean_grid               => null()
 
 ! Required exports
 
