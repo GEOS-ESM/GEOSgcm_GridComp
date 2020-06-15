@@ -681,6 +681,8 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,   name="RUN"        ,RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,   name="RUN2"       ,RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,   name="FINALIZE"   ,RC=STATUS)
     VERIFY_(STATUS)
 
@@ -1947,6 +1949,9 @@ contains
     call mom4_put_prog_tracer(tracer_index,T)
 
     deallocate(T)
+
+    call MAPL_TimerOff(MAPL,"RUN2"  )
+    call MAPL_TimerOff(MAPL,"TOTAL")
 
 ! All Done
 !---------
