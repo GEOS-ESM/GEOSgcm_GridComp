@@ -65,6 +65,11 @@ module GEOS_GwdGridCompMod
         KERES_DEV, BKGERR_DEV
   use cudafor
 #else
+  use gw_oro, only : gw_oro_init
+  use gw_convect, only : gw_beres_init, BeresSourceDesc
+  use gw_common, only: GWBand, gw_common_init
+  use gw_drag_ncar, only: gw_intr_ncar
+
   use gw_drag, only: gw_intr
 #endif
   
@@ -77,6 +82,11 @@ module GEOS_GwdGridCompMod
 
 !EOP
   logical, parameter :: USE_NCEP_GWD = .false.
+  type(GWBand)          :: beres_band
+  type(BeresSourceDesc) :: beres_desc
+  type(GWBand)          :: oro_band
+
+integer,parameter :: r8 = selected_real_kind(12)
 
 contains
 
@@ -85,6 +95,7 @@ contains
 
 ! !INTERFACE:
   subroutine SetServices ( GC, RC )
+#include <netcdf.inc>
 
 ! !ARGUMENTS:
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
@@ -107,8 +118,21 @@ contains
     character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
+    character(len=ESMF_MAXSTR)              :: BERES_FILE_NAME
+    character(len=ESMF_MAXSTR)              :: ERRstring
 
 !=============================================================================
+
+
+  ! Vars needed by NetCDF operators
+  integer  :: ncid_gwd, dimid_gwd , varid_gwd , status_gwd
+
+  integer  :: hd_mfcc , mw_mfcc, ps_mfcc, ngwv_file, ps_mfcc_mid
+
+  type(GWBand) :: band
+
+  type(BeresSourceDesc) :: desc
+
 
 ! Begin...
 
@@ -119,6 +143,29 @@ contains
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
+
+
+!++jtb 03/2020
+!This is here in set_sevices but should really be in an init method
+!-----------------------------------
+     call gw_common_init(  .FALSE. , 1 , & 
+                           1.0_r8 * MAPL_GRAV , &
+                           1.0_r8 * MAPL_RGAS , &
+                           1.0_r8 * MAPL_CP , &
+                           0.50_r8 , 0.25_r8, ERRstring )
+! Beres Scheme File
+     BERES_FILE_NAME = '/gpfsm/dnb31/jbacmeis/cesm_inputdata/newmfspectra40_dc25.nc'
+
+
+     call gw_beres_init( BERES_FILE_NAME , beres_band, beres_desc )
+
+
+     call gw_oro_init ( oro_band )
+
+
+!Set some run-time constants
+
+
 
 ! Set the Run entry point
 ! -----------------------
@@ -196,6 +243,22 @@ contains
         VLOCATION  = MAPL_VLocationEdge,                          &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
+
+
+! from moist
+        call MAPL_AddImportSpec(GC,                              &
+             SHORT_NAME='DTDT_moist',                            & 
+             LONG_NAME ='T tendency due to moist',               &
+             UNITS     ='K s-1',                                 &
+             DIMS      = MAPL_DimsHorzVert,                      &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+        VERIFY_(STATUS)  
+!JTB: This was moved (3/25/2020) from imports for NCEP GWD, because 
+!     new NCAR code will use it for testing of Beres scheme. Not 
+!     sure this is what Beres scheme should actually be using, but OK
+!     for now until tuning begins. 
+!     from this we can compute QMAX (column maximum value)
+!     and KTOP, KBOT near the location of QMAX
 
 ! !EXPORT STATE:
   
@@ -556,15 +619,16 @@ contains
         VERIFY_(STATUS)      
 
 ! from moist
-        call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='DTDT_moist',                            & 
-             LONG_NAME ='T tendency due to moist',               &
-             UNITS     ='K s-1',                                 &
-             DIMS      = MAPL_DimsHorzVert,                      &
-             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-        VERIFY_(STATUS)  
+!        call MAPL_AddImportSpec(GC,                              &
+!             SHORT_NAME='DTDT_moist',                            & 
+!             LONG_NAME ='T tendency due to moist',               &
+!             UNITS     ='K s-1',                                 &
+!             DIMS      = MAPL_DimsHorzVert,                      &
+!             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+!        VERIFY_(STATUS)  
 !ALT: from this we can compute QMAX (column maximum value)
 !     and KTOP, KBOT near the location of QMAX
+!JTB: Moved up to default import state block (3/25/20)
 
         call MAPL_AddImportSpec(GC,                              &
              SHORT_NAME='CNV_FRC',                               &
@@ -895,6 +959,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real, pointer, dimension(:)      :: PREF
       real, pointer, dimension(:,:)    :: SGH
       real, pointer, dimension(:,:,:)  :: PLE, T, Q, U, V
+      !++jtb Array for moist/deepconv heating
+      real, pointer, dimension(:,:,:)  :: HT_dpc
 
 !  Pointers to Export state
 
@@ -982,6 +1048,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       type (ESMF_Grid)  :: esmfgrid
       integer           :: COUNTS(3)
 
+! NCAR GWD vars
+
+      logical :: USE_NCAR_GWD
+
 !  Begin...
 !----------
 
@@ -1005,6 +1075,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, V,      'V',       RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, SGH,    'SGH',     RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, PREF,   'PREF',    RC=STATUS ); VERIFY_(STATUS)
+!++jtb
+      call MAPL_GetPointer( IMPORT, HT_dpc, 'DTDT_moist',  RC=STATUS ); VERIFY_(STATUS)
 
 ! Allocate/refer to the outputs
 !------------------------------
@@ -1454,6 +1526,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       VERIFY_(STATUS)
 
 #else
+! This is the non-CUDA sectio
 
       CALL PREGEO(IM*JM,   LM,   &
                     PLE, LATS,   PMID,  PDEL, RPDEL,     PILN,     PMLN)
@@ -1468,11 +1541,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Do gravity wave drag calculations on a list of soundings
 !---------------------------------------------------------
 
+    call MAPL_GetResource(MAPL,USE_NCAR_GWD,'USE_NCAR_GWD:', default=.false., RC=STATUS)
+    VERIFY_(STATUS)
+
     call MAPL_TimerOn(MAPL,"-INTR")
     if (.not. USE_NCEP_GWD) then
-       call gw_intr   (IM*JM,      LM,         DT,                  &
-            PGWV,                                                   &
-            PLE,       T,          U,          V,      SGH,   PREF, &
+
+       if (USE_NCAR_GWD) then
+          ! Use Julio new code
+       call gw_intr_ncar(IM*JM,    LM,         DT,                  &
+            PGWV,      beres_desc, beres_band, oro_band,            &
+            PLE,       T,          U,          V,      HT_dpc,      &
+            SGH,       PREF,                                        &
             PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
             DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
             DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
@@ -1481,6 +1561,21 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
             FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
             BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
        VERIFY_(STATUS)
+       else
+          ! Use GEOS GWD    
+          call gw_intr   (IM*JM,      LM,         DT,                  &
+               PGWV,                                                   &
+               PLE,       T,          U,          V,      SGH,   PREF, &
+               PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+               DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
+               DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
+               TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
+               TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
+               FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
+               BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
+         VERIFY_(STATUS)
+       end if
+
     else
        ! get pointers from INTERNAL:HPRIME,OC,OA4,CLX4,THETA,SIGMA,GAMMA,ELVMAX
        call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
