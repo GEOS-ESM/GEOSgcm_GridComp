@@ -86,8 +86,6 @@ module GEOS_GwdGridCompMod
   type(BeresSourceDesc) :: beres_desc
   type(GWBand)          :: oro_band
 
-  integer,parameter :: r8 = selected_real_kind(12)
-
 contains
 
 !BOP
@@ -807,10 +805,10 @@ contains
       !-----------------------------------
       if (USE_NCAR_GWD) then
          call gw_common_init( .FALSE. , 1 , & 
-                              1.0_r8 * MAPL_GRAV , &
-                              1.0_r8 * MAPL_RGAS , &
-                              1.0_r8 * MAPL_CP , &
-                              0.50_r8 , 0.25_r8, ERRstring )
+                              1.0_MAPL_R8 * MAPL_GRAV , &
+                              1.0_MAPL_R8 * MAPL_RGAS , &
+                              1.0_MAPL_R8 * MAPL_CP , &
+                              0.50_MAPL_R8 , 0.25_MAPL_R8, ERRstring )
 
          ! Beres Scheme File
          call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
