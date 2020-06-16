@@ -86,7 +86,7 @@ module GEOS_GwdGridCompMod
   type(BeresSourceDesc) :: beres_desc
   type(GWBand)          :: oro_band
 
-integer,parameter :: r8 = selected_real_kind(12)
+  integer,parameter :: r8 = selected_real_kind(12)
 
 contains
 
@@ -95,7 +95,6 @@ contains
 
 ! !INTERFACE:
   subroutine SetServices ( GC, RC )
-#include <netcdf.inc>
 
 ! !ARGUMENTS:
     type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
@@ -118,21 +117,8 @@ contains
     character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
-    character(len=ESMF_MAXSTR)              :: BERES_FILE_NAME
-    character(len=ESMF_MAXSTR)              :: ERRstring
 
 !=============================================================================
-
-
-  ! Vars needed by NetCDF operators
-  integer  :: ncid_gwd, dimid_gwd , varid_gwd , status_gwd
-
-  integer  :: hd_mfcc , mw_mfcc, ps_mfcc, ngwv_file, ps_mfcc_mid
-
-  type(GWBand) :: band
-
-  type(BeresSourceDesc) :: desc
-
 
 ! Begin...
 
@@ -144,32 +130,12 @@ contains
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
 
-
-!++jtb 03/2020
-!This is here in set_sevices but should really be in an init method
-!-----------------------------------
-     call gw_common_init(  .FALSE. , 1 , & 
-                           1.0_r8 * MAPL_GRAV , &
-                           1.0_r8 * MAPL_RGAS , &
-                           1.0_r8 * MAPL_CP , &
-                           0.50_r8 , 0.25_r8, ERRstring )
-! Beres Scheme File
-     BERES_FILE_NAME = '/gpfsm/dnb31/jbacmeis/cesm_inputdata/newmfspectra40_dc25.nc'
-
-
-     call gw_beres_init( BERES_FILE_NAME , beres_band, beres_desc )
-
-
-     call gw_oro_init ( oro_band )
-
-
-!Set some run-time constants
-
-
-
 ! Set the Run entry point
 ! -----------------------
 
+    call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_INITIALIZE,  Initialize,  &
+                                      RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint ( gc, ESMF_METHOD_RUN,  Run,  &
                                       RC=STATUS)
     VERIFY_(STATUS)
@@ -767,6 +733,102 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+  !BOP
+
+  ! !IROUTINE: Initialize -- Initialize method for the composite Moist Gridded Component
+
+  ! !INTERFACE:
+
+  subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
+
+    ! !ARGUMENTS:
+
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component 
+    type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+    type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+    type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+    integer, optional,   intent(  out) :: RC     ! Error code
+
+    ! !DESCRIPTION: The Initialize method of the GWD Physics Gridded Component first 
+    !   calls the Initialize method of the children.  Then, if using the NCAR GWD
+    !   scheme, calls the initialization routines.
+
+    !EOP
+
+!=============================================================================
+!
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)              :: IAm
+    integer                                 :: STATUS
+    character(len=ESMF_MAXSTR)              :: COMP_NAME
+
+! Local derived type aliases
+
+    type (MAPL_MetaComp),      pointer  :: MAPL
+
+! NCAR GWD variables
+
+    character(len=ESMF_MAXPATHLEN) :: BERES_FILE_NAME
+    character(len=ESMF_MAXSTR)     :: ERRstring
+    logical                        :: USE_NCAR_GWD
+
+!=============================================================================
+
+   ! Begin...
+
+   ! Get my name and set-up traceback handle
+   ! ---------------------------------------
+
+      Iam = 'Initialize'
+      call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
+      VERIFY_(STATUS)
+      Iam = trim(COMP_NAME) // Iam
+
+      ! Get my internal MAPL_Generic state
+      !-----------------------------------
+
+      call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
+      VERIFY_(STATUS)
+
+      ! Call Generic Initialize for GWD GC
+      !-----------------------------------
+
+      call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
+      VERIFY_(STATUS)
+
+      ! Check to see if we are using NCAR GWD
+      !--------------------------------------
+
+      call MAPL_GetResource( MAPL, USE_NCAR_GWD, Label="USE_NCAR_GWD:",  default=.false., RC=STATUS)
+      VERIFY_(STATUS)
+
+      !++jtb 03/2020
+      !-----------------------------------
+      if (USE_NCAR_GWD) then
+         call gw_common_init( .FALSE. , 1 , & 
+                              1.0_r8 * MAPL_GRAV , &
+                              1.0_r8 * MAPL_RGAS , &
+                              1.0_r8 * MAPL_CP , &
+                              0.50_r8 , 0.25_r8, ERRstring )
+
+         ! Beres Scheme File
+         call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
+            default='/gpfsm/dnb31/jbacmeis/cesm_inputdata/newmfspectra40_dc25.nc', RC=STATUS)
+         VERIFY_(STATUS)
+
+         call gw_beres_init( BERES_FILE_NAME , beres_band, beres_desc )
+
+         call gw_oro_init ( oro_band )
+      end if
+
+      ! All done
+      !---------
+
+      RETURN_(ESMF_SUCCESS)
+   end subroutine Initialize
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !BOP
 
 ! !IROUTINE: RUN -- Run method for the GWD component
