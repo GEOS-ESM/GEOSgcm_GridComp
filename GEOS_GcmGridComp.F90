@@ -52,6 +52,8 @@ integer ::       AIAU
 integer ::       ADFI
 
 integer :: bypass_ogcm
+integer ::       k
+character(len = 2) :: suffix
 
 type T_GCM_STATE
    private
@@ -568,11 +570,32 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
+     call MAPL_TerminateImport( GC,                                 &
+          SHORT_NAME = (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM',    &
+                         'RH    ', 'OZ    ', 'WV    '/),            &
+          CHILD      = OGCM,                                        &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
      call MAPL_TerminateImport    ( GC,   &
           SHORT_NAME = (/'UU'/),                                    &
           CHILD      = OGCM,                                        &
           RC=STATUS  )
      VERIFY_(STATUS)
+
+     if (DO_OBIO/=0) then
+      do k=1, 33
+         write(unit = suffix, fmt = '(i2.2)') k
+         call MAPL_TerminateImport( GC,           &
+            SHORT_NAME = [ character(len=(8)) ::  &
+               'TAUA_'//suffix,                   &
+               'ASYMP_'//suffix,                  &
+               'SSALB_'//suffix ],                &
+            CHILD      = OGCM,                    &
+            RC=STATUS  )
+         VERIFY_(STATUS)
+      enddo
+     end if
 
      if(DO_DATAATM==0) then
         call MAPL_TerminateImport    ( GC,                             &
@@ -1108,6 +1131,11 @@ contains
        call MAPL_AddRecord(CMAPL, ALARMS, (/MAPL_Write2Ram/), rc=status)
        VERIFY_(STATUS)
 
+       call MAPL_GetObjectFromGC ( GCS(OGCM), CMAPL, RC=STATUS)                                                                   
+       VERIFY_(STATUS)
+       call MAPL_AddRecord(CMAPL, ALARMS, (/MAPL_Write2Ram/), rc=status)
+       VERIFY_(STATUS)
+
        GCM_INTERNAL_STATE%replayStartAlarm      = replayStartAlarm
        GCM_INTERNAL_STATE%replayStopAlarm       = replayStopAlarm
        GCM_INTERNAL_STATE%replayCycleAlarm      = replayCycleAlarm
@@ -1228,10 +1256,27 @@ contains
            RC=STATUS )
       VERIFY_(STATUS)
 
+      do k=1, 33
+         write(unit = suffix, fmt = '(i2.2)') k
+         call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
+            [ character(len=8) ::                         &
+               'TAUA_'//suffix,                           &
+               'ASYMP_'//suffix,                          &
+               'SSALB_'//suffix] ,                        &
+            RC=STATUS)
+         VERIFY_(STATUS)
+      enddo
+
       call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
               (/'DUDP', 'DUWT', 'DUSD'/),             &
               RC=STATUS )
-         VERIFY_(STATUS)
+      VERIFY_(STATUS)
+
+      call AllocateExports(GCM_INTERNAL_STATE%expSKIN,                      &
+                        (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM', 'RH    ', &
+                          'OZ    ', 'WV    '/),                             &
+                        RC=STATUS)
+      VERIFY_(STATUS)
          
       if(DO_DATAATM==0) then
          
@@ -1889,11 +1934,36 @@ contains
           VERIFY_(STATUS)
           call DO_A2O(GIM(OGCM),'CO2SC'  ,expSKIN,'CO2SC'  , RC=STATUS)
           VERIFY_(STATUS)
+          do k=1, 33
+             write(unit = suffix, fmt = '(i2.2)') k
+             call DO_A2O(GIM(OGCM), 'TAUA_'//suffix, expSKIN, 'TAUA_'//suffix, RC=STATUS)
+             VERIFY_(STATUS)
+             call DO_A2O(GIM(OGCM), 'SSALB_'//suffix, expSKIN, 'SSALB_'//suffix, RC=STATUS)
+             VERIFY_(STATUS)
+             call DO_A2O(GIM(OGCM), 'ASYMP_'//suffix, expSKIN, 'ASYMP_'//suffix, RC=STATUS)
+             VERIFY_(STATUS)
+          enddo
+
           call DO_A2O_UGD(GIM(OGCM), 'DUDP', expSKIN, 'DUDP', RC=STATUS)
           VERIFY_(STATUS)
           call DO_A2O_UGD(GIM(OGCM), 'DUWT', expSKIN, 'DUWT', RC=STATUS)
           VERIFY_(STATUS)
           call DO_A2O_UGD(GIM(OGCM), 'DUSD', expSKIN, 'DUSD', RC=STATUS)
+          VERIFY_(STATUS)
+
+          call DO_A2O(GIM(OGCM), 'CCOVM', expSKIN, 'CCOVM', RC=STATUS)
+          VERIFY_(STATUS)
+          call DO_A2O(GIM(OGCM), 'CDREM', expSKIN, 'CDREM', RC=STATUS)
+          VERIFY_(STATUS)
+          call DO_A2O(GIM(OGCM), 'RLWPM', expSKIN, 'RLWPM', RC=STATUS)
+          VERIFY_(STATUS)
+          call DO_A2O(GIM(OGCM), 'CLDTCM', expSKIN, 'CLDTCM', RC=STATUS)
+          VERIFY_(STATUS)
+          call DO_A2O(GIM(OGCM), 'RH', expSKIN, 'RH', RC=STATUS)
+          VERIFY_(STATUS)
+          call DO_A2O(GIM(OGCM), 'OZ', expSKIN, 'OZ', RC=STATUS)
+          VERIFY_(STATUS)
+          call DO_A2O(GIM(OGCM), 'WV', expSKIN, 'WV', RC=STATUS)
           VERIFY_(STATUS)
           if(DO_DATAATM==0) then
              call DO_A2O_UGD(GIM(OGCM), 'BCDP', expSKIN, 'BCDP', RC=STATUS)
