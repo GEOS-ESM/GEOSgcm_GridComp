@@ -74,6 +74,7 @@ module GEOS_OgcmGridCompMod
   integer            :: DO_OBIO
   integer            :: DO_DATAATM
 
+  character(len=ESMF_MAXSTR)          :: OCEAN_NAME
 !=============================================================================
 
   integer ::        OBIO
@@ -1292,11 +1293,13 @@ contains
 ! Put OBIO tracers into the OCEAN's tracer bundle.
 !-------------------------------------------------
 
+    call MAPL_GetResource ( MAPL, OCEAN_NAME, Label="OCEAN_NAME:", DEFAULT="MOM", __RC__ )
+
     if (DO_DATASEAONLY==0) then
-! SA: commenting for MOM6. Also we do not need this bundle thing, even with MOM5. 
-!     Get rid of it.
-!      call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
-!      VERIFY_(STATUS)
+       if (trim(OCEAN_NAME) == "MOM") then
+         call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
+         VERIFY_(STATUS)
+       endif
        call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )
        VERIFY_(STATUS)
     end if
