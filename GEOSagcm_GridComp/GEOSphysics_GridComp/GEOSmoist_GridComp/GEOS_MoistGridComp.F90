@@ -6787,11 +6787,11 @@ contains
            VERIFY_(STATUS)
            if (isPresent) then
               call ESMF_AttributeGet  (FIELD,"SetofHenryLawCts",Vect_Hcts,  RC=STATUS)
-              !.. if (MAPL_AM_I_ROOT()) then
-                 !.. PRINT*,"spcname=",k,trim(QNAMES(K)),FSCAV_(K)
-                 !.. print*,"Vect_Hcts=",Vect_Hcts(:),statUS
-                 !.. call flush(6)
-              !.. ENDIF
+!               if (MAPL_AM_I_ROOT()) then
+!                  PRINT*,"spcname=",k,trim(QNAMES(K)),FSCAV_(K)
+!                  print*,"Vect_Hcts=",Vect_Hcts(:),statUS
+!                  call flush(6)
+!               ENDIF
               Hcts(k)%hstar = Vect_Hcts(1)
               Hcts(k)%dhr   = Vect_Hcts(2)
               Hcts(k)%ak0   = Vect_Hcts(3)
