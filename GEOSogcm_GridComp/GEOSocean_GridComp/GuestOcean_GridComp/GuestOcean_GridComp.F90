@@ -243,25 +243,27 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-!!$     call MAPL_AddImportSpec(GC,                             &
-!!$        SHORT_NAME         = 'TR',                                &
-!!$        LONG_NAME          = 'tracer_mixing_ratios',              &
-!!$        UNITS              = '1',                                 &
-!!$        DIMS               = MAPL_DimsHorzVert,                   &
-!!$        VLOCATION          = MAPL_VLocationCenter,                &
-!!$        DATATYPE           = MAPL_BundleItem,                     &
-!!$                                                       RC=STATUS  )
-!!$     VERIFY_(STATUS)
-!!$
-!!$     call MAPL_AddImportSpec(GC,                             &
-!!$        SHORT_NAME         = 'TRFLUX',                            &
-!!$        LONG_NAME          = 'surface_fluxes_of_tracers',         &
-!!$        UNITS              = 'X',                                 &
-!!$        DIMS               = MAPL_DimsHorzOnly,                   &
-!!$        VLOCATION          = MAPL_VLocationNone,                  &
-!!$        DATATYPE           = MAPL_BundleItem,                     &
-!!$                                                       RC=STATUS  )
-!!$     VERIFY_(STATUS)
+    if (trim(OCEAN_NAME) == "MOM") then
+       call MAPL_AddImportSpec(GC,                             &
+           SHORT_NAME         = 'TR',                                &
+           LONG_NAME          = 'tracer_mixing_ratios',              &
+           UNITS              = '1',                                 &
+           DIMS               = MAPL_DimsHorzVert,                   &
+           VLOCATION          = MAPL_VLocationCenter,                &
+           DATATYPE           = MAPL_BundleItem,                     &
+                                                          RC=STATUS  )
+       VERIFY_(STATUS)
+   
+       call MAPL_AddImportSpec(GC,                             &
+           SHORT_NAME         = 'TRFLUX',                            &
+           LONG_NAME          = 'surface_fluxes_of_tracers',         &
+           UNITS              = 'X',                                 &
+           DIMS               = MAPL_DimsHorzOnly,                   &
+           VLOCATION          = MAPL_VLocationNone,                  &
+           DATATYPE           = MAPL_BundleItem,                     &
+                                                          RC=STATUS  )
+       VERIFY_(STATUS)
+    endif
 
     call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
