@@ -59,7 +59,7 @@ module MOM6_GEOSPlugMod
                                       ocean_state_type,     &
                                       ocean_model_get_UV_surf
 
-  use MOM_surface_forcing,      only: ice_ocean_boundary_type
+  use MOM_surface_forcing_gfdl, only: ice_ocean_boundary_type
 
   use ocean_model_mod,          only: get_ocean_grid
   use MOM_grid,                 only: ocean_grid_type
