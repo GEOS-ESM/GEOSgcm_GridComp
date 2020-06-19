@@ -162,7 +162,7 @@ module gfdl2_cloud_microphys_mod
     
     logical :: tables_are_initialized = .false.
     
-    ! logical :: rootproc
+    ! logical :: root_proc
     ! integer :: id_rh, id_vtr, id_vts, id_vtg, id_vti, id_rain, id_snow, id_graupel, &
     ! id_ice, id_prec, id_cond, id_var, id_droplets
     ! integer :: gfdl_mp_clock ! clock for timing of driver routine
@@ -546,7 +546,7 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     ! used = send_data (id_snow, snow, time, is_in = iis, js_in = jjs)
     ! if (mp_print .and. seconds == 0) then
     ! tot_prec = g_sum (snow, is, ie, js, je, area, 1)
-    ! if (rootproc) write (*, *) 'mean snow = ', tot_prec
+    ! if (root_proc) write (*, *) 'mean snow = ', tot_prec
     ! endif
     ! endif
     !
@@ -555,7 +555,7 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     ! used = send_data (id_graupel, graupel, time, is_in = iis, js_in = jjs)
     ! if (mp_print .and. seconds == 0) then
     ! tot_prec = g_sum (graupel, is, ie, js, je, area, 1)
-    ! if (rootproc) write (*, *) 'mean graupel = ', tot_prec
+    ! if (root_proc) write (*, *) 'mean graupel = ', tot_prec
     ! endif
     ! endif
     !
@@ -564,7 +564,7 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     ! used = send_data (id_ice, ice, time, is_in = iis, js_in = jjs)
     ! if (mp_print .and. seconds == 0) then
     ! tot_prec = g_sum (ice, is, ie, js, je, area, 1)
-    ! if (rootproc) write (*, *) 'mean ice_mp = ', tot_prec
+    ! if (root_proc) write (*, *) 'mean ice_mp = ', tot_prec
     ! endif
     ! endif
     !
@@ -573,7 +573,7 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     ! used = send_data (id_rain, rain, time, is_in = iis, js_in = jjs)
     ! if (mp_print .and. seconds == 0) then
     ! tot_prec = g_sum (rain, is, ie, js, je, area, 1)
-    ! if (rootproc) write (*, *) 'mean rain = ', tot_prec
+    ! if (root_proc) write (*, *) 'mean rain = ', tot_prec
     ! endif
     ! endif
     !
@@ -593,7 +593,7 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     ! if (seconds == 0) then
     ! prec1 (:, :) = prec1 (:, :) * dt_in / 86400.
     ! tot_prec = g_sum (prec1, is, ie, js, je, area, 1)
-    ! if (rootproc) write (*, *) 'daily prec_mp = ', tot_prec
+    ! if (root_proc) write (*, *) 'daily prec_mp = ', tot_prec
     ! prec1 (:, :) = 0.
     ! endif
     ! endif
@@ -3359,12 +3359,12 @@ subroutine setupm
     fac_rc = (4. / 3.) * pie * rhor * rthresh ** 3
     
     if (prog_ccn) then
-        ! if (rootproc) write (*, *) 'prog_ccn option is .t.'
+        ! if (root_proc) write (*, *) 'prog_ccn option is .t.'
     else
         den_rc = fac_rc * ccn_o * 1.e6
-        ! if (rootproc) write (*, *) 'mp: for ccn_o = ', ccn_o, 'ql_rc = ', den_rc
+        ! if (root_proc) write (*, *) 'mp: for ccn_o = ', ccn_o, 'ql_rc = ', den_rc
         den_rc = fac_rc * ccn_l * 1.e6
-        ! if (rootproc) write (*, *) 'mp: for ccn_l = ', ccn_l, 'ql_rc = ', den_rc
+        ! if (root_proc) write (*, *) 'mp: for ccn_l = ', ccn_l, 'ql_rc = ', den_rc
     endif
     
     vdifu = 2.11e-5
@@ -3487,7 +3487,7 @@ subroutine gfdl_cloud_microphys_init ()
     ! logical :: flag
     ! real :: tmp, q1, q2
     
-    ! rootproc = (mpp_pe () .eq.mpp_root_pe ())
+    ! root_proc = (mpp_pe () .eq.mpp_root_pe ())
     
 #ifdef INTERNAL_FILE_NML
     read (input_nml_file, nml = gfdl_cloud_microphysics_nml)
@@ -3514,7 +3514,7 @@ subroutine gfdl_cloud_microphys_init ()
     endif
     
     ! write version number and namelist to log file
-   !if (me == rootproc) then
+   !if (me == root_proc) then
    !    write (logunit, *) " ================================================================== "
    !    write (logunit, *) "gfdl_cloud_microphys_mod"
    !    write (logunit, nml = gfdl_cloud_microphysics_nml)
@@ -3531,7 +3531,7 @@ subroutine gfdl_cloud_microphys_init ()
     tice0 = tice - 0.01
     t_wfr = tice - 40.0 ! supercooled water can exist down to - 48 c, which is the "absolute"
     
-    ! if (rootproc) write (logunit, nml = gfdl_cloud_microphys_nml)
+    ! if (root_proc) write (logunit, nml = gfdl_cloud_microphys_nml)
     !
     ! id_vtr = register_diag_field (mod_name, 'vt_r', axes (1:3), time, &
     ! 'rain fall speed', 'm / s', missing_value = missing_value)
@@ -3558,7 +3558,7 @@ subroutine gfdl_cloud_microphys_init ()
     ! id_prec = register_diag_field (mod_name, 'prec_lin', axes (1:2), time, &
     ! 'prec_lin', 'mm / day', missing_value = missing_value)
     
-    ! if (rootproc) write (*, *) 'prec_lin diagnostics initialized.', id_prec
+    ! if (root_proc) write (*, *) 'prec_lin diagnostics initialized.', id_prec
     
     ! id_cond = register_diag_field (mod_name, 'cond_lin', axes (1:2), time, &
     ! 'total condensate', 'kg / m ** 2', missing_value = missing_value)
@@ -3569,7 +3569,7 @@ subroutine gfdl_cloud_microphys_init ()
     
     ! testing the water vapor tables
     
-    ! if (mp_debug .and. rootproc) then
+    ! if (mp_debug .and. root_proc) then
     ! write (*, *) 'testing water vapor tables in gfdl_cloud_microphys'
     ! tmp = tice - 90.
     ! do k = 1, 25
@@ -3580,7 +3580,7 @@ subroutine gfdl_cloud_microphys_init ()
     ! enddo
     ! endif
     
-    ! if (rootproc) write (*, *) 'gfdl_cloud_micrphys diagnostics initialized.'
+    ! if (root_proc) write (*, *) 'gfdl_cloud_micrphys diagnostics initialized.'
     
     ! gfdl_mp_clock = mpp_clock_id ('gfdl_cloud_microphys', grain = clock_routine)
     
@@ -3620,7 +3620,7 @@ subroutine setup_con
     
     implicit none
     
-    ! rootproc = (mpp_pe () .eq.mpp_root_pe ())
+    ! root_proc = (mpp_pe () .eq.mpp_root_pe ())
     
     rgrav = 1. / grav
     
@@ -3715,8 +3715,8 @@ subroutine qsmith_init
     
     if (.not. tables_are_initialized) then
         
-        ! rootproc = (mpp_pe () .eq. mpp_root_pe ())
-        ! if (rootproc) print *, ' gfdl mp: initializing qs tables'
+        ! root_proc = (mpp_pe () .eq. mpp_root_pe ())
+        ! if (root_proc) print *, ' gfdl mp: initializing qs tables'
         
         ! debug code
         ! print *, mpp_pe (), allocated (table), allocated (table2), &
