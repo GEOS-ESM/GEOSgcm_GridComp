@@ -173,23 +173,14 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME         = 'SWHEAT',                            &
-         LONG_NAME          = 'solar_heating_rate',                &
-         UNITS              = 'W m-2',                             &
-         DIMS               = MAPL_DimsHorzVert,                   &
-         VLOCATION          = MAPL_VLocationCenter,                &
-         RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC                     ,             &
+    call MAPL_AddImportSpec(GC                     ,             &
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
         UNITS              = 'W m-2'                     ,        &
         SHORT_NAME         = 'LWFLX'                   ,          &
         DIMS               = MAPL_DimsHorzOnly           ,        &
         VLOCATION          = MAPL_VLocationNone          ,        &
         RC=STATUS  )
-     VERIFY_(STATUS)
+    VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                          &
         LONG_NAME          = 'upward_sensible_heat_flux' ,&
@@ -296,33 +287,6 @@ contains
           SHORT_NAME         = 'DISCHARGE'                 ,&
           DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                                   &
-        SHORT_NAME         = 'STROCNXB',                          &
-        LONG_NAME          = 'x_stress_at_base_of_ice_weighted_by_aiu_Bgrid',    &
-        UNITS              = 'N m-2',                             &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME         = 'STROCNYB',                          &
-        LONG_NAME          = 'y_stress_at_base_of_ice_weighted_by_aiu_Bgrid',   &
-        UNITS              = 'N m-2',                             &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                                   &
-          SHORT_NAME         = 'AICEU',                            &
-          LONG_NAME          = 'ice_concentration_of_grid_cell_Bgrid',   &
-          UNITS              = '1',                                &
-          DIMS               = MAPL_DimsHorzOnly,                  &
-          VLOCATION          = MAPL_VLocationNone,                 &
           RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -483,37 +447,10 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME         = 'DH',                                &
-         LONG_NAME          = 'layer_thickness',                   &
-         UNITS              = 'm OR kg m-2',                       &
-         DIMS               = MAPL_DimsHorzVert,                   &
-         VLOCATION          = MAPL_VLocationCenter,                &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
     call MAPL_AddExportSpec(GC,                                    & 
          SHORT_NAME         = 'DEPTH',                             &
          LONG_NAME          = 'layer_depth',                       &
          UNITS              = 'm',                                 &
-         DIMS               = MAPL_DimsHorzVert,                   &
-         VLOCATION          = MAPL_VLocationCenter,                &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME         = 'T',                                 &
-         LONG_NAME          = 'potential_temperature',             &
-         UNITS              = 'K',                                 &
-         DIMS               = MAPL_DimsHorzVert,                   &
-         VLOCATION          = MAPL_VLocationCenter,                &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                    &
-         SHORT_NAME         = 'S',                                 &
-         LONG_NAME          = 'salinity',                          &
-         UNITS              = 'psu',                               &
          DIMS               = MAPL_DimsHorzVert,                   &
          VLOCATION          = MAPL_VLocationCenter,                &
          RC=STATUS  )
@@ -1004,9 +941,6 @@ contains
     REAL_, pointer                     :: DRNIR(:,:)         => null()
     REAL_, pointer                     :: DFNIR(:,:)         => null()
     REAL_, pointer                     :: DISCHARGE(:,:)     => null()
-    REAL_, pointer                     :: STROCNXB(:,:)      => null()
-    REAL_, pointer                     :: STROCNYB(:,:)      => null()
-    REAL_, pointer                     :: AICEU(:,:)         => null()
     REAL_, pointer                     :: AICE(:,:)          => null()
     REAL_, pointer                     :: TAUXBOT(:,:)       => null()
     REAL_, pointer                     :: TAUYBOT(:,:)       => null()
@@ -1125,9 +1059,6 @@ contains
     call MAPL_GetPointer(IMPORT, DRNIR,    'DRNIR'  ,   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, DFNIR,    'DFNIR'  ,   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, DISCHARGE,'DISCHARGE', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, STROCNXB, 'STROCNXB',  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, STROCNYB, 'STROCNYB',  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, AICEU,    'AICEU',     RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, AICE,     'AICE',      RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, TAUXBOT,  'TAUXBOT',   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, TAUYBOT,  'TAUYBOT',   RC=STATUS); VERIFY_(STATUS)

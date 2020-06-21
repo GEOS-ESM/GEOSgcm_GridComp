@@ -192,6 +192,7 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DO_DATAATM,     Label="USE_DATAATM:" ,     DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, OCEAN_NAME, Label="OCEAN_NAME:", DEFAULT="MOM", __RC__ )
     
     if (DO_DATAATM/=0) then
        _ASSERT(DO_DATASEAONLY==0,'needs informative message')
@@ -916,32 +917,36 @@ contains
 !---------------------------------
 
   if(DO_DATASEAONLY==0) then
-     ! Radiation to Ocean
-     call MAPL_AddConnectivity ( GC,  &
-          SHORT_NAME  = (/'SWHEAT'/), &
-          DST_ID = OCEAN,             &
-          SRC_ID = ORAD,              &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+!   if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
+       ! Radiation to Ocean
+       call MAPL_AddConnectivity ( GC,  &
+            SHORT_NAME  = (/'SWHEAT'/), &
+            DST_ID = OCEAN,             &
+            SRC_ID = ORAD,              &
+            RC=STATUS  )
+       VERIFY_(STATUS)
      
-     ! Ocean to Radiation
-     call MAPL_AddConnectivity ( GC,  &
-          SHORT_NAME  = (/'DH'/),     &
-          DST_ID = ORAD,              &
-          SRC_ID = OCEAN,             &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+       ! Ocean to Radiation
+       call MAPL_AddConnectivity ( GC,  &
+            SHORT_NAME  = (/'DH'/),     &
+            DST_ID = ORAD,              &
+            SRC_ID = OCEAN,             &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+!   end if
   end if
 
   if(DO_OBIO/=0) then
 
-     ! Ocean to OceanBio
-     call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'DH', 'T ', 'S '/),     &
-          DST_ID = OBIO,               &
-          SRC_ID = OCEAN,              &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+    if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
+      ! Ocean to OceanBio
+      call MAPL_AddConnectivity ( GC,   &
+           SHORT_NAME  = (/'DH', 'T ', 'S '/),     &
+           DST_ID = OBIO,               &
+           SRC_ID = OCEAN,              &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+    end if
      
      ! OceanRad to OceanBio
      call MAPL_AddConnectivity ( GC,   &
@@ -1003,13 +1008,23 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
      
-     call MAPL_AddConnectivity ( GC,  &
-          SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
-          'STROCNXB', 'STROCNYB', 'AICEU   ', 'FRESH   ', 'FSALT   ', 'FHOCN   ', 'AICE   '/), &
-          DST_ID = OCEAN,             &
-          SRC_ID = SEAICE,            &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+     if (trim(OCEAN_NAME) == "MOM") then  ! MOM5
+       call MAPL_AddConnectivity ( GC,  &
+            SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
+            'STROCNXB', 'STROCNYB', 'AICEU   ', 'FRESH   ', 'FSALT   ', 'FHOCN  '/), &
+            DST_ID = OCEAN,             &
+            SRC_ID = SEAICE,            &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+     else ! MOM6
+       call MAPL_AddConnectivity ( GC,  &
+            SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
+            'FRESH   ', 'FSALT   ', 'FHOCN   ', 'AICE   '/), &
+            DST_ID = OCEAN,             &
+            SRC_ID = SEAICE,            &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+     endif
   end if
 
 ! Children's imports are in the ocean grid and are all satisfied
@@ -1292,8 +1307,6 @@ contains
 
 ! Put OBIO tracers into the OCEAN's tracer bundle.
 !-------------------------------------------------
-
-    call MAPL_GetResource ( MAPL, OCEAN_NAME, Label="OCEAN_NAME:", DEFAULT="MOM", __RC__ )
 
     if (DO_DATASEAONLY==0) then
        if (trim(OCEAN_NAME) == "MOM") then
