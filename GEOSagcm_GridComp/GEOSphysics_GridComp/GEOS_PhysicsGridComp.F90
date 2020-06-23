@@ -2396,7 +2396,9 @@ contains
     end if
 
      call MAPL_GetPointer ( GIM(SURF),  UA,  'UA', RC=STATUS)
+     VERIFY_(STATUS)
      call MAPL_GetPointer ( GIM(SURF),  VA,  'VA', RC=STATUS)
+     VERIFY_(STATUS)
 
 !----------------------
 
