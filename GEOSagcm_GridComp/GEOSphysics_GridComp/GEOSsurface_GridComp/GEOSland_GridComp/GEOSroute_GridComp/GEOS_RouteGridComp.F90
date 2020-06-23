@@ -998,12 +998,12 @@ contains
 
 ! ---------------------------------------------------------------------------
 
-  subroutine InitializeRiverRouting(MYPE, numprocs, master_proc,           &
+  subroutine InitializeRiverRouting(MYPE, numprocs, root_proc,           &
        pfaf_code, AllActive, AlldstCatchID, srcProcsID, LocDstCatchID, rc)
     
     implicit none
     INTEGER, INTENT (IN)                             :: MYPE, numprocs
-    LOGICAL, INTENT (IN)                             :: master_proc
+    LOGICAL, INTENT (IN)                             :: root_proc
     INTEGER, DIMENSION (:),  INTENT (IN)             :: pfaf_code
     INTEGER, DIMENSION (N_CatG),          INTENT (INOUT) :: srcProcsID, LocDstCatchID
     INTEGER, DIMENSION (N_CatG,numprocs), INTENT (INOUT) :: Allactive,  AlldstCatchID
@@ -1052,7 +1052,7 @@ contains
        Allactive (:,i) = global_buff((i-1)*N_CatG+1:i*N_CatG)
     enddo
 
-    if (master_proc) then
+    if (root_proc) then
 
        DO N = 1, N_CatG
           NPROCS = count(Allactive(N,:) >= 1)
