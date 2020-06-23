@@ -12,7 +12,7 @@ integer, parameter :: nbins = 40, N_RANDOM_YEARS = 41
 ! initialize to non-MPI values
   include 'mpif.h'	
 !integer,public   :: myid=0, numprocs=1, mpierr, mpistatus(MPI_STATUS_SIZE)  
-!logical, public  :: master_proc=.true.
+!logical, public  :: root_proc=.true.
 
 contains
 
@@ -1173,12 +1173,12 @@ END SUBROUTINE RSQ
  !   call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
  !   call MPI_COMM_SIZE( MPI_COMM_WORLD, numprocs, mpierr )
  !
- !   if (myid .ne. 0)  master_proc = .false.
+ !   if (myid .ne. 0)  root_proc = .false.
  !   
 !!    call init_MPI_types()
  !   
  !   write (*,*) "MPI process ", myid, " of ", numprocs, " is alive"    
- !   write (*,*) "MPI process ", myid, ": master_proc=", master_proc
+ !   write (*,*) "MPI process ", myid, ": root_proc=", root_proc
 !
 !  end subroutine init_MPI
 
