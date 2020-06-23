@@ -61,7 +61,7 @@ module GEOS_VegdynGridCompMod
   data VGRT  / 19700., 7000., 9400., 7000., 7000., 14000./
   ! commented out legacy look-up table for veg heights, which are now always from bcs via restarts, - reichle, 17 March 2020
   ! data VGZ2 / 35.0, 20.0, 17.0, 0.6, 0.5, 0.6/ ! Dorman and Sellers (1989)   
-  
+  real, pointer :: LAIens0(:),GRNens0(:), NDVIens0(:), ROOTLens0(:)  
 contains
 
 !BOP
@@ -311,7 +311,7 @@ contains
     character(len=ESMF_MAXSTR)         :: LAItpl
     character(len=ESMF_MAXSTR)         :: GRNtpl
     character(len=ESMF_MAXSTR)         :: NDVItpl
-    integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width
+    integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width, ens_id, first_ens_id
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -336,13 +336,17 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, first_ens_id, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+    ens_id = first_ens_id 
 
 ! -----------------------------------------------------------
 ! Get file names from configuration
 ! -----------------------------------------------------------
-
     if(NUM_LDAS_ENSEMBLE > 1) then
        !comp_name should be vegdynxxxx....
+       read(comp_name(7:7+ens_id_width-1), *) ens_id
+
        call MAPL_GetResource(MAPL, LAItpl, label = 'LAI'//comp_name(7:7+ens_id_width-1)//'_FILE:', &
             RC=STATUS )
        call MAPL_GetResource(MAPL, GRNtpl, label = 'GREEN'//comp_name(7:7+ens_id_width-1)//'_FILE:', &
@@ -401,11 +405,21 @@ contains
     call MAPL_GetPointer(EXPORT, NDVI,   'NDVI',  RC=STATUS)
     VERIFY_(STATUS)
 
+    if (NUM_LDAS_ENSEMBLE > 1 .and. ens_id > first_ens_id) then
+       LAI   = LAIens0  
+       GRN   = GRNens0  
+       NDVI  = NDVIens0 
+       ROOTL = ROOTLens0
+
+       call MAPL_TimerOff(MAPL,"TOTAL")
+       RETURN_(ESMF_SUCCESS)
+    endif
 ! Do the lai greeness and ndvi interpolation
 ! ------------------------------------------
 
     call ESMF_ClockGet  ( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
     VERIFY_(STATUS)
+
     call MAPL_ReadForcing(MAPL,'LAI',LAIFILE,CURRENT_TIME,LAI,ON_TILES=.true.,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_ReadForcing(MAPL,'GRN',GRNFILE,CURRENT_TIME,GRN,ON_TILES=.true.,RC=STATUS)
@@ -418,7 +432,13 @@ contains
 ! -----------------------------------------------------
 
     ROOTL = VGRT(nint(ITY))
-    
+
+    if (NUM_LDAS_ENSEMBLE > 1 .and. ens_id == first_ens_id) then
+       LAIens0  => LAI
+       GRNens0  => GRN
+       NDVIens0 => NDVI
+       ROOTLens0=> ROOTL
+    endif
 !  All done
 ! ---------
 

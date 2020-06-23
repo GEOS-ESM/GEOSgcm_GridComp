@@ -3980,8 +3980,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         logical                     :: solalarmison
         logical                     :: debugzth
 
-        real,pointer,dimension(:)   :: VISDF
-        real,pointer,dimension(:)   :: NIRDF
+        real,pointer,dimension(:), save   :: VISDF=>null()
+        real,pointer,dimension(:), save   :: NIRDF=>null()
         character (len=ESMF_MAXSTR) :: VISDFFILE
         character (len=ESMF_MAXSTR) :: VISDFtpl
         character (len=ESMF_MAXSTR) :: NIRDFFILE
@@ -4084,6 +4084,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character(len=:), pointer :: vname
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
+        integer                       :: ens_id, first_ens_id
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4161,11 +4162,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
         ! Get name of albedo files from configuration
         ! --------------------------------------------------------------------------
-
+        call MAPL_GetResource ( MAPL, first_ens_id, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+        VERIFY_(STATUS)           
+        ens_id = first_ens_id
+        
         if(NUM_LDAS_ENSEMBLE > 1) then
            call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
            VERIFY_(STATUS)           
            !comp_name should be catchxxxx
+           read(comp_name(6:6+ens_id_width-1), *) ens_id
            call MAPL_GetResource(MAPL   ,&
               VISDFtpl                  ,&
               label   = 'VISDF'//comp_name(6:6+ens_id_width-1)//'_FILE:',&
@@ -4473,8 +4478,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RSL2     (NTILES)) 
         allocate(SQSCAT   (NTILES))
         allocate(RDC      (NTILES))  
-        allocate(VISDF    (NTILES))
-        allocate(NIRDF    (NTILES))
+        if (.not. associated(VISDF)) allocate(VISDF(NTILES))
+        if (.not. associated(NIRDF)) allocate(NIRDF(NTILES))
 	allocate(UUU      (NTILES))
 	allocate(RHO      (NTILES))
 	allocate(ZVG      (NTILES))
@@ -4603,11 +4608,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! in the internal state and get their midmonth times
         ! ----------------------------------------------------------------------------------
 
-        call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
-        VERIFY_(STATUS)
+        if (ens_id  == First_ens_id) then
+           call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
+           VERIFY_(STATUS)
+           call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
+           VERIFY_(STATUS)
+        endif
 
+        
         ! --------------------------------------------------------------------------
         ! retrieve the zenith angle
         ! --------------------------------------------------------------------------
@@ -5755,8 +5763,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(HSNACC   )
         deallocate(EVACC    )
         deallocate(SHACC    )
-        deallocate(VISDF    )
-        deallocate(NIRDF    )
+        !deallocate(VISDF    )
+        !deallocate(NIRDF    )
         deallocate(VSUVR    )
         deallocate(VSUVF    )
         deallocate(SNOVR    )
