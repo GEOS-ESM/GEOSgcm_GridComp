@@ -4084,7 +4084,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character(len=:), pointer :: vname
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
-        integer                       :: ens_id, first_ens_id
+        integer                       :: ldas_ens_id, ldas_first_ens_id
 !#---
 
         ! --------------------------------------------------------------------------
@@ -4162,45 +4162,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
         ! Get name of albedo files from configuration
         ! --------------------------------------------------------------------------
-        call MAPL_GetResource ( MAPL, first_ens_id, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+        call MAPL_GetResource ( MAPL, ldas_first_ens_id, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
         VERIFY_(STATUS)           
-        ens_id = first_ens_id
+        ldas_ens_id = ldas_first_ens_id
         
         if(NUM_LDAS_ENSEMBLE > 1) then
            call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
            VERIFY_(STATUS)           
-           !comp_name should be catchxxxx
-           read(comp_name(6:6+ens_id_width-1), *) ens_id
-           call MAPL_GetResource(MAPL   ,&
-              VISDFtpl                  ,&
-              label   = 'VISDF'//comp_name(6:6+ens_id_width-1)//'_FILE:',&
-              RC=STATUS )
-           call MAPL_GetResource(MAPL    ,&
-              NIRDFtpl                   ,&
-              label   = 'NIRDF'//comp_name(6:6+ens_id_width-1)//'_FILE:' ,&
-              RC=STATUS )
-
-           if (STATUS/=ESMF_SUCCESS) then
-              call MAPL_GetResource(MAPL     ,&
-                   VISDFtpl                  ,&
-                   label   = 'VISDF_FILE:'   ,&
-                   default = '../input/visdf%s.data'      ,&
-                   RC=STATUS )
-              VERIFY_(STATUS)
-
-              call MAPL_GetResource(MAPL       ,&
-                  NIRDFtpl                     ,&
-              label   = 'NIRDF_FILE:'          ,&
-              default = '../input/nirdf%s.data',&
-              RC=STATUS )
-              VERIFY_(STATUS)
+           !for GEOSldas comp_name should be catchxxxx
+           read(comp_name(6:6+ens_id_width-1), *) ldas_ens_id
         endif
-
-           call ESMF_CFIOStrTemplate(VISDFFILE, VISDFtpl,'GRADS', xid=comp_name(6:6+ens_id_width-1), stat=status)
-           VERIFY_(STATUS)
-           call ESMF_CFIOStrTemplate(NIRDFFILE, NIRDFtpl,'GRADS', xid=comp_name(6:6+ens_id_width-1), stat=status)
-           VERIFY_(STATUS) 
-        else
 
         call MAPL_GetResource(MAPL      ,&
              VISDFFILE                  ,&
@@ -4215,7 +4186,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              default = 'nirdf.dat'       ,&
              RC=STATUS )
         VERIFY_(STATUS)
-        endif
 
         call ESMF_VMGet(VM, localPet=mype, rc=status)
         VERIFY_(STATUS)
@@ -4608,7 +4578,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! in the internal state and get their midmonth times
         ! ----------------------------------------------------------------------------------
 
-        if (ens_id  == First_ens_id) then
+        if (ldas_ens_id  == ldas_first_ens_id) then ! it is always .true. if NUM_LDAS_ENSMEBLE = 1 ( by default)
            call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
            VERIFY_(STATUS)
            call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)

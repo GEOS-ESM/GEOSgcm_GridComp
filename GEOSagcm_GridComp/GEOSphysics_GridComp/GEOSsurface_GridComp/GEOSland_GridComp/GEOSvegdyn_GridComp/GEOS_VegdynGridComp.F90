@@ -311,7 +311,7 @@ contains
     character(len=ESMF_MAXSTR)         :: LAItpl
     character(len=ESMF_MAXSTR)         :: GRNtpl
     character(len=ESMF_MAXSTR)         :: NDVItpl
-    integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width, ens_id, first_ens_id
+    integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width, ldas_ens_id, ldas_first_ens_id
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -336,52 +336,27 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, first_ens_id, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, ldas_first_ens_id, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    ens_id = first_ens_id 
+    ldas_ens_id = ldas_first_ens_id 
 
 ! -----------------------------------------------------------
 ! Get file names from configuration
 ! -----------------------------------------------------------
     if(NUM_LDAS_ENSEMBLE > 1) then
-       !comp_name should be vegdynxxxx....
-       read(comp_name(7:7+ens_id_width-1), *) ens_id
+       !for GEOSldas, the comp_name should be vegdynxxxx....
+       read(comp_name(7:7+ens_id_width-1), *) ldas_ens_id
+    endif
 
-       call MAPL_GetResource(MAPL, LAItpl, label = 'LAI'//comp_name(7:7+ens_id_width-1)//'_FILE:', &
-            RC=STATUS )
-       call MAPL_GetResource(MAPL, GRNtpl, label = 'GREEN'//comp_name(7:7+ens_id_width-1)//'_FILE:', &
-            RC=STATUS )
-       call MAPL_GetResource(MAPL, NDVItpl, label = 'NDVI'//comp_name(7:7+ens_id_width-1)//'_FILE:', &
-            RC=STATUS )
-
-       if (STATUS/=ESMF_SUCCESS) then
-          call MAPL_GetResource(MAPL, LAItpl, label = 'LAI_FILE:', &
-               default = '../input/lai%s.data', RC=STATUS )
-          VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, GRNtpl, label = 'GREEN_FILE:', &
-               default = '../input/green%s.data', RC=STATUS )
-          VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, NDVItpl, label = 'NDVI_FILE:', &
-                default = '../input/ndvi%s.data', RC=STATUS )
-       endif
-
-       call ESMF_CFIOStrTemplate(LAIFILE, LAItpl,'GRADS', xid=comp_name(7:7+ens_id_width-1), stat=status)
-       VERIFY_(STATUS)
-       call ESMF_CFIOStrTemplate(GRNFILE, GRNtpl,'GRADS', xid=comp_name(7:7+ens_id_width-1), stat=status)
-       VERIFY_(STATUS)
-       call ESMF_CFIOStrTemplate(NDVIFILE,NDVItpl,'GRADS',xid=comp_name(7:7+ens_id_width-1), stat=status)
-       VERIFY_(STATUS)
-    else
-       call MAPL_GetResource(MAPL, LAIFILE, label = 'LAI_FILE:', &
-         default = 'lai.dat', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, GRNFILE, label = 'GREEN_FILE:', &
+    call MAPL_GetResource(MAPL, LAIFILE, label = 'LAI_FILE:', &
+        default = 'lai.dat', RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, GRNFILE, label = 'GREEN_FILE:', &
          default = 'green.dat', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetResource(MAPL, NDVIFILE, label = 'NDVI_FILE:', &
-          default = 'ndvi.dat', RC=STATUS )
-       VERIFY_(STATUS)
-   endif
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, NDVIFILE, label = 'NDVI_FILE:', &
+        default = 'ndvi.dat', RC=STATUS )
+    VERIFY_(STATUS)
 
 ! get pointers to internal variables
 ! ----------------------------------
@@ -405,15 +380,15 @@ contains
     call MAPL_GetPointer(EXPORT, NDVI,   'NDVI',  RC=STATUS)
     VERIFY_(STATUS)
 
-    if (NUM_LDAS_ENSEMBLE > 1 .and. ens_id > first_ens_id) then
-       LAI   = LAIens0  
-       GRN   = GRNens0  
-       NDVI  = NDVIens0 
-       ROOTL = ROOTLens0
-
+    if (NUM_LDAS_ENSEMBLE > 1 .and. ldas_ens_id > ldas_first_ens_id) then
+       if(associated(LAI))  LAI   = LAIens0  
+       if(associated(GRN))  GRN   = GRNens0  
+       if(associated(NDVI)) NDVI  = NDVIens0 
+       if(associated(ROOTL))ROOTL = ROOTLens0
        call MAPL_TimerOff(MAPL,"TOTAL")
        RETURN_(ESMF_SUCCESS)
     endif
+
 ! Do the lai greeness and ndvi interpolation
 ! ------------------------------------------
 
@@ -433,18 +408,19 @@ contains
 
     ROOTL = VGRT(nint(ITY))
 
-    if (NUM_LDAS_ENSEMBLE > 1 .and. ens_id == first_ens_id) then
+    if (NUM_LDAS_ENSEMBLE > 1 .and. ldas_ens_id == ldas_first_ens_id) then
        LAIens0  => LAI
        GRNens0  => GRN
        NDVIens0 => NDVI
        ROOTLens0=> ROOTL
     endif
+
 !  All done
 ! ---------
 
     call MAPL_TimerOff(MAPL,"TOTAL")
-
     RETURN_(ESMF_SUCCESS)
+
   end subroutine RUN
 
 end module GEOS_VegdynGridCompMod
