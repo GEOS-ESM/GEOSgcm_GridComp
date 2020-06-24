@@ -31,6 +31,9 @@ module cloudnew
    PUBLIC ICE_FRACTION
    PUBLIC T_CLOUD_CTL
    PUBLIC fix_up_clouds
+   PUBLIC pdffrac
+   PUBLIC pdfcondensate
+   PUBLIC RADCOUPLE
 #endif
 
    type T_CLOUD_CTL
@@ -1597,12 +1600,12 @@ contains
                CLDREFFL_dev(I,K)   = 0.
                CLDREFFI_dev(I,K)   = 0.
             ELSE
-               call RADCOUPLE ( TEMP, PP_dev(I,K), PPE_dev(I,K)-PPE_dev(I,K-1), KH_dev(I,K-1), DTS_dev(I), CLDFRC_dev(I,K), ANVFRC_dev(I,K), &
+               call RADCOUPLE ( TEMP, PP_dev(I,K), CLDFRC_dev(I,K), ANVFRC_dev(I,K), &
                      Q_dev(I,K), QLW_LS_dev(I,K), QIW_LS_dev(I,K), QLW_AN_dev(I,K), QIW_AN_dev(I,K), QRN_ALL, QSN_ALL, NACTL_dev(I,K), NACTI_dev(I,K), & 
                      RAD_QV_dev(I,K), RAD_QL_dev(I,K), RAD_QI_dev(I,K), RAD_QR_dev(I,K), RAD_QS_dev(I,K), RAD_CLDFRC_dev(I,K), & 
                      CLDREFFL_dev(I,K), CLDREFFI_dev(I,K), &
-                     TEMPOR_dev(I), FRLAND_dev(I), CNV_FRACTION_dev(I), &
-                     SCLMFDFR, FR_AN_WAT, CONVPAR_OPTION,RHX_DEV(I,K) )
+                     FRLAND_dev(I), CNV_FRACTION_dev(I), &
+                     FR_AN_WAT, FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI, RHX_DEV(I,K) )
             END IF
 
             QRN_CU_dev(I,K) = QRN_CU_1D
@@ -3798,7 +3801,7 @@ contains
   
        ELSEIF(ITYPE == ICE) THEN
 
-        IF (adjustl(CLDMICRO)=="GFDL") THEN
+        IF (adjustl(CLDMICRO)=="SAVE_FOR_AEROSOLS...") THEN
 
          RHO = 100.*PL / (MAPL_RGAS*TE )
          !- ice water content
@@ -3830,7 +3833,7 @@ contains
             !if((PL<300. .and. PL>200.) .and. (QC>1.e-6)) print*,"GOCRI=", RHO*QC,TE,NNI, RADIUS* 1.e+6
          ENDIF
   
-        ELSE ! CLDMICRO =1MOMENT
+        ELSE ! CLDMICRO =1MOMENT or GFDL
 
             !------ice cloud effective radius ----- [klaus wyser, 1998]
             !- air density (kg/m^3)
@@ -4038,9 +4041,6 @@ contains
    subroutine RADCOUPLE(  &
          TE,              & 
          PL,              & 
-         DELP,            &
-         KH,              &
-         DTS,             &
          CF,              & 
          AF,              & 
          QV,              &
@@ -4060,26 +4060,22 @@ contains
          RAD_CF,          & 
          RAD_RL,          & 
          RAD_RI,          & 
-         TEMPOR, FRLAND, CNV_FRACTION, SCLMFDFR, FR_AN_WAT, &
-         CONVPAR_OPTION,  &
+         FRLAND, CNV_FRACTION, FR_AN_WAT, &
+         FAC_RL, MIN_RL, MAX_RL, &
+         FAC_RI, MIN_RI, MAX_RI, &
 	 RHX)
 
       real, intent(in ) :: TE
-      real, intent(in ) :: PL, DELP, KH, DTS
+      real, intent(in ) :: PL
       real, intent(in ) :: AF,CF, QV, QClAN, QCiAN, QClLS, QCiLS
       real, intent(in ) :: QRN_ALL, QSN_ALL
       real, intent(in ) :: NL,NI
       real, intent(out) :: RAD_QV,RAD_QL,RAD_QI,RAD_QR,RAD_QS,RAD_CF,RAD_RL,RAD_RI
 
-      real, intent(in )  :: tempor, FRLAND, CNV_FRACTION, SCLMFDFR,RHX
+      real, intent(in )  :: FRLAND, CNV_FRACTION, RHX
+      real, intent(in )  :: FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI
       integer, intent(in) :: FR_AN_WAT
-      character(LEN=*), INTENT(IN) :: CONVPAR_OPTION
-      real :: RElAN, REiAN, RElLS, REiLS, QCm, ss
-      real :: QClANm, QCiANm, QClLSm, QCiLSm, QCtot, AFx
-      real :: rampt, rampu, rampp
-
-      real :: ALPH, CFPBL
-      real :: CIP, TEM2D, TEM2, TEM3
+      real :: ALPH, SS, AFx
       real :: NN, NN_LAND, NN_OCEAN
 
       ! Limits on Radii needed to ensure
