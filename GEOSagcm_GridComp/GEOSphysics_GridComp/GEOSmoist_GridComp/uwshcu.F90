@@ -42,12 +42,12 @@ contains
    subroutine compute_uwshcu_inv(idim, k0, ncnst, dt,pmid0_inv,     & ! INPUT
          zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, &
          dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv,        &
-         th0_inv, tke_inv, kpbl_inv, thlsrc_pert,                   & 
+         th0_inv, tke_inv, kpbl_inv, shfx,evap,                     & 
          cush, tr0_inv,                                             & ! INOUT
-         umf_inv, qvten_inv, qlten_inv, qiten_inv, thten_inv,       & ! OUTPUT
+         umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, thten_inv, & ! OUTPUT
          uten_inv, vten_inv, qrten_inv, qsten_inv, cufrc_inv,       &
          fer_inv, fdr_inv, qldet_inv, qidet_inv, qlsub_inv,         &
-         qisub_inv, ndrop_inv, nice_inv,                            & 
+         qisub_inv, ndrop_inv, nice_inv, tpert_out, qpert_out,      & 
 #ifdef UWDIAG
          qcu_inv, qlu_inv, qiu_inv, cbmf, qc_inv,                   & ! DIAGNOSTIC ONLY
          cnt_inv, cnb_inv, cin, plcl, plfc, pinv, prel, pbup,       &
@@ -81,11 +81,13 @@ contains
       real,   intent(in)    :: tke_inv(idim,k0+1)       !  Turbulent kinetic energy at the interfaces [ m2/s2 ]
                                                         !  at the previous time step [ fraction ]
       real, intent(in)    :: kpbl_inv(idim)               !  Height of PBL [ m ]
-      real, intent(in)    :: thlsrc_pert
+      real, intent(in)    :: shfx(idim)               ! Surface sensible heat
+      real, intent(in)    :: evap(idim)               ! Surface evaporation
       real, intent(inout) :: tr0_inv(idim,k0,ncnst)   !  Environmental tracers [ #, kg/kg ]
       real, intent(inout) :: cush(idim)               !  Convective scale height [m]
 
       real, intent(out)   :: umf_inv(idim,k0+1)       !  Updraft mass flux at interfaces [kg/m2/s]
+      real, intent(out)   :: dcm_inv(idim,k0)       !  Detrained cloudy air mass
       real, intent(out)   :: qvten_inv(idim,k0)       !  Tendency of water vapor specific humidity [ kg/kg/s ]
       real, intent(out)   :: qlten_inv(idim,k0)         !  Tendency of liquid water specific humidity [ kg/kg/s ]
       real, intent(out)   :: qiten_inv(idim,k0)         !  Tendency of ice specific humidity [ kg/kg/s ]
@@ -104,6 +106,8 @@ contains
       real, intent(out)   :: qisub_inv(idim,k0)
       real, intent(out)   :: ndrop_inv(idim,k0)
       real, intent(out)   :: nice_inv(idim,k0)
+      real, intent(out)   :: tpert_out(idim)
+      real, intent(out)   :: qpert_out(idim)
 
 !!! Diagnostic only
 #ifdef UWDIAG
@@ -154,6 +158,7 @@ contains
       real              :: tke(idim,0:k0)           !  Turbulent kinetic energy [ m2 s-2 ] 
       real              :: tr0(idim,k0,ncnst)       !  Environmental tracers [ #, kg/kg ]
       real              :: umf(idim,0:k0)           !  Updraft mass flux at the interfaces [ kg/m2/s ]
+      real              :: dcm(idim,k0)             !  Detrained cloudy air mass
       real              :: qvten(idim,k0)           !  Tendency of water vapor specific humidity [ kg/kg/s ]
       real              :: qlten(idim,k0)           !  Tendency of liquid water specific humidity [ kg/kg/s ]
       real              :: qiten(idim,k0)           !  tendency of ice specific humidity [ kg/kg/s ]
@@ -241,9 +246,10 @@ contains
       call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
            exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
            qv0, ql0, qi0, th0, tr0, kpbl, tke, cush, umf,   &
-           qvten, qlten, qiten, sten, uten, vten,           &
+           dcm, qvten, qlten, qiten, sten, uten, vten,      &
            qrten, qsten, cufrc, fer, fdr, qldet, qidet,     & 
-           qlsub, qisub, ndrop, nice, thlsrc_pert,          &
+           qlsub, qisub, ndrop, nice,                       &
+           shfx, evap, tpert_out, qpert_out,                &
 #ifdef UWDIAG
            qcu, qlu, qiu, cbmf, qc, cnt, cnb,               & ! Diagnostic only
            cin, plcl, plfc, pinv, prel, pbup, wlcl, qtsrc,  &
@@ -275,6 +281,7 @@ contains
 
       do k = 1, k0
          k_inv                    = k0 + 1 - k
+         dcm_inv(:idim,k_inv)     = dcm(:idim,k)    
          qvten_inv(:idim,k_inv)   = qvten(:idim,k)   
          qlten_inv(:idim,k_inv)   = qlten(:idim,k)   
          qiten_inv(:idim,k_inv)   = qiten(:idim,k)   
@@ -309,6 +316,7 @@ contains
          endif
 
       end do
+      dcm_inv(:idim,k0) = 0.
 
    end subroutine compute_uwshcu_inv
 
@@ -317,11 +325,11 @@ contains
          exnifc0_in, pmid0_in, zmid0_in, exnmid0_in, dp0_in,       &
          u0_in, v0_in, qv0_in, ql0_in, qi0_in, th0_in,             &
          tr0_inout, kpbl_in, tke_in, cush_inout,                   & ! OUT
-         umf_out, qvten_out, qlten_out, qiten_out,                 &
+         umf_out, dcm_out, qvten_out, qlten_out, qiten_out,        &
          sten_out, uten_out, vten_out, qrten_out,                  &
          qsten_out, cufrc_out, fer_out, fdr_out, qldet_out,        &
          qidet_out, qlsub_out, qisub_out, ndrop_out, nice_out,     &
-         thlsrc_pert,                                              &
+         shfx, evap, tpert_out, qpert_out,                         &
 #ifdef UWDIAG
          qcu_out, qlu_out, qiu_out, cbmf_out, qc_out,              & ! DIAG ONLY
          cnt_out, cnb_out, cinh_out, plcl_out, plfc_out, pinv_out, &
@@ -374,13 +382,17 @@ contains
       real, intent(in)    :: qi0_in( idim,k0 )        ! Environmental ice specific humidity
       real, intent(in)    :: th0_in ( idim,k0 )       ! Environmental potential temperature [K]
       real, intent(in)    :: tke_in( idim,0:k0 )      ! Turbulent kinetic energy at interfaces
-      real, intent(in)    :: thlsrc_pert
+      real, intent(in)    :: shfx(idim)               ! Surface sensible heat
+      real, intent(in)    :: evap(idim)               ! Surface evaporation
+      real, intent(out)   :: tpert_out(idim)          ! Temperature perturbation
+      real, intent(out)   :: qpert_out(idim)          ! Humidity perturbation
       integer, intent(in) :: kpbl_in( idim )          ! Boundary layer top layer index
 
       real, intent(inout) :: cush_inout( idim )       ! Convective scale height [m]
       real, intent(inout) :: tr0_inout(idim,k0,ncnst) !  Environmental tracers [ #, kg/kg ]
 
       real, intent(out)   :: umf_out(idim,0:k0)       !  Updraft mass flux at the interfaces [ kg/m2/s ]
+      real, intent(out)   :: dcm_out(idim,k0)         !  Detrained cloudy air mass
       real, intent(out)   :: qvten_out(idim,k0)       !  Tendency of water vapor specific humidity [ kg/kg/s ]
       real, intent(out)   :: qlten_out(idim,k0)       !  Tendency of liquid water specific humidity [ kg/kg/s ]
       real, intent(out)   :: qiten_out(idim,k0)       !  Tendency of ice specific humidity [ kg/kg/s ]
@@ -429,10 +441,6 @@ contains
 
       type(shlwparam_type), intent(in) :: shlwparams
 
-!srf
-      !real, intent(in)    :: qtsrc_pert 
-      real     :: qtsrc_pert = 0.5e-3
-!srf      
     !
     ! Internal Output Variables
     !
@@ -493,6 +501,7 @@ contains
 
     real    umf(0:k0)                                    !  Updraft mass
     real    emf(0:k0)                                    !  Penetrative
+    real    dcm(k0)                                      !  Detrained cloud mass
     real    qvten(k0)                                    !  Tendency of
     real    qlten(k0)                                    !  Tendency of
     real    qiten(k0)                                    !  Tendency of
@@ -546,6 +555,9 @@ contains
     real    trflx_u(0:k0)                                !  Adjustive
     real    trmin
     real    pdelx, dum 
+
+! Variables for temperature/moisture excess in source parcel
+    real    zrho, delzg,buoyflx,wstar !pahfs,pqhfl,zkhvfl,pgeoh,zws,ztexec,zqexec
 
     !----- Variables used for the calculation of condensation sink associated with compensating subsidence
     !      In the current code, this 'sink' tendency is simply set to be zero.
@@ -619,7 +631,7 @@ contains
       real       ee2, ud2, wtw, wtwb
       real       xc
       real       cldhgt, scaleh, tscaleh, cridis
-      real       sigmaw, tkeavg, dpsum, dpi, thvlmin
+      real       sigmaw, tkeavg, qtavg, uavg, vavg, dpsum, dpi, thvlmin
       real       thlxsat, qtxsat, thvxsat, x_cu, x_en, thv_x0, thv_x1
       real       dpe, exne, thvebot, thle, qte, ue, ve, thlue, qtue, wue
       real       mu, mumin0, mumin2, mulcl, mulclstar
@@ -745,7 +757,7 @@ contains
 
     !----- Variables for implicit CIN computation
 
-    real, dimension(k0)   :: qv0_s  , ql0_s   , qi0_s   , s0_s    , u0_s    ,          & 
+    real, dimension(k0)   :: dcm_s, qv0_s  , ql0_s   , qi0_s   , s0_s    , u0_s    ,          & 
                              v0_s   , t0_s    , & !qt0_s   , thl0_s  ,thvl0_s ,           &
                              qvten_s , qlten_s, qiten_s , qrten_s , qsten_s , sten_s  ,& 
                              uten_s, vten_s, cufrc_s, qcu_s, qlu_s, qiu_s, & 
@@ -783,6 +795,13 @@ contains
     ! Define Parameters  !
     !                    !
     ! ------------------ !
+
+    ! ------------------------ !
+    ! Source air perturbations !
+    ! ------------------------ !
+
+    real :: qtsrc_fac 
+    real :: thlsrc_fac
 
     ! ------------------------ !
     ! Iterative xc calculation !
@@ -830,6 +849,7 @@ contains
 
     logical :: use_cumpenent
     logical :: scverbose
+    logical :: windsrcavg
     real    :: rpen     ! penetrative entrainment efficiency
 
     ! ----------------------- !
@@ -838,6 +858,7 @@ contains
 
     real :: rle          !  For critical stopping distance for lateral entrainment [no unit]
     real :: rkm          !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
+    real :: mixscale     !  Specify vertical structure of mixing rate [0 or 1]
     real :: rkfre        !  Vertical velocity variance as fraction of  tke. 
     real :: rmaxfrac     !  Maximum allowable 'core' updraft fraction
     real :: mumin1       !  Normalized CIN ('mu') corresponding to 'rmaxfrac' at the PBL top
@@ -881,9 +902,11 @@ contains
     use_momenflx     = shlwparams%use_momenflx
     use_cumpenent    = shlwparams%use_cumpenent
     scverbose        = shlwparams%scverbose
+    windsrcavg       = shlwparams%windsrcavg
     rpen             = shlwparams%rpen
     rle       = shlwparams%rle      !  For critical stopping distance for lateral entrainment [no unit]
     rkm       = shlwparams%rkm      !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
+    mixscale  = shlwparams%mixscale !  Specifies vertical structure of mixing rate
     rkfre     = shlwparams%rkfre    !  Vertical velocity variance as fraction of  tke. 
     rmaxfrac  = shlwparams%rmaxfrac !  Maximum allowable 'core' updraft fraction
     mumin1    = shlwparams%mumin1
@@ -895,6 +918,8 @@ contains
     criqc     = shlwparams%criqc
     frc_rasn  = shlwparams%frc_rasn
     rdrop     = shlwparams%rdrop
+    thlsrc_fac = shlwparams%thlsrc_fac
+    qtsrc_fac  = shlwparams%qtsrc_fac
 
     !------------------------!
     !                        !
@@ -914,7 +939,7 @@ contains
     ! ------------------------------------------------------- !
 
     umf_out(:idim,0:k0)          = 0.0
-
+    dcm_out(:idim,:k0)           = 0.0
     cufrc_out(:idim,:k0)         = 0.0
     fer_out(:idim,:k0)           = 0.0
     fdr_out(:idim,:k0)           = 0.0
@@ -961,6 +986,9 @@ contains
     rcwp_out(:idim)              = 0.0
     rlwp_out(:idim)              = 0.0
     riwp_out(:idim)              = 0.0
+  
+    tpert_out(:idim)            = 0.0
+    qpert_out(:idim)            = 0.0
 
     wu_out(:idim,0:k0)          = MAPL_UNDEF
     qtu_out(:idim,0:k0)         = MAPL_UNDEF
@@ -1150,6 +1178,7 @@ contains
          ! ---------------------------------------------- !
 
       umf(0:k0)          = 0.0
+      dcm(:k0)           = 0.0
       emf(0:k0)          = 0.0
       slflx(0:k0)        = 0.0
       qtflx(0:k0)        = 0.0
@@ -1257,7 +1286,9 @@ contains
            tscaleh = cush                        
            cush    = -1.
            tkeavg   = 0.
-
+           qtavg   = 0.
+           uavg    = 0.
+           vavg    = 0.
 
            ! ----------------------------------------------------------------------- !
            ! Find PBL top height interface index, 'kinv-1' where 'kinv' is the layer !
@@ -1336,10 +1367,15 @@ contains
             dpi = pifc0(k-1) - pifc0(k)
             dpsum  = dpsum  + dpi 
             tkeavg = tkeavg + dpi*tke(k)
+            qtavg  = qtavg  + dpi*qt0(k)
+            uavg   = uavg   + dpi*u0(k)
+            vavg   = vavg   + dpi*v0(k)
             if( k .ne. kinv ) thvlmin = min(thvlmin,min(thvl0bot(k),thvl0top(k)))
          end do
          tkeavg  = tkeavg/dpsum
-         !tkeavg  = tkeavg/1e4
+         qtavg   = qtavg/dpsum
+         uavg    = uavg/dpsum
+         vavg    = vavg/dpsum
 
        ! ------------------------------------------------------------------ !
        ! Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc !
@@ -1349,14 +1385,39 @@ contains
        ! as the values just below the PBL top interface.                    !
        ! ------------------------------------------------------------------ !
 
-          qtsrc   = qt0(1)
-!         qtsrc   = qt0(1) + qtsrc_pert
-!srf
-         thvlsrc = thvlmin+thlsrc_pert
-!         thvlsrc = thvl0(1)
+         zrho = pifc0(0)/(287.04*(t0(1)*(1.+0.608*qv0(1))))
+
+         buoyflx = (-shfx(i)/cp-0.608*t0(1)*evap(i))/zrho ! K m s-1
+ 
+!         delzg = (zifc0(1)-zifc0(0))*g
+         delzg = (50.0)*g   ! assume 50m surface scale
+
+         wstar = max(0.,0.001-0.41*buoyflx*delzg/t0(1)) ! m3 s-3
+
+         qpert_out(i) = 0.0
+         tpert_out(i) = 0.0
+         if (wstar > 0.001) then
+           wstar = 1.0*wstar**.3333
+           tpert_out(i) = thlsrc_fac*shfx(i)/(zrho*wstar*cp)  ! K
+           qpert_out(i) = qtsrc_fac*evap(i)/(zrho*wstar)    ! kg kg-1
+         end if
+         qpert_out(i) = max(min(qpert_out(i),0.01*qt0(1)),0.)  ! limit to 1% of QT
+         tpert_out(i) = 0.25+max(min(tpert_out(i),1.0),0.)          ! limit to 1K
+
+         qtsrc   = qt0(1) + qpert_out(i)
+
+         thvlsrc = thvlmin + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
+
          thlsrc  = thvlsrc / ( 1. + zvir * qtsrc )  
-         usrc    = u0(kinv-1) + ssu0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )             
-         vsrc    = v0(kinv-1) + ssv0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
+
+         if (windsrcavg) then
+            usrc  = uavg
+            vsrc  = vavg
+         else
+            usrc  = u0(kinv-1) + ssu0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
+            vsrc  = v0(kinv-1) + ssv0(kinv-1) * ( pifc0(kinv-1) - pmid0(kinv-1) )
+         end if
+
          if (dotransport.eq.1) then
          do m = 1, ncnst
             trsrc(m) = tr0(1,m)
@@ -1699,6 +1760,7 @@ contains
                ! ------------------------------------------------------ ! 
 
                umf(0:k0)          = 0.0
+               dcm(:k0)           = 0.0
                emf(0:k0)          = 0.0
                slflx(0:k0)        = 0.0
                qtflx(0:k0)        = 0.0
@@ -1793,6 +1855,7 @@ contains
                ! --------------------------------------------------------- !
 
                umf_out(i,0:k0)         = umf_s(0:k0)
+               dcm_out(i,:k0)          = dcm_s(:k0)
                qvten_out(i,:k0)        = qvten_s(:k0)
                qlten_out(i,:k0)        = qlten_s(:k0)  
                qiten_out(i,:k0)        = qiten_s(:k0)
@@ -2394,6 +2457,7 @@ contains
           ! ----------------------------------------------------------------- !
           ! Case 1 : When both cumulus and env. are unsaturated or saturated. !
           ! ----------------------------------------------------------------- !
+            xsat = 0.
 
             if( ( excessu .le. 0. .and. excess0 .le. 0. ) .or. ( excessu .ge. 0. .and. excess0 .ge. 0. ) ) then
                 xc = min(1.,max(0.,1.-2.*rbuoy*g*cridis/wue**2.*(1.-thvj/thv0j)))
@@ -2402,6 +2466,11 @@ contains
                 aquad = 0.
                 bquad = 0.
                 cquad = 0.
+               if (excessu .gt. 0.) then
+                  xsat = 1.
+               else
+                  xsat = 0.
+               end if
             else
           ! -------------------------------------------------- !
           ! Case 2 : When either cumulus or env. is saturated. !
@@ -2471,13 +2540,20 @@ contains
           ! So, for the time being, I came back to the original limiter.             !
           ! ------------------------------------------------------------------------ !
             ee2    = xc**2
-            ud2    = 1. - 2.*xc + xc**2
-          ! rei(k) = ( rkm / scaleh / g / rho0j )        ! Default.
-            rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j ) ! Alternative.
+            ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
+            if (mixscale.ne.0.0) then
+              rei(k) = ( rkm / min(scaleh,4000.) / g / rhomid0j )   ! alternative
+            else if (mixscale.eq.0.0) then
+              rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j )       ! Jason-2_0 version
+            end if
+
             if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(dp0(k)/g/dt/umf(km1) + 1.)/dpe/(2.*xc-1.))
             fer(k) = rei(k) * ee2
             fdr(k) = rei(k) * ud2
             xco(k) = xc
+
+          
+
 
           ! ------------------------------------------------------------------------------ !
           ! Iteration Start due to 'maxufrc' constraint [ ****************************** ] ! 
@@ -2491,7 +2567,10 @@ contains
           ! -------------------------------------------------------------------------- !
 
             umf(k) = umf(km1) * exp( dpe * ( fer(k) - fdr(k) ) )
-            emf(k) = 0.   
+            emf(k) = 0.
+   
+            dcm(k) = 0.5*(umf(k)+umf(km1))*rei(k)*dpe*min(1.,max(0.,xsat-xc))
+!            dcm(k) = min(1.,max(0.,xsat-xc))
 
           ! --------------------------------------------------------- !
           ! Compute cumulus updraft properties at the top interface.  !
@@ -3985,6 +4064,7 @@ contains
            endif
 
            umf_s(0:k0)          = umf(0:k0)
+           dcm_s(:k0)           = dcm(:k0)
            qvten_s(:k0)         = qvten(:k0)
            qlten_s(:k0)         = qlten(:k0)  
            qiten_s(:k0)         = qiten(:k0)
@@ -4148,7 +4228,7 @@ contains
 
      umf_out(i,0:k0)             = umf(0:k0)
      umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
-
+     dcm_out(i,:k0)              = dcm(0:k0)
 !the indices are not reversed, these variables go into compute_mcshallow_inv
      qvten_out(i,:k0)            = qvten(:k0)
      qlten_out(i,:k0)            = qlten(:k0)
@@ -4267,6 +4347,7 @@ contains
      ! --------------------------------------------------------------------- !
      
      umf_out(i,0:k0)             = 0.   
+     dcm_out(i,:k0)              = 0.   
      qvten_out(i,:k0)            = 0.
      qlten_out(i,:k0)            = 0.
      qiten_out(i,:k0)            = 0.
