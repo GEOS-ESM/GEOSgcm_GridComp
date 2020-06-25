@@ -839,15 +839,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetResource( MAPL, effgwbkg, Label="EFFGWBKG:", default=0.125, RC=STATUS)
     VERIFY_(STATUS)
 
-    if( LM .le. 72 ) then
+    if( LM .eq. 72 ) then
         call MAPL_GetResource( MAPL, pgwv,        Label="PGWV:",        default=4,    RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetResource( MAPL, bgstressmax, Label="BGSTRESSMAX:", default=0.9,  RC=STATUS)
         VERIFY_(STATUS)
      else
-        call MAPL_GetResource( MAPL, pgwv,        Label="PGWV:",        default=8,    RC=STATUS)
+        call MAPL_GetResource( MAPL, pgwv,        Label="PGWV:",        default=NINT(4*LM/72.0),    RC=STATUS)
         VERIFY_(STATUS)
-        call MAPL_GetResource( MAPL, bgstressmax, Label="BGSTRESSMAX:", default=2.25, RC=STATUS)
+        call MAPL_GetResource( MAPL, bgstressmax, Label="BGSTRESSMAX:", default=0.9, RC=STATUS)
         VERIFY_(STATUS)
      endif
 
