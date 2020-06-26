@@ -1,4 +1,4 @@
-esma_set_this ()
+esma_set_this (OVERRIDE mom6)
 
 list( APPEND MOM6_SRCS
    src/ALE/coord_adapt.F90
@@ -89,34 +89,34 @@ list( APPEND MOM6_SRCS
 #  src/equation_of_state/TEOS10/gsw_t_freezing_exact.f90
 #  src/equation_of_state/TEOS10/gsw_t_freezing_poly.f90
 #  src/equation_of_state/TEOS10/gsw_t_from_ct.f90
-   src/framework//MOM_array_transform.F90
-   src/framework//MOM_checksums.F90
-   src/framework//MOM_coms.F90
-   src/framework//MOM_constants.F90
-   src/framework//MOM_cpu_clock.F90
-   src/framework//MOM_diag_manager_wrapper.F90
-   src/framework//MOM_diag_mediator.F90
-   src/framework//MOM_diag_remap.F90
-   src/framework//MOM_diag_vkernels.F90
-   src/framework//MOM_document.F90
-   src/framework//MOM_domains.F90
-   src/framework//MOM_dyn_horgrid.F90
-   src/framework//MOM_error_handler.F90
-   src/framework//MOM_file_parser.F90
-   src/framework//MOM_get_input.F90
-   src/framework//MOM_hor_index.F90
-   src/framework//MOM_horizontal_regridding.F90
-   src/framework//MOM_intrinsic_functions.F90
-   src/framework//MOM_io.F90
-   src/framework//MOM_random.F90
-   src/framework//MOM_restart.F90
-   src/framework//MOM_safe_alloc.F90
-   src/framework//MOM_spatial_means.F90
-   src/framework//MOM_string_functions.F90
-   src/framework//MOM_time_manager.F90
-   src/framework//MOM_transform_FMS.F90
-   src/framework//MOM_unit_scaling.F90
-   src/framework//MOM_write_cputime.F90
+   src/framework/MOM_array_transform.F90
+   src/framework/MOM_checksums.F90
+   src/framework/MOM_coms.F90
+   src/framework/MOM_constants.F90
+   src/framework/MOM_cpu_clock.F90
+   src/framework/MOM_diag_manager_wrapper.F90
+   src/framework/MOM_diag_mediator.F90
+   src/framework/MOM_diag_remap.F90
+   src/framework/MOM_diag_vkernels.F90
+   src/framework/MOM_document.F90
+   src/framework/MOM_domains.F90
+   src/framework/MOM_dyn_horgrid.F90
+   src/framework/MOM_error_handler.F90
+   src/framework/MOM_file_parser.F90
+   src/framework/MOM_get_input.F90
+   src/framework/MOM_hor_index.F90
+   src/framework/MOM_horizontal_regridding.F90
+   src/framework/MOM_intrinsic_functions.F90
+   src/framework/MOM_io.F90
+   src/framework/MOM_random.F90
+   src/framework/MOM_restart.F90
+   src/framework/MOM_safe_alloc.F90
+   src/framework/MOM_spatial_means.F90
+   src/framework/MOM_string_functions.F90
+   src/framework/MOM_time_manager.F90
+   src/framework/MOM_transform_FMS.F90
+   src/framework/MOM_unit_scaling.F90
+   src/framework/MOM_write_cputime.F90
    src/ice_shelf/MOM_ice_shelf_dynamics.F90
    src/ice_shelf/MOM_ice_shelf.F90
    src/ice_shelf/MOM_ice_shelf_initialize.F90
@@ -439,10 +439,16 @@ list( APPEND MOM6_SRCS
    config_src/coupled_driver/ocean_model_MOM.F90
 )
 
+set (MOM6_path ${CMAKE_CURRENT_SOURCE_DIR}/../@mom6)
+set (SRCS)
+foreach (file ${MOM6_SRCS})
+  list (APPEND SRCS ${MOM6_path}/${file})
+endforeach ()
+
 esma_add_library (${this}
-  SRCS ${MOM6_SRCS}
+  SRCS ${SRCS}
   DEPENDENCIES fms_r8
-  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/config_src/dynamic ${CMAKE_CURRENT_SOURCE_DIR}/src/framework
+  INCLUDES ${MOM6_path}/config_src/dynamic ${MOM6_path}/src/framework
   TYPE SHARED
 )
 

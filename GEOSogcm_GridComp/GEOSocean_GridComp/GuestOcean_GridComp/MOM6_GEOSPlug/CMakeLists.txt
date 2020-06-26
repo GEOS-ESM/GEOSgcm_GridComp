@@ -4,10 +4,13 @@ set (SRCS
   MOM6_GEOSPlug.F90
   )
 
+esma_add_subdirectories(
+  mom6_cmake
+  )
+
 esma_add_library (${this}
   SRCS ${SRCS}
-  SUBCOMPONENTS @mom6
-  DEPENDENCIES MAPL_Base
+  DEPENDENCIES MAPL_Base fms_r8 mom6
   TYPE SHARED
   )
 
