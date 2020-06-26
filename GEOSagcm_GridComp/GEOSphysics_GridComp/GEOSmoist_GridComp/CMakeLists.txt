@@ -11,13 +11,12 @@ set (srcs
   # ras00.F90 cloud.F90
   )
 
+get_target_property (extra_incs fms_r4 INCLUDE_DIRECTORIES)
 
 esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base
-  INCLUDES ${INC_ESMF})
-get_target_property (extra_incs fms_r4 INCLUDE_DIRECTORIES)
-target_link_libraries (${this} PUBLIC fms_r4)
+  INCLUDES ${extra_incs} ${INC_ESMF})
 
 
 file (GLOB_RECURSE rc_files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.rc)
