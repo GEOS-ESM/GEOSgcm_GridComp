@@ -153,7 +153,7 @@ contains
 
     if (MODIS_DVG == 1) then
        call ESMF_ConfigGetAttribute (SCF, value= MODIS_PATH, label='MODIS_PATH:',  &
-            DEFAULT='/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/MCD15A2H.006/', __RC__ )
+            DEFAULT='/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/MCD15A2H.006/IAV_smoothed/', __RC__ )
        call MAPL_GetResource (MAPL, OFFLINE_MODE, Label="CATCHMENT_OFFLINE:", DEFAULT=0, RC=STATUS)
        if (OFFLINE_MODE == 0) then
           call MAPL_GetResource( MAPL, GRIDNAME, label='AGCM_GRIDNAME:', RC=STATUS ) ; VERIFY_(STATUS)
