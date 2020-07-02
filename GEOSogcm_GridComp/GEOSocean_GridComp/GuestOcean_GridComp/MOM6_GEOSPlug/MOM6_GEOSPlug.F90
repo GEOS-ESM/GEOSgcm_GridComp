@@ -173,14 +173,23 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddImportSpec(GC                     ,             &
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME         = 'SWHEAT',                            &
+         LONG_NAME          = 'solar_heating_rate',                &
+         UNITS              = 'W m-2',                             &
+         DIMS               = MAPL_DimsHorzVert,                   &
+         VLOCATION          = MAPL_VLocationCenter,                &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC                     ,             &
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
         UNITS              = 'W m-2'                     ,        &
         SHORT_NAME         = 'LWFLX'                   ,          &
         DIMS               = MAPL_DimsHorzOnly           ,        &
         VLOCATION          = MAPL_VLocationNone          ,        &
         RC=STATUS  )
-    VERIFY_(STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                          &
         LONG_NAME          = 'upward_sensible_heat_flux' ,&
@@ -290,7 +299,7 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_AddImportSpec(GC,                                   &
+    call MAPL_AddImportSpec(GC,                                    &
           SHORT_NAME         = 'AICE',                             &
           LONG_NAME          = 'ice_concentration_of_grid_cell',   &
           UNITS              = '1',                                &
@@ -447,10 +456,37 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME         = 'DH',                                &
+         LONG_NAME          = 'layer_thickness',                   &
+         UNITS              = 'm OR kg m-2',                       &
+         DIMS               = MAPL_DimsHorzVert,                   &
+         VLOCATION          = MAPL_VLocationCenter,                &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                                    & 
          SHORT_NAME         = 'DEPTH',                             &
          LONG_NAME          = 'layer_depth',                       &
          UNITS              = 'm',                                 &
+         DIMS               = MAPL_DimsHorzVert,                   &
+         VLOCATION          = MAPL_VLocationCenter,                &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME         = 'T',                                 &
+         LONG_NAME          = 'potential_temperature',             &
+         UNITS              = 'K',                                 &
+         DIMS               = MAPL_DimsHorzVert,                   &
+         VLOCATION          = MAPL_VLocationCenter,                &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME         = 'S',                                 &
+         LONG_NAME          = 'salinity',                          &
+         UNITS              = 'psu',                               &
          DIMS               = MAPL_DimsHorzVert,                   &
          VLOCATION          = MAPL_VLocationCenter,                &
          RC=STATUS  )
@@ -672,17 +708,15 @@ contains
     call MAPL_GetResource( MAPL, wind_stagger, Label="ocean_wind_stagger:", DEFAULT="AGRID", RC=STATUS)
     VERIFY_(STATUS)
 
-    if (MAPL_AM_I_Root()) then
-     if (wind_stagger == "AGRID") then
-       print *, ' Surface stress stagger for MOM6: AGRID. Its value= ', AGRID
-       iwind_stagger = AGRID
-     elseif ( (wind_stagger == "BGRID") .or. (wind_stagger == "CGRID")) then
-       print *, ' Surface stress stagger for MOM6: BGRID_NE or CGRID_NE. These options are not supported. Exiting!'
-       ASSERT_(.false.)
-     else
-       print *, ' Surface stress stagger for MOM6 is invalid, stopping.'
-       ASSERT_(.false.)
-     endif
+    if ( trim(wind_stagger) == "AGRID") then
+      iwind_stagger = AGRID
+      if (MAPL_AM_I_Root()) print *, ' Surface stress stagger for MOM6: AGRID. Its value= ', AGRID
+    elseif ( ( trim(wind_stagger) == "BGRID") .or. ( trim(wind_stagger) == "CGRID")) then
+      print *, ' Surface stress stagger for MOM6: BGRID_NE or CGRID_NE. These options are not supported. Exiting!'
+      ASSERT_(.false.)
+    else
+      print *, ' Surface stress stagger for MOM6 is invalid, stopping.'
+      ASSERT_(.false.)
     endif
 
 ! Initialize ocean model

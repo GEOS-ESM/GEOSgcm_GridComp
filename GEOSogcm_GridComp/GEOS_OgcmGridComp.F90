@@ -938,7 +938,7 @@ contains
 
   if(DO_OBIO/=0) then
 
-    if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
+!   if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
       ! Ocean to OceanBio
       call MAPL_AddConnectivity ( GC,   &
            SHORT_NAME  = (/'DH', 'T ', 'S '/),     &
@@ -946,7 +946,7 @@ contains
            SRC_ID = OCEAN,              &
            RC=STATUS  )
       VERIFY_(STATUS)
-    end if
+!   end if
      
      ! OceanRad to OceanBio
      call MAPL_AddConnectivity ( GC,   &
