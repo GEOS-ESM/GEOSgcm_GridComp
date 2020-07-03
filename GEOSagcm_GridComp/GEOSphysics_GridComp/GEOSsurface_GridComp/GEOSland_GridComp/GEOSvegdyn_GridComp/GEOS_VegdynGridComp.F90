@@ -149,7 +149,7 @@ contains
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='MODIS_DVG:', value=MODIS_DVG, DEFAULT=0, __RC__ ) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='MODIS_LAI:', value=MODIS_DVG, DEFAULT=0, __RC__ ) ; VERIFY_(STATUS)
 
     if (MODIS_DVG == 1) then
        call ESMF_ConfigGetAttribute (SCF, value= MODIS_PATH, label='MODIS_PATH:',  &

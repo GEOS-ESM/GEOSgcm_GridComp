@@ -137,7 +137,7 @@ type CATCH_WRAP
 end type CATCH_WRAP
 !#--
 
-integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB,CHOOSEMOSFC, MODIS_DVG
+integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB,CHOOSEMOSFC, MODIS_ALB
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 
@@ -216,7 +216,7 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (SCF, label='Z0_FORMULATION:', value=Z0_FORMULATION, DEFAULT=2  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'   , value=USE_ASCATZ0,    DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'   , value=CHOOSEMOSFC,    DEFAULT=1  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='MODIS_DVG:'     , value=MODIS_DVG,      DEFAULT=0  , __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='MODIS_ALB:'     , value=MODIS_ALB,      DEFAULT=0  , __RC__ ) 
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
@@ -777,7 +777,7 @@ subroutine SetServices ( GC, RC )
          RC=STATUS  ) 
     VERIFY_(STATUS)
 
-    IF (MODIS_DVG > 0) THEN 
+    IF (MODIS_ALB == 2) THEN 
     
        call MAPL_AddImportSpec(gc, &
             short_name = "MODIS_VISDF",                               &
@@ -4299,7 +4299,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,SSWT   ,'SSWT'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
 
-        IF (MODIS_DVG > 0) THEN 
+        IF (MODIS_ALB == 2) THEN 
            call MAPL_GetPointer(IMPORT, MODIS_VISDF ,'MODIS_VISDF'   ,RC=STATUS); VERIFY_(STATUS) 
            call MAPL_GetPointer(IMPORT, MODIS_NIRDF ,'MODIS_NIRDF'   ,RC=STATUS); VERIFY_(STATUS) 
         ENDIF
@@ -4501,7 +4501,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RSL2     (NTILES)) 
         allocate(SQSCAT   (NTILES))
         allocate(RDC      (NTILES))  
-        IF (MODIS_DVG == 0) THEN
+        IF (MODIS_ALB == 0) THEN
            allocate(VISDF    (NTILES))
            allocate(NIRDF    (NTILES))
         ENDIF
@@ -4834,7 +4834,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Update raditation exports
         ! --------------------------------------------------------------------------
 
-     IF (MODIS_DVG == 0) THEN
+     IF (MODIS_ALB == 0) THEN
 
         ! ----------------------------------------------------------------------------------
         ! Update the interpolation limits for MODIS albedo corrections
@@ -4850,7 +4850,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
                        ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
 
-     ELSE
+     ELSEIF (MODIS_ALB == 2) THEN
 
         ALBVR = MIN (1., MAX(0.001,MODIS_VISDF))
         ALBNR = MIN (1., MAX(0.001,MODIS_NIRDF))
@@ -5547,7 +5547,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
-        IF (MODIS_DVG == 0) THEN
+        IF (MODIS_ALB == 0) THEN
 
            call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
                 VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
@@ -5561,7 +5561,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                 SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
                 RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
            
-        ELSE
+        ELSEIF (MODIS_ALB == 2) THEN
 
            ALBVR = MIN (1., MAX(0.001,MODIS_VISDF))
            ALBNR = MIN (1., MAX(0.001,MODIS_NIRDF))
@@ -5815,7 +5815,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(HSNACC   )
         deallocate(EVACC    )
         deallocate(SHACC    )
-        if(MODIS_DVG == 0) THEN
+        if(MODIS_ALB == 0) THEN
            deallocate(VISDF    )
            deallocate(NIRDF    )
         endif
