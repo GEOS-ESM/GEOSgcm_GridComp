@@ -2,6 +2,14 @@
   ! setenv LD_LIBRARY_PATH /ford1/local/EL6-64/lib
   ! source /ford1/local/intel/latest/bin/compilervars.csh intel64
   ! ifort -o mkLAIrst2tiles.x mkLAIrst2tiles.F90 -L/ford1/local/EL6-64/lib -I/ford1/local/EL6-64/include -lnetcdff -lnetcdf
+
+!  USAGE:
+
+! 1) Derive tile-spaced LAI for using analysis ready MODIS raw data @ 15 arc-sec lat/lon
+!    bin/mkLAIrst2tiles.x  YYYYDOY  YYYYMMDD  time_step   minutes_since_20020708-0000
+! 2) Smmoth using 3 time step window
+!    bin/mkLAIrst2tiles.x  GRID_NAME  lai_data.YYYYDOY  lai_data.YYYYDOY_previous  lai_data.YYYYDOY  lai_data.YYYYDOY_next
+
 PROGRAM mkLAIrst2tiles 
 
   use netcdf
