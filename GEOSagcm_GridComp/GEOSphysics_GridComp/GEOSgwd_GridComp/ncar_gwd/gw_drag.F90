@@ -314,12 +314,12 @@ call gw_prof (pcols , pver, pint_dev_ff , pmid_dev_ff , t_dev_ff , rhoi, nm, ni 
        t_gwt_ff = t_gwt_ff + t_gwt_org_ff
 
 
-     dudt_gwd_dev(1:pcols,1:pver) = REAL( u_gwt_ff(1:pcols,1:pver))   !zonal wind tendency at layer 
+     dudt_gwd_dev(1:pcols,1:pver) = REAL( u_gwt_ff(1:pcols,1:pver))  !zonal wind tendency at layer 
      dvdt_gwd_dev(1:pcols,1:pver) = REAL( v_gwt_ff(1:pcols,1:pver))  !meridional wind tendency at layer 
      dtdt_gwd_dev(1:pcols,1:pver) = REAL( t_gwt_ff(1:pcols,1:pver))  !temperature tendency at layer
-     dudt_org_dev(1:pcols,1:pver) = 0.0 !REAL( u_gwt_org_ff(1:pcols,1:pver))  !zonal wind tendency at layer due to orography GWD
-     dvdt_org_dev(1:pcols,1:pver) = 0.0 !REAL( v_gwt_org_ff(1:pcols,1:pver))  !meridional wind tendency at layer  due to orography GWD
-     dtdt_org_dev(1:pcols,1:pver) = 0.0 !REAL( t_gwt_org_ff(1:pcols,1:pver))  !temperature tendency at layer  due to orography GWD
+     dudt_org_dev(1:pcols,1:pver) = REAL( u_gwt_org_ff(1:pcols,1:pver))  !zonal wind tendency at layer due to orography GWD
+     dvdt_org_dev(1:pcols,1:pver) = REAL( v_gwt_org_ff(1:pcols,1:pver))  !meridional wind tendency at layer  due to orography GWD
+     dtdt_org_dev(1:pcols,1:pver) = REAL( t_gwt_org_ff(1:pcols,1:pver))  !temperature tendency at layer  due to orography GWD
 
 
 

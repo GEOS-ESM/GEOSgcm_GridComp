@@ -1372,7 +1372,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'DTDT_moist','CNV_FRC   '/),              & 
+         SHORT_NAME  = (/'DTDT_moist','CNV_FRC   ','DTDTCN'/),     & 
          DST_ID      = GWD,                                        &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )

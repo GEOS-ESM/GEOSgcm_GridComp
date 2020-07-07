@@ -211,12 +211,13 @@ contains
 
 ! from moist
         call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='DTDT_moist',                            & 
-             LONG_NAME ='T tendency due to moist',               &
+             SHORT_NAME='DTDTCN',                                & 
+             LONG_NAME ='T tendency due to convection',          &
              UNITS     ='K s-1',                                 &
              DIMS      = MAPL_DimsHorzVert,                      &
              VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
         VERIFY_(STATUS)  
+!WMP: Updated this to be the T tendency due to convection...
 !JTB: This was moved (3/25/2020) from imports for NCEP GWD, because 
 !     new NCAR code will use it for testing of Beres scheme. Not 
 !     sure this is what Beres scheme should actually be using, but OK
@@ -583,16 +584,17 @@ contains
         VERIFY_(STATUS)      
 
 ! from moist
-!        call MAPL_AddImportSpec(GC,                              &
-!             SHORT_NAME='DTDT_moist',                            & 
-!             LONG_NAME ='T tendency due to moist',               &
-!             UNITS     ='K s-1',                                 &
-!             DIMS      = MAPL_DimsHorzVert,                      &
-!             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-!        VERIFY_(STATUS)  
+        call MAPL_AddImportSpec(GC,                              &
+             SHORT_NAME='DTDT_moist',                            & 
+             LONG_NAME ='T tendency due to moist',               &
+             UNITS     ='K s-1',                                 &
+             DIMS      = MAPL_DimsHorzVert,                      &
+             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+        VERIFY_(STATUS)  
 !ALT: from this we can compute QMAX (column maximum value)
 !     and KTOP, KBOT near the location of QMAX
 !JTB: Moved up to default import state block (3/25/20)
+!WMP: Restored here for NCEP code
 
         call MAPL_AddImportSpec(GC,                              &
              SHORT_NAME='CNV_FRC',                               &
@@ -1136,7 +1138,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, SGH,    'SGH',     RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, PREF,   'PREF',    RC=STATUS ); VERIFY_(STATUS)
 !++jtb
-      call MAPL_GetPointer( IMPORT, HT_dpc, 'DTDT_moist',  RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, HT_dpc, 'DTDTCN',  RC=STATUS ); VERIFY_(STATUS)
 
 ! Allocate/refer to the outputs
 !------------------------------
