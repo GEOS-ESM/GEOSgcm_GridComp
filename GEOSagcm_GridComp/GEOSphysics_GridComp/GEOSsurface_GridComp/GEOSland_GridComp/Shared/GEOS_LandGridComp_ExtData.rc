@@ -3,7 +3,7 @@ PrimaryExports%%
 #  Import      |       |       | Regrid |        Refresh       | OffSet | Scale  | Variable On |   File   |
 #  Name        | Units | Clim  | Method |     Time Template    | Factor | Factor |     File    | Template |
 # -------------|-------|-------|--------|----------------------|--------|--------|-------------|----------|
-MODIS_LAI '1' N N 0 none none MODIS_LAI /discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/MCD15A2H.006_LAI_ExtData.nc4
+MODIS_LAI '1' N N 0 none none MODIS_LAI /discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/MCD15A2H.006/IAV/ExtData/MCD15A2H.006_LAI_ExtData.nc4
 MODIS_VISDF '1' N N 0 none none MODIS_VISDF /discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/MCD43GF.006_ALBEDO_ExtData.nc4
 MODIS_NIRDF '1' N N 0 none none MODIS_NIRDF /discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/MCD43GF.006_ALBEDO_ExtData.nc4
 %%
