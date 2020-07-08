@@ -1386,8 +1386,7 @@ contains
 
      call MAPL_TerminateImport    ( GC,   &
           SHORT_NAME = (/'SH   ','TAUX ','TAUY ','EVAP ','DEWL ','FRSL ',     &
-                         'DSH  ','DFU  ','DFV  ','DEVAP','DDEWL','DFRSL',     &
-                         'UA   ','VA   '                                  /), &
+                         'DSH  ','DFU  ','DFV  ','DEVAP','DDEWL','DFRSL'/),   &
           CHILD      = SURF,           &
           RC=STATUS  )
      VERIFY_(STATUS)
@@ -1974,6 +1973,7 @@ contains
    logical                             :: DPEDT_PHYS
    real                                :: DT
    real                                :: SYNCTQ, DOPHYSICS
+   real                                :: HGT_SURFACE
   
    real, pointer, dimension(:,:,:)     :: S, T, ZLE, TH, PLE, PLK, U, V, W
    real, pointer, dimension(:,:,:)     :: DM, DPI, TOT, FRI, TTN, STN,TMP
@@ -2020,7 +2020,6 @@ contains
    real, pointer, dimension(:,:  )     :: PEPHY
    real, pointer, dimension(:,:  )     :: KEPHY
    real, pointer, dimension(:,:  )     :: KETND
-   real, pointer, dimension(:,:  )     :: UA, VA
    real, pointer, dimension(:,:  )     :: AREA
 
    real*8, allocatable, dimension(:,:)   :: sumq
@@ -2039,13 +2038,13 @@ contains
    real, pointer, dimension(:,:,:)     :: TGWD, DTDTGWD, TFORMOIST, THFORMOIST
    real, pointer, dimension(:,:,:)     :: SAFTERMOIST, THAFMOIST
    real, pointer, dimension(:,:,:)     :: THFORCHEM, TFORCHEM, TFORRAD
-   real, pointer, dimension(:,:)       :: TFORSURF
+   real, pointer, dimension(:,:)       :: UA, VA, TFORSURF
    real, pointer, dimension(:,:,:)     :: SFORTURB, THFORTURB, TFORTURB
    real, pointer, dimension(:,:,:)     :: SAFDIFFUSE, SAFUPDATE
-   real, allocatable, dimension(:,:,:) :: PK
+   real, allocatable, dimension(:,:,:) :: PK, HGT, DTAFTURB
    real, allocatable, dimension(:,:,:) :: TDPOLD, TDPNEW
    real, allocatable, dimension(:,:,:) :: TFORQS
-   real, allocatable, dimension(:,:)   :: qs,pmean
+   real, allocatable, dimension(:,:)   :: qs,pmean,DTSURFAFTURB
 
    real(kind=MAPL_R8), allocatable, dimension(:,:) :: sumdq
    real(kind=MAPL_R8), allocatable, dimension(:,:) ::  dpe
@@ -2184,6 +2183,8 @@ contains
     call MAPL_GetResource(STATE, SYNCTQ,    'SYNCTQ:',    DEFAULT= 1.0, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(STATE, DOPHYSICS, 'DOPHYSICS:', DEFAULT= 1.0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(STATE, HGT_SURFACE, Label="HGT_SURFACE:", DEFAULT= 50.0, RC=STATUS)
     VERIFY_(STATUS)
 
 
@@ -2394,14 +2395,11 @@ contains
        VERIFY_(STATUS)
     end if
 
-    call MAPL_GetPointer ( GIM(SURF),  UA,  'UA', RC=STATUS)
-    VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  UA,  'UA', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer ( GIM(SURF),  VA,  'VA', RC=STATUS)
+     VERIFY_(STATUS)
 
-    call MAPL_GetPointer ( GIM(SURF),  VA,  'VA', RC=STATUS)
-    VERIFY_(STATUS)
-
-    UA = U(:,:,LM)
-    VA = V(:,:,LM)
 !----------------------
 
     if ( SYNCTQ.eq.1. ) then
@@ -2491,7 +2489,15 @@ contains
 
 !  AMM - Update TA for surf using TH after MOIST
     if ( SYNCTQ.eq.1. ) then
-     TFORSURF = THAFMOIST(:,:,LM)*PK(:,:,LM)
+     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+       allocate(HGT(IM,JM,LM+1),stat=STATUS);VERIFY_(STATUS)
+       do k = 1,LM+1
+         HGT(:,:,k) = (ZLE(:,:,k-1) - ZLE(:,:,LM))
+       enddo
+       call VertInterp(TFORSURF,THAFMOIST*PK,-HGT,-HGT_SURFACE, status)
+     else
+       TFORSURF = THAFMOIST(:,:,LM)*PK(:,:,LM)
+     endif
     endif
 
 !-srf-gf-scheme
@@ -2550,10 +2556,17 @@ contains
 
     if ( SYNCTQ.eq.1. ) then
 !AMM - update TA for surface using turb updated S - assume change in S is all change in T
-     TforSURF = TforSURF + ( SafDIFFUSE(:,:,LM) - SforTURB(:,:,LM) ) / MAPL_CP
-! set THforCHEM and TforRAD using turb run 1 updated S - assume change in S is all change in T
-     THFORCHEM = THFORTURB + (SafDIFFUSE -SforTURB) / (PK * MAPL_CP)
-     TFORRAD = TFORTURB + (SafDIFFUSE -SforTURB) / MAPL_CP
+     if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
+       allocate(DTSURFAFTURB(IM,JM),stat=STATUS);VERIFY_(STATUS)
+       call VertInterp(DTSURFAFTURB,(SAFDIFFUSE-SFORTURB)/MAPL_CP,-HGT,-HGT_SURFACE, status)
+       TFORSURF = TFORSURF + DTSURFAFTURB
+       deallocate(DTSURFAFTURB)
+     else
+       TFORSURF = TFORSURF + ( SAFDIFFUSE(:,:,LM) - SFORTURB(:,:,LM) ) / MAPL_CP
+     endif
+! set THFORCHEM and TFORRAD using turb run 1 updated S - assume change in S is all change in T
+     THFORCHEM = THFORTURB + (SAFDIFFUSE -SFORTURB) / (PK * MAPL_CP)
+     TFORRAD = TFORTURB + (SAFDIFFUSE -SFORTURB) / MAPL_CP
     endif
 
     I=SURF
@@ -2619,6 +2632,7 @@ contains
 !AMM
     if ( SYNCTQ.eq.1. ) then
       deallocate(PK)
+      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) deallocate(HGT)
     endif
 
     endif     !   end of if do physics condition
@@ -2670,7 +2684,7 @@ contains
        allocate(FRI(IM,JM,LM),stat=STATUS)
        VERIFY_(STATUS)
        FRI         = INTDIS + TOPDIS
-    !  FRI(:,:,LM) = FRI(:,:,LM)  + SRFDIS
+    !  FRI(:,:,LM) = FRI(:,:,LM)  + SRFDIS ! Already included in Turbulence
     end if
 
     if(NEED_TTN) then
@@ -3198,5 +3212,58 @@ contains
   end subroutine Run
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  subroutine VertInterp(v2,v3,ple,pp,rc)
+
+    real    , intent(OUT) :: v2(:,:)
+    real    , intent(IN ) :: v3(:,:,:)
+    real    , intent(IN ) :: ple(:,:,:)
+    real    , intent(IN ) :: pp
+    integer, optional, intent(OUT) :: rc
+
+    real, dimension(size(v2,1),size(v2,2)) :: al,PT,PB
+    integer k,km
+    logical edge
+
+    character*(10) :: Iam='VertInterp'
+
+    km   = size(ple,3)-1
+    edge = size(v3,3)==km+1
+
+    _ASSERT(edge .or. size(v3,3)==km,'needs informative message')
+
+    v2   = MAPL_UNDEF
+
+    if(EDGE) then
+       pb   = ple(:,:,km+1)
+       do k=km,1,-1
+          pt = ple(:,:,k)
+          if(all(pb<pp)) exit
+          where(pp>pt .and. pp<=pb)
+             al = (pb-pp)/(pb-pt)
+             v2 = v3(:,:,k)*al + v3(:,:,k+1)*(1.0-al)
+          end where
+          pb = pt
+       end do
+    else
+       pb = 0.5*(ple(:,:,km)+ple(:,:,km+1))
+       do k=km,2,-1
+          pt = 0.5*(ple(:,:,k-1)+ple(:,:,k))
+          if(all(pb<pp)) exit
+          where( (pp>pt.and.pp<=pb) )
+             al = (pb-pp)/(pb-pt)
+             v2 = v3(:,:,k-1)*al + v3(:,:,k)*(1.0-al)
+          end where
+          pb = pt
+       end do
+       pt = 0.5*(ple(:,:,km)+ple(:,:,km-1))
+       pb = 0.5*(ple(:,:,km)+ple(:,:,km+1))
+          where( (pp>pb.and.pp<=ple(:,:,km+1)) )
+             v2 = v3(:,:,km)
+          end where
+    end if
+
+    RETURN_(ESMF_SUCCESS)
+  end subroutine VertInterp
 
 end module GEOS_PhysicsGridCompMod

@@ -1,16 +1,14 @@
 esma_set_this ()
 
 set (srcs
-   rte/mo_fluxes.F90
-   rte/mo_optical_props.F90
    rte/mo_rte_kind.F90
-   rte/mo_rte_lw.F90
-   rte/mo_rte_sw.F90
    rte/mo_rte_util_array.F90
-   rte/mo_source_functions.F90
    rte/kernels/mo_rte_solver_kernels.F90
    rte/kernels/mo_optical_props_kernels.F90
    rte/kernels/mo_fluxes_broadband_kernels.F90
+   rte/mo_optical_props.F90
+   rte/mo_source_functions.F90
+   rte/mo_fluxes.F90
    rrtmgp/mo_rrtmgp_constants.F90
    rrtmgp/mo_rrtmgp_util_reorder.F90
    rrtmgp/mo_rrtmgp_util_string.F90
@@ -33,6 +31,8 @@ set (srcs
    examples/mo_simple_netcdf.F90
    examples/mo_load_coefficients.F90
    examples/mo_load_cloud_coefficients.F90
+   rte/mo_rte_lw.F90
+   rte/mo_rte_sw.F90
    )
 
 esma_add_library(${this} 

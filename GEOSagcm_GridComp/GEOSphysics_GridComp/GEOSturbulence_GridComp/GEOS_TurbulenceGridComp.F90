@@ -1866,7 +1866,7 @@ contains
      logical                             :: ALLOC_ZPBL2, CALC_ZPBL2
      logical                             :: ALLOC_ZPBL10p, CALC_ZPBL10p
 
-     real                                :: LOUIS
+     real                                :: LOUIS, ALHFAC, ALMFAC
      real                                :: LAMBDAM, LAMBDAM2
      real                                :: LAMBDAH, LAMBDAH2
      real                                :: ZKMENV, ZKHENV 
@@ -1892,7 +1892,7 @@ contains
      real                                :: SHC_LAMBDA,SHC_TSCALE,SHC_VONK,SHC_CK, &
                                             SHC_CEFAC,SHC_CESFAC,SHC_THL2TUNE,    &
                                             SHC_QW2TUNE,SHC_QWTHL2TUNE
-     real    :: lambdadiss
+     real    :: LAMBDADISS
 
      integer :: locmax
      real    :: maxkh,minlval
@@ -1939,11 +1939,20 @@ contains
 ! Get turbulence parameters from configuration
 !---------------------------------------------
 
-     call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0,          RC=STATUS)
+     if (LM .eq. 72) then
+       call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0,          RC=STATUS)
+       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,          RC=STATUS)
+       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,          RC=STATUS)
+     else
+       call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=1.0,          RC=STATUS)
+       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.0,          RC=STATUS)
+       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.0,          RC=STATUS)
+     endif
      call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=160.0,        RC=STATUS)
      call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,          RC=STATUS)
      call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=160.0,        RC=STATUS)
      call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,          RC=STATUS)
+     call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,         RC=STATUS)
      call MAPL_GetResource (MAPL, ZKMENV,       trim(COMP_NAME)//"_ZKMENV:",       default=3000.,        RC=STATUS)
      call MAPL_GetResource (MAPL, ZKHENV,       trim(COMP_NAME)//"_ZKHENV:",       default=3000.,        RC=STATUS)
      call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=0.1,          RC=STATUS)
@@ -1965,7 +1974,12 @@ contains
      call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3,       RC=STATUS)
      call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS)
      call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,        RC=STATUS)
+
+     if (LM .eq. 72) then
      call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,            RC=STATUS)
+     else
+     call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,            RC=STATUS)
+     endif
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",      default=0,            RC=STATUS)
      if (DO_SHOC /= 0) then
@@ -2159,12 +2173,14 @@ contains
       DMI = (MAPL_GRAV*DT)/(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
 
       !===> Running 1-2-1 smooth of bottom 5 levels of Virtual Pot. Temp.
+      if (LM .eq. 72) then
       THV(:,:,LM  ) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
       THV(:,:,LM-1) = THV(:,:,LM-2)*0.25 + THV(:,:,LM-1)*0.50 + THV(:,:,LM  )*0.25 
       THV(:,:,LM-2) = THV(:,:,LM-3)*0.25 + THV(:,:,LM-2)*0.50 + THV(:,:,LM-1)*0.25 
       THV(:,:,LM-3) = THV(:,:,LM-4)*0.25 + THV(:,:,LM-3)*0.50 + THV(:,:,LM-2)*0.25 
       THV(:,:,LM-4) = THV(:,:,LM-5)*0.25 + THV(:,:,LM-4)*0.50 + THV(:,:,LM-3)*0.25 
       THV(:,:,LM-5) = THV(:,:,LM-6)*0.25 + THV(:,:,LM-5)*0.50 + THV(:,:,LM-4)*0.25 
+      endif
 
       call MAPL_TimerOff(MAPL,"---PRELIMS")
 
@@ -2281,6 +2297,7 @@ contains
             LOUIS, MINSHEAR, MINTHICK,      &
             LAMBDAM, LAMBDAM2,              & 
             LAMBDAH, LAMBDAH2,              & 
+            ALHFAC, ALMFAC,                 &
             ZKMENV, ZKHENV, AKHMMAX,        &
             ALH, KMLS, KHLS                 )
       end if
@@ -2700,6 +2717,7 @@ contains
       if (CALC_TCZPBL) then
          TCZPBL = MAPL_UNDEF
 
+       if (LM .eq. 72) then
          thetavs = T(:,:,LM)*(1.0+MAPL_VIREPS*Q(:,:,LM)/(1.0-Q(:,:,LM)))*(TH(:,:,LM)/T(:,:,LM))
          tcrib(:,:,LM) = 0.0
          do I = 1, IM
@@ -2716,6 +2734,22 @@ contains
                end do
             end do
          end do
+       else
+         tcrib(:,:,LM) = 0.0
+         do I = 1, IM
+            do J = 1, JM
+               do L=LM-1,1,-1
+                  uv2h(I,J) = max(U(I,J,L)**2+V(I,J,L)**2,1.0E-8)
+                  tcrib(I,J,L) = MAPL_GRAV*(THV(I,J,L)-THV(I,J,LM))*Z(I,J,L)/(THV(I,J,LM)*uv2h(I,J))
+                  if (tcrib(I,J,L) >= tcri_crit) then
+                     TCZPBL(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
+                     KPBLTC(I,J) = float(L)
+                     exit
+                  end if
+               end do
+            end do
+         end do
+       endif
 
          where (TCZPBL<0.)
             TCZPBL = Z(:,:,LM)
@@ -2811,9 +2845,8 @@ contains
           TKE = TKESHOC
         else
           TKE = MAPL_UNDEF
-          lambdadiss = 50.
           do L = 1,LM-1
-            TKE(:,:,L) = ( lambdadiss * &
+            TKE(:,:,L) = ( LAMBDADISS * &
             ( -1.*(KH(:,:,L)*MAPL_GRAV/((THV(:,:,L) + THV(:,:,L+1))*0.5) *  ((THV(:,:,L) - THV(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
             (KM(:,:,L)*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((U(:,:,L) - U(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
             (KM(:,:,L)*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((V(:,:,L) - V(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
@@ -3834,7 +3867,7 @@ end subroutine RUN1
                !   INTDIS(:,:,L) = INTDIS(:,:,L) + DF(:,:,1)*DP(:,:,L)
                !end do
 
-               ! Add surface dissipation to lower 50m
+               ! Add surface dissipation to lower 200m
                do J=1,JM
                   do I=1,IM
                      DF(I,J,1) = sum(DP(I,J,L200(I,J):LM))
@@ -4043,6 +4076,7 @@ end subroutine RUN1
          LOUIS, MINSHEAR, MINTHICK,  &
          LAMBDAM, LAMBDAM2,          &
          LAMBDAH, LAMBDAH2,          &
+         ALHFAC, ALMFAC,             &
          ZKMENV, ZKHENV, AKHMMAX,    &
          ALH_DIAG,KMLS_DIAG,KHLS_DIAG)
 
@@ -4075,6 +4109,8 @@ end subroutine RUN1
       real,    intent(IN   ) :: LAMBDAM2     ! Second Blackadar parameter for momentum (m).
       real,    intent(IN   ) :: LAMBDAH      ! Blackadar(1962) length scale parameter for heat (m).
       real,    intent(IN   ) :: LAMBDAH2     ! Second Blackadar parameter for heat (m).
+      real,    intent(IN   ) :: ALHFAC
+      real,    intent(IN   ) :: ALMFAC
       real,    intent(IN   ) :: ZKMENV       ! Transition height for Blackadar param for momentum (m)
       real,    intent(IN   ) :: ZKHENV       ! Transition height for Blackadar param for heat     (m)
       real,    intent(IN   ) :: AKHMMAX      ! Maximum allowe diffusivity (m+2 s-1).
@@ -4171,8 +4207,6 @@ end subroutine RUN1
 
       integer :: L, LM
       !real    :: Zchoke 
-      real, parameter :: alhfac = 1.2
-      real, parameter :: almfac = 1.2
 
 ! Begin...
 !===>   Number of layers; edge levels will be one less (LM-1).
@@ -4218,8 +4252,8 @@ end subroutine RUN1
          LAMBDAH_X(:,:,L) = MAX( 0.1 * pbllocal(:,:) * EXP( -(ZE(:,:,L) / ZKHENV )**2 ) , LAMBDAH2 )
       end do
 
-      ALM = almfac * ( MAPL_KARMAN*ZE/( 1.0 + MAPL_KARMAN*(ZE/LAMBDAM_X) ) )**2
-      ALH = alhfac * ( MAPL_KARMAN*ZE/( 1.0 + MAPL_KARMAN*(ZE/LAMBDAH_X) ) )**2
+      ALM = ALMFAC * ( MAPL_KARMAN*ZE/( 1.0 + MAPL_KARMAN*(ZE/LAMBDAM_X) ) )**2
+      ALH = ALHFAC * ( MAPL_KARMAN*ZE/( 1.0 + MAPL_KARMAN*(ZE/LAMBDAH_X) ) )**2
 
       if (associated(ALH_DIAG)) ALH_DIAG(:,:,1:LM-1) = SQRT( ALH )
 
