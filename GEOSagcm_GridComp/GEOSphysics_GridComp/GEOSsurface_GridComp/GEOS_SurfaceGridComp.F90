@@ -95,7 +95,7 @@ module GEOS_SurfaceGridCompMod
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
   integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
   integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
-  INTEGER            :: catchswim,landicegoswim, MODIS_DVG
+  INTEGER            :: catchswim,landicegoswim, MODIS_DVG, MODIS_ALB
 
   character(len=ESMF_MAXSTR), pointer :: GCNames(:)
   integer                    :: CHILD_MASK(NUM_CHILDREN)
@@ -230,7 +230,8 @@ module GEOS_SurfaceGridCompMod
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LANDICE4SNWALB:', value=landicegoswim, DEFAULT=0, __RC__ ) 
     call ESMF_ConfigGetAttribute (SCF, label='LAND_PARAMS:', value=LAND_PARAMS, DEFAULT="Icarus", __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=CHOOSEMOSFC, DEFAULT=1, __RC__ ) 
-    call ESMF_ConfigGetAttribute (SCF, label='MODIS_DVG:'  , value=MODIS_DVG  , DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='MODIS_LAI:'  , value=MODIS_DVG  , DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='MODIS_ALB:'  , value=MODIS_ALB  , DEFAULT=0, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
     if ( (catchswim/=0) .or. (landicegoswim/=0) .or. (DO_OBIO/=0)) then
@@ -637,7 +638,6 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 
     IF (MODIS_DVG == 2) THEN 
-
        call MAPL_AddImportSpec(gc, &
             short_name = "MODIS_LAI", &
             LONG_NAME  = 'MODIS Leaf Area Index',                     &
@@ -646,7 +646,9 @@ module GEOS_SurfaceGridCompMod
             DIMS       = MAPL_DimsHorzOnly,                           &
             VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
        VERIFY_(STATUS)
+    ENDIF
     
+    IF (MODIS_ALB == 2) THEN
        call MAPL_AddImportSpec(gc, &
             short_name = "MODIS_VISDF",                               &
             LONG_NAME  = 'MODIS albedo visible diffuse',              &
@@ -5477,6 +5479,8 @@ module GEOS_SurfaceGridCompMod
 
     IF (MODIS_DVG == 2) THEN
        call MAPL_GetPointer(IMPORT  , MODIS_LAI   , 'MODIS_LAI'  , RC=STATUS); VERIFY_(STATUS)
+    ENDIF
+    IF (MODIS_ALB == 2) THEN
        call MAPL_GetPointer(IMPORT  , MODIS_VISDF , 'MODIS_VISDF', RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT  , MODIS_NIRDF , 'MODIS_NIRDF', RC=STATUS); VERIFY_(STATUS)
     ENDIF
@@ -6423,6 +6427,8 @@ module GEOS_SurfaceGridCompMod
 
     IF (MODIS_DVG == 2) THEN
        allocate(MODIS_LAITILE   (NT), STAT=STATUS) ; VERIFY_(STATUS)
+    ENDIF
+    IF (MODIS_ALB == 2) THEN
        allocate(MODIS_VISDFTILE (NT), STAT=STATUS) ; VERIFY_(STATUS)
        allocate(MODIS_NIRDFTILE (NT), STAT=STATUS) ; VERIFY_(STATUS)
     ENDIF
@@ -6455,8 +6461,10 @@ module GEOS_SurfaceGridCompMod
     call MAPL_LocStreamTransform( LOCSTREAM, BLWTILE  , BLW,     RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM, DTSDTTILE, DTSDT,   RC=STATUS); VERIFY_(STATUS)
 
-    IF (MODIS_DVG == 2) THEN 
+    IF (MODIS_DVG == 2) THEN
        call MAPL_LocStreamTransform( LOCSTREAM, MODIS_LAITILE,   MODIS_LAI  , RC=STATUS); VERIFY_(STATUS)
+    ENDIF
+    IF (MODIS_ALB == 2) THEN
        call MAPL_LocStreamTransform( LOCSTREAM, MODIS_VISDFTILE, MODIS_VISDF, RC=STATUS); VERIFY_(STATUS)
        call MAPL_LocStreamTransform( LOCSTREAM, MODIS_NIRDFTILE, MODIS_NIRDF, RC=STATUS); VERIFY_(STATUS)
     ENDIF
@@ -8186,6 +8194,8 @@ module GEOS_SurfaceGridCompMod
       call FILLIN_TILE(GIM(type), 'DTSDT', DTSDTTILE,XFORM, RC=STATUS); VERIFY_(STATUS)
       IF (MODIS_DVG == 2) THEN
          call FILLIN_TILE(GIM(type), 'MODIS_LAI'  , MODIS_LAITILE  ,XFORM, RC=STATUS); VERIFY_(STATUS)
+      ENDIF
+      IF(MODIS_ALB == 2) THEN
          call FILLIN_TILE(GIM(type), 'MODIS_VISDF', MODIS_VISDFTILE,XFORM, RC=STATUS); VERIFY_(STATUS)
          call FILLIN_TILE(GIM(type), 'MODIS_NIRDF', MODIS_NIRDFTILE,XFORM, RC=STATUS); VERIFY_(STATUS)
       ENDIF
