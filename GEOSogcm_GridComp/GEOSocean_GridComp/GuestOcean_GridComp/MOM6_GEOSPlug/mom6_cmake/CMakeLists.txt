@@ -448,7 +448,9 @@ endforeach ()
 esma_add_library (${this}
   SRCS ${SRCS}
   DEPENDENCIES fms_r8
-  INCLUDES ${MOM6_path}/config_src/dynamic ${MOM6_path}/src/framework
+  INCLUDES
+  $<BUILD_INTERFACE:${MOM6_path}/config_src/dynamic> 
+  $<BUILD_INTERFACE:${MOM6_path}/src/framework>
   TYPE SHARED
 )
 
