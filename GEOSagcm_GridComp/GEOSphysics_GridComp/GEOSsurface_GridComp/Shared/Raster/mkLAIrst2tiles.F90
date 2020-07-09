@@ -8,7 +8,7 @@
 ! 1) Derive tile-spaced LAI for using analysis ready MODIS raw data @ 15 arc-sec lat/lon
 !    bin/mkLAIrst2tiles.x  YYYYDOY  YYYYMMDD  time_step   minutes_since_20020708-0000
 ! 2) Smmoth using 3 time step window
-!    bin/mkLAIrst2tiles.x  GRID_NAME  lai_data.YYYYDOY  lai_data.YYYYDOY_previous  lai_data.YYYYDOY  lai_data.YYYYDOY_next
+!    bin/mkLAIrst2tiles.x  GRID_NAME  lai_data.YYYYDOY_previous  lai_data.YYYYDOY  lai_data.YYYYDOY_next tstep
 
 PROGRAM mkLAIrst2tiles 
 
@@ -23,7 +23,7 @@ PROGRAM mkLAIrst2tiles
 !       RAWDIR = '/l_data/model_parameters/LAI/MODIS6/',                &
 !       BCSDIR = '/ldas/sarith/LAI/MODIS6/Python/bcs/' ,                &
 !       OUTDIR = '/l_data/model_parameters/LAI/MODIS6/'
-
+  real, parameter :: dxy = 0.5
   integer,     parameter :: NC = 86400, NR = 43200, IM = 43200, JM = 21600, NGRIDS = 7
   character*16, parameter,dimension (NGRIDS) :: GRIDS =(/ &
        'DE720           ', &
@@ -72,30 +72,34 @@ PROGRAM mkLAIrst2tiles
      end do
      
      read (arg(1),'(a)') GRID_NAME
-     read (arg(2),'(a)') file_out
-     read (arg(3),'(a)') file1
-     read (arg(4),'(a)') file2
-     read (arg(5),'(a)') file3
-     
+     read (arg(2),'(a)') file1
+     read (arg(3),'(a)') file2
+     read (arg(4),'(a)') file3
+     read (arg(5),* )   tstep(1)
+
+     file_out = file2
      inquire(file=trim(SMOOTH)//trim(GRID_NAME)//'/'//trim(file_out),exist=file_exists)
      if(file_exists) stop
-     call smooth_data (trim(GRID_NAME), trim(file_out), trim(file1), trim(file2), trim(file3))
+     call smooth_data (trim(GRID_NAME), trim(file_out), trim(file1), trim(file2), trim(file3),tstep)
      
   endif
 
 contains
 
-  SUBROUTINE smooth_data (GRID_NAME, file_out, file1, file2, file3)
+  SUBROUTINE smooth_data (GRID_NAME, file_out, file1, file2, file3, tstep)
 
     implicit none
 
     character(*), intent (in) :: GRID_NAME, file_out, file1, file2, file3
+    integer, intent (in),dimension(:)   :: tstep
+    integer, allocatable, dimension (:) :: ii,jj
     character*100             :: filename
     logical                   :: file_exists = .false.
     character*3               :: DOY
     character*4               :: YYYY
-    integer                   :: n, yc, nt
+    integer                   :: n, yc, nt, nx, ny, NCID, STATUS
     real, allocatable         :: vec_lai(:), vec_data(:)
+    real, allocatable, dimension (:,:) :: lai_grid
 
     open (20, file = trim(SMOOTH)//trim(GRID_NAME)//'/'//trim(file_out), &
             form = 'unformatted', action = 'write', status = 'unknown')
@@ -123,7 +127,23 @@ contains
 
     write (20) vec_lai
     close(20, status = 'keep')
-    
+
+    if(trim(GRID_NAME) == 'DE720') then
+       allocate (ii (1:NT))
+       allocate (jj (1:NT))
+       nx = nint (360./dxy)
+       ny = nint (180./dxy)
+       allocate (lai_grid (1 : nx, 1 : ny)) 
+       call ReadTileFile_RealLatLon(trim(BCSDIR)//trim(GRID_NAME)//'/tilfile', NT, ii,jj)
+       lai_grid =  1.e+15
+       do n = 1,NT
+          lai_grid(ii(n), jj(n)) =  vec_lai(n)
+       end do
+       status = NF90_OPEN(trim(SMOOTH)//'/ExtData/MCD15A2H.006_LAI_ExtData.nc4',NF90_WRITE,    ncid); VERIFY_(STATUS)
+       STATUS = NF90_PUT_VAR (NCID,VarID(NCID,'MODIS_LAI'),     lai_grid,start = (/1,1,tstep/),count =(/nx,ny,1/)) ; VERIFY_(STATUS)
+       STATUS = NF90_CLOSE (NCID)
+    endif
+
     ! derive climatological mean file
     
     DOY = file_out(14:16)
@@ -172,7 +192,6 @@ contains
     integer :: n,i,j,k, NT, tindex, pfaf, ncid, nx, ny,status,tileid_tile
     real    :: dxm, dym,minlon,maxlon,minlat,maxlat
     INTEGER :: imn,imx,jmn,jmx,mval,d1,d2,l, ix, jx
-    real, parameter :: dxy = 0.5
     character(8)    :: qc_str
     integer         :: doy, doy_tstep,i_yyyydoy
 
