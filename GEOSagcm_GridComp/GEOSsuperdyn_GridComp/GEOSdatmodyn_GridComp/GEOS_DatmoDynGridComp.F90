@@ -538,6 +538,21 @@ contains
          VLOCATION = MAPL_VLocationNone,                            &
                                                         __RC__  )
     
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'US',                                         &
+         LONG_NAME ='Surface_zonal_wind',                           &
+         UNITS     ='m s-1',                                        &
+         DIMS      = MAPL_DimsHorzOnly,                             &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'VS',                                         &
+         LONG_NAME ='Surface_meridional_wind',                      &
+         UNITS     ='m s-1',                                        &
+         DIMS      = MAPL_DimsHorzOnly,                             &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                &
          SHORT_NAME='QSKINOBS',                                     &
@@ -1150,6 +1165,8 @@ contains
     real, pointer, dimension(:,:)   :: TA
     real, pointer, dimension(:,:)   :: SPEED
     real, pointer, dimension(:,:)   :: QA
+    real, pointer, dimension(:,:)   :: US
+    real, pointer, dimension(:,:)   :: VS
     real, pointer, dimension(:,:)   :: TSKINOBS
     real, pointer, dimension(:,:)   :: QSKINOBS
     real, pointer, dimension(:,:)   :: LHOBS
@@ -1614,6 +1631,10 @@ contains
                            ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, QA,    'QA'    , &
                            ALLOC=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, US,    'US'    , &
+                           ALLOC=.true., __RC__)
+      call MAPL_GetPointer(EXPORT, VS,    'VS'    , &
+                           ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, QSKINOBS,    'QSKINOBS'    , &
                            ALLOC=.true., __RC__)
       call MAPL_GetPointer(EXPORT, TSKINOBS,    'TSKINOBS'    , &
@@ -1718,6 +1739,8 @@ contains
       QSKINOBS(:,:)  = ( Fac0*QSKIN(ii)   + Fac1*QSKIN(iip1) )/1000.
       TSKINOBS(:,:)  = ( Fac0*TSKIN(ii)   + Fac1*TSKIN(iip1) )
       SPEED(:,:)  =   SQRT( U(:,:,LM)**2  + V(:,:,LM)**2 ) 
+      US(:,:) = U(:,:,LM)
+      VS(:,:) = V(:,:,LM)
 
       do l=0,lm
         OMOBS(:,:,L) = ( Fac0*OMEGA(ii,l)    + Fac1*OMEGA(iip1,l) )
