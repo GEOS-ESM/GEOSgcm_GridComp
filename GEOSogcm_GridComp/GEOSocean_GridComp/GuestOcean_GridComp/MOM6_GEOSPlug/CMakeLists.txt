@@ -19,3 +19,9 @@ string(REPLACE " " ";" tmp ${FREAL8})
 foreach (flag ${tmp})
   target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${flag}>)
 endforeach ()
+
+install(
+   DIRECTORY mom6_app
+   DESTINATION etc/MOM6
+   USE_SOURCE_PERMISSIONS
+   )
