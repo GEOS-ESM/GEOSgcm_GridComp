@@ -165,7 +165,7 @@ contains
              yc = yc + 1
           endif          
        end do
-       vec_lai = vec_lai + vec_data / yc
+       vec_lai = vec_lai / yc
        open (20, file = trim(SMOOTH)//trim(GRID_NAME)//'/lai_data.YYYY'//DOY,  &
             form = 'unformatted', action = 'write', status = 'unknown')
        write (20) vec_lai
