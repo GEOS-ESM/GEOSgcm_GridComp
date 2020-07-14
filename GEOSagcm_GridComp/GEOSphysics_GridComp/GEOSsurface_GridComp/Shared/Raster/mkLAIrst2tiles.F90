@@ -93,11 +93,11 @@ contains
     character(*), intent (in) :: GRID_NAME, file_out, file1, file2, file3
     integer, intent (in),dimension(:)   :: tstep
     integer, allocatable, dimension (:) :: ii,jj
-    character*100             :: filename
+    character*300             :: filename
     logical                   :: file_exists = .false.
-    character*3               :: DOY
+    character*3               :: DOY, DOY1, DOY3
     character*4               :: YYYY
-    integer                   :: n, yc, nt, nx, ny, NCID, STATUS
+    integer                   :: n, yc, nt, nx, ny, NCID, STATUS, k
     real, allocatable         :: vec_lai(:), vec_data(:)
     real, allocatable, dimension (:,:) :: lai_grid
 
@@ -150,20 +150,38 @@ contains
     inquire(file=trim(SMOOTH)//trim(GRID_NAME)//'/lai_data.YYYY'//DOY,exist=file_exists)
 
     if(.not.file_exists) then
+       DOY1 = file1(14:16)
+       DOY3 = file3(14:16)
        vec_lai = 0.
        yc      = 0.
        do n = 2002, 2020
-          write (yyyy, '(i4.4)') n
-          file_exists = .false.
-          inquire(file=trim(OUTDIR)//trim(GRID_NAME)//'/lai_data.'//YYYY//DOY,exist=file_exists)
-          if(file_exists) then
-             open (10, file=trim(OUTDIR)//trim(GRID_NAME)//'/lai_data.'//YYYY//DOY, &
-                  form = 'unformatted', action = 'read', status = 'old')
-             read (10) vec_data
-             close(10, status = 'keep')
-             vec_lai = vec_lai + vec_data
-             yc = yc + 1
-          endif          
+          do k = 1,3
+             write (yyyy, '(i4.4)') n
+             file_exists = .false.             
+             if (k == 1) then
+                if (doy == '001') write (yyyy, '(i4.4)') n -1
+                inquire(file=trim(OUTDIR)//trim(GRID_NAME)//'/lai_data.'//YYYY//DOY1,exist=file_exists)
+                filename = trim(OUTDIR)//trim(GRID_NAME)//'/lai_data.'//YYYY//DOY1
+             endif
+             if (k == 2) then
+                inquire(file=trim(OUTDIR)//trim(GRID_NAME)//'/lai_data.'//YYYY//DOY ,exist=file_exists)
+                filename = trim(OUTDIR)//trim(GRID_NAME)//'/lai_data.'//YYYY//DOY
+             endif
+             if (k == 3) then
+                if (doy == '361') write (yyyy, '(i4.4)') n +1
+                inquire(file=trim(OUTDIR)//trim(GRID_NAME)//'/lai_data.'//YYYY//DOY3,exist=file_exists)
+                filename = trim(OUTDIR)//trim(GRID_NAME)//'/lai_data.'//YYYY//DOY3
+             endif
+!             print *,  k,file_exists,YYYY//DOY1,YYYY//DOY,YYYY//DOY3
+             if(file_exists) then
+                open (10, file=trim(filename), &
+                     form = 'unformatted', action = 'read', status = 'old')
+                read (10) vec_data
+                close(10, status = 'keep')
+                vec_lai = vec_lai + vec_data
+                yc = yc + 1
+             endif
+          end do
        end do
        vec_lai = vec_lai / yc
        open (20, file = trim(SMOOTH)//trim(GRID_NAME)//'/lai_data.YYYY'//DOY,  &
