@@ -8861,7 +8861,7 @@ contains
          call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 0.5     )
          call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT,     'TURNRHCRIT:',     DEFAULT= 884.0   )
       elseif (adjustl(CLDMICRO) =="GFDL") then
-         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
+         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 0.5     )
          call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT= 15.e-6  )
          call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
          call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 1.0     )
