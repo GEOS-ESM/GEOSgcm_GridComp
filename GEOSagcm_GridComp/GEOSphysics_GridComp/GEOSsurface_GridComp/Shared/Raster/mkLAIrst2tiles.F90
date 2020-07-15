@@ -97,8 +97,8 @@ contains
     logical                   :: file_exists = .false.
     character*3               :: DOY, DOY1, DOY3
     character*4               :: YYYY
-    integer                   :: n, yc, nt, nx, ny, NCID, STATUS, k
-    real, allocatable         :: vec_lai(:), vec_data(:)
+    integer                   :: n, nt, nx, ny, NCID, STATUS, k, j
+    real, allocatable         :: vec_lai(:), vec_data(:), yc(:)
     real, allocatable, dimension (:,:) :: lai_grid
 
     open (20, file = trim(SMOOTH)//trim(GRID_NAME)//'/'//trim(file_out), &
@@ -110,10 +110,11 @@ contains
 
     allocate (vec_lai (nt))
     allocate (vec_data(nt))
-
-    vec_lai = 0.
+    allocate (yc      (nt))
+    
+    vec_lai = 0.0001
     vec_data= 0.
-
+    yc      = 0.
     do n = 1,3
        if (n == 1) filename = trim(file1)
        if (n == 2) filename = trim(file2)
@@ -122,9 +123,14 @@ contains
             form = 'unformatted', action = 'read', status = 'old')
        read (10) vec_data
        close(10, status = 'keep')
-       vec_lai = vec_lai + vec_data / 3.
+       do j = 1, NT
+          if(vec_data (j) > 0.) then
+             vec_lai(j) = vec_lai(j) + vec_data (j)
+             yc(j)      = yc(j)  + 1
+          endif
+       end do
     end do
-
+    where (yc > 0.) vec_lai  = vec_lai /yc
     write (20) vec_lai
     close(20, status = 'keep')
 
@@ -152,7 +158,7 @@ contains
     if(.not.file_exists) then
        DOY1 = file1(14:16)
        DOY3 = file3(14:16)
-       vec_lai = 0.
+       vec_lai = 0.0001
        yc      = 0.
        do n = 2002, 2020
           do k = 1,3
@@ -178,12 +184,16 @@ contains
                      form = 'unformatted', action = 'read', status = 'old')
                 read (10) vec_data
                 close(10, status = 'keep')
-                vec_lai = vec_lai + vec_data
-                yc = yc + 1
+                do j = 1, NT
+                   if(vec_data (j) > 0.) then
+                      vec_lai(j) = vec_lai(j) + vec_data (j)
+                      yc(j)      = yc(j)  + 1
+                   endif
+                end do
              endif
           end do
        end do
-       vec_lai = vec_lai / yc
+       where (yc > 0.) vec_lai = vec_lai / yc
        open (20, file = trim(SMOOTH)//trim(GRID_NAME)//'/lai_data.YYYY'//DOY,  &
             form = 'unformatted', action = 'write', status = 'unknown')
        write (20) vec_lai
