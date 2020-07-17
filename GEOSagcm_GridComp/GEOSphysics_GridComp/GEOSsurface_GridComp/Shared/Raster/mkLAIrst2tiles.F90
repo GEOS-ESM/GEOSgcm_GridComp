@@ -25,6 +25,7 @@ PROGRAM mkLAIrst2tiles
 !       OUTDIR = '/l_data/model_parameters/LAI/MODIS6/'
   real, parameter :: dxy = 0.5
   integer,     parameter :: NC = 86400, NR = 43200, IM = 43200, JM = 21600, NGRIDS = 7
+! *** NOTE WARNING *** DE720 must be the first
   character*16, parameter,dimension (NGRIDS) :: GRIDS =(/ &
        'DE720           ', &
        'PE90x540-CF/    ', &
@@ -36,15 +37,19 @@ PROGRAM mkLAIrst2tiles
 
   character*20 :: MODIS_NAME, YYYYDOY, GRID_NAME, file_out, file1, file2, file3
   integer,dimension(1) :: tstep, time, refdate
-  integer              :: n, iargc
+  integer              :: n, iargc, NT
   character*256        :: arg(5)
   logical              :: file_exists = .false.
-
+  real,    allocatable, dimension (:) :: tile_lat
+  real,    allocatable, dimension (:) :: tile_lon
+  real,    allocatable, dimension (:) :: vec_lai, count_lai
+  integer*2, allocatable, dimension (:,:)    :: Lai_500m, FparLai_QC
+  
   type :: regrid_catdef
-     integer                             :: maxcat
-     integer, allocatable, dimension (:) :: tile_lat
-     integer, allocatable, dimension (:) :: tile_lon
-     real,    allocatable, dimension (:) :: vec_lai, count_lai
+     integer                          :: maxcat
+     real, allocatable, dimension (:) :: tile_lat
+     real, allocatable, dimension (:) :: tile_lon
+     real, allocatable, dimension (:) :: vec_lai, count_lai
   end type regrid_catdef
   
   if(iargc() ==4)  then
@@ -57,9 +62,7 @@ PROGRAM mkLAIrst2tiles
      read (arg(2),* ) refdate(1)
      read (arg(3),* )   tstep(1)
      read (arg(4),* )    time(1)
-     
-     print *, refdate, tstep, time
-     
+          
      MODIS_NAME = 'MCD15A2H.006'
      
      call grid2tile (MODIS_NAME, trim(YYYYDOY), tstep, time, refdate)
@@ -97,8 +100,8 @@ contains
     logical                   :: file_exists = .false.
     character*3               :: DOY, DOY1, DOY3
     character*4               :: YYYY
-    integer                   :: n, nt, nx, ny, NCID, STATUS, k, j
-    real, allocatable         :: vec_lai(:), vec_data(:), yc(:)
+    integer                   :: n, nx, ny, NCID, STATUS, k, j
+    real, allocatable         :: vec_data(:), yc(:)
     real, allocatable, dimension (:,:) :: lai_grid
 
     open (20, file = trim(SMOOTH)//trim(GRID_NAME)//'/'//trim(file_out), &
@@ -178,7 +181,7 @@ contains
                 inquire(file=trim(OUTDIR)//trim(GRID_NAME)//'/lai_data.'//YYYY//DOY3,exist=file_exists)
                 filename = trim(OUTDIR)//trim(GRID_NAME)//'/lai_data.'//YYYY//DOY3
              endif
-!             print *,  k,file_exists,YYYY//DOY1,YYYY//DOY,YYYY//DOY3
+
              if(file_exists) then
                 open (10, file=trim(filename), &
                      form = 'unformatted', action = 'read', status = 'old')
@@ -209,78 +212,31 @@ contains
     implicit none
     character(*), intent (in)                  :: MODIS_NAME, YYYYDOY
     integer, intent (in),dimension(:)          :: tstep, time, refdate
-    integer, allocatable, dimension (:,:,:)    :: tile_id
-    integer, allocatable, dimension (:)        :: maxcat,ii,jj
-    integer*2, allocatable, dimension (:,:)    :: Lai_500m, FparLai_QC
-    type (regrid_catdef), dimension(:),pointer :: catdef
+    integer, allocatable, dimension (:)        :: maxcat,ii,jj    
+    type (regrid_catdef),pointer               :: catdef
     real, allocatable, target, dimension (:,:) :: lai_grid
-    real, allocatable, dimension (:,:)         :: lai_clim
+    real, allocatable, dimension (:,:)         :: lai_clim, lai_ext
     real,    pointer,     dimension (:,:)      :: subset
     real,    allocatable,    dimension(:)      :: x, y
-    integer :: n,i,j,k, NT, tindex, pfaf, ncid, nx, ny,status,tileid_tile
-    real    :: dxm, dym,minlon,maxlon,minlat,maxlat
+    integer :: n,i,j,k, ncid, nx, ny,status, ng
     INTEGER :: imn,imx,jmn,jmx,mval,d1,d2,l, ix, jx
-    character(8)    :: qc_str
+
     integer         :: doy, doy_tstep,i_yyyydoy
 
-    allocate (catdef(NGRIDS))
     read (YYYYDOY, '(i7.7)') i_yyyydoy
     doy = i_yyyydoy - (i_yyyydoy/1000)*1000
     doy_tstep = (doy - 1)/8 + 1
-    print *,'DOY DT', doy_tstep
-    allocate (tile_id (1:IM, 1:JM, 1:ngrids))
-    
-    ! read BCs til/rst files
-    ! ----------------------
 
-    do n = 1, ngrids
-
-       open (20 +n,file=trim(BCSDIR)//trim(GRIDS(n))//'/rstfile',status='old',action='read',form='unformatted',convert='little_endian')    
-       open (10,file=trim(BCSDIR)//trim(GRIDS(n))//'/catchment.def',status='old',action='read',form='formatted')
-       read (10,*) NT
-
-       catdef(n)%maxcat = NT
-       allocate (catdef(n)%tile_lat (1:NT))
-       allocate (catdef(n)%tile_lon (1:NT))
-       allocate (catdef(n)%vec_lai  (1:NT))
-       allocate (catdef(n)%count_lai(1:NT))
-       catdef(n)%vec_lai   = -9999.
-       catdef(n)%count_lai = 0.
-
-       do k = 1, NT
-          read (10,*) tindex,pfaf,minlon,maxlon,minlat,maxlat
-          catdef(n)%tile_lon(k) = (minlon + maxlon)/2.
-          catdef(n)%tile_lat(k) = (minlat + maxlat)/2.
-       end do
-       close(10, status = 'keep')
-       if(trim(GRIDS(n)) == 'DE720') then
-          allocate (ii (1:NT))
-          allocate (jj (1:NT))
-          call ReadTileFile_RealLatLon(trim(BCSDIR)//trim(GRIDS(n))//'/tilfile', NT, ii,jj)
-       endif
-
-    end do
-
-    do j=1,JM
-       do n = 1, ngrids
-          read(20+n)tile_id(:,j,n)
-       end do
-    end do
-
-    do n = 1, ngrids
-       close(20+n, status = 'keep')
-    end do
-
-    dxm = real(nc) /real(im) 
-    dym = real(nr) /real(jm)
-
+    ! READ MODIS data
+    ! ---------------
+   
     allocate (Lai_500m  (1:NC, 1: NR))
     allocate (FparLai_QC(1:NC, 1: NR))
     status = NF90_OPEN(trim(RAWDIR)//trim(MODIS_NAME)//'/'//trim(MODIS_NAME)//'_LAI_'//trim(YYYYDOY)//'.nc4',NF90_NOWRITE, ncid); VERIFY_(STATUS)
     STATUS = NF90_GET_VAR (NCID,VarID(NCID,'Lai_500m'  ),   Lai_500m) ; VERIFY_(STATUS)
     STATUS = NF90_GET_VAR (NCID,VarID(NCID,'FparLai_QC'), FparLai_QC) ; VERIFY_(STATUS)
     STATUS = NF90_CLOSE (NCID)
-    print *, maxval(Lai_500m), minval (LAI_500m)
+
     nx = nint (360./dxy)
     ny = nint (180./dxy)
     allocate (lai_grid (1 : nx, 1 : ny)) 
@@ -292,59 +248,46 @@ contains
          'V001/MCD15A2H.006/IAV/ExtData/MCD15A2H.006_LAIclim_wogapfilled_ExtData.nc4',NF90_NOWRITE, ncid); VERIFY_(STATUS)
     STATUS = NF90_GET_VAR (NCID,VarID(NCID,'MODIS_LAI'  ),lai_clim, start = (/1,1, doy_tstep/),count =(/nx,ny,1/)) ; VERIFY_(STATUS)
     STATUS = NF90_CLOSE (NCID)
-    print *,maxval(lai_clim), minval (lai_clim)
+
     FORALL (i = 1:nx) x(i) =  -180. + dxy/2. + (i-1)*dxy
     FORALL (i = 1:ny) y(i) =   -90. + dxy/2. + (i-1)*dxy
-    lai_grid  = -9999
- 
-    do j = 1, nr
-       do i = 1, nc
-          if((Lai_500m(i,j) >=0).and.(Lai_500m(i,j) <= 100)) then
-             ! Table 5 of https://lpdaac.usgs.gov/documents/2/mod15_user_guide.pdf
-             ! (SCF_QC '000' OR '001') AND ( MODLAND_QC = 0)
-             if((FparLai_QC(i,j) <= 62).and.(MOD(FparLai_QC(i,j),2) ==0)) then
-                ! Cloud free 
-!                qc_str = bit2str(INT(FparLai_QC(i,j)))
-!                if(qc_str(4:5) /= '01') then 
-                tileid_tile = tile_id (ceiling(i/dxm), ceiling (j/dym),1)
-                if((tileid_tile >= 1).and.(tileid_tile <= catdef(1)%maxcat)) then
-                   do n = 1, ngrids
-                      k = tile_id (ceiling(i/dxm), ceiling (j/dym),n)
-                      if(catdef(n)%vec_lai(k) == -9999.) catdef(n)%vec_lai(k) = 0.
-                      catdef(n)%vec_lai(k)   = catdef(n)%vec_lai(k) + Lai_500m(i,j)*0.1
-                      catdef(n)%count_lai(k) = catdef(n)%count_lai(k) + 1. 
-                   end do
-                endif
-!               endif
-             endif
-          endif
-       end do
-    end do
-
-    do n = 1, ngrids
-        where (catdef(n)%count_lai > 0.) catdef(n)%vec_lai = catdef(n)%vec_lai/catdef(n)%count_lai
-        if(trim(GRIDS(n)) == 'DE720') then
-           do k = 1, catdef(n)%maxcat
-              if(lai_clim(ii(k), jj(k)) < 100.)then
-                 lai_grid(ii(k), jj(k)) = amax1(lai_clim(ii(k), jj(k)),0.01)
- !                print *,ii(k), jj(k), lai_grid(ii(k), jj(k))
-              endif
-              if(catdef(n)%count_lai(k) >= 1.) lai_grid(ii(k), jj(k)) =  catdef(n)%vec_lai(k)
-           enddo
-        endif
-    end do
     
-    ! Filling gaps
-    !-------------
+    ! read BCs til/rst files and initialize
+    ! -------------------------------------
 
-    do k = 1, ngrids
-       do n = 1, catdef(k)%maxcat
-          if(catdef(k)%count_lai(n) == 0.) then
+    lai_grid  = -9999
+    
+    do ng = 1, ngrids
+
+       call process_grid (NG)
+       
+       if(trim(GRIDS(ng)) == 'DE720') then
+          allocate (ii (1:NT))
+          allocate (jj (1:NT))
+          call ReadTileFile_RealLatLon(trim(BCSDIR)//trim(GRIDS(NG))//'/tilfile', NT, ii,jj)
+       endif
+  
+
+    
+       if(trim(GRIDS(ng)) == 'DE720') then
+          do k = 1, NT
+             if(lai_clim(ii(k), jj(k)) < 100.)then
+                lai_grid(ii(k), jj(k)) = amax1(lai_clim(ii(k), jj(k)),0.01)
+             endif
+             if(count_lai(k) >= 1.) lai_grid(ii(k), jj(k)) =  vec_lai(k)
+          enddo
+       endif
+
+       ! Filling gaps
+       !-------------
+       
+       do n = 1, NT
+          if(count_lai(n) == 0.) then
              DO i = 1,nx - 1
-                if ((catdef(k)%tile_lon(n) >= x(i)).and.(catdef(k)%tile_lon(n) < x(i+1))) ix = i
+                if ((tile_lon(n) >= x(i)).and.(tile_lon(n) < x(i+1))) ix = i
              end do
              DO i = 1,ny -1
-                if ((catdef(k)%tile_lat(n) >= y(i)).and.(catdef(k)%tile_lat(n) < y(i+1))) jx = i
+                if ((tile_lat(n) >= y(i)).and.(tile_lat(n) < y(i+1))) jx = i
              end do
              l = 1
              do 
@@ -361,7 +304,7 @@ contains
                 subset => lai_grid(imn: imx,jmn:jmx)
                 
                 if(maxval(subset) > 0.) then 
-                   catdef(k)%vec_lai (n) = sum(subset, subset>0.)/(max(1,count(subset>0.)))
+                   vec_lai (n) = sum(subset, subset>0.)/(max(1,count(subset>0.)))
                    exit
                 endif
                 l = l + 1
@@ -369,35 +312,101 @@ contains
              end do
           endif
        end do
-    end do    
-
-    ! Write output
-    ! ------------
-    
-    lai_grid =  1.e+15 
-    print *, 'Writing'
-    do n = 1, ngrids
-       open (10, file = trim(OUTDIR)//'/'//trim(GRIDS(n))//'/lai_data.'//trim(YYYYDOY), &
+       
+       ! Write output
+       ! ------------
+           
+       open (10, file = trim(OUTDIR)//'/'//trim(GRIDS(ng))//'/lai_data.'//trim(YYYYDOY), &
             form = 'unformatted', action = 'write', status = 'unknown')
-       write (10) catdef(n)%vec_lai
+       write (10) vec_lai
        close (10,status = 'keep')
-       if(trim(GRIDS(n)) == 'DE720') then
-           do k = 1, catdef(n)%maxcat
-              lai_grid(ii(k), jj(k)) =  catdef(n)%vec_lai(k)
-           enddo
-        endif
+
+       if(trim(GRIDS(ng)) == 'DE720') then
+          allocate (lai_ext (1 : nx, 1 : ny))
+          lai_ext = 1.e+15
+          do k = 1, NT
+             lai_ext(ii(k), jj(k)) =  vec_lai(k)
+          enddo
+      
+          status = NF90_OPEN(trim(OUTDIR)//'/ExtData/'//trim(MODIS_NAME)//'_LAI_ExtData.nc4',NF90_WRITE,    ncid); VERIFY_(STATUS)
+          STATUS = NF90_PUT_VAR (NCID,VarID(NCID,'MODIS_LAI'),     lai_ext, start = (/1,1,tstep/),count =(/nx,ny,1/)) ; VERIFY_(STATUS)
+          STATUS = NF90_PUT_VAR (NCID,VarID(NCID,'REFERENCE_DATE'),refdate, start = (/tstep/)    ,count =(/1/)      ) ; VERIFY_(STATUS)
+          STATUS = NF90_PUT_VAR (NCID,VarID(NCID,'time'),          time,    start = (/tstep/)    ,count =(/1/)      ) ; VERIFY_(STATUS)
+          STATUS = NF90_CLOSE (NCID)
+          deallocate (lai_ext)
+       endif
+       deallocate (tile_lat, tile_lon, vec_lai, count_lai)
+       NT = 0
     end do
-    print *, 'Done calcs'
-    status = NF90_OPEN(trim(OUTDIR)//'/ExtData/'//trim(MODIS_NAME)//'_LAI_ExtData.nc4',NF90_WRITE,    ncid); VERIFY_(STATUS)
-    STATUS = NF90_PUT_VAR (NCID,VarID(NCID,'MODIS_LAI'),     lai_grid,start = (/1,1,tstep/),count =(/nx,ny,1/)) ; VERIFY_(STATUS)
-    STATUS = NF90_PUT_VAR (NCID,VarID(NCID,'REFERENCE_DATE'),refdate, start = (/tstep/)    ,count =(/1/)      ) ; VERIFY_(STATUS)
-    STATUS = NF90_PUT_VAR (NCID,VarID(NCID,'time'),          time,    start = (/tstep/)    ,count =(/1/)      ) ; VERIFY_(STATUS)
-    STATUS = NF90_CLOSE (NCID)
-    print *, 'The End'
-    deallocate (catdef)
-    deallocate (tile_id,Lai_500m, FparLai_QC,lai_grid,lai_clim)
+       
+    deallocate (Lai_500m, FparLai_QC,lai_grid,lai_clim)
     return
   END SUBROUTINE grid2tile
+
+  ! -----------------------------------------------------------------------
+
+  SUBROUTINE process_grid (ng)
+
+    implicit none
+    integer, intent (in)                    :: NG
+    integer, allocatable, dimension (:,:)   :: tile_id
+    integer                                 :: i,j,k, tindex, pfaf
+    real                                    :: minlon,maxlon,minlat,maxlat,dxm, dym
+    character(8)                            :: qc_str
+
+    
+    allocate (tile_id (1:IM, 1:JM))    
+    open (20,file=trim(BCSDIR)//trim(GRIDS(ng))//'/rstfile',status='old',action='read',form='unformatted',convert='little_endian')    
+    open (10,file=trim(BCSDIR)//trim(GRIDS(ng))//'/catchment.def',status='old',action='read',form='formatted')
+    read (10,*) NT
+    allocate (tile_lat (1:NT))
+    allocate (tile_lon (1:NT))
+    allocate (vec_lai  (1:NT))
+    allocate (count_lai(1:NT))
+    vec_lai   = -9999.
+    count_lai = 0.
+    
+    do k = 1, NT
+       read (10,*) tindex,pfaf,minlon,maxlon,minlat,maxlat
+       tile_lon(k) = (minlon + maxlon)/2.
+       tile_lat(k) = (minlat + maxlat)/2.
+    end do
+    close(10, status = 'keep')
+
+    do j=1,JM
+       read(20)tile_id(:,j)
+    end do
+    close(20, status = 'keep')
+
+    ! process LAI
+    dxm = real(nc) /real(im) 
+    dym = real(nr) /real(jm)
+    
+    do j = 1, nr
+       do i = 1, nc
+          if((Lai_500m(i,j) >=0).and.(Lai_500m(i,j) <= 100)) then
+             ! Table 5 of https://lpdaac.usgs.gov/documents/2/mod15_user_guide.pdf
+             ! (SCF_QC '000' OR '001') AND ( MODLAND_QC = 0)
+             if((FparLai_QC(i,j) <= 62).and.(MOD(FparLai_QC(i,j),2) ==0)) then
+                ! Cloud free 
+                !                qc_str = bit2str(INT(FparLai_QC(i,j)))
+                !                if(qc_str(4:5) /= '01') then 
+                k = tile_id (ceiling(i/dxm), ceiling (j/dym))
+                if((k >= 1).and.(k <= NT)) then
+                   if(vec_lai(k) == -9999.) vec_lai(k) = 0.
+                   vec_lai(k)   = vec_lai(k) + Lai_500m(i,j)*0.1
+                   count_lai(k) = count_lai(k) + 1.
+                endif
+!               endif
+             endif
+          endif
+       end do
+    end do
+
+    where (count_lai > 0.) vec_lai = vec_lai/count_lai
+
+  end SUBROUTINE process_grid
+  
 
   ! -----------------------------------------------------------------------
 
@@ -414,7 +423,7 @@ contains
     real, allocatable, target, dimension (:,:) :: lai_grid
     real,    pointer,     dimension (:,:)      :: subset
     real,    allocatable,    dimension(:)      :: x, y
-    integer :: n,i,j,k, NT, tindex, pfaf, ncid, nx, ny,status,tileid_tile
+    integer :: n,i,j,k, tindex, pfaf, ncid, nx, ny,status,tileid_tile
     real    :: dxm, dym,minlon,maxlon,minlat,maxlat
     INTEGER :: imn,imx,jmn,jmx,mval,d1,d2,l, ix, jx
     real, parameter :: dxy = 0.5
@@ -472,7 +481,7 @@ contains
     STATUS = NF90_GET_VAR (NCID,VarID(NCID,'Lai_500m'  ),   Lai_500m) ; VERIFY_(STATUS)
     STATUS = NF90_GET_VAR (NCID,VarID(NCID,'FparLai_QC'), FparLai_QC) ; VERIFY_(STATUS)
     STATUS = NF90_CLOSE (NCID)
-    print *, maxval(Lai_500m), minval (LAI_500m)
+
     nx = nint (360./dxy)
     ny = nint (180./dxy)
     allocate (lai_grid (1 : nx, 1 : ny)) 
@@ -567,7 +576,7 @@ contains
     integer , intent (in)     :: ntiles
     integer, dimension (:), intent(inout)    :: ii,jj
     integer, optional, intent(IN) :: mask
-    integer :: n,icnt,ityp, nt, umask, i
+    integer :: n,icnt,ityp, ntl, umask, i
     real    :: xval,yval, pf, ik, jk
          
     if(present(mask)) then
@@ -578,7 +587,7 @@ contains
    
     open(11,file=InCNTileFile, &
          form='formatted',action='read',status='old')
-    read (11,*, iostat=n) Nt
+    read (11,*, iostat=n) Ntl
     	  
     do n = 1,7 ! skip header
        read(11,*)
@@ -586,7 +595,7 @@ contains
     
     icnt = 0
     
-    do i=1,Nt
+    do i=1,Ntl
        read(11,*) ityp,pf,xval,yval, ik,jk
        if(ityp == umask) then
           icnt = icnt + 1
