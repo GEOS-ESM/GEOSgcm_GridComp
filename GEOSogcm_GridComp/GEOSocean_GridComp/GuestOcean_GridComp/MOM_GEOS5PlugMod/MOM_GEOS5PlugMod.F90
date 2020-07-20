@@ -50,7 +50,9 @@ module MOM_GEOS5PlugMod
 
   use ocean_model_mod,          only: ocean_model_init, update_ocean_model, ocean_model_end, ocean_model_restart
   use ocean_types_mod,          only: ocean_public_type, ice_ocean_boundary_type
-  use ocean_model_mod,          only: get_ocean_domain, mom5_ocean_state_type
+  
+! MAT ocean_state_type renamed due to GNU build issue with simultaneous MOM5/MOM6 model
+  use ocean_model_mod,          only: get_ocean_domain, mom5_ocean_state_type 
 
 ! mjs added these two
 
