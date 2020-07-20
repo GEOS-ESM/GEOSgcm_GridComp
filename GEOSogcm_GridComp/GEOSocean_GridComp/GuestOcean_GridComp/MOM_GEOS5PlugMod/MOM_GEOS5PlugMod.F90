@@ -752,8 +752,8 @@ contains
 ! Locals
 
     type(ice_ocean_boundary_type), pointer :: boundary
-    type(ocean_public_type),         pointer :: Ocean
-    type(mom5_ocean_state_type),          pointer :: Ocean_State
+    type(ocean_public_type),       pointer :: Ocean
+    type(mom5_ocean_state_type),   pointer :: Ocean_State
     type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state 
     type(MOM_MAPLWrap_Type)                :: wrap
 
@@ -1170,7 +1170,7 @@ contains
     type(MOM_MAPLWrap_Type)                :: wrap
     type(ice_ocean_boundary_type), pointer :: boundary
     type(ocean_public_type),       pointer :: Ocean
-    type(mom5_ocean_state_type),        pointer :: Ocean_State
+    type(mom5_ocean_state_type),   pointer :: Ocean_State
     type(domain2d)                         :: OceanDomain
     integer                                :: isc,iec,jsc,jec
     integer                                :: isd,ied,jsd,jed
@@ -1867,7 +1867,7 @@ contains
     type(MOM_MAPLWrap_Type)                :: wrap
 !    type(ice_ocean_boundary_type), pointer :: boundary
 !    type(ocean_public_type),       pointer :: Ocean
-!    type(mom5_ocean_state_type),        pointer :: Ocean_State
+!    type(mom5_ocean_state_type),   pointer :: Ocean_State
 !    type(domain2d)                         :: OceanDomain
     integer                                :: isc,iec,jsc,jec
     integer                                :: isd,ied,jsd,jed
@@ -1983,8 +1983,8 @@ contains
     type(ESMF_Time)                  :: MyTime
     type(MOM_MAPL_Type),     pointer :: MOM_MAPL_internal_state 
     type(MOM_MAPLWrap_Type)          :: wrap
-    type(ocean_public_type),   pointer :: Ocean
-    type(mom5_ocean_state_type),    pointer :: Ocean_State
+    type(ocean_public_type),     pointer :: Ocean
+    type(mom5_ocean_state_type), pointer :: Ocean_State
 
 ! ErrLog Variables
 
