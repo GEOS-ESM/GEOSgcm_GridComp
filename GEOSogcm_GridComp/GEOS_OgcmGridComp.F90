@@ -1011,7 +1011,8 @@ contains
      if (trim(OCEAN_NAME) == "MOM") then  ! MOM5
        call MAPL_AddConnectivity ( GC,  &
             SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
-            'STROCNXB', 'STROCNYB', 'AICEU   ', 'FRESH   ', 'FSALT   ', 'FHOCN  '/), &
+                            'STROCNXB','STROCNYB', 'AICEU   ', 'FRESH   ', &
+                            'FSALT   ','FHOCN   '/), &
             DST_ID = OCEAN,             &
             SRC_ID = SEAICE,            &
             RC=STATUS  )
@@ -1019,7 +1020,7 @@ contains
      else ! MOM6
        call MAPL_AddConnectivity ( GC,  &
             SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
-            'FRESH   ', 'FSALT   ', 'FHOCN   ', 'AICE   '/), &
+                            'FRESH   ','FSALT   ', 'FHOCN   ', 'AICE    '/), &
             DST_ID = OCEAN,             &
             SRC_ID = SEAICE,            &
             RC=STATUS  )
