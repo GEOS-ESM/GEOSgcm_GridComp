@@ -158,7 +158,7 @@ contains
        if (OFFLINE_MODE == 0) then
           call MAPL_GetResource( MAPL, GRIDNAME, label='AGCM_GRIDNAME:', RC=STATUS ) ; VERIFY_(STATUS)
        else
-          call MAPL_GetResource( MAPL, GRIDNAME, label='GRIDNAME:',      RC=STATUS ) ; VERIFY_(STATUS)
+          call MAPL_GetResource( MAPL, GRIDNAME, label='GEOSldas.GRIDNAME:',      RC=STATUS ) ; VERIFY_(STATUS)
        endif    
     endif
     call ESMF_ConfigDestroy      (SCF, __RC__)
