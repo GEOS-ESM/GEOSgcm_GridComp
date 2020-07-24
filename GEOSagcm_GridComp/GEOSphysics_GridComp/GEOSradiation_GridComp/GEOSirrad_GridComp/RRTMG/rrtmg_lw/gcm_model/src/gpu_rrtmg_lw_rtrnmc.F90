@@ -733,8 +733,8 @@
 
    
             
-            pzd = pz
-            pwvcmd = pwvcm
+            pzd(:,:) = pz(:, 0:ubound(pzd,2))
+            pwvcmd(:) = pwvcm
             idrvd = idrv
             bpaded = bpade
             heatfacd = heatfac
