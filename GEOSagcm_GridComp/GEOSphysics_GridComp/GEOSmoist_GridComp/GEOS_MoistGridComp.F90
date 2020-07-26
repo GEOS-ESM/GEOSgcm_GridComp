@@ -6328,6 +6328,7 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%RLE,       'RLE:'       ,DEFAULT=0.1, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'       ,DEFAULT=12.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%MIXSCALE,  'MIXSCALE:'  ,DEFAULT=0.0, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%DETRHGT,   'DETRHGT:'   ,DEFAULT=1500.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RMAXFRAC,  'RMAXFRAC:'  ,DEFAULT=0.1,  RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%MUMIN1,    'MUMIN1:'    ,DEFAULT=0.906, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RBUOY,     'RBUOY:'     ,DEFAULT=1.0,    RC=STATUS)
@@ -8782,12 +8783,12 @@ contains
 
                   QT = Q1(i,j,k) + (QLLS(i,j,k)+QILS(i,j,k))/(1.-CLCN(i,j,k))   ! QT in non-convective area
                  
-                  do n = 1,5
+                  do n = 1,10
 
                     qsatn = GEOS_QSAT( TEMP(i,j,k), PLO(i,j,k) )
 
                     sigmaqt = CLDPARAMS%MINRHCRIT + (CLDPARAMS%MAXRHCRIT-CLDPARAMS%MINRHCRIT)/(19.) * &
-                        ((atan( (2.*(PLO(i,j,k)-CNV_PLE(i,j,LM)+260.)/(260.)-1.) * &
+                        ((atan( (2.*(PLO(i,j,k)-CNV_PLE(i,j,LM)+270.)/(270.)-1.) * &
                         tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
 
                     sigmaqt = (1.0-sigmaqt)*qsatn

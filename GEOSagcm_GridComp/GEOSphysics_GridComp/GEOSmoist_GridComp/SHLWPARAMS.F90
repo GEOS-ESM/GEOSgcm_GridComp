@@ -19,6 +19,7 @@
            real     :: rle
            real     :: rkm                ! Factor controlling lateral mixing rate
            real     :: mixscale           ! Controls vertical structure of mixing
+           real     :: detrhgt            ! Mixing rate increases above this height
            real     :: rkfre              ! Vertical velocity fraction of tke
            real     :: rmaxfrac           ! Maximum core updraft fraction
            real     :: mumin1             ! 
