@@ -1,17 +1,16 @@
 esma_set_this ()
 
 set (SRCS
-  MOM_GEOS5PlugMod.F90
+  MOM6_GEOSPlug.F90
   )
 
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/seawater.F90)
-  list (APPEND SRCS seawater.F90)
-endif ()
+esma_add_subdirectories(
+  mom6_cmake
+  )
 
 esma_add_library (${this}
   SRCS ${SRCS}
-  SUBCOMPONENTS @mom
-  DEPENDENCIES MAPL
+  DEPENDENCIES MAPL fms_r8 mom6
 # TYPE SHARED
   )
 
@@ -20,3 +19,9 @@ string(REPLACE " " ";" tmp ${FREAL8})
 foreach (flag ${tmp})
   target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${flag}>)
 endforeach ()
+
+install(
+   DIRECTORY mom6_app
+   DESTINATION etc/MOM6
+   USE_SOURCE_PERMISSIONS
+   )
