@@ -858,7 +858,8 @@ contains
 
     real :: rle          !  For critical stopping distance for lateral entrainment [no unit]
     real :: rkm          !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
-    real :: mixscale     !  Specify vertical structure of mixing rate [0 or 1]
+    real :: mixscale     !  Specify vertical structure of mixing rate
+    real :: detrhgt      !  Mixing rate increases above this height to speed detrainment
     real :: rkfre        !  Vertical velocity variance as fraction of  tke. 
     real :: rmaxfrac     !  Maximum allowable 'core' updraft fraction
     real :: mumin1       !  Normalized CIN ('mu') corresponding to 'rmaxfrac' at the PBL top
@@ -907,6 +908,7 @@ contains
     rle       = shlwparams%rle      !  For critical stopping distance for lateral entrainment [no unit]
     rkm       = shlwparams%rkm      !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
     mixscale  = shlwparams%mixscale !  Specifies vertical structure of mixing rate
+    detrhgt   = shlwparams%detrhgt  !  Specifies vertical structure of mixing rate
     rkfre     = shlwparams%rkfre    !  Vertical velocity variance as fraction of  tke. 
     rmaxfrac  = shlwparams%rmaxfrac !  Maximum allowable 'core' updraft fraction
     mumin1    = shlwparams%mumin1
@@ -941,8 +943,8 @@ contains
     umf_out(:idim,0:k0)          = 0.0
     dcm_out(:idim,:k0)           = 0.0
     cufrc_out(:idim,:k0)         = 0.0
-    fer_out(:idim,:k0)           = 0.0
-    fdr_out(:idim,:k0)           = 0.0
+    fer_out(:idim,:k0)           = MAPL_UNDEF
+    fdr_out(:idim,:k0)           = MAPL_UNDEF
     qldet_out(:idim,:k0)         = 0.0
     qidet_out(:idim,:k0)         = 0.0
     qlsub_out(:idim,:k0)         = 0.0
@@ -1198,8 +1200,8 @@ contains
       qcu(:k0)           = 0.0
       qlu(:k0)           = 0.0
       qiu(:k0)           = 0.0
-      fer(:k0)           = MAPL_UNDEF
-      fdr(:k0)           = MAPL_UNDEF
+      fer(:k0)           = 0.0
+      fdr(:k0)           = 0.0
       xco(:k0)           = 0.0
       cin                = 0.0
       cinlcl             = 0.0
@@ -1404,6 +1406,7 @@ contains
          qpert_out(i) = max(min(qpert_out(i),0.01*qt0(1)),0.)  ! limit to 1% of QT
          tpert_out(i) = 0.25+max(min(tpert_out(i),1.0),0.)          ! limit to 1K
 
+!         qtsrc   = qtavg + qpert_out(i)
          qtsrc   = qt0(1) + qpert_out(i)
 
          thvlsrc = thvlmin + tpert_out(i)*(1.0+zvir*qtsrc) !/exnmid0(1)
@@ -2542,7 +2545,8 @@ contains
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
             if (mixscale.ne.0.0) then
-              rei(k) = ( rkm / min(scaleh,4000.) / g / rhomid0j )   ! alternative
+              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/100.)) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+!              rei(k) = ( rkm / min(scaleh,4000.) / g / rhomid0j )   ! alternative
             else if (mixscale.eq.0.0) then
               rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j )       ! Jason-2_0 version
             end if
@@ -4228,7 +4232,7 @@ contains
 
      umf_out(i,0:k0)             = umf(0:k0)
      umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
-     dcm_out(i,:k0)              = dcm(0:k0)
+     dcm_out(i,:k0)              = dcm(:k0)
 !the indices are not reversed, these variables go into compute_mcshallow_inv
      qvten_out(i,:k0)            = qvten(:k0)
      qlten_out(i,:k0)            = qlten(:k0)
@@ -4259,8 +4263,8 @@ contains
      ! analysis of cumulus scheme                        !
      ! ------------------------------------------------- !
 
-     fer_out(i,1:k0)          = fer(:k0)  
-     fdr_out(i,1:k0)          = fdr(:k0)  
+     fer_out(i,1:kpen)          = fer(:kpen)  
+     fdr_out(i,1:kpen)          = fdr(:kpen)  
 
 #ifdef UWDIAG
      cldhgt_out(i)               = cldhgt
@@ -4361,8 +4365,8 @@ contains
      qldet_out(i,:k0)            = 0.
      qidet_out(i,:k0)            = 0.
 
-     fer_out(i,1:k0)             = 0.
-     fdr_out(i,1:k0)             = 0.
+     fer_out(i,1:k0)             = MAPL_UNDEF
+     fdr_out(i,1:k0)             = MAPL_UNDEF
 
 #ifdef UWDIAG
      cbmf_out(i)                 = 0.   
