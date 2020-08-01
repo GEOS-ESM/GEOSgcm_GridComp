@@ -74,6 +74,7 @@ module GEOS_OgcmGridCompMod
   integer            :: DO_OBIO
   integer            :: DO_DATAATM
 
+  character(len=ESMF_MAXSTR)          :: OCEAN_NAME
 !=============================================================================
 
   integer ::        OBIO
@@ -191,6 +192,7 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DO_DATAATM,     Label="USE_DATAATM:" ,     DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, OCEAN_NAME, Label="OCEAN_NAME:", DEFAULT="MOM", __RC__ )
     
     if (DO_DATAATM/=0) then
        _ASSERT(DO_DATASEAONLY==0,'needs informative message')
@@ -915,32 +917,36 @@ contains
 !---------------------------------
 
   if(DO_DATASEAONLY==0) then
-     ! Radiation to Ocean
-     call MAPL_AddConnectivity ( GC,  &
-          SHORT_NAME  = (/'SWHEAT'/), &
-          DST_ID = OCEAN,             &
-          SRC_ID = ORAD,              &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+!   if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
+       ! Radiation to Ocean
+       call MAPL_AddConnectivity ( GC,  &
+            SHORT_NAME  = (/'SWHEAT'/), &
+            DST_ID = OCEAN,             &
+            SRC_ID = ORAD,              &
+            RC=STATUS  )
+       VERIFY_(STATUS)
      
-     ! Ocean to Radiation
-     call MAPL_AddConnectivity ( GC,  &
-          SHORT_NAME  = (/'DH'/),     &
-          DST_ID = ORAD,              &
-          SRC_ID = OCEAN,             &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+       ! Ocean to Radiation
+       call MAPL_AddConnectivity ( GC,  &
+            SHORT_NAME  = (/'DH'/),     &
+            DST_ID = ORAD,              &
+            SRC_ID = OCEAN,             &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+!   end if
   end if
 
   if(DO_OBIO/=0) then
 
-     ! Ocean to OceanBio
-     call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'DH', 'T ', 'S '/),     &
-          DST_ID = OBIO,               &
-          SRC_ID = OCEAN,              &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+!   if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
+      ! Ocean to OceanBio
+      call MAPL_AddConnectivity ( GC,   &
+           SHORT_NAME  = (/'DH', 'T ', 'S '/),     &
+           DST_ID = OBIO,               &
+           SRC_ID = OCEAN,              &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+!   end if
      
      ! OceanRad to OceanBio
      call MAPL_AddConnectivity ( GC,   &
@@ -1002,13 +1008,24 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
      
-     call MAPL_AddConnectivity ( GC,  &
-          SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
-          'STROCNXB', 'STROCNYB', 'AICEU   ', 'FRESH   ', 'FSALT   ', 'FHOCN   '/), &
-          DST_ID = OCEAN,             &
-          SRC_ID = SEAICE,            &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+     if (trim(OCEAN_NAME) == "MOM") then  ! MOM5
+       call MAPL_AddConnectivity ( GC,  &
+            SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
+                            'STROCNXB','STROCNYB', 'AICEU   ', 'FRESH   ', &
+                            'FSALT   ','FHOCN   '/), &
+            DST_ID = OCEAN,             &
+            SRC_ID = SEAICE,            &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+     else ! MOM6
+       call MAPL_AddConnectivity ( GC,  &
+            SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
+                            'FRESH   ','FSALT   ', 'FHOCN   ', 'AICE    '/), &
+            DST_ID = OCEAN,             &
+            SRC_ID = SEAICE,            &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+     endif
   end if
 
 ! Children's imports are in the ocean grid and are all satisfied
@@ -1293,8 +1310,10 @@ contains
 !-------------------------------------------------
 
     if (DO_DATASEAONLY==0) then
-       call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
-       VERIFY_(STATUS)
+       if (trim(OCEAN_NAME) == "MOM") then
+         call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
+         VERIFY_(STATUS)
+       endif
        call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )
        VERIFY_(STATUS)
     end if
@@ -1536,6 +1555,7 @@ contains
     real, pointer, dimension(:,:) :: STROCNXB => null() 
     real, pointer, dimension(:,:) :: STROCNYB => null()
     real, pointer, dimension(:,:) :: AICEU => null()
+    real, pointer, dimension(:,:) :: AICE  => null()
     real, pointer, dimension(:,:) :: UWBO => null()
     real, pointer, dimension(:,:) :: VWBO => null()
 
@@ -1961,7 +1981,7 @@ contains
         VERIFY_(STATUS)
         call MAPL_GetPointer(GEX(SEAICE), DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., RC=STATUS)
         VERIFY_(STATUS)
-        call MAPL_GetPointer(GEX(SEAICE), AICEDO , 'AICE' , RC=STATUS)
+        call MAPL_GetPointer(GEX(SEAICE), AICEDO , 'AICE' , RC=STATUS)  ! SA: AICE needs to be looked into
         VERIFY_(STATUS)
         call MAPL_GetPointer(GEX(SEAICE), HICEDO , 'HICE' , RC=STATUS)
         VERIFY_(STATUS)

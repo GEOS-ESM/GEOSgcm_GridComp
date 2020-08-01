@@ -5012,12 +5012,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                         :: nmax
         type(ESMF_VM)                   :: VM
 
-   ! variables from sun orbit
-        integer :: years_per_cycle, days_per_cycle
-        real    :: year_length
-        real, pointer, dimension(:) :: zco => null()
-        real, pointer, dimension(:) :: zso => null()
-
 #ifdef DBG_CNLSM_INPUTS
         ! vars for debugging purposes
         type(ESMF_Grid)                 :: TILEGRID
@@ -5145,10 +5139,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr, sofmin
     logical, save :: first = .true.
     integer*8, save :: istep = 1 ! gkw: legacy variable from offline
-
-! solar declination related
-    real :: ob, declin, zs, zc, max_decl, max_dayl
-    integer :: year, iday, idayp1
 
     real :: co2
     real, external :: getco2
@@ -6390,32 +6380,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     AGCM_S = AGCM_S + 60 * AGCM_MI + 3600 * AGCM_HH
     sofmin = AGCM_S
 
-! declination  gkw: this is ugly... get someone to make ZS & ZC available as optional arg for MAPL_SunGetInsolation
-! -----------                                                                              or MAPL_SunOrbitQuery
-    call MAPL_SunOrbitQuery(Orbit,zc=zco,zs=zso,years_per_cycle=years_per_cycle, &
-           days_per_cycle=days_per_cycle,year_length=year_length,rc=status)
-    VERIFY_(STATUS)
-    YEAR = mod(AGCM_YY-1,YEARS_PER_CYCLE)  ! gkw: made ORBIT public in MAPL_sun_uc.P90 (temporary solution)
-
-    IDAY = YEAR*int(YEAR_LENGTH)+dofyr
-    IDAYP1 = mod(IDAY,DAYS_PER_CYCLE) + 1
-
-    _ASSERT(IDAY   <= 1461 .AND. IDAY   > 0,'needs informative message')
-    _ASSERT(IDAYP1 <= 1461 .AND. IDAYP1 > 0,'needs informative message')
-
-    FAC = real(AGCM_S)/86400.
-
-    !ZS = ORBIT%ZS(IDAYP1)*FAC + ORBIT%ZS(IDAY)*(1.-FAC) !   sine of solar declination
-    !ZC = ORBIT%ZC(IDAYP1)*FAC + ORBIT%ZC(IDAY)*(1.-FAC) ! cosine of solar declination
-    ZS = ZSO(IDAYP1)*FAC + ZSO(IDAY)*(1.-FAC) !   sine of solar declination
-    ZC = ZCO(IDAYP1)*FAC + ZCO(IDAY)*(1.-FAC) ! cosine of solar declination
-
-    nullify(ZSO,ZCO) 
-    declin = asin(ZS)
-
-!if( MAPL_AM_I_Root() ) write(6,444) declin,iday,idayp1,fac,zs,dofyr,AGCM_S
-!444 format('orbit:',f10.6,2i5,f7.4,f9.5,i4,i6)
-
 ! get ending time; determine if this is last call before ending time
 ! ------------------------------------------------------------------
     call ESMF_ClockGet ( clock,  StopTime=StopTime ,rc=STATUS )
@@ -6429,34 +6393,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! ----------------------------------------------
     cat_id = nint(tile_id) ! gkw: temporary for debugging
 
-! compute daylength (and daylength factor) gkw: LATS is in radians, OB in degrees
+! compute daylength (and daylength factor)
 ! ----------------------------------------
-    call MAPL_SunOrbitQuery(ORBIT,           & ! gkw: this is the correct way to obtain obliquity
-                            OBLIQUITY=OB,    & ! gkw: ideally, ZS & ZC would be obtained this way
-			    rc=status )
+
+    ! current daylight duration
+    call MAPL_SunGetDaylightDuration(ORBIT,lats,dayl,currTime=CURRENT_TIME,RC=STATUS)
     VERIFY_(STATUS)
-
-    do n = 1,ntiles
-!!!   fac = -(sin(lats(n))*sin(declin))/(cos(lats(n))*cos(declin))
-      fac = -(sin(lats(n))*zs)/(cos(lats(n))*zc)
-      fac = min(1.,max(-1.,fac))
-      dayl(n) = (86400./MAPL_PI) * acos(fac)   ! daylength (seconds)
-
-      max_decl = ob * (MAPL_PI/180.)
-      if (lats(n) < 0.) max_decl = -max_decl
-      fac = -(sin(lats(n))*sin(max_decl))/(cos(lats(n))*cos(max_decl))
-      fac = min(1.,max(-1.,fac))
-      max_dayl = (86400./MAPL_PI) * acos(fac)  ! maximum daylength (sec; function of latitude & obliquity)
-
-! calculate dayl_factor as the ratio of (current:max dayl)^2
-! set a minimum of 0.01 (1%) for the dayl_factor [gkw: from CLM4]
-
-      dayl_fac(n) = min(1.,max(0.01,(dayl(n)*dayl(n))/(max_dayl*max_dayl)))
-    end do
-
-!write(6,845) cat_id(1),lats(1),lons(1),dayl(1),-(sin(lats(1))*sin(declin))/(cos(lats(1))*cos(declin)), &
-!                                               -(sin(lats(1))*zs)/(cos(lats(1))*zc),ob,dayl_fac(1)
-!845 format('dayl:',i6,2f10.5,f9.2,2f10.6,f7.3,f8.5)
+    ! maximum daylight duration (at solstice)
+    call MAPL_SunGetDaylightDurationMax(ORBIT,lats,dayl_fac,currTime=CURRENT_TIME,RC=STATUS)
+    VERIFY_(STATUS)
+    ! dayl_fac is ratio current:maximum dayl squared (min 0.01 [gkw: from CLM4])
+    dayl_fac = min(1.,max(0.01,(dayl/dayl_fac)**2))
 
 ! gkw: obtain catchment area fractions and soil moisture
 ! ------------------------------------------------------
