@@ -176,7 +176,6 @@ real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 f
 real    :: CO2
 integer :: CO2_YEAR_IN          ! years when atmospheric carbon dioxide concentration increases, starting from 1850
 real    :: DTCN                 ! Time step for carbon/nitrogen routines in CatchmentCN model (default 5400)
-integer :: PRECIPFRAC
 real    :: FWETC, FWETL
 logical :: USE_FWET_FOR_RUNOFF
 
@@ -257,14 +256,12 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'          , value=RUN_IRRIG,           DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='IRRIG_METHOD:'       , value=IRRIG_METHOD,        DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,         DEFAULT=1  , __RC__ ) 
-    call ESMF_ConfigGetAttribute (SCF, label='USE_FWET_FOR_RUNOFF:', value=PRECIPFRAC,     DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='USE_FWET_FOR_RUNOFF:', value=USE_FWET_FOR_RUNOFF, DEFAULT=.FALSE., __RC__ )
     
-    if (PRECIPFRAC == 0) then
-       USE_FWET_FOR_RUNOFF = .false.
+    if (.NOT. USE_FWET_FOR_RUNOFF) then
        call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT= 0.02, __RC__ )
        call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT= 0.02, __RC__ )
     else
-       USE_FWET_FOR_RUNOFF = .true.
        call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT=0.005, __RC__ )
        call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT=0.025, __RC__ )
     endif
@@ -7403,7 +7400,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
-           call WRITE_PARALLEL(PRECIPFRAC, UNIT)
+           call WRITE_PARALLEL(USE_FWET_FOR_RUNOFF, UNIT)
            call MAPL_VarWrite(unit, tilegrid, LONS,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, LATS,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, VEG1,  mask=mask, rc=status); VERIFY_(STATUS)
