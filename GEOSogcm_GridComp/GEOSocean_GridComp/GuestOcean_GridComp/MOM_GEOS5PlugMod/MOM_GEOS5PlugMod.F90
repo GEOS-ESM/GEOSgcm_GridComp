@@ -469,7 +469,7 @@ contains
     call MAPL_AddExportSpec(GC,                                   &
          SHORT_NAME         = 'FRAZIL',                              &
          LONG_NAME          = 'heating_from_frazil_formation',       &
-         UNITS              = 'J m-2',                                &
+         UNITS              = 'W m-2',                                &
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
