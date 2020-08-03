@@ -569,11 +569,6 @@ contains
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC   ,                               &
-            SHORT_NAME = 'FRAZIL',                                    &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
        if (trim(OCEAN_NAME) == "MOM") then
           call MAPL_AddExportSpec ( GC   ,                               &
                SHORT_NAME = 'PBO',                                       &
@@ -890,7 +885,7 @@ contains
 
     real, pointer :: TS_FOUND (:,:)
     real, pointer :: SS_FOUND (:,:)
-    real, pointer :: FRZMLT(:,:)
+    real, pointer :: FRZMLTe(:,:)
 
 ! Diagnostics exports
 
@@ -936,7 +931,7 @@ contains
     real, pointer :: SW  (:,:)
     real, pointer :: MASK(:,:)
     real, pointer :: MASK3D(:,:,:)
-    real, pointer :: FRAZIL(:,:)
+    real, pointer :: FRZMLT(:,:)
 
     real, pointer :: TWd  (:,:)
     real, pointer :: DEL_TEMP (:,:)
@@ -1113,7 +1108,7 @@ contains
        end if
        
        if(DO_DATASEA==0) then
-          call MAPL_GetPointer(GEX(OCN), FRAZIL,   'FRAZIL'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GEX(OCN), FRZMLT,   'FRZMLT'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
        end if
 
 ! Get pointers to exports
@@ -1121,7 +1116,7 @@ contains
 
        call MAPL_GetPointer(EXPORT, TS_FOUND,'TS_FOUND', RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SS_FOUND,'SS_FOUND', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, FRZMLT,'FRZMLT', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, FRZMLTe,'FRZMLT', RC=STATUS); VERIFY_(STATUS)
 
 ! Diagnostics exports
 !---------------------------------------------------------
@@ -1304,13 +1299,13 @@ contains
           end where
        end if
 
-       if(associated(FRZMLT)) then
+       if(associated(FRZMLTe)) then
           if(DO_DATASEA == 0) then
              where(WGHT > 0.0 )
-                FRZMLT = FRAZIL
+                FRZMLTe = FRZMLT
              end where
           else
-             FRZMLT = 0.0
+             FRZMLTe = 0.0
           end if          
        end if
 
@@ -1339,7 +1334,7 @@ contains
           where(wght>0.0)
              TS_FOUND=TS_FOUND+ \
              DT*(LWFLXi+HEATi(:,:,1)-SHFLXi-QFLUXi*MAPL_ALHL-MAPL_ALHF*SNOWi+FHOCN)/(OrphanDepth*MAPL_RHO_SEAWATER*MAPL_CAPWTR)
-             FRZMLT = (Tfreeze - TS_FOUND) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*OrphanDepth)/DT
+             FRZMLTe = (Tfreeze - TS_FOUND) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*OrphanDepth)/DT
              TS_FOUND=max(TS_FOUND, Tfreeze)
           end where
 
