@@ -1974,12 +1974,13 @@ contains
      call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3,       RC=STATUS)
      call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS)
      call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,        RC=STATUS)
-     call MAPL_GetResource (MAPL, SMTH_LEV,     trim(COMP_NAME)//"_SMTH_LEV:",     default=20,           RC=STATUS)
 
      if (LM .eq. 72) then
-     call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,            RC=STATUS)
+       call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,          RC=STATUS)
+       call MAPL_GetResource (MAPL, SMTH_LEV,     trim(COMP_NAME)//"_SMTH_LEV:",     default=5,          RC=STATUS)
      else
-     call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,            RC=STATUS)
+       call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,          RC=STATUS)
+       call MAPL_GetResource (MAPL, SMTH_LEV,     trim(COMP_NAME)//"_SMTH_LEV:",     default=20,         RC=STATUS)
      endif
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",      default=0,            RC=STATUS)
@@ -2173,29 +2174,26 @@ contains
       RDZ = RDZ(:,:,1:LM-1) / (Z(:,:,1:LM-1)-Z(:,:,2:LM))
       DMI = (MAPL_GRAV*DT)/(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
 
-      !===> Running 1-2-1 smooth of bottom 5 levels of Virtual Pot. Temp.
-!      if (LM .eq. 72) then
-!      THV(:,:,LM  ) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
-!      THV(:,:,LM-1) = THV(:,:,LM-2)*0.25 + THV(:,:,LM-1)*0.50 + THV(:,:,LM  )*0.25 
-!      THV(:,:,LM-2) = THV(:,:,LM-3)*0.25 + THV(:,:,LM-2)*0.50 + THV(:,:,LM-1)*0.25 
-!      THV(:,:,LM-3) = THV(:,:,LM-4)*0.25 + THV(:,:,LM-3)*0.50 + THV(:,:,LM-2)*0.25 
-!      THV(:,:,LM-4) = THV(:,:,LM-5)*0.25 + THV(:,:,LM-4)*0.50 + THV(:,:,LM-3)*0.25 
-!      THV(:,:,LM-5) = THV(:,:,LM-6)*0.25 + THV(:,:,LM-5)*0.50 + THV(:,:,LM-4)*0.25 
-!      endif
-
+      !===> Running 1-2-1 smooth of bottom levels of THV, U and V
       USM(:,:,:) = U
       VSM(:,:,:) = V
       if (SMTH_LEV.gt.0) then
+
          THV(:,:,LM  ) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
-         USM(:,:,LM  ) = U(:,:,LM-1)*0.25 + U(:,:,LM  )*0.75
-         VSM(:,:,LM  ) = V(:,:,LM-1)*0.25 + V(:,:,LM  )*0.75
-      
          do L=LM-1,LM-SMTH_LEV,-1
             THV(:,:,L) = THV(:,:,L-1)*0.25 + THV(:,:,L)*0.50 + THV(:,:,L+1)*0.25
-            USM(:,:,L) = USM(:,:,L-1)*0.25 + USM(:,:,L)*0.50 + USM(:,:,L+1)*0.25
-            VSM(:,:,L) = VSM(:,:,L-1)*0.25 + VSM(:,:,L)*0.50 + VSM(:,:,L+1)*0.25
          end do
-      end if
+
+         if (LM.ne.72) then
+            USM(:,:,LM  ) = U(:,:,LM-1)*0.25 + U(:,:,LM  )*0.75
+            VSM(:,:,LM  ) = V(:,:,LM-1)*0.25 + V(:,:,LM  )*0.75
+            do L=LM-1,LM-SMTH_LEV,-1
+               USM(:,:,L) = USM(:,:,L-1)*0.25 + USM(:,:,L)*0.50 + USM(:,:,L+1)*0.25
+               VSM(:,:,L) = VSM(:,:,L-1)*0.25 + VSM(:,:,L)*0.50 + VSM(:,:,L+1)*0.25
+            end do
+         end if
+
+     end if
 
       call MAPL_TimerOff(MAPL,"---PRELIMS")
 
@@ -2859,7 +2857,7 @@ contains
         if (DO_SHOC /= 0) then
           TKE = TKESHOC
         else
-          TKE = 0.0
+          TKE = MAPL_UNDEF
           do L = 1,LM-1
             TKE(:,:,L) = ( LAMBDADISS * &
             ( -1.*(KH(:,:,L)*MAPL_GRAV/((THV(:,:,L) + THV(:,:,L+1))*0.5) *  ((THV(:,:,L) - THV(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
