@@ -3801,7 +3801,7 @@ contains
   
        ELSEIF(ITYPE == ICE) THEN
 
-        IF (adjustl(CLDMICRO)=="SAVE_FOR_AEROSOLS...") THEN
+        IF (adjustl(CLDMICRO)=="GFDL") THEN
 
          RHO = 100.*PL / (MAPL_RGAS*TE )
          !- ice water content
