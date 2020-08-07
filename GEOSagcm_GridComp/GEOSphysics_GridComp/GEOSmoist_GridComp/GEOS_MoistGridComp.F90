@@ -13642,7 +13642,7 @@ do K= 1, LM
           WRITE(*,*) 'Invalid OTDLISSCAL scaling factor, needed to compute flash rate for GEOSCHEMchem'
           WRITE(*,*) 'Please specify parameter "LFR_GCC_OTD_LISSCAL" or make sure that there is a default'
           WRITE(*,*) 'values for this grid resolution in GEOS_MoistGridComp.F90.'
-          FLUSH()
+          FLUSH(6)
           ASSERT_(OTDLISSCAL>0.0)
        ENDIF
        IF ( MAPL_AM_I_ROOT() ) THEN
