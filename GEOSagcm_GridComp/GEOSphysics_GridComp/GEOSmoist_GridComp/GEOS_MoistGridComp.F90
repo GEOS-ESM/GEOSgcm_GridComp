@@ -5073,7 +5073,11 @@ contains
     end if
     
 !--kml
-    call MAPL_GetResource(MAPL,INT_USE_AEROSOL_NN,'USE_AEROSOL_NN:',default=1, RC=STATUS )
+    if (adjustl(CLDMICRO)=="GFDL") then
+      call MAPL_GetResource(MAPL,INT_USE_AEROSOL_NN,'USE_AEROSOL_NN:',default=0, RC=STATUS )
+    else
+      call MAPL_GetResource(MAPL,INT_USE_AEROSOL_NN,'USE_AEROSOL_NN:',default=1, RC=STATUS )
+    endif
     VERIFY_(STATUS)
     if (INT_USE_AEROSOL_NN == 0) then
        USE_AEROSOL_NN = .FALSE.
@@ -6106,7 +6110,7 @@ contains
 
       ! Convective Fraction
       integer, dimension(IM,JM)           :: L600
-      real   , dimension(IM,JM)           :: RHat600, QV600, QVCBL
+      real   , dimension(IM,JM)           :: RHat600, QL600, QV600, QVCBL
       real   , dimension(IM,JM)           :: CNV_FRACTION
       real                                :: CNV_FRACTION_MIN
       real                                :: CNV_FRACTION_MAX
@@ -7653,20 +7657,11 @@ contains
          QV600 = Q(:,:,levs600)
       END WHERE
 
-    ! Compute the deep convective fraction based on mid-tropospheric moisture (QV at 600mb)
-    !     mid-tropospheric moisture is used as an indicator of vertical motion
-    !     associated with active deep convection lifting moisture to the mid-troposphere
-    ! QV at 600mb Criteria 
-    ! call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT= 0.00250, RC=STATUS)
-    ! VERIFY_(STATUS)
-    ! call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 0.00600, RC=STATUS)
-    ! VERIFY_(STATUS)
-
     ! CAPE Criteria
       if( LM .ne. 72 ) then
         call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
         VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS)
+        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT=   10.0, RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 9.e6, RC=STATUS)
         VERIFY_(STATUS)
@@ -7684,6 +7679,19 @@ contains
       endif
 
       if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
+        if (LM .ne. 72) then
+           ! QL*1.e5 at 600mb
+           ! Find QL at 600mb level
+           RAD_QL = (QLLS + QLCN)*1.e5
+           call VertInterp(QL600,RAD_QL,log(PLE),log(60000.),STATUS)
+           VERIFY_(STATUS)
+           ! Fill undefs (600mb below the surface) with surface QV values L=LM
+           levs600  = max(1,count(PREF < 60000.))
+           WHERE (QL600 == MAPL_UNDEF)
+             QL600 = RAD_QL(:,:,levs600)
+           END WHERE
+           CNV_FRACTION =MAX(0.0,MIN(1.0,(QL600-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
+        else
          if (CNV_FRACTION_MAX < 1.0) then
           ! QV at 600mb
            DO J=1, JM
@@ -7697,14 +7705,7 @@ contains
               CNV_FRACTION =MAX(0.0,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
            END WHERE
          endif
-         if (LM .ne. 72) then
-           ! QV at 600mb
-           DO J=1, JM
-             DO I=1, IM
-               CNV_FRACTION(I,J) =MAX(CNV_FRACTION(I,J),MIN(1.0,(QV600(I,J)-0.00250)/(0.00600-0.00250)))
-             END DO
-           END DO
-         endif
+        endif
       endif
 
       if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
@@ -9066,8 +9067,8 @@ contains
 
       if (adjustl(CLDMICRO) =="GFDL") then
           call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
-          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.3     )
-          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 0.3     )
+          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
+          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
           call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.0     )
       else
         if( LM .eq. 72 ) then

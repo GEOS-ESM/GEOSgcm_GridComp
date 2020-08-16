@@ -3808,29 +3808,25 @@ contains
          WC = RHO*QC  !kg/m3
 
          IF( (.not. USE_AEROSOL_NN) ) THEN 
-
             !------ice cloud effective radius ----- [klaus wyser, 1998]
-             BB     =  -2. + log10(1000.*WC/50.)*(1.e-3*(273.15-TE)**1.5)
-             BB     = MIN((MAX(BB,-6.)),-2.) 
-             RADIUS =377.4 + 203.3 * bb+ 37.91 * bb **2 + 2.3696 * bb **3
-             RADIUS =RADIUS * 1.e-6 !- convert to meter
-
+            if(TE>273.15) then
+             BB     = -2.
+            else
+             BB     = -2. + log10(1.e3*WC/50.)*(1.e-3*(273.15-TE)**1.5)
+            endif
+            BB     = MIN((MAX(BB,-6.)),-2.) 
+            RADIUS =377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
+            RADIUS =RADIUS * 1.e-6 !- convert to meter
          ELSE
-
             !--Mean volume and effective radius following Lohmann&Karcher (2002)
             !-- qice is the detrained ice water mixing ratio (kg/kg)
             !-- NNI  !#/m^3	 
             !-- RIV in micrometers
-
             RIV  = 1.E+6*((3.*WC)/(4.*MAPL_PI*densic*NNI))**0.33333  
             RIV  = MAX(RIV, 8.22)
             RADIUS= ((((RIV**3.-betai)**2.-gamai))/deltai)**0.33333
-            
             !- convert to meter
-            
             RADIUS = RADIUS*1.E-6
-
-            !if((PL<300. .and. PL>200.) .and. (QC>1.e-6)) print*,"GOCRI=", RHO*QC,TE,NNI, RADIUS* 1.e+6
          ENDIF
   
         ELSE ! CLDMICRO =1MOMENT or GFDL
@@ -4135,8 +4131,13 @@ contains
       RAD_QS = MIN( RAD_QS, 0.01 )
 
      ! Number Concentration Assumptions
-      NN_LAND  = 150.0e6
-      NN_OCEAN =  30.0e6
+      IF (adjustl(CLDMICRO)=="GFDL") THEN
+        NN_LAND  = 300.0e6
+        NN_OCEAN = 100.0e6
+      ELSE
+        NN_LAND  = 150.0e6
+        NN_OCEAN =  30.0e6
+      ENDIF
      !          Over Land            Over Ocean
       NN = FRLAND*NN_LAND + (1.0-FRLAND)*NN_OCEAN
 
