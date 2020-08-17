@@ -388,6 +388,11 @@ contains
        dtss    = 0. 
        excswe  = 0.
 
+       rmelt = 0.0
+       mltwtr = 0.0
+       drho0 = 0.0
+       tksno = 0.0
+
        !wesn0 = wesn 
        !sndz0 = sndz 
 
