@@ -829,10 +829,8 @@ contains
 
 !**** Update snow density by compaction (Pitman et al. 1991)
 
-       excs = 0.
        mass = 0.
        w    = 0.
-       drho0 = 0.
 
        wesndens = wesn
 
