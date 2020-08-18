@@ -8914,7 +8914,7 @@ contains
           end where
         end if
      ! Clean up clouds before microphysics
-        CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW )
+        CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN )
      ! Clean up any negative specific humidity
         CALL FILLQ2ZERO2( Q1, MASS, FILLQ  )
         DTDT_macro=  (TEMP-DTDT_macro)/DT_MOIST
@@ -9501,7 +9501,7 @@ contains
          QICN = RAD_QI*     FQAi
          QILS = RAD_QI*(1.0-FQAi)
      ! Clean up clouds after microphysics
-         CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW )
+         CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN )
      ! Clean up any negative specific humidity
          CALL FILLQ2ZERO2( Q1, MASS, FILLQ  )
      ! Convert back to PT
@@ -14254,8 +14254,23 @@ END SUBROUTINE Get_hemcoFlashrate
 
    end function LDRADIUS
 
-   subroutine FIX_UP_CLOUDS( TE, QV, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW )
-      real, dimension(:,:,:), intent(inout) :: TE, QV, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW 
+   subroutine FIX_UP_CLOUDS( TE, QV, QLLS, QILS, CLLS, QLCN, QICN, CLCN )
+      real, dimension(:,:,:), intent(inout) :: TE, QV, QLLS, QILS, CLLS, QLCN, QICN, CLCN 
+   ! Clouds too small
+      where (CLCN < 1.E-5)
+         QV   = QV + QLCN + QICN
+         TE   = TE - (MAPL_ALHL/MAPL_CP)*QLCN - (MAPL_ALHS/MAPL_CP)*QICN
+         CLCN = 0.
+         QLCN = 0.
+         QICN = 0.
+      end where
+      where (CLLS < 1.E-5) 
+         QV   = QV + QLLS + QILS
+         TE   = TE - (MAPL_ALHL/MAPL_CP)*QLLS - (MAPL_ALHS/MAPL_CP)*QILS
+         CLLS = 0.
+         QLLS = 0.
+         QILS = 0.
+      end where
    ! Liquid too small
       where ( QLCN < 1.E-8 )
          QV   = QV + QLCN
@@ -14266,11 +14281,6 @@ END SUBROUTINE Get_hemcoFlashrate
          QV   = QV + QLLS
          TE   = TE - (MAPL_ALHL/MAPL_CP)*QLLS
          QLLS = 0.
-      end where
-      where ( QRAIN < 1.E-8 )
-         QV   = QV + QRAIN
-         TE   = TE - (MAPL_ALHL/MAPL_CP)*QRAIN
-         QRAIN = 0.
       end where
    ! Ice too small
       where ( QICN < 1.E-8 )
@@ -14283,41 +14293,21 @@ END SUBROUTINE Get_hemcoFlashrate
          TE   = TE - (MAPL_ALHS/MAPL_CP)*QILS
          QILS = 0.
       end where
-      where ( QSNOW < 1.E-8 )
-         QV   = QV + QSNOW
-         TE   = TE - (MAPL_ALHS/MAPL_CP)*QSNOW
-         QSNOW = 0.
-      end where
-   ! Clouds too small
-      where (CLCN < 1.E-5)
+   ! Fix ALL clouds if cloud LIQUID+ICE too small
+      where ( ( QLCN + QICN ) < 1.E-8 )
          QV   = QV + QLCN + QICN
          TE   = TE - (MAPL_ALHL/MAPL_CP)*QLCN - (MAPL_ALHS/MAPL_CP)*QICN
          CLCN = 0.
          QLCN = 0.
          QICN = 0.
       end where
-      where (CLLS < 1.E-5)
+      where ( ( QLLS + QILS ) < 1.E-8 )
          QV   = QV + QLLS + QILS
          TE   = TE - (MAPL_ALHL/MAPL_CP)*QLLS - (MAPL_ALHS/MAPL_CP)*QILS
          CLLS = 0.
          QLLS = 0.
          QILS = 0.
       end where
-!  ! Fix ALL clouds if cloud LIQUID+ICE too small
-!     where ( ( QLCN + QICN ) < 1.E-8 )
-!        QV   = QV + QLCN + QICN
-!        TE   = TE - (MAPL_ALHL/MAPL_CP)*QLCN - (MAPL_ALHS/MAPL_CP)*QICN
-!        CLCN = 0.
-!        QLCN = 0.
-!        QICN = 0.
-!     end where
-!     where ( ( QLLS + QILS ) < 1.E-8 )
-!        QV   = QV + QLLS + QILS
-!        TE   = TE - (MAPL_ALHL/MAPL_CP)*QLLS - (MAPL_ALHS/MAPL_CP)*QILS
-!        CLLS = 0.
-!        QLLS = 0.
-!        QILS = 0.
-!     end where
 
    end subroutine FIX_UP_CLOUDS
 
