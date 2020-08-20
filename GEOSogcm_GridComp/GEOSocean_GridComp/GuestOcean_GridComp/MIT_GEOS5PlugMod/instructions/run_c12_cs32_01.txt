@@ -33,9 +33,16 @@ setenv EXPDIR <location of experiment>
 cd $EXPDIR/TEST
 
 # copy GEOS initial conditions
-cp ~/data/geos5/ICDIR_v2/c12_cs32_01_data/geos5/* .
+# Pleiades
+cp /nobackupp2/estrobac/geos5/ICDIR_v2/c12_cs32_01_data/geos5/* .
+# Discover
+cp /gpfsm/dnb32/estrobac/geos5/ICDIR_v2/c12_cs32_01_data/geos5/* .
+
 # copy MITgcm initial conditions
-cp -r ~/data/geos5/ICDIR_v2/c12_cs32_01_data/mit_input .
+# Pleiades
+cp -r /nobackupp2/estrobac/geos5/ICDIR_v2/c12_cs32_01_data/mit_input .
+# Discover
+cp -r /gpfsm/dnb32/estrobac/geos5/ICDIR_v2/c12_cs32_01_data/mit_input .
 
 # comment problematic line in AGCM.rc
 sed -i 's/ROUTING_FILE/#ROUTING_FILE/g' AGCM.rc
