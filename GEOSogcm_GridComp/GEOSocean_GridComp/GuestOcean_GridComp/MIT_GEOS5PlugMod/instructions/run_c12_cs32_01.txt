@@ -1,0 +1,48 @@
+# Define variable with the location of the build direcory.
+# This is where the bin, include, etc folders are
+setenv ESMADIR <location of install directory>
+# Define the experiment directory. This is the location
+# the experiment setup folder is copied to.
+setenv EXPDIR <location of experiment>
+
+# Set up coupled code for c12_cs32_01
+# Be sure to replace "Desired Location" and "Build"
+# directories below with your own.
+ cd $ESMADIR/bin
+ ./gcm_setup
+# Enter the Experiment ID: TEST
+# Enter a 1-line Experiment Description: TEST
+# Do you wish to CLONE an old experiment? NO
+# Enter the Atmospheric Horizontal Resolution code: c12 <-------------------------
+# Enter the Atmospheric Model Vertical Resolution: 72
+# Do you wish to IOSERVER? NO
+# Enter the Processor Type you wish to run on: bro
+# Do you wish to run the COUPLED Ocean/Sea-Ice Model? YES
+# Choose an Ocean Model: MIT
+# Enter the Ocean Lat/Lon Horizontal Resolution: cs32 <---------------------------
+# Enter the Ocean Model Vertical Resolution: 15
+# Enter the choice of  Land Surface Model: 1
+# Do you wish to run  the Runoff Routing Model? FALSE <---------------------------
+# Do you wish to run GOCART with Actual or Climatological Aerosols? C <-----------
+# Enter the tag or directory: Current
+# Enter Desired Location for HOME: $EXPDIR/TEST            (spell out $EXPDIR)
+# Enter Desired Location for EXPERIMENT: $EXPDIR/TEST      (spell out $EXPDIR)
+# Enter Location for Build directory: $ESMADIR             (spell out $ESMADIR)
+# Enter your GROUP ID for Current EXP: g26209
+
+cd $EXPDIR/TEST
+
+# copy GEOS initial conditions
+cp ~/data/geos5/ICDIR_v2/c12_cs32_01_data/geos5/* .
+# copy MITgcm initial conditions
+cp -r ~/data/geos5/ICDIR_v2/c12_cs32_01_data/mit_input .
+
+# comment problematic line in AGCM.rc
+sed -i 's/ROUTING_FILE/#ROUTING_FILE/g' AGCM.rc
+
+# run experiment executable
+# Pleiades - only works through qsub
+qsub gcm_run.j
+# Discover (can also with sbatch or qsub)
+./gcm_run.j |&  tee gcm_run.out
+
