@@ -1,0 +1,24 @@
+#Discover
+module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
+#NAS
+module use -a /nobackup/gmao_SIteam/modulefiles
+
+module load GEOSenv
+
+git clone -b feature/udistr/MITgcm-DYAMOND git@github.com:GEOS-ESM/GEOSgcm.git
+
+cd GEOSgcm
+
+mepo init
+mepo clone
+
+source @env/g5_modules
+
+mkdir build
+cd build
+
+cmake .. -DBASEDIR=$BASEDIR/Linux -DCMAKE_INSTALL_PREFIX=../install -DBUILD_MIT_OCEAN=ON -DMIT_CONFIG_ID=c12_cs32_01 -DCMAKE_Fortran_COMPILER=ifort
+
+# for debugging Add -DCMAKE_BUILD_TYPE=Debug to cmake
+
+make -j 6 install
