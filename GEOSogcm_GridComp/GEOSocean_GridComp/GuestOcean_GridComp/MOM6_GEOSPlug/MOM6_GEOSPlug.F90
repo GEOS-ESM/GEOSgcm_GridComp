@@ -410,6 +410,24 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                   &
+         SHORT_NAME         = 'FRAZIL',                           &
+         LONG_NAME          = 'heating_from_frazil_formation',    &
+         UNITS              = 'W m-2',                            &
+         DIMS               = MAPL_DimsHorzOnly,                  &
+         VLOCATION          = MAPL_VLocationNone,                 &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                   &
+         SHORT_NAME         = 'MELT_POT',                         &
+         LONG_NAME          = 'heat_that_can_be_used_to_melt_sea_ice',    &
+         UNITS              = 'W m-2',                            &
+         DIMS               = MAPL_DimsHorzOnly,                  &
+         VLOCATION          = MAPL_VLocationNone,                 &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                   &
          SHORT_NAME         = 'FRZMLT',                           &
          LONG_NAME          = 'freeze_melt_potential',            &
          UNITS              = 'W m-2',                            &
@@ -950,6 +968,8 @@ contains
     REAL_, pointer                     :: UWB   (:,:)        => null()
     REAL_, pointer                     :: VWB   (:,:)        => null()
     REAL_, pointer                     :: SLV   (:,:)        => null()
+    REAL_, pointer                     :: FRAZIL(:,:)        => null()
+    REAL_, pointer                     :: MELT_POT(:,:)      => null()
     REAL_, pointer                     :: FRZMLT(:,:)        => null()
     REAL_, pointer                     :: MASK  (:,:)        => null()
     REAL_, pointer                     :: AREA  (:,:)        => null()
@@ -1107,7 +1127,10 @@ contains
     call MAPL_GetPointer(EXPORT, TW,    'TW'  ,   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, SW,    'SW'  ,   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, SLV,   'SLV',    RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, FRZMLT,'FRZMLT', RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetPointer(EXPORT, FRAZIL,  'FRAZIL',   alloc=.true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MELT_POT,'MELT_POT', alloc=.true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FRZMLT,  'FRZMLT',                 RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, MASK, 'MOM_2D_MASK', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, AREA, 'AREA',        RC=STATUS); VERIFY_(STATUS)
@@ -1231,19 +1254,44 @@ contains
        where(MASK(:,:)>0.0)
           SLV = real(U, kind = G5KIND)
        elsewhere
-          SLV=0.0
+          SLV = 0.0
        end where
     end if
 
+!   frazil (W/m^2)
     U = 0.0
-    V = 0.0
-    if(associated(FRZMLT)) then
-       call ocean_model_data_get(Ocean_State, Ocean, 'frazil', U, isc, jsc)  ! this comes to us in J/m2
-       call ocean_model_data_get(Ocean_State, Ocean, 'melt_pot', V, isc, jsc)  ! this comes in J/m2 too
+    if(associated(FRAZIL)) then
+       call ocean_model_data_get(Ocean_State, Ocean, 'frazil',   U, isc, jsc)  ! this comes to us in J/m2
        where(MASK(:,:)>0.0)
-          FRZMLT = real((U+V)/dt_ocean, kind = G5KIND)
+          FRAZIL =  real( (U)/dt_ocean, kind = G5KIND) ! relying on fortran to promote the int (dt_ocean) to real
        elsewhere
-          FRZMLT=0.0
+          FRAZIL =  0.0
+       end where
+    endif
+
+!   melt potential (W/m^2)
+    U = 0.0
+    if(associated(MELT_POT)) then
+       call ocean_model_data_get(Ocean_State, Ocean, 'melt_pot', U, isc, jsc)  ! this comes to us in J/m2
+       where(MASK(:,:)>0.0)
+          MELT_POT = -real( (U)/dt_ocean, kind = G5KIND) ! relying on fortran to promote the int (dt_ocean) to real
+       elsewhere
+          MELT_POT =  0.0
+       end where
+       MELT_POT = MIN ( MELT_POT, 0.0) ! make sure melt potential is <= 0
+    endif
+
+!   freezing melt potential (W/m^2)
+    if(associated(FRZMLT)) then
+       if ( (.not.associated(FRAZIL)) .or. (.not.associated(MELT_POT))) then
+         print *, 'You are asking for freeze melt potential, without asking for frazil and melt potential. You must ask for all. Exiting!'
+         ASSERT_(.false.)
+       endif
+
+       where(MASK(:,:)>0.0)
+          FRZMLT = FRAZIL + MELT_POT
+       elsewhere
+          FRZMLT = 0.0
        end where
     end if
 
