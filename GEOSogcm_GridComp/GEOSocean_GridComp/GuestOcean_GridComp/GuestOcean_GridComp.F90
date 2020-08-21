@@ -371,6 +371,9 @@ contains
         case ("MOM6")
             charbuf_ = 'MASK'
     end select
+
+! Following export of ocean_mask to history is there, but nobody fills it and it is zero for MOM6. 
+! If you really need a mask in history, get it from MOM6plug.
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME         = trim(charbuf_),                      &
          LONG_NAME          = 'ocean_mask',                        &
