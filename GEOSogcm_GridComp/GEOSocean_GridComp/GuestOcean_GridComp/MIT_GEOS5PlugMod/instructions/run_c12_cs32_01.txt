@@ -51,5 +51,6 @@ sed -i 's/ROUTING_FILE/#ROUTING_FILE/g' AGCM.rc
 # Pleiades - only works through qsub
 qsub gcm_run.j
 # Discover (can also with sbatch or qsub)
+xalloc -n 6 --qos=debug
 ./gcm_run.j |&  tee gcm_run.out
 
