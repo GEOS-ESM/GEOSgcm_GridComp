@@ -16,7 +16,7 @@ setenv EXPDIR <location of experiment>
 # Enter the Atmospheric Horizontal Resolution code: c12 <-------------------------
 # Enter the Atmospheric Model Vertical Resolution: 72
 # Do you wish to IOSERVER? NO
-# Enter the Processor Type you wish to run on: bro
+# Enter the Processor Type you wish to run on: bro (hasw on discover)
 # Do you wish to run the COUPLED Ocean/Sea-Ice Model? YES
 # Choose an Ocean Model: MIT
 # Enter the Ocean Lat/Lon Horizontal Resolution: cs32 <---------------------------
@@ -28,7 +28,7 @@ setenv EXPDIR <location of experiment>
 # Enter Desired Location for HOME: $EXPDIR/TEST            (spell out $EXPDIR)
 # Enter Desired Location for EXPERIMENT: $EXPDIR/TEST      (spell out $EXPDIR)
 # Enter Location for Build directory: $ESMADIR             (spell out $ESMADIR)
-# Enter your GROUP ID for Current EXP: g26209
+# Enter your GROUP ID for Current EXP: (Default)
 
 cd $EXPDIR/TEST
 
