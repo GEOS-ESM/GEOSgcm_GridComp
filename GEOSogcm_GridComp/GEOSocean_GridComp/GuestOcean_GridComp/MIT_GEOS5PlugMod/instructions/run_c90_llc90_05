@@ -1,0 +1,53 @@
+# Define variable with the location of the build direcory. 
+# this is where the bin, include, etc folders are
+setenv ESMADIR <location of install directory>
+# Define the experiment directory. This is the location
+# the experiment setup folder is copied to.
+setenv EXPDIR <location of experiment>
+
+# Set up coupled code for c90_llc_05
+# Be sure to replace "Desired Location" and "Build"
+# directories below with your own.
+ cd $ESMADIR/bin
+ ./gcm_setup
+# Enter the Experiment ID: TEST
+# Enter a 1-line Experiment Description: TEST
+# Do you wish to CLONE an old experiment? NO
+# Enter the Atmospheric Horizontal Resolution code: c90 <-------------------------
+# Enter the Atmospheric Model Vertical Resolution: 72
+# Do you wish to IOSERVER? NO
+# Enter the Processor Type you wish to run on: bro
+# Do you wish to run the COUPLED Ocean/Sea-Ice Model? YES
+# Choose an Ocean Model: MIT
+# Enter the Ocean Lat/Lon Horizontal Resolution: llc90 <---------------------------
+# Enter the Ocean Model Vertical Resolution: 50
+# Enter the choice of  Land Surface Model: 1
+# Do you wish to run  the Runoff Routing Model? FALSE <---------------------------
+# Do you wish to run GOCART with Actual or Climatological Aerosols? A <-----------
+# Enter the GOCART Emission Files to use: MERRA2
+# Enter the tag or directory: Current
+# Enter Desired Location for HOME: $EXPDIR/TEST            (spell out $EXPDIR)
+# Enter Desired Location for EXPERIMENT: $EXPDIR/TEST      (spell out $EXPDIR)
+# Enter Location for Build directory: $ESMADIR             (spell out $ESMADIR)
+# Enter your GROUP ID for Current EXP: Default
+
+cd $EXPDIR/TEST
+
+# copy GEOS initial conditions
+# Pleiades
+cp /nobackupp2/estrobac/geos5/ICDIR_v2/c90_llc90_05_data/geos5/* .
+# Discover
+cp /gpfsm/dnb32/estrobac/geos5/ICDIR_v2/c90_llc90_05_data/geos5/* .
+
+# copy MITgcm initial conditions
+# Pleiades
+cp -r /nobackupp2/estrobac/geos5/ICDIR_v2/c90_llc90_05_data/mit_input .
+Discover
+cp -r /gpfsm/dnb32/estrobac/geos5/ICDIR_v2/c90_llc90_05_data/mit_input .
+
+# run experiment executable
+# Pleiades - only works through qsub
+qsub gcm_run.j
+# Discover (can also with sbatch or qsub)
+xalloc -n 360 --qos=debug
+./gcm_run.j |&  tee gcm_run.out
