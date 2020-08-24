@@ -17,6 +17,7 @@ source @env/g5_modules
 mkdir build
 cd build
 
+# make sure -DMIT_CONFIG_ID is pointing to the right experiment
 cmake .. -DBASEDIR=$BASEDIR/Linux -DCMAKE_INSTALL_PREFIX=../install -DBUILD_MIT_OCEAN=ON -DMIT_CONFIG_ID=c12_cs32_01 -DCMAKE_Fortran_COMPILER=ifort
 
 # for debugging Add -DCMAKE_BUILD_TYPE=Debug to cmake
