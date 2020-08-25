@@ -67,15 +67,30 @@
 # GEOSagcm=>Z0_FORMULATION: 4
 # GEOSldas=>Z0_FORMULATION: 4
 
-# ---- Compute runoff from large-scale and convective storms separately  	
+# ---- Compute runoff from large-scale and convective storms
 #	
-#    .FALSE.  : The default value for AGCM and GEOSldas uses total throughfall to compute surface runoff and 
-#          assumes both FWETC and FWETL as 0.02 - the areal fractions of canopy on to which convective and precipitation falls, respectively.
-#    .TRUE.   : Accounts for separate convective and large-scale throufalls to compute surface runoff and
-#          uses calibrated parameter values of FWETC = 0.005, and FWETL = 0.025. Note with USE_FWET_FOR_RUNOFF: .TRUE. option, areal fractions can be
-#          passed to the model via this resource file using parameter labels 'FWETC:' and 'FWETL:'.   	
+#   FWETC and FWETL are the areal fractions of canopy on to which convective and precipitation 
+#   falls, respectively.  These parameter values and the functional form to compute surface runoff
+#   are set in conjunction with the logical resource parameter USE_FWET_FOR_RUNOFF as follows:
+#
+#    .FALSE.  : Default; uses total throughfall to compute surface runoff with FWETC=FWETL=0.02 
+#               (hard-wired). 
+#    .TRUE.   : Accounts for separate convective and large-scale throughfalls to compute surface runoff
+#               with FWETC=0.005 and FWETL=0.025 unless specified otherwise below. 
+#               These FWETC and FWETL parameter values were calibrated in off-line, 36-km simulations 
+#               using MERRA-2 (?) forcing.
+#               Note that the partitioning between "convective" and "large-scale" precipitation in 
+#               the GCM depends strongly on resolution, presumably requiring tuned FWETC and FWETL
+#               values that depend on the atmospheric resolution.
+#
 # GEOSagcm=>USE_FWET_FOR_RUNOFF: .FALSE.	
 # GEOSldas=>USE_FWET_FOR_RUNOFF: .FALSE.
+#
+# GEOSagcm=>FWETC: 0.005	                 # ignored unless USE_FWET_FOR_RUNOFF is .TRUE.    
+# GEOSldas=>FWETC: 0.005	                 # ignored unless USE_FWET_FOR_RUNOFF is .TRUE.    
+#
+# GEOSagcm=>FWETL: 0.025	                 # ignored unless USE_FWET_FOR_RUNOFF is .TRUE.    
+# GEOSldas=>FWETL: 0.025	                 # ignored unless USE_FWET_FOR_RUNOFF is .TRUE.    
 
 # ---- ASCAT-derived turbulent roughness length
 #
