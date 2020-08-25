@@ -1131,6 +1131,11 @@ contains
        call MAPL_AddRecord(CMAPL, ALARMS, (/MAPL_Write2Ram/), rc=status)
        VERIFY_(STATUS)
 
+       call MAPL_GetObjectFromGC ( GCS(OGCM), CMAPL, RC=STATUS)                                                                   
+       VERIFY_(STATUS)
+       call MAPL_AddRecord(CMAPL, ALARMS, (/MAPL_Write2Ram/), rc=status)
+       VERIFY_(STATUS)
+
        GCM_INTERNAL_STATE%replayStartAlarm      = replayStartAlarm
        GCM_INTERNAL_STATE%replayStopAlarm       = replayStopAlarm
        GCM_INTERNAL_STATE%replayCycleAlarm      = replayCycleAlarm

@@ -45,7 +45,6 @@ contains
 !
 ! !USES:
     use clmtype
-!   use spmdMod              , only: masterproc
     use CNSetValueMod        , only: CNZeroFluxes
     use CNNDynamicsMod       , only: CNNDeposition,CNNFixation, CNNLeaching
     use CNMRespMod           , only: CNMResp

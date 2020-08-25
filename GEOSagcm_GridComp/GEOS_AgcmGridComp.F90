@@ -897,11 +897,13 @@ contains
     call MAPL_AddConnectivity ( GC,                                                        &
          SRC_NAME  = (/'U            ','V            ','TH           ','T            ',    &
                        'ZLE          ','PS           ','TA           ','QA           ',    &
+                       'US           ','VS           ',                                    &
                        'SPEED        ','DZ           ','PLE          ','W            ',    &
                        'PREF         ','TROPP_BLENDED','S            ','PLK          ',    &
                        'PV           ','OMEGA        ','PKE          '/),                  &
          DST_NAME  = (/'U     ','V     ','TH    ','T     ',                                &
                        'ZLE   ','PS    ','TA    ','QA    ',                                &
+                       'UA    ','VA    ',                                                  &
                        'SPEED ','DZ    ','PLE   ','W     ',                                &
                        'PREF  ','TROPP ','S     ','PLK   ',                                &
                        'PV    ','OMEGA ','PKE   '/),                                       &

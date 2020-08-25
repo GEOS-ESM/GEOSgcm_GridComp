@@ -50,7 +50,9 @@ module MOM_GEOS5PlugMod
 
   use ocean_model_mod,          only: ocean_model_init, update_ocean_model, ocean_model_end, ocean_model_restart
   use ocean_types_mod,          only: ocean_public_type, ice_ocean_boundary_type
-  use ocean_model_mod,          only: get_ocean_domain, ocean_state_type
+  
+! MAT ocean_state_type renamed due to GNU build issue with simultaneous MOM5/MOM6 model
+  use ocean_model_mod,          only: get_ocean_domain, mom5_ocean_state_type 
 
 ! mjs added these two
 
@@ -58,13 +60,13 @@ module MOM_GEOS5PlugMod
   use ocean_model_mod,          only: ocean_model_data_get
   use ocean_model_mod,          only: mom4_get_latlon_UVsurf, mom4_get_UVsurfB
   use ocean_model_mod,          only: mom4_get_thickness, mom4_get_tsurf, mom4_get_ssurf
-  use ocean_model_mod,          only: mom4_get_pointers_to_variables, mom4_get_streamfunction
+  use ocean_model_mod,          only: mom4_get_pointers_to_variables, mom4_get_streamfunction,  mom4_get_mld
   use ocean_model_mod,          only: mom4_get_prog_tracer_index, mom4_put_prog_tracer, mom4_get_prog_tracer 
   use ocean_model_mod,          only: mom4_get_diag_tracer_index, mom4_get_diag_tracer 
   use ocean_model_mod,          only: mom4_get_temperature_index, mom4_get_salinity_index, &
        mom4_get_uv, mom4_get_latlon_uv, mom4_get_density
   use ocean_model_mod,          only: mom4_get_3D_tmask, mom4_set_swheat, mom4_set_swheat_fr
-  use ocean_vert_kpp_mom4p1_mod,       only: mom4_get_hblt
+
 ! This was added for a to b; Balaji was reluctant to expose ice_grid_mod.
 
   use mpp_parameter_mod,          only: AGRID, SCALAR_PAIR
@@ -681,6 +683,8 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,   name="RUN"        ,RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,   name="RUN2"       ,RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,   name="FINALIZE"   ,RC=STATUS)
     VERIFY_(STATUS)
 
@@ -748,8 +752,8 @@ contains
 ! Locals
 
     type(ice_ocean_boundary_type), pointer :: boundary
-    type(ocean_public_type),         pointer :: Ocean
-    type(ocean_state_type),          pointer :: Ocean_State
+    type(ocean_public_type),       pointer :: Ocean
+    type(mom5_ocean_state_type),   pointer :: Ocean_State
     type(MOM_MAPL_Type),           pointer :: MOM_MAPL_internal_state 
     type(MOM_MAPLWrap_Type)                :: wrap
 
@@ -1042,7 +1046,7 @@ contains
        pbo = real(merge(tsource = 1.0e-04*tmp2, fsource = real(MAPL_UNDEF), mask = (mask(:, :, 1) > 0.0)),kind=G5KIND)
     end if 
 
-    call mom4_get_hblt(Tmp2)
+    tmp2=mom4_get_mld()
     OMLDAMAX   = real(merge(tsource = tmp2, fsource = real(MAPL_UNDEF), mask = (mask(:, :, 1) > 0.0)), kind=G5KIND)
 
     deallocate(Tmp2)
@@ -1166,7 +1170,7 @@ contains
     type(MOM_MAPLWrap_Type)                :: wrap
     type(ice_ocean_boundary_type), pointer :: boundary
     type(ocean_public_type),       pointer :: Ocean
-    type(ocean_state_type),        pointer :: Ocean_State
+    type(mom5_ocean_state_type),   pointer :: Ocean_State
     type(domain2d)                         :: OceanDomain
     integer                                :: isc,iec,jsc,jec
     integer                                :: isd,ied,jsd,jed
@@ -1732,7 +1736,7 @@ contains
        end where
     end if
 
-    call mom4_get_hblt(U)
+    U=mom4_get_mld()
     if(HR==0 .and.  MN==0 .and. SC==0) then
        OMLDAMAX = real(U, kind = G5KIND)
     else
@@ -1863,7 +1867,7 @@ contains
     type(MOM_MAPLWrap_Type)                :: wrap
 !    type(ice_ocean_boundary_type), pointer :: boundary
 !    type(ocean_public_type),       pointer :: Ocean
-!    type(ocean_state_type),        pointer :: Ocean_State
+!    type(mom5_ocean_state_type),   pointer :: Ocean_State
 !    type(domain2d)                         :: OceanDomain
     integer                                :: isc,iec,jsc,jec
     integer                                :: isd,ied,jsd,jed
@@ -1948,6 +1952,9 @@ contains
 
     deallocate(T)
 
+    call MAPL_TimerOff(MAPL,"RUN2"  )
+    call MAPL_TimerOff(MAPL,"TOTAL")
+
 ! All Done
 !---------
 
@@ -1976,8 +1983,8 @@ contains
     type(ESMF_Time)                  :: MyTime
     type(MOM_MAPL_Type),     pointer :: MOM_MAPL_internal_state 
     type(MOM_MAPLWrap_Type)          :: wrap
-    type(ocean_public_type),   pointer :: Ocean
-    type(ocean_state_type),    pointer :: Ocean_State
+    type(ocean_public_type),     pointer :: Ocean
+    type(mom5_ocean_state_type), pointer :: Ocean_State
 
 ! ErrLog Variables
 
@@ -2078,7 +2085,7 @@ contains
     type (MAPL_MetaComp), pointer    :: MAPL 
     type(MOM_MAPL_Type),     pointer :: MOM_MAPL_internal_state 
     type(MOM_MAPLWrap_Type)          :: wrap
-    type(ocean_state_type),  pointer :: Ocean_State
+    type(mom5_ocean_state_type),  pointer :: Ocean_State
 
 ! ErrLog Variables
 
@@ -2109,7 +2116,7 @@ contains
 
     call MAPL_TimerOn(MAPL,"TOTAL")
 
-    doRecord = MAPL_RecordAlarmIsRinging(MAPL, RC=status)
+    doRecord = MAPL_RecordAlarmIsRinging(MAPL, MODE=MAPL_Write2Disk, RC=status)
     VERIFY_(STATUS)
 
     if (doRecord) then

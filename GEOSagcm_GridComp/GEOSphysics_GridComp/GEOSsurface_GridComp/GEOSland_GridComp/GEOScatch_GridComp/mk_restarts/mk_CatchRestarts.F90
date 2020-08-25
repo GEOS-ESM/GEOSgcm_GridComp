@@ -11,7 +11,7 @@ program  mk_CatchRestarts
   ! initialize to non-MPI values
 
   integer  :: myid=0, numprocs=1, mpierr, mpistatus(MPI_STATUS_SIZE)  
-  logical  :: master_proc=.true.
+  logical  :: root_proc=.true.
 
   character*256 :: Usage="mk_CatchRestarts OutTileFile InTileFile InRestart SURFLAY <OutIsOld>"
   character*256 :: OutTileFile
@@ -72,7 +72,7 @@ program  mk_CatchRestarts
 
   inquire(file=trim(DataDir)//"mosaic_veg_typs_fracs",exist=havedata)
 
-  if (master_proc) then
+  if (root_proc) then
 
      ! Read Output/Input  .til files
      call ReadTileFile_RealLatLon(OutTileFile, ntiles, lono, lato)  
@@ -87,7 +87,7 @@ program  mk_CatchRestarts
   endif
 
   if (havedata) then
-     if (master_proc) call read_and_write_rst (NTILES, SURFLAY, OutIsOld, NTILES)
+     if (root_proc) call read_and_write_rst (NTILES, SURFLAY, OutIsOld, NTILES)
   else
 
      call MPI_BCAST  (ntiles   , 1, MPI_INTEGER, 0,MPI_COMM_WORLD, mpierr)
@@ -232,7 +232,7 @@ program  mk_CatchRestarts
      deallocate (loni,lati,lonn,latt, tid_in)
      call MPI_Barrier(MPI_COMM_WORLD, mpierr)
  
-     if (master_proc) call read_and_write_rst (NTILES, SURFLAY, OutIsOld, NTILES_IN, id)
+     if (root_proc) call read_and_write_rst (NTILES, SURFLAY, OutIsOld, NTILES_IN, id)
   
   endif
 
@@ -763,10 +763,10 @@ contains
     call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
     call MPI_COMM_SIZE( MPI_COMM_WORLD, numprocs, mpierr )
 
-    if (myid .ne. 0)  master_proc = .false.
+    if (myid .ne. 0)  root_proc = .false.
         
 !    write (*,*) "MPI process ", myid, " of ", numprocs, " is alive"    
-!    write (*,*) "MPI process ", myid, ": master_proc=", master_proc
+!    write (*,*) "MPI process ", myid, ": root_proc=", root_proc
 
   end subroutine init_MPI
 

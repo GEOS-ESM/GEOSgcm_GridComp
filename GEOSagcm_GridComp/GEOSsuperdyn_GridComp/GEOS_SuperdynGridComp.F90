@@ -300,6 +300,18 @@ integer ::          ADV = -1
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'US',                                        &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
+         SHORT_NAME = 'VS',                                        &
+         CHILD_ID   = DYN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( GC   ,                               &
          SHORT_NAME = 'TA',                                        &
          CHILD_ID   = DYN,                                         &
                                                         RC=STATUS  )

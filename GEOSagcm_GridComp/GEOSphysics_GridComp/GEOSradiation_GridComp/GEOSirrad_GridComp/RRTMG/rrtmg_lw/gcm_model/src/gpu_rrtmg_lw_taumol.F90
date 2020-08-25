@@ -3631,7 +3631,7 @@ else
 
       ! (dmb 2012) Copy the needed data from the CPU to the GPU.  I had to separate this
       ! out into 16 separate functions to correspond with the 16 taumol subroutines.
-      subroutine copyGPUTaumol(pavelc, wxc, coldryc, tauap, pncol, colstart, nlay, npart)
+      subroutine copyGPUTaumol(pavelc, coldryc, tauap, pncol, colstart, nlay, npart)
       use rrlw_kg01, only : copyToGPU1, reg1
       use rrlw_kg02, only : copyToGPU2, reg2
       use rrlw_kg03, only : copyToGPU3, reg3
@@ -3651,7 +3651,7 @@ else
       use rrlw_ref, only  : copyToGPUref
       real , intent(in) :: pavelc(:,:)           ! layer pressures (mb) 
                                                       !    Dimensions: (nlayers)
-      real  , intent(in) :: wxc(:,:,:)            ! cross-section amounts (mol/cm2)
+      !real  , intent(in) :: wxc(:,:,:)            ! cross-section amounts (mol/cm2)
                                                       !    Dimensions: (maxxsec,nlayers)
       real  , intent(in) :: coldryc(:,:)          ! column amount (dry air)
                                                       !    Dimensions: (nlayers)

@@ -203,7 +203,7 @@ program  mk_CatchCNRestarts
   ! initialize to non-MPI values
 
   integer  :: myid=0, numprocs=1, mpierr, mpistatus(MPI_STATUS_SIZE)  
-  logical  :: master_proc=.true.
+  logical  :: root_proc=.true.
 
   ! Carbon model specifics
   ! ----------------------
@@ -286,7 +286,7 @@ program  mk_CatchCNRestarts
   ! availability.  
   !-----------------------------------------------------
 
-  MPI_PROC0 : if (master_proc) then
+  MPI_PROC0 : if (root_proc) then
   
   I = iargc()
   
@@ -525,7 +525,7 @@ HAVE :  if(havedata) then
    
    !OPT3 (Reading/writing BCs/hydrological variables)
    
-   if (master_proc) call read_bcs_data  (ntiles, SURFLAY, OutFmt, InRestart)
+   if (root_proc) call read_bcs_data  (ntiles, SURFLAY, OutFmt, InRestart)
    
 else
      
@@ -533,7 +533,7 @@ else
         ! OPT1
         ! ----
 
-       if (master_proc)  call read_catchcn_nc4 (NTILES_IN, NTILES, OutFmt, ID, InRestart)
+       if (root_proc)  call read_catchcn_nc4 (NTILES_IN, NTILES, OutFmt, ID, InRestart)
 
      else
 
@@ -1281,7 +1281,7 @@ contains
     allocate (lonc   (1:ntiles_cn))
     allocate (latc   (1:ntiles_cn))
 
-    if (master_proc) then
+    if (root_proc) then
        
        ! --------------------------------------------
        ! Read exact lonn, latt from output .til file 
@@ -1337,7 +1337,7 @@ contains
        endif
     end do
     
-    if(master_proc) deallocate (long, latg)
+    if(root_proc) deallocate (long, latg)
  
     call MPI_BCAST(lonc,ntiles_cn,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
     call MPI_BCAST(latc,ntiles_cn,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
@@ -1365,7 +1365,7 @@ contains
     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/low_ind(myid+1),3/), (/nt_local(myid+1),1/),CLMC_sf1)
     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/low_ind(myid+1),4/), (/nt_local(myid+1),1/),CLMC_sf2)
     
-    if (master_proc) then
+    if (root_proc) then
 
        allocate (TILE_ID  (1:ntiles_cn))
 
@@ -1596,7 +1596,7 @@ contains
  
      ! update id_glb in root
 
-     if(master_proc)  then
+     if(root_proc)  then
         allocate (id_glb  (ntiles,4))
         allocate (id_vec  (ntiles))
      endif
@@ -1623,13 +1623,13 @@ contains
            endif
         end do
        
-        if(master_proc) id_glb (:,nv) = id_vec
+        if(root_proc) id_glb (:,nv) = id_vec
         
      end do
 
 ! write out regridded carbon variables
 
-     if(master_proc) then
+     if(root_proc) then
 
         allocate (CLMC_pf1(NTILES))
         allocate (CLMC_pf2(NTILES))
@@ -2920,7 +2920,7 @@ integer :: n_threads=1
     allocate (lonc   (1:ntiles_cn))
     allocate (latc   (1:ntiles_cn))
 
-    if (master_proc) then
+    if (root_proc) then
 
        allocate (long   (ntiles))
        allocate (latg   (ntiles))
@@ -2978,7 +2978,7 @@ integer :: n_threads=1
 !         latt,nt_local(myid+1),MPI_real  , &
 !         0,MPI_COMM_WORLD, mpierr )
 
-    if(master_proc) deallocate (long, latg)
+    if(root_proc) deallocate (long, latg)
      
      call MPI_BCAST(lonc,ntiles_cn,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
      call MPI_BCAST(latc,ntiles_cn,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
@@ -3075,7 +3075,7 @@ integer :: n_threads=1
  
      ! update id_glb in root
 
-     if(master_proc)  allocate (id_glb  (ntiles))
+     if(root_proc)  allocate (id_glb  (ntiles))
 
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 
@@ -3099,7 +3099,7 @@ integer :: n_threads=1
 !                   id_glb, nt_local,low_ind-1, MPI_real, &
 !                   0, MPI_COMM_WORLD, mpierr )
         
-    if (master_proc) call put_land_vars  (NTILES, id_glb, ld_reorder, OutFmt)
+    if (root_proc) call put_land_vars  (NTILES, id_glb, ld_reorder, OutFmt)
 
     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 
@@ -3641,10 +3641,10 @@ integer :: n_threads=1
     call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
     call MPI_COMM_SIZE( MPI_COMM_WORLD, numprocs, mpierr )
 
-    if (myid .ne. 0)  master_proc = .false.
+    if (myid .ne. 0)  root_proc = .false.
     
 !    write (*,*) "MPI process ", myid, " of ", numprocs, " is alive"    
-!    write (*,*) "MPI process ", myid, ": master_proc=", master_proc
+!    write (*,*) "MPI process ", myid, ": root_proc=", root_proc
 
   end subroutine init_MPI
 
