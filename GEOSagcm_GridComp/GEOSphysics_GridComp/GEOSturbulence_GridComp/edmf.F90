@@ -26,13 +26,15 @@ subroutine A_star_closure(IM, JM, LM, zle, zlo, thv, & ! in
   integer, dimension(IM,JM), intent(out)  :: izsl
   real, dimension(IM,JM,LM), intent(out)  :: A_star
 
-  integer :: i, j, k, km1, kp1
-  real :: dthvdz, foo
-  real, dimension(IM,JM) :: A_star_sum
-  logical, dimension(IM,JM) :: conv_flag, sl_flag
+  integer                     :: i, j, k, km1, kp1
+  real                        :: dthvdz, dz
+  real, dimension(IM,JM,0:LM) :: M_star
+  real, dimension(IM,JM)      :: A_star_sum
+  logical, dimension(IM,JM)   :: conv_flag, sl_flag
 
   A_star(:,:,:)   = 0.
   A_star_sum(:,:) = 0.
+  M_star(:,:,:)   = 0.
 
   ! Determine if column is convective (surface-driven) and compute A_star
   ! (before normalization) at first model level
@@ -46,7 +48,6 @@ subroutine A_star_closure(IM, JM, LM, zle, zlo, thv, & ! in
   ! Compute A_star (before normalization) and find top of surface layer
   do k = LM,1,-1
      km1 = k - 1
-     kp1 = k + 1
 
      do j = 1,JM
      do i = 1,IM
@@ -81,11 +82,18 @@ subroutine A_star_closure(IM, JM, LM, zle, zlo, thv, & ! in
   ! Test
   do j = 1,JM
   do i = 1,IM
-     foo = 0.
      if ( conv_flag(i,j) ) then
-        do k = LM,izsl(i,j),-1
-           foo = foo + A_star(i,j,k)*( zle(i,j,km1) - zle(i,j,k) ) 
-           write(*,*) k, foo, A_star(i,j,k), zle(i,j,km1) - zle(i,j,k)
+        M_star(i,j,LM) = 0.
+        do k = LM,izsl(i,j)+1,-1
+           km1 = k - 1
+
+           dz              = zle(i,j,km1) - zle(i,j,k)
+           M_star(i,j,km1) = M_star(i,j,k) + A_star(i,j,k)*dz
+        end do
+        write(*,*) izsl(i,j)
+        do k = izsl(i,j),LM
+           km1 = k - 1
+           write(*,*) k, M_star(i,j,k), A_star(i,j,k)*dz, thv(i,j,km1) - thv(i,j,k)
         end do
      end if
   end do
@@ -100,7 +108,7 @@ end subroutine A_star_closure
 !
 subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
                     edmf_discrete_type, edmf_implicit, thermal_plume_flag, &        ! in
-                    th00, dt, z, zle, ple, rhoe, exf, &                             ! in
+                    th00, dt, zlo, zle, ple, rhoe, exf, &                           ! in
                     u, v, thl, thv, qt, qv, ql, qi, &                               ! in         
                     ustar, sh, evap, ice_ramp, &                                    ! in
                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in
@@ -121,7 +129,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   ! Inputs
   integer, intent(in)                     :: IM, JM, LM, numup, edmf_discrete_type, edmf_implicit, thermal_plume_flag, ET
   integer, dimension(IM,JM), intent(in)   :: iras, jras
-  real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, z, exf
+  real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zlo, exf
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe
   real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, L0
   real, dimension(IM,JM), intent(inout)   :: zpbl
@@ -159,6 +167,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   integer, dimension(2)  :: seedmf, the_seed
 
   ! New stuff
+  integer, dimension(IM,JM)       :: izsl
+  real, dimension(IM,JM,LM)       :: A_star
   logical, dimension(numup,IM,JM) :: active_updraft
 
   !
@@ -275,7 +285,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
         if (edmf_discrete_type == 0) then
            if (edmf_implicit == 0) then
-              ifac = ( zle(i,j,k) - z(i,j,kp1) )/( z(i,j,k) - z(i,j,kp1) )
+              ifac = ( zle(i,j,k) - zlo(i,j,kp1) )/( zlo(i,j,k) - zlo(i,j,kp1) )
 
               ui(i,j,k)   = u(i,j,kp1)   + ifac*( u(i,j,k)   - u(i,j,kp1) )
               vi(i,j,k)   = v(i,j,kp1)   + ifac*( v(i,j,k)   - v(i,j,kp1) )
@@ -308,6 +318,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
      end do
      end do
   end do
+
+  ! Test
+  call A_star_closure(IM, JM, LM, zle, zlo, thv, & ! in
+                      izsl, A_star)                ! out
 
   ! Initialize updrafts
   do j = 1,JM
@@ -628,10 +642,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
         if ( au_full > 0. ) then 
            hle(i,j,k) =   exf(i,j,k)*( thl(i,j,k) - au_full*thlu_full )/( 1. - au_full ) &
-                        + (mapl_grav/mapl_cp)*z(i,j,k)
+                        + (mapl_grav/mapl_cp)*zlo(i,j,k)
            qte(i,j,k) = ( qt(i,j,k) - au_full*qtu_full )/( 1. - au_full )
         else
-           hle(i,j,k) = exf(i,j,k)*thl(i,j,k) + (mapl_grav/mapl_cp)*z(i,j,k)
+           hle(i,j,k) = exf(i,j,k)*thl(i,j,k) + (mapl_grav/mapl_cp)*zlo(i,j,k)
            qte(i,j,k) = qt(i,j,k)
         end if
 

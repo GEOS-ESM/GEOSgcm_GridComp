@@ -1237,19 +1237,28 @@ contains
 !-srf-gf-scheme
 
 !-mynn-edmf
+!!$    call MAPL_AddImportSpec(GC,                                              &
+!!$       LONG_NAME  = 'updraft_area_fraction',                                 &
+!!$       UNITS      = '1',                                                     &
+!!$       SHORT_NAME = 'au'    ,                                                &
+!!$       DIMS       = MAPL_DimsHorzVert,                                       &
+!!$       VLOCATION  = MAPL_VLocationEdge,                                      &
+!!$                                                                  RC=STATUS  )
+!!$    VERIFY_(STATUS)
+
     call MAPL_AddImportSpec(GC,                                              &
-       LONG_NAME  = 'updraft_area_fraction',                                 &
+       LONG_NAME  = 'updaft_area_fraction_at_full_levels',                   &
        UNITS      = '1',                                                     &
-       SHORT_NAME = 'au'    ,                                                &
+       SHORT_NAME = 'au_full',                                               &
        DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                                      &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'sub-environmental_hl',                                  &
        UNITS      = 'K',                                                     &
-       SHORT_NAME = 'hle',                                                   &
+       SHORT_NAME = 'hlu_full',                                              &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -1258,9 +1267,36 @@ contains
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'sub-environmental_qt',                                  &
        UNITS      = 'kg+1kg-1',                                              &
-       SHORT_NAME = 'qte',                                                   &
+       SHORT_NAME = 'qtu_full',                                              &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                              &
+       LONG_NAME  = 'cloud_fraction_within_updraft',                         &
+       UNITS      = '1',                                                     &
+       SHORT_NAME = 'acu_full',                                              &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                              &
+       LONG_NAME  = 'temperature_of_cloudy_part_of_updraft',                 &
+       UNITS      = 'K',                                                     &
+       SHORT_NAME = 'Tu_full',                                              &
+       DIMS       = MAPL_DimsHorzVert,                                       &
+       VLOCATION  = MAPL_VLocationCenter,                                    &
+                                                                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                                 &
+       LONG_NAME  = 'liquid_water_specific_humidity_of_cloudy_part_of_updraft', &
+       UNITS      = 'kg+1kg-1',                                                 &
+       SHORT_NAME = 'qlu_full',                                                &
+       DIMS       = MAPL_DimsHorzVert,                                          &
+       VLOCATION  = MAPL_VLocationCenter,                                       &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 !-mynn-edmf
@@ -5169,10 +5205,51 @@ contains
         VERIFY_(STATUS)
 !--kml--- activation for single-moment uphysics
 
+! Diagnostic exports
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 'exner_moist',                          &
+         LONG_NAME          = 'exner_moist',                          & 
+         UNITS              = '1',                                  &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 'au_moist',                           &
+         LONG_NAME          = 'au_moist',                           & 
+         UNITS              = '1',                                  &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 'hle_moist',                          &
+         LONG_NAME          = 'hle_moist',                          & 
+         UNITS              = 'K',                                  &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 'thle_moist',                         &
+         LONG_NAME          = 'thle_moist',                         & 
+         UNITS              = 'K',                                  &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 'qte_moist',                          &
+         LONG_NAME          = 'qte_moist',                          & 
+         UNITS              = 'kg/kg',                              &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
 ! Coefficients for determining relative contribution of sensible and latent
 ! heat fluxes to bouyancy flux
     call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME         = 'A_mynn',                             &
+         SHORT_NAME         = 'A_moist',                             &
          LONG_NAME          = 'A-coefficient_for_moist_turbulence', & 
          UNITS              = '?',                                  &
          DIMS               = MAPL_DimsHorzVert,                    &
@@ -5180,7 +5257,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME         = 'B_mynn',                             &
+         SHORT_NAME         = 'B_moist',                             &
          LONG_NAME          = 'B-coefficient_for_moist_turbulence', & 
          UNITS              = '?',                                  &
          DIMS               = MAPL_DimsHorzVert,                    &
@@ -5188,9 +5265,25 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                     &
-         SHORT_NAME         = 'qsat_mynn',                          &
+         SHORT_NAME         = 'qsat_moist',                          &
          LONG_NAME          = 'Saturation_specific_humidity',       & 
          UNITS              = 'kg+1kg-1',                           &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 's_moist',                             &
+         LONG_NAME          = 'normalized_saturation_excess',       & 
+         UNITS              = '1',                                  &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 'sigma_s_moist',                       &
+         LONG_NAME          = 'std_of_saturation_excess',           & 
+         UNITS              = 'kg+2kg-2',                          &
          DIMS               = MAPL_DimsHorzVert,                    &
          VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
     VERIFY_(STATUS)
@@ -5712,7 +5805,8 @@ contains
       real, pointer, dimension(:,:,:) :: T, PLE, U, V, W, TH
       real, pointer, dimension(:,:)   :: TROPP
       real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE, TKESHOC
-      real, pointer, dimension(:,:,:) :: ISOTROPY,w3_canuto,edmf_wqt,edmf_whl,edmf_qt2,edmf_hl2,edmf_hlqt,edmf_w2,edmf_w3,edmf_qt3,edmf_dry_a,edmf_moist_a
+      real, pointer, dimension(:,:,:) :: ISOTROPY,w3_canuto,edmf_wqt,edmf_whl,edmf_qt2,edmf_hl2,edmf_hlqt,&
+                                         edmf_w2,edmf_w3,edmf_qt3,edmf_dry_a,edmf_moist_a
 
       real, pointer, dimension(:,:,:) :: hl2, qt2, hlqt
 
@@ -5864,7 +5958,7 @@ contains
       real, pointer, dimension(:,:,:)       :: DTDT_BL
       real, pointer, dimension(:,:,:)       :: DQDT_BL
       real, pointer, dimension(:,:,:)       :: DQDT_GF,DTDT_GF,MUPDP,MUPSH,MUPMD,DTRDT_GF
-      real, pointer, dimension(:,:,:)       :: au, hle, qte ! for MYNN-EDMF
+      real, pointer, dimension(:,:,:)       :: au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full ! for MYNN-EDMF
       real, pointer, dimension(:,:  )       :: USTAR,TSTAR,QSTAR,T2M,Q2M,TA,QA,SH,EVAP,PHIS
       real, pointer, dimension(:,:  )       :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
       real, pointer, dimension(:,:  )       :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
@@ -5874,7 +5968,10 @@ contains
       real, pointer, dimension(:,:,:)       :: NACTL,NACTI
 !--kml--- activation for single-moment uphysics
 
-      real, pointer, dimension(:,:,:)       :: A_mynn, B_mynn, qsat_mynn
+      real, pointer, dimension(:,:,:) :: A_moist, B_moist, qsat_moist, & 
+                                         s_moist, sigma_s_moist, &
+                                         exner_moist, au_moist, hle_moist, &
+                                         thle_moist, qte_moist
 
       ! Aerosol-Cloud interactions
 
@@ -6097,7 +6194,7 @@ contains
         MAPL, RRTMG_IRRAD, RRTMG_SORAD, SCWST, MTIME, SWCIRRUS, MINCDNC, TMAXBASELQ, TMAXCFCORR, Immersion_param, &
         DT_MICRO, DT_AUX, UR_SCALE    
         
-      real, dimension(IM,JM,LM)       :: edmf_frc,edmf_mstfrc    
+      real, dimension(IM,JM,LM)       :: edmf_frc, edmf_mstfrc, exner, hle, qte    
 
       real                            :: THLSRC_PERT, QTSRC_PERT
       real                            :: PMIN_CBL
@@ -6437,7 +6534,7 @@ contains
 
 
       real, dimension(IM,JM,LM) :: hl,total_water,w3var,w2var,hlsec,qtsec,hlqtsec,wqtsec,whlsec,wqlsec
-      real, dimension(IM,JM,LM) :: whl_sec,wqt_sec,hl2_sec,qt2_sec,hlqt_sec, au_full
+      real, dimension(IM,JM,LM) :: whl_sec,wqt_sec,hl2_sec,qt2_sec,hlqt_sec
       real, dimension(IM,JM)    :: sm,wrk1,wrk2,wrk3
       real kd,ku,qt2tune,hl2tune,hlqt2tune,radbuoyfac
 
@@ -6781,6 +6878,8 @@ contains
       call MAPL_GetPointer(IMPORT, edmf_whl, 'edmf_whl', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, edmf_dry_a, 'edmf_dry_a', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, edmf_moist_a, 'edmf_moist_a', RC=STATUS); VERIFY_(STATUS)
+!      call MAPL_GetPointer(IMPORT, edmf_hl, 'edmf_hl', RC=STATUS); VERIFY_(STATUS)
+!      call MAPL_GetPointer(IMPORT, edmf_qt, 'edmf_qt', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, edmf_qt2, 'edmf_qt2', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, edmf_hl2, 'edmf_hl2', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, edmf_hlqt,'edmf_qthl', RC=STATUS); VERIFY_(STATUS)
@@ -6813,9 +6912,12 @@ contains
       call MAPL_GetPointer(IMPORT, hlqt,   'hlqt',   RC=STATUS); VERIFY_(STATUS)
 
       ! Get pointers to sub-environmental properties
-      call MAPL_GetPointer(IMPORT,   au,   'au', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,  hle,  'hle', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,  qte,  'qte', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,   au_full,   'au_full', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,  hlu_full,  'hlu_full', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,  qtu_full,  'qtu_full', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,  acu_full,  'acu_full', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,  Tu_full,   'Tu_full',  RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, qlu_full,   'qlu_full', RC=STATUS); VERIFY_(STATUS)
 
       ! define EDMF updraft fraction on full levels
       edmf_frc = 0.5*(edmf_dry_a(:,:,0:LM-1)+edmf_moist_a(:,:,0:LM-1)+edmf_dry_a(:,:,1:LM)+edmf_moist_a(:,:,1:LM))
@@ -7311,9 +7413,18 @@ contains
 !!!      endif
 !--kml-----------------------------------------------------------------------------
 
-      call MAPL_GetPointer(EXPORT,    A_mynn,    'A_mynn', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT,    B_mynn,    'B_mynn', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, qsat_mynn, 'qsat_mynn', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      ! Diagnostics exportw
+      call MAPL_GetPointer(EXPORT, exner_moist, 'exner_moist', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, au_moist,    'au_moist',    RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, hle_moist,   'hle_moist',   RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, thle_moist,  'thle_moist',  RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, qte_moist,   'qte_moist',   RC=STATUS); VERIFY_(STATUS)
+
+      call MAPL_GetPointer(EXPORT,       A_moist,       'A_moist', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT,       B_moist,       'B_moist', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT,    qsat_moist,    'qsat_moist', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT,       s_moist,       's_moist', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, sigma_s_moist, 'sigma_s_moist', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
       ! Count the fields in TR...
       !--------------------------
@@ -9326,8 +9437,6 @@ contains
           ku = k 
           if (k==1) kd = k 
 
-          au_full(:,:,k) = 0.5*( au(:,:,kd) + au(:,:,ku) )
-
           if ( DO_MYNN == 0 ) then 
              w3var(:,:,k) = edmf_w3(:,:,k)    ! assume 0 skewness in environment 
              w2var(:,:,k) = ( 1.0 - edmf_frc(:,:,k) )*(0.667*tkeshoc(:,:,k)) &
@@ -10730,10 +10839,15 @@ contains
               FRLAND            , &   ! <- surf
               KH                , &   ! <- turb
               ISOTROPY          , &   ! <- turb
-              edmf_frc          , &   ! <- turb
               au_full           , &   ! <- turb
-              hle               , &   ! <- turb
-              qte               , &   ! <- turb
+              hlu_full          , &   ! <- turb
+              qtu_full          , &   ! <- turb
+              acu_full          , &   ! <- turb
+              Tu_full           , &   ! <- turb
+              qlu_full          , &   ! <- turb
+              edmf_frc          , &   ! <- turb
+!              edmf_hl           , &   ! <- turb
+!              edmf_qt           , &   ! <- turb
               edmf_hl2          , &   ! <- turb
               edmf_qt2          , &   ! <- turb
               edmf_hlqt         , &   ! <- turb
@@ -10795,10 +10909,15 @@ contains
               QDDF3             , &
               CNV_FRACTION      , &
               TROPP             , &
-              A_mynn            , &
-              B_mynn            , &
-              qsat_mynn         , &
+              A_moist           , &
+              B_moist           , &
+              qsat_moist        , &
+              s_moist           , &
+              sigma_s_moist     , &
                                 ! Diagnostics
+              exner             , &
+              hle               , &
+              qte               , &
               RHX_X             , &
               REV_LS_X          , &
               REV_AN_X          , &
@@ -10836,6 +10955,12 @@ contains
               NACTI,    &
               CONVPAR_OPTION )
 
+       ! Diagnostic outputs for MYNN-EDMF
+       if ( associated( exner_moist ) ) exner_moist = exner     
+       if ( associated( au_moist ) )    au_moist    = au_full
+       if ( associated( hle_moist ) )   hle_moist   = hle       
+       if ( associated( qte_moist ) )   qte_moist   = qte
+       if ( associated( thle_moist ) )  thle_moist  = ( hle - (MAPL_GRAV/MAPL_CP)*ZLO )/exner
 
 !        print *,'RAD_CF after progno=',RAD_CF
 

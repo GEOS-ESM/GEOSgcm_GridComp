@@ -1093,7 +1093,7 @@ contains
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'QV  ','QLLS','QILS','QLCN',              &
                          'QICN','CLLS','CLCN','WTHV2',             &
-                         'A_mynn', 'B_mynn', 'qsat_mynn'/),           &
+                         'A_moist', 'B_moist', 'qsat_moist'/),     &
          DST_ID      = TURBL,                                      &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
@@ -1300,7 +1300,8 @@ contains
                          'edmf_moist_a', 'edmf_qthl   ', 'edmf_whl    ',     &
                          'edmf_w2     ',                                     &
                          'hl2         ', 'qt2         ', 'hlqt        ',     &
-                         'au          ', 'hle         ', 'qte         '/),    &
+                         'au_full     ', 'hlu_full    ', 'qtu_full    ',     &
+                         'acu_full    ', 'Tu_full     ', 'qlu_full    '/),    &
          DST_ID      = MOIST,                                      &
          SRC_ID      = TURBL,                                      &
                                                         RC=STATUS  )
