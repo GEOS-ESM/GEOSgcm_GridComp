@@ -365,17 +365,8 @@ contains
 
 !  !EXPORT STATE:
 
-    select case (trim(OCEAN_NAME))
-        case ("MOM", "DATASEA")
-            charbuf_ = 'MASKO'
-        case ("MOM6")
-            charbuf_ = 'MASK'
-    end select
-
-! Following export of ocean_mask to history is there, but nobody fills it and it is zero for MOM6. 
-! If you really need a mask in history, get it from MOM6plug.
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME         = trim(charbuf_),                      &
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME         = 'MASKO',                             &
          LONG_NAME          = 'ocean_mask',                        &
          UNITS              = '1',                                 &
          DIMS               = MAPL_DimsHorzOnly,                   &
@@ -690,8 +681,8 @@ contains
     type (ESMF_TimeInterval)            :: timeStep
     type (ESMF_Time)                    :: currTime
 
-    real, pointer :: MASK(:,:)
-    real, pointer :: MASKO(:,:)
+    real, pointer ::   MASK(:,:)
+    real, pointer ::  MASKO(:,:)
     real, pointer :: MASK3D(:,:,:)
     real, pointer :: DH(:,:,:)
 
@@ -798,15 +789,16 @@ contains
     call MAPL_TimerOn (STATE,"TOTAL"     )
 
     if(DO_DATASEA==0) then
+       call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,__RC__)
+
        select case (trim(OCEAN_NAME))
           case ("MOM")
-             call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,__RC__)
              call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', __RC__)
              MASK => MASK3D(:,:,1)
-             if(associated(MASKO)) MASKO = MASK
           case ("MOM6")
              call MAPL_GetPointer(GEX(OCN), MASK, 'MOM_2D_MASK', __RC__)
        end select
+       if(associated(MASKO)) MASKO = MASK
 
 ! The following sets the depth in orphan points. This is needed to calculate SWHEAT in these points.
 ! Unfortunately, frocean is zero at this point so we set OrphanDepth in all MOM land points.
@@ -932,7 +924,7 @@ contains
 
     real, pointer :: TW  (:,:)
     real, pointer :: SW  (:,:)
-    real, pointer :: MASK(:,:)
+    real, pointer ::   MASK(:,:)
     real, pointer :: MASK3D(:,:,:)
     real, pointer :: FRZMLT(:,:)
 
