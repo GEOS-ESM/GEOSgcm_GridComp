@@ -3315,8 +3315,12 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
         ! -----------------------------------------------------------------------
         ! use deng and mace (2008, grl), which gives smaller fall speed than hd90 formula
         ! -----------------------------------------------------------------------
+      ! vi0 = ( lsc_icefall*(1.0-cnv_fraction) + anv_icefall*(cnv_fraction) )
+      ! do k = ktop, kbot
+      !     pl0 = (MAX(0.25,MIN(1.0,pl(k)/45000.0))-0.25)/(0.75) - 0.5
+      !     vi1 = 0.01 * ((vi_fac-vi0)*(0.5*SIN(pi*pl0)+0.5) + vi0)
+        vi1 = 0.01 * ( lsc_icefall*(1.0-cnv_fraction) + anv_icefall*(cnv_fraction) )
         do k = ktop, kbot
-            vi1 = 0.01 * vi_fac
             if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
                 vti (k) = vf_min
             else
@@ -3357,6 +3361,7 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
             endif
         enddo
 #endif
+
 #endif
     endif
     

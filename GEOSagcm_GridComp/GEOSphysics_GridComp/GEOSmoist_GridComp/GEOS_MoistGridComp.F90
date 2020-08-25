@@ -138,6 +138,7 @@ module GEOS_MoistGridCompMod
   character(len=ESMF_MAXSTR) :: DIAGNOSE_PRECIP_TYPE ! TRUE or FALSE
   logical                    :: LDIAGNOSE_PRECIP_TYPE
 
+  integer :: USE_GF2020
   integer :: DOSHLW
   real    :: MGVERSION
   integer :: DOGRAUPEL
@@ -5123,6 +5124,11 @@ contains
         call MAPL_GetResource(MAPL, LAMBAU_SHDN     , 'LAMBAU_SHDN:'	  ,default= 2.0,   RC=STATUS );VERIFY_(STATUS)
 
         if(adjustl(CLDMICRO) == "GFDL" .or. adjustl(CLDMICRO) == "2MOMENT") then
+            call MAPL_GetResource(MAPL, USE_GF2020  ,'USE_GF2020:'        ,default= 1, RC=STATUS );VERIFY_(STATUS)
+        else
+            call MAPL_GetResource(MAPL, USE_GF2020  ,'USE_GF2020:'        ,default= 0, RC=STATUS );VERIFY_(STATUS)
+        endif
+        if(USE_GF2020==1) then
           call MAPL_GetResource(MAPL, CLEV_GRID       , 'CLEV_GRID:'        ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, VERT_DISCR      , 'VERT_DISCR:'       ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, USE_FCT         , 'USE_FCT:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
@@ -6388,7 +6394,7 @@ contains
       if(adjustl(CLDMICRO)=="GFDL") then
         call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:', DEFAULT=0, RC=STATUS)
         call MAPL_GetResource(STATE,     UWTOLS,     'UWTOLS:', DEFAULT=0, RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=-1.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 1.0, RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
       else
         call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:', DEFAULT=1, RC=STATUS)
@@ -7661,9 +7667,9 @@ contains
       if( LM .ne. 72 ) then
         call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
         VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT=   10.0, RC=STATUS)
+        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT=  100.0, RC=STATUS)
         VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 9.e6, RC=STATUS)
+        call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= -1.0, RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
         VERIFY_(STATUS)
@@ -7680,9 +7686,9 @@ contains
 
       if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
         if (LM .ne. 72) then
-           ! QL*1.e5 at 600mb
+           ! QL*1.e6 at 600mb
            ! Find QL at 600mb level
-           RAD_QL = (QLLS + QLCN)*1.e5
+           RAD_QL = (QLLS + QLCN)*1.e6
            call VertInterp(QL600,RAD_QL,log(PLE),log(60000.),STATUS)
            VERIFY_(STATUS)
            ! Fill undefs (600mb below the surface) with surface QV values L=LM
@@ -7692,19 +7698,10 @@ contains
            END WHERE
            CNV_FRACTION =MAX(0.0,MIN(1.0,(QL600-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
         else
-         if (CNV_FRACTION_MAX < 1.0) then
-          ! QV at 600mb
-           DO J=1, JM
-             DO I=1, IM
-               CNV_FRACTION(I,J) =MAX(0.0,MIN(1.0,(QV600(I,J)-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
-             END DO
-           END DO
-         else
           ! CAPE
            WHERE (CAPE .ne. MAPL_UNDEF)   
               CNV_FRACTION =MAX(0.0,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
            END WHERE
-         endif
         endif
       endif
 
@@ -8914,7 +8911,7 @@ contains
           end where
         end if
      ! Clean up clouds before microphysics
-        CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN )
+        CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW, QGRAUPEL )
      ! Clean up any negative specific humidity
         CALL FILLQ2ZERO2( Q1, MASS, FILLQ  )
         DTDT_macro=  (TEMP-DTDT_macro)/DT_MOIST
@@ -9484,15 +9481,6 @@ contains
      ! Cloud liquid & Ice tendencies (these exports are confusing, for now keep them zeros)
          REV_LS_X = REV_LS_X + REV_MC_X
          RSU_LS_X = RSU_LS_X + RSU_MC_X
-    !    EVAPC_X = ( EVAPC_X - RAD_QL ) / DT_MOIST
-    !    SUBLC_X = ( SUBLC_X - RAD_QI ) / DT_MOIST
-     ! Fill vapor/rain/snow/graupel state
-         Q1       = RAD_QV
-         QRAIN    = RAD_QR
-         QSNOW    = RAD_QS
-         QGRAUPEL = RAD_QG
-         if (associated(QRTOT)) QRTOT = QRAIN
-         if (associated(QSTOT)) QSTOT = QSNOW
      ! Redistribute cloud/liquid/ice species...
          CLCN = RAD_CF*     FQA
          CLLS = RAD_CF*(1.0-FQA)
@@ -9500,10 +9488,18 @@ contains
          QLLS = RAD_QL*(1.0-FQAl)
          QICN = RAD_QI*     FQAi
          QILS = RAD_QI*(1.0-FQAi)
+     ! Fill vapor/rain/snow/graupel state
+         Q1       = RAD_QV
+         QRAIN    = RAD_QR
+         QSNOW    = RAD_QS
+         QGRAUPEL = RAD_QG
      ! Clean up clouds after microphysics
-         CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN )
+         CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW, QGRAUPEL )
      ! Clean up any negative specific humidity
          CALL FILLQ2ZERO2( Q1, MASS, FILLQ  )
+     ! Fill rain/snow exports
+         if (associated(QRTOT)) QRTOT = QRAIN
+         if (associated(QSTOT)) QSTOT = QSNOW
      ! Convert back to PT
          TH1 = TEMP/PK
      ! Radiation Coupling
@@ -14142,7 +14138,7 @@ END SUBROUTINE Get_hemcoFlashrate
       real, dimension(IM,JM),    intent(in)    :: CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
       real                   :: fQi,dQil,DQmax, QLTOT, QITOT, FQA
       integer                :: i, j, k, n
-      integer, parameter     :: MaxIterations=1
+      integer, parameter     :: MaxIterations=5
       logical                :: converged
       real                   :: taufrz=450 ! timescale for freezing (seconds)
 
@@ -14254,8 +14250,26 @@ END SUBROUTINE Get_hemcoFlashrate
 
    end function LDRADIUS
 
-   subroutine FIX_UP_CLOUDS( TE, QV, QLLS, QILS, CLLS, QLCN, QICN, CLCN )
-      real, dimension(:,:,:), intent(inout) :: TE, QV, QLLS, QILS, CLLS, QLCN, QICN, CLCN 
+   subroutine FIX_UP_CLOUDS( TE, QV, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW, QGRAUPEL )
+      real, dimension(:,:,:), intent(inout) :: TE, QV, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW, QGRAUPEL 
+   ! Rain too small
+      where ( QRAIN < 1.E-5 )
+         QV   = QV + QRAIN
+         TE   = TE - (MAPL_ALHL/MAPL_CP)*QRAIN
+         QRAIN = 0.
+      end where
+   ! Snow too small
+      where ( QSNOW < 1.E-5 )
+         QV   = QV + QSNOW
+         TE   = TE - (MAPL_ALHS/MAPL_CP)*QSNOW
+         QSNOW = 0.
+      end where
+   ! Graupel too small
+      where ( QGRAUPEL < 1.E-5 )
+         QV   = QV + QGRAUPEL
+         TE   = TE - (MAPL_ALHS/MAPL_CP)*QGRAUPEL
+         QGRAUPEL = 0.
+      end where
    ! Clouds too small
       where (CLCN < 1.E-5)
          QV   = QV + QLCN + QICN
