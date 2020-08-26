@@ -565,7 +565,7 @@ contains
                          'DISCHRG', 'LWFLX', 'SHFLX', 'QFLUX',      &
                          'DRNIR'  , 'DFNIR',                        &
                          'SNOW', 'RAIN', 'FRESH', 'FSALT',          &
-                         'FHOCN', 'PENocean'],                      &
+                         'FHOCN', 'PEN_OCEAN'],                     &
           CHILD      = OGCM,                                        &
           RC=STATUS  )
      VERIFY_(STATUS)
@@ -1928,7 +1928,7 @@ contains
        VERIFY_(STATUS)
        call DO_A2O(GIM(OGCM),'FHOCN'  ,expSKIN,'FHOCN'  , RC=STATUS)
        VERIFY_(STATUS)
-       call DO_A2O(GIM(OGCM),'PENocean',expSKIN,'PEN_OCEAN', RC=STATUS)
+       call DO_A2O(GIM(OGCM),'PEN_OCEAN',expSKIN,'PEN_OCEAN', RC=STATUS)
        VERIFY_(STATUS)
 
        if(DO_OBIO/=0) then
