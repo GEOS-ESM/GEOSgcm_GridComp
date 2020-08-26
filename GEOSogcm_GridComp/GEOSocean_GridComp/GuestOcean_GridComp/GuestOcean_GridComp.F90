@@ -338,7 +338,7 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME         = 'PEN_OCEAN',                         &
+        SHORT_NAME         = 'PEN_OCN',                           &
         LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer',     &
         UNITS              = 'W m-2',                             &
         DIMS               = MAPL_DimsHorzOnly,                   &
@@ -522,7 +522,7 @@ contains
      VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                     &    
-          SHORT_NAME         = 'PEN_OCEAN',                         &    
+          SHORT_NAME         = 'PEN_OCN',                           &    
           LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer',&
           UNITS              = 'W m-2',                             &    
           DIMS               = MAPL_DimsHorzOnly,                   &    
@@ -608,7 +608,7 @@ contains
           [character(len=9) :: 'TAUX  ','TAUY  ',                   &
             'PENUVR','PENPAR','PENUVF','PENPAF', 'DRNIR', 'DFNIR',  &
             'DISCHARGE', 'LWFLX', 'SHFLX', 'QFLUX', 'RAIN', 'SNOW', &
-            'SFLX','SWHEAT', 'PEN_OCEAN'],                          &
+            'SFLX','SWHEAT', 'PEN_OCN'],                            &
             CHILD=OCN,                          RC=STATUS  )
        VERIFY_(STATUS)
     end if
@@ -894,7 +894,7 @@ contains
     real, pointer :: FHOCN(:,:)
     real, pointer :: FRESH(:,:)
     real, pointer :: FSALT(:,:)
-    real, pointer :: PEN_OCEAN(:,:)
+    real, pointer :: PEN_OCN(:,:)
 
 ! Pointers to Exports
 
@@ -917,7 +917,7 @@ contains
     real, pointer :: RAINe(:,:)
     real, pointer :: SNOWe(:,:)
     real, pointer :: SFLXe(:,:)
-    real, pointer :: PEN_OCEANE(:,:)
+    real, pointer :: PEN_OCNe(:,:)
 
 
 ! Pointers to imports of child
@@ -1113,7 +1113,7 @@ contains
           call MAPL_GetPointer(GIM(OCN), RAIN, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), SNOW, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PEN_OCEAN,'PEN_OCEAN',RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), PEN_OCN,'PEN_OCN',RC=STATUS); VERIFY_(STATUS)
        end if
 
        call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
@@ -1150,7 +1150,7 @@ contains
        call MAPL_GetPointer(EXPORT, RAINe, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SNOWe, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SFLXe, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, PEN_OCEANE, 'PEN_OCEAN'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PEN_OCNe,'PEN_OCN', RC=STATUS); VERIFY_(STATUS)
 
        if(associated(FROCEANe)) FROCEANe = FROCEAN
 
@@ -1184,7 +1184,7 @@ contains
           RAIN = (RAINi+FRESH) * WGHT
           SNOW = SNOWi * WGHT
           SFLX = FSALT * WGHT
-          PEN_OCEAN = PEN_OCEAN * WGHT
+          PEN_OCN = PEN_OCN * WGHT
 
 ! This stress forces the ocean, combined with sea ice bottom stress later
 !------------------------------------------------------------------------
@@ -1219,7 +1219,7 @@ contains
           if (associated(RAINe)) RAINe = RAIN
           if (associated(SNOWe)) SNOWe = SNOW
           if (associated(SFLXe)) SFLXe = SFLX
-          if (associated(PEN_OCEANE)) PEN_OCEANE = PEN_OCEAN
+          if (associated(PEN_OCNe)) PEN_OCNe = PEN_OCN
        end if !DO_DATASEA
 
 ! Loop the ocean model
@@ -1353,7 +1353,7 @@ contains
 
           where(wght>0.0)
              TS_FOUND=TS_FOUND+ &
-                      DT*(LWFLXi+(PENUVR+PENPAR+PENUVF+PENPAF+DRNIR+DFNIR - PEN_OCEAN)-SHFLXi-QFLUXi*MAPL_ALHL-MAPL_ALHF*SNOWi+FHOCN)/(OrphanDepth*MAPL_RHO_SEAWATER*MAPL_CAPWTR) ! explicit update in time
+                      DT*(LWFLXi+(PENUVR+PENPAR+PENUVF+PENPAF+DRNIR+DFNIR - PEN_OCN)-SHFLXi-QFLUXi*MAPL_ALHL-MAPL_ALHF*SNOWi+FHOCN)/(OrphanDepth*MAPL_RHO_SEAWATER*MAPL_CAPWTR) ! explicit update in time
              FRZMLTe = (Tfreeze - TS_FOUND) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*OrphanDepth)/DT
              TS_FOUND=max(TS_FOUND, Tfreeze)
           end where

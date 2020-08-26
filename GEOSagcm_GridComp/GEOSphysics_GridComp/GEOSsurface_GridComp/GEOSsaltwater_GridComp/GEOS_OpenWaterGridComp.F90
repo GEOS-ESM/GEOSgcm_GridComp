@@ -946,7 +946,7 @@ module GEOS_OpenwaterGridCompMod
     call MAPL_AddExportSpec(GC,                                    &
          LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer',   &
          UNITS              = 'W m-2',                             &
-         SHORT_NAME         = 'PEN_OCEAN',                         &
+         SHORT_NAME         = 'PEN_OCN',                           &
          DIMS               = MAPL_DimsTileOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
@@ -2741,7 +2741,7 @@ contains
    call MAPL_GetPointer(EXPORT,AODRNIR, 'AO_DRNIR',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,AODFNIR, 'AO_DFNIR',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FSURF  , 'FSURF'   ,    RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT,PENOCNe, 'PEN_OCEAN',   RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,PENOCNe, 'PEN_OCN' ,    RC=STATUS); VERIFY_(STATUS)
 
    call MAPL_GetPointer(EXPORT,Dwarm  , 'DWARM'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,Dcool  , 'DCOOL'   ,    RC=STATUS); VERIFY_(STATUS)
