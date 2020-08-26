@@ -788,6 +788,15 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC,                                  &
+         SHORT_NAME         = 'PENocean',                           &
+         LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer', &
+         UNITS              = 'W m-2',                           &
+         DIMS               = MAPL_DimsTileOnly,                     &
+         VLOCATION          = MAPL_VLocationNone,                &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
 !  !EXPORT STATE:
 
   call MAPL_AddExportSpec(GC,                            &
@@ -1489,6 +1498,7 @@ contains
     real, pointer, dimension(:) :: FRESH => null()
     real, pointer, dimension(:) :: FSALT => null()
     real, pointer, dimension(:) :: FHOCN => null()
+    real, pointer, dimension(:) :: PENocean => null()
 
 ! Pointers to ocn grid versions
 
@@ -1594,6 +1604,7 @@ contains
     real, pointer, dimension(:,:) :: FRESHO   => null()
     real, pointer, dimension(:,:) :: FSALTO   => null()
     real, pointer, dimension(:,:) :: FHOCNO   => null()
+    real, pointer, dimension(:,:) :: PENoceanO => null()
 
 ! Pointers to exports
 
@@ -1781,6 +1792,8 @@ contains
     call MAPL_GetPointer(IMPORT, FSALT,   'FSALT'  , RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, FHOCN,   'FHOCN'  , RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, PENocean,'PENocean',RC=STATUS)
     VERIFY_(STATUS)
 
 ! Verify that the saltwater ice variables are friendly to seaice
@@ -1999,6 +2012,8 @@ contains
    call MAPL_GetPointer(GIM(OCEAN), SNOWO, 'SNOW',  RC=STATUS)
    VERIFY_(STATUS)
    call MAPL_GetPointer(GIM(OCEAN), RAINO, 'RAIN',  RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(GIM(OCEAN), PENoceanO, 'PENocean',  RC=STATUS)
    VERIFY_(STATUS)
 
 ! Transform imports to the ocean grid
@@ -2275,6 +2290,8 @@ contains
     call MAPL_LocStreamTransform( ExchGrid, SNOWO,  SNOW, RC=STATUS) 
     VERIFY_(STATUS)
     call MAPL_LocStreamTransform( ExchGrid, RAINO,  RAIN, RC=STATUS) 
+    VERIFY_(STATUS)
+    call MAPL_LocStreamTransform( ExchGrid, PENoceanO,  PENocean, RC=STATUS) 
     VERIFY_(STATUS)
 
 ! Pointers to tile outputs

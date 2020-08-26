@@ -1088,6 +1088,9 @@ module GEOS_SaltwaterGridCompMod
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_DRNIR'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_DFNIR'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
 
+! and that penetrated below ocean model first layer
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'PEN_OCEAN' , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
+
 
 
 !EOS

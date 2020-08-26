@@ -943,6 +943,15 @@ module GEOS_OpenwaterGridCompMod
                                                        RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                    &
+         LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer',   &
+         UNITS              = 'W m-2',                             &
+         SHORT_NAME         = 'PEN_OCEAN',                         &
+         DIMS               = MAPL_DimsTileOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)
+
 !  !INTERNAL STATE:
 
      if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
@@ -2428,6 +2437,7 @@ contains
    real, pointer, dimension(:  )  :: AODRNIR => null()
    real, pointer, dimension(:  )  :: AODFNIR => null()
    real, pointer, dimension(:  )  :: FSURF   => null()
+   real, pointer, dimension(:  )  :: PENOCNe => null()
 
    real, pointer, dimension(:  )  :: DELTS  => null()
    real, pointer, dimension(:  )  :: DELQS  => null()
@@ -2731,7 +2741,7 @@ contains
    call MAPL_GetPointer(EXPORT,AODRNIR, 'AO_DRNIR',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,AODFNIR, 'AO_DFNIR',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FSURF  , 'FSURF'   ,    RC=STATUS); VERIFY_(STATUS)
-
+   call MAPL_GetPointer(EXPORT,PENOCNe, 'PEN_OCEAN',   RC=STATUS); VERIFY_(STATUS)
 
    call MAPL_GetPointer(EXPORT,Dwarm  , 'DWARM'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,Dcool  , 'DCOOL'   ,    RC=STATUS); VERIFY_(STATUS)
@@ -3044,7 +3054,7 @@ contains
       PEN_ocean =  exp(-KPAR*OGCM_top_thickness)
       PPR       =  (1.-ALBVRO)*DRPAR*PEN_ocean
       PPF       =  (1.-ALBVFO)*DFPAR*PEN_ocean
-      PEN_ocean =  PUR + PUF + PPR + PPF    ! total absorbed into water up to OGCM_top_thickness
+      PEN_ocean =  PUR + PUF + PPR + PPF    ! penetrated flux through OGCM_top_thickness
     else
       PEN_ocean = 0.0
     endif
@@ -3360,6 +3370,7 @@ contains
     if(associated(AODRNIR)) AODRNIR = (1.-ALBNRO)*DRNIR*FRWATER
     if(associated(AODFNIR)) AODFNIR = (1.-ALBNFO)*DFNIR*FRWATER
     if(associated(FSURF  )) FSURF   = SWN+LWDNSRF-(ALW+BLW*TS(:,WATER))-SHF-LHF
+    if(associated(PENOCNe)) PENOCNe = PEN_ocean * FRWATER
 
     if(associated(RAINOCN)) RAINOCN = PCU + PLS
     if(associated(HLWUP  )) HLWUP   = ALW*FR(:,WATER) 

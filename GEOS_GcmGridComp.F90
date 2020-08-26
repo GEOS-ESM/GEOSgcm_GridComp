@@ -562,11 +562,11 @@ contains
                          'HI     ','TI     ','SI     ' ,            &
                          'PENUVR ','PENUVF ','PENPAR ','PENPAF ',   &
                          'CO2SC  ','DUDP   ','DUWT   ','DUSD   ',   &
-                         'DISCHRG', 'LWFLX', 'SHFLX', 'QFLUX', &
-                         'DRNIR'  , 'DFNIR',                     &
-                         'SNOW', 'RAIN', 'FRESH', 'FSALT',    &
-                         'FHOCN'],                                 &
-          CHILD      = OGCM,           &
+                         'DISCHRG', 'LWFLX', 'SHFLX', 'QFLUX',      &
+                         'DRNIR'  , 'DFNIR',                        &
+                         'SNOW', 'RAIN', 'FRESH', 'FSALT',          &
+                         'FHOCN', 'PENocean'],                      &
+          CHILD      = OGCM,                                        &
           RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1227,10 +1227,10 @@ contains
         [ character(len=8) :: &
         'TAUXO    ', 'TAUYO    ','TAUXI    ', 'TAUYI    ', &
         'PENPAR   ', 'PENPAF   ','PENUVR   ', 'PENUVF   ', &
-        'OUSTAR3  ', 'PS       ', &
-        'AO_LWFLX', 'AO_SHFLX', 'AO_QFLUX', &
-        'AO_SNOW', 'AO_RAIN', 'AO_DRNIR', 'AO_DFNIR', &
-        'FRESH', 'FSALT','FHOCN'], &
+        'OUSTAR3  ', 'PS       ',                          &
+        'AO_LWFLX', 'AO_SHFLX', 'AO_QFLUX',                &
+        'AO_SNOW', 'AO_RAIN', 'AO_DRNIR', 'AO_DFNIR',      &
+        'FRESH', 'FSALT','FHOCN', 'PEN_OCEAN'],            &
         RC=STATUS)
    VERIFY_(STATUS)
 
@@ -1927,6 +1927,8 @@ contains
        call DO_A2O(GIM(OGCM),'FSALT'  ,expSKIN,'FSALT'  , RC=STATUS)
        VERIFY_(STATUS)
        call DO_A2O(GIM(OGCM),'FHOCN'  ,expSKIN,'FHOCN'  , RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O(GIM(OGCM),'PENocean',expSKIN,'PEN_OCEAN', RC=STATUS)
        VERIFY_(STATUS)
 
        if(DO_OBIO/=0) then

@@ -107,7 +107,7 @@ contains
 
     call MAPL_GetResource ( MAPL,       DO_DATASEA,     Label="USE_DATASEA:" ,       DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL,       OrphanDepth,    Label="ORPHAN_DEPTH:" ,       DEFAULT=10.0, RC=STATUS)
+    call MAPL_GetResource ( MAPL,       OrphanDepth,    Label="OGCM_TOP_LAYER:" ,    DEFAULT=10.0, RC=STATUS)
     VERIFY_(STATUS)
 
     if(DO_DATASEA/=0) then
@@ -337,6 +337,15 @@ contains
         RC=STATUS  )
      VERIFY_(STATUS)
 
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME         = 'PENocean',                          &
+        LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer',     &
+        UNITS              = 'W m-2',                             &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RC=STATUS  )
+     VERIFY_(STATUS)
+
     if (dual_ocean) then
        call MAPL_AddImportSpec(GC,                            &
          SHORT_NAME         = 'FRACICEd',                           &
@@ -512,6 +521,15 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                     &    
+          SHORT_NAME         = 'PENocean',                          &    
+          LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer',&
+          UNITS              = 'W m-2',                             &    
+          DIMS               = MAPL_DimsHorzOnly,                   &    
+          VLOCATION          = MAPL_VLocationNone,                  &    
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
 ! Exports of child
 
     call MAPL_AddExportSpec ( GC   ,                          &
@@ -589,7 +607,8 @@ contains
        call MAPL_TerminateImport    ( GC, SHORT_NAME= &
           [character(len=9) :: 'TAUX  ','TAUY  ', &
             'PENUVR','PENPAR','PENUVF','PENPAF', 'DRNIR', 'DFNIR', &
-            'DISCHARGE', 'LWFLX', 'SHFLX', 'QFLUX', 'RAIN', 'SNOW', 'SFLX','SWHEAT'], &
+            'DISCHARGE', 'LWFLX', 'SHFLX', 'QFLUX', 'RAIN', 'SNOW', &
+            'SFLX','SWHEAT', 'PENocean'], &
             CHILD=OCN,                          RC=STATUS  )
        VERIFY_(STATUS)
     end if
@@ -875,6 +894,7 @@ contains
     real, pointer :: FHOCN(:,:)
     real, pointer :: FRESH(:,:)
     real, pointer :: FSALT(:,:)
+    real, pointer :: PENocean(:,:)
 
 ! Pointers to Exports
 
@@ -897,6 +917,7 @@ contains
     real, pointer :: RAINe(:,:)
     real, pointer :: SNOWe(:,:)
     real, pointer :: SFLXe(:,:)
+    real, pointer :: PENoceanE(:,:)
 
 
 ! Pointers to imports of child
@@ -943,7 +964,7 @@ contains
     real              :: TAU_SST_UNDER_ICE
     real, pointer     :: LONS  (:,:)
     real, pointer     :: LATS  (:,:)
-    real, parameter   :: OrphanSalinity=34.0
+    real, parameter   :: OrphanSalinity=34.0  ! SA: ought to revisit this in context of OGCM rewrite. In reality one should update S as well.
     real              :: Tfreeze
 
     integer :: ID
@@ -1092,6 +1113,7 @@ contains
           call MAPL_GetPointer(GIM(OCN), RAIN, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), SNOW, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), PENocean,'PENocean',RC=STATUS); VERIFY_(STATUS)
        end if
 
        call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
@@ -1128,6 +1150,7 @@ contains
        call MAPL_GetPointer(EXPORT, RAINe, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SNOWe, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SFLXe, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PENoceanE, 'PENocean'  , RC=STATUS); VERIFY_(STATUS)
 
        if(associated(FROCEANe)) FROCEANe = FROCEAN
 
@@ -1161,6 +1184,7 @@ contains
           RAIN = (RAINi+FRESH) * WGHT
           SNOW = SNOWi * WGHT
           SFLX = FSALT * WGHT
+          PENocean = PENocean * WGHT
 
 ! This stress forces the ocean, combined with sea ice bottom stress later
 !------------------------------------------------------------------------
@@ -1195,6 +1219,7 @@ contains
           if (associated(RAINe)) RAINe = RAIN
           if (associated(SNOWe)) SNOWe = SNOW
           if (associated(SFLXe)) SFLXe = SFLX
+          if (associated(PENoceanE)) PENoceanE = PENocean
        end if !DO_DATASEA
 
 ! Loop the ocean model
@@ -1327,8 +1352,8 @@ contains
           Tfreeze=MAPL_TICE-0.054*OrphanSalinity
 
           where(wght>0.0)
-             TS_FOUND=TS_FOUND+ \
-             DT*(LWFLXi+HEATi(:,:,1)-SHFLXi-QFLUXi*MAPL_ALHL-MAPL_ALHF*SNOWi+FHOCN)/(OrphanDepth*MAPL_RHO_SEAWATER*MAPL_CAPWTR)
+             TS_FOUND=TS_FOUND+ &
+                      DT*(LWFLXi+(PENUVR+PENPAR+PENUVF+PENPAF+DRNIR+DFNIR - PENocean)-SHFLXi-QFLUXi*MAPL_ALHL-MAPL_ALHF*SNOWi+FHOCN)/(OrphanDepth*MAPL_RHO_SEAWATER*MAPL_CAPWTR) ! explicit update in time
              FRZMLTe = (Tfreeze - TS_FOUND) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*OrphanDepth)/DT
              TS_FOUND=max(TS_FOUND, Tfreeze)
           end where
