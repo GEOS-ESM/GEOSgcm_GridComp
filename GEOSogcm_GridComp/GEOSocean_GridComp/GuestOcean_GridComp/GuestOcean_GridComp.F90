@@ -608,7 +608,7 @@ contains
           [character(len=9) :: 'TAUX  ','TAUY  ',                   &
             'PENUVR','PENPAR','PENUVF','PENPAF', 'DRNIR', 'DFNIR',  &
             'DISCHARGE', 'LWFLX', 'SHFLX', 'QFLUX', 'RAIN', 'SNOW', &
-            'SFLX','SWHEAT', 'PEN_OCN'],                            &
+            'SFLX','SWHEAT'],                                       &  ! do not terminate import of PEN_OCN since it is not used in the `plug'
             CHILD=OCN,                          RC=STATUS  )
        VERIFY_(STATUS)
     end if
@@ -1112,8 +1112,7 @@ contains
           call MAPL_GetPointer(GIM(OCN), QFLUX, 'QFLUX'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), RAIN, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), SNOW, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PEN_OCN,'PEN_OCN',RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); VERIFY_(STATUS) ! and do not add import of PEN_OCN here since it is not used in the `plug'
        end if
 
        call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
