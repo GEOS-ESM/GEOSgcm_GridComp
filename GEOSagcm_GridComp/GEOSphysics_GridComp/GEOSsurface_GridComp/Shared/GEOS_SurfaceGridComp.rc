@@ -69,7 +69,7 @@
 
 # ---- Compute runoff from large-scale and convective storms
 #	
-#   FWETC and FWETL are the areal fractions of canopy on to which convective and precipitation 
+#   FWETC and FWETL are the areal fractions of canopy on to which convective and "large-scale" precipitation 
 #   falls, respectively.  These parameter values and the functional form to compute surface runoff
 #   are set in conjunction with the logical resource parameter USE_FWET_FOR_RUNOFF as follows:
 #
