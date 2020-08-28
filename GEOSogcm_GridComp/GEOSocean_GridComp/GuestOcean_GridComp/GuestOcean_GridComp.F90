@@ -818,13 +818,6 @@ contains
              call MAPL_GetPointer(GEX(OCN), MASK, 'MOM_2D_MASK', __RC__)
        end select
        if(associated(MASKO)) MASKO = MASK
-
-! The following sets the depth in orphan points. This is needed to calculate SWHEAT in these points.
-! Unfortunately, frocean is zero at this point so we set OrphanDepth in all MOM land points.
-       call MAPL_GetPointer(GEX(OCN), DH, 'DH', __RC__)
-       where(MASK == 0.0)
-          DH(:,:,1) = OrphanDepth
-       end where
     end if
  
     call MAPL_TimerOff(STATE,"TOTAL"     )
