@@ -1185,7 +1185,6 @@ contains
           RAIN = (RAINi+FRESH) * WGHT
           SNOW = SNOWi * WGHT
           SFLX = FSALT * WGHT
-          PEN_OCN = PEN_OCN * WGHT
 
 ! This stress forces the ocean, combined with sea ice bottom stress later
 !------------------------------------------------------------------------
