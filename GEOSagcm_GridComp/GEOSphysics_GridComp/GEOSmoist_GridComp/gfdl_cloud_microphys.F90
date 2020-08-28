@@ -1265,7 +1265,8 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! with subgrid variability
         ! -----------------------------------------------------------------------
 
-        qadum = max(qa,1e-4)
+       ! Use In-Cloud condensate
+        qadum = max(qa,1e-5)
         ql = ql/qadum
         qi = qi/qadum
         
@@ -1298,15 +1299,15 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
                     sink = min(ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
-                    qr (k) = qr (k) + sink*qadum(k)
+                    qr (k) = qr (k) + sink*qa(k)
                     qa (k ) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,1e-8 ) )
                 endif
             endif
         enddo
-        ql = ql*qadum
-        qi = qi*qadum
+       ! Revert In-Cloud condensate
+        ql = ql*qa
+        qi = qi*qa
     endif
-!    qa = min( 1.0, max( 0.0, qa ) )    
 
 end subroutine warm_rain
 
@@ -3309,16 +3310,9 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
             endif
         enddo
 #else
-
-#define DENG_MACE
-#ifdef DENG_MACE
         ! -----------------------------------------------------------------------
         ! use deng and mace (2008, grl), which gives smaller fall speed than hd90 formula
         ! -----------------------------------------------------------------------
-      ! vi0 = ( lsc_icefall*(1.0-cnv_fraction) + anv_icefall*(cnv_fraction) )
-      ! do k = ktop, kbot
-      !     pl0 = (MAX(0.25,MIN(1.0,pl(k)/45000.0))-0.25)/(0.75) - 0.5
-      !     vi1 = 0.01 * ((vi_fac-vi0)*(0.5*SIN(pi*pl0)+0.5) + vi0)
         vi1 = 0.01 * ( lsc_icefall*(1.0-cnv_fraction) + anv_icefall*(cnv_fraction) )
         do k = ktop, kbot
             if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
@@ -3338,30 +3332,6 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 vti (k) = min (vi_max, max (vf_min, vti (k)))
             endif
         enddo
-#else
-        vi1 = 0.01 * vi_fac
-        do k = ktop, kbot
-            if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
-                vti (k) = vf_min
-            else
-                tc (k) = tk (k) - tice
-               ! -----------------------------------------------------------------------
-               ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in 
-               !                               midlatitude cirrus: Results from SPartICus'
-               ! -----------------------------------------------------------------------
-                IWC    = qi (k) * den (k) * 1.e6 ! Units are mg/m3
-                viCNV  = MAX(1.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC) + 68.85))
-                viLSC  = MAX(1.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC) + 82.35))
-               ! Combine 
-                vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
-               ! Units from cm/s to m/s
-                vti (k) = vi1 * vti (k)
-               ! Limits
-                vti (k) = min (vi_max, max (vf_min, vti (k)))
-            endif
-        enddo
-#endif
-
 #endif
     endif
     

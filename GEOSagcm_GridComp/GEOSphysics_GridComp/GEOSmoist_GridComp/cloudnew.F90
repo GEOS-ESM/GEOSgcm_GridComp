@@ -180,10 +180,8 @@ module cloudnew
    real,    constant :: ANV_SDQV3
    real,    constant :: ANV_SDQVT1
    real,    constant :: ANV_TO_LS
-   real,    constant :: N_WARM
-   real,    constant :: N_ICE
-   real,    constant :: N_ANVIL
-   real,    constant :: N_PBL
+   real,    constant :: CCN_OCEAN
+   real,    constant :: CCN_LAND
    integer, constant :: DISABLE_RAD
    integer, constant :: ICE_SETTLE
    real,    constant :: ANV_ICEFALL_C
@@ -307,10 +305,8 @@ module cloudnew
    real    :: ANV_SDQV3
    real    :: ANV_SDQVT1
    real    :: ANV_TO_LS
-   real    :: N_WARM
-   real    :: N_ICE
-   real    :: N_ANVIL
-   real    :: N_PBL
+   real    :: CCN_OCEAN
+   real    :: CCN_LAND
    integer :: DISABLE_RAD
    integer :: ICE_SETTLE
    real    :: ANV_ICEFALL_C
@@ -693,10 +689,8 @@ contains
          ANV_SDQV3     = CLDPARAMS%ANV_SUND_COLD
          ANV_SDQVT1    = CLDPARAMS%ANV_SUND_TEMP1
          ANV_TO_LS     = CLDPARAMS%ANV_TO_LS_TIME
-         N_WARM        = CLDPARAMS%NCCN_WARM
-         N_ICE         = CLDPARAMS%NCCN_ICE
-         N_ANVIL       = CLDPARAMS%NCCN_ANVIL
-         N_PBL         = CLDPARAMS%NCCN_PBL
+         CCN_OCEAN     = CLDPARAMS%CCN_OCEAN
+         CCN_LAND      = CLDPARAMS%CCN_LAND
          DISABLE_RAD   = INT( CLDPARAMS%DISABLE_RAD )
          ICE_SETTLE    = NINT( CLDPARAMS%ICE_SETTLE )
          ANV_ICEFALL_C = CLDPARAMS%ANV_ICEFALL
@@ -1605,7 +1599,7 @@ contains
                      RAD_QV_dev(I,K), RAD_QL_dev(I,K), RAD_QI_dev(I,K), RAD_QR_dev(I,K), RAD_QS_dev(I,K), RAD_CLDFRC_dev(I,K), & 
                      CLDREFFL_dev(I,K), CLDREFFI_dev(I,K), &
                      FRLAND_dev(I), CNV_FRACTION_dev(I), &
-                     FR_AN_WAT, FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI, RHX_DEV(I,K) )
+                     FR_AN_WAT, FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI, CCN_OCEAN, CCN_LAND )
             END IF
 
             QRN_CU_dev(I,K) = QRN_CU_1D
@@ -2780,7 +2774,7 @@ contains
          QCm=0.
       end if
 
-      RADIUS = LDRADIUS4(PL,TE,QCm,NN,RHX,NL,NI,1)
+      RADIUS = LDRADIUS4(PL,TE,QCm,NN,NL,NI,1)
       
       if ( (RHx < 1.0 ) .and.(RADIUS > 0.0) ) then
          TEFF   =   (1.0 - RHx) / ((K1+K2)*RADIUS**2)  ! / (1.00 - RHx)
@@ -2878,7 +2872,7 @@ contains
          QCm=0.
       end if
 
-      RADIUS = LDRADIUS4(PL,TE,QCm,NN,RHX,NL,NI,2)
+      RADIUS = LDRADIUS4(PL,TE,QCm,NN,NL,NI,2)
       
       if ( (RHx < RHCR ) .and.(RADIUS > 0.0) ) then
          TEFF   =   ( RHCR - RHx) / ((K1+K2)*RADIUS**2)  ! / (1.00 - RHx)
@@ -3745,7 +3739,7 @@ contains
 
 
    end function LDRADIUS3
-   function LDRADIUS4(PL,TE,QC,NN,RHX,NNL,NNI,ITYPE) RESULT(RADIUS)
+   function LDRADIUS4(PL,TE,QC,NN,NNL,NNI,ITYPE) RESULT(RADIUS)
    
        real, parameter :: betai     = -2.262e+3
        real, parameter :: gamai     =  5.113e+6
@@ -3761,7 +3755,7 @@ contains
        real, parameter :: smnum = 1.e-1            !
        real, parameter :: rhminh= 0.80              ! minimum rh for high stable clouds      
        
-       REAL   , INTENT(IN) :: TE,PL,NN,QC,RHX,NNL,NNI
+       REAL   , INTENT(IN) :: TE,PL,NN,QC,NNL,NNI
        INTEGER, INTENT(IN) :: ITYPE
        REAL  :: RADIUS
        INTEGER, PARAMETER  :: CLOUD=1, ICE=2
@@ -3801,7 +3795,7 @@ contains
   
        ELSEIF(ITYPE == ICE) THEN
 
-        IF (adjustl(CLDMICRO)=="GFDL") THEN
+        IF (adjustl(CLDMICRO)=="SKIPFORNOW") THEN
 
          RHO = 100.*PL / (MAPL_RGAS*TE )
          !- ice water content
@@ -3832,18 +3826,17 @@ contains
         ELSE ! CLDMICRO =1MOMENT or GFDL
 
             !------ice cloud effective radius ----- [klaus wyser, 1998]
-            !- air density (kg/m^3)
             RHO = 100.*PL / (MAPL_RGAS*TE )
             !- ice water content
-            iwl = RHO*QC* 1.e+3  !g/m3
-            if(iwl<1.0e-6 .or. TE>273.0) then
-             RADIUS = 5.0*1.e-6
+            WC = RHO*QC  !kg/m3
+            if(TE>273.15) then
+             BB     = -2.
             else
-             BB     = -2. + log10(iwl/50.)*(1.e-3*(273.15-max(210.15,TE))**1.5)
-             RADIUS =377.4 + 203.3 * bb+ 37.91 * bb **2 + 2.3696 * bb **3
-             RADIUS =RADIUS * 1.e-6 !- convert to meter
-             !print*,"bb=",temp,micro_g(ngrid)%rei(k,i,j),bb,iwl(k,i,j);call flush(6)
+             BB     = -2. + log10(1.e3*WC/50.)*(1.e-3*(273.15-TE)**1.5)
             endif
+            BB     = MIN((MAX(BB,-6.)),-2.)
+            RADIUS =377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
+            RADIUS =RADIUS * 1.e-6 !- convert to meter
 
         ENDIF ! CLDMICRO
 
@@ -4059,7 +4052,7 @@ contains
          FRLAND, CNV_FRACTION, FR_AN_WAT, &
          FAC_RL, MIN_RL, MAX_RL, &
          FAC_RI, MIN_RI, MAX_RI, &
-	 RHX)
+         CCN_O, CCN_L)
 
       real, intent(in ) :: TE
       real, intent(in ) :: PL
@@ -4068,7 +4061,7 @@ contains
       real, intent(in ) :: NL,NI
       real, intent(out) :: RAD_QV,RAD_QL,RAD_QI,RAD_QR,RAD_QS,RAD_CF,RAD_RL,RAD_RI
 
-      real, intent(in )  :: FRLAND, CNV_FRACTION, RHX
+      real, intent(in )  :: FRLAND, CNV_FRACTION, CCN_O, CCN_L
       real, intent(in )  :: FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI
       integer, intent(in) :: FR_AN_WAT
       real :: ALPH, SS, AFx
@@ -4131,26 +4124,21 @@ contains
       RAD_QS = MIN( RAD_QS, 0.01 )
 
      ! Number Concentration Assumptions
-      IF (adjustl(CLDMICRO)=="GFDL") THEN
-        NN_LAND  = 300.0e6
-        NN_OCEAN = 100.0e6
-      ELSE
-        NN_LAND  = 150.0e6
-        NN_OCEAN =  30.0e6
-      ENDIF
+      NN_LAND  = CCN_L*1.0e6
+      NN_OCEAN = CCN_O*1.0e6
      !          Over Land            Over Ocean
       NN = FRLAND*NN_LAND + (1.0-FRLAND)*NN_OCEAN
 
      ! LIQUID RADII
       !-BRAMS formulation     
-      RAD_RL = LDRADIUS4(PL,TE,RAD_QL,NN,RHX,NL,NI,1)
+      RAD_RL = LDRADIUS4(PL,TE,RAD_QL,NN,NL,NI,1)
      ! apply limits
       RAD_RL = RAD_RL*FAC_RL
       RAD_RL = MAX( MIN_RL, MIN(RAD_RL, MAX_RL) )
 
     ! ICE RADII
      !-BRAMS formulation  
-      RAD_RI = LDRADIUS4(PL,TE,RAD_QI,NN,RHX,NL,NI,2)
+      RAD_RI = LDRADIUS4(PL,TE,RAD_QI,NN,NL,NI,2)
     ! apply limits
       RAD_RI = RAD_RI*FAC_RI
       RAD_RI = MAX( MIN_RI, MIN(RAD_RI, MAX_RI) )
