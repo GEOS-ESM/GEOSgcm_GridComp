@@ -3293,46 +3293,27 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
     if (const_vi) then
         vti (:) = vi_fac
     else
-!#define GFDL_ICE_FALL
-#ifdef GFDL_ICE_FALL
-        vi0 = ( lsc_icefall*(1.0-cnv_fraction) + anv_icefall*(cnv_fraction) )
-        pl0 = (    102000.0*(1.0-cnv_fraction) +     60000.0*(cnv_fraction) )
+        vi1 = 0.01 * vi_fac
         do k = ktop, kbot
-            vi1 = 0.01 * vi_fac * MAX(vi0,MIN(vi0,pl(k)/pl0)**3.0)
             if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
                 vti (k) = vf_min
             else
-                ! tc [deg C]  and  qi*den [kg/m3]
                 tc (k) = tk (k) - tice
-                vti (k) = (3. + log10 (qi (k) * den (k))) * (tc (k) * (aa * tc (k) + bb) + cc) + dd * tc (k) + ee
-                vti (k) = vi1 * exp (log_10 * vti (k))
-                vti (k) = min (vi_max, max (vf_min, vti (k)))
-            endif
-        enddo
-#else
-        ! -----------------------------------------------------------------------
-        ! use deng and mace (2008, grl), which gives smaller fall speed than hd90 formula
-        ! -----------------------------------------------------------------------
-        vi1 = 0.01 * vi_fac * ( lsc_icefall*(1.0-cnv_fraction) + anv_icefall*(cnv_fraction) )
-        do k = ktop, kbot
-            if (qi (k) < thi) then ! this is needed as the fall - speed maybe problematic for small qi
-                vti (k) = vf_min
-            else
-                tc (k) = tk (k) - tice ! deg C
-                IWC    = qi (k) * den (k) * 1.e3 ! g/m3
-               ! Tropical (TWP) Convective anvil+cirrus
-                viCNV   = 10.0**(log10(IWC) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
-               ! Large-scale (SGP) cirrus
-                viLSC   = 10.0**(log10(IWC) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
+               ! -----------------------------------------------------------------------
+               ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in 
+               !                               midlatitude cirrus: Results from SPartICus'
+               ! -----------------------------------------------------------------------
+                IWC    = qi (k) * den (k) * 1.e6 ! Units are mg/m3
+                viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC) + 68.85))
+                viLSC  = MAX(10.0,lsc_icefall*(1.411*tc(k) + 11.71*log10(IWC) + 82.35))
                ! Combine 
                 vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
-               ! Units
+               ! Units from cm/s to m/s
                 vti (k) = vi1 * vti (k)
                ! Limits
                 vti (k) = min (vi_max, max (vf_min, vti (k)))
             endif
         enddo
-#endif
     endif
     
     ! -----------------------------------------------------------------------

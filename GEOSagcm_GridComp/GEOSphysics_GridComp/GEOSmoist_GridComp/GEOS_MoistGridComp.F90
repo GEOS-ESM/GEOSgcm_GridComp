@@ -25,7 +25,8 @@ module GEOS_MoistGridCompMod
   use gfdl2_cloud_microphys_mod
 
 #ifndef _CUDA
-  use CLOUDNEW, only: PROGNO_CLOUD, ICE_FRACTION, T_CLOUD_CTL, pdfcondensate, pdffrac, RADCOUPLE
+  use CLOUDNEW, only: PROGNO_CLOUD, ICE_FRACTION, T_CLOUD_CTL, pdfcondensate, pdffrac, RADCOUPLE, &
+                      hystpdf, hystpdf_new
 #else
   use CLOUDNEW, only: &
        ! Subroutines
@@ -5131,8 +5132,8 @@ contains
           call MAPL_GetResource(MAPL, SATUR_CALC      , 'SATUR_CALC:'       ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, BC_METH         , 'BC_METH:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, USE_REBCB       , 'USE_REBCB:'        ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_MID         , 'TAU_MID:'          ,default= 900.,  RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_DEEP        , 'TAU_DEEP:'         ,default= 1800., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_MID         , 'TAU_MID:'          ,default= 1800., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_DEEP        , 'TAU_DEEP:'         ,default= 5400., RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, AUTOCONV        , 'AUTOCONV:'         ,default= 3,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C0_DEEP         , 'C0_DEEP:'          ,default= 3.e-3, RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C0_MID          , 'C0_MID:'	    ,default= 3.e-3, RC=STATUS );VERIFY_(STATUS)
@@ -8843,6 +8844,58 @@ contains
           QLCN = QLCN +   QLDET_SC*iMASS*DT_MOIST
           QICN = QICN +   QIDET_SC*iMASS*DT_MOIST
 
+#define HYSTPDF
+#ifdef HYSTPDF
+          do K=1,LM
+            do J=1,JM
+              do I=1,IM
+                  turnrhcrit = MIN( CLDPARAMS%TURNRHCRIT , CLDPARAMS%TURNRHCRIT-(1020-CNV_PLE(i,j,LM)) )
+                  alpha = 1.0
+                  if (PLO(i,j,k) .le. turnrhcrit) then
+                     alpha = CLDPARAMS%MINRHCRIT
+                  else
+                     alpha = CLDPARAMS%MINRHCRIT + (CLDPARAMS%MAXRHCRIT-CLDPARAMS%MINRHCRIT)/(19.) * &
+                         ((atan( (2.*(PLO(i,j,k)-turnrhcrit)/( CNV_PLE(i,j,LM)-turnrhcrit)-1.) * &
+                         tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
+                  endif
+                  alpha = 1.0 - min(alpha,1.)
+                  IF(USE_AEROSOL_NN) THEN
+                   call hystpdf_new( &
+                      DT_MOIST    , &
+                      ALPHA       , &
+                      INT(CLDPARAMS%PDFSHAPE), &
+                      PLO(I,J,K)  , &
+                      Q1(I,J,K)   , &
+                      QLLS(I,J,K) , &
+                      QLCN(I,J,K) , &
+                      QILS(I,J,K) , &
+                      QICN(I,J,K) , &
+                      TEMP(I,J,K) , &
+                      CLLS(I,J,K) , &
+                      CLCN(I,J,K) , &
+                      NACTL(I,J,K),  &
+                      NACTI(I,J,K),  &
+                      CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
+                  ELSE
+                   call hystpdf( &
+                      DT_MOIST    , &
+                      ALPHA       , &
+                      INT(CLDPARAMS%PDFSHAPE), &
+                      PLO(I,J,K)  , &
+                      Q1(I,J,K)   , &
+                      QLLS(I,J,K) , &
+                      QLCN(I,J,K) , &
+                      QILS(I,J,K) , &
+                      QICN(I,J,K) , &
+                      TEMP(I,J,K) , &
+                      CLLS(I,J,K) , &
+                      CLCN(I,J,K) , &
+                      CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
+                  ENDIF
+              end do ! IM loop
+            end do ! JM loop
+          end do ! LM loop
+#else
           CLCN = max(min(CLCN,1.0),0.0)
 
           do K=1,LM
@@ -8863,7 +8916,7 @@ contains
                   alpha = 1.0 - min(alpha,1.)
 
                   QT  = Q1(i,j,k) + (QLLS(i,j,k)+QILS(i,j,k))/(1.-CLCN(i,j,k))   ! QT in non-convective area
-                  QCn = (QLLS(i,j,k)+QILS(i,j,k))/(1.-CLCN(i,j,k))
+                  QCn =             (QLLS(i,j,k)+QILS(i,j,k))/(1.-CLCN(i,j,k))
 
                   do n = 1,10
 
@@ -8906,6 +8959,7 @@ contains
               end do ! IM loop
             end do ! JM loop
           end do ! LM loop
+#endif
         
         endif
        ! add ShallowCu rain/snow tendencies

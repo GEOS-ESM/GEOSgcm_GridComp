@@ -34,6 +34,7 @@ module cloudnew
    PUBLIC pdffrac
    PUBLIC pdfcondensate
    PUBLIC RADCOUPLE
+   PUBLIC hystpdf, hystpdf_new
 #endif
 
    type T_CLOUD_CTL
@@ -3815,12 +3816,7 @@ contains
             !--Mean volume and effective radius following Lohmann&Karcher (2002)
             !-- qice is the detrained ice water mixing ratio (kg/kg)
             !-- NNI  !#/m^3	 
-            !-- RIV in micrometers
-            RIV  = 1.E+6*((3.*WC)/(4.*MAPL_PI*densic*NNI))**0.33333  
-            RIV  = MAX(RIV, 8.22)
-            RADIUS= ((((RIV**3.-betai)**2.-gamai))/deltai)**0.33333
-            !- convert to meter
-            RADIUS = RADIUS*1.E-6
+            RADIUS  = ((3.*WC)/(4.*MAPL_PI*densic*MAX(NNI,1.e-8)))**0.33333  
          ENDIF
   
         ELSE ! CLDMICRO =1MOMENT or GFDL
