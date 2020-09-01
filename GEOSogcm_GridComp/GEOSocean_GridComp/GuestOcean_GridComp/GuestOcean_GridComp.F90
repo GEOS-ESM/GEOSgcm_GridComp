@@ -1019,23 +1019,20 @@ contains
     call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
     VERIFY_(status)
 
-    call MAPL_GetResource(state,ReplayMode,  'REPLAY_MODE:',  default="NoReplay", RC=STATUS )
-    if (trim(replayMode)=="Regular" ) then
-       if (myTime > EndTime) then
-          call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_REVERSE,rc=status)
-          VERIFY_(status)
-          do
-            call ESMF_ClockAdvance(PrivateState%Clock,rc=status)
-            VERIFY_(status)
-            call ESMF_ClockGet(PrivateState%Clock,currTime=ct,rc=status)
-            VERIFY_(status)
-            if (ct==endTime) exit
-          enddo
-          call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_FORWARD,rc=status)
-          VERIFY_(status)
-          call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
-          VERIFY_(status)
-       end if
+    if (myTime > EndTime) then
+       call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_REVERSE,rc=status)
+       VERIFY_(status)
+       do
+         call ESMF_ClockAdvance(PrivateState%Clock,rc=status)
+         VERIFY_(status)
+         call ESMF_ClockGet(PrivateState%Clock,currTime=ct,rc=status)
+         VERIFY_(status)
+         if (ct==endTime) exit
+       enddo
+       call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_FORWARD,rc=status)
+       VERIFY_(status)
+       call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
+       VERIFY_(status)
     end if
 
     if( MyTime <= EndTime ) then ! Time to run
