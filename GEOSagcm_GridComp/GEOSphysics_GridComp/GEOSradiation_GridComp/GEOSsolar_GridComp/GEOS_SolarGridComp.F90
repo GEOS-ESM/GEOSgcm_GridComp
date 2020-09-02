@@ -578,6 +578,17 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC,                                   &
+       LONG_NAME  = 'aerosols_from_GOCARTng',                     &
+       UNITS      = 'kg kg-1',                                    &
+       SHORT_NAME = 'AERO2G_RAD',                                 &
+       DIMS       = MAPL_DimsHorzVert,                            &
+       VLOCATION  = MAPL_VLocationCenter,                         &
+       DATATYPE   = MAPL_StateItem,                               &
+       RESTART    = MAPL_RestartSkip,                             &
+                                                       __RC__  )
+
+
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo_for_visible_beam',                       &
        UNITS      = '1',                                                     &
@@ -1616,6 +1627,14 @@ contains
     real, allocatable, dimension(:,:,:,:):: AEROSOL_SSA
     real, allocatable, dimension(:,:,:,:):: AEROSOL_ASY
 
+! AERO2G_RAD state varaibles
+! ---------------------------
+   type (ESMF_State)                    :: AERO2G
+   real, allocatable, dimension(:,:,:,:):: AEROSOL2G_EXT
+   real, allocatable, dimension(:,:,:,:):: AEROSOL2G_SSA
+   real, allocatable, dimension(:,:,:,:):: AEROSOL2G_ASY
+
+
     integer            :: band
     logical            :: implements_aerosol_optics
     logical            :: USE_RRTMGP, USE_RRTMGP_IRRAD
@@ -2028,6 +2047,10 @@ contains
            AEROSOL_ASY = 0.0
 
            ! compute aerosol optics at all solar bands
+
+if (mapl_am_i_root()) print*,'GOCART NUM_BANDS_SOLAR = ',NUM_BANDS_SOLAR
+if (mapl_am_i_root()) print*,'BANDS_SOLAR_OFFSET     = ',BANDS_SOLAR_OFFSET
+
            SOLAR_BANDS: do band = 1, NUM_BANDS_SOLAR
                call ESMF_AttributeSet(AERO, name='band_for_aerosol_optics', value=(BANDS_SOLAR_OFFSET+band), RC=STATUS)
                VERIFY_(STATUS)
@@ -2078,6 +2101,144 @@ contains
            end do SOLAR_BANDS
 
        end if RADIATIVELY_ACTIVE_AEROSOLS
+
+! BEGIN GOCARTng AERO2G callback
+! ================================================================
+
+       call ESMF_StateGet(IMPORT, 'AERO2G_RAD', AERO2G, RC=STATUS)
+       VERIFY_(STATUS)
+
+!   call ESMF_AttributeGet (AERO2G, name='active_aerosol_instances', itemCount=i, __RC__)
+!   allocate (AEROlist(i), __STAT__)
+!   call ESMF_AttributeGet (AERO2G, name='active_aerosol_instances', valueList=AEROlist, __RC__)
+
+!   if (mapl_am_i_root()) print*,'SOLAR AEROlist = ', AEROlist
+
+
+           ! set RH for aerosol optics
+           call ESMF_AttributeGet(AERO2G, name='relative_humidity_for_aerosol_optics', value=AS_FIELD_NAME, RC=STATUS)
+           VERIFY_(STATUS)
+
+           if (AS_FIELD_NAME /= '') then
+               call MAPL_GetPointer(IMPORT, AS_PTR_PLE, 'PLE',  RC=STATUS)
+               VERIFY_(STATUS)
+
+               call MAPL_GetPointer(IMPORT, AS_PTR_Q,   'QV',   RC=STATUS)
+               VERIFY_(STATUS)
+
+               call MAPL_GetPointer(IMPORT, AS_PTR_T,   'T',    RC=STATUS)
+               VERIFY_(STATUS)
+
+               allocate(AS_ARR_RH(IM,JM,LM), AS_ARR_PL(IM,JM,LM), stat=STATUS)
+               VERIFY_(STATUS)
+
+               AS_ARR_PL = 0.5*(AS_PTR_PLE(:,:,1:LM) + AS_PTR_PLE(:,:,0:LM-1))
+
+               AS_ARR_RH = AS_PTR_Q / MAPL_EQSAT(AS_PTR_T, PL=AS_ARR_PL)
+
+               call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME), RC=STATUS)
+               VERIFY_(STATUS)
+
+               AS_PTR_3D = AS_ARR_RH
+
+               deallocate(AS_ARR_RH, AS_ARR_PL, stat=STATUS)
+               VERIFY_(STATUS)
+           end if
+
+           ! set PLE for aerosol optics
+           call ESMF_AttributeGet(AERO2G, name='air_pressure_for_aerosol_optics', value=AS_FIELD_NAME, RC=STATUS)
+           VERIFY_(STATUS)
+
+           if (AS_FIELD_NAME /= '') then
+               call MAPL_GetPointer(IMPORT, AS_PTR_PLE, 'PLE',  RC=STATUS)
+               VERIFY_(STATUS)
+
+               call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME), RC=STATUS)
+               VERIFY_(STATUS)
+
+               AS_PTR_3D = AS_PTR_PLE
+           end if
+
+           ! allocate memory for total aerosol ext, ssa and asy at all solar bands
+           allocate(AEROSOL2G_EXT(IM,JM,LM,NUM_BANDS_SOLAR),  &
+                    AEROSOL2G_SSA(IM,JM,LM,NUM_BANDS_SOLAR),  &
+                    AEROSOL2G_ASY(IM,JM,LM,NUM_BANDS_SOLAR),  stat=STATUS)
+           VERIFY_(STATUS)
+
+           AEROSOL2G_EXT = 0.0
+           AEROSOL2G_SSA = 0.0
+           AEROSOL2G_ASY = 0.0
+
+           ! compute aerosol optics at all solar bands
+
+           do band = 1, NUM_BANDS_SOLAR
+               call ESMF_AttributeSet(AERO2G, name='band_for_aerosol_optics', value=(BANDS_SOLAR_OFFSET+band), RC=STATUS)
+               VERIFY_(STATUS)
+
+               ! execute the aero provider's optics method
+               call ESMF_MethodExecute(AERO2G, label="run_aerosol_optics", userRC=AS_STATUS, RC=STATUS)
+               VERIFY_(AS_STATUS)
+               VERIFY_(STATUS)
+
+               ! EXT from AERO_PROVIDER
+               call ESMF_AttributeGet(AERO2G, name='extinction_in_air_due_to_ambient_aerosol', value=AS_FIELD_NAME, RC=STATUS)
+               VERIFY_(STATUS)
+
+               if (AS_FIELD_NAME /= '') then
+                   call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME),  RC=STATUS)
+                   VERIFY_(STATUS)
+
+                   if (associated(AS_PTR_3D)) then
+                       AEROSOL2G_EXT(:,:,:,band) = AS_PTR_3D
+                   end if
+               end if
+
+               ! SSA from AERO_PROVIDER
+               call ESMF_AttributeGet(AERO2G, name='single_scattering_albedo_of_ambient_aerosol', value=AS_FIELD_NAME, RC=STATUS)
+               VERIFY_(STATUS)
+
+               if (AS_FIELD_NAME /= '') then
+                   call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME),  RC=STATUS)
+                   VERIFY_(STATUS)
+
+                   if (associated(AS_PTR_3D)) then
+                       AEROSOL2G_SSA(:,:,:,band) = AS_PTR_3D
+                   end if
+               end if
+
+               ! ASY from AERO_PROVIDER
+               call ESMF_AttributeGet(AERO2G, name='asymmetry_parameter_of_ambient_aerosol', value=AS_FIELD_NAME, RC=STATUS)
+               VERIFY_(STATUS)
+
+	               if (AS_FIELD_NAME /= '') then
+                   call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME),  RC=STATUS)
+                   VERIFY_(STATUS)
+
+                   if (associated(AS_PTR_3D)) then
+                       AEROSOL2G_ASY(:,:,:,band) = AS_PTR_3D
+                   end if
+               end if
+           end do ! do band = 1, NUM_BANDS_SOLAR 
+
+
+if (mapl_am_i_root()) print*,'SOLAR AEROSOL_EXT = ', sum(AEROSOL_EXT)
+if (mapl_am_i_root()) print*,'SOLAR AEROSOL_SSA = ', sum(AEROSOL_SSA)
+if (mapl_am_i_root()) print*,'SOLAR AEROSOL_ASY = ', sum(AEROSOL_ASY)
+
+if (mapl_am_i_root()) print*,'SOLAR AEROSOL2G_EXT = ', sum(AEROSOL2G_EXT)
+if (mapl_am_i_root()) print*,'SOLAR AEROSOL2G_SSA = ', sum(AEROSOL2G_SSA)
+if (mapl_am_i_root()) print*,'SOLAR AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY)
+
+if (mapl_am_i_root()) print*,'SOLAR AEROSOL_EXT diff = ', sum(AEROSOL_EXT-AEROSOL2G_EXT)
+if (mapl_am_i_root()) print*,'SOLAR AEROSOL_SSA diff = ', sum(AEROSOL_SSA-AEROSOL2G_SSA)
+if (mapl_am_i_root()) print*,'SOLAR AEROSOL_ASY diff = ', sum(AEROSOL_ASY-AEROSOL2G_ASY)
+
+!if (mapl_am_i_root()) print*,'SOLAR all AEROSOL_ASY = ', AEROSOL_ASY
+!if (mapl_am_i_root()) print*,'SOLAR all AEROSOL2G_ASY = ',AEROSOL2G_ASY
+
+! END GOCARTng AERO2G callback
+! ================================================================
+
 
        call MAPL_TimerOff(MAPL,"-AEROSOLS", RC=STATUS); VERIFY_(STATUS)
 
@@ -2571,8 +2732,8 @@ contains
 !  are dimensions by LM levels. This will be asserted later.
 !-----------------------------------------------------------------
 
-
-            if (NAMESimp(K)=="AERO") then
+!            if (NAMESimp(K)=="AERO") then
+            if ((NAMESimp(K)=="AERO") .OR. (NAMESimp(K)=="AERO2G_RAD")) then
 
                if(NO_AERO) then ! This is a no aerosol call done for "clean" diagnostics
                   NA = 0
@@ -2585,6 +2746,7 @@ contains
                end if
 
                SLICESimp(K) = LM*NA*NUM_BANDS_SOLAR
+
             else  ! Import is not the aerosol bundle
 
                select case(DIMS)               
@@ -2598,7 +2760,6 @@ contains
                case default
                   _ASSERT(.false.,'needs informative message')
                end select
-
             end if  ! Special treatment for AERO Import Bundle
          end if
 
@@ -2683,8 +2844,71 @@ contains
 
                deallocate(BUF_AEROSOL, stat=STATUS)
                VERIFY_(STATUS)
+
+
+! BEGIN GOCARTng accomodation for SORADCORE
+!            else if (NAMESimp(K)=="AERO2G") then
+
+!               ASSERT_(size(AEROSOL2G_EXT,3)==LM)
+!               ASSERT_(size(AEROSOL2G_SSA,3)==LM)
+!               ASSERT_(size(AEROSOL2G_ASY,3)==LM)
+
+!               allocate(BUF_AEROSOL(size(AEROSOL2G_EXT,1), &
+!                                    size(AEROSOL2G_EXT,2), &
+!                                    size(AEROSOL2G_EXT,3)), stat=STATUS)
+!               VERIFY_(STATUS)
+
+!               BUF_AEROSOL = MAPL_UNDEF
+!               do J=1,NUM_BANDS_SOLAR
+!                   BUF_AEROSOL = AEROSOL2G_EXT(:,:,:,J)
+
+!                   call ReOrder(BUFIMP(L1 + (J-1)*LM*NUMMAX),BUF_AEROSOL,DAYTIME,NUMMAX,&
+!                        HorzDims,LM,PACKIT)
+!               end do
+
+!               LN = L1 + NUMMAX*LM*NUM_BANDS_SOLAR - 1
+
+!               PTR3(1:NUMMAX,1:LM,1:NUM_BANDS_SOLAR) => BUFIMP(L1:LN)
+!               BUFIMP_AEROSOL_EXT => PTR3(1:NUM2DO,:,:)
+
+!               L1 = LN + 1
+
+!               BUF_AEROSOL = MAPL_UNDEF
+!               do J=1,NUM_BANDS_SOLAR
+!                   BUF_AEROSOL = AEROSOL2G_SSA(:,:,:,J)
+
+!                   call ReOrder(BUFIMP(L1 + (J-1)*LM*NUMMAX),BUF_AEROSOL,DAYTIME,NUMMAX,&
+!                        HorzDims,LM,PACKIT)
+!               end do
+
+!               LN = L1 + NUMMAX*LM*NUM_BANDS_SOLAR - 1
+
+!               PTR3(1:NUMMAX,1:LM,1:NUM_BANDS_SOLAR) => BUFIMP(L1:LN)
+!               BUFIMP_AEROSOL_SSA => PTR3(1:NUM2DO,:,:)
+
+!               L1 = LN + 1
+
+!               BUF_AEROSOL = MAPL_UNDEF
+!               do J=1,NUM_BANDS_SOLAR
+
+!                   BUF_AEROSOL = AEROSOL2G_ASY(:,:,:,J)
+!                   call ReOrder(BUFIMP(L1 + (J-1)*LM*NUMMAX),BUF_AEROSOL,DAYTIME,NUMMAX,&
+!                        HorzDims,LM,PACKIT)
+!               end do
+
+!               LN = L1 + NUMMAX*LM*NUM_BANDS_SOLAR - 1
+
+!               PTR3(1:NUMMAX,1:LM,1:NUM_BANDS_SOLAR) => BUFIMP(L1:LN)
+!               BUFIMP_AEROSOL_ASY => PTR3(1:NUM2DO,:,:)
+
+!               deallocate(BUF_AEROSOL, stat=STATUS)
+!               VERIFY_(STATUS)
+!! END GOCARTng accomodation for SORADCORE
+
             else
-               if (SLICESimp(K) /= 1) then
+!               if (SLICESimp(K) /= 1) then
+               if ((SLICESimp(K) /= 1) .AND. (trim(NAMESimp(K)) /= 'AERO2G_RAD')) then
+
                   call ESMFL_StateGetPointerToData(IMPORT, PTR3, NAMESimp(K), RC=STATUS)
                   VERIFY_(STATUS)
                   call ReOrder(BUFIMP(L1),Ptr3,DAYTIME,NUMMAX,HorzDims,size(Ptr3,3),PACKIT)
@@ -2703,8 +2927,10 @@ contains
                   else if (trim(NAMESimp(K)) == 'ZTH') then
                      call ReOrder(BUFIMP(L1),ZTH,DAYTIME,NUMMAX,HorzDims,1,PACKIT)
                   else 
-                     call ESMFL_StateGetPointerToData(IMPORT, PTR2, NAMESimp(K), __RC__)
-                     call ReOrder(BUFIMP(L1),Ptr2,DAYTIME,NUMMAX,HorzDims,1,PACKIT)
+                     if (trim(NAMESimp(K)) /= 'AERO2G_RAD') then ! accomodation for GOCARTng
+                        call ESMFL_StateGetPointerToData(IMPORT, PTR2, NAMESimp(K), __RC__)
+                        call ReOrder(BUFIMP(L1),Ptr2,DAYTIME,NUMMAX,HorzDims,1,PACKIT)
+                     end if
                   end if
 
                   LN = L1 + NUMMAX - 1
