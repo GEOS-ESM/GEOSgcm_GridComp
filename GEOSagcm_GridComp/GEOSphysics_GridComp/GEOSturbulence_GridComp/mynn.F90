@@ -581,8 +581,8 @@ subroutine run_mynn(IM, JM, LM, &                                               
   ! Lower boundary conditions
   do j = 1,JM
   do i = 1,IM
-!     tke_surf(i,j)  = B1**twothirds*u_star(i,j)**2.
-     tke_surf(i,j)  = 0.
+     tke_surf(i,j)  = B1**twothirds*u_star(i,j)**2.
+!     tke_surf(i,j)  = 0.
      hl2_surf(i,j)  = 0.
      qt2_surf(i,j)  = 0.
      hlqt_surf(i,j) = 0.

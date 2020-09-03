@@ -17,10 +17,10 @@ contains
 !
 ! A_star_closure
 !
-subroutine A_star_closure(IM, JM, LM, zle, zlo, thv, & ! in
+subroutine A_star_closure(IM, JM, LM, zle, zlo, thv, debug_flag, & ! in
                           izsl, A_star)                ! out
 
-  integer, intent(in)                     :: IM, JM, LM
+  integer, intent(in)                     :: IM, JM, LM, debug_flag
   real, dimension(IM,JM,LM), intent(in)   :: zlo, thv
   real, dimension(IM,JM,0:LM), intent(in) :: zle
   integer, dimension(IM,JM), intent(out)  :: izsl
@@ -90,11 +90,13 @@ subroutine A_star_closure(IM, JM, LM, zle, zlo, thv, & ! in
            dz              = zle(i,j,km1) - zle(i,j,k)
            M_star(i,j,km1) = M_star(i,j,k) + A_star(i,j,k)*dz
         end do
-        write(*,*) izsl(i,j)
-        do k = izsl(i,j),LM
-           km1 = k - 1
-           write(*,*) k, M_star(i,j,k), A_star(i,j,k)*dz, thv(i,j,km1) - thv(i,j,k)
-        end do
+        if ( debug_flag /= 0 ) then
+           write(*,*) izsl(i,j)
+           do k = izsl(i,j),LM
+              km1 = k - 1
+              write(*,*) k, M_star(i,j,k), A_star(i,j,k)*dz, thv(i,j,km1) - thv(i,j,k)
+           end do
+        end if
      end if
   end do
   end do
@@ -107,7 +109,7 @@ end subroutine A_star_closure
 ! edmf
 !
 subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
-                    edmf_discrete_type, edmf_implicit, thermal_plume_flag, &        ! in
+                    discrete_type, implicit_flag, stochastic_flag, plume_type, &    ! in
                     th00, dt, zlo, zle, ple, rhoe, exf, &                           ! in
                     u, v, thl, thv, qt, qv, ql, qi, &                               ! in         
                     ustar, sh, evap, ice_ramp, &                                    ! in
@@ -124,10 +126,11 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                     ae, awu, awv, aw, aws, awqv, awql, awqi, &                      ! out (for solver)
                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)
                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfqthl, mfwhl, & ! out (for SHOC)
-                    au, wu, Mu, E, D, hle, qte)                                     ! out
+                    au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
+                    au, wu, Mu, E, D)                                               ! out
   
   ! Inputs
-  integer, intent(in)                     :: IM, JM, LM, numup, edmf_discrete_type, edmf_implicit, thermal_plume_flag, ET
+  integer, intent(in)                     :: IM, JM, LM, numup, discrete_type, implicit_flag, stochastic_flag, plume_type, ET
   integer, dimension(IM,JM), intent(in)   :: iras, jras
   real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zlo, exf
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe
@@ -143,8 +146,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                                               ae, aw, aws, awqv, awql, awqi, awu, awv, &
                                               whl_mf, wqt_mf, wthv_mf, au, Mu, wu
 
-  real, dimension(IM,JM,LM), intent(out)   :: buoyf, mfw2, mfw3, mfqt3, mfqt2, mfwqt, &
-                                              mfhl2, mfqthl, mfwhl, E, D, hle, qte
+  real, dimension(IM,JM,LM), intent(out) :: buoyf, mfw2, mfw3, mfqt3, mfqt2, mfwqt, &
+                                            mfhl2, mfqthl, mfwhl, E, D, &
+                                            au_full, hlu_full, qtu_full, acu_full, &
+                                            Tu_full, qlu_full
 
   real, dimension(numup,IM,JM) :: upw, upthl, upqt, upql, upqi, upa, upu, upv, upthv
 
@@ -152,14 +157,13 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
   real :: wthv, wstar, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
           B, QTn, THLn, THVn, QCn, Un, Vn, Wn2, EntEXP, EntEXPU, EntW, wf, &
-          stmp, ltm, QTsrfF, THVsrfF, mft, mfthvt, dzle, ifac, test, mft_work, mfthvt_work, &
-          au_full, thlu_full, qtu_full
+          stmp, ltm, QTsrfF, THVsrfF, mft, mfthvt, dzle, ifac, test, mft_work, mfthvt_work, thlu_full
 
   ! Temporary (too slow; need to figure out how random number generator works)
   integer, dimension(numup,IM,JM,LM)  :: enti
   real, dimension(numup,IM,JM,LM)     :: entf, ent
 
-  real, dimension(IM,JM,LM) :: thlu, qtu
+  real, dimension(IM,JM,LM) :: thlu, qtu, qlu
 
   real, dimension(IM,JM,0:LM) :: aw2, ahl2, aqt2, aw3, aqt3, aqthl, &
                                  ui, vi, thvi, qvi, qli, qii, exfh, thli, qti 
@@ -175,7 +179,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   ! Initialize arrays
   !
 
-  ! Updraft statistics
+  ! Outputs that are diagnostic updraft statistics
   edmfdrya     = 0.
   edmfmoista   = 0.
   edmfdryw     = 0.
@@ -190,30 +194,33 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   edmfmoistv   = 0.
   edmfmoistqc  = 0.
 
-  ! Outputs needed for solver 
-  aw    = 0.
-  awu   = 0.
-  awv   = 0.
-  aws   = 0.
-  awqv  = 0.
-  awql  = 0.
-  awqi  = 0.
+  ! Outputs needed for solver in TURBULENCE
+  ae   = EDfac 
+  aw   = 0.
+  awu  = 0.
+  awv  = 0.
+  aws  = 0.
+  awqv = 0.
+  awql = 0.
+  awqi = 0.
 
-  ! Outputs needed for MYNN-EDMF
+  ! Outputs need for MYNN
   whl_mf  = 0.
   wqt_mf  = 0.
   wthv_mf = 0.
 
   ! 
-  aw2    = 0.
-  ahl2   = 0.
-  aqt2   = 0.
+  aw2   = 0.
+  ahl2  = 0.
+  aqt2  = 0.
   aqthl = 0.
-  aw3    = 0.
-  aqt3   = 0.
+  aw3   = 0.
+  aqt3  = 0.
 
-  ! Outputs needed for Moist
-  buoyf  = 0.
+  ! Outputs needed for SHOC in TURBULENCE
+  buoyf = 0.
+
+  ! Outputs needed for SHOC cloud scheme in MOIST
   mfw2   = 0.
   mfw3   = 0.
   mfqt3  = 0.
@@ -223,8 +230,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   mfqthl = 0.
   mfwhl  = 0.
 
-  ae = EDfac 
-
+  ! 
   au = 0.
   wu = 0.
   Mu = 0.
@@ -283,8 +289,9 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
      do i = 1,IM
         exfh(i,j,k) = (ple(i,j,k)/mapl_p00)**mapl_kappa
 
-        if (edmf_discrete_type == 0) then
-           if (edmf_implicit == 0) then
+        if (discrete_type == 0) then
+           ! This is temporary until I fix the interplation for implicit mass flux discretization
+           if ( implicit_flag == 0 ) then
               ifac = ( zle(i,j,k) - zlo(i,j,kp1) )/( zlo(i,j,k) - zlo(i,j,kp1) )
 
               ui(i,j,k)   = u(i,j,kp1)   + ifac*( u(i,j,k)   - u(i,j,kp1) )
@@ -295,7 +302,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               qli(i,j,k)  = ql(i,j,kp1)  + ifac*( ql(i,j,k)  - ql(i,j,kp1) )
               qii(i,j,k)  = qi(i,j,kp1)  + ifac*( qi(i,j,k)  - qi(i,j,kp1) )
               thvi(i,j,k) = thv(i,j,kp1) + ifac*( thv(i,j,k) - thv(i,j,kp1) )
-           else ! This is temporary until I fix the interplation for implicit mass flux discretization
+           else 
               ui(i,j,k)   = 0.5*( u(i,j,kp1)   + u(i,j,k) )
               vi(i,j,k)   = 0.5*( v(i,j,kp1)   + v(i,j,k) )
               thli(i,j,k) = 0.5*( thl(i,j,kp1) + thl(i,j,k) )
@@ -320,8 +327,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   end do
 
   ! Test
-  call A_star_closure(IM, JM, LM, zle, zlo, thv, & ! in
-                      izsl, A_star)                ! out
+!  call A_star_closure(IM, JM, LM, zle, zlo, thv, & ! in
+!                      izsl, A_star)                ! out
 
   ! Initialize updrafts
   do j = 1,JM
@@ -429,13 +436,13 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               aw3(i,j,k)    = aw3(i,j,k)   + upa(iup,i,j)*upw(iup,i,j)**3.
               aqt3(i,j,k)   = aqt3(i,j,k)  + upa(iup,i,j)*( upqt(iup,i,j) - qti(i,j,k) )**3.
 
-              if ( edmf_implicit == 1 ) then
+              if ( implicit_flag == 1 ) then
                  stmp =  mapl_cp*exfh(i,j,k)*upthl(iup,i,j) + mapl_grav*zle(i,j,k) + mapl_alhl*upql(iup,i,j) + mapl_alhs*upqi(iup,i,j) 
                         
                  awu(i,j,k)  = awu(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*upu(iup,i,j)
                  awv(i,j,k)  = awv(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*upv(iup,i,j)
                  aws(i,j,k)  = aws(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*stmp
-                 awqv(i,j,k) = awqv(i,j,k) +  upa(iup,i,j)*upw(iup,i,j)&
+                 awqv(i,j,k) = awqv(i,j,k) + upa(iup,i,j)*upw(iup,i,j)&
                                              *( upqt(iup,i,j) - upql(iup,i,j) - upqi(iup,i,j) )
                  awql(i,j,k) = awql(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*upql(iup,i,j)
                  awqi(i,j,k) = awqi(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*upqi(iup,i,j)
@@ -447,7 +454,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                  awu(i,j,k)  = awu(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*( upu(iup,i,j)  - ui(i,j,k) )
                  awv(i,j,k)  = awv(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*( upv(iup,i,j)  - vi(i,j,k) )
                  aws(i,j,k)  = aws(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*stmp
-                 awqv(i,j,k) = awqv(i,j,k) +  upa(iup,i,j)*upw(iup,i,j)&
+                 awqv(i,j,k) = awqv(i,j,k) + upa(iup,i,j)*upw(iup,i,j)&
                                              *( upqt(iup,i,j)-upql(iup,i,j)-upqi(iup,i,j) - qvi(i,j,k))
                  awql(i,j,k) = awql(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*( upql(iup,i,j) - qli(i,j,k) )
                  awqi(i,j,k) = awqi(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*( upqi(iup,i,j) - qii(i,j,k) )
@@ -481,11 +488,16 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               !
 
               ! Random number generator for stochastic entrainment
-              call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
+              if ( stochastic_flag /= 0 ) then
+                 call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
+              end if
 
               if ( L0(i,j) > 0. ) then
-                 ent(iup,i,j,k) = real(enti(iup,i,j,k))*ent0/dzle
-!                 ent(iup,i,j,k) = entf(iup,i,j,k)*ent0/dzle ! test
+                 if ( stochastic_flag == 0 ) then
+                    ent(iup,i,j,k) = entf(iup,i,j,k)*ent0/dzle ! test
+                 else
+                    ent(iup,i,j,k) = real(enti(iup,i,j,k))*ent0/dzle
+                 end if
 
                  ! increase entrainment if local minimum of thv
                  if ( ( thv(i,j,k) < thv(i,j,kp1) ) .and. ( thv(i,j,k) < thv(i,j,km1) ) ) then
@@ -541,16 +553,17 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                  mft    = mft    + 0.5*( upa(iup,i,j)*upw(iup,i,j) + mft_work )
               else
                  mfthvt = mfthvt + 0.5*mfthvt_work
-                 mft    = mft    +  0.5*mft_work
+                 mft    = mft    + 0.5*mft_work
 
                  active_updraft(iup,i,j) = .false.
               end if
            end if ! active_updraft(iup,i,j)
         end do ! iup = 1,numup
 
+        ! Outputs needed for SHOC in TURBULENCE
         buoyf(i,j,k) = buoyf(i,j,k) + exf(i,j,k)*( mfthvt - mft*thv(i,j,k) )
 
-        ! Average updraft samples
+        ! Average dry updraft samples
         if ( edmfdrya(i,j,k) > 0. ) then
            edmfdryw(i,j,k)   = edmfdryw(i,j,k)/edmfdrya(i,j,k)
            edmfdryqt(i,j,k)  = edmfdryqt(i,j,k)/edmfdrya(i,j,k)
@@ -565,6 +578,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
            edmfdryv(i,j,k)   = mapl_undef
         end if
 
+        ! Average moist updraft samples
         if ( edmfmoista(i,j,k) > 0. ) then
            edmfmoistw(i,j,k)   = edmfmoistw(i,j,k)/edmfmoista(i,j,k)
            edmfmoistqt(i,j,k)  = edmfmoistqt(i,j,k)/edmfmoista(i,j,k)
@@ -590,15 +604,18 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                              + edmfmoista(i,j,k)*edmfmoistthl(i,j,k) )/au(i,j,k)
               qtu(i,j,k)  = (  edmfdrya(i,j,k)*edmfdryqt(i,j,k)  &
                              + edmfmoista(i,j,k)*edmfmoistqt(i,j,k) )/au(i,j,k)
+              qlu(i,j,k)  = edmfmoistqc(i,j,k)
            else
               wu(i,j,k)   = edmfdryw(i,j,k)
               thlu(i,j,k) = edmfdrythl(i,j,k)
               qtu(i,j,k)  = edmfdryqt(i,j,k)
+              qlu(i,j,k)  = 0.
            end if
         else
            wu(i,j,k)   = 0.
            thlu(i,j,k) = thli(i,j,k)
            qtu(i,j,k)  = qti(i,j,k)
+           qlu(i,j,k)  = 0.
         end if
         Mu(i,j,k) = rhoe(i,j,k)*au(i,j,k)*wu(i,j,k)
 
@@ -613,10 +630,26 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
      do j = 1,JM
      do i = 1,IM
         if ( k >= 2 ) then
-           au_full   = 0.5*( au(i,j,k)   + au(i,j,km1) )
-           thlu_full = 0.5*( thlu(i,j,k) + thlu(i,j,km1) )
-           qtu_full  = 0.5*( qtu(i,j,k)  + qtu(i,j,km1) )
+           ! Outputs needed for MYNN-EDMF cloud scheme in MOIST
+           if ( au(i,j,k) > 0. .or. au(i,j,km1) > 0. ) then
+              au_full(i,j,k)   = 0.5*( au(i,j,k)   + au(i,j,km1) )
+              qlu_full(i,j,k)  = 0.5*( qlu(i,j,k)  + qlu(i,j,km1) )
+              thlu_full        = 0.5*( thlu(i,j,k) + thlu(i,j,km1) )
+              qtu_full(i,j,k)  = 0.5*( qtu(i,j,k)  + qtu(i,j,km1) )
 
+              acu_full(i,j,k) = min( au_full(i,j,k), 0.5*( edmfmoista(i,j,k) + edmfmoista(i,j,km1) ) )
+           else
+              au_full(i,j,k)  = 0.
+              qlu_full(i,j,k) = 0.
+              thlu_full       = thl(i,j,k)
+              qtu_full(i,j,k) = qt(i,j,k)
+              
+              acu_full(i,j,k) = 0.
+           end if
+           hlu_full(i,j,k) = exf(i,j,k)*thlu_full + (mapl_grav/mapl_cp)*zlo(i,j,k)
+           Tu_full(i,j,k)  = exf(i,j,k)*thlu_full + (mapl_alhl/mapl_cp)*qlu_full(i,j,k)
+
+           ! Outputs needed for SHOC cloud scheme in MOIST
            mfw2(i,j,k)   = 0.5*( aw2(i,j,k)    + aw2(i,j,km1) )
            mfw3(i,j,k)   = 0.5*( aw3(i,j,k)    + aw3(i,j,km1) )
            mfhl2(i,j,k)  = 0.5*( ahl2(i,j,k)   + ahl2(i,j,km1) )
@@ -625,11 +658,19 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
            mfwqt(i,j,k)  = 0.5*( wqt_mf(i,j,k) + wqt_mf(i,j,km1) )
            mfqthl(i,j,k) = 0.5*( aqthl(i,j,k)  + aqthl(i,j,km1) )
            mfwhl(i,j,k)  = 0.5*( whl_mf(i,j,k) + whl_mf(i,j,km1) )
-        else
-           au_full   = au(i,j,2)
-           thlu_full = thlu(i,j,2)
-           qtu_full  = qtu(i,j,2)
+        elseif ( k == 1 ) then
+           ! Outputs needed for MYNN-EDMF cloud scheme in MOIST
+           au_full(i,j,1)   = 0.
+           qlu_full(i,j,1)  = 0.
+           thlu_full        = thl(i,j,1)
+           qtu_full(i,j,1)  = qt(i,j,1)
 
+           acu_full(i,j,1)  = 0.
+
+           hlu_full(i,j,1) = exf(i,j,1)*thlu_full + (mapl_grav/mapl_cp)*zlo(i,j,1)
+           Tu_full(i,j,1)  = exf(i,j,1)*thlu_full + (mapl_alhl/mapl_cp)*qlu_full(i,j,1)
+
+           ! Outputs needed for SHOC cloud scheme in MOIST
            mfw2(i,j,1)   = aw2(i,j,2)
            mfw3(i,j,1)   = aw3(i,j,2)
            mfhl2(i,j,1)  = ahl2(i,j,2)
@@ -638,15 +679,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
            mfwqt(i,j,1)  = wqt_mf(i,j,2)
            mfqthl(i,j,1) = aqthl(i,j,2)
            mfwhl(i,j,1)  = whl_mf(i,j,2)
-        end if
-
-        if ( au_full > 0. ) then 
-           hle(i,j,k) =   exf(i,j,k)*( thl(i,j,k) - au_full*thlu_full )/( 1. - au_full ) &
-                        + (mapl_grav/mapl_cp)*zlo(i,j,k)
-           qte(i,j,k) = ( qt(i,j,k) - au_full*qtu_full )/( 1. - au_full )
-        else
-           hle(i,j,k) = exf(i,j,k)*thl(i,j,k) + (mapl_grav/mapl_cp)*zlo(i,j,k)
-           qte(i,j,k) = qt(i,j,k)
         end if
 
         D(i,j,k) = E(i,j,k) - ( Mu(i,j,km1) - Mu(i,j,k) )/( zle(i,j,km1) - zle(i,j,k) )

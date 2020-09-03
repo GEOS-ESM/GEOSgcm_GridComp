@@ -3546,8 +3546,12 @@ contains
                                      ! 0: don't include M-term
      integer :: THV_SMOOTHING        ! 1: (default) smooth first five layers of THV 
                                      ! 0: don't smooth THV
+     integer :: EDMF_SCHEME          ! 0: (default) Kay's EDMF scheme
+                                     ! 1: Dave's refactoring of Kay's scheme
      integer :: EDMF_IMPLICIT        ! 1 (default): implicit discretization of mass flux terms
                                      ! 0: explicit
+     integer :: EDMF_STOCHASTIC      ! 1 (default): stochastic entrainment
+                                     ! 0: deterministic entrainment
      integer :: EDMF_DISCRETE_TYPE   ! 0 (default): centered mass flux discretization in solver
                                      ! 1: upwind discretization 
      integer :: EDMF_CONSISTENT_TYPE ! 0 (default): conventional (inconsistent) EDMF
@@ -3711,7 +3715,7 @@ contains
      endif
 
      call MAPL_GetResource (MAPL, THV_SMOOTHING, trim(COMP_NAME)//"_THV_SMOOTHING:", default=1, RC=STATUS)
-     call MAPL_GetResource (MAPL, TKET_M_FLAG,   trim(COMP_NAME)//"TKET_M_FLAG:",    default=1, RC=STATUS)
+     call MAPL_GetResource (MAPL, TKET_M_FLAG,   trim(COMP_NAME)//"_TKET_M_FLAG:",   default=1, RC=STATUS)
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS)
      if (DO_SHOC /= 0) then
@@ -4204,10 +4208,12 @@ contains
   ! if true then 
     call MAPL_GetResource (MAPL, DOMF,                 "EDMF_DOMF:",            default=0.,  RC=STATUS)
     call MAPL_GetResource (MAPL, DOMFCOND,             "EDMF_COND:",            default=0.,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EntWFac,              "EDMF_ENTWFAC:",         default=0.3333, RC=STATUS)  
+    call MAPL_GetResource (MAPL, EntWFac,              "EDMF_ENTWFAC:",         default=0.3333, RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_SCHEME,          "EDMF_SCHEME:",          default=0,  RC=STATUS)  
+    call MAPL_GetResource (MAPL, EDMF_IMPLICIT,        "EDMF_IMPLICIT:",        default=0,  RC=STATUS)  
+    call MAPL_GetResource (MAPL, EDMF_STOCHASTIC,      "EDMF_STOCHASTIC:",      default=1,  RC=STATUS)  
     call MAPL_GetResource (MAPL, EDMF_DISCRETE_TYPE,   "EDMF_DISCRETE_TYPE:",   default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_CONSISTENT_TYPE, "EDMF_CONSISTENT_TYPE:", default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_IMPLICIT,        "EDMF_IMPLICIT:",        default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME,   "EDMF_THERMAL_PLUME:",   default=0,  RC=STATUS)
 
     call MAPL_GetResource (MAPL, MYNN_LEVEL,      "TURBULENCE_MYNN_LEVEL:",      default=2,  RC=STATUS)
@@ -4257,54 +4263,57 @@ if (ETr .eq. 1.) then
 ! use the L0 to be constant
 
    ! Test
-   call  A_star_closure(IM, JM, LM, zle, z, thv, & ! in
-                        izsl, A_star)              ! out
+   call A_star_closure(IM, JM, LM, zle, z, thv, MYNN_DEBUG_FLAG, & ! in
+                       izsl, A_star)              ! out
 
     L02=L0
 
-!!$    call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
-!!$                  edmf_discrete_type, edmf_implicit, edmf_thermal_plume, &        ! in
-!!$                  th00, dt, z, zle, ple, rhoe, exf, &                             ! in
-!!$                  u, v, thl, thv, qt, q, ql, qi, &                                ! in
-!!$                  ustar, sh, evap, ice_ramp, &                                    ! in                                         
-!!$                  pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
-!!$                  ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
-!!$                  zpbl, &                                                         ! inout
-!!$                  edmfdrya, edmfmoista, &                                         ! out
-!!$                  edmfdryw, edmfmoistw, &                                         ! out
-!!$                  edmfdryqt, edmfmoistqt, &                                       ! out
-!!$                  edmfdrythl, edmfmoistthl, &                                     ! out
-!!$                  edmfdryu, edmfmoistu,  &                                        ! out
-!!$                  edmfdryv, edmfmoistv,  &                                        ! out
-!!$                  edmfmoistqc, &                                                  ! out
-!!$                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
-!!$                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
-!!$                  buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
-!!$                  au, wu, Mu, E, D, hlu_full, qtu_full)                                     ! out
-
-    call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,NumUp,&
-             U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl,ice_ramp, &
-             edmfdrya,edmfmoista, &
-             edmfdryw,edmfmoistw, &
-             edmfdryqt,edmfmoistqt, &
-             edmfdrythl,edmfmoistthl, &
-             edmfdryu,edmfmoistu,  &
-             edmfdryv,edmfmoistv,  &
-             edmfmoistqc,             &
-             ae3, aw3, aws3, awqv3, awql3, awqi3, awu3, awv3, &
-             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
-             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
-             ET,L02,ENT0,EDfac,EntWFac,buoyf,&
-             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
-             au, Mu, E, D, &
-             au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, & ! for MOIST
+    if ( EDMF_SCHEME == 0 ) then
+       call EDMF(1,IM*JM,1,LM,DT,Z,EXF,ZLE,PLE,RHOE,NumUp,&
+                 U,V,THL,THV,T,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl,ice_ramp, &
+                 edmfdrya,edmfmoista, &
+                 edmfdryw,edmfmoistw, &
+                 edmfdryqt,edmfmoistqt, &
+                 edmfdrythl,edmfmoistthl, &
+                 edmfdryu,edmfmoistu,  &
+                 edmfdryv,edmfmoistv,  &
+                 edmfmoistqc,             &
+                 ae3, aw3, aws3, awqv3, awql3, awqi3, awu3, awv3, &
+                 WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
+                 pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
+                 ET,L02,ENT0,EDfac,EntWFac,buoyf,&
+                 mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
+                 au, Mu, E, D, &
+                 au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, & ! for MOIST
 #ifdef EDMF_DIAG
-             qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
-             qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
-             thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
-             thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
+                 qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
+                 qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
+                 thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
+                 thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-             EDMF_DISCRETE_TYPE, EDMF_IMPLICIT)
+                 EDMF_DISCRETE_TYPE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
+    else
+       call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
+                     edmf_discrete_type, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
+                     th00, dt, z, zle, ple, rhoe, exf, &                             ! in
+                     u, v, thl, thv, qt, q, ql, qi, &                                ! in
+                     ustar, sh, evap, ice_ramp, &                                    ! in                                         
+                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
+                     ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
+                     zpbl, &                                                         ! inout
+                     edmfdrya, edmfmoista, &                                         ! out
+                     edmfdryw, edmfmoistw, &                                         ! out
+                     edmfdryqt, edmfmoistqt, &                                       ! out
+                     edmfdrythl, edmfmoistthl, &                                     ! out
+                     edmfdryu, edmfmoistu,  &                                        ! out
+                     edmfdryv, edmfmoistv,  &                                        ! out
+                     edmfmoistqc, &                                                  ! out
+                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
+                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
+                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
+                     au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
+                     au, wu, Mu, E, D)                                               ! out
+    end if
 
     edmfZCLD=0.
   
@@ -4323,49 +4332,52 @@ if (ETr .eq. 1.) then
 ! negative L02 means no entrainment for the updrafts
      L02=-9.
  
-!!$    call run_edmf(IM, JM, LM, 1, iras, jras, &                                    ! in
-!!$                  edmf_discrete_type, edmf_implicit, edmf_thermal_plume, &        ! in
-!!$                  th00, dt, z, zle, ple, rhoe, exf, &                             ! in
-!!$                  u, v, thl, thv, qt, q, ql, qi, &                                ! in
-!!$                  ustar, sh, evap, ice_ramp, &                                    ! in                                         
-!!$                  pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
-!!$                  ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
-!!$                  zpbl, &                                                         ! inout
-!!$                  edmfdrya, edmfmoista, &                                         ! out
-!!$                  edmfdryw, edmfmoistw, &                                         ! out
-!!$                  edmfdryqt, edmfmoistqt, &                                       ! out
-!!$                  edmfdrythl, edmfmoistthl, &                                     ! out
-!!$                  edmfdryu, edmfmoistu,  &                                        ! out
-!!$                  edmfdryv, edmfmoistv,  &                                        ! out
-!!$                  edmfmoistqc, &                                                  ! out
-!!$                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
-!!$                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
-!!$                  buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
-!!$                  au, wu, Mu, E, D, hlu_full, qtu_full)                                     ! out
-
-    call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,1,&
-             U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl,ice_ramp, &
-             edmfdrya,edmfmoista, &
-             edmfdryw,edmfmoistw, &
-             edmfdryqt,edmfmoistqt, &
-             edmfdrythl,edmfmoistthl, &
-             edmfdryu,edmfmoistu,  &
-             edmfdryv,edmfmoistv,  &
-             edmfmoistqc,             &
-             ae3, aw3, aws3, awqv3, awql3, awqi3, awu3, awv3, &
-             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
-             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
-             ET,L02,ENT0,EDfac,EntWFac,buoyf,&
-             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
-             au, Mu, E, D, &
-             au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, & ! for MOIST
+     if ( EDMF_SCHEME == 0 ) then
+        call EDMF(1,IM*JM,1,LM,DT,Z,EXF,ZLE,PLE,RHOE,1,&
+                  U,V,THL,THV,T,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl,ice_ramp, &
+                  edmfdrya,edmfmoista, &
+                  edmfdryw,edmfmoistw, &
+                  edmfdryqt,edmfmoistqt, &
+                  edmfdrythl,edmfmoistthl, &
+                  edmfdryu,edmfmoistu,  &
+                  edmfdryv,edmfmoistv,  &
+                  edmfmoistqc,             &
+                  ae3, aw3, aws3, awqv3, awql3, awqi3, awu3, awv3, &
+                  WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
+                  pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
+                  ET,L02,ENT0,EDfac,EntWFac,buoyf,&
+                  mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
+                  au, Mu, E, D, &
+                  au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, & ! for MOIST
 #ifdef EDMF_DIAG
-             qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
-             qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
-             thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
-             thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
+                  qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
+                  qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
+                  thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
+                  thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-             EDMF_DISCRETE_TYPE, EDMF_IMPLICIT)
+                  EDMF_DISCRETE_TYPE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
+     else
+        call run_edmf(IM, JM, LM, 1, iras, jras, &                                    ! in
+                      edmf_discrete_type, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
+                      th00, dt, z, zle, ple, rhoe, exf, &                             ! in
+                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
+                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
+                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
+                      ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
+                      zpbl, &                                                         ! inout
+                      edmfdrya, edmfmoista, &                                         ! out
+                      edmfdryw, edmfmoistw, &                                         ! out
+                      edmfdryqt, edmfmoistqt, &                                       ! out
+                      edmfdrythl, edmfmoistthl, &                                     ! out
+                      edmfdryu, edmfmoistu,  &                                        ! out
+                      edmfdryv, edmfmoistv,  &                                        ! out
+                      edmfmoistqc, &                                                  ! out
+                      ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
+                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN)      
+                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
+                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
+                      au, wu, Mu, E, D)                                               ! out
+     end if
  
     ! compute the depth of the convective layer  
     ! the height where the convective mass-flux is zero
@@ -4397,55 +4409,66 @@ if (ETr .eq. 1.) then
  !
  ! now the real call to the mass-flux
  !
-!!$    call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
-!!$                  edmf_discrete_type, edmf_implicit, edmf_thermal_plume, &        ! in
-!!$                  th00, dt, z, zle, ple, rhoe, exf, &                             ! in
-!!$                  u, v, thl, thv, qt, q, ql, qi, &                                ! in
-!!$                  ustar, sh, evap, ice_ramp, &                                    ! in                                         
-!!$                  pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
-!!$                  ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
-!!$                  zpbl, &                                                         ! inout
-!!$                  edmfdrya, edmfmoista, &                                         ! out
-!!$                  edmfdryw, edmfmoistw, &                                         ! out
-!!$                  edmfdryqt, edmfmoistqt, &                                       ! out
-!!$                  edmfdrythl, edmfmoistthl, &                                     ! out
-!!$                  edmfdryu, edmfmoistu,  &                                        ! out
-!!$                  edmfdryv, edmfmoistv,  &                                        ! out
-!!$                  edmfmoistqc, &                                                  ! out
-!!$                  ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
-!!$                  whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
-!!$                  buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
-!!$                  au, wu, Mu, E, D, hlu_full, qtu_full)                                     ! out          
-
-    call EDMF(1,IM*JM,1,LM,DT,Z,ZLE,PLE,RHOE,NumUp,&
-             U,V,THL,THV,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl,ice_ramp, &
-             edmfdrya,edmfmoista, &
-             edmfdryw,edmfmoistw, &
-             edmfdryqt,edmfmoistqt, &
-             edmfdrythl,edmfmoistthl, &
-             edmfdryu,edmfmoistu,  &
-             edmfdryv,edmfmoistv,  &
-             edmfmoistqc,             &
-             ae3, aw3, aws3, awqv3, awql3, awqi3, awu3, awv3, &
-             WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
-             pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
-             ET,L02,ENT0,EDfac,EntWFac,buoyf,&
-             mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
-             au, Mu, E, D, &
-             au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, & ! for MOIST
+   
+    if ( EDMF_SCHEME == 0 ) then
+       call EDMF(1,IM*JM,1,LM,DT,Z,EXF,ZLE,PLE,RHOE,NumUp,&
+                 U,V,THL,THV,T,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl,ice_ramp, &
+                 edmfdrya,edmfmoista, &
+                 edmfdryw,edmfmoistw, &
+                 edmfdryqt,edmfmoistqt, &
+                 edmfdrythl,edmfmoistthl, &
+                 edmfdryu,edmfmoistu,  &
+                 edmfdryv,edmfmoistv,  &
+                 edmfmoistqc,             &
+                 ae3, aw3, aws3, awqv3, awql3, awqi3, awu3, awv3, &
+                 WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
+                 pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
+                 ET,L02,ENT0,EDfac,EntWFac,buoyf,&
+                 mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
+                 au, Mu, E, D, &
+                 au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, & ! for MOIST
 #ifdef EDMF_DIAG
-             qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
-             qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
-             thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
-             thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
+                 qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
+                 qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
+                 thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
+                 thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-             EDMF_DISCRETE_TYPE, EDMF_IMPLICIT)
-  
+                 EDMF_DISCRETE_TYPE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
+    else
+       call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
+                     edmf_discrete_type, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
+                     th00, dt, z, zle, ple, rhoe, exf, &                             ! in
+                     u, v, thl, thv, qt, q, ql, qi, &                                ! in
+                     ustar, sh, evap, ice_ramp, &                                    ! in                                         
+                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
+                     ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
+                     zpbl, &                                                         ! inout
+                     edmfdrya, edmfmoista, &                                         ! out
+                     edmfdryw, edmfmoistw, &                                         ! out
+                     edmfdryqt, edmfmoistqt, &                                       ! out
+                     edmfdrythl, edmfmoistthl, &                                     ! out
+                     edmfdryu, edmfmoistu,  &                                        ! out
+                     edmfdryv, edmfmoistv,  &                                        ! out
+                     edmfmoistqc, &                                                  ! out
+                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
+                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN)      
+                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
+                     au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
+                     au, wu, Mu, E, D)                                               ! out          
+    end if
  else
     write (*,*) "Error: wrong EDMF_ET "
 end if
       
-      
+! Test
+!!$if ( SH(1,1) + mapl_epsilon*THV(1,1,LM)*EVAP(1,1)  > 0. ) then
+!!$   write(*,*) '*'
+!!$   do l = 1,LM
+!!$      write(*,*) l, acu_full(:,:,l), Tu_full(:,:,l), qlu_full(:,:,l)
+!!$   end do
+!!$   write(*,*) '*'
+!!$_ASSERT( .false. , 'foo bar' )      
+!!$end if
    !    print *,'edmfdrya',edmfdrya
    !   print *,'edmfdryw',edmfdryw    
    !    print *,'edmfmoista',edmfmoista
@@ -7598,8 +7621,8 @@ enddo
 
 end subroutine ComputeZPBL
 
-SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
-              u3,v3,thl3,thv3,qt3,qv3,ql3,qi3,&
+SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,exf3,zw3,pw3,rhoe3,nup,&
+              u3,v3,thl3,thv3,t3,qt3,qv3,ql3,qi3,&
               ust2,wthl2,wqt2,pblh2,ice_ramp, &
             ! outputs - tendencies
            !  &dth,dqv,dqc,du,dv,&
@@ -7625,7 +7648,7 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
              thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
              thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-             edmf_discrete_type, edmf_implicit)
+             discrete_type, implicit_flag, stochastic_flag)
 
 
 
@@ -7661,12 +7684,12 @@ SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,zw3,pw3,rhoe3,nup,&
 
 
        INTEGER, INTENT(IN) :: ITS,ITE,KTS,KTE,NUP
-       REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: U3,V3,THL3,QT3,THV3,QV3,QL3,QI3,ZLO3
+       REAL,DIMENSION(ITS:ITE,KTS:KTE), INTENT(IN) :: U3,V3,THL3,QT3,THV3,T3,QV3,QL3,QI3,ZLO3,EXF3
        ! zw .. heights of the updraft levels (edges of boxes)
       ! REAL,DIMENSION(ITS:ITE,KTS:KTE+1), INTENT(IN) :: ZW
        REAL,DIMENSION(ITS:ITE,KTS-1:KTE), INTENT(IN) :: ZW3,PW3, rhoe3
        REAL,DIMENSION(ITS:ITE), INTENT(IN) :: UST2,WTHL2,WQT2,PBLH2
-       INTEGER, INTENT(IN) :: edmf_discrete_type, edmf_implicit
+       INTEGER, INTENT(IN) :: discrete_type, implicit_flag, stochastic_flag
        REAL, INTENT(IN)                     :: ICE_RAMP  
        REAL :: DT,EntWFac
        INTEGER,DIMENSION(ITS:ITE) :: iras,jras
@@ -7784,6 +7807,14 @@ real, dimension(its:ite) :: L0
       mfhlqt=0.
       mfwhl =0.
 
+      ! Outputs needs for MYNN-EDMF cloud scheme in MOIST
+      au_full  = 0.
+      qlu_full = 0.
+      hlu_full = exf3*thl3 + (mapl_grav/mapl_cp)*zlo3
+      qtu_full = qt3
+      Tu_full  = exf3*thl3
+      acu_full = 0.
+
    ! this is the environmental area - by default 1.
 
      ae3=EDfac 
@@ -7843,6 +7874,7 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
 
   DO k=kts,kte
       zlo(k)=zlo3(IH,kte-k+kts)
+      exf(k)=exf3(IH,kte-k+kts)
       u(k)=u3(IH,kte-k+kts)
       v(k)=v3(IH,kte-k+kts)
       thl(k)=thl3(IH,kte-k+kts)
@@ -7851,8 +7883,8 @@ wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
       qv(k)=qv3(IH,kte-k+kts)
       ql(k)=ql3(IH,kte-k+kts)
       qi(k)=qi3(IH,kte-k+kts)
-      if (k<kte) then
-         if (edmf_discrete_type == 0) then
+      if ( k<kte ) then
+         if ( discrete_type == 0 ) then
             ui(k)   = 0.5*( u3(IH,kte-k+kts)   + u3(IH,kte-k+kts-1) )
             vi(k)   = 0.5*( v3(IH,kte-k+kts)   + v3(IH,kte-k+kts-1) )
             thli(k) = 0.5*( thl3(IH,kte-k+kts) + thl3(IH,kte-k+kts-1) )
@@ -7945,8 +7977,11 @@ if (L0(IH) .gt. 0. ) then
    ! entrainent: Ent=Ent0/dz*P(dz/L0)             
    do i=1,Nup   
     do k=kts,kte
-     ENT(k,i)=real(ENTi(k,i))*Ent0/(ZW(k)-ZW(k-1))
-!     ENT(k,i)=ENTf(k,i)*Ent0/(ZW(k)-ZW(k-1)) ! test
+       if ( stochastic_flag == 0 ) then
+          ENT(k,i)=ENTf(k,i)*Ent0/(ZW(k)-ZW(k-1))
+       else
+          ENT(k,i)=real(ENTi(k,i))*Ent0/(ZW(k)-ZW(k-1))
+       end if
    enddo
    enddo
 
@@ -7968,7 +8003,7 @@ end if
 
 ! exner function
  exfh=(p/mapl_p00)**mapl_kappa
- exf=(0.5*(p(1:kte)+p(0:kte-1))/mapl_p00)**mapl_kappa 
+! exf=(0.5*(p(1:kte)+p(0:kte-1))/mapl_p00)**mapl_kappa 
 
 
 
@@ -8236,32 +8271,22 @@ end if
       !
       D_flip(k) = E_flip(k) - ( Mu_flip(k) - Mu_flip(k-1) )/( zw(k) - zw(k-1) )
 
-      !
-!!$      if ( au_flip(k-1) > 0. .or. au_flip(k) > 0. ) then
-!!$         au_full_flip(k)  = 0.5*( au_flip(k-1) + au_flip(k) )
-!!$         thlu_full_flip   = 0.5*( thlu(k-1)    + thlu(k)    ) 
-!!$         qtu_full_flip(k) = 0.5*( qtu(k-1)     + qtu(k)     )
-!!$      else
-!!$         au_full_flip(k)  = 0.
-!!$         thlu_full_flip   = thl(k)
-!!$         qtu_full_flip(k) = qt(k)
-!!$      end if
+      ! Compute quantities need in MOIST
+      if ( au_flip(k-1) > 0. .or. au_flip(k) > 0. ) then
+         au_full_flip(k)  = 0.5*( au_flip(k-1) + au_flip(k) )
+         qlu_full_flip(k) = 0.5*( qlu(k-1)     + qlu(k)     )
+         thlu_full_flip   = 0.5*( thlu(k-1)    + thlu(k)    ) 
+         qtu_full_flip(k) = 0.5*( qtu(k-1)     + qtu(k)     )
 
-!!$      if ( moist_a(k-1) > 0. .and. moist_a(k) > 0. ) then
-!!$         acu_full_flip(k) = min( au_full_flip(k), 0.5*( moist_a(k-1) + moist_a(k) ) )
-!!$         qlu_full_flip(k) = 0.5*( qlu(k-1) + qlu(k) )
-!!$      else
-!!$         acu_full_flip(k) = 0.
-!!$         qlu_full_flip(k) = 0.
-!!$      end if
+         acu_full_flip(k) = min( au_full_flip(k), 0.5*( moist_a(k-1) + moist_a(k) ) )
+      else
+         au_full_flip(k)  = 0.
+         qlu_full_flip(k) = 0.
+         thlu_full_flip   = thl(k)
+         qtu_full_flip(k) = qt(k)
 
-      au_full_flip(k)  = 0.5*( au_flip(k-1) + au_flip(k) )
-      thlu_full_flip   = 0.5*( thlu(k-1)    + thlu(k)    ) 
-      qtu_full_flip(k) = 0.5*( qtu(k-1)     + qtu(k)     )
-      acu_full_flip(k) = min( au_full_flip(k), 0.5*( moist_a(k-1) + moist_a(k) ) )
-      qlu_full_flip(k) = 0.5*( qlu(k-1) + qlu(k) )
-
-      !
+         acu_full_flip(k) = 0.
+      end if
       hlu_full_flip(k) = exf(k)*thlu_full_flip + (mapl_grav/mapl_cp)*zlo(k)
       Tu_full_flip(k)  = exf(k)*thlu_full_flip + (mapl_alhl/mapl_cp)*qlu_full_flip(k)
    end do
@@ -8299,7 +8324,7 @@ end if
           s_aqt2(K)=s_aqt2(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPQT(K,I)-QTI(K))
           s_aqt3(K)=s_aqt3(K)+UPA(K,I)*(UPQT(K,I)-QTI(K))**3
           s_ahlqt(K)=s_ahlqt(K)+exfh(k)*UPA(K,I)*(UPQT(K,I)-QTI(K))*(UPTHL(K,i)-THLI(K))
-          if (edmf_implicit == 1) then
+          if (implicit_flag == 1) then
              stmp = mapl_cp*exfh(k)*UPTHL(K,i) + mapl_grav*zw(k) + mapl_alhl*UPQL(K,i) + UPQI(K,I)*mapl_alhs
           else
 !             stmp = exfh(k)*mapl_cp*UPTHL(K,i) + UPQI(K,I)*mapl_alhs + UPQL(K,i)*mapl_alhl + mapl_grav*zw(k) - exf(k)*mapl_cp*THLI(K) - QII(K)*mapl_alhs - QLI(K)*mapl_alhl - mapl_grav*zlo(K)
@@ -8312,7 +8337,7 @@ end if
           s_aws(k)=s_aws(K)+UPA(K,i)*UPW(K,i)*stmp
           s_ahl2(k)=s_ahl2(K)+UPA(K,i)*ltm*ltm
           s_awhl(k)=s_awhl(K)+UPA(K,i)*UPW(K,I)*ltm
-          if (edmf_implicit == 1) then
+          if (implicit_flag == 1) then
              s_awu(k)  = s_awu(K)  + UPA(K,i)*UPW(K,I)*UPU(K,I)
              s_awv(k)  = s_awv(K)  + UPA(K,i)*UPW(K,I)*UPV(K,I)
              s_awqv(k) = s_awqv(K) + UPA(K,i)*UPW(K,I)*(UPQT(K,I) - UPQI(K,I) - UPQL(K,I))
@@ -8406,7 +8431,6 @@ end if
     
  END IF   !  IF ( wthv > 0.0 ) then  
 ENDDO ! loop over horizontal area  
-
 
 END SUBROUTINE edmf
 
