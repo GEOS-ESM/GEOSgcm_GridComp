@@ -2,6 +2,7 @@ esma_set_this ()
 
 set (srcs
    rte/mo_rte_kind.F90
+   rte/mo_rte_config.F90
    rte/mo_rte_util_array.F90
    rte/kernels/mo_rte_solver_kernels.F90
    rte/kernels/mo_optical_props_kernels.F90
