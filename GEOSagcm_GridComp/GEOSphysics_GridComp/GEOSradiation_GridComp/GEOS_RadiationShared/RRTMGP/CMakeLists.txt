@@ -34,7 +34,13 @@ set (srcs
    rte/mo_rte_sw.F90
    )
 
+if (APPLE)
+   set(MKL_Fortran TRUE)
+endif ()
+find_package(MKL)
 if (MKL_FOUND)
+   set(BLA_VENDOR Intel10_64lp_seq)
+
    list (APPEND srcs
       extensions/rng/mo_rng_mklvsl.F90
       extensions/rng/mo_rng_mklvsl_plus.F90
