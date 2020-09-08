@@ -2597,7 +2597,6 @@ contains
    real                                :: fr_ice_thresh             ! threshold on ice fraction, used in diurnal warming and cool-skin layer
    real                                :: MUSKIN                    ! exponent in T(z) profile in warm layer, based on Zeng & Beljaars, 2005
    real                                :: STOKES_SPEED              ! Stokes velocity in m/s. A global constant number until Wave Watch is ready
-   integer                             :: USE_KPAR
 
    real                                :: MAXSALINITY
    real                                :: MINSALINITY
@@ -2841,8 +2840,6 @@ contains
 
     call MAPL_GetResource ( MAPL, STOKES_SPEED,  Label="STOKES_VELOCITY:" , DEFAULT=1.E-2,   RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, USE_KPAR,      Label="USE_KPAR:",         DEFAULT=1,       RC=STATUS)
-    VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, MAXSALINITY,   Label="MAX_SALINITY:" ,    DEFAULT=40.0 ,   RC=STATUS)
     VERIFY_(STATUS)
@@ -3062,12 +3059,6 @@ contains
     SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
           (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
 
-
-    if( trim(AOIL_COMP_SWITCH) == "ON") then
-      ikpar: if ( USE_KPAR /= 1) then    ! (if NOT default) compute penetrated shortwave using below...
-        call SIMPLE_SW_ABS(NT, USE_KPAR, (HW/MAPL_RHOWTR), ZTH, SWN, PEN)  ! replace MAPL_RHOWTR with MAPL_RHO_SEAWATER
-      end if ikpar
-    endif
     SWN   = SWN - PEN
 
     if (DO_DATASEA == 0) then            ! in coupled mode
@@ -3510,54 +3501,6 @@ contains
 
    RETURN_(ESMF_SUCCESS)
   end subroutine ALBSEA
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! !IROUTINE: SIMPLE_SW_ABS - 
-!  Implements two simple ways for the absorption of shortwave radiation,
-!  as an alternative (for "TESTING" purposes) to using KPAR & KUVR based on PEN,
-!  into an interface layer of typical depth = 2m, that is also called "depth of AOIL"
-
-! !INTERFACE:
-
-  subroutine SIMPLE_SW_ABS(NT, USE_KPAR, depth, ZTH, SWN, PEN)
-
-! !ARGUMENTS:
-
-    integer, intent(IN)    :: NT        ! dimension of array
-    integer, intent(IN)    :: USE_KPAR  ! absorption profile option
-    real,    intent(IN)    :: ZTH(:)    ! cosine of solar zenith angle
-    real,    intent(IN)    :: depth(:)  ! depth up to which shortwave needs to be absorbed
-    real,    intent(IN)    :: SWN(:)    ! net shortwave at surface of ocean, or @ top of air/sea interface
-    real,    intent(OUT)   :: PEN(:)    ! shortwave penetrated below the depth    
-
-!  local variables
-    real, dimension(NT)  :: fW
-
-    fW  = 0.0
-    PEN = 0.0                ! initialize to zero
-
-    if (USE_KPAR == -1) then
-       ! Soloviev, 1982 shortwave absorption profile
-       ! --------------------------------------------
-       fW = 0.28*exp(-71.5*depth) + 0.27*exp(-2.8*depth) + 0.45*exp(-0.07*depth)
-
-    else if (USE_KPAR == -2) then
-       ! Paulson & Simpson, 1981- Taken from Gentemann et al, 2009
-       ! ----------------------------------------------------------
-       fW    = 0.237*exp(-(depth*ZTH)/34.84)  +  0.36*exp(-(depth*ZTH)/2.266)   + &
-               0.179*exp(-(depth*ZTH)/0.0315) + 0.087*exp(-(depth*ZTH)/0.0055)  + &
-                0.08*exp(-(depth*ZTH)/8.32e-4)+ 0.025*exp(-(depth*ZTH)/1.26e-4) + &
-               0.025*exp(-(depth*ZTH)/3.13e-4)+ 0.007*exp(-(depth*ZTH)/7.82e-4) + &
-              0.0004*exp(-(depth*ZTH)/1.44e-5)
-    else
-       if(MAPL_AM_I_ROOT()) print *, 'ERROR! Unknown use_kpar option: ', USE_KPAR
-    end if
-
-    PEN   = SWN * fW
-
-   RETURN_(ESMF_SUCCESS)
-  end subroutine SIMPLE_SW_ABS
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
