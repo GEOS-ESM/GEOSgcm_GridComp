@@ -86,11 +86,8 @@
 # GEOSagcm=>USE_FWET_FOR_RUNOFF: .FALSE.	
 # GEOSldas=>USE_FWET_FOR_RUNOFF: .FALSE.
 #
-# GEOSagcm=>FWETC: 0.005	                 # ignored unless USE_FWET_FOR_RUNOFF is .TRUE.    
-# GEOSldas=>FWETC: 0.005	                 # ignored unless USE_FWET_FOR_RUNOFF is .TRUE.    
-#
-# GEOSagcm=>FWETL: 0.025	                 # ignored unless USE_FWET_FOR_RUNOFF is .TRUE.    
-# GEOSldas=>FWETL: 0.025	                 # ignored unless USE_FWET_FOR_RUNOFF is .TRUE.    
+# FWETC: 0.005	                 # ignored unless USE_FWET_FOR_RUNOFF is .TRUE.    
+# FWETL: 0.025	                 # ignored unless USE_FWET_FOR_RUNOFF is .TRUE.    
 
 # ---- ASCAT-derived turbulent roughness length
 #
