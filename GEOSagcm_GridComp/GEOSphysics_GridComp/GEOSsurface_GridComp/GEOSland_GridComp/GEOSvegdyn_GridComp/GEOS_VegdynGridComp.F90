@@ -45,6 +45,8 @@ module GEOS_VegdynGridCompMod
 
   use ESMF
   use MAPL
+  use GEOSland_modules, only : modis_date, read_modis_data
+  
   implicit none
   private
 
@@ -329,7 +331,7 @@ contains
 
 ! IMPORT Pointers
 
-    real, save, dimension(:), pointer :: MODIS_LAI
+    real, dimension(:), pointer :: MODIS_LAI
 
 ! EXPORT pointers 
 
@@ -356,8 +358,9 @@ contains
     integer                            :: MOD_DOY,DOY,MFDOY,CUR_YY,CUR_MM,CUR_DD, &
                                           MOD_YY, MOD_MM, MOD_DD
     logical, save                      :: first = .true.
-    logical                            :: b4_modis_date = .false.
-    integer                            :: MODIS_FIRSTDATE = 20020704
+    logical                            :: b4_modis_date
+    integer                            :: MODLAI_FIRSTDATE = 20020704
+    real, allocatable, dimension(:),save :: MODIS_LAITILE
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -448,34 +451,36 @@ contains
        VERIFY_(STATUS)
        
     ELSE IF (MODIS_DVG == 1) THEN
-
+       b4_modis_date = .false.
        ! read interannually varying LAI data on tile space
        call ESMF_TimeIntervalSet(M8, h=24*8, rc=status ) ; VERIFY_(STATUS)
-       MOD_YY = MODIS_FIRSTDATE / 10000
-       MOD_MM = (MODIS_FIRSTDATE - MOD_YY*10000) / 100
-       MOD_DD = MODIS_FIRSTDATE - (MOD_YY*10000 + MOD_MM*100)
+       MOD_YY = MODLAI_FIRSTDATE / 10000
+       MOD_MM = (MODLAI_FIRSTDATE - MOD_YY*10000) / 100
+       MOD_DD = MODLAI_FIRSTDATE - (MOD_YY*10000 + MOD_MM*100)
        call ESMF_TimeSet (MODIS_TIME, yy=MOD_YY, mm=MOD_MM, dd=MOD_DD, rc=status) ; VERIFY_(STATUS)
        call ESMF_TimeGet (MODIS_TIME, DayOfYear=MFDOY, RC=STATUS)                 ; VERIFY_(STATUS)
 
        if (first) then          
           call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, MM = CUR_MM, DD = CUR_DD, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
-          MOD_DOY = modis_date (DOY)
+          MOD_DOY = modis_date (DOY, 8)
           call ESMF_TimeSet(MODIS_TIME, yy=CUR_YY, mm=CUR_MM, dd=CUR_DD, rc=status) ; VERIFY_(STATUS)
           call ESMF_TimeIntervalSet(TIME_DIFF, h=24*(DOY -MOD_DOY), rc=status )     ; VERIFY_(STATUS)
           MODIS_RING = MODIS_TIME - TIME_DIFF
           MODIS_RING = MODIS_RING + M8
           
-          ALLOCATE (MODIS_LAI (1:SIZE(ITY)))
+          ALLOCATE (MODIS_LAITILE (1:SIZE(ITY)))
           if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
-          call read_modis_lai (MAPL,CUR_YY, MOD_DOY, MODIS_LAI, b4_modis_date)
+          call read_modis_data (MAPL,CUR_YY, MOD_DOY, b4_modis_date, &
+               GRIDNAME, MODIS_PATH, 'lai', MODIS_LAITILE)
           first = .false.
        endif
 
        if (CURRENT_TIME ==  MODIS_RING) then
           call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
-          MOD_DOY = modis_date (DOY)
+          MOD_DOY = modis_date (DOY, 8)
           if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
-          call read_modis_lai (MAPL,CUR_YY, DOY, MODIS_LAI, b4_modis_date)
+          call read_modis_data (MAPL,CUR_YY, DOY, b4_modis_date, &
+               GRIDNAME, MODIS_PATH, 'lai', MODIS_LAITILE)
           if (DOY < 361) then
              MODIS_RING = CURRENT_TIME + M8
           else
@@ -484,7 +489,7 @@ contains
           endif
        endif
        
-       LAI = MODIS_LAI
+       LAI = MODIS_LAITILE
        LAI = min(7., max(0.0001, LAI))
        
        
@@ -520,72 +525,6 @@ contains
 
     call MAPL_TimerOff(MAPL,"TOTAL")
     RETURN_(ESMF_SUCCESS)
-
-  contains
-
-    ! ---------------------------------------------------------------------------
-    
-    integer function modis_date (DOY) result (MOD_DOY)
-      
-      implicit none
-      integer, intent(in) :: DOY
-      integer, parameter  :: N_MODIS_DATES = 46
-      integer, dimension (N_MODIS_DATES), parameter ::  &
-           MODIS_DOYS = (/                              &
-           1  ,  9, 17, 25, 33, 41, 49, 57, 65,         &
-           73 , 81, 89, 97,105,113,121,129,137,         &
-           145,153,161,169,177,185,193,201,209,         &
-           217,225,233,241,249,257,265,273,281,         &
-           289,297,305,313,321,329,337,345,353,361/)
-      integer :: i
-      
-      if (DOY < MODIS_DOYS(N_MODIS_DATES)) then
-         do i = 1, N_MODIS_DATES
-            if (MODIS_DOYS(i) > DOY) exit
-         end do         
-         MOD_DOY = MODIS_DOYS(i-1)
-      else
-         MOD_DOY = MODIS_DOYS(N_MODIS_DATES)
-      endif
-            
-    end function modis_date
-    
-    ! ---------------------------------------------------------------------------
-
-    subroutine read_modis_lai (MAPL,CUR_YY, MOD_DOY,MODIS_LAI, b4_modis_date) 
-
-      implicit none
-      integer, intent (in)                     :: CUR_YY, MOD_DOY
-      logical, intent (in)                     :: b4_modis_date
-      real, dimension (:), intent (inout)      :: MODIS_LAI
-      type(MAPL_MetaComp),pointer, intent (in) :: MAPL
-      type(ESMF_Grid)                          :: TILEGRID
-      type(MAPL_LocStream)                     :: LOCSTREAM
-      integer, pointer                         :: mask(:)
-      integer                                  :: status, unit
-      character*300                            :: filename
-      CHARACTER(len=7)                         :: YYYYDoY
-      logical                                  :: file_exists
-      
-      if(b4_modis_date) then
-         WRITE (YYYYDoY,'(a4,i3.3)') 'YYYY',MOD_DOY
-      else
-         WRITE (YYYYDoY,'(i4.4,i3.3)') CUR_YY,MOD_DOY
-      endif
-      
-      filename = trim(MODIS_PATH)//'/'//trim(GRIDNAME)//'/lai_data.'//YYYYDoY
-      inquire(file=filename, exist=file_exists)
-      if (.not. file_exists) then
-          _ASSERT(.FALSE.,'Missing : '//trim(filename))
-      endif
-      call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)            ; VERIFY_(STATUS)
-      call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS); VERIFY_(STATUS)
-      call MAPL_TileMaskGet(tilegrid,  mask, rc=status)              ; VERIFY_(STATUS)
-      unit = GETFILE(trim(filename), form="unformatted", RC=STATUS)  ; VERIFY_(STATUS)
-      call MAPL_VarRead(unit,tilegrid,MODIS_LAI,mask=mask,RC=STATUS) ; VERIFY_(STATUS)
-      call FREE_FILE(unit, RC=STATUS)                                ; VERIFY_(STATUS)
-      
-    end subroutine read_modis_lai
     
     ! ---------------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
 esma_set_this ()
 
-esma_add_library (${this} SRCS GEOS_VegdynGridComp.F90 DEPENDENCIES MAPL)
+esma_add_library (${this} SRCS GEOS_VegdynGridComp.F90 DEPENDENCIES MAPL GEOS_LandShared)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 

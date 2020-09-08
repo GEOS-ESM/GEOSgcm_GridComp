@@ -48,6 +48,7 @@ module GEOS_CatchGridCompMod
        LAND_FIX
 
   USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
+  USE GEOSland_modules, ONLY : modis_date, read_modis_data
 
 !#sqz_for_ldas_coupling 
   use catch_incr
@@ -140,6 +141,7 @@ end type CATCH_WRAP
 integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB,CHOOSEMOSFC, MODIS_ALB
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
+character(len=ESMF_MAXSTR)         :: GRIDNAME, MODIS_PATH
 
 contains
 
@@ -216,7 +218,16 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (SCF, label='Z0_FORMULATION:', value=Z0_FORMULATION, DEFAULT=2  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'   , value=USE_ASCATZ0,    DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'   , value=CHOOSEMOSFC,    DEFAULT=1  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='MODIS_ALB:'     , value=MODIS_ALB,      DEFAULT=0  , __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='MODIS_ALB:'     , value=MODIS_ALB,      DEFAULT=0  , __RC__ )
+    if (MODIS_ALB == 1) then
+       call ESMF_ConfigGetAttribute (SCF, value= MODIS_PATH, label='MODIS_PATH:',  &
+            DEFAULT='/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/MCD15A2H.006/IAV_smoothed/', __RC__ )
+       if (OFFLINE_MODE == 0) then
+          call MAPL_GetResource( MAPL, GRIDNAME, label='AGCM_GRIDNAME:', RC=STATUS ) ; VERIFY_(STATUS)
+       else
+          call MAPL_GetResource( MAPL, GRIDNAME, label='GEOSldas.GRIDNAME:',      RC=STATUS ) ; VERIFY_(STATUS)
+       endif    
+    endif
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
@@ -3702,6 +3713,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: ity
         real, dimension(:),   pointer :: ASCATZ0
         real, dimension(:),   pointer :: NDVI
+        real, dimension(:),   pointer :: MODIS_VISDF
+        real, dimension(:),   pointer :: MODIS_NIRDF
 
         real, dimension(:,:), pointer :: DUDP
         real, dimension(:,:), pointer :: DUSV
@@ -3723,8 +3736,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:,:), pointer :: SSSV
         real, dimension(:,:), pointer :: SSWT
         real, dimension(:,:), pointer :: SSSD
-        real, dimension(:), pointer   :: MODIS_VISDF
-        real, dimension(:), pointer   :: MODIS_NIRDF
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
@@ -4108,8 +4119,21 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
         integer                       :: ldas_ens_id, ldas_first_ens_id
-!#---
 
+        integer                       :: MOD_DOY,DOY,MFDOY,CUR_YY,CUR_MM,CUR_DD, &
+             MOD_YY, MOD_MM, MOD_DD
+        logical, save                 :: modis_first = .true.
+        logical                       :: b4_modis_date
+        integer                       :: MODALB_FIRSTDATE = 20000101
+
+        ! Time attributes and placeholders
+
+        type(ESMF_Time)               :: MODIS_TIME
+        type(ESMF_Time), save         :: MODIS_RING
+        type(ESMF_TimeInterval)       :: M5, TIME_DIFF
+        real, dimension(:),   pointer :: MODIS_VISDFTILE
+        real, dimension(:),   pointer :: MODIS_NIRDFTILE
+    
         ! --------------------------------------------------------------------------
         ! Lookup tables
         ! --------------------------------------------------------------------------
@@ -4809,30 +4833,77 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Update raditation exports
         ! --------------------------------------------------------------------------
 
-     IF (MODIS_ALB == 0) THEN
+        IF (MODIS_ALB == 0) THEN
 
-        ! ----------------------------------------------------------------------------------
-        ! Update the interpolation limits for MODIS albedo corrections
-        ! in the internal state and get their midmonth times
-        ! ----------------------------------------------------------------------------------
+           ! ----------------------------------------------------------------------------------
+           ! Update the interpolation limits for MODIS albedo corrections
+           ! in the internal state and get their midmonth times
+           ! ----------------------------------------------------------------------------------
 
-        call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
-        VERIFY_(STATUS)
-
-        call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
-                       VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                       ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
-
-     ELSEIF (MODIS_ALB == 2) THEN
-
-        ALBVR = MIN (1., MAX(0.001,MODIS_VISDF))
-        ALBNR = MIN (1., MAX(0.001,MODIS_NIRDF))
-        ALBVF = MIN (1., MAX(0.001,MODIS_VISDF))
-        ALBNF = MIN (1., MAX(0.001,MODIS_NIRDF))  
-        
-     ENDIF
+           if (ldas_ens_id == ldas_first_ens_id) then ! it is always .true. if NUM_LDAS_ENSEMBLE = 1 (by default)
+              call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
+              VERIFY_(STATUS)
+              call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
+              VERIFY_(STATUS)
+           endif
+           
+           call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
+                VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
+                ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+           
+        ELSE IF (MODIS_ALB == 1) THEN
+           b4_modis_date = .false.
+           ! read interannually varying VISDF NIRDF albedo data on tile space
+           call ESMF_TimeIntervalSet(M5, h=24*5, rc=status ) ; VERIFY_(STATUS)
+           MOD_YY = MODALB_FIRSTDATE / 10000
+           MOD_MM = (MODALB_FIRSTDATE - MOD_YY*10000) / 100
+           MOD_DD = MODALB_FIRSTDATE - (MOD_YY*10000 + MOD_MM*100)
+           call ESMF_TimeSet (MODIS_TIME, yy=MOD_YY, mm=MOD_MM, dd=MOD_DD, rc=status) ; VERIFY_(STATUS)
+           call ESMF_TimeGet (MODIS_TIME, DayOfYear=MFDOY, RC=STATUS)                 ; VERIFY_(STATUS)
+           
+           if (modis_first) then          
+              call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, MM = CUR_MM, DD = CUR_DD, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
+              MOD_DOY = modis_date (DOY, 5)
+              call ESMF_TimeSet(MODIS_TIME, yy=CUR_YY, mm=CUR_MM, dd=CUR_DD, rc=status) ; VERIFY_(STATUS)
+              call ESMF_TimeIntervalSet(TIME_DIFF, h=24*(DOY -MOD_DOY), rc=status )     ; VERIFY_(STATUS)
+              MODIS_RING = MODIS_TIME - TIME_DIFF
+              MODIS_RING = MODIS_RING + M5
+              
+              ALLOCATE (MODIS_VISDFTILE (1:SIZE(ITY)))
+              ALLOCATE (MODIS_NIRDFTILE (1:SIZE(ITY)))
+              if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
+              call read_modis_data (MAPL,CUR_YY, MOD_DOY, b4_modis_date, &
+                   GRIDNAME, MODIS_PATH, 'alb', MODIS_VISDFTILE, MODIS_NIR = MODIS_NIRDFTILE)
+              modis_first = .false.
+           endif
+           
+           if (CURRENT_TIME ==  MODIS_RING) then
+              call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
+              MOD_DOY = modis_date (DOY, 5)
+              if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
+              call read_modis_data (MAPL,CUR_YY, DOY, b4_modis_date, &
+                   GRIDNAME, MODIS_PATH, 'alb', MODIS_VISDFTILE, MODIS_NIR = MODIS_NIRDFTILE)
+              if (DOY < 366) then
+                 MODIS_RING = CURRENT_TIME + M5
+              else
+                 call ESMF_TimeSet(MODIS_TIME, yy=CUR_YY+1, mm=1, dd=1, rc=status) ; VERIFY_(STATUS)
+                 MODIS_RING = MODIS_TIME
+              endif
+           endif
+       
+           ALBVR = MIN (1., MAX(0.001,MODIS_VISDFTILE))
+           ALBNR = MIN (1., MAX(0.001,MODIS_NIRDFTILE))
+           ALBVF = MIN (1., MAX(0.001,MODIS_VISDFTILE))
+           ALBNF = MIN (1., MAX(0.001,MODIS_NIRDFTILE))  
+           
+        ELSEIF (MODIS_ALB == 2) THEN
+           
+           ALBVR = MIN (1., MAX(0.001,MODIS_VISDFTILE))
+           ALBNR = MIN (1., MAX(0.001,MODIS_NIRDFTILE))
+           ALBVF = MIN (1., MAX(0.001,MODIS_VISDFTILE))
+           ALBNF = MIN (1., MAX(0.001,MODIS_NIRDFTILE))  
+           
+        ENDIF
 
         ! Get TPSN1OUT1 for SNOW_ALBEDO parameterization
 
@@ -5522,37 +5593,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
-        IF (MODIS_ALB == 0) THEN
-
-           call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
-                VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles           
-
-           call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
-                RHOFS,                                              &   
-                SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
-                WESNN, HTSNNN, SNDZN,                               &
-                ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
-                SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
-                RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
-           
-        ELSEIF (MODIS_ALB == 2) THEN
-
-           ALBVR = MIN (1., MAX(0.001,MODIS_VISDF))
-           ALBNR = MIN (1., MAX(0.001,MODIS_NIRDF))
-           ALBVF = MIN (1., MAX(0.001,MODIS_VISDF))
-           ALBNF = MIN (1., MAX(0.001,MODIS_NIRDF))  
-           
-           call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
-                RHOFS,                                              &   
-                SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
-                WESNN, HTSNNN, SNDZN,                               &
-                ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
-                SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
-                RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
-           
-        ENDIF
-
+        call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+             RHOFS,                                              &   
+             SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
+             WESNN, HTSNNN, SNDZN,                               &
+             ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
+             SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
+             RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
+        
         ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
         ALBNR   = ALBNR    *(1.-ASNOW) + SNONR    *ASNOW
@@ -5831,8 +5879,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(SLDTOT )
 
         RETURN_(ESMF_SUCCESS)
-
-      end subroutine Driver
+        
+  end subroutine Driver
 
 end subroutine RUN2
 
