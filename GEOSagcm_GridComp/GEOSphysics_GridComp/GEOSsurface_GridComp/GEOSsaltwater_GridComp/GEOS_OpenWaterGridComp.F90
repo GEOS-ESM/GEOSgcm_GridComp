@@ -90,7 +90,7 @@ module GEOS_OpenwaterGridCompMod
   use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
-  
+  use atmOcnIntlayer,     only: ALBSEA
 
   implicit none
   private
@@ -3447,62 +3447,6 @@ contains
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! !IROUTINE: ALBSEA - Computes albedos as a function of $cos(\zeta)$ over ocean surfaces
-
-! !INTERFACE:
-
-  subroutine ALBSEA (ALBVR,ALBVF,ALBNR,ALBNF,ZTH)
-
-! !ARGUMENTS:
-
-    real,    intent(IN)  :: ZTH  (:)
-    real,    intent(OUT) :: ALBVR(:) ! visible beam    albedo
-    real,    intent(OUT) :: ALBVF(:) ! visible diffuse albedo
-    real,    intent(OUT) :: ALBNR(:) ! nearIr  beam    albedo
-    real,    intent(OUT) :: ALBNF(:) ! nearIr  diffuse albedo
-
-!  !DESCRIPTION:
-!        Compute albedo for ocean points
-!          based on ceres
-
-!  CERES ocean albedo at zth=.5 is 0.052. Our formulation gives .077
-!    thus the scaling. The diffuse albedo is given by computing
-!    the zth weighted average of the albedo over the hemisphere and
-!    then applying the same scaling to match CERES.
-
-
-!LLT: CERESFAC = 1           reduces to old formulation 1-5-05
-!     CERESFAC = 0.052/0.077 is the Original CERES Factor
-!     CERESFAC = 0.068/0.077 is the EROS Tuned Value
-
-    real, parameter :: CERESFAC   = 0.068/0.077
-!   real, parameter :: CERESFAC   = 1.0
-
-    real, parameter :: OCNALBVF   = .08*CERESFAC
-    real, parameter :: OCNALBNF   = .08*CERESFAC
-
-    real, parameter :: A0         = 0.40670980*CERESFAC
-    real, parameter :: A1         =-1.23236340*CERESFAC
-    real, parameter :: A2         = 1.42240510*CERESFAC
-    real, parameter :: A3         =-0.55573341*CERESFAC
-
-! Beam albedos
-!-------------
-
-    ALBVR = A0+(A1+(A2+A3*ZTH)*ZTH)*ZTH
-    ALBNR = ALBVR
-
-! Diffuse albedos
-!----------------
-
-    ALBVF = OCNALBVF
-    ALBNF = OCNALBNF
-
-   RETURN_(ESMF_SUCCESS)
-  end subroutine ALBSEA
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! !IROUTINE: COOL_SKIN - Computes variables related to the Cool Skin Layer
 
