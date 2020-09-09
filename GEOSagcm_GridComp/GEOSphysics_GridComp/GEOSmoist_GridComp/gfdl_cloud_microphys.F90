@@ -1266,9 +1266,9 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! -----------------------------------------------------------------------
 
        ! Use In-Cloud condensate
-       !qadum = max(qa,1e-5)
-       !ql = ql/qadum
-       !qi = qi/qadum
+       qadum = max(qa,1e-5)
+       ql = ql/qadum
+       qi = qi/qadum
         
         call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
         
@@ -1299,14 +1299,14 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
                     sink = min(ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
-                    qr (k) = qr (k) + sink
+                    qr (k) = qr (k) + sink*qadum(k)
                     qa (k ) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,1e-8 ) )
                 endif
             endif
         enddo
        ! Revert In-Cloud condensate
-       !ql = ql*qa
-       !qi = qi*qa
+       ql = ql*qadum
+       qi = qi*qadum
     endif
 
 end subroutine warm_rain
