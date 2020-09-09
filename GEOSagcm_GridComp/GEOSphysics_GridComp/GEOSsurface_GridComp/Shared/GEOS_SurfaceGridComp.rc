@@ -73,12 +73,11 @@
 #   falls, respectively.  These parameter values and the functional form to compute surface runoff
 #   are set in conjunction with the logical resource parameter USE_FWET_FOR_RUNOFF as follows:
 #
-#    .FALSE.  : Default; uses total throughfall to compute surface runoff with FWETC=FWETL=0.02 
-#               (hard-wired). 
-#    .TRUE.   : Accounts for separate convective and large-scale throughfalls to compute surface runoff
-#               with FWETC=0.005 and FWETL=0.025 unless specified otherwise below. 
-#               These FWETC and FWETL parameter values were calibrated in off-line, 36-km simulations 
-#               using MERRA-2 (?) forcing.
+#    .FALSE.  : Default; uses total throughfall to compute surface runoff with FWETC=FWETL=0.02. 
+#
+#    .TRUE.   : Accounts for separate convective and large-scale throughfalls to compute surface runoff.
+#               Off-line, 36-km simulations using MERRA-2(?) forcing yielded calibrated parameter values 
+#               of FWETC=0.005 and FWETL=0.025.
 #               Note that the partitioning between "convective" and "large-scale" precipitation in 
 #               the GCM depends strongly on resolution, presumably requiring tuned FWETC and FWETL
 #               values that depend on the atmospheric resolution.
@@ -86,8 +85,11 @@
 # GEOSagcm=>USE_FWET_FOR_RUNOFF: .FALSE.	
 # GEOSldas=>USE_FWET_FOR_RUNOFF: .FALSE.
 #
-# FWETC: 0.005	                 # ignored unless USE_FWET_FOR_RUNOFF is .TRUE.    
-# FWETL: 0.025	                 # ignored unless USE_FWET_FOR_RUNOFF is .TRUE.    
+# GEOSagcm=>FWETC: 0.02	                 # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF is .FALSE.
+# GEOSldas=>FWETC: 0.02	                 # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF is .FALSE. 
+#	
+# GEOSagcm=>FWETL: 0.02	                 # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF is .FALSE.    	
+# GEOSldas=>FWETL: 0.02	                 # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF is .FALSE.
 
 # ---- ASCAT-derived turbulent roughness length
 #
