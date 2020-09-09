@@ -90,7 +90,8 @@ module GEOS_OpenwaterGridCompMod
   use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
-  use atmOcnIntlayer,     only: ALBSEA
+  use atmOcnIntlayer,     only: ALBSEA,    &
+                                COOL_SKIN
 
   implicit none
   private
@@ -3447,144 +3448,6 @@ contains
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! !IROUTINE: COOL_SKIN - Computes variables related to the Cool Skin Layer
-
-! !INTERFACE:
-
-  subroutine COOL_SKIN (NT,CM,UUA,VVA,UW,VW,SWN,LHF,SHF,LWDNSRF,    &
-                        ALW,BLW,TXW,TYW,USTARW_,                    &
-                        DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_, &
-                        TS,WATER,FR,n_iter_cool,fr_ice_thresh)
-
-! !ARGUMENTS:
-
-    integer, intent(IN)    :: NT             ! number of tiles
-!   real,    intent(IN)    :: FR     (:)     ! fraction of sea ice
-    real,    intent(IN)    :: FR     (:,:)   ! fraction of surface (water/ice)
-    integer, intent(IN)    :: WATER          ! subtile  number assigned to surface type: "WATER" 
-    real,    intent(IN)    :: CM     (:,:)   ! transfer coefficient for wind
-    real,    intent(IN)    :: UUA    (:)     ! zonal       wind
-    real,    intent(IN)    :: VVA    (:)     ! meridional  wind
-    real,    intent(IN)    :: UW     (:)     ! u-current
-    real,    intent(IN)    :: VW     (:)     ! v-current
-    real,    intent(IN)    :: SWN    (:)     ! net shortwave radiation incident at surface
-    real,    intent(IN)    :: LHF    (:)     ! latent   heat flux
-    real,    intent(IN)    :: SHF    (:)     ! sensible heat flux
-    real,    intent(IN)    :: LWDNSRF(:)     ! downward longwave at surface
-    real,    intent(IN)    :: ALW    (:)     ! for linearized \sigma T^4
-    real,    intent(IN)    :: BLW    (:)     ! for linearized \sigma T^4
-    integer, intent(IN)    :: n_iter_cool    ! number of iterations to compute cool-skin layer 
-    real,    intent(IN)    :: fr_ice_thresh  ! threshold on ice fraction, sort of defines Marginal Ice Zone
-    real,    intent(IN)    :: TS     (:,:)   ! skin temperature
-
-    real,    intent(OUT)   :: USTARW_(:)     ! u_{*,w} 
-    real,    intent(OUT)   :: DCOOL_ (:)     ! depth of cool-skin layer
-    real,    intent(OUT)   :: TDROP_ (:)     ! temperature drop across cool-skin
-    real,    intent(OUT)   :: SWCOOL_(:)     ! shortwave radiation absorbed in cool-skin 
-    real,    intent(OUT)   :: QCOOL_ (:)     ! net heat flux in cool layer
-    real,    intent(OUT)   :: BCOOL_ (:)     ! bouyancy in cool layer
-    real,    intent(OUT)   :: LCOOL_ (:)     ! Saunder's parameter in cool layer
-
-    real,    intent(INOUT) :: TXW    (:)     ! zonal      stress
-    real,    intent(INOUT) :: TYW    (:)     ! meridional stress
-
-!  !LOCAL VARIABLES
-
-    integer         :: N, iter_cool
-
-    real            :: ALPH, Qb, fC
-
-    real, parameter :: NU_WATER        = 1.0E-6  ! kinematic viscosity of water  [m^2/s]
-    real, parameter :: TherCond_WATER  = 0.563   ! Thermal conductivity of water [W/m/ K]
-    real, parameter :: bigC            = &
-          (16.0 * (MAPL_CAPWTR*MAPL_RHO_SEAWATER)**2 * NU_WATER**3) / TherCond_WATER**2
-
-!  !DESCRIPTION:
-!        Based on Fairall et al, 1996
-
-    do N = 1, NT  ! N is now looping over all tiles (NOT sub-tiles).
-
-!      Stress over "open" water (or Marginal Ice Zone) depends on ocean currents
-!      --------------------------------------------------------------------------
-       TXW(N) = CM(N,WATER)*(UUA(N) - UW(N))
-       TYW(N) = CM(N,WATER)*(VVA(N) - VW(N))
-
-!      if( FR(N)       < fr_ice_thresh ) then 
-       if( FR(N,WATER) > fr_ice_thresh ) then 
-
-!        Ustar in water has a floor of 2 \mu m/s
-!        ----------------------------------------
-         USTARW_(N) = max( 2.e-6, sqrt(sqrt(TXW(N)*TXW(N)+TYW(N)*TYW(N))/MAPL_RHO_SEAWATER) )
-
-!        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!        ! Cool skin layer- heat loss and temperature drop  @ top of interface layer !
-!        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-          DCOOL_(N)  = 1.e-3           ! initial guess for cool-skin layer thickness
-          TDROP_(N)  = 0.2             ! guess for cool-skin tdrop. FINAL TDROP IS SENSITIVE TO INITIAL CHOICE. 3 ITER ENOUGH?
-
-          cool_iter: do iter_cool = 1, n_iter_cool
-
-!         Short wave absorbed in the cool layer. This is a modified version of Zeng and Beljaars, 2005
-!         ----------------------------------------------------------------------------------------------
-
-             fC  = 0.0685 + 11.0*DCOOL_(N) - (3.3e-5/DCOOL_(N))*(1.0-exp(-DCOOL_(N)/8.0E-4))
-             fC  = max( fC, 0.01)        ! absorb at least 1% of shortwave in cool layer
-             SWCOOL_(N) = SWN(N)*fC
-
-!            Heat loss at top of skin (cool) layer
-!            --------------------------------------
-
-             QCOOL_(N)  = &
-                          LHF(N) + SHF(N) - ( LWDNSRF(N) -(ALW(N) + BLW(N)*( TS(N,WATER)-TDROP_(N)))) - &
-                          SWCOOL_(N)
-
-!            Bouyancy production in cool layer depends on surface cooling
-!            and evap-salinity effect from surface. It does not depend on solar
-!            heating, which is assumed to be uniform in cool layer. This last assumption
-!            could be improved by including some NIR. For this calculation, we include
-!            temperature dependence of the thermal expansion coefficient.
-!            -------------------------------------------------------------------------------
-
-             ALPH   = (0.6 + 0.0935*(TS(N,WATER)-MAPL_TICE))*1.E-4
-             Qb     = QCOOL_(N) + ( (0.026*MAPL_CAPWTR)/(ALPH*MAPL_ALHL) )*LHF(N)
-             BCOOL_(N) = (ALPH*MAPL_GRAV*Qb) / (MAPL_RHO_SEAWATER*MAPL_CAPWTR)
-
-!            Saunders parameter
-!            BigC = (16.0 * (MAPL_CAPWTR*MAPL_RHO_SEAWATER)**2 * NU_WATER**3) / TherCond_WATER**2  
-!            -------------------------------------------------------------------------------
-
-             if ( BCOOL_(N) > 0.0) then  ! Eqn(14) of F96
-                LCOOL_(N)  = 6.0/( 1.0 + ( BCOOL_(N)*bigC / USTARW_(N)**4 )**0.75 )**(1./3.)
-                DCOOL_(N)  = LCOOL_(N)*NU_WATER/USTARW_(N)
-             else 
-                LCOOL_(N)  = 6.0
-                DCOOL_(N)  = min( LCOOL_(N)*NU_WATER/USTARW_(N), 1.e-2)    ! Prevent very thick cool layer depth
-             end if
-
-             TDROP_(N)    = max( 0.0, DCOOL_(N)*QCOOL_(N)/TherCond_WATER ) ! Eqn(4) & (13) of F96
-
-          end do cool_iter
-
-!        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!        ! Done with Cool skin layer.  Now turbluent heat flux at base of interface layer !
-!        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-       else            ! FR(N, WATER) <= fr_ice_thresh
-          USTARW_(N)     = MAPL_UNDEF
-          DCOOL_ (N)     = MAPL_UNDEF
-          TDROP_ (N)     = 0.0 !MAPL_UNDEF
-          SWCOOL_(N)     = MAPL_UNDEF
-          QCOOL_ (N)     = MAPL_UNDEF
-          BCOOL_ (N)     = MAPL_UNDEF
-          LCOOL_ (N)     = MAPL_UNDEF
-       end if
-    end do
-
-   RETURN_(ESMF_SUCCESS)
-  end subroutine COOL_SKIN
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! !IROUTINE: AOIL_SST - Computes skin SST using AOIL (single column)
 
