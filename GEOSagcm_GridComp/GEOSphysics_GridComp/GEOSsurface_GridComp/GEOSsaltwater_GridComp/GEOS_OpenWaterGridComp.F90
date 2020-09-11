@@ -97,8 +97,7 @@ module GEOS_OpenwaterGridCompMod
   implicit none
   private
 
-  integer            :: DO_DATASEA   ! between DO_GUEST and DO_DATASEA, we pick one that
-                                     ! works in both amip and coupled mode
+  integer            :: DO_DATASEA
   integer            :: DO_SKIN_LAYER
 
   public SetServices
@@ -114,7 +113,6 @@ module GEOS_OpenwaterGridCompMod
                                           ! defualt: OFF, so AOIL is incompatible with "old" interface
                                           ! when it is ON, set servives provides what is needed for both versions
                                           ! whereas RUN(1,2) will use one or other (OFF: AOIL; ON: old interface)
-                                                               
 
   contains
 
@@ -245,7 +243,6 @@ module GEOS_OpenwaterGridCompMod
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
-
 
      call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'evaporation'               ,&
@@ -823,16 +820,6 @@ module GEOS_OpenwaterGridCompMod
           RC=STATUS  )
      VERIFY_(STATUS)
 
-! this is gone because FRZMLT will be from ocean/guest
-!     call MAPL_AddExportSpec(GC,                     &
-!          SHORT_NAME         = 'FRZMLT'                    ,&
-!          LONG_NAME          = 'Freeze_melt_potential',     &
-!          UNITS              = 'W m-2'                     ,&
-!          DIMS               = MAPL_DimsTileOnly           ,&
-!          VLOCATION          = MAPL_VLocationNone          ,&
-!                                               RC=STATUS  ) 
-!    VERIFY_(STATUS)
-
      call MAPL_AddExportSpec(GC,                           &
           SHORT_NAME         = 'SS_FOUND',                 &
           LONG_NAME          = 'foundation_salinity_for_interface_layer',        &
@@ -841,7 +828,6 @@ module GEOS_OpenwaterGridCompMod
           VLOCATION          = MAPL_VLocationNone,         &
           RC=STATUS  )
      VERIFY_(STATUS)
-
 
      call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'total_surface_heat_flux_over_the_whole_tile' ,&
@@ -872,7 +858,7 @@ module GEOS_OpenwaterGridCompMod
         VERIFY_(STATUS)
      endif
 
-     ! atmosphere-ocean fluxes
+     ! Atmosphere-ocean fluxes
      call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'atmosphere_ocean_sensible_heat_flux' ,&
         UNITS              = 'W m-2'                     ,&
@@ -1423,7 +1409,6 @@ module GEOS_OpenwaterGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'KPAR',                              &
         LONG_NAME          = 'PAR_extinction_coefficient',        &
@@ -1483,7 +1468,6 @@ module GEOS_OpenwaterGridCompMod
           RC=STATUS  ) 
     VERIFY_(STATUS)
 
-
     call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'UUA',                             &
         LONG_NAME          = 'interpolated_effective_surface_zonal_velocity',&
@@ -1504,95 +1488,7 @@ module GEOS_OpenwaterGridCompMod
         RC=STATUS  )
      VERIFY_(STATUS)
 
-
-!    if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-
-! these exports were filled with 0. by SimpleSeaiceGridComp
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'DRUVRTHRU',                             &
-!            LONG_NAME          = 'penetrative_uvr_beam_flux_through_sea_ice',           &
-!            UNITS              = 'W m-2',                             &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'DFUVRTHRU',                             &
-!            LONG_NAME          = 'penetrative_uvr_diffuse_flux_through_sea_ice',           &
-!            UNITS              = 'W m-2',                             &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'DRPARTHRU',                             &
-!            LONG_NAME          = 'penetrative_par_beam_flux_through_sea_ice',           &
-!            UNITS              = 'W m-2',                             &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'DFPARTHRU',                             &
-!            LONG_NAME          = 'penetrative_par_diffuse_flux_through_sea_ice',           &
-!            UNITS              = 'W m-2',                             &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'FRESH',                             &
-!            LONG_NAME          = 'fresh_water_flux_from_sea_ice',     &
-!            UNITS              = 'kg m-2 s-1',                        &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'FSALT',                             &
-!            LONG_NAME          = 'salt_flux_from_sea_ice',            &
-!            UNITS              = 'kg m-2 s-1',                        &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'FHOCN',                             &
-!            LONG_NAME          = 'heat_flux_from_sea_ice',            &
-!            UNITS              = 'W m-2',                             &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!    endif
-
-     ! added here in case skin layer needs it
-     !call MAPL_AddImportSpec(GC,                     &
-     !   SHORT_NAME         = 'FRZMLT'                    ,&
-     !   LONG_NAME          = 'freeze_melt_potential',     &
-     !   UNITS              = 'W m-2'                     ,&
-     !   DIMS               = MAPL_DimsTileOnly           ,&
-     !   VLOCATION          = MAPL_VLocationNone          ,&
-     !   DEFAULT            = 0.0                         ,&
-     !   RC=STATUS  ) 
-     !VERIFY_(STATUS)
-
 !EOS
-
 
 ! Set the Profiling timers
 ! ------------------------
@@ -1605,7 +1501,6 @@ module GEOS_OpenwaterGridCompMod
     VERIFY_(STATUS) 
     call MAPL_TimerAdd(GC,    name="-Albedo"  ,             RC=STATUS)
     VERIFY_(STATUS)
-  
 
 ! Set generic init and final methods
 ! ----------------------------------
@@ -1619,7 +1514,6 @@ module GEOS_OpenwaterGridCompMod
     RETURN_(ESMF_SUCCESS)
   
   end subroutine SetServices
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -1715,13 +1609,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:)    :: FI  => null()
    real, pointer, dimension(:)    :: TF  => null()
    real, pointer, dimension(:)    :: TS_FOUNDi => null()
-!  real, pointer, dimension(:)    :: FRZMLT    => null()
 
    integer                        :: N
    integer                        :: NT
    integer                        :: NC
    integer                        :: niter
-
 
    real, allocatable              :: TS (:,:)
    real, allocatable              :: US (:,:)
@@ -1777,8 +1669,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real            :: OGCM_top_thickness        ! thickness of OGCM top layer (D) in AS2018
    real            :: QSAT_SCL
 
-   integer         :: iFIX_BUG1                 ! whether to fix the "bug" with old interface? 0: no (default), 1: yes
-   integer         :: iMAK_BUG                  ! whether to put a   "bug" in   new interface? 0: no (default), 1: yes
    character(len=ESMF_MAXSTR)     :: SURFRC
    type(ESMF_Config)              :: SCF 
 
@@ -1894,8 +1784,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,TS_FOUNDi, 'TS_FOUND', RC=STATUS)
    VERIFY_(STATUS)
-!  call MAPL_GetPointer(IMPORT,FRZMLT, 'FRZMLT'  ,    RC=STATUS)
-!  VERIFY_(STATUS)
 
 ! Pointers to internals
 !----------------------
@@ -1982,14 +1870,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
      call MAPL_GetPointer(EXPORT,QSAT2 , 'QSAT2'   ,    RC=STATUS)
      VERIFY_(STATUS)
-   endif
-
-   if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-      call MAPL_GetResource ( MAPL, iFIX_BUG1,  Label="FIX1_OLD_INTERFACE:"  , DEFAULT=0,   RC=STATUS)
-      VERIFY_(STATUS)
-   else
-      call MAPL_GetResource ( MAPL, iMAK_BUG,   Label="BREAK_NEW_INTERFACE:" , DEFAULT=0,   RC=STATUS)
-      VERIFY_(STATUS)
    endif
 
    NT = size(TA)
@@ -2079,12 +1959,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
 
    if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-     TS(:,WATER) = TW  ! TW (in K): returned from MOM/dataocean. Max, should it be TS(:,WATER) = TW - TWMTS?
-
-     if( iFIX_BUG1 == 1) then
-       call MAPL_GetPointer(INTERNAL,TWMTS  , 'TWMTS',    RC=STATUS); VERIFY_(STATUS)
-       TS(:,WATER)= TS(:,WATER) - TWMTS ! so helfsurface gets SKIN SST (i.e., "TS") as input.
-     endif
+     TS(:,WATER) = TW
 
    else
 
@@ -2101,12 +1976,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
        endif
        TS(:,WATER) = TS(:,WATER) - DELTC                                   ! Eqn.(16) of AS2018
 
-       if( iMAK_BUG == 1) then
-         TS(:,WATER) = TS_FOUNDi + TWMTF                                   ! deliberately input helfsurface "TW"
-       endif
      endif
    endif
-
 
    FR(:,WATER) = 1.0 ! parent(saltwater) will aggregate based on water/ice fraction 
 
@@ -2123,17 +1994,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    endif
 
    if( trim(AOIL_COMP_SWITCH) == "OFF") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-   ! it is a minor bug to not having the line below
-   ! TS has been updated on the ocean side, so QS should too
-   ! commented out for now so Santha can have zero-diff
 
-     !QS(:,WATER) = GEOS_QSAT(TS(:,WATER), PS, RAMP=0.0, PASCALS=.TRUE.) 
      call MAPL_GetResource ( MAPL, QSAT_SCL, Label="QSAT_SALTWATER_SCALING:" , DEFAULT=1.0, RC=STATUS)
      VERIFY_(STATUS)
      QS(:,WATER) = QSAT_SCL*GEOS_QSAT(TS(:,WATER), PS, RAMP=2.0, PASCALS=.TRUE.) 
 
      if(associated(QSAT1)) QSAT1 = QS(:,WATER)
-     !if(associated(QSAT2)) QSAT2 = 1.0/1.22*0.98*640380.0*exp(-5107.4/TS(:,WATER))
    endif
 
 !  Clear the output tile accumulators
@@ -2202,7 +2068,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
            UCN = 0.
          endif
 
-
          !  Aggregate to tiles for MO only diagnostics
          !--------------------------------------------
          if(associated(MOU50M))MOU50M = U50M(:)*FR(:,N)
@@ -2236,7 +2101,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          if(associated(GST)) GST     = WW(:,N)*FR(:,N)
          if(associated(VNT)) VNT     = UUU    *FR(:,N)
 
-
       !  Aggregate effective, CD-weighted, surface values of T and Q
       !-------------------------------------------------------------
 
@@ -2244,7 +2108,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          if(associated(QH)) QH      = CQ(:,N)*QS(:,N)*FR(:,N)
          if(associated(UH)) UH      = CM(:,N)*US(:,N)*FR(:,N)
          if(associated(VH)) VH      = CM(:,N)*VS(:,N)*FR(:,N)
-
 
          WW(:,N) = max(CH(:,N)*(TS(:,N)-TA-(MAPL_GRAV/MAPL_CP)*DZ)/TA + MAPL_VIREPS*CQ(:,N)*(QS(:,N)-QA),0.0)
          WW(:,N) = (HPBL*MAPL_GRAV*WW(:,N))**(2./3.)
@@ -2302,7 +2165,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    RETURN_(ESMF_SUCCESS)
 
-
  end subroutine RUN1
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2325,7 +2187,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! !DESCRIPTION: Periodically refreshes the sea-surface conditions
 
 !EOP
-
 
 ! ErrLog Variables
 
@@ -2530,7 +2391,6 @@ contains
    real, pointer, dimension(:)    :: TF => null()
    real, pointer, dimension(:)    :: DISCHARGE_IM => null()
 
-
    real, allocatable                   :: TS (:,:)                  ! Following 4 Variables: TS to FR need to be 
    real, allocatable                   :: HH (:,:)                  ! allocatable because NUM_SUBTILES is NOT a parameter
    real, allocatable                   :: SS (:,:)
@@ -2543,8 +2403,6 @@ contains
    real,    dimension(NT)              :: EVD
    real,    dimension(NT)              :: CFQ
    real,    dimension(NT)              :: CFT
-   !real,    dimension(NT)              :: UUA
-   !real,    dimension(NT)              :: VVA
    real,    dimension(NT)              :: TXW
    real,    dimension(NT)              :: TYW
    real,    dimension(NT)              :: DQS
@@ -2568,7 +2426,6 @@ contains
    real,    dimension(NT)              :: ALBNFO
    real,    dimension(NT)              :: VSUVR
    real,    dimension(NT)              :: VSUVF
-
 
    real,    dimension(NT)              :: LCOOL_
    real,    dimension(NT)              :: BCOOL_
@@ -2614,10 +2471,7 @@ contains
 
    integer                             :: NSUB, I, K, L
 
-   real                                :: FSALT, FRESH!, FHOCN
-
-   integer                             :: iFIX_BUG2                 ! whether to fix the "bug" with old interface? 0: no (default), 1: yes
-
+   real                                :: FSALT, FRESH
 
 !  -------------------------------------------------------------------
 
@@ -2702,7 +2556,6 @@ contains
      call MAPL_GetPointer(INTERNAL,TWMTS  , 'TWMTS',    RC=STATUS); VERIFY_(STATUS)
    endif
 
-
 ! Pointers to outputs
 !--------------------
 
@@ -2764,7 +2617,6 @@ contains
    call MAPL_GetPointer(EXPORT,ZETA_W , 'ZETA_W'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,TWMTFe , 'TWMTF'   ,    RC=STATUS); VERIFY_(STATUS)
 
-
    allocate(TS (NT,NUM_SUBTILES),STAT=STATUS)
    VERIFY_(STATUS)
    allocate(HH (NT,NUM_SUBTILES),STAT=STATUS)
@@ -2822,9 +2674,9 @@ contains
 !   Treatment of Marginal Ice Zone (MIZ), i.e., threshold on fraction of ice (fraci), to model the SST variations. 
 !   One can imagine at least following three possibilities:
 !   (i)  SST is NOT allowed to vary within ice extent, 
-!        i.e., if fraci    < fr_ice_thresh (1.e-11 default), turn AOIL off, set skin SST = TS_FOUND
+!        i.e., if fraci    < fr_ice_thresh (= 1.e-11 default), turn AOIL off, set skin SST = TS_FOUND
 !   (ii) SST IS allowed to vary with the ice extent, 
-!                 FRwater  > fr_ice_thresh (0.0 default),    turn AOIL on, only over water, skin SST .ne. TS_FOUND (as it was <= Jason-2_0)
+!                 FRwater  > fr_ice_thresh (= 0.0 default),    turn AOIL on, only over water, skin SST .ne. TS_FOUND (as it was <= Jason-2_0)
 !   (iii) SST is NOT allowed to vary when SST < SST_cold, say, 15C. Turn AOIL off when the water temperature falls below some threshold.
 !
 !   As already noted, option (ii) was used in versions before and up to Jason-2_0, and (i) was tried in Jason-3_0, which 
@@ -2835,8 +2687,7 @@ contains
 !   
 !   ** Revisit when coupled to ocean+sea-ice ** July, 2019.
 !   --------------------------------------------------------------------------------------------------------
-!   call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=1.e-11,    RC=STATUS)   ! above option (i)
-    call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=0.0,       RC=STATUS)   ! above option (ii)
+    call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=0.0,       RC=STATUS)   ! i.e., above option (ii)
     VERIFY_(STATUS)
 !   --------------------------------------------------------------------------------------------------------
 
@@ -3148,8 +2999,8 @@ contains
 !    Copy back to friendly internal variables
 !    -----------------------------------------
 
-     TW = TS(:,WATER) + TWMTS       ! SA: I don't fully understand how LANL CICE should interact w/Skin Layer. Jul 2015.
-     HW = HH(:,WATER)               ! So for now, have the same skin layer interaction as in GEOS CICE
+     TW = TS(:,WATER) + TWMTS
+     HW = HH(:,WATER)               ! The same skin layer interaction as in GEOS CICE
      ! multiply by 1000 to account for g->kg conversion
      FSALT = 0.  ! SA: has to be done this way for compatibility (when it is "ON")
      SW = (SS(:,WATER)+DT*1.e3*FSALT)/HW
@@ -3158,18 +3009,11 @@ contains
      endwhere
     endif
 
-! Atmospheric surface stresses
-!-----------------------------
-    !*** already computed in surface
-    !UUA = (TAUX/CMATM + UHATM)
-    !VVA = (TAUY/CMATM + VHATM)
-
 ! Net Solar insolation (including UV & IR, direct & diffuse) in interface layer 
 !------------------------------------------------------------------------------
 
     SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
           (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
-
 
 ! how many cool-skin iterations to do?
 !-------------------------------------
@@ -3181,7 +3025,7 @@ contains
 !     Marginal Ice Zone- threshold on fraction: if no LANL CICE, SST IS ALLOWED TO VARY WITHIN ICE EXTENT.
 !     -------------------------------------------------------------------------------------------------
 
-      ! Bin: the default for coupled (with cice) needs to be revisited 
+      ! Following default for coupled (with cice) needs to be revisited 
       call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=0.0,    RC=STATUS)
       VERIFY_(STATUS)
 
@@ -3199,13 +3043,6 @@ contains
                      fr_ice_thresh)
 
       deallocate(tmp2)
-
-      call MAPL_GetResource ( MAPL, iFIX_BUG2,  Label="FIX2_OLD_INTERFACE:"  , DEFAULT=0,   RC=STATUS)
-      VERIFY_(STATUS)
-      if( iFIX_BUG2 == 1) then
-        DQS         = GEOS_QSAT(TS(:,WATER), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,WATER)
-        QS(:,WATER) = QS(:,WATER) + DQS
-      endif
     endif
 
     if( trim(AOIL_COMP_SWITCH) == "OFF") then
@@ -3313,15 +3150,6 @@ contains
             TDEL_  (N) = MAPL_UNDEF
           endif ! if( FR(N, WATER) > fr_ice_thresh )
         end do
-        ! associated change in QS
-        call MAPL_GetResource ( MAPL, iFIX_BUG2,  Label="FIX2_OLD_INTERFACE:"  , DEFAULT=0,   RC=STATUS)
-        VERIFY_(STATUS)
-        if( iFIX_BUG2 == 1) then
-          DQS         = GEOS_QSAT( TS(:,WATER), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,WATER)
-          QS(:,WATER) = QS(:,WATER) + DQS
-        endif
-        !if(associated(DELTS  )) DELTS   = DTS*CFT*FR(:,WATER)
-        !if(associated(DELQS  )) DELQS   = DQS*CFQ*FR(:,WATER)
       endif ! if (DO_SKIN_LAYER==0) 
       if(associated(TWMTFe)) TWMTFe = TWMTF
     endif   ! if( trim(AOIL_COMP_SWITCH) == "OFF")
@@ -3345,7 +3173,6 @@ contains
     if(associated(ZETA_W)) ZETA_W  = ZETA_W_
     if(associated(TS_FOUNDe)) TS_FOUNDe = TS_FOUNDi
     if(associated(SS_FOUNDe)) SS_FOUNDe = SS_FOUNDi
-
 
     if(associated(TAUXW)) TAUXW = TXW
     if(associated(TAUYW)) TAUYW = TYW
@@ -3376,7 +3203,6 @@ contains
              LWNDWTR = MAPL_UNDEF
           end where
     endif
-
 
     if(associated(TST    )) TST     = TS(:,WATER)*FR(:,WATER)
     if(associated(QST    )) QST     = QS(:,WATER)*FR(:,WATER)
@@ -3451,5 +3277,4 @@ contains
 end subroutine RUN2
 
 end module GEOS_OpenwaterGridCompMod
-
 
