@@ -183,7 +183,7 @@ module GEOS_OpenwaterGridCompMod
     call MAPL_GetResource ( MAPL, DO_DATASEA,    Label="USE_DATASEA:"     , DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_SKIN_LAYER, Label="USE_SKIN_LAYER:"  , DEFAULT=0    , RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_SKIN_LAYER, Label="USE_SKIN_LAYER:"  , DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Atmosphere-Ocean Interface Layer compatibility: on/off?
@@ -1592,7 +1592,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: WW  => null()
    real, pointer, dimension(:,:)  :: Z0  => null()
 
-   real, pointer, dimension(:  )  :: TWMTS => null()  ! add here to be able to fix the "bug" with old interface
+   real, pointer, dimension(:  )  :: TWMTS => null()
 
 ! pointers to import
 
@@ -2235,7 +2235,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get parameters from generic state.
 !-----------------------------------
 
-    call MAPL_Get(MAPL,             &
+    call MAPL_Get(MAPL,                          &
          TILELATS  = LATS ,                      &
          TILELONS  = LONS ,                      &
          TILEAREA  = AREA ,                      &
@@ -3002,7 +3002,7 @@ contains
      TW = TS(:,WATER) + TWMTS
      HW = HH(:,WATER)               ! The same skin layer interaction as in GEOS CICE
      ! multiply by 1000 to account for g->kg conversion
-     FSALT = 0.  ! SA: has to be done this way for compatibility (when it is "ON")
+     FSALT = 0.  ! for compatibility (when it is "ON")
      SW = (SS(:,WATER)+DT*1.e3*FSALT)/HW
      where (.not. (abs(UW) > 0.0 .or. abs(VW) > 0.0))
         SW = max(min(SW,MAXSALINITY),MINSALINITY)
@@ -3120,11 +3120,6 @@ contains
             endif
             TAUTW_(N) = MAX(DT, TAUTW_(N)) ! for this time-scale, avoid 0.
             TWMTF(N) = TWMTF(N)/(1.+DT/TAUTW_(N))
-!           SA: positivity should be imposed like this to be able to compute above PHIW_(N), that needs TWMTF>0 to arg to SQRT() is <0.
-!           if (trim(diurnal_warming_scheme) == 'AS2018') then
-!             TWMTF(N) = max( TWMTF(N), 0.)
-!           endif
-
             DELTC(N) = TDROP_(N)
 
             if (DO_DATASEA == 1) then
@@ -3134,8 +3129,9 @@ contains
               TDEL_(N) = TS_FOUNDi(N) + (1./MUSKIN + (1.-epsilon_d)) * MAX(TWMTF(N), 0.0)
               TBAR_(N) = TS_FOUNDi(N) +              (1.-epsilon_d)  * MAX(TWMTF(N), 0.0)
             endif
-            !DTS(N)     = ( TDEL_(N) - TDROP_(N)) - TS(N,WATER)
+
             TS(N,WATER) = TDEL_(N) - TDROP_(N)                  ! updated skin temperature
+            
           else ! FR(N, WATER) <= fr_ice_thresh
             SWWARM_(N) = MAPL_UNDEF
             QWARM_ (N) = MAPL_UNDEF
