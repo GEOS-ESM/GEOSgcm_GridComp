@@ -43,9 +43,6 @@ module GEOS_SimpleSeaiceGridCompMod
   integer, parameter    :: ICE = 1  
   integer, parameter    :: NUM_SUBTILES = 1       
 
-  character(len=7)   :: AOIL_COMP_SWITCH                       ! Atmosphere-Ocean Interface Layer, compatibility: on/off
-                                                               ! defualt: OFF, so AOIL is incompatible with "old" interface
-
   contains
 
 !BOP
@@ -101,13 +98,6 @@ module GEOS_SimpleSeaiceGridCompMod
 !--------------------------
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
-
-
-! Atmosphere-Ocean Interface Layer compatibility: on/off?
-!-------------------------------------------------------
-
-    call MAPL_GetResource( MAPL,  AOIL_COMP_SWITCH,        Label="AOIL_COMP_SWITCH:",     DEFAULT="ON", RC=STATUS)
     VERIFY_(STATUS)
 
 ! Sea-Ice Thermodynamics computation: using CICE or not?
@@ -1096,9 +1086,8 @@ module GEOS_SimpleSeaiceGridCompMod
                                                        RC=STATUS  )
    VERIFY_(STATUS)
 
-   if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME         = 'SSKINW',                           &
+   call MAPL_AddImportSpec(GC,                                    &
+        SHORT_NAME         = 'SSKINW',                            &
         LONG_NAME          = 'water_skin_salinity',               &
         UNITS              = 'psu',                               &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -1106,10 +1095,10 @@ module GEOS_SimpleSeaiceGridCompMod
         DEFAULT            = 30.0,                                &
 
                                                        RC=STATUS  )
-      VERIFY_(STATUS)
+   VERIFY_(STATUS)
 
-      call MAPL_AddImportSpec(GC,                                  &
-        SHORT_NAME         = 'TSKINW',                           &
+   call MAPL_AddImportSpec(GC,                                    &
+        SHORT_NAME         = 'TSKINW',                            &
         LONG_NAME          = 'water_skin_temperature',            &
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
@@ -1117,9 +1106,7 @@ module GEOS_SimpleSeaiceGridCompMod
         DEFAULT            = 280.0,                               &
 
                                                        RC=STATUS  )
-      VERIFY_(STATUS)
-
-   endif
+   VERIFY_(STATUS)
 
    call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'SS_FOUND',                          &
@@ -1606,11 +1593,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    US(:,ICE  ) = UI
    VS(:,ICE  ) = VI
-
-!  SA -- reconcile old (x39) and new (x40)
-   if( trim(AOIL_COMP_SWITCH) == "OFF") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-     QS(:,ICE  ) = GEOS_QSAT(TS(:,ICE), PS, RAMP=0.0, PASCALS=.TRUE.) 
-   endif
 
 !  Clear the output tile accumulators
 !------------------------------------
