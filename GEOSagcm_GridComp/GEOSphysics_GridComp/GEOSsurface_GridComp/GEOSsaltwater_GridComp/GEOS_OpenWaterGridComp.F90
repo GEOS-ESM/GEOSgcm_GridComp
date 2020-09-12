@@ -92,13 +92,14 @@ module GEOS_OpenwaterGridCompMod
   use DragCoefficientsMod
   use atmOcnIntlayer,     only: ALBSEA,    &
                                 COOL_SKIN, &
-                                SKIN_SST
+                                SKIN_SST,  &
+                                AOIL_sfcLayer_T
 
   implicit none
   private
 
-  integer            :: DO_DATASEA
-  integer            :: DO_SKIN_LAYER
+  integer            :: DO_DATASEA               ! =1:uncoupled (AGCM); =0:coupled (AOGCM)
+  integer            :: DO_SKIN_LAYER            ! =1:active AOIL (ON); =0:inactive AOIL (OFF)
 
   public SetServices
 
@@ -922,42 +923,38 @@ module GEOS_OpenwaterGridCompMod
 
 !  !INTERNAL STATE:
 
-     if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-     
-        call MAPL_AddInternalSpec(GC,                           &
-             SHORT_NAME         = 'HSKINW',                            &
-             LONG_NAME          = 'water_skin_layer_mass',             &
-             UNITS              = 'kg m-2',                            &
-             DIMS               = MAPL_DimsTileOnly,                   &
-             VLOCATION          = MAPL_VLocationNone,                  &
-             FRIENDLYTO         = 'OCEAN:SEAICE',                      &
-             DEFAULT            = 5.0*MAPL_RHO_SEAWATER,               &
+    call MAPL_AddInternalSpec(GC,                           &
+        SHORT_NAME         = 'HSKINW',                            &
+        LONG_NAME          = 'water_skin_layer_mass',             &
+        UNITS              = 'kg m-2',                            &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        FRIENDLYTO         = 'OCEAN:SEAICE',                      & ! must go away
+        DEFAULT            = 5.0*MAPL_RHO_SEAWATER,               &
                                                        RC=STATUS  )
-        VERIFY_(STATUS)
+    VERIFY_(STATUS)
 
-        call MAPL_AddInternalSpec(GC,                           &
-             SHORT_NAME         = 'TSKINW',                            &
-             LONG_NAME          = 'water_skin_temperature',            &
-             UNITS              = 'K',                                 &
-             DIMS               = MAPL_DimsTileOnly,                   &
-             VLOCATION          = MAPL_VLocationNone,                  &
-             FRIENDLYTO         = 'OCEAN:SEAICE',                      &
-             DEFAULT            = 280.0,                               &
+    call MAPL_AddInternalSpec(GC,                           &
+        SHORT_NAME         = 'TSKINW',                            &
+        LONG_NAME          = 'water_skin_temperature',            &
+        UNITS              = 'K',                                 &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        FRIENDLYTO         = 'OCEAN:SEAICE',                      & ! must go away
+        DEFAULT            = 280.0,                               &
                                                        RC=STATUS  )
-        VERIFY_(STATUS)
+    VERIFY_(STATUS)
 
-        call MAPL_AddInternalSpec(GC,                           &
-             SHORT_NAME         = 'SSKINW',                            &
-             LONG_NAME          = 'water_skin_salinity',               &
-             UNITS              = 'psu',                               &
-             DIMS               = MAPL_DimsTileOnly,                   &
-             VLOCATION          = MAPL_VLocationNone,                  &
-             FRIENDLYTO         = 'OCEAN:SEAICE',                      &
-             DEFAULT            = 30.0,                                &
+    call MAPL_AddInternalSpec(GC,                           &
+        SHORT_NAME         = 'SSKINW',                            &
+        LONG_NAME          = 'water_skin_salinity',               &
+        UNITS              = 'psu',                               &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        FRIENDLYTO         = 'OCEAN:SEAICE',                      & ! must go away
+        DEFAULT            = 30.0,                                &
                                                        RC=STATUS  )
-        VERIFY_(STATUS)
-
-     endif
+    VERIFY_(STATUS)
 
      call MAPL_AddInternalSpec(GC,                           &
         SHORT_NAME         = 'QS',                                &
@@ -1025,17 +1022,15 @@ module GEOS_OpenwaterGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-     if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-        call MAPL_AddInternalSpec(GC,                                &
-             SHORT_NAME         = 'TWMTS',                             &
-             LONG_NAME          = 'departure_of_skin_temperature_from_mean_interface_temperature',   &
-             UNITS              = 'K',                                 &
-             DEFAULT            = 0.0,                                 &
-             DIMS               = MAPL_DimsTileOnly,                   &
-             VLOCATION          = MAPL_VLocationNone,                  &
+     call MAPL_AddInternalSpec(GC,                                &
+        SHORT_NAME         = 'TWMTS',                             &
+        LONG_NAME          = 'departure_of_skin_temperature_from_mean_interface_temperature',   &
+        UNITS              = 'K',                                 &
+        DEFAULT            = 0.0,                                 &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
-        VERIFY_(STATUS)
-     endif
+     VERIFY_(STATUS)
 
      call MAPL_AddInternalSpec(GC,                                &
         SHORT_NAME         = 'TWMTF',                             &
@@ -1558,9 +1553,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! pointers to internal
 
-   real, pointer, dimension(:  )  :: TW  => null() ! AOIL compatibility
+   real, pointer, dimension(:  )  :: TW  => null()
    real, pointer, dimension(:  )  :: HW  => null()
 
+   real, pointer, dimension(:  )  :: TWMTS => null()
    real, pointer, dimension(:  )  :: TWMTF => null()
    real, pointer, dimension(:  )  :: DELTC => null()
    real, pointer, dimension(:,:)  :: QS  => null()
@@ -1569,8 +1565,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: CQ  => null()
    real, pointer, dimension(:,:)  :: WW  => null()
    real, pointer, dimension(:,:)  :: Z0  => null()
-
-   real, pointer, dimension(:  )  :: TWMTS => null()
 
 ! pointers to import
 
@@ -1649,6 +1643,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    character(len=ESMF_MAXSTR)     :: SURFRC
    type(ESMF_Config)              :: SCF 
+   character(len=100)             :: WHICH_T_TO_SFCLAYER    ! what temperature does the sfclayer get from AOIL?
 
 !=============================================================================
 
@@ -1766,13 +1761,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Pointers to internals
 !----------------------
 
-   if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-     call MAPL_GetPointer(INTERNAL,TW   , 'TSKINW' ,    RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,HW   , 'HSKINW' ,    RC=STATUS)
-     VERIFY_(STATUS)
-   endif
-
    call MAPL_GetPointer(INTERNAL,QS   , 'QS'     ,    RC=STATUS)
    VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,CH   , 'CH'     ,    RC=STATUS)
@@ -1784,6 +1772,14 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(INTERNAL,Z0   , 'Z0'     ,    RC=STATUS)
    VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,WW   , 'WW'     ,    RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,TW   , 'TSKINW' ,    RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,HW   , 'HSKINW' ,    RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,TWMTF, 'TWMTF'  ,    RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,DELTC, 'DELTC'  ,    RC=STATUS)
    VERIFY_(STATUS)
 
 ! Pointers to outputs
@@ -1928,26 +1924,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    allocate(FR (NT,NUM_SUBTILES),   STAT=STATUS)
    VERIFY_(STATUS)
 
-   if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-     TS(:,WATER) = TW
+   call MAPL_GetResource( MAPL, WHICH_T_TO_SFCLAYER, Label="T_from_AOIL_to_SFCLAYER:", DEFAULT="TW_from_internal", RC=STATUS)
+   VERIFY_(STATUS)
 
-   else
-
-     if (DO_SKIN_LAYER==0) then
-       TS(:,WATER) = TS_FOUNDi
-     else
-       call MAPL_GetPointer(INTERNAL,TWMTF, 'TWMTF',  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL,DELTC, 'DELTC',  RC=STATUS); VERIFY_(STATUS)
-
-       if (DO_DATASEA == 1) then                                           ! Ocean is from "data"
-          TS(:,WATER)= TS_FOUNDi + ((1.+MUSKIN)/MUSKIN) * TWMTF            ! Eqn.(14) of AS2018
-       else                                                                ! Ocean is from a model
-          TS(:,WATER)= TS_FOUNDi + (1./MUSKIN + (1.-epsilon_d)) * TWMTF    ! RHS is from Eqn.(15) of AS2018; (here) abuse of notation: T_o is from OGCM.
-       endif
-       TS(:,WATER) = TS(:,WATER) - DELTC                                   ! Eqn.(16) of AS2018
-
-     endif
-   endif
+   call AOIL_sfcLayer_T( WHICH_T_TO_SFCLAYER, DO_DATASEA, MUSKIN, epsilon_d, &
+                          TW, TS_FOUNDi, TWMTF, DELTC, TS(:,WATER))
 
    FR(:,WATER) = 1.0 ! parent(saltwater) will aggregate based on water/ice fraction 
 
@@ -2068,7 +2049,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated(CHT)) CHT = CHB
    if(associated(CQT)) CQT = CQB
    if(associated(CMT)) CMT = CMB
-
 
    deallocate(UUU)
    deallocate(LAI)
