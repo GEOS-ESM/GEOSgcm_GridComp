@@ -838,26 +838,6 @@ module GEOS_OpenwaterGridCompMod
                                                RC=STATUS  ) 
      VERIFY_(STATUS)
 
-     if( trim(AOIL_COMP_SWITCH) == "OFF") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-        call MAPL_AddExportSpec(GC,                    &
-             LONG_NAME          = 'saturation_specific_humidity_using_geos_formula',&
-             UNITS              = 'kg kg-1'                   ,&
-             SHORT_NAME         = 'QSAT1'                     ,&
-             DIMS               = MAPL_DimsTileOnly           ,&
-             VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-        VERIFY_(STATUS)
- 
-        call MAPL_AddExportSpec(GC,                    &
-             LONG_NAME          = 'saturation_specific_humidity_using_bulk_formula',&
-             UNITS              = 'kg kg-1'                   ,&
-             SHORT_NAME         = 'QSAT2'                     ,&
-             DIMS               = MAPL_DimsTileOnly           ,&
-             VLOCATION          = MAPL_VLocationNone          ,&
-                                               RC=STATUS  ) 
-        VERIFY_(STATUS)
-     endif
-
      ! Atmosphere-ocean fluxes
      call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'atmosphere_ocean_sensible_heat_flux' ,&
@@ -1575,8 +1555,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:  )  :: MOV50M => null()
    real, pointer, dimension(:  )  :: GST    => null()
    real, pointer, dimension(:  )  :: VNT    => null()
-   real, pointer, dimension(:  )  :: QSAT1  => null()
-   real, pointer, dimension(:  )  :: QSAT2  => null()
 
 ! pointers to internal
 
@@ -1864,14 +1842,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(EXPORT,VNT   , 'VENT'    ,    RC=STATUS)
    VERIFY_(STATUS)
 
-   if( trim(AOIL_COMP_SWITCH) == "OFF") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-     call MAPL_GetPointer(EXPORT,QSAT1 , 'QSAT1'   ,    RC=STATUS)
-     VERIFY_(STATUS)
-
-     call MAPL_GetPointer(EXPORT,QSAT2 , 'QSAT2'   ,    RC=STATUS)
-     VERIFY_(STATUS)
-   endif
-
    NT = size(TA)
    if(NT == 0) then
       call MAPL_TimerOff(MAPL,"RUN1" )
@@ -1989,18 +1959,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
        TS(:,WATER) = TF
    endwhere
 
-   if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-     TW = TS(:,WATER)
-   endif
-
-   if( trim(AOIL_COMP_SWITCH) == "OFF") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-
-     call MAPL_GetResource ( MAPL, QSAT_SCL, Label="QSAT_SALTWATER_SCALING:" , DEFAULT=1.0, RC=STATUS)
-     VERIFY_(STATUS)
-     QS(:,WATER) = QSAT_SCL*GEOS_QSAT(TS(:,WATER), PS, RAMP=2.0, PASCALS=.TRUE.) 
-
-     if(associated(QSAT1)) QSAT1 = QS(:,WATER)
-   endif
+   TW = TS(:,WATER)
 
 !  Clear the output tile accumulators
 !------------------------------------
@@ -2063,10 +2022,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          ZQ = Z0(:,N)
          RE = 0.
          UUU = UU
-
-         if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-           UCN = 0.
-         endif
+         UCN = 0.
 
          !  Aggregate to tiles for MO only diagnostics
          !--------------------------------------------
@@ -2081,9 +2037,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          if(associated(MOU2M ))MOU2M  = U2M (:)*FR(:,N)
          if(associated(MOV2M ))MOV2M  = V2M (:)*FR(:,N)
 
-         if( trim(AOIL_COMP_SWITCH) == "OFF") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-           if(associated(QSAT2)) QSAT2 = 1.0/RHO*0.98*640380.0*exp(-5107.4/TS(:,WATER))
-         endif
    endif sfc_layer
 
       !  Aggregate to tiles
