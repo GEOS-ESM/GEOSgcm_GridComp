@@ -22,6 +22,7 @@ module GEOS_OpenwaterGridCompMod
 !      by passing back an effective surface value of the exchanged quantity.
 !      ----------------------------------------------------------------------------
 !
+!      --------- rewrite ---------
 !      \noindent The "OPENWATERCORE" implements following AOIL.
 !      \noindent If the AOIL is OFF, near-surface temperature variations are neglected, 
 !      $T_s = T_o$ from the ocean model, or $=T_f$ from boundary conditions.\\~\\
