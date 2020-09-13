@@ -114,7 +114,7 @@ module GEOS_OpenwaterGridCompMod
   character(len=7)   :: AOIL_COMP_SWITCH  ! Atmosphere-Ocean Interface Layer, compatibility: on/off
                                           ! defualt: OFF, so AOIL is incompatible with "old" interface
                                           ! when it is ON, set servives provides what is needed for both versions
-                                          ! whereas RUN(1,2) will use one or other (OFF: AOIL; ON: old interface)
+                                          ! whereas RUN(2) will use one or other (OFF: AOIL; ON: old interface)
 
   contains
 
