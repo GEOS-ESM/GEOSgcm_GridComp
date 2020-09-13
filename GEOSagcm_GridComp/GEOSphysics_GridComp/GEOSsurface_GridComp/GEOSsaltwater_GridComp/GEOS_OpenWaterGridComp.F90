@@ -93,7 +93,8 @@ module GEOS_OpenwaterGridCompMod
   use atmOcnIntlayer,     only: ALBSEA,    &
                                 COOL_SKIN, &
                                 SKIN_SST,  &
-                                AOIL_sfcLayer_T
+                                AOIL_sfcLayer_T, &
+                                water_RHO
 
   implicit none
   private
@@ -2632,20 +2633,12 @@ contains
     call MAPL_GetResource ( MAPL, MINSALINITY,   Label="MIN_SALINITY:" ,    DEFAULT=5.0  ,   RC=STATUS)
     VERIFY_(STATUS)
 
-    if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-      MaxWaterDepth   = MaxWaterDepth*MAPL_RHOWTR
-      MinWaterDepth   = MinWaterDepth*MAPL_RHOWTR
-      if(DO_SKIN_LAYER==0) TWMTS = 0.
-    else
-      MaxWaterDepth   = MaxWaterDepth*MAPL_RHO_SEAWATER
-      MinWaterDepth   = MinWaterDepth*MAPL_RHO_SEAWATER
-    endif
+    if(DO_SKIN_LAYER==0) TWMTS = 0.
 
     if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
 
-!   Copy friendly internals into tile-tile local variables
-!   -------------------------------------------------------
-
+!     Copy friendly internals into tile-tile local variables
+!     -------------------------------------------------------
       HH(:,WATER) = HW
       SS(:,WATER) = SW*HW
       TS(:,WATER) = TW - TWMTS
@@ -2661,7 +2654,7 @@ contains
          TWMTF       = 0.
          DELTC       = 0.
        else 
-         HH(:,WATER) = AOIL_depth*MAPL_RHO_SEAWATER
+         HH(:,WATER) = AOIL_depth * water_RHO('salt_water')
          SS(:,WATER) = SS_FOUNDi*HH(:,WATER)
 
          call MAPL_GetPointer(INTERNAL,TWMTF, 'TWMTF',  RC=STATUS); VERIFY_(STATUS)
@@ -2808,7 +2801,7 @@ contains
       PEN = 1.0
     else 
       if( trim(AOIL_COMP_SWITCH) == "ON") then
-        PEN = exp(-(KUVR/MAPL_RHOWTR)*HW)           ! replace MAPL_RHOWTR with MAPL_RHO_SEAWATER
+        PEN = exp(-(KUVR/water_RHO('fresh_water'))*HW)
       else
         PEN = exp(-KUVR*AOIL_depth)                 ! UV penetration into water
       endif
@@ -2820,7 +2813,7 @@ contains
       PEN = 1.0
     else 
       if( trim(AOIL_COMP_SWITCH) == "ON") then
-        PEN = exp(-(KPAR/MAPL_RHOWTR)*HW)           ! replace MAPL_RHOWTR with MAPL_RHO_SEAWATER
+        PEN = exp(-(KPAR/water_RHO('fresh_water'))*HW)
       else
         PEN = exp(-KPAR*AOIL_depth)                 ! near-IR ("blue light" 490nm?)
       endif
@@ -2919,7 +2912,7 @@ contains
 
     if( trim(AOIL_COMP_SWITCH) == "ON") then
       HH(:,N) = HH(:,N) + DT*(FRESHATM + FRESH)
-      HH(:,N) = max(min(HH(:,N),MaxWaterDepth),MinWaterDepth)
+      HH(:,N) = max( min(HH(:,N), (MaxWaterDepth*water_RHO('fresh_water'))), (MinWaterDepth*water_RHO('fresh_water')))
     endif
 
     if(associated(EVAPOUT)) EVAPOUT = EVP    *FR(:,N)
@@ -3024,7 +3017,7 @@ contains
             if (DO_DATASEA == 0) then
               QWARM_(N)= QWARM_(N) - (epsilon_d/(1.-epsilon_d))* (PEN(N)-PEN_ocean(N))
             endif
-            ZETA_W_(N)= (AOIL_depth*MAPL_KARMAN/USTARW_(N)**3.)*MAPL_GRAV*ALPH(N)*QWARM_(N)/(MAPL_RHO_SEAWATER*MAPL_CAPWTR)
+            ZETA_W_(N)= (AOIL_depth*MAPL_KARMAN/USTARW_(N)**3.)*MAPL_GRAV*ALPH(N)*QWARM_(N)/(water_RHO('salt_water')*MAPL_CAPWTR)
 
             if ( trim(diurnal_warming_scheme) == 'ATS2017') then ! See Eq(6) of ATS 2017, DOI:10.1002/qj.2988
               if ( ZETA_W_(N) >= 0.0) then   ! Takaya: Eq(5) or Eq(6) of ATS2017

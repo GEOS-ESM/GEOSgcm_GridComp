@@ -30,6 +30,7 @@ module GEOS_SimpleSeaiceGridCompMod
   use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
+  use atmOcnIntlayer,     only: water_RHO
 
   implicit none
   private
@@ -2131,8 +2132,8 @@ contains
     call MAPL_GetResource ( MAPL, EMSICE,        Label="CICE_EMSICE:",      DEFAULT=0.99999, RC=STATUS)
     VERIFY_(STATUS)
 
-    MAXICEDEPTH     = MAXICEDEPTH  *MAPL_RHOWTR
-    MINICEDEPTH     = MINICEDEPTH  *MAPL_RHOWTR
+    MAXICEDEPTH     = MAXICEDEPTH  * water_RHO('fresh_water')
+    MINICEDEPTH     = MINICEDEPTH  * water_RHO('fresh_water')
 
 
 ! Copy friendly internals into tile-tile local variables

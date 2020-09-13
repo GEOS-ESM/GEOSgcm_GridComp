@@ -32,6 +32,7 @@ module GEOS_SaltwaterGridCompMod
   use ESMF
   use MAPL
   use GEOS_UtilsMod
+  use atmOcnIntlayer,     only: water_RHO
 
   use GEOS_OpenwaterGridCompMod,            only : OpenWaterSetServices       => SetServices
   use GEOS_SimpleSeaiceGridCompMod,         only : SimpleSeaiceSetServices    => SetServices
@@ -2143,7 +2144,7 @@ contains
     if(associated(TAUYO)) TAUYO = TYO
 
     if(associated(PSEX )) PSEX  = PS 
-    if(associated(USTR3)) USTR3 = sqrt(sqrt(TXO*TXO+TYO*TYO)/MAPL_RHO_SEAWATER)**3
+    if(associated(USTR3)) USTR3 = sqrt(sqrt(TXO*TXO+TYO*TYO)/water_RHO('salt_water'))**3
     if(associated(UUEX))  UUEX  = UU
 
     if(DO_OBIO/=0) then
