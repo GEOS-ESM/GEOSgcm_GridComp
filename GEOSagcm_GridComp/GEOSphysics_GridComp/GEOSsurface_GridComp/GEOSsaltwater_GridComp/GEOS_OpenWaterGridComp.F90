@@ -2635,41 +2635,21 @@ contains
     call MAPL_GetResource ( MAPL, MINSALINITY,   Label="MIN_SALINITY:" ,    DEFAULT=5.0  ,   RC=STATUS)
     VERIFY_(STATUS)
 
+!   Copy internals into local variables
+!   ------------------------------------
     if(DO_SKIN_LAYER==0) then                ! inactive AOIL (OFF)
       HH(:,WATER) = AOIL_depth * water_RHO('salt_water')
-      SS(:,WATER) = SS_FOUNDi*HW
-      TS(:,WATER) = TS_FOUNDi
+      SS(:,WATER) = SW*HW
+      TS(:,WATER) = TW
 
       TWMTS = 0.
       TWMTF = 0.
       DELTC = 0.
-    endif
-
-    if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-
-!     Copy internals into local variables
-!     ------------------------------------
+    else
       HH(:,WATER) = HW
       SS(:,WATER) = SW*HW
       TS(:,WATER) = TW - TWMTS
-
-    else
-
-!   Get TS from internal state exactly as in Run1
-!   ---------------------------------------------
-       if (DO_SKIN_LAYER/=0) then 
-         HH(:,WATER) = AOIL_depth * water_RHO('salt_water')
-         SS(:,WATER) = SS_FOUNDi*HH(:,WATER)
-
-
-         if (DO_DATASEA == 1) then                                          ! Ocean is from "data"
-           TS(:,WATER)= TS_FOUNDi + ((1.+MUSKIN)/MUSKIN) * TWMTF            ! Eqn.(14) of AS2018
-         else                                                               ! Ocean is from a model
-           TS(:,WATER)= TS_FOUNDi + (1./MUSKIN + (1.-epsilon_d)) * TWMTF    ! RHS is from Eqn.(15) of AS2018; (here) abuse of notation: T_o is from OGCM.
-         endif
-         TS(:,WATER) = TS(:,WATER) - DELTC                                  ! Eqn.(16) of AS2018
-       endif
-    endif ! if( trim(AOIL_COMP_SWITCH) == "ON")
+    endif
 
     FR(:,WATER) = 1.0
     FRWATER     = max(1.0 - FI, 0.0)
