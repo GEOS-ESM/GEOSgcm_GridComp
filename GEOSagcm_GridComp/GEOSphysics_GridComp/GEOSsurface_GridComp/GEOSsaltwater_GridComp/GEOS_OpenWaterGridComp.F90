@@ -931,7 +931,7 @@ module GEOS_OpenwaterGridCompMod
         UNITS              = 'kg m-2',                            &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        FRIENDLYTO         = 'OCEAN:SEAICE',                      & ! must go away
+        FRIENDLYTO         = 'OCEAN:SEAICE',                      & ! must go away. Connectivity needs fixing.
         DEFAULT            = 5.0*MAPL_RHO_SEAWATER,               &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
@@ -942,7 +942,7 @@ module GEOS_OpenwaterGridCompMod
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        FRIENDLYTO         = 'OCEAN:SEAICE',                      & ! must go away
+        FRIENDLYTO         = 'OCEAN:SEAICE',                      & ! must go away. Connectivity needs fixing.
         DEFAULT            = 280.0,                               &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
@@ -953,7 +953,7 @@ module GEOS_OpenwaterGridCompMod
         UNITS              = 'psu',                               &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        FRIENDLYTO         = 'OCEAN:SEAICE',                      & ! must go away
+        FRIENDLYTO         = 'OCEAN:SEAICE',                      & ! must go away. Connectivity needs fixing.
         DEFAULT            = 30.0,                                &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
@@ -1726,8 +1726,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !      ------------------------------
        call MAPL_GetResource ( MAPL, OGCM_top_thickness, Label="OGCM_TOP_LAYER:" , DEFAULT=10.,   RC=STATUS) ! SA: could be an export from GUEST GC
        VERIFY_(STATUS)
-
        epsilon_d  = AOIL_depth/OGCM_top_thickness ! < 1. If that is NOT true, AOIL formulation would need revisit; see AS2018
+    else
+       OGCM_top_thickness = MAPL_UNDEF
+       epsilon_d          = MAPL_UNDEF
     end if
 
 ! Pointers to inputs
@@ -2476,20 +2478,17 @@ contains
 ! Pointers to internals
 !----------------------
 
-   if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-     call MAPL_GetPointer(INTERNAL,TW     ,'TSKINW',    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,HW     ,'HSKINW',    RC=STATUS); VERIFY_(STATUS)
-     call MAPL_GetPointer(INTERNAL,SW     ,'SSKINW',    RC=STATUS); VERIFY_(STATUS)
-   endif
+   call MAPL_GetPointer(INTERNAL,TW     ,'TSKINW',    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,HW     ,'HSKINW',    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,SW     ,'SSKINW',    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,TWMTS  ,'TWMTS',     RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,TWMTF  ,'TWMTF',     RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(INTERNAL,DELTC  ,'DELTC',     RC=STATUS); VERIFY_(STATUS)
 
    call MAPL_GetPointer(INTERNAL,QS     , 'QS'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,CH     , 'CH'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,CQ     , 'CQ'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL,CM     , 'CM'   ,    RC=STATUS); VERIFY_(STATUS)
-
-   if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-     call MAPL_GetPointer(INTERNAL,TWMTS  , 'TWMTS',    RC=STATUS); VERIFY_(STATUS)
-   endif
 
 ! Pointers to outputs
 !--------------------
@@ -2601,8 +2600,10 @@ contains
 !      ------------------------------
        call MAPL_GetResource ( MAPL, OGCM_top_thickness, Label="OGCM_TOP_LAYER:" , DEFAULT=10.,   RC=STATUS) ! SA: could be an export from GUEST GC
        VERIFY_(STATUS)
-
        epsilon_d  = AOIL_depth/OGCM_top_thickness ! < 1. If that is NOT true, AOIL formulation would need revisit; see AS2018
+    else
+       OGCM_top_thickness = MAPL_UNDEF
+       epsilon_d          = MAPL_UNDEF
     end if
 
 !   --------------------------------------------------------------------------------------------------------
@@ -2638,8 +2639,8 @@ contains
 
     if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
 
-!     Copy friendly internals into tile-tile local variables
-!     -------------------------------------------------------
+!     Copy internals into local variables
+!     ------------------------------------
       HH(:,WATER) = HW
       SS(:,WATER) = SW*HW
       TS(:,WATER) = TW - TWMTS
@@ -2658,8 +2659,6 @@ contains
          HH(:,WATER) = AOIL_depth * water_RHO('salt_water')
          SS(:,WATER) = SS_FOUNDi*HH(:,WATER)
 
-         call MAPL_GetPointer(INTERNAL,TWMTF, 'TWMTF',  RC=STATUS); VERIFY_(STATUS)
-         call MAPL_GetPointer(INTERNAL,DELTC, 'DELTC',  RC=STATUS); VERIFY_(STATUS)
 
          if (DO_DATASEA == 1) then                                          ! Ocean is from "data"
            TS(:,WATER)= TS_FOUNDi + ((1.+MUSKIN)/MUSKIN) * TWMTF            ! Eqn.(14) of AS2018
@@ -2923,7 +2922,7 @@ contains
     if(associated(DELQS  )) DELQS   = DQS*CFQ*FR(:,N)
 
     if( trim(AOIL_COMP_SWITCH) == "ON") then
-!    Copy back to friendly internal variables
+!    Copy back to internal variables
 !    -----------------------------------------
 
      TW = TS(:,WATER) + TWMTS
