@@ -1557,10 +1557,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    real, pointer, dimension(:  )  :: TW  => null()
    real, pointer, dimension(:  )  :: HW  => null()
-
    real, pointer, dimension(:  )  :: TWMTS => null()
    real, pointer, dimension(:  )  :: TWMTF => null()
    real, pointer, dimension(:  )  :: DELTC => null()
+
    real, pointer, dimension(:,:)  :: QS  => null()
    real, pointer, dimension(:,:)  :: CH  => null()
    real, pointer, dimension(:,:)  :: CM  => null()
@@ -2635,7 +2635,15 @@ contains
     call MAPL_GetResource ( MAPL, MINSALINITY,   Label="MIN_SALINITY:" ,    DEFAULT=5.0  ,   RC=STATUS)
     VERIFY_(STATUS)
 
-    if(DO_SKIN_LAYER==0) TWMTS = 0.
+    if(DO_SKIN_LAYER==0) then                ! inactive AOIL (OFF)
+      HH(:,WATER) = AOIL_depth * water_RHO('salt_water')
+      SS(:,WATER) = SS_FOUNDi*HW
+      TS(:,WATER) = TS_FOUNDi
+
+      TWMTS = 0.
+      TWMTF = 0.
+      DELTC = 0.
+    endif
 
     if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
 
@@ -2649,13 +2657,7 @@ contains
 
 !   Get TS from internal state exactly as in Run1
 !   ---------------------------------------------
-       if (DO_SKIN_LAYER==0) then 
-         HH(:,WATER) = 1.e+15    ! infinite heat capacity with TS = SST (from data)
-         TS(:,WATER) = TS_FOUNDi
-         SS(:,WATER) = SS_FOUNDi
-         TWMTF       = 0.
-         DELTC       = 0.
-       else 
+       if (DO_SKIN_LAYER/=0) then 
          HH(:,WATER) = AOIL_depth * water_RHO('salt_water')
          SS(:,WATER) = SS_FOUNDi*HH(:,WATER)
 
