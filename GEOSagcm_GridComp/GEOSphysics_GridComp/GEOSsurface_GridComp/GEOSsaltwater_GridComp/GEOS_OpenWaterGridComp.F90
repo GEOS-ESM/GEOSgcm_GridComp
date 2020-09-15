@@ -2654,20 +2654,12 @@ contains
     FR(:,WATER) = 1.0
     FRWATER     = max(1.0 - FI, 0.0)
 
-! Initialize PAR and UVR beam fluxes
-!-----------------------------------
-
-    VSUVR = DRPAR + DRUVR
-    VSUVF = DFPAR + DFUVR
-    PUR   = 0.0
-    PUF   = 0.0
-    PPR   = 0.0
-    PPF   = 0.0
-
-! Add analysis increment. This is zero if ANA_TS is false.
-!---------------------------------------------------------
+! Add skin SST analysis increment. This is zero if ANA_TS is false.
+!------------------------------------------------------------------
     TS(:,WATER) = TS(:,WATER) + DT*DTSDT
 
+! Update albedo
+!--------------
     call MAPL_TimerOn(MAPL,    "-Albedo")
 
     debugzth = .false.
@@ -2745,37 +2737,22 @@ contains
     call MAPL_TimerOff(MAPL,    "-Albedo")
 
     call MAPL_TimerOn(MAPL,    "-OpenWater")
-! Cycle through sub-tiles doing water and energy budget
-!------------------------------------------------------
 
-    if(associated(EVAPOUT)) EVAPOUT = 0.0
-    if(associated(SHOUT  )) SHOUT   = 0.0
-    if(associated(HLATN  )) HLATN   = 0.0
-    if(associated(DELTS  )) DELTS   = 0.0
-    if(associated(DELQS  )) DELQS   = 0.0
+! Initialize PAR and UVR beam fluxes
+!-----------------------------------
+    VSUVR = DRPAR + DRUVR
+    VSUVF = DFPAR + DFUVR
+    PUR   = 0.0
+    PUF   = 0.0
+    PPR   = 0.0
+    PPF   = 0.0
 
-    if(associated(PENUVR))  PENUVR  = 0.0 ! Fill up exports (following 4) related to shortwave absorption
-    if(associated(PENUVF))  PENUVF  = 0.0 
-    if(associated(PENPAR))  PENPAR  = 0.0 
-    if(associated(PENPAF))  PENPAF  = 0.0 
-
-    N   = WATER
-    CFT = (CH(:,N)/CTATM)
-    CFQ = (CQ(:,N)/CQATM)
-    EVP = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))
-    SHF = CFT*(SH   + DSH*(TS(:,N)-THATM))
-    SHD = CFT*DSH
-    EVD = CFQ*DEV*GEOS_DQSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
-    DTS = LWDNSRF - (ALW + BLW*TS(:,N)) - SHF
-
-    ! FR accounts for skin under ice
-    DTX = DT*FRWATER / (SALTWATERCAP*HH(:,N))
-
-    if (DO_DATASEA == 1) then            ! in uncoupled mode
-      if (DO_SKIN_LAYER /= 0) DTX = DTX*((MUSKIN+1.)/MUSKIN)
-    else
-      if (DO_SKIN_LAYER /= 0) DTX = DTX*((MUSKIN+1.-MUSKIN*epsilon_d)/MUSKIN)
-    endif
+! Regardless of interface layer, penetrative solar to ocean always gets surface values 
+! ------------------------------------------------------------------------------------
+    if(associated(PENUVR)) PENUVR  = (1.-ALBVRO)*DRUVR
+    if(associated(PENUVF)) PENUVF  = (1.-ALBVFO)*DFUVR
+    if(associated(PENPAR)) PENPAR  = (1.-ALBVRO)*DRPAR
+    if(associated(PENPAF)) PENPAF  = (1.-ALBVFO)*DFPAR
 
 !   Shortwave absorption in water
 !   -----------------------------
@@ -2826,12 +2803,31 @@ contains
       SWN   = SWN - (epsilon_d/(1.-epsilon_d))* (PEN-PEN_ocean)
     endif
 
-    ! regardless of what interface layer is used, penetrative solar to ocean
-    ! always gets the surface values 
-    if(associated(PENUVR)) PENUVR  = (1.-ALBVRO)*DRUVR
-    if(associated(PENUVF)) PENUVF  = (1.-ALBVFO)*DFUVR
-    if(associated(PENPAR)) PENPAR  = (1.-ALBVRO)*DRPAR
-    if(associated(PENPAF)) PENPAF  = (1.-ALBVFO)*DFPAR
+! Cycle through sub-tiles doing water and energy budget
+!------------------------------------------------------
+    if(associated(EVAPOUT)) EVAPOUT = 0.0
+    if(associated(SHOUT  )) SHOUT   = 0.0
+    if(associated(HLATN  )) HLATN   = 0.0
+    if(associated(DELTS  )) DELTS   = 0.0
+    if(associated(DELQS  )) DELQS   = 0.0
+
+    N   = WATER
+    CFT = (CH(:,N)/CTATM)
+    CFQ = (CQ(:,N)/CQATM)
+    EVP = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))
+    SHF = CFT*(SH   + DSH*(TS(:,N)-THATM))
+    SHD = CFT*DSH
+    EVD = CFQ*DEV*GEOS_DQSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
+    DTS = LWDNSRF - (ALW + BLW*TS(:,N)) - SHF
+
+    ! FR accounts for skin under ice
+    DTX = DT*FRWATER / (SALTWATERCAP*HH(:,N))
+
+    if (DO_DATASEA == 1) then            ! in uncoupled mode
+      if (DO_SKIN_LAYER /= 0) DTX = DTX*((MUSKIN+1.)/MUSKIN)
+    else
+      if (DO_SKIN_LAYER /= 0) DTX = DTX*((MUSKIN+1.-MUSKIN*epsilon_d)/MUSKIN)
+    endif
 
     ! DTY accounts for ice on top of water. Part of Shortwave is absorbed by ice and rest goes to warm water.
     ! Skin layer only absorbs the portion of SW radiation passing thru the bottom of ice MINUS
@@ -2885,9 +2881,8 @@ contains
 
 ! Layer thickness; liquid precip goes right thru ice.
 ! FRESHATM is useful for mass flux balance.
-! freshwater flux from atmosphere needs to be added to HW
-! here since it carries zero enthalpy 
-!---------------------------------------------------
+! freshwater flux from atmosphere needs to be added to HW here since it carries zero enthalpy 
+!---------------------------------------------------------------------------------------------
 
     FRESHATM    = FRWATER*(SNO - EVP) + PCU + PLS
     FRESH       = 0.
@@ -2922,12 +2917,6 @@ contains
 
     SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
           (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
-
-! how many cool-skin iterations to do?
-!-------------------------------------
-
-    call MAPL_GetResource ( MAPL, n_iter_cool, Label="COOL_SKIN_LAYER_ITERATIONS" , DEFAULT=3,    RC=STATUS)
-    VERIFY_(STATUS)
 
     if( trim(AOIL_COMP_SWITCH) == "ON") then
 !     Marginal Ice Zone- threshold on fraction: if no LANL CICE, SST IS ALLOWED TO VARY WITHIN ICE EXTENT.
