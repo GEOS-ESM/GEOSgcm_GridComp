@@ -17,6 +17,8 @@ MODULE lsm_routines
 ! Justin, 16 Apr 2018  - replaced LAND_UPD ifdef with LAND_FIX from SurfParams, CSOIL_2 now called
 !                        from SurfParams, as well as others
 ! Sarith, 14 Aug 2018  - Added irrigation routines, considered experimental
+! Sarith, 22 Apr 2020  - moved SUBROUTINE SRUNOFF here and modified to account for separate convective and 
+!                        large-scale throughfalls. FWETC and FWETL are now passed through the resource file.
 
   USE MAPL_BaseMod,      ONLY:                &
        NTYPS             => MAPL_NumVegTypes, &
@@ -64,7 +66,7 @@ MODULE lsm_routines
   PUBLIC :: INTERC, BASE, PARTITION, RZEQUIL, gndtp0
   PUBLIC :: SIBALB, catch_calc_soil_moist, catch_calc_subtile2tile
   PUBLIC :: gndtmp, catch_calc_tp,  catch_calc_ght, catch_calc_FT, catch_calc_wtotl
-  PUBLIC :: dampen_tc_oscillations, lsmroutines_echo_constants, irrigation_rate
+  PUBLIC :: dampen_tc_oscillations, lsmroutines_echo_constants, irrigation_rate, SRUNOFF
 
   ! layer depth associated with snow-free land temperatures
   !
@@ -88,12 +90,10 @@ MODULE lsm_routines
 
   ! ---------------------------------------------------------------------------
   !
-  ! constants for interception routine (interc())
-  ! Areal fraction of canopy leaves onto which precipitation falls:
-
-  REAL,    PARAMETER :: FWETL    = 0.02   ! for large-scale precipitation
-  REAL,    PARAMETER :: FWETC    = 0.02   ! for convective precipitation
-
+ 
+   REAL,    PARAMETER :: TIMFRL = 1.0
+   REAL,    PARAMETER :: TIMFRC = 0.333
+  
   ! ---------------------------------------------------------------------------
   !
   ! constants for ground temperature routine (gndtp0() and gndtmp())
@@ -127,7 +127,7 @@ MODULE lsm_routines
 
   REAL,    PARAMETER :: ZERO     = 0.
   REAL,    PARAMETER :: ONE      = 1.
-
+  
   CONTAINS
 
 !****
@@ -137,39 +137,31 @@ MODULE lsm_routines
 !****
 !**** [ BEGIN INTERC ]
 !****
+
       SUBROUTINE INTERC (                                                      &
-                         NCH, DTSTEP, TRAINL, TRAINC,SMELT,                    &
-                         SATCAP, SFRAC,BUG,                                    &
+                         NCH, DTSTEP, FWETC, FWETL, TRAINL, TRAINC,SMELT,      &
+                         SATCAP,BUG,                                           &
                          CAPAC,                                                &
-                         THRU                                                  &
+                         THRUL, THRUC                                          &
                         )
 !****
 !**** THIS ROUTINE USES THE PRECIPITATION FORCING TO DETERMINE
 !**** CHANGES IN INTERCEPTION AND SOIL MOISTURE STORAGE.
-!**** Changes in snowcover are not treated here anymore.
 !****
       IMPLICIT NONE
 
 !****
       INTEGER, INTENT(IN) ::  NCH
-      REAL, INTENT(IN) :: DTSTEP, SFRAC
+      REAL, INTENT(IN) :: DTSTEP, FWETC, FWETL
       REAL, INTENT(IN), DIMENSION(NCH) :: TRAINL, TRAINC, SMELT, SATCAP
       LOGICAL, INTENT(IN) :: BUG
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: CAPAC
 
-      REAL, INTENT(OUT), DIMENSION(NCH) :: THRU
-
+      REAL, INTENT(OUT), DIMENSION(NCH) :: THRUC, THRUL
 
       INTEGER CHNO
-      REAL WETINT, WATADD, CAVAIL, THRUC, TIMFRL, TIMFRC,                      &
-           THRU1, THRU2, THRUL, XTCORR,SMPERS
-
-!      DATA FWETL /0.02/, FWETC /0.02/
-      DATA TIMFRL/1.00/
-      DATA TIMFRC/0.333/
-! value for GSWP
-!      TIMFRC/0.125/
+      REAL WETINT, WATADD, CAVAIL, THRU1, THRU2, XTCORR,SMPERS
 
 !****
 !**** ------------------------------------------------------------------
@@ -187,7 +179,7 @@ MODULE lsm_routines
 !**** COVERS ENTIRE GRID SQUARE.)
 
       XTCORR= (1.-TIMFRL) *                                                    &
-            AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/(FWETL*SFRAC) )
+            AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/FWETL )
 
 !****
 !**** FILL INTERCEPTION RESERVOIR WITH PRECIPITATION.
@@ -197,7 +189,7 @@ MODULE lsm_routines
 !****    IS MULTIPLIED BY 1-XTCORR.
 !****
       WATADD = TRAINL(CHNO)*DTSTEP + SMELT(CHNO)*DTSTEP
-      CAVAIL = ( SATCAP(CHNO) - CAPAC(CHNO) ) * (FWETL*SFRAC)
+      CAVAIL = ( SATCAP(CHNO) - CAPAC(CHNO) ) * FWETL
       WETINT = CAPAC(CHNO)/SATCAP(CHNO)
       IF( WATADD*(1.-WETINT) .LT. CAVAIL ) THEN
           THRU1 = WATADD*WETINT
@@ -211,7 +203,7 @@ MODULE lsm_routines
 
       THRU2=XTCORR*WATADD
 
-      THRUL=THRU1+THRU2
+      THRUL(CHNO)=THRU1+THRU2
 
       CAPAC(CHNO)=CAPAC(CHNO)+WATADD-THRU1-THRU2
 
@@ -224,7 +216,7 @@ MODULE lsm_routines
 !**** WET SURFACE DUE TO THE TIME CORRELATION OF PRECIPITATION POSITION.
 
       XTCORR= (1.-TIMFRC) *                                                    &
-           AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/(FWETC*SFRAC) )
+           AMIN1( 1.,(CAPAC(CHNO)/SATCAP(CHNO))/FWETC )
 
 !****
 !**** FILL INTERCEPTION RESERVOIR WITH PRECIPITATION.
@@ -234,7 +226,7 @@ MODULE lsm_routines
 !****    IS MULTIPLIED BY 1-XTCORR.
 !****
       WATADD = TRAINC(CHNO)*DTSTEP
-      CAVAIL = ( SATCAP(CHNO) - CAPAC(CHNO) ) * (FWETC*SFRAC)
+      CAVAIL = ( SATCAP(CHNO) - CAPAC(CHNO) ) * FWETC
       WETINT = CAPAC(CHNO)/SATCAP(CHNO)
       IF( WATADD*(1.-WETINT) .LT. CAVAIL ) THEN
           THRU1 = WATADD*WETINT
@@ -248,21 +240,123 @@ MODULE lsm_routines
 
       THRU2=XTCORR*WATADD
 
-      THRUC=THRU1+THRU2
+      THRUC(CHNO)=THRU1+THRU2
       CAPAC(CHNO)=CAPAC(CHNO)+WATADD-THRU1-THRU2
 !****
-      IF (THRUL+THRUC .LT. -1.e-8) WRITE(*,*) 'THRU= ',                        &
-          THRUL, THRUC, TRAINC(CHNO), TRAINL(CHNO), SMELT(CHNO)
-      THRU(CHNO)=AMAX1(0., THRUL+THRUC)
-
+      IF (THRUL(CHNO)+THRUC(CHNO) .LT. -1.e-8) WRITE(*,*) 'THRU= ',                        &
+          THRUL(CHNO), THRUC(CHNO), TRAINC(CHNO), TRAINL(CHNO), SMELT(CHNO)
+      THRUL(CHNO)=AMAX1(0., THRUL(CHNO))
+      THRUC(CHNO)=AMAX1(0., THRUC(CHNO))
+      
  100  CONTINUE
 !****
       RETURN
       END SUBROUTINE INTERC
+
 !****
 !**** [ END INTERC ]
 !****
 !****
+!**** ===================================================
+!**** ///////////////////////////////////////////////////
+!**** ===================================================
+
+      SUBROUTINE SRUNOFF (                                                  &
+           NCH,DTSTEP,UFW4RO, FWETC, FWETL, AR1,ar2,ar4, THRUL,THRUC,       &
+           frice,tp1,srfmx, BUG,                                            &
+           SRFEXC,RUNSRF,                                                   &
+           QINFIL                                                           &
+           )
+
+      IMPLICIT NONE
+
+
+      INTEGER, INTENT(IN) :: NCH
+      REAL, INTENT(IN)    :: DTSTEP, FWETC, FWETL
+      LOGICAL, INTENT (IN):: UFW4RO 
+      REAL, INTENT(IN), DIMENSION(NCH) :: AR1, ar2, ar4, frice, tp1,     &
+             srfmx, THRUL, THRUC
+      LOGICAL, INTENT(IN) :: BUG
+
+      REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC ,RUNSRF
+
+      REAL, INTENT(OUT), DIMENSION(NCH) :: QINFIL
+
+      INTEGER N
+      REAL deficit,srun0,frun,qin, qinfil_l, qinfil_c, qcapac, excess_infil, srunc, srunl, ptotal
+
+!**** - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+      DO N=1,NCH
+
+         if(.not.UFW4RO) then
+            
+            PTOTAL=THRUL(N) + THRUC(N)
+            frun=AR1(N)
+            srun0=PTOTAL*frun
+            
+            !**** Comment out this line in order to allow moisture
+            !**** to infiltrate soil:
+            !       if(tp1(n) .lt. 0.) srun0=ptotal
+            
+            if(ptotal-srun0 .gt. srfmx(n)-srfexc(n))                               &
+                 srun0=ptotal-(srfmx(n)-srfexc(n)) 
+            
+            if (srun0 .gt. ptotal) srun0=ptotal
+            
+            RUNSRF(N)=RUNSRF(N)+srun0
+            QIN=PTOTAL-srun0
+            
+         endif
+
+         if(UFW4RO) then
+
+            !**** Compute runoff from large-scale and convective storms separately:
+ 
+            deficit=srfmx(n)-srfexc(n)
+            srunl=AR1(n)*THRUL(n)
+            qinfil_l=(1.-ar1(n))*THRUL(n)
+            qcapac=deficit*FWETL
+            
+            if(qinfil_l .gt. qcapac) then
+               excess_infil=qinfil_l-qcapac
+               srunl=srunl+excess_infil
+               qinfil_l=qinfil_l-excess_infil
+            endif
+         
+            srunc=AR1(n)*THRUC(n)
+            qinfil_c=(1.-ar1(n))*THRUC(n)
+            qcapac=deficit*FWETC
+            
+            if(qinfil_c .gt. qcapac) then
+               excess_infil=qinfil_c-qcapac
+               srunc=srunc+excess_infil
+               qinfil_c=qinfil_c-excess_infil
+            endif
+         
+            !**** Comment out this line in order to allow moisture
+            !**** to infiltrate soil:
+            !       if(tp1(n) .lt. 0.) srun0=ptotal
+         
+            if (srunl .gt. THRUL(n)) srunl=THRUL(n)
+         
+            if (srunc .gt. THRUC(n)) srunc=THRUC(n)
+            
+            RUNSRF(N)=RUNSRF(N)+srunl+srunc
+            QIN=THRUL(n)+THRUC(n)-(srunl+srunc)
+
+         endif
+
+         SRFEXC(N)=SRFEXC(N)+QIN
+         RUNSRF(N)=RUNSRF(N)/DTSTEP
+         QINFIL(N)=QIN/DTSTEP
+     
+      END DO
+
+      RETURN
+
+      END SUBROUTINE SRUNOFF
+
 !**** -----------------------------------------------------------------
 !**** /////////////////////////////////////////////////////////////////
 !**** -----------------------------------------------------------------
@@ -2174,8 +2268,6 @@ MODULE lsm_routines
     write (logunit,*)
     write (logunit,*) 'DZTC          = ', DZTC
     write (logunit,*)
-    write (logunit,*) 'FWETL         = ', FWETL
-    write (logunit,*) 'FWETC         = ', FWETC
     write (logunit,*) 'SATCAPFR      = ', SATCAPFR
     write (logunit,*)
     write (logunit,*) 'DZGT          = ', DZGT
