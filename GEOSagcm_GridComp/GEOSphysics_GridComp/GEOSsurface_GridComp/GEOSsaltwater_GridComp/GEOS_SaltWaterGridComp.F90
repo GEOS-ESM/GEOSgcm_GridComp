@@ -32,13 +32,11 @@ module GEOS_SaltwaterGridCompMod
   use ESMF
   use MAPL
   use GEOS_UtilsMod
-  !use DragCoefficientsMod
 
   use GEOS_OpenwaterGridCompMod,            only : OpenWaterSetServices       => SetServices
   use GEOS_SimpleSeaiceGridCompMod,         only : SimpleSeaiceSetServices    => SetServices
   use GEOS_CICE4ColumnPhysGridComp,         only : CICE4ColumnPhysSetServices => SetServices
   
-
   implicit none
   private
 
@@ -111,8 +109,6 @@ module GEOS_SaltwaterGridCompMod
     integer                                 :: I
     integer                                 :: DO_OBIO         ! default (=0) is to run saltwater, with no ocean bio and chem
     integer                                 :: DO_CICE_THERMO  ! default (=0) is to run saltwater, with no LANL CICE Thermodynamics
-!!$    integer                                 :: DO_GUEST        ! default (=0) is to run saltwater, with Data (fake) ocean, i.e., SST and SSS from existing data products
-
 
 !=============================================================================
 
@@ -131,7 +127,6 @@ module GEOS_SaltwaterGridCompMod
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-
 ! Sea-Ice Thermodynamics computation: using CICE or not?
 !-------------------------------------------------------
 
@@ -141,13 +136,13 @@ module GEOS_SaltwaterGridCompMod
 ! Atmosphere-Ocean Interface Layer compatibility: on/off?
 !-------------------------------------------------------
 
-    call MAPL_GetResource( MAPL,  AOIL_COMP_SWITCH,        Label="AOIL_COMP_SWITCH:",     DEFAULT="ON", RC=STATUS)
+    call MAPL_GetResource( MAPL,  AOIL_COMP_SWITCH,   Label="AOIL_COMP_SWITCH:",     DEFAULT="ON", RC=STATUS)
     VERIFY_(STATUS)
 
 ! Ocean biology and chemistry: using OBIO or not?
 !------------------------------------------------
 
-    call MAPL_GetResource ( MAPL, DO_OBIO,            Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_OBIO,            Label="USE_OCEANOBIOGEOCHEM:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
@@ -404,11 +399,7 @@ module GEOS_SaltwaterGridCompMod
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
-!
-! https://github.com/GEOS-ESM/GEOSgcm/issues/115
-!
-! TSKINI export is filled with children's version
-!
+ 
      call MAPL_AddExportSpec(GC,                         &
         SHORT_NAME         = 'TSKINICE',                    &
         LONG_NAME          = 'snow_or_ice_surface_temperature',&
@@ -607,18 +598,16 @@ module GEOS_SaltwaterGridCompMod
                                                RC=STATUS  ) 
      VERIFY_(STATUS)
 
-!!$  if (DO_GUEST /= 0) then    
-  ! this export is here in saltwater only for the sake of 
-  ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
-     call MAPL_AddExportSpec(GC,                    &
-          LONG_NAME          = 'river_discharge_at_ocean_points',&
+! Following export of DISCHARGE is here in saltwater only for the sake of 
+! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
+     call MAPL_AddExportSpec(GC,                            &      
+          LONG_NAME          = 'river_discharge_at_ocean_points',& 
           UNITS              = 'kg m-2 s-1'                ,&
           SHORT_NAME         = 'DISCHARGE'                 ,&
           DIMS               = MAPL_DimsTileOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           RC=STATUS  ) 
      VERIFY_(STATUS)
-!!$  endif ! DO_GUEST
 
      call MAPL_AddExportSpec(GC,                             &
         LONG_NAME          = 'surface_pressure',                  &
@@ -629,11 +618,9 @@ module GEOS_SaltwaterGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-
-
-  if (DO_OBIO /= 0) then    
-  ! these OBIO related exports are here in saltwater only for the sake of 
+  ! Following OBIO related exports are here in saltwater only for the sake of 
   ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
+  if (DO_OBIO /= 0) then    
 
     call MAPL_AddExportSpec(GC                            ,&
           SHORT_NAME         = 'CO2SC',                     &
@@ -735,7 +722,7 @@ module GEOS_SaltwaterGridCompMod
      VERIFY_(STATUS)
   endif ! DO_OBIO
      
-! following 3 exports (HFLUX, WATERFLUX, SALTFLUX) are for ocean model - need to be filled up.
+! Following 3 exports (HFLUX, WATERFLUX, SALTFLUX) are for ocean model - need to be filled up.
    call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME         = 'HFLUX',                            &
         LONG_NAME          = 'heat_flux_below_saltwater_ocean',  &
@@ -828,8 +815,7 @@ module GEOS_SaltwaterGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
     
-!!$  if (DO_GUEST /= 0) then    
-  ! this import is here in saltwater only for the sake of 
+  ! Following import is here in saltwater only for the sake of 
   ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
     call MAPL_AddImportSpec(GC,                    &
           LONG_NAME          = 'river_discharge_at_ocean_points',&
@@ -840,11 +826,10 @@ module GEOS_SaltwaterGridCompMod
           RESTART            = MAPL_RestartSkip            ,&
           RC=STATUS  ) 
      VERIFY_(STATUS)
-!!$  endif ! DO_GUEST
 
-  if (DO_OBIO /= 0) then
-  ! these OBIO related imports are here in saltwater only for the sake of 
+  ! Following OBIO related imports are here in saltwater only for the sake of 
   ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
+  if (DO_OBIO /= 0) then
 
    call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'CO2SC',                             &
@@ -990,15 +975,6 @@ module GEOS_SaltwaterGridCompMod
     VERIFY_(STATUS)
   endif 
 
-  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENUVF'    , CHILD_ID = WATER, RC=STATUS)
-  !VERIFY_(STATUS)
-  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENUVR'    , CHILD_ID = WATER, RC=STATUS)
-  !VERIFY_(STATUS)
-  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENPAF'    , CHILD_ID = WATER, RC=STATUS)
-  !VERIFY_(STATUS)
-  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENPAR'    , CHILD_ID = WATER, RC=STATUS)
-  !VERIFY_(STATUS)
-
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUXW'     , CHILD_ID = WATER, RC=STATUS)
   VERIFY_(STATUS)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUYW'     , CHILD_ID = WATER, RC=STATUS)
@@ -1091,8 +1067,6 @@ module GEOS_SaltwaterGridCompMod
 ! and that penetrated below ocean model first layer
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'PEN_OCN' ,   CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
 
-
-
 !EOS
 
   if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
@@ -1104,26 +1078,12 @@ module GEOS_SaltwaterGridCompMod
     VERIFY_(STATUS)
   endif
 
-  !call MAPL_AddConnectivity ( GC,   &
-  !     SHORT_NAME  = (/'FRZMLT'/),  &
-  !     DST_ID      = ICE,           &
-  !     SRC_ID      = WATER,         &
-  !     RC=STATUS  )
-  !VERIFY_(STATUS)
-
   call MAPL_AddConnectivity ( GC,   &
-        !SHORT_NAME  = [character(len=9) :: &
-        !                'FRESH','FSALT','FHOCN',           &
-        !                'FRACI', 'FRACINEW','TFREEZE',     &
-        !                'DRUVRTHRU','DFUVRTHRU',           &
-        !                'DRPARTHRU','DFPARTHRU'],          &
        SHORT_NAME  = [character(len=8) :: 'FRACI', 'FRACINEW','TFREEZE'],     & 
        DST_ID = WATER,              &
        SRC_ID = ICE,                &
        RC=STATUS  )
   VERIFY_(STATUS)
-
-
 
 ! Set the Profiling timers
 ! ------------------------
@@ -1133,7 +1093,6 @@ module GEOS_SaltwaterGridCompMod
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="RUN2"  ,                RC=STATUS)
     VERIFY_(STATUS)
-
 
 ! Set generic init and final methods
 ! ----------------------------------
@@ -1255,7 +1214,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !EOP
 
-
 ! ErrLog Variables
 
   character(len=ESMF_MAXSTR)      :: IAm
@@ -1372,7 +1330,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    call MAPL_TimerOn(MAPL,"TOTAL")
    call MAPL_TimerOn(MAPL,"RUN1" )
-
 
 ! Pointers to outputs
 !--------------------
@@ -1695,7 +1652,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    RETURN_(ESMF_SUCCESS)
 
-
  end subroutine RUN1
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1718,7 +1674,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! !DESCRIPTION: Periodically refreshes the sea-surface conditions
 
 !EOP
-
 
 ! ErrLog Variables
 
@@ -1903,7 +1858,6 @@ contains
    integer                             :: NSUB, I, K, L
    integer                             :: DO_OBIO
    integer                             :: DO_CICE_THERMO
-!!$   integer                             :: DO_GUEST
 
 !  -------------------------------------------------------------------
 
@@ -1912,7 +1866,7 @@ contains
 
    IAm =  trim(COMP_NAME) // "SALTWATERCORE"
 
-   call MAPL_GetResource ( MAPL, DO_OBIO,    Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
+   call MAPL_GetResource ( MAPL, DO_OBIO,            Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
    VERIFY_(STATUS)
    call MAPL_GetResource ( MAPL, DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,    DEFAULT=0, RC=STATUS)
    VERIFY_(STATUS)
@@ -1938,7 +1892,6 @@ contains
       call MAPL_GetPointer(IMPORT,FSWBAND ,'FSWBAND' ,   RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT,FSWBANDNA,'FSWBANDNA', RC=STATUS); VERIFY_(STATUS)
    endif
-
 
 ! Pointers to outputs
 !--------------------
@@ -1974,11 +1927,8 @@ contains
    call MAPL_GetPointer(EXPORT,FSURF  , 'FSURF'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SWFLX  , 'SWFLX'   ,    RC=STATUS); VERIFY_(STATUS)
 
-
-!!$   if (DO_GUEST /= 0) then    
      call MAPL_GetPointer(EXPORT, DISCHARGE, 'DISCHARGE', RC=STATUS); VERIFY_(STATUS)
      if(associated(DISCHARGE)) DISCHARGE = DISCHARGE_IM
-!!$   endif
 
    ! category dimensional exports
    if (DO_OBIO /= 0) then    
@@ -2129,7 +2079,6 @@ contains
     if(associated(FSURF  )) FSURF   = 0.0
     if(associated(SWFLX  )) SWFLX   = 0.0
 
-
 ! Cycle through sub-tiles aggregating fluxes
 !-------------------------------------------
     do N=1,NUM_SUBTILES
@@ -2160,8 +2109,7 @@ contains
                                ! use updated ice fraction to aggregate albedos 
                                ! only relevant for coupled; AMIP sees the same fraction
                                ! albedo computed here only correct when solar alarm 
-                               ! is ringing (double check with Andrea!!!) 
-                               ! SA: Bin, Did you check w/her?
+                               ! is ringing
                                ALBVR   = ALBVR   + AVR    *FRNEW(:,N)
                                ALBVF   = ALBVF   + AVF    *FRNEW(:,N)
                                ALBNR   = ALBNR   + ANR    *FRNEW(:,N)
@@ -2234,7 +2182,6 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end subroutine RUN2
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
