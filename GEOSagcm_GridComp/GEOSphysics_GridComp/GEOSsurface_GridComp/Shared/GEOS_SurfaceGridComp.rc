@@ -206,7 +206,7 @@
 # GEOSldas=>ATM_CO2: 2
 # GEOSldas=>CO2: 350.e-6
 # 
-# GEOSldas=>CO2_YEAR:       # Only for GEOSldas with ATM_C02=2
+# GEOSldas=>CO2_YEAR:-9999   # Only for GEOSldas with ATM_C02=2
 
 # ---- Prescribe daily LAI and SAI data from an archived CATCHCN simulation
 #
