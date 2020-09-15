@@ -3203,6 +3203,7 @@ module GEOS_SurfaceGridCompMod
     integer                                 :: NT
     integer                                 :: K
     integer                                 :: userRC, NumInitPhases
+    INTEGER                                 :: LSM_CHOICE
 
     character(len=ESMF_MAXSTR), parameter   :: INITIALIZED_EXPORTS(4) = (/'FROCEAN  ', &
                              'FRLAKE   ', &
@@ -3379,7 +3380,8 @@ module GEOS_SurfaceGridCompMod
 
 ! Init land and snow constants, currently different in Icarus and GEOSldas
 !-----------------------------------------------------------------------
-
+    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
     call SurfParams_init(LAND_PARAMS)
 
 ! Handle river routing (if required)
