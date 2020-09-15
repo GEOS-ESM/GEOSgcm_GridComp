@@ -1646,6 +1646,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    character(len=ESMF_MAXSTR)     :: SURFRC
    type(ESMF_Config)              :: SCF 
    character(len=100)             :: WHICH_T_TO_SFCLAYER    ! what temperature does the sfclayer get from AOIL?
+   real, parameter                :: puny = 1.e-11
 
 !=============================================================================
 
@@ -1729,7 +1730,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
        epsilon_d  = AOIL_depth/OGCM_top_thickness ! < 1. If that is NOT true, AOIL formulation would need revisit; see AS2018
     else
        OGCM_top_thickness = MAPL_UNDEF
-       epsilon_d          = MAPL_UNDEF
+       epsilon_d          = puny
     end if
 
 ! Pointers to inputs
@@ -2603,7 +2604,7 @@ contains
        epsilon_d  = AOIL_depth/OGCM_top_thickness ! < 1. If that is NOT true, AOIL formulation would need revisit; see AS2018
     else
        OGCM_top_thickness = MAPL_UNDEF
-       epsilon_d          = MAPL_UNDEF
+       epsilon_d          = puny
     end if
 
 !   --------------------------------------------------------------------------------------------------------
