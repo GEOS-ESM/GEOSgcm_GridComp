@@ -237,7 +237,7 @@ n = 1
 
 is_OFFLINE = OFFLINE_MODE /= 0
 
-call SurfParams_init("GCM") 
+call SurfParams_init("GCM",2) 
 
 open (10,file=trim(scratch_dir)//'/catchcn_inputs.data' ,form ='unformatted', &
      action ='read', status ='old',convert='little_endian')
