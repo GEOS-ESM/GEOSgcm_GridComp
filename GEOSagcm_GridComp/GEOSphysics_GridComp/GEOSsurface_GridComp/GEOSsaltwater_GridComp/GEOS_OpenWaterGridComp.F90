@@ -2818,7 +2818,6 @@ contains
 ! FRESHATM is useful for mass flux balance.
 ! freshwater flux from atmosphere needs to be added to HW here since it carries zero enthalpy 
 !---------------------------------------------------------------------------------------------
-
     FRESHATM    = FRWATER*(SNO - EVP) + PCU + PLS
     FRESH       = 0.
     HH(:,N) = HH(:,N) + DT*(FRESHATM + FRESH)
@@ -2850,19 +2849,15 @@ contains
     if(associated(DELTS  )) DELTS   = DTS*CFT*FR(:,N)
     if(associated(DELQS  )) DELQS   = DQS*CFQ*FR(:,N)
 
-    if( trim(AOIL_COMP_SWITCH) == "ON") then
-!    Copy back to internal variables
-!    -----------------------------------------
-
-     TW = TS(:,WATER) + TWMTS
-     HW = HH(:,WATER)               ! The same skin layer interaction as in GEOS CICE
-     ! multiply by 1000 to account for g->kg conversion
-     FSALT = 0.  ! for compatibility (when it is "ON")
-     SW = (SS(:,WATER)+DT*1.e3*FSALT)/HW
-     where (.not. (abs(UW) > 0.0 .or. abs(VW) > 0.0))
-        SW = max(min(SW,MAXSALINITY),MINSALINITY)
-     endwhere
-    endif
+!   Copy back to internal variables
+!   -----------------------------------------
+    TW = TS(:,WATER) + TWMTS
+    HW = HH(:,WATER)
+    FSALT = 0.
+    SW = (SS(:,WATER)+DT*1.e3*FSALT)/HW ! multiply by 1000 to account for g->kg conversion
+    where (.not. (abs(UW) > 0.0 .or. abs(VW) > 0.0))
+       SW = max(min(SW,MAXSALINITY),MINSALINITY)
+    endwhere
 
 ! Net Solar insolation (including UV & IR, direct & diffuse) in interface layer 
 !------------------------------------------------------------------------------
