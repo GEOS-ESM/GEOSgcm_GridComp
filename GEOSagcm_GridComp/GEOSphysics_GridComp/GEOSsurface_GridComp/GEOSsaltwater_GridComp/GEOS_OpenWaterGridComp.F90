@@ -92,7 +92,6 @@ module GEOS_OpenwaterGridCompMod
   use GEOS_UtilsMod
   use DragCoefficientsMod
   use atmOcnIntlayer,     only: ALBSEA,            &
-                                COOL_SKIN,         &
                                 SKIN_SST,          &
                                 AOIL_sfcLayer_T,   &
                                 water_RHO,         &
@@ -2888,111 +2887,6 @@ contains
 
       deallocate(tmp2)
     endif
-
-    if( trim(AOIL_COMP_SWITCH) == "OFF") then
-
-!     Diagnose cool-skin
-!     ---------------------
-
-      call COOL_SKIN (NT,CM,UUA,VVA,UW,VW,SWN,LHF,SHF,LWDNSRF,    &
-                      ALW,BLW,TXW,TYW,USTARW_,                    &
-                      DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_, &
-                      TS,WATER,FR,n_iter_cool,fr_ice_thresh)
-
-!     AOIL temperature update due to bottom turbulent flux
-!     ----------------------------------------------------
-
-      if (DO_SKIN_LAYER==0) then
-        TBAR_   = TS(:,WATER)
-        TDEL_   = TS(:,WATER) + TDROP_                   ! for analysis not to die if do_skin_layer is off
-        TWMTF   = 0.
-        DELTC   = 0.
-
-        SWWARM_ = MAPL_UNDEF
-        QWARM_  = MAPL_UNDEF
-        ZETA_W_ = MAPL_UNDEF
-        PHIW_   = MAPL_UNDEF
-        LANGM_  = MAPL_UNDEF
-        TAUTW_  = MAPL_UNDEF
-      else
-
-!       Formulation of diurnal warming scheme
-!       -------------------------------------
-        call MAPL_GetResource ( MAPL, diurnal_warming_scheme,        Label="DIURNAL_WARMING_SCHEME:" , DEFAULT='AS2018',   RC=STATUS)
-        VERIFY_(STATUS)
-
-!       Parameter in stability function, Eq.(29) of AS2018
-!       --------------------------------------------------
-        call MAPL_GetResource ( MAPL, F_PHI,        Label="F_PHI:" , DEFAULT=3.0  ,   RC=STATUS)
-        VERIFY_(STATUS)
-
-        do N = 1, NT
-!         if( FI(N)        < fr_ice_thresh ) then   ! see above note on threshold of MIZ to model SST variations
-          if( FR(N, WATER) > fr_ice_thresh ) then
-            ALPH(N)   = (0.6 + 0.0935*(TS(N,WATER)-MAPL_TICE))*1.E-4
-            SWWARM_(N)= SWN(N) - PEN(N)
-            QWARM_ (N)= SWWARM_(N) - (LHF(N) + SHF(N) - (LWDNSRF(N) - ALW(N) - BLW(N)*TS(N,WATER)))
-            if (DO_DATASEA == 0) then
-              QWARM_(N)= QWARM_(N) - (epsilon_d/(1.-epsilon_d))* (PEN(N)-PEN_ocean(N))
-            endif
-            ZETA_W_(N)= (AOIL_depth*MAPL_KARMAN/USTARW_(N)**3.)*MAPL_GRAV*ALPH(N)*QWARM_(N)/(water_RHO('salt_water')*MAPL_CAPWTR)
-
-            if ( trim(diurnal_warming_scheme) == 'ATS2017') then ! See Eq(6) of ATS 2017, DOI:10.1002/qj.2988
-              if ( ZETA_W_(N) >= 0.0) then   ! Takaya: Eq(5) or Eq(6) of ATS2017
-                PHIW_(N) = 1. + (5*ZETA_W_(N) + 4.*ZETA_W_(N)**2)/(1+3.*ZETA_W_(N)+0.25*ZETA_W_(N)**2)
-              else
-                PHIW_(N) = 1.0/sqrt(1.-16.*ZETA_W_(N))
-              end if
-            else ! Following implements AS2018
-              PHIW_(N)  = 1.+SQRT(1.+4.*MAPL_KARMAN**2.*(1.+MUSKIN)*F_PHI*AOIL_depth*MAPL_GRAV*ALPH(N)*MAX(TWMTF(N),0.0)/USTARW_(N)**2.)
-              PHIW_(N)  = 0.5*PHIW_(N)
-            endif
-
-            LANGM_(N) = SQRT( USTARW_(N)/STOKES_SPEED)
-
-            if ( trim(diurnal_warming_scheme) == 'ATS2017') then   ! See Eq(6) of ATS 2017, DOI:10.1002/qj.2988
-              fLA           = LANGM_(N)**(-0.66667)        ! Takaya: Eqn(6)
-              if (fLA       <= 1.0) fLA = 1.0              ! Limit range of fLa to be >=1
-              if (ZETA_W_(N)<= 0.0) fLA = 1.0              ! Apply fLa to stable conditions only 
-              TAUTW_(N) = (AOIL_depth*PHIW_(N))/(MAPL_KARMAN*USTARW_(N)*(1.+MUSKIN)*fLA)
-            else ! AS2018
-              TAUTW_(N) = (AOIL_depth*PHIW_(N))/(MAPL_KARMAN*USTARW_(N)*(1.+MUSKIN))
-            endif
-
-            if (DO_DATASEA == 0) then
-              TAUTW_(N)= (1.- epsilon_d) * TAUTW_(N)   ! compare \tau_{\sigma} in Eq.(22) and that in section 2.2 of AS2018
-            endif
-            TAUTW_(N) = MAX(DT, TAUTW_(N)) ! for this time-scale, avoid 0.
-            TWMTF(N) = TWMTF(N)/(1.+DT/TAUTW_(N))
-            DELTC(N) = TDROP_(N)
-
-            if (DO_DATASEA == 1) then
-              TDEL_(N) = TS_FOUNDi(N) + ((1.+MUSKIN)/MUSKIN) * MAX(TWMTF(N), 0.0)
-              TBAR_(N) = TS_FOUNDi(N) +                        MAX(TWMTF(N), 0.0)
-            else
-              TDEL_(N) = TS_FOUNDi(N) + (1./MUSKIN + (1.-epsilon_d)) * MAX(TWMTF(N), 0.0)
-              TBAR_(N) = TS_FOUNDi(N) +              (1.-epsilon_d)  * MAX(TWMTF(N), 0.0)
-            endif
-
-            TS(N,WATER) = TDEL_(N) - TDROP_(N)                  ! updated skin temperature
-            
-          else ! FR(N, WATER) <= fr_ice_thresh
-            SWWARM_(N) = MAPL_UNDEF
-            QWARM_ (N) = MAPL_UNDEF
-            ZETA_W_(N) = MAPL_UNDEF
-            PHIW_  (N) = MAPL_UNDEF
-            LANGM_ (N) = MAPL_UNDEF
-            TAUTW_ (N) = MAPL_UNDEF
-            TWMTF  (N) = 0.
-            DELTC  (N) = 0.
-
-            TBAR_  (N) = MAPL_UNDEF
-            TDEL_  (N) = MAPL_UNDEF
-          endif ! if( FR(N, WATER) > fr_ice_thresh )
-        end do
-      endif ! if (DO_SKIN_LAYER==0) 
-      if(associated(TWMTFe)) TWMTFe = TWMTF
-    endif   ! if( trim(AOIL_COMP_SWITCH) == "OFF")
 
     if(associated(SWcool)) SWcool = SWCOOL_
     if(associated(SWWARM)) SWWARM = SWWARM_
