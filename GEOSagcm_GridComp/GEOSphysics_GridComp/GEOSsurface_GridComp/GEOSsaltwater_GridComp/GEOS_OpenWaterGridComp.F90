@@ -91,11 +91,12 @@ module GEOS_OpenwaterGridCompMod
   use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
-  use atmOcnIntlayer,     only: ALBSEA,    &
-                                COOL_SKIN, &
-                                SKIN_SST,  &
-                                AOIL_sfcLayer_T, &
-                                water_RHO
+  use atmOcnIntlayer,     only: ALBSEA,            &
+                                COOL_SKIN,         &
+                                SKIN_SST,          &
+                                AOIL_sfcLayer_T,   &
+                                water_RHO,         &
+                                AOIL_Shortwave_abs
 
   implicit none
   private
@@ -2350,10 +2351,6 @@ contains
    real,    dimension(NT)              :: SWN
    real,    dimension(NT)              :: PEN
    real,    dimension(NT)              :: PEN_ocean
-   real,    dimension(NT)              :: PUR
-   real,    dimension(NT)              :: PUF
-   real,    dimension(NT)              :: PPR
-   real,    dimension(NT)              :: PPF
    real,    dimension(NT)              :: LHF
    real,    dimension(NT)              :: ZTH
    real,    dimension(NT)              :: SLR
@@ -2742,10 +2739,6 @@ contains
 !-----------------------------------
     VSUVR = DRPAR + DRUVR
     VSUVF = DFPAR + DFUVR
-    PUR   = 0.0
-    PUF   = 0.0
-    PPR   = 0.0
-    PPF   = 0.0
 
 ! Regardless of interface layer, penetrative solar to ocean always gets surface values 
 ! ------------------------------------------------------------------------------------
@@ -2754,52 +2747,15 @@ contains
     if(associated(PENPAR)) PENPAR  = (1.-ALBVRO)*DRPAR
     if(associated(PENPAF)) PENPAF  = (1.-ALBVFO)*DFPAR
 
-!   Shortwave absorption in water
-!   -----------------------------
-    if (DO_SKIN_LAYER==0) then 
-      PEN = 1.0
-    else 
-      if( trim(AOIL_COMP_SWITCH) == "ON") then
-        PEN = exp(-(KUVR/water_RHO('fresh_water'))*HW)
-      else
-        PEN = exp(-KUVR*AOIL_depth)                 ! UV penetration into water
-      endif
-    endif
-    PUR = (1.-ALBVRO)*DRUVR*PEN
-    PUF = (1.-ALBVFO)*DFUVR*PEN
-
-    if (DO_SKIN_LAYER==0) then 
-      PEN = 1.0
-    else 
-      if( trim(AOIL_COMP_SWITCH) == "ON") then
-        PEN = exp(-(KPAR/water_RHO('fresh_water'))*HW)
-      else
-        PEN = exp(-KPAR*AOIL_depth)                 ! near-IR ("blue light" 490nm?)
-      endif
-    endif
-    PPR = (1.-ALBVRO)*DRPAR*PEN
-    PPF = (1.-ALBVFO)*DFPAR*PEN
-
-    PEN = PUR + PUF + PPR + PPF          ! total absorbed into water up to AOIL_depth
-    
-    if (DO_DATASEA == 0) then            ! in coupled mode
-      PEN_ocean =  exp(-KUVR*OGCM_top_thickness)
-      PUR       =  (1.-ALBVRO)*DRUVR*PEN_ocean
-      PUF       =  (1.-ALBVFO)*DFUVR*PEN_ocean
-      PEN_ocean =  exp(-KPAR*OGCM_top_thickness)
-      PPR       =  (1.-ALBVRO)*DRPAR*PEN_ocean
-      PPF       =  (1.-ALBVFO)*DFPAR*PEN_ocean
-      PEN_ocean =  PUR + PUF + PPR + PPF    ! penetrated flux through OGCM_top_thickness
-    else
-      PEN_ocean = 0.0
-    endif
+    call AOIL_Shortwave_abs (NT, DO_SKIN_LAYER, DO_DATASEA, &
+                             AOIL_depth, OGCM_top_thickness, HW, KUVR, KPAR, &
+                             ALBVRO, ALBVFO, DRUVR, DFUVR, DRPAR, DFPAR, &
+                             PEN, PEN_ocean)
 
     SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
           (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
-
     SWN   = SWN - PEN
-
-    if (DO_DATASEA == 0) then            ! in coupled mode
+    if (DO_DATASEA == 0) then               ! in coupled mode, first term on RHS of eqn 10 (AS2018)
       SWN   = SWN - (epsilon_d/(1.-epsilon_d))* (PEN-PEN_ocean)
     endif
 
