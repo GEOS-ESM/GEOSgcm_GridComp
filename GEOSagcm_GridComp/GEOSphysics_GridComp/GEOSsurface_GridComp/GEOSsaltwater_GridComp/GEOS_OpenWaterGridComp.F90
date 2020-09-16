@@ -932,7 +932,7 @@ module GEOS_OpenwaterGridCompMod
         UNITS              = 'kg m-2',                            &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        FRIENDLYTO         = 'OCEAN:SEAICE',                      & ! must go away. Connectivity needs fixing.
+        FRIENDLYTO         = trim(COMP_NAME),                     & ! friendly are a pain to get rid of!
         DEFAULT            = 5.0*MAPL_RHO_SEAWATER,               &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
@@ -943,7 +943,7 @@ module GEOS_OpenwaterGridCompMod
         UNITS              = 'K',                                 &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        FRIENDLYTO         = 'OCEAN:SEAICE',                      & ! must go away. Connectivity needs fixing.
+        FRIENDLYTO         = trim(COMP_NAME),                     & ! friendly are a pain to get rid of!
         DEFAULT            = 280.0,                               &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
@@ -954,7 +954,7 @@ module GEOS_OpenwaterGridCompMod
         UNITS              = 'psu',                               &
         DIMS               = MAPL_DimsTileOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-        FRIENDLYTO         = 'OCEAN:SEAICE',                      & ! must go away. Connectivity needs fixing.
+        FRIENDLYTO         = trim(COMP_NAME),                     & ! friendly are a pain to get rid of!
         DEFAULT            = 30.0,                                &
                                                        RC=STATUS  )
     VERIFY_(STATUS)
