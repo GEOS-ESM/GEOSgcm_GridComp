@@ -1647,7 +1647,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    character(len=ESMF_MAXSTR)     :: SURFRC
    type(ESMF_Config)              :: SCF 
    character(len=100)             :: WHICH_T_TO_SFCLAYER    ! what temperature does the sfclayer get from AOIL?
-   real, parameter                :: puny = 1.e-11
 
 !=============================================================================
 
@@ -1731,7 +1730,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
        epsilon_d  = AOIL_depth/OGCM_top_thickness ! < 1. If that is NOT true, AOIL formulation would need revisit; see AS2018
     else
        OGCM_top_thickness = MAPL_UNDEF
-       epsilon_d          = puny
+       epsilon_d          = 0.0
     end if
 
 ! Pointers to inputs
@@ -2144,8 +2143,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
   real, pointer, dimension(:)         :: LONS => null()
 
   real, pointer, dimension(:)         :: AREA => null()     ! needed to calculate TILEAREA in OpenWaterCore
-
-  real, parameter                     :: puny = 1.e-11
 
 !=============================================================================
 
@@ -2600,7 +2597,7 @@ contains
        epsilon_d  = AOIL_depth/OGCM_top_thickness ! < 1. If that is NOT true, AOIL formulation would need revisit; see AS2018
     else
        OGCM_top_thickness = MAPL_UNDEF
-       epsilon_d          = puny
+       epsilon_d          = 0.0
     end if
 
 !   --------------------------------------------------------------------------------------------------------
@@ -2779,10 +2776,10 @@ contains
     ! FR accounts for skin under ice
     DTX = DT*FRWATER / (SALTWATERCAP*HH(:,N))
 
-    if (DO_DATASEA == 1) then            ! in uncoupled mode
-      if (DO_SKIN_LAYER /= 0) DTX = DTX*((MUSKIN+1.)/MUSKIN)
+    if (DO_SKIN_LAYER == 0) then
+      DTX = 0.
     else
-      if (DO_SKIN_LAYER /= 0) DTX = DTX*((MUSKIN+1.-MUSKIN*epsilon_d)/MUSKIN)
+      DTX = DTX*((MUSKIN+1.-MUSKIN*epsilon_d)/MUSKIN)
     endif
 
     ! DTY accounts for ice on top of water. Part of Shortwave is absorbed by ice and rest goes to warm water.
@@ -2804,17 +2801,16 @@ contains
     DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
     QS(:,N) = QS(:,N) + DQS
 
-    if( trim(AOIL_COMP_SWITCH) == "ON") then
-      if(DO_SKIN_LAYER/=0) then
-        TWMTS = TWMTS - (1.0/(MUSKIN+1.0))*DTS
-      endif
+    if(DO_SKIN_LAYER == 0) then
+      TWMTS = 0.
+      TWMTF = 0.
     else
-      if(DO_SKIN_LAYER/=0) then
-       if (DO_DATASEA == 0) then            ! in coupled mode
+      TWMTS = TWMTS - (1.0/(MUSKIN+1.0))*DTS
+      if (DO_DATASEA == 0) then            ! coupled   mode
          TWMTF = TWMTF + (MUSKIN/(1.+MUSKIN-MUSKIN*epsilon_d))*DTS
-       else
-         TWMTF = TWMTF + (MUSKIN/(1.+MUSKIN))*DTS
-       end if
+      else                                 ! uncoupled mode
+         TWMTF = 0.
+!        TWMTF = TWMTF + (MUSKIN/(1.+MUSKIN))*DTS ! This will cause non-zero diff in internal/checkpoint, but ZERO DIFF in OUTPUT.
       end if
     end if
 
