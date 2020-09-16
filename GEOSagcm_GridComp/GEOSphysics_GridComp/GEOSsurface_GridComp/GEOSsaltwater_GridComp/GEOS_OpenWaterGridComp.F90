@@ -2354,7 +2354,6 @@ contains
    real,    dimension(NT)              :: PUF
    real,    dimension(NT)              :: PPR
    real,    dimension(NT)              :: PPF
-   real,    dimension(NT)              :: PENICE
    real,    dimension(NT)              :: LHF
    real,    dimension(NT)              :: ZTH
    real,    dimension(NT)              :: SLR
@@ -2833,10 +2832,8 @@ contains
     ! DTY accounts for ice on top of water. Part of Shortwave is absorbed by ice and rest goes to warm water.
     ! Skin layer only absorbs the portion of SW radiation passing thru the bottom of ice MINUS
     ! the portion passing thru the skin layer    
-
-    ! penetrated shortwave from sea ice bottom + associated ocean/ice heat flux
-!    DTY = DT / (SALTWATERCAP*HW) * (PENICE * FI + FHOCN)
-     DTY = 0. ! SA: revisit above with CICE6 [Nov, 2019]
+    ! Penetrated shortwave from sea ice bottom + associated ocean/ice heat flux
+    DTY = 0. ! Revisit above with CICE6 [Nov, 2019] and compute DTY = DT / (SALTWATERCAP*HW) * (PENICE * FI + FHOCN)
 
     DTS = DTX * ( DTS + SWN - EVP*MAPL_ALHL - MAPL_ALHF*SNO ) + DTY
     DTS = DTS   / ( 1.0 + DTX*(BLW + SHD + EVD*MAPL_ALHL) )
