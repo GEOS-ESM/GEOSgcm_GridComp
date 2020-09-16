@@ -2797,21 +2797,6 @@ contains
     SHF = SHF + SHD * DTS
     LHF = EVP * MAPL_ALHL
 
-    if(associated(HLATWTR)) then
-          WHERE( FRWATER>0.0 )
-             HLATWTR = LHF
-          ELSEWHERE
-             HLATWTR = MAPL_UNDEF
-          ENDWHERE
-    endif
-    if(associated(  SHWTR)) then
-          WHERE( FRWATER>0.0 )
-             SHWTR   = SHF
-          ELSEWHERE
-             SHWTR   = MAPL_UNDEF
-          ENDWHERE
-    endif
-
 ! Update WATER surface temperature and moisture
 !----------------------------------------
 
@@ -2844,6 +2829,21 @@ contains
     if( trim(AOIL_COMP_SWITCH) == "ON") then
       HH(:,N) = HH(:,N) + DT*(FRESHATM + FRESH)
       HH(:,N) = max( min(HH(:,N), (MaxWaterDepth*water_RHO('fresh_water'))), (MinWaterDepth*water_RHO('fresh_water')))
+    endif
+
+    if(associated(HLATWTR)) then
+          WHERE( FRWATER>0.0 )
+             HLATWTR = LHF
+          ELSEWHERE
+             HLATWTR = MAPL_UNDEF
+          ENDWHERE
+    endif
+    if(associated(  SHWTR)) then
+          WHERE( FRWATER>0.0 )
+             SHWTR   = SHF
+          ELSEWHERE
+             SHWTR   = MAPL_UNDEF
+          ENDWHERE
     endif
 
     if(associated(EVAPOUT)) EVAPOUT = EVP    *FR(:,N)
