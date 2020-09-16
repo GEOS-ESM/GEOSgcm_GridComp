@@ -2825,9 +2825,11 @@ contains
 
     FRESHATM    = FRWATER*(SNO - EVP) + PCU + PLS
     FRESH       = 0.
+    HH(:,N) = HH(:,N) + DT*(FRESHATM + FRESH)
 
-    if( trim(AOIL_COMP_SWITCH) == "ON") then
-      HH(:,N) = HH(:,N) + DT*(FRESHATM + FRESH)
+    if (DO_DATASEA == 0) then               ! coupled   mode
+      HH(:,N) = max( min(HH(:,N), (MaxWaterDepth*water_RHO('salt_water'))),  (MinWaterDepth*water_RHO('salt_water')))
+    else                                    ! uncoupled mode
       HH(:,N) = max( min(HH(:,N), (MaxWaterDepth*water_RHO('fresh_water'))), (MinWaterDepth*water_RHO('fresh_water')))
     endif
 
