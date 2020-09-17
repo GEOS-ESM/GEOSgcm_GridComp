@@ -48,6 +48,7 @@ module GEOS_CatchGridCompMod
        LAND_FIX
 
   USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
+  USE GEOSland_modules, ONLY : MODISReader
 
 !#sqz_for_ldas_coupling 
   use catch_incr
@@ -142,6 +143,7 @@ real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 f
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 real    :: FWETC, FWETL
 logical :: USE_FWET_FOR_RUNOFF
+character(len=ESMF_MAXSTR)         :: GRIDNAME, MODIS_PATH
 
 contains
 
@@ -219,6 +221,16 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,        DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,        DEFAULT=1  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='MODIS_ALB:'          , value=MODIS_ALB,          DEFAULT=0  , __RC__ )
+    if (MODIS_ALB == 1) then
+        call ESMF_ConfigGetAttribute (SCF, value= MODIS_PATH, label='MODIS_PATH:',  &
+             DEFAULT='/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/MCD15A2H.006/IAV_smoothed/', __RC__ )
+        if (OFFLINE_MODE == 0) then
+           call MAPL_GetResource( MAPL, GRIDNAME, label='AGCM_GRIDNAME:', RC=STATUS ) ; VERIFY_(STATUS)
+        else
+           call MAPL_GetResource( MAPL, GRIDNAME, label='GEOSldas.GRIDNAME:',      RC=STATUS ) ; VERIFY_(STATUS)
+        endif    
+    endif
+
     call ESMF_ConfigGetAttribute (SCF, label='USE_FWET_FOR_RUNOFF:', value=USE_FWET_FOR_RUNOFF,DEFAULT=.FALSE., __RC__ )
     
     if (.NOT. USE_FWET_FOR_RUNOFF) then
