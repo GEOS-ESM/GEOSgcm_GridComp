@@ -64,23 +64,6 @@ module GEOS_OpenwaterGridCompMod
 !      $$ \frac{\partial \sigma_T}{\partial t}= \frac{Q_{\sigma}}{d\,\rho_w\,c_w} - \frac{1}{\tau_{\sigma}} \sigma_T.$$
 !      \noindent For complete details, please see Akella and Suarez, 2018, 
 !      "The Atmosphere-Ocean Interface Layer of the NASA Goddard Earth Observing System Model and Data Assimilation System." GMAO Tech Memo, Vol 51. 
-!
-!      \noindent COMPATIBILITY: 
-!
-!      **************************************************************************
-!      Set Services:
-!      enables ability to run old and/or new interface(s) by setting compatibility: ON
-!      -- this feature adds (back) "old" stuff when set ON
-!
-!      Whereas Run(1,2) will execute either 
-!      -----------      -------------------
-!      interface 
-!       version        compatibility
-!     -----------      -------------------
-!        old:               ON
-!        new:               OFF
-!      **************************************************************************
-!
 !      ----------------------------------------------------------------------------
 !
 
