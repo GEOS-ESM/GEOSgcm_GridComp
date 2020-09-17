@@ -42,7 +42,7 @@ ecbuild_add_executable (TARGET mkCatchParam.x SOURCES mkCatchParam.F90 LIBS MAPL
 set_target_properties(mkCatchParam.x PROPERTIES COMPILE_FLAGS "${OpenMP_Fortran_FLAGS}")
 set_target_properties(mkCatchParam.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
 
-ecbuild_add_executable (TARGET mkMODISrst2tiles.x SOURCES mkMODISrst2tiles.F90 INCLUDES ${INC_ESMF} ${INC_NETCDF} ${INC_HDF5} LIBS hdf5hl_fortran hdf5_fortran MAPL ${this})
+#ecbuild_add_executable (TARGET mkMODISrst2tiles.x SOURCES mkMODISrst2tiles.F90 INCLUDES ${INC_ESMF} ${INC_NETCDF} ${INC_HDF5} LIBS hdf5hl_fortran hdf5_fortran MAPL ${this})
 ecbuild_add_executable (TARGET mkCubeFVRaster.x SOURCES mkCubeFVRaster.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkLandRaster.x SOURCES mkLandRaster.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkLatLonRaster.x SOURCES mkLatLonRaster.F90 LIBS MAPL ${this})

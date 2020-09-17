@@ -5886,16 +5886,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(SLDTOT )
 
         RETURN_(ESMF_SUCCESS)
->>>>>>>>>>>>>>>>>>>> File 1
-
-      end subroutine Driver
->>>>>>>>>>>>>>>>>>>> File 2
-
-      end subroutine Driver
->>>>>>>>>>>>>>>>>>>> File 3
         
   end subroutine Driver
-<<<<<<<<<<<<<<<<<<<<
 
 end subroutine RUN2
 

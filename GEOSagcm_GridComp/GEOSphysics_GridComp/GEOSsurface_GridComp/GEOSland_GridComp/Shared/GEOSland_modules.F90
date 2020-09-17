@@ -15,13 +15,15 @@ MODULE GEOSland_modules
      procedure, public :: modis_date
      procedure, public :: read_modis_data
   end type MODISReader
+
+contains
   
   ! ---------------------------------------------------------------------------
     
   integer function modis_date (this,DOY, interval) result (MOD_DOY)
     
     implicit none
-    class (MODISReader), intent(inout)        :: this
+    class (MODISReader), intent(in)            :: this
     integer, intent(in) :: DOY, interval
     integer, parameter  :: N_MODIS_DAYS8 = 46, N_MODIS_DAYS5 = 74
     integer, dimension (N_MODIS_DAYS8), target ::     &
