@@ -4130,8 +4130,22 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         integer                       :: nv, nVars
         integer                       :: nDims,dimSizes(3)
         integer                       :: ldas_ens_id, ldas_first_ens_id
-!#---
 
+        integer                       :: MOD_DOY,DOY,MFDOY,CUR_YY,CUR_MM,CUR_DD, &
+             MOD_YY, MOD_MM, MOD_DD
+        logical, save                 :: modis_first = .true.
+        logical                       :: b4_modis_date
+        integer                       :: MODALB_FIRSTDATE = 20000101
+
+        ! Time attributes and placeholders
+
+        type(ESMF_Time)               :: MODIS_TIME
+        type(ESMF_Time), save         :: MODIS_RING
+        type(ESMF_TimeInterval)       :: M5, TIME_DIFF
+        real, dimension(:),   pointer :: MODIS_VISDFTILE
+        real, dimension(:),   pointer :: MODIS_NIRDFTILE
+        type(MODISReader)             :: MR
+    
         ! --------------------------------------------------------------------------
         ! Lookup tables
         ! --------------------------------------------------------------------------
@@ -4495,11 +4509,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RSL2     (NTILES)) 
         allocate(SQSCAT   (NTILES))
         allocate(RDC      (NTILES))  
-        IF (MODIS_ALB == 0) THEN
-           allocate(VISDF    (NTILES))
-           allocate(NIRDF    (NTILES))
-        ENDIF
-	allocate(UUU      (NTILES))
+        allocate(VISDF    (NTILES))
+        allocate(NIRDF    (NTILES))
+        allocate(UUU      (NTILES))
 	allocate(RHO      (NTILES))
 	allocate(ZVG      (NTILES))
 	allocate(LAI0     (NTILES))
@@ -4828,30 +4840,79 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Update raditation exports
         ! --------------------------------------------------------------------------
 
-     IF (MODIS_ALB == 0) THEN
-
         ! ----------------------------------------------------------------------------------
         ! Update the interpolation limits for MODIS albedo corrections
         ! in the internal state and get their midmonth times
         ! ----------------------------------------------------------------------------------
-
-        call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
-        VERIFY_(STATUS)
-
-        call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
-                       VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                       ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
-
-     ELSEIF (MODIS_ALB == 2) THEN
-
-        ALBVR = MIN (1., MAX(0.001,MODIS_VISDF))
-        ALBNR = MIN (1., MAX(0.001,MODIS_NIRDF))
-        ALBVF = MIN (1., MAX(0.001,MODIS_VISDF))
-        ALBNF = MIN (1., MAX(0.001,MODIS_NIRDF))  
         
-     ENDIF
+        if (ldas_ens_id == ldas_first_ens_id) then ! it is always .true. if NUM_LDAS_ENSEMBLE = 1 (by default)
+           call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
+           VERIFY_(STATUS)
+           call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
+           VERIFY_(STATUS)
+        endif
+           
+        call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
+             VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
+             ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+           
+        IF (MODIS_ALB == 1) THEN
+           b4_modis_date = .false.
+           ! read interannually varying VISDF NIRDF albedo data on tile space
+           call ESMF_TimeIntervalSet(M5, h=24*5, rc=status ) ; VERIFY_(STATUS)
+           MOD_YY = MODALB_FIRSTDATE / 10000
+           MOD_MM = (MODALB_FIRSTDATE - MOD_YY*10000) / 100
+           MOD_DD = MODALB_FIRSTDATE - (MOD_YY*10000 + MOD_MM*100)
+           call ESMF_TimeSet (MODIS_TIME, yy=MOD_YY, mm=MOD_MM, dd=MOD_DD, rc=status) ; VERIFY_(STATUS)
+           call ESMF_TimeGet (MODIS_TIME, DayOfYear=MFDOY, RC=STATUS)                 ; VERIFY_(STATUS)
+           
+           if (modis_first) then          
+              call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, MM = CUR_MM, DD = CUR_DD, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
+              MOD_DOY = mr%modis_date (DOY, 5)
+              call ESMF_TimeSet(MODIS_TIME, yy=CUR_YY, mm=CUR_MM, dd=CUR_DD, rc=status) ; VERIFY_(STATUS)
+              call ESMF_TimeIntervalSet(TIME_DIFF, h=24*(DOY -MOD_DOY), rc=status )     ; VERIFY_(STATUS)
+              MODIS_RING = MODIS_TIME - TIME_DIFF
+              MODIS_RING = MODIS_RING + M5
+              
+              ALLOCATE (MODIS_VISDFTILE (1:SIZE(ITY)))
+              ALLOCATE (MODIS_NIRDFTILE (1:SIZE(ITY)))
+              if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
+              call mr%read_modis_data (MAPL,CUR_YY, MOD_DOY, b4_modis_date, &
+                   GRIDNAME, MODIS_PATH, 'alb', MODIS_VISDFTILE, MODIS_NIR = MODIS_NIRDFTILE)
+              modis_first = .false.
+           endif
+           
+           if (CURRENT_TIME ==  MODIS_RING) then
+              call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
+              MOD_DOY = mr%modis_date (DOY, 5)
+              if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
+              call mr%read_modis_data (MAPL,CUR_YY, DOY, b4_modis_date, &
+                   GRIDNAME, MODIS_PATH, 'alb', MODIS_VISDFTILE, MODIS_NIR = MODIS_NIRDFTILE)
+              if (DOY < 366) then
+                 MODIS_RING = CURRENT_TIME + M5
+              else
+                 call ESMF_TimeSet(MODIS_TIME, yy=CUR_YY+1, mm=1, dd=1, rc=status) ; VERIFY_(STATUS)
+                 MODIS_RING = MODIS_TIME
+              endif
+           endif
+
+           where (MODIS_VISDFTILE >= 0.)
+              ALBVR = MODIS_VISDFTILE
+              ALBVF = MODIS_VISDFTILE
+           endwhere
+           where (MODIS_NIRDFTILE >= 0.)
+              ALBNR = MODIS_NIRDFTILE
+              ALBNF = MODIS_NIRDFTILE
+           endwhere
+           
+        ELSEIF (MODIS_ALB == 2) THEN
+           
+           ALBVR = MIN (1., MAX(0.001,MODIS_VISDFTILE))
+           ALBNR = MIN (1., MAX(0.001,MODIS_NIRDFTILE))
+           ALBVF = MIN (1., MAX(0.001,MODIS_VISDFTILE))
+           ALBNF = MIN (1., MAX(0.001,MODIS_NIRDFTILE))  
+           
+        ENDIF
 
         ! Get TPSN1OUT1 for SNOW_ALBEDO parameterization
 
@@ -5089,7 +5150,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
-           call WRITE_PARALLEL(USE_FWET_FOR_RUNOFF, UNIT)
+           call WRITE_PARALLEL(PRECIPFRAC, UNIT)
            call MAPL_VarWrite(unit, tilegrid, LONS, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, LATS, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, DZSF, mask=mask, rc=status); VERIFY_(STATUS)
@@ -5541,37 +5602,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
         TPSN1OUT1 =  TPSN1OUT1 + MAPL_TICE
 
-        IF (MODIS_ALB == 0) THEN
-
-           call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
-                VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles           
-
-           call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
-                RHOFS,                                              &   
-                SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
-                WESNN, HTSNNN, SNDZN,                               &
-                ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
-                SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
-                RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
-           
-        ELSEIF (MODIS_ALB == 2) THEN
-
-           ALBVR = MIN (1., MAX(0.001,MODIS_VISDF))
-           ALBNR = MIN (1., MAX(0.001,MODIS_NIRDF))
-           ALBVF = MIN (1., MAX(0.001,MODIS_VISDF))
-           ALBNF = MIN (1., MAX(0.001,MODIS_NIRDF))  
-           
-           call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
-                RHOFS,                                              &   
-                SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
-                WESNN, HTSNNN, SNDZN,                               &
-                ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
-                SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
-                RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
-           
-        ENDIF
-
+        call   SNOW_ALBEDO(NTILES, N_snow,  N_CONST_LAND4SNWALB, VEG, LAI, ZTH, &
+             RHOFS,                                              &   
+             SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
+             WESNN, HTSNNN, SNDZN,                               &
+             ALBVR, ALBNR, ALBVF, ALBNF, & ! instantaneous snow-free albedos on tiles
+             SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
+             RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)   
+        
         ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
         ALBNR   = ALBNR    *(1.-ASNOW) + SNONR    *ASNOW
@@ -5809,10 +5847,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(HSNACC   )
         deallocate(EVACC    )
         deallocate(SHACC    )
-        if(MODIS_ALB == 0) THEN
-           deallocate(VISDF    )
-           deallocate(NIRDF    )
-        endif
+        deallocate(VISDF    )
+        deallocate(NIRDF    )
         deallocate(VSUVR    )
         deallocate(VSUVF    )
         deallocate(SNOVR    )
@@ -5850,8 +5886,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(SLDTOT )
 
         RETURN_(ESMF_SUCCESS)
+>>>>>>>>>>>>>>>>>>>> File 1
 
       end subroutine Driver
+>>>>>>>>>>>>>>>>>>>> File 2
+
+      end subroutine Driver
+>>>>>>>>>>>>>>>>>>>> File 3
+        
+  end subroutine Driver
+<<<<<<<<<<<<<<<<<<<<
 
 end subroutine RUN2
 
