@@ -112,11 +112,6 @@ module GEOS_OpenwaterGridCompMod
   real,    parameter            :: KUVR         = 0.09
   real,    parameter            :: SALTWATERCAP  = MAPL_CAPWTR
 
-  character(len=7)   :: AOIL_COMP_SWITCH  ! Atmosphere-Ocean Interface Layer, compatibility: on/off
-                                          ! defualt: OFF, so AOIL is incompatible with "old" interface
-                                          ! when it is ON, set servives provides what is needed for both versions
-                                          ! whereas RUN(2) will use one or other (OFF: AOIL; ON: old interface)
-
   contains
 
 !BOP
@@ -187,12 +182,6 @@ module GEOS_OpenwaterGridCompMod
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, DO_SKIN_LAYER, Label="USE_SKIN_LAYER:"  , DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-
-! Atmosphere-Ocean Interface Layer compatibility: on/off?
-!-------------------------------------------------------
-
-    call MAPL_GetResource( MAPL,  AOIL_COMP_SWITCH,        Label="AOIL_COMP_SWITCH:",     DEFAULT="ON", RC=STATUS)
     VERIFY_(STATUS)
 
 ! Set the state variable specs.
@@ -2864,19 +2853,15 @@ contains
     SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
           (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
 
-    if( trim(AOIL_COMP_SWITCH) == "ON") then
-!     Marginal Ice Zone- threshold on fraction: if no LANL CICE, SST IS ALLOWED TO VARY WITHIN ICE EXTENT.
-!     -------------------------------------------------------------------------------------------------
+!   Marginal Ice Zone- threshold on fraction: if no LANL CICE, SST IS ALLOWED TO VARY WITHIN ICE EXTENT.
+!   -------------------------------------------------------------------------------------------------
+    ! Following default for coupled (with cice) needs to be revisited 
+    call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=0.0,    RC=STATUS)
+    VERIFY_(STATUS)
 
-      ! Following default for coupled (with cice) needs to be revisited 
-      call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=0.0,    RC=STATUS)
-      VERIFY_(STATUS)
-
-!     Cool-skin and diurnal warm layer. It changes TS, TWMTS, TW if DO_SKIN_LAYER = 1
-!     --------------------------------------------------------------------------------
-
-      allocate(tmp2(NT, NUM_SUBTILES), STAT=STATUS)
-      VERIFY_(STATUS)
+!   Cool-skin and diurnal warm layer. It changes TS, TWMTS, TW if DO_SKIN_LAYER = 1
+!   --------------------------------------------------------------------------------
+      allocate(tmp2(NT, NUM_SUBTILES), STAT=STATUS); VERIFY_(STATUS)
       tmp2(:,WATER) = FRWATER
 
       call SKIN_SST (DO_SKIN_LAYER,NT,CM,UUA,VVA,UW,VW,HW,SWN,LHF,SHF,LWDNSRF,                   &
@@ -2884,9 +2869,7 @@ contains
                      DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_,TDEL_,SWWARM_,QWARM_,ZETA_W_,    &
                      PHIW_,LANGM_,TAUTW_,uStokes_,TS,TWMTS,TW,WATER,tmp2,n_iter_cool,&
                      fr_ice_thresh)
-
       deallocate(tmp2)
-    endif
 
     if(associated(SWcool)) SWcool = SWCOOL_
     if(associated(SWWARM)) SWWARM = SWWARM_
