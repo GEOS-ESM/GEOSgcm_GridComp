@@ -4,18 +4,24 @@
 MODULE GEOSland_modules
 
   use ESMF
-
+  use MAPL
+  
   implicit none
 
-  PRIVATE
+  private
 
-  PUBLIC :: modis_date, read_modis_data
-
-    ! ---------------------------------------------------------------------------
+  type, public :: MODISReader
+   contains
+     procedure, public :: modis_date
+     procedure, public :: read_modis_data
+  end type MODISReader
+  
+  ! ---------------------------------------------------------------------------
     
-  integer function modis_date (DOY, interval) result (MOD_DOY)
+  integer function modis_date (this,DOY, interval) result (MOD_DOY)
     
     implicit none
+    class (MODISReader), intent(inout)        :: this
     integer, intent(in) :: DOY, interval
     integer, parameter  :: N_MODIS_DAYS8 = 46, N_MODIS_DAYS5 = 74
     integer, dimension (N_MODIS_DAYS8), target ::     &
@@ -38,7 +44,7 @@ MODULE GEOSland_modules
          351,356,361,366/)
     integer, dimension(:), pointer :: MODIS_DOYS
     integer :: i,N_MODIS_DATES
-
+    
     select case (interval)
     case (8)
        MODIS_DOYS => MODIS_DOYS8
@@ -58,13 +64,14 @@ MODULE GEOSland_modules
     endif
     
   end function modis_date
-    
+  
   ! ---------------------------------------------------------------------------
   
-  subroutine read_modis_data (MAPL,CUR_YY, MOD_DOY, b4_modis_date, &
+  subroutine read_modis_data (this,MAPL,CUR_YY, MOD_DOY, b4_modis_date, &
        GRIDNAME, MODIS_PATH, label, MODIS_DATA, MODIS_NIR) 
 
     implicit none
+    class (MODISReader), intent(inout)       :: this
     type(MAPL_MetaComp), intent(in),pointer  :: MAPL
     character (*), intent (in)               :: GRIDNAME, MODIS_PATH, label
     integer, intent (in)                     :: CUR_YY, MOD_DOY
@@ -100,343 +107,8 @@ MODULE GEOSland_modules
     call FREE_FILE(unit, RC=STATUS)                                ; VERIFY_(STATUS)
     
   end subroutine read_modis_data
-
+  
 END MODULE GEOSland_modules
 
-! ********************************************************************
-
-module GEOSland_io_hdf5
-
-  use hdf5
-
-  implicit none
-
-  private
-
-  integer, parameter :: UNINIT_INT = -99999
-  character(len=*), parameter :: UNINIT_STR = ""
-
-  type, public :: hdf5read
-     private
-     character(len=256) :: file_name = UNINIT_STR
-     integer(hid_t) :: file_id = UNINIT_INT
-     character(len=256) :: dset_name = UNINIT_STR
-     integer(hid_t) :: dset_id = UNINIT_INT, dspace_id = UNINIT_INT, dtype_id = UNINIT_INT
-     integer :: dset_rank = UNINIT_INT
-     ! 7 is the max dimension of a fortran array
-     integer(hsize_t) :: dset_size(7) = UNINIT_INT, dset_max_size(7) = UNINIT_INT
-   contains
-     ! public
-     procedure, public  :: openFile
-     procedure, public  :: closeFile
-     procedure, public  :: queryDataset
-     generic,   public  :: readDataset => readDataset1DReal, readDataset1DReal8, readDataset1DInt, readDataset1DChar24, readDataset2DReal
-     ! private
-     procedure, private :: readDataset1DReal
-     procedure, private :: readDataset1DReal8
-     procedure, private :: readDataset1DInt
-     procedure, private :: readDataset1DChar24
-     procedure, private :: readDataset2DReal
-     procedure, private :: uninitDataset
-  end type hdf5read
-
-contains
-
-  ! open file
-  subroutine openFile(this, filename)
-
-    ! input/output variables
-    ! NEED class(hdf5read) instead of type(hdf5read)
-    class (hdf5read), intent(inout) :: this
-    character(len=*), intent(in) :: filename
-
-    ! local variable
-    integer :: hdf5err
-
-    ! set obj param val
-    this%file_name = filename
-
-    ! initialize fortran interface
-    call h5open_f(hdf5err)
-    call checkErrCode_('h5open_f', hdf5err)
-
-    ! open existing file
-    call h5fopen_f(this%file_name, H5F_ACC_RDONLY_F, this%file_id, hdf5err)
-    call checkErrCode_('h5fopen_f', hdf5err)
-
-  end subroutine openFile
-
-  ! close already opened file
-  subroutine closeFile(this)
-
-    ! input/output variables
-    class (hdf5read), intent(inout) :: this
-
-    ! local variable
-    integer :: hdf5err
-
-    ! ensure that dataset has been closed
-    if (this%dset_name/=UNINIT_STR) stop "ERROR: Open dataset needs to be closed first. Stopping!"
-
-    ! close file
-    call h5fclose_f(this%file_id, hdf5err)
-    call checkErrCode_('h5fclose_f', hdf5err)
-    this%file_name = UNINIT_STR
-    this%file_id = UNINIT_INT
-
-    ! close fortran interface
-    call h5close_f(hdf5err)
-    call checkErrCode_('h5close_f', hdf5err)
-    
-  end subroutine closeFile
-
-  ! query dataset for number of dims and its shape
-  subroutine queryDataset(this, dsetName, dsetRank, dsetSize)
-
-    ! input/output variables
-    class (hdf5read), intent(inout) :: this
-    character(len=*), intent(in) :: dsetName
-    integer, intent(out) :: dsetRank
-    integer, intent(out) :: dsetSize(7)
-
-    ! local variable
-    integer :: hdf5err
-
-    ! ensure that file_name is set i.e. openFile
-    ! must have been called prior to this routine
-    if (this%file_name==UNINIT_STR) stop "ERROR: No open file available. Stopping!"
-
-    ! set obj param val
-    this%dset_name = dsetname
-
-    ! open datset from already opened file
-    call h5dopen_f(this%file_id, this%dset_name, this%dset_id, hdf5err)
-    call checkErrCode_('h5dopen_f', hdf5err)
-
-    ! get dataspace id
-    call h5dget_space_f(this%dset_id, this%dspace_id, hdf5err)
-    call checkErrCode_('h5dget_space_f', hdf5err)
-
-    ! get num of dimensions
-    call h5sget_simple_extent_ndims_f(this%dspace_id, this%dset_rank, hdf5err)
-    call checkErrCode_('h5sget_simple_extent_ndims_f', hdf5err)
-    dsetRank = this%dset_rank
-
-    ! get size of array
-    call h5sget_simple_extent_dims_f(this%dspace_id, this%dset_size, this%dset_max_size, hdf5err)
-    call checkErrCode_('h5sget_simple_extent_dims_f', hdf5err)
-    dsetSize = this%dset_size
-
-  end subroutine queryDataset
-
-
-  ! uninitalize dataset
-  subroutine uninitDataset(this)
-
-    ! input/output variables
-    class (hdf5read), intent(inout) :: this
-
-    ! un-initialize everything related to
-    ! the dataset queried/read
-    this%dset_name = UNINIT_STR
-    this%dset_id = UNINIT_INT
-    this%dspace_id = UNINIT_INT
-    this%dset_rank = UNINIT_INT
-    this%dset_size = UNINIT_INT
-    this%dset_max_size = UNINIT_INT
-    this%dtype_id = UNINIT_INT
-
-  end subroutine uninitDataset
-
-
-  ! read the dataset that was queried earlier
-  subroutine readDataset1DChar24(this, dataChar)
-    
-    ! input/output variables
-    class (hdf5read), intent(inout) :: this
-    character(len=24), intent(out) :: dataChar(:)
-
-    ! local variable
-    integer :: hdf5err
-
-    ! ensure that dset_name is set i.e. openDataset
-    ! must have been called prior to this routine
-    if (this%dset_name==UNINIT_STR) stop "ERROR: No open dataset available. Stopping!"
-
-    if (this%dset_size(1)==0) then
-       print *, 'Datset ', trim(this%dset_name), ' in file ', trim(this%file_name), ' is empty'
-    else
-       ! get data type
-       call h5dget_type_f(this%dset_id, this%dtype_id, hdf5err)
-       
-       ! read data
-       call h5dread_f(this%dset_id, this%dtype_id, dataChar, this%dset_size, hdf5err)
-       call checkErrCode_('h5dread_f', hdf5err)
-    end if
-
-    ! close dataset
-    call h5dclose_f(this%dset_id, hdf5err)
-    call checkErrCode_('h5dclose_f', hdf5err)
-
-    ! un-initialize dataset just queried/read
-    call this%uninitDataset
-
-  end subroutine readDataset1DChar24
-
-
-  ! read the dataset that was queried earlier
-  subroutine readDataset1DReal(this, data1D)
-
-    ! input/output variables
-    class (hdf5read), intent(inout) :: this
-    real, intent(out) :: data1D(:)
-
-    ! local variable
-    integer :: hdf5err
-
-    ! ensure that dset_name is set i.e. openDataset
-    ! must have been called prior to this routine
-    if (this%dset_name==UNINIT_STR) stop "ERROR: No open dataset available. Stopping!"
-
-    if (this%dset_size(1)==0) then
-       print *, 'Datset ', trim(this%dset_name), ' in file ', trim(this%file_name), ' is empty'
-    else
-       ! get data type
-       call h5dget_type_f(this%dset_id, this%dtype_id, hdf5err)
-       
-       ! read data
-       call h5dread_f(this%dset_id, this%dtype_id, data1D, this%dset_size, hdf5err)
-       call checkErrCode_('h5dread_f', hdf5err)
-    end if
-
-    ! close dataset
-    call h5dclose_f(this%dset_id, hdf5err)
-    call checkErrCode_('h5dclose_f', hdf5err)
-
-    ! un-initialize dataset just queried/read
-    call this%uninitDataset
-
-  end subroutine readDataset1DReal
-
-
-  ! read the dataset that was queried earlier
-  subroutine readDataset1DReal8(this, data1D)
-
-    ! input/output variables
-    class (hdf5read), intent(inout) :: this
-    real(8), intent(out) :: data1D(:)
-
-    ! local variable
-    integer :: hdf5err
-
-    ! ensure that dset_name is set i.e. openDataset
-    ! must have been called prior to this routine
-    if (this%dset_name==UNINIT_STR) stop "ERROR: No open dataset available. Stopping!"
-
-    if (this%dset_size(1)==0) then
-       print *, 'Datset ', trim(this%dset_name), ' in file ', trim(this%file_name), ' is empty'
-    else
-       ! get data type
-       call h5dget_type_f(this%dset_id, this%dtype_id, hdf5err)
-       
-       ! read data
-       call h5dread_f(this%dset_id, this%dtype_id, data1D, this%dset_size, hdf5err)
-       call checkErrCode_('h5dread_f', hdf5err)
-    end if
-
-    ! close dataset
-    call h5dclose_f(this%dset_id, hdf5err)
-    call checkErrCode_('h5dclose_f', hdf5err)
-
-    ! un-initialize dataset just queried/read
-    call this%uninitDataset
-
-  end subroutine readDataset1DReal8
-
-
-  subroutine readDataset1DInt(this, data1D)
-
-    ! input/output variables
-    class (hdf5read), intent(inout) :: this
-    integer, intent(out) :: data1D(:)
-
-    ! local variable
-    integer :: hdf5err
-
-    ! ensure that dset_name is set i.e. openDataset
-    ! must have been called prior to this routine
-    if (this%dset_name==UNINIT_STR) stop "ERROR: No open dataset available. Stopping!"
-
-    if (this%dset_size(1)==0) then
-       print *, 'Datset ', trim(this%dset_name), ' in file ', trim(this%file_name), ' is empty'
-    else
-       ! get data type
-       call h5dget_type_f(this%dset_id, this%dtype_id, hdf5err)
-       
-       ! read data
-       !call h5dread_f(this%dset_id, this%dtype_id, data1D, this%dset_size, hdf5err)
-       call h5dread_f(this%dset_id, H5T_NATIVE_INTEGER, data1D, this%dset_size, hdf5err)
-       call checkErrCode_('h5dread_f', hdf5err)
-    end if
-
-    ! close dataset
-    call h5dclose_f(this%dset_id, hdf5err)
-    call checkErrCode_('h5dclose_f', hdf5err)
-
-    ! un-initialize dataset just queried/read
-    call this%uninitDataset
-
-  end subroutine readDataset1DInt
-
-
-  subroutine readDataset2DReal(this, data2D)
-
-    ! input/output variables
-    class (hdf5read), intent(inout) :: this
-    real, intent(out) :: data2D(:,:)
-
-    ! local variable
-    integer :: hdf5err
-
-    ! ensure that dset_name is set i.e. openDataset
-    ! must have been called prior to this routine
-    if (this%dset_name==UNINIT_STR) stop "ERROR: No open dataset available. Stopping!"
-
-    if (this%dset_size(1)==0) then
-       print *, 'Datset ', trim(this%dset_name), ' in file ', trim(this%file_name), ' is empty'
-    else
-       ! get data type
-       call h5dget_type_f(this%dset_id, this%dtype_id, hdf5err)
-       
-       ! read data
-       call h5dread_f(this%dset_id, this%dtype_id, data2D, this%dset_size, hdf5err)
-       call checkErrCode_('h5dread_f', hdf5err)
-    end if
-
-    ! close dataset
-    call h5dclose_f(this%dset_id, hdf5err)
-    call checkErrCode_('h5dclose_f', hdf5err)
-
-    ! un-initialize dataset just queried/read
-    call this%uninitDataset
-
-  end subroutine readDataset2DReal
-
-  ! check return code
-  ! (not part of class hdf5read)
-  subroutine checkErrCode_(routineName, hdf5errCode)
-
-    ! input/output variables
-    character(len=*), intent(in) :: routineName
-    integer, intent(in) :: hdf5errCode
-
-    if (hdf5errCode<0) then
-       write(*,*) 'ERROR: ', routineName, ' returned NEGATIVE err code. Stopping!'
-       stop
-    end if
-
-  end subroutine checkErrCode_
-
-end module GEOSland_io_hdf5
 
  

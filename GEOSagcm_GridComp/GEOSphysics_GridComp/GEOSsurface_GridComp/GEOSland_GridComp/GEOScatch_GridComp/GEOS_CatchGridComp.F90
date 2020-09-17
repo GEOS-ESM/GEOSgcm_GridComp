@@ -48,7 +48,7 @@ module GEOS_CatchGridCompMod
        LAND_FIX
 
   USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
-  USE GEOSland_modules, ONLY : modis_date, read_modis_data
+  USE GEOSland_modules, ONLY : MODISReader
 
 !#sqz_for_ldas_coupling 
   use catch_incr
@@ -4133,6 +4133,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         type(ESMF_TimeInterval)       :: M5, TIME_DIFF
         real, dimension(:),   pointer :: MODIS_VISDFTILE
         real, dimension(:),   pointer :: MODIS_NIRDFTILE
+        type(MODISReader)             :: MR
     
         ! --------------------------------------------------------------------------
         ! Lookup tables
@@ -4833,25 +4834,23 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! Update raditation exports
         ! --------------------------------------------------------------------------
 
-        IF (MODIS_ALB == 0) THEN
-
-           ! ----------------------------------------------------------------------------------
-           ! Update the interpolation limits for MODIS albedo corrections
-           ! in the internal state and get their midmonth times
-           ! ----------------------------------------------------------------------------------
-
-           if (ldas_ens_id == ldas_first_ens_id) then ! it is always .true. if NUM_LDAS_ENSEMBLE = 1 (by default)
-              call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
-              VERIFY_(STATUS)
-              call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
-              VERIFY_(STATUS)
-           endif
+        ! ----------------------------------------------------------------------------------
+        ! Update the interpolation limits for MODIS albedo corrections
+        ! in the internal state and get their midmonth times
+        ! ----------------------------------------------------------------------------------
+        
+        if (ldas_ens_id == ldas_first_ens_id) then ! it is always .true. if NUM_LDAS_ENSEMBLE = 1 (by default)
+           call MAPL_ReadForcing(MAPL,'VISDF',VISDFFILE,CURRENT_TIME,VISDF,ON_TILES=.true.,RC=STATUS)
+           VERIFY_(STATUS)
+           call MAPL_ReadForcing(MAPL,'NIRDF',NIRDFFILE,CURRENT_TIME,NIRDF,ON_TILES=.true.,RC=STATUS)
+           VERIFY_(STATUS)
+        endif
            
-           call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
-                VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
-                ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
+        call    SIBALB(NTILES, VEG, LAI, GRN, ZTH, & 
+             VISDF, VISDF, NIRDF, NIRDF, & ! MODIS albedo scale parameters on tiles USE ONLY DIFFUSE
+             ALBVR, ALBNR, ALBVF, ALBNF  ) ! instantaneous snow-free albedos on tiles
            
-        ELSE IF (MODIS_ALB == 1) THEN
+        IF (MODIS_ALB == 1) THEN
            b4_modis_date = .false.
            ! read interannually varying VISDF NIRDF albedo data on tile space
            call ESMF_TimeIntervalSet(M5, h=24*5, rc=status ) ; VERIFY_(STATUS)
@@ -4863,7 +4862,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            
            if (modis_first) then          
               call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, MM = CUR_MM, DD = CUR_DD, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
-              MOD_DOY = modis_date (DOY, 5)
+              MOD_DOY = mr%modis_date (DOY, 5)
               call ESMF_TimeSet(MODIS_TIME, yy=CUR_YY, mm=CUR_MM, dd=CUR_DD, rc=status) ; VERIFY_(STATUS)
               call ESMF_TimeIntervalSet(TIME_DIFF, h=24*(DOY -MOD_DOY), rc=status )     ; VERIFY_(STATUS)
               MODIS_RING = MODIS_TIME - TIME_DIFF
@@ -4872,16 +4871,16 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ALLOCATE (MODIS_VISDFTILE (1:SIZE(ITY)))
               ALLOCATE (MODIS_NIRDFTILE (1:SIZE(ITY)))
               if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
-              call read_modis_data (MAPL,CUR_YY, MOD_DOY, b4_modis_date, &
+              call mr%read_modis_data (MAPL,CUR_YY, MOD_DOY, b4_modis_date, &
                    GRIDNAME, MODIS_PATH, 'alb', MODIS_VISDFTILE, MODIS_NIR = MODIS_NIRDFTILE)
               modis_first = .false.
            endif
            
            if (CURRENT_TIME ==  MODIS_RING) then
               call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
-              MOD_DOY = modis_date (DOY, 5)
+              MOD_DOY = mr%modis_date (DOY, 5)
               if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
-              call read_modis_data (MAPL,CUR_YY, DOY, b4_modis_date, &
+              call mr%read_modis_data (MAPL,CUR_YY, DOY, b4_modis_date, &
                    GRIDNAME, MODIS_PATH, 'alb', MODIS_VISDFTILE, MODIS_NIR = MODIS_NIRDFTILE)
               if (DOY < 366) then
                  MODIS_RING = CURRENT_TIME + M5
@@ -4890,11 +4889,15 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  MODIS_RING = MODIS_TIME
               endif
            endif
-       
-           ALBVR = MIN (1., MAX(0.001,MODIS_VISDFTILE))
-           ALBNR = MIN (1., MAX(0.001,MODIS_NIRDFTILE))
-           ALBVF = MIN (1., MAX(0.001,MODIS_VISDFTILE))
-           ALBNF = MIN (1., MAX(0.001,MODIS_NIRDFTILE))  
+
+           where (MODIS_VISDFTILE >= 0.)
+              ALBVR = MODIS_VISDFTILE
+              ALBVF = MODIS_VISDFTILE
+           endwhere
+           where (MODIS_NIRDFTILE >= 0.)
+              ALBNR = MODIS_NIRDFTILE
+              ALBNF = MODIS_NIRDFTILE
+           endwhere
            
         ELSEIF (MODIS_ALB == 2) THEN
            

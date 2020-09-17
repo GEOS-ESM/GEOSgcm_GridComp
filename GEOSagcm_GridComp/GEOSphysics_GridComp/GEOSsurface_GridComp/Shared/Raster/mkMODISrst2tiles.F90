@@ -9,14 +9,14 @@
 
 ! 1) Derive tile-spaced LAI for using analysis ready MODIS raw data @ 15 arc-sec lat/lon
 !    bin/mkLAIrst2tiles.x  YYYYDOY  YYYYMMDD  time_step   minutes_since_20020708-0000
-! 2) Smmoth using 3 time step window
+! 2) Smooth using 3 time step window
 !    bin/mkLAIrst2tiles.x  GRID_NAME  lai_data.YYYYDOY_previous  lai_data.YYYYDOY  lai_data.YYYYDOY_next tstep
 
 !#####################################################################################
 
 PROGRAM mkMODISrst2tiles 
 
-  use GEOSland_io_hdf5
+  use GEOSland_modules
   use netcdf
   implicit none
 
@@ -43,7 +43,7 @@ PROGRAM mkMODISrst2tiles
   character*20 :: MODIS_NAME, YYYYDOY, GRID_NAME, file_out, file1, file2, file3
   integer,dimension(1) :: tstep, time, refdate
   integer              :: n, iargc, NT
-  character*256        :: arg(5)
+  character*256        :: arg(6)
   logical              :: file_exists = .false.
   real,    allocatable, dimension (:) :: tile_lat
   real,    allocatable, dimension (:) :: tile_lon
@@ -52,8 +52,11 @@ PROGRAM mkMODISrst2tiles
      integer                          :: maxcat
      real, allocatable, dimension (:) :: tile_lat
      real, allocatable, dimension (:) :: tile_lon
-     real, allocatable, dimension (:) :: vec_lai, count_lai
+     real, allocatable, dimension (:) :: vec_data1, count_data1
+     real, allocatable, dimension (:) :: vec_data2, count_data2
   end type regrid_catdef
+
+  logical :: fill_gaps
   
   if(iargc() ==4)  then
 
@@ -66,10 +69,12 @@ PROGRAM mkMODISrst2tiles
      read (arg(3),* )   tstep(1)
      read (arg(4),* )    time(1)
           
-     MODIS_NAME = 'MCD15A2H.006'
-     
-     call grid2tile (MODIS_NAME, trim(YYYYDOY), tstep, time, refdate)
+     call getenv ("MODIS_NAME"        ,MODIS_NAME)
+     if (trim(MODIS_NAME) == 'MCD15A2H.006') &
+          call grid2tile_lai (trim(MODIS_NAME), trim(YYYYDOY), tstep, time, refdate)
      !  call grid2tile_with_gaps (MODIS_NAME, YYYYDOY, tstep, time, refdate)
+     if (trim(MODIS_NAME) == 'MCD15A2H.006') &
+          call grid2tile_alb (trim(MODIS_NAME), trim(YYYYDOY), tstep, time, refdate)
      
   elseif (iargc() ==5)  then
      
@@ -87,6 +92,8 @@ PROGRAM mkMODISrst2tiles
      inquire(file=trim(SMOOTH)//trim(GRID_NAME)//'/'//trim(file_out),exist=file_exists)
      if(file_exists) stop
      call smooth_data (trim(GRID_NAME), trim(file_out), trim(file1), trim(file2), trim(file3),tstep)
+     
+  elseif (iargc() ==6)  then
      
   endif
 
@@ -348,67 +355,67 @@ contains
   
     ! -----------------------------------------------------------------------
     
-    SUBROUTINE process_grid (ng)
+  SUBROUTINE process_grid (ng)
       
-      implicit none
-      integer, intent (in)                    :: NG
-      integer, allocatable, dimension (:,:)   :: tile_id
-      integer                                 :: i,j,k, tindex, pfaf
-      real                                    :: minlon,maxlon,minlat,maxlat,dxm, dym
-      character(8)                            :: qc_str
+    implicit none
+    integer, intent (in)                    :: NG
+    integer, allocatable, dimension (:,:)   :: tile_id
+    integer                                 :: i,j,k, tindex, pfaf
+    real                                    :: minlon,maxlon,minlat,maxlat,dxm, dym
+    character(8)                            :: qc_str
+    
+    
+    allocate (tile_id (1:IM, 1:JM))    
+    open (20,file=trim(BCSDIR)//trim(GRIDS(ng))//'/rstfile',status='old',action='read',form='unformatted',convert='little_endian')    
+    open (10,file=trim(BCSDIR)//trim(GRIDS(ng))//'/catchment.def',status='old',action='read',form='formatted')
+    read (10,*) NT
+    allocate (tile_lat (1:NT))
+    allocate (tile_lon (1:NT))
+    allocate (vec_lai  (1:NT))
+    allocate (count_lai(1:NT))
+    vec_lai   = -9999.
+    count_lai = 0.
+    
+    do k = 1, NT
+       read (10,*) tindex,pfaf,minlon,maxlon,minlat,maxlat
+       tile_lon(k) = (minlon + maxlon)/2.
+       tile_lat(k) = (minlat + maxlat)/2.
+    end do
+    close(10, status = 'keep')
+    
+    do j=1,JM
+       read(20)tile_id(:,j)
+    end do
+    close(20, status = 'keep')
+    
+    ! process LAI
+    dxm = real(nc) /real(im) 
+    dym = real(nr) /real(jm)
+    
+    do j = 1, nr
+       do i = 1, nc
+          if((Lai_500m(i,j) >=0).and.(Lai_500m(i,j) <= 100)) then
+             ! Table 5 of https://lpdaac.usgs.gov/documents/2/mod15_user_guide.pdf
+             ! (SCF_QC '000' OR '001') AND ( MODLAND_QC = 0)
+             if((FparLai_QC(i,j) <= 62).and.(MOD(FparLai_QC(i,j),2) ==0)) then
+                ! Cloud free 
+                !                qc_str = bit2str(INT(FparLai_QC(i,j)))
+                !                if(qc_str(4:5) /= '01') then 
+                k = tile_id (ceiling(i/dxm), ceiling (j/dym))
+                if((k >= 1).and.(k <= NT)) then
+                   if(vec_lai(k) == -9999.) vec_lai(k) = 0.
+                   vec_lai(k)   = vec_lai(k) + Lai_500m(i,j)*0.1
+                   count_lai(k) = count_lai(k) + 1.
+                endif
+                !               endif
+             endif
+          endif
+       end do
+    end do
       
+    where (count_lai > 0.) vec_lai = vec_lai/count_lai
       
-      allocate (tile_id (1:IM, 1:JM))    
-      open (20,file=trim(BCSDIR)//trim(GRIDS(ng))//'/rstfile',status='old',action='read',form='unformatted',convert='little_endian')    
-      open (10,file=trim(BCSDIR)//trim(GRIDS(ng))//'/catchment.def',status='old',action='read',form='formatted')
-      read (10,*) NT
-      allocate (tile_lat (1:NT))
-      allocate (tile_lon (1:NT))
-      allocate (vec_lai  (1:NT))
-      allocate (count_lai(1:NT))
-      vec_lai   = -9999.
-      count_lai = 0.
-      
-      do k = 1, NT
-         read (10,*) tindex,pfaf,minlon,maxlon,minlat,maxlat
-         tile_lon(k) = (minlon + maxlon)/2.
-         tile_lat(k) = (minlat + maxlat)/2.
-      end do
-      close(10, status = 'keep')
-      
-      do j=1,JM
-         read(20)tile_id(:,j)
-      end do
-      close(20, status = 'keep')
-      
-      ! process LAI
-      dxm = real(nc) /real(im) 
-      dym = real(nr) /real(jm)
-      
-      do j = 1, nr
-         do i = 1, nc
-            if((Lai_500m(i,j) >=0).and.(Lai_500m(i,j) <= 100)) then
-               ! Table 5 of https://lpdaac.usgs.gov/documents/2/mod15_user_guide.pdf
-               ! (SCF_QC '000' OR '001') AND ( MODLAND_QC = 0)
-               if((FparLai_QC(i,j) <= 62).and.(MOD(FparLai_QC(i,j),2) ==0)) then
-                  ! Cloud free 
-                  !                qc_str = bit2str(INT(FparLai_QC(i,j)))
-                  !                if(qc_str(4:5) /= '01') then 
-                  k = tile_id (ceiling(i/dxm), ceiling (j/dym))
-                  if((k >= 1).and.(k <= NT)) then
-                     if(vec_lai(k) == -9999.) vec_lai(k) = 0.
-                     vec_lai(k)   = vec_lai(k) + Lai_500m(i,j)*0.1
-                     count_lai(k) = count_lai(k) + 1.
-                  endif
-                  !               endif
-               endif
-            endif
-         end do
-      end do
-      
-      where (count_lai > 0.) vec_lai = vec_lai/count_lai
-      
-    end SUBROUTINE process_grid
+  end SUBROUTINE process_grid
 
   ! -----------------------------------------------------------------------
 

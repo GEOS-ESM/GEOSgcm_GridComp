@@ -45,7 +45,7 @@ module GEOS_VegdynGridCompMod
 
   use ESMF
   use MAPL
-  use GEOSland_modules, only : modis_date, read_modis_data
+  use GEOSland_modules, only : MODISReader
   
   implicit none
   private
@@ -361,7 +361,8 @@ contains
     logical                            :: b4_modis_date
     integer                            :: MODLAI_FIRSTDATE = 20020704
     real, allocatable, dimension(:),save :: MODIS_LAITILE
-
+    type(MODISReader)                  :: MR
+    
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
 
@@ -462,7 +463,7 @@ contains
 
        if (first) then          
           call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, MM = CUR_MM, DD = CUR_DD, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
-          MOD_DOY = modis_date (DOY, 8)
+          MOD_DOY = mr%modis_date (DOY, 8)
           call ESMF_TimeSet(MODIS_TIME, yy=CUR_YY, mm=CUR_MM, dd=CUR_DD, rc=status) ; VERIFY_(STATUS)
           call ESMF_TimeIntervalSet(TIME_DIFF, h=24*(DOY -MOD_DOY), rc=status )     ; VERIFY_(STATUS)
           MODIS_RING = MODIS_TIME - TIME_DIFF
@@ -470,16 +471,16 @@ contains
           
           ALLOCATE (MODIS_LAITILE (1:SIZE(ITY)))
           if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
-          call read_modis_data (MAPL,CUR_YY, MOD_DOY, b4_modis_date, &
+          call mr%read_modis_data (MAPL,CUR_YY, MOD_DOY, b4_modis_date, &
                GRIDNAME, MODIS_PATH, 'lai', MODIS_LAITILE)
           first = .false.
        endif
 
        if (CURRENT_TIME ==  MODIS_RING) then
           call ESMF_TimeGet (CURRENT_TIME, YY = CUR_YY, DayOfYear=DOY, RC=STATUS); VERIFY_(STATUS)
-          MOD_DOY = modis_date (DOY, 8)
+          MOD_DOY = mr%modis_date (DOY, 8)
           if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
-          call read_modis_data (MAPL,CUR_YY, DOY, b4_modis_date, &
+          call mr%read_modis_data (MAPL,CUR_YY, DOY, b4_modis_date, &
                GRIDNAME, MODIS_PATH, 'lai', MODIS_LAITILE)
           if (DOY < 361) then
              MODIS_RING = CURRENT_TIME + M8
