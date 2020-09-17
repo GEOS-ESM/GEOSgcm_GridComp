@@ -67,12 +67,29 @@
 # GEOSagcm=>Z0_FORMULATION: 4
 # GEOSldas=>Z0_FORMULATION: 4
 
-# ---- Area fraction of each tile on which precipitation falls (0. < value <= 1.)  	
+# ---- Compute runoff from large-scale and convective storms
 #	
-#    1.0   : default value for AGCM and GEOSldas 	
-# 	
-# GEOSagcm=>PRECIPFRAC: 1.	
-# GEOSldas=>PRECIPFRAC: 1.
+#   FWETC and FWETL are the areal fractions of canopy on to which convective and "large-scale" precipitation 
+#   falls, respectively.  These parameter values and the functional form to compute surface runoff
+#   are set in conjunction with the logical resource parameter USE_FWET_FOR_RUNOFF as follows:
+#
+#    .FALSE.  : Default; uses total throughfall to compute surface runoff with FWETC=FWETL=0.02. 
+#
+#    .TRUE.   : Accounts for separate convective and large-scale throughfalls to compute surface runoff.
+#               Off-line, 36-km simulations using MERRA-2(?) forcing yielded calibrated parameter values 
+#               of FWETC=0.005 and FWETL=0.025.
+#               Note that the partitioning between "convective" and "large-scale" precipitation in 
+#               the GCM depends strongly on resolution, presumably requiring tuned FWETC and FWETL
+#               values that depend on the atmospheric resolution.
+#
+# GEOSagcm=>USE_FWET_FOR_RUNOFF: .FALSE.	
+# GEOSldas=>USE_FWET_FOR_RUNOFF: .FALSE.
+#
+# GEOSagcm=>FWETC: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE.
+# GEOSldas=>FWETC: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE. 
+#	
+# GEOSagcm=>FWETL: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE.    	
+# GEOSldas=>FWETL: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE.
 
 # ---- ASCAT-derived turbulent roughness length
 #
