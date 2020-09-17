@@ -4980,6 +4980,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         real,dimension(:),allocatable :: RSL1, RSL2
         real,dimension(:),allocatable :: SQSCAT
+        real,allocatable,dimension(:) :: rdc_tmp_1, rdc_tmp_2
 
         ! albedo calculation stuff
 
@@ -5820,7 +5821,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RSL2     (NTILES)) 
         allocate(SQSCAT   (NTILES))
         allocate(RDC      (NTILES))  
-	allocate(UUU      (NTILES))
+	allocate(RDC_TMP_1(NTILES))
+        allocate(RDC_TMP_2(NTILES))
+        allocate(UUU      (NTILES))
 	allocate(RHO      (NTILES))
 	allocate(ZVG      (NTILES))
 	allocate(LAI0     (NTILES))
@@ -6203,7 +6206,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         IF (LAND_FIX_CN) THEN
         RDC = max(VGRDA(VEG1),VGRDA(VEG2))*min(1.,lai/2.)
         ELSE
-        RDC = max(max( VGRDA(VEG1)*min( 1., LAI1/VGRDB(VEG1) ), 0.001),max( VGRDA(VEG2)*min( 1., LAI2/VGRDB(VEG2) ), 0.001))*min(1.,lai/2.)
+        rdc_tmp_1 = max( VGRDA(VEG1)*min( 1., LAI1/VGRDB(VEG1) ), 0.001)
+        rdc_tmp_2 = max( VGRDA(VEG2)*min( 1., LAI2/VGRDB(VEG2) ), 0.001)
+        RDC = max(rdc_tmp_1,rdc_tmp_2)*min(1.,lai/2.)
         END IF
         RDC = max(RDC,0.001)
 
@@ -7711,15 +7716,9 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         if(associated( WCSF )) WCSF   = SFMC
         if(associated( WCRZ )) WCRZ   = RZMC
         if(associated( WCPR )) WCPR   = PRMC
-        IF (LAND_FIX_CN) THEN
         if(associated( ACCUM)) ACCUM  = SLDTOT - EVPICE*(1./MAPL_ALHS) - SMELT
         if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
         if(associated(SNOLAND)) SNOLAND = SLDTOT
-        ELSE
-        if(associated( ACCUM)) ACCUM  = SNO - EVPICE*(1./MAPL_ALHS) - SMELT
-        if(associated(PRLAND)) PRLAND = PCU+PLS+SNO
-        if(associated(SNOLAND)) SNOLAND = SNO
-        END IF
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
         if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
@@ -7883,6 +7882,8 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 	deallocate(RSL2     )
 	deallocate(SQSCAT   )
 	deallocate(RDC      )
+        deallocate(RDC_TMP_1)
+        deallocate(RDC_TMP_2)
         deallocate(UUU      )
         deallocate(RHO      )
         deallocate(ZVG      )
