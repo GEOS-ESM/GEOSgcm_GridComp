@@ -78,7 +78,8 @@ module GEOS_OpenwaterGridCompMod
                                 SKIN_SST,          &
                                 AOIL_sfcLayer_T,   &
                                 water_RHO,         &
-                                AOIL_Shortwave_abs
+                                AOIL_Shortwave_abs,&
+                                AOIL_v0_S
 
   implicit none
   private
@@ -2372,9 +2373,7 @@ contains
 ! following are related  to CICE
 
    integer                             :: NSUB, I, K, L
-
-   real                                :: FSALT, FRESH
-
+   real                                :: FRESH
 !  -------------------------------------------------------------------
 
    type (ESMF_TimeInterval)            :: DELT
@@ -2752,7 +2751,7 @@ contains
     if (DO_SKIN_LAYER == 0) then
       DTX = 0.
     else
-      DTX = DTX*((MUSKIN+1.-MUSKIN*epsilon_d)/MUSKIN)
+      DTX = DTX*((MUSKIN+1.-MUSKIN*epsilon_d)/MUSKIN) ! note: epsilon_d is = 0. in uncoupled mode (DO_DATASEA == 1)
     endif
 
     ! DTY accounts for ice on top of water. Part of Shortwave is absorbed by ice and rest goes to warm water.
@@ -2804,8 +2803,8 @@ contains
 !   -----------------------------------------
     TW = TS(:,WATER) + TWMTS
     HW = HH(:,WATER)
-    FSALT = 0.
-    SW = (SS(:,WATER)+DT*1.e3*FSALT)/HW ! multiply by 1000 to account for g->kg conversion
+
+    call AOIL_v0_S (DT, HW, SS(:,WATER), SW)
     where (.not. (abs(UW) > 0.0 .or. abs(VW) > 0.0))
        SW = max(min(SW,MAXSALINITY),MINSALINITY)
     endwhere
