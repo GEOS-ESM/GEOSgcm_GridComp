@@ -79,7 +79,8 @@ module GEOS_OpenwaterGridCompMod
                                 AOIL_sfcLayer_T,   &
                                 water_RHO,         &
                                 AOIL_Shortwave_abs,&
-                                AOIL_v0_S
+                                AOIL_v0_S,         &
+                                AOIL_v0_HW
 
   implicit none
   private
@@ -2785,19 +2786,8 @@ contains
       end if
     end if
 
-! Layer thickness; liquid precip goes right thru ice.
-! FRESHATM is useful for mass flux balance.
-! freshwater flux from atmosphere needs to be added to HW here since it carries zero enthalpy 
-!---------------------------------------------------------------------------------------------
-    FRESHATM    = FRWATER*(SNO - EVP) + PCU + PLS
-    FRESH       = 0.
-    HH(:,N) = HH(:,N) + DT*(FRESHATM + FRESH)
-
-    if (DO_DATASEA == 0) then               ! coupled   mode
-      HH(:,N) = max( min(HH(:,N), (MaxWaterDepth*water_RHO('salt_water'))),  (MinWaterDepth*water_RHO('salt_water')))
-    else                                    ! uncoupled mode
-      HH(:,N) = max( min(HH(:,N), (MaxWaterDepth*water_RHO('fresh_water'))), (MinWaterDepth*water_RHO('fresh_water')))
-    endif
+    call AOIL_v0_HW ( NT, DT, DO_DATASEA, MaxWaterDepth, MinWaterDepth, &
+                      FRWATER, SNO, EVP, PCU+PLS, HH(:,WATER))
 
 !   Copy back to internal variables
 !   -----------------------------------------
