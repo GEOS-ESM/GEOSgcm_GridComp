@@ -2769,7 +2769,6 @@ contains
 
 ! Update WATER surface temperature and moisture
 !----------------------------------------
-
     TS(:,N) = TS(:,N) + DTS
     DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
     QS(:,N) = QS(:,N) + DQS
@@ -2811,9 +2810,8 @@ contains
        SW = max(min(SW,MAXSALINITY),MINSALINITY)
     endwhere
 
-! Net Solar insolation (including UV & IR, direct & diffuse) in interface layer 
-!------------------------------------------------------------------------------
-
+! Net Solar insolation (including UV & IR, direct & diffuse) in interface layer  (Recomputed)
+!--------------------------------------------------------------------------------------------
     SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
           (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
 
@@ -2831,7 +2829,6 @@ contains
 
 ! Copies for export
 !------------------
-
     if(associated(HLATWTR)) then
           WHERE( FRWATER>0.0 )
              HLATWTR = LHF
@@ -2876,8 +2873,6 @@ contains
     if(associated(TAUXW)) TAUXW = TXW
     if(associated(TAUYW)) TAUYW = TYW
 
-    if(associated(SNOWOCN)) SNOWOCN = SNO*FR(:,WATER)
-
     if(associated(AOSHFLX)) AOSHFLX = SHF    *FRWATER
     if(associated(AOQFLUX)) AOQFLUX = EVP    *FRWATER
     if(associated(AOLWFLX)) AOLWFLX = (LWDNSRF-ALW-BLW*TS(:,WATER))*FRWATER
@@ -2888,6 +2883,7 @@ contains
     if(associated(FSURF  )) FSURF   = SWN+LWDNSRF-(ALW+BLW*TS(:,WATER))-SHF-LHF
     if(associated(PENOCNe)) PENOCNe = PEN_ocean * FRWATER
 
+    if(associated(SNOWOCN)) SNOWOCN = SNO*FR(:,WATER)
     if(associated(RAINOCN)) RAINOCN = PCU + PLS
     if(associated(HLWUP  )) HLWUP   = ALW*FR(:,WATER) 
     if(associated(LWNDSRF)) LWNDSRF = (LWDNSRF - ALW)*FR(:,WATER)
@@ -2932,6 +2928,7 @@ contains
     endif
 
     call MAPL_TimerOff(MAPL,   "-OpenWater")
+!------------------------------------------------------
 
     call MAPL_TimerOn(MAPL,    "-Albedo")
 
