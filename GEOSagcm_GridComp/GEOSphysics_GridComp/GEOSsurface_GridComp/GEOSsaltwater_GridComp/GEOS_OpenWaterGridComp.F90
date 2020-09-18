@@ -2801,27 +2801,6 @@ contains
       HH(:,N) = max( min(HH(:,N), (MaxWaterDepth*water_RHO('fresh_water'))), (MinWaterDepth*water_RHO('fresh_water')))
     endif
 
-    if(associated(HLATWTR)) then
-          WHERE( FRWATER>0.0 )
-             HLATWTR = LHF
-          ELSEWHERE
-             HLATWTR = MAPL_UNDEF
-          ENDWHERE
-    endif
-    if(associated(  SHWTR)) then
-          WHERE( FRWATER>0.0 )
-             SHWTR   = SHF
-          ELSEWHERE
-             SHWTR   = MAPL_UNDEF
-          ENDWHERE
-    endif
-
-    if(associated(EVAPOUT)) EVAPOUT = EVP    *FR(:,N)
-    if(associated(SHOUT  )) SHOUT   = SHF    *FR(:,N)
-    if(associated(HLATN  )) HLATN   = LHF    *FR(:,N)
-    if(associated(DELTS  )) DELTS   = DTS*CFT*FR(:,N)
-    if(associated(DELQS  )) DELQS   = DQS*CFQ*FR(:,N)
-
 !   Copy back to internal variables
 !   -----------------------------------------
     TW = TS(:,WATER) + TWMTS
@@ -2850,6 +2829,30 @@ contains
                      fr_ice_thresh)
       deallocate(tmp2)
 
+! Copies for export
+!------------------
+
+    if(associated(HLATWTR)) then
+          WHERE( FRWATER>0.0 )
+             HLATWTR = LHF
+          ELSEWHERE
+             HLATWTR = MAPL_UNDEF
+          ENDWHERE
+    endif
+    if(associated(  SHWTR)) then
+          WHERE( FRWATER>0.0 )
+             SHWTR   = SHF
+          ELSEWHERE
+             SHWTR   = MAPL_UNDEF
+          ENDWHERE
+    endif
+
+    if(associated(EVAPOUT)) EVAPOUT = EVP    *FR(:,N)
+    if(associated(SHOUT  )) SHOUT   = SHF    *FR(:,N)
+    if(associated(HLATN  )) HLATN   = LHF    *FR(:,N)
+    if(associated(DELTS  )) DELTS   = DTS*CFT*FR(:,N)
+    if(associated(DELQS  )) DELQS   = DQS*CFQ*FR(:,N)
+
     if(associated(SWcool)) SWcool = SWCOOL_
     if(associated(SWWARM)) SWWARM = SWWARM_
     if(associated(Qcool )) Qcool  = QCOOL_
@@ -2872,9 +2875,6 @@ contains
 
     if(associated(TAUXW)) TAUXW = TXW
     if(associated(TAUYW)) TAUYW = TYW
-
-! Copies for export
-!------------------
 
     if(associated(SNOWOCN)) SNOWOCN = SNO*FR(:,WATER)
 
