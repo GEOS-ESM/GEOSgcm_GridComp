@@ -176,6 +176,8 @@ real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 f
 real    :: CO2
 integer :: CO2_YEAR_IN          ! years when atmospheric carbon dioxide concentration increases, starting from 1850
 real    :: DTCN                 ! Time step for carbon/nitrogen routines in CatchmentCN model (default 5400)
+real    :: FWETC, FWETL
+logical :: USE_FWET_FOR_RUNOFF
 
 contains
 
@@ -253,7 +255,16 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,         DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'          , value=RUN_IRRIG,           DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='IRRIG_METHOD:'       , value=IRRIG_METHOD,        DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,         DEFAULT=1, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,         DEFAULT=1  , __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='USE_FWET_FOR_RUNOFF:', value=USE_FWET_FOR_RUNOFF, DEFAULT=.FALSE., __RC__ )
+    
+    if (.NOT. USE_FWET_FOR_RUNOFF) then
+       call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT= 0.02, __RC__ )
+       call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT= 0.02, __RC__ )
+    else
+       call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT=0.005, __RC__ )
+       call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT=0.025, __RC__ )
+    endif
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
@@ -4987,7 +4998,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         logical                     :: debugzth
         real                        :: FAC
 
-        real                        :: PRECIPFRAC
         real                        :: DT
         integer                     :: NTILES
         integer                     :: I, J, K, N
@@ -5182,9 +5192,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              Label   = trim(COMP_NAME)//"_DT:"     ,&
              Default = DT                          ,&
              RC=STATUS )
-        VERIFY_(STATUS)
-
-        call MAPL_GetResource ( MAPL, PRECIPFRAC, Label="PRECIPFRAC:", DEFAULT=1.0, RC=STATUS)
         VERIFY_(STATUS)
 
         ! Get component's private internal state
@@ -7393,7 +7400,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
-           call WRITE_PARALLEL(PRECIPFRAC, UNIT)
+           call WRITE_PARALLEL(USE_FWET_FOR_RUNOFF, UNIT)
            call MAPL_VarWrite(unit, tilegrid, LONS,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, LATS,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, VEG1,  mask=mask, rc=status); VERIFY_(STATUS)
@@ -7479,8 +7486,8 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
         if (ntiles > 0) then
 
-           call CATCHCN ( NTILES, LONS, LATS                         ,&
-                DT	,PRECIPFRAC, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF   ,&
+           call CATCHCN ( NTILES, LONS, LATS, DT,USE_FWET_FOR_RUNOFF, &
+                FWETC, FWETL, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF     ,&
                 PCU      ,     PLSIN ,     SNO, ICE, FRZR            ,&
                 UUU                                                  ,&
 

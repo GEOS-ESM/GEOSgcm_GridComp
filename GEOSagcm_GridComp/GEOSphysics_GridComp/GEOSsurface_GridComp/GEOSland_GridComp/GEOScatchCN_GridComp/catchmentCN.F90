@@ -60,6 +60,7 @@
 !                      - moved SHR, EPSILON, SCONST, CSOIL_1,  CSOIL_2, N_sm, and SATCAPFR to
 !                        ../Shared/catch_constants.f90
 ! Justin, 20 Jun 2018  - moved CSOIL_2 to SURFPARAMS
+! Sarith , 20 Apr 2020  - introducing USE_FWET_FOR_RUNOFF and passing FWETL and FWETC via GEOS_SurfaceGridComp.rc
 
 MODULE CATCHMENT_CN_MODEL
   
@@ -92,7 +93,11 @@ MODULE CATCHMENT_CN_MODEL
 
 
   
-  USE lsm_routines
+  USE lsm_routines, only :                          &
+          INTERC, BASE, PARTITION, RZEQUIL, gndtp0, &   
+          catch_calc_soil_moist, gndtmp,            &
+          catch_calc_wtotl, dampen_tc_oscillations, &
+          PHIGT, DZTC, DZGT, FSN, SRUNOFF
   
   USE SIBALB_COEFF,  ONLY: coeffsib
   
@@ -129,7 +134,7 @@ CONTAINS
   ! and the most recent version of the "unified" model (from Sept. 20, 2006).
   
   SUBROUTINE CATCHCN (                                           &
-       NCH, LONS, LATS, DTSTEP, SFRAC, cat_id,                   &
+       NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL, cat_id,    &
        ITYP1,ITYP2,FVEG1,FVEG2,                                  &
        DZSF, TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,              &
        ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
@@ -171,7 +176,8 @@ CONTAINS
     INTEGER, INTENT(IN) :: NCH
     INTEGER, INTENT(IN), DIMENSION(:) :: ITYP1, ITYP2, cat_id
     
-    REAL, INTENT(IN) :: DTSTEP, SFRAC
+    REAL, INTENT(IN)    :: DTSTEP, FWETC, FWETL
+    LOGICAL, INTENT(IN) :: UFW4RO
     REAL, INTENT(IN), DIMENSION(:) :: DZSF, TRAINC, TRAINL, TSNOW, &
          TICE, TFRZR, UM, FVEG1,   FVEG2,                          &
          ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
@@ -242,7 +248,7 @@ CONTAINS
          RC, SATCAP, SNWFRC, POTFRC,  ESNFRC, EVSNOW, SHFLUXS, HLWUPS,      &
          HFTDS1, HFTDS2, HFTDS4, DHFT1, DHFT2, DHFT4, TPSNB,                &
          QSATTC, DQSDTC, SWSRF1, SWSRF2, SWSRF4, AR4,                       &
-         FCAN, THRU, RZEQOL, frice, srfmx,                                  &
+         FCAN, THRUL, THRUC, RZEQOL, frice, srfmx,                          &
          srfmn, RCST1, RCST2, EVAPFR, RDCX, EVAP1, EVAP2,                   &
          EVAP4, SHFLUX1, SHFLUX2, SHFLUX4, HLWUP1, HLWUP2, HLWUP4,          &
          GHFLUX1, GHFLUX2, GHFLUX4, RZI, TC1SF, TC2SF, TC4SF, ar1old,       &
@@ -335,7 +341,7 @@ CONTAINS
           
           write (*,*) NCH  
           write (*,*) DTSTEP  
-          write (*,*) SFRAC  
+          write (*,*) UFW4RO
           write (*,*) ITYP1(n_out)  
           write (*,*) ITYP2(n_out)  
           write (*,*) FVEG1(n_out)  
@@ -790,7 +796,7 @@ CONTAINS
         T1(1)  = TG1(N)-TF
         T1(2)  = TG2(N)-TF
         T1(3)  = TG4(N)-TF
-        AREA(1)= AR1(N) 
+        AREA(1)= AR1(N)
         AREA(2)= AR2(N) 
         AREA(3)= AR4(N) 
         pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
@@ -1129,12 +1135,12 @@ CONTAINS
 
 !**** UPDATE CANOPY INTERCEPTION; DETERMINE THROUGHFALL RATES.
 
-      CALL INTERC (                                                            &
-                   NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
-                   SATCAP, SFRAC,BUG,                                          &
-                   CAPAC,                                                      &
-                   THRU                                                        &
-                  )
+        CALL INTERC (                                                    &
+             NCH, DTSTEP, FWETC, FWETL, TRAINLX, TRAINCX, SMELT,         &
+             SATCAP, BUG,                                                &
+             CAPAC,                                                      &
+             THRUL, THRUC                                                &
+             )
 
       IF (BUG) THEN
         WRITE(*,*) 'INTERC OK'
@@ -1142,11 +1148,11 @@ CONTAINS
 
 !**** DETERMINE SURFACE RUNOFF AND INFILTRATION RATES:
 
-      CALL SRUNOFF (                                                           &
-                    NCH,DTSTEP,AR1,ar2,ar4,THRU,frice,tp1,srfmx,BUG,           &
-                    SRFEXC,RUNSRF,                                             &
-                    QINFIL                                                     &
-                   )
+        CALL SRUNOFF ( NCH,DTSTEP,UFW4RO, FWETC, FWETL,                 &
+             AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,BUG,              & 
+             SRFEXC,RUNSRF,                                             &
+             QINFIL                                                     &
+             )
 
       IF (BUG) THEN
         WRITE(*,*) 'SRUNOFF'
@@ -1190,7 +1196,7 @@ CONTAINS
           sfmc, rzmc, prmc,                                                    &
           werror, sfmcun, rzmcun, prmcun  )
 
-! Add differences due to adjustments to land moisture prognostics
+! Add differences due to adjustments to land mosture prognostics
       do n=1,nch
          if(werror(n) .le. 0.) runsrf(n)=runsrf(n)-werror(n)/dtstep
          if(werror(n) .gt. 0.) then
@@ -1479,7 +1485,7 @@ CONTAINS
          
          write (*,*) NCH  
          write (*,*) DTSTEP  
-         write (*,*) SFRAC  
+         write (*,*) UFW4RO
          write (*,*) ITYP1(n_out)  
          write (*,*) ITYP2(n_out)  
          write (*,*) FVEG1(n_out)  
@@ -1739,7 +1745,7 @@ CONTAINS
           RZEXC(N)=VGWMAX(N)-RZEQ(N)
           CATDEF(N)=CATDEF(N)-EXCESS
           ENDIF
-
+ 
         IF(CATDEF(N) .LT. 0.) THEN
           RUNSRF(N)=RUNSRF(N)-CATDEF(N)
           CATDEF(N)=0.
@@ -1749,70 +1755,6 @@ CONTAINS
 
       RETURN
       END SUBROUTINE RZDRAIN
-
-!**** ===================================================
-!**** ///////////////////////////////////////////////////
-!**** ===================================================
-
-      SUBROUTINE SRUNOFF (                                                     &
-                          NCH,DTSTEP,AR1,ar2,ar4, THRU,frice,tp1,srfmx,BUG,    &
-                          SRFEXC,RUNSRF,                                       &
-                          QINFIL                                               &
-                         )
-
-      IMPLICIT NONE
-
-
-      INTEGER, INTENT(IN) :: NCH
-      REAL, INTENT(IN) :: DTSTEP
-      REAL, INTENT(IN), DIMENSION(NCH) :: AR1, ar2, ar4, THRU, frice, tp1,     &
-             srfmx
-      LOGICAL, INTENT(IN) :: BUG
-
-      REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC ,RUNSRF
-
-      REAL, INTENT(OUT), DIMENSION(NCH) :: QINFIL
-
-      INTEGER N
-      REAL PTOTAL,srun0,frun,qin
-
-!**** - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-      DO N=1,NCH
-
-        PTOTAL=THRU(N)
-        frun=AR1(N)
-
-!        if(srfexc(n) .gt. 0.) then
-!          frun=frun+ar2(n)*(srfexc(n)/(srfmx(n)+1.e-20))
-!          frun=frun+ar4(n)*(srfexc(n)/(srfmx(n)+1.e-20))**2
-!          endif
-!        frun=frun+(1-frun)*frice(n)
-
-        srun0=PTOTAL*frun
-
-!**** Comment out this line in order to allow moisture
-!**** to infiltrate soil:
-!       if(tp1(n) .lt. 0.) srun0=ptotal
-
-        if(ptotal-srun0 .gt. srfmx(n)-srfexc(n))                               &
-                      srun0=ptotal-(srfmx(n)-srfexc(n)) 
-
-        if (srun0 .gt. ptotal) then
-          srun0=ptotal
-          endif
-
-        RUNSRF(N)=RUNSRF(N)+srun0
-        QIN=PTOTAL-srun0
-
-        SRFEXC(N)=SRFEXC(N)+QIN
-        RUNSRF(N)=RUNSRF(N)/DTSTEP
-        QINFIL(N)=QIN/DTSTEP
-         
-        ENDDO
-      
-      RETURN
-      END SUBROUTINE SRUNOFF
 
 !**** -----------------------------------------------------------------
 !**** /////////////////////////////////////////////////////////////////
