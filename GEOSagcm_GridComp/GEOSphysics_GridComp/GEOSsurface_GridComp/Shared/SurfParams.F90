@@ -107,7 +107,7 @@ module SurfParams
 
        case ("Icarus")  ! "Old" LDASsa physics, current default for Icarus GCM                
          LAND_FIX = .FALSE.                                                                   
-         LAND_FIX_CN = .FALSE.                                                                
+         LAND_FIX_CN = .TRUE.                                                                
          CSOIL_2  = 200.                                                                      
          WEMIN    = 26.                                                                       
          AICEV    = 0.149                                                                     
