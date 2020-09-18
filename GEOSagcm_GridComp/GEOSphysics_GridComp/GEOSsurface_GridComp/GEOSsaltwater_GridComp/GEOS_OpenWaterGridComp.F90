@@ -2767,8 +2767,8 @@ contains
     SHF = SHF + SHD * DTS
     LHF = EVP * MAPL_ALHL
 
-! Update WATER surface temperature and moisture
-!----------------------------------------
+! Update WATER surface temperature, moisture and mass
+!----------------------------------------------------
     TS(:,N) = TS(:,N) + DTS
     DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
     QS(:,N) = QS(:,N) + DQS
