@@ -16,6 +16,14 @@ MODULE GEOSland_modules
      procedure, public :: read_modis_data
   end type MODISReader
 
+  type, public :: TimeUtil
+   contains
+     generic,   public  :: TimeFrac => TimeFrac_esmf, TimeFrac_yyyymmdd
+     procedure, public  :: MidTime
+     procedure, private :: TimeFrac_esmf
+     procedure, private :: TimeFrac_yyyymmdd
+  end type TimeUtil
+
 contains
   
   ! ---------------------------------------------------------------------------
@@ -23,7 +31,7 @@ contains
   integer function modis_date (this,DOY, interval) result (MOD_DOY)
     
     implicit none
-    class (MODISReader), intent(in)            :: this
+    class (MODISReader), intent(inout)         :: this
     integer, intent(in) :: DOY, interval
     integer, parameter  :: N_MODIS_DAYS8 = 46, N_MODIS_DAYS5 = 74
     integer, dimension (N_MODIS_DAYS8), target ::     &
@@ -109,7 +117,111 @@ contains
     call FREE_FILE(unit, RC=STATUS)                                ; VERIFY_(STATUS)
     
   end subroutine read_modis_data
+
+  ! ---------------------------------------------------------------------------
+
+  real function TimeFrac_ESMF (this, PTIME, CTIME, NTIME) result (tf)
+    
+    implicit none
+    class (TimeUtil), intent(inout) :: this
+    type(ESMF_Time),INTENT(IN) :: PTIME, CTIME, NTIME 
+    real(ESMF_KIND_R8)         :: tdiff_21, tdiff_20, tfrac      
+    type(ESMF_TimeInterval)    :: T21, T20
+    integer                    :: status
+    
+    T21 = NTIME - PTIME
+    T20 = NTIME - CTIME
+    
+    call ESMF_TimeIntervalGet(T21, s_r8=tdiff_21,rc=status) ; VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(T20,s_r8=tdiff_20,rc=status)  ; VERIFY_(STATUS)
+    tfrac = tdiff_20/tdiff_21
+    tf    = tfrac
+    
+  end function TimeFrac_ESMF
+
+  ! ---------------------------------------------------------------------------
   
+  real function TimeFrac_YYYYMMDD (this, dayp, dayc, dayn) result (tf)
+    
+    implicit none
+    class (TimeUtil), intent(inout) :: this
+    integer, intent (in)       :: dayp,dayc, dayn
+    type(ESMF_Time)            :: PTIME, CTIME, NTIME 
+    integer                    :: status, YY, MO, DA
+    
+    YY = dayp / 10000
+    MO = (dayp - YY*10000) / 100
+    DA = dayp - (YY*10000 + MO*100)
+    call ESMF_TimeSet (ptime, yy=yy, mm=mo, dd=da, rc=status)     ; VERIFY_(STATUS)
+
+    YY = dayc / 10000
+    MO = (dayc - YY*10000) / 100
+    DA = dayc - (YY*10000 + MO*100)
+    call ESMF_TimeSet (ctime, yy=yy, mm=mo, dd=da, rc=status)     ; VERIFY_(STATUS)
+
+    YY = dayn / 10000
+    MO = (dayn - YY*10000) / 100
+    DA = dayn - (YY*10000 + MO*100)
+    call ESMF_TimeSet (ntime, yy=yy, mm=mo, dd=da, rc=status)     ; VERIFY_(STATUS)
+
+    tf    = this%TimeFrac (PTIME, CTIME, NTIME)
+    
+  end function TimeFrac_YYYYMMDD
+
+  ! ---------------------------------------------------------------------------
+
+  function MidTime (this, DOY1, DOY2, CYEAR, start, last)  result (MT)
+
+    implicit none
+    class (TimeUtil), intent(inout) :: this
+    integer, intent (in)    :: DOY1, DOY2, CYEAR
+    type(ESMF_Time)         :: TIME1, MT, CYB
+    type(ESMF_TimeInterval) :: DAY_SHIFT
+    integer                 :: status, yyyy, ref_year
+    logical, intent(in), optional :: start, last
+
+    ref_year = 2002
+    if (mod(cyear,4) /= 0) then 
+       ref_year = 2002
+    else if (mod(cyear,400) == 0) then
+       ref_year = 2004
+    else if (mod(cyear,100) == 0) then 
+       ref_year = 2002
+    else
+       ref_year = 2004
+    end if
+    
+    if (present(start)) then
+       yyyy = ref_year -1
+    else
+       yyyy = ref_year
+    endif
+    
+    call ESMF_TimeSet (CYB, yy=yyyy, mm=1, dd=1, rc=status)                  ; VERIFY_(STATUS)
+    
+    if(present(last)) then
+       yyyy = ref_year + 1
+       call ESMF_TimeSet (CYB, yy=yyyy, mm=1, dd=1, rc=status)               ; VERIFY_(STATUS)
+    endif
+    
+    call ESMF_TimeIntervalSet (DAY_SHIFT, h=24*(DOY1-1), rc=status )         ; VERIFY_(STATUS)
+    TIME1 = CYB + DAY_SHIFT
+    
+    if (DOY2 > DOY1) then
+       call ESMF_TimeIntervalSet (DAY_SHIFT, h=24*(DOY2-DOY1)/2, rc=status ) ; VERIFY_(STATUS)
+       MT = TIME1 + DAY_SHIFT
+    else
+       ! climatologies don't account for leap years)
+       call ESMF_TimeIntervalSet (DAY_SHIFT, h=24*(366-DOY1)/2, rc=status )  ; VERIFY_(STATUS)
+       MT = TIME1 + DAY_SHIFT
+       if (DOY2 > 1) then
+          call ESMF_TimeIntervalSet (DAY_SHIFT, h=24*(DOY2-1)/2, rc=status ) ; VERIFY_(STATUS)
+          MT = MT + DAY_SHIFT
+       endif
+    endif
+        
+  end function MidTime
+      
 END MODULE GEOSland_modules
 
 
