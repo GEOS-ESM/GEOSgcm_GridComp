@@ -62,7 +62,8 @@ module GEOS_CatchCNGridCompMod
   use pftvarcon,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist, irrigation_rate
   use update_model_para4cn, only : upd_curr_date_time
-  
+  USE SURFPARAMS,       ONLY: LAND_FIX_CN  
+
 implicit none
 private
 
@@ -4917,6 +4918,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         real,dimension(:),allocatable :: RSL1, RSL2
         real,dimension(:),allocatable :: SQSCAT
+        real,allocatable,dimension(:) :: rdc_tmp_1, rdc_tmp_2
 
         ! albedo calculation stuff
 
@@ -5809,7 +5811,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RSL2     (NTILES)) 
         allocate(SQSCAT   (NTILES))
         allocate(RDC      (NTILES))  
-	allocate(UUU      (NTILES))
+	allocate(RDC_TMP_1(NTILES))
+        allocate(RDC_TMP_2(NTILES))
+        allocate(UUU      (NTILES))
 	allocate(RHO      (NTILES))
 	allocate(ZVG      (NTILES))
 	allocate(LAI0     (NTILES))
@@ -6189,8 +6193,14 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
         ! LAI and type dependent parameters; RDC formulation now uses veg fractions gkw: 2013-11-25, see note from Randy
         ! --------------------------------------------------------------------------
-
+        
+        IF (LAND_FIX_CN) THEN
         RDC = max(VGRDA(VEG1),VGRDA(VEG2))*min(1.,lai/2.)
+        ELSE
+        rdc_tmp_1 = max( VGRDA(VEG1)*min( 1., LAI1/VGRDB(VEG1) ), 0.001)
+        rdc_tmp_2 = max( VGRDA(VEG2)*min( 1., LAI2/VGRDB(VEG2) ), 0.001)
+        RDC = max(rdc_tmp_1,rdc_tmp_2)*min(1.,lai/2.)
+        END IF
         RDC = max(RDC,0.001)
 
         RHO = PS/(MAPL_RGAS*(TA*(1+MAPL_VIREPS*QA)))
@@ -8104,6 +8114,8 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 	deallocate(RSL2     )
 	deallocate(SQSCAT   )
 	deallocate(RDC      )
+        deallocate(RDC_TMP_1)
+        deallocate(RDC_TMP_2)
         deallocate(UUU      )
         deallocate(RHO      )
         deallocate(ZVG      )
