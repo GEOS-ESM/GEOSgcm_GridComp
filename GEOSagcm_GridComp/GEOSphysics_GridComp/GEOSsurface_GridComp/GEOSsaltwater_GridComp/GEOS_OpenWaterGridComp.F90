@@ -2809,11 +2809,11 @@ contains
       allocate(tmp2(NT, NUM_SUBTILES), STAT=STATUS); VERIFY_(STATUS)
       tmp2(:,WATER) = FRWATER
 
-      call SKIN_SST (DO_SKIN_LAYER,NT,CM,UUA,VVA,UW,VW,HW,SWN,LHF,SHF,LWDNSRF,                   &
-                     ALW,BLW,PEN,STOKES_SPEED,DT,MUSKIN,TS_FOUNDi,DWARM_,TBAR_,TXW,TYW,USTARW_,  &
-                     DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_,TDEL_,SWWARM_,QWARM_,ZETA_W_,    &
-                     PHIW_,LANGM_,TAUTW_,uStokes_,TS,TWMTS,TW,WATER,tmp2,n_iter_cool,&
-                     fr_ice_thresh)
+      call SKIN_SST (DO_SKIN_LAYER, DO_DATASEA, NT,CM,UUA,VVA,UW,VW,HW,SWN,LHF,SHF,LWDNSRF,                   &
+                     ALW,BLW,PEN, PEN_OCEAN, STOKES_SPEED,DT,MUSKIN,TS_FOUNDi,DWARM_,TBAR_,TXW,TYW,USTARW_,   &
+                     DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_,TDEL_,SWWARM_,QWARM_,ZETA_W_,                 &
+                     PHIW_,LANGM_,TAUTW_,uStokes_,TS,TWMTS,TW,WATER,tmp2,n_iter_cool,                         &
+                     fr_ice_thresh, epsilon_d)
       deallocate(tmp2)
 
 ! Copies for export
