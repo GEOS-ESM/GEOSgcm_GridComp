@@ -89,8 +89,8 @@ MODULE CATCHMENT_CN_MODEL
        DZ1MAX            => CATCH_DZ1MAX,        &  
        SHR, SCONST, C_CANOP, N_sm, SATCAPFR   
 
-  USE SURFPARAMS,       ONLY: CSOIL_2
-
+  USE SURFPARAMS,       ONLY: CSOIL_2, RSWILT, &
+      LAND_FIX_CN, FLWALPHA
 
   
   USE lsm_routines, only :                          &
@@ -549,13 +549,14 @@ CONTAINS
         tc4_orig(n)=tc4(n)
 
         ! Andrea Molod (Oct 21, 2016):
-
+        if (LAND_FIX_CN) then
         qa1(n) = min(max(qm(N),qsat1(N)),qa1(N))
         qa1(n) = max(min(qm(N),qsat1(N)),qa1(N))
         qa2(n) = min(max(qm(N),qsat2(N)),qa2(N))
         qa2(n) = max(min(qm(N),qsat2(N)),qa2(N))
         qa4(n) = min(max(qm(N),qsat4(N)),qa4(N))
         qa4(n) = max(min(qm(N),qsat4(N)),qa4(N))
+        end if
 
 !        if(ityp1(n) .ge. 7) potfrc(n)=0.
 
@@ -1286,8 +1287,8 @@ CONTAINS
        ! reichle, 12 Aug 2014
 
 !!!    IF (ityp1(N) .ge. 1) THEN ! gkw: would do TC correction on all types in unified 
-       IF (ityp1(N) .eq.-1) THEN ! gkw: using Helfand with viscous sublayer; don't need TC correction; using -1 skips this block
-
+!!!    IF (ityp1(N) .eq.-1) THEN ! gkw: using Helfand with viscous sublayer; don't need TC correction; using -1 skips this block
+       IF (LAND_FIX_CN) THEN   ! jkolassa 11 Jun 2020: changed to be controlled by LAND_FIX_CN; was previously set to always be false
         call dampen_tc_oscillations(dtstep,tm(N),tc1_orig(N),tc1(N),     &
              tc1_00(N),dtc1)
         call dampen_tc_oscillations(dtstep,tm(N),tc2_orig(N),tc2(N),     &
@@ -1363,7 +1364,7 @@ CONTAINS
                            DHSDTC4(N)
 
 !       Ensure that modifications made to QA and TC are not too large:
-
+        IF ( (.NOT. LAND_FIX_CN) .OR. (ASNOW0(N) .EQ. 0. ) ) THEN
         IF(ABS(QA1X-QA1(N)) .LE. 0.5*QA1(N)) THEN
             QA1(N)=QA1X
           ELSE
@@ -1399,6 +1400,7 @@ CONTAINS
           ELSE
             TC4(N)=TC4(N)+SIGN(10.,TC4X-TC4(N))
           ENDIF
+        ENDIF ! LAND_FIX_CN and ASNOW=0 
 
 
 ! EVACC and SHACC are the differences ("errors") between what the land surface
@@ -1698,7 +1700,7 @@ CONTAINS
 ! ---------------------------------------------------------------------
 
         SRFLW=SRFEXC(N)*DTSTEP/TSC0
-        IF(SRFLW < 0.    ) SRFLW = 0.005 * SRFLW ! C05 change
+        IF(SRFLW < 0.    ) SRFLW = FLWALPHA * SRFLW ! C05 change
 !rr   following inserted by koster Sep 22, 2003
         rzdif=rzave/poros(n)-wpwet(n)
 !**** No moisture transport up if rz at wilting; employ ramping.
@@ -2379,7 +2381,7 @@ CONTAINS
 
       INTEGER N
       REAL, DIMENSION(NCH) :: EA, ESATTC
-      REAL HESAT, RSWILT, ATERM, BTERM
+      REAL HESAT,  ATERM, BTERM
 
 ! RDK 04/04/06
 !  VALUES OF BARE SOIL SURFACE RESISTANCE AT WILTING POINT, SATURATION
@@ -2388,7 +2390,7 @@ CONTAINS
 !!!   PARAMETER (RSWILT=5.e3) ! gkw: 63u
 !!!   PARAMETER (RSWILT=1.e9) ! gkw: 64u
 !!!   PARAMETER (RSWILT=2.e3) ! gkw: 65u
-      PARAMETER (RSWILT=2000.)! gkw: 66u & 67u
+!!!   PARAMETER (RSWILT=2000.)! gkw: 66u & 67u
 !****
 !**** -----------------------------------------------------------------
 
