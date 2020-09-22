@@ -141,6 +141,17 @@ module SurfParams
          STEXP    = 1.     ! reverted     
          RSWILT   = 2000.  ! set to previously hardcoded CatchCN value                        
                                                                                               
+      case ("EL_CLM45_Fire")  ! parameters to reproduce Eunjee Lee's CatchCN_CLM4.5 simulations of GPP and fire carbon emissions        
+         LAND_FIX = .TRUE.
+         LAND_FIX_CN = .FALSE.
+         CSOIL_2  = 70000. ! Post H5_0  
+         WEMIN    = 13.
+         AICEV    = 0.107
+         AICEN    = 19.893
+         FLWALPHA = 0.005
+         ASTRFR   = 0.333  ! reverted 
+         STEXP    = 1.     ! reverted                                  
+         RSWILT   = 2000.
       case DEFAULT                                                                            
          write (*,*) "LAND_PARAMS not valid or incompatible with LSM_CHOICE ",LAND_PARAMS     
          return                                                                               
