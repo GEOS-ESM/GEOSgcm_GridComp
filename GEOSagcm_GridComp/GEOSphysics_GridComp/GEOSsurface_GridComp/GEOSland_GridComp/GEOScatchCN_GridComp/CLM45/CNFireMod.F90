@@ -25,7 +25,8 @@ module CNFireMod
   use clm_varctl     , only: iulog, use_nofire
   use clm_varpar     , only: nlevdecomp, ndecomp_pools
   use clm_varcon     , only: dzsoi_decomp
-  use pftvarcon      , only: noveg
+  use pftvarcon      , only: noveg, nbrdlf_evr_trp_tree
+!  use catch_types    , only: cn_param_type
 !  use spmdMod        , only: masterproc, mpicom, comp_id
 !  use fileutils      , only: getavu, relavu
 !  use controlMod     , only: NLFilename
@@ -142,7 +143,7 @@ subroutine CNFireArea (num_soilc, filter_soilc, num_soilp, filter_soilp)
 ! !USES:
    use clmtype
    use clm_time_manager, only: get_step_size, get_days_per_year, get_curr_date, get_nstep
-   use clm_varpar      , only: max_pft_per_col
+   use clm_varpar      , only: max_pft_per_col, numpft
    use clm_varcon      , only: secspday
 !   use shr_infnan_mod  , only: shr_infnan_isnan
    use, intrinsic :: ieee_arithmetic, only: shr_infnan_isnan => ieee_is_nan
@@ -171,6 +172,7 @@ subroutine CNFireArea (num_soilc, filter_soilc, num_soilp, filter_soilp)
    real(r8), pointer :: lfpftd(:)       ! decrease of pft weight (0-1) on the col. for timestep 
    real(r8), pointer :: wtcol(:)        ! pft weight on the column
    integer , pointer :: ivt(:)          ! vegetation type for this pft
+   real(r8), pointer :: fveg(:)         ! vegetation fraction for this pft
    real(r8), pointer :: deadcrootc(:)         ! (gC/m2) dead coarse root C
    real(r8), pointer :: deadcrootc_storage(:) ! (gC/m2) dead coarse root C storage
    real(r8), pointer :: deadcrootc_xfer(:)    ! (gC/m2) dead coarse root C transfer
@@ -282,9 +284,22 @@ subroutine CNFireArea (num_soilc, filter_soilc, num_soilp, filter_soilp)
    real(r8) :: fs       !
    real(r8) :: ig       !
    real(r8) :: hdmlf    ! human density
+
+   ! local variables for PFT fire modifications
+   logical :: pft_4_flag ! flag for presence of PFT 4
+   real(r8):: fire_m_tmp
+   real, dimension(0:numpft) :: fire_m_fac ! array to parameterize combustibility sensitivity to soil moisture separately for each PFT
 !EOP
 !-----------------------------------------------------------------------
-  ! assign local pointers to derived type members (pft-level)
+! declare fire_m_fac array used to compute PFT-dependent combustibility (jkolassa 08/2020)  
+
+data     fire_m_fac    /  SHR_CONST_PI, SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI,SHR_CONST_PI/
+
+! only allow fires in very dry conditions in PFTs 4 and 6 (jkolassa 08/2020)
+fire_m_fac(4) = 10.e15
+fire_m_fac(6) = 10.e15
+
+! assign local pointers to derived type members (pft-level)
   wtcol              =>pft%wtcol
   ivt                =>pft%itype 
   prec60             => pps%prec60
@@ -307,7 +322,8 @@ subroutine CNFireArea (num_soilc, filter_soilc, num_soilp, filter_soilp)
   burndate           => pps%burndate
   cpool              => pcs%cpool
 
-  ! assign local pointers to derived type members (column-level)
+
+ ! assign local pointers to derived type members (column-level)
   cwtgcell         =>col%wtgcell
   npfts            =>col%npfts
   pfti             =>col%pfti
@@ -350,6 +366,9 @@ subroutine CNFireArea (num_soilc, filter_soilc, num_soilp, filter_soilp)
   decomp_cpools_vr => ccs%decomp_cpools_vr
   cpool_col        => ccs%cpool_col 
  
+!  write(*,*) 'size PFTi ', size(pfti)
+!  write(*,*) 'PFTi vals ', pfti(1:10)
+
   !assign local pointers to derived type members (grid-level) 
   forc_rh       => grc%forc_rh
   forc_wind     => grc%forc_wind
@@ -513,7 +532,7 @@ subroutine CNFireArea (num_soilc, filter_soilc, num_soilp, filter_soilp)
                                          (hdmlf/450._r8)**0.5_r8))*wtcol(p)/lfwt(c)
                        else   ! for trees
                           if( gdp_lf(c) .gt. 20._r8 )then
-                             lgdp_col(c)  =lgdp_col(c)+0.39_r8*wtcol(p)/(1.0_r8 - cropf_col(c))
+                             lgdp_col(c)  =lgdp_col(c)+0.2_r8*wtcol(p)/(1.0_r8 - cropf_col(c))    ! GDP 0.2
                           else    
                              lgdp_col(c) = lgdp_col(c)+wtcol(p)/(1.0_r8 - cropf_col(c))
                           end if
@@ -643,9 +662,17 @@ subroutine CNFireArea (num_soilc, filter_soilc, num_soilp, filter_soilp)
      hdmlf=forc_hdm(g)
      nfire(c) = 0._r8  ! This is done in CNInitMod.F90 in clm4_6_00, fzeng, 9 May 2019
      if( cropf_col(c) .lt. 1.0 )then
+       pft_4_flag = .false.                                                                                                                           
+       do pi = 1,max_pft_per_col ! this loop can be avoided by directly targeting PFT 4                                                 
+                                 ! kept for now to be able to extend modifications to other PFTs;jkolassa Jun 2020                      
+          p = pfti(c) + pi - 1                                                                                                          
+          if ((ivt(p)==nbrdlf_evr_trp_tree).and.(wtcol(p).gt.0.)) then                                                                
+              pft_4_flag = .true.                                                                                         
+           end if                                                                                                                        
+        end do  
        ! see clm4_6_00 and Li et al., BG 2014, fzeng, 7 May 2019
 !      if (trotr1_col(c)+trotr2_col(c)>0.6_r8) then
-       if (trotr1_col(c)>0.6_r8) then  ! Allow trotr2 (i.e. broadleaf deciduous tropical trees in ESA) in Africa to burn, because this type is classified as woody savanna and savanna in MODIS land cover which is more consistent with CLM4.5CN tree and grass fractions in Africa, fzeng, 12 July 2019  
+       if ((trotr1_col(c)>0.6_r8).and.(pft_4_flag==.false.)) then  ! Allow trotr2 (i.e. broadleaf deciduous tropical trees in ESA) in Africa to burn, because this type is classified as woody savanna and savanna in MODIS land cover which is more consistent with CLM4.5CN tree and grass fractions in Africa, fzeng, 12 July 2019; additional modification by jkolassa (pft_4_flag=.false.) enables fires for PFT 4 again in attempt to improve fire carbon emissions over Africa  
             farea_burned(c)=min(1.0_r8,baf_crop(c)+baf_peatf(c))
          else     
            fuelc(c) = totlitc(c)+totvegc_col(c)-rootc_col(c)-fuelc_crop(c)*cropf_col(c)        
@@ -655,9 +682,14 @@ subroutine CNFireArea (num_soilc, filter_soilc, num_soilp, filter_soilp)
            fuelc(c) = fuelc(c)/(1._r8-cropf_col(c))
            fb       = max(0.0_r8,min(1.0_r8,(fuelc(c)-lfuel)/(ufuel-lfuel)))
            m        = max(0._r8,wf(c))
-           fire_m   = exp(-SHR_CONST_PI *(m/0.69_r8)**2)*(1.0_r8 - max(0._r8, &
-                   min(1._r8,(forc_rh(g)-30._r8)/(80._r8-30._r8))))*  &
-                   min(1._r8,exp(SHR_CONST_PI*(forc_t(g)-SHR_CONST_TKFRZ)/10._r8))
+           fire_m = 0.     ! jkolassa 09/2020: made fire combustability computation PFT-dependent in order to be able to control combustibility sensitivity to soil moisture separately for each PFT
+           do pi = 1,max_pft_per_col
+              p = pfti(c) + pi - 1
+              fire_m_tmp = exp(-fire_m_fac(ivt(p))*(m/0.69_r8)**2)*(1.0_r8 - max(0._r8, &
+                      min(1._r8,(forc_rh(g)-30._r8)/(80._r8-30._r8))))*  &
+                      min(1._r8,exp(SHR_CONST_PI*(forc_t(g)-SHR_CONST_TKFRZ)/10._r8))
+              fire_m = fire_m + (fire_m_tmp*wtcol(p))
+           end do
            lh       = 0.0035_r8*6.8_r8*hdmlf**(0.43_r8)/30._r8/24._r8
            fs       = 1._r8-(0.01_r8+0.98_r8*exp(-0.025_r8*hdmlf))
 !          ig       = (lh+forc_lnfm(g)/24/(5.16_r8+2.16_r8*cos(3._r8*grc%latdeg(g)))*0.25_r8)*(1._r8-fs)*(1._r8-cropf_col(c))                         ! There is a bug here. The input of "cos" must be in radians!! fzeng, 2 Aug 2019              
@@ -1785,6 +1817,12 @@ end subroutine CNFireFluxes
 !     write(iulog,*) ' '
 !     write(iulog,*) 'light_stream settings:'
 !     write(iulog,*) '  stream_year_first_lightng  = ',stream_year_first_lightng  
+!     write(iulog,*) '  stream_year_last_lightng   = ',stream_year_last_lightng   
+!     write(iulog,*) '  model_year_align_lightng   = ',model_year_align_lightng   
+!     write(iulog,*) '  stream_fldFileName_lightng = ',stream_fldFileName_lightng
+!     write(iulog,*) ' '
+!  endif
+!     write(iulog,*) '  stream_year_last_lightng   = ',stream_year_last_lightng   
 !     write(iulog,*) '  stream_year_last_lightng   = ',stream_year_last_lightng   
 !     write(iulog,*) '  model_year_align_lightng   = ',model_year_align_lightng   
 !     write(iulog,*) '  stream_fldFileName_lightng = ',stream_fldFileName_lightng
