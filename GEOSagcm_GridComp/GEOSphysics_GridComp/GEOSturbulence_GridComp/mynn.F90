@@ -246,11 +246,12 @@ subroutine run_mynn(IM, JM, LM, &                                               
           ac_half, T_half, ql_half, Tl,&
           hl2_25, qt2_25, hlqt_25, hlthv, qtthv, thv2, &
           hlthv_25, qtthv_25, thv2_25, hlthv_p, qtthv_p, thv2_p, &
-          we, we_up, idzle, A_half, B_half, goth00
+          we, we_up, idzle, A_half, B_half, goth00, &
+          tkee, tkee_up, w2e_up
 
   real, dimension(IM,JM)      :: wb_surf, LMO
   real, dimension(IM,JM,LM)   :: hl
-  real, dimension(IM,JM,0:LM) :: S2, N2, zeta, A, B, w2e
+  real, dimension(IM,JM,0:LM) :: S2, N2, zeta, A, B
 
   double precision, dimension(IM,JM)      :: w_star, LT
   double precision, dimension(IM,JM,0:LM) :: q, L, LS, LB
@@ -301,10 +302,6 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
         N2(i,j,k) = goth00*( Beta_hl(i,j,k)*dhldz + Beta_qt(i,j,k)*dqtdz )
         S2(i,j,k) = (( u(i,j,k) - u(i,j,kp1) )*idzlo)**2. + (( v(i,j,k) - v(i,j,kp1) )*idzlo)**2.
-
-        if ( CONSISTENT_TYPE == 2 ) then
-           w2e(i,j,k) = twothirds*tke(i,j,k)/( 1. - au(i,j,k) ) ! need to use MYNN w2 later
-        end if
      end do
      end do
   end do
@@ -493,7 +490,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
         Kh(i,j,k) = Lq*SH
 
         !
-        if ( DOMF /= 0. .and. CONSISTENT_TYPE == 0 ) then
+        if ( DOMF /= 0. .and. CONSISTENT_TYPE /= 0 ) then
            whl = -Kh(i,j,k)*dhldz + whl_explicit + whl_mf(i,j,k)
            wqt = -Kh(i,j,k)*dqtdz + wqt_explicit + wqt_mf(i,j,k)
         else
@@ -521,21 +518,23 @@ subroutine run_mynn(IM, JM, LM, &                                               
         idzle = 1./( zle(i,j,km1) - zle(i,j,k) )
 
         ! Compute budget terms for second-order moments
-        if ( DOMF /= 0. .and. CONSISTENT_TYPE == 0 ) then
+        if ( DOMF /= 0. .and. CONSISTENT_TYPE /= 0 ) then
            tket_B(i,j,k) = -Kh(i,j,k)*N2(i,j,k) + wb_explicit + goth00*wthv_mf(i,j,k)
         else
            tket_B(i,j,k) = -Kh(i,j,k)*N2(i,j,k) + wb_explicit
         end if
 
-        if (CONSISTENT_TYPE == 2) then
+        if ( CONSISTENT_TYPE == 0 ) then
            we    = -au(i,j,k)*wu(i,j,k)/( 1. - au(i,j,k) )
            we_up = -au(i,j,km1)*wu(i,j,km1)/( 1. - au(i,j,km1) )
+
+           tkee    = tke(i,j,k)/( 1. - au(i,j,k) )
+           tkee_up = tke(i,j,km1)/( 1. - au(i,j,km1) )
+           w2e_up  = twothirds*tkee_up
            
-           tket_T_mf(i,j,k) = (  0.5*( Mu(i,j,km1)*w2e(i,j,km1) - Mu(i,j,k)*w2e(i,j,k) )*idzle &
-                               - 0.5*max(0., E(i,j,k))*w2e(i,j,k) &
-                               + 0.5*max(0., D(i,j,k))*( wu(i,j,k) - we )**2.&
-                              )/rhoe(i,j,k) &
-                              - ( 1. - au(i,j,km1) )*w2e(i,j,km1)*( we_up - we )*idzle
+           tket_T_mf(i,j,k) = (  ( Mu(i,j,km1)*tkee_up - Mu(i,j,k)*tkee )*idzle &
+                               - max(0., E(i,j,k))*tkee )/rhoe(i,j,k) &
+                              - ( 1. - au(i,j,km1) )*w2e_up*( we_up - we )*idzle
         else
            tket_T_mf(i,j,k) = 0.
         end if
@@ -721,9 +720,9 @@ subroutine implicit_M(IM, JM, LM, &
                       Beta_hl, Beta_qt, Km, Kh, &
                       ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf, &
                       tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
-                      MYNN_LEVEL, DOMF, CONSISTENT_FLAG)
+                      MYNN_LEVEL, DOMF, CONSISTENT_TYPE)
 
-  integer, intent(in)                      :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_FLAG
+  integer, intent(in)                      :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE
   real, intent(in)                         :: th00, DOMF
   real, dimension(IM,JM,LM), intent(in)    :: zlo, u, v, h, qv, ql 
   real, dimension(IM,JM,0:LM), intent(in)  :: Beta_hl, Beta_qt, Km, Kh, &
@@ -768,7 +767,7 @@ subroutine implicit_M(IM, JM, LM, &
            wb_explicit= 0.
         end if
 
-        if (DOMF /= 0. .and. CONSISTENT_FLAG == 0 ) then
+        if ( DOMF /= 0. .and. CONSISTENT_TYPE /= 0 ) then
            tket_B(i,j,k) = -Kh(i,j,k)*N2    + wb_explicit  + goth00*wthv_mf(i,j,k)
            whl           = -Kh(i,j,k)*dhldz + whl_explicit + whl_mf(i,j,k)
            wqt           = -Kh(i,j,k)*dqtdz + wqt_explicit + wqt_mf(i,j,k)

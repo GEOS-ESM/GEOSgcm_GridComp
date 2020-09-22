@@ -185,7 +185,7 @@ contains
 !BOS
 
     ! To decide whether to create tendencies of thermodynamic second-order moments
-    call MAPL_GetResource (MAPL, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_LEVEL, "MYNN_LEVEL:", default=2,  RC=STATUS)
 
 ! !IMPORT STATE:
 
@@ -575,8 +575,8 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    if (MYNN_LEVEL == 3) then
-       call MAPL_AddExportSpec(GC,                        &
+    if ( MYNN_LEVEL == 3 ) then
+       call MAPL_AddExportSpec(GC,                            &
             SHORT_NAME = 'hl2IT',                             &
             LONG_NAME  = 'tendency_of_hl2_due_to_turbulence', &
             UNITS      = 'K+2s-1',                            &
@@ -1769,8 +1769,8 @@ contains
     call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_GetResource (STATE, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
-    if (MYNN_LEVEL == 3) then
+    call MAPL_GetResource (STATE, MYNN_LEVEL, "MYNN_LEVEL:", default=2,  RC=STATUS)
+    if ( MYNN_LEVEL == 3 ) then
        call ESMF_StateGet    (GEX(TURBL),  'hl2'   , FIELD,    RC=STATUS )
        VERIFY_(STATUS)
        call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )

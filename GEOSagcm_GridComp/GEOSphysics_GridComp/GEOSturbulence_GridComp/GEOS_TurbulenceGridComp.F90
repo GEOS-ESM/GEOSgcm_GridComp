@@ -256,7 +256,7 @@ contains
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
    
-    call MAPL_GetResource (MAPL, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_LEVEL, "MYNN_LEVEL:", default=2,  RC=STATUS)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -2607,6 +2607,19 @@ contains
        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
     VERIFY_(STATUS)
 
+    ! Start EDMF-related variables
+    !
+
+    call MAPL_AddInternalSpec(GC,                                &
+       SHORT_NAME = 'zpbl_mf',                                   &
+       LONG_NAME  = 'planetary_boundary_layer_height',           &
+       UNITS      = 'm',                                         &
+       FRIENDLYTO = trim(COMP_NAME),                             &
+       DEFAULT    = 100.,                                        &
+       DIMS       = MAPL_DimsHorzOnly,                           &
+       VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)
+
     ! Start MYNN-related variables
     !
     call MAPL_AddInternalSpec(GC,                                &
@@ -3088,6 +3101,9 @@ contains
 
     real, dimension(:,:), pointer :: EVAP, SH, tke_surf, hl2_surf, qt2_surf, hlqt_surf
 
+! EDMF-related variables
+    real, dimension(:,:), pointer :: zpbl_mf
+
 ! Begin... 
 !---------
 
@@ -3125,7 +3141,7 @@ contains
     VERIFY_(STATUS)
 
     ! To decide whether to include solver arrays for second-order moments beyond TKE
-    call MAPL_GetResource (MAPL, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_LEVEL, "MYNN_LEVEL:", default=2,  RC=STATUS)
 
 ! Get all pointers that are needed by both REFRESH and DIFFUSE
 !-------------------------------------------------------------
@@ -3267,7 +3283,9 @@ contains
 !
 ! edmf variables
 !
- call MAPL_GetPointer(INTERNAL, DKSS,   'DKSS',     RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, zpbl_mf, 'zpbl_mf', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, DKSS,   'DKSS',     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, DKQQ,   'DKQQ',     RC=STATUS)
     VERIFY_(STATUS)
@@ -3496,6 +3514,7 @@ contains
                                            edmf_thl_plume8,edmf_thl_plume9,edmf_thl_plume10
 #endif
 
+   real             :: edmf_wa, edmf_wb
    double precision :: alpha1_mynn, alpha2_mynn, alpha3_mynn, alpha4_mynn
    integer :: DO_MYNN, DO_LOCK_MYNN
 
@@ -3537,38 +3556,40 @@ contains
      integer                             :: KPBLMIN,PBLHT_OPTION
 
      ! mass-flux constants/parameters
-     real :: NumUpR,ETr
      integer :: NumUp,ET
      real :: pwmin,pwmax,AlphaW,AlphaQT,AlphaTH,L0,L0fac,ENT0,EDfac
      real                            :: DOMF,DOMFCOND 
 
-     integer :: TKET_M_FLAG          ! 1 (default): include M-term in TKE budget
-                                     ! 0: don't include M-term
-     integer :: THV_SMOOTHING        ! 1: (default) smooth first five layers of THV 
-                                     ! 0: don't smooth THV
-     integer :: EDMF_SCHEME          ! 0: (default) Kay's EDMF scheme
-                                     ! 1: Dave's refactoring of Kay's scheme
-     integer :: EDMF_IMPLICIT        ! 1 (default): implicit discretization of mass flux terms
-                                     ! 0: explicit
-     integer :: EDMF_STOCHASTIC      ! 1 (default): stochastic entrainment
-                                     ! 0: deterministic entrainment
-     integer :: EDMF_DISCRETE_TYPE   ! 0 (default): centered mass flux discretization in solver
-                                     ! 1: upwind discretization 
-     integer :: EDMF_CONSISTENT_TYPE ! 0 (default): conventional (inconsistent) EDMF
-                                     ! 1: "naive" consistent partitioning 
-                                     ! 2: fully consistent partitioning
-     integer :: EDMF_THERMAL_PLUME   ! 0 (default): JPL mass flux scheme
-                                     ! 1: Thermal plume model
-     integer :: MYNN_LEVEL           ! 2 (default): Level-2.5 
-                                     ! 3: Level-3
+     integer :: MYNN_TKET_M          ! 0 (default): include M-term in TKE budget
+                                     ! 1: don't include M-term
+
+     ! EDMF parameters
+     integer :: EDMF_SCHEME          ! 0:    Kay's EDMF scheme
+                                     ! else: Dave's refactoring of Kay's scheme
+     integer :: EDMF_KBOTP           ! 0:    initialize updrafts at surface
+                                     ! k:    initialize k levels above surface
+     integer :: EDMF_IMPLICIT        ! 0:    explicit discretization of mass flux terms
+                                     ! else: implicit "              "  "    "    "
+     integer :: EDMF_STOCHASTIC      ! 0:    stochastic entrainment
+                                     ! else: deterministic entrainment
+     integer :: EDMF_DISCRETE        ! 0:    centered mass flux discretization in solver
+                                     ! else: upwind discretization 
+     integer :: EDMF_CONSISTENT      ! 0:    consistent partitioning of TKE
+                                     ! else: conventional partitioning
+     integer :: EDMF_THERMAL_PLUME   ! 0:    JPL mass flux scheme
+                                     ! else: thermal plume model
+
+     ! MYNN parameters
+     integer :: MYNN_LEVEL           ! 2:    level-2.5 
+                                     ! 3:    level-3
+     integer :: MYNN_IMPLICIT        ! 0:    implicit mean-gradient and buoyancy production of TKE
+                                     ! else: explicit
+     integer :: MYNN_DEBUG           ! 0 (default): no debugging output in MYNN
+                                     ! 1: print internal variables in MYNN subroutine
      integer :: WQL_TYPE             ! 1 (default): counter-gradient liquid water flux (level-3 closure only)
                                      ! 0: no counter-gradient liquid water flux
      integer :: WRF_CG_FLAG          ! 1: (default): do not allow positive counter-gradient fluxes (like WRF-MYNN) 
                                      ! 0: else
-     integer :: IMPLICIT_M_FLAG      ! 1 (default): implicit mean-gradient and buoyancy production of TKE
-                                     ! 0: explicit
-     integer :: MYNN_DEBUG_FLAG      ! 0 (default): no debugging output in MYNN
-                                     ! 1: print internal variables in MYNN subroutine
 
      real,dimension(IM,JM) :: L02
      
@@ -3588,7 +3609,7 @@ contains
      real, dimension(im,jm,lm) :: zlo,zlot,pk
      real, dimension(im,jm)    :: rhodz,edmfZCLD
      real, dimension(im,jm,0:lm) :: RHOE,RHOAW3
-     real, dimension(im,jm) :: ZPBLmf,KPBLmf   
+     real, dimension(im,jm) :: KPBLmf   
      real,dimension(im,jm,lm) :: buoyf,mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl
 
 #ifdef EDMF_DIAG
@@ -3714,9 +3735,6 @@ contains
      call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,            RC=STATUS)
      endif
 
-     call MAPL_GetResource (MAPL, THV_SMOOTHING, trim(COMP_NAME)//"_THV_SMOOTHING:", default=1, RC=STATUS)
-     call MAPL_GetResource (MAPL, TKET_M_FLAG,   trim(COMP_NAME)//"_TKET_M_FLAG:",   default=1, RC=STATUS)
-
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS)
      if (DO_SHOC /= 0) then
        call MAPL_GetResource (MAPL, SHC_LAMBDA,   trim(COMP_NAME)//"_SHC_LAMBDA:",   default=0.04,       RC=STATUS)
@@ -3748,6 +3766,11 @@ contains
       call MAPL_GetResource(MAPL, alpha2_mynn, "alpha2_mynn:", default=1.d0,   RC=STATUS)
       call MAPL_GetResource(MAPL, alpha3_mynn, "alpha3_mynn:", default=5.d0,   RC=STATUS)
       call MAPL_GetResource(MAPL, alpha4_mynn, "alpha4_mynn:", default=100.d0,  RC=STATUS)
+
+      call MAPL_GetResource(MAPL, edmf_wa, 'EDMF_WA:', default=1.,  RC=STATUS)
+      call MAPL_GetResource(MAPL, edmf_wb, 'EDMF_WB:', default=1.5, RC=STATUS)
+
+     call MAPL_GetResource (MAPL, MYNN_TKET_M, "MYNN_TKET_M:",   default=0, RC=STATUS)
 
       ! Make sure SHOC and MYNN are not running at the same time
       _ASSERT( .not. ( DO_SHOC /= 0 .and. DO_MYNN /= 0) , 'SHOC and MYNN cannot be turned on at the same time!' )
@@ -4127,8 +4150,6 @@ contains
       TV  = T *( 1.0 + MAPL_VIREPS * Q - QL - QI ) 
       THV = TV*(TH/T)
 
-!      THV_MYNN = THV ! This variable is NOT smoothed in the lowest 5 layers
-
       TVE = (TV(:,:,1:LM-1) + TV(:,:,2:LM))*0.5
 
       ! Miscellaneous factors
@@ -4143,7 +4164,7 @@ contains
       RHOE(:,:,LM)=PLE(:,:,LM)/(MAPL_RGAS*TV(:,:,LM))
 
       !===> Running 1-2-1 smooth of bottom 5 levels of Virtual Pot. Temp.
-      if ( LM .eq. 72 .and. THV_SMOOTHING /= 0 ) then
+      if ( LM .eq. 72 .or. DO_MYNN /= 0 .or. DO_SHOC /= 0 ) then
          THV(:,:,LM  ) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
          THV(:,:,LM-1) = THV(:,:,LM-2)*0.25 + THV(:,:,LM-1)*0.50 + THV(:,:,LM  )*0.25 
          THV(:,:,LM-2) = THV(:,:,LM-3)*0.25 + THV(:,:,LM-2)*0.50 + THV(:,:,LM-1)*0.25 
@@ -4179,24 +4200,20 @@ contains
        rh_turb   = q/qsat_turb
     end if
 
-! get updraft constants
-
-
 ! number of updrafts
-  call MAPL_GetResource (MAPL, NumUpR, "EDMF_NumUp:", default=10.,     RC=STATUS)
-       NumUp=nint(NumUpR)
+    call MAPL_GetResource (MAPL, NumUp, "EDMF_NumUp:", default=10,     RC=STATUS)
 
 ! (1):  boundaries for the updraft area
-      call MAPL_GetResource (MAPL, pwmin, "EDMF_pwmin:", default=1.,     RC=STATUS)
-      call MAPL_GetResource (MAPL, pwmax, "EDMF_pwmax:", default=3.,     RC=STATUS)
+    call MAPL_GetResource (MAPL, pwmin, "EDMF_pwmin:", default=1.,     RC=STATUS)
+    call MAPL_GetResource (MAPL, pwmax, "EDMF_pwmax:", default=3.,     RC=STATUS)
 ! (2): coefficients for surface forcing
-      call MAPL_GetResource (MAPL, AlphaW, "EDMF_AlphaW:", default=0.572,     RC=STATUS)
-      call MAPL_GetResource (MAPL, AlphaQT, "EDMF_AlphaQT:", default=2.89,     RC=STATUS)
-      call MAPL_GetResource (MAPL, AlphaTH, "EDMF_AlphaTH:", default=2.89,     RC=STATUS)
+    call MAPL_GetResource (MAPL, AlphaW, "EDMF_AlphaW:", default=0.572,     RC=STATUS)
+    call MAPL_GetResource (MAPL, AlphaQT, "EDMF_AlphaQT:", default=2.89,     RC=STATUS)
+    call MAPL_GetResource (MAPL, AlphaTH, "EDMF_AlphaTH:", default=2.89,     RC=STATUS)
 
 !  get info on how ent. rate is to be computed
-       call MAPL_GetResource (MAPL, ETr, "EDMF_ET:", default=1.,     RC=STATUS)
-       ET=nint(ETr)
+    call MAPL_GetResource (MAPL, ET, "EDMF_ET:", default=1, RC=STATUS)
+
  ! constant entrainment rate   
       call MAPL_GetResource (MAPL, ENT0, "EDMF_ENT0:", default=0.3,     RC=STATUS)
       ! L0 if ET==1
@@ -4211,16 +4228,17 @@ contains
     call MAPL_GetResource (MAPL, EntWFac,              "EDMF_ENTWFAC:",         default=0.3333, RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_SCHEME,          "EDMF_SCHEME:",          default=0,  RC=STATUS)  
     call MAPL_GetResource (MAPL, EDMF_IMPLICIT,        "EDMF_IMPLICIT:",        default=0,  RC=STATUS)  
-    call MAPL_GetResource (MAPL, EDMF_STOCHASTIC,      "EDMF_STOCHASTIC:",      default=1,  RC=STATUS)  
-    call MAPL_GetResource (MAPL, EDMF_DISCRETE_TYPE,   "EDMF_DISCRETE_TYPE:",   default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_CONSISTENT_TYPE, "EDMF_CONSISTENT_TYPE:", default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_STOCHASTIC,      "EDMF_STOCHASTIC:",      default=0,  RC=STATUS)  
+    call MAPL_GetResource (MAPL, EDMF_DISCRETE,        "EDMF_DISCRETE:",        default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_CONSISTENT,      "EDMF_CONSISTENT:",       default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME,   "EDMF_THERMAL_PLUME:",   default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_KBOTP,           "EDMF_KBOTP:",           default=0,  RC=STATUS)  
 
-    call MAPL_GetResource (MAPL, MYNN_LEVEL,      "TURBULENCE_MYNN_LEVEL:",      default=2,  RC=STATUS)
-    call MAPL_GetResource (MAPL, WQL_TYPE,        "TURBULENCE_WQL_TYPE:",        default=1,  RC=STATUS)
-    call MAPL_GetResource (MAPL, WRF_CG_FLAG,     "TURBULENCE_WRF_CG_FLAG:",     default=1,  RC=STATUS)
-    call MAPL_GetResource (MAPL, IMPLICIT_M_FLAG, "TURBULENCE_IMPLICIT_M_FLAG:", default=1,  RC=STATUS)
-    call MAPL_GetResource (MAPL, MYNN_DEBUG_FLAG, "TURBULENCE_MYNN_DEBUG_FLAG:", default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_LEVEL,      "MYNN_LEVEL:",             default=2,  RC=STATUS)
+    call MAPL_GetResource (MAPL, WQL_TYPE,        "TURBULENCE_WQL_TYPE:",    default=1,  RC=STATUS)
+    call MAPL_GetResource (MAPL, WRF_CG_FLAG,     "TURBULENCE_WRF_CG_FLAG:", default=1,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_IMPLICIT,   "MYNN_IMPLICIT:",          default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_DEBUG,      "MYNN_DEBUG:",             default=0,  RC=STATUS)
 ! get ice ramp
    call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0   )
 
@@ -4258,19 +4276,14 @@ IF(DoMF .eq. 1.) then
       IRAS       = nint(LONS*100)
       JRAS       = nint(LATS*100)
 
-if (ETr .eq. 1.) then
+if ( ET == 1 ) then
 
-! use the L0 to be constant
-
-   ! Test
-   call A_star_closure(IM, JM, LM, zle, z, thv, MYNN_DEBUG_FLAG, & ! in
-                       izsl, A_star)              ! out
-
-    L02=L0
+    ! use the L0 to be constant
+    L02 = L0
 
     if ( EDMF_SCHEME == 0 ) then
        call EDMF(1,IM*JM,1,LM,DT,Z,EXF,ZLE,PLE,RHOE,NumUp,&
-                 U,V,THL,THV,T,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl,ice_ramp, &
+                 U,V,THL,THV,T,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl_mf,ice_ramp, &
                  edmfdrya,edmfmoista, &
                  edmfdryw,edmfmoistw, &
                  edmfdryqt,edmfmoistqt, &
@@ -4291,16 +4304,16 @@ if (ETr .eq. 1.) then
                  thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
                  thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-                 EDMF_DISCRETE_TYPE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
+                 EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
     else
-       call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
-                     edmf_discrete_type, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
+       call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp, &                    ! in
+                     edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
                      th00, dt, z, zle, ple, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
-                     ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
-                     zpbl, &                                                         ! inout
+                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
+                     zpbl_mf, &                                                      ! inout
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
                      edmfdryqt, edmfmoistqt, &                                       ! out
@@ -4314,105 +4327,16 @@ if (ETr .eq. 1.) then
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
                      au, wu, Mu, E, D)                                               ! out
     end if
-
-    edmfZCLD=0.
-  
-      DO I=1,IM
-       DO J=1,JM
-        L02(I,J)=max(min(edmfZCLD(I,J),5000.),500.)/L0fac
-      ENDDO
-     ENDDO
-
-      
- elseif (ETr .eq. 2.) then
+ elseif ( ET == 2 ) then
+    ! L0 is a function of the cloud depth
+    ! compute the depth of the cloud layer for a single non-entraining plume
  
- ! L0 is a function of the cloud depth
- ! compute the depth of the cloud layer for a single non-entraining plume
+    ! negative L02 means no entrainment for the updrafts
+    L02 = -9.
  
-! negative L02 means no entrainment for the updrafts
-     L02=-9.
- 
-     if ( EDMF_SCHEME == 0 ) then
-        call EDMF(1,IM*JM,1,LM,DT,Z,EXF,ZLE,PLE,RHOE,1,&
-                  U,V,THL,THV,T,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl,ice_ramp, &
-                  edmfdrya,edmfmoista, &
-                  edmfdryw,edmfmoistw, &
-                  edmfdryqt,edmfmoistqt, &
-                  edmfdrythl,edmfmoistthl, &
-                  edmfdryu,edmfmoistu,  &
-                  edmfdryv,edmfmoistv,  &
-                  edmfmoistqc,             &
-                  ae3, aw3, aws3, awqv3, awql3, awqi3, awu3, awv3, &
-                  WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
-                  pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
-                  ET,L02,ENT0,EDfac,EntWFac,buoyf,&
-                  mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
-                  au, Mu, E, D, &
-                  au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, & ! for MOIST
-#ifdef EDMF_DIAG
-                  qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
-                  qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
-                  thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
-                  thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
-#endif
-                  EDMF_DISCRETE_TYPE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
-     else
-        call run_edmf(IM, JM, LM, 1, iras, jras, &                                    ! in
-                      edmf_discrete_type, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                      th00, dt, z, zle, ple, rhoe, exf, &                             ! in
-                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
-                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
-                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
-                      ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
-                      zpbl, &                                                         ! inout
-                      edmfdrya, edmfmoista, &                                         ! out
-                      edmfdryw, edmfmoistw, &                                         ! out
-                      edmfdryqt, edmfmoistqt, &                                       ! out
-                      edmfdrythl, edmfmoistthl, &                                     ! out
-                      edmfdryu, edmfmoistu,  &                                        ! out
-                      edmfdryv, edmfmoistv,  &                                        ! out
-                      edmfmoistqc, &                                                  ! out
-                      ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
-                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN)      
-                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
-                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
-                      au, wu, Mu, E, D)                                               ! out
-     end if
- 
-    ! compute the depth of the convective layer  
-    ! the height where the convective mass-flux is zero
-    
-    edmfZCLD=0.
-    
-     DO I=1,IM
-       DO J=1,JM
-        DO L=LM,0,-1
-           IF (AW3(I,J,L) .gt. 0.) then
-              edmfZCLD(I,J)=ZLE(I,J,L)
-           ENDIF  
-       ENDDO
-    ENDDO
-  ENDDO 
- 
-! print *,'edmf-cloudtop',edmfZCLD 
- 
- 
- ! compute the L0 assuming reasonable limits
-     DO I=1,IM
-       DO J=1,JM
-        L02(I,J)=max(min(edmfZCLD(I,J),5000.),500.)/L0fac
-    ENDDO
-  ENDDO 
- 
- 
- 
- !
- ! now the real call to the mass-flux
- !
-   
     if ( EDMF_SCHEME == 0 ) then
-       call EDMF(1,IM*JM,1,LM,DT,Z,EXF,ZLE,PLE,RHOE,NumUp,&
-                 U,V,THL,THV,T,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl,ice_ramp, &
+       call EDMF(1,IM*JM,1,LM,DT,Z,EXF,ZLE,PLE,RHOE,1,&
+                 U,V,THL,THV,T,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl_mf,ice_ramp, &
                  edmfdrya,edmfmoista, &
                  edmfdryw,edmfmoistw, &
                  edmfdryqt,edmfmoistqt, &
@@ -4433,16 +4357,78 @@ if (ETr .eq. 1.) then
                  thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
                  thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
-                 EDMF_DISCRETE_TYPE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
+                 EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
     else
-       call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
-                     edmf_discrete_type, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
+       call run_edmf(IM, JM, LM, 1, iras, jras, edmf_kbotp, &                        ! in
+                     edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
                      th00, dt, z, zle, ple, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
-                     ET, L02, ENT0, EDfac, EntWFac, &                                ! in       
-                     zpbl, &                                                         ! inout
+                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
+                     zpbl_mf, &                                                      ! inout
+                     edmfdrya, edmfmoista, &                                         ! out
+                     edmfdryw, edmfmoistw, &                                         ! out
+                     edmfdryqt, edmfmoistqt, &                                       ! out
+                     edmfdrythl, edmfmoistthl, &                                     ! out
+                     edmfdryu, edmfmoistu,  &                                        ! out
+                     edmfdryv, edmfmoistv,  &                                        ! out
+                     edmfmoistqc, &                                                  ! out
+                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
+                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN)      
+                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
+                     au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
+                     au, wu, Mu, E, D)                                               ! out
+    end if ! EDMF_SCHEME == 0
+
+    ! compute the depth of the convective layer  
+    ! the height where the (dry or moist) convective mass-flux is zero
+    call ComputeZPBL(IM*JM, LM, zle, edmfdrya, zpbl_mf, KPBLmf)
+ 
+    ! compute the L0 assuming reasonable limits
+    DO j = 1,JM
+    DO i = 1,IM
+       L02(i,j) = max( 500., min( 5000., zpbl_mf(i,j) ) )/L0fac
+    ENDDO
+    ENDDO
+ 
+    !
+    ! now the real call to the mass-flux
+    !
+   
+    if ( EDMF_SCHEME == 0 ) then
+       call EDMF(1,IM*JM,1,LM,DT,Z,EXF,ZLE,PLE,RHOE,NumUp,&
+                 U,V,THL,THV,T,QT,Q,QL,QI,USTAR,SH,EVAP,zpbl_mf,ice_ramp, &
+                 edmfdrya,edmfmoista, &
+                 edmfdryw,edmfmoistw, &
+                 edmfdryqt,edmfmoistqt, &
+                 edmfdrythl,edmfmoistthl, &
+                 edmfdryu,edmfmoistu,  &
+                 edmfdryv,edmfmoistv,  &
+                 edmfmoistqc,             &
+                 ae3, aw3, aws3, awqv3, awql3, awqi3, awu3, awv3, &
+                 WHL_MF,WQT_MF,WTHV_MF, & ! for MYNN  
+                 pwmin,pwmax,AlphaW,AlphaQT,AlphaTH, &
+                 ET,L02,ENT0,EDfac,EntWFac,buoyf,&
+                 mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,iras,jras, &
+                 au, Mu, E, D, &
+                 au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, & ! for MOIST
+#ifdef EDMF_DIAG
+                 qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
+                 qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
+                 thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
+                 thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
+#endif
+                 EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
+    else
+       call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp,&                     ! in
+                     edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
+                     th00, dt, z, zle, ple, rhoe, exf, &                             ! in
+                     u, v, thl, thv, qt, q, ql, qi, &                                ! in
+                     ustar, sh, evap, ice_ramp, &                                    ! in                                         
+                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
+                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
+                     zpbl_mf, &                                                      ! inout
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
                      edmfdryqt, edmfmoistqt, &                                       ! out
@@ -4455,20 +4441,14 @@ if (ETr .eq. 1.) then
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
                      au, wu, Mu, E, D)                                               ! out          
-    end if
+    end if ! EDMF_SCHEME == 0
  else
     write (*,*) "Error: wrong EDMF_ET "
-end if
+end if ! ET == 1
+
+call ComputeZPBL(IM*JM, LM, zle, edmfdrya, zpbl_mf, KPBLmf)
+write(*,*) '**', zpbl_mf
       
-! Test
-!!$if ( SH(1,1) + mapl_epsilon*THV(1,1,LM)*EVAP(1,1)  > 0. ) then
-!!$   write(*,*) '*'
-!!$   do l = 1,LM
-!!$      write(*,*) l, acu_full(:,:,l), Tu_full(:,:,l), qlu_full(:,:,l)
-!!$   end do
-!!$   write(*,*) '*'
-!!$_ASSERT( .false. , 'foo bar' )      
-!!$end if
    !    print *,'edmfdrya',edmfdrya
    !   print *,'edmfdryw',edmfdryw    
    !    print *,'edmfmoista',edmfmoista
@@ -4476,8 +4456,6 @@ end if
    !   print *,'aw3',aw3
    !   print *,'buoyf',buoyf
       
-     
-
   !  Sdry=mapl_cp*T+0.5*mapl_grav*(ZLE(:,:,1:LM)+ZLE(:,:,0:LM-1))
 
 
@@ -4571,8 +4549,6 @@ end if
      if (associated(edmf_whl)) edmf_whl=mfwhl
      if (associated(edmf_mf)) edmf_mf=edmfmoista*edmfmoistw+edmfdrya*edmfdryw 
 
-     call ComputeZPBL(IM*JM,LM,ZLE,aw3,ZPBLmf,KPBLmf)
-
 ELSE
 ! if there is no mass-flux
 !
@@ -4619,8 +4595,8 @@ ELSE
     qlu_full = 0.
     if ( associated( exf_turb ) ) exf_turb = exf
 
-    ZPBLmf=0.
-    KPBLmf=float(LM)
+    zpbl_mf = 0.
+    KPBLmf  = float(LM)
      
 ENDIF
 
@@ -4734,8 +4710,8 @@ ENDIF
 
         ! Run MYNN
         call run_mynn(IM, JM, LM, &                                                ! in      
-                      MYNN_DEBUG_FLAG, DOMF, MYNN_LEVEL, &                         ! in      
-                      EDMF_CONSISTENT_TYPE, WQL_TYPE, WRF_CG_FLAG, &               ! in      
+                      MYNN_DEBUG, DOMF, MYNN_LEVEL, &                              ! in      
+                      EDMF_CONSISTENT, WQL_TYPE, WRF_CG_FLAG, &                    ! in      
                       alpha1_mynn, alpha2_mynn, alpha3_mynn, alpha4_mynn, &        ! in 
                       th00, PLE, RHOE, ZLE, Z, &                                   ! in      
                       U, V, OMEGA, T, Q, QL, QI, QA, THL, QT, THV, &               ! in      
@@ -5513,26 +5489,26 @@ ENDIF
       ! Setup the tridiagonal matrix
       ! ----------------------------
 
-      BKS = 1.00 - (AKS+CKS)
-      BKQ = 1.00 - (AKQ+CKQ)
-      BKV = 1.00 - (AKV+CKV)
+      BKS = 1. - ( AKS + CKS )
+      BKQ = 1. - ( AKQ + CKQ )
+      BKV = 1. - ( AKV + CKV )
 
     !
     ! A,B,C,D-s for mass flux
     !
         
 
-  AKSS(:,:,1)=0.0
-!  AKQQ(:,:,1)=0.0
-  AKUU(:,:,1)=0.0
+  AKSS(:,:,1) = 0.0
+!  AKQQ(:,:,1) = 0.0
+  AKUU(:,:,1) = 0.0
 
 
-  RHOAW3=RHOE*AW3
+  RHOAW3 = RHOE*AW3
 
 ! print *,'rhoaw3',rhoaw3
 
   if ( DO_MYNN == 0 ) then
-     if (EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE_TYPE == 0) then
+     if ( EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE == 0 ) then
         AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM) &
                          - 0.5*DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
         AKUU(:,:,2:LM) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM) &
@@ -5542,7 +5518,7 @@ ENDIF
         AKUU(:,:,2:LM) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM)
      end if
   else ! No AE3 factor in front of KM and KH
-     if (EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE_TYPE == 0) then
+     if ( EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE == 0 ) then
         AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,2:LM) &
                          - 0.5*DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
         AKUU(:,:,2:LM) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,2:LM) &
@@ -5554,12 +5530,12 @@ ENDIF
   end if
   AKQQ = AKSS
 
-  CKSS(:,:,LM)=-CT*DMI(:,:,LM)
-  CKQQ(:,:,LM)=-CQ*DMI(:,:,LM)
-  CKUU(:,:,LM)=-CU*DMI(:,:,LM)
+  CKSS(:,:,LM) = -CT*DMI(:,:,LM)
+  CKQQ(:,:,LM) = -CQ*DMI(:,:,LM)
+  CKUU(:,:,LM) = -CU*DMI(:,:,LM)
   
   if ( DO_MYNN == 0 ) then
-     if (EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE_TYPE == 0) then
+     if ( EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE == 0 ) then
         CKSS(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
                            + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
         CKUU(:,:,1:LM-1) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
@@ -5568,8 +5544,8 @@ ENDIF
         CKSS(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)
         CKUU(:,:,1:LM-1) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)
      end if
-  else ! No AE3 factor in front of  KM and KH
-     if (EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE_TYPE == 0) then
+  else ! No AE3 factor in front of KM and KH
+     if ( EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE == 0 ) then
         CKSS(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
                            + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
         CKUU(:,:,1:LM-1) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
@@ -5581,14 +5557,14 @@ ENDIF
   end if
   CKQQ(:,:,1:LM-1) = CKSS(:,:,1:LM-1)  
  
-  BKSS = 1.0 - (CKSS+AKSS)
-  BKQQ = 1.0 - (CKQQ+AKQQ)
-  BKUU = 1.0 - (CKUU+AKUU)
+  BKSS = 1.0 - ( CKSS + AKSS )
+  BKQQ = 1.0 - ( CKQQ + AKQQ )
+  BKUU = 1.0 - ( CKUU + AKUU )
 
 ! Add mass flux contribution
   
-  if (EDMF_IMPLICIT == 1) then
-     if (EDMF_DISCRETE_TYPE == 0) then
+  if ( EDMF_IMPLICIT == 1 ) then
+     if ( EDMF_DISCRETE == 0 ) then
         BKSS(:,:,LM) = BKSS(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
         BKQQ(:,:,LM) = BKQQ(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
         BKUU(:,:,LM) = BKUU(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
@@ -5596,7 +5572,7 @@ ENDIF
         BKSS(:,:,1:LM-1) = BKSS(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2))
         BKQQ(:,:,1:LM-1) = BKQQ(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2))
         BKUU(:,:,1:LM-1) = BKUU(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2))
-     else if (EDMF_DISCRETE_TYPE == 1) then
+     else 
         AKSS(:,:,2:LM) = AKSS(:,:,2:LM) - DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
         AKQQ(:,:,2:LM) = AKQQ(:,:,2:LM) - DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
         AKUU(:,:,2:LM) = AKUU(:,:,2:LM) - DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
@@ -5647,14 +5623,14 @@ ENDIF
       BKTKE(:,:,LM)     = 1.
       
       YTKE(:,:,0) = 0.
-      if ( TKET_M_FLAG /= 0 ) then
+      if ( MYNN_TKET_M == 0 ) then
          YTKE(:,:,1:LM-1) = DT*( tket_M(:,:,1:LM-1) + tket_B(:,:,1:LM-1) + tket_T_mf(:,:,1:LM-1) )
       else
          YTKE(:,:,1:LM-1) = DT*(                      tket_B(:,:,1:LM-1) + tket_T_mf(:,:,1:LM-1) )
       end if
       YTKE(:,:,LM) = TKE_SURF(:,:)
          
-      if (MYNN_LEVEL == 3) then
+      if ( MYNN_LEVEL == 3 ) then
          AKTPE(:,:,0)      = 0.
          AKTPE(:,:,1:LM-1) = -K_TKE(:,:,1:LM-1)/3.*RDZ_HALF(:,:,1:LM-1)*DMI_HALF(:,:,1:LM-1)
          AKTPE(:,:,LM)     = 0.
@@ -5797,7 +5773,7 @@ ENDIF
         BKTKE = BKIX
         AKTKE = AKIX
 
-        if (MYNN_LEVEL == 3) then
+        if ( MYNN_LEVEL == 3 ) then
            AKIX = AKTPE
            BKIX = BKTPE
            call VTRILU(AKIX, BKIX, CKTPE)
@@ -5874,7 +5850,7 @@ ENDIF
     real, dimension(:,:,:), pointer     :: AK, BK, CK
 
     ! For implicit mean-gradient production of second-order moments option
-    integer                             :: IMPLICIT_M_FLAG, MYNN_LEVEL, EDMF_CONSISTENT_TYPE, TKET_M_FLAG
+    integer                             :: MYNN_IMPLICIT, MYNN_LEVEL, EDMF_CONSISTENT, MYNN_TKET_M
     real                                :: DOMF
 
     real, dimension(:,:), pointer       :: SH, EVAP
@@ -5899,8 +5875,8 @@ ENDIF
 
 ! Get MYNN flags
 !---------------
-    call MAPL_GetResource(MAPL, IMPLICIT_M_FLAG, 'TURBULENCE_IMPLICIT_M_FLAG:', default=1,  RC=STATUS)
-    call MAPL_GetResource(MAPL, DO_MYNN,         'TURBULENCE_DO_MYNN:',         default=0, RC=STATUS)
+    call MAPL_GetResource(MAPL, MYNN_IMPLICIT,   'MYNN_IMPLICIT:',      default=0,  RC=STATUS)
+    call MAPL_GetResource(MAPL, DO_MYNN,         'TURBULENCE_DO_MYNN:', default=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Get pointers to implicit diffusive thermodynamic fluxes
@@ -5918,15 +5894,14 @@ ENDIF
 
 ! Initialize height of full levels
 !---------------------------------
-!    if ( DO_MYNN /= 0 .and. ( IMPLICIT_M_FLAG /= 0 .or. associated(ws_implicit) .or. associated(wqv_implicit) .or. associated(wql_implicit) ) ) then
-    if ( IMPLICIT_M_FLAG /= 0 .or. associated(ws_implicit) .or. associated(wqv_implicit) .or. associated(wql_implicit) ) then
+    if ( MYNN_IMPLICIT == 0 .or. associated(ws_implicit) .or. associated(wqv_implicit) .or. associated(wql_implicit) ) then
        allocate(ZLO(IM,JM,LM))
        ZLO = 0.5*( ZLE(:,:,0:LM-1) + ZLE(:,:,1:LM) )
     end if
 
 ! Allocate arrays for implicit mean-gradient production option
 !-------------------------------------------------------------
-    if ( DO_MYNN /= 0 .and. IMPLICIT_M_FLAG /=  0 ) then
+    if ( DO_MYNN /= 0 .and. MYNN_IMPLICIT ==  0 ) then
        allocate(U(IM,JM,LM), V(IM,JM,LM), H(IM,JM,LM), QV(IM,JM,LM), &
                 QLCN(IM,JM,LM), QLLS(IM,JM,LM), QL(IM,JM,LM))
     end if
@@ -6043,12 +6018,12 @@ ENDIF
 ! This assumes second-order moments are solved for last, and tke_new is the first
 ! second-order moment to be solved for.
 ! --------------------------------------------------------------------------------
-       if ( trim(name) == 'tke_new' .and. DO_MYNN /= 0 .and. IMPLICIT_M_FLAG /= 0 ) then
+       if ( trim(name) == 'tke_new' .and. DO_MYNN /= 0 .and. MYNN_IMPLICIT == 0 ) then
           call MAPL_GetResource(MAPL, DOMF, "EDMF_DOMF:", default=0.,  RC=STATUS)
           VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, EDMF_CONSISTENT_TYPE, "EDMF_CONSISTENT_TYPE:", default=0,  RC=STATUS)
+          call MAPL_GetResource(MAPL, EDMF_CONSISTENT, "EDMF_CONSISTENT:", default=0,  RC=STATUS)
           VERIFY_(STATUS)
-          call MAPL_GetResource (MAPL, TKET_M_FLAG, "TKET_M_FLAG:", default=1, RC=STATUS)
+          call MAPL_GetResource (MAPL, MYNN_TKET_M, "MYNN_TKET_M:", default=0, RC=STATUS)
 
           call MAPL_GetPointer(EXPORT, tket_M,    'tket_M',    ALLOC=.TRUE., RC=STATUS)
           VERIFY_(STATUS)
@@ -6090,7 +6065,7 @@ ENDIF
           end if
           VERIFY_(STATUS)
           
-          QL  = QLCN + QLLS
+          QL = QLCN + QLLS
 
           call implicit_M(IM, JM, LM, &
                           th00, ZLO, U, V, H, QV, QL, &
@@ -6098,18 +6073,18 @@ ENDIF
                           ws_explicit, wqv_explicit, wql_explicit, &
                           whl_mf, wqt_mf, wthv_mf, &
                           tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
-                          MYNN_LEVEL, DOMF, EDMF_CONSISTENT_TYPE)
+                          MYNN_LEVEL, DOMF, EDMF_CONSISTENT)
 
           YTKE(:,:,0) = 0.
-          if ( TKET_M_FLAG /= 0 ) then
+          if ( MYNN_TKET_M == 0 ) then
              YTKE(:,:,1:LM-1) = DT*( tket_M(:,:,1:LM-1) + tket_B(:,:,1:LM-1) + tket_T_mf(:,:,1:LM-1) )
           else
              YTKE(:,:,1:LM-1) = DT*(                      tket_B(:,:,1:LM-1) + tket_T_mf(:,:,1:LM-1) )
           end if
           YTKE(:,:,LM) = TKE_SURF(:,:)
 
-          call MAPL_GetResource (MAPL, MYNN_LEVEL, "TURBULENCE_MYNN_LEVEL:", default=2,  RC=STATUS)
-          if (MYNN_LEVEL == 3) then
+          call MAPL_GetResource (MAPL, MYNN_LEVEL, "MYNN_LEVEL:", default=2,  RC=STATUS)
+          if ( MYNN_LEVEL == 3 ) then
              YHL2(:,:,0)      = 0.
              YHL2(:,:,1:LM-1) = DT*hl2t_M(:,:,1:LM-1)
              YHL2(:,:,LM)     = HL2_SURF(:,:)
@@ -6290,7 +6265,7 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
        end if       
 
        ! Save updated mean state variables for implicit mean-gradient production option
-       if ( DO_MYNN /= 0 .and. IMPLICIT_M_FLAG /= 0 ) then
+       if ( DO_MYNN /= 0 .and. MYNN_IMPLICIT == 0 ) then
           if (trim(name) == 'U') then
              U = SX
           else if (trim(name) == 'V') then
@@ -7593,31 +7568,28 @@ X_mf(:,:,1)=0.
 end subroutine ComputeTendencies
 
 
-subroutine  ComputeZPBL(IRUN,LM,ZLE,AW,ZPBLmf,KPBLmf)
+subroutine ComputeZPBL(IRUN, LM, ZLE, AW, ZPBLmf, KPBLmf)
 
-integer, intent(in) :: IRUN,LM
-real, intent(in),dimension(IRUN,LM+1) :: ZLE,AW
-real, intent(out),dimension(IRUN) :: ZPBLmf,KPBLmf
-integer :: i,k
-! maximum pbl height
-real  :: zmax
+  integer, intent(in)                   :: IRUN, LM
+  real, intent(in),dimension(IRUN,0:LM) :: ZLE, AW
+  real, intent(out),dimension(IRUN)     :: ZPBLmf, KPBLmf
 
-zmax=3000.
+  integer :: i, k
+  real    :: zmax ! maximum pbl height
 
+  zmax = 3000.
 
-do i=1,irun
-     ZPBLmf(i)=0.
-     KPBLmf(i)=real(LM)
+  do i = 1,irun
+     ZPBLmf(i) = ZLE(i,LM-1)
+     KPBLmf(i) = real(LM)
 
-  do k=lm+1,1,-1
-   if ((AW(i,k) .ne. 0.) .and. (ZLE(i,k) .lt. zmax))  then
-       KPBLmf(i)=real(k)
-       ZPBLmf(i)=ZLE(i,k)
-    endif
-   enddo
-
-enddo
-
+     do k = LM,0,-1
+        if ( ( AW(i,k) /= 0. ) .and. ( ZLE(i,k) < zmax ) )  then
+           KPBLmf(i) = real(k)
+           ZPBLmf(i) = max( ZLE(i,LM-1), ZLE(i,k) )
+        endif
+     enddo
+  enddo
 
 end subroutine ComputeZPBL
 
@@ -7977,7 +7949,7 @@ if (L0(IH) .gt. 0. ) then
    ! entrainent: Ent=Ent0/dz*P(dz/L0)             
    do i=1,Nup   
     do k=kts,kte
-       if ( stochastic_flag == 0 ) then
+       if ( stochastic_flag /= 0 ) then
           ENT(k,i)=ENTf(k,i)*Ent0/(ZW(k)-ZW(k-1))
        else
           ENT(k,i)=real(ENTi(k,i))*Ent0/(ZW(k)-ZW(k-1))
