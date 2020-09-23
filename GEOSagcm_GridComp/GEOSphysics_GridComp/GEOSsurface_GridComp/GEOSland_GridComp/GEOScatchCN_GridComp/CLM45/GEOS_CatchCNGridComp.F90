@@ -5015,7 +5015,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:) :: car1, car2, car4
     real, allocatable, dimension(:) :: para
     real, allocatable, dimension(:) :: dayl, dayl_fac
-    real, allocatable, dimension(:), save :: nee, npp, gpp, sr, padd, frootc, vegc, xsmr,burn, closs
+    real, allocatable, dimension(:), save :: nee, npp, gpp, sr, padd, frootc, vegc, xsmr,burn, closs, fsel
     real, allocatable, dimension(:) :: nfire, som_closs, fsnow
     real, allocatable, dimension(:) :: ndeploy, denit, sminn_leached, sminn, fire_nloss
     real, allocatable, dimension(:) :: leafn, leafc, gross_nmin, net_nmin, nfix_to_sminn, actual_immob
@@ -6342,6 +6342,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(.not. allocated(xsmr)) allocate(    xsmr(ntiles) )
     if(.not. allocated(burn)) allocate(    burn(ntiles) )
     if(.not. allocated(closs))allocate(   closs(ntiles) )
+    if(.not. allocated(fsel ))allocate(   fsel (ntiles) )
     allocate(             nfire(ntiles) )
     allocate(         som_closs(ntiles) )
     allocate(    dayl(ntiles) )
