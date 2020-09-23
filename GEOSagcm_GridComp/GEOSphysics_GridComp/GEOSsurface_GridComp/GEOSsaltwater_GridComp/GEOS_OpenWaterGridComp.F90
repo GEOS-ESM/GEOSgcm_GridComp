@@ -1615,7 +1615,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real            :: MaxWaterDepth
    real            :: MinWaterDepth
    real            :: OGCM_top_thickness        ! thickness of OGCM top layer (D) in AS2018
-   real            :: QSAT_SCL
 
    character(len=ESMF_MAXSTR)     :: SURFRC
    type(ESMF_Config)              :: SCF 
@@ -2348,9 +2347,6 @@ contains
    real,    dimension(NT)              :: TAUTW_
    real,    dimension(NT)              :: ZETA_W_
    real,    dimension(NT)              :: uStokes_                  ! Stokes velocity should be an import from Wave Watch
-   real,    dimension(NT)              :: FRESHATM                  ! fresh water flux from atmosphere
-
-   real,    dimension(NT)              :: ALPH
 
    integer                             :: N
    real                                :: DT
@@ -2366,15 +2362,11 @@ contains
    real                                :: AOIL_depth                ! thickness of atmosphere-ocean interface layer (AOIL) denoted by d in Akella & Suarez, 2018
    real                                :: OGCM_top_thickness        ! thickness of OGCM top layer (D) in AS2018
    real                                :: epsilon_d                 ! ratio: (thickness of AOIL)/(thickness of OGCM top level) = epsilon_d in AS2018
-   real                                :: F_PHI                     ! tunable parameter, used to calculate stability function in AS2018
-   real                                :: QSAT_SCL 
-   real                                :: fLA
-   character(len=10)                   :: diurnal_warming_scheme    ! which formulation of diurnal warming model? AS2018 or AT2017 (DOI:10.1002/qj.2988)
+   character(len=3)                    :: DO_GRAD_DECAY_warmLayer   ! simulate gradual decay of warm layer: yes or no. Follows Zeng and Beljaars, 2005.
 
 ! following are related  to CICE
 
    integer                             :: NSUB, I, K, L
-   real                                :: FRESH
 !  -------------------------------------------------------------------
 
    type (ESMF_TimeInterval)            :: DELT
@@ -2602,6 +2594,9 @@ contains
     call MAPL_GetResource ( MAPL, MINSALINITY,   Label="MIN_SALINITY:" ,    DEFAULT=5.0  ,   RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetResource ( MAPL, DO_GRAD_DECAY_warmLayer,   Label="WARM_LAYER_GRAD_DECAY:" ,  DEFAULT="no"  ,   RC=STATUS)
+    VERIFY_(STATUS)
+
 !   Copy internals into local variables
 !   ------------------------------------
     if(DO_SKIN_LAYER==0) then                ! inactive AOIL (OFF)
@@ -2813,7 +2808,7 @@ contains
                      ALW,BLW,PEN, PEN_OCEAN, STOKES_SPEED,DT,MUSKIN,TS_FOUNDi,DWARM_,TBAR_,TXW,TYW,USTARW_,   &
                      DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_,TDEL_,SWWARM_,QWARM_,ZETA_W_,                 &
                      PHIW_,LANGM_,TAUTW_,uStokes_,TS,TWMTS,TW,WATER,tmp2,n_iter_cool,                         &
-                     fr_ice_thresh, epsilon_d)
+                     fr_ice_thresh, epsilon_d, trim(DO_GRAD_DECAY_warmLayer))
       deallocate(tmp2)
 
 ! Copies for export
