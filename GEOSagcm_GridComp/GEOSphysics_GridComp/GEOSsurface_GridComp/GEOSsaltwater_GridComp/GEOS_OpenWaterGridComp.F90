@@ -96,7 +96,6 @@ module GEOS_OpenwaterGridCompMod
   integer, parameter            :: WATER        = 1      
   integer, parameter            :: NUM_SUBTILES = 1             ! number of sub-tiles
   real,    parameter            :: KUVR         = 0.09
-  real,    parameter            :: SALTWATERCAP  = MAPL_CAPWTR
 
   contains
 
@@ -2308,16 +2307,12 @@ contains
    real,    dimension(NT)              :: FRWATER
    real,    dimension(NT)              :: SHF
    real,    dimension(NT)              :: EVP
-   real,    dimension(NT)              :: SHD
-   real,    dimension(NT)              :: EVD
    real,    dimension(NT)              :: CFQ
    real,    dimension(NT)              :: CFT
    real,    dimension(NT)              :: TXW
    real,    dimension(NT)              :: TYW
    real,    dimension(NT)              :: DQS
    real,    dimension(NT)              :: DTS
-   real,    dimension(NT)              :: DTX
-   real,    dimension(NT)              :: DTY
    real,    dimension(NT)              :: SWN
    real,    dimension(NT)              :: PEN
    real,    dimension(NT)              :: PEN_ocean
@@ -2740,52 +2735,6 @@ contains
     call surf_hflux_update (NT,DO_SKIN_LAYER,DO_DATASEA,MUSKIN,DT,epsilon_d,  &
              CFT,CFQ,SH,EVAP,DSH,DEV,THATM,QHATM,PS,FRWATER,HH(:,N),SNO,      &
              LWDNSRF,SWN,ALW,BLW,SHF,LHF,EVP,DTS,DQS,TS(:,N),QS(:,N),TWMTS,TWMTF)
-
-!   EVP = CFQ*(EVAP + DEV*(QS(:,N)-QHATM))
-!   SHF = CFT*(SH   + DSH*(TS(:,N)-THATM))
-!   SHD = CFT*DSH
-!   EVD = CFQ*DEV*GEOS_DQSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.)
-!   DTS = LWDNSRF - (ALW + BLW*TS(:,N)) - SHF
-
-!   ! FR accounts for skin under ice
-!   DTX = DT*FRWATER / (SALTWATERCAP*HH(:,N))
-
-!   if (DO_SKIN_LAYER == 0) then
-!     DTX = 0.
-!   else
-!     DTX = DTX*((MUSKIN+1.-MUSKIN*epsilon_d)/MUSKIN) ! note: epsilon_d is = 0. in uncoupled mode (DO_DATASEA == 1)
-!   endif
-
-!   ! DTY accounts for ice on top of water. Part of Shortwave is absorbed by ice and rest goes to warm water.
-!   ! Skin layer only absorbs the portion of SW radiation passing thru the bottom of ice MINUS
-!   ! the portion passing thru the skin layer    
-!   ! Penetrated shortwave from sea ice bottom + associated ocean/ice heat flux
-!   DTY = 0. ! Revisit above with CICE6 [Nov, 2019] and compute DTY = DT / (SALTWATERCAP*HW) * (PENICE * FI + FHOCN)
-
-!   DTS = DTX * ( DTS + SWN - EVP*MAPL_ALHL - MAPL_ALHF*SNO ) + DTY
-!   DTS = DTS   / ( 1.0 + DTX*(BLW + SHD + EVD*MAPL_ALHL) )
-!   EVP = EVP + EVD * DTS
-!   SHF = SHF + SHD * DTS
-!   LHF = EVP * MAPL_ALHL
-
-! Update WATER surface temperature, moisture and mass
-!----------------------------------------------------
-!   TS(:,N) = TS(:,N) + DTS
-!   DQS     = GEOS_QSAT(TS(:,N), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,N)
-!   QS(:,N) = QS(:,N) + DQS
-
-!   if(DO_SKIN_LAYER == 0) then
-!     TWMTS = 0.
-!     TWMTF = 0.
-!   else
-!     TWMTS = TWMTS - (1.0/(MUSKIN+1.0))*DTS
-!     if (DO_DATASEA == 0) then            ! coupled   mode
-!        TWMTF = TWMTF + (MUSKIN/(1.+MUSKIN-MUSKIN*epsilon_d))*DTS
-!     else                                 ! uncoupled mode
-!        TWMTF = 0.
-!!       TWMTF = TWMTF + (MUSKIN/(1.+MUSKIN))*DTS ! This will cause non-zero diff in internal/checkpoint, but ZERO DIFF in OUTPUT.
-!     end if
-!   end if
 
     call AOIL_v0_HW ( NT, DT, DO_DATASEA, MaxWaterDepth, MinWaterDepth, &
                       FRWATER, SNO, EVP, PCU+PLS, HH(:,WATER))
