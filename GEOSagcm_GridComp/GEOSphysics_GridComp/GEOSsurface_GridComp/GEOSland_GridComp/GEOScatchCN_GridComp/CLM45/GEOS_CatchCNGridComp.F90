@@ -3516,11 +3516,19 @@ subroutine SetServices ( GC, RC )
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_total_root_C'           ,&
     UNITS              = 'kg m-2'                    ,&
-    SHORT_NAME         = 'CNROOTC'                   ,&
+    SHORT_NAME         = 'CNROOT'                   ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
-  
+                                           RC=STATUS  )
+ 
+   call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'fire season length'        ,&
+    UNITS              = 'days'                      ,&
+    SHORT_NAME         = 'CNFSEL'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )  
+
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'absorbed_PAR'              ,&
     UNITS              = 'W m-2'                     ,&
@@ -4811,7 +4819,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: CNFUELC            
         real, dimension(:),   pointer :: CNTOTLITC          
         real, dimension(:),   pointer :: CNCWDC             
-        real, dimension(:),   pointer :: CNROOTC            
+        real, dimension(:),   pointer :: CNROOT            
+        real, dimension(:),   pointer :: CNFSEL
 
         real, dimension(:),   pointer :: WAT10CM
         real, dimension(:),   pointer :: WATSOI
@@ -5521,7 +5530,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,CNFUELC            , 'CNFUELC'             ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNTOTLITC          , 'CNTOTLITC'           ,           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNCWDC             , 'CNCWDC'              ,           RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNROOTC            , 'CNROOTC'             ,           RC=STATUS); VERIFY_(STATUS)        
+        call MAPL_GetPointer(EXPORT,CNROOT             , 'CNROOT'             ,           RC=STATUS); VERIFY_(STATUS)        
+        call MAPL_GetPointer(EXPORT,CNFSEL, 'CNFSEL' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU001,'RMELTDU001',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU002,'RMELTDU002',  RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,RMELTDU003,'RMELTDU003',  RC=STATUS); VERIFY_(STATUS)
@@ -7297,8 +7307,8 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        if(associated(CNFUELC            )) cnfuelc             = 1.e-3*fuelc             * cnsum 
        if(associated(CNTOTLITC          )) cntotlitc           = 1.e-3*totlitc           * cnsum 
        if(associated(CNCWDC             )) cncwdc              = 1.e-3*cwdc              * cnsum 
-       if(associated(CNROOTC            )) cnrootc             = 1.e-3*rootc             * cnsum          
-       
+       if(associated(CNROOT             )) cnroot              = 1.e-3*rootc             * cnsum          
+       if(associated(CNFSEL             )) cnfsel              = fsel                    
        ! reset summing arrays
        ! --------------------
        tgwm    = 0.
@@ -7354,7 +7364,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        if(associated(CNFUELC            )) cnfuelc             = 0. 
        if(associated(CNTOTLITC          )) cntotlitc           = 0. 
        if(associated(CNCWDC             )) cncwdc              = 0. 
-       if(associated(CNROOTC            )) cnrootc             = 0.
+       if(associated(CNROOT             )) cnroot              = 0.
        
     endif
 
