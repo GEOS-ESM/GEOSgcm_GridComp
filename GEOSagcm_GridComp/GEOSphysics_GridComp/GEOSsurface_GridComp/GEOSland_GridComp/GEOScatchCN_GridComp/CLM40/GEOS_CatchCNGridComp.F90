@@ -3303,7 +3303,16 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-
+  
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'Dummy_CN_fine_root_carbon' ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'CNFROOTC'                  ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_net_primary_production' ,&
     UNITS              = 'kg m-2 s-1'                ,&
@@ -4834,6 +4843,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: CNTOTC
         real, dimension(:),   pointer :: CNVEGC
         real, dimension(:),   pointer :: CNROOT
+        real, dimension(:),   pointer :: CNFROOTC
         real, dimension(:),   pointer :: CNNPP
         real, dimension(:),   pointer :: CNGPP
         real, dimension(:),   pointer :: CNSR
@@ -5485,6 +5495,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,CNTOTC, 'CNTOTC' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNVEGC, 'CNVEGC' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNROOT, 'CNROOT' ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,CNFROOTC,'CNFROOTC',           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNNPP,  'CNNPP'  ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNGPP,  'CNGPP'  ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNSR,   'CNSR'   ,             RC=STATUS); VERIFY_(STATUS)
@@ -7134,6 +7145,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        if(associated(CNLOSS)) cnloss = 1.e-3*closs ! * cnsum ! total fire C loss (kg/m2/s)
        if(associated(CNBURN)) cnburn = burn        ! * cnsum ! area fractional fire burn rate (s-1)
        if(associated(CNFSEL)) cnfsel = fsel        ! * cnsum ! fire season length (days)
+       if(associated(CNFROOTC)) cnfrootc = 1.e-3*root  ! * cnsum
        
        ! copy CN_restart vars to catch_internal_rst gkw: only do if stopping
        ! ------------------------------------------
