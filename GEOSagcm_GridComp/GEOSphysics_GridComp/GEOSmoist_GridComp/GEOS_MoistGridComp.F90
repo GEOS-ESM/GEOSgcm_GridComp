@@ -6370,11 +6370,11 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%SCVERBOSE,        'SCVERBOSE:',      DEFAULT=0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:',     DEFAULT=1, RC=STATUS)
 
-      call MAPL_GetResource(STATE, SHLWPARAMS%RPEN,      'RPEN:'      ,DEFAULT=3.0, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RPEN,      'RPEN:'      ,DEFAULT=10.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RLE,       'RLE:'       ,DEFAULT=0.1, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'       ,DEFAULT=10.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%MIXSCALE,  'MIXSCALE:'  ,DEFAULT=3000.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%DETRHGT,   'DETRHGT:'   ,DEFAULT=1600.0, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%DETRHGT,   'DETRHGT:'   ,DEFAULT=1000.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RMAXFRAC,  'RMAXFRAC:'  ,DEFAULT=0.1,  RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%MUMIN1,    'MUMIN1:'    ,DEFAULT=0.906, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RBUOY,     'RBUOY:'     ,DEFAULT=1.0,    RC=STATUS)
@@ -9489,6 +9489,7 @@ contains
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI]
                                RAD_QV, RAD_QL, RAD_QR, RAD_QI, RAD_QS, RAD_QG, RAD_CF, (NACTL+NACTI)/1.e6, &
+                               fQa, fqal, fqai,  &
                              ! Output tendencies
                                DQVDT_micro, DQLDT_micro, DQRDT_micro, DQIDT_micro, &
                                DQSDT_micro, DQGDT_micro, DQADT_micro, DTDT_micro, &
@@ -9506,6 +9507,10 @@ contains
                              ! constant grid/time information
                                LHYDROSTATIC, LPHYS_HYDROSTATIC, &
                                1,IM, 1,JM, 1,LM, 1, LM)
+
+         fqa  = max(0.,min(1.,fqa))
+         fqal = max(0.,min(1.,fqal))
+         fqai = max(0.,min(1.,fqai))
 
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
          PRCP_RAIN    = PRCP_RAIN    / 86400.
