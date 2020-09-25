@@ -90,6 +90,11 @@
        real, pointer ::    BGALBNF(:)
        real, pointer ::    CNCOL(:,:)
        real, pointer ::    CNPFT(:,:)
+       real, pointer ::    ABM     (:)
+       real, pointer ::    FIELDCAP(:)
+       real, pointer ::    HDM     (:)
+       real, pointer ::    GDP     (:)
+       real, pointer ::    PEATF   (:)       
   endtype catch_rst
 
   type(catch_rst) catch(3)
@@ -161,7 +166,7 @@
   if (filetype == 0) then
      call formatter(1)%open(trim(fname1),pFIO_READ,rc=rc)
      call formatter(2)%open(trim(fname2),pFIO_READ,rc=rc)
-     cfg(1)=formatter(1)%read(rc=rc)
+     cfg(1)=formatter(1)%read(rc=rc) 
      cfg(2)=formatter(2)%read(rc=rc)
   else
      open(unit=10, file=trim(fname1),  form='unformatted')
@@ -490,6 +495,12 @@
        allocate( catch%    BGALBNF(ntiles) )
        allocate( catch%      CNCOL(ntiles,nzone*VAR_COL))
        allocate( catch%      CNPFT(ntiles,nzone*nveg*VAR_PFT))
+       allocate( catch%        ABM(ntiles) )
+       allocate( catch%   FIELDCAP(ntiles) )
+       allocate( catch%        HDM(ntiles) )
+       allocate( catch%        GDP(ntiles) )
+       allocate( catch%      PEATF(ntiles) )
+       
    return
    end subroutine allocatch
 
@@ -500,7 +511,7 @@
    integer :: j, dim1,dim2
    type(Variable), pointer :: myVariable
    character(len=:), pointer :: dname
-   
+   logical                   :: clm45 = .false.
 
        call MAPL_VarRead(formatter,"BF1",catch%bf1)
        call MAPL_VarRead(formatter,"BF2",catch%bf2)
@@ -578,6 +589,14 @@
        myVariable => cfg%get_variable("CNCOL")
        dname => myVariable%get_ith_dimension(2)
        dim1 = cfg%get_dimension(dname)
+       if (dim1 == 105) clm45  = .true.
+       if(clm45) then          
+          call MAPL_VarRead(formatter,"ABM",     catch%ABM , rc = rc    )
+          call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP)
+          call MAPL_VarRead(formatter,"HDM",     catch%HDM     )
+          call MAPL_VarRead(formatter,"GDP",     catch%GDP     )
+          call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   )
+       endif
        do j=1,dim1
           call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j)
        enddo
@@ -795,6 +814,12 @@
           do j=1,dim1
              call MAPL_VarWrite(formatter,"SFMM",  var,offset1=j)
           enddo
+
+          call MAPL_VarWrite(formatter,"ABM",     catch%ABM, rc =rc     )
+          call MAPL_VarWrite(formatter,"FIELDCAP",catch%FIELDCAP)
+          call MAPL_VarWrite(formatter,"HDM",     catch%HDM     )
+          call MAPL_VarWrite(formatter,"GDP",     catch%GDP     )
+          call MAPL_VarWrite(formatter,"PEATF",   catch%PEATF   )
           call MAPL_VarWrite(formatter,"RHM",     var)
           call MAPL_VarWrite(formatter,"WINDM",   var)
           call MAPL_VarWrite(formatter,"RAINFM",  var)

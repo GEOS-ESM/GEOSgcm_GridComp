@@ -1651,8 +1651,6 @@ subroutine SetServices ( GC, RC )
     RESTART            = MAPL_RestartRequired        ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-
-  ! Interactive CN model or write out anomalies
   
   call MAPL_AddInternalSpec(GC                       ,&
        LONG_NAME          = 'column_rst_vars'           ,&
