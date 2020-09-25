@@ -6569,6 +6569,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 	 qx2(n)   =  (f1*qc(n,fsat) + f2*qc(n,ftrn) + f4*qc(n,fwlt))/cn2
          rzm(n,2) =  (f1*sm1(n)     + f2*sm2(n)     + f4*sm4(n)    )/cn2
          sfm(n,2) =  (f1*SWSRF1(n)  + f2*SWSRF2(n)  + f4*SWSRF4(n) )/cn2
+         btran2_sf(n) = (f1*bt1_sf(n) + f2*bt2_sf(n) + f4*bt4_sf(n))/cn2
 ! CN zone 3
          if(ax4 .gt. cn3) then
            f1 = 0. ; f2 = 0. ; f4 = cn3
@@ -7234,7 +7235,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        
        lats_degree = lats / MAPL_PI * 180.
        lons_degree = lons / MAPL_PI * 180.
-
+       
        call CN_Driver(istep_cn,ntiles,nveg,nzone,dayl,                                           &
             tgwm,tpm,tp2,tp3,tp4,tp5,tp6,sfmm,rzmm,wpwet,                                        &
             psis,bee,poros,vgwmax,bflowm,totwatm,runsrfm,                                        &
@@ -7248,6 +7249,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
             leafn,leafc,gross_nmin,net_nmin,nfix_to_sminn,actual_immob,                          &
             fpg,fpi,sminn_to_plant,sminn_to_npool,ndep_to_sminn,totvegn,totlitn,totsomn,         &
             retransn,retransn_to_npool,fuelc,totlitc,cwdc,rootc) 
+
        
        ! save scaled CN diagnostics
        ! --------------------------
