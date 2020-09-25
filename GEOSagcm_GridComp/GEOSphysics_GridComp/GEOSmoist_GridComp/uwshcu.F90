@@ -785,6 +785,8 @@ contains
                                         
     integer               :: kinv_o   , klcl_o   , klfc_o  
 
+    real                  :: lts
+
     real, dimension(k0,ncnst)   :: tr0_o
     real, dimension(k0,ncnst)   :: trten_o, sstr0_o  
     real, dimension(0:k0,ncnst) :: trflx_o
@@ -1316,29 +1318,17 @@ contains
            ! of 5 [m] in the below 'kinv' finding block.                             !
            ! ----------------------------------------------------------------------- !
 
-!           do k = k0-1, 1, -1 
-!              if( (pblh + 5. - zifc0(k))*(pblh + 5. - zifc0(k+1)) .lt. 0. ) then
-!                  kinv = k + 1   ! should this be k?
-!                  go to 15
-!              endif 
-!           end do
-!           kinv = 1
-
            ! invert kpbl index
-           if (kpbl_in(i).gt.k0/2) then
-             kinv = k0 - kpbl_in(i) + 1
-           else
-             kinv = 5
-           end if
-!           print *,'kinv=',kinv
+             kinv = k0 - kpbl_in(i) + 2
+
 
 15         continue    
 
-           if( kinv .le. 1 ) then        
+           if( zifc0(kinv) .le. 300. ) then        
               exit_kinv1(i) = 1.
               id_exit = .true.
               if (scverbose) then
-                call write_parallel('------- UW ShCu: Exit, kinv<=1')
+                call write_parallel('------- UW ShCu: Exit, zinv<=300m')
               end if
               go to 333
            endif
@@ -1350,8 +1340,6 @@ contains
               go to 333
            endif
 
-!           kinv = min(kinv,7)
-           ! From here, it must be '7 >= kinv >= 2'.        
  
        ! -------------------------------------------------------------------------- !
        ! Find PBL averaged tke ('tkeavg') and minimum 'thvl' ('thvlmin') in the PBL !
@@ -1387,7 +1375,7 @@ contains
 
          dpsum = 0.
          do k = 1,kinv
-             dpi = max(0.,(4e3+pmid0(k)-pifc0(0))/4e3)
+             dpi = max(0.,(2e3+pmid0(k)-pifc0(0))/2e3)
              qtavg  = qtavg  + dpi*qt0(k)
              dpsum = dpsum + dpi
          end do
@@ -1548,6 +1536,17 @@ contains
         plfc   = 0.
         klfc   = k0
 
+
+
+        lts =  0.0
+        do k = 2,k0-1
+           if (pmid0(k).lt.70000.0) then
+             lts = t0(k-1)/exnmid0(k-1)  ! theta
+             exit
+           end if
+        end do
+        lts = lts - t0(1)/exnmid0(1)
+
         !------------------------------------------------------------------------!
         ! Case 1. LCL height is higher than PBL interface ( 'pLCL <=ps0(kinv-1)' ) !
         !------------------------------------------------------------------------!
@@ -1630,6 +1629,8 @@ contains
  35    continue
        if( cin .lt. 0. ) limit_cin(i) = 1.
        cin = max(0.,cin)
+       cin = max(cin,0.04*(lts-18.))   ! kludge to prevent UW in StCu regions
+
 
        if( klfc .ge. k0 ) then
            klfc = k0
@@ -2561,7 +2562,7 @@ contains
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
             if (mixscale.ne.0.0) then
-              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/100.)) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
 !              rei(k) = ( rkm / min(scaleh,4000.) / g / rhomid0j )   ! alternative
             else if (mixscale.eq.0.0) then
               rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j )       ! Jason-2_0 version
@@ -4247,7 +4248,7 @@ contains
      ! ----------------------- !
 
      umf_out(i,0:k0)             = umf(0:k0)
-     umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
+!     umf_out(i,0:kinv-2)         = uemf(0:kinv-2)
      dcm_out(i,:k0)              = dcm(:k0)
 !the indices are not reversed, these variables go into compute_mcshallow_inv
      qvten_out(i,:k0)            = qvten(:k0)
