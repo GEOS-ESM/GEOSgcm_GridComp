@@ -3853,12 +3853,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
     integer, parameter :: nzone = num_zon ! number of stress zones
 
     integer, allocatable :: ityp(:,:,:)
-    real,    allocatable :: fveg(:,:,:), elai(:,:,:), esai(:,:,:), wtzone(:,:), lai1(:), lai2(:), wght(:)
+    real,    allocatable :: fveg(:,:,:), elai(:,:,:), esai(:,:,:), tlai(:,:,:), wtzone(:,:), lai1(:), lai2(:), wght(:)
 
     integer :: nv, nz, ib
     real    :: bare
     logical, save :: first = .true.
-    integer*8, save :: istep = 1 ! gkw: legacy variable from offline
+    integer*8, save :: istep_cn = 1 ! gkw: legacy variable from offline
 
   ! Offline mode
 
@@ -4114,6 +4114,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    allocate( wtzone(nt,nzone) )
    allocate(   elai(nt,nveg,nzone) )
    allocate(   esai(nt,nveg,nzone) )
+   allocate(   tlai(nt,nveg,nzone) )
 
    allocate ( lai1(nt) )
    allocate ( lai2(nt) )
@@ -4168,7 +4169,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! initialize CN model and transfer restart variables on startup
 ! -------------------------------------------------------------
    if(first) then
-      call CN_init(istep,nt,nveg,nzone,ityp,fveg,var_col,var_pft,cncol=cncol,cnpft=cnpft)  
+      call CN_init(istep_cn,nt,nveg,nzone,ityp,fveg,var_col,var_pft,cncol=cncol,cnpft=cnpft)  
       call get_CN_LAI(nt,nveg,nzone,ityp,fveg,elai,esai=esai)  
       first = .false.
    endif
@@ -4183,7 +4184,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! obtain LAI from previous time step (from CN model)
 ! --------------------------------------------------
 
-   call get_CN_LAI(nt,nveg,nzone,ityp,fveg,elai,esai=esai)
+   call get_CN_LAI(nt,nveg,nzone,ityp,fveg,elai,esai=esai,tlai=tlai)
       
    lai1 = 0.
    wght = 0.
@@ -4212,6 +4213,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    deallocate ( elai )
    deallocate ( esai )
    deallocate ( wtzone )
+   deallocate ( tlai   )
    
 !  Clear the output tile accumulators
 !------------------------------------
@@ -5101,7 +5103,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     integer :: ntile, nv, dpy, ierr, iok, ndt
     integer, save :: year_prev = -9999
-    real :: dtcn ! carbon model time step
     
     integer, save :: n10d               ! number of land model steps in a 10-day period
     integer, save :: n60d               ! number of land model steps in a 60-day period    
@@ -5180,10 +5181,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              RC=STATUS )
         VERIFY_(STATUS)
 
-        ! Get lightening frequency clim file name from configuration
-        call MAPL_GetResource ( MAPL, LNFMFILE, label = 'LNFM_FILE:', default = 'lnfm.dat', RC=STATUS )
-        VERIFY_(STATUS)
-
         ! Get component's private internal state
         call ESMF_UserCompGetInternalState(gc, 'OfflineMode', wrap, status)
         VERIFY_(status)
@@ -5209,7 +5206,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! -----------------------------------------------------
         ! IMPORT Pointers
         ! -----------------------------------------------------
-
+        
         call MAPL_GetPointer(IMPORT,PS     ,'PS'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,TA     ,'TA'     ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,QA     ,'QA'     ,RC=STATUS); VERIFY_(STATUS)
@@ -5547,7 +5544,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     allocate(   ityp(ntiles,nveg,nzone) )
     allocate(   fveg(ntiles,nveg,nzone) )
-    allocate( wtzone(ntiles,nzone) )
+    allocate(   wtzone   (ntiles,nzone) )
     allocate(   elai(ntiles,nveg,nzone) )
     allocate(   esai(ntiles,nveg,nzone) )
     allocate(   tlai(ntiles,nveg,nzone) )
@@ -5592,7 +5589,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     ! obtain LAI from previous time step (from CN model)
     ! --------------------------------------------------
-    call get_CN_LAI(ntiles,nveg,nzone,ityp,fveg,elai,esai=esai)
+    call get_CN_LAI(ntiles,nveg,nzone,ityp,fveg,elai,esai=esai,tlai = tlai)
 
 ! OPTIONAL IMPOSE MONTHLY MEAN DIURNAL CYCLE FROM NOAA CARBON TRACKER
 ! -------------------------------------------------------------------
@@ -5676,7 +5673,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
        ENDIF READ_CT_CO2       
     ENDIF
-    
+
  ! OPTIONAL FPAR SCALING
 ! ---------------------
  
@@ -6571,7 +6568,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 	 tx2(n)   =  (f1*tc(n,fsat) + f2*tc(n,ftrn) + f4*tc(n,fwlt))/cn2
 	 qx2(n)   =  (f1*qc(n,fsat) + f2*qc(n,ftrn) + f4*qc(n,fwlt))/cn2
          rzm(n,2) =  (f1*sm1(n)     + f2*sm2(n)     + f4*sm4(n)    )/cn2
-
+         sfm(n,2) =  (f1*SWSRF1(n)  + f2*SWSRF2(n)  + f4*SWSRF4(n) )/cn2
 ! CN zone 3
          if(ax4 .gt. cn3) then
            f1 = 0. ; f2 = 0. ; f4 = cn3
@@ -6808,7 +6805,8 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
 ! fzeng: note that this is not exactly the same as calling sibalb_vis in the unified model because the 
 ! "if(fveg(i)>1.e-4 .and. zth(i)>0.01)" branch in subroutine sibalb_vis is absent in the current subroutine sibalb.
-! -----------------------------------------------------------------------------------------------------------------        
+! -----------------------------------------------------------------------------------------------------------------
+
         call SIBALB(ntiles, ityp_tmp, elaz(:,nv), GRN, ZTH, &
                     BGALBVR, BGALBVF, BGALBNR, BGALBNF,     &              ! gkw: MODIS soil background albedo
                     ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )      ! instantaneous snow-free albedos on tiles
@@ -6833,6 +6831,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
         albdir(:,nv) = albvr(:)*(1.-fsnow(:)) + snovr(:)*fsnow(:)
         albdif(:,nv) = albvf(:)*(1.-fsnow(:)) + snovf(:)*fsnow(:)
+
       end do      
 
       call compute_rc(ntiles,nveg,TCx,QAx,T2M10D,TA,PS,ZTH,DRPAR,DFPAR,     &
@@ -6982,7 +6981,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
                    RCx,RCxDT,RCxDQ,psnsunx,psnshax,laisunx,laishax,      &
                    dayl_fac,co2v,dtc,dea,parzone,sifsunx,sifshax,        &
                    lmrsunx,lmrshax,fpar_sf = scaled_fpar )
-              
+
               rc00(:,nz) = rcx(:)
               rcdt(:,nz) = rcxdt(:)
               rcdq(:,nz) = rcxdq(:)
@@ -7120,7 +7119,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
     SNONR(:) = SNONR(:)*fveg1(:) + SNONR_tmp(:)*fveg2(:)
     SNOVF(:) = SNOVF(:)*fveg1(:) + SNOVF_tmp(:)*fveg2(:)
     SNONF(:) = SNONF(:)*fveg1(:) + SNONF_tmp(:)*fveg2(:)
-    
+
     ! --------------------------------------------------------------------------
     ! albedo/swnet partitioning
     ! --------------------------------------------------------------------------
@@ -7146,9 +7145,9 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        Qair_sat = MAPL_EQsat(TA(n), PS(n) )
        Qair_relative(n) = QA(n) / Qair_sat * 100.
     end do
-    
+
     Qair_relative(:) = min(max(0., Qair_relative(:)), 100.)
-       
+
     ! CN time step over 4 hours may fail; limit to 4 hours; verify that DTCN is a multiple of DT
     ! ------------------------------------------------------------------------------------------
     dtcn = min(dtcn,14400.)
@@ -7158,12 +7157,14 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
     
     ! sum over interval for CN
     ! ------------------------
+
     tgwm    = tgwm    + tgw
     tpm     = tpm     + tp1
     sfmm    = sfmm    + sfm
     rzmm    = rzmm    + rzm
     bflowm  = bflowm  + bflow
     totwatm = totwatm + totwat
+    
     tairm   = tairm   + TA
     rhm     = rhm     + Qair_relative
     windm   = windm   + UU
@@ -7183,7 +7184,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
     
     ! call CN model every DTCN seconds
     ! --------------------------------
-    
+
     if(mod(AGCM_S_ofday,nint(dtcn)) == 0) then
        
        ! fzeng: pass current date_time to the CN routines.
@@ -7193,6 +7194,11 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        ! do lnfm interpolation
        call ESMF_ClockGet  ( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
        VERIFY_(STATUS)
+
+       ! Get lightening frequency clim file name from configuration
+       call MAPL_GetResource ( MAPL, LNFMFILE, label = 'LNFM_FILE:', default = 'lnfm.dat', RC=STATUS )
+       VERIFY_(STATUS)
+
        call MAPL_ReadForcing(MAPL,'LNFM',LNFMFILE,CURRENT_TIME,lnfm,ON_TILES=.true.,RC=STATUS)
        VERIFY_(STATUS)
        
@@ -7209,6 +7215,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
              lmrsham(:,nv,nz) = lmrsham(:,nv,nz) / cnsum(:)                
           end do
        end do
+       
        tpm     = tpm     / cnsum
        bflowm  = bflowm  / cnsum
        totwatm = totwatm / cnsum
@@ -7227,7 +7234,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        
        lats_degree = lats / MAPL_PI * 180.
        lons_degree = lons / MAPL_PI * 180.
-       
+
        call CN_Driver(istep_cn,ntiles,nveg,nzone,dayl,                                           &
             tgwm,tpm,tp2,tp3,tp4,tp5,tp6,sfmm,rzmm,wpwet,                                        &
             psis,bee,poros,vgwmax,bflowm,totwatm,runsrfm,                                        &

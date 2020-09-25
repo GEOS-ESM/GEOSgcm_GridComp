@@ -682,6 +682,7 @@
    real, dimension (:), allocatable :: var
    type(Variable), pointer :: myVariable
    character(len=:), pointer :: dname
+   logical                   :: clm45 = .false.
 
        call MAPL_VarWrite(formatter,"BF1",catch%bf1)
        call MAPL_VarWrite(formatter,"BF2",catch%bf2)
@@ -759,6 +760,7 @@
        myVariable => cfg%get_variable("CNCOL")
        dname => myVariable%get_ith_dimension(2)
        dim1 = cfg%get_dimension(dname)
+       if (dim1 == 105) clm45  = .true.
        do j=1,dim1
           call MAPL_VarWrite(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j)
        enddo
@@ -773,7 +775,6 @@
        allocate (var (dim1))
        var = 0.
 
-       call MAPL_VarWrite(formatter,"SFMCM",  var)
        call MAPL_VarWrite(formatter,"BFLOWM", var)
        call MAPL_VarWrite(formatter,"TOTWATM",var)
        call MAPL_VarWrite(formatter,"TAIRM",  var)
@@ -790,10 +791,27 @@
           call MAPL_VarWrite(formatter,"RZMM",var,offset1=j)
        end do
 
+       if (clm45) then
+          do j=1,dim1
+             call MAPL_VarWrite(formatter,"SFMM",  var,offset1=j)
+          enddo
+          call MAPL_VarWrite(formatter,"RHM",     var)
+          call MAPL_VarWrite(formatter,"WINDM",   var)
+          call MAPL_VarWrite(formatter,"RAINFM",  var)
+          call MAPL_VarWrite(formatter,"SNOWFM",  var)
+          call MAPL_VarWrite(formatter,"RUNSRFM", var)
+          call MAPL_VarWrite(formatter,"AR1M",    var)
+          call MAPL_VarWrite(formatter,"T2M10D",  var)
+          call MAPL_VarWrite(formatter,"TPREC10D",var)
+          call MAPL_VarWrite(formatter,"TPREC60D",var)
+       else
+          call MAPL_VarWrite(formatter,"SFMCM",  var)          
+       endif
+       
        myVariable => cfg%get_variable("PSNSUNM")
        dname => myVariable%get_ith_dimension(2)
        dim1 = cfg%get_dimension(dname)
-       dname => myVariable%get_ith_dimension(2)
+       dname => myVariable%get_ith_dimension(3)
        dim2 = cfg%get_dimension(dname)
        do i=1,dim2 
           do j=1,dim1
