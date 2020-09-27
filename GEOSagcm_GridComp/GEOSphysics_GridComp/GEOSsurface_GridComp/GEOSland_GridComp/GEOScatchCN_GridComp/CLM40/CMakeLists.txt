@@ -37,14 +37,12 @@ set (srcs
   CNBalanceCheckMod.F90
   CN_DriverMod.F90
   compute_rc.F90
-  catchmentCN.F90
-  catchcn_iau.F90
   GEOS_CatchCNGridComp.F90 
   )
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL GEOS_Shared GEOS_LandShared)
+  DEPENDENCIES MAPL GEOS_Shared GEOS_LandShared GEOS_CatchCNRoot)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
 if (is_openmp)
