@@ -90,7 +90,7 @@ MODULE CATCHMENT_CN_MODEL
        SHR, SCONST, C_CANOP, N_sm, SATCAPFR   
 
   USE SURFPARAMS,       ONLY: CSOIL_2, RSWILT, &
-      LAND_FIX_CN, FLWALPHA
+      LAND_FIX_CN, LAND_FIX, FLWALPHA
 
   
   USE lsm_routines, only :                          &
@@ -549,14 +549,13 @@ CONTAINS
         tc4_orig(n)=tc4(n)
 
         ! Andrea Molod (Oct 21, 2016):
-        if (LAND_FIX_CN) then
+       
         qa1(n) = min(max(qm(N),qsat1(N)),qa1(N))
         qa1(n) = max(min(qm(N),qsat1(N)),qa1(N))
         qa2(n) = min(max(qm(N),qsat2(N)),qa2(N))
         qa2(n) = max(min(qm(N),qsat2(N)),qa2(N))
         qa4(n) = min(max(qm(N),qsat4(N)),qa4(N))
         qa4(n) = max(min(qm(N),qsat4(N)),qa4(N))
-        end if
 
 !        if(ityp1(n) .ge. 7) potfrc(n)=0.
 
@@ -1364,43 +1363,43 @@ CONTAINS
                            DHSDTC4(N)
 
 !       Ensure that modifications made to QA and TC are not too large:
-        IF ( (.NOT. LAND_FIX_CN) .OR. (ASNOW0(N) .EQ. 0. ) ) THEN
-        IF(ABS(QA1X-QA1(N)) .LE. 0.5*QA1(N)) THEN
-            QA1(N)=QA1X
-          ELSE
-            QA1(N)=QA1(N)+SIGN(0.5*QA1(N),QA1X-QA1(N))
-          ENDIF
+        IF ( (.NOT. LAND_FIX) .OR. (ASNOW0(N) .EQ. 0. ) ) THEN
+           IF(ABS(QA1X-QA1(N)) .LE. 0.5*QA1(N)) THEN
+             QA1(N)=QA1X
+           ELSE
+             QA1(N)=QA1(N)+SIGN(0.5*QA1(N),QA1X-QA1(N))
+           ENDIF
 
-        IF(ABS(QA2X-QA2(N)) .LE. 0.5*QA2(N)) THEN
-            QA2(N)=QA2X
-          ELSE
-            QA2(N)=QA2(N)+SIGN(0.5*QA2(N),QA2X-QA2(N))
-          ENDIF
+           IF(ABS(QA2X-QA2(N)) .LE. 0.5*QA2(N)) THEN
+             QA2(N)=QA2X
+           ELSE
+             QA2(N)=QA2(N)+SIGN(0.5*QA2(N),QA2X-QA2(N))
+           ENDIF
 
-        IF(ABS(QA4X-QA4(N)) .LE. 0.5*QA4(N)) THEN
-            QA4(N)=QA4X
-          ELSE
-            QA4(N)=QA4(N)+SIGN(0.5*QA4(N),QA4X-QA4(N))
-          ENDIF
+           IF(ABS(QA4X-QA4(N)) .LE. 0.5*QA4(N)) THEN
+             QA4(N)=QA4X
+           ELSE
+             QA4(N)=QA4(N)+SIGN(0.5*QA4(N),QA4X-QA4(N))
+           ENDIF
 
-        IF(ABS(TC1X-TC1(N)) .LE. 10.) THEN
-            TC1(N)=TC1X
-          ELSE
-            TC1(N)=TC1(N)+SIGN(10.,TC1X-TC1(N))
-          ENDIF
+           IF(ABS(TC1X-TC1(N)) .LE. 10.) THEN
+             TC1(N)=TC1X
+           ELSE
+             TC1(N)=TC1(N)+SIGN(10.,TC1X-TC1(N))
+           ENDIF
 
-        IF(ABS(TC2X-TC2(N)) .LE. 10.) THEN
-            TC2(N)=TC2X
-          ELSE
-            TC2(N)=TC2(N)+SIGN(10.,TC2X-TC2(N))
-          ENDIF
+           IF(ABS(TC2X-TC2(N)) .LE. 10.) THEN
+             TC2(N)=TC2X
+           ELSE
+             TC2(N)=TC2(N)+SIGN(10.,TC2X-TC2(N))
+           ENDIF
 
-        IF(ABS(TC4X-TC4(N)) .LE. 10.) THEN
-            TC4(N)=TC4X
-          ELSE
-            TC4(N)=TC4(N)+SIGN(10.,TC4X-TC4(N))
-          ENDIF
-       ENDIF ! LAND_FIX_CN and ASNOW=0  
+           IF(ABS(TC4X-TC4(N)) .LE. 10.) THEN
+             TC4(N)=TC4X
+           ELSE
+             TC4(N)=TC4(N)+SIGN(10.,TC4X-TC4(N))
+           ENDIF
+        ENDIF ! IF ( (.NOT. LAND_FIX) .OR. (ASNOW0(N) .EQ. 0. ) ) 
 
 ! EVACC and SHACC are the differences ("errors") between what the land surface
 ! model computes for the evaporation and sensible heat flux and what the AGCM
