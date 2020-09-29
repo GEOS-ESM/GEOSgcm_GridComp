@@ -2344,7 +2344,6 @@ contains
    real,    dimension(NT)              :: ZETA_W_
    real,    dimension(NT)              :: uStokes_                  ! Stokes velocity should be an import from Wave Watch
 
-   integer                             :: N
    real                                :: DT
    real                                :: MAXWATERDEPTH
    real                                :: MINWATERDEPTH
@@ -2708,18 +2707,6 @@ contains
     if(associated(PENPAR)) PENPAR  = (1.-ALBVRO)*DRPAR
     if(associated(PENPAF)) PENPAF  = (1.-ALBVFO)*DFPAR
 
-    call AOIL_Shortwave_abs (NT, DO_SKIN_LAYER, DO_DATASEA, &
-                             AOIL_depth, OGCM_top_thickness, HW, KUVR, KPAR, &
-                             ALBVRO, ALBVFO, DRUVR, DFUVR, DRPAR, DFPAR, &
-                             PEN, PEN_ocean)
-
-    SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
-          (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
-    SWN   = SWN - PEN
-    if (DO_DATASEA == 0) then               ! in coupled mode, first term on RHS of eqn 10 (AS2018)
-      SWN   = SWN - (epsilon_d/(1.-epsilon_d))* (PEN-PEN_ocean)
-    endif
-
 ! Cycle through sub-tiles doing water and energy budget
 !------------------------------------------------------
     if(associated(EVAPOUT)) EVAPOUT = 0.0
@@ -2728,13 +2715,25 @@ contains
     if(associated(DELTS  )) DELTS   = 0.0
     if(associated(DELQS  )) DELQS   = 0.0
 
-    N   = WATER
-    CFT = (CH(:,N)/CTATM)
-    CFQ = (CQ(:,N)/CQATM)
+    SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
+          (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
+
+    CFT = (CH(:,WATER)/CTATM)
+    CFQ = (CQ(:,WATER)/CQATM)
+
+    call AOIL_Shortwave_abs (NT, DO_SKIN_LAYER, DO_DATASEA, &
+                             AOIL_depth, OGCM_top_thickness, HW, KUVR, KPAR, &
+                             ALBVRO, ALBVFO, DRUVR, DFUVR, DRPAR, DFPAR, &
+                             PEN, PEN_ocean)
+
+    SWN   = SWN - PEN
+    if (DO_DATASEA == 0) then               ! in coupled mode, first term on RHS of eqn 10 (AS2018)
+      SWN   = SWN - (epsilon_d/(1.-epsilon_d))* (PEN-PEN_ocean)
+    endif
 
     call surf_hflux_update (NT,DO_SKIN_LAYER,DO_DATASEA,MUSKIN,DT,epsilon_d,  &
-             CFT,CFQ,SH,EVAP,DSH,DEV,THATM,QHATM,PS,FRWATER,HH(:,N),SNO,      &
-             LWDNSRF,SWN,ALW,BLW,SHF,LHF,EVP,DTS,DQS,TS(:,N),QS(:,N),TWMTS,TWMTF)
+             CFT,CFQ,SH,EVAP,DSH,DEV,THATM,QHATM,PS,FRWATER,HH(:,WATER),SNO,      &
+             LWDNSRF,SWN,ALW,BLW,SHF,LHF,EVP,DTS,DQS,TS(:,WATER),QS(:,WATER),TWMTS,TWMTF)
 
     call AOIL_v0_HW ( NT, DT, DO_DATASEA, MaxWaterDepth, MinWaterDepth, &
                       FRWATER, SNO, EVP, PCU+PLS, HH(:,WATER))
@@ -2783,11 +2782,11 @@ contains
           ENDWHERE
     endif
 
-    if(associated(EVAPOUT)) EVAPOUT = EVP    *FR(:,N)
-    if(associated(SHOUT  )) SHOUT   = SHF    *FR(:,N)
-    if(associated(HLATN  )) HLATN   = LHF    *FR(:,N)
-    if(associated(DELTS  )) DELTS   = DTS*CFT*FR(:,N)
-    if(associated(DELQS  )) DELQS   = DQS*CFQ*FR(:,N)
+    if(associated(EVAPOUT)) EVAPOUT = EVP    *FR(:,WATER)
+    if(associated(SHOUT  )) SHOUT   = SHF    *FR(:,WATER)
+    if(associated(HLATN  )) HLATN   = LHF    *FR(:,WATER)
+    if(associated(DELTS  )) DELTS   = DTS*CFT*FR(:,WATER)
+    if(associated(DELQS  )) DELQS   = DQS*CFQ*FR(:,WATER)
 
     if(associated(SWcool)) SWcool = SWCOOL_
     if(associated(SWWARM)) SWWARM = SWWARM_
