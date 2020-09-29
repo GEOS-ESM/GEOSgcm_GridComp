@@ -2303,7 +2303,6 @@ contains
    real, allocatable                   :: HH (:,:)                  ! allocatable because NUM_SUBTILES is NOT a parameter
    real, allocatable                   :: SS (:,:)
    real, allocatable                   :: FR (:,:)
-   real, allocatable                   :: tmp2 (:,:)
    real,    dimension(NT)              :: FRWATER
    real,    dimension(NT)              :: SHF
    real,    dimension(NT)              :: EVP
@@ -2755,15 +2754,11 @@ contains
 
 !   Cool-skin and diurnal warm layer. It changes TS, TWMTS, TW if DO_SKIN_LAYER = 1
 !   --------------------------------------------------------------------------------
-      allocate(tmp2(NT, NUM_SUBTILES), STAT=STATUS); VERIFY_(STATUS)
-      tmp2(:,WATER) = FRWATER
-
       call SKIN_SST (DO_SKIN_LAYER, DO_DATASEA, NT,CM,UUA,VVA,UW,VW,HW,SWN,LHF,SHF,LWDNSRF,                   &
                      ALW,BLW,PEN, PEN_OCEAN, STOKES_SPEED,DT,MUSKIN,TS_FOUNDi,DWARM_,TBAR_,TXW,TYW,USTARW_,   &
                      DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_,TDEL_,SWWARM_,QWARM_,ZETA_W_,                 &
-                     PHIW_,LANGM_,TAUTW_,uStokes_,TS,TWMTS,TW,WATER,tmp2,n_iter_cool,                         &
+                     PHIW_,LANGM_,TAUTW_,uStokes_,TS,TWMTS,TW,WATER,FRWATER,n_iter_cool,                         &
                      fr_ice_thresh, epsilon_d, trim(DO_GRAD_DECAY_warmLayer))
-      deallocate(tmp2)
 
 ! Copies for export
 !------------------
