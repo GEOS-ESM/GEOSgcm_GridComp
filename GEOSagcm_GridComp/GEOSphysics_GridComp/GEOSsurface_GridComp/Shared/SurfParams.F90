@@ -103,7 +103,19 @@ module SurfParams
          	FLWALPHA = 1.                                                                        
          	ASTRFR   = 0.333  ! reverted 
          	STEXP    = 1.     ! reverted                                  
-         	RSWILT   = 1500.   
+         	RSWILT   = 1500. 
+
+	case ("EL_Fire_CLM45")  ! parameters to reproduce Eunjee Lee's Catchment-CN4.5 fire carbon emission simulations
+                LAND_FIX = .TRUE.
+                LAND_FIX_CN = .FALSE.
+                CSOIL_2  = 70000. ! Post H5_0  
+                WEMIN    = 13.
+                AICEV    = 0.107
+                AICEN    = 19.893
+                FLWALPHA = 0.005.
+                ASTRFR   = 0.333  ! reverted 
+                STEXP    = 1.     ! reverted                                  
+                RSWILT   = 2000.  
 
        	case ("Icarus")  ! "Old" LDASsa physics, current default for Icarus GCM                
          	LAND_FIX = .FALSE.                                                                   
