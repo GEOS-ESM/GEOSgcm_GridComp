@@ -15,31 +15,37 @@ contains
 !
 ! A_star_closure
 !
-subroutine A_star_closure(IM, JM, LM, zle, zlo, thv, debug_flag, & ! in
-                          izsl, A_star)                            ! out
+subroutine A_star_closure(IM, JM, LM, th00, zle, zlo, ple, ice_ramp, & ! in
+                          rho, rhoe, thl, qt, thv, debug_flag, &       ! in
+                          izsl, A, Mu0, zi)                            ! out
 
   integer, intent(in)                     :: IM, JM, LM, debug_flag
-  real, dimension(IM,JM,LM), intent(in)   :: zlo, thv
-  real, dimension(IM,JM,0:LM), intent(in) :: zle
+  real, intent(in)                        :: ice_ramp, th00
+  real, dimension(IM,JM,LM), intent(in)   :: zlo, thl, qt, thv, rho
+  real, dimension(IM,JM,0:LM), intent(in) :: zle, rhoe, ple
   integer, dimension(IM,JM), intent(out)  :: izsl
-  real, dimension(IM,JM,LM), intent(out)  :: A_star
+  real, dimension(IM,JM), intent(out)     :: Mu0, zi
+  real, dimension(IM,JM,LM), intent(out)  :: A
 
-  integer                     :: i, j, k, km1, kp1
-  real                        :: dthvdz, dz
-  real, dimension(IM,JM,0:LM) :: M_star
-  real, dimension(IM,JM)      :: A_star_sum
-  logical, dimension(IM,JM)   :: conv_flag, sl_flag
+  integer                     :: i, j, k, km1
+  real                        :: dthvdz, dz, B, wf, qcu, f, Mu_next, wu2_next, thlu_next, qtu_next, thvu_next
+  real, dimension(IM,JM)      :: A_star_sum, A_star2_int, Mu, thlu, qtu, thvu, wu2
+  logical, dimension(IM,JM)   :: conv_flag, sl_flag, test_flag
 
-  A_star(:,:,:)   = 0.
+  A(:,:,:)        = 0.
   A_star_sum(:,:) = 0.
-  M_star(:,:,:)   = 0.
+  Mu0(:,:)        = 0.
 
   ! Determine if column is convective (surface-driven) and compute A_star
   ! (before normalization) at first model level
   do j = 1,JM
   do i = 1,IM
-     conv_flag(i,j) = thv(i,j,LM-1) - thv(i,j,LM) < 0.
+     conv_flag(i,j) = thv(i,j,LM-1) < thv(i,j,LM)
      sl_flag(i,j)   = conv_flag(i,j)
+
+     if ( .not. conv_flag(i,j) ) then
+        izsl(i,j) = -1
+     end if
   end do
   end do
 
@@ -53,8 +59,8 @@ subroutine A_star_closure(IM, JM, LM, zle, zlo, thv, debug_flag, & ! in
            dthvdz = ( thv(i,j,km1) - thv(i,j,k) )/( zlo(i,j,km1) - zlo(i,j,k) )
 
            if ( dthvdz < 0. ) then
-              A_star(i,j,k)   = -sqrt(zle(i,j,km1))*dthvdz
-              A_star_sum(i,j) = A_star_sum(i,j) + A_star(i,j,k)*( zle(i,j,km1) - zle(i,j,k) )
+              A(i,j,k)        = -sqrt(zle(i,j,km1))*dthvdz
+              A_star_sum(i,j) = A_star_sum(i,j) + A(i,j,k)*( zle(i,j,km1) - zle(i,j,k) )
            else
               izsl(i,j) = k
 
@@ -65,39 +71,79 @@ subroutine A_star_closure(IM, JM, LM, zle, zlo, thv, debug_flag, & ! in
      end do
   end do
 
-  ! Normalize A_star
-  ! Note: this loop needs to be refactored for column-major order
+  ! Normalize A_star and initialize test plume
   do j = 1,JM
   do i = 1,IM
+     test_flag(i,j) = conv_flag(i,j)
+
      if ( conv_flag(i,j) ) then
+        dz = zle(i,j,LM-1) - zle(i,j,LM)
+
+        ! Note: this loop needs to be refactored for column-major order
+        A_star2_int(i,j) = 0.
         do k = LM,izsl(i,j)+1,-1
-           A_star(i,j,k) = A_star(i,j,k)/A_star_sum(i,j)
+           A(i,j,k)         = A(i,j,k)/A_star_sum(i,j)
+           A_star2_int(i,j) = A_star2_int(i,j) + A(i,j,k)**2.*dz/rho(i,j,k)
         end do
+
+        ! Initialize plume
+        Mu(i,j)   = A(i,j,LM)*dz
+        wu2(i,j)  = 0.
+        thlu(i,j) = thl(i,j,LM)
+        qtu(i,j)  = qt(i,j,LM)
+        thvu(i,j) = thv(i,j,LM)
+
+        if ( debug_flag /= 0 ) then
+           write(*,*) LM-1, Mu(i,j), thvu(i,j), thv(i,j,LM-1)
+        end if
      end if
   end do
   end do
 
-  ! Test
-  if ( debug_flag /= 0 ) then
+  ! Find magnitude and height of maximum plume velocity and compute Mu0 accordingly
+  do k = LM-1,1,-1
+     km1 = k - 1
+
      do j = 1,JM
      do i = 1,IM
-        if ( conv_flag(i,j) ) then
-           M_star(i,j,LM) = 0.
-           do k = LM,izsl(i,j)+1,-1
-              km1 = k - 1
-              
-              dz              = zle(i,j,km1) - zle(i,j,k)
-              M_star(i,j,km1) = M_star(i,j,k) + A_star(i,j,k)*dz
-           end do
-           
-           do k = izsl(i,j),LM
-              km1 = k - 1
-              write(*,*) k, M_star(i,j,k), A_star(i,j,k)*dz, thv(i,j,km1) - thv(i,j,k)
-           end do
+        if ( test_flag(i,j) ) then
+           dz = zle(i,j,km1) - zle(i,j,k)
+
+           Mu_next = Mu(i,j) + A(i,j,k)*dz
+
+           f = Mu(i,j)/Mu_next
+           B = (mapl_grav/th00)*( thvu(i,j) - thv(i,j,k) )
+
+           thlu_next = f*thlu(i,j) + ( 1. - f )*thl(i,j,k)
+           qtu_next  = f*qtu(i,j)  + ( 1. - f )*qt(i,j,k)
+           wu2_next  = (rhoe(i,j,k)/rhoe(i,j,km1))*( wu2(i,j) + dz*B )
+
+           call condensation_edmf(qtu_next, thlu_next, ple(i,j,km1), thvu_next, qcu, wf, ice_ramp)           
+
+           if ( debug_flag /= 0 ) then
+              write(*,*) km1, Mu_next, thvu_next, thv(i,j,km1)
+           end if
+
+           if ( wu2_next <= wu2(i,j) ) then
+              zi(i,j) = zle(i,j,k)
+              Mu0(i,j) = sqrt( wu2(i,j) )/( 2.*zi(i,j)*A_star2_int(i,j) )
+              test_flag(i,j) = .false.
+           else
+              Mu(i,j)   = Mu_next
+              wu2(i,j)  = wu2_next
+              thlu(i,j) = thlu_next
+              qtu(i,j)  = qtu_next
+           end if
         end if
      end do
      end do
-  end if
+  end do
+
+  do j = 1,JM
+  do i = 1,IM
+     A(i,j,:) = Mu0(i,j)*A(i,j,:)
+  end do
+  end do
 
 end subroutine A_star_closure
 
@@ -106,7 +152,7 @@ end subroutine A_star_closure
 !
 subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                         ! in
                     discrete_type, implicit_flag, stochastic_flag, plume_type, &    ! in
-                    th00, dt, zlo, zle, ple, rhoe, exf, &                           ! in
+                    th00, dt, zlo, zle, ple, rho, rhoe, exf, &                      ! in
                     u, v, thl, thv, qt, qv, ql, qi, &                               ! in         
                     ustar, sh, evap, ice_ramp, &                                    ! in
                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in
@@ -128,7 +174,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   ! Inputs
   integer, intent(in)                     :: IM, JM, LM, numup, discrete_type, implicit_flag, stochastic_flag, plume_type, ET, kbotp
   integer, dimension(IM,JM), intent(in)   :: iras, jras
-  real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zlo, exf
+  real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zlo, exf, rho
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe
   real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, L0
   real, dimension(IM,JM), intent(inout)   :: zpbl
@@ -171,6 +217,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   ! Thermal plume stuff 
   integer, dimension(IM,JM) :: izsl
   real, dimension(IM,JM,LM) :: A_star
+  real, dimension(IM,JM)    :: Mu0, zi_thermal
 
   kbot = LM - kbotp
 
@@ -327,10 +374,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   end do
 
   ! Get surface layer organized entrainment
-!  if ( plume_type /= 0 ) then
-!     call A_star_closure(IM, JM, LM, zle, zlo, thv, 1, & ! in
-!                         izsl, A_star)                   ! out
-!  end if
+  call A_star_closure(IM, JM, LM, th00, zle, zlo, ple, ice_ramp, & ! in
+                      rho, rhoe, thl, qt, thv, 1, &                ! in
+                      izsl, A_star, Mu0, zi_thermal)               ! out
+  write(*,*) '*', izsl, Mu0
 
   !
   ! Initialize updrafts
@@ -342,7 +389,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
      zpbl(i,j) = max( zpbl(i,j), zpblmin )
      wthv      = sh(i,j)/mapl_cp + mapl_epsilon*thvi(i,j,LM)*evap(i,j)
 
-     if ( wthv > 0. .and. thv(i,j,LM-1) - thv(i,j,LM) < 0. ) then
+     if ( wthv > 0. .and. thv(i,j,LM-1) < thv(i,j,LM) ) then
         if ( plume_type == 0 ) then ! JPL entraining plume model
            wstar  = max( wstarmin, (mapl_grav/th00*wthv*zpbl(i,j))**onethird )
            qstar  = evap(i,j)/wstar
@@ -423,7 +470,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
         mft    = 0.
 
         do iup = 1,numup
-           if (active_updraft(iup,i,j)) then
+           if ( active_updraft(iup,i,j) ) then
               !
               ! Sample updraft statistics
               !
@@ -498,9 +545,9 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     end if
 
                     ! increase entrainment if local minimum of thv
-!                    if ( ( thv(i,j,k) < thv(i,j,kp1) ) .and. ( thv(i,j,k) < thv(i,j,km1) ) ) then
-!                       ent(iup,i,j,k) = ent(iup,i,j,k) + 5.*ent0/L0(i,j)
-!                    end if
+                    if ( ( thv(i,j,k) < thv(i,j,kp1) ) .and. ( thv(i,j,k) < thv(i,j,km1) ) ) then
+                       ent(iup,i,j,k) = ent(iup,i,j,k) + 5.*ent0/L0(i,j)
+                    end if
                  else
                     ! negative L0 means 0 entrainment  
                     ent(:,i,j,:) = 0. ! check
@@ -523,8 +570,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
 
                  ! Buoyancy
-!                 B = mapl_grav*( 0.5*( THVn + upthv(iup,i,j) )/thv(i,j,k) - 1. ) ! centered discretization
-                 B = mapl_grav*( upthv(iup,i,j)/thv(i,j,k) - 1. ) ! upwind discretization
+                 B = mapl_grav*( 0.5*( THVn + upthv(iup,i,j) )/thv(i,j,k) - 1. ) ! centered discretization
+!                 B = mapl_grav*( upthv(iup,i,j)/thv(i,j,k) - 1. ) ! upwind discretization
 
                  ! Vertical velocity
                  WP = Wb*ent(iup,i,j,k)
@@ -671,6 +718,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               if ( edmfmoista(i,j,k) > 0. .and. edmfmoista(i,j,km1) > 0. ) then
                  acu_full(i,j,k) = min( au_full(i,j,k), 0.5*( edmfmoista(i,j,k) + edmfmoista(i,j,km1) ) )
                  qlu_full(i,j,k) = 0.5*( qlu(i,j,k) + qlu(i,j,km1) )
+!              else if (      edmfmoista(i,j,k+1) == 0. &
+!                       .and. edmfmoista(i,j,k) > 0. .and. edmfmoista(i,j,km1) == 0. ) then
+!                 acu_full(i,j,k) = min( au_full(i,j,k), edmfmoista(i,j,k) )
+!                 qlu_full(i,j,k) = qlu(i,j,k)
               else
                  acu_full(i,j,k) = 0.
                  qlu_full(i,j,k) = 0.
@@ -745,7 +796,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 end subroutine run_edmf
 
 
-subroutine condensation_edmf(QT,THL,P,THV,QC,wf,ice_ramp)
+subroutine condensation_edmf(QT, THL, P, THV, QC, wf, ice_ramp)
 !
 ! zero or one condensation for edmf: calculates THV and QC
 !
@@ -755,9 +806,8 @@ real,intent(in) :: QT,THL,P
 real,intent(in) :: ice_ramp
 real,intent(out):: THV,QC,wf
 
-
-integer :: niter,i
-real :: diff,exn,t,qs,qcold
+integer :: niter, i
+real    :: diff, exn, t, qs, qcold
  
 ! max number of iterations
 niter=50

@@ -174,7 +174,11 @@ do iter = 1,niter
                     alpha1, alpha2, alpha3, alpha4, & ! in
                     wb_surf, zle, zlo, q, N2, LMO, &  ! in
                     L, LS, LB, LT, w_star)            ! out      
-   
+!   call mynn_length_new(IM, JM, LM, &  ! in
+!                        alpha2, &      ! in
+!                        zle, q, N2, &  ! in
+!                        L, LS, LB, LT) ! out   
+
    do k = 1,LM-2
       do j = 1,JM
       do i = 1,IM
@@ -350,6 +354,10 @@ subroutine run_mynn(IM, JM, LM, &                                               
                    alpha1, alpha2, alpha3, alpha4, & ! in
                    wb_surf, zle, zlo, q, N2, LMO, &  ! in
                    L, LS, LB, LT, w_star)            ! out
+!  call mynn_length_new(IM, JM, LM, &  ! in
+!                       alpha2, &      ! in
+!                       zle, q, N2, &  ! in
+!                       L, LS, LB, LT) ! out   
 
   do k = 1,LM-1
 
@@ -444,17 +452,17 @@ subroutine run_mynn(IM, JM, LM, &                                               
            EH   = qdiv*eHc*( ( Phi2 + Phi5 )/D_p )                                     ! NN09 (48)
 
            ! Compute counter-gradient flux of conserved variables
-           if (WRF_CG_FLAG == 0) then
+           if ( WRF_CG_FLAG == 0 ) then
               hlthv_p = hlthv - hlthv_25
               qtthv_p = qtthv - qtthv_25
            else
-              if (hlthv_25 >= 0.) then
+              if ( hlthv_25 >= 0. ) then
                  hlthv_p = max( 0., hlthv - hlthv_25 )
               else
                  hlthv_p = min( 0., hlthv - hlthv_25 )
               end if
 
-              if (qtthv_25 >= 0.) then
+              if ( qtthv_25 >= 0. ) then
                  qtthv_p = max( 0., qtthv - qtthv_25 )
               else
                  qtthv_p = min( 0., qtthv - qtthv_25 )
@@ -499,8 +507,8 @@ subroutine run_mynn(IM, JM, LM, &                                               
         end if
 
         ! Compute counter-gradient fluxes of GEOS variables
-        if (MYNN_LEVEL == 3) then
-           if (WQL_TYPE == 0) then
+        if ( MYNN_LEVEL == 3 ) then
+           if ( WQL_TYPE == 0 ) then
               wql_explicit(i,j,k) = 0.
            else
               ifac    = (zle(i,j,k) - zlo(i,j,k+1))*idzlo
@@ -657,7 +665,7 @@ subroutine mynn_length(IM, JM, LM, &                     ! in
      kkm1 = kk - 1
      do j = 1,JM
      do i = 1,IM
-        if (zle(i,j,kkm1) <= zi2ph1) then ! top limit of integration from WRF MYNN scheme
+        if ( zle(i,j,kkm1) <= zi2ph1 ) then ! top limit of integration from WRF MYNN scheme
            qdz = max( 0.d0, ( 0.5*( q(i,j,kk) + q(i,j,kkm1) ) - qmin )*( zle(i,j,kkm1) - zle(i,j,kk) ) )
 
            work1(i,j) = work1(i,j) + zlo(i,j,kk)*qdz 
@@ -683,7 +691,7 @@ subroutine mynn_length(IM, JM, LM, &                     ! in
         zeta = zle(i,j,k)/LMO(i,j)
 
         ! WRF MYNN version
-        if (zeta > 0.) then
+        if ( zeta > 0. ) then
            LS(i,j,k) = MAPL_KARMAN*zle(i,j,k)/( 1. + cns*min(zmax, zeta) )
         else
            LS(i,j,k) = MAPL_KARMAN*zle(i,j,k)*( 1. - alpha4*zeta )**0.2
@@ -695,7 +703,7 @@ subroutine mynn_length(IM, JM, LM, &                     ! in
 
            ! WRF MYNN version
            LB(i,j,k) = alpha2*( q(i,j,k)/N )*( 1.d0 + alpha3/alpha2*sqrt( w_star(i,j)/( N*LT(i,j) ) ) )
-           LF        = alpha2*( q(i,j,k)/N )
+           LF = alpha2*( q(i,j,k)/N )
         else
            LB(i,j,k) = 1.d+10
            LF        = LB(i,j,k)
@@ -711,6 +719,54 @@ subroutine mynn_length(IM, JM, LM, &                     ! in
   L(:,:,LM)  = L(:,:,LM-1)
 
 end subroutine mynn_length
+
+!
+! 
+!
+subroutine mynn_length_new(IM, JM, LM, &  ! in
+                           alpha2, &      ! in
+                           zle, q, N2, &  ! in
+                           L, LS, LB, LT) ! out
+
+  use MAPL_ConstantsMod, only: MAPL_KARMAN
+
+  integer, intent(in)                                  :: IM, JM, LM
+  double precision, intent(in)                         :: alpha2
+  real, dimension(IM,JM,0:LM), intent(in)              :: zle, N2
+  double precision, dimension(IM,JM,0:LM), intent(in)  :: q
+  double precision, dimension(IM,JM), intent(out)      :: LT
+  double precision, dimension(IM,JM,0:LM), intent(out) :: L, LS, LB
+
+  integer          :: i, j, k
+  double precision :: work
+
+  LT(:,:) = 50.
+
+  ! Compute master length scale
+  do k = 1,LM-1
+     do j = 1,JM
+     do i = 1,IM
+        ! Compute surface length scale
+        LS(i,j,k) = MAPL_KARMAN*zle(i,j,k)
+        
+        ! Compute buoyancy length scale
+        if ( N2(i,j,k) > 0. ) then
+           LB(i,j,k) = alpha2*( q(i,j,k)/sqrt(N2(i,j,k)) )
+        else
+           LB(i,j,k) = 1.d+10
+        end if
+
+        LS(i,j,k) = LS(i,j,k)/( LS(i,j,k)/LT(i,j) + 1.d0 )
+        
+        L(i,j,k) = min( LB(i,j,k), LS(i,j,k) )
+     end do
+     end do
+  end do
+
+  LS(:,:,LM) = 0.
+  L(:,:,LM)  = L(:,:,LM-1)
+
+end subroutine mynn_length_new
 
 !
 !

@@ -5297,6 +5297,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME         = 'ace_moist',                          &
+         LONG_NAME          = '(not normalized) sub-environmental cloud fraction',   & 
+         UNITS              = '1',                                  &
+         DIMS               = MAPL_DimsHorzVert,                    &
+         VLOCATION          = MAPL_VLocationCenter,     RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                     &
          SHORT_NAME         = 'qsat_moist',                          &
          LONG_NAME          = 'Saturation_specific_humidity',       & 
          UNITS              = 'kg+1kg-1',                           &
@@ -6001,8 +6009,8 @@ contains
       real, pointer, dimension(:,:,:)       :: NACTL,NACTI
 !--kml--- activation for single-moment uphysics
 
-      real, pointer, dimension(:,:,:) :: A_moist, B_moist, qsat_moist, & 
-                                         s_moist, sigma_s_moist, &
+      real, pointer, dimension(:,:,:) :: A_moist, B_moist, ace_moist, &
+                                         qsat_moist, s_moist, sigma_s_moist, &
                                          exner_moist, au_moist, hle_moist, &
                                          thle_moist, qte_moist
 
@@ -7470,6 +7478,7 @@ contains
 
       call MAPL_GetPointer(EXPORT,       A_moist,       'A_moist', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT,       B_moist,       'B_moist', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT,     ace_moist,     'ace_moist', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT,    qsat_moist,    'qsat_moist', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT,       s_moist,       's_moist', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, sigma_s_moist, 'sigma_s_moist', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -11023,6 +11032,7 @@ contains
               TROPP             , &
               A_moist           , &
               B_moist           , &
+              ace_moist         , &
               qsat_moist        , &
               s_moist           , &
               sigma_s_moist     , &

@@ -467,6 +467,7 @@ contains
          TROPP_dev        , &
          A_moist          , &
          B_moist          , &
+         ace_moist        , &
          qsat_moist       , &
          s_moist          , &
          sigma_s_moist    , &
@@ -679,6 +680,7 @@ contains
       real, intent(in   ), dimension(IRUN,  LM) :: NACTI_dev  ! NACTI
       real, intent(  out), dimension(IRUN,  LM) :: A_moist
       real, intent(  out), dimension(IRUN,  LM) :: B_moist
+      real, intent(  out), dimension(IRUN,  LM) :: ace_moist
       real, intent(  out), dimension(IRUN,  LM) :: qsat_moist
       real, intent(  out), dimension(IRUN,  LM) :: s_moist
       real, intent(  out), dimension(IRUN,  LM) :: sigma_s_moist
@@ -1164,6 +1166,7 @@ contains
                   qte_moist(I,K),      &
                   A_moist(I,K),        &
                   B_moist(I,K),        &
+                  ace_moist(I,K),      &
                   qsat_moist(I,K),     &
                   s_moist(I,K),        &
                   sigma_s_moist(I,K) )
@@ -2164,6 +2167,7 @@ contains
          qte,        &
          A_moist,    &
          B_moist,    &
+         ace_moist,  &
          qsat_moist, &
          s_moist,    &
          sigma_s_moist )
@@ -2180,7 +2184,8 @@ contains
                              PDF_SIGQT1, PDF_SIGQT2, PDF_QT1, PDF_QT2, &
                              PDF_RHLQT
       real, intent(out)   :: WTHV2, WQL
-      real, intent(out)   :: A_moist, B_moist, qsat_moist, s_moist, sigma_s_moist, &
+      real, intent(out)   :: A_moist, B_moist, ace_moist, &
+                             qsat_moist, s_moist, sigma_s_moist, &
                              exner, hle, qte
 
       ! internal arrays
@@ -2195,7 +2200,7 @@ contains
       real :: QCx, QVx, CFx, QAx, QC, QA, fQi
       real :: dQAi, dQAl, dQCi, dQCl, Nfac, NLv, NIv 
 
-      real :: Tce, qle, ace
+      real :: Tce, qle
 
 !      real :: fQip
 
@@ -2354,14 +2359,14 @@ contains
             qte = ( qt - au*qtu )/( 1. - au )
 
             call gaussian(zl, 100.*pl, hle, qte, hl2, qt2, hlqt, &
-                          Tce, qle, ace, &
+                          Tce, qle, ace_moist, &
                           A_moist, B_moist, qsat_moist, &
                           s_moist, sigma_s_moist, exner)
 
             ! Combine upddraft and environment
             TEn = au*Tu  + ( 1. - au )*Tce
             QCn = au*qlu + ( 1. - au )*qle
-            CFn = acu    + ( 1. - au )*ace
+            CFn = acu    + ( 1. - au )*ace_moist
 
             fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
          endif

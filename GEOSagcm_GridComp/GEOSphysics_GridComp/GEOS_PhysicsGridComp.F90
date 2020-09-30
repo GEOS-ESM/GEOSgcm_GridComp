@@ -1093,7 +1093,8 @@ contains
     call MAPL_AddConnectivity ( GC,                                &
          SHORT_NAME  = (/'QV  ','QLLS','QILS','QLCN',              &
                          'QICN','CLLS','CLCN','WTHV2',             &
-                         'A_moist', 'B_moist', 'qsat_moist'/),     &
+                         'A_moist', 'B_moist', 'ace_moist',        &
+                         'qsat_moist'/),                           &
          DST_ID      = TURBL,                                      &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )

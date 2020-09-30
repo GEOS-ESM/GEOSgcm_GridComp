@@ -572,6 +572,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
+       SHORT_NAME = 'ace_moist',                                   &
+       LONG_NAME  = '(not_normalized)_sub-environmental_cloud_fraction', &
+       UNITS      = '1',                                           &
+       DIMS       = MAPL_DimsHorzVert,                             &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
        SHORT_NAME = 'qsat_moist',                                   &
        LONG_NAME  = 'Saturation_specific_humidity',                &
        UNITS      = 'kg+1 kg-1',                                   &
@@ -1225,6 +1233,22 @@ contains
          UNITS      = 'kg kg-1 m s-1',                                &
          DIMS       = MAPL_DimsHorzVert,                              &
          VLOCATION  = MAPL_VLocationEdge,                  RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                           & 
+         SHORT_NAME = 'wthl_implicit',                                    &
+         LONG_NAME  = 'implicit_liquid_water_potential_temperature_flux', &
+         UNITS      = 'Kms-1',                                            &
+         DIMS       = MAPL_DimsHorzVert,                                  &
+         VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                      &
+         SHORT_NAME = 'wqt_implicit',                                 &
+         LONG_NAME  = 'implicit_liquid_water_specific_humidity_flux', &
+         UNITS      = 'kg kg-1 m s-1',                                &
+         DIMS       = MAPL_DimsHorzVert,                              &
+         VLOCATION  = MAPL_VLocationEdge,                 RC=STATUS  )
     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                                  &
@@ -2151,6 +2175,14 @@ contains
        UNITS      = 'm+2 s-1',                                   &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'wthl_mf',                                   &
+       LONG_NAME  = 'edmf_thl_flux_contribution',                &
+       UNITS      = 'm+2 s-1',                                   &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
     VERIFY_(STATUS)
 
 !
@@ -3485,14 +3517,15 @@ contains
                                             edmf_whl, edmf_qt3, w3_canuto, &
                                             au_full, hlu_full, qtu_full, &
                                             acu_full, Tu_full, qlu_full, &
-                                            A_moist, B_moist, qsat_moist
+                                            A_moist, B_moist, ace_moist, &
+                                            qsat_moist
 
    real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
 !   real, dimension(IM,JM,0:LM)          ::  awhl3, awqt3, awthv3 ! for EDMF contribution to MYNN
 
    real, dimension(:,:), pointer        :: z_conv_edmf
 
-   real, dimension(:,:,:), pointer ::  K_TKE, tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M
+   real, dimension(:,:,:), pointer ::  K_TKE, tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, wthl_mf
    real, dimension(:,:,:), pointer :: au, wu, Mu, E, D, D_org
 
    ! Exports for testing MYNN cloud-top entrainment
@@ -3515,7 +3548,8 @@ contains
 #endif
 
    real             :: edmf_wa, edmf_wb
-   double precision :: alpha1_mynn, alpha2_mynn, alpha3_mynn, alpha4_mynn
+   double precision :: mynn_alpha1, mynn_alpha2, mynn_alpha3, mynn_alpha4
+
    integer :: DO_MYNN, DO_LOCK_MYNN
 
    real, dimension(:,:), pointer   :: LT_mynn
@@ -3610,7 +3644,7 @@ contains
      real, dimension(im,jm)    :: rhodz,edmfZCLD
      real, dimension(im,jm,0:lm) :: RHOE,RHOAW3
      real, dimension(im,jm) :: KPBLmf   
-     real,dimension(im,jm,lm) :: buoyf,mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl
+     real,dimension(im,jm,lm) :: buoyf,mfw2,mfw3,mfqt3,mfwqt,mfqt2,mfhl2,mfhlqt,mfwhl,rho
 
 #ifdef EDMF_DIAG
      real,dimension(im,jm,0:lm) :: qt_plume1,qt_plume2,qt_plume3,qt_plume4, &
@@ -3688,6 +3722,7 @@ contains
 
      call MAPL_GetPointer(IMPORT,    A_moist,    'A_moist', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,    B_moist,    'B_moist', RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,  ace_moist,  'ace_moist', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT, qsat_moist, 'qsat_moist', RC=STATUS); VERIFY_(STATUS)
 
 ! Get turbulence parameters from configuration
@@ -3762,10 +3797,10 @@ contains
       call MAPL_GetResource (MAPL, DO_MYNN,      "TURBULENCE_DO_MYNN:",   default=0, RC=STATUS)
       call MAPL_GetResource (MAPL, DO_LOCK_MYNN, "TURBULENCE_LOCK_MYNN:", default=0, RC=STATUS)
 
-      call MAPL_GetResource(MAPL, alpha1_mynn, "alpha1_mynn:", default=0.23d0, RC=STATUS)
-      call MAPL_GetResource(MAPL, alpha2_mynn, "alpha2_mynn:", default=1.d0,   RC=STATUS)
-      call MAPL_GetResource(MAPL, alpha3_mynn, "alpha3_mynn:", default=5.d0,   RC=STATUS)
-      call MAPL_GetResource(MAPL, alpha4_mynn, "alpha4_mynn:", default=100.d0,  RC=STATUS)
+      call MAPL_GetResource(MAPL, mynn_alpha1, "MYNN_ALPHA1:", default=0.23d0, RC=STATUS)
+      call MAPL_GetResource(MAPL, mynn_alpha2, "MYNN_ALPHA2:", default=1.d0,   RC=STATUS)
+      call MAPL_GetResource(MAPL, mynn_alpha3, "MYNN_ALPHA3:", default=5.d0,   RC=STATUS)
+      call MAPL_GetResource(MAPL, mynn_alpha4, "MYNN_ALPHA4:", default=100.d0,  RC=STATUS)
 
       call MAPL_GetResource(MAPL, edmf_wa, 'EDMF_WA:', default=1.,  RC=STATUS)
       call MAPL_GetResource(MAPL, edmf_wb, 'EDMF_WB:', default=1.5, RC=STATUS)
@@ -4062,6 +4097,8 @@ contains
 
      call MAPL_GetPointer(EXPORT, exf_turb, 'exf_turb', RC=STATUS)
      VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, wthl_mf,  'wthl_mf',  RC=STATUS)
+     VERIFY_(STATUS)
 
      ! Cloud-top entrainment exports
      call MAPL_GetPointer(EXPORT, ktop_entrain_ex,     'ktop_entrain',     RC=STATUS)
@@ -4159,9 +4196,11 @@ contains
       RDZ = RDZ(:,:,1:LM-1) / (Z(:,:,1:LM-1)-Z(:,:,2:LM))
       DMI = (MAPL_GRAV*DT)/(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
 
-      RHOE(:,:,1:LM-1)=PLE(:,:,1:LM-1)/(MAPL_RGAS*TVE) 
-      RHOE(:,:,0)=PLE(:,:,0)/(MAPL_RGAS*TV(:,:,1))
-      RHOE(:,:,LM)=PLE(:,:,LM)/(MAPL_RGAS*TV(:,:,LM))
+      RHOE(:,:,1:LM-1) = PLE(:,:,1:LM-1)/(MAPL_RGAS*TVE) 
+      RHOE(:,:,0)      = PLE(:,:,0)/(MAPL_RGAS*TV(:,:,1))
+      RHOE(:,:,LM)     = PLE(:,:,LM)/(MAPL_RGAS*TV(:,:,LM))
+
+      rho = plo/( mapl_rgas*tv )
 
       !===> Running 1-2-1 smooth of bottom 5 levels of Virtual Pot. Temp.
       if ( LM .eq. 72 .or. DO_MYNN /= 0 .or. DO_SHOC /= 0 ) then
@@ -4225,20 +4264,22 @@ contains
   ! if true then 
     call MAPL_GetResource (MAPL, DOMF,                 "EDMF_DOMF:",            default=0.,  RC=STATUS)
     call MAPL_GetResource (MAPL, DOMFCOND,             "EDMF_COND:",            default=0.,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EntWFac,              "EDMF_ENTWFAC:",         default=0.3333, RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_SCHEME,          "EDMF_SCHEME:",          default=0,  RC=STATUS)  
     call MAPL_GetResource (MAPL, EDMF_IMPLICIT,        "EDMF_IMPLICIT:",        default=0,  RC=STATUS)  
     call MAPL_GetResource (MAPL, EDMF_STOCHASTIC,      "EDMF_STOCHASTIC:",      default=0,  RC=STATUS)  
     call MAPL_GetResource (MAPL, EDMF_DISCRETE,        "EDMF_DISCRETE:",        default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_CONSISTENT,      "EDMF_CONSISTENT:",       default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME,   "EDMF_THERMAL_PLUME:",   default=0,  RC=STATUS)
+
+    call MAPL_GetResource (MAPL, EntWFac,              "EDMF_ENTWFAC:",         default=0.3333, RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_KBOTP,           "EDMF_KBOTP:",           default=0,  RC=STATUS)  
 
-    call MAPL_GetResource (MAPL, MYNN_LEVEL,      "MYNN_LEVEL:",             default=2,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_LEVEL,      "MYNN_LEVEL:",    default=2,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_IMPLICIT,   "MYNN_IMPLICIT:", default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_DEBUG,      "MYNN_DEBUG:",    default=0,  RC=STATUS)
+
     call MAPL_GetResource (MAPL, WQL_TYPE,        "TURBULENCE_WQL_TYPE:",    default=1,  RC=STATUS)
     call MAPL_GetResource (MAPL, WRF_CG_FLAG,     "TURBULENCE_WRF_CG_FLAG:", default=1,  RC=STATUS)
-    call MAPL_GetResource (MAPL, MYNN_IMPLICIT,   "MYNN_IMPLICIT:",          default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, MYNN_DEBUG,      "MYNN_DEBUG:",             default=0,  RC=STATUS)
 ! get ice ramp
    call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0   )
 
@@ -4262,12 +4303,12 @@ edmf_qt2 = 0.0
 edmf_hlqt = 0.0
 
 ! Initialize MYNN-related internal variables
-whl_mf  = 0.
-wqt_mf  = 0.
-wthv_mf = 0.
-ws_explicit   = 0.
-wqv_explicit  = 0.
-wql_explicit  = 0.
+whl_mf       = 0.
+wqt_mf       = 0.
+wthv_mf      = 0.
+ws_explicit  = 0.
+wqv_explicit = 0.
+wql_explicit = 0.
 
 IF(DoMF .eq. 1.) then
     
@@ -4308,7 +4349,7 @@ if ( ET == 1 ) then
     else
        call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp, &                    ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                     th00, dt, z, zle, ple, rhoe, exf, &                             ! in
+                     th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
@@ -4361,7 +4402,7 @@ if ( ET == 1 ) then
     else
        call run_edmf(IM, JM, LM, 1, iras, jras, edmf_kbotp, &                        ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                     th00, dt, z, zle, ple, rhoe, exf, &                             ! in
+                     th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
@@ -4423,9 +4464,9 @@ if ( ET == 1 ) then
     else
        call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp,&                     ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                     th00, dt, z, zle, ple, rhoe, exf, &                             ! in
+                     th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
-                     ustar, sh, evap, ice_ramp, &                                    ! in                                         
+                     ustar, sh, evap, ice_ramp, &                                    ! in 
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
                      zpbl_mf, &                                                      ! inout
@@ -4447,7 +4488,6 @@ if ( ET == 1 ) then
 end if ! ET == 1
 
 call ComputeZPBL(IM*JM, LM, zle, edmfdrya, zpbl_mf, KPBLmf)
-write(*,*) '**', zpbl_mf
       
    !    print *,'edmfdrya',edmfdrya
    !   print *,'edmfdryw',edmfdryw    
@@ -4600,6 +4640,10 @@ ELSE
      
 ENDIF
 
+ if ( associated(wthl_mf) ) then
+    wthl_mf = whl_mf/(ple/mapl_p00)**(MAPL_RGAS/MAPL_CP)
+ end if
+
  call MAPL_TimerOff(MAPL,"---MASSFLUX")
 
 
@@ -4712,9 +4756,10 @@ ENDIF
         call run_mynn(IM, JM, LM, &                                                ! in      
                       MYNN_DEBUG, DOMF, MYNN_LEVEL, &                              ! in      
                       EDMF_CONSISTENT, WQL_TYPE, WRF_CG_FLAG, &                    ! in      
-                      alpha1_mynn, alpha2_mynn, alpha3_mynn, alpha4_mynn, &        ! in 
+                      mynn_alpha1, mynn_alpha2, mynn_alpha3, mynn_alpha4, &        ! in 
                       th00, PLE, RHOE, ZLE, Z, &                                   ! in      
-                      U, V, OMEGA, T, Q, QL, QI, QA, THL, QT, THV, &               ! in      
+!                      U, V, OMEGA, T, Q, QL, QI, QA, THL, QT, THV, &               ! in      
+                      U, V, OMEGA, T, Q, QL, QI, ace_moist, THL, QT, THV, &        ! in      
                       USTAR, SH, EVAP, &                                           ! in      
                       whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, &                 ! in      
                       A_moist, B_moist, qsat_moist, &                              ! in
@@ -4728,6 +4773,8 @@ ENDIF
         
         KH = KH_MYNN
         KM = KM_MYNN
+
+        
 
         call MAPL_TimerOff (MAPL,name="---MYNN" ,RC=STATUS)
         VERIFY_(STATUS)
@@ -5856,7 +5903,8 @@ ENDIF
     real, dimension(:,:), pointer       :: SH, EVAP
     real, dimension(:,:,:), pointer     :: tket_M, tket_B, tket_D, &
                                            hl2t_M, hl2t_T, hl2t_D, qt2t_M, qt2t_T, qt2t_D, hlqtt_M, hlqtt_T, hlqtt_D, &
-                                           ws_implicit, wqv_implicit, wql_implicit
+                                           ws_implicit, wqv_implicit, wql_implicit, wthl_implicit, wqt_implicit, &
+                                           exner
     real, dimension(:,:,:), allocatable :: U, V, H, QV, QLLS, QLCN, ZLO, QL 
 
     integer                             :: KM, K,L, DO_MYNN
@@ -5881,15 +5929,28 @@ ENDIF
 
 ! Get pointers to implicit diffusive thermodynamic fluxes
 !--------------------------------------------------------
-    call MAPL_GetPointer(EXPORT, ws_implicit, 'ws_implicit',   RC=STATUS)
+    call MAPL_GetPointer(EXPORT, wthl_implicit, 'wthl_implicit', RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, wqv_implicit, 'wqv_implicit', RC=STATUS)
+    call MAPL_GetPointer(EXPORT, wqt_implicit,  'wqt_implicit',  RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, wql_implicit, 'wql_implicit', RC=STATUS)
+    if ( associated(wthl_implicit) .or. associated(wqt_implicit) ) then 
+       call MAPL_GetPointer(EXPORT, ws_implicit,  'ws_implicit',  ALLOC=.TRUE., RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, wqv_implicit, 'wqv_implicit', ALLOC=.TRUE., RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, wql_implicit, 'wql_implicit', ALLOC=.TRUE., RC=STATUS)
+       VERIFY_(STATUS)
+    else
+       call MAPL_GetPointer(EXPORT, ws_implicit,  'ws_implicit',  RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, wqv_implicit, 'wqv_implicit', RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, wql_implicit, 'wql_implicit', RC=STATUS)
+       VERIFY_(STATUS)
+    end if
+    call MAPL_GetPointer(IMPORT, SH,   'SH',   RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, SH,           'SH',           RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, EVAP,         'EVAP',         RC=STATUS)
+    call MAPL_GetPointer(IMPORT, EVAP, 'EVAP', RC=STATUS)
     VERIFY_(STATUS)
 
 ! Initialize height of full levels
@@ -5897,6 +5958,11 @@ ENDIF
     if ( MYNN_IMPLICIT == 0 .or. associated(ws_implicit) .or. associated(wqv_implicit) .or. associated(wql_implicit) ) then
        allocate(ZLO(IM,JM,LM))
        ZLO = 0.5*( ZLE(:,:,0:LM-1) + ZLE(:,:,1:LM) )
+    end if
+
+    if ( associated(wthl_implicit) ) then
+       allocate(exner(IM,JM,LM))
+       exner = (ple/mapl_p00)**(MAPL_RGAS/MAPL_CP)
     end if
 
 ! Allocate arrays for implicit mean-gradient production option
@@ -6182,7 +6248,7 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
 ! Solve for semi-implicit changes. This modifies SX
 ! -------------------------------------------------
 
-       if (trim(name) == 'tke_new' .or. trim(name) == 'hl2' .or. trim(name) == 'qt2' .or. trim(name) == 'hlqt') then
+       if ( trim(name) == 'tke_new' .or. trim(name) == 'hl2' .or. trim(name) == 'qt2' .or. trim(name) == 'hlqt' ) then
           call VTRISOLVE(AK,BK,CK,SX_HALF,SG)
 
           ! Ensure realizibility
@@ -6309,6 +6375,14 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
 
     enddo ! End loop over all quantities to be diffused
 ! -----------------------------------------------------
+
+    !
+    if ( associated( wthl_implicit ) ) then
+       wthl_implicit = ( ws_implicit/mapl_cp - (mapl_alhl/mapl_cp)*wql_implicit )/exner
+    end if
+    if ( associated( wqt_implicit ) ) then
+       wqt_implicit = wqv_implicit + wql_implicit
+    end if
 
     RETURN_(ESMF_SUCCESS)
   end subroutine DIFFUSE
