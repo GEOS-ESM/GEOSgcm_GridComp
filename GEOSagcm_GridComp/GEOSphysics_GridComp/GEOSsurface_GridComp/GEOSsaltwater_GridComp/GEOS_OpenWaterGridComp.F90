@@ -2313,6 +2313,7 @@ contains
    real,    dimension(NT)              :: DQS
    real,    dimension(NT)              :: DTS
    real,    dimension(NT)              :: SWN
+   real,    dimension(NT)              :: SWN_surf
    real,    dimension(NT)              :: PEN
    real,    dimension(NT)              :: PEN_ocean
    real,    dimension(NT)              :: LHF
@@ -2714,15 +2715,18 @@ contains
     if(associated(DELTS  )) DELTS   = 0.0
     if(associated(DELQS  )) DELQS   = 0.0
 
-    SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
-          (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
-
     CFT = (CH(:,WATER)/CTATM)
     CFQ = (CQ(:,WATER)/CQATM)
 
+! Net Solar insolation (including UV & IR, direct & diffuse) in interface layer
+!------------------------------------------------------------------------------
+    SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
+          (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
+    SWN_surf = SWN
+
     call AOIL_Shortwave_abs (NT, DO_SKIN_LAYER, DO_DATASEA, &
                              AOIL_depth, OGCM_top_thickness, HW, KUVR, KPAR, &
-                             ALBVRO, ALBVFO, DRUVR, DFUVR, DRPAR, DFPAR, &
+                             ALBVRO, ALBVFO, DRUVR, DFUVR, DRPAR, DFPAR,     &
                              PEN, PEN_ocean)
 
     SWN   = SWN - PEN
@@ -2747,14 +2751,9 @@ contains
        SW = max(min(SW,MAXSALINITY),MINSALINITY)
     endwhere
 
-! Net Solar insolation (including UV & IR, direct & diffuse) in interface layer  (Recomputed)
-!--------------------------------------------------------------------------------------------
-    SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
-          (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
-
 !   Cool-skin and diurnal warm layer. It changes TS, TWMTS, TW if DO_SKIN_LAYER = 1
 !   --------------------------------------------------------------------------------
-      call SKIN_SST (DO_SKIN_LAYER, DO_DATASEA, NT,CM(:,WATER),UUA,VVA,UW,VW,HW,SWN,LHF,SHF,LWDNSRF,          &
+      call SKIN_SST (DO_SKIN_LAYER, DO_DATASEA, NT,CM(:,WATER),UUA,VVA,UW,VW,HW,SWN_surf,LHF,SHF,LWDNSRF,     &
                      ALW,BLW,PEN, PEN_OCEAN, STOKES_SPEED,DT,MUSKIN,TS_FOUNDi,DWARM_,TBAR_,TXW,TYW,USTARW_,   &
                      DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_,TDEL_,SWWARM_,QWARM_,ZETA_W_,                 &
                      PHIW_,LANGM_,TAUTW_,uStokes_,TS(:,WATER),TWMTS,TW,FRWATER,n_iter_cool,                   &
