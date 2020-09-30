@@ -1278,6 +1278,14 @@ contains
    if(   (adjustl(ReplayMode)=="Exact"  ) .or.   &
        ( (adjustl(ReplayMode)=="Regular") .and. (PREDICTOR_DURATION.gt.MKIAU_FREQUENCY/2) )  ) then
 
+      call MAPL_GetResource(STATE, RPL_SHUTOFF, 'REPLAY_SHUTOFF:', default=4000*21600., RC=STATUS ) ! Default: 1000 days
+      VERIFY_(STATUS)
+      call ESMF_TimeIntervalSet(TIMEINT, S=nint(RPL_SHUTOFF), RC=STATUS)
+      VERIFY_(STATUS)
+
+      ALARM = ESMF_AlarmCreate ( name='ReplayShutOff', clock=CLOCK, ringInterval=TIMEINT, sticky=.false., RC=STATUS )
+      VERIFY_(STATUS)
+
       call MAPL_GetResource(STATE, RPL_INTERVAL, 'REPLAY_INTERVAL:', default=21600., RC=STATUS )
       VERIFY_(STATUS)
       call ESMF_TimeIntervalSet(TIMEINT, S=nint(RPL_INTERVAL), RC=STATUS)
@@ -3187,6 +3195,8 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     logical l_use_ana_delp
     logical fromANA2BKG
     logical IuseTS
+    logical IuseTd,IuseTv
+    logical IuseO3
     logical l_windfix
     logical done_remap
     type(ESMF_Config)                   :: CF
@@ -3210,7 +3220,8 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     real, pointer, dimension(:,:,:)     ::   v_ana => NULL()
     real, pointer, dimension(:,:,:)     ::  dv_inc => NULL()
     real, pointer, dimension(:,:,:)     ::  tv_bkg => NULL()
-    real, pointer, dimension(:,:,:)     ::  tv_ana => NULL()
+    real, pointer, dimension(:,:,:)     ::  td_bkg => NULL()
+    real, pointer, dimension(:,:,:)     ::temp_ana => NULL()
     real, pointer, dimension(:,:,:)     ::  dt_inc => NULL()
     real, pointer, dimension(:,:,:)     ::   q_bkg => NULL()
     real, pointer, dimension(:,:,:)     ::   q_ana => NULL()
@@ -3284,6 +3295,10 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 
     INTEGER DATE_TIME(8)
     CHARACTER (LEN = 12) REAL_CLOCK(3)
+
+    IuseTd=.false.
+    IuseTv=.false.
+    IuseO3=.false.
 
 !   When assimilation period is over, do not even bother ...
 !   --------------------------------------------------------
@@ -3566,6 +3581,8 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     VERIFY_(STATUS)
     call MAPL_GetPointer( GEX(SDYN),    tv_bkg,'TV', RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetPointer( GEX(SDYN),    td_bkg,'T' , RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer( GEX(PHYS),o3_bkg,'O3PPMV', RC=STATUS)
     VERIFY_(STATUS)
     do K=1,NumFriendly
@@ -3598,6 +3615,8 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
           allocate(dps_aux (IMana,JMana),        stat=status );VERIFY_(STATUS)
        endif
     else              ! Bundle has increment, therefore bring it to GCM grid
+       allocate(du_aux(IMbkg,JMbkg,LMbkg),stat=status );VERIFY_(STATUS)
+       allocate(dv_aux(IMbkg,JMbkg,LMbkg),stat=status );VERIFY_(STATUS)
        allocate(gptr3d(IMbkg,JMbkg,LMbkg),stat=STATUS); VERIFY_(STATUS)
        allocate(gptr2d(IMbkg,JMbkg),  stat=STATUS); VERIFY_(STATUS)
        allocate(qdum1 (IMbkg,JMbkg,1),stat=STATUS); VERIFY_(STATUS)
@@ -3658,14 +3677,34 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                gptr3d=aptr3d
            endif
            if (fromANA2BKG) then 
-              if(trim(NAME)=='ozone') do3_inc=gptr3d
-              if(trim(NAME)=='sphu' ) dq_inc =gptr3d
-              if(trim(NAME)=='tv'   ) dt_inc =gptr3d
+              if(trim(NAME)=='ozone') then 
+                 IuseO3 = .true.
+                 do3_inc=gptr3d
+              endif
+              if(trim(NAME)=='sphu' .or. trim(NAME)=='q' .or.  trim(NAME)=='qv' ) dq_inc =gptr3d
+              if(trim(NAME)=='tv'   ) then
+                 IuseTv = .true.
+                 dt_inc =gptr3d
+              endif
+              if(trim(NAME)=='t'   ) then
+                 IuseTd = .true.
+                 dt_inc =gptr3d
+              endif
               if(trim(NAME)=='delp'.and.l_use_ana_delp ) dp_inc =gptr3d
            else
-              if(trim(NAME)=='ozone') do3_aux=gptr3d
-              if(trim(NAME)=='sphu' ) dq_aux =gptr3d
-              if(trim(NAME)=='tv'   ) dt_aux =gptr3d
+              if(trim(NAME)=='ozone') then
+                 IuseO3 = .true.
+                 do3_aux=gptr3d
+              endif
+              if(trim(NAME)=='sphu' .or. trim(NAME)=='q' .or.  trim(NAME)=='qv' ) dq_aux =gptr3d
+              if(trim(NAME)=='tv'   ) then
+                 IuseTV = .true.
+                 dt_aux =gptr3d
+              endif
+              if(trim(NAME)=='t'   ) then
+                 IuseTd = .true.
+                 dt_aux =gptr3d
+              endif
               if(trim(NAME)=='delp'.and.l_use_ana_delp ) dp_aux =gptr3d
            endif
            if(.not.l_use_ana_delp) then
@@ -3680,6 +3719,26 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
        deallocate(qdum2)
        deallocate(qdum1)
     endif
+    if (IuseTv.and.IuseTd) then
+       if(MAPL_AM_I_ROOT()) then
+          print *
+          print *, 'Found both T and TV in file, not sure what to use, aborting ... '
+       endif
+       status=99
+       VERIFY_(STATUS)
+    endif
+    if (IuseTv) then
+       if(MAPL_AM_I_ROOT()) then
+          print *
+          print *, 'Using virtual temperate from ana/inc file to create dry temperature tendency'
+       endif
+    endif
+    if (IuseTd) then
+       if(MAPL_AM_I_ROOT()) then
+          print *
+          print *, 'Using dry temperate from ana/inc file to create dry temperature tendency'
+       endif
+    endif
 
 !   U and V
 !   -------
@@ -3691,11 +3750,18 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
        else
           call ANA2BKG%regrid(uptr, du_aux, rc=status); VERIFY_(STATUS)
           call ANA2BKG%regrid(vptr, dv_aux, rc=status); VERIFY_(STATUS)
-!          call POLEFIX ( du_aux,dv_aux,VM,GRID )
+!         call POLEFIX ( du_aux,dv_aux,VM,GRID )
        endif
     else
         du_aux=uptr
         dv_aux=vptr
+    endif
+
+!   if handling increments, nothing else to do with winds, just copy them over
+!   --------------------------------------------------------------------------
+    if (.not. l_nudge) then
+       du_inc = du_aux
+       dv_inc = dv_aux   
     endif
  
 !   Calculate 3d-pressure change
@@ -3703,7 +3769,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     if (l_use_ana_delp) then
        if (.not.l_nudge) then ! increment
            dple_inc(:,:,0)=0.0
-           do L=1,LM
+           do L=1,LMbkg
               dple_inc(:,:,L)=dp_inc(:,:,L)
            enddo
        endif
@@ -3720,11 +3786,13 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 !   Convert virtual temperature increment into dry temperature increment
 !   -------------------------------------------------------------------
     EPS = MAPL_RVAP/MAPL_RGAS-1.0
-    if (.not.l_nudge) then ! in this case, using the background fields is not
-                           ! quite legitimate since these refer to the really 
-                           ! current trajectory and not quite the original
-                           ! background used by the analysis
-       dt_inc = dt_inc /(1.0+eps*q_bkg) - eps*dq_inc*tv_bkg/((1.0+eps*q_bkg)*(1.0+eps*q_bkg)) ! now dt is inc in dry temperature
+    if (.not.l_nudge) then
+       if (IuseTv) then ! in this case, using the background fields is not
+                        ! quite legitimate since these refer to the really 
+                        ! current trajectory and not quite the original
+                        ! background used by the analysis
+          dt_inc = dt_inc /(1.0+eps*q_bkg) - eps*dq_inc*tv_bkg/((1.0+eps*q_bkg)*(1.0+eps*q_bkg)) ! now dt is inc in dry temperature
+       endif
     endif
 
 !   When nugding, RBundle carries full analysis state.
@@ -3735,18 +3803,22 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
 !   -----------------------------------------------------------------------------------
     if (l_nudge) then
 
-       allocate(u_ana  (IMana,JMana,  LMana),stat=STATUS); VERIFY_(STATUS)
-       allocate(v_ana  (IMana,JMana,  LMana),stat=STATUS); VERIFY_(STATUS)
-       allocate(tv_ana (IMana,JMana,  LMana),stat=STATUS); VERIFY_(STATUS)
-       allocate(q_ana  (IMana,JMana,  LMana),stat=STATUS); VERIFY_(STATUS)
-       allocate(o3_ana (IMana,JMana,  LMana),stat=STATUS); VERIFY_(STATUS)
-       allocate(ple_ana(IMana,JMana,0:LMana),stat=STATUS); VERIFY_(STATUS)
+       allocate(u_ana   (IMana,JMana,  LMana),stat=STATUS); VERIFY_(STATUS)
+       allocate(v_ana   (IMana,JMana,  LMana),stat=STATUS); VERIFY_(STATUS)
+       allocate(temp_ana(IMana,JMana,  LMana),stat=STATUS); VERIFY_(STATUS)
+       allocate(q_ana   (IMana,JMana,  LMana),stat=STATUS); VERIFY_(STATUS)
+       allocate(o3_ana  (IMana,JMana,  LMana),stat=STATUS); VERIFY_(STATUS)
+       allocate(ple_ana (IMana,JMana,0:LMana),stat=STATUS); VERIFY_(STATUS)
 
        u_ana = du_aux
        v_ana = dv_aux
        q_ana = dq_aux
-       tv_ana= dt_aux
-       o3_ana= do3_aux
+       temp_ana= dt_aux  ! this will hold either TV or T
+       if(IuseO3) then
+          o3_ana= do3_aux
+       else
+          o3_ana= 0.0  ! put something just not to upset remap
+       endif
 
        if (l_use_ana_delp) then
 !         Analyzed pressure edges
@@ -3799,10 +3871,18 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                enddo
           endif
 
-! Virtutal Temperature:
-          call BKG2ANA%regrid(tv_bkg, dt_aux, rc=status); VERIFY_(STATUS)
+! Virtual Temperature:
+          if (IuseTv) then
+             call BKG2ANA%regrid(tv_bkg, dt_aux, rc=status); VERIFY_(STATUS)
+          endif
+! Dry Temperature:
+          if (IuseTd) then
+             call BKG2ANA%regrid(td_bkg, dt_aux, rc=status); VERIFY_(STATUS)
+          endif
 ! Ozone:
-          call BKG2ANA%regrid(o3_bkg, do3_aux, rc=status); VERIFY_(STATUS)
+          if (IuseO3) then
+             call BKG2ANA%regrid(o3_bkg, do3_aux, rc=status); VERIFY_(STATUS)
+          endif
 
           done_remap=.false.
           if (l_remap) then
@@ -3826,7 +3906,10 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                  enddo
    
                  allocate(thv_ana(IMana,JMana,LMana),stat=STATUS);VERIFY_(STATUS)
-                 thv_ana = tv_ana/pk_ana
+                 thv_ana = temp_ana/pk_ana
+                 if (IuseTd) then
+                    thv_ana = thv_ana*(1.0-eps*q_ana)
+                 endif
     
                  call myremap ( ple_ana, &
                                   u_ana, &
@@ -3843,7 +3926,10 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                     pk_ana(:,:,L) = ( pke_ana(:,:,L)-pke_ana(:,:,L-1) ) &
                                   / ( MAPL_KAPPA*log(ple_ana(:,:,L)/ple_ana(:,:,L-1)) )
                  enddo
-                 tv_ana= thv_ana*pk_ana
+                 temp_ana= thv_ana*pk_ana
+                 if (IuseTd) then
+                    temp_ana = temp_ana/(1.0-eps*q_ana)
+                 endif
    
                  deallocate(thv_ana,stat=STATUS);VERIFY_(STATUS)
                  deallocate(pke_ana,stat=STATUS);VERIFY_(STATUS)
@@ -3952,16 +4038,20 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
              print *
           endif
 
-!         Calculate virtual temperature increment
-          dt_aux = (tv_ana - dt_aux)                                                    ! virtual temperature increment
+!         Calculate temperature increment; hold either Tv or T
+          dt_aux = (temp_ana - dt_aux)
           call ANA2BKG%regrid(dt_aux, dt_inc, rc=status); VERIFY_(STATUS)
-!         Convert virtual temperature increment into dry temperature increment
-          dt_inc = dt_inc/(1.0+eps*q_bkg) - eps*dq_inc*tv_bkg/((1.0+eps*q_bkg)*(1.0+eps*q_bkg)) ! dt_inc now has inc on dry temperature
+          if (IuseTv) then
+!             Convert virtual temperature increment into dry temperature increment
+              dt_inc = dt_inc/(1.0+eps*q_bkg) - eps*dq_inc*tv_bkg/((1.0+eps*q_bkg)*(1.0+eps*q_bkg)) ! dt_inc now has inc on dry temperature
+          endif
 
-!         Calculate ozone increment on analysis grid
-          do3_aux = o3_ana - do3_aux
-!         Bring specific humidity increment from analysis grid to model grid
-          call ANA2BKG%regrid(do3_aux, do3_inc, rc=status); VERIFY_(STATUS)
+          if (IuseO3) then
+!            Calculate ozone increment on analysis grid
+             do3_aux = o3_ana - do3_aux
+!            Bring specific humidity increment from analysis grid to model grid
+             call ANA2BKG%regrid(do3_aux, do3_inc, rc=status); VERIFY_(STATUS)
+          endif
 
           if(MAPL_AM_I_ROOT()) then
              CALL DATE_AND_TIME (REAL_CLOCK(1), REAL_CLOCK(2), &
@@ -4017,10 +4107,16 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
              enddo
           endif
 !         Virtual Temperature
-          dt_inc = (tv_ana - tv_bkg)                                                            ! virtual temperature increment
-          dt_inc = dt_inc/(1.0+eps*q_bkg) - eps*dq_inc*tv_bkg/((1.0+eps*q_bkg)*(1.0+eps*q_bkg)) ! dry temperature increment
+          if (IuseTv) then
+             dt_inc = (temp_ana - tv_bkg)                                                          ! virtual temperature increment
+             dt_inc = dt_inc/(1.0+eps*q_bkg) - eps*dq_inc*tv_bkg/((1.0+eps*q_bkg)*(1.0+eps*q_bkg)) ! dry temperature increment
+          endif
+!         Dry Temperature
+          if (IuseTd) then
+             dt_inc = (temp_ana - td_bkg)                                                          ! dry temperature increment
+          endif
 !         Ozone
-          do3_inc = do3_aux - o3_bkg
+          if (IuseO3) do3_inc = do3_aux - o3_bkg
 !         Skin temperature
           if (IuseTS) then
              dts_inc = dts_aux - ts_bkg
@@ -4045,14 +4141,14 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
        if(.not.l_use_ana_delp) then
           deallocate(ps_ana ,stat=STATUS); VERIFY_(STATUS)
        endif
-       deallocate(ple_ana,stat=STATUS); VERIFY_(STATUS)
-       deallocate(o3_ana, stat=STATUS); VERIFY_(STATUS)
-       deallocate(q_ana,  stat=STATUS); VERIFY_(STATUS)
-       deallocate(tv_ana, stat=STATUS); VERIFY_(STATUS)
-       deallocate(v_ana,  stat=STATUS); VERIFY_(STATUS)
-       deallocate(u_ana,  stat=STATUS); VERIFY_(STATUS)
+       deallocate(ple_ana, stat=STATUS); VERIFY_(STATUS)
+       deallocate(o3_ana,  stat=STATUS); VERIFY_(STATUS)
+       deallocate(q_ana,   stat=STATUS); VERIFY_(STATUS)
+       deallocate(temp_ana,stat=STATUS); VERIFY_(STATUS)
+       deallocate(v_ana,   stat=STATUS); VERIFY_(STATUS)
+       deallocate(u_ana,   stat=STATUS); VERIFY_(STATUS)
 
-     endif ! <nudge>
+    endif ! <nudge>
 
 !   Clean up
 !   --------
@@ -4067,13 +4163,13 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
           deallocate(dps_aux ,stat=STATUS); VERIFY_(STATUS)
        endif
        deallocate(dts_aux ,stat=STATUS); VERIFY_(STATUS)
-       deallocate(du_aux  ,stat=STATUS); VERIFY_(STATUS)
-       deallocate(dv_aux  ,stat=STATUS); VERIFY_(STATUS)
        deallocate(dt_aux  ,stat=STATUS); VERIFY_(STATUS)
        deallocate(dq_aux  ,stat=STATUS); VERIFY_(STATUS)
        deallocate(do3_aux ,stat=STATUS); VERIFY_(STATUS)
        deallocate(dple_aux,stat=STATUS); VERIFY_(STATUS)
     endif
+    deallocate(du_aux  ,stat=STATUS); VERIFY_(STATUS)
+    deallocate(dv_aux  ,stat=STATUS); VERIFY_(STATUS)
     if(associated(phis_ana))deallocate(phis_ana)
     if(associated(gptr2d))deallocate(gptr2d)
     if(associated(gptr3d))deallocate(gptr3d)
