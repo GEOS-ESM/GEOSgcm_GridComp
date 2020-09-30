@@ -1,0 +1,612 @@
+#!/bin/csh -f
+
+# This script will generate MERRA2 forcing files for the Singe Column Model.
+# The user needs to define the following varaibles: datebeg, dateend, EXPID, alat, alon
+
+# Revision History
+# ???       R.Cullather - Original author
+# 21Aug2020 E.Sherman   - Updated directory paths and added to Github
+
+#----== ARM97 ==----
+@ datebeg = 19970619
+@ dateend = 19970717
+set EXPID = arm97_MERRA2
+
+set alat = 36.00
+set alon = -97.50
+#-----------------------
+
+@ yr_beg = ( $datebeg  - $datebeg % 10000 ) / 10000
+@ mo_beg = ( $datebeg  - $yr_beg * 10000 - $datebeg % 100 ) / 100
+@ day_beg = $datebeg % 100
+
+@ yr_end = ( $dateend  - $dateend % 10000 ) / 10000
+@ mo_end = ( $dateend  - $yr_end * 10000 - $dateend % 100 ) / 100
+@ day_end = $dateend % 100
+
+
+@ year = $yr_beg - 1
+while ( $year < $yr_end )
+  @ year += 1
+
+  @ decade = $year - $year % 10
+  switch ($decade)
+    case '1990':
+      switch ($year)
+        case '1990':
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan79
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan79
+          set nser = "MERRA2_100"
+          breaksw
+        case '1991':
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan79
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan79
+          set nser = "MERRA2_100"
+          breaksw
+        default:
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan91
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan91
+          set nser = "MERRA2_200"
+          breaksw
+      endsw
+      breaksw
+    case '2000':
+      switch ($year)
+        case '2000':
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan91
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan91
+          set nser = "MERRA2_200"
+          breaksw
+        default:
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan00
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan00
+          set nser = "MERRA2_300"
+          breaksw
+      endsw
+      breaksw
+    case '2010':
+      switch ($year)
+        case '2010':
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan00
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan00
+          set nser = "MERRA2_300"
+          breaksw
+        default:
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan10
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan10
+          set nser = "MERRA2_400"
+          breaksw
+      endsw
+      breaksw
+    default:
+#      set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan79
+      set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan79
+      set nser = "MERRA2_100"
+      breaksw
+  endsw
+#  set ydir = $sdir/stage/Y$year
+  set ydir = $sdir/Y$year
+
+
+  @ month = 0
+  if ( $year == $yr_beg ) then
+    @ month = $mo_beg - 1
+  endif
+  @ endmonth = 12
+  if ( $year == $yr_end ) then
+    @ endmonth = $mo_end
+  endif
+
+  while ( $month < $endmonth )
+    @ month += 1
+    set mdir = M`printf "%02d" $month`
+    @ yrmo = $year * 100 + $month
+
+    @ day = 0
+    if ( $year == $yr_beg && $month == $mo_beg ) then
+      @ day = $day_beg - 1
+    endif
+    switch ($month)
+      case '2':
+        @ leap = $year % 4
+        switch ($leap)
+          case [1-3]:
+            @ endday = 28
+            breaksw
+          default:
+            @ endday = 29
+            breaksw
+        endsw
+        breaksw
+      case '9':
+        @ endday = 30
+        breaksw
+      case '4':
+        @ endday = 30
+        breaksw
+      case '6':
+        @ endday = 30
+        breaksw
+      case '11':
+        @ endday = 30
+        breaksw
+      default:
+        @ endday = 31
+        breaksw
+    endsw
+    if ( $year == $yr_end && $month == $mo_end ) then
+      @ endday = $day_end
+    endif
+
+    while ($day < $endday)
+      @ day += 1
+      @ date = $year * 10000 + $month * 100 + $day
+
+      echo $date
+
+      ln -s $ydir/$mdir/$nser.inst3_3d_asm_Np.$date.nc4 $nser.inst3_3d_asm_Np.$date.nc4
+      ln -s $ydir/$mdir/$nser.tavg3_3d_tdt_Np.$date.nc4 $nser.tavg3_3d_tdt_Np.$date.nc4
+      ln -s $ydir/$mdir/$nser.tavg3_3d_qdt_Np.$date.nc4 $nser.tavg3_3d_qdt_Np.$date.nc4
+      ln -s $ydir/$mdir/$nser.tavg1_2d_rad_Nx.$date.nc4 $nser.tavg1_2d_rad_Nx.$date.nc4
+      ln -s $ydir/$mdir/$nser.tavg1_2d_flx_Nx.$date.nc4 $nser.tavg1_2d_flx_Nx.$date.nc4
+      
+    end
+
+  end
+
+end
+
+switch ($mo_beg)
+  case '1':
+    @ mo_beg = 12
+    @ yr_beg -= 1
+    breaksw
+  default:
+    @ mo_beg -= 1
+    breaksw
+endsw
+switch ($mo_end)
+  case '12':
+    @ mo_end = 1
+    @ yr_end += 1
+    breaksw
+  default:
+    @ mo_end += 1
+    breaksw
+endsw
+
+@ year = $yr_beg - 1
+while ( $year < $yr_end )
+  @ year += 1
+
+  @ decade = $year - $year % 10
+  switch ($decade)
+    case '1990':
+      switch ($year)
+        case '1990':
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan79
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan79
+          set nser = "MERRA2_100"
+          breaksw
+        case '1991':
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan79
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan79
+          set nser = "MERRA2_100"
+          breaksw
+        default:
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan91
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan91
+          set nser = "MERRA2_200"
+          breaksw
+      endsw
+      breaksw
+    case '2000':
+      switch ($year)
+        case '2000':
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan91
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan91
+          set nser = "MERRA2_200"
+          breaksw
+        default:
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan00
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan00
+          set nser = "MERRA2_300"
+          breaksw
+      endsw
+      breaksw
+    case '2010':
+      switch ($year)
+        case '2010':
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan00
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan00
+          set nser = "MERRA2_300"
+          breaksw
+        default:
+#          set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan10
+          set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan10
+          set nser = "MERRA2_400"
+          breaksw
+      endsw
+      breaksw
+    default:
+#      set sdir = /gpfsm/dnb02/projects/p53/merra2/scratch/d5124_m2_jan79
+      set sdir = /discover/nobackup/projects/gmao/merra2/data/products/d5124_m2_jan79
+      set nser = "MERRA2_100"
+      breaksw
+  endsw
+#  set ydir = $sdir/stage/Y$year
+  set ydir = $sdir/Y$year
+
+  @ month = 0
+  if ( $year == $yr_beg ) then
+    @ month = $mo_beg - 1
+  endif
+  @ endmonth = 12
+  if ( $year == $yr_end ) then
+    @ endmonth = $mo_end
+  endif
+
+  while ( $month < $endmonth )
+    @ month += 1
+    set mdir = M`printf "%02d" $month`
+    @ yrmo = $year * 100 + $month
+
+    @ day = 0
+    switch ($month)
+      case '2':
+        @ leap = $year % 4
+        switch ($leap)
+          case [1-3]:
+            @ endday = 28
+            breaksw
+          default:
+            @ endday = 29
+            breaksw
+        endsw
+        breaksw
+      case '9':
+        @ endday = 30
+        breaksw
+      case '4':
+        @ endday = 30
+        breaksw
+      case '6':
+        @ endday = 30
+        breaksw
+      case '11':
+        @ endday = 30
+        breaksw
+      default:
+        @ endday = 31
+        breaksw
+    endsw
+
+    while ($day < $endday)
+      @ day += 1
+      @ date = $year * 10000 + $month * 100 + $day
+
+      echo $date
+
+      ln -s $ydir/$mdir/$nser.tavg1_2d_ocn_Nx.$date.nc4 $nser.tavg1_2d_ocn_Nx.$date.nc4
+      
+    end
+
+  end
+
+end
+
+
+echo "BEGIN NCL STUFF"
+
+ncl -n << endncl | tail -n +6 > $EXPID.dat
+;**********************************************************
+print("test A")
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/shea_util.ncl"
+
+
+print("test 1")
+begin
+
+print("test 2")
+
+  g = 9.80665
+  rho = 6371.220
+  pi = 4. * atan(1.)
+  alat = $alat
+  alon = $alon
+
+  fili1 = systemfunc("ls *.inst3_3d_asm_Np.*.nc4")
+  nc_infile1 = addfiles(fili1, "r")
+  lat = nc_infile1[0]->lat
+  lon = nc_infile1[0]->lon
+  lev = nc_infile1[0]->lev
+  time = nc_infile1[:]->time
+  var1 = nc_infile1[:]->T(:,:,{alat},{alon})
+  var2 = nc_infile1[:]->QV(:,:,{alat},{alon})
+  var3 = nc_infile1[:]->U(:,:,{alat},{alon})
+  var4 = nc_infile1[:]->V(:,:,{alat},{alon})
+  var5 = nc_infile1[:]->OMEGA(:,:,{alat},{alon})
+  var6 = nc_infile1[:]->PS(:,{alat},{alon})
+; printVarSummary(var1)
+
+  fili2 = systemfunc("ls *.tavg3_3d_tdt_Np.*.nc4")
+  nc_infile2 = addfiles(fili2, "r")
+  var7 = nc_infile2[:]->DTDTDYN(:,:,{alat},{alon})
+  var9 = nc_infile2[:]->DTDTANA(:,:,{alat},{alon})
+
+  fili3 = systemfunc("ls *.tavg3_3d_qdt_Np.*.nc4")
+  nc_infile3 = addfiles(fili3, "r")
+  var8 = nc_infile3[:]->DQVDTDYN(:,:,{alat},{alon})
+  var10 = nc_infile3[:]->DQVDTANA(:,:,{alat},{alon})
+
+  fili4 = systemfunc("ls *.tavg1_2d_flx_Nx.*.nc4")
+  nc_infile4 = addfiles(fili4, "r")
+  var11 = nc_infile4[:]->HFLUX(0::3,{alat},{alon})
+  var12 = nc_infile4[:]->EFLUX(0::3,{alat},{alon})
+  var14 = nc_infile4[:]->PRECTOT(0::3,{alat},{alon})
+
+  fili5 = systemfunc("ls *.tavg1_2d_rad_Nx.*.nc4")
+  nc_infile5 = addfiles(fili5, "r")
+  var13 = nc_infile5[:]->TS(0::3,{alat},{alon})
+
+
+print("test 3")
+
+
+  do kk = 0, 40
+    k = 40 - kk
+    kp1 = k + 1
+    var1(:,k) = where(ismissing(var1(:,k)), var1(:,kp1), var1(:,k))
+    var2(:,k) = where(ismissing(var2(:,k)), var2(:,kp1), var2(:,k))
+    var3(:,k) = where(ismissing(var3(:,k)), var3(:,kp1), var3(:,k))
+    var4(:,k) = where(ismissing(var4(:,k)), var4(:,kp1), var4(:,k))
+    var5(:,k) = where(ismissing(var5(:,k)), var5(:,kp1), var5(:,k))
+    var7(:,k) = where(ismissing(var7(:,k)), var7(:,kp1), var7(:,k))
+    var8(:,k) = where(ismissing(var8(:,k)), var8(:,kp1), var8(:,k))
+    var9(:,k) = where(ismissing(var9(:,k)), var9(:,kp1), var9(:,k))
+    var10(:,k) = where(ismissing(var10(:,k)), var10(:,kp1), var10(:,k))
+  end do
+  var0 = var1
+  var0 = 0.0
+  var5 = var5 * 36.
+  var6 = var6 / 100.
+  var7 = var7 * 3600.
+  var8 = var8 * 3600000.
+  var9 = var9 * 3600.
+  var10 = var10 * 3600000.
+  var14 = var14 * 3600.
+
+  utc_date = cd_calendar(time, 0)
+  iyear = tointeger(utc_date(:,0))
+  imonth = tointeger(utc_date(:,1))
+  iday = tointeger(utc_date(:,2))
+  ihr = tointeger(utc_date(:,3))
+  imin = tointeger(utc_date(:,4))
+  doy = day_of_year(iyear, imonth, iday) + ihr / 24.
+  icorr = 0.
+  do k = 1, dimsizes(time) - 1
+    if(doy(k).eq.1) then
+      icorr = icorr + day_of_year(iyear(k-1), 12, 31)
+    end if
+    doy(k) = doy(k) + icorr
+  end do
+
+  print(" time length (nt)")
+  ntime = dimsizes(time)
+  print( sprinti("%12.0i", ntime) )
+  print(" number of pressure levels (np)")
+  nlev = dimsizes(lev)
+  print( sprinti("%12.0i", nlev) )
+  print(" pressure levels P(np)")
+  print(" mb")
+  print( sprintf("%15.7E", lev) )
+  print(" time TIME(nt)")
+  print( sprintf("%15.7E", doy) )
+  print(" year YY(nt)")
+  print( sprintf("%15.7E", iyear) )
+  print(" month MO(nt)")
+  print( sprintf("%15.7E", imonth) )
+  print(" day DD(nt)")
+  print( sprintf("%15.7E", iday) )
+  print(" hour HH(nt)")
+  print( sprintf("%15.7E", ihr) )
+  print(" minute MM(nt)")
+  print( sprintf("%15.7E", imin) )
+  print(" Number of Multi-Level Fields:")
+  print("          11")
+  print("           1  & Temp_(K)")
+  print(" K")
+  do k = 0, dimsizes(time) - 1
+    nt = k + 1
+    print(" nt="+sprinti("%12.0i", nt) )
+    print( sprintf("%15.7E", var1(k,:)) )
+  end do
+  print("           2  & H2O_Mixing_Ratio_(kg/kg)")
+  print(" kg/kg")
+  do k = 0, dimsizes(time) - 1
+    nt = k + 1
+    print(" nt="+sprinti("%12.0i", nt) )
+    print( sprintf("%15.7E", var2(k,:)) )
+  end do
+  print("           3  & U_wind_(m/sec)")
+  print(" m/sec")
+  do k = 0, dimsizes(time) - 1
+    nt = k + 1
+    print(" nt="+sprinti("%12.0i", nt) )
+    print( sprintf("%15.7E", var3(k,:)) )
+  end do
+  print("           4  & V_wind_(m/sec)")
+  print(" m/sec")
+  do k = 0, dimsizes(time) - 1
+    nt = k + 1
+    print(" nt="+sprinti("%12.0i", nt) )
+    print( sprintf("%15.7E", var4(k,:)) )
+  end do
+  print("           5  & Omega_(mb/hour)")
+  print(" mb/hour")
+  do k = 0, dimsizes(time) - 1
+    nt = k + 1
+    print(" nt="+sprinti("%12.0i", nt) )
+    print( sprintf("%15.7E", var5(k,:)) )
+  end do
+  print("           6  & Horizontal_Temp_Advec_(K/hour) dtdtdynscm")
+  print(" K/hour")
+  do k = 0, dimsizes(time) - 1
+    nt = k + 1
+    print(" nt="+sprinti("%12.0i", nt) )
+    print( sprintf("%15.7E", var7(k,:)) )
+  end do
+  print("           7  & Vertical_Temp_Advec_(K/hour)")
+  print(" K/hour")
+  do k = 0, dimsizes(time) - 1
+    nt = k + 1
+    print(" nt="+sprinti("%12.0i", nt) )
+    print( sprintf("%15.7E", var0(k,:)) )
+  end do
+  print("           8  & Horizontal_q_Advec_(g/kg/hour)dqvdtdynscm")
+  print(" g/kg/hour")
+  do k = 0, dimsizes(time) - 1
+    nt = k + 1
+    print(" nt="+sprinti("%12.0i", nt) )
+    print( sprintf("%15.7E", var8(k,:)) )
+  end do
+  print("           9  & Vertical_q_Advec_(g/kg/hour)")
+  print(" g/kg/hour")
+  do k = 0, dimsizes(time) - 1
+    nt = k + 1
+    print(" nt="+sprinti("%12.0i", nt) )
+    print( sprintf("%15.7E", var0(k,:)) )
+  end do
+  print("          10  & Horizontal_Temp_Advec_(K/hour) dtdtanascm")
+  print(" K/hour")
+  do k = 0, dimsizes(time) - 1
+    nt = k + 1
+    print(" nt="+sprinti("%12.0i", nt) )
+;    print( sprintf("%15.7E", var9(k,:)) )
+    print( sprintf("%15.7E", var0(k,:)) )
+  end do
+  print("          11  & Horizontal_q_Advec_(g/kg/hour)dqvdtanascm")
+  print(" g/kg/hour")
+  do k = 0, dimsizes(time) - 1
+    nt = k + 1
+    print(" nt="+sprinti("%12.0i", nt) )
+;    print( sprintf("%15.7E", var10(k,:)) )
+    print( sprintf("%15.7E", var0(k,:)) )
+  end do
+  print(" Number of Single-Level Fields:")
+  print("           5")
+  print("           1  & SH_(W/m**2)")
+  print(" W/m**2")
+  print( sprintf("%15.7E", var11) )
+  print("           2  & LH_(W/m**2)")
+  print(" W/m**2")
+  print( sprintf("%15.7E", var12) )
+  print("           3  & TS_(K)")
+  print(" K")
+  print( sprintf("%15.7E", var13) )
+  print("           4  & PS_(mb)")
+  print(" mb")
+  print( sprintf("%15.7E", var6) )
+  print("           5  & Prec_(mm/hour)")
+  print(" mm/hour")
+  print( sprintf("%15.7E", var14) )
+    
+  fili6 = systemfunc("ls *.tavg1_2d_ocn_Nx.*.nc4")
+  nc_infile6 = addfiles(fili6, "r")
+  time2 = nc_infile6[:]->time(0::3)
+  var15 = nc_infile6[:]->TSKINWTR(0::3,{alat},{alon})
+  var16 = nc_infile6[:]->FRSEAICE(0::3,{alat},{alon})
+  var15 = where(ismissing(var15), 300., var15)
+
+  utc_date2 = cd_calendar(time2, 0)
+  iyear2 = tointeger(utc_date2(:,0))
+  imonth2 = tointeger(utc_date2(:,1))
+  iday2 = tointeger(utc_date2(:,2))
+  ihr2 = tointeger(utc_date2(:,3))
+  imin2 = tointeger(utc_date2(:,4))
+
+  fhead = new ( (/dimsizes(time2), 14/), "float")
+  ntimem1 = dimsizes(time2) - 1
+  ntimem2 = dimsizes(time2) - 2
+  fhead(:,0) = tofloat(iyear2)
+  fhead(:,1) = tofloat(imonth2)
+  fhead(:,2) = tofloat(iday2)
+  fhead(:,3) = tofloat(ihr2)
+  fhead(:,4) = tofloat(imin2)
+  fhead(:,5) = 0.
+  fhead(0:ntimem2,6) = tofloat(iyear2(1:ntimem1))
+  fhead(0:ntimem2,7) = tofloat(imonth2(1:ntimem1))
+  fhead(0:ntimem2,8) = tofloat(iday2(1:ntimem1))
+  fhead(0:ntimem2,9) = tofloat(ihr2(1:ntimem1))
+  fhead(:,10) = tofloat(imin2)
+  fhead(:,11) = 0.
+  jmx = ispan(0, dimsizes(lat) - 1, 1)
+  copy_VarCoords(lat, jmx)
+  imx = ispan(0, dimsizes(lon) - 1, 1)
+  copy_VarCoords(lon, imx)
+  fhead(:,12) = tofloat( jmx({alat}) )
+  fhead(:,13) = tofloat( imx({alon}) )
+
+  fhead(ntimem1,9) = 0.
+  fhead(ntimem1,6) = tofloat(iyear2(ntimem1))
+  fhead(ntimem1,7) = tofloat(imonth2(ntimem1))
+  fhead(ntimem1,8) = tofloat(iday2(ntimem1)) + 1.
+  dim = tofloat( days_in_month(round( fhead(ntimem1,6), 3), round( fhead(ntimem1,7), 3) ) )
+  if (fhead(ntimem1,8).gt.dim) then
+    fhead(ntimem1,8) = 1
+    fhead(ntimem1,7) = fhead(ntimem1,7) + 1
+    if (fhead(ntimem1,7).gt.12) then
+      fhead(ntimem1,7) = 1
+      fhead(ntimem1,6) = fhead(ntimem1,6) + 1
+    end if
+  end if
+
+  irec = 0
+  do k = 0, ntimem1
+;   print(fhead(k,:))
+;   print(var15(k))
+    irec = where(k.eq.0, 0, -1)
+    fbinrecwrite("sst.data", irec, fhead(k,:))
+    fbinrecwrite("sstsi.data", irec, fhead(k,:))
+    fbinrecwrite("fraci.data", irec, fhead(k,:))
+
+    fbinrecwrite("sst.data", -1, var15(k))
+    fbinrecwrite("sstsi.data", -1, var15(k))
+    fbinrecwrite("fraci.data", -1, var16(k))
+  end do
+
+  fili7 = "/discover/nobackup/projects/gmao/share/dao_ops/fvInput_4dvar/g5gcm/bcs/realtime/SST/360x180/SEAWIFS_KPAR_mon_clim.360x180"
+  do k = 1, 14
+    rec_in = 2 * k - 2
+    kpar_header = fbinrecread( fili7, rec_in, (/14/), "float")
+    kpar_in = fbinrecread( fili7, rec_in + 1, (/180,360/), "float")
+
+    kpar_lat = fspan(-89.5,89.5,180)
+    kpar_lat@units = "degrees north"
+    kpar_lon = fspan(-179.5, 179.5, 360)
+    kpar_lon@units = "degrees east"
+    kpar_in!0 = "lat"
+    kpar_in!1 = "lon"
+    kpar_in&lat = kpar_lat
+    kpar_in&lon = kpar_lon
+    kpar_in@_FillValue = 1.
+    kpar_in = where(ismissing(kpar_in), 0., kpar_in)
+
+    rec_out = where(k.eq.1, 0, -1)
+    fbinrecwrite("SEAWIFS_KPAR_mon_clim.data", rec_out, kpar_header)
+    fbinrecwrite("SEAWIFS_KPAR_mon_clim.data", -1, kpar_in({alat},{alon}))
+
+  end do
+
+
+end
+
+endncl
+
+
+rm MERRA2_???.inst3_3d_asm_Np.????????.nc4 MERRA2_???.tavg3_3d_tdt_Np.????????.nc4 MERRA2_???.tavg3_3d_qdt_Np.????????.nc4 MERRA2_???.tavg1_2d_rad_Nx.????????.nc4 MERRA2_???.tavg1_2d_flx_Nx.????????.nc4 MERRA2_???.tavg1_2d_ocn_Nx.????????.nc4
+
+

@@ -57,6 +57,7 @@
 !                        ../Shared/catch_constants.f90
 ! Justin , 19 Apr 2018  - removed LAND_UPD ifdefs, use SurfParams
 ! Justin , 11 Dec 2018  - put in ASNOW fix affecting AGCM only
+! Sarith , 20 Apr 2020  - introducing USE_FWET_FOR_RUNOFF and passing FWETL and FWETC via GEOS_SurfaceGridComp.rc
 
 
       MODULE CATCHMENT_MODEL
@@ -96,7 +97,7 @@
           INTERC, BASE, PARTITION, RZEQUIL, gndtp0, &   
           catch_calc_soil_moist, gndtmp,            &
           catch_calc_wtotl, dampen_tc_oscillations, &
-          PHIGT, DZTC 
+          PHIGT, DZTC, SRUNOFF 
       
       USE SIBALB_COEFF,  ONLY: coeffsib
 
@@ -123,7 +124,7 @@
       CONTAINS
 
       SUBROUTINE CATCHMENT (                                                   &
-                     NCH, LONS, LATS, DTSTEP, SFRAC,                           &
+                     NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL,            &
                      cat_id,ITYP,DZSF,TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,   &
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
@@ -162,9 +163,10 @@
       INTEGER, INTENT(IN) :: NCH
       INTEGER, INTENT(IN), DIMENSION(NCH) :: ITYP, cat_id
 
-      REAL, INTENT(IN) :: DTSTEP, SFRAC
+      REAL, INTENT(IN)     :: DTSTEP, FWETC, FWETL
+      LOGICAL,  INTENT(IN) :: UFW4RO
       REAL, INTENT(IN), DIMENSION(NCH) :: DZSF, TRAINC, TRAINL,                &
-                     TSNOW, TICE, TFRZR,  UM,    &
+                     TSNOW, TICE, TFRZR,  UM,                                  &
                      ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
                      ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
                      ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
@@ -234,7 +236,7 @@
             RC, SATCAP, SNWFRC, POTFRC,  ESNFRC, EVSNOW, SHFLUXS, HLWUPS,      &
             HFTDS1, HFTDS2, HFTDS4, DHFT1, DHFT2, DHFT4, TPSNB,                &
             QSATTC, DQSDTC, SWSRF1, SWSRF2, SWSRF4, AR4, RX11, RX21, RX12,     &
-            RX14, RX24, RX22, EIRFRC, FCAN, THRU, RZEQOL, frice, srfmx,        &
+            RX14, RX24, RX22, EIRFRC, FCAN, THRUL, THRUC,RZEQOL, frice, srfmx, &
             srfmn, RCST, EVAPFR, RCUN, PAR, PDIR, RDCX, EVAP1, EVAP2,          &
             EVAP4, SHFLUX1, SHFLUX2, SHFLUX4, HLWUP1, HLWUP2, HLWUP4,          &
             GHFLUX1, GHFLUX2, GHFLUX4, RZI, TC1SF, TC2SF, TC4SF, ar1old,       &
@@ -323,7 +325,7 @@
          
          write (*,*) NCH  
          write (*,*) DTSTEP  
-         write (*,*) SFRAC  
+         write (*,*) UFW4RO
          write (*,*) ITYP(n_out)  
          write (*,*) TRAINC(n_out)    
          write (*,*) TRAINL(n_out)    
@@ -1145,12 +1147,12 @@
 
 !**** UPDATE CANOPY INTERCEPTION; DETERMINE THROUGHFALL RATES.
 
-      CALL INTERC (                                                            &
-                   NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
-                   SATCAP, SFRAC,BUG,                                          &
-                   CAPAC,                                                      &
-                   THRU                                                        &
-                  )
+        CALL INTERC (                                                    &
+             NCH, DTSTEP, FWETC, FWETL, TRAINLX, TRAINCX, SMELT,         &
+             SATCAP, BUG,                                                &
+             CAPAC,                                                      &
+             THRUL, THRUC                                                &
+             )
 
       IF (BUG) THEN
         WRITE(*,*) 'INTERC OK'
@@ -1158,11 +1160,11 @@
 
 !**** DETERMINE SURFACE RUNOFF AND INFILTRATION RATES:
 
-      CALL SRUNOFF (                                                           &
-                    NCH,DTSTEP,AR1,ar2,ar4,THRU,frice,tp1,srfmx,BUG,           &
-                    SRFEXC,RUNSRF,                                             &
-                    QINFIL                                                     &
-                   )
+        CALL SRUNOFF ( NCH,DTSTEP,UFW4RO, FWETC, FWETL,                 &
+             AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,BUG,              & 
+             SRFEXC,RUNSRF,                                             &
+             QINFIL                                                     &
+             )
 
       IF (BUG) THEN
         WRITE(*,*) 'SRUNOFF'
@@ -1504,7 +1506,7 @@
          
          write (*,*) NCH  
          write (*,*) DTSTEP  
-         write (*,*) SFRAC  
+         write (*,*) UFW4RO
          write (*,*) ITYP(n_out)  
          write (*,*) TRAINC(n_out)    
          write (*,*) TRAINL(n_out)    
@@ -1791,74 +1793,6 @@
       RETURN
       END SUBROUTINE RZDRAIN
 
-!**** ===================================================
-!**** ///////////////////////////////////////////////////
-!**** ===================================================
-
-      SUBROUTINE SRUNOFF (                                                     &
-                          NCH,DTSTEP,AR1,ar2,ar4, THRU,frice,tp1,srfmx,BUG,    &
-                          SRFEXC,RUNSRF,                                       &
-                          QINFIL                                               &
-                         )
-
-      IMPLICIT NONE
-
-
-      INTEGER, INTENT(IN) :: NCH
-      REAL, INTENT(IN) :: DTSTEP
-      REAL, INTENT(IN), DIMENSION(NCH) :: AR1, ar2, ar4, THRU, frice, tp1,     &
-             srfmx
-      LOGICAL, INTENT(IN) :: BUG
-
-      REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC ,RUNSRF
-
-      REAL, INTENT(OUT), DIMENSION(NCH) :: QINFIL
-
-      INTEGER N
-      REAL PTOTAL,srun0,frun,qin
-
-!**** - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-      DO N=1,NCH
-
-        PTOTAL=THRU(N)
-        frun=AR1(N)
-        if(srfexc(n) .gt. 0.) then
-!          frun=frun+ar2(n)*(srfexc(n)/(srfmx(n)+1.e-20))
-!         frun=frun+ar4(n)*(srfexc(n)/(srfmx(n)+1.e-20))**2
-          endif
-!        frun=frun+(1-frun)*frice(n)
-        srun0=PTOTAL*frun
-
-!**** Comment out this line in order to allow moisture
-!**** to infiltrate soil:
-!       if(tp1(n) .lt. 0.) srun0=ptotal
-
-        if(ptotal-srun0 .gt. srfmx(n)-srfexc(n))                               &
-                      srun0=ptotal-(srfmx(n)-srfexc(n)) 
-
-        if (srun0 .gt. ptotal) then
-!rr          write(*,*) 'srun0 > ptotal: N=',N
-!rr          write(*,*) ' frice=',frice(n),' ar1=',ar1(n),' ptotal=',
-!rr     &           ptotal,' tp1=',tp1(n)
-!rr          write(*,*) ' ar2=',ar2(n),' ar4=',ar4(n),' srfexc=',
-!rr     &           srfexc(n),' srfmx=',srfmx(n),' thru=',thru(n),
-!rr     &           ' rzexc=',rzexc(n)
-!rr          write(*,*) '=====> CORRECTION'
-          srun0=ptotal
-          endif
-
-        RUNSRF(N)=RUNSRF(N)+srun0
-        QIN=PTOTAL-srun0
-
-        SRFEXC(N)=SRFEXC(N)+QIN
-        RUNSRF(N)=RUNSRF(N)/DTSTEP
-        QINFIL(N)=QIN/DTSTEP
-         
-        ENDDO
-      
-      RETURN
-      END SUBROUTINE SRUNOFF
 
 !****
 !**** -----------------------------------------------------------------

@@ -90,13 +90,14 @@ module GEOS_OpenwaterGridCompMod
   use MAPL
   use GEOS_UtilsMod
   use DragCoefficientsMod
-  
+  use atmOcnIntlayer,     only: ALBSEA,    &
+                                COOL_SKIN, &
+                                SKIN_SST
 
   implicit none
   private
 
-  integer            :: DO_DATASEA   ! between DO_GUEST and DO_DATASEA, we pick one that
-                                     ! works in both amip and coupled mode
+  integer            :: DO_DATASEA
   integer            :: DO_SKIN_LAYER
 
   public SetServices
@@ -112,7 +113,6 @@ module GEOS_OpenwaterGridCompMod
                                           ! defualt: OFF, so AOIL is incompatible with "old" interface
                                           ! when it is ON, set servives provides what is needed for both versions
                                           ! whereas RUN(1,2) will use one or other (OFF: AOIL; ON: old interface)
-                                                               
 
   contains
 
@@ -183,7 +183,7 @@ module GEOS_OpenwaterGridCompMod
     call MAPL_GetResource ( MAPL, DO_DATASEA,    Label="USE_DATASEA:"     , DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_SKIN_LAYER, Label="USE_SKIN_LAYER:"  , DEFAULT=0    , RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_SKIN_LAYER, Label="USE_SKIN_LAYER:"  , DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Atmosphere-Ocean Interface Layer compatibility: on/off?
@@ -243,7 +243,6 @@ module GEOS_OpenwaterGridCompMod
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
-
 
      call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'evaporation'               ,&
@@ -821,16 +820,6 @@ module GEOS_OpenwaterGridCompMod
           RC=STATUS  )
      VERIFY_(STATUS)
 
-! this is gone because FRZMLT will be from ocean/guest
-!     call MAPL_AddExportSpec(GC,                     &
-!          SHORT_NAME         = 'FRZMLT'                    ,&
-!          LONG_NAME          = 'Freeze_melt_potential',     &
-!          UNITS              = 'W m-2'                     ,&
-!          DIMS               = MAPL_DimsTileOnly           ,&
-!          VLOCATION          = MAPL_VLocationNone          ,&
-!                                               RC=STATUS  ) 
-!    VERIFY_(STATUS)
-
      call MAPL_AddExportSpec(GC,                           &
           SHORT_NAME         = 'SS_FOUND',                 &
           LONG_NAME          = 'foundation_salinity_for_interface_layer',        &
@@ -839,7 +828,6 @@ module GEOS_OpenwaterGridCompMod
           VLOCATION          = MAPL_VLocationNone,         &
           RC=STATUS  )
      VERIFY_(STATUS)
-
 
      call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'total_surface_heat_flux_over_the_whole_tile' ,&
@@ -870,7 +858,7 @@ module GEOS_OpenwaterGridCompMod
         VERIFY_(STATUS)
      endif
 
-     ! atmosphere-ocean fluxes
+     ! Atmosphere-ocean fluxes
      call MAPL_AddExportSpec(GC,                     &
         LONG_NAME          = 'atmosphere_ocean_sensible_heat_flux' ,&
         UNITS              = 'W m-2'                     ,&
@@ -938,6 +926,15 @@ module GEOS_OpenwaterGridCompMod
          LONG_NAME          = 'departure_of_mean_interface_temperature_from_foundation_temperature',   &
          UNITS              = 'K',                                 &
          SHORT_NAME         = 'TWMTF',                             &
+         DIMS               = MAPL_DimsTileOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+                                                       RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer',   &
+         UNITS              = 'W m-2',                             &
+         SHORT_NAME         = 'PEN_OCN',                           &
          DIMS               = MAPL_DimsTileOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
@@ -1412,7 +1409,6 @@ module GEOS_OpenwaterGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-
      call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'KPAR',                              &
         LONG_NAME          = 'PAR_extinction_coefficient',        &
@@ -1472,7 +1468,6 @@ module GEOS_OpenwaterGridCompMod
           RC=STATUS  ) 
     VERIFY_(STATUS)
 
-
     call MAPL_AddImportSpec(GC,                             &
         SHORT_NAME         = 'UUA',                             &
         LONG_NAME          = 'interpolated_effective_surface_zonal_velocity',&
@@ -1493,95 +1488,7 @@ module GEOS_OpenwaterGridCompMod
         RC=STATUS  )
      VERIFY_(STATUS)
 
-
-!    if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-
-! these exports were filled with 0. by SimpleSeaiceGridComp
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'DRUVRTHRU',                             &
-!            LONG_NAME          = 'penetrative_uvr_beam_flux_through_sea_ice',           &
-!            UNITS              = 'W m-2',                             &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'DFUVRTHRU',                             &
-!            LONG_NAME          = 'penetrative_uvr_diffuse_flux_through_sea_ice',           &
-!            UNITS              = 'W m-2',                             &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'DRPARTHRU',                             &
-!            LONG_NAME          = 'penetrative_par_beam_flux_through_sea_ice',           &
-!            UNITS              = 'W m-2',                             &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'DFPARTHRU',                             &
-!            LONG_NAME          = 'penetrative_par_diffuse_flux_through_sea_ice',           &
-!            UNITS              = 'W m-2',                             &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'FRESH',                             &
-!            LONG_NAME          = 'fresh_water_flux_from_sea_ice',     &
-!            UNITS              = 'kg m-2 s-1',                        &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'FSALT',                             &
-!            LONG_NAME          = 'salt_flux_from_sea_ice',            &
-!            UNITS              = 'kg m-2 s-1',                        &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!       call MAPL_AddImportSpec(GC,                             &
-!            SHORT_NAME         = 'FHOCN',                             &
-!            LONG_NAME          = 'heat_flux_from_sea_ice',            &
-!            UNITS              = 'W m-2',                             &
-!            DIMS               = MAPL_DimsTileOnly,                   &
-!            VLOCATION          = MAPL_VLocationNone,                  &
-!            RESTART            = MAPL_RestartSkip,                    &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)
-
-!    endif
-
-     ! added here in case skin layer needs it
-     !call MAPL_AddImportSpec(GC,                     &
-     !   SHORT_NAME         = 'FRZMLT'                    ,&
-     !   LONG_NAME          = 'freeze_melt_potential',     &
-     !   UNITS              = 'W m-2'                     ,&
-     !   DIMS               = MAPL_DimsTileOnly           ,&
-     !   VLOCATION          = MAPL_VLocationNone          ,&
-     !   DEFAULT            = 0.0                         ,&
-     !   RC=STATUS  ) 
-     !VERIFY_(STATUS)
-
 !EOS
-
 
 ! Set the Profiling timers
 ! ------------------------
@@ -1594,7 +1501,6 @@ module GEOS_OpenwaterGridCompMod
     VERIFY_(STATUS) 
     call MAPL_TimerAdd(GC,    name="-Albedo"  ,             RC=STATUS)
     VERIFY_(STATUS)
-  
 
 ! Set generic init and final methods
 ! ----------------------------------
@@ -1608,7 +1514,6 @@ module GEOS_OpenwaterGridCompMod
     RETURN_(ESMF_SUCCESS)
   
   end subroutine SetServices
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -1687,7 +1592,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: WW  => null()
    real, pointer, dimension(:,:)  :: Z0  => null()
 
-   real, pointer, dimension(:  )  :: TWMTS => null()  ! add here to be able to fix the "bug" with old interface
+   real, pointer, dimension(:  )  :: TWMTS => null()
 
 ! pointers to import
 
@@ -1704,13 +1609,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:)    :: FI  => null()
    real, pointer, dimension(:)    :: TF  => null()
    real, pointer, dimension(:)    :: TS_FOUNDi => null()
-!  real, pointer, dimension(:)    :: FRZMLT    => null()
 
    integer                        :: N
    integer                        :: NT
    integer                        :: NC
    integer                        :: niter
-
 
    real, allocatable              :: TS (:,:)
    real, allocatable              :: US (:,:)
@@ -1766,8 +1669,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real            :: OGCM_top_thickness        ! thickness of OGCM top layer (D) in AS2018
    real            :: QSAT_SCL
 
-   integer         :: iFIX_BUG1                 ! whether to fix the "bug" with old interface? 0: no (default), 1: yes
-   integer         :: iMAK_BUG                  ! whether to put a   "bug" in   new interface? 0: no (default), 1: yes
    character(len=ESMF_MAXSTR)     :: SURFRC
    type(ESMF_Config)              :: SCF 
 
@@ -1883,8 +1784,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,TS_FOUNDi, 'TS_FOUND', RC=STATUS)
    VERIFY_(STATUS)
-!  call MAPL_GetPointer(IMPORT,FRZMLT, 'FRZMLT'  ,    RC=STATUS)
-!  VERIFY_(STATUS)
 
 ! Pointers to internals
 !----------------------
@@ -1971,14 +1870,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
      call MAPL_GetPointer(EXPORT,QSAT2 , 'QSAT2'   ,    RC=STATUS)
      VERIFY_(STATUS)
-   endif
-
-   if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-      call MAPL_GetResource ( MAPL, iFIX_BUG1,  Label="FIX1_OLD_INTERFACE:"  , DEFAULT=0,   RC=STATUS)
-      VERIFY_(STATUS)
-   else
-      call MAPL_GetResource ( MAPL, iMAK_BUG,   Label="BREAK_NEW_INTERFACE:" , DEFAULT=0,   RC=STATUS)
-      VERIFY_(STATUS)
    endif
 
    NT = size(TA)
@@ -2068,12 +1959,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
 
    if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-     TS(:,WATER) = TW  ! TW (in K): returned from MOM/dataocean. Max, should it be TS(:,WATER) = TW - TWMTS?
-
-     if( iFIX_BUG1 == 1) then
-       call MAPL_GetPointer(INTERNAL,TWMTS  , 'TWMTS',    RC=STATUS); VERIFY_(STATUS)
-       TS(:,WATER)= TS(:,WATER) - TWMTS ! so helfsurface gets SKIN SST (i.e., "TS") as input.
-     endif
+     TS(:,WATER) = TW
 
    else
 
@@ -2090,12 +1976,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
        endif
        TS(:,WATER) = TS(:,WATER) - DELTC                                   ! Eqn.(16) of AS2018
 
-       if( iMAK_BUG == 1) then
-         TS(:,WATER) = TS_FOUNDi + TWMTF                                   ! deliberately input helfsurface "TW"
-       endif
      endif
    endif
-
 
    FR(:,WATER) = 1.0 ! parent(saltwater) will aggregate based on water/ice fraction 
 
@@ -2112,17 +1994,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    endif
 
    if( trim(AOIL_COMP_SWITCH) == "OFF") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-   ! it is a minor bug to not having the line below
-   ! TS has been updated on the ocean side, so QS should too
-   ! commented out for now so Santha can have zero-diff
 
-     !QS(:,WATER) = GEOS_QSAT(TS(:,WATER), PS, RAMP=0.0, PASCALS=.TRUE.) 
      call MAPL_GetResource ( MAPL, QSAT_SCL, Label="QSAT_SALTWATER_SCALING:" , DEFAULT=1.0, RC=STATUS)
      VERIFY_(STATUS)
      QS(:,WATER) = QSAT_SCL*GEOS_QSAT(TS(:,WATER), PS, RAMP=2.0, PASCALS=.TRUE.) 
 
      if(associated(QSAT1)) QSAT1 = QS(:,WATER)
-     !if(associated(QSAT2)) QSAT2 = 1.0/1.22*0.98*640380.0*exp(-5107.4/TS(:,WATER))
    endif
 
 !  Clear the output tile accumulators
@@ -2191,7 +2068,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
            UCN = 0.
          endif
 
-
          !  Aggregate to tiles for MO only diagnostics
          !--------------------------------------------
          if(associated(MOU50M))MOU50M = U50M(:)*FR(:,N)
@@ -2225,7 +2101,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          if(associated(GST)) GST     = WW(:,N)*FR(:,N)
          if(associated(VNT)) VNT     = UUU    *FR(:,N)
 
-
       !  Aggregate effective, CD-weighted, surface values of T and Q
       !-------------------------------------------------------------
 
@@ -2233,7 +2108,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          if(associated(QH)) QH      = CQ(:,N)*QS(:,N)*FR(:,N)
          if(associated(UH)) UH      = CM(:,N)*US(:,N)*FR(:,N)
          if(associated(VH)) VH      = CM(:,N)*VS(:,N)*FR(:,N)
-
 
          WW(:,N) = max(CH(:,N)*(TS(:,N)-TA-(MAPL_GRAV/MAPL_CP)*DZ)/TA + MAPL_VIREPS*CQ(:,N)*(QS(:,N)-QA),0.0)
          WW(:,N) = (HPBL*MAPL_GRAV*WW(:,N))**(2./3.)
@@ -2291,7 +2165,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    RETURN_(ESMF_SUCCESS)
 
-
  end subroutine RUN1
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -2314,7 +2187,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! !DESCRIPTION: Periodically refreshes the sea-surface conditions
 
 !EOP
-
 
 ! ErrLog Variables
 
@@ -2363,7 +2235,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Get parameters from generic state.
 !-----------------------------------
 
-    call MAPL_Get(MAPL,             &
+    call MAPL_Get(MAPL,                          &
          TILELATS  = LATS ,                      &
          TILELONS  = LONS ,                      &
          TILEAREA  = AREA ,                      &
@@ -2428,6 +2300,7 @@ contains
    real, pointer, dimension(:  )  :: AODRNIR => null()
    real, pointer, dimension(:  )  :: AODFNIR => null()
    real, pointer, dimension(:  )  :: FSURF   => null()
+   real, pointer, dimension(:  )  :: PENOCNe => null()
 
    real, pointer, dimension(:  )  :: DELTS  => null()
    real, pointer, dimension(:  )  :: DELQS  => null()
@@ -2518,7 +2391,6 @@ contains
    real, pointer, dimension(:)    :: TF => null()
    real, pointer, dimension(:)    :: DISCHARGE_IM => null()
 
-
    real, allocatable                   :: TS (:,:)                  ! Following 4 Variables: TS to FR need to be 
    real, allocatable                   :: HH (:,:)                  ! allocatable because NUM_SUBTILES is NOT a parameter
    real, allocatable                   :: SS (:,:)
@@ -2531,8 +2403,6 @@ contains
    real,    dimension(NT)              :: EVD
    real,    dimension(NT)              :: CFQ
    real,    dimension(NT)              :: CFT
-   !real,    dimension(NT)              :: UUA
-   !real,    dimension(NT)              :: VVA
    real,    dimension(NT)              :: TXW
    real,    dimension(NT)              :: TYW
    real,    dimension(NT)              :: DQS
@@ -2556,7 +2426,6 @@ contains
    real,    dimension(NT)              :: ALBNFO
    real,    dimension(NT)              :: VSUVR
    real,    dimension(NT)              :: VSUVF
-
 
    real,    dimension(NT)              :: LCOOL_
    real,    dimension(NT)              :: BCOOL_
@@ -2587,7 +2456,6 @@ contains
    real                                :: fr_ice_thresh             ! threshold on ice fraction, used in diurnal warming and cool-skin layer
    real                                :: MUSKIN                    ! exponent in T(z) profile in warm layer, based on Zeng & Beljaars, 2005
    real                                :: STOKES_SPEED              ! Stokes velocity in m/s. A global constant number until Wave Watch is ready
-   integer                             :: USE_KPAR
 
    real                                :: MAXSALINITY
    real                                :: MINSALINITY
@@ -2603,10 +2471,7 @@ contains
 
    integer                             :: NSUB, I, K, L
 
-   real                                :: FSALT, FRESH!, FHOCN
-
-   integer                             :: iFIX_BUG2                 ! whether to fix the "bug" with old interface? 0: no (default), 1: yes
-
+   real                                :: FSALT, FRESH
 
 !  -------------------------------------------------------------------
 
@@ -2691,7 +2556,6 @@ contains
      call MAPL_GetPointer(INTERNAL,TWMTS  , 'TWMTS',    RC=STATUS); VERIFY_(STATUS)
    endif
 
-
 ! Pointers to outputs
 !--------------------
 
@@ -2731,7 +2595,7 @@ contains
    call MAPL_GetPointer(EXPORT,AODRNIR, 'AO_DRNIR',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,AODFNIR, 'AO_DFNIR',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FSURF  , 'FSURF'   ,    RC=STATUS); VERIFY_(STATUS)
-
+   call MAPL_GetPointer(EXPORT,PENOCNe, 'PEN_OCN' ,    RC=STATUS); VERIFY_(STATUS)
 
    call MAPL_GetPointer(EXPORT,Dwarm  , 'DWARM'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,Dcool  , 'DCOOL'   ,    RC=STATUS); VERIFY_(STATUS)
@@ -2752,7 +2616,6 @@ contains
    call MAPL_GetPointer(EXPORT,TauTW  , 'TAUTW'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,ZETA_W , 'ZETA_W'  ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,TWMTFe , 'TWMTF'   ,    RC=STATUS); VERIFY_(STATUS)
-
 
    allocate(TS (NT,NUM_SUBTILES),STAT=STATUS)
    VERIFY_(STATUS)
@@ -2811,9 +2674,9 @@ contains
 !   Treatment of Marginal Ice Zone (MIZ), i.e., threshold on fraction of ice (fraci), to model the SST variations. 
 !   One can imagine at least following three possibilities:
 !   (i)  SST is NOT allowed to vary within ice extent, 
-!        i.e., if fraci    < fr_ice_thresh (1.e-11 default), turn AOIL off, set skin SST = TS_FOUND
+!        i.e., if fraci    < fr_ice_thresh (= 1.e-11 default), turn AOIL off, set skin SST = TS_FOUND
 !   (ii) SST IS allowed to vary with the ice extent, 
-!                 FRwater  > fr_ice_thresh (0.0 default),    turn AOIL on, only over water, skin SST .ne. TS_FOUND (as it was <= Jason-2_0)
+!                 FRwater  > fr_ice_thresh (= 0.0 default),    turn AOIL on, only over water, skin SST .ne. TS_FOUND (as it was <= Jason-2_0)
 !   (iii) SST is NOT allowed to vary when SST < SST_cold, say, 15C. Turn AOIL off when the water temperature falls below some threshold.
 !
 !   As already noted, option (ii) was used in versions before and up to Jason-2_0, and (i) was tried in Jason-3_0, which 
@@ -2824,14 +2687,11 @@ contains
 !   
 !   ** Revisit when coupled to ocean+sea-ice ** July, 2019.
 !   --------------------------------------------------------------------------------------------------------
-!   call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=1.e-11,    RC=STATUS)   ! above option (i)
-    call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=0.0,       RC=STATUS)   ! above option (ii)
+    call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=0.0,       RC=STATUS)   ! i.e., above option (ii)
     VERIFY_(STATUS)
 !   --------------------------------------------------------------------------------------------------------
 
     call MAPL_GetResource ( MAPL, STOKES_SPEED,  Label="STOKES_VELOCITY:" , DEFAULT=1.E-2,   RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, USE_KPAR,      Label="USE_KPAR:",         DEFAULT=1,       RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, MAXSALINITY,   Label="MAX_SALINITY:" ,    DEFAULT=40.0 ,   RC=STATUS)
@@ -3044,7 +2904,7 @@ contains
       PEN_ocean =  exp(-KPAR*OGCM_top_thickness)
       PPR       =  (1.-ALBVRO)*DRPAR*PEN_ocean
       PPF       =  (1.-ALBVFO)*DFPAR*PEN_ocean
-      PEN_ocean =  PUR + PUF + PPR + PPF    ! total absorbed into water up to OGCM_top_thickness
+      PEN_ocean =  PUR + PUF + PPR + PPF    ! penetrated flux through OGCM_top_thickness
     else
       PEN_ocean = 0.0
     endif
@@ -3052,12 +2912,6 @@ contains
     SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
           (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
 
-
-    if( trim(AOIL_COMP_SWITCH) == "ON") then
-      ikpar: if ( USE_KPAR /= 1) then    ! (if NOT default) compute penetrated shortwave using below...
-        call SIMPLE_SW_ABS(NT, USE_KPAR, (HW/MAPL_RHOWTR), ZTH, SWN, PEN)  ! replace MAPL_RHOWTR with MAPL_RHO_SEAWATER
-      end if ikpar
-    endif
     SWN   = SWN - PEN
 
     if (DO_DATASEA == 0) then            ! in coupled mode
@@ -3145,28 +2999,21 @@ contains
 !    Copy back to friendly internal variables
 !    -----------------------------------------
 
-     TW = TS(:,WATER) + TWMTS       ! SA: I don't fully understand how LANL CICE should interact w/Skin Layer. Jul 2015.
-     HW = HH(:,WATER)               ! So for now, have the same skin layer interaction as in GEOS CICE
+     TW = TS(:,WATER) + TWMTS
+     HW = HH(:,WATER)               ! The same skin layer interaction as in GEOS CICE
      ! multiply by 1000 to account for g->kg conversion
-     FSALT = 0.  ! SA: has to be done this way for compatibility (when it is "ON")
+     FSALT = 0.  ! for compatibility (when it is "ON")
      SW = (SS(:,WATER)+DT*1.e3*FSALT)/HW
      where (.not. (abs(UW) > 0.0 .or. abs(VW) > 0.0))
         SW = max(min(SW,MAXSALINITY),MINSALINITY)
      endwhere
     endif
 
-! Atmospheric surface stresses
-!-----------------------------
-    !*** already computed in surface
-    !UUA = (TAUX/CMATM + UHATM)
-    !VVA = (TAUY/CMATM + VHATM)
-
 ! Net Solar insolation (including UV & IR, direct & diffuse) in interface layer 
 !------------------------------------------------------------------------------
 
     SWN = (1.-ALBVRO)*VSUVR + (1.-ALBVFO)*VSUVF + &
           (1.-ALBNRO)*DRNIR + (1.-ALBNFO)*DFNIR
-
 
 ! how many cool-skin iterations to do?
 !-------------------------------------
@@ -3178,7 +3025,7 @@ contains
 !     Marginal Ice Zone- threshold on fraction: if no LANL CICE, SST IS ALLOWED TO VARY WITHIN ICE EXTENT.
 !     -------------------------------------------------------------------------------------------------
 
-      ! Bin: the default for coupled (with cice) needs to be revisited 
+      ! Following default for coupled (with cice) needs to be revisited 
       call MAPL_GetResource ( MAPL, fr_ice_thresh, Label="THRESHOLD_ICE_FR_SST:" , DEFAULT=0.0,    RC=STATUS)
       VERIFY_(STATUS)
 
@@ -3196,13 +3043,6 @@ contains
                      fr_ice_thresh)
 
       deallocate(tmp2)
-
-      call MAPL_GetResource ( MAPL, iFIX_BUG2,  Label="FIX2_OLD_INTERFACE:"  , DEFAULT=0,   RC=STATUS)
-      VERIFY_(STATUS)
-      if( iFIX_BUG2 == 1) then
-        DQS         = GEOS_QSAT(TS(:,WATER), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,WATER)
-        QS(:,WATER) = QS(:,WATER) + DQS
-      endif
     endif
 
     if( trim(AOIL_COMP_SWITCH) == "OFF") then
@@ -3280,11 +3120,6 @@ contains
             endif
             TAUTW_(N) = MAX(DT, TAUTW_(N)) ! for this time-scale, avoid 0.
             TWMTF(N) = TWMTF(N)/(1.+DT/TAUTW_(N))
-!           SA: positivity should be imposed like this to be able to compute above PHIW_(N), that needs TWMTF>0 to arg to SQRT() is <0.
-!           if (trim(diurnal_warming_scheme) == 'AS2018') then
-!             TWMTF(N) = max( TWMTF(N), 0.)
-!           endif
-
             DELTC(N) = TDROP_(N)
 
             if (DO_DATASEA == 1) then
@@ -3294,8 +3129,9 @@ contains
               TDEL_(N) = TS_FOUNDi(N) + (1./MUSKIN + (1.-epsilon_d)) * MAX(TWMTF(N), 0.0)
               TBAR_(N) = TS_FOUNDi(N) +              (1.-epsilon_d)  * MAX(TWMTF(N), 0.0)
             endif
-            !DTS(N)     = ( TDEL_(N) - TDROP_(N)) - TS(N,WATER)
+
             TS(N,WATER) = TDEL_(N) - TDROP_(N)                  ! updated skin temperature
+            
           else ! FR(N, WATER) <= fr_ice_thresh
             SWWARM_(N) = MAPL_UNDEF
             QWARM_ (N) = MAPL_UNDEF
@@ -3310,15 +3146,6 @@ contains
             TDEL_  (N) = MAPL_UNDEF
           endif ! if( FR(N, WATER) > fr_ice_thresh )
         end do
-        ! associated change in QS
-        call MAPL_GetResource ( MAPL, iFIX_BUG2,  Label="FIX2_OLD_INTERFACE:"  , DEFAULT=0,   RC=STATUS)
-        VERIFY_(STATUS)
-        if( iFIX_BUG2 == 1) then
-          DQS         = GEOS_QSAT( TS(:,WATER), PS, RAMP=0.0, PASCALS=.TRUE.) - QS(:,WATER)
-          QS(:,WATER) = QS(:,WATER) + DQS
-        endif
-        !if(associated(DELTS  )) DELTS   = DTS*CFT*FR(:,WATER)
-        !if(associated(DELQS  )) DELQS   = DQS*CFQ*FR(:,WATER)
       endif ! if (DO_SKIN_LAYER==0) 
       if(associated(TWMTFe)) TWMTFe = TWMTF
     endif   ! if( trim(AOIL_COMP_SWITCH) == "OFF")
@@ -3343,7 +3170,6 @@ contains
     if(associated(TS_FOUNDe)) TS_FOUNDe = TS_FOUNDi
     if(associated(SS_FOUNDe)) SS_FOUNDe = SS_FOUNDi
 
-
     if(associated(TAUXW)) TAUXW = TXW
     if(associated(TAUYW)) TAUYW = TYW
 
@@ -3360,6 +3186,7 @@ contains
     if(associated(AODRNIR)) AODRNIR = (1.-ALBNRO)*DRNIR*FRWATER
     if(associated(AODFNIR)) AODFNIR = (1.-ALBNFO)*DFNIR*FRWATER
     if(associated(FSURF  )) FSURF   = SWN+LWDNSRF-(ALW+BLW*TS(:,WATER))-SHF-LHF
+    if(associated(PENOCNe)) PENOCNe = PEN_ocean * FRWATER
 
     if(associated(RAINOCN)) RAINOCN = PCU + PLS
     if(associated(HLWUP  )) HLWUP   = ALW*FR(:,WATER) 
@@ -3372,7 +3199,6 @@ contains
              LWNDWTR = MAPL_UNDEF
           end where
     endif
-
 
     if(associated(TST    )) TST     = TS(:,WATER)*FR(:,WATER)
     if(associated(QST    )) QST     = QS(:,WATER)*FR(:,WATER)
@@ -3442,600 +3268,9 @@ contains
     RETURN_(ESMF_SUCCESS)
              
   end subroutine OPENWATERCORE
-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! !IROUTINE: ALBSEA - Computes albedos as a function of $cos(\zeta)$ over ocean surfaces
-
-! !INTERFACE:
-
-  subroutine ALBSEA (ALBVR,ALBVF,ALBNR,ALBNF,ZTH)
-
-! !ARGUMENTS:
-
-    real,    intent(IN)  :: ZTH  (:)
-    real,    intent(OUT) :: ALBVR(:) ! visible beam    albedo
-    real,    intent(OUT) :: ALBVF(:) ! visible diffuse albedo
-    real,    intent(OUT) :: ALBNR(:) ! nearIr  beam    albedo
-    real,    intent(OUT) :: ALBNF(:) ! nearIr  diffuse albedo
-
-!  !DESCRIPTION:
-!        Compute albedo for ocean points
-!          based on ceres
-
-!  CERES ocean albedo at zth=.5 is 0.052. Our formulation gives .077
-!    thus the scaling. The diffuse albedo is given by computing
-!    the zth weighted average of the albedo over the hemisphere and
-!    then applying the same scaling to match CERES.
-
-
-!LLT: CERESFAC = 1           reduces to old formulation 1-5-05
-!     CERESFAC = 0.052/0.077 is the Original CERES Factor
-!     CERESFAC = 0.068/0.077 is the EROS Tuned Value
-
-    real, parameter :: CERESFAC   = 0.068/0.077
-!   real, parameter :: CERESFAC   = 1.0
-
-    real, parameter :: OCNALBVF   = .08*CERESFAC
-    real, parameter :: OCNALBNF   = .08*CERESFAC
-
-    real, parameter :: A0         = 0.40670980*CERESFAC
-    real, parameter :: A1         =-1.23236340*CERESFAC
-    real, parameter :: A2         = 1.42240510*CERESFAC
-    real, parameter :: A3         =-0.55573341*CERESFAC
-
-! Beam albedos
-!-------------
-
-    ALBVR = A0+(A1+(A2+A3*ZTH)*ZTH)*ZTH
-    ALBNR = ALBVR
-
-! Diffuse albedos
-!----------------
-
-    ALBVF = OCNALBVF
-    ALBNF = OCNALBNF
-
-   RETURN_(ESMF_SUCCESS)
-  end subroutine ALBSEA
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! !IROUTINE: SIMPLE_SW_ABS - 
-!  Implements two simple ways for the absorption of shortwave radiation,
-!  as an alternative (for "TESTING" purposes) to using KPAR & KUVR based on PEN,
-!  into an interface layer of typical depth = 2m, that is also called "depth of AOIL"
-
-! !INTERFACE:
-
-  subroutine SIMPLE_SW_ABS(NT, USE_KPAR, depth, ZTH, SWN, PEN)
-
-! !ARGUMENTS:
-
-    integer, intent(IN)    :: NT        ! dimension of array
-    integer, intent(IN)    :: USE_KPAR  ! absorption profile option
-    real,    intent(IN)    :: ZTH(:)    ! cosine of solar zenith angle
-    real,    intent(IN)    :: depth(:)  ! depth up to which shortwave needs to be absorbed
-    real,    intent(IN)    :: SWN(:)    ! net shortwave at surface of ocean, or @ top of air/sea interface
-    real,    intent(OUT)   :: PEN(:)    ! shortwave penetrated below the depth    
-
-!  local variables
-    real, dimension(NT)  :: fW
-
-    fW  = 0.0
-    PEN = 0.0                ! initialize to zero
-
-    if (USE_KPAR == -1) then
-       ! Soloviev, 1982 shortwave absorption profile
-       ! --------------------------------------------
-       fW = 0.28*exp(-71.5*depth) + 0.27*exp(-2.8*depth) + 0.45*exp(-0.07*depth)
-
-    else if (USE_KPAR == -2) then
-       ! Paulson & Simpson, 1981- Taken from Gentemann et al, 2009
-       ! ----------------------------------------------------------
-       fW    = 0.237*exp(-(depth*ZTH)/34.84)  +  0.36*exp(-(depth*ZTH)/2.266)   + &
-               0.179*exp(-(depth*ZTH)/0.0315) + 0.087*exp(-(depth*ZTH)/0.0055)  + &
-                0.08*exp(-(depth*ZTH)/8.32e-4)+ 0.025*exp(-(depth*ZTH)/1.26e-4) + &
-               0.025*exp(-(depth*ZTH)/3.13e-4)+ 0.007*exp(-(depth*ZTH)/7.82e-4) + &
-              0.0004*exp(-(depth*ZTH)/1.44e-5)
-    else
-       if(MAPL_AM_I_ROOT()) print *, 'ERROR! Unknown use_kpar option: ', USE_KPAR
-    end if
-
-    PEN   = SWN * fW
-
-   RETURN_(ESMF_SUCCESS)
-  end subroutine SIMPLE_SW_ABS
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! !IROUTINE: COOL_SKIN - Computes variables related to the Cool Skin Layer
-
-! !INTERFACE:
-
-  subroutine COOL_SKIN (NT,CM,UUA,VVA,UW,VW,SWN,LHF,SHF,LWDNSRF,    &
-                        ALW,BLW,TXW,TYW,USTARW_,                    &
-                        DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_, &
-                        TS,WATER,FR,n_iter_cool,fr_ice_thresh)
-
-! !ARGUMENTS:
-
-    integer, intent(IN)    :: NT             ! number of tiles
-!   real,    intent(IN)    :: FR     (:)     ! fraction of sea ice
-    real,    intent(IN)    :: FR     (:,:)   ! fraction of surface (water/ice)
-    integer, intent(IN)    :: WATER          ! subtile  number assigned to surface type: "WATER" 
-    real,    intent(IN)    :: CM     (:,:)   ! transfer coefficient for wind
-    real,    intent(IN)    :: UUA    (:)     ! zonal       wind
-    real,    intent(IN)    :: VVA    (:)     ! meridional  wind
-    real,    intent(IN)    :: UW     (:)     ! u-current
-    real,    intent(IN)    :: VW     (:)     ! v-current
-    real,    intent(IN)    :: SWN    (:)     ! net shortwave radiation incident at surface
-    real,    intent(IN)    :: LHF    (:)     ! latent   heat flux
-    real,    intent(IN)    :: SHF    (:)     ! sensible heat flux
-    real,    intent(IN)    :: LWDNSRF(:)     ! downward longwave at surface
-    real,    intent(IN)    :: ALW    (:)     ! for linearized \sigma T^4
-    real,    intent(IN)    :: BLW    (:)     ! for linearized \sigma T^4
-    integer, intent(IN)    :: n_iter_cool    ! number of iterations to compute cool-skin layer 
-    real,    intent(IN)    :: fr_ice_thresh  ! threshold on ice fraction, sort of defines Marginal Ice Zone
-    real,    intent(IN)    :: TS     (:,:)   ! skin temperature
-
-    real,    intent(OUT)   :: USTARW_(:)     ! u_{*,w} 
-    real,    intent(OUT)   :: DCOOL_ (:)     ! depth of cool-skin layer
-    real,    intent(OUT)   :: TDROP_ (:)     ! temperature drop across cool-skin
-    real,    intent(OUT)   :: SWCOOL_(:)     ! shortwave radiation absorbed in cool-skin 
-    real,    intent(OUT)   :: QCOOL_ (:)     ! net heat flux in cool layer
-    real,    intent(OUT)   :: BCOOL_ (:)     ! bouyancy in cool layer
-    real,    intent(OUT)   :: LCOOL_ (:)     ! Saunder's parameter in cool layer
-
-    real,    intent(INOUT) :: TXW    (:)     ! zonal      stress
-    real,    intent(INOUT) :: TYW    (:)     ! meridional stress
-
-!  !LOCAL VARIABLES
-
-    integer         :: N, iter_cool
-
-    real            :: ALPH, Qb, fC
-
-    real, parameter :: NU_WATER        = 1.0E-6  ! kinematic viscosity of water  [m^2/s]
-    real, parameter :: TherCond_WATER  = 0.563   ! Thermal conductivity of water [W/m/ K]
-    real, parameter :: bigC            = &
-          (16.0 * (MAPL_CAPWTR*MAPL_RHO_SEAWATER)**2 * NU_WATER**3) / TherCond_WATER**2
-
-!  !DESCRIPTION:
-!        Based on Fairall et al, 1996
-
-    do N = 1, NT  ! N is now looping over all tiles (NOT sub-tiles).
-
-!      Stress over "open" water (or Marginal Ice Zone) depends on ocean currents
-!      --------------------------------------------------------------------------
-       TXW(N) = CM(N,WATER)*(UUA(N) - UW(N))
-       TYW(N) = CM(N,WATER)*(VVA(N) - VW(N))
-
-!      if( FR(N)       < fr_ice_thresh ) then 
-       if( FR(N,WATER) > fr_ice_thresh ) then 
-
-!        Ustar in water has a floor of 2 \mu m/s
-!        ----------------------------------------
-         USTARW_(N) = max( 2.e-6, sqrt(sqrt(TXW(N)*TXW(N)+TYW(N)*TYW(N))/MAPL_RHO_SEAWATER) )
-
-!        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!        ! Cool skin layer- heat loss and temperature drop  @ top of interface layer !
-!        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-          DCOOL_(N)  = 1.e-3           ! initial guess for cool-skin layer thickness
-          TDROP_(N)  = 0.2             ! guess for cool-skin tdrop. FINAL TDROP IS SENSITIVE TO INITIAL CHOICE. 3 ITER ENOUGH?
-
-          cool_iter: do iter_cool = 1, n_iter_cool
-
-!         Short wave absorbed in the cool layer. This is a modified version of Zeng and Beljaars, 2005
-!         ----------------------------------------------------------------------------------------------
-
-             fC  = 0.0685 + 11.0*DCOOL_(N) - (3.3e-5/DCOOL_(N))*(1.0-exp(-DCOOL_(N)/8.0E-4))
-             fC  = max( fC, 0.01)        ! absorb at least 1% of shortwave in cool layer
-             SWCOOL_(N) = SWN(N)*fC
-
-!            Heat loss at top of skin (cool) layer
-!            --------------------------------------
-
-             QCOOL_(N)  = &
-                          LHF(N) + SHF(N) - ( LWDNSRF(N) -(ALW(N) + BLW(N)*( TS(N,WATER)-TDROP_(N)))) - &
-                          SWCOOL_(N)
-
-!            Bouyancy production in cool layer depends on surface cooling
-!            and evap-salinity effect from surface. It does not depend on solar
-!            heating, which is assumed to be uniform in cool layer. This last assumption
-!            could be improved by including some NIR. For this calculation, we include
-!            temperature dependence of the thermal expansion coefficient.
-!            -------------------------------------------------------------------------------
-
-             ALPH   = (0.6 + 0.0935*(TS(N,WATER)-MAPL_TICE))*1.E-4
-             Qb     = QCOOL_(N) + ( (0.026*MAPL_CAPWTR)/(ALPH*MAPL_ALHL) )*LHF(N)
-             BCOOL_(N) = (ALPH*MAPL_GRAV*Qb) / (MAPL_RHO_SEAWATER*MAPL_CAPWTR)
-
-!            Saunders parameter
-!            BigC = (16.0 * (MAPL_CAPWTR*MAPL_RHO_SEAWATER)**2 * NU_WATER**3) / TherCond_WATER**2  
-!            -------------------------------------------------------------------------------
-
-             if ( BCOOL_(N) > 0.0) then  ! Eqn(14) of F96
-                LCOOL_(N)  = 6.0/( 1.0 + ( BCOOL_(N)*bigC / USTARW_(N)**4 )**0.75 )**(1./3.)
-                DCOOL_(N)  = LCOOL_(N)*NU_WATER/USTARW_(N)
-             else 
-                LCOOL_(N)  = 6.0
-                DCOOL_(N)  = min( LCOOL_(N)*NU_WATER/USTARW_(N), 1.e-2)    ! Prevent very thick cool layer depth
-             end if
-
-             TDROP_(N)    = max( 0.0, DCOOL_(N)*QCOOL_(N)/TherCond_WATER ) ! Eqn(4) & (13) of F96
-
-          end do cool_iter
-
-!        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!        ! Done with Cool skin layer.  Now turbluent heat flux at base of interface layer !
-!        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-       else            ! FR(N, WATER) <= fr_ice_thresh
-          USTARW_(N)     = MAPL_UNDEF
-          DCOOL_ (N)     = MAPL_UNDEF
-          TDROP_ (N)     = 0.0 !MAPL_UNDEF
-          SWCOOL_(N)     = MAPL_UNDEF
-          QCOOL_ (N)     = MAPL_UNDEF
-          BCOOL_ (N)     = MAPL_UNDEF
-          LCOOL_ (N)     = MAPL_UNDEF
-       end if
-    end do
-
-   RETURN_(ESMF_SUCCESS)
-  end subroutine COOL_SKIN
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! !IROUTINE: AOIL_SST - Computes skin SST using AOIL (single column)
-
-! !INTERFACE:
-
-  subroutine AOIL_SST  ( DO_DATASEA, DT, epsilon_d, F_PHI, STOKES_SPEED, &
-             AOIL_depth, MUSKIN, SWN, PEN, PEN_ocean, LHF, SHF, LWDNSRF, &
-             ALW, BLW, USTARW, TDROP, TS_FOUNDi, SWWARM, QWARM, ZETA_W,  &
-             PHIW, LANGM, TAUTW, DELTC, TBAR, TDEL, DTS, TS, TWMTF)
-
-! !ARGUMENTS:
-
-    integer, intent(IN) :: DO_DATASEA  ! =0: coupled with ocean model (CGCM)
-                                       ! =1: uncoupled                (AGCM)
-
-    real, intent(IN)    :: DT          ! model time step
-    real, intent(IN)    :: epsilon_d   ! ratio: (depth of AOIL)/(ocean model top level)
-
-    real, intent(IN)    :: F_PHI       ! a scaler (tunable parameter) used to compute stability function
-    real, intent(IN)    :: STOKES_SPEED! should be input from wave model, dummy for now
-
-    real, intent(IN)    :: AOIL_depth  ! depth of the AOIL
-    real, intent(IN)    :: MUSKIN      ! exponent in the prescribed temperature profile within AOIL
-
-    real, intent(IN)    :: SWN         ! net shortwave radiation at surface
-    real, intent(IN)    :: PEN         ! net shortwave radiation below the AOIL
-    real, intent(IN)    :: PEN_ocean   ! net shortwave radiation below the AOIL with ocean model
-    real, intent(IN)    :: LHF         ! latent   heat flux
-    real, intent(IN)    :: SHF         ! sensible heat flux
-    real, intent(IN)    :: LWDNSRF     ! downward longwave radiation
-    real, intent(IN)    :: ALW         ! upward   longwave = ALW + BLW * TS
-    real, intent(IN)    :: BLW         ! upward   longwave = ALW + BLW * TS
-
-    real, intent(IN)    :: USTARW      ! friction velocity over water
-    real, intent(IN)    :: TDROP       ! temperature drop due to cool skin layer
-    real, intent(IN)    :: TS_FOUNDi   ! temperature at base of the AOIL
-
-    real, intent(OUT)   :: SWWARM      ! net shortwave radiation absorbed within the AOIL
-    real, intent(OUT)   :: QWARM       ! net heat flux within the AOIL
-    real, intent(OUT)   :: ZETA_W      ! similarity parameter = AOIL_depth/(MO length scale)
-    real, intent(OUT)   :: PHIW        ! stability function
-    real, intent(OUT)   :: LANGM       ! Langmuir `number', dummy for now
-    real, intent(OUT)   :: TAUTW       ! time scale at which diurnal warming -> 0, or TWMTF -> 0.
-    real, intent(OUT)   :: DELTC       ! temperature drop due to cool skin layer = (above) TDROP
-    real, intent(OUT)   :: TBAR        ! depth averaged mean AOIL temperature
-    real, intent(OUT)   :: TDEL        ! temperature at top of warm layer (within the AOIL)
-    real, intent(OUT)   :: DTS         ! temperature change: next time step - previous
-
-    real, intent(INOUT) :: TS          ! skin SST
-    real, intent(INOUT) :: TWMTF       ! AOIL state variable
-
-!  !LOCAL VARIABLES
-
-    real         :: ALPH
-
-!  !DESCRIPTION:
-!        Based on Akella and Suarez, 2018
-!        "The Atmosphere-Ocean Interface Layer of the NASA
-!         Goddard Earth Observing System Model and Data Assimilation System."
-!         GMAO Tech Memo, Vol 51.
-
-         ALPH   = (0.6 + 0.0935*(TS-MAPL_TICE))*1.E-4
-
-         SWWARM = SWN - PEN
-         QWARM  = SWWARM - (LHF + SHF - (LWDNSRF - ALW - BLW*TS))
-
-         ZETA_W = (AOIL_depth*MAPL_KARMAN/USTARW**3.)*MAPL_GRAV*ALPH*QWARM/(MAPL_RHO_SEAWATER*MAPL_CAPWTR)
-
-         PHIW  = 1.+SQRT(1.+4.*MAPL_KARMAN**2.*(1.+MUSKIN)*F_PHI*AOIL_depth*MAPL_GRAV*ALPH*TWMTF/USTARW**2.)
-         PHIW  = 0.5*PHIW
-
-         LANGM = SQRT( USTARW/STOKES_SPEED)
-
-         TAUTW = (AOIL_depth*PHIW)/(MAPL_KARMAN*USTARW*(1.+MUSKIN))
-
-         if (DO_DATASEA == 0) then ! with an OGCM, as in coupled GCM
-           QWARM = QWARM - (epsilon_d/(1.-epsilon_d))* (PEN-PEN_ocean)
-           TAUTW = (1.- epsilon_d) * TAUTW   ! compare \tau_{\sigma} in Eq.(22) and that in section 2.2 of AS2018
-         endif
-
-         TWMTF = (TWMTF+DT*(QWARM/(AOIL_depth*MAPL_RHO_SEAWATER*MAPL_CAPWTR)))/(1.+DT/TAUTW)
-         TWMTF = max( TWMTF, 0.)
-
-         DELTC = TDROP
-
-         TBAR  = TWMTF + TS_FOUNDi
-
-         if (DO_DATASEA == 1) then ! Atmospheric GCM, ocean surface is from "data"
-          TDEL = TS_FOUNDi + ((1.+MUSKIN)/MUSKIN) * TWMTF
-         else                      ! Coupled GCM
-          TDEL = TS_FOUNDi + (1./MUSKIN + (1.-epsilon_d)) * TWMTF
-         endif
-
-         DTS = (TDEL- TDROP) - TS
-         TS  = TDEL - TDROP       ! updated skin temperature
-
-   RETURN_(ESMF_SUCCESS)
-  end subroutine AOIL_SST
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! !IROUTINE: SKIN_SST - Computes changes to SST in interface layer due to Cool Skin & Diurnal Warming 
-
-! !INTERFACE:
-
-  subroutine SKIN_SST (DO_SKIN_LAYER,NT,CM,UUA,VVA,UW,VW,HW,SWN,LHF,SHF,LWDNSRF,                   &
-                       ALW,BLW,PEN,STOKES_SPEED,DT,MUSKIN,TS_FOUNDi,DWARM_,TBAR_,TXW,TYW,USTARW_,  &
-                       DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_,TDEL_,SWWARM_,QWARM_,ZETA_W_,    &
-                       PHIW_,LANGM_,TAUTW_,uStokes_,TS,TWMTS,TW,WATER,FR,n_iter_cool,fr_ice_thresh)
-
-! !ARGUMENTS:
-
-    integer, intent(IN)    :: DO_SKIN_LAYER  ! 0: No interface layer,     1: active, and accounts for change in SST
-    integer, intent(IN)    :: NT             ! number of tiles
-    real,    intent(IN)    :: FR     (:,:)   ! fraction of surface (water/ice)
-    integer, intent(IN)    :: WATER          ! subtile  number assigned to surface type: "WATER" 
-    real,    intent(IN)    :: CM     (:,:)   ! transfer coefficient for wind
-    real,    intent(IN)    :: UUA    (:)     ! zonal       wind
-    real,    intent(IN)    :: VVA    (:)     ! meridional  wind
-    real,    intent(IN)    :: UW     (:)     ! u-current
-    real,    intent(IN)    :: VW     (:)     ! v-current
-    real,    intent(IN)    :: HW     (:)     ! mass  of skin layer
-    real,    intent(IN)    :: SWN    (:)     ! net shortwave radiation incident at surface
-    real,    intent(IN)    :: LHF    (:)     ! latent   heat flux
-    real,    intent(IN)    :: SHF    (:)     ! sensible heat flux
-    real,    intent(IN)    :: LWDNSRF(:)     ! longwave at surface
-    real,    intent(IN)    :: ALW    (:)     ! for linearized \sigma T^4
-    real,    intent(IN)    :: BLW    (:)     ! for linearized \sigma T^4
-    real,    intent(IN)    :: PEN    (:)     ! shortwave radiation that penetrates below interface layer
-    real,    intent(IN)    :: STOKES_SPEED   ! scalar value set for Stokes speed- place holder for output from Wave model
-    real,    intent(IN)    :: DT             ! time-step
-    real,    intent(IN)    :: MUSKIN         ! exponent of temperature: T(z) profile in warm layer
-    real,    intent(IN)    :: TS_FOUNDi(:)   ! bulk SST (temperature at base of warm layer)
-    integer, intent(IN)    :: n_iter_cool    ! number of iterations to compute cool-skin layer 
-    real,    intent(IN)    :: fr_ice_thresh  ! threshold on ice fraction, sort of defines Marginal Ice Zone
-
-    real,    intent(OUT)   :: DWARM_ (:)     ! depth of skin layer
-    real,    intent(OUT)   :: TBAR_  (:)     ! copy of TW (also internal state) to export out
-    real,    intent(OUT)   :: USTARW_(:)     ! u_{*,w} 
-    real,    intent(OUT)   :: DCOOL_ (:)     ! depth of cool-skin layer
-    real,    intent(OUT)   :: TDROP_ (:)     ! temperature drop across cool-skin
-    real,    intent(OUT)   :: SWCOOL_(:)     ! shortwave radiation absorbed in cool-skin 
-    real,    intent(OUT)   :: QCOOL_ (:)     ! net heat flux in cool layer
-    real,    intent(OUT)   :: BCOOL_ (:)     ! bouyancy in cool layer
-    real,    intent(OUT)   :: LCOOL_ (:)     ! Saunder's parameter in cool layer
-
-    real,    intent(OUT)   :: TDEL_  (:)     ! temperature at top of warm layer
-    real,    intent(OUT)   :: SWWARM_(:)     ! shortwave radiation absorbed in warm layer
-    real,    intent(OUT)   :: QWARM_ (:)     ! net heat flux in warm layer
-    real,    intent(OUT)   :: ZETA_W_(:)     ! stability parameter = dwarm/(Obukhov length)
-    real,    intent(OUT)   :: PHIW_  (:)     ! similarity function
-    real,    intent(OUT)   :: LANGM_ (:)     ! Langmuir number
-    real,    intent(OUT)   :: TAUTW_ (:)     ! time-scale of relaxation to bulk SST (i.e., TS_FOUND)
-    real,    intent(OUT)   :: uStokes_(:)    ! Stokes speed
-
-    real,    intent(INOUT) :: TXW    (:)     ! zonal      stress
-    real,    intent(INOUT) :: TYW    (:)     ! meridional stress
-    real,    intent(INOUT) :: TWMTS  (:)     ! "internal state" variable that has: TW - TS
-    real,    intent(INOUT) :: TW     (:)     ! "internal state" variable that has: TW
-    real,    intent(INOUT) :: TS     (:,:)   ! skin temperature
-
-!  !LOCAL VARIABLES
-
-    integer         :: N, iter_cool
-    real            :: ALPH, Qb, fC, fLA, X1, X2
-
-    real, parameter :: RHO_SEAWATER    = 1022.0  ! sea water density             [kg/m^3]    ! Replace Usage of RHO_SEAWATER with MAPL_RHO_SEAWATER
-    real, parameter :: NU_WATER        = 1.0E-6  ! kinematic viscosity of water  [m^2/s]
-    real, parameter :: TherCond_WATER  = 0.563   ! Thermal conductivity of water [W/m/ K]
-    real, parameter :: bigC            = &
-          (16.0 * (MAPL_CAPWTR*MAPL_RHOWTR)**2 * NU_WATER**3) / TherCond_WATER**2
-
-!  !DESCRIPTION:
-!        Based on Fairall et al, 1996 for Cool Skin Layer and Takaya et al, 2010 for Warm Layer
-
-! Open water conditions, including computation of skin layer parameters
-!----------------------------------------------------------------------
-
-    do N = 1, NT  ! N is now looping over all tiles (NOT sub-tiles).
-
-! Stress over "open" water (or Marginal Ice Zone) depends on ocean currents
-!--------------------------------------------------------------------------
-
-       TXW(N) = CM(N,WATER)*(UUA(N) - UW(N))
-       TYW(N) = CM(N,WATER)*(VVA(N) - VW(N))
-
-       if( FR(N, WATER) > fr_ice_thresh) then 
-
-! Depth and mean temperature of interface layer
-!----------------------------------------------
-
-          DWARM_(N) = HW(N)/MAPL_RHOWTR                                                   ! replace MAPL_RHOWTR with MAPL_RHO_SEAWATER
-          TBAR_(N)  = TS(N,WATER) + TWMTS(N)
-
-! Ustar in water has a floor of 2 \mu m/s
-!----------------------------------------
-
-          USTARW_(N) = max( 2.e-6, sqrt(sqrt(TXW(N)*TXW(N)+TYW(N)*TYW(N))/MAPL_RHOWTR) )  ! replace MAPL_RHOWTR with MAPL_RHO_SEAWATER
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! Cool skin layer- heat loss and temperature drop  @ top of interface layer !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-          DCOOL_(N)  = 1.e-3           ! initial guess for cool-skin layer thickness
-          TDROP_(N)  = 0.2             ! guess for cool-skin tdrop. FINAL TDROP IS SENSITIVE TO INITIAL CHOICE. 3 ITER ENOUGH?
-
-          COOL_SKIN: do iter_cool = 1, n_iter_cool
-
-! Short wave absorbed in the cool layer. This is a modified version of Zhang and Beljaars, 2005
-!----------------------------------------------------------------------------------------------
-
-             fC  = 0.0685 + 11.0*DCOOL_(N) - (3.3e-5/DCOOL_(N))*(1.0-exp(-DCOOL_(N)/8.0E-4))
-             fC  = max( fC, 0.01)        ! absorb at least 1% of shortwave in cool layer
-             SWCOOL_(N) = SWN(N)*fC
-
-! Heat loss at top of skin (cool) layer
-!--------------------------------------
-
-             X1 = LHF(N) + SHF(N) - ( LWDNSRF(N) -(ALW(N) + BLW(N)*( TS(N,WATER)-TDROP_(N))))
-             QCOOL_(N)  = X1 - SWCOOL_(N)
-
-! Bouyancy production in cool layer depends on surface cooling
-! and evap-salinity effect from surface. It does not depend on solar
-! heating, which is assumed to be uniform in cool layer. This last assumption
-! could be improved by including some NIR. For this calculation, we include
-! temperature dependence of the thermal expansion coefficient.
-!-------------------------------------------------------------------------------
-
-             ALPH   = (0.6 + 0.0935*(TBAR_(N)-MAPL_TICE))*1.E-4
-             Qb     = QCOOL_(N) + ( (0.026*MAPL_CAPWTR)/(ALPH*MAPL_ALHL) )*LHF(N)
-             BCOOL_(N) = (ALPH*MAPL_GRAV*Qb) / (RHO_SEAWATER*MAPL_CAPWTR)                 ! replace RHO_SEAWATER with MAPL_RHO_SEAWATER
-
-! Saunders parameter
-! BigC = (16.0 * (MAPL_CAPWTR*MAPL_RHO_SEAWATER)**2 * NU_WATER**3) / TherCond_WATER**2  
-!-------------------------------------------------------------------------------
-
-             if ( BCOOL_(N) > 0.0) then  ! Eqn(14) of F96
-                LCOOL_(N)  = 6.0/( 1.0 + ( BCOOL_(N)*bigC / USTARW_(N)**4 )**0.75 )**(1./3.)
-                DCOOL_(N)  = LCOOL_(N)*NU_WATER/USTARW_(N)
-             else 
-                LCOOL_(N)  = 6.0
-                DCOOL_(N)  = min( LCOOL_(N)*NU_WATER/USTARW_(N), 1.e-2)  ! Prevent very thick cool layer depth
-             end if
-
-             TDROP_(N)    = max( 0.0, DCOOL_(N)*QCOOL_(N)/TherCond_WATER ) ! Eqn(4) & (13) of F96
-
-          end do COOL_SKIN
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! Done with Cool skin layer.  Now turbluent heat flux at base of interface layer  !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-          WARM_LAYER: if(DO_SKIN_LAYER==0) then   ! Warm layer temperature increase calculated based on definition of mean interface temperature.
-
-             TDEL_(N)    = TS(N,WATER) + TDROP_(N)
-             TWMTS(N)    = TBAR_(N)    - TS(N,WATER)
-
-!            fill up with mapl_undef - so that LocStreamMod does NOT die while exporting
-             SWWARM_(N)  = MAPL_UNDEF
-             QWARM_ (N)  = MAPL_UNDEF
-             ZETA_W_(N)  = MAPL_UNDEF
-             PHIW_(N)    = MAPL_UNDEF
-             LANGM_(N)   = MAPL_UNDEF
-             TAUTW_(N)   = MAPL_UNDEF
-
-          else  ! use Takaya et al 2012
-
-! Compute warm layer temperature increase based on Takaya et al, 2012
-!--------------------------------------------------------------------
-
-             ALPH        = (0.6 + 0.0935*(TBAR_(N)-MAPL_TICE))*1.E-4
-
-! Short wave absorbed in the warm layer.
-!--------------------------------------
-
-             X1         = LHF(N) + SHF(N) - ( LWDNSRF(N) -(ALW(N) + BLW(N)*TS(N,WATER)))
-             SWWARM_(N) = SWN(N) - PEN(N)
-             QWARM_(N)  = SWWARM_(N) - X1
-
-! Stability parameter & Similarity function
-!------------------------------------------
-
-             ZETA_W_(N)  = (DWARM_(N)*MAPL_KARMAN*MAPL_GRAV*ALPH*QWARM_(N)) / &           ! zeta_w = dwarm/obukhov length
-                           (RHO_SEAWATER*MAPL_CAPWTR*USTARW_(N)**3)                       ! replace RHO_SEAWATER with MAPL_RHO_SEAWATER
-
-             if ( ZETA_W_(N) >= 0.0) then   ! Takaya: Eqn(5)
-                PHIW_(N) = 1. + (5*ZETA_W_(N) + 4.*ZETA_W_(N)**2)/(1+3.*ZETA_W_(N)+0.25*ZETA_W_(N)**2)
-             else
-                PHIW_(N) = 1.0/sqrt(1.-16.*ZETA_W_(N))
-             end if
-
-! Langmuir number- need imports from Wave Model
-!----------------------------------------------
-
-             uStokes_(N) = STOKES_SPEED
-             LANGM_(N)   = sqrt(USTARW_(N)/uStokes_(N))
-             fLA         = LANGM_(N)**(-0.66667)           ! Takaya: Eqn(6)
-
-             IF (fLA       <= 1.0) fLA = 1.0               ! Limit range of fLa to be >=1
-             IF (ZETA_W_(N)<= 0.0) fLA = 1.0               ! Apply fLa to stable conditions only
-
-             TAUTW_(N)   = &
-                  (DWARM_(N)*PHIW_(N))/(MAPL_KARMAN*USTARW_(N)*fLA*(MUSKIN+1.))
-
-             X2          = DT * &
-                  ( (MAPL_KARMAN*USTARW_(N)*fLA*(MUSKIN+1.))/(DWARM_(N)*PHIW_(N)) )
-
-! We DO NOT include cool-skin tdrop in TW, therefore, we now save TW
-
-             TW(N)       = TS_FOUNDi(N) + ( 1.0/(1.+X2))        *    (TBAR_(N) - TS_FOUNDi(N))
-             TS(N,WATER) = TS(N,WATER)  + ((1.0+MUSKIN)/MUSKIN) *    (TW(N)    - TBAR_(N))
-
-             TDEL_(N)    = TS_FOUNDi(N) + ((1.0+MUSKIN)/MUSKIN) * MAX(TW(N)    - TS_FOUNDi(N), 0.0)
-             TBAR_(N)    = TW(N)
-
-             TS(N,WATER) = TDEL_(N) - TDROP_(N)
-             TWMTS(N)    = TW(N) - TS(N,WATER)
-          end if WARM_LAYER
-
-       else            ! FR(N, WATER) <= fr_ice_thresh
-          DCOOL_ (N)     = MAPL_UNDEF
-          LCOOL_ (N)     = MAPL_UNDEF
-          DWARM_ (N)     = MAPL_UNDEF
-          TBAR_  (N)     = MAPL_UNDEF
-          TDROP_ (N)     = MAPL_UNDEF
-          QCOOL_ (N)     = MAPL_UNDEF
-          USTARW_(N)     = MAPL_UNDEF
-          SWCOOL_(N)     = MAPL_UNDEF
-          BCOOL_ (N)     = MAPL_UNDEF
-          TDEL_  (N)     = MAPL_UNDEF
-          TWMTS  (N)     = 0.0
-          QWARM_ (N)     = MAPL_UNDEF
-          SWWARM_(N)     = MAPL_UNDEF
-          PHIW_  (N)     = MAPL_UNDEF
-          LANGM_ (N)     = MAPL_UNDEF
-          TAUTW_ (N)     = MAPL_UNDEF
-          ZETA_W_(N)     = MAPL_UNDEF
-       end if
-    end do
-
-
-   RETURN_(ESMF_SUCCESS)
-  end subroutine SKIN_SST
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end subroutine RUN2
 
-
 end module GEOS_OpenwaterGridCompMod
-
 

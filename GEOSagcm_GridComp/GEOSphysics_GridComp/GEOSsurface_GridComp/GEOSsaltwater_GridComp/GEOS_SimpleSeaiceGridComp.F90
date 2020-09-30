@@ -1121,16 +1121,6 @@ module GEOS_SimpleSeaiceGridCompMod
 
    endif
 
-!  call MAPL_AddImportSpec(GC                         ,&
-!         SHORT_NAME         = 'FRZMLT'                    ,&
-!         LONG_NAME          = 'freeze_melt_potential',     &
-!         UNITS              = 'W m-2'                     ,&
-!         DIMS               = MAPL_DimsTileOnly           ,&
-!         VLOCATION          = MAPL_VLocationNone          ,&
-!         DEFAULT            = 0.0,                         &
-!         RC=STATUS  )
-!  VERIFY_(STATUS)
-
    call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME         = 'SS_FOUND',                          &
         LONG_NAME          = 'foundation_salinity_for_interface_layer',               &
@@ -1988,8 +1978,6 @@ contains
    real,    dimension(NT)              :: EVD
    real,    dimension(NT)              :: CFQ
    real,    dimension(NT)              :: CFT
-   !real,    dimension(NT)              :: UUA
-   !real,    dimension(NT)              :: VVA
    real,    dimension(NT)              :: TXI
    real,    dimension(NT)              :: TYI
    real,    dimension(NT)              :: DQS
@@ -2576,12 +2564,9 @@ contains
    RETURN_(ESMF_SUCCESS)
   end subroutine ALBSEAICE
 
-
 end subroutine RUN2
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end module GEOS_SimpleSeaiceGridCompMod
-
 

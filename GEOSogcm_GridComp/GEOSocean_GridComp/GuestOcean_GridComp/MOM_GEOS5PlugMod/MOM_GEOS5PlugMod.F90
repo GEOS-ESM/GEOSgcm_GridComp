@@ -466,10 +466,10 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                                   &
-         SHORT_NAME         = 'FRAZIL',                              &
-         LONG_NAME          = 'heating_from_frazil_formation',       &
-         UNITS              = 'J m-2',                                &
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME         = 'FRZMLT',                            &
+         LONG_NAME          = 'freeze_melt_potential',             &
+         UNITS              = 'W m-2',                             &
          DIMS               = MAPL_DimsHorzOnly,                   &
          VLOCATION          = MAPL_VLocationNone,                  &
          RC=STATUS  )
@@ -1107,7 +1107,7 @@ contains
     REAL_, pointer                         :: DH  (:,:,:)
     REAL_, pointer                         :: SSH  (:,:)
     REAL_, pointer                         :: SLV  (:,:)
-    REAL_, pointer                         :: FRAZIL  (:,:)
+    REAL_, pointer                         :: FRZMLT  (:,:)
     REAL_, pointer                         :: MASK(:,:,:)
     REAL_, pointer                         :: AREA(:,:)
     REAL_, pointer                         :: DEPTH(:,:,:)
@@ -1296,7 +1296,7 @@ contains
     call MAPL_GetPointer(EXPORT, SW,   'SW'  , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, SSH,   'SSH', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, SLV,   'SLV', RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, FRAZIL,   'FRAZIL', RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FRZMLT,   'FRZMLT', RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, DEPTH, 'DEPTH', RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT, DH,   'DH'  , RC=STATUS); VERIFY_(STATUS)
@@ -1705,12 +1705,13 @@ contains
        end where       
     end if
 
-    if(associated(FRAZIL)) then
+    if(associated(FRZMLT)) then
+       ! frazil in mom5 already contains melt potential
        call ocean_model_data_get(Ocean_State, Ocean, 'frazil', U, isc, jsc) 
        where(MASK(:,:,1)>0.0)
-          FRAZIL = real(U, kind = G5KIND)
+          FRZMLT = real(U, kind = G5KIND)
        elsewhere
-          FRAZIL=0.0
+          FRZMLT = 0.0
        end where       
     end if
     

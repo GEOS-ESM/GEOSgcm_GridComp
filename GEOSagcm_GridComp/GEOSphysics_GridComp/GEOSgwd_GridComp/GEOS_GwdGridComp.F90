@@ -820,8 +820,7 @@ contains
                               0.50_MAPL_R8 , 0.25_MAPL_R8, ERRstring )
 
          ! Beres Scheme File
-         call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
-            default='/gpfsm/dnb31/jbacmeis/cesm_inputdata/newmfspectra40_dc25.nc', RC=STATUS)
+         call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", RC=STATUS)
          VERIFY_(STATUS)
 
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_desc )

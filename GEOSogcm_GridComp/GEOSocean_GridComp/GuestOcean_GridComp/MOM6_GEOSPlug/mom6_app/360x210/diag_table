@@ -77,6 +77,7 @@
 "ocean_model_z","temp","temp","prog_z","all",.true.,"none",2
 "ocean_model_z","temp_xyave","temp_xyave","prog_z","all",.true.,"none",2
 "ocean_model_z","salt","salt","prog_z","all",.true.,"none",2
+"ocean_model_z","thkcello","thkcello","prog_z","all",.true.,"none",2
 #
 ## Auxilary Tracers:
 ##==================
@@ -445,6 +446,13 @@
 #"ocean_model", "wet_u",       "wet_u",       "ocean_static", "all", .false., "none", 2
 #"ocean_model", "wet_v",       "wet_v",       "ocean_static", "all", .false., "none", 2
 #"ocean_model", "Coriolis",    "Coriolis",    "ocean_static", "all", .false., "none", 2
+#"ocean_model", "dxt",         "dxt",         "ocean_static", "all", .false., "none", 2
+#"ocean_model", "dyt",         "dyt",         "ocean_static", "all", .false., "none", 2
+#"ocean_model", "dxCu",        "dxCu",        "ocean_static", "all", .false., "none", 2
+#"ocean_model", "dyCu",        "dyCu",        "ocean_static", "all", .false., "none", 2
+#"ocean_model", "dxCv",        "dxCv",        "ocean_static", "all", .false., "none", 2
+#"ocean_model", "dyCv",        "dyCv",        "ocean_static", "all", .false., "none", 2
+
 #
 ## Static ocean fields:
 ##=====================
