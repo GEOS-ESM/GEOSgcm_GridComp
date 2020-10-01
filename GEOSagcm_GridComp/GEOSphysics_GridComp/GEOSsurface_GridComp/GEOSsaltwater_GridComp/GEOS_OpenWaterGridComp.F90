@@ -1619,6 +1619,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    character(len=ESMF_MAXSTR)     :: SURFRC
    type(ESMF_Config)              :: SCF 
    character(len=100)             :: WHICH_T_TO_SFCLAYER    ! what temperature does the sfclayer get from AOIL?
+   real                           :: DEPTH_T_TO_SFCLAYER    ! temperature (at what depth) does the sfclayer get from AOIL?
 
 !=============================================================================
 
@@ -1904,8 +1905,16 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetResource( MAPL, WHICH_T_TO_SFCLAYER, Label="T_from_AOIL_to_SFCLAYER:", DEFAULT="TW_from_internal", RC=STATUS)
    VERIFY_(STATUS)
 
-   call AOIL_sfcLayer_T( WHICH_T_TO_SFCLAYER, DO_DATASEA, MUSKIN, epsilon_d, &
-                          TW, TS_FOUNDi, TWMTF, DELTC, TS(:,WATER))
+   call MAPL_GetResource( MAPL, DEPTH_T_TO_SFCLAYER, Label="DEPTH_T_AOIL_to_SFCLAYER:", DEFAULT=0.,                RC=STATUS)
+   VERIFY_(STATUS)
+
+   if ( DEPTH_T_TO_SFCLAYER > AOIL_depth) then
+     print *, " DEPTH_T_AOIL_to_SFCLAYER must not be greater than the depth of the AOIL, which is currently set =", AOIL_depth, "Exiting!"
+     ASSERT_(.false.)
+   endif
+
+   call AOIL_sfcLayer_T( WHICH_T_TO_SFCLAYER, DEPTH_T_TO_SFCLAYER, DO_DATASEA, MUSKIN, epsilon_d, &
+                          AOIL_depth, TW, TS_FOUNDi, TWMTF, DELTC, TS(:,WATER))
 
    FR(:,WATER) = 1.0 ! parent(saltwater) will aggregate based on water/ice fraction 
 
