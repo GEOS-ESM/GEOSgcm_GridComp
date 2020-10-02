@@ -60,9 +60,7 @@ module GEOS_OpenwaterGridCompMod
 !               $$T_{\delta}= T_f + \left( \frac{1+\mu}{\mu}\right) \sigma_T$$
 !      \end{itemize} 
 !
-!      \noindent $\sigma_T$ evolves according to
-!      $$ \frac{\partial \sigma_T}{\partial t}= \frac{Q_{\sigma}}{d\,\rho_w\,c_w} - \frac{1}{\tau_{\sigma}} \sigma_T.$$
-!      \noindent For complete details, please see Akella and Suarez, 2018, 
+!      \noindent For details, please see Akella and Suarez, 2018, 
 !      "The Atmosphere-Ocean Interface Layer of the NASA Goddard Earth Observing System Model and Data Assimilation System." GMAO Tech Memo, Vol 51. 
 !      ----------------------------------------------------------------------------
 !
@@ -75,13 +73,10 @@ module GEOS_OpenwaterGridCompMod
   use GEOS_UtilsMod
   use DragCoefficientsMod
   use atmOcnIntlayer,     only: ALBSEA,            &
-                                SKIN_SST,          &
                                 AOIL_sfcLayer_T,   &
                                 water_RHO,         &
                                 AOIL_Shortwave_abs,&
-                                AOIL_v0_S,         &
-                                AOIL_v0_HW,        &
-                                surf_hflux_update
+                                AOIL_v0
 
   implicit none
   private
@@ -2367,6 +2362,7 @@ contains
    real                                :: OGCM_top_thickness        ! thickness of OGCM top layer (D) in AS2018
    real                                :: epsilon_d                 ! ratio: (thickness of AOIL)/(thickness of OGCM top level) = epsilon_d in AS2018
    character(len=3)                    :: DO_GRAD_DECAY_warmLayer   ! simulate gradual decay of warm layer: yes or no. Follows Zeng and Beljaars, 2005.
+   character(len=3)                    :: DO_UPDATE_FLUXES_AOIL_SECOND_STEP  ! update fluxes and other variables following second update step in AOIL: yes or no.
 
 ! following are related  to CICE
 
@@ -2551,7 +2547,7 @@ contains
 
 ! How many cool-skin iterations to do?
 ! -------------------------------------
-    call MAPL_GetResource ( MAPL, n_iter_cool, Label="COOL_SKIN_LAYER_ITERATIONS" , DEFAULT=3,    RC=STATUS)
+    call MAPL_GetResource ( MAPL, n_iter_cool, Label="COOL_SKIN_LAYER_ITERATIONS:" , DEFAULT=3,    RC=STATUS)
     VERIFY_(STATUS)
 
     AOIL_depth = MAX(MaxWaterDepth, MinWaterDepth)
@@ -2599,6 +2595,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, DO_GRAD_DECAY_warmLayer,   Label="WARM_LAYER_GRAD_DECAY:" ,  DEFAULT="no"  ,   RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, DO_UPDATE_FLUXES_AOIL_SECOND_STEP, Label="UPDATE_FLUXES_AOIL_SECOND_STEP:" ,  DEFAULT="no"  ,   RC=STATUS)
     VERIFY_(STATUS)
 
 !   Copy internals into local variables
@@ -2743,30 +2742,15 @@ contains
       SWN   = SWN - (epsilon_d/(1.-epsilon_d))* (PEN-PEN_ocean)
     endif
 
-    call surf_hflux_update (NT,DO_SKIN_LAYER,DO_DATASEA,MUSKIN,DT,epsilon_d,  &
-             CFT,CFQ,SH,EVAP,DSH,DEV,THATM,QHATM,PS,FRWATER,HH(:,WATER),SNO,      &
-             LWDNSRF,SWN,ALW,BLW,SHF,LHF,EVP,DTS,DQS,TS(:,WATER),QS(:,WATER),TWMTS,TWMTF)
-
-    call AOIL_v0_HW ( NT, DT, DO_DATASEA, MaxWaterDepth, MinWaterDepth, &
-                      FRWATER, SNO, EVP, PCU+PLS, HH(:,WATER))
-
-!   Copy back to internal variables
-!   -----------------------------------------
-    TW = TS(:,WATER) + TWMTS
-    HW = HH(:,WATER)
-
-    call AOIL_v0_S (DT, HW, SS(:,WATER), SW)
-    where (.not. (abs(UW) > 0.0 .or. abs(VW) > 0.0))
-       SW = max(min(SW,MAXSALINITY),MINSALINITY)
-    endwhere
-
-!   Cool-skin and diurnal warm layer. It changes TS, TWMTS, TW if DO_SKIN_LAYER = 1
-!   --------------------------------------------------------------------------------
-      call SKIN_SST (DO_SKIN_LAYER, DO_DATASEA, NT,CM(:,WATER),UUA,VVA,UW,VW,HW,SWN_surf,LHF,SHF,LWDNSRF,     &
-                     ALW,BLW,PEN, PEN_OCEAN, STOKES_SPEED,DT,MUSKIN,TS_FOUNDi,DWARM_,TBAR_,TXW,TYW,USTARW_,   &
-                     DCOOL_,TDROP_,SWCOOL_,QCOOL_,BCOOL_,LCOOL_,TDEL_,SWWARM_,QWARM_,ZETA_W_,                 &
-                     PHIW_,LANGM_,TAUTW_,uStokes_,TS(:,WATER),TWMTS,TWMTF,DELTC,TW,FRWATER,n_iter_cool,       &
-                     fr_ice_thresh, epsilon_d, trim(DO_GRAD_DECAY_warmLayer))
+    call AOIL_v0 (NT, DO_SKIN_LAYER, DO_DATASEA, n_iter_cool, fr_ice_thresh, trim(DO_GRAD_DECAY_warmLayer), &
+                  DT, MUSKIN, epsilon_d, MaxWaterDepth, MinWaterDepth, MaxSalinity, MinSalinity,            &
+                  STOKES_SPEED, CM(:,WATER), CFT, CFQ, SH, EVAP, DSH, DEV, THATM, QHATM, PS, SNO, PCU+PLS,  &
+                  UUA, VVA, UW, VW, FRWATER, SWN, SWN_surf, PEN, PEN_ocean, LWDNSRF, ALW, BLW,              &
+                  HH(:,WATER), TS(:,WATER), SS(:,WATER), QS(:,WATER), TS_FOUNDi,                            &
+                  DWARM_, TBAR_, USTARW_, DCOOL_, TDROP_, SWCOOL_, QCOOL_, BCOOL_, LCOOL_,                  &
+                  TDEL_, SWWARM_, QWARM_, ZETA_W_, PHIW_, LANGM_, TAUTW_, uStokes_, TXW, TYW,               &
+                  SHF, LHF, EVP, DTS, DQS, DELTC, HW, TW, SW, TWMTS, TWMTF,                                 &
+                  trim(do_update_fluxes_AOIL_second_step))
 
 ! Copies for export
 !------------------
