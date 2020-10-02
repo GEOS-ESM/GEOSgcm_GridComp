@@ -1169,8 +1169,8 @@ contains
       qcu(:k0)           = 0.0
       qlu(:k0)           = 0.0
       qiu(:k0)           = 0.0
-      fer(:k0)           = MAPL_UNDEF
-      fdr(:k0)           = MAPL_UNDEF
+      fer(:k0)           = 0.0
+      fdr(:k0)           = 0.0
       xco(:k0)           = 0.0
       cin                = 0.0
       cinlcl             = 0.0
