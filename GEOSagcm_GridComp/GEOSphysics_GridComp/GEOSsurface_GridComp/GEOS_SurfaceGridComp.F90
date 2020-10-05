@@ -99,7 +99,7 @@ module GEOS_SurfaceGridCompMod
 
   character(len=ESMF_MAXSTR), pointer :: GCNames(:)
   integer                    :: CHILD_MASK(NUM_CHILDREN)
-  integer :: DO_OBIO, ATM_CO2, CHOOSEMOSFC 
+  integer :: DO_OBIO, DO_WAVES, ATM_CO2, CHOOSEMOSFC 
   logical :: DO_GOSWIM
 
   character(len=ESMF_MAXSTR) :: LAND_PARAMS ! land parameter option
@@ -223,6 +223,9 @@ module GEOS_SurfaceGridCompMod
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, DO_OBIO,        Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, DO_WAVES,       Label="USE_WAVES:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
     call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2,   DEFAULT=0, __RC__ ) 
@@ -634,6 +637,41 @@ module GEOS_SurfaceGridCompMod
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
+
+    if (DO_WAVES /= 0) then
+       call MAPL_AddImportSpec(GC,                                    &
+            SHORT_NAME         = 'CHARNOCK',                          &
+            LONG_NAME          = 'charnock_coefficient',              &
+            UNITS              = '1',                                 &
+            RESTART            = MAPL_RestartOptional,                &
+            DEFAULT            = 0.0185,                              &
+            DIMS               = MAPL_DimsHorzOnly,                   &
+            VLOCATION          = MAPL_VLocationNone,                  &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+
+       call MAPL_AddImportSpec(GC,                                    &
+            SHORT_NAME         = 'SHFX_SPRAY',                        &
+            LONG_NAME          = 'sensible_heat_contribution_from_sea_spray', &
+            UNITS              = '1',                                 &
+            RESTART            = MAPL_RestartOptional,                &
+            DEFAULT            = 0.0,                                 &
+            DIMS               = MAPL_DimsHorzOnly,                   &
+            VLOCATION          = MAPL_VLocationNone,                  &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+
+       call MAPL_AddImportSpec(GC,                                    &
+            SHORT_NAME         = 'LHFX_SPRAY',                        &
+            LONG_NAME          = 'latent_heat_contribution_from_sea_spray', &
+            UNITS              = '1',                                 &
+            RESTART            = MAPL_RestartOptional,                &
+            DEFAULT            = 0.0,                                 &
+            DIMS               = MAPL_DimsHorzOnly,                   &
+            VLOCATION          = MAPL_VLocationNone,                  &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+   end if
 
 !  !EXPORT STATE:
 
@@ -2912,6 +2950,18 @@ module GEOS_SurfaceGridCompMod
 
   END IF
 
+  if (DO_WAVES /= 0) then
+    call MAPL_AddExportSpec(GC,                             &
+       LONG_NAME  = 'surface_pressure',                     &
+       UNITS      = 'Pa',                                   &
+       SHORT_NAME = 'PS',                                   &
+       DIMS       = MAPL_DimsHorzOnly,                      &
+       VLOCATION  = MAPL_VLocationNone,                     &
+       RC=STATUS  )
+    VERIFY_(STATUS)
+  end if
+
+
 ! !INTERNAL STATE:
 
 !  These are here only because they are passed between run1 and run2.
@@ -3772,6 +3822,13 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: PCU     => NULL()
     real, pointer, dimension(:,:) :: PHIS    => NULL()
 
+    real, pointer, dimension(:,:) :: CHARNOCK => NULL()
+#if (0)
+    real, pointer, dimension(:,:) :: SH_SPRAY => NULL()
+    real, pointer, dimension(:,:) :: LH_SPRAY => NULL()
+#endif
+
+
 ! Pointers to gridded internals
 
     real, pointer, dimension(:,:) :: CT   => NULL()
@@ -3832,6 +3889,13 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: UWINDLMTILE => NULL()
     real, pointer, dimension(:) :: VWINDLMTILE => NULL()
     real, pointer, dimension(:) :: PCUTILE     => NULL()
+
+    real, pointer, dimension(:) :: CHARNOCKTILE=> NULL()
+#if (0)
+    real, pointer, dimension(:) :: SH_SPRAYTILE=> NULL()
+    real, pointer, dimension(:) :: LH_SPRAYTILE=> NULL()
+#endif
+
 
 ! Pointers to tiled versions of internals
 
@@ -3949,6 +4013,20 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(IMPORT  , PCU   , 'PCU'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , PHIS  , 'PHIS'  ,  RC=STATUS); VERIFY_(STATUS)
 
+    if (DO_WAVES /= 0) then
+      call MAPL_GetPointer(IMPORT  , CHARNOCK , 'CHARNOCK',  RC=STATUS); VERIFY_(STATUS)
+#if (0)
+      call MAPL_GetPointer(IMPORT  , SH_SPRAY , 'SHFX_SPRAY',  RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT  , LH_SPRAY , 'LHFX_SPRAY',  RC=STATUS); VERIFY_(STATUS)
+#endif 
+#ifdef DEBUG
+      print *, 'DEBUG::WGCM::SURF CHARNOCK = ', minval(CHARNOCK,mask=CHARNOCK/=MAPL_UNDEF), maxval(CHARNOCK,mask=CHARNOCK/=MAPL_UNDEF)
+
+      print *, 'DEBUG::WGCM::SURF SH_SPRAY = ', minval(SH_SPRAY,mask=SH_SPRAY/=MAPL_UNDEF), maxval(SH_SPRAY,mask=SH_SPRAY/=MAPL_UNDEF)
+      print *, 'DEBUG::WGCM::SURF LH_SPRAY = ', minval(LH_SPRAY,mask=LH_SPRAY/=MAPL_UNDEF), maxval(LH_SPRAY,mask=LH_SPRAY/=MAPL_UNDEF)
+#endif
+    end if
+
 ! Pointers to grid outputs
 !-------------------------
 
@@ -3972,14 +4050,14 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , MOQ2M , 'Q2M' ,  ALLOC = .true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , MOU2M , 'U2M' ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , MOV2M , 'V2M' ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , MOT10M , 'T10M' ,RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , MOQ10M , 'Q10M' ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , MOT10M , 'T10M' ,ALLOC = .true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , MOQ10M , 'Q10M' ,ALLOC = .true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , MOU10M , 'U10M' ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , MOV10M , 'V10M' ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , MOU50M , 'U50M' ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , MOV50M , 'V50M' ,RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , UU10M   , 'UU10M'  ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , RH2M    , 'RH2M'   ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , RH2M    , 'RH2M'   ,  ALLOC = .true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , T2MDEW , 'T2MDEW' ,   RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , T2MWET , 'T2MWET' ,   RC=STATUS); VERIFY_(STATUS)
   else
@@ -4049,6 +4127,16 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     allocate(  PCUTILE(NT), STAT=STATUS)
     VERIFY_(STATUS)
+    if (DO_WAVES /= 0) then
+      allocate(CHARNOCKTILE(NT), STAT=STATUS)
+      VERIFY_(STATUS)
+#if(0)
+      allocate(SH_SPRAYTILE(NT), STAT=STATUS)
+      VERIFY_(STATUS)
+      allocate(LH_SPRAYTILE(NT), STAT=STATUS)
+      VERIFY_(STATUS)
+#endif
+    end if
 
 ! Imports at the tiles
 !---------------------
@@ -4066,6 +4154,15 @@ module GEOS_SurfaceGridCompMod
     call MAPL_LocStreamTransform( LOCSTREAM,  UWINDLMTILE,  UWINDLM, INTERP=useInterp, RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM,  VWINDLMTILE,  VWINDLM, INTERP=useInterp, RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM,  PCUTILE,      PCU,     RC=STATUS); VERIFY_(STATUS)
+
+    if (DO_WAVES /= 0) then
+      call MAPL_LocStreamTransform( LOCSTREAM,  CHARNOCKTILE,  CHARNOCK, RC=STATUS); VERIFY_(STATUS)
+
+#if (0)
+      call MAPL_LocStreamTransform( LOCSTREAM,  SH_SPRAYTILE,  SH_SPRAY, RC=STATUS); VERIFY_(STATUS)
+      call MAPL_LocStreamTransform( LOCSTREAM,  LH_SPRAYTILE,  LH_SPRAY, RC=STATUS); VERIFY_(STATUS)
+#endif
+    end if
 
 ! Allocate tile versions of internal
 !------------------------------------
@@ -4395,6 +4492,12 @@ module GEOS_SurfaceGridCompMod
     if(associated(   UWINDLMTILE)) deallocate(    UWINDLMTILE)
     if(associated(   VWINDLMTILE)) deallocate(    VWINDLMTILE)
 
+    if(associated(CHARNOCKTILE))   deallocate(CHARNOCKTILE)
+#if (0)
+    if(associated(SH_SPRAYTILE))   deallocate(SH_SPRAYTILE)
+    if(associated(LH_SPRAYTILE))   deallocate(LH_SPRAYTILE)
+#endif
+
 !  All done
 !-----------
 
@@ -4454,6 +4557,17 @@ module GEOS_SurfaceGridCompMod
         VERIFY_(STATUS)
         call FILLIN_TILE(GIM(type), 'PCU', PCUTILE, XFORM, RC=STATUS)
         VERIFY_(STATUS)
+        if (DO_WAVES /= 0) then
+          call FILLIN_TILE(GIM(type), 'CHARNOCK', CHARNOCKTILE, XFORM, RC=STATUS)
+          VERIFY_(STATUS)
+#if (0)
+          call FILLIN_TILE(GIM(type), 'SHFX_SPRAY', SH_SPRAYTILE, XFORM, RC=STATUS)
+          VERIFY_(STATUS)
+          call FILLIN_TILE(GIM(type), 'LHFX_SPRAY', LH_SPRAYTILE, XFORM, RC=STATUS)
+          VERIFY_(STATUS)
+#endif
+        end if
+
 
 ! Allocate the child's needed exports
 !------------------------------------
@@ -4898,6 +5012,9 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: FRLAND    => NULL()
     real, pointer, dimension(:,:) :: FRLANDICE => NULL()
     real, pointer, dimension(:,:) :: HLATN     => NULL()
+    real, pointer, dimension(:,:) :: PS_       => NULL()
+
+
    
     real, pointer, dimension(:,:) :: HLATWTR  => NULL()
     real, pointer, dimension(:,:) :: HLATICE  => NULL()
@@ -5994,9 +6111,9 @@ module GEOS_SurfaceGridCompMod
   endif
 
 
-    call MAPL_GetPointer(EXPORT  , HLATWTR   , 'HLATWTR'   ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , HLATWTR   , 'HLATWTR'   ,  alloc=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , HLATICE   , 'HLATICE'   ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  ,   SHWTR   , 'SHWTR'     ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  ,   SHWTR   , 'SHWTR'     ,  alloc=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  ,   SHICE   , 'SHICE'     ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  ,   TAUXW   , 'TAUXW'     ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  ,   TAUXI   , 'TAUXI'     ,  RC=STATUS); VERIFY_(STATUS)
@@ -6008,7 +6125,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , SWNDICE   , 'SWNDICE'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SNOWOCN   , 'SNOWOCN'   ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RAINOCN   , 'RAINOCN'   ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , TSKINW, 'TSKINW',  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , TSKINW, 'TSKINW',  alloc=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , TSKINI, 'TSKINI',  RC=STATUS); VERIFY_(STATUS)
 
     call MAPL_GetPointer(EXPORT  , HICE    , 'HICE'    ,  RC=STATUS); VERIFY_(STATUS)
@@ -6039,8 +6156,8 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_GetPointer(EXPORT  , EVAPOU  , 'EVAPOUT',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SUBLIM  , 'SUBLIM' ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , SHOU    , 'SHOUT'  ,  RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT  , HLWUP   , 'HLWUP'  ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , SHOU    , 'SHOUT'  ,  alloc=.true., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT  , HLWUP   , 'HLWUP'  ,  alloc=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , LWNDSRF , 'LWNDSRF',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , SWNDSRF , 'SWNDSRF',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RUNOFF  , 'RUNOFF' ,  RC=STATUS); VERIFY_(STATUS)
@@ -6130,6 +6247,11 @@ module GEOS_SurfaceGridCompMod
        call MAPL_GetPointer(EXPORT  , CNFSEL  , 'CNFSEL' ,  RC=STATUS); VERIFY_(STATUS)
     END IF
 
+    if (DO_WAVES /= 0) then
+       call MAPL_GetPointer(EXPORT  , PS_     , 'PS',  alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       PS_ = PS
+    end if    
+    
 ! Force allocation for ice fraction for lwi mask
 
     call MAPL_GetPointer(EXPORT  , FRI     , 'FRACI'  ,  alloc=associated(LWI) , rC=STATUS)
