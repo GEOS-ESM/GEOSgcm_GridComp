@@ -85,7 +85,7 @@ foreach(src_file ${WW3ESMF_FTN})
     add_custom_command(
         OUTPUT  ${gen_src_file}
         DEPENDS w3adc ${ftn_dir}/${src_file}
-        COMMAND ${WW3_path}/model/esmf/run_w3adc.sh ${ftn_dir} ${src_file} > ${gen_log_file}.w3adc.log 2>&1
+        COMMAND ./run_w3adc.sh ${ftn_dir} ${src_file} > ${gen_log_file}.w3adc.log 2>&1
         COMMENT "Running w3adc ${src_file}")
     list(APPEND WW3ESMF_F90 ${gen_src_file})
 endforeach()
