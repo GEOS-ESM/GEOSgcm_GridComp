@@ -17,10 +17,17 @@
 
   integer, parameter :: nveg = 4
   integer, parameter :: nzone = 3
-  integer, parameter :: VAR_COL = 40 ! number of CN column restart variables
-  integer, parameter :: VAR_PFT = 74 ! number of CN PFT variables per column
-  real               :: WEMIN_IN, WEMIN_OUT
+  integer            :: VAR_COL, VAR_PFT
+  integer, parameter :: VAR_COL_CLM40 = 40 ! number of CN column restart variables
+  integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column
+  integer, parameter :: npft    = 19  
+  integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
+  integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column
   
+  real               :: WEMIN_IN, WEMIN_OUT
+  logical            :: clm45  = .false.
+  integer :: un_dim3
+
   type catch_rst
        real, pointer ::        bf1(:)
        real, pointer ::        bf2(:)
@@ -173,7 +180,7 @@
      open(unit=20, file=trim(fname2),  form='unformatted')
      open(unit=30, file=trim(fname3),  form='unformatted')
   end if
-
+  
 ! Get SURFLAY Value
 ! -----------------
   read(arg(4),*) SURFLAY
@@ -188,10 +195,21 @@
   end if
   print *, 'SURFLAY: ',SURFLAY
 
+  VAR_COL = VAR_COL_CLM40 
+  VAR_PFT = VAR_PFT_CLM40
+
   if (filetype ==0) then
 
      ntiles = cfg(1)%get_dimension('tile',rc=rc)
-
+     un_dim3 = cfg(1)%get_dimension('unknown_dim3',rc=rc)
+     if(un_dim3 == 105) then
+        clm45  = .true.
+        VAR_COL = VAR_COL_CLM45 
+        VAR_PFT = VAR_PFT_CLM45
+        print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
+     else
+        print *, 'Processing CLM40 restarts : ', VAR_COL, VAR_PFT, clm45
+     endif
   else
 
 !    Determine NTILES
@@ -511,7 +529,6 @@
    integer :: j, dim1,dim2
    type(Variable), pointer :: myVariable
    character(len=:), pointer :: dname
-   logical                   :: clm45 = .false.
 
        call MAPL_VarRead(formatter,"BF1",catch%bf1)
        call MAPL_VarRead(formatter,"BF2",catch%bf2)
@@ -589,7 +606,6 @@
        myVariable => cfg%get_variable("CNCOL")
        dname => myVariable%get_ith_dimension(2)
        dim1 = cfg%get_dimension(dname)
-       if (dim1 == 105) clm45  = .true.
        if(clm45) then          
           call MAPL_VarRead(formatter,"ABM",     catch%ABM , rc = rc    )
           call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP)
@@ -600,6 +616,9 @@
        do j=1,dim1
           call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j)
        enddo
+       myVariable => cfg%get_variable("CNPFT")
+       dname => myVariable%get_ith_dimension(2)
+       dim1 = cfg%get_dimension(dname)       
        do j=1,dim1
           call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j)
        enddo
@@ -701,7 +720,6 @@
    real, dimension (:), allocatable :: var
    type(Variable), pointer :: myVariable
    character(len=:), pointer :: dname
-   logical                   :: clm45 = .false.
 
        call MAPL_VarWrite(formatter,"BF1",catch%bf1)
        call MAPL_VarWrite(formatter,"BF2",catch%bf2)
@@ -779,7 +797,7 @@
        myVariable => cfg%get_variable("CNCOL")
        dname => myVariable%get_ith_dimension(2)
        dim1 = cfg%get_dimension(dname)
-       if (dim1 == 105) clm45  = .true.
+
        do j=1,dim1
           call MAPL_VarWrite(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j)
        enddo
