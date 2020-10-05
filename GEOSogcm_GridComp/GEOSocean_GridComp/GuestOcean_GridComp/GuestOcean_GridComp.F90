@@ -553,6 +553,12 @@ contains
                                                         RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec ( GC   ,                          &
+         SHORT_NAME = 'DW',                                        &
+         CHILD_ID   = OCN,                                         &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
+
     if(DO_DATASEA==0) then
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'DH',                                        &
