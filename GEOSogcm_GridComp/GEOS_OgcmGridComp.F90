@@ -818,6 +818,15 @@ contains
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                            &
+    SHORT_NAME         = 'DW',                                &
+    LONG_NAME          = 'bathymetry',                        &
+    UNITS              = 'm',                                 &
+    DIMS               = MAPL_DimsTileOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                            &
     SHORT_NAME         = 'UI',                                &
     LONG_NAME          = 'zonal_velocity_of_surface_seaice',  &
     UNITS              = 'm s-1 ',                            &
@@ -992,12 +1001,14 @@ contains
      
   end if
 
-  call MAPL_AddConnectivity ( GC,  &
-          SHORT_NAME  = (/'FRACICE'/), & 
-          DST_ID = OCEAN,             &
-          SRC_ID = SEAICE,            &
-          RC=STATUS  )
-  VERIFY_(STATUS)
+  if(DO_WAVES/=0) then
+     call MAPL_AddConnectivity ( GC,      &
+             SHORT_NAME  = (/'FRACICE'/), & 
+             DST_ID = OCEAN,              &
+             SRC_ID = SEAICE,             &
+             RC=STATUS  )
+     VERIFY_(STATUS)
+  endif
 
   if(DUAL_OCEAN) then 
      call MAPL_AddConnectivity ( GC,  &
@@ -1046,7 +1057,28 @@ contains
      VERIFY_(STATUS)
   end if
   
-  call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
+  if(DO_WAVES==0) then
+     call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
+  else
+     call MAPL_TerminateImport    ( GC, CHILD=ORAD,   RC=STATUS )
+     VERIFY_(STATUS)
+     call MAPL_TerminateImport    ( GC, CHILD=OBIO,   RC=STATUS )
+     VERIFY_(STATUS)
+     call MAPL_TerminateImport    ( GC, CHILD=SEAICE, RC=STATUS )
+     VERIFY_(STATUS)
+  
+     if (DO_DATASEAONLY==0) then
+        call MAPL_TerminateImport    (GC, CHILD = OCEAN, RC=STATUS)
+        VERIFY_(STATUS)
+     else
+        call MAPL_TerminateImport(GC, SHORT_NAME = ['FRACICE  ', &
+                                                    'FROCEAN  ', &
+                                                    'SWHEAT   ', &
+                                                    'TAUX     ', &
+                                                    'TAUY     ', &
+                                                    'DISCHARGE'  ], CHILD = OCEAN, RC=STATUS)
+        VERIFY_(STATUS)
+     end if
 
 ! Set the Profiling timers
 ! ------------------------
@@ -1551,6 +1583,7 @@ contains
     real, pointer, dimension(:,:) :: DISCHARGEO => null()
     real, pointer, dimension(:,:) :: UWO => null()
     real, pointer, dimension(:,:) :: VWO => null()
+    real, pointer, dimension(:,:) :: DWO => null()
 
     real, pointer, dimension(:,:) :: HIO => null()
     real, pointer, dimension(:,:) :: SIO => null()
@@ -1610,6 +1643,7 @@ contains
 
     real, pointer, dimension(:) :: UW       => null()
     real, pointer, dimension(:) :: VW       => null()
+    real, pointer, dimension(:) :: DW       => null()
     real, pointer, dimension(:) :: UI       => null()
     real, pointer, dimension(:) :: VI       => null()
     real, pointer, dimension(:) :: KPAR     => null()
@@ -2310,6 +2344,8 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VW      ,  'VW'     , RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DW      ,  'DW'     , RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, UI      ,  'UI'     , RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, VI      ,  'VI'     , RC=STATUS)
@@ -2333,6 +2369,11 @@ contains
 
     if(associated(VW)) then
        call MAPL_GetPointer(GEX(OCEAN ), VWO ,  'VW'    , alloc=.true., RC=STATUS)
+       VERIFY_(STATUS)
+    end if
+
+    if(associated(DW)) then
+       call MAPL_GetPointer(GEX(OCEAN ), DWO ,  'DW'    , alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
     end if
 
@@ -2605,6 +2646,12 @@ contains
 
     if(associated(VW)) then
        call MAPL_LocStreamTransform( ExchGrid, VW     ,  VWO   , &
+         INTERP=useInterp, RC=STATUS)
+       VERIFY_(STATUS)
+    end if
+
+    if(associated(DW)) then
+       call MAPL_LocStreamTransform( ExchGrid, DW     ,  DWO   , &
          INTERP=useInterp, RC=STATUS)
        VERIFY_(STATUS)
     end if
