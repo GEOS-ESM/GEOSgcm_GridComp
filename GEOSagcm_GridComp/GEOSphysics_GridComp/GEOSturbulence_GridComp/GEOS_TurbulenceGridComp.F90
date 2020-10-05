@@ -221,6 +221,11 @@ contains
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
 
+    type (MAPL_MetaComp), pointer           :: MAPL
+
+    integer :: DO_WAVES
+    integer :: DO_SEA_SPRAY
+
 !=============================================================================
 
 ! Begin...
@@ -232,6 +237,17 @@ contains
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam = trim(COMP_NAME) // Iam
+
+! Get my MAPL_Generic state
+!--------------------------
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Set the Run entry points
 ! ------------------------
@@ -529,6 +545,30 @@ contains
         RESTART    = MAPL_RestartSkip,                            &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
+
+    if (DO_WAVES /= 0) then
+       call MAPL_AddImportSpec(GC,                                    &
+            SHORT_NAME         = 'SHFX_SPRAY',                        &
+            LONG_NAME          = 'sensible_heat_contribution_from_sea_spray', &
+            UNITS              = '1',                                 &
+            RESTART            = MAPL_RestartOptional,                &
+            DEFAULT            = 0.0,                                 &
+            DIMS               = MAPL_DimsHorzOnly,                   &
+            VLOCATION          = MAPL_VLocationNone,                  &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+
+       call MAPL_AddImportSpec(GC,                                    &
+            SHORT_NAME         = 'LHFX_SPRAY',                        &
+            LONG_NAME          = 'latent_heat_contribution_from_sea_spray', &
+            UNITS              = '1',                                 &
+            RESTART            = MAPL_RestartOptional,                &
+            DEFAULT            = 0.0,                                 &
+            DIMS               = MAPL_DimsHorzOnly,                   &
+            VLOCATION          = MAPL_VLocationNone,                  &
+            RC=STATUS  )
+       VERIFY_(STATUS) 
+    end if
 
 
 
@@ -1133,6 +1173,21 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
+    if (DO_WAVES /= 0) then
+        call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME      = 'SHFX_SPRAY',                           &
+           LONG_NAME       = 'sensible_heat_contribution_from_sea_spray', &
+           UNITS           = 'W m-2',                                &
+           DIMS            = MAPL_DimsHorzOnly,                      &
+           VLOCATION       = MAPL_VLocationNone,     __RC__)
+
+        call MAPL_AddExportSpec(GC,                                  &
+           SHORT_NAME      = 'LHFX_SPRAY',                           &
+           LONG_NAME       = 'latent_heat_contribution_from_sea_spray',   &
+           UNITS           = 'W m-2',                                &
+           DIMS            = MAPL_DimsHorzOnly,                      &
+           VLOCATION       = MAPL_VLocationNone,     __RC__)
+    end if
 
 
 ! !INTERNAL STATE:
@@ -1585,6 +1640,15 @@ contains
                                            DQIDT_SHC
     real, dimension(:,:), pointer       :: EVAP, SH
 
+! Sea spray
+    integer :: DO_WAVES
+    integer :: DO_SEA_SPRAY
+    real, dimension(:,:), pointer       :: SH_SPR
+    real, dimension(:,:), pointer       :: LH_SPR
+    real, dimension(:,:), pointer       :: SH_SPRX
+    real, dimension(:,:), pointer       :: LH_SPRX
+
+
 ! Begin... 
 !---------
 
@@ -1619,6 +1683,28 @@ contains
 
     call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
     VERIFY_(STATUS)
+
+! Sea spray
+    call MAPL_GetResource ( MAPL, DO_WAVES, Label="USE_WAVES:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, DO_SEA_SPRAY, Label="USE_SEA_SPRAY:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+
+    if (DO_WAVES /= 0) then
+        call MAPL_GetPointer(IMPORT, SH_SPR,   'SHFX_SPRAY',    RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, LH_SPR,   'LHFX_SPRAY',    RC=STATUS)
+        VERIFY_(STATUS)
+
+        call MAPL_GetPointer(EXPORT, SH_SPRX,  'SHFX_SPRAY',    RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT, LH_SPRX,  'LHFX_SPRAY',    RC=STATUS)
+        VERIFY_(STATUS)
+
+        if (associated(SH_SPRX)) SH_SPRX = SH_SPR
+        if (associated(LH_SPRX)) LH_SPRX = LH_SPR
+    end if    
 
 ! Get all pointers that are needed by both REFRESH and DIFFUSE
 !-------------------------------------------------------------
@@ -3159,6 +3245,12 @@ contains
 ! AMM pointer to export of S after diffuse
     real, dimension(:,:,:), pointer     :: SAFDIFFUSE
 
+! Sea Spray
+    real, dimension(:,:), pointer       :: SH_SPRAY_ => NULL()
+    real, dimension(:,:), pointer       :: LH_SPRAY_ => NULL()
+    real, dimension(IM,JM)              :: SH_SPRAY
+    real, dimension(IM,JM)              :: LH_SPRAY
+
 ! Get the bundles containing the quantities to be diffused, 
 !     their tendencies, their surface values, their surface
 !     fluxes, and the derivatives of their surface fluxes
@@ -3167,6 +3259,28 @@ contains
 
     call ESMF_StateGet(IMPORT, 'TR' ,    TR,     RC=STATUS); VERIFY_(STATUS)
     call ESMF_StateGet(IMPORT, 'TRG',    TRG,    RC=STATUS); VERIFY_(STATUS)
+
+    if ((DO_WAVES /= 0) .and. (DO_SEA_SPRAY /= 0)) then
+       call MAPL_GetPointer(IMPORT, SH_SPRAY_, 'SHFX_SPRAY',   RC=STATUS)
+       VERIFY_(STATUS)
+
+       call MAPL_GetPointer(IMPORT, LH_SPRAY_, 'LHFX_SPRAY',   RC=STATUS)
+       VERIFY_(STATUS)
+
+       SH_SPRAY = SH_SPRAY_
+       LH_SPRAY = LH_SPRAY_
+
+       where (SH_SPRAY > 500.0)   SH_SPRAY = 500.0
+       where (SH_SPRAY <-500.0)   SH_SPRAY =-500.0
+
+       where (LH_SPRAY > 500.0)   LH_SPRAY = 500.0
+       where (LH_SPRAY <-500.0)   LH_SPRAY =-500.0
+
+#ifdef DEBUG
+       print *, ' *** DEBUG TURB:SH_SPRAY = ', minval(SH_SPRAY), maxval(SH_SPRAY)
+       print *, ' *** DEBUG TURB:LH_SPRAY = ', minval(LH_SPRAY), maxval(LH_SPRAY)
+#endif
+    end if
 
     call ESMF_StateGet(EXPORT, 'TRI',    TRI,    RC=STATUS); VERIFY_(STATUS)
     call ESMF_StateGet(EXPORT, 'FSTAR',  FSTAR,  RC=STATUS); VERIFY_(STATUS)
@@ -3307,6 +3421,11 @@ contains
           end if
        end if
 
+       if ((DO_WAVES /= 0) .and. (DO_SEA_SPRAY /= 0)) then
+          if(NAME=='S') SF = SF + SH_SPRAY
+          if(NAME=='Q') SF = SF + LH_SPRAY/MAPL_ALHL
+       end if
+
 ! Create tendencies
 !------------------
 
@@ -3316,6 +3435,11 @@ contains
           else
              SOI = ( (SX - S)/DT )
           endif
+       end if
+
+       if ((DO_WAVES /= 0) .and. (DO_SEA_SPRAY /= 0)) then
+          if(NAME=='S') SX(:,:,LM) = SX(:,:,LM) + (SH_SPRAY/(DP(:,:,LM)/MAPL_GRAV))*DT
+          if(NAME=='Q') SX(:,:,LM) = SX(:,:,LM) + (LH_SPRAY/(MAPL_ALHL*DP(:,:,LM)/MAPL_GRAV))*DT
        end if
 
        if( NAME=='S' ) then
