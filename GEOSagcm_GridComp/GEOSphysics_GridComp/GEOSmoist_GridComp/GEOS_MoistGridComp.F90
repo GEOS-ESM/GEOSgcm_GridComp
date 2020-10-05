@@ -4892,8 +4892,6 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="--USE_AEROSOL_NN2"   ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,name="--USE_AEROSOL_NN3"   ,RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="-MISC1"    ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="-MISC2"    ,RC=STATUS)
@@ -5138,8 +5136,8 @@ contains
           call MAPL_GetResource(MAPL, SATUR_CALC      , 'SATUR_CALC:'       ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, BC_METH         , 'BC_METH:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, USE_REBCB       , 'USE_REBCB:'        ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_MID         , 'TAU_MID:'          ,default= 3600.,  RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_DEEP        , 'TAU_DEEP:'         ,default= 7200., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_MID         , 'TAU_MID:'          ,default= 5400.,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_DEEP        , 'TAU_DEEP:'         ,default= 10800., RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, AUTOCONV        , 'AUTOCONV:'         ,default= 3,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C0_DEEP         , 'C0_DEEP:'          ,default= 3.e-3, RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C0_MID          , 'C0_MID:'	    ,default= 3.e-3, RC=STATUS );VERIFY_(STATUS)
@@ -6399,7 +6397,7 @@ contains
       if(adjustl(CLDMICRO)=="GFDL") then
         call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:', DEFAULT=0, RC=STATUS)
         call MAPL_GetResource(STATE,     UWTOLS,     'UWTOLS:', DEFAULT=0, RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 1.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 0.0, RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
       else
         call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:', DEFAULT=1, RC=STATUS)
@@ -7668,8 +7666,8 @@ contains
          QV600 = Q(:,:,levs600)
       END WHERE
 
-    ! CAPE Criteria
       if(USE_GF2020==1) then
+       ! QL*1.e6 at 600mb Criteria
         call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT=  100.0, RC=STATUS)
@@ -7679,6 +7677,7 @@ contains
         call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
         VERIFY_(STATUS)
       else
+       ! CAPE Criteria
         call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
@@ -7715,8 +7714,7 @@ contains
       if(associated(RH600   )) RH600    = RHat600
 
       if (SHLWPARAMS%FRC_RASN < 0.0) then
-        !FRC_RASN_2D = (1.0-CNV_FRACTION)
-         FRC_RASN_2D = ABS(SHLWPARAMS%FRC_RASN)*(1.0-FRLAND)
+         FRC_RASN_2D = ABS(SHLWPARAMS%FRC_RASN)*(1.0-FRLAND)*CNV_FRACTION
       else
          FRC_RASN_2D = SHLWPARAMS%FRC_RASN
       endif
@@ -7747,29 +7745,7 @@ contains
          END DO
       END DO
 
-#ifdef DONT_SKIP_cloud_ptr_stubs
-    if (.false.) then 
-       call cloud_ptr_stubs (SMAXL, SMAXI, WSUB, CCN01, CCN04, CCN1, &
-            NHET_NUC, NLIM_NUC, SO4, ORG, BCARBON, &
-            DUST, SEASALT, NCPL_VOL, NCPI_VOL, NRAIN, NSNOW, &
-            CDNC_NUC, INC_NUC, SAT_RAT, QSTOT, QRTOT, CLDREFFS, CLDREFFR, & 
-            DQVDT_micro,DQIDT_micro, DQLDT_micro, DTDT_micro, RL_MASK, RI_MASK, &
-            KAPPA, SC_ICE, CFICE, CFLIQ, RHICE, RHLIQ,  &
-            RAD_CF, RAD_QL, RAD_QI, RAD_QS, RAD_QR, RAD_QV, &
-            CLDREFFI, CLDREFFL, NHET_IMM, NHET_DEP, & 
-            DUST_IMM, DUST_DEP,  SCF, SCF_ALL, &
-            SIGW_GW, SIGW_CNV, &
-            SIGW_TURB, SIGW_RC, RHCmicro, DNHET_IMM, &
-            BERG, BERGS, MELT, DNHET_CT, DTDT_macro, QCRES, DT_RASP, FRZPP_LS, &
-            SNOWMELT_LS, QIRES, AUTICE, PFRZ,  DNCNUC, DNCHMSPLIT, DNCSUBL, &
-            DNCAUTICE, DNCACRIS, DNDCCN, DNDACRLS, DNDEVAPC, DNDACRLR, DNDAUTLIQ, &
-            DNDCNV, DNCCNV) 
-    end if 
-#endif
-
-!--kml
       if(adjustl(CLDMICRO)=="2MOMENT" .or. USE_AEROSOL_NN) then
-!--kml
 
       call MAPL_TimerOn(STATE,"--USE_AEROSOL_NN1")
 
@@ -7912,12 +7888,14 @@ contains
       call init_Aer(AeroAux)
       call init_Aer(AeroAux_b)
 
-!--kml
-      if((adjustl(CLDMICRO)=="1MOMENT" .or. adjustl(CLDMICRO)=="GFDL") .and. USE_AEROSOL_NN) GOTO 31416
-!--kml
-
-      call MAPL_TimerOn(STATE,"--USE_AEROSOL_NN2")
-
+      if((adjustl(CLDMICRO)=="1MOMENT" .or. adjustl(CLDMICRO)=="GFDL") .and. USE_AEROSOL_NN) then
+!----- aerosol activation (single-moment uphysics)      
+         call MAPL_TimerOn(STATE,"--USE_AEROSOL_NN2")
+         call Aer_Actv_1M_interface(IM,JM,LM,N_MODES, TEMP, PLO, ZLO, ZLE, QLCN, QICN, QLLS, QILS &
+                                   ,KPBLIN,ZWS,OMEGA, FRLAND ,AeroProps, NACTL,NACTI)
+         call MAPL_TimerOff(STATE,"--USE_AEROSOL_NN2")
+      else    
+         call MAPL_TimerOn(STATE,"--USE_AEROSOL_NN2")
          !initialize some values 
          CNV_PRC3 =0.0    
          CNV_UPDF =0.0    
@@ -7930,26 +7908,19 @@ contains
          CNV_CVW  = 0.0
          ENTLAM   = 0.0
          RASPARAMS%CLDMICRO = 1.0
-	 RASPARAMS%FDROP_DUST = FDROP_DUST
-	 RASPARAMS%FDROP_SOOT = FDROP_SOOT
-     RASPARAMS%FDROP_SEASALT = SS_INFAC
+         RASPARAMS%FDROP_DUST = FDROP_DUST
+         RASPARAMS%FDROP_SOOT = FDROP_SOOT
+         RASPARAMS%FDROP_SEASALT = SS_INFAC
          SHLW_PRC3 = 0.0
          SHLW_SNO3 = 0.0
-         UFRC_SC   = 0.0	 
-
-         wparc_rc = 0.0
-
+         UFRC_SC   = 0.0
+         wparc_rc  = 0.0
          ! find the minimun level for cloud micro calculations
-	 call find_l(KMIN_TROP, PLO, pmin_trop, IM, JM, LM, 10, LM-2) 
-	 
-
-      call MAPL_TimerOff(STATE,"--USE_AEROSOL_NN2")
-
-      end if          !CLDMICRO
+         call find_l(KMIN_TROP, PLO, pmin_trop, IM, JM, LM, 10, LM-2) 
+         call MAPL_TimerOff(STATE,"--USE_AEROSOL_NN2")
+      end if  !CLDMICRO
+      end if  !USE_AEROSOL_NN
       !===================================================================================
-!--kml
-31416 CONTINUE
-!--kml
 
       call MAPL_TimerOff(STATE,"-MISC1")
 
@@ -9139,8 +9110,8 @@ contains
       if (adjustl(CLDMICRO) =="GFDL") then
           call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
           call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
-          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 0.75    )
-          call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.0     )
+          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
+          call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= -999.99 ) ! irrelevant
       else
         if( LM .eq. 72 ) then
           call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
@@ -9268,14 +9239,6 @@ contains
      
       !==========AER_CLOUD===================microphysics "if"===========================
       if(adjustl(CLDMICRO) /="2MOMENT") then
-
-        if(USE_AEROSOL_NN) then
-!--kml--- aerosol activation (single-moment uphysics)      
-         call MAPL_TimerOn(STATE,"--USE_AEROSOL_NN3")
-         call Aer_Actv_1M_interface(IM,JM,LM,N_MODES,T, PLO, ZLO, ZLE, QLCN, QICN, QLLS, QILS &
-                                   ,KPBLIN,ZWS,OMEGA, FRLAND ,AeroProps, NACTL,NACTI)
-         call MAPL_TimerOff(STATE,"--USE_AEROSOL_NN3")
-        ENDIF
 
        if(adjustl(CLDMICRO) == "GFDL") then
 
@@ -9554,6 +9517,9 @@ contains
          RAD_QS = RAD_QS + DQSDT_micro * DT_MOIST
          RAD_QG = RAD_QG + DQGDT_micro * DT_MOIST
          RAD_CF = RAD_CF + DQADT_micro * DT_MOIST
+    !! Melt/Freeze constraints
+    !    call meltfrz_all  ( IM, JM, LM, DT_MOIST, TEMP, RAD_QV, RAD_QL, RAD_QI, &
+    !                        CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND)
      ! when do_qa=.true. in GFDL_MP RAD_CF is update internally and DQADT_micro is zero
      ! so lets be sure we get the real cloud tendency from micro here
          DQADT_micro = ( RAD_CF - CLCN - CLLS ) / DT_MOIST
@@ -14215,7 +14181,7 @@ END SUBROUTINE Get_hemcoFlashrate
       integer                :: i, j, k, n
       integer, parameter     :: MaxIterations=5
       logical                :: converged
-      real                   :: taufrz=450 ! timescale for freezing (seconds)
+      real                   :: taufrz=900 ! timescale for freezing (seconds)
 
       do k=1,LM
         do j=1,JM
