@@ -61,7 +61,7 @@ module GEOS_CatchCNGridCompMod
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist, irrigation_rate
-  USE SURFPARAMS,       ONLY: LAND_FIX_CN
+  USE SURFPARAMS,       ONLY: RDC_FORMULATION
 implicit none
 private
 
@@ -6203,7 +6203,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
         ! LAI and type dependent parameters; RDC formulation now uses veg fractions gkw: 2013-11-25, see note from Randy
         ! --------------------------------------------------------------------------
-        IF (LAND_FIX_CN) THEN
+        IF (RDC_FORMULATION==0) THEN
         	RDC = max(VGRDA(VEG1),VGRDA(VEG2))*min(1.,lai/2.)
         ELSE
         	rdc_tmp_1 = max( VGRDA(VEG1)*min( 1., LAI1/VGRDB(VEG1) ), 0.001)
