@@ -21,6 +21,8 @@ module GEOS_GcmGridCompMod
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
    use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
    use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices
+   use GEOS_WgcmGridCompMod,     only:  WGCM_SetServices => SetServices
+
 
 
   implicit none
@@ -37,6 +39,7 @@ module GEOS_GcmGridCompMod
   integer            :: DO_DATAATM
   integer            :: DO_OBIO
   integer            :: DO_DATASEA
+  integer            :: DO_WAVES
 
 !=============================================================================
 
@@ -50,6 +53,7 @@ integer ::       AGCM
 integer ::       OGCM
 integer ::       AIAU
 integer ::       ADFI
+integer ::       WGCM
 
 integer :: bypass_ogcm
 integer ::       k
@@ -76,6 +80,20 @@ type T_GCM_STATE
    logical                    :: checkpointRequested = .false.
    character(len=ESMF_MAXSTR) :: checkpointFilename = ''
    character(len=ESMF_MAXSTR) :: checkpointFileType = ''
+
+   ! coupling to wave model
+   type(ESMF_State)           :: SURF_EXP
+   type(ESMF_State)           :: SURF_IMP
+   type(ESMF_State)           :: TURB_EXP
+   type(ESMF_State)           :: TURB_IMP
+   type(ESMF_State)           :: OCN_EXP
+   type(ESMF_State)           :: OCN_IMP
+   type(ESMF_State)           :: WGCM_EXP
+   type(ESMF_State)           :: WGCM_IMP
+   type(ESMF_RouteHandle), pointer :: rh_a2w => NULL()
+   type(ESMF_RouteHandle), pointer :: rh_w2a => NULL()
+   type(ESMF_RouteHandle), pointer :: rh_o2w => NULL()
+   type(ESMF_RouteHandle), pointer :: rh_w2o => NULL()
 end type T_GCM_STATE
 
 ! Wrapper for extracting internal state
@@ -188,6 +206,8 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DO_DATASEA,  Label="USE_DATASEA:" ,        DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, DO_WAVES,    Label="USE_WAVES:",           DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetResource(MAPL, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
     VERIFY_(STATUS)
@@ -238,6 +258,10 @@ contains
     OGCM = MAPL_AddChild(GC, NAME='OGCM', SS=Ogcm_SetServices, RC=STATUS)
     VERIFY_(STATUS)
 
+    if (DO_WAVES /= 0) then
+       WGCM = MAPL_AddChild(GC, NAME='WGCM', SS=Wgcm_SetServices, RC=STATUS)
+       VERIFY_(STATUS)
+    end if
 
 ! Get RUN Parameters (MERRA-2 Defaults) and Initialize for use in other Components (e.g., AGCM_GridComp and MKIAU_GridComp)
 !--------------------------------------------------------------------------------------------------------------------------
@@ -628,6 +652,13 @@ contains
        VERIFY_(STATUS)
    endif 
 
+! For now we terminate all the imports of WGCM. If we need to send any of
+! them to ExtData, we need to revisit this statement
+   if (DO_WAVES /= 0) then
+      call MAPL_TerminateImport    ( GC, CHILD = WGCM, RC=STATUS )
+      VERIFY_(STATUS)
+   end if
+
 ! Allocate this instance of the internal state and put it in wrapper.
 ! -------------------------------------------------------------------
 
@@ -806,6 +837,13 @@ contains
 !------------------------
     call MAPL_GridCreate(GCS(AGCM), rc=status)
     VERIFY_(STATUS)
+
+! Create Waves grid
+!------------------------
+    if (DO_WAVES /= 0) then
+       call MAPL_GridCreate(GCS(WGCM), rc=status)
+       VERIFY_(STATUS)
+    end if    
 
 ! Create Ocean grid
 !------------------
@@ -1131,6 +1169,14 @@ contains
        call MAPL_AddRecord(CMAPL, ALARMS, (/MAPL_Write2Ram/), rc=status)
        VERIFY_(STATUS)
 
+       if (DO_WAVES /= 0) then
+          call MAPL_GetObjectFromGC ( GCS(WGCM), CMAPL, RC=STATUS)
+          VERIFY_(STATUS)
+          Alarms(1) = replayStartAlarm
+          call MAPL_AddRecord(CMAPL, ALARMS, (/MAPL_Write2Ram/), rc=status)
+          VERIFY_(STATUS)
+       end if
+
        call MAPL_GetObjectFromGC ( GCS(OGCM), CMAPL, RC=STATUS)                                                                   
        VERIFY_(STATUS)
        call MAPL_AddRecord(CMAPL, ALARMS, (/MAPL_Write2Ram/), rc=status)
@@ -1188,6 +1234,45 @@ contains
     else
        skinname = 'SALTWATER'
     endif
+
+    ! wave model addition
+    !select SURFACE export
+    call MAPL_ExportStateGet(GEX, name='SURFACE', &
+         result=GCM_INTERNAL_STATE%SURF_EXP,rc=status )
+    VERIFY_(STATUS)
+
+    !select SURFACE import 
+    call MAPL_ImportStateGet(GC, import=import, name='SURFACE', &
+         result=GCM_INTERNAL_STATE%SURF_IMP,rc=status )
+    VERIFY_(STATUS)
+
+    !select TURBULENCE export
+    call MAPL_ExportStateGet(GEX, name='TURBULENCE', &
+         result=GCM_INTERNAL_STATE%TURB_EXP,rc=status )
+    VERIFY_(STATUS)
+
+    !select SURFACE import 
+    call MAPL_ImportStateGet(GC, import=import, name='TURBULENCE', &
+         result=GCM_INTERNAL_STATE%TURB_IMP,rc=status )
+    VERIFY_(STATUS)
+
+    !select OCEAN export
+    call MAPL_ExportStateGet(GEX, name='OCEAN', &
+         result=GCM_INTERNAL_STATE%OCN_EXP,rc=status )
+    VERIFY_(STATUS)
+
+    !select OCEAN import
+    call MAPL_ImportStateGet(GC, import=import, name='OCEAN', &
+         result=GCM_INTERNAL_STATE%OCN_IMP,rc=status )
+    VERIFY_(STATUS)
+
+    if (DO_WAVES /= 0) then
+       !select WAVE import
+       GCM_INTERNAL_STATE%WGCM_IMP = GIM(WGCM)
+   
+       !select WAVE export
+       GCM_INTERNAL_STATE%WGCM_EXP = GEX(WGCM)
+    end if
 
    call MAPL_GetResource(MAPL, bypass_ogcm, "BYPASS_OGCM:", &
         default=0, rc=status)
@@ -1292,7 +1377,7 @@ contains
       endif
    endif
 
-   call AllocateExports(GEX(OGCM), (/'UW      ', 'VW      ', &
+   call AllocateExports(GEX(OGCM), (/'UW      ', 'VW      ', 'DW      ', &
                                      'UI      ', 'VI      ', & 
                                      'FRZMLT  ', 'KPAR    ', & 
                                      'TS_FOUND', 'SS_FOUND' /), RC=STATUS)
@@ -1613,6 +1698,16 @@ contains
                    call RUN_OCEAN(Phase=2, RC=STATUS)
                    VERIFY_(STATUS)
                 end if
+
+                ! Run the WGCM Gridded Component
+                ! ------------------------------
+                ! not save for WW3, it is also unneccessary unless there are
+                ! are two-way interactions between W and O/A, so for now we
+                ! opt not to run wave model
+!!              if (DO_WAVES /= 0) then
+!!                 call RUN_WAVES(RC=STATUS)
+!!                 VERIFY_(STATUS)
+!!              end if
                 
                 ! Advance the Clock
                 ! -----------------
@@ -1711,6 +1806,10 @@ contains
              VERIFY_(STATUS)
              call MAPL_GenericRefresh( GCS(OGCM), GIM(OGCM), GEX(OGCM), clock, rc=status )
              VERIFY_(STATUS)
+             if (DO_WAVES /= 0) then
+                call MAPL_GenericRefresh( GCS(WGCM), GIM(WGCM), GEX(WGCM), clock, rc=status )
+                VERIFY_(STATUS)
+             endif
 
              call ESMF_GridCompRun ( ExtData_internal_state%gc, importState=dummy, &
                   exportState=ExtData_internal_state%ExpState, clock=clock, userRC=status )
@@ -1781,6 +1880,10 @@ contains
     call RUN_OCEAN(RC=STATUS)
     VERIFY_(STATUS)
     
+    if (DO_WAVES /= 0) then
+       call RUN_WAVES(RC=STATUS)
+       VERIFY_(STATUS)
+    end if
 
      call MAPL_TimerOff(MAPL,"TOTAL")
      call MAPL_TimerOff(MAPL,"RUN"  )
@@ -2084,6 +2187,121 @@ contains
      RETURN_(ESMF_SUCCESS)
 
    end subroutine RUN_OCEAN
+
+   subroutine RUN_WAVES(rc)
+     implicit none
+
+     integer, optional, intent(OUT) :: rc
+     integer :: status
+     character(len=ESMF_MAXSTR) :: Iam='Run_Waves'
+
+     type(ESMF_State), pointer :: SRC, DST
+
+     call MAPL_TimerOn(MAPL, "--A2W")
+
+     ! aliases
+     SRC => GCM_INTERNAL_STATE%SURF_EXP
+     DST => GCM_INTERNAL_STATE%WGCM_IMP
+
+     call DO_A2W(SRC, DST, NAME='FRLAND',  RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='FROCEAN', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='FRACI',   RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='U10M',    RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='V10M',    RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='U10N',    RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='V10N',    RC=STATUS)
+     VERIFY_(STATUS)
+!    call DO_A2W(SRC, DST, NAME='UA',      RC=STATUS)
+!    VERIFY_(STATUS)
+!    call DO_A2W(SRC, DST, NAME='VA',      RC=STATUS)
+!    VERIFY_(STATUS)
+!    call DO_A2W(SRC, DST, NAME='DZ',      RC=STATUS)
+!    VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='RHOS',    RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='TS',      RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='TSKINW',  RC=STATUS)
+     VERIFY_(STATUS)
+!    call DO_A2W(SRC, DST, NAME='SHWTR',   RC=STATUS)
+!    VERIFY_(STATUS)
+!    call DO_A2W(SRC, DST, NAME='HLATWTR', RC=STATUS)
+!    VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='SH',      RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='LHFX',    RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='PS',      RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='Q10M',    RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='T10M',    RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2W(SRC, DST, NAME='RH2M',    RC=STATUS)
+     VERIFY_(STATUS)
+
+     call MAPL_TimerOff(MAPL, "--A2W")
+
+
+     call MAPL_TimerOn(MAPL, "--O2W")
+
+     ! aliases
+     SRC => GCM_INTERNAL_STATE%OCN_EXP
+     DST => GCM_INTERNAL_STATE%WGCM_IMP
+
+     call DO_O2W(SRC, DST, NAME='UW',      RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_O2W(SRC, DST, NAME='VW',      RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_O2W(SRC, DST, NAME='DW',      RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_O2W(SRC, DST, NAME='TW',      RC=STATUS)
+     VERIFY_(STATUS)
+
+     call MAPL_TimerOff(MAPL, "--O2W")
+
+     ! run the actual wave model
+     call MAPL_TimerOn(MAPL, "WGCM")
+
+     call ESMF_GridCompRun ( GCS(WGCM), importState=gim(WGCM), exportState=gex(WGCM), clock=clock, userRC=status )
+     VERIFY_(STATUS)
+
+     call MAPL_TimerOff(MAPL, "WGCM")
+
+
+     call MAPL_TimerOn (MAPL,"--W2A"  )
+
+     ! aliases
+     SRC => GCM_INTERNAL_STATE%WGCM_EXP
+     DST => GCM_INTERNAL_STATE%SURF_IMP
+
+     call DO_W2A(SRC, DST, NAME='CHARNOCK',    RC=STATUS)
+     VERIFY_(STATUS)
+
+     ! aliases
+     SRC => GCM_INTERNAL_STATE%WGCM_EXP
+     DST => GCM_INTERNAL_STATE%TURB_IMP
+
+     call DO_W2A(SRC, DST, NAME='SHFX_SPRAY',  RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_W2A(SRC, DST, NAME='LHFX_SPRAY',  RC=STATUS)
+     VERIFY_(STATUS)
+
+
+     call MAPL_TimerOff(MAPL,"--W2A"  )
+
+     ! possibly W2O
+     ! ...
+
+     RETURN_(ESMF_SUCCESS)
+
+   end subroutine RUN_WAVES
 
    subroutine DO_A2O(STATEO,NAMEO,STATEA,NAMEA,RC)
      type(ESMF_State)          , intent(INOUT) ::  STATEO
@@ -2419,7 +2637,190 @@ contains
      RETURN_(ESMF_SUCCESS)
    end subroutine DO_O2A_SUBTILES2D_R8R4
 
+   subroutine DO_A2W(SRC,DST,NAME,RC)
+     implicit none
+       
+     type(ESMF_STATE), intent(INout) :: SRC
+     type(ESMF_STATE), intent(inout) :: DST
+     character(len=*), intent(in)    :: NAME
+     integer, optional,intent(out)   :: RC
+
+     character(len=ESMF_MAXSTR), parameter :: Iam = 'A2W' 
+     integer :: status
+
+     type(ESMF_RouteHandle), pointer :: rh
+     type(ESMF_Field) :: srcField, dstField
+     
+     call ESMF_StateGet(SRC, name, srcField, rc=status)
+     VERIFY_(STATUS)
+     call ESMF_StateGet(DST, name, dstField, rc=status)
+     VERIFY_(STATUS)
+     rh => GCM_INTERNAL_STATE%rh_a2w
+     if (.not.associated(rh)) then
+        !ALT: this should be done only once per regridder
+        allocate(rh, stat=status)
+        VERIFY_(STATUS)
+        call ESMF_FieldRegridStore(srcField, dstField, &
+                                   regridmethod=ESMF_REGRIDMETHOD_BILINEAR, &
+                                   lineType=ESMF_LINETYPE_GREAT_CIRCLE, &
+                                   routeHandle=rh, rc=status)
+        VERIFY_(STATUS)
+
+        GCM_INTERNAL_STATE%rh_a2w => rh
+
+        ! we could specify a regridMethod as additional argument in call above.
+        ! The default is ESMF_REGRID_METHOD_BILINEAR.
+        ! Also, we could have specified srcMaskValues, and dstMaskValues,
+        ! we might need to attach a mask to the grid
+
+        print *, '************** !!!! created routeHandle A2W !!!'
+     end if
+
+     call ESMF_FieldRegrid(srcField=srcField, dstField=dstField, &
+          routeHandle=rh, rc=status)
+     VERIFY_(STATUS)
+
+     RETURN_(ESMF_SUCCESS)
+   end subroutine DO_A2W
+     
+   subroutine DO_W2A(SRC,DST,NAME,RC)
+     type(ESMF_STATE), intent(INout) :: SRC
+     type(ESMF_STATE), intent(inout) :: DST
+     character(len=*), intent(in)    :: NAME
+     integer, optional,intent(out)   :: RC
+
+     character(len=ESMF_MAXSTR), parameter :: Iam = 'W2A' 
+     integer :: status
+
+     type(ESMF_RouteHandle), pointer :: rh
+     type(ESMF_Field) :: srcField, dstField
+     
+     call ESMF_StateGet(SRC, name, srcField, rc=status)
+     VERIFY_(STATUS)
+     call ESMF_StateGet(DST, name, dstField, rc=status)
+     VERIFY_(STATUS)
+     rh => GCM_INTERNAL_STATE%rh_w2a
+     if (.not.associated(rh)) then
+        !ALT: this should be done only once per regridder
+        allocate(rh, stat=status)
+        VERIFY_(STATUS)
+        call ESMF_FieldRegridStore(srcField, dstField, &
+                                   regridmethod=ESMF_REGRIDMETHOD_BILINEAR, &
+                                   lineType=ESMF_LINETYPE_GREAT_CIRCLE, &
+                                   routeHandle=rh, rc=status)
+        VERIFY_(STATUS)
+
+        GCM_INTERNAL_STATE%rh_w2a => rh
+
+        ! we could specify a regridMethod as additional argument in call above.
+        ! The default is ESMF_REGRID_METHOD_BILINEAR.
+        ! Also, we could have specified srcMaskValues, and dstMaskValues,
+        ! we might need to attach a mask to the grid
+
+        print *, '************** !!!! created routeHandle W2A !!!'
+     end if
+
+     call ESMF_FieldRegrid(srcField=srcField, dstField=dstField, &
+          routeHandle=rh, rc=status)
+     VERIFY_(STATUS)
+
+     RETURN_(ESMF_SUCCESS)
+   end subroutine DO_W2A
+     
+   subroutine DO_O2W(SRC,DST,NAME,RC)
+     type(ESMF_STATE), intent(INout) :: SRC
+     type(ESMF_STATE), intent(inout) :: DST
+     character(len=*), intent(in)    :: NAME
+     integer, optional,intent(out)   :: RC
+
+     character(len=ESMF_MAXSTR), parameter :: Iam = 'O2W' 
+     integer :: status
+
+     type(ESMF_RouteHandle), pointer :: rh
+     type(ESMF_Field) :: srcField, dstField
+     
+     call ESMF_StateGet(SRC, name, srcField, rc=status)
+     VERIFY_(STATUS)
+     call ESMF_StateGet(DST, name, dstField, rc=status)
+     VERIFY_(STATUS)
+     rh => GCM_INTERNAL_STATE%rh_o2w
+     if (.not.associated(rh)) then
+        !ALT: this should be done only once per regridder
+        allocate(rh, stat=status)
+        VERIFY_(STATUS)
+        call ESMF_FieldRegridStore(srcField, dstField, &
+                                   regridmethod=ESMF_REGRIDMETHOD_BILINEAR, &
+                                   lineType=ESMF_LINETYPE_GREAT_CIRCLE, &
+                                   routeHandle=rh, rc=status)
+        VERIFY_(STATUS)
+
+        GCM_INTERNAL_STATE%rh_o2w => rh
+
+        ! we could specify a regridMethod as additional argument in call above.
+        ! The default is ESMF_REGRID_METHOD_BILINEAR.
+        ! Also, we could have specified srcMaskValues, and dstMaskValues,
+        ! we might need to attach a mask to the grid
+
+        print *, '************** !!!! created routeHandle O2W !!!'
+     end if
+
+     call ESMF_FieldRegrid(srcField=srcField, dstField=dstField, &
+          routeHandle=rh, rc=status)
+     VERIFY_(STATUS)
+
+     RETURN_(ESMF_SUCCESS)
+   end subroutine DO_O2W
+     
+   subroutine DO_W2O(SRC,DST,NAME,RC)
+     type(ESMF_STATE), intent(INout) :: SRC
+     type(ESMF_STATE), intent(inout) :: DST
+     character(len=*), intent(in)    :: NAME
+     integer, optional,intent(out)   :: RC
+
+     character(len=ESMF_MAXSTR), parameter :: Iam = 'W2O' 
+     integer :: status
+
+     type(ESMF_RouteHandle), pointer :: rh
+     type(ESMF_Field) :: srcField, dstField
+     
+     call ESMF_StateGet(SRC, name, srcField, rc=status)
+     VERIFY_(STATUS)
+     call ESMF_StateGet(DST, name, dstField, rc=status)
+     VERIFY_(STATUS)
+     rh => GCM_INTERNAL_STATE%rh_w2o
+     if (.not.associated(rh)) then
+        !ALT: this should be done only once per regridder
+        allocate(rh, stat=status)
+        VERIFY_(STATUS)
+        call ESMF_FieldRegridStore(srcField, dstField, &
+                                   regridMethod=ESMF_REGRIDMETHOD_BILINEAR, &
+                                   lineType=ESMF_LINETYPE_GREAT_CIRCLE, &
+                                   routeHandle=rh, &
+                                   unmappedAction=ESMF_UNMAPPEDACTION_IGNORE, rc=status)
+        VERIFY_(STATUS)
+
+        GCM_INTERNAL_STATE%rh_w2o => rh
+        ! we could specify a regridMethod as additional argument in call above.
+        ! The default is ESMF_REGRID_METHOD_BILINEAR.
+        ! For conservative regridding, in addition to specify
+        ! ESMF_REGRID_METHOD_CONSERVATIVE, we need the corners of both grids  
+        ! Also, we could have specified srcMaskValues, and dstMaskValues,
+        ! we might need to attach a mask to the grid
+
+        print *, '************** !!!! created routeHandle W2O !!!'
+     end if
+
+     call ESMF_FieldRegrid(srcField=srcField, dstField=dstField, &
+          routeHandle=rh, rc=status)
+     VERIFY_(STATUS)
+
+     RETURN_(ESMF_SUCCESS)
+   end subroutine DO_W2O
+     
  end subroutine Run
+
+!ALT we could have a finalize method to release memory
+! for example call ESMF_FieldRegridRelease(routeHandle, rc=status)
 
 end module GEOS_GcmGridCompMod
 
