@@ -50,7 +50,8 @@
 #
 #    Icarus  : Icarus/f522_fp and earlier (scientifically close to MERRA-2)
 #    V24_C05 : GEOSldas_m4-17_0
-#    NRv7.2  : SMAP L4_SM Version 4, f525_fp
+#    NRv7.2  : SMAP L4_SM Version 4 and 5, f525_fp
+#    CN_CLM4 : parameters to reproduce Fanwei Zeng's science-validated and published Catchment-CN.4.0 runs (e0004s_transientCO2_05)     
 #
 # GEOSagcm=>LAND_PARAMS: NRv7.2
 # GEOSldas=>LAND_PARAMS: NRv7.2
