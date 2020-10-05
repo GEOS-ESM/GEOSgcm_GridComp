@@ -98,7 +98,41 @@ module GEOS_DataSeaGridCompMod
 !BOS
 
 ! !Import state:
-! None. Its only job is to simply export: SST, SSS, US, VS
+  call MAPL_AddImportSpec(GC,                            &
+        SHORT_NAME         = 'FRACICE',                           &
+        LONG_NAME          = 'fractional_cover_of_seaice',        &
+        UNITS              = '1',                                 &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                                 &
+    SHORT_NAME         = 'UW',                                &
+    LONG_NAME          = 'zonal_velocity_of_surface_water',   &
+    UNITS              = 'm s-1 ',                            &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                                 &
+    SHORT_NAME         = 'VW',                                &
+    LONG_NAME          = 'meridional_velocity_of_surface_water',&
+    UNITS              = 'm s-1 ',                            &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddImportSpec(GC,                                 &
+    SHORT_NAME         = 'DW',                                &
+    LONG_NAME          = 'bathymetry',                        &
+    UNITS              = 'm',                                 &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
 
 !  !Export state:
 
@@ -115,6 +149,15 @@ module GEOS_DataSeaGridCompMod
     SHORT_NAME         = 'VW',                                &
     LONG_NAME          = 'meridional_velocity_of_surface_water',&
     UNITS              = 'm s-1 ',                            &
+    DIMS               = MAPL_DimsHorzOnly,                   &
+    VLOCATION          = MAPL_VLocationNone,                  &
+                                                   RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                                 &
+    SHORT_NAME         = 'DW',                                &
+    LONG_NAME          = 'bathymetry',                        &
+    UNITS              = 'm',                                 &
     DIMS               = MAPL_DimsHorzOnly,                   &
     VLOCATION          = MAPL_VLocationNone,                  &
                                                    RC=STATUS  )
@@ -138,16 +181,6 @@ module GEOS_DataSeaGridCompMod
                                                    RC=STATUS  )
   VERIFY_(STATUS)
 
-! import
-
-  call MAPL_AddImportSpec(GC,                            &
-        SHORT_NAME         = 'FRACICE',                           &
-        LONG_NAME          = 'fractional_cover_of_seaice',        &
-        UNITS              = '1',                                 &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-                                                   RC=STATUS  )
-  VERIFY_(STATUS)
 
 !EOS
 
@@ -222,12 +255,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    real, pointer, dimension(:,:)  :: UW
    real, pointer, dimension(:,:)  :: VW
+   real, pointer, dimension(:,:)  :: DW
    real, pointer, dimension(:,:)  :: TW
    real, pointer, dimension(:,:)  :: SW
 
 ! pointers to import
 
    real, pointer, dimension(:,:)  :: FI
+
+   real, pointer, dimension(:,:)  :: UW_
+   real, pointer, dimension(:,:)  :: VW_
+   real, pointer, dimension(:,:)  :: DW_
 
 !  Begin...
 !----------
@@ -257,12 +295,21 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetPointer(IMPORT,      FI  , 'FRACICE'  , RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetPointer(IMPORT, UW_     ,  'UW'      , RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, VW_     ,  'VW'      , RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, DW_     ,  'DW'      , RC=STATUS)
+    VERIFY_(STATUS)
+
 !  Pointers to Exports
 !---------------------
 
     call MAPL_GetPointer(EXPORT,      UW  , 'UW'       , RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,      VW  , 'VW'       , RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,      DW  , 'DW'      , RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,      TW  , 'TW'       , RC=STATUS)
     VERIFY_(STATUS)
@@ -335,8 +382,29 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  Update the exports
 !--------------------
 
-   if(associated(UW)) UW = 0.0
-   if(associated(VW)) VW = 0.0
+   if(associated(UW)) then
+       where (abs(UW_) < 1.0e3) 
+           UW = UW_
+       elsewhere
+           UW = 0.0
+       end where
+   end if
+
+   if(associated(VW)) then
+       where (abs(VW_) < 1.0e3)
+           VW = VW_
+       elsewhere
+           VW = 0.0
+       end where
+   end if
+
+   if(associated(DW)) then
+       where (abs(DW_) < 11.5e3)
+           DW = DW_
+       elsewhere
+           DW = 0.0
+       end where
+   end if
 
    TICE   = MAPL_TICE-1.8
    if (adjSST == 1) then
