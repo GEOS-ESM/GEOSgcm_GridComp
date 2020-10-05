@@ -154,6 +154,7 @@ module GEOS_OpenwaterGridCompMod
     type (MAPL_MetaComp),  pointer          :: MAPL
     type (ESMF_Config)                      :: CF
 
+    integer                                 :: DO_WAVES
 !=============================================================================
 
 ! Begin...
@@ -184,6 +185,9 @@ module GEOS_OpenwaterGridCompMod
     VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, DO_SKIN_LAYER, Label="USE_SKIN_LAYER:"  , DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, DO_WAVES,      Label="USE_WAVES:"       , DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Atmosphere-Ocean Interface Layer compatibility: on/off?
@@ -1488,6 +1492,18 @@ module GEOS_OpenwaterGridCompMod
         RC=STATUS  )
      VERIFY_(STATUS)
 
+     if (DO_WAVES /= 0) then
+       call MAPL_AddImportSpec(GC,                                &
+          SHORT_NAME       = 'CHARNOCK',                          &
+          LONG_NAME        = 'charnock_coefficient',              &
+          UNITS            = '1',                                 &
+          RESTART          = MAPL_RestartSkip,                    &
+          DIMS             = MAPL_DimsTileOnly,                   &
+          VLOCATION        = MAPL_VLocationNone,                  &
+          RC=STATUS  )
+       VERIFY_(STATUS)
+     end if
+
 !EOS
 
 ! Set the Profiling timers
@@ -1609,6 +1625,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:)    :: FI  => null()
    real, pointer, dimension(:)    :: TF  => null()
    real, pointer, dimension(:)    :: TS_FOUNDi => null()
+   real, pointer, dimension(:)    :: CHARNOCK  => null()
+
 
    integer                        :: N
    integer                        :: NT
@@ -1671,6 +1689,9 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    character(len=ESMF_MAXSTR)     :: SURFRC
    type(ESMF_Config)              :: SCF 
+
+   integer                        :: DO_WAVES
+   real, allocatable              :: CHARNOCK_(:)
 
 !=============================================================================
 
@@ -1755,6 +1776,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
        epsilon_d  = AOIL_depth/OGCM_top_thickness ! < 1. If that is NOT true, AOIL formulation would need revisit; see AS2018
     end if
 
+! Is the wave model enabled
+! -------------------------
+    call MAPL_GetResource ( MAPL, DO_WAVES,         Label="USE_WAVES:",           DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+ 
 ! Pointers to inputs
 !-------------------
 
@@ -1784,6 +1810,27 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
    call MAPL_GetPointer(IMPORT,TS_FOUNDi, 'TS_FOUND', RC=STATUS)
    VERIFY_(STATUS)
+
+   NT = size(TA)
+   allocate(CHARNOCK_(NT),    STAT=STATUS)
+   VERIFY_(STATUS)
+   
+   if (DO_WAVES /= 0) then
+     call MAPL_GetPointer(IMPORT,CHARNOCK, 'CHARNOCK', RC=STATUS)
+     VERIFY_(STATUS)
+
+#ifdef DEBUG
+     print *, 'DEBUG::WGCM::OpenWater CHARNOCK = ', minval(CHARNOCK), maxval(CHARNOCK)
+#endif
+
+     where (CHARNOCK > 0 .and. CHARNOCK < 1.0)
+       CHARNOCK_ = CHARNOCK
+     elsewhere
+       CHARNOCK_ = 0.0185
+     end where
+   else
+     CHARNOCK_ = 0.0185
+   end if
 
 ! Pointers to internals
 !----------------------
@@ -2052,7 +2099,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
          call helfsurface( UWINDLMTILE,VWINDLMTILE,TA,TS(:,N),QA,QS(:,N),PSL,PSMB,Z0(:,N),        &
                            fakelai,IWATER,DZ,niter,nt,RHO,VKH,VKM,USTAR,XX,YY,CU,CT,RIB,ZETA,WS,  &
-                           t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0)
+                           t2m,q2m,u2m,v2m,t10m,q10m,u10m,v10m,u50m,v50m,CHOOSEZ0,CHARNOCK_)
+
+#ifdef DEBUG
+         print *, 'DEBUG::WGCM::OpenWater CHARNOCK_= ', minval(CHARNOCK_), maxval(CHARNOCK_)
+#endif
 
          CM(:,N)  = VKM
          CH(:,N)  = VKH
@@ -2156,6 +2207,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    deallocate(IWATER)
    deallocate(PSMB)
    deallocate(PSL)
+
+   deallocate(CHARNOCK_)
 
 !  All done
 !-----------

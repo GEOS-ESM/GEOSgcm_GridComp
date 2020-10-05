@@ -109,6 +109,7 @@ module GEOS_SaltwaterGridCompMod
     integer                                 :: I
     integer                                 :: DO_OBIO         ! default (=0) is to run saltwater, with no ocean bio and chem
     integer                                 :: DO_CICE_THERMO  ! default (=0) is to run saltwater, with no LANL CICE Thermodynamics
+    integer                                 :: DO_WAVES
 
 !=============================================================================
 
@@ -143,6 +144,9 @@ module GEOS_SaltwaterGridCompMod
 !------------------------------------------------
 
     call MAPL_GetResource ( MAPL, DO_OBIO,            Label="USE_OCEANOBIOGEOCHEM:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, DO_WAVES,           Label="USE_WAVES:",           DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
@@ -941,6 +945,18 @@ module GEOS_SaltwaterGridCompMod
    VERIFY_(STATUS)
 
   endif !DO_OBIO
+
+  if (DO_WAVES /= 0) then
+   call MAPL_AddImportSpec(GC,                                    &
+        SHORT_NAME         = 'CHARNOCK',                          &
+        LONG_NAME          = 'charnock_coefficient',              &
+        UNITS              = '1',                                 &
+        RESTART            = MAPL_RestartSkip,                    &
+        DIMS               = MAPL_DimsTileOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RC=STATUS  )
+   VERIFY_(STATUS)
+  end if
 
   if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
     call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINW'    , CHILD_ID = WATER, RC=STATUS)
@@ -1820,6 +1836,8 @@ contains
    real, pointer, dimension(:,:)  :: OCWT      => null()
    real, pointer, dimension(:,:)  :: FSWBAND   => null()
    real, pointer, dimension(:,:)  :: FSWBANDNA => null()
+
+   real, pointer, dimension(:)    :: CHARNOCK  => null()
 
 ! pointers to the childrens' export
    real, pointer, dimension(:)    :: TS        => null() 
