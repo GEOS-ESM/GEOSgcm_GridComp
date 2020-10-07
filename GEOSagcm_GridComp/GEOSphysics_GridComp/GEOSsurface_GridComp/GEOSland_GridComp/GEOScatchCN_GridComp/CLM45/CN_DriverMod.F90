@@ -963,7 +963,7 @@ contains
     cwdcg(c)           = cwdcg(c)           + cwdc(i) * wtzone(c,z)  
   end do
   
-  if (LAND_FIX_CN)
+  if (LAND_FIX_CN) then
   where (zlai > 20.) zlai = 20.
   where (zsai > 20.) zsai = 20.
   end if
@@ -1662,7 +1662,7 @@ contains
     end do     ! CN zone loop
   end do       ! catchment tile loop
 
-  if (LAND_FIX_CN)
+  if (LAND_FIX_CN) then
   where (elai > 20.) elai = 20.
   where (esai > 20.) esai = 20.
   end if 
