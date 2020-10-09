@@ -6866,7 +6866,7 @@ contains
               !.. if (MAPL_AM_I_ROOT()) then
                  !.. PRINT*,"spcname=",k,trim(QNAMES(K)),FSCAV_(K)
                  !.. print*,"Vect_Hcts=",Vect_Hcts(:),statUS
-                 !.. call flush(6)
+                 !.. flush(6)
               !.. ENDIF
               Hcts(k)%hstar = Vect_Hcts(1)
               Hcts(k)%dhr   = Vect_Hcts(2)
@@ -8282,7 +8282,7 @@ contains
           call MAPL_GetPointer(EXPORT, AA1_CIN  ,'AA1_CIN' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);AA1_CIN=0.0
           call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);TAU_BL =0.0
           call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);TAU_EC =0.0
-          !print*,"sizes=",size(ERRMD),size(MUPMD);call flush(6)
+          !print*,"sizes=",size(ERRMD),size(MUPMD);flush(6)
          ENDIF
 
 ! WMP
@@ -13807,7 +13807,7 @@ do K= 1, LM
           WRITE(*,*) 'Invalid OTDLISSCAL scaling factor, needed to compute flash rate for GEOSCHEMchem'
           WRITE(*,*) 'Please specify parameter "LFR_GCC_OTD_LISSCAL" or make sure that there is a default'
           WRITE(*,*) 'values for this grid resolution in GEOS_MoistGridComp.F90.'
-          CALL FLUSH()
+          FLUSH(6)
           ASSERT_(OTDLISSCAL>0.0)
        ENDIF
        IF ( MAPL_AM_I_ROOT() ) THEN

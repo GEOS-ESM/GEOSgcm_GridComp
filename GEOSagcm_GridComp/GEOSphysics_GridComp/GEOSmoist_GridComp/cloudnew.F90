@@ -3846,7 +3846,7 @@ contains
              BB     = -2. + log10(iwl/50.)*(1.e-3*(273.15-max(210.15,TE))**1.5)
              RADIUS =377.4 + 203.3 * bb+ 37.91 * bb **2 + 2.3696 * bb **3
              RADIUS =RADIUS * 1.e-6 !- convert to meter
-             !print*,"bb=",temp,micro_g(ngrid)%rei(k,i,j),bb,iwl(k,i,j);call flush(6)
+             !print*,"bb=",temp,micro_g(ngrid)%rei(k,i,j),bb,iwl(k,i,j);flush(6)
             endif
 
         ENDIF ! CLDMICRO

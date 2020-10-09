@@ -107,7 +107,7 @@ contains
 
     call MAPL_GetResource ( MAPL,       DO_DATASEA,     Label="USE_DATASEA:" ,       DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL,       OrphanDepth,    Label="ORPHAN_DEPTH:" ,       DEFAULT=10.0, RC=STATUS)
+    call MAPL_GetResource ( MAPL,       OrphanDepth,    Label="OGCM_TOP_LAYER:" ,    DEFAULT=10.0, RC=STATUS)
     VERIFY_(STATUS)
 
     if(DO_DATASEA/=0) then
@@ -337,6 +337,15 @@ contains
         RC=STATUS  )
      VERIFY_(STATUS)
 
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME         = 'PEN_OCN',                           &
+        LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer',     &
+        UNITS              = 'W m-2',                             &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RC=STATUS  )
+     VERIFY_(STATUS)
+
     if (dual_ocean) then
        call MAPL_AddImportSpec(GC,                            &
          SHORT_NAME         = 'FRACICEd',                           &
@@ -365,14 +374,8 @@ contains
 
 !  !EXPORT STATE:
 
-    select case (trim(OCEAN_NAME))
-        case ("MOM", "DATASEA")
-            charbuf_ = 'MASKO'
-        case ("MOM6")
-            charbuf_ = 'MASK'
-    end select
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME         = trim(charbuf_),                      &
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME         = 'MASKO',                             &
          LONG_NAME          = 'ocean_mask',                        &
          UNITS              = '1',                                 &
          DIMS               = MAPL_DimsHorzOnly,                   &
@@ -518,6 +521,15 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                     &    
+          SHORT_NAME         = 'PEN_OCN',                           &    
+          LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer',&
+          UNITS              = 'W m-2',                             &    
+          DIMS               = MAPL_DimsHorzOnly,                   &    
+          VLOCATION          = MAPL_VLocationNone,                  &    
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
 ! Exports of child
 
     call MAPL_AddExportSpec ( GC   ,                          &
@@ -569,11 +581,6 @@ contains
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC   ,                               &
-            SHORT_NAME = 'FRAZIL',                                    &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
        if (trim(OCEAN_NAME) == "MOM") then
           call MAPL_AddExportSpec ( GC   ,                               &
                SHORT_NAME = 'PBO',                                       &
@@ -597,10 +604,11 @@ contains
 !EOS
 
     if(DO_DATASEA==0) then
-       call MAPL_TerminateImport    ( GC, SHORT_NAME= &
-          [character(len=9) :: 'TAUX  ','TAUY  ', &
-            'PENUVR','PENPAR','PENUVF','PENPAF', 'DRNIR', 'DFNIR', &
-            'DISCHARGE', 'LWFLX', 'SHFLX', 'QFLUX', 'RAIN', 'SNOW', 'SFLX','SWHEAT'], &
+       call MAPL_TerminateImport    ( GC, SHORT_NAME=               &
+          [character(len=9) :: 'TAUX  ','TAUY  ',                   &
+            'PENUVR','PENPAR','PENUVF','PENPAF', 'DRNIR', 'DFNIR',  &
+            'DISCHARGE', 'LWFLX', 'SHFLX', 'QFLUX', 'RAIN', 'SNOW', &
+            'SFLX','SWHEAT'],                                       &  ! do not terminate import of PEN_OCN since it is not used in the `plug'
             CHILD=OCN,                          RC=STATUS  )
        VERIFY_(STATUS)
     end if
@@ -692,8 +700,8 @@ contains
     type (ESMF_TimeInterval)            :: timeStep
     type (ESMF_Time)                    :: currTime
 
-    real, pointer :: MASK(:,:)
-    real, pointer :: MASKO(:,:)
+    real, pointer ::   MASK(:,:)
+    real, pointer ::  MASKO(:,:)
     real, pointer :: MASK3D(:,:,:)
     real, pointer :: DH(:,:,:)
 
@@ -800,22 +808,16 @@ contains
     call MAPL_TimerOn (STATE,"TOTAL"     )
 
     if(DO_DATASEA==0) then
+       call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,__RC__)
+
        select case (trim(OCEAN_NAME))
           case ("MOM")
-             call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,__RC__)
              call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', __RC__)
              MASK => MASK3D(:,:,1)
-             if(associated(MASKO)) MASKO = MASK
           case ("MOM6")
              call MAPL_GetPointer(GEX(OCN), MASK, 'MOM_2D_MASK', __RC__)
        end select
-
-! The following sets the depth in orphan points. This is needed to calculate SWHEAT in these points.
-! Unfortunately, frocean is zero at this point so we set OrphanDepth in all MOM land points.
-       call MAPL_GetPointer(GEX(OCN), DH, 'DH', __RC__)
-       where(MASK == 0.0)
-          DH(:,:,1) = OrphanDepth
-       end where
+       if(associated(MASKO)) MASKO = MASK
     end if
  
     call MAPL_TimerOff(STATE,"TOTAL"     )
@@ -885,12 +887,13 @@ contains
     real, pointer :: FHOCN(:,:)
     real, pointer :: FRESH(:,:)
     real, pointer :: FSALT(:,:)
+    real, pointer :: PEN_OCN(:,:)
 
 ! Pointers to Exports
 
     real, pointer :: TS_FOUND (:,:)
     real, pointer :: SS_FOUND (:,:)
-    real, pointer :: FRZMLT(:,:)
+    real, pointer :: FRZMLTe(:,:)
 
 ! Diagnostics exports
 
@@ -907,6 +910,7 @@ contains
     real, pointer :: RAINe(:,:)
     real, pointer :: SNOWe(:,:)
     real, pointer :: SFLXe(:,:)
+    real, pointer :: PEN_OCNe(:,:)
 
 
 ! Pointers to imports of child
@@ -934,9 +938,9 @@ contains
 
     real, pointer :: TW  (:,:)
     real, pointer :: SW  (:,:)
-    real, pointer :: MASK(:,:)
+    real, pointer ::   MASK(:,:)
     real, pointer :: MASK3D(:,:,:)
-    real, pointer :: FRAZIL(:,:)
+    real, pointer :: FRZMLT(:,:)
 
     real, pointer :: TWd  (:,:)
     real, pointer :: DEL_TEMP (:,:)
@@ -953,7 +957,7 @@ contains
     real              :: TAU_SST_UNDER_ICE
     real, pointer     :: LONS  (:,:)
     real, pointer     :: LATS  (:,:)
-    real, parameter   :: OrphanSalinity=34.0
+    real, parameter   :: OrphanSalinity=34.0  ! SA: ought to revisit this in context of OGCM rewrite. In reality one should update S as well.
     real              :: Tfreeze
 
     integer :: ID
@@ -1015,23 +1019,20 @@ contains
     call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
     VERIFY_(status)
 
-    call MAPL_GetResource(state,ReplayMode,  'REPLAY_MODE:',  default="NoReplay", RC=STATUS )
-    if (trim(replayMode)=="Regular" ) then
-       if (myTime > EndTime) then
-          call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_REVERSE,rc=status)
-          VERIFY_(status)
-          do
-            call ESMF_ClockAdvance(PrivateState%Clock,rc=status)
-            VERIFY_(status)
-            call ESMF_ClockGet(PrivateState%Clock,currTime=ct,rc=status)
-            VERIFY_(status)
-            if (ct==endTime) exit
-          enddo
-          call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_FORWARD,rc=status)
-          VERIFY_(status)
-          call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
-          VERIFY_(status)
-       end if
+    if (myTime > EndTime) then
+       call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_REVERSE,rc=status)
+       VERIFY_(status)
+       do
+         call ESMF_ClockAdvance(PrivateState%Clock,rc=status)
+         VERIFY_(status)
+         call ESMF_ClockGet(PrivateState%Clock,currTime=ct,rc=status)
+         VERIFY_(status)
+         if (ct==endTime) exit
+       enddo
+       call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_FORWARD,rc=status)
+       VERIFY_(status)
+       call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
+       VERIFY_(status)
     end if
 
     if( MyTime <= EndTime ) then ! Time to run
@@ -1101,8 +1102,10 @@ contains
           call MAPL_GetPointer(GIM(OCN), QFLUX, 'QFLUX'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), RAIN, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), SNOW, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); VERIFY_(STATUS) ! and do not add import of PEN_OCN here since it is not used in the `plug'
        end if
+
+       call MAPL_GetPointer(IMPORT, PEN_OCN, 'PEN_OCN',RC=STATUS); VERIFY_(STATUS)
 
        call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(GEX(OCN), SW,   'SW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
@@ -1113,7 +1116,7 @@ contains
        end if
        
        if(DO_DATASEA==0) then
-          call MAPL_GetPointer(GEX(OCN), FRAZIL,   'FRAZIL'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GEX(OCN), FRZMLT,   'FRZMLT'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
        end if
 
 ! Get pointers to exports
@@ -1121,7 +1124,7 @@ contains
 
        call MAPL_GetPointer(EXPORT, TS_FOUND,'TS_FOUND', RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SS_FOUND,'SS_FOUND', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, FRZMLT,'FRZMLT', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, FRZMLTe,'FRZMLT', RC=STATUS); VERIFY_(STATUS)
 
 ! Diagnostics exports
 !---------------------------------------------------------
@@ -1138,6 +1141,7 @@ contains
        call MAPL_GetPointer(EXPORT, RAINe, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SNOWe, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SFLXe, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PEN_OCNe,'PEN_OCN', RC=STATUS); VERIFY_(STATUS)
 
        if(associated(FROCEANe)) FROCEANe = FROCEAN
 
@@ -1205,6 +1209,7 @@ contains
           if (associated(RAINe)) RAINe = RAIN
           if (associated(SNOWe)) SNOWe = SNOW
           if (associated(SFLXe)) SFLXe = SFLX
+          if (associated(PEN_OCNe)) PEN_OCNe = PEN_OCN
        end if !DO_DATASEA
 
 ! Loop the ocean model
@@ -1304,13 +1309,13 @@ contains
           end where
        end if
 
-       if(associated(FRZMLT)) then
+       if(associated(FRZMLTe)) then
           if(DO_DATASEA == 0) then
              where(WGHT > 0.0 )
-                FRZMLT = FRAZIL
+                FRZMLTe = FRZMLT
              end where
           else
-             FRZMLT = 0.0
+             FRZMLTe = 0.0
           end if          
        end if
 
@@ -1337,9 +1342,9 @@ contains
           Tfreeze=MAPL_TICE-0.054*OrphanSalinity
 
           where(wght>0.0)
-             TS_FOUND=TS_FOUND+ \
-             DT*(LWFLXi+HEATi(:,:,1)-SHFLXi-QFLUXi*MAPL_ALHL-MAPL_ALHF*SNOWi+FHOCN)/(OrphanDepth*MAPL_RHO_SEAWATER*MAPL_CAPWTR)
-             FRZMLT = (Tfreeze - TS_FOUND) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*OrphanDepth)/DT
+             TS_FOUND=TS_FOUND+ &
+                      DT*(LWFLXi+(PENUVR+PENPAR+PENUVF+PENPAF+DRNIR+DFNIR - PEN_OCN)-SHFLXi-QFLUXi*MAPL_ALHL-MAPL_ALHF*SNOWi+FHOCN)/(OrphanDepth*MAPL_RHO_SEAWATER*MAPL_CAPWTR) ! explicit update in time
+             FRZMLTe = (Tfreeze - TS_FOUND) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*OrphanDepth)/DT
              TS_FOUND=max(TS_FOUND, Tfreeze)
           end where
 
