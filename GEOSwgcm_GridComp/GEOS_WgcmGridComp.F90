@@ -783,9 +783,9 @@ contains
 ! ------------------------
 
         call MAPL_TimerAdd(GC, name='TOTAL'        , __RC__)
-        call MAPL_TimerAdd(GC, name='-INITIALIZE'  , __RC__)
-        call MAPL_TimerAdd(GC, name='-RUN'         , __RC__)
-        call MAPL_TimerAdd(GC, name='-FINALIZE'    , __RC__)
+        call MAPL_TimerAdd(GC, name='INITIALIZE'  , __RC__)
+        call MAPL_TimerAdd(GC, name='RUN'         , __RC__)
+        call MAPL_TimerAdd(GC, name='FINALIZE'    , __RC__)
 
 
 !ALT: we need to terminate child's import so they do not "bubble up". We will fill them explicitly
@@ -844,7 +844,11 @@ contains
       type (WaveModel_Wrap)           :: wrap
 
 ! Local Variables
-    
+
+      type (ESMF_GridComp),      pointer  :: GCS(:) => null()
+      type (ESMF_State),         pointer  :: GIM(:) => null()
+      type (ESMF_State),         pointer  :: GEX(:) => null()
+ 
 
 !=============================================================================
 
@@ -875,8 +879,19 @@ contains
 ! ----------------
 
       call MAPL_TimerOn(MAPL, 'TOTAL',        __RC__)
-      call MAPL_TimerOn(MAPL, '-INITIALIZE',  __RC__)
+      call MAPL_TimerOn(MAPL, 'INITIALIZE',  __RC__)
 
+! this section needs to be executed only for WW3
+      call MAPL_Get(MAPL, GCS=GCS, GIM=GIM, GEX=GEX, __RC__)
+      call MAPL_Set(MAPL, ChildInit=.false., __RC__)
+
+      call ESMF_GridCompInitialize(GCS(WM), importState=GIM(WM), &
+           exportState=GEX(WM), clock=CLOCK, userRC=status )
+      VERIFY_(STATUS)
+
+      call ESMF_GridCompGet(GCS(WM), grid=grid, __RC__)
+      call ESMF_GridCompSet(GC, grid=grid, __RC__)
+! end of WW3 section
 
 ! Get the grid
 ! ------------
@@ -902,7 +917,7 @@ contains
 ! Stop the timers
 ! ---------------
 
-      call MAPL_TimerOff(MAPL, '-INITIALIZE', __RC__)
+      call MAPL_TimerOff(MAPL, 'INITIALIZE', __RC__)
       call MAPL_TimerOff(MAPL, 'TOTAL',      __RC__)
 
 
@@ -992,7 +1007,7 @@ contains
 ! ----------------
 
       call MAPL_TimerOn(MAPL, 'TOTAL', __RC__)
-      call MAPL_TimerOn(MAPL, '-RUN',  __RC__)
+      call MAPL_TimerOn(MAPL, 'RUN',  __RC__)
 
 ! Get parameters from generic state.
 ! ----------------------------------
@@ -1023,7 +1038,7 @@ contains
 ! Stop the timers
 ! ---------------
 
-      call MAPL_TimerOff(MAPL, '-RUN',  __RC__)
+      call MAPL_TimerOff(MAPL, 'RUN',  __RC__)
       call MAPL_TimerOff(MAPL, 'TOTAL', __RC__)
 
 ! All Done
@@ -1099,7 +1114,7 @@ contains
 ! ----------------
 
       call MAPL_TimerOn(MAPL, 'TOTAL',     __RC__)
-      call MAPL_TimerOn(MAPL, '-FINALIZE', __RC__)
+      call MAPL_TimerOn(MAPL, 'FINALIZE', __RC__)
 
 ! Get parameters from generic state.
 ! ----------------------------------
@@ -1121,23 +1136,15 @@ contains
 ! Get parameters
 !---------------
 
-! Call UMWM_FINALIZE
-! ------------
 
-      call MAPL_MemUtilsWrite(VM, 'GEOSUMWM_GridComp:BeforeGEOS_UMWM_FINALIZE', __RC__)
 
-      call MAPL_TimerOn(MAPL, '--UMWM_FINALIZE', __RC__)
 
-      !call GEOS_UMWM_FINALIZE( ... , __RC__)
 
-      call MAPL_TimerOff(MAPL, '--UMWM_FINALIZE', __RC__)
-
-      call MAPL_MemUtilsWrite(VM, 'GEOSUMWM_GridComp:AfterGEOS_UMWM_FINALIZE', __RC__)
 
 ! Stop the timers
 ! ---------------
 
-      call MAPL_TimerOff(MAPL, '-FINALIZE', __RC__)
+      call MAPL_TimerOff(MAPL, 'FINALIZE', __RC__)
       call MAPL_TimerOff(MAPL, 'TOTAL',     __RC__)
 
 ! Call GenericFinalize
