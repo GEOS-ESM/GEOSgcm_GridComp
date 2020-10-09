@@ -35,4 +35,5 @@ jobs:
           name: "Build"
           command: |
             cd ${CIRCLE_WORKING_DIRECTORY}/GEOSgcm/build
-            make -j"$(nproc)" install
+            #make -j"$(nproc)" install
+            make -j2 install
