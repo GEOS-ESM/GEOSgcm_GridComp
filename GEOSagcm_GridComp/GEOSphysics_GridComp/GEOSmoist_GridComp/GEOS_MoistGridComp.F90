@@ -5136,8 +5136,8 @@ contains
           call MAPL_GetResource(MAPL, SATUR_CALC      , 'SATUR_CALC:'       ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, BC_METH         , 'BC_METH:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, USE_REBCB       , 'USE_REBCB:'        ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_MID         , 'TAU_MID:'          ,default= 5400.,  RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_DEEP        , 'TAU_DEEP:'         ,default= 10800., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_MID         , 'TAU_MID:'          ,default= 3600., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_DEEP        , 'TAU_DEEP:'         ,default= 5400., RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, AUTOCONV        , 'AUTOCONV:'         ,default= 3,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C0_DEEP         , 'C0_DEEP:'          ,default= 3.e-3, RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C0_MID          , 'C0_MID:'	    ,default= 3.e-3, RC=STATUS );VERIFY_(STATUS)
@@ -7666,17 +7666,17 @@ contains
          QV600 = Q(:,:,levs600)
       END WHERE
 
-      if(USE_GF2020==1) then
-       ! QL*1.e6 at 600mb Criteria
-        call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT=  100.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= -1.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
-        VERIFY_(STATUS)
-      else
+     !if(USE_GF2020==1) then
+     ! ! QL*1.e6 at 600mb Criteria
+     !  call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
+     !  VERIFY_(STATUS)
+     !  call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT=  100.0, RC=STATUS)
+     !  VERIFY_(STATUS)
+     !  call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= -1.0, RC=STATUS)
+     !  VERIFY_(STATUS)
+     !  call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
+     !  VERIFY_(STATUS)
+     !else
        ! CAPE Criteria
         call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
         VERIFY_(STATUS)
@@ -7686,27 +7686,27 @@ contains
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
         VERIFY_(STATUS)
-      endif
+     !endif
 
       if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-        if(USE_GF2020==1) then
-           ! QL*1.e6 at 600mb
-           ! Find QL at 600mb level
-           RAD_QL = (QLLS + QLCN)*1.e6
-           call VertInterp(QL600,RAD_QL,log(PLE),log(60000.),STATUS)
-           VERIFY_(STATUS)
-           ! Fill undefs (600mb below the surface) with surface QV values L=LM
-           levs600  = max(1,count(PREF < 60000.))
-           WHERE (QL600 == MAPL_UNDEF)
-             QL600 = RAD_QL(:,:,levs600)
-           END WHERE
-           CNV_FRACTION =MAX(0.0,MIN(1.0,(QL600-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
-        else
+       !if(USE_GF2020==1) then
+       !   ! QL*1.e6 at 600mb
+       !   ! Find QL at 600mb level
+       !   RAD_QL = (QLLS + QLCN)*1.e6
+       !   call VertInterp(QL600,RAD_QL,log(PLE),log(60000.),STATUS)
+       !   VERIFY_(STATUS)
+       !   ! Fill undefs (600mb below the surface) with surface QV values L=LM
+       !   levs600  = max(1,count(PREF < 60000.))
+       !   WHERE (QL600 == MAPL_UNDEF)
+       !     QL600 = RAD_QL(:,:,levs600)
+       !   END WHERE
+       !   CNV_FRACTION =MAX(0.0,MIN(1.0,(QL600-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
+       !else
           ! CAPE
            WHERE (CAPE .ne. MAPL_UNDEF)   
               CNV_FRACTION =MAX(0.0,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
            END WHERE
-        endif
+       !endif
       endif
 
       if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
