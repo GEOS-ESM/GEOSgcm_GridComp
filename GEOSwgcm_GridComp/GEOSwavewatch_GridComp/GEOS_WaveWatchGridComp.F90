@@ -208,19 +208,19 @@ contains
 
 ! !EXPORT STATE:
         ! Name change: 'charno', 'z0rlen' 
-        call MAPL_AddExportSpec(GC,                                  &
-             SHORT_NAME     = 'CHARNOCK',                             &
-             LONG_NAME      = 'wave_model_charnock_coefficient',      &
-             UNITS          = '1',                                    &
-             DIMS           = MAPL_DimsHorzOnly,                      &
-             VLOCATION      = MAPL_VLocationNone,     __RC__) 
-     
-        call MAPL_AddExportSpec(GC,                                  &
-             SHORT_NAME     = 'Z0',                                   &
-             LONG_NAME      = 'surface_roughness',                    &
-             UNITS          = 'm',                                    &
-             DIMS           = MAPL_DimsHorzOnly,                      &
-             VLOCATION      = MAPL_VLocationNone,     __RC__) 
+!!!x        call MAPL_AddExportSpec(GC,                                  &
+!!!x             SHORT_NAME     = 'CHARNOCK',                             &
+!!!x             LONG_NAME      = 'wave_model_charnock_coefficient',      &
+!!!x             UNITS          = '1',                                    &
+!!!x             DIMS           = MAPL_DimsHorzOnly,                      &
+!!!x             VLOCATION      = MAPL_VLocationNone,     __RC__) 
+!!!x     
+!!!x        call MAPL_AddExportSpec(GC,                                  &
+!!!x             SHORT_NAME     = 'Z0',                                   &
+!!!x             LONG_NAME      = 'surface_roughness',                    &
+!!!x             UNITS          = 'm',                                    &
+!!!x             DIMS           = MAPL_DimsHorzOnly,                      &
+!!!x             VLOCATION      = MAPL_VLocationNone,     __RC__) 
  
  
         !

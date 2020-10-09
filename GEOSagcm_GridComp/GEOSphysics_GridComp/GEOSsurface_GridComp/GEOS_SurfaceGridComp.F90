@@ -650,6 +650,7 @@ module GEOS_SurfaceGridCompMod
             RC=STATUS  )
        VERIFY_(STATUS)
 
+#if (0)
        call MAPL_AddImportSpec(GC,                                    &
             SHORT_NAME         = 'SHFX_SPRAY',                        &
             LONG_NAME          = 'sensible_heat_contribution_from_sea_spray', &
@@ -671,6 +672,7 @@ module GEOS_SurfaceGridCompMod
             VLOCATION          = MAPL_VLocationNone,                  &
             RC=STATUS  )
        VERIFY_(STATUS)
+#endif
    end if
 
 !  !EXPORT STATE:

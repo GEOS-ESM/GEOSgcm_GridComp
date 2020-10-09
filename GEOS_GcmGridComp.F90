@@ -21,8 +21,8 @@ module GEOS_GcmGridCompMod
    use GEOS_mkiauGridCompMod,    only:  AIAU_SetServices => SetServices
    use DFI_GridCompMod,          only:  ADFI_SetServices => SetServices
    use GEOS_OgcmGridCompMod,     only:  OGCM_SetServices => SetServices
-   use GEOS_WgcmGridCompMod,     only:  WGCM_SetServices => SetServices
-
+!  use GEOS_WgcmGridCompMod,     only:  WGCM_SetServices => SetServices
+   use GEOS_WaveWatchGridCompMod, only: WGCM_SetServices => SetServices
 
 
   implicit none
@@ -655,7 +655,7 @@ contains
 ! For now we terminate all the imports of WGCM. If we need to send any of
 ! them to ExtData, we need to revisit this statement
    if (DO_WAVES /= 0) then
-      call MAPL_TerminateImport    ( GC, CHILD = WGCM, RC=STATUS )
+      call MAPL_TerminateImport(GC, CHILD = WGCM, RC=STATUS)
       VERIFY_(STATUS)
    end if
 
@@ -1701,8 +1701,8 @@ contains
 
                 ! Run the WGCM Gridded Component
                 ! ------------------------------
-                ! not save for WW3, it is also unneccessary unless there are
-                ! are two-way interactions between W and O/A, so for now we
+                ! ...not safe for WW3, it is also unneccessary unless there are
+                ! are two-way interactions between W and O/A, so for now we 
                 ! opt not to run wave model
 !!              if (DO_WAVES /= 0) then
 !!                 call RUN_WAVES(RC=STATUS)
@@ -2203,48 +2203,48 @@ contains
      SRC => GCM_INTERNAL_STATE%SURF_EXP
      DST => GCM_INTERNAL_STATE%WGCM_IMP
 
-     call DO_A2W(SRC, DST, NAME='FRLAND',  RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2W(SRC, DST, NAME='FROCEAN', RC=STATUS)
-     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='FRLAND',  RC=STATUS)
+!!!x     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='FROCEAN', RC=STATUS)
+!!!x     VERIFY_(STATUS)
      call DO_A2W(SRC, DST, NAME='FRACI',   RC=STATUS)
      VERIFY_(STATUS)
      call DO_A2W(SRC, DST, NAME='U10M',    RC=STATUS)
      VERIFY_(STATUS)
      call DO_A2W(SRC, DST, NAME='V10M',    RC=STATUS)
      VERIFY_(STATUS)
-     call DO_A2W(SRC, DST, NAME='U10N',    RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2W(SRC, DST, NAME='V10N',    RC=STATUS)
-     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='U10N',    RC=STATUS)
+!!!x     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='V10N',    RC=STATUS)
+!!!x     VERIFY_(STATUS)
 !    call DO_A2W(SRC, DST, NAME='UA',      RC=STATUS)
 !    VERIFY_(STATUS)
 !    call DO_A2W(SRC, DST, NAME='VA',      RC=STATUS)
 !    VERIFY_(STATUS)
 !    call DO_A2W(SRC, DST, NAME='DZ',      RC=STATUS)
 !    VERIFY_(STATUS)
-     call DO_A2W(SRC, DST, NAME='RHOS',    RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2W(SRC, DST, NAME='TS',      RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2W(SRC, DST, NAME='TSKINW',  RC=STATUS)
-     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='RHOS',    RC=STATUS)
+!!!x     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='TS',      RC=STATUS)
+!!!x     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='TSKINW',  RC=STATUS)
+!!!x     VERIFY_(STATUS)
 !    call DO_A2W(SRC, DST, NAME='SHWTR',   RC=STATUS)
 !    VERIFY_(STATUS)
 !    call DO_A2W(SRC, DST, NAME='HLATWTR', RC=STATUS)
 !    VERIFY_(STATUS)
-     call DO_A2W(SRC, DST, NAME='SH',      RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2W(SRC, DST, NAME='LHFX',    RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2W(SRC, DST, NAME='PS',      RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2W(SRC, DST, NAME='Q10M',    RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2W(SRC, DST, NAME='T10M',    RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_A2W(SRC, DST, NAME='RH2M',    RC=STATUS)
-     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='SH',      RC=STATUS)
+!!!x     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='LHFX',    RC=STATUS)
+!!!x     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='PS',      RC=STATUS)
+!!!x     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='Q10M',    RC=STATUS)
+!!!x     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='T10M',    RC=STATUS)
+!!!x     VERIFY_(STATUS)
+!!!x     call DO_A2W(SRC, DST, NAME='RH2M',    RC=STATUS)
+!!!x     VERIFY_(STATUS)
 
      call MAPL_TimerOff(MAPL, "--A2W")
 
@@ -2255,14 +2255,14 @@ contains
      SRC => GCM_INTERNAL_STATE%OCN_EXP
      DST => GCM_INTERNAL_STATE%WGCM_IMP
 
-     call DO_O2W(SRC, DST, NAME='UW',      RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_O2W(SRC, DST, NAME='VW',      RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_O2W(SRC, DST, NAME='DW',      RC=STATUS)
-     VERIFY_(STATUS)
-     call DO_O2W(SRC, DST, NAME='TW',      RC=STATUS)
-     VERIFY_(STATUS)
+!!!x     call DO_O2W(SRC, DST, NAME='UW',      RC=STATUS)
+!!!x     VERIFY_(STATUS)
+!!!x     call DO_O2W(SRC, DST, NAME='VW',      RC=STATUS)
+!!!x     VERIFY_(STATUS)
+!!!x     call DO_O2W(SRC, DST, NAME='DW',      RC=STATUS)
+!!!x     VERIFY_(STATUS)
+!!!x     call DO_O2W(SRC, DST, NAME='TW',      RC=STATUS)
+!!!x     VERIFY_(STATUS)
 
      call MAPL_TimerOff(MAPL, "--O2W")
 
@@ -2281,8 +2281,8 @@ contains
      SRC => GCM_INTERNAL_STATE%WGCM_EXP
      DST => GCM_INTERNAL_STATE%SURF_IMP
 
-     call DO_W2A(SRC, DST, NAME='CHARNOCK',    RC=STATUS)
-     VERIFY_(STATUS)
+!!!x     call DO_W2A(SRC, DST, NAME='CHARNOCK',    RC=STATUS)
+!!!x     VERIFY_(STATUS)
 
      ! aliases
      SRC => GCM_INTERNAL_STATE%WGCM_EXP

@@ -1001,14 +1001,14 @@ contains
      
   end if
 
-  if(DO_WAVES/=0) then
+#if (0) 
      call MAPL_AddConnectivity ( GC,      &
              SHORT_NAME  = (/'FRACICE'/), & 
              DST_ID = OCEAN,              &
              SRC_ID = SEAICE,             &
              RC=STATUS  )
      VERIFY_(STATUS)
-  endif
+#endif
 
   if(DUAL_OCEAN) then 
      call MAPL_AddConnectivity ( GC,  &
@@ -1057,16 +1057,16 @@ contains
      VERIFY_(STATUS)
   end if
   
-  if(DO_WAVES==0) then
+#if (0)
      call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
-  else
+#else
      call MAPL_TerminateImport    ( GC, CHILD=ORAD,   RC=STATUS )
      VERIFY_(STATUS)
      call MAPL_TerminateImport    ( GC, CHILD=OBIO,   RC=STATUS )
      VERIFY_(STATUS)
      call MAPL_TerminateImport    ( GC, CHILD=SEAICE, RC=STATUS )
      VERIFY_(STATUS)
-  
+
      if (DO_DATASEAONLY==0) then
         call MAPL_TerminateImport    (GC, CHILD = OCEAN, RC=STATUS)
         VERIFY_(STATUS)
@@ -1079,6 +1079,7 @@ contains
                                                     'DISCHARGE'  ], CHILD = OCEAN, RC=STATUS)
         VERIFY_(STATUS)
      end if
+#endif
 
 ! Set the Profiling timers
 ! ------------------------
