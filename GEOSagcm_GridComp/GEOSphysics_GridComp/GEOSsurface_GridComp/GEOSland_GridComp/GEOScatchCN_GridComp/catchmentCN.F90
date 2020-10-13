@@ -90,7 +90,7 @@ MODULE CATCHMENT_CN_MODEL
        SHR, SCONST, C_CANOP, N_sm, SATCAPFR   
 
   USE SURFPARAMS,       ONLY: CSOIL_2, RSWILT, &
-      LAND_FIX_CN, LAND_FIX, FLWALPHA
+      LAND_FIX, FLWALPHA
 
   
   USE lsm_routines, only :                          &
@@ -548,15 +548,15 @@ CONTAINS
         tc2_orig(n)=tc2(n)
         tc4_orig(n)=tc4(n)
 
-        ! Andrea Molod (Oct 21, 2016):
-       
-        qa1(n) = min(max(qm(N),qsat1(N)),qa1(N))
-        qa1(n) = max(min(qm(N),qsat1(N)),qa1(N))
-        qa2(n) = min(max(qm(N),qsat2(N)),qa2(N))
-        qa2(n) = max(min(qm(N),qsat2(N)),qa2(N))
-        qa4(n) = min(max(qm(N),qsat4(N)),qa4(N))
-        qa4(n) = max(min(qm(N),qsat4(N)),qa4(N))
-
+        IF (LAND_FIX) THEN
+	   ! Andrea Molod (Oct 21, 2016):
+           qa1(n) = min(max(qm(N),qsat1(N)),qa1(N))
+           qa1(n) = max(min(qm(N),qsat1(N)),qa1(N))
+           qa2(n) = min(max(qm(N),qsat2(N)),qa2(N))
+           qa2(n) = max(min(qm(N),qsat2(N)),qa2(N))
+           qa4(n) = min(max(qm(N),qsat4(N)),qa4(N))
+           qa4(n) = max(min(qm(N),qsat4(N)),qa4(N))
+        END IF
 !        if(ityp1(n) .ge. 7) potfrc(n)=0.
 
 !     HSNACC is an energy accounting term designed to account (among other,
@@ -1287,7 +1287,7 @@ CONTAINS
 
 !!!    IF (ityp1(N) .ge. 1) THEN ! gkw: would do TC correction on all types in unified 
 !!!       IF (ityp1(N) .eq.-1) THEN ! gkw: using Helfand with viscous sublayer; don't need TC correction; using -1 skips this block
-     IF (LAND_FIX_CN) THEN   ! jkolassa 11 Jun 2020: changed to be controlled by LAND_FIX_CN; was previously set to always be false
+     IF (LAND_FIX .OR. (ityp(N) .ne. 1)) THEN   ! jkolassa Oct 2020: changed to be equivalent to catchment.F90; was previously set to always be false
         call dampen_tc_oscillations(dtstep,tm(N),tc1_orig(N),tc1(N),     &
              tc1_00(N),dtc1)
         call dampen_tc_oscillations(dtstep,tm(N),tc2_orig(N),tc2(N),     &
