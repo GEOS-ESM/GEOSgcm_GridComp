@@ -1103,7 +1103,7 @@ contains
 ! -----------------------------------------------------------------
 
      call MAPL_AddConnectivity ( GC,                               &
-         SHORT_NAME  = (/'AERO','AERO2G_RAD'/),                    & !AERO2G_RAD is GOCART2G's AERO state
+         SHORT_NAME  = (/'AERO      ', 'AERO2G_RAD'/),                    & !AERO2G_RAD is GOCART2G's AERO state
          DST_ID      =  RAD,                                       &
          SRC_ID      =  CHEM,                                      &
                                                         RC=STATUS  )
@@ -1155,7 +1155,7 @@ contains
      ENDIF
 
      call MAPL_AddConnectivity ( GC,                               &
-         SHORT_NAME  = (/'AERO_DP', 'AERO2G_DP'/),                              &
+         SHORT_NAME  = (/'AERO_DP  ', 'AERO2G_DP'/),                              &
          SRC_ID      = CHEM,                                       &
          DST_ID      = SURF,                                       &
                                                         RC=STATUS  )
@@ -1299,7 +1299,7 @@ contains
 
     !Aerosol
     call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'AERO_ACI', 'AERO2G_ACI'/),                             &
+         SHORT_NAME  = (/'AERO_ACI  ', 'AERO2G_ACI'/),                             &
          DST_ID      =  MOIST,                                     &
          SRC_ID      =  CHEM,                                      &
                                                         RC=STATUS  )
