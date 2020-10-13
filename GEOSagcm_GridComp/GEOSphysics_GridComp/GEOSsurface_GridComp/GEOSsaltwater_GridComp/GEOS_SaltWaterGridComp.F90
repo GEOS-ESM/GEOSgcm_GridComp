@@ -32,6 +32,7 @@ module GEOS_SaltwaterGridCompMod
   use ESMF
   use MAPL
   use GEOS_UtilsMod
+  use atmOcnIntlayer,     only: water_RHO
 
   use GEOS_OpenwaterGridCompMod,            only : OpenWaterSetServices       => SetServices
   use GEOS_SimpleSeaiceGridCompMod,         only : SimpleSeaiceSetServices    => SetServices
@@ -63,9 +64,6 @@ module GEOS_SaltwaterGridCompMod
   integer, parameter :: NB_CHOU_UV  = 5                        ! number of UV bands
   integer, parameter :: NB_CHOU_NIR = 3                        ! number of near-IR bands
   integer, parameter :: NB_CHOU     = NB_CHOU_UV + NB_CHOU_NIR ! total number of bands
-
-  character(len=7)   :: AOIL_COMP_SWITCH                       ! Atmosphere-Ocean Interface Layer, compatibility: on/off
-                                                               ! defualt: OFF, so AOIL is incompatible with "old" interface
 
    contains
 
@@ -131,12 +129,6 @@ module GEOS_SaltwaterGridCompMod
 !-------------------------------------------------------
 
     call MAPL_GetResource ( MAPL, DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,    DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-
-! Atmosphere-Ocean Interface Layer compatibility: on/off?
-!-------------------------------------------------------
-
-    call MAPL_GetResource( MAPL,  AOIL_COMP_SWITCH,   Label="AOIL_COMP_SWITCH:",     DEFAULT="ON", RC=STATUS)
     VERIFY_(STATUS)
 
 ! Ocean biology and chemistry: using OBIO or not?
@@ -942,20 +934,18 @@ module GEOS_SaltwaterGridCompMod
 
   endif !DO_OBIO
 
-  if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINW'    , CHILD_ID = WATER, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINW'    , CHILD_ID = WATER, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINW'    , CHILD_ID = WATER, RC=STATUS)
-    VERIFY_(STATUS)  
-  end if
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINW'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINW'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINW'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)  
 
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINI'    , CHILD_ID =   ICE, RC=STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINI'    , CHILD_ID = ICE,   RC=STATUS)
   VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINI'    , CHILD_ID =   ICE, RC=STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINI'    , CHILD_ID = ICE,   RC=STATUS)
   VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINI'    , CHILD_ID =   ICE, RC=STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINI'    , CHILD_ID = ICE,   RC=STATUS)
   VERIFY_(STATUS)
      
   if(DO_CICE_THERMO /= 0) then ! additional exports from CICE4 sea ice thermodynamics
@@ -1069,14 +1059,12 @@ module GEOS_SaltwaterGridCompMod
 
 !EOS
 
-  if( trim(AOIL_COMP_SWITCH) == "ON") then ! as close as possible to "x0039", while keeping everything as in "x0040"
-    call MAPL_AddConnectivity ( GC,   &
-         SHORT_NAME  = (/'TSKINW','SSKINW'/),  &
-         DST_ID = ICE,                &
-         SRC_ID = WATER,              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-  endif
+  call MAPL_AddConnectivity ( GC,   &
+       SHORT_NAME  = (/'TSKINW','SSKINW'/),  &
+       DST_ID = ICE,                &
+       SRC_ID = WATER,              &
+       RC=STATUS  )
+  VERIFY_(STATUS)
 
   call MAPL_AddConnectivity ( GC,   &
        SHORT_NAME  = [character(len=8) :: 'FRACI', 'FRACINEW','TFREEZE'],     & 
@@ -2156,7 +2144,7 @@ contains
     if(associated(TAUYO)) TAUYO = TYO
 
     if(associated(PSEX )) PSEX  = PS 
-    if(associated(USTR3)) USTR3 = sqrt(sqrt(TXO*TXO+TYO*TYO)/MAPL_RHO_SEAWATER)**3
+    if(associated(USTR3)) USTR3 = sqrt(sqrt(TXO*TXO+TYO*TYO)/water_RHO('salt_water'))**3
     if(associated(UUEX))  UUEX  = UU
 
     if(DO_OBIO/=0) then
