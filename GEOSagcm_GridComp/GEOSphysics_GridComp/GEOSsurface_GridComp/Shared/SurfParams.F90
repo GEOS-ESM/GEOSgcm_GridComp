@@ -94,7 +94,7 @@ module SurfParams
 	select case (LAND_PARAMS)                                                                
        	case ("CN_CLM4")  ! parameters to reproduce Fanwei Zeng's Catchment-CN.4.0 runs (e0004s_transientCO2_05) done with build /gpfsm/dnb31/fzeng/LDASsa_m3-16_0_p2_CatchCatchCN_for_MERRA3        
          	LAND_FIX        = .TRUE.                                                                    
-         	RDC_FORMULATION = 1 ! 1: Fanwei's Catchment-CN version; 0: Catchment version        
+         	RDC_FORMULATION = 1 ! 1: Fanwei's Catchment-CN version; 0: previous GEOSldas Catchment-CN version        
          	CSOIL_2         = 70000. ! Post H5_0  
          	WEMIN           = 13.                                                                       
          	AICEV           = 0.149                                                                     
