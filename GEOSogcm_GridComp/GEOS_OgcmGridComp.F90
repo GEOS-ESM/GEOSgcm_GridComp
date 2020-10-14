@@ -16,7 +16,6 @@ module GEOS_OgcmGridCompMod
   use MAPL
 
   use GEOS_OceanBioGeoChemGridCompMod,   only : ObioSetServices   => SetServices
-  use GEOS_OceanBioGridCompMod,          only : ObioSimpleSetServices => SetServices
   use GEOS_OradBioGridCompMod,           only : OradBioSetServices   => SetServices
   use GEOS_OradGridCompMod,              only : OradSetServices   => SetServices
 
@@ -231,8 +230,6 @@ contains
        ORAD = MAPL_AddChild(GC, NAME='ORAD', SS=OradBioSetServices, RC=STATUS)
        VERIFY_(STATUS)
     else
-       OBIO = MAPL_AddChild(GC, NAME='OBIO', SS=ObioSimpleSetServices, RC=STATUS)
-       VERIFY_(STATUS)
        ORAD = MAPL_AddChild(GC, NAME='ORAD', SS=OradSetServices, RC=STATUS)
        VERIFY_(STATUS)
     end if
