@@ -6205,10 +6205,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
         IF (RDC_FORMULATION==0) THEN
         	RDC = max(VGRDA(VEG1),VGRDA(VEG2))*min(1.,lai/2.)
-        ELSE
+        ELSE IF (RDC_FORMULATION==1) THEN
         	rdc_tmp_1 = max( VGRDA(VEG1)*min( 1., LAI1/VGRDB(VEG1) ), 0.001)
         	rdc_tmp_2 = max( VGRDA(VEG2)*min( 1., LAI2/VGRDB(VEG2) ), 0.001)
         	RDC = max(rdc_tmp_1,rdc_tmp_2)*min(1.,lai/2.)
+        ELSE
+         	write(*,*) "Invalid RDC_FORMULATION value"
+                stop
         END IF
         RDC = max(RDC,0.001)
 
