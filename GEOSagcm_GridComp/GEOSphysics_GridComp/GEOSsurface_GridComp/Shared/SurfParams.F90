@@ -26,7 +26,6 @@ module SurfParams
 
   LOGICAL, PUBLIC, SAVE :: LAND_FIX  		 ! Used for fixes and init changes that
   	   	   	   	     		 ! are still default in Icarus GCM
-  INTEGER, PUBLIC, SAVE :: RDC_FORMULATION	 ! controls RDC computation in Catchment-CN
 
   contains
   
