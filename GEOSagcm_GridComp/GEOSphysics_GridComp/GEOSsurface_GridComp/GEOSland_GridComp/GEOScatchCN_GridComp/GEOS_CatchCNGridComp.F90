@@ -61,7 +61,7 @@ module GEOS_CatchCNGridCompMod
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist, irrigation_rate
-  USE SURFPARAMS,       ONLY: RDC_FORMULATION
+
 implicit none
 private
 
@@ -6203,16 +6203,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
         ! LAI and type dependent parameters; RDC formulation now uses veg fractions gkw: 2013-11-25, see note from Randy
         ! --------------------------------------------------------------------------
-        IF (RDC_FORMULATION==0) THEN
-        	RDC = max(VGRDA(VEG1),VGRDA(VEG2))*min(1.,lai/2.)
-        ELSE IF (RDC_FORMULATION==1) THEN
-        	rdc_tmp_1 = max( VGRDA(VEG1)*min( 1., LAI1/VGRDB(VEG1) ), 0.001)
-        	rdc_tmp_2 = max( VGRDA(VEG2)*min( 1., LAI2/VGRDB(VEG2) ), 0.001)
-        	RDC = max(rdc_tmp_1,rdc_tmp_2)*min(1.,lai/2.)
-        ELSE
-         	write(*,*) "Invalid RDC_FORMULATION value"
-                ASSERT_(.FALSE.)
-        END IF
+        ! jkolassa Oct 2020: RDC formulation previously implemented in GEOSldas Catchment-CN
+        ! RDC = max(VGRDA(VEG1),VGRDA(VEG2))*min(1.,lai/2.)
+        
+        ! jkolassa Oct 2020: updated RDC formulation to the one used in F. Zeng's science-validated, published Catchment-CN simulations
+        rdc_tmp_1 = max( VGRDA(VEG1)*min( 1., LAI1/VGRDB(VEG1) ), 0.001)
+        rdc_tmp_2 = max( VGRDA(VEG2)*min( 1., LAI2/VGRDB(VEG2) ), 0.001)
+        RDC = max(rdc_tmp_1,rdc_tmp_2)*min(1.,lai/2.)
         RDC = max(RDC,0.001)
 
         RHO = PS/(MAPL_RGAS*(TA*(1+MAPL_VIREPS*QA)))
