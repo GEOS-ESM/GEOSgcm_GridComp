@@ -6211,7 +6211,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         	RDC = max(rdc_tmp_1,rdc_tmp_2)*min(1.,lai/2.)
         ELSE
          	write(*,*) "Invalid RDC_FORMULATION value"
-                stop
+                ASSERT_(.FALSE.)
         END IF
         RDC = max(RDC,0.001)
 
