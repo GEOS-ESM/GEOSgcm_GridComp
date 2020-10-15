@@ -41,8 +41,7 @@ ecbuild_add_executable (TARGET CombineRasters.x SOURCES CombineRasters.F90 LIBS 
 ecbuild_add_executable (TARGET mkCatchParam.x SOURCES mkCatchParam.F90 LIBS MAPL ${this} ${OpenMP_Fortran_LIBRARIES})
 set_target_properties(mkCatchParam.x PROPERTIES COMPILE_FLAGS "${OpenMP_Fortran_FLAGS}")
 set_target_properties(mkCatchParam.x PROPERTIES LINK_FLAGS "${OpenMP_Fortran_FLAGS}")
-
-#ecbuild_add_executable (TARGET mkMODISrst2tiles.x SOURCES mkMODISrst2tiles.F90 INCLUDES ${INC_ESMF} ${INC_NETCDF} ${INC_HDF5} LIBS hdf5hl_fortran hdf5_fortran MAPL ${this})
+ecbuild_add_executable (TARGET mkMODISrst2tiles.x SOURCES mkMODISrst2tiles.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkCubeFVRaster.x SOURCES mkCubeFVRaster.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkLandRaster.x SOURCES mkLandRaster.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkLatLonRaster.x SOURCES mkLatLonRaster.F90 LIBS MAPL ${this})
@@ -53,4 +52,4 @@ ecbuild_add_executable (TARGET mk_runofftbl.x SOURCES mk_runofftbl.F90 LIBS MAPL
 ecbuild_add_executable (TARGET mkSMAPTilesPara.x SOURCES mkSMAPTilesPara.F90 LIBS MAPL ${this})
 ecbuild_add_executable (TARGET mkSMAPTilesPara_v2.x SOURCES mkSMAPTilesPara_v2.F90 LIBS MAPL ${this})
 
-install(PROGRAMS make_bcs clsm_plots.pro plot_curves.pro create_README.csh plot_curves.csh DESTINATION bin)
+install(PROGRAMS make_tiles make_bcs clsm_plots.pro plot_curves.pro create_README.csh plot_curves.csh DESTINATION bin)

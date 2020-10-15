@@ -223,7 +223,7 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (SCF, label='MODIS_ALB:'          , value=MODIS_ALB,          DEFAULT=0  , __RC__ )
     if (MODIS_ALB == 1) then
         call ESMF_ConfigGetAttribute (SCF, value= MODIS_PATH, label='MODIS_PATH:',  &
-             DEFAULT='/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/MCD15A2H.006/IAV_smoothed/', __RC__ )
+             DEFAULT='/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/MODIS_DVG/IAV/', __RC__ )
         if (OFFLINE_MODE == 0) then
            call MAPL_GetResource( MAPL, GRIDNAME, label='AGCM_GRIDNAME:', RC=STATUS ) ; VERIFY_(STATUS)
         else

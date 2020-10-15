@@ -125,17 +125,9 @@ contains
     implicit none
     class (TimeUtil), intent(inout) :: this
     type(ESMF_Time),INTENT(IN) :: PTIME, CTIME, NTIME 
-    real(ESMF_KIND_R8)         :: tdiff_21, tdiff_20, tfrac      
-    type(ESMF_TimeInterval)    :: T21, T20
     integer                    :: status
     
-    T21 = NTIME - PTIME
-    T20 = NTIME - CTIME
-    
-    call ESMF_TimeIntervalGet(T21, s_r8=tdiff_21,rc=status) ; VERIFY_(STATUS)
-    call ESMF_TimeIntervalGet(T20,s_r8=tdiff_20,rc=status)  ; VERIFY_(STATUS)
-    tfrac = tdiff_20/tdiff_21
-    tf    = tfrac
+    call MAPL_Interp_Fac (CTIME,PTIME,NTIME,tf,RC=STATUS ) ; VERIFY_(STATUS)
     
   end function TimeFrac_ESMF
 
