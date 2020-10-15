@@ -46,15 +46,17 @@
 # GEOSagcm=>SURFLAY: 50.0
 # GEOSldas=>SURFLAY: 50.0
  
-# ---- Version of assorted Catchment/snow model parameters
+# ---- Assorted Catchment/snow model parameters associated with certain model versions:
 #
-#    CATCHMENT COLLECTIONS:
+#    CATCHMENT model versions
+#    ------------------------
 #    Icarus  : Icarus/f522_fp and earlier (scientifically close to MERRA-2)
 #    V24_C05 : GEOSldas_m4-17_0
 #    NRv7.2  : SMAP L4_SM Version 4 and 5, f525_fp
 #
-#    CATCHMENT-CN COLLECTIONS:
-#    CN_CLM4 : parameters to reproduce Fanwei Zeng's science-validated and published Catchment-CN.4.0 runs (e0004s_transientCO2_05)     
+#    CATCHMENT-CN model versions
+#    ---------------------------
+#    CN_CLM4 : Fanwei Zeng's science-validated and published Catchment-CN.4.0 (e0004s_transientCO2_05)     
 #
 # GEOSagcm=>LAND_PARAMS: NRv7.2
 # GEOSldas=>LAND_PARAMS: NRv7.2
