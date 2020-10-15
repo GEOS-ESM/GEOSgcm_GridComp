@@ -1,4 +1,6 @@
+#include "MAPL_Generic.h"
 
+!==========================================================
 module SurfParams
 
   ! Justin, 12 Apr 2018  - Created - Replaces LAND_UPD ifdefs , added SurfParams_init,
@@ -85,7 +87,7 @@ module SurfParams
 
       	case DEFAULT                                                                            
          	write (*,*) "LAND_PARAMS not valid or incompatible with LSM_CHOICE ",LAND_PARAMS     
-         	return                                                                               
+         	ASSERT_(.FALSE.)                                                                            
       	end select                                                                                
                                                                                               
     else if (LSM_CHOICE==2) then       
@@ -104,11 +106,11 @@ module SurfParams
 
       	case DEFAULT                                                                            
          	write (*,*) "LAND_PARAMS not valid or incompatible with LSM_CHOICE ",LAND_PARAMS     
-         	return                                                                               
+         	ASSERT_(.FALSE.)                                                                               
       	end select     
     else                                                                                      
       	write (*,*) "invalid land model choice ",LSM_CHOICE                                                   
-     	 return                                                                               
+     	 ASSERT_(.FALSE.)                                                                               
     end if ! LSM_CHOICE  
 
     init_called = .TRUE.
