@@ -1015,6 +1015,7 @@ module GEOS_LandiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         UNGRIDDED_DIMS     = (/NUM_SNOW_LAYERS/),                 &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartRequired,                &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1025,6 +1026,7 @@ module GEOS_LandiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         UNGRIDDED_DIMS     = (/NUM_SNOW_LAYERS/),                 &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartRequired,                &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1035,6 +1037,7 @@ module GEOS_LandiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         UNGRIDDED_DIMS     = (/NUM_SNOW_LAYERS/),                 &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartRequired,                &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -1045,6 +1048,7 @@ module GEOS_LandiceGridCompMod
         DIMS               = MAPL_DimsTileOnly,                   &
         UNGRIDDED_DIMS     = (/NUM_SUBTILES, NUM_ICE_LAYERS/),    &
         VLOCATION          = MAPL_VLocationNone,                  &
+        RESTART            = MAPL_RestartRequired,                &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
