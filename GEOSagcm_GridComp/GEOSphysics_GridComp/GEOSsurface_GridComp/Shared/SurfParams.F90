@@ -86,8 +86,7 @@ module SurfParams
          	RSWILT   = 500.   ! reverted
 
       	case DEFAULT                                                                            
-         	write (*,*) "LAND_PARAMS not valid or incompatible with LSM_CHOICE ",LAND_PARAMS     
-         	ASSERT_(.FALSE.)                                                                            
+         	_ASSERT(.FALSE.,'LAND_PARAMS not valid or incompatible with LSM_CHOICE')                                                                            
       	end select                                                                                
                                                                                               
     else if (LSM_CHOICE==2) then       
@@ -105,12 +104,10 @@ module SurfParams
          	RSWILT          = 1500.   
 
       	case DEFAULT                                                                            
-         	write (*,*) "LAND_PARAMS not valid or incompatible with LSM_CHOICE ",LAND_PARAMS     
-         	ASSERT_(.FALSE.)                                                                               
+         	_ASSERT(.FALSE.,'LAND_PARAMS not valid or incompatible with LSM_CHOICE')           
       	end select     
     else                                                                                      
-      	write (*,*) "invalid land model choice ",LSM_CHOICE                                                   
-     	 ASSERT_(.FALSE.)                                                                               
+     	_ASSERT(.FALSE.,'land model choice not valid')                                                                               
     end if ! LSM_CHOICE  
 
     init_called = .TRUE.
