@@ -4142,8 +4142,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         type(ESMF_Time)               :: MODIS_TIME
         type(ESMF_Time), save         :: MODIS_RING
         type(ESMF_TimeInterval)       :: M5, TIME_DIFF
-        real, dimension(:),   pointer :: MODIS_VISDFTILE
-        real, dimension(:),   pointer :: MODIS_NIRDFTILE
+        real, dimension(:), allocatable, save :: MODIS_VISDFTILE
+        real, dimension(:), allocatable, save :: MODIS_NIRDFTILE
         type(MODISReader)             :: MR
     
         ! --------------------------------------------------------------------------
@@ -4895,7 +4895,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  MODIS_RING = MODIS_TIME
               endif
            endif
-
            where (MODIS_VISDFTILE >= 0.)
               ALBVR = MODIS_VISDFTILE
               ALBVF = MODIS_VISDFTILE
@@ -4904,7 +4903,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ALBNR = MODIS_NIRDFTILE
               ALBNF = MODIS_NIRDFTILE
            endwhere
-           
+
         ELSEIF (MODIS_ALB == 2) THEN
            
            ALBVR = MIN (1., MAX(0.001,MODIS_VISDFTILE))

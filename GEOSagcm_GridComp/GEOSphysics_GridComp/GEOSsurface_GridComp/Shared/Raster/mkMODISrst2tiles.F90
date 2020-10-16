@@ -13,8 +13,10 @@
 !    Albedo
 !    bin/MODISrst2tiles.x  -m MCD43GF -y YYYYDOY  -r YYYYMMDD  -t time_step   -l minutes_since_20000101-0000
 ! 2) Smooth LAI using a 3 time step window
-!    bin/MODISrst2tiles.x  -s Y -g GRID_NAME  -a lai_data.YYYYDOY_previous  -b lai_data.YYYYDOY  -c lai_data.YYYYDOY_next -t tstep
-
+!    bin/MODISrst2tiles.x -m MCD43GF -s Y -g GRID_NAME  -a lai_data.YYYYDOY_previous  -b lai_data.YYYYDOY  -c lai_data.YYYYDOY_next -t tstep
+! 3) Compute albedo climatology
+!    bin/MODISrst2tiles.x -m MCD43GF -s Y
+!
 !#####################################################################################
 
 PROGRAM mkMODISrst2tiles 
@@ -58,7 +60,7 @@ PROGRAM mkMODISrst2tiles
   ! Read arguments
   ! --------------
   
-  smooth = .false.
+  smooth  = .false.
   nxt = 1
 
   call getarg(nxt,arg)
@@ -106,7 +108,7 @@ PROGRAM mkMODISrst2tiles
      call getarg(nxt,arg)
 
   end do
-
+  
   MODIS_NAME = trim(MODIS_NAME)//'.006'
   
   if (.not. smooth) then
@@ -114,17 +116,82 @@ PROGRAM mkMODISrst2tiles
      call grid2tile (trim(MODIS_NAME), trim(YYYYDOY), tstep, time, refdate)
      
   else
-     
-     inquire(file=trim(SMDIR)//trim(GRID_NAME)//'/'//trim(file_out),exist=file_exists)
-     if(file_exists) stop
-     call smooth_data (trim(GRID_NAME), trim(file_out), trim(file1), trim(file2), trim(file3),tstep)
-          
+
+     if (trim(MODIS_NAME) == 'MCD43GF.006') then
+        call compute_alb_clim (TRIM(GRID_NAME))
+     else
+        inquire(file=trim(SMDIR)//trim(GRID_NAME)//'/'//trim(file_out),exist=file_exists)
+        if(file_exists) stop
+        call smooth_data (trim(GRID_NAME), trim(file_out), trim(file1), trim(file2), trim(file3),tstep)
+     endif     
   endif
 
   STOP
   
 contains
 
+  SUBROUTINE compute_alb_clim (GRID_NAME)
+
+    implicit none
+
+    character(*), intent (in)        :: GRID_NAME
+    real, allocatable, dimension (:) :: yc, vec_vis, vec_nir,vec_dat1, vec_dat2
+    character*3   :: DDD
+    character*4   :: YYYY
+    integer       :: DOY, YEAR, j
+    logical       :: file_exists = .false.
+    character*300 :: filename
+    
+    open (10,file = trim(BCSDIR)//trim(GRID_NAME)//'/catchment.def',status='old',action='read',form='formatted')
+    read (10,*) NT
+    close(10, status = 'keep')
+
+    allocate (vec_vis (nt))
+    allocate (vec_nir (nt))
+    allocate (vec_dat1(nt))
+    allocate (vec_dat2(nt))
+    allocate (yc      (nt))
+
+    DO DOY = 1,365,5
+       write (DDD,'(i3.3)') DOY
+       vec_vis = -9999.
+       vec_nir = -9999.
+       yc = 0.
+       DO YEAR = 2000, 2020
+          write (YYYY, '(i4.4)') YEAR
+          file_exists = .false.
+          filename = trim(OUTDIR)//trim(GRID_NAME)//'/alb_data.'//YYYY//DDD
+          inquire(file=trim(filename),exist=file_exists)
+          if(file_exists) then
+ !            print *,YYYY//DDD
+             open (10, file=trim(filename), &
+                  form = 'unformatted', action = 'read', status = 'old')
+             read (10) vec_dat1
+             read (10) vec_dat2
+             close(10, status = 'keep')
+             do j = 1, NT
+                if(vec_dat1 (j) >= 0.) then
+                   if(vec_vis (j) == -9999.) vec_vis (j) = 0.
+                   if(vec_nir (j) == -9999.) vec_nir (j) = 0.
+                   vec_vis(j) = vec_vis(j) + vec_dat1 (j)
+                   vec_nir(j) = vec_nir(j) + vec_dat2 (j)
+                   yc(j)      = yc(j)  + 1
+                endif                
+             end do
+          endif          
+       END DO
+       where (yc > 0.) vec_vis = vec_vis / yc
+       where (yc > 0.) vec_nir = vec_nir / yc
+       open (20, file = trim(OUTDIR)//trim(GRID_NAME)//'/alb_data.YYYY'//DDD,  &
+            form = 'unformatted', action = 'write', status = 'unknown')
+       write (20) vec_vis
+       write (20) vec_nir
+       close(20, status = 'keep')
+    END DO
+  END SUBROUTINE compute_alb_clim
+
+  ! ----------------------------------------------------------------------
+  
   SUBROUTINE smooth_data (GRID_NAME, file_out, file1, file2, file3, tstep)
 
     implicit none
@@ -414,6 +481,7 @@ contains
        if(trim(MODIS_NAME) == 'MCD43GF.006' ) open (10, file = trim(OUTDIR)//'/'//trim(GRIDS(ng))//'/alb_data.'//trim(YYYYDOY), &
             form = 'unformatted', action = 'write', status = 'unknown')
        write (10) vec_data
+       if(trim(MODIS_NAME) == 'MCD43GF.006') write (10) nirdf
        close (10,status = 'keep')
 
        if(trim(GRIDS(ng)) == 'DE720') then
