@@ -6,7 +6,8 @@ module SurfParams
   ! Justin, 12 Apr 2018  - Created - Replaces LAND_UPD ifdefs , added SurfParams_init,
   !                        called from GEOS_LandGridCompMod, GEOS_LandiceGridCompMod
   ! jkolassa, 11 Jun 2020 - added LSM_CHOICE as input; introduced separate land parameter collections
-  !   
+  !  
+  use MAPL_ExceptionHandling 
   implicit none
 
   private  
@@ -33,12 +34,13 @@ module SurfParams
   
   ! Call to get "constants" that really are variables changeable during land/landice initialization
 
-  subroutine SurfParams_init(LAND_PARAMS,LSM_CHOICE) 
+  subroutine SurfParams_init(LAND_PARAMS,LSM_CHOICE, rc) 
 
     implicit none
     
     CHARACTER(*), INTENT(IN) :: LAND_PARAMS
     INTEGER, INTENT(IN)      :: LSM_CHOICE 
+    INTEGER, OPTIONAL, INTENT(OUT) :: rc
 
     LOGICAL, SAVE :: init_called = .FALSE. ! Flag if SurfParams_init has been called
 
