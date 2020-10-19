@@ -561,7 +561,7 @@ contains
                          'OUSTAR3','PS     ',                       &
                          'HI     ','TI     ','SI     ' ,            &
                          'PENUVR ','PENUVF ','PENPAR ','PENPAF ',   &
-                         'CO2SC  ','DUDP   ','DUWT   ','DUSD   ',   &
+                         'CO2SC  ','DUDP   ','DUWT   ','DUSD   ',   &   ! These (4) go to OGCM only if DO_OBIO /= 0.
                          'DISCHRG', 'LWFLX', 'SHFLX', 'QFLUX',      &
                          'DRNIR'  , 'DFNIR',                        &
                          'SNOW', 'RAIN', 'FRESH', 'FSALT',          &
@@ -570,41 +570,31 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_TerminateImport( GC,                                 &
+     call MAPL_TerminateImport( GC,                                 &   ! These go to OGCM only if DO_OBIO /= 0.
           SHORT_NAME = (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM',    &
                          'RH    ', 'OZ    ', 'WV    '/),            &
           CHILD      = OGCM,                                        &
           RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_TerminateImport    ( GC,   &
+     call MAPL_TerminateImport    ( GC,                             &   ! This goes to OGCM only if DO_OBIO /= 0.
           SHORT_NAME = (/'UU'/),                                    &
           CHILD      = OGCM,                                        &
           RC=STATUS  )
      VERIFY_(STATUS)
 
      if (DO_OBIO/=0) then
-      do k=1, 33
-         write(unit = suffix, fmt = '(i2.2)') k
-         call MAPL_TerminateImport( GC,           &
-            SHORT_NAME = [ character(len=(8)) ::  &
-               'TAUA_'//suffix,                   &
-               'ASYMP_'//suffix,                  &
-               'SSALB_'//suffix ],                &
-            CHILD      = OGCM,                    &
-            RC=STATUS  )
-         VERIFY_(STATUS)
-      enddo
+      call OBIO_TerminateImports(RC)
      end if
 
      if(DO_DATAATM==0) then
-        call MAPL_TerminateImport    ( GC,                             &
+        call MAPL_TerminateImport    ( GC,                             &  ! These go to OGCM only if DO_OBIO /= 0.
              SHORT_NAME = (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),         &
              CHILD      = OGCM,                                        &
              RC=STATUS  )
         VERIFY_(STATUS)
 
-        call MAPL_TerminateImport    ( GC,                             &
+        call MAPL_TerminateImport    ( GC,                             &  ! These go to OGCM only if DO_OBIO /= 0.
              SHORT_NAME = (/'FSWBAND  ', 'FSWBANDNA'/),                &
              CHILD      = OGCM,                                        &
              RC=STATUS  )
@@ -677,9 +667,33 @@ contains
     VERIFY_(STATUS)
 
     RETURN_(ESMF_SUCCESS)
-  
-  end subroutine SetServices
 
+    contains
+
+      subroutine OBIO_TerminateImports(RC)
+
+        integer, optional,          intent(  OUT) ::  RC  
+
+        character(len=ESMF_MAXSTR), parameter     :: IAm="OBIO_TerminateImports"
+        integer                                   :: STATUS
+        integer          :: k
+
+        do k=1, 33
+         write(unit = suffix, fmt = '(i2.2)') k
+         call MAPL_TerminateImport( GC,           &    
+            SHORT_NAME = [ character(len=(8)) ::  &
+               'TAUA_'//suffix,                   &    
+               'ASYMP_'//suffix,                  &    
+               'SSALB_'//suffix ],                &    
+            CHILD      = OGCM,                    &    
+            RC=STATUS  )
+         VERIFY_(STATUS)
+        enddo
+
+        RETURN_(ESMF_SUCCESS)
+      end subroutine OBIO_TerminateImports
+
+  end subroutine SetServices
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
