@@ -881,22 +881,29 @@ contains
       call MAPL_TimerOn(MAPL, 'TOTAL',        __RC__)
       call MAPL_TimerOn(MAPL, 'INITIALIZE',  __RC__)
 
-! this section needs to be executed only for WW3
-      call MAPL_Get(MAPL, GCS=GCS, GIM=GIM, GEX=GEX, __RC__)
-      call MAPL_Set(MAPL, ChildInit=.false., __RC__)
 
-      call ESMF_GridCompInitialize(GCS(WM), importState=GIM(WM), &
-           exportState=GEX(WM), clock=CLOCK, userRC=status )
-      VERIFY_(STATUS)
+! Set the grid explicitly if the WM instance is WW3
+! -------------------------------------------------
 
-      call ESMF_GridCompGet(GCS(WM), grid=grid, __RC__)
-      call ESMF_GridCompSet(GC, grid=grid, __RC__)
-! end of WW3 section
+      ! this section needs to be executed only for WW3:
+      ! propagate the WW3 grid up to the WGCM.
+      if (self%wave_model == wave_model_ww3) then 
+          call MAPL_Get(MAPL, GCS=GCS, GIM=GIM, GEX=GEX, __RC__)
+          call MAPL_Set(MAPL, ChildInit=.false., __RC__)
+
+          call ESMF_GridCompInitialize(GCS(WM), importState=GIM(WM), &
+                   exportState=GEX(WM), clock=CLOCK, userRC=STATUS)
+          VERIFY_(STATUS)
+
+          call ESMF_GridCompGet(GCS(WM), grid=GRID, __RC__)
+          call ESMF_GridCompSet(GC, grid=GRID, __RC__)
+      end if
+
 
 ! Get the grid
 ! ------------
 
-      call ESMF_GridCompGet( GC, grid=GRID, __RC__)
+      call ESMF_GridCompGet(GC, grid=GRID, __RC__)
 
 
 ! Generic initialize
