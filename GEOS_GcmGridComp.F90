@@ -1959,56 +1959,7 @@ contains
        VERIFY_(STATUS)
 
        if(DO_OBIO/=0) then
-          call DO_A2O(GIM(OGCM),'UU'     ,expSKIN,'UU'     , RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM),'CO2SC'  ,expSKIN,'CO2SC'  , RC=STATUS)
-          VERIFY_(STATUS)
-          do k=1, 33
-             write(unit = suffix, fmt = '(i2.2)') k
-             call DO_A2O(GIM(OGCM), 'TAUA_'//suffix, expSKIN, 'TAUA_'//suffix, RC=STATUS)
-             VERIFY_(STATUS)
-             call DO_A2O(GIM(OGCM), 'SSALB_'//suffix, expSKIN, 'SSALB_'//suffix, RC=STATUS)
-             VERIFY_(STATUS)
-             call DO_A2O(GIM(OGCM), 'ASYMP_'//suffix, expSKIN, 'ASYMP_'//suffix, RC=STATUS)
-             VERIFY_(STATUS)
-          enddo
-
-          call DO_A2O_UGD(GIM(OGCM), 'DUDP', expSKIN, 'DUDP', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O_UGD(GIM(OGCM), 'DUWT', expSKIN, 'DUWT', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O_UGD(GIM(OGCM), 'DUSD', expSKIN, 'DUSD', RC=STATUS)
-          VERIFY_(STATUS)
-
-          call DO_A2O(GIM(OGCM), 'CCOVM', expSKIN, 'CCOVM', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM), 'CDREM', expSKIN, 'CDREM', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM), 'RLWPM', expSKIN, 'RLWPM', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM), 'CLDTCM', expSKIN, 'CLDTCM', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM), 'RH', expSKIN, 'RH', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM), 'OZ', expSKIN, 'OZ', RC=STATUS)
-          VERIFY_(STATUS)
-          call DO_A2O(GIM(OGCM), 'WV', expSKIN, 'WV', RC=STATUS)
-          VERIFY_(STATUS)
-          if(DO_DATAATM==0) then
-             call DO_A2O_UGD(GIM(OGCM), 'BCDP', expSKIN, 'BCDP', RC=STATUS)
-             VERIFY_(STATUS)
-             call DO_A2O_UGD(GIM(OGCM), 'BCWT', expSKIN, 'BCWT', RC=STATUS)
-             VERIFY_(STATUS)
-             call DO_A2O_UGD(GIM(OGCM), 'OCDP', expSKIN, 'OCDP', RC=STATUS)
-             VERIFY_(STATUS)
-             call DO_A2O_UGD(GIM(OGCM), 'OCWT', expSKIN, 'OCWT', RC=STATUS)
-             VERIFY_(STATUS)
-
-             call DO_A2O_UGD(GIM(OGCM), 'FSWBAND',   expSKIN, 'FSWBAND',   RC=STATUS)
-             VERIFY_(STATUS)
-             call DO_A2O_UGD(GIM(OGCM), 'FSWBANDNA', expSKIN, 'FSWBANDNA', RC=STATUS)
-             VERIFY_(STATUS)
-          endif
+          call OBIO_A2O(DO_DATAATM, RC)
        endif
        call MAPL_TimerOff(MAPL,"--A2O"  )
        
@@ -2109,8 +2060,69 @@ contains
 
      endif
      RETURN_(ESMF_SUCCESS)
-
    end subroutine RUN_OCEAN
+
+   subroutine OBIO_A2O(DO_DATAATM, RC)
+
+     integer,                    intent(IN   ) ::  DO_DATAATM 
+     integer, optional,          intent(  OUT) ::  RC  
+
+     integer                                   :: STATUS
+     integer          :: k
+
+     call DO_A2O(GIM(OGCM),'UU'     ,expSKIN,'UU'     , RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM),'CO2SC'  ,expSKIN,'CO2SC'  , RC=STATUS)
+     VERIFY_(STATUS)
+
+     do k=1, 33
+       write(unit = suffix, fmt = '(i2.2)') k
+       call DO_A2O(GIM(OGCM), 'TAUA_'//suffix, expSKIN, 'TAUA_'//suffix, RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O(GIM(OGCM), 'SSALB_'//suffix, expSKIN, 'SSALB_'//suffix, RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O(GIM(OGCM), 'ASYMP_'//suffix, expSKIN, 'ASYMP_'//suffix, RC=STATUS)
+       VERIFY_(STATUS)
+     enddo
+
+     call DO_A2O_UGD(GIM(OGCM), 'DUDP', expSKIN, 'DUDP', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O_UGD(GIM(OGCM), 'DUWT', expSKIN, 'DUWT', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O_UGD(GIM(OGCM), 'DUSD', expSKIN, 'DUSD', RC=STATUS)
+     VERIFY_(STATUS)
+
+     call DO_A2O(GIM(OGCM), 'CCOVM', expSKIN, 'CCOVM', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM), 'CDREM', expSKIN, 'CDREM', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM), 'RLWPM', expSKIN, 'RLWPM', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM), 'CLDTCM', expSKIN, 'CLDTCM', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM), 'RH', expSKIN, 'RH', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM), 'OZ', expSKIN, 'OZ', RC=STATUS)
+     VERIFY_(STATUS)
+     call DO_A2O(GIM(OGCM), 'WV', expSKIN, 'WV', RC=STATUS)
+     VERIFY_(STATUS)
+     if(DO_DATAATM==0) then
+       call DO_A2O_UGD(GIM(OGCM), 'BCDP', expSKIN, 'BCDP', RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O_UGD(GIM(OGCM), 'BCWT', expSKIN, 'BCWT', RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O_UGD(GIM(OGCM), 'OCDP', expSKIN, 'OCDP', RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O_UGD(GIM(OGCM), 'OCWT', expSKIN, 'OCWT', RC=STATUS)
+       VERIFY_(STATUS)
+
+       call DO_A2O_UGD(GIM(OGCM), 'FSWBAND',   expSKIN, 'FSWBAND',   RC=STATUS)
+       VERIFY_(STATUS)
+       call DO_A2O_UGD(GIM(OGCM), 'FSWBANDNA', expSKIN, 'FSWBANDNA', RC=STATUS)
+       VERIFY_(STATUS)
+     endif
+     RETURN_(ESMF_SUCCESS)
+   end subroutine OBIO_A2O
 
    subroutine DO_A2O(STATEO,NAMEO,STATEA,NAMEA,RC)
      type(ESMF_State)          , intent(INOUT) ::  STATEO
