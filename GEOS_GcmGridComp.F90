@@ -1260,50 +1260,7 @@ contains
    VERIFY_(STATUS)
 
    if(DO_OBIO/=0) then
-      call AllocateExports( GCM_INTERNAL_STATE%expSKIN,                   &
-           (/'UU'/),                                     &
-           RC=STATUS )
-      VERIFY_(STATUS)
-
-      call AllocateExports( GCM_INTERNAL_STATE%expSKIN,                   &
-           (/'CO2SC'/),                                  &
-           RC=STATUS )
-      VERIFY_(STATUS)
-
-      do k=1, 33
-         write(unit = suffix, fmt = '(i2.2)') k
-         call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
-            [ character(len=8) ::                         &
-               'TAUA_'//suffix,                           &
-               'ASYMP_'//suffix,                          &
-               'SSALB_'//suffix] ,                        &
-            RC=STATUS)
-         VERIFY_(STATUS)
-      enddo
-
-      call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
-              (/'DUDP', 'DUWT', 'DUSD'/),             &
-              RC=STATUS )
-      VERIFY_(STATUS)
-
-      call AllocateExports(GCM_INTERNAL_STATE%expSKIN,                      &
-                        (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM', 'RH    ', &
-                          'OZ    ', 'WV    '/),                             &
-                        RC=STATUS)
-      VERIFY_(STATUS)
-         
-      if(DO_DATAATM==0) then
-         
-         call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
-              (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),                           &
-              RC=STATUS )
-         VERIFY_(STATUS)
-         
-         call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &
-              (/'FSWBAND  ', 'FSWBANDNA'/),               &
-              RC=STATUS )
-         VERIFY_(STATUS)
-      endif
+     call AllocateExports_OBIO(DO_DATAATM, RC)
    endif
 
    call AllocateExports(GEX(OGCM), (/'UW      ', 'VW      ', &
@@ -1373,6 +1330,62 @@ contains
      RETURN_(ESMF_SUCCESS)
 
    end subroutine AllocateExports_UGD
+
+   subroutine AllocateExports_OBIO(DO_DATAATM, RC)
+
+     integer,                    intent(IN   ) ::  DO_DATAATM 
+     integer, optional,          intent(  OUT) ::  RC  
+
+     integer                                   :: STATUS
+     integer          :: k
+
+     call AllocateExports( GCM_INTERNAL_STATE%expSKIN,                   &    
+          (/'UU'/),                                     &    
+          RC=STATUS )
+     VERIFY_(STATUS)
+
+     call AllocateExports( GCM_INTERNAL_STATE%expSKIN,                   &    
+          (/'CO2SC'/),                                  &    
+          RC=STATUS )
+     VERIFY_(STATUS)
+
+     do k=1, 33
+        write(unit = suffix, fmt = '(i2.2)') k
+        call AllocateExports(GCM_INTERNAL_STATE%expSKIN, &
+           [ character(len=8) ::                         &    
+              'TAUA_'//suffix,                           &    
+              'ASYMP_'//suffix,                          &    
+              'SSALB_'//suffix] ,                        &    
+           RC=STATUS)
+        VERIFY_(STATUS)
+     enddo
+
+     call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &    
+             (/'DUDP', 'DUWT', 'DUSD'/),             &    
+             RC=STATUS )
+     VERIFY_(STATUS)
+
+     call AllocateExports(GCM_INTERNAL_STATE%expSKIN,                      &    
+                       (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM', 'RH    ', &
+                         'OZ    ', 'WV    '/),                             &    
+                       RC=STATUS)
+     VERIFY_(STATUS)
+     
+     if(DO_DATAATM==0) then 
+        call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &    
+             (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),                           &    
+             RC=STATUS )
+        VERIFY_(STATUS)
+     
+        call AllocateExports_UGD( GCM_INTERNAL_STATE%expSKIN,               &    
+             (/'FSWBAND  ', 'FSWBANDNA'/),               &    
+             RC=STATUS )
+        VERIFY_(STATUS)
+     endif
+
+     RETURN_(ESMF_SUCCESS)
+   end subroutine AllocateExports_OBIO
+
  end subroutine Initialize
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
