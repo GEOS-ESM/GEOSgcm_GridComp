@@ -260,8 +260,6 @@ contains
     call getBands_(MAPL, USE_RRTMGP_SORAD, USE_RRTMG_SORAD, USE_RRTMGP, &
                        USE_RRTMG, NUM_BANDS, __RC__)
 
-!   call MAPL_GetResource(MAPL,NUM_BANDS, 'test_BANDS:', __RC__)
-!f(MAPL_am_i_root()) print*,'test_BANDS = ', NUM_BANDS
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -514,7 +512,7 @@ contains
     call MAPL_AddImportSpec(GC,                                   &
        LONG_NAME  = 'aerosols',                                   &
        UNITS      = 'kg kg-1',                                    &
-       SHORT_NAME = 'AERO',                                       &
+       SHORT_NAME = 'AERO_RAD',                                   &
        DIMS       = MAPL_DimsHorzVert,                            &
        VLOCATION  = MAPL_VLocationCenter,                         &
        DATATYPE   = MAPL_StateItem,                               &
@@ -522,7 +520,7 @@ contains
                                                        RC=STATUS  )
     VERIFY_(STATUS)
 
-
+#if 0
     call MAPL_AddImportSpec(GC,                                   &
        LONG_NAME  = 'aerosols_from_GOCART2G',                     &
        UNITS      = 'kg kg-1',                                    &
@@ -532,7 +530,7 @@ contains
        DATATYPE   = MAPL_StateItem,                               &
        RESTART    = MAPL_RestartSkip,                             &
                                                        __RC__  )
-
+#endif
 
 !  !EXPORT STATE:
 
@@ -1790,9 +1788,6 @@ contains
    call getBands_(MAPL, USE_RRTMGP_SORAD, USE_RRTMG_SORAD, USE_RRTMGP, USE_RRTMG, &
                   OFFSET=offset1, NB_IRRAD=nb_irrad1, __RC__)
 
-if (mapl_am_i_root()) print*,'RAD offset1 = ', offset1
-if (mapl_am_i_root()) print*,'RAD nb_irrad1 = ', nb_irrad1
-
    ! Set number of IRRAD bands for aerosol optics
    if (USE_RRTMGP) then
       NB_IRRAD = NB_RRTMGP
@@ -1916,7 +1911,7 @@ if (mapl_am_i_root()) print*,'RAD nb_irrad1 = ', nb_irrad1
 
    call MAPL_TimerOn(MAPL,"---AEROSOLS")
 
-   call ESMF_StateGet(IMPORT, 'AERO', AERO, RC=STATUS)
+   call ESMF_StateGet(IMPORT, 'AERO_RAD', AERO, RC=STATUS)
    VERIFY_(STATUS)
 
 
@@ -1959,9 +1954,6 @@ if (mapl_am_i_root()) print*,'RAD nb_irrad1 = ', nb_irrad1
       AEROSOL_SSA = 0.0
       AEROSOL_ASY = 0.0
 
-if (mapl_am_i_root()) print*,'GOCART NB_IRRAD = ',NB_IRRAD
-if (mapl_am_i_root()) print*,'GOCART OFFSET   = ',OFFSET
-
       ! compute aerosol optics at all solar bands
       IR_BANDS: do band = 1, NB_IRRAD
 
@@ -1969,7 +1961,7 @@ if (mapl_am_i_root()) print*,'GOCART OFFSET   = ',OFFSET
          VERIFY_(STATUS)
 
          ! execute the aero provider's optics method
-         call ESMF_MethodExecute(AERO, label="aerosol_optics", RC=STATUS)
+         call ESMF_MethodExecute(AERO, label="run_aerosol_optics", RC=STATUS)
          VERIFY_(STATUS)
 
          ! EXT from AERO_PROVIDER
@@ -2018,7 +2010,7 @@ if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
 
 ! BEGIN GOCARTng AERO2G callback 
 ! ================================================================
-
+#if 0
    call ESMF_StateGet(IMPORT, 'AERO2G_RAD', AERO2G, __RC__)
 
 !   call ESMF_AttributeGet (AERO2G, name='active_aerosol_instances', itemCount=i, __RC__)
@@ -2117,13 +2109,13 @@ if (mapl_am_i_root()) print*,'AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY)
 !      deallocate(AEROSOL2G_ASY, __STAT__)
 
 
-
+#endif
 ! END GOCARTng AERO2G callback
 ! ================================================================
 
-if (mapl_am_i_root()) print*,'diff AEROSOL2G_EXT = ', sum(AEROSOL2G_EXT - AEROSOL_EXT)
-if (mapl_am_i_root()) print*,'diff AEROSOL2G_SSA = ', sum(AEROSOL2G_SSA - AEROSOL_SSA)
-if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSOL_ASY)
+!if (mapl_am_i_root()) print*,'diff AEROSOL2G_EXT = ', sum(AEROSOL2G_EXT - AEROSOL_EXT)
+!if (mapl_am_i_root()) print*,'diff AEROSOL2G_SSA = ', sum(AEROSOL2G_SSA - AEROSOL_SSA)
+!if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSOL_ASY)
 
 !if (mapl_am_i_root()) print*,'TEST aerosol2g_ext = ', aerosol2g_ext
 !if (mapl_am_i_root()) print*,'TEST aerosol_ext   = ', aerosol_ext
@@ -4401,8 +4393,6 @@ end subroutine RUN
           NUM_BANDS = NB_CHOU + NUM_BANDS
       end if
 
-!if (mapl_am_i_root()) print*,'determineRAD_ NUM_BANDS = ',NUM_BANDS
-
       call MAPL_Get(MAPL, cf=cfg, __RC__)
       call MAPL_ConfigSetAttribute(cfg, NUM_BANDS, label='NUM_BANDS:', __RC__)
    end if 
@@ -4484,8 +4474,6 @@ end subroutine RUN
           NUM_BANDS = NB_CHOU + NUM_BANDS
       end if
 
-if (mapl_am_i_root()) print*,'getBands_ NUM_BANDS = ',NUM_BANDS
-
       call MAPL_Get(MAPL, cf=cfg, __RC__)
 !    NUM_BANDS: should be removed from AGCM.rc, and then this value will set it
       call MAPL_ConfigSetAttribute(cfg, NUM_BANDS, label='NUM_BANDS:', __RC__)
@@ -4501,8 +4489,6 @@ if (mapl_am_i_root()) print*,'getBands_ NUM_BANDS = ',NUM_BANDS
       else
          OFFSET = NB_CHOU_SORAD
       end if
-if (mapl_am_i_root()) print*,'getBands_ OFFSET = ',OFFSET
-
    end if
 
    ! Set number of IRRAD bands for aerosol optics
@@ -4514,8 +4500,6 @@ if (mapl_am_i_root()) print*,'getBands_ OFFSET = ',OFFSET
       else
          NB_IRRAD = NB_CHOU
       end if
-if (mapl_am_i_root()) print*,'getBands_ NB_IRRAD = ',NB_IRRAD
-
    end if
 
 

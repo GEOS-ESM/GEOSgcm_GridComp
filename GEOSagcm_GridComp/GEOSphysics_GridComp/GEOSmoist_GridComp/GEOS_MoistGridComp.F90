@@ -740,7 +740,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)      
 
-
+#if 0
     call MAPL_AddImportSpec(GC,                       & ! GOCART2G testing purposes. Will remove.
          LONG_NAME  = 'aerosol_cloud_interaction',                             &
          UNITS      = '1',                                                     &
@@ -750,7 +750,7 @@ contains
          DATATYPE   = MAPL_StateItem,                                         &
          RC=STATUS  )
     VERIFY_(STATUS)
-
+#endif
 
     !new imports required for Aer-Cloud Interactions
 
@@ -7608,10 +7608,10 @@ contains
 
       call ESMF_StateGet(IMPORT, 'AERO_ACI', aero_aci, __RC__)
 
-      call ESMF_AttributeGet(aero_aci, name='implements_aerosol_activation_properties_method', &
-                                       value=implements_aerosol_activation_properties, __RC__)
+!      call ESMF_AttributeGet(aero_aci, name='implements_aerosol_activation_properties_method', &
+!                                       value=implements_aerosol_activation_properties, __RC__)
 
-      if (implements_aerosol_activation_properties) then
+!      if (implements_aerosol_activation_properties) then
 
           call ESMF_AttributeGet(aero_aci, name='number_of_aerosol_modes', value=n_modes, __RC__)
 
@@ -7744,11 +7744,11 @@ contains
 
       call MAPL_TimerOff(STATE,"--USE_AEROSOL_NN1")
 
-      else
+!      else
           ! options: 
           !     *) set aerosol concentrations to 0.0, i.e., no aerosol
           !     *) raise an exception if aerosol is required!
-      end if
+!      end if
 
 
 !====== BEGIN AERO2G_ACI ==================

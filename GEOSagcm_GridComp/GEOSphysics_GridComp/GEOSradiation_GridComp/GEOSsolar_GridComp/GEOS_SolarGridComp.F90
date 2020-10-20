@@ -570,7 +570,7 @@ contains
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'aerosols',                                              &
        UNITS      = 'kg kg-1',                                               &
-       SHORT_NAME = 'AERO',                                                  &
+       SHORT_NAME = 'AERO_RAD',                                              &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
        DATATYPE   = MAPL_StateItem,                                          &
@@ -578,6 +578,7 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
+#if 0
     call MAPL_AddImportSpec(GC,                                   &
        LONG_NAME  = 'aerosols_from_GOCARTng',                     &
        UNITS      = 'kg kg-1',                                    &
@@ -587,7 +588,7 @@ contains
        DATATYPE   = MAPL_StateItem,                               &
        RESTART    = MAPL_RestartSkip,                             &
                                                        __RC__  )
-
+#endif
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo_for_visible_beam',                       &
@@ -1983,7 +1984,7 @@ contains
 
        call MAPL_TimerOn (MAPL,"-AEROSOLS", RC=STATUS); VERIFY_(STATUS)
 
-       call ESMF_StateGet(IMPORT, 'AERO', AERO, RC=STATUS)
+       call ESMF_StateGet(IMPORT, 'AERO_RAD', AERO, RC=STATUS)
        VERIFY_(STATUS)
 
        call ESMF_AttributeGet(aero, name='implements_aerosol_optics_method', &
@@ -2056,7 +2057,7 @@ if (mapl_am_i_root()) print*,'BANDS_SOLAR_OFFSET     = ',BANDS_SOLAR_OFFSET
                VERIFY_(STATUS)
 
                ! execute the aero provider's optics method 
-               call ESMF_MethodExecute(AERO, label="aerosol_optics", userRC=AS_STATUS, RC=STATUS)
+               call ESMF_MethodExecute(AERO, label="run_aerosol_optics", userRC=AS_STATUS, RC=STATUS)
                VERIFY_(AS_STATUS)
                VERIFY_(STATUS)
 
@@ -2104,7 +2105,7 @@ if (mapl_am_i_root()) print*,'BANDS_SOLAR_OFFSET     = ',BANDS_SOLAR_OFFSET
 
 ! BEGIN GOCARTng AERO2G callback
 ! ================================================================
-
+#if 0
        call ESMF_StateGet(IMPORT, 'AERO2G_RAD', AERO2G, RC=STATUS)
        VERIFY_(STATUS)
 
@@ -2220,18 +2221,18 @@ if (mapl_am_i_root()) print*,'BANDS_SOLAR_OFFSET     = ',BANDS_SOLAR_OFFSET
                end if
            end do ! do band = 1, NUM_BANDS_SOLAR 
 
-
+#endif
 if (mapl_am_i_root()) print*,'SOLAR AEROSOL_EXT = ', sum(AEROSOL_EXT)
 if (mapl_am_i_root()) print*,'SOLAR AEROSOL_SSA = ', sum(AEROSOL_SSA)
 if (mapl_am_i_root()) print*,'SOLAR AEROSOL_ASY = ', sum(AEROSOL_ASY)
 
-if (mapl_am_i_root()) print*,'SOLAR AEROSOL2G_EXT = ', sum(AEROSOL2G_EXT)
-if (mapl_am_i_root()) print*,'SOLAR AEROSOL2G_SSA = ', sum(AEROSOL2G_SSA)
-if (mapl_am_i_root()) print*,'SOLAR AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY)
+!if (mapl_am_i_root()) print*,'SOLAR AEROSOL2G_EXT = ', sum(AEROSOL2G_EXT)
+!if (mapl_am_i_root()) print*,'SOLAR AEROSOL2G_SSA = ', sum(AEROSOL2G_SSA)
+!if (mapl_am_i_root()) print*,'SOLAR AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY)
 
-if (mapl_am_i_root()) print*,'SOLAR AEROSOL_EXT diff = ', sum(AEROSOL_EXT-AEROSOL2G_EXT)
-if (mapl_am_i_root()) print*,'SOLAR AEROSOL_SSA diff = ', sum(AEROSOL_SSA-AEROSOL2G_SSA)
-if (mapl_am_i_root()) print*,'SOLAR AEROSOL_ASY diff = ', sum(AEROSOL_ASY-AEROSOL2G_ASY)
+!if (mapl_am_i_root()) print*,'SOLAR AEROSOL_EXT diff = ', sum(AEROSOL_EXT-AEROSOL2G_EXT)
+!if (mapl_am_i_root()) print*,'SOLAR AEROSOL_SSA diff = ', sum(AEROSOL_SSA-AEROSOL2G_SSA)
+!if (mapl_am_i_root()) print*,'SOLAR AEROSOL_ASY diff = ', sum(AEROSOL_ASY-AEROSOL2G_ASY)
 
 !if (mapl_am_i_root()) print*,'SOLAR all AEROSOL_ASY = ', AEROSOL_ASY
 !if (mapl_am_i_root()) print*,'SOLAR all AEROSOL2G_ASY = ',AEROSOL2G_ASY
@@ -2737,7 +2738,7 @@ if (mapl_am_i_root()) print*,'SOLAR AEROSOL_ASY diff = ', sum(AEROSOL_ASY-AEROSO
 !-----------------------------------------------------------------
 
 !            if (NAMESimp(K)=="AERO") then
-            if ((NAMESimp(K)=="AERO") .OR. (NAMESimp(K)=="AERO2G_RAD")) then
+            if (NAMESimp(K)=="AERO_RAD") then
 
                if(NO_AERO) then ! This is a no aerosol call done for "clean" diagnostics
                   NA = 0
@@ -2792,7 +2793,8 @@ if (mapl_am_i_root()) print*,'SOLAR AEROSOL_ASY diff = ', sum(AEROSOL_ASY-AEROSO
 
          if(SLICESimp(K) > 0) then ! Skip PREF
 
-            if (NAMESimp(K)=="AERO") then
+!            if (NAMESimp(K)=="AERO") then
+            if (NAMESimp(K)=="AERO_RAD") then
 
                _ASSERT(size(AEROSOL_EXT,3)==LM,'needs informative message')
                _ASSERT(size(AEROSOL_SSA,3)==LM,'needs informative message')
@@ -2849,69 +2851,9 @@ if (mapl_am_i_root()) print*,'SOLAR AEROSOL_ASY diff = ', sum(AEROSOL_ASY-AEROSO
                deallocate(BUF_AEROSOL, stat=STATUS)
                VERIFY_(STATUS)
 
-
-! BEGIN GOCARTng accomodation for SORADCORE
-!            else if (NAMESimp(K)=="AERO2G") then
-
-!               ASSERT_(size(AEROSOL2G_EXT,3)==LM)
-!               ASSERT_(size(AEROSOL2G_SSA,3)==LM)
-!               ASSERT_(size(AEROSOL2G_ASY,3)==LM)
-
-!               allocate(BUF_AEROSOL(size(AEROSOL2G_EXT,1), &
-!                                    size(AEROSOL2G_EXT,2), &
-!                                    size(AEROSOL2G_EXT,3)), stat=STATUS)
-!               VERIFY_(STATUS)
-
-!               BUF_AEROSOL = MAPL_UNDEF
-!               do J=1,NUM_BANDS_SOLAR
-!                   BUF_AEROSOL = AEROSOL2G_EXT(:,:,:,J)
-
-!                   call ReOrder(BUFIMP(L1 + (J-1)*LM*NUMMAX),BUF_AEROSOL,DAYTIME,NUMMAX,&
-!                        HorzDims,LM,PACKIT)
-!               end do
-
-!               LN = L1 + NUMMAX*LM*NUM_BANDS_SOLAR - 1
-
-!               PTR3(1:NUMMAX,1:LM,1:NUM_BANDS_SOLAR) => BUFIMP(L1:LN)
-!               BUFIMP_AEROSOL_EXT => PTR3(1:NUM2DO,:,:)
-
-!               L1 = LN + 1
-
-!               BUF_AEROSOL = MAPL_UNDEF
-!               do J=1,NUM_BANDS_SOLAR
-!                   BUF_AEROSOL = AEROSOL2G_SSA(:,:,:,J)
-
-!                   call ReOrder(BUFIMP(L1 + (J-1)*LM*NUMMAX),BUF_AEROSOL,DAYTIME,NUMMAX,&
-!                        HorzDims,LM,PACKIT)
-!               end do
-
-!               LN = L1 + NUMMAX*LM*NUM_BANDS_SOLAR - 1
-
-!               PTR3(1:NUMMAX,1:LM,1:NUM_BANDS_SOLAR) => BUFIMP(L1:LN)
-!               BUFIMP_AEROSOL_SSA => PTR3(1:NUM2DO,:,:)
-
-!               L1 = LN + 1
-
-!               BUF_AEROSOL = MAPL_UNDEF
-!               do J=1,NUM_BANDS_SOLAR
-
-!                   BUF_AEROSOL = AEROSOL2G_ASY(:,:,:,J)
-!                   call ReOrder(BUFIMP(L1 + (J-1)*LM*NUMMAX),BUF_AEROSOL,DAYTIME,NUMMAX,&
-!                        HorzDims,LM,PACKIT)
-!               end do
-
-!               LN = L1 + NUMMAX*LM*NUM_BANDS_SOLAR - 1
-
-!               PTR3(1:NUMMAX,1:LM,1:NUM_BANDS_SOLAR) => BUFIMP(L1:LN)
-!               BUFIMP_AEROSOL_ASY => PTR3(1:NUM2DO,:,:)
-
-!               deallocate(BUF_AEROSOL, stat=STATUS)
-!               VERIFY_(STATUS)
-!! END GOCARTng accomodation for SORADCORE
-
             else
-!               if (SLICESimp(K) /= 1) then
-               if ((SLICESimp(K) /= 1) .AND. (trim(NAMESimp(K)) /= 'AERO2G_RAD')) then
+               if (SLICESimp(K) /= 1) then
+!               if ((SLICESimp(K) /= 1) .AND. (trim(NAMESimp(K)) /= 'AERO2G_RAD')) then
 
                   call ESMFL_StateGetPointerToData(IMPORT, PTR3, NAMESimp(K), RC=STATUS)
                   VERIFY_(STATUS)
@@ -2931,10 +2873,10 @@ if (mapl_am_i_root()) print*,'SOLAR AEROSOL_ASY diff = ', sum(AEROSOL_ASY-AEROSO
                   else if (trim(NAMESimp(K)) == 'ZTH') then
                      call ReOrder(BUFIMP(L1),ZTH,DAYTIME,NUMMAX,HorzDims,1,PACKIT)
                   else 
-                     if (trim(NAMESimp(K)) /= 'AERO2G_RAD') then ! accomodation for GOCARTng
+!                     if (trim(NAMESimp(K)) /= 'AERO2G_RAD') then ! accomodation for GOCARTng
                         call ESMFL_StateGetPointerToData(IMPORT, PTR2, NAMESimp(K), __RC__)
                         call ReOrder(BUFIMP(L1),Ptr2,DAYTIME,NUMMAX,HorzDims,1,PACKIT)
-                     end if
+!                     end if
                   end if
 
                   LN = L1 + NUMMAX - 1
