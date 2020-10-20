@@ -49,3 +49,7 @@ if (is_openmp)
   target_compile_options(${this} PRIVATE ${OpenMP_Fortran_FLAGS})
 endif ()
 
+ecbuild_add_executable (TARGET CNLSMdriver.x SOURCES ../CNLSM_point_driver.F90 INCLUDES ${INC_ESMF} ${INC_NET
+CDF} LIBS GEOS_LandShared MAPL ${this})
+
+install(PROGRAMS ../run_cnlsm.x DESTINATION bin)
