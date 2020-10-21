@@ -572,22 +572,10 @@ contains
 
 
      if (DO_OBIO/=0) then
-      call OBIO_TerminateImports(RC)
+      call OBIO_TerminateImports(DO_DATAATM, RC)
      end if
 
-     if(DO_DATAATM==0) then
-        call MAPL_TerminateImport    ( GC,                             &  ! These go to OGCM only if DO_OBIO /= 0.
-             SHORT_NAME = (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),         &
-             CHILD      = OGCM,                                        &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-
-        call MAPL_TerminateImport    ( GC,                             &  ! These go to OGCM only if DO_OBIO /= 0.
-             SHORT_NAME = (/'FSWBAND  ', 'FSWBANDNA'/),                &
-             CHILD      = OGCM,                                        &
-             RC=STATUS  )
-        VERIFY_(STATUS)
-     else
+     if(DO_DATAATM /= 0) then
         call MAPL_TerminateImport    ( GC,   & 
              SHORT_NAME = (/'KPAR   ','UW     ','VW     ','UI     ', &
              'VI     ','TAUXBOT','TAUYBOT'/),         &
@@ -658,8 +646,9 @@ contains
 
     contains
 
-      subroutine OBIO_TerminateImports(RC)
+      subroutine OBIO_TerminateImports(DO_DATAATM, RC)
 
+        integer,                    intent(IN   ) ::  DO_DATAATM 
         integer, optional,          intent(  OUT) ::  RC  
 
         character(len=ESMF_MAXSTR), parameter     :: IAm="OBIO_TerminateImports"
@@ -697,6 +686,20 @@ contains
             RC=STATUS  )
          VERIFY_(STATUS)
         enddo
+
+        if(DO_DATAATM==0) then
+          call MAPL_TerminateImport    ( GC,                         &
+               SHORT_NAME = (/'BCDP', 'BCWT', 'OCDP', 'OCWT' /),     &
+               CHILD      = OGCM,                                    &
+               RC=STATUS  )
+          VERIFY_(STATUS)
+
+          call MAPL_TerminateImport    ( GC,                         &
+               SHORT_NAME = (/'FSWBAND  ', 'FSWBANDNA'/),            &
+               CHILD      = OGCM,                                    &
+               RC=STATUS  )
+          VERIFY_(STATUS)
+        end if
 
         RETURN_(ESMF_SUCCESS)
       end subroutine OBIO_TerminateImports
@@ -2114,6 +2117,7 @@ contains
      VERIFY_(STATUS)
      call DO_A2O(GIM(OGCM), 'WV', expSKIN, 'WV', RC=STATUS)
      VERIFY_(STATUS)
+
      if(DO_DATAATM==0) then
        call DO_A2O_UGD(GIM(OGCM), 'BCDP', expSKIN, 'BCDP', RC=STATUS)
        VERIFY_(STATUS)
@@ -2129,6 +2133,7 @@ contains
        call DO_A2O_UGD(GIM(OGCM), 'FSWBANDNA', expSKIN, 'FSWBANDNA', RC=STATUS)
        VERIFY_(STATUS)
      endif
+
      RETURN_(ESMF_SUCCESS)
    end subroutine OBIO_A2O
 

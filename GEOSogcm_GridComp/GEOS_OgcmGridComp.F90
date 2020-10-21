@@ -57,6 +57,14 @@ module GEOS_OgcmGridCompMod
   integer, parameter :: NUM_SNOW_LAYERS=1
   integer            :: NUM_ICE_CATEGORIES
   integer            :: NUM_ICE_LAYERS
+
+  integer            :: DO_CICE_THERMO
+  integer            :: DO_DATASEAONLY
+  integer            :: DO_DATAICE
+  integer            :: DO_OBIO
+  integer            :: DO_DATAATM
+
+!if DO_OBIO =/ 0
   integer, parameter :: NUM_DUDP = 5
   integer, parameter :: NUM_DUWT = 5
   integer, parameter :: NUM_DUSD = 5
@@ -67,11 +75,7 @@ module GEOS_OgcmGridCompMod
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
   integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
   integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
-  integer            :: DO_CICE_THERMO
-  integer            :: DO_DATASEAONLY
-  integer            :: DO_DATAICE
-  integer            :: DO_OBIO
-  integer            :: DO_DATAATM
+!--------
 
   character(len=ESMF_MAXSTR)          :: OCEAN_NAME
 !=============================================================================
@@ -379,75 +383,7 @@ contains
   VERIFY_(STATUS)
 
   if (DO_OBIO/=0) then
-    call OBIO_SetServices(RC)
-  end if
-
-  if(DO_DATAATM==0) then           ! needed only if DO_OBIO /= 0.
-     call MAPL_AddImportSpec(GC,                             &
-          LONG_NAME          = 'Black Carbon Dry Deposition',&
-          UNITS              = 'kg m-2 s-1'                 ,&
-          SHORT_NAME         = 'BCDP'                       ,&
-          DIMS               = MAPL_DimsTileOnly            ,&
-          UNGRIDDED_DIMS     = (/NUM_BCDP/)                 ,&
-          VLOCATION          = MAPL_VLocationNone           ,&
-          RESTART            = MAPL_RestartSkip             ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddImportSpec(GC,                             &
-          LONG_NAME          = 'Black Carbon Wet Deposition',&
-          UNITS              = 'kg m-2 s-1'                 ,&
-          SHORT_NAME         = 'BCWT'                       ,&
-          DIMS               = MAPL_DimsTileOnly            ,&
-          UNGRIDDED_DIMS     = (/NUM_BCWT/)                 ,&
-          VLOCATION          = MAPL_VLocationNone           ,&
-          RESTART            = MAPL_RestartSkip             ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddImportSpec(GC,                               &
-          LONG_NAME          = 'Organic Carbon Dry Deposition',&
-          UNITS              = 'kg m-2 s-1'                   ,&
-          SHORT_NAME         = 'OCDP'                         ,&
-          DIMS               = MAPL_DimsTileOnly              ,&
-          UNGRIDDED_DIMS     = (/NUM_OCDP/)                   ,&
-          VLOCATION          = MAPL_VLocationNone             ,&
-          RESTART            = MAPL_RestartSkip               ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddImportSpec(GC,                               &
-          LONG_NAME          = 'Organic Carbon Wet Deposition',&
-          UNITS              = 'kg m-2 s-1'                   ,&
-          SHORT_NAME         = 'OCWT'                         ,&
-          DIMS               = MAPL_DimsTileOnly              ,&
-          UNGRIDDED_DIMS     = (/NUM_OCWT/)                   ,&
-          VLOCATION          = MAPL_VLocationNone             ,&
-          RESTART            = MAPL_RestartSkip               ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddImportSpec(GC,                             &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
-          UNITS              = 'W m-2'                      ,&
-          SHORT_NAME         = 'FSWBAND'                    ,&
-          DIMS               = MAPL_DimsTileOnly            ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
-          VLOCATION          = MAPL_VLocationNone           ,&
-          RESTART            = MAPL_RestartSkip             ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddImportSpec(GC,                             &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
-          UNITS              = 'W m-2'                      ,&
-          SHORT_NAME         = 'FSWBANDNA'                  ,&
-          DIMS               = MAPL_DimsTileOnly            ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
-          VLOCATION          = MAPL_VLocationNone           ,&
-          RESTART            = MAPL_RestartSkip             ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+    call OBIO_SetServices(DO_DATAATM, RC)
   end if
   
 ! These are supposed to be friendly to us
@@ -884,8 +820,9 @@ contains
  
     contains
 
-    subroutine OBIO_SetServices(RC)
+    subroutine OBIO_SetServices(DO_DATAATM, RC)
     
+      integer,                intent(IN   ) ::  DO_DATAATM
       integer, optional,      intent(  OUT) ::  RC
       integer                               :: STATUS
 
@@ -1035,6 +972,74 @@ contains
            VLOCATION  = MAPL_VLocationNone,                       &
            RC=STATUS  )
       VERIFY_(STATUS)
+
+      if(DO_DATAATM==0) then
+        call MAPL_AddImportSpec(GC,                             &
+             LONG_NAME          = 'Black Carbon Dry Deposition',&
+             UNITS              = 'kg m-2 s-1'                 ,&
+             SHORT_NAME         = 'BCDP'                       ,&
+             DIMS               = MAPL_DimsTileOnly            ,&
+             UNGRIDDED_DIMS     = (/NUM_BCDP/)                 ,&
+             VLOCATION          = MAPL_VLocationNone           ,&
+             RESTART            = MAPL_RestartSkip             ,&
+             RC=STATUS  ) 
+        VERIFY_(STATUS)
+     
+        call MAPL_AddImportSpec(GC,                             &
+             LONG_NAME          = 'Black Carbon Wet Deposition',&
+             UNITS              = 'kg m-2 s-1'                 ,&
+             SHORT_NAME         = 'BCWT'                       ,&
+             DIMS               = MAPL_DimsTileOnly            ,&
+             UNGRIDDED_DIMS     = (/NUM_BCWT/)                 ,&
+             VLOCATION          = MAPL_VLocationNone           ,&
+             RESTART            = MAPL_RestartSkip             ,&
+             RC=STATUS  ) 
+        VERIFY_(STATUS)
+     
+        call MAPL_AddImportSpec(GC,                               &
+             LONG_NAME          = 'Organic Carbon Dry Deposition',&
+             UNITS              = 'kg m-2 s-1'                   ,&
+             SHORT_NAME         = 'OCDP'                         ,&
+             DIMS               = MAPL_DimsTileOnly              ,&
+             UNGRIDDED_DIMS     = (/NUM_OCDP/)                   ,&
+             VLOCATION          = MAPL_VLocationNone             ,&
+             RESTART            = MAPL_RestartSkip               ,&
+             RC=STATUS  ) 
+        VERIFY_(STATUS)
+     
+        call MAPL_AddImportSpec(GC,                               &
+             LONG_NAME          = 'Organic Carbon Wet Deposition',&
+             UNITS              = 'kg m-2 s-1'                   ,&
+             SHORT_NAME         = 'OCWT'                         ,&
+             DIMS               = MAPL_DimsTileOnly              ,&
+             UNGRIDDED_DIMS     = (/NUM_OCWT/)                   ,&
+             VLOCATION          = MAPL_VLocationNone             ,&
+             RESTART            = MAPL_RestartSkip               ,&
+             RC=STATUS  ) 
+        VERIFY_(STATUS)
+     
+        call MAPL_AddImportSpec(GC,                             &
+             LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
+             UNITS              = 'W m-2'                      ,&
+             SHORT_NAME         = 'FSWBAND'                    ,&
+             DIMS               = MAPL_DimsTileOnly            ,&
+             UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
+             VLOCATION          = MAPL_VLocationNone           ,&
+             RESTART            = MAPL_RestartSkip             ,&
+             RC=STATUS  ) 
+        VERIFY_(STATUS)
+     
+        call MAPL_AddImportSpec(GC,                             &
+             LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
+             UNITS              = 'W m-2'                      ,&
+             SHORT_NAME         = 'FSWBANDNA'                  ,&
+             DIMS               = MAPL_DimsTileOnly            ,&
+             UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
+             VLOCATION          = MAPL_VLocationNone           ,&
+             RESTART            = MAPL_RestartSkip             ,&
+             RC=STATUS  ) 
+        VERIFY_(STATUS)
+      end if
 
 !     if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
         ! Ocean to OceanBio
@@ -1732,23 +1737,8 @@ contains
     endif 
     
     if (DO_OBIO/=0) then
-      call OBIO_RunTransforms(RC)
+      call OBIO_RunTransforms(DO_DATAATM, RC)
     endif
-
-    if(DO_DATAATM==0) then
-       call MAPL_GetPointer(IMPORT, BCDP    ,  'BCDP'   , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, BCWT    ,  'BCWT'   , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, OCDP    ,  'OCDP'   , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, OCWT    ,  'OCWT'   , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'   , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA' , RC=STATUS)
-       VERIFY_(STATUS)
-    end if
 
     call MAPL_GetPointer(IMPORT, LWFLX, 'LWFLX', RC=STATUS)
     VERIFY_(STATUS)
@@ -1846,18 +1836,6 @@ contains
     call MAPL_GetPointer(GIM(OCEAN ), USTR3O  ,  'OUSTAR3', notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(GIM(OCEAN ), PSO     ,  'PS'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
 
-    if (DO_OBIO/=0) then
-    if(DO_DATAATM==0) then
-      call MAPL_GetPointer(GIM(OBIO ), BCDPB   ,  'BCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(GIM(OBIO ), BCWTB   ,  'BCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(GIM(OBIO ), OCDPB   ,  'OCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(GIM(OBIO ), OCWTB   ,  'OCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          
-      call MAPL_GetPointer(GIM(ORAD ), FSWBANDR   , 'FSWBAND'   , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(GIM(ORAD ), FSWBANDNAR , 'FSWBANDNA' , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
-    end if
-    end if
-    
     if(DO_DATASEAONLY==0) then
        call MAPL_GetPointer(GIM(OCEAN  ), PENUVRM ,  'PENUVR',  RC=STATUS)
        VERIFY_(STATUS)
@@ -2001,44 +1979,6 @@ contains
        VERIFY_(STATUS)
     endif
 
-    if(DO_DATAATM==0) then
-       if(associated(BCDPB)) then
-          do N = 1, NUM_BCDP
-             call MAPL_LocStreamTransform( ExchGrid, BCDPB(:,:,N), BCDP(:,N), RC=STATUS )
-             VERIFY_(STATUS)
-          end do
-       endif
-       if(associated(BCWTB)) then
-          do N = 1, NUM_BCWT
-             call MAPL_LocStreamTransform( ExchGrid, BCWTB(:,:,N), BCWT(:,N), RC=STATUS )
-             VERIFY_(STATUS)
-          end do
-       endif
-       if(associated(OCDPB)) then
-          do N = 1, NUM_OCDP
-             call MAPL_LocStreamTransform( ExchGrid, OCDPB(:,:,N), OCDP(:,N), RC=STATUS )
-             VERIFY_(STATUS)
-          end do
-       endif
-       if(associated(OCWTB)) then
-          do N = 1, NUM_OCWT
-             call MAPL_LocStreamTransform( ExchGrid, OCWTB(:,:,N), OCWT(:,N), RC=STATUS )
-             VERIFY_(STATUS)
-          end do
-       endif
-       if(associated(FSWBANDR)) then
-          do N = 1, NB_CHOU
-             call MAPL_LocStreamTransform( ExchGrid, FSWBANDR(:,:,N),   FSWBAND(:,N),   RC=STATUS )
-             VERIFY_(STATUS)
-          end do
-       endif
-       if(associated(FSWBANDNAR)) then
-          do N = 1, NB_CHOU
-             call MAPL_LocStreamTransform( ExchGrid, FSWBANDNAR(:,:,N), FSWBANDNA(:,N), RC=STATUS )
-             VERIFY_(STATUS)
-          end do
-       endif
-    end if
     
     call MAPL_LocStreamTransform( ExchGrid, PENUVRO,  PENUVR, RC=STATUS) 
     VERIFY_(STATUS)
@@ -2523,8 +2463,9 @@ contains
    
     contains
 
-    subroutine OBIO_RunTransforms(RC)
+    subroutine OBIO_RunTransforms(DO_DATAATM, RC)
 
+      integer,                    intent(IN   ) ::  DO_DATAATM
       integer, optional,          intent(  OUT) ::  RC
       
       character(len=ESMF_MAXSTR), parameter :: IAm="OBIO_RunTransforms"
@@ -2595,6 +2536,21 @@ contains
       call MAPL_GetPointer(GIM(ORAD ), RHO     ,  'RH'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(GIM(ORAD ), OZO     ,  'OZ'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(GIM(ORAD ), WVO     ,  'WV'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+
+      if(DO_DATAATM==0) then
+        call MAPL_GetPointer(IMPORT, BCDP      , 'BCDP'      , RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, BCWT      , 'BCWT'      , RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, OCDP      , 'OCDP'      , RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, OCWT      , 'OCWT'      , RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'   , RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA' , RC=STATUS)
+        VERIFY_(STATUS)
+      end if
 
       if(associated(UUB)) then
          call MAPL_LocStreamTransform( ExchGrid, UUB     ,  UU     , RC=STATUS) 
@@ -2670,6 +2626,55 @@ contains
        call MAPL_LocStreamTransform( ExchGrid, WVO, WV, RC=STATUS)
        VERIFY_(STATUS)
       endif
+
+      if(DO_DATAATM==0) then
+        call MAPL_GetPointer(GIM(OBIO ), BCDPB   ,  'BCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GIM(OBIO ), BCWTB   ,  'BCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GIM(OBIO ), OCDPB   ,  'OCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GIM(OBIO ), OCWTB   ,  'OCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+          
+        call MAPL_GetPointer(GIM(ORAD ), FSWBANDR   , 'FSWBAND'   , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GIM(ORAD ), FSWBANDNAR , 'FSWBANDNA' , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
+      end if
+
+      if(DO_DATAATM==0) then
+       if(associated(BCDPB)) then
+          do N = 1, NUM_BCDP
+             call MAPL_LocStreamTransform( ExchGrid, BCDPB(:,:,N), BCDP(:,N), RC=STATUS )
+             VERIFY_(STATUS)
+          end do
+       endif
+       if(associated(BCWTB)) then
+          do N = 1, NUM_BCWT
+             call MAPL_LocStreamTransform( ExchGrid, BCWTB(:,:,N), BCWT(:,N), RC=STATUS )
+             VERIFY_(STATUS)
+          end do
+       endif
+       if(associated(OCDPB)) then
+          do N = 1, NUM_OCDP
+             call MAPL_LocStreamTransform( ExchGrid, OCDPB(:,:,N), OCDP(:,N), RC=STATUS )
+             VERIFY_(STATUS)
+          end do
+       endif
+       if(associated(OCWTB)) then
+          do N = 1, NUM_OCWT
+             call MAPL_LocStreamTransform( ExchGrid, OCWTB(:,:,N), OCWT(:,N), RC=STATUS )
+             VERIFY_(STATUS)
+          end do
+       endif
+       if(associated(FSWBANDR)) then
+          do N = 1, NB_CHOU
+             call MAPL_LocStreamTransform( ExchGrid, FSWBANDR(:,:,N),   FSWBAND(:,N),   RC=STATUS )
+             VERIFY_(STATUS)
+          end do
+       endif
+       if(associated(FSWBANDNAR)) then
+          do N = 1, NB_CHOU
+             call MAPL_LocStreamTransform( ExchGrid, FSWBANDNAR(:,:,N), FSWBANDNA(:,N), RC=STATUS )
+             VERIFY_(STATUS)
+          end do
+       endif
+      end if
 
       RETURN_(ESMF_SUCCESS)
     end subroutine OBIO_RunTransforms
