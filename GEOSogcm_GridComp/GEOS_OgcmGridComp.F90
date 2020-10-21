@@ -1668,11 +1668,11 @@ contains
 !-----------------------------------
 
     call MAPL_Get(MAPL,             &
-         ExchangeGrid  = ExchGrid,               &
-         GIM       = GIM,                        &
-         GEX       = GEX,                        &
-         GCS       = GCS,                        &
-                                       RC=STATUS )
+         ExchangeGrid  = ExchGrid,  &
+         GIM       = GIM,           & 
+         GEX       = GEX,           &
+         GCS       = GCS,           &
+    RC=STATUS )
     VERIFY_(STATUS)
 
 ! Pointers to imports
@@ -1731,44 +1731,8 @@ contains
        VERIFY_(STATUS)
     endif 
     
-
     if (DO_OBIO/=0) then
-      call MAPL_GetPointer(IMPORT, UU      ,  'UU',      RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, CO2SC   ,  'CO2SC'  , RC=STATUS)
-      VERIFY_(STATUS)
-
-      do k=1, 33
-        write(unit = suffix, fmt = '(i2.2)') k
-        call MAPL_GetPointer(IMPORT, ATAUA(k)%b,'TAUA_'//suffix,   RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT, AASYMP(k)%b,'ASYMP_'//suffix, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT, ASSALB(k)%b,'SSALB_'//suffix, RC=STATUS)
-        VERIFY_(STATUS)
-      enddo
-
-      call MAPL_GetPointer(IMPORT, DUDP    ,  'DUDP'   , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, DUWT    ,  'DUWT'   , RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, DUSD    ,  'DUSD'   , RC=STATUS)
-      VERIFY_(STATUS)
-
-      call MAPL_GetPointer(IMPORT, CCOVM,     'CCOVM',   RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, CDREM,     'CDREM',   RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, RLWPM,     'RLWPM',   RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, CLDTCM,    'CLDTCM',  RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, RH,        'RH',      RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, OZ,        'OZ',      RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, WV,        'WV',      RC=STATUS)
-      VERIFY_(STATUS)
+      call OBIO_RunTransforms(RC)
     endif
 
     if(DO_DATAATM==0) then
@@ -1882,44 +1846,16 @@ contains
     call MAPL_GetPointer(GIM(OCEAN ), USTR3O  ,  'OUSTAR3', notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(GIM(OCEAN ), PSO     ,  'PS'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
 
-    if(DO_OBIO /= 0) then
-       call MAPL_GetPointer(GIM(OBIO ), USTR3B  ,  'OUSTAR3'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), UUB     ,  'UU'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), PSB     ,  'PS'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-
-       call MAPL_GetPointer(GIM(OBIO ), CO2SCB  ,  'CO2SC'    , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-
-       do k=1, 33
-          write(unit = suffix, fmt = '(i2.2)') k
-          call MAPL_GetPointer(GIM(ORAD ), ATAUAO(k)%b, 'TAUA_'//suffix , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(ORAD ), AASYMPO(k)%b,'ASYMP_'//suffix, notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(ORAD ), ASSALBO(k)%b,'SSALB_'//suffix, notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       enddo
-       call MAPL_GetPointer(GIM(ORAD ), UUO     ,  'UU'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), PSO     ,  'PS'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-
-       call MAPL_GetPointer(GIM(OBIO ), DUDPB   ,  'DUDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), DUWTB   ,  'DUWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), DUSDB   ,  'DUSD'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), DISCHARGEOB   ,  'DISCHARGE'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-
-       if(DO_DATAATM==0) then
-          call MAPL_GetPointer(GIM(OBIO ), BCDPB   ,  'BCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OBIO ), BCWTB   ,  'BCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OBIO ), OCDPB   ,  'OCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OBIO ), OCWTB   ,  'OCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+    if (DO_OBIO/=0) then
+    if(DO_DATAATM==0) then
+      call MAPL_GetPointer(GIM(OBIO ), BCDPB   ,  'BCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), BCWTB   ,  'BCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), OCDPB   ,  'OCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), OCWTB   ,  'OCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
           
-          call MAPL_GetPointer(GIM(ORAD ), FSWBANDR   , 'FSWBAND'   , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(ORAD ), FSWBANDNAR , 'FSWBANDNA' , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
-       end if
-
-       call MAPL_GetPointer(GIM(ORAD ), CCOVMO  ,  'CCOVM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), CDREMO  ,  'CDREM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), RLWPMO  ,  'RLWPM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), CLDTCMO ,  'CLDTCM' , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), RHO     ,  'RH'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), OZO     ,  'OZ'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), WVO     ,  'WV'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), FSWBANDR   , 'FSWBAND'   , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), FSWBANDNAR , 'FSWBANDNA' , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
+    end if
     end if
     
     if(DO_DATASEAONLY==0) then
@@ -2063,84 +1999,6 @@ contains
     if(associated(PSR)) then
        call MAPL_LocStreamTransform( ExchGrid, PSR     ,  PS     , RC=STATUS)
        VERIFY_(STATUS)
-    endif
-
-    if (DO_OBIO/=0) then
-      if(associated(UUB)) then
-         call MAPL_LocStreamTransform( ExchGrid, UUB     ,  UU     , RC=STATUS) 
-         VERIFY_(STATUS)
-      endif
-      if(associated(UUO)) then
-         call MAPL_LocStreamTransform( ExchGrid, UUO     ,  UU     , RC=STATUS)
-         VERIFY_(STATUS)
-      endif
-      if(associated(CO2SCB)) then
-         call MAPL_LocStreamTransform( ExchGrid, CO2SCB  ,  CO2SC  , RC=STATUS) 
-         VERIFY_(STATUS)
-      endif
-
-      do k=1, 33
-       if ( associated(ATAUAO(k)%b) ) then
-        call MAPL_LocStreamTransform( ExchGrid, ATAUAO(k)%b, ATAUA(k)%b, RC=STATUS)
-        VERIFY_(STATUS)
-       endif
-       if ( associated(AASYMPO(k)%b) ) then
-        call MAPL_LocStreamTransform( ExchGrid, AASYMPO(k)%b, AASYMP(k)%b, RC=STATUS)
-        VERIFY_(STATUS)
-       endif
-       if ( associated(ASSALBO(k)%b) ) then
-        call MAPL_LocStreamTransform( ExchGrid, ASSALBO(k)%b, ASSALB(k)%b, RC=STATUS)
-        VERIFY_(STATUS)
-       endif
-      enddo
-
-      if(associated(DUDPB)) then
-       do N = 1, NUM_DUDP
-          call MAPL_LocStreamTransform( ExchGrid, DUDPB(:,:,N), DUDP(:,N), RC=STATUS )
-          VERIFY_(STATUS)
-       end do
-      endif
-      if(associated(DUWTB)) then
-       do N = 1, NUM_DUWT
-          call MAPL_LocStreamTransform( ExchGrid, DUWTB(:,:,N), DUWT(:,N), RC=STATUS )
-          VERIFY_(STATUS)
-       end do
-      endif
-      if(associated(DUSDB)) then
-       do N = 1, NUM_DUSD
-          call MAPL_LocStreamTransform( ExchGrid, DUSDB(:,:,N), DUSD(:,N), RC=STATUS )
-          VERIFY_(STATUS)
-       end do
-      endif
-
-      if ( associated(CCOVMO) ) then
-        call MAPL_LocStreamTransform( ExchGrid, CCOVMO, CCOVM, RC=STATUS)
-        VERIFY_(STATUS)
-      endif
-      if ( associated(CDREMO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, CDREMO, CDREM, RC=STATUS)
-       VERIFY_(STATUS)
-      endif
-      if ( associated(RLWPMO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, RLWPMO, RLWPM, RC=STATUS)
-       VERIFY_(STATUS)
-      endif
-      if ( associated(CLDTCMO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, CLDTCMO, CLDTCM, RC=STATUS)
-       VERIFY_(STATUS)
-      endif
-      if ( associated(RHO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, RHO, RH, RC=STATUS)
-       VERIFY_(STATUS)
-      endif
-      if ( associated(OZO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, OZO, OZ, RC=STATUS)
-       VERIFY_(STATUS)
-      endif
-      if ( associated(WVO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, WVO, WV, RC=STATUS)
-       VERIFY_(STATUS)
-      endif
     endif
 
     if(DO_DATAATM==0) then
@@ -2662,6 +2520,159 @@ contains
     call MAPL_TimerOff(MAPL,"RUN" )
 
     RETURN_(ESMF_SUCCESS)
+   
+    contains
+
+    subroutine OBIO_RunTransforms(RC)
+
+      integer, optional,          intent(  OUT) ::  RC
+      
+      character(len=ESMF_MAXSTR), parameter :: IAm="OBIO_RunTransforms"
+      integer                               :: STATUS
+
+      integer          :: k
+
+      call MAPL_GetPointer(IMPORT, UU      ,  'UU',      RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, CO2SC   ,  'CO2SC'  , RC=STATUS)
+      VERIFY_(STATUS)
+
+      do k=1, 33
+        write(unit = suffix, fmt = '(i2.2)') k
+        call MAPL_GetPointer(IMPORT, ATAUA(k)%b,'TAUA_'//suffix,   RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, AASYMP(k)%b,'ASYMP_'//suffix, RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, ASSALB(k)%b,'SSALB_'//suffix, RC=STATUS)
+        VERIFY_(STATUS)
+      enddo
+
+      call MAPL_GetPointer(IMPORT, DUDP    ,  'DUDP'   , RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, DUWT    ,  'DUWT'   , RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, DUSD    ,  'DUSD'   , RC=STATUS)
+      VERIFY_(STATUS)
+
+      call MAPL_GetPointer(IMPORT, CCOVM,     'CCOVM',   RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, CDREM,     'CDREM',   RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, RLWPM,     'RLWPM',   RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, CLDTCM,    'CLDTCM',  RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, RH,        'RH',      RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, OZ,        'OZ',      RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, WV,        'WV',      RC=STATUS)
+      VERIFY_(STATUS)
+
+      call MAPL_GetPointer(GIM(OBIO ), USTR3B  ,  'OUSTAR3'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), UUB     ,  'UU'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), PSB     ,  'PS'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), CO2SCB  ,  'CO2SC'    , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+
+      do k=1, 33
+        write(unit = suffix, fmt = '(i2.2)') k
+        call MAPL_GetPointer(GIM(ORAD ), ATAUAO(k)%b, 'TAUA_'//suffix , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GIM(ORAD ), AASYMPO(k)%b,'ASYMP_'//suffix, notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GIM(ORAD ), ASSALBO(k)%b,'SSALB_'//suffix, notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      enddo
+
+      call MAPL_GetPointer(GIM(ORAD ), UUO     ,  'UU'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), PSO     ,  'PS'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+
+      call MAPL_GetPointer(GIM(OBIO ), DUDPB   ,  'DUDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), DUWTB   ,  'DUWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), DUSDB   ,  'DUSD'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), DISCHARGEOB   ,  'DISCHARGE'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), CCOVMO  ,  'CCOVM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), CDREMO  ,  'CDREM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), RLWPMO  ,  'RLWPM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), CLDTCMO ,  'CLDTCM' , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), RHO     ,  'RH'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), OZO     ,  'OZ'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), WVO     ,  'WV'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+
+      if(associated(UUB)) then
+         call MAPL_LocStreamTransform( ExchGrid, UUB     ,  UU     , RC=STATUS) 
+         VERIFY_(STATUS)
+      endif
+      if(associated(UUO)) then
+         call MAPL_LocStreamTransform( ExchGrid, UUO     ,  UU     , RC=STATUS)
+         VERIFY_(STATUS)
+      endif
+      if(associated(CO2SCB)) then
+         call MAPL_LocStreamTransform( ExchGrid, CO2SCB  ,  CO2SC  , RC=STATUS) 
+         VERIFY_(STATUS)
+      endif
+
+      do k=1, 33
+        if ( associated(ATAUAO(k)%b) ) then
+         call MAPL_LocStreamTransform( ExchGrid, ATAUAO(k)%b, ATAUA(k)%b, RC=STATUS)
+         VERIFY_(STATUS)
+        endif
+        if ( associated(AASYMPO(k)%b) ) then
+         call MAPL_LocStreamTransform( ExchGrid, AASYMPO(k)%b, AASYMP(k)%b, RC=STATUS)
+         VERIFY_(STATUS)
+        endif
+        if ( associated(ASSALBO(k)%b) ) then
+         call MAPL_LocStreamTransform( ExchGrid, ASSALBO(k)%b, ASSALB(k)%b, RC=STATUS)
+         VERIFY_(STATUS)
+        endif
+      enddo
+
+      if(associated(DUDPB)) then
+       do N = 1, NUM_DUDP
+          call MAPL_LocStreamTransform( ExchGrid, DUDPB(:,:,N), DUDP(:,N), RC=STATUS )
+          VERIFY_(STATUS)
+       end do
+      endif
+      if(associated(DUWTB)) then
+       do N = 1, NUM_DUWT
+          call MAPL_LocStreamTransform( ExchGrid, DUWTB(:,:,N), DUWT(:,N), RC=STATUS )
+          VERIFY_(STATUS)
+       end do
+      endif
+      if(associated(DUSDB)) then
+       do N = 1, NUM_DUSD
+          call MAPL_LocStreamTransform( ExchGrid, DUSDB(:,:,N), DUSD(:,N), RC=STATUS )
+          VERIFY_(STATUS)
+       end do
+      endif
+      if ( associated(CCOVMO) ) then
+        call MAPL_LocStreamTransform( ExchGrid, CCOVMO, CCOVM, RC=STATUS)
+        VERIFY_(STATUS)
+      endif
+      if ( associated(CDREMO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, CDREMO, CDREM, RC=STATUS)
+       VERIFY_(STATUS)
+      endif
+      if ( associated(RLWPMO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, RLWPMO, RLWPM, RC=STATUS)
+       VERIFY_(STATUS)
+      endif
+      if ( associated(CLDTCMO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, CLDTCMO, CLDTCM, RC=STATUS)
+       VERIFY_(STATUS)
+      endif
+      if ( associated(RHO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, RHO, RH, RC=STATUS)
+       VERIFY_(STATUS)
+      endif
+      if ( associated(OZO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, OZO, OZ, RC=STATUS)
+       VERIFY_(STATUS)
+      endif
+      if ( associated(WVO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, WVO, WV, RC=STATUS)
+       VERIFY_(STATUS)
+      endif
+
+      RETURN_(ESMF_SUCCESS)
+    end subroutine OBIO_RunTransforms
 
   end subroutine RUN
 
