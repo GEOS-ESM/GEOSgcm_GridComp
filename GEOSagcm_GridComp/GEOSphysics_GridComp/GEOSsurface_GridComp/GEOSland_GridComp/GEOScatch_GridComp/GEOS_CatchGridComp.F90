@@ -4888,7 +4888,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               if((MOD_YY*1000 + MFDOY) > (CUR_YY*1000 + MOD_DOY)) b4_modis_date = .true.
               call mr%read_modis_data (MAPL,CUR_YY, DOY, b4_modis_date, &
                    GRIDNAME, MODIS_PATH, 'alb', MODIS_VISDFTILE, MODIS_NIR = MODIS_NIRDFTILE)
-              if (DOY < 366) then
+              if (DOY < 361) then
                  MODIS_RING = CURRENT_TIME + M5
               else
                  call ESMF_TimeSet(MODIS_TIME, yy=CUR_YY+1, mm=1, dd=1, rc=status) ; VERIFY_(STATUS)

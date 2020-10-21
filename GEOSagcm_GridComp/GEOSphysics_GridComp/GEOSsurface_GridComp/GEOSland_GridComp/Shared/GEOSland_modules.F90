@@ -33,7 +33,7 @@ contains
     implicit none
     class (MODISReader), intent(inout)         :: this
     integer, intent(in) :: DOY, interval
-    integer, parameter  :: N_MODIS_DAYS8 = 46, N_MODIS_DAYS5 = 74
+    integer, parameter  :: N_MODIS_DAYS8 = 46, N_MODIS_DAYS5 = 73
     integer, dimension (N_MODIS_DAYS8), target ::     &
          MODIS_DOYS8 = (/                             &
          1  ,  9, 17, 25, 33, 41, 49, 57, 65,         &
@@ -51,7 +51,7 @@ contains
          201,206,211,216,221,226,231,236,241,246,     &
          251,256,261,266,271,276,281,286,291,296,     &
          301,306,311,316,321,326,331,336,341,346,     &
-         351,356,361,366/)
+         351,356,361/)
     integer, dimension(:), pointer :: MODIS_DOYS
     integer :: i,N_MODIS_DATES
     
