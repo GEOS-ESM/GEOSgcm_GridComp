@@ -471,7 +471,7 @@ integer :: n_threads=1
        write (log_file,'(a)')'Done creating CLM4.5 lightening frequency clim ...........11'
 
        call country_codes (nc,nr,gridnamer)
-       call albedo4catchcn (gridnamet)
+       ! call albedo4catchcn (gridnamet)
 
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'DONE creating CLSM data files...............................'

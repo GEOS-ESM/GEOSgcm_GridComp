@@ -10,6 +10,7 @@ module rmTinyCatchParaMod
   use date_time_util  
   use leap_year
   use MAPL_ConstantsMod
+  use module_sibalb, ONLY: sibalb
   
   implicit none
   logical, parameter :: error_file=.true.
@@ -1318,10 +1319,10 @@ END SUBROUTINE modis_lai
     character*30, dimension (2,2) :: geosname
     integer, allocatable, dimension (:) :: vegcls 
     real, allocatable, dimension (:) :: &
-         modisalb,scale_fac,albvr,albnr,albvf,albnf,lat,lon, &
-         green,lai,sunang,snw,lai_before,lai_after,grn_before,grn_after
+         modisalb,scale_fac,albvf,albnf,lat,lon, &
+         green,lai,lai_before,lai_after,grn_before,grn_after
     real, allocatable, dimension (:) :: &
-         calbvr,calbnr,calbvf,calbnf
+         calbvf,calbnf
     character*300 :: ifile1,ifile2,ofile
     integer, dimension(12), parameter :: days_in_month_nonleap = &
          (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
@@ -1337,7 +1338,6 @@ END SUBROUTINE modis_lai
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)maxcat
 
-    allocate (albvr    (1:maxcat))
     allocate (albvf    (1:maxcat))
     allocate (albnf    (1:maxcat))
     allocate (calbvf   (1:maxcat))
@@ -1350,8 +1350,6 @@ END SUBROUTINE modis_lai
     allocate (lai_after  (1:maxcat))
     allocate (grn_after  (1:maxcat))
     allocate (vegcls   (1:maxcat))
-    allocate (sunang   (1:maxcat))
-    allocate (snw      (1:maxcat))
     close (10,status='keep')
 
     date_time_new%year   =2002
@@ -1402,14 +1400,12 @@ END SUBROUTINE modis_lai
     close (20,status='keep')
 
     cyy='00-04'
-    albvr    =0.
     albvf    =0.
     albnf    =0.
     calbvf   =0.
     calbnf   =0.
     modisalb =0.
-    snw      =0.
-    sunang   =0.
+
     unit1 =10
     unit2 =20
     unit3 =30
@@ -1476,8 +1472,6 @@ END SUBROUTINE modis_lai
 
     calbvf   =0.
     calbnf   =0.
-    albvr    =0.
-    albnr    =0.
     albvf    =0.
     albnf    =0.
     tsteps   =0.
@@ -1523,12 +1517,15 @@ END SUBROUTINE modis_lai
         
         tsteps = tsteps + 1.
 
-              call sibalb(                                    &
-                   albvr,albvr,albvf,albnf,                   &
-                   lai, green, 0.0, snw, vegcls, maxcat)  
-
-              calbvf = calbvf + albvf
-              calbnf = calbnf + albnf
+        !call sibalb(                                    &
+        !     albvr,albvr,albvf,albnf,                   &
+        !     lai, green, 0.0, snw, vegcls, maxcat)  
+        call sibalb (                  &
+             MAXCAT,vegcls,lai,green,  &
+             albvf, albnf)
+         
+        calbvf = calbvf + albvf
+        calbnf = calbnf + albnf
               
      end do
 
@@ -1574,8 +1571,8 @@ END SUBROUTINE modis_lai
 
   end do
     
-  deallocate (modisalb,albvr,albvf,albnf)
-  deallocate (green,lai,sunang)
+  deallocate (modisalb,albvf,albnf)
+  deallocate (green,lai)
   deallocate (vegcls)
   deallocate (calbvf,calbnf)
   

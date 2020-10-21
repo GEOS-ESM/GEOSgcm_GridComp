@@ -13,6 +13,7 @@ use MAPL_SortMod
 use date_time_util  
 use leap_year
 use MAPL_ConstantsMod
+use module_sibalb, ONLY: sibalb
 
 #if defined USE_EXTERNAL_FINDLOC
 use findloc_mod, only: findloc
@@ -32,7 +33,7 @@ public :: CLM45_fixed_parameters, CLM45_clim_parameters, gimms_clim_ndvi, grid2t
 
 ! Below structure is used to regrid high resolution data to high resolution tile raster
 
-integer, parameter   :: N_tiles_per_cell = 8
+integer, parameter   :: N_tiles_per_cell = 9
 integer  , parameter :: nc_esa = 129600, nr_esa = 64800, SRTM_maxcat = 291284
 real, parameter      :: pi= MAPL_PI,RADIUS=MAPL_RADIUS
 
@@ -2106,10 +2107,10 @@ END SUBROUTINE HISTOGRAM
     integer :: yy,j,month
     integer, allocatable, dimension (:) :: vegcls 
     real, allocatable, dimension (:) :: &
-         modisvf, modisnf,albvr,albnr,albvf,albnf,lat,lon, &
-         green,lai,snw,lai_before,lai_after,grn_before,grn_after
+         modisvf, modisnf,albvf,albnf,lat,lon, &
+         green,lai,lai_before,lai_after,grn_before,grn_after
     real, allocatable, dimension (:) :: &
-         calbvr,calbnr,calbvf,calbnf
+         calbvf,calbnf
     character*300 :: ifile1,ifile2,ofile
     integer, dimension(12), parameter :: days_in_month_nonleap = &
          (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
@@ -2121,9 +2122,7 @@ END SUBROUTINE HISTOGRAM
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)maxcat
 
-    allocate (albvr    (1:maxcat))
     allocate (albvf    (1:maxcat))
-    allocate (albnr    (1:maxcat))
     allocate (albnf    (1:maxcat))
     allocate (calbvf   (1:maxcat))
     allocate (calbnf   (1:maxcat))
@@ -2136,7 +2135,6 @@ END SUBROUTINE HISTOGRAM
     allocate (lai_after  (1:maxcat))
     allocate (grn_after  (1:maxcat))
     allocate (vegcls     (1:maxcat))
-    allocate (snw      (1:maxcat))
     close (10,status='keep')
 
     fname=trim(gfile)//'.til'
@@ -2171,15 +2169,12 @@ END SUBROUTINE HISTOGRAM
     close (10,status='keep')
     close (20,status='keep')
 
-    albvr    =0.
     albvf    =0.
-    albnr    =0.
     albnf    =0.
     calbvf   =0.
     calbnf   =0.
     modisvf  =0.
     modisnf  =0.
-    snw      =0.
 
 ! MODIS Albedo files
     if(MA == 'MODIS1') then 
@@ -2275,8 +2270,6 @@ END SUBROUTINE HISTOGRAM
 
     calbvf   =0.
     calbnf   =0.
-    albvr    =0.
-    albnr    =0.
     albvf    =0.
     albnf    =0.
     tsteps   =0.    
@@ -2364,10 +2357,13 @@ END SUBROUTINE HISTOGRAM
          call Time_Interp_Fac (date_time_new, gf_green_time, af_green_time, slice1, slice2)
          green  = (slice1*grn_before + slice2*grn_after)
           
-          call sibalb(                                    &
-               albvr,albnr,albvf,albnf,                   &
-               lai, green, 0.0, snw, vegcls, maxcat)  
-          
+        !  call sibalb(                                    &
+        !       albvr,albnr,albvf,albnf,                   &
+        !       lai, green, 0.0, snw, vegcls, maxcat)  
+         call sibalb (                  &
+              MAXCAT,vegcls,lai,green,  &
+              albvf, albnf)
+         
           calbvf = calbvf + albvf
           calbnf = calbnf + albnf         
           tsteps = tsteps + 1.  
@@ -2421,8 +2417,6 @@ END SUBROUTINE HISTOGRAM
                call Get_MidTime(yr,mn,dy,yr1,mn1,dy1,af_modis_time)
                calbvf   =0.
                calbnf   =0.
-               albvr    =0.
-               albnr    =0.
                albvf    =0.
                albnf    =0.
                tsteps   =0.   
@@ -2430,11 +2424,11 @@ END SUBROUTINE HISTOGRAM
          endif
       end do
   
-      deallocate (modisvf,modisnf,albvr,albvf,albnf,albnr)
+      deallocate (modisvf,modisnf,albvf,albnf)
       deallocate (green,lai)
       deallocate (vegcls)
       deallocate (calbvf,calbnf)
-      deallocate (lai_before,grn_before, lai_after,grn_after,snw)
+      deallocate (lai_before,grn_before, lai_after,grn_after)
 
       close (10, status='keep')
       close (11, status='keep')        
