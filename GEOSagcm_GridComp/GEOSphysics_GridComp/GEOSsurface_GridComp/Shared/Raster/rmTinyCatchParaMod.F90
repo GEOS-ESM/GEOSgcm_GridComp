@@ -1183,10 +1183,11 @@ END SUBROUTINE modis_lai
     read (10,'(a)')version
     read (10,*)nc_gcm
     read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
-    
+    if(.not. ease_grid) then
+       read (10,'(a)')version
+       read (10,*)nc_ocean
+       read (10,*)nr_ocean
+    endif
     do n = 1,ip
       if (ease_grid) then     
 	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
@@ -1378,9 +1379,11 @@ END SUBROUTINE modis_lai
     read (10,'(a)')version
     read (10,*)nc_gcm
     read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
+    if(.not. ease_grid) then
+       read (10,'(a)')version
+       read (10,*)nc_ocean
+       read (10,*)nr_ocean
+    endif
 
     do n = 1,ip
       if (ease_grid) then     
@@ -1969,9 +1972,11 @@ END SUBROUTINE modis_scale_para
     read (10,'(a)')version
     read (10,*)nc_gcm
     read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
+    if(.not. ease_grid) then
+       read (10,'(a)')version
+       read (10,*)nc_ocean
+       read (10,*)nr_ocean
+    endif
 
     allocate(id(ip))
     id=0
@@ -2206,9 +2211,11 @@ END SUBROUTINE modis_scale_para
     read (10,'(a)')version
     read (10,*)nc_gcm
     read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
+    if(.not. ease_grid) then
+       read (10,'(a)')version
+       read (10,*)nc_ocean
+       read (10,*)nr_ocean
+    endif
     
     do n = 1,ip
       if (ease_grid) then     
@@ -2458,9 +2465,11 @@ END SUBROUTINE modis_scale_para
     read (10,'(a)')version
     read (10,*)nc_gcm
     read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
+    if(.not. ease_grid) then
+       read (10,'(a)')version
+       read (10,*)nc_ocean
+       read (10,*)nr_ocean
+    endif
     
     do n = 1,ip
       if (ease_grid) then  
