@@ -245,8 +245,9 @@ integer :: n_threads=1
           DL = 'DE'
           write (log_file,'(a)')'Cube Grid - assuming DE'
        endif
-
-       CALL open_landparam_nc4_files 
+       
+       inquire(file='clsm/catch_params.nc4', exist=file_exists)
+       if (.not.file_exists) CALL open_landparam_nc4_files 
 
        ! Creating catchment.def 
        ! ----------------------
