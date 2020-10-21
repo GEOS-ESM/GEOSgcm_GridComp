@@ -115,7 +115,8 @@ contains
     character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
-
+    logical :: use_ncar_gwd
+    type (MAPL_MetaComp),     pointer   :: MAPL
 !=============================================================================
 
 ! Begin...
@@ -138,6 +139,10 @@ contains
                                       RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, USE_NCAR_GWD, Label="USE_NCAR_GWD:",  default=.false., RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -577,6 +582,63 @@ contains
          DIMS       = MAPL_DimsHorzOnly,                                                                 &
          VLOCATION  = MAPL_VLocationNone,                                                     RC=STATUS  )
      VERIFY_(STATUS)
+
+     if (USE_NCAR_GWD) then
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'SGH', &
+             LONG_NAME  = 'standard deviation of 30s elevation from 3km cube', &
+             UNITS      = 'm', &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'GBXAR', &
+             LONG_NAME  = 'NA', &
+             UNITS      = 'NA', &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'HWDTH', &
+             LONG_NAME  = 'NA', &
+             UNITS      = 'NA', &
+             UNGRIDDED_DIMS     = (/16/),                      &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'CLNGT', &
+             LONG_NAME  = 'NA', &
+             UNITS      = 'NA', &
+             UNGRIDDED_DIMS     = (/16/),                      &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'MXDIS', &
+             LONG_NAME  = 'NA', &
+             UNITS      = 'NA', &
+             UNGRIDDED_DIMS     = (/16/),                      &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'ANGLL', &
+             LONG_NAME  = 'NA', &
+             UNITS      = 'NA', &
+             UNGRIDDED_DIMS     = (/16/),                      &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'ANIXY', &
+             LONG_NAME  = 'NA', &
+             UNITS      = 'NA', &
+             UNGRIDDED_DIMS     = (/16/),                      &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+     end if
 
      if (USE_NCEP_GWD) then
 !ALT: Reminder for myself: we need connections in Physics
