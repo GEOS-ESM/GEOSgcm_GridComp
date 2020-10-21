@@ -561,7 +561,6 @@ contains
                          'OUSTAR3','PS     ',                       &
                          'HI     ','TI     ','SI     ' ,            &
                          'PENUVR ','PENUVF ','PENPAR ','PENPAF ',   &
-                         'CO2SC  ','DUDP   ','DUWT   ','DUSD   ',   &   ! These (4) go to OGCM only if DO_OBIO /= 0.
                          'DISCHRG', 'LWFLX', 'SHFLX', 'QFLUX',      &
                          'DRNIR'  , 'DFNIR',                        &
                          'SNOW', 'RAIN', 'FRESH', 'FSALT',          &
@@ -570,18 +569,7 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
 
-     call MAPL_TerminateImport( GC,                                 &   ! These go to OGCM only if DO_OBIO /= 0.
-          SHORT_NAME = (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM',    &
-                         'RH    ', 'OZ    ', 'WV    '/),            &
-          CHILD      = OGCM,                                        &
-          RC=STATUS  )
-     VERIFY_(STATUS)
 
-     call MAPL_TerminateImport    ( GC,                             &   ! This goes to OGCM only if DO_OBIO /= 0.
-          SHORT_NAME = (/'UU'/),                                    &
-          CHILD      = OGCM,                                        &
-          RC=STATUS  )
-     VERIFY_(STATUS)
 
      if (DO_OBIO/=0) then
       call OBIO_TerminateImports(RC)
@@ -677,6 +665,26 @@ contains
         character(len=ESMF_MAXSTR), parameter     :: IAm="OBIO_TerminateImports"
         integer                                   :: STATUS
         integer          :: k
+
+        call MAPL_TerminateImport    ( GC,     &
+           SHORT_NAME = [character(len=7) ::   &
+              'CO2SC  ','DUDP   ','DUWT   ','DUSD   '],&  
+           CHILD      = OGCM,                  &
+           RC=STATUS  )
+        VERIFY_(STATUS)        
+
+        call MAPL_TerminateImport( GC,                               &
+           SHORT_NAME = (/'CCOVM ', 'CDREM ', 'RLWPM ', 'CLDTCM',    &
+                          'RH    ', 'OZ    ', 'WV    '/),            &
+           CHILD      = OGCM,                                        &
+           RC=STATUS  )
+        VERIFY_(STATUS)
+
+        call MAPL_TerminateImport    ( GC,                           &
+           SHORT_NAME = (/'UU'/),                                    &
+           CHILD      = OGCM,                                        &
+           RC=STATUS  )
+        VERIFY_(STATUS)
 
         do k=1, 33
          write(unit = suffix, fmt = '(i2.2)') k
