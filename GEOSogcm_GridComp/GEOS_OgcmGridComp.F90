@@ -1328,7 +1328,7 @@ contains
          call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
          VERIFY_(STATUS)
        endif
-       call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )
+       call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )  ! DO_OBIO /= 0 should be added here.
        VERIFY_(STATUS)
     end if
 
