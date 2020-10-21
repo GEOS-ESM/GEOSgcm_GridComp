@@ -379,151 +379,7 @@ contains
   VERIFY_(STATUS)
 
   if (DO_OBIO/=0) then
-
-    call MAPL_AddImportSpec(GC,                            &
-         LONG_NAME          = 'surface_wind_speed'        ,&
-         UNITS              = 'm s-1'                     ,&
-         SHORT_NAME         = 'UU'                        ,&
-         DIMS               = MAPL_DimsTileOnly           ,&
-         VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS          ) 
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                             &
-         LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
-         UNITS              = '1e-6'                       ,&
-         SHORT_NAME         = 'CO2SC'                      ,&
-         DIMS               = MAPL_DimsTileOnly            ,&
-         VLOCATION          = MAPL_VLocationNone           ,&
-         RESTART            = MAPL_RestartSkip             ,&
-         RC=STATUS  ) 
-    VERIFY_(STATUS)
-
-    do k=1, 33
-      write(unit = suffix, fmt = '(i2.2)') k
-      call MAPL_AddImportSpec(GC,                               &
-        SHORT_NAME = 'TAUA_'//suffix,                           &
-        LONG_NAME  = 'aerosol optical thickness',               &
-        UNITS      = '',                                        &
-        DIMS       = MAPL_DimsTileOnly,                         &
-        VLOCATION  = MAPL_VLocationNone,                        &
-        RC=STATUS  )
-      VERIFY_(STATUS)
-
-      call MAPL_AddImportSpec(GC,                               &
-        SHORT_NAME = 'ASYMP_'//suffix,                          &
-        LONG_NAME  = 'asymmetry parameter',                     &
-        UNITS      = '',                                        &
-        DIMS       = MAPL_DimsTileOnly,                         &
-        VLOCATION  = MAPL_VLocationNone,                        &
-        RC=STATUS  )
-      VERIFY_(STATUS)
-
-      call MAPL_AddImportSpec(GC,                               &
-        SHORT_NAME = 'SSALB_'//suffix,                          &
-        LONG_NAME  = 'single scattering albedo',                &
-        UNITS      = '',                                        &
-        DIMS       = MAPL_DimsTileOnly,                         &
-        VLOCATION  = MAPL_VLocationNone,                        &
-        RC=STATUS  )
-      VERIFY_(STATUS)
-    enddo
-
-    call MAPL_AddImportSpec(GC,                             &
-         LONG_NAME          = 'Dust Dry Deposition'        ,&
-         UNITS              = 'kg m-2 s-1'                 ,&
-         SHORT_NAME         = 'DUDP'                       ,&
-         DIMS               = MAPL_DimsTileOnly            ,&
-         UNGRIDDED_DIMS     = (/NUM_DUDP/)                 ,&
-         VLOCATION          = MAPL_VLocationNone           ,&
-         RESTART            = MAPL_RestartSkip             ,&
-         RC=STATUS  ) 
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                             &
-         LONG_NAME          = 'Dust Wet Deposition'        ,&
-         UNITS              = 'kg m-2 s-1'                 ,&
-         SHORT_NAME         = 'DUWT'                       ,&
-         DIMS               = MAPL_DimsTileOnly            ,&
-         UNGRIDDED_DIMS     = (/NUM_DUWT/)                 ,&
-         VLOCATION          = MAPL_VLocationNone           ,&
-         RESTART            = MAPL_RestartSkip             ,&
-         RC=STATUS  ) 
-    VERIFY_(STATUS)
-     
-    call MAPL_AddImportSpec(GC,                             &
-         LONG_NAME          = 'Dust Sedimentation'         ,&
-         UNITS              = 'kg m-2 s-1'                 ,&
-         SHORT_NAME         = 'DUSD'                       ,&
-         DIMS               = MAPL_DimsTileOnly            ,&
-         UNGRIDDED_DIMS     = (/NUM_DUSD/)                 ,&
-         VLOCATION          = MAPL_VLocationNone           ,&
-         RESTART            = MAPL_RestartSkip             ,&
-         RC=STATUS  ) 
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                             &
-         SHORT_NAME = 'CCOVM',                              &
-         LONG_NAME  = 'cloud cover',                        &
-         UNITS      = 'fraction (dimensionless)',           &
-         DIMS       = MAPL_DimsTileOnly,                    &
-         VLOCATION  = MAPL_VLocationNone,                   &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                                 &
-         SHORT_NAME = 'CDREM',                                  &
-         LONG_NAME  = 'cloud droplet effective radius',         &
-         UNITS      = '',                                       &
-         DIMS       = MAPL_DimsTileOnly,                        &
-         VLOCATION  = MAPL_VLocationNone,                       &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-  
-    call MAPL_AddImportSpec(GC,                                 &
-         SHORT_NAME = 'RLWPM',                                  &
-         LONG_NAME  = 'cloud liquid water path',                &
-         UNITS      = '',                                       &
-         DIMS       = MAPL_DimsTileOnly,                        &
-         VLOCATION  = MAPL_VLocationNone,                       &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-  
-    call MAPL_AddImportSpec(GC,                                 &
-         SHORT_NAME = 'CLDTCM',                                 &
-         LONG_NAME  = 'cloud optical thickness',                &
-         UNITS      = '',                                       &
-         DIMS       = MAPL_DimsTileOnly,                        &
-         VLOCATION  = MAPL_VLocationNone,                       &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                                 &
-         SHORT_NAME = 'RH',                                     &
-         LONG_NAME  = 'relative humidity',                      &
-         UNITS      = 'percent',                                &
-         DIMS       = MAPL_DimsTileOnly,                        &
-         VLOCATION  = MAPL_VLocationNone,                       &
-         RC=STATUS  )
-    VERIFY_(STATUS)     
-
-    call MAPL_AddImportSpec(GC,                                 &
-         SHORT_NAME = 'OZ',                                     &
-         LONG_NAME  = 'ozone thickness',                        &
-         UNITS      = 'Dobson units',                           &
-         DIMS       = MAPL_DimsTileOnly,                        &
-         VLOCATION  = MAPL_VLocationNone,                       &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-  
-    call MAPL_AddImportSpec(GC,                                 &
-         SHORT_NAME = 'WV',                                     &
-         LONG_NAME  = 'water vapor',                            &
-         UNITS      = 'cm',                                     &
-         DIMS       = MAPL_DimsTileOnly,                        &
-         VLOCATION  = MAPL_VLocationNone,                       &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+    call OBIO_SetServices(RC)
   end if
 
   if(DO_DATAATM==0) then           ! needed only if DO_OBIO /= 0.
@@ -944,53 +800,6 @@ contains
 !   end if
   end if
 
-  if(DO_OBIO/=0) then
-
-!   if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
-      ! Ocean to OceanBio
-      call MAPL_AddConnectivity ( GC,   &
-           SHORT_NAME  = (/'DH', 'T ', 'S '/),     &
-           DST_ID = OBIO,               &
-           SRC_ID = OCEAN,              &
-           RC=STATUS  )
-      VERIFY_(STATUS)
-!   end if
-     
-     ! OceanRad to OceanBio
-     call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'TIRRQ'/),   &
-          DST_ID = OBIO,               &
-          SRC_ID = ORAD,               &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'CDOMABSQ'/),   &
-          DST_ID = OBIO,               &
-          SRC_ID = ORAD,               &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-     
-     ! OceanBio to OceanRad
-     call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'DIATOM','CHLORO','CYANO ','DINO  ',&
-                          'PHAEO ','COCCO ','CDET  ','PIC   ',&
-                          'CDC   ','AVGQ  '/), &
-          DST_ID = ORAD,               &
-          SRC_ID = OBIO,               &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-     
-     ! Seaice to OceanBio
-     call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'FRACICE'/), &
-          DST_ID = OBIO,               &
-          SRC_ID = SEAICE,             &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-     
-  end if
-
   call MAPL_AddConnectivity ( GC,  &
           SHORT_NAME  = (/'FRACICE'/), & 
           DST_ID = OCEAN,             &
@@ -1038,12 +847,6 @@ contains
 
 ! Children's imports are in the ocean grid and are all satisfied
 !   by OGCM from exchange grid quantities.
-
-  if(DO_OBIO /= 0) then
-     call MAPL_TerminateImport(GC, SHORT_NAME = ['PS    ','UU    ','OZ    ','WV    ',&
-          'RH    ','CCOVM ','CLDTCM','RLWPM ','CDREM '], CHILD=ORAD, RC=STATUS  )
-     VERIFY_(STATUS)
-  end if
   
   call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
 
@@ -1078,7 +881,210 @@ contains
     VERIFY_(STATUS)
  
     RETURN_(ESMF_SUCCESS)
+ 
+    contains
+
+    subroutine OBIO_SetServices(RC)
+    
+      integer, optional,      intent(  OUT) ::  RC
+      integer                               :: STATUS
+
+      integer          :: k
+
+      call MAPL_AddImportSpec(GC,                            &
+         LONG_NAME          = 'surface_wind_speed'        ,&
+         UNITS              = 'm s-1'                     ,&
+         SHORT_NAME         = 'UU'                        ,&
+         DIMS               = MAPL_DimsTileOnly           ,&
+         VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS          ) 
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                             &
+         LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
+         UNITS              = '1e-6'                       ,&
+         SHORT_NAME         = 'CO2SC'                      ,&
+         DIMS               = MAPL_DimsTileOnly            ,&
+         VLOCATION          = MAPL_VLocationNone           ,&
+         RESTART            = MAPL_RestartSkip             ,&
+         RC=STATUS  ) 
+      VERIFY_(STATUS)
+
+      do k=1, 33
+        write(unit = suffix, fmt = '(i2.2)') k
+        call MAPL_AddImportSpec(GC,                               &
+             SHORT_NAME = 'TAUA_'//suffix,                        &
+             LONG_NAME  = 'aerosol optical thickness',            &
+             UNITS      = '',                                     &
+             DIMS       = MAPL_DimsTileOnly,                      &
+             VLOCATION  = MAPL_VLocationNone,                     &
+             RC=STATUS  )
+        VERIFY_(STATUS)
+
+        call MAPL_AddImportSpec(GC,                               &
+             SHORT_NAME = 'ASYMP_'//suffix,                       &
+             LONG_NAME  = 'asymmetry parameter',                  &
+             UNITS      = '',                                     &
+             DIMS       = MAPL_DimsTileOnly,                      &
+             VLOCATION  = MAPL_VLocationNone,                     &
+             RC=STATUS  )
+        VERIFY_(STATUS)
+
+        call MAPL_AddImportSpec(GC,                               &
+             SHORT_NAME = 'SSALB_'//suffix,                       &  
+             LONG_NAME  = 'single scattering albedo',             &
+             UNITS      = '',                                     &
+             DIMS       = MAPL_DimsTileOnly,                      &
+             VLOCATION  = MAPL_VLocationNone,                     &
+             RC=STATUS  )
+        VERIFY_(STATUS)
+      enddo
+
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'Dust Dry Deposition'        ,&
+           UNITS              = 'kg m-2 s-1'                 ,&
+           SHORT_NAME         = 'DUDP'                       ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NUM_DUDP/)                 ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'Dust Wet Deposition'        ,&
+           UNITS              = 'kg m-2 s-1'                 ,&
+           SHORT_NAME         = 'DUWT'                       ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NUM_DUWT/)                 ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+     
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'Dust Sedimentation'         ,&
+           UNITS              = 'kg m-2 s-1'                 ,&
+           SHORT_NAME         = 'DUSD'                       ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NUM_DUSD/)                 ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                             &
+           SHORT_NAME = 'CCOVM',                              &
+           LONG_NAME  = 'cloud cover',                        &
+           UNITS      = 'fraction (dimensionless)',           &
+           DIMS       = MAPL_DimsTileOnly,                    &
+           VLOCATION  = MAPL_VLocationNone,                   &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                                 &
+           SHORT_NAME = 'CDREM',                                  &
+           LONG_NAME  = 'cloud droplet effective radius',         &
+           UNITS      = '',                                       &
+           DIMS       = MAPL_DimsTileOnly,                        &
+           VLOCATION  = MAPL_VLocationNone,                       &
+           RC=STATUS  )
+      VERIFY_(STATUS)
   
+      call MAPL_AddImportSpec(GC,                                 &
+           SHORT_NAME = 'RLWPM',                                  &
+           LONG_NAME  = 'cloud liquid water path',                &
+           UNITS      = '',                                       &
+           DIMS       = MAPL_DimsTileOnly,                        &
+           VLOCATION  = MAPL_VLocationNone,                       &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+  
+      call MAPL_AddImportSpec(GC,                                 &
+           SHORT_NAME = 'CLDTCM',                                 &
+           LONG_NAME  = 'cloud optical thickness',                &
+           UNITS      = '',                                       &
+           DIMS       = MAPL_DimsTileOnly,                        &
+           VLOCATION  = MAPL_VLocationNone,                       &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                                 &
+           SHORT_NAME = 'RH',                                     &
+           LONG_NAME  = 'relative humidity',                      &
+           UNITS      = 'percent',                                &
+           DIMS       = MAPL_DimsTileOnly,                        &
+           VLOCATION  = MAPL_VLocationNone,                       &
+           RC=STATUS  )
+      VERIFY_(STATUS)     
+
+      call MAPL_AddImportSpec(GC,                                 &
+           SHORT_NAME = 'OZ',                                     &
+           LONG_NAME  = 'ozone thickness',                        &
+           UNITS      = 'Dobson units',                           &
+           DIMS       = MAPL_DimsTileOnly,                        &
+           VLOCATION  = MAPL_VLocationNone,                       &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+  
+      call MAPL_AddImportSpec(GC,                                 &
+           SHORT_NAME = 'WV',                                     &
+           LONG_NAME  = 'water vapor',                            &
+           UNITS      = 'cm',                                     &
+           DIMS       = MAPL_DimsTileOnly,                        &
+           VLOCATION  = MAPL_VLocationNone,                       &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+!     if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
+        ! Ocean to OceanBio
+        call MAPL_AddConnectivity ( GC,   &
+             SHORT_NAME  = (/'DH', 'T ', 'S '/),     &
+             DST_ID = OBIO,               &
+             SRC_ID = OCEAN,              &
+             RC=STATUS  )
+        VERIFY_(STATUS)
+!     end if
+     
+      ! OceanRad to OceanBio
+      call MAPL_AddConnectivity ( GC,   &
+           SHORT_NAME  = (/'TIRRQ'/),   &
+           DST_ID = OBIO,               &
+           SRC_ID = ORAD,               &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddConnectivity ( GC,   &
+           SHORT_NAME  = (/'CDOMABSQ'/),   &
+           DST_ID = OBIO,               &
+           SRC_ID = ORAD,               &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+     
+      ! OceanBio to OceanRad
+      call MAPL_AddConnectivity ( GC,   &
+           SHORT_NAME  = (/'DIATOM','CHLORO','CYANO ','DINO  ',&
+                           'PHAEO ','COCCO ','CDET  ','PIC   ',&
+                           'CDC   ','AVGQ  '/), &
+           DST_ID = ORAD,               &
+           SRC_ID = OBIO,               &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+     
+      ! Seaice to OceanBio
+      call MAPL_AddConnectivity ( GC,   &
+           SHORT_NAME  = (/'FRACICE'/), &
+           DST_ID = OBIO,               &
+           SRC_ID = SEAICE,             &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_TerminateImport(GC, SHORT_NAME = ['PS    ','UU    ','OZ    ','WV    ',&
+          'RH    ','CCOVM ','CLDTCM','RLWPM ','CDREM '], CHILD=ORAD, RC=STATUS  )
+      VERIFY_(STATUS)
+
+    end subroutine OBIO_SetServices
+ 
   end subroutine SetServices
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
