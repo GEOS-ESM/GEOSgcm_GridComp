@@ -36,7 +36,7 @@
 
 module gfdl2_cloud_microphys_mod
     
-      use mpp_mod, only: mpp_pe, mpp_root_pe
+      !use mpp_mod, only: mpp_pe, mpp_root_pe
     ! use mpp_mod, only: stdlog, mpp_pe, mpp_root_pe, mpp_clock_id, &
     ! mpp_clock_begin, mpp_clock_end, clock_routine, &
     ! input_nml_file
@@ -46,10 +46,11 @@ module gfdl2_cloud_microphys_mod
     ! use fms_mod, only: write_version_number, open_namelist_file, &
     ! check_nml_error, file_exist, close_file
 
-    use fms_mod,             only: write_version_number, open_namelist_file, &
-                                   check_nml_error, close_file, file_exist,  &
-                                   fms_init
+    !use fms_mod,             only: write_version_number, open_namelist_file, &
+    !                               check_nml_error, close_file, file_exist,  &
+    !                               fms_init
 
+    use MAPL
     implicit none
     
     private
@@ -3496,7 +3497,7 @@ subroutine gfdl_cloud_microphys_init ()
     integer :: nlunit
     character (len = 64) :: fn_nml = 'input.nml'
     
-    integer :: ios, ierr
+    integer :: ios, ierr, rc
     logical :: exists
     
     ! integer, intent (in) :: id, jd, kd
@@ -3506,8 +3507,8 @@ subroutine gfdl_cloud_microphys_init ()
     ! integer :: unit, io, ierr, k, logunit
     ! logical :: flag
     ! real :: tmp, q1, q2
-   
-    call fms_init()     
+
+    !call fms_init()     
  
     ! root_proc = (mpp_pe () .eq.mpp_root_pe ())
     
@@ -3519,16 +3520,23 @@ subroutine gfdl_cloud_microphys_init ()
         write (6, *) 'gfdl - mp :: namelist file: ', trim (fn_nml), ' does not exist'
         stop
     else
-        nlunit=open_namelist_file()
-        rewind (nlunit)
+        !nlunit=open_namelist_file()
+        open(NEWUNIT=nlunit,file=trim(fn_nml), form='formatted',access='sequential',iostat=ios)
+        if(ios /= 0) stop('open namelist file gfdl_cloud_microphys_init failed, bailing out...')
+        rewind (nlunit, iostat=ios)
+        if(ios /= 0) stop('rewind namelist file gfdl_cloud_microphys_init failed, bailing out...')
      ! Read Main namelist
         read (nlunit,gfdl_cloud_microphysics_nml,iostat=ios)
-        ierr = check_nml_error(ios,'gfdl_cloud_microphysics_nml')
-        call close_file(nlunit)
+        if(ios /= 0) stop('read namelist gfdl_cloud_microphys_init failed, bailing out...')
+        !ierr = check_nml_error(ios,'gfdl_cloud_microphysics_nml')
+        !call close_file(nlunit)
+        close(nlunit, iostat=ios)
+        if(ios /= 0) stop('close namelist file gfdl_cloud_microphys_init failed, bailing out...')
     endif
 #endif
 
-    if (mpp_pe() .EQ. mpp_root_pe()) then
+    !if (mpp_pe() .EQ. mpp_root_pe()) then
+    if (MAPL_AM_I_ROOT()) then
         write (*, *) " ================================================================== "
         write (*, *) "gfdl_cloud_microphys_mod"
         write (*, nml = gfdl_cloud_microphysics_nml)
