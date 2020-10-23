@@ -109,7 +109,7 @@ module GEOS_MoistGridCompMod
 	                     ,CUM_MAX_EDT_LAND,CUM_MAX_EDT_OCEAN, CUM_HEI_DOWN_LAND, CUM_HEI_DOWN_OCEAN &
                              ,CUM_HEI_UPDF_LAND,CUM_HEI_UPDF_OCEAN,USE_MOMENTUM_TRANSP,CUM_ENTR_RATE    &
                              ,ZERO_DIFF,MOIST_TRIGGER,FRAC_MODIS,MAX_TQ_TEND,CUM_FADJ_MASSFLX           &
-			     ,CUM_USE_EXCESS,CUM_AVE_LAYER
+			     ,CUM_USE_EXCESS,CUM_AVE_LAYER,ADV_TRIGGER
 !-srf-gf-scheme
 
 !ALT-protection for GF
@@ -5126,9 +5126,9 @@ contains
         call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL) ,'USE_EXCESS_SH:'      ,default= 0, RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)  ,'USE_EXCESS_MD:'      ,default= 2, RC=STATUS );VERIFY_(STATUS)
 
-        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)  ,'AVE_LAYER_DP:'       ,default= 15., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)  ,'AVE_LAYER_DP:'       ,default= 50., RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)  ,'AVE_LAYER_SH:'       ,default= 30., RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)   ,'AVE_LAYER_MD:'       ,default= 15., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)   ,'AVE_LAYER_MD:'       ,default= 50., RC=STATUS );VERIFY_(STATUS)
       
         call MAPL_GetResource(MAPL, USE_TRACER_TRANSP    ,'USE_TRACER_TRANSP:'  ,default= 1, RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN    ,'USE_TRACER_SCAVEN:'  ,default= 2, RC=STATUS );VERIFY_(STATUS)
@@ -5141,7 +5141,6 @@ contains
         call MAPL_GetResource(MAPL, DOWNDRAFT       , 'DOWNDRAFT:'        ,default= 1,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, USE_FLUX_FORM   , 'USE_FLUX_FORM:'    ,default= 1,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, USE_TRACER_EVAP , 'USE_TRACER_EVAP:'  ,default= 1,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, SGS_W_TIMESCALE , 'SGS_W_TIMESCALE:'  ,default= 0,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, APPLY_SUB_MP    , 'APPLY_SUB_MP:'     ,default= 0,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, ALP1            , 'ALP1:'             ,default= 1., RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, LIGHTNING_DIAG  , 'LIGHTNING_DIAG:'   ,default= 0,  RC=STATUS );VERIFY_(STATUS)
@@ -5149,32 +5148,34 @@ contains
         call MAPL_GetResource(MAPL, USE_WETBULB     , 'USE_WETBULB:'      ,default= 0,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, LAMBAU_SHDN     , 'LAMBAU_SHDN:'	  ,default= 2., RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, ZERO_DIFF       , 'ZERO_DIFF:'        ,default= 0,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL ,MOIST_TRIGGER   , 'MOIST_TRIGGER:'    ,default= 0,  RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL ,MAX_TQ_TEND     , 'MAX_TQ_TEND:'      ,default= 100.,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL ,FRAC_MODIS      , 'FRAC_MODIS:'       ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, ADV_TRIGGER     , 'ADV_TRIGGER:'      ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL ,MAX_TQ_TEND     , 'MAX_TQ_TEND:'      ,default= 100., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL ,MOIST_TRIGGER   , 'MOIST_TRIGGER:'    ,default= 0,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, SGS_W_TIMESCALE , 'SGS_W_TIMESCALE:'  ,default= 0,  RC=STATUS );VERIFY_(STATUS)
 
-        call MAPL_GetResource(MAPL, USE_GF2020      , 'USE_GF2020:'       ,default= 1, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, USE_GF2020      , 'USE_GF2020:'       ,default= 1,  RC=STATUS );VERIFY_(STATUS)
         if(USE_GF2020==1) then
-          call MAPL_GetResource(MAPL, CLEV_GRID       , 'CLEV_GRID:'        ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, VERT_DISCR      , 'VERT_DISCR:'       ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, USE_FCT         , 'USE_FCT:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, SATUR_CALC      , 'SATUR_CALC:'       ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, BC_METH         , 'BC_METH:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, USE_REBCB       , 'USE_REBCB:'        ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_MID         , 'TAU_MID:'          ,default= 900.,  RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_DEEP        , 'TAU_DEEP:'         ,default= 1800., RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, AUTOCONV        , 'AUTOCONV:'         ,default= 3,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, C0_DEEP         , 'C0_DEEP:'          ,default= 3.e-3, RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, C0_MID          , 'C0_MID:'	    ,default= 3.e-3, RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, QRC_CRIT        , 'QRC_CRIT:'         ,default= 1.e-5, RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, C1              , 'C1:'               ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, LAMBAU_DEEP     , 'LAMBAU_DEEP:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CLEV_GRID     , 'CLEV_GRID:'	  ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, VERT_DISCR    , 'VERT_DISCR:'	  ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, USE_FCT       , 'USE_FCT:'	  ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, SATUR_CALC    , 'SATUR_CALC:'	  ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, BC_METH       , 'BC_METH:'	  ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, USE_REBCB     , 'USE_REBCB:'	  ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_MID       , 'TAU_MID:'	  ,default= 900.,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_DEEP      , 'TAU_DEEP:'	  ,default= 1800., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, AUTOCONV      , 'AUTOCONV:'	  ,default= 3,     RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, C0_DEEP       , 'C0_DEEP:'	  ,default= 3.e-3, RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, C0_MID        , 'C0_MID:' 	  ,default= 3.e-3, RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, QRC_CRIT      , 'QRC_CRIT:'	  ,default= 1.e-5, RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, C1            , 'C1:'		  ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, LAMBAU_DEEP   , 'LAMBAU_DEEP:'	  ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
 
-          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'    ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'    ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'    ,default= 0.7,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'    ,default= 0.7,   RC=STATUS );VERIFY_(STATUS)
 
-          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'   ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'   ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'   ,default= 0.7,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'   ,default= 0.7,   RC=STATUS );VERIFY_(STATUS)
 
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'    ,default= 0.50,  RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'    ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
@@ -5189,6 +5190,11 @@ contains
 
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'    ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+!======
+          call MAPL_GetResource(MAPL ,MOIST_TRIGGER   , 'MOIST_TRIGGER:'    ,default= 1,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, SGS_W_TIMESCALE , 'SGS_W_TIMESCALE:'  ,default= 1,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL ,FRAC_MODIS      , 'FRAC_MODIS:'       ,default= 1,  RC=STATUS );VERIFY_(STATUS)
+!======
           
 	  !if(adjustl(CLDMICRO)=="1MOMENT") then
 	  if(ICUMULUS_GF(SHAL) == 1) then
@@ -6424,6 +6430,7 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,     'SHLW_RDROP:',DEFAULT=8.e-6,  RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%THLSRC_FAC,'THLSRC_FAC:',DEFAULT=2.0,    RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%QTSRC_FAC, 'QTSRC_FAC:' ,DEFAULT=0.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%QTSRCHGT,  'QTSRCHGT:'  ,DEFAULT=50.0,   RC=STATUS)
 
 
       if(adjustl(CLDMICRO)=="GFDL") then
