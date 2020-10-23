@@ -806,6 +806,7 @@ contains
 
     real :: qtsrc_fac 
     real :: thlsrc_fac
+    real :: qtsrchgt
 
     ! ------------------------ !
     ! Iterative xc calculation !
@@ -926,6 +927,7 @@ contains
     rdrop     = shlwparams%rdrop
     thlsrc_fac = shlwparams%thlsrc_fac
     qtsrc_fac  = shlwparams%qtsrc_fac
+    qtsrchgt   = shlwparams%qtsrchgt
 
     !------------------------!
     !                        !
@@ -1319,8 +1321,7 @@ contains
            ! ----------------------------------------------------------------------- !
 
            ! invert kpbl index
-             kinv = k0 - kpbl_in(i) + 2
-
+           kinv = k0 - kpbl_in(i) + 1
 
 15         continue    
 
@@ -1361,26 +1362,36 @@ contains
             dpi = pifc0(k-1) - pifc0(k)
             dpsum  = dpsum  + dpi 
             tkeavg = tkeavg + dpi*tke(k)
-!            qtavg  = qtavg  + dpi*qt0(k)
             uavg   = uavg   + dpi*u0(k)
             vavg   = vavg   + dpi*v0(k)
             thvlavg = thvlavg + dpi*thvl0(k)
             if( k .ne. kinv ) thvlmin = min(thvlmin,min(thvl0bot(k),thvl0top(k)))
          end do
          tkeavg  = tkeavg/dpsum
-!         qtavg   = qtavg/dpsum
          uavg    = uavg/dpsum
          vavg    = vavg/dpsum
          thvlavg = thvlavg/dpsum
 
-         dpsum = 0.
-         do k = 1,kinv
-             dpi = max(0.,(2e3+pmid0(k)-pifc0(0))/2e3)
-             qtavg  = qtavg  + dpi*qt0(k)
-             dpsum = dpsum + dpi
-         end do
-         qtavg   = qtavg/dpsum
+        ! weighted average over lowest 20mb
+!         dpsum = 0.
+!         do k = 1,kinv
+!             dpi = max(0.,(2e3+pmid0(k)-pifc0(0))/2e3)
+!             qtavg  = qtavg  + dpi*qt0(k)
+!             dpsum = dpsum + dpi
+!         end do
+!         qtavg   = qtavg/dpsum
  
+       ! Interpolate qt to specified height
+         k = 1
+         do while (zmid0(k).lt.qtsrchgt)
+           k = k+1
+         end do
+         if (k.gt.1) then
+           qtavg = qt0(k-1)*(zmid0(k)-qtsrchgt) + qt0(k)*(qtsrchgt-zmid0(k-1))
+           qtavg = qtavg / (zmid0(k)-zmid0(k-1))
+         else
+           qtavg = qt0(1)
+         end if
 
        ! ------------------------------------------------------------------ !
        ! Find characteristics of cumulus source air: qtsrc,thlsrc,usrc,vsrc !

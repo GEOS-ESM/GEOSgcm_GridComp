@@ -108,7 +108,8 @@ module GEOS_MoistGridCompMod
                              ,C1,C0_DEEP, QRC_CRIT,LAMBAU_DEEP,LAMBAU_SHDN,C0_MID                       &
 	                     ,CUM_MAX_EDT_LAND,CUM_MAX_EDT_OCEAN, CUM_HEI_DOWN_LAND, CUM_HEI_DOWN_OCEAN &
                              ,CUM_HEI_UPDF_LAND,CUM_HEI_UPDF_OCEAN,USE_MOMENTUM_TRANSP,CUM_ENTR_RATE    &
-                             ,ZERO_DIFF,MOIST_TRIGGER,FRAC_MODIS,MAX_TQ_TEND,CUM_FADJ_MASSFLX
+                             ,ZERO_DIFF,MOIST_TRIGGER,FRAC_MODIS,MAX_TQ_TEND,CUM_FADJ_MASSFLX           &
+			     ,CUM_USE_EXCESS,CUM_AVE_LAYER
 !-srf-gf-scheme
 
 !ALT-protection for GF
@@ -2286,22 +2287,6 @@ contains
          LONG_NAME ='diameter_of_largest_RAS_plume',               &
          UNITS     ='m'  ,                                         &
          DIMS      = MAPL_DimsHorzOnly,                            & 
-         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='RH600',                                      &
-         LONG_NAME ='rh_at_600mb',               &
-         UNITS     ='kg/kg'  ,                                         &
-         DIMS      = MAPL_DimsHorzOnly,                            &
-         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME='Q600',                                      &
-         LONG_NAME ='q_at_600mb',               &
-         UNITS     ='kg/kg'  ,                                         &
-         DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -4671,6 +4656,20 @@ contains
          DIMS       = MAPL_DimsHorzVert,                          &
          VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
        VERIFY_(STATUS)
+       call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME = 'VAR3d_c',                                    &
+         LONG_NAME  = 'dummy_array_for_output_GF',        &
+         UNITS      = 'unknown',                                  &
+         DIMS       = MAPL_DimsHorzVert,                              &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec(GC,                                     &
+         SHORT_NAME = 'VAR3d_d',                                    &
+         LONG_NAME  = 'dummy_array_for_output_GF',        &
+         UNITS      = 'unknown',                                  &
+         DIMS       = MAPL_DimsHorzVert,                              &
+         VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+       VERIFY_(STATUS)
        !-2d
        call MAPL_AddExportSpec(GC,                                &
         SHORT_NAME         = 'MFDP',                              &
@@ -4858,7 +4857,7 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="--RAS_RUN"    ,RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,name="-POST_RAS"    ,RC=STATUS)
+    call MAPL_TimerAdd(GC,name="-POST_CNV"    ,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,name="--UWSHCU"    ,RC=STATUS)
     VERIFY_(STATUS)
@@ -5100,12 +5099,21 @@ contains
         call MAPL_GetResource(MAPL, CLOSURE_CHOICE(DEEP) ,'CLOSURE_DEEP:'       ,default= 0, RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CLOSURE_CHOICE(SHAL) ,'CLOSURE_SHALLOW:'    ,default= 7, RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)  ,'CLOSURE_CONGESTUS:'  ,default= 3, RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)  ,'ENTR_DEEP:'          ,default= 1.e-4, RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)  ,'ENTR_SHALLOW:'       ,default= 1.e-3, RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)   ,'ENTR_CONGESTUS:'     ,default= 9.e-4, RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP),'FADJ_MASSFLX_DEEP:'     ,default= 1.0, RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL),'FADJ_MASSFLX_SHALLOW:'  ,default= 2.0, RC=STATUS );VERIFY_(STATUS)
-        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID) ,'FADJ_MASSFLX_CONGESTUS:',default= 1.0, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)  ,'ENTR_DP:'            ,default= 1.e-4, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)  ,'ENTR_SH:'            ,default= 2.e-3, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)   ,'ENTR_MD:'            ,default= 9.e-4, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP),'FADJ_MASSFLX_DP:'   ,default= 1.0, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL),'FADJ_MASSFLX_SH:'   ,default= 1.0, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID) ,'FADJ_MASSFLX_MD:'   ,default= 1.0, RC=STATUS );VERIFY_(STATUS)
+       
+        call MAPL_GetResource(MAPL, CUM_USE_EXCESS(DEEP) ,'USE_EXCESS_DP:'      ,default= 2, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL) ,'USE_EXCESS_SH:'      ,default= 0, RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)  ,'USE_EXCESS_MD:'      ,default= 2, RC=STATUS );VERIFY_(STATUS)
+
+        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)  ,'AVE_LAYER_DP:'       ,default= 15., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)  ,'AVE_LAYER_SH:'       ,default= 30., RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)   ,'AVE_LAYER_MD:'       ,default= 15., RC=STATUS );VERIFY_(STATUS)
+      
         call MAPL_GetResource(MAPL, USE_TRACER_TRANSP    ,'USE_TRACER_TRANSP:'  ,default= 1, RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN    ,'USE_TRACER_SCAVEN:'  ,default= 2, RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL, USE_SCALE_DEP        ,'USE_SCALE_DEP:'      ,default= 1, RC=STATUS );VERIFY_(STATUS)
@@ -5127,6 +5135,7 @@ contains
         call MAPL_GetResource(MAPL, ZERO_DIFF       , 'ZERO_DIFF:'        ,default= 0,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL ,MOIST_TRIGGER   , 'MOIST_TRIGGER:'    ,default= 0,  RC=STATUS );VERIFY_(STATUS)
         call MAPL_GetResource(MAPL ,MAX_TQ_TEND     , 'MAX_TQ_TEND:'      ,default= 100.,  RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL ,FRAC_MODIS      , 'FRAC_MODIS:'       ,default= 0,  RC=STATUS );VERIFY_(STATUS)
 
         call MAPL_GetResource(MAPL, USE_GF2020  ,'USE_GF2020:'        ,default= 1, RC=STATUS );VERIFY_(STATUS)
         if(USE_GF2020==1) then
@@ -5136,7 +5145,7 @@ contains
           call MAPL_GetResource(MAPL, SATUR_CALC      , 'SATUR_CALC:'       ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, BC_METH         , 'BC_METH:'          ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, USE_REBCB       , 'USE_REBCB:'        ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_MID         , 'TAU_MID:'          ,default= 3600., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_MID         , 'TAU_MID:'          ,default= 3600.,  RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, TAU_DEEP        , 'TAU_DEEP:'         ,default= 5400., RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, AUTOCONV        , 'AUTOCONV:'         ,default= 3,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C0_DEEP         , 'C0_DEEP:'          ,default= 3.e-3, RC=STATUS );VERIFY_(STATUS)
@@ -5144,7 +5153,6 @@ contains
           call MAPL_GetResource(MAPL, QRC_CRIT        , 'QRC_CRIT:'         ,default= 1.e-5, RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C1              , 'C1:'               ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, LAMBAU_DEEP     , 'LAMBAU_DEEP:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL ,FRAC_MODIS      , 'FRAC_MODIS:'       ,default= 1,  RC=STATUS );VERIFY_(STATUS)
 
           call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'    ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'    ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
@@ -5154,17 +5162,23 @@ contains
 
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'    ,default= 0.50,  RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'    ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'    ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
 
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'   ,default= 0.45,  RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'   ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'   ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
 
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
 
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'    ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
-
- 
+          
+	  if(ICUMULUS_GF(SHAL) == 1) then
+               call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'   ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+               call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'    ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+               call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'    ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)		   
+          endif
         else
           call MAPL_GetResource(MAPL, CLEV_GRID       , 'CLEV_GRID:'        ,default= 0,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, VERT_DISCR      , 'VERT_DISCR:'       ,default= 0,     RC=STATUS );VERIFY_(STATUS)
@@ -5180,7 +5194,6 @@ contains
           call MAPL_GetResource(MAPL, LAMBAU_DEEP     , 'LAMBAU_DEEP:'      ,default= 2.0,   RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C1              , 'C1:'               ,default= 1.e-3, RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C0_MID          , 'C0_MID:'	    ,default= 2.e-3, RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL ,FRAC_MODIS      , 'FRAC_MODIS:'       ,default= 0,  RC=STATUS );VERIFY_(STATUS)
           
           call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
@@ -5190,9 +5203,11 @@ contains
 
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'    ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'    ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
 
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'   ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'   ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'   ,default= 0.10,  RC=STATUS );VERIFY_(STATUS)
 
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'     ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'     ,default= 0.35,  RC=STATUS );VERIFY_(STATUS)
@@ -5425,7 +5440,7 @@ contains
       real, pointer, dimension(:,:  ) :: IWP,LWP,CWP,TPW,CAPE,ZPBLCN,INHB,ZLCL,ZLFC,ZCBL,CCWP , KPBLIN, KPBLSC
       real, pointer, dimension(:,:  ) :: TVQ0,TVQ1,TVE0,TVE1,TVEX,DCPTE, TVQX2, TVQX1, CCNCOLUMN, NDCOLUMN, NCCOLUMN  !DONIF
       real, pointer, dimension(:,:,:,:) :: XHO
-      real, pointer, dimension(:,:  ) ::  MXDIAM, RH600, Q600, QCBL, QRATIO, CNV_FRC
+      real, pointer, dimension(:,:  ) ::  MXDIAM, QCBL, QRATIO, CNV_FRC
 
       real, pointer, dimension(:,:  ) :: RAS_TIME, RAS_TRG, RAS_TOKI, RAS_PBL, RAS_WFN 
       real, pointer, dimension(:,:,:) :: RAS_ALPHA, RAS_TAU
@@ -5553,7 +5568,7 @@ contains
       real, pointer, dimension(:,:,:)       :: DTDT_BL
       real, pointer, dimension(:,:,:)       :: DQDT_BL
       real, pointer, dimension(:,:,:)       :: DQDT_GF,DTDT_GF,MUPDP,MDNDP,MUPSH,MUPMD,DTRDT_GF
-      real, pointer, dimension(:,:,:)       :: VAR3d_a,VAR3d_b
+      real, pointer, dimension(:,:,:)       :: VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d
       real, pointer, dimension(:,:  )       :: USTAR,TSTAR,QSTAR,T2M,Q2M,TA,QA,SH,EVAP,PHIS
       real, pointer, dimension(:,:  )       :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
       real, pointer, dimension(:,:  )       :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
@@ -6018,7 +6033,7 @@ contains
       integer                    :: KTOP
       real                       :: PA2, PA, NA, TH_TOP, TH_BOT, TL_MEAN, Z_LAYER, ZTHICK
 
-      integer                    :: levs925, levs600
+      integer                    :: levs925, levs600, levs200
       real, dimension(IM,JM   )  :: tempor2d, GF_AREA, FRC_RASN_2D
 
       ! Manage diagnostic outputs for re-evaporation
@@ -6118,8 +6133,8 @@ contains
       real, dimension(IM,JM,LM+1) :: ZET
 
       ! Convective Fraction
-      integer, dimension(IM,JM)           :: L600
-      real   , dimension(IM,JM)           :: RHat600, QL600, QV600, QVCBL
+      integer, dimension(IM,JM)           :: L600, L200
+      real   , dimension(IM,JM)           :: QL600, CF200, QVCBL
       real   , dimension(IM,JM)           :: CNV_FRACTION
       real                                :: CNV_FRACTION_MIN
       real                                :: CNV_FRACTION_MAX
@@ -6392,6 +6407,7 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,     'SHLW_RDROP:',DEFAULT=8.e-6,  RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%THLSRC_FAC,'THLSRC_FAC:',DEFAULT=2.0,    RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%QTSRC_FAC, 'QTSRC_FAC:' ,DEFAULT=0.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%QTSRCHGT,  'QTSRCHGT:'  ,DEFAULT=50.0,   RC=STATUS)
 
 
       if(adjustl(CLDMICRO)=="GFDL") then
@@ -6748,8 +6764,6 @@ contains
       call MAPL_GetPointer(EXPORT, RAS_WFN,   'RAS_WFN'  , ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
 
       call MAPL_GetPointer(EXPORT, MXDIAM,    'MXDIAM'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, RH600,     'RH600'     , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(EXPORT, Q600,      'Q600'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, QCBL,      'QCBL'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, CNV_FRC,   'CNV_FRC'   , RC=STATUS); VERIFY_(STATUS)
 
@@ -7648,70 +7662,23 @@ contains
     !    CNV_FRACTION = 1.0  --->  Deep-Convection
          CNV_FRACTION = 0.0 
 
-     ! Find RH at 600mb level
-      call VertInterp(RHat600,Q1/QSS,log(PLE),log(60000.),STATUS)
+    ! CNV_FRACTION Criteria
+      call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
       VERIFY_(STATUS)
-     ! Fill undefs (600mb below the surface) with surface RH values L=LM
-         levs600  = max(1,count(PREF < 60000.))
-      WHERE (RHat600 == MAPL_UNDEF)
-         RHat600 = Q1(:,:,levs600)/QSS(:,:,levs600)
-      END WHERE
-
-     ! Find QV at 600mb level
-      call VertInterp(QV600,Q,log(PLE),log(60000.),STATUS)
+      call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
       VERIFY_(STATUS)
-     ! Fill undefs (600mb below the surface) with surface QV values L=LM
-         levs600  = max(1,count(PREF < 60000.))
-      WHERE (QV600 == MAPL_UNDEF)
-         QV600 = Q(:,:,levs600)
-      END WHERE
-
-     !if(USE_GF2020==1) then
-     ! ! QL*1.e6 at 600mb Criteria
-     !  call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
-     !  VERIFY_(STATUS)
-     !  call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT=  100.0, RC=STATUS)
-     !  VERIFY_(STATUS)
-     !  call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= -1.0, RC=STATUS)
-     !  VERIFY_(STATUS)
-     !  call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
-     !  VERIFY_(STATUS)
-     !else
-       ! CAPE Criteria
-        call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 1.e6, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
-        VERIFY_(STATUS)
-     !endif
+      call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 0.0, RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
+      VERIFY_(STATUS)
 
       if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-       !if(USE_GF2020==1) then
-       !   ! QL*1.e6 at 600mb
-       !   ! Find QL at 600mb level
-       !   RAD_QL = (QLLS + QLCN)*1.e6
-       !   call VertInterp(QL600,RAD_QL,log(PLE),log(60000.),STATUS)
-       !   VERIFY_(STATUS)
-       !   ! Fill undefs (600mb below the surface) with surface QV values L=LM
-       !   levs600  = max(1,count(PREF < 60000.))
-       !   WHERE (QL600 == MAPL_UNDEF)
-       !     QL600 = RAD_QL(:,:,levs600)
-       !   END WHERE
-       !   CNV_FRACTION =MAX(0.0,MIN(1.0,(QL600-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
-       !else
-          ! CAPE
-           WHERE (CAPE .ne. MAPL_UNDEF)   
-              CNV_FRACTION =MAX(0.0,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
-           END WHERE
-       !endif
+        ! CAPE
+         WHERE (CAPE .ne. MAPL_UNDEF)   
+            CNV_FRACTION =MAX(0.0,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
+         END WHERE
       endif
-
       if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
-      if(associated(Q600    )) Q600     = QV600
-      if(associated(RH600   )) RH600    = RHat600
 
       if (SHLWPARAMS%FRC_RASN < 0.0) then
          FRC_RASN_2D = ABS(SHLWPARAMS%FRC_RASN)*(1.0-FRLAND)*CNV_FRACTION
@@ -7891,6 +7858,17 @@ contains
       if((adjustl(CLDMICRO)=="1MOMENT" .or. adjustl(CLDMICRO)=="GFDL") .and. USE_AEROSOL_NN) then
 !----- aerosol activation (single-moment uphysics)      
          call MAPL_TimerOn(STATE,"--USE_AEROSOL_NN2")
+         do j = 1, JM
+            do i = 1, IM
+             aux1=PLE(i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q1(i,j,LM)))) ! air_dens (kg m^-3)
+             hfs = -SH  (i,j) ! W m^-2
+             hfl = -EVAP(i,j) ! kg m^-2 s^-1
+             aux2= (hfs/MAPL_CP + 0.608*T(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)
+             aux3= ZLE(I, J,  nint(KPBLIN(I, J)))           ! pbl height (m)
+             !-convective velocity scale W* (m/s)
+             ZWS(i,j) = max(0.,0.001-1.5*0.41*MAPL_GRAV*aux2*aux3/T(i,j,LM))
+             ZWS(i,j) = 1.2*ZWS(i,j)**0.3333 ! m/s           
+         enddo; enddo
          call Aer_Actv_1M_interface(IM,JM,LM,N_MODES, TEMP, PLO, ZLO, ZLE, QLCN, QICN, QLLS, QILS &
                                    ,KPBLIN,ZWS,OMEGA, FRLAND ,AeroProps, NACTL,NACTI)
          call MAPL_TimerOff(STATE,"--USE_AEROSOL_NN2")
@@ -8062,17 +8040,6 @@ contains
         end do
         QCBL = QVCBL
       end if
-     !Option to Use Q at CBL to adjust convective intensities based Q at CBL
-     !if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-     !   if (CNV_FRACTION_MAX < 1.0) then ! QV at CBL
-     !     DO J=1, JM
-     !       DO I=1, IM
-     !         CNV_FRACTION(I,J) = MAX(0.0,MIN(1.0,(QVCBL(I,J)-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
-     !       END DO
-     !     END DO
-     !     if(associated(CNV_FRC )) CNV_FRC = CNV_FRACTION
-     !   endif
-     !endif
 
       if (ADJUSTL(CONVPAR_OPTION) == "RAS") then 
        RASAL1 = RASPARAMS%RASAL1
@@ -8279,6 +8246,8 @@ contains
          call MAPL_GetPointer(EXPORT, MUPMD  ,'MUPMD'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MUPMD=0.0
          call MAPL_GetPointer(EXPORT, VAR3d_a,'VAR3d_a'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);VAR3d_a=0.0
          call MAPL_GetPointer(EXPORT, VAR3d_b,'VAR3d_b'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);VAR3d_b=0.0
+         call MAPL_GetPointer(EXPORT, VAR3d_c,'VAR3d_c'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);VAR3d_c=0.0
+         call MAPL_GetPointer(EXPORT, VAR3d_d,'VAR3d_d'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);VAR3d_d=0.0
          call MAPL_GetPointer(EXPORT, MFDP   ,'MFDP'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFDP=0.0
          call MAPL_GetPointer(EXPORT, MFSH   ,'MFSH'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFSH=0.0
          call MAPL_GetPointer(EXPORT, MFMD   ,'MFMD'	,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);MFMD=0.0
@@ -8305,6 +8274,8 @@ contains
 ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRACTION dependence
          if (GF_MIN_AREA > 0) then
            GF_AREA = GF_MIN_AREA*CNV_FRACTION + AREA*(1.0-CNV_FRACTION)
+         else if (GF_MIN_AREA < 0) then
+           GF_AREA = ABS(GF_MIN_AREA)*(1.0-CNV_FRACTION) + AREA*CNV_FRACTION
          else
            GF_AREA = AREA
          endif
@@ -8329,7 +8300,8 @@ contains
                                  ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE, CLDMICRO &
                                  ,XHO,FSCAV,CNAMES,QNAMES,DTRDT_GF                  &
                                  ,RSU_CN_GF,REV_CN_GF, PFI_CN_GF, PFL_CN_GF         &
-                                 ,TPWI,TPWI_star,LFR_GF,VAR3d_a,VAR3d_b) !,CNV_TR)
+                                 ,TPWI,TPWI_star,LFR_GF                             &
+				 ,VAR3d_a,VAR3d_b,VAR3d_c,VAR3d_d) !,CNV_TR)
                                                                    
          HHO      =  0.0
          HSO      =  0.0    
@@ -8491,17 +8463,9 @@ contains
          CNV_UPDF =0.0 ! 'updraft_areal_fraction',           - '1', 
          ENTLAM   =0.0 ! 'entrainment parameter',            - 'm-1',  
          CNV_PRC3 =0.0 ! 'convective_precipitation           - 'kg m-2 s-1'
-        ! Move any convective condensate/cloud to large-scale
-         QLLS = QLLS+QLCN
-         QILS = QILS+QICN
-         CLLS = MIN(CLLS+CLCN,1.0)
-        ! Zero out convective condensate/cloud
-         QLCN = 0.0
-         QICN = 0.0
-         CLCN = 0.0
      ENDIF
 
-      call MAPL_TimerOn (STATE,"-POST_RAS")
+      call MAPL_TimerOn (STATE,"-POST_CNV")
 
       CNV_NICE_X = CNV_NICE*CNV_MFD
       CNV_NDROP_X = CNV_NDROP*CNV_MFD
@@ -8555,7 +8519,7 @@ contains
 !-srf-gf-scheme
 #endif
 
-      call MAPL_TimerOff(STATE,"-POST_RAS")
+      call MAPL_TimerOff(STATE,"-POST_CNV")
 
       call MAPL_TimerOn (STATE,"--UWSHCU")
       if (DOSHLW /= 0) then
@@ -8659,7 +8623,7 @@ contains
       call MAPL_TimerOff (STATE,"--UWSHCU")
 
 
-      call MAPL_TimerOn(STATE,"-POST_RAS")
+      call MAPL_TimerOn(STATE,"-POST_CNV")
 
       !     Compute new mass loading for aerosols; CAR 12/19/08
       !     -----------------------------------------------------
@@ -8745,7 +8709,7 @@ contains
          end if
       end do
 
-      call MAPL_TimerOff(STATE,"-POST_RAS")
+      call MAPL_TimerOff(STATE,"-POST_CNV")
 
 
       call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 1.0    )
@@ -8818,9 +8782,10 @@ contains
         CLCN = CLCN + CNV_MFD*iMASS*DT_MOIST
         if (UWTOLS/=0) then
        ! add ShallowCu CL/QL/QI tendencies to Large-Scale
-          CLLS = CLLS +   MFD_SC*iMASS*DT_MOIST
-          QLLS = QLLS + QLDET_SC*iMASS*DT_MOIST
-          QILS = QILS + QIDET_SC*iMASS*DT_MOIST
+        ! CLLS = CLLS +   MFD_SC*iMASS*DT_MOIST
+          CLLS = CLLS + 1.5*DCM_SC*iMASS*DT_MOIST
+          QLLS = QLLS +   QLDET_SC*iMASS*DT_MOIST
+          QILS = QILS +   QIDET_SC*iMASS*DT_MOIST
         else
          !CLCN = CLCN +     MFD_SC*iMASS*DT_MOIST
           CLCN = CLCN + 1.5*DCM_SC*iMASS*DT_MOIST
@@ -8898,8 +8863,7 @@ contains
                   endif
                   alpha = 1.0 - min(alpha,1.)
 
-                  QT  = Q1(i,j,k) + (QLLS(i,j,k)+QILS(i,j,k))/(1.-CLCN(i,j,k))   ! QT in non-convective area
-                  QCn =             (QLLS(i,j,k)+QILS(i,j,k))/(1.-CLCN(i,j,k))
+                  QCn = (QLLS(i,j,k)+QILS(i,j,k))/(1.-CLCN(i,j,k))
 
                   do n = 1,10
 
@@ -8907,6 +8871,8 @@ contains
                     QCp = QCn
                     dqsatn = GEOS_DQSAT( TEp, PLO(i,j,k), QSAT=qsatn )
                     sigmaqt = alpha*qsatn
+
+                    QT  = Q1(i,j,k) + (QLLS(i,j,k)+QILS(i,j,k))/(1.-CLCN(i,j,k))   ! QT in non-convective area
 
                     call pdffrac(INT(CLDPARAMS%PDFSHAPE),QT,sigmaqt,sigmaqt,qsatn,CFn)
                     call pdfcondensate(INT(CLDPARAMS%PDFSHAPE),QT,sigmaqt,sigmaqt,qsatn,QCn)
@@ -9136,12 +9102,11 @@ contains
          call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 21.e-6  )
          call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 1.0     )
          call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 0.5     )
-         call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT,     'TURNRHCRIT:',     DEFAULT= 884.0   )
       elseif (adjustl(CLDMICRO) =="GFDL") then
          call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
          call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT= 15.e-6  )
          call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
-         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 1.0     )
+         call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 0.9     )
          call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT= 5.e-6   )
          call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 21.e-6  )
          call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 0.0     )
@@ -9222,21 +9187,6 @@ contains
          where (u1(:,:,l).gt.4.) tempor2d(:,:) = 1.
       end do
    
-   
-    
-         do j = 1, JM
-            do i = 1, IM
-	     aux1=PLE(i,j,LM)/(287.04*(T(i,j,LM)*(1.+0.608*Q1(i,j,LM)))) ! air_dens (kg m^-3)
-	     hfs = -SH  (i,j) ! W m^-2
-	     hfl = -EVAP(i,j) ! kg m^-2 s^-1
-             aux2= (hfs/MAPL_CP + 0.608*T(i,j,LM)*hfl)/aux1 ! buoyancy flux (h+le)
-             aux3= ZLE(I, J,  nint(KPBLIN(I, J)))           ! pbl height (m)
-             !-convective velocity scale W* (m/s)
-             zws(i,j) = max(0.,0.001-1.5*0.41*MAPL_GRAV*aux2*aux3/T(i,j,LM))
-             zws(i,j) = 1.2*zws(i,j)**0.3333 ! m/s	     
-   	 enddo; enddo
-     
-     
       !==========AER_CLOUD===================microphysics "if"===========================
       if(adjustl(CLDMICRO) /="2MOMENT") then
 
@@ -9520,7 +9470,7 @@ contains
     !! Melt/Freeze constraints
     !    call meltfrz_all  ( IM, JM, LM, DT_MOIST, TEMP, RAD_QV, RAD_QL, RAD_QI, &
     !                        CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND)
-     ! when do_qa=.true. in GFDL_MP RAD_CF is update internally and DQADT_micro is zero
+     ! when do_qa=.true. in GFDL_MP RAD_CF is updated internally and DQADT_micro is zero
      ! so lets be sure we get the real cloud tendency from micro here
          DQADT_micro = ( RAD_CF - CLCN - CLLS ) / DT_MOIST
      ! Cloud liquid & Ice tendencies (these exports are confusing, for now keep them zeros)

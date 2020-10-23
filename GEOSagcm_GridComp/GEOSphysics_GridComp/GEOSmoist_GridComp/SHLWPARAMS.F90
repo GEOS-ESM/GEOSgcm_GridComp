@@ -33,6 +33,7 @@
            real     :: rdrop              ! liquid drop radius
            real     :: thlsrc_fac         ! Scaling factor for thlsrc perturbation
            real     :: qtsrc_fac          ! Scaling factor for qtsrc perturbation
+           real     :: qtsrchgt           ! Interpolation height for total water source
       endtype SHLWPARAM_TYPE
 
   end module SHLWPARAMS

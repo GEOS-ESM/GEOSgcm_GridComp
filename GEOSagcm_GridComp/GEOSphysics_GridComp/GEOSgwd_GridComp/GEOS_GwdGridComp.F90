@@ -1138,7 +1138,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, TRATE,  'DTDT_moist', RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, CNVF,   'CNV_FRC',    RC=STATUS ); VERIFY_(STATUS)
       DO L = 1, LM
-         HT_ForCnvGWD(:,:,L) = TRATE(:,:,L)*CNVF
+         HT_ForCnvGWD(:,:,L) = HT_dpc(:,:,L)
       ENDDO
 
 ! Allocate/refer to the outputs
