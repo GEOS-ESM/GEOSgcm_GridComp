@@ -113,6 +113,7 @@ module SurfParams
     end if ! LSM_CHOICE  
 
     init_called = .TRUE.
+    _RETURN(_SUCCESS)
 
   end subroutine SurfParams_init
 
