@@ -4826,16 +4826,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
            call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)             ; VERIFY_(STATUS)
            call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS) ; VERIFY_(STATUS)
            call MAPL_TileMaskGet(tilegrid,  mask, rc=status)               ; VERIFY_(STATUS)
-           unit_s = GETFILE( "/discover/nobackup/borescan/for_Randy/MODIS_snow_alb_09km_nel_5849552_Global.bin", &
+           unit_s = GETFILE( "/discover/nobackup/borescan/for_Randy/MODIS_snow_alb_09km_nel_1684725_Global.bin", &
                 form="unformatted", RC=STATUS ) ; VERIFY_(STATUS)
            call MAPL_VarRead (unit_s, tilegrid,MODIS_SNOW_ALBEDO, mask=mask, rc=status) ; VERIFY_(STATUS)
            call FREE_FILE(unit_s, RC=STATUS)  ; VERIFY_(STATUS)
         endif
 
-        SNOVR = MODIS_SNOW_ALBEDO
-        SNONR = MODIS_SNOW_ALBEDO
-        SNOVF = MODIS_SNOW_ALBEDO
-        SNONF = MODIS_SNOW_ALBEDO
+        where (MODIS_SNOW_ALBEDO > 0.)
+           SNOVR = MODIS_SNOW_ALBEDO
+           SNONR = MODIS_SNOW_ALBEDO
+           SNOVF = MODIS_SNOW_ALBEDO
+           SNONF = MODIS_SNOW_ALBEDO
+        endwhere
         
         ! --------------------------------------------------------------------------
         ! albedo/swnet partitioning
@@ -5523,11 +5525,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  SNOVR, SNONR, SNOVF, SNONF, & ! instantaneous snow albedos on tiles
                  RCONSTIT, UUU, TPSN1OUT1,DRPAR, DFPAR)
 
-        SNOVR = MODIS_SNOW_ALBEDO
-        SNONR = MODIS_SNOW_ALBEDO
-        SNOVF = MODIS_SNOW_ALBEDO
-        SNONF = MODIS_SNOW_ALBEDO
-
+        where (MODIS_SNOW_ALBEDO > 0.)
+           SNOVR = MODIS_SNOW_ALBEDO
+           SNONR = MODIS_SNOW_ALBEDO
+           SNOVF = MODIS_SNOW_ALBEDO
+           SNONF = MODIS_SNOW_ALBEDO
+        endwhere
+        
         ALBVR   = ALBVR    *(1.-ASNOW) + SNOVR    *ASNOW
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
         ALBNR   = ALBNR    *(1.-ASNOW) + SNONR    *ASNOW
