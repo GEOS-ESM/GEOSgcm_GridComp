@@ -3825,7 +3825,8 @@ contains
             RHO = 100.*PL / (MAPL_RGAS*TE )
             !- ice water content
             WC = RHO*QC  !kg/m3
-            if(TE>273.15) then
+!srf        if(TE>273.15) then
+            if(TE>273.15 .or. QC <=0.) then
              BB     = -2.
             else
              BB     = -2. + log10(1.e3*WC/50.)*(1.e-3*(273.15-TE)**1.5)

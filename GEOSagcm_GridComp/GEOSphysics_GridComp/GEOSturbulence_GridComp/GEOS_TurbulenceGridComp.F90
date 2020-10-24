@@ -2842,7 +2842,7 @@ contains
 
             maxkh = maxval(temparray)
             do L=LM-1,2,-1
-               if ( (temparray(L) < 0.1*maxkh) .and. (temparray(L+1) >= 0.1*maxkh)  &
+               if ( (temparray(L) < 0.1) .and. (temparray(L+1) >= 0.1)  &
                .and. (KPBL_SC(I,J) == MAPL_UNDEF ) ) then
                   KPBL_SC(I,J) = float(L)
                end if
