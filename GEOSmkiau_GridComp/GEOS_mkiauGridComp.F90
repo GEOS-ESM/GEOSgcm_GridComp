@@ -1,4 +1,4 @@
-!  $Id: GEOS_mkiauGridComp.F90,v 1.38.2.21.18.5.2.5 2019/10/22 20:53:09 ltakacs Exp $
+!  $Id: GEOS_mkiauGridComp.F90,v 1.38.2.21.18.5.2.5.4.1 2020/10/13 18:14:34 rtodling Exp $
 
 #include "MAPL_Generic.h"
 
@@ -23,6 +23,7 @@ module GEOS_mkiauGridCompMod
   use m_chars, only: uppercase
   use MAPL_GridManagerMod, only: grid_manager
   use MAPL_RegridderManagerMod, only: regridder_manager
+  use CubeToCubeRegridderMod
   use MAPL_AbstractRegridderMod
   use MAPL_RegridderSpecMod
   implicit none
@@ -1026,8 +1027,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call CFIO_Close      ( fid, STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_MakeDecomposition(nx,ny,rc=status)
-    VERIFY_(status)
+    call MAPL_GetResource( MAPL, NX,  Label="NX:", RC=status )
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NY,  Label="NY:", RC=status )
+    VERIFY_(STATUS)
 
     do_transforms = ( IMbkg_World /= IMana_World ) .or. &
                     ( JMbkg_World /= JMana_World ) .or. &
@@ -1053,11 +1056,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           VERIFY_(STATUS)
        end if
 
-       call WRITE_PARALLEL("Creating GRIDana...")
-       write(imstr,*) IMana_World
-       write(jmstr,*) JMana_World
-       gridAnaName='PC'//trim(adjustl(imstr))//'x'//trim(adjustl(jmstr))//'-DC'
-
        ! Get grid_dimensions from file.
        call CFIO_Open(REPLAY_FILEP0, 1, fid, rc=status)
        VERIFY_(status)
@@ -1066,17 +1064,45 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        call CFIO_Close(fid, rc=status)
        VERIFY_(status)
 
-       block
-         use MAPL_LatLonGridFactoryMod
-         GRIDrep = grid_manager%make_grid(                                                 &
-                   LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMana, &
-                   nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
-         VERIFY_(STATUS)
-         GRIDana = grid_manager%make_grid(                                                 &
-                   LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMbkg, &
-                   nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
-         VERIFY_(STATUS)
-       end block
+       if (JMana_World==6*IMana_World) then
+
+          call WRITE_PARALLEL("Creating GRIDana...")
+          write(imstr,*) IMana_World
+          write(jmstr,*) JMana_World
+          gridAnaName='PE'//trim(adjustl(imstr))//'x'//trim(adjustl(jmstr))//'-CF'
+
+          block
+            use CubedSphereGridFactoryMod
+            type (CubedSphereGridFactory)  :: factory
+            type (CubedSphereGridFactory)  :: cs_factory
+            type (CubeToCubeRegridder)     :: cube_to_cube_prototype
+            call grid_manager%add_prototype('Cubed-Sphere',factory)
+            call regridder_manager%add_prototype('Cubed-Sphere', 'Cubed-Sphere', REGRID_METHOD_BILINEAR, cube_to_cube_prototype)
+            cs_factory = CubedSphereGridFactory(im_world=IMana_World,lm=LMana,nx=nx,ny=ny/6,rc=status)
+            GRIDrep = grid_manager%make_grid(cs_factory,__RC__)
+            VERIFY_(STATUS)
+            GRIDana = grid_manager%make_grid(cs_factory,__RC__)
+            VERIFY_(STATUS)
+          end block
+       else
+
+          call WRITE_PARALLEL("Creating GRIDana...")
+          write(imstr,*) IMana_World
+          write(jmstr,*) JMana_World
+          gridAnaName='PC'//trim(adjustl(imstr))//'x'//trim(adjustl(jmstr))//'-DC'
+
+          block
+            use MAPL_LatLonGridFactoryMod
+            GRIDrep = grid_manager%make_grid(                                                 &
+                      LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMana, &
+                      nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
+            VERIFY_(STATUS)
+            GRIDana = grid_manager%make_grid(                                                 &
+                      LatLonGridFactory(im_world=IMana_World, jm_world=JMana_World, lm=LMbkg, &
+                      nx=NX, ny=NY, pole='PC', dateline= 'DC', rc=status)                     )
+            VERIFY_(STATUS)
+          end block
+       endif
          
        mkiau_internal_state%im      =   IMana_World
        mkiau_internal_state%jm      =   JMana_World
@@ -1181,6 +1207,16 @@ CONTAINS
                                                     'ozone', &
                                                     'delp ', &
                                                     'ts   ' /)
+
+    character(len=ESMF_MAXSTR)          :: INCNAME_U
+    character(len=ESMF_MAXSTR)          :: INCNAME_V
+    character(len=ESMF_MAXSTR)          :: INCNAME_T
+    character(len=ESMF_MAXSTR)          :: INCNAME_QV
+    character(len=ESMF_MAXSTR)          :: INCNAME_O3
+    character(len=ESMF_MAXSTR)          :: INCNAME_DP
+    character(len=ESMF_MAXSTR)          :: INCNAME_PS
+    character(len=ESMF_MAXSTR)          :: INCNAME_TS
+
     integer rank,ni
     type(ESMF_Field)  :: Field
     real,allocatable, dimension(:,:,:)  :: dp
@@ -1190,6 +1226,23 @@ CONTAINS
     real,allocatable, dimension(:,:,:)  :: pkz
     real,allocatable, dimension(:,:,:)  :: dpkz
     character(len=ESMF_MAXSTR) :: name
+
+    call MAPL_GetResource(MAPL, INCNAME_U ,  Label="INCNAME_U:" , default='u',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, INCNAME_V ,  Label="INCNAME_V:" , default='v',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, INCNAME_T ,  Label="INCNAME_T:" , default='tv',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, INCNAME_QV,  Label="INCNAME_QV:", default='sphu', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, INCNAME_O3,  Label="INCNAME_O3:", default='ozone',RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, INCNAME_DP,  Label="INCNAME_DP:", default='delp', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, INCNAME_PS,  Label="INCNAME_PS:", default='ps',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, INCNAME_TS,  Label="INCNAME_TS:", default='ts',   RC=STATUS)
+    VERIFY_(STATUS)
 
 ! *****************************************************************************
 ! ****   READ Internal STATE (ie. ANA.ETA) from REPLAY File into BUNDLE    ****
@@ -1333,6 +1386,8 @@ CONTAINS
 !   This interface computes Analysis Increments based on BKG and ANA variables
 
     subroutine handleANA_
+
+    logical found_var
 
 ! *****************************************************************************
 
@@ -1625,6 +1680,15 @@ CONTAINS
     allocate ( ak_rep(0:LMana) )
     allocate ( bk_rep(0:LMana) )
 
+!   Define replay vertical coordinates
+!   ----------------------------------
+    if( LMana.eq.LMbkg ) then
+        ak_rep = ak
+        bk_rep = bk
+    else
+        call set_eta ( LMana,ksdum,ptopdum,pintdum,ak_rep,bk_rep )
+    endif
+
     doremap = (trim(cremap).eq.'YES') .or. (LMana.ne.LMbkg)
 
 ! Initialize ANA.ETA variables to Transformed BKG IMPORT State (In case REPLAY Variables are turned OFF)
@@ -1727,26 +1791,41 @@ CONTAINS
 !-----------------------
         FOUND = .false.
         do k=1,nq
-           if( match('dp',REPLAY_DP,rnames(k)) ) then
+           found_var = match('dp',REPLAY_DP,rnames(k))
+           if ( found_var ) then
                call ESMFL_BundleGetPointertoData(RBUNDLEP0,trim(rnames(k)),ptr3d, RC=STATUS)
+               dp_rep =  ptr3d
+           else
+               if ( trim(REPLAY_DP) == 'YES' ) then
+                   write(STRING,'(A)') "ANA Variable: DP Not Found!"
+                   call WRITE_PARALLEL( trim(STRING)   )
+                   write(STRING,'(A)') "Constructing DP from PS"
+                   call WRITE_PARALLEL( trim(STRING)   )
+                   do L=1,LMana
+                      dp_rep(:,:,L)=(bk_rep(L)-bk_rep(L-1))*ps_ana
+                    end do
+                    found_var = .true.
+                    STATUS = 0
+                endif
+           endif
+           if( found_var ) then
                if(STATUS==ESMF_SUCCESS) then
-                          dp_rep =  ptr3d
-                          if( currTime /= REPLAY_TIMEP0 ) then
-                              call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
-                              VERIFY_(STATUS)
-                              dp_rep =  facp0*dp_rep + facm1*ptr3d
-                              if( REPLAY_TIME_INTERP == "CUBIC" ) then
-                                  call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
-                                  VERIFY_(STATUS)
-                                  dp_rep =  dp_rep + facp1*ptr3d
-                              call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
-                              VERIFY_(STATUS)
-                              dp_rep =  dp_rep + facm2*ptr3d
-                          endif
-                          endif
-                          if( REPLAY_P_FACTOR.ne.1.0 ) dp_rep = dp_rep * REPLAY_P_FACTOR
-                          FOUND  = .true.
-                          exit
+                  if( currTime /= REPLAY_TIMEP0 ) then
+                      call ESMFL_BundleGetPointertoData(RBUNDLEM1,trim(rnames(k)),ptr3d, RC=STATUS)
+                      VERIFY_(STATUS)
+                      dp_rep =  facp0*dp_rep + facm1*ptr3d
+                      if( REPLAY_TIME_INTERP == "CUBIC" ) then
+                          call ESMFL_BundleGetPointertoData(RBUNDLEP1,trim(rnames(k)),ptr3d, RC=STATUS)
+                          VERIFY_(STATUS)
+                          dp_rep =  dp_rep + facp1*ptr3d
+                      call ESMFL_BundleGetPointertoData(RBUNDLEM2,trim(rnames(k)),ptr3d, RC=STATUS)
+                      VERIFY_(STATUS)
+                      dp_rep =  dp_rep + facm2*ptr3d
+                  endif
+                  endif
+                  if( REPLAY_P_FACTOR.ne.1.0 ) dp_rep = dp_rep * REPLAY_P_FACTOR
+                  FOUND  = .true.
+                  exit
                endif
            endif
         enddo
@@ -1896,13 +1975,6 @@ CONTAINS
 
 ! ANA Pressure Variables
 ! ----------------------
-        if( LMana.eq.LMbkg ) then
-            ak_rep = ak
-            bk_rep = bk
-        else
-            call set_eta ( LMana,ksdum,ptopdum,pintdum,ak_rep,bk_rep )
-        endif
-
         ple_rep(:,:,0) = ak_rep(0)
         do L=1,LMana
         ple_rep(:,:,L) = ple_rep(:,:,L-1) + dp_rep(:,:,L)
@@ -2834,11 +2906,13 @@ CONTAINS
 
       if(     trim(name) == 'U'        ) then
           if( trim(var)  == 'U'        ) match = .true.
+          if( trim(var)  == 'UA'       ) match = .true.
           if( trim(var)  == 'UGRD'     ) match = .true.
       endif
 
       if(     trim(name) == 'V'        ) then
           if( trim(var)  == 'V'        ) match = .true.
+          if( trim(var)  == 'VA'       ) match = .true.
           if( trim(var)  == 'VGRD'     ) match = .true.
       endif
 

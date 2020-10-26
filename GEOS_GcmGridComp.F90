@@ -1053,7 +1053,7 @@ contains
                                            RingInterval = CORRECTOR_DURATION, sticky=.false., rc=status )
        VERIFY_(STATUS)
 
-       replayShutoffAlarm = ESMF_AlarmCreate( name='ReplayShutOff', clock=clock, RingInterval = Shutoff, sticky=.false., RC=STATUS )
+       replayShutoffAlarm = ESMF_AlarmCreate( name='ReplayShutOff', clock=clock, RingInterval = Shutoff, sticky=.true., RC=STATUS )
        VERIFY_(STATUS)
 
 
