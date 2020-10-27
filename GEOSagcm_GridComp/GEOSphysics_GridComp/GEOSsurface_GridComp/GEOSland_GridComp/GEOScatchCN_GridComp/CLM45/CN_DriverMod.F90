@@ -30,7 +30,7 @@ module CN_DriverMod
   use CNDecompCascadeMod_CENTURY, only : init_decompcascade
 #endif
   use lsm_routines,      only: DZTC, DZGT
-  use SurfParams,        only: LAND_FIX_CN
+  use SurfParams,        only: LAND_FIX
 !  use update_model_para4cn, only : LocalTileID, upd_tileid   ! useful for debugging
 
   implicit none
@@ -963,9 +963,9 @@ contains
     cwdcg(c)           = cwdcg(c)           + cwdc(i) * wtzone(c,z)  
   end do
   
-  if (LAND_FIX_CN) then
-  where (zlai > 20.) zlai = 20.
-  where (zsai > 20.) zsai = 20.
+  if (LAND_FIX==.FALSE.) then ! jkolassa Oct 2020: the if-wrapper here is to toggle between the LDASsa version used by Fanwei Zeng and Eunjee Lee and current GEOSldas Catchment-CN; there is likely a better way to control this
+     where (zlai > 20.) zlai = 20.
+     where (zsai > 20.) zsai = 20.
   end if
 
   end subroutine CN_Driver
@@ -1662,9 +1662,9 @@ contains
     end do     ! CN zone loop
   end do       ! catchment tile loop
 
-  if (LAND_FIX_CN) then
-  where (elai > 20.) elai = 20.
-  where (esai > 20.) esai = 20.
+  if (LAND_FIX==.FALSE.) then ! jkolassa Oct 2020: the if-wrapper here is to toggle between the LDASsa version used by Fanwei Zeng and Eunjee Lee and current GEOSldas Catchment-CN; there is likely a better way to control this
+     where (elai > 20.) elai = 20.
+     where (esai > 20.) esai = 20.
   end if 
 
   end subroutine get_CN_LAI 
