@@ -1,3 +1,4 @@
+#include "MAPL_Generic.h"
 PROGRAM dbg_cnlsm_offline
 
 !
@@ -12,6 +13,7 @@ PROGRAM dbg_cnlsm_offline
 !
 use ESMF
 use MAPL_ConstantsMod
+use MAPL_ExceptionHandling
 USE SURFPARAMS
 use CATCHMENT_CN_MODEL
 !USE MAPL_BaseMod,      ONLY: MAPL_UNDEF
@@ -241,7 +243,8 @@ n = 1
 is_OFFLINE = OFFLINE_MODE /= 0
 
 call ESMF_ConfigGetAttribute (SCF, label='LAND_PARAMS:', value=LAND_PARAMS, DEFAULT="Icarus", __RC__ )
-call SurfParams_init(LAND_PARAMS,LSM_CHOICE) 
+call SurfParams_init(LAND_PARAMS,LSM_CHOICE,rc=status) 
+_VERIFY(STATUS)
 
 open (10,file=trim(scratch_dir)//'/catchcn_inputs.data' ,form ='unformatted', &
      action ='read', status ='old',convert='little_endian')
