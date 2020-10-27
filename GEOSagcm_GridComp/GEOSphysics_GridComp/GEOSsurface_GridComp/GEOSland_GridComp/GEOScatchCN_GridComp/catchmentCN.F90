@@ -90,7 +90,7 @@ MODULE CATCHMENT_CN_MODEL
        SHR, SCONST, C_CANOP, N_sm, SATCAPFR   
 
   USE SURFPARAMS,       ONLY: CSOIL_2, RSWILT, &
-       FLWALPHA
+       LAND_FIX, FLWALPHA
 
   
   USE lsm_routines, only :                          &
