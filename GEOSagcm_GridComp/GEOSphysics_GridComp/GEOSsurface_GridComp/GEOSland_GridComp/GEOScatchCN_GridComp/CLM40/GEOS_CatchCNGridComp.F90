@@ -61,7 +61,7 @@ module GEOS_CatchCNGridCompMod
   use clm_time_manager, only: get_days_per_year, get_step_size
   use pftvarcon,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist, irrigation_rate
-  USE SURFPARAMS,       ONLY: LAND_FIX_CN
+
 implicit none
 private
 
@@ -3303,16 +3303,7 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
-  
-  call MAPL_AddExportSpec(GC                         ,&
-    LONG_NAME          = 'Dummy_CN_fine_root_carbon' ,&
-    UNITS              = 'kg m-2'                    ,&
-    SHORT_NAME         = 'CNFROOTC'                  ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
-  VERIFY_(STATUS)
-  
+
   call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_net_primary_production' ,&
     UNITS              = 'kg m-2 s-1'                ,&
@@ -4843,7 +4834,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: CNTOTC
         real, dimension(:),   pointer :: CNVEGC
         real, dimension(:),   pointer :: CNROOT
-        real, dimension(:),   pointer :: CNFROOTC
         real, dimension(:),   pointer :: CNNPP
         real, dimension(:),   pointer :: CNGPP
         real, dimension(:),   pointer :: CNSR
@@ -4991,7 +4981,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,dimension(:),allocatable :: RSL1, RSL2
         real,dimension(:),allocatable :: SQSCAT
         real,allocatable,dimension(:) :: rdc_tmp_1, rdc_tmp_2
-        
+
         ! albedo calculation stuff
 
         type(ESMF_Config)           :: CF
@@ -5496,7 +5486,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,CNTOTC, 'CNTOTC' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNVEGC, 'CNVEGC' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNROOT, 'CNROOT' ,             RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(EXPORT,CNFROOTC,'CNFROOTC',           RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNNPP,  'CNNPP'  ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNGPP,  'CNGPP'  ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,CNSR,   'CNSR'   ,             RC=STATUS); VERIFY_(STATUS)
@@ -5810,30 +5799,30 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! ALLOCATE LOCAL POINTERS
         ! --------------------------------------------------------------------------
 
-        allocate(GHTCNT (6,NTILES))
-        allocate(WESNN  (3,NTILES))
-        allocate(HTSNNN (3,NTILES))
-        allocate(SNDZN  (3,NTILES))
-        allocate(TILEZERO (NTILES))
-        allocate(DZSF     (NTILES))
-        allocate(SWNETFREE(NTILES))
-        allocate(SWNETSNOW(NTILES))
-        allocate(VEG1     (NTILES))
-        allocate(VEG2     (NTILES))
-        allocate(RCSAT    (NTILES))
-        allocate(DRCSDT   (NTILES))
-        allocate(DRCSDQ   (NTILES))
-        allocate(RCUNS    (NTILES))
-        allocate(DRCUDT   (NTILES))
-        allocate(DRCUDQ   (NTILES))
-        allocate(ZTH      (NTILES))  
-        allocate(SLR      (NTILES))  
-        allocate(RSL1     (NTILES)) 
-        allocate(RSL2     (NTILES)) 
-        allocate(SQSCAT   (NTILES))
-        allocate(RDC      (NTILES))
+	allocate(GHTCNT (6,NTILES))
+	allocate(WESNN  (3,NTILES))
+	allocate(HTSNNN (3,NTILES))
+	allocate(SNDZN  (3,NTILES))
+	allocate(TILEZERO (NTILES))
+	allocate(DZSF     (NTILES))
+	allocate(SWNETFREE(NTILES))
+	allocate(SWNETSNOW(NTILES))
+	allocate(VEG1     (NTILES))
+	allocate(VEG2     (NTILES))
+	allocate(RCSAT    (NTILES))
+	allocate(DRCSDT   (NTILES))
+	allocate(DRCSDQ   (NTILES))
+	allocate(RCUNS    (NTILES))
+	allocate(DRCUDT   (NTILES))
+	allocate(DRCUDQ   (NTILES))
+	allocate(ZTH      (NTILES))  
+	allocate(SLR      (NTILES))  
+	allocate(RSL1     (NTILES)) 
+	allocate(RSL2     (NTILES)) 
+	allocate(SQSCAT   (NTILES))
+	allocate(RDC      (NTILES))  
 	allocate(RDC_TMP_1(NTILES))
-        allocate(RDC_TMP_2(NTILES))        
+	allocate(RDC_TMP_2(NTILES))
 	allocate(UUU      (NTILES))
 	allocate(RHO      (NTILES))
 	allocate(ZVG      (NTILES))
@@ -6214,13 +6203,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
         ! LAI and type dependent parameters; RDC formulation now uses veg fractions gkw: 2013-11-25, see note from Randy
         ! --------------------------------------------------------------------------
-        IF (LAND_FIX_CN) THEN
-           RDC = max(VGRDA(VEG1),VGRDA(VEG2))*min(1.,lai/2.)
-        ELSE
-           rdc_tmp_1 = max( VGRDA(VEG1)*min( 1., LAI1/VGRDB(VEG1) ), 0.001)
-           rdc_tmp_2 = max( VGRDA(VEG2)*min( 1., LAI2/VGRDB(VEG2) ), 0.001)
-           RDC = max(rdc_tmp_1,rdc_tmp_2)*min(1.,lai/2.)
-        END IF
+        ! jkolassa Oct 2020: RDC formulation previously implemented in GEOSldas Catchment-CN
+        ! RDC = max(VGRDA(VEG1),VGRDA(VEG2))*min(1.,lai/2.)
+        
+        ! jkolassa Oct 2020: updated RDC formulation to the one used in F. Zeng's science-validated, published Catchment-CN simulations
+        rdc_tmp_1 = max( VGRDA(VEG1)*min( 1., LAI1/VGRDB(VEG1) ), 0.001)
+        rdc_tmp_2 = max( VGRDA(VEG2)*min( 1., LAI2/VGRDB(VEG2) ), 0.001)
+        RDC = max(rdc_tmp_1,rdc_tmp_2)*min(1.,lai/2.)
         RDC = max(RDC,0.001)
 
         RHO = PS/(MAPL_RGAS*(TA*(1+MAPL_VIREPS*QA)))
@@ -7153,7 +7142,6 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        if(associated(CNLOSS)) cnloss = 1.e-3*closs ! * cnsum ! total fire C loss (kg/m2/s)
        if(associated(CNBURN)) cnburn = burn        ! * cnsum ! area fractional fire burn rate (s-1)
        if(associated(CNFSEL)) cnfsel = fsel        ! * cnsum ! fire season length (days)
-       if(associated(CNFROOTC)) cnfrootc = 1.e-3*root  ! * cnsum
        
        ! copy CN_restart vars to catch_internal_rst gkw: only do if stopping
        ! ------------------------------------------
@@ -7728,7 +7716,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         if(associated( WCSF )) WCSF   = SFMC
         if(associated( WCRZ )) WCRZ   = RZMC
         if(associated( WCPR )) WCPR   = PRMC
-        if(associated( ACCUM)) ACCUM  = SLDTOT - EVPICE*(1./MAPL_ALHS) - SMELT 
+        if(associated( ACCUM)) ACCUM  = SLDTOT - EVPICE*(1./MAPL_ALHS) - SMELT
         if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
         if(associated(SNOLAND)) SNOLAND = SLDTOT
         if(associated(EVPSNO)) EVPSNO = EVPICE
@@ -7872,12 +7860,12 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         if (allocated (SNOVF_tmp)) deallocate ( SNOVF_tmp )
         if (allocated (SNONF_tmp)) deallocate ( SNONF_tmp )
 
-        deallocate(GHTCNT   )
-        deallocate(WESNN    )
-        deallocate(HTSNNN   )
-        deallocate(SNDZN    )
+	deallocate(GHTCNT   )
+	deallocate(WESNN    )
+	deallocate(HTSNNN   )
+	deallocate(SNDZN    )
 	deallocate(TILEZERO )
-        deallocate(DZSF     )
+	deallocate(DZSF     )
 	deallocate(SWNETFREE)
 	deallocate(SWNETSNOW)
 	deallocate(VEG1     )
@@ -7893,80 +7881,80 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 	deallocate(RSL1     )
 	deallocate(RSL2     )
 	deallocate(SQSCAT   )
-        deallocate(RDC      )
-        deallocate(RDC_TMP_1)
-        deallocate(RDC_TMP_2)
-        deallocate(UUU      )
-        deallocate(RHO      )
-        deallocate(ZVG      )
-        deallocate(LAI0     )
-        deallocate(GRN0     )
-        deallocate(Z0       )
+	deallocate(RDC      )
+	deallocate(RDC_TMP_1)
+	deallocate(RDC_TMP_2)
+	deallocate(UUU      )
+	deallocate(RHO      )
+	deallocate(ZVG      )
+	deallocate(LAI0     )
+	deallocate(GRN0     )
+	deallocate(Z0       )
 	deallocate(D0       )
 	deallocate(SFMC     )
 	deallocate(RZMC     )
-        deallocate(PRMC     )
-        deallocate(ENTOT    )
-        deallocate(WTOT     )
-        deallocate(GHFLXSNO )
-        deallocate(SHSNOW1  )
-        deallocate(AVETSNOW1)
-        deallocate(WAT10CM1 )
-        deallocate(WATSOI1  )
-        deallocate(ICESOI1  )
-        deallocate(LHSNOW1  )
-        deallocate(LWUPSNOW1)
-        deallocate(LWDNSNOW1)
-        deallocate(NETSWSNOW)
-        deallocate(TCSORIG1 )
-        deallocate(LHACC )
-        deallocate(SUMEV )
-        deallocate(TPSN1IN1 )
-        deallocate(TPSN1OUT1)
-        deallocate(GHFLXTSKIN)
-        deallocate(WCHANGE  )
-        deallocate(ECHANGE  )
-        deallocate(HSNACC   )
-        deallocate(EVACC    )
-        deallocate(SHACC    )
-        deallocate(VSUVR    )
-        deallocate(VSUVF    )
-        deallocate(SNOVR    )
-        deallocate(SNOVF    )
-        deallocate(SNONR    )
-        deallocate(SNONF    )
-        deallocate(SHSBT    )
-        deallocate(DSHSBT   )
-        deallocate(EVSBT    )
-        deallocate(DEVSBT   )
-        deallocate(DEDTC    )
-        deallocate(DHSDQA   )
-        deallocate(CFT      )
-        deallocate(CFQ      )
-        deallocate(TCO      )
-        deallocate(QCO      )
-        deallocate(DQS      )
-        deallocate(QSAT     )
-        deallocate(RA       )
-        deallocate(CAT_ID   )
-        deallocate(ALWX     )
-        deallocate(BLWX     )
-        deallocate(ALWN     )
-        deallocate(BLWN     )
-        deallocate(TC1_0    )
-        deallocate(TC2_0    )
-        deallocate(TC4_0    )
-        deallocate(QA1_0    )
-        deallocate(QA2_0    )
-        deallocate(QA4_0    )
-        deallocate(fveg1    )
-        deallocate(fveg2    )
-        deallocate(RCONSTIT )
-        deallocate(TOTDEPOS )
-        deallocate(RMELT    )
-        deallocate(FICE1    )
-        deallocate(SLDTOT )
-        deallocate(   btran )
+	deallocate(PRMC     )
+	deallocate(ENTOT    )
+	deallocate(WTOT     )
+	deallocate(GHFLXSNO )
+	deallocate(SHSNOW1  )
+	deallocate(AVETSNOW1)
+	deallocate(WAT10CM1 )
+	deallocate(WATSOI1  )
+	deallocate(ICESOI1  )
+	deallocate(LHSNOW1  )
+	deallocate(LWUPSNOW1)
+	deallocate(LWDNSNOW1)
+	deallocate(NETSWSNOW)
+	deallocate(TCSORIG1 )
+	deallocate(LHACC )
+	deallocate(SUMEV )
+	deallocate(TPSN1IN1 )
+	deallocate(TPSN1OUT1)
+	deallocate(GHFLXTSKIN)
+	deallocate(WCHANGE  )
+	deallocate(ECHANGE  )
+	deallocate(HSNACC   )
+	deallocate(EVACC    )
+	deallocate(SHACC    )
+	deallocate(VSUVR    )
+	deallocate(VSUVF    )
+	deallocate(SNOVR    )
+	deallocate(SNOVF    )
+	deallocate(SNONR    )
+	deallocate(SNONF    )
+	deallocate(SHSBT    )
+	deallocate(DSHSBT   )
+	deallocate(EVSBT    )
+	deallocate(DEVSBT   )
+	deallocate(DEDTC    )
+	deallocate(DHSDQA   )
+	deallocate(CFT      )
+	deallocate(CFQ      )
+	deallocate(TCO      )
+	deallocate(QCO      )
+	deallocate(DQS      )
+	deallocate(QSAT     )
+	deallocate(RA       )
+	deallocate(CAT_ID   )
+	deallocate(ALWX     )
+	deallocate(BLWX     )
+	deallocate(ALWN     )
+	deallocate(BLWN     )
+	deallocate(TC1_0    )
+	deallocate(TC2_0    )
+	deallocate(TC4_0    )
+	deallocate(QA1_0    )
+	deallocate(QA2_0    )
+	deallocate(QA4_0    )
+	deallocate(fveg1    )
+	deallocate(fveg2    )
+	deallocate(RCONSTIT )
+	deallocate(TOTDEPOS )
+	deallocate(RMELT    )
+	deallocate(FICE1    )
+	deallocate(SLDTOT )
+	deallocate(   btran )
 	deallocate(     wgt )
 	deallocate(     bt1 )
 	deallocate(     bt2 )
@@ -7995,13 +7983,12 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 	deallocate(    car4 )
 	deallocate( parzone )
 	deallocate(    para )
-        deallocate(   parav )
-        deallocate (scaled_fpar)
-        deallocate (UNscaled_fpar)
+	deallocate(   parav )
+	deallocate(scaled_fpar)
+	deallocate(UNscaled_fpar)
 	deallocate(  totwat )
 	deallocate(    dayl )
 	deallocate(dayl_fac )
-
 	deallocate(     tgw )
 	deallocate(     rzm )
 	deallocate(    rc00 )
