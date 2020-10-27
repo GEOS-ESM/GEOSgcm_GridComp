@@ -111,7 +111,7 @@ module SurfParams
                 WEMIN    = 13.
                 AICEV    = 0.107
                 AICEN    = 19.893
-                FLWALPHA = 0.005.
+                FLWALPHA = 0.005
                 FLWALPHA = 0.005
                 ASTRFR   = 0.333  ! reverted 
                 STEXP    = 1.     ! reverted                                  
