@@ -11,11 +11,11 @@
 !    LAI
 !    bin/mkMODISrst2tiles.x  -m MCD15A2H -y YYYYDOY  -r YYYYMMDD  -t time_step   -l minutes_since_20020704-0000
 !    Albedo
-!    bin/MODISrst2tiles.x  -m MCD43GF -y YYYYDOY  -r YYYYMMDD  -t time_step   -l minutes_since_20000101-0000
+!    bin/mkMODISrst2tiles.x  -m MCD43GF -y YYYYDOY  -r YYYYMMDD  -t time_step   -l minutes_since_20000101-0000
 ! 2) Smooth LAI using a 3 time step window
-!    bin/MODISrst2tiles.x -m MCD43GF -s Y -g GRID_NAME  -a lai_data.YYYYDOY_previous  -b lai_data.YYYYDOY  -c lai_data.YYYYDOY_next -t tstep
+!    bin/mkMODISrst2tiles.x -m MCD43GF -s Y -g GRID_NAME  -a lai_data.YYYYDOY_previous  -b lai_data.YYYYDOY  -c lai_data.YYYYDOY_next -t tstep
 ! 3) Compute albedo climatology
-!    bin/MODISrst2tiles.x -m MCD43GF -s Y
+!    bin/mkMODISrst2tiles.x -g GRID_NAME -m MCD43GF -s Y
 !
 !#####################################################################################
 
@@ -359,7 +359,7 @@ contains
        STATUS  = NF90_CLOSE (NCID)
        val_min = 0
        val_max = 100
-       sf      = 0.01
+       sf      = 0.1
 
     elseif (trim(MODIS_NAME) == 'MCD43GF.006') then
 
@@ -407,41 +407,9 @@ contains
           enddo
        end if
        
-       do n = 1, NT
-          if(count_data(n) == 0.) then
-             DO i = 1,nx - 1
-                if ((tile_lon(n) >= x(i)).and.(tile_lon(n) < x(i+1))) ix = i
-             end do
-             DO i = 1,ny -1
-                if ((tile_lat(n) >= y(i)).and.(tile_lat(n) < y(i+1))) jx = i
-             end do
-             l = 1
-             do 
-                imx=ix + l
-                imn=ix - l
-                jmn=jx - l
-                jmx=jx + l
-                imn=MAX(imn,1)
-                jmn=MAX(jmn,1)
-                imx=MIN(imx,nx)
-                jmx=MIN(jmx,ny)
-                d1=imx-imn+1
-                d2=jmx-jmn+1
-                subset => data_grid(imn: imx,jmn:jmx)
-                
-                if(maxval(subset) > 0.) then 
-                   vec_data (n) = sum(subset, subset>0.)/(max(1,count(subset>0.)))
-                   exit
-                endif
-                l = l + 1
-                NULLIFY (subset)
-             end do
-          endif
-       end do
-
-       if(trim(MODIS_NAME) ==  'MCD43GF.006') then
+       if(trim(MODIS_NAME) ==  'MCD15A2H.006') then
           do n = 1, NT
-             if(nir_count(n) == 0.) then
+             if(count_data(n) == 0.) then
                 DO i = 1,nx - 1
                    if ((tile_lon(n) >= x(i)).and.(tile_lon(n) < x(i+1))) ix = i
                 end do
@@ -460,18 +428,52 @@ contains
                    jmx=MIN(jmx,ny)
                    d1=imx-imn+1
                    d2=jmx-jmn+1
-                   subset => nir_grid(imn: imx,jmn:jmx)
+                   subset => data_grid(imn: imx,jmn:jmx)
                    
                    if(maxval(subset) > 0.) then 
-                      nirdf (n) = sum(subset, subset>0.)/(max(1,count(subset>0.)))
+                      vec_data (n) = sum(subset, subset>0.)/(max(1,count(subset>0.)))
                       exit
                    endif
                    l = l + 1
                    NULLIFY (subset)
                 end do
              endif
-          end do          
+          end do
        endif
+
+!       if(trim(MODIS_NAME) ==  'MCD43GF.006') then
+!          do n = 1, NT
+!             if(nir_count(n) == 0.) then
+!                DO i = 1,nx - 1
+!                   if ((tile_lon(n) >= x(i)).and.(tile_lon(n) < x(i+1))) ix = i
+!                end do
+!                DO i = 1,ny -1
+!                   if ((tile_lat(n) >= y(i)).and.(tile_lat(n) < y(i+1))) jx = i
+!                end do
+!                l = 1
+!                do 
+!                   imx=ix + l
+!                   imn=ix - l
+!                   jmn=jx - l
+!                   jmx=jx + l
+!                   imn=MAX(imn,1)
+!                   jmn=MAX(jmn,1)
+!                   imx=MIN(imx,nx)
+!                   jmx=MIN(jmx,ny)
+!                   d1=imx-imn+1
+!                   d2=jmx-jmn+1
+!                   subset => nir_grid(imn: imx,jmn:jmx)
+!                   
+!                   if(maxval(subset) > 0.) then 
+!                      nirdf (n) = sum(subset, subset>0.)/(max(1,count(subset>0.)))
+!                      exit
+!                   endif
+!                   l = l + 1
+!                   NULLIFY (subset)
+!                end do
+!             endif
+!          end do          
+!       endif
        
        ! Write output
        ! ------------
