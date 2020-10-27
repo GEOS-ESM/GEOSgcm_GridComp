@@ -90,7 +90,7 @@ MODULE CATCHMENT_CN_MODEL
        SHR, SCONST, C_CANOP, N_sm, SATCAPFR   
 
   USE SURFPARAMS,       ONLY: CSOIL_2, RSWILT, &
-      LAND_FIX_CN, FLWALPHA
+       FLWALPHA
 
   
   USE lsm_routines, only :                          &
@@ -549,7 +549,7 @@ CONTAINS
         tc4_orig(n)=tc4(n)
 
         ! Andrea Molod (Oct 21, 2016):
-        if (LAND_FIX_CN) then
+        if (LAND_FIX) then
         qa1(n) = min(max(qm(N),qsat1(N)),qa1(N))
         qa1(n) = max(min(qm(N),qsat1(N)),qa1(N))
         qa2(n) = min(max(qm(N),qsat2(N)),qa2(N))
@@ -1288,7 +1288,7 @@ CONTAINS
 
 !!!    IF (ityp1(N) .ge. 1) THEN ! gkw: would do TC correction on all types in unified 
 !!!    IF (ityp1(N) .eq.-1) THEN ! gkw: using Helfand with viscous sublayer; don't need TC correction; using -1 skips this block
-       IF (LAND_FIX_CN) THEN   ! jkolassa 11 Jun 2020: changed to be controlled by LAND_FIX_CN; was previously set to always be false
+       IF (LAND_FIX .OR. (ityp1(N) .ne. 1))  THEN   ! jkolassa Oct 2020: changed to be consistent with catchmentCN.F90; was previously set to always be false
         call dampen_tc_oscillations(dtstep,tm(N),tc1_orig(N),tc1(N),     &
              tc1_00(N),dtc1)
         call dampen_tc_oscillations(dtstep,tm(N),tc2_orig(N),tc2(N),     &
@@ -1364,7 +1364,7 @@ CONTAINS
                            DHSDTC4(N)
 
 !       Ensure that modifications made to QA and TC are not too large:
-        IF ( (.NOT. LAND_FIX_CN) .OR. (ASNOW0(N) .EQ. 0. ) ) THEN
+        IF ( (.NOT. LAND_FIX) .OR. (ASNOW0(N) .EQ. 0. ) ) THEN
         IF(ABS(QA1X-QA1(N)) .LE. 0.5*QA1(N)) THEN
             QA1(N)=QA1X
           ELSE
