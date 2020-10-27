@@ -3391,7 +3391,8 @@ module GEOS_SurfaceGridCompMod
 !-----------------------------------------------------------------------
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call SurfParams_init(LAND_PARAMS,LSM_CHOICE)
+    call SurfParams_init(LAND_PARAMS,LSM_CHOICE,RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Handle river routing (if required)
 !-----------------------------------
