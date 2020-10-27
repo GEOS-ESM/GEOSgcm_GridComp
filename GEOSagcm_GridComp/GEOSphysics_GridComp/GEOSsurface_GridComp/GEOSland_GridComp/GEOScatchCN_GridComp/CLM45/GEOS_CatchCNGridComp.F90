@@ -62,7 +62,6 @@ module GEOS_CatchCNGridCompMod
   use pftvarcon,        only: noveg
   USE lsm_routines,     ONLY : sibalb, catch_calc_soil_moist, irrigation_rate
   use update_model_para4cn, only : upd_curr_date_time
-  USE SURFPARAMS,       ONLY: LAND_FIX_CN  
 
 implicit none
 private
@@ -6199,13 +6198,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! LAI and type dependent parameters; RDC formulation now uses veg fractions gkw: 2013-11-25, see note from Randy
         ! --------------------------------------------------------------------------
         
-        IF (LAND_FIX_CN) THEN
-        RDC = max(VGRDA(VEG1),VGRDA(VEG2))*min(1.,lai/2.)
-        ELSE
+        ! old RDC formulation implemented in orginial GEOScatchCN_GridCom
+        ! RDC = max(VGRDA(VEG1),VGRDA(VEG2))*min(1.,lai/2.)
+
+        ! new RDC formulation used to reproduce Fanwei Zeng's LDASsa Catchment-CN.4.0 and Eunjee Lee's Catchment-CN.4.5 simulations
         rdc_tmp_1 = max( VGRDA(VEG1)*min( 1., LAI1/VGRDB(VEG1) ), 0.001)
         rdc_tmp_2 = max( VGRDA(VEG2)*min( 1., LAI2/VGRDB(VEG2) ), 0.001)
         RDC = max(rdc_tmp_1,rdc_tmp_2)*min(1.,lai/2.)
-        END IF
         RDC = max(RDC,0.001)
 
         RHO = PS/(MAPL_RGAS*(TA*(1+MAPL_VIREPS*QA)))
