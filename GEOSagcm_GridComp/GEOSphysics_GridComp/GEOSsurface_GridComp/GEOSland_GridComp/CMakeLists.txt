@@ -15,7 +15,7 @@ esma_add_library (${this}
   SRCS GEOS_LandGridComp.F90
   SUBCOMPONENTS ${alldirs}
   SUBDIRS Shared GEOScatchCN_GridComp
-  DEPENDENCIES GEOS_SurfaceShared CLM45 GEOS_LandShared MAPL
+  DEPENDENCIES GEOS_SurfaceShared CLM40 GEOS_LandShared MAPL
   INCLUDES ${INC_ESMF})
 
 # Special case for GEOScatch and GEOScatchCN components - build with / without openmp
