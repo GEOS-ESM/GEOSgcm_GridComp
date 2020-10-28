@@ -214,7 +214,7 @@ sub write_mk_catch_j {
 #SBATCH --ntasks=$numtasks
 #SBATCH --time=$walltime
 #SBATCH --job-name=catchcnj
-#SBATCH --constraint=hasw
+###SBATCH --constraint=hasw
 #SBATCH --output=$cwd/$mk_catch_log
 #$QOSline
 
