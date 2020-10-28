@@ -106,16 +106,16 @@ module SurfParams
          	RSWILT          = 1500. 
   
 	case ("CN_CLM45")  ! parameters to reproduce Eunjee Lee's Catchment-CN4.5 fire carbon emission simulations
-                LAND_FIX = .TRUE.
-                CSOIL_2  = 70000. ! Post H5_0  
-                WEMIN    = 13.
-                AICEV    = 0.107
-                AICEN    = 19.893
-                FLWALPHA = 0.005
-                FLWALPHA = 0.005
-                ASTRFR   = 0.333  ! reverted 
-                STEXP    = 1.     ! reverted                                  
-                RSWILT   = 2000.  
+                LAND_FIX 	= .TRUE.
+                CSOIL_2  	= 70000. ! Post H5_0  
+                WEMIN    	= 13.
+                AICEV    	= 0.107
+                AICEN    	= 19.893
+                FLWALPHA 	= 0.005
+                FLWALPHA 	= 0.005
+                ASTRFR   	= 0.333  ! reverted 
+                STEXP    	= 1.     ! reverted                                  
+                RSWILT   	= 2000.  
 
       	case DEFAULT                                                                            
          	_ASSERT(.FALSE.,'LAND_PARAMS not valid or incompatible with LSM_CHOICE')           
