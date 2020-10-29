@@ -43,12 +43,11 @@ set (srcs
   compute_rc.F90
   TridiagonalMod.F90
   getco2.F90
-  GEOS_CatchCNGridComp.F90 
   )
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL GEOS_LandShared GEOS_CatchCNRoot)
+  DEPENDENCIES MAPL GEOS_LandShared GEOS_CatchCNShared)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
 if (is_openmp)
