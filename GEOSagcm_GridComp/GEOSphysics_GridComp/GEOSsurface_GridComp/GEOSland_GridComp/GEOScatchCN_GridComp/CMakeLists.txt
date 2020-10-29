@@ -5,7 +5,7 @@
 # SWITCH to change the CN module: Change below line 8 and line 18 of GEOSland_GridComp/CMakeLists.txt to the desired version of the CN module.
      
 esma_set_this (OVERRIDE GEOS_CatchCNRoot)
-esma_add_subdirectories (CLM40)
+esma_add_subdirectories (${CATCHCN_COMPONENT})
 
 set (srcs
   catchmentCN.F90
