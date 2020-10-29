@@ -27,5 +27,5 @@ set (srcs
 
 esma_add_library (${this}
     SRCS ${srcs}
-    DEPENDENCIES MAPL GEOS_Shared GEOS_LandShared GEOS_CatchCNShared)
+    DEPENDENCIES MAPL GEOS_Shared GEOS_LandShared ${CATCHCN_COMPONENT} GEOS_CatchCNShared)
 
