@@ -435,8 +435,8 @@ contains
     _VERIFY(status)
     !route%pfaf => arbSeq
     !route%ntiles = ntiles
-    !route%minCatch = minCatch
-    !route%maxCatch = maxCatch
+    route%minCatch = minCatch
+    route%maxCatch = maxCatch
 
     if (allocated(ims)) deallocate(ims)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
