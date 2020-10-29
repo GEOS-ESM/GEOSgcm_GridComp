@@ -30,7 +30,7 @@ module GEOS_LandGridCompMod
   use GEOS_VegdynGridCompMod,  only : VegdynSetServices   => SetServices
   use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices
   use GEOS_CatchCNGridCompMod, only : CatchCNSetServices  => SetServices
-!  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
+  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
 
   implicit none
   private
@@ -45,7 +45,8 @@ module GEOS_LandGridCompMod
 
   integer                                 :: VEGDYN
   integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:)
-  INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
+  INTEGER                                 :: LSM_CHOICE, DO_GOSWIM
+  LOGICAL                                 :: run_route
 
 contains
 
@@ -151,7 +152,7 @@ contains
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='RUN_ROUTE:'  , value=RUN_ROUTE  , DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='RUN_ROUTE:'  , value=RUN_ROUTE  , DEFAULT=.false., __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
@@ -191,19 +192,20 @@ contains
        
     END SELECT
 
-!    IF(RUN_ROUTE == 1) THEN
-!       if (NUM_CATCH == 1) then
-!          ROUTE(1) = MAPL_AddChild(GC, NAME='ROUTE', SS=RouteSetServices, RC=STATUS)
-!          VERIFY_(STATUS)
-!       else
-!          do I = 1, NUM_CATCH
-!             WRITE(TMP,'(I3.3)') I
-!             GCName  = 'ens' // trim(TMP) // ':ROUTE'
-!             ROUTE(I) = MAPL_AddChild(GC, NAME=GCName, SS=RouteSetServices, RC=STATUS)
-!             VERIFY_(STATUS)
-!          end do
-!       end if
-!    ENDIF
+    IF(RUN_ROUTE) THEN
+       allocate(route(num_catch))
+       if (NUM_CATCH == 1) then
+          ROUTE(1) = MAPL_AddChild(GC, NAME='ROUTE', SS=RouteSetServices, RC=STATUS)
+          VERIFY_(STATUS)
+       else
+          do I = 1, NUM_CATCH
+             WRITE(TMP,'(I3.3)') I
+             GCName  = 'ens' // trim(TMP) // ':ROUTE'
+             ROUTE(I) = MAPL_AddChild(GC, NAME=GCName, SS=RouteSetServices, RC=STATUS)
+             VERIFY_(STATUS)
+          end do
+       end if
+    ENDIF
     
 !BOS
 
@@ -1359,16 +1361,16 @@ contains
                                                       RC=STATUS )
           VERIFY_(STATUS)
 
-!          IF(RUN_ROUTE == 1) THEN
-!             call MAPL_AddConnectivity (                              &
-!                  GC                                                 ,&
-!                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&
-!                  SRC_ID =  CATCH(I)                                 ,&
-!                  DST_ID =  ROUTE(I)                                 ,&
-!                  
-!                  RC=STATUS )
-!             VERIFY_(STATUS)            
-!          ENDIF
+          IF(RUN_ROUTE) THEN
+             call MAPL_AddConnectivity (                              &
+                  GC                                                 ,&
+                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&
+                  SRC_ID =  CATCH(I)                                 ,&
+                  DST_ID =  ROUTE(I)                                 ,&
+                  
+                  RC=STATUS )
+             VERIFY_(STATUS)            
+          ENDIF
 
        CASE (2)
           call MAPL_AddConnectivity (                                    & 
@@ -1379,16 +1381,16 @@ contains
             SRC_ID =  VEGDYN                                   ,         &
                                                       RC=STATUS ) 
 
-!          IF(RUN_ROUTE == 1) THEN
-!             call MAPL_AddConnectivity (                              &
-!                  GC                                                 ,&
-!                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&
-!                  SRC_ID =  CATCHCN(I)                               ,&
-!                  DST_ID =  ROUTE(I)                                 ,&
-!                  
-!                  RC=STATUS )
-!             VERIFY_(STATUS)            
-!          ENDIF
+          IF(RUN_ROUTE) THEN
+             call MAPL_AddConnectivity (                              &
+                  GC                                                 ,&
+                  SHORT_NAME  = (/'RUNOFF  '/)                       ,&
+                  SRC_ID =  CATCHCN(I)                               ,&
+                  DST_ID =  ROUTE(I)                                 ,&
+                  
+                  RC=STATUS )
+             VERIFY_(STATUS)            
+          ENDIF
        END SELECT
     END DO
 

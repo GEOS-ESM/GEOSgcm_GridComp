@@ -27,20 +27,16 @@ module GEOS_RouteGridCompMod
   use MAPL_Mod
   use MAPL_ConstantsMod
   use ROUTING_MODEL,          ONLY:     &
-       river_routing, ROUTE_DT
+       river_routing, RRM_TIMESTEP
 #if 0
-  USE catch_constants, ONLY:          &
-       N_CatG => N_Pfaf_Catchs  
+  USE catch_constants, ONLY: N_CatG => N_Pfaf_Catchs
 #endif
-  
   implicit none
   integer, parameter :: N_CatG = 291284
   private
 
   type T_RROUTE_STATE
      private
-     type (ESMF_RouteHandle) :: routeHandle
-     type (ESMF_Field)       :: field
      integer :: nTiles
      integer :: comm
      integer :: nDes
@@ -49,6 +45,8 @@ module GEOS_RouteGridCompMod
      integer :: maxCatch
      integer, pointer :: pfaf(:) => NULL()
      real,    pointer :: tile_area(:) => NULL()
+     type(MAPL_LocStreamXForm) :: xform
+     type(MAPL_LocStream) :: route_ls
   end type T_RROUTE_STATE
 
   ! Wrapper for extracting internal state
@@ -194,16 +192,16 @@ contains
          LONG_NAME          = 'area_of_catchment'        ,&
          UNITS              = 'km+2'                     ,&
          SHORT_NAME         = 'AREACAT'                  ,&
-         DIMS               = MAPL_DimsCatchOnly          ,&
+         DIMS               = MAPL_DimsHorzOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartRequired       ,&
          RC=STATUS  ) 
- 
+
     call MAPL_AddInternalSpec(GC                     ,&
          LONG_NAME          = 'length_of_channel_segment',&
          UNITS              = 'km+2'                     ,&
          SHORT_NAME         = 'LENGSC'                   ,&
-         DIMS               = MAPL_DimsCatchOnly          ,&
+         DIMS               = MAPL_DimsHorzOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartRequired       ,&
          RC=STATUS  ) 
@@ -212,7 +210,7 @@ contains
          LONG_NAME          = 'index_of_downtream_catchment',&
          UNITS              = '1'                        ,&
          SHORT_NAME         = 'DNSTR'                    ,&
-         DIMS               = MAPL_DimsCatchOnly          ,&
+         DIMS               = MAPL_DimsHorzOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartRequired       ,&
          RC=STATUS  ) 
@@ -221,7 +219,7 @@ contains
          LONG_NAME          = 'volume_of_water_in_local_stream',&
          UNITS              = 'm+3'                      ,&
          SHORT_NAME         = 'WSTREAM'                  ,&
-         DIMS               = MAPL_DimsCatchOnly          ,&
+         DIMS               = MAPL_DimsHorzOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartRequired       ,&
          RC=STATUS  )
@@ -230,7 +228,7 @@ contains
          LONG_NAME          = 'volume_of_water_in_river' ,&
          UNITS              = 'm+3'                      ,&
          SHORT_NAME         = 'WRIVER'                   ,&
-         DIMS               = MAPL_DimsCatchOnly          ,&
+         DIMS               = MAPL_DimsHorzOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartRequired       ,&
                                          RC=STATUS  )   
@@ -239,7 +237,7 @@ contains
          LONG_NAME          = 'TileID_of_the_lake_tile_at_the_river_mouth' ,&
          UNITS              = '1'                        ,&
          SHORT_NAME         = 'LRIVERMOUTH'              ,&
-         DIMS               = MAPL_DimsCatchOnly          ,&
+         DIMS               = MAPL_DimsHorzOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartRequired       ,&
                                          RC=STATUS  )   
@@ -248,7 +246,7 @@ contains
          LONG_NAME          = 'TileID_of_the_ocean_tile_at_the_river_mouth' ,&
          UNITS              = '1'                        ,&
          SHORT_NAME         = 'ORIVERMOUTH'              ,&
-         DIMS               = MAPL_DimsCatchOnly          ,&
+         DIMS               = MAPL_DimsHorzOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
          RESTART            = MAPL_RestartRequired       ,&
                                          RC=STATUS  )   
@@ -260,7 +258,7 @@ contains
          LONG_NAME          = 'transfer_of_moisture_from_stream_variable_to_river_variable' ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QSFLOW'                   ,&
-         DIMS               = MAPL_DimsCatchOnly          ,&
+         DIMS               = MAPL_DimsHorzOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
                                          RC=STATUS  ) 
 
@@ -268,7 +266,7 @@ contains
          LONG_NAME          = 'transfer_of_river_water_from_upstream_catchments' ,&
          UNITS              = 'm+3 s-1'                   ,&
          SHORT_NAME         = 'QINFLOW'                   ,&
-         DIMS               = MAPL_DimsCatchOnly           ,&
+         DIMS               = MAPL_DimsHorzOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
                                           RC=STATUS  ) 
 
@@ -276,7 +274,7 @@ contains
          LONG_NAME          = 'transfer_of_river_water_to_downstream_catchments' ,&
          UNITS              = 'm+3 s-1'                  ,&
          SHORT_NAME         = 'QOUTFLOW'                 ,&
-         DIMS               = MAPL_DimsCatchOnly          ,&
+         DIMS               = MAPL_DimsHorzOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
                                          RC=STATUS  ) 
 
@@ -296,8 +294,8 @@ contains
     VERIFY_(STATUS)
     wrap%ptr => route_internal_state
     
-! Save pointer to the wrapped internal state in the GC
-! ----------------------------------------------------
+!! Save pointer to the wrapped internal state in the GC
+!! ----------------------------------------------------
 
     call ESMF_UserCompSetInternalState ( GC, 'RiverRoute_state',wrap,status )
     VERIFY_(STATUS)
@@ -312,7 +310,7 @@ contains
 
 ! All done
 !---------
-    
+   
     call MAPL_GenericSetServices(GC, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -353,27 +351,23 @@ contains
     integer        :: nDEs
     integer        :: myPE
     integer        :: beforeMe, minCatch, maxCatch, pf, i
-    integer        :: ntiles, nt_global
 
-    type(ESMF_Grid) :: tileGrid
-    type(ESMF_Grid) :: newTileGrid
     type(ESMF_Grid) :: catchGrid
     type(ESMF_DistGrid) :: distGrid
-    type(ESMF_Field) :: field, field0
+    type(ESMF_DELayout) :: layout
 
     type(MAPL_MetaComp), pointer   :: MAPL
-    type(MAPL_LocStream) :: locstream
+    type(MAPL_LocStream) :: locstream,route_ls
     
-    integer, pointer :: ims(:) => NULL()
+    integer, allocatable :: ims(:)
+    integer ::  jms(1)
     integer, pointer :: pfaf(:) => NULL()
     integer, pointer :: arbSeq(:) => NULL()
     integer, allocatable :: arbIndex(:,:)
-    real, pointer :: tile_area_src(:) => NULL()
-    real, pointer :: tile_area(:) => NULL()
-    real, pointer :: ptr2(:) => NULL()
     
     type (T_RROUTE_STATE), pointer         :: route => null()
     type (RROUTE_wrap)                     :: wrap
+    real(ESMF_KIND_R8), pointer :: coords(:,:)
 
     ! ------------------
     ! begin
@@ -400,7 +394,9 @@ contains
     route%mype = mype
     
     ! define minCatch, maxCatch
+    allocate(ims(ndes))
     call MAPL_DecomposeDim ( n_catg,ims,ndes ) ! ims(mype+1) gives the size of my partition
+    jms=1
     ! myPE is 0-based!
     beforeMe = sum(ims(1:mype))
     minCatch = beforeMe + 1
@@ -409,134 +405,40 @@ contains
     ! get LocStream
     call MAPL_Get(MAPL, LocStream = locstream, RC=status)
     VERIFY_(STATUS)
-    ! extract Pfaf (TILEI on the "other" grid)
-    call MAPL_LocStreamGet(locstream, tilei=pfaf, OnAttachedGrid=.false., &
-         tileGrid=tilegrid, nt_global=nt_global, RC=status)
-    VERIFY_(STATUS)
-    
-    ! exchange Pfaf across PEs
 
-    ntiles = 0
-    !loop over total_n_tiles
-    do i = 1, nt_global
-       pf = pfaf(i)
-       if (pf >= minCatch .and. pf <= maxCatch) then ! I want this!
-          ntiles = ntiles+1
-          !realloc if needed
-          arbSeq(ntiles) = i
-       end if
-    end do ! global tile loop
+    CatchGrid = ESMF_GridCreate(name="ROUTE_GRID",countsPerDEDim1=ims,countsPerDeDim2=jms,indexFlag=ESMF_INDEX_DELOCAL,rc=status)
+    _VERIFY(status)
+    call ESMF_GridAddCoord(CatchGrid,rc=status)
+    _VERIFY(status)
+    call ESMF_GridGetCoord(CatchGrid,coordDim=1,farrayptr=coords,rc=status)
+    _VERIFY(status)
+    coords=0.0d0
+    call ESMF_GridGetCoord(CatchGrid,coordDim=2,farrayptr=coords,rc=status)
+    _VERIFY(status)
+    coords=0.0d0
+    call ESMF_GridCompSet(gc,grid=CatchGrid,rc=status)
+    _VERIFY(status)
+    call ESMF_GridGet(CatchGrid,distgrid=distgrid,rc=status)
+    _VERIFY(status)
+    call ESMF_DistGridGet(distgrid,deLayout=layout,rc=status)
+    _VERIFY(status)
+    call MAPL_LocstreamCreate(route_ls,layout,"tile.bin",'catch_ls', mask=[MAPL_LAND], &
+         grid=CatchGrid,use_pfaf=.true.,rc=status)
+    _VERIFY(status)
+    route%route_ls=route_ls
 
-    distgrid = ESMF_DistGridCreate(arbSeqIndexList=arbSeq, rc=status)
-    VERIFY_(STATUS)
-
-    newTileGRID = ESMF_GridEmptyCreate(rc=status)
-    VERIFY_(STATUS)
-         
-    allocate(arbIndex(nTiles,1), stat=status)
-    VERIFY_(STATUS)
-
-    arbIndex(:,1) = arbSeq
-
-    call ESMF_GridSet(newTileGrid,  &
-         name='redist_tile_grid_for_'//trim(COMP_NAME),    &
-         distgrid=distgrid, & 
-         gridMemLBound=(/1/), &
-         indexFlag=ESMF_INDEX_USER, &
-         distDim = (/1/), &
-         localArbIndexCount=ntiles, &
-         localArbIndex=arbIndex, &
-         minIndex=(/1/), &
-         maxIndex=(/NT_GLOBAL/), &
-         rc=status)
-    VERIFY_(STATUS)
-
-    deallocate(arbIndex)
-
-    call ESMF_GridCommit(newTileGrid, rc=status)
-    VERIFY_(STATUS)
+    call MAPL_LocStreamCreateXForm(xform=route%xform, locstreamOut=route_ls, &
+          locStreamIn=locstream,name="tile_to_route",rc=status)
 
 
-    ! now create a "catch" grid to be the "native" grid for this component
-    distgrid = ESMF_DistGridCreate(arbSeqIndexList=(/minCatch:maxCatch/), &
-         rc=status)
-    VERIFY_(STATUS)
+    call MAPL_LocStreamGet(route%route_ls,nt_local=route%ntiles,rc=status)
+    _VERIFY(status)
+    !route%pfaf => arbSeq
+    !route%ntiles = ntiles
+    !route%minCatch = minCatch
+    !route%maxCatch = maxCatch
 
-    catchGRID = ESMF_GridEmptyCreate(rc=status)
-    VERIFY_(STATUS)
-
-    allocate(arbIndex(ims(myPE+1),1), stat=status)
-    VERIFY_(STATUS)
-
-    arbIndex(:,1) = (/minCatch:maxCatch/)
-         
-    call ESMF_GridSet(catchGrid,  &
-         name='catch_grid_for_'//trim(COMP_NAME),    &
-         distgrid=distgrid, & 
-         gridMemLBound=(/1/), &
-         indexFlag=ESMF_INDEX_USER, &
-         distDim = (/1/), &
-         localArbIndexCount=ims(myPE+1), &
-         localArbIndex=arbIndex, &
-         minIndex=(/1/), &
-         maxIndex=(/N_CatG/), &
-         rc=status)
-    VERIFY_(STATUS)
-
-    deallocate(arbIndex)
-
-    call ESMF_GridCommit(catchGrid, rc=status)
-    VERIFY_(STATUS)
-
-    call ESMF_GridCompSet(gc, grid=catchGrid, RC=status)
-    VERIFY_(STATUS)
-
-    call MAPL_LocStreamGet(locstream, TILEAREA = tile_area_src, RC=status)
-    VERIFY_(STATUS)
-
-    field0 = ESMF_FieldCreate(grid=tilegrid, datacopyflag=ESMF_DATACOPY_VALUE, &
-         farrayPtr=tile_area_src, name='TILE_AREA_SRC', RC=STATUS)
-    VERIFY_(STATUS)
-    ! create field on the "new" tile grid
-    allocate(tile_area(ntiles), stat=status)
-    VERIFY_(STATUS)
-    field = ESMF_FieldCreate(grid=newtilegrid, datacopyflag=ESMF_DATACOPY_VALUE, &
-         farrayPtr=tile_area, name='TILE_AREA', RC=STATUS)
-    VERIFY_(STATUS)
-
-    ! create routehandle
-    call ESMF_FieldRedistStore(srcField=field0, dstField=field, &
-                routehandle=route%routehandle, rc=status)
-    VERIFY_(STATUS)
- 
-    ! redist tile_area
-    call ESMF_FieldRedist(srcField=FIELD0, dstField=FIELD, &
-         routehandle=route%routehandle, rc=status)
-    VERIFY_(STATUS)
-
-    call ESMF_FieldDestroy(field, rc=status)
-    VERIFY_(STATUS)
-    call ESMF_FieldDestroy(field0, rc=status)
-    VERIFY_(STATUS)
-
-#ifdef __GFORTRAN__
-    deallocate(tile_area_src)
-#endif
-    
-    ! redist pfaf (NOTE: me might need a second routehandle for integers)
-
-    route%pfaf => arbSeq
-    route%ntiles = ntiles
-    route%minCatch = minCatch
-    route%maxCatch = maxCatch
-
-    allocate(ptr2(ntiles), stat=status)
-    VERIFY_(STATUS)
-    route%field = ESMF_FieldCreate(grid=newtilegrid, datacopyflag=ESMF_DATACOPY_VALUE, &
-         farrayPtr=ptr2, name='RUNOFF', RC=STATUS)
-    VERIFY_(STATUS)
-    
-    deallocate(ims)
+    if (allocated(ims)) deallocate(ims)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
 
@@ -587,6 +489,14 @@ contains
 ! INTERNAL pointers
 ! ----------------------------------------------------- 
 
+    real, dimension(:,:), pointer :: AREACAT_2D
+    real, dimension(:,:), pointer :: LENGSC_2D
+    real, dimension(:,:), pointer :: DNSTR_2D
+    real, dimension(:,:), pointer :: WSTREAM_2D
+    real, dimension(:,:), pointer :: WRIVER_2D
+    real, dimension(:,:), pointer :: LRIVERMOUTH_2D
+    real, dimension(:,:), pointer :: ORIVERMOUTH_2D
+
     real, dimension(:), pointer :: AREACAT
     real, dimension(:), pointer :: LENGSC
     real, dimension(:), pointer :: DNSTR
@@ -626,11 +536,17 @@ contains
     REAL, ALLOCATABLE, DIMENSION(:)          :: RUNOFF_CATCH, RUNOFF_ACT,AREACAT_ACT,& 
          LENGSC_ACT, WSTREAM_ACT,WRIVER_ACT, QSFLOW_ACT,QOUTFLOW_ACT, runoff_save
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: tmp_index
-    type(ESMF_Field) :: runoff_src
+
+    real, allocatable :: runoff_catch_dist(:)
 
     integer                                :: ndes, mype
     type (T_RROUTE_STATE), pointer         :: route => null()
     type (RROUTE_wrap)                     :: wrap
+
+    real, allocatable :: runoff_on_catch(:,:)
+    integer :: nt_local
+    type(ESMF_Grid) :: esmfgrid
+    integer :: counts(3)
 
     ! ------------------
     ! begin
@@ -640,16 +556,16 @@ contains
 
     route => wrap%ptr
 
-! Get the target components name and set-up traceback handle.
-! -----------------------------------------------------------
+!! Get the target components name and set-up traceback handle.
+!! -----------------------------------------------------------
 
     call ESMF_GridCompGet(GC, name=COMP_NAME, CONFIG=CF, RC=STATUS )
     VERIFY_(STATUS)
   
     Iam = trim(COMP_NAME) // "RUN"
 
-! Get my internal MAPL_Generic state
-! -----------------------------------------------------------
+!! Get my internal MAPL_Generic state
+!! -----------------------------------------------------------
 
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
     VERIFY_(STATUS)
@@ -667,324 +583,341 @@ contains
 
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
     VERIFY_(STATUS) 
+
+! Get runoff from import
+    call MAPL_GetPointer(import,runoff,"RUNOFF",rc=status)
+    _VERIFY(status)
+
+! Get number of local tiles on catch grid and allocate temporary array
+    call MAPL_LocStreamGet(route%route_ls,nt_local=nt_local,rc=status)
+    _VERIFY(status)
+    allocate(runoff_catch_dist(nt_local))
+
+! Call Locstream transform, takes land tiles that are on the distribution used by
+! catchgridcomp (based on atmosphere) and shuffles them to be on catchment distribution
+! in other words the tile is on the processor contains the catchment making up the tile
+    call MAPL_LocStreamTransform(runoff_catch_dist,route%xform,runoff,rc=status)
+    _VERIFY(status)
+! Finall we can take the tiles and do the conservative locstream transform to 
+! aggregate them on the actual catchments. I am allocataing a temporary array
+! get the result of this computation
+    call ESMF_GridCompGet(gc,grid=esmfgrid,rc=status)
+    _VERIFY(status)
+    call MAPL_GridGet(esmfgrid,localCellCountPerDim=counts,rc=status)
+    _VERIFY(status)
+    allocate(runoff_on_catch(counts(1),counts(2)))
+    call MAPL_LOcStreamTransform(route%route_ls,runoff_on_catch,runoff_catch_dist,rc=status)
+    _VERIFY(status)
+
+    !pfaf_code => route%pfaf
+    !tile_area => route%tile_area
     
-! get pointers to inputs variables
-! ----------------------------------
-
-    ! get the field from IMPORT
-    call ESMF_StateGet(IMPORT, 'RUNOFF', field=runoff_src, RC=STATUS)
-    VERIFY_(STATUS)
-
-    ! redist RunOff
-    call ESMF_FieldRedist(srcField=runoff_src, dstField=route%field, &
-                routehandle=route%routehandle, rc=status)
-    VERIFY_(STATUS)
-
-    call ESMF_FieldGet(route%field, farrayPtr=RUNOFF, rc=status)
-    VERIFY_(STATUS)
-
-    pfaf_code => route%pfaf
-    tile_area => route%tile_area
-    
-! get pointers to internal variables
-! ----------------------------------
+!! get pointers to internal variables (note they are 2D in the internal state)
+!! ----------------------------------
   
-    call MAPL_GetPointer(INTERNAL, AREACAT , 'AREACAT', RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, AREACAT_2D , 'AREACAT', RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, LENGSC  , 'LENGSC',  RC=STATUS)
+    AREACAT => AREACAT_2D(:,1)
+    call MAPL_GetPointer(INTERNAL, LENGSC_2D  , 'LENGSC',  RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, DNSTR   , 'DNSTR'  , RC=STATUS)
+    LENGSC => LENGSC_2D(:,1)
+    call MAPL_GetPointer(INTERNAL, DNSTR_2D   , 'DNSTR'  , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, WSTREAM , 'WSTREAM', RC=STATUS)
+    DNSTR => DNSTR_2D(:,1)
+    call MAPL_GetPointer(INTERNAL, WSTREAM_2D , 'WSTREAM', RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, WRIVER  , 'WRIVER' , RC=STATUS)
+    WSTREAM => WSTREAM_2D(:,1)
+    call MAPL_GetPointer(INTERNAL, WRIVER_2D  , 'WRIVER' , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, LRIVERMOUTH, 'LRIVERMOUTH' , RC=STATUS)
+    WRIVER => WRIVER_2D(:,1)
+    call MAPL_GetPointer(INTERNAL, LRIVERMOUTH_2D, 'LRIVERMOUTH' , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, ORIVERMOUTH, 'ORIVERMOUTH' , RC=STATUS)
+    LRIVERMOUTH => LRIVERMOUTH_2D(:,1)
+    call MAPL_GetPointer(INTERNAL, ORIVERMOUTH_2D, 'ORIVERMOUTH' , RC=STATUS)
     VERIFY_(STATUS)
+    ORIVERMOUTH => ORIVERMOUTH_2D(:,1)
 
-! get pointers to EXPORTS
-! -----------------------
+!! get pointers to EXPORTS
+!! -----------------------
 
-    call MAPL_GetPointer(EXPORT, QSFLOW,   'QSFLOW'  , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QINFLOW,  'QINFLOW' , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, QOUTFLOW, 'QOUTFLOW', RC=STATUS)
-    VERIFY_(STATUS)
+    !call MAPL_GetPointer(EXPORT, QSFLOW,   'QSFLOW'  , RC=STATUS)
+    !VERIFY_(STATUS)
+    !call MAPL_GetPointer(EXPORT, QINFLOW,  'QINFLOW' , RC=STATUS)
+    !VERIFY_(STATUS)
+    !call MAPL_GetPointer(EXPORT, QOUTFLOW, 'QOUTFLOW', RC=STATUS)
+    !VERIFY_(STATUS)
  
-    call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
-    VERIFY_(STATUS)    
+    !call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
+    !VERIFY_(STATUS)
+    !call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+    !VERIFY_(STATUS)    
 
-    call MAPL_TimerOn  ( MAPL, "-RRM" )
+    !call MAPL_TimerOn  ( MAPL, "-RRM" )
 
-    call MAPL_LocStreamGet(LocStream, NT_LOCAL=NTILES, RC=STATUS )
-    N_CatL  = size(AREACAT)
+    !call MAPL_LocStreamGet(LocStream, NT_LOCAL=NTILES, RC=STATUS )
+    !N_CatL  = size(AREACAT)
 
-!@@    ALLOCATE (pfaf_code (1:NTILES)) ! 9th_coulumn_in_TILFILE
+!!@@    ALLOCATE (pfaf_code (1:NTILES)) ! 9th_coulumn_in_TILFILE
 
-    ! NOTES    :    
-    !Need below area and pfaf_index from the .til file (Maybe, they are already in LocStream)
-    !
-    !	 TILFILE: /discover/nobackup/smahanam/bcs/Heracles-4_3/Heracles-4_3_MERRA-3/CF0090x6C_DE1440xPE0720/CF0090x6C_DE1440xPE0720-Pfafstetter.til
-    !	 The 8-line header is followed by 1061481 number of rows.
-    !	 do n = 1,475330
-    !	        read (10,*)type,area, longitude, latitude, ig, jg, cell_frac, integer,   & 
-    !                      pfaf_code, pfaf_index, pfaf_frac
-    !	 end do
-    !	 
-    !	where for each tile:
-    !	 (1)    type      [-]      tile type (100-land; 19-lakes; 20-ice)
-    !	 (2)    area      [x EarthRadius^2 km2]  tile area
-    !	 (3)    longitude [degree] longitude at the centroid of the tile
-    !	 (4)    latitude  [degree] latitude at the centroid of the tile
-    !	 (5)    ig        [-]      i-index of the AGCM grid cell where the tile is located
-    !	 (6)    jg        [-]      j-index of the AGCM grid cell where the tile is located
-    !	 (7)    cell_frac [-]      fraction of the AGCM grid cell  
-    !    (8)    integer            some integer that matters only for OGCM tiles, I suppose.  
-    !	 (9)    pfaf_code [-]      catchment index (1-291284) after sorting Pfafstetter codes in ascending order 
-    !	 (10)    pfaf_index[-]      catchment index (1-290188) after sorting Pfafstetter codes 
-    !                                  and removing submerged in ascending order 
-    !    (11)   pfaf_frac [-]      fraction of the pfafstetter catchment
+    !! NOTES    :    
+    !!Need below area and pfaf_index from the .til file (Maybe, they are already in LocStream)
+    !!
+    !!	 TILFILE: /discover/nobackup/smahanam/bcs/Heracles-4_3/Heracles-4_3_MERRA-3/CF0090x6C_DE1440xPE0720/CF0090x6C_DE1440xPE0720-Pfafstetter.til
+    !!	 The 8-line header is followed by 1061481 number of rows.
+    !!	 do n = 1,475330
+    !!	        read (10,*)type,area, longitude, latitude, ig, jg, cell_frac, integer,   & 
+    !!                      pfaf_code, pfaf_index, pfaf_frac
+    !!	 end do
+    !!	 
+    !!	where for each tile:
+    !!	 (1)    type      [-]      tile type (100-land; 19-lakes; 20-ice)
+    !!	 (2)    area      [x EarthRadius^2 km2]  tile area
+    !!	 (3)    longitude [degree] longitude at the centroid of the tile
+    !!	 (4)    latitude  [degree] latitude at the centroid of the tile
+    !!	 (5)    ig        [-]      i-index of the AGCM grid cell where the tile is located
+    !!	 (6)    jg        [-]      j-index of the AGCM grid cell where the tile is located
+    !!	 (7)    cell_frac [-]      fraction of the AGCM grid cell  
+    !!    (8)    integer            some integer that matters only for OGCM tiles, I suppose.  
+    !!	 (9)    pfaf_code [-]      catchment index (1-291284) after sorting Pfafstetter codes in ascending order 
+    !!	 (10)    pfaf_index[-]      catchment index (1-290188) after sorting Pfafstetter codes 
+    !!                                  and removing submerged in ascending order 
+    !!    (11)   pfaf_frac [-]      fraction of the pfafstetter catchment
 
-    !call MAPL_LocStreamGet(LocStream, 9th_coulumn_in_TILFILE=pfaf_code, RC=STATUS )
+    !!call MAPL_LocStreamGet(LocStream, 9th_coulumn_in_TILFILE=pfaf_code, RC=STATUS )
 
-    Local_Min = route%minCatch
-    Local_Max = route%maxCatch
+    !Local_Min = route%minCatch
+    !Local_Max = route%maxCatch
  
-    FIRST_TIME : IF (FirstTime) THEN
+    !FIRST_TIME : IF (FirstTime) THEN
 
-       ! Pfafstetter catchment Domain Decomposition :         
-       ! --------------------------------------------
+       !! Pfafstetter catchment Domain Decomposition :         
+       !! --------------------------------------------
 
-       ! AllActive      : Processor(s) where the catchment is active  (identical in any processor). 
-       ! srcProcsID     : For all active catchments anywhere tells which processor is the principal owner of the catchment (identical in any processor).
-       ! DstCatchID  : 2-D array contains downstream catchID and downstream processor (identical in any processor)
-       ! LocDstCatchID  : Downstream catchID when for catchments that are local to the processor.
+       !! AllActive      : Processor(s) where the catchment is active  (identical in any processor). 
+       !! srcProcsID     : For all active catchments anywhere tells which processor is the principal owner of the catchment (identical in any processor).
+       !! DstCatchID  : 2-D array contains downstream catchID and downstream processor (identical in any processor)
+       !! LocDstCatchID  : Downstream catchID when for catchments that are local to the processor.
 
-       ndes = route%ndes
-       mype = route%mype
-       allocate (AllActive    (1:N_CatG, 1: nDEs))
-       allocate (DstCatchID(1:N_CatG, 1: nDEs)) 
-       allocate (srcProcsID   (1:N_CatG ))
-       allocate (LocDstCatchID(1:N_CatG ))
+       !ndes = route%ndes
+       !mype = route%mype
+       !allocate (AllActive    (1:N_CatG, 1: nDEs))
+       !allocate (DstCatchID(1:N_CatG, 1: nDEs)) 
+       !allocate (srcProcsID   (1:N_CatG ))
+       !allocate (LocDstCatchID(1:N_CatG ))
 
-       AllActive       = -9999
-       srcProcsID      = -9999
-       DstCatchID      = -9999
-       LocDstCatchID   = NINT(DNSTR)
+       !AllActive       = -9999
+       !srcProcsID      = -9999
+       !DstCatchID      = -9999
+       !LocDstCatchID   = NINT(DNSTR)
 
-       call InitializeRiverRouting(MYPE, nDEs, MAPL_am_I_root(vm),pfaf_code, & 
-            AllActive, DstCatchID, srcProcsID, LocDstCatchID, rc=STATUS)
+       !call InitializeRiverRouting(MYPE, nDEs, MAPL_am_I_root(vm),pfaf_code, & 
+            !AllActive, DstCatchID, srcProcsID, LocDstCatchID, rc=STATUS)
 
-       VERIFY_(STATUS)
+       !VERIFY_(STATUS)
 
-       N_Active = count (srcProcsID == MYPE)
+       !N_Active = count (srcProcsID == MYPE)
 
-       allocate (GlbActive(1 : N_Active))
-       allocate (tmp_index(1 : N_CatG  ))
+       !allocate (GlbActive(1 : N_Active))
+       !allocate (tmp_index(1 : N_CatG  ))
 
-       forall (N=1:N_CatG) tmp_index(N) = N
+       !forall (N=1:N_CatG) tmp_index(N) = N
 
-       GlbActive = pack (tmp_index, mask = (srcProcsID == MYPE))
+       !GlbActive = pack (tmp_index, mask = (srcProcsID == MYPE))
 
-       ! Initialize the cycle counter and sum (runoff) 
+       !! Initialize the cycle counter and sum (runoff) 
 
-       allocate (runoff_save (1:NTILES))
+       !allocate (runoff_save (1:NTILES))
 
-       runoff_save = 0.
-       ThisCycle   = 1
+       !runoff_save = 0.
+       !ThisCycle   = 1
 
-       FirstTime = .false.
+       !FirstTime = .false.
 
-       deallocate (tmp_index)
+       !deallocate (tmp_index)
        
-    ENDIF FIRST_TIME
+    !ENDIF FIRST_TIME
 
-    ! For efficiency, the time step to call the river routing model is set at ROUTE_DT 
+    !! For efficiency, the time step to call the river routing model is set at RRM_TIMESTEP 
 
-    N_CYC = ROUTE_DT/HEARTBEAT
+    !N_CYC = RRM_TIMESTEP/HEARTBEAT
 
-    RUN_MODEL : if (ThisCycle == N_CYC) then  
+    !RUN_MODEL : if (ThisCycle == N_CYC) then  
 
-       runoff_save = runoff_save + runoff/real (N_CYC)
+       !runoff_save = runoff_save + runoff/real (N_CYC)
 
-       ! Here we aggreagate GEOS_Catch/GEOS_CatchCN produced RUNOFF from TILES to CATCHMENTS
-       ! Everything is local to the parallel block. Units: RUNOFF [kg m-2 s-1], 
-       !        RUNOFF_CATCH [m3 s-1]
-       ! -----------------------------------------------------------------------------------
+       !! Here we aggreagate GEOS_Catch/GEOS_CatchCN produced RUNOFF from TILES to CATCHMENTS
+       !! Everything is local to the parallel block. Units: RUNOFF [kg m-2 s-1], 
+       !!        RUNOFF_CATCH [m3 s-1]
+       !! -----------------------------------------------------------------------------------
        
-       ! Unit conversion 
+       !! Unit conversion 
        
-       mm2m3 = MAPL_RADIUS * MAPL_RADIUS / 1000.
+       !mm2m3 = MAPL_RADIUS * MAPL_RADIUS / 1000.
        
-       ALLOCATE (RUNOFF_CATCH(1:N_CatG))
+       !ALLOCATE (RUNOFF_CATCH(1:N_CatG))
     
-       RUNOFF_CATCH = 0.
+       !RUNOFF_CATCH = 0.
        
-       DO N = 1, NTILES 
-          RUNOFF_CATCH (pfaf_code(n)) = RUNOFF_CATCH (pfaf_code(n)) + mm2m3 * RUNOFF_SAVE (N) * TILE_AREA (N)
-       END DO
+       !DO N = 1, NTILES 
+          !RUNOFF_CATCH (pfaf_code(n)) = RUNOFF_CATCH (pfaf_code(n)) + mm2m3 * RUNOFF_SAVE (N) * TILE_AREA (N)
+       !END DO
        
-       ! Inter-processor communication 1
-       ! For catchment-tiles that contribute to the main catchment in some other processor, 
-       ! send runoff to the corresponding srcProcsID(N)    
-       ! -----------------------------------------------------------------------------------
+       !! Inter-processor communication 1
+       !! For catchment-tiles that contribute to the main catchment in some other processor, 
+       !! send runoff to the corresponding srcProcsID(N)    
+       !! -----------------------------------------------------------------------------------
        
-       do N = Local_Min, Local_Max
+       !do N = Local_Min, Local_Max
           
-          if ((AllActive (N,MYPE+1) > 0).and.(srcProcsID(N) /= MYPE)) then
+          !if ((AllActive (N,MYPE+1) > 0).and.(srcProcsID(N) /= MYPE)) then
              
-             rbuff = RUNOFF_CATCH (N)
+             !rbuff = RUNOFF_CATCH (N)
              
-             call MPI_ISend(rbuff,1,MPI_real,srcProcsID(N),999,MPI_COMM_WORLD,req,status)
-             call MPI_WAIT (req  ,MPI_STATUS_IGNORE,status)
+             !call MPI_ISend(rbuff,1,MPI_real,srcProcsID(N),999,MPI_COMM_WORLD,req,status)
+             !call MPI_WAIT (req  ,MPI_STATUS_IGNORE,status)
              
-             RUNOFF_CATCH (N) = 0.
+             !RUNOFF_CATCH (N) = 0.
              
-          else
+          !else
              
-             if(srcProcsID(N) == MYPE) then 
+             !if(srcProcsID(N) == MYPE) then 
                 
-                do i = 1,nDEs                
-                   if((i-1 /= MYPE).and.(AllActive (N,i) > 0))  then                   
+                !do i = 1,nDEs                
+                   !if((i-1 /= MYPE).and.(AllActive (N,i) > 0))  then                   
                       
-                      call MPI_RECV(rbuff,1,MPI_real,i-1,999,MPI_COMM_WORLD,MPI_STATUS_IGNORE,status)
-                      RUNOFF_CATCH (N) = RUNOFF_CATCH (N) + rbuff
+                      !call MPI_RECV(rbuff,1,MPI_real,i-1,999,MPI_COMM_WORLD,MPI_STATUS_IGNORE,status)
+                      !RUNOFF_CATCH (N) = RUNOFF_CATCH (N) + rbuff
                       
-                   endif
-                end do
-             endif
-          endif
-       end do
+                   !endif
+                !end do
+             !endif
+          !endif
+       !end do
        
-       ! Now compress and create subsets of arrays that only contain active catchments 
-       !    in the local processor
-       ! -----------------------------------------------------------------------------
+       !! Now compress and create subsets of arrays that only contain active catchments 
+       !!    in the local processor
+       !! -----------------------------------------------------------------------------
        
-       if(allocated (LENGSC_ACT ) .eqv. .false.) allocate (LENGSC_ACT  (1:N_Active))
-       if(allocated (AREACAT_ACT ) .eqv. .false.) allocate (AREACAT_ACT (1:N_Active))
-       if(allocated (WSTREAM_ACT ) .eqv. .false.) allocate (WSTREAM_ACT (1:N_Active))
-       if(allocated (WRIVER_ACT  ) .eqv. .false.) allocate (WRIVER_ACT  (1:N_Active))
-       if(allocated (QSFLOW_ACT  ) .eqv. .false.) allocate (QSFLOW_ACT  (1:N_Active))
-       if(allocated (QOUTFLOW_ACT) .eqv. .false.) allocate (QOUTFLOW_ACT(1:N_Active))  
-       if(allocated (RUNOFF_ACT  ) .eqv. .false.) allocate (RUNOFF_ACT  (1:N_Active))  
+       !if(allocated (LENGSC_ACT ) .eqv. .false.) allocate (LENGSC_ACT  (1:N_Active))
+       !if(allocated (AREACAT_ACT ) .eqv. .false.) allocate (AREACAT_ACT (1:N_Active))
+       !if(allocated (WSTREAM_ACT ) .eqv. .false.) allocate (WSTREAM_ACT (1:N_Active))
+       !if(allocated (WRIVER_ACT  ) .eqv. .false.) allocate (WRIVER_ACT  (1:N_Active))
+       !if(allocated (QSFLOW_ACT  ) .eqv. .false.) allocate (QSFLOW_ACT  (1:N_Active))
+       !if(allocated (QOUTFLOW_ACT) .eqv. .false.) allocate (QOUTFLOW_ACT(1:N_Active))  
+       !if(allocated (RUNOFF_ACT  ) .eqv. .false.) allocate (RUNOFF_ACT  (1:N_Active))  
        
-       DO N = 1, size (GlbActive)
+       !DO N = 1, size (GlbActive)
           
-          I = GlbActive (N)
-          RUNOFF_ACT  (N) = RUNOFF_CATCH (I)
+          !I = GlbActive (N)
+          !RUNOFF_ACT  (N) = RUNOFF_CATCH (I)
           
-          I = GlbActive (N) - Local_Min + 1
-          WSTREAM_ACT (N) = WSTREAM (I)
-          WRIVER_ACT  (N) = WRIVER  (I)
-          LENGSC_ACT  (N) = LENGSC  (I)
-          AREACAT_ACT (N) = AREACAT (I)
+          !I = GlbActive (N) - Local_Min + 1
+          !WSTREAM_ACT (N) = WSTREAM (I)
+          !WRIVER_ACT  (N) = WRIVER  (I)
+          !LENGSC_ACT  (N) = LENGSC  (I)
+          !AREACAT_ACT (N) = AREACAT (I)
           
-       END DO
+       !END DO
        
-       QSFLOW_ACT   = 0.
-       QOUTFLOW_ACT = 0.
-       QSFLOW       = 0.
-       QOUTFLOW     = 0.
-       QINFLOW      = 0.
+       !QSFLOW_ACT   = 0.
+       !QOUTFLOW_ACT = 0.
+       !QSFLOW       = 0.
+       !QOUTFLOW     = 0.
+       !QINFLOW      = 0.
        
-       ! Call river_routing_model
-       ! ------------------------
+       !! Call river_routing_model
+       !! ------------------------
        
-       CALL RIVER_ROUTING  (N_Active, RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,  &
-            WSTREAM_ACT,WRIVER_ACT, QSFLOW_ACT,QOUTFLOW_ACT) 
+       !CALL RIVER_ROUTING  (N_Active, RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,  &
+            !WSTREAM_ACT,WRIVER_ACT, QSFLOW_ACT,QOUTFLOW_ACT) 
        
-       DO N = 1, size (GlbActive)
+       !DO N = 1, size (GlbActive)
           
-          I = GlbActive (N) - Local_Min + 1
+          !I = GlbActive (N) - Local_Min + 1
           
-          WSTREAM (I) = WSTREAM_ACT (N) 
-          WRIVER  (I) = WRIVER_ACT  (N)  
-          QSFLOW  (I) = QSFLOW_ACT  (N)
-          QOUTFLOW(I) = QOUTFLOW_ACT(N)
+          !WSTREAM (I) = WSTREAM_ACT (N) 
+          !WRIVER  (I) = WRIVER_ACT  (N)  
+          !QSFLOW  (I) = QSFLOW_ACT  (N)
+          !QOUTFLOW(I) = QOUTFLOW_ACT(N)
 
-          if (LocDstCatchID (GlbActive (N)) ==  GlbActive (N)) then
+          !if (LocDstCatchID (GlbActive (N)) ==  GlbActive (N)) then
 
-             ! This catchment drains to the ocean, lake or a sink 
-             ! if(ORIVERMOUTH(... ) > 0) send QOUTFLOW(I) [m3/s] to ORIVERMOUTH(N) th ocean tile
-             ! if(LRIVERMOUTH(... ) > 0) send QOUTFLOW(I) [m3/s] to LRIVERMOUTH(N) th lake tile
+             !! This catchment drains to the ocean, lake or a sink 
+             !! if(ORIVERMOUTH(... ) > 0) send QOUTFLOW(I) [m3/s] to ORIVERMOUTH(N) th ocean tile
+             !! if(LRIVERMOUTH(... ) > 0) send QOUTFLOW(I) [m3/s] to LRIVERMOUTH(N) th lake tile
 
-          endif
-       END DO
+          !endif
+       !END DO
        
-       ! Inter-processor communication-2
-       ! Update down stream catchments
-       ! -------------------------------
+       !! Inter-processor communication-2
+       !! Update down stream catchments
+       !! -------------------------------
        
-       do N = 1,N_CatG 
+       !do N = 1,N_CatG 
           
-          if ((srcProcsID (N) == MYPE).and.(srcProcsID (LocDstCatchID (N)) == MYPE)) then ! destination is local
+          !if ((srcProcsID (N) == MYPE).and.(srcProcsID (LocDstCatchID (N)) == MYPE)) then ! destination is local
              
-             I = LocDstCatchID (N) - Local_Min + 1 ! Downstream index in the local processor
-             K = N - Local_Min + 1                 ! Source index in the local processor  
+             !I = LocDstCatchID (N) - Local_Min + 1 ! Downstream index in the local processor
+             !K = N - Local_Min + 1                 ! Source index in the local processor  
              
-             if(LocDstCatchID (N) /= N) then ! ensure not to refill the reservoir by itself
+             !if(LocDstCatchID (N) /= N) then ! ensure not to refill the reservoir by itself
                 
-                QINFLOW(I) = QINFLOW(I) + QOUTFLOW (K)
-                WRIVER (I) = WRIVER (I) + QOUTFLOW (K) * real(route_dt)
+                !QINFLOW(I) = QINFLOW(I) + QOUTFLOW (K)
+                !WRIVER (I) = WRIVER (I) + QOUTFLOW (K) * real(route_dt)
 
-             endif
+             !endif
                              
-          elseif ((srcProcsID (N) == MYPE).and.(srcProcsID (LocDstCatchID (N)) /= MYPE)) then 
+          !elseif ((srcProcsID (N) == MYPE).and.(srcProcsID (LocDstCatchID (N)) /= MYPE)) then 
              
-             if(srcProcsID (LocDstCatchID (N)) >= 0) then
+             !if(srcProcsID (LocDstCatchID (N)) >= 0) then
                 
-                ! Send to downstream processor
+                !! Send to downstream processor
                 
-                K = N - Local_Min + 1                 ! Source index in the local processor  
+                !K = N - Local_Min + 1                 ! Source index in the local processor  
                 
-                call MPI_ISend(QOUTFLOW(K),1,MPI_real,srcProcsID (LocDstCatchID (N)),999,MPI_COMM_WORLD,req,status)
-                call MPI_WAIT(req,MPI_STATUS_IGNORE,status) 
+                !call MPI_ISend(QOUTFLOW(K),1,MPI_real,srcProcsID (LocDstCatchID (N)),999,MPI_COMM_WORLD,req,status)
+                !call MPI_WAIT(req,MPI_STATUS_IGNORE,status) 
                 
-             endif
+             !endif
              
-          elseif ((srcProcsID (N) /= MYPE).and.(srcProcsID (N) >= 0)) then
+          !elseif ((srcProcsID (N) /= MYPE).and.(srcProcsID (N) >= 0)) then
              
-             K = srcProcsID (dstCatchID(N,srcProcsID (N)+1))
+             !K = srcProcsID (dstCatchID(N,srcProcsID (N)+1))
              
-             if (k == MYPE) then
+             !if (k == MYPE) then
                 
-                do i = 1,nDEs
+                !do i = 1,nDEs
                    
-                   if(MYPE /= i-1) then 
+                   !if(MYPE /= i-1) then 
                       
-                      if((srcProcsID  (n) == i-1).and.(srcProcsID (dstCatchID(N, i)) == MYPE))then                       
-                         call MPI_RECV(rbuff,1,MPI_real, srcProcsID (N),999,MPI_COMM_WORLD,MPI_STATUS_IGNORE,status)
-                         K = dstCatchID(N,i) - Local_Min + 1
-                         QINFLOW (K) = QINFLOW (K) + rbuff
-                         WRIVER  (K) = WRIVER (K)  + rbuff * real(route_dt)
+                      !if((srcProcsID  (n) == i-1).and.(srcProcsID (dstCatchID(N, i)) == MYPE))then                       
+                         !call MPI_RECV(rbuff,1,MPI_real, srcProcsID (N),999,MPI_COMM_WORLD,MPI_STATUS_IGNORE,status)
+                         !K = dstCatchID(N,i) - Local_Min + 1
+                         !QINFLOW (K) = QINFLOW (K) + rbuff
+                         !WRIVER  (K) = WRIVER (K)  + rbuff * real(route_dt)
                          
-                      endif
-                   endif
-                end do
-             endif
+                      !endif
+                   !endif
+                !end do
+             !endif
              
-          endif
+          !endif
           
-       end do
+       !end do
 
-       ! initialize the cycle counter and sum (runoff_tile) 
+       !! initialize the cycle counter and sum (runoff_tile) 
 
-       runoff_save = 0.
-       ThisCycle   = 1         
+       !runoff_save = 0.
+       !ThisCycle   = 1         
 
 
-    else
+    !else
        
-       runoff_save = runoff_save + runoff/real (N_CYC)
+       !runoff_save = runoff_save + runoff/real (N_CYC)
        
-       ThisCycle = ThisCycle + 1
+       !ThisCycle = ThisCycle + 1
        
-    endif RUN_MODEL
+    !endif RUN_MODEL
 
  call MAPL_TimerOff ( MAPL, "-RRM" )
 
@@ -1116,5 +1049,7 @@ contains
     deallocate (global_buff, scounts, rdispls, rcounts, LocalActive)
 
     RETURN_(ESMF_SUCCESS)
+
   end subroutine InitializeRiverRouting
+  
 end module GEOS_RouteGridCompMod

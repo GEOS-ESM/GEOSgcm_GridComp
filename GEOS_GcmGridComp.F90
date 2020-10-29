@@ -828,13 +828,13 @@ contains
          default="tile.data", RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_LocStreamCreate(exchA, LAYOUT=layout, FILENAME=TILINGFILE, &
-                              NAME='MAIN_Atm',                           &
+    !call MAPL_LocStreamCreate(exchA, LAYOUT=layout, FILENAME=TILINGFILE, &
+                              !NAME='MAIN_Atm',                           &
+    call MAPL_LocStreamCreate(exchA, layout, TILINGFILE, 'MAIN_Atm',                           &
                               grid=agrid, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_LocStreamCreate(exchO, LAYOUT=layout, FILENAME=TILINGFILE, &
-                              NAME='MAIN_Ocn',  mask=(/ MAPL_OCEAN /),   &
+    call MAPL_LocStreamCreate(exchO, layout, TILINGFILE, 'MAIN_Ocn',  mask=(/ MAPL_OCEAN /),   &
                               grid=ogrid, RC=STATUS)
     VERIFY_(STATUS)
 

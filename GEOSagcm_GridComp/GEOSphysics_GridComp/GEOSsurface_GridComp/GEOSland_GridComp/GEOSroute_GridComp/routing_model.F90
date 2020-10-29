@@ -3,8 +3,8 @@ MODULE routing_model
   IMPLICIT NONE
 
   private
-  public :: river_routing, SEARCH_DNST, ROUTE_DT
-  integer                   ,    parameter :: ROUTE_DT = 3600
+  public :: river_routing, SEARCH_DNST, RRM_TIMESTEP
+  integer,    parameter :: RRM_TIMESTEP = 3600
 
   CONTAINS
 
@@ -57,25 +57,25 @@ MODULE routing_model
               
        ! Updating WSTREAM
        
-       WSTREAM(N)    = WSTREAM(N)  + RUNCATCH(N) * REAL (ROUTE_DT)
+       WSTREAM(N)    = WSTREAM(N)  + RUNCATCH(N) * REAL (RRM_TIMESTEP)
        LS            = AREACAT(N) / (AMAX1(1.,LENGSC (N)))
        ROFF          = RUNCATCH(N) * AREACAT(N)
        IF(ROFF < 2. ) THEN
-             COEFF = RESCONST (LS, P1, P2)
-          ELSEIF(ROFF > 10.) THEN
-             COEFF = RESCONST (LS, P3, P4)
-          ELSE
-             COEFF1 = RESCONST (LS, P1, P2)    
-             COEFF2 = RESCONST (LS, P3, P4)   
-             COEFF  = COEFF1 + (ROFF - 2.)*(COEFF2 - COEFF1)/8.
-          ENDIF
+          COEFF = RESCONST (LS, P1, P2)
+       ELSEIF(ROFF > 10.) THEN
+          COEFF = RESCONST (LS, P3, P4)
+       ELSE
+          COEFF1 = RESCONST (LS, P1, P2)    
+          COEFF2 = RESCONST (LS, P3, P4)   
+          COEFF  = COEFF1 + (ROFF - 2.)*(COEFF2 - COEFF1)/8.
+       ENDIF
 
        IF(COEFF > K_RES_MAX) COEFF = K_SIMPLE
  
        QSFLOW(N)     = COEFF * WSTREAM(N)
        WSTREAM(N)    = WSTREAM(N) - QSFLOW(N)
        WRIVER(N)     = WRIVER(N)  + QSFLOW(N)
-       QSFLOW(N)     = QSFLOW(N) / REAL (ROUTE_DT) 
+       QSFLOW(N)     = QSFLOW(N) / REAL (RRM_TIMESTEP) 
 
        ! Updating WRIVER
        
@@ -85,7 +85,7 @@ MODULE routing_model
 
        QOUTFLOW(N)   = COEFF * WRIVER(N)
        WRIVER(N)     = WRIVER(N)   - QOUTFLOW(N)
-       QOUTFLOW(N)   = QOUTFLOW(N) / REAL (ROUTE_DT) 
+       QOUTFLOW(N)   = QOUTFLOW(N) / REAL (RRM_TIMESTEP) 
        
     ENDDO
    
