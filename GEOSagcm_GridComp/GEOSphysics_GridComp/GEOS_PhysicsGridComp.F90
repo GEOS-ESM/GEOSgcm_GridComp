@@ -2863,6 +2863,7 @@ contains
 
    !  Modify P and Q such that Pdry is conserved
    !  ------------------------------------------
+#ifdef ORIGDRY
              ple_new = ple*1.0_8
                sumdq = 0.0
          DPDT(:,:,0) = 0.0
@@ -2882,6 +2883,25 @@ contains
                 endif
               end do
        end do
+#else
+       ple_new = ple*1.0_8
+       DPDT(:,:,0) = 0.0
+       do l=1,lm
+             dpe(:,:)  = 1. + dq(:,:,l)
+             ple_new(:,:,l) = ple_new(:,:,l-1) + (ple(:,:,l)-ple(:,:,l-1)) * dpe(:,:)
+             dpdt(:,:,l) = (ple_new(:,:,l)-ple(:,:,l))/DT
+ 
+             do N=1,NQ
+                call ESMFL_BundleGetPointertoData( BUNDLE, trim(NAMES(N)), PTR3D, RC=STATUS)
+                VERIFY_(STATUS)
+                if( trim(NAMES(N)) /= 'CLCN'       .and. & ! Exclude: Advected Convective and Large-Scale
+                    trim(NAMES(N)) /= 'CLLS'     )  then   ! -------- Cloud Fractions
+                PTR3D(:,:,l) = PTR3d(:,:,l) / dpe(:,:)
+                endif
+              end do
+       end do
+
+#endif
 
    ! Create New Dry Mass Variables
    ! -----------------------------
