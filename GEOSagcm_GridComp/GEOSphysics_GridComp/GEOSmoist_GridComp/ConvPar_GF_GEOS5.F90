@@ -144,7 +144,8 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
   mintracer   =  tiny(1.),&  ! kg/kg - tiny(x)
   smallerQV   =  1.e-16      ! kg/kg  
 
- INTEGER, PARAMETER :: MAX_NSPEC=200
+ ! cakelle2, 2020/10/23: increase from 200 to 400 to accomodate GEOS-Chem
+ INTEGER, PARAMETER :: MAX_NSPEC=400
  INTEGER, DIMENSION(MAX_NSPEC) :: ind_chem
  CHARACTER(len=100),DIMENSION(MAX_NSPEC)    ::  CHEM_NAME
  INTEGER           ,DIMENSION(MAX_NSPEC)    ::  CHEM_NAME_MASK,CHEM_NAME_MASK_EVAP
@@ -353,6 +354,11 @@ CONTAINS
     !---temporary settings for debugging purposes
     !- special setting for SCM runs
     if(mxp==1 .and. myp==1 .and. maxval(T2m) < 1.e-6) return
+
+    ! error trap if too many tracers are being transported (cakelle2, 2020/10/23)
+    IF ( ITRCR > MAX_NSPEC ) THEN
+       stop "ITRCR exceeds MAX_NSPEC, please increase the latter in ConvPar_GF_GEOS5.F90"
+    ENDIF
 
     !- special setting for SCM runs
     if(mxp>1 .and. myp>1) wrtgrads = .false.
@@ -9281,6 +9287,8 @@ loop0:  do k= kbcon(i),ktop(i)
               endif
              enddo
          else
+             ! testing only 
+             write(*,*) 'ichoice is ',ichoice, closure_choice
              stop 'For mid ichoice must be 0,..,5'
          endif
       ENDIF
