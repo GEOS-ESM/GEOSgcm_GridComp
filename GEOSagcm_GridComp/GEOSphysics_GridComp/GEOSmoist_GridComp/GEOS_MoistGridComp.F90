@@ -137,6 +137,40 @@ module GEOS_MoistGridCompMod
   real    :: MGVERSION
   integer :: DOGRAUPEL
 
+  ! For GEOS-Chem moist exports: not sure how to do this better...
+  ! cakelle2, 10/27/2020
+  integer, parameter                    :: GCmax = 28
+  character(len=ESMF_MAXSTR), parameter :: GCspecies(GCmax) = &
+                                                  (/ 'SO2',   &
+                                                     'SO4',   &
+                                                     'HNO3',  &
+                                                     'DST1',  &
+                                                     'DST2',  &
+                                                     'DST3',  &
+                                                     'DST4',  &
+                                                     'NIT',   &
+                                                     'SALA',  &
+                                                     'SALC',  &
+                                                     'BCPI',  &
+                                                     'BCPO',  &
+                                                     'OCPI',  &
+                                                     'OCPO',  &
+                                                     'ALD2',  &
+                                                     'ALK4',  &
+                                                     'CH2O',  &
+                                                     'Br2',   &
+                                                     'HBr',   &
+                                                     'MAP',   &
+                                                     'MEK',   &
+                                                     'MTPA',  &
+                                                     'MTPO',  &
+                                                     'MVK',   &
+                                                     'NH3',   &
+                                                     'NH4',   &
+                                                     'PAN',   &
+                                                     'CFC12'  /)
+                                                              
+
   private
 
   ! !PUBLIC MEMBER FUNCTIONS:
@@ -198,6 +232,11 @@ contains
     character(len=ESMF_MAXSTR) :: FRIENDLIES_NCPL , FRIENDLIES_NCPI , &
                                   FRIENDLIES_NRAIN, FRIENDLIES_NSNOW, FRIENDLIES_NGRAUPEL
     character(len=ESMF_MAXSTR) :: FRIENDLIES_QRAIN, FRIENDLIES_QSNOW, FRIENDLIES_QGRAUPEL
+ 
+    ! GEOS-Chem exports
+    integer                    :: I
+    character(len=ESMF_MAXSTR) :: spcname
+
 
     !=============================================================================
 
@@ -3624,6 +3663,16 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    ! Add selected GEOS-Chem wet scavenging exports (cakelle2, 10/27/2020)
+    DO I = 1,GCmax
+       spcname = TRIM(GCspecies(I))
+       call MAPL_AddExportSpec(GC,                                             &
+         SHORT_NAME='ConvScav_'//TRIM(spcname),                                &
+         LONG_NAME ='GEOS-Chem_'//TRIM(spcname)//'_tendency_due_to_conv_scav', &
+         UNITS     ='kg m-2 s-1',                                              &
+         DIMS      = MAPL_DimsHorzOnly,                                        &
+          __RC__ )
+    ENDDO
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='LFR',                                            &
@@ -5280,6 +5329,13 @@ contains
       character(len=ESMF_MAXSTR)                               :: QNAME,  CNAME, ENAME
       character(len=ESMF_MAXSTR), pointer, dimension(:)        :: QNAMES, CNAMES
       integer                                                  :: ind
+
+      ! GEOS-Chem convective scavenging exports
+      real, dimension(IM,JM,GCmax)                             :: GCinit
+      real, dimension(IM,JM,GCmax)                             :: GCtend
+      real, pointer, dimension(:,:)                            :: GCptr
+      integer                                                  :: GCii, GCind
+      character(len=ESMF_MAXSTR)                               :: spcname
 
       integer                                                  :: i_src_mode
       integer                                                  :: i_dst_mode
@@ -7992,6 +8048,10 @@ contains
       CMDUcarma = 0.0
       CMSScarma = 0.0
 
+      ! GEOS-Chem species (cakelle2, 10/27/2020)
+      GCinit(:,:,:) = 0.0
+      GCtend(:,:,:) = 0.0
+
       !! Now loop over tracers and accumulate initial column loading
       !! tendency  kg/m2/s CAR
 
@@ -8047,6 +8107,20 @@ contains
                         end if
                      END SELECT
                   endif
+               endif
+            endif
+            ! update to GEOS-Chem (cakelle2, 10/27/2020)
+            if(CNAME == 'GEOSCHEMCHEM' ) then
+               spcname = trim(QNAME(5:)) ! remove prefix ('SPC_')
+               GCind = -1
+               do GCii=1,GCmax
+                  if(trim(spcname)==trim(GCspecies(GCii))) then
+                     GCind = GCii
+                     exit
+                  endif
+               enddo
+               if ( GCind > 0 ) then
+                  GCinit(:,:,GCind) = GCinit(:,:,GCind) + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
                endif
             endif
          end if
@@ -8516,24 +8590,41 @@ contains
                   end if
                END SELECT
             endif
-         end if
-         if(CNAME == 'CARMA') then   ! Diagnostics for CARMA tracers
-            ! Check name to see if it is a "pc" element
-            ENAME = ''
-            ind= index(QNAME, '::')
-            if (ind> 0) then
-               ENAME = trim(QNAME(ind+2:ind+3))  ! Component name (e.g., GOCART, CARMA)
-               if(ENAME == 'pc') then
-                  SELECT CASE (QNAME(1:4))
-                  CASE ('dust') ! CARMA DUST
-                     if(associated(DDUDTcarma)) then
-                        DDUDTcarma = DDUDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
-                     end if
-                  CASE ('seas') ! CARMA SEASALT
-                     if(associated(DSSDTcarma)) then
-                        DSSDTcarma = DSSDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
-                     end if
-                  END SELECT
+         ! cakelle2: I presume this is a bug fix and the CARMA loop should be within
+         ! the IS_FRIENDLY statement (10/27/2020)
+         !end if
+            if(CNAME == 'CARMA') then   ! Diagnostics for CARMA tracers
+               ! Check name to see if it is a "pc" element
+               ENAME = ''
+               ind= index(QNAME, '::')
+               if (ind> 0) then
+                  ENAME = trim(QNAME(ind+2:ind+3))  ! Component name (e.g., GOCART, CARMA)
+                  if(ENAME == 'pc') then
+                     SELECT CASE (QNAME(1:4))
+                     CASE ('dust') ! CARMA DUST
+                        if(associated(DDUDTcarma)) then
+                           DDUDTcarma = DDUDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
+                        end if
+                     CASE ('seas') ! CARMA SEASALT
+                        if(associated(DSSDTcarma)) then
+                           DSSDTcarma = DSSDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
+                        end if
+                     END SELECT
+                  endif
+               endif
+            endif
+            ! update to GEOS-Chem (cakelle2, 10/27/2020)
+            if(CNAME == 'GEOSCHEMCHEM' ) then
+               spcname = trim(QNAME(5:)) ! remove prefix ('SPC_')
+               GCind = -1
+               do GCii=1,GCmax
+                  if(trim(spcname)==trim(GCspecies(GCii))) then
+                     GCind = GCii
+                     exit
+                  endif
+               enddo
+               if ( GCind > 0 ) then
+                  GCtend(:,:,GCind) = GCtend(:,:,GCind) + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
                endif
             endif
          endif
@@ -8548,6 +8639,15 @@ contains
 
       if (associated(DDUDTcarma))  DDUDTcarma = (DDUDTcarma - CMDUcarma) / (MAPL_GRAV*DT_MOIST)
       if (associated(DSSDTcarma))  DSSDTcarma = (DSSDTcarma - CMSScarma) / (MAPL_GRAV*DT_MOIST)
+
+      ! update to GEOS-Chem
+      do GCii=1,GCmax
+         spcname = 'ConvScav_'//TRIM(GCspecies(GCii)) 
+         call MAPL_GetPointer(EXPORT, GCptr, TRIM(spcname), NotFoundOk=.TRUE., __RC__ ) 
+         if ( associated(GCptr) ) then
+            GCptr = ( GCtend(:,:,GCii) - GCinit(:,:,GCii) ) / (MAPL_GRAV*DT_MOIST)
+         endif
+      enddo
 
 
       ! Fill in tracer tendencies
