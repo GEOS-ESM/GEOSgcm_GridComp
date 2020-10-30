@@ -37,6 +37,7 @@ module GEOS_SaltwaterGridCompMod
   use GEOS_OpenwaterGridCompMod,            only : OpenWaterSetServices       => SetServices
   use GEOS_SimpleSeaiceGridCompMod,         only : SimpleSeaiceSetServices    => SetServices
   use GEOS_CICE4ColumnPhysGridComp,         only : CICE4ColumnPhysSetServices => SetServices
+  use GEOS_ObioGridCompMod,                 only : ObioSetServices            => SetServices
   
   implicit none
   private
@@ -50,20 +51,6 @@ module GEOS_SaltwaterGridCompMod
   integer, parameter :: NUM_SUBTILES  = 2  ! number of subtiles for each tile (see above prologue)
   integer, parameter :: ICE           = 1  ! index(id) of two children fixed here 
   integer, parameter :: WATER         = 2  ! AddChild needs to adhere to the specification
-
-
-! Following could also be controlled via resource parameter
-  integer, parameter :: NUM_DUDP = 5                           ! number of DUst Depositions
-  integer, parameter :: NUM_DUWT = 5
-  integer, parameter :: NUM_DUSD = 5
-  integer, parameter :: NUM_BCDP = 2                           ! number of Black Carbon 
-  integer, parameter :: NUM_BCWT = 2
-  integer, parameter :: NUM_OCDP = 2                           ! number of Organic Carbon 
-  integer, parameter :: NUM_OCWT = 2
-
-  integer, parameter :: NB_CHOU_UV  = 5                        ! number of UV bands
-  integer, parameter :: NB_CHOU_NIR = 3                        ! number of near-IR bands
-  integer, parameter :: NB_CHOU     = NB_CHOU_UV + NB_CHOU_NIR ! total number of bands
 
    contains
 
@@ -157,8 +144,13 @@ module GEOS_SaltwaterGridCompMod
        VERIFY_(STATUS)
     endif  
 
-    I = MAPL_AddChild(GC,    NAME='OPENWATER'   , SS=OpenWaterSetServices   ,    RC=STATUS)
+    I = MAPL_AddChild(GC,    NAME='OPENWATER', SS=OpenWaterSetServices,    RC=STATUS)
     VERIFY_(STATUS)
+
+    if(DO_OBIO /= 0) then
+       I = MAPL_AddChild(GC, NAME='OBIO', SS=ObioSetServices, RC=STATUS)
+       VERIFY_(STATUS)
+    endif  
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -610,110 +602,6 @@ module GEOS_SaltwaterGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-  ! Following OBIO related exports are here in saltwater only for the sake of 
-  ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
-  if (DO_OBIO /= 0) then    
-
-    call MAPL_AddExportSpec(GC                            ,&
-          SHORT_NAME         = 'CO2SC',                     &
-          LONG_NAME          = 'CO2 Surface Concentration Bin 001',&
-          UNITS              = '1e-6'                      ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'DUDP'                      ,&
-          LONG_NAME          = 'Dust Dry Deposition'       ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          UNGRIDDED_DIMS     = (/NUM_DUDP/)                ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'DUWT'                      ,&
-          LONG_NAME          = 'Dust Wet Deposition'       ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          UNGRIDDED_DIMS     = (/NUM_DUWT/)                ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
- 
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'DUSD'                      ,&
-          LONG_NAME          = 'Dust Sedimentation'        ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          UNGRIDDED_DIMS     = (/NUM_DUSD/)                ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'BCDP'                            ,&
-          LONG_NAME          = 'Black Carbon Dry Deposition'     ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_BCDP/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'BCWT'                            ,&
-          LONG_NAME          = 'Black Carbon Wet Deposition'     ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_BCWT/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'OCDP'                            ,&
-          LONG_NAME          = 'Organic Carbon Dry Deposition'   ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_OCDP/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'OCWT'                            ,&
-          LONG_NAME          = 'Organic Carbon Wet Deposition'   ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_OCWT/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'FSWBAND'                         ,                   &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
-          UNITS              = 'W m-2'                           ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'FSWBANDNA'                       ,                                       &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
-          UNITS              = 'W m-2'                           ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-  endif ! DO_OBIO
-     
 ! Following 3 exports (HFLUX, WATERFLUX, SALTFLUX) are for ocean model - need to be filled up.
    call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME         = 'HFLUX',                            &
@@ -818,121 +706,6 @@ module GEOS_SaltwaterGridCompMod
           RESTART            = MAPL_RestartSkip            ,&
           RC=STATUS  ) 
      VERIFY_(STATUS)
-
-  ! Following OBIO related imports are here in saltwater only for the sake of 
-  ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
-  if (DO_OBIO /= 0) then
-
-   call MAPL_AddImportSpec(GC,                             &
-        SHORT_NAME         = 'CO2SC',                             &
-        LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
-        UNITS              = '1e-6',                              &
-        DIMS               = MAPL_DimsTileOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        RESTART            = MAPL_RestartSkip,                    &
-                                                       RC=STATUS  )
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                            &
-         SHORT_NAME         = 'DUDP'                      ,&
-          LONG_NAME          = 'Dust Dry Deposition'       ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          UNGRIDDED_DIMS     = (/NUM_DUDP/)                ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartSkip            ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                            &
-         SHORT_NAME         = 'DUWT'                      ,&
-          LONG_NAME          = 'Dust Wet Deposition'       ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          UNGRIDDED_DIMS     = (/NUM_DUWT/)                ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartSkip            ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                            &
-         SHORT_NAME         = 'DUSD'                      ,&
-          LONG_NAME          = 'Dust Sedimentation'        ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          UNGRIDDED_DIMS     = (/NUM_DUSD/)                ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartSkip            ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                                  &
-         SHORT_NAME         = 'BCDP'                            ,&
-          LONG_NAME          = 'Black Carbon Dry Deposition'     ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_BCDP/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                                  &
-         SHORT_NAME         = 'BCWT'                            ,&
-          LONG_NAME          = 'Black Carbon Wet Deposition'     ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_BCWT/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                                  &
-         SHORT_NAME         = 'OCDP'                            ,&
-          LONG_NAME          = 'Organic Carbon Dry Deposition'   ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_OCDP/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                                  &
-         SHORT_NAME         = 'OCWT'                            ,&
-          LONG_NAME          = 'Organic Carbon Wet Deposition'   ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_OCWT/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                    &
-         SHORT_NAME         = 'FSWBAND'                         ,                   &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
-          UNITS              = 'W m-2'                           ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                    &
-         SHORT_NAME         = 'FSWBANDNA'                       ,                                       &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
-          UNITS              = 'W m-2'                           ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-  endif !DO_OBIO
 
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINW'    , CHILD_ID = WATER, RC=STATUS)
   VERIFY_(STATUS)
@@ -1780,34 +1553,12 @@ contains
 
    real, pointer, dimension(:)    :: DISCHARGE   => null()
 
-   real, pointer, dimension(:  )  :: CO2SCEX     => null()
-   real, pointer, dimension(:,:)  :: DUDPEX      => null()
-   real, pointer, dimension(:,:)  :: DUWTEX      => null()
-   real, pointer, dimension(:,:)  :: DUSDEX      => null()
-   real, pointer, dimension(:,:)  :: BCDPEX      => null()
-   real, pointer, dimension(:,:)  :: BCWTEX      => null()
-   real, pointer, dimension(:,:)  :: OCDPEX      => null()
-   real, pointer, dimension(:,:)  :: OCWTEX      => null()
-   real, pointer, dimension(:,:)  :: FSWBANDEX   => null()
-   real, pointer, dimension(:,:)  :: FSWBANDNAEX => null()
-
 ! pointers to import
 
    real, pointer, dimension(:)    :: PS => null()
    real, pointer, dimension(:)    :: UU => null()
    real, pointer, dimension(:)    :: FI => null()
    real, pointer, dimension(:)    :: DISCHARGE_IM => null()
-
-   real, pointer, dimension(:)    :: CO2SC     => null()
-   real, pointer, dimension(:,:)  :: DUDP      => null()
-   real, pointer, dimension(:,:)  :: DUWT      => null()
-   real, pointer, dimension(:,:)  :: DUSD      => null()
-   real, pointer, dimension(:,:)  :: BCDP      => null()
-   real, pointer, dimension(:,:)  :: BCWT      => null()
-   real, pointer, dimension(:,:)  :: OCDP      => null()
-   real, pointer, dimension(:,:)  :: OCWT      => null()
-   real, pointer, dimension(:,:)  :: FSWBAND   => null()
-   real, pointer, dimension(:,:)  :: FSWBANDNA => null()
 
 ! pointers to the childrens' export
    real, pointer, dimension(:)    :: TS        => null() 
@@ -1844,7 +1595,6 @@ contains
 
    integer                             :: N
    integer                             :: NSUB, I, K, L
-   integer                             :: DO_OBIO
    integer                             :: DO_CICE_THERMO
 
 !  -------------------------------------------------------------------
@@ -1854,8 +1604,6 @@ contains
 
    IAm =  trim(COMP_NAME) // "SALTWATERCORE"
 
-   call MAPL_GetResource ( MAPL, DO_OBIO,            Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
-   VERIFY_(STATUS)
    call MAPL_GetResource ( MAPL, DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,    DEFAULT=0, RC=STATUS)
    VERIFY_(STATUS)
 
@@ -1867,19 +1615,6 @@ contains
 !!$   if (DO_GUEST /= 0) then    
       call MAPL_GetPointer(IMPORT, DISCHARGE_IM, 'DISCHARGE', RC=STATUS); VERIFY_(STATUS)
 !!$   endif
-
-   if (DO_OBIO /= 0) then    
-      call MAPL_GetPointer(IMPORT,CO2SC  , 'CO2SC'  ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,DUDP   , 'DUDP'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,DUWT   , 'DUWT'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,DUSD   , 'DUSD'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,BCDP   , 'BCDP'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,BCWT   , 'BCWT'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,OCDP   , 'OCDP'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,OCWT   , 'OCWT'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,FSWBAND ,'FSWBAND' ,   RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,FSWBANDNA,'FSWBANDNA', RC=STATUS); VERIFY_(STATUS)
-   endif
 
 ! Pointers to outputs
 !--------------------
@@ -1917,20 +1652,6 @@ contains
 
      call MAPL_GetPointer(EXPORT, DISCHARGE, 'DISCHARGE', RC=STATUS); VERIFY_(STATUS)
      if(associated(DISCHARGE)) DISCHARGE = DISCHARGE_IM
-
-   ! category dimensional exports
-   if (DO_OBIO /= 0) then    
-       call MAPL_GetPointer(EXPORT,CO2SCEX,    'CO2SC'   ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,DUDPEX ,    'DUDP'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,DUWTEX ,    'DUWT'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,DUSDEX ,    'DUSD'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,BCDPEX ,    'BCDP'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,BCWTEX ,    'BCWT'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,OCDPEX ,    'OCDP'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,OCWTEX ,    'OCWT'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,FSWBANDEX,  'FSWBAND',     RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,FSWBANDNAEX,'FSWBANDNA',   RC=STATUS); VERIFY_(STATUS)
-   endif
 
    call MAPL_Get (MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCnames=GCnames,rc=STATUS)
    VERIFY_(STATUS)
@@ -2146,19 +1867,6 @@ contains
     if(associated(PSEX )) PSEX  = PS 
     if(associated(USTR3)) USTR3 = sqrt(sqrt(TXO*TXO+TYO*TYO)/water_RHO('salt_water'))**3
     if(associated(UUEX))  UUEX  = UU
-
-    if(DO_OBIO/=0) then
-       if  (  associated(CO2SCEX)      )  CO2SCEX      =  CO2SC
-       if  (  associated(DUDPEX)       )  DUDPEX       =  DUDP
-       if  (  associated(DUWTEX)       )  DUWTEX       =  DUWT
-       if  (  associated(DUSDEX)       )  DUSDEX       =  DUSD
-       if  (  associated(BCDPEX)       )  BCDPEX       =  BCDP
-       if  (  associated(BCWTEX)       )  BCWTEX       =  BCWT
-       if  (  associated(OCDPEX)       )  OCDPEX       =  OCDP
-       if  (  associated(OCWTEX)       )  OCWTEX       =  OCWT
-       if  (  associated(FSWBANDEX)    )  FSWBANDEX    =  FSWBAND
-       if  (  associated(FSWBANDNAEX)  )  FSWBANDNAEX  =  FSWBANDNA
-    endif
 
 !  All done with SALTWATERCORE
 !-----------------------------
