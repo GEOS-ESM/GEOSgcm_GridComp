@@ -18,7 +18,7 @@ elseif (CLM4.5)
   set (CATCHCN_COMPONENT CLM45)
 else()
   message( FATAL_ERROR "One of CLM 4.0 and 4.5 should be ON")
-endif
+endif()
 
 esma_add_subdirectories (${CATCHCN_COMPONENT})
 
