@@ -7690,24 +7690,6 @@ contains
                  END IF
 #endif
 
-                 if (MAPL_AM_I_ROOT()) then
-                 if (trim(aero_aci_modes(n)) == 'ss001') then
-                    print *
-                    print *, 'AERO_ACI::' // trim(aero_aci_modes(n))
-
-                    print *, 'num            : ', sum(aci_num)
-                    print *, 'dgn            : ', sum(aci_dgn)
-                    print *, 'sigma          : ', sum(aci_sigma)
-                    print *, 'hygroscopicity : ', sum(aci_hygroscopicity)
-                    print *, 'density        : ', sum(aci_density)
-                    print *, 'f_dust         : ', sum(aci_f_dust)
-                    print *, 'f_soot         : ', sum(aci_f_soot)
-                    print *, 'f_organic      : ', sum(aci_f_organic)
-                    print *
-                 end if
-                 END IF
-
-
                  buffer(:,:,:,n,1) = aci_num
                  buffer(:,:,:,n,2) = aci_dgn
                  buffer(:,:,:,n,3) = aci_sigma
