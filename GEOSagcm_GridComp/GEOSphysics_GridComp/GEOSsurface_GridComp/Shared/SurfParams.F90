@@ -114,7 +114,7 @@ module SurfParams
                 FLWALPHA 	= 0.005
                 ASTRFR   	= 0.333  ! reverted 
                 STEXP    	= 1.     ! reverted                                  
-                RSWILT   	= 2000.  
+                RSWILT   	= 2000.
 
       	case DEFAULT                                                                            
          	_ASSERT(.FALSE.,'LAND_PARAMS not valid or incompatible with LSM_CHOICE')           
