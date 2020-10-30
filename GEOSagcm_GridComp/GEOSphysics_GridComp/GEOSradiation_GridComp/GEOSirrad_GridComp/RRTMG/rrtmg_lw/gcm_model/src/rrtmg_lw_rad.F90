@@ -164,6 +164,7 @@
          use parrrtm, only : nbndlw, ngptlw, maxxsec, mxmol, nbndlw
          use rrlw_con, only: fluxfac, heatfac, oneminus, pi
          use rrlw_wvn, only: ng, ngb, nspa, nspb, wavenum1, wavenum2, delwave
+         use iso_fortran_env, only : error_unit
 
          ! ------- Declarations -------
 
@@ -311,6 +312,96 @@
          ! store the available device global and constant memory
          real gmem, cmem
          real t1,t2
+
+         ! ASSERTs to catch unphysical inputs
+         if (any(play   < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: play'
+         end if
+         if (any(plev   < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: plev'
+         end if
+         if (any(tlay   < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: tlay'
+         end if
+         if (any(tlev   < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: tlev'
+         end if
+         if (any(tsfc   < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: tsfc'
+         end if
+         if (any(h2ovmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: h2ovmr'
+         end if
+         if (any(o3vmr  < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: o3vmr'
+         end if
+         if (any(co2vmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: co2vmr'
+         end if
+         if (any(ch4vmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: ch4vmr'
+         end if
+         if (any(n2ovmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: n2ovmr'
+         end if
+         if (any(o2vmr  < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: o2vmr'
+         end if
+         if (any(cfc11vmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: cfc11vmr'
+         end if
+         if (any(cfc12vmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: cfc12vmr'
+         end if
+         if (any(cfc22vmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: cfc22vmr'
+         end if
+         if (any(ccl4vmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: ccl4vmr'
+         end if
+         if (any(emis    < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: emis'
+         end if
+         if (any(cldfrac < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: cldfrac'
+         end if
+         if (any(ciwp    < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: ciwp'
+         end if
+         if (any(clwp    < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: clwp'
+         end if
+         if (any(rei     < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: rei'
+         end if
+         if (any(rel     < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: rel'
+         end if
+         if (any(tauaer < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           error stop 'negative values in input: tauaer'
+         end if
 
 #ifdef _CUDA
 
