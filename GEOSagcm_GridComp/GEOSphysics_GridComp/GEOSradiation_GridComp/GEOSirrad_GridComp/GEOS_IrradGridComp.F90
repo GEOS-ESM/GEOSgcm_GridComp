@@ -181,16 +181,24 @@ contains
 ! Local derived type aliases
 
     type (ESMF_Config          )            :: CF
-    type (MAPL_MetaComp),     pointer  :: MAPL
+    type (MAPL_MetaComp),     pointer       :: MAPL
 
     integer      :: MY_STEP
     integer      :: ACCUMINT
     real         :: DT
+    integer      :: NUM_BANDS
+
+    integer, parameter                   :: NB_CHOU   = 10        ! Number of bands in IRRAD calcs for Chou
+    integer, parameter                   :: NB_RRTMG  = 16        ! Number of bands in IRRAD calcs for RRTMG
+    integer, parameter                   :: NB_RRTMGP = 16        ! Number of bands in IRRAD calcs for RRTMGP
+
+    integer, parameter                   :: NB_CHOU_SORAD   = 8   ! Number of bands in SORAD calcs for Chou
+    integer, parameter                   :: NB_RRTMG_SORAD  = 14  ! Number of bands in SORAD calcs for RRTMG
+    integer, parameter                   :: NB_RRTMGP_SORAD = 14  ! Number of bands in SORAD calcs for RRTMGP
 
     logical                              :: USE_RRTMGP, USE_RRTMGP_SORAD
     logical                              :: USE_RRTMG , USE_RRTMG_SORAD
     logical                              :: USE_CHOU  , USE_CHOU_SORAD
-   integer :: NUM_BANDS                     ! Holds value from AGCM.rc
     type(ESMF_Config)         :: cfg
 
 
@@ -252,13 +260,32 @@ contains
     ACCUMINT = nint(DT)
 
 
-! Set total number of radiation bands (NUM_BANDS) in the MAPL config object - GOCARTng development
+! Set total number of radiation bands (NUM_BANDS) in the MAPL config object
+! NUM_BANDS value is used in GOCART 
 !---------------------------------------------------------------------------
     call MAPL_GetObjectFromGC ( GC, MAPL, __RC__)
     call determineRAD_(MAPL, USE_RRTMGP, USE_RRTMGP_SORAD, USE_RRTMG, &
                        USE_RRTMG_SORAD, USE_CHOU, USE_CHOU_SORAD, __RC__)
-    call getBands_(MAPL, USE_RRTMGP_SORAD, USE_RRTMG_SORAD, USE_RRTMGP, &
-                       USE_RRTMG, NUM_BANDS, __RC__)
+
+    NUM_BANDS = 0
+    if (USE_RRTMGP_SORAD) then
+       NUM_BANDS = NB_RRTMGP_SORAD
+    else if (USE_RRTMG_SORAD) then
+       NUM_BANDS = NB_RRTMG_SORAD
+    else
+       NUM_BANDS = NB_CHOU_SORAD
+    end if
+
+    if (USE_RRTMGP) then
+       NUM_BANDS = NB_RRTMGP + NUM_BANDS
+    else if (USE_RRTMG) then
+       NUM_BANDS = NB_RRTMG + NUM_BANDS
+    else
+       NUM_BANDS = NB_CHOU + NUM_BANDS
+    end if
+
+    call MAPL_Get(MAPL, cf=cfg, __RC__)
+    call MAPL_ConfigSetAttribute(cfg, NUM_BANDS, label='NUM_BANDS:', __RC__)
 
 
 ! Set the state variable specs.
@@ -520,17 +547,6 @@ contains
                                                        RC=STATUS  )
     VERIFY_(STATUS)
 
-#if 0
-    call MAPL_AddImportSpec(GC,                                   &
-       LONG_NAME  = 'aerosols_from_GOCART2G',                     &
-       UNITS      = 'kg kg-1',                                    &
-       SHORT_NAME = 'AERO2G_RAD',                                 &
-       DIMS       = MAPL_DimsHorzVert,                            &
-       VLOCATION  = MAPL_VLocationCenter,                         &
-       DATATYPE   = MAPL_StateItem,                               &
-       RESTART    = MAPL_RestartSkip,                             &
-                                                       __RC__  )
-#endif
 
 !  !EXPORT STATE:
 
@@ -1522,16 +1538,6 @@ contains
 
    integer                              :: band
 
-! AERO2G varaibles
-! -----------------------
-   type (ESMF_State)                    :: AERO2G
-   real, allocatable, dimension(:,:,:,:):: AEROSOL2G_EXT
-   real, allocatable, dimension(:,:,:,:):: AEROSOL2G_SSA
-   real, allocatable, dimension(:,:,:,:):: AEROSOL2G_ASY
-   character (len=ESMF_MAXSTR), allocatable :: AEROlist(:)
-
-
-
 
 ! Variables for RRTMG Code
 ! ------------------------
@@ -1773,8 +1779,7 @@ contains
    VERIFY_(STATUS)
 
 ! Prepare for aerosol optics calculations
-!_---------------------------------------
-
+!----------------------------------------
    ! Set the offset for the IRRAD aerosol bands
    if (USE_RRTMGP_SORAD) then
       OFFSET = NB_RRTMGP_SORAD
@@ -1783,10 +1788,6 @@ contains
    else
       OFFSET = NB_CHOU_SORAD
    end if
-
-
-   call getBands_(MAPL, USE_RRTMGP_SORAD, USE_RRTMG_SORAD, USE_RRTMGP, USE_RRTMG, &
-                  OFFSET=offset1, NB_IRRAD=nb_irrad1, __RC__)
 
    ! Set number of IRRAD bands for aerosol optics
    if (USE_RRTMGP) then
@@ -2005,126 +2006,6 @@ contains
 if (mapl_am_i_root()) print*,'GOCART ext = ', sum(AEROSOL_EXT)
 if (mapl_am_i_root()) print*,'GOCART ssa = ', sum(AEROSOL_SSA)
 if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
-
-
-
-! BEGIN GOCARTng AERO2G callback 
-! ================================================================
-#if 0
-   call ESMF_StateGet(IMPORT, 'AERO2G_RAD', AERO2G, __RC__)
-
-!   call ESMF_AttributeGet (AERO2G, name='active_aerosol_instances', itemCount=i, __RC__)
-!   allocate (AEROlist(i), __STAT__)
-!   call ESMF_AttributeGet (AERO2G, name='active_aerosol_instances', valueList=AEROlist, __RC__)
-
-!   call ESMF_StateGet (AERO2G, itemCount=i, __RC__)
-!   allocate (AEROlist(i), __STAT__)
-!   call ESMF_StateGet (AERO2G, itemNameList=AEROlist, __RC__)
-!   if (mapl_am_i_root()) print*,'IRRAD AEROlist = ', AEROlist
-
-
-!   ! allocate memory for total aerosol ext, ssa and asy at all solar bands
-    allocate(AEROSOL2G_EXT(IM,JM,LM,NB_IRRAD),  &
-             AEROSOL2G_SSA(IM,JM,LM,NB_IRRAD),  &
-             AEROSOL2G_ASY(IM,JM,LM,NB_IRRAD), __STAT__)
-
-    AEROSOL2G_EXT = 0.0d0
-    AEROSOL2G_SSA = 0.0d0
-    AEROSOL2G_ASY = 0.0d0
-
-
-!       ! set RH for aerosol optics
-         call ESMF_AttributeGet(AERO2G, name='relative_humidity_for_aerosol_optics', value=AS_FIELD_NAME, __RC__)
-
-         if (AS_FIELD_NAME /= '') then
-             call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
-             AS_PTR_3D = RH
-         end if
-
-!       ! set PLE for aerosol optics
-         call ESMF_AttributeGet(AERO2G, name='air_pressure_for_aerosol_optics', value=AS_FIELD_NAME, RC=STATUS)
-         VERIFY_(STATUS)
-
-         if (AS_FIELD_NAME /= '') then
-             call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
-             AS_PTR_3D = PLE
-         end if
-
-!        ! compute aerosol optics at all solar bands
-
-if (mapl_am_i_root()) print*,'GOCART2G NB_IRRAD = ',NB_IRRAD
-if (mapl_am_i_root()) print*,'GOCART2G OFFSET   = ',OFFSET
-
-         do band = 1, NB_IRRAD
-
-             call ESMF_AttributeSet(AERO2G, name='band_for_aerosol_optics', value=(OFFSET+band), __RC__)
-
-!            ! execute the aero provider's optics method
-             call ESMF_MethodExecute(AERO2G, label="run_aerosol_optics", __RC__)
-
-!            ! EXT from AERO_PROVIDER
-             call ESMF_AttributeGet(AERO2G, name='extinction_in_air_due_to_ambient_aerosol', value=AS_FIELD_NAME, __RC__)
-
-             if (AS_FIELD_NAME /= '') then
-                 call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME), __RC__)
-
-                 if (associated(AS_PTR_3D)) then
-                     AEROSOL2G_EXT(:,:,:,band) = AEROSOL2G_EXT(:,:,:,band) + AS_PTR_3D
-                 end if
-             end if
-
-!            ! SSA from AERO_PROVIDER
-             call ESMF_AttributeGet(AERO2G, name='single_scattering_albedo_of_ambient_aerosol', value=AS_FIELD_NAME, RC=STATUS)
-             VERIFY_(STATUS)
-
-             if (AS_FIELD_NAME /= '') then
-                call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME),  RC=STATUS); VERIFY_(STATUS)
-
-                if (associated(AS_PTR_3D)) then
-                   AEROSOL2G_SSA(:,:,:,band) = AEROSOL2G_SSA(:,:,:,band) + AS_PTR_3D
-                end if
-             end if
-
-!            ! ASY from AERO_PROVIDER
-             call ESMF_AttributeGet(AERO2G, name='asymmetry_parameter_of_ambient_aerosol', value=AS_FIELD_NAME, RC=STATUS)
-             VERIFY_(STATUS)
-
-             if (AS_FIELD_NAME /= '') then
-                call MAPL_GetPointer(AERO2G, AS_PTR_3D, trim(AS_FIELD_NAME),  RC=STATUS)
-                VERIFY_(STATUS)
-
-                if (associated(AS_PTR_3D)) then
-                   AEROSOL2G_ASY(:,:,:,band) = AEROSOL2G_ASY(:,:,:,band) + AS_PTR_3D
-                end if
-             end if
-         end do !band = 1,...
-
-
-if (mapl_am_i_root()) print*,'AEROSOL2G_EXT = ', sum(AEROSOL2G_EXT)
-if (mapl_am_i_root()) print*,'AEROSOL2G_SSA = ', sum(AEROSOL2G_SSA)
-if (mapl_am_i_root()) print*,'AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY)
-
-!     deallocate(AEROSOL2G_EXT, __STAT__)
-!     deallocate(AEROSOL2G_SSA, __STAT__)
-!      deallocate(AEROSOL2G_ASY, __STAT__)
-
-
-#endif
-! END GOCARTng AERO2G callback
-! ================================================================
-
-!if (mapl_am_i_root()) print*,'diff AEROSOL2G_EXT = ', sum(AEROSOL2G_EXT - AEROSOL_EXT)
-!if (mapl_am_i_root()) print*,'diff AEROSOL2G_SSA = ', sum(AEROSOL2G_SSA - AEROSOL_SSA)
-!if (mapl_am_i_root()) print*,'diff AEROSOL2G_ASY = ', sum(AEROSOL2G_ASY - AEROSOL_ASY)
-
-!if (mapl_am_i_root()) print*,'TEST aerosol2g_ext = ', aerosol2g_ext
-!if (mapl_am_i_root()) print*,'TEST aerosol_ext   = ', aerosol_ext
-
-!if (mapl_am_i_root()) print*,'TEST aerosol2g_ssa = ', aerosol2g_ssa
-!if (mapl_am_i_root()) print*,'TEST aerosol_ssa   = ', aerosol_ssa
-
-!if (mapl_am_i_root()) print*,'TEST aerosol2g_asy = ', aerosol2g_asy
-!if (mapl_am_i_root()) print*,'TEST aerosol_asy   = ', aerosol_asy
 
 
       NA = 3
@@ -4317,16 +4198,12 @@ end subroutine RUN
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  subroutine determineRAD_ (MAPL, USE_RRTMGP, USE_RRTMGP_SORAD, USE_RRTMG, &
-                           USE_RRTMG_SORAD, USE_CHOU, USE_CHOU_SORAD,     &
-                           NUM_BANDS, OFFSET, NB_IRRAD, RC)
+                           USE_RRTMG_SORAD, USE_CHOU, USE_CHOU_SORAD, RC)
 
    type (MAPL_MetaComp),         intent(inout)    :: MAPL
    logical,                      intent(inout)    :: USE_RRTMGP, USE_RRTMGP_SORAD
    logical,                      intent(inout)    :: USE_RRTMG , USE_RRTMG_SORAD
    logical,                      intent(inout)    :: USE_CHOU  , USE_CHOU_SORAD
-   integer, optional,            intent(  out)    :: NUM_BANDS
-   integer, optional,            intent(  out)    :: OFFSET
-   integer, optional,            intent(  out)    :: NB_IRRAD
    integer, optional,            intent(  out)    :: RC          ! Error code:
 
 
@@ -4374,138 +4251,10 @@ end subroutine RUN
       USE_CHOU_SORAD  = .not.USE_RRTMG_SORAD
    end if
 
-   ! Set the total number of radiation bands
-   if (present(NUM_BANDS)) then
-      NUM_BANDS = 0
-      if (USE_RRTMGP_SORAD) then
-          NUM_BANDS = NB_RRTMGP_SORAD
-      else if (USE_RRTMG_SORAD) then
-          NUM_BANDS = NB_RRTMG_SORAD
-      else
-          NUM_BANDS = NB_CHOU_SORAD
-      end if
-
-      if (USE_RRTMGP) then
-          NUM_BANDS = NB_RRTMGP + NUM_BANDS
-      else if (USE_RRTMG) then
-          NUM_BANDS = NB_RRTMG + NUM_BANDS
-      else
-          NUM_BANDS = NB_CHOU + NUM_BANDS
-      end if
-
-      call MAPL_Get(MAPL, cf=cfg, __RC__)
-      call MAPL_ConfigSetAttribute(cfg, NUM_BANDS, label='NUM_BANDS:', __RC__)
-   end if 
-
-   ! Set the offset for the IRRAD aerosol bands
-   if (present(OFFSET)) then
-      if (USE_RRTMGP_SORAD) then
-         OFFSET = NB_RRTMGP_SORAD
-      else if (USE_RRTMG_SORAD) then
-         OFFSET = NB_RRTMG_SORAD
-      else
-         OFFSET = NB_CHOU_SORAD
-      end if
-   end if
-
-   ! Set number of IRRAD bands for aerosol optics
-   if (present(NB_IRRAD)) then
-      if (USE_RRTMGP) then
-         NB_IRRAD = NB_RRTMGP
-      else if (USE_RRTMG) then
-         NB_IRRAD = NB_RRTMG
-      else
-         NB_IRRAD = NB_CHOU
-      end if
-   end if
-
   RETURN_(ESMF_SUCCESS)
 
  end subroutine determineRAD_
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
- subroutine getBands_(MAPL, USE_RRTMGP_SORAD, USE_RRTMG_SORAD, USE_RRTMGP,USE_RRTMG, &
-                      NUM_BANDS, OFFSET, NB_IRRAD, RC)
-
-   type (MAPL_MetaComp),              intent(inout)    :: MAPL
-   logical,                           intent(inout)    :: USE_RRTMGP, USE_RRTMGP_SORAD
-   logical,                           intent(inout)    :: USE_RRTMG , USE_RRTMG_SORAD
-   integer, optional,                 intent(  out)    :: NUM_BANDS
-   integer, optional,                 intent(  out)    :: OFFSET
-   integer, optional,                 intent(  out)    :: NB_IRRAD
-   integer, optional,                 intent(  out)    :: RC 
-
- !locals
-   type (ESMF_Config)                   :: cfg
-
-   real                                 :: RFLAG
-
-   integer, parameter                   :: NB_CHOU   = 10        ! Number of bands in IRRAD calcs for Chou
-   integer, parameter                   :: NB_RRTMG  = 16        ! Number of bands in IRRAD calcs for RRTMG
-   integer, parameter                   :: NB_RRTMGP = 16        ! Number of bands in IRRAD calcs for RRTMGP
-
-   integer, parameter                   :: NB_CHOU_SORAD   = 8   ! Number of bands in SORAD calcs for Chou
-   integer, parameter                   :: NB_RRTMG_SORAD  = 14  ! Number of bands in SORAD calcs for RRTMG
-   integer, parameter                   :: NB_RRTMGP_SORAD = 14  ! Number of bands in SORAD calcs for RRTMGP
-
-   __Iam__('getBands_')
-
-!   Description: Determine what radiation bands.
-
-!   Begin...
-
-   ! Set the total number of radiation bands
-   if (present(NUM_BANDS)) then
-      NUM_BANDS = 0
-      if (USE_RRTMGP_SORAD) then
-          NUM_BANDS = NB_RRTMGP_SORAD
-      else if (USE_RRTMG_SORAD) then
-          NUM_BANDS = NB_RRTMG_SORAD
-      else
-          NUM_BANDS = NB_CHOU_SORAD
-      end if
-
-      if (USE_RRTMGP) then
-          NUM_BANDS = NB_RRTMGP + NUM_BANDS
-      else if (USE_RRTMG) then
-          NUM_BANDS = NB_RRTMG + NUM_BANDS
-      else
-          NUM_BANDS = NB_CHOU + NUM_BANDS
-      end if
-
-      call MAPL_Get(MAPL, cf=cfg, __RC__)
-!    NUM_BANDS: should be removed from AGCM.rc, and then this value will set it
-      call MAPL_ConfigSetAttribute(cfg, NUM_BANDS, label='NUM_BANDS:', __RC__)
-
-   end if
-
-   ! Set the offset for the IRRAD aerosol bands
-   if (present(OFFSET)) then
-      if (USE_RRTMGP_SORAD) then
-         OFFSET = NB_RRTMGP_SORAD
-      else if (USE_RRTMG_SORAD) then
-         OFFSET = NB_RRTMG_SORAD
-      else
-         OFFSET = NB_CHOU_SORAD
-      end if
-   end if
-
-   ! Set number of IRRAD bands for aerosol optics
-   if (present(NB_IRRAD)) then
-      if (USE_RRTMGP) then
-         NB_IRRAD = NB_RRTMGP
-      else if (USE_RRTMG) then
-         NB_IRRAD = NB_RRTMG
-      else
-         NB_IRRAD = NB_CHOU
-      end if
-   end if
-
-
-  RETURN_(ESMF_SUCCESS)
-
- end subroutine getBands_
 
 end module GEOS_IrradGridCompMod
 
