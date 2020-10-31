@@ -20,6 +20,7 @@ else()
   message( FATAL_ERROR "One of CLM 4.0 and 4.5 should be ON")
 endif()
 
+esma_add_subdirectories (Shared)
 esma_add_subdirectories (${CATCHCN_COMPONENT})
 
 set (srcs
