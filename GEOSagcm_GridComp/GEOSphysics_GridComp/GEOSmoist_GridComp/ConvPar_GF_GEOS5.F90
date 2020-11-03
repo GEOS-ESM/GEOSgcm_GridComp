@@ -147,7 +147,7 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
  INTEGER,DIMENSION(maxiens) :: CUM_USE_EXCESS    =(/1,     1,     1   /)!= use T,Q excess sub-grid scale variability
 
  INTEGER :: MOIST_TRIGGER  = 0 != relative humidity effects on the cap_max trigger function
- INTEGER :: FRAC_MODIS     = 0 != use fraction liq/ice contend derived from MODIS/CALIPO sensors
+ INTEGER :: FRAC_MODIS     = 0 != use fraction liq/ice content derived from MODIS/CALIPO sensors
  INTEGER :: ADV_TRIGGER    = 0 !=  1=> Kain (2004),  2=> moisture adv trigger (Ma & Tan, 2009, Atmos Res)
  !------------------- internal variables  -------------------
 
@@ -1415,7 +1415,7 @@ ENDIF
     itf=ite
     ktf=kte-1
     jtf=jte
-    IF(C1 == 0.) USE_C1D = .FALSE.  
+    IF(C1 > 0.) USE_C1D = .TRUE.  
 !----------------------------------------------------------------------
    !-- for the moisture adv trigger  
    IF(ADV_TRIGGER == 2) &
@@ -3396,11 +3396,11 @@ l_SIG:DO fase = 1,2
 !
 !--- calculate rain mixing ratio in updrafts
 !
-       call cup_up_rain(cumulus,klcl,kbcon,ktop,k22,ierr,xland         &
-                       ,zo_cup,qco,qrco,pwo,pwavo,po,p_cup,t_cup,tempco&
-                       ,zuo,up_massentr,up_massdetr,vvel2d,rho         & 
-                       ,qrr                                            & 
-                       ,itf,ktf,its,ite, kts,kte)
+!       call cup_up_rain(cumulus,klcl,kbcon,ktop,k22,ierr,xland         &
+!                       ,zo_cup,qco,qrco,pwo,pwavo,po,p_cup,t_cup,tempco&
+!                       ,zuo,up_massentr,up_massdetr,vvel2d,rho         & 
+!                       ,qrr                                            & 
+!                       ,itf,ktf,its,ite, kts,kte)
 
 !---- new rain
 !
@@ -3593,10 +3593,16 @@ l_SIG:DO fase = 1,2
             wmean(i) = wmeanx ! m/s ! in the future change for Wmean == integral( W dz) / cloud_depth
             
             !- time-scale cape removal from Bechtold et al. 2008
-            tau_ecmwf(i)=( zo_cup(i,ktop(i))- zo_cup(i,kbcon(i)) ) / wmean(i)
+            !tau_ecmwf(i)=( zo_cup(i,ktop(i))- zo_cup(i,kbcon(i)) ) / wmean(i)
+            !if(cumulus=='deep') tau_ecmwf(i)=max(tau_ecmwf(i),tau_deep)
+            !if(cumulus=='mid' ) tau_ecmwf(i)=max(tau_ecmwf(i),tau_mid)
     
-            if(cumulus=='deep') tau_ecmwf(i)=max(tau_ecmwf(i),tau_deep)
-            if(cumulus=='mid' ) tau_ecmwf(i)=max(tau_ecmwf(i),tau_mid)
+            !print*,"tau=",cumulus,real(tau_ecmwf(i),4),real(tau_deep,4),real(tau_mid,4)
+            if(cumulus=='deep') then 
+	       tau_ecmwf(i)=tau_deep
+            else
+	       tau_ecmwf(i)=tau_mid
+            endif
   
             tau_ecmwf(i)= tau_ecmwf(i) * (1. + 1.66 * (dx(i)/(125*1000.)))! dx must be in meters
          ENDDO
@@ -6273,12 +6279,44 @@ ENDIF
             endif
 
             IF (autoconv == 1 ) then
-                cx0     = (c1d(i,k)+c0)*DZ!*zu(i,k)
+                cx0     = (c1d(i,k)+c0)*DZ
                 qrc(i,k)= clw_all(i,k)/(1.+cx0)
-                PW (i,k)= cx0*max(0.,QRC(I,K) -qrc_crit)! units kg[rain]/kg[air]
+                pw (i,k)= cx0*max(0.,qrc(i,k) -qrc_crit)! units kg[rain]/kg[air]
 
-                !--- convert PW to normalized PW
-                PW (i,k)=PW(i,k)*zu(i,k)
+                !--- convert pw to normalized pw
+                pw (i,k)=pw(i,k)*zu(i,k)
+
+            ELSEIF (autoconv == 5 ) then
+!  c0_deep	   = 1.5e-3,
+!  c0_mid	   = 1.5e-3, 
+!  qrc_crit        = 1.e-4 !(kg/kg)
+		
+		min_liq  = qrc_crit  !* ( xland(i)*0.6 + (1.-xland(i))*1. )
+                
+		if(clw_all(i,k) <= min_liq) then !=> more heating at upper levels, more detrained ice
+               
+	           qrc(i,k)= clw_all(i,k) ; pw(i,k) = 0.
+		else
+		
+		   cx0     = (c1d(i,k)+c0)*(1.+ 0.33*fract_liq_f(tempc(i,k)))
+!--- v1
+		   qrc_0   = qrc(i,k)
+                   qrc(i,k)= (qrc_0-min_liq)*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))+min_liq
+                   qrc(i,k)= max(qrc(i,k),min_liq)
+                   pw (i,k)= clw_all(i,k)-qrc(i,k) ! units kg[rain]/kg[air]
+		    
+! 		   qrc(i,k)= (clw_all(i,k)-min_liq)*exp(-cx0*dz)+min_liq
+!		   pw (i,k)= clw_all(i,k)-qrc(i,k) ! units kg[rain]/kg[air]
+
+!--- v3
+!                  qrc(i,k)= (clw_all(i,k)-min_liq) / (1.+cx0*dz)+min_liq
+!		   pw (i,k)= cx0*dz*(qrc(i,k)-min_liq) ! units kg[rain]/kg[air]
+                   
+                  !print*,"BG=",real(pw(i,k),4),real(qrc(i,k),4),real(clw_all(i,k)-pw(i,k),4)		   
+		   
+                  !--- convert pw to normalized pw
+		   pw (i,k)= pw(i,k)*zu(i,k)
+                endif
 
             ELSEIF (autoconv == 6 ) then
                 min_liq  = 0.5* qrc_crit * (xland(i)*1.5+(1.-xland(i))*2.5)
@@ -6305,7 +6343,8 @@ ENDIF
 		   qrc_0   = qrc(i,k)
 		   qrc(i,k)= qrc_0*exp(-cx0*dz) + (cup/cx0)*(1.-exp(-cx0*dz))
                    
-		   pw (i,k)= clw_all(i,k) - qrc(i,k)
+		   pw (i,k)= max(clw_all(i,k) - qrc(i,k),0.)
+                   qrc(i,k)= clw_all(i,k) - pw (i,k)
                    pw (i,k)= pw(i,k)*zu(i,k)
                 endif
                 !
@@ -6323,7 +6362,7 @@ ENDIF
                        aux = 1.
                    else
                        aux = 1. * exp(0.07* (t_cup(i,k) - (273.16 + DELT)))
-                   endif
+                   endif 
                    cx0     = aux*c0
 !                  cx0     = max(cx0,c0)
 !                  cx0     = max(cx0,0.25*c0)
@@ -6335,25 +6374,6 @@ ENDIF
 		   pw (i,k)= pw(i,k)*zu(i,k)
                    !if(pw(i,k)<0.) stop " pw<0 autoc 3"
 		endif
-            ELSEIF (autoconv == 33 ) then
-                min_liq  =qrc_crit ! * (xland(i)*1.5+(1.-xland(i))*2.5)
-                if(clw_all(i,k) <= min_liq) then
-                   qrc(i,k)= clw_all(i,k)
-                   pw(i,k) = 0.
-                else
-                   DELT=-5.
-                   if(t_cup(i,k) > 273.16 + DELT) then
-                       aux = 1.
-                   else
-                       aux = 1. * exp(0.07* (t_cup(i,k) - (273.16 + DELT)))
-                   endif
-                   cx0 = 2.0*aux*c0*dz
-                   qrc(i,k)=(clw_all(i,k)-min_liq)*exp(-cx0)+min_liq
-                   pw (i,k)= clw_all(i,k) - qrc(i,k)
-                   pw (i,k)= pw(i,k)*zu(i,k)
-                endif
-                !print*,"3mass=",pw(i,k)/(1.e-12+zu(i,k))+qrc(i,k),clw_all(i,k)
-                !print*,"3mass=",delt,k,aux,pw(i,k),qrc(i,k)
 
             ELSEIF (autoconv == 4 ) then
 
@@ -6727,15 +6747,8 @@ ENDIF
      ENDIF
 !---non-zero-diff-APR-08-2020
 
-     if(draft == 'deep' ) then
-      incr1=1
-      incr2=1
-     elseif(draft == 'shallow' .or. draft == 'mid') then
-      incr1=1
-      incr2=1
-     else
-      stop 'unknow draft in get_lateral_massflux'
-     endif
+     incr1=1
+     incr2=1
 
      up_massentro(:,:)=0.
      up_massdetro(:,:)=0.
@@ -6784,7 +6797,7 @@ ENDIF
 	  do k=ismooth1,ismooth2
            dz=zo_cup(i,k)-zo_cup(i,k-1)
 
-zuo_ave = 0.5*(zuo(i,k-1)+zuo(i,k))
+           zuo_ave = 0.5*(zuo(i,k-1)+zuo(i,k))
            
 	   up_massentro(i,k-1)=0.5*(entr_rate_2d(i,k-1)*dz*zuo_ave+up_massentro(i,k-2))
 	   
@@ -6802,7 +6815,7 @@ zuo_ave = 0.5*(zuo(i,k-1)+zuo(i,k))
 	  do k=ismooth1,ismooth2
            dz=zo_cup(i,k)-zo_cup(i,k-1)
 
-zuo_ave = 0.5*(zuo(i,k-1)+zuo(i,k))
+           zuo_ave = 0.5*(zuo(i,k-1)+zuo(i,k))
 
            up_massdetro(i,k-1)=0.5*(cd(i,k-1)*dz*zuo_ave+up_massdetro(i,k-2))
            up_massentro(i,k-1)=zuo(i,k)-zuo(i,k-1)+up_massdetro(i,k-1)
@@ -6832,10 +6845,10 @@ zuo_ave = 0.5*(zuo(i,k-1)+zuo(i,k))
            !-- check up_massentro in case of dd_up_massdetro has been changed above
            up_massentro(i,k-1)=-zuo(i,k-1)+up_massdetro(i,k-1)+zuo(i,k)
 
-           !if(zuo(i,k-1).gt.0.) then
+           if(zuo_ave.gt.0.) then
            cd          (i,k-1)=up_massdetro(i,k-1)/(dz*zuo_ave)
            entr_rate_2d(i,k-1)=up_massentro(i,k-1)/(dz*zuo_ave)
-           !endif
+           endif
          enddo
 
          do k=kts,kte
@@ -7283,12 +7296,7 @@ zuo_ave = 0.5*(zuo(i,k-1)+zuo(i,k))
  !ELSEIF(itest==20 .and. draft == "deep_up") then       !--- land/ocean
   ELSEIF(itest==20                         ) then       !--- land/ocean
 
-
-      if(xland  < 0.90 ) then !- over land
-	hei_updf= hei_updf_LAND 
-      else
-	hei_updf= hei_updf_OCEAN 
-      endif
+      hei_updf=(1.-xland)*hei_updf_LAND+xland*hei_updf_OCEAN
 
       !- for gate soundings
       !hei_updf = max(0.1, min(1.,float(JL)/100.)) 
@@ -7344,20 +7352,13 @@ zuo_ave = 0.5*(zuo(i,k-1)+zuo(i,k))
   !---------------------------------------------------------
   ELSEIF(itest==21) then
      
-      if(xland  < 0.90 ) then !- over land
-	hei_updf= hei_updf_LAND 
-      else
-	hei_updf= hei_updf_OCEAN 
-      endif
+      hei_updf=(1.-xland)*hei_updf_LAND+xland*hei_updf_OCEAN
 
       !- for gate soundings
       !if(gate) hei_updf = max(0.1, min(1.,float(JL)/160.)) 
       !print*,"JL=",jl,hei_updf
 
-      !pmaxzu=900.
-      !if(draft == "deep_up") pmaxzu=850.  
       pmaxzu=850.
-
       kb_adj=minloc(abs(po_cup(kts:kt)-pmaxzu),1)!;print*,"1=",kb_adj,po_cup(kb_adj)
       kb_adj=max(kb,kb_adj)
       kb_adj=min(kb_adj,kt)
@@ -7368,7 +7369,6 @@ zuo_ave = 0.5*(zuo(i,k-1)+zuo(i,k))
       do k=klcl-1,min(kte,kt)
           kratio= float(k)/float(kt+1)
           zul(k) = kratio**(alpha-1.0) * (1.0-kratio)**(beta-1.0)
-          !print*,"1",k,zul(k),kb_adj,pmaxzu
       enddo
       zul(kts:min(kte,kt))= zul(kts:min(kte,kt))/ (1.e-9+maxval(zul(kts:min(kte,kt)),1))
 
@@ -7602,7 +7602,7 @@ zuo_ave = 0.5*(zuo(i,k-1)+zuo(i,k))
       krmax        = min(krmax,0.99)
 
      !beta= 1.5! smaller => sharper detrainment layer
-      beta= 3.! smaller => sharper detrainment layer
+      beta= 3.0! smaller => sharper detrainment layer
       !- this alpha imposes the maximum zu at kpbli
       alpha=1.+krmax*(beta-1.)/(1.-krmax)
       alpha=min(6.,alpha)
@@ -7640,18 +7640,14 @@ zuo_ave = 0.5*(zuo(i,k-1)+zuo(i,k))
       IF(cumulus == 'mid' ) beta =6.5 ! P10
       IF(cumulus == 'deep') beta =2.5
 
-      if(xland  < 0.90 ) then !- over land
-	hei_down= hei_down_LAND
-      else
-	hei_down= hei_down_OCEAN 
-      endif
+      hei_down=(1.-xland)*hei_down_LAND+xland*hei_down_OCEAN
 
 !---non-zero-diff-APR-08-2020
       IF(zero_diff==1) hei_down= 0.5 
 !---non-zero-diff-APR-08-2020
 
       pmaxzu= hei_down * po_cup(kt) + (1.-hei_down)*psur
-      kb_adj=minloc(abs(po_cup(kts:kt)-pmaxzu),1)!;print*,"1=",kb_adj,po_cup(kb_adj)
+      kb_adj=minloc(abs(po_cup(kts:kt)-pmaxzu),1)
 
       !- this alpha constrains the location of the maximun ZU to be at "kb_adj" vertical level
       alpha=1. + (beta-1.0)*(float(kb_adj)/float(kt+1))/(1.0-(float(kb_adj)/float(kt+1)))
@@ -7659,7 +7655,6 @@ zuo_ave = 0.5*(zuo(i,k-1)+zuo(i,k))
       do k=kts+1,min(kt+1,ktf)
               kratio= float(k)/float(kt+1)
               zu(k)= kratio**(alpha-1.0) * (1.0-kratio)**(beta-1.0)
-              !write(0,*)k,zuh(k)
       enddo
       !-- smooth section
       IF(do_smooth) then
@@ -8851,7 +8846,7 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
 
      real,    dimension (its:ite) ::   cap_max
      integer                      ::   i,k,k1,k2,kfinalzu
-     real                         ::   plus,hetest,dz,dbythresh &
+     real                         ::   plus,hetest,dz,dbythresh,denom &
                                       ,dzh,del_cap_max,fx,x_add,Z_overshoot
      real   , dimension (kts:kte) ::   dby
      integer, dimension (its:ite) ::   start_level
@@ -8980,10 +8975,13 @@ loop2:      do while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
 
          do k=start_level(i)+1,ktf-1
            dz=z_cup(i,k)-z_cup(i,k-1)
-
-           hcot(i,k)=( (1.-0.5*entr_rate_2d(i,k-1)*dz)*hcot(i,k-1)    &
-                              +entr_rate_2d(i,k-1)*dz *heo (i,k-1) )/ &
-                       (1.+0.5*entr_rate_2d(i,k-1)*dz)
+           denom = 1.+0.5*entr_rate_2d(i,k-1)*dz
+	   if(denom == 0.) then
+	        hcot(i,k)=hcot(i,k-1)
+	   else
+                hcot(i,k)=( (1.-0.5*entr_rate_2d(i,k-1)*dz)*hcot(i,k-1)    &
+                                   +entr_rate_2d(i,k-1)*dz *heo (i,k-1) )/ denom
+           endif
          enddo
          do k=start_level(i)+1,ktf-1
 
