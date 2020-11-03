@@ -12,7 +12,7 @@
 ! !MODULE: GEOS_Moist -- A Module to compute moist processes, including convection,
 !   large-scale condensation and precipitation and cloud parameters.
 
-! !INTERFACE
+! !INTERFACE:
 
 module GEOS_MoistGridCompMod
 
