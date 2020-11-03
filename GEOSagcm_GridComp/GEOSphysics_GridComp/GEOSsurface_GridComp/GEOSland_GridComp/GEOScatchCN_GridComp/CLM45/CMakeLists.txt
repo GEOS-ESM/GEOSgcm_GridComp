@@ -43,6 +43,7 @@ set (srcs
   compute_rc.F90
   TridiagonalMod.F90
   getco2.F90
+  GEOS_CatchCN45GridComp.F90
   )
 
 esma_add_library (${this}

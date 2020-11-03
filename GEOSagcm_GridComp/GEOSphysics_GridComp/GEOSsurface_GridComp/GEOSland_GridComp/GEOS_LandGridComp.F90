@@ -178,12 +178,12 @@ contains
        allocate (CATCHCN(NUM_CATCH), stat=status)
        VERIFY_(STATUS)
        if (NUM_CATCH == 1) then
-          CATCHCN(1) = MAPL_AddChild(GC, NAME='CATCHCN'//trim(tmp), SS=CatchCNSetServices, RC=STATUS)
+          CATCHCN(1) = MAPL_AddChild(GC, NAME='CATCHCN_PROXY'//trim(tmp), SS=CatchCNSetServices, RC=STATUS)
           VERIFY_(STATUS)
        else
           do I = 1, NUM_CATCH
              WRITE(TMP,'(I3.3)') I
-             GCName  = 'ens' // trim(TMP) // ':CATCHCN'
+             GCName  = 'ens' // trim(TMP) // ':CATCHCN_PROXY'
              CATCHCN(I) = MAPL_AddChild(GC, NAME=GCName, SS=CatchCNSetServices, RC=STATUS)
              VERIFY_(STATUS)
           end do

@@ -37,6 +37,7 @@ set (srcs
   CNBalanceCheckMod.F90
   CN_DriverMod.F90
   compute_rc.F90
+  GEOS_CatchCN40GridComp.F90
   )
 
 esma_add_library (${this}
