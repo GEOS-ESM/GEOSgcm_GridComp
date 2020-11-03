@@ -705,6 +705,15 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC, name="--O2A"         ,RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC, name="--A2W"         ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC, name="--W2A"         ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC, name="--O2W"         ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC, name="--W2O"         ,RC=STATUS)
+    VERIFY_(STATUS)
+
 
     RETURN_(ESMF_SUCCESS)
   
