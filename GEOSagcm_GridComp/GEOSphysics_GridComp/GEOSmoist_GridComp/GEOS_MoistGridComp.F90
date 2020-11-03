@@ -1,4 +1,4 @@
-! $Id$
+ ! $Id$
 
 ! VERIFY_ and RETURN_ macros for error handling.
 
@@ -12,7 +12,7 @@
 ! !MODULE: GEOS_Moist -- A Module to compute moist processes, including convection,
 !   large-scale condensation and precipitation and cloud parameters.
 
-! !INTERFACE:
+! !INTERFACE
 
 module GEOS_MoistGridCompMod
 
@@ -12152,8 +12152,10 @@ do K= 1, LM
 
 ! For 2 moment, move some LS precip/flux into the CN precip/flux category for use by chemistry
 ! --------------------------------------------------------------------------------------------
-      if(adjustl(CLDMICRO)=="2MOMENT") then
+      !if(adjustl(CLDMICRO)=="2MOMENT") then
 
+  if(.FALSE.) then
+ 
       call MAPL_GetPointer(EXPORT, CU2DRAINMOVE,'CU2DRAINMOVE', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, CU2DSNOWMOVE,'CU2DSNOWMOVE', RC=STATUS); VERIFY_(STATUS)
 
@@ -12191,7 +12193,7 @@ do K= 1, LM
       if(associated(PFLCNMOVE)) pflcnmove = pfl_cn - pflcnmove
       if(associated(PFICNMOVE)) pficnmove = pfi_cn - pficnmove
 
-      endif
+     endif
 ! --------------------------------------------------------------------------------------------
 
       DIAGNOSE_PTYPE: if (LDIAGNOSE_PRECIP_TYPE) then
