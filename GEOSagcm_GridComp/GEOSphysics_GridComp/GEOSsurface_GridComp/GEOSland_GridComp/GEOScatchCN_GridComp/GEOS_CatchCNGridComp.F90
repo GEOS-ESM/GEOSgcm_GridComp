@@ -10,6 +10,13 @@ module GEOS_CatchCNGridCompMod
   
   use GEOS_CatchCN40GridCompMod,only: CLM40_SetServices => SetServices
   use GEOS_CatchCN45GridCompMod,only: CLM45_SetServices => SetServices
+  USE STIEGLITZSNOW,   ONLY :                 &
+       N_CONSTIT,   &
+       NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD, &
+       NUM_BCDP, NUM_BCSV, NUM_BCWT, NUM_BCSD, &
+       NUM_OCDP, NUM_OCSV, NUM_OCWT, NUM_OCSD, &
+       NUM_SUDP, NUM_SUSV, NUM_SUWT, NUM_SUSD, &
+       NUM_SSDP, NUM_SSSV, NUM_SSWT, NUM_SSSD
  
   implicit none
   private
