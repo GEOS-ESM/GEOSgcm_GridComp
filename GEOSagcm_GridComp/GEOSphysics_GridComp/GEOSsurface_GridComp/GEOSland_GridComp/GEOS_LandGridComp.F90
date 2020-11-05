@@ -173,17 +173,17 @@ contains
           end do
        end if
        
-    CASE (2) 
+    CASE (2,3) 
        
        allocate (CATCHCN(NUM_CATCH), stat=status)
        VERIFY_(STATUS)
        if (NUM_CATCH == 1) then
-          CATCHCN(1) = MAPL_AddChild(GC, NAME='CATCHCN_PROXY'//trim(tmp), SS=CatchCNSetServices, RC=STATUS)
+          CATCHCN(1) = MAPL_AddChild(GC, NAME='CATCHCN'//trim(tmp), SS=CatchCNSetServices, RC=STATUS)
           VERIFY_(STATUS)
        else
           do I = 1, NUM_CATCH
              WRITE(TMP,'(I3.3)') I
-             GCName  = 'ens' // trim(TMP) // ':CATCHCN_PROXY'
+             GCName  = 'ens' // trim(TMP) // ':CATCHCN'
              CATCHCN(I) = MAPL_AddChild(GC, NAME=GCName, SS=CatchCNSetServices, RC=STATUS)
              VERIFY_(STATUS)
           end do
@@ -933,7 +933,7 @@ contains
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'ROC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        end if
 
-    CASE (2) 
+    CASE (2,3) 
        
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'LST',      CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
@@ -1371,7 +1371,7 @@ contains
 !             VERIFY_(STATUS)            
 !          ENDIF
 
-       CASE (2)
+       CASE (2,3)
           call MAPL_AddConnectivity (                                    & 
             GC                                                 ,         &
             SHORT_NAME  = (/'LAI    ', 'GRN    ', 'ROOTL  ', 'Z2CH   ',  &

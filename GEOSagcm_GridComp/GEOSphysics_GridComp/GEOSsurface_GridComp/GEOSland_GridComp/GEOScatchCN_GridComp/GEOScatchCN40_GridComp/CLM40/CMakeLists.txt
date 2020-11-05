@@ -1,5 +1,4 @@
 esma_set_this ()
-string (REPLACE GEOScatchCN_GridComp_ "" is_openmp ${this})
 
 set (srcs
   clmtype.F90
@@ -37,7 +36,6 @@ set (srcs
   CNBalanceCheckMod.F90
   CN_DriverMod.F90
   compute_rc.F90
-  GEOS_CatchCN40GridComp.F90
   )
 
 esma_add_library (${this}
