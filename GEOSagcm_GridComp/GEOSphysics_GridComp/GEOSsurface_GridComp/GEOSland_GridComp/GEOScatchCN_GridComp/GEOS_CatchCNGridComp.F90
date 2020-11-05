@@ -53,7 +53,7 @@ subroutine SetServices ( GC, RC )
     character(len=ESMF_MAXSTR)   :: CATCHCN_VERSION
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF
-    integer :: DO_GOSWIM, LSM_CHOICE
+    integer :: DO_GOSWIM, LSM_CHOICE, ATM_CO2
 
 ! Begin...
 ! --------
@@ -71,6 +71,7 @@ subroutine SetServices ( GC, RC )
     call MAPL_GetResource ( MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2, DEFAULT=2, RC=STATUS) ; VERIFY_(STATUS)
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
 
     if ( LSM_CHOICE == 2 ) then
