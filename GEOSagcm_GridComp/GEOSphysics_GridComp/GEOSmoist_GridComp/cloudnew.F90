@@ -3804,7 +3804,7 @@ contains
 
          IF( (.not. USE_AEROSOL_NN) ) THEN 
             !------ice cloud effective radius ----- [klaus wyser, 1998]
-            if(TE>273.15) then
+            if(TE>273.15 .or. QC <=0.) then
              BB     = -2.
             else
              BB     = -2. + log10(1.e3*WC/50.)*(1.e-3*(273.15-TE)**1.5)
@@ -3819,13 +3819,13 @@ contains
             RADIUS  = ((3.*WC)/(4.*MAPL_PI*densic*MAX(NNI,1.e-8)))**0.33333  
          ENDIF
   
-        ELSE ! CLDMICRO =1MOMENT or GFDL
+        ELSE ! CLDMICRO =1MOMENT
 
             !------ice cloud effective radius ----- [klaus wyser, 1998]
             RHO = 100.*PL / (MAPL_RGAS*TE )
             !- ice water content
             WC = RHO*QC  !kg/m3
-            if(TE>273.15) then
+            if(TE>273.15 .or. QC <=0.) then
              BB     = -2.
             else
              BB     = -2. + log10(1.e3*WC/50.)*(1.e-3*(273.15-TE)**1.5)
@@ -4083,6 +4083,9 @@ contains
       else
         AFx  =  AF
       endif
+
+      ! water vapor
+      RAD_QV = QV
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! Total cloud fraction

@@ -1067,8 +1067,9 @@ contains
      call MAPL_AddConnectivity ( GC,                                  &
          SHORT_NAME  = (/'QV   ','QL   ','QI   ','QR   ','QS   ',     &
                          'QLLS ','QILS ','QLCN ','QICN ',             &
-                         'QRTOT','QSTOT',                             &
-                         'RL   ','RR   ','RI   ','RS   ','FCLD ' /),  &
+                         'QRTOT','QSTOT','QGTOT',                     &
+                         'RL   ','RR   ','RI   ','RS   ','RG   ',     &
+                         'FCLD ' /),  &
          DST_ID      = RAD,                                           &
          SRC_ID      = MOIST,                                         &
                                                            RC=STATUS  )

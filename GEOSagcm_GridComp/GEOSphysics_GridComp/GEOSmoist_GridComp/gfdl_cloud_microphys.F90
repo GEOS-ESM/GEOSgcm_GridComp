@@ -115,7 +115,7 @@ module gfdl2_cloud_microphys_mod
     real, parameter :: d2ice = dc_vap + dc_ice !< - 126, isobaric heating / cooling
     real, parameter :: li2 = lv0 + li00 !< 2.86799816e6, sublimation latent heat coefficient at 0 deg k
     
-    real, parameter :: qrmin = 1.e-8 ! min value for ???
+    real, parameter :: qrmin = 1.e-8 ! min value for suspended rain/snow/liquid/ice condensate
     real, parameter :: qvmin = 1.e-20 !< min value for water vapor (treated as zero)
     real, parameter :: qcmin = 1.e-12 !< min value for cloud condensates
     
@@ -338,12 +338,13 @@ contains
 !>@brief The subroutine 'gfdl_cloud_microphys_driver' executes the full GFDL
 !! cloud microphysics.
 subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
-        fqa, fqal, fqai, &
+        fqa, fqal, fqai,                                                  &
         qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, pt_dt, pt, w,    &
-        uin, vin, udt, vdt, dz, delp, area, dt_in, land, cnv_fraction,    &
-        anv_icefall, lsc_icefall, &
+        uin, vin, udt, vdt, dz, delp, area, dt_in,                        &
+        snomas, landice, land, cnv_fraction,                              &
+        anv_icefall, lsc_icefall,                                         &
         revap, isubl, evapc,                                              &
-        rain, snow, ice, &
+        rain, snow, ice,                                                  &
         graupel, m2_rain, m2_sol, hydrostatic, phys_hydrostatic,          &
         iis, iie, jjs, jje, kks, kke, ktop, kbot)
     
@@ -357,6 +358,8 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     real, intent (in) :: dt_in !< physics time step
     
     real, intent (in), dimension (:, :) :: area !< cell area
+    real, intent (in), dimension (:, :) :: snomas !< snow mass on land
+    real, intent (in), dimension (:, :) :: landice !< landce fraction
     real, intent (in), dimension (:, :) :: land !< land fraction
     real, intent (in), dimension (:, :) :: cnv_fraction !< diagnosed convective fraction
 
@@ -470,7 +473,8 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
             qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes,  &
             fqa, fqal, fqai,                                                   &
             rain (:, j), snow (:, j), graupel (:, j), ice (:, j), m2_rain,     &
-            m2_sol, cond (:, j), area (:, j), land (:, j), cnv_fraction(:, j), &
+            m2_sol, cond (:, j), area (:, j),                                  &
+            snomas (:, j), landice (:, j), land (:, j), cnv_fraction(:, j),    &
             anv_icefall, lsc_icefall,                                          &
             revap, isubl, evapc,                                               &
             udt, vdt, pt_dt,                                                   &
@@ -629,7 +633,7 @@ end subroutine gfdl_cloud_microphys_driver
 subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         qg, qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes, &
         fqa, fqal, fqai,                                                      &
-        rain, snow, graupel, ice, m2_rain, m2_sol, cond, area1, land,         &
+        rain, snow, graupel, ice, m2_rain, m2_sol, cond, area1, snomas, landice, land, &
         cnv_fraction, anv_icefall, lsc_icefall, revap, isubl, evapc,          &
         u_dt, v_dt, pt_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt,   &
         w_var, vt_r, vt_s, vt_g, vt_i, qn2)
@@ -643,7 +647,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     
     real, intent (in) :: dt_in
     
-    real, intent (in), dimension (is:) :: area1, land
+    real, intent (in), dimension (is:) :: area1, snomas, landice, land
     real, intent (in), dimension (is:) :: cnv_fraction
    
     real, intent (in) :: anv_icefall, lsc_icefall
@@ -691,7 +695,17 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     ! -----------------------------------------------------------------------
     
     do i = is, ie
-        
+
+        ! over oceans
+                                   t_wfr = tice - 34. - dt_fr
+        ! over land
+        if (land(i) > 0.1)         t_wfr = tice - 33. - dt_fr
+        ! Convectve regime 
+        if (cnv_fraction(i) > 0.1) t_wfr = tice - 27. - dt_fr
+        ! over snow or landice
+        if (landice(i) > 0.1 .OR. &
+             snomas(i) > 0.1)      t_wfr = tice - 36. - dt_fr
+ 
         do k = ktop, kbot
             qiz (k) = qi (i, j, k)
             qsz (k) = qs (i, j, k)
@@ -1267,7 +1281,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min (dq, dt * c_praut (k) * den (k) * exp (so3 * log (ql (k))))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink
-                    qa (k) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k)+ql(k) + sink,1e-8) )
+                    qa (k) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k)+ql(k) + sink,qrmin) )
                 endif
             endif
         enddo
@@ -1281,7 +1295,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
 !#define INCLOUD
 #ifdef INCLOUD
        ! Use In-Cloud condensate
-       qadum = max(qa,1e-5)
+       qadum = max(qa,qrmin)
        ql = ql/qadum
        qi = qi/qadum
         
@@ -1315,7 +1329,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min(ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink*qadum(k)
-                    qa (k ) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,1e-8 ) )
+                    qa (k ) = qa(k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,qrmin) )
                 endif
             endif
         enddo
@@ -1353,7 +1367,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
                     sink = min(ql(k), max(0.,sink))
                     ql (k) = ql (k) - sink
                     qr (k) = qr (k) + sink
-                    qa (k) = qa (k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,1e-8 ) )
+                    qa (k) = qa (k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,qrmin ) )
                 endif
             endif
         enddo
@@ -2151,50 +2165,38 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
 !#define CNVQL
 #ifdef CNVQL
         qlcn = ql(k)*fqa(k)
-        if (dq0 > 0. .and. qlcn>1e-12 ) then
-!        if (dq0 > 0. .and. fqa(k) .gt. 1e-8) then
-            ! SJL 20170703 added ql factor to prevent the situation of high ql and low RH
-            ! factor = min (1., fac_l2v * sqrt (max (0., ql (k)) / 1.e-5) * 10. * dq0 / qsw)
-            ! factor = fac_l2v
-            ! factor = 1
+        if (dq0 > 0. .and. qlcn>qcmin) then
             factor = min (1., fac_l2v * (10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
-            evap = min( dq0, min (qlcn, factor * dq0 / (1. + tcp3 (k) * dwsdt)))
-
-            ! Adjust fqal
+            evap = min (qlcn, factor * dq0 / (1. + tcp3 (k) * dwsdt))
+           ! Adjust convective fraction of liquid condensates
             if (evap.lt.qlcn) then
               fqal(k) = (qlcn-evap)/(ql(k)-evap)    ! new conv liquid / new total liquid
             else
               fqal(k) = 0.
             end if
-
+            fqal(k) = min(1.,max(0.,fqal(k)))
+           ! Adjust convective fraction of cloud fractions
             oldqa = qa(k)
-            qa(k) = qa(k) * (qi(k) + ql(k)-evap) / (qi(k)+ql(k))     ! new total condensate / old condensate 
+            qa(k) = qa(k) * max(qi(k) + ql(k)-evap,0.0) / max(qi(k)+ql(k),qrmin)     ! new total condensate / old condensate 
             if (qa(k).gt.0.) then
               fqa(k) = (fqa(k)-1.)*oldqa/qa(k) + 1.  ! new conv frac / new total frac
             else
               fqa(k) = 0.0
             end if
-
-            fqa(k) = min(1.,max(0.,fqa(k)))    
-            fqal(k) = min(1.,max(0.,fqal(k)))    
+            fqa(k) = min(1.,max(0.,fqa(k)))
         else
             evap = 0.
         endif
 #else
         if (dq0 > 0.) then
-            ! SJL 20170703 added ql factor to prevent the situation of high ql and low RH
-            ! factor = min (1., fac_l2v * sqrt (max (0., ql (k)) / 1.e-5) * 10. * dq0 / qsw)
-            ! factor = fac_l2v
-            ! factor = 1
             factor = min (1., fac_l2v * (10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
             evap = min (ql (k), factor * dq0 / (1. + tcp3 (k) * dwsdt))
-        else ! condensate all excess vapor into cloud water
-            ! -----------------------------------------------------------------------
-            ! evap = fac_v2l * dq0 / (1. + tcp3 (k) * dwsdt)
-            ! sjl, 20161108
-            ! -----------------------------------------------------------------------
-            evap = dq0 / (1. + tcp3 (k) * dwsdt)
+        else
+           ! ! condensate all excess vapor into cloud water
+           !evap = dq0 / (1. + tcp3 (k) * dwsdt)
+            evap = 0.
         endif
+        qa(k) = max(0.,min(1.,qa(k) * max(qi(k) + ql(k)-evap,0.0) / max(qi(k)+ql(k),qrmin)))     ! new total condensate / old condensate 
 #endif
         qv (k) = qv (k) + evap
         ql (k) = ql (k) - evap
@@ -2463,21 +2465,17 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! assuming subgrid linear distribution in horizontal; this is effectively a smoother for the
         ! binary cloud scheme
         ! -----------------------------------------------------------------------
-        
-#ifndef SKIP_PARTIAL_CLOUDINESS
-        if (qpz > qrmin) then
-            ! partial cloudiness by pdf:
-            dq = max (qcmin, h_var * qpz)
-            q_plus = qpz + dq ! cloud free if qstar > q_plus
-            q_minus = qpz - dq
-            if (qstar < q_minus) then
-                qa (k) = qa (k) + 1. ! air fully saturated; 100 % cloud cover
-            elseif (qstar < q_plus .and. q_cond (k) > qc_crt) then
-                qa (k) = qa (k) + (q_plus - qstar) / (dq + dq) ! partial cloud cover
-                ! qa (k) = sqrt (qa (k) + (q_plus - qstar) / (dq + dq))
-            endif
-        endif
-#endif
+         if (qpz > qrmin) then
+             ! partial cloudiness by pdf:
+             dq = max (qcmin, h_var * qpz)
+             q_plus = qpz + dq ! cloud free if qstar > q_plus
+             q_minus = qpz - dq
+             if (qstar < q_minus) then
+                 qa (k) = 1. ! air fully saturated; 100 % cloud cover
+             elseif (qstar < q_plus .and. q_cond (k) > qc_crt) then
+                 qa (k) = min(1., qa (k) + (q_plus - qstar) / (dq + dq) ) ! partial cloud cover
+             endif
+         endif
         
     enddo
     
@@ -2564,7 +2562,7 @@ subroutine revap_rac1 (hydrostatic, is, ie, dt, tz, qv, ql, qr, qi, qs, qg, den,
             ! accretion: pracc
             ! -----------------------------------------------------------------------
             
-            if (qr (i) > qrmin .and. ql (i) > 1.e-8 .and. qsat < q_plus) then
+            if (qr (i) > qrmin .and. ql (i) > qrmin .and. qsat < q_plus) then
                 denfac (i) = sqrt (sfcrho / den (i))
                 sink = dt * denfac (i) * cracw * exp (0.95 * log (qr (i) * den (i)))
                 sink = sink / (1. + sink) * ql (i)

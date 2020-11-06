@@ -30,6 +30,7 @@ module uwshcu
    real, parameter :: p00   = 1e5                   ! Reference pressure
    real, parameter :: rovcp = MAPL_RGAS/MAPL_CP     ! Gas constant over specific heat
 
+   real, parameter :: mintracer = tiny(1.)
 contains
 
    real function exnerfn(pressure)
@@ -204,6 +205,7 @@ contains
 
 
 !---------- Indices -----------
+      integer           :: i                        !  Horizontal index for local fields [ no ] 
       integer           :: k                        !  Vertical index for local fields [ no ] 
       integer           :: k_inv                    !  Vertical index for incoming fields [ no ]
       integer           :: m                        !  Tracer index [ no ]
@@ -309,7 +311,9 @@ contains
 #endif
          if (dotransport.eq.1) then
          do m = 1, ncnst
-            tr0_inv(:idim,k_inv,m)   = tr0(:idim,k,m)
+            do i=1,idim
+               tr0_inv(i,k_inv,m)   = MAX(mintracer,tr0(i,k,m))
+            enddo
 #ifdef UWDIAG
             trten_inv(:idim,k_inv,m) = trten(:idim,k,m)            
 #endif
