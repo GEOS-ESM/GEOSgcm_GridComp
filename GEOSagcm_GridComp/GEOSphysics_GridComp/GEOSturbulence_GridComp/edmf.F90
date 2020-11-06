@@ -374,10 +374,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   end do
 
   ! Get surface layer organized entrainment
-!  call A_star_closure(IM, JM, LM, th00, zle, zlo, ple, ice_ramp, & ! in
-!                      rho, rhoe, thl, qt, thv, 1, &                ! in
-!                      izsl, A_star, Mu0, zi_thermal)               ! out
-!  write(*,*) '*', izsl, Mu0
+  call A_star_closure(IM, JM, LM, th00, zle, zlo, ple, ice_ramp, & ! in
+                      rho, rhoe, thl, qt, thv, 1, &                ! in
+                      izsl, A_star, Mu0, zi_thermal)               ! out
+  write(*,*) '*', izsl, Mu0
 
   !
   ! Initialize updrafts
