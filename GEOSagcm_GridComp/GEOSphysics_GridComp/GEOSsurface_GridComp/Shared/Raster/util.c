@@ -4,8 +4,11 @@
 #include "stdarg.h"
 #include "fcntl.h"
 #include "string.h"
+#include <unistd.h>
 
 int Open=0,Form=0,Close=0,Write=1,Read=0;
+
+void ZIPBUFF(char *fname, int *Buff, int *nbytes, int *form, int *Write);
 
 void WRITERST(int *rst, int *nx, int *ny, char *filename, int *zip)
 {

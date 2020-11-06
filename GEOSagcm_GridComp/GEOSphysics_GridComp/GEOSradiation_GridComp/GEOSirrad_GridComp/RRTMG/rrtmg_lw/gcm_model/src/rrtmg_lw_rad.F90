@@ -52,7 +52,8 @@
             tauaer  , zm, cloudMH, cloudHH, &
             uflx    ,dflx    ,hr      ,uflxc   ,dflxc,  hrc, &
             duflx_dt, duflxc_dt, cloudFlag, &
-            olrb09, dolrb09_dt, olrb10, dolrb10_dt, olrb11, dolrb11_dt, &
+            olrb06, dolrb06_dt, olrb09, dolrb09_dt, &
+            olrb10, dolrb10_dt, olrb11, dolrb11_dt, &
             dyofyr, alat, numCPUs, partition_size)
          ! -------- Description --------
 
@@ -288,6 +289,7 @@
          !    Dimensions: (ncol,nlay)
          integer , intent(out), optional :: cloudFlag(:,:)
 
+         real, intent(out), dimension(:), optional :: olrb06, dolrb06_dt
          real, intent(out), dimension(:), optional :: olrb09, dolrb09_dt
          real, intent(out), dimension(:), optional :: olrb10, dolrb10_dt
          real, intent(out), dimension(:), optional :: olrb11, dolrb11_dt
@@ -396,7 +398,8 @@
                   tauaer  , zm, cloudMH, cloudHH, &
                   uflx    ,dflx    ,hr      ,uflxc   ,dflxc,  hrc, &
                   duflx_dt, duflxc_dt, cloudFlag, &
-                  olrb09, dolrb09_dt, olrb10, dolrb10_dt, olrb11, dolrb11_dt, &
+                  olrb06, dolrb06_dt, olrb09, dolrb09_dt, &
+                  olrb10, dolrb10_dt, olrb11, dolrb11_dt, &
                   dyofyr,alat)    
          end do
 
@@ -420,7 +423,8 @@
             tauaer  , zm, cloudMH, cloudHH, &
             uflx    ,dflx    ,hr      ,uflxc   ,dflxc,  hrc, &
             duflx_dt, duflxc_dt, cloudFlag, &
-            olrb09, dolrb09_dt, olrb10, dolrb10_dt, olrb11, dolrb11_dt, &
+            olrb06, dolrb06_dt, olrb09, dolrb09_dt, &
+            olrb10, dolrb10_dt, olrb11, dolrb11_dt, &
             dyofyr,alat)
 
 
@@ -551,10 +555,11 @@
          !    Dimensions: (ncol,nlay)
          integer , intent(out), optional :: cloudFlag(:,:)
 
+         real, intent(out), dimension(:), optional :: olrb06, dolrb06_dt
          real, intent(out), dimension(:), optional :: olrb09, dolrb09_dt
          real, intent(out), dimension(:), optional :: olrb10, dolrb10_dt
          real, intent(out), dimension(:), optional :: olrb11, dolrb11_dt
-         ! OLR for bands 9-11 and temperature derivatives (W/m2, W/m2/K)
+         ! OLR for bands 6 & 9-11 and temperature derivatives (W/m2, W/m2/K)
          !    Dimensions: (ncol)
 
          real  _gpudeva :: cldfmcd(:,:,:)         ! layer cloud fraction [mcica]
@@ -1020,6 +1025,8 @@
          htrcd = 0.0
          dtotuflux_dtd = 0.0
          dtotuclfl_dtd = 0.0
+         olrb06d = 0.0
+         dolrb06_dtd = 0.0
          olrb09d = 0.0
          dolrb09_dtd = 0.0
          olrb10d = 0.0
@@ -1055,6 +1062,7 @@
          dflxc(colstart:(colstart+pncol-1), 1:(nlayers+1)) = totdclfld(:,0:nlayers)
          hr(colstart:(colstart+pncol-1), 1:(nlayers+1)) = htrd(:,0:nlayers)
          hrc(colstart:(colstart+pncol-1), 1:(nlayers+1)) = htrcd(:,0:nlayers)
+         olrb06(colstart:(colstart+pncol-1)) = olrb06d(:)
          olrb09(colstart:(colstart+pncol-1)) = olrb09d(:)
          olrb10(colstart:(colstart+pncol-1)) = olrb10d(:)
          olrb11(colstart:(colstart+pncol-1)) = olrb11d(:)
@@ -1063,6 +1071,7 @@
 
             duflx_dt(colstart:(colstart+pncol-1), 1:(nlayers+1)) = dtotuflux_dtd(:,0:nlayers)
             duflxc_dt(colstart:(colstart+pncol-1), 1:(nlayers+1)) = dtotuclfl_dtd(:,0:nlayers)
+            dolrb06_dt(colstart:(colstart+pncol-1)) = dolrb06_dtd(:)
             dolrb09_dt(colstart:(colstart+pncol-1)) = dolrb09_dtd(:)
             dolrb10_dt(colstart:(colstart+pncol-1)) = dolrb10_dtd(:)
             dolrb11_dt(colstart:(colstart+pncol-1)) = dolrb11_dtd(:)

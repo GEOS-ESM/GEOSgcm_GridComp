@@ -93,7 +93,9 @@
                                               ! with respect to surface temperature
       real , allocatable _gpudev :: dplankbnd_dtd(:,:) 
      
-      ! TOA OLR in bands 9-11 and their derivatives with surface temp
+      ! TOA OLR in bands 6 & 9-11 and their derivatives with surface temp
+      real , allocatable _gpudev :: olrb06d(:)     ! (W/m2)
+      real , allocatable _gpudev :: dolrb06_dtd(:) ! (W/m2/K)
       real , allocatable _gpudev :: olrb09d(:)     ! (W/m2)
       real , allocatable _gpudev :: dolrb09_dtd(:) ! (W/m2/K)
       real , allocatable _gpudev :: olrb10d(:)     ! (W/m2)
@@ -657,6 +659,7 @@
                totuclfld(iplon, ilay)=totuclfld(iplon, ilay)+gclrurad(iplon, igp, ilay)
                totdclfld(iplon, ilay)=totdclfld(iplon, ilay)+gclrdrad(iplon, igp, ilay)
                if (ilay .eq. nlay) then
+                 if (ngb(igp) .eq.  6) olrb06d(iplon) = olrb06d(iplon) + gurad(iplon, igp, nlay)
                  if (ngb(igp) .eq.  9) olrb09d(iplon) = olrb09d(iplon) + gurad(iplon, igp, nlay)
                  if (ngb(igp) .eq. 10) olrb10d(iplon) = olrb10d(iplon) + gurad(iplon, igp, nlay)
                  if (ngb(igp) .eq. 11) olrb11d(iplon) = olrb11d(iplon) + gurad(iplon, igp, nlay)
@@ -670,6 +673,7 @@
                 dtotuflux_dtd(iplon, ilay) = dtotuflux_dtd(iplon, ilay) + gdtotuflux_dtd( iplon, igp, ilay)
                 dtotuclfl_dtd(iplon, ilay) = dtotuclfl_dtd(iplon, ilay) + gdtotuclfl_dtd( iplon, igp, ilay)
                 if (ilay .eq. nlay) then
+                  if (ngb(igp) .eq.  6) dolrb06_dtd(iplon) = dolrb06_dtd(iplon) + gdtotuflux_dtd(iplon, igp, nlay)
                   if (ngb(igp) .eq.  9) dolrb09_dtd(iplon) = dolrb09_dtd(iplon) + gdtotuflux_dtd(iplon, igp, nlay)
                   if (ngb(igp) .eq. 10) dolrb10_dtd(iplon) = dolrb10_dtd(iplon) + gdtotuflux_dtd(iplon, igp, nlay)
                   if (ngb(igp) .eq. 11) dolrb11_dtd(iplon) = dolrb11_dtd(iplon) + gdtotuflux_dtd(iplon, igp, nlay)
@@ -781,6 +785,8 @@
           allocate (dtotuclfl_dtd(ncol, 0:nlay))
           allocate (dplankbnd_dtd(ncol,nbndlw)) 
 
+          allocate (olrb06d(ncol))
+          allocate (dolrb06_dtd(ncol))
           allocate (olrb09d(ncol))
           allocate (dolrb09_dtd(ncol))
           allocate (olrb10d(ncol))
@@ -821,6 +827,7 @@
             deallocate( gdtotuflux_dtd, gdtotuclfl_dtd )
           end if
 
+          deallocate (olrb06d, dolrb06_dtd)
           deallocate (olrb09d, dolrb09_dtd)
           deallocate (olrb10d, dolrb10_dtd)
           deallocate (olrb11d, dolrb11_dtd)
