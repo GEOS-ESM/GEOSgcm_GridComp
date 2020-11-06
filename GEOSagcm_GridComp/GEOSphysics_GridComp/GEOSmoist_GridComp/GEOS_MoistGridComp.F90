@@ -5081,7 +5081,7 @@ contains
     
 !--kml
     if (adjustl(CLDMICRO)=="GFDL") then
-      call MAPL_GetResource(MAPL,INT_USE_AEROSOL_NN,'USE_AEROSOL_NN:',default=1, RC=STATUS )
+      call MAPL_GetResource(MAPL,INT_USE_AEROSOL_NN,'USE_AEROSOL_NN:',default=0, RC=STATUS )
     else
       call MAPL_GetResource(MAPL,INT_USE_AEROSOL_NN,'USE_AEROSOL_NN:',default=1, RC=STATUS )
     endif
