@@ -8056,6 +8056,13 @@ contains
 
 !=====================================================================================
 !-srf-gf-scheme
+    
+      
+      
+      CNV_MFC =  0.0
+      UMF_SC  =  0.0
+      MFD_SC  =  0.0 
+
       IF(ADJUSTL(CONVPAR_OPTION) == 'GF' .or. ADJUSTL(CONVPAR_OPTION) == 'BOTH') THEN
      
          call MAPL_TimerOn (STATE,"-GF")
@@ -12146,9 +12153,19 @@ do K= 1, LM
       !--------------------------------------------------------------
       !  add ShallowCu contribution to total/detraining mass flux exports
       !--------------------------------------------------------------
-      CNV_MFC = CNV_MFC + UMF_SC
+    
+    
+      CNV_MFC = CNV_MFC + UMF_SC !this maybe causing trouble DONIF
       CNV_MFD = CNV_MFD + MFD_SC
       !--------------------------------------------------------------
+      
+    !  WHERE(ISNAN(CNV_MFC))
+    !    CNV_MFC = MAPL_UNDEF
+    !  END WHERE
+      
+      !  WHERE(ISNAN(CNV_MFD))
+      !   CNV_MFD = MAPL_UNDEF
+      ! END WHERE
 
 ! For 2 moment, move some LS precip/flux into the CN precip/flux category for use by chemistry
 ! --------------------------------------------------------------------------------------------
