@@ -3643,6 +3643,10 @@ contains
                                      ! else: upwind discretization 
      integer :: EDMF_CONSISTENT      ! 0:    consistent partitioning of TKE
                                      ! else: conventional partitioning
+     integer :: EDMF_ANELASTIC       ! 0:    use non-anelastic buoyancy in EDMF    
+                                     ! else: anelastic
+     integer :: EDMF_ENTRAIN_BOOST   ! 0:    boost entrainment when at local THV minimum    
+                                     ! else: don't boost entrainment
      integer :: EDMF_THERMAL_PLUME   ! 0:    JPL mass flux scheme
                                      ! else: thermal plume model
 
@@ -4310,7 +4314,9 @@ contains
     call MAPL_GetResource (MAPL, EDMF_IMPLICIT,        "EDMF_IMPLICIT:",        default=0,  RC=STATUS)  
     call MAPL_GetResource (MAPL, EDMF_STOCHASTIC,      "EDMF_STOCHASTIC:",      default=0,  RC=STATUS)  
     call MAPL_GetResource (MAPL, EDMF_DISCRETE,        "EDMF_DISCRETE:",        default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_CONSISTENT,      "EDMF_CONSISTENT:",       default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_CONSISTENT,      "EDMF_CONSISTENT:",      default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_ANELASTIC,       "EDMF_ANELASTIC:",       default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_ENTRAIN_BOOST,   "EDMF_ENTRAIN_BOOST:",   default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME,   "EDMF_THERMAL_PLUME:",   default=0,  RC=STATUS)
 
     call MAPL_GetResource (MAPL, EntWFac,              "EDMF_ENTWFAC:",         default=0.3333, RC=STATUS)
@@ -4391,6 +4397,7 @@ if ( ET == 1 ) then
     else
        call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp, &                    ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
+                     edmf_anelastic, edmf_entrain_boost,                                & ! in
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
@@ -4444,6 +4451,7 @@ if ( ET == 1 ) then
     else
        call run_edmf(IM, JM, LM, 1, iras, jras, edmf_kbotp, &                        ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
+                     edmf_anelastic, edmf_entrain_boost,                                & ! in
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
@@ -4506,6 +4514,7 @@ if ( ET == 1 ) then
     else
        call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp,&                     ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
+                     edmf_anelastic, edmf_entrain_boost,                                & ! in
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in 
@@ -8098,7 +8107,7 @@ end if
  !
  ! surface conditions
  !      
-   wstar=max(wstarmin,(mapl_grav/th00*wthv*pblh)**(1./3.))
+   wstar=max(wstarmin,(mapl_grav/thv(1)*wthv*pblh)**(1./3.))
    qstar=wqt/wstar
    thstar=wthv/wstar
 
