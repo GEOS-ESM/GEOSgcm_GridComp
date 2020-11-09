@@ -11,8 +11,8 @@ module GuestOcean_GridCompMod
 
   use ESMF
   use MAPL
-  use MOM_GEOS5PlugMod, only: MOMSetServices  => SetServices  ! this sets IRF
-  use MOM6_GEOSPlugMod, only: MOM6SetServices => SetServices  ! this sets IRF
+  !use MOM_GEOS5PlugMod, only: MOMSetServices  => SetServices  ! this sets IRF
+  !use MOM6_GEOSPlugMod, only: MOM6SetServices => SetServices  ! this sets IRF
   use GEOS_DataSeaGridCompMod, only: DataSeaSetServices  => SetServices
 
   implicit none
@@ -118,9 +118,11 @@ contains
        call MAPL_GetResource ( MAPL, OCEAN_NAME, Label="OCEAN_NAME:", DEFAULT="MOM", __RC__ )
        select case (trim(OCEAN_NAME))
           case ("MOM")
-             OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOMSetServices, __RC__)
+             !OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOMSetServices, __RC__)
+             OCN = MAPL_AddChild(OCEAN_NAME,'setservices_', parentGC=GC, sharedObj='libMOM_GEOS5PlugMod.so',  __RC__)
           case ("MOM6")
-             OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOM6SetServices, __RC__)
+             !OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOM6SetServices, __RC__)
+             OCN = MAPL_AddChild(OCEAN_NAME,'setservices_', parentGC=GC, sharedObj='libMOM6_GEOSPlug.so',  __RC__)
           case default
              charbuf_ = "OCEAN_NAME: " // trim(OCEAN_NAME) // " is not implemented, ABORT!"
              call WRITE_PARALLEL(charbuf_)

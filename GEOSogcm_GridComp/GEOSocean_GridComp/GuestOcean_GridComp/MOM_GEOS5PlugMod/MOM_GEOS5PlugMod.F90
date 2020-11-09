@@ -2146,12 +2146,12 @@ contains
 !====================================================================
 
 end module MOM_GEOS5PlugMod
-  
-        
 
-  
-
-
-
-
-
+subroutine SetServices(gc, rc)
+   use ESMF
+   use MOM_GEOS5PlugMod, only : mySeservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   integer :: status
+   call mySetServices(comp, rc=rc)
+end subroutine
