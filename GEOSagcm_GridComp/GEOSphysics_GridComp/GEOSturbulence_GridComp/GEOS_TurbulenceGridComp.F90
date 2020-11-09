@@ -4758,7 +4758,6 @@ ENDIF
                       EDMF_CONSISTENT, WQL_TYPE, WRF_CG_FLAG, &                    ! in      
                       mynn_alpha1, mynn_alpha2, mynn_alpha3, mynn_alpha4, &        ! in 
                       th00, PLE, RHOE, ZLE, Z, &                                   ! in      
-!                      U, V, OMEGA, T, Q, QL, QI, QA, THL, QT, THV, &               ! in      
                       U, V, OMEGA, T, Q, QL, QI, ace_moist, THL, QT, THV, &        ! in      
                       USTAR, SH, EVAP, &                                           ! in      
                       whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, &                 ! in      
