@@ -35,7 +35,6 @@ set (srcs
   CNWoodProductsMod.F90
   CNSummaryMod.F90
   CNEcosystemDynMod.F90
-  nanMod.F90
   clmtypeInitMod.F90
   CNiniTimeVar.F90
   CNBalanceCheckMod.F90
