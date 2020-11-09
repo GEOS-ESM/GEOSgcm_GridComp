@@ -1114,7 +1114,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'updraft_mass_flux',                                     &
-       UNITS      = 'm+1s-1',                                                &
+       UNITS      = 'kg+1m+1s-1',                                            &
        SHORT_NAME = 'Mu'    ,                                                &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
@@ -1123,7 +1123,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'updraft_entrainment_rate',                              &
-       UNITS      = 'm+1s-1',                                                &
+       UNITS      = 'kg+1m-3s-1',                                                &
        SHORT_NAME = 'E'     ,                                                &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
@@ -1132,7 +1132,7 @@ contains
 
     call MAPL_AddExportSpec(GC,                                              &
        LONG_NAME  = 'updraft_detrainment_rate',                              &
-       UNITS      = 'm+1s-1',                                                &
+       UNITS      = 'kg+1m-3s-1',                                                &
        SHORT_NAME = 'D'     ,                                                &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
@@ -1140,9 +1140,9 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'updraft_organized_detrainment_rate',                    &
+       LONG_NAME  = 'updraft_detrainment_velocity',                          &
        UNITS      = 'm+1s-1',                                                &
-       SHORT_NAME = 'D_org',                                                 &
+       SHORT_NAME = 'wdet',                                                  &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
                                                                   RC=STATUS  )
@@ -2183,6 +2183,38 @@ contains
        UNITS      = 'm+2 s-1',                                   &
        DIMS       = MAPL_DimsHorzVert,                           &
        VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME = 'tket_T_mf1',                                      &
+         LONG_NAME  = 'transport_component_of_mass_flux_TKE_transport',  &
+         UNITS      = 'm+2 s-3',                                         &
+         DIMS       = MAPL_DimsHorzVert,                                 &
+         VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                            &
+         SHORT_NAME = 'tket_T_mf2',                                        &
+         LONG_NAME  = 'entrainment_component_of_mass_flux_TKE_transport',  &
+         UNITS      = 'm+2 s-3',                                           &
+         DIMS       = MAPL_DimsHorzVert,                                   &
+         VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                            &
+         SHORT_NAME = 'tket_T_mf3',                                        &
+         LONG_NAME  = 'detrainment_component_of_mass_flux_TKE_transport',  &
+         UNITS      = 'm+2 s-3',                                           &
+         DIMS       = MAPL_DimsHorzVert,                                   &
+         VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                             &
+         SHORT_NAME = 'tket_T_mf4',                                         &
+         LONG_NAME  = 'mean-gradient_component_of_mass_flux_TKE_transport', &
+         UNITS      = 'm+2 s-3',                                            &
+         DIMS       = MAPL_DimsHorzVert,                                    &
+         VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
     VERIFY_(STATUS)
 
 !
@@ -3525,8 +3557,9 @@ contains
 
    real, dimension(:,:), pointer        :: z_conv_edmf
 
-   real, dimension(:,:,:), pointer ::  K_TKE, tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, wthl_mf
-   real, dimension(:,:,:), pointer :: au, wu, Mu, E, D, D_org
+   real, dimension(:,:,:), pointer ::  K_TKE, tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, wthl_mf, &
+                                       tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4        
+   real, dimension(:,:,:), pointer :: au, wu, Mu, E, D, wdet
 
    ! Exports for testing MYNN cloud-top entrainment
    real, dimension(:,:,:), pointer :: zle_turb, exner_turb, u_turb, v_turb, &
@@ -4079,7 +4112,16 @@ contains
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT,         D,         'D', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT,     D_org,     'D_org', ALLOC=.TRUE., RC=STATUS)
+     call MAPL_GetPointer(EXPORT,      wdet,      'wdet', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+
+     call MAPL_GetPointer(EXPORT, tket_T_mf1, 'tket_T_mf1', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, tket_T_mf2, 'tket_T_mf2', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, tket_T_mf3, 'tket_T_mf3', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, tket_T_mf4, 'tket_T_mf4', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
 
      call MAPL_GetPointer(EXPORT, au_full,   'au_full',   ALLOC=.TRUE., RC=STATUS)
@@ -4366,7 +4408,7 @@ if ( ET == 1 ) then
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
-                     au, wu, Mu, E, D)                                               ! out
+                     au, wu, Mu, E, D, wdet)                                         ! out
     end if
  elseif ( ET == 2 ) then
     ! L0 is a function of the cloud depth
@@ -4419,7 +4461,7 @@ if ( ET == 1 ) then
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
-                     au, wu, Mu, E, D)                                               ! out
+                     au, wu, Mu, E, D, wdet)                                         ! out
     end if ! EDMF_SCHEME == 0
 
     ! compute the depth of the convective layer  
@@ -4481,7 +4523,7 @@ if ( ET == 1 ) then
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
-                     au, wu, Mu, E, D)                                               ! out          
+                     au, wu, Mu, E, D, wdet)                                         ! out          
     end if ! EDMF_SCHEME == 0
  else
     write (*,*) "Error: wrong EDMF_ET "
@@ -4760,7 +4802,7 @@ ENDIF
                       th00, PLE, RHOE, ZLE, Z, &                                   ! in      
                       U, V, OMEGA, T, Q, QL, QI, ace_moist, THL, QT, THV, &        ! in      
                       USTAR, SH, EVAP, &                                           ! in      
-                      whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, &                 ! in      
+                      whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &           ! in      
                       A_moist, B_moist, qsat_moist, &                              ! in
                       tke_new, hl2, qt2, hlqt, &                                   ! inout   
                       ws_explicit, wqv_explicit, wql_explicit, &                   ! inout     
@@ -4768,12 +4810,11 @@ ENDIF
                       beta_hl, beta_qt, &                                          ! out
                       L_mynn, LS_mynn, LB_mynn, LT_mynn, &                         ! out
                       tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &        ! out     
+                      tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &            ! out
                       tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                     ! out 
         
         KH = KH_MYNN
         KM = KM_MYNN
-
-        
 
         call MAPL_TimerOff (MAPL,name="---MYNN" ,RC=STATUS)
         VERIFY_(STATUS)

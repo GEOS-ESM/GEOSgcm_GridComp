@@ -208,14 +208,15 @@ subroutine run_mynn(IM, JM, LM, &                                               
                     th00, ple, rhoe, zle, zlo, &                                            ! in
                     u, v, omega, T, qv, ql, qi, ac, thl, qt, thv, &                         ! in
                     u_star, H_surf, E_surf, &                                               ! in
-                    whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, &                            ! in
+                    whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &                      ! in
                     A_cloud, B_cloud, qsat, &                                               ! in
                     tke, hl2, qt2, hlqt, &                                                  ! inout
                     ws_explicit, wqv_explicit, wql_explicit, &                              ! inout
                     Km, Kh, K_tke, itau, &                                                  ! out
                     Beta_hl, Beta_qt, &                                                     ! out
                     L_out, LS_out, LB_out, LT_out, &                                        ! out
-                    tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &                      ! out
+                    tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &                   ! out
+                    tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &                       ! out
                     tke_surf, hl2_surf, qt2_surf, hlqt_surf)                                ! out
 
   use MAPL_ConstantsMod, only: MAPL_KARMAN
@@ -227,13 +228,14 @@ subroutine run_mynn(IM, JM, LM, &                                               
   double precision, intent(in)               :: alpha1, alpha2, alpha3, alpha4
   real, dimension(IM,JM), intent(in)         :: u_star, H_surf, E_surf
   real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, T, qv, ql, qi, ac, thv, thl, qt, E, D, &
-                                                A_cloud, B_cloud, qsat
+                                                A_cloud, B_cloud, qsat, wdet
   real, dimension(IM,JM,0:LM), intent(in)    :: ple, zle, rhoe, omega, whl_mf, wqt_mf, wthv_mf, &
                                                 au, Mu, wu
   real, dimension(IM,JM,0:LM), intent(inout) :: tke, hl2, qt2, hlqt, ws_explicit, wqv_explicit, wql_explicit
   real, dimension(IM,JM), intent(out)        :: tke_surf, hl2_surf, qt2_surf, hlqt_surf, LT_out
   real, dimension(IM,JM,0:LM), intent(out)   :: Km, Kh, itau, Beta_hl, Beta_qt, &
                                                 tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &
+                                                tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &
                                                 L_out, LS_out, LB_out
   real, dimension(IM,JM,LM), intent(out)     :: K_tke
 
@@ -540,10 +542,18 @@ subroutine run_mynn(IM, JM, LM, &                                               
            tkee_up = tke(i,j,km1)/( 1. - au(i,j,km1) )
            w2e_up  = twothirds*tkee_up
            
-           tket_T_mf(i,j,k) = (  ( Mu(i,j,km1)*tkee_up - Mu(i,j,k)*tkee )*idzle &
-                               - max(0., E(i,j,k))*tkee )/rhoe(i,j,k) &
-                              - ( 1. - au(i,j,km1) )*w2e_up*( we_up - we )*idzle
+           tket_T_mf1(i,j,k) = ( Mu(i,j,km1)*tkee_up - Mu(i,j,k)*tkee )*idzle/rhoe(i,j,k)
+           tket_T_mf2(i,j,k) = - max(0., E(i,j,k))*tkee/rhoe(i,j,k)
+           tket_T_mf3(i,j,k) =   max(0., D(i,j,k))*( we - wdet(i,j,k) )**2./rhoe(i,j,k)
+           tket_T_mf4(i,j,k) = - ( 1. - au(i,j,km1) )*w2e_up*( we_up - we )*idzle
+
+           tket_T_mf(i,j,k) = tket_T_mf1(i,j,k) + tket_T_mf2(i,j,k) + tket_T_mf3(i,j,k) + tket_T_mf4(i,j,k)
         else
+           tket_T_mf1(i,j,k) = 0.
+           tket_T_mf2(i,j,k) = 0.
+           tket_T_mf3(i,j,k) = 0.
+           tket_T_mf4(i,j,k) = 0.
+
            tket_T_mf(i,j,k) = 0.
         end if
 

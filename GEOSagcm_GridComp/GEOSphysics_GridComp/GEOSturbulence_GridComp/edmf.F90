@@ -169,7 +169,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)
                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfqthl, mfwhl, & ! out (for SHOC)
                     au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
-                    au, wu, Mu, E, D)                                               ! out
+                    au, wu, Mu, E, D, wdet)                                         ! out
   
   ! Inputs
   integer, intent(in)                     :: IM, JM, LM, numup, discrete_type, implicit_flag, stochastic_flag, plume_type, ET, kbotp
@@ -189,7 +189,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                                               whl_mf, wqt_mf, wthv_mf, au, Mu, wu
 
   real, dimension(IM,JM,LM), intent(out) :: buoyf, mfw2, mfw3, mfqt3, mfqt2, mfwqt, &
-                                            mfhl2, mfqthl, mfwhl, E, D, &
+                                            mfhl2, mfqthl, mfwhl, E, D, wdet, &
                                             au_full, hlu_full, qtu_full, acu_full, &
                                             Tu_full, qlu_full
 
@@ -199,13 +199,13 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
   real :: wthv, wstar, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
           B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, EntEXP, EntEXPU, EntW, wf, &
-          stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, ifac, test, mft_work, mfthvt_work, thlu_full, work
+          stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, idzle, ifac, test, mft_work, mfthvt_work, thlu_full, work
 
   ! Temporary (too slow; need to figure out how random number generator works)
   integer, dimension(numup,IM,JM,LM)  :: enti
   real, dimension(numup,IM,JM,LM)     :: entf, ent
 
-  real, dimension(IM,JM,LM) :: thlu, qtu, qlu, edmfmoistql
+  real, dimension(IM,JM,LM) :: thlu, qtu, qlu, edmfmoistql, Dw
 
   real, dimension(IM,JM,0:LM) :: aw2, ahl2, aqt2, aw3, aqt3, aqthl, &
                                  ui, vi, thvi, qvi, qli, qii, exfh, thli, qti 
@@ -283,6 +283,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   Mu = 0.
   E  = 0.
   D  = 0.
+  Dw = 0.
 
   ! Loop across surface tiles
   do j = 1,JM
@@ -464,7 +465,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
      
      do j = 1,JM
      do i = 1,IM
-        dzle = zle(i,j,km1) - zle(i,j,k)
+        dzle  = zle(i,j,km1) - zle(i,j,k)
+        idzle = 1./dzle
         
         mfthvt = 0.
         mft    = 0.
@@ -538,10 +540,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  !
                  if ( L0(i,j) > 0. ) then
                     if ( stochastic_flag /= 0 ) then
-                       ent(iup,i,j,k) = entf(iup,i,j,k)*ent0/dzle ! test
+                       ent(iup,i,j,k) = entf(iup,i,j,k)*ent0*idzle ! test
                     else
                        call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
-                       ent(iup,i,j,k) = real(enti(iup,i,j,k))*ent0/dzle
+                       ent(iup,i,j,k) = real(enti(iup,i,j,k))*ent0*idzle
                     end if
 
                     ! increase entrainment if local minimum of thv
@@ -591,7 +593,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     Wn = sqrt( max( 0., Wn2 ) )
                     if ( rhoe(i,j,km1)*Wn > rhoe(i,j,k)*upw(iup,i,j) ) then
                        ! Sample entrainment rate
-                       E(i,j,k) = E(i,j,k) + upa(iup,i,j)*( rhoe(i,j,km1)*Wn - rhoe(i,j,k)*upw(iup,i,j) )/dzle
+                       E(i,j,k) = E(i,j,k) + upa(iup,i,j)*( rhoe(i,j,km1)*Wn - rhoe(i,j,k)*upw(iup,i,j) )*idzle
 
                        EntExp = 1. - ( rhoe(i,j,k)*upw(iup,i,j) ) / ( rhoe(i,j,km1)*Wn )
                     else
@@ -617,6 +619,9 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               mft_work    = upa(iup,i,j)*upw(iup,i,j)
 
               if ( Wn2 > 0. ) then
+                 Dw(i,j,k) = Dw(i,j,k) - upa(iup,i,j)*( rhoe(i,j,km1)*Wn2 - rhoe(i,j,k)*upw(iup,i,j)**2. )*idzle &
+                                       + rhoe(i,j,k)*upa(iup,i,j)*B 
+
                  upw(iup,i,j)   = sqrt(Wn2)
                  upthv(iup,i,j) = THVn
                  upthl(iup,i,j) = THLn
@@ -629,6 +634,9 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  mfthvt = mfthvt + 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) + mfthvt_work )
                  mft    = mft    + 0.5*(                upa(iup,i,j)*upw(iup,i,j) + mft_work )
               else
+                 Dw(i,j,k) = Dw(i,j,k) + rhoe(i,j,k)*upa(iup,i,j)*upw(iup,i,j)**2.*idzle &
+                                       + rhoe(i,j,k)*upa(iup,i,j)*B 
+
                  mfthvt = mfthvt + 0.5*mfthvt_work
                  mft    = mft    + 0.5*mft_work
 
@@ -768,6 +776,9 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
         Tu_full(i,j,k)  = exf(i,j,k)*thlu_full + (mapl_alhl/mapl_cp)*qlu_full(i,j,k)
 
         D(i,j,k) = E(i,j,k) - ( Mu(i,j,km1) - Mu(i,j,k) )/( zle(i,j,km1) - zle(i,j,k) )
+        if ( D(i,j,k) > 0. ) then
+           wdet(i,j,k) = max( 0., Dw(i,j,k)/D(i,j,k) )
+        end if
 
         ! Outputs needed for SHOC
         if ( k >= 2 ) then
