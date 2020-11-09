@@ -1042,6 +1042,11 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Local derived type aliases
 
     type (MAPL_MetaComp    ), pointer       :: MAPL
+    type (MAPL_MetaComp    ), pointer       :: CHILD_MAPL
+    type (MAPL_LocStream       )            :: LOCSTREAM
+    type (ESMF_GridComp        ), pointer   :: GCS(:)
+
+    integer                                 :: I
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
@@ -1052,6 +1057,18 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call MAPL_TimerOn(MAPL,"TOTAL", RC=STATUS ); VERIFY_(STATUS)
     call MAPL_TimerOn(MAPL,"INITIALIZE", RC=STATUS ); VERIFY_(STATUS)
+
+    call MAPL_Get (MAPL, LOCSTREAM=LOCSTREAM, GCS=GCS, RC=STATUS )
+    VERIFY_(STATUS)
+
+! Place the land tilegrid in the generic state of each child component
+!---------------------------------------------------------------------
+    do I = 1, SIZE(GCS)
+       call MAPL_GetObjectFromGC( GCS(I), CHILD_MAPL, RC=STATUS )
+       VERIFY_(STATUS)
+       call MAPL_Set (CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
+       VERIFY_(STATUS)
+    end do
 
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
 
