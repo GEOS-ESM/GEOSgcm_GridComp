@@ -165,17 +165,16 @@
 
 # ---- Run river routing model interactively 
 #
-#    0 : Default - NO
-#    1 : YES
+#    .FALSE. : Default - do not run the river routing model
+#    .TRUE.  : run the river routing model on Pfafstetter catchments
 #
-# GEOSagcm=>RUN_ROUTE: 0
-# GEOSldas=>RUN_ROUTE: 0
+# GEOSagcm=>RUN_ROUTE: .TRUE.
+# GEOSldas=>RUN_ROUTE: .TRUE.
 
 # ---- Time step for river routing [s]
 #
 # GEOSagcm=>RRM_DT: 3600
 # GEOSldas=>RRM_DT: 3600 
-
 
 #--------------------------------------------------------#
 #             CatchCN-specific parameters                #

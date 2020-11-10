@@ -28,11 +28,9 @@ module GEOS_RouteGridCompMod
   use MAPL_ConstantsMod
   use ROUTING_MODEL,          ONLY:     &
        river_routing, RRM_TIMESTEP
-#if 0
   USE catch_constants, ONLY: N_CatG => N_Pfaf_Catchs
-#endif
   implicit none
-  integer, parameter :: N_CatG = 291284
+
   private
 
   type T_RROUTE_STATE
@@ -54,6 +52,9 @@ module GEOS_RouteGridCompMod
   type RROUTE_WRAP
      type (T_RROUTE_STATE), pointer :: PTR => null()
   end type RROUTE_WRAP
+
+  integer      :: RUN_DT, RRM_DT
+  real         :: DT
 
   include "mpif.h"
 
@@ -105,9 +106,6 @@ contains
     type (T_RROUTE_STATE), pointer         :: route_internal_state => null()
     type (RROUTE_wrap)                     :: wrap
 
-    integer      :: RUN_DT
-    real         :: DT
-
 !=============================================================================
 
 ! Begin...
@@ -148,14 +146,11 @@ contains
 ! -----------------------------------------------------------
 ! Get the intervals
 ! -----------------------------------------------------------
-!
-    call ESMF_ConfigGetAttribute (CF, DT                         ,&
-                                  Label="RUN_DT:"                ,&
-                                  RC=STATUS)
 
+    call ESMF_ConfigGetAttribute ( CF, RRM_DT, Label="RRM_DT:", &
+         default=RRM_TIMESTEP, RC=STATUS)
     VERIFY_(STATUS)
-
-    RUN_DT = nint(DT)
+    
 
 ! -----------------------------------------------------------
 ! At the moment, this will refresh when the land parent 
@@ -388,6 +383,9 @@ contains
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
+    VERIFY_(STATUS)
+    RUN_DT = nint(DT)
 
     route%comm = comm
     route%ndes = ndes
@@ -508,7 +506,10 @@ contains
 ! -----------------------------------------------------
 ! EXPORT pointers 
 ! -----------------------------------------------------
-
+    
+    real, dimension(:,:), pointer :: QSFLOW_2D
+    real, dimension(:,:), pointer :: QINFLOW_2D
+    real, dimension(:,:), pointer :: QOUTFLOW_2D
     real, dimension(:), pointer :: QSFLOW
     real, dimension(:), pointer :: QINFLOW
     real, dimension(:), pointer :: QOUTFLOW
@@ -528,14 +529,11 @@ contains
 
     INTEGER, DIMENSION(:,:), POINTER, SAVE   :: AllActive,DstCatchID 
     INTEGER, DIMENSION(:), ALLOCATABLE, SAVE :: srcProcsID, LocDstCatchID  
-    integer, dimension (:),allocatable, SAVE :: GlbActive
-    INTEGER, SAVE                            :: N_Active, ThisCycle   
-    INTEGER                                  :: Local_Min, Local_Max
+    INTEGER, SAVE                            :: ThisCycle   
+    INTEGER                                  :: Local_Min, Local_Max, Pfaf_Min, Pfaf_Max
     integer                                  :: K, N, I, req
-    REAL                                     :: mm2m3, rbuff, HEARTBEAT 
-    REAL, ALLOCATABLE, DIMENSION(:)          :: RUNOFF_CATCH, RUNOFF_ACT,AREACAT_ACT,& 
-         LENGSC_ACT, WSTREAM_ACT,WRIVER_ACT, QSFLOW_ACT,QOUTFLOW_ACT, runoff_save
-    INTEGER, ALLOCATABLE, DIMENSION(:)       :: tmp_index
+    REAL                                     :: rbuff, HEARTBEAT 
+    REAL, ALLOCATABLE, DIMENSION(:), SAVE    :: runoff_save
 
     real, allocatable :: runoff_catch_dist(:)
 
@@ -608,7 +606,7 @@ contains
     allocate(runoff_on_catch(counts(1),counts(2)))
     call MAPL_LOcStreamTransform(route%route_ls,runoff_on_catch,runoff_catch_dist,rc=status)
     _VERIFY(status)
-
+    
     !pfaf_code => route%pfaf
     !tile_area => route%tile_area
     
@@ -640,55 +638,32 @@ contains
 !! get pointers to EXPORTS
 !! -----------------------
 
-    !call MAPL_GetPointer(EXPORT, QSFLOW,   'QSFLOW'  , RC=STATUS)
-    !VERIFY_(STATUS)
-    !call MAPL_GetPointer(EXPORT, QINFLOW,  'QINFLOW' , RC=STATUS)
-    !VERIFY_(STATUS)
-    !call MAPL_GetPointer(EXPORT, QOUTFLOW, 'QOUTFLOW', RC=STATUS)
-    !VERIFY_(STATUS)
- 
-    !call MAPL_Get(MAPL, LocStream=LOCSTREAM, RC=STATUS)
-    !VERIFY_(STATUS)
-    !call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
-    !VERIFY_(STATUS)    
+    call MAPL_GetPointer(EXPORT, QSFLOW_2D, 'QSFLOW'  , RC=STATUS)
+    VERIFY_(STATUS)
+    QSFLOW => QSFLOW_2D(:,1)
+    call MAPL_GetPointer(EXPORT, QINFLOW_2D, 'QINFLOW' , RC=STATUS)
+    VERIFY_(STATUS)
+    QINFLOW => QINFLOW_2D(:,1)
+    call MAPL_GetPointer(EXPORT, QOUTFLOW_2D, 'QOUTFLOW', RC=STATUS)
+    VERIFY_(STATUS)
+    QOUTFLOW => QOUTFLOW_2D(:,1)
 
-    !call MAPL_TimerOn  ( MAPL, "-RRM" )
-
-    !call MAPL_LocStreamGet(LocStream, NT_LOCAL=NTILES, RC=STATUS )
-    !N_CatL  = size(AREACAT)
-
-!!@@    ALLOCATE (pfaf_code (1:NTILES)) ! 9th_coulumn_in_TILFILE
-
-    !! NOTES    :    
-    !!Need below area and pfaf_index from the .til file (Maybe, they are already in LocStream)
-    !!
-    !!	 TILFILE: /discover/nobackup/smahanam/bcs/Heracles-4_3/Heracles-4_3_MERRA-3/CF0090x6C_DE1440xPE0720/CF0090x6C_DE1440xPE0720-Pfafstetter.til
-    !!	 The 8-line header is followed by 1061481 number of rows.
-    !!	 do n = 1,475330
-    !!	        read (10,*)type,area, longitude, latitude, ig, jg, cell_frac, integer,   & 
-    !!                      pfaf_code, pfaf_index, pfaf_frac
-    !!	 end do
-    !!	 
-    !!	where for each tile:
-    !!	 (1)    type      [-]      tile type (100-land; 19-lakes; 20-ice)
-    !!	 (2)    area      [x EarthRadius^2 km2]  tile area
-    !!	 (3)    longitude [degree] longitude at the centroid of the tile
-    !!	 (4)    latitude  [degree] latitude at the centroid of the tile
-    !!	 (5)    ig        [-]      i-index of the AGCM grid cell where the tile is located
-    !!	 (6)    jg        [-]      j-index of the AGCM grid cell where the tile is located
-    !!	 (7)    cell_frac [-]      fraction of the AGCM grid cell  
-    !!    (8)    integer            some integer that matters only for OGCM tiles, I suppose.  
-    !!	 (9)    pfaf_code [-]      catchment index (1-291284) after sorting Pfafstetter codes in ascending order 
-    !!	 (10)    pfaf_index[-]      catchment index (1-290188) after sorting Pfafstetter codes 
-    !!                                  and removing submerged in ascending order 
-    !!    (11)   pfaf_frac [-]      fraction of the pfafstetter catchment
-
-    !!call MAPL_LocStreamGet(LocStream, 9th_coulumn_in_TILFILE=pfaf_code, RC=STATUS )
-
-    !Local_Min = route%minCatch
-    !Local_Max = route%maxCatch
- 
-    !FIRST_TIME : IF (FirstTime) THEN
+    ! Sarith Begins
+    
+    call MAPL_TimerOn  ( MAPL, "-RRM" )
+    N_CatL  = size(AREACAT)
+    ndes = route%ndes
+    mype = route%mype
+    Local_min  = MINVAL (route%pfaf)
+    Local_max  = MAXVAL (route%pfaf)
+    call MPI_Reduce(Local_Min,Pfaf_Min,1,MPI_INTEGER,MPI_MIN,0,route%comm,STATUS) ; VERIFY_(STATUS)
+    call MPI_Reduce(Local_Max,Pfaf_Max,1,MPI_INTEGER,MPI_MAX,0,route%comm,STATUS) ; VERIFY_(STATUS)    
+    call MPI_BARRIER( route%comm, STATUS ) ; VERIFY_(STATUS)    
+    call MPI_BCAST (Pfaf_Min , 1, MPI_INTEGER, 0,route%comm,STATUS) ; VERIFY_(STATUS)
+    call MPI_BCAST (Pfaf_Max , 1, MPI_INTEGER, 0,route%comm,STATUS) ; VERIFY_(STATUS)
+    
+    
+    FIRST_TIME : IF (FirstTime) THEN
 
        !! Pfafstetter catchment Domain Decomposition :         
        !! --------------------------------------------
@@ -698,358 +673,235 @@ contains
        !! DstCatchID  : 2-D array contains downstream catchID and downstream processor (identical in any processor)
        !! LocDstCatchID  : Downstream catchID when for catchments that are local to the processor.
 
-       !ndes = route%ndes
-       !mype = route%mype
-       !allocate (AllActive    (1:N_CatG, 1: nDEs))
-       !allocate (DstCatchID(1:N_CatG, 1: nDEs)) 
-       !allocate (srcProcsID   (1:N_CatG ))
-       !allocate (LocDstCatchID(1:N_CatG ))
+       allocate (AllActive    (1:N_CatG, 1: nDEs))
+       allocate (DstCatchID   (1:N_CatG, 1: nDEs)) 
+       allocate (srcProcsID   (1:N_CatG ))
+       allocate (LocDstCatchID(1:N_CatG ))
 
-       !AllActive       = -9999
-       !srcProcsID      = -9999
-       !DstCatchID      = -9999
-       !LocDstCatchID   = NINT(DNSTR)
+       AllActive       = -9999
+       srcProcsID      = -9999
+       DstCatchID      = -9999
+       LocDstCatchID   = NINT(DNSTR)
 
-       !call InitializeRiverRouting(MYPE, nDEs, MAPL_am_I_root(vm),pfaf_code, & 
-            !AllActive, DstCatchID, srcProcsID, LocDstCatchID, rc=STATUS)
+       call InitializeRiverRouting(MYPE, nDEs, route%comm, MAPL_am_I_root(vm),route%pfaf, & 
+            Pfaf_Min, Pfaf_Max, AllActive, DstCatchID, srcProcsID, LocDstCatchID, rc=STATUS)
 
-       !VERIFY_(STATUS)
+       VERIFY_(STATUS)
+       ASSERT_ ((count (srcProcsID == MYPE) - N_CatL) == 0)
 
-       !N_Active = count (srcProcsID == MYPE)
+       ! Initialize the cycle counter and sum (runoff) 
 
-       !allocate (GlbActive(1 : N_Active))
-       !allocate (tmp_index(1 : N_CatG  ))
+       allocate (runoff_save (1:size (runoff_on_catch,1)))
 
-       !forall (N=1:N_CatG) tmp_index(N) = N
+       runoff_save = 0.
+       ThisCycle   = 0
 
-       !GlbActive = pack (tmp_index, mask = (srcProcsID == MYPE))
-
-       !! Initialize the cycle counter and sum (runoff) 
-
-       !allocate (runoff_save (1:NTILES))
-
-       !runoff_save = 0.
-       !ThisCycle   = 1
-
-       !FirstTime = .false.
-
-       !deallocate (tmp_index)
+       FirstTime = .false.
        
-    !ENDIF FIRST_TIME
+    ENDIF FIRST_TIME
 
-    !! For efficiency, the time step to call the river routing model is set at RRM_TIMESTEP 
+    N_CYC = RRM_TIMESTEP/HEARTBEAT
 
-    !N_CYC = RRM_TIMESTEP/HEARTBEAT
-
-    !RUN_MODEL : if (ThisCycle == N_CYC) then  
-
-       !runoff_save = runoff_save + runoff/real (N_CYC)
-
-       !! Here we aggreagate GEOS_Catch/GEOS_CatchCN produced RUNOFF from TILES to CATCHMENTS
-       !! Everything is local to the parallel block. Units: RUNOFF [kg m-2 s-1], 
-       !!        RUNOFF_CATCH [m3 s-1]
-       !! -----------------------------------------------------------------------------------
+    ! Unit conversion and save 
+    runoff_save (:) = runoff_save (:) +  runoff_on_catch (:,1) * AREACAT(:) * 1000. /real (N_CYC)
+    ThisCycle = ThisCycle + 1
+ 
+    RUN_MODEL : if (ThisCycle == N_CYC) then  
        
-       !! Unit conversion 
+       QSFLOW       = 0.
+       QOUTFLOW     = 0.
+       QINFLOW      = 0.
        
-       !mm2m3 = MAPL_RADIUS * MAPL_RADIUS / 1000.
+       ! Call river_routing_model
+       ! ------------------------
        
-       !ALLOCATE (RUNOFF_CATCH(1:N_CatG))
-    
-       !RUNOFF_CATCH = 0.
+       CALL RIVER_ROUTING  (N_catL, RUNOFF_SAVE,AREACAT,LENGSC,  &
+            WSTREAM,WRIVER, QSFLOW,QOUTFLOW) 
        
-       !DO N = 1, NTILES 
-          !RUNOFF_CATCH (pfaf_code(n)) = RUNOFF_CATCH (pfaf_code(n)) + mm2m3 * RUNOFF_SAVE (N) * TILE_AREA (N)
-       !END DO
+       ! Inter-processor communication: Update downstream catchments
+       ! -----------------------------------------------------------
        
-       !! Inter-processor communication 1
-       !! For catchment-tiles that contribute to the main catchment in some other processor, 
-       !! send runoff to the corresponding srcProcsID(N)    
-       !! -----------------------------------------------------------------------------------
-       
-       !do N = Local_Min, Local_Max
+       do N = 1,N_CatG 
           
-          !if ((AllActive (N,MYPE+1) > 0).and.(srcProcsID(N) /= MYPE)) then
+          if ((srcProcsID (N) == MYPE).and.(srcProcsID (LocDstCatchID (N)) == MYPE)) then ! destination is local
              
-             !rbuff = RUNOFF_CATCH (N)
+             I = LocDstCatchID (N) - Local_Min + 1 ! Downstream index in the local processor
+             K = N - Local_Min + 1                 ! Source index in the local processor  
              
-             !call MPI_ISend(rbuff,1,MPI_real,srcProcsID(N),999,MPI_COMM_WORLD,req,status)
-             !call MPI_WAIT (req  ,MPI_STATUS_IGNORE,status)
+             if(LocDstCatchID (N) /= N) then ! ensure not to refill the reservoir by itself
+                QINFLOW(I) = QINFLOW(I) + QOUTFLOW (K)
+                WRIVER (I) = WRIVER (I) + QOUTFLOW (K) * real(RRM_TIMESTEP)                
+             endif
              
-             !RUNOFF_CATCH (N) = 0.
+          elseif ((srcProcsID (N) == MYPE).and.(srcProcsID (LocDstCatchID (N)) /= MYPE)) then 
              
-          !else
-             
-             !if(srcProcsID(N) == MYPE) then 
+             if(srcProcsID (LocDstCatchID (N)) >= 0) then
                 
-                !do i = 1,nDEs                
-                   !if((i-1 /= MYPE).and.(AllActive (N,i) > 0))  then                   
-                      
-                      !call MPI_RECV(rbuff,1,MPI_real,i-1,999,MPI_COMM_WORLD,MPI_STATUS_IGNORE,status)
-                      !RUNOFF_CATCH (N) = RUNOFF_CATCH (N) + rbuff
-                      
-                   !endif
-                !end do
-             !endif
-          !endif
-       !end do
-       
-       !! Now compress and create subsets of arrays that only contain active catchments 
-       !!    in the local processor
-       !! -----------------------------------------------------------------------------
-       
-       !if(allocated (LENGSC_ACT ) .eqv. .false.) allocate (LENGSC_ACT  (1:N_Active))
-       !if(allocated (AREACAT_ACT ) .eqv. .false.) allocate (AREACAT_ACT (1:N_Active))
-       !if(allocated (WSTREAM_ACT ) .eqv. .false.) allocate (WSTREAM_ACT (1:N_Active))
-       !if(allocated (WRIVER_ACT  ) .eqv. .false.) allocate (WRIVER_ACT  (1:N_Active))
-       !if(allocated (QSFLOW_ACT  ) .eqv. .false.) allocate (QSFLOW_ACT  (1:N_Active))
-       !if(allocated (QOUTFLOW_ACT) .eqv. .false.) allocate (QOUTFLOW_ACT(1:N_Active))  
-       !if(allocated (RUNOFF_ACT  ) .eqv. .false.) allocate (RUNOFF_ACT  (1:N_Active))  
-       
-       !DO N = 1, size (GlbActive)
-          
-          !I = GlbActive (N)
-          !RUNOFF_ACT  (N) = RUNOFF_CATCH (I)
-          
-          !I = GlbActive (N) - Local_Min + 1
-          !WSTREAM_ACT (N) = WSTREAM (I)
-          !WRIVER_ACT  (N) = WRIVER  (I)
-          !LENGSC_ACT  (N) = LENGSC  (I)
-          !AREACAT_ACT (N) = AREACAT (I)
-          
-       !END DO
-       
-       !QSFLOW_ACT   = 0.
-       !QOUTFLOW_ACT = 0.
-       !QSFLOW       = 0.
-       !QOUTFLOW     = 0.
-       !QINFLOW      = 0.
-       
-       !! Call river_routing_model
-       !! ------------------------
-       
-       !CALL RIVER_ROUTING  (N_Active, RUNOFF_ACT,AREACAT_ACT,LENGSC_ACT,  &
-            !WSTREAM_ACT,WRIVER_ACT, QSFLOW_ACT,QOUTFLOW_ACT) 
-       
-       !DO N = 1, size (GlbActive)
-          
-          !I = GlbActive (N) - Local_Min + 1
-          
-          !WSTREAM (I) = WSTREAM_ACT (N) 
-          !WRIVER  (I) = WRIVER_ACT  (N)  
-          !QSFLOW  (I) = QSFLOW_ACT  (N)
-          !QOUTFLOW(I) = QOUTFLOW_ACT(N)
-
-          !if (LocDstCatchID (GlbActive (N)) ==  GlbActive (N)) then
-
-             !! This catchment drains to the ocean, lake or a sink 
-             !! if(ORIVERMOUTH(... ) > 0) send QOUTFLOW(I) [m3/s] to ORIVERMOUTH(N) th ocean tile
-             !! if(LRIVERMOUTH(... ) > 0) send QOUTFLOW(I) [m3/s] to LRIVERMOUTH(N) th lake tile
-
-          !endif
-       !END DO
-       
-       !! Inter-processor communication-2
-       !! Update down stream catchments
-       !! -------------------------------
-       
-       !do N = 1,N_CatG 
-          
-          !if ((srcProcsID (N) == MYPE).and.(srcProcsID (LocDstCatchID (N)) == MYPE)) then ! destination is local
+                ! Send to downstream processor                
+                K = N - Local_Min + 1         ! Source index in the local processor                  
+                call MPI_ISend(QOUTFLOW(K),1,MPI_real,srcProcsID (LocDstCatchID (N)),999,route%comm,req,status)
+                call MPI_WAIT(req,MPI_STATUS_IGNORE,status)                 
+             endif
              
-             !I = LocDstCatchID (N) - Local_Min + 1 ! Downstream index in the local processor
-             !K = N - Local_Min + 1                 ! Source index in the local processor  
+          elseif ((srcProcsID (N) /= MYPE).and.(srcProcsID (N) >= 0)) then
              
-             !if(LocDstCatchID (N) /= N) then ! ensure not to refill the reservoir by itself
-                
-                !QINFLOW(I) = QINFLOW(I) + QOUTFLOW (K)
-                !WRIVER (I) = WRIVER (I) + QOUTFLOW (K) * real(route_dt)
-
-             !endif
-                             
-          !elseif ((srcProcsID (N) == MYPE).and.(srcProcsID (LocDstCatchID (N)) /= MYPE)) then 
+             K = srcProcsID (dstCatchID(N,srcProcsID (N)+1))
              
-             !if(srcProcsID (LocDstCatchID (N)) >= 0) then
-                
-                !! Send to downstream processor
-                
-                !K = N - Local_Min + 1                 ! Source index in the local processor  
-                
-                !call MPI_ISend(QOUTFLOW(K),1,MPI_real,srcProcsID (LocDstCatchID (N)),999,MPI_COMM_WORLD,req,status)
-                !call MPI_WAIT(req,MPI_STATUS_IGNORE,status) 
-                
-             !endif
-             
-          !elseif ((srcProcsID (N) /= MYPE).and.(srcProcsID (N) >= 0)) then
-             
-             !K = srcProcsID (dstCatchID(N,srcProcsID (N)+1))
-             
-             !if (k == MYPE) then
-                
-                !do i = 1,nDEs
-                   
-                   !if(MYPE /= i-1) then 
-                      
-                      !if((srcProcsID  (n) == i-1).and.(srcProcsID (dstCatchID(N, i)) == MYPE))then                       
-                         !call MPI_RECV(rbuff,1,MPI_real, srcProcsID (N),999,MPI_COMM_WORLD,MPI_STATUS_IGNORE,status)
-                         !K = dstCatchID(N,i) - Local_Min + 1
-                         !QINFLOW (K) = QINFLOW (K) + rbuff
-                         !WRIVER  (K) = WRIVER (K)  + rbuff * real(route_dt)
-                         
-                      !endif
-                   !endif
-                !end do
-             !endif
-             
-          !endif
-          
-       !end do
+             if (k == MYPE) then                
+                do i = 1,nDEs                   
+                   if(MYPE /= i-1) then                       
+                      if((srcProcsID  (n) == i-1).and.(srcProcsID (dstCatchID(N, i)) == MYPE))then                       
+                         call MPI_RECV(rbuff,1,MPI_real, srcProcsID (N),999,route%comm,MPI_STATUS_IGNORE,status)
+                         K = dstCatchID(N,i) - Local_Min + 1
+                         QINFLOW (K) = QINFLOW (K) + rbuff
+                         WRIVER  (K) = WRIVER (K)  + rbuff * real(RRM_TIMESTEP)                         
+                      endif
+                   endif
+                end do
+             endif             
+          endif          
+       end do
 
-       !! initialize the cycle counter and sum (runoff_tile) 
+       ! initialize the cycle counter and sum (runoff_tile) 
 
-       !runoff_save = 0.
-       !ThisCycle   = 1         
+       runoff_save = 0.
+       ThisCycle   = 0         
 
+    end if RUN_MODEL
 
-    !else
-       
-       !runoff_save = runoff_save + runoff/real (N_CYC)
-       
-       !ThisCycle = ThisCycle + 1
-       
-    !endif RUN_MODEL
+    call MAPL_TimerOff ( MAPL, "-RRM" )
 
- call MAPL_TimerOff ( MAPL, "-RRM" )
-
-! All done
-! --------
+    ! All done
+    ! --------
 
     call MAPL_TimerOff(MAPL,"RUN")
 
     RETURN_(ESMF_SUCCESS)
 
+  contains
+
+    ! ---------------------------------------------------------------------------
+
+    subroutine InitializeRiverRouting(MYPE, numprocs, comm, root_proc,           &
+         pfaf_code, Pfaf_Min, Pfaf_Max, AllActive, AlldstCatchID, srcProcsID, LocDstCatchID, rc)
+      
+      implicit none
+      INTEGER, INTENT (IN)                             :: MYPE, numprocs, comm, Pfaf_Min, Pfaf_Max
+      LOGICAL, INTENT (IN)                             :: root_proc
+      INTEGER, DIMENSION (:),  INTENT (IN)             :: pfaf_code
+      INTEGER, DIMENSION (:),           INTENT (INOUT) :: srcProcsID, LocDstCatchID
+      INTEGER, DIMENSION (:,:),         INTENT (INOUT) :: Allactive,  AlldstCatchID
+      
+      INTEGER, DIMENSION(:)  ,ALLOCATABLE  :: global_buff, scounts, rdispls, rcounts, LocalActive
+      INTEGER                              :: N_active, I,J,K,N,i1,i2,NProcs, Local_Min, Local_Max      
+      integer, optional,    intent(OUT):: rc      
+      integer :: status
+      character(len=ESMF_MAXSTR), parameter :: Iam='InitializeRiverRouting'
+      
+      ! STEP 1: Identify active catchments within the local processor. If the catchment is active in 
+      !         more than 1 processor, choose an owner.
+      ! --------------------------------------------------------------------------------------------
+      
+      allocate (LocalActive (1:N_CatG))
+      LocalActive = -9999
+      
+      Local_Min = minval (pfaf_code)
+      Local_Max = maxval (pfaf_code)
+      
+      do N = 1, size (pfaf_code)               
+         LocalActive(pfaf_code(n)) = pfaf_code(n) 
+      end do
+      
+      allocate (global_buff (N_CatG * numprocs))
+      allocate (scounts(numprocs),rdispls(numprocs),rcounts(numprocs))  
+      
+      scounts = N_CatG
+      rcounts = N_CatG
+      
+      rdispls(1) = 0
+      global_buff= 0
+      
+      do i=2,numprocs
+         rdispls(i)=rdispls(i-1)+rcounts(i-1)
+      enddo
+      
+      call MPI_allgatherv  (                          &
+           LocalActive, scounts         ,MPI_INTEGER, &
+           global_buff, rcounts, rdispls,MPI_INTEGER, &
+           COMM, status)
+      
+      do i=1,numprocs
+         Allactive (:,i) = global_buff((i-1)*N_CatG+1:i*N_CatG)
+      enddo
+      
+      if (root_proc) then
+         
+         DO N = 1, N_CatG
+            NPROCS = count(Allactive(N,:) >= 1)
+            if(NPROCS > 0)then
+               if (NPROCS == 1) then
+                  srcProcsID (N) = maxloc(Allactive(N,:),dim=1) - 1
+               else
+                  i1 = MAX(N - 5,1)
+                  i2 = MIN(N + 5, N_CatG)
+                  N_active = 0
+                  do I = 1,numprocs
+                     if(Allactive (N,I) >= 1) then
+                        if(count (Allactive(I1:I2,I) > 0) > N_active) then
+                           N_active = count (Allactive(I1:I2,I) > 0)
+                           J        = I
+                        endif
+                     endif
+                  end do
+                  srcProcsID (N) = J - 1
+               endif
+            endif
+         END DO
+         
+      endif
+      
+      call MPI_BCAST (srcProcsID, N_CatG, MPI_INTEGER, 0,COMM, STATUS)
+      
+      ! STEP 2: reset downstream catchment indeces (from -1 OR 1:291284) of catchments that are
+      !            in the local processor to full domain indeces.
+      ! ------------------------------------------------------------------------------------------
+      
+      do N = Local_Min, Local_Max
+         
+         if(LocalActive (N) >=1) then 
+            
+            if ((LocDstCatchID (N) == -1).OR.(LocDstCatchID (N) < Pfaf_Min) &
+                 .OR. (LocDstCatchID (N) > Pfaf_Max)) then
+               ! (a) DNST Catch is a sink hole, ocean or lake so water drains to self 
+               LocDstCatchID (N)    = N 
+               
+            endif
+            
+         else
+            
+            LocDstCatchID (N) = -9999 ! is inactive
+            
+         endif
+      end do
+      
+      global_buff= 0
+      
+      call MPI_allgatherv  (                          &
+           LocDstCatchID,  scounts      ,MPI_INTEGER, &
+           global_buff, rcounts, rdispls,MPI_INTEGER, &
+           COMM, STATUS)
+      
+      do i=1,numprocs
+         AlldstCatchID (:,i) = global_buff((i-1)*N_CatG+1:i*N_CatG)
+      enddo
+      
+      deallocate (global_buff, scounts, rdispls, rcounts, LocalActive)
+      
+      RETURN_(ESMF_SUCCESS)
+
+    end subroutine InitializeRiverRouting
+        
   end subroutine RUN
 
-! ---------------------------------------------------------------------------
-
-  subroutine InitializeRiverRouting(MYPE, numprocs, root_proc,           &
-       pfaf_code, AllActive, AlldstCatchID, srcProcsID, LocDstCatchID, rc)
-    
-    implicit none
-    INTEGER, INTENT (IN)                             :: MYPE, numprocs
-    LOGICAL, INTENT (IN)                             :: root_proc
-    INTEGER, DIMENSION (:),  INTENT (IN)             :: pfaf_code
-    INTEGER, DIMENSION (N_CatG),          INTENT (INOUT) :: srcProcsID, LocDstCatchID
-    INTEGER, DIMENSION (N_CatG,numprocs), INTENT (INOUT) :: Allactive,  AlldstCatchID
-
-    INTEGER, DIMENSION(:)  ,ALLOCATABLE  :: global_buff, scounts, rdispls, rcounts, LocalActive
-    INTEGER                              :: N_active, I,J,K,N,i1,i2,NProcs, Local_Min, Local_Max
-
-    integer, optional,    intent(OUT):: rc
-
-    integer :: mpierr
-    character(len=ESMF_MAXSTR), parameter :: Iam='InitializeRiverRouting'
-
-    ! STEP 1: Identify active catchments within the local processor. If the catchment is active in 
-    !         more than 1 processor, choose an owner.
-    ! --------------------------------------------------------------------------------------------
-
-    allocate (LocalActive (1:N_CatG))
-    LocalActive = -9999
- 
-    Local_Min = minval (pfaf_code)
-    Local_Max = maxval (pfaf_code)
- 
-    do N = 1, size (pfaf_code)               
-       LocalActive(pfaf_code(n)) = pfaf_code(n) 
-    end do
-
-    allocate (global_buff (N_CatG * numprocs))
-    allocate (scounts(numprocs),rdispls(numprocs),rcounts(numprocs))  
-
-    scounts = N_CatG
-    rcounts = N_CatG
-    
-    rdispls(1) = 0
-    global_buff= 0
-    
-    do i=2,numprocs
-       rdispls(i)=rdispls(i-1)+rcounts(i-1)
-    enddo
-    
-    call MPI_allgatherv  (                          &
-         LocalActive, scounts         ,MPI_INTEGER, &
-         global_buff, rcounts, rdispls,MPI_INTEGER, &
-         MPI_COMM_WORLD, mpierr)
-    
-    do i=1,numprocs
-       Allactive (:,i) = global_buff((i-1)*N_CatG+1:i*N_CatG)
-    enddo
-
-    if (root_proc) then
-
-       DO N = 1, N_CatG
-          NPROCS = count(Allactive(N,:) >= 1)
-          if(NPROCS > 0)then
-             if (NPROCS == 1) then
-                srcProcsID (N) = maxloc(Allactive(N,:),dim=1) - 1
-             else
-                i1 = MAX(N - 5,1)
-                i2 = MIN(N + 5, N_CatG)
-                N_active = 0
-                do I = 1,numprocs
-                   if(Allactive (N,I) >= 1) then
-                      if(count (Allactive(I1:I2,I) > 0) > N_active) then
-                         N_active = count (Allactive(I1:I2,I) > 0)
-                         J        = I
-                      endif
-                   endif
-                end do
-                srcProcsID (N) = J - 1
-             endif
-          endif
-       END DO
-
-    endif
-
-    call MPI_BCAST (srcProcsID, N_CatG, MPI_INTEGER, 0,MPI_COMM_WORLD,mpierr)
-
-    ! STEP 2: reset downstream catchment indeces (from -1 OR 1:291284) of catchments that are
-    !            in the local processor to full domain indeces.
-    ! ------------------------------------------------------------------------------------------
-
-    do N = Local_Min, Local_Max
-       
-       if(LocalActive (N) >=1) then 
-          
-          if (LocDstCatchID (N) == -1) then
-             ! (a) DNST Catch is a sink hole, ocean or lake so water drains to self 
-             LocDstCatchID (N)    = N 
-             
-          endif
-          
-       else
-          
-          LocDstCatchID (N) = -9999 ! is inactive
-          
-       endif
-    end do
-
-    global_buff= 0
-    
-    call MPI_allgatherv  (                          &
-         LocDstCatchID,  scounts      ,MPI_INTEGER, &
-         global_buff, rcounts, rdispls,MPI_INTEGER, &
-         MPI_COMM_WORLD, mpierr)
-    
-    do i=1,numprocs
-       AlldstCatchID (:,i) = global_buff((i-1)*N_CatG+1:i*N_CatG)
-    enddo
-    
-    deallocate (global_buff, scounts, rdispls, rcounts, LocalActive)
-
-    RETURN_(ESMF_SUCCESS)
-
-  end subroutine InitializeRiverRouting
   
 end module GEOS_RouteGridCompMod
