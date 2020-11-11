@@ -1,4 +1,3 @@
-
 #include "MAPL_Generic.h"
 
 #ifndef RUN_FOR_REAL
@@ -115,7 +114,7 @@ contains
 !------------------------------------------------------------
 
     call ESMF_GridCompGet(GC                                 ,&
-                          NAME=COMP_NAME			   ,&
+                          NAME=COMP_NAME	             ,&
                           RC=STATUS )
 
     VERIFY_(STATUS)
@@ -473,7 +472,6 @@ contains
 
     type (MAPL_MetaComp),     pointer   :: MAPL
     type (ESMF_State       )            :: INTERNAL
-!    type(ESMF_Alarm)                    :: ALARM
     type (ESMF_Config )                 :: CF
     type(ESMF_VM)                       :: VM
 
@@ -520,31 +518,22 @@ contains
 
 ! Others
 
-    type(ESMF_Grid)                    :: TILEGRID
-    type (MAPL_LocStream)              :: LOCSTREAM
-    integer                            :: NTILES, N_CatL, N_CYC
-    logical, save                      :: FirstTime=.true.
-    real, pointer, dimension(:)    :: tile_area
-    integer, pointer, dimension(:) :: pfaf_code
-
+    type(ESMF_Grid)                          :: ESMFGRID
+    type (MAPL_LocStream)                    :: LOCSTREAM
+    integer                                  :: N_CatL, N_CYC
+    logical, save                            :: FirstTime=.true.
     INTEGER, DIMENSION(:,:), POINTER, SAVE   :: AllActive,DstCatchID 
     INTEGER, DIMENSION(:), ALLOCATABLE, SAVE :: srcProcsID, LocDstCatchID  
     INTEGER, SAVE                            :: ThisCycle   
     INTEGER                                  :: Local_Min, Local_Max, Pfaf_Min, Pfaf_Max
     integer                                  :: K, N, I, req
     REAL                                     :: rbuff, HEARTBEAT 
+    real, allocatable, DIMENSION(:)          :: runoff_catch_dist
+    real, allocatable, DIMENSION(:,:)        :: runoff_on_catch
     REAL, ALLOCATABLE, DIMENSION(:), SAVE    :: runoff_save
-
-    real, allocatable :: runoff_catch_dist(:)
-
-    integer                                :: ndes, mype
-    type (T_RROUTE_STATE), pointer         :: route => null()
-    type (RROUTE_wrap)                     :: wrap
-
-    real, allocatable :: runoff_on_catch(:,:)
-    integer :: nt_local
-    type(ESMF_Grid) :: esmfgrid
-    integer :: counts(3)
+    integer                                  :: ndes, mype, nt_local, counts(3)
+    type (T_RROUTE_STATE), pointer           :: route => null()
+    type (RROUTE_wrap)                       :: wrap
 
     ! ------------------
     ! begin
@@ -607,9 +596,6 @@ contains
     call MAPL_LOcStreamTransform(route%route_ls,runoff_on_catch,runoff_catch_dist,rc=status)
     _VERIFY(status)
     
-    !pfaf_code => route%pfaf
-    !tile_area => route%tile_area
-    
 !! get pointers to internal variables (note they are 2D in the internal state)
 !! ----------------------------------
   
@@ -661,8 +647,7 @@ contains
     call MPI_BARRIER( route%comm, STATUS ) ; VERIFY_(STATUS)    
     call MPI_BCAST (Pfaf_Min , 1, MPI_INTEGER, 0,route%comm,STATUS) ; VERIFY_(STATUS)
     call MPI_BCAST (Pfaf_Max , 1, MPI_INTEGER, 0,route%comm,STATUS) ; VERIFY_(STATUS)
-    
-    
+        
     FIRST_TIME : IF (FirstTime) THEN
 
        !! Pfafstetter catchment Domain Decomposition :         
@@ -681,7 +666,7 @@ contains
        AllActive       = -9999
        srcProcsID      = -9999
        DstCatchID      = -9999
-       LocDstCatchID   = NINT(DNSTR)
+       LocDstCatchID (Local_Min - Pfaf_Min + 1 :Local_Max - Pfaf_Min + 1) = NINT(DNSTR)
 
        call InitializeRiverRouting(MYPE, nDEs, route%comm, MAPL_am_I_root(vm),route%pfaf, & 
             Pfaf_Min, Pfaf_Max, AllActive, DstCatchID, srcProcsID, LocDstCatchID, rc=STATUS)
