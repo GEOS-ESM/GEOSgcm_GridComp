@@ -2152,6 +2152,5 @@ subroutine SetServices(gc, rc)
    use MOM_GEOS5PlugMod, only : mySetservices=>SetServices
    type(ESMF_GridComp) :: gc
    integer, intent(out) :: rc
-   integer :: status
-   call mySetServices(gc,rc)
+   call mySetServices(gc,rc=rc)
 end subroutine
