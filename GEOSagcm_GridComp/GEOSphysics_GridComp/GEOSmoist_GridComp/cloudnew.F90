@@ -2347,6 +2347,8 @@ contains
                           A_moist, B_moist, qsat_moist, &
                           s_moist, sigma_s_moist, exner)
             
+            ace_moist = QCn
+
             fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
          elseif ( pdfflag == 7 ) then ! Double Gaussian with consistent partitioning
             ! Update the liquid water static energy
@@ -2357,24 +2359,21 @@ contains
 
 !            hle = ( hl - au*hlu )/( 1. - au ) 
 !            qte = ( qt - au*qtu )/( 1. - au )
+            hle = hl
+            qte = qt
 
-!            call gaussian(zl, 100.*pl, hle, qte, hl2, qt2, hlqt, &
-!                          Tce, qle, ace_moist, &
-!                          A_moist, B_moist, qsat_moist, &
-!                          s_moist, sigma_s_moist, exner)
-
-            call gaussian(zl, 100.*pl, hl, qt, hl2, qt2, hlqt, &
-                          TEn, QCn, ace_moist, &
+            call gaussian(zl, 100.*pl, hle, qte, hl2, qt2, hlqt, &
+                          Tce, qle, ace_moist, &
                           A_moist, B_moist, qsat_moist, &
                           s_moist, sigma_s_moist, exner)
 
             ! Combine upddraft and environment
-!            TEn = au*Tu  + ( 1. - au )*Tce
-!            QCn = au*qlu + ( 1. - au )*qle
+            TEn = au*Tu  + ( 1. - au )*Tce
+            QCn = au*qlu + ( 1. - au )*qle
             CFn = acu    + ( 1. - au )*ace_moist
 
             ! Test
-!            CFn = acu
+!            ace_moist = 0.
 
             fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
          endif
