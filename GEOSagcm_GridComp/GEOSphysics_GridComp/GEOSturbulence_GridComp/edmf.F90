@@ -18,10 +18,10 @@ contains
 subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                         ! in
                     discrete_type, implicit_flag, stochastic_flag, plume_type, &    ! in
                     anelastic_flag, entrain_boost, &                                ! in
-                    th00, dt, zlo, zle, ple, rho, rhoe, exf, &                      ! in
+                    th00, dt, zl, zle, ple, rho, rhoe, exf, &                      ! in
                     u, v, thl, thv, qt, qv, ql, qi, &                               ! in         
                     ustar, sh, evap, ice_ramp, &                                    ! in
-                    pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in
+                    pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in
                     ET, L0, ENT0, EDfac, EntWFac, Wa, Wb, &                         ! in
                     zpbl, &                                                         ! inout
                     edmfdrya, edmfmoista, &                                         ! out
@@ -31,7 +31,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     edmfdryu, edmfmoistu,  &                                        ! out
                     edmfdryv, edmfmoistv,  &                                        ! out
                     edmfmoistqc, &                                                  ! out
-                    ae, awu, awv, aw, aws, awqv, awql, awqi, &                      ! out (for solver)
+                    ae, awu, awv, aw, aws, awqv, awql, awqi, Kh_mf, &               ! out (for solver)
                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)
                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfqthl, mfwhl, & ! out (for SHOC)
                     au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
@@ -42,11 +42,12 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                                              stochastic_flag, plume_type, ET, kbotp, &
                                              anelastic_flag, entrain_boost
   integer, dimension(IM,JM), intent(in)   :: iras, jras
-  real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zlo, exf, rho
+  real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zl, exf, rho
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe
   real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, L0
   real, dimension(IM,JM), intent(inout)   :: zpbl
-  real, intent(in)                        :: th00, ice_ramp, dt, EntWFac, ENT0, Wa, Wb, pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, EDfac
+  real, intent(in)                        :: th00, ice_ramp, dt, EntWFac, ENT0, Wa, Wb, pwmin, pwmax, &
+                                             AlphaW, AlphaQT, AlphaTH, EDfac, c_kh_mf
  
   ! Outputs
   real, dimension(IM,JM,0:LM), intent(out) :: edmfdrya, edmfmoista, edmfdryw, edmfmoistw, &
@@ -54,7 +55,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                                               edmfdryu, edmfmoistu, edmfdryv, edmfmoistv, &
                                               edmfmoistqc, &
                                               ae, aw, aws, awqv, awql, awqi, awu, awv, &
-                                              whl_mf, wqt_mf, wthv_mf, au, Mu, wu
+                                              whl_mf, wqt_mf, wthv_mf, au, Mu, wu, Kh_mf
 
   real, dimension(IM,JM,LM), intent(out) :: buoyf, mfw2, mfw3, mfqt3, mfqt2, mfwqt, &
                                             mfhl2, mfqthl, mfwhl, E, D, wdet, &
@@ -211,7 +212,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
         if ( discrete_type == 0 ) then
            ! This is temporary until I fix the interplation for implicit mass flux discretization
            if ( implicit_flag == 0 ) then
-              ifac = ( zle(i,j,k) - zlo(i,j,kp1) )/( zlo(i,j,k) - zlo(i,j,kp1) )
+              ifac = ( zle(i,j,k) - zl(i,j,kp1) )/( zl(i,j,k) - zl(i,j,kp1) )
 
               ui(i,j,k)   = u(i,j,kp1)   + ifac*( u(i,j,k)   - u(i,j,kp1) )
               vi(i,j,k)   = v(i,j,kp1)   + ifac*( v(i,j,k)   - v(i,j,kp1) )
@@ -246,7 +247,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   end do
 
   ! Get surface layer organized entrainment
-!  call A_star_closure(IM, JM, LM, th00, zle, zlo, ple, ice_ramp, & ! in
+!  call A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
 !                      rho, rhoe, thl, qt, thv, 1, &                ! in
 !                      izsl, A_star, Mu0, zi_thermal)               ! out
 !  write(*,*) '*', izsl, Mu0
@@ -296,8 +297,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               upa(iup,i,j)   = 0.5*erf(wtv*work) - 0.5*erf(wlv*work)       
               upu(iup,i,j)   = ui(i,j,kbot)
               upv(iup,i,j)   = vi(i,j,kbot)
-              upqt(iup,i,j)  = qti(i,j,kbot)  + 0.32*upw(iup,i,j)*sigmaQT/sigmaW
-              upthv(iup,i,j) = thvi(i,j,kbot) + 0.58*upw(iup,i,j)*sigmaTH/sigmaW
+              upqt(iup,i,j)  = qti(i,j,kbot)  + 0.32*upw(iup,i,j)*sigmaQT/sigmaW ! 0.32~=0.58*0.55 (Stull 1988)
+              upthv(iup,i,j) = thvi(i,j,kbot) + 0.58*upw(iup,i,j)*sigmaTH/sigmaW ! Stull 1988
 
               ! For stability make sure that the surface mass-fluxes are not more than their 
               ! values computed from the surface scheme
@@ -419,7 +420,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  !
                  if ( L0(i,j) > 0. ) then
                     if ( stochastic_flag /= 0 ) then
-                       ent(iup,i,j,k) = entf(iup,i,j,k)*ent0*idzle ! test
+                       ent(iup,i,j,k) = entf(iup,i,j,k)*ent0*idzle
                     else
                        call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
                        ent(iup,i,j,k) = real(enti(iup,i,j,k))*ent0*idzle
@@ -429,6 +430,9 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     if ( entrain_boost == 0 .and. thv(i,j,k) < thv(i,j,kp1) .and. thv(i,j,k) < thv(i,j,km1) ) then
                        ent(iup,i,j,k) = ent(iup,i,j,k) + 5.*ent0/L0(i,j)
                     end if
+
+                    ! Test
+!                    ent(iup,i,j,k) = max( ent(iup,i,j,k), 1./(3.*zl(i,j,k)) ) 
                  else
                     ! negative L0 means 0 entrainment  
                     ent(:,i,j,:) = 0. ! check
@@ -660,9 +664,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
            qlu_full(i,j,1) = 0.
         end if
 
-        hlu_full(i,j,k) = exf(i,j,k)*thlu_full + (mapl_grav/mapl_cp)*zlo(i,j,k)
+        hlu_full(i,j,k) = exf(i,j,k)*thlu_full + (mapl_grav/mapl_cp)*zl(i,j,k)
         Tu_full(i,j,k)  = exf(i,j,k)*thlu_full + (mapl_alhl/mapl_cp)*qlu_full(i,j,k)
 
+        ! Compute detrainmnet rate
         D(i,j,k) = E(i,j,k) - ( Mu(i,j,km1) - Mu(i,j,k) )/( zle(i,j,km1) - zle(i,j,k) )
         if ( D(i,j,k) > 0. ) then
            wdet(i,j,k) = max( 0., Dw(i,j,k)/D(i,j,k) )
@@ -692,18 +697,22 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
      end do
   end do
 
+  ! Test
+  Kh_mf(:,:,:)      = 0.
+  Kh_mf(:,:,1:LM-1) = c_kh_mf*( zl(:,:,1:LM-1) - zl(:,:,2:LM) )*(Mu(:,:,1:LM-1)/rhoe(:,:,1:LM-1))
+
 end subroutine run_edmf
 
 !
 ! A_star_closure
 !
-subroutine A_star_closure(IM, JM, LM, th00, zle, zlo, ple, ice_ramp, & ! in
+subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
                           rho, rhoe, thl, qt, thv, debug_flag, &       ! in
                           izsl, A, Mu0, zi)                            ! out
 
   integer, intent(in)                     :: IM, JM, LM, debug_flag
   real, intent(in)                        :: ice_ramp, th00
-  real, dimension(IM,JM,LM), intent(in)   :: zlo, thl, qt, thv, rho
+  real, dimension(IM,JM,LM), intent(in)   :: zl, thl, qt, thv, rho
   real, dimension(IM,JM,0:LM), intent(in) :: zle, rhoe, ple
   integer, dimension(IM,JM), intent(out)  :: izsl
   real, dimension(IM,JM), intent(out)     :: Mu0, zi
@@ -741,7 +750,7 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zlo, ple, ice_ramp, & ! in
      do j = 1,JM
      do i = 1,IM
         if ( sl_flag(i,j) ) then
-           dthvdz = ( thv(i,j,km1) - thv(i,j,k) )/( zlo(i,j,km1) - zlo(i,j,k) )
+           dthvdz = ( thv(i,j,km1) - thv(i,j,k) )/( zl(i,j,km1) - zl(i,j,k) )
 
            if ( dthvdz < 0. ) then
               A(i,j,k)        = -sqrt(zle(i,j,km1))*dthvdz

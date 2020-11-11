@@ -2373,6 +2373,9 @@ contains
 !            QCn = au*qlu + ( 1. - au )*qle
             CFn = acu    + ( 1. - au )*ace_moist
 
+            ! Test
+!            CFn = acu
+
             fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
          endif
 

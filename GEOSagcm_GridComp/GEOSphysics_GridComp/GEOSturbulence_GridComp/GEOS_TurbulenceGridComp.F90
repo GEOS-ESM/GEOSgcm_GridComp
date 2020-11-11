@@ -2217,6 +2217,14 @@ contains
          VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                               &
+         SHORT_NAME = 'Kh_mf',                                                &
+         LONG_NAME  = 'mass-flux_contribution_to_KH_for_numerical_stability', &
+         UNITS      = 'm+1 s-2',                                              &
+         DIMS       = MAPL_DimsHorzVert,                                      &
+         VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
+    VERIFY_(STATUS)
+
 !
 ! Exports for testing MYNN cloud-top entrainment
 !
@@ -3558,7 +3566,7 @@ contains
    real, dimension(:,:), pointer        :: z_conv_edmf
 
    real, dimension(:,:,:), pointer ::  K_TKE, tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, wthl_mf, &
-                                       tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4        
+                                       tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, Kh_mf        
    real, dimension(:,:,:), pointer :: au, wu, Mu, E, D, wdet
 
    ! Exports for testing MYNN cloud-top entrainment
@@ -3624,7 +3632,7 @@ contains
 
      ! mass-flux constants/parameters
      integer :: NumUp,ET
-     real :: pwmin,pwmax,AlphaW,AlphaQT,AlphaTH,L0,L0fac,ENT0,EDfac
+     real :: pwmin,pwmax,AlphaW,AlphaQT,AlphaTH,L0,L0fac,ENT0,EDfac, c_kh_mf
      real                            :: DOMF,DOMFCOND 
 
      integer :: MYNN_TKET_M          ! 0 (default): include M-term in TKE budget
@@ -4128,6 +4136,9 @@ contains
      call MAPL_GetPointer(EXPORT, tket_T_mf4, 'tket_T_mf4', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
 
+     call MAPL_GetPointer(EXPORT, Kh_mf, 'Kh_mf', ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+
      call MAPL_GetPointer(EXPORT, au_full,   'au_full',   ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, hlu_full,  'hlu_full',  ALLOC=.TRUE., RC=STATUS)
@@ -4322,6 +4333,8 @@ contains
     call MAPL_GetResource (MAPL, EntWFac,              "EDMF_ENTWFAC:",         default=0.3333, RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_KBOTP,           "EDMF_KBOTP:",           default=0,  RC=STATUS)  
 
+    call MAPL_GetResource (MAPL, c_kh_mf,              "EDMF_c_kh_mf:",         default=0.,     RC=STATUS)
+
     call MAPL_GetResource (MAPL, MYNN_LEVEL,      "MYNN_LEVEL:",    default=2,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_IMPLICIT,   "MYNN_IMPLICIT:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_DEBUG,      "MYNN_DEBUG:",    default=0,  RC=STATUS)
@@ -4401,7 +4414,7 @@ if ( ET == 1 ) then
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
-                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
+                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
                      zpbl_mf, &                                                      ! inout
                      edmfdrya, edmfmoista, &                                         ! out
@@ -4411,7 +4424,7 @@ if ( ET == 1 ) then
                      edmfdryu, edmfmoistu,  &                                        ! out
                      edmfdryv, edmfmoistv,  &                                        ! out
                      edmfmoistqc, &                                                  ! out
-                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
+                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, &       ! out (for solver)         
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
@@ -4455,7 +4468,7 @@ if ( ET == 1 ) then
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
-                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
+                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
                      zpbl_mf, &                                                      ! inout
                      edmfdrya, edmfmoista, &                                         ! out
@@ -4465,7 +4478,7 @@ if ( ET == 1 ) then
                      edmfdryu, edmfmoistu,  &                                        ! out
                      edmfdryv, edmfmoistv,  &                                        ! out
                      edmfmoistqc, &                                                  ! out
-                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
+                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, &       ! out (for solver)         
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
@@ -4518,7 +4531,7 @@ if ( ET == 1 ) then
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in 
-                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, &                       ! in 
+                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
                      zpbl_mf, &                                                      ! inout
                      edmfdrya, edmfmoista, &                                         ! out
@@ -4528,7 +4541,7 @@ if ( ET == 1 ) then
                      edmfdryu, edmfmoistu,  &                                        ! out
                      edmfdryv, edmfmoistv,  &                                        ! out
                      edmfmoistqc, &                                                  ! out
-                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, &              ! out (for solver)         
+                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, &       ! out (for solver)         
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
@@ -4821,9 +4834,13 @@ ENDIF
                       tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &        ! out     
                       tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &            ! out
                       tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                     ! out 
-        
-        KH = KH_MYNN
-        KM = KM_MYNN
+
+        KM = KM_MYNN        
+        if ( DOMF == 0. ) then
+           KH = KH_MYNN
+        else
+           KH = KH_MYNN + Kh_mf
+        end if
 
         call MAPL_TimerOff (MAPL,name="---MYNN" ,RC=STATUS)
         VERIFY_(STATUS)
