@@ -1,9 +1,5 @@
 #include "MAPL_Generic.h"
 
-#ifndef RUN_FOR_REAL
-#define MAPL_DimsCatchOnly MAPL_DimsTileOnly
-#endif
-
 !=============================================================================
 module GEOS_RouteGridCompMod
 
@@ -363,14 +359,15 @@ contains
     
     integer, allocatable :: ims(:)
     integer ::  jms(1)
-    integer, pointer :: pfaf(:) => NULL()
-    integer, pointer :: arbSeq(:) => NULL()
-    integer, allocatable :: arbIndex(:,:)
-    
+!    integer, pointer :: pfaf(:) => NULL()
+!    integer, pointer :: arbSeq(:) => NULL()
+!    integer, allocatable :: arbIndex(:,:)
+
     type (T_RROUTE_STATE), pointer         :: route => null()
     type (RROUTE_wrap)                     :: wrap
     real(ESMF_KIND_R8), pointer :: coords(:,:)
-
+    integer :: ii,counts(3)
+    
     ! ------------------
     ! begin
     
@@ -438,6 +435,16 @@ contains
 
     call MAPL_LocStreamGet(route%route_ls,nt_local=route%ntiles,rc=status)
     _VERIFY(status)
+
+    call MAPL_GridGet(catchGrid,localCellCountPerDim=counts,rc=status)
+    allocate (route%pfaf(counts(1)))
+    ii=1
+
+    do i=MinCatch, MaxCatch
+       route%pfaf(ii)=i
+       ii=ii+1
+    enddo
+    
     !route%pfaf => arbSeq
     !route%ntiles = ntiles
     route%minCatch = minCatch
@@ -545,7 +552,7 @@ contains
 
     ! ------------------
     ! begin
-    
+
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
     VERIFY_(STATUS)
 
@@ -600,13 +607,13 @@ contains
     _VERIFY(status)
     call MAPL_GridGet(esmfgrid,localCellCountPerDim=counts,rc=status)
     _VERIFY(status)
-    allocate(runoff_on_catch(counts(1),counts(2)))
+    allocate(runoff_on_catch(counts(1),counts(2)))    
     call MAPL_LOcStreamTransform(route%route_ls,runoff_on_catch,runoff_catch_dist,rc=status)
     _VERIFY(status)
     
 !! get pointers to internal variables (note they are 2D in the internal state)
 !! ----------------------------------
-  
+
     call MAPL_GetPointer(INTERNAL, AREACAT_2D , 'AREACAT', RC=STATUS)
     VERIFY_(STATUS)
     AREACAT => AREACAT_2D(:,1)
@@ -650,12 +657,13 @@ contains
     mype = route%mype
     Local_min  = MINVAL (route%pfaf)
     Local_max  = MAXVAL (route%pfaf)
+
     call MPI_Reduce(Local_Min,Pfaf_Min,1,MPI_INTEGER,MPI_MIN,0,route%comm,STATUS) ; VERIFY_(STATUS)
     call MPI_Reduce(Local_Max,Pfaf_Max,1,MPI_INTEGER,MPI_MAX,0,route%comm,STATUS) ; VERIFY_(STATUS)    
     call MPI_BARRIER( route%comm, STATUS ) ; VERIFY_(STATUS)    
     call MPI_BCAST (Pfaf_Min , 1, MPI_INTEGER, 0,route%comm,STATUS) ; VERIFY_(STATUS)
     call MPI_BCAST (Pfaf_Max , 1, MPI_INTEGER, 0,route%comm,STATUS) ; VERIFY_(STATUS)
-        
+
     FIRST_TIME : IF (FirstTime) THEN
 
        !! Pfafstetter catchment Domain Decomposition :         
@@ -674,13 +682,12 @@ contains
        AllActive       = -9999
        srcProcsID      = -9999
        DstCatchID      = -9999
+       LocDstCatchID   = -9999
        LocDstCatchID (Local_Min - Pfaf_Min + 1 :Local_Max - Pfaf_Min + 1) = NINT(DNSTR)
-
        call InitializeRiverRouting(MYPE, nDEs, route%comm, MAPL_am_I_root(vm),route%pfaf, & 
             Pfaf_Min, Pfaf_Max, AllActive, DstCatchID, srcProcsID, LocDstCatchID, rc=STATUS)
 
-       VERIFY_(STATUS)
-       print *,MYPE,N_CatL, Local_Min, Local_Max, size (route%pfaf)
+       VERIFY_(STATUS)       
        ASSERT_ ((count (srcProcsID == MYPE) - N_CatL) == 0)
 
        ! Initialize the cycle counter and sum (runoff) 
