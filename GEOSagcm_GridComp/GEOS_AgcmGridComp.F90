@@ -548,6 +548,38 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME       = 'TQR',                                        &
+         LONG_NAME        = 'vertically_integrated_rain_water',           &
+         UNITS            = 'kg m-2'  ,                                   &
+         DIMS             = MAPL_DimsHorzOnly,                            &
+         VLOCATION        = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME       = 'TQS',                                        &
+         LONG_NAME        = 'vertically_integrated_snow',                 &
+         UNITS            = 'kg m-2'  ,                                   &
+         DIMS             = MAPL_DimsHorzOnly,                            &
+         VLOCATION        = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME       = 'TQG',                                        &
+         LONG_NAME        = 'vertically_integrated_graupel',              &
+         UNITS            = 'kg m-2'  ,                                   &
+         DIMS             = MAPL_DimsHorzOnly,                            &
+         VLOCATION        = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME       = 'TQC',                                        &
+         LONG_NAME        = 'vertically_integrated_cloud_cover',          &
+         UNITS            = '1'       ,                                   &
+         DIMS             = MAPL_DimsHorzOnly,                            &
+         VLOCATION        = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
          SHORT_NAME       = 'TOX',                                        &
          LONG_NAME        = 'total_column_odd_oxygen',                    &
          UNITS            = 'kg m-2'  ,                                   &
@@ -1380,6 +1412,8 @@ contains
    real, pointer, dimension(:,:,:)     :: T      => null()
    real, pointer, dimension(:,:  )     :: TS     => null()
    real, pointer, dimension(:,:,:)     :: Q      => null()
+   real, pointer, dimension(:,:,:)     :: CLLS   => null()
+   real, pointer, dimension(:,:,:)     :: CLCN   => null()
    real, pointer, dimension(:,:,:)     :: QLLS   => null()
    real, pointer, dimension(:,:,:)     :: QLCN   => null()
    real, pointer, dimension(:,:,:)     :: QILS   => null()
@@ -1418,6 +1452,10 @@ contains
    real, pointer, dimension(:,:)       :: TQV    => null()
    real, pointer, dimension(:,:)       :: TQI    => null()
    real, pointer, dimension(:,:)       :: TQL    => null()
+   real, pointer, dimension(:,:)       :: TQR    => null()
+   real, pointer, dimension(:,:)       :: TQS    => null()
+   real, pointer, dimension(:,:)       :: TQG    => null()
+   real, pointer, dimension(:,:)       :: TQC    => null()
    real, pointer, dimension(:,:)       :: TOX    => null()
    real, pointer, dimension(:,:)       :: TROPP1 => null()
    real, pointer, dimension(:,:)       :: TROPP2 => null()
@@ -2019,6 +2057,10 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 call ESMF_StateGet(GEX(PHYS), 'TRADV', Advect_BUNDLE, RC=STATUS )
                 VERIFY_(STATUS)
 
+                call ESMFL_BundleGetPointerToData( Advect_BUNDLE, 'CLLS', CLLS, RC=STATUS )
+                VERIFY_(STATUS)
+                call ESMFL_BundleGetPointerToData( Advect_BUNDLE, 'CLCN', CLCN, RC=STATUS )
+                VERIFY_(STATUS)
                 call ESMFL_BundleGetPointerToData( Advect_BUNDLE, 'QLLS', QLLS, RC=STATUS )
                 VERIFY_(STATUS)
                 call ESMFL_BundleGetPointerToData( Advect_BUNDLE, 'QLCN', QLCN, RC=STATUS )
@@ -2444,6 +2486,14 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     VERIFY_(STATUS)
     call MAPL_GetPointer ( EXPORT, TQL   , 'TQL'   , rc=STATUS )
     VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, TQR   , 'TQR'   , rc=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, TQS   , 'TQS'   , rc=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, TQG   , 'TQG'   , rc=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetPointer ( EXPORT, TQC   , 'TQC'   , rc=STATUS )
+    VERIFY_(STATUS)
     call MAPL_GetPointer ( EXPORT, QLTOT , 'QLTOT' , rc=STATUS )
     VERIFY_(STATUS)
     call MAPL_GetPointer ( EXPORT, QITOT , 'QITOT' , rc=STATUS )
@@ -2460,6 +2510,7 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
     if(associated(QLFILL)) QLFILL = 0.0
     if(associated(TQI)   ) TQI    = 0.0
     if(associated(TQL)   ) TQL    = 0.0
+    if(associated(TQC)   ) TQC    = 0.0
     if(associated(QLTOT) ) QLTOT  = 0.0
     if(associated(QITOT) ) QITOT  = 0.0
 
@@ -2577,6 +2628,35 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
           if(associated(DQLDTPHYINT)) DQLDTPHYINT = DQLDTPHYINT + QFILL
           if(associated(TQL))                 TQL = TQL         + QINT
           if(associated(QLTOT))             QLTOT = QLTOT       + Q
+       endif
+
+! Rain
+! ------------
+       if(NAMES(K)=='QRAIN') then
+          call FILL_Friendly   ( Q,DP,QFILL,QINT )
+          if(associated(TQR))                 TQR = QINT
+       endif
+! SNOW
+! ------------
+       if(NAMES(K)=='QSNOW') then
+          call FILL_Friendly   ( Q,DP,QFILL,QINT )
+          if(associated(TQS))                 TQS = QINT
+       endif
+! GRAUPEL
+! ------------
+       if(NAMES(K)=='QGRAUPEL') then
+          call FILL_Friendly   ( Q,DP,QFILL,QINT )
+          if(associated(TQG))                 TQG = QINT
+       endif
+! CLOUD
+! ------------
+       if(NAMES(K)=='CLCN') then
+          call FILL_Friendly   ( Q,DP,QFILL,QINT )
+          if(associated(TQC))                 TQC = TQC         + QINT
+       endif
+       if(NAMES(K)=='CLLS') then
+          call FILL_Friendly   ( Q,DP,QFILL,QINT )
+          if(associated(TQC))                 TQC = TQC         + QINT
        endif
 
 ! Total Odd-Oxygen
