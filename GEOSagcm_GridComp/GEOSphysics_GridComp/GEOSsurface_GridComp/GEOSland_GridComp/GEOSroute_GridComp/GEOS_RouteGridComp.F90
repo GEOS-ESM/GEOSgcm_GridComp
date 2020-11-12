@@ -54,7 +54,8 @@ module GEOS_RouteGridCompMod
 
   integer      :: RUN_DT, RRM_DT
   real         :: DT
-
+  character(len=ESMF_MAXSTR)              :: TILFILE
+  
   include "mpif.h"
 
   
@@ -157,6 +158,13 @@ contains
 
     call ESMF_ConfigGetAttribute ( CF, DT, Label=trim(COMP_NAME)//"_DT:", &
          default=DT, RC=STATUS)
+    VERIFY_(STATUS)
+
+! -----------------------------------------------------------
+! get the TILFILE    
+    
+    call ESMF_ConfigGetAttribute ( CF, TILFILE, Label="TILING_FILE:", &
+         default='tile.bin', RC=STATUS)
     VERIFY_(STATUS)
 
 ! -----------------------------------------------------------
@@ -419,7 +427,7 @@ contains
     _VERIFY(status)
     call ESMF_DistGridGet(distgrid,deLayout=layout,rc=status)
     _VERIFY(status)
-    call MAPL_LocstreamCreate(route_ls,layout,"tile.bin",'catch_ls', mask=[MAPL_LAND], &
+    call MAPL_LocstreamCreate(route_ls,layout,trim(TILFILE),'catch_ls', mask=[MAPL_LAND], &
          grid=CatchGrid,use_pfaf=.true.,rc=status)
     _VERIFY(status)
     route%route_ls=route_ls
@@ -672,6 +680,7 @@ contains
             Pfaf_Min, Pfaf_Max, AllActive, DstCatchID, srcProcsID, LocDstCatchID, rc=STATUS)
 
        VERIFY_(STATUS)
+       print *,MYPE,N_CatL, Local_Min, Local_Max, size (route%pfaf)
        ASSERT_ ((count (srcProcsID == MYPE) - N_CatL) == 0)
 
        ! Initialize the cycle counter and sum (runoff) 
