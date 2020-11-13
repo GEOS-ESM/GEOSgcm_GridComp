@@ -24,6 +24,7 @@ module GEOS_RouteGridCompMod
   use ROUTING_MODEL,          ONLY:     &
        river_routing, RRM_TIMESTEP
   USE catch_constants, ONLY: N_CatG => N_Pfaf_Catchs
+  USE MAPL_MinMaxMod
   implicit none
 
   private
@@ -381,7 +382,7 @@ contains
     call ESMF_VMGetCurrent(VM,                                RC=STATUS)
     VERIFY_(STATUS)
     call ESMF_VMGet       (VM,       mpiCommunicator =comm,   RC=STATUS)
-    VERIFY_(STATUS)
+    VERIFY_(STATUS)    
     call ESMF_VMGet       (VM, localpet=MYPE, petcount=nDEs,  RC=STATUS)
     VERIFY_(STATUS)
 
@@ -408,7 +409,10 @@ contains
     call MAPL_Get(MAPL, LocStream = locstream, RC=status)
     VERIFY_(STATUS)
 
-    CatchGrid = ESMF_GridCreate(name="ROUTE_GRID",countsPerDEDim1=ims,countsPerDeDim2=jms,indexFlag=ESMF_INDEX_DELOCAL,rc=status)
+    !    CatchGrid = ESMF_GridCreate(name="ROUTE_GRID",countsPerDEDim1=ims,countsPerDeDim2=jms,indexFlag=ESMF_INDEX_DELOCAL,rc=status)
+    catchGrid = grid_manager%make_grid(LatLonGridFactory(grid_name="ROUTE_GRID",im_world=n_catg,jm_world=1,lm=1, &
+         nx=ndes,ny=1,pole='XY',dateline='XY',lon_range=RealMinMax(-1.0,1.0), &
+         lat_range=RealMinMax(-1.0,10.),ims=ims,jms=jms,force_decomposition=.true.,rc=status))
     _VERIFY(status)
     call ESMF_GridAddCoord(CatchGrid,rc=status)
     _VERIFY(status)
@@ -554,9 +558,11 @@ contains
     ! begin
 
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
+    VERIFY_(STATUS)    
+    route => wrap%ptr
+    call ESMF_VMGetCurrent(VM,                                RC=STATUS)
     VERIFY_(STATUS)
 
-    route => wrap%ptr
 
 !! Get the target components name and set-up traceback handle.
 !! -----------------------------------------------------------
@@ -579,7 +585,7 @@ contains
 ! ------------
 
     call MAPL_TimerOn(MAPL,"RUN")
-
+    
 ! Get parameters from generic state
 ! ---------------------------------
 
@@ -684,10 +690,11 @@ contains
        DstCatchID      = -9999
        LocDstCatchID   = -9999
        LocDstCatchID (Local_Min - Pfaf_Min + 1 :Local_Max - Pfaf_Min + 1) = NINT(DNSTR)
+
        call InitializeRiverRouting(MYPE, nDEs, route%comm, MAPL_am_I_root(vm),route%pfaf, & 
             Pfaf_Min, Pfaf_Max, AllActive, DstCatchID, srcProcsID, LocDstCatchID, rc=STATUS)
 
-       VERIFY_(STATUS)       
+       VERIFY_(STATUS)
        ASSERT_ ((count (srcProcsID == MYPE) - N_CatL) == 0)
 
        ! Initialize the cycle counter and sum (runoff) 
@@ -708,7 +715,9 @@ contains
     ThisCycle = ThisCycle + 1
  
     RUN_MODEL : if (ThisCycle == N_CYC) then  
-       
+
+       print *, 'Entered ', mype, n_catl, size (RUNOFF_SAVE),size(AREACAT),size(LENGSC),  &
+            size(WSTREAM),size(WRIVER), size(QSFLOW),size(QOUTFLOW)
        QSFLOW       = 0.
        QOUTFLOW     = 0.
        QINFLOW      = 0.
@@ -718,7 +727,8 @@ contains
        
        CALL RIVER_ROUTING  (N_catL, RUNOFF_SAVE,AREACAT,LENGSC,  &
             WSTREAM,WRIVER, QSFLOW,QOUTFLOW) 
-       
+
+       print *,' ran RRM'
        ! Inter-processor communication: Update downstream catchments
        ! -----------------------------------------------------------
        
