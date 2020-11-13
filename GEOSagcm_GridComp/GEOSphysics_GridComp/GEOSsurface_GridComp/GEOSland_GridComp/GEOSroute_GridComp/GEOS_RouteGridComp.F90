@@ -716,8 +716,6 @@ contains
  
     RUN_MODEL : if (ThisCycle == N_CYC) then  
 
-       print *, 'Entered ', mype, n_catl, size (RUNOFF_SAVE),size(AREACAT),size(LENGSC),  &
-            size(WSTREAM),size(WRIVER), size(QSFLOW),size(QOUTFLOW)
        QSFLOW       = 0.
        QOUTFLOW     = 0.
        QINFLOW      = 0.
@@ -728,7 +726,6 @@ contains
        CALL RIVER_ROUTING  (N_catL, RUNOFF_SAVE,AREACAT,LENGSC,  &
             WSTREAM,WRIVER, QSFLOW,QOUTFLOW) 
 
-       print *,' ran RRM'
        ! Inter-processor communication: Update downstream catchments
        ! -----------------------------------------------------------
        
