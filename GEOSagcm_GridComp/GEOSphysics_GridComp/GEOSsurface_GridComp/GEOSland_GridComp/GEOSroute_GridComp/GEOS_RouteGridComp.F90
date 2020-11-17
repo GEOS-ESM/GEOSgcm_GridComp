@@ -14,7 +14,7 @@ module GEOS_RouteGridCompMod
 !
 !   IMPORTS   : RUNOFF \\
 !   INTERNALS : AREACAT, LENGSC2, DNSTR, WSTREAM, WRIVER, LRIVERMOUTH, ORIVERMOUTH \\
-!   EXPORTS   : QSFLOW, QINFLOW, QOUTFLOW \\
+!   EXPORTS   : SFLOW, INFLOW, DISCHARGE \\
 
 ! !USES: 
 
@@ -49,9 +49,9 @@ module GEOS_RouteGridCompMod
      type (T_RROUTE_STATE), pointer :: PTR => null()
   end type RROUTE_WRAP
 
-  integer      :: RUN_DT, RRM_DT
-  real         :: DT
-  character(len=ESMF_MAXSTR)              :: TILFILE
+  character(len=ESMF_MAXSTR)        :: TILFILE
+  integer                           :: RUN_DT, RRM_DT
+  REAL                              :: DT
   
   include "mpif.h"
 
@@ -98,11 +98,10 @@ contains
 
 ! Local derived type aliases
 
-    type (ESMF_Config          )            :: CF
-    
+    type (ESMF_Config          )           :: CF 
     type (T_RROUTE_STATE), pointer         :: route_internal_state => null()
     type (RROUTE_wrap)                     :: wrap
-
+    
 !=============================================================================
 
 ! Begin...
@@ -131,7 +130,6 @@ contains
 !------------------------------------------------------------
 ! Set generic final method 
 !------------------------------------------------------------
-
     
 ! -----------------------------------------------------------
 ! Get the configuration
@@ -139,16 +137,15 @@ contains
 ! 
     call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
     VERIFY_(STATUS)
-!
+
 ! -----------------------------------------------------------
 ! Get the intervals
 ! -----------------------------------------------------------
 
-    call ESMF_ConfigGetAttribute ( CF, RRM_DT, Label="RRM_DT:", &
+    call ESMF_ConfigGetAttribute (CF, RRM_DT, Label="RRM_DT:", &
          default=RRM_TIMESTEP, RC=STATUS)
     VERIFY_(STATUS)
     
-
 ! -----------------------------------------------------------
 ! At the moment, this will refresh when the land parent 
 ! needs to refresh.
@@ -156,18 +153,14 @@ contains
     call ESMF_ConfigGetAttribute ( CF, DT, Label=trim(COMP_NAME)//"_DT:", &
          default=DT, RC=STATUS)
     VERIFY_(STATUS)
-
+    
 ! -----------------------------------------------------------
 ! get the TILFILE    
     
     call ESMF_ConfigGetAttribute ( CF, TILFILE, Label="TILING_FILE:", &
          default='tile.bin', RC=STATUS)
-    VERIFY_(STATUS)
-
-! -----------------------------------------------------------
-! Set the state variable specs.
-! -----------------------------------------------------------
-
+    VERIFY_(STATUS)    
+    
 !BOS
 
 ! -----------------------------------------------------------
@@ -254,25 +247,33 @@ contains
 ! -----------------------------------------------------------
 
     call MAPL_AddExportSpec(GC,                        &
-         LONG_NAME          = 'transfer_of_moisture_from_stream_variable_to_river_variable' ,&
+         LONG_NAME          = 'RUNOFF_IMPORT_from_tiles_to_catchments' ,&
          UNITS              = 'm+3 s-1'                  ,&
-         SHORT_NAME         = 'QSFLOW'                   ,&
+         SHORT_NAME         = 'RUNOFFIN'                 ,&
+         DIMS               = MAPL_DimsHorzOnly          ,&
+         VLOCATION          = MAPL_VLocationNone         ,&
+                                         RC=STATUS  ) 
+    
+    call MAPL_AddExportSpec(GC,                        &
+         LONG_NAME          = 'water_transfer_rate_from_streams_to_local_river_channel' ,&
+         UNITS              = 'm+3 s-1'                  ,&
+         SHORT_NAME         = 'SFLOW'                    ,&
          DIMS               = MAPL_DimsHorzOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
                                          RC=STATUS  ) 
 
     call MAPL_AddExportSpec(GC,                    &
-         LONG_NAME          = 'transfer_of_river_water_from_upstream_catchments' ,&
+         LONG_NAME          = 'inflow_of_river_water_from_upstream_catchments' ,&
          UNITS              = 'm+3 s-1'                   ,&
-         SHORT_NAME         = 'QINFLOW'                   ,&
+         SHORT_NAME         = 'INFLOW'                    ,&
          DIMS               = MAPL_DimsHorzOnly           ,&
          VLOCATION          = MAPL_VLocationNone          ,&
                                           RC=STATUS  ) 
 
     call MAPL_AddExportSpec(GC,                    &
-         LONG_NAME          = 'transfer_of_river_water_to_downstream_catchments' ,&
+         LONG_NAME          = 'discharge_to_the_downstream_catchment' ,&
          UNITS              = 'm+3 s-1'                  ,&
-         SHORT_NAME         = 'QOUTFLOW'                 ,&
+         SHORT_NAME         = 'DISCHARGE'                ,&
          DIMS               = MAPL_DimsHorzOnly          ,&
          VLOCATION          = MAPL_VLocationNone         ,&
                                          RC=STATUS  ) 
@@ -283,8 +284,6 @@ contains
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="-RRM" ,RC=STATUS)
     VERIFY_(STATUS)
-
-
 
 ! Allocate this instance of the internal state and put it in wrapper.
 ! -------------------------------------------------------------------
@@ -351,24 +350,17 @@ contains
     integer        :: myPE
     integer        :: beforeMe, minCatch, maxCatch, pf, i
 
-    type(ESMF_Grid) :: catchGrid
+    type(ESMF_Grid)     :: catchGrid
     type(ESMF_DistGrid) :: distGrid
     type(ESMF_DELayout) :: layout
-
-    type(MAPL_MetaComp), pointer   :: MAPL
-    type(MAPL_LocStream) :: locstream,route_ls
-    
+    type (MAPL_MetaComp), pointer  :: MAPL
+    type(MAPL_LocStream)           :: locstream,route_ls
+    type (T_RROUTE_STATE), pointer :: route => null()
+    type (RROUTE_wrap)             :: wrap
+    real(ESMF_KIND_R8), pointer    :: coords(:,:)
     integer, allocatable :: ims(:)
-    integer ::  jms(1)
-!    integer, pointer :: pfaf(:) => NULL()
-!    integer, pointer :: arbSeq(:) => NULL()
-!    integer, allocatable :: arbIndex(:,:)
-
-    type (T_RROUTE_STATE), pointer         :: route => null()
-    type (RROUTE_wrap)                     :: wrap
-    real(ESMF_KIND_R8), pointer :: coords(:,:)
-    integer :: ii,counts(3)
-    
+    integer              :: jms(1), ii,counts(3)
+     
     ! ------------------
     ! begin
     
@@ -386,11 +378,8 @@ contains
     call ESMF_VMGet       (VM, localpet=MYPE, petcount=nDEs,  RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
     VERIFY_(STATUS)
-    call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
-    VERIFY_(STATUS)
-    RUN_DT = nint(DT)
 
     route%comm = comm
     route%ndes = ndes
@@ -449,8 +438,6 @@ contains
        ii=ii+1
     enddo
     
-    !route%pfaf => arbSeq
-    !route%ntiles = ntiles
     route%minCatch = minCatch
     route%maxCatch = maxCatch
 
@@ -459,6 +446,7 @@ contains
     VERIFY_(STATUS)
 
     RETURN_(ESMF_SUCCESS)
+    
   end subroutine INITIALIZE
   
 ! -----------------------------------------------------------
@@ -481,24 +469,24 @@ contains
 ! ErrLog Variables
 ! -----------------------------------------------------------
 
-    character(len=ESMF_MAXSTR)          :: IAm="Run"
-    integer                             :: STATUS
-    character(len=ESMF_MAXSTR)          :: COMP_NAME
+    character(len=ESMF_MAXSTR)         :: IAm="Run"
+    integer                            :: STATUS
+    character(len=ESMF_MAXSTR)         :: COMP_NAME
 
 ! -----------------------------------------------------------
 ! Locals
 ! -----------------------------------------------------------
 
-    type (MAPL_MetaComp),     pointer   :: MAPL
-    type (ESMF_State       )            :: INTERNAL
-    type (ESMF_Config )                 :: CF
-    type(ESMF_VM)                       :: VM
+    type (MAPL_MetaComp), pointer     :: MAPL
+    type (ESMF_State   )              :: INTERNAL
+    type (ESMF_Config  )              :: CF
+    type(ESMF_VM)                    :: VM
 
 ! -----------------------------------------------------
 ! IMPORT pointers
 ! ----------------------------------------------------- 
 
-    real, dimension(:), pointer :: RUNOFF 
+    real, dimension(:), pointer   :: RUNOFF 
 
 ! -----------------------------------------------------
 ! INTERNAL pointers
@@ -512,29 +500,27 @@ contains
     real, dimension(:,:), pointer :: LRIVERMOUTH_2D
     real, dimension(:,:), pointer :: ORIVERMOUTH_2D
 
-    real, dimension(:), pointer :: AREACAT
-    real, dimension(:), pointer :: LENGSC
-    real, dimension(:), pointer :: DNSTR
-    real, dimension(:), pointer :: WSTREAM
-    real, dimension(:), pointer :: WRIVER
-    real, dimension(:), pointer :: LRIVERMOUTH
-    real, dimension(:), pointer :: ORIVERMOUTH
+    real, dimension(:),   pointer :: AREACAT
+    real, dimension(:),   pointer :: LENGSC
+    real, dimension(:),   pointer :: DNSTR
+    real, dimension(:),   pointer :: WSTREAM
+    real, dimension(:),   pointer :: WRIVER
+    real, dimension(:),   pointer :: LRIVERMOUTH
+    real, dimension(:),   pointer :: ORIVERMOUTH
 
 ! -----------------------------------------------------
 ! EXPORT pointers 
 ! -----------------------------------------------------
     
-    real, dimension(:,:), pointer :: QSFLOW_2D
-    real, dimension(:,:), pointer :: QINFLOW_2D
-    real, dimension(:,:), pointer :: QOUTFLOW_2D
-    real, dimension(:), pointer :: QSFLOW
-    real, dimension(:), pointer :: QINFLOW
-    real, dimension(:), pointer :: QOUTFLOW
+    real, dimension(:,:), pointer :: RUNOFFIN_2D
+    real, dimension(:,:), pointer :: SFLOW_2D
+    real, dimension(:,:), pointer :: INFLOW_2D
+    real, dimension(:,:), pointer :: DISCHARGE_2D
+    real, dimension(:),   pointer :: RUNOFFIN
+    real, dimension(:),   pointer :: SFLOW
+    real, dimension(:),   pointer :: INFLOW
+    real, dimension(:),   pointer :: DISCHARGE
   
-! Time attributes and placeholders
-
-!    type(ESMF_Time) :: CURRENT_TIME
-
 ! Others
 
     type(ESMF_Grid)                          :: ESMFGRID
@@ -546,7 +532,7 @@ contains
     INTEGER, SAVE                            :: ThisCycle   
     INTEGER                                  :: Local_Min, Local_Max, Pfaf_Min, Pfaf_Max
     integer                                  :: K, N, I, req
-    REAL                                     :: rbuff, HEARTBEAT 
+    REAL                                     :: rbuff
     real, allocatable, DIMENSION(:)          :: runoff_catch_dist
     real, allocatable, DIMENSION(:,:)        :: runoff_on_catch
     REAL, ALLOCATABLE, DIMENSION(:), SAVE    :: runoff_save
@@ -560,9 +546,7 @@ contains
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
     VERIFY_(STATUS)    
     route => wrap%ptr
-    call ESMF_VMGetCurrent(VM,                                RC=STATUS)
-    VERIFY_(STATUS)
-
+    call ESMF_VMGetCurrent(VM, RC=STATUS) ; VERIFY_(STATUS)
 
 !! Get the target components name and set-up traceback handle.
 !! -----------------------------------------------------------
@@ -577,10 +561,10 @@ contains
 
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
     VERIFY_(STATUS)
-
-    call MAPL_Get(MAPL, HEARTBEAT = HEARTBEAT, RC=STATUS)
+    call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
     VERIFY_(STATUS)
-
+    RUN_DT = NINT (DT)
+    
 ! Start timers
 ! ------------
 
@@ -644,18 +628,21 @@ contains
 
 !! get pointers to EXPORTS
 !! -----------------------
+    call MAPL_GetPointer(EXPORT, RUNOFFIN_2D, 'RUNOFFIN'  , RC=STATUS)
+    VERIFY_(STATUS)
+    RUNOFFIN => RUNOFFIN_2D(:,1)
+    call MAPL_GetPointer(EXPORT, SFLOW_2D, 'SFLOW'  , RC=STATUS)
+    VERIFY_(STATUS)
+    SFLOW => SFLOW_2D(:,1)
+    call MAPL_GetPointer(EXPORT, INFLOW_2D, 'INFLOW' , RC=STATUS)
+    VERIFY_(STATUS)
+    INFLOW => INFLOW_2D(:,1)
+    call MAPL_GetPointer(EXPORT, DISCHARGE_2D, 'DISCHARGE', RC=STATUS)
+    VERIFY_(STATUS)
+    DISCHARGE => DISCHARGE_2D(:,1)
 
-    call MAPL_GetPointer(EXPORT, QSFLOW_2D, 'QSFLOW'  , RC=STATUS)
-    VERIFY_(STATUS)
-    QSFLOW => QSFLOW_2D(:,1)
-    call MAPL_GetPointer(EXPORT, QINFLOW_2D, 'QINFLOW' , RC=STATUS)
-    VERIFY_(STATUS)
-    QINFLOW => QINFLOW_2D(:,1)
-    call MAPL_GetPointer(EXPORT, QOUTFLOW_2D, 'QOUTFLOW', RC=STATUS)
-    VERIFY_(STATUS)
-    QOUTFLOW => QOUTFLOW_2D(:,1)
-
-    ! Sarith Begins
+! Begin water transfer across the river network
+! ---------------------------------------------
     
     call MAPL_TimerOn  ( MAPL, "-RRM" )
     N_CatL  = size(AREACAT)
@@ -708,23 +695,24 @@ contains
        
     ENDIF FIRST_TIME
 
-    N_CYC = RRM_TIMESTEP/HEARTBEAT
+    N_CYC = RRM_DT/RUN_DT
 
     ! Unit conversion and save 
     runoff_save (:) = runoff_save (:) +  runoff_on_catch (:,1) * AREACAT(:) * 1000. /real (N_CYC)
     ThisCycle = ThisCycle + 1
+    RUNOFFIN = runoff_on_catch (:,1) * AREACAT(:) * 1000. 
  
     RUN_MODEL : if (ThisCycle == N_CYC) then  
 
-       QSFLOW       = 0.
-       QOUTFLOW     = 0.
-       QINFLOW      = 0.
+       SFLOW       = 0.
+       DISCHARGE   = 0.
+       INFLOW      = 0.
        
        ! Call river_routing_model
        ! ------------------------
        
-       CALL RIVER_ROUTING  (N_catL, RUNOFF_SAVE,AREACAT,LENGSC,  &
-            WSTREAM,WRIVER, QSFLOW,QOUTFLOW) 
+       CALL RIVER_ROUTING  (N_catL, real(RRM_DT), RUNOFF_SAVE,AREACAT,LENGSC,  &
+            WSTREAM, WRIVER, SFLOW, DISCHARGE) 
 
        ! Inter-processor communication: Update downstream catchments
        ! -----------------------------------------------------------
@@ -737,8 +725,8 @@ contains
              K = N - Local_Min + 1                 ! Source index in the local processor  
              
              if(LocDstCatchID (N) /= N) then ! ensure not to refill the reservoir by itself
-                QINFLOW(I) = QINFLOW(I) + QOUTFLOW (K)
-                WRIVER (I) = WRIVER (I) + QOUTFLOW (K) * real(RRM_TIMESTEP)                
+                INFLOW(I)  = INFLOW(I) + DISCHARGE (K)
+                WRIVER (I) = WRIVER (I) + DISCHARGE (K) * real(RRM_DT)                
              endif
              
           elseif ((srcProcsID (N) == MYPE).and.(srcProcsID (LocDstCatchID (N)) /= MYPE)) then 
@@ -747,7 +735,7 @@ contains
                 
                 ! Send to downstream processor                
                 K = N - Local_Min + 1         ! Source index in the local processor                  
-                call MPI_ISend(QOUTFLOW(K),1,MPI_real,srcProcsID (LocDstCatchID (N)),999,route%comm,req,status)
+                call MPI_ISend(DISCHARGE(K),1,MPI_real,srcProcsID (LocDstCatchID (N)),999,route%comm,req,status)
                 call MPI_WAIT(req,MPI_STATUS_IGNORE,status)                 
              endif
              
@@ -761,8 +749,8 @@ contains
                       if((srcProcsID  (n) == i-1).and.(srcProcsID (dstCatchID(N, i)) == MYPE))then                       
                          call MPI_RECV(rbuff,1,MPI_real, srcProcsID (N),999,route%comm,MPI_STATUS_IGNORE,status)
                          K = dstCatchID(N,i) - Local_Min + 1
-                         QINFLOW (K) = QINFLOW (K) + rbuff
-                         WRIVER  (K) = WRIVER (K)  + rbuff * real(RRM_TIMESTEP)                         
+                         INFLOW (K)  = INFLOW (K) + rbuff
+                         WRIVER  (K) = WRIVER (K) + rbuff * real(RRM_DT)                    
                       endif
                    endif
                 end do

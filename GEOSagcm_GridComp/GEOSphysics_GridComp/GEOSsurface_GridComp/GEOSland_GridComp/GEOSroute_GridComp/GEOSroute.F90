@@ -1188,7 +1188,7 @@ PROGRAM GEOSroute_driver
         RUNOFF (N)  = RUNOFF_DOMAIN(I)
      END DO
                    
-     CALL RIVER_ROUTING  (N_Active, RUNOFF,AREACAT,LENGSC,           &
+     CALL RIVER_ROUTING  (N_Active,REAL(RRM_TIMESTEP),RUNOFF,AREACAT,LENGSC, &
           WSTREAM,WRIVER, QSFLOW,QOUTFLOW) 
      
      DO N = 1, size (DomActive)
