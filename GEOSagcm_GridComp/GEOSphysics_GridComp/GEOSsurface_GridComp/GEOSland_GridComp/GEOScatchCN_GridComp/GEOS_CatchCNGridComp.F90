@@ -1173,7 +1173,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! ErrLog Variables
 ! ------------------------------------------------------------------------------
 
-    character(len=ESMF_MAXSTR) :: Iam="RUN2"
+    character(len=ESMF_MAXSTR) :: Iam
     integer :: STATUS
     character(len=ESMF_MAXSTR) :: COMP_NAME
 
@@ -1196,7 +1196,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
-    Iam=trim(COMP_NAME)//"::RUN1"
+    Iam=trim(COMP_NAME)//"::RUN2"
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
     VERIFY_(STATUS)
@@ -1205,7 +1205,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! ------------
 
     call MAPL_TimerOn(MAPL,"TOTAL")
-    call MAPL_TimerOn(MAPL,"RUN1")
+    call MAPL_TimerOn(MAPL,"RUN2")
 
     call MAPL_Get (MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCnames=GCnames,rc=STATUS)
     VERIFY_(STATUS)
@@ -1216,7 +1216,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     DO I = 1, size(GCS)
        call MAPL_TimerOn(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
        call ESMF_GridCompRun(GCS(I), importState=GIM(I), exportState=GEX(I), &
-                             CLOCK=CLOCK, PHASE=1, userRC=STATUS)
+                             CLOCK=CLOCK, PHASE=2, userRC=STATUS)
        VERIFY_(STATUS)
        call MAPL_TimerOff(MAPL,trim(GCnames(i)), RC=STATUS ); VERIFY_(STATUS)
     END DO
@@ -1224,9 +1224,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 !  All done
 ! ------------------------------------------------------------------------------
 
-    call MAPL_TimerOff ( MAPL, "RUN1"  )
+    call MAPL_TimerOff ( MAPL, "RUN2"  )
     call MAPL_TimerOff ( MAPL, "TOTAL" )
-
+    RETURN_(ESMF_SUCCESS)
 end subroutine RUN2
 
 subroutine Finalize(gc, import, export, clock, rc)
