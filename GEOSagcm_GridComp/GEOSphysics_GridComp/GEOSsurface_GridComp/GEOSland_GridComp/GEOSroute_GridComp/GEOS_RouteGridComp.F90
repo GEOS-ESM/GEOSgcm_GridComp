@@ -697,13 +697,14 @@ contains
 
     N_CYC = RRM_DT/RUN_DT
 
-    ! Unit conversion and save 
-    runoff_save (:) = runoff_save (:) +  runoff_on_catch (:,1) * AREACAT(:) * 1000. /real (N_CYC)
+    ! Unit conversion and save
+    RUNOFFIN = runoff_on_catch (:,1) * AREACAT(:) * 1000.
+    runoff_save (:) = runoff_save (:) +  runoff_on_catch (:,1) /real (N_CYC)
     ThisCycle = ThisCycle + 1
-    RUNOFFIN = runoff_on_catch (:,1) * AREACAT(:) * 1000. 
+     
  
     RUN_MODEL : if (ThisCycle == N_CYC) then  
-
+       runoff_save (:) = runoff_save (:) * AREACAT(:) * 1000.
        SFLOW       = 0.
        DISCHARGE   = 0.
        INFLOW      = 0.
@@ -764,7 +765,8 @@ contains
        ThisCycle   = 0         
 
     end if RUN_MODEL
-
+    deallocate (runoff_catch_dist, runoff_on_catch)
+    
     call MAPL_TimerOff ( MAPL, "-RRM" )
 
     ! All done
