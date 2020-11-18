@@ -480,7 +480,7 @@ contains
     type (MAPL_MetaComp), pointer     :: MAPL
     type (ESMF_State   )              :: INTERNAL
     type (ESMF_Config  )              :: CF
-    type(ESMF_VM)                    :: VM
+    type(ESMF_VM)                     :: VM
 
 ! -----------------------------------------------------
 ! IMPORT pointers
@@ -527,15 +527,15 @@ contains
     type (MAPL_LocStream)                    :: LOCSTREAM
     integer                                  :: N_CatL, N_CYC
     logical, save                            :: FirstTime=.true.
-    INTEGER, DIMENSION(:,:), POINTER, SAVE   :: AllActive,DstCatchID 
+    INTEGER, DIMENSION(:,:), POINTER,   SAVE :: AllActive,DstCatchID 
     INTEGER, DIMENSION(:), ALLOCATABLE, SAVE :: srcProcsID, LocDstCatchID  
-    INTEGER, SAVE                            :: ThisCycle   
-    INTEGER                                  :: Local_Min, Local_Max, Pfaf_Min, Pfaf_Max
+    INTEGER,                            SAVE :: ThisCycle   
+    INTEGER,                            SAVE :: Local_Min, Local_Max, Pfaf_Min, Pfaf_Max
+    REAL, ALLOCATABLE, DIMENSION(:),    SAVE :: runoff_save    
     integer                                  :: K, N, I, req
     REAL                                     :: rbuff
     real, allocatable, DIMENSION(:)          :: runoff_catch_dist
     real, allocatable, DIMENSION(:,:)        :: runoff_on_catch
-    REAL, ALLOCATABLE, DIMENSION(:), SAVE    :: runoff_save
     integer                                  :: ndes, mype, nt_local, counts(3)
     type (T_RROUTE_STATE), pointer           :: route => null()
     type (RROUTE_wrap)                       :: wrap
@@ -578,27 +578,6 @@ contains
 
 ! Get runoff from import
     call MAPL_GetPointer(import,runoff,"RUNOFF",rc=status)
-    _VERIFY(status)
-
-! Get number of local tiles on catch grid and allocate temporary array
-    call MAPL_LocStreamGet(route%route_ls,nt_local=nt_local,rc=status)
-    _VERIFY(status)
-    allocate(runoff_catch_dist(nt_local))
-
-! Call Locstream transform, takes land tiles that are on the distribution used by
-! catchgridcomp (based on atmosphere) and shuffles them to be on catchment distribution
-! in other words the tile is on the processor contains the catchment making up the tile
-    call MAPL_LocStreamTransform(runoff_catch_dist,route%xform,runoff,rc=status)
-    _VERIFY(status)
-! Finall we can take the tiles and do the conservative locstream transform to 
-! aggregate them on the actual catchments. I am allocataing a temporary array
-! get the result of this computation
-    call ESMF_GridCompGet(gc,grid=esmfgrid,rc=status)
-    _VERIFY(status)
-    call MAPL_GridGet(esmfgrid,localCellCountPerDim=counts,rc=status)
-    _VERIFY(status)
-    allocate(runoff_on_catch(counts(1),counts(2)))    
-    call MAPL_LOcStreamTransform(route%route_ls,runoff_on_catch,runoff_catch_dist,rc=status)
     _VERIFY(status)
     
 !! get pointers to internal variables (note they are 2D in the internal state)
@@ -648,17 +627,18 @@ contains
     N_CatL  = size(AREACAT)
     ndes = route%ndes
     mype = route%mype
-    Local_min  = MINVAL (route%pfaf)
-    Local_max  = MAXVAL (route%pfaf)
-
-    call MPI_Reduce(Local_Min,Pfaf_Min,1,MPI_INTEGER,MPI_MIN,0,route%comm,STATUS) ; VERIFY_(STATUS)
-    call MPI_Reduce(Local_Max,Pfaf_Max,1,MPI_INTEGER,MPI_MAX,0,route%comm,STATUS) ; VERIFY_(STATUS)    
-    call MPI_BARRIER( route%comm, STATUS ) ; VERIFY_(STATUS)    
-    call MPI_BCAST (Pfaf_Min , 1, MPI_INTEGER, 0,route%comm,STATUS) ; VERIFY_(STATUS)
-    call MPI_BCAST (Pfaf_Max , 1, MPI_INTEGER, 0,route%comm,STATUS) ; VERIFY_(STATUS)
 
     FIRST_TIME : IF (FirstTime) THEN
 
+       Local_min  = MINVAL (route%pfaf)
+       Local_max  = MAXVAL (route%pfaf)
+
+       call MPI_Reduce(Local_Min,Pfaf_Min,1,MPI_INTEGER,MPI_MIN,0,route%comm,STATUS) ; VERIFY_(STATUS)
+       call MPI_Reduce(Local_Max,Pfaf_Max,1,MPI_INTEGER,MPI_MAX,0,route%comm,STATUS) ; VERIFY_(STATUS)    
+       call MPI_BARRIER( route%comm, STATUS ) ; VERIFY_(STATUS)    
+       call MPI_BCAST (Pfaf_Min , 1, MPI_INTEGER, 0,route%comm,STATUS) ; VERIFY_(STATUS)
+       call MPI_BCAST (Pfaf_Max , 1, MPI_INTEGER, 0,route%comm,STATUS) ; VERIFY_(STATUS)
+       
        !! Pfafstetter catchment Domain Decomposition :         
        !! --------------------------------------------
 
@@ -686,7 +666,7 @@ contains
 
        ! Initialize the cycle counter and sum (runoff) 
 
-       allocate (runoff_save (1:size (runoff_on_catch,1)))
+       allocate (runoff_save (1:size (runoff)))
 
        runoff_save = 0.
        ThisCycle   = 0
@@ -697,14 +677,38 @@ contains
 
     N_CYC = RRM_DT/RUN_DT
 
-    ! Unit conversion and save
-    RUNOFFIN = runoff_on_catch (:,1) * AREACAT(:) * 1000.
-    runoff_save (:) = runoff_save (:) +  runoff_on_catch (:,1) /real (N_CYC)
+    ! save mean tile-space runoff during RRM_DT in [kg/m2/s] 
+    runoff_save (:) = runoff_save (:) + runoff (:)/real (N_CYC)
     ThisCycle = ThisCycle + 1
-     
- 
-    RUN_MODEL : if (ThisCycle == N_CYC) then  
-       runoff_save (:) = runoff_save (:) * AREACAT(:) * 1000.
+    
+    RUN_MODEL : if (ThisCycle == N_CYC) then
+
+       ! Get number of local tiles on catch grid and allocate temporary array
+       call MAPL_LocStreamGet(route%route_ls,nt_local=nt_local,rc=status)
+       _VERIFY(status)
+       allocate(runoff_catch_dist(nt_local))
+       
+       ! Call Locstream transform, takes land tiles that are on the distribution used by
+       ! catchgridcomp (based on atmosphere) and shuffles them to be on catchment distribution
+       ! in other words the tile is on the processor contains the catchment making up the tile
+       call MAPL_LocStreamTransform(runoff_catch_dist,route%xform,runoff_save,rc=status)
+       _VERIFY(status)
+       
+       ! Finall we can take the tiles and do the conservative locstream transform to 
+       ! aggregate them on the actual catchments. I am allocataing a temporary array
+       ! get the result of this computation
+       call ESMF_GridCompGet(gc,grid=esmfgrid,rc=status)
+       _VERIFY(status)
+       call MAPL_GridGet(esmfgrid,localCellCountPerDim=counts,rc=status)
+       _VERIFY(status)
+       allocate(runoff_on_catch(counts(1),counts(2)))    
+       call MAPL_LOcStreamTransform(route%route_ls,runoff_on_catch,runoff_catch_dist,rc=status)
+       _VERIFY(status)
+
+       ! unit conversion of spatially averaged catchment runoff to [m3/s]
+       runoff_on_catch(:,1) = runoff_on_catch (:,1) * AREACAT(:) * 1000.
+       RUNOFFIN             = runoff_on_catch (:,1) 
+       
        SFLOW       = 0.
        DISCHARGE   = 0.
        INFLOW      = 0.
@@ -712,7 +716,7 @@ contains
        ! Call river_routing_model
        ! ------------------------
        
-       CALL RIVER_ROUTING  (N_catL, real(RRM_DT), RUNOFF_SAVE,AREACAT,LENGSC,  &
+       CALL RIVER_ROUTING  (N_catL, real(RRM_DT), runoff_on_catch(:,1),AREACAT,LENGSC,  &
             WSTREAM, WRIVER, SFLOW, DISCHARGE) 
 
        ! Inter-processor communication: Update downstream catchments
@@ -763,10 +767,10 @@ contains
 
        runoff_save = 0.
        ThisCycle   = 0         
-
+       deallocate (runoff_catch_dist, runoff_on_catch)
+       
     end if RUN_MODEL
-    deallocate (runoff_catch_dist, runoff_on_catch)
-    
+
     call MAPL_TimerOff ( MAPL, "-RRM" )
 
     ! All done
