@@ -150,7 +150,7 @@ module gfdl2_cloud_microphys_mod
     logical :: do_sedi_w = .false. !< transport of vertical motion in sedimentation
     logical :: do_sedi_heat = .true. !< transport of heat in sedimentation
     logical :: prog_ccn = .false. !< do prognostic ccn (yi ming's method)
-    logical :: do_qa = .true. !< do inline cloud fraction
+    logical :: do_qa = .true. !< do inline cloud fraction (WMP: in FV3 dynamics)
     logical :: rad_snow = .true. !< consider snow in cloud fraciton calculation
     logical :: rad_graupel = .true. !< consider graupel in cloud fraction calculation
     logical :: rad_rain = .true. !< consider rain in cloud fraction calculation
@@ -488,20 +488,11 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     
     if (ks < ktop) then
         do k = ks, ktop
-            if (do_qa) then
-                do j = js, je
-                    do i = is, ie
-                        qa_dt (i, j, k) = 0.
-                    enddo
+            do j = js, je
+                do i = is, ie
+                    qa_dt (i, j, k) = 0.
                 enddo
-            else
-                do j = js, je
-                    do i = is, ie
-                        ! qa_dt (i, j, k) = - qa (i, j, k) * rdt
-                        qa_dt (i, j, k) = 0. ! gfs
-                    enddo
-                enddo
-            endif
+            enddo
         enddo
     endif
     
@@ -999,12 +990,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! -----------------------------------------------------------------------
         
         do k = ktop, kbot
-            if (do_qa) then
-                qa_dt (i, j, k) = 0.
-            else
-!                qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (qaz (k) / real (ntimes) - qa0 (k))
-                qa_dt (i, j, k) =  rdt * (qaz (k) - qa0 (k))
-            endif
+            qa_dt (i, j, k) =  rdt * (qaz (k) - qa0 (k))
         enddo
 
         ! -----------------------------------------------------------------------
@@ -2122,7 +2108,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
             q_sol (k) = q_sol (k) + sink
             cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tz (k) = tz (k) + sink * (lhl (k) + lhi (k)) / cvm (k)
-            if (.not. do_qa) qa (k) = 1. ! air fully saturated; 100 % cloud cover
+            qa (k) = 1. ! air fully saturated; 100 % cloud cover
             cycle
         endif
         

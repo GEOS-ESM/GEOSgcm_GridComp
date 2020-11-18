@@ -595,7 +595,7 @@ CONTAINS
      ENDDO
      !.. !- Tracer transport/scavenging section
      IF(USE_TRACER_TRANSP==1) THEN
-       where(TRACER<0.0) TRACER = mintracer
+       where(TRACER<=0.0) TRACER = mintracer
      ENDIF
     ELSEIF(trim(env_setting)=='DEFAULT') then
      !-2nd setting: environmental state is that one before any tendency
@@ -659,7 +659,7 @@ CONTAINS
      !
      !- Tracer transport/scavenging section
      IF(USE_TRACER_TRANSP==1) THEN       
-       where(TRACER<0.0) TRACER = mintracer
+       where(TRACER<=0.0) TRACER = mintracer
      ENDIF
     ELSE
      stop 'unknown env_setting at convpar_gf_geos5.F90'
