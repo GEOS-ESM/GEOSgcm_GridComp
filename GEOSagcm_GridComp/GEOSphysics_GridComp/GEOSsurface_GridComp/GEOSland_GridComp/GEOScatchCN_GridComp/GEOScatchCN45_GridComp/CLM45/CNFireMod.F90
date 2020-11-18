@@ -672,7 +672,14 @@ fire_m_fac(6) = 10.e15
         end do  
        ! see clm4_6_00 and Li et al., BG 2014, fzeng, 7 May 2019
 !      if (trotr1_col(c)+trotr2_col(c)>0.6_r8) then
-       if ((trotr1_col(c)>0.6_r8).and.(pft_4_flag==.false.)) then  ! Allow trotr2 (i.e. broadleaf deciduous tropical trees in ESA) in Africa to burn, because this type is classified as woody savanna and savanna in MODIS land cover which is more consistent with CLM4.5CN tree and grass fractions in Africa, fzeng, 12 July 2019; additional modification by jkolassa (pft_4_flag=.false.) enables fires for PFT 4 again in attempt to improve fire carbon emissions over Africa  
+       ! Allow trotr2 (i.e. broadleaf deciduous tropical trees in ESA)
+       ! in Africa to burn, because this type is classified as woody savanna 
+       ! and savanna in MODIS land cover which is more consistent with
+       ! CLM4.5CN tree and grass fractions in Africa, fzeng, 12 July 2019; 
+       ! additional modification by jkolassa (pft_4_flag=.false.) enables
+       ! fires for PFT 4 again in attempt to improve fire carbon emissions over Africa  
+       ! changes (pft_4_flag==.false.) to (.not. pft_4_flag). W.J.
+       if ((trotr1_col(c)>0.6_r8) .and. ( .not. pft_4_flag )) then
             farea_burned(c)=min(1.0_r8,baf_crop(c)+baf_peatf(c))
          else     
            fuelc(c) = totlitc(c)+totvegc_col(c)-rootc_col(c)-fuelc_crop(c)*cropf_col(c)        

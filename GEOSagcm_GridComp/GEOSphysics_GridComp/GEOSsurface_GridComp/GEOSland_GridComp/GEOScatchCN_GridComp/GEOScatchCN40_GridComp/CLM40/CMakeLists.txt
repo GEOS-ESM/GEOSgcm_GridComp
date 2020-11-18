@@ -1,5 +1,4 @@
 esma_set_this ()
-string (REPLACE GEOScatchCN_GridComp_ "" is_openmp ${this})
 
 set (srcs
   clmtype.F90
@@ -31,7 +30,6 @@ set (srcs
   CNWoodProductsMod.F90
   CNSummaryMod.F90
   CNEcosystemDynMod.F90
-  nanMod.F90
   clmtypeInitMod.F90
   CNiniTimeVar.F90
   CNBalanceCheckMod.F90
