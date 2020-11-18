@@ -1067,6 +1067,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real,              dimension(IM,JM)      :: KEGWD_X, KEORO_X,  KERAY_X,  KEBKG_X, KERES_X
       real,              dimension(IM,JM)      :: PEGWD_X, PEORO_X,  PERAY_X,  PEBKG_X, BKGERR_X
 
+      real,              dimension(IM,JM,LM  ) :: DUDT_GWD_0 , DVDT_GWD_0 , DTDT_GWD_0
+      real,              dimension(IM,JM     ) :: TAUXB_TMP_0, TAUYB_TMP_0
+
       integer                                  :: J, K, L
       real(ESMF_KIND_R8)                       :: DT_R8
       real                                     :: DT     ! time interval in sec
@@ -1611,19 +1614,43 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if (.not. USE_NCEP_GWD) then
 
        if (USE_NCAR_GWD) then
-          ! Use Julio new code
-       call gw_intr_ncar(IM*JM,    LM,         DT,                  &
-            PGWV,      beres_desc, beres_band, oro_band,            &
-            PLE,       T,          U,          V,      HT_ForCnvGWD,&
-            SGH,       PREF,                                        &
-            PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
-            DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
-            DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
-            TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
-            TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
-            FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
-            BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
-       VERIFY_(STATUS)
+          ! Use GEOS GWD only for Extratropical background sources...
+          call gw_intr   (IM*JM,      LM,         DT,                  &
+               PGWV,                                                   &
+               PLE,       T,          U,          V,      SGH,   PREF, &
+               PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+               DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
+               DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
+               TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
+               TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
+               FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
+               BGSTRESSMAX*0.0, effgworo*0.0, effgwbkg,   RC=STATUS            )
+         VERIFY_(STATUS)
+         ! HOLD ON TO THE GEOS BKG OUTPUT
+         DUDT_GWD_0=DUDT_GWD
+         DVDT_GWD_0=DVDT_GWD
+         DTDT_GWD_0=DTDT_GWD
+         TAUXB_TMP_0=TAUXB_TMP
+         TAUYB_TMP_0=TAUYB_TMP
+         ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
+         call gw_intr_ncar(IM*JM,    LM,         DT,                  &
+              PGWV,      beres_desc, beres_band, oro_band,            &
+              PLE,       T,          U,          V,      HT_ForCnvGWD,&
+              SGH,       PREF,                                        &
+              PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+              DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
+              DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
+              TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
+              TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
+              FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
+              BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
+         VERIFY_(STATUS)
+         ! ADD THE GEOS BKG OUTPUT
+         DUDT_GWD=DUDT_GWD_0+DUDT_GWD
+         DVDT_GWD=DVDT_GWD_0+DVDT_GWD
+         DTDT_GWD=DTDT_GWD_0+DTDT_GWD
+         TAUXB_TMP=TAUXB_TMP_0+TAUXB_TMP
+         TAUYB_TMP=TAUYB_TMP_0+TAUYB_TMP
        else
           ! Use GEOS GWD    
           call gw_intr   (IM*JM,      LM,         DT,                  &
