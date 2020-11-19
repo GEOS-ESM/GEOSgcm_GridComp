@@ -1067,8 +1067,9 @@ contains
      call MAPL_AddConnectivity ( GC,                                  &
          SHORT_NAME  = (/'QV   ','QL   ','QI   ','QR   ','QS   ',     &
                          'QLLS ','QILS ','QLCN ','QICN ',             &
-                         'QRTOT','QSTOT',                             &
-                         'RL   ','RR   ','RI   ','RS   ','FCLD ' /),  &
+                         'QRTOT','QSTOT','QGTOT',                     &
+                         'RL   ','RR   ','RI   ','RS   ','RG   ',     &
+                         'FCLD ' /),  &
          DST_ID      = RAD,                                           &
          SRC_ID      = MOIST,                                         &
                                                            RC=STATUS  )
@@ -1170,13 +1171,20 @@ contains
 
 ! Imports for GWD
 !----------------
-
-     call MAPL_AddConnectivity ( GC,                               &
-         SHORT_NAME  = (/'Q      '/),                              &
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'Q', 'DTDT_moist','CNV_FRC','DTDTCN'/),   &
          DST_ID      = GWD,                                        &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
-     VERIFY_(STATUS)
+    VERIFY_(STATUS)
+
+! connections needed for NCEP GWD
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'KPBL'/),                                 &
+         DST_ID      = GWD,                                        &
+         SRC_ID      = TURBL,                                      &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
 
 ! Chemistry Imports
 ! -----------------
@@ -1362,21 +1370,6 @@ contains
 
     VERIFY_(STATUS)
     
-
-! New connections needed for NCEP GWD
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'KPBL'/),                                 &
-         DST_ID      = GWD,                                        &
-         SRC_ID      = TURBL,                                      &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'DTDT_moist','CNV_FRC   ','DTDTCN    '/), & 
-         DST_ID      = GWD,                                        &
-         SRC_ID      = MOIST,                                      &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
 
 !EOP
 
@@ -2173,7 +2166,7 @@ contains
 ! Initialize Passive Tracer QW
 ! ----------------------------
        if (NWAT == 5) then
-       QW = QV+QLLS+QLCN+QILS+QICN
+         QW = QV+QLLS+QLCN+QILS+QICN
        elseif (NWAT == 8) then
          QW = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL
        endif
@@ -2863,6 +2856,7 @@ contains
 
    !  Modify P and Q such that Pdry is conserved
    !  ------------------------------------------
+#ifdef ORIGDRY
              ple_new = ple*1.0_8
                sumdq = 0.0
          DPDT(:,:,0) = 0.0
@@ -2882,6 +2876,25 @@ contains
                 endif
               end do
        end do
+#else
+       ple_new = ple*1.0_8
+       DPDT(:,:,0) = 0.0
+       do l=1,lm
+             dpe(:,:)  = 1. + dq(:,:,l)
+             ple_new(:,:,l) = ple_new(:,:,l-1) + (ple(:,:,l)-ple(:,:,l-1)) * dpe(:,:)
+             dpdt(:,:,l) = (ple_new(:,:,l)-ple(:,:,l))/DT
+ 
+             do N=1,NQ
+                call ESMFL_BundleGetPointertoData( BUNDLE, trim(NAMES(N)), PTR3D, RC=STATUS)
+                VERIFY_(STATUS)
+                if( trim(NAMES(N)) /= 'CLCN'       .and. & ! Exclude: Advected Convective and Large-Scale
+                    trim(NAMES(N)) /= 'CLLS'     )  then   ! -------- Cloud Fractions
+                PTR3D(:,:,l) = PTR3d(:,:,l) / dpe(:,:)
+                endif
+              end do
+       end do
+
+#endif
 
    ! Create New Dry Mass Variables
    ! -----------------------------

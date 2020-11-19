@@ -151,7 +151,6 @@ contains
         UNITS      = 'Pa',                                        &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationEdge,                          &
-        RESTART    = MAPL_RestartSkip,                            &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -161,7 +160,6 @@ contains
         UNITS      = 'K',                                         &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,                        &
-        RESTART    = MAPL_RestartSkip,                            &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -171,7 +169,6 @@ contains
         UNITS      = 'kg kg-1',                                   &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,                        &
-        RESTART    = MAPL_RestartSkip,                            &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -181,7 +178,6 @@ contains
         UNITS      = 'm s-1',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,                        &
-        RESTART    = MAPL_RestartSkip,                            &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -191,7 +187,6 @@ contains
         UNITS      = 'm s-1',                                     &
         DIMS       = MAPL_DimsHorzVert,                           &
         VLOCATION  = MAPL_VLocationCenter,                        &
-        RESTART    = MAPL_RestartSkip,                            &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -201,7 +196,6 @@ contains
         UNITS      = 'm',                                         &
         DIMS       = MAPL_DimsHorzOnly,                           &
         VLOCATION  = MAPL_VLocationNone,                          &
-        RESTART    = MAPL_RestartSkip,                            &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -211,7 +205,6 @@ contains
         UNITS      = 'Pa',                                        &
         DIMS       = MAPL_DimsVertOnly,                           &
         VLOCATION  = MAPL_VLocationEdge,                          &
-        RESTART    = MAPL_RestartSkip,                            &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
@@ -578,6 +571,23 @@ contains
          VLOCATION  = MAPL_VLocationNone,                                                     RC=STATUS  )
      VERIFY_(STATUS)
 
+! from moist
+     call MAPL_AddImportSpec(GC,                              &
+          SHORT_NAME='DTDT_moist',                            &
+          LONG_NAME ='T tendency due to moist',               &
+          UNITS     ='K s-1',                                 &
+          DIMS      = MAPL_DimsHorzVert,                      &
+          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                              &
+          SHORT_NAME='CNV_FRC',                               &
+          LONG_NAME ='convective_fraction',                   &
+          UNITS     ='1',                                     &
+          DIMS      = MAPL_DimsHorzOnly,                      &
+          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+     VERIFY_(STATUS)
+
      if (USE_NCEP_GWD) then
 !ALT: Reminder for myself: we need connections in Physics
 ! We need some new imports
@@ -589,27 +599,6 @@ contains
              DIMS       = MAPL_DimsHorzOnly,                    &
              VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
         VERIFY_(STATUS)      
-
-! from moist
-        call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='DTDT_moist',                            & 
-             LONG_NAME ='T tendency due to moist',               &
-             UNITS     ='K s-1',                                 &
-             DIMS      = MAPL_DimsHorzVert,                      &
-             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-        VERIFY_(STATUS)  
-!ALT: from this we can compute QMAX (column maximum value)
-!     and KTOP, KBOT near the location of QMAX
-!JTB: Moved up to default import state block (3/25/20)
-!WMP: Restored here for NCEP code
-
-        call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='CNV_FRC',                               &
-             LONG_NAME ='convective_fraction',                   &
-             UNITS     ='1',                                     &
-             DIMS      = MAPL_DimsHorzOnly,                      &
-             VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
-        VERIFY_(STATUS)
 
 ! from dycore
         call MAPL_AddImportSpec ( gc,                            &
@@ -820,7 +809,8 @@ contains
                               0.50_MAPL_R8 , 0.25_MAPL_R8, ERRstring )
 
          ! Beres Scheme File
-         call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", RC=STATUS)
+         call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
+            default='/gpfsm/dnb31/jbacmeis/cesm_inputdata/newmfspectra40_dc25.nc', RC=STATUS)
          VERIFY_(STATUS)
 
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_desc )
@@ -1028,7 +1018,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real, pointer, dimension(:,:)    :: SGH
       real, pointer, dimension(:,:,:)  :: PLE, T, Q, U, V
       !++jtb Array for moist/deepconv heating
-      real, pointer, dimension(:,:,:)  :: HT_dpc
+      real, pointer, dimension(:,:,:)  :: HT_dpc, TRATE
+      real, pointer, dimension(:,:)    :: CNVF
 
 !  Pointers to Export state
 
@@ -1060,6 +1051,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       
 ! local variables
 
+      real,              dimension(IM,JM,LM  ) :: HT_ForCnvGWD
       real,              dimension(IM,JM,LM  ) :: ZM, PMID, PDEL, RPDEL, PMLN
       real,              dimension(IM,JM,LM  ) :: DUDT_ORG, DVDT_ORG, DTDT_ORG
       real,              dimension(IM,JM,LM  ) :: DUDT_GWD, DVDT_GWD, DTDT_GWD
@@ -1085,7 +1077,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 #endif
 
 ! NCEP gwd related vars
-      real, pointer :: TRATE(:,:,:)=>NULL()
       real          :: CDMBGWD(2)
       logical       :: LPRNT
       logical, allocatable :: KCNV(:,:)
@@ -1102,7 +1093,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       integer, allocatable :: KTOP(:,:)
       real, allocatable :: QMAX(:,:)
       real, pointer     :: fPBL(:,:) => NULL()
-      real, pointer     :: CLDF(:,:) => NULL()
       real, pointer     :: HPRIME(:,:) => NULL()
       real, pointer     :: OC(:,:) => NULL()
       real, pointer     :: SIGMA(:,:) => NULL()
@@ -1144,7 +1134,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, SGH,    'SGH',     RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, PREF,   'PREF',    RC=STATUS ); VERIFY_(STATUS)
 !++jtb
-      call MAPL_GetPointer( IMPORT, HT_dpc, 'DTDTCN',  RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, HT_dpc, 'DTDTCN',     RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, TRATE,  'DTDT_moist', RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, CNVF,   'CNV_FRC',    RC=STATUS ); VERIFY_(STATUS)
+      DO L = 1, LM
+         HT_ForCnvGWD(:,:,L) = HT_dpc(:,:,L) !TRATE(:,:,L)*CNVF
+      ENDDO
 
 ! Allocate/refer to the outputs
 !------------------------------
@@ -1619,7 +1614,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           ! Use Julio new code
        call gw_intr_ncar(IM*JM,    LM,         DT,                  &
             PGWV,      beres_desc, beres_band, oro_band,            &
-            PLE,       T,          U,          V,      HT_dpc,      &
+            PLE,       T,          U,          V,      HT_ForCnvGWD,&
             SGH,       PREF,                                        &
             PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
             DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
@@ -1723,10 +1718,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        call MAPL_GetPointer( IMPORT, DLENGTH, 'DXC', RC=STATUS )
        VERIFY_(STATUS)
 
-       call MAPL_GetPointer( IMPORT, CLDF, 'CNV_FRC', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( IMPORT, TRATE, 'DTDT_moist', RC=STATUS )
-       VERIFY_(STATUS)
        ! for every i,j search loop over levels to find QMAX, KBOT and KTOP
        ! lat is not used
 
@@ -1759,13 +1750,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
              END DO
              KBOT(I,J) = L+1
 
-             IF(CLDF(I,J) > 0.15) THEN
+             IF(CNVF(I,J) > 0.15) THEN
                 KCNV(I,J) = .TRUE.
              END IF
           END DO
        END DO
        call gwdc(IRUN,IX,IY,LM,LAT,U,V,T,Q,DT, &
-            PMID,PLE,PDEL,QMAX,KTOP,KBOT,KCNV,CLDF, &
+            PMID,PLE,PDEL,QMAX,KTOP,KBOT,KCNV,CNVF, &
             MAPL_GRAV,MAPL_CP,MAPL_RDRY,FV,MAPL_PI,&
             DLENGTH,LPRNT,IPR,FHOUR, &
             DUDT_TOT,DVDT_TOT,TAUXB_TMP,TAUYB_TMP)
