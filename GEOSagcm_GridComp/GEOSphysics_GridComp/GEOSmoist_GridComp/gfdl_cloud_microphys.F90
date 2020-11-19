@@ -990,7 +990,12 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! -----------------------------------------------------------------------
         
         do k = ktop, kbot
-            qa_dt (i, j, k) =  rdt * (qaz (k) - qa0 (k))
+            if (do_qa) then
+                qa_dt (i, j, k) = 0.
+            else
+!                qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (qaz (k) / real (ntimes) - qa0 (k))
+                qa_dt (i, j, k) =  rdt * (qaz (k) - qa0 (k))
+            endif
         enddo
 
         ! -----------------------------------------------------------------------
@@ -1278,7 +1283,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! with subgrid variability
         ! -----------------------------------------------------------------------
 
-!#define INCLOUD
+#define INCLOUD
 #ifdef INCLOUD
        ! Use In-Cloud condensate
        qadum = max(qa,qrmin)
@@ -2148,12 +2153,12 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         
         qsw = wqs2 (tz (k), den (k), dwsdt)
         dq0 = qsw - qv (k)
-!#define CNVQL
+#define CNVQL
 #ifdef CNVQL
         qlcn = ql(k)*fqa(k)
         if (dq0 > 0. .and. qlcn>qcmin) then
             factor = min (1., fac_l2v * (10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
-            evap = min (qlcn, factor * dq0 / (1. + tcp3 (k) * dwsdt))
+            evap = min (qlcn, factor * qlcn / (1. + tcp3 (k) * dwsdt))
            ! Adjust convective fraction of liquid condensates
             if (evap.lt.qlcn) then
               fqal(k) = (qlcn-evap)/(ql(k)-evap)    ! new conv liquid / new total liquid
@@ -2176,7 +2181,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
 #else
         if (dq0 > 0.) then
             factor = min (1., fac_l2v * (10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
-            evap = min (ql (k), factor * dq0 / (1. + tcp3 (k) * dwsdt))
+            evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
         else
            ! ! condensate all excess vapor into cloud water
            !evap = dq0 / (1. + tcp3 (k) * dwsdt)

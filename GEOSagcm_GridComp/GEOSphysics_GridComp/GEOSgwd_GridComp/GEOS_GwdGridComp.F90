@@ -1068,7 +1068,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real,              dimension(IM,JM)      :: PEGWD_X, PEORO_X,  PERAY_X,  PEBKG_X, BKGERR_X
 
       real,              dimension(IM,JM,LM  ) :: DUDT_GWD_0 , DVDT_GWD_0 , DTDT_GWD_0
+      real,              dimension(IM,JM,LM  ) :: DUDT_ORO_0 , DVDT_ORO_0 , DTDT_ORO_0
       real,              dimension(IM,JM     ) :: TAUXB_TMP_0, TAUYB_TMP_0
+      real,              dimension(IM,JM     ) :: TAUXO_TMP_0, TAUYO_TMP_0
 
       integer                                  :: J, K, L
       real(ESMF_KIND_R8)                       :: DT_R8
@@ -1624,7 +1626,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
                TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
                FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
-               BGSTRESSMAX*0.0, effgworo*0.0, effgwbkg,   RC=STATUS            )
+               BGSTRESSMAX*0.0, effgworo, effgwbkg,   RC=STATUS            )
          VERIFY_(STATUS)
          ! HOLD ON TO THE GEOS BKG OUTPUT
          DUDT_GWD_0=DUDT_GWD
@@ -1632,6 +1634,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          DTDT_GWD_0=DTDT_GWD
          TAUXB_TMP_0=TAUXB_TMP
          TAUYB_TMP_0=TAUYB_TMP
+         ! HOLD ON TO THE GEOS ORO OUTPUT
+         DUDT_ORO_0=DUDT_ORO
+         DVDT_ORO_0=DVDT_ORO
+         DTDT_ORO_0=DTDT_ORO
+         TAUXO_TMP_0=TAUXO_TMP
+         TAUYO_TMP_0=TAUYO_TMP
          ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
          call gw_intr_ncar(IM*JM,    LM,         DT,                  &
               PGWV,      beres_desc, beres_band, oro_band,            &
@@ -1643,7 +1651,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
               TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
               TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
               FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
-              BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
+              BGSTRESSMAX, effgworo*0.0, effgwbkg,   RC=STATUS            )
          VERIFY_(STATUS)
          ! ADD THE GEOS BKG OUTPUT
          DUDT_GWD=DUDT_GWD_0+DUDT_GWD
@@ -1651,6 +1659,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          DTDT_GWD=DTDT_GWD_0+DTDT_GWD
          TAUXB_TMP=TAUXB_TMP_0+TAUXB_TMP
          TAUYB_TMP=TAUYB_TMP_0+TAUYB_TMP
+         ! REPLACE THE GEOS ORO OUTPUT
+         DUDT_ORO=DUDT_ORO_0
+         DVDT_ORO=DVDT_ORO_0
+         DTDT_ORO=DTDT_ORO_0
+         TAUXO_TMP=TAUXO_TMP_0
+         TAUYO_TMP=TAUYO_TMP_0
        else
           ! Use GEOS GWD    
           call gw_intr   (IM*JM,      LM,         DT,                  &

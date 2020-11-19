@@ -278,7 +278,7 @@ contains
                 adjustl(CLDMICRO)=="GFDL"
     _ASSERT( LCLDMICRO, 'needs informative message' )
     if (adjustl(CLDMICRO)=="2MOMENT") then
-      call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=0.0, RC=STATUS)
+      call ESMF_ConfigGetAttribute( CF, MGVERSION, Label="MGVERSION:",  default=1.0, RC=STATUS)
     endif
     call ESMF_ConfigGetAttribute( CF, DOSHLW, Label="DOSHLW:",  default=0, RC=STATUS)
 
@@ -307,7 +307,7 @@ contains
     FRIENDLIES_QGRAUPEL = trim(COMP_NAME)
    
     if(adjustl(CLDMICRO)=="2MOMENT") then
-      if (MGVERSION==0) then    
+      if (MGVERSION==1) then    
         FRIENDLIES_NCPI = 'DYNAMICS:TURBULENCE'      
         FRIENDLIES_NCPL = 'DYNAMICS:TURBULENCE'
       endif
@@ -5016,7 +5016,7 @@ contains
                 adjustl(CLDMICRO)=="GFDL"
     _ASSERT( LCLDMICRO, 'needs informative message' )
     if (adjustl(CLDMICRO)=="2MOMENT") then
-      call MAPL_GetResource( MAPL, MGVERSION, Label="MGVERSION:",  default=0.0, RC=STATUS)
+      call MAPL_GetResource( MAPL, MGVERSION, Label="MGVERSION:",  default=1.0, RC=STATUS)
     endif
     call MAPL_GetResource( MAPL, DOSHLW, Label="DOSHLW:",  default=0, RC=STATUS)
  
@@ -8723,7 +8723,7 @@ contains
          if(IS_FRIENDLY(K)) then
             KK = KK+1
             TRPtrs(K)%Q(:,:,:) = XHO(:,:,:,KK)
-            ASSERT_(all(XHO(:,:,:,KK) > 0.0))
+            ASSERT_(all(XHO(:,:,:,KK) >= 0.0))
          end if
       end do
 
@@ -12373,11 +12373,11 @@ do K= 1, LM
       if(associated(CU2DRAINMOVE)) cu2drainmove = cn_prc2
       if(associated(CU2DSNOWMOVE)) cu2dsnowmove = cn_snr
 
-       CN_PRC2 = CN_PRC2 + LS_PRC2*cnv_fraction
-       LS_PRC2 = LS_PRC2 - LS_PRC2*cnv_fraction
+      !CN_PRC2 = CN_PRC2 + LS_PRC2*cnv_fraction
+      !LS_PRC2 = LS_PRC2 - LS_PRC2*cnv_fraction
 
-       CN_SNR = CN_SNR + LS_SNR*cnv_fraction
-       LS_SNR = LS_SNR - LS_SNR*cnv_fraction
+      !CN_SNR = CN_SNR + LS_SNR*cnv_fraction
+      !LS_SNR = LS_SNR - LS_SNR*cnv_fraction
 
       if(associated(CU2DRAINMOVE)) cu2drainmove = cn_prc2 - cu2drainmove
       if(associated(CU2DSNOWMOVE)) cu2dsnowmove = cn_snr - cu2dsnowmove
@@ -12389,17 +12389,17 @@ do K= 1, LM
       if(associated(PFLCNMOVE)) pflcnmove = pfl_cn
       if(associated(PFICNMOVE)) pficnmove = pfi_cn
 
-       do l=1,lm
+      !do l=1,lm
 
-       pfl_cn  (:,:,L) = pfl_cn  (:,:,L) + pfl_ls(:,:,L)*cnv_fraction
-       pfl_lsan(:,:,L) = pfl_lsan(:,:,L) - pfl_ls(:,:,L)*cnv_fraction
-       pfl_ls  (:,:,L) = pfl_ls  (:,:,L) - pfl_ls(:,:,L)*cnv_fraction
+      !pfl_cn  (:,:,L) = pfl_cn  (:,:,L) + pfl_ls(:,:,L)*cnv_fraction
+      !pfl_lsan(:,:,L) = pfl_lsan(:,:,L) - pfl_ls(:,:,L)*cnv_fraction
+      !pfl_ls  (:,:,L) = pfl_ls  (:,:,L) - pfl_ls(:,:,L)*cnv_fraction
 
-       pfi_cn  (:,:,L) = pfi_cn  (:,:,L) + pfi_ls(:,:,L)*cnv_fraction
-       pfi_lsan(:,:,L) = pfi_lsan(:,:,L) - pfi_ls(:,:,L)*cnv_fraction
-       pfi_ls  (:,:,L) = pfi_ls  (:,:,L) - pfi_ls(:,:,L)*cnv_fraction
+      !pfi_cn  (:,:,L) = pfi_cn  (:,:,L) + pfi_ls(:,:,L)*cnv_fraction
+      !pfi_lsan(:,:,L) = pfi_lsan(:,:,L) - pfi_ls(:,:,L)*cnv_fraction
+      !pfi_ls  (:,:,L) = pfi_ls  (:,:,L) - pfi_ls(:,:,L)*cnv_fraction
 
-       enddo
+      !enddo
 
       if(associated(PFLCNMOVE)) pflcnmove = pfl_cn - pflcnmove
       if(associated(PFICNMOVE)) pficnmove = pfi_cn - pficnmove
