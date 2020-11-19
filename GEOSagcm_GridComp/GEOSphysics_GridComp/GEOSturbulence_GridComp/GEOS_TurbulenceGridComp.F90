@@ -2955,7 +2955,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
     
-    if (MYNN_LEVEL == 3) then
+    if ( MYNN_LEVEL >= 3 ) then
        call MAPL_AddInternalSpec(GC,                                            &
             LONG_NAME  = 'matrix_diagonal_ahat_for_tke',                          &
             SHORT_NAME = 'AKTPE',                                                 &
@@ -2987,16 +2987,6 @@ contains
        VERIFY_(STATUS)
        
        call MAPL_AddInternalSpec(GC,                                            &
-            LONG_NAME  = 'rhs_for_hl2',                                           &
-            SHORT_NAME = 'YHL2',                                                  &
-            UNITS      = '1',                                                     &
-            DIMS       = MAPL_DimsHorzVert,                                       &
-            VLOCATION  = MAPL_VLocationEdge,                                      &
-            RESTART    = MAPL_RestartSkip,                                        &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-       
-       call MAPL_AddInternalSpec(GC,                                            &
             LONG_NAME  = 'rhs_for_qt2',                                           &
             SHORT_NAME = 'YQT2',                                                  &
             UNITS      = '1',                                                     &
@@ -3005,16 +2995,28 @@ contains
             RESTART    = MAPL_RestartSkip,                                        &
             RC=STATUS  )
        VERIFY_(STATUS)
-       
-       call MAPL_AddInternalSpec(GC,                                            &
-            LONG_NAME  = 'rhs_for_hlqt',                                          &
-            SHORT_NAME = 'YHLQT',                                                 &
-            UNITS      = '1',                                                     &
-            DIMS       = MAPL_DimsHorzVert,                                       &
-            VLOCATION  = MAPL_VLocationEdge,                                      &
-            RESTART    = MAPL_RestartSkip,                                        &
-            RC=STATUS  )
-       VERIFY_(STATUS)
+
+       if ( MYNN_LEVEL == 3 ) then
+          call MAPL_AddInternalSpec(GC,                                            &
+               LONG_NAME  = 'rhs_for_hl2',                                           &
+               SHORT_NAME = 'YHL2',                                                  &
+               UNITS      = '1',                                                     &
+               DIMS       = MAPL_DimsHorzVert,                                       &
+               VLOCATION  = MAPL_VLocationEdge,                                      &
+               RESTART    = MAPL_RestartSkip,                                        &
+               RC=STATUS  )
+          VERIFY_(STATUS)
+
+          call MAPL_AddInternalSpec(GC,                                            &
+               LONG_NAME  = 'rhs_for_hlqt',                                          &
+               SHORT_NAME = 'YHLQT',                                                 &
+               UNITS      = '1',                                                     &
+               DIMS       = MAPL_DimsHorzVert,                                       &
+               VLOCATION  = MAPL_VLocationEdge,                                      &
+               RESTART    = MAPL_RestartSkip,                                        &
+               RC=STATUS  )
+          VERIFY_(STATUS)
+       end if
     end if
     !
     ! End MYNN-related variables
@@ -3279,19 +3281,22 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, YTKE,          'YTKE',      RC=STATUS)
     VERIFY_(STATUS)
-    if (MYNN_LEVEL == 3) then
+    if ( MYNN_LEVEL >= 3 ) then
        call MAPL_GetPointer(INTERNAL, AKTPE,     'AKTPE',     RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, BKTPE,     'BKTPE',     RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, CKTPE,     'CKTPE',     RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, YHL2,      'YHL2',      RC=STATUS)
-       VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, YQT2,      'YQT2',      RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, YHLQT,     'YHLQT',     RC=STATUS)
-       VERIFY_(STATUS)
+
+       if ( MYNN_LEVEL == 3 ) then
+          call MAPL_GetPointer(INTERNAL, YHL2,      'YHL2',      RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GetPointer(INTERNAL, YHLQT,     'YHLQT',     RC=STATUS)
+          VERIFY_(STATUS)
+       end if
     end if
     call MAPL_GetPointer(INTERNAL, ws_explicit,     'ws_explicit',     RC=STATUS)
     VERIFY_(STATUS)
@@ -3661,6 +3666,7 @@ contains
      ! MYNN parameters
      integer :: MYNN_LEVEL           ! 2:    level-2.5 
                                      ! 3:    level-3
+                                     ! 4:    level-2.75
      integer :: MYNN_IMPLICIT        ! 0:    implicit mean-gradient and buoyancy production of TKE
                                      ! else: explicit
      integer :: MYNN_DEBUG           ! 0 (default): no debugging output in MYNN
@@ -5743,7 +5749,7 @@ ENDIF
       end if
       YTKE(:,:,LM) = TKE_SURF(:,:)
          
-      if ( MYNN_LEVEL == 3 ) then
+      if ( MYNN_LEVEL >= 3 ) then
          AKTPE(:,:,0)      = 0.
          AKTPE(:,:,1:LM-1) = -K_TKE(:,:,1:LM-1)/3.*RDZ_HALF(:,:,1:LM-1)*DMI_HALF(:,:,1:LM-1)
          AKTPE(:,:,LM)     = 0.
@@ -5755,18 +5761,20 @@ ENDIF
          BKTPE(:,:,0)      = 1.
          BKTPE(:,:,1:LM-1) = 1. + DT*itau_mynn(:,:,1:LM-1)/B2 - ( CKTPE(:,:,1:LM-1) + AKTPE(:,:,1:LM-1) )
          BKTPE(:,:,LM)     = 1.
-         
-         YHL2(:,:,0)      = 0.
-         YHL2(:,:,1:LM-1) = DT*HL2T_M(:,:,1:LM-1)
-         YHL2(:,:,LM)     = HL2_SURF(:,:)
 
          YQT2(:,:,0)      = 0.
          YQT2(:,:,1:LM-1) = DT*QT2T_M(:,:,1:LM-1)
          YQT2(:,:,LM)     = QT2_SURF(:,:)
 
-         YHLQT(:,:,0)      = 0.
-         YHLQT(:,:,1:LM-1) = DT*HLQTT_M(:,:,1:LM-1)
-         YHLQT(:,:,LM)     = HLQT_SURF(:,:)
+         if ( MYNN_LEVEL == 3 ) then
+            YHL2(:,:,0)      = 0.
+            YHL2(:,:,1:LM-1) = DT*HL2T_M(:,:,1:LM-1)
+            YHL2(:,:,LM)     = HL2_SURF(:,:)
+
+            YHLQT(:,:,0)      = 0.
+            YHLQT(:,:,1:LM-1) = DT*HLQTT_M(:,:,1:LM-1)
+            YHLQT(:,:,LM)     = HLQT_SURF(:,:)
+         end if
       end if
    end if
 
@@ -6216,18 +6224,20 @@ ENDIF
           YTKE(:,:,LM) = TKE_SURF(:,:)
 
           call MAPL_GetResource (MAPL, MYNN_LEVEL, "MYNN_LEVEL:", default=2,  RC=STATUS)
-          if ( MYNN_LEVEL == 3 ) then
-             YHL2(:,:,0)      = 0.
-             YHL2(:,:,1:LM-1) = DT*hl2t_M(:,:,1:LM-1)
-             YHL2(:,:,LM)     = HL2_SURF(:,:)
-
+          if ( MYNN_LEVEL >= 3 ) then
              YQT2(:,:,0)      = 0.
              YQT2(:,:,1:LM-1) = DT*qt2t_M(:,:,1:LM-1)
              YQT2(:,:,LM)     = QT2_SURF(:,:)
 
-             YHLQT(:,:,0)      = 0.
-             YHLQT(:,:,1:LM-1) = DT*hlqtt_M(:,:,1:LM-1)
-             YHLQT(:,:,LM)     = HLQT_SURF(:,:)
+             if ( MYNN_LEVEL == 3 ) then
+                YHLQT(:,:,0)      = 0.
+                YHLQT(:,:,1:LM-1) = DT*hlqtt_M(:,:,1:LM-1)
+                YHLQT(:,:,LM)     = HLQT_SURF(:,:)
+
+                YHL2(:,:,0)      = 0.
+                YHL2(:,:,1:LM-1) = DT*hl2t_M(:,:,1:LM-1)
+                YHL2(:,:,LM)     = HL2_SURF(:,:)
+             end if
           end if
        end if
 
@@ -6373,11 +6383,11 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
        ! Compute dissipation tendencies of second-order moments
        if ( DO_MYNN /= 0 .and. trim(name) == 'tke_new' ) then
           tket_D(:,:,1:LM-1) = -itau_mynn(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B1
-       else if ( trim(name) == 'hl2' ) then
+       else if ( trim(name) == 'hl2' .and. associated(hl2t_D) ) then
           hl2t_D(:,:,1:LM-1) = -itau_mynn(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B2
-       else if ( trim(name) == 'qt2' ) then
+       else if ( trim(name) == 'qt2' .and. associated(qt2t_D)) then
           qt2t_D(:,:,1:LM-1) = -itau_mynn(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B2
-       else if ( trim(name) == 'hlqt' ) then
+       else if ( trim(name) == 'hlqt' .and. associated(hlqtt_D) ) then
           hlqtt_D(:,:,1:LM-1) = -itau_mynn(:,:,1:LM-1)*SX_HALF(:,:,1:LM-1)/B2
        end if
 
@@ -6385,12 +6395,12 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
        if ( associated(SOI) ) then
           if ( trim(name) == 'tke_new' .and. associated(tket_T) .and. associated(tket_D) ) then
              tket_T(:,:,1:LM-1) = SOI(:,:,1:LM-1) - tket_M(:,:,1:LM-1) - tket_B(:,:,1:LM-1) - tket_D(:,:,1:LM-1) - tket_T_mf(:,:,1:LM-1)
-          else if ( MYNN_LEVEL == 3 ) then
-             if (trim(name) == 'hl2' .and. associated(hl2t_T) .and. associated(hl2t_D) ) then
+          else if ( MYNN_LEVEL >= 3 ) then
+             if ( trim(name) == 'hl2' .and. associated(hl2t_T) .and. associated(hl2t_D) ) then
                 hl2t_T(:,:,1:LM-1) = SOI(:,:,1:LM-1) - hl2t_M(:,:,1:LM-1) - hl2t_D(:,:,1:LM-1)
-             else if (trim(name) == 'qt2' .and. associated(qt2t_T) .and. associated(qt2t_D) ) then
+             else if ( trim(name) == 'qt2' .and. associated(qt2t_T) .and. associated(qt2t_D) ) then
                 qt2t_T(:,:,1:LM-1) = SOI(:,:,1:LM-1) - qt2t_M(:,:,1:LM-1) - qt2t_D(:,:,1:LM-1)
-             else if (trim(name) == 'hlqt' .and. associated(hlqtt_T) .and. associated(hlqtt_D) ) then
+             else if ( trim(name) == 'hlqt' .and. associated(hlqtt_T) .and. associated(hlqtt_D) ) then
                 hlqtt_T(:,:,1:LM-1) = SOI(:,:,1:LM-1) - hlqtt_M(:,:,1:LM-1) - hlqtt_D(:,:,1:LM-1)
              end if
           end if
@@ -6416,8 +6426,8 @@ if ((trim(name) /= 'S') .and. (trim(name) /= 'Q') .and. (trim(name) /= 'QLLS') &
 ! Update friendlies
 !------------------
 
-       if(FRIENDLY) then
-          if (trim(name) == 'tke_new' .or. trim(name) == 'hl2' .or. trim(name) == 'qt2' .or. trim(name) == 'hlqt') then
+       if( FRIENDLY ) then
+          if ( trim(name) == 'tke_new' .or. trim(name) == 'hl2' .or. trim(name) == 'qt2' .or. trim(name) == 'hlqt' ) then
              S = SX_HALF
           else
              S = SX

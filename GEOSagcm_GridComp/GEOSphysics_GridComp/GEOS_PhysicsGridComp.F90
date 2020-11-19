@@ -575,16 +575,7 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    if ( MYNN_LEVEL == 3 ) then
-       call MAPL_AddExportSpec(GC,                            &
-            SHORT_NAME = 'hl2IT',                             &
-            LONG_NAME  = 'tendency_of_hl2_due_to_turbulence', &
-            UNITS      = 'K+2s-1',                            &
-            DIMS       = MAPL_DimsHorzVert,                   &
-            VLOCATION  = MAPL_VLocationEdge,                  &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-
+    if ( MYNN_LEVEL >= 3 ) then
        call MAPL_AddExportSpec(GC,                            &
             SHORT_NAME = 'qt2IT',                             &
             LONG_NAME  = 'tendency_of_qt2_due_to_turbulence', &
@@ -594,14 +585,25 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
 
-       call MAPL_AddExportSpec(GC,                             &
-            SHORT_NAME = 'hlqtIT',                             &
-            LONG_NAME  = 'tendency_of_hlqt_due_to_turbulence', &
-            UNITS      = 'K+2s-1',                             &
-            DIMS       = MAPL_DimsHorzVert,                    &
-            VLOCATION  = MAPL_VLocationEdge,                   &
-            RC=STATUS  )
-       VERIFY_(STATUS)
+       if ( MYNN_LEVEL == 4 ) then
+          call MAPL_AddExportSpec(GC,                            &
+               SHORT_NAME = 'hl2IT',                             &
+               LONG_NAME  = 'tendency_of_hl2_due_to_turbulence', &
+               UNITS      = 'K+2s-1',                            &
+               DIMS       = MAPL_DimsHorzVert,                   &
+               VLOCATION  = MAPL_VLocationEdge,                  &
+               RC=STATUS  )
+          VERIFY_(STATUS)
+
+          call MAPL_AddExportSpec(GC,                             &
+               SHORT_NAME = 'hlqtIT',                             &
+               LONG_NAME  = 'tendency_of_hlqt_due_to_turbulence', &
+               UNITS      = 'K+2s-1',                             &
+               DIMS       = MAPL_DimsHorzVert,                    &
+               VLOCATION  = MAPL_VLocationEdge,                   &
+               RC=STATUS  )
+          VERIFY_(STATUS)
+       end if
     end if
     !
     ! End second-order moment tendencies
@@ -1771,14 +1773,7 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_GetResource (STATE, MYNN_LEVEL, "MYNN_LEVEL:", default=2,  RC=STATUS)
-    if ( MYNN_LEVEL == 3 ) then
-       call ESMF_StateGet    (GEX(TURBL),  'hl2'   , FIELD,    RC=STATUS )
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
-       VERIFY_(STATUS)
-
+    if ( MYNN_LEVEL >= 3 ) then
        call ESMF_StateGet    (GEX(TURBL),  'qt2'   , FIELD,    RC=STATUS )
        VERIFY_(STATUS)
        call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
@@ -1786,12 +1781,21 @@ contains
        call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
        VERIFY_(STATUS)
 
-       call ESMF_StateGet    (GEX(TURBL),  'hlqt'   , FIELD,    RC=STATUS )
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
-       VERIFY_(STATUS)
+       if ( MYNN_LEVEL == 3 ) then
+          call ESMF_StateGet    (GEX(TURBL),  'hl2'   , FIELD,    RC=STATUS )
+          VERIFY_(STATUS)
+          call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+          VERIFY_(STATUS)
+          call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+          VERIFY_(STATUS)
+
+          call ESMF_StateGet    (GEX(TURBL),  'hlqt'   , FIELD,    RC=STATUS )
+          VERIFY_(STATUS)
+          call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+          VERIFY_(STATUS)
+          call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+          VERIFY_(STATUS)
+       end if
     end if
 
 #ifdef PRINT_STATES
