@@ -990,12 +990,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! -----------------------------------------------------------------------
         
         do k = ktop, kbot
-            if (do_qa) then
-                qa_dt (i, j, k) = 0.
-            else
-!                qa_dt (i, j, k) = qa_dt (i, j, k) + rdt * (qaz (k) / real (ntimes) - qa0 (k))
-                qa_dt (i, j, k) =  rdt * (qaz (k) - qa0 (k))
-            endif
+             qa_dt (i, j, k) =  rdt * (qaz (k) - qa0 (k))
         enddo
 
         ! -----------------------------------------------------------------------
