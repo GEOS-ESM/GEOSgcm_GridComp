@@ -169,6 +169,8 @@ contains
 ! Get constants from CF
 ! ---------------------
 
+    call MAPL_GetResource ( MAPL,       NEW_FEATURE,     Label="NEW_FEATURE:" ,       DEFAULT=.FALSE., RC=STATUS)
+    VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL,       DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,       DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
