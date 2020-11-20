@@ -1,11 +1,11 @@
 esma_set_this ()
 
-string (REPLACE GEOScatchCN40_GridComp_ "" is_openmp ${this})
+string (REPLACE GEOScatchCNCLM40_GridComp_ "" is_openmp ${this})
 
 esma_add_subdirectories (CLM40)
 
 set (srcs
-  GEOS_CatchCN40GridComp.F90
+  GEOS_CatchCNCLM40GridComp.F90
   )
 
 esma_add_library (${this}

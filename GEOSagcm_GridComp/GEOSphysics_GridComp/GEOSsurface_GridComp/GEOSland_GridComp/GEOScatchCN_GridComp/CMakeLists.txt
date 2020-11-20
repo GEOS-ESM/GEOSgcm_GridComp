@@ -1,8 +1,8 @@
 esma_set_this ()
 
 set (alldirs
-  GEOScatchCN40_GridComp
-  GEOScatchCN45_GridComp
+  GEOScatchCNCLM40_GridComp
+  GEOScatchCNCLM45_GridComp
   )
 
 esma_add_library (${this}

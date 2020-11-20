@@ -8,8 +8,8 @@ module GEOS_CatchCNGridCompMod
   use ESMF
   use MAPL
   
-  use GEOS_CatchCN40GridCompMod,only: CLM40_SetServices => SetServices
-  use GEOS_CatchCN45GridCompMod,only: CLM45_SetServices => SetServices
+  use GEOS_CatchCNCLM40GridCompMod,only: CLM40_SetServices => SetServices
+  use GEOS_CatchCNCLM45GridCompMod,only: CLM45_SetServices => SetServices
   USE STIEGLITZSNOW,   ONLY :                 &
        N_CONSTIT,   &
        NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD, &
@@ -75,10 +75,10 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
 
     if ( LSM_CHOICE == 2 ) then
-       CATCHCN = MAPL_AddChild(GC, NAME='CATCHCN40', SS = CLM40_SetServices, RC=STATUS)
+       CATCHCN = MAPL_AddChild(GC, NAME='CATCHCNCLM40', SS = CLM40_SetServices, RC=STATUS)
        VERIFY_(STATUS)       
     else if ( LSM_CHOICE == 3 ) then
-       CATCHCN = MAPL_AddChild(GC, NAME='CATCHCN45', SS = CLM45_SetServices, RC=STATUS)
+       CATCHCN = MAPL_AddChild(GC, NAME='CATCHCNCLM45', SS = CLM45_SetServices, RC=STATUS)
        VERIFY_(STATUS)       
     else
        _ASSERT( .false., " LSM_CHOICE should 2 (CLM40) or 3 (CLM45)")
