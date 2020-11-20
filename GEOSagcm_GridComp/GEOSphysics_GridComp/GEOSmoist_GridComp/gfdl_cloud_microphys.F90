@@ -2398,7 +2398,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! combine water species
         ! -----------------------------------------------------------------------
         
-        if (do_qa) cycle
+     !  if (do_qa) cycle
         
         if (rad_snow) then
             q_sol (k) = qi (k) + qs (k)
@@ -2418,7 +2418,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! use the "liquid - frozen water temperature" (tin) to compute saturated specific humidity
         ! -----------------------------------------------------------------------
         
-        tin = tz (k) - (lcpk (k) * q_cond (k) + icpk (k) * q_sol (k)) ! minimum temperature
+        tin = tz (k) - (lcpk (k) * q_liq (k) + icpk (k) * q_sol (k)) ! minimum temperature
         ! tin = tz (k) - ((lv00 + d0_vap * tz (k)) * q_cond (k) + &
         ! (li00 + dc_ice * tz (k)) * q_sol (k)) / (c_air + qpz * c_vap)
         

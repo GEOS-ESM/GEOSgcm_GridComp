@@ -8730,7 +8730,11 @@ contains
       call MAPL_TimerOff(STATE,"-POST_CNV")
 
 
-      call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 1.0    )
+      if (adjustl(CLDMICRO) =="GFDL") then
+        call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 2.0    )
+      else
+        call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 1.0    )
+      endif
 
       call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT= 300.0  )
       call MAPL_GetResource( STATE, CLDPARAMS%SLOPERHCRIT, 'SLOPERHCRIT:', DEFAULT= 20.0  )
