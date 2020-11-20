@@ -3368,23 +3368,19 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 vti (k) = vf_min
             else
                 tc (k) = tk (k) - tice ! deg C
-!#define DENG_MACE
+#define DENG_MACE
 #ifdef DENG_MACE
                ! -----------------------------------------------------------------------
                ! use deng and mace (2008, grl)
                ! -----------------------------------------------------------------------
-#define SPLIT
-#ifdef SPLIT
                 IWC    = qi (k) * den (k) * 1.e3 ! g/m3
                 viCNV   = anv_icefall*10.0**(log10(IWC) * (tc (k) * (aaC * tc (k) + bbC) + ccC) + ddC * tc (k) + eeC)
                 viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
                ! Combine 
                 vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
-#else
-               ! Global
-                vti (k) = (3. + log10 (qi (k) * den (k))) * (tc (k) * (aa * tc (k) + bb) + cc) + dd * tc (k) + ee
-                vti (k) = exp (log_10 * vti (k))
-#endif
+              !! Global
+              ! vti (k) = (3. + log10 (qi (k) * den (k))) * (tc (k) * (aa * tc (k) + bb) + cc) + dd * tc (k) + ee
+              ! vti (k) = exp (log_10 * vti (k))
 #else
                ! -----------------------------------------------------------------------
                ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in 
@@ -3399,7 +3395,7 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                ! Units from cm/s to m/s
                 vti (k) = vi1 * vti (k)
 
-#define PRES_SCALE
+!#define PRES_SCALE
 #ifdef PRES_SCALE
                ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
                 !------ice cloud effective radius ----- [klaus wyser, 1998]
