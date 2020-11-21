@@ -307,13 +307,13 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
            end do            
 
            ! Change surface THV so that the fluxes from the mass flux equal prescribed values
-           if ( THVsrfF > wthv ) then
+           if ( kbot == 0 .and. THVsrfF > wthv ) then
               upthv(:,i,j) = ( upthv(:,i,j) - thvi(i,j,kbot) )*wthv/THVsrfF + thvi(i,j,kbot)
            end if
 
            ! Change surface QT so that the fluxes from the mass flux equal prescribed values 
            ! We do not need to worry about the negative values as they should not exist
-           if ( ( QTsrfF > evap(i,j) ) .and. ( evap(i,j) > 0. ) )  then
+           if ( kbot == 0. .and. QTsrfF > evap(i,j) .and. evap(i,j) > 0. )  then
               upqt(:,i,j) = ( upqt(:,i,j) - qti(i,j,kbot) )*evap(i,j)/QTsrfF + qti(i,j,kbot)
            end if
 
