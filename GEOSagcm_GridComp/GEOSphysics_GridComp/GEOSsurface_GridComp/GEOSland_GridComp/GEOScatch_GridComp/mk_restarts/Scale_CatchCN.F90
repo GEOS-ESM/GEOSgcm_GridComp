@@ -616,6 +616,13 @@
        do j=1,dim1
           call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j)
        enddo
+       ! The following three lines were added as a bug fix by smahanam on 5 Oct 2020
+       ! (to be merged into the "develop" branch in late 2020):
+       ! The length of the 2nd dim of CNPFT differs from that of CNCOL.  Prior to this fix,
+       ! CNPFT was not read in its entirety and some elements remained uninitialized (or zero),
+       ! resulting in bad values in the "regridded" (re-tiled) restart file. 
+       ! This impacted re-tiled restarts for both CNCLM40 and CLCLM45.
+       ! - reichle, 23 Nov 2020
        myVariable => cfg%get_variable("CNPFT")
        dname => myVariable%get_ith_dimension(2)
        dim1 = cfg%get_dimension(dname)       
