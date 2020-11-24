@@ -69,18 +69,18 @@ contains
 !
 ! mynn_l2
 !
-subroutine mynn_l2(GM, GH, SM, SH)
+subroutine mynn_l2(GM, GH, SM2, SH2)
 
   double precision, intent(in) :: GM, GH
-  real, intent(out)            :: SM, SH
+  real, intent(out)            :: SM2, SH2
 
   double precision :: Ri, Rf
 
   Ri  = -GH/max( GM, 1.d-10 )
   Rf  = min( Rfc, Ri1*( Ri + Ri2 - sqrt( Ri**2.d0 - Ri3*Ri + Ri4 ) ) ) ! NN09 (A11)
 
-  SH = SHc*( ( Rfc - Rf )/( 1.d0 - Rf ) )    ! NN09 (A4)
-  SM = SMc*( ( Rf1 - Rf )/( Rf2 - Rf )  )*SH ! NN09 (A3)
+  SH2 = SHc*( ( Rfc - Rf )/( 1.d0 - Rf ) )     ! NN09 (A4)
+  SM2 = SMc*( ( Rf1 - Rf )/( Rf2 - Rf )  )*SH2 ! NN09 (A3)
 
 end subroutine mynn_l2
 
@@ -88,13 +88,13 @@ end subroutine mynn_l2
 ! mynn_l25
 !
 subroutine mynn_l25(L, q, tke, dhldz, dqtdz, S2, N2, &    ! in
-                    SM, SH, hl2_25, qt2_25, hlqt_25, &    ! out (MYNN level 2.5 state)
+                    SM25, SH25, &                         ! out (MYNN level 2.5 state)
                     Phi1, Phi2, Phi3, Phi4, Phi5, D_25, & ! out (needed for MYNN level-3)
                     L2, GH, L2GH, q2, qdiv, qdiv2)        ! out (needed for MYNN level-3)
 
   double precision, intent(in)  :: L, q
   real, intent(in)              :: tke, dhldz, dqtdz, S2, N2
-  real, intent(out)             :: SM, SH, hl2_25, qt2_25, hlqt_25
+  real, intent(out)             :: SM25, SH25
   double precision, intent(out) :: Phi1, Phi2, Phi3, Phi4, Phi5, D_25, &
                                    L2, GH, L2GH, q2, qdiv, qdiv2
 
@@ -104,11 +104,11 @@ subroutine mynn_l25(L, q, tke, dhldz, dqtdz, S2, N2, &    ! in
 
   ! Compute some intermediate quantities
   L2   = L**2.d0
+  q2   = q**2.d0
   GH   = -N2 ! This is actually GH divided by L2/q2
   GM   = S2  ! "    "  "        GM "       "  "
   L2GH = L2*GH
   L2GM = L2*GM
-  q2   = q**2.d0
 
   ! Compute Level-2 closure quantities
   call mynn_l2(GM, GH, SM2, SH2)
@@ -133,52 +133,32 @@ subroutine mynn_l25(L, q, tke, dhldz, dqtdz, S2, N2, &    ! in
 
   ! Compute stability functions
   if ( q2 < q22 ) then
-     SM = qdiv*SM2
-     SH = qdiv*SH2
+     SM25 = qdiv*SM2
+     SH25 = qdiv*SH2
   else
-     SM = q2*A1*( ( Phi3 - 3.d0*C1*Phi4 )/D_25 ) ! NN09 (27)
-     SH = q2*A2*( ( Phi2 + 3.d0*C1*Phi5 )/D_25 ) ! NN09 (28)
+     SM25 = q2*A1*( ( Phi3 - 3.d0*C1*Phi4 )/D_25 ) ! NN09 (27)
+     SH25 = q2*A2*( ( Phi2 + 3.d0*C1*Phi5 )/D_25 ) ! NN09 (28)
   end if
-
-  ! Compute thermodyanamic (co-)variances from level-2.5 closure
-  hl2_25  = qdiv*B2*L2*SH*dhldz**2.
-  qt2_25  = qdiv*B2*L2*SH*dqtdz**2.
-  hlqt_25 = qdiv*B2*L2*SH*dhldz*dqtdz
 
 end subroutine mynn_l25
 
 !
 ! mynn_l3
 !
-subroutine mynn_l3(WRF_CG_FLAG, &                                             ! in
-                   hl2, qt2, hlqt, Beta_hl, Beta_qt, &                        ! in 
-                   goth00, Lq, hl2_25, qt2_25, hlqt_25, &                     ! in
-                   Phi1, Phi3, Phi4, Phi5, D_25, L2, GH, L2GH, qdiv, qdiv2, & ! in
-                   SM, Phi2, q2, &                                            ! inout          
-                   whl_explicit, wqt_explicit, wb_explicit)                   ! out
+subroutine mynn_l3(th00, &                                                    ! in 
+                   Phi1, Phi3, Phi4, Phi5, D_25, L2, GH, L2GH, qdiv, qdiv2, & ! in (MYNN level-2.5 state)
+                   Phi2, q2, &                                                ! inout         
+                   EM, EH, Cw_low, Cw_high)                                   ! out (MYNN level-3 state)
 
-  integer, intent(in)             :: WRF_CG_FLAG
-  real, intent(in)                :: goth00, Beta_hl, Beta_qt, hl2, qt2, hlqt, hl2_25, qt2_25, hlqt_25
-  double precision, intent(in)    :: L2, Lq, Phi1, Phi3, Phi4, Phi5, D_25, &
-                                     GH, L2GH, qdiv, qdiv2
+  real, intent(in)                :: th00
+  double precision, intent(in)    :: Phi1, Phi3, Phi4, Phi5, D_25, L2, GH, L2GH, qdiv, qdiv2
   double precision, intent(inout) :: Phi2, q2
-  real, intent(inout)             :: SM
-  real, intent(out)               :: whl_explicit, wqt_explicit, wb_explicit
+  real, intent(out)               :: EM, EH, Cw_low, Cw_high
 
-  real             :: goth002, Cw_low, Cw_high, Cw_25, hlthv, qtthv, thv2, &
-                      hlthv_p, qtthv_p, thv2_p, hlthv_25, qtthv_25, thv2_25
-  double precision :: D_p, wden, EM, EH
+  real             :: Cw_25, goth002
+  double precision :: D_p, wden
 
-  goth002 = goth00**2.
-
-  ! Compute buoyancy (co-)variances
-  hlthv_25 = Beta_hl*hl2_25  + Beta_qt*hlqt_25
-  qtthv_25 = Beta_hl*hlqt_25 + Beta_qt*qt2_25
-  thv2_25  = max( 0., Beta_hl*hlthv_25 + Beta_qt*qtthv_25 )
-
-  hlthv = Beta_hl*hl2  + Beta_qt*hlqt
-  qtthv = Beta_hl*hlqt + Beta_qt*qt2
-  thv2  = max( 0.d0, Beta_hl*hlthv + Beta_qt*qtthv )
+  goth002 = (MAPL_GRAV/th00)**2.
 
   ! Limit q2 so that L/q is less than 1/N for N2 > 0 (NN09 Section 2.7)
   if ( q2/L2 < -GH ) then
@@ -188,50 +168,239 @@ subroutine mynn_l3(WRF_CG_FLAG, &                                             ! 
   !
   Phi2 = q2 - e2c*L2GH*qdiv2                                                  ! NN09 (34)
   D_p  = max( 1.d-20, Phi2*( Phi4 - Phi1 + q2 ) + Phi5*( Phi3 - Phi1 + q2 ) ) ! NN09 (32)
-  EH   = qdiv*eHc*( ( Phi2 + Phi5 )/D_p )                                     ! NN09 (48)
 
-  ! Compute counter-gradient flux of conserved variables
-  if ( WRF_CG_FLAG == 0 ) then
-     hlthv_p = hlthv - hlthv_25
-     qtthv_p = qtthv - qtthv_25
-  else
-     if ( hlthv_25 >= 0. ) then
-        hlthv_p = max( 0., hlthv - hlthv_25 )
-     else
-        hlthv_p = min( 0., hlthv - hlthv_25 )
-     end if
+  ! Compute level-3 momentum stability function
+  EH = qdiv*eHc*( ( Phi2 + Phi5 )/D_p )        ! NN09 (48)
+  EM = qdiv*eMc*( ( Phi3 - Phi4 )/(D_p*L2GH) ) ! NN09 (47)
 
-     if ( qtthv_25 >= 0. ) then
-        qtthv_p = max( 0., qtthv - qtthv_25 )
-     else
-        qtthv_p = min( 0., qtthv - qtthv_25 )
-     end if
-  end if
-  whl_explicit = Lq*EH*goth00*hlthv_p
-  wqt_explicit = Lq*EH*goth00*qtthv_p
-
-  ! Compute counter-gradient buoyancy flux, but
-  ! restrict anisotropy by restricting buoyancy variance (NN09 Section 2.7)
-  thv2_p = max( 0., Beta_hl*hlthv_p + Beta_qt*qtthv_p )
+  !
   wden = ( 1.d0 - C3 )*goth002*L2*qdiv2*( e4c*Phi2 - e3c*Phi5 )
   if ( wden /= 0.d0 ) then
      Cw_25   = Phi1*( Phi2 + 3.d0*C1*Phi5 )/(3.d0*D_25) ! NN09 (59)
      Cw_low  = q2*( 0.12 - Cw_25 )*( D_p/wden )
      Cw_high = q2*( 0.76 - Cw_25 )*( D_p/wden )
+  end if
 
-     if ( wden > 0.d0 ) then
+end subroutine mynn_l3
+
+!!$!
+!!$! mynn_predict_correct
+!!$!
+!!$subroutine mynn_predict_correct(IM, JM, LM, &                                         ! in
+!!$                                mynn_level, wrf_cg_flag, domf, consistent_type, &     ! in
+!!$                                th00, ple, Beta_hl, Beta_qt, tke, hl2, qt2, hlqt, &   ! in
+!!$                                dzle, dhldz, dqtdz, dqldz, N2, S2, &                  ! in (gradient information)
+!!$                                SM25, SH, EM, EH, &                                   ! in
+!!$                                au, Mu, E, D, wu, wdet, &                             ! in (for consistent partitioning of TKE)
+!!$                                whl_mf, wqt_mf, wthv_mf, &                            ! in (for non-consistent partitioning of TKE)
+!!$                                tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, & ! out
+!!$                                tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4)       ! out
+!!$
+!!$  implicit none
+!!$
+!!$  integer, intent(in)                     :: IM, JM, LM, mynn_level, consistent_type, wrf_cg_flag
+!!$  real, dimension(IM,JM,0:LM), intent(in) :: domf, th00, ple, Beta_hl, Beta_qt, &
+!!$                                             dzle, dhldz, dqtdz, dqldz, N2, S2, &
+!!$                                             SM25, SH, EM, EH, &
+!!$                                             whl_mf, wqt_mf, wthv_mf, tke, hl2, qt2, hlqt, &
+!!$                                             au, Mu, E, D, wu, wdet
+!!$  real, intent(inout) :: tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &
+!!$                         tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4
+!!$
+!!$  real :: KM, KH, hl2_25, qt2_25, hlqt_25, ws_explicit, wqv_explicit, wql_explicit, &
+!!$          tket_M_test, tket_B_test, tket_T_mf_test, hl2t_M_test, qt2t_M_test, hlqtt_M_test, &
+!!$          tket_T_mf1_test, tket_T_mf2_test, tket_T_mf3_test, tket_T_mf4_test
+!!$  double precision :: L2, Lq
+!!$
+!!$  do k = 1,LM-1
+!!$
+!!$     km1 = k - 1
+!!$     kp1 = k + 1
+!!$     do j = 1,JM
+!!$     do i = 1,IM
+!!$        ! Compute diffusivities and second-order tendencies
+!!$        call mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &                                               ! in
+!!$                           th00, rhoe(i,j,k), Beta_hl(i,j,k), Beta_qt(i,j,k), hl2(i,j,k), qt2(i,j,k), hlqt(i,j,k), &       ! in
+!!$                           dzle, dhldz(i,j,k), dqtdz(i,j,k), dqldz(i,j,k), N2(i,j,k), S2(i,j,k), &                         ! in
+!!$                           L2, Lq, SM25(i,j,k), SH25(i,j,k), EM(i,j,k), EH(i,j,k), hl2_25, qt2_25, hlqt_25, &              ! in
+!!$                           tke(i,j,k), tke(i,j,km1), Mu(i,j,k), Mu(i,j,km1), au(i,j,k), au(i,j,km1), &                     ! in (for tket_T_mf)
+!!$                           wu(i,j,k), wu(i,j,km1), E(i,j,k), D(i,j,k), wdet(i,j,k), &                                      ! in (for tket_T_mf)
+!!$                           whl_mf(i,j,k), wqt_mf(i,j,k), wthv_mf(i,j,k), &                                                 ! in
+!!$                           KM(i,j,k), KH(i,j,k), ws_explicit(i,j,k), wqv_explicit(i,j,k), wql_explicit(i,j,k), &           ! out
+!!$                           tket_M_test, tket_B_test, tket_T_mf_test, hl2t_M_test, qt2t_M_test, hlqtt_M_test, & ! out
+!!$                           tket_T_mf1_test, tket_T_mf2_test, tket_T_mf3_test, tket_T_mf4_test)                     !out
+!!$
+!!$        tket_M(i,j,k)    = 0.5*( tket_M(i,j,k)    + tket_M_test )
+!!$        tket_B(i,j,k)    = 0.5*( tket_B(i,j,k)    + tket_B_test )
+!!$        tket_T_mf(i,j,k) = 0.5*( tket_T_mf(i,j,k) + tket_T_mf_test )
+!!$
+!!$        tket_T_mf1(i,j,k) = 0.5*( tket_T_mf1(i,j,k) + tket_T_mf1_test )
+!!$        tket_T_mf2(i,j,k) = 0.5*( tket_T_mf2(i,j,k) + tket_T_mf2_test )
+!!$        tket_T_mf3(i,j,k) = 0.5*( tket_T_mf3(i,j,k) + tket_T_mf3_test )
+!!$        tket_T_mf4(i,j,k) = 0.5*( tket_T_mf4(i,j,k) + tket_T_mf4_test )
+!!$
+!!$!        hl2t_M(i,j,k)    = 0.5*( hl2t_M(i,j,k) + hl2t_M_test )
+!!$!        qt2t_M(i,j,k)    = 0.5*( qt2t_M(i,j,k) + qt2t_M_test )
+!!$!        hlqtt_M(i,j,k)   = 0.5*( hlqtt_M(i,j,k) + hlqtt_M_test )
+!!$     end do
+!!$     end do
+!!$  end do
+!!$
+!!$end subroutine mynn_predict_correct
+
+!
+! mynn_tendency
+!
+subroutine mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &      ! in
+                         th00, rhoe, Beta_hl, Beta_qt, hl2, qt2, hlqt, &        ! in
+                         dzle, dhldz, dqtdz, dqldz, N2, S2, &                   ! in
+                         L2, Lq, SM25, SH, EM, EH, hl2_25, qt2_25, hlqt_25, &   ! in
+                         tke, tke_up, Mu, Mu_up, au, au_up, &                   ! in
+                         wu, wu_up, E, D, wdet, &                               ! in
+                         whl_mf, wqt_mf, wthv_mf, &                             ! in
+                         KM, KH, ws_explicit, wqv_explicit, wql_explicit, &     ! out
+                         tket_M, tket_B, tket_t_mf, hl2t_M, qt2t_M, hlqtt_M, &  ! out
+                         tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4)        ! out
+
+  implicit none
+
+  integer, intent(in)          :: mynn_level, consistent_type, wrf_cg_flag
+  real, intent(in)             :: domf, th00, rhoe, Beta_hl, Beta_qt, dzle, dhldz, dqtdz, dqldz, N2, S2, &
+                                  SM25, SH, EM, EH, &
+                                  whl_mf, wqt_mf, wthv_mf, hl2, qt2, hlqt, hl2_25, qt2_25, hlqt_25, &
+                                  tke, tke_up, Mu, Mu_up, au, au_up, wu, wu_up, E, D, wdet
+  double precision, intent(in) :: L2, Lq
+  real, intent(out)            :: KM, KH, ws_explicit, wqv_explicit, wql_explicit, &                                  
+                                  tket_M, tket_B, tket_t_mf, hl2t_M, qt2t_M, hlqtt_M, &
+                                  tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4
+
+  real :: goth00, goth002, Cw_low, Cw_high, Cw_25, hlthv, qtthv, thv2, &
+          hlthv_p, qtthv_p, thv2_p, SM, whl_explicit, wqt_explicit, wb_explicit, &
+          whl, wqt, hlthv_25, qtthv_25, thv2_25, we, we_up, tkee, tkee_up, w2e_up
+
+  goth00  = MAPL_GRAV/th00
+  goth002 = goth002**2.
+
+  if ( mynn_level >= 3 ) then
+     ! Compute level-2.5 buoyancy (co-)variances
+     hlthv_25 = Beta_hl*hl2_25  + Beta_qt*hlqt_25
+     qtthv_25 = Beta_hl*hlqt_25 + Beta_qt*qt2_25
+     thv2_25  = max( 0., Beta_hl*hlthv_25 + Beta_qt*qtthv_25 )
+
+     ! Compute bouyancy (co-variances)
+     hlthv = Beta_hl*hl2  + Beta_qt*hlqt
+     qtthv = Beta_hl*hlqt + Beta_qt*qt2
+     thv2  = max( 0.d0, Beta_hl*hlthv + Beta_qt*qtthv )
+
+     ! Compute counter-gradient flux of conserved variables
+     if ( wrf_cg_flag == 0 ) then
+        hlthv_p = hlthv - hlthv_25
+        qtthv_p = qtthv - qtthv_25
+     else
+        if ( hlthv_25 >= 0. ) then
+           hlthv_p = max( 0., hlthv - hlthv_25 )
+        else
+           hlthv_p = min( 0., hlthv - hlthv_25 )
+        end if
+        
+        if ( qtthv_25 >= 0. ) then
+           qtthv_p = max( 0., qtthv - qtthv_25 )
+        else
+           qtthv_p = min( 0., qtthv - qtthv_25 )
+        end if
+     end if
+     whl_explicit = Lq*EH*goth00*hlthv_p
+     wqt_explicit = Lq*EH*goth00*qtthv_p
+
+     ! Compute counter-gradient buoyancy flux
+     thv2_p = max( 0., Beta_hl*hlthv_p + Beta_qt*qtthv_p )
+
+     ! Restrict anisotropy by restricting buoyancy variance (NN09 Section 2.7)
+!     if ( wden > 0.d0 ) then
+     if ( Cw_high > 0.d0 ) then
         thv2_p = min( max( thv2_p, Cw_low ), Cw_high )
      else
         thv2_p = max( min( thv2_p, Cw_low ), Cw_high )
      end if
+     wb_explicit = Lq*EH*goth002*thv2_p
+
+     ! Update momentum stability function
+     SM = SM25 + EM*L2*goth002*thv2_p
+  else
+     SM = SM25
+
+     whl_explicit = 0.
+     wqt_explicit = 0.
+     wb_explicit  = 0.
   end if
-  wb_explicit = Lq*EH*goth002*thv2_p
 
-  ! Compute level-3 momentum stability function
-  EM = qdiv*eMc*( ( Phi3 - Phi4 )/(D_p*L2GH) ) ! NN09 (47)
-  SM = SM + EM*L2*goth002*thv2_p
+  ! Compute diffusivities
+  KM = Lq*SM
+  KH = Lq*SH
 
-end subroutine mynn_l3
+  ! Compute counter-gradient fluxes of GEOS variables
+  if ( MYNN_LEVEL >= 3 ) then
+     wql_explicit = 0. ! temporary
+     ws_explicit  = MAPL_CP*whl_explicit + MAPL_ALHL*wql_explicit
+     wqv_explicit = wqt_explicit - wql_explicit
+  end if
+
+  !
+  ! Compute total fluxes
+  ! 
+
+  if ( DOMF /= 0. .and. CONSISTENT_TYPE /= 0 ) then
+     whl = -KH*dhldz + whl_explicit + whl_mf
+     wqt = -KH*dqtdz + wqt_explicit + wqt_mf
+  else
+     whl = -KH*dhldz + whl_explicit
+     wqt = -KH*dqtdz + wqt_explicit
+  end if
+
+  !
+  ! Compute budget terms for second-order moments
+  !
+
+  ! Buoyancy produduction
+  if ( domf /= 0. .and. consistent_type /= 0 ) then
+     tket_B = -KH*N2 + wb_explicit + goth00*wthv_mf
+  else
+     tket_B = -KH*N2 + wb_explicit
+  end if
+
+  ! Mechanical production
+  tket_M  = KM*S2
+  hl2t_M  = -2.*whl*dhldz
+  qt2t_M  = -2.*wqt*dqtdz
+  hlqtt_M = -whl*dqtdz - wqt*dhldz
+
+  ! Mass flux transport of TKE
+  if ( CONSISTENT_TYPE == 0 ) then
+     we    = -au*wu/( 1. - au )
+     we_up = -au_up*wu_up/( 1. - au_up )
+     
+     tkee    = tke/( 1. - au )
+     tkee_up = tke_up/( 1. - au_up )
+     w2e_up  = twothirds*tkee_up
+           
+     tket_T_mf1 = ( Mu_up*tkee_up - Mu*tkee )/(dzle*rhoe)
+     tket_T_mf2 = - max(0., E)*tkee/rhoe
+!     tket_T_mf2 = 0.
+     tket_T_mf3 =   max(0., D)*( we - wdet )**2./rhoe
+!     tket_T_mf3 = 0.
+     tket_T_mf4 = - ( 1. - au_up )*w2e_up*( we_up - we )/dzle
+
+     tket_T_mf = tket_T_mf1 + tket_T_mf2 + tket_T_mf3 + tket_T_mf4
+  else
+     tket_T_mf1 = 0.
+     tket_T_mf2 = 0.
+     tket_T_mf3 = 0.
+     tket_T_mf4 = 0.
+
+     tket_T_mf = 0.
+  end if
+
+end subroutine mynn_tendency
 
 !
 ! run_mynn
@@ -247,9 +416,9 @@ subroutine run_mynn(IM, JM, LM, &                                               
                     A_cloud, B_cloud, qsat, &                                               ! in
                     tke, hl2, qt2, hlqt, &                                                  ! inout
                     ws_explicit, wqv_explicit, wql_explicit, &                              ! inout
-                    Km, Kh, K_tke, itau, &                                                  ! out
+                    KM, KH, K_tke, itau, qdiv_out, SM25, SH25, L_out, &                     ! out
                     Beta_hl, Beta_qt, &                                                     ! out
-                    L_out, LS_out, LB_out, LT_out, &                                        ! out
+                    LS_out, LB_out, LT_out, &                                               ! out
                     tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &                   ! out
                     tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &                       ! out
                     tke_surf, hl2_surf, qt2_surf, hlqt_surf)                                ! out
@@ -268,33 +437,31 @@ subroutine run_mynn(IM, JM, LM, &                                               
                                                 au, Mu, wu
   real, dimension(IM,JM,0:LM), intent(inout) :: tke, hl2, qt2, hlqt, ws_explicit, wqv_explicit, wql_explicit
   real, dimension(IM,JM), intent(out)        :: tke_surf, hl2_surf, qt2_surf, hlqt_surf, LT_out
-  real, dimension(IM,JM,0:LM), intent(out)   :: Km, Kh, itau, Beta_hl, Beta_qt, &
+  real, dimension(IM,JM,0:LM), intent(out)   :: KM, KH, itau, qdiv_out, SM25, SH25, L_out, Beta_hl, Beta_qt, &
                                                 tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &
                                                 tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &
-                                                L_out, LS_out, LB_out
+                                                LS_out, LB_out
   real, dimension(IM,JM,LM), intent(out)     :: K_tke
 
   integer :: i, j, k, kp1, km1
 
   double precision :: GH, GM, q2, Phi1, Phi2, Phi3, Phi4, Phi5, &
-                      D_25, qdiv, qdiv2, L2, L2GM, L2GH, Lq
+                      D_25, qdiv, qdiv2, L2, L2GM, L2GH, Lq, &
+                      tau_test, w2_test, wb_test_1, wb_test_2 ! for debugging
 
   real :: dhldz, dqtdz, dqldz, idzlo, ifac, iexner, &
-          SM, SH, whl, wqt, th_star, q_star, wrk1, &
-          whl_explicit, wqt_explicit, wb_explicit, wql, &
+          whl, wqt, th_star, q_star, wrk1, &
+          whl_explicit, wqt_explicit, wb_explicit, &
           ac_half, hl2_25, qt2_25, hlqt_25, &
-          we, we_up, idzle, A_half, B_half, goth00, &
-          tkee, tkee_up, w2e_up
+          A_half, B_half, goth00, Cw_low, Cw_high, dzle, &
+          hlthv_25, qtthv_25, thv2_25 ! for debugging2
 
   real, dimension(IM,JM)      :: wb_surf, LMO
   real, dimension(IM,JM,LM)   :: hl
-  real, dimension(IM,JM,0:LM) :: S2, N2, zeta, A, B
+  real, dimension(IM,JM,0:LM) :: S2, N2, zeta, A, B, EM, EH
 
   double precision, dimension(IM,JM)      :: w_star, LT
   double precision, dimension(IM,JM,0:LM) :: q, L, LS, LB
-
-  ! For debugging
-  real :: w2_test, tau_test, wb_test
 
   goth00 = MAPL_GRAV/th00
 
@@ -317,8 +484,8 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
         idzlo = 1./( zlo(i,j,k) - zlo(i,j,kp1) )
         dhldz = ( hl(i,j,k) - hl(i,j,kp1) )*idzlo
-        dqtdz = ( qt(i,j,k) - qt(i,j,kp1) )*idzlo
-
+        dqtdz = ( qt(i,j,k) - qt(i,j,kp1) )*idzlo        
+        
         ifac = ( zle(i,j,k) - zlo(i,j,kp1) )*idzlo
 
         ac_half =      ac(i,j,kp1) + ifac*( ac(i,j,k) - ac(i,j,kp1) )
@@ -343,11 +510,11 @@ subroutine run_mynn(IM, JM, LM, &                                               
      wb_surf(i,j) = goth00*( H_surf(i,j)/(MAPL_CP*rhoe(i,j,LM)) + ep2*th00*E_surf(i,j)/rhoe(i,j,LM) )
      LMO(i,j)     = -u_star(i,j)**3./(MAPL_KARMAN*wb_surf(i,j))
 
-     Km(i,j,0)  = 0.
-     Km(i,j,LM) = 0.
+     KM(i,j,0)  = 0.
+     KM(i,j,LM) = 0.
 
-     Kh(i,j,0)  = 0.
-     Kh(i,j,LM) = 0.
+     KH(i,j,0)  = 0.
+     KH(i,j,LM) = 0.
 
      q(i,j,0)  = 0.d0
      q(i,j,LM) = 0.d0
@@ -398,23 +565,27 @@ subroutine run_mynn(IM, JM, LM, &                                               
         dqtdz   = ( qt(i,j,k) - qt(i,j,kp1) )*idzlo
         dqldz   = ( ql(i,j,k) - ql(i,j,kp1) )*idzlo
 
+        dzle = zle(i,j,km1) - zle(i,j,k)
+
         ! Diagnose MYNN level-2.5 state
         call mynn_l25(L(i,j,k), q(i,j,k), tke(i,j,k), dhldz, dqtdz, S2(i,j,k), N2(i,j,k), & ! in
-                      SM, SH, hl2_25, qt2_25, hlqt_25, &                                    ! out
-                      Phi1, Phi2, Phi3, Phi4, Phi5, D_25, &                                 ! out (needed for MYNN Level-3)
-                      L2, GH, L2GH, q2, qdiv, qdiv2)                                        ! out (needed for MYNN Level-3)
+                      SM25(i,j,k), SH25(i,j,k), &                                           ! out
+                      Phi1, Phi2, Phi3, Phi4, Phi5, D_25, L2, GH, L2GH, q2, qdiv, qdiv2)    ! out (needed for MYNN Level-3)
+
+        ! 
+        qdiv_out(i,j,k) = qdiv
 
         !
         itau(i,j,k) = q(i,j,k)/L(i,j,k)
         Lq          = L(i,j,k)*sqrt(2.*tke(i,j,k))
 
-        ! Compute counter-gradient fluxes of conserved variables
-        if ( MYNN_LEVEL == 2 ) then
-           ! No counter-gradient flux
-           whl_explicit = 0.
-           wqt_explicit = 0.
-           wb_explicit  = 0.           
+        ! Compute thermodyanamic (co-)variances from level-2.5 closure
+        hl2_25  = qdiv*B2*L2*SH25(i,j,k)*dhldz**2.
+        qt2_25  = qdiv*B2*L2*SH25(i,j,k)*dqtdz**2.
+        hlqt_25 = qdiv*B2*L2*SH25(i,j,k)*dhldz*dqtdz
 
+        !
+        if ( MYNN_LEVEL == 2 ) then
            ! Update thermodynamic second-order moments
            hl2(i,j,k)  = hl2_25
            qt2(i,j,k)  = qt2_25
@@ -426,116 +597,46 @@ subroutine run_mynn(IM, JM, LM, &                                               
               hlqt(i,j,k) = hlqt_25
            end if
 
-           ! Compute MYNN level-3 stae
-           call mynn_l3(WRF_CG_FLAG, &                                                         ! in
-                        hl2(i,j,k), qt2(i,j,k), hlqt(i,j,k), Beta_hl(i,j,k), Beta_qt(i,j,k), & ! in
-                        goth00, Lq, hl2_25, qt2_25, hlqt_25, &                                 ! in
-                        Phi1, Phi3, Phi4, Phi5, D_25, L2, GH, L2GH, qdiv, qdiv2, &             ! in
-                        SM, Phi2, q2, &                                                        ! inout
-                        whl_explicit, wqt_explicit, wb_explicit)                               ! out
+           ! Compute MYNN level-3 state
+           call mynn_l3(th00, Phi1, Phi3, Phi4, Phi5, D_25, L2, GH, L2GH, qdiv, qdiv2, & ! in (MYNN level-2.5 state)
+                        Phi2, q2, &                                                      ! inout          
+                        EM(i,j,k), EH(i,j,k), Cw_low, Cw_high)                           ! out (MYNN level-3 state)
         end if
 
-        ! Compute turbulent diffusivities
-        Km(i,j,k) = Lq*SM
-        Kh(i,j,k) = Lq*SH
+        ! Compute diffusivities and second-order tendencies
+        call mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &                                               ! in
+                           th00, rhoe(i,j,k), Beta_hl(i,j,k), Beta_qt(i,j,k), hl2(i,j,k), qt2(i,j,k), hlqt(i,j,k), &       ! in
+                           dzle, dhldz, dqtdz, dqldz, N2(i,j,k), S2(i,j,k), &                                              ! in
+                           L2, Lq, SM25(i,j,k), SH25(i,j,k), EM(i,j,k), EH(i,j,k), hl2_25, qt2_25, hlqt_25, &              ! in
+                           tke(i,j,k), tke(i,j,km1), Mu(i,j,k), Mu(i,j,km1), au(i,j,k), au(i,j,km1), &                     ! in (for tket_T_mf)
+                           wu(i,j,k), wu(i,j,km1), E(i,j,k), D(i,j,k), wdet(i,j,k), &                                      ! in (for tket_T_mf)
+                           whl_mf(i,j,k), wqt_mf(i,j,k), wthv_mf(i,j,k), &                                                 ! in
+                           KM(i,j,k), KH(i,j,k), ws_explicit(i,j,k), wqv_explicit(i,j,k), wql_explicit(i,j,k), &           ! out
+                           tket_M(i,j,k), tket_B(i,j,k), tket_t_mf(i,j,k), hl2t_M(i,j,k), qt2t_M(i,j,k), hlqtt_M(i,j,k), & ! out
+                           tket_T_mf1(i,j,k), tket_T_mf2(i,j,k), tket_T_mf3(i,j,k), tket_T_mf4(i,j,k))                     ! out
 
-        !
-        if ( DOMF /= 0. .and. CONSISTENT_TYPE /= 0 ) then
-           whl = -Kh(i,j,k)*dhldz + whl_explicit + whl_mf(i,j,k)
-           wqt = -Kh(i,j,k)*dqtdz + wqt_explicit + wqt_mf(i,j,k)
-        else
-           whl = -Kh(i,j,k)*dhldz + whl_explicit
-           wqt = -Kh(i,j,k)*dqtdz + wqt_explicit
-        end if
-
-        ! Compute counter-gradient fluxes of GEOS variables
-        if ( MYNN_LEVEL >= 3 ) then
-           if ( WQL_TYPE == 0 ) then
-              wql_explicit(i,j,k) = 0.
-           else
-              ifac    = (zle(i,j,k) - zlo(i,j,k+1))*idzlo
-              ac_half = ac(i,j,k+1) + ifac*(ac(i,j,k) - ac(i,j,k+1))
-              wql     = ac_half*(  A(i,j,k)*( -Kh(i,j,k)*dqtdz + wqt_explicit ) &
-                                 - B(i,j,k)*( -Kh(i,j,k)*dhldz + whl_explicit ) )
-              
-              wql_explicit(i,j,k) = wql + Kh(i,j,k)*dqldz
-           end if
-           ws_explicit(i,j,k)  = MAPL_CP*whl_explicit + MAPL_ALHL*wql_explicit(i,j,k)
-           wqv_explicit(i,j,k) = wqt_explicit - wql_explicit(i,j,k)
-        end if
-
-        !         
-        idzle = 1./( zle(i,j,km1) - zle(i,j,k) )
-
-        ! Compute budget terms for second-order moments
-        if ( DOMF /= 0. .and. CONSISTENT_TYPE /= 0 ) then
-           tket_B(i,j,k) = -Kh(i,j,k)*N2(i,j,k) + wb_explicit + goth00*wthv_mf(i,j,k)
-        else
-           tket_B(i,j,k) = -Kh(i,j,k)*N2(i,j,k) + wb_explicit
-        end if
-
-        if ( CONSISTENT_TYPE == 0 ) then
-           we    = -au(i,j,k)*wu(i,j,k)/( 1. - au(i,j,k) )
-           we_up = -au(i,j,km1)*wu(i,j,km1)/( 1. - au(i,j,km1) )
-
-           tkee    = tke(i,j,k)/( 1. - au(i,j,k) )
-           tkee_up = tke(i,j,km1)/( 1. - au(i,j,km1) )
-           w2e_up  = twothirds*tkee_up
-           
-           tket_T_mf1(i,j,k) = ( Mu(i,j,km1)*tkee_up - Mu(i,j,k)*tkee )*idzle/rhoe(i,j,k)
-!           tket_T_mf2(i,j,k) = - max(0., E(i,j,k))*tkee/rhoe(i,j,k)
-           tket_T_mf2(i,j,k) = 0.
-!           tket_T_mf3(i,j,k) =   max(0., D(i,j,k))*( we - wdet(i,j,k) )**2./rhoe(i,j,k)
-           tket_T_mf3(i,j,k) = 0.
-           tket_T_mf4(i,j,k) = - ( 1. - au(i,j,km1) )*w2e_up*( we_up - we )*idzle
-
-           tket_T_mf(i,j,k) = tket_T_mf1(i,j,k) + tket_T_mf2(i,j,k) + tket_T_mf3(i,j,k) + tket_T_mf4(i,j,k)
-        else
-           tket_T_mf1(i,j,k) = 0.
-           tket_T_mf2(i,j,k) = 0.
-           tket_T_mf3(i,j,k) = 0.
-           tket_T_mf4(i,j,k) = 0.
-
-           tket_T_mf(i,j,k) = 0.
-        end if
-
-        tket_M(i,j,k)  = Km(i,j,k)*S2(i,j,k)
-        hl2t_M(i,j,k)  = -2.*whl*dhldz
-        qt2t_M(i,j,k)  = -2.*wqt*dqtdz
-        hlqtt_M(i,j,k) = -whl*dqtdz - wqt*dhldz
-       
-        ! Start test
+        ! Debugging output
         if ( DEBUG_FLAG == 1 ) then
-!!$           tau_test = L(i,j,k)/q(i,j,k)
-!!$           w2_test  = onethird*q(i,j,k)**2. + 2.*A1*tau_test*( -Km(i,j,k)*S2(i,j,k) ) &
-!!$                                            + 4.*A1*( 1. - C2 )*tau_test*( -Kh(i,j,k)*N2(i,j,k) + wb_explicit)
-!!$           if ( MYNN_LEVEL == 2 ) then
-!!$              hlthv_25 = Beta_hl(i,j,k)*hl2_25  + Beta_qt(i,j,k)*hlqt_25
-!!$              qtthv_25 = Beta_hl(i,j,k)*hlqt_25 + Beta_qt(i,j,k)*qt2_25
-!!$              thv2_25  = max( 0.d0, Beta_hl(i,j,k)*hlthv_25 + Beta_qt(i,j,k)*qtthv_25 )
-!!$              wb_test  = 3.*A2*tau_test*( -w2_test*N2(i,j,k) + ( 1. - C3 )*goth002*thv2_25 )
-!!$           else
-!!$              wb_test  = 3.*A2*tau_test*(-w2_test*N2(i,j,k) + ( 1. - C3 )*goth002*( thv2_25  + thv2_p ) )
-!!$           end if
+           tau_test = L(i,j,k)/q(i,j,k)
+           w2_test  = onethird*q(i,j,k)**2. + 2.*A1*tau_test*( -KM(i,j,k)*S2(i,j,k) ) &
+                                            + 4.*A1*( 1. - C2 )*tau_test*( -KH(i,j,k)*N2(i,j,k) + wb_explicit)
+           if ( MYNN_LEVEL == 2 ) then
+              hlthv_25 = Beta_hl(i,j,k)*hl2_25  + Beta_qt(i,j,k)*hlqt_25
+              qtthv_25 = Beta_hl(i,j,k)*hlqt_25 + Beta_qt(i,j,k)*qt2_25
+              thv2_25  = max( 0.d0, Beta_hl(i,j,k)*hlthv_25 + Beta_qt(i,j,k)*qtthv_25 )
 
-           write(*,*) &
+              wb_test_1 = MAPL_CP*rhoe(i,j,k)*3.*A2*tau_test*( -w2_test*N2(i,j,k) + ( 1. - C3 )*goth00**2.*thv2_25 )
+              wb_test_2 = MAPL_CP*rhoe(i,j,k)*( -KH(i,j,k)*N2(i,j,k) + wb_explicit )
+           else
+!              wb_test  = 3.*A2*tau_test*(-w2_test*N2(i,j,k) + ( 1. - C3 )*goth002*( thv2_25  + thv2_p ) )
+           end if
+
+           write(*,*)             &
                       tke(i,j,k), &
+!                      wb_test_1, &
+!                      wb_test_2, &
                       ac(i,j,k),  &
-!                      qt2_25, &
-!                      mapl_alhl*wqv_explicit(i,j,k)
-!                      mapl_alhl*Kh(i,j,k)*( qv(i,j,k) - qv(i,j,k+1) )/( zlo(i,j,k) - zlo(i,j,k+1) )
-!                      qt2(i,j,k), &
                       real(qdiv, 4)
-!                      real(MAPL_CP*rhoe(i,j,k)*( -Kh(i,j,k)*N2(i,j,k) + wb_explicit ), 4), &
-!                      real(MAPL_CP*rhoe(i,j,k)*wb_test, 4), &
-!                      rhoe(i,j,k), &
-!                      omega(i,j,k)!, &
-                      !hl2(i,j,k), &
-                      !qt2(i,j,k), &
-                      !hlqt(i,j,k)/(sqrt(hl2(i,j,k))*sqrt(qt2(i,j,k)))
-                      !hlqt(i,j,k), &
-                      !real(Lq, 4), &
-                      !real(SH, 4), &
         end if
      end do
      end do
@@ -546,7 +647,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
      km1 = k - 1
      do j = 1,JM
      do i = 1,IM
-        K_tke(i,j,k) = 1.5*( Km(i,j,k) + Km(i,j,km1) )
+        K_tke(i,j,k) = 1.5*( KM(i,j,k) + KM(i,j,km1) )
      end do
      end do
   end do
@@ -560,6 +661,8 @@ subroutine run_mynn(IM, JM, LM, &                                               
   LT_out = LT
 
 end subroutine run_mynn
+
+
 
 !
 ! initialize_mynn
@@ -592,7 +695,7 @@ double precision, dimension(IM,JM,0:LM), intent(inout) :: q
 integer                                 :: iter, i, j, k, kp1
 real                                    :: idzlo, L2
 double precision, dimension(IM,JM)      :: w_star
-real, dimension(IM,JM,0:LM)             :: SM, SH, dhldz, dqtdz
+real, dimension(IM,JM,0:LM)             :: SM2, SH2, dhldz, dqtdz
 double precision, dimension(IM,JM)      :: LT
 double precision, dimension(IM,JM,0:LM) :: GM, GH, L, LS, LB
 
@@ -610,7 +713,7 @@ do k = 1,LM-1
       GH(i,j,k) = -N2(i,j,k) ! This is actually GH divided by L2/q2
       GM(i,j,k) = S2(i,j,k)  ! "    "  "        GM "       "  "
 
-      call mynn_l2(GM(i,j,k), GH(i,j,k), SM(i,j,k), SH(i,j,k))
+      call mynn_l2(GM(i,j,k), GH(i,j,k), SM2(i,j,k), SH2(i,j,k))
    end do
    end do
 end do
@@ -644,7 +747,7 @@ do iter = 1,niter
       do i = 1,IM
          L2 = L(i,j,k)**2.d0
 
-         tke(i,j,k) = 0.5*B1*L2*( SM(i,j,k)*GM(i,j,k) + SH(i,j,k)*GH(i,j,k) )
+         tke(i,j,k) = 0.5*B1*L2*( SM2(i,j,k)*GM(i,j,k) + SH2(i,j,k)*GH(i,j,k) )
          q(i,j,k)   = sqrt( max( 1.d-10, real(2.*tke(i,j,k),8) ) )
       end do
       end do
@@ -658,133 +761,14 @@ do k = 1,LM-1
    do i = 1,IM
       L2 = L(i,j,k)**2.d0
 
-      hl2(i,j,k)  = B2*L2*SH(i,j,k)*dhldz(i,j,k)**2.
-      qt2(i,j,k)  = B2*L2*SH(i,j,k)*dqtdz(i,j,k)**2.
-      hlqt(i,j,k) = B2*L2*SH(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
+      hl2(i,j,k)  = B2*L2*SH2(i,j,k)*dhldz(i,j,k)**2.
+      qt2(i,j,k)  = B2*L2*SH2(i,j,k)*dqtdz(i,j,k)**2.
+      hlqt(i,j,k) = B2*L2*SH2(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
    end do
    end do
 end do
 
 end subroutine initialize_mynn
-
-!
-! prep_mynn
-!
-subroutine prep_mynn(IM, JM, LM, &                                   ! in
-                     DEBUG_FLAG, MYNN_LEVEL, &                       ! in
-                     alpha1, alpha2, alpha3, alpha4, &               ! in
-                     th00, ple, rhoe, zle, zlo, &                    ! in
-                     u, v, omega, T, qv, ql, qi, ac, thl, qt, thv, & ! in
-                     u_star, H_surf, E_surf, &                       ! in
-                     A_cloud, B_cloud, qsat, &                       ! in
-                     tke, hl2, qt2, hlqt, &                          ! inout
-                     Beta_hl, Beta_qt, &                             ! out
-                     q, L, LS, LB, LT)                               ! out
-
-  use MAPL_ConstantsMod, only: MAPL_KARMAN
-  use MAPL_SatVaporMod, only: MAPL_EQsat
-
-  integer, intent(in)                                  :: IM, JM, LM, MYNN_LEVEL, DEBUG_FLAG
-  real, intent(in)                                     :: th00
-  double precision, intent(in)                         :: alpha1, alpha2, alpha3, alpha4
-  real, dimension(IM,JM), intent(in)                   :: u_star, H_surf, E_surf
-  real, dimension(IM,JM,LM), intent(in)                :: zlo, u, v, T, qv, ql, qi, ac, thv, thl, qt, &
-                                                          A_cloud, B_cloud, qsat
-  real, dimension(IM,JM,0:LM), intent(in)              :: ple, zle, rhoe, omega
-  real, dimension(IM,JM,0:LM), intent(inout)           :: tke, hl2, qt2, hlqt
-  real, dimension(IM,JM,0:LM), intent(out)             :: Beta_hl, Beta_qt
-  double precision, dimension(IM,JM), intent(out)      :: LT
-  double precision, dimension(IM,JM,0:LM), intent(out) :: q, L, LS, LB
-
-  integer :: i, j, k, kp1, km1
-
-  real :: dhldz, dqtdz, dqldz, idzlo, ifac, iexner, &
-          SM2, SH2, SM, SH, wrk1, Lq, ac_half, &
-          hl2_25, qt2_25, hlqt_25, &
-          idzle, A_half, B_half, goth00
-
-  real, dimension(IM,JM)      :: wb_surf, LMO
-  real, dimension(IM,JM,LM)   :: hl
-  real, dimension(IM,JM,0:LM) :: S2, N2, zeta, A, B
-
-  double precision, dimension(IM,JM) :: w_star
-
-  goth00 = MAPL_GRAV/th00
-
-  ! Compute conserved thermodynamic properties
-  do k = 1,LM
-     do j = 1,JM
-     do i = 1,IM
-        hl(i,j,k) = T(i,j,k) + gocp*zlo(i,j,k) - lvocp*ql(i,j,k)
-     end do
-     end do
-  end do
-
-  ! Compute shear and buoyancy frequencies
-  do k = 1,LM-1
-
-     kp1 = k + 1
-     do j = 1,JM
-     do i = 1,IM
-        q(i,j,k) = sqrt( max( 1.d-10, real(2.*tke(i,j,k),8) ) )
-
-        idzlo = 1./( zlo(i,j,k) - zlo(i,j,kp1) )
-        dhldz = ( hl(i,j,k) - hl(i,j,kp1) )*idzlo
-        dqtdz = ( qt(i,j,k) - qt(i,j,kp1) )*idzlo
-
-        ifac = ( zle(i,j,k) - zlo(i,j,kp1) )*idzlo
-
-        ac_half =      ac(i,j,kp1) + ifac*( ac(i,j,k) - ac(i,j,kp1) )
-        A_half  = A_cloud(i,j,kp1) + ifac*( A_cloud(i,j,k) - A_cloud(i,j,kp1) )
-        B_half  = B_cloud(i,j,kp1) + ifac*( B_cloud(i,j,k) - B_cloud(i,j,kp1) )
-
-        iexner = (MAPL_P00/ple(i,j,k))**kappa
-        wrk1   = lvocp*iexner - ( 1. + ep2 )*th00
-
-        Beta_hl(i,j,k) = iexner*( 1. - wrk1*ac_half*B_half )
-        Beta_qt(i,j,k) = ep2*th00 + wrk1*ac_half*A_half
-
-        N2(i,j,k) = goth00*( Beta_hl(i,j,k)*dhldz + Beta_qt(i,j,k)*dqtdz )
-        S2(i,j,k) = ( ( u(i,j,k) - u(i,j,kp1) )*idzlo)**2. + ( ( v(i,j,k) - v(i,j,kp1) )*idzlo)**2.
-     end do
-     end do
-  end do
-
-  ! Compute some surface and TOA quantities
-  do j = 1,JM
-  do i = 1,IM
-     wb_surf(i,j) = goth00*( H_surf(i,j)/(MAPL_CP*rhoe(i,j,LM)) + ep2*th00*E_surf(i,j)/rhoe(i,j,LM) )
-     LMO(i,j)     = -u_star(i,j)**3./(MAPL_KARMAN*wb_surf(i,j))
-
-     q(i,j,0)  = 0.d0
-     q(i,j,LM) = 0.d0
-
-     N2(i,j,0)  = 0.
-     N2(i,j,LM) = 0.
-
-     S2(i,j,0)  = 0.
-     S2(i,j,LM) = 0.
-  end do
-  end do
-
-  ! Initialize MYNN
-  if ( .not. initialized_mynn ) then
-     call initialize_mynn(IM, JM, LM, &
-                          alpha1, alpha2, alpha3, alpha4, &
-                          hl, qt, tke, hl2, qt2, hlqt, q, &
-                          zle, zlo, S2, N2, &
-                          u_star, wb_surf, LMO)
-
-     initialized_mynn = .true.
-  end if
-
-  ! Compute length scales
-  call mynn_length(IM, JM, LM, &                     ! in
-                   alpha1, alpha2, alpha3, alpha4, & ! in
-                   wb_surf, zle, zlo, q, N2, LMO, &  ! in
-                   L, LS, LB, LT, w_star)            ! out
-
-end subroutine prep_mynn
 
 !
 ! 
@@ -891,74 +875,32 @@ subroutine mynn_length(IM, JM, LM, &                     ! in
 end subroutine mynn_length
 
 !
-! 
-!
-subroutine mynn_length_new(IM, JM, LM, &  ! in
-                           alpha2, &      ! in
-                           zle, q, N2, &  ! in
-                           L, LS, LB, LT) ! out
-
-  use MAPL_ConstantsMod, only: MAPL_KARMAN
-
-  integer, intent(in)                                  :: IM, JM, LM
-  double precision, intent(in)                         :: alpha2
-  real, dimension(IM,JM,0:LM), intent(in)              :: zle, N2
-  double precision, dimension(IM,JM,0:LM), intent(in)  :: q
-  double precision, dimension(IM,JM), intent(out)      :: LT
-  double precision, dimension(IM,JM,0:LM), intent(out) :: L, LS, LB
-
-  integer          :: i, j, k
-  double precision :: work
-
-  LT(:,:) = 50.
-
-  ! Compute master length scale
-  do k = 1,LM-1
-     do j = 1,JM
-     do i = 1,IM
-        ! Compute surface length scale
-        LS(i,j,k) = MAPL_KARMAN*zle(i,j,k)
-        
-        ! Compute buoyancy length scale
-        if ( N2(i,j,k) > 0. ) then
-           LB(i,j,k) = alpha2*( q(i,j,k)/sqrt(N2(i,j,k)) )
-        else
-           LB(i,j,k) = 1.d+10
-        end if
-
-        LS(i,j,k) = LS(i,j,k)/( LS(i,j,k)/LT(i,j) + 1.d0 )
-        
-        L(i,j,k) = min( LB(i,j,k), LS(i,j,k) )
-     end do
-     end do
-  end do
-
-  LS(:,:,LM) = 0.
-  L(:,:,LM)  = L(:,:,LM-1)
-
-end subroutine mynn_length_new
-
 !
 !
-!
-subroutine implicit_M(IM, JM, LM, &
-                      th00, zlo, u, v, h, qv, ql, &
-                      Beta_hl, Beta_qt, Km, Kh, &
-                      ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf, &
-                      tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
-                      MYNN_LEVEL, DOMF, CONSISTENT_TYPE)
+subroutine implicit_M(IM, JM, LM, &                                                       ! in
+                      th00, zlo, u, v, h, qv, ql, tke, &                                  ! in
+                      Beta_hl, Beta_qt, L, qdiv, SM25, SH25, &                            ! in
+                      ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf, & ! in
+                      hl2, qt2, hlqt, &                                                   ! inout
+                      tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &                          ! out
+                      dhldz, dqtdz, S2, N2, &                                             ! out
+                      MYNN_LEVEL, DOMF, CONSISTENT_TYPE)                                  ! in
 
-  integer, intent(in)                      :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE
-  real, intent(in)                         :: th00, DOMF
-  real, dimension(IM,JM,LM), intent(in)    :: zlo, u, v, h, qv, ql 
-  real, dimension(IM,JM,0:LM), intent(in)  :: Beta_hl, Beta_qt, Km, Kh, &
-                                              ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf
-  real, dimension(IM,JM,0:LM), intent(out) :: tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M
+  integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE
+  real, intent(in)                           :: th00, DOMF
+  real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, h, qv, ql 
+  real, dimension(IM,JM,0:LM), intent(in)    :: tke, Beta_hl, Beta_qt, L, qdiv, SM25, SH25, &
+                                                ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf
+  real, dimension(IM,JM,0:LM), intent(inout) :: hl2, qt2, hlqt
+  real, dimension(IM,JM,0:LM), intent(out)   :: tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
+                                                dhldz, dqtdz, S2, N2
 
   integer :: i, j, k, kp1
 
-  real                      :: N2, S2, idzlo, dhldz, dqtdz, whl, wqt, whl_explicit, wqt_explicit, wb_explicit, goth00
+  real                      :: idzlo, whl, wqt, whl_explicit, wqt_explicit, wb_explicit, goth00, KM, KH
   real, dimension(IM,JM,LM) :: hl, qt
+
+  double precision :: Lq, L2 ! this precision may be unecessary
 
   goth00 = MAPL_GRAV/th00
 
@@ -977,36 +919,53 @@ subroutine implicit_M(IM, JM, LM, &
      kp1 = k + 1
      do j = 1,JM
      do i = 1,IM
-        idzlo = 1./( zlo(i,j,k) - zlo(i,j,kp1) )
-        dhldz = ( hl(i,j,k) - hl(i,j,kp1) )*idzlo
-        dqtdz = ( qt(i,j,k) - qt(i,j,kp1) )*idzlo
+        L2 = L(i,j,k)**2.
+        Lq = real(L(i,j,k),8)*sqrt( real(2.*tke(i,j,k),8) )
 
-        N2 = goth00*( Beta_hl(i,j,k)*dhldz + Beta_qt(i,j,k)*dqtdz )
-        S2 = (( u(i,j,k) - u(i,j,kp1) )*idzlo)**2. + ( (v(i,j,k) - v(i,j,kp1) )*idzlo)**2.
+        KM = Lq*SM25(i,j,k)
+        KH = Lq*SH25(i,j,k)
+        
+        idzlo = 1./( zlo(i,j,k) - zlo(i,j,kp1) )
+        dhldz(i,j,k) = ( hl(i,j,k) - hl(i,j,kp1) )*idzlo
+        dqtdz(i,j,k) = ( qt(i,j,k) - qt(i,j,kp1) )*idzlo
+
+        N2(i,j,k) = goth00*( Beta_hl(i,j,k)*dhldz(i,j,k) + Beta_qt(i,j,k)*dqtdz(i,j,k) )
+        S2(i,j,k) = (( u(i,j,k) - u(i,j,kp1) )*idzlo)**2. + ( (v(i,j,k) - v(i,j,kp1) )*idzlo)**2.
 
         whl_explicit = ws_explicit(i,j,k)/MAPL_CP - lvocp*wql_explicit(i,j,k)
         wqt_explicit = wqv_explicit(i,j,k) + wql_explicit(i,j,k)
 
         if ( MYNN_LEVEL >= 3 ) then
            wb_explicit = Beta_hl(i,j,k)*whl_explicit + Beta_qt(i,j,k)*wqt_explicit
+
+           if ( MYNN_LEVEL == 4 ) then
+              ! Compute thermodyanamic (co-)variances from level-2.5 closure
+              hl2(i,j,k)  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)**2.
+              hlqt(i,j,k) = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
+           end if
         else
            wb_explicit= 0.
+
+           ! Compute thermodyanamic (co-)variances from level-2.5 closure
+           hl2(i,j,k)  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)**2.
+           qt2(i,j,k)  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dqtdz(i,j,k)**2.
+           hlqt(i,j,k) = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
         end if
 
         if ( DOMF /= 0. .and. CONSISTENT_TYPE /= 0 ) then
-           tket_B(i,j,k) = -Kh(i,j,k)*N2    + wb_explicit  + goth00*wthv_mf(i,j,k)
-           whl           = -Kh(i,j,k)*dhldz + whl_explicit + whl_mf(i,j,k)
-           wqt           = -Kh(i,j,k)*dqtdz + wqt_explicit + wqt_mf(i,j,k)
+           tket_B(i,j,k) = -KH*N2(i,j,k)    + wb_explicit  + goth00*wthv_mf(i,j,k)
+           whl           = -KH*dhldz(i,j,k) + whl_explicit + whl_mf(i,j,k)
+           wqt           = -KH*dqtdz(i,j,k) + wqt_explicit + wqt_mf(i,j,k)
         else
-           tket_B(i,j,k) = -Kh(i,j,k)*N2    + wb_explicit
-           whl           = -Kh(i,j,k)*dhldz + whl_explicit
-           wqt           = -Kh(i,j,k)*dqtdz + wqt_explicit
+           tket_B(i,j,k) = -KH*N2(i,j,k)    + wb_explicit
+           whl           = -KH*dhldz(i,j,k) + whl_explicit
+           wqt           = -KH*dqtdz(i,j,k) + wqt_explicit
         end if
 
-        tket_M(i,j,k)  = Km(i,j,k)*S2
-        hl2t_M(i,j,k)  = -2.*whl*dhldz
-        qt2t_M(i,j,k)  = -2.*wqt*dqtdz
-        hlqtt_M(i,j,k) = -whl*dqtdz - wqt*dhldz
+        tket_M(i,j,k)  = KM*S2(i,j,k)
+        hl2t_M(i,j,k)  = -2.*whl*dhldz(i,j,k)
+        qt2t_M(i,j,k)  = -2.*wqt*dqtdz(i,j,k)
+        hlqtt_M(i,j,k) = -whl*dqtdz(i,j,k) - wqt*dhldz(i,j,k)
      end do
      end do
   end do
@@ -1085,3 +1044,14 @@ end do
 end subroutine entrain_mynn
 
 end module mynn
+
+!!$     if ( WQL_TYPE == 0 ) then
+!!$        wql_explicit = 0.
+!!$     else
+!!$        ifac    = (zle - zlo(i,j,k+1))*idzlo
+!!$        ac_half = ac(i,j,k+1) + ifac*(ac - ac(i,j,k+1))
+!!$        wql     = ac_half*(  A*( -KH*dqtdz(i,j,k) + wqt_explicit ) &
+!!$                           - B*( -KH*dhldz(i,j,k) + whl_explicit ) )
+!!$              
+!!$        wql_explicit = wql + KH*dqldz
+!!$     end if
