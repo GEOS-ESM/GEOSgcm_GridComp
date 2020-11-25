@@ -175,10 +175,10 @@
      call formatter(2)%open(trim(fname2),pFIO_READ,rc=rc)
      cfg(1)=formatter(1)%read(rc=rc) 
      cfg(2)=formatter(2)%read(rc=rc)
-  else
-     open(unit=10, file=trim(fname1),  form='unformatted')
-     open(unit=20, file=trim(fname2),  form='unformatted')
-     open(unit=30, file=trim(fname3),  form='unformatted')
+ ! else
+ !    open(unit=10, file=trim(fname1),  form='unformatted')
+ !    open(unit=20, file=trim(fname2),  form='unformatted')
+ !    open(unit=30, file=trim(fname3),  form='unformatted')
   end if
   
 ! Get SURFLAY Value
@@ -210,15 +210,15 @@
      else
         print *, 'Processing CLM40 restarts : ', VAR_COL, VAR_PFT, clm45
      endif
-  else
-
-!    Determine NTILES
-!    ----------------
-     bpos=0
-     read(10)
-     epos = ftell(10)            ! ending position of file pointer
-     ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
-     rewind 10
+!  else
+!
+!!    Determine NTILES
+!!    ----------------
+!     bpos=0
+!     read(10)
+!     epos = ftell(10)            ! ending position of file pointer
+!     ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
+!     rewind 10
 
   end if
 
@@ -236,11 +236,11 @@
   new = 2
   
   if (filetype ==0) then
-     call readcatch_nc4 ( catch(old), formatter(old), cfg(old) )
-     call readcatch_nc4 ( catch(new), formatter(new), cfg(new) )
-  else
-     call readcatch ( 10,catch(old) )
-     call readcatch ( 20,catch(new) )
+     call readcatchcn_nc4 ( catch(old), formatter(old), cfg(old) )
+     call readcatchcn_nc4 ( catch(new), formatter(new), cfg(new) )
+!  else
+!     call readcatchcn ( 10,catch(old) )
+!     call readcatchcn ( 20,catch(new) )
   end if
 
 ! Create Scaled Catch
@@ -425,9 +425,9 @@
      cfg(3) = cfg(2)
      call formatter(3)%create(fname3,rc=rc)
      call formatter(3)%write(cfg(3),rc=rc)
-     call writecatch_nc4 ( catch(sca), formatter(3) ,cfg(3) )
-  else
-     call writecatch ( 30,catch(sca) )
+     call writecatchcn_nc4 ( catch(sca), formatter(3) ,cfg(3) )
+!  else
+!     call writecatchcn ( 30,catch(sca) )
   end if
 
 100 format(1x,'Total  Tiles: ',i10)
@@ -522,7 +522,7 @@
    return
    end subroutine allocatch
 
-   subroutine readcatch_nc4 (catch,formatter,cfg)
+   subroutine readcatchcn_nc4 (catch,formatter,cfg)
    type(catch_rst) catch
    type(Filemetadata) :: cfg
    type(Netcdf4_Fileformatter) :: formatter
@@ -630,9 +630,9 @@
           call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j)
        enddo
    return
-   end subroutine readcatch_nc4
+   end subroutine readcatchcn_nc4
 
-   subroutine readcatch (unit,catch)
+   subroutine readcatchcn (unit,catch)
    integer unit, i,j,n
    type(catch_rst) catch
 
@@ -717,9 +717,9 @@
           read(unit) catch%    CNPFT (:,i)
        end do
    return
-   end subroutine readcatch
+   end subroutine readcatchcn
 
-   subroutine writecatch_nc4 (catch,formatter,cfg)
+   subroutine writecatchcn_nc4 (catch,formatter,cfg)
    type(catch_rst) catch
    type(Netcdf4_fileformatter) :: formatter
    type(filemetadata) :: cfg
@@ -871,9 +871,9 @@
        end do
        call formatter%close()
    return
-   end subroutine writecatch_nc4
+   end subroutine writecatchcn_nc4
 
-   subroutine writecatch (unit,catch)
+   subroutine writecatchcn (unit,catch)
    integer unit, i,j,n
    type(catch_rst) catch
 
@@ -959,7 +959,7 @@
        end do
 
    return
-   end subroutine writecatch
+   end subroutine writecatchcn
 
   end
 
