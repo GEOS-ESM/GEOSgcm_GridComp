@@ -575,6 +575,15 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                                 &
+         SHORT_NAME = 'tke_new2IT',                                             &
+         LONG_NAME  = 'tendency_of_turbulent_kinetic_energy_due_to_turbulence', &
+         UNITS      = 'm+2 s-3',                                                &
+         DIMS       = MAPL_DimsHorzVert,                                        &
+         VLOCATION  = MAPL_VLocationEdge,                                       &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     if ( MYNN_LEVEL >= 3 ) then
        call MAPL_AddExportSpec(GC,                            &
             SHORT_NAME = 'qt2IT',                             &
@@ -1766,6 +1775,13 @@ contains
 ! These should be defined last (after first-order moments)
 
     call ESMF_StateGet    (GEX(TURBL),  'tke_new'   , FIELD,    RC=STATUS )
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_FieldBundleAdd   (BUNDLE,   FIELD,                       RC=STATUS )
+    VERIFY_(STATUS)
+
+    call ESMF_StateGet    (GEX(TURBL),  'tke_new2'   , FIELD,    RC=STATUS )
     VERIFY_(STATUS)
     call ESMF_AttributeSet(FIELD, NAME="DiffuseLike"     ,VALUE="Q",       RC=STATUS )
     VERIFY_(STATUS)

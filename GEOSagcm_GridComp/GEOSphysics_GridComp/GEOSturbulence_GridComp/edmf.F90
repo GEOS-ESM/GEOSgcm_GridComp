@@ -62,7 +62,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                                             au_full, hlu_full, qtu_full, acu_full, &
                                             Tu_full, qlu_full
 
-  real, dimension(numup,IM,JM) :: upw, upthl, upqt, upql, upqi, upa, upu, upv, upthv
+  real, dimension(numup,IM,JM) :: upm, upw, upthl, upqt, upql, upqi, upa, upu, upv, upthv
 
   integer :: i, j, k, km1, kp1, iup, kbot
 
@@ -81,6 +81,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                                  ui, vi, thvi, qvi, qli, qii, exfh, thli, qti 
 
   integer, dimension(2)  :: seedmf, the_seed
+
+  logical :: stop_cond
 
   logical, dimension(numup,IM,JM) :: active_updraft
 
@@ -267,69 +269,62 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
      end if
 
      if ( wthv > 0. .and. thv(i,j,LM-1) < thv(i,j,LM) ) then
-        if ( plume_type == 0 ) then ! JPL entraining plume model
-           if ( anelastic_flag == 0 ) then
-              wstar = max( wstarmin, (mapl_grav/thv(i,j,LM)*wthv*zpbl(i,j))**onethird )
-           else
-              wstar = max( wstarmin, (goth00*wthv*zpbl(i,j))**onethird )
-           end if
-           qstar  = evap(i,j)/wstar
-           thstar = wthv/wstar
-
-           sigmaW  = AlphaW*wstar
-           sigmaQT = AlphaQT*max( qstar, 0. )
-           sigmaTH = AlphaTH*max( thstar, 0. )
-
-           wmin = sigmaW*pwmin ! vertical velocity of least energetic updraft
-           wmax = sigmaW*pwmax ! "        "        "  most  "         "
-       
-           work = 1./( sqrt(2.)*sigmaW )
-
-           QTsrfF  = 0.
-           THVsrfF = 0.
-           do iup = 1,numup
-              active_updraft(iup,i,j) = .true.
-              
-              wlv = wmin + ( wmax - wmin )*real(iup-1)/real(numup)
-              wtv = wmin + ( wmax - wmin )*real(iup)/real(numup)
-       
-              upw(iup,i,j)   = 0.5*( wlv + wtv ) 
-              upa(iup,i,j)   = 0.5*erf(wtv*work) - 0.5*erf(wlv*work)       
-              upu(iup,i,j)   = ui(i,j,kbot)
-              upv(iup,i,j)   = vi(i,j,kbot)
-              upqt(iup,i,j)  = qti(i,j,kbot)  + 0.32*upw(iup,i,j)*sigmaQT/sigmaW ! 0.32~=0.58*0.55 (Stull 1988)
-              upthv(iup,i,j) = thvi(i,j,kbot) + 0.58*upw(iup,i,j)*sigmaTH/sigmaW ! Stull 1988
-
-              ! For stability make sure that the surface mass-fluxes are not more than their 
-              ! values computed from the surface scheme
-              QTsrfF  = QTsrfF  + upa(iup,i,j)*upw(iup,i,j)*( upqt(iup,i,j)  - qti(i,j,kbot) )
-              THVsrfF = THVsrfF + upa(iup,i,j)*upw(iup,i,j)*( upthv(iup,i,j) - thvi(i,j,kbot) )
-           end do            
-
-           ! Change surface THV so that the fluxes from the mass flux equal prescribed values
-           if ( kbot == 0 .and. THVsrfF > wthv ) then
-              upthv(:,i,j) = ( upthv(:,i,j) - thvi(i,j,kbot) )*wthv/THVsrfF + thvi(i,j,kbot)
-           end if
-
-           ! Change surface QT so that the fluxes from the mass flux equal prescribed values 
-           ! We do not need to worry about the negative values as they should not exist
-           if ( kbot == 0. .and. QTsrfF > evap(i,j) .and. evap(i,j) > 0. )  then
-              upqt(:,i,j) = ( upqt(:,i,j) - qti(i,j,kbot) )*evap(i,j)/QTsrfF + qti(i,j,kbot)
-           end if
-
-           ! Compute condensation and thl, ql, qi
-           do iup = 1,numup
-              call condensation_edmfA(upthv(iup,i,j), upqt(iup,i,j), ple(i,j,kbot), &
-                                      upthl(iup,i,j), upql(iup,i,j), upqi(iup,i,j), ice_ramp)
-           end do
+        if ( anelastic_flag == 0 ) then
+           wstar = max( wstarmin, (mapl_grav/thv(i,j,LM)*wthv*zpbl(i,j))**onethird )
         else
-           do iup = 1,numup
-              active_updraft(iup,i,j) = .true.
+           wstar = max( wstarmin, (goth00*wthv*zpbl(i,j))**onethird )
+        end if
+        qstar  = evap(i,j)/wstar
+        thstar = wthv/wstar
+        
+        sigmaW  = AlphaW*wstar
+        sigmaQT = AlphaQT*max( qstar, 0. )
+        sigmaTH = AlphaTH*max( thstar, 0. )
 
-              upu(iup,i,j) = u(i,j,LM)
-              upv(iup,i,j) = v(i,j,LM)
-           end do
-        end if ! plume_type == 0
+        wmin = sigmaW*pwmin ! vertical velocity of least energetic updraft
+        wmax = sigmaW*pwmax ! "        "        "  most  "         "
+        
+        work = 1./( sqrt(2.)*sigmaW )
+
+        QTsrfF  = 0.
+        THVsrfF = 0.
+        do iup = 1,numup
+           active_updraft(iup,i,j) = .true.
+           
+           wlv = wmin + ( wmax - wmin )*real(iup-1)/real(numup)
+           wtv = wmin + ( wmax - wmin )*real(iup)/real(numup)
+       
+           upw(iup,i,j)   = 0.5*( wlv + wtv ) 
+           upa(iup,i,j)   = 0.5*erf(wtv*work) - 0.5*erf(wlv*work)       
+           upu(iup,i,j)   = ui(i,j,kbot)
+           upv(iup,i,j)   = vi(i,j,kbot)
+           upqt(iup,i,j)  = qti(i,j,kbot)  + 0.32*upw(iup,i,j)*sigmaQT/sigmaW ! 0.32~=0.58*0.55 (Stull 1988)
+           upthv(iup,i,j) = thvi(i,j,kbot) + 0.58*upw(iup,i,j)*sigmaTH/sigmaW ! Stull 1988
+
+           upm(iup,i,j) = rhoe(i,j,kbot)*upa(iup,i,j)*upw(iup,i,j)
+
+           ! For stability make sure that the surface mass-fluxes are not more than their 
+           ! values computed from the surface scheme
+           QTsrfF  = QTsrfF  + upa(iup,i,j)*upw(iup,i,j)*( upqt(iup,i,j)  - qti(i,j,kbot) )
+           THVsrfF = THVsrfF + upa(iup,i,j)*upw(iup,i,j)*( upthv(iup,i,j) - thvi(i,j,kbot) )
+        end do
+
+        ! Change surface THV so that the fluxes from the mass flux equal prescribed values
+        if ( kbot == 0 .and. THVsrfF > wthv ) then
+           upthv(:,i,j) = ( upthv(:,i,j) - thvi(i,j,kbot) )*wthv/THVsrfF + thvi(i,j,kbot)
+        end if
+
+        ! Change surface QT so that the fluxes from the mass flux equal prescribed values 
+        ! We do not need to worry about the negative values as they should not exist
+        if ( kbot == 0. .and. QTsrfF > evap(i,j) .and. evap(i,j) > 0. )  then
+           upqt(:,i,j) = ( upqt(:,i,j) - qti(i,j,kbot) )*evap(i,j)/QTsrfF + qti(i,j,kbot)
+        end if
+
+        ! Compute condensation and thl, ql, qi
+        do iup = 1,numup
+           call condensation_edmfA(upthv(iup,i,j), upqt(iup,i,j), ple(i,j,kbot), &
+                                   upthl(iup,i,j), upql(iup,i,j), upqi(iup,i,j), ice_ramp)
+        end do
      else
         active_updraft(:,i,j) = .false.
      end if    ! wthv > 0.
@@ -353,6 +348,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
         do iup = 1,numup
            if ( active_updraft(iup,i,j) ) then
+              ! Initialize
+              
               !
               ! Sample updraft statistics
               !
@@ -415,29 +412,29 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  edmfdryv(i,j,k)   = edmfdryv(i,j,k)   + upa(iup,i,j)*upv(iup,i,j)
               end if
 
-              !
-              if ( plume_type == 0 ) then ! JPL entraining plume model
-                 !
-                 if ( L0(i,j) > 0. ) then
-                    if ( stochastic_flag /= 0 ) then
-                       ent(iup,i,j,k) = entf(iup,i,j,k)*ent0*idzle
-                    else
-                       call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
-                       ent(iup,i,j,k) = real(enti(iup,i,j,k))*ent0*idzle
-                    end if
-
-                    ! increase entrainment if local minimum of thv
-                    if ( entrain_boost == 0 .and. thv(i,j,k) < thv(i,j,kp1) .and. thv(i,j,k) < thv(i,j,km1) ) then
-                       ent(iup,i,j,k) = ent(iup,i,j,k) + 5.*ent0/L0(i,j)
-                    end if
-
-                    ! Test
-!                    ent(iup,i,j,k) = max( ent(iup,i,j,k), 1./(3.*zl(i,j,k)) ) 
+              ! Compute fractional entrainment rate
+              if ( L0(i,j) > 0. ) then
+                 if ( stochastic_flag /= 0 ) then
+                    ent(iup,i,j,k) = entf(iup,i,j,k)*ent0*idzle
                  else
-                    ! negative L0 means 0 entrainment  
-                    ent(:,i,j,:) = 0. ! check
+                    call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
+                    ent(iup,i,j,k) = real(enti(iup,i,j,k))*ent0*idzle
                  end if
 
+                 ! increase entrainment if local minimum of thv
+                 if ( entrain_boost == 0 .and. thv(i,j,k) < thv(i,j,kp1) .and. thv(i,j,k) < thv(i,j,km1) ) then
+                    ent(iup,i,j,k) = ent(iup,i,j,k) + 5.*ent0/L0(i,j)
+                 end if
+
+                 ! Limit entrainment length scale using surface
+                 ent(iup,i,j,k) = max( ent(iup,i,j,k), 1./(3.*zl(i,j,k)) ) ! Cheinet 2003
+              else
+                 ! negative L0 means 0 entrainment  
+                 ent(:,i,j,:) = 0. ! check
+              end if
+
+              ! Integrate plume budgets acroos one vertical step
+              if ( plume_type == 0 ) then ! JPL entraining plume model
                  ! sample entrainment
                  E(i,j,k) = E(i,j,k) + rhoe(i,j,k)*upa(iup,i,j)*upw(iup,i,j)*ent(iup,i,j,k)
                  
@@ -473,30 +470,17 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  end if
 
               elseif ( plume_type == 1 ) then ! thermal plume
-                 if ( anelastic_flag == 0 ) then
-                    B = mapl_grav*( upthv(iup,i,j)/thv(i,j,k) - 1. )
-                 else
-                    B = goth00*( upthv(iup,i,j) - thv(i,j,k) )
-                 end if
+                 ! Integrate mass flux budget
+                 Mn = upm(iup,i,j)*exp(dzle*ent(iup,i,j,k))
 
-                 if ( k >= izsl(i,j) + 1 ) then
-                    Wn2 = ( rhoe(i,j,k)/rhoe(i,j,km1) )*( upw(iup,i,j)**2. + dzle*B )
+                 ! Sample entrainment rate
+                 E(i,j,k) = E(i,j,k) + ( Mn - upm(iup,i,j) )*idzle
 
-                    Wn = sqrt( max( 0., Wn2 ) )
-                    if ( rhoe(i,j,km1)*Wn > rhoe(i,j,k)*upw(iup,i,j) ) then
-                       ! Sample entrainment rate
-                       E(i,j,k) = E(i,j,k) + upa(iup,i,j)*( rhoe(i,j,km1)*Wn - rhoe(i,j,k)*upw(iup,i,j) )*idzle
-
-                       EntExp = 1. - ( rhoe(i,j,k)*upw(iup,i,j) ) / ( rhoe(i,j,km1)*Wn )
-                    else
-                       EntExp = 1.
-                    end if
-                 else
-                    Mn = rhoe(i,j,km1)*upa(iup,i,j)*Wn
-                 end if
-
+                 !
+                 EntExp  = upm(iup,i,j)/Mn
                  EntExpU = EntExp ! temporary
 
+                 ! Integrate scalar budgets
                  QTn  = qt(i,j,k)*( 1. - EntExp )  + upqt(iup,i,j)*EntExp
                  THLn = thl(i,j,k)*( 1. - EntExp ) + upthl(iup,i,j)*EntExp
                  Un   = u(i,j,k)*( 1. - EntExpU )  + upu(iup,i,j)*EntExpU
@@ -504,15 +488,35 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
                  ! Condensation
                  call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
+
+                 ! Compute buoyancy
+                 if ( anelastic_flag == 0 ) then
+                    B = mapl_grav*( upthv(iup,i,j)/thv(i,j,k) - 1. )
+                 else
+                    B = goth00*( upthv(iup,i,j) - thv(i,j,k) )
+                 end if
+
+                 ! Integrate momentum budget
+                 Wn2 = EntExp**2.*Wn2 + 2.*dzle*B ! Rio and Hourdin 2007 ( eq. A9 )
               end if
               
               ! Intermediate quantities 
               mfthvt_work = upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j)
               mft_work    = upa(iup,i,j)*upw(iup,i,j)
 
-              if ( Wn2 > 0. ) then
-                 Dw(i,j,k) = Dw(i,j,k) - upa(iup,i,j)*( rhoe(i,j,km1)*Wn2 - rhoe(i,j,k)*upw(iup,i,j)**2. )*idzle &
-                                       + rhoe(i,j,k)*upa(iup,i,j)*B 
+              ! Determine stopping condition
+              if ( plume_type == 0 ) then
+                 stop_cond = Wn2 > 0.
+              else
+                 stop_cond = B > 0.
+              end if
+
+              ! Update plume
+              if ( stop_cond ) then
+                 if ( plume_type == 0 ) then
+                    Dw(i,j,k) = Dw(i,j,k) - upa(iup,i,j)*( rhoe(i,j,km1)*Wn2 - rhoe(i,j,k)*upw(iup,i,j)**2. )*idzle &
+                                          + rhoe(i,j,k)*upa(iup,i,j)*B 
+                 end if
 
                  upw(iup,i,j)   = sqrt(Wn2)
                  upthv(iup,i,j) = THVn
@@ -522,6 +526,11 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  upqi(iup,i,j)  = QCn*( 1. - wf )
                  upu(iup,i,j)   = Un
                  upv(iup,i,j)   = Vn
+
+                 if ( plume_type == 1 ) then
+                    upm(iup,i,j) = Mn
+                    upa(iup,i,j) = upm(iup,i,j)/( rhoe(i,j,km1)*upw(iup,i,j) )
+                 end if
 
                  mfthvt = mfthvt + 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) + mfthvt_work )
                  mft    = mft    + 0.5*(                upa(iup,i,j)*upw(iup,i,j) + mft_work )
