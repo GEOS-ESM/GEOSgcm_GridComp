@@ -210,6 +210,7 @@ module gfdl2_cloud_microphys_mod
     real :: tau_l2v = 300. !< cloud water to water vapor (evaporation)
     real :: tau_g2v = 900. !< graupel sublimation
     real :: tau_v2g = 21600. !< graupel deposition -- make it a slow process
+    real :: tau_revp = 1200. !< rain re-evaporation
     ! horizontal subgrid variability
     
     real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
@@ -310,6 +311,7 @@ module gfdl2_cloud_microphys_mod
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
         const_vs, const_vg, const_vr, use_ccn, rthresh, ccn_l, ccn_o, qc_crt, &
         tau_g2v, tau_v2g, &
+        tau_revp, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v,      &
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs,           &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin, tice,        &
@@ -323,6 +325,7 @@ module gfdl2_cloud_microphys_mod
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
         const_vs, const_vg, const_vr, use_ccn, rthresh, ccn_l, ccn_o, qc_crt, &
         tau_g2v, tau_v2g, &
+        tau_revp, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v,      &
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs,           &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin, tice,        &
@@ -686,17 +689,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     ! -----------------------------------------------------------------------
     
     do i = is, ie
-
-        ! over oceans
-                                   t_wfr = tice - 34. - dt_fr
-        ! over land
-        if (land(i) > 0.1)         t_wfr = tice - 33. - dt_fr
-        ! Convectve regime 
-        if (cnv_fraction(i) > 0.1) t_wfr = tice - 27. - dt_fr
-        ! over snow or landice
-        if (landice(i) > 0.1 .OR. &
-             snomas(i) > 0.1)      t_wfr = tice - 36. - dt_fr
- 
+        
         do k = ktop, kbot
             qiz (k) = qi (i, j, k)
             qsz (k) = qs (i, j, k)
@@ -1437,7 +1430,9 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, revap, isubl,
                 t2 = tin * tin
                 evap = crevp (1) * t2 * dq * (crevp (2) * sqrt (qden) + crevp (3) * &
                     exp (0.725 * log (qden))) / (crevp (4) * t2 + crevp (5) * qsat * den (k))
-                evap = min (qr (k), dt * evap, dqv / (1. + lcpk (k) * dqsdt))
+                fac_revp = 1. - exp (- dt / tau_revp)
+                evap = min (qr (k), dt * fac_revp * evap, dqv / (1. + lcpk (k) * dqsdt))
+          !!!!! evap = min (qr (k), dt *            evap, dqv / (1. + lcpk (k) * dqsdt))
                 ! -----------------------------------------------------------------------
                 ! alternative minimum evap in dry environmental air
                 ! sink = min (qr (k), dim (rh_rain * qsat, qv (k)) / (1. + lcpk (k) * dqsdt))

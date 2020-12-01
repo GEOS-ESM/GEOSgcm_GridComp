@@ -3599,7 +3599,7 @@ l_SIG:DO fase = 1,2
 	       tau_ecmwf(i)=tau_mid
             endif
   
-            tau_ecmwf(i)= tau_ecmwf(i) * (1. + 1.66 * (dx(i)/(125*1000.)))! dx must be in meters
+            !tau_ecmwf(i)= tau_ecmwf(i) * (1. + 1.66 * (dx(i)/(125*1000.)))! dx must be in meters
          ENDDO
       
        ELSE
@@ -9630,9 +9630,9 @@ loop0:  do k= kbcon(i),ktop(i)
 !endif
 
 !---over the land, only applies closure 10.
-!if(zero_diff == 0 .and. ichoice == 0) then
-!  xf_ens(i,1:16)=(1.-xland(i))*xf_ens(i,10)+xland(i)*xf_ens(i,1:16) 
-!endif
+if(zero_diff == 0 .and. ichoice == 0) then
+  xf_ens(i,1:16)=(1.-xland(i))*xf_ens(i,10)+xland(i)*xf_ens(i,1:16) 
+endif
 
 !------------------------------------
 
