@@ -2069,30 +2069,30 @@ REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
                 VERIFY_(STATUS)
                 call ESMFL_BundleGetPointerToData( Advect_BUNDLE, 'QICN', QICN, RC=STATUS )
                 VERIFY_(STATUS)
-                call ESMF_FieldBundleGet (Advect_BUNDLE, fieldName='QRAIN', isPresent=isPresent, RC=STATUS)
-                VERIFY_(STATUS)
-                if (isPresent) then
-                   call ESMFL_BundleGetPointerToData( Advect_BUNDLE, 'QRAIN', QRAIN, RC=STATUS )
-                   VERIFY_(STATUS)
-                else
+            !   call ESMF_FieldBundleGet (Advect_BUNDLE, fieldName='QRAIN', isPresent=isPresent, RC=STATUS)
+            !   VERIFY_(STATUS)
+            !   if (isPresent) then
+            !      call ESMFL_BundleGetPointerToData( Advect_BUNDLE, 'QRAIN', QRAIN, RC=STATUS )
+            !      VERIFY_(STATUS)
+            !   else
                    QRAIN => zero
-                end if
-                call ESMF_FieldBundleGet (Advect_BUNDLE, fieldName='QSNOW', isPresent=isPresent, RC=STATUS)
-                VERIFY_(STATUS)
-                if (isPresent) then
-                   call ESMFL_BundleGetPointerToData( Advect_BUNDLE, 'QSNOW', QSNOW, RC=STATUS )
-                   VERIFY_(STATUS)
-                else
+            !   end if
+            !   call ESMF_FieldBundleGet (Advect_BUNDLE, fieldName='QSNOW', isPresent=isPresent, RC=STATUS)
+            !   VERIFY_(STATUS)
+            !   if (isPresent) then
+            !      call ESMFL_BundleGetPointerToData( Advect_BUNDLE, 'QSNOW', QSNOW, RC=STATUS )
+            !      VERIFY_(STATUS)
+            !   else
                    QSNOW => zero
-                end if
-                call ESMF_FieldBundleGet (Advect_BUNDLE, fieldName='QGRAUPEL', isPresent=isPresent, RC=STATUS)
-                VERIFY_(STATUS)
-                if (isPresent) then
-                   call ESMFL_BundleGetPointerToData( Advect_BUNDLE, 'QGRAUPEL', QGRAUPEL, RC=STATUS )
-                   VERIFY_(STATUS)
-                else
+            !   end if
+            !   call ESMF_FieldBundleGet (Advect_BUNDLE, fieldName='QGRAUPEL', isPresent=isPresent, RC=STATUS)
+            !   VERIFY_(STATUS)
+            !   if (isPresent) then
+            !      call ESMFL_BundleGetPointerToData( Advect_BUNDLE, 'QGRAUPEL', QGRAUPEL, RC=STATUS )
+            !      VERIFY_(STATUS)
+            !   else
                    QGRAUPEL => zero
-                end if
+            !   end if
 
                 DQVANA = Q
                 DQLANA = QLLS + QLCN

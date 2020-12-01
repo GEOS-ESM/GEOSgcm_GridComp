@@ -2849,9 +2849,9 @@ contains
    !  Compute Total Water Mass Change due to Physics Sources and Sinks
    !  ----------------------------------------------------------------
        if (NWAT == 5) then
-          DQ = QV+QLLS+QLCN+QILS+QICN                      - QW  ! - DT*DQVDTCHM  We do not keep dry-mass budget for CHEM constituents
+          DQ = QV+QLLS+QLCN+QILS+QICN                      - QW !- DT*DQVDTCHM ! Who added this comment::: We do not keep dry-mass budget for CHEM constituents
        elseif (NWAT == 8) then
-          DQ = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL - QW  ! - DT*DQVDTCHM  We do not keep dry-mass budget for CHEM constituents
+          DQ = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL - QW !- DT*DQVDTCHM ! Who added this comment::: We do not keep dry-mass budget for CHEM constituents
        endif
 
    !  Modify P and Q such that Pdry is conserved
