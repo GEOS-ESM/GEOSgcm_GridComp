@@ -7,4 +7,5 @@ set (srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL GEOS_Shared GEOS_LandShared)
+  DEPENDENCIES MAPL GEOS_Shared GEOS_LandShared
+  TYPE SHARED)

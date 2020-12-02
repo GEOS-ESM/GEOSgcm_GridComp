@@ -91,7 +91,7 @@ module SurfParams
          	_ASSERT(.FALSE.,'LAND_PARAMS not valid or incompatible with LSM_CHOICE')                                                                            
       	end select                                                                                
                                                                                               
-    else if (LSM_CHOICE==2) then       
+    else if (LSM_CHOICE >1) then       
 
 	select case (LAND_PARAMS)                                                                
        	case ("CN_CLM4")  ! parameters to reproduce Fanwei Zeng's Catchment-CN.4.0 runs (e0004s_transientCO2_05) done with build /gpfsm/dnb31/fzeng/LDASsa_m3-16_0_p2_CatchCatchCN_for_MERRA3        

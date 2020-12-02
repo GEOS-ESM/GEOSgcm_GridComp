@@ -8949,3 +8949,11 @@ END FUNCTION TSLAI
 
 end module GEOS_CatchCNCLM40GridCompMod
 
+subroutine SetServices(gc, rc)
+   use ESMF
+   use GEOS_CatchCNCLM40GridCompMod, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc, rc=rc)
+end subroutine
+

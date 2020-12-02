@@ -39,7 +39,8 @@ set (srcs
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL GEOS_Shared GEOS_LandShared GEOS_CatchCNShared)
+  DEPENDENCIES MAPL GEOS_Shared GEOS_LandShared GEOS_CatchCNShared
+  TYPE SHARED)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
 if (is_openmp)

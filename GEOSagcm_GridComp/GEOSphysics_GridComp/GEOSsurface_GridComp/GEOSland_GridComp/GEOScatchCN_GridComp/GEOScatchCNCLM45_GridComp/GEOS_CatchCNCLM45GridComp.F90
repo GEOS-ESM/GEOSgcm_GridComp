@@ -7199,7 +7199,6 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
        call MAPL_ReadForcing(MAPL,'LNFM',LNFMFILE,CURRENT_TIME,lnfm,ON_TILES=.true.,RC=STATUS)
        VERIFY_(STATUS)
-       
        ! compute mean state over interval
        ! --------------------------------
        do nz = 1,nzone
@@ -7213,7 +7212,6 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
              lmrsham(:,nv,nz) = lmrsham(:,nv,nz) / cnsum(:)                
           end do
        end do
-       
        tpm     = tpm     / cnsum
        bflowm  = bflowm  / cnsum
        totwatm = totwatm / cnsum
@@ -7736,7 +7734,6 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
 ! call unified land model
 ! -----------------------
-
         if (ntiles > 0) then
 
            call CATCHCN ( NTILES, LONS, LATS, DT,USE_FWET_FOR_RUNOFF, &
@@ -8814,3 +8811,10 @@ end subroutine RUN0
 
 end module GEOS_CatchCNCLM45GridCompMod
 
+subroutine SetServices(gc, rc)
+   use ESMF
+   use GEOS_CatchCNCLM45GridCompMod, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc, rc=rc)
+end subroutine
