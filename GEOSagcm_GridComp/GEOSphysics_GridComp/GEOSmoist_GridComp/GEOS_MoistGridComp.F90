@@ -1334,6 +1334,15 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'CLDBASEHGT',                                &
+         LONG_NAME = 'Height_of_cloud_base',                       &
+         UNITS     = 'm',                                          &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                           &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME= 'SHLW_PRC3 ',                                   &
          LONG_NAME = 'shallow_convective_rain',           &
@@ -1351,6 +1360,42 @@ contains
          VLOCATION = MAPL_VLocationCenter,                         &
          RC=STATUS  )
     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'QTFLX_SC',                                  &
+         LONG_NAME  = 'shallow_cumulus_total_water_flux',          &
+         UNITS      = 'kg kg-1 m s-1',                             &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,                          &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'SLFLX_SC',                                  &
+         LONG_NAME  = 'shallow_cumulus_liquid_static_energy_flux', &
+         UNITS      = 'K m s-1',                                  &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,                          &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'UFLX_SC',                                   &
+         LONG_NAME  = 'shallow_cumulus_u_wind_flux',               &
+         UNITS      = '1',                                         &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,                          &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'VFLX_SC',                                   &
+         LONG_NAME  = 'shallow_cumulus_v_wind_flux',               &
+         UNITS      = '1',                                         &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,                          &
+         RC=STATUS  )
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'CUFRC_SC',                                  &
@@ -1763,6 +1808,15 @@ contains
          SHORT_NAME = 'CBMF_SC',                                      &
          LONG_NAME = 'cloud_base_mass_flux_due_to_shallow_convection',&
          UNITS     = 'kg s-1 m-2',                                 &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'CUSH_SC',                                      &
+         LONG_NAME = 'cumulus_scale_height_for_shallow_convection',&
+         UNITS     = 'm',                                          &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                         &
          RC=STATUS  )
@@ -5150,7 +5204,7 @@ contains
           call MAPL_GetResource(MAPL, SATUR_CALC    , 'SATUR_CALC:'	  ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, BC_METH       , 'BC_METH:'	  ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, USE_REBCB     , 'USE_REBCB:'	  ,default= 1,     RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_MID       , 'TAU_MID:'	  ,default= 3600., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_MID       , 'TAU_MID:'	  ,default= 3600.,  RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, TAU_DEEP      , 'TAU_DEEP:'	  ,default= 5400., RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, AUTOCONV      , 'AUTOCONV:'	  ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, C0_DEEP       , 'C0_DEEP:'	  ,default= 2.e-3, RC=STATUS );VERIFY_(STATUS)
@@ -5395,18 +5449,19 @@ contains
       real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, DCM_SC, WUP_SC, QTUP_SC, &
                                          THLUP_SC, THVUP_SC, UUP_SC, VUP_SC 
       real, pointer, dimension(:,:,:) :: QCU_SC, QLU_SC, QIU_SC
+      real, pointer, dimension(:,:,:) :: QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC
       real, pointer, dimension(:,:,:) :: DTHDT_SC, DQVDT_SC, DQRDT_SC, DQSDT_SC, &
                                          DQIDT_SC, DQLDT_SC, DQCDT_SC, CUFRC_SC
       real, pointer, dimension(:,:,:) :: DUDT_SC, DVDT_SC, &
                                          ENTR_SC, DETR_SC, XC_SC,QLDET_SC, &
                                          QIDET_SC, QLENT_SC, QIENT_SC, &
                                          QLSUB_SC, QISUB_SC, SC_NDROP, SC_NICE
-      real, pointer, dimension(:,:  ) :: CBMF_SC, TPERT_SC, QPERT_SC
+      real, pointer, dimension(:,:  ) :: CBMF_SC, CUSH_SC, TPERT_SC, QPERT_SC
       real, pointer, dimension(:,:  ) :: CIN_SC, PINV_SC, PLCL_SC, PLFC_SC, &
                                          PREL_SC, PBUP_SC
       real, pointer, dimension(:,:  ) :: WLCL_SC, QTSRC_SC, THLSRC_SC, &
                                          THVLSRC_SC, TKEAVG_SC, CLDTOP_SC, CUSH
-      real, pointer, dimension(:,:  ) :: CNT_SC, CNB_SC
+      real, pointer, dimension(:,:  ) :: CNT_SC, CNB_SC, CLDBASEHGT
 
       real, pointer, dimension(:,:,:) :: CNV_DQLDT            , &
            CNV_MF0              , &
@@ -5848,7 +5903,7 @@ contains
       real,    dimension(IM,JM)       :: LS_SNR, CN_SNR, AN_SNR, SC_SNR, ZCBLx, FILLQ, MXDIAMx
       real,    dimension(IM,JM)       :: LS_PRC2,CN_PRC2,AN_PRC2,SC_PRC2,ER_PRC2, TPREC, TVQX
       real,    dimension(IM,JM)       :: TPERT, QPERT, TSFCAIR, DTS, RASAL2_2d, NPRE_FRAC_2d
-      integer, dimension(IM,JM)       :: IRAS, JRAS, KCBL
+      integer, dimension(IM,JM)       :: IRAS, JRAS, KCBL, CLDBASEx
       real,    dimension(IM,JM,LM)    :: WGT0, WGT1
       real,    dimension(IM,JM,LM)    :: TRDLX
       integer, dimension(IM,JM,LM)    :: irccode
@@ -6001,6 +6056,7 @@ contains
       logical :: ALLOC_QLU
       logical :: ALLOC_QIU
       logical :: ALLOC_CBMF
+      logical :: ALLOC_CUSH
       logical :: ALLOC_DQCDT
       logical :: ALLOC_CNT
       logical :: ALLOC_CNB
@@ -6035,6 +6091,10 @@ contains
       logical :: ALLOC_NICE
       logical :: ALLOC_TPERT
       logical :: ALLOC_QPERT
+      logical :: ALLOC_QTFLX
+      logical :: ALLOC_SLFLX
+      logical :: ALLOC_UFLX
+      logical :: ALLOC_VFLX
 
       !---------------------------------------------------
 
@@ -6427,7 +6487,7 @@ contains
       if(adjustl(CLDMICRO)=="GFDL") then
         call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:', DEFAULT=0, RC=STATUS)
         call MAPL_GetResource(STATE,     UWTOLS,     'UWTOLS:', DEFAULT=0, RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 0.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 1.0, RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
       else
         call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:', DEFAULT=1, RC=STATUS)
@@ -6620,9 +6680,11 @@ contains
       call MAPL_GetPointer(EXPORT, CLDREFFG, 'RG'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, CLDNCCN,  'CLDNCCN' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT,DTDTFRIC, 'DTDTFRIC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CLDBASEHGT,'CLDBASEHGT', RC=STATUS); VERIFY_(STATUS)
 
 !!! shallow vars
       call MAPL_GetPointer(EXPORT, CBMF_SC,  'CBMF_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CUSH_SC,  'CUSH_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, UMF_SC,  'UMF_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, MFD_SC,  'MFD_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DCM_SC,  'DCM_SC' , RC=STATUS); VERIFY_(STATUS)
@@ -6643,6 +6705,10 @@ contains
       call MAPL_GetPointer(EXPORT, DQIDT_SC,  'DQIDT_SC'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DQLDT_SC,  'DQLDT_SC'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DQCDT_SC,  'DQCDT_SC'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QTFLX_SC,  'QTFLX_SC'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SLFLX_SC,  'SLFLX_SC'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, UFLX_SC,   'UFLX_SC'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, VFLX_SC,   'VFLX_SC'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DUDT_SC,   'DUDT_SC'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DVDT_SC,   'DVDT_SC'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, WLCL_SC,   'WLCL_SC'   , RC=STATUS); VERIFY_(STATUS)
@@ -7478,6 +7544,7 @@ contains
       ALLOC_QLU    = .not.associated(QLU_SC    )
       ALLOC_QIU    = .not.associated(QIU_SC    )
       ALLOC_CBMF   = .not.associated(CBMF_SC   )
+      ALLOC_CUSH   = .not.associated(CUSH_SC   )
       ALLOC_DQCDT  = .not.associated(DQCDT_SC  )
       ALLOC_CNT    = .not.associated(CNT_SC    )
       ALLOC_CNB    = .not.associated(CNB_SC    )
@@ -7512,6 +7579,10 @@ contains
       ALLOC_NICE   = .not.associated(SC_NICE    )
       ALLOC_TPERT  = .not.associated(TPERT_SC   )
       ALLOC_QPERT  = .not.associated(QPERT_SC   )
+      ALLOC_QTFLX  = .not.associated(QTFLX_SC   )
+      ALLOC_SLFLX  = .not.associated(SLFLX_SC   )
+      ALLOC_UFLX   = .not.associated(UFLX_SC    )
+      ALLOC_VFLX   = .not.associated(VFLX_SC    )
 
       if(ALLOC_UMF)    allocate( UMF_SC(IM,JM,0:LM) )
       if(ALLOC_MFD)    allocate( MFD_SC(IM,JM,LM) )
@@ -7529,6 +7600,7 @@ contains
       if(ALLOC_QLU)    allocate( QLU_SC(IM,JM,LM)   )
       if(ALLOC_QIU)    allocate( QIU_SC(IM,JM,LM)   )
       if(ALLOC_CBMF)   allocate( CBMF_SC(IM,JM)     )
+      if(ALLOC_CUSH)   allocate( CUSH_SC(IM,JM)     )
       if(ALLOC_DQCDT)  allocate( DQCDT_SC(IM,JM,LM) )
       if(ALLOC_CNT)    allocate( CNT_SC(IM,JM)      )
       if(ALLOC_CNB)    allocate( CNB_SC(IM,JM)      )
@@ -7563,6 +7635,11 @@ contains
       if(ALLOC_NICE)   allocate( SC_NICE(IM,JM,LM)  )
       if(ALLOC_TPERT)  allocate( TPERT_SC(IM,JM)  )
       if(ALLOC_QPERT)  allocate( QPERT_SC(IM,JM)  )
+      if(ALLOC_QTFLX)  allocate( QTFLX_SC(IM,JM,LM) )
+      if(ALLOC_SLFLX)  allocate( SLFLX_SC(IM,JM,LM) )
+      if(ALLOC_UFLX)   allocate( UFLX_SC(IM,JM,LM)  )
+      if(ALLOC_VFLX)   allocate( VFLX_SC(IM,JM,LM)  )
+
 
       IDIM = IM*JM
       IRUN = IM*JM
@@ -8554,6 +8631,7 @@ contains
             DQSDT_SC, CUFRC_SC, ENTR_SC, DETR_SC,         &
             QLDET_SC, QIDET_SC, QLSUB_SC, QISUB_SC,       &
             SC_NDROP, SC_NICE, TPERT_SC, QPERT_SC,        &
+            QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC,         &
 #ifdef UWDIAG 
             QCU_SC, QLU_SC,                               & ! DIAG ONLY 
             QIU_SC, CBMF_SC, DQCDT_SC, CNT_SC, CNB_SC,    &
@@ -8617,6 +8695,8 @@ contains
       SHLW_PRC3 = DQRDT_SC    ! [kg/kg/s]
       SHLW_SNO3 = DQSDT_SC    ! [kg/kg/s]
 
+      if (associated(CUSH_SC)) CUSH_SC = CUSH
+
       else   ! if UW shallow scheme not called
 
         MFD_SC    = 0.
@@ -8629,13 +8709,10 @@ contains
         QIDET_SC  = 0.
         QLSUB_SC  = 0.
         QISUB_SC  = 0.
-
-!--srf        
 	DCM_SC    = 0.
         UMF_SC    = 0.
-!--srf        
-      end if
 
+      end if
       
       call MAPL_TimerOff (STATE,"--UWSHCU")
 
@@ -8804,13 +8881,13 @@ contains
         CLCN = CLCN + CNV_MFD*iMASS*DT_MOIST
         if (UWTOLS/=0) then
        ! add ShallowCu CL/QL/QI tendencies to Large-Scale
-        ! CLLS = CLLS +   MFD_SC*iMASS*DT_MOIST
-          CLLS = CLLS + 1.5*DCM_SC*iMASS*DT_MOIST
+          CLLS = CLLS +   1.0*MFD_SC*iMASS*DT_MOIST
+          !CLLS = CLLS + 1.5*DCM_SC*iMASS*DT_MOIST
           QLLS = QLLS +   QLDET_SC*iMASS*DT_MOIST
           QILS = QILS +   QIDET_SC*iMASS*DT_MOIST
         else
-         !CLCN = CLCN +     MFD_SC*iMASS*DT_MOIST
-          CLCN = CLCN + 1.5*DCM_SC*iMASS*DT_MOIST
+          CLCN = CLCN +     1.0*MFD_SC*iMASS*DT_MOIST
+         ! CLCN = CLCN + 1.5*DCM_SC*iMASS*DT_MOIST
           QLCN = QLCN +   QLDET_SC*iMASS*DT_MOIST
           QICN = QICN +   QIDET_SC*iMASS*DT_MOIST
 
@@ -12621,7 +12698,24 @@ do K= 1, LM
          endwhere
          DQIDT   = DQIDT / DT_MOIST
       endif
-         
+
+
+
+      if (associated(CLDBASEHGT)) then
+         CLDBASEx = MAPL_UNDEF
+         do i = 1,IM
+           do j = 1,JM
+             do k =  LM, 1, -1
+               if (ZLE(i,j,k).gt.10000.) exit
+               if ( ( RAD_CF(i,j,k) .ge. 1e-3 ) ) then
+                 CLDBASEx(i,j)  = ZLE(i,j,k)
+                 exit
+               end if
+             end do
+           end do
+         end do
+         CLDBASEHGT = CLDBASEx         
+      end if
          
       CFX =100.*PLO*r_air/TEMP
 
@@ -12862,6 +12956,10 @@ do K= 1, LM
       if(ALLOC_THVLSRC)deallocate( THVLSRC_SC )
       if(ALLOC_TKEAVG) deallocate( TKEAVG_SC )
       if(ALLOC_CLDTOP) deallocate( CLDTOP_SC )
+      if(ALLOC_QTFLX)  deallocate( QTFLX_SC )
+      if(ALLOC_SLFLX)  deallocate( SLFLX_SC )
+      if(ALLOC_UFLX)   deallocate( UFLX_SC  )
+      if(ALLOC_VFLX)   deallocate( VFLX_SC  )
 
       if(ALLOC_WUP)    deallocate( WUP_SC )
       if(ALLOC_QTUP)   deallocate( QTUP_SC )
