@@ -3822,7 +3822,9 @@ contains
                                         edmfdryu,edmfmoistu,  &
                                         edmfdryv,edmfmoistv,  &
                                         edmfmoistqc,          &
-                                        WHL_tmp,WQT_tmp,WTHV_tmp 
+                                        WHL_tmp,WQT_tmp,WTHV_tmp , &
+                                        ui, vi, thli, qti, qvi, qli, qii, thvi, &
+                                        acei_moist, Ai_moist, Bi_moist
      real, dimension(im,jm,lm) :: sdry,sdrya,sdryb,sdryc
      real, dimension(im,jm,lm) :: zlo,zlot,pk
      real, dimension(im,jm)    :: rhodz,edmfZCLD
@@ -4391,6 +4393,15 @@ contains
     THL=TH-(mapl_alhl*QL+mapl_alhs*QI)/(mapl_cp*EXF)
     QT=Q+QL+QI
 
+    ! Interpolate profiles to half levels
+    call interp_half(IM, JM, LM, &                             ! in
+                     edmf_discrete, edmf_implicit, &           ! in
+                     zle, zlo, &                               ! in
+                     u, v, thl, qt, q, ql, qi, thv, &          ! in
+                     ace_moist, A_moist, B_moist, &            ! in
+                     ui, vi, thli, qti, qvi, qli, qii, thvi, & ! out
+                     acei_moist, Ai_moist, Bi_moist)           ! out
+
     ! Save thermodynamic exports
     if ( associated( zle_turb ) )  zle_turb   = ZLE
     if ( associated( exner_turb) ) exner_turb = EXF
@@ -4522,7 +4533,8 @@ if ( ET == 1 ) then
        call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp, &                    ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
-                     u, v, thl, thv, qt, q, ql, qi, &                                ! in
+                     u, v, thl, qt, q, ql, qi, thv, &                                ! in
+                     ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
@@ -4576,7 +4588,8 @@ if ( ET == 1 ) then
        call run_edmf(IM, JM, LM, 1, iras, jras, edmf_kbotp, &                        ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
-                     u, v, thl, thv, qt, q, ql, qi, &                                ! in
+                     u, v, thl, qt, q, ql, qi, thv, &                                ! in
+                     ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
@@ -4641,7 +4654,8 @@ if ( ET == 1 ) then
        call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp,&                     ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
-                     u, v, thl, thv, qt, q, ql, qi, &                                ! in
+                     u, v, thl, qt, q, ql, qi, thv, &                                ! in
+                     ui, vi, thli, qti, qvi, qli, qii, thvi, &                             ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in 
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
@@ -4939,10 +4953,10 @@ ENDIF
                       EDMF_CONSISTENT, WQL_TYPE, WRF_CG_FLAG, &                    ! in      
                       mynn_alpha1, mynn_alpha2, mynn_alpha3, mynn_alpha4, &        ! in 
                       th00, PLE, PLO, RHOE, ZLE, Z, &                              ! in      
-                      U, V, OMEGA, T, Q, QL, QI, ace_moist, THL, QT, THV, &        ! in      
+                      U, V, T, Q, QL, QI, THL, QT, THV, &                          ! in      
                       USTAR, SH, EVAP, &                                           ! in      
                       whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &           ! in      
-                      A_moist, B_moist, qsat_moist, &                              ! in
+                      acei_moist, Ai_moist, Bi_moist, &                            ! in
                       tke_new, hl2, qt2, hlqt, &                                   ! inout   
                       ws_explicit, wqv_explicit, wql_explicit, &                   ! inout     
                       KM_mynn, KH_mynn, K_tke, itau_mynn, qdiv, SM25, SH25, L_mynn, & ! out
@@ -8962,6 +8976,105 @@ end subroutine Poisson
       call random_number(ran1)
       END FUNCTION ran1
 
+      !
+      ! interp_half
+      !
+      subroutine interp_half(IM, JM, LM, &                             ! in
+                             discrete_type, implicit_flag, &           ! in
+                             zle, zl, &                                ! in
+                             u, v, thl, qt, qv, ql, qi, thv, &         ! in
+                             ac, A_moist, B_moist, &                   ! in
+                             ui, vi, thli, qti, qvi, qli, qii, thvi, & ! out (for EDMF)
+                             aci, Ai_moist, Bi_moist)                  ! out (for MYNN)
 
+        implicit none
+
+        integer, intent(in)         :: IM, JM, LM, discrete_type, implicit_flag
+        real, dimension(IM,JM,LM)   :: zl, u, v, thl, qt, qv, ql, qi, thv, ac, A_moist, B_moist
+        real, dimension(IM,JM,0:LM) :: zle, ui, vi, thli, qti, qvi, qli, qii, thvi, aci, Ai_moist, Bi_moist 
+
+        integer :: i, j, k, kp1
+        real    :: ifac
+
+        do k = 1,LM-1
+           kp1 = k + 1
+           
+           do j = 1,JM
+           do i = 1,IM
+              if ( discrete_type == 0 ) then ! centered
+                 ! This is temporary until I fix the interplation for implicit mass flux discretization
+                 if ( implicit_flag == 0 ) then
+                    ifac = ( zle(i,j,k) - zl(i,j,kp1) )/( zl(i,j,k) - zl(i,j,kp1) )
+                    
+                    ui(i,j,k)       = u(i,j,kp1)       + ifac*( u(i,j,k)       - u(i,j,kp1) )
+                    vi(i,j,k)       = v(i,j,kp1)       + ifac*( v(i,j,k)       - v(i,j,kp1) )
+                    thli(i,j,k)     = thl(i,j,kp1)     + ifac*( thl(i,j,k)     - thl(i,j,kp1) )
+                    qti(i,j,k)      = qt(i,j,kp1)      + ifac*( qt(i,j,k)      - qt(i,j,kp1) )
+                    qvi(i,j,k)      = qv(i,j,kp1)      + ifac*( qv(i,j,k)      - qv(i,j,kp1) )
+                    qli(i,j,k)      = ql(i,j,kp1)      + ifac*( ql(i,j,k)      - ql(i,j,kp1) )
+                    qii(i,j,k)      = qi(i,j,kp1)      + ifac*( qi(i,j,k)      - qi(i,j,kp1) )
+                    thvi(i,j,k)     = thv(i,j,kp1)     + ifac*( thv(i,j,k)     - thv(i,j,kp1) )
+                    aci(i,j,k)      = ac(i,j,kp1)      + ifac*( ac(i,j,k)      - ac(i,j,kp1) )
+                    Ai_moist(i,j,k) = A_moist(i,j,kp1) + ifac*( A_moist(i,j,k) - A_moist(i,j,kp1) )
+                    Bi_moist(i,j,k) = B_moist(i,j,kp1) + ifac*( B_moist(i,j,k) - B_moist(i,j,kp1) )
+                 else
+                    ui(i,j,k)       = 0.5*( u(i,j,kp1)       + u(i,j,k) )
+                    vi(i,j,k)       = 0.5*( v(i,j,kp1)       + v(i,j,k) )
+                    thli(i,j,k)     = 0.5*( thl(i,j,kp1)     + thl(i,j,k) )
+                    qti(i,j,k)      = 0.5*( qt(i,j,kp1)      + qt(i,j,k) )
+                    qvi(i,j,k)      = 0.5*( qv(i,j,kp1)      + qv(i,j,k) )
+                    qli(i,j,k)      = 0.5*( ql(i,j,kp1)      + ql(i,j,k) )
+                    qii(i,j,k)      = 0.5*( qi(i,j,kp1)      + qi(i,j,k) )
+                    thvi(i,j,k)     = 0.5*( thv(i,j,kp1)     + thv(i,j,k) )
+                    aci(i,j,k)      = 0.5*( ac(i,j,kp1)      + ac(i,j,k) )
+                    Ai_moist(i,j,k) = 0.5*( A_moist(i,j,kp1) + A_moist(i,j,k) )
+                    Bi_moist(i,j,k) = 0.5*( B_moist(i,j,kp1) + B_moist(i,j,k) )
+                 end if
+              elseif ( discrete_type == 1 ) then ! upwind
+                 ui(i,j,k)       = u(i,j,k)
+                 vi(i,j,k)       = v(i,j,k)
+                 thli(i,j,k)     = thl(i,j,k)
+                 qti(i,j,k)      = qt(i,j,k)
+                 qvi(i,j,k)      = qv(i,j,k)
+                 qli(i,j,k)      = ql(i,j,k)
+                 qii(i,j,k)      = qi(i,j,k)
+                 thvi(i,j,k)     = thv(i,j,k)
+                 aci(i,j,k)      = ac(i,j,k)
+                 Ai_moist(i,j,k) = A_moist(i,j,k)
+                 Bi_moist(i,j,k) = B_moist(i,j,k)
+              end if
+           end do
+           end do
+        end do
+
+        do j = 1,JM
+        do i = 1,IM
+           ui(i,j,0)       = u(i,j,1)
+           vi(i,j,0)       = v(i,j,1)
+           thli(i,j,0)     = thl(i,j,1)
+           qti(i,j,0)      = qt(i,j,1)
+           qvi(i,j,0)      = qv(i,j,1)
+           qli(i,j,0)      = ql(i,j,1)
+           qii(i,j,0)      = qi(i,j,1)
+           thvi(i,j,0)     = thv(i,j,1)
+           aci(i,j,0)      = 0.
+           Ai_moist(i,j,0) = A_moist(i,j,1)
+           Bi_moist(i,j,0) = B_moist(i,j,1)
+
+           ui(i,j,LM)       = u(i,j,LM)
+           vi(i,j,LM)       = v(i,j,LM)
+           thli(i,j,LM)     = thl(i,j,LM)
+           qti(i,j,LM)      = qt(i,j,LM)
+           qvi(i,j,LM)      = qv(i,j,LM)
+           qli(i,j,LM)      = ql(i,j,LM)
+           qii(i,j,LM)      = qi(i,j,LM)
+           thvi(i,j,LM)     = thv(i,j,LM)
+           aci(i,j,LM)      = 0.
+           Ai_moist(i,j,LM) = A_moist(i,j,LM)
+           Bi_moist(i,j,LM) = B_moist(i,j,LM)
+        end do
+        end do
+      end subroutine interp_half
+        
 end module GEOS_TurbulenceGridCompMod
 

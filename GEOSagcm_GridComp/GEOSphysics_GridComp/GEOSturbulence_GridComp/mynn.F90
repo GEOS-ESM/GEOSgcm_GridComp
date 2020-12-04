@@ -440,10 +440,10 @@ subroutine run_mynn(IM, JM, LM, &                                               
                     CONSISTENT_TYPE, WQL_TYPE, WRF_CG_FLAG, &                               ! in
                     alpha1, alpha2, alpha3, alpha4, &                                       ! in (length scale parameters)
                     th00, ple, pl, rhoe, zle, zlo, &                                        ! in
-                    u, v, omega, T, qv, ql, qi, ac, thl, qt, thv, &                         ! in (mean atmospheric state)
+                    u, v, T, qv, ql, qi, thl, qt, thv, &                                    ! in (mean atmospheric state)
                     u_star, H_surf, E_surf, &                                               ! in (surface state)
                     whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &                      ! in (updraft state)
-                    A_cloud, B_cloud, qsat, &                                               ! in
+                    aci, Ai_moist, Bi_moist, &                                              ! in
                     tke, hl2, qt2, hlqt, &                                                  ! inout (turbulent state)
                     ws_explicit, wqv_explicit, wql_explicit, &                              ! inout (counter-gradient fluxes)
                     KM, KH, K_tke, itau, qdiv_out, SM25, SH25, L_out, &                     ! out
@@ -461,10 +461,9 @@ subroutine run_mynn(IM, JM, LM, &                                               
   real, intent(in)                           :: th00, DOMF
   double precision, intent(in)               :: alpha1, alpha2, alpha3, alpha4
   real, dimension(IM,JM), intent(in)         :: u_star, H_surf, E_surf
-  real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, T, qv, ql, qi, ac, thv, thl, qt, E, D, &
-                                                A_cloud, B_cloud, qsat, wdet, pl
-  real, dimension(IM,JM,0:LM), intent(in)    :: ple, zle, rhoe, omega, whl_mf, wqt_mf, wthv_mf, &
-                                                au, Mu, wu
+  real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, T, qv, ql, qi, thv, thl, qt, E, D, wdet, pl
+  real, dimension(IM,JM,0:LM), intent(in)    :: ple, zle, rhoe, whl_mf, wqt_mf, wthv_mf, &
+                                                au, Mu, wu, Ai_moist, Bi_moist, aci
   real, dimension(IM,JM,0:LM), intent(inout) :: tke, hl2, qt2, hlqt, ws_explicit, wqv_explicit, wql_explicit
   real, dimension(IM,JM), intent(out)        :: tke_surf, hl2_surf, qt2_surf, hlqt_surf, LT_out
   real, dimension(IM,JM,0:LM), intent(out)   :: KM, KH, itau, qdiv_out, SM25, SH25, EM, EH, L_out, Beta_hl, Beta_qt, &
@@ -479,11 +478,11 @@ subroutine run_mynn(IM, JM, LM, &                                               
                       D_25, qdiv, qdiv2, L2, L2GM, L2GH, Lq, &
                       tau_test, w2_test, wb_test_1, wb_test_2 ! for debugging
 
-  real :: dhldz, dqtdz, dqldz, idzlo, ifac, iexner, &
+  real :: dhldz, dqtdz, dqldz, idzlo, iexner, &
           whl, wqt, th_star, q_star, wrk1, &
           whl_explicit, wqt_explicit, wb_explicit, &
-          ac_half, hl2_25, qt2_25, hlqt_25, &
-          A_half, B_half, goth00, Cw_low, Cw_high, dzle, &
+          hl2_25, qt2_25, hlqt_25, &
+          goth00, Cw_low, Cw_high, dzle, &
           hlthv_25, qtthv_25, thv2_25 ! for debugging2
 
   real, dimension(IM,JM)      :: wb_surf, LMO
@@ -516,17 +515,11 @@ subroutine run_mynn(IM, JM, LM, &                                               
         dhldz = ( hl(i,j,k) - hl(i,j,kp1) )*idzlo
         dqtdz = ( qt(i,j,k) - qt(i,j,kp1) )*idzlo        
         
-        ifac = ( zle(i,j,k) - zlo(i,j,kp1) )*idzlo
-
-        ac_half =      ac(i,j,kp1) + ifac*( ac(i,j,k) - ac(i,j,kp1) )
-        A_half  = A_cloud(i,j,kp1) + ifac*( A_cloud(i,j,k) - A_cloud(i,j,kp1) )
-        B_half  = B_cloud(i,j,kp1) + ifac*( B_cloud(i,j,k) - B_cloud(i,j,kp1) )
-
         iexner = (MAPL_P00/ple(i,j,k))**kappa
         wrk1   = lvocp*iexner - ( 1. + ep2 )*th00
 
-        Beta_hl(i,j,k) = iexner*( 1. - wrk1*ac_half*B_half )
-        Beta_qt(i,j,k) = ep2*th00 + wrk1*ac_half*A_half
+        Beta_hl(i,j,k) = iexner*( 1. - wrk1*aci(i,j,k)*Bi_moist(i,j,k) )
+        Beta_qt(i,j,k) = ep2*th00 + wrk1*aci(i,j,k)*Ai_moist(i,j,k)
 
         N2(i,j,k) = goth00*( Beta_hl(i,j,k)*dhldz + Beta_qt(i,j,k)*dqtdz )
         S2(i,j,k) = (( u(i,j,k) - u(i,j,kp1) )*idzlo)**2. + (( v(i,j,k) - v(i,j,kp1) )*idzlo)**2.
@@ -667,7 +660,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
                       tke(i,j,k), &
 !                      wb_test_1, &
 !                      wb_test_2, &
-                      ac(i,j,k),  &
+                      aci(i,j,k), &
                       real(qdiv, 4)
         end if
      end do

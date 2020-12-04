@@ -17,8 +17,9 @@ contains
 !
 subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                         ! in
                     discrete_type, implicit_flag, stochastic_flag, plume_type, &    ! in
-                    th00, dt, zl, zle, ple, rho, rhoe, exf, &                      ! in
-                    u, v, thl, thv, qt, qv, ql, qi, &                               ! in         
+                    th00, dt, zl, zle, ple, rho, rhoe, exf, &                       ! in
+                    u, v, thl, qt, qv, ql, qi, thv, &                               ! in         
+                    ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                     ustar, sh, evap, ice_ramp, &                                    ! in
                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in
                     ET, L0, ENT0, EDfac, EntWFac, Wa, Wb, &                         ! in
@@ -42,7 +43,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                                              stochastic_flag, plume_type, ET, kbotp
   integer, dimension(IM,JM), intent(in)   :: iras, jras
   real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zl, exf, rho
-  real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe
+  real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe, ui, vi, thli, qti, qvi, qli, qii, thvi
   real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, L0
   real, dimension(IM,JM), intent(inout)   :: zpbl
   real, intent(in)                        :: th00, ice_ramp, dt, EntWFac, ENT0, Wa, Wb, pwmin, pwmax, &
@@ -68,7 +69,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   real :: wthv, wstar, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
           B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, EntEXP, EntEXPU, EntW, wf, &
           stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, idzle, ifac, test, mft_work, mfthvt_work, &
-          goth00, thlu_full, work
+          goth00, thlu_full, work, exfh
 
   ! Temporary (too slow; need to figure out how random number generator works)
   integer, dimension(numup,IM,JM,LM)  :: enti
@@ -76,8 +77,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
   real, dimension(IM,JM,LM) :: thlu, qtu, qlu, edmfmoistql
 
-  real, dimension(IM,JM,0:LM) :: aw2, ahl2, aqt2, aw3, aqt3, aqthl, &
-                                 ui, vi, thvi, qvi, qli, qii, exfh, thli, qti 
+  real, dimension(IM,JM,0:LM) :: aw2, ahl2, aqt2, aw3, aqt3, aqthl
 
   integer, dimension(2)  :: seedmf, the_seed
 
@@ -181,74 +181,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
            entf(iup,i,j,k) = ( zle(i,j,km1) - zle(i,j,k) )/L0(i,j)
         end do
      end do
-
-     ! Treat TOA and surface properties the same as the nearest grid cell
-     ui(i,j,0)   = u(i,j,1)
-     vi(i,j,0)   = v(i,j,1)
-     thli(i,j,0) = thl(i,j,1)
-     qti(i,j,0)  = qt(i,j,1)
-     qvi(i,j,0)  = qv(i,j,1)
-     qli(i,j,0)  = ql(i,j,1)
-     qii(i,j,0)  = qi(i,j,1)
-     thvi(i,j,0) = thv(i,j,1)
-
-     ui(i,j,LM)   = u(i,j,LM)
-     vi(i,j,LM)   = v(i,j,LM)
-     thli(i,j,LM) = thl(i,j,LM)
-     qti(i,j,LM)  = qt(i,j,LM)
-     qvi(i,j,LM)  = qv(i,j,LM)
-     qli(i,j,LM)  = ql(i,j,LM)
-     qii(i,j,LM)  = qi(i,j,LM)
-     thvi(i,j,LM) = thv(i,j,LM)
-
-     !
-     exfh(i,j,LM) = (ple(i,j,LM)/mapl_p00)**mapl_kappa
   end do
-  end do
-
-  ! Interpolate to half levels
-  do k = 1,LM-1
-     kp1 = k + 1
-
-     do j = 1,JM
-     do i = 1,IM
-        exfh(i,j,k) = (ple(i,j,k)/mapl_p00)**mapl_kappa
-
-        if ( discrete_type == 0 ) then
-           ! This is temporary until I fix the interplation for implicit mass flux discretization
-           if ( implicit_flag == 0 ) then
-              ifac = ( zle(i,j,k) - zl(i,j,kp1) )/( zl(i,j,k) - zl(i,j,kp1) )
-
-              ui(i,j,k)   = u(i,j,kp1)   + ifac*( u(i,j,k)   - u(i,j,kp1) )
-              vi(i,j,k)   = v(i,j,kp1)   + ifac*( v(i,j,k)   - v(i,j,kp1) )
-              thli(i,j,k) = thl(i,j,kp1) + ifac*( thl(i,j,k) - thl(i,j,kp1) )
-              qti(i,j,k)  = qt(i,j,kp1)  + ifac*( qt(i,j,k)  - qt(i,j,kp1) )
-              qvi(i,j,k)  = qv(i,j,kp1)  + ifac*( qv(i,j,k)  - qv(i,j,kp1) )
-              qli(i,j,k)  = ql(i,j,kp1)  + ifac*( ql(i,j,k)  - ql(i,j,kp1) )
-              qii(i,j,k)  = qi(i,j,kp1)  + ifac*( qi(i,j,k)  - qi(i,j,kp1) )
-              thvi(i,j,k) = thv(i,j,kp1) + ifac*( thv(i,j,k) - thv(i,j,kp1) )
-           else 
-              ui(i,j,k)   = 0.5*( u(i,j,kp1)   + u(i,j,k) )
-              vi(i,j,k)   = 0.5*( v(i,j,kp1)   + v(i,j,k) )
-              thli(i,j,k) = 0.5*( thl(i,j,kp1) + thl(i,j,k) )
-              qti(i,j,k)  = 0.5*( qt(i,j,kp1)  + qt(i,j,k) )
-              qvi(i,j,k)  = 0.5*( qv(i,j,kp1)  + qv(i,j,k) )
-              qli(i,j,k)  = 0.5*( ql(i,j,kp1)  + ql(i,j,k) )
-              qii(i,j,k)  = 0.5*( qi(i,j,kp1)  + qi(i,j,k) )
-              thvi(i,j,k) = 0.5*( thv(i,j,kp1) + thv(i,j,k) )
-           end if
-        else
-           ui(i,j,k)   = u(i,j,k)
-           vi(i,j,k)   = v(i,j,k)
-           thli(i,j,k) = thl(i,j,k)
-           qti(i,j,k)  = qt(i,j,k)
-           qvi(i,j,k)  = qv(i,j,k)
-           qli(i,j,k)  = ql(i,j,k)
-           qii(i,j,k)  = qi(i,j,k)
-           thvi(i,j,k) = thv(i,j,k)
-        end if
-     end do
-     end do
   end do
 
   ! Get surface layer organized entrainment
@@ -340,6 +273,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
         dzle  = zle(i,j,km1) - zle(i,j,k)
         idzle = 1./dzle
         
+        exfh = (ple(i,j,k)/mapl_p00)**mapl_kappa
+
         mfthvt = 0.
         mft    = 0.
 
@@ -354,15 +289,15 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               ! Quantities required for solver
               aw(i,j,k)    = aw(i,j,k)    + upa(iup,i,j)*upw(iup,i,j)
               aw2(i,j,k)   = aw2(i,j,k)   + upa(iup,i,j)*upw(iup,i,j)**2.
-              ahl2(i,j,k)  = ahl2(i,j,k)  + upa(iup,i,j)*( exfh(i,j,k)*( upthl(iup,i,j) - thli(i,j,k) ) )**2.
+              ahl2(i,j,k)  = ahl2(i,j,k)  + upa(iup,i,j)*( exfh*( upthl(iup,i,j) - thli(i,j,k) ) )**2.
               aqt2(i,j,k)  = aqt2(i,j,k)  + upa(iup,i,j)*( upqt(iup,i,j) - qti(i,j,k) )**2.
-              aqthl(i,j,k) = aqthl(i,j,k) + upa(iup,i,j)*exfh(i,j,k)*( upthl(iup,i,j) - thli(i,j,k) )&
+              aqthl(i,j,k) = aqthl(i,j,k) + upa(iup,i,j)*exfh*( upthl(iup,i,j) - thli(i,j,k) )&
                                                                     *( upqt(iup,i,j) - qti(i,j,k) )
               aw3(i,j,k)   = aw3(i,j,k)   + upa(iup,i,j)*upw(iup,i,j)**3.
               aqt3(i,j,k)  = aqt3(i,j,k)  + upa(iup,i,j)*( upqt(iup,i,j) - qti(i,j,k) )**3.
 
               if ( implicit_flag == 1 ) then
-                 stmp = mapl_cp*exfh(i,j,k)*upthl(iup,i,j) + mapl_grav*zle(i,j,k) + mapl_alhl*upql(iup,i,j) + mapl_alhs*upqi(iup,i,j) 
+                 stmp = mapl_cp*exfh*upthl(iup,i,j) + mapl_grav*zle(i,j,k) + mapl_alhl*upql(iup,i,j) + mapl_alhs*upqi(iup,i,j) 
                         
                  awu(i,j,k)  = awu(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*upu(iup,i,j)
                  awv(i,j,k)  = awv(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*upv(iup,i,j)
@@ -372,7 +307,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  awql(i,j,k) = awql(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*upql(iup,i,j)
                  awqi(i,j,k) = awqi(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*upqi(iup,i,j)
               else
-                 stmp =   mapl_cp*exfh(i,j,k)*( upthl(iup,i,j) - thli(i,j,k) ) &
+                 stmp =   mapl_cp*exfh*( upthl(iup,i,j) - thli(i,j,k) ) &
                         + mapl_alhs*( upqi(iup,i,j) - qii(i,j,k) )             &
                         + mapl_alhl*( upql(iup,i,j) - qli(i,j,k) ) 
 
@@ -386,7 +321,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               end if
 
               ! Quantities required for MYNN
-              whl_mf(i,j,k)  = whl_mf(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*exfh(i,j,k)*( upthl(iup,i,j) - thli(i,j,k) )
+              whl_mf(i,j,k)  = whl_mf(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*exfh*( upthl(iup,i,j) - thli(i,j,k) )
               wqt_mf(i,j,k)  = wqt_mf(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*( upqt(iup,i,j) - qti(i,j,k) )
               wthv_mf(i,j,k) = wthv_mf(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*( upthv(iup,i,j) - thvi(i,j,k) )
 
