@@ -74,7 +74,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   integer, dimension(numup,IM,JM,LM)  :: enti
   real, dimension(numup,IM,JM,LM)     :: entf, ent
 
-  real, dimension(IM,JM,LM) :: thlu, qtu, qlu, edmfmoistql, Dw
+  real, dimension(IM,JM,LM) :: thlu, qtu, qlu, edmfmoistql
 
   real, dimension(IM,JM,0:LM) :: aw2, ahl2, aqt2, aw3, aqt3, aqthl, &
                                  ui, vi, thvi, qvi, qli, qii, exfh, thli, qti 
@@ -83,6 +83,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
   logical :: stop_cond
 
+  logical, dimension(IM,JM)       :: work_flag
   logical, dimension(numup,IM,JM) :: active_updraft
 
   ! Thermal plume stuff 
@@ -154,12 +155,12 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   mfwhl  = 0.
 
   ! 
-  au = 0.
-  wu = 0.
-  Mu = 0.
-  E  = 0.
-  D  = 0.
-  Dw = 0.
+  au   = 0.
+  wu   = 0.
+  Mu   = 0.
+  E    = 0.
+  D    = 0.
+  wdet = 0.
 
   ! Loop across surface tiles
   do j = 1,JM
@@ -460,15 +461,27 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  end if
 
               elseif ( plume_type == 1 ) then ! thermal plume
-                 ! Integrate mass flux budget
-                 Mn = upm(iup,i,j)*exp(dzle*ent(iup,i,j,k))
+                 ! Compute buoyancy
+                 B = goth00*( upthv(iup,i,j) - thv(i,j,k) )
 
                  ! Sample entrainment rate
-                 E(i,j,k) = E(i,j,k) + ( Mn - upm(iup,i,j) )*idzle
+                 E(i,j,k) = E(i,j,k) + ent(iup,i,j,k)*upm(iup,i,j)
 
-                 !
-                 EntExp  = upm(iup,i,j)/Mn
-                 EntExpU = EntExp ! temporary
+                 ! Integrate momentum budget
+                 if ( B > 0. ) then
+                    Mn     = upm(iup,i,j) + dzle*ent(iup,i,j,k)*upm(iup,i,j)
+                    EntExp = upm(iup,i,j)/Mn
+                    Wn2    = EntExp**2.**upw(iup,i,j)**2. + 2.*dzle*B ! Rio and Hourdin 2007 ( eq. A9 )   
+                 else
+                    Wn2 = ( upw(iup,i,j)**2. + 2.*dzle*B )/( 1. + 2.*dzle*ent(iup,i,j,k) )
+                    if ( Wn2 > 0. ) then
+                       Mn = rhoe(i,j,km1)*upa(iup,i,j)*sqrt(Wn2)
+                    else
+                       Mn = 0.
+                    end if
+                    EntExp = 1./( 1. + dzle*ent(iup,i,j,k) )
+                 end if
+                 EntExpU = EntExp
 
                  ! Integrate scalar budgets
                  QTn  = qt(i,j,k)*( 1. - EntExp )  + upqt(iup,i,j)*EntExp
@@ -478,12 +491,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
                  ! Condensation
                  call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
-
-                 ! Compute buoyancy
-                 B = goth00*( upthv(iup,i,j) - thv(i,j,k) )
-
-                 ! Integrate momentum budget
-                 Wn2 = EntExp**2.*Wn2 + 2.*dzle*B ! Rio and Hourdin 2007 ( eq. A9 )
               end if
               
               ! Intermediate quantities 
@@ -497,13 +504,11 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  stop_cond = B > 0.
               end if
 
+              ! Sample detrainment velocity
+              wdet(i,j,k) = wdet(i,j,k) + upa(iup,i,j)*upw(iup,i,j)
+
               ! Update plume
               if ( stop_cond ) then
-                 if ( plume_type == 0 ) then
-                    Dw(i,j,k) = Dw(i,j,k) - upa(iup,i,j)*( rhoe(i,j,km1)*Wn2 - rhoe(i,j,k)*upw(iup,i,j)**2. )*idzle &
-                                          + rhoe(i,j,k)*upa(iup,i,j)*B 
-                 end if
-
                  upw(iup,i,j)   = sqrt(Wn2)
                  upthv(iup,i,j) = THVn
                  upthl(iup,i,j) = THLn
@@ -521,9 +526,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  mfthvt = mfthvt + 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) + mfthvt_work )
                  mft    = mft    + 0.5*(                upa(iup,i,j)*upw(iup,i,j) + mft_work )
               else
-                 Dw(i,j,k) = Dw(i,j,k) + rhoe(i,j,k)*upa(iup,i,j)*upw(iup,i,j)**2.*idzle &
-                                       + rhoe(i,j,k)*upa(iup,i,j)*B 
-
                  mfthvt = mfthvt + 0.5*mfthvt_work
                  mft    = mft    + 0.5*mft_work
 
@@ -571,6 +573,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
         ! Average both dry and moist updraft samples together
         au(i,j,k) = edmfdrya(i,j,k) + edmfmoista(i,j,k)
         if ( au(i,j,k) > 0. ) then
+           wdet(i,j,k) = wdet(i,j,k)/au(i,j,k)
+
            if ( edmfmoista(i,j,k) > 0. ) then
               wu(i,j,k)   = (  edmfdrya(i,j,k)*edmfdryw(i,j,k)  &
                              + edmfmoista(i,j,k)*edmfmoistw(i,j,k) )/au(i,j,k)
@@ -664,9 +668,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
         ! Compute detrainmnet rate
         D(i,j,k) = E(i,j,k) - ( Mu(i,j,km1) - Mu(i,j,k) )/( zle(i,j,km1) - zle(i,j,k) )
-        if ( D(i,j,k) > 0. ) then
-           wdet(i,j,k) = max( 0., Dw(i,j,k)/D(i,j,k) )
-        end if
 
         ! Outputs needed for SHOC
         if ( k >= 2 ) then
@@ -695,6 +696,25 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   ! Test
   Kh_mf(:,:,:)      = 0.
   Kh_mf(:,:,1:LM-1) = c_kh_mf*( zl(:,:,1:LM-1) - zl(:,:,2:LM) )*(Mu(:,:,1:LM-1)/rhoe(:,:,1:LM-1))
+
+  ! Compute zpbl of thermal plume
+  if ( plume_type == 1 ) then
+     work_flag(:,:) = .true.
+     do k = LM-1,1,-1
+        
+        do j = 1,JM
+        do i = 1,IM
+           if ( work_flag(i,j) ) then
+              zpbl(i,j) = zle(i,j,k)
+              if ( edmfdrya(i,j,k) == 0. ) then
+                 work_flag(i,j) = .false.
+              end if
+           end if
+        end do
+        end do
+     end do
+  end if
+
 
 end subroutine run_edmf
 

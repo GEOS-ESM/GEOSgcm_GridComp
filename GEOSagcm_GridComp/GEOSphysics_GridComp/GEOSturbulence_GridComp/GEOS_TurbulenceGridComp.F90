@@ -4598,7 +4598,9 @@ if ( ET == 1 ) then
 
     ! compute the depth of the convective layer  
     ! the height where the (dry or moist) convective mass-flux is zero
-    call ComputeZPBL(IM*JM, LM, zle, edmfdrya, zpbl_mf, KPBLmf)
+    if ( edmf_thermal_plume == 0 ) then
+       call ComputeZPBL(IM*JM, LM, zle, edmfdrya, zpbl_mf, KPBLmf)
+    end if
  
     ! compute the L0 assuming reasonable limits
     DO j = 1,JM
@@ -4662,7 +4664,9 @@ if ( ET == 1 ) then
     write (*,*) "Error: wrong EDMF_ET "
 end if ! ET == 1
 
-call ComputeZPBL(IM*JM, LM, zle, edmfdrya, zpbl_mf, KPBLmf)
+if ( edmf_thermal_plume == 0 ) then
+   call ComputeZPBL(IM*JM, LM, zle, edmfdrya, zpbl_mf, KPBLmf)
+end if
       
    !    print *,'edmfdrya',edmfdrya
    !   print *,'edmfdryw',edmfdryw    
