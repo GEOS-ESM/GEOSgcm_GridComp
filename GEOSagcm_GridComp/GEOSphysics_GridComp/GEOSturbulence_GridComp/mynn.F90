@@ -417,9 +417,7 @@ subroutine mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &      
            
      tket_T_mf1 = ( Mu_up*tkee_up - Mu*tkee )/(dzle*rhoe)
      tket_T_mf2 = - max(0., E)*tkee/rhoe
-!     tket_T_mf2 = 0.
      tket_T_mf3 =   max(0., D)*( we - wdet )**2./rhoe
-!     tket_T_mf3 = 0.
      tket_T_mf4 = - ( 1. - au_up )*w2e_up*( we_up - we )/dzle
 
      tket_T_mf = tket_T_mf1 + tket_T_mf2 + tket_T_mf3 + tket_T_mf4

@@ -2131,6 +2131,14 @@ contains
          VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                        &
+         SHORT_NAME = 'tke_mf',                        &
+         LONG_NAME  = 'mass-flux_contribution_to_TKE', &
+         UNITS      = 'm+2 s-2',                       &
+         DIMS       = MAPL_DimsHorzVert,               &
+         VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
+    VERIFY_(STATUS)
+
 !
 ! Exports for testing MYNN cloud-top entrainment
 !
@@ -3696,12 +3704,12 @@ contains
                                             A_moist, B_moist, ace_moist, &
                                             qsat_moist
 
-   real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3
+   real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, tke_mf
 !   real, dimension(IM,JM,0:LM)          ::  awhl3, awqt3, awthv3 ! for EDMF contribution to MYNN
 
    real, dimension(:,:), pointer        :: z_conv_edmf
 
-   real, dimension(:,:,:), pointer ::  tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, wthl_mf, KH_mf
+   real, dimension(:,:,:), pointer ::  tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, wthl_mf, KH_mf, tke_mf_ex
 
    ! Exports for testing MYNN cloud-top entrainment
    real, dimension(:,:,:), pointer :: zle_turb, exner_turb, u_turb, v_turb, &
@@ -3727,8 +3735,11 @@ contains
 
    integer :: DO_MYNN, DO_LOCK_MYNN
 
-   real, dimension(:,:), pointer   :: LT_mynn
-   real, dimension(:,:,:), pointer :: LS_mynn, LB_mynn
+   real, dimension(IM,JM)    :: LT_mynn
+   real, dimension(IM,JM,LM) :: LS_mynn, LB_mynn
+
+   real, dimension(:,:), pointer   :: LT_mynn_ex
+   real, dimension(:,:,:), pointer :: LS_mynn_ex, LB_mynn_ex
 
 ! SHOC PDF variables
 !    real, dimension(:,:,:),pointer     :: PDF_A,      &
@@ -3782,10 +3793,6 @@ contains
                                      ! else: upwind discretization 
      integer :: EDMF_CONSISTENT      ! 0:    consistent partitioning of TKE
                                      ! else: conventional partitioning
-     integer :: EDMF_ANELASTIC       ! 0:    use non-anelastic buoyancy in EDMF    
-                                     ! else: anelastic
-     integer :: EDMF_ENTRAIN_BOOST   ! 0:    boost entrainment when at local THV minimum    
-                                     ! else: don't boost entrainment
      integer :: EDMF_THERMAL_PLUME   ! 0:    JPL mass flux scheme
                                      ! else: thermal plume model
 
@@ -4257,6 +4264,9 @@ contains
      call MAPL_GetPointer(EXPORT, qlu_full, 'qlu_full', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
 
+     call MAPL_GetPointer(EXPORT, tke_mf_ex, 'tke_mf', RC=STATUS)
+     VERIFY_(STATUS)
+
      call MAPL_GetPointer(EXPORT, exf_turb, 'exf_turb', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, wthl_mf,  'wthl_mf',  RC=STATUS)
@@ -4273,11 +4283,11 @@ contains
      VERIFY_(STATUS)
 
      ! MYNN length scale exports
-     call MAPL_GetPointer(EXPORT, LS_mynn, 'LS_mynn', RC=STATUS)
+     call MAPL_GetPointer(EXPORT, LS_mynn_ex, 'LS_mynn', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, LB_mynn, 'LB_mynn', RC=STATUS)
+     call MAPL_GetPointer(EXPORT, LB_mynn_ex, 'LB_mynn', RC=STATUS)
      VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, LT_mynn, 'LT_mynn', RC=STATUS)
+     call MAPL_GetPointer(EXPORT, LT_mynn_ex, 'LT_mynn', RC=STATUS)
      VERIFY_(STATUS)
 
 ! Initialize some arrays
@@ -4429,8 +4439,6 @@ contains
     call MAPL_GetResource (MAPL, EDMF_STOCHASTIC,      "EDMF_STOCHASTIC:",      default=0,  RC=STATUS)  
     call MAPL_GetResource (MAPL, EDMF_DISCRETE,        "EDMF_DISCRETE:",        default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_CONSISTENT,      "EDMF_CONSISTENT:",      default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_ANELASTIC,       "EDMF_ANELASTIC:",       default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_ENTRAIN_BOOST,   "EDMF_ENTRAIN_BOOST:",   default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME,   "EDMF_THERMAL_PLUME:",   default=0,  RC=STATUS)
 
     call MAPL_GetResource (MAPL, EntWFac,              "EDMF_ENTWFAC:",         default=0.3333, RC=STATUS)
@@ -4513,7 +4521,6 @@ if ( ET == 1 ) then
     else
        call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp, &                    ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                     edmf_anelastic, edmf_entrain_boost,                                & ! in
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
@@ -4527,11 +4534,12 @@ if ( ET == 1 ) then
                      edmfdryu, edmfmoistu,  &                                        ! out
                      edmfdryv, edmfmoistv,  &                                        ! out
                      edmfmoistqc, &                                                  ! out
+                     tke_mf, &                                                       ! out (diagnostics)
                      ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, &       ! out (for solver)         
-                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)      
+                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
-                     au, wu, Mu, E, D, wdet)                                         ! out
+                     au, wu, Mu, E, D, wdet)                                         ! out (for MYNN-EDMF consistent partitioning)
     end if
  elseif ( ET == 2 ) then
     ! L0 is a function of the cloud depth
@@ -4567,7 +4575,6 @@ if ( ET == 1 ) then
     else
        call run_edmf(IM, JM, LM, 1, iras, jras, edmf_kbotp, &                        ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                     edmf_anelastic, edmf_entrain_boost,                                & ! in
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
@@ -4581,11 +4588,12 @@ if ( ET == 1 ) then
                      edmfdryu, edmfmoistu,  &                                        ! out
                      edmfdryv, edmfmoistv,  &                                        ! out
                      edmfmoistqc, &                                                  ! out
+                     tke_mf, &                                                       ! out (diagnostics)
                      ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, &       ! out (for solver)         
-                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN)      
+                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
-                     au, wu, Mu, E, D, wdet)                                         ! out
+                     au, wu, Mu, E, D, wdet)                                         ! out (for MYNN-EDMF consistent partitioning)
     end if ! EDMF_SCHEME == 0
 
     ! compute the depth of the convective layer  
@@ -4630,7 +4638,6 @@ if ( ET == 1 ) then
     else
        call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp,&                     ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                     edmf_anelastic, edmf_entrain_boost,                                & ! in
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, thv, qt, q, ql, qi, &                                ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in 
@@ -4644,11 +4651,12 @@ if ( ET == 1 ) then
                      edmfdryu, edmfmoistu,  &                                        ! out
                      edmfdryv, edmfmoistv,  &                                        ! out
                      edmfmoistqc, &                                                  ! out
+                     tke_mf, &                                                       ! out (diagnostics)
                      ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, &       ! out (for solver)         
-                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN)      
+                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
-                     au, wu, Mu, E, D, wdet)                                         ! out          
+                     au, wu, Mu, E, D, wdet)                                         ! out (for MYNN-EDMF consistent partitioning)         
     end if ! EDMF_SCHEME == 0
  else
     write (*,*) "Error: wrong EDMF_ET "
@@ -4699,6 +4707,8 @@ call ComputeZPBL(IM*JM, LM, zle, edmfdrya, zpbl_mf, KPBLmf)
 !     QL_mf=0.
 !     QI_mf=0.
 !end if
+
+if ( associated(tke_mf_ex) ) tke_mf_ex = tke_mf
 
 #ifdef EDMF_DIAG
      if (associated(edmf_qt_plume1)) edmf_qt_plume1 = qt_plume1
@@ -4944,6 +4954,10 @@ ENDIF
            KH_mynn = KH_mynn + KH_mf ! additional diffusivity for stability of EDMF
         end if
         KH = KH_mynn
+
+        if ( associated(LS_mynn_ex) ) LS_mynn_ex = LS_mynn
+        if ( associated(LB_mynn_ex) ) LB_mynn_ex = LB_mynn
+        if ( associated(LT_mynn_ex) ) LT_mynn_ex = LT_mynn
 
         call MAPL_TimerOff (MAPL,name="---MYNN" ,RC=STATUS)
         VERIFY_(STATUS)

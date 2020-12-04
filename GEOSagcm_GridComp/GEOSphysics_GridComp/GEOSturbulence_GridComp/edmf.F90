@@ -17,7 +17,6 @@ contains
 !
 subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                         ! in
                     discrete_type, implicit_flag, stochastic_flag, plume_type, &    ! in
-                    anelastic_flag, entrain_boost, &                                ! in
                     th00, dt, zl, zle, ple, rho, rhoe, exf, &                      ! in
                     u, v, thl, thv, qt, qv, ql, qi, &                               ! in         
                     ustar, sh, evap, ice_ramp, &                                    ! in
@@ -31,16 +30,16 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     edmfdryu, edmfmoistu,  &                                        ! out
                     edmfdryv, edmfmoistv,  &                                        ! out
                     edmfmoistqc, &                                                  ! out
+                    tke_mf, &                                                       ! out (diagnostics)
                     ae, awu, awv, aw, aws, awqv, awql, awqi, Kh_mf, &               ! out (for solver)
-                    whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF)
+                    whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)
                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfqthl, mfwhl, & ! out (for SHOC)
                     au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
-                    au, wu, Mu, E, D, wdet)                                         ! out
+                    au, wu, Mu, E, D, wdet)                                         ! out (for MYNN-EDMF consistent partitioning)
   
   ! Inputs
   integer, intent(in)                     :: IM, JM, LM, numup, discrete_type, implicit_flag, &
-                                             stochastic_flag, plume_type, ET, kbotp, &
-                                             anelastic_flag, entrain_boost
+                                             stochastic_flag, plume_type, ET, kbotp
   integer, dimension(IM,JM), intent(in)   :: iras, jras
   real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zl, exf, rho
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe
@@ -53,7 +52,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   real, dimension(IM,JM,0:LM), intent(out) :: edmfdrya, edmfmoista, edmfdryw, edmfmoistw, &
                                               edmfdryqt, edmfmoistqt, edmfdrythl, edmfmoistthl, &
                                               edmfdryu, edmfmoistu, edmfdryv, edmfmoistv, &
-                                              edmfmoistqc, &
+                                              edmfmoistqc, tke_mf, &
                                               ae, aw, aws, awqv, awql, awqi, awu, awv, &
                                               whl_mf, wqt_mf, wthv_mf, au, Mu, wu, Kh_mf
 
@@ -125,10 +124,13 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   awql = 0.
   awqi = 0.
 
-  ! Outputs need for MYNN
+  ! Outputs need for MYNN-ED
   whl_mf  = 0.
   wqt_mf  = 0.
   wthv_mf = 0.
+
+  ! 
+  tke_mf = 0.
 
   ! Intermediate quantities for SHOC cloud scheme in MOIST
   aw2   = 0.
@@ -262,18 +264,12 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
      ent = 0.
 
      zpbl(i,j) = max( zpbl(i,j), zpblmin )
-     if ( anelastic_flag == 0 ) then
-        wthv = sh(i,j)/mapl_cp + mapl_epsilon*thvi(i,j,LM)*evap(i,j)
-     else
-        wthv = sh(i,j)/mapl_cp + mapl_epsilon*th00*evap(i,j)
-     end if
+
+     wthv = sh(i,j)/mapl_cp + mapl_epsilon*th00*evap(i,j)
 
      if ( wthv > 0. .and. thv(i,j,LM-1) < thv(i,j,LM) ) then
-        if ( anelastic_flag == 0 ) then
-           wstar = max( wstarmin, (mapl_grav/thv(i,j,LM)*wthv*zpbl(i,j))**onethird )
-        else
-           wstar = max( wstarmin, (goth00*wthv*zpbl(i,j))**onethird )
-        end if
+        wstar = max( wstarmin, (goth00*wthv*zpbl(i,j))**onethird )
+
         qstar  = evap(i,j)/wstar
         thstar = wthv/wstar
         
@@ -422,12 +418,12 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  end if
 
                  ! increase entrainment if local minimum of thv
-                 if ( entrain_boost == 0 .and. thv(i,j,k) < thv(i,j,kp1) .and. thv(i,j,k) < thv(i,j,km1) ) then
+                 if ( thv(i,j,k) < thv(i,j,kp1) .and. thv(i,j,k) < thv(i,j,km1) ) then
                     ent(iup,i,j,k) = ent(iup,i,j,k) + 5.*ent0/L0(i,j)
                  end if
 
                  ! Limit entrainment length scale using surface
-                 ent(iup,i,j,k) = max( ent(iup,i,j,k), 1./(3.*zl(i,j,k)) ) ! Cheinet 2003
+!                 ent(iup,i,j,k) = max( ent(iup,i,j,k), 1./(3.*zl(i,j,k)) ) ! Cheinet 2003
               else
                  ! negative L0 means 0 entrainment  
                  ent(:,i,j,:) = 0. ! check
@@ -452,13 +448,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
 
                  ! Buoyancy
-                 if ( anelastic_flag == 0 ) then
-                    B = mapl_grav*( 0.5*( THVn + upthv(iup,i,j) )/thv(i,j,k) - 1. ) ! centered discretization
-!                    B = mapl_grav*( upthv(iup,i,j)/thv(i,j,k) - 1. ) ! upwind discretization
-                 else
-                    B = goth00*( 0.5*( THVn + upthv(iup,i,j) ) - thv(i,j,k) )
-!                    B = goth00*( 0.5*( THVn + upthv(iup,i,j) ) - thv(i,j,k) )
-                 end if
+                 B = goth00*( 0.5*( THVn + upthv(iup,i,j) ) - thv(i,j,k) )
 
                  ! Vertical velocity
                  WP = Wb*ent(iup,i,j,k)
@@ -490,11 +480,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
 
                  ! Compute buoyancy
-                 if ( anelastic_flag == 0 ) then
-                    B = mapl_grav*( upthv(iup,i,j)/thv(i,j,k) - 1. )
-                 else
-                    B = goth00*( upthv(iup,i,j) - thv(i,j,k) )
-                 end if
+                 B = goth00*( upthv(iup,i,j) - thv(i,j,k) )
 
                  ! Integrate momentum budget
                  Wn2 = EntExp**2.*Wn2 + 2.*dzle*B ! Rio and Hourdin 2007 ( eq. A9 )
@@ -605,9 +591,9 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
            qtu(i,j,k)  = qti(i,j,k)
            qlu(i,j,k)  = 0.
         end if
-        Mu(i,j,k) = rhoe(i,j,k)*au(i,j,k)*wu(i,j,k)
-
-        ae(i,j,k) = ( 1. - edmfdrya(i,j,k) - edmfmoista(i,j,k) )*EDfac 
+        Mu(i,j,k)     = rhoe(i,j,k)*au(i,j,k)*wu(i,j,k)
+        tke_mf(i,j,k) = au(i,j,k)/( 1. - au(i,j,k) )*wu(i,j,k)**2.
+        ae(i,j,k)     = ( 1. - edmfdrya(i,j,k) - edmfmoista(i,j,k) )*EDfac 
      end do ! i = 1,IM
      end do ! j = 1,JM
   end do ! k = LM,2,-1
