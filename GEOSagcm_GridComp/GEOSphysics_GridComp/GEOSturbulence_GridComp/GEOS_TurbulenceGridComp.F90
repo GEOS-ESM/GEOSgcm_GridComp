@@ -4465,7 +4465,7 @@ contains
     ! Interpolate EDMF profiles to half levels
     call interp_edmf(IM, JM, LM, &                           ! in
                      edmf_discrete, edmf_implicit, &         ! in
-                     zle, zlo, &                             ! in
+                     zle, z, &                               ! in
                      u, v, thl, qt, q, ql, qi, thv, &        ! in
                      ui, vi, thli, qti, qvi, qli, qii, thvi) ! out
 
@@ -4944,7 +4944,7 @@ ENDIF
         ! Interpolate MYNN profiles to half levels
         call interp_mynn(IM, JM, LM, &                   ! in
                          mynn_discrete, &                ! in
-                         zle, zlo, &                     ! in
+                         zle, z, &                       ! in
                          ace_moist, A_moist, B_moist, &  ! in
                          acei_moist, Ai_moist, Bi_moist) ! out
 
