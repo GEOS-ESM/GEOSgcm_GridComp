@@ -3802,6 +3802,8 @@ contains
                                      ! 4:    level-2.75
      integer :: MYNN_IMPLICIT        ! 0:    implicit mean-gradient and buoyancy production of TKE
                                      ! else: explicit
+     integer :: MYNN_DISCRETE        ! 0:    
+                                     ! else: 
      integer :: MYNN_DEBUG           ! 0 (default): no debugging output in MYNN
                                      ! 1: print internal variables in MYNN subroutine
      integer :: WQL_TYPE             ! 1 (default): counter-gradient liquid water flux (level-3 closure only)
@@ -4393,15 +4395,6 @@ contains
     THL=TH-(mapl_alhl*QL+mapl_alhs*QI)/(mapl_cp*EXF)
     QT=Q+QL+QI
 
-    ! Interpolate profiles to half levels
-    call interp_half(IM, JM, LM, &                             ! in
-                     edmf_discrete, edmf_implicit, &           ! in
-                     zle, zlo, &                               ! in
-                     u, v, thl, qt, q, ql, qi, thv, &          ! in
-                     ace_moist, A_moist, B_moist, &            ! in
-                     ui, vi, thli, qti, qvi, qli, qii, thvi, & ! out
-                     acei_moist, Ai_moist, Bi_moist)           ! out
-
     ! Save thermodynamic exports
     if ( associated( zle_turb ) )  zle_turb   = ZLE
     if ( associated( exner_turb) ) exner_turb = EXF
@@ -4459,6 +4452,7 @@ contains
 
     call MAPL_GetResource (MAPL, MYNN_LEVEL,      "MYNN_LEVEL:",    default=2,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_IMPLICIT,   "MYNN_IMPLICIT:", default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_DISCRETE,   "MYNN_DISCRETE:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_DEBUG,      "MYNN_DEBUG:",    default=0,  RC=STATUS)
 
     call MAPL_GetResource (MAPL, WQL_TYPE,        "TURBULENCE_WQL_TYPE:",    default=1,  RC=STATUS)
@@ -4466,8 +4460,14 @@ contains
 ! get ice ramp
    call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0   )
 
-
      call MAPL_TimerOn(MAPL,"---MASSFLUX")
+
+    ! Interpolate EDMF profiles to half levels
+    call interp_edmf(IM, JM, LM, &                           ! in
+                     edmf_discrete, edmf_implicit, &         ! in
+                     zle, zlo, &                             ! in
+                     u, v, thl, qt, q, ql, qi, thv, &        ! in
+                     ui, vi, thli, qti, qvi, qli, qii, thvi) ! out
 
 mfhl2 = 0.0
 mfhlqt = 0.0
@@ -4940,6 +4940,13 @@ ENDIF
      if ( DO_MYNN /= 0 ) then
         call MAPL_TimerOn (MAPL,name="---MYNN" ,RC=STATUS)
         VERIFY_(STATUS)
+
+        ! Interpolate MYNN profiles to half levels
+        call interp_mynn(IM, JM, LM, &                   ! in
+                         mynn_discrete, &                ! in
+                         zle, zlo, &                     ! in
+                         ace_moist, A_moist, B_moist, &  ! in
+                         acei_moist, Ai_moist, Bi_moist) ! out
 
         if ( DO_LOCK_MYNN == 0 ) then
            LOCK_ON = 0
@@ -8977,21 +8984,78 @@ end subroutine Poisson
       END FUNCTION ran1
 
       !
-      ! interp_half
+      ! interp_mynn
       !
-      subroutine interp_half(IM, JM, LM, &                             ! in
-                             discrete_type, implicit_flag, &           ! in
-                             zle, zl, &                                ! in
-                             u, v, thl, qt, qv, ql, qi, thv, &         ! in
-                             ac, A_moist, B_moist, &                   ! in
-                             ui, vi, thli, qti, qvi, qli, qii, thvi, & ! out (for EDMF)
-                             aci, Ai_moist, Bi_moist)                  ! out (for MYNN)
+      subroutine interp_mynn(IM, JM, LM, &            ! in
+                             discrete_type, &         ! in
+                             zle, zl, &               ! in
+                             ac, A_moist, B_moist, &  ! in
+                             aci, Ai_moist, Bi_moist) ! out
+
+        implicit none
+
+        integer, intent(in)         :: IM, JM, LM, discrete_type
+        real, dimension(IM,JM,LM)   :: zl, ac, A_moist, B_moist
+        real, dimension(IM,JM,0:LM) :: zle, aci, Ai_moist, Bi_moist 
+
+        integer :: i, j, k, kp1
+        real    :: ifac
+
+        do k = 1,LM-1
+           kp1 = k + 1
+           
+           do j = 1,JM
+           do i = 1,IM
+              if ( discrete_type == 0 ) then ! centered
+                 ifac = ( zle(i,j,k) - zl(i,j,kp1) )/( zl(i,j,k) - zl(i,j,kp1) )
+                    
+                 aci(i,j,k)      = ac(i,j,kp1)      + ifac*( ac(i,j,k)      - ac(i,j,kp1) )
+                 Ai_moist(i,j,k) = A_moist(i,j,kp1) + ifac*( A_moist(i,j,k) - A_moist(i,j,kp1) )
+                 Bi_moist(i,j,k) = B_moist(i,j,kp1) + ifac*( B_moist(i,j,k) - B_moist(i,j,kp1) )
+              elseif ( discrete_type == 1 ) then ! upwind
+                 aci(i,j,k)      = ac(i,j,k)
+                 Ai_moist(i,j,k) = A_moist(i,j,k)
+                 Bi_moist(i,j,k) = B_moist(i,j,k)
+              elseif ( discrete_type == 2 ) then
+                 aci(i,j,k)      = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, ac)
+                 Ai_moist(i,j,k) = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, A_moist)
+                 Bi_moist(i,j,k) = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, B_moist)
+              elseif ( discrete_type == 3 ) then
+                 aci(i,j,k)      = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, ac)
+                 Ai_moist(i,j,k) = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, A_moist)
+                 Bi_moist(i,j,k) = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, B_moist)
+              end if
+           end do
+           end do
+        end do
+
+        do j = 1,JM
+        do i = 1,IM
+           aci(i,j,0)      = 0.
+           Ai_moist(i,j,0) = A_moist(i,j,1)
+           Bi_moist(i,j,0) = B_moist(i,j,1)
+
+           aci(i,j,LM)      = 0.
+           Ai_moist(i,j,LM) = A_moist(i,j,LM)
+           Bi_moist(i,j,LM) = B_moist(i,j,LM)
+        end do
+        end do
+      end subroutine interp_mynn
+
+      !
+      ! interp_edmf
+      !
+      subroutine interp_edmf(IM, JM, LM, &                           ! in
+                             discrete_type, implicit_flag, &         ! in
+                             zle, zl, &                              ! in
+                             u, v, thl, qt, qv, ql, qi, thv, &       ! in
+                             ui, vi, thli, qti, qvi, qli, qii, thvi) ! out
 
         implicit none
 
         integer, intent(in)         :: IM, JM, LM, discrete_type, implicit_flag
-        real, dimension(IM,JM,LM)   :: zl, u, v, thl, qt, qv, ql, qi, thv, ac, A_moist, B_moist
-        real, dimension(IM,JM,0:LM) :: zle, ui, vi, thli, qti, qvi, qli, qii, thvi, aci, Ai_moist, Bi_moist 
+        real, dimension(IM,JM,LM)   :: zl, u, v, thl, qt, qv, ql, qi, thv
+        real, dimension(IM,JM,0:LM) :: zle, ui, vi, thli, qti, qvi, qli, qii, thvi
 
         integer :: i, j, k, kp1
         real    :: ifac
@@ -9006,42 +9070,51 @@ end subroutine Poisson
                  if ( implicit_flag == 0 ) then
                     ifac = ( zle(i,j,k) - zl(i,j,kp1) )/( zl(i,j,k) - zl(i,j,kp1) )
                     
-                    ui(i,j,k)       = u(i,j,kp1)       + ifac*( u(i,j,k)       - u(i,j,kp1) )
-                    vi(i,j,k)       = v(i,j,kp1)       + ifac*( v(i,j,k)       - v(i,j,kp1) )
-                    thli(i,j,k)     = thl(i,j,kp1)     + ifac*( thl(i,j,k)     - thl(i,j,kp1) )
-                    qti(i,j,k)      = qt(i,j,kp1)      + ifac*( qt(i,j,k)      - qt(i,j,kp1) )
-                    qvi(i,j,k)      = qv(i,j,kp1)      + ifac*( qv(i,j,k)      - qv(i,j,kp1) )
-                    qli(i,j,k)      = ql(i,j,kp1)      + ifac*( ql(i,j,k)      - ql(i,j,kp1) )
-                    qii(i,j,k)      = qi(i,j,kp1)      + ifac*( qi(i,j,k)      - qi(i,j,kp1) )
-                    thvi(i,j,k)     = thv(i,j,kp1)     + ifac*( thv(i,j,k)     - thv(i,j,kp1) )
-                    aci(i,j,k)      = ac(i,j,kp1)      + ifac*( ac(i,j,k)      - ac(i,j,kp1) )
-                    Ai_moist(i,j,k) = A_moist(i,j,kp1) + ifac*( A_moist(i,j,k) - A_moist(i,j,kp1) )
-                    Bi_moist(i,j,k) = B_moist(i,j,kp1) + ifac*( B_moist(i,j,k) - B_moist(i,j,kp1) )
+                    ui(i,j,k)   = u(i,j,kp1)   + ifac*( u(i,j,k)   - u(i,j,kp1) )
+                    vi(i,j,k)   = v(i,j,kp1)   + ifac*( v(i,j,k)   - v(i,j,kp1) )
+                    thli(i,j,k) = thl(i,j,kp1) + ifac*( thl(i,j,k) - thl(i,j,kp1) )
+                    qti(i,j,k)  = qt(i,j,kp1)  + ifac*( qt(i,j,k)  - qt(i,j,kp1) )
+                    qvi(i,j,k)  = qv(i,j,kp1)  + ifac*( qv(i,j,k)  - qv(i,j,kp1) )
+                    qli(i,j,k)  = ql(i,j,kp1)  + ifac*( ql(i,j,k)  - ql(i,j,kp1) )
+                    qii(i,j,k)  = qi(i,j,kp1)  + ifac*( qi(i,j,k)  - qi(i,j,kp1) )
+                    thvi(i,j,k) = thv(i,j,kp1) + ifac*( thv(i,j,k) - thv(i,j,kp1) )
                  else
-                    ui(i,j,k)       = 0.5*( u(i,j,kp1)       + u(i,j,k) )
-                    vi(i,j,k)       = 0.5*( v(i,j,kp1)       + v(i,j,k) )
-                    thli(i,j,k)     = 0.5*( thl(i,j,kp1)     + thl(i,j,k) )
-                    qti(i,j,k)      = 0.5*( qt(i,j,kp1)      + qt(i,j,k) )
-                    qvi(i,j,k)      = 0.5*( qv(i,j,kp1)      + qv(i,j,k) )
-                    qli(i,j,k)      = 0.5*( ql(i,j,kp1)      + ql(i,j,k) )
-                    qii(i,j,k)      = 0.5*( qi(i,j,kp1)      + qi(i,j,k) )
-                    thvi(i,j,k)     = 0.5*( thv(i,j,kp1)     + thv(i,j,k) )
-                    aci(i,j,k)      = 0.5*( ac(i,j,kp1)      + ac(i,j,k) )
-                    Ai_moist(i,j,k) = 0.5*( A_moist(i,j,kp1) + A_moist(i,j,k) )
-                    Bi_moist(i,j,k) = 0.5*( B_moist(i,j,kp1) + B_moist(i,j,k) )
+                    ui(i,j,k)   = 0.5*( u(i,j,kp1)   + u(i,j,k) )
+                    vi(i,j,k)   = 0.5*( v(i,j,kp1)   + v(i,j,k) )
+                    thli(i,j,k) = 0.5*( thl(i,j,kp1) + thl(i,j,k) )
+                    qti(i,j,k)  = 0.5*( qt(i,j,kp1)  + qt(i,j,k) )
+                    qvi(i,j,k)  = 0.5*( qv(i,j,kp1)  + qv(i,j,k) )
+                    qli(i,j,k)  = 0.5*( ql(i,j,kp1)  + ql(i,j,k) )
+                    qii(i,j,k)  = 0.5*( qi(i,j,kp1)  + qi(i,j,k) )
+                    thvi(i,j,k) = 0.5*( thv(i,j,kp1) + thv(i,j,k) )
                  end if
               elseif ( discrete_type == 1 ) then ! upwind
-                 ui(i,j,k)       = u(i,j,k)
-                 vi(i,j,k)       = v(i,j,k)
-                 thli(i,j,k)     = thl(i,j,k)
-                 qti(i,j,k)      = qt(i,j,k)
-                 qvi(i,j,k)      = qv(i,j,k)
-                 qli(i,j,k)      = ql(i,j,k)
-                 qii(i,j,k)      = qi(i,j,k)
-                 thvi(i,j,k)     = thv(i,j,k)
-                 aci(i,j,k)      = ac(i,j,k)
-                 Ai_moist(i,j,k) = A_moist(i,j,k)
-                 Bi_moist(i,j,k) = B_moist(i,j,k)
+                 ui(i,j,k)   = u(i,j,kp1)
+                 vi(i,j,k)   = v(i,j,kp1)
+                 thli(i,j,k) = thl(i,j,kp1)
+                 qti(i,j,k)  = qt(i,j,kp1)
+                 qvi(i,j,k)  = qv(i,j,kp1)
+                 qli(i,j,k)  = ql(i,j,kp1)
+                 qii(i,j,k)  = qi(i,j,kp1)
+                 thvi(i,j,k) = thv(i,j,kp1)
+              elseif ( discrete_type == 2 ) then ! upwind (Carpenter et al. 1990)
+                 ui(i,j,k)   = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, u)
+                 vi(i,j,k)   = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, v)
+                 thli(i,j,k) = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, thl)
+                 qti(i,j,k)  = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, qt)
+                 qvi(i,j,k)  = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, qv)
+                 qli(i,j,k)  = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, ql)
+                 qii(i,j,k)  = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, qi)
+                 thvi(i,j,k) = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, thv)
+              elseif ( discrete_type == 3 ) then ! downwind (Carpeneter et al. 1990)
+                 ui(i,j,k)   = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, u)
+                 vi(i,j,k)   = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, v)
+                 thli(i,j,k) = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, thl)
+                 qti(i,j,k)  = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, qt)
+                 qvi(i,j,k)  = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, qv)
+                 qli(i,j,k)  = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, ql)
+                 qii(i,j,k)  = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, qi)
+                 thvi(i,j,k) = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, thv)
               end if
            end do
            end do
@@ -9049,32 +9122,86 @@ end subroutine Poisson
 
         do j = 1,JM
         do i = 1,IM
-           ui(i,j,0)       = u(i,j,1)
-           vi(i,j,0)       = v(i,j,1)
-           thli(i,j,0)     = thl(i,j,1)
-           qti(i,j,0)      = qt(i,j,1)
-           qvi(i,j,0)      = qv(i,j,1)
-           qli(i,j,0)      = ql(i,j,1)
-           qii(i,j,0)      = qi(i,j,1)
-           thvi(i,j,0)     = thv(i,j,1)
-           aci(i,j,0)      = 0.
-           Ai_moist(i,j,0) = A_moist(i,j,1)
-           Bi_moist(i,j,0) = B_moist(i,j,1)
+           ui(i,j,0)   = u(i,j,1)
+           vi(i,j,0)   = v(i,j,1)
+           thli(i,j,0) = thl(i,j,1)
+           qti(i,j,0)  = qt(i,j,1)
+           qvi(i,j,0)  = qv(i,j,1)
+           qli(i,j,0)  = ql(i,j,1)
+           qii(i,j,0)  = qi(i,j,1)
+           thvi(i,j,0) = thv(i,j,1)
 
-           ui(i,j,LM)       = u(i,j,LM)
-           vi(i,j,LM)       = v(i,j,LM)
-           thli(i,j,LM)     = thl(i,j,LM)
-           qti(i,j,LM)      = qt(i,j,LM)
-           qvi(i,j,LM)      = qv(i,j,LM)
-           qli(i,j,LM)      = ql(i,j,LM)
-           qii(i,j,LM)      = qi(i,j,LM)
-           thvi(i,j,LM)     = thv(i,j,LM)
-           aci(i,j,LM)      = 0.
-           Ai_moist(i,j,LM) = A_moist(i,j,LM)
-           Bi_moist(i,j,LM) = B_moist(i,j,LM)
+           ui(i,j,LM)   = u(i,j,LM)
+           vi(i,j,LM)   = v(i,j,LM)
+           thli(i,j,LM) = thl(i,j,LM)
+           qti(i,j,LM)  = qt(i,j,LM)
+           qvi(i,j,LM)  = qv(i,j,LM)
+           qli(i,j,LM)  = ql(i,j,LM)
+           qii(i,j,LM)  = qi(i,j,LM)
+           thvi(i,j,LM) = thv(i,j,LM)
         end do
         end do
-      end subroutine interp_half
+      end subroutine interp_edmf
+
+      !
+      !
+      !
+      real function interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, var)
+
+        implicit none
+
+        integer, intent(in)         :: IM, JM, LM, i, j, k
+        real, dimension(IM,JM,LM)   :: zl, var
+        real, dimension(IM,JM,0:LM) :: zle 
         
+        real :: s_up, s_down, s
+
+        if ( k /= LM - 1 ) then
+           s_up   = ( var(i,j,k) - var(i,j,k+1) )/( zl(i,j,k) - zl(i,j,k+1) )
+           s_down = ( var(i,j,k+1) - var(i,j,k+2) )/( zl(i,j,k+1) - zl(i,j,k+2) )
+        
+           if ( sign(s_up,s_down) /= s_up ) then
+              s = 0.
+           else
+              s = sign( min(abs(s_up),abs(s_down)), s_up )
+           end if
+           
+           interp_carpenter1990_up = var(i,j,k+1) + s*( zle(i,j,k) - zl(i,j,k+1) )
+        else
+           interp_carpenter1990_up = var(i,j,k+1)
+        end if
+
+      end function interp_carpenter1990_up
+
+      !
+      !
+      !
+      real function interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, var)
+
+        implicit none
+
+        integer, intent(in)         :: IM, JM, LM, i, j, k
+        real, dimension(IM,JM,LM)   :: zl, var
+        real, dimension(IM,JM,0:LM) :: zle 
+        
+        real :: s_up, s_down, s
+
+        if ( k /= 1 ) then 
+           s_up   = ( var(i,j,k-1) - var(i,j,k) )/( zl(i,j,k-1) - zl(i,j,k) )
+           s_down = ( var(i,j,k) - var(i,j,k+1) )/( zl(i,j,k) - zl(i,j,k+1) )
+           
+           if ( sign(s_up,s_down) /= s_up ) then
+              s = 0.
+           else
+              s = sign( min(abs(s_up),abs(s_down)), s_up )
+           end if
+           
+           interp_carpenter1990_down = var(i,j,k) + s*( zle(i,j,k) - zl(i,j,k) )
+        else
+           interp_carpenter1990_down = var(i,j,k)
+        end if
+
+      end function interp_carpenter1990_down
+
 end module GEOS_TurbulenceGridCompMod
 
