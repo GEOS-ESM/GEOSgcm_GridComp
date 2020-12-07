@@ -7636,10 +7636,10 @@ contains
       if(ALLOC_NICE)   allocate( SC_NICE(IM,JM,LM)  )
       if(ALLOC_TPERT)  allocate( TPERT_SC(IM,JM)  )
       if(ALLOC_QPERT)  allocate( QPERT_SC(IM,JM)  )
-      if(ALLOC_QTFLX)  allocate( QTFLX_SC(IM,JM,LM) )
-      if(ALLOC_SLFLX)  allocate( SLFLX_SC(IM,JM,LM) )
-      if(ALLOC_UFLX)   allocate( UFLX_SC(IM,JM,LM)  )
-      if(ALLOC_VFLX)   allocate( VFLX_SC(IM,JM,LM)  )
+      if(ALLOC_QTFLX)  allocate( QTFLX_SC(IM,JM,0:LM) )
+      if(ALLOC_SLFLX)  allocate( SLFLX_SC(IM,JM,0:LM) )
+      if(ALLOC_UFLX)   allocate( UFLX_SC(IM,JM,0:LM)  )
+      if(ALLOC_VFLX)   allocate( VFLX_SC(IM,JM,0:LM)  )
 
 
       IDIM = IM*JM
