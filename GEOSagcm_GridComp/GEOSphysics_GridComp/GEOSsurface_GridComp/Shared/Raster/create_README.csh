@@ -1595,7 +1595,7 @@ mkdir -p clsm/plots
 
 cd clsm/plots/
 
-module load idl/8.5
+module load tool/idl-8.5
 
 idl  <<EOB
 

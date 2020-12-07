@@ -643,9 +643,9 @@ PROGRAM mkSMAPTilesPara_v2
       write (10,*)'SMAP-EASEv2-'//trim(MGRID)
       write (10,*)nc_smap
       write (10,*)nr_smap
- !     write (10,*)'NO-OCEAN'
- !     write (10,*) -9999
- !     write (10,*) -9999      
+      write (10,*)'NO-OCEAN'
+      write (10,*) -9999
+      write (10,*) -9999      
 
       do l=1,i_index
 

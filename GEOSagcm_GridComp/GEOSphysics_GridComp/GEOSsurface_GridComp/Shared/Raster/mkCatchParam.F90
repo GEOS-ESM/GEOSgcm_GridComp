@@ -245,9 +245,8 @@ integer :: n_threads=1
           DL = 'DE'
           write (log_file,'(a)')'Cube Grid - assuming DE'
        endif
-       
-       inquire(file='clsm/catch_params.nc4', exist=file_exists)
-       if (.not.file_exists) CALL open_landparam_nc4_files 
+
+       CALL open_landparam_nc4_files 
 
        ! Creating catchment.def 
        ! ----------------------
@@ -472,7 +471,7 @@ integer :: n_threads=1
        write (log_file,'(a)')'Done creating CLM4.5 lightening frequency clim ...........11'
 
        call country_codes (nc,nr,gridnamer)
-       ! call albedo4catchcn (gridnamet)
+       call albedo4catchcn (gridnamet)
 
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'DONE creating CLSM data files...............................'
