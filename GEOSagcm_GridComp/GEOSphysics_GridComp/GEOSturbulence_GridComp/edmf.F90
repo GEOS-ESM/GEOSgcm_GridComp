@@ -354,9 +354,9 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  end if
 
                  ! increase entrainment if local minimum of thv
-                 if ( thv(i,j,k) < thv(i,j,kp1) .and. thv(i,j,k) < thv(i,j,km1) ) then
-                    ent(iup,i,j,k) = ent(iup,i,j,k) + 5.*ent0/L0(i,j)
-                 end if
+!                 if ( thv(i,j,k) < thv(i,j,kp1) .and. thv(i,j,k) < thv(i,j,km1) ) then
+!                    ent(iup,i,j,k) = ent(iup,i,j,k) + 5.*ent0/L0(i,j)
+!                 end if
 
                  ! Limit entrainment length scale using surface
 !                 ent(iup,i,j,k) = max( ent(iup,i,j,k), 1./(3.*zl(i,j,k)) ) ! Cheinet 2003

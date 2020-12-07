@@ -9089,15 +9089,15 @@ end subroutine Poisson
                     thvi(i,j,k) = 0.5*( thv(i,j,kp1) + thv(i,j,k) )
                  end if
               elseif ( discrete_type == 1 ) then ! upwind
-                 ui(i,j,k)   = u(i,j,kp1)
-                 vi(i,j,k)   = v(i,j,kp1)
-                 thli(i,j,k) = thl(i,j,kp1)
-                 qti(i,j,k)  = qt(i,j,kp1)
-                 qvi(i,j,k)  = qv(i,j,kp1)
-                 qli(i,j,k)  = ql(i,j,kp1)
-                 qii(i,j,k)  = qi(i,j,kp1)
-                 thvi(i,j,k) = thv(i,j,kp1)
-              elseif ( discrete_type == 2 ) then ! upwind (Carpenter et al. 1990)
+                 ui(i,j,k)   = u(i,j,k)
+                 vi(i,j,k)   = v(i,j,k)
+                 thli(i,j,k) = thl(i,j,k)
+                 qti(i,j,k)  = qt(i,j,k)
+                 qvi(i,j,k)  = qv(i,j,k)
+                 qli(i,j,k)  = ql(i,j,k)
+                 qii(i,j,k)  = qi(i,j,k)
+                 thvi(i,j,k) = thv(i,j,k)
+              elseif ( discrete_type == 2 ) then ! upwind (Carpeneter et al. 1990)
                  ui(i,j,k)   = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, u)
                  vi(i,j,k)   = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, v)
                  thli(i,j,k) = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, thl)
@@ -9106,15 +9106,6 @@ end subroutine Poisson
                  qli(i,j,k)  = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, ql)
                  qii(i,j,k)  = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, qi)
                  thvi(i,j,k) = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, thv)
-              elseif ( discrete_type == 3 ) then ! downwind (Carpeneter et al. 1990)
-                 ui(i,j,k)   = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, u)
-                 vi(i,j,k)   = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, v)
-                 thli(i,j,k) = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, thl)
-                 qti(i,j,k)  = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, qt)
-                 qvi(i,j,k)  = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, qv)
-                 qli(i,j,k)  = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, ql)
-                 qii(i,j,k)  = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, qi)
-                 thvi(i,j,k) = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, thv)
               end if
            end do
            end do
@@ -9156,19 +9147,19 @@ end subroutine Poisson
         
         real :: s_up, s_down, s
 
-        if ( k /= LM - 1 ) then
-           s_up   = ( var(i,j,k) - var(i,j,k+1) )/( zl(i,j,k) - zl(i,j,k+1) )
-           s_down = ( var(i,j,k+1) - var(i,j,k+2) )/( zl(i,j,k+1) - zl(i,j,k+2) )
-        
+        if ( k /= 1 ) then 
+           s_up   = ( var(i,j,k-1) - var(i,j,k) )/( zl(i,j,k-1) - zl(i,j,k) )
+           s_down = ( var(i,j,k) - var(i,j,k+1) )/( zl(i,j,k) - zl(i,j,k+1) )
+           
            if ( sign(s_up,s_down) /= s_up ) then
               s = 0.
            else
               s = sign( min(abs(s_up),abs(s_down)), s_up )
            end if
            
-           interp_carpenter1990_up = var(i,j,k+1) + s*( zle(i,j,k) - zl(i,j,k+1) )
+           interp_carpenter1990_up = var(i,j,k) + s*( zle(i,j,k) - zl(i,j,k) )
         else
-           interp_carpenter1990_up = var(i,j,k+1)
+           interp_carpenter1990_up = var(i,j,k)
         end if
 
       end function interp_carpenter1990_up
@@ -9186,19 +9177,19 @@ end subroutine Poisson
         
         real :: s_up, s_down, s
 
-        if ( k /= 1 ) then 
-           s_up   = ( var(i,j,k-1) - var(i,j,k) )/( zl(i,j,k-1) - zl(i,j,k) )
-           s_down = ( var(i,j,k) - var(i,j,k+1) )/( zl(i,j,k) - zl(i,j,k+1) )
-           
+        if ( k /= LM - 1 ) then
+           s_up   = ( var(i,j,k) - var(i,j,k+1) )/( zl(i,j,k) - zl(i,j,k+1) )
+           s_down = ( var(i,j,k+1) - var(i,j,k+2) )/( zl(i,j,k+1) - zl(i,j,k+2) )
+        
            if ( sign(s_up,s_down) /= s_up ) then
               s = 0.
            else
               s = sign( min(abs(s_up),abs(s_down)), s_up )
            end if
            
-           interp_carpenter1990_down = var(i,j,k) + s*( zle(i,j,k) - zl(i,j,k) )
+           interp_carpenter1990_down = var(i,j,k+1) + s*( zle(i,j,k) - zl(i,j,k+1) )
         else
-           interp_carpenter1990_down = var(i,j,k)
+           interp_carpenter1990_down = var(i,j,k+1)
         end if
 
       end function interp_carpenter1990_down
