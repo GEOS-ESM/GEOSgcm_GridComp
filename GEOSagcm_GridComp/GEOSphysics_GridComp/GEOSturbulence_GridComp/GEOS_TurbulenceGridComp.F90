@@ -4959,7 +4959,7 @@ ENDIF
                       MYNN_DEBUG, DOMF, MYNN_LEVEL, &                              ! in      
                       EDMF_CONSISTENT, WQL_TYPE, WRF_CG_FLAG, &                    ! in      
                       mynn_alpha1, mynn_alpha2, mynn_alpha3, mynn_alpha4, &        ! in 
-                      th00, PLE, PLO, RHOE, ZLE, Z, &                              ! in      
+                      th00, ice_ramp, PLE, PLO, RHOE, ZLE, Z, &                    ! in      
                       U, V, T, Q, QL, QI, THL, QT, THV, &                          ! in      
                       USTAR, SH, EVAP, &                                           ! in      
                       whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &           ! in      

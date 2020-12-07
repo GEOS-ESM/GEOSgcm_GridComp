@@ -439,7 +439,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
                     DEBUG_FLAG, DOMF, MYNN_LEVEL, &                                         ! in
                     CONSISTENT_TYPE, WQL_TYPE, WRF_CG_FLAG, &                               ! in
                     alpha1, alpha2, alpha3, alpha4, &                                       ! in (length scale parameters)
-                    th00, ple, pl, rhoe, zle, zlo, &                                        ! in
+                    th00, ice_ramp, ple, pl, rhoe, zle, zlo, &                              ! in
                     u, v, T, qv, ql, qi, thl, qt, thv, &                                    ! in (mean atmospheric state)
                     u_star, H_surf, E_surf, &                                               ! in (surface state)
                     whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &                      ! in (updraft state)
@@ -458,7 +458,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
   integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, &
                                                 WQL_TYPE, WRF_CG_FLAG, DEBUG_FLAG
-  real, intent(in)                           :: th00, DOMF
+  real, intent(in)                           :: th00, ice_ramp, DOMF
   double precision, intent(in)               :: alpha1, alpha2, alpha3, alpha4
   real, dimension(IM,JM), intent(in)         :: u_star, H_surf, E_surf
   real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, T, qv, ql, qi, thv, thl, qt, E, D, wdet, pl
@@ -564,19 +564,19 @@ subroutine run_mynn(IM, JM, LM, &                                               
   if ( .not. initialized_mynn ) then
      call initialize_mynn(IM, JM, LM, &
                           alpha1, alpha2, alpha3, alpha4, &
-                          th00, hl, qt, tke, hl2, qt2, hlqt, q, &
+                          th00, ice_ramp, hl, qt, tke, hl2, qt2, hlqt, q, &
                           zle, zlo, S2, N2, &
                           u_star, wb_surf, LMO, &
-                          thl, thv, ple, pl)
+                          thv, ple, pl)
 
      initialized_mynn = .true.
   end if
 
-  call mynn_length(IM, JM, LM, &                          ! in
-                   alpha1, alpha2, alpha3, alpha4, &      ! in
-                   th00, wb_surf, zle, zlo, q, N2, LMO, & ! in
-                   thl, qt, thv, ple, pl, &               ! in
-                   L, LS, LB, LT, w_star)                 ! out
+  call mynn_length(IM, JM, LM, &                                    ! in
+                   alpha1, alpha2, alpha3, alpha4, &                ! in
+                   th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
+                   thv, ple, pl, &                                  ! in
+                   L, LS, LB, LT, w_star)                           ! out
 
   do k = 1,LM-1
 
@@ -694,10 +694,10 @@ end subroutine run_mynn
 !
 subroutine initialize_mynn(IM, JM, LM, &
                            alpha1, alpha2, alpha3, alpha4, &
-                           th00, hl, qt, tke, hl2, qt2, hlqt, q, &
+                           th00, ice_ramp, hl, qt, tke, hl2, qt2, hlqt, q, &
                            zle, zlo, S2, N2, &
                            u_star, wb_surf, LMO, &
-                           thl, thv, ple, pl)
+                           thv, ple, pl)
 
 use MAPL_ConstantsMod, only: MAPL_KARMAN
 
@@ -711,11 +711,11 @@ real, parameter :: flq = 0.
 real, parameter :: phm = phh*B2/(B1*pmz)**twothirds
        
 integer, intent(in)                                    :: IM, JM, LM
-real, intent(in)                                       :: th00
+real, intent(in)                                       :: th00, ice_ramp
 double precision, intent(in)                           :: alpha1, alpha2, alpha3, alpha4
 real, dimension(IM,JM), intent(in)                     :: u_star, wb_surf, LMO
 real, dimension(IM,JM,0:LM), intent(in)                :: zle, S2, N2, ple
-real, dimension(IM,JM,LM), intent(in)                  :: zlo, hl, qt, thl, thv, pl
+real, dimension(IM,JM,LM), intent(in)                  :: zlo, hl, qt, thv, pl
 real, dimension(IM,JM,0:LM), intent(inout)             :: tke, hl2, qt2, hlqt
 double precision, dimension(IM,JM,0:LM), intent(inout) :: q
 
@@ -764,11 +764,11 @@ end do
 
 ! Iterate to initialize TKE
 do iter = 1,niter
-   call mynn_length(IM, JM, LM, &                          ! in
-                    alpha1, alpha2, alpha3, alpha4, &      ! in
-                    th00, wb_surf, zle, zlo, q, N2, LMO, & ! in
-                    thl, qt, thv, ple, pl, &               ! in
-                    L, LS, LB, LT, w_star)                 ! out      
+   call mynn_length(IM, JM, LM, &                                    ! in
+                    alpha1, alpha2, alpha3, alpha4, &                ! in
+                    th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
+                    thv, ple, pl, &                                  ! in
+                    L, LS, LB, LT, w_star)                           ! out      
 
    do k = 1,LM-1
       do j = 1,JM
@@ -801,26 +801,25 @@ end subroutine initialize_mynn
 !
 ! boulac
 !
-subroutine boulac(IM, JM, LM, i, j, kz, &                 ! in
-                  th00, zl, zle, pl, ple, thl, qt, thv, & ! in
-                  q, N, &                                 ! in
-                  LB)                                     ! out
+subroutine boulac(IM, JM, LM, i, j, kz, &                  ! in
+                  th00, ice_ramp, zl, zle, pl, ple, thv, & ! in
+                  q, N, &                                  ! in
+                  LB)                                      ! out
 
   use edmf_mod, only: condensation_edmfA, condensation_edmf
 
   implicit none
 
   integer, intent(in)                     :: IM, JM, LM, i, j, kz
-  real, intent(in)                        :: th00
+  real, intent(in)                        :: th00, ice_ramp
   double precision, intent(in)            :: q, N
-  real, dimension(IM,JM,LM), intent(in)   :: zl, pl, thl, qt, thv
+  real, dimension(IM,JM,LM), intent(in)   :: zl, pl, thv
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple
   double precision, intent(out)           :: LB
 
   integer :: k, km1, kp1
-  real    :: thlp, qtp, qlp, qip, thvp, lup, ldown, w2p, w2p_next, ifac, &
-             lup0, ldown0, dz, wf, iceramp, qlp_next, thvp_next, ice_ramp, &
-             goth00, B
+  real    :: thvp, lup, ldown, w2p, w2p_next, ifac, &
+             lup0, ldown0, dz, wf, goth00, B
 
   goth00 = mapl_grav/th00
 
@@ -828,7 +827,7 @@ subroutine boulac(IM, JM, LM, i, j, kz, &                 ! in
   ldown0 = zle(i,j,kz) - zl(i,j,kz+1)
 
   ! If LB smaller that half of dz, then use local bouyancy length scale
-  if ( q/N <= max(lup0,ldown0) ) then
+  if ( q/N <= min(lup0,ldown0) ) then
      LB = q/N  
      return
   end if
@@ -836,31 +835,24 @@ subroutine boulac(IM, JM, LM, i, j, kz, &                 ! in
   ! Initialize parcel
   ifac = ( zle(i,j,kz) - zl(i,j,kz) )/( zl(i,j,kz) - zl(i,j,kz+1) )
   thvp = thv(i,j,kz+1) + ifac*( thv(i,j,kz) - thv(i,j,kz+1) )
-  qtp  = qt(i,j,kz+1)  + ifac*( qt(i,j,kz)  - qt(i,j,kz+1) )
-  call condensation_edmfA(thvp, qtp, ple(i,j,kz), &
-                          thlp, qlp, qip, ice_ramp)
 
   ! up
-  k = kz
+  k   = kz
   lup = lup0
   w2p = q**2 - (lup0*N)**2.
-  call condensation_edmf(qtp, thlp, pl(i,j,k), thvp, qlp, wf, ice_ramp)
 up:  do while ( w2p > 0. .and. k >= 2 )
      km1 = k - 1
 
      dz = zl(i,j,km1) - zl(i,j,k)
 
-     call condensation_edmf(qtp, thlp, pl(i,j,km1), thvp_next, qlp_next, wf, ice_ramp)
-
-     B = goth00*( 0.5*( thvp - thv(i,j,k) ) + 0.5*( thvp_next - thv(i,j,km1) ) )
+     B = goth00*( thvp - 0.5*( thv(i,j,k) + thv(i,j,km1) ) )
 
      w2p_next = w2p + 2.*dz*B
 
      if ( w2p_next > 0. ) then
-        lup  = lup + dz
-        w2p  = w2p_next
-        thvp = thvp_next
-        k    = k - 1
+        lup = lup + dz
+        w2p = w2p_next
+        k   = k - 1
      else
         lup = lup - 0.5*w2p/B
 
@@ -872,15 +864,12 @@ up:  do while ( w2p > 0. .and. k >= 2 )
   k     = kz + 1
   ldown = ldown0
   w2p   = -q**2. + (ldown0*N)**2.
-  call condensation_edmf(qtp, thlp, pl(i,j,k), thvp, qlp, wf, ice_ramp)
 down:  do while ( w2p < 0. .and. k <= LM-1 )
      kp1 = k + 1
 
      dz = zl(i,j,k) - zl(i,j,kp1)
 
-     call condensation_edmf(qtp, thlp, pl(i,j,kp1), thvp_next, qlp_next, wf, ice_ramp)
-
-     B = goth00*( 0.5*( thvp - thv(i,j,k) ) + 0.5*( thvp_next - thv(i,j,kp1) ) )
+     B = goth00*( thvp - 0.5*( thv(i,j,k) + thv(i,j,kp1) ) )
 
      w2p_next = w2p + 2.*dz*B
 
@@ -889,9 +878,8 @@ down:  do while ( w2p < 0. .and. k <= LM-1 )
 
         ! Check proximity to surface
         if ( k <= LM-2 ) then 
-           w2p   = w2p_next
-           thvp  = thvp_next
-           k     = k + 1
+           w2p = w2p_next
+           k   = k + 1
         else
            ldown = ldown + zl(i,j,LM)
 
@@ -905,18 +893,18 @@ down:  do while ( w2p < 0. .and. k <= LM-1 )
   end do down
 
   ! Geometrically average each length scale
-  LB = min( zle(i,j,kz), sqrt(lup*ldown) )
+  LB = min( q/N, min( zle(i,j,kz), sqrt(lup*ldown) ) )
 
 end subroutine boulac
 
 !
 ! mynn_length 
 !
-subroutine mynn_length(IM, JM, LM, &                          ! in
-                       alpha1, alpha2, alpha3, alpha4, &      ! in
-                       th00, wb_surf, zle, zlo, q, N2, LMO, & ! in
-                       thl, qt, thv, ple, pl, &               ! in
-                       L, LS, LB, LT, w_star)                 ! out
+subroutine mynn_length(IM, JM, LM, &                                    ! in
+                       alpha1, alpha2, alpha3, alpha4, &                ! in
+                       th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
+                       thv, ple, pl, &                                  ! in
+                       L, LS, LB, LT, w_star)                           ! out
 
   use MAPL_ConstantsMod, only: MAPL_KARMAN
 
@@ -937,10 +925,10 @@ subroutine mynn_length(IM, JM, LM, &                          ! in
 
 
   integer, intent(in)                                  :: IM, JM, LM
-  real, intent(in)                                     :: th00
+  real, intent(in)                                     :: th00, ice_ramp
   double precision, intent(in)                         :: alpha1, alpha2, alpha3, alpha4
   real, dimension(IM,JM), intent(in)                   :: wb_surf, LMO
-  real, dimension(IM,JM,LM), intent(in)                :: zlo, thl, qt, thv, pl
+  real, dimension(IM,JM,LM), intent(in)                :: zlo, thv, pl
   real, dimension(IM,JM,0:LM), intent(in)              :: zle, N2, ple
   double precision, dimension(IM,JM,0:LM), intent(in)  :: q
   double precision, dimension(IM,JM), intent(out)      :: w_star, LT
@@ -996,10 +984,10 @@ subroutine mynn_length(IM, JM, LM, &                          ! in
         if ( N2(i,j,k) > 0. ) then
            N = sqrt( N2(i,j,k) )
 
-           call boulac(IM, JM, LM, i, j, k, &                   ! in
-                       th00, zlo, zle, pl, ple, thl, qt, thv, & ! in
-                       q(i,j,k), N, &                           ! in
-                       LB_test)                                 ! out    
+           call boulac(IM, JM, LM, i, j, k, &                    ! in
+                       th00, ice_ramp, zlo, zle, pl, ple, thv, & ! in
+                       q(i,j,k), N, &                            ! in
+                       LB_test)                                  ! out    
 
            ! WRF MYNN version
 !           LB(i,j,k) = alpha2*( q(i,j,k)/N )*( 1.d0 + alpha3/alpha2*sqrt( w_star(i,j)/( N*LT(i,j) ) ) )

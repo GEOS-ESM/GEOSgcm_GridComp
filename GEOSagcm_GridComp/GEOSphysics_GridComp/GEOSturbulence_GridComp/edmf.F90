@@ -296,17 +296,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               aw3(i,j,k)   = aw3(i,j,k)   + upa(iup,i,j)*upw(iup,i,j)**3.
               aqt3(i,j,k)  = aqt3(i,j,k)  + upa(iup,i,j)*( upqt(iup,i,j) - qti(i,j,k) )**3.
 
-              if ( implicit_flag == 1 ) then
-                 stmp = mapl_cp*exfh*upthl(iup,i,j) + mapl_grav*zle(i,j,k) + mapl_alhl*upql(iup,i,j) + mapl_alhs*upqi(iup,i,j) 
-                        
-                 awu(i,j,k)  = awu(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*upu(iup,i,j)
-                 awv(i,j,k)  = awv(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*upv(iup,i,j)
-                 aws(i,j,k)  = aws(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*stmp
-                 awqv(i,j,k) = awqv(i,j,k) + upa(iup,i,j)*upw(iup,i,j)&
-                                             *( upqt(iup,i,j) - upql(iup,i,j) - upqi(iup,i,j) )
-                 awql(i,j,k) = awql(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*upql(iup,i,j)
-                 awqi(i,j,k) = awqi(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*upqi(iup,i,j)
-              else
+              if ( implicit_flag == 0 ) then
                  stmp =   mapl_cp*exfh*( upthl(iup,i,j) - thli(i,j,k) ) &
                         + mapl_alhs*( upqi(iup,i,j) - qii(i,j,k) )             &
                         + mapl_alhl*( upql(iup,i,j) - qli(i,j,k) ) 
@@ -318,6 +308,16 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                                              *( upqt(iup,i,j) - upql(iup,i,j) - upqi(iup,i,j) - qvi(i,j,k))
                  awql(i,j,k) = awql(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*( upql(iup,i,j) - qli(i,j,k) )
                  awqi(i,j,k) = awqi(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*( upqi(iup,i,j) - qii(i,j,k) )
+              else
+                 stmp = mapl_cp*exfh*upthl(iup,i,j) + mapl_grav*zle(i,j,k) + mapl_alhl*upql(iup,i,j) + mapl_alhs*upqi(iup,i,j) 
+                        
+                 awu(i,j,k)  = awu(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*upu(iup,i,j)
+                 awv(i,j,k)  = awv(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*upv(iup,i,j)
+                 aws(i,j,k)  = aws(i,j,k)  + upa(iup,i,j)*upw(iup,i,j)*stmp
+                 awqv(i,j,k) = awqv(i,j,k) + upa(iup,i,j)*upw(iup,i,j)&
+                                             *( upqt(iup,i,j) - upql(iup,i,j) - upqi(iup,i,j) )
+                 awql(i,j,k) = awql(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*upql(iup,i,j)
+                 awqi(i,j,k) = awqi(i,j,k) + upa(iup,i,j)*upw(iup,i,j)*upqi(iup,i,j)
               end if
 
               ! Quantities required for MYNN
@@ -649,7 +649,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
         end do
      end do
   end if
-
 
 end subroutine run_edmf
 
