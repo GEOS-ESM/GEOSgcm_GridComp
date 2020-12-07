@@ -5903,7 +5903,8 @@ contains
       real,    dimension(IM,JM)       :: LS_SNR, CN_SNR, AN_SNR, SC_SNR, ZCBLx, FILLQ, MXDIAMx
       real,    dimension(IM,JM)       :: LS_PRC2,CN_PRC2,AN_PRC2,SC_PRC2,ER_PRC2, TPREC, TVQX
       real,    dimension(IM,JM)       :: TPERT, QPERT, TSFCAIR, DTS, RASAL2_2d, NPRE_FRAC_2d
-      integer, dimension(IM,JM)       :: IRAS, JRAS, KCBL, CLDBASEx
+      integer, dimension(IM,JM)       :: IRAS, JRAS, KCBL
+      real,    dimension(IM,JM)       :: CLDBASEx
       real,    dimension(IM,JM,LM)    :: WGT0, WGT1
       real,    dimension(IM,JM,LM)    :: TRDLX
       integer, dimension(IM,JM,LM)    :: irccode
