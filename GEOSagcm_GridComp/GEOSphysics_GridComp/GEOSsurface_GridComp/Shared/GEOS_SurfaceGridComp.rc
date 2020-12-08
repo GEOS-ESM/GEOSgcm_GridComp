@@ -153,13 +153,14 @@
 #    1 : YES, run irrigation module
 #
 # GEOSagcm=>RUN_IRRIG: 0
-# GEOSldas=>RUN_IRRIG: 0
+# GEOSldas=>RUN_IRRIG: 1
 
 # ---- Irrigation model method 
 #
-#    0 : Sprinkler and Flood irrigation combined (default)
+#    0 : CONCURRENTLY Sprinkler, Flood, and DRIP irrigation methods on mthod specific fractions (default)
 #    1 : Sprinkler irrigation only
 #    2 : Flood irrigation only
+#    3 : Drip irrigation only
 #
 # GEOSagcm=>IRRIG_METHOD: 0
 # GEOSldas=>IRRIG_METHOD: 0
