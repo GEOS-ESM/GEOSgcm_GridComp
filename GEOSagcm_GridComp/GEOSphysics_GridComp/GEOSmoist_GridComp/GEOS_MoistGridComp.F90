@@ -100,7 +100,7 @@ module GEOS_MoistGridCompMod
 !-srf-gf-scheme
   USE ConvPar_GF_GEOS5, only: gf_geos5_interface &
       ,maxiens, icumulus_gf, closure_choice, deep, shal, mid&
-      ,DEBUG_GF,USE_SCALE_DEP,DICYCLE,Hcts&
+      ,DEBUG_GF,USE_SCALE_DEP,DICYCLE,Hcts,KcScals&
       ,USE_TRACER_TRANSP,USE_TRACER_SCAVEN, TAU_DEEP, TAU_MID&
       ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
 !-srf-gf-scheme
@@ -5321,6 +5321,7 @@ contains
       real, pointer, dimension(:    ) :: FSCAV_, &  ! holding array for all tracers
                                          FSCAV      ! container for friendly to moist tracers
       real, dimension(4) :: Vect_Hcts
+      real, dimension(3) :: Vect_KcScal
 
       ! Aerosol convective scavenging internal pointers (2D column-averages);  must deallocate!!!
       ! CAR 
@@ -6815,11 +6816,17 @@ contains
       VERIFY_(STATUS)
       IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
         ALLOCATE(Hcts(KM), stat=STATUS); VERIFY_(STATUS)
-	IF(STATUS==0) THeN
+        IF(STATUS==0) THeN
               Hcts(1:KM)%hstar = -1.
               Hcts(1:KM)%dhr   = -1.
               Hcts(1:KM)%ak0   = -1.
               Hcts(1:KM)%dak   = -1.
+        ENDIF
+        ALLOCATE(KcScals(KM), stat=STATUS); VERIFY_(STATUS)
+        IF(STATUS==0) THeN
+           KcScals(1:KM)%KcScal1 = 1.
+           KcScals(1:KM)%KcScal2 = 1.
+           KcScals(1:KM)%KcScal3 = 1.
         ENDIF
       ENDIF
 
@@ -6900,6 +6907,16 @@ contains
               Hcts(k)%dhr   = Vect_Hcts(2)
               Hcts(k)%ak0   = Vect_Hcts(3)
               Hcts(k)%dak   = Vect_Hcts(4)
+           ENDIF
+           ! KC scale factors for GEOS-Chem
+           Vect_KcScal(:) = 1.0
+           call ESMF_AttributeGet  (FIELD,"SetofKcScalFactors",isPresent=isPresent,  RC=STATUS)
+           VERIFY_(STATUS)
+           if (isPresent) then
+              call ESMF_AttributeGet  (FIELD,"SetofKcScalFactors",Vect_KcScal,  RC=STATUS)
+              KcScals(k)%KcScal1 = Vect_KcScal(1)
+              KcScals(k)%KcScal2 = Vect_KcScal(2)
+              KcScals(k)%KcScal3 = Vect_KcScal(3)
            ENDIF
          ENDIF
 
@@ -8887,6 +8904,7 @@ contains
       VERIFY_(STATUS)
       IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
          DEALLOCATE(Hcts , stat=STATUS); VERIFY_(STATUS)
+         DEALLOCATE(KcScals , stat=STATUS); VERIFY_(STATUS)
       ENDIF
 
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_BETA,       'CNV_BETA:',       DEFAULT= 10.0    )

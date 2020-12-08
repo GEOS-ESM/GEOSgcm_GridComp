@@ -21,7 +21,7 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
  PUBLIC  GF_GEOS5_INTERFACE, maxiens, icumulus_gf, closure_choice, deep, shal, mid &
         ,DEBUG_GF,USE_SCALE_DEP,DICYCLE,TAU_DEEP,TAU_MID,Hcts &
         ,USE_TRACER_TRANSP, USE_TRACER_SCAVEN&
-	,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
+	,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1,KcScals
 
  !- for internal debugging
  PUBLIC GF_GEOS5_DRV       !- for debugging purposes (set private for normal runs)
@@ -154,6 +154,10 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
    REAL :: hstar,dhr,ak0,dak
  END TYPE Hcts_vars
  TYPE (Hcts_vars), ALLOCATABLE :: Hcts(:)
+ TYPE KcScal_vars
+   REAL :: KcScal1,KcScal2,KcScal3
+ END TYPE KcScal_vars
+ TYPE (KcScal_vars), ALLOCATABLE :: KcScals(:)
  
  CHARACTER(LEN=10),PARAMETER  :: host_model = 'NEW_GEOS5'
 !
@@ -9924,7 +9928,12 @@ ENDIF
 !    real, parameter :: kc = 5.e-3  ! s-1
      real, parameter :: kc = 2.e-3  ! s-1        !!! autoconversion parameter in GF is lower than what is used in GOCART
      real, dimension (mtp ,its:ite,kts:kte) ::  factor_temp
-     
+     ! for GEOS-Chem
+     logical, dimension(mtp) :: is_gcc
+     real                    :: kc_scaled
+     real, parameter         :: TEMP1 = 237.0
+     real, parameter         :: TEMP2 = 258.0
+ 
      !--initialization
      sc_up          = se_cup
      pw_up          = 0.0
@@ -9961,6 +9970,15 @@ ENDIF
              enddo
           enddo
      ENDIF 
+
+     !Flag GEOS-Chem species
+     do ispc = 1,mtp
+        if ( TRIM(CHEM_NAME(ispc)(1:4)) == 'SPC_' ) then
+           is_gcc(ispc) = .true.
+        else
+           is_gcc(ispc) = .false.
+        endif
+     enddo
 
      DO i=its,itf
        if(ierr(i) /= 0) cycle
@@ -10010,8 +10028,23 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                     pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- FSCAV(ispc) * (dz/1000.))))
         
                     !--formulation 2 as in GOCART                    
-                    if(USE_TRACER_SCAVEN==2) & 
-                    pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
+                    if(USE_TRACER_SCAVEN==2) then
+                       ! GEOS-Chem uses additional scalings... 
+                       if ( is_gcc(ispc) ) then
+                          kc_scaled = 5.e-3
+                          if ( tempco(i,k) < TEMP1 ) then
+                             kc_scaled = kc_scaled * KcScals(ispc)%KcScal1
+                          else if ( (tempco(i,k)>=TEMP1) .and. (tempco(i,k)<TEMP2) ) then
+                             kc_scaled = kc_scaled * KcScals(ispc)%KcScal2
+                          else
+                             kc_scaled = kc_scaled * KcScals(ispc)%KcScal3
+                          endif
+                          pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc_scaled * (dz/w_upd)))*fscav(ispc))
+                       ! default formulation
+                       else
+                          pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
+                       endif
+                    endif
 
                     !--formulation 3 - orignal GF conv_par
                     if(USE_TRACER_SCAVEN==3) then
