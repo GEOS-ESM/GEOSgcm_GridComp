@@ -3804,6 +3804,8 @@ contains
                                      ! else: explicit
      integer :: MYNN_DISCRETE        ! 0:    
                                      ! else: 
+     integer :: MYNN_LOCAL           ! 0:    use nonlocal buoyancy length scale (Boulac)    
+                                     ! else: use local bouyancy length scale
      integer :: MYNN_DEBUG           ! 0 (default): no debugging output in MYNN
                                      ! 1: print internal variables in MYNN subroutine
      integer :: WQL_TYPE             ! 1 (default): counter-gradient liquid water flux (level-3 closure only)
@@ -4453,6 +4455,7 @@ contains
     call MAPL_GetResource (MAPL, MYNN_LEVEL,      "MYNN_LEVEL:",    default=2,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_IMPLICIT,   "MYNN_IMPLICIT:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_DISCRETE,   "MYNN_DISCRETE:", default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_LOCAL,      "MYNN_LOCAL:",    default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_DEBUG,      "MYNN_DEBUG:",    default=0,  RC=STATUS)
 
     call MAPL_GetResource (MAPL, WQL_TYPE,        "TURBULENCE_WQL_TYPE:",    default=1,  RC=STATUS)
@@ -4956,8 +4959,8 @@ ENDIF
 
         ! Run MYNN
         call run_mynn(IM, JM, LM, &                                                ! in      
-                      MYNN_DEBUG, DOMF, MYNN_LEVEL, &                              ! in      
-                      EDMF_CONSISTENT, WQL_TYPE, WRF_CG_FLAG, &                    ! in      
+                      MYNN_DEBUG, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &             ! in
+                      MYNN_LOCAL, WQL_TYPE, WRF_CG_FLAG, &                         ! in      
                       mynn_alpha1, mynn_alpha2, mynn_alpha3, mynn_alpha4, &        ! in 
                       th00, ice_ramp, PLE, PLO, RHOE, ZLE, Z, &                    ! in      
                       U, V, T, Q, QL, QI, THL, QT, THV, &                          ! in      
