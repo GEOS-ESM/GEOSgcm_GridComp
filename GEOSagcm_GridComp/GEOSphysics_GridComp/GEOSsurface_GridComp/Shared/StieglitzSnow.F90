@@ -388,6 +388,11 @@ contains
        dtss    = 0. 
        excswe  = 0.
 
+       rmelt = 0.0
+       mltwtr = 0.0
+       drho0 = 0.0
+       tksno = 0.0
+
        !wesn0 = wesn 
        !sndz0 = sndz 
 
@@ -824,10 +829,8 @@ contains
 
 !**** Update snow density by compaction (Pitman et al. 1991)
 
-       excs = 0.
        mass = 0.
        w    = 0.
-       drho0 = 0.
 
        wesndens = wesn
 

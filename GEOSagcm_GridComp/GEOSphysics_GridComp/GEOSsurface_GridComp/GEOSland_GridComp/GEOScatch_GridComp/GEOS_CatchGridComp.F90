@@ -140,6 +140,8 @@ end type CATCH_WRAP
 integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB,CHOOSEMOSFC
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
+real    :: FWETC, FWETL
+logical :: USE_FWET_FOR_RUNOFF
 
 contains
 
@@ -212,10 +214,19 @@ subroutine SetServices ( GC, RC )
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
-    call ESMF_ConfigGetAttribute (SCF, label='SURFLAY:'       , value=SURFLAY,        DEFAULT=50., __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='Z0_FORMULATION:', value=Z0_FORMULATION, DEFAULT=2  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'   , value=USE_ASCATZ0,    DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'   , value=CHOOSEMOSFC,    DEFAULT=1  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='SURFLAY:'            , value=SURFLAY,            DEFAULT=50., __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='Z0_FORMULATION:'     , value=Z0_FORMULATION,     DEFAULT=2  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,        DEFAULT=0  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,        DEFAULT=1  , __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='USE_FWET_FOR_RUNOFF:', value=USE_FWET_FOR_RUNOFF,DEFAULT=.FALSE., __RC__ )
+    
+    if (.NOT. USE_FWET_FOR_RUNOFF) then
+       call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT= 0.02, __RC__ )
+       call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT= 0.02, __RC__ )
+    else
+       call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT=0.005, __RC__ )
+       call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT=0.025, __RC__ )
+    endif
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
@@ -1258,7 +1269,7 @@ subroutine SetServices ( GC, RC )
     SHORT_NAME         = 'TSURF'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartRequired        ,&
+    RESTART            = RESTART                     ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -1944,7 +1955,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_1' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP1'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1953,7 +1964,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_2' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP2'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1962,7 +1973,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_3' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP3'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1971,7 +1982,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_4' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP4'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1980,7 +1991,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_5' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP5'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1989,7 +2000,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_6' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP6'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -3988,7 +3999,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character (len=ESMF_MAXSTR) :: NIRDFtpl
         real                        :: FAC
 
-        real                        :: PRECIPFRAC
         real                        :: DT
         integer                     :: NTILES
         integer                     :: I, N 
@@ -4132,9 +4142,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              Label   = trim(COMP_NAME)//"_DT:"     ,&
              Default = DT                          ,&
              RC=STATUS )
-        VERIFY_(STATUS)
-
-        call MAPL_GetResource ( MAPL, PRECIPFRAC, Label="PRECIPFRAC:", DEFAULT=1.0, RC=STATUS)
         VERIFY_(STATUS)
 
         ! Get component's private internal state
@@ -5033,7 +5040,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
-           call WRITE_PARALLEL(PRECIPFRAC, UNIT)
+           call WRITE_PARALLEL(USE_FWET_FOR_RUNOFF, UNIT)
            call MAPL_VarWrite(unit, tilegrid, LONS, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, LATS, mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, DZSF, mask=mask, rc=status); VERIFY_(STATUS)
@@ -5375,7 +5382,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if (ntiles >0) then
 
              call CATCHMENT ( NTILES, LONS, LATS                  ,&
-             DT	      ,     PRECIPFRAC, cat_id, VEG, DZSF         ,&
+             DT,USE_FWET_FOR_RUNOFF,FWETC,FWETL, cat_id, VEG, DZSF,&
              PCU      ,     PLS       ,    SNO, ICE, FRZR         ,&
              UUU                                                  ,&
 
@@ -5442,7 +5449,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
 
         end if
+        
+        ! Change units of TP1, TP2, .., TP6 export variables from Celsius to Kelvin.
+        ! This used to be done at the level the Surface GridComp.
+        ! With this change, gridded TSOIL[x] exports from Surface and tile-space TP[x] exports
+        ! from Catch are now consistently in units of Kelvin.
+        ! - rreichle, borescan, 6 Nov 2020
 
+        TP1 = TP1 + MAPL_TICE
+        TP2 = TP2 + MAPL_TICE
+        TP3 = TP3 + MAPL_TICE
+        TP4 = TP4 + MAPL_TICE
+        TP5 = TP5 + MAPL_TICE
+        TP6 = TP6 + MAPL_TICE
+                
         call MAPL_TimerOff ( MAPL, "-CATCH" )
 
         if (OFFLINE_MODE /=0) then
