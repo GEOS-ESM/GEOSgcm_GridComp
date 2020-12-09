@@ -10,7 +10,7 @@
 /GEOSogcm_GridComp/ @GEOS-ESM/ocean-team
 # Also _connections_ to the ocean should be included in Ocean Team's responsibility
 /GEOSdataatm_GridComp/ @GEOS-ESM/ocean-team 
-/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSsaltwater_GridComp/ @GEOS-ESM/ocean-team 
+/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSsaltwater_GridComp/ @GEOS-ESM/ocean-team @GEOS-ESM/seaice-team
 
 
 
