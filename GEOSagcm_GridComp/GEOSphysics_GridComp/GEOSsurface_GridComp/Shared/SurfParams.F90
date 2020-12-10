@@ -110,7 +110,7 @@ module SurfParams
         end select
 
      else if (LSM_CHOICE==3) then
-	select case (LAND_PARAMS)
+	select case (LAND_PARAMS)      
 	case ("CN_CLM45")  ! parameters to reproduce Eunjee Lee's Catchment-CN4.5 fire carbon emission simulations
                 LAND_FIX 	= .TRUE.
                 CSOIL_2  	= 70000. ! Post H5_0

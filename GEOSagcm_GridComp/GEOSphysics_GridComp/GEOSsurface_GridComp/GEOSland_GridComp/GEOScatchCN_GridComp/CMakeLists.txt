@@ -1,13 +1,10 @@
 esma_set_this ()
 
-set (alldirs
-  GEOScatchCN40_GridComp
-  GEOScatchCN45_GridComp
-  )
+add_subdirectory (GEOScatchCNCLM40_GridComp)
+add_subdirectory (GEOScatchCNCLM45_GridComp)
 
 esma_add_library (${this}
   SRCS GEOS_CatchCNGridComp.F90 
-  SUBCOMPONENTS ${alldirs}
   SUBDIRS Shared 
   DEPENDENCIES GEOS_SurfaceShared GEOS_LandShared GEOS_CatchCNShared MAPL
   INCLUDES ${INC_ESMF})

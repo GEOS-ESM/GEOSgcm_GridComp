@@ -497,6 +497,8 @@ contains
     allocate(pftcon%taus(0:numpft))
     allocate(pftcon%z0mr(0:numpft))
     allocate(pftcon%displar(0:numpft))
+    allocate(pftcon%roota_par(0:numpft))
+    allocate(pftcon%rootb_par(0:numpft))
     allocate(pftcon%slatop(0:numpft))
     allocate(pftcon%dsladlai(0:numpft))
     allocate(pftcon%leafcn(0:numpft))

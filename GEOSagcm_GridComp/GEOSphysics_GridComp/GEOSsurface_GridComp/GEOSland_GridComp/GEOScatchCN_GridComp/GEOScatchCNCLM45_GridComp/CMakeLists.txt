@@ -1,16 +1,17 @@
 esma_set_this ()
 
-string (REPLACE GEOScatchCN40_GridComp_ "" is_openmp ${this})
+string (REPLACE GEOScatchCNCLM45_GridComp_ "" is_openmp ${this})
 
-esma_add_subdirectories (CLM40)
+esma_add_subdirectories (CLM45)
 
 set (srcs
-  GEOS_CatchCN40GridComp.F90
+  GEOS_CatchCNCLM45GridComp.F90
   )
 
 esma_add_library (${this}
   SRCS ${srcs}
-  DEPENDENCIES MAPL GEOS_Shared GEOS_LandShared CLM40 GEOS_CatchCNShared)
+  DEPENDENCIES MAPL GEOS_Shared GEOS_LandShared CLM45 GEOS_CatchCNShared
+  TYPE SHARED)
 target_include_directories (${this} PUBLIC ${INC_ESMF} ${INC_NETCDF})
 
 if (is_openmp)
