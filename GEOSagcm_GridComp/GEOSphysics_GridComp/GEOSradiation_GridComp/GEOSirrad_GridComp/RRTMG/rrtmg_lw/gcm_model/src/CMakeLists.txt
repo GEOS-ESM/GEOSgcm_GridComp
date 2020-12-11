@@ -32,7 +32,7 @@ set (k_g_srcs
 # MAT With GCC -O1 -g with these files causes an issue. But disabling var tracking
 #     seems to make compilation bearable on release
 foreach (file ${k_g_srcs})
-   if (CMAKE_BUILD_TYPE MATCHES Release)
+   if (CMAKE_BUILD_TYPE MATCHES Release OR CMAKE_BUILD_TYPE MATCHES Aggressive)
       if ("${CMAKE_Fortran_COMPILER_ID}" MATCHES "GNU")
          set_source_files_properties( ${file} PROPERTIES COMPILE_FLAGS "-O1 -fno-var-tracking")
       else ()
