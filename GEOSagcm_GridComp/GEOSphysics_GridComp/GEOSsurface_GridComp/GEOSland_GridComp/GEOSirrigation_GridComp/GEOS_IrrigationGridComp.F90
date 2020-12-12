@@ -15,30 +15,28 @@ module GEOS_IrrigationGridCompMod
 !   necessary interpolation to provide refreshed values of the 
 !   dynamic vegetation values prescribed by external data/observations.\\
 !
-! There are no imports to this routine.
 ! Exports from this routine are the instaneous values of the
-! vegetation parameters on tilespace to be used in other components
-! of the land subroutine.  All exports and imports are stored on the
+! irrigation rates from 3 different irrigation methods on tilespace :
+! 1) drip, 2) sprinkler and 3) flood. Land models (CATCH/CATCHCN)  use
+! irrigation rates as a water inpput in water budget calculation.
+! All exports and imports are stored on the
 ! tile grid inherited from the parent routine.\\
 ! 
-! I. Parameter Class 1: Time AND spatially dependent parameters 
+! I. Parameter Class 1: Time and spatially dependent parameters 
 ! from a binary data file\\
 ! 
-! Current list: LAI, GRN, NDVI \\
+! EXPORTS:  SPRINKLERRATE, DRIPRATE, FLOODRATE\\
 ! 
 ! The gridded component stores the surrounding observations of 
-! each parameter in the internal state.  If the run method 
-! discovers that the current internal state does not contain the 
-! observed values required to interpolate the values at the current 
-! time, it performs the required i/o to refresh the values of 
-! the internal state.  The first iteration of the run method 
-! always has to fill the values.  No restart is required by this 
-! gridded component for these parameters.  (A restart *is* now
-! required for Vegetation Class 3 \\
+! each parameter in the internal state.  All internals are static parameters.
 !
-! INTERNALS: ITY, Z2CH, ASCATZ0\\
+! INTERNALS: IRRIGFRAC, PADDYFRAC, CROPIRRIGFRAC, IRRIGPLANT, IRRIGHARVEST,
+!            IRRIGTYPE, SPRINKLERFR, DRIPFR, FLOODFR, LAIMIN, LAIMAX\\
 !
-! EXPORTS:  LAI, GRN, NDVI\\
+! This GC imports soil parameters and root zone soil moisture from land models
+!    to compute soil moisture state for IRRIGRATE calculation.
+  
+! IMPORTS: POROS, WPWET, VGWMAX, WCRZ \\
 !
 ! !USES: 
 
@@ -149,11 +147,6 @@ contains
 ! -----------------------------------------------------------
 
 !BOS
-
-! -----------------------------------------------------------
-!   Import States
-! None at the moment
-! -----------------------------------------------------------
 
 ! -----------------------------------------------------------
 ! Internal State 
@@ -274,7 +267,7 @@ contains
     VERIFY_(STATUS)  
 
 ! -----------------------------------------------------------
-! Import Variables
+! Import states
 ! -----------------------------------------------------------    
 
     call MAPL_AddImportSpec(GC                                 ,&
@@ -319,7 +312,7 @@ contains
 ! -----------------------------------------------------------
 
     call MAPL_AddExportSpec(GC                                ,&
-         SHORT_NAME = 'SPRINKERRATE'                          ,&
+         SHORT_NAME = 'SPRINKLERRATE'                         ,&
          LONG_NAME  = 'sprinkler_irrigation_rate'             ,&
          UNITS      = 'kg m-2 s-1'                            ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
@@ -377,41 +370,50 @@ contains
 
 ! ErrLog Variables
 
-    character(len=ESMF_MAXSTR)          :: IAm
-    integer                             :: STATUS
-    character(len=ESMF_MAXSTR)          :: COMP_NAME
+    character(len=ESMF_MAXSTR)         :: IAm
+    integer                            :: STATUS
+    character(len=ESMF_MAXSTR)         :: COMP_NAME
 
 ! Locals
 
-    type (MAPL_MetaComp),     pointer   :: MAPL=>null()
-    type (ESMF_State       )            :: INTERNAL
+    type (MAPL_MetaComp),     pointer  :: MAPL=>null()
+    type (ESMF_State       )           :: INTERNAL
 
 ! INTERNAL pointers
  
-    real, dimension(:), pointer :: ITY
-    real, dimension(:), pointer :: Z2CH
-    real, dimension(:), pointer :: ASCATZ0
-
+    real, dimension(:),     pointer :: IRRIGFRAC
+    real, dimension(:),     pointer :: PADDYFRAC
+    real, dimension(:),     pointer :: SPRINKLERFR
+    real, dimension(:),     pointer :: DRIPFR
+    real, dimension(:),     pointer :: FLOODFR
+    real, dimension(:),     pointer :: LAIMIN
+    real, dimension(:),     pointer :: LAIMAX
+    real, dimension(:,:),   pointer :: CROPIRRIGFRAC
+    real, dimension(:,:),   pointer :: IRRIGTYPE
+    real, dimension(:,:,:), pointer :: IRRIGPLANT
+    real, dimension(:,:,:), pointer :: IRRIGHARVEST
+    
 ! EXPORT pointers 
 
-    real, dimension(:), pointer :: LAI
-    real, dimension(:), pointer :: GRN
-    real, dimension(:), pointer :: ROOTL
-    real, dimension(:), pointer :: NDVI
+    real, dimension(:), pointer :: SPRINKLERRATE
+    real, dimension(:), pointer :: DRIPRATE
+    real, dimension(:), pointer :: FLOODRATE
+
+! IMPORT pointers
+    
+    real, dimension(:), pointer :: POROS
+    real, dimension(:), pointer :: WPWET
+    real, dimension(:), pointer :: VGWMAX
+    real, dimension(:), pointer :: WCRZ
   
-! Time attributes and placeholders
+! Time attributes 
 
     type(ESMF_Time) :: CURRENT_TIME
+    logical, save   :: firsttime=.true.
+    integer         :: AGCM_YY, AGCM_MM, AGCM_DD, AGCM_MI, AGCM_S, AGCM_HH, dofyr
 
 ! Others
 
-    character(len=ESMF_MAXSTR)         :: LAIFile
-    character(len=ESMF_MAXSTR)         :: GRNFile
-    character(len=ESMF_MAXSTR)         :: NDVIFile
-    character(len=ESMF_MAXSTR)         :: LAItpl
-    character(len=ESMF_MAXSTR)         :: GRNtpl
-    character(len=ESMF_MAXSTR)         :: NDVItpl
-    integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width, ldas_ens_id, ldas_first_ens_id
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -432,92 +434,67 @@ contains
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
     VERIFY_(STATUS) 
 
-    call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, ldas_first_ens_id, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-    ldas_ens_id = ldas_first_ens_id 
-
-! -----------------------------------------------------------
-! Get file names from configuration
-! -----------------------------------------------------------
-    if(NUM_LDAS_ENSEMBLE > 1) then
-       !for GEOSldas, the comp_name should be vegdynxxxx....
-       read(comp_name(7:7+ens_id_width-1), *) ldas_ens_id
-    endif
-
-    call MAPL_GetResource(MAPL, LAIFILE, label = 'LAI_FILE:', &
-        default = 'lai.dat', RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, GRNFILE, label = 'GREEN_FILE:', &
-         default = 'green.dat', RC=STATUS )
-    VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, NDVIFILE, label = 'NDVI_FILE:', &
-        default = 'ndvi.dat', RC=STATUS )
-    VERIFY_(STATUS)
 
 ! get pointers to internal variables
 ! ----------------------------------
   
-    call MAPL_GetPointer(INTERNAL,      ITY,      'ITY' , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL,      Z2CH,     'Z2CH', RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL,   ASCATZ0,  'ASCATZ0', RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRIGFRAC      ,'IRRIGFRAC',    RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, PADDYFRAC      ,'PADDYFRAC',    RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CROPIRRIGFRAC  ,'CROPIRRIGFRAC',RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRIGPLANT     ,'IRRIGPLANT',   RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRIGHARVEST   ,'IRRIGHARVEST', RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRIGTYPE      ,'IRRIGTYPE',    RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, SPRINKLERFR    ,'SPRINKLERFR',  RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, DRIPFR         ,'DRIPFR',       RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, FLOODFR        ,'FLOODFR',      RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, LAIMIN         ,'LAIMIN',       RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, LAIMAX         ,'LAIMAX',       RC=STATUS) ; VERIFY_(STATUS)
 
 ! get pointers to EXPORTS
 ! -----------------------
 
-    call MAPL_GetPointer(EXPORT, LAI,   'LAI',    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, GRN,   'GRN',    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, ROOTL, 'ROOTL',  RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(EXPORT, NDVI,   'NDVI',  RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SPRINKLERRATE, 'SPRINKLERRATE', RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DRIPRATE,      'DRIPRATE',      RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FLOODRATE,     'FLOODRATE',     RC=STATUS) ; VERIFY_(STATUS)
 
-    if (NUM_LDAS_ENSEMBLE > 1 .and. ldas_ens_id > ldas_first_ens_id) then
-       if(associated(LAI))  LAI   = LAIens0  
-       if(associated(GRN))  GRN   = GRNens0  
-       if(associated(NDVI)) NDVI  = NDVIens0 
-       if(associated(ROOTL))ROOTL = ROOTLens0
+! get pointers to IMPORT variables
+! --------------------------------
+
+    call MAPL_GetPointer(IMPORT, POROS , 'POROS',  RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, WPWET , 'WPWET',  RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, VGWMAX, 'VGWMAX', RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, WCRZ  , 'WCRZ',   RC=STATUS) ; VERIFY_(STATUS)
+    
+    if (firsttime) then
+       
+       if(associated(SPRINKLERRATE)) SPRINKLERRATE = 0.
+       if(associated(DRIPRATE))      DRIPRATE      = 0.
+       if(associated(FLOODRATE))     FLOODRATE     = 0.
+       firsttime = .false.
        call MAPL_TimerOff(MAPL,"TOTAL")
        RETURN_(ESMF_SUCCESS)
+       
     endif
 
-! Do the lai greeness and ndvi interpolation
-! ------------------------------------------
+! Get time
+! --------
 
     call ESMF_ClockGet  ( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_ReadForcing(MAPL,'LAI',LAIFILE,CURRENT_TIME,LAI,ON_TILES=.true.,RC=STATUS)
+    call ESMF_TimeGet  ( CURRENT_TIME, YY = AGCM_YY,       &
+				       MM = AGCM_MM,       &
+				       DD = AGCM_DD,       &
+                                       H  = AGCM_HH,       &
+                                       M  = AGCM_MI,       &
+				       S  = AGCM_S ,       &  
+				       dayOfYear = dofyr , &
+				       rc=status )
     VERIFY_(STATUS)
-    call MAPL_ReadForcing(MAPL,'GRN',GRNFILE,CURRENT_TIME,GRN,ON_TILES=.true.,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_ReadForcing(MAPL,'NDVI',NDVIFILE,CURRENT_TIME,NDVI,ON_TILES=.true.,RC=STATUS)
-    VERIFY_(STATUS)
 
-! Vegetation types used to index into tables
-! Root length density no longer depends on time of year
-! -----------------------------------------------------
-
-    ROOTL = VGRT(nint(ITY))
-
-    if (NUM_LDAS_ENSEMBLE > 1 .and. ldas_ens_id == ldas_first_ens_id) then
-       LAIens0  => LAI
-       GRNens0  => GRN
-       NDVIens0 => NDVI
-       ROOTLens0=> ROOTL
-    endif
-
-!  All done
-! ---------
-
+! call the irrigation model 
+! -------------------------
+    
     call MAPL_TimerOff(MAPL,"TOTAL")
     RETURN_(ESMF_SUCCESS)
 

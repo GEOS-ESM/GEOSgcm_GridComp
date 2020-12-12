@@ -149,15 +149,16 @@
 
 # ---- Run irrigation module
 #
-#    0 : Do NOT run irrigation module (default)
-#    1 : YES, run irrigation module
+#    0 : Do NOT run irrigation module (default) 
+#    1 : YES, run irrigation module -
+#        The irrigation parameter file 'irrigation_IMxJM_DL.dat' must be availaable in the BCSDIR 
 #
 # GEOSagcm=>RUN_IRRIG: 0
 # GEOSldas=>RUN_IRRIG: 1
 
 # ---- Irrigation model method 
 #
-#    0 : CONCURRENTLY Sprinkler, Flood, and DRIP irrigation methods on mthod specific fractions (default)
+#    0 : CONCURRENTLY Sprinkler, Flood, and DRIP irrigation methods on method specific fractions (default)
 #    1 : Sprinkler irrigation only
 #    2 : Flood irrigation only
 #    3 : Drip irrigation only
@@ -165,6 +166,13 @@
 # GEOSagcm=>IRRIG_METHOD: 0
 # GEOSldas=>IRRIG_METHOD: 0
 
+# ---- Irrigation trigger
+#
+#    0 : LAImin/LAImax based (default)
+#    1 : Use planting and harvesting times from crop calendars for 26 crops
+#
+# GEOSagcm=>IRRIG_TRIGGER: 0
+# GEOSldas=>IRRIG_TRIGGER: 1
 
 #--------------------------------------------------------#
 #              River routing model (RRM)                 #
