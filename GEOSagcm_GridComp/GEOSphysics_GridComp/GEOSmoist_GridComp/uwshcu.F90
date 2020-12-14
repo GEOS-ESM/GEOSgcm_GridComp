@@ -1666,7 +1666,7 @@ contains
  35    continue
        if( cin .lt. 0. ) limit_cin(i) = 1.
        cin = max(0.,cin)
-       cin = max(cin,0.05*(lts-18.))   ! kludge to reduce UW in StCu regions
+       cin = max(cin,0.04*(lts-18.))   ! kludge to reduce UW in StCu regions
 
 
        if( klfc .ge. k0 ) then
@@ -2505,7 +2505,7 @@ contains
           ! ----------------------------------------------------------------- !
 
             cridis = rle*scaleh                 ! Original code
-          ! cridis = 1.*(zifc0(k) - zifc0(k-1))  ! New code
+           ! cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
  
           ! ---------------- !
           ! Buoyancy Sorting !
@@ -2601,8 +2601,7 @@ contains
             if (mixscale.ne.0.0) then
 !            if (lts.gt.18.) then
               rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
-!              rei(k) = rei(k)*max(0.,min(1.,(zmid0(k)-400.)/300.))
-!              rei(k) = ( rkm / min(scaleh,4000.) / g / rhomid0j )   ! alternative
+!              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-min(4.,max(0.,(scaleh-2600.)/300.))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
             else if (mixscale.eq.0.0) then
               rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j )       ! Jason-2_0 version
             end if

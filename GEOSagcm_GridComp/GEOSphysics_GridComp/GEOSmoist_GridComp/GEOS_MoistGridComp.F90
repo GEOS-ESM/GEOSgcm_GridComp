@@ -8882,12 +8882,12 @@ contains
         CLCN = CLCN + CNV_MFD*iMASS*DT_MOIST
         if (UWTOLS/=0) then
        ! add ShallowCu CL/QL/QI tendencies to Large-Scale
-          CLLS = CLLS +   1.0*MFD_SC*iMASS*DT_MOIST
+          CLLS = CLLS +   1.2*MFD_SC*iMASS*DT_MOIST
           !CLLS = CLLS + 1.5*DCM_SC*iMASS*DT_MOIST
           QLLS = QLLS +   QLDET_SC*iMASS*DT_MOIST
           QILS = QILS +   QIDET_SC*iMASS*DT_MOIST
         else
-          CLCN = CLCN +     1.0*MFD_SC*iMASS*DT_MOIST
+          CLCN = CLCN +     1.2*MFD_SC*iMASS*DT_MOIST
          ! CLCN = CLCN + 1.5*DCM_SC*iMASS*DT_MOIST
           QLCN = QLCN +   QLDET_SC*iMASS*DT_MOIST
           QICN = QICN +   QIDET_SC*iMASS*DT_MOIST

@@ -2100,7 +2100,7 @@ contains
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,          RC=STATUS)
        call MAPL_GetResource (MAPL, SMTH_LEV,     trim(COMP_NAME)//"_SMTH_LEV:",     default=NINT(20.0*LM/137), RC=STATUS)
     ! Pressure Thickness (hPa) at the surface for 1-2-1 smoother for THV (and U:V)
-       call MAPL_GetResource (MAPL, SMTH_PRS,     trim(COMP_NAME)//"_SMTH_PRS:",     default= 25000.0,    RC=STATUS)
+       call MAPL_GetResource (MAPL, SMTH_PRS,     trim(COMP_NAME)//"_SMTH_PRS:",     default= -999.0,    RC=STATUS)
      endif
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",      default=0,            RC=STATUS)
