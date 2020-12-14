@@ -3,59 +3,167 @@ MODULE IRRIGATION_MODULE
   USE ESMF
   
   IMPLICIT NONE
-
-  PRIVATE
-
-  PUBLIC IRRIGATION, NUM_CROPS, NUM_SEASONS
-
-  INTEGER, PARAMETER :: NUM_CROPS = 26, NUM_SEASONS = 2
-
-CONTAINS
   
-  SUBROUTINE IRRIGATION (SURFRC)
+  PRIVATE
+  
+  INTEGER, PARAMETER, PUBLIC :: NUM_CROPS = 26, NUM_SEASONS = 2
+  
+  type, public :: irrigation_model
+     
+     ! Sprinkler parameters
+     ! --------------------
+     REAL :: sprinkler_stime  = 6.0 ! sprinkler irrigatrion start time [hours]
+     REAL :: sprinkler_dur    = 4.0 ! sprinkler irrigation duration [hours]
+     REAL :: sprinkler_thres  = 0.5 ! soil moisture threshhold to trigger sprinkler irrigation
+     
+     ! Drip parameters 
+     ! ---------------
+     REAL :: drip_stime       =  6.0 ! drip irrigatrion start time [hours]
+     REAL :: drip_dur         = 12.0 ! drip irrigation duration [hours]
+     
+     ! Flood parameters
+     ! ----------------
+     REAL :: flood_stime      =  6.0  ! flood irrigatrion start time [hours]
+     REAL :: flood_dur        =  1.0  ! flood irrigation duration [hours]
+     REAL :: flood_thres      =  0.25 ! soil moisture threshhold to trigger flood irrigation
+     REAL :: efcor            = 76.0  ! Efficiency Correction (%)
+     
+   contains
+     
+     ! public
+     procedure, public :: init_model
+     generic,   public :: run_model => irrigrate_lai_trigger, irrigrate_crop_calendar
 
-    IMPLICIT NONE
+     ! private
+     procedure, private :: irrigrate_lai_trigger
+     procedure, private :: irrigrate_crop_calendar
+     procedure, private :: srate => sprinkler_irrig_rate
+     procedure, private :: frate => flood_irrig_rate
+     procedure, private :: drate => drip_irrig_rate
+     
+  end type irrigation_model
 
-    CHARACTER(:), INTENT(IN) :: SURFRC
+contains
+
+  ! ----------------------------------------------------------------------------
+  
+  SUBROUTINE init_model (IM, SURFRC)
+
+    implicit none
+    class (irrigation_model), intent(inout) :: IM
+    CHARACTER(:), INTENT(IN)                :: SURFRC
+    type(ESMF_Config)                       :: SCF
     
-    ! Sprinkler parameters
-    ! --------------------
-    REAL :: sprinkler_stime  = 6.0 ! sprinkler irrigatrion start time [hours]
-    REAL :: sprinkler_dur    = 4.0 ! sprinkler irrigation duration [hours]
-    REAL :: sprinkler_thres  = 0.5 ! soil moisture threshhold to trigger sprinkler irrigation
-      
-    ! Drip parameters 
-    ! ---------------
-    REAL :: drip_stime       =  6.0 ! drip irrigatrion start time [hours]
-    REAL :: drip_dur         = 12.0 ! drip irrigation duration [hours]
-      
-    ! Flood parameters
-    ! ----------------
-    REAL :: flood_stime      =  6.0  ! flood irrigatrion start time [hours]
-    REAL :: flood_dur        =  1.0  ! flood irrigation duration [hours]
-    REAL :: flood_thres      =  0.25 ! soil moisture threshhold to trigger flood irrigation
-    REAL :: efcor            = 76.0  ! Efficiency Correction (%)    
-    TYPE(ESMF_Config)       :: SCF 
-
     SCF = ESMF_ConfigCreate(__RC__) 
     CALL ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_STIME:', VALUE=sprinkler_stime, DEFAULT= 6.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_DUR:'  , VALUE=sprinkler_dur,   DEFAULT= 4.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_THRES:', VALUE=sprinkler_thres, DEFAULT= 0.50, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_STIME:'     , VALUE=drip_stime,      DEFAULT= 6.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_DUR:'       , VALUE=drip_dur,        DEFAULT=12.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_STIME:'    , VALUE=flood_stime,     DEFAULT= 6.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_DUR:'      , VALUE=flood_dur,       DEFAULT= 1.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_THRES:'    , VALUE=flood_thres,     DEFAULT= 0.25, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='IRR_EFCOR:'      , VALUE=efcor,           DEFAULT=76.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_STIME:', VALUE=IM%sprinkler_stime, DEFAULT= 6.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_DUR:'  , VALUE=IM%sprinkler_dur,   DEFAULT= 4.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_THRES:', VALUE=IM%sprinkler_thres, DEFAULT= 0.50, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_STIME:'     , VALUE=IM%drip_stime,      DEFAULT= 6.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_DUR:'       , VALUE=IM%drip_dur,        DEFAULT=12.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_STIME:'    , VALUE=IM%flood_stime,     DEFAULT= 6.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_DUR:'      , VALUE=IM%flood_dur,       DEFAULT= 1.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_THRES:'    , VALUE=IM%flood_thres,     DEFAULT= 0.25, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRR_EFCOR:'      , VALUE=IM%efcor,           DEFAULT=76.00, __RC__ )
     CALL ESMF_ConfigDestroy      (SCF, __RC__)
+
+  END SUBROUTINE init_model
+
+  ! ----------------------------------------------------------------------------
+
+  SUBROUTINE irrigrate_lai_trigger (this,IRRIG_METHOD, local_hour, &
+            IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,    &           
+            SMWP, SMSAT, SMREF, SMCNT, LAI, LAITHRES,              &
+            SPRINKLERRATE, DRIPRATE, FLOODRATE)
+
+    implicit none
+    class (irrigation_model), intent(inout) :: this
+    integer, intent (in) :: IRRIG_METHOD
+    real,    intent (in) :: local_hour
+    real, dimension (:), intent (in)    ::  IRRIGFRAC, PADDYFRAC, SPRINKLERFR, &
+         DRIPFR, FLOODFR, SMWP, SMSAT, SMREF, SMCNT, LAI, LAITHRES
+    real, dimension (:), intent (inout) :: SPRINKLERRATE, DRIPRATE, FLOODRATE
+    INTEGER :: NTILES, N
+    REAL    :: ma
+
+    SPRINKLERRATE = 0.
+    DRIPRATE      = 0.
+    FLOODRATE     = 0.
     
-  CONTAINS
+    TILE_LOOP : DO N = 1, NTILES
+       CHECK_IRRIGFRACS_LAITHRES : IF (((IRRIGFRAC(N) + PADDYFRAC(N)) > 0.).AND.&
+            (LAI(N) >= LAITHRES(N))) THEN
+
+          !-----------------------------------------------------------------------------
+          !     Get the root zone moisture availability to the plant
+          !-----------------------------------------------------------------------------
+
+          ma = (SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
+
+          SELECT CASE (IRRIG_METHOD)
+          CASE (0)  ! CONCURRENTLY SPRINKER + FLOOD + DRIP on corresponding fractions
+             SPRINKLERRATE (N) = this%srate() * SPRINKLERFR(N)
+             FLOODRATE     (N) = this%frate() * FLOODFR (N)
+             DRIPRATE      (N) = this%drate() * DRIPFR (N)
+                         
+          CASE (1)  ! SPRINKLER only
+             SPRINKLERRATE (N) = this%srate()             
+          CASE (2)  ! FLOOD only
+             FLOODRATE     (N) = this%frate()
+          CASE (3)  ! DRIP only
+             DRIPRATE      (N) = this%drate()
+          CASE DEFAULT
+             PRINT *, 'irrigrate_lai_trigger: IRRIG_METHOD can be 0,1,2, or3'
+             CALL EXIT(1)
+          END SELECT
+          
+       ENDIF CHECK_IRRIGFRACS_LAITHRES
+    END DO TILE_LOOP
+
+  END SUBROUTINE irrigrate_lai_trigger
+
+  ! ----------------------------------------------------------------------------
+
+  SUBROUTINE irrigate_crop_calendar
+
+    implicit none
+
     
+    
+  END SUBROUTINE irrigate_crop_calendar
+  
+  ! ----------------------------------------------------------------------------
+
+  REAL FUNCTION sprinkler_irrig_rate()
+
+    implicit none
+    
+  END FUNCTION sprinkler_irrig_rate
+  
+  ! ----------------------------------------------------------------------------
+
+  REAL FUNCTION flood_irrig_rate()
+
+    implicit none
+
+  END FUNCTION flood_irrig_rate
+  
+  ! ----------------------------------------------------------------------------
+
+  REAL FUNCTION drip_irrig_rate()
+
+    implicit none
+
+  END FUNCTION drip_irrig_rate
+  
+  ! ----------------------------------------------------------------------------
+
+  
+     
     ! ********************************************************************
   
     SUBROUTINE irrigation_rate (IRRIG_METHOD,                                    &
-         NTILES, AGCM_HH, AGCM_MI, AGCM_S, lons, IRRIGFRAC, PADDYFRAC,  &
+         NTILES,  IRRIGFRAC, PADDYFRAC,  &
          CLMPT,CLMST, CLMPF, CLMSF, LAIMAX, LAIMIN, LAI,                &
          POROS, WPWET, VGWMAX, RZMC, IRRIGRATE)
       
@@ -355,5 +463,21 @@ CONTAINS
       flood_irrig_water = water * (100.0/(100.0-efcor))
       
     END FUNCTION flood_irrig_water
-  END SUBROUTINE IRRIGATION
+
+   ! ********************************************************************
+
+  REAL FUNCTION crop_water_deficit (IrrigScale, asmc, smcref, efcor)
+
+    implicit none
+
+    real, intent (in)  :: IrrigScale, asmc, smcref, efcor
+    real               :: twater
+
+    twater             = smcref - asmc
+    twater             = twater * IrrigScale            ! Scale the irrigation intensity
+    crop_water_deficit = twater*(100.0/(100.0-efcor))   ! Apply efficiency correction
+
+  END FUNCTION crop_water_deficit
+
+  ! ********************************************************************
 END MODULE IRRIGATION_MODULE

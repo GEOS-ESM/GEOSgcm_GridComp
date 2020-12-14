@@ -156,7 +156,7 @@
 # GEOSagcm=>RUN_IRRIG: 0
 # GEOSldas=>RUN_IRRIG: 1
 
-# ---- Irrigation model method 
+# ---- Irrigation method 
 #
 #    0 : CONCURRENTLY Sprinkler, Flood, and DRIP irrigation methods on method specific fractions (default)
 #    1 : Sprinkler irrigation only
@@ -169,10 +169,22 @@
 # ---- Irrigation trigger
 #
 #    0 : LAImin/LAImax based (default)
-#    1 : Use planting and harvesting times from crop calendars for 26 crops
+#    1 : Use planting and harvesting times from 26 crop calendars 
 #
 # GEOSagcm=>IRRIG_TRIGGER: 0
-# GEOSldas=>IRRIG_TRIGGER: 1
+# GEOSldas=>IRRIG_TRIGGER: 0
+
+# ----- Below default parameter values can also be changed via this resource file 
+#
+# SPRINKLER_STIME: 6.0 # sprinkler irrigatrion start time [hours]
+# SPRINKLER_DUR:   4.0 # sprinkler irrigation duration [hours]
+# SPRINKLER_THRES: 0.5 # soil moisture threshhold to trigger sprinkler irrigation
+# DRIP_STIME:      6.0 # drip irrigatrion start time [hours]
+# DRIP_DUR:       12.0 # drip irrigation duration [hours]
+# FLOOD_STIME:     6.0 # flood irrigatrion start time [hours]
+# FLOOD_DUR:       1.0 # flood irrigation duration [hours]
+# FLOOD_THRES:    0.25 # soil moisture threshhold to trigger flood irrigation
+# IRR_EFCOR:      76.0 # Efficiency Correction (%)
 
 #--------------------------------------------------------#
 #              River routing model (RRM)                 #
