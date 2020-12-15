@@ -41,7 +41,7 @@ $mk_catch_log = "mk_catch.log";
             system_($cmd);
         }
         else {
-            $cmd = "sbatch $mk_catch_j";
+            $cmd = "sbatch -W $mk_catch_j";
             print "$cmd\n";
             chomp($line = `$cmd`);
             $pid = (split /\s+/, $line)[-1];
