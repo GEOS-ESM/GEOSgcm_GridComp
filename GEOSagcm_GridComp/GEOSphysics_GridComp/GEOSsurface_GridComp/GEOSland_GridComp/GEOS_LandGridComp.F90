@@ -68,7 +68,7 @@ contains
 ! !DESCRIPTION:  The SetServices for the Physics GC needs to register its
 !   Initialize and Run.  It uses the MAPL\_Generic construct for defining 
 !   state specs and couplings among its children.  In addition, it creates the   
-!   children GCs (VegDyn, Irrigation, Catch, CatchCN, Route) and runs their respective SetServices.
+!   children GCs (VegDyn, Catch, CatchCN, Irrigation, Route) and runs their respective SetServices.
 
 !EOP
 
@@ -158,20 +158,6 @@ contains
     call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'  , value=RUN_IRRIG  , DEFAULT=0, __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
-
-    IF(RUN_IRRIG == 1) THEN
-       if (NUM_CATCH == 1) then
-          IRRIGATION(1) = MAPL_AddChild(GC, NAME='IRRIGATION', SS=RouteSetServices, RC=STATUS)
-          VERIFY_(STATUS)
-       else
-          do I = 1, NUM_CATCH
-             WRITE(TMP,'(I3.3)') I
-             GCName  = 'ens' // trim(TMP) // ':IRRIGATION'
-             IRRIGATION(I) = MAPL_AddChild(GC, NAME=GCName, SS=IrrigationSetServices, RC=STATUS)
-             VERIFY_(STATUS)
-          end do
-       end if
-    ENDIF
    
     SELECT CASE (LSM_CHOICE)
 
@@ -209,6 +195,19 @@ contains
        
     END SELECT
     
+    IF(RUN_IRRIG == 1) THEN
+       if (NUM_CATCH == 1) then
+          IRRIGATION(1) = MAPL_AddChild(GC, NAME='IRRIGATION', SS=IrrigationSetServices, RC=STATUS)
+          VERIFY_(STATUS)
+       else
+          do I = 1, NUM_CATCH
+             WRITE(TMP,'(I3.3)') I
+             GCName  = 'ens' // trim(TMP) // ':IRRIGATION'
+             IRRIGATION(I) = MAPL_AddChild(GC, NAME=GCName, SS=IrrigationSetServices, RC=STATUS)
+             VERIFY_(STATUS)
+          end do
+       end if
+    ENDIF    
 !    IF(RUN_ROUTE == 1) THEN
 !       if (NUM_CATCH == 1) then
 !          ROUTE(1) = MAPL_AddChild(GC, NAME='ROUTE', SS=RouteSetServices, RC=STATUS)
@@ -1442,6 +1441,16 @@ contains
 !             VERIFY_(STATUS)            
 !          ENDIF
        END SELECT
+       IF(RUN_ROUTE == 1) THEN
+          call MAPL_AddConnectivity (                              &
+               GC                                                 ,&
+               SHORT_NAME  = (/'LAI  '/)                          ,&
+               SRC_ID =  VEGDYN                                   ,&
+               DST_ID =  IRRIGATION(I)                            ,&
+               
+               RC=STATUS )
+          VERIFY_(STATUS)            
+       ENDIF
     END DO
 
 
