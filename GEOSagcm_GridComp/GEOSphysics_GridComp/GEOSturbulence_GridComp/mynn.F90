@@ -69,29 +69,29 @@ contains
 !
 ! run_mynn
 !
-subroutine run_mynn(IM, JM, LM, &                                                           ! in
-                    DEBUG_FLAG, DOMF, MYNN_LEVEL, CONSISTENT_TYPE, &                        ! in
-                    local_flag, WQL_TYPE, WRF_CG_FLAG, &                                    ! in
-                    alpha1, alpha2, alpha3, alpha4, &                                       ! in (length scale parameters)
-                    th00, ice_ramp, ple, pl, rhoe, zle, zlo, &                              ! in
-                    u, v, T, qv, ql, qi, thl, qt, thv, &                                    ! in (mean atmospheric state)
-                    u_star, H_surf, E_surf, &                                               ! in (surface state)
-                    whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &                      ! in (updraft state)
-                    aci, Ai_moist, Bi_moist, &                                              ! in
-                    tke, hl2, qt2, hlqt, &                                                  ! inout (turbulent state)
-                    ws_explicit, wqv_explicit, wql_explicit, &                              ! inout (counter-gradient fluxes)
-                    KM, KH, K_tke, itau, qdiv_out, SM25, SH25, L_out, &                     ! out
-                    Beta_hl, Beta_qt, EM, EH, &                                             ! out
-                    LS_out, LB_out, LT_out, &                                               ! out
-                    tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &                   ! out
-                    tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &                       ! out
-                    tke_surf, hl2_surf, qt2_surf, hlqt_surf)                                ! out
+subroutine run_mynn(IM, JM, LM, &                                                   ! in
+                    DEBUG_FLAG, DOMF, MYNN_LEVEL, CONSISTENT_TYPE, &                ! in
+                    L_TYPE_1, L_TYPE_2, L_TYPE_3, WQL_TYPE, WRF_CG_FLAG, &          ! in
+                    alpha1, alpha2, alpha3, alpha4, &                               ! in (length scale parameters)
+                    th00, ice_ramp, ple, pl, rhoe, zle, zlo, &                      ! in
+                    u, v, T, qv, ql, qi, thl, qt, thv, &                            ! in (mean atmospheric state)
+                    u_star, H_surf, E_surf, &                                       ! in (surface state)
+                    whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &              ! in (updraft state)
+                    aci, Ai_moist, Bi_moist, &                                      ! in
+                    tke, hl2, qt2, hlqt, &                                          ! inout (turbulent state)
+                    ws_explicit, wqv_explicit, wql_explicit, &                      ! inout (counter-gradient fluxes)
+                    KM, KH, K_tke, itau, qdiv_out, SM25, SH25, L_out, L_qt2_out, &  ! out
+                    Beta_hl, Beta_qt, EM, EH, &                                     ! out
+                    LS_out, LB_out, LT_out, &                                       ! out
+                    tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &           ! out
+                    tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &               ! out
+                    tke_surf, hl2_surf, qt2_surf, hlqt_surf)                        ! out
 
   use MAPL_ConstantsMod, only: MAPL_KARMAN
   use MAPL_SatVaporMod, only: MAPL_EQsat
 
   integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, &
-                                                WQL_TYPE, WRF_CG_FLAG, DEBUG_FLAG, local_flag
+                                                WQL_TYPE, WRF_CG_FLAG, DEBUG_FLAG, L_TYPE_1, L_TYPE_2, L_TYPE_3
   real, intent(in)                           :: th00, ice_ramp, DOMF
   double precision, intent(in)               :: alpha1, alpha2, alpha3, alpha4
   real, dimension(IM,JM), intent(in)         :: u_star, H_surf, E_surf
@@ -100,7 +100,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
                                                 au, Mu, wu, Ai_moist, Bi_moist, aci
   real, dimension(IM,JM,0:LM), intent(inout) :: tke, hl2, qt2, hlqt, ws_explicit, wqv_explicit, wql_explicit
   real, dimension(IM,JM), intent(out)        :: tke_surf, hl2_surf, qt2_surf, hlqt_surf, LT_out
-  real, dimension(IM,JM,0:LM), intent(out)   :: KM, KH, itau, qdiv_out, SM25, SH25, EM, EH, L_out, Beta_hl, Beta_qt, &
+  real, dimension(IM,JM,0:LM), intent(out)   :: KM, KH, itau, qdiv_out, SM25, SH25, EM, EH, L_out, L_qt2_out, Beta_hl, Beta_qt, &
                                                 tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &
                                                 tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &
                                                 LS_out, LB_out
@@ -109,7 +109,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
   integer :: i, j, k, kp1, km1
 
   double precision :: GH, GM, q2, Phi1, Phi2, Phi3, Phi4, Phi5, &
-                      D_25, qdiv, qdiv2, L2, L2GM, L2GH, Lq, &
+                      D_25, qdiv, qdiv2, L2, L2GM, L2GH, Lq, L_hlqt, &
                       tau_test, w2_test, wb_test_1, wb_test_2 ! for debugging
 
   real :: dhldz, dqtdz, dqldz, idzlo, iexner, &
@@ -124,7 +124,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
   real, dimension(IM,JM,0:LM) :: S2, N2, zeta, A, B
 
   double precision, dimension(IM,JM)      :: w_star, LT
-  double precision, dimension(IM,JM,0:LM) :: q, L, LS, LB
+  double precision, dimension(IM,JM,0:LM) :: q, L, L_qt2, LS, LB
 
   goth00 = MAPL_GRAV/th00
 
@@ -197,7 +197,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
   ! Test
   if ( .not. initialized_mynn ) then
      call initialize_mynn(IM, JM, LM, &
-                          local_flag, alpha1, alpha2, alpha3, alpha4, &
+                          L_TYPE_2, L_TYPE_3, alpha1, alpha2, alpha3, alpha4, &
                           th00, ice_ramp, hl, qt, tke, hl2, qt2, hlqt, q, &
                           zle, zlo, S2, N2, &
                           u_star, wb_surf, LMO, &
@@ -206,11 +206,11 @@ subroutine run_mynn(IM, JM, LM, &                                               
      initialized_mynn = .true.
   end if
 
-  call mynn_length(IM, JM, LM, &                                    ! in
-                   local_flag, alpha1, alpha2, alpha3, alpha4, &    ! in
-                   th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
-                   thv, ple, pl, &                                  ! in
-                   L, LS, LB, LT, w_star)                           ! out
+  call mynn_length(IM, JM, LM, &                                         ! in
+                   L_TYPE_2, L_TYPE_3, alpha1, alpha2, alpha3, alpha4, & ! in
+                   th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, &      ! in
+                   thv, ple, pl, &                                       ! in
+                   L, L_qt2, LS, LB, LT, w_star)                         ! out
 
   do k = 1,LM-1
 
@@ -239,9 +239,17 @@ subroutine run_mynn(IM, JM, LM, &                                               
         Lq          = L(i,j,k)*real( sqrt(2.*tke(i,j,k)), 8 )
 
         ! Compute thermodyanamic (co-)variances from level-2.5 closure
-        hl2_25  = qdiv*B2*L2*SH25(i,j,k)*dhldz**2.
-        qt2_25  = qdiv*B2*L2*SH25(i,j,k)*dqtdz**2.
-        hlqt_25 = qdiv*B2*L2*SH25(i,j,k)*dhldz*dqtdz
+        if ( L_TYPE_1 == 0 ) then 
+           hl2_25  = qdiv*B2*L2*SH25(i,j,k)*dhldz**2.
+           qt2_25  = qdiv*B2*L2*SH25(i,j,k)*dqtdz**2.
+           hlqt_25 = qdiv*B2*L2*SH25(i,j,k)*dhldz*dqtdz
+        else
+           L_hlqt = sqrt( L(i,j,k)*L_qt2(i,j,k) )
+
+           hl2_25  = qdiv*B2*L(i,j,k)**2.d0*SH25(i,j,k)*dhldz**2.
+           hlqt_25 = qdiv*B2*L(i,j,k)*L_hlqt*SH25(i,j,k)*dhldz*dqtdz
+           qt2_25  = qdiv*B2*L(i,j,k)*L_qt2(i,j,k)*SH25(i,j,k)*dqtdz**2.
+        end if
 
         !
         if ( MYNN_LEVEL == 2 ) then
@@ -314,10 +322,11 @@ subroutine run_mynn(IM, JM, LM, &                                               
   K_tke(:,:,LM) = K_tke(:,:,LM-1)
 
   !
-  L_out  = L
-  LS_out = LS
-  LB_out = LB
-  LT_out = LT
+  L_out     = L
+  L_qt2_out = L_qt2
+  LS_out    = LS
+  LB_out    = LB
+  LT_out    = LT
 
 end subroutine run_mynn
 
@@ -478,17 +487,17 @@ end subroutine mynn_tendency
 !
 subroutine implicit_M(IM, JM, LM, &                                                       ! in
                       th00, zlo, ple, u, v, h, qv, ql, Tv, tke, &                         ! in
-                      Beta_hl, Beta_qt, L, qdiv, SM25, SH25, &                            ! in
+                      Beta_hl, Beta_qt, L, L_qt2, qdiv, SM25, SH25, &                     ! in
                       ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf, & ! in
                       hl2, qt2, hlqt, &                                                   ! inout
                       tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &                          ! out
                       rhoe, dhldz, dqtdz, dqldz, S2, N2, &                                ! out
-                      MYNN_LEVEL, DOMF, CONSISTENT_TYPE)                                  ! in
+                      MYNN_LEVEL, DOMF, CONSISTENT_TYPE, L_TYPE_1)                          ! in
 
-  integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE
+  integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, L_TYPE_1
   real, intent(in)                           :: th00, DOMF
   real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, h, qv, ql, Tv 
-  real, dimension(IM,JM,0:LM), intent(in)    :: ple, tke, Beta_hl, Beta_qt, L, qdiv, SM25, SH25, &
+  real, dimension(IM,JM,0:LM), intent(in)    :: ple, tke, Beta_hl, Beta_qt, L, L_qt2, qdiv, SM25, SH25, &
                                                 ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf
   real, dimension(IM,JM,0:LM), intent(inout) :: hl2, qt2, hlqt
   real, dimension(IM,JM,0:LM), intent(out)   :: tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
@@ -497,7 +506,7 @@ subroutine implicit_M(IM, JM, LM, &                                             
   integer :: i, j, k, kp1
 
   real                      :: idzlo, whl, wqt, whl_explicit, wqt_explicit, wb_explicit, goth00, &
-                               T, Tve, KM, KH
+                               T, Tve, KM, KH, L_hlqt, hl2_25, qt2_25, hlqt_25
   real, dimension(IM,JM,LM) :: hl, qt
 
   double precision :: Lq, L2 ! this precision may be unecessary
@@ -540,20 +549,33 @@ subroutine implicit_M(IM, JM, LM, &                                             
         whl_explicit = ws_explicit(i,j,k)/MAPL_CP - lvocp*wql_explicit(i,j,k)
         wqt_explicit = wqv_explicit(i,j,k) + wql_explicit(i,j,k)
 
+        !
+        if ( L_TYPE_1 == 0 ) then
+           hl2_25  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)**2.
+           hlqt_25 = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
+           qt2_25  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dqtdz(i,j,k)**2.
+        else
+           L_hlqt = sqrt( L(i,j,k)*L_qt2(i,j,k) )
+
+           hl2_25  = qdiv(i,j,k)*B2*L(i,j,k)**2.*SH25(i,j,k)*dhldz(i,j,k)**2.
+           hlqt_25 = qdiv(i,j,k)*B2*L(i,j,k)*L_hlqt*SH25(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
+           qt2_25  = qdiv(i,j,k)*B2*L(i,j,k)*L_qt2(i,j,k)*SH25(i,j,k)*dqtdz(i,j,k)**2.
+        end if
+
         if ( mynn_level == 2 ) then
            wb_explicit = 0.
 
            ! Compute thermodyanamic (co-)variances from level-2.5 closure
-           hl2(i,j,k)  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)**2.
-           qt2(i,j,k)  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dqtdz(i,j,k)**2.
-           hlqt(i,j,k) = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
+           hl2(i,j,k)  = hl2_25
+           qt2(i,j,k)  = qt2_25
+           hlqt(i,j,k) = hlqt_25
         else
            wb_explicit = Beta_hl(i,j,k)*whl_explicit + Beta_qt(i,j,k)*wqt_explicit
 
            if ( mynn_level == 4 ) then
               ! Compute thermodyanamic (co-)variances from level-2.5 closure
-              hl2(i,j,k)  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)**2.
-              hlqt(i,j,k) = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
+              hl2(i,j,k)  = hl2_25
+              hlqt(i,j,k) = hlqt_25
            end if
         end if
 
@@ -580,11 +602,11 @@ end subroutine implicit_M
 !
 ! mynn_length 
 !
-subroutine mynn_length(IM, JM, LM, &                                    ! in
-                       local_flag, alpha1, alpha2, alpha3, alpha4, &    ! in
-                       th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
-                       thv, ple, pl, &                                  ! in
-                       L, LS, LB, LT, w_star)                           ! out
+subroutine mynn_length(IM, JM, LM, &                                         ! in
+                       L_TYPE_2, L_TYPE_3, alpha1, alpha2, alpha3, alpha4, & ! in
+                       th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, &      ! in
+                       thv, ple, pl, &                                       ! in
+                       L, L_qt2, LS, LB, LT, w_star)                         ! out
 
   use MAPL_ConstantsMod, only: MAPL_KARMAN
 
@@ -604,7 +626,7 @@ subroutine mynn_length(IM, JM, LM, &                                    ! in
   real, parameter :: zi2ph1 = zi2 + h1
 
 
-  integer, intent(in)                                  :: IM, JM, LM, local_flag
+  integer, intent(in)                                  :: IM, JM, LM, L_TYPE_2, L_TYPE_3
   real, intent(in)                                     :: th00, ice_ramp
   double precision, intent(in)                         :: alpha1, alpha2, alpha3, alpha4
   real, dimension(IM,JM), intent(in)                   :: wb_surf, LMO
@@ -612,7 +634,7 @@ subroutine mynn_length(IM, JM, LM, &                                    ! in
   real, dimension(IM,JM,0:LM), intent(in)              :: zle, N2, ple
   double precision, dimension(IM,JM,0:LM), intent(in)  :: q
   double precision, dimension(IM,JM), intent(out)      :: w_star, LT
-  double precision, dimension(IM,JM,0:LM), intent(out) :: L, LS, LB
+  double precision, dimension(IM,JM,0:LM), intent(out) :: L, L_qt2, LS, LB
 
   integer                            :: i, j, k, kk, kkm1
   real                               :: qdz, zeta
@@ -664,18 +686,22 @@ subroutine mynn_length(IM, JM, LM, &                                    ! in
         if ( N2(i,j,k) > 0. ) then
            N = sqrt( N2(i,j,k) )
 
-           if ( local_flag == 0 ) then
+           if ( L_TYPE_2 == 0 ) then
               call boulac(IM, JM, LM, i, j, k, &                    ! in
                           th00, ice_ramp, zlo, zle, pl, ple, thv, & ! in
                           q(i,j,k), N, &                            ! in
                           LB_test)                                  ! out    
+           else
+              LB_test = q(i,j,k)/N
+           end if
 
+           if ( L_TYPE_3 == 0 ) then
               N_test    = q(i,j,k)/LB_test
               LB(i,j,k) = alpha2*( LB_test )*( 1.d0 + alpha3/alpha2*sqrt( w_star(i,j)/( N_test*LT(i,j) ) ) )
               LF        = alpha2*( LB_test )
            else
-              LB(i,j,k) = alpha2*( q(i,j,k)/N )*( 1.d0 + alpha3/alpha2*sqrt( w_star(i,j)/( N*LT(i,j) ) ) )
-              LF        = alpha2*( q(i,j,k)/N )              
+              LB(i,j,k) = alpha2*( LB_test )
+              LF        = alpha2*( LB_test )              
            end if
         else
            LB(i,j,k) = 1.d+10
@@ -683,7 +709,8 @@ subroutine mynn_length(IM, JM, LM, &                                    ! in
         end if
         
         ! Harmonically average length scales
-        L(i,j,k) = min( LF, LB(i,j,k)/( LB(i,j,k)/LS(i,j,k) + LB(i,j,k)/LT(i,j) + 1.d0 ) ) ! NN09 (52)
+        L(i,j,k)     = min( LF, LB(i,j,k)/( LB(i,j,k)/LS(i,j,k) + LB(i,j,k)/LT(i,j) + 1.d0 ) ) ! NN09 (52)
+        L_qt2(i,j,k) = min( LF, 1.d+10/( 1.d+10/LS(i,j,k) + 1.d+10/LT(i,j) + 1.d0 ) ) 
      end do
      end do
   end do
@@ -697,7 +724,7 @@ end subroutine mynn_length
 ! initialize_mynn
 !
 subroutine initialize_mynn(IM, JM, LM, &
-                           local_flag, alpha1, alpha2, alpha3, alpha4, &
+                           L_TYPE_2, L_TYPE_3, alpha1, alpha2, alpha3, alpha4, &
                            th00, ice_ramp, hl, qt, tke, hl2, qt2, hlqt, q, &
                            zle, zlo, S2, N2, &
                            u_star, wb_surf, LMO, &
@@ -714,7 +741,7 @@ real, parameter :: flq = 0.
 
 real, parameter :: phm = phh*B2/(B1*pmz)**twothirds
        
-integer, intent(in)                                    :: IM, JM, LM, local_flag
+integer, intent(in)                                    :: IM, JM, LM, L_TYPE_2, L_TYPE_3
 real, intent(in)                                       :: th00, ice_ramp
 double precision, intent(in)                           :: alpha1, alpha2, alpha3, alpha4
 real, dimension(IM,JM), intent(in)                     :: u_star, wb_surf, LMO
@@ -728,7 +755,7 @@ real                                    :: idzlo, L2
 double precision, dimension(IM,JM)      :: w_star
 real, dimension(IM,JM,0:LM)             :: SM2, SH2, dhldz, dqtdz
 double precision, dimension(IM,JM)      :: LT
-double precision, dimension(IM,JM,0:LM) :: GM, GH, L, LS, LB
+double precision, dimension(IM,JM,0:LM) :: GM, GH, L, L_qt2, LS, LB
 
 
 !
@@ -768,11 +795,11 @@ end do
 
 ! Iterate to initialize TKE
 do iter = 1,niter
-   call mynn_length(IM, JM, LM, &                                    ! in
-                    local_flag, alpha1, alpha2, alpha3, alpha4, &    ! in
-                    th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
-                    thv, ple, pl, &                                  ! in
-                    L, LS, LB, LT, w_star)                           ! out      
+   call mynn_length(IM, JM, LM, &                                         ! in
+                    L_TYPE_2, L_TYPE_3, alpha1, alpha2, alpha3, alpha4, & ! in
+                    th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, &      ! in
+                    thv, ple, pl, &                                       ! in
+                    L, L_qt2, LS, LB, LT, w_star)                         ! out      
 
    do k = 1,LM-1
       do j = 1,JM
