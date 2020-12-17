@@ -295,94 +295,117 @@
       ! ASSERTs to catch unphysical inputs
       if (any(play   < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(play):', minval(play)
         error stop 'negative values in input: play'
       end if
       if (any(plev   < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(plev):', minval(plev)
         error stop 'negative values in input: plev'
       end if
       if (any(tlay   < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(tlay):', minval(tlay)
         error stop 'negative values in input: tlay'
       end if
       if (any(tlev   < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(tlev):', minval(tlev)
         error stop 'negative values in input: tlev'
       end if
       if (any(tsfc   < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(tsfc):', minval(tsfc)
         error stop 'negative values in input: tsfc'
       end if
       if (any(h2ovmr < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(h2ovmr):', minval(h2ovmr)
         error stop 'negative values in input: h2ovmr'
       end if
       if (any(o3vmr  < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(o3vmr):', minval(o3vmr)
         error stop 'negative values in input: o3vmr'
       end if
       if (any(co2vmr < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(co2vmr):', minval(co2vmr)
         error stop 'negative values in input: co2vmr'
       end if
       if (any(ch4vmr < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(ch4vmr):', minval(ch4vmr)
         error stop 'negative values in input: ch4vmr'
       end if
       if (any(n2ovmr < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(n2ovmr):', minval(n2ovmr)
         error stop 'negative values in input: n2ovmr'
       end if
       if (any(o2vmr  < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(o2vmr):', minval(o2vmr)
         error stop 'negative values in input: o2vmr'
       end if
       if (any(asdir  < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(asdir):', minval(asdir)
         error stop 'negative values in input: asdir'
       end if
       if (any(aldir  < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(aldir):', minval(aldir)
         error stop 'negative values in input: aldir'
       end if
       if (any(asdif  < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(asdif):', minval(asdif)
         error stop 'negative values in input: asdif'
       end if
       if (any(aldif  < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(aldif):', minval(aldif)
         error stop 'negative values in input: aldif'
       end if
       if (any(cld    < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(cld):', minval(cld)
         error stop 'negative values in input: cld'
       end if
       if (any(ciwp   < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(ciwp):', minval(ciwp)
         error stop 'negative values in input: ciwp'
       end if
       if (any(clwp   < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(clwp):', minval(clwp)
         error stop 'negative values in input: clwp'
       end if
       if (any(rei    < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(rei):', minval(rei)
         error stop 'negative values in input: rei'
       end if
       if (any(rel    < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(rel):', minval(rel)
         error stop 'negative values in input: rel'
       end if
       if (any(tauaer < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(tauaer):', minval(tauaer)
         error stop 'negative values in input: tauaer'
       end if
       if (any(ssaaer < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+        write(error_unit,*) 'minval(ssaaer):', minval(ssaaer)
         error stop 'negative values in input: ssaaer'
       end if
 !     if (any(asmaer < 0.)) then
 !       write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+!       write(error_unit,*) 'minval(asmaer):', minval(asmaer)
 !       error stop 'negative values in input: asmaer'
 !     end if
 
