@@ -1,7 +1,7 @@
 module module_gate
   IMPLICIT NONE
 
-  !-for BRAMS runs, set use_gate=.false.
+  !-for GEOS-5 runs, set use_gate=.false.
   LOGICAL, PARAMETER :: use_gate = .false. 
   
   !- Here are the place for data related with the GATE soundings
@@ -22,7 +22,7 @@ module module_gate
   REAL, DIMENSION(klon,klev):: pgeo,ppres,ptemp,pq,pu,pv,pvervel, &
                                zrvten,ztten,zq1,zq2,zqr,zadvt,zadvq
 
-  INTEGER :: JL
-  character (len=128) :: runname, runlabel
+  INTEGER :: JL,KLEV_SOUND
+  character (len=128) :: runname, runlabel,rundata="NONE" 
 
 end module module_gate

@@ -43,7 +43,7 @@ contains
    subroutine compute_uwshcu_inv(idim, k0, ncnst, dt,pmid0_inv,     & ! INPUT
          zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, &
          dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv,        &
-         th0_inv, tke_inv, kpbl_inv, shfx,evap,                     & 
+         th0_inv, tke_inv, kpbl_inv, shfx,evap, cnvtr, frland,      & 
          cush, tr0_inv,                                             & ! INOUT
          umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, thten_inv, & ! OUTPUT
          uten_inv, vten_inv, qrten_inv, qsten_inv, cufrc_inv,       &
@@ -86,6 +86,8 @@ contains
       real, intent(in)    :: kpbl_inv(idim)               !  Height of PBL [ m ]
       real, intent(in)    :: shfx(idim)               ! Surface sensible heat
       real, intent(in)    :: evap(idim)               ! Surface evaporation
+      real, intent(in)    :: cnvtr(idim,k0)           ! convective tracer
+      real, intent(in)    :: frland(idim)             ! land fraction
       real, intent(inout) :: tr0_inv(idim,k0,ncnst)   !  Environmental tracers [ #, kg/kg ]
       real, intent(inout) :: cush(idim)               !  Convective scale height [m]
 
@@ -187,6 +189,7 @@ contains
       real              :: slflx(idim,0:k0)
       real              :: uflx(idim,0:k0)
       real              :: vflx(idim,0:k0)
+      real              :: cnvtrmax(idim)
 
 !--------- Internal, Diagnostic only ---------
 #ifdef UWDIAG
@@ -253,6 +256,11 @@ contains
 
       kpbl = int(kpbl_inv)
 
+      do i = 1,idim
+        cnvtrmax(i) = min(300.,max(0.,maxval(cnvtr(i,kpbl(i):k0))))
+        if (frland(i)>0.5) cnvtrmax(i) = 0.
+        if (isnan(cnvtrmax(i))) cnvtrmax(i) = 0.
+      end do
 
       call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
            exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
@@ -260,7 +268,7 @@ contains
            dcm, qvten, qlten, qiten, sten, uten, vten,      &
            qrten, qsten, cufrc, fer, fdr, qldet, qidet,     & 
            qlsub, qisub, ndrop, nice,                       &
-           shfx, evap, tpert_out, qpert_out,                &
+           shfx, evap, cnvtrmax, tpert_out, qpert_out,      &
            qtflx, slflx, uflx, vflx,                        &
 #ifdef UWDIAG
            qcu, qlu, qiu, cbmf, qc, cnt, cnb,               & ! Diagnostic only
@@ -347,7 +355,7 @@ contains
          sten_out, uten_out, vten_out, qrten_out,                  &
          qsten_out, cufrc_out, fer_out, fdr_out, qldet_out,        &
          qidet_out, qlsub_out, qisub_out, ndrop_out, nice_out,     &
-         shfx, evap, tpert_out, qpert_out,                         &
+         shfx, evap, cnvtr, tpert_out, qpert_out,                  &
          qtflx_out, slflx_out, uflx_out, vflx_out,                 &
 #ifdef UWDIAG
          qcu_out, qlu_out, qiu_out, cbmf_out, qc_out,              & ! DIAG ONLY
@@ -404,6 +412,7 @@ contains
       real, intent(in)    :: tke_in( idim,0:k0 )      ! Turbulent kinetic energy at interfaces
       real, intent(in)    :: shfx(idim)               ! Surface sensible heat
       real, intent(in)    :: evap(idim)               ! Surface evaporation
+      real, intent(in)    :: cnvtr(idim)              ! Convective tracer
       real, intent(out)   :: tpert_out(idim)          ! Temperature perturbation
       real, intent(out)   :: qpert_out(idim)          ! Humidity perturbation
       real, intent(out)   :: qtflx_out(idim, 0:k0 )   
@@ -2600,7 +2609,8 @@ contains
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
             if (mixscale.ne.0.0) then
 !            if (lts.gt.18.) then
-              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+!              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(4.,(cnvtr(i)-10.)/20.))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
 !              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-min(4.,max(0.,(scaleh-2600.)/300.))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
             else if (mixscale.eq.0.0) then
               rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j )       ! Jason-2_0 version
