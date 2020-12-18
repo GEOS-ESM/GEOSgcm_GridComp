@@ -167,8 +167,11 @@ module gfdl2_cloud_microphys_mod
     ! integer :: id_rh, id_vtr, id_vts, id_vtg, id_vti, id_rain, id_snow, id_graupel, &
     ! id_ice, id_prec, id_cond, id_var, id_droplets
     ! integer :: gfdl_mp_clock ! clock for timing of driver routine
-    
-    real, parameter :: dt_fr = 8. !< homogeneous freezing of all cloud water at t_wfr - dt_fr
+  
+    real    :: t_wfr
+    real    :: dt_fr
+    integer :: expfr
+    ! < homogeneous freezing of all cloud water at t_wfr - dt_fr
     ! minimum temperature water can exist (moore & molinero nov. 2011, nature)
     ! dt_fr can be considered as the error bar
     
@@ -298,7 +301,7 @@ module gfdl2_cloud_microphys_mod
     
     ! real :: global_area = - 1.
     
-    real :: log_10, tice0, t_wfr
+    real :: log_10, tice0
     
     ! -----------------------------------------------------------------------
     ! namelist
@@ -689,7 +692,26 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     ! -----------------------------------------------------------------------
     
     do i = is, ie
-        
+   
+
+        ! over oceans
+                                   t_wfr = tice - 10.
+                                   dt_fr = 25.0
+                                   expfr = 4
+        ! over land
+        if (land(i) > 0.1)         t_wfr = tice - 12.
+                                   dt_fr = 22.0
+                                   expfr = 2
+        ! over snow or landice
+        if (landice(i) > 0.1 .OR. &
+             snomas(i) > 0.1)      t_wfr = tice - 18.
+                                   dt_fr = 19.0
+                                   expfr = 6
+        ! Convectve regime 
+        if (cnv_fraction(i) > 0.1) t_wfr = tice - 12.
+                                   dt_fr = 16.0
+                                   expfr = 2
+ 
         do k = ktop, kbot
             qiz (k) = qi (i, j, k)
             qsz (k) = qs (i, j, k)
@@ -1282,7 +1304,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         
         do k = ktop, kbot
             qc0 = fac_rc * ccn (k)
-            if (tz (k) > t_wfr + dt_fr) then
+            if (tz (k) > t_wfr) then
                 dl (k) = min (max (1.e-6, dl (k)), 0.5 * ql (k))
                 ! --------------------------------------------------------------------
                 ! as in klein's gfdl am2 stratiform scheme (with subgrid variations)
@@ -1320,7 +1342,7 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
 
         do k = ktop, kbot
             qc0 = fac_rc * ccn (k)
-            if (tz (k) > t_wfr + dt_fr) then
+            if (tz (k) > t_wfr) then
                 dl (k) = min (max (1.e-6, dl (k)), 0.5 * ql (k))
                 ! --------------------------------------------------------------------
                 ! as in klein's gfdl am2 stratiform scheme (with subgrid variations)
@@ -1621,7 +1643,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, fqak, fqal
             ! -----------------------------------------------------------------------
             
             dtmp = t_wfr - tzk (k)
-            factor = min (1., dtmp / dt_fr)
+          ! factor = min (1., dtmp / dt_fr)
+            factor = max(0.0,min(1.0,sin(0.5*pi*(1.0 - (tzk (k) - (t_wfr-dt_fr)) / dt_fr))))**expfr
             sink = min (qlk (k) * factor, dtmp / icpk (k))
             qi_crt = qi_gen * min (qi_lim, 0.1 * (tice - tzk (k))) / den (k)
             tmp = min (sink, dim (qi_crt, qik (k)))
@@ -2148,7 +2171,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         qlcn = ql(k)*fqa(k)
         if (dq0 > 0. .and. qlcn>qcmin) then
             factor = min (1., fac_l2v * (10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
-            evap = min (qlcn, factor * qlcn / (1. + tcp3 (k) * dwsdt))
+            evap = min(dq0, min (qlcn, factor * qlcn / (1. + tcp3 (k) * dwsdt)))
            ! Adjust convective fraction of liquid condensates
             if (evap.lt.qlcn) then
               fqal(k) = (qlcn-evap)/(ql(k)-evap)    ! new conv liquid / new total liquid
@@ -2194,10 +2217,10 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         icpk (k) = lhi (k) / cvm (k)
         
         ! -----------------------------------------------------------------------
-        ! enforce complete freezing below - 48 c
+        ! enforce complete freezing below - t_wfr-dt_fr
         ! -----------------------------------------------------------------------
         
-        dtmp = t_wfr - tz (k) ! [ - 40, - 48]
+        dtmp = t_wfr - dt_fr - tz (k) 
         if (dtmp > 0. .and. ql (k) > qcmin) then
             sink = min (ql (k), ql (k) * dtmp * 0.125, dtmp / icpk (k))
             ql (k) = ql (k) - sink
@@ -2393,7 +2416,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! combine water species
         ! -----------------------------------------------------------------------
         
-     !  if (do_qa) cycle
+        if (.not. do_qa) cycle
         
         if (rad_snow) then
             q_sol (k) = qi (k) + qs (k)
@@ -2421,24 +2444,25 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! determine saturated specific humidity
         ! -----------------------------------------------------------------------
         
-        if (tin <= t_wfr) then
+        if (tin <= t_wfr-dt_fr) then
             ! ice phase:
             qstar = iqs1 (tin, den (k))
-        elseif (tin >= tice) then
+        elseif (tin >= t_wfr) then
             ! liquid phase:
             qstar = wqs1 (tin, den (k))
         else
             ! mixed phase:
             qsi = iqs1 (tin, den (k))
             qsw = wqs1 (tin, den (k))
-            if (q_cond (k) > 3.e-6) then
-                rqi = q_sol (k) / q_cond (k)
-            else
-                ! -----------------------------------------------------------------------
-                ! mostly liquid water q_cond (k) at initial cloud development stage
-                ! -----------------------------------------------------------------------
-                rqi = (tice - tin) / (tice - t_wfr)
-            endif
+          ! if (q_cond (k) > 3.e-6) then
+          !     rqi = q_sol (k) / q_cond (k)
+          ! else
+          !     ! -----------------------------------------------------------------------
+          !     ! mostly liquid water q_cond (k) at initial cloud development stage
+          !     ! -----------------------------------------------------------------------
+                rqi = max(0.0,min(1.0,sin(0.5*pi*(1.0 - (tin - (t_wfr-dt_fr)) / dt_fr))))**expfr
+               !rqi = (tice - tin) / (tice - t_wfr)
+          ! endif
             qstar = rqi * qsi + (1. - rqi) * qsw
         endif
         
@@ -3665,7 +3689,7 @@ subroutine gfdl_cloud_microphys_init ()
     log_10 = log (10.)
     
     tice0 = tice - 0.01
-    t_wfr = tice - 40.0 ! supercooled water can exist down to - 48 c, which is the "absolute"
+!!  t_wfr = tice - 10.0 ! supercooled water can exist down to - 48 c, which is the "absolute"
     
     ! if (root_proc) write (logunit, nml = gfdl_cloud_microphys_nml)
     !

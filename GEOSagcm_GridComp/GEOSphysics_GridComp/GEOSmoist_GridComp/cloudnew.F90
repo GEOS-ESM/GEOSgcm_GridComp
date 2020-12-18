@@ -1600,7 +1600,7 @@ contains
                      RAD_QV_dev(I,K), RAD_QL_dev(I,K), RAD_QI_dev(I,K), RAD_QR_dev(I,K), RAD_QS_dev(I,K), RAD_CLDFRC_dev(I,K), & 
                      CLDREFFL_dev(I,K), CLDREFFI_dev(I,K), &
                      FRLAND_dev(I), CNV_FRACTION_dev(I), &
-                     FR_AN_WAT, FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI, CCN_OCEAN, CCN_LAND )
+                     FR_AN_WAT, FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI, CCN_OCEAN, CCN_LAND, CLDPARAMS%PRECIPRAD )
             END IF
 
             QRN_CU_dev(I,K) = QRN_CU_1D
@@ -4048,7 +4048,8 @@ contains
          FRLAND, CNV_FRACTION, FR_AN_WAT, &
          FAC_RL, MIN_RL, MAX_RL, &
          FAC_RI, MIN_RI, MAX_RI, &
-         CCN_O, CCN_L)
+         CCN_O, CCN_L, &
+         PRECIPRAD)
 
       real, intent(in ) :: TE
       real, intent(in ) :: PL
@@ -4060,6 +4061,7 @@ contains
       real, intent(in )  :: FRLAND, CNV_FRACTION, CCN_O, CCN_L
       real, intent(in )  :: FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI
       integer, intent(in) :: FR_AN_WAT
+      real, intent(in) :: PRECIPRAD 
       real :: ALPH, SS, AFx
       real :: NN, NN_LAND, NN_OCEAN
 
@@ -4094,7 +4096,11 @@ contains
 
       ! Total In-cloud liquid
       if ( RAD_CF > 0. ) then
-         RAD_QL = ( QClLS + QClAN ) / RAD_CF
+         if (PRECIPRAD /= 0) then
+           RAD_QL = ( QClLS + QClAN + QRN_ALL ) / RAD_CF
+         else
+           RAD_QL = ( QClLS + QClAN ) / RAD_CF
+         endif
       else
          RAD_QL = 0.0
       end if
@@ -4102,7 +4108,11 @@ contains
 
       ! Total In-cloud ice
       if (  RAD_CF >0. ) then
-         RAD_QI = ( QCiLS + QCiAN ) / RAD_CF
+         if (PRECIPRAD /= 0) then
+           RAD_QI = ( QCiLS + QCiAN + QSN_ALL ) / RAD_CF
+         else
+           RAD_QI = ( QCiLS + QCiAN ) / RAD_CF
+         endif
       else
          RAD_QI = 0.0
       end if

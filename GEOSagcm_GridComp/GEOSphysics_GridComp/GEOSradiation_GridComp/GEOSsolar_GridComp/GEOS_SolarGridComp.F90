@@ -3757,7 +3757,9 @@ contains
 ! Prepare Input for RRTMG
 
 ! Set flags related to cloud properties
-      ICLD = 4
+      call MAPL_GetResource( MAPL, ICLD, 'RRTMGSW_ICLD:',  DEFAULT=4, RC=STATUS)
+      VERIFY_(STATUS)
+
       INFLGSW = 2
       ICEFLGSW = 3
       LIQFLGSW = 1

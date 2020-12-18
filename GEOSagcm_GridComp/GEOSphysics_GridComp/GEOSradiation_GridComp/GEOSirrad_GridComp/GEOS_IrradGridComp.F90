@@ -3285,7 +3285,9 @@ contains
       allocate(OLRB11RG_1D(IM*JM),__STAT__)
       allocate(DOLRB11RG_DT_1D(IM*JM),__STAT__)
 
-      ICLD = 4
+      call MAPL_GetResource(MAPL,ICLD,'RRTMGLW_ICLD:',DEFAULT=4,RC=STATUS)
+      VERIFY_(STATUS)
+
       INFLGLW = 2
       ICEFLGLW = 3
       LIQFLGLW = 1

@@ -43,12 +43,13 @@ contains
    subroutine compute_uwshcu_inv(idim, k0, ncnst, dt,pmid0_inv,     & ! INPUT
          zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, &
          dp0_inv, u0_inv, v0_inv, qv0_inv, ql0_inv, qi0_inv,        &
-         th0_inv, tke_inv, kpbl_inv, shfx,evap,                     & 
+         th0_inv, tke_inv, kpbl_inv, shfx,evap, cnvtr, frland,      & 
          cush, tr0_inv,                                             & ! INOUT
          umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, thten_inv, & ! OUTPUT
          uten_inv, vten_inv, qrten_inv, qsten_inv, cufrc_inv,       &
          fer_inv, fdr_inv, qldet_inv, qidet_inv, qlsub_inv,         &
          qisub_inv, ndrop_inv, nice_inv, tpert_out, qpert_out,      & 
+         qtflx_inv, slflx_inv, uflx_inv, vflx_inv,                  &
 #ifdef UWDIAG
          qcu_inv, qlu_inv, qiu_inv, cbmf, qc_inv,                   & ! DIAGNOSTIC ONLY
          cnt_inv, cnb_inv, cin, plcl, plfc, pinv, prel, pbup,       &
@@ -85,6 +86,8 @@ contains
       real, intent(in)    :: kpbl_inv(idim)               !  Height of PBL [ m ]
       real, intent(in)    :: shfx(idim)               ! Surface sensible heat
       real, intent(in)    :: evap(idim)               ! Surface evaporation
+      real, intent(in)    :: cnvtr(idim,k0)           ! convective tracer
+      real, intent(in)    :: frland(idim)             ! land fraction
       real, intent(inout) :: tr0_inv(idim,k0,ncnst)   !  Environmental tracers [ #, kg/kg ]
       real, intent(inout) :: cush(idim)               !  Convective scale height [m]
 
@@ -110,6 +113,10 @@ contains
       real, intent(out)   :: nice_inv(idim,k0)
       real, intent(out)   :: tpert_out(idim)
       real, intent(out)   :: qpert_out(idim)
+      real, intent(out)   :: qtflx_inv(idim,k0+1)
+      real, intent(out)   :: slflx_inv(idim,k0+1)
+      real, intent(out)   :: uflx_inv(idim,k0+1)
+      real, intent(out)   :: vflx_inv(idim,k0+1)
 
 !!! Diagnostic only
 #ifdef UWDIAG
@@ -178,7 +185,11 @@ contains
       real              :: qisub(idim,k0)           !  Ice water tendency due to subsidence
       real              :: ndrop(idim,k0)
       real              :: nice(idim,k0)
-
+      real              :: qtflx(idim,0:k0)
+      real              :: slflx(idim,0:k0)
+      real              :: uflx(idim,0:k0)
+      real              :: vflx(idim,0:k0)
+      real              :: cnvtrmax(idim)
 
 !--------- Internal, Diagnostic only ---------
 #ifdef UWDIAG
@@ -245,6 +256,11 @@ contains
 
       kpbl = int(kpbl_inv)
 
+      do i = 1,idim
+        cnvtrmax(i) = min(300.,max(0.,maxval(cnvtr(i,kpbl(i):k0))))
+        if (frland(i)>0.5) cnvtrmax(i) = 0.
+        if (isnan(cnvtrmax(i))) cnvtrmax(i) = 0.
+      end do
 
       call compute_uwshcu( idim,k0, dt, ncnst,pifc0, zifc0, &
            exnifc0, pmid0, zmid0, exnmid0, dp0, u0, v0,     &
@@ -252,7 +268,8 @@ contains
            dcm, qvten, qlten, qiten, sten, uten, vten,      &
            qrten, qsten, cufrc, fer, fdr, qldet, qidet,     & 
            qlsub, qisub, ndrop, nice,                       &
-           shfx, evap, tpert_out, qpert_out,                &
+           shfx, evap, cnvtrmax, tpert_out, qpert_out,      &
+           qtflx, slflx, uflx, vflx,                        &
 #ifdef UWDIAG
            qcu, qlu, qiu, cbmf, qc, cnt, cnb,               & ! Diagnostic only
            cin, plcl, plfc, pinv, prel, pbup, wlcl, qtsrc,  &
@@ -271,6 +288,10 @@ contains
       do k = 0, k0
          k_inv                    = k0 + 1 - k
          umf_inv(:idim,k_inv)     = umf(:idim,k)       
+         qtflx_inv(:idim,k_inv)   = qtflx(:idim,k)       
+         slflx_inv(:idim,k_inv)   = slflx(:idim,k)       
+         uflx_inv(:idim,k_inv)    = uflx(:idim,k)       
+         vflx_inv(:idim,k_inv)    = vflx(:idim,k)       
 
 #ifdef UWDIAG
          wu_inv(:idim,k_inv)      = wu(:idim,k)   ! Diagnostic only
@@ -334,7 +355,8 @@ contains
          sten_out, uten_out, vten_out, qrten_out,                  &
          qsten_out, cufrc_out, fer_out, fdr_out, qldet_out,        &
          qidet_out, qlsub_out, qisub_out, ndrop_out, nice_out,     &
-         shfx, evap, tpert_out, qpert_out,                         &
+         shfx, evap, cnvtr, tpert_out, qpert_out,                  &
+         qtflx_out, slflx_out, uflx_out, vflx_out,                 &
 #ifdef UWDIAG
          qcu_out, qlu_out, qiu_out, cbmf_out, qc_out,              & ! DIAG ONLY
          cnt_out, cnb_out, cinh_out, plcl_out, plfc_out, pinv_out, &
@@ -390,8 +412,13 @@ contains
       real, intent(in)    :: tke_in( idim,0:k0 )      ! Turbulent kinetic energy at interfaces
       real, intent(in)    :: shfx(idim)               ! Surface sensible heat
       real, intent(in)    :: evap(idim)               ! Surface evaporation
+      real, intent(in)    :: cnvtr(idim)              ! Convective tracer
       real, intent(out)   :: tpert_out(idim)          ! Temperature perturbation
       real, intent(out)   :: qpert_out(idim)          ! Humidity perturbation
+      real, intent(out)   :: qtflx_out(idim, 0:k0 )   
+      real, intent(out)   :: slflx_out(idim, 0:k0 )   
+      real, intent(out)   :: uflx_out(idim, 0:k0 )   
+      real, intent(out)   :: vflx_out(idim, 0:k0 )   
       integer, intent(in) :: kpbl_in( idim )          ! Boundary layer top layer index
 
       real, intent(inout) :: cush_inout( idim )       ! Convective scale height [m]
@@ -960,7 +987,11 @@ contains
     qlsub_out(:idim,:k0)         = 0.0
     qisub_out(:idim,:k0)         = 0.0
     ndrop_out(:idim,:k0)         = 0.0
-    nice_out(:idim,:k0)         = 0.0
+    nice_out(:idim,:k0)          = 0.0
+    qtflx_out(:idim,0:k0)        = 0.0
+    slflx_out(:idim,0:k0)        = 0.0
+    uflx_out(:idim,0:k0)         = 0.0
+    vflx_out(:idim,0:k0)         = 0.0
 
 #ifdef UWDIAG
     cbmf_out(:idim)              = 0.0
@@ -1329,11 +1360,11 @@ contains
 
 15         continue    
 
-           if( zifc0(kinv) .le. 300. ) then        
+           if( zifc0(kinv) .le. 400. ) then        
               exit_kinv1(i) = 1.
               id_exit = .true.
               if (scverbose) then
-                call write_parallel('------- UW ShCu: Exit, zinv<=300m')
+                call write_parallel('------- UW ShCu: Exit, zinv<=400m')
               end if
               go to 333
            endif
@@ -1644,7 +1675,7 @@ contains
  35    continue
        if( cin .lt. 0. ) limit_cin(i) = 1.
        cin = max(0.,cin)
-       cin = max(cin,0.04*(lts-18.))   ! kludge to prevent UW in StCu regions
+       cin = max(cin,0.04*(lts-18.))   ! kludge to reduce UW in StCu regions
 
 
        if( klfc .ge. k0 ) then
@@ -1905,6 +1936,10 @@ contains
                qisub_out(i,:k0)        = qisub_s(:k0)
                cush_inout(i)           = cush_s
                cufrc_out(i,:k0)        = cufrc_s(:k0)
+               qtflx_out(i,0:k0)       = qtflx_s(0:k0)
+               slflx_out(i,0:k0)       = slflx_s(0:k0)
+               uflx_out(i,0:k0)        = uflx_s(0:k0)
+               vflx_out(i,0:k0)        = vflx_s(0:k0)
 
 #ifdef UWDIAG  
                qcu_out(i,:k0)          = qcu_s(:k0)    
@@ -1928,10 +1963,6 @@ contains
 
                fer_out(i,1:k0)      = fer_s(:k0)  
                fdr_out(i,1:k0)      = fdr_s(:k0)  
-
-!               ufrc_out(i,k0:0:-1)     = ufrc_s(0:k0)
-!               uflx_out(i,k0:0:-1)     = uflx_s(0:k0)  
-!               vflx_out(i,k0:0:-1)     = vflx_s(0:k0)  
 
 #ifdef UWDIAG
                ufrcinvbase_out(i)       = ufrcinvbase_s
@@ -2483,7 +2514,7 @@ contains
           ! ----------------------------------------------------------------- !
 
             cridis = rle*scaleh                 ! Original code
-          ! cridis = 1.*(zifc0(k) - zifc0(k-1))  ! New code
+           ! cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
  
           ! ---------------- !
           ! Buoyancy Sorting !
@@ -2577,8 +2608,10 @@ contains
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
             if (mixscale.ne.0.0) then
-              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
-!              rei(k) = ( rkm / min(scaleh,4000.) / g / rhomid0j )   ! alternative
+!            if (lts.gt.18.) then
+!              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(4.,(cnvtr(i)-10.)/20.))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+!              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-min(4.,max(0.,(scaleh-2600.)/300.))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
             else if (mixscale.eq.0.0) then
               rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j )       ! Jason-2_0 version
             end if
@@ -4113,6 +4146,8 @@ contains
            cufrc_s(:k0)         = cufrc(:k0)  
            slflx_s(0:k0)        = slflx(0:k0)  
            qtflx_s(0:k0)        = qtflx(0:k0)  
+           uflx_s(0:k0)         = uflx(0:k0)  
+           vflx_s(0:k0)         = vflx(0:k0)  
            qcu_s(:k0)           = qcu(:k0)  
            qlu_s(:k0)           = qlu(:k0)  
            qiu_s(:k0)           = qiu(:k0)  
@@ -4133,8 +4168,6 @@ contains
 
 
 #ifdef UWDIAG         
-           uflx_s(0:k0)         = uflx(0:k0)  
-           vflx_s(0:k0)         = vflx(0:k0)  
            cnt_s                = cnt
            cnb_s                = cnb
            qtten_s(:k0)         = qtten(:k0)
@@ -4283,6 +4316,10 @@ contains
      ndrop_out(i,:k0)            = qlten_det(:k0)/(4188.787*rdrop**3)
 !     ndrop_out(i,:k0)            = qlten_det(:k0)/(4.19e-12) !(1.15e-11) ! /drop mass
      nice_out(i,:k0)             = qiten_det(:k0)/(3.0e-10) ! /crystal mass
+     qtflx_out(i,0:k0)           = qtflx(0:k0)
+     slflx_out(i,0:k0)           = slflx(0:k0)
+     uflx_out(i,0:k0)            = uflx(0:k0)
+     vflx_out(i,0:k0)            = vflx(0:k0)
 
      if (dotransport.eq.1) then
      do m = 1, ncnst
@@ -4396,6 +4433,10 @@ contains
      cush_inout(i)               = -1.
      qldet_out(i,:k0)            = 0.
      qidet_out(i,:k0)            = 0.
+     qtflx_out(i,0:k0)           = 0.
+     slflx_out(i,0:k0)           = 0.
+     uflx_out(i,0:k0)            = 0.
+     vflx_out(i,0:k0)            = 0.
 
      fer_out(i,1:k0)             = MAPL_UNDEF
      fdr_out(i,1:k0)             = MAPL_UNDEF
