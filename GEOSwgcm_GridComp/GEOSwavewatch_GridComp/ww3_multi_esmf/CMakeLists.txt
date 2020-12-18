@@ -1,6 +1,5 @@
 esma_set_this () 
 
-#list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 list( APPEND WW3ESMF_FTN
     constants.ftn
@@ -68,7 +67,7 @@ list( APPEND WW3ESMF_FTN
     SCRIP/scrip_timers.f
 )
 
-set (WW3_path ${CMAKE_CURRENT_SOURCE_DIR}/../@ww3-j3)
+set (WW3_path ${CMAKE_CURRENT_SOURCE_DIR}/../@ww3)
 
 get_filename_component(aux_dir ${WW3_path}/model/aux ABSOLUTE)
 get_filename_component(ftn_dir ${WW3_path}/model/ftn ABSOLUTE)
@@ -98,12 +97,3 @@ esma_add_library (${this}
    INCLUDES 
   )
 
-
-#target_compile_options (${this} PRIVATE "-convert" "little_endian")
-
-#target_compile_options (${this} PRIVATE "-i4" 
-#                                        "-real-size" "32" 
-#                                        "-fp-model" "precise" 
-#                                        "-assume" "byterecl" 
-#                                        "-fno-fnalias")
-    

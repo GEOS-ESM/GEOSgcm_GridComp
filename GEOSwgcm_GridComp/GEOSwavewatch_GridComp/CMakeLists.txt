@@ -1,25 +1,8 @@
 esma_set_this ()
 
-# model/ftn/wmesmfmd.ftn~
-# model/ftn/w3iogrmd.ftn~
-# model/ftn/wminitmd.ftn~
-# model/ftn/w3timemd.ftn~
-# model/ftn/w3iorsmd.ftn~
-# 
-
-# endiannes
-# --------------------------------
-#          GEOS    WGCM   WW3esmf
-# --------------------------------
-# CVS/J3   big     big    big
-# git      little  little little 
-# --------------------------------
-
 set (ESMFMKFILE "${BASEDIR}/lib/esmf.mk")
 
-
 set (alldirs
-    #   @ww3-release/model/esmf
     ww3_multi_esmf
   )
 
