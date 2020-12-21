@@ -1629,6 +1629,15 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'MUEVEGD',                   &
+    LONG_NAME          = 'moisture_unstressed_transpiration_deficit',    &
+    UNITS              = 'kg m-2',                    &
+    DIMS               = MAPL_DimsTileOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'snow_ice_evaporation_energy_flux',&
     UNITS              = 'W m-2'                     ,&
     SHORT_NAME         = 'EVPICE'                    ,&
@@ -3797,6 +3806,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: evpint
         real, dimension(:),   pointer :: evpsoi
         real, dimension(:),   pointer :: evpveg
+        real, dimension(:),   pointer :: muevegd
         real, dimension(:),   pointer :: evpice
         real, dimension(:),   pointer :: evpsno
         real, dimension(:),   pointer :: bflow
@@ -3893,6 +3903,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:)   :: RMELTBC002
         real, pointer, dimension(:)   :: RMELTOC001
         real, pointer, dimension(:)   :: RMELTOC002
+        
 
         ! --------------------------------------------------------------------------
         ! Local pointers for tile variables
@@ -4342,6 +4353,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,EVPINT, 'EVPINT' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,EVPSOI, 'EVPSOI' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,EVPVEG, 'EVPVEG' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,MUEVEGD,'MUEVEGD',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,EVPICE, 'EVPICE' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,WAT10CM,'WAT10CM',ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,WATSOI, 'WATSOI' ,ALLOC=.true.,RC=STATUS); VERIFY_(STATUS)
@@ -5446,7 +5458,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              lonbeg,lonend,latbeg,latend                          ,&
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
-             RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
+             RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC, MUEVEGD)
 
         end if
 
@@ -5550,7 +5562,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         EVPVEG = EVPVEG - EVACC*EVPVEG/SUMEV
         endwhere
         endif
-
+        if(associated(MUEVEGD))MUEVEGD= DT * (MUEVEGD - EVPVEG/MAPL_ALHL)
         if(associated( LST  )) LST    = TST
         if(associated( TPSURF))TPSURF = TSURF
         if(associated( WET1 )) WET1   = max(min(SFMC / POROS,1.0),0.0)

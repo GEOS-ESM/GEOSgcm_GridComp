@@ -153,7 +153,7 @@
                      LH_SNOW, LWUP_SNOW, LWDOWN_SNOW, NETSW_SNOW,              &
                      TCSORIG, TPSN1IN, TPSN1OUT,lonbeg,lonend,latbeg,latend,   &
                      TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &
-                     RCONSTIT, RMELT, TOTDEPOS,  LHACC)
+                     RCONSTIT, RMELT, TOTDEPOS,  LHACC, MUEVEGD)
 
       IMPLICIT NONE
 
@@ -219,7 +219,7 @@
       REAL, INTENT(OUT), DIMENSION(NCH) :: TCSORIG, TPSN1IN, TPSN1OUT
 
       
-      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: LHACC
+      REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: LHACC, MUEVEGD
 
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: TC1_0,TC2_0,TC4_0
       REAL, INTENT(OUT), DIMENSION(NCH), OPTIONAL :: QA1_0,QA2_0,QA4_0 	
@@ -246,7 +246,7 @@
             prmcun,WTOT_ORIG,ENTOT_ORIG,HSNACC1,HSNACC2,HSNACC4,               &
             TC1_00, TC2_00, TC4_00, EACC_00,                                   &
               qa1_orig,qa2_orig,qa4_orig,tc1_orig,tc2_orig,tc4_orig,           &
-              tcs_orig
+              tcs_orig, MUEVEG
 
 
       REAL, DIMENSION(N_GT) :: HT, TP, soilice
@@ -1108,7 +1108,7 @@
                      RX11,RX21,RX12,RX22,RX14,RX24,                            &
                      AR1,AR2,AR4,CDCR1,EIRFRC,RZEQOL,srfmn,WPWET,VGWMAX,       &
                      CAPAC, RZEXC, CATDEF, SRFEXC,                             &
-                     EINT, ESOI, EVEG                                          &
+                     EINT, ESOI, EVEG, MUEVEG                                  &
                     )
 
 ! ---------------------------------------------------------------------
@@ -2728,7 +2728,7 @@
                            RX11,RX21,RX12,RX22,RX14,RX24, AR1,AR2,AR4,CDCR1,   &
                            EIRFRC,RZEQ,srfmn,WPWET,VGWMAX,                     &
                            CAPAC, RZEXC, CATDEF, SRFEXC,                       &
-                           EINT, ESOI, EVEG                                    &
+                           EINT, ESOI, EVEG, MUEVEG                            &
                           )
 !****
 !**** THIS SUBROUTINE ALLOWS EVAPOTRANSPIRATION TO ADJUST THE WATER
@@ -2745,7 +2745,7 @@
 
       REAL, INTENT(INOUT), DIMENSION(NCH) :: CAPAC, CATDEF, RZEXC, SRFEXC
 
-      REAL, INTENT(OUT), DIMENSION(NCH) :: EINT, ESOI, EVEG
+      REAL, INTENT(OUT), DIMENSION(NCH) :: EINT, ESOI, EVEG, MUEVEG
 
 
       INTEGER CHNO
@@ -2840,8 +2840,9 @@
           CAPAC(CHNO) = AMAX1(0., CAPAC(CHNO) - EINT(CHNO))
           RZEXC(CHNO) = RZEXC(CHNO) -  EVEG(CHNO)
           SRFEXC(CHNO) = SRFEXC(CHNO) - ESOI(CHNO)
-        ENDIF
-
+       ENDIF
+       
+       MUEVEG(CHNO) =
 !****
  100  CONTINUE
 !****
