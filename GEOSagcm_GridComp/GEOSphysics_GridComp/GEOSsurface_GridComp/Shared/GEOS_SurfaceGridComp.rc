@@ -149,12 +149,12 @@
 
 # ---- Run irrigation module
 #
-#    0 : Do NOT run irrigation module (default) 
-#    1 : YES, run irrigation module -
-#        The irrigation parameter file 'irrigation_IMxJM_DL.dat' must be availaable in the BCSDIR 
+#    .FALSE. : Do NOT run irrigation module (default) 
+#    .TRUE.  : YES, run irrigation module -
+#    NOTE: The irrigation parameter file ('irrigation_IMxJM_DL.dat') must be availaable in the BCSDIR to run the irrigatopm model.  
 #
-# GEOSagcm=>RUN_IRRIG: 0
-# GEOSldas=>RUN_IRRIG: 1
+# GEOSagcm=>RUN_IRRIG: .FALSE.
+# GEOSldas=>RUN_IRRIG: .TRUE.
 
 # ---- Irrigation method 
 #

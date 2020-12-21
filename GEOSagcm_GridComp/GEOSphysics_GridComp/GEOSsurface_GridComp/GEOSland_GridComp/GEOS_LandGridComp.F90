@@ -48,7 +48,8 @@ module GEOS_LandGridCompMod
 
   integer                                 :: VEGDYN
   integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:), IRRIGATION(:)
-  INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM, RUN_IRRIG
+  INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
+  LOGICAL                                 :: RUN_IRRIG
 
 contains
 
@@ -155,7 +156,7 @@ contains
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigGetAttribute (SCF, label='RUN_ROUTE:'  , value=RUN_ROUTE  , DEFAULT=0, __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'  , value=RUN_IRRIG  , DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'  , value=RUN_IRRIG  , DEFAULT=.false., __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
    
@@ -195,7 +196,7 @@ contains
        
     END SELECT
     
-    IF(RUN_IRRIG == 1) THEN
+    IF(RUN_IRRIG) THEN
        if (NUM_CATCH == 1) then
           IRRIGATION(1) = MAPL_AddChild(GC, NAME='IRRIGATION', SS=IrrigationSetServices, RC=STATUS)
           VERIFY_(STATUS)
@@ -1318,7 +1319,7 @@ contains
 
     END SELECT
 
-    IF(RUN_IRRIG == 1) THEN
+    IF(RUN_IRRIG) THEN
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPRINKLERRATE', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FLOODRATE',     CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DRIPRATE',      CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)       
@@ -1376,10 +1377,12 @@ contains
                                                       RC=STATUS )
           VERIFY_(STATUS)
 
-          IF(RUN_IRRIG == 1) THEN
+          IF(RUN_IRRIG) THEN
              call MAPL_AddConnectivity (                                         &
                   GC                                                            ,&
-                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '/) ,&
+                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '   ,&
+                       'CATDEF  ','BF1     ','BF2     ','CDCR1   ','CDCR2   '   ,&
+                       'MUEVEGD '/)                                             ,&
                   SRC_ID =  CATCH(I)                                            ,&
                   DST_ID =  IRRIGATION(I)                                       ,&
                   RC=STATUS )
@@ -1413,23 +1416,26 @@ contains
             DST_ID =  CATCHCN(I)                               ,         &
             SRC_ID =  VEGDYN                                   ,         &
                                                       RC=STATUS ) 
-          IF(RUN_IRRIG == 1) THEN
-             call MAPL_AddConnectivity (                                         &
-                  GC                                                            ,&
-                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '/) ,&
-                  SRC_ID =  CATCHCN(I)                                          ,&
-                  DST_ID =  IRRIGATION(I)                                       ,&
-                  RC=STATUS )
-             VERIFY_(STATUS)
+          IF(RUN_IRRIG) THEN
+!             call MAPL_AddConnectivity (                                         &
+!                  GC                                                            ,&
+!                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '   ,&
+!                       'CATDEF  ','BF1     ','BF2     ','CDCR1   ','CDCR2   '   ,&
+!                       'MUEVEGD '/)                                             ,&
+!                  SRC_ID =  CATCHCN(I)                                          ,&
+!                  DST_ID =  IRRIGATION(I)                                       ,&
+!                  RC=STATUS )
+!             VERIFY_(STATUS)
              
-             call MAPL_AddConnectivity (                                         &
-                  GC                                                            ,&
-                  SHORT_NAME  = (/'SPRINKERRATE','DRIPRATE    ','FLOODRATE   '/),&
-                  SRC_ID =  IRRIGATIION(I)                                      ,&
-                  DST_ID =  CATCHCN(I)                                          ,& 
-                  RC=STATUS )
-             VERIFY_(STATUS)             
+!             call MAPL_AddConnectivity (                                         &
+!                  GC                                                            ,&
+!                  SHORT_NAME  = (/'SPRINKERRATE','DRIPRATE    ','FLOODRATE   '/),&
+!                  SRC_ID =  IRRIGATIION(I)                                      ,&
+!                  DST_ID =  CATCHCN(I)                                          ,& 
+!                  RC=STATUS )
+!             VERIFY_(STATUS)             
           ENDIF
+          
 !          IF(RUN_ROUTE == 1) THEN
 !             call MAPL_AddConnectivity (                              &
 !                  GC                                                 ,&
@@ -1441,7 +1447,8 @@ contains
 !             VERIFY_(STATUS)            
 !          ENDIF
        END SELECT
-       IF(RUN_ROUTE == 1) THEN
+
+       IF(RUN_IRRIG) THEN
           call MAPL_AddConnectivity (                              &
                GC                                                 ,&
                SHORT_NAME  = (/'LAI  '/)                          ,&

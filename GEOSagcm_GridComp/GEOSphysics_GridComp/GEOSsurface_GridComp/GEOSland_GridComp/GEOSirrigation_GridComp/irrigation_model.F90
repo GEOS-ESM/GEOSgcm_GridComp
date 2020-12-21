@@ -10,6 +10,23 @@ MODULE IRRIGATION_MODULE
   
   type, public :: irrigation_model
      
+   contains
+          
+     ! public
+     procedure, public :: init_model
+     generic,   public :: run_model => irrigrate_lai_trigger, irrigrate_crop_calendar
+
+     ! private
+     procedure, private :: irrigrate_lai_trigger
+     procedure, private :: irrigrate_crop_calendar
+     procedure, private :: srate => sprinkler_irrig_rate
+     procedure, private :: frate => flood_irrig_rate
+     procedure, private :: drate => drip_irrig_rate
+     
+  end type irrigation_model
+
+  type, public, extends (irrigation_model) :: irrig_params
+     
      ! Sprinkler parameters
      ! --------------------
      REAL :: sprinkler_stime  = 6.0 ! sprinkler irrigatrion start time [hours]
@@ -28,43 +45,30 @@ MODULE IRRIGATION_MODULE
      REAL :: flood_thres      =  0.25 ! soil moisture threshhold to trigger flood irrigation
      REAL :: efcor            = 76.0  ! Efficiency Correction (%)
      
-   contains
-     
-     ! public
-     procedure, public :: init_model
-     generic,   public :: run_model => irrigrate_lai_trigger, irrigrate_crop_calendar
-
-     ! private
-     procedure, private :: irrigrate_lai_trigger
-     procedure, private :: irrigrate_crop_calendar
-     procedure, private :: srate => sprinkler_irrig_rate
-     procedure, private :: frate => flood_irrig_rate
-     procedure, private :: drate => drip_irrig_rate
-     
-  end type irrigation_model
+  end type irrig_params
 
 contains
 
   ! ----------------------------------------------------------------------------
   
-  SUBROUTINE init_model (IM, SURFRC)
+  SUBROUTINE init_model (IP, SURFRC)
 
     implicit none
-    class (irrigation_model), intent(inout) :: IM
+    class (irrig_params), intent(inout)     :: IP
     CHARACTER(:), INTENT(IN)                :: SURFRC
     type(ESMF_Config)                       :: SCF
     
     SCF = ESMF_ConfigCreate(__RC__) 
     CALL ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_STIME:', VALUE=IM%sprinkler_stime, DEFAULT= 6.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_DUR:'  , VALUE=IM%sprinkler_dur,   DEFAULT= 4.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_THRES:', VALUE=IM%sprinkler_thres, DEFAULT= 0.50, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_STIME:'     , VALUE=IM%drip_stime,      DEFAULT= 6.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_DUR:'       , VALUE=IM%drip_dur,        DEFAULT=12.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_STIME:'    , VALUE=IM%flood_stime,     DEFAULT= 6.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_DUR:'      , VALUE=IM%flood_dur,       DEFAULT= 1.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_THRES:'    , VALUE=IM%flood_thres,     DEFAULT= 0.25, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='IRR_EFCOR:'      , VALUE=IM%efcor,           DEFAULT=76.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_STIME:', VALUE=IP%sprinkler_stime, DEFAULT= 6.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_DUR:'  , VALUE=IP%sprinkler_dur,   DEFAULT= 4.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_THRES:', VALUE=IP%sprinkler_thres, DEFAULT= 0.50, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_STIME:'     , VALUE=IP%drip_stime,      DEFAULT= 6.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_DUR:'       , VALUE=IP%drip_dur,        DEFAULT=12.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_STIME:'    , VALUE=IP%flood_stime,     DEFAULT= 6.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_DUR:'      , VALUE=IP%flood_dur,       DEFAULT= 1.00, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_THRES:'    , VALUE=IP%flood_thres,     DEFAULT= 0.25, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRR_EFCOR:'      , VALUE=IP%efcor,           DEFAULT=76.00, __RC__ )
     CALL ESMF_ConfigDestroy      (SCF, __RC__)
 
   END SUBROUTINE init_model
