@@ -717,11 +717,6 @@ contains
     
     RUN_MODEL : if (ThisCycle == N_CYC) then
 
-       ! Get number of local tiles on catch grid and allocate temporary array
-       call MAPL_LocStreamGet(route%route_ls,nt_local=nt_local,rc=status)
-       _VERIFY(status)
-       allocate(runoff_catch_dist(nt_local))
-      
        call ESMF_GridCompGet(gc,grid=esmfgrid,rc=status)
        _VERIFY(status)
        call MAPL_GridGet(esmfgrid,localCellCountPerDim=counts,rc=status)
@@ -736,8 +731,8 @@ contains
           _VERIFY(status)
           call MAPL_LocStreamGet(locstream,local_i=local_i,local_j=local_j,rc=status)
           _VERIFY(status)
-          do i=1,size(runoff_catch_dist)
-             ease_array(local_i(i),local_j(i))=runoff_catch_dist(i)
+          do i=1,size(runoff_save)
+             ease_array(local_i(i),local_j(i))=runoff_save(i)
           enddo
           call mapl_locstreamget(route%ease_ls,nt_local=ntiles_in,rc=status)
           _VERIFY(status)
@@ -757,6 +752,9 @@ contains
           ! Call Locstream transform, takes land tiles that are on the distribution used by
           ! catchgridcomp (based on atmosphere) and shuffles them to be on catchment distribution
           ! in other words the tile is on the processor contains the catchment making up the tile
+          call MAPL_LocStreamGet(route%route_ls,nt_local=nt_local,rc=status)
+          _VERIFY(status)
+          allocate(runoff_catch_dist(nt_local))
           call MAPL_LocStreamTransform(runoff_catch_dist,route%xform,runoff_save,rc=status)
           _VERIFY(status)
           ! Finall we can take the tiles and do the conservative locstream transform to 
