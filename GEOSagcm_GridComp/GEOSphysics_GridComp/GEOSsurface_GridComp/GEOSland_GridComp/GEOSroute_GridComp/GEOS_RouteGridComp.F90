@@ -354,7 +354,7 @@ contains
 
     type(ESMF_Grid)     :: catchGrid
     type(ESMF_DistGrid) :: distGrid
-    type(ESMF_DELayout) :: layout
+    type(ESMF_DELayout) :: layout_route, delayout_ease
     type (MAPL_MetaComp), pointer  :: MAPL
     type(MAPL_LocStream)           :: locstream,route_ls,ease_ls
     type (T_RROUTE_STATE), pointer :: route => null()
@@ -431,11 +431,21 @@ contains
        _VERIFY(status)
        call ESMF_ConfigGetAttribute ( CF, ease_tilefile, Label="EASE_PFAFFSETTER_TILE", RC=STATUS)
        _VERIFY(status)
-       call MAPL_LocStreamCreate(ease_ls,layout,trim(ease_tilefile),'ease_ls',mask=[MAPL_LAND], &
+
+       call ESMF_GridGet(route%ease_grid,distgrid=distgrid,rc=status)
+       _VERIFY(status)
+       call ESMF_DistGridGet(distgrid,deLayout=layout_ease,rc=status)
+       _VERIFY(status)
+       call ESMF_GridGet(CatchGrid,distgrid=distgrid,rc=status)
+       _VERIFY(status)
+       call ESMF_DistGridGet(distgrid,deLayout=layout_catch,rc=status)
+       _VERIFY(status)
+
+       call MAPL_LocStreamCreate(ease_ls,layout_ease,trim(ease_tilefile),'ease_ls',mask=[MAPL_LAND], &
             grid=route%ease_grid,rc=status)
        _VERIFY(status)
        route%ease_ls=ease_ls
-       call MAPL_LocstreamCreate(route_ls,layout,trim(ease_tilefile),'route_ls', mask=[MAPL_LAND], &
+       call MAPL_LocstreamCreate(route_ls,layout_catch,trim(ease_tilefile),'route_ls', mask=[MAPL_LAND], &
             grid=CatchGrid,use_pfaf=.true.,rc=status)
        _VERIFY(status)
        route%route_ls=route_ls
@@ -445,9 +455,9 @@ contains
     else
        call ESMF_GridGet(CatchGrid,distgrid=distgrid,rc=status)
        _VERIFY(status)
-       call ESMF_DistGridGet(distgrid,deLayout=layout,rc=status)
+       call ESMF_DistGridGet(distgrid,deLayout=layout_catch,rc=status)
        _VERIFY(status)
-       call MAPL_LocstreamCreate(route_ls,layout,trim(TILFILE),'catch_ls', mask=[MAPL_LAND], &
+       call MAPL_LocstreamCreate(route_ls,layout_catch,trim(TILFILE),'catch_ls', mask=[MAPL_LAND], &
             grid=CatchGrid,use_pfaf=.true.,rc=status)
        _VERIFY(status)
        route%route_ls=route_ls
