@@ -354,7 +354,7 @@ contains
 
     type(ESMF_Grid)     :: catchGrid
     type(ESMF_DistGrid) :: distGrid
-    type(ESMF_DELayout) :: layout_route, delayout_ease
+    type(ESMF_DELayout) :: layout_ease,layout_catch
     type (MAPL_MetaComp), pointer  :: MAPL
     type(MAPL_LocStream)           :: locstream,route_ls,ease_ls
     type (T_RROUTE_STATE), pointer :: route => null()
