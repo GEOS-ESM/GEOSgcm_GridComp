@@ -41,6 +41,9 @@ module GEOS_RouteGridCompMod
      real,    pointer :: tile_area(:) => NULL()
      type(MAPL_LocStreamXForm) :: xform
      type(MAPL_LocStream) :: route_ls
+     logical :: ease_tiles
+     type(MAPL_LocStream) :: ease_ls
+     type(ESMF_Grid) :: ease_grid
   end type T_RROUTE_STATE
 
   ! Wrapper for extracting internal state
@@ -338,7 +341,6 @@ contains
 
     character(len=ESMF_MAXSTR)          :: IAm="Initialize"
     integer                             :: STATUS
-    character(len=ESMF_MAXSTR)          :: COMP_NAME
 
 ! -----------------------------------------------------------
 ! Locals
@@ -348,23 +350,28 @@ contains
     integer        :: comm
     integer        :: nDEs
     integer        :: myPE
-    integer        :: beforeMe, minCatch, maxCatch, pf, i
+    integer        :: beforeMe, minCatch, maxCatch,  i
 
     type(ESMF_Grid)     :: catchGrid
     type(ESMF_DistGrid) :: distGrid
     type(ESMF_DELayout) :: layout
     type (MAPL_MetaComp), pointer  :: MAPL
-    type(MAPL_LocStream)           :: locstream,route_ls
+    type(MAPL_LocStream)           :: locstream,route_ls,ease_ls
     type (T_RROUTE_STATE), pointer :: route => null()
     type (RROUTE_wrap)             :: wrap
     real(ESMF_KIND_R8), pointer    :: coords(:,:)
     integer, allocatable :: ims(:)
     integer              :: jms(1), ii,counts(3)
+    character(len=ESMF_MAXSTR) :: master_gridname
+    character(len=ESMF_MAXPATHLEN) :: ease_tilefile
+    type(ESMF_Config) :: cf
      
     ! ------------------
     ! begin
     
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
+    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, CONFIG = CF, RC=STATUS )
     VERIFY_(STATUS)
 
     route => wrap%ptr
@@ -413,17 +420,41 @@ contains
     coords=0.0d0
     call ESMF_GridCompSet(gc,grid=CatchGrid,rc=status)
     _VERIFY(status)
-    call ESMF_GridGet(CatchGrid,distgrid=distgrid,rc=status)
-    _VERIFY(status)
-    call ESMF_DistGridGet(distgrid,deLayout=layout,rc=status)
-    _VERIFY(status)
-    call MAPL_LocstreamCreate(route_ls,layout,trim(TILFILE),'catch_ls', mask=[MAPL_LAND], &
-         grid=CatchGrid,use_pfaf=.true.,rc=status)
-    _VERIFY(status)
-    route%route_ls=route_ls
 
-    call MAPL_LocStreamCreateXForm(xform=route%xform, locstreamOut=route_ls, &
-          locStreamIn=locstream,name="tile_to_route",rc=status)
+    
+    call ESMF_ConfigGetAttribute ( CF, master_gridname, Label="GEOSldas.GRIDNAME", RC=STATUS)
+    _VERIFY(status)
+    route%ease_tiles = (index(master_gridname,"EASE")/=0)
+    if (route%ease_tiles) then
+
+       route%ease_grid = grid_manager%make_grid(cf,prefix="GEOSldas"//".",rc=status)
+       _VERIFY(status)
+       call ESMF_ConfigGetAttribute ( CF, ease_tilefile, Label="EASE_PFAFFSETTER_TILE", RC=STATUS)
+       _VERIFY(status)
+       call MAPL_LocStreamCreate(ease_ls,layout,trim(ease_tilefile),'ease_ls',mask=[MAPL_LAND], &
+            grid=route%ease_grid,rc=status)
+       _VERIFY(status)
+       route%ease_ls=ease_ls
+       call MAPL_LocstreamCreate(route_ls,layout,trim(ease_tilefile),'route_ls', mask=[MAPL_LAND], &
+            grid=CatchGrid,use_pfaf=.true.,rc=status)
+       _VERIFY(status)
+       route%route_ls=route_ls
+       call MAPL_LocStreamCreateXform(xform=route%xform,locstreamOut=route_ls, &
+            locstreamIn=ease_ls,name="ease_to_route",rc=status)
+       _VERIFY(status)
+    else
+       call ESMF_GridGet(CatchGrid,distgrid=distgrid,rc=status)
+       _VERIFY(status)
+       call ESMF_DistGridGet(distgrid,deLayout=layout,rc=status)
+       _VERIFY(status)
+       call MAPL_LocstreamCreate(route_ls,layout,trim(TILFILE),'catch_ls', mask=[MAPL_LAND], &
+            grid=CatchGrid,use_pfaf=.true.,rc=status)
+       _VERIFY(status)
+       route%route_ls=route_ls
+
+       call MAPL_LocStreamCreateXForm(xform=route%xform, locstreamOut=route_ls, &
+             locStreamIn=locstream,name="tile_to_route",rc=status)
+    end if
 
 
     call MAPL_LocStreamGet(route%route_ls,nt_local=route%ntiles,rc=status)
@@ -539,6 +570,9 @@ contains
     integer                                  :: ndes, mype, nt_local, counts(3)
     type (T_RROUTE_STATE), pointer           :: route => null()
     type (RROUTE_wrap)                       :: wrap
+    real, allocatable :: ease_array(:,:), tile_in(:), tile_out(:)
+    integer :: ntiles_in,ntiles_out
+    integer, pointer :: local_i(:), local_j(:)
 
     ! ------------------
     ! begin
@@ -687,23 +721,50 @@ contains
        call MAPL_LocStreamGet(route%route_ls,nt_local=nt_local,rc=status)
        _VERIFY(status)
        allocate(runoff_catch_dist(nt_local))
-       
-       ! Call Locstream transform, takes land tiles that are on the distribution used by
-       ! catchgridcomp (based on atmosphere) and shuffles them to be on catchment distribution
-       ! in other words the tile is on the processor contains the catchment making up the tile
-       call MAPL_LocStreamTransform(runoff_catch_dist,route%xform,runoff_save,rc=status)
-       _VERIFY(status)
-       
-       ! Finall we can take the tiles and do the conservative locstream transform to 
-       ! aggregate them on the actual catchments. I am allocataing a temporary array
-       ! get the result of this computation
+      
        call ESMF_GridCompGet(gc,grid=esmfgrid,rc=status)
        _VERIFY(status)
        call MAPL_GridGet(esmfgrid,localCellCountPerDim=counts,rc=status)
        _VERIFY(status)
        allocate(runoff_on_catch(counts(1),counts(2)))    
-       call MAPL_LOcStreamTransform(route%route_ls,runoff_on_catch,runoff_catch_dist,rc=status)
-       _VERIFY(status)
+       if (route%ease_tiles) then
+          call MAPL_GridGet(route%ease_grid,localCellCountPerDim=counts,rc=status)
+          _VERIFY(status)
+          allocate(ease_array(counts(1),counts(2)))
+          ease_array=0.
+          call MAPL_Get(MAPL, LocStream = locstream, RC=status)
+          _VERIFY(status)
+          call MAPL_LocStreamGet(locstream,local_i=local_i,local_j=local_j,rc=status)
+          _VERIFY(status)
+          do i=1,size(runoff_catch_dist)
+             ease_array(local_i(i),local_j(i))=runoff_catch_dist(i)
+          enddo
+          call mapl_locstreamget(route%ease_ls,nt_local=ntiles_in,rc=status)
+          _VERIFY(status)
+          call mapl_locstreamget(route%route_ls,nt_local=ntiles_out,rc=status)
+          _VERIFY(status)
+          allocate(tile_in(ntiles_in))
+          allocate(tile_out(ntiles_out))
+          
+          call MAPL_LocStreamTransform(route%ease_ls,tile_in,ease_array,rc=status)
+          _VERIFY(status)
+          call MAPL_LocStreamTransform(tile_in,route%xform,tile_out,rc=status)
+          _VERIFY(status)
+          call MAPL_LocStreamTransform(route%route_ls,runoff_on_catch,tile_out,rc=status)
+          _VERIFY(status)
+          deallocate(ease_array,tile_in,tile_out) 
+       else 
+          ! Call Locstream transform, takes land tiles that are on the distribution used by
+          ! catchgridcomp (based on atmosphere) and shuffles them to be on catchment distribution
+          ! in other words the tile is on the processor contains the catchment making up the tile
+          call MAPL_LocStreamTransform(runoff_catch_dist,route%xform,runoff_save,rc=status)
+          _VERIFY(status)
+          ! Finall we can take the tiles and do the conservative locstream transform to 
+          ! aggregate them on the actual catchments. I am allocataing a temporary array
+          ! get the result of this computation
+          call MAPL_LOcStreamTransform(route%route_ls,runoff_on_catch,runoff_catch_dist,rc=status)
+          _VERIFY(status)
+       end if
 
        ! unit conversion of spatially averaged catchment runoff to [m3/s]
        runoff_on_catch(:,1) = runoff_on_catch (:,1) * AREACAT(:) * 1000.
