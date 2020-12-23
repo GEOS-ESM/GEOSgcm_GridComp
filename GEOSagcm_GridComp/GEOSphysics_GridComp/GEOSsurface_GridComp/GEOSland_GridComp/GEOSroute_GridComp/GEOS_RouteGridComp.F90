@@ -429,7 +429,7 @@ contains
 
        route%ease_grid = grid_manager%make_grid(cf,prefix="GEOSldas"//".",rc=status)
        _VERIFY(status)
-       call ESMF_ConfigGetAttribute ( CF, ease_tilefile, Label="EASE_PFAFFSETTER_TILE", RC=STATUS)
+       call ESMF_ConfigGetAttribute ( CF, ease_tilefile, Label="EASE_PFAFFSETTER_FILE:", RC=STATUS)
        _VERIFY(status)
 
        call ESMF_GridGet(route%ease_grid,distgrid=distgrid,rc=status)
