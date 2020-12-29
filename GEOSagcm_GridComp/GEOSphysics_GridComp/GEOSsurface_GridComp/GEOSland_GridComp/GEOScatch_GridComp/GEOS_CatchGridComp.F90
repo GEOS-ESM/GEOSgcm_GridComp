@@ -141,7 +141,7 @@ integer :: USE_ASCATZ0, Z0_FORMULATION, AEROSOL_DEPOSITION, N_CONST_LAND4SNWALB,
 real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 for Old Soil Params
                                 !         (Ganymed-4 and later  ) SURFLAY=50.0 for New Soil Params
 real    :: FWETC, FWETL
-logical :: USE_FWET_FOR_RUNOFF
+logical :: USE_FWET_FOR_RUNOFF, RUN_IRRIG
 
 contains
 
@@ -228,6 +228,8 @@ subroutine SetServices ( GC, RC )
        call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT=0.025, __RC__ )
     endif
 
+    call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'  , value=RUN_IRRIG  , DEFAULT=.false., __RC__ )
+    
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
     ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
@@ -786,6 +788,33 @@ subroutine SetServices ( GC, RC )
          VLOCATION          = MAPL_VLocationNone,            &
          RC=STATUS  ) 
     VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC                              ,&
+         SHORT_NAME = 'SPRINKLERRATE'                         ,&
+         LONG_NAME  = 'sprinkler_irrigation_rate'             ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)  
+    
+    call MAPL_AddImportSpec(GC                              ,&
+         SHORT_NAME = 'DRIPRATE'                              ,&
+         LONG_NAME  = 'drip_irrigation_rate'	              ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)  	 
+    
+    call MAPL_AddImportSpec(GC                              ,&
+         SHORT_NAME = 'FLOODRATE'                             ,&
+         LONG_NAME  = 'flood_irrigation_rate'                 ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)  	 
 
 !  !INTERNAL STATE:
 
@@ -1561,7 +1590,7 @@ subroutine SetServices ( GC, RC )
                                               RC=STATUS  ) 
       VERIFY_(STATUS)
 
-  end if
+   end if
 
 !  !EXPORT STATE:
 
@@ -1630,8 +1659,8 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'MUEVEGD',                   &
-    LONG_NAME          = 'moisture_unstressed_transpiration_deficit',    &
-    UNITS              = 'kg m-2',                    &
+    LONG_NAME          = 'moisture_unstressed_transpiration_difference',    &
+    UNITS              = 'kg m-2 s-1',                &
     DIMS               = MAPL_DimsTileOnly,           &
     VLOCATION          = MAPL_VLocationNone,          &
                                            RC=STATUS  )
@@ -3701,6 +3730,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:),   pointer :: ity
         real, dimension(:),   pointer :: ASCATZ0
         real, dimension(:),   pointer :: NDVI
+        real, dimension(:),   pointer :: SPRINKLERRATE
+        real, dimension(:),   pointer :: DRIPRATE
+        real, dimension(:),   pointer :: FLOODRATE
 
         real, dimension(:,:), pointer :: DUDP
         real, dimension(:,:), pointer :: DUSV
@@ -3721,7 +3753,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, dimension(:,:), pointer :: SSDP
         real, dimension(:,:), pointer :: SSSV
         real, dimension(:,:), pointer :: SSWT
-        real, dimension(:,:), pointer :: SSSD
+        real, dimension(:,:), pointer :: SSSD        
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
@@ -3940,7 +3972,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real,pointer,dimension(:) :: LHACC, SUMEV
         real,pointer,dimension(:) :: FICE1
         real,pointer,dimension(:) :: SLDTOT
- 
+        real,pointer,dimension(:) :: PLS_IN
+        
 !       real*8,pointer,dimension(:) :: fsum
 
         real,pointer,dimension(:,:) :: ghtcnt
@@ -4268,6 +4301,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(IMPORT,SSSV   ,'SSSV'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSWT   ,'SSWT'   ,RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(IMPORT,SSSD   ,'SSSD'   ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,SPRINKLERRATE,'SPRINKLERRATE',RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,DRIPRATE,     'DRIPRATE'     ,RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,FLOODRATE,    'FLOODRATE'    ,RC=STATUS); VERIFY_(STATUS)
 
         ! -----------------------------------------------------
         ! INTERNAL Pointers
@@ -4539,7 +4575,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         allocate(RCONSTIT (NTILES,N_SNOW,N_constit))
         allocate(TOTDEPOS (NTILES,N_constit))
         allocate(RMELT    (NTILES,N_constit))
-
+        allocate(PLS_IN   (NTILES))
+        
         LAI0  = LAI
  
         call ESMF_VMGetCurrent ( VM, RC=STATUS )
@@ -4943,6 +4980,24 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         TILEZERO = 0.0
 
+        PLS_IN = PLS
+
+        ! --------------------------------------------------------------------------
+        ! Add irrigation model imports
+        ! --------------------------------------------------------------------------
+        
+        if(RUN_IRRIG) then
+           where (SPRINKLERRATE > 0)
+              PLS_IN = PLS_IN + SPRINKLERRATE
+           end where
+           where (DRIPRATE > 0)
+              RZEXC  = RZEXC + DRIPRATE*DT
+           end where
+           where (FLOODRATE > 0)
+              SRFEXC = SRFEXC + FLOODRATE*DT
+           end where
+        endif
+        
         call MAPL_TimerOn  ( MAPL, "-CATCH" )
 !#ifdef LAND_UPD
         if (LAND_FIX) then
@@ -4972,8 +5027,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         unit = unit_i
  
 ! Inputs
-        call MAPL_VarWrite(unit, tilegrid, PCU,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, PLS,  mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, PCU,   mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, PLS_IN,mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, SNO,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, ICE,  mask=mask, rc=status); VERIFY_(STATUS)
         call MAPL_VarWrite(unit, tilegrid, FRZR, mask=mask, rc=status); VERIFY_(STATUS)
@@ -5395,7 +5450,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
              call CATCHMENT ( NTILES, LONS, LATS                  ,&
              DT,USE_FWET_FOR_RUNOFF,FWETC,FWETL, cat_id, VEG, DZSF,&
-             PCU      ,     PLS       ,    SNO, ICE, FRZR         ,&
+             PCU      ,     PLS_IN    ,    SNO, ICE, FRZR         ,&
              UUU                                                  ,&
 
              EVSBT(:,FSAT),     DEVSBT(:,FSAT),     DEDTC(:,FSAT) ,&
@@ -5455,10 +5510,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              SHSNOW1, AVETSNOW1, WAT10CM1, WATSOI1, ICESOI1       ,&
              LHSNOW1, LWUPSNOW1, LWDNSNOW1, NETSWSNOW             ,&
              TCSORIG1, TPSN1IN1, TPSN1OUT1                        ,&
-             lonbeg,lonend,latbeg,latend                          ,&
+             lonbeg,lonend,latbeg,latend, MUEVEGD                 ,&
              TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
              QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
-             RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC, MUEVEGD)
+             RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
 
         end if
 
@@ -5562,7 +5617,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         EVPVEG = EVPVEG - EVACC*EVPVEG/SUMEV
         endwhere
         endif
-        if(associated(MUEVEGD))MUEVEGD= DT * (MUEVEGD - EVPVEG/MAPL_ALHL)
+        if(associated(MUEVEGD))MUEVEGD= MUEVEGD - EVPVEG/MAPL_ALHL
         if(associated( LST  )) LST    = TST
         if(associated( TPSURF))TPSURF = TSURF
         if(associated( WET1 )) WET1   = max(min(SFMC / POROS,1.0),0.0)
@@ -5577,7 +5632,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
         if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
-        if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
+        if(associated(PRLAND)) PRLAND = PCU+PLS_IN+SLDTOT
         if(associated(SNOLAND)) SNOLAND = SLDTOT     ! note, not just SNO
         if(associated(DRPARLAND)) DRPARLAND = DRPAR
         if(associated(DFPARLAND)) DFPARLAND = DFPAR
@@ -5789,6 +5844,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         deallocate(RMELT )
         deallocate(FICE1 )
         deallocate(SLDTOT )
+        deallocate(PLS_IN)
 
         RETURN_(ESMF_SUCCESS)
 

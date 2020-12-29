@@ -26,18 +26,17 @@ module GEOS_IrrigationGridCompMod
 ! I. Parameter Class 1: Time and spatially dependent parameters 
 ! from a binary data file\\
 ! 
-! EXPORTS:  SPRINKLERRATE, DRIPRATE, FLOODRATE\\
 ! 
 ! The gridded component stores the surrounding observations of 
 ! each parameter in the internal state.  All internals are static parameters.
 !
 ! INTERNALS: IRRIGFRAC, PADDYFRAC, CROPIRRIGFRAC, IRRIGPLANT, IRRIGHARVEST,
 !            IRRIGTYPE, SPRINKLERFR, DRIPFR, FLOODFR, LAIMIN, LAIMAX\\
-!
+! OPTIONAL INTERNALS:  SPRINKLERRATE, DRIPRATE, FLOODRATE\\
+!  
 ! This GC imports soil parameters and root zone soil moisture from land models
-!    to compute soil moisture state for IRRIGRATE calculation.
-  
-! IMPORTS: POROS, WPWET, VGWMAX, WCRZ, LAI \\
+!    to compute soil moisture state for IRRIGRATE calculation.  
+! IMPORTS: POROS, WPWET, VGWMAX, WCRZ, LAI, CATDEF, MUEVEGD \\
 !
 ! !USES: 
 
@@ -99,7 +98,7 @@ contains
     type(ESMF_Config)                       :: SCF
     character(len=ESMF_MAXSTR)              :: SURFRC
 
-    type (irrig_params), pointer            :: irrigation_model_params => null()
+    type (irrigation_model), pointer        :: IM => null()
     type (IRRIG_wrap)                       :: wrap
 
 !=============================================================================
@@ -133,13 +132,16 @@ contains
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'    , value=RUN_IRRIG   , DEFAULT=.false., __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='IRRIG_TRIGGER:', value=IRRIG_TRIGGER,DEFAULT=0, __RC__ )    
     call ESMF_ConfigGetAttribute (SCF, label='IRRIG_METHOD:' , value=IRRIG_METHOD, DEFAULT=0, __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='IRRIG_TRIGGER:', value=RUN_IRRIG   , DEFAULT=0, __RC__ )    
+   
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
-    ! Leave GEOSirrigation_GridComp if RUN_IRRIG == 0
-    if(.not. RUN_IRRIG) RETURN_(ESMF_SUCCESS)
-
+    ! Leave GEOSirrigation_GridComp if RUN_IRRIG == .FALSE.
+    if(.not. RUN_IRRIG) then
+       RETURN_(ESMF_SUCCESS)
+    endif
+    
 ! -----------------------------------------------------------
 ! Set the Run entry point
 ! -----------------------------------------------------------
@@ -284,7 +286,7 @@ contains
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
          FRIENDLYTO = trim(COMP_NAME)                         ,&
-         RESTART    = RESTART                                 ,&
+         RESTART    = MAPL_RestartOptional                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)  
     
@@ -295,7 +297,7 @@ contains
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
          FRIENDLYTO = trim(COMP_NAME)                         ,&
-         RESTART    = RESTART                                 ,&
+         RESTART    = MAPL_RestartOptional                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)  	 
     
@@ -306,7 +308,7 @@ contains
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
          FRIENDLYTO = trim(COMP_NAME)                         ,&
-         RESTART    = RESTART                                 ,&
+         RESTART    = MAPL_RestartOptional                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)  	 
     
@@ -351,27 +353,46 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC                                ,&
-       SHORT_NAME = 'LAI'                                     ,&
-       LONG_NAME  = 'leaf_area_index'                         ,&
-       UNITS      = '1'                                       ,&
-       DIMS       = MAPL_DimsTileOnly                         ,&
-       VLOCATION  = MAPL_VLocationNone                        ,&
-       RC=STATUS  )
+         SHORT_NAME = 'LAI'                                   ,&
+         LONG_NAME  = 'leaf_area_index'                       ,&
+         UNITS      = '1'                                     ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+        
+    call MAPL_AddImportSpec(GC                                ,&
+         LONG_NAME  = 'catchment_deficit'                     ,&
+         UNITS      = 'kg m-2'                                ,&
+         SHORT_NAME = 'CATDEF'                                ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  ) 
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC                                ,&
+         SHORT_NAME = 'MUEVEGD'                               ,&
+         LONG_NAME  = 'moisture_unstressed_transpiration_deficit',&
+         UNITS      = 'kg m-2 s-1'                                ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+  
 ! Allocate this instance of the internal state and put it in wrapper.
 ! -------------------------------------------------------------------
 
-    allocate( irrigation_model_params, stat=status )
+    allocate(IM, stat=status )
     VERIFY_(STATUS)
-    call irrigation_model_params%init_model (SURFRC)
-    wrap%ptr => irrigation_model_params
+    call IM%init_model (SURFRC)
+    wrap%ptr = IM%irrig_params
     
 ! Save pointer to the wrapped internal state in the GC
 ! ----------------------------------------------------
 
     call ESMF_UserCompSetInternalState ( GC, 'irrigation_state',wrap,status )
     VERIFY_(STATUS)
+    deallocate (IM)
     
 !EOS
 
@@ -427,12 +448,9 @@ contains
     real, dimension(:,:),   pointer :: IRRIGTYPE
     real, dimension(:,:,:), pointer :: IRRIGPLANT
     real, dimension(:,:,:), pointer :: IRRIGHARVEST
-    
-! EXPORT pointers 
-
-    real, dimension(:), pointer :: SPRINKLERRATE
-    real, dimension(:), pointer :: DRIPRATE
-    real, dimension(:), pointer :: FLOODRATE
+    real, dimension(:),     pointer :: SPRINKLERRATE
+    real, dimension(:),     pointer :: DRIPRATE
+    real, dimension(:),     pointer :: FLOODRATE
 
 ! IMPORT pointers
     
@@ -441,6 +459,8 @@ contains
     real, dimension(:), pointer :: VGWMAX
     real, dimension(:), pointer :: WCRZ
     real, dimension(:), pointer :: LAI
+    real, dimension(:), pointer :: CATDEF
+    real, dimension(:), pointer :: MUEVEGD
   
 ! Time attributes 
 
@@ -449,12 +469,11 @@ contains
 
 ! Others/ Locals
 
-    type(irrigation_model),save :: IM
-    real,pointer,dimension(:)   :: lons
-    integer                     :: ntiles, n
-    real, dimension (:)         :: local_hour, SMWP, SMSAT, SMREF, SMCNT, LAIFAC, LAITHRES
-    type (irrig_params), pointer:: ip => null()
-    type (IRRIG_wrap)           :: wrap
+    type(irrigation_model),pointer :: IM
+    type (IRRIG_wrap)              :: wrap
+    real,pointer,dimension(:)      :: lons
+    integer                        :: ntiles, n
+    real, dimension(:),allocatable :: local_hour, SMWP, SMSAT, SMREF, SMCNT
 
 
 ! Get the target components name and set-up traceback handle.
@@ -467,7 +486,9 @@ contains
 
     call ESMF_UserCompGetInternalState ( GC, 'irrigation_state',wrap,status )
     VERIFY_(STATUS)    
-    IP => wrap%ptr
+    allocate (IM)
+    IM = irrigation_model()
+    IM%irrig_params = wrap%ptr
 
     ! Get my internal MAPL_Generic state
 ! -----------------------------------------------------------
@@ -501,12 +522,14 @@ contains
 ! get pointers to IMPORT variables
 ! --------------------------------
 
-    call MAPL_GetPointer(IMPORT, POROS , 'POROS',  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, WPWET , 'WPWET',  RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, VGWMAX, 'VGWMAX', RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, WCRZ  , 'WCRZ',   RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, LAI   , 'LAI',    RC=STATUS) ; VERIFY_(STATUS)
-    
+    call MAPL_GetPointer(IMPORT, POROS  , 'POROS',  RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, WPWET  , 'WPWET',  RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, VGWMAX , 'VGWMAX', RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, WCRZ   , 'WCRZ',   RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, LAI    , 'LAI',    RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, CATDEF , 'CATDEF', RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, MUEVEGD, 'MUEVEGD',RC=STATUS) ; VERIFY_(STATUS)
+        
 ! Get time and parameters from local state
 ! ----------------------------------------
 
@@ -549,8 +572,8 @@ contains
        IF (local_hour(n) >= 24.) local_hour(n) = local_hour(n) - 24.
        IF (local_hour(n) <   0.) local_hour(n) = local_hour(n) + 24.
 
-       ! reference soil moisture content is at lower tercile of RZ soil moisture
-       SMREF (n) = VGWMAX (n) * poros(n) * (wpwet (n) + (1. - wpwet (n))/3.) 
+       ! reference soil moisture content is at lower tercile of RZ soil moisture range [mm]
+       SMREF (n) = VGWMAX (n) * (wpwet (n) + wpwet (n)/3.) 
        
     END DO
 
@@ -558,40 +581,25 @@ contains
 
        ! LAI based trigger: scale soil moisture to LAI seasonal cycle
        ! ============================================================
-       
-       allocate (LAIFAC   (1:NTILES))
-       allocate (LAITHRES (1:NTILES))
-       
-       DO N = 1, NTILES
-          LAITHRES (N)   = LAIMIN (N) + 0.60 * (LAIMAX (N) - LAIMIN (N))
-          IF(LAIMAX (N) > LAIMIN (N)) THEN
-             LAIFAC (N) = (LAI(N) - LAIMIN (N)) / (LAIMAX(N) - LAIMIN(N))
-          ELSE
-             LAIFAC (N) = 0.
-          ENDIF
-       END DO
-      
-       SMWP  = LAIFAC * SMWP  
-       SMSAT = LAIFAC * SMSAT
-       SMREF = LAIFAC * SMREF
-       SMCNT = LAIFAC * SMCNT
-             
-       call IM%run_model(IRRIG_METHOD, local_hour,                 &
-            IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,    &           
-            SMWP, SMSAT, SMREF, SMCNT, LAI, LAITHRES,              &
+                    
+       call IM%run_model(IRRIG_METHOD, local_hour,                        &
+            IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,           &           
+            SMWP,SMSAT,SMREF,SMCNT, LAI, LAIMIN, LAIMAX, MUEVEGD,CATDEF,  &
             SPRINKLERRATE, DRIPRATE, FLOODRATE) 
-
-       deallocate (LAIFAC, LAITHRES)
        
     else
        
        ! crop calendar based irrigation
        ! ==============================
-       call IM%run_model
+       
+       call IM%run_model (dofyr,local_hour,                   &
+            CROPIRRIGFRAC,IRRIGPLANT,IRRIGHARVEST,IRRIGTYPE , &
+            SMWP,SMSAT,SMREF,SMCNT, MUEVEGD,CATDEF,           & 
+            SPRINKLERRATE, DRIPRATE, FLOODRATE) 
 
     endif
     
-    deallocate (local_hour, SMWP, SMSAT, SMREF, SMCNT)
+    deallocate (local_hour, SMWP, SMSAT, SMREF, SMCNT, IM)
     
     call MAPL_TimerOff(MAPL,"TOTAL")
     RETURN_(ESMF_SUCCESS)

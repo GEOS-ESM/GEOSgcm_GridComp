@@ -197,6 +197,7 @@ contains
     END SELECT
     
     IF(RUN_IRRIG) THEN
+       allocate (IRRIGATION(NUM_CATCH), stat=status)
        if (NUM_CATCH == 1) then
           IRRIGATION(1) = MAPL_AddChild(GC, NAME='IRRIGATION', SS=IrrigationSetServices, RC=STATUS)
           VERIFY_(STATUS)
@@ -1381,8 +1382,7 @@ contains
              call MAPL_AddConnectivity (                                         &
                   GC                                                            ,&
                   SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '   ,&
-                       'CATDEF  ','BF1     ','BF2     ','CDCR1   ','CDCR2   '   ,&
-                       'MUEVEGD '/)                                             ,&
+                       'CATDEF  ','MUEVEGD '/)                                  ,&
                   SRC_ID =  CATCH(I)                                            ,&
                   DST_ID =  IRRIGATION(I)                                       ,&
                   RC=STATUS )
@@ -1391,7 +1391,7 @@ contains
              call MAPL_AddConnectivity (                                         &
                   GC                                                            ,&
                   SHORT_NAME  = (/'SPRINKERRATE','DRIPRATE    ','FLOODRATE   '/),&
-                  SRC_ID =  IRRIGATIION(I)                                      ,&
+                  SRC_ID =  IRRIGATION(I)                                       ,&
                   DST_ID =  CATCH(I)                                            ,& 
                   RC=STATUS )
              VERIFY_(STATUS)             
@@ -1420,8 +1420,7 @@ contains
 !             call MAPL_AddConnectivity (                                         &
 !                  GC                                                            ,&
 !                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '   ,&
-!                       'CATDEF  ','BF1     ','BF2     ','CDCR1   ','CDCR2   '   ,&
-!                       'MUEVEGD '/)                                             ,&
+!                       'CATDEF  ','MUEVEGD '/)                                  ,&
 !                  SRC_ID =  CATCHCN(I)                                          ,&
 !                  DST_ID =  IRRIGATION(I)                                       ,&
 !                  RC=STATUS )
