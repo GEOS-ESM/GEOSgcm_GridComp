@@ -13,9 +13,9 @@ MODULE IRRIGATION_MODULE
   !      sprinkler irrigation rate to large scale precipitation;
   !      drip irrigation volume to rootzone excess; and
   !      flood irrigation volume to surface excess.
-  ! The model treats computed irrigation rates are as internals to ensure stop-start zerodiff of the modeling system.
-  ! The model uses the rootzone soil moisture state at the local start time of irrigation to compute the
-  ! irrigation rates for the day and maintains the same rate throught out the irrigation period.
+  ! The model treats computed irrigation rates as internals to ensure stop-start zerodiff of the modeling system.
+  ! The model uses rootzone soil moisture state at the local start time of irrigation to compute 
+  ! irrigation rates for the day and maintains the same rate through out the irrigation period.
   ! 
   ! Sprinkler and Flood Irrigation methods were adapted from LIS CLSMF2.5 irrigatrion module:
   ! https://github.com/NASA-LIS/LISF/blob/master/lis/surfacemodels/land/clsm.f2.5/irrigation/clsmf25_getirrigationstates.F90 
