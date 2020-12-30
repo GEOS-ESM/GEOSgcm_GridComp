@@ -183,8 +183,8 @@
 # SPRINKLER_STIME: 6.0 # sprinkler irrigatrion start time [hours]
 # SPRINKLER_DUR:   4.0 # sprinkler irrigation duration [hours]
 # SPRINKLER_THRES: 0.5 # soil moisture threshhold to trigger sprinkler irrigation
-# DRIP_STIME:      6.0 # drip irrigatrion start time [hours]
-# DRIP_DUR:       12.0 # drip irrigation duration [hours]
+# DRIP_STIME:     10.0 # drip irrigatrion start time [hours]
+# DRIP_DUR:        8.0 # drip irrigation duration [hours]
 # FLOOD_STIME:     6.0 # flood irrigatrion start time [hours]
 # FLOOD_DUR:       1.0 # flood irrigation duration [hours]
 # FLOOD_THRES:    0.25 # soil moisture threshhold to trigger flood irrigation

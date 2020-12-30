@@ -382,18 +382,17 @@ contains
 ! Allocate this instance of the internal state and put it in wrapper.
 ! -------------------------------------------------------------------
 
-    allocate(IM, stat=status )
+    allocate(IM,   stat=status )
     VERIFY_(STATUS)
     call IM%init_model (SURFRC)
-    wrap%ptr = IM%irrig_params
-    
+    wrap%ptr => IM%irrig_params
+
 ! Save pointer to the wrapped internal state in the GC
 ! ----------------------------------------------------
 
     call ESMF_UserCompSetInternalState ( GC, 'irrigation_state',wrap,status )
     VERIFY_(STATUS)
-    deallocate (IM)
-    
+     
 !EOS
 
 !------------------------------------------------------------
@@ -565,7 +564,7 @@ contains
     SMWP  = VGWMAX * WPWET           ! RZ soil moisture content at wilting point [mm]
     SMSAT = VGWMAX                   ! RZ soil moisture at saturation  [mm]
     SMCNT = (VGWMAX/POROS) * WCRZ    ! actual RZ soil moisture content [mm]
-       
+
     DO N = 1, NTILES
        ! local times
        local_hour(n) = AGCM_HH + AGCM_MI / 60. + AGCM_S / 3600. + 12.* (lons(n)/MAPL_PI)
@@ -576,7 +575,7 @@ contains
        SMREF (n) = VGWMAX (n) * (wpwet (n) + wpwet (n)/3.) 
        
     END DO
-
+    
     if (IRRIG_TRIGGER == 0) then
 
        ! LAI based trigger: scale soil moisture to LAI seasonal cycle

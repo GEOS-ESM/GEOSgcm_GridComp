@@ -358,7 +358,6 @@ contains
           else
              ma = -1.
           endif
-          
           ICFRAC = SUM (CROPIRRIGFRAC(N,:)) - CROPIRRIGFRAC(N,3)
           IF (ICFRAC > 0.) THEN
              srate = 0.
@@ -366,12 +365,15 @@ contains
              frate = 0.
              DO crop = 1, NUM_CROPS
                 if(crop /= 3) then
-                   if (IRRIGTYPE (N,crop) == 1.) SRATE (crop) = SPRINKLERRATE(N)*CROPIRRIGFRAC(N,crop)/SUM (CROPIRRIGFRAC(N,:),mask=IRRIGTYPE (N,:) == 1.)
-                   if (IRRIGTYPE (N,crop) == 2.) DRATE (crop) = DRIPRATE(N)     *CROPIRRIGFRAC(N,crop)/SUM (CROPIRRIGFRAC(N,:),mask=IRRIGTYPE (N,:) == 2.)
-                   if (IRRIGTYPE (N,crop) == 3.) FRATE (crop) = FLOODRATE(N)    *CROPIRRIGFRAC(N,crop)/SUM (CROPIRRIGFRAC(N,:),mask=IRRIGTYPE (N,:) == 3.)
+                   if ((IRRIGTYPE (N,crop) == 1.).AND.(SUM (CROPIRRIGFRAC(N,:),mask=IRRIGTYPE (N,:) == 1.) > 0)) &
+                        SRATE (crop) = SPRINKLERRATE(N)*CROPIRRIGFRAC(N,crop)/SUM (CROPIRRIGFRAC(N,:),mask=IRRIGTYPE (N,:) == 1.)
+                   if ((IRRIGTYPE (N,crop) == 2.).AND.(SUM (CROPIRRIGFRAC(N,:),mask=IRRIGTYPE (N,:) == 2.) > 0)) &
+                        DRATE (crop) = DRIPRATE(N)     *CROPIRRIGFRAC(N,crop)/SUM (CROPIRRIGFRAC(N,:),mask=IRRIGTYPE (N,:) == 2.)
+                   if ((IRRIGTYPE (N,crop) == 3.).AND.(SUM (CROPIRRIGFRAC(N,:),mask=IRRIGTYPE (N,:) == 3.) > 0)) &
+                        FRATE (crop) = FLOODRATE(N)    *CROPIRRIGFRAC(N,crop)/SUM (CROPIRRIGFRAC(N,:),mask=IRRIGTYPE (N,:) == 3.)
                 endif
              END DO
-          END IF
+           END IF
           
           CROP_LOOP: DO crop = 1, NUM_CROPS
              CROP_IN_TILE: if(CROPIRRIGFRAC(N,crop) > 0.) then

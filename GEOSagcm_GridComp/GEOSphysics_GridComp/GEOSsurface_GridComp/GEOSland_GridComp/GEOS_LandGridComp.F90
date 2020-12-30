@@ -1390,7 +1390,7 @@ contains
              
              call MAPL_AddConnectivity (                                         &
                   GC                                                            ,&
-                  SHORT_NAME  = (/'SPRINKERRATE','DRIPRATE    ','FLOODRATE   '/),&
+                  SHORT_NAME = (/'SPRINKLERRATE','DRIPRATE    ','FLOODRATE   '/),&
                   SRC_ID =  IRRIGATION(I)                                       ,&
                   DST_ID =  CATCH(I)                                            ,& 
                   RC=STATUS )
@@ -1428,7 +1428,7 @@ contains
              
 !             call MAPL_AddConnectivity (                                         &
 !                  GC                                                            ,&
-!                  SHORT_NAME  = (/'SPRINKERRATE','DRIPRATE    ','FLOODRATE   '/),&
+!                  SHORT_NAME = (/'SPRINKLERRATE','DRIPRATE    ','FLOODRATE   '/),&
 !                  SRC_ID =  IRRIGATIION(I)                                      ,&
 !                  DST_ID =  CATCHCN(I)                                          ,& 
 !                  RC=STATUS )
