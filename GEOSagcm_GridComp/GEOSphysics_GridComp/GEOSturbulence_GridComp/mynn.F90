@@ -687,12 +687,12 @@ subroutine mynn_length(IM, JM, LM, &                                         ! i
            N = sqrt( N2(i,j,k) )
 
            if ( L_TYPE_2 == 0 ) then
+              LB_test = q(i,j,k)/N
+           else
               call boulac(IM, JM, LM, i, j, k, &                    ! in
                           th00, ice_ramp, zlo, zle, pl, ple, thv, & ! in
                           q(i,j,k), N, &                            ! in
                           LB_test)                                  ! out    
-           else
-              LB_test = q(i,j,k)/N
            end if
 
            if ( L_TYPE_3 == 0 ) then

@@ -9218,5 +9218,66 @@ end subroutine Poisson
 
       end function interp_carpenter1990_down
 
+      subroutine compute_zi(IM, JM, LM, &
+                            zle, thv, &
+                            zi)
+
+        implicit none
+
+        real, parameter :: dthv = 0.75
+
+        integer, intent(in)                     :: IM, JM, LM
+        real, dimension(IM,JM,0:LM), intent(in) :: zle
+        real, dimension(IM,JM,LM), intent(in)   :: thv
+        real, dimension(IM,JM), intent(out)     :: zi
+
+        integer :: i, j, k, kp1, m, n
+        logical, dimension(IM,JM) :: search_flag
+        real, dimension(IM,JM)    :: min_thv
+
+        n = IM*JM
+
+        m = 0
+        min_thv(:,:) = 9E+9
+        do k = LM-1,1,-1
+           if ( m == n ) exit
+
+           kp1 = k + 1
+
+           do j = 1,JM
+           do i = 1,IM
+              if ( zle(i,j,k) <= 200. ) then
+                 if ( thv(i,j,kp1) < min_thv(i,j) ) then
+                    min_thv(i,j) = thv(i,j,kp1)
+                 end if
+              else
+                 m = m + 1
+              end if
+           end do
+           end do
+        end do
+
+        m = 0
+        search_flag(:,:) = .true.
+        zi(:,:)          = LM - 1
+        do k = LM-1,1,-1
+           if ( m == n ) exit
+
+           kp1 = k + 1
+
+           do j = 1,JM
+           do i = 1,IM
+              if ( search_flag(i,j) .and. thv(i,j,k) >= min_thv(i,j) + dthv ) then
+                 zi(i,j) = k
+
+                 search_flag(i,j) = .false.
+                 m = m + 1
+              end if
+           end do
+           end do
+        end do
+
+      end subroutine compute_zi
+
 end module GEOS_TurbulenceGridCompMod
 
