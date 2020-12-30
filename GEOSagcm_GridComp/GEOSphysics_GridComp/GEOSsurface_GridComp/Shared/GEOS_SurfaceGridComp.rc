@@ -171,8 +171,8 @@
 # 4 different irrigation methods to choose from: 
 #    0 : CONCURRENTLY Sprinkler, Flood, and DRIP irrigation methods on method specific tile fractions (default)
 #    1 : Sprinkler irrigation on entire tile
-#    2 : Flood irrigation on entire tile 
-#    3 : Drip irrigation on entire tile
+#    2 : Drip irrigation on entire tile
+#    3 : Flood irrigation on entire tile 
 #
 # GEOSagcm=>IRRIG_METHOD: 0
 # GEOSldas=>IRRIG_METHOD: 0

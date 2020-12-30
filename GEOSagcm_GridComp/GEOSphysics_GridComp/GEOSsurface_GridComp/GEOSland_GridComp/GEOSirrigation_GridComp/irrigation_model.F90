@@ -37,7 +37,7 @@ MODULE IRRIGATION_MODULE
   !    All fractions use the same model and soil parameters from the main land tile that they belong to while
   !    vegetation characteristics and vegetation dynamic parameters were taken from the nearest
   !    grass or crops land tile. During tiling and BCs data preparation, computed fractional coverages for land tiles were also adjusted
-  !    to reflect each computational tiles under the land grid component represent a non-irrigated land,
+  !    to reflect each computational tile under the land grid component represents entirely one of the 3 irrigation surface types: a non-irrigated land,
   !    OR a irrigated-crops OR a paddy tile.
   !
   ! (3) MODEL INPUTS:
@@ -61,8 +61,8 @@ MODULE IRRIGATION_MODULE
   !          that woould run on corresponding fractions       
   !          i)  0: (Default) All 3 methods (sprinkler/flood/drip) concurrently.
   !          ii) 1: Sprinkler irrigation on entire tile.
-  !          iii)2: Flood irrigation on entire tile.
-  !          iv) 3: Drip irrigation on entire tile.
+  !          iv) 2: Drip irrigation on entire tile.
+  !          iii)3: Flood irrigation on entire tile.
   !
   !     IRRIG_TRIGGER: 0 SPECIFIC INPUTS:
   !          IRRIGFRAC    : fraction of tile covered by irrigated crops (per Section 2, values will be 0. or 1.)
@@ -265,8 +265,20 @@ contains
                    
                    DRIPRATE (N) = 0.
                    FLOODRATE (N)= 0.
+                                      
+                CASE (2)  ! DRIP only
                    
-                CASE (2)  ! FLOOD only
+                   H1 = this%drip_stime
+                   H2 = this%drip_stime + this%drip_dur
+                   if ((HC >= H1).AND.(HC < H2)) then
+                      if(H1 == HC) DRIPRATE (N) = MUEVEGD(N) *12. /(H2 - H1)
+                   else
+                      DRIPRATE (N) = 0.
+                   endif
+                   SPRINKLERRATE (N) = 0.
+                   FLOODRATE (N)     = 0.
+
+                CASE (3)  ! FLOOD only
                    
                    H1 = this%flood_stime
                    H2 = this%flood_stime + this%flood_dur
@@ -280,18 +292,6 @@ contains
                    endif
                    SPRINKLERRATE (N) = 0.
                    DRIPRATE (N)      = 0.
-                   
-                CASE (3)  ! DRIP only
-                   
-                   H1 = this%drip_stime
-                   H2 = this%drip_stime + this%drip_dur
-                   if ((HC >= H1).AND.(HC < H2)) then
-                      if(H1 == HC) DRIPRATE (N) = MUEVEGD(N) *12. /(H2 - H1)
-                   else
-                      DRIPRATE (N) = 0.
-                   endif
-                   SPRINKLERRATE (N) = 0.
-                   FLOODRATE (N)     = 0.
                    
                 CASE DEFAULT
                    PRINT *, 'irrigrate_lai_trigger: IRRIG_METHOD can be 0,1,2, or3'
