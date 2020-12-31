@@ -9,13 +9,13 @@ MODULE IRRIGATION_MODULE
 
   ! This module computes irrigation rates by 3 different methods: sprinkler, flood and drip.
   ! Computed irrigation rates return to the land model as rates that water is added to
-  ! the hydrological cycle by irrigation. Land models add: 
+  ! the hydrological cycle by irrigation. Thus, land models add irrigation feedback: 
   !      sprinkler irrigation rate to large scale precipitation;
   !      drip irrigation volume to rootzone excess; and
   !      flood irrigation volume to surface excess.
-  ! The model treats computed irrigation rates as internals to ensure stop-start zerodiff of the modeling system.
+  ! Computed irrigation rates are treated as internals to ensure stop-start zerodiff of the modeling system.
   ! The model uses rootzone soil moisture state at the local start time of irrigation to compute 
-  ! irrigation rates for the day and maintains the same rate through out the irrigation period.
+  ! irrigation rates for the day and maintains the same rate through out the irrigation duration.
   ! 
   ! Sprinkler and Flood Irrigation methods were adapted from LIS CLSMF2.5 irrigatrion module:
   ! https://github.com/NASA-LIS/LISF/blob/master/lis/surfacemodels/land/clsm.f2.5/irrigation/clsmf25_getirrigationstates.F90 
@@ -108,13 +108,14 @@ MODULE IRRIGATION_MODULE
      
      ! Below parameters can be set via RC file.
      
-     REAL ::lai_thres         = 0.6  ! threshold of LAI range to turn irrigation on
+     REAL :: lai_thres        =  0.6 ! threshold of LAI range to turn irrigation on
+     REAL :: efcor            = 76.0 ! Efficiency Correction (%)
      
      ! Sprinkler parameters
      ! --------------------
-     REAL :: sprinkler_stime  = 6.0 ! sprinkler irrigatrion start time [hours]
-     REAL :: sprinkler_dur    = 4.0 ! sprinkler irrigation duration [hours]
-     REAL :: sprinkler_thres  = 0.5 ! soil moisture threshhold to trigger sprinkler irrigation
+     REAL :: sprinkler_stime  =  6.0 ! sprinkler irrigatrion start time [hours]
+     REAL :: sprinkler_dur    =  4.0 ! sprinkler irrigation duration [hours]
+     REAL :: sprinkler_thres  =  0.5 ! soil moisture threshhold to trigger sprinkler irrigation
      
      ! Drip parameters 
      ! ---------------
@@ -123,10 +124,10 @@ MODULE IRRIGATION_MODULE
      
      ! Flood parameters
      ! ----------------
-     REAL :: flood_stime      =  6.0  ! flood irrigatrion start time [hours]
-     REAL :: flood_dur        =  1.0  ! flood irrigation duration [hours]
-     REAL :: flood_thres      =  0.25 ! soil moisture threshhold to trigger flood irrigation
-     REAL :: efcor            = 76.0  ! Efficiency Correction (%)
+     REAL :: flood_stime      =  6.0 ! flood irrigatrion start time [hours]
+     REAL :: flood_dur        =  1.0 ! flood irrigation duration [hours]
+     REAL :: flood_thres      = 0.25 ! soil moisture threshhold to trigger flood irrigation
+
      
   end type irrig_params
   
@@ -153,6 +154,7 @@ contains
 
     implicit none
     class (irrigation_model), intent(inout) :: IP
+    type(irrig_params)                      :: DP
     CHARACTER(*), INTENT(IN)                :: SURFRC
     type(ESMF_Config)                       :: SCF
     integer                                 :: status, RC
@@ -162,16 +164,16 @@ contains
     
     SCF = ESMF_ConfigCreate(__RC__) 
     CALL ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_STIME:', VALUE=IP%sprinkler_stime, DEFAULT= 6.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_DUR:'  , VALUE=IP%sprinkler_dur,   DEFAULT= 4.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_THRES:', VALUE=IP%sprinkler_thres, DEFAULT= 0.50, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_STIME:'     , VALUE=IP%drip_stime,      DEFAULT=10.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_DUR:'       , VALUE=IP%drip_dur,        DEFAULT= 8.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_STIME:'    , VALUE=IP%flood_stime,     DEFAULT= 6.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_DUR:'      , VALUE=IP%flood_dur,       DEFAULT= 1.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_THRES:'    , VALUE=IP%flood_thres,     DEFAULT= 0.25, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='IRR_EFCOR:'      , VALUE=IP%efcor,           DEFAULT=76.00, __RC__ )
-    CALL ESMF_ConfigGetAttribute (SCF, label='LAI_THRES:'      , VALUE=IP%lai_thres,       DEFAULT= 0.60, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_STIME:', VALUE=IP%sprinkler_stime, DEFAULT=DP%sprinkler_stime, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_DUR:'  , VALUE=IP%sprinkler_dur,   DEFAULT=DP%sprinkler_dur  , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='SPRINKLER_THRES:', VALUE=IP%sprinkler_thres, DEFAULT=DP%sprinkler_thres, __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_STIME:'     , VALUE=IP%drip_stime,      DEFAULT=DP%drip_stime     , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='DRIP_DUR:'       , VALUE=IP%drip_dur,        DEFAULT=DP%drip_dur       , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_STIME:'    , VALUE=IP%flood_stime,     DEFAULT=DP%flood_stime    , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_DUR:'      , VALUE=IP%flood_dur,       DEFAULT=DP%flood_dur      , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_THRES:'    , VALUE=IP%flood_thres,     DEFAULT=DP%flood_thres    , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRR_EFCOR:'      , VALUE=IP%efcor,           DEFAULT=DP%efcor          , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='LAI_THRES:'      , VALUE=IP%lai_thres,       DEFAULT=DP%lai_thres      , __RC__ )
     CALL ESMF_ConfigDestroy      (SCF, __RC__)
 
   END SUBROUTINE init_model
@@ -381,6 +383,7 @@ contains
                       IS_CROP: IF(IRRIGPLANT(N, sea, crop) /= 998) THEN
                          IS_SEASON: IF(IS_WITHIN_SEASON(dofyr,NINT(IRRIGPLANT(N, sea, crop)),NINT(IRRIGHARVEST(N, sea, crop)))) THEN
                             PADDY_OR_CROP: if (crop == 3) then
+                               
                                ! a paddy tile
                                H1 = this%flood_stime
                                H2 = this%flood_stime + this%flood_dur
@@ -391,10 +394,10 @@ contains
                                endif
                                SPRINKLERRATE (N) = 0.
                                DRIPRATE (N)      = 0.
+
                             else
                                
-                               ! irrigated crop - compute sum of irrigrates from 25 crops
-                               
+                               ! irrigated crop - compute sum of irrigrates from 25 crops   
                                SELECT CASE (NINT(IRRIGTYPE(N,crop)))
                                CASE (1)
                                   ! (1)SPRINKLER
