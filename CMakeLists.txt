@@ -4,7 +4,7 @@ set (alldirs
   GEOSagcm_GridComp
   GEOSdataatm_GridComp
   GEOSmkiau_GridComp
-  GEOSogcm_GridComp
+#  GEOSogcm_GridComp
   )
 
 
