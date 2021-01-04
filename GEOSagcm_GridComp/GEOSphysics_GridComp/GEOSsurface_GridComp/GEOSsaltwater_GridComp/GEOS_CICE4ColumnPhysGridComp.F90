@@ -4831,6 +4831,103 @@ contains
     RETURN_(ESMF_SUCCESS)
   end subroutine CICE_PREP_THERMO
 
+
+
+! !IROUTINE: CICE_THERMO1 - Computes 1st step of CICE Thermodynamics
+
+! !INTERFACE:
+
+  subroutine  EXPLICIT_COUPLING(N,NSUB,
+                           LAT,LON,                          &
+                           LATSO,LONSO,                      &
+                           DT,FR,TS,                         &
+                           ERGICE,ERGSNO,                    &
+                           FCOND, EVP,                       &
+                           VOLICE,VOLSNO,                    &
+                           SHF,LHF,                          &
+                           ALW,BLW,                          &
+                           FSWSFC,FSWABS,                    & 
+                           LWDNSRF,                          & 
+                           EVD,SHD,RC)
+
+! !ARGUMENTS:
+    integer, optional, intent(OUT) :: RC
+
+    integer, intent(IN)  ::  N                 ! number of subtile type (or ice category)
+    integer, intent(IN)  ::  NSUB              ! number of tiles
+
+    real,    intent(IN)  :: LAT                ! lat
+    real,    intent(IN)  :: LON                ! lon
+    real,    intent(IN)  :: LATSO              ! trace CICE computations at this latitude
+    real,    intent(IN)  :: LONSO              ! trace CICE computations at this longitude
+
+    real,    intent(IN)  :: TF         (:)     ! sea Water freezing temperature in degrees C
+    real,    intent(IN)  :: ALW        (:)     ! linearization of \sigma T^4
+    real,    intent(IN)  :: BLW        (:)     ! linearization of \sigma T^4
+    real,    intent(IN)  :: FSWABS     (:)
+    real,    intent(IN)  :: LWDNSRF    (:)     ! longwave at surface
+    real,    intent(IN)  :: EVD        (:)     ! related to evap
+    real,    intent(IN)  :: SHD        (:)     ! related to sensible heat 
+
+    real,    intent(INOUT)  :: FSWSFC  (:,:)   ! ?
+    real,    intent(INOUT)  :: EVP     (:)     ! evaporation
+    real,    intent(INOUT)  :: SHF     (:)     ! sensible heat flux
+    real,    intent(INOUT)  :: LHF     (:)     ! latent   heat flux
+    real,    intent(INOUT)  :: TS      (:,:)   ! skin temperature
+
+    real(kind=MAPL_R8),    intent(IN)  :: AICEN     ! fractions of water, ice types
+    real(kind=MAPL_R8),    intent(IN)  :: VICEN     ! volume of ice
+    real(kind=MAPL_R8),    intent(IN)  :: VSNON     ! volume of snow
+    real(kind=MAPL_R8),    intent(IN)  :: ERGICE(:)    ! ?
+    real(kind=MAPL_R8),    intent(IN)  :: ERGSNO(:)    ! ?
+
+    real,    intent(INOUT)  :: FCOND   (:,:)   ! ?
+
+    real,    intent(IN)     :: DT 
+    real(kind=MAPL_R8)      :: DTDB               ! DT (time step) in R8 for CICE
+
+    
+    integer :: i, j, ij, k   ! indices
+
+    real (kind=MAPL_R8) ::  &
+         dTsf         , & ! change in Tsf
+         khmax        , & ! max allowed value of kh
+         ci               ! heat capacity of top ice layer
+
+    logical             ::   &
+         l_snow           ! true if hsno > hs_min
+
+   
+
+
+     DTDB = real(DT, kind=MAPL_R8) 
+     ! Check if snow layer thickness hsno > hs_min
+     hslyr = vsnon / (aicen*real(NUM_SNOW_LAYERS,kind=MAPL_R8))
+     if (hslyr > hs_min) then
+         l_snow = .true.
+     else
+         l_snow = .false.
+     endif
+
+     ! Calculate max conductivity to satisfy diffusive CFL condition
+
+     if (l_snow) then
+         khmax = rhos*cp_ice*hslyr / DTDB
+     else
+         ! Compute heat capacity of the ice layer
+         if (l_brine) then
+            ci = cp_ice - Lfresh*Tmlt(1) /  (T_top*T_top)
+         else
+            ci = cp_ice
+         endif
+         hilyr = vicen / (aicen*real(NUM_ICE_LAYERS,kind=MAPL_R8))
+         khmax = rhoi*ci*hilyr / DTDB
+     endif
+ 
+
+
+  end subroutine EXPLICIT_COUPLING   
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! !IROUTINE: CICE_THERMO1 - Computes 1st step of CICE Thermodynamics
