@@ -235,6 +235,7 @@ contains
        ORAD = MAPL_AddChild(GC, NAME='ORAD', SS=OradBioSetServices, RC=STATUS)
        VERIFY_(STATUS)
     else
+       OBIO = 0
        ORAD = MAPL_AddChild(GC, NAME='ORAD', SS=OradSetServices, RC=STATUS)
        VERIFY_(STATUS)
     end if
@@ -2219,6 +2220,7 @@ contains
           CHLD = (/OBIO,ORAD,SEAICEd,SEAICE,OCEAN/)
           DO N=1, size(CHLD)
              ID = CHLD(N)
+             if (ID <= 0) cycle
              call ESMF_GridCompRun( GCS(ID), importState=GIM(ID), &
                   exportState=GEX(ID), clock=CLOCK, phase=1, userRC=STATUS )
              VERIFY_(STATUS)
@@ -2234,6 +2236,7 @@ contains
           CHLD = (/OBIO,ORAD,SEAICEd,OCEAN/)
           DO N=1, size(CHLD)
              ID = CHLD(N)
+             if (ID <= 0) cycle
              if (ID /= OCEAN) then
                 phase_ = 1
              else
