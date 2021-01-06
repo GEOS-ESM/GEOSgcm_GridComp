@@ -4843,7 +4843,7 @@ contains
 
 ! !INTERFACE:
 
-  subroutine  EXPLICIT_COUPLING(N,NSUB,
+  subroutine  EXPLICIT_COUPLING(N,NSUB,                      & 
                            LAT,LON,                          &
                            LATSO,LONSO,                      &
                            DT,FR,TS,                         &
@@ -4910,6 +4910,8 @@ contains
          rnslyr        , &     
          rnilyr        , &  
          qn            , &             
+         khis          , &  
+         keff_top      , &  
          T_top       
 
     logical             ::   &
@@ -4949,6 +4951,28 @@ contains
          ki =  calculate_ki_from_Tin(T_top,salin(1))
          keff_top = c2 * ki / hilyr
      endif
+  
+     !khis(ij) = min(keff(i,j), khmax)
+     khis = keff_top
+
+     dTsf = (fsurfn - khis*(Tsf - T_top) /   &
+                (khis - dfsurf_dT)
+
+     Tsf = Tsf + dTsf
+
+     if (Tsf > c0) then
+         dTsf = dTsf - Tsf
+         Tsf = c0
+     endif
+
+     Tsfcn(i,j) = Tsf(ij)   ! for output
+
+     fsensn (i,j) = fsensn (i,j) + dTsf*dfsens_dT(ij)
+     flatn  (i,j) = flatn  (i,j) + dTsf*dflat_dT(ij)
+     flwoutn(i,j) = flwoutn(i,j) + dTsf*dflwout_dT(ij)
+     fsurfn (i,j) = fsurfn (i,j) + dTsf*dfsurf_dT(ij)
+     fcondtopn(i,j) = khis(ij) * (Tsf(ij) - T_top(i,j))
+
  
 
 
