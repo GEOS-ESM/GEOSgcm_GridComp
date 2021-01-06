@@ -39,16 +39,22 @@ module GEOS_CICE4ColumnPhysGridComp
   use ice_constants,      only: m2_to_km2
   use ice_constants,      only: depressT
   use ice_constants,      only: Tocnfrz
-  use ice_constants,      only: Lfresh, rhos, cp_ice
+  use ice_constants,      only: ksno
+  use ice_constants,      only: Lfresh, rhoi, rhos, cp_ice
   use ice_domain_size,    only: init_column_physics
   use ice_itd,            only: init_itd, ilyr1, cleanup_itd
   use ice_therm_vertical, only: init_thermo_vertical,  &
                                 init_vertical_profile, &
                                 thermo_vertical,       &
+                                Tmlt,                  & 
+                                salin,                 &  
+                                calculate_Tin_from_qin,     &
+                                calculate_ki_from_Tin,      &
                                 diagnose_internal_ice_temp, &
                                 frzmlt_bottom_lateral   
   use ice_state,          only: nt_tsfc, nt_iage, nt_volpn, init_trcr_depend
   use ice_therm_itd,      only: linear_itd, add_new_ice, lateral_melt,    &
+                                hs_min,                                   &  
                                 freeboard_ccsm
   use ice_init,           only: input_data, set_state_var, &
                                 alloc_column_physics, dealloc_column_physics
@@ -4878,14 +4884,18 @@ contains
     real(kind=MAPL_R8),    intent(IN)  :: AICEN     ! fractions of water, ice types
     real(kind=MAPL_R8),    intent(IN)  :: VICEN     ! volume of ice
     real(kind=MAPL_R8),    intent(IN)  :: VSNON     ! volume of snow
-    real(kind=MAPL_R8),    intent(IN)  :: ERGICE(:)    ! ?
-    real(kind=MAPL_R8),    intent(IN)  :: ERGSNO(:)    ! ?
+    real(kind=MAPL_R8),    intent(IN)  :: ERGICE    ! ?
+    real(kind=MAPL_R8),    intent(IN)  :: ERGSNO    ! ?
 
     real,    intent(INOUT)  :: FCOND   (:,:)   ! ?
 
     real,    intent(IN)     :: DT 
-    real(kind=MAPL_R8)      :: DTDB               ! DT (time step) in R8 for CICE
 
+! !LOCAL VARIABLES
+    character(len=ESMF_MAXSTR)     :: IAm
+    integer                        :: STATUS
+
+    real(kind=MAPL_R8)      :: DTDB               ! DT (time step) in R8 for CICE
     
     integer :: i, j, ij, k   ! indices
 
@@ -4894,16 +4904,25 @@ contains
          khmax        , & ! max allowed value of kh
          ci               ! heat capacity of top ice layer
 
+    real (kind=MAPL_R8) ::  &
+         hslyr         , & 
+         hilyr         , & 
+         rnslyr        , &     
+         rnilyr        , &  
+         qn            , &             
+         T_top       
+
     logical             ::   &
          l_snow           ! true if hsno > hs_min
 
-   
-
 
      DTDB = real(DT, kind=MAPL_R8) 
+     rnslyr = real(NUM_SNOW_LAYERS,kind=MAPL_R8)
+     rnilyr = real(NUM_ICE_LAYERS,kind=MAPL_R8)
+
      ! Check if snow layer thickness hsno > hs_min
-     hslyr = vsnon / (aicen*real(NUM_SNOW_LAYERS,kind=MAPL_R8))
-     if (hslyr > hs_min) then
+     hslyr = vsnon / (aicen*rnslyr)
+     if (hslyr > hs_min/rnslyr) then
          l_snow = .true.
      else
          l_snow = .false.
@@ -4913,15 +4932,22 @@ contains
 
      if (l_snow) then
          khmax = rhos*cp_ice*hslyr / DTDB
+         qn = esnon*rnslyr/vsnon
+         T_top = (Lfresh + qn/rhos)/cp_ice
+         keff_top = c2 * ksno / hslyr
      else
+         qn = eicen * rnilyr / vicen
+         T_top = calculate_Tin_from_qin(qn, Tmlt(1)) 
          ! Compute heat capacity of the ice layer
          if (l_brine) then
             ci = cp_ice - Lfresh*Tmlt(1) /  (T_top*T_top)
          else
             ci = cp_ice
          endif
-         hilyr = vicen / (aicen*real(NUM_ICE_LAYERS,kind=MAPL_R8))
+         hilyr = vicen / (aicen*rnilyr)
          khmax = rhoi*ci*hilyr / DTDB
+         ki =  calculate_ki_from_Tin(T_top,salin(1))
+         keff_top = c2 * ki / hilyr
      endif
  
 
