@@ -5799,7 +5799,7 @@ module GEOS_SurfaceGridCompMod
           SNO = 0.
           ICE = 0.
           FRZR= 0.
-       elsewhere (PRECSUM > 1.15741e-6)  ! Above is not true .AND. model precip > 0.1  mm/day
+       elsewhere (PRECSUM > 1.15741e-6)  ! Above is not true .AND. model precip > 0.1  mm/day. Note: 0.1mm/day = 0.1/86400 = 1.15741e-6
           PCSCALE = PTTe / PRECSUM
           RCU  = PCSCALE*RCU
           RLS  = PCSCALE*RLS
