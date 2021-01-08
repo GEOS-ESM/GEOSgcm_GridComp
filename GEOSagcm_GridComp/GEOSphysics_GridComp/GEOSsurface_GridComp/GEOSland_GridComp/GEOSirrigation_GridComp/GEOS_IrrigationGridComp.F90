@@ -36,7 +36,7 @@ module GEOS_IrrigationGridCompMod
 !  
 ! This GC imports soil parameters and root zone soil moisture from land models
 !    to compute soil moisture state for IRRIGRATE calculation.  
-! IMPORTS: POROS, WPWET, VGWMAX, WCRZ, LAI, CATDEF, MUEVEGD \\
+! IMPORTS: POROS, WPWET, VGWMAX, WCRZ, LAI, MUEVEGD \\
 !
 ! !USES: 
 
@@ -362,15 +362,6 @@ contains
     VERIFY_(STATUS)
         
     call MAPL_AddImportSpec(GC                                ,&
-         LONG_NAME  = 'catchment_deficit'                     ,&
-         UNITS      = 'kg m-2'                                ,&
-         SHORT_NAME = 'CATDEF'                                ,&
-         DIMS       = MAPL_DimsTileOnly                       ,&
-         VLOCATION  = MAPL_VLocationNone                      ,&
-         RC=STATUS  ) 
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC                                ,&
          SHORT_NAME = 'MUEVEGD'                               ,&
          LONG_NAME  = 'moisture_unstressed_transpiration_deficit',&
          UNITS      = 'kg m-2 s-1'                                ,&
@@ -458,7 +449,6 @@ contains
     real, dimension(:), pointer :: VGWMAX
     real, dimension(:), pointer :: WCRZ
     real, dimension(:), pointer :: LAI
-    real, dimension(:), pointer :: CATDEF
     real, dimension(:), pointer :: MUEVEGD
   
 ! Time attributes 
@@ -472,7 +462,7 @@ contains
     type (IRRIG_wrap)              :: wrap
     real,pointer,dimension(:)      :: lons
     integer                        :: ntiles, n
-    real, dimension(:),allocatable :: local_hour, SMWP, SMSAT, SMREF, SMCNT
+    real, dimension(:),allocatable :: local_hour, SMWP, SMSAT, SMREF, SMCNT, RZDEF
 
 
 ! Get the target components name and set-up traceback handle.
@@ -526,7 +516,6 @@ contains
     call MAPL_GetPointer(IMPORT, VGWMAX , 'VGWMAX', RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, WCRZ   , 'WCRZ',   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, LAI    , 'LAI',    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, CATDEF , 'CATDEF', RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, MUEVEGD, 'MUEVEGD',RC=STATUS) ; VERIFY_(STATUS)
         
 ! Get time and parameters from local state
@@ -559,12 +548,15 @@ contains
     allocate (SMSAT      (1:NTILES))
     allocate (SMREF      (1:NTILES))
     allocate (SMCNT      (1:NTILES))
+    allocate (RZDEF      (1:NTILES))
 
     ! soil moisture state
     SMWP  = VGWMAX * WPWET           ! RZ soil moisture content at wilting point [mm]
     SMSAT = VGWMAX                   ! RZ soil moisture at saturation  [mm]
     SMCNT = (VGWMAX/POROS) * WCRZ    ! actual RZ soil moisture content [mm]
-
+    RZDEF = SMSAT - SMCNT            ! rootzone moisture deficit to reach
+                                     !   complete soil saturation for paddy [mm]
+    
     DO N = 1, NTILES
        ! local times
        local_hour(n) = AGCM_HH + AGCM_MI / 60. + AGCM_S / 3600. + 12.* (lons(n)/MAPL_PI)
@@ -581,9 +573,9 @@ contains
        ! LAI based trigger: scale soil moisture to LAI seasonal cycle
        ! ============================================================
                     
-       call IM%run_model(IRRIG_METHOD, local_hour,                        &
-            IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,           &           
-            SMWP,SMSAT,SMREF,SMCNT, LAI, LAIMIN, LAIMAX, MUEVEGD,CATDEF,  &
+       call IM%run_model(IRRIG_METHOD, local_hour,                      &
+            IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,         &           
+            SMWP,SMSAT,SMREF,SMCNT, LAI, LAIMIN, LAIMAX, MUEVEGD, RZDEF,&
             SPRINKLERRATE, DRIPRATE, FLOODRATE) 
        
     else
@@ -593,12 +585,12 @@ contains
        
        call IM%run_model (dofyr,local_hour,                   &
             CROPIRRIGFRAC,IRRIGPLANT,IRRIGHARVEST,IRRIGTYPE , &
-            SMWP,SMSAT,SMREF,SMCNT, MUEVEGD,CATDEF,           & 
+            SMWP,SMSAT,SMREF,SMCNT, MUEVEGD, RZDEF,           & 
             SPRINKLERRATE, DRIPRATE, FLOODRATE) 
 
     endif
     
-    deallocate (local_hour, SMWP, SMSAT, SMREF, SMCNT, IM)
+    deallocate (local_hour, SMWP, SMSAT, SMREF, SMCNT, RZDEF, IM)
     
     call MAPL_TimerOff(MAPL,"TOTAL")
     RETURN_(ESMF_SUCCESS)

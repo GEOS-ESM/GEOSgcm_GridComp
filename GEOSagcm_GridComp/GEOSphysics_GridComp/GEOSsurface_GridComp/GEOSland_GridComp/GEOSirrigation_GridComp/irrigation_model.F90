@@ -48,7 +48,8 @@ MODULE IRRIGATION_MODULE
   !     MUEVEGD : unstressed transpiration (EVEG) difference -
   !               EVEG under the same atmospheric conditions but saturated rootzone
   !               minus current EVEG[kg m-2 s-1] (for Drip irrigation)
-  !     CATDEF  : amount of water needed to bring water table to the surface [mm] (for PADDY)
+  !     RZDEF   : rootzone moisture deficit to reach complete soil saturation for paddy [mm]
+  !     LOCAL_HOUR to set irrigation switch.
   !
   ! (3) SEASONAL CYLCE OF CROP WATER DEMAND:
   ! The module provides 2 options to determine the seasonal cycle of crop water demand:
@@ -57,7 +58,7 @@ MODULE IRRIGATION_MODULE
   !          uses precomputed minimum and maximum LAI on irrigateed pixels to determine
   !          beginning and end of crop growing seasons.
   !
-  !          This LAI-based trigger is also equipped with the additional control parameter, IRRIG_METHOD, which is good to choose the method of irrigation
+  !          This LAI-based trigger is also equipped with an additional control parameter, IRRIG_METHOD, which is good to choose the method of irrigation
   !          that woould run on corresponding fractions       
   !          i)  0: (Default) All 3 methods (sprinkler/flood/drip) concurrently.
   !          ii) 1: Sprinkler irrigation on entire tile.
@@ -180,9 +181,9 @@ contains
 
   ! ----------------------------------------------------------------------------
 
-  SUBROUTINE irrigrate_lai_trigger (this,IRRIG_METHOD, local_hour,        &
-            IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,           &           
-            SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN,LAIMAX, MUEVEGD,CATDEF,&
+  SUBROUTINE irrigrate_lai_trigger (this,IRRIG_METHOD, local_hour,         &
+            IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,            &           
+            SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN,LAIMAX, MUEVEGD, RZDEF, &
             SPRINKLERRATE, DRIPRATE, FLOODRATE)
 
     implicit none
@@ -190,7 +191,7 @@ contains
     integer, intent (in)                    :: IRRIG_METHOD
     real, dimension (:), intent (in)        :: local_hour
     real, dimension (:), intent (in)        :: IRRIGFRAC, PADDYFRAC, SPRINKLERFR, &
-         DRIPFR, FLOODFR, SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN, LAIMAX,MUEVEGD,CATDEF
+         DRIPFR, FLOODFR, SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN, LAIMAX,MUEVEGD,RZDEF
     real, dimension (:), intent (inout)     :: SPRINKLERRATE, DRIPRATE, FLOODRATE
     INTEGER                                 :: NTILES, N
     REAL                                    :: ma, H1, H2, HC, IT, LF, LAITHRES
@@ -306,7 +307,7 @@ contains
              H1 = this%flood_stime
              H2 = this%flood_stime + this%flood_dur
              if ((HC >= H1).AND.(HC < H2)) then
-                if(H1 == HC) FLOODRATE (N) = CATDEF(N) /(H2 - H1)/ 3600.
+                if(H1 == HC) FLOODRATE (N) = RZDEF(N) /(H2 - H1)/ 3600.
              else
                  FLOODRATE (N) = 0.
              endif
@@ -328,15 +329,15 @@ contains
   ! ----------------------------------------------------------------------------
 
   SUBROUTINE irrigrate_crop_calendar(this,dofyr,local_hour, &
-       CROPIRRIGFRAC,IRRIGPLANT, IRRIGHARVEST, IRRIGTYPE , &
-       SMWP,SMSAT,SMREF,SMCNT, MUEVEGD,CATDEF,             & 
+       CROPIRRIGFRAC,IRRIGPLANT, IRRIGHARVEST, IRRIGTYPE ,  &
+       SMWP,SMSAT,SMREF,SMCNT, MUEVEGD, RZDEF,              &  
        SPRINKLERRATE, DRIPRATE, FLOODRATE)
 
     implicit none
     class(irrigation_model),intent(inout):: this
     integer, intent (in)                 :: dofyr
     real, dimension (:),   intent (in)   :: local_hour
-    real, dimension (:),   intent (in)   :: SMWP, SMSAT, SMREF, SMCNT, MUEVEGD,CATDEF
+    real, dimension (:),   intent (in)   :: SMWP, SMSAT, SMREF, SMCNT, MUEVEGD,RZDEF
     real, dimension(:,:),  intent (in)   :: CROPIRRIGFRAC ! NUM_CROPS
     real, dimension(:,:),  intent (in)   :: IRRIGTYPE     ! NUM_CROPS
     real, dimension(:,:,:),intent (in)   :: IRRIGPLANT    ! NUM_SEASONS, NUM_CROPS
@@ -388,7 +389,7 @@ contains
                                H1 = this%flood_stime
                                H2 = this%flood_stime + this%flood_dur
                                if ((HC >= H1).AND.(HC < H2)) then
-                                  if(H1 == HC) FLOODRATE (N) = CATDEF(N) /(H2 - H1)/ 3600.
+                                  if(H1 == HC) FLOODRATE (N) = RZDEF(N) /(H2 - H1)/ 3600.
                                else
                                   FLOODRATE (N) = 0.
                                endif

@@ -1382,7 +1382,7 @@ contains
              call MAPL_AddConnectivity (                                         &
                   GC                                                            ,&
                   SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '   ,&
-                       'CATDEF  ','MUEVEGD '/)                                  ,&
+                       'MUEVEGD '/)                                             ,&
                   SRC_ID =  CATCH(I)                                            ,&
                   DST_ID =  IRRIGATION(I)                                       ,&
                   RC=STATUS )
@@ -1420,7 +1420,7 @@ contains
 !             call MAPL_AddConnectivity (                                         &
 !                  GC                                                            ,&
 !                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '   ,&
-!                       'CATDEF  ','MUEVEGD '/)                                  ,&
+!                       'MUEVEGD '/)                                             ,&
 !                  SRC_ID =  CATCHCN(I)                                          ,&
 !                  DST_ID =  IRRIGATION(I)                                       ,&
 !                  RC=STATUS )
