@@ -4867,19 +4867,19 @@ contains
     real,    intent(IN)  :: LATSO              ! trace CICE computations at this latitude
     real,    intent(IN)  :: LONSO              ! trace CICE computations at this longitude
 
-    real,    intent(IN)  :: TF         (:)     ! sea Water freezing temperature in degrees C
-    real,    intent(IN)  :: ALW        (:)     ! linearization of \sigma T^4
-    real,    intent(IN)  :: BLW        (:)     ! linearization of \sigma T^4
-    real,    intent(IN)  :: FSWABS     (:)
-    real,    intent(IN)  :: LWDNSRF    (:)     ! longwave at surface
-    real,    intent(IN)  :: EVD        (:)     ! related to evap
-    real,    intent(IN)  :: SHD        (:)     ! related to sensible heat 
+    real,    intent(IN)  :: TF              ! sea Water freezing temperature in degrees C
+    real,    intent(IN)  :: ALW             ! linearization of \sigma T^4
+    real,    intent(IN)  :: BLW             ! linearization of \sigma T^4
+    real,    intent(IN)  :: FSWABS    
+    real,    intent(IN)  :: LWDNSRF         ! longwave at surface
+    real,    intent(IN)  :: EVD             ! related to evap
+    real,    intent(IN)  :: SHD             ! related to sensible heat 
 
-    real,    intent(INOUT)  :: FSWSFC  (:,:)   ! ?
-    real,    intent(INOUT)  :: EVP     (:)     ! evaporation
-    real,    intent(INOUT)  :: SHF     (:)     ! sensible heat flux
-    real,    intent(INOUT)  :: LHF     (:)     ! latent   heat flux
-    real,    intent(INOUT)  :: TS      (:,:)   ! skin temperature
+    real,    intent(INOUT)  :: FSWSFC     ! ?
+    real,    intent(INOUT)  :: EVP         ! evaporation
+    real,    intent(INOUT)  :: SHF          ! sensible heat flux
+    real,    intent(INOUT)  :: LHF          ! latent   heat flux
+    real,    intent(INOUT)  :: TS         ! skin temperature
 
     real(kind=MAPL_R8),    intent(IN)  :: AICEN     ! fractions of water, ice types
     real(kind=MAPL_R8),    intent(IN)  :: VICEN     ! volume of ice
@@ -4955,6 +4955,17 @@ contains
      !khis(ij) = min(keff(i,j), khmax)
      khis = keff_top
 
+     lwupsrf = alw + blw * TS
+     Tsf = Ts - MAPL_TICE 
+     fsurfn = fswsfc - shf - lhf + lwdnsrf - lwupsrf 
+     fsensn = -shf
+     flatn 
+     dfsens_dT = 
+     dflat_dT = 
+     dflwout_dT = 
+     dfsurf_dT = 
+     
+
      dTsf = (fsurfn - khis*(Tsf - T_top) /   &
                 (khis - dfsurf_dT)
 
@@ -4965,13 +4976,13 @@ contains
          Tsf = c0
      endif
 
-     Tsfcn(i,j) = Tsf(ij)   ! for output
+     Ts = Tsf + MAPL_TICE   ! for output
 
-     fsensn (i,j) = fsensn (i,j) + dTsf*dfsens_dT(ij)
-     flatn  (i,j) = flatn  (i,j) + dTsf*dflat_dT(ij)
-     flwoutn(i,j) = flwoutn(i,j) + dTsf*dflwout_dT(ij)
-     fsurfn (i,j) = fsurfn (i,j) + dTsf*dfsurf_dT(ij)
-     fcondtopn(i,j) = khis(ij) * (Tsf(ij) - T_top(i,j))
+     fsensn (i,j) = fsensn (i,j) + dTsf*dfsens_dT
+     flatn  (i,j) = flatn  (i,j) + dTsf*dflat_dT
+     flwoutn(i,j) = flwoutn(i,j) + dTsf*dflwout_dT
+     fsurfn (i,j) = fsurfn (i,j) + dTsf*dfsurf_dT
+     fcondtopn(i,j) = khis(ij) * (Tsf - T_top)
 
  
 
