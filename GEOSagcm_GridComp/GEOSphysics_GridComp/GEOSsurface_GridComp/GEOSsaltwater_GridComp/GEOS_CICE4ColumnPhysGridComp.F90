@@ -4854,7 +4854,7 @@ contains
                            ALW,BLW,                          &
                            FSWSFC,FSWABS,                    & 
                            LWDNSRF,                          & 
-                           EVD,SHD,RC)
+                           DLHDT,SHD,EVD,RC)
 
 ! !ARGUMENTS:
     integer, optional, intent(OUT) :: RC
@@ -4872,8 +4872,9 @@ contains
     real,    intent(IN)  :: BLW             ! linearization of \sigma T^4
     real,    intent(IN)  :: FSWABS    
     real,    intent(IN)  :: LWDNSRF         ! longwave at surface
-    real,    intent(IN)  :: EVD             ! related to evap
+    real,    intent(IN)  :: DLHDT           ! related to latent heat
     real,    intent(IN)  :: SHD             ! related to sensible heat 
+    real,    intent(IN)  :: EVD             ! related to evap
 
     real,    intent(INOUT)  :: FSWSFC     ! ?
     real,    intent(INOUT)  :: EVP         ! evaporation
@@ -4959,11 +4960,11 @@ contains
      Tsf = Ts - MAPL_TICE 
      fsurfn = fswsfc - shf - lhf + lwdnsrf - lwupsrf 
      fsensn = -shf
-     flatn 
-     dfsens_dT = 
-     dflat_dT = 
-     dflwout_dT = 
-     dfsurf_dT = 
+     flatn  = -lhf
+     dfsens_dT = -shd 
+     dflat_dT =  -dlhdt
+     dflwout_dT = -blw 
+     dfsurf_dT = dfsens_dT + dflat_dT + dflwout_dT
      
 
      dTsf = (fsurfn - khis*(Tsf - T_top) /   &
@@ -4978,11 +4979,12 @@ contains
 
      Ts = Tsf + MAPL_TICE   ! for output
 
-     fsensn (i,j) = fsensn (i,j) + dTsf*dfsens_dT
-     flatn  (i,j) = flatn  (i,j) + dTsf*dflat_dT
-     flwoutn(i,j) = flwoutn(i,j) + dTsf*dflwout_dT
-     fsurfn (i,j) = fsurfn (i,j) + dTsf*dfsurf_dT
-     fcondtopn(i,j) = khis(ij) * (Tsf - T_top)
+     fsensn  = fsensn  + dTsf*dfsens_dT
+     flatn   = flatn   + dTsf*dflat_dT
+     flwoutn = flwoutn + dTsf*dflwout_dT
+     fsurfn  = fsurfn  + dTsf*dfsurf_dT
+     evp     = evp     + dTsf*evd
+     fcondtopn = khis  * (Tsf - T_top)
 
  
 
