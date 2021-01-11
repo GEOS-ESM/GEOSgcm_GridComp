@@ -86,7 +86,7 @@ contains
       real, intent(in)    :: kpbl_inv(idim)               !  Height of PBL [ m ]
       real, intent(in)    :: shfx(idim)               ! Surface sensible heat
       real, intent(in)    :: evap(idim)               ! Surface evaporation
-      real, intent(in)    :: cnvtr(idim,k0)           ! convective tracer
+      real, intent(in)    :: cnvtr(idim)              ! convective tracer
       real, intent(in)    :: frland(idim)             ! land fraction
       real, intent(inout) :: tr0_inv(idim,k0,ncnst)   !  Environmental tracers [ #, kg/kg ]
       real, intent(inout) :: cush(idim)               !  Convective scale height [m]
@@ -257,7 +257,8 @@ contains
       kpbl = int(kpbl_inv)
 
       do i = 1,idim
-        cnvtrmax(i) = min(300.,max(0.,maxval(cnvtr(i,kpbl(i):k0))))
+!        cnvtrmax(i) = min(300.,max(0.,maxval(cnvtr(i,:))))
+        cnvtrmax(i) = min(1e-5,max(0.,cnvtr(i)))
         if (frland(i)>0.5) cnvtrmax(i) = 0.
         if (isnan(cnvtrmax(i))) cnvtrmax(i) = 0.
       end do
@@ -2608,10 +2609,9 @@ contains
             ee2    = xc**2
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
             if (mixscale.ne.0.0) then
-!            if (lts.gt.18.) then
 !              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
-              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(4.,(cnvtr(i)-10.)/20.))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
-!              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-min(4.,max(0.,(scaleh-2600.)/300.))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+!              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(4.,(cnvtr(i))/25.))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(4.,(cnvtr(i))/2.5e-6))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
             else if (mixscale.eq.0.0) then
               rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j )       ! Jason-2_0 version
             end if

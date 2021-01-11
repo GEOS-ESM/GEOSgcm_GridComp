@@ -213,7 +213,7 @@ module gfdl2_cloud_microphys_mod
     real :: tau_l2v = 300. !< cloud water to water vapor (evaporation)
     real :: tau_g2v = 900. !< graupel sublimation
     real :: tau_v2g = 21600. !< graupel deposition -- make it a slow process
-    real :: tau_revp = 1200. !< rain re-evaporation
+    real :: tau_revp = 300. !< rain re-evaporation
     ! horizontal subgrid variability
     
     real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
@@ -2170,8 +2170,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
 #ifdef CNVQL
         qlcn = ql(k)*fqa(k)
         if (dq0 > 0. .and. qlcn>qcmin) then
-            factor = min (1., fac_l2v * max(1.,10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
-!            factor = min (1., fac_l2v * (10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
+!            factor = min (1., fac_l2v * max(1.,10. * dq0 / qsw)) 
+            factor = min (1., fac_l2v * (10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
             evap = min(dq0, min (qlcn, factor * qlcn / (1. + tcp3 (k) * dwsdt)))
            ! Adjust convective fraction of liquid condensates
             if (evap.lt.qlcn) then

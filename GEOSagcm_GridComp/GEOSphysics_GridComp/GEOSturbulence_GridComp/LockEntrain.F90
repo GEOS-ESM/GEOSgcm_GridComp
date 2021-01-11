@@ -770,9 +770,12 @@ contains
 ! deep ones
             if ( zsml(i,j) .lt. 1600. ) then 
                wentr_tmp = wentr_tmp * ( zsml(i,j) / 800. )
+!               wentr_tmp = wentr_tmp * (0.5 + zsml(i,j)/1600.)
             else
                wentr_tmp = 2.*wentr_tmp
+!               wentr_tmp = 1.5*wentr_tmp
             endif
+
 !-----------------------------------------
 
 !!AMM106 !----------------------------------------
