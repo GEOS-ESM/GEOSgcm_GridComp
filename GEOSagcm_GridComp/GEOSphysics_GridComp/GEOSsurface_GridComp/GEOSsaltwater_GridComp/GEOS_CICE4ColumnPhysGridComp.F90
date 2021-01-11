@@ -39,7 +39,6 @@ module GEOS_CICE4ColumnPhysGridComp
   use ice_constants,      only: m2_to_km2
   use ice_constants,      only: depressT
   use ice_constants,      only: Tocnfrz
-  use ice_constants,      only: ksno
   use ice_constants,      only: Lfresh, rhoi, rhos, cp_ice
   use ice_domain_size,    only: init_column_physics
   use ice_itd,            only: init_itd, ilyr1, cleanup_itd
@@ -48,13 +47,15 @@ module GEOS_CICE4ColumnPhysGridComp
                                 thermo_vertical,       &
                                 Tmlt,                  & 
                                 salin,                 &  
+                                ksno,                  &
+                                hs_min,                &  
+                                l_brine,               &  
                                 calculate_Tin_from_qin,     &
                                 calculate_ki_from_Tin,      &
                                 diagnose_internal_ice_temp, &
                                 frzmlt_bottom_lateral   
   use ice_state,          only: nt_tsfc, nt_iage, nt_volpn, init_trcr_depend
   use ice_therm_itd,      only: linear_itd, add_new_ice, lateral_melt,    &
-                                hs_min,                                   &  
                                 freeboard_ccsm
   use ice_init,           only: input_data, set_state_var, &
                                 alloc_column_physics, dealloc_column_physics
@@ -4843,31 +4844,27 @@ contains
 
 ! !INTERFACE:
 
-  subroutine  EXPLICIT_COUPLING(N,NSUB,                      & 
-                           LAT,LON,                          &
+  subroutine  EXPLICIT_COUPLING(                             & 
+                           LAT,LON,DT,                       &
                            LATSO,LONSO,                      &
-                           DT,FR,TS,                         &
-                           ERGICE,ERGSNO,                    &
+                           AICEN,TS,                         &
+                           EICEN,ESNON,                      &
                            FCOND, EVP,                       &
-                           VOLICE,VOLSNO,                    &
+                           VICEN, VSNON,                     &
                            SHF,LHF,                          &
-                           ALW,BLW,                          &
+                           ALW,BLW,LWUP,                     &
                            FSWSFC,FSWABS,                    & 
                            LWDNSRF,                          & 
                            DLHDT,SHD,EVD,RC)
 
 ! !ARGUMENTS:
-    integer, optional, intent(OUT) :: RC
-
-    integer, intent(IN)  ::  N                 ! number of subtile type (or ice category)
-    integer, intent(IN)  ::  NSUB              ! number of tiles
 
     real,    intent(IN)  :: LAT                ! lat
     real,    intent(IN)  :: LON                ! lon
     real,    intent(IN)  :: LATSO              ! trace CICE computations at this latitude
     real,    intent(IN)  :: LONSO              ! trace CICE computations at this longitude
+    real(kind=MAPL_R8),    intent(IN)  :: DT   ! time step 
 
-    real,    intent(IN)  :: TF              ! sea Water freezing temperature in degrees C
     real,    intent(IN)  :: ALW             ! linearization of \sigma T^4
     real,    intent(IN)  :: BLW             ! linearization of \sigma T^4
     real,    intent(IN)  :: FSWABS    
@@ -4885,18 +4882,16 @@ contains
     real(kind=MAPL_R8),    intent(IN)  :: AICEN     ! fractions of water, ice types
     real(kind=MAPL_R8),    intent(IN)  :: VICEN     ! volume of ice
     real(kind=MAPL_R8),    intent(IN)  :: VSNON     ! volume of snow
-    real(kind=MAPL_R8),    intent(IN)  :: ERGICE    ! ?
-    real(kind=MAPL_R8),    intent(IN)  :: ERGSNO    ! ?
+    real(kind=MAPL_R8),    intent(IN)  :: EICEN    ! ?
+    real(kind=MAPL_R8),    intent(IN)  :: ESNON    ! ?
 
-    real,    intent(INOUT)  :: FCOND   (:,:)   ! ?
-
-    real,    intent(IN)     :: DT 
+    real,    intent(OUT)  :: FCOND      ! ?
+    real,    intent(OUT)  :: LWUP    
+    integer, optional, intent(OUT) :: RC
 
 ! !LOCAL VARIABLES
     character(len=ESMF_MAXSTR)     :: IAm
     integer                        :: STATUS
-
-    real(kind=MAPL_R8)      :: DTDB               ! DT (time step) in R8 for CICE
     
     integer :: i, j, ij, k   ! indices
 
@@ -4911,6 +4906,17 @@ contains
          rnslyr        , &     
          rnilyr        , &  
          qn            , &             
+         ki            , &             
+         Tsf           , &             
+         lwupsrf       , &
+         fsurfn        , &
+         fsensn        , &
+         flatn         , &
+         flwoutn       , &    
+         dfsens_dT     , &
+         dflat_dT      , &
+         dflwout_dT    , &
+         dfsurf_dT     , &
          khis          , &  
          keff_top      , &  
          T_top       
@@ -4919,9 +4925,8 @@ contains
          l_snow           ! true if hsno > hs_min
 
 
-     DTDB = real(DT, kind=MAPL_R8) 
      rnslyr = real(NUM_SNOW_LAYERS,kind=MAPL_R8)
-     rnilyr = real(NUM_ICE_LAYERS,kind=MAPL_R8)
+     rnilyr = real(NUM_ICE_LAYERS, kind=MAPL_R8)
 
      ! Check if snow layer thickness hsno > hs_min
      hslyr = vsnon / (aicen*rnslyr)
@@ -4934,10 +4939,10 @@ contains
      ! Calculate max conductivity to satisfy diffusive CFL condition
 
      if (l_snow) then
-         khmax = rhos*cp_ice*hslyr / DTDB
+         khmax = rhos*cp_ice*hslyr / DT
          qn = esnon*rnslyr/vsnon
          T_top = (Lfresh + qn/rhos)/cp_ice
-         keff_top = c2 * ksno / hslyr
+         keff_top = 2.0 * ksno / hslyr
      else
          qn = eicen * rnilyr / vicen
          T_top = calculate_Tin_from_qin(qn, Tmlt(1)) 
@@ -4948,26 +4953,26 @@ contains
             ci = cp_ice
          endif
          hilyr = vicen / (aicen*rnilyr)
-         khmax = rhoi*ci*hilyr / DTDB
+         khmax = rhoi*ci*hilyr / DT
          ki =  calculate_ki_from_Tin(T_top,salin(1))
-         keff_top = c2 * ki / hilyr
+         keff_top = 2.0 * ki / hilyr
      endif
   
      !khis(ij) = min(keff(i,j), khmax)
      khis = keff_top
 
-     lwupsrf = alw + blw * TS
+     flwoutn = -alw - blw * TS
      Tsf = Ts - MAPL_TICE 
-     fsurfn = fswsfc - shf - lhf + lwdnsrf - lwupsrf 
      fsensn = -shf
      flatn  = -lhf
+     fsurfn = fswsfc + fsensn + flatn + lwdnsrf + flwoutn
      dfsens_dT = -shd 
      dflat_dT =  -dlhdt
      dflwout_dT = -blw 
      dfsurf_dT = dfsens_dT + dflat_dT + dflwout_dT
      
 
-     dTsf = (fsurfn - khis*(Tsf - T_top) /   &
+     dTsf = (fsurfn - khis*(Tsf - T_top)) /   &
                 (khis - dfsurf_dT)
 
      Tsf = Tsf + dTsf
@@ -4984,9 +4989,15 @@ contains
      flwoutn = flwoutn + dTsf*dflwout_dT
      fsurfn  = fsurfn  + dTsf*dfsurf_dT
      evp     = evp     + dTsf*evd
-     fcondtopn = khis  * (Tsf - T_top)
+     fcond   = khis  * (Tsf - T_top)
 
- 
+     lwup    = -flwoutn
+     shf     = -fsensn
+     lhf     = -flatn 
+
+
+
+     RETURN_(ESMF_SUCCESS)
 
 
   end subroutine EXPLICIT_COUPLING   
