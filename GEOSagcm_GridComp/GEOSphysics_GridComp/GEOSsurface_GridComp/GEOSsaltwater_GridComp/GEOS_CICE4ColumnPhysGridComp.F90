@@ -4840,44 +4840,43 @@ contains
 
 
 
-! !IROUTINE: CICE_THERMO1 - Computes 1st step of CICE Thermodynamics
-
+! !IROUTINE: EXPLICIT_COUPLING - Explicit coupling between surface 
+!                                and top ice/snow layer
 ! !INTERFACE:
 
   subroutine  EXPLICIT_COUPLING(                             & 
                            LAT,LON,DT,                       &
-                           LATSO,LONSO,                      &
+                           OBS,                              & 
                            AICEN,TS,                         &
                            EICEN,ESNON,                      &
                            FCOND, EVP,                       &
                            VICEN, VSNON,                     &
                            SHF,LHF,                          &
                            ALW,BLW,LWUP,                     &
-                           FSWSFC,FSWABS,                    & 
+                           FSWSFC,                           & 
                            LWDNSRF,                          & 
-                           DLHDT,SHD,EVD,RC)
+                           DLHDT,SHD,EVD)
 
 ! !ARGUMENTS:
 
     real,    intent(IN)  :: LAT                ! lat
     real,    intent(IN)  :: LON                ! lon
-    real,    intent(IN)  :: LATSO              ! trace CICE computations at this latitude
-    real,    intent(IN)  :: LONSO              ! trace CICE computations at this longitude
+    logical, intent(IN)  :: OBS        
     real(kind=MAPL_R8),    intent(IN)  :: DT   ! time step 
 
     real,    intent(IN)  :: ALW             ! linearization of \sigma T^4
     real,    intent(IN)  :: BLW             ! linearization of \sigma T^4
-    real,    intent(IN)  :: FSWABS    
     real,    intent(IN)  :: LWDNSRF         ! longwave at surface
     real,    intent(IN)  :: DLHDT           ! related to latent heat
     real,    intent(IN)  :: SHD             ! related to sensible heat 
     real,    intent(IN)  :: EVD             ! related to evap
 
-    real,    intent(INOUT)  :: FSWSFC     ! ?
-    real,    intent(INOUT)  :: EVP         ! evaporation
+    real(kind=MAPL_R8),  intent(IN)  :: FSWSFC          ! ?
+
     real,    intent(INOUT)  :: SHF          ! sensible heat flux
     real,    intent(INOUT)  :: LHF          ! latent   heat flux
     real,    intent(INOUT)  :: TS         ! skin temperature
+    real(kind=MAPL_R8),    intent(INOUT)  :: EVP         ! evaporation
 
     real(kind=MAPL_R8),    intent(IN)  :: AICEN     ! fractions of water, ice types
     real(kind=MAPL_R8),    intent(IN)  :: VICEN     ! volume of ice
@@ -4885,13 +4884,9 @@ contains
     real(kind=MAPL_R8),    intent(IN)  :: EICEN    ! ?
     real(kind=MAPL_R8),    intent(IN)  :: ESNON    ! ?
 
-    real,    intent(OUT)  :: FCOND      ! ?
-    real,    intent(OUT)  :: LWUP    
-    integer, optional, intent(OUT) :: RC
+    real(kind=MAPL_R8),    intent(OUT)  :: FCOND      ! ?
+    real(kind=MAPL_R8),    intent(OUT)  :: LWUP    
 
-! !LOCAL VARIABLES
-    character(len=ESMF_MAXSTR)     :: IAm
-    integer                        :: STATUS
     
     integer :: i, j, ij, k   ! indices
 
@@ -4994,10 +4989,6 @@ contains
      lwup    = -flwoutn
      shf     = -fsensn
      lhf     = -flatn 
-
-
-
-     RETURN_(ESMF_SUCCESS)
 
 
   end subroutine EXPLICIT_COUPLING   
@@ -5204,6 +5195,19 @@ contains
           FRDB           =  FR(K,N)
           VOLICEDB       = VOLICE(K,NSUB)
           VOLSNODB       = VOLSNO(K,NSUB)
+   
+          call  EXPLICIT_COUPLING(                           & 
+                           LATSD(1,1),LONSD(1,1),DTDB,       &
+                           OBSERVE(1,1),                     &
+                           FR(K,N),TS(K,N),                  &
+                           ERGICE_TMP(1),ERGSNO_TMP(1),      &
+                           FCONDDB(1,1), EVPDB(1,1),         &
+                           VOLICEDB(1,1), VOLSNODB(1,1),     &
+                           SHF(K),LHF(K),                    &
+                           ALW(K),BLW(K), LWUP0DB(1,1),      &
+                           FSWSFCDB(1,1),                    & 
+                           LWDNSRF(K),                       & 
+                           DLHDT,SHD(K),EVD(K))
 
           call thermo_vertical(                &
                1,1,DTDB,1,one,one,             &
