@@ -1935,7 +1935,7 @@ contains
      real, dimension(:    ), pointer     :: PREF
 
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
-     real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA, USM, VSM
+     real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA, TSM, USM, VSM
      real, dimension(IM,JM,0:LM)         :: PKE
      integer, dimension(IM,JM)           :: SMTH_LEV
 
@@ -1958,7 +1958,6 @@ contains
      real, dimension(:,:,:), pointer     :: AKVODT, CKVODT
 
 
-     logical, dimension(IM,JM     )      :: CONVECT
      logical                             :: ALLOC_TCZPBL, CALC_TCZPBL
      logical                             :: ALLOC_ZPBL2, CALC_ZPBL2
      logical                             :: ALLOC_ZPBL10p, CALC_ZPBL10p
@@ -2297,44 +2296,36 @@ contains
       RDZ = RDZ(:,:,1:LM-1) / (Z(:,:,1:LM-1)-Z(:,:,2:LM))
       DMI = (MAPL_GRAV*DT)/(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
 
+      TSM = THV
+      USM = U
+      VSM = V
+      if (SMTH_PRS /= 0) then
       !===> Running 1-2-1 smooth of bottom levels of THV, U and V
-      USM(:,:,:) = U
-      VSM(:,:,:) = V
-      if (LM.eq.72) then
-        ! 72L setup uses an index of 5-levels
-        SMTH_LEV=LM-5
-      else
-        ! Use Pressure Thickness at the surface to determine index
-        SMTH_LEV=-1
-        do L=LM,1,-1
-          where ( (SMTH_LEV .lt. 0) .AND. (PLE(:,:,LM)-PLE(:,:,L) >= SMTH_PRS) )
-            SMTH_LEV=L
-          endwhere
-        enddo
-        where (SMTH_LEV .lt. 0)
-          SMTH_LEV=LM-5
-        end where
-      endif
-
-      THV(:,:,LM  ) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
-      do J=1,JM
-        do I=1,IM
-          do L=LM-1,SMTH_LEV(I,J),-1
-            THV(I,J,L) = THV(I,J,L-1)*0.25 + THV(I,J,L)*0.50 + THV(I,J,L+1)*0.25
-          end do
-        end do
-      end do
-
-      if (LM.ne.72) then
-         USM(:,:,LM  ) = U(:,:,LM-1)*0.25 + U(:,:,LM  )*0.75
-         VSM(:,:,LM  ) = V(:,:,LM-1)*0.25 + V(:,:,LM  )*0.75
+         ! Use Pressure Thickness at the surface to determine index
+         SMTH_LEV=-1
+         do L=LM,1,-1
          do J=1,JM
-           do I=1,IM
-             do L=LM-1,SMTH_LEV(I,J),-1
-               USM(I,J,L) = USM(I,J,L-1)*0.25 + USM(I,J,L)*0.50 + USM(I,J,L+1)*0.25
-               VSM(I,J,L) = VSM(I,J,L-1)*0.25 + VSM(I,J,L)*0.50 + VSM(I,J,L+1)*0.25
-             end do
-           end do
+         do I=1,IM
+           if ( (SMTH_LEV(I,J) < 0) .AND. ((PLE(I,J,LM)-PLE(I,J,L)) >= SMTH_PRS) ) then
+             SMTH_LEV=L
+           end if
+         enddo
+         enddo
+         enddo
+         where (SMTH_LEV < 0)
+           SMTH_LEV=LM-5
+         end where
+         TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
+         USM(:,:,LM) =   U(:,:,LM-1)*0.25 +   U(:,:,LM  )*0.75
+         VSM(:,:,LM) =   V(:,:,LM-1)*0.25 +   V(:,:,LM  )*0.75
+         do J=1,JM
+         do I=1,IM
+         do L=LM-1,SMTH_LEV(I,J),-1
+            TSM(I,J,L) = THV(I,J,L-1)*0.25 + THV(I,J,L)*0.50 + THV(I,J,L+1)*0.25
+            USM(I,J,L) =   U(I,J,L-1)*0.25 +   U(I,J,L)*0.50 +   U(I,J,L+1)*0.25
+            VSM(I,J,L) =   V(I,J,L-1)*0.25 +   V(I,J,L)*0.50 +   V(I,J,L+1)*0.25
+         end do
+         end do
          end do
       end if
 
@@ -2447,7 +2438,7 @@ contains
 
       if (DO_SHOC == 0) then
         call LOUIS_KS(                      &
-            Z,ZLE(:,:,1:LM-1),THV,USM,VSM,ZPBL, &    
+            Z,ZLE(:,:,1:LM-1),TSM,USM,VSM,ZPBL, &    
             KH(:,:,1:LM-1),KM(:,:,1:LM-1),  &
             RI(:,:,1:LM-1),DU(:,:,1:LM-1),  &    
             LOUIS, MINSHEAR, MINTHICK,      &
@@ -3003,7 +2994,7 @@ contains
           TKE = MAPL_UNDEF
           do L = 1,LM-1
             TKE(:,:,L) = ( LAMBDADISS * &
-            ( -1.*(KH(:,:,L)*MAPL_GRAV/((THV(:,:,L) + THV(:,:,L+1))*0.5) *  ((THV(:,:,L) - THV(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
+            ( -1.*(KH(:,:,L)*MAPL_GRAV/((TSM(:,:,L) + TSM(:,:,L+1))*0.5) *  ((TSM(:,:,L) - TSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) +  &
             (KM(:,:,L)*((USM(:,:,L) - USM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((USM(:,:,L) - USM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1))))  +  &
             (KM(:,:,L)*((VSM(:,:,L) - VSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))*((VSM(:,:,L) - VSM(:,:,L+1))/(Z(:,:,L) - Z(:,:,L+1)))) )) ** 2
             TKE(:,:,L) = TKE(:,:,L) ** (1./3.)
