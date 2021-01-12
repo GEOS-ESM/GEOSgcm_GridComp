@@ -7756,27 +7756,32 @@ module GEOS_SurfaceGridCompMod
           where(WET1 == MAPL_UNDEF) WET1 = 1.0
       endif
 
-! Modify TSOIL to Kelvin
-!-----------------------
 
-      if( associated(TSOIL1) ) then
-             where ( TSOIL1 /= MAPL_Undef ) TSOIL1 = TSOIL1 + MAPL_TICE
-      endif
-      if( associated(TSOIL2) ) then
-             where ( TSOIL2 /= MAPL_Undef ) TSOIL2 = TSOIL2 + MAPL_TICE
-      endif
-      if( associated(TSOIL3) ) then
-             where ( TSOIL3 /= MAPL_Undef ) TSOIL3 = TSOIL3 + MAPL_TICE
-      endif
-      if( associated(TSOIL4) ) then
-             where ( TSOIL4 /= MAPL_Undef ) TSOIL4 = TSOIL4 + MAPL_TICE
-      endif
-      if( associated(TSOIL5) ) then
-             where ( TSOIL5 /= MAPL_Undef ) TSOIL5 = TSOIL5 + MAPL_TICE
-      endif
-      if( associated(TSOIL6) ) then
-             where ( TSOIL6 /= MAPL_Undef ) TSOIL6 = TSOIL6 + MAPL_TICE
-      endif
+
+! Moved change of units for soil temperature export variables down to Catch[CN] Gridcomp.
+! With this change, gridded TSOIL[n] exports from Surface and tile-space TP[n] exports
+! from Catch are now consistently in units of Kelvin.
+! - rreichle & borescan, 6 Nov 2020
+!
+!-----------------------      
+!      if( associated(TSOIL1) ) then
+!             where ( TSOIL1 /= MAPL_Undef ) TSOIL1 = TSOIL1 + MAPL_TICE
+!      endif
+!      if( associated(TSOIL2) ) then
+!             where ( TSOIL2 /= MAPL_Undef ) TSOIL2 = TSOIL2 + MAPL_TICE
+!      endif
+!      if( associated(TSOIL3) ) then
+!             where ( TSOIL3 /= MAPL_Undef ) TSOIL3 = TSOIL3 + MAPL_TICE
+!      endif
+!      if( associated(TSOIL4) ) then
+!             where ( TSOIL4 /= MAPL_Undef ) TSOIL4 = TSOIL4 + MAPL_TICE
+!      endif
+!      if( associated(TSOIL5) ) then
+!             where ( TSOIL5 /= MAPL_Undef ) TSOIL5 = TSOIL5 + MAPL_TICE
+!      endif
+!      if( associated(TSOIL6) ) then
+!             where ( TSOIL6 /= MAPL_Undef ) TSOIL6 = TSOIL6 + MAPL_TICE
+!      endif
 
 ! Fill SNOMAS over Glaciers
 !--------------------------
