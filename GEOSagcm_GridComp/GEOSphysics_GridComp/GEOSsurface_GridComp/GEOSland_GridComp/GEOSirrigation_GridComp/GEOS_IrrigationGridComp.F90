@@ -553,7 +553,7 @@ contains
        IF (local_hour(n) <   0.) local_hour(n) = local_hour(n) + 24.
 
        ! reference soil moisture content is at lower tercile of RZ soil moisture range [mm]
-       SMREF (n) = VGWMAX (n) * (wpwet (n) + wpwet (n)/3.) 
+       SMREF (n) = VGWMAX (n) * (wpwet (n) + (1. - wpwet (n))/3.) 
        
     END DO
     
