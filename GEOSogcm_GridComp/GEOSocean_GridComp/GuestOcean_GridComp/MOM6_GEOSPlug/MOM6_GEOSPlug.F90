@@ -903,11 +903,6 @@ contains
        AREA = real(Tmp2, kind=G5KIND)
     end if
 
-    if(associated(sea_lev)) then
-       call ocean_model_data_get(Ocean_State, Ocean, 'sea_lev', Tmp2, g_isc, g_jsc) ! includes inv baro in M
-       sea_lev = real(merge(tsource = Tmp2, fsource = real(MAPL_UNDEF), mask = (MASK(:, :) > 0.0)), kind=G5KIND)
-    end if
-
     deallocate(Tmp2)
 
 ! All Done
