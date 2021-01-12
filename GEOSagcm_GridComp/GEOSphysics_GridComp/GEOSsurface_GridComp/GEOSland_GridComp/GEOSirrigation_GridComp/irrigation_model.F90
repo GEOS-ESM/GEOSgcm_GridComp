@@ -29,14 +29,16 @@ MODULE IRRIGATION_MODULE
   !    1) SPRINKLERRATE [kg m-2 s-1]
   !    2) DRIPRATE [kg m-2 s-1]
   !    3) FLOODRATE [kg m-2 s-1]
+  !    DRIPRATE and SPINKLERRATE calculation are similar, albeit DRIPRATE is assumed to have a 0% water loss.
   !
   ! (2) COMPUTATIONAL TILES:
   !    During land BCs generation, land tiles where irrigated crops or paddy is present were further subdivided to a
   !    mosaic of upto 3 fractions: i) non-irrigated land, ii) irrigated crop, or iii) paddy.
   !    The model treats each fraction as a separate computational tile and runs on each individual fraction with own parameters and prognostics.
-  !    All fractions use the same model and soil parameters from the main land tile that they belong to while
+  !    All fractions inherited model and soil parameters from the main land tile that they belong to while
   !    vegetation characteristics and vegetation dynamic parameters were taken from the nearest
-  !    grass or crops land tile. During tiling and BCs data preparation, computed fractional coverages for land tiles were also adjusted
+  !    grass or crops land tile. BF3 parameter on paddy tiles was exception, though. On paddy, BF3 was set to 25 to account for the flat surfaces of paddy.
+  !    During tiling and BCs data preparation, computed fractional coverages for land tiles were also adjusted
   !    to reflect each computational tile under the land grid component represents entirely one of the 3 irrigation surface types: a non-irrigated land,
   !    OR a irrigated-crops OR a paddy tile.
   !
@@ -45,9 +47,6 @@ MODULE IRRIGATION_MODULE
   !     SMSAT   : rootzone soil moisture content at saturation [mm] 
   !     SMREF   : rootzone soil moisture at lower tercile [mm]
   !     SMCNT   : currrent root zone soil moisture content [mm] 
-  !     MUEVEGD : unstressed transpiration (EVEG) difference -
-  !               EVEG under the same atmospheric conditions but saturated rootzone
-  !               minus current EVEG[kg m-2 s-1] (for Drip irrigation)
   !     RZDEF   : rootzone moisture deficit to reach complete soil saturation for paddy [mm]
   !     LOCAL_HOUR to set irrigation switch.
   !
@@ -110,7 +109,7 @@ MODULE IRRIGATION_MODULE
      ! Below parameters can be set via RC file.
      
      REAL :: lai_thres        =  0.6 ! threshold of LAI range to turn irrigation on
-     REAL :: efcor            = 76.0 ! Efficiency Correction (%)
+     REAL :: efcor            = 24.0 ! Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use)
      
      ! Sprinkler parameters
      ! --------------------
@@ -183,7 +182,7 @@ contains
 
   SUBROUTINE irrigrate_lai_trigger (this,IRRIG_METHOD, local_hour,         &
             IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,            &           
-            SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN,LAIMAX, MUEVEGD, RZDEF, &
+            SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN,LAIMAX, RZDEF,          &
             SPRINKLERRATE, DRIPRATE, FLOODRATE)
 
     implicit none
@@ -191,16 +190,18 @@ contains
     integer, intent (in)                    :: IRRIG_METHOD
     real, dimension (:), intent (in)        :: local_hour
     real, dimension (:), intent (in)        :: IRRIGFRAC, PADDYFRAC, SPRINKLERFR, &
-         DRIPFR, FLOODFR, SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN, LAIMAX,MUEVEGD,RZDEF
+         DRIPFR, FLOODFR, SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN, LAIMAX, RZDEF
     real, dimension (:), intent (inout)     :: SPRINKLERRATE, DRIPRATE, FLOODRATE
     INTEGER                                 :: NTILES, N
     REAL                                    :: ma, H1, H2, HC, IT, LF, LAITHRES
+    logical                                 :: ignore_lai_scaling = .true.
 
     NTILES = SIZE (IRRIGFRAC)
     TILE_LOOP : DO N = 1, NTILES
        IF(LAIMAX (N) > LAIMIN (N)) THEN
           LAITHRES = LAIMIN (N) + this%lai_thres * (LAIMAX (N) - LAIMIN (N))          
           LF       = (LAI(N) - LAIMIN (N)) / (LAIMAX(N) - LAIMIN(N))
+          if(ignore_lai_scaling) LF = 1.
        ELSE
           LF = 0.
        ENDIF
@@ -248,7 +249,7 @@ contains
                    H1 = this%drip_stime
                    H2 = this%drip_stime + this%drip_dur
                    if ((HC >= H1).AND.(HC < H2)) then
-                      if(H1 == HC) DRIPRATE (N) = MUEVEGD(N) * DRIPFR (N) * 12./(H2 - H1)
+                      if(H1 == HC) DRIPRATE (N) = this%cwd(SMCNT(N),SMREF(N),0.) * DRIPFR (N) /(H2 - H1)/3600.
                    else
                       DRIPRATE (N) = 0.
                    endif
@@ -274,7 +275,8 @@ contains
                    H1 = this%drip_stime
                    H2 = this%drip_stime + this%drip_dur
                    if ((HC >= H1).AND.(HC < H2)) then
-                      if(H1 == HC) DRIPRATE (N) = MUEVEGD(N) *12. /(H2 - H1)
+                      if(H1 == HC) DRIPRATE (N) = this%cwd(LF*SMCNT(N),SMREF(N),0.) &
+                                               /(H2 - H1)/3600.
                    else
                       DRIPRATE (N) = 0.
                    endif
@@ -330,14 +332,14 @@ contains
 
   SUBROUTINE irrigrate_crop_calendar(this,dofyr,local_hour, &
        CROPIRRIGFRAC,IRRIGPLANT, IRRIGHARVEST, IRRIGTYPE ,  &
-       SMWP,SMSAT,SMREF,SMCNT, MUEVEGD, RZDEF,              &  
+       SMWP,SMSAT,SMREF,SMCNT, RZDEF,                       &  
        SPRINKLERRATE, DRIPRATE, FLOODRATE)
 
     implicit none
     class(irrigation_model),intent(inout):: this
     integer, intent (in)                 :: dofyr
     real, dimension (:),   intent (in)   :: local_hour
-    real, dimension (:),   intent (in)   :: SMWP, SMSAT, SMREF, SMCNT, MUEVEGD,RZDEF
+    real, dimension (:),   intent (in)   :: SMWP, SMSAT, SMREF, SMCNT, RZDEF
     real, dimension(:,:),  intent (in)   :: CROPIRRIGFRAC ! NUM_CROPS
     real, dimension(:,:),  intent (in)   :: IRRIGTYPE     ! NUM_CROPS
     real, dimension(:,:,:),intent (in)   :: IRRIGPLANT    ! NUM_SEASONS, NUM_CROPS
@@ -418,7 +420,8 @@ contains
                                   H1 = this%drip_stime
                                   H2 = this%drip_stime + this%drip_dur
                                   if ((HC >= H1).AND.(HC < H2)) then
-                                     if(H1 == HC) DRATE (crop) = MUEVEGD(N) *12. /(H2 - H1)
+                                     if(H1 == HC) DRATE (crop) = this%cwd(SMCNT(N),SMREF(N),0.) &
+                                          /(H2 - H1)/3600.
                                   else
                                      DRATE (crop) = 0.
                                   endif

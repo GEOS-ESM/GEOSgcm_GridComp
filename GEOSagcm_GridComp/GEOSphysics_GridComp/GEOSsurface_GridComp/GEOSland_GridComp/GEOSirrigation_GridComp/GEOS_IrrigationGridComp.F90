@@ -36,7 +36,7 @@ module GEOS_IrrigationGridCompMod
 !  
 ! This GC imports soil parameters and root zone soil moisture from land models
 !    to compute soil moisture state for IRRIGRATE calculation.  
-! IMPORTS: POROS, WPWET, VGWMAX, WCRZ, LAI, MUEVEGD \\
+! IMPORTS: POROS, WPWET, VGWMAX, WCRZ, LAI \\
 !
 ! !USES: 
 
@@ -360,16 +360,7 @@ contains
          VLOCATION  = MAPL_VLocationNone                      ,&
          RC=STATUS  )
     VERIFY_(STATUS)
-        
-    call MAPL_AddImportSpec(GC                                ,&
-         SHORT_NAME = 'MUEVEGD'                               ,&
-         LONG_NAME  = 'moisture_unstressed_transpiration_deficit',&
-         UNITS      = 'kg m-2 s-1'                                ,&
-         DIMS       = MAPL_DimsTileOnly                       ,&
-         VLOCATION  = MAPL_VLocationNone                      ,&
-         RC=STATUS  )
-    VERIFY_(STATUS)
-  
+          
 ! Allocate this instance of the internal state and put it in wrapper.
 ! -------------------------------------------------------------------
 
@@ -449,7 +440,6 @@ contains
     real, dimension(:), pointer :: VGWMAX
     real, dimension(:), pointer :: WCRZ
     real, dimension(:), pointer :: LAI
-    real, dimension(:), pointer :: MUEVEGD
   
 ! Time attributes 
 
@@ -516,7 +506,6 @@ contains
     call MAPL_GetPointer(IMPORT, VGWMAX , 'VGWMAX', RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, WCRZ   , 'WCRZ',   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, LAI    , 'LAI',    RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, MUEVEGD, 'MUEVEGD',RC=STATUS) ; VERIFY_(STATUS)
         
 ! Get time and parameters from local state
 ! ----------------------------------------
@@ -575,7 +564,7 @@ contains
                     
        call IM%run_model(IRRIG_METHOD, local_hour,                      &
             IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,         &           
-            SMWP,SMSAT,SMREF,SMCNT, LAI, LAIMIN, LAIMAX, MUEVEGD, RZDEF,&
+            SMWP,SMSAT,SMREF,SMCNT, LAI, LAIMIN, LAIMAX, RZDEF,         &
             SPRINKLERRATE, DRIPRATE, FLOODRATE) 
        
     else
@@ -585,7 +574,7 @@ contains
        
        call IM%run_model (dofyr,local_hour,                   &
             CROPIRRIGFRAC,IRRIGPLANT,IRRIGHARVEST,IRRIGTYPE , &
-            SMWP,SMSAT,SMREF,SMCNT, MUEVEGD, RZDEF,           & 
+            SMWP,SMSAT,SMREF,SMCNT, RZDEF,                    & 
             SPRINKLERRATE, DRIPRATE, FLOODRATE) 
 
     endif

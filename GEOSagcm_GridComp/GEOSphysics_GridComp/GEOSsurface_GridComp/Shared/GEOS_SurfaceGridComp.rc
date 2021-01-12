@@ -188,7 +188,7 @@
 # FLOOD_STIME:     6.0 # flood irrigatrion start time [hours]
 # FLOOD_DUR:       1.0 # flood irrigation duration [hours]
 # FLOOD_THRES:    0.25 # soil moisture threshhold to trigger flood irrigation
-# IRR_EFCOR:      76.0 # Efficiency Correction (%)
+# IRR_EFCOR:      24.0 # Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use )
 
 #--------------------------------------------------------#
 #              River routing model (RRM)                 #

@@ -1381,8 +1381,7 @@ contains
           IF(RUN_IRRIG) THEN
              call MAPL_AddConnectivity (                                         &
                   GC                                                            ,&
-                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '   ,&
-                       'MUEVEGD '/)                                             ,&
+                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '/) ,&
                   SRC_ID =  CATCH(I)                                            ,&
                   DST_ID =  IRRIGATION(I)                                       ,&
                   RC=STATUS )
@@ -1419,8 +1418,7 @@ contains
           IF(RUN_IRRIG) THEN
 !             call MAPL_AddConnectivity (                                         &
 !                  GC                                                            ,&
-!                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '   ,&
-!                       'MUEVEGD '/)                                             ,&
+!                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    ''/),&
 !                  SRC_ID =  CATCHCN(I)                                          ,&
 !                  DST_ID =  IRRIGATION(I)                                       ,&
 !                  RC=STATUS )

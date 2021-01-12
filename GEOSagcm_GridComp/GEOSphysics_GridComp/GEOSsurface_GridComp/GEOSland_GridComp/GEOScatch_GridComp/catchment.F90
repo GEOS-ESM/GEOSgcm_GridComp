@@ -152,7 +152,7 @@
                      SH_SNOW, AVET_SNOW, WAT_10CM, TOTWAT_SOIL, TOTICE_SOIL,   &
                      LH_SNOW, LWUP_SNOW, LWDOWN_SNOW, NETSW_SNOW,              &
                      TCSORIG, TPSN1IN, TPSN1OUT,lonbeg,lonend,latbeg,latend,   &
-                     MUEVEGD,TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0, &
+                     TC1_0, TC2_0, TC4_0, QA1_0, QA2_0, QA4_0, EACC_0,         &
                      RCONSTIT, RMELT, TOTDEPOS,  LHACC)
 
       IMPLICIT NONE
@@ -209,7 +209,7 @@
                      HLWUP,SWLAND,HLATN,QINFIL,AR1, AR2, RZEQ,                 &
                      GHFLUX, TPSN1, ASNOW0, TP1, TP2, TP3, TP4, TP5, TP6,      &
                      sfmc, rzmc, prmc, entot, wtot, tsurf, WCHANGE, ECHANGE,   &
-                     HSNACC, EVACC, SHACC, MUEVEGD
+                     HSNACC, EVACC, SHACC
       REAL, INTENT(OUT), DIMENSION(NCH) :: GHFLUXSNO, GHTSKIN
 
       REAL, INTENT(OUT), DIMENSION(NCH) :: SH_SNOW, AVET_SNOW,       &
