@@ -2372,6 +2372,15 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
+    SHORT_NAME         = 'IRRLAND',                   &
+    LONG_NAME          = 'Total_irrigation_land',     &
+    UNITS              = 'kg m-2 s-1',                &
+    DIMS               = MAPL_DimsTileOnly,           &
+    VLOCATION          = MAPL_VLocationNone,          &
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+  
+  call MAPL_AddExportSpec(GC,                    &
     SHORT_NAME         = 'SNOLAND',                   &
     LONG_NAME          = 'snowfall_land',             &
     UNITS              = 'kg m-2 s-1',                &
@@ -3883,6 +3892,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         real, dimension(:),   pointer :: EVLAND
         real, dimension(:),   pointer :: PRLAND
+        real, dimension(:),   pointer :: IRRLAND
         real, dimension(:),   pointer :: SNOLAND
         real, dimension(:),   pointer :: DRPARLAND
         real, dimension(:),   pointer :: DFPARLAND
@@ -4434,6 +4444,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call MAPL_GetPointer(EXPORT,SNOWDP, 'SNOWDP' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,EVLAND, 'EVLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,PRLAND, 'PRLAND' ,             RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(EXPORT,IRRLAND,'IRRLAND',             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,SNOLAND, 'SNOLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DRPARLAND, 'DRPARLAND' ,             RC=STATUS); VERIFY_(STATUS)
         call MAPL_GetPointer(EXPORT,DFPARLAND, 'DFPARLAND' ,             RC=STATUS); VERIFY_(STATUS)
@@ -5621,7 +5632,10 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
         if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
-        if(associated(PRLAND)) PRLAND = PCU+PLS_IN+SLDTOT
+        if(associated(PRLAND)) PRLAND = PCU+PLS +SLDTOT
+        if(associated(IRRLAND)) then
+           if (RUN_IRRIG) IRRLAND = SPRINKLERRATE + FLOODRATE + DRIPRATE
+        endif        
         if(associated(SNOLAND)) SNOLAND = SLDTOT     ! note, not just SNO
         if(associated(DRPARLAND)) DRPARLAND = DRPAR
         if(associated(DFPARLAND)) DFPARLAND = DFPAR

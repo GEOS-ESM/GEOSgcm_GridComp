@@ -155,127 +155,127 @@ contains
 ! Internal State 
 ! -----------------------------------------------------------
 
-    call MAPL_AddInternalSpec(GC                                ,&
-         SHORT_NAME = 'IRRIGFRAC'                               ,&
-         LONG_NAME  = 'fraction_of_irrigated_cropland'	        ,&
-         UNITS      = '1'                                       ,&
-         DIMS       = MAPL_DimsTileOnly                         ,&
-         VLOCATION  = MAPL_VLocationNone                        ,&
-         FRIENDLYTO = trim(COMP_NAME)                           ,&
-         RESTART    = MAPL_RestartRequired                      ,&
+    call MAPL_AddInternalSpec(GC                              ,&
+         SHORT_NAME = 'IRRIGFRAC'                             ,&
+         LONG_NAME  = 'fraction_of_irrigated_cropland'	      ,&
+         UNITS      = '1'                                     ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         FRIENDLYTO = trim(COMP_NAME)                         ,&
+         RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)  
     
-    call MAPL_AddInternalSpec(GC                                ,&
-         SHORT_NAME = 'PADDYFRAC'                               ,&
-         LONG_NAME  = 'fraction_of_paddy_cropland'	        ,&
-         UNITS      = '1'                                       ,&
-         DIMS       = MAPL_DimsTileOnly                         ,&
-         VLOCATION  = MAPL_VLocationNone                        ,&
-         FRIENDLYTO = trim(COMP_NAME)                           ,&
-         RESTART    = MAPL_RestartRequired                      ,&
+    call MAPL_AddInternalSpec(GC                              ,&
+         SHORT_NAME = 'PADDYFRAC'                             ,&
+         LONG_NAME  = 'fraction_of_paddy_cropland'	      ,&
+         UNITS      = '1'                                     ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         FRIENDLYTO = trim(COMP_NAME)                         ,&
+         RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)
        
-    call MAPL_AddInternalSpec(GC                                ,&
-         SHORT_NAME = 'CROPIRRIGFRAC'                           ,&
-         LONG_NAME  = 'Crop_irrigated_fraction'		        ,&
-         UNITS      = '1'                                       ,&
-         DIMS       = MAPL_DimsTileOnly                         ,&
-         VLOCATION  = MAPL_VLocationNone                        ,&
-         FRIENDLYTO = trim(COMP_NAME)                           ,&
-         UNGRIDDED_DIMS = (/NUM_CROPS/)                         ,&
-         RESTART    = MAPL_RestartRequired                      ,&
+    call MAPL_AddInternalSpec(GC                              ,&
+         SHORT_NAME = 'CROPIRRIGFRAC'                         ,&
+         LONG_NAME  = 'Crop_irrigated_fraction'		      ,&
+         UNITS      = '1'                                     ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         FRIENDLYTO = trim(COMP_NAME)                         ,&
+         UNGRIDDED_DIMS = (/NUM_CROPS/)                       ,&
+         RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)
        
-    call MAPL_AddInternalSpec(GC                                ,&
-         SHORT_NAME = 'IRRIGPLANT'                              ,&
-         LONG_NAME  = 'DOY_start_planting'		        ,&
-         UNITS      = 'day'                                     ,&
-         DIMS       = MAPL_DimsTileOnly                         ,&
-         VLOCATION  = MAPL_VLocationNone                        ,&
-         FRIENDLYTO = trim(COMP_NAME)                           ,&
-         UNGRIDDED_DIMS = (/NUM_SEASONS, NUM_CROPS/)            ,&
-         RESTART    = MAPL_RestartRequired                      ,&
+    call MAPL_AddInternalSpec(GC                              ,&
+         SHORT_NAME = 'IRRIGPLANT'                            ,&
+         LONG_NAME  = 'DOY_start_planting'		      ,&
+         UNITS      = 'day'                                   ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         FRIENDLYTO = trim(COMP_NAME)                         ,&
+         UNGRIDDED_DIMS = (/NUM_SEASONS, NUM_CROPS/)          ,&
+         RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)
     
-    call MAPL_AddInternalSpec(GC                                ,&
-         SHORT_NAME = 'IRRIGHARVEST'                            ,&
-         LONG_NAME  = 'DOY_end_harvesting'                      ,&
-         UNITS      = 'day'                                     ,&
-         DIMS       = MAPL_DimsTileOnly                         ,&
-         VLOCATION  = MAPL_VLocationNone                        ,&
-         FRIENDLYTO = trim(COMP_NAME)                           ,&
-         UNGRIDDED_DIMS = (/NUM_SEASONS, NUM_CROPS/)            ,&
-         RESTART    = MAPL_RestartRequired                      ,&
+    call MAPL_AddInternalSpec(GC                              ,&
+         SHORT_NAME = 'IRRIGHARVEST'                          ,&
+         LONG_NAME  = 'DOY_end_harvesting'                    ,&
+         UNITS      = 'day'                                   ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         FRIENDLYTO = trim(COMP_NAME)                         ,&
+         UNGRIDDED_DIMS = (/NUM_SEASONS, NUM_CROPS/)          ,&
+         RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)
     
-    call MAPL_AddInternalSpec(GC                                ,&
-         SHORT_NAME = 'IRRIGTYPE'                               ,&
+    call MAPL_AddInternalSpec(GC                              ,&
+         SHORT_NAME = 'IRRIGTYPE'                             ,&
          LONG_NAME  = 'Preferred_Irrig_method=(1)SPRINKLER_(2)DRIP_(3)FLOOD',&
-         UNITS      = '1'                                       ,&
-         DIMS       = MAPL_DimsTileOnly                         ,&
-         VLOCATION  = MAPL_VLocationNone                        ,&
-         FRIENDLYTO = trim(COMP_NAME)                           ,&
-         UNGRIDDED_DIMS = (/NUM_CROPS/)                         ,&
-         RESTART    = MAPL_RestartRequired                      ,&
+         UNITS      = '1'                                     ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         FRIENDLYTO = trim(COMP_NAME)                         ,&
+         UNGRIDDED_DIMS = (/NUM_CROPS/)                       ,&
+         RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)
     
-    call MAPL_AddInternalSpec(GC                                ,&
-         SHORT_NAME = 'SPRINKLERFR'                             ,&
-         LONG_NAME  = 'fraction_of_sprinkler_irrigation'        ,&
-         UNITS      = '1'                                       ,&
-         DIMS       = MAPL_DimsTileOnly                         ,&
-         VLOCATION  = MAPL_VLocationNone                        ,&
-         FRIENDLYTO = trim(COMP_NAME)                           ,&
+    call MAPL_AddInternalSpec(GC                              ,&
+         SHORT_NAME = 'SPRINKLERFR'                           ,&
+         LONG_NAME  = 'fraction_of_sprinkler_irrigation'      ,&
+         UNITS      = '1'                                     ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         FRIENDLYTO = trim(COMP_NAME)                         ,&
          RC=STATUS  )
     VERIFY_(STATUS)
     
-    call MAPL_AddInternalSpec(GC                                ,&
-         SHORT_NAME = 'DRIPFR'                                  ,&
-         LONG_NAME  = 'fraction_of_drip_irrigation'	        ,&
-         UNITS      = '1'                                       ,&
-         DIMS       = MAPL_DimsTileOnly                         ,&
-         VLOCATION  = MAPL_VLocationNone                        ,&
-         FRIENDLYTO = trim(COMP_NAME)                           ,&
-         RESTART    = MAPL_RestartRequired                      ,&
+    call MAPL_AddInternalSpec(GC                              ,&
+         SHORT_NAME = 'DRIPFR'                                ,&
+         LONG_NAME  = 'fraction_of_drip_irrigation'	      ,&
+         UNITS      = '1'                                     ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         FRIENDLYTO = trim(COMP_NAME)                         ,&
+         RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)
     
-    call MAPL_AddInternalSpec(GC                                ,&
-         SHORT_NAME = 'FLOODFR'                                 ,&
-         LONG_NAME  = 'fraction_of_flood_irrigation'	        ,&
-         UNITS      = '1'                                       ,&
-         DIMS       = MAPL_DimsTileOnly                         ,&
-         VLOCATION  = MAPL_VLocationNone                        ,&
-         FRIENDLYTO = trim(COMP_NAME)                           ,&
-         RESTART    = MAPL_RestartRequired                      ,&
+    call MAPL_AddInternalSpec(GC                              ,&
+         SHORT_NAME = 'FLOODFR'                               ,&
+         LONG_NAME  = 'fraction_of_flood_irrigation'	      ,&
+         UNITS      = '1'                                     ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         FRIENDLYTO = trim(COMP_NAME)                         ,&
+         RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)
     
-    call MAPL_AddInternalSpec(GC                                ,&
-         SHORT_NAME = 'LAIMIN'                                  ,&
-         LONG_NAME  = 'Minimum_LAI_irrigated_crops'	        ,&
-         UNITS      = '1'                                       ,&
-         DIMS       = MAPL_DimsTileOnly                         ,&
-         VLOCATION  = MAPL_VLocationNone                        ,&
-         FRIENDLYTO = trim(COMP_NAME)                           ,&
-         RESTART    = MAPL_RestartRequired                      ,&
+    call MAPL_AddInternalSpec(GC                              ,&
+         SHORT_NAME = 'LAIMIN'                                ,&
+         LONG_NAME  = 'Minimum_LAI_irrigated_crops'	      ,&
+         UNITS      = '1'                                     ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         FRIENDLYTO = trim(COMP_NAME)                         ,&
+         RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)
     
-    call MAPL_AddInternalSpec(GC                                ,&
-         SHORT_NAME = 'LAIMAX'                                  ,&
-         LONG_NAME  = 'Maximum_LAI_irrigated_crops'             ,&
-         UNITS      = '1'                                       ,&
-         DIMS       = MAPL_DimsTileOnly                         ,&
-         VLOCATION  = MAPL_VLocationNone                        ,&
-         FRIENDLYTO = trim(COMP_NAME)                           ,&
-         RESTART    = MAPL_RestartRequired                      ,&
+    call MAPL_AddInternalSpec(GC                              ,&
+         SHORT_NAME = 'LAIMAX'                                ,&
+         LONG_NAME  = 'Maximum_LAI_irrigated_crops'           ,&
+         UNITS      = '1'                                     ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         FRIENDLYTO = trim(COMP_NAME)                         ,&
+         RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)  
 

@@ -539,6 +539,11 @@ contains
             RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
+            SHORT_NAME = 'IRRLAND', &
+            CHILD_ID = CATCH(1), &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'SNOLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
@@ -1072,6 +1077,8 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PRLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRLAND',  CHILD_ID = CATCHCN(1), RC=STATUS  )
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNOLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DRPARLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
@@ -1416,21 +1423,21 @@ contains
             SRC_ID =  VEGDYN                                   ,         &
                                                       RC=STATUS ) 
           IF(RUN_IRRIG) THEN
-!             call MAPL_AddConnectivity (                                         &
-!                  GC                                                            ,&
-!                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    ''/),&
-!                  SRC_ID =  CATCHCN(I)                                          ,&
-!                  DST_ID =  IRRIGATION(I)                                       ,&
-!                  RC=STATUS )
-!             VERIFY_(STATUS)
-             
-!             call MAPL_AddConnectivity (                                         &
-!                  GC                                                            ,&
-!                  SHORT_NAME = (/'SPRINKLERRATE','DRIPRATE    ','FLOODRATE   '/),&
-!                  SRC_ID =  IRRIGATIION(I)                                      ,&
-!                  DST_ID =  CATCHCN(I)                                          ,& 
-!                  RC=STATUS )
-!             VERIFY_(STATUS)             
+             call MAPL_AddConnectivity (                                         &
+                  GC                                                            ,&
+                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '/) ,&
+                  SRC_ID =  CATCHCN(I)                                          ,&
+                  DST_ID =  IRRIGATION(I)                                       ,&
+                  RC=STATUS )
+             VERIFY_(STATUS)
+            
+             call MAPL_AddConnectivity (                                         &
+                  GC                                                            ,&
+                  SHORT_NAME = (/'SPRINKLERRATE','DRIPRATE    ','FLOODRATE   '/),&
+                  SRC_ID =  IRRIGATION(I)                                       ,&
+                  DST_ID =  CATCHCN(I)                                          ,& 
+                  RC=STATUS )
+             VERIFY_(STATUS)             
           ENDIF
           
 !          IF(RUN_ROUTE == 1) THEN

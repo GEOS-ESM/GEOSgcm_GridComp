@@ -19,25 +19,22 @@ MODULE IRRIGATION_MODULE
   ! 
   ! Sprinkler and Flood Irrigation methods were adapted from LIS CLSMF2.5 irrigatrion module:
   ! https://github.com/NASA-LIS/LISF/blob/master/lis/surfacemodels/land/clsm.f2.5/irrigation/clsmf25_getirrigationstates.F90 
-  ! while the Drip Irrigation scheme follows:
-  ! Evans, J. P., and Zaitchik, B. F. (2008), Modeling the large‐scale water balance impact of different irrigation systems,
-  ! Water Resour. Res., 44, W08448, doi:10.1029/2007WR006671.
-  ! 
+  ! Drip irrigation method calculation is similar to the that of sprinkler, albeit the drip irrigation method assumed to have a 0% water loss.
+  !
   ! December 24, 2020 (Sarith) - First Version
   !
   ! (1) MODEL OUTPUTS:
   !    1) SPRINKLERRATE [kg m-2 s-1]
   !    2) DRIPRATE [kg m-2 s-1]
-  !    3) FLOODRATE [kg m-2 s-1]
-  !    DRIPRATE and SPINKLERRATE calculation are similar, albeit DRIPRATE is assumed to have a 0% water loss.
+  !    3) FLOODRATE [kg m-2 s-1]    
   !
   ! (2) COMPUTATIONAL TILES:
   !    During land BCs generation, land tiles where irrigated crops or paddy is present were further subdivided to a
   !    mosaic of upto 3 fractions: i) non-irrigated land, ii) irrigated crop, or iii) paddy.
   !    The model treats each fraction as a separate computational tile and runs on each individual fraction with own parameters and prognostics.
-  !    All fractions inherited model and soil parameters from the main land tile that they belong to while
-  !    vegetation characteristics and vegetation dynamic parameters were taken from the nearest
-  !    grass or crops land tile. BF3 parameter on paddy tiles was exception, though. On paddy, BF3 was set to 25 to account for the flat surfaces of paddy.
+  !    All fractions inherited model and soil parameters from the main land tile that they belong to. A special treatment of setting BF3 to a high
+  !    value (25.) was applied to paddy tiles account for the uniquely flat nature of paddy fields. Vegetation characteristics and vegetation dynamic
+  !    parameters for irrigated crop and paddy tiles were taken from the nearest grass or crops land tile. 
   !    During tiling and BCs data preparation, computed fractional coverages for land tiles were also adjusted
   !    to reflect each computational tile under the land grid component represents entirely one of the 3 irrigation surface types: a non-irrigated land,
   !    OR a irrigated-crops OR a paddy tile.
