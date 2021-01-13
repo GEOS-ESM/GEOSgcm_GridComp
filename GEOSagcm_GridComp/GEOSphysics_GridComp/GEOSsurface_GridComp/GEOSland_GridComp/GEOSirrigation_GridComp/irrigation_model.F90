@@ -33,7 +33,7 @@ MODULE IRRIGATION_MODULE
   !    mosaic of upto 3 fractions: i) non-irrigated land, ii) irrigated crop, or iii) paddy.
   !    The model treats each fraction as a separate computational tile and runs on each individual fraction with own parameters and prognostics.
   !    All fractions inherited model and soil parameters from the main land tile that they belong to. A special treatment of setting BF3 to a high
-  !    value (25.) was applied to paddy tiles account for the uniquely flat nature of paddy fields. Vegetation characteristics and vegetation dynamic
+  !    value (25.) was applied to paddy tiles to account for the uniquely flat nature of paddy fields. Vegetation characteristics and vegetation dynamic
   !    parameters for irrigated crop and paddy tiles were taken from the nearest grass or crops land tile. 
   !    During tiling and BCs data preparation, computed fractional coverages for land tiles were also adjusted
   !    to reflect each computational tile under the land grid component represents entirely one of the 3 irrigation surface types: a non-irrigated land,
