@@ -19,7 +19,7 @@ MODULE IRRIGATION_MODULE
   ! 
   ! Sprinkler and Flood Irrigation methods were adapted from LIS CLSMF2.5 irrigatrion module:
   ! https://github.com/NASA-LIS/LISF/blob/master/lis/surfacemodels/land/clsm.f2.5/irrigation/clsmf25_getirrigationstates.F90 
-  ! Drip irrigation method calculation is similar to that of sprinkler, albeit the drip irrigation method assumes to a 0% water loss.
+  ! Drip irrigation method calculation is similar to that of sprinkler, albeit the drip irrigation method assumes a 0% water loss.
   !
   ! December 24, 2020 (Sarith) - First Version
   !
