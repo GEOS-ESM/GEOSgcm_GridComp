@@ -453,6 +453,7 @@ contains
     real,pointer,dimension(:)      :: lons
     integer                        :: ntiles, n
     real, dimension(:),allocatable :: local_hour, SMWP, SMSAT, SMREF, SMCNT, RZDEF
+    real                           :: DT, T1, T2
 
 
 ! Get the target components name and set-up traceback handle.
@@ -475,6 +476,9 @@ contains
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
+    VERIFY_(STATUS)
+    
     call MAPL_TimerOn(MAPL,"TOTAL")
 
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
@@ -545,13 +549,17 @@ contains
     SMCNT = (VGWMAX/POROS) * WCRZ    ! actual RZ soil moisture content [mm]
     RZDEF = SMSAT - SMCNT            ! rootzone moisture deficit to reach
                                      !   complete soil saturation for paddy [mm]
-    
+
     DO N = 1, NTILES
        ! local times
        local_hour(n) = AGCM_HH + AGCM_MI / 60. + AGCM_S / 3600. + 12.* (lons(n)/MAPL_PI)
        IF (local_hour(n) >= 24.) local_hour(n) = local_hour(n) - 24.
        IF (local_hour(n) <   0.) local_hour(n) = local_hour(n) + 24.
-
+       T1 = CEILING (local_hour(n))     - DT/2./3600.
+       T2 = FLOOR   (local_hour(n) + 1) + DT/2./3600.
+       if((local_hour(n) >= T1).and.(local_hour(n) <= T2))then
+          local_hour(n) = real(NINT(local_hour(n)))
+       end if
        ! reference soil moisture content is at lower tercile of RZ soil moisture range [mm]
        SMREF (n) = VGWMAX (n) * (wpwet (n) + (1. - wpwet (n))/3.) 
        
@@ -578,7 +586,7 @@ contains
             SPRINKLERRATE, DRIPRATE, FLOODRATE) 
 
     endif
-    
+
     deallocate (local_hour, SMWP, SMSAT, SMREF, SMCNT, RZDEF, IM)
     
     call MAPL_TimerOff(MAPL,"TOTAL")

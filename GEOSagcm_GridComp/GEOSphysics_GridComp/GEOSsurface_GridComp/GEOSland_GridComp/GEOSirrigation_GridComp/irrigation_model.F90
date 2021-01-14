@@ -225,7 +225,7 @@ contains
                    H2 = this%sprinkler_stime + this%sprinkler_dur
                    IT = this%sprinkler_thres                   
                    if ((HC >= H1).AND.(HC < H2)) then
-                      if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) &
+                      if((ma <= IT).AND.(H1 == HC)) &
                            SPRINKLERRATE (N) = this%cwd (LF*SMCNT(N),SMREF(N),this%efcor) &
                                                * SPRINKLERFR(N)/(H2 - H1)/3600.
                    else
@@ -236,7 +236,7 @@ contains
                    H2 = this%flood_stime + this%flood_dur
                    IT = this%flood_thres
                    if ((HC >= H1).AND.(HC < H2)) then
-                      if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) &
+                      if((ma <= IT).AND.(H1 == HC)) &
                            FLOODRATE (N) = this%cwd (LF*SMCNT(N),SMREF(N),this%efcor) &
                                            * FLOODFR (N)/(H2 - H1)/3600.
                    else
@@ -246,7 +246,7 @@ contains
                    H1 = this%drip_stime
                    H2 = this%drip_stime + this%drip_dur
                    if ((HC >= H1).AND.(HC < H2)) then
-                      if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(SMCNT(N),SMREF(N),0.) * DRIPFR (N) /(H2 - H1)/3600.
+                      if((ma <= IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(SMCNT(N),SMREF(N),0.) * DRIPFR (N) /(H2 - H1)/3600.
                    else
                       DRIPRATE (N) = 0.
                    endif
@@ -257,7 +257,7 @@ contains
                    H2 = this%sprinkler_stime + this%sprinkler_dur
                    IT = this%sprinkler_thres    
                    if ((HC >= H1).AND.(HC < H2)) then
-                      if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) &
+                      if((ma <= IT).AND.(H1 == HC)) &
                            SPRINKLERRATE (N) = this%cwd(LF*SMCNT(N),SMREF(N),this%efcor) &
                                                /(H2 - H1)/3600.
                    else
@@ -272,7 +272,7 @@ contains
                    H1 = this%drip_stime
                    H2 = this%drip_stime + this%drip_dur
                    if ((HC >= H1).AND.(HC < H2)) then
-                      if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(LF*SMCNT(N),SMREF(N),0.) &
+                      if((ma <= IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(LF*SMCNT(N),SMREF(N),0.) &
                                                /(H2 - H1)/3600.
                    else
                       DRIPRATE (N) = 0.
@@ -286,7 +286,7 @@ contains
                    H2 = this%flood_stime + this%flood_dur
                    IT = this%flood_thres
                    if ((HC >= H1).AND.(HC < H2)) then
-                      if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) &
+                      if((ma <= IT).AND.(H1 == HC)) &
                            FLOODRATE (N) = this%cwd(LF*SMCNT(N),SMREF(N),this%efcor) &
                                            /(H2 - H1)/3600.
                    else
