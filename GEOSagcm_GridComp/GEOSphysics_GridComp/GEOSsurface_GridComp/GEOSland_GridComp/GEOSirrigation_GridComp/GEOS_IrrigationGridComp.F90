@@ -557,7 +557,7 @@ contains
        IF (local_hour(n) <   0.) local_hour(n) = local_hour(n) + 24.
        T1 = CEILING (local_hour(n))     - DT/2./3600.
        T2 = FLOOR   (local_hour(n) + 1) + DT/2./3600.
-       if((local_hour(n) >= T1).and.(local_hour(n) <= T2))then
+       if((local_hour(n) >= T1).and.(local_hour(n) < T2))then
           local_hour(n) = real(NINT(local_hour(n)))
        end if
        ! reference soil moisture content is at lower tercile of RZ soil moisture range [mm]
