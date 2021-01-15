@@ -4994,7 +4994,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               RZEXC  = RZEXC + DRIPRATE*DT
            end where
            where (FLOODRATE > 0)
-              SRFEXC = SRFEXC + FLOODRATE*DT
+              RZEXC  = RZEXC + FLOODRATE*DT
            end where
         endif
         

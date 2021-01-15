@@ -12,7 +12,7 @@ MODULE IRRIGATION_MODULE
   ! the hydrological cycle by irrigation. Thus, land models add irrigation feedback: 
   !      sprinkler irrigation rate to large scale precipitation;
   !      drip irrigation volume to rootzone excess; and
-  !      flood irrigation volume to surface excess.
+  !      flood irrigation volume to rootzone excess.
   ! Computed irrigation rates are treated as internals to ensure stop-start zerodiff of the modeling system.
   ! The model uses rootzone soil moisture state at the local start time of irrigation to compute 
   ! irrigation rates for the day and maintains the same rate through out the irrigation duration.

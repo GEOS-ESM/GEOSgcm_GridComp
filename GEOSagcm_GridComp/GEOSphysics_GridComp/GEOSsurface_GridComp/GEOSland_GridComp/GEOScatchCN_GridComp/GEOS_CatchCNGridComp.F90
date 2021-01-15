@@ -7205,7 +7205,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
           RZEXC  = RZEXC + DRIPRATE*DT
        end where
        where (FLOODRATE > 0)
-          SRFEXC = SRFEXC + FLOODRATE*DT
+          RZEXC  = RZEXC + FLOODRATE*DT
        end where
     endif
     
