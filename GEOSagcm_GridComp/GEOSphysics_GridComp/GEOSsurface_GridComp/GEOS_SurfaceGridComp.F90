@@ -8990,7 +8990,7 @@ module GEOS_SurfaceGridCompMod
          call FILLOUT_TILE(GEX(type), 'CNROOT',   CNROOTTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
-      f(associated(CNFROOTCTILE)) then
+      if(associated(CNFROOTCTILE)) then
          call FILLOUT_TILE(GEX(type), 'CNFROOTC', CNFROOTCTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
