@@ -1149,112 +1149,113 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
 
    do I = 1, size(GCS)
+      if (trim(GCnames(I)) .ne. 'OBIO') then
 
-     if(associated(MOT2M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOT2M'  , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOQ2M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOQ2M'  , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOU2M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOU2M'  , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOV2M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOV2M'  , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOT10M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOT10M' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOQ10M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOQ10M' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOU10M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOU10M' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOV10M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOV10M' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOU50M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOU50M' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOV50M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOV50M' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(TH)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'TH'     , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(QH)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'QH'     , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(UH)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'UH'     , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(VH)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'VH'     , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(CHT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'CHT'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(CQT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'CQT'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(CMT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'CMT'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(TST)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'TST'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(QST)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'QST'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(CNT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'CNT'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(CNT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'RIT'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(CNT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'RET'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(Z0O)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'Z0'     , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(Z0H)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'Z0H'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(GST)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'GUST'   , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(VNT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'VENT'   , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-
+         if(associated(MOT2M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOT2M'  , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOQ2M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOQ2M'  , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOU2M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOU2M'  , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOV2M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOV2M'  , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOT10M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOT10M' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOQ10M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOQ10M' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOU10M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOU10M' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOV10M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOV10M' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOU50M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOU50M' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOV50M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOV50M' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(TH)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'TH'     , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(QH)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'QH'     , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(UH)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'UH'     , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(VH)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'VH'     , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(CHT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'CHT'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(CQT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'CQT'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(CMT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'CMT'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(TST)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'TST'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(QST)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'QST'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(CNT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'CNT'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(CNT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'RIT'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(CNT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'RET'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(Z0O)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'Z0'     , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(Z0H)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'Z0H'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(GST)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'GUST'   , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(VNT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'VENT'   , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+        endif 
+      endif 
    enddo
 
    NT = size(LONS)
@@ -1657,67 +1658,68 @@ contains
    VERIFY_(STATUS)
 
    do I = 1, size(GCS)
-
-     if(associated(TST)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'TST'   , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(QST)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'QST'   , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(DELTS)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'DELTS' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(DELQS)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'DELQS' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(EVAPOUT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'EVAPOUT', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(SHOUT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'SHOUT' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(HLATN)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'HLATN' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(HLWUP)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'HLWUP' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(LWNDSRF)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'LWNDSRF', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
-     if(associated(SWNDSRF)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'SWNDSRF', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
-     if(associated(PENUVR)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'PENUVR', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
-     if(associated(PENUVF)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'PENUVF', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
-     if(associated(PENPAR)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'PENPAR', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
-     if(associated(PENPAF)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'PENPAF', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
-     if(associated(FSURF)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'FSURF' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
+      if (trim(GCnames(I)) .ne. 'OBIO') then
+         if(associated(TST)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'TST'   , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(QST)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'QST'   , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(DELTS)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'DELTS' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(DELQS)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'DELQS' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(EVAPOUT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'EVAPOUT', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(SHOUT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'SHOUT' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(HLATN)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'HLATN' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(HLWUP)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'HLWUP' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(LWNDSRF)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'LWNDSRF', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif  
+         if(associated(SWNDSRF)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'SWNDSRF', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif  
+         if(associated(PENUVR)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'PENUVR', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif  
+         if(associated(PENUVF)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'PENUVF', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif  
+         if(associated(PENPAR)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'PENPAR', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif  
+         if(associated(PENPAF)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'PENPAF', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif  
+         if(associated(FSURF)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'FSURF' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif
+      endif
    enddo
 
    if(DO_CICE_THERMO /= 0) then
