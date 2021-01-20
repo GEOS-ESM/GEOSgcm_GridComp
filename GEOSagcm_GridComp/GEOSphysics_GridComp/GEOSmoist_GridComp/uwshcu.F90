@@ -2613,7 +2613,7 @@ contains
 !              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(4.,(cnvtr(i))/25.))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
               rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(4.,(cnvtr(i))/2.5e-6))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
             else if (mixscale.eq.0.0) then
-              rei(k) = ( 0.5 * rkm / zmid0(k) / g /rhomid0j )       ! Jason-2_0 version
+              rei(k) = ( 0.5 * rkm / min(1500.,zmid0(k)) / g /rhomid0j )       ! Jason-2_0 version
             end if
 
             if( xc .gt. 0.5 ) rei(k) = min(rei(k),0.9*log(dp0(k)/g/dt/umf(km1) + 1.)/dpe/(2.*xc-1.))

@@ -3415,7 +3415,7 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                ! Units from cm/s to m/s
                 vti (k) = vi1 * vti (k)
 
-!#define PRES_SCALE
+#define PRES_SCALE
 #ifdef PRES_SCALE
                ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
                 !------ice cloud effective radius ----- [klaus wyser, 1998]

@@ -529,7 +529,7 @@ contains
       real                         :: vrad,radf,svpcp,chis,vbrv
       real                         :: vsurf
       real                         :: wentr_rad,wentr_pbl,wentr_brv
-      real                         :: convpbl, radpbl
+      real                         :: convpbl, radpbl, beta_surf_lts, lts
       real, dimension(GPU_MAXLEVS) :: slv, density,qc, slvcp
       !real, dimension(GPU_MAXLEVS) :: rh ! Not used in current code
       real, dimension(GPU_MAXLEVS) :: hleff
@@ -681,6 +681,21 @@ contains
          ipbl    = -1
          kcldtop = -1
 
+
+!---------------
+! Calculate lower tropospheric statbility for use later
+      lts =  0.0
+      do k = nlev-1,2,-1
+         if (pfull(i,j,k).lt.70000.0) then
+           lts = t(i,j,k-1)*(1e5/pfull(i,j,k))**0.286
+           exit
+         end if
+      end do
+      lts = lts - t(i,j,nlev-1)*(1e5/pfull(i,j,nlev-1))**0.286
+
+! Increase beta_surf in regions of high LTS
+      beta_surf_lts = beta_surf * (1. + 0.25*(1.+TANH(lts-17.)))
+
 !-----------------------------------------------------------
 !
 ! SURFACE DRIVEN CONVECTIVE LAYERS
@@ -710,6 +725,7 @@ contains
                   pfull,            &
                   b_star,           &
                   u_star,           &
+                  lts,              &
                   ipbl,zsml         )
 
 !------------------------------------------------------
@@ -760,7 +776,7 @@ contains
                                  MAPL_CP)/(slv(ipbl)/MAPL_CP)
             tmp2 = ((vsurf3+vshear3)**(2./3.)) / zsml(i,j)
 
-            wentr_tmp= min( wentrmax,  max(0., (beta_surf *   &
+            wentr_tmp= min( wentrmax,  max(0., (beta_surf_lts *   &
                            (vsurf3 + vshear3)/zsml(i,j))/ &
                            (tmp1+tmp2) ) )
 
@@ -1100,7 +1116,7 @@ contains
             tmp2 = ((vbr3+vrad3+vsurf3+vshear3)**(2./3.)) / zradml(i,j)
 
             wentr_rad = min( wentrmax,  max(0., &
-                  ((beta_surf *(vsurf3 + vshear3)+beta_rad*(vrad3+vbr3) )/ &
+                  ((beta_surf_lts *(vsurf3 + vshear3)+beta_rad*(vrad3+vbr3) )/ &
                   zradml(i,j))/(tmp1+tmp2) ) )
 
             wentr_pbl = wentr_rad
@@ -1200,7 +1216,7 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine mpbl_depth(i,j,icol,jcol,nlev,tpfac, entrate, pceff, t, q, u, v, z, p, b_star, u_star , ipbl, ztop )
+   subroutine mpbl_depth(i,j,icol,jcol,nlev,tpfac, entrate, pceff, t, q, u, v, z, p, b_star, u_star, lts, ipbl, ztop )
 
 !
 !  -----
@@ -1229,13 +1245,13 @@ contains
       integer, intent(in   )                            :: i, j, nlev, icol, jcol
       real,    intent(in   ), dimension(icol,jcol,nlev) :: t, z, q, p, u, v
       real,    intent(in   ), dimension(icol,jcol)      :: b_star, u_star
-      real,    intent(in   )                            :: tpfac, entrate, pceff
+      real,    intent(in   )                            :: tpfac, entrate, pceff, lts
       integer, intent(  out)                            :: ipbl
       real,    intent(  out),dimension(icol,jcol)       :: ztop
 
 
       real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,u1,v1,u2,v2,du
-      real     :: entfr,entrate_x,vscale,lts
+      real     :: entfr,entrate_x,vscale
       integer  :: k
 
 
@@ -1268,15 +1284,6 @@ contains
 !!  tep  = tep * (1.+ tpfac * b_star(i,j)*u_star(i,j)/MAPL_GRAV)
 
 !search for level where this is exceeded              
-
-      lts =  0.0
-      do k = nlev-1,2,-1
-         if (p(i,j,k).lt.70000.0) then
-           lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
-           exit
-         end if
-      end do
-      lts = lts - t(i,j,nlev-1)*(1e5/p(i,j,nlev-1))**0.286
 
       t1   = t(i,j,nlev)
       v1   = v(i,j,nlev)
@@ -1311,12 +1318,10 @@ contains
 
          dqp   = max( qp - qsp, 0. )/(1.+(MAPL_ALHL/MAPL_CP)*dqsp )
          qp    = qp - dqp
-         if (lts.gt.18.) then
-           tep   = tep  + 1.0 * MAPL_ALHL * dqp/MAPL_CP
-         else
-           tep   = tep  + pceff * MAPL_ALHL * dqp/MAPL_CP  ! "Precipitation efficiency" basically means fraction
-         end if
-! of condensation heating that gets applied to parcel
+         tep = tep + pceff + 0.5*(1.-pceff)*(1.+TANH(lts-17.))*MAPL_ALHL * dqp/MAPL_CP
+!                           Set pceff to 1 where LTS is high
+!           tep   = tep  + pceff * MAPL_ALHL * dqp/MAPL_CP  ! "Precipitation efficiency" basically means fraction
+                                                            ! of condensation heating that gets applied to parcel
 
 
 ! If parcel temperature (tep) colder than env (t2)
