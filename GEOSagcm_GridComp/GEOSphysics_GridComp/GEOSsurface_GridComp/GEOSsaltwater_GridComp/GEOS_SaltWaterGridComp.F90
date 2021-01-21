@@ -51,6 +51,7 @@ module GEOS_SaltwaterGridCompMod
   integer, parameter :: NUM_SUBTILES  = 2  ! number of subtiles for each tile (see above prologue)
   integer, parameter :: ICE           = 1  ! index(id) of two children fixed here 
   integer, parameter :: WATER         = 2  ! AddChild needs to adhere to the specification
+  integer, parameter :: OBIO          = 3   
 
    contains
 
