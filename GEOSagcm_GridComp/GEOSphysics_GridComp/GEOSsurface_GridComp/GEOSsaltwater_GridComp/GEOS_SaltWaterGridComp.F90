@@ -827,6 +827,19 @@ module GEOS_SaltwaterGridCompMod
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_DRNIR'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_DFNIR'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
 
+ if(DO_OBIO /= 0) then
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'CO2SC'     , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DUDP'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DUWT'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DUSD'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCDP'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCWT'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'OCDP'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'OCWT'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBAND'   , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBANDNA' , CHILD_ID = OBIO, __RC__)
+  end if
+
 ! and that penetrated below ocean model first layer
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'PEN_OCN' ,   CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
 
