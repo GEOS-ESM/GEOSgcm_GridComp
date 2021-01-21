@@ -92,15 +92,19 @@ module GEOS_SurfaceGridCompMod
   integer, parameter :: NUM_CHILDREN = 4
 #endif
 
-  integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
-  integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
-  integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
   INTEGER            :: catchswim,landicegoswim
 
   character(len=ESMF_MAXSTR), pointer :: GCNames(:)
   integer                    :: CHILD_MASK(NUM_CHILDREN)
-  integer :: DO_OBIO, ATM_CO2, CHOOSEMOSFC 
+  integer :: DO_OBIO, ATM_CO2               ! these two "logicals" will be used as a "combination"
+  integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
+
+! used only when DO_OBIO==1 or ATM_CO2 == 4
+  integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
+  integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
+  integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
+!
 
   character(len=ESMF_MAXSTR) :: LAND_PARAMS ! land parameter option
 
