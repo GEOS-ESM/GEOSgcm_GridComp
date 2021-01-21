@@ -4796,7 +4796,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:)   :: LWDNSRF   => NULL()
     real, pointer, dimension(:,:)   :: ALW       => NULL()
     real, pointer, dimension(:,:)   :: BLW       => NULL()
-    real, pointer, dimension(:,:)   :: CO2SC     => NULL()
     real, pointer, dimension(:,:)   :: AERO_DP_I => NULL()
     real, pointer, dimension(:,:,:) :: AERO_DP   => NULL()
     real, pointer, dimension(:,:,:) :: DUDP      => NULL()
@@ -4819,8 +4818,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:,:) :: SSSV      => NULL()
     real, pointer, dimension(:,:,:) :: SSWT      => NULL()
     real, pointer, dimension(:,:,:) :: SSSD      => NULL()
-    real, pointer, dimension(:,:,:) :: FSWBAND   => NULL()
-    real, pointer, dimension(:,:,:) :: FSWBANDNA => NULL()
     real, pointer, dimension(:,:)   :: DTSDT     => NULL()
 
 ! Pointers to internals
@@ -5105,7 +5102,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: LWBTILE         => NULL()
     real, pointer, dimension(:) :: ALWTILE         => NULL()
     real, pointer, dimension(:) :: BLWTILE         => NULL()
-    real, pointer, dimension(:) :: CO2SCTILE       => NULL()
     real, pointer, dimension(:,:) :: DUDPTILE      => NULL()
     real, pointer, dimension(:,:) :: DUSVTILE      => NULL()
     real, pointer, dimension(:,:) :: DUWTTILE      => NULL()
@@ -5126,8 +5122,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: SSSVTILE      => NULL()
     real, pointer, dimension(:,:) :: SSWTTILE      => NULL()
     real, pointer, dimension(:,:) :: SSSDTILE      => NULL()
-    real, pointer, dimension(:,:) :: FSWBANDTILE   => NULL()
-    real, pointer, dimension(:,:) :: FSWBANDNATILE => NULL()
     real, pointer, dimension(:)   :: DTSDTTILE     => NULL()
 
 ! These are tile versions of internals
@@ -5359,6 +5353,18 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: DFUVR => NULL()
     real, pointer, dimension(:,:) :: ZTH   => NULL()
     real, pointer, dimension(:,:) :: SLR   => NULL()
+
+! following three active only when DO_OBIO==1 or ATM_CO2 == 4
+!   IMPORTS
+    real, pointer, dimension(:,:)   :: CO2SC     => NULL()
+    real, pointer, dimension(:,:,:) :: FSWBAND   => NULL()
+    real, pointer, dimension(:,:,:) :: FSWBANDNA => NULL()
+
+!   tiled versio of IMPORTS
+    real, pointer, dimension(:)   :: CO2SCTILE     => NULL()
+    real, pointer, dimension(:,:) :: FSWBANDTILE   => NULL()
+    real, pointer, dimension(:,:) :: FSWBANDNATILE => NULL()
+!
 
 ! for reading "forced" precip
     real, pointer, dimension(:,:) :: PTTe => NULL()
