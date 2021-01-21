@@ -98,10 +98,11 @@ module GEOS_SurfaceGridCompMod
   integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
 
-! used only when DO_OBIO==1 or ATM_CO2 == 4
+! used only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
   integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
   integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
+  integer, parameter :: ATM_CO2_FOUR = 4
 !
 
   character(len=ESMF_MAXSTR) :: LAND_PARAMS ! land parameter option
@@ -224,7 +225,7 @@ module GEOS_SurfaceGridCompMod
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
     call MAPL_GetResource (MAPL, DO_OBIO, label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2,   DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:',      value=ATM_CO2,        DEFAULT=0, __RC__ ) 
 
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:', value=catchswim, DEFAULT=0, __RC__ ) 
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LANDICE4SNWALB:', value=landicegoswim, DEFAULT=0, __RC__ ) 
@@ -580,7 +581,7 @@ module GEOS_SurfaceGridCompMod
                                                        RC=STATUS  )
     VERIFY_(STATUS)
 
-    if((DO_OBIO/=0).OR. (ATM_CO2 == 4)) call OBIO_setServices(NB_CHOU, RC)
+    if((DO_OBIO/=0).OR. (ATM_CO2 == ATM_CO2_FOUR)) call OBIO_setServices(NB_CHOU, RC)
 
     if (DO_GOSWIM) then
 
@@ -5354,7 +5355,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: ZTH   => NULL()
     real, pointer, dimension(:,:) :: SLR   => NULL()
 
-! following three active only when DO_OBIO==1 or ATM_CO2 == 4
+! following three active only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR (=4)
 !   IMPORTS
     real, pointer, dimension(:,:)   :: CO2SC     => NULL()
     real, pointer, dimension(:,:,:) :: FSWBAND   => NULL()
@@ -5477,7 +5478,7 @@ module GEOS_SurfaceGridCompMod
 
     NUM_AERO_DP = 0
 
-    if((DO_OBIO/=0)  .OR. (ATM_CO2 == 4)) then
+    if((DO_OBIO/=0)  .OR. (ATM_CO2 == ATM_CO2_FOUR)) then
        call MAPL_GetPointer(IMPORT  , CO2SC   , 'CO2SC'    , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA', RC=STATUS); VERIFY_(STATUS)
@@ -6394,7 +6395,7 @@ module GEOS_SurfaceGridCompMod
     allocate(SSSDTILE(NT,NUM_SSSD), STAT=STATUS)
     VERIFY_(STATUS)
 
-    if((DO_OBIO/=0) .OR. (ATM_CO2 == 4)) then
+    if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then
        allocate(CO2SCTILE(NT), STAT=STATUS)
        VERIFY_(STATUS)
        allocate(FSWBANDTILE(  NT,NB_CHOU), STAT=STATUS)
@@ -6501,7 +6502,7 @@ module GEOS_SurfaceGridCompMod
        end do
     end if
 
-    if((DO_OBIO/=0) .OR. (ATM_CO2 == 4)) then
+    if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then
 
        call MAPL_LocStreamTransform(LOCSTREAM, CO2SCTILE, CO2SC,    RC=STATUS); VERIFY_(STATUS)
 
@@ -8195,7 +8196,7 @@ module GEOS_SurfaceGridCompMod
          call FILLIN_TILE(GIM(type), 'DISCHARGE',  DISCHARGETILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
       end if
 
-      if((DO_OBIO/=0) .OR. (ATM_CO2 == 4)) then 
+      if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then 
          call FILLIN_TILE(GIM(type), 'CO2SC',  CO2SCTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
          call FILLIN_TILE(GIM(type), 'FSWBAND'  , FSWBANDTILE  , XFORM, RC=STATUS); VERIFY_(STATUS)
          call FILLIN_TILE(GIM(type), 'FSWBANDNA', FSWBANDNATILE, XFORM, RC=STATUS); VERIFY_(STATUS)
