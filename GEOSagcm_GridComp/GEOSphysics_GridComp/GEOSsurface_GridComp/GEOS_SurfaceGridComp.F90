@@ -79,8 +79,6 @@ module GEOS_SurfaceGridCompMod
 
 !EOP
 
-
-     
   integer ::        LAKE
   integer ::     LANDICE
   integer ::       OCEAN 
@@ -96,7 +94,7 @@ module GEOS_SurfaceGridCompMod
 
   character(len=ESMF_MAXSTR), pointer :: GCNames(:)
   integer                    :: CHILD_MASK(NUM_CHILDREN)
-  integer :: DO_OBIO, ATM_CO2               ! these two "logicals" will be used as a "combination"
+  integer :: DO_OBIO, ATM_CO2
   integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
 
@@ -143,7 +141,6 @@ module GEOS_SurfaceGridCompMod
      module procedure MKTILE_1D
      module procedure MKTILE_UNGRIDDED
   end interface
-
 
    contains
 
@@ -226,10 +223,9 @@ module GEOS_SurfaceGridCompMod
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_OBIO,        Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
-
+    call MAPL_GetResource (MAPL, DO_OBIO, label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
     call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2,   DEFAULT=0, __RC__ ) 
+
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:', value=catchswim, DEFAULT=0, __RC__ ) 
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LANDICE4SNWALB:', value=landicegoswim, DEFAULT=0, __RC__ ) 
     call ESMF_ConfigGetAttribute (SCF, label='LAND_PARAMS:', value=LAND_PARAMS, DEFAULT="Icarus", __RC__ )
@@ -584,37 +580,7 @@ module GEOS_SurfaceGridCompMod
                                                        RC=STATUS  )
     VERIFY_(STATUS)
 
-    if((DO_OBIO/=0).OR. (ATM_CO2 == 4)) then
-
-       call MAPL_AddImportSpec(GC,                              &
-            SHORT_NAME         = 'CO2SC',                             &
-            LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
-            UNITS              = '1e-6',                              &
-            DIMS               = MAPL_DimsHorzOnly,                   &
-            VLOCATION          = MAPL_VLocationNone,                  &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-       
-       call MAPL_AddImportSpec(GC,                              &
-            SHORT_NAME         = 'FSWBAND',                           &
-            LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air', &
-            UNITS              = 'W m-2',                             &
-            DIMS               = MAPL_DimsHorzOnly,                   &
-            UNGRIDDED_DIMS     = (/NB_CHOU/),                         &
-            VLOCATION          = MAPL_VLocationNone,                  &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-
-       call MAPL_AddImportSpec(GC,                              &
-            SHORT_NAME         = 'FSWBANDNA',                         &
-            LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol', &
-            UNITS              = 'W m-2',                             &
-            DIMS               = MAPL_DimsHorzOnly,                   &
-            UNGRIDDED_DIMS     = (/NB_CHOU/),                         &
-            VLOCATION          = MAPL_VLocationNone,                  &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-    endif
+    if((DO_OBIO/=0).OR. (ATM_CO2 == 4)) call OBIO_setServices(NB_CHOU, RC)
 
     if (DO_GOSWIM) then
 
@@ -3137,6 +3103,48 @@ module GEOS_SurfaceGridCompMod
  
     RETURN_(ESMF_SUCCESS)
   
+    contains
+
+    subroutine OBIO_setServices(NB_CHOU, RC)
+
+      integer,           intent(   IN) ::  NB_CHOU
+      integer, optional, intent(  OUT) ::  RC
+
+      character(len=ESMF_MAXSTR), parameter     :: IAm="OBIO_setServices"
+      integer                                   :: STATUS
+
+      call MAPL_AddImportSpec(GC,                              &
+           SHORT_NAME         = 'CO2SC',                             &
+           LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
+           UNITS              = '1e-6',                              &
+           DIMS               = MAPL_DimsHorzOnly,                   &
+           VLOCATION          = MAPL_VLocationNone,                  &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+       
+      call MAPL_AddImportSpec(GC,                              &
+           SHORT_NAME         = 'FSWBAND',                           &
+           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air', &
+           UNITS              = 'W m-2',                             &
+           DIMS               = MAPL_DimsHorzOnly,                   &
+           UNGRIDDED_DIMS     = (/NB_CHOU/),                         &
+           VLOCATION          = MAPL_VLocationNone,                  &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                              &
+           SHORT_NAME         = 'FSWBANDNA',                         &
+           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol', &
+           UNITS              = 'W m-2',                             &
+           DIMS               = MAPL_DimsHorzOnly,                   &
+           UNGRIDDED_DIMS     = (/NB_CHOU/),                         &
+           VLOCATION          = MAPL_VLocationNone,                  &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      RETURN_(ESMF_SUCCESS)
+    end subroutine OBIO_setServices
+
   end subroutine SetServices
 
 
