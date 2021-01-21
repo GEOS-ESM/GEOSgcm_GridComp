@@ -225,7 +225,7 @@ module GEOS_SurfaceGridCompMod
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
     call MAPL_GetResource (MAPL, DO_OBIO, label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:',      value=ATM_CO2,        DEFAULT=0, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2, DEFAULT=0, __RC__ ) 
 
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:', value=catchswim, DEFAULT=0, __RC__ ) 
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LANDICE4SNWALB:', value=landicegoswim, DEFAULT=0, __RC__ ) 
@@ -5478,12 +5478,6 @@ module GEOS_SurfaceGridCompMod
 
     NUM_AERO_DP = 0
 
-    if((DO_OBIO/=0)  .OR. (ATM_CO2 == ATM_CO2_FOUR)) then
-       call MAPL_GetPointer(IMPORT  , CO2SC   , 'CO2SC'    , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA', RC=STATUS); VERIFY_(STATUS)
-    endif
-  
     ! Get contents of AERO_DP bundle, put them in an ungridded dimension
     if (DO_GOSWIM) then
 
@@ -6394,20 +6388,6 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     allocate(SSSDTILE(NT,NUM_SSSD), STAT=STATUS)
     VERIFY_(STATUS)
-
-    if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then
-       allocate(CO2SCTILE(NT), STAT=STATUS)
-       VERIFY_(STATUS)
-       allocate(FSWBANDTILE(  NT,NB_CHOU), STAT=STATUS)
-       VERIFY_(STATUS)
-       allocate(FSWBANDNATILE(NT,NB_CHOU), STAT=STATUS)
-       VERIFY_(STATUS)
-    else
-       nullify(  CO2SCTILE         )
-       nullify(  FSWBANDTILE       )
-       nullify(FSWBANDNATILE       )
-    endif
-
     allocate(  DTSDTTILE(NT), STAT=STATUS)
     VERIFY_(STATUS)
 
@@ -6501,18 +6481,6 @@ module GEOS_SurfaceGridCompMod
           call MAPL_LocStreamTransform(LOCSTREAM, SSSDTILE(:,K), SSSD(:,:,K), RC=STATUS); VERIFY_(STATUS)
        end do
     end if
-
-    if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then
-
-       call MAPL_LocStreamTransform(LOCSTREAM, CO2SCTILE, CO2SC,    RC=STATUS); VERIFY_(STATUS)
-
-       do K = 1, NB_CHOU
-          call MAPL_LocStreamTransform(LOCSTREAM, FSWBANDTILE(  :,K), FSWBAND(  :,:,K), RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_LocStreamTransform(LOCSTREAM, FSWBANDNATILE(:,K), FSWBANDNA(:,:,K), RC=STATUS)
-          VERIFY_(STATUS)
-       end do
-    endif
 
     ! option to interpolate effective wind vectors such that
     ! stresses computed in all children will have smooth curl/divergence 
@@ -7776,6 +7744,20 @@ module GEOS_SurfaceGridCompMod
       endif
 
 
+! Fill imports/exports for OBIO
+!-------------------------------
+
+      if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then 
+        call OBIO_fillExports(OCEAN, IMPORT,&
+                              NT, NB_CHOU,&
+                              CO2SC,     FSWBAND,     FSWBANDNA,&
+                              CO2SCTILE, FSWBANDTILE, FSWBANDNATILE,&
+                              RC)
+      else
+        nullify(  CO2SCTILE   )
+        nullify(  FSWBANDTILE )
+        nullify(FSWBANDNATILE )
+      endif
 
 ! Moved change of units for soil temperature export variables down to Catch[CN] Gridcomp.
 ! With this change, gridded TSOIL[n] exports from Surface and tile-space TP[n] exports
@@ -8196,11 +8178,6 @@ module GEOS_SurfaceGridCompMod
          call FILLIN_TILE(GIM(type), 'DISCHARGE',  DISCHARGETILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
       end if
 
-      if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then 
-         call FILLIN_TILE(GIM(type), 'CO2SC',  CO2SCTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
-         call FILLIN_TILE(GIM(type), 'FSWBAND'  , FSWBANDTILE  , XFORM, RC=STATUS); VERIFY_(STATUS)
-         call FILLIN_TILE(GIM(type), 'FSWBANDNA', FSWBANDNATILE, XFORM, RC=STATUS); VERIFY_(STATUS)
-      endif
       call FILLIN_TILE(GIM(type), 'ZTH',    ZTHTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
 
       call FILLIN_TILE(GIM(type), 'THATM',  THTILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
@@ -9609,6 +9586,59 @@ module GEOS_SurfaceGridCompMod
 
       RETURN_(ESMF_SUCCESS)
     end subroutine RouteRunoff
+
+    subroutine OBIO_fillExports(type, IMPORT,&
+                                NT, NB_CHOU,&
+                                CO2SC,     FSWBAND,     FSWBANDNA,&
+                                CO2SCTILE, FSWBANDTILE, FSWBANDNATILE,&
+                                RC)
+
+      integer,           intent(   IN ):: TYPE
+      type(ESMF_State),  intent(inout) :: IMPORT ! Import state
+
+      integer,           intent(   IN) ::  NT
+      integer,           intent(   IN) ::  NB_CHOU
+      integer, optional, intent(  OUT) ::  RC
+
+      real, pointer ::  CO2SCTILE(:), CO2SC(:,:),&
+                        FSWBANDTILE(:,:), FSWBAND(:,:,:),&
+                        FSWBANDNATILE(:,:), FSWBANDNA(:,:,:)
+
+      character(len=ESMF_MAXSTR), parameter     :: IAm="OBIO_fillExports"
+      integer                                   :: STATUS
+      integer                                   :: K
+
+      type (ESMF_State),      pointer         :: GIM(:)
+      type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE
+      type (MAPL_LocStream)                   :: LOCSTREAM
+      type (MAPL_LocStreamXFORM)              :: XFORM
+
+      call MAPL_GetPointer(IMPORT  , CO2SC   , 'CO2SC'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA', RC=STATUS); VERIFY_(STATUS)
+
+      allocate(CO2SCTILE(NT), STAT=STATUS)
+      VERIFY_(STATUS)
+      allocate(FSWBANDTILE(  NT,NB_CHOU), STAT=STATUS)
+      VERIFY_(STATUS)
+      allocate(FSWBANDNATILE(NT,NB_CHOU), STAT=STATUS)
+      VERIFY_(STATUS)
+
+      call MAPL_LocStreamTransform(LOCSTREAM, CO2SCTILE, CO2SC,    RC=STATUS); VERIFY_(STATUS)
+      do K = 1, NB_CHOU
+        call MAPL_LocStreamTransform(LOCSTREAM, FSWBANDTILE(  :,K), FSWBAND(  :,:,K), RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_LocStreamTransform(LOCSTREAM, FSWBANDNATILE(:,K), FSWBANDNA(:,:,K), RC=STATUS)
+        VERIFY_(STATUS)
+      end do
+
+      XFORM = surf_internal_state%xform_in(type)
+      call FILLIN_TILE(GIM(type), 'CO2SC',     CO2SCTILE,     XFORM, RC=STATUS); VERIFY_(STATUS)
+      call FILLIN_TILE(GIM(type), 'FSWBAND'  , FSWBANDTILE  , XFORM, RC=STATUS); VERIFY_(STATUS)
+      call FILLIN_TILE(GIM(type), 'FSWBANDNA', FSWBANDNATILE, XFORM, RC=STATUS); VERIFY_(STATUS)
+
+      RETURN_(ESMF_SUCCESS)
+    end subroutine OBIO_fillExports
 
 end module GEOS_SurfaceGridCompMod
 
