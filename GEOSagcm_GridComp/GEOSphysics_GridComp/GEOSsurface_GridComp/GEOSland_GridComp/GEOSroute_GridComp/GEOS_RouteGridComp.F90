@@ -42,8 +42,9 @@ module GEOS_RouteGridCompMod
      type(MAPL_LocStreamXForm) :: xform
      type(MAPL_LocStream) :: route_ls
      logical :: ease_tiles
-     type(MAPL_LocStream) :: ease_ls
-     type(ESMF_Grid) :: ease_grid
+     type(MAPL_LocStream) :: application_ls
+     type(ESMF_Grid) :: application_grid
+     character(len=:), allocatable :: routing_tile_file
   end type T_RROUTE_STATE
 
   ! Wrapper for extracting internal state
@@ -356,15 +357,15 @@ contains
     type(ESMF_DistGrid) :: distGrid
     type(ESMF_DELayout) :: layout_ease,layout_catch
     type (MAPL_MetaComp), pointer  :: MAPL
-    type(MAPL_LocStream)           :: locstream,route_ls,ease_ls
+    type(MAPL_LocStream)           :: locstream,route_ls,application_ls
     type (T_RROUTE_STATE), pointer :: route => null()
     type (RROUTE_wrap)             :: wrap
     real(ESMF_KIND_R8), pointer    :: coords(:,:)
     integer, allocatable :: ims(:)
     integer              :: jms(1), ii,counts(3)
     character(len=ESMF_MAXSTR) :: master_gridname
-    character(len=ESMF_MAXPATHLEN) :: ease_tilefile
     type(ESMF_Config) :: cf
+    logical :: ease_grid_found,alternate_tile_found
      
     ! ------------------
     ! begin
@@ -404,6 +405,13 @@ contains
     ! get LocStream
     call MAPL_Get(MAPL, LocStream = locstream, RC=status)
     VERIFY_(STATUS)
+    block
+     type(ESMF_Grid) :: mygrid
+     integer :: mydims(3)
+     call ESMF_GridCompGet(GC,grid=mygrid)
+     call MAPL_GridGet(mygrid,globalcellcountperdim=mydims)
+     if (mapl_am_I_root()) write(*,*)'bmaa mydims: ',mydims(1),mydims(2)
+    end block
 
     !    CatchGrid = ESMF_GridCreate(name="ROUTE_GRID",countsPerDEDim1=ims,countsPerDeDim2=jms,indexFlag=ESMF_INDEX_DELOCAL,rc=status)
     catchGrid = grid_manager%make_grid(LatLonGridFactory(grid_name="ROUTE_GRID",im_world=n_catg,jm_world=1,lm=1, &
@@ -415,24 +423,45 @@ contains
     call ESMF_GridGetCoord(CatchGrid,coordDim=1,farrayptr=coords,rc=status)
     _VERIFY(status)
     coords=0.0d0
-    call ESMF_GridGetCoord(CatchGrid,coordDim=2,farrayptr=coords,rc=status)
+    all ESMF_GridGetCoord(CatchGrid,coordDim=2,farrayptr=coords,rc=status)
     _VERIFY(status)
     coords=0.0d0
-    call ESMF_GridCompSet(gc,grid=CatchGrid,rc=status)
-    _VERIFY(status)
-
-    
-    call ESMF_ConfigGetAttribute ( CF, master_gridname, Label="GEOSldas.GRIDNAME", RC=STATUS)
-    _VERIFY(status)
+   
+    call ESMF_ConfigFindLabel ( CF, "GEOSldas.GRIDNAME:", isPresent=ease_grid_found,rc=status)
+    if (ease_grid_found) then
+       call ESMF_ConfigGetAttribute ( CF, master_gridname, Label="GEOSldas.GRIDNAME:", RC=STATUS)
+       _VERIFY(status)
+    else
+       master_gridname =""
+    end if
     route%ease_tiles = (index(master_gridname,"EASE")/=0)
+
+    alternate_tile_found=.false.
     if (route%ease_tiles) then
-
-       route%ease_grid = grid_manager%make_grid(cf,prefix="GEOSldas"//".",rc=status)
+       call ESMF_ConfigGetAttribute ( CF, route%routing_tile_file, Label="EASE_PFAFFSETTER_FILE:", RC=STATUS)
        _VERIFY(status)
-       call ESMF_ConfigGetAttribute ( CF, ease_tilefile, Label="EASE_PFAFFSETTER_FILE:", RC=STATUS)
-       _VERIFY(status)
+       alternate_tile_found=.true.
+    else 
+       call ESMF_ConfigFindLabel( CF, "routing_tile:", isPresent=alternate_tile_found,rc=status)
+       if (alternate_tile_found) then
+          call ESMF_ConfigGetAttribute(CF, route%routing_tile_file, label="routing_tile:", rc=status)
+          _VERIFY(status)
+       end if
+    end if
 
-       call ESMF_GridGet(route%ease_grid,distgrid=distgrid,rc=status)
+    _ASSERT(.not.(alternate_tile_found .and. ease_grid_found),"can not use alternative tile file for route when running ease grid")
+
+    if (alternate_tile_found) then
+
+       if (route%ease_tiles) then
+          route%application_grid = grid_manager%make_grid(cf,prefix="GEOSldas"//".",rc=status)
+          _VERIFY(status)
+       else
+          call ESMF_GridCompGet(GC,grid=route%application_grid,rc=status)
+          _VERIFY(status)
+       end if
+
+       call ESMF_GridGet(route%application_grid,distgrid=distgrid,rc=status)
        _VERIFY(status)
        call ESMF_DistGridGet(distgrid,deLayout=layout_ease,rc=status)
        _VERIFY(status)
@@ -441,17 +470,18 @@ contains
        call ESMF_DistGridGet(distgrid,deLayout=layout_catch,rc=status)
        _VERIFY(status)
 
-       call MAPL_LocStreamCreate(ease_ls,layout_ease,trim(ease_tilefile),'ease_ls',mask=[MAPL_LAND], &
-            grid=route%ease_grid,rc=status)
+       call MAPL_LocStreamCreate(application_ls,layout_ease,trim(route%routing_tile_file),'application_ls',mask=[MAPL_LAND], &
+            grid=route%application_grid,rc=status)
        _VERIFY(status)
-       route%ease_ls=ease_ls
-       call MAPL_LocstreamCreate(route_ls,layout_catch,trim(ease_tilefile),'route_ls', mask=[MAPL_LAND], &
+       route%application_ls=application_ls
+       call MAPL_LocstreamCreate(route_ls,layout_catch,trim(route%routing_tile_file),'route_ls', mask=[MAPL_LAND], &
             grid=CatchGrid,use_pfaf=.true.,rc=status)
        _VERIFY(status)
        route%route_ls=route_ls
        call MAPL_LocStreamCreateXform(xform=route%xform,locstreamOut=route_ls, &
-            locstreamIn=ease_ls,name="ease_to_route",rc=status)
+            locstreamIn=application_ls,name="application_to_route",rc=status)
        _VERIFY(status)
+        
     else
        call ESMF_GridGet(CatchGrid,distgrid=distgrid,rc=status)
        _VERIFY(status)
@@ -483,6 +513,8 @@ contains
     route%maxCatch = maxCatch
 
     if (allocated(ims)) deallocate(ims)
+    call ESMF_GridCompSet(gc,grid=CatchGrid,rc=status)
+    _VERIFY(status)
     call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
     VERIFY_(STATUS)
 
@@ -572,9 +604,9 @@ contains
     INTEGER, DIMENSION(:), ALLOCATABLE, SAVE :: srcProcsID, LocDstCatchID  
     INTEGER,                            SAVE :: ThisCycle   
     INTEGER,                            SAVE :: Local_Min, Local_Max, Pfaf_Min, Pfaf_Max
-    REAL, ALLOCATABLE, DIMENSION(:),    SAVE :: runoff_save    
+    REAL, ALLOCATABLE, DIMENSION(:),    SAVE :: runoff_save   
     integer                                  :: K, N, I, req
-    REAL                                     :: rbuff
+    REAL                                     :: rbuff 
     real, allocatable, DIMENSION(:)          :: runoff_catch_dist
     real, allocatable, DIMENSION(:,:)        :: runoff_on_catch
     integer                                  :: ndes, mype, nt_local, counts(3)
@@ -587,6 +619,7 @@ contains
     ! ------------------
     ! begin
 
+    if (mapl_am_i_root()) write(*,*)'bmaa running route'
     call ESMF_UserCompGetInternalState ( GC, 'RiverRoute_state',wrap,status )
     VERIFY_(STATUS)    
     route => wrap%ptr
@@ -651,16 +684,16 @@ contains
 
 !! get pointers to EXPORTS
 !! -----------------------
-    call MAPL_GetPointer(EXPORT, RUNOFFIN_2D, 'RUNOFFIN'  , RC=STATUS)
+    call MAPL_GetPointer(EXPORT, RUNOFFIN_2D, 'RUNOFFIN'  , alloc=.true., RC=STATUS)
     VERIFY_(STATUS)
     RUNOFFIN => RUNOFFIN_2D(:,1)
-    call MAPL_GetPointer(EXPORT, SFLOW_2D, 'SFLOW'  , RC=STATUS)
+    call MAPL_GetPointer(EXPORT, SFLOW_2D, 'SFLOW'  , alloc=.true., RC=STATUS)
     VERIFY_(STATUS)
     SFLOW => SFLOW_2D(:,1)
-    call MAPL_GetPointer(EXPORT, INFLOW_2D, 'INFLOW' , RC=STATUS)
+    call MAPL_GetPointer(EXPORT, INFLOW_2D, 'INFLOW' , alloc=.true., RC=STATUS)
     VERIFY_(STATUS)
     INFLOW => INFLOW_2D(:,1)
-    call MAPL_GetPointer(EXPORT, DISCHARGE_2D, 'DISCHARGE', RC=STATUS)
+    call MAPL_GetPointer(EXPORT, DISCHARGE_2D, 'DISCHARGE', alloc=.true., RC=STATUS)
     VERIFY_(STATUS)
     DISCHARGE => DISCHARGE_2D(:,1)
 
@@ -732,32 +765,40 @@ contains
        call MAPL_GridGet(esmfgrid,localCellCountPerDim=counts,rc=status)
        _VERIFY(status)
        allocate(runoff_on_catch(counts(1),counts(2)))    
-       if (route%ease_tiles) then
-          call MAPL_GridGet(route%ease_grid,localCellCountPerDim=counts,rc=status)
+       if (allocated(route%routing_tile_file)) then
+          call MAPL_GridGet(route%application_grid,localCellCountPerDim=counts,rc=status)
           _VERIFY(status)
           allocate(ease_array(counts(1),counts(2)))
           ease_array=0.
           call MAPL_Get(MAPL, LocStream = locstream, RC=status)
           _VERIFY(status)
-          call MAPL_LocStreamGet(locstream,local_i=local_i,local_j=local_j,rc=status)
-          _VERIFY(status)
-          do i=1,size(runoff_save)
-             ease_array(local_i(i),local_j(i))=runoff_save(i)
-          enddo
-          call mapl_locstreamget(route%ease_ls,nt_local=ntiles_in,rc=status)
+          allocate(ease_array(counts(1),counts(2)))
+          if (route%ease_tiles) then
+             call MAPL_LocStreamGet(locstream,local_i=local_i,local_j=local_j,rc=status)
+             _VERIFY(status)
+             do i=1,size(runoff_save)
+                ease_array(local_i(i),local_j(i))=runoff_save(i)
+             enddo
+          else
+             call MAPL_LocStreamTransform(locstream,ease_array,runoff_save,rc=status)
+             _VERIFY(status)
+          end if
+
+          ! now that we are on cube, do cube to tile, tile-tile, tile-catchment grid
+          call mapl_locstreamget(route%application_ls,nt_local=ntiles_in,rc=status)
           _VERIFY(status)
           call mapl_locstreamget(route%route_ls,nt_local=ntiles_out,rc=status)
           _VERIFY(status)
           allocate(tile_in(ntiles_in))
           allocate(tile_out(ntiles_out))
           
-          call MAPL_LocStreamTransform(route%ease_ls,tile_in,ease_array,rc=status)
+          call MAPL_LocStreamTransform(route%application_ls,tile_in,ease_array,rc=status)
           _VERIFY(status)
           call MAPL_LocStreamTransform(tile_in,route%xform,tile_out,rc=status)
           _VERIFY(status)
           call MAPL_LocStreamTransform(route%route_ls,runoff_on_catch,tile_out,rc=status)
           _VERIFY(status)
-          deallocate(ease_array,tile_in,tile_out) 
+          deallocate(ease_array,tile_in,tile_out)
        else 
           ! Call Locstream transform, takes land tiles that are on the distribution used by
           ! catchgridcomp (based on atmosphere) and shuffles them to be on catchment distribution
