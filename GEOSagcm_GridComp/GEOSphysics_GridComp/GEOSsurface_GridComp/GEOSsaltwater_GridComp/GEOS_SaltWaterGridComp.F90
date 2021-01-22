@@ -53,6 +53,10 @@ module GEOS_SaltwaterGridCompMod
   integer, parameter :: WATER         = 2  ! AddChild needs to adhere to the specification
   integer, parameter :: OBIO          = 3   
 
+    type bandptr
+      real, pointer, dimension(:) :: b
+    end type bandptr
+
    contains
 
 !BOP
@@ -96,6 +100,8 @@ module GEOS_SaltwaterGridCompMod
     integer                                 :: DO_OBIO         ! default (=0) is to run saltwater, with no ocean bio and chem
     integer                                 :: DO_CICE_THERMO  ! default (=0) is to run saltwater, with no LANL CICE Thermodynamics
 
+  character(len = 2) :: suffix
+  integer            :: k
 !=============================================================================
 
 ! Begin...
@@ -828,7 +834,7 @@ module GEOS_SaltwaterGridCompMod
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_DRNIR'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_DFNIR'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
 
- if(DO_OBIO /= 0) then
+  if(DO_OBIO /= 0) then
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'CO2SC'     , CHILD_ID = OBIO, __RC__)
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'DUDP'      , CHILD_ID = OBIO, __RC__)
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'DUWT'      , CHILD_ID = OBIO, __RC__)
@@ -839,7 +845,38 @@ module GEOS_SaltwaterGridCompMod
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'OCWT'      , CHILD_ID = OBIO, __RC__)
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBAND'   , CHILD_ID = OBIO, __RC__)
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBANDNA' , CHILD_ID = OBIO, __RC__)
+
+     do k=1, 33
+        write(unit = suffix, fmt = '(i2.2)') k
+        call MAPL_AddExportSpec(GC,                               &
+             SHORT_NAME = 'TAUA_'//suffix,                        &
+             LONG_NAME  = 'aerosol optical thickness',            &
+             UNITS      = '',                                     &
+             DIMS       = MAPL_DimsTileOnly,                      &
+             VLOCATION  = MAPL_VLocationNone,                     &
+             default    = 0.0, &
+             __RC__)
+
+        call MAPL_AddExportSpec(GC,                               &
+             SHORT_NAME = 'ASYMP_'//suffix,                       &
+             LONG_NAME  = 'asymmetry parameter',                  &
+             UNITS      = '',                                     &
+             DIMS       = MAPL_DimsTileOnly,                      &
+             VLOCATION  = MAPL_VLocationNone,                     &
+             default    = 0.0, &
+             __RC__)
+
+        call MAPL_AddExportSpec(GC,                               &
+             SHORT_NAME = 'SSALB_'//suffix,                       &
+             LONG_NAME  = 'single scattering albedo',             &
+             UNITS      = '',                                     &
+             DIMS       = MAPL_DimsTileOnly,                      &
+             VLOCATION  = MAPL_VLocationNone,                     &
+             default    = 0.0, &
+             __RC__)
+     enddo
   end if
+
 
 ! and that penetrated below ocean model first layer
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'PEN_OCN' ,   CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
@@ -920,7 +957,6 @@ module GEOS_SaltwaterGridCompMod
     type (ESMF_GridComp    ), pointer    :: GCS(:)
   
     integer                              :: I
-
 !=============================================================================
 
 ! Begin... 
