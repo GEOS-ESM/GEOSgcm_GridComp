@@ -8738,10 +8738,10 @@ contains
       SHLW_SNO3 = DQSDT_SC    ! [kg/kg/s]
 
       dum2d = 0.
+!      SC_PRC2 = 0.
       DO K = 1,LM
-!        RASPRCP = RASPRCP + DQRDT_SC(:,:,K)*MASS(:,:,K)
-         dum2d = dum2d + (DQRDT_SC(:,:,k)+DQVDT_SC(:,:,k)+DQLDT_SC(:,:,k)+DQIDT_SC(:,:,k))*MASS(:,:,k)
-!         dum2d = dum2d + (DQLDT_SC(:,:,k)-QLENT_SC(:,:,k)-QLSUB_SC(:,:,k))*MASS(:,:,k)-QLDET_SC(:,:,k)
+!         SC_PRC2 = SC_PRC2 + DQRDT_SC(:,:,K)*MASS(:,:,K)
+         dum2d = dum2d + (DQSDT_SC(:,:,k)+DQRDT_SC(:,:,k)+DQVDT_SC(:,:,k)+QLENT_SC(:,:,k)+QLSUB_SC(:,:,k)+QIENT_SC(:,:,k)+QISUB_SC(:,:,k))*MASS(:,:,k)+QLDET_SC(:,:,k)+QIDET_SC(:,:,k)
       END DO
       if (associated(SC_QT)) SC_QT = dum2d
       dum2d = 0.

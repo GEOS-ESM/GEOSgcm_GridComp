@@ -150,7 +150,7 @@ contains
 
       type(shlwparam_type), intent(in) :: shlwparams
 
-  !----- Internal variables -----
+  !----- Local variables -----
       real              :: pifc0(idim,0:k0)         !  Environmental pressure at the interfaces [ Pa ]
       real              :: zifc0(idim,0:k0)         !  Environmental height at the interfaces   [ m ]
       real              :: exnifc0(idim,0:k0)       !  Exner function on interfaces
@@ -190,8 +190,9 @@ contains
       real              :: uflx(idim,0:k0)
       real              :: vflx(idim,0:k0)
       real              :: cnvtrmax(idim)
+      real              :: tmp2d(idim,k0)
 
-!--------- Internal, Diagnostic only ---------
+!--------- Local, Diagnostic only ---------
 #ifdef UWDIAG
       real              :: trten(idim,k0,ncnst)    !  Tendency of tracers [ #/s, kg/kg/s ]
       real              :: qcu(idim,k0)            !  Condensate water specific humidity within cumulus updraft
@@ -341,9 +342,20 @@ contains
 #endif
          enddo
          endif
-
       end do
       dcm_inv(:idim,k0) = 0.
+      ! Re-scale liquid/ice water sub-tendencies to enforce conservation
+      where(ABS(qldet_inv+qlsub_inv).gt.1e-12)
+        tmp2d = qlten_inv / (qldet_inv+qlsub_inv)
+        qldet_inv = tmp2d*qldet_inv
+        qlsub_inv = tmp2d*qlsub_inv
+      end where
+      where(ABS(qidet_inv+qisub_inv).gt.1e-12)
+        tmp2d = qiten_inv / (qidet_inv+qisub_inv)
+        qidet_inv = tmp2d*qidet_inv
+        qisub_inv = tmp2d*qisub_inv
+      end where
+      
 
    end subroutine compute_uwshcu_inv
 
@@ -3907,8 +3919,8 @@ contains
 !               limit_negcon(i) = 1.
 !           end if
            slten(k) = sten(k) - xlv*qlten(k) - xls*qiten(k)
-           slten(k) = slten(k) + xlv * qrten(k) + xls * qsten(k)         
-           sten(k)  = slten(k) + xlv * qlten(k) + xls * qiten(k)
+!           slten(k) = slten(k) + xlv * qrten(k) + xls * qsten(k)         
+!           sten(k)  = slten(k) + xlv * qlten(k) + xls * qiten(k)
 
          end do
 
