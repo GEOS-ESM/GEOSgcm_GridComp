@@ -846,6 +846,9 @@ module GEOS_SaltwaterGridCompMod
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBAND'   , CHILD_ID = OBIO, __RC__)
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBANDNA' , CHILD_ID = OBIO, __RC__)
 
+!    ! These variables below should be read from file or provided by DataAtmosphere.
+!    ! For development/testing purposes we are writing the exports here and setting
+!    ! their values to zero.
      do k=1, 33
         write(unit = suffix, fmt = '(i2.2)') k
         call MAPL_AddExportSpec(GC,                               &
@@ -875,6 +878,70 @@ module GEOS_SaltwaterGridCompMod
              default    = 0.0, &
              __RC__)
      enddo
+
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'RH',                                   &
+          LONG_NAME  = 'relative humidity',             &
+          UNITS      = 'percent',                                     &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 0.0, &
+          __RC__)
+
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'CCOVM',                                &
+          LONG_NAME  = 'cloud cover',                          &
+          UNITS      = 'fraction (dimensionless)',             &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 0.0, &
+          __RC__)
+
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'CDREM',                                   &
+          LONG_NAME  = 'cloud droplet effective radius',             &
+          UNITS      = '',                                     &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 0.0, &
+          __RC__)
+     
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'RLWPM',                                &
+          LONG_NAME  = 'cloud liquid water path',              &
+          UNITS      = '',                                     &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 0.0, &
+          __RC__)
+
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'CLDTCM',                               &
+          LONG_NAME  = 'cloud optical thickness',              &
+          UNITS      = '',                                     &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 0.0, &
+          __RC__)
+
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'OZ',                                   &
+          LONG_NAME  = 'ozone thickness',                      &
+          UNITS      = 'Dobson units',                         &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 0.0, &
+          __RC__)
+
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'WV',                                   &
+          LONG_NAME  = 'water vapor',                          &
+          UNITS      = 'cm',                                   &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 0.0, &
+          __RC__)
+
   end if
 
 

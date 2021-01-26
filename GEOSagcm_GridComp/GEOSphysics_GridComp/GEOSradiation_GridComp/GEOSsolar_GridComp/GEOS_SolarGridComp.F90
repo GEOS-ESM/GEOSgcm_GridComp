@@ -5149,7 +5149,7 @@ contains
 
 ! Fill 3D per-band Fluxes
 ! -----------------------
-
+if(mapl_am_i_root()) print*,'SOLAR NUM_BANDS_SOLAR = ', NUM_BANDS_SOLAR
       do IB = 1, NUM_BANDS_SOLAR
          if(associated(FSWBAND  )) FSWBAND  (:,:,IB) = FSWBANDN  (:,:,IB)*SLR
          if(associated(FSWBANDNA)) FSWBANDNA(:,:,IB) = FSWBANDNAN(:,:,IB)*SLR

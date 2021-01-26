@@ -7746,9 +7746,12 @@ module GEOS_SurfaceGridCompMod
 
 ! Fill imports/exports for OBIO
 !-------------------------------
+if(mapl_am_i_root()) print*,'SURFACE NB_CHOU = ',nb_chou
 
       if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then 
         call OBIO_fillExports(OCEAN, IMPORT,&
+                              LOCSTREAM, GIM,&
+                              surf_internal_state%xform_in(OCEAN), &
                               NT, NB_CHOU,&
                               CO2SC,     FSWBAND,     FSWBANDNA,&
                               CO2SCTILE, FSWBANDTILE, FSWBANDNATILE,&
@@ -9587,14 +9590,19 @@ module GEOS_SurfaceGridCompMod
       RETURN_(ESMF_SUCCESS)
     end subroutine RouteRunoff
 
-    subroutine OBIO_fillExports(type, IMPORT,&
-                                NT, NB_CHOU,&
+    subroutine OBIO_fillExports(type, IMPORT, &
+                                LOCSTREAM, GIM, &
+                                XFORM, &
+                                NT, NB_CHOU, &
                                 CO2SC,     FSWBAND,     FSWBANDNA,&
                                 CO2SCTILE, FSWBANDTILE, FSWBANDNATILE,&
                                 RC)
 
-      integer,           intent(   IN ):: TYPE
-      type(ESMF_State),  intent(inout) :: IMPORT ! Import state
+      integer,           intent(   IN )     :: TYPE
+      type(ESMF_State),  intent(inout)      :: IMPORT ! Import state
+      type(MAPL_LocStream), intent(in)      :: LOCSTREAM
+      type(ESMF_State), pointer, intent(in) :: GIM(:)
+      type(MAPL_LocStreamXFORM), intent(in) :: XFORM
 
       integer,           intent(   IN) ::  NT
       integer,           intent(   IN) ::  NB_CHOU
@@ -9608,10 +9616,10 @@ module GEOS_SurfaceGridCompMod
       integer                                   :: STATUS
       integer                                   :: K
 
-      type (ESMF_State),      pointer         :: GIM(:)
-      type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE
-      type (MAPL_LocStream)                   :: LOCSTREAM
-      type (MAPL_LocStreamXFORM)              :: XFORM
+!      type (ESMF_State),      pointer         :: GIM(:)
+!      type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE
+!      type (MAPL_LocStream)                   :: LOCSTREAM
+!      type (MAPL_LocStreamXFORM)              :: XFORM
 
       call MAPL_GetPointer(IMPORT  , CO2SC   , 'CO2SC'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'  , RC=STATUS); VERIFY_(STATUS)
@@ -9632,7 +9640,7 @@ module GEOS_SurfaceGridCompMod
         VERIFY_(STATUS)
       end do
 
-      XFORM = surf_internal_state%xform_in(type)
+!      XFORM = surf_internal_state%xform_in(type)
       call FILLIN_TILE(GIM(type), 'CO2SC',     CO2SCTILE,     XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'FSWBAND'  , FSWBANDTILE  , XFORM, RC=STATUS); VERIFY_(STATUS)
       call FILLIN_TILE(GIM(type), 'FSWBANDNA', FSWBANDNATILE, XFORM, RC=STATUS); VERIFY_(STATUS)
