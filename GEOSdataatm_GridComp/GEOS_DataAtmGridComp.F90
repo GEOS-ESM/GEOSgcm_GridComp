@@ -2064,6 +2064,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !!!!   logical(kind=log_kind)  :: L_STOP
 !!!!   integer(kind=int_kind)              :: IDUM, JDUM
        real (kind=dbl_kind) :: sblx(1,1)
+       real (kind=dbl_kind) :: place_holder(1,1)
 !!!!#else
        logical :: L_STOP = .false.
        integer :: IDUM, JDUM
@@ -3358,7 +3359,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                   
                   RDUMDB,  RDUMDB,   RDUMDB,  RDUMDB,      &
                   LATSDB, LONSDB, OBSERVE, FCONDBOTDB, sblx,     & 
-                  
+                  place_holder,                            &   
                   MLT_ONSETDB,   FRZ_ONSETDB,     & 
                   YDAYDB,          L_STOP,        &
                   IDUM,          JDUM, DO_DATAATM/=0 )

@@ -695,6 +695,7 @@ module GEOS_CICE4ColumnPhysGridComp
                                                RC=STATUS  ) 
      VERIFY_(STATUS)
 
+
 !  !INTERNAL STATE:
 
      call MAPL_AddInternalSpec(GC,                           &
@@ -1624,6 +1625,16 @@ module GEOS_CICE4ColumnPhysGridComp
           UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           RC=STATUS  ) 
+   VERIFY_(STATUS)
+
+   call MAPL_AddExportSpec(GC                     ,&
+        SHORT_NAME         = 'FCONDREPAR'                ,&
+        LONG_NAME          = 'top_conductive_flux_repartitioned_to_ice_bottom',&
+        UNITS              = 'W m-2'                     ,&
+        DIMS               = MAPL_DimsTileOnly           ,&
+        UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+                                               RC=STATUS  ) 
    VERIFY_(STATUS)
 
    call MAPL_AddExportSpec(GC,                     &
@@ -3162,6 +3173,7 @@ contains
    real, pointer, dimension(:,:)  :: ALBSNe      => null()
    real, pointer, dimension(:,:)  :: FCONDBOTN   => null()
    real, pointer, dimension(:,:)  :: FCONDTOPN   => null()
+   real, pointer, dimension(:,:)  :: FCONDRP     => null()
    real, pointer, dimension(:,:)  :: TINZ        => null()
 
    ! pointers to CMIP5 exports (CICE)
@@ -3315,6 +3327,7 @@ contains
    real,               allocatable    :: RSIDE         (:)
    real,               allocatable    :: FSWTHRU       (:,:)        ! FSWTHRU is also an EXPORT 
    real,               allocatable    :: FCOND         (:,:)
+   real,               allocatable    :: FCONDR        (:,:)
    real,               allocatable    :: FCONDBOT      (:,:)
    real,               allocatable    :: TBOT          (:)
    real,               allocatable    :: FBOT          (:)
@@ -3537,6 +3550,7 @@ contains
    ! category dimensional exports
    call MAPL_GetPointer(EXPORT,FCONDBOTN,  'FCONDBOTN' ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FCONDTOPN,  'FCONDTOPN' ,  RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,FCONDRP,    'FCONDREPAR',  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,TINZ     ,  'TINZ'      ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SHICEN   ,  'SHICEN'    ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,HLWUPN   ,  'HLWUPN'    ,  RC=STATUS); VERIFY_(STATUS)
@@ -3629,6 +3643,8 @@ contains
     VERIFY_(STATUS)
     allocate(FCOND     (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
+    allocate(FCONDR    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    VERIFY_(STATUS)
     allocate(FCONDBOT  (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
     allocate(TBOT      (NT),                                   STAT=STATUS)
@@ -3709,7 +3725,7 @@ contains
 
 !     initialize arrays for CICE Thermodynamics
     call CICE_PREP_THERMO(TF,TRCRTYPE,TRACERS,MELTLN,FRAZLN,FRESHN,FRESHL,FSALTN,FSALTL,FHOCNN,FHOCNL,RSIDE,  &
-                            FSWTHRU,FCOND,FCONDBOT,TBOT,FBOT,ALBIN,ALBSN,ALBPND,ALBVRN,ALBNRN,ALBVFN,ALBNFN,FSWSFC,FSWINT,     &
+                            FSWTHRU,FCOND,FCONDR,FCONDBOT,TBOT,FBOT,ALBIN,ALBSN,ALBPND,ALBVRN,ALBNRN,ALBVFN,ALBNFN,FSWSFC,FSWINT,     &
                             ISWABS,SSWABS,FSWABS,MELTT,MELTS,MELTB,CONGEL,SNOICE,UW,VW,SLMASK,LATS,LONS,LATSO,LONSO,   &
                             FR8,FRCICE,SW,TAUAGE,ICE,NT,VOLPOND,DT,VOLICE,VOLSNO,ERGICE,ERGSNO,TS,VOLICE_DELTA,  &
                             NEWICEERG, SBLX, RC=STATUS)
@@ -4045,7 +4061,7 @@ contains
           call CICE_THERMO1(N,NSUB,NT,ICE,LATS,LONS,LATSO,LONSO,DT,TF,FR8TMP,TS,         &
                            ERGICE,ERGSNO,TAUXBOT,TAUYBOT,TBOT,ISWABS,SSWABS,             &
                            DO_POND,FBOT,RSIDE,PCU,PLS,FSURF,                             &
-                           FSWTHRU,FCOND,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,              &
+                           FSWTHRU,FCOND,FCONDR,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,              &
                            MELTT,MELTS,MELTB,CONGEL,SNOICE,VOLICE,VOLSNO,SHF,LHF,        &
                            VOLPOND,APONDN,HPONDN,TAUAGE,TRACERS,ALW,BLW,    &
                            FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,SBLX,RC=STATUS)
@@ -4141,6 +4157,14 @@ contains
          do N=1, NUM_ICE_CATEGORIES  
             where(FR8(:,N) <= puny)
                FCONDTOPN(:,N) = MAPL_UNDEF
+            endwhere   
+         enddo
+     endif    
+     if(associated(FCONDRP))  then
+         FCONDRP      = FCONDR
+         do N=1, NUM_ICE_CATEGORIES  
+            where(FR8(:,N) <= puny)
+               FCONDRP(:,N) = MAPL_UNDEF
             endwhere   
          enddo
      endif    
@@ -4579,6 +4603,7 @@ contains
     deallocate(RSIDE)
     deallocate(FSWTHRU)
     deallocate(FCOND)
+    deallocate(FCONDR)
     deallocate(FCONDBOT)
     deallocate(TBOT)
     deallocate(FBOT)
@@ -4630,7 +4655,7 @@ contains
 ! !INTERFACE:
 
   subroutine CICE_PREP_THERMO(TF, TRCRTYPE,TRACERS,MELTLN,FRAZLN,FRESHN,FRESHL,FSALTN,FSALTL,FHOCNN,FHOCNL,RSIDE,  &
-                              FSWTHRU,FCOND,FCONDBOT,TBOT,FBOT,ALBIN,ALBSN,ALBPND,ALBVRN,ALBNRN,ALBVFN,ALBNFN,FSWSFC,FSWINT,     &
+                              FSWTHRU,FCOND,FCONDR,FCONDBOT,TBOT,FBOT,ALBIN,ALBSN,ALBPND,ALBVRN,ALBNRN,ALBVFN,ALBNFN,FSWSFC,FSWINT,     &
                               ISWABS,SSWABS,FSWABS,MELTT,MELTS,MELTB,CONGEL,SNOICE,UW,VW,SLMASK,LATS,LONS,LATSO,LONSO,   &
                               FR ,FRCICE,SW,TAUAGE,ICE,NT,VOLPOND,DT,VOLICE,VOLSNO,ERGICE,ERGSNO,TS,VOLICE_DELTA,  &
                               NEWICEERG, SBLX, RC)
@@ -4665,6 +4690,7 @@ contains
     real,    intent(OUT)  :: RSIDE      (:)     ! ?
     real,    intent(OUT)  :: FSWTHRU    (:,:)   ! SW_flux_thru_ice_to_ocean 
     real,    intent(OUT)  :: FCOND      (:,:)   ! ?
+    real,    intent(OUT)  :: FCONDR     (:,:)   ! ?
     real,    intent(OUT)  :: FCONDBOT   (:,:)   ! ?
     real,    intent(OUT)  :: TBOT       (:)     ! ?
     real,    intent(OUT)  :: FBOT       (:)     ! ?
@@ -4748,6 +4774,7 @@ contains
     RSIDE              = 0.0
     FSWTHRU            = 0.0
     FCOND              = 0.0
+    FCONDR             = 0.0
     FCONDBOT           = 0.0
 
     TBOT               = 0.0
@@ -5002,7 +5029,7 @@ contains
   subroutine CICE_THERMO1 (N,NSUB,NT,ICE,LATS,LONS,LATSO,LONSO,DT,TF,FR,TS,              &
                            ERGICE,ERGSNO,TAUXBOT,TAUYBOT,TBOT,ISWABS,SSWABS,             &
                            DO_POND,FBOT,RSIDE,PCU,PLS,FSUR,                              &
-                           FSWTHRU,FCOND,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,              &
+                           FSWTHRU,FCOND,FCONDR,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,       &
                            MELTT,MELTS,MELTB,CONGEL,SNOICE,VOLICE,VOLSNO,SHF,LHF,        &
                            VOLPOND,APONDN,HPONDN,TAUAGE,TRACERS,ALW,BLW,    &
                            FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,SBLX,RC)
@@ -5071,6 +5098,7 @@ contains
     real,    intent(INOUT)  :: FSWTHRU (:,:)   ! shortwave thru water, how can it be modified?
     real,    intent(INOUT)  :: FCOND   (:,:)   ! ?
     real,    intent(INOUT)  :: FCONDBOT(:,:)   ! ?
+    real,    intent(INOUT)  :: FCONDR  (:,:)   ! ?
 
     real,    intent(IN)     :: DT 
     real(kind=MAPL_R8)      :: DTDB               ! DT (time step) in R8 for CICE
@@ -5099,7 +5127,7 @@ contains
                                          MELTTDB, MELTSDB, MELTBDB, CONGELDB,SNOICEDB,&
                                          DSHDB, BLWDB, LATSDB, LONSDB, MLT_ONSETDB,   &
                                          FRZ_ONSETDB, FRDB, VOLICEDB, VOLSNODB,       &
-                                         SBLXDB,                                      & 
+                                         SBLXDB, FCONDRPDB,                           & 
                                          APONDNDB, HPONDNDB, RDUMDB, FRAINDB           
 
     real(kind=MAPL_R8), dimension(NT)                  :: FRCICE
@@ -5192,6 +5220,7 @@ contains
           FRZ_ONSETDB    =  0.0
           YDAYDB         =  0.0
           SBLXDB         =  0.0
+          FCONDRPDB      =  0.0
           FRDB           =  FR(K,N)
           VOLICEDB       = VOLICE(K,NSUB)
           VOLSNODB       = VOLSNO(K,NSUB)
@@ -5237,7 +5266,7 @@ contains
                DFSDTDB,DSHDB,DLHDTDB,BLWDB,    &
                LATSDB, LONSDB, OBSERVE,        &
                FCONDBOTDB,    SBLXDB,          &
-
+               FCONDRPDB,                      &
                MLT_ONSETDB,   FRZ_ONSETDB,     &
                YDAYDB,          L_STOP,        &
                IDUM,          JDUM             )
@@ -5264,6 +5293,7 @@ contains
           !*** sublimation  < 0, water vapor goes up
           EVP(K)             =  -EVPDB(1,1)
           SBLX(K)            =  SBLXDB(1,1)
+          FCONDR(K,NSUB)     =  FCONDRPDB(1,1)
           FRESHN(K)          =  FRESHNDB(1,1)
           FSALTN(K)          =  FSALTNDB(1,1)
           FHOCNN(K)          =  FHOCNNDB(1,1)
@@ -5280,7 +5310,8 @@ contains
           LHF(K)             = -LHF0(1,1)
           FSWSFC(K,N)        =  FSWSFCDB(1,1)
 
-          TS(K,N)            =  TRACERS(nt_tsfc,NSUB) + TFfresh
+          ! do not reload Ts from tracer array since it is already computed
+          !TS(K,N)            =  TRACERS(nt_tsfc,NSUB) + TFfresh
           TAUAGE(K,NSUB)     =  TRACERS(nt_iage,NSUB)
 
           if ( (DO_POND==1) .and. trim(SHORTWAVE) == 'dEdd') then
