@@ -48,6 +48,7 @@ module GEOS_SurfaceGridCompMod
 
   use ESMF
   use MAPL
+  use MAPL_StringTemplate
   use GEOS_UtilsMod
 
   use GEOS_LakeGridCompMod,      only : LakeSetServices     => SetServices
@@ -3210,7 +3211,6 @@ module GEOS_SurfaceGridCompMod
                              'FRLAND   ', &
                              'FRLANDICE' /)
 
-
 !=============================================================================
 
 ! Begin... 
@@ -5349,7 +5349,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: SLR   => NULL()
 
 ! for reading "forced" precip
-    real, pointer, dimension(:,:) :: PTTe => NULL()
+    !real, pointer, dimension(:,:) :: PTTe => NULL()
 
 ! interpolate wind for wind stress 
     real, pointer, dimension(:,:) :: UUA     => NULL()
@@ -5373,6 +5373,16 @@ module GEOS_SurfaceGridCompMod
     real, allocatable :: PRECSUM(:,:)
     character(len=ESMF_MAXPATHLEN) :: SolCycFileName
     logical :: PersistSolar
+
+
+    type(ESMF_Grid) :: ll_grid
+    integer :: nx,ny,counts(3),imll,jmll
+    class (AbstractRegridder), pointer :: esmf_regridder
+    real, pointer                           :: ptte_ll(:,:)
+    real, allocatable :: ptte(:,:)
+    type(fileMetaData) :: metadata
+    type (NetCDF4_FileFormatter) :: formatter
+    character(len=ESMF_MAXPATHLEN) :: fname
     
 !=============================================================================
 
@@ -5753,15 +5763,44 @@ module GEOS_SurfaceGridCompMod
 
     REPLACE_PRECIP: if(PRECIP_FILE /= "null") then
 
-       bundle = ESMF_FieldBundleCreate (NAME='PRECIP', RC=STATUS)
+       call fill_grads_template(fname,precip_file,time=currenttime) 
+       call formatter%open(trim(fname),pFIO_Read,rc=status)
+       VERIFY_(status)
+       metadata= formatter%read(rc=status)
+       VERIFY_(status)
+       imll = metadata%get_dimension('lon')
+       jmll = metadata%get_dimension('lat')
+       call formatter%close(rc=status)
+       VERIFY_(status)
+
+       call MAPL_MakeDecomposition(nx,ny,rc=status)
+       VERIFY_(status)
+       ll_grid = grid_manager%make_grid(LatLonGridFactory(im_world=imll, jm_world=jmll, lm=72, &
+                 nx=nx,ny=ny,pole='PC',dateline='DC',rc=status))
+       bundle = ESMF_FieldBundleCreate (NAME='DISCHARGE_ADJUST', RC=STATUS)
        VERIFY_(STATUS)
-       call ESMF_FieldBundleSet(bundle, GRID=GRID, RC=STATUS)
+       call ESMF_FieldBundleSet(bundle, GRID=ll_grid, RC=STATUS)
        VERIFY_(STATUS)
 
-       call MAPL_CFIORead( PRECIP_FILE, CurrentTime, Bundle, RC=STATUS)
+       !bundle = ESMF_FieldBundleCreate (NAME='PRECIP', RC=STATUS)
+       !VERIFY_(STATUS)
+       !call ESMF_FieldBundleSet(bundle, GRID=GRID, RC=STATUS)
+       !VERIFY_(STATUS)
+
+       call MAPL_CFIORead( PRECIP_FILE, CurrentTime, Bundle, only_vars="PRECTOT",  RC=STATUS)
        VERIFY_(STATUS)
-       call ESMFL_BundleGetPointerToData(Bundle,'PRECTOT',PTTe, RC=STATUS)
+       call ESMFL_BundleGetPointerToData(Bundle,'PRECTOT',PTTe_ll, RC=STATUS)
        VERIFY_(STATUS)
+
+          call MAPL_GridGet(grid,localcellcountperdim=counts,rc=status)
+          VERIFY_(status)
+          allocate(ptte(counts(1),counts(2)),stat=status)
+          VERIFY_(status)
+          esmf_regridder=>new_regridder_manager%make_regridder(ll_grid,grid,REGRID_METHOD_BILINEAR,rc=status)
+          VERIFY_(status)
+          call esmf_regridder%regrid(ptte_ll,ptte,rc=status)
+          VERIFY_(status)
+          if (mapl_am_I_root()) write(*,*)'bmaa surf: ',maxval(ptte)
 
 
 ! Catchment required convective and large-scale rain and total snowfall,
@@ -5827,11 +5866,19 @@ module GEOS_SurfaceGridCompMod
        deallocate(PCSCALE,PRECSUM)
 ! Destroy the bundle and its fields
 !----------------------------------
-
+       deallocate(PTTe, ptte_ll)
+       block
+          integer :: nitems,iii
+          type(ESMF_Field) :: field1
+          call ESMF_FieldBundleGet(bundle,fieldCount=nitems)
+          do iii=1,nitems
+             call ESMF_FieldBundleGet(bundle,iii,field1)
+             call ESMF_FieldDestroy(field1,noGarbage=.true.,rc=status)
+             VERIFY_(status)
+          enddo
+       end block
        call ESMF_FieldBundleDestroy(bundle, rc=STATUS)
        VERIFY_(STATUS)
-
-       deallocate(PTTe)
 
 ! Apply latitude taper to replace the model-generated precip
 !  only at low latitudes,
