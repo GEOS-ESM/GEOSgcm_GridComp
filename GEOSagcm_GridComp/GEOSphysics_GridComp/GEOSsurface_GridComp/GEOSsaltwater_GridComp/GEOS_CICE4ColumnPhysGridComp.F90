@@ -4881,7 +4881,7 @@ contains
                            SHF,LHF,                          &
                            ALW,BLW,LWUP,                     &
                            FSWSFC,                           & 
-                           LWDNSRF,                          & 
+                           LWDNSRF, FSURF,                   & 
                            DLHDT,SHD,EVD)
 
 ! !ARGUMENTS:
@@ -4913,6 +4913,7 @@ contains
 
     real(kind=MAPL_R8),    intent(OUT)  :: FCOND      ! ?
     real(kind=MAPL_R8),    intent(OUT)  :: LWUP    
+    real(kind=MAPL_R8),    intent(OUT)  :: FSURF    
 
     
     integer :: i, j, ij, k   ! indices
@@ -5015,7 +5016,8 @@ contains
 
      lwup    = -flwoutn
      shf     = -fsensn
-     lhf     = -flatn 
+     lhf     = -flatn
+     fsurf   = fsurfn 
 
 
   end subroutine EXPLICIT_COUPLING   
@@ -5169,9 +5171,6 @@ contains
 
           TAUAGE(K,NSUB) = TAUAGE(K,NSUB) + DT
 
-          TRACERS(nt_tsfc, NSUB) = TS(K,N) - TFfresh
-          TRACERS(nt_iage, NSUB) = TAUAGE(K, NSUB)
-          TRACERS(nt_volpn,NSUB) = VOLPOND(K,NSUB)
 
           LWUPSRF        = ALW(K) + BLW(K)*TS(K,N) ! use TS (in Kelvin) here
           FSURF(1,1)     = FSWSFC(K,NSUB) - SHF(K) - LHF(K) + LWDNSRF(K) - LWUPSRF
@@ -5186,11 +5185,8 @@ contains
           FSWINTDB       =  FSWINT(K,NSUB)
           FSURFDB(1,1)   =  FSWSFCDB(1,1) - SHF(K) - LHF(K) + LWDNSRF(K) - LWUPSRF
           DFSDTDB        =  DFSDT
-          SHF0DB         = -SHF(K)
-          LHF0DB         = -LHF(K)
           LWUP0DB        = -LWUPSRF
 
-          TRACERSDB      =  TRACERS(:,NSUB)
           LWDNSRFDB      =  LWDNSRF(K)
           SNODB          =  SNO(K)
           TBOTDB         =  TBOT(K)
@@ -5235,8 +5231,22 @@ contains
                            SHF(K),LHF(K),                    &
                            ALW(K),BLW(K), LWUP0DB(1,1),      &
                            FSWSFCDB(1,1),                    & 
-                           LWDNSRF(K),                       & 
+                           LWDNSRF(K), FSURFDB(1,1),         & 
                            DLHDT,SHD(K),EVD(K))
+
+          ! up to this point, TS, FSURF, SHF, LHF and LWUP0DB 
+          ! have been updated and should be held fixed
+
+          SHF0DB         = -SHF(K)
+          LHF0DB         = -LHF(K)
+          LWUPSRF        = -LWUP0DB(1,1) 
+          EVP(K)         = EVPDB(1,1)
+          ! fill in tracers array  
+          TRACERS(nt_tsfc, NSUB) = TS(K,N) - TFfresh
+          TRACERS(nt_iage, NSUB) = TAUAGE(K, NSUB)
+          TRACERS(nt_volpn,NSUB) = VOLPOND(K,NSUB)
+
+          TRACERSDB      =  TRACERS(:,NSUB)
 
           call thermo_vertical(                &
                1,1,DTDB,1,one,one,             &
@@ -5279,19 +5289,17 @@ contains
 
           ERGICE(K,:,NSUB)   = ERGICE_TMP(:)
           ERGSNO(K,:,NSUB)   = ERGSNO_TMP(:)
-          SHF0               =  SHF0DB
-          LHF0               =  LHF0DB
+          !SHF0               =  SHF0DB
+          !LHF0               =  LHF0DB
           TRACERS(:, NSUB)   =  TRACERSDB
           FSWTHRU(K,N)       =  FSWTHRUDB(1,1)
           FCOND(K,NSUB)      =  FCONDDB(1,1)
           FCONDBOT(K,NSUB)   =  FCONDBOTDB(1,1)
           FSURF              =  FSURFDB(1,1)
           FSUR(K)            =  FSURF(1,1)
-          LWUPSRF            = -LWUP0DB(1,1) 
           !*** EVP computed by CICE has an opposite sign:
           !*** condensation > 0, water vapor goes down
           !*** sublimation  < 0, water vapor goes up
-          EVP(K)             =  -EVPDB(1,1)
           SBLX(K)            =  SBLXDB(1,1)
           FCONDR(K,NSUB)     =  FCONDRPDB(1,1)
           FRESHN(K)          =  FRESHNDB(1,1)
@@ -5306,8 +5314,8 @@ contains
           VOLICE(K,N)        =  VOLICEDB(1,1)
           VOLSNO(K,N)        =  VOLSNODB(1,1)
           ! need to update these for aggregation later
-          SHF(K)             = -SHF0(1,1)
-          LHF(K)             = -LHF0(1,1)
+          !SHF(K)             = -SHF0(1,1)
+          !LHF(K)             = -LHF0(1,1)
           FSWSFC(K,N)        =  FSWSFCDB(1,1)
 
           ! do not reload Ts from tracer array since it is already computed
