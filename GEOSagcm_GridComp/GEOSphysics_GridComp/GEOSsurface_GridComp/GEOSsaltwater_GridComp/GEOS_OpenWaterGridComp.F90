@@ -112,7 +112,14 @@ module GEOS_OpenwaterGridCompMod
                                           ! defualt: OFF, so AOIL is incompatible with "old" interface
                                           ! when it is ON, set servives provides what is needed for both versions
                                           ! whereas RUN(1,2) will use one or other (OFF: AOIL; ON: old interface)
-                                                               
+
+  type openwater_state
+       integer:: CHOOSEMOSFC
+  end type openwater_state
+
+  type openwater_state_wrap
+      type(openwater_state), pointer :: ptr
+  end type                                                               
 
   contains
 
@@ -153,6 +160,11 @@ module GEOS_OpenwaterGridCompMod
 
     type (MAPL_MetaComp),  pointer          :: MAPL
     type (ESMF_Config)                      :: CF
+
+    type(openwater_state_wrap) :: wrap
+    type(openwater_state), pointer :: mystate
+    character(len=ESMF_MAXSTR)     :: SURFRC
+    type(ESMF_Config)              :: SCF
 
 !=============================================================================
 
@@ -1582,6 +1594,16 @@ module GEOS_OpenwaterGridCompMod
 
 !EOS
 
+    allocate(mystate,stat=status)
+    VERIFY_(status)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=mystate%CHOOSEMOSFC, DEFAULT=1, __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
+    wrap%ptr => mystate
+    call ESMF_UserCompSetInternalState(gc, 'openwater_private', wrap,status)
+    VERIFY_(status)
 
 ! Set the Profiling timers
 ! ------------------------
@@ -1768,8 +1790,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    integer         :: iFIX_BUG1                 ! whether to fix the "bug" with old interface? 0: no (default), 1: yes
    integer         :: iMAK_BUG                  ! whether to put a   "bug" in   new interface? 0: no (default), 1: yes
-   character(len=ESMF_MAXSTR)     :: SURFRC
-   type(ESMF_Config)              :: SCF 
+   type(openwater_state_wrap) :: wrap
+   type(openwater_state), pointer :: mystate
 
 !=============================================================================
 
@@ -1810,11 +1832,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
-    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=CHOOSEMOSFC, DEFAULT=1, __RC__ ) 
-    call ESMF_ConfigDestroy      (SCF, __RC__)
+    call ESMF_UserCompGetInternalState(gc,'openwater_private',wrap,status)
+    VERIFY_(status)
+    mystate => wrap%ptr
+    CHOOSEMOSFC = mystate%CHOOSEMOSFC
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0,    Label="CHOOSEZ0:",    DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
