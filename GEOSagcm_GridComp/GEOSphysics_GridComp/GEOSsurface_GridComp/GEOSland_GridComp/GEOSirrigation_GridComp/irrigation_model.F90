@@ -245,6 +245,7 @@ contains
 
                    H1 = this%drip_stime
                    H2 = this%drip_stime + this%drip_dur
+                   IT = this%sprinkler_thres 
                    if ((HC >= H1).AND.(HC < H2)) then
                       if((ma <= IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(SMCNT(N),SMREF(N),0.) * DRIPFR (N) /(H2 - H1)/3600.
                    else
@@ -271,6 +272,7 @@ contains
                    
                    H1 = this%drip_stime
                    H2 = this%drip_stime + this%drip_dur
+                   IT = this%sprinkler_thres 
                    if ((HC >= H1).AND.(HC < H2)) then
                       if((ma <= IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(LF*SMCNT(N),SMREF(N),0.) &
                                                /(H2 - H1)/3600.
@@ -416,6 +418,7 @@ contains
                                   ! (2)DRIP
                                   H1 = this%drip_stime
                                   H2 = this%drip_stime + this%drip_dur
+                                  IT = this%sprinkler_thres 
                                   if ((HC >= H1).AND.(HC < H2)) then
                                      if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) DRATE (crop) = this%cwd(SMCNT(N),SMREF(N),0.) &
                                           /(H2 - H1)/3600.
