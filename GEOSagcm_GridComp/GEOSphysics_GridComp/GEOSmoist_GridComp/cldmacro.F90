@@ -59,10 +59,8 @@ module cldmacro
    real    :: ANV_SDQV3
    real    :: ANV_SDQVT1
    real    :: ANV_TO_LS
-   real    :: N_WARM
-   real    :: N_ICE
-   real    :: N_ANVIL
-   real    :: N_PBL
+   real    :: CCN_OCEAN
+   real    :: CCN_LAND
    integer :: DISABLE_RAD
    real    :: ANV_ICEFALL_C
    real    :: LS_ICEFALL_C
@@ -339,10 +337,8 @@ contains
       ANV_SDQV3     = CLDPARAMS%ANV_SUND_COLD
       ANV_SDQVT1    = CLDPARAMS%ANV_SUND_TEMP1
       ANV_TO_LS     = CLDPARAMS%ANV_TO_LS_TIME
-      N_WARM        = CLDPARAMS%NCCN_WARM
-      N_ICE         = CLDPARAMS%NCCN_ICE
-      N_ANVIL       = CLDPARAMS%NCCN_ANVIL
-      N_PBL         = CLDPARAMS%NCCN_PBL
+      CCN_OCEAN     = CLDPARAMS%CCN_OCEAN
+      CCN_LAND      = CLDPARAMS%CCN_LAND
       DISABLE_RAD   = INT( CLDPARAMS%DISABLE_RAD )
       ANV_ICEFALL_C = CLDPARAMS%ANV_ICEFALL
       LS_ICEFALL_C  = CLDPARAMS%LS_ICEFALL
@@ -2183,7 +2179,7 @@ subroutine hystpdf_new( &
              BB     = -2. + log10(iwl/50.)*(1.e-3*(273.15-max(210.15,TE))**1.5)
              RADIUS =377.4 + 203.3 * bb+ 37.91 * bb **2 + 2.3696 * bb **3
              RADIUS =RADIUS * 1.e-6 !- convert to meter
-             !print*,"bb=",temp,micro_g(ngrid)%rei(k,i,j),bb,iwl(k,i,j);flush(6)
+             !print*,"bb=",temp,micro_g(ngrid)%rei(k,i,j),bb,iwl(k,i,j);call flush(6)
             endif
 
         ENDIF ! CLDMICRO

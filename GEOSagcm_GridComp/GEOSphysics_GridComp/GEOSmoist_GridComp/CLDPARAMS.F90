@@ -31,10 +31,10 @@
            real               :: ANV_SUND_COLD         ! 19
            real               :: ANV_SUND_TEMP1        ! 20
            real               :: ANV_TO_LS_TIME        ! 21
-           real               :: NCCN_WARM             ! 22
-           real               :: NCCN_ICE              ! 23
-           real               :: NCCN_ANVIL            ! 24
-           real               :: NCCN_PBL              ! 25
+           real               :: CCN_OCEAN             ! 22
+           real               :: CCN_LAND              ! 23
+           real               :: NCCN_ANVIL_NULL       ! 24
+           real               :: NCCN_PBL_NULL         ! 25
            real               :: DISABLE_RAD           ! 26
            real               :: ICE_SETTLE            ! 27
            real               :: ANV_ICEFALL           ! 28
