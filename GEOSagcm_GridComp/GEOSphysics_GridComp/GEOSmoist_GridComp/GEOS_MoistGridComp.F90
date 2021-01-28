@@ -1319,6 +1319,42 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'QTFLX_SC',                                  &
+         LONG_NAME  = 'shallow_cumulus_total_water_flux',          &
+         UNITS      = 'kg kg-1 m s-1',                             &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,                          &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'SLFLX_SC',                                  &
+         LONG_NAME  = 'shallow_cumulus_liquid_static_energy_flux', &
+         UNITS      = 'K m s-1',                                  &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,                          &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'UFLX_SC',                                   &
+         LONG_NAME  = 'shallow_cumulus_u_wind_flux',               &
+         UNITS      = '1',                                         &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,                          &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME = 'VFLX_SC',                                   &
+         LONG_NAME  = 'shallow_cumulus_v_wind_flux',               &
+         UNITS      = '1',                                         &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationEdge,                          &
+         RC=STATUS  )
+     VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'CUFRC_SC',                                  &
          LONG_NAME  = 'shallow_cumulus_cloud_fraction',            &
@@ -1662,6 +1698,16 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'DCM_SC',                                      &
+         LONG_NAME = 'Shallow_convection_detrained_cloud_mass', &
+         UNITS     = 'kg m-2 s-1',                                 &
+         DIMS      = MAPL_DimsHorzVert,                            &
+         VLOCATION = MAPL_VLocationCenter,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'CIN_SC',                                      &
          LONG_NAME = 'Convective_inhibition_for_shallow_convection', &
@@ -1720,6 +1766,15 @@ contains
          SHORT_NAME = 'CBMF_SC',                                      &
          LONG_NAME = 'cloud_base_mass_flux_due_to_shallow_convection',&
          UNITS     = 'kg s-1 m-2',                                 &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'CUSH_SC',                                      &
+         LONG_NAME = 'cumulus_scale_height_for_shallow_convection',&
+         UNITS     = 'm',                                          &
          DIMS      = MAPL_DimsHorzOnly,                            &
          VLOCATION = MAPL_VLocationNone,                         &
          RC=STATUS  )
@@ -1978,6 +2033,22 @@ contains
          SHORT_NAME = 'ER_PRCP',                                     & 
          LONG_NAME = 'spurious_rain_from_RH_cleanup',          &
          UNITS     = 'kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME ='SC_MSE',                                    & 
+         LONG_NAME ='shallow_convective_column_MSE_tendency',      &
+         UNITS     ='W m-2',                                       &
+         DIMS      = MAPL_DimsHorzOnly,                            & 
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME ='SC_QT',                                       & 
+         LONG_NAME ='shallow_convective_column_QT_tendency',      &
+         UNITS     ='kg m-2 s-1',                                  &
          DIMS      = MAPL_DimsHorzOnly,                            & 
          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
     VERIFY_(STATUS)
@@ -4139,6 +4210,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME='TPERT_SC',                                          & 
+         LONG_NAME ='Shallow_convection_source_air_temperature_perturbation', &
+         UNITS     ='K',                                             &
+         DIMS      = MAPL_DimsHorzOnly,                                  &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                          &
+         SHORT_NAME='QPERT_SC',                                          & 
+         LONG_NAME ='Shallow_convection_source_air_humidity_perturbation', &
+         UNITS     ='kg kg-1',                                             &
+         DIMS      = MAPL_DimsHorzOnly,                                  &
+         VLOCATION = MAPL_VLocationNone,              RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                          &
          SHORT_NAME='RHCmicro',                                          & 
          LONG_NAME ='Corrected RHc after micro', &
          UNITS     ='1',                                             &
@@ -5188,22 +5275,23 @@ contains
 
       real, pointer, dimension(:,:,:) :: DQDTCN, DTHDTCN,DQCDTCN,DTDTFRIC
 
-      integer :: DOCLDMACRO
-      real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, WUP_SC, QTUP_SC, &
+      integer :: DOCLDMACRO,UWTOLS
+      real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, DCM_SC, WUP_SC, QTUP_SC, &
                                          THLUP_SC, THVUP_SC, UUP_SC, VUP_SC 
       real, pointer, dimension(:,:,:) :: QCU_SC, QLU_SC, QIU_SC
+      real, pointer, dimension(:,:,:) :: QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC
       real, pointer, dimension(:,:,:) :: DTHDT_SC, DQVDT_SC, DQRDT_SC, DQSDT_SC, &
                                          DQIDT_SC, DQLDT_SC, DQCDT_SC, CUFRC_SC
       real, pointer, dimension(:,:,:) :: DUDT_SC, DVDT_SC, &
                                          ENTR_SC, DETR_SC, XC_SC,QLDET_SC, &
                                          QIDET_SC, QLENT_SC, QIENT_SC, &
                                          QLSUB_SC, QISUB_SC, SC_NDROP, SC_NICE
-      real, pointer, dimension(:,:  ) :: CBMF_SC
+      real, pointer, dimension(:,:  ) :: CBMF_SC, CUSH_SC, TPERT_SC, QPERT_SC
       real, pointer, dimension(:,:  ) :: CIN_SC, PINV_SC, PLCL_SC, PLFC_SC, &
                                          PREL_SC, PBUP_SC
       real, pointer, dimension(:,:  ) :: WLCL_SC, QTSRC_SC, THLSRC_SC, &
                                          THVLSRC_SC, TKEAVG_SC, CLDTOP_SC, CUSH
-      real, pointer, dimension(:,:  ) :: CNT_SC, CNB_SC
+      real, pointer, dimension(:,:  ) :: CNT_SC, CNB_SC, CLDBASEHGT
 
       real, pointer, dimension(:,:,:) :: CNV_DQLDT            , &
            CNV_MF0              , &
@@ -5242,6 +5330,7 @@ contains
 
       real, pointer, dimension(:,:  ) :: PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL
       real, pointer, dimension(:,:  ) :: LS_PRCP,CN_PRCP,AN_PRCP,SC_PRCP,TT_PRCP,ER_PRCP,FILLNQV
+      real, pointer, dimension(:,:  ) :: SC_MSE, SC_QT
       real, pointer, dimension(:,:  ) :: HOURNORAIN
       integer                         :: YEAR, MONTH, DAY, HR, SE, MN
       type (ESMF_Time)                :: CurrentTime
@@ -5575,7 +5664,7 @@ contains
                                    frachet_bc, frachet_org, frachet_ss
       logical                   :: ismarine, is_stable, use_average_v                  
       real                      :: Nct, Wct, DX, ksa1, Xscale
-
+      real, dimension(IM,JM)    :: dum2d
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -5609,9 +5698,6 @@ contains
         DT_MICRO, DT_AUX, UR_SCALE    
         
     
-!!! MODIFIED : remove when done testing shallow
-      real                            :: THLSRC_PERT, QTSRC_PERT
-      real                            :: UWTOLS
       real                            :: PMIN_CBL
 
       real                            :: CBL_TPERTi, CBL_TPERT, CBL_QPERT, RASAL1, RASAL2
@@ -5783,6 +5869,7 @@ contains
 
       logical :: ALLOC_UMF
       logical :: ALLOC_MFD
+      logical :: ALLOC_DCM
       logical :: ALLOC_DQVDT
       logical :: ALLOC_DQLDT
       logical :: ALLOC_DQIDT
@@ -5796,6 +5883,7 @@ contains
       logical :: ALLOC_QLU
       logical :: ALLOC_QIU
       logical :: ALLOC_CBMF
+      logical :: ALLOC_CUSH
       logical :: ALLOC_DQCDT
       logical :: ALLOC_CNT
       logical :: ALLOC_CNB
@@ -5828,6 +5916,12 @@ contains
       logical :: ALLOC_QISUB
       logical :: ALLOC_NDROP
       logical :: ALLOC_NICE
+      logical :: ALLOC_TPERT
+      logical :: ALLOC_QPERT
+      logical :: ALLOC_QTFLX
+      logical :: ALLOC_SLFLX
+      logical :: ALLOC_UFLX
+      logical :: ALLOC_VFLX
 
       !---------------------------------------------------
 
@@ -5841,7 +5935,7 @@ contains
       real                       :: PA2, PA, NA, TH_TOP, TH_BOT, TL_MEAN, Z_LAYER, ZTHICK
 
       integer                    :: levs925, levs600
-      real, dimension(IM,JM   )  :: tempor2d, GF_AREA
+      real, dimension(IM,JM   )  :: tempor2d, GF_AREA, FRC_RASN_2D
 
       ! Manage diagnostic outputs for re-evaporation
       !---------------------------------------------------
@@ -5955,7 +6049,7 @@ contains
       real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU, CMNI
       real   , dimension(IM,JM)           :: CMDUcarma, CMSScarma
        
-      real :: sigmaqt, qcn, cfn, qsatn, dqlls, dqils, qt
+      real :: turnrhcrit, sigmaqt, alpha, QCp, QCn, CFn, ALHX, dqsatn, qsatn, dqlls, dqils, QT, TEp
 
       ! MATMAT CUDA Variables
 #ifdef _CUDA
@@ -6176,10 +6270,6 @@ contains
       call MAPL_GetResource(STATE,CBL_TPERT_MXOCN, 'CBL_TPERT_MXOCN:',     DEFAULT= 2.0   , RC=STATUS)
       call MAPL_GetResource(STATE,CBL_TPERT_MXLND, 'CBL_TPERT_MXLND:',     DEFAULT= 0.0   , RC=STATUS)
 
-     !!! MODIFIED by npa: remove when done testing shallow
-      call MAPL_GetResource(STATE,THLSRC_PERT, 'THLSRC_PERT:',     DEFAULT= 0.0   , RC=STATUS)     
-      call MAPL_GetResource(STATE,QTSRC_PERT, 'QTSRC_PERT:',     DEFAULT= 1.0   , RC=STATUS)     
-      call MAPL_GetResource(STATE,UWTOLS, 'UWTOLS:',     DEFAULT= 0.0   , RC=STATUS)     
 
       KSTRAP = INT( RASPARAMS%STRAPPING )
 
@@ -6197,28 +6287,39 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_CINCIN,       'USE_CINCIN:'     ,DEFAULT=1, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_SELF_DETRAIN, 'USE_SELF_DETRAIN:',DEFAULT=0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_MOMENFLX,     'USE_MOMENFLX:'   ,DEFAULT=1, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%USE_CUMPENENT,    'USE_CUMPENENT:'   ,DEFAULT=1, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%USE_CUMPENENT,    'USE_CUMPENENT:'  ,DEFAULT=1, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%SCVERBOSE,        'SCVERBOSE:',      DEFAULT=0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RPEN,    'RPEN:'    ,DEFAULT=3.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RLE,     'RLE:'     ,DEFAULT=0.1, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RKM,     'RKM:'     ,DEFAULT=12.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'   ,DEFAULT=1.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RMAXFRAC,'RMAXFRAC:',DEFAULT=0.1,  RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%MUMIN1,  'MUMIN1:'  ,DEFAULT=0.906, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RBUOY,   'RBUOY:'   ,DEFAULT=1.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RDRAG,   'RDRAG:'   ,DEFAULT=1.0, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%EPSVARW, 'EPSVARW:' ,DEFAULT=5.e-4, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%PGFC,    'PGFC:'    ,DEFAULT=0.7, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,   'CRIQC:'   ,DEFAULT=1.0e-3, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%KEVP,    'KEVP:'    ,DEFAULT=2.e-6,    RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,   'SHLW_RDROP:',DEFAULT=8.e-6,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%WINDSRCAVG,       'WINDSRCAVG:',     DEFAULT=1, RC=STATUS)
+
+      call MAPL_GetResource(STATE, SHLWPARAMS%RPEN,      'RPEN:'      ,DEFAULT=10.0, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RLE,       'RLE:'       ,DEFAULT=0.1, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'       ,DEFAULT=10.0, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%MIXSCALE,  'MIXSCALE:'  ,DEFAULT=3000.0, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%DETRHGT,   'DETRHGT:'   ,DEFAULT=1600.0, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RMAXFRAC,  'RMAXFRAC:'  ,DEFAULT=0.1,  RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%MUMIN1,    'MUMIN1:'    ,DEFAULT=0.906, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RBUOY,     'RBUOY:'     ,DEFAULT=1.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RDRAG,     'RDRAG:'     ,DEFAULT=1.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%EPSVARW,   'EPSVARW:'   ,DEFAULT=5.e-4,  RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%PGFC,      'PGFC:'      ,DEFAULT=0.7,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,     'CRIQC:'     ,DEFAULT=1.0e-3, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%KEVP,      'KEVP:'      ,DEFAULT=2.e-6,  RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,     'SHLW_RDROP:',DEFAULT=8.e-6,  RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%THLSRC_FAC,'THLSRC_FAC:',DEFAULT=2.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%QTSRC_FAC, 'QTSRC_FAC:' ,DEFAULT=0.0,    RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%QTSRCHGT,  'QTSRCHGT:'  ,DEFAULT=20.0,   RC=STATUS)
+
 
       if(adjustl(CLDMICRO)=="GFDL") then
-        call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=0  , RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=1.0, RC=STATUS)
+        call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:', DEFAULT=0, RC=STATUS)
+        call MAPL_GetResource(STATE,     UWTOLS,     'UWTOLS:', DEFAULT=0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 1.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
       else
-        call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=1  , RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=0.0, RC=STATUS)
+        call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:', DEFAULT=1, RC=STATUS)
+        call MAPL_GetResource(STATE,     UWTOLS,     'UWTOLS:', DEFAULT=0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 0.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
       endif
 
       ! Get the time step from the alarm
@@ -6402,8 +6503,10 @@ contains
 
 !!! shallow vars
       call MAPL_GetPointer(EXPORT, CBMF_SC,  'CBMF_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CUSH_SC,  'CUSH_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, UMF_SC,  'UMF_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, MFD_SC,  'MFD_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DCM_SC,  'DCM_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, CUFRC_SC,'CUFRC_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, PLCL_SC,'PLCL_SC' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, PLFC_SC,'PLFC_SC' , RC=STATUS); VERIFY_(STATUS)
@@ -6421,6 +6524,10 @@ contains
       call MAPL_GetPointer(EXPORT, DQIDT_SC,  'DQIDT_SC'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DQLDT_SC,  'DQLDT_SC'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DQCDT_SC,  'DQCDT_SC'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QTFLX_SC,  'QTFLX_SC'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SLFLX_SC,  'SLFLX_SC'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, UFLX_SC,   'UFLX_SC'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, VFLX_SC,   'VFLX_SC'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DUDT_SC,   'DUDT_SC'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DVDT_SC,   'DVDT_SC'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, WLCL_SC,   'WLCL_SC'   , RC=STATUS); VERIFY_(STATUS)
@@ -6450,6 +6557,10 @@ contains
       call MAPL_GetPointer(EXPORT, SC_NDROP, 'SC_NDROP' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, SC_NICE,  'SC_NICE' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, SC_PRCP,  'SC_PRCP'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, TPERT_SC, 'TPERT_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, QPERT_SC, 'QPERT_SC' , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SC_MSE,   'SC_MSE'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, SC_QT,    'SC_QT'    , RC=STATUS); VERIFY_(STATUS)
 
 
 !      call MAPL_GetPointer(EXPORT, LIQANMOVE, 'LIQANMOVE' , RC=STATUS); VERIFY_(STATUS)
@@ -7240,6 +7351,7 @@ contains
 
       ALLOC_UMF    = .not.associated(UMF_SC    )
       ALLOC_MFD    = .not.associated(MFD_SC    )
+      ALLOC_DCM    = .not.associated(DCM_SC    )
       ALLOC_DQVDT  = .not.associated(DQVDT_SC  )
       ALLOC_DQLDT  = .not.associated(DQLDT_SC  )
       ALLOC_DQIDT  = .not.associated(DQIDT_SC  )
@@ -7253,6 +7365,7 @@ contains
       ALLOC_QLU    = .not.associated(QLU_SC    )
       ALLOC_QIU    = .not.associated(QIU_SC    )
       ALLOC_CBMF   = .not.associated(CBMF_SC   )
+      ALLOC_CUSH   = .not.associated(CUSH_SC   )
       ALLOC_DQCDT  = .not.associated(DQCDT_SC  )
       ALLOC_CNT    = .not.associated(CNT_SC    )
       ALLOC_CNB    = .not.associated(CNB_SC    )
@@ -7285,9 +7398,16 @@ contains
       ALLOC_QISUB  = .not.associated(QISUB_SC   )
       ALLOC_NDROP  = .not.associated(SC_NDROP   )
       ALLOC_NICE   = .not.associated(SC_NICE    )
+      ALLOC_TPERT  = .not.associated(TPERT_SC   )
+      ALLOC_QPERT  = .not.associated(QPERT_SC   )
+      ALLOC_QTFLX  = .not.associated(QTFLX_SC   )
+      ALLOC_SLFLX  = .not.associated(SLFLX_SC   )
+      ALLOC_UFLX   = .not.associated(UFLX_SC    )
+      ALLOC_VFLX   = .not.associated(VFLX_SC    )
 
       if(ALLOC_UMF)    allocate( UMF_SC(IM,JM,0:LM) )
       if(ALLOC_MFD)    allocate( MFD_SC(IM,JM,LM) )
+      if(ALLOC_DCM)    allocate( DCM_SC(IM,JM,LM) )
       if(ALLOC_DQVDT)  allocate( DQVDT_SC(IM,JM,LM) )
       if(ALLOC_DQLDT)  allocate( DQLDT_SC(IM,JM,LM) )
       if(ALLOC_DQIDT)  allocate( DQIDT_SC(IM,JM,LM) )
@@ -7301,6 +7421,7 @@ contains
       if(ALLOC_QLU)    allocate( QLU_SC(IM,JM,LM)   )
       if(ALLOC_QIU)    allocate( QIU_SC(IM,JM,LM)   )
       if(ALLOC_CBMF)   allocate( CBMF_SC(IM,JM)     )
+      if(ALLOC_CUSH)   allocate( CUSH_SC(IM,JM)     )
       if(ALLOC_DQCDT)  allocate( DQCDT_SC(IM,JM,LM) )
       if(ALLOC_CNT)    allocate( CNT_SC(IM,JM)      )
       if(ALLOC_CNB)    allocate( CNB_SC(IM,JM)      )
@@ -7333,18 +7454,24 @@ contains
       if(ALLOC_QISUB)  allocate( QISUB_SC(IM,JM,LM) )
       if(ALLOC_NDROP)  allocate( SC_NDROP(IM,JM,LM) )
       if(ALLOC_NICE)   allocate( SC_NICE(IM,JM,LM)  )
+      if(ALLOC_TPERT)  allocate( TPERT_SC(IM,JM)  )
+      if(ALLOC_QPERT)  allocate( QPERT_SC(IM,JM)  )
+      if(ALLOC_QTFLX)  allocate( QTFLX_SC(IM,JM,0:LM) )
+      if(ALLOC_SLFLX)  allocate( SLFLX_SC(IM,JM,0:LM) )
+      if(ALLOC_UFLX)   allocate( UFLX_SC(IM,JM,0:LM)  )
+      if(ALLOC_VFLX)   allocate( VFLX_SC(IM,JM,0:LM)  )
+
 
       IDIM = IM*JM
       IRUN = IM*JM
 
 
     ! define some default effective radii
-      CLDREFFR = 10.0e-6
-      CLDREFFS = 90.0e-6
-      CLDREFFG = 90.0e-6
-      CLDREFFI = 25.0e-6
-      CLDREFFL = 10.0e-6
-
+      CLDREFFR = 100.0e-6 ! Rain
+      CLDREFFS = 140.0e-6 ! Snow
+      CLDREFFG = 140.0e-6 ! Graupel
+      CLDREFFI = 25.0e-6  ! Cloud-Ice
+      CLDREFFL = 10.0e-6  ! Cloud-Water
 
       !  Copy incoming state vars to local arrays that will be adjusted
       !  by physics.  Untouched state vars will later be used for 
@@ -7511,6 +7638,12 @@ contains
               CNV_FRACTION =MAX(0.0,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
            END WHERE
          endif
+      endif
+
+      if (SHLWPARAMS%FRC_RASN < 0.0) then
+         FRC_RASN_2D = ABS(SHLWPARAMS%FRC_RASN)*(1.0-FRLAND)*CNV_FRACTION
+      else
+         FRC_RASN_2D = SHLWPARAMS%FRC_RASN
       endif
 
       if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
@@ -8386,13 +8519,14 @@ contains
       call compute_uwshcu_inv(IDIM, K0, ITRCR, DT_MOIST,  & ! IN
             PLO*100., ZLO, PK, PLE, ZLE, PKE, DP,         &
             U1, V1, Q1, QLLS, QILS, TH1, TKE, KPBLSC,     &
-            THLSRC_PERT,                                  &
+            SH, EVAP, RASPRCP, FRLAND,                     &
             CUSH, XHO,                                    & ! INOUT
-            UMF_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC,         & ! OUT
+            UMF_SC, DCM_SC, DQVDT_SC, DQLDT_SC, DQIDT_SC, & ! OUT
             DTHDT_SC, DUDT_SC, DVDT_SC, DQRDT_SC,         &
             DQSDT_SC, CUFRC_SC, ENTR_SC, DETR_SC,         &
             QLDET_SC, QIDET_SC, QLSUB_SC, QISUB_SC,       &
-            SC_NDROP, SC_NICE,                            &
+            SC_NDROP, SC_NICE, TPERT_SC, QPERT_SC,        &
+            QTFLX_SC, SLFLX_SC, UFLX_SC, VFLX_SC,         &
 #ifdef UWDIAG 
             QCU_SC, QLU_SC,                               & ! DIAG ONLY 
             QIU_SC, CBMF_SC, DQCDT_SC, CNT_SC, CNB_SC,    &
@@ -8402,7 +8536,7 @@ contains
             QTUP_SC, THLUP_SC, THVUP_SC, UUP_SC, VUP_SC,  &
             XC_SC,                                        &
 #endif 
-            USE_TRACER_TRANSP_UW, SHLWPARAMS )
+            FRC_RASN_2D, USE_TRACER_TRANSP_UW, SHLWPARAMS )
 
 
       !  Apply tendencies
@@ -8456,6 +8590,21 @@ contains
       SHLW_PRC3 = DQRDT_SC    ! [kg/kg/s]
       SHLW_SNO3 = DQSDT_SC    ! [kg/kg/s]
 
+      dum2d = 0.
+!      SC_PRC2 = 0.
+      DO K = 1,LM
+!         SC_PRC2 = SC_PRC2 + DQRDT_SC(:,:,K)*MASS(:,:,K)
+         dum2d = dum2d + (DQSDT_SC(:,:,k)+DQRDT_SC(:,:,k)+DQVDT_SC(:,:,k)+QLENT_SC(:,:,k)+QLSUB_SC(:,:,k)+QIENT_SC(:,:,k)+QISUB_SC(:,:,k))*MASS(:,:,k)+QLDET_SC(:,:,k)+QIDET_SC(:,:,k)
+      END DO
+      if (associated(SC_QT)) SC_QT = dum2d
+      dum2d = 0.
+      DO K = 1,LM
+         dum2d = dum2d + (MAPL_CP*DTHDT_SC(:,:,k)*PK(:,:,k) + MAPL_ALHL*DQVDT_SC(:,:,k)-MAPL_ALHF*DQIDT_SC(:,:,k))*MASS(:,:,k)
+      END DO
+      if (associated(SC_MSE)) SC_MSE = dum2d
+
+      if (associated(CUSH_SC)) CUSH_SC = CUSH
+
       else   ! if UW shallow scheme not called
 
         MFD_SC    = 0.
@@ -8468,9 +8617,10 @@ contains
         QIDET_SC  = 0.
         QLSUB_SC  = 0.
         QISUB_SC  = 0.
+	DCM_SC    = 0.
+        UMF_SC    = 0.
 
       end if
-
       
       call MAPL_TimerOff (STATE,"--UWSHCU")
 
@@ -8557,7 +8707,8 @@ contains
       do K=1,KM
          if(IS_FRIENDLY(K)) then
             KK = KK+1
-            TRPtrs(K)%Q(:,:,:) =  XHO(:,:,:,KK)
+            TRPtrs(K)%Q(:,:,:) = XHO(:,:,:,KK)
+            ASSERT_(all(XHO(:,:,:,KK) >= 0.0))
          end if
       end do
 
@@ -12616,6 +12767,7 @@ do K= 1, LM
 
       if(ALLOC_UMF)    deallocate( UMF_SC )
       if(ALLOC_MFD)    deallocate( MFD_SC )
+      if(ALLOC_DCM)    deallocate( DCM_SC )
       if(ALLOC_DQVDT)  deallocate( DQVDT_SC )
       if(ALLOC_DQLDT)  deallocate( DQLDT_SC )
       if(ALLOC_DQIDT)  deallocate( DQIDT_SC )
@@ -12644,6 +12796,10 @@ do K= 1, LM
       if(ALLOC_THVLSRC)deallocate( THVLSRC_SC )
       if(ALLOC_TKEAVG) deallocate( TKEAVG_SC )
       if(ALLOC_CLDTOP) deallocate( CLDTOP_SC )
+      if(ALLOC_QTFLX)  deallocate( QTFLX_SC )
+      if(ALLOC_SLFLX)  deallocate( SLFLX_SC )
+      if(ALLOC_UFLX)   deallocate( UFLX_SC  )
+      if(ALLOC_VFLX)   deallocate( VFLX_SC  )
 
       if(ALLOC_WUP)    deallocate( WUP_SC )
       if(ALLOC_QTUP)   deallocate( QTUP_SC )
@@ -12662,6 +12818,8 @@ do K= 1, LM
       if(ALLOC_QISUB)  deallocate( QISUB_SC )
       if(ALLOC_NDROP)  deallocate( SC_NDROP )
       if(ALLOC_NICE)   deallocate( SC_NICE )
+      if(ALLOC_TPERT)  deallocate( TPERT_SC )
+      if(ALLOC_QPERT)  deallocate( QPERT_SC )
 
       if(adjustl(CLDMICRO)=="GFDL") then
          if(ALLOC_PRCP_RAIN  )  deallocate(PRCP_RAIN  )
@@ -13642,7 +13800,7 @@ do K= 1, LM
           WRITE(*,*) 'Invalid OTDLISSCAL scaling factor, needed to compute flash rate for GEOSCHEMchem'
           WRITE(*,*) 'Please specify parameter "LFR_GCC_OTD_LISSCAL" or make sure that there is a default'
           WRITE(*,*) 'values for this grid resolution in GEOS_MoistGridComp.F90.'
-          FLUSH(6)
+          CALL FLUSH(6)
           ASSERT_(OTDLISSCAL>0.0)
        ENDIF
        IF ( MAPL_AM_I_ROOT() ) THEN
