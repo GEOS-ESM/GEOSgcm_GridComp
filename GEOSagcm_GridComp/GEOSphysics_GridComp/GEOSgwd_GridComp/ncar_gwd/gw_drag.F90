@@ -279,7 +279,7 @@ call gw_prof (pcols , pver, pint_dev_ff , pmid_dev_ff , t_dev_ff , rhoi, nm, ni 
 
 
 !get rid of lchnk
-    effgw_dp = 0.5_r8
+    effgw_dp = effgwbkg
     call gw_beres_ifc( beres_band, &
        pcols, pver, dt_ff , effgw_dp,  &
        u_dev_ff , v_dev_ff, t_dev_ff, &
@@ -296,7 +296,7 @@ call gw_prof (pcols , pver, pint_dev_ff , pmid_dev_ff , t_dev_ff , rhoi, nm, ni 
        t_gwt_ff = t_gwt_ff + t_gwt_dc_ff
 
 
-     effgworo_ff=0.125
+     effgworo_ff=effgworo
      call gw_oro_ifc( oro_band, &
        pcols, pver, dt_ff , effgworo_ff,  &
        u_dev_ff , v_dev_ff, t_dev_ff, &

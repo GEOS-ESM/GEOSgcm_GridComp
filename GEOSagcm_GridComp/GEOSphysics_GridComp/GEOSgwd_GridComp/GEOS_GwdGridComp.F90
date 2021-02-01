@@ -578,6 +578,23 @@ contains
          VLOCATION  = MAPL_VLocationNone,                                                     RC=STATUS  )
      VERIFY_(STATUS)
 
+! from moist
+     call MAPL_AddImportSpec(GC,                              &
+          SHORT_NAME='DTDT_moist',                            &
+          LONG_NAME ='T tendency due to moist',               &
+          UNITS     ='K s-1',                                 &
+          DIMS      = MAPL_DimsHorzVert,                      &
+          VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                              &
+          SHORT_NAME='CNV_FRC',                               &
+          LONG_NAME ='convective_fraction',                   &
+          UNITS     ='1',                                     &
+          DIMS      = MAPL_DimsHorzOnly,                      &
+          VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+     VERIFY_(STATUS)
+
      if (USE_NCEP_GWD) then
 !ALT: Reminder for myself: we need connections in Physics
 ! We need some new imports
@@ -589,27 +606,6 @@ contains
              DIMS       = MAPL_DimsHorzOnly,                    &
              VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
         VERIFY_(STATUS)      
-
-! from moist
-        call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='DTDT_moist',                            & 
-             LONG_NAME ='T tendency due to moist',               &
-             UNITS     ='K s-1',                                 &
-             DIMS      = MAPL_DimsHorzVert,                      &
-             VLOCATION = MAPL_VLocationCenter,              RC=STATUS  )
-        VERIFY_(STATUS)  
-!ALT: from this we can compute QMAX (column maximum value)
-!     and KTOP, KBOT near the location of QMAX
-!JTB: Moved up to default import state block (3/25/20)
-!WMP: Restored here for NCEP code
-
-        call MAPL_AddImportSpec(GC,                              &
-             SHORT_NAME='CNV_FRC',                               &
-             LONG_NAME ='convective_fraction',                   &
-             UNITS     ='1',                                     &
-             DIMS      = MAPL_DimsHorzOnly,                      &
-             VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
-        VERIFY_(STATUS)
 
 ! from dycore
         call MAPL_AddImportSpec ( gc,                            &
@@ -820,7 +816,8 @@ contains
                               0.50_MAPL_R8 , 0.25_MAPL_R8, ERRstring )
 
          ! Beres Scheme File
-         call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", RC=STATUS)
+         call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
+            default='/gpfsm/dnb31/jbacmeis/cesm_inputdata/newmfspectra40_dc25.nc', RC=STATUS)
          VERIFY_(STATUS)
 
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_desc )
@@ -1028,7 +1025,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real, pointer, dimension(:,:)    :: SGH
       real, pointer, dimension(:,:,:)  :: PLE, T, Q, U, V
       !++jtb Array for moist/deepconv heating
-      real, pointer, dimension(:,:,:)  :: HT_dpc
+      real, pointer, dimension(:,:,:)  :: HT_dpc, TRATE
+      real, pointer, dimension(:,:)    :: CNVF
 
 !  Pointers to Export state
 
@@ -1060,6 +1058,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       
 ! local variables
 
+      real,              dimension(IM,JM,LM  ) :: HT_ForCnvGWD
       real,              dimension(IM,JM,LM  ) :: ZM, PMID, PDEL, RPDEL, PMLN
       real,              dimension(IM,JM,LM  ) :: DUDT_ORG, DVDT_ORG, DTDT_ORG
       real,              dimension(IM,JM,LM  ) :: DUDT_GWD, DVDT_GWD, DTDT_GWD
@@ -1075,6 +1074,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real,              dimension(IM,JM)      :: KEGWD_X, KEORO_X,  KERAY_X,  KEBKG_X, KERES_X
       real,              dimension(IM,JM)      :: PEGWD_X, PEORO_X,  PERAY_X,  PEBKG_X, BKGERR_X
 
+      real,              dimension(IM,JM,LM  ) :: DUDT_GWD_0 , DVDT_GWD_0 , DTDT_GWD_0
+      real,              dimension(IM,JM,LM  ) :: DUDT_ORO_0 , DVDT_ORO_0 , DTDT_ORO_0
+      real,              dimension(IM,JM     ) :: TAUXB_TMP_0, TAUYB_TMP_0
+      real,              dimension(IM,JM     ) :: TAUXO_TMP_0, TAUYO_TMP_0
+
       integer                                  :: J, K, L
       real(ESMF_KIND_R8)                       :: DT_R8
       real                                     :: DT     ! time interval in sec
@@ -1085,7 +1089,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 #endif
 
 ! NCEP gwd related vars
-      real, pointer :: TRATE(:,:,:)=>NULL()
       real          :: CDMBGWD(2)
       logical       :: LPRNT
       logical, allocatable :: KCNV(:,:)
@@ -1102,7 +1105,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       integer, allocatable :: KTOP(:,:)
       real, allocatable :: QMAX(:,:)
       real, pointer     :: fPBL(:,:) => NULL()
-      real, pointer     :: CLDF(:,:) => NULL()
       real, pointer     :: HPRIME(:,:) => NULL()
       real, pointer     :: OC(:,:) => NULL()
       real, pointer     :: SIGMA(:,:) => NULL()
@@ -1144,7 +1146,12 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, SGH,    'SGH',     RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, PREF,   'PREF',    RC=STATUS ); VERIFY_(STATUS)
 !++jtb
-      call MAPL_GetPointer( IMPORT, HT_dpc, 'DTDTCN',  RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, HT_dpc, 'DTDTCN',     RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, TRATE,  'DTDT_moist', RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetPointer( IMPORT, CNVF,   'CNV_FRC',    RC=STATUS ); VERIFY_(STATUS)
+      DO L = 1, LM
+         HT_ForCnvGWD(:,:,L) = HT_dpc(:,:,L)
+      ENDDO
 
 ! Allocate/refer to the outputs
 !------------------------------
@@ -1616,19 +1623,55 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if (.not. USE_NCEP_GWD) then
 
        if (USE_NCAR_GWD) then
-          ! Use Julio new code
-       call gw_intr_ncar(IM*JM,    LM,         DT,                  &
-            PGWV,      beres_desc, beres_band, oro_band,            &
-            PLE,       T,          U,          V,      HT_dpc,      &
-            SGH,       PREF,                                        &
-            PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
-            DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
-            DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
-            TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
-            TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
-            FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
-            BGSTRESSMAX, effgworo, effgwbkg,   RC=STATUS            )
-       VERIFY_(STATUS)
+          ! Use GEOS GWD only for Extratropical background sources...
+          call gw_intr   (IM*JM,      LM,         DT,                  &
+               PGWV,                                                   &
+               PLE,       T,          U,          V,      SGH,   PREF, &
+               PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+               DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
+               DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
+               TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
+               TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
+               FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
+               BGSTRESSMAX*0.0, effgworo, effgwbkg,   RC=STATUS            )
+         VERIFY_(STATUS)
+         ! HOLD ON TO THE GEOS BKG OUTPUT
+         DUDT_GWD_0=DUDT_GWD
+         DVDT_GWD_0=DVDT_GWD
+         DTDT_GWD_0=DTDT_GWD
+         TAUXB_TMP_0=TAUXB_TMP
+         TAUYB_TMP_0=TAUYB_TMP
+         ! HOLD ON TO THE GEOS ORO OUTPUT
+         DUDT_ORO_0=DUDT_ORO
+         DVDT_ORO_0=DVDT_ORO
+         DTDT_ORO_0=DTDT_ORO
+         TAUXO_TMP_0=TAUXO_TMP
+         TAUYO_TMP_0=TAUYO_TMP
+         ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
+         call gw_intr_ncar(IM*JM,    LM,         DT,                  &
+              PGWV,      beres_desc, beres_band, oro_band,            &
+              PLE,       T,          U,          V,      HT_ForCnvGWD,&
+              SGH,       PREF,                                        &
+              PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+              DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
+              DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
+              TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
+              TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
+              FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
+              BGSTRESSMAX, effgworo*0.0, effgwbkg,   RC=STATUS            )
+         VERIFY_(STATUS)
+         ! ADD THE GEOS BKG OUTPUT
+         DUDT_GWD=DUDT_GWD_0+DUDT_GWD
+         DVDT_GWD=DVDT_GWD_0+DVDT_GWD
+         DTDT_GWD=DTDT_GWD_0+DTDT_GWD
+         TAUXB_TMP=TAUXB_TMP_0+TAUXB_TMP
+         TAUYB_TMP=TAUYB_TMP_0+TAUYB_TMP
+         ! REPLACE THE GEOS ORO OUTPUT
+         DUDT_ORO=DUDT_ORO_0
+         DVDT_ORO=DVDT_ORO_0
+         DTDT_ORO=DTDT_ORO_0
+         TAUXO_TMP=TAUXO_TMP_0
+         TAUYO_TMP=TAUYO_TMP_0
        else
           ! Use GEOS GWD    
           call gw_intr   (IM*JM,      LM,         DT,                  &
@@ -1723,10 +1766,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        call MAPL_GetPointer( IMPORT, DLENGTH, 'DXC', RC=STATUS )
        VERIFY_(STATUS)
 
-       call MAPL_GetPointer( IMPORT, CLDF, 'CNV_FRC', RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetPointer( IMPORT, TRATE, 'DTDT_moist', RC=STATUS )
-       VERIFY_(STATUS)
        ! for every i,j search loop over levels to find QMAX, KBOT and KTOP
        ! lat is not used
 
@@ -1759,13 +1798,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
              END DO
              KBOT(I,J) = L+1
 
-             IF(CLDF(I,J) > 0.15) THEN
+             IF(CNVF(I,J) > 0.15) THEN
                 KCNV(I,J) = .TRUE.
              END IF
           END DO
        END DO
        call gwdc(IRUN,IX,IY,LM,LAT,U,V,T,Q,DT, &
-            PMID,PLE,PDEL,QMAX,KTOP,KBOT,KCNV,CLDF, &
+            PMID,PLE,PDEL,QMAX,KTOP,KBOT,KCNV,CNVF, &
             MAPL_GRAV,MAPL_CP,MAPL_RDRY,FV,MAPL_PI,&
             DLENGTH,LPRNT,IPR,FHOUR, &
             DUDT_TOT,DVDT_TOT,TAUXB_TMP,TAUYB_TMP)

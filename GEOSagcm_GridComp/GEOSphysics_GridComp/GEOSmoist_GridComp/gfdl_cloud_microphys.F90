@@ -2417,7 +2417,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! combine water species
         ! -----------------------------------------------------------------------
         
-        if (.not. do_qa) cycle
+        if (do_qa) cycle
         
         if (rad_snow) then
             q_sol (k) = qi (k) + qs (k)
@@ -3388,7 +3388,23 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 vti (k) = vf_min
             else
                 tc (k) = tk (k) - tice ! deg C
-#define DENG_MACE
+#define COMBINE_ICE
+#ifdef COMBINE_ICE
+               ! -----------------------------------------------------------------------
+               ! use deng and mace (2008, grl)
+               ! -----------------------------------------------------------------------
+                IWC    = qi (k) * den (k) * 1.e3 ! Units are g/m3
+                viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc (k) * (aa * tc (k) + bb) + cc) + dd * tc (k) + ee)
+               ! -----------------------------------------------------------------------
+               ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in 
+               !                               midlatitude cirrus: Results from SPartICus'
+               ! -----------------------------------------------------------------------
+                IWC    = IWC * 1.e3 ! Units are mg/m3
+                viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC) + 68.85))
+               ! Combine 
+                vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
+#else
+!#define DENG_MACE
 #ifdef DENG_MACE
                ! -----------------------------------------------------------------------
                ! use deng and mace (2008, grl)
@@ -3412,6 +3428,8 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                ! Combine 
                 vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
 #endif
+#endif
+
                ! Units from cm/s to m/s
                 vti (k) = vi1 * vti (k)
 

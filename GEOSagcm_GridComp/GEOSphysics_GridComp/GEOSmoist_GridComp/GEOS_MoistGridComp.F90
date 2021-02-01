@@ -7807,7 +7807,7 @@ contains
          CNV_FRACTION = 0.0 
 
     ! CNV_FRACTION Criteria
-      call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
+      call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
       VERIFY_(STATUS)
@@ -7818,8 +7818,8 @@ contains
 
       if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
         ! CAPE
-         WHERE (CAPE .ne. MAPL_UNDEF)   
-            CNV_FRACTION =MAX(0.0,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN)))
+         WHERE (CAPE .ne. MAPL_UNDEF)
+            CNV_FRACTION =MAX(0.0,SQRT(MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
          END WHERE
       endif
       if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
@@ -9281,11 +9281,11 @@ contains
          call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 0.5     )
       elseif (adjustl(CLDMICRO) =="GFDL") then
          call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
-         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT= 15.e-6  )
-         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
+         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT=  5.e-6  )
+         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 140.e-6 )
          call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 1.0     )
-         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT= 5.e-6   )
-         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 21.e-6  )
+         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT= 2.5e-6  )
+         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 60.e-6  )
          call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 0.0     )
          call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 1.0     ) ! irrelevant
       else
