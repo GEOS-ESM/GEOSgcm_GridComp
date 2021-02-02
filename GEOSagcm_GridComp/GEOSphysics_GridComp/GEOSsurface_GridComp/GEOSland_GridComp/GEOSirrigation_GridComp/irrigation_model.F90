@@ -191,14 +191,12 @@ contains
     real, dimension (:), intent (inout)     :: SPRINKLERRATE, DRIPRATE, FLOODRATE
     INTEGER                                 :: NTILES, N
     REAL                                    :: ma, H1, H2, HC, IT, LF, LAITHRES
-    logical                                 :: ignore_lai_scaling = .true.
 
     NTILES = SIZE (IRRIGFRAC)
     TILE_LOOP : DO N = 1, NTILES
        IF(LAIMAX (N) > LAIMIN (N)) THEN
           LAITHRES = LAIMIN (N) + this%lai_thres * (LAIMAX (N) - LAIMIN (N))          
           LF       = (LAI(N) - LAIMIN (N)) / (LAIMAX(N) - LAIMIN(N))
-          if(ignore_lai_scaling) LF = 1.
        ELSE
           LF = 0.
        ENDIF
