@@ -50,7 +50,7 @@ for x in range(0,N_STA) : lats[x], lons[x], snames[x] = sta_info[x].values()
 # Create basin information file
 ################################
 
-OUTDIR = '../river_basin_infor/'
+OUTDIR = 'river_basin_infor/'
 
 if not os.path.exists(OUTDIR):
         os.mkdir(OUTDIR)
