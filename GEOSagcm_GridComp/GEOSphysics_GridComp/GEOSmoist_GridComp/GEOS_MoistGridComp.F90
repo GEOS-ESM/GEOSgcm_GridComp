@@ -9680,16 +9680,12 @@ contains
                      RAD_QV(I,J,K), RAD_QL(I,J,K), RAD_QI(I,J,K), RAD_QR(I,J,K), RAD_QS(I,J,K), RAD_CF(I,J,K), &
                      CLDREFFL(I,J,K), CLDREFFI(I,J,K), FRLAND(I,J), CNV_FRACTION(I,J), INT(CLDPARAMS%FR_AN_WAT), & 
                      CLDPARAMS%FAC_RL, CLDPARAMS%MIN_RL, CLDPARAMS%MAX_RL, CLDPARAMS%FAC_RI, CLDPARAMS%MIN_RI, CLDPARAMS%MAX_RI, &
-                     CLDPARAMS%CCN_OCEAN, CLDPARAMS%CCN_LAND )
+                     CLDPARAMS%CCN_OCEAN, CLDPARAMS%CCN_LAND, CLDPARAMS%PRECIPRAD)
             enddo
           enddo
         enddo
       ! Clean up radiation clouds after microphysics
         CALL FIX_UP_RAD_CLOUDS( RAD_QV, RAD_QL, RAD_QI, RAD_CF, RAD_QR, RAD_QS, RAD_QG)
-        if(CLDPARAMS%PRECIPRAD.eq.1.) then
-            RAD_QL = RAD_QL+RAD_QR
-            RAD_QI = RAD_QI+RAD_QS+RAD_QG
-        endif
       endif
 
          if (USE_AEROSOL_NN) then
