@@ -213,7 +213,8 @@ module gfdl2_cloud_microphys_mod
     real :: tau_l2v = 300. !< cloud water to water vapor (evaporation)
     real :: tau_g2v = 900. !< graupel sublimation
     real :: tau_v2g = 21600. !< graupel deposition -- make it a slow process
-    real :: tau_revp = 300. !< rain re-evaporation
+!   real :: tau_revp = 450. !< rain re-evaporation
+    real :: tau_revp = 600. !< rain re-evaporation
     ! horizontal subgrid variability
     
     real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
@@ -3388,7 +3389,23 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 vti (k) = vf_min
             else
                 tc (k) = tk (k) - tice ! deg C
-#define DENG_MACE
+#define COMBINE_ICE
+#ifdef COMBINE_ICE
+               ! -----------------------------------------------------------------------
+               ! use deng and mace (2008, grl)
+               ! -----------------------------------------------------------------------
+                IWC    = qi (k) * den (k) * 1.e3 ! Units are g/m3
+                viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc (k) * (aa * tc (k) + bb) + cc) + dd * tc (k) + ee)
+               ! -----------------------------------------------------------------------
+               ! use Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in 
+               !                               midlatitude cirrus: Results from SPartICus'
+               ! -----------------------------------------------------------------------
+                IWC    = IWC * 1.e3 ! Units are mg/m3
+                viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC) + 68.85))
+               ! Combine 
+                vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
+#else
+!#define DENG_MACE
 #ifdef DENG_MACE
                ! -----------------------------------------------------------------------
                ! use deng and mace (2008, grl)
@@ -3412,10 +3429,12 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                ! Combine 
                 vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
 #endif
+#endif
+
                ! Units from cm/s to m/s
                 vti (k) = vi1 * vti (k)
 
-!#define PRES_SCALE
+#define PRES_SCALE
 #ifdef PRES_SCALE
                ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
                 !------ice cloud effective radius ----- [klaus wyser, 1998]
