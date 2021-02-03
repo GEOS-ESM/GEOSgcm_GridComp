@@ -213,7 +213,8 @@ module gfdl2_cloud_microphys_mod
     real :: tau_l2v = 300. !< cloud water to water vapor (evaporation)
     real :: tau_g2v = 900. !< graupel sublimation
     real :: tau_v2g = 21600. !< graupel deposition -- make it a slow process
-    real :: tau_revp = 300. !< rain re-evaporation
+    real :: tau_revp = 600. !< rain re-evaporation
+    real :: tau_frz = 450. !, timescale for liquid-ice freezing
     ! horizontal subgrid variability
     
     real :: dw_land = 0.20 !< base value for subgrid deviation / variability over land
@@ -314,7 +315,7 @@ module gfdl2_cloud_microphys_mod
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
         const_vs, const_vg, const_vr, use_ccn, rthresh, ccn_l, ccn_o, qc_crt, &
         tau_g2v, tau_v2g, &
-        tau_revp, &
+        tau_revp, tau_frz, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v,      &
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs,           &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin, tice,        &
@@ -328,7 +329,7 @@ module gfdl2_cloud_microphys_mod
         qi0_crt, qr0_crt, fast_sat_adj, rh_inc, rh_ins, rh_inr, const_vi,     &
         const_vs, const_vg, const_vr, use_ccn, rthresh, ccn_l, ccn_o, qc_crt, &
         tau_g2v, tau_v2g, &
-        tau_revp, &
+        tau_revp, tau_frz, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v,      &
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs,           &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin, tice,        &
@@ -1619,13 +1620,14 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, fqak, fqal
     ! -----------------------------------------------------------------------
     
     do k = ktop, kbot
-        if (tzk (k) > tice .and. qik (k) > qcmin) then
+        if (tzk (k) > t_wfr .and. qik (k) > qcmin) then
             
             ! -----------------------------------------------------------------------
             ! pimlt: instant melting of cloud ice
             ! -----------------------------------------------------------------------
-            
-            melt = min (qik (k), fac_imlt * (tzk (k) - tice) / icpk (k))
+           
+            factor = max(0.,min(1.,((tzk (k)-t_wfr)/(tice-t_wfr))**2))
+            melt = min (qik (k), factor * fac_imlt * (tzk (k) - t_wfr) / icpk (k))
             tmp = min (melt, dim (ql_mlt, qlk (k))) ! max ql amount
             qlk (k) = qlk (k) + tmp
             qrk (k) = qrk (k) + melt - tmp
@@ -2075,7 +2077,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
     real :: dqsdt, dwsdt, dq, dq0, factor, tmp, oldqa, qlcn
     real :: q_plus, q_minus, dt_evap, dt_pisub
     real :: evap, sink, tc, pisub, q_adj, dtmp
-    real :: pssub, pgsub, tsq, qden, fac_g2v, fac_v2g
+    real :: pssub, pgsub, tsq, qden, fac_g2v, fac_v2g, fac_frz
     
     integer :: k
     
@@ -2094,7 +2096,9 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
     
     fac_g2v = 1. - exp (- dts / tau_g2v)
     fac_v2g = 1. - exp (- dts / tau_v2g)
-    
+   
+    fac_frz = 1. - exp (- dts / tau_frz)
+ 
     ! -----------------------------------------------------------------------
     ! define heat capacity and latend heat coefficient
     ! -----------------------------------------------------------------------
@@ -2223,7 +2227,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         
         dtmp = t_wfr - dt_fr - tz (k) 
         if (dtmp > 0. .and. ql (k) > qcmin) then
-            sink = min (ql (k), ql (k) * dtmp * 0.125, dtmp / icpk (k))
+           !sink = min (ql (k), ql (k) * dtmp * 0.125, dtmp / icpk (k))
+            sink = min (ql (k), ql (k) * dtmp * fac_frz, dtmp / icpk (k))
             ql (k) = ql (k) - sink
             qi (k) = qi (k) + sink
             q_liq (k) = q_liq (k) - sink

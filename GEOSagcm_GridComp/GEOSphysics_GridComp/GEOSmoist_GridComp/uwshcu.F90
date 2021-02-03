@@ -1466,7 +1466,7 @@ contains
            qpert_out(i) = qtsrc_fac*evap(i)/(zrho*wstar)    ! kg kg-1
          end if
          qpert_out(i) = max(min(qpert_out(i),0.02*qt0(1)),0.)  ! limit to 1% of QT
-         tpert_out(i) = 0.25+max(min(tpert_out(i),1.0),0.)          ! limit to 1K
+         tpert_out(i) = 0.1+max(min(tpert_out(i),1.0),0.)          ! limit to 1K
 
          qtsrc   = qtavg + qpert_out(i)
 !         qtsrc   = qt0(1) + qpert_out(i)
@@ -2622,8 +2622,7 @@ contains
             ud2    = 1. - 2.*xc + xc**2  ! (1-xc)**2
             if (mixscale.ne.0.0) then
 !              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
-!              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(4.,(cnvtr(i))/25.))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
-              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(4.,(cnvtr(i))/2.5e-6))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
+              rei(k) = ( (rkm+max(0.,(zmid0(k)-detrhgt)/200.)-max(0.,min(2.,(cnvtr(i))/2.5e-6))) / min(scaleh,mixscale) / g / rhomid0j )   ! alternative
             else if (mixscale.eq.0.0) then
               rei(k) = ( 0.5 * rkm / min(1500.,zmid0(k)) / g /rhomid0j )       ! Jason-2_0 version
             end if
@@ -3913,9 +3912,9 @@ contains
            qlten(k) = qlten(k) - qrten(k)
            qiten(k) = qiten(k) - qsten(k)
            qtten(k) = qlten(k) + qiten(k) + qvten(k)
-!           if( ( qv0(k) + qvten(k)*dt ) .lt. qmin(1) .or. &
-!              ( ql0(k) + qlten(k)*dt ) .lt. qmin(ixcldliq) .or. &
-!              ( qi0(k) + qiten(k)*dt ) .lt. qmin(ixcldice) ) then
+!           if( ( qv0(k) + qvten(k)*dt ) .lt. 0.0 .or. &
+!              ( ql0(k) + qlten(k)*dt ) .lt. 0.0 .or. &
+!              ( qi0(k) + qiten(k)*dt ) .lt. 0.0 ) then
 !               limit_negcon(i) = 1.
 !           end if
            slten(k) = sten(k) - xlv*qlten(k) - xls*qiten(k)

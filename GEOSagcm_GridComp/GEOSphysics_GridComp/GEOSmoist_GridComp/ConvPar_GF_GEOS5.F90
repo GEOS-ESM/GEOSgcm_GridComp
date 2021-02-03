@@ -33,7 +33,8 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 	,use_momentum_transp,cum_entr_rate                                 &
         ,zero_diff , nmp, lsmp, cnmp,moist_trigger,frac_modis,max_tq_tend  &
 	,cum_fadj_massflx, cum_use_excess, cum_ave_layer, adv_trigger      &
-	,use_smooth_prof, evap_fix,output_sound,use_cloud_dissipation
+	,use_smooth_prof, evap_fix,output_sound,use_cloud_dissipation      &
+	,use_smooth_tend
  
  !- for internal debugging
  PUBLIC GF_GEOS5_DRV       !- for debugging purposes (set private for normal runs)
@@ -137,6 +138,7 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 
  INTEGER :: USE_SMOOTH_PROF     = 0      != 1 makes the normalized mass flux, entr and detraiment profiles smoother
  
+ INTEGER :: USE_SMOOTH_TEND     = 0    
  !---                                              deep, shallow, congestus
  REAL,   DIMENSION(maxiens) :: CUM_HEI_DOWN_LAND =(/0.30,  0.20,  0.20/)!= [0.2,0.8] height of the max Z Downdraft , default = 0.50
  REAL,   DIMENSION(maxiens) :: CUM_HEI_DOWN_OCEAN=(/0.30,  0.20,  0.20/)!= [0.2,0.8] height of the max Z Downdraft , default = 0.50
@@ -3331,6 +3333,8 @@ l_SIG:DO fase = 1,2
         if(ierr(i) /= 0) cycle
         cupclw(i,kts:ktop(i)+1)=qrco(i,kts:ktop(i)+1)
      enddo
+
+
 !
 !--- get melting profile
 !
@@ -7418,6 +7422,7 @@ ENDIF
 
       !- for gate soundings
       !hei_updf = max(0.1, min(1.,float(JL)/100.)) 
+      !beta =1.0+float(JL)/100. * 5.
 
       !--hei_updf parameter goes from 0 to 1 = rainfall decreases with hei_updf 
       pmaxzu  =  (psur-100.) * (1.- 0.5*hei_updf) + 0.6*( po_cup(kt) ) * 0.5*hei_updf
@@ -7714,7 +7719,6 @@ ENDIF
      !hei_updf = (float(JL)-20)/40.
      !print*,"JL=",jl,hei_updf
       
-
       dp_layer     = hei_updf*(po_cup(k1)-po_cup(kt))
 
       level_max_zu = minloc(abs(po_cup(kts:kt+1)-(po_cup(k1)-dp_layer)),1)
@@ -7724,10 +7728,8 @@ ENDIF
       krmax        = float(level_max_zu)/float(kt+1)
       krmax        = min(krmax,0.99)
 
-       beta= 3.0!smaller => sharper detrainment layer
-
-      !beta = 1.+4.*(float(JL))/40.
-      !print*,"JL=",jl,beta
+      beta= 3.0!smaller => sharper detrainment layer
+     !beta = 1.+4.*(float(JL))/40.
       
       !- this alpha imposes the maximum zu at kpbli
       alpha=1.+krmax*(beta-1.)/(1.-krmax)
@@ -9288,7 +9290,7 @@ loop0:  do k= kbcon(i),ktop(i)
                                 outtem,outq,outqc,zu,pre,pw,xmb,ktop,                     &
                                 nx,nx2,ierr2,ierr3,pr_ens, maxens3,ensdim,sig,xland1,     &
                                 ichoice,ipr,jpr,itf,ktf,its,ite, kts,kte,                 &
-                                xf_dicycle,outu,outv,dellu,dellv,dtime,p_cup,kbcon,       &
+                                xf_dicycle,outu,outv,dellu,dellv,dtime,po_cup,kbcon,       &
 	                        dellabuoy,outbuoy, dellampqi,outmpqi,dellampql,outmpql,   &
 				dellampcf,outmpcf ,nmp)
    IMPLICIT NONE
@@ -9318,6 +9320,7 @@ loop0:  do k= kbcon(i),ktop(i)
   ! pw = pw -epsilon*pd (ensemble dependent)
   ! ierr error value, maybe modified in this routine
   !
+     character *(*), intent (in)          ::    name
      real,    dimension (its:ite,1:ensdim)                             &
         ,intent (inout)                   ::                           &
        xf_ens,pr_ens
@@ -9330,7 +9333,7 @@ loop0:  do k= kbcon(i),ktop(i)
         outmpqi,outmpql,outmpcf
      real,    dimension (its:ite,kts:kte)                              &
         ,intent (in  )                   ::                            &
-        zu,p_cup
+        zu,po_cup
      real,   dimension (its:ite)                                       &
          ,intent (in  )                   ::                           &
         sig
@@ -9341,7 +9344,7 @@ loop0:  do k= kbcon(i),ktop(i)
         ,intent (out  )                   ::                           &
         pre,xmb
      real,    dimension (its:ite)                                      &
-        ,intent (inout  )                   ::                         &
+        ,intent (inout  )                 ::                         &
         xland1
      real,    dimension (its:ite,kts:kte)                              &
         ,intent (in   )                   ::                           &
@@ -9365,15 +9368,13 @@ loop0:  do k= kbcon(i),ktop(i)
 !  local variables in this routine
 !
 
-     integer                              ::                           &
-        i,k,n,ncount,zmax
-     real                                 ::                           &
-        outtes,ddtes,dtt,dtq,dtqc,dtpw,prerate,fixouts
-     real                                 ::                           &
-        dtts,dtqs,fsum
-     real,    dimension (its:ite)::                           &
-       xmb_ave,xmbmax
-     character *(*), intent (in)        ::         name
+     integer                              ::  i,k,n,ncount,zmax,kk
+     real                                 ::  outtes,ddtes,dtt,dtq,dtqc&
+                                             ,dtpw,prerate,fixouts,dp
+     real                                 ::  dtts,dtqs,fsum, rcount
+     real,    dimension (its:ite)         ::  xmb_ave,xmbmax
+     real,    dimension (kts:kte,8)       ::  tend2d
+     real,    dimension (8)               ::  tend1d
 !
       do k=kts,ktf
        do i=its,itf
@@ -9490,7 +9491,7 @@ loop0:  do k= kbcon(i),ktop(i)
 !
       DO i=its,itf
            if(ierr(i) /= 0) cycle
-           xmbmax(i)=100.*(p_cup(i,kbcon(i))-p_cup(i,kbcon(i)+1))/(g*dtime)
+           xmbmax(i)=100.*(po_cup(i,kbcon(i))-po_cup(i,kbcon(i)+1))/(g*dtime)
            xmb(i) = min(xmb(i),xmbmax(i))
       ENDDO
 
@@ -9523,12 +9524,55 @@ loop0:  do k= kbcon(i),ktop(i)
            outu     (i,k)= dellu      (i,k)*xmb(i)
            outv     (i,k)= dellv      (i,k)*xmb(i)
            outbuoy  (i,k)= dellabuoy  (i,k)*xmb(i)
+        ENDDO
+        xf_ens (i,:)= sig(i)*xf_ens(i,:)
+        
+	IF(APPLY_SUB_MP == 1) THEN
+         DO k=kts,ktop(i)
 	   outmpqi(:,i,k)= dellampqi(:,i,k)*xmb(i)
 	   outmpql(:,i,k)= dellampql(:,i,k)*xmb(i)
 	   outmpcf(:,i,k)= dellampcf(:,i,k)*xmb(i)
         ENDDO
-        xf_ens (i,:)= sig(i)*xf_ens(i,:)
+	ENDIF
       ENDDO
+!
+!--  smooth the tendencies (future work: include outbuoy, outmpc* and tracers)
+!
+      IF(USE_SMOOTH_TEND > 0) THEN
+        DO i=its,itf
+           IF(ierr(i) /= 0) CYCLE
+           tend2d=0.
+           
+	   DO k=kts,ktop(i)
+             rcount = 0. ; tend1d=0.
+	     !print*,"xx=",max(kts,k-USE_SMOOTH_TEND),min(ktop(i),k+USE_SMOOTH_TEND)
+	     DO kk= max(kts,k-USE_SMOOTH_TEND),min(ktop(i),k+USE_SMOOTH_TEND)
+		  dp=(po_cup(i,kk)-po_cup(i,kk+1))
+		  rcount = rcount + dp
+      
+		  tend1d(1)  = tend1d(1)  +  dp*outtem (i,kk)
+		  tend1d(2)  = tend1d(2)  +  dp*outq   (i,kk)
+		  tend1d(3)  = tend1d(3)  +  dp*outqc  (i,kk)
+		  tend1d(4)  = tend1d(4)  +  dp*outu   (i,kk)
+		  tend1d(5)  = tend1d(5)  +  dp*outv   (i,kk)
+       
+             ENDDO
+	     tend2d(k,1)  = tend1d(1) /rcount
+	     tend2d(k,2)  = tend1d(2) /rcount
+	     tend2d(k,3)  = tend1d(3) /rcount
+	     tend2d(k,4)  = tend1d(4) /rcount
+	     tend2d(k,5)  = tend1d(5) /rcount
+           ENDDO
+	   DO k=kts,ktop(i)
+             outtem (i,k) = tend2d(k,1)
+	     outq   (i,k) = tend2d(k,2)
+             outqc  (i,k) = tend2d(k,3)
+     	     outu   (i,k) = tend2d(k,4)
+      	     outv   (i,k) = tend2d(k,5)
+	   ENDDO
+        ENDDO
+     
+      ENDIF
 
    END SUBROUTINE cup_output_ens_3d
 !------------------------------------------------------------------------------------
@@ -10772,8 +10816,8 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
      RH_cr_OCEAN = 0.9
      RH_cr_LAND  = 0.9
  else
-     RH_cr_OCEAN = 1.0
-     RH_cr_LAND  = 0.9
+     RH_cr_OCEAN = 0.95
+     RH_cr_LAND  = 0.85
  endif
  
  evap_bcb     = 0.0
@@ -10787,13 +10831,13 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
      if(ierr(i) /= 0) cycle
      
      !-- critical rel humidity  - check this, if the value is too small, not evapo will take place.
-     !RH_cr=0.9*xland(i)+0.7*(1.0-xland(i))
-     !RH_cr=1.
-     if(xland(i)  < 0.90 ) then !- over land
-	RH_cr = RH_cr_LAND
-     else
-	RH_cr = RH_cr_OCEAN
-     endif
+      RH_cr=RH_cr_OCEAN*xland(i)+RH_cr_LAND*(1.0-xland(i))
+
+     !if(xland(i)  < 0.90 ) then !- over land
+     !  RH_cr = RH_cr_LAND
+     !else
+     !  RH_cr = RH_cr_OCEAN
+     !endif
 
      do k=ktop(i),kts,-1
 
@@ -10802,7 +10846,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
         !p_liq_ice(i,k) = fract_liq_f(tempco(i,k))
      
         !---rainfall evaporation below cloud base
-	if(k < kbcon(i)) then
+	if(k <= kbcon(i)) then
          q_deficit = max(0.,(RH_cr*qes_cup(i,k) -qo_cup(i,k)))
        
          !--units here: kg[water]/kg[air}/sec
@@ -12061,43 +12105,47 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
      
      do k=ktop(i),kbcon(i),-1
 
-        !--- cloud liq/ice remained in the convection plume
-	qrc_diss = max(0., qrco(i,k) - outqc(i,k) * dtime)
+       !--- cloud liq/ice remained in the convection plume
+       qrc_diss = max(0., qrco(i,k) - outqc(i,k) * dtime)
 
-!qrc_diss=0.
+       !dp  = 100.*(po_cup(i,k)-po_cup(i,k+1))
+	
+       !--- get relative humidity
+       frh = 0. !min(qo_cup(i,k)/qeso_cup(i,k),1.)
+	
+       !--- estimation of the fractional area 
+       fractional_area = (xmb(i)/sig(i)) * zuo(i,k) / (rho_hydr(i,k)*vvel2d(i,k)) 
+	
+       !--- source of enviroment moistening/cooling due to the 'remained' cloud dissipation into it.
+       outqc_diss = ( qrc_diss * (1.-frh) ) / cloud_lifetime
+       
+       if(versionx==1) then 
+       
+         outt_diss  = -outqc_diss*(xlv/cp) !--- cooling
+       
+         !--- source of enviroment moistening/warming due to the 'remained' in-cloud water vapor mixing into it.
+         !  qvx   = qco   (i,k) 
+         !  tempx = tempco(i,k)
+            qvx   = qeso_cup(i,k)
+            tempx =(heso_cup(i,k)-g*zo(i,k)-xlv*qeso_cup(i,k))/cp
 
-        !dp  = 100.*(po_cup(i,k)-po_cup(i,k+1))
+         outq_mix = ( qvx   - qo_cup(i,k) ) / cloud_lifetime
 	
-	!--- get relative humidity
-        frh = 0. !min(qo_cup(i,k)/qeso_cup(i,k),1.)
-	
-	!--- estimation of the fractional area 
-        fractional_area = (xmb(i)/sig(i)) * zuo(i,k) / (rho_hydr(i,k)*vvel2d(i,k)) 
-	
-        !--- source of enviroment moistening/cooling due to the 'remained' cloud dissipation into it.
-        outqc_diss = ( qrc_diss * (1.-frh) ) / cloud_lifetime
+	 outt_mix = ( tempx - tn_cup(i,k) ) / cloud_lifetime
        
-        outt_diss  = -outqc_diss*(xlv/cp) !--- cooling
+         !-- feedback
+         del_q = (outqc_diss + outq_mix) * use_cloud_dissipation * fractional_area ! units: kg[water]/kg[air}/sec
+         del_t = (outt_diss  + outt_mix) * use_cloud_dissipation * fractional_area ! units: K/sec
        
-        !--- source of enviroment moistening/warming due to the 'remained' in-cloud water vapor mixing into it.
-if(versionx==1) then 
-   qvx   = qco   (i,k) 
-   tempx = tempco(i,k)
-else
-   qvx   = qeso_cup(i,k)
-   tempx = (heso_cup(i,k)-g*zo(i,k)-xlv*qeso_cup(i,k))/cp
-endif
-        outq_mix = ( qvx   - qo_cup(i,k) ) / cloud_lifetime
-	
-	outt_mix = ( tempx - tn_cup(i,k) ) / cloud_lifetime
-       
-        !-- feedback
-        del_q = (outqc_diss + outq_mix) * use_cloud_dissipation * fractional_area ! units: kg[water]/kg[air}/sec
-        del_t = (outt_diss  + outt_mix) * use_cloud_dissipation * fractional_area ! units: K/sec
-       
-        outq (i,k) = outq (i,k) + del_q
-        outt (i,k) = outt (i,k) + del_t
+         outq (i,k) = outq (i,k) + del_q
+         outt (i,k) = outt (i,k) + del_t
         
+        else
+        
+         outqc(i,k) = outqc(i,k) + outqc_diss* fractional_area * use_cloud_dissipation
+
+        endif
+
 	!print*,"diss2=",k,real(outqc_diss*86400.*1000),real(sqrt(1.-sig(i)),4),real( fractional_area*100.,4)
 	
         qrco    (i,k) = max(0., qrco(i,k) - outqc_diss * use_cloud_dissipation * fractional_area *dtime)
