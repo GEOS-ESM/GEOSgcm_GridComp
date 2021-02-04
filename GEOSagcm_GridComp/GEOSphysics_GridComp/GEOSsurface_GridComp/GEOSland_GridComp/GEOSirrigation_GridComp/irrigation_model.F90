@@ -42,7 +42,7 @@ MODULE IRRIGATION_MODULE
   ! (3) MODEL INPUTS:
   !     SMWP    : rootzone soil moisture content at wilting point [mm] 
   !     SMSAT   : rootzone soil moisture content at saturation [mm] 
-  !     SMREF   : rootzone soil moisture at lower tercile [mm]
+  !     SMREF   : rootzone soil moisture at field capacity [mm]
   !     SMCNT   : currrent root zone soil moisture content [mm] 
   !     RZDEF   : rootzone moisture deficit to reach complete soil saturation for paddy [mm]
   !     LOCAL_HOUR to set irrigation switch.
@@ -107,6 +107,7 @@ MODULE IRRIGATION_MODULE
      
      REAL :: lai_thres        =  0.6 ! threshold of LAI range to turn irrigation on
      REAL :: efcor            = 24.0 ! Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use)
+     REAL :: MIDS_LENGTH      =  0.5 ! Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER: 1)
      
      ! Sprinkler parameters
      ! --------------------
@@ -171,6 +172,7 @@ contains
     CALL ESMF_ConfigGetAttribute (SCF, label='FLOOD_THRES:'    , VALUE=IP%flood_thres,     DEFAULT=DP%flood_thres    , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='IRR_EFCOR:'      , VALUE=IP%efcor,           DEFAULT=DP%efcor          , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='LAI_THRES:'      , VALUE=IP%lai_thres,       DEFAULT=DP%lai_thres      , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='MIDS_LENGTH:'    , VALUE=IP%MIDS_LENGTH,     DEFAULT=DP%lai_thres      , __RC__ )
     CALL ESMF_ConfigDestroy      (SCF, __RC__)
 
   END SUBROUTINE init_model
@@ -343,7 +345,7 @@ contains
     real, dimension(:,:,:),intent (in)   :: IRRIGHARVEST  ! NUM_SEASONS, NUM_CROPS
     real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FLOODRATE
     INTEGER                              :: NTILES, N, crop, sea
-    REAL                                 :: ma, H1, H2, HC, IT, ICFRAC
+    REAL                                 :: ma, H1, H2, HC, IT, ICFRAC, SEAFRAC
     REAL, ALLOCATABLE, DIMENSION (:)     :: FRATE, SRATE, DRATE
 
     NTILES = SIZE (local_hour)
@@ -355,11 +357,6 @@ contains
        HC = local_hour(n)
        IRR_OR_NOT: if(SUM(CROPIRRIGFRAC(N,:)) > 0.) then
           
-          if(SMREF(N) > SMWP(N))then
-             ma = (SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
-          else
-             ma = -1.
-          endif
           ICFRAC = SUM (CROPIRRIGFRAC(N,:)) - CROPIRRIGFRAC(N,3)
           IF (ICFRAC > 0.) THEN
              srate = 0.
@@ -396,7 +393,12 @@ contains
                                DRIPRATE (N)      = 0.
 
                             else
-                               
+                               SEAFRAC = CROP_SEASON_STAGE (this%MIDS_LENGTH, dofyr,NINT(IRRIGPLANT(N, sea, crop)),NINT(IRRIGHARVEST(N, sea, crop)))
+                               if(SMREF(N) > SMWP(N))then
+                                  ma = (SEAFRAC*SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
+                               else
+                                  ma = -1.
+                               endif
                                ! irrigated crop - compute sum of irrigrates from 25 crops   
                                SELECT CASE (NINT(IRRIGTYPE(N,crop)))
                                CASE (1)
@@ -490,6 +492,39 @@ contains
     endif
       
   end FUNCTION IS_WITHIN_SEASON
+
+  ! ----------------------------------------------------------------------------
+  
+  real FUNCTION CROP_SEASON_STAGE (MSL, DOY,DP, DH)
+
+    implicit none
+    real, intent    (in) :: MSL
+    integer, intent (in) :: DOY,DP, DH
+    real                 :: seal, t0, t1, t2, t3, CTime
+    
+    CROP_SEASON_STAGE = 0.
+    
+    if(DH > DP) then
+       seal  = real (DH - DP + 1)
+       CTime = real (DOY)
+    else
+       seal = real(366 - DP + 1 + DH)      
+       if((DOY >= DP).AND.(DOY <= 366)) CTIME = real (DOY) 
+       if((DOY >=  1).AND.(DOY <=  DH)) CTIME = real (DOY) + 365.
+    endif
+
+    t0 = real (DP)
+    t1 = t0 + seal * (1. - MSL)/2.
+    t2 = t1 + seal*MSL
+    t3 = t0 + seal
+
+    if (ctime < t1)                     CROP_SEASON_STAGE = (CTIME -t0)/(t1 - t0)
+    if ((t1 <= ctime).and.(ctime < t2)) CROP_SEASON_STAGE = 1.
+    if (ctime >= t2)                    CROP_SEASON_STAGE = (t3 - ctime)/(t3 - t2)  
+
+    if(CROP_SEASON_STAGE > 1.) CROP_SEASON_STAGE = 1.
+    
+  end FUNCTION CROP_SEASON_STAGE
   
   ! ----------------------------------------------------------------------------
 

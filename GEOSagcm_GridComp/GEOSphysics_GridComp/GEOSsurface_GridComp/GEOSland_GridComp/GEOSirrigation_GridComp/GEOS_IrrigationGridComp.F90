@@ -31,7 +31,7 @@ module GEOS_IrrigationGridCompMod
 ! each parameter in the internal state.  All internals are static parameters.
 !
 ! INTERNALS: IRRIGFRAC, PADDYFRAC, CROPIRRIGFRAC, IRRIGPLANT, IRRIGHARVEST,
-!            IRRIGTYPE, SPRINKLERFR, DRIPFR, FLOODFR, LAIMIN, LAIMAX\\
+!            FIELDCAP, IRRIGTYPE, SPRINKLERFR, DRIPFR, FLOODFR, LAIMIN, LAIMAX\\
 ! OPTIONAL INTERNALS:  SPRINKLERRATE, DRIPRATE, FLOODRATE\\
 !  
 ! This GC imports soil parameters and root zone soil moisture from land models
@@ -154,6 +154,17 @@ contains
 ! -----------------------------------------------------------
 ! Internal State 
 ! -----------------------------------------------------------
+
+    call MAPL_AddInternalSpec(GC                              ,&
+         SHORT_NAME = 'FIELDCAP'                              ,&
+         LONG_NAME  = 'soil_field_capacity'	              ,&
+         UNITS      = '1'                                     ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         FRIENDLYTO = trim(COMP_NAME)                         ,&
+         RESTART    = MAPL_RestartRequired                    ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)  
 
     call MAPL_AddInternalSpec(GC                              ,&
          SHORT_NAME = 'IRRIGFRAC'                             ,&
@@ -417,7 +428,8 @@ contains
     type (ESMF_State       )           :: INTERNAL
 
 ! INTERNAL pointers
- 
+
+    real, dimension(:),     pointer :: FIELDCAP
     real, dimension(:),     pointer :: IRRIGFRAC
     real, dimension(:),     pointer :: PADDYFRAC
     real, dimension(:),     pointer :: SPRINKLERFR
@@ -486,7 +498,8 @@ contains
 
 ! get pointers to internal variables
 ! ----------------------------------
-  
+
+    call MAPL_GetPointer(INTERNAL, FIELDCAP       ,'FIELDCAP',     RC=STATUS) ; VERIFY_(STATUS)  
     call MAPL_GetPointer(INTERNAL, IRRIGFRAC      ,'IRRIGFRAC',    RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, PADDYFRAC      ,'PADDYFRAC',    RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, CROPIRRIGFRAC  ,'CROPIRRIGFRAC',RC=STATUS) ; VERIFY_(STATUS)
@@ -560,8 +573,8 @@ contains
        if((local_hour(n) >= T1).and.(local_hour(n) < T2))then
           local_hour(n) = real(NINT(local_hour(n)))
        end if
-       ! reference soil moisture content is at lower tercile of RZ soil moisture range [mm]
-       SMREF (n) = VGWMAX (n) * (wpwet (n) + (1. - wpwet (n))/3.) 
+       ! reference soil moisture content is at soil field capacity [mm]
+       SMREF (n) = VGWMAX (n) * FIELDCAP(n)
        
     END DO
     
