@@ -1,0 +1,70 @@
+! The following are overrides to the default 1deg configuration from
+! GFDL (https://github.com/NOAA-GFDL/MOM6-examples/blob/dev/gfdl/
+!       ice_ocean_SIS2/OM_1deg/MOM_input)
+! that are needed for SOCA
+!-------------------------------------------------------------------------------
+
+! overrides due to change of default values between latest MOM6 code and that
+! assumed by the version of MOM_input being used
+INTERPOLATE_RES_FN = False
+
+! disable checksums
+RESTART_CHECKSUMS_REQUIRED = False
+
+! use Z* vertical coordinates instead of hybrid coords
+#override REGRIDDING_COORDINATE_MODE = "Z*"
+#override ALE_COORDINATE_CONFIG="FILE:vgrid.nc,dz"
+
+! vertex shear to remove checkerboard patterns that may develop
+VERTEX_SHEAR=True
+
+! diagnostic output coordinates (because I don't care about rho coords, for now)
+#override NUM_DIAG_COORDS = 1
+#override DIAG_COORDS = "z Z ZSTAR"
+
+# input files / var-names for coldstarts are different
+!#override TEMP_Z_INIT_FILE = "ocean.T.nc"
+!#override SALT_Z_INIT_FILE = "ocean.S.nc"
+!#override Z_INIT_FILE_PTEMP_VAR = "ptemp_an"
+!#override Z_INIT_FILE_SALT_VAR = "s_an"
+
+#override TEMP_SALT_Z_INIT_FILE = "WOA05_pottemp_salt.nc" ! default = "temp_salt_z.nc"
+                                ! The name of the z-space input file used to initialize
+                                ! the layer thicknesses, temperatures and salinities.
+#override TEMP_Z_INIT_FILE = "" ! default = ""
+                                ! The name of the z-space input file used to initialize temperatures, only.
+#override SALT_Z_INIT_FILE = "" ! default = ""
+                                ! The name of the z-space input file used to initialize temperatures, only.
+#override Z_INIT_FILE_PTEMP_VAR = "PTEMP" ! default = "ptemp"
+                                ! The name of the potential temperature variable in
+                                ! TEMP_SALT_Z_INIT_FILE.
+#override Z_INIT_FILE_SALT_VAR = "SALT"   ! default = "salt"
+                                ! The name of the salinity variable in
+                                ! TEMP_SALT_Z_INIT_FILE.
+
+
+! we don't run long enough to care about tracer ages
+#override USE_IDEAL_AGE_TRACER = False
+
+! we don't require reproducibility with old runs... disable all known bugs (eventually)
+!#override USE_TRIPOLAR_GEOLONB_BUG = False
+!#override GRID_ROTATION_ANGLE_BUGS = False
+!#override Z_INIT_REMAP_OLD_ALG = False
+!#override REMAP_UV_USING_OLD_ALG = False
+!#override USE_GM_WORK_BUG =  False
+!#override KAPPA_SHEAR_ITER_BUG = False
+!#override KAPPA_SHEAR_ALL_LAYER_TKE_BUG = False
+!#override FIX_USTAR_GUSTLESS_BUG = True
+
+! these are not used by the forecast for coupled MOM6SIS2, but are needed
+! by SOCA's MOM6 solo (e.g. the checkpoint app)
+BUOY_CONFIG='zero'
+WIND_CONFIG='zero'
+
+#override DT_THERM = 450.
+HFREEZE = 10.0
+
+!VERBOSITY = 9
+!DEBUG = True
+!REPORT_UNUSED_PARAMS = True
+

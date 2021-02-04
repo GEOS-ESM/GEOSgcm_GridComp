@@ -34,9 +34,9 @@
                       pwvcm, fracs, taut, & 
                       totuflux, totdflux, fnet, htr, &
                       totuclfl, totdclfl, fnetc, htrc, &
-                      olrb09, olrb10, olrb11, &
+                      olrb06, olrb09, olrb10, olrb11, &
                       idrv, dplankbnd_dt, dtotuflux_dt, dtotuclfl_dt, &
-                      dolrb09_dt, dolrb10_dt, dolrb11_dt )
+                      dolrb06_dt, dolrb09_dt, dolrb10_dt, dolrb11_dt )
 !-----------------------------------------------------------------------------
 !
 !  Original version:   E. J. Mlawer, et al. RRTM_V3.0
@@ -121,9 +121,9 @@
                                                       ! with respect to surface temperature
                                                       !    Dimensions: (0:nlayers)
 
-      ! TOA OLR in bands 9-11 and their derivatives with surface temp
-      real, intent(out) :: olrb09,     olrb10,     olrb11       ! W/m2
-      real, intent(out) :: dolrb09_dt, dolrb10_dt, dolrb11_dt   ! W/m2/K
+      ! TOA OLR in bands 6 & 9-11 and their derivatives with surface temp
+      real, intent(out) :: olrb06,     olrb09,     olrb10,     olrb11       ! W/m2
+      real, intent(out) :: dolrb06_dt, dolrb09_dt, dolrb10_dt, dolrb11_dt   ! W/m2/K
 
 ! ----- Local -----
 ! Declarations for radiative transfer
@@ -291,11 +291,13 @@
          dtotuclfl_dt(0) = 0.0 
       endif
 
-      ! default to zero if bands 9-11 not included
+      ! default to zero if bands 6 & 9-11 not included
+      olrb06 = 0.0
       olrb09 = 0.0
       olrb10 = 0.0
       olrb11 = 0.0
       if (idrv .eq. 1) then
+         dolrb06_dt = 0.0
          dolrb09_dt = 0.0
          dolrb10_dt = 0.0
          dolrb11_dt = 0.0
@@ -574,7 +576,13 @@
             enddo
          endif
 
-         ! bands 9-11 TOA OLR
+         ! bands 6 & 9-11 TOA OLR
+         if (iband .eq.  6) then
+            olrb06 = uflux(nlayers) * delwave(iband)
+            if (idrv .eq. 1) then
+               dolrb06_dt = duflux_dt(nlayers) * delwave(iband)
+            end if
+         end if
          if (iband .eq.  9) then
             olrb09 = uflux(nlayers) * delwave(iband)
             if (idrv .eq. 1) then
@@ -624,11 +632,13 @@
       htr(nlayers) = 0.0 
       htrc(nlayers) = 0.0 
 
-      ! bands 9-11 TOA OLR (convert to flux)
+      ! bands 6 & 9-11 TOA OLR (convert to flux)
+      olrb06 = olrb06 * fluxfac
       olrb09 = olrb09 * fluxfac
       olrb10 = olrb10 * fluxfac
       olrb11 = olrb11 * fluxfac
       if (idrv .eq. 1) then
+        dolrb06_dt = dolrb06_dt * fluxfac
         dolrb09_dt = dolrb09_dt * fluxfac
         dolrb10_dt = dolrb10_dt * fluxfac
         dolrb11_dt = dolrb11_dt * fluxfac

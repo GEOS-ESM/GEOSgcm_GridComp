@@ -11,6 +11,10 @@ set (srcs
   # ras00.F90 cloud.F90
   )
 
+if (CMAKE_Fortran_COMPILER_ID MATCHES Intel AND CMAKE_BUILD_TYPE MATCHES Aggressive)
+   set (CMAKE_Fortran_FLAGS_AGGRESSIVE "${GEOS_Fortran_FLAGS_VECT}")
+endif ()
+
 esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base
@@ -21,7 +25,7 @@ target_include_directories(${this} PRIVATE
    $<BUILD_INTERFACE:${extra_incs}>
    )
 
-file (GLOB_RECURSE rc_files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.rc)
+file (GLOB_RECURSE rc_files CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.rc)
 foreach ( file ${rc_files} )
    get_filename_component( dir ${file} DIRECTORY )
    install( FILES ${file} DESTINATION etc/${dir} )

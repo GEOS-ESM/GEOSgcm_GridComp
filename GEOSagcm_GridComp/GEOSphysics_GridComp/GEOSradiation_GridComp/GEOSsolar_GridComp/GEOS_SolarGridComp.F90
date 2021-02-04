@@ -2213,8 +2213,10 @@ contains
       ! brng = VSL_BRNG_PHILOX4X32X10  ! 10-round Philox 4x32 counter, 2x32 key
       ! Alternatives are VSL_BRNG_ARS5 ! faster if AES-NI instructions hardware supported
       !
+#ifdef HAVE_MKL
       use MKL_VSL_TYPE
       use mo_rng_mklvsl_plus, only: ty_rng_mklvsl_plus
+#endif
 
       integer,           intent(IN ) :: IM, JM, LM
       logical,           intent(IN ) :: NO_AERO
@@ -2359,7 +2361,9 @@ contains
       real(wp), dimension(:,:), allocatable :: clwp, ciwp
 
       ! a column random number generator
+#ifdef HAVE_MKL
       type(ty_rng_mklvsl_plus) :: rng
+#endif
       integer, dimension(:), allocatable :: seeds
 
       ! uniform random numbers need by mcICA (ngpt,nlay,cols)
@@ -3488,6 +3492,7 @@ contains
         ! generate McICA random numbers for subset
         ! Note: really only needed where cloud fraction > 0 (speedup?)
         ! Also, perhaps later this can be parallelized?
+#ifdef HAVE_MKL
         do isub = 1, ncols_subset
           ! local 1d column index
           icol = colS + isub - 1
@@ -3502,6 +3507,7 @@ contains
           ! free the rng
           call rng%end()
         end do
+#endif
 
         ! cloud sampling to gpoints
         select case (cloud_overlap_type)
