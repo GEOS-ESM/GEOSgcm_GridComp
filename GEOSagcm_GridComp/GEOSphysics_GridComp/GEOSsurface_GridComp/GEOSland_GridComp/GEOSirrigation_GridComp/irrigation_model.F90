@@ -247,7 +247,7 @@ contains
                    H2 = this%drip_stime + this%drip_dur
                    IT = this%sprinkler_thres 
                    if ((HC >= H1).AND.(HC < H2)) then
-                      if((ma <= IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(SMCNT(N),SMREF(N),0.) * DRIPFR (N) /(H2 - H1)/3600.
+                      if((ma <= IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(LF*SMCNT(N),SMREF(N),0.) * DRIPFR (N) /(H2 - H1)/3600.
                    else
                       DRIPRATE (N) = 0.
                    endif
@@ -408,7 +408,7 @@ contains
                                   IT = this%sprinkler_thres
                                   if ((HC >= H1).AND.(HC < H2)) then
                                      if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) &
-                                          SRATE (crop) = this%cwd(SMCNT(N),SMREF(N),this%efcor) &
+                                          SRATE (crop) = this%cwd(SEAFRAC*SMCNT(N),SMREF(N),this%efcor) &
                                           /(H2 - H1)/3600.
                                   else
                                      SRATE (crop) = 0
@@ -420,7 +420,7 @@ contains
                                   H2 = this%drip_stime + this%drip_dur
                                   IT = this%sprinkler_thres 
                                   if ((HC >= H1).AND.(HC < H2)) then
-                                     if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) DRATE (crop) = this%cwd(SMCNT(N),SMREF(N),0.) &
+                                     if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) DRATE (crop) = this%cwd(SEAFRAC*SMCNT(N),SMREF(N),0.) &
                                           /(H2 - H1)/3600.
                                   else
                                      DRATE (crop) = 0.
@@ -433,7 +433,7 @@ contains
                                   IT = this%flood_thres
                                   if ((HC >= H1).AND.(HC < H2)) then
                                      if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) &
-                                          FRATE (crop) = this%cwd(SMCNT(N),SMREF(N),this%efcor) &
+                                          FRATE (crop) = this%cwd(SEAFRAC*SMCNT(N),SMREF(N),this%efcor) &
                                            /(H2 - H1)/3600.
                                   else
                                      FRATE (crop) = 0.
