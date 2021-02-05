@@ -574,7 +574,7 @@ contains
           local_hour(n) = real(NINT(local_hour(n)))
        end if
        ! reference soil moisture content is at soil field capacity [mm]
-       SMREF (n) = VGWMAX (n) * FIELDCAP(n)
+       SMREF (n) = (VGWMAX(n)/POROS(n)) * FIELDCAP(n)
        
     END DO
     
