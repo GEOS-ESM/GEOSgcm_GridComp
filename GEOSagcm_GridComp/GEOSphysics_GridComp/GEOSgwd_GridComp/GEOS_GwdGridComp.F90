@@ -81,6 +81,7 @@ module GEOS_GwdGridCompMod
   public SetServices
 
 !EOP
+  logical            :: USE_NCAR_GWD
   logical, parameter :: USE_NCEP_GWD = .false.
   type(GWBand)          :: beres_band
   type(BeresSourceDesc) :: beres_desc
@@ -115,7 +116,7 @@ contains
     character(len=ESMF_MAXSTR)              :: IAm
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
-
+    type (MAPL_MetaComp),     pointer   :: MAPL
 !=============================================================================
 
 ! Begin...
@@ -138,6 +139,10 @@ contains
                                       RC=STATUS)
     VERIFY_(STATUS)
 
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, USE_NCAR_GWD, Label="USE_NCAR_GWD:",  default=.false., RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -578,6 +583,62 @@ contains
          VLOCATION  = MAPL_VLocationNone,                                                     RC=STATUS  )
      VERIFY_(STATUS)
 
+     if (USE_NCAR_GWD) then
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'SGH', &
+             LONG_NAME  = 'standard deviation of 30s elevation from 3km cube', &
+             UNITS      = 'm', &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'GBXAR', &
+             LONG_NAME  = 'NA', &
+             UNITS      = 'NA', &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'HWDTH', &
+             LONG_NAME  = 'NA', &
+             UNITS      = 'NA', &
+             UNGRIDDED_DIMS     = (/16/),                      &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'CLNGT', &
+             LONG_NAME  = 'NA', &
+             UNITS      = 'NA', &
+             UNGRIDDED_DIMS     = (/16/),                      &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'MXDIS', &
+             LONG_NAME  = 'NA', &
+             UNITS      = 'NA', &
+             UNGRIDDED_DIMS     = (/16/),                      &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'ANGLL', &
+             LONG_NAME  = 'NA', &
+             UNITS      = 'NA', &
+             UNGRIDDED_DIMS     = (/16/),                      &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+        call MAPL_AddInternalSpec(GC, &
+             SHORT_NAME = 'ANIXY', &
+             LONG_NAME  = 'NA', &
+             UNITS      = 'NA', &
+             UNGRIDDED_DIMS     = (/16/),                      &
+             DIMS       = MAPL_DimsHorzOnly,                    &
+             VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+        VERIFY_(STATUS)      
+     end if
 ! from moist
      call MAPL_AddImportSpec(GC,                              &
           SHORT_NAME='DTDT_moist',                            &
@@ -774,7 +835,6 @@ contains
 
     character(len=ESMF_MAXPATHLEN) :: BERES_FILE_NAME
     character(len=ESMF_MAXSTR)     :: ERRstring
-    logical                        :: USE_NCAR_GWD
 
 !=============================================================================
 
@@ -800,12 +860,6 @@ contains
       call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
       VERIFY_(STATUS)
 
-      ! Check to see if we are using NCAR GWD
-      !--------------------------------------
-
-      call MAPL_GetResource( MAPL, USE_NCAR_GWD, Label="USE_NCAR_GWD:",  default=.false., RC=STATUS)
-      VERIFY_(STATUS)
-
       !++jtb 03/2020
       !-----------------------------------
       if (USE_NCAR_GWD) then
@@ -817,7 +871,7 @@ contains
 
          ! Beres Scheme File
          call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
-            default='/gpfsm/dnb31/jbacmeis/cesm_inputdata/newmfspectra40_dc25.nc', RC=STATUS)
+            default=' /discover/nobackup/projects/gmao/share/gmao_ops/fvInput/g5gcm/gwd/newmfspectra40_dc25.nc', RC=STATUS)
          VERIFY_(STATUS)
 
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_desc )
@@ -869,6 +923,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   real                                :: CDMBGWD1, CDMBGWD2
   real                                :: bgstressmax
   real, pointer, dimension(:,:)       :: LATS
+ 
+  real :: GEOS_BGSTRESS, GEOS_GWBKG, GEOS_GWORO
+  real :: NCAR_BGSTRESS, NCAR_GWBKG, NCAR_GWORO
 
   character(len=ESMF_MAXSTR) :: GRIDNAME
   character(len=4)           :: imchar
@@ -961,6 +1018,21 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetResource( MAPL, CDMBGWD2, Label="CDMBGWD2:", default=0.250, RC=STATUS)
       VERIFY_(STATUS)
     endif
+    endif
+
+    if (USE_NCAR_GWD) then
+    call MAPL_GetResource( MAPL, GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, GEOS_GWBKG, Label="GEOS_GWBKG:", default=0.0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, GEOS_GWORO, Label="GEOS_GWORO:", default=0.0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NCAR_BGSTRESS, Label="NCAR_BGSTRESS:", default=1.0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NCAR_GWBKG, Label="NCAR_GWBKG:", default=1.0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, NCAR_GWORO, Label="NCAR_GWORO:", default=1.0, RC=STATUS)
+    VERIFY_(STATUS)
     endif
 
     call MAPL_GetResource( MAPL, effgworo, Label="EFFGWORO:", default=0.250, RC=STATUS)
@@ -1058,7 +1130,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       
 ! local variables
 
-      real,              dimension(IM,JM,LM  ) :: HT_ForCnvGWD
       real,              dimension(IM,JM,LM  ) :: ZM, PMID, PDEL, RPDEL, PMLN
       real,              dimension(IM,JM,LM  ) :: DUDT_ORG, DVDT_ORG, DTDT_ORG
       real,              dimension(IM,JM,LM  ) :: DUDT_GWD, DVDT_GWD, DTDT_GWD
@@ -1074,10 +1145,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real,              dimension(IM,JM)      :: KEGWD_X, KEORO_X,  KERAY_X,  KEBKG_X, KERES_X
       real,              dimension(IM,JM)      :: PEGWD_X, PEORO_X,  PERAY_X,  PEBKG_X, BKGERR_X
 
-      real,              dimension(IM,JM,LM  ) :: DUDT_GWD_0 , DVDT_GWD_0 , DTDT_GWD_0
-      real,              dimension(IM,JM,LM  ) :: DUDT_ORO_0 , DVDT_ORO_0 , DTDT_ORO_0
-      real,              dimension(IM,JM     ) :: TAUXB_TMP_0, TAUYB_TMP_0
-      real,              dimension(IM,JM     ) :: TAUXO_TMP_0, TAUYO_TMP_0
+      real,              dimension(IM,JM,LM  ) :: DUDT_GWD_GEOS , DVDT_GWD_GEOS , DTDT_GWD_GEOS
+      real,              dimension(IM,JM,LM  ) :: DUDT_ORO_GEOS , DVDT_ORO_GEOS , DTDT_ORO_GEOS
+      real,              dimension(IM,JM     ) :: TAUXB_TMP_GEOS, TAUYB_TMP_GEOS
+      real,              dimension(IM,JM     ) :: TAUXO_TMP_GEOS, TAUYO_TMP_GEOS
 
       integer                                  :: J, K, L
       real(ESMF_KIND_R8)                       :: DT_R8
@@ -1118,10 +1189,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       type (ESMF_Grid)  :: esmfgrid
       integer           :: COUNTS(3)
 
-! NCAR GWD vars
-
-      logical :: USE_NCAR_GWD
-
 !  Begin...
 !----------
 
@@ -1149,9 +1216,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       call MAPL_GetPointer( IMPORT, HT_dpc, 'DTDTCN',     RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, TRATE,  'DTDT_moist', RC=STATUS ); VERIFY_(STATUS)
       call MAPL_GetPointer( IMPORT, CNVF,   'CNV_FRC',    RC=STATUS ); VERIFY_(STATUS)
-      DO L = 1, LM
-         HT_ForCnvGWD(:,:,L) = HT_dpc(:,:,L)
-      ENDDO
 
 ! Allocate/refer to the outputs
 !------------------------------
@@ -1616,41 +1680,31 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Do gravity wave drag calculations on a list of soundings
 !---------------------------------------------------------
 
-    call MAPL_GetResource(MAPL,USE_NCAR_GWD,'USE_NCAR_GWD:', default=.false., RC=STATUS)
-    VERIFY_(STATUS)
-
     call MAPL_TimerOn(MAPL,"-INTR")
     if (.not. USE_NCEP_GWD) then
 
        if (USE_NCAR_GWD) then
           ! Use GEOS GWD only for Extratropical background sources...
+         if ( (GEOS_GWORO /= 0.0) .OR. (GEOS_GWBKG /= 0.0) ) then
           call gw_intr   (IM*JM,      LM,         DT,                  &
                PGWV,                                                   &
                PLE,       T,          U,          V,      SGH,   PREF, &
                PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
-               DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
-               DUDT_ORG,  DVDT_ORG,   DTDT_ORG,                        &
-               TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
-               TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
+               DUDT_GWD_GEOS,  DVDT_GWD_GEOS,   DTDT_GWD_GEOS,         &
+               DUDT_ORO_GEOS,  DVDT_ORO_GEOS,   DTDT_ORO_GEOS,         &
+               TAUXO_TMP_GEOS, TAUYO_TMP_GEOS,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
+               TAUXB_TMP_GEOS, TAUYB_TMP_GEOS,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
                FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
-               BGSTRESSMAX*0.0, effgworo, effgwbkg,   RC=STATUS            )
-         VERIFY_(STATUS)
-         ! HOLD ON TO THE GEOS BKG OUTPUT
-         DUDT_GWD_0=DUDT_GWD
-         DVDT_GWD_0=DVDT_GWD
-         DTDT_GWD_0=DTDT_GWD
-         TAUXB_TMP_0=TAUXB_TMP
-         TAUYB_TMP_0=TAUYB_TMP
-         ! HOLD ON TO THE GEOS ORO OUTPUT
-         DUDT_ORO_0=DUDT_ORO
-         DVDT_ORO_0=DVDT_ORO
-         DTDT_ORO_0=DTDT_ORO
-         TAUXO_TMP_0=TAUXO_TMP
-         TAUYO_TMP_0=TAUYO_TMP
+               BGSTRESSMAX*GEOS_BGSTRESS, &
+                  effgworo*GEOS_GWORO,    &
+                  effgwbkg*GEOS_GWBKG, &
+               RC=STATUS            )
+          VERIFY_(STATUS)
+         endif
          ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
          call gw_intr_ncar(IM*JM,    LM,         DT,                  &
               PGWV,      beres_desc, beres_band, oro_band,            &
-              PLE,       T,          U,          V,      HT_ForCnvGWD,&
+              PLE,       T,          U,          V,      HT_dpc,      &
               SGH,       PREF,                                        &
               PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
               DUDT_GWD,  DVDT_GWD,   DTDT_GWD,                        &
@@ -1658,20 +1712,24 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
               TAUXO_TMP, TAUYO_TMP,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
               TAUXB_TMP, TAUYB_TMP,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
               FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
-              BGSTRESSMAX, effgworo*0.0, effgwbkg,   RC=STATUS            )
+               BGSTRESSMAX*NCAR_BGSTRESS, &
+                  effgworo*NCAR_GWORO,    &
+                  effgwbkg*NCAR_GWBKG, &
+               RC=STATUS            )
          VERIFY_(STATUS)
-         ! ADD THE GEOS BKG OUTPUT
-         DUDT_GWD=DUDT_GWD_0+DUDT_GWD
-         DVDT_GWD=DVDT_GWD_0+DVDT_GWD
-         DTDT_GWD=DTDT_GWD_0+DTDT_GWD
-         TAUXB_TMP=TAUXB_TMP_0+TAUXB_TMP
-         TAUYB_TMP=TAUYB_TMP_0+TAUYB_TMP
-         ! REPLACE THE GEOS ORO OUTPUT
-         DUDT_ORO=DUDT_ORO_0
-         DVDT_ORO=DVDT_ORO_0
-         DTDT_ORO=DTDT_ORO_0
-         TAUXO_TMP=TAUXO_TMP_0
-         TAUYO_TMP=TAUYO_TMP_0
+         ! ADD THE GEOS TENDENCIES OUTPUT
+         if ( (GEOS_GWORO /= 0.0) .OR. (GEOS_GWBKG /= 0.0) ) then
+           DUDT_GWD=DUDT_GWD_GEOS+DUDT_GWD
+           DVDT_GWD=DVDT_GWD_GEOS+DVDT_GWD
+           DTDT_GWD=DTDT_GWD_GEOS+DTDT_GWD
+           TAUXB_TMP=TAUXB_TMP_GEOS+TAUXB_TMP
+           TAUYB_TMP=TAUYB_TMP_GEOS+TAUYB_TMP
+           DUDT_ORO=DUDT_ORO_GEOS+DUDT_ORG
+           DVDT_ORO=DVDT_ORO_GEOS+DVDT_ORG
+           DTDT_ORO=DTDT_ORO_GEOS+DTDT_ORG
+           TAUXO_TMP=TAUXO_TMP_GEOS+TAUXO_TMP
+           TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP
+         endif
        else
           ! Use GEOS GWD    
           call gw_intr   (IM*JM,      LM,         DT,                  &

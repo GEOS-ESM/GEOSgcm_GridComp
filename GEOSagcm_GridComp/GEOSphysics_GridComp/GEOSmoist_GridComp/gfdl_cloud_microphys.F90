@@ -1620,14 +1620,13 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, fqak, fqal
     ! -----------------------------------------------------------------------
     
     do k = ktop, kbot
-        if (tzk (k) > t_wfr .and. qik (k) > qcmin) then
+        if (tzk (k) > tice .and. qik (k) > qcmin) then
             
             ! -----------------------------------------------------------------------
             ! pimlt: instant melting of cloud ice
             ! -----------------------------------------------------------------------
            
-            factor = max(0.,min(1.,((tzk (k)-t_wfr)/(tice-t_wfr))**2))
-            melt = min (qik (k), factor * fac_imlt * (tzk (k) - t_wfr) / icpk (k))
+            melt = min (qik (k), fac_imlt * (tzk (k) - tice) / icpk (k))
             tmp = min (melt, dim (ql_mlt, qlk (k))) ! max ql amount
             qlk (k) = qlk (k) + tmp
             qrk (k) = qrk (k) + melt - tmp
