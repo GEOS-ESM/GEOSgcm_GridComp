@@ -192,15 +192,15 @@ contains
          DRIPFR, FLOODFR, SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN, LAIMAX, RZDEF
     real, dimension (:), intent (inout)     :: SPRINKLERRATE, DRIPRATE, FLOODRATE
     INTEGER                                 :: NTILES, N
-    REAL                                    :: ma, H1, H2, HC, IT, LF, LAITHRES
+    REAL                                    :: ma, H1, H2, HC, IT, ROOTFRAC, LAITHRES
 
     NTILES = SIZE (IRRIGFRAC)
     TILE_LOOP : DO N = 1, NTILES
        IF(LAIMAX (N) > LAIMIN (N)) THEN
           LAITHRES = LAIMIN (N) + this%lai_thres * (LAIMAX (N) - LAIMIN (N))          
-          LF       = (LAI(N) - LAIMIN (N)) / (LAIMAX(N) - LAIMIN(N))
+          ROOTFRAC = MIN((LAI(N) - LAIMIN (N)) / (LAIMAX(N) - LAIMIN(N)) ,1.0)          
        ELSE
-          LF = 0.
+          ROOTFRAC = 0.
        ENDIF
        HC = local_hour(n)
        CHECK_LAITHRES : IF (LAI(N) >= LAITHRES) THEN          
@@ -211,7 +211,7 @@ contains
              !-----------------------------------------------------------------------------
 
              if(SMREF(N) > SMWP(N))then
-                ma = (LF*SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
+                ma = ROOTFRAC*(SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
              else
                 ma = -1.
              endif
@@ -226,7 +226,7 @@ contains
                    IT = this%sprinkler_thres                   
                    if ((HC >= H1).AND.(HC < H2)) then
                       if((ma <= IT).AND.(H1 == HC)) &
-                           SPRINKLERRATE (N) = this%cwd (LF*SMCNT(N),SMREF(N),this%efcor) &
+                           SPRINKLERRATE (N) = this%cwd (ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
                                                * SPRINKLERFR(N)/(H2 - H1)/3600.
                    else
                       SPRINKLERRATE (N) = 0
@@ -237,7 +237,7 @@ contains
                    IT = this%flood_thres
                    if ((HC >= H1).AND.(HC < H2)) then
                       if((ma <= IT).AND.(H1 == HC)) &
-                           FLOODRATE (N) = this%cwd (LF*SMCNT(N),SMREF(N),this%efcor) &
+                           FLOODRATE (N) = this%cwd (ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
                                            * FLOODFR (N)/(H2 - H1)/3600.
                    else
                       FLOODRATE (N) = 0.
@@ -247,7 +247,7 @@ contains
                    H2 = this%drip_stime + this%drip_dur
                    IT = this%sprinkler_thres 
                    if ((HC >= H1).AND.(HC < H2)) then
-                      if((ma <= IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(LF*SMCNT(N),SMREF(N),0.) * DRIPFR (N) /(H2 - H1)/3600.
+                      if((ma <= IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),0.) * DRIPFR (N) /(H2 - H1)/3600.
                    else
                       DRIPRATE (N) = 0.
                    endif
@@ -259,7 +259,7 @@ contains
                    IT = this%sprinkler_thres    
                    if ((HC >= H1).AND.(HC < H2)) then
                       if((ma <= IT).AND.(H1 == HC)) &
-                           SPRINKLERRATE (N) = this%cwd(LF*SMCNT(N),SMREF(N),this%efcor) &
+                           SPRINKLERRATE (N) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
                                                /(H2 - H1)/3600.
                    else
                       SPRINKLERRATE (N) = 0
@@ -274,7 +274,7 @@ contains
                    H2 = this%drip_stime + this%drip_dur
                    IT = this%sprinkler_thres 
                    if ((HC >= H1).AND.(HC < H2)) then
-                      if((ma <= IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(LF*SMCNT(N),SMREF(N),0.) &
+                      if((ma <= IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),0.) &
                                                /(H2 - H1)/3600.
                    else
                       DRIPRATE (N) = 0.
@@ -289,7 +289,7 @@ contains
                    IT = this%flood_thres
                    if ((HC >= H1).AND.(HC < H2)) then
                       if((ma <= IT).AND.(H1 == HC)) &
-                           FLOODRATE (N) = this%cwd(LF*SMCNT(N),SMREF(N),this%efcor) &
+                           FLOODRATE (N) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
                                            /(H2 - H1)/3600.
                    else
                       FLOODRATE (N) = 0.
@@ -345,7 +345,7 @@ contains
     real, dimension(:,:,:),intent (in)   :: IRRIGHARVEST  ! NUM_SEASONS, NUM_CROPS
     real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FLOODRATE
     INTEGER                              :: NTILES, N, crop, sea
-    REAL                                 :: ma, H1, H2, HC, IT, ICFRAC, SEAFRAC
+    REAL                                 :: ma, H1, H2, HC, IT, ICFRAC, ROOTFRAC
     REAL, ALLOCATABLE, DIMENSION (:)     :: FRATE, SRATE, DRATE
 
     NTILES = SIZE (local_hour)
@@ -393,9 +393,9 @@ contains
                                DRIPRATE (N)      = 0.
 
                             else
-                               SEAFRAC = CROP_SEASON_STAGE (this%MIDS_LENGTH, dofyr,NINT(IRRIGPLANT(N, sea, crop)),NINT(IRRIGHARVEST(N, sea, crop)))
+                               ROOTFRAC = CROP_SEASON_STAGE (this%MIDS_LENGTH, dofyr,NINT(IRRIGPLANT(N, sea, crop)),NINT(IRRIGHARVEST(N, sea, crop)))
                                if(SMREF(N) > SMWP(N))then
-                                  ma = (SEAFRAC*SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
+                                  ma = ROOTFRAC*(SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
                                else
                                   ma = -1.
                                endif
@@ -408,7 +408,7 @@ contains
                                   IT = this%sprinkler_thres
                                   if ((HC >= H1).AND.(HC < H2)) then
                                      if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) &
-                                          SRATE (crop) = this%cwd(SEAFRAC*SMCNT(N),SMREF(N),this%efcor) &
+                                          SRATE (crop) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
                                           /(H2 - H1)/3600.
                                   else
                                      SRATE (crop) = 0
@@ -420,7 +420,7 @@ contains
                                   H2 = this%drip_stime + this%drip_dur
                                   IT = this%sprinkler_thres 
                                   if ((HC >= H1).AND.(HC < H2)) then
-                                     if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) DRATE (crop) = this%cwd(SEAFRAC*SMCNT(N),SMREF(N),0.) &
+                                     if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) DRATE (crop) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),0.) &
                                           /(H2 - H1)/3600.
                                   else
                                      DRATE (crop) = 0.
@@ -433,7 +433,7 @@ contains
                                   IT = this%flood_thres
                                   if ((HC >= H1).AND.(HC < H2)) then
                                      if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) &
-                                          FRATE (crop) = this%cwd(SEAFRAC*SMCNT(N),SMREF(N),this%efcor) &
+                                          FRATE (crop) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
                                            /(H2 - H1)/3600.
                                   else
                                      FRATE (crop) = 0.
@@ -528,13 +528,13 @@ contains
   
   ! ----------------------------------------------------------------------------
 
-  REAL FUNCTION crop_water_deficit (this, asmc, smcref, efcor)
+  REAL FUNCTION crop_water_deficit (this, rootfrac, asmc, smcref, efcor)
 
     implicit none
     class(irrigation_model),intent(inout):: this
-    real, intent (in)                    :: asmc, smcref, efcor
+    real, intent (in)                    :: rootfrac, asmc, smcref, efcor
 
-    crop_water_deficit = (smcref - asmc)*100.0/(100.0-efcor)   
+    crop_water_deficit = rootfrac*(smcref - asmc)*100.0/(100.0-efcor)   
 
   END FUNCTION crop_water_deficit
   
