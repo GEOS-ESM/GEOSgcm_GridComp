@@ -5138,7 +5138,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     logical, save :: first = .true.
     integer*8, save :: istep = 1 ! gkw: legacy variable from offline
 
-    real :: co2
+   ! real :: co2
     real, external :: getco2
 
     ! temporaries for call to SIBALB for each type
