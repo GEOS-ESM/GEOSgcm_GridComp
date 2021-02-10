@@ -497,7 +497,7 @@ contains
   
   real FUNCTION CROP_SEASON_STAGE (MSL, DOY,DP, DH)
   ! MSL : mid season length [-] as a fraction of the length of the season
-  ! DOY : doay of year
+  ! DOY : doy of year
   ! DP  : plant date
   ! DH  : harvest date
   
