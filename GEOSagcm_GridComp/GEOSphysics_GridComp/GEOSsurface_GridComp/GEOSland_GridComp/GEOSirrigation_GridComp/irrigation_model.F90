@@ -496,7 +496,11 @@ contains
   ! ----------------------------------------------------------------------------
   
   real FUNCTION CROP_SEASON_STAGE (MSL, DOY,DP, DH)
-
+  ! MSL : mid season length [-] as a fraction of the length of the season
+  ! DOY : doay of year
+  ! DP  : plant date
+  ! DH  : harvest date
+  
     implicit none
     real, intent    (in) :: MSL
     integer, intent (in) :: DOY,DP, DH
@@ -508,13 +512,14 @@ contains
        seal  = real (DH - DP + 1)
        CTime = real (DOY)
     else
+       ! the crop season is fall-to-spring
        seal = real(366 - DP + 1 + DH)      
        if((DOY >= DP).AND.(DOY <= 366)) CTIME = real (DOY) 
        if((DOY >=  1).AND.(DOY <=  DH)) CTIME = real (DOY) + 365.
     endif
 
     t0 = real (DP)
-    t1 = t0 + seal * (1. - MSL)/2.
+    t1 = t0 + seal * (1. - MSL)/2. ! assumes equal development and late periods
     t2 = t1 + seal*MSL
     t3 = t0 + seal
 
