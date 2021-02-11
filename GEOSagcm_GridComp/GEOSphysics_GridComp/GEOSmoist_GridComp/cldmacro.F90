@@ -86,7 +86,7 @@ module cldmacro
    real :: min_lts
    real :: disp_factor_liq
    real :: disp_factor_ice
-   real :: sclm_shw
+   real :: SCLM_DEEP, SCLM_SHALLOW
 
    real, parameter :: T_ICE_MAX    = MAPL_TICE  ! -7.0+MAPL_TICE
    real, parameter :: RHO_W        = 1.0e3      ! Density of liquid water in kg/m^3
@@ -159,7 +159,6 @@ contains
          CUARF_dev        , &
          SNRCU_dev        , &
          CLDPARAMS        , &
-         SCLMFDFR         , &
          QST3_dev         , &
          DZET_dev         , &
          CNV_FRACTION_dev , &
@@ -230,7 +229,6 @@ contains
       real, intent(  out), dimension(IRUN     ) :: PRECU_dev ! CN_PRC2    
       real, intent(  out), dimension(IRUN     ) :: CUARF_dev ! CN_ARFX
       real, intent(  out), dimension(IRUN     ) :: SNRCU_dev ! CN_SNR
-      real, intent(in   )                       :: SCLMFDFR   ! CLOUD_CTL%SCLMFDFR
       real, intent(in   ), dimension(IRUN,  LM) :: QST3_dev   ! QST3
       real, intent(in   ), dimension(IRUN,  LM) :: DZET_dev   ! DZET
       real, intent(in   ), dimension(IRUN)      :: CNV_FRACTION_dev   ! CNV_FRACTION
@@ -367,7 +365,9 @@ contains
       PDFFLAG       = INT(CLDPARAMS%PDFSHAPE)
       DISP_FACTOR_LIQ   = CLDPARAMS%DISP_FACTOR_LIQ
       DISP_FACTOR_ICE   = CLDPARAMS%DISP_FACTOR_ICE
-      sclm_shw =  CLDPARAMS%SCLM_SHW
+      SCLM_DEEP    =  CLDPARAMS%SCLM_DEEP
+      SCLM_SHALLOW =  CLDPARAMS%SCLM_SHALLOW
+
       
       turnrhcrit_upper = CLDPARAMS%TURNRHCRIT_UP
       sloperhcrit= CLDPARAMS%SLOPERHCRIT
@@ -463,7 +463,8 @@ contains
 
             CALL cnvsrc (DT             , &
                   CNVICEPARAM    , &
-                  SCLMFDFR       , &
+                  SCLM_DEEP      , &
+                  SCLM_SHALLOW   , &
                   MASS           , & 
                   iMASS          , &
                   PP_dev(I,K)    , &
@@ -1710,7 +1711,8 @@ subroutine hystpdf_new( &
    subroutine cnvsrc( & 
          DT      , &
          ICEPARAM, &
-         SCLMFDFR, &
+         SCLM_DEEP, &
+         SCLM_SHALLOW, &
          MASS    , &
          iMASS   , &
          PL      , &
@@ -1739,11 +1741,11 @@ subroutine hystpdf_new( &
       !                 1 means partitioning follows ice_fraction(TE,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND). 0 means all new condensate is
       !                 liquid 
       !
-      !       SCLMFDFR: Scales detraining mass flux to a cloud fraction source - kludge. Thinly justified
+      !       SCLM_*: Scales detraining mass flux to a cloud fraction source - kludge. Thinly justified
       !                 by fuzziness of cloud boundaries and existence of PDF of condensates (for choices
       !                 0.-1.0) or by subgrid layering (for choices >1.0) 
 
-      real, intent(in)    :: DT,ICEPARAM,SCLMFDFR
+      real, intent(in)    :: DT,ICEPARAM,SCLM_DEEP,SCLM_SHALLOW
       real, intent(in)    :: MASS,iMASS,QS
       real, intent(in)    :: DMF,PL
       real, intent(in)    :: DCF,CF,DCIFshlw,DCLFshlw,DMFshlw
@@ -1822,7 +1824,7 @@ subroutine hystpdf_new( &
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !! Tiedtke-style anvil fraction !!
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      TEND=(DMF*SCLMFDFR+DMFshlw*SCLM_SHW)*iMASS    
+      TEND=(DMF*SCLM_DEEP + DMFshlw*SCLM_SHALLOW)*iMASS    
       AF = AF + TEND*DT
       AF = MIN( AF , 0.99 ) 
 

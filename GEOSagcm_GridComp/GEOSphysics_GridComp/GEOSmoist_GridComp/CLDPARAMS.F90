@@ -77,7 +77,8 @@
            integer            :: CFPBL_EXP             ! 62
            real               :: DISP_FACTOR_LIQ       ! 63
            real               :: DISP_FACTOR_ICE       ! 63
-           real               :: SCLM_SHW       ! 63
+           real               :: SCLM_SHALLOW          ! 63
+           real               :: SCLM_DEEP             ! 63
       endtype CLDPARAM_TYPE
 
   end module CLDPARAMS

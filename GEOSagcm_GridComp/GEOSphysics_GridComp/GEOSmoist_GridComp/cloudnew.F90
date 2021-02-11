@@ -29,18 +29,14 @@ module cloudnew
 
    PUBLIC PROGNO_CLOUD
    PUBLIC ICE_FRACTION
-   PUBLIC T_CLOUD_CTL
    PUBLIC fix_up_clouds
    PUBLIC pdffrac
    PUBLIC pdfcondensate
    PUBLIC RADCOUPLE
    PUBLIC hystpdf, hystpdf_new
+   PUBLIC cnvsrc
+   PUBLIC meltfrz, meltfrz_inst
 #endif
-
-   type T_CLOUD_CTL
-      real  :: SCLMFDFR
-      real  :: RSUB_RADIUS
-   end type T_CLOUD_CTL
 
 #ifdef _CUDA
 
@@ -217,6 +213,8 @@ module cloudnew
    real,    constant :: FAC_RI
    real,    constant :: CFPBL_EXP
    integer, constant :: PDFFLAG
+   real,    constant :: SCLM_SHALLOW
+   real,    constant :: SCLM_DEEP
 
    ! Parameters for Internal DQSAT
    ! -----------------------------
@@ -333,6 +331,7 @@ module cloudnew
    integer :: FR_LS_WAT, FR_LS_ICE, FR_AN_WAT, FR_AN_ICE
    real    :: maxrhcritland
    integer :: pdfflag
+   real    :: SCLM_DEEP, SCLM_SHALLOW
 #endif
 
    real, parameter :: T_ICE_MAX    = MAPL_TICE-10.0
@@ -371,7 +370,7 @@ contains
 !     are USE-associated in the GridComp
 
 #ifdef _CUDA
-   attributes(global) subroutine progno_cloud(IRUN,LM,DT,SCLMFDFR)
+   attributes(global) subroutine progno_cloud(IRUN,LM,DT)
 #else
    subroutine progno_cloud( &
 !!! first vars are (in) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -428,7 +427,6 @@ contains
          SNRAN_dev        , &
          SNRSC_dev        , &
          CLDPARAMS        , &
-         SCLMFDFR         , &
          QST3_dev         , &
          DZET_dev         , &
          QDDF3_dev        , &
@@ -473,7 +471,6 @@ contains
       integer, intent(in   ), value :: IRUN
       integer, intent(in   ), value :: LM
       real   , intent(in   ), value :: DT
-      real   , intent(in   ), value :: SCLMFDFR   ! CLOUD_CTL%SCLMFDFR
 #else
       type (CLDPARAM_TYPE), intent(in)          :: CLDPARAMS
 
@@ -530,7 +527,6 @@ contains
       real, intent(  out), dimension(IRUN     ) :: SNRCU_dev ! CN_SNR
       real, intent(  out), dimension(IRUN     ) :: SNRAN_dev ! AN_SNR
       real, intent(  out), dimension(IRUN     ) :: SNRSC_dev ! SC_SNR
-      real, intent(in   )                       :: SCLMFDFR   ! CLOUD_CTL%SCLMFDFR
       real, intent(in   ), dimension(IRUN,  LM) :: QST3_dev   ! QST3
       real, intent(in   ), dimension(IRUN,  LM) :: DZET_dev   ! DZET
       real, intent(in   ), dimension(IRUN,  LM) :: QDDF3_dev  ! QDDF3
@@ -725,6 +721,8 @@ contains
          FAC_RI        = CLDPARAMS%FAC_RI
          CFPBL_EXP     = CLDPARAMS%CFPBL_EXP
          PDFFLAG       = INT(CLDPARAMS%PDFSHAPE)
+         SCLM_SHALLOW  = CLDPARAMS%SCLM_SHALLOW
+         SCLM_DEEP     = CLDPARAMS%SCLM_DEEP
 #endif
 
       use_autoconv_timescale = .false.
@@ -943,7 +941,8 @@ contains
             CALL cnvsrc (          &  
                   DT             , &
                   CNVICEPARAM    , &
-                  SCLMFDFR       , &
+                  SCLM_DEEP      , &
+                  SCLM_SHALLOW   , &
                   MASS           , & 
                   iMASS          , &
                   PP_dev(I,K)    , &
@@ -2579,7 +2578,8 @@ contains
    subroutine cnvsrc( & 
          DT      , &
          ICEPARAM, &
-         SCLMFDFR, &
+         SCLM_DEEP, &
+         SCLM_SHALLOW, &
          MASS    , &
          iMASS   , &
          PL      , &
@@ -2604,11 +2604,11 @@ contains
       !                 1 means partitioning follows ice_fraction(TE,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND). 0 means all new condensate is
       !                 liquid 
       !
-      !       SCLMFDFR: Scales detraining mass flux to a cloud fraction source - kludge. Thinly justified
+      !       SCLM_*: Scales detraining mass flux to a cloud fraction source - kludge. Thinly justified
       !                 by fuzziness of cloud boundaries and existence of PDF of condensates (for choices
       !                 0.-1.0) or by subgrid layering (for choices >1.0) 
 
-      real, intent(in)    :: DT,ICEPARAM,SCLMFDFR
+      real, intent(in)    :: DT,ICEPARAM,SCLM_DEEP,SCLM_SHALLOW
       real, intent(in)    :: MASS,iMASS,QS
       real, intent(in)    :: DMF,PL
       real, intent(in)    :: DCF,CF,DCIFshlw,DCLFshlw,DMFshlw
@@ -2635,7 +2635,6 @@ contains
       QIA  = QIA +    fQi   * TEND*DT
 
       ! dont forget that conv cond has never frozen !!!!
-      !TE   = TE +   (MAPL_ALHS-MAPL_ALHL) * fQi * TEND*DT/MAPL_CP
       IF(ADJUSTL(CONVPAR_OPTION) /= 'GF') TE   = TE +   (MAPL_ALHS-MAPL_ALHL) * fQi * TEND*DT/MAPL_CP
 
       ! add shallow convective ice/liquid source
@@ -2647,8 +2646,7 @@ contains
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !! Tiedtke-style anvil fraction !!
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!     TEND=(DMF+DMFshlw*1.2)*iMASS * SCLMFDFR
-      TEND=(DMF+DMFshlw)*iMASS * SCLMFDFR
+      TEND=(DMF*SCLM_DEEP + DMFshlw*SCLM_SHALLOW)*iMASS
       AF = AF + TEND*DT
       AF = MIN( AF , 0.99 )
 
