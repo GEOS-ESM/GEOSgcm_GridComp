@@ -3609,6 +3609,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DNH4ADT',                                        &
+         LONG_NAME ='ammonium_aerosol_tendency_due_to_conv_scav',     &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DNH3DT',                                         &
+         LONG_NAME ='ammonia_tendency_due_to_conv_scav',              &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DBRCDT',                                          &
          LONG_NAME ='brown_carbon_tendency_due_to_conv_scav',              &
          UNITS     ='kg m-2 s-1',                                     &
@@ -5284,7 +5300,7 @@ contains
       ! Aerosol convective scavenging internal pointers (2D column-averages);  must deallocate!!!
       ! CAR 
       real, pointer, dimension(:,: )                           :: DDUDT, &
-           DSSDT, DOCDT, DBCDT, DSUDT,  DNIDT, DBRCDT, DDUDTcarma, DSSDTcarma
+           DSSDT, DOCDT, DBCDT, DSUDT,  DNIDT, DNH4ADT, DNH3DT, DBRCDT, DDUDTcarma, DSSDTcarma
       character(len=ESMF_MAXSTR)                               :: QNAME,  CNAME, ENAME
       character(len=ESMF_MAXSTR), pointer, dimension(:)        :: QNAMES, CNAMES
       integer                                                  :: ind
@@ -5960,7 +5976,7 @@ contains
       real :: icefall
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
 
-      real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU, CMNI, CMBRC
+      real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU, CMNI, CMNH3, CMNH4A, CMBRC
       real   , dimension(IM,JM)           :: CMDUcarma, CMSScarma
        
       real :: sigmaqt, qcn, cfn, qsatn, dqlls, dqils, qt
@@ -6617,6 +6633,8 @@ contains
       call MAPL_GetPointer(EXPORT, DOCDT,     'DOCDT'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DSUDT,     'DSUDT'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DNIDT,     'DNIDT'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DNH4ADT,   'DNH4ADT'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DNH3DT,    'DNH3DT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DBRCDT,    'DBRCDT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DDUDTcarma,  'DDUDTcarma'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DSSDTcarma,  'DSSDTcarma'    , RC=STATUS); VERIFY_(STATUS)
@@ -7983,23 +8001,27 @@ contains
       ! Compute initial mass loading for aerosols; CAR 12/19/08
       ! -------------------------------------------------------
       !! First initialize everything to zero
-      if(associated(DDUDT)) DDUDT =  0.0
-      if(associated(DSSDT)) DSSDT =  0.0
-      if(associated(DBCDT)) DBCDT =  0.0
-      if(associated(DOCDT)) DOCDT =  0.0
-      if(associated(DSUDT)) DSUDT =  0.0
-      if(associated(DNIDT)) DNIDT =  0.0
-      if(associated(DBRCDT))DBRCDT=  0.0
+      if(associated(DDUDT))   DDUDT =  0.0
+      if(associated(DSSDT))   DSSDT =  0.0
+      if(associated(DBCDT))   DBCDT =  0.0
+      if(associated(DOCDT))   DOCDT =  0.0
+      if(associated(DSUDT))   DSUDT =  0.0
+      if(associated(DNIDT))   DNIDT =  0.0
+      if(associated(DNH4ADT)) DNH4ADT =  0.0
+      if(associated(DNH3DT))  DNH3DT =  0.0
+      if(associated(DBRCDT))  DBRCDT=  0.0
       if(associated(DDUDTcarma)) DDUDTcarma =  0.0
       if(associated(DSSDTcarma)) DSSDTcarma =  0.0
 
-      CMDU = 0.0
-      CMSS = 0.0
-      CMOC = 0.0
-      CMBC = 0.0
-      CMSU = 0.0
-      CMNI = 0.0
-      CMBRC= 0.0
+      CMDU   = 0.0
+      CMSS   = 0.0
+      CMOC   = 0.0
+      CMBC   = 0.0
+      CMSU   = 0.0
+      CMNI   = 0.0
+      CMNH4A = 0.0
+      CMNH3  = 0.0
+      CMBRC  = 0.0
       CMDUcarma = 0.0
       CMSScarma = 0.0
 
@@ -8037,6 +8059,14 @@ contains
                CASE ('NO3')
                   if(associated(DNIDT)) then
                      CMNI = CMNI + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('NH3')
+                  if(associated(DNH3DT)) then
+                     CMNH3 = CMNH3 + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('NH4')
+                  if(associated(DNH4ADT)) then
+                     CMNH4A = CMNH4A + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('BRC')
                   if(associated(DBRCDT)) then
@@ -8529,6 +8559,14 @@ contains
                   if(associated(DNIDT)) then
                      DNIDT = DNIDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
+               CASE ('NH3')
+                  if(associated(DNH3DT)) then
+                     DNH3DT = DNH3DT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('NH4')
+                  if(associated(DNH4ADT)) then
+                     DNH4ADT = DNH4ADT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
                CASE ('BRC')
                   if(associated(DBRCDT)) then
                      DBRCDT = DBRCDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
@@ -8558,13 +8596,15 @@ contains
          endif
       end do
 
-      if (associated(DDUDT))  DDUDT = (DDUDT - CMDU) / (MAPL_GRAV*DT_MOIST)
-      if (associated(DSSDT))  DSSDT = (DSSDT - CMSS) / (MAPL_GRAV*DT_MOIST)
-      if (associated(DBCDT))  DBCDT = (DBCDT - CMBC) / (MAPL_GRAV*DT_MOIST)
-      if (associated(DOCDT))  DOCDT = (DOCDT - CMOC) / (MAPL_GRAV*DT_MOIST)
-      if (associated(DSUDT))  DSUDT = (DSUDT - CMSU) / (MAPL_GRAV*DT_MOIST)
-      if (associated(DNIDT))  DNIDT = (DNIDT - CMNI) / (MAPL_GRAV*DT_MOIST)
-      if (associated(DBRCDT)) DBRCDT= (DBRCDT- CMBRC)/ (MAPL_GRAV*DT_MOIST)
+      if (associated(DDUDT))   DDUDT = (DDUDT - CMDU) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DSSDT))   DSSDT = (DSSDT - CMSS) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DBCDT))   DBCDT = (DBCDT - CMBC) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DOCDT))   DOCDT = (DOCDT - CMOC) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DSUDT))   DSUDT = (DSUDT - CMSU) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DNIDT))   DNIDT = (DNIDT - CMNI) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DNH3DT))  DNH3DT = (DNH3DT - CMNH3) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DNH4ADT)) DNH4ADT = (DNH4ADT - CMNH4A) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DBRCDT))  DBRCDT= (DBRCDT- CMBRC)/ (MAPL_GRAV*DT_MOIST)
 
       if (associated(DDUDTcarma))  DDUDTcarma = (DDUDTcarma - CMDUcarma) / (MAPL_GRAV*DT_MOIST)
       if (associated(DSSDTcarma))  DSSDTcarma = (DSSDTcarma - CMSScarma) / (MAPL_GRAV*DT_MOIST)
