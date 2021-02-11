@@ -176,6 +176,8 @@ real    :: SURFLAY              ! Default (Ganymed-3 and earlier) SURFLAY=20.0 f
 real    :: CO2
 integer :: CO2_YEAR_IN          ! years when atmospheric carbon dioxide concentration increases, starting from 1850
 real    :: DTCN                 ! Time step for carbon/nitrogen routines in CatchmentCN model (default 5400)
+real    :: FWETC, FWETL
+logical :: USE_FWET_FOR_RUNOFF
 
 contains
 
@@ -253,7 +255,16 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,         DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'          , value=RUN_IRRIG,           DEFAULT=0  , __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='IRRIG_METHOD:'       , value=IRRIG_METHOD,        DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,         DEFAULT=1, __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,         DEFAULT=1  , __RC__ ) 
+    call ESMF_ConfigGetAttribute (SCF, label='USE_FWET_FOR_RUNOFF:', value=USE_FWET_FOR_RUNOFF, DEFAULT=.FALSE., __RC__ )
+    
+    if (.NOT. USE_FWET_FOR_RUNOFF) then
+       call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT= 0.02, __RC__ )
+       call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT= 0.02, __RC__ )
+    else
+       call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT=0.005, __RC__ )
+       call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT=0.025, __RC__ )
+    endif
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
@@ -1347,7 +1358,7 @@ subroutine SetServices ( GC, RC )
     SHORT_NAME         = 'TSURF'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartRequired        ,&
+    RESTART            = RESTART                     ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -2592,7 +2603,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_1' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP1'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -2601,7 +2612,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_2' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP2'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -2610,7 +2621,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_3' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP3'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -2619,7 +2630,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_4' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP4'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -2628,7 +2639,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_5' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP5'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -2637,7 +2648,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_6' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP6'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -4969,6 +4980,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         real,dimension(:),allocatable :: RSL1, RSL2
         real,dimension(:),allocatable :: SQSCAT
+        real,allocatable,dimension(:) :: rdc_tmp_1, rdc_tmp_2
 
         ! albedo calculation stuff
 
@@ -4987,7 +4999,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         logical                     :: debugzth
         real                        :: FAC
 
-        real                        :: PRECIPFRAC
         real                        :: DT
         integer                     :: NTILES
         integer                     :: I, J, K, N
@@ -4998,12 +5009,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         logical :: DUMFLAG1,DUMFLAG2
         integer                         :: nmax
         type(ESMF_VM)                   :: VM
-
-   ! variables from sun orbit
-        integer :: years_per_cycle, days_per_cycle
-        real    :: year_length
-        real, pointer, dimension(:) :: zco => null()
-        real, pointer, dimension(:) :: zso => null()
 
 #ifdef DBG_CNLSM_INPUTS
         ! vars for debugging purposes
@@ -5133,11 +5138,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     logical, save :: first = .true.
     integer*8, save :: istep = 1 ! gkw: legacy variable from offline
 
-! solar declination related
-    real :: ob, declin, zs, zc, max_decl, max_dayl
-    integer :: year, iday, idayp1
-
-    real :: co2
+   ! real :: co2
     real, external :: getco2
 
     ! temporaries for call to SIBALB for each type
@@ -5192,9 +5193,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              Label   = trim(COMP_NAME)//"_DT:"     ,&
              Default = DT                          ,&
              RC=STATUS )
-        VERIFY_(STATUS)
-
-        call MAPL_GetResource ( MAPL, PRECIPFRAC, Label="PRECIPFRAC:", DEFAULT=1.0, RC=STATUS)
         VERIFY_(STATUS)
 
         ! Get component's private internal state
@@ -5801,28 +5799,30 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! ALLOCATE LOCAL POINTERS
         ! --------------------------------------------------------------------------
 
-        allocate(GHTCNT (6,NTILES))
-        allocate(WESNN  (3,NTILES))
-        allocate(HTSNNN (3,NTILES))
-        allocate(SNDZN  (3,NTILES))
-        allocate(TILEZERO (NTILES))
-        allocate(DZSF     (NTILES))
-        allocate(SWNETFREE(NTILES))
-        allocate(SWNETSNOW(NTILES))
-        allocate(VEG1     (NTILES))
-        allocate(VEG2     (NTILES))
-        allocate(RCSAT    (NTILES))
-        allocate(DRCSDT   (NTILES))
-        allocate(DRCSDQ   (NTILES))
-        allocate(RCUNS    (NTILES))
-        allocate(DRCUDT   (NTILES))
-        allocate(DRCUDQ   (NTILES))
-        allocate(ZTH      (NTILES))  
-        allocate(SLR      (NTILES))  
-        allocate(RSL1     (NTILES)) 
-        allocate(RSL2     (NTILES)) 
-        allocate(SQSCAT   (NTILES))
-        allocate(RDC      (NTILES))  
+	allocate(GHTCNT (6,NTILES))
+	allocate(WESNN  (3,NTILES))
+	allocate(HTSNNN (3,NTILES))
+	allocate(SNDZN  (3,NTILES))
+	allocate(TILEZERO (NTILES))
+	allocate(DZSF     (NTILES))
+	allocate(SWNETFREE(NTILES))
+	allocate(SWNETSNOW(NTILES))
+	allocate(VEG1     (NTILES))
+	allocate(VEG2     (NTILES))
+	allocate(RCSAT    (NTILES))
+	allocate(DRCSDT   (NTILES))
+	allocate(DRCSDQ   (NTILES))
+	allocate(RCUNS    (NTILES))
+	allocate(DRCUDT   (NTILES))
+	allocate(DRCUDQ   (NTILES))
+	allocate(ZTH      (NTILES))  
+	allocate(SLR      (NTILES))  
+	allocate(RSL1     (NTILES)) 
+	allocate(RSL2     (NTILES)) 
+	allocate(SQSCAT   (NTILES))
+	allocate(RDC      (NTILES))  
+	allocate(RDC_TMP_1(NTILES))
+	allocate(RDC_TMP_2(NTILES))
 	allocate(UUU      (NTILES))
 	allocate(RHO      (NTILES))
 	allocate(ZVG      (NTILES))
@@ -6203,8 +6203,13 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! --------------------------------------------------------------------------
         ! LAI and type dependent parameters; RDC formulation now uses veg fractions gkw: 2013-11-25, see note from Randy
         ! --------------------------------------------------------------------------
-
-        RDC = max(VGRDA(VEG1),VGRDA(VEG2))*min(1.,lai/2.)
+        ! jkolassa Oct 2020: RDC formulation previously implemented in GEOSldas Catchment-CN
+        ! RDC = max(VGRDA(VEG1),VGRDA(VEG2))*min(1.,lai/2.)
+        
+        ! jkolassa Oct 2020: updated RDC formulation to the one used in F. Zeng's science-validated, published Catchment-CN simulations
+        rdc_tmp_1 = max( VGRDA(VEG1)*min( 1., LAI1/VGRDB(VEG1) ), 0.001)
+        rdc_tmp_2 = max( VGRDA(VEG2)*min( 1., LAI2/VGRDB(VEG2) ), 0.001)
+        RDC = max(rdc_tmp_1,rdc_tmp_2)*min(1.,lai/2.)
         RDC = max(RDC,0.001)
 
         RHO = PS/(MAPL_RGAS*(TA*(1+MAPL_VIREPS*QA)))
@@ -6380,32 +6385,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     AGCM_S = AGCM_S + 60 * AGCM_MI + 3600 * AGCM_HH
     sofmin = AGCM_S
 
-! declination  gkw: this is ugly... get someone to make ZS & ZC available as optional arg for MAPL_SunGetInsolation
-! -----------                                                                              or MAPL_SunOrbitQuery
-    call MAPL_SunOrbitQuery(Orbit,zc=zco,zs=zso,years_per_cycle=years_per_cycle, &
-           days_per_cycle=days_per_cycle,year_length=year_length,rc=status)
-    VERIFY_(STATUS)
-    YEAR = mod(AGCM_YY-1,YEARS_PER_CYCLE)  ! gkw: made ORBIT public in MAPL_sun_uc.P90 (temporary solution)
-
-    IDAY = YEAR*int(YEAR_LENGTH)+dofyr
-    IDAYP1 = mod(IDAY,DAYS_PER_CYCLE) + 1
-
-    _ASSERT(IDAY   <= 1461 .AND. IDAY   > 0,'needs informative message')
-    _ASSERT(IDAYP1 <= 1461 .AND. IDAYP1 > 0,'needs informative message')
-
-    FAC = real(AGCM_S)/86400.
-
-    !ZS = ORBIT%ZS(IDAYP1)*FAC + ORBIT%ZS(IDAY)*(1.-FAC) !   sine of solar declination
-    !ZC = ORBIT%ZC(IDAYP1)*FAC + ORBIT%ZC(IDAY)*(1.-FAC) ! cosine of solar declination
-    ZS = ZSO(IDAYP1)*FAC + ZSO(IDAY)*(1.-FAC) !   sine of solar declination
-    ZC = ZCO(IDAYP1)*FAC + ZCO(IDAY)*(1.-FAC) ! cosine of solar declination
-
-    nullify(ZSO,ZCO) 
-    declin = asin(ZS)
-
-!if( MAPL_AM_I_Root() ) write(6,444) declin,iday,idayp1,fac,zs,dofyr,AGCM_S
-!444 format('orbit:',f10.6,2i5,f7.4,f9.5,i4,i6)
-
 ! get ending time; determine if this is last call before ending time
 ! ------------------------------------------------------------------
     call ESMF_ClockGet ( clock,  StopTime=StopTime ,rc=STATUS )
@@ -6419,34 +6398,17 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! ----------------------------------------------
     cat_id = nint(tile_id) ! gkw: temporary for debugging
 
-! compute daylength (and daylength factor) gkw: LATS is in radians, OB in degrees
+! compute daylength (and daylength factor)
 ! ----------------------------------------
-    call MAPL_SunOrbitQuery(ORBIT,           & ! gkw: this is the correct way to obtain obliquity
-                            OBLIQUITY=OB,    & ! gkw: ideally, ZS & ZC would be obtained this way
-			    rc=status )
+
+    ! current daylight duration
+    call MAPL_SunGetDaylightDuration(ORBIT,lats,dayl,currTime=CURRENT_TIME,RC=STATUS)
     VERIFY_(STATUS)
-
-    do n = 1,ntiles
-!!!   fac = -(sin(lats(n))*sin(declin))/(cos(lats(n))*cos(declin))
-      fac = -(sin(lats(n))*zs)/(cos(lats(n))*zc)
-      fac = min(1.,max(-1.,fac))
-      dayl(n) = (86400./MAPL_PI) * acos(fac)   ! daylength (seconds)
-
-      max_decl = ob * (MAPL_PI/180.)
-      if (lats(n) < 0.) max_decl = -max_decl
-      fac = -(sin(lats(n))*sin(max_decl))/(cos(lats(n))*cos(max_decl))
-      fac = min(1.,max(-1.,fac))
-      max_dayl = (86400./MAPL_PI) * acos(fac)  ! maximum daylength (sec; function of latitude & obliquity)
-
-! calculate dayl_factor as the ratio of (current:max dayl)^2
-! set a minimum of 0.01 (1%) for the dayl_factor [gkw: from CLM4]
-
-      dayl_fac(n) = min(1.,max(0.01,(dayl(n)*dayl(n))/(max_dayl*max_dayl)))
-    end do
-
-!write(6,845) cat_id(1),lats(1),lons(1),dayl(1),-(sin(lats(1))*sin(declin))/(cos(lats(1))*cos(declin)), &
-!                                               -(sin(lats(1))*zs)/(cos(lats(1))*zc),ob,dayl_fac(1)
-!845 format('dayl:',i6,2f10.5,f9.2,2f10.6,f7.3,f8.5)
+    ! maximum daylight duration (at solstice)
+    call MAPL_SunGetDaylightDurationMax(ORBIT,lats,dayl_fac,currTime=CURRENT_TIME,RC=STATUS)
+    VERIFY_(STATUS)
+    ! dayl_fac is ratio current:maximum dayl squared (min 0.01 [gkw: from CLM4])
+    dayl_fac = min(1.,max(0.01,(dayl/dayl_fac)**2))
 
 ! gkw: obtain catchment area fractions and soil moisture
 ! ------------------------------------------------------
@@ -6581,7 +6543,11 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
       zbar = -sqrt(1.e-20+catdef(n)/bf1(n))+bf2(n)
       HT(:)=GHTCNT(:,N)
       CALL GNDTMP_CN(poros(n),zbar,ht,frice,tp,soilice)
-      tp1(n) = tp(1) + Tzero
+
+      ! At the CatchCNGridComp level, tp1, tp2, .., tp6 are export variables in units of Kelvin,
+      ! - rreichle & borescan, 6 Nov 2020
+
+      tp1(n) = tp(1) + Tzero  
       tp2(n) = tp(2) + Tzero
       tp3(n) = tp(3) + Tzero
       tp4(n) = tp(4) + Tzero
@@ -7446,7 +7412,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
            call WRITE_PARALLEL(NT_GLOBAL, UNIT)
            call WRITE_PARALLEL(DT, UNIT)
-           call WRITE_PARALLEL(PRECIPFRAC, UNIT)
+           call WRITE_PARALLEL(USE_FWET_FOR_RUNOFF, UNIT)
            call MAPL_VarWrite(unit, tilegrid, LONS,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, LATS,  mask=mask, rc=status); VERIFY_(STATUS)
            call MAPL_VarWrite(unit, tilegrid, VEG1,  mask=mask, rc=status); VERIFY_(STATUS)
@@ -7532,8 +7498,8 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
         if (ntiles > 0) then
 
-           call CATCHCN ( NTILES, LONS, LATS                         ,&
-                DT	,PRECIPFRAC, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF   ,&
+           call CATCHCN ( NTILES, LONS, LATS, DT,USE_FWET_FOR_RUNOFF, &
+                FWETC, FWETL, cat_id, VEG1,VEG2,FVEG1,FVEG2,DZSF     ,&
                 PCU      ,     PLSIN ,     SNO, ICE, FRZR            ,&
                 UUU                                                  ,&
 
@@ -7601,7 +7567,21 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
                 TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
                 QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
                 RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
-
+           
+           
+           ! Change units of TP1, TP2, .., TP6 export variables from Celsius to Kelvin.
+           ! This used to be done at the level the Surface GridComp.
+           ! With this change, gridded TSOIL[n] exports from Surface and tile-space TP[n] exports
+           ! from Catch are now consistently in units of Kelvin.
+           ! - rreichle, borescan, 6 Nov 2020
+           
+           TP1 = TP1 + MAPL_TICE
+           TP2 = TP2 + MAPL_TICE
+           TP3 = TP3 + MAPL_TICE
+           TP4 = TP4 + MAPL_TICE
+           TP5 = TP5 + MAPL_TICE
+           TP6 = TP6 + MAPL_TICE
+            
         end if
 
         if (OFFLINE_MODE /=0) then
@@ -7754,14 +7734,12 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         if(associated( WCSF )) WCSF   = SFMC
         if(associated( WCRZ )) WCRZ   = RZMC
         if(associated( WCPR )) WCPR   = PRMC
-
-        if(associated( ACCUM)) ACCUM  = SLDTOT - EVPICE*(1./MAPL_ALHS) - SMELT 
-
+        if(associated( ACCUM)) ACCUM  = SLDTOT - EVPICE*(1./MAPL_ALHS) - SMELT
+        if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
+        if(associated(SNOLAND)) SNOLAND = SLDTOT
         if(associated(EVPSNO)) EVPSNO = EVPICE
         if(associated(SUBLIM)) SUBLIM = EVPICE*(1./MAPL_ALHS)*FR(:,FSNW)
         if(associated(EVLAND)) EVLAND = EVAPOUT-EVACC
-        if(associated(PRLAND)) PRLAND = PCU+PLS+SLDTOT
-        if(associated(SNOLAND)) SNOLAND = SLDTOT
         if(associated(DRPARLAND)) DRPARLAND = DRPAR
         if(associated(DFPARLAND)) DFPARLAND = DFPAR
         if(associated(LHLAND)) LHLAND = HLATN
@@ -7900,12 +7878,12 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         if (allocated (SNOVF_tmp)) deallocate ( SNOVF_tmp )
         if (allocated (SNONF_tmp)) deallocate ( SNONF_tmp )
 
-        deallocate(GHTCNT   )
-        deallocate(WESNN    )
-        deallocate(HTSNNN   )
-        deallocate(SNDZN    )
+	deallocate(GHTCNT   )
+	deallocate(WESNN    )
+	deallocate(HTSNNN   )
+	deallocate(SNDZN    )
 	deallocate(TILEZERO )
-        deallocate(DZSF     )
+	deallocate(DZSF     )
 	deallocate(SWNETFREE)
 	deallocate(SWNETSNOW)
 	deallocate(VEG1     )
@@ -7922,77 +7900,79 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 	deallocate(RSL2     )
 	deallocate(SQSCAT   )
 	deallocate(RDC      )
-        deallocate(UUU      )
-        deallocate(RHO      )
-        deallocate(ZVG      )
-        deallocate(LAI0     )
-        deallocate(GRN0     )
-        deallocate(Z0       )
+	deallocate(RDC_TMP_1)
+	deallocate(RDC_TMP_2)
+	deallocate(UUU      )
+	deallocate(RHO      )
+	deallocate(ZVG      )
+	deallocate(LAI0     )
+	deallocate(GRN0     )
+	deallocate(Z0       )
 	deallocate(D0       )
 	deallocate(SFMC     )
 	deallocate(RZMC     )
-        deallocate(PRMC     )
-        deallocate(ENTOT    )
-        deallocate(WTOT     )
-        deallocate(GHFLXSNO )
-        deallocate(SHSNOW1  )
-        deallocate(AVETSNOW1)
-        deallocate(WAT10CM1 )
-        deallocate(WATSOI1  )
-        deallocate(ICESOI1  )
-        deallocate(LHSNOW1  )
-        deallocate(LWUPSNOW1)
-        deallocate(LWDNSNOW1)
-        deallocate(NETSWSNOW)
-        deallocate(TCSORIG1 )
-        deallocate(LHACC )
-        deallocate(SUMEV )
-        deallocate(TPSN1IN1 )
-        deallocate(TPSN1OUT1)
-        deallocate(GHFLXTSKIN)
-        deallocate(WCHANGE  )
-        deallocate(ECHANGE  )
-        deallocate(HSNACC   )
-        deallocate(EVACC    )
-        deallocate(SHACC    )
-        deallocate(VSUVR    )
-        deallocate(VSUVF    )
-        deallocate(SNOVR    )
-        deallocate(SNOVF    )
-        deallocate(SNONR    )
-        deallocate(SNONF    )
-        deallocate(SHSBT    )
-        deallocate(DSHSBT   )
-        deallocate(EVSBT    )
-        deallocate(DEVSBT   )
-        deallocate(DEDTC    )
-        deallocate(DHSDQA   )
-        deallocate(CFT      )
-        deallocate(CFQ      )
-        deallocate(TCO      )
-        deallocate(QCO      )
-        deallocate(DQS      )
-        deallocate(QSAT     )
-        deallocate(RA       )
-        deallocate(CAT_ID   )
-        deallocate(ALWX     )
-        deallocate(BLWX     )
-        deallocate(ALWN     )
-        deallocate(BLWN     )
-        deallocate(TC1_0    )
-        deallocate(TC2_0    )
-        deallocate(TC4_0    )
-        deallocate(QA1_0    )
-        deallocate(QA2_0    )
-        deallocate(QA4_0    )
-        deallocate(fveg1    )
-        deallocate(fveg2    )
-        deallocate(RCONSTIT )
-        deallocate(TOTDEPOS )
-        deallocate(RMELT    )
-        deallocate(FICE1    )
-        deallocate(SLDTOT )
-        deallocate(   btran )
+	deallocate(PRMC     )
+	deallocate(ENTOT    )
+	deallocate(WTOT     )
+	deallocate(GHFLXSNO )
+	deallocate(SHSNOW1  )
+	deallocate(AVETSNOW1)
+	deallocate(WAT10CM1 )
+	deallocate(WATSOI1  )
+	deallocate(ICESOI1  )
+	deallocate(LHSNOW1  )
+	deallocate(LWUPSNOW1)
+	deallocate(LWDNSNOW1)
+	deallocate(NETSWSNOW)
+	deallocate(TCSORIG1 )
+	deallocate(LHACC )
+	deallocate(SUMEV )
+	deallocate(TPSN1IN1 )
+	deallocate(TPSN1OUT1)
+	deallocate(GHFLXTSKIN)
+	deallocate(WCHANGE  )
+	deallocate(ECHANGE  )
+	deallocate(HSNACC   )
+	deallocate(EVACC    )
+	deallocate(SHACC    )
+	deallocate(VSUVR    )
+	deallocate(VSUVF    )
+	deallocate(SNOVR    )
+	deallocate(SNOVF    )
+	deallocate(SNONR    )
+	deallocate(SNONF    )
+	deallocate(SHSBT    )
+	deallocate(DSHSBT   )
+	deallocate(EVSBT    )
+	deallocate(DEVSBT   )
+	deallocate(DEDTC    )
+	deallocate(DHSDQA   )
+	deallocate(CFT      )
+	deallocate(CFQ      )
+	deallocate(TCO      )
+	deallocate(QCO      )
+	deallocate(DQS      )
+	deallocate(QSAT     )
+	deallocate(RA       )
+	deallocate(CAT_ID   )
+	deallocate(ALWX     )
+	deallocate(BLWX     )
+	deallocate(ALWN     )
+	deallocate(BLWN     )
+	deallocate(TC1_0    )
+	deallocate(TC2_0    )
+	deallocate(TC4_0    )
+	deallocate(QA1_0    )
+	deallocate(QA2_0    )
+	deallocate(QA4_0    )
+	deallocate(fveg1    )
+	deallocate(fveg2    )
+	deallocate(RCONSTIT )
+	deallocate(TOTDEPOS )
+	deallocate(RMELT    )
+	deallocate(FICE1    )
+	deallocate(SLDTOT )
+	deallocate(   btran )
 	deallocate(     wgt )
 	deallocate(     bt1 )
 	deallocate(     bt2 )
@@ -8021,13 +8001,12 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 	deallocate(    car4 )
 	deallocate( parzone )
 	deallocate(    para )
-        deallocate(   parav )
-        deallocate (scaled_fpar)
-        deallocate (UNscaled_fpar)
+	deallocate(   parav )
+	deallocate(scaled_fpar)
+	deallocate(UNscaled_fpar)
 	deallocate(  totwat )
 	deallocate(    dayl )
 	deallocate(dayl_fac )
-
 	deallocate(     tgw )
 	deallocate(     rzm )
 	deallocate(    rc00 )
