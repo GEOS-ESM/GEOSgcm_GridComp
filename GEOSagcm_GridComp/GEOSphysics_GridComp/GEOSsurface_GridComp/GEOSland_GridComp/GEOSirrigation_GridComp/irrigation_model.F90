@@ -211,7 +211,7 @@ contains
              !-----------------------------------------------------------------------------
 
              if(SMREF(N) > SMWP(N))then
-                ma = ROOTFRAC*(SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
+                ma = (SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
              else
                 ma = -1.
              endif
@@ -395,7 +395,7 @@ contains
                             else
                                ROOTFRAC = CROP_SEASON_STAGE (this%MIDS_LENGTH, dofyr,NINT(IRRIGPLANT(N, sea, crop)),NINT(IRRIGHARVEST(N, sea, crop)))
                                if(SMREF(N) > SMWP(N))then
-                                  ma = ROOTFRAC*(SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
+                                  ma = (SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
                                else
                                   ma = -1.
                                endif
@@ -407,7 +407,7 @@ contains
                                   H2 = this%sprinkler_stime + this%sprinkler_dur
                                   IT = this%sprinkler_thres
                                   if ((HC >= H1).AND.(HC < H2)) then
-                                     if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) &
+                                     if((ma >= 0.).AND.(ma <= IT).AND.(H1 == HC)) &
                                           SRATE (crop) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
                                           /(H2 - H1)/3600.
                                   else
@@ -420,7 +420,7 @@ contains
                                   H2 = this%drip_stime + this%drip_dur
                                   IT = this%sprinkler_thres 
                                   if ((HC >= H1).AND.(HC < H2)) then
-                                     if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) DRATE (crop) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),0.) &
+                                     if((ma >= 0.).AND.(ma <= IT).AND.(H1 == HC)) DRATE (crop) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),0.) &
                                           /(H2 - H1)/3600.
                                   else
                                      DRATE (crop) = 0.
@@ -432,7 +432,7 @@ contains
                                   H2 = this%flood_stime + this%flood_dur
                                   IT = this%flood_thres
                                   if ((HC >= H1).AND.(HC < H2)) then
-                                     if((ma >= 0.).AND.(ma < IT).AND.(H1 == HC)) &
+                                     if((ma >= 0.).AND.(ma <= IT).AND.(H1 == HC)) &
                                           FRATE (crop) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
                                            /(H2 - H1)/3600.
                                   else
@@ -496,11 +496,24 @@ contains
   ! ----------------------------------------------------------------------------
   
   real FUNCTION CROP_SEASON_STAGE (MSL, DOY,DP, DH)
-  ! MSL : mid season length [-] as a fraction of the length of the season
-  ! DOY : doy of year
-  ! DP  : plant date
-  ! DH  : harvest date
-  
+    
+    ! MSL : mid season length [-] as a fraction of the length of the season
+    ! DOY : doy of year
+    ! DP  : plant date
+    ! DH  : harvest date
+    !                                MSL
+    !                       ----------------------
+    !                      /|                    | \
+    !                     / |                    |  \
+    !                    /  |                    |   \
+    !                   /   |                    |    \
+    !          --------------------- DOY ---------------------------->
+    !                  t0  t1                   t2   t3
+    !                  DP                             DH  
+    !                  |<----       SEAL            -->|
+    !
+        
+   
     implicit none
     real, intent    (in) :: MSL
     integer, intent (in) :: DOY,DP, DH
@@ -539,7 +552,8 @@ contains
     class(irrigation_model),intent(inout):: this
     real, intent (in)                    :: rootfrac, asmc, smcref, efcor
 
-    crop_water_deficit = rootfrac*(smcref - asmc)*100.0/(100.0-efcor)   
+    crop_water_deficit = 0.
+    if(smcref > asmc) crop_water_deficit = rootfrac*(smcref - asmc)*100.0/(100.0-efcor)   
 
   END FUNCTION crop_water_deficit
   
