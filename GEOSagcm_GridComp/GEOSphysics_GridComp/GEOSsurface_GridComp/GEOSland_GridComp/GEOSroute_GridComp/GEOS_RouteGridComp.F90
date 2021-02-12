@@ -423,7 +423,7 @@ contains
     call ESMF_GridGetCoord(CatchGrid,coordDim=1,farrayptr=coords,rc=status)
     _VERIFY(status)
     coords=0.0d0
-    all ESMF_GridGetCoord(CatchGrid,coordDim=2,farrayptr=coords,rc=status)
+    call ESMF_GridGetCoord(CatchGrid,coordDim=2,farrayptr=coords,rc=status)
     _VERIFY(status)
     coords=0.0d0
    
