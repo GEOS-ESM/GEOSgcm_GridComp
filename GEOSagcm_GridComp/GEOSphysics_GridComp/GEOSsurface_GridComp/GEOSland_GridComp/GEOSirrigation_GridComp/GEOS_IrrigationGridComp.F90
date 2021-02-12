@@ -561,7 +561,13 @@ contains
           local_hour(n) = real(NINT(local_hour(n)))
        end if
 
-       ! reference soil moisture content is at lower tercile of RZ soil moisture range [mm]
+       ! reference soil moisture content is at lower tercile of RZ soil moisture range [mm].
+       ! (NOTE: Perhaps, soil field capacity (FEILDCAP) is the desired parameter here - the upper limit
+       ! of water content that soil can hold for plants after excess water is drained off downward quickly.
+       ! The use of lower tercile here is consistent with CATCH/CATCHCN soil moisture parameterization, though.
+       ! If we want to switch to FIELDCAP in the future, that has already been derived on tiles and available
+       ! in irrigation_IMxJM_DL.dat file.)
+       
        SMREF (n) = VGWMAX (n) * (wpwet (n) + (1. - wpwet (n))/3.) 
        
     END DO
