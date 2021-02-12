@@ -365,7 +365,7 @@ contains
     ! initial SRATE, DRATE and FRATE at the start of the loop and update SPRINKLERRATE, DRIPRATE, and
     ! FLOODRATE using updated SRATE, DRATE and FRATE at the end again to save for the next time step.
     ! Note also, CROPIRRIGFRAC(N,3) is always 1.0 on paddy tiles, and SUM of CROPIRRIGFRAC(N,:) excluding the 3rd element
-    ! is also 1.0 on irrigated crop tiles.
+    ! (3rd element is paddy) is 1.0 on irrigated crop tiles.
      
     ALLOCATE (SRATE (NUM_CROPS))
     ALLOCATE (DRATE (NUM_CROPS))
@@ -529,11 +529,11 @@ contains
     ! DP  : plant date
     ! DH  : harvest date
     !                                MSL
-    !               1.0 ->  ----------------------
-    !                      /|                    | \
-    !                     / |                    |  \
-    !                    /  |                    |   \
-    !                   /   |                    |    \
+    !               1.0 ___________________________
+    !                      /|                     |\
+    !                     / |                     | \
+    !                    /  |                     |  \
+    !                   /   |                     |   \
     !          --------------------- DOY ---------------------------->
     !                  t0  t1                   t2   t3
     !                  DP                             DH  
