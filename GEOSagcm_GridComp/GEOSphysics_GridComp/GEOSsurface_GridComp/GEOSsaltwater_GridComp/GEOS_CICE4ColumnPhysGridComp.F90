@@ -70,6 +70,14 @@ module GEOS_CICE4ColumnPhysGridComp
 
   logical ::      DUAL_OCEAN
 
+  type cice_state
+       integer:: CHOOSEMOSFC
+  end type cice_state
+
+  type cice_state_wrap
+      type(cice_state), pointer :: ptr
+  end type
+
   contains
 
 !BOP
@@ -114,6 +122,11 @@ module GEOS_CICE4ColumnPhysGridComp
     integer                                 :: NUM_ICE_LAYERS      ! set via resource parameter
     integer                                 :: NUM_ICE_CATEGORIES  ! set via resource parameter
     integer ::      iDUAL_OCEAN
+
+    type(cice_state_wrap) :: wrap
+    type(cice_state), pointer :: mystate
+    character(len=ESMF_MAXSTR)     :: SURFRC
+    type(ESMF_Config)              :: SCF
 
 !=============================================================================
 
@@ -1904,6 +1917,16 @@ module GEOS_CICE4ColumnPhysGridComp
 
 !EOS
 
+    allocate(mystate,stat=status)
+    VERIFY_(status)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=mystate%CHOOSEMOSFC, DEFAULT=1, __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
+    wrap%ptr => mystate
+    call ESMF_UserCompSetInternalState(gc, 'cice_private', wrap,status)
+    VERIFY_(status)
 
 ! Set the Profiling timers
 ! ------------------------
@@ -2294,8 +2317,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer         :: PRES_ICE
    integer         :: CHOOSEMOSFC
    integer         :: CHOOSEZ0
-   character(len=ESMF_MAXSTR)     :: SURFRC
-   type(ESMF_Config)              :: SCF 
+   type(cice_state_wrap) :: wrap
+   type(cice_state), pointer :: mystate
 
 !=============================================================================
 
@@ -2340,11 +2363,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
-    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=CHOOSEMOSFC, DEFAULT=1, __RC__ ) 
-    call ESMF_ConfigDestroy      (SCF, __RC__)
+    call ESMF_UserCompGetInternalState(gc,'cice_private',wrap,status)
+    VERIFY_(status)
+    mystate => wrap%ptr
+    CHOOSEMOSFC = mystate%CHOOSEMOSFC
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0,    Label="CHOOSEZ0:",    DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
