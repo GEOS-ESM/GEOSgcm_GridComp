@@ -55,7 +55,7 @@ module GEOS_IrrigationGridCompMod
   logical    :: RUN_IRRIG
   
   type IRRIG_WRAP
-     type (irrig_params), pointer :: PTR => null()
+     type (irrig_params), pointer   :: PTR => null()
   end type IRRIG_WRAP
 
 contains
@@ -310,7 +310,45 @@ contains
          FRIENDLYTO = trim(COMP_NAME)                         ,&
          RESTART    = MAPL_RestartOptional                    ,&
          RC=STATUS  )
-    VERIFY_(STATUS)  	 
+    VERIFY_(STATUS)
+    
+    if (IRRIG_TRIGGER == 1) then
+       call MAPL_AddInternalSpec(GC                              ,&
+            SHORT_NAME = 'SRATE'                                 ,&
+            LONG_NAME  ='crop_specific_sprinkler_irrigation_rate',&
+            UNITS      = 'kg m-2 s-1'                            ,&
+            DIMS       = MAPL_DimsTileOnly                       ,&
+            VLOCATION  = MAPL_VLocationNone                      ,&
+            FRIENDLYTO = trim(COMP_NAME)                         ,&
+            RESTART    = MAPL_RestartOptional                    ,&
+            UNGRIDDED_DIMS = (/NUM_CROPS/)                       ,&
+            RC=STATUS  )
+       VERIFY_(STATUS)  
+       
+       call MAPL_AddInternalSpec(GC                              ,&
+            SHORT_NAME = 'DRATE'                                 ,&
+            LONG_NAME  = 'crop_specific_drip_irrigation_rate'    ,&
+            UNITS      = 'kg m-2 s-1'                            ,&
+            DIMS       = MAPL_DimsTileOnly                       ,&
+            VLOCATION  = MAPL_VLocationNone                      ,&
+            FRIENDLYTO = trim(COMP_NAME)                         ,&
+            RESTART    = MAPL_RestartOptional                    ,&
+            UNGRIDDED_DIMS = (/NUM_CROPS/)                       ,&
+            RC=STATUS  )
+       VERIFY_(STATUS)  	 
+       
+       call MAPL_AddInternalSpec(GC                              ,&
+            SHORT_NAME = 'FRATE'                                 ,&
+            LONG_NAME  = 'crop_specific_flood_irrigation_rate'   ,&
+            UNITS      = 'kg m-2 s-1'                            ,&
+            DIMS       = MAPL_DimsTileOnly                       ,&
+            VLOCATION  = MAPL_VLocationNone                      ,&
+            FRIENDLYTO = trim(COMP_NAME)                         ,&
+            RESTART    = MAPL_RestartOptional                    ,&
+            UNGRIDDED_DIMS = (/NUM_CROPS/)                       ,&
+            RC=STATUS  )
+       VERIFY_(STATUS)       
+    endif
     
 ! -----------------------------------------------------------
 ! Import states
@@ -432,6 +470,9 @@ contains
     real, dimension(:),     pointer :: SPRINKLERRATE
     real, dimension(:),     pointer :: DRIPRATE
     real, dimension(:),     pointer :: FLOODRATE
+    real, dimension(:,:),   pointer :: SRATE
+    real, dimension(:,:),   pointer :: DRATE
+    real, dimension(:,:),   pointer :: FRATE
 
 ! IMPORT pointers
     
@@ -501,6 +542,12 @@ contains
     call MAPL_GetPointer(INTERNAL, SPRINKLERRATE, 'SPRINKLERRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, DRIPRATE,      'DRIPRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, FLOODRATE,     'FLOODRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    if (IRRIG_TRIGGER == 1) then
+       call MAPL_GetPointer(INTERNAL, SRATE, 'SRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, DRATE, 'DRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_GetPointer(INTERNAL, FRATE, 'FRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    endif
+    
     
 ! get pointers to IMPORT variables
 ! --------------------------------
@@ -536,6 +583,7 @@ contains
 ! -------------------------
 
     NTILES = SIZE (LONS)
+    
     allocate (local_hour (1:NTILES))
     allocate (SMWP       (1:NTILES))
     allocate (SMSAT      (1:NTILES))
@@ -586,11 +634,12 @@ contains
        
        ! crop calendar based irrigation
        ! ==============================
-       
+
        call IM%run_model (dofyr,local_hour,                   &
             CROPIRRIGFRAC,IRRIGPLANT,IRRIGHARVEST,IRRIGTYPE , &
             SMWP,SMSAT,SMREF,SMCNT, RZDEF,                    & 
-            SPRINKLERRATE, DRIPRATE, FLOODRATE) 
+            SPRINKLERRATE, DRIPRATE, FLOODRATE,               &
+            SRATE, DRATE, FRATE) 
 
     endif
 
