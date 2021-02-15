@@ -36,6 +36,7 @@ module cloudnew
    PUBLIC hystpdf, hystpdf_new
    PUBLIC cnvsrc
    PUBLIC meltfrz, meltfrz_inst
+   PUBLIC evap3, subl3
 #endif
 
 #ifdef _CUDA
@@ -1083,6 +1084,7 @@ contains
 
             call evap3(            &
                   DT             , &
+                  CLD_EVP_EFF    , &
                   RHCRIT         , &
                   PP_dev(I,K)    , &
                   TEMP           , &
@@ -1097,6 +1099,7 @@ contains
 
             call subl3(            &
                   DT             , & 
+                  CLD_EVP_EFF    , &
                   RHCRIT         , &
                   PP_dev(I,K)    , &
                   TEMP           , &
@@ -2705,6 +2708,7 @@ contains
 #endif
    subroutine evap3(&
          DT      , &
+         A_EFF   , &
          RHCR    , &
          PL      , &
          TE      , &
@@ -2718,6 +2722,7 @@ contains
          QS        )
 
       real, intent(in   ) :: DT 
+      real, intent(in   ) :: A_EFF
       real, intent(in   ) :: RHCR
       real, intent(in   ) :: PL
       real, intent(inout) :: TE
@@ -2734,9 +2739,7 @@ contains
       real, parameter :: K_COND  =  2.4e-2        ! J m**-1 s**-1 K**-1
       real, parameter :: DIFFU   =  2.2e-5        ! m**2 s**-1
 
-      real :: A_eff
-
-      A_EFF = CLD_EVP_EFF
+     !A_EFF = CLD_EVP_EFF
 
       NN = 50.*1.0e6
 
@@ -2803,6 +2806,7 @@ contains
 #endif
    subroutine subl3( &
          DT        , &
+         A_EFF     , &
          RHCR      , &
          PL        , &
          TE        , &
@@ -2816,6 +2820,7 @@ contains
          QS        )
 
       real, intent(in   ) :: DT
+      real, intent(in   ) :: A_EFF
       real, intent(in   ) :: RHCR
       real, intent(in   ) :: PL
       real, intent(inout) :: TE
@@ -2831,10 +2836,6 @@ contains
       real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
       real, parameter :: K_COND  =  2.4e-2        ! J m**-1 s**-1 K**-1
       real, parameter :: DIFFU   =  2.2e-5        ! m**2 s**-1
-
-      real :: A_eff
-
-      A_EFF = CLD_EVP_EFF
 
       NN = 5.*1.0e6
 
@@ -3794,7 +3795,7 @@ contains
   
        ELSEIF(ITYPE == ICE) THEN
 
-        IF (adjustl(CLDMICRO)=="GFDL") THEN
+        IF (adjustl(CLDMICRO)=="NONE") THEN
 
          RHO = 100.*PL / (MAPL_RGAS*TE )
          !- ice water content
