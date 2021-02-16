@@ -1,6 +1,5 @@
 # Note that directory and library name do not correspond!
 esma_set_this (OVERRIDE GEOS_SurfaceShared)
-esma_add_subdirectories (Raster)
 
 set (resource_files
     GEOS_SurfaceGridComp.rc
