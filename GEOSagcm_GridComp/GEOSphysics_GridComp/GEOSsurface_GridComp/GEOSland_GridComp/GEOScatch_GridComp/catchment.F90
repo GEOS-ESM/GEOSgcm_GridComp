@@ -831,7 +831,7 @@
         AREA(2)= AR2(N) 
         AREA(3)= AR4(N) 
         pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
-        snowf  = tsnow(n)+tice(n)+tfrzr(n)
+        snowf  = tsnow(n)+tice(n) !WMP+tfrzr(n)
         dedea  = dedqas(n)*epsilon/psur(n) 
         dhsdea = dhsdqas(n)*epsilon/psur(n) 
         ea     = qm(n)*psur(n)/epsilon 

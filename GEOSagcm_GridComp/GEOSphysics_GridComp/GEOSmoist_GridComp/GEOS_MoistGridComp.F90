@@ -2159,6 +2159,14 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'RAIN',                                         &
+         LONG_NAME = 'rainfall',                                    &
+         UNITS     = 'kg m-2 s-1',                                  &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME = 'PCU',                                         & 
          LONG_NAME = 'convective_rainfall',                         &
          UNITS     = 'kg m-2 s-1',                                  &
@@ -5368,7 +5376,7 @@ contains
       integer                         :: YEAR, MONTH, DAY, HR, SE, MN
       type (ESMF_Time)                :: CurrentTime
       real, pointer, dimension(:,:  ) :: LS_ARF, CN_ARF, AN_ARF, SC_ARF
-      real, pointer, dimension(:,:  ) :: PTYPE,FRZR,ICE,SNR,PRECU,PRELS,TS,SNOMAS,FRLANDICE,FRLAND,FROCEAN
+      real, pointer, dimension(:,:  ) :: PTYPE,RAIN,PRECU,PRELS,FRZR,ICE,SNR,TS,SNOMAS,FRLANDICE,FRLAND,FROCEAN
       real, pointer, dimension(:,:  ) :: IWP,LWP,CWP,TPW,CAPE,ZPBLCN,INHB,ZLCL,ZLFC,ZCBL,CCWP , KPBLIN, KPBLSC
       real, pointer, dimension(:,:  ) :: TVQ0,TVQ1,TVE0,TVE1,TVEX,DCPTE, TVQX2, TVQX1, CCNCOLUMN, NDCOLUMN, NCCOLUMN  !DONIF
       real, pointer, dimension(:,:,:,:) :: XHO
@@ -6441,6 +6449,7 @@ contains
       call MAPL_GetPointer(EXPORT, WI,       'DWDT'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DQDT,     'DQDT'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, PTYPE,    'PTYPE'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, RAIN,     'RAIN'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, FRZR,     'FRZR'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, ICE,      'ICE'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, SNR,      'SNO'     , RC=STATUS); VERIFY_(STATUS)
@@ -9379,6 +9388,18 @@ contains
          PRCP_SNOW    = PRCP_SNOW    / 86400.
          PRCP_ICE     = PRCP_ICE     / 86400.
          PRCP_GRAUPEL = PRCP_GRAUPEL / 86400.
+         where (PRCP_RAIN .lt. 0.0)
+            PRCP_RAIN = 0.0
+         end where
+         where (PRCP_SNOW .lt. 0.0)
+            PRCP_SNOW = 0.0
+         end where
+         where (PRCP_ICE .lt. 0.0)
+            PRCP_ICE = 0.0
+         end where
+         where (PRCP_GRAUPEL .lt. 0.0)
+            PRCP_GRAUPEL = 0.0
+         end where
      ! Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
          PFL_LS_X = PFL_LS_X/(MAPL_GRAV*DT_MOIST)
          PFI_LS_X = PFI_LS_X/(MAPL_GRAV*DT_MOIST)
@@ -12219,20 +12240,11 @@ do K= 1, LM
       if (associated(TPW    ))   TPW     = SUM(   Q1         *MASS , 3 )
       if (associated(RH2    ))   RH2     = max(MIN( Q1/GEOS_QSAT (TH1*PK, PLO) , 1.02 ),0.0)
 
-    
-
       if(adjustl(CLDMICRO)=="2MOMENT") then
          if (associated(CCNCOLUMN    ))   CCNCOLUMN      = SUM(CCN1*MASS/(100.*PLO*r_air/TEMP) , 3)
          if (associated(NDCOLUMN    ))    NDCOLUMN      =  SUM(NCPL_VOL*MASS/(100.*PLO*r_air/TEMP) , 3)
          if (associated(NCCOLUMN    ))    NCCOLUMN      =SUM(NCPI_VOL*MASS/(100.*PLO*r_air/TEMP) , 3)
       end if
-
-      if (associated(PRECU  ))   PRECU   = CN_PRC2 + SC_PRC2
-      if (associated(PRELS  ))   PRELS   = LS_PRC2 + AN_PRC2
-      if (associated(TT_PRCP))   TT_PRCP = TPREC
-      if (associated(SNR    ))   SNR     = LS_SNR  + AN_SNR + CN_SNR + SC_SNR
-      if (associated(ICE    ))   ICE     = 0.0
-      if (associated(FRZR   ))   FRZR    = 0.0
 
       if (associated(HOURNORAIN))   then
          call ESMF_ClockGet(CLOCK, currTime=CurrentTime, rc=STATUS)
@@ -12298,6 +12310,8 @@ do K= 1, LM
 ! --------------------------------------------------------------------------------------------
 
       DIAGNOSE_PTYPE: if (LDIAGNOSE_PRECIP_TYPE) then
+
+
          PTYPE(:,:) = 0 ! default PTYPE to rain
          ! Surface Precip Type diagnostic
          !
@@ -12412,17 +12426,37 @@ do K= 1, LM
          endif
          enddo
          enddo
+! WMP: 2019-04-01
+      endif DIAGNOSE_PTYPE
 
-         ! Zero out snowfall exports when using PTYPE diagnostics if not SNOW/MIX
-         if (associated(SNR) .AND. associated(PTYPE)) then
-         do J=1,JM
-            do I=1,IM
-               if (PTYPE(I,J) <= 2) SNR(I,J) = 0.0
+      if(adjustl(CLDMICRO)=="GFDL") then
+       ! Use true precip types for Land
+         if (associated(TT_PRCP))   TT_PRCP = TPREC
+         if (associated(SNR    ))   SNR     = PRCP_SNOW
+         if (associated(ICE    ))   ICE     = PRCP_ICE + PRCP_GRAUPEL
+         if (associated(RAIN   ))   RAIN    = PRCP_RAIN + CN_PRC2 + SC_PRC2 
+         if (associated(PRECU  ))   PRECU   = CN_PRC2 + SC_PRC2
+         if (associated(PRELS  ))   PRELS   = PRCP_RAIN
+         if (associated(FRZR   )) then
+            FRZR = 0.0
+            do J=1,JM
+               do I=1,IM
+                  if (TEMP(I,J,LM) < MAPL_TICE) FRZR(I,J) = PRCP_RAIN(I,J)
+               enddo
             enddo
-         enddo
          endif
-
-         ! Fill ICE fall diagnostic
+      else
+         if (associated(TT_PRCP))   TT_PRCP = TPREC
+         if (associated(SNR) .AND. associated(PTYPE)) then
+            SNR = 0.0
+            do J=1,JM
+               do I=1,IM
+                  if (PTYPE(I,J) > 2) SNR(I,J) = TPREC(I,J)
+               enddo
+            enddo
+         else
+            if (associated(SNR))   SNR = LS_SNR + AN_SNR + CN_SNR + SC_SNR
+         endif
          if (associated(ICE) .AND. associated(PTYPE)) then
             ICE = 0.0
             do J=1,JM
@@ -12433,8 +12467,6 @@ do K= 1, LM
          else
             if (associated(ICE))   ICE = 0.0
          endif
-
-         ! Fill FRZR fall diagnostic
          if (associated(FRZR) .AND. associated(PTYPE)) then
             FRZR = 0.0
             do J=1,JM
@@ -12446,39 +12478,25 @@ do K= 1, LM
          else
             if (associated(FRZR ))   FRZR = 0.0
          endif
-
-! WMP: 2019-04-01
-! For now keep all frozen precip from microphysics frozen
-!        ! Move convective frozen precip at surface to liquid based on PTYPE
-!        if (associated(PRECU) .AND. associated(PTYPE)) then
-!         do J=1,JM
-!           do I=1,IM
-!              if (PTYPE(I,J) <= 2) then
-!                 CN_PRC2(I,J) = CN_PRC2(I,J) + CN_SNR(I,J)
-!                 SC_PRC2(I,J) = SC_PRC2(I,J) + SC_SNR(I,J)
-!                 CN_SNR(I,J) = 0.0
-!                 SC_SNR(I,J) = 0.0
-!              endif
-!           enddo
-!         enddo
-!        endif
-!
-!        ! Move large-scale frozen precip at surface to liquid based on PTYPE
-!        if (associated(PRECU) .AND. associated(PTYPE)) then
-!         do J=1,JM
-!           do I=1,IM
-!              if (PTYPE(I,J) <= 2) then
-!                 LS_PRC2(I,J) = LS_PRC2(I,J) + LS_SNR(I,J)
-!                 AN_PRC2(I,J) = AN_PRC2(I,J) + AN_SNR(I,J)
-!                 LS_SNR(I,J) = 0.0
-!                 AN_SNR(I,J) = 0.0
-!              endif
-!           enddo
-!         enddo
-!        endif
-! WMP: 2019-04-01
-
-      endif DIAGNOSE_PTYPE
+         if (associated(RAIN) .AND. associated(PTYPE)) then
+            RAIN = 0.0
+            if (associated(PRECU)) PRECU = 0.0
+            if (associated(PRELS)) PRELS = 0.0
+            do J=1,JM
+               do I=1,IM
+                  if (PTYPE(I,J) <  2  ) then
+                     RAIN(I,J) = TPREC(I,J)
+                     if (associated(PRECU)) PRECU(I,J) = CN_PRC2(I,J)+SC_PRC2(I,J)
+                     if (associated(PRELS)) PRELS(I,J) = LS_PRC2(I,J)+AN_PRC2(I,J)
+                  endif
+               enddo
+            enddo
+         else
+            if (associated(RAIN ))   RAIN  = CN_PRC2+SC_PRC2+LS_PRC2+AN_PRC2
+            if (associated(PRECU))   PRECU = CN_PRC2 + SC_PRC2
+            if (associated(PRELS))   PRELS = LS_PRC2 + AN_PRC2
+       endif
+      endif
 
       if (associated(CN_PRCP))   CN_PRCP = CN_PRC2 + CN_SNR
       if (associated(SC_PRCP))   SC_PRCP = SC_PRC2 + SC_SNR
