@@ -308,7 +308,7 @@ module GEOS_OceanbiogeochemGridCompMod
     LONG_NAME  = 'fractional_cover_of_seaice',                &
     UNITS      = '1',                                         &
     DIMS       = MAPL_DimsHorzOnly,                           &
-    UNGRIDDED_DIMS = (/NUM_ICE_CATEGORIES/),                  &
+!    UNGRIDDED_DIMS = (/NUM_ICE_CATEGORIES/),                  &
     VLOCATION  = MAPL_VLocationNone,                          &
     RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
@@ -1061,6 +1061,8 @@ real :: tq(50)
 
     real, pointer, dimension(:,:)   :: FRICE => null()
 
+real :: testa
+real*8 :: testb
 !=============================================================================
 
 ! Begin... 
@@ -1159,7 +1161,9 @@ real :: tq(50)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, S,       'S',       RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FRACICE, 'FRACICE', RC=STATUS)
+!    call MAPL_GetPointer(IMPORT, FRACICE, 'FRACICE', RC=STATUS)
+!    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, FRICE, 'FRACICE', RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, FR, 'FROCEAN', RC=STATUS)
     VERIFY_(STATUS)
@@ -1300,8 +1304,8 @@ real :: tq(50)
 
 ! Get total seaice fraction
 !--------------------------
-    allocate(FRICE(IM,JM), __STAT__)
-    FRICE = SUM(FRACICE, DIM=3)
+!    allocate(FRICE(IM,JM), __STAT__)
+!    FRICE = SUM(FRACICE, DIM=3)
 
 ! Allocate BIO and other variables
 !---------------------------------
@@ -1333,13 +1337,12 @@ tq=10.0
               + DRY_DUST(i,j,4)+WET_DUST(i,j,4)+SED_DUST(i,j,4)        &
               + DRY_DUST(i,j,5)+WET_DUST(i,j,5)+SED_DUST(i,j,5))
 !    Convert Fe from kg m-2 s-1 to nmol Fe m-2 s-1
-!       Fe = (1.0E12/MOLWGHT_FE)*Fedep
+       Fe = (1.0E12/MOLWGHT_FE)*Fedep
 !#ifdef DATAATM
 !!    For data atmosphere, use pre-calculated fractions and content
 !!    and use only the first fraction
 !      Fe = DRY_CLAY(i,j)/3600.0   ! convert from nmFe m-2 h-1 to s-1
 !#endif
-
 
 !
 !  There are mismatches between the ocean, land and atmosphere in GEOS-5
@@ -1362,7 +1365,6 @@ endif
 !if (discharg > 0.0)then
 !write(6,*)'i,j,discharg = ',i,j,discharg
 !endif
-
 
        BIO(:,1)   = NITRATE(i,j,:)
        BIO(:,2)   = AMMON(i,j,:)
@@ -1397,6 +1399,13 @@ endif
          call daysetbio( LM, State%rik, State%cchl, CCHLRATIO1,     &
                          AVGQ1, GCMAX, BIO, DH(i,j,:), RIKD, WSSC)
        endif
+
+!testa = 1.0098989E-19
+!testb = 1.0098989E-19
+!if(mapl_am_i_root()) then
+!  print*,'OBIO a*a = ',testa*testa
+!  print*,'OBIO b*b = ',testb*testb
+!end if
        call kloop ( LM, DT,        State%solFe,      State%remin,   &
                     State%rkn,     State%rks,        State%rkf,     &
                     State%cnratio, State%cfratio,    CCHLRATIO1,    &
@@ -1408,6 +1417,7 @@ endif
 !                    tq, CDOMABSQ(i,j,:),aco2, wspd, slp,            &
                     TIRRQ(i,j,:),CDOMABSQ(i,j,:), aco2, wspd, slp,  &
                     T(i,j,:)-MAPL_TICE, S(i,j,:), PCO, CFLX, PPZ)
+
 
 BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
        NITRATE(i,j,:)  = BIO(:,1)
@@ -1455,7 +1465,7 @@ BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
     call apply_iau(import, mapl, mask = merge(tsource = 1.0, fsource = 0.0, mask = (dh /= mapl_undef)));
     call set_chlorophyll(mapl);
 #endif
-    
+
     if ( associated(PCO2) ) &
       where ( DH(:,:,1) > 1.0E10 ) PCO2 = MAPL_UNDEF
     if ( associated(FCO2) ) &
@@ -1472,9 +1482,9 @@ BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
     deallocate(WGHT)
     deallocate(dischrg)
 
+if(mapl_am_i_root()) print*,'OBIO DONE!!!'
 !  All done
 !-----------
-
     call MAPL_TimerOff(MAPL,"RUN" )
     call MAPL_TimerOff(MAPL,"TOTAL")
 

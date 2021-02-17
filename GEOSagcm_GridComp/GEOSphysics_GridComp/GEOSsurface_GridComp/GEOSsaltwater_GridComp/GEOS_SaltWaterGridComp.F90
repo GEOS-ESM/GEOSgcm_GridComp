@@ -857,7 +857,7 @@ module GEOS_SaltwaterGridCompMod
              UNITS      = '',                                     &
              DIMS       = MAPL_DimsTileOnly,                      &
              VLOCATION  = MAPL_VLocationNone,                     &
-             default    = 0.0, &
+             default    = 1.0, &
              __RC__)
 
         call MAPL_AddExportSpec(GC,                               &
@@ -875,7 +875,7 @@ module GEOS_SaltwaterGridCompMod
              UNITS      = '',                                     &
              DIMS       = MAPL_DimsTileOnly,                      &
              VLOCATION  = MAPL_VLocationNone,                     &
-             default    = 0.0, &
+             default    = 0.95, &
              __RC__)
      enddo
 
@@ -885,7 +885,7 @@ module GEOS_SaltwaterGridCompMod
           UNITS      = 'percent',                                     &
           DIMS       = MAPL_DimsTileOnly,                      &
           VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 0.0, &
+          default    = 1.0, &
           __RC__)
 
      call MAPL_AddExportSpec(GC,                               &
@@ -894,7 +894,7 @@ module GEOS_SaltwaterGridCompMod
           UNITS      = 'fraction (dimensionless)',             &
           DIMS       = MAPL_DimsTileOnly,                      &
           VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 0.0, &
+          default    = 1.0, &
           __RC__)
 
      call MAPL_AddExportSpec(GC,                               &
@@ -903,7 +903,7 @@ module GEOS_SaltwaterGridCompMod
           UNITS      = '',                                     &
           DIMS       = MAPL_DimsTileOnly,                      &
           VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 0.0, &
+          default    = 1.0, &
           __RC__)
      
      call MAPL_AddExportSpec(GC,                               &
@@ -912,7 +912,7 @@ module GEOS_SaltwaterGridCompMod
           UNITS      = '',                                     &
           DIMS       = MAPL_DimsTileOnly,                      &
           VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 0.0, &
+          default    = 1.0, &
           __RC__)
 
      call MAPL_AddExportSpec(GC,                               &
@@ -921,7 +921,7 @@ module GEOS_SaltwaterGridCompMod
           UNITS      = '',                                     &
           DIMS       = MAPL_DimsTileOnly,                      &
           VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 0.0, &
+          default    = 1.0, &
           __RC__)
 
      call MAPL_AddExportSpec(GC,                               &
@@ -930,7 +930,7 @@ module GEOS_SaltwaterGridCompMod
           UNITS      = 'Dobson units',                         &
           DIMS       = MAPL_DimsTileOnly,                      &
           VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 0.0, &
+          default    = 1.0, &
           __RC__)
 
      call MAPL_AddExportSpec(GC,                               &
@@ -939,7 +939,7 @@ module GEOS_SaltwaterGridCompMod
           UNITS      = 'cm',                                   &
           DIMS       = MAPL_DimsTileOnly,                      &
           VLOCATION  = MAPL_VLocationNone,                     &
-          default    = 0.0, &
+          default    = 1.0, &
           __RC__)
 
   end if

@@ -176,6 +176,24 @@ module GEOS_OradBioGridCompMod
     RC=STATUS  )
     VERIFY_(STATUS)
 
+     call MAPL_AddImportSpec(GC                         ,&
+          LONG_NAME          = 'net_surface_downwelling_nir_beam_flux',&
+          UNITS              = 'W m-2'                       ,&
+          SHORT_NAME         = 'DRNIR'                       ,&
+          DIMS               = MAPL_DimsHorzOnly             ,&
+          VLOCATION          = MAPL_VLocationNone            ,&
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC                         ,&
+          LONG_NAME          = 'net_surface_downwelling_nir_diffuse_flux',&
+          UNITS              = 'W m-2'                       ,&
+          SHORT_NAME         = 'DFNIR'                       ,&
+          DIMS               = MAPL_DimsHorzOnly             ,&
+          VLOCATION          = MAPL_VLocationNone            ,&
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
     call MAPL_AddImportSpec(GC,                               &
     SHORT_NAME = 'FROCEAN',                                   &
     LONG_NAME  = 'ocean_fraction_of_grid_cell',               &

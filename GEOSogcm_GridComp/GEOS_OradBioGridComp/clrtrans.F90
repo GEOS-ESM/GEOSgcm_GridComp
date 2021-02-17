@@ -179,6 +179,9 @@
       data b0,b1,b2,b3 /5.026,-0.01138,9.552E-6,-2.698E-9/
       data ifst /0/
 
+integer, parameter :: dp = kind(1.d0)
+real(kind=dp) :: rof
+
       if (ifst .eq. 0)then
        rn = 1.341    !index of refraction of pure seawater
        roair = 1.2E3     !density of air g/m3
@@ -199,6 +202,9 @@
        ifst = 1
       endif
 
+if(wspd > 1000.0) then
+ wspd = 0.0
+end if
 !  Foam and diffuse reflectance
       if (wspd .gt. 4.0)then
        if (wspd .le. 7.0)then
@@ -206,6 +212,11 @@
         rof = roair*cn*2.2E-5*wspd*wspd - 4.0E-4
        else
         cn = 0.49E-3 + 0.065E-3*wspd
+!if(wspd > 30.0) then
+!print*,'OBIORAD clrtrans cn = ',cn
+!print*,'OBIORAD clrtrans wspd = ',wspd
+!print*,'OBIORAD clrtrans = ',(roair*cn*4.5E-5 - 4.0E-5)*wspd*wspd
+!end if
         rof = (roair*cn*4.5E-5 - 4.0E-5)*wspd*wspd
        endif
        rosps = 0.057

@@ -1645,6 +1645,10 @@ contains
     integer :: CAT_DIST                  ! parameters for sea ice nudging
     real    :: HIN, RN, DT, TAU_SIT      ! parameters for sea ice nudging 
 
+integer :: itemcount, dimcount, rank
+character(len=ESMF_MAXSTR), dimension(:), allocatable :: itemnamelist
+
+
 !=============================================================================
 
 ! Begin... 
@@ -2183,6 +2187,21 @@ contains
        call MAPL_GetPointer(GEX(OCEAN ), VWBO ,  'VWB'    , alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
     end if
+
+call ESMF_StateGet(GEX(SEAICE), itemcount=itemcount, __RC__)
+allocate(itemnamelist(itemcount), __STAT__)
+call ESMF_StateGet(GEX(SEAICE), itemnamelist=itemnamelist, __RC__)
+!print*,'OGCM itemNameList = ',itemnamelist
+
+call ESMF_StateGet(GEX(SEAICE), 'FRACICE', field, __RC__)
+call ESMF_FieldGet(field, dimcount=dimcount, rank=rank, __RC__) 
+call ESMF_FieldValidate(field, __RC__)
+
+!print*,'OGCM FRACICE dimcount = ',dimcount
+!print*,'OGCM FRACICE rank = ',rank
+
+call MAPL_GetPointer(GEX(SEAICE), FRI  ,  'FRACICE', alloc=.true., __RC__)
+
     
     if (DO_CICE_THERMO == 0) then  
        call MAPL_GetPointer(GEX(SEAICE), FRO  ,  'FRACICE', alloc=.true., RC=STATUS)

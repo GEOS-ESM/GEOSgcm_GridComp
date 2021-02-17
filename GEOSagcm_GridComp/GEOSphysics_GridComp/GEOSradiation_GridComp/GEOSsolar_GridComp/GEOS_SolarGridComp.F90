@@ -374,6 +374,10 @@ contains
       USE_RRTMG = RFLAG /= 0.0
       USE_CHOU  = .not.USE_RRTMG
     end if
+if(mapl_am_i_root()) print*,'SOLAR USE_CHOU   = ',use_chou
+if(mapl_am_i_root()) print*,'SOLAR USE_RRTMG  = ',USE_RRTMG
+if(mapl_am_i_root()) print*,'SOLAR USE_RRTMGP = ',USE_RRTMGP
+
 
     ! Set number of solar bands
     if (USE_RRTMGP) then
@@ -383,6 +387,7 @@ contains
     else
       NUM_BANDS_SOLAR = NB_CHOU
     end if
+if(mapl_am_i_root()) print*,'SOLAR SetServices NUM_BANDS_SOLAR = ', NUM_BANDS_SOLAR
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -1796,6 +1801,8 @@ contains
     else
       NUM_BANDS_SOLAR = NB_CHOU
     end if
+
+if(mapl_am_i_root()) print*,'SOLAR Run NUM_BANDS_SOLAR = ', NUM_BANDS_SOLAR
 
 ! Test to see if AGCM.rc is set up correctly for the Radiation selected
 !----------------------------------------------------------------------
@@ -5150,6 +5157,9 @@ contains
 ! Fill 3D per-band Fluxes
 ! -----------------------
 if(mapl_am_i_root()) print*,'SOLAR NUM_BANDS_SOLAR = ', NUM_BANDS_SOLAR
+if(mapl_am_i_root()) print*,'SOLAR size(FSWBAND) = ',size(FSWBAND)
+if(mapl_am_i_root()) print*,'SOLAR shape(FSWBAND) = ',shape(FSWBAND)
+
       do IB = 1, NUM_BANDS_SOLAR
          if(associated(FSWBAND  )) FSWBAND  (:,:,IB) = FSWBANDN  (:,:,IB)*SLR
          if(associated(FSWBANDNA)) FSWBANDNA(:,:,IB) = FSWBANDNAN(:,:,IB)*SLR

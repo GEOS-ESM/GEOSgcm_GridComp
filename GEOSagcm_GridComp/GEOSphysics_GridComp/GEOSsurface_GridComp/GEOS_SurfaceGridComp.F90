@@ -7761,6 +7761,8 @@ if(mapl_am_i_root()) print*,'SURFACE NB_CHOU = ',nb_chou
         nullify(  FSWBANDTILE )
         nullify(FSWBANDNATILE )
       endif
+if(mapl_am_i_root()) print*,'SURFACE size(FSWBAND) = ',size(FSWBAND)
+if(mapl_am_i_root()) print*,'SURFACE shape(FSWBAND) = ',shape(FSWBAND)
 
 ! Moved change of units for soil temperature export variables down to Catch[CN] Gridcomp.
 ! With this change, gridded TSOIL[n] exports from Surface and tile-space TP[n] exports

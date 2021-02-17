@@ -70,12 +70,27 @@
              ta
   
 !	df = dfn/dx
-  
+
+!if (a2 == 0.) then
+!print*,'ta_iter_SWS k123p = ',k123p
+!print*,'ta_iter_SWS k12p = ',k12p
+!print*,'ta_iter_SWS k1p = ',k1p
+!print*,'ta_iter_SWS x = ',x
+!print*,'ta_iter_SWS a = ',a
+!print*,'ta_iter_SWS a2 = ',a2
+!end if
+
+if (a2 == 0.) then
+  a2 = tiny(a2)
+!  print*,' OBIO a2 0 tiny = ',a2
+end if
+
        df = ((k1*dic*b) - k1*x*dic*db)/b2 -                        &
              2.0*dic*k12*db/b2 -                                   &
              bt/kb/(1.0+x/kb)**2. -                                &
              kw/x2 +                                               &
-             (pt*k12p*(a - x*da))/a2 -                             &
+!             (pt*k12p*(a - x*da))/a2 -                             & ! Original line
+             (pt*k12p*(a - x*da))/a2 -                             & ! new line to prevent divide by zero error.
              2.0*pt*k123p*da/a2 -                                  &
              sit/ksi/(1.0+x/ksi)**2. -                             &
              1.0/c -                                               &
