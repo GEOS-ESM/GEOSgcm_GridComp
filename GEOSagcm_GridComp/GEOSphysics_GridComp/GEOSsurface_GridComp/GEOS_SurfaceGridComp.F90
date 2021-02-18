@@ -5754,6 +5754,7 @@ end do
     call MAPL_GetPointer(IMPORT, SNOFL   , 'SNO'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, ICEFL   , 'ICE'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, FRZRFL  , 'FRZR'   ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, TA      ,  'TA'    ,  RC=STATUS); VERIFY_(STATUS)
 
 ! This is the default behavior, with all surface components seeing uncorrected precip
 !------------------------------------------------------------------------------------
@@ -5817,7 +5818,7 @@ end do
           SNO = 0.
           ICE = 0.
           FRZR= 0.
-       elsewhere (PRECSUM > 1.15741e-6)  ! Above is not true .AND. model precip > 0.1  mm/day
+       elsewhere (PRECSUM > 1.15741e-6)  ! Above is not true .AND. model precip > 0.1  mm/day. Note: 0.1mm/day = 0.1/86400 = 1.15741e-6
           PCSCALE = PTTe / PRECSUM
           RCU  = PCSCALE*RCU
           RLS  = PCSCALE*RLS
