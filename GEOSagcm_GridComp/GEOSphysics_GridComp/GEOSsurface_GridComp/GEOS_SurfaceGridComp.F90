@@ -3893,7 +3893,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: ALHX  => NULL()
 
     type (MAPL_MetaComp), pointer :: CHILD_MAPL
-    integer                           :: I
+    integer                           :: I,k
 
     integer    :: iUseInterp
     logical    :: UseInterp
@@ -3956,6 +3956,12 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(IMPORT  , PS    , 'PS'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , DZ    , 'DZ'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , UU    , 'SPEED' ,  RC=STATUS); VERIFY_(STATUS)
+
+do i = 1, ubound(UU,1)
+  do k = 1, ubound(UU,2)
+    if (UU(i,k) > 1000.0) print*,'SURFACE UU = ',UU(i,k)
+  end do
+end do
 
     call MAPL_GetPointer(IMPORT  , UWINDLM , 'UA'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , VWINDLM , 'VA'  ,  RC=STATUS); VERIFY_(STATUS)

@@ -2491,7 +2491,7 @@ call MAPL_GetPointer(GEX(SEAICE), FRI  ,  'FRACICE', alloc=.true., __RC__)
       integer                               :: STATUS
 
       integer          :: k
-
+integer :: i
       call MAPL_GetPointer(IMPORT, UU      ,  'UU',      RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, CO2SC   ,  'CO2SC'  , RC=STATUS)
@@ -2583,6 +2583,21 @@ call MAPL_GetPointer(GEX(SEAICE), FRI  ,  'FRACICE', alloc=.true., __RC__)
          call MAPL_LocStreamTransform( ExchGrid, CO2SCB  ,  CO2SC  , RC=STATUS) 
          VERIFY_(STATUS)
       endif
+
+do k = 1, ubound(UU,1)
+   if (UU(k) > 1000.0) print*,'OGCM UU = ',UU(k)
+end do
+
+!do i = 1, ubound(UUB, 1)
+!  do k = 1, ubound(UUB,2)
+!     if (UUB(i,k) > 1000.0) print*,'OGCM UUB = ',UUB(i,k)
+!  end do
+!end do
+!do i = 1, ubound(UUO, 1)
+!  do k = 1, ubound(UUO,2)
+!     if (UUO(i,k) > 1000.0) print*,'OGCM UUO = ',UUO(i,k)
+!  end do
+!end do
 
       do k=1, 33
         if ( associated(ATAUAO(k)%b) ) then

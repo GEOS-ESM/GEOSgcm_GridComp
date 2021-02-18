@@ -179,8 +179,8 @@
       data b0,b1,b2,b3 /5.026,-0.01138,9.552E-6,-2.698E-9/
       data ifst /0/
 
-integer, parameter :: dp = kind(1.d0)
-real(kind=dp) :: rof
+!integer, parameter :: dp = kind(1.d0)
+!real(kind=dp) :: rof
 
       if (ifst .eq. 0)then
        rn = 1.341    !index of refraction of pure seawater
@@ -202,9 +202,9 @@ real(kind=dp) :: rof
        ifst = 1
       endif
 
-if(wspd > 1000.0) then
- wspd = 0.0
-end if
+!if(wspd > 1000.0) then
+! wspd = 0.0
+!end if
 !  Foam and diffuse reflectance
       if (wspd .gt. 4.0)then
        if (wspd .le. 7.0)then
