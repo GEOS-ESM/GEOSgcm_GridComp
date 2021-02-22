@@ -3850,6 +3850,7 @@ contains
     integer         :: N, iter_cool
     real            :: ALPH, Qb, fC, fLA, X1, X2
 
+    real, parameter :: TICE            = MAPL_TICE-1.8      ! -1.8C freezing temperature of sea water
     real, parameter :: RHO_SEAWATER    = 1022.0  ! sea water density             [kg/m^3]    ! Replace Usage of RHO_SEAWATER with MAPL_RHO_SEAWATER
     real, parameter :: NU_WATER        = 1.0E-6  ! kinematic viscosity of water  [m^2/s]
     real, parameter :: TherCond_WATER  = 0.563   ! Thermal conductivity of water [W/m/ K]
@@ -4000,8 +4001,11 @@ contains
              TBAR_(N)    = TW(N)
 
              TS(N,WATER) = TDEL_(N) - TDROP_(N)
-             TWMTS(N)    = TW(N) - TS(N,WATER)
           end if WARM_LAYER
+
+          ! Protection on minimum water temperture, do not allow colder than TICE
+           TW(N)    = MAX(TW(N),TICE)
+             TWMTS(N)    = TW(N) - TS(N,WATER)
 
        else            ! FR(N, WATER) <= fr_ice_thresh
           DCOOL_ (N)     = MAPL_UNDEF
@@ -4014,6 +4018,7 @@ contains
           SWCOOL_(N)     = MAPL_UNDEF
           BCOOL_ (N)     = MAPL_UNDEF
           TDEL_  (N)     = MAPL_UNDEF
+          TW     (N)     = TICE
           TWMTS  (N)     = 0.0
           QWARM_ (N)     = MAPL_UNDEF
           SWWARM_(N)     = MAPL_UNDEF
