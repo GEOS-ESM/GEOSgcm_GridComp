@@ -1990,6 +1990,7 @@ contains
                                             SHC_CEFAC,SHC_CESFAC,SHC_THL2TUNE,    &
                                             SHC_QW2TUNE,SHC_QWTHL2TUNE
      real    :: LAMBDADISS
+     integer :: NEWTUNING
 
      integer :: locmax
      real    :: maxkh,minlval
@@ -2035,64 +2036,65 @@ contains
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
+     call MAPL_GetResource (MAPL, NEWTUNING,      trim(COMP_NAME)//"_NEWTUNING",     default=1,            RC=STATUS); VERIFY_(STATUS)
 
-     if (LM .eq. 72) then
-       call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0,          RC=STATUS)
-       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,          RC=STATUS)
-       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,          RC=STATUS)
-       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,         RC=STATUS)
+     if (NEWTUNING .eq. 1) then
+       call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0,          RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,         RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=3.0,          RC=STATUS)
-       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.1,          RC=STATUS)
-       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.1,          RC=STATUS)
+       call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=3.0,          RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
        LAMBDADISS = MIN(50.0,80.0*720.0/FLOAT(imsize))
-       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=LAMBDADISS,   RC=STATUS)
+       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=LAMBDADISS,   RC=STATUS); VERIFY_(STATUS)
      endif
-     call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=160.0,        RC=STATUS)
-     call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,          RC=STATUS)
-     call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=160.0,        RC=STATUS)
-     call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,          RC=STATUS)
-     call MAPL_GetResource (MAPL, ZKMENV,       trim(COMP_NAME)//"_ZKMENV:",       default=3000.,        RC=STATUS)
-     call MAPL_GetResource (MAPL, ZKHENV,       trim(COMP_NAME)//"_ZKHENV:",       default=3000.,        RC=STATUS)
-     call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=0.1,          RC=STATUS)
-     call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030,       RC=STATUS)
+     call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=160.0,        RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,          RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, LAMBDAH,      trim(COMP_NAME)//"_LAMBDAH:",      default=160.0,        RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, LAMBDAH2,     trim(COMP_NAME)//"_LAMBDAH2:",     default=1.0,          RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, ZKMENV,       trim(COMP_NAME)//"_ZKMENV:",       default=3000.,        RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, ZKHENV,       trim(COMP_NAME)//"_ZKHENV:",       default=3000.,        RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, MINTHICK,     trim(COMP_NAME)//"_MINTHICK:",     default=0.1,          RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, MINSHEAR,     trim(COMP_NAME)//"_MINSHEAR:",     default=0.0030,       RC=STATUS); VERIFY_(STATUS)
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=2.5101471e-8, RC=STATUS)  ! Pre Ganymed-4_1 value
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=1.02e-7,      RC=STATUS)  ! Value used for Ganymed-4_1 through Heracles-5_4_p3
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.00e-7,      RC=STATUS)  ! Value used with updated GMTED TOPO Data
-     call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=0.6,          RC=STATUS)  ! Value used with updated GMTED TOPO Data
+     call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=0.6,          RC=STATUS); VERIFY_(STATUS)
                                                                                      C_B = C_B*1.e-6
-     call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,        RC=STATUS)
-     call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,         RC=STATUS)
-     call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,            RC=STATUS)
-     call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,          RC=STATUS)
-     call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,         RC=STATUS)
-     if (LM .eq. 72) then
-       call MAPL_GetResource (MAPL, BETA_SURF,  trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,         RC=STATUS)
-       call MAPL_GetResource (MAPL, BETA_RAD,   trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,         RC=STATUS)
+     call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,        RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,         RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,            RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,          RC=STATUS); VERIFY_(STATUS)
+     call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,         RC=STATUS); VERIFY_(STATUS)
+     if (NEWTUNING .eq. 1) then
+       call MAPL_GetResource (MAPL, BETA_SURF,  trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_RAD,   trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,         RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, BETA_SURF,  trim(COMP_NAME)//"_BETA_SURF:",    default=0.20,         RC=STATUS)
-       call MAPL_GetResource (MAPL, BETA_RAD,   trim(COMP_NAME)//"_BETA_RAD:",     default=0.10,         RC=STATUS)
+       call MAPL_GetResource (MAPL, BETA_SURF,  trim(COMP_NAME)//"_BETA_SURF:",    default=0.20,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, BETA_RAD,   trim(COMP_NAME)//"_BETA_RAD:",     default=0.10,         RC=STATUS); VERIFY_(STATUS)
      endif
-     call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,         RC=STATUS)
-     if (LM .eq. 72) then
-       call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.60,         RC=STATUS)
-       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.30,         RC=STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,         RC=STATUS)
-       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3,       RC=STATUS)
-       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS)
+     call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,         RC=STATUS); VERIFY_(STATUS)
+     if (NEWTUNING .eq. 1) then
+       call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.60,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.30,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.5e-3,       RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.50,         RC=STATUS)
-       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.70,         RC=STATUS)
-       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=10.0,         RC=STATUS)
-       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.75e-3,       RC=STATUS)
-       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS)
+       call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.50,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.70,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=10.0,         RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, ENTRATE_SURF, trim(COMP_NAME)//"_ENTRATE_SURF:", default=1.75e-3,       RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, PCEFF_SURF,   trim(COMP_NAME)//"_PCEFF_SURF:",   default=0.5,          RC=STATUS); VERIFY_(STATUS)
      endif
-     call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,        RC=STATUS)
+     call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,        RC=STATUS); VERIFY_(STATUS)
 
-     if (LM .eq. 72) then
-       call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,          RC=STATUS)
+     if (NEWTUNING .eq. 1) then
+       call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,          RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,          RC=STATUS)
+       call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,          RC=STATUS); VERIFY_(STATUS)
      endif
 
    ! Pressure Thickness at the surface for 1-2-1 smoother for THV (and U:V) [72L setup uses an index of 5-levels]
@@ -2865,7 +2867,7 @@ contains
       if (CALC_TCZPBL) then
          TCZPBL = MAPL_UNDEF
 
-       if (LM .eq. 72) then
+       if (NEWTUNING .eq. 1) then
          thetavs = T(:,:,LM)*(1.0+MAPL_VIREPS*Q(:,:,LM)/(1.0-Q(:,:,LM)))*(TH(:,:,LM)/T(:,:,LM))
          tcrib(:,:,LM) = 0.0
          do I = 1, IM

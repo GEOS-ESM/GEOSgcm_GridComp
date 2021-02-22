@@ -168,13 +168,6 @@ module gfdl2_cloud_microphys_mod
     ! id_ice, id_prec, id_cond, id_var, id_droplets
     ! integer :: gfdl_mp_clock ! clock for timing of driver routine
   
-    real    :: t_wfr
-    real    :: dt_fr
-    integer :: expfr
-    ! < homogeneous freezing of all cloud water at t_wfr - dt_fr
-    ! minimum temperature water can exist (moore & molinero nov. 2011, nature)
-    ! dt_fr can be considered as the error bar
-    
     real :: p_min = 100. !< minimum pressure (pascal) for mp to operate
     
     ! slj, the following parameters are for cloud - resolving resolution: 1 - 5 km
@@ -189,7 +182,14 @@ module gfdl2_cloud_microphys_mod
     ! -----------------------------------------------------------------------
     
     real :: cld_min = 0.05 !< minimum cloud fraction
-    real :: tice = 273.16 !< set tice = 165. to trun off ice - phase phys (kessler emulator)
+    real   , parameter :: tice = 273.16 !< set tice = 165. to trun off ice - phase phys (kessler emulator)
+
+    real   , parameter :: t_wfr = tice
+    real   , parameter :: dt_fr = 36.
+    integer, parameter :: expfr = 9
+    ! < homogeneous freezing of all cloud water at t_wfr - dt_fr
+    ! minimum temperature water can exist (moore & molinero nov. 2011, nature)
+    ! dt_fr can be considered as the error bar
     
     real :: t_min = 178. !< min temp to freeze - dry all water vapor
     real :: t_sub = 184. !< min temp for sublimation of cloud ice
@@ -318,7 +318,7 @@ module gfdl2_cloud_microphys_mod
         tau_revp, tau_frz, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v,      &
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs,           &
-        z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin, tice,        &
+        z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin,              &
         rad_snow, rad_graupel, rad_rain, cld_min, use_ppm, mono_prof,         &
         do_sedi_heat, sedi_transport, do_sedi_w, de_ice, icloud_f, irain_f, mp_print
     
@@ -332,7 +332,7 @@ module gfdl2_cloud_microphys_mod
         tau_revp, tau_frz, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v,      &
         tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs,           &
-        z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin, tice,        &
+        z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin,              &
         rad_snow, rad_graupel, rad_rain, cld_min, use_ppm, mono_prof,         &
         do_sedi_heat, sedi_transport, do_sedi_w, de_ice, icloud_f, irain_f, mp_print
     
@@ -688,26 +688,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     ! -----------------------------------------------------------------------
     
     do i = is, ie
-   
 
-        ! over oceans
-                                   t_wfr = tice - 10.
-                                   dt_fr = 25.0
-                                   expfr = 4
-        ! over land
-        if (land(i) > 0.1)         t_wfr = tice - 12.
-                                   dt_fr = 22.0
-                                   expfr = 2
-        ! over snow or landice
-        if (landice(i) > 0.1 .OR. &
-             snomas(i) > 0.1)      t_wfr = tice - 18.
-                                   dt_fr = 19.0
-                                   expfr = 6
-        ! Convectve regime 
-        if (cnv_fraction(i) > 0.1) t_wfr = tice - 12.
-                                   dt_fr = 16.0
-                                   expfr = 2
- 
         do k = ktop, kbot
             qiz (k) = qi (i, j, k)
             qsz (k) = qs (i, j, k)
@@ -1387,7 +1368,9 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, revap, isubl,
     real :: qpz, dq, dqh, tin
     real :: fac_revp 
     integer :: k
-   
+  
+    fac_revp = 1. - exp (- dt / tau_revp)
+ 
     revap(:) = 0.
     isubl(:) = 0.
  
@@ -1437,7 +1420,6 @@ subroutine revap_racc (ktop, kbot, dt, tz, qv, ql, qr, qi, qs, qg, revap, isubl,
                 t2 = tin * tin
                 evap = crevp (1) * t2 * dq * (crevp (2) * sqrt (qden) + crevp (3) * &
                     exp (0.725 * log (qden))) / (crevp (4) * t2 + crevp (5) * qsat * den (k))
-                fac_revp = 1. - exp (- dt / tau_revp)
                 evap = min (qr (k), dt * fac_revp * evap, dqv / (1. + lcpk (k) * dqsdt))
           !!!!! evap = min (qr (k), dt *            evap, dqv / (1. + lcpk (k) * dqsdt))
                 ! -----------------------------------------------------------------------
@@ -1619,18 +1601,18 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tzk (k) = tzk (k) - melt * lhi (k) / cvm (k)
             
-        elseif (tzk (k) < t_wfr .and. qlk (k) > qcmin) then
+        elseif (tzk (k) <= tice .and. qlk (k) > qcmin) then
             
             ! -----------------------------------------------------------------------
             ! pihom: homogeneous freezing of cloud water into cloud ice
             ! this is the 1st occurance of liquid water freezing in the split mp process
             ! -----------------------------------------------------------------------
             
-            dtmp = t_wfr - tzk (k)
+            dtmp = tice - tzk (k)
           ! factor = min (1., dtmp / dt_fr)
             factor = max(0.0,min(1.0,sin(0.5*pi*(1.0 - (tzk (k) - (t_wfr-dt_fr)) / dt_fr))))**expfr
             sink = min (qlk (k) * factor, dtmp / icpk (k))
-            qi_crt = qi_gen * min (qi_lim, 0.1 * (tice - tzk (k))) / den (k)
+            qi_crt = qi_gen * min (qi_lim, 0.1 * (t_wfr - tzk (k))) / den (k)
             tmp = min (sink, dim (qi_crt, qik (k)))
             qlk (k) = qlk (k) - sink
             qsk (k) = qsk (k) + sink - tmp
@@ -2092,7 +2074,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         lcpk (k) = lhl (k) / cvm (k)
         icpk (k) = lhi (k) / cvm (k)
         tcpk (k) = lcpk (k) + icpk (k)
-        tcp3 (k) = lcpk (k) + icpk (k) * min (1., dim (tice, tz (k)) / (tice - t_wfr))
+        rqi = max(0.0,min(1.0,sin(0.5*pi*(1.0 - (tz (k) - (t_wfr-dt_fr)) / dt_fr))))**expfr
+        tcp3 (k) = lcpk (k) + icpk (k) * rqi
     enddo
     
     do k = ktop, kbot
@@ -2123,7 +2106,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         lcpk (k) = lhl (k) / cvm (k)
         icpk (k) = lhi (k) / cvm (k)
         tcpk (k) = lcpk (k) + icpk (k)
-        tcp3 (k) = lcpk (k) + icpk (k) * min (1., dim (tice, tz (k)) / (tice - t_wfr))
+        rqi = max(0.0,min(1.0,sin(0.5*pi*(1.0 - (tz (k) - (t_wfr-dt_fr)) / dt_fr))))**expfr
+        tcp3 (k) = lcpk (k) + icpk (k) * rqi
         
         ! -----------------------------------------------------------------------
         ! instant evaporation / sublimation of all clouds if rh < rh_adj -- > cloud free
@@ -2152,7 +2136,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         dq0 = qsw - qv (k)
         if (dq0 > 0.) then
             factor = min (1., fac_l2v * (10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
-            evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
+            evap = min (ql (k), factor * dq0 / (1. + tcp3 (k) * dwsdt))
         else
            ! ! condensate all excess vapor into cloud water
            !evap = dq0 / (1. + tcp3 (k) * dwsdt)

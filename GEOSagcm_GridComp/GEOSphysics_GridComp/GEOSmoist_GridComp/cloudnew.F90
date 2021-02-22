@@ -86,6 +86,7 @@ module cloudnew
    real, allocatable, dimension(:,:), device :: RAD_QI_dev
    real, allocatable, dimension(:,:), device :: RAD_QR_dev
    real, allocatable, dimension(:,:), device :: RAD_QS_dev
+   real, allocatable, dimension(:,:), device :: RAD_QG_dev
    real, allocatable, dimension(:,:), device :: QPLS_dev
    real, allocatable, dimension(:,:), device :: CLDREFFL_dev
    real, allocatable, dimension(:,:), device :: CLDREFFI_dev
@@ -336,7 +337,8 @@ module cloudnew
 #endif
 
    real, parameter :: T_ICE_MAX    = MAPL_TICE-10.0
-   real, parameter :: RHO_W        = 1.0e3      ! Density of liquid water in kg/m^3
+   real, parameter :: RHO_I        =  916.8      ! Density of ice crystal in kg/m^3
+   real, parameter :: RHO_W        = 1000.0      ! Density of liquid water in kg/m^3
    real, parameter :: MIN_CLD_FRAC = 1.0e-8
    real, parameter :: ZVIR = MAPL_RVAP/MAPL_RGAS - 1.
    real, parameter :: GORD = MAPL_GRAV/MAPL_RGAS
@@ -361,6 +363,11 @@ module cloudnew
    real, parameter :: oT_ICE_MAX = 263.16
    real, parameter :: oICEFRPWR  = 4.0
 
+  ! LDRADIUS4 constants
+   real, parameter :: r13  = 1./3.
+   real, parameter :: be   = r13 - 0.11
+   real, parameter :: aewc = 0.13*(3./(4.*MAPL_PI*RHO_W*1.e3))**r13
+   real, parameter :: aeic = 0.13*(3./(4.*MAPL_PI*RHO_I*1.e3))**r13
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -412,6 +419,7 @@ contains
          RAD_QI_dev       , &
          RAD_QR_dev       , &
          RAD_QS_dev       , &
+         RAD_QG_dev       , &
          QPLS_dev         , &
          CLDREFFL_dev     , &
          CLDREFFI_dev     , &
@@ -513,6 +521,7 @@ contains
       real, intent(  out), dimension(IRUN,  LM) :: RAD_QI_dev ! RAD_QI
       real, intent(  out), dimension(IRUN,  LM) :: RAD_QR_dev ! QRAIN
       real, intent(  out), dimension(IRUN,  LM) :: RAD_QS_dev ! QSNOW
+      real, intent(  out), dimension(IRUN,  LM) :: RAD_QG_dev ! QGRAUPEL
       real, intent(  out), dimension(IRUN,  LM) :: QPLS_dev ! QPLS
       real, intent(  out), dimension(IRUN,  LM) :: CLDREFFL_dev ! CLDREFFL
       real, intent(  out), dimension(IRUN,  LM) :: CLDREFFI_dev ! CLDREFFI
@@ -621,7 +630,7 @@ contains
       real :: TOTFRC
       real :: QRN_LS, QRN_AN, QRN_CU_1D, QRN_SC_1D
       real :: QSN_LS, QSN_AN, QSN_CU, QSN_SC_1D
-      real :: QRN_ALL, QSN_ALL
+      real :: QRN_ALL, QSN_ALL, QGR_ALL
       real :: QTMP1, QTMP2, QTMP3
       real :: TEMP
       real :: RHCRIT
@@ -789,6 +798,7 @@ contains
             RAD_QI_dev(I,K)     = 0.
             RAD_QR_dev(I,K)     = 0.
             RAD_QS_dev(I,K)     = 0.
+            RAD_QG_dev(I,K)     = 0.
             QPLS_dev(I,K)       = 0.
             RAD_CLDFRC_dev(I,K) = 0.
             CLDREFFL_dev(I,K)   = 0.
@@ -1327,6 +1337,7 @@ contains
 
             QRN_ALL = 0.
             QSN_ALL = 0.
+            QGR_ALL = 0.
 
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             ! GET SOME MICROPHYSICAL QUANTITIES 
@@ -1593,13 +1604,14 @@ contains
                RAD_QI_dev(I,K)     = 0.
                RAD_QR_dev(I,K)     = 0.
                RAD_QS_dev(I,K)     = 0.
+               RAD_QG_dev(I,K)     = 0.
                RAD_CLDFRC_dev(I,K) = 0.
                CLDREFFL_dev(I,K)   = 0.
                CLDREFFI_dev(I,K)   = 0.
             ELSE
                call RADCOUPLE ( TEMP, PP_dev(I,K), CLDFRC_dev(I,K), ANVFRC_dev(I,K), &
-                     Q_dev(I,K), QLW_LS_dev(I,K), QIW_LS_dev(I,K), QLW_AN_dev(I,K), QIW_AN_dev(I,K), QRN_ALL, QSN_ALL, NACTL_dev(I,K), NACTI_dev(I,K), & 
-                     RAD_QV_dev(I,K), RAD_QL_dev(I,K), RAD_QI_dev(I,K), RAD_QR_dev(I,K), RAD_QS_dev(I,K), RAD_CLDFRC_dev(I,K), & 
+                     Q_dev(I,K), QLW_LS_dev(I,K), QIW_LS_dev(I,K), QLW_AN_dev(I,K), QIW_AN_dev(I,K), QRN_ALL, QSN_ALL, QGR_ALL, NACTL_dev(I,K), NACTI_dev(I,K), & 
+                     RAD_QV_dev(I,K), RAD_QL_dev(I,K), RAD_QI_dev(I,K), RAD_QR_dev(I,K), RAD_QS_dev(I,K), RAD_QG_dev(I,K), RAD_CLDFRC_dev(I,K), & 
                      CLDREFFL_dev(I,K), CLDREFFI_dev(I,K), &
                      FRLAND_dev(I), CNV_FRACTION_dev(I), &
                      FR_AN_WAT, FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI, CCN_OCEAN, CCN_LAND, CLDPARAMS%PRECIPRAD )
@@ -2493,7 +2505,7 @@ contains
        qtmode =  qtmean + (sigmaqt1-sigmaqt2)/3.
        qtmin = max(qtmode-sigmaqt1,0.)
        qtmax = qtmode + sigmaqt2
-       if(qtmax.lt.qstar) then
+       if(qtmax.le.qstar) then
         clfrac = 0.
        elseif ( (qtmode.le.qstar).and.(qstar.lt.qtmax) ) then
         clfrac = (qtmax-qstar)*(qtmax-qstar) / ( (qtmax-qtmin)*(qtmax-qtmode) )
@@ -2549,7 +2561,7 @@ contains
        qtmode =  qtmean + (sigmaqt1-sigmaqt2)/3.d0
        qtmin = max(qtmode-sigmaqt1,0.d0)
        qtmax = qtmode + sigmaqt2
-       if ( qtmax.lt.qstar ) then
+       if ( qtmax.le.qstar ) then
         condensate = 0.d0
        elseif ( (qtmode.le.qstar).and.(qstar.lt.qtmax) ) then
         constB = 2.d0 / ( (qtmax - qtmin)*(qtmax-qtmode) )
@@ -3741,100 +3753,61 @@ contains
    end function LDRADIUS3
    function LDRADIUS4(PL,TE,QC,NN,NNL,NNI,ITYPE) RESULT(RADIUS)
    
-       real, parameter :: betai     = -2.262e+3
-       real, parameter :: gamai     =  5.113e+6
-       real, parameter :: deltai    =  2.809e+3
-       real, parameter :: densic    =  500.e0   !Ice crystal density in kgm-3
-
-       real, parameter :: abeta = 0.07
-       real, parameter :: bbeta = -0.14
-       real, parameter :: bx = 100.* (3./(4.*MAPL_PI))**(1./3.)  
-       real, parameter :: r13 = 1./3.  
-       real, parameter :: r13bbeta = 1./3. - 0.14
-       real, parameter :: premit= 750.e2            ! top pressure bound for mid level cloud
-       real, parameter :: smnum = 1.e-1            !
-       real, parameter :: rhminh= 0.80              ! minimum rh for high stable clouds      
-       
        REAL   , INTENT(IN) :: TE,PL,NN,QC,NNL,NNI
        INTEGER, INTENT(IN) :: ITYPE
        REAL  :: RADIUS
        INTEGER, PARAMETER  :: CLOUD=1, ICE=2
-       
+      
+       REAL :: RADIUS0,RADIUS1 
        REAL :: NNX,RHO,IWL,BB, RIV,CLOUD_HIGH,RHDIF,WC
        INTEGER :: ICLD_HIGH
        
-       !print*,"radius4=", PL,TE
-       
+       !- air density (kg/m^3)
+       RHO = 100.*PL / (MAPL_RGAS*TE )
        IF(ITYPE == CLOUD) THEN        
+
        !- liquid cloud effective radius ----- 
           !- [liu&daum, 2000 and 2005. liu et al 2008]
-          !- air density (kg/m^3)
-          RHO = 100.*PL / (MAPL_RGAS*TE )
-   
+          !- liquid water content
+          WC = 1.e3*RHO*QC  !g/m3
           IF(USE_AEROSOL_NN) THEN
-            !- cloud drop number concentration 
+            !- cloud drop number concentration #/m3
             !- from the aerosol model + ....
-            NNX = NNL * 1.e-6  !#/cm3
+            NNX = NNL
           ELSE
-            !- cloud drop number concentration :u[NNX]= #/cm^3
-            NNX = NN * 1.e-6  !#/cm3
+            !- cloud drop number concentration #/m3
+            NNX = NN
           ENDIF
-
-          !- liquid water content : u[lwl] = g/m3
-          WC = RHO*QC* 1.e+3  !g/m3
-      
-          !- radius in micrometers
-          RADIUS= bx *  ( WC /NNX)**r13bbeta*abeta*6.92 !6.92=(1.e-6)**bbeta	      
-   
-          !- RADIUS is limited between 2.5 and 60 micrometers as 
-          !- required by rrtm parameterization
-          RADIUS = max(2.5, min( 60.0, RADIUS ) )
-  
-          !- convert to meter
-          RADIUS = RADIUS*1.e-6
+          NNX = MAX(NNX,1.e3)
+          !- radius in meters
+          RADIUS = aewc * (WC/NNX)**be
   
        ELSEIF(ITYPE == ICE) THEN
 
-        IF (adjustl(CLDMICRO)=="NONE") THEN
-
-         RHO = 100.*PL / (MAPL_RGAS*TE )
-         !- ice water content
-         WC = RHO*QC  !kg/m3
-
+       !- ice cloud effective radius ----- 
+        !- ice water content
+         WC = 1.e3*RHO*QC  !g/m3
+        !------ice cloud effective radius ----- [klaus wyser, 1998]
+         if(TE>273.15 .or. QC <=0.) then
+            BB     = -2.
+         else
+            BB     = -2. + log10(WC/50.)*(1.e-3*(273.15-TE)**1.5)
+         endif
+         BB     = MIN((MAX(BB,-6.)),-2.) 
+         RADIUS0 = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
+         RADIUS0 = RADIUS0 * 1.e-6 !- convert to meter
+        ! include aerosol number concentration in additiom to above
          IF( (.not. USE_AEROSOL_NN) ) THEN 
-            !------ice cloud effective radius ----- [klaus wyser, 1998]
-            if(TE>273.15 .or. QC <=0.) then
-             BB     = -2.
-            else
-             BB     = -2. + log10(1.e3*WC/50.)*(1.e-3*(273.15-TE)**1.5)
-            endif
-            BB     = MIN((MAX(BB,-6.)),-2.) 
-            RADIUS =377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-            RADIUS =RADIUS * 1.e-6 !- convert to meter
-         ELSE
-            !--Mean volume and effective radius following Lohmann&Karcher (2002)
-            !-- qice is the detrained ice water mixing ratio (kg/kg)
+            NNX = NN
+          ELSE
             !-- NNI  !#/m^3	 
-            RADIUS  = ((3.*WC)/(4.*MAPL_PI*densic*MAX(NNI,1.e-8)))**0.33333  
+            NNX = MAX(NNI,1.e3)
          ENDIF
+        !- radius in meters from eq12b of https://doi.org/10.1029/2001JD000470
+         RADIUS1 = (3.0*WC/(4.0*MAPL_PI*RHO_I*1.e3*NNX))**r13
+        ! Combine
+         RADIUS = 0.5*(RADIUS1+RADIUS0)
   
-        ELSE ! CLDMICRO =1MOMENT
-
-            !------ice cloud effective radius ----- [klaus wyser, 1998]
-            RHO = 100.*PL / (MAPL_RGAS*TE )
-            !- ice water content
-            WC = RHO*QC  !kg/m3
-            if(TE>273.15 .or. QC <=0.) then
-             BB     = -2.
-            else
-             BB     = -2. + log10(1.e3*WC/50.)*(1.e-3*(273.15-TE)**1.5)
-            endif
-            BB     = MIN((MAX(BB,-6.)),-2.)
-            RADIUS =377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-            RADIUS =RADIUS * 1.e-6 !- convert to meter
-
-        ENDIF ! CLDMICRO
-
       ELSE
         STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
       ENDIF
@@ -3863,7 +3836,7 @@ contains
         ICEFRCT_0 = ICEFRCT_0**aICEFRPWR
 
   ! Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-      if ( (SNOMAS > 0.1) .OR. (FRLANDICE > 0.5) ) then
+      if ( (SNOMAS > 0.001) .OR. (FRLANDICE > 0.001) ) then
         ! Over snow/ice
         ICEFRCT_1  = 0.00
         if ( TEMP <= iT_ICE_ALL ) then
@@ -3874,7 +3847,7 @@ contains
         ICEFRCT_1 = MIN(ICEFRCT_1,1.00)
         ICEFRCT_1 = MAX(ICEFRCT_1,0.00)
         ICEFRCT_1 = ICEFRCT_1**iICEFRPWR
-      else if (FRLAND > 0.1) then
+      else if (FRLAND > 0.001) then
         ! Over Land
         ICEFRCT_1  = 0.00
         if ( TEMP <= lT_ICE_ALL ) then
@@ -4034,6 +4007,7 @@ contains
          QCiAN,           & 
          QRN_ALL,         & 
          QSN_ALL,         & 
+         QGR_ALL,         &
          NL,              &
          NI,              &
          RAD_QV,          &
@@ -4041,6 +4015,7 @@ contains
          RAD_QI,          & 
          RAD_QR,          & 
          RAD_QS,          & 
+         RAD_QG,          &
          RAD_CF,          & 
          RAD_RL,          & 
          RAD_RI,          & 
@@ -4053,9 +4028,9 @@ contains
       real, intent(in ) :: TE
       real, intent(in ) :: PL
       real, intent(in ) :: AF,CF, QV, QClAN, QCiAN, QClLS, QCiLS
-      real, intent(in ) :: QRN_ALL, QSN_ALL
+      real, intent(in ) :: QRN_ALL, QSN_ALL, QGR_ALL
       real, intent(in ) :: NL,NI
-      real, intent(out) :: RAD_QV,RAD_QL,RAD_QI,RAD_QR,RAD_QS,RAD_CF,RAD_RL,RAD_RI
+      real, intent(out) :: RAD_QV,RAD_QL,RAD_QI,RAD_QR,RAD_QS,RAD_QG,RAD_CF,RAD_RL,RAD_RI
 
       real, intent(in )  :: FRLAND, CNV_FRACTION, CCN_O, CCN_L
       real, intent(in )  :: FAC_RL, MIN_RL, MAX_RL, FAC_RI, MIN_RI, MAX_RI
@@ -4108,7 +4083,7 @@ contains
       ! Total In-cloud ice
       if (  RAD_CF >0. ) then
          if (PRECIPRAD /= 0) then
-           RAD_QI = ( QCiLS + QCiAN + QSN_ALL ) / RAD_CF
+           RAD_QI = ( QCiLS + QCiAN + QSN_ALL + QGR_ALL ) / RAD_CF
          else
            RAD_QI = ( QCiLS + QCiAN ) / RAD_CF
          endif
@@ -4122,14 +4097,17 @@ contains
       if (  RAD_CF >0. ) then
          RAD_QR = ( QRN_ALL ) / RAD_CF
          RAD_QS = ( QSN_ALL ) / RAD_CF
+         RAD_QG = ( QGR_ALL ) / RAD_CF
       else
          RAD_QR = 0.0
          RAD_QS = 0.0
+         RAD_QG = 0.0
       end if
       RAD_QL = MIN( RAD_QL, 0.01 )
       RAD_QI = MIN( RAD_QI, 0.01 )
       RAD_QR = MIN( RAD_QR, 0.01 )
       RAD_QS = MIN( RAD_QS, 0.01 )
+      RAD_QG = MIN( RAD_QG, 0.01 )
 
      ! Number Concentration Assumptions
       NN_LAND  = CCN_L*1.0e6
@@ -4157,6 +4135,7 @@ contains
          RAD_CF = 0.
          RAD_QR = 0.
          RAD_QS = 0.
+         RAD_QG = 0.
       end if
 
    end subroutine RADCOUPLE
@@ -4214,27 +4193,12 @@ contains
 
       !Completelely glaciated cloud:
       if (TE .ge. T_ICE_MAX) then   !liquid cloud
-         FQI   = 0.0
-
-      elseif(TE .le. T_ICE_ALL) then !ice cloud
-
-         FQI   = 1.0
-
-      else !mixed phase cloud
 
          FQI   = 0.0
-         
-          if (QILS .le. 0.0) then 
-           
-                    if (needs_preexisting) then
-                   ! new 0518 this line ensures that only preexisting ice can grow by deposition.
-                  ! Only works if explicit ice nucleation is available (2 moment muphysics and up)                        
-                    else
-                      fQi  =   ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
-                    end if                      
-                  return 
-         end if 
-         
+
+      else !mixed phase or ice clouds
+
+         FQI   = ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
          
          QVINC=  QV 
          QSLIQ  = QSATLQ(         &

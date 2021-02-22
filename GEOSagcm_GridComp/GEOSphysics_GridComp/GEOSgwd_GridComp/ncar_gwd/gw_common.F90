@@ -281,7 +281,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
      src_level, tend_level, dt, t,    &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
      effgw,      c, kvtt, tau,  utgw,  vtgw, &
-     ttgw,  egwdffi,   gwut, dttdf, dttke, ro_adjust, &
+     ttgw,  egwdffi,   gwut, dttdf, dttke, ro_adjust, tau_adjust, &
      kwvrdg, satfac_in, lapply_effgw_in )
 
   !-----------------------------------------------------------------------
@@ -374,6 +374,10 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! Adjustment parameter for IGWs.
   real(r8), intent(in), optional :: &
        ro_adjust(ncol,-band%ngwv:band%ngwv,pver+1)
+
+  ! Adjustment parameter for TAU.
+  real(r8), intent(in), optional :: &
+       tau_adjust(ncol,pver+1)
 
   ! Diagnosed horizontal wavenumber for ridges.
   real(r8), intent(in), optional :: &
@@ -513,6 +517,18 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
               tausat = tausat * sqrt(ro_adjust(:,l,k))
            end where
         end if
+
+  ! WMP from GEOS
+        if (present(tau_adjust)) then
+           tausat = tausat * tau_adjust(:,k)
+        end if
+        if (k == ktop  ) tausat = 0.0
+        if (k == ktop+1) tausat = tausat*0.02
+        if (k == ktop+2) tausat = tausat*0.05
+        if (k == ktop+3) tausat = tausat*0.10
+        if (k == ktop+4) tausat = tausat*0.20
+        if (k == ktop+5) tausat = tausat*0.50
+  ! WMP from GEOS
 
         if (present(kwvrdg)) then
            where (src_level >= k)

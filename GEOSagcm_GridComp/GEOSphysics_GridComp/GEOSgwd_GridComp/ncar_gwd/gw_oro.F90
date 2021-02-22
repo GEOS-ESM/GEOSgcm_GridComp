@@ -42,9 +42,9 @@ subroutine gw_oro_init (band )
   gw_dc = 2.5_r8
   pgwv  = 0
   wavelength = 1.e5_r8
-  band  = GWBand(pgwv, gw_dc, 1.0_r8, wavelength )
+  band  = GWBand(pgwv, gw_dc, 0.5_r8, wavelength )
 
-  gw_oro_south_fac = 2.0_r8
+  gw_oro_south_fac = 1.0_r8
   
 end subroutine gw_oro_init
 
@@ -334,6 +334,7 @@ subroutine gw_oro_ifc( band, &
    real(r8) :: taury(ncol,pver+1)
    real(r8) :: taury0(ncol,pver+1)
 
+   real(r8) :: pint_adj(ncol,pver+1)
 
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
@@ -371,7 +372,14 @@ subroutine gw_oro_ifc( band, &
            tau(i,:,:) = tau(i,:,:) * gw_oro_south_fac
         end if
      end do
-     
+
+!WMP pressure scaling from GEOS
+     pint_adj = 1.0
+     where (pint < 1000.0)
+       pint_adj = (pint/1000.0)**3
+     endwhere
+!WMP pressure scaling from GEOS
+
      ! Solve for the drag profile with orographic sources.
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,   dt, t,    &
@@ -379,7 +387,8 @@ subroutine gw_oro_ifc( band, &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
           ttgw, egwdffi,  gwut, dttdf, dttke,            &
           satfac_in = 1._r8,                                   &
-          lapply_effgw_in=gw_apply_tndmax)
+          lapply_effgw_in=gw_apply_tndmax, &
+          tau_adjust=pint_adj)
 
      flx_heat(:ncol) = 0._r8
 

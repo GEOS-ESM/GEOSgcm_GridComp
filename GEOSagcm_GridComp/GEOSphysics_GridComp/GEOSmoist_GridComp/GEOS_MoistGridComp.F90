@@ -5103,7 +5103,6 @@ contains
        call WRITE_PARALLEL ("INITIALIZED MG in non-generic GC INIT")
     end if
     
-!--kml
     if (adjustl(CLDMICRO)=="GFDL") then
       call MAPL_GetResource(MAPL,INT_USE_AEROSOL_NN,'USE_AEROSOL_NN:',default=0, RC=STATUS )
     else
@@ -5120,7 +5119,6 @@ contains
        call aer_cloud_init()
        call WRITE_PARALLEL ("INITIALIZED aer_cloud_init for 1moment")
     end if
-!--kml
 
 !-srf-gf-scheme
     ! Inititialize configuration parameters for GF convection scheme 
@@ -6357,15 +6355,12 @@ contains
 
       if(adjustl(CLDMICRO)=="GFDL") then
         call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:', DEFAULT=0, RC=STATUS)
-        call MAPL_GetResource(STATE,     UWTOLS,     'UWTOLS:', DEFAULT=0, RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 1.0, RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
       else
         call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:', DEFAULT=1, RC=STATUS)
-        call MAPL_GetResource(STATE,     UWTOLS,     'UWTOLS:', DEFAULT=0, RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 0.0, RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
       endif
+      call MAPL_GetResource(STATE, UWTOLS,             'UWTOLS:'     ,DEFAULT=0   , RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 1.0, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
 
       ! Get the time step from the alarm
       !---------------------------------
@@ -8683,7 +8678,7 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 2.0    )
 
       ! Horizontal resolution dependant defaults for minimum RH crit
-      tmprh = 1.0-min(0.20, max(0.01, 0.1*360./imsize))
+      tmprh = 1.0-min(0.20, max(0.01, 0.16*360./imsize))
       call MAPL_GetResource( STATE, CLDPARAMS%MINRHCRIT    , 'MINRHCRIT:'    , DEFAULT=tmprh, RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource( STATE, CLDPARAMS%MAXRHCRIT    , 'MAXRHCRIT:'    , DEFAULT= 1.0 , RC=STATUS); VERIFY_(STATUS)
       tmprh = 0.5*(1.0+CLDPARAMS%MINRHCRIT)
@@ -9449,8 +9444,8 @@ contains
              do I = 1, IM
                RHX_X(I,J,K) = Q1(I,J,K)/GEOS_QSAT( TEMP(I,J,K), PLO(I,J,K) )
                call RADCOUPLE ( TEMP(I,J,K), PLO(I,J,K), CLLS(I,J,K), CLCN(I,J,K), &
-                     Q1(I,J,K), QLLS(I,J,K), QILS(I,J,K), QLCN(I,J,K), QICN(I,J,K), QRAIN(I,J,K), QSNOW(I,J,K), NACTL(I,J,K), NACTI(I,J,K), &
-                     RAD_QV(I,J,K), RAD_QL(I,J,K), RAD_QI(I,J,K), RAD_QR(I,J,K), RAD_QS(I,J,K), RAD_CF(I,J,K), &
+                     Q1(I,J,K), QLLS(I,J,K), QILS(I,J,K), QLCN(I,J,K), QICN(I,J,K), QRAIN(I,J,K), QSNOW(I,J,K), QGRAUPEL(I,J,K), NACTL(I,J,K), NACTI(I,J,K), &
+                     RAD_QV(I,J,K), RAD_QL(I,J,K), RAD_QI(I,J,K), RAD_QR(I,J,K), RAD_QS(I,J,K), RAD_QG(I,J,K), RAD_CF(I,J,K), &
                      CLDREFFL(I,J,K), CLDREFFI(I,J,K), FRLAND(I,J), CNV_FRACTION(I,J), INT(CLDPARAMS%FR_AN_WAT), & 
                      CLDPARAMS%FAC_RL, CLDPARAMS%MIN_RL, CLDPARAMS%MAX_RL, CLDPARAMS%FAC_RI, CLDPARAMS%MIN_RI, CLDPARAMS%MAX_RI, &
                      CLDPARAMS%CCN_OCEAN, CLDPARAMS%CCN_LAND, CLDPARAMS%PRECIPRAD)
@@ -10251,6 +10246,7 @@ contains
               RAD_QI            , &
               QRN               , &
               QSN               , &
+              RAD_QG            , &
               QPLS              , &
               CLDREFFL          , &
               CLDREFFI          , &
@@ -14101,73 +14097,6 @@ END SUBROUTINE Get_hemcoFlashrate
       enddo
 
    end subroutine meltfrz_all
-
-   function LDRADIUS(PL,TE,QC,NN,RHX,NNL,NNI,ITYPE) RESULT(RADIUS)
-   
-       real, parameter :: betai     = -2.262e+3
-       real, parameter :: gamai     =  5.113e+6
-       real, parameter :: deltai    =  2.809e+3
-       real, parameter :: densic    =  500.e0   !Ice crystal density in kgm-3
-
-       real, parameter :: abeta = 0.07
-       real, parameter :: bbeta = -0.14
-       real, parameter :: bx = 100.* (3./(4.*MAPL_PI))**(1./3.)  
-       real, parameter :: r13 = 1./3.  
-       real, parameter :: r13bbeta = 1./3. - 0.14
-       real, parameter :: premit= 750.e2            ! top pressure bound for mid level cloud
-       real, parameter :: smnum = 1.e-1            !
-       real, parameter :: rhminh= 0.80              ! minimum rh for high stable clouds      
-       
-       REAL   , INTENT(IN) :: TE,PL,NN,QC,RHX,NNL,NNI
-       INTEGER, INTENT(IN) :: ITYPE
-       REAL  :: RADIUS
-       INTEGER, PARAMETER  :: CLOUD=1, ICE=2
-       
-       REAL :: NNX,RHO,IWL,BB, RIV,CLOUD_HIGH,RHDIF,WC
- 
-       IF(ITYPE == CLOUD) THEN        
-       !- liquid cloud effective radius ----- 
-          !- [liu&daum, 2000 and 2005. liu et al 2008]
-          !- air density (kg/m^3)
-          RHO = 100.*PL / (MAPL_RGAS*TE )
-          IF(USE_AEROSOL_NN) THEN
-            !- cloud drop number concentration 
-            !- from the aerosol model + ....
-            NNX = NNL * 1.e-6  !#/cm3
-          ELSE
-            !- cloud drop number concentration :u[NNX]= #/cm^3
-            NNX = NN * 1.e-6  !#/cm3
-          ENDIF
-          !- liquid water content : u[lwl] = g/m3
-          WC = RHO*QC* 1.e+3  !g/m3
-          !- radius in micrometers
-          RADIUS= bx *  ( WC /NNX)**r13bbeta*abeta*6.92 !6.92=(1.e-6)**bbeta	      
-          !- RADIUS is limited between 2.5 and 60 micrometers as 
-          !- required by rrtm parameterization
-          RADIUS = max(2.5, min( 60.0, RADIUS ) )
-          !- convert to meter
-          RADIUS = RADIUS*1.e-6
-  
-       ELSEIF(ITYPE == ICE) THEN
-
-          !------ice cloud effective radius ----- [klaus wyser, 1998]
-          !- air density (kg/m^3)
-          RHO = 100.*PL / (MAPL_RGAS*TE )
-          !- ice water content
-          iwl = RHO*QC* 1.e+3  !g/m3
-          if(iwl<1.0e-6 .or. TE>273.0) then
-             RADIUS = 5.0*1.e-6
-          else
-             BB     = -2. + log10(iwl/50.)*(1.e-3*(273.15-max(210.15,TE))**1.5)
-             RADIUS =377.4 + 203.3 * bb+ 37.91 * bb **2 + 2.3696 * bb **3
-             RADIUS =RADIUS * 1.e-6 !- convert to meter
-          endif
- 
-       ELSE
-          STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
-       ENDIF
-
-   end function LDRADIUS
 
    subroutine FIX_UP_RAD_CLOUDS( RAD_QV, RAD_QL, RAD_QI, RAD_CF, RAD_QR, RAD_QS, RAD_QG)
       real, dimension(:,:,:), intent(inout) :: RAD_QV, RAD_QL, RAD_QI, RAD_CF, RAD_QR, RAD_QS, RAD_QG
