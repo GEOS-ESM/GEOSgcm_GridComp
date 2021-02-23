@@ -15,6 +15,7 @@ set (exe_srcs
   mk_CatchRestarts.F90		    
   mk_LakeLandiceSaltRestarts.F90	    
   mk_RouteRestarts.F90		    
+  mk_Catch_Catchcn_Restarts.F90
 #  mk_catch_restart.F90		    
 #  mk_vegdyn_restart.F90		    
   newcatch.F90			    
