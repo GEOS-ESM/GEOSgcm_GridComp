@@ -475,11 +475,12 @@ contains
           ENDIF
           
        else
-          
-          SPRINKLERRATE (N) = 0.
-          DRIPRATE (N)      = 0.
-          FLOODRATE (N)     = 0.
-          
+          ! Paddy tiles shouldn't enter here
+          if(CROPIRRIGFRAC(N,3) == 0.) then
+             SPRINKLERRATE (N) = 0.
+             DRIPRATE (N)      = 0.
+             FLOODRATE (N)     = 0.
+          endif
        endif IRR_OR_NOT
     END DO TILE_LOOP
     
@@ -495,7 +496,7 @@ contains
     IS_WITHIN_SEASON = .false.
     if(DH > DP) then
        if((DOY >= DP).AND.(DOY <=  DH)) IS_WITHIN_SEASON = .true.
-    else
+    elseif (DH < DP) then
        if((DOY >= DP).AND.(DOY <= 366)) IS_WITHIN_SEASON = .true.
        if((DOY >=  1).AND.(DOY <=  DH)) IS_WITHIN_SEASON = .true.
     endif
