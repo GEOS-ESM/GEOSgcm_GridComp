@@ -3893,7 +3893,7 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: ALHX  => NULL()
 
     type (MAPL_MetaComp), pointer :: CHILD_MAPL
-    integer                           :: I,k
+    integer                           :: I
 
     integer    :: iUseInterp
     logical    :: UseInterp
@@ -3956,12 +3956,6 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(IMPORT  , PS    , 'PS'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , DZ    , 'DZ'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , UU    , 'SPEED' ,  RC=STATUS); VERIFY_(STATUS)
-
-do i = 1, ubound(UU,1)
-  do k = 1, ubound(UU,2)
-    if (UU(i,k) > 1000.0) print*,'SURFACE UU = ',UU(i,k)
-  end do
-end do
 
     call MAPL_GetPointer(IMPORT  , UWINDLM , 'UA'  ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT  , VWINDLM , 'VA'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -7753,8 +7747,6 @@ end do
 
 ! Fill imports/exports for OBIO
 !-------------------------------
-if(mapl_am_i_root()) print*,'SURFACE NB_CHOU = ',nb_chou
-
       if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then 
         call OBIO_fillExports(OCEAN, IMPORT,&
                               LOCSTREAM, GIM,&
@@ -7768,8 +7760,6 @@ if(mapl_am_i_root()) print*,'SURFACE NB_CHOU = ',nb_chou
         nullify(  FSWBANDTILE )
         nullify(FSWBANDNATILE )
       endif
-if(mapl_am_i_root()) print*,'SURFACE size(FSWBAND) = ',size(FSWBAND)
-if(mapl_am_i_root()) print*,'SURFACE shape(FSWBAND) = ',shape(FSWBAND)
 
 ! Moved change of units for soil temperature export variables down to Catch[CN] Gridcomp.
 ! With this change, gridded TSOIL[n] exports from Surface and tile-space TP[n] exports

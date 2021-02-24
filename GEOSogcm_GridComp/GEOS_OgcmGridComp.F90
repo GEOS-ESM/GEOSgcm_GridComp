@@ -1646,10 +1646,6 @@ contains
     integer :: CAT_DIST                  ! parameters for sea ice nudging
     real    :: HIN, RN, DT, TAU_SIT      ! parameters for sea ice nudging 
 
-integer :: itemcount, dimcount, rank
-character(len=ESMF_MAXSTR), dimension(:), allocatable :: itemnamelist
-
-
 !=============================================================================
 
 ! Begin... 
@@ -2189,21 +2185,6 @@ character(len=ESMF_MAXSTR), dimension(:), allocatable :: itemnamelist
        VERIFY_(STATUS)
     end if
 
-call ESMF_StateGet(GEX(SEAICE), itemcount=itemcount, __RC__)
-allocate(itemnamelist(itemcount), __STAT__)
-call ESMF_StateGet(GEX(SEAICE), itemnamelist=itemnamelist, __RC__)
-!print*,'OGCM itemNameList = ',itemnamelist
-
-call ESMF_StateGet(GEX(SEAICE), 'FRACICE', field, __RC__)
-call ESMF_FieldGet(field, dimcount=dimcount, rank=rank, __RC__) 
-call ESMF_FieldValidate(field, __RC__)
-
-!print*,'OGCM FRACICE dimcount = ',dimcount
-!print*,'OGCM FRACICE rank = ',rank
-
-call MAPL_GetPointer(GEX(SEAICE), FRI  ,  'FRACICE', alloc=.true., __RC__)
-
-    
     if (DO_CICE_THERMO == 0) then  
        call MAPL_GetPointer(GEX(SEAICE), FRO  ,  'FRACICE', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
@@ -2494,7 +2475,7 @@ call MAPL_GetPointer(GEX(SEAICE), FRI  ,  'FRACICE', alloc=.true., __RC__)
       integer                               :: STATUS
 
       integer          :: k
-integer :: i
+
       call MAPL_GetPointer(IMPORT, UU      ,  'UU',      RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, CO2SC   ,  'CO2SC'  , RC=STATUS)
@@ -2586,21 +2567,6 @@ integer :: i
          call MAPL_LocStreamTransform( ExchGrid, CO2SCB  ,  CO2SC  , RC=STATUS) 
          VERIFY_(STATUS)
       endif
-
-do k = 1, ubound(UU,1)
-   if (UU(k) > 1000.0) print*,'OGCM UU = ',UU(k)
-end do
-
-!do i = 1, ubound(UUB, 1)
-!  do k = 1, ubound(UUB,2)
-!     if (UUB(i,k) > 1000.0) print*,'OGCM UUB = ',UUB(i,k)
-!  end do
-!end do
-!do i = 1, ubound(UUO, 1)
-!  do k = 1, ubound(UUO,2)
-!     if (UUO(i,k) > 1000.0) print*,'OGCM UUO = ',UUO(i,k)
-!  end do
-!end do
 
       do k=1, 33
         if ( associated(ATAUAO(k)%b) ) then

@@ -96,12 +96,12 @@ module GEOS_SaltwaterGridCompMod
 
     type (MAPL_MetaComp),  pointer          :: MAPL
     type (ESMF_Config)                      :: CF
-    integer                                 :: I
+    integer                                 :: I, k
     integer                                 :: DO_OBIO         ! default (=0) is to run saltwater, with no ocean bio and chem
     integer                                 :: DO_CICE_THERMO  ! default (=0) is to run saltwater, with no LANL CICE Thermodynamics
 
-  character(len = 2) :: suffix
-  integer            :: k
+    character(len = 2) :: suffix
+
 !=============================================================================
 
 ! Begin...
@@ -846,12 +846,8 @@ module GEOS_SaltwaterGridCompMod
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBAND'   , CHILD_ID = OBIO, __RC__)  ! Delete? It's not imported by OBIO, EMS
      call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBANDNA' , CHILD_ID = OBIO, __RC__)  ! Delete? It's not imported by OBIO, EMS
 
-!    ! These variables below should be read from file or provided by DataAtmosphere.
-!    ! For development/testing purposes we are writing the exports here and setting
-!    ! their values.
-
-! temporarily use AERO_RAD to compute TAUA. Pick some band (550nm?) then fill that band for all 33 bands defined here.
-! Then we don't need to use the default value of 1.0. THIS NEEDS TO BE DONE IN SURFACE GRID COMP.
+!    ! We are setting these variable values for OBIORAD temporarily. These variables should be read from
+!    ! file or computed.
      do k=1, 33
         write(unit = suffix, fmt = '(i2.2)') k
         call MAPL_AddExportSpec(GC,                               &
@@ -1989,11 +1985,6 @@ contains
     if(associated(PSEX )) PSEX  = PS 
     if(associated(USTR3)) USTR3 = sqrt(sqrt(TXO*TXO+TYO*TYO)/water_RHO('salt_water'))**3
     if(associated(UUEX))  UUEX  = UU
-
-if(mapl_am_i_root()) print*,'SALTWATER size(UU) = ',size(UU)
-do i = 1, ubound(UU,1)
-   if (UU(i) > 1000.0) print*,'SALTWATER UU = ',UU(i)
-end do
 
 !  All done with SALTWATERCORE
 !-----------------------------

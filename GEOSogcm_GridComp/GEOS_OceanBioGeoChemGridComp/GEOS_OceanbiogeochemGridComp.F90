@@ -1004,7 +1004,7 @@ real :: tq(50)
     real, pointer, dimension(:,:,:) :: S => null()
     real, pointer, dimension(:,:,:) :: TIRRQ => null()
     real, pointer, dimension(:,:,:) :: CDOMABSQ => null()
-    real, pointer, dimension(:,:,:) :: FRACICE => null()
+!    real, pointer, dimension(:,:,:) :: FRACICE => null()
     real, pointer, dimension(:,:)   :: FR => null()
     real, pointer, dimension(:,:,:)   :: DRY_DUST => null()
     real, pointer, dimension(:,:,:)   :: WET_DUST => null()
@@ -1061,8 +1061,6 @@ real :: tq(50)
 
     real, pointer, dimension(:,:)   :: FRICE => null()
 
-real :: testa
-real*8 :: testb
 !=============================================================================
 
 ! Begin... 
@@ -1307,6 +1305,10 @@ real*8 :: testb
 !    allocate(FRICE(IM,JM), __STAT__)
 !    FRICE = SUM(FRACICE, DIM=3)
 
+!  FRACICE from Import state is already in 2d. These two lines of code must have been 
+!  before FRACICE was a 2d variable. EMS
+
+
 ! Allocate BIO and other variables
 !---------------------------------
 
@@ -1400,12 +1402,6 @@ endif
                          AVGQ1, GCMAX, BIO, DH(i,j,:), RIKD, WSSC)
        endif
 
-!testa = 1.0098989E-19
-!testb = 1.0098989E-19
-!if(mapl_am_i_root()) then
-!  print*,'OBIO a*a = ',testa*testa
-!  print*,'OBIO b*b = ',testb*testb
-!end if
        call kloop ( LM, DT,        State%solFe,      State%remin,   &
                     State%rkn,     State%rks,        State%rkf,     &
                     State%cnratio, State%cfratio,    CCHLRATIO1,    &
@@ -1473,7 +1469,7 @@ BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
 
     deallocate(COSZ  )
     deallocate(SLR   )
-    deallocate(FRICE)
+!    deallocate(FRICE)
     deallocate(BIO   )
     deallocate(GCMAX ) ; deallocate(WSSC  ) ; deallocate(AVGQ1 )
     deallocate(CCHLRATIO1 )
@@ -1482,7 +1478,6 @@ BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
     deallocate(WGHT)
     deallocate(dischrg)
 
-if(mapl_am_i_root()) print*,'OBIO DONE!!!'
 !  All done
 !-----------
     call MAPL_TimerOff(MAPL,"RUN" )

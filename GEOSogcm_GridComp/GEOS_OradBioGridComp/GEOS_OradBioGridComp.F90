@@ -956,7 +956,8 @@ hr=1.0
 !  to have ocean underneath with land overhead.  Set irradiance to 0
 !  to represent this condition.
 !       if (slp < 0.0 .or. slp >1.0E10)then ! original line, EMS
-       if ((slp < 0.0 .or. slp >1.0E10) .or. (wspd == MAPL_UNDEF)) then ! extended to include condition for wspd, EMS
+       if ((slp < 0.0 .or. slp >1.0E10) .or. (wspd == MAPL_UNDEF) .or. (ozone == MAPL_UNDEF) &
+           .or. (wvapor == MAPL_UNDEF) .or. (relhum == MAPL_UNDEF)) then ! extended to include additional variables, EMS
         Ed = 0.0
         Es = 0.0
         TIRRQ(i,j,:) = 0.0
