@@ -6356,7 +6356,7 @@ contains
       if(adjustl(CLDMICRO)=="GFDL") then
         call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=0   , RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 1.0, RC=STATUS)
-        call MAPL_GetResource(STATE, UWTOCN,             'UWTOCN:'     ,DEFAULT=1   , RC=STATUS)
+        call MAPL_GetResource(STATE, UWTOCN,             'UWTOCN:'     ,DEFAULT=0   , RC=STATUS)
       else
         call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=1   , RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 0.0, RC=STATUS)
