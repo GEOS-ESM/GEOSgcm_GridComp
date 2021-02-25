@@ -5314,7 +5314,7 @@ contains
 
       real, pointer, dimension(:,:,:) :: DQDTCN, DTHDTCN,DQCDTCN,DTDTFRIC
 
-      integer :: DOCLDMACRO,UWTOLS
+      integer :: DOCLDMACRO,UWTOCN
       real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, DCM_SC, WUP_SC, QTUP_SC, &
                                          THLUP_SC, THVUP_SC, UUP_SC, VUP_SC 
       real, pointer, dimension(:,:,:) :: QCU_SC, QLU_SC, QIU_SC
@@ -6354,12 +6354,14 @@ contains
 
 
       if(adjustl(CLDMICRO)=="GFDL") then
-        call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:', DEFAULT=0, RC=STATUS)
+        call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=0   , RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 1.0, RC=STATUS)
+        call MAPL_GetResource(STATE, UWTOCN,             'UWTOCN:'     ,DEFAULT=1   , RC=STATUS)
       else
-        call MAPL_GetResource(STATE, DOCLDMACRO, 'DOCLDMACRO:', DEFAULT=1, RC=STATUS)
+        call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=1   , RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 0.0, RC=STATUS)
+        call MAPL_GetResource(STATE, UWTOCN,             'UWTOCN:'     ,DEFAULT=0   , RC=STATUS)
       endif
-      call MAPL_GetResource(STATE, UWTOLS,             'UWTOLS:'     ,DEFAULT=0   , RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 1.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
 
       ! Get the time step from the alarm
@@ -8687,8 +8689,10 @@ contains
 
       if(adjustl(CLDMICRO)=="2MOMENT") then
          call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT, 'TURNRHCRIT:'   , DEFAULT= 884.0 )
+      elseif (adjustl(CLDMICRO) =="GFDL") then
+         call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT, 'TURNRHCRIT:'   , DEFAULT= 750.0 )
       else
-         call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT, 'TURNRHCRIT:'   , DEFAULT= -999.0)
+         call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT, 'TURNRHCRIT:'   , DEFAULT= 750.0 )
       end if
 
       call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT= 300.0 )
@@ -8726,18 +8730,39 @@ contains
         CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW, QGRAUPEL )
      ! Clean up any negative specific humidity
         CALL FILLQ2ZERO2( Q1, MASS, FILLQ  )
+        if (UWTOCN/=0) then
+       ! add Convective CL tendencies
+          CLCN = CLCN + CNV_MFD*iMASS*DT_MOIST
+       ! add ShallowCu CL/QL/QI tendencies to Large-Scale
+          CLCN = CLCN +   MFD_SC*iMASS*DT_MOIST
+          QLCN = QLCN + QLDET_SC*iMASS*DT_MOIST
+          QICN = QICN + QIDET_SC*iMASS*DT_MOIST
+          do K=1,LM
+            do J=1,JM
+             do I=1,IM
+            ! Make sure QICN stays within T limits 
+             call meltfrz (    &
+                  DT_MOIST   , &
+                  TEMP(I,J,K), &
+                  QLCN(I,J,K), &
+                  QICN(I,J,K), &
+                  CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
+              end do ! IM loop
+            end do ! JM loop
+          end do ! LM loop
+        else
         do K=1,LM
           do J=1,JM
            do I=1,IM
        ! Make sure QICN stays within T limits 
-            CALL meltfrz (     &
+             call meltfrz (    &
                   DT_MOIST   , & 
                   TEMP(I,J,K), & 
                   QLCN(I,J,K), &
                   QICN(I,J,K), &
                   CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
        ! add DeepCu & ShallowCu QL/QI/CL to Convective
-            CALL cnvsrc (             &
+             call cnvsrc (            &
                   DT_MOIST          , &
                   CLDPARAMS%CNV_ICEPARAM, &
                   CLDPARAMS%SCLM_DEEP, &
@@ -8847,6 +8872,7 @@ contains
             end do ! IM loop
           end do ! JM loop
         end do ! LM loop
+        endif ! UWTOCN
        ! add ShallowCu rain/snow tendencies
         QRAIN = QRAIN + SHLW_PRC3*DT_MOIST
         QSNOW = QSNOW + SHLW_SNO3*DT_MOIST
