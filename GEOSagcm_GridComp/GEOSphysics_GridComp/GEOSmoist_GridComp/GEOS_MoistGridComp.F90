@@ -8841,6 +8841,7 @@ contains
                       CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
              ENDIF
              ! 'Anvil' evaporation/sublimation partition from Conv-Parameterized not done in hystpdf
+             ! should skip this section in GFDL to avoid double counting
              call evap3(           &
                   DT_MOIST       , &
                   CLDPARAMS%CCW_EVAP_EFF, &
