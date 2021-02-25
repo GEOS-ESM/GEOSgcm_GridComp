@@ -1539,7 +1539,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     real :: tz, qv, ql, qr, qi, qs, qg, melt
     real :: pracs, psacw, pgacw, psacr, pgacr, pgaci, praci, psaci
     real :: pgmlt, psmlt, pgfr, pgaut, psaut, pgsub
-    real :: tc, tsq, dqs0, qden, qim, qsm
+    real :: tc, tsq, dqs0, qden, qim, qsm, ptc
     real :: dt5, rqi, factor, sink, qi_crt
     real :: tmp, qsw, qsi, dqsdt, dq
     real :: dtmp, qc, q_plus, q_minus
@@ -1599,15 +1599,18 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tzk (k) = tzk (k) - melt * lhi (k) / cvm (k)
             
-        elseif (tzk (k) < t_wfr .and. qlk (k) > qcmin) then
+        elseif (tzk (k) <= tice .and. qlk (k) > qcmin) then
             
             ! -----------------------------------------------------------------------
             ! pihom: homogeneous freezing of cloud water into cloud ice
             ! this is the 1st occurance of liquid water freezing in the split mp process
             ! -----------------------------------------------------------------------
             
-            dtmp = t_wfr - tzk (k)
-            factor = min (1., dtmp / dt_fr)
+            dtmp = tice - tzk (k)
+            ! Update factor to use the MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
+            tc = max(t_wfr-tice, tzk(k)-tice) ! convert to celcius
+            ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
+            factor = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
             sink = min (qlk (k) * factor, dtmp / icpk (k))
             qi_crt = qi_gen * min (qi_lim, 0.1 * (tice - tzk (k))) / den (k)
             tmp = min (sink, dim (qi_crt, qik (k)))
@@ -2035,7 +2038,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
     real :: rh, rqi, tin, qsw, qsi, qpz, qstar
     real :: dqsdt, dwsdt, dq, dq0, factor, tmp, oldqa, qlcn
     real :: q_plus, q_minus, dt_evap, dt_pisub
-    real :: evap, sink, tc, pisub, q_adj, dtmp
+    real :: evap, sink, tc, pisub, q_adj, dtmp, ptc
     real :: pssub, pgsub, tsq, qden, fac_g2v, fac_v2g
     
     integer :: k
@@ -2399,7 +2402,11 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
                 ! -----------------------------------------------------------------------
                 ! mostly liquid water q_cond (k) at initial cloud development stage
                 ! -----------------------------------------------------------------------
-                rqi = (tice - tin) / (tice - t_wfr)
+            !!! rqi = (tice - tin) / (tice - t_wfr)
+                ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
+                tc = tin-tice ! convert to celcius
+                ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
+                rqi = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
             endif
             qstar = rqi * qsi + (1. - rqi) * qsw
         endif
