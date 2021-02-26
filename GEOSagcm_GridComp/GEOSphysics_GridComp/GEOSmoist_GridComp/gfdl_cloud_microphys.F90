@@ -2079,10 +2079,6 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         
       if (p1 (k) < p_min) cycle
 
-! GEOS
-! use do_qa to disable evap/subl processes accounted for in GEOSmoistGridComp
-      if (do_qa) then 
-! GEOS
         ! -----------------------------------------------------------------------
         ! instant deposit all water vapor to cloud ice when temperature is super low
         ! -----------------------------------------------------------------------
@@ -2240,10 +2236,6 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
             tz (k) = tz (k) + sink * (lhl (k) + lhi (k)) / cvm (k)
         endif
 
-! GEOS
-       endif ! do_qa
-! GEOS
-        
         ! -----------------------------------------------------------------------
         ! update capacity heat and latend heat coefficient
         ! -----------------------------------------------------------------------
