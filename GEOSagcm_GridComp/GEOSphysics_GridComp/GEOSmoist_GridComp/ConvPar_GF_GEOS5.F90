@@ -166,6 +166,40 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 
  INTEGER :: whoami_all
 
+! For GEOS-Chem moist exports: not sure how to do this better...
+! cakelle2, 10/27/2020
+ integer, parameter, public                    :: GCmax = 28
+ real, allocatable, public                     :: GCfsol(:,:,:,:)
+ character(len=ESMF_MAXSTR), parameter, public :: GCspecies(GCmax) = &
+                                                  (/ 'SO2',   &
+                                                     'SO4',   &
+                                                     'HNO3',  &
+                                                     'DST1',  &
+                                                     'DST2',  &
+                                                     'DST3',  &
+                                                     'DST4',  &
+                                                     'NIT',   &
+                                                     'SALA',  &
+                                                     'SALC',  &
+                                                     'BCPI',  &
+                                                     'BCPO',  &
+                                                     'OCPI',  &
+                                                     'OCPO',  &
+                                                     'ALD2',  &
+                                                     'ALK4',  &
+                                                     'CH2O',  &
+                                                     'Br2',   &
+                                                     'HBr',   &
+                                                     'MAP',   &
+                                                     'MEK',   &
+                                                     'MTPA',  &
+                                                     'MTPO',  &
+                                                     'MVK',   &
+                                                     'NH3',   &
+                                                     'NH4',   &
+                                                     'PAN',   &
+                                                     'CFC12'  /)
+
 CONTAINS
 !---------------------------------------------------------------------------------------------------
 
@@ -1224,6 +1258,12 @@ ENDIF
         !temporary
         !se_chem(1:mtp,i,k) = 1.e-3*exp(-(max(0.,float(k-kpbli(i)))/float(kpbli(i))))+1.e-4
       ENDDO;ENDDO
+
+      ! Hacky GC diagnostics 
+      if(allocated(GCfsol))
+       allocate(GCfsol_local(GCmax,itf-its+1,kte-kts+1))
+       GCfsol_local(:,:,:) = 0.0
+      endif
      ENDIF
      !- pbl  (i) = depth of pbl layer (m)
      !- kpbli(i) = index of zo(i,k)
@@ -1776,6 +1816,19 @@ loop1:  do n=1,maxiens
            ENDIF
          enddo
       ENDDO
+
+      ! Hacky diagnostics
+      if(allocated(GCfsol))then
+       do k=kts,ktf
+       do i=its,itf
+       do ispc,1,GCmax
+         GCfsol(i,j,k,ispc) = GCfsol_local(ispc,i,k)
+       enddo
+       enddo
+       enddo
+       if(allocated(GCfsol_local)) deallocate(GCfsol_local)
+      endif
+      
      ENDIF
 
  100 CONTINUE
@@ -9929,6 +9982,8 @@ ENDIF
      real, parameter :: kc = 2.e-3  ! s-1        !!! autoconversion parameter in GF is lower than what is used in GOCART
      real, dimension (mtp ,its:ite,kts:kte) ::  factor_temp
      ! for GEOS-Chem
+     real                    :: fsol
+     integer                 :: nGC
      logical, dimension(mtp) :: is_gcc
      real                    :: kc_scaled
      real, parameter         :: TEMP1 = 237.0
@@ -10021,6 +10076,15 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
             w_upd = vvel2d(i,k) 
 	    
             do ispc = 1,mtp
+                ! Check for GEOS-Chem diagnostics...
+                GCii = -1
+                do nGC = 1,GCmax
+                    if(TRIM(CHEM_NAME(ispc)(5:len(CHEM_NAME(ispc))))==TRIM(GCspecies(nGC))) then
+                        GCii=nGC
+                        exit
+                    endif
+                enddo
+
                 IF(fscav(ispc) > 1.e-6) THEN ! aerosol scavenging
 
                     !!! testing only
@@ -10044,7 +10108,11 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                           else
                              kc_scaled = kc_scaled * KcScals(ispc)%KcScal3
                           endif
-                          pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc_scaled * (dz/w_upd)))*fscav(ispc))
+                          fsol = (1.-exp(- kc_scaled * (dz/w_upd)))*fscav(ispc)
+                          pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*fsol)
+                          ! diagnostics
+                          if (GCii>0) GCfsol_local(GCii,i,k) = fsol 
+
                        ! default formulation
                        else
                           pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
@@ -10086,7 +10154,12 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
  		      fliq = henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k))
 
                       !---   aqueous-phase concentration in rain water
-                      pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(-fliq*kc*dz/w_upd)))!*factor_temp(ispc,i,k))
+                      fsol = sc_up(ispc,i,k)*(1.-exp(-fliq*kc*dz/w_upd))!*factor_temp(ispc,i,k))
+                      pw_up(ispc,i,k) = max(0.,fsol)
+
+                      ! diagnostics
+                      if (GCii>0) GCfsol_local(GCii,i,k) = fsol 
+
 
                     endif		    
 		    
