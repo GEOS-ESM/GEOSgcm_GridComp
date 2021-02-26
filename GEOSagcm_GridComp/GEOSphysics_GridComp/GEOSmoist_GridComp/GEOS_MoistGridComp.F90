@@ -5103,11 +5103,7 @@ contains
        call WRITE_PARALLEL ("INITIALIZED MG in non-generic GC INIT")
     end if
     
-    if (adjustl(CLDMICRO)=="GFDL") then
-      call MAPL_GetResource(MAPL,INT_USE_AEROSOL_NN,'USE_AEROSOL_NN:',default=0, RC=STATUS )
-    else
-      call MAPL_GetResource(MAPL,INT_USE_AEROSOL_NN,'USE_AEROSOL_NN:',default=1, RC=STATUS )
-    endif
+    call MAPL_GetResource(MAPL,INT_USE_AEROSOL_NN,'USE_AEROSOL_NN:',default=1, RC=STATUS )
     VERIFY_(STATUS)
     if (INT_USE_AEROSOL_NN == 0) then
        USE_AEROSOL_NN = .FALSE.
@@ -6069,7 +6065,7 @@ contains
 !!$      real, dimension(IM,JM,LM) :: CUSNOWMOVE_X 
 
       ! MATMAT Additional variables for GPUization
-      real, dimension(IM,JM,LM)   :: DQST3,QST3,TEMP_0
+      real, dimension(IM,JM,LM)   :: DQST3,QST3,QVx,TEMP_0
       real, dimension(IM,JM,LM)   :: DZ, DZET, iMASS, MASS, QDDF3
       real, dimension(IM,JM)      :: VMIP
       real, dimension(IM,JM,LM+1) :: ZET
@@ -6092,7 +6088,7 @@ contains
       real   , dimension(IM,JM)           :: CMDUcarma, CMSScarma
        
       real :: turnrhcrit, sigmaqt, alpha, QCp, QCn, CFn, ALHX, dqsatn, qsatn, dqlls, dqils, QT, TEp
-      real :: tmprh, rhcrit, tmpmaxrhcrit
+      real :: tmprh, rhcrit, tmpmaxrhcrit, minrhx
 
       ! MATMAT CUDA Variables
 #ifdef _CUDA
@@ -6885,10 +6881,8 @@ contains
       !---------
 
 !--kml--- activation for single-moment uphysics      
-!!!      if(adjustl(CLDMICRO)=="1MOMENT" .and. USE_AEROSOL_NN) then 
-        call MAPL_GetPointer(EXPORT, NACTL,'NACTL' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);NACTL=0.0
-        call MAPL_GetPointer(EXPORT, NACTI,'NACTI' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);NACTI=0.0
-!!!      endif
+      call MAPL_GetPointer(EXPORT, NACTL,'NACTL' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);NACTL=0.0
+      call MAPL_GetPointer(EXPORT, NACTI,'NACTI' ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);NACTI=0.0
 !--kml-----------------------------------------------------------------------------
 
       ! Count the fields in TR...
@@ -7626,7 +7620,7 @@ contains
       VERIFY_(STATUS)
       call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 0.0, RC=STATUS)
+      call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 1.e6, RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
       VERIFY_(STATUS)
@@ -8677,7 +8671,11 @@ contains
 
       call MAPL_TimerOff(STATE,"-POST_CNV")
 
-      call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 2.0    )
+      if(adjustl(CLDMICRO)=="2MOMENT") then
+        call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 1.0    )
+      else
+        call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 2.0    )
+      end if
 
       ! Horizontal resolution dependant defaults for minimum RH crit
       tmprh = 1.0-min(0.20, max(0.01, 0.16*360./imsize))
@@ -8725,69 +8723,56 @@ contains
         DQLDT_macro=QLCN+QLLS
         DQIDT_macro=QICN+QILS
         DQADT_macro=CLCN+CLLS
-        DQST3 = GEOS_DQSAT(TEMP, PLO, QSAT=QST3)
      ! Clean up clouds before macrophysics
         CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW, QGRAUPEL )
      ! Clean up any negative specific humidity
         CALL FILLQ2ZERO2( Q1, MASS, FILLQ  )
-        if (UWTOCN/=0) then
-          do K=1,LM
-            do J=1,JM
-             do I=1,IM
-             ! add DeepCu & ShallowCu QL/QI/CL to Convective
-               call cnvsrc (          &
-                  DT_MOIST          , &
-                  CLDPARAMS%CNV_ICEPARAM, &
-                  CLDPARAMS%SCLM_DEEP, &
-                  CLDPARAMS%SCLM_SHALLOW, &
-                  MASS(I,J,K)       , &
-                  iMASS(I,J,K)      , &
-                  PLO(I,J,K)        , &
-                  TEMP(I,J,K)       , &
-                  Q1(I,J,K)         , &
-                  CNV_DQLDT(I,J,K)  , &   ! <- DeepCu
-                  CNV_MFD(I,J,K)    , &   ! <- DeepCu
-                  QLDET_SC(I,J,K)   , &   ! <- ShlwCu 
-                  QIDET_SC(I,J,K)   , &   ! <- ShlwCu   
-                  MFD_SC(I,J,K)     , &   ! <- ShlwCu   
-                  QLCN(I,J,K)       , &
-                  QICN(I,J,K)       , &
-                  CLLS(I,J,K)       , &
-                  CLCN(I,J,K)       , &
-                  QST3(I,J,K)       , &
-                  CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J), &
-                  CONVPAR_OPTION )
-              end do ! IM loop
-            end do ! JM loop
-          end do ! LM loop
-        else
+       ! add DeepCu CL tendency
+        CLCN = CLCN +  CNV_MFD*iMASS*DT_MOIST*CLDPARAMS%SCLM_DEEP
+       ! add DeepCu QL/QI to Convective
         do K=1,LM
           do J=1,JM
            do I=1,IM
-       ! add DeepCu & ShallowCu QL/QI/CL to Convective
-             call cnvsrc (            &
-                  DT_MOIST          , &
-                  CLDPARAMS%CNV_ICEPARAM, &
-                  CLDPARAMS%SCLM_DEEP, &
-                  CLDPARAMS%SCLM_SHALLOW, &
-                  MASS(I,J,K)       , &
-                  iMASS(I,J,K)      , &
-                  PLO(I,J,K)        , &
-                  TEMP(I,J,K)       , &
-                  Q1(I,J,K)         , &
-                  CNV_DQLDT(I,J,K)  , &   ! <- DeepCu
-                  CNV_MFD(I,J,K)    , &   ! <- DeepCu
-                  QLDET_SC(I,J,K)   , &   ! <- ShlwCu 
-                  QIDET_SC(I,J,K)   , &   ! <- ShlwCu   
-                  MFD_SC(I,J,K)     , &   ! <- ShlwCu   
-                  QLCN(I,J,K)       , &
-                  QICN(I,J,K)       , &
-                  CLLS(I,J,K)       , &
-                  CLCN(I,J,K)       , &
-                  QST3(I,J,K)       , &
-                  CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J), &
-                  CONVPAR_OPTION )
-       ! Send the convective processes through the pdf
+            IFRC = ICE_FRACTION( TEMP(I,J,K), CNV_FRACTION(I,J), &
+                                 SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J) )
+            TEND = CNV_DQLDT(I,J,K)*iMASS(I,J,K)*DT_MOIST
+            QLCN(I,J,K) = QLCN(I,J,K) + (1.0-IFRC)*TEND
+            QICN(I,J,K) = QICN(I,J,K) +      IFRC *TEND
+           ! dont forget that conv cond has never frozen !!!!
+            IF(ADJUSTL(CONVPAR_OPTION) /= 'GF') THEN
+              TEMP(I,J,K) = TEMP(I,J,K) + (MAPL_ALHS-MAPL_ALHL) * IFRC * TEND / MAPL_CP
+            ENDIF
+           enddo
+          enddo
+        enddo
+       ! add ShallowCu CL/QL/QI tendencies
+        CLCN = CLCN +   MFD_SC*iMASS*DT_MOIST*CLDPARAMS%SCLM_SHALLOW
+        QLCN = QLCN + QLDET_SC*iMASS*DT_MOIST
+        QICN = QICN + QIDET_SC*iMASS*DT_MOIST
+       ! Constrain convective cloud fractions 0:1
+        DQST3 = GEOS_DQSAT(TEMP, PLO, QSAT=QST3)
+        where (CLCN .lt. 1.0)
+          QVx  = ( Q1 - QST3 * CLCN )/(1.-CLCN)
+        else where
+          CLCN = 1.0
+          QVx  = QST3
+        end where
+        minrhx = 0.001 !Minimum allowed env RH 
+        where ((( QVx - minrhx*QST3 ) < 0.0 ) .and. (CLCN > 0.))
+          CLCN = (Q1  - minrhx*QST3)/(QST3*(1.0-minrhx))
+        end where
+        where ( CLCN < 0. ) ! If still cant make suitable env RH then destroy CN clouds
+            CLCN = 0.
+            Q1   = Q1 + QLCN + QICN
+            TEMP = TEMP - (MAPL_ALHL*QLCN + MAPL_ALHS*QICN)/MAPL_CP
+            QLCN = 0.
+            QICN = 0.
+        end where
+#ifdef SKIP_THIS_IS_PROBLEM_FOR_QI
+        do K=1,LM
+          do J=1,JM
+           do I=1,IM
+       ! Send the condensates through the pdf after convection
        !  Use Slingo-Ritter (1985) formulation for critical relative humidity
              if (CLDPARAMS%TURNRHCRIT .LT. 0) then
                  TURNRHCRIT = CNV_PLE(I, J, NINT(KPBLIN(I, J )))
@@ -8809,7 +8794,6 @@ contains
                 endif
              endif
              ALPHA = min( 0.25, 1.0 - min(ALPHA,1.) ) ! restrict RHcrit to > 75% 
-             RHCRIT = 1.0 - ALPHA
              IF(USE_AEROSOL_NN) THEN
                    call hystpdf_new( &
                       DT_MOIST    , &
@@ -8843,39 +8827,10 @@ contains
                       CLCN(I,J,K) , &
                       CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
              ENDIF
-             ! 'Anvil' evaporation/sublimation partition from Conv-Parameterized not done in hystpdf
-             call evap3(           &
-                  DT_MOIST       , &
-                  CLDPARAMS%CCW_EVAP_EFF, &
-                  RHCRIT         , &
-                  PLO(I,J,K)     , &
-                  TEMP(I,J,K)    , &
-                  Q1(I,J,K)      , &
-                  QLCN(I,J,K)    , &
-                  QICN(I,J,K)    , &
-                  CLCN(I,J,K)    , &
-                  CLLS(I,J,K)    , &
-                  NACTL(I,J,K)   , &
-                  NACTI(I,J,K)   , &
-                  QST3(I,J,K)    )
-             call subl3(            &
-                  DT_MOIST       , &
-                  CLDPARAMS%CCW_EVAP_EFF, &
-                  RHCRIT         , &
-                  PLO(I,J,K)     , &
-                  TEMP(I,J,K)    , &
-                  Q1(I,J,K)      , &
-                  QLCN(I,J,K)    , &
-                  QICN(I,J,K)    , &
-                  CLCN(I,J,K)    , &
-                  CLLS(I,J,K)    , &
-                  NACTL(I,J,K)   , &
-                  NACTI(I,J,K)   , &
-                  QST3(I,J,K)    )
             end do ! IM loop
           end do ! JM loop
         end do ! LM loop
-        endif ! UWTOCN
+#endif
        ! add ShallowCu rain/snow tendencies
         QRAIN = QRAIN + SHLW_PRC3*DT_MOIST
         QSNOW = QSNOW + SHLW_SNO3*DT_MOIST
@@ -9369,7 +9324,7 @@ contains
                              ! Input fields
                                TEMP, W1, U1, V1, DUDT_micro, DVDT_micro, DZ, DP, &
                              ! constant inputs
-                               AREA, DT_MOIST, SNOMAS, FRLANDICE, FRLAND, CNV_FRACTION, &
+                               AREA, DT_MOIST, FRLAND, CNV_FRACTION, &
                                CLDPARAMS%ANV_ICEFALL, CLDPARAMS%LS_ICEFALL, &
                              ! Output rain re-evaporation and sublimation
                                REV_MC_X, RSU_MC_X, EVAPC_X, & 
@@ -9442,72 +9397,6 @@ contains
          QLLS = RAD_QL*(1.0-FQAl)
          QICN = RAD_QI*     FQAi
          QILS = RAD_QI*(1.0-FQAi)
-     ! Get back in touch with the PDF if we didn't already in GFDL with do_qa
-         if (UWTOCN==0) then
-         DQST3 = GEOS_DQSAT(TEMP, PLO, QSAT=QST3)
-         do K=1,LM
-          do J=1,JM
-           do I=1,IM
-       ! Send the convective processes through the pdf
-       !  Use Slingo-Ritter (1985) formulation for critical relative humidity
-             if (CLDPARAMS%TURNRHCRIT .LT. 0) then
-                 TURNRHCRIT = CNV_PLE(I, J, NINT(KPBLIN(I, J )))
-             else
-                 TURNRHCRIT = MIN( CLDPARAMS%TURNRHCRIT , CLDPARAMS%TURNRHCRIT-(1020-CNV_PLE(i,j,LM)) )
-             endif
-                                      tmpmaxrhcrit = CLDPARAMS%MAXRHCRIT
-             if (FRLAND(I,J).gt.0.05) tmpmaxrhcrit = CLDPARAMS%MAXRHCRITLAND
-             ALPHA = tmpmaxrhcrit
-             if (PLO(i,j,k) .le. TURNRHCRIT) then
-                ALPHA = CLDPARAMS%MINRHCRIT
-             else
-                if (k.eq.LM) then
-                   ALPHA = tmpmaxrhcrit
-                else
-                   ALPHA = CLDPARAMS%MINRHCRIT + (tmpmaxrhcrit-CLDPARAMS%MINRHCRIT)/(19.) * &
-                           ((atan( (2.*(PLO(i,j,k)-TURNRHCRIT)/( CNV_PLE(i,j,LM)-TURNRHCRIT)-1.) * &
-                           tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
-                endif
-             endif
-             ALPHA = min( 0.25, 1.0 - min(ALPHA,1.) ) ! restrict RHcrit to > 75% 
-             RHCRIT = 1.0 - ALPHA
-             IF(USE_AEROSOL_NN) THEN
-                   call hystpdf_new( &
-                      DT_MOIST    , &
-                      ALPHA       , &
-                      INT(CLDPARAMS%PDFSHAPE), &
-                      PLO(I,J,K)  , &
-                      Q1(I,J,K)   , &
-                      QLLS(I,J,K) , &
-                      QLCN(I,J,K) , &
-                      QILS(I,J,K) , &
-                      QICN(I,J,K) , &
-                      TEMP(I,J,K) , &
-                      CLLS(I,J,K) , &
-                      CLCN(I,J,K) , &
-                      NACTL(I,J,K),  &
-                      NACTI(I,J,K),  &
-                      CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
-             ELSE
-                   call hystpdf( &
-                      DT_MOIST    , &
-                      ALPHA       , &
-                      INT(CLDPARAMS%PDFSHAPE), &
-                      PLO(I,J,K)  , &
-                      Q1(I,J,K)   , &
-                      QLLS(I,J,K) , &
-                      QLCN(I,J,K) , &
-                      QILS(I,J,K) , &
-                      QICN(I,J,K) , &
-                      TEMP(I,J,K) , &
-                      CLLS(I,J,K) , &
-                      CLCN(I,J,K) , &
-                      CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
-             ENDIF
-              end do ! IM loop
-            end do ! JM loop
-          end do ! LM loop
-         endif
      ! Fill vapor/rain/snow/graupel state
          Q1       = RAD_QV
          QRAIN    = RAD_QR
