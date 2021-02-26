@@ -10022,7 +10022,12 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 	    
             do ispc = 1,mtp
                 IF(fscav(ispc) > 1.e-6) THEN ! aerosol scavenging
-                                        
+
+                    !!! testing only
+!                    if ( MAPL_am_I_Root().and.i==1.and.k==start_level(i)+1 ) then
+!                     write(*,*) 'Aerosol scavening: ',TRIM(CHEM_NAME(ispc)),USE_TRACER_SCAVEN,is_gcc(ispc),fscav(ispc),KcScals(ispc)%KcScal1,KcScals(ispc)%KcScal2,KcScals(ispc)%KcScal3
+!                    endif 
+                     
                     !--formulation 1 as in GOCART with RAS conv_par
                     if(USE_TRACER_SCAVEN==1) & 
                     pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- FSCAV(ispc) * (dz/1000.))))
@@ -10062,6 +10067,11 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 
                     !--- equilibrium tracer concentration - Henry's law
                     henry_coef=henry(ispc,tempco(i,k),rho(i,k))
+
+                    !!! testing only
+!                    if ( MAPL_am_I_Root().and.i==1.and.k==start_level(i)+1 ) then
+!                     write(*,*) 'Gas scavening: ',TRIM(CHEM_NAME(ispc)),USE_TRACER_SCAVEN,Hcts(ispc)%hstar,Hcts(ispc)%dhr,Hcts(ispc)%ak0,Hcts(ispc)%ak0,henry_coef
+!                    endif 
 
                     if(USE_TRACER_SCAVEN==3) then
                       !--- cloud liquid water tracer concentration
@@ -10134,7 +10144,9 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
   ! converted to [(mol(aq)/m3(aq))/(mol(g)/m3(air))], i.e. dimensionless!
   ! in equilibrium XXXa = XXXh * LWC * XXXg!
   tcorr = 1./temp - temp0i
-  fct   = conv7 * rgas * temp
+  !fct   = conv7 * rgas * temp
+  ! ckeller, 01/12/2021:
+  fct   = 8.3144598d0 / 101.325d0 * temp
 
   !-taking into account the acid dissociation constant
   ! ak=ak0*exp(dak*(1/t-1/298))
