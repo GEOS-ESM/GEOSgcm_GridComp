@@ -603,8 +603,8 @@ contains
        local_hour(n) = AGCM_HH + AGCM_MI / 60. + AGCM_S / 3600. + 12.* (lons(n)/MAPL_PI)
        IF (local_hour(n) >= 24.) local_hour(n) = local_hour(n) - 24.
        IF (local_hour(n) <   0.) local_hour(n) = local_hour(n) + 24.
-       T1 = CEILING (local_hour(n))     - DT/2./3600.
-       T2 = FLOOR   (local_hour(n) + 1) + DT/2./3600.
+       T1 = CEILING (local_hour(n))     - DT/3600.
+       T2 = FLOOR   (local_hour(n) + 1) + DT/3600.
        if((local_hour(n) >= T1).and.(local_hour(n) < T2))then
           local_hour(n) = real(NINT(local_hour(n)))
        end if
