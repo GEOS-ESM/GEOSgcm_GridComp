@@ -189,7 +189,7 @@
 # FLOOD_DUR:       1.0 # flood irrigation duration [hours]
 # FLOOD_THRES:    0.25 # soil moisture threshhold to trigger flood irrigation
 # IRR_EFCOR:      24.0 # Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use )
-# MIDS_LENGTH      0.5 # Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER: 1)
+# MIDS_LENGTH:     0.5 # Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER: 1)
 #                      # lengths of development and end seasons are assumed as (1 - MIDS_LENGTH) / 2.
 
 #--------------------------------------------------------#

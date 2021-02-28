@@ -18,21 +18,21 @@ module GEOS_IrrigationGridCompMod
 ! Exports from this routine are the instaneous values of the
 ! irrigation rates from 3 different irrigation methods on tilespace :
 ! 1) drip, 2) sprinkler and 3) flood. Because Land models (CATCH/CATCHCN) use
-! irrigation rates as a water inpput in water budget calculation, the 3 EXPORTS
-! are considered optional INTERNALS to ensure stop/start regression.
+! irrigation rates as a water input in water budget calculation, 
 ! All exports and imports are stored on the
 ! tile grid inherited from the parent routine.\\
 ! 
 ! I. Parameter Class 1: Time and spatially dependent parameters 
 ! from a binary data file\\
 ! 
-! 
 ! The gridded component stores the surrounding observations of 
 ! each parameter in the internal state.  All internals are static parameters.
 !
+! EXPORTS:  SPRINKLERRATE, DRIPRATE, FLOODRATE\\ 
+!  
 ! INTERNALS: IRRIGFRAC, PADDYFRAC, CROPIRRIGFRAC, IRRIGPLANT, IRRIGHARVEST,
 !            IRRIGTYPE, SPRINKLERFR, DRIPFR, FLOODFR, LAIMIN, LAIMAX\\
-! OPTIONAL INTERNALS:  SPRINKLERRATE, DRIPRATE, FLOODRATE\\
+! OPTIONAL INTERNALS:  SRATE, DRATE, FRATE\\
 !  
 ! This GC imports soil parameters and root zone soil moisture from land models
 !    to compute soil moisture state for IRRIGRATE calculation.  
@@ -117,7 +117,6 @@ contains
 
     Iam = trim(COMP_NAME) // 'SetServices'
 
-
 ! -----------------------------------------------------------
 ! Get the configuration
 ! -----------------------------------------------------------
@@ -143,9 +142,11 @@ contains
     endif
     
 ! -----------------------------------------------------------
-! Set the Run entry point
+! Set the the Initialize and Run entry point
 ! -----------------------------------------------------------
 
+    call MAPL_GridCompSetEntryPoint (GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
+    VERIFY_(STATUS)
     call MAPL_GridCompSetEntryPoint (GC, ESMF_METHOD_RUN, Run, RC=STATUS)
     VERIFY_(STATUS)
 
@@ -278,41 +279,47 @@ contains
          RESTART    = MAPL_RestartRequired                    ,&
          RC=STATUS  )
     VERIFY_(STATUS)  
+    
+    if (IRRIG_TRIGGER == 0) then
+       ! only two crop types: irrigated crops and paddy in that order.
+       call MAPL_AddInternalSpec(GC                              ,&
+            SHORT_NAME = 'SRATE'                                 ,&
+            LONG_NAME  ='crop_specific_sprinkler_irrigation_rate',&
+            UNITS      = 'kg m-2 s-1'                            ,&
+            DIMS       = MAPL_DimsTileOnly                       ,&
+            VLOCATION  = MAPL_VLocationNone                      ,&
+            FRIENDLYTO = trim(COMP_NAME)                         ,&
+            RESTART    = MAPL_RestartOptional                    ,&
+            UNGRIDDED_DIMS = (/2/)                               ,&
+            RC=STATUS  )
+       VERIFY_(STATUS)  
+       
+       call MAPL_AddInternalSpec(GC                              ,&
+            SHORT_NAME = 'DRATE'                                 ,&
+            LONG_NAME  = 'crop_specific_drip_irrigation_rate'    ,&
+            UNITS      = 'kg m-2 s-1'                            ,&
+            DIMS       = MAPL_DimsTileOnly                       ,&
+            VLOCATION  = MAPL_VLocationNone                      ,&
+            FRIENDLYTO = trim(COMP_NAME)                         ,&
+            RESTART    = MAPL_RestartOptional                    ,&
+            UNGRIDDED_DIMS = (/2/)                               ,&
+            RC=STATUS  )
+       VERIFY_(STATUS)  	 
+       
+       call MAPL_AddInternalSpec(GC                              ,&
+            SHORT_NAME = 'FRATE'                                 ,&
+            LONG_NAME  = 'crop_specific_flood_irrigation_rate'   ,&
+            UNITS      = 'kg m-2 s-1'                            ,&
+            DIMS       = MAPL_DimsTileOnly                       ,&
+            VLOCATION  = MAPL_VLocationNone                      ,&
+            FRIENDLYTO = trim(COMP_NAME)                         ,&
+            RESTART    = MAPL_RestartOptional                    ,&
+            UNGRIDDED_DIMS = (/2/)                               ,&
+            RC=STATUS  )
+       VERIFY_(STATUS)
 
-    call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'SPRINKLERRATE'                         ,&
-         LONG_NAME  = 'sprinkler_irrigation_rate'             ,&
-         UNITS      = 'kg m-2 s-1'                            ,&
-         DIMS       = MAPL_DimsTileOnly                       ,&
-         VLOCATION  = MAPL_VLocationNone                      ,&
-         FRIENDLYTO = trim(COMP_NAME)                         ,&
-         RESTART    = MAPL_RestartOptional                    ,&
-         RC=STATUS  )
-    VERIFY_(STATUS)  
-    
-    call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'DRIPRATE'                              ,&
-         LONG_NAME  = 'drip_irrigation_rate'	              ,&
-         UNITS      = 'kg m-2 s-1'                            ,&
-         DIMS       = MAPL_DimsTileOnly                       ,&
-         VLOCATION  = MAPL_VLocationNone                      ,&
-         FRIENDLYTO = trim(COMP_NAME)                         ,&
-         RESTART    = MAPL_RestartOptional                    ,&
-         RC=STATUS  )
-    VERIFY_(STATUS)  	 
-    
-    call MAPL_AddInternalSpec(GC                              ,&
-         SHORT_NAME = 'FLOODRATE'                             ,&
-         LONG_NAME  = 'flood_irrigation_rate'                 ,&
-         UNITS      = 'kg m-2 s-1'                            ,&
-         DIMS       = MAPL_DimsTileOnly                       ,&
-         VLOCATION  = MAPL_VLocationNone                      ,&
-         FRIENDLYTO = trim(COMP_NAME)                         ,&
-         RESTART    = MAPL_RestartOptional                    ,&
-         RC=STATUS  )
-    VERIFY_(STATUS)
-    
-    if (IRRIG_TRIGGER == 1) then
+    elseif (IRRIG_TRIGGER == 1) then
+       
        call MAPL_AddInternalSpec(GC                              ,&
             SHORT_NAME = 'SRATE'                                 ,&
             LONG_NAME  ='crop_specific_sprinkler_irrigation_rate',&
@@ -347,9 +354,41 @@ contains
             RESTART    = MAPL_RestartOptional                    ,&
             UNGRIDDED_DIMS = (/NUM_CROPS/)                       ,&
             RC=STATUS  )
-       VERIFY_(STATUS)       
+       VERIFY_(STATUS)
+       
     endif
     
+! -----------------------------------------------------------
+! Export state
+! -----------------------------------------------------------
+
+    call MAPL_AddExportSpec(GC                                ,&
+         SHORT_NAME = 'SPRINKLERRATE'                         ,&
+         LONG_NAME  = 'sprinkler_irrigation_rate'             ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)  
+    
+    call MAPL_AddExportSpec(GC                                ,&
+         SHORT_NAME = 'DRIPRATE'                              ,&
+         LONG_NAME  = 'drip_irrigation_rate'	              ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)  	 
+    
+    call MAPL_AddExportSpec(GC                                ,&
+         SHORT_NAME = 'FLOODRATE'                             ,&
+         LONG_NAME  = 'flood_irrigation_rate'                 ,&
+         UNITS      = 'kg m-2 s-1'                            ,&
+         DIMS       = MAPL_DimsTileOnly                       ,&
+         VLOCATION  = MAPL_VLocationNone                      ,&
+         RC=STATUS  )
+    VERIFY_(STATUS)
+      
 ! -----------------------------------------------------------
 ! Import states
 ! -----------------------------------------------------------    
@@ -412,8 +451,14 @@ contains
 
     call ESMF_UserCompSetInternalState ( GC, 'irrigation_state',wrap,status )
     VERIFY_(STATUS)
-     
-!EOS
+
+! Clocks
+!-------
+
+    call MAPL_TimerAdd(GC, name="INITIALIZE"    ,RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
+    VERIFY_(STATUS)
 
 !------------------------------------------------------------
 ! Set generic init and final methods
@@ -421,11 +466,131 @@ contains
 
     call MAPL_GenericSetServices(GC, RC=STATUS)
     VERIFY_(STATUS)
-
+    
     RETURN_(ESMF_SUCCESS)
   
   end subroutine SetServices
 
+  ! -----------------------------------------------------------
+  ! INITIALIZE -- Initialize method for the irrigation component
+  ! -----------------------------------------------------------
+
+  subroutine INITIALIZE (GC,IMPORT, EXPORT, CLOCK, RC )
+    
+    ! ARGUMENTS:
+    
+    type(ESMF_GridComp), intent(inout) :: GC    
+    type(ESMF_State),    intent(inout) :: IMPORT
+    type(ESMF_State),    intent(inout) :: EXPORT
+    type(ESMF_Clock),    intent(inout) :: CLOCK
+    integer, optional,   intent(  out) :: RC
+        
+    ! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)          :: IAm="Initialize"
+    integer                             :: STATUS
+    character(len=ESMF_MAXSTR)          :: COMP_NAME
+
+    ! Locals
+
+    type (MAPL_MetaComp),     pointer  :: MAPL=>null()
+    type (ESMF_State       )           :: INTERNAL
+
+    ! INTERNAL pointers
+
+    real, dimension(:),     pointer :: IRRIGFRAC
+    real, dimension(:),     pointer :: PADDYFRAC
+    real, dimension(:,:),   pointer :: CROPIRRIGFRAC
+    real, dimension(:,:),   pointer :: IRRIGTYPE
+    real, dimension(:,:),   pointer :: SRATE
+    real, dimension(:,:),   pointer :: DRATE
+    real, dimension(:,:),   pointer :: FRATE
+
+! EXPORT ponters
+    
+    real, dimension(:),     pointer :: SPRINKLERRATE
+    real, dimension(:),     pointer :: DRIPRATE
+    real, dimension(:),     pointer :: FLOODRATE
+
+    type(irrigation_model),pointer :: IM
+    type (IRRIG_wrap)              :: wrap
+    
+! Get the target components name and set-up traceback handle.
+! -----------------------------------------------------------
+
+    call ESMF_GridCompGet(GC, name=COMP_NAME, RC=STATUS )
+    VERIFY_(STATUS)
+  
+    Iam = trim(COMP_NAME) // "Initialize"
+
+    call MAPL_GenericInitialize ( GC, import, export, clock, rc=status )
+    VERIFY_(STATUS)
+    call ESMF_UserCompGetInternalState ( GC, 'irrigation_state',wrap,status )
+    VERIFY_(STATUS)    
+    allocate (IM)
+    IM = irrigation_model()
+    IM%irrig_params = wrap%ptr
+
+    ! Get my internal MAPL_Generic state
+    ! -----------------------------------------------------------
+
+    call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
+    VERIFY_(STATUS)
+    
+    call MAPL_TimerOn(MAPL,"INITIALIZE")
+
+    call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
+    VERIFY_(STATUS)     
+
+    ! get pointers to internal variables
+    ! ----------------------------------
+
+    call MAPL_GetPointer(INTERNAL, IRRIGFRAC      ,'IRRIGFRAC',    RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, PADDYFRAC      ,'PADDYFRAC',    RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CROPIRRIGFRAC  ,'CROPIRRIGFRAC',RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, IRRIGTYPE      ,'IRRIGTYPE',    RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, SRATE          ,'SRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, DRATE          ,'DRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, FRATE          ,'FRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    
+    ! get pointers to EXPORT variable
+    ! -------------------------------
+    call MAPL_GetPointer(EXPORT, SPRINKLERRATE, 'SPRINKLERRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DRIPRATE,      'DRIPRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FLOODRATE,     'FLOODRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+
+    if (IRRIG_TRIGGER == 0) then
+
+       ! LAI based trigger: scale soil moisture to LAI seasonal cycle
+       ! ============================================================
+                    
+       call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, & 
+         IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
+       
+    else
+
+       ! crop calendar based irrigation
+       ! ==============================
+
+       call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, &
+       IRRIGTYPE, CROPIRRIGFRAC,SRATE,DRATE,FRATE)
+       
+    endif
+
+    ! Scale computed SPRINKLERRATE, DRIPRATE, and FLOODRATE to the total
+    ! irrigated tile fraction before exporting to land models.
+    ! Since revised IRRIGFRAC, and PADDYFRAC in subtiling mode are 0. or 1., below scaling
+    ! has no effect in that mode.
+
+    SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC + PADDYFRAC)
+    DRIPRATE      = DRIPRATE     *(IRRIGFRAC + PADDYFRAC)
+    FLOODRATE     = FLOODRATE    *(IRRIGFRAC + PADDYFRAC)
+
+    call MAPL_TimerOff(MAPL,"INITIALIZE")
+    RETURN_(ESMF_SUCCESS)
+    
+  end subroutine INITIALIZE
+    
 ! -----------------------------------------------------------
 ! RUN -- Run method for the irrigation component
 ! -----------------------------------------------------------
@@ -440,8 +605,6 @@ contains
     type(ESMF_State),    intent(inout) :: EXPORT
     type(ESMF_Clock),    intent(inout) :: CLOCK
     integer, optional,   intent(  out) :: RC
-
-!EOP
 
 ! ErrLog Variables
 
@@ -467,13 +630,16 @@ contains
     real, dimension(:,:),   pointer :: IRRIGTYPE
     real, dimension(:,:,:), pointer :: IRRIGPLANT
     real, dimension(:,:,:), pointer :: IRRIGHARVEST
-    real, dimension(:),     pointer :: SPRINKLERRATE
-    real, dimension(:),     pointer :: DRIPRATE
-    real, dimension(:),     pointer :: FLOODRATE
     real, dimension(:,:),   pointer :: SRATE
     real, dimension(:,:),   pointer :: DRATE
     real, dimension(:,:),   pointer :: FRATE
 
+! EXPORT ponters
+    
+    real, dimension(:),     pointer :: SPRINKLERRATE
+    real, dimension(:),     pointer :: DRIPRATE
+    real, dimension(:),     pointer :: FLOODRATE    
+    
 ! IMPORT pointers
     
     real, dimension(:), pointer :: POROS
@@ -497,8 +663,8 @@ contains
     real                           :: DT, T1, T2
 
 
-! Get the target components name and set-up traceback handle.
-! -----------------------------------------------------------
+    ! Get the target components name and set-up traceback handle.
+    ! -----------------------------------------------------------
 
     call ESMF_GridCompGet(GC, name=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
@@ -512,7 +678,7 @@ contains
     IM%irrig_params = wrap%ptr
 
     ! Get my internal MAPL_Generic state
-! -----------------------------------------------------------
+    ! -----------------------------------------------------------
 
     call MAPL_GetObjectFromGC(GC, MAPL, STATUS)
     VERIFY_(STATUS)
@@ -520,13 +686,13 @@ contains
     call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
     VERIFY_(STATUS)
     
-    call MAPL_TimerOn(MAPL,"TOTAL")
+    call MAPL_TimerOn(MAPL,"RUN")
 
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
     VERIFY_(STATUS) 
 
-! get pointers to internal variables
-! ----------------------------------
+    ! get pointers to internal variables
+    ! ----------------------------------
 
     call MAPL_GetPointer(INTERNAL, IRRIGFRAC      ,'IRRIGFRAC',    RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, PADDYFRAC      ,'PADDYFRAC',    RC=STATUS) ; VERIFY_(STATUS)
@@ -539,18 +705,19 @@ contains
     call MAPL_GetPointer(INTERNAL, FLOODFR        ,'FLOODFR',      RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, LAIMIN         ,'LAIMIN',       RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, LAIMAX         ,'LAIMAX',       RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, SPRINKLERRATE, 'SPRINKLERRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, DRIPRATE,      'DRIPRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, FLOODRATE,     'FLOODRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    if (IRRIG_TRIGGER == 1) then
-       call MAPL_GetPointer(INTERNAL, SRATE, 'SRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, DRATE, 'DRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, FRATE, 'FRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
-    endif
+    call MAPL_GetPointer(INTERNAL, SRATE          ,'SRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, DRATE          ,'DRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, FRATE          ,'FRATE',        ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    
+    ! get pointers to EXPORT variable
+    ! -------------------------------
+    call MAPL_GetPointer(EXPORT, SPRINKLERRATE, 'SPRINKLERRATE',ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DRIPRATE,      'DRIPRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, FLOODRATE,     'FLOODRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     
     
-! get pointers to IMPORT variables
-! --------------------------------
+    ! get pointers to IMPORT variables
+    ! --------------------------------
 
     call MAPL_GetPointer(IMPORT, POROS  , 'POROS',  RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, WPWET  , 'WPWET',  RC=STATUS) ; VERIFY_(STATUS)
@@ -558,8 +725,8 @@ contains
     call MAPL_GetPointer(IMPORT, WCRZ   , 'WCRZ',   RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, LAI    , 'LAI',    RC=STATUS) ; VERIFY_(STATUS)
         
-! Get time and parameters from local state
-! ----------------------------------------
+    ! Get time and parameters from local state
+    ! ----------------------------------------
 
     call ESMF_ClockGet  ( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
     VERIFY_(STATUS)
@@ -579,8 +746,8 @@ contains
     VERIFY_(STATUS)
     
 
-! call the irrigation model 
-! -------------------------
+    ! call irrigation model 
+    ! ---------------------
 
     NTILES = SIZE (LONS)
     
@@ -609,17 +776,17 @@ contains
           local_hour(n) = real(NINT(local_hour(n)))
        end if
 
-       ! reference soil moisture content is at lower tercile of RZ soil moisture range [mm].
+       ! The reference soil moisture content is set to lower tercile of RZ soil moisture range [mm] to be consistent with
+       ! with ASTRFR = 0.333 used in CATCHC/CATCHCN.
        ! (NOTE: Perhaps, soil field capacity (FEILDCAP) is the desired parameter here - the upper limit
-       ! of water content that soil can hold for plants after excess water is drained off downward quickly.
-       ! The use of lower tercile here is consistent with CATCH/CATCHCN soil moisture parameterization, though.
+       ! of water content that soil can hold for plants after excess water drained off downward quickly.
        ! If we want to switch to FIELDCAP in the future, that has already been derived on tiles and available
        ! in irrigation_IMxJM_DL.dat file.)
        
        SMREF (n) = VGWMAX (n) * (wpwet (n) + (1. - wpwet (n))/3.) 
        
     END DO
-    
+        
     if (IRRIG_TRIGGER == 0) then
 
        ! LAI based trigger: scale soil moisture to LAI seasonal cycle
@@ -628,7 +795,8 @@ contains
        call IM%run_model(IRRIG_METHOD, local_hour,                      &
             IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,         &           
             SMWP,SMSAT,SMREF,SMCNT, LAI, LAIMIN, LAIMAX, RZDEF,         &
-            SPRINKLERRATE, DRIPRATE, FLOODRATE) 
+            SPRINKLERRATE, DRIPRATE, FLOODRATE,                         &
+            SRATE, DRATE, FRATE) 
        
     else
        
@@ -643,9 +811,19 @@ contains
 
     endif
 
+    ! Scale computed SPRINKLERRATE, DRIPRATE, and FLOODRATE to the total
+    ! irrigated tile fraction before exporting to land models.
+    ! Since revised IRRIGFRAC, and PADDYFRAC in subtiling mode are 0. or 1., below scaling
+    ! has no effect in that mode.
+    ! 
+
+    SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC + PADDYFRAC)
+    DRIPRATE      = DRIPRATE     *(IRRIGFRAC + PADDYFRAC)
+    FLOODRATE     = FLOODRATE    *(IRRIGFRAC + PADDYFRAC)
+
     deallocate (local_hour, SMWP, SMSAT, SMREF, SMCNT, RZDEF, IM)
-    
-    call MAPL_TimerOff(MAPL,"TOTAL")
+
+    call MAPL_TimerOff(MAPL,"RUN")
     RETURN_(ESMF_SUCCESS)
     
   end subroutine RUN

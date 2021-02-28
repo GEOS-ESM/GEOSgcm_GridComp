@@ -13,7 +13,6 @@ MODULE IRRIGATION_MODULE
   !      sprinkler irrigation rate to large scale precipitation;
   !      drip irrigation volume to rootzone excess; and
   !      flood irrigation volume to rootzone excess.
-  ! Computed irrigation rates are treated as internals to ensure stop-start zerodiff of the modeling system.
   ! The model uses rootzone soil moisture state at the local start time of irrigation to compute 
   ! irrigation rates for the day and maintains the same rate through out the irrigation duration.
   ! 
@@ -21,9 +20,9 @@ MODULE IRRIGATION_MODULE
   ! https://github.com/NASA-LIS/LISF/blob/master/lis/surfacemodels/land/clsm.f2.5/irrigation/clsmf25_getirrigationstates.F90 
   ! Drip irrigation method calculation is similar to that of sprinkler, albeit the drip irrigation method assumes a 0% water loss.
   !
-  ! December 24, 2020 (Sarith) - First Version
+  ! February 26, 2021 (Sarith Mahanama) - First Version
   !
-  ! (1) MODEL OUTPUTS:
+  ! (1) EXPORTS - MODEL OUTPUTS TO THE LAND MODEL (IRRIGATION RATES):
   !    1) SPRINKLERRATE [kg m-2 s-1]
   !    2) DRIPRATE [kg m-2 s-1]
   !    3) FLOODRATE [kg m-2 s-1]    
@@ -47,9 +46,9 @@ MODULE IRRIGATION_MODULE
   !     RZDEF   : rootzone moisture deficit to reach complete soil saturation for paddy [mm]
   !     LOCAL_HOUR to set irrigation switch.
   !
-  ! (3) SEASONAL CYLCE OF CROP WATER DEMAND:
+  ! (4) SEASONAL CYLCE OF CROP WATER DEMAND:
   ! The module provides 2 options to determine the seasonal cycle of crop water demand:
-  !    3.1) IRRIG_TRIGGER: 0 - SUBROUTINE irrigrate_lai_trigger
+  !    4.1) IRRIG_TRIGGER: 0 - SUBROUTINE irrigrate_lai_trigger
   !          The LAI-based trigger (Default and the current LIS implementation)
   !          uses precomputed minimum and maximum LAI on irrigateed pixels to determine
   !          beginning and end of crop growing seasons.
@@ -71,7 +70,7 @@ MODULE IRRIGATION_MODULE
   !          LAIMIN       : Minimum LAI spatially averaged over the irrigated tile fraction 
   !          LAIMAX       : Maximum LAI spatially averaged over the irrigated tile fraction
   !
-  !    3.2) IRRIG_TRIGGER: 1 - SUBROUTINE irrigrate_crop_calendar
+  !    4.2) IRRIG_TRIGGER: 1 - SUBROUTINE irrigrate_crop_calendar
   !          uses 26 crop calendars based on monthly crop growing areas of below crops.
   !          1       Wheat                      14      Oil palm                              
   !          2       Maize                      15      Rape seed / Canola    
@@ -96,6 +95,20 @@ MODULE IRRIGATION_MODULE
   !          IRRIGPLANT   : DOY start planting (NTILES, 2, 26) - up to two seasons
   !          IRRIGHARVEST : DOY end harvesting (NTILES, 2, 26) - up to two seasons
   !          If IRRIGPLANT/IRRIGHARVEST = 998, the crop is not grown on that tile 
+  !
+  ! (5) MODEL UPDATES (OPTIONAL INTERNALS):
+  !     SRATE, DRATE, and FRATE contain irrigation rates applied on individual fractions at any given time.
+  !     The second dimensions of 2D arrays is for different crop fractions i.e. the second dimension is 2 for above
+  !     IRRIG_TRIGGER: 0 to separately store irrigation rates in irrigated crop and paddy fractions.
+  !     It would be 26 for IRRIG_TRIGGER: 1.
+  !     Note also that runnning the irrigation model on subtiling mode (specific irrigated crop and paddy tiles with their own land prognostics)
+  !     is preferred (Section 2) to running the irrigation model on fractions of typical land tiles. For the subtiling mode with own soil moisture
+  !     prognostics, IRRIGFRAC, PADDYFRAC and CROPIRRIGFRAC fractions have been adjusted to represent irrigation type of the subtile in question. i.e.  
+  !     IRRIFRAC has been set to 1. on irrigated-crop subtiles; PADDYFRAC and CROPIRRIGFRAC(N,3) are set to 1. on paddy subtiles; and  SUM of
+  !     CROPIRRIGFRAC(N,:) excluding the 3rd element is set to 1. on irrigated crop tiles.
+  !
+  !     The crop calendar implemetation (IRRIG_TRIGGER: 1) computes SPRINKLERRATE, DRIPRATE, and FLOODRATE as weighted averages of irrigation rates from
+  !     all active crops in SRATE, DRATE and FRATE arrays.
   
   PRIVATE
   
@@ -136,11 +149,14 @@ MODULE IRRIGATION_MODULE
      ! public
      procedure, public :: init_model
      generic,   public :: run_model => irrigrate_lai_trigger, irrigrate_crop_calendar
-
+     generic,   public :: update_irates => update_irates_lai, update_irates_ccalendar
+     
      ! private
      procedure, private :: irrigrate_lai_trigger
      procedure, private :: irrigrate_crop_calendar
      procedure, private :: cwd => crop_water_deficit
+     procedure, private :: update_irates_lai
+     procedure, private :: update_irates_ccalendar
      
   end type irrigation_model
 
@@ -182,7 +198,7 @@ contains
   SUBROUTINE irrigrate_lai_trigger (this,IRRIG_METHOD, local_hour,         &
             IRRIGFRAC, PADDYFRAC, SPRINKLERFR, DRIPFR, FLOODFR,            &           
             SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN,LAIMAX, RZDEF,          &
-            SPRINKLERRATE, DRIPRATE, FLOODRATE)
+            SPRINKLERRATE, DRIPRATE, FLOODRATE, SRATE, DRATE, FRATE)
 
     implicit none
     class (irrigation_model), intent(inout) :: this
@@ -191,9 +207,11 @@ contains
     real, dimension (:), intent (in)        :: IRRIGFRAC, PADDYFRAC, SPRINKLERFR, &
          DRIPFR, FLOODFR, SMWP, SMSAT, SMREF, SMCNT, LAI, LAIMIN, LAIMAX, RZDEF
     real, dimension (:), intent (inout)     :: SPRINKLERRATE, DRIPRATE, FLOODRATE
-    INTEGER                                 :: NTILES, N
+    real, dimension (:,:),intent (inout)    :: SRATE, DRATE, FRATE
+    INTEGER                                 :: NTILES, N, crop
     REAL                                    :: ma, H1, H2, HC, IT, ROOTFRAC, LAITHRES
-
+    logical                                 :: season_end
+    
     NTILES = SIZE (IRRIGFRAC)
     TILE_LOOP : DO N = 1, NTILES
        IF(LAIMAX (N) > LAIMIN (N)) THEN
@@ -203,7 +221,11 @@ contains
           ROOTFRAC = 0.
        ENDIF
        HC = local_hour(n)
-       CHECK_LAITHRES : IF (LAI(N) >= LAITHRES) THEN          
+
+       season_end        =  .true.
+       
+       CHECK_LAITHRES : IF (LAI(N) >= LAITHRES) THEN
+          season_end = .false.
           CHECK_IRRIGFRACS: IF (IRRIGFRAC(N) > 0.) THEN
 
              !-----------------------------------------------------------------------------
@@ -228,10 +250,10 @@ contains
                       ! The model uses rootzone soil moisture state at H1 to compute irrigation rates for the day and
                       ! maintains the same rate through out the irrigation duration (H1 <= HC < H2).
                       if((ma <= IT).AND.(H1 == HC)) &
-                           SPRINKLERRATE (N) = this%cwd (ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
+                           SRATE (N,1) = this%cwd (ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
                                                * SPRINKLERFR(N)/(H2 - H1)/3600.
                    else
-                      SPRINKLERRATE (N) = 0
+                      SRATE (N,1) = 0.
                    endif
                    
                    H1 = this%flood_stime
@@ -239,10 +261,10 @@ contains
                    IT = this%flood_thres
                    if ((HC >= H1).AND.(HC < H2)) then
                       if((ma <= IT).AND.(H1 == HC)) &
-                           FLOODRATE (N) = this%cwd (ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
+                           FRATE (N,1) = this%cwd (ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
                                            * FLOODFR (N)/(H2 - H1)/3600.
                    else
-                      FLOODRATE (N) = 0.
+                      FRATE (N,1) = 0.
                    endif
 
                    H1 = this%drip_stime
@@ -250,9 +272,9 @@ contains
                    IT = this%sprinkler_thres 
                    if ((HC >= H1).AND.(HC < H2)) then
                       ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
-                      if((ma <= IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),0.) * DRIPFR (N) /(H2 - H1)/3600.
+                      if((ma <= IT).AND.(H1 == HC)) DRATE (N,1) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),0.) * DRIPFR (N) /(H2 - H1)/3600.
                    else
-                      DRIPRATE (N) = 0.
+                      DRATE (N,1) = 0.
                    endif
                    
                 CASE (1)  ! SPRINKLER only
@@ -263,14 +285,14 @@ contains
                    if ((HC >= H1).AND.(HC < H2)) then
                       ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate. 
                       if((ma <= IT).AND.(H1 == HC)) &
-                           SPRINKLERRATE (N) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
+                           SRATE (N,1) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
                                                /(H2 - H1)/3600.
                    else
-                      SPRINKLERRATE (N) = 0
+                      SRATE (N,1) = 0.
                    endif
                    
-                   DRIPRATE (N) = 0.
-                   FLOODRATE (N)= 0.
+                   DRATE (N,1) = 0.
+                   FRATE (N,1) = 0.
                                       
                 CASE (2)  ! DRIP only
                    
@@ -279,13 +301,13 @@ contains
                    IT = this%sprinkler_thres 
                    if ((HC >= H1).AND.(HC < H2)) then
                       ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
-                      if((ma <= IT).AND.(H1 == HC)) DRIPRATE (N) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),0.) &
+                      if((ma <= IT).AND.(H1 == HC)) DRATE (N,1) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),0.) &
                                                /(H2 - H1)/3600.
                    else
-                      DRIPRATE (N) = 0.
+                      DRATE (N,1) = 0.
                    endif
-                   SPRINKLERRATE (N) = 0.
-                   FLOODRATE (N)     = 0.
+                   SRATE (N,1) = 0.
+                   FRATE (N,1) = 0.
 
                 CASE (3)  ! FLOOD only
                    
@@ -295,43 +317,59 @@ contains
                    if ((HC >= H1).AND.(HC < H2)) then
                       ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate. 
                       if((ma <= IT).AND.(H1 == HC)) &
-                           FLOODRATE (N) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
+                           FRATE (N,1) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
                                            /(H2 - H1)/3600.
                    else
-                      FLOODRATE (N) = 0.
+                      FRATE (N,1) = 0.
                    endif
-                   SPRINKLERRATE (N) = 0.
-                   DRIPRATE (N)      = 0.
+                   SRATE (N,1) = 0.
+                   DRATE (N,1) = 0.
                    
                 CASE DEFAULT
                    PRINT *, 'irrigrate_lai_trigger: IRRIG_METHOD can be 0,1,2, or3'
                    CALL EXIT(1)
                 END SELECT
              endif
-             
+                          
           ELSEIF (PADDYFRAC (N) > 0.) THEN
              
              H1 = this%flood_stime
              H2 = this%flood_stime + this%flood_dur
              if ((HC >= H1).AND.(HC < H2)) then
                 ! use RZDEF at H1 during H1 <= HC < H2 to compute irrigrate for paddy. 
-                if(H1 == HC) FLOODRATE (N) = RZDEF(N) /(H2 - H1)/ 3600.
+                if(H1 == HC) FRATE (N,2) = RZDEF(N) /(H2 - H1)/ 3600.
              else
-                 FLOODRATE (N) = 0.
+                FRATE (N,2) = 0.
              endif
-             SPRINKLERRATE (N) = 0.
-             DRIPRATE (N)      = 0.
+             SRATE (N,2) = 0.
+             DRATE (N,2) = 0.
              
           ELSE
              
-             SPRINKLERRATE (N) = 0.
-             DRIPRATE (N)      = 0.
-             FLOODRATE (N)     = 0.
+             SRATE (N,:) = 0.
+             DRATE (N,:) = 0.
+             FRATE (N,:) = 0.
              
           ENDIF CHECK_IRRIGFRACS
        ENDIF CHECK_LAITHRES
+
+       ! turn off irrigation if LAI is smaller than the LAI trigger marking end of the season
+       if(season_end) then
+          DO crop = 1, 2
+             SRATE (N,crop) = 0.
+             DRATE (N,crop) = 0.
+             FRATE (N,crop) = 0.
+          END DO
+       endif
+       
     END DO TILE_LOOP
 
+    ! Update SPRINKLERRATE, DRIPRATE,  FLOODRATE EXPORTS to be sent to land models
+    ! They are weighted averaged over the irrigated crops + paddy fractions.
+       
+    call this%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, &
+         IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
+    
   END SUBROUTINE irrigrate_lai_trigger
 
   ! ----------------------------------------------------------------------------
@@ -353,43 +391,36 @@ contains
     real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FLOODRATE
     real, dimension (:,:),intent (inout) :: SRATE, DRATE, FRATE
     INTEGER                              :: NTILES, N, crop, sea
-    REAL                                 :: ma, H1, H2, HC, IT, ICFRAC, ROOTFRAC
-
+    REAL                                 :: ma, H1, H2, HC, IT, ROOTFRAC
+    logical                              :: season_end (NUM_CROPS)
     NTILES = SIZE (local_hour)
-
-    ! SPRINKLERRATE, DRIPRATE, and FLOODRATE are internals for the entire irrigated crop or paddy tile.
-    ! However, in this crop calendar implemetation, SPRINKLERRATE, DRIPRATE, and FLOODRATE are computed as the
-    ! weighted average of irrigation rates from all active crops at the time. SRATE,
-    ! DRATE and FRATE are irrigation rates that are applied on individual crop fractions at a given time and they are saved separately as internals to ensure stop-start regression zero-diff.
-    ! Note also, CROPIRRIGFRAC(N,3) is always 1.0 on paddy tiles, and SUM of CROPIRRIGFRAC(N,:) excluding the 3rd element
-    ! (3rd element is paddy) is 1.0 on irrigated crop tiles.
          
     TILE_LOOP : DO N = 1, NTILES
        HC = local_hour(n)
-       IRR_OR_NOT: if(SUM(CROPIRRIGFRAC(N,:)) > 0.) then
+       IF_IRR: if(SUM(CROPIRRIGFRAC(N,:)) > 0.) then
           ! the tile is irrigated crop or paddy
+          season_end =  .true.
           CROP_LOOP: DO crop = 1, NUM_CROPS
              CROP_IN_TILE: if(CROPIRRIGFRAC(N,crop) > 0.) then
                 ! crop is grown in this tile
-                do sea = 1, NUM_SEASONS
+                TWO_SEASONS: do sea = 1, NUM_SEASONS
                    IS_CROP: IF(IRRIGPLANT(N, sea, crop) /= 998) THEN
                       ! crop is grown in sea
                       IS_SEASON: IF(IS_WITHIN_SEASON(dofyr,NINT(IRRIGPLANT(N, sea, crop)),NINT(IRRIGHARVEST(N, sea, crop)))) THEN
                          ! dofyr falls within the crop season
-                         
-                         PADDY_OR_CROP: if (crop == 3) then
-                            
-                            ! PADDY TILE: FLOODRATE is updated directly
+                         season_end(crop) = .false.
+                         PADDY_OR_CROP: if (crop == 3) then                           
+                            ! PADDY TILE
                             H1 = this%flood_stime
                             H2 = this%flood_stime + this%flood_dur
                             if ((HC >= H1).AND.(HC < H2)) then
                                ! use RZDEF at H1 during H1 <= HC < H2 to compute irrigrate. 
-                               if(H1 == HC) FLOODRATE (N) = RZDEF(N) /(H2 - H1)/ 3600.
+                               if(H1 == HC) FRATE (N,crop) = RZDEF(N) /(H2 - H1)/ 3600.          
                             else
-                               FLOODRATE (N) = 0.
+                               FRATE (N,crop) = 0.
                             endif
-                            SPRINKLERRATE (N) = 0.
-                            DRIPRATE (N)      = 0.
+                            SRATE (N,crop) = 0.
+                            DRATE (N,crop) = 0.
 
                          else
                             
@@ -455,37 +486,108 @@ contains
                          ENDIF PADDY_OR_CROP
                       ENDIF IS_SEASON
                    end IF IS_CROP
-                end do
+                end do TWO_SEASONS
              endif CROP_IN_TILE
           END DO CROP_LOOP
-          
-          ICFRAC = SUM (CROPIRRIGFRAC(N,:)) - CROPIRRIGFRAC(N,3)
-          IF (ICFRAC > 0.) THEN
-             ! update SPRINKLERRATE, DRIPRATE,  FLOODRATE for non paddy, irrigated crops
-             SPRINKLERRATE(N) = 0.
-             DRIPRATE(N)      = 0.
-             FLOODRATE(N)     = 0.
-             DO crop = 1, NUM_CROPS
-                if(crop /= 3) then
-                   if (IRRIGTYPE (N,crop) == 1.) SPRINKLERRATE(N) = SPRINKLERRATE(N) + SRATE (N,crop)*CROPIRRIGFRAC(N,crop)
-                   if (IRRIGTYPE (N,crop) == 2.) DRIPRATE(N)      = DRIPRATE(N)      + DRATE (N,crop)*CROPIRRIGFRAC(N,crop)
-                   if (IRRIGTYPE (N,crop) == 3.) FLOODRATE(N)     = FLOODRATE(N)     + FRATE (N,crop)*CROPIRRIGFRAC(N,crop)
-                endif
-             END DO
-          ENDIF
-          
-       else
-          ! Paddy tiles shouldn't enter here
-          if(CROPIRRIGFRAC(N,3) == 0.) then
-             SPRINKLERRATE (N) = 0.
-             DRIPRATE (N)      = 0.
-             FLOODRATE (N)     = 0.
-          endif
-       endif IRR_OR_NOT
+
+          ! turn off irrigation for crops that ended the season
+          DO crop = 1, NUM_CROPS
+             if(season_end(crop)) then
+                SRATE (N,crop) = 0.
+                DRATE (N,crop) = 0.
+                FRATE (N,crop) = 0.
+             endif
+          END DO
+                             
+       endif IF_IRR
     END DO TILE_LOOP
+    
+    ! Update SPRINKLERRATE, DRIPRATE,  FLOODRATE EXPORTS to be sent to land models
+    ! They are weighted averaged over the irrigated crops + paddy fractions
+
+    call this%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, &
+       IRRIGTYPE, CROPIRRIGFRAC,SRATE,DRATE,FRATE)
     
   END SUBROUTINE irrigrate_crop_calendar
 
+  ! ----------------------------------------------------------------------------
+
+  SUBROUTINE update_irates_lai (this,SPRINKLERRATE,DRIPRATE,FLOODRATE, &
+       IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
+    
+    implicit none
+
+    class(irrigation_model),intent(inout):: this
+    real, dimension (:), intent (in)     :: IRRIGFRAC, PADDYFRAC
+    real, dimension (:,:), intent (in)   :: SRATE, DRATE, FRATE
+    real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FLOODRATE
+    integer                              :: N, NT
+
+    ! INITIALIZE EXPORTS
+    SPRINKLERRATE = 0.
+    DRIPRATE      = 0.
+    FLOODRATE     = 0.
+
+    NT = size (IRRIGFRAC)
+
+    !_ASSERT(size (SRATE,2)==NUM_CROPS,'Irrigation model LAI trigger irrig tile types mismatch')
+    
+    DO N = 1, NT
+       IF ((IRRIGFRAC(N) + PADDYFRAC(N))  > 0.) THEN
+          SPRINKLERRATE (N) = SRATE (N,1)
+          DRIPRATE (N)      = DRATE (N,1)
+          FLOODRATE (N)     = (IRRIGFRAC(N)* FRATE (N,1) + PADDYFRAC(N)*FRATE (N,2)) &
+               /(IRRIGFRAC(N) + PADDYFRAC(N)) 
+       ENDIF
+    END DO
+    
+  END SUBROUTINE update_irates_lai
+
+  !...............................................................................
+  
+  SUBROUTINE update_irates_ccalendar(this,SPRINKLERRATE,DRIPRATE,FLOODRATE, &
+       IRRIGTYPE, CROPIRRIGFRAC,SRATE,DRATE,FRATE)
+
+    implicit none
+    class(irrigation_model),intent(inout):: this
+    real, dimension(:,:),  intent (in)   :: CROPIRRIGFRAC, IRRIGTYPE ! NUM_CROPS
+    real, dimension (:,:), intent (in)   :: SRATE, DRATE, FRATE
+    real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FLOODRATE
+    integer                              :: N, NT, crop
+
+    ! INITIALIZE EXPORTS
+    SPRINKLERRATE = 0.
+    DRIPRATE      = 0.
+    FLOODRATE     = 0.
+
+    !_ASSERT(size (SRATE,2)==NUM_CROPS,'Irrigation model crop calandar trigger NUM_CROPS mismatch')
+
+    NT =  size (SPRINKLERRATE)
+    DO N = 1, NT
+       if(SUM(CROPIRRIGFRAC(N,:)) > 0.) then
+          DO crop = 1, NUM_CROPS
+             if (IRRIGTYPE (N,crop) == 1.) SPRINKLERRATE(N) = SPRINKLERRATE(N) + SRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
+             if (IRRIGTYPE (N,crop) == 2.) DRIPRATE(N)      = DRIPRATE(N)      + DRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
+             if (IRRIGTYPE (N,crop) == 3.) FLOODRATE(N)     = FLOODRATE(N)     + FRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
+          END DO
+       endif
+    END DO
+
+  END SUBROUTINE update_irates_ccalendar
+
+  ! ----------------------------------------------------------------------------
+
+  REAL FUNCTION crop_water_deficit (this, rootfrac, asmc, smcref, efcor)
+
+    implicit none
+    class(irrigation_model),intent(inout):: this
+    real, intent (in)                    :: rootfrac, asmc, smcref, efcor
+    
+    crop_water_deficit = 0.
+    if(smcref > asmc) crop_water_deficit = rootfrac*(smcref - asmc)*100.0/(100.0-efcor)   
+    
+  END FUNCTION crop_water_deficit
+  
   ! ----------------------------------------------------------------------------
 
   logical FUNCTION IS_WITHIN_SEASON (DOY,DP, DH)
@@ -552,19 +654,4 @@ contains
     
   end FUNCTION CROP_SEASON_STAGE
   
-  ! ----------------------------------------------------------------------------
-
-  REAL FUNCTION crop_water_deficit (this, rootfrac, asmc, smcref, efcor)
-
-    implicit none
-    class(irrigation_model),intent(inout):: this
-    real, intent (in)                    :: rootfrac, asmc, smcref, efcor
-
-    crop_water_deficit = 0.
-    if(smcref > asmc) crop_water_deficit = rootfrac*(smcref - asmc)*100.0/(100.0-efcor)   
-
-  END FUNCTION crop_water_deficit
-  
-  ! ----------------------------------------------------------------------------
-
 END MODULE IRRIGATION_MODULE
