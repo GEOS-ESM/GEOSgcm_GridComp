@@ -762,11 +762,11 @@ contains
     SMWP  = VGWMAX * WPWET           ! RZ soil moisture content at wilting point [mm]
     SMSAT = VGWMAX                   ! RZ soil moisture at saturation  [mm]
     SMCNT = (VGWMAX/POROS) * WCRZ    ! actual RZ soil moisture content [mm]
-    RZDEF = SMSAT - SMCNT            ! rootzone moisture deficit to reach
-                                     !   complete soil saturation for paddy [mm]
 
     DO N = 1, NTILES
-       ! local times
+
+       ! local time [hour]
+
        local_hour(n) = AGCM_HH + AGCM_MI / 60. + AGCM_S / 3600. + 12.* (lons(n)/MAPL_PI)
        IF (local_hour(n) >= 24.) local_hour(n) = local_hour(n) - 24.
        IF (local_hour(n) <   0.) local_hour(n) = local_hour(n) + 24.
@@ -778,13 +778,17 @@ contains
 
        ! The reference soil moisture content is set to lower tercile of RZ soil moisture range [mm] to be consistent with
        ! with ASTRFR = 0.333 used in CATCHC/CATCHCN.
-       ! (NOTE: Perhaps, soil field capacity (FEILDCAP) is the desired parameter here - the upper limit
+       ! Perhaps, soil field capacity (FEILDCAP) is the desired parameter here - the upper limit
        ! of water content that soil can hold for plants after excess water drained off downward quickly.
        ! If we want to switch to FIELDCAP in the future, that has already been derived on tiles and available
-       ! in irrigation_IMxJM_DL.dat file.)
+       ! in irrigation_IMxJM_DL.dat file.
        
-       SMREF (n) = VGWMAX (n) * (wpwet (n) + (1. - wpwet (n))/3.) 
-       
+       SMREF (n) = VGWMAX (n) * (wpwet (n) + (1. - wpwet (n))/3.)
+
+       ! rootzone moisture deficit to reach complete soil saturation for paddy [mm]
+
+       RZDEF (n) = MAX(SMSAT(n) - SMCNT(n), 0.)  
+                                                 
     END DO
         
     if (IRRIG_TRIGGER == 0) then
