@@ -1380,10 +1380,6 @@ contains
        ORES = 4*(ORES/6)
     end if
 
-#ifdef __GFORTRAN__
-    deallocate(gnames, gridim, gridjm)
-#endif
-
     if (ARES > ORES) then
        ! Ocean grid is coarser; we should interpolate
        iInterp = 1
