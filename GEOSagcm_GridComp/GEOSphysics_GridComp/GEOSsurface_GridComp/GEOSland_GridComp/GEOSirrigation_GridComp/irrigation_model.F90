@@ -119,25 +119,25 @@ MODULE IRRIGATION_MODULE
      ! Below parameters can be set via RC file.
      
      REAL :: lai_thres        =  0.6 ! threshold of LAI range to turn irrigation on
-     REAL :: efcor            = 24.0 ! Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use)
-     REAL :: MIDS_LENGTH      =  0.5 ! Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER: 1)
+     REAL :: efcor            = 30.0 ! Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use)
+     REAL :: MIDS_LENGTH      =  0.6 ! Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER: 1)
      
      ! Sprinkler parameters
      ! --------------------
      REAL :: sprinkler_stime  =  6.0 ! sprinkler irrigatrion start time [hours]
      REAL :: sprinkler_dur    =  4.0 ! sprinkler irrigation duration [hours]
-     REAL :: sprinkler_thres  =  0.5 ! soil moisture threshhold to trigger sprinkler irrigation
+     REAL :: sprinkler_thres  =  0.7 ! soil moisture threshhold to trigger sprinkler irrigation
      
      ! Drip parameters 
      ! ---------------
-     REAL :: drip_stime       = 10.0 ! drip irrigatrion start time [hours] 
+     REAL :: drip_stime       =  8.0 ! drip irrigatrion start time [hours] 
      REAL :: drip_dur         =  8.0 ! drip irrigation duration [hours]
      
      ! Flood parameters
      ! ----------------
      REAL :: flood_stime      =  6.0 ! flood irrigatrion start time [hours]
      REAL :: flood_dur        =  1.0 ! flood irrigation duration [hours]
-     REAL :: flood_thres      = 0.25 ! soil moisture threshhold to trigger flood irrigation
+     REAL :: flood_thres      =  0.6 ! soil moisture threshhold to trigger flood irrigation
 
      
   end type irrig_params
