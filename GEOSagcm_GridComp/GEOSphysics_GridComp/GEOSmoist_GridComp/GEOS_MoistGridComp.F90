@@ -5310,7 +5310,7 @@ contains
 
       real, pointer, dimension(:,:,:) :: DQDTCN, DTHDTCN,DQCDTCN,DTDTFRIC
 
-      integer :: DOCLDMACRO,UWTOCN
+      integer :: DOCLDMACRO
       real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, DCM_SC, WUP_SC, QTUP_SC, &
                                          THLUP_SC, THVUP_SC, UUP_SC, VUP_SC 
       real, pointer, dimension(:,:,:) :: QCU_SC, QLU_SC, QIU_SC
@@ -6332,7 +6332,6 @@ contains
 
       call MAPL_GetResource(STATE, SHLWPARAMS%RPEN,      'RPEN:'      ,DEFAULT=3.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RLE,       'RLE:'       ,DEFAULT=0.1, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'       ,DEFAULT=8.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%MIXSCALE,  'MIXSCALE:'  ,DEFAULT=3000.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%DETRHGT,   'DETRHGT:'   ,DEFAULT=1800.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RMAXFRAC,  'RMAXFRAC:'  ,DEFAULT=0.1,  RC=STATUS)
@@ -6352,11 +6351,11 @@ contains
       if(adjustl(CLDMICRO)=="GFDL") then
         call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=0   , RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=1.0 , RC=STATUS)
-        call MAPL_GetResource(STATE, UWTOCN,             'UWTOCN:'     ,DEFAULT=1   , RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'      ,DEFAULT=4.0 , RC=STATUS)
       else
         call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=1   , RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=0.0 , RC=STATUS)
-        call MAPL_GetResource(STATE, UWTOCN,             'UWTOCN:'     ,DEFAULT=0   , RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'      ,DEFAULT=8.0 , RC=STATUS)
       endif
       call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
 
@@ -8704,7 +8703,7 @@ contains
 
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_ICEPARAM,    'CNV_ICEPARAM:',    DEFAULT= 1.0   )
       call MAPL_GetResource( STATE, CLDPARAMS%SCLM_DEEP,       'SCLM_DEEP:',       DEFAULT= 1.0   )
-      call MAPL_GetResource( STATE, CLDPARAMS%SCLM_SHALLOW,    'SCLM_SHALLOW:',    DEFAULT= 1.1   )
+      call MAPL_GetResource( STATE, CLDPARAMS%SCLM_SHALLOW,    'SCLM_SHALLOW:',    DEFAULT= 1.0   )
 
 #ifdef _CUDA
       PDFFLAG       = INT(CLDPARAMS%PDFSHAPE)
@@ -8768,7 +8767,7 @@ contains
             QLCN = 0.
             QICN = 0.
         end where
-#ifdef SKIP_THIS_IS_PROBLEM_FOR_QI
+#ifdef SKIP_DUE_TO_QI_ISSUE
         do K=1,LM
           do J=1,JM
            do I=1,IM
@@ -8779,8 +8778,7 @@ contains
              else
                  TURNRHCRIT = MIN( CLDPARAMS%TURNRHCRIT , CLDPARAMS%TURNRHCRIT-(1020-CNV_PLE(i,j,LM)) )
              endif
-                                      tmpmaxrhcrit = CLDPARAMS%MAXRHCRIT
-             if (FRLAND(I,J).gt.0.05) tmpmaxrhcrit = CLDPARAMS%MAXRHCRITLAND
+             tmpmaxrhcrit = CLDPARAMS%MAXRHCRIT*(1.0-FRLAND(I,J)) + CLDPARAMS%MAXRHCRITLAND*FRLAND(I,J)
              ALPHA = tmpmaxrhcrit
              if (PLO(i,j,k) .le. TURNRHCRIT) then
                 ALPHA = CLDPARAMS%MINRHCRIT

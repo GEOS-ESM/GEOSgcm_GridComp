@@ -2418,9 +2418,9 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
           !  endif
            ! triangular
              if(q_plus.le.qstar) then
-               ! no clouds 
+               qa (k) = 0. ! no clouds 
              elseif ( (qpz.le.qstar).and.(qstar.lt.q_plus) ) then ! partial cloud cover
-                qa (k) = min(1., qa (k) + (q_plus-qstar)*(q_plus-qstar) / ( (q_plus-q_minus)*(q_plus-qpz) ))
+                qa (k) = min(1., (q_plus-qstar)*(q_plus-qstar) / ( (q_plus-q_minus)*(q_plus-qpz) ))
              elseif ( (q_minus.le.qstar).and.(qstar.lt.qpz) ) then ! partial cloud cover
                 qa (k) = min(1., 1. - ( (qstar-q_minus)*(qstar-q_minus) / ( (q_plus-q_minus)*(qpz-q_minus) )))
              elseif ( qstar.le.q_minus ) then

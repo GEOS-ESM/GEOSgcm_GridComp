@@ -2005,6 +2005,8 @@ contains
 
      real(kind=MAPL_R8), dimension(IM,JM,LM) :: AKX, BKX
 
+     integer :: JASON_TUNING
+
 #ifdef _CUDA
      type(dim3) :: Grid, Block
      integer :: blocksize_x, blocksize_y
@@ -2033,9 +2035,11 @@ contains
      call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
 
+     call MAPL_GetResource (MAPL, JASON_TUNING,        trim(COMP_NAME)//"_JASON_TUNING:",        default=1,          RC=STATUS); VERIFY_(STATUS)
+
 ! Get turbulence parameters from configuration
 !---------------------------------------------
-     if (LM .eq. 72) then
+     if (JASON_TUNING .eq. 1) then
        call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=5.0,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
@@ -2058,14 +2062,14 @@ contains
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=2.5101471e-8, RC=STATUS)  ! Pre Ganymed-4_1 value
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=1.02e-7,      RC=STATUS)  ! Value used for Ganymed-4_1 through Heracles-5_4_p3
 !    call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.00e-7,      RC=STATUS)  ! Value used with updated GMTED TOPO Data
-     call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=0.6,          RC=STATUS); VERIFY_(STATUS)
-                                                                                     C_B = C_B*1.e-6
+     call MAPL_GetResource (MAPL, C_B,          trim(COMP_NAME)//"_C_B:",          default=6.0,          RC=STATUS); VERIFY_(STATUS) ! modified to it gets reported in logfile
+                                  C_B = C_B*1.e-7                                                                                    ! update correct scaling x1.e-7
      call MAPL_GetResource (MAPL, LAMBDA_B,     trim(COMP_NAME)//"_LAMBDA_B:",     default=1500.,        RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, AKHMMAX,      trim(COMP_NAME)//"_AKHMMAX:",      default=500.,         RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LOCK_ON,      trim(COMP_NAME)//"_LOCK_ON:",      default=1,            RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, PRANDTLSFC,   trim(COMP_NAME)//"_PRANDTLSFC:",   default=1.0,          RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, PRANDTLRAD,   trim(COMP_NAME)//"_PRANDTLRAD:",   default=0.75,         RC=STATUS); VERIFY_(STATUS)
-     if (LM .eq. 72) then
+     if (JASON_TUNING .eq. 1) then
        call MAPL_GetResource (MAPL, BETA_SURF,  trim(COMP_NAME)//"_BETA_SURF:",    default=0.25,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, BETA_RAD,   trim(COMP_NAME)//"_BETA_RAD:",     default=0.20,         RC=STATUS); VERIFY_(STATUS)
      else
@@ -2073,7 +2077,7 @@ contains
        call MAPL_GetResource (MAPL, BETA_RAD,   trim(COMP_NAME)//"_BETA_RAD:",     default=0.10,         RC=STATUS); VERIFY_(STATUS)
      endif
      call MAPL_GetResource (MAPL, KHRADFAC,     trim(COMP_NAME)//"_KHRADFAC:",     default=0.85,         RC=STATUS); VERIFY_(STATUS)
-     if (LM .eq. 72) then
+     if (JASON_TUNING .eq. 1) then
        call MAPL_GetResource (MAPL, KHSFCFAC_LND, trim(COMP_NAME)//"_KHSFCFAC_LND:", default=0.60,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, KHSFCFAC_OCN, trim(COMP_NAME)//"_KHSFCFAC_OCN:", default=0.30,         RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, TPFAC_SURF,   trim(COMP_NAME)//"_TPFAC_SURF:",   default=20.0,         RC=STATUS); VERIFY_(STATUS)
@@ -2088,7 +2092,7 @@ contains
      endif
      call MAPL_GetResource (MAPL, LOUIS_MEMORY, trim(COMP_NAME)//"_LOUIS_MEMORY:", default=-999.,        RC=STATUS); VERIFY_(STATUS)
 
-     if (LM .eq. 72) then
+     if (JASON_TUNING .eq. 1) then
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=4,          RC=STATUS); VERIFY_(STATUS)
      else
        call MAPL_GetResource (MAPL, PBLHT_OPTION, trim(COMP_NAME)//"_PBLHT_OPTION:", default=3,          RC=STATUS); VERIFY_(STATUS)
@@ -2864,7 +2868,7 @@ contains
       if (CALC_TCZPBL) then
          TCZPBL = MAPL_UNDEF
 
-       if (LM .eq. 72) then
+       if (JASON_TUNING .eq. 1) then
          thetavs = T(:,:,LM)*(1.0+MAPL_VIREPS*Q(:,:,LM)/(1.0-Q(:,:,LM)))*(TH(:,:,LM)/T(:,:,LM))
          tcrib(:,:,LM) = 0.0
          do I = 1, IM

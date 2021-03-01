@@ -3788,10 +3788,10 @@ contains
         !- ice water content
          WC = 1.e3*RHO*QC  !g/m3
         !------ice cloud effective radius ----- [klaus wyser, 1998]
-         if(TE>273.15 .or. QC <=0.) then
+         if(TE>MAPL_TICE .or. QC <=0.) then
             BB     = -2.
          else
-            BB     = -2. + log10(WC/50.)*(1.e-3*(273.15-TE)**1.5)
+            BB     = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5)
          endif
          BB     = MIN((MAX(BB,-6.)),-2.) 
          RADIUS0 = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
@@ -3917,7 +3917,7 @@ contains
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-      TE0=273.
+      TE0=MAPL_TICE
       !TE1=263.
       TE2=200.
       !RATE2=  10.
@@ -4143,7 +4143,7 @@ contains
 
       DQALL=DQALL/DTIME                                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
       CFALL= min(CF+AF, 1.0)
-      TC=TE-273.0
+      TC=TE-MAPL_TICE
       fQI_0 = fQI
 
       !Completelely glaciated cloud:
@@ -4168,7 +4168,7 @@ contains
 
          ! Calculate deposition onto preexisting ice 
 
-         DIFF=(0.211*1013.25/(PL+0.1))*(((TE+0.1)/273.0)**1.94)*1e-4  !From Seinfeld and Pandis 2006
+         DIFF=(0.211*1013.25/(PL+0.1))*(((TE+0.1)/MAPL_TICE)**1.94)*1e-4  !From Seinfeld and Pandis 2006
          DENAIR=PL*100.0/MAPL_RGAS/TE
          DENICE= 1000.0*(0.9167 - 1.75e-4*TC -5.0e-7*TC*TC) !From PK 97
          LHcorr = ( 1.0 + DQSI*MAPL_ALHS/MAPL_CP) !must be ice deposition
