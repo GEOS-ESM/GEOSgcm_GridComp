@@ -10134,7 +10134,10 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
   ! converted to [(mol(aq)/m3(aq))/(mol(g)/m3(air))], i.e. dimensionless!
   ! in equilibrium XXXa = XXXh * LWC * XXXg!
   tcorr = 1./temp - temp0i
-  fct   = conv7 * rgas * temp
+  !fct   = conv7 * rgas * temp
+  !mkelp 20210114
+  fct   = 8.3144598d0 / 101.325d0 * temp
+
 
   !-taking into account the acid dissociation constant
   ! ak=ak0*exp(dak*(1/t-1/298))
