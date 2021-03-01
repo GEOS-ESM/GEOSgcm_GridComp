@@ -9,7 +9,7 @@ MODULE IRRIGATION_MODULE
 
   ! This module computes irrigation rates by 3 different methods: sprinkler, flood and drip.
   ! Computed irrigation rates return to the land model as rates that water is added to
-  ! the hydrological cycle by irrigation. Thus, land models add irrigation feedback: 
+  ! the hydrological cycle by irrigation. Subsequently, land models add irrigation feedback: 
   !      sprinkler irrigation rate to large scale precipitation;
   !      drip irrigation volume to rootzone excess; and
   !      flood irrigation volume to rootzone excess.
