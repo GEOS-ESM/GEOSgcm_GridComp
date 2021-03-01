@@ -364,9 +364,9 @@ contains
        
     END DO TILE_LOOP
 
-    ! Update SPRINKLERRATE, DRIPRATE,  FLOODRATE EXPORTS to be sent to land models
-    ! They are weighted averaged over the irrigated crops + paddy fractions.
-       
+    ! Update SPRINKLERRATE, DRIPRATE,  FLOODRATE EXPORTS to be sent to land models.
+    ! FLOODRATE is weighted averaged over irrigated crops + paddy fractions.
+        
     call this%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, &
          IRRIGFRAC,PADDYFRAC,SRATE,DRATE,FRATE)
     
@@ -503,7 +503,7 @@ contains
     END DO TILE_LOOP
     
     ! Update SPRINKLERRATE, DRIPRATE,  FLOODRATE EXPORTS to be sent to land models
-    ! They are weighted averaged over the irrigated crops + paddy fractions
+    ! They are weighted averaged over 26 crop fractions.
 
     call this%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, &
        IRRIGTYPE, CROPIRRIGFRAC,SRATE,DRATE,FRATE)
