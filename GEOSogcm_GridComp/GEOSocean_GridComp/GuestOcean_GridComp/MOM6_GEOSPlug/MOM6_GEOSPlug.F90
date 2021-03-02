@@ -1573,3 +1573,12 @@ contains
 !====================================================================
 
 end module MOM6_GEOSPlugMod
+
+subroutine SetServices(gc, rc)
+   use ESMF
+   use MOM6_GEOSPlugMod, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc, rc=rc)
+end subroutine
+
