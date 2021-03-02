@@ -1707,7 +1707,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
          if(associated(RET)) RET     = RE(:  )*FR(:,N)
          if(associated(Z0O)) Z0O     = Z0(:,N)*FR(:,N)
          if(associated(Z0H)) Z0H     = ZT(:  )*FR(:,N)
-         if(associated(GST)) GST     = WW(:,N)*FR(:,N)
          if(associated(VNT)) VNT     = UUU    *FR(:,N)
 
       !  Aggregate effective, CD-weighted, surface values of T and Q
@@ -1721,6 +1720,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
       WW(:,N) = max(CH(:,N)*(TS(:,N)-TA-(MAPL_GRAV/MAPL_CP)*DZ)/TA + MAPL_VIREPS*CQ(:,N)*(QS(:,N)-QA),0.0)
       WW(:,N) = (HPBL*MAPL_GRAV*WW(:,N))**(2./3.)
+      if(associated(GST)) GST     = WW(:,N)*FR(:,N)
 
    if(associated(CHT)) CHT = CHB
    if(associated(CQT)) CQT = CQB
