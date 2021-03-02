@@ -776,9 +776,9 @@ contains
           local_hour(n) = real(NINT(local_hour(n)))
        end if
 
-       ! The reference soil moisture content is set to lower tercile of RZ soil moisture range [mm] to be consistent with
-       ! with ASTRFR = 0.333 used in CATCHC/CATCHCN.
-       ! Perhaps, soil field capacity (FEILDCAP) is the desired parameter here - the upper limit
+       ! The reference soil moisture content is set to lower tercile of RZ soil moisture range [mm] to be consistent 
+       ! with ASTRFR = 0.333 used in CATCH/CATCHCN.
+       ! Perhaps, soil field capacity (FIELDCAP) is the desired parameter here - the upper limit
        ! of water content that soil can hold for plants after excess water drained off downward quickly.
        ! If we want to switch to FIELDCAP in the future, that has already been derived on tiles and available
        ! in irrigation_IMxJM_DL.dat file.
@@ -818,8 +818,7 @@ contains
     ! Scale computed SPRINKLERRATE, DRIPRATE, and FLOODRATE to the total
     ! irrigated tile fraction before exporting to land models.
     ! Since revised IRRIGFRAC, and PADDYFRAC in subtiling mode are 0. or 1., below scaling
-    ! has no effect in that mode.
-    ! 
+    ! has no effect in that mode. 
 
     SPRINKLERRATE = SPRINKLERRATE*(IRRIGFRAC + PADDYFRAC)
     DRIPRATE      = DRIPRATE     *(IRRIGFRAC + PADDYFRAC)
