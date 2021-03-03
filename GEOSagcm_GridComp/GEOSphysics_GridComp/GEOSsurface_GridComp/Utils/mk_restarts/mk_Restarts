@@ -12,7 +12,7 @@ use Cwd qw(getcwd);
 # global variables
 #-----------------
 my ($saltwater, $openwater, $seaice, $lake, $landice, $catch, $catchcn, $route);
-my ($surflay, $rsttime, $grpID, $numtasks, $walltime, $rescale, $qos, $yyyymm);
+my ($surflay, $rsttime, $grpID, $numtasks, $walltime, $rescale, $qos, $partition, $yyyymm);
 my ($mk_catch_j, $mk_catch_log, $weminIN, $weminOUT, $weminDFLT);
 my ($zoom);
 
@@ -41,7 +41,7 @@ $mk_catch_log = "mk_catch.log";
             system_($cmd);
         }
         else {
-            $cmd = "sbatch $mk_catch_j";
+            $cmd = "sbatch -W $mk_catch_j";
             print "$cmd\n";
             chomp($line = `$cmd`);
             $pid = (split /\s+/, $line)[-1];
@@ -136,6 +136,7 @@ sub init {
                 "walltime=s"=> \$walltime,
                 "rescale"   => \$rescale,
                 "qos=s"     => \$qos,
+                "partition=s" => \$partition,
                 "zoom=i"    => \$zoom,
                 "h|help"    => \$help );
     # defaults
@@ -171,6 +172,7 @@ sub init {
         unless ($walltime) { $walltime = "1:00:00" }
         unless ($numtasks) { $numtasks = 84 }
         $qos = "" unless $qos;
+        $partition = "" unless $partition;
     }
 
     # rsttime value is needed for route
@@ -188,7 +190,7 @@ sub init {
 # purpose - write job file to make catch and/or catchcn restart
 #=======================================================================
 sub write_mk_catch_j {
-    my ($grouplist, $cwd, $QOSline, $FH);
+    my ($grouplist, $cwd, $QOSline, $PARTline, $FH);
 
     $grouplist = "";
     $grouplist = "SBATCH --account=$grpID" if $grpID;
@@ -202,6 +204,10 @@ sub write_mk_catch_j {
             $QOSline = "" unless $numtasks <= 532 and $walltime le "1:00:00";
         }
     }
+    $PARTline = "";
+    if ($partition) {
+        $PARTline = "SBATCH --partition=$partition";
+    }
     print("\nWriting jobscript: $mk_catch_j\n");
     open CNj, ">> $mk_catch_j" or die "Error opening $mk_catch_j: $!";
 
@@ -214,9 +220,10 @@ sub write_mk_catch_j {
 #SBATCH --ntasks=$numtasks
 #SBATCH --time=$walltime
 #SBATCH --job-name=catchcnj
-#SBATCH --constraint=hasw
+###SBATCH --constraint=hasw
 #SBATCH --output=$cwd/$mk_catch_log
 #$QOSline
+#$PARTline
 
 source $Bin/g5_modules
 set echo
@@ -356,6 +363,7 @@ option flags
                     \"-qos debug\" will not work unless these conditions are met
                          -> numtasks <= 532
                          -> walltime le \"1:00:00\"
+   -partition val   use \"SBATCH --partition=val directive\" for batch jobs
    -zoom n          zoom value to send to land regridding codes [8]
    -h               print usage information
 

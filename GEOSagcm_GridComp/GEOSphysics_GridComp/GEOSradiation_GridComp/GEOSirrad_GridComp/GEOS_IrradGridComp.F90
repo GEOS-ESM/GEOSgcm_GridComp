@@ -735,6 +735,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                   &
+        SHORT_NAME = 'OLRB06RG',                                  &
+        LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band06 (820-980 cm-1)', &
+        UNITS      = 'W m-2',                                     &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                   &
+        SHORT_NAME = 'TBRB06RG',                                  &
+        LONG_NAME  = 'brightness_temperature_in_RRTMG_band06 (820-980 cm-1)',         &
+        UNITS      = 'K',                                         &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'OLRB09RG',                                  &
         LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band09 (1180-1390 cm-1)', &
         UNITS      = 'W m-2',                                     &
@@ -1067,6 +1083,20 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                 &
+        SHORT_NAME = 'OLRB06RG',                                  &
+        LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band06', &
+        UNITS      = 'W m-2',                                     &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+
+    call MAPL_AddInternalSpec(GC,                                 &
+        SHORT_NAME = 'DOLRB06RGDT',                               &
+        LONG_NAME  = 'derivative_of_upwelling_longwave_flux_at_toa_in_RRTMG_band06_wrt_surface_temp', &
+        UNITS      = 'W m-2 K-1',                                 &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+
+    call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'OLRB09RG',                                  &
         LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band09', &
         UNITS      = 'W m-2',                                     &
@@ -1235,8 +1265,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:,:)   :: DFDTSC
    real, pointer, dimension(:,:,:)   :: DFDTSCNA
 
-   real, pointer, dimension(:,:  )   :: OLRB09RG_INT, OLRB10RG_INT, OLRB11RG_INT
-   real, pointer, dimension(:,:  )   :: DOLRB09RG_DT, DOLRB10RG_DT, DOLRB11RG_DT
+   real, pointer, dimension(:,:  )   :: OLRB06RG_INT, OLRB09RG_INT, OLRB10RG_INT, OLRB11RG_INT
+   real, pointer, dimension(:,:  )   :: DOLRB06RG_DT, DOLRB09RG_DT, DOLRB10RG_DT, DOLRB11RG_DT
 
    real, external :: getco2
 
@@ -1355,6 +1385,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(INTERNAL, DFDTSNA,   'DFDTSNA', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL, DFDTSCNA,  'DFDTSCNA',RC=STATUS); VERIFY_(STATUS)
 
+   call MAPL_GetPointer(INTERNAL, OLRB06RG_INT, 'OLRB06RG'   , __RC__)
+   call MAPL_GetPointer(INTERNAL, DOLRB06RG_DT, 'DOLRB06RGDT', __RC__)
    call MAPL_GetPointer(INTERNAL, OLRB09RG_INT, 'OLRB09RG'   , __RC__)
    call MAPL_GetPointer(INTERNAL, DOLRB09RG_DT, 'DOLRB09RGDT', __RC__)
    call MAPL_GetPointer(INTERNAL, OLRB10RG_INT, 'OLRB10RG'   , __RC__)
@@ -1571,6 +1603,7 @@ contains
    real,    allocatable, dimension(:,:)   :: HR, HRC
    integer, allocatable, dimension(:,:)   :: CLOUDFLAG
    real,    allocatable, dimension(:)     :: ALAT
+   real,    allocatable, dimension(:)     :: OLRB06RG_1D, DOLRB06RG_DT_1D
    real,    allocatable, dimension(:)     :: OLRB09RG_1D, DOLRB09RG_DT_1D
    real,    allocatable, dimension(:)     :: OLRB10RG_1D, DOLRB10RG_DT_1D
    real,    allocatable, dimension(:)     :: OLRB11RG_1D, DOLRB11RG_DT_1D
@@ -3345,6 +3378,8 @@ if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
       allocate(HRC(IM*JM,LM+1),__STAT__)
       allocate(CLOUDFLAG(IM*JM,4),__STAT__)
       allocate(ALAT(IM*JM),__STAT__)
+      allocate(OLRB06RG_1D(IM*JM),__STAT__)
+      allocate(DOLRB06RG_DT_1D(IM*JM),__STAT__)
       allocate(OLRB09RG_1D(IM*JM),__STAT__)
       allocate(DOLRB09RG_DT_1D(IM*JM),__STAT__)
       allocate(OLRB10RG_1D(IM*JM),__STAT__)
@@ -3471,7 +3506,8 @@ if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
               TAUCLD ,CICEWP ,CLIQWP ,REICE ,RELIQ , &
               TAUAER  , ZL_R, LCLDLM, LCLDMH, &
               UFLX, DFLX, HR, UFLXC, DFLXC, HRC, DUFLX_DT, DUFLXC_DT, CLOUDFLAG, &
-              OLRB09RG_1D, DOLRB09RG_DT_1D, OLRB10RG_1D, DOLRB10RG_DT_1D, OLRB11RG_1D, DOLRB11RG_DT_1D, &
+              OLRB06RG_1D, DOLRB06RG_DT_1D, OLRB09RG_1D, DOLRB09RG_DT_1D, &
+              OLRB10RG_1D, DOLRB10RG_DT_1D, OLRB11RG_1D, DOLRB11RG_DT_1D, &
               DOY, ALAT, CoresPerNode, PARTITION_SIZE)
 
       call MAPL_TimerOff(MAPL,"---RRTMG_RUN",RC=STATUS)
@@ -3517,7 +3553,9 @@ if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
 
          SFCEM_INT(i,j) = -UFLX(IJ,1) + DFLX(IJ,1)*(1.0-EMISS(IJ,1))
 
-         ! band 9-11 water vapor products
+         ! band 6 window and band 9-11 water vapor products
+         OLRB06RG_INT(i,j) = OLRB06RG_1D(IJ)
+         DOLRB06RG_DT(i,j) = DOLRB06RG_DT_1D(IJ)
          OLRB09RG_INT(i,j) = OLRB09RG_1D(IJ)
          DOLRB09RG_DT(i,j) = DOLRB09RG_DT_1D(IJ)
          OLRB10RG_INT(i,j) = OLRB10RG_1D(IJ)
@@ -3571,6 +3609,8 @@ if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
       deallocate(HRC,__STAT__)
       deallocate(CLOUDFLAG,__STAT__)
       deallocate(ALAT,__STAT__)
+      deallocate(OLRB06RG_1D,__STAT__)
+      deallocate(DOLRB06RG_DT_1D,__STAT__)
       deallocate(OLRB09RG_1D,__STAT__)
       deallocate(DOLRB09RG_DT_1D,__STAT__)
       deallocate(OLRB10RG_1D,__STAT__)
@@ -3715,6 +3755,7 @@ if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
    real, pointer, dimension(:,:  )   :: OLC
    real, pointer, dimension(:,:  )   :: OLCC5
    real, pointer, dimension(:,:  )   :: OLA
+   real, pointer, dimension(:,:  )   :: OLRB06RG, TBRB06RG
    real, pointer, dimension(:,:  )   :: OLRB09RG, TBRB09RG
    real, pointer, dimension(:,:  )   :: OLRB10RG, TBRB10RG
    real, pointer, dimension(:,:  )   :: OLRB11RG, TBRB11RG
@@ -3764,6 +3805,8 @@ if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
    call MAPL_GetPointer(EXPORT,   OLC   ,    'OLC'   ,RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,   OLCC5 ,    'OLCC5' ,RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,   OLA   ,    'OLA'   ,RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT, OLRB06RG,  'OLRB06RG',RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT, TBRB06RG,  'TBRB06RG',RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT, OLRB09RG,  'OLRB09RG',RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT, TBRB09RG,  'TBRB09RG',RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT, OLRB10RG,  'OLRB10RG',RC=STATUS); VERIFY_(STATUS)
@@ -3915,6 +3958,8 @@ if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
        if(associated(FLNSC )) FLNSC  =  FLC_INT(:,:,LM) + DFDTSC  (:,:,LM) * DELT
        if(associated(FLNSA )) FLNSA  =  FLA_INT(:,:,LM) + DFDTSCNA(:,:,LM) * DELT
 
+       if(associated(OLRB06RG)) OLRB06RG = MAPL_UNDEF
+       if(associated(TBRB06RG)) TBRB06RG = MAPL_UNDEF
        if(associated(OLRB09RG)) OLRB09RG = MAPL_UNDEF
        if(associated(TBRB09RG)) TBRB09RG = MAPL_UNDEF
        if(associated(OLRB10RG)) OLRB10RG = MAPL_UNDEF
@@ -3987,6 +4032,18 @@ if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
        if(associated(FLNSNA)) FLNSNA = MAPL_UNDEF
        if(associated(FLNSC )) FLNSC  = FLC_INT(:,:,LM) + DFDTSC(:,:,LM) * DELT
        if(associated(FLNSA )) FLNSA  = MAPL_UNDEF
+
+       if(associated(OLRB06RG).or.associated(TBRB06RG)) then
+         allocate(OLRBNN(IM,JM),__STAT__)
+         OLRBNN = OLRB06RG_INT + DOLRB06RG_DT * DELT
+         if(associated(OLRB06RG)) OLRB06RG = OLRBNN
+         if(associated(TBRB06RG)) then
+           ! brightness temperature for RRTMG band 06
+           wn1 = 820.e2; wn2 = 980.e2  ! NB: [m-1]
+           call Tbr_from_band_flux(IM, JM, OLRBNN, wn1, wn2, TBRB06RG, __RC__)
+         end if
+         deallocate(OLRBNN)
+       end if
 
        if(associated(OLRB09RG).or.associated(TBRB09RG)) then
          allocate(OLRBNN(IM,JM),__STAT__)
