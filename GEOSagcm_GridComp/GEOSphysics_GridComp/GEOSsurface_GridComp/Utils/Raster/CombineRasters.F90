@@ -33,7 +33,7 @@ program mkOverlaySimple
   integer                :: nxt, argl, fill
   integer                :: i, j, k, l, ip
   integer                :: STATUS, i1, i2, nvars, rvars
-  integer                :: ip1, ip2
+  integer                :: ip1, ip2, nf1, nf2
   integer                :: nx1, nx2, ny1, ny2, nx, ny
   integer                :: maxtiles, hash
   integer                :: count0,count1,count_rate
@@ -162,8 +162,8 @@ program mkOverlaySimple
 
 ! Read raster sizes info from .til headers
 
-    read(TILUNIT1,*) ip1, nx1, ny1
-    read(TILUNIT2,*) ip2, nx,  ny
+    read(TILUNIT1,*) ip1, nf1, nx1, ny1
+    read(TILUNIT2,*) ip2, nf2, nx,  ny
 
 ! Both grids must be based on same shape rasters
 
@@ -383,7 +383,11 @@ program mkOverlaySimple
 
     do k=1,ip
        rTable(1,k) = atan2(rTable(1,k),rTable(2,k))/d2r
-       rTable(2,k) =       rTable(3,k)/rTable(4,k)     
+       if(rTable(4,k) < 1.e-15) then 
+          rTable(2,k) =       rTable(3,k)/(rTable(4,k) + 1.e-15)
+       else
+          rTable(2,k) =       rTable(3,k)/rTable(4,k)
+       endif
        rTable(3,k) = rTable(4,k)
        rTable(4,k) = rTable(5,k)
     end do

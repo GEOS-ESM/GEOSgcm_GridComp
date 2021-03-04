@@ -1,0 +1,45 @@
+Additions
+module_sibalb.F90
+module_irrig_params.F90
+mkMODISrst2tiles.F90
+mkIrrigTiles.F90
+mkIAV_LAIalb.F90
+
+Deletions
+sibalb.f (replaced with a F90 module)
+zenith.f (no use)
+irrg_model.F90 (this was a temporary file that was sort of never used)
+
+Modifcation:
+1) River Routing Model and MAPL too 
+CombineRasters.F90
+rasterize.F90
+mkSMAPTilesPara_v2.F90
+mkLandRaster.F90
+make_bcs
+
+2) Irrigation model
+module_irrig_params.F90
+mkIrrigTiles.F90
+mkCatchParam.F90
+
+3) MODIS V6 MCD14A2H LAI and MCD43D VISDF/NIRDF stage preprocessor for MERRA3
+mkMODISrst2tiles.F90
+
+4) create AGCM input files in MAPL_ReadForcing format for interannually varying LAI and VISDF/NIRDF scale parameters 
+mkIAV_LAIalb.F90
+
+5) PEATMAP
+mod_process_hres_data.F90
+
+6) EASE til file header changed from LDASsa the LDASsa file reader's format to GEOSldas (MAPL)
+rmTinyCatchParaMod.F90
+mkSMAPTilesPara_v2.F90
+mkSMAPTilesPara.F90
+mod_process_hres_data.F90
+
+7) increased N_tiles_per_cell from 8 to 9 for CF5760
+8) Some modificatiosn to the subroutine that derives country/state boundaries
+
+9) module_sibalb.F90 F90 module and verified
+running, plottinng and README: make_bcs, clsm_plots.pro, create_README.csh

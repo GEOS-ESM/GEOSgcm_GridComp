@@ -38,6 +38,7 @@
    use rmTinyCatchParaMod
    use process_hres_data
    use comp_CATCHCN_AlbScale_parameters, ONLY : albedo4catchcn
+   use module_irrig_params, ONLY : create_irrig_params
 
   implicit none
     integer              :: NC = i_raster, NR = j_raster
@@ -245,8 +246,9 @@ integer :: n_threads=1
           DL = 'DE'
           write (log_file,'(a)')'Cube Grid - assuming DE'
        endif
-
-       CALL open_landparam_nc4_files 
+       
+       inquire(file='clsm/catch_params.nc4', exist=file_exists)
+       if (.not.file_exists) CALL open_landparam_nc4_files 
 
        ! Creating catchment.def 
        ! ----------------------
@@ -470,14 +472,19 @@ integer :: n_threads=1
        if (.not.file_exists) call CLM45_clim_parameters (nc,nr,gridnamer)   
        write (log_file,'(a)')'Done creating CLM4.5 lightening frequency clim ...........11'
 
-       call country_codes (nc,nr,gridnamer)
-       call albedo4catchcn (gridnamet)
+       call map_country_codes (nc,nr,gridnamer)
+       write (log_file,'(a)')'Done mapping country and state codes .....................12'
+
+       call create_irrig_params (nc,nr,gridnamer)
+       write (log_file,'(a)')'Done computing irrigation model parameters ...............13'
+       
+       ! call albedo4catchcn (gridnamet)
 
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'DONE creating CLSM data files...............................'
        write (log_file,'(a)')'============================================================'
               
-       call system ('chmod 755 bin/create_README.csh ; bin/create_README.csh')
+!       call system ('chmod 755 bin/create_README.csh ; bin/create_README.csh')
     endif
 
     close (log_file,status='keep') 

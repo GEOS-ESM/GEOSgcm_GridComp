@@ -10,6 +10,7 @@ module rmTinyCatchParaMod
   use date_time_util  
   use leap_year
   use MAPL_ConstantsMod
+  use module_sibalb, ONLY: sibalb
   
   implicit none
   logical, parameter :: error_file=.true.
@@ -27,7 +28,7 @@ module rmTinyCatchParaMod
   include 'netcdf.inc'	
   logical :: preserve_soiltype = .false.
   character*100 :: c_data = 'data/CATCH/'
-  logical :: process_peat = .false.
+  logical :: process_peat = .true.
 
   private
 
@@ -41,8 +42,9 @@ module rmTinyCatchParaMod
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats, c_data	
   public :: ascat_r0, jpl_canoph,  NC_VarID,  process_peat 
-  logical, parameter, public :: jpl_height = .false.
-
+  logical, parameter, public :: jpl_height = .true.
+  INTEGER, PARAMETER, public :: SRTM_maxcat = 291284
+  
 type :: mineral_perc
    real :: clay_perc
    real :: silt_perc
@@ -1179,13 +1181,13 @@ END SUBROUTINE modis_lai
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)ip
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
-    
+
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do
+
     do n = 1,ip
       if (ease_grid) then     
 	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
@@ -1318,10 +1320,10 @@ END SUBROUTINE modis_lai
     character*30, dimension (2,2) :: geosname
     integer, allocatable, dimension (:) :: vegcls 
     real, allocatable, dimension (:) :: &
-         modisalb,scale_fac,albvr,albnr,albvf,albnf,lat,lon, &
-         green,lai,sunang,snw,lai_before,lai_after,grn_before,grn_after
+         modisalb,scale_fac,albvf,albnf,lat,lon, &
+         green,lai,lai_before,lai_after,grn_before,grn_after
     real, allocatable, dimension (:) :: &
-         calbvr,calbnr,calbvf,calbnf
+         calbvf,calbnf
     character*300 :: ifile1,ifile2,ofile
     integer, dimension(12), parameter :: days_in_month_nonleap = &
          (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
@@ -1337,7 +1339,6 @@ END SUBROUTINE modis_lai
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)maxcat
 
-    allocate (albvr    (1:maxcat))
     allocate (albvf    (1:maxcat))
     allocate (albnf    (1:maxcat))
     allocate (calbvf   (1:maxcat))
@@ -1350,8 +1351,6 @@ END SUBROUTINE modis_lai
     allocate (lai_after  (1:maxcat))
     allocate (grn_after  (1:maxcat))
     allocate (vegcls   (1:maxcat))
-    allocate (sunang   (1:maxcat))
-    allocate (snw      (1:maxcat))
     close (10,status='keep')
 
     date_time_new%year   =2002
@@ -1377,13 +1376,13 @@ END SUBROUTINE modis_lai
 
     read (10,*)ip
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
 
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do
+    
     do n = 1,ip
       if (ease_grid) then     
 	 read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm
@@ -1402,14 +1401,12 @@ END SUBROUTINE modis_lai
     close (20,status='keep')
 
     cyy='00-04'
-    albvr    =0.
     albvf    =0.
     albnf    =0.
     calbvf   =0.
     calbnf   =0.
     modisalb =0.
-    snw      =0.
-    sunang   =0.
+
     unit1 =10
     unit2 =20
     unit3 =30
@@ -1476,8 +1473,6 @@ END SUBROUTINE modis_lai
 
     calbvf   =0.
     calbnf   =0.
-    albvr    =0.
-    albnr    =0.
     albvf    =0.
     albnf    =0.
     tsteps   =0.
@@ -1523,12 +1518,15 @@ END SUBROUTINE modis_lai
         
         tsteps = tsteps + 1.
 
-              call sibalb(                                    &
-                   albvr,albvr,albvf,albnf,                   &
-                   lai, green, 0.0, snw, vegcls, maxcat)  
-
-              calbvf = calbvf + albvf
-              calbnf = calbnf + albnf
+        !call sibalb(                                    &
+        !     albvr,albvr,albvf,albnf,                   &
+        !     lai, green, 0.0, snw, vegcls, maxcat)  
+        call sibalb (                  &
+             MAXCAT,vegcls,lai,green,  &
+             albvf, albnf)
+         
+        calbvf = calbvf + albvf
+        calbnf = calbnf + albnf
               
      end do
 
@@ -1574,8 +1572,8 @@ END SUBROUTINE modis_lai
 
   end do
     
-  deallocate (modisalb,albvr,albvf,albnf)
-  deallocate (green,lai,sunang)
+  deallocate (modisalb,albvf,albnf)
+  deallocate (green,lai)
   deallocate (vegcls)
   deallocate (calbvf,calbnf)
   
@@ -1748,15 +1746,15 @@ END SUBROUTINE modis_scale_para
     allocate(tile_area(ip))  
     id=0
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
 
-    dx_gcm = 360./float(nc_gcm)
-    dy_gcm = 180./float(nr_gcm)    
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do
+    
+!    dx_gcm = 360./float(nc_gcm)
+!    dy_gcm = 180./float(nr_gcm)    
 
     do n = 1,ip
  
@@ -1969,12 +1967,12 @@ END SUBROUTINE modis_scale_para
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)ip
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
+    
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do
 
     allocate(id(ip))
     id=0
@@ -2206,12 +2204,12 @@ END SUBROUTINE modis_scale_para
     allocate(id(1:ip))
     
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
+ 
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do
     
     do n = 1,ip
       if (ease_grid) then     
@@ -2428,7 +2426,7 @@ END SUBROUTINE modis_scale_para
   SUBROUTINE cti_stat_file (ease_grid,gfile, MaskFile)
 
     IMPLICIT NONE
-    INTEGER, PARAMETER :: nbcat=36716,nofvar=6, SRTM_maxcat = 291284
+    INTEGER, PARAMETER :: nbcat=36716,nofvar=6
     INTEGER :: n,i,ip, itext(SRTM_maxcat,2),ix, jx,ip2, maxcat
     INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3
     INTEGER*8 :: idum8
@@ -2458,12 +2456,12 @@ END SUBROUTINE modis_scale_para
     id=0
  
     read (10,*)j_dum
-    read (10,'(a)')version
-    read (10,*)nc_gcm
-    read (10,*)nr_gcm
-    read (10,'(a)')version
-    read (10,*)nc_ocean
-    read (10,*)nr_ocean
+
+    do n = 1, j_dum
+       read (10,'(a)')version
+       read (10,*)nc_gcm
+       read (10,*)nr_gcm
+    end do
     
     do n = 1,ip
       if (ease_grid) then  
@@ -3353,6 +3351,13 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
            write(*,*)'Warnning 1: pfafstetter mismatched' 
            stop
         endif
+        if(process_peat) then
+           meanlu = 9.3
+           stdev  = 0.12
+           minlu  = 8.5
+           maxlu  = 11.5
+           coesk  = 0.25
+        endif
 
         if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
            TOPMEAN(n) = meanlu
@@ -3465,10 +3470,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           tsa1(n),tsa2(n),tsb1(n),tsb2(n)  &
           )
 
-      if(POROS(n) >= 0.8) then
+      if(soil_class_com(n) == 253) then
 
          ! Michel Bechtold paper - PEATCLSM_fitting_CLSM_params.R produced these data values.
          if(process_peat) then
+            
             ars1(n) = -7.9514018e-03
             ars2(n) = 6.2297356e-02 
             ars3(n) = 1.9187240e-03                   
@@ -3484,6 +3490,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             bf1(n) = 4.6088086e+02  
             bf2(n) = 1.4237401e-01  
             bf3(n) = 6.9803000e+00
+
+            tsa1(n) = -2.417581e+00  
+            tsa2(n) = -4.784762e+00  
+            tsb1(n) = -3.700285e-03  
+            tsb2(n) = -2.392484e-03
             
          endif
       endif

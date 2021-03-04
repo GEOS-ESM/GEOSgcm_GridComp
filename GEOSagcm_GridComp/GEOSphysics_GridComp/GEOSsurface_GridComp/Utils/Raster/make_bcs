@@ -17,6 +17,7 @@ source $ESMADIR/g5_modules
 setenv NCPUS `/usr/bin/lscpu | grep '^CPU(s)' | cut -d ':' -f2 | head -1 `
 @ NCPUS = $NCPUS / 4
 @ NCPUS = $NCPUS * 3
+set NCPUS = 20
 setenv OMP_NUM_THREADS 1
 
 #######################################################################
@@ -148,6 +149,7 @@ echo "${C1} Ocean Resolution:${CR} ${C2}$orslvs${CR}"
 #######################################################################
 #######################################################################
 
+set IRRIGTHRES = 2
 set make_bcs_jobs = ''
 
 # ------------------------------------
@@ -155,8 +157,8 @@ set make_bcs_jobs = ''
 # ------------------------------------
 
 set GLOBAL_CATCH_DATA = /discover/nobackup/ltakacs/bcs/LandSurfaceData_for_Catchment_Parameters/global.cat_id.catch.ORIG.DL
-set HOSTNAME = `hostname | rev | cut -c3- | rev`
-if ( $HOSTNAME == discover ) then
+#set HOSTNAME = `hostname | rev | cut -c3- | rev | cut -c1-8`
+if ( -f /discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/GEOS5_10arcsec_mask.nc ) then
     set l_data = /discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/
 else
     set l_data = /nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/
@@ -426,6 +428,15 @@ echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
+#SBATCH --output=$pwd/logs/$BCNAME.log
+#SBATCH --error=$pwd/logs/$BCNAME.err
+#SBATCH --account=g0620
+#SBATCH --time=12:00:00
+#SBATCH --ntasks=28
+#SBATCH --job-name=$BCNAME.j
+#SBATCH --chdir=$pwd/$BCDIR
+#SBATCH --constraint=sky
+
 setenv ESMADIR $ESMADIR
 
 cd $pwd
@@ -452,18 +463,24 @@ if( $LATLON_OCEAN == TRUE ) then
     bin/mkLatLonRaster.x -x ${NX} -y ${NY} -b DE -p PE -t 0 ${IMO} ${JMO} >/dev/null
     bin/CombineRasters.x -f 0 -t ${NT} DE${IMO}xPE${JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t ${NT} DC${IM}xPC${JM} DE${IMO}xPE${JMO}-Pfafstetter
+    setenv OMP_NUM_THREADS 1
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g DC${IM}xPC${JM}_DE${IMO}xPE${JMO}-Pfafstetter
     setenv OMP_NUM_THREADS ${NCPUS}
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g DC${IM}xPC${JM}_DE${IMO}xPE${JMO}-Pfafstetter
+    chmod 755 bin/create_README.csh
+    bin/create_README.csh
 endif
 if( $TRIPOL_OCEAN == TRUE ) then
     bin/mkMOMAquaRaster.x -x $NX -y $NY  data/MOM/${imo}x${jmo}/grid_spec.nc > /dev/null
     bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t ${NT} DC${IM}xPC${JM} ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
     bin/mk_runofftbl.x DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    setenv OMP_NUM_THREADS 1
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g DE${IMO}xPE${JMO}_DE${IMO}xPE${JMO}-Pfafstetter
     setenv OMP_NUM_THREADS ${NCPUS}
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g DE${IMO}xPE${JMO}_DE${IMO}xPE${JMO}-Pfafstetter
+    chmod 755 bin/create_README.csh
+    bin/create_README.csh
 endif
 
 /bin/mv clsm  clsm.${IM}x${JM}
@@ -471,6 +488,7 @@ endif
 /bin/rm clsm.${IM}x${JM}/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.file
 
 cd clsm.${IM}x${JM}
+   /bin/mv irrig.dat irrigation_${RS}_DC.dat
    /bin/mv vegdyn.data   vegdyn_${RS}_DC.dat
    /bin/mv nirdf.dat      nirdf_${RS}_DC.dat
    /bin/mv visdf.dat      visdf_${RS}_DC.dat
@@ -535,6 +553,9 @@ cd ../../
 /bin/mv    $BCJOB                $BCNAME
 /bin/rm -r $OUTDIR
 
+#mkdir -p IRRIG/$BCNAME/clsm
+#bin/mkIrrigTiles.x -b $BCNAME -t DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til -r _${RS}_DC -p $IRRIGTHRES
+
 _EOF_
 chmod 755 $BCJOB
 set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB`
@@ -573,6 +594,15 @@ echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
+#SBATCH --output=$pwd/logs/$BCNAME.log
+#SBATCH --error=$pwd/logs/$BCNAME.err
+#SBATCH --account=g0620
+#SBATCH --time=12:00:00
+#SBATCH --ntasks=28
+#SBATCH --job-name=$BCNAME.j
+#SBATCH --chdir=$pwd/$BCDIR
+#SBATCH --constraint=sky
+
 setenv ESMADIR $ESMADIR
 
 cd $pwd
@@ -599,9 +629,12 @@ if( $LATLON_OCEAN == TRUE ) then
     bin/mkLatLonRaster.x -x ${NX} -y ${NY} -b DE -p PE -t 0 ${IMO} ${JMO} >/dev/null
     bin/CombineRasters.x -f 0 -t ${NT} DE${IMO}xPE${JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t ${NT} CF${NC}x6C DE${IMO}xPE${JMO}-Pfafstetter
+    setenv OMP_NUM_THREADS 1
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_DE${IMO}xPE${JMO}-Pfafstetter
     setenv OMP_NUM_THREADS ${NCPUS}
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_DE${IMO}xPE${JMO}-Pfafstetter
+    chmod 755 bin/create_README.csh
+    bin/create_README.csh
 endif
 
 if( $TRIPOL_OCEAN == TRUE ) then
@@ -609,17 +642,23 @@ if( $TRIPOL_OCEAN == TRUE ) then
     bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t ${NT} CF${NC}x6C ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
     bin/mk_runofftbl.x CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    setenv OMP_NUM_THREADS 1
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
     setenv OMP_NUM_THREADS ${NCPUS}
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    chmod 755 bin/create_README.csh
+    bin/create_README.csh
 endif
 
 if( $CUBED_SPHERE_OCEAN == TRUE ) then
     bin/CombineRasters.x -f 0 -t ${NT} CF${NC}x6C Pfafstetter >/dev/null
     bin/CombineRasters.x -t ${NT} CF${NC}x6C CF${NC}x6C-Pfafstetter
+    setenv OMP_NUM_THREADS 1
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter
     setenv OMP_NUM_THREADS ${NCPUS}
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter    
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter 
+    chmod 755 bin/create_README.csh
+    bin/create_README.csh
 endif
 
 /bin/mv clsm  clsm.C${NC}
@@ -627,6 +666,7 @@ endif
 /bin/rm clsm.C${NC}/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.file
 
 cd clsm.C${NC}
+   /bin/mv irrig.dat irrigation_${RC}.dat
    /bin/mv vegdyn.data   vegdyn_${RC}.dat
    /bin/mv nirdf.dat      nirdf_${RC}.dat
    /bin/mv visdf.dat      visdf_${RC}.dat
@@ -701,6 +741,9 @@ cd ../../
 /bin/mv    $BCJOB                $BCNAME
 /bin/rm -r $OUTDIR
 
+#mkdir -p IRRIG/$BCNAME/clsm
+#bin/mkIrrigTiles.x -b $BCNAME -t CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til -r _${RC} -p $IRRIGTHRES
+
 _EOF_
 chmod 755 $BCJOB
 set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB`
@@ -727,14 +770,24 @@ set JM  = `echo ${jm}   | awk '{printf "%4.4i", $1}'`
 set             BCNAME = SMAP_${EVERSION}_${MGRID}
 set             BCDIR  = $OUTDIR/$BCNAME.scratch
 set             BCJOB  = $BCDIR/$BCNAME.j
-
+set           THISGRID = SMAP-${EVERSION}-${MGRID}
 if(     -e $BCDIR) /bin/rm -r $BCDIR
 mkdir -p $BCDIR
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
+
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
+
+#SBATCH --output=$pwd/logs/$BCNAME.log
+#SBATCH --error=$pwd/logs/$BCNAME.err
+#SBATCH --account=g0620
+#SBATCH --time=12:00:00
+#SBATCH --ntasks=28
+#SBATCH --job-name=$BCNAME.j
+#SBATCH --chdir=$pwd/$BCDIR
+#SBATCH --constraint=sky
 
 setenv ESMADIR $ESMADIR
 cd $pwd
@@ -748,24 +801,37 @@ cd ../
 source bin/g5_modules
 if ( $EVERSION == EASEv2 ) then
 setenv MASKFILE ${MASKFILE}
+bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
+bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID} -pfaf_til T
+bin/CombineRasters.x -f 0 -t 232000000 ${THISGRID} Pfafstetter > /dev/null
+bin/CombineRasters.x -t 232000000 ${THISGRID} ${THISGRID}-Pfafstetter
+/bin/mv til/${THISGRID}_${THISGRID}-Pfafstetter.til  til/${THISGRID}_${THISGRID}-Pfafstetter.ind 
+setenv OMP_NUM_THREADS 1
 bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID}
 setenv OMP_NUM_THREADS ${NCPUS}
 head -1 clsm/mkCatchParam.log > smap_cmd
 chmod 755 smap_cmd
 ./smap_cmd
+chmod 755 bin/create_README.csh
+bin/create_README.csh
 else
 setenv MASKFILE ${MASKFILE}
+setenv OMP_NUM_THREADS 1
 bin/mkSMAPTilesPara.x -smap_grid ${MGRID}
 setenv OMP_NUM_THREADS ${NCPUS}
 head -1 clsm/mkCatchParam.log > smap_cmd
 chmod 755 smap_cmd
 ./smap_cmd
+chmod 755 bin/create_README.csh
+bin/create_README.csh
 endif
 
 /bin/mv clsm  clsm.${IM}x${JM}
 /bin/cp til/SMAP_${EVERSION}_${MGRID}_${RS}.til clsm.${IM}x${JM}
+/bin/cp til//${THISGRID}_${THISGRID}-Pfafstetter.til clsm.${IM}x${JM}
 
 cd clsm.${IM}x${JM}
+   /bin/mv irrig.dat irrigation_${RS}_DE.dat
    /bin/mv vegdyn.data   vegdyn_${RS}_DE.dat
    /bin/mv nirdf.dat      nirdf_${RS}_DE.dat
    /bin/mv visdf.dat      visdf_${RS}_DE.dat
@@ -826,12 +892,16 @@ cd ../../
 /bin/mv    $BCJOB                $BCNAME
 /bin/rm -r $OUTDIR
 
+#mkdir -p IRRIG/$BCNAME/clsm
+#bin/mkIrrigTiles.x -b $BCNAME -t SMAP_${EVERSION}_${MGRID}_${RS}.til -r _${RS}_DE -p $IRRIGTHRES
+#/bin/cp $BCNAME/${THISGRID}_${THISGRID}-Pfafstetter.til IRRIG/$BCNAME/.
 _EOF_
+
+
 chmod 755 $BCJOB
 set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB`
-endif # End if directory exists
+endif # End if directory 
 endif # End ease Test
-
 end # End Atmospheric Resolution Loop
 
 # -----------------------------
@@ -849,6 +919,10 @@ set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
 if(.$dummy == .Y | .$dummy == YES ) then
     foreach job ($make_bcs_jobs)
       nohup ./$job &
+    end
+else
+    foreach job ($make_bcs_jobs)
+      sbatch $job 
     end
 endif
 

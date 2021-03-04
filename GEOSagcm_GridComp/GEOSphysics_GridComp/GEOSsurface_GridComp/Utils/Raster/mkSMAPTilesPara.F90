@@ -16,7 +16,7 @@ PROGRAM mkSMAPTilesPara_v1
       integer i,j,ig,jg,i0,iop,n,d1,d2,j1,j2,i1,i2,ix, jx,icount,pcount
       integer :: NC = i_raster, NR = j_raster, NT = 16330000, ND = 10000, ND_raster = 10000
       
-      integer, parameter :: SRTM_maxcat = 291284, nc_esa = 129600, nr_esa = 64800
+      integer, parameter :: nc_esa = 129600, nr_esa = 64800
 
       ! For regridding
 
@@ -604,9 +604,9 @@ PROGRAM mkSMAPTilesPara_v1
       write (10,*)'SMAP-EASEv2-'//trim(MGRID)
       write (10,*)nc_smap
       write (10,*)nr_smap
-      write (10,*)'NO-OCEAN'
-      write (10,*) -9999
-      write (10,*) -9999      
+!      write (10,*)'NO-OCEAN'
+!      write (10,*) -9999
+!      write (10,*) -9999      
 
       do l=1,i_index
 
