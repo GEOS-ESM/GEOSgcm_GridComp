@@ -443,7 +443,6 @@ list( APPEND MOM6_SRCS
    config_src/infra/FMS1/MOM_interp_infra.F90
    config_src/infra/FMS1/MOM_io_infra.F90
    config_src/infra/FMS1/MOM_time_manager.F90
-#
 )
 
 list( APPEND MOM6_SRCS
