@@ -808,7 +808,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! default area dependent form: use dx ~ 100 km as the base
         ! -----------------------------------------------------------------------
         
-        s_leng = sqrt (sqrt (area1 (i) / 1.e10))
+        s_leng = sqrt (sqrt (area1 (i)) / 1.e3)
         t_land = dw_land * s_leng
         t_ocean = dw_ocean * s_leng
         h_var = t_land * land (i) + t_ocean * (1. - land (i))
@@ -2038,7 +2038,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
     real :: q_plus, q_minus, dt_evap, dt_pisub
     real :: evap, sink, tc, pisub, q_adj, dtmp, ptc
     real :: pssub, pgsub, tsq, qden, fac_g2v, fac_v2g
-    
+    real :: a1
+ 
     integer :: k
     
     if (fast_sat_adj) then
@@ -2133,7 +2134,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         else
             evap = 0.0
         endif
-        qa(k) = max(0.,min(1.,qa(k) * max(qi(k) + ql(k)-evap,0.0) / max(qi(k)+ql(k),qrmin)))     ! new total condensate / old condensate 
+        qa (k) = max(0.,min(1.,qa(k) * (qi(k) + ql(k)-evap) / max(qi(k)+ql(k),qrmin)))     ! new total condensate / old condensate 
         qv (k) = qv (k) + evap
         ql (k) = ql (k) - evap
         q_liq (k) = q_liq (k) - evap
@@ -2227,6 +2228,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
                 pidep = pidep * min (1., dim (tz (k), t_sub) * 0.2)
                 sink = max (pidep, sink, - qi (k))
             endif
+            qa (k) = max(0.,min(1.,qa(k) * (qi(k)+sink + ql(k)) / max(qi(k)+ql(k),qrmin)))     ! new total condensate / old condensate 
             qv (k) = qv (k) - sink
             qi (k) = qi (k) + sink
             q_sol (k) = q_sol (k) + sink
@@ -2406,8 +2408,17 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! binary cloud scheme
         ! -----------------------------------------------------------------------
          if (qpz > qrmin) then
+            ! Include ramp to keep low level RHCRIT at 1.0
+             a1 = 1.0
+             if (p1(k) .le. 75000.0) then
+               a1 = (1.0-h_var)
+             else
+               a1 = (1.0-h_var) + (1.0-(1.0-h_var))/(19.) * &
+                    ((atan( (2.*(p1(k)- 75000.0)/(102000.-75000.0)-1.) * &
+                    tan(20.*pi/21.-0.5*pi) ) + 0.5*pi) * 21./pi - 1.)
+             end if
              ! partial cloudiness by pdf:
-             dq = max (qcmin, h_var * qpz)
+             dq = max (qcmin, (1.0-a1) * qpz)
              q_plus = qpz + dq ! cloud free if qstar > q_plus
              q_minus = qpz - dq
           !! top-hat
@@ -3274,12 +3285,18 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
     real, parameter :: thi = 1.0e-8 !< cloud ice threshold for terminal fall
     real, parameter :: thg = 1.0e-8
     real, parameter :: ths = 1.0e-8
-    
-    real, parameter :: aa = - 4.14122e-5
-    real, parameter :: bb = - 0.00538922
-    real, parameter :: cc = - 0.0516344
-    real, parameter :: dd = 0.00216078
-    real, parameter :: ee = 1.9714
+   
+    real, parameter :: aaC = - 4.18334e-5
+    real, parameter :: bbC = - 0.00525867
+    real, parameter :: ccC = - 0.0486519
+    real, parameter :: ddC = 0.00251197
+    real, parameter :: eeC = 1.91523
+
+    real, parameter :: aaL = - 1.70704e-5
+    real, parameter :: bbL = - 0.00319109
+    real, parameter :: ccL = - 0.0169876
+    real, parameter :: ddL = 0.00410839
+    real, parameter :: eeL = 1.93644
     
     ! marshall - palmer constants
     
@@ -3324,7 +3341,7 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                ! Combine 'large-scale' Deng and Mace (2008, grl)
                ! -----------------------------------------------------------------------
                 IWC    = qi (k) * den (k) * 1.e3 ! Units are g/m3
-                viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc (k) * (aa * tc (k) + bb) + cc) + dd * tc (k) + ee)
+                viLSC   = lsc_icefall*10.0**(log10(IWC) * (tc (k) * (aaL * tc (k) + bbL) + ccL) + ddL * tc (k) + eeL)
                ! -----------------------------------------------------------------------
                ! With 'convective' Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in 
                !                               midlatitude cirrus: Results from SPartICus'
@@ -3333,10 +3350,12 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC) + 68.85))
                ! Combine 
                 vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
+               ! Combine 
+                vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
                ! Update units from cm/s to m/s
                 vti (k) = vi1 * vti (k)
                ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
-                !------ice cloud effective radius ----- [klaus wyser, 1998]
+               !------ice cloud effective radius ----- [klaus wyser, 1998]
                 if(tk(k)>273.15) then
                  rBB  = -2.
                 else
@@ -3345,12 +3364,11 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                 endif
                 rBB   = MIN((MAX(rBB,-6.)),-2.)
                 DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
-                lnP   = log(pl(k)/100.0)
+                lnP   = log(MAX(1.0,pl(k)/100.0))
                 C0    = -1.04 + 0.298*lnP
                 C1    =  0.67 - 0.097*lnP
-                ! apply pressure scaling
+               ! apply pressure scaling
                 vti (k) = vti (k) * (C0 + C1*log(DIAM))
-
                ! Limits
                 vti (k) = min (vi_max, max (vf_min, vti (k)))
             endif

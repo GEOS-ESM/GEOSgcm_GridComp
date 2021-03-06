@@ -3326,10 +3326,14 @@ contains
       allocate(OLRB11RG_1D(IM*JM),__STAT__)
       allocate(DOLRB11RG_DT_1D(IM*JM),__STAT__)
 
-      ICLD = 4
-      INFLGLW = 2
-      ICEFLGLW = 3
-      LIQFLGLW = 1
+      call MAPL_GetResource(MAPL,ICLD    ,'RRTMG_ICLD:'  ,DEFAULT=4,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,INFLGLW ,'RRTMG_INFLG:' ,DEFAULT=2,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,ICEFLGLW,'RRTMG_ICEFLG:',DEFAULT=3,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,LIQFLGLW,'RRTMG_LIQFLG:',DEFAULT=1,RC=STATUS)
+      VERIFY_(STATUS)
 
       !  Set flag for flux derivative calculation
       IDRV = 1

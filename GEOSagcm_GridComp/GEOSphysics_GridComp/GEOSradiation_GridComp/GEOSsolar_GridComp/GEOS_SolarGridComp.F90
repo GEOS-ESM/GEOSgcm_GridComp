@@ -3763,10 +3763,14 @@ contains
 ! Prepare Input for RRTMG
 
 ! Set flags related to cloud properties
-      ICLD = 4
-      INFLGSW = 2
-      ICEFLGSW = 3
-      LIQFLGSW = 1
+      call MAPL_GetResource(MAPL,ICLD    ,'RRTMG_ICLD:'  ,DEFAULT=4,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,INFLGSW ,'RRTMG_INFLG:' ,DEFAULT=2,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,ICEFLGSW,'RRTMG_ICEFLG:',DEFAULT=3,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,LIQFLGSW,'RRTMG_LIQFLG:',DEFAULT=1,RC=STATUS)
+      VERIFY_(STATUS)
 
       NCOL = size(Q,1)
 

@@ -6349,13 +6349,13 @@ contains
 
 
       if(adjustl(CLDMICRO)=="GFDL") then
-        call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=0   , RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=1.0 , RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'      ,DEFAULT=4.0 , RC=STATUS)
+        call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT= 0  , RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 0.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%RKM,     'RKM:'        ,DEFAULT= 8.0, RC=STATUS)
       else
-        call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT=1   , RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT=0.0 , RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'      ,DEFAULT=8.0 , RC=STATUS)
+        call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT= 1  , RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 0.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%RKM,     'RKM:'        ,DEFAULT= 8.0, RC=STATUS)
       endif
       call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
 
@@ -7503,14 +7503,6 @@ contains
       IDIM = IM*JM
       IRUN = IM*JM
 
-
-    ! define some default effective radii
-      CLDREFFR = 100.0e-6 ! Rain
-      CLDREFFS = 140.0e-6 ! Snow
-      CLDREFFG = 140.0e-6 ! Graupel
-      CLDREFFI = 25.0e-6  ! Cloud-Ice
-      CLDREFFL = 10.0e-6  ! Cloud-Water
-
       !  Copy incoming state vars to local arrays that will be adjusted
       !  by physics.  Untouched state vars will later be used for 
       !  post facto tendency calculations.
@@ -7615,7 +7607,7 @@ contains
          CNV_FRACTION = 0.0 
 
     ! CNV_FRACTION Criteria
-      call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
+      call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
       VERIFY_(STATUS)
@@ -7627,7 +7619,7 @@ contains
       if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
         ! CAPE
          WHERE (CAPE .ne. MAPL_UNDEF)
-            CNV_FRACTION =SQRT(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
+            CNV_FRACTION =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
          END WHERE
       endif
       if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
@@ -8671,9 +8663,9 @@ contains
       call MAPL_TimerOff(STATE,"-POST_CNV")
 
       if(adjustl(CLDMICRO)=="2MOMENT") then
-        call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 1.0    )
+         call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 1.0    )
       else
-        call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 2.0    )
+         call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 2.0    )
       end if
 
       ! Horizontal resolution dependant defaults for minimum RH crit
@@ -8767,7 +8759,6 @@ contains
             QLCN = 0.
             QICN = 0.
         end where
-#ifdef SKIP_DUE_TO_QI_ISSUE
         do K=1,LM
           do J=1,JM
            do I=1,IM
@@ -8792,25 +8783,7 @@ contains
                 endif
              endif
              ALPHA = min( 0.25, 1.0 - min(ALPHA,1.) ) ! restrict RHcrit to > 75% 
-             IF(USE_AEROSOL_NN) THEN
-                   call hystpdf_new( &
-                      DT_MOIST    , &
-                      ALPHA       , &
-                      INT(CLDPARAMS%PDFSHAPE), &
-                      PLO(I,J,K)  , &
-                      Q1(I,J,K)   , &
-                      QLLS(I,J,K) , &
-                      QLCN(I,J,K) , &
-                      QILS(I,J,K) , &
-                      QICN(I,J,K) , &
-                      TEMP(I,J,K) , &
-                      CLLS(I,J,K) , &
-                      CLCN(I,J,K) , &
-                      NACTL(I,J,K),  &
-                      NACTI(I,J,K),  &
-                      CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
-             ELSE
-                   call hystpdf( &
+             call hystpdf( &
                       DT_MOIST    , &
                       ALPHA       , &
                       INT(CLDPARAMS%PDFSHAPE), &
@@ -8824,11 +8797,40 @@ contains
                       CLLS(I,J,K) , &
                       CLCN(I,J,K) , &
                       CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
-             ENDIF
+#ifdef SKIP_THIS_DONE_IN_MICROPHYSICS
+             ! 'Anvil' evaporation/sublimation partition from Conv-Parameterized not done in hystpdf
+             call evap3(           &
+                  DT_MOIST       , &
+                  CLDPARAMS%CCW_EVAP_EFF, &
+                  RHCRIT         , &
+                  PLO(I,J,K)     , &
+                  TEMP(I,J,K)    , &
+                  Q1(I,J,K)      , &
+                  QLCN(I,J,K)    , &
+                  QICN(I,J,K)    , &
+                  CLCN(I,J,K)    , &
+                  CLLS(I,J,K)    , &
+                  NACTL(I,J,K)   , &
+                  NACTI(I,J,K)   , &
+                  QST3(I,J,K)    )
+             call subl3(            &
+                  DT_MOIST       , &
+                  CLDPARAMS%CCW_EVAP_EFF, &
+                  RHCRIT         , &
+                  PLO(I,J,K)     , &
+                  TEMP(I,J,K)    , &
+                  Q1(I,J,K)      , &
+                  QLCN(I,J,K)    , &
+                  QICN(I,J,K)    , &
+                  CLCN(I,J,K)    , &
+                  CLLS(I,J,K)    , &
+                  NACTL(I,J,K)   , &
+                  NACTI(I,J,K)   , &
+                  QST3(I,J,K)    )
+#endif
             end do ! IM loop
           end do ! JM loop
         end do ! LM loop
-#endif
        ! add ShallowCu rain/snow tendencies
         QRAIN = QRAIN + SHLW_PRC3*DT_MOIST
         QSNOW = QSNOW + SHLW_SNO3*DT_MOIST
@@ -9007,7 +9009,6 @@ contains
         endif
       endif
 
-
       if(adjustl(CLDMICRO)=="2MOMENT") then
          call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
          call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT= 15.e-6  )
@@ -9019,23 +9020,30 @@ contains
          call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 0.5     )
       elseif (adjustl(CLDMICRO) =="GFDL") then
          call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
-         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT=  5.e-6  )
+         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT=   5.e-6 )
          call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 140.e-6 )
          call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 1.0     )
-         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT= 2.5e-6  )
-         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 60.e-6  )
+         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT=  2.5e-6 )
+         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 60.0e-6 )
          call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 0.0     )
          call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 1.0     ) ! irrelevant
       else
          call MAPL_GetResource( STATE, CLDPARAMS%FAC_RI,         'FAC_RI:',         DEFAULT= 1.0     )
-         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT= 15.e-6  )
-         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 150.e-6 )
+         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RI,         'MIN_RI:',         DEFAULT=   5.e-6 )
+         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RI,         'MAX_RI:',         DEFAULT= 140.e-6 )
          call MAPL_GetResource( STATE, CLDPARAMS%FAC_RL,         'FAC_RL:',         DEFAULT= 1.0     )
-         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT= 5.e-6   )
-         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 21.e-6  )
+         call MAPL_GetResource( STATE, CLDPARAMS%MIN_RL,         'MIN_RL:',         DEFAULT=  2.5e-6 )
+         call MAPL_GetResource( STATE, CLDPARAMS%MAX_RL,         'MAX_RL:',         DEFAULT= 60.0e-6 )
          call MAPL_GetResource( STATE, CLDPARAMS%PRECIPRAD,      'PRECIPRAD:',      DEFAULT= 0.0     )
          call MAPL_GetResource( STATE, CLDPARAMS%SNOW_REVAP_FAC, 'SNOW_REVAP_FAC:', DEFAULT= 1.0     )
       end if
+
+    ! define some default effective radii
+      CLDREFFR = 100.0e-6 ! Rain
+      CLDREFFS = 140.0e-6 ! Snow
+      CLDREFFG = 140.0e-6 ! Graupel
+      CLDREFFI = CLDPARAMS%MIN_RI ! Cloud-Ice
+      CLDREFFL = CLDPARAMS%MIN_RL ! Cloud-Water
 
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_ENVF,  'CNV_ENVF:',   DEFAULT= 1.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%ANV_ENVF,  'ANV_ENVF:',   DEFAULT= 1.0    )

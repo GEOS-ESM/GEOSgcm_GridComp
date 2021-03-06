@@ -3789,25 +3789,22 @@ contains
          WC = 1.e3*RHO*QC  !g/m3
         !------ice cloud effective radius ----- [klaus wyser, 1998]
          if(TE>MAPL_TICE .or. QC <=0.) then
-            BB     = -2.
+            BB = -2.
          else
-            BB     = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5)
+            BB = -2. + log10(WC/50.)*(1.e-3*(MAPL_TICE-TE)**1.5)
          endif
          BB     = MIN((MAX(BB,-6.)),-2.) 
-         RADIUS0 = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
-         RADIUS0 = RADIUS0 * 1.e-6 !- convert to meter
-        ! include aerosol number concentration in additiom to above
-         IF( (.not. USE_AEROSOL_NN) ) THEN 
-            NNX = NN
-          ELSE
-            !-- NNI  !#/m^3	 
+         RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
+         RADIUS = RADIUS * 1.e-6 !- convert to meter
+        ! include aerosol number concentration in addition to above
+         IF(USE_AEROSOL_NN) THEN 
             NNX = MAX(NNI,1.e3)
+           !- radius in meters from eq12b of https://doi.org/10.1029/2001JD000470
+            RADIUS1 = (3.0*WC/(4.0*MAPL_PI*RHO_I*1.e3*NNX))**r13
+           ! Combine
+            RADIUS = 0.5*(RADIUS1+RADIUS)
          ENDIF
-        !- radius in meters from eq12b of https://doi.org/10.1029/2001JD000470
-         RADIUS1 = (3.0*WC/(4.0*MAPL_PI*RHO_I*1.e3*NNX))**r13
-        ! Combine
-         RADIUS = 0.5*(RADIUS1+RADIUS0)
-  
+
       ELSE
         STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
       ENDIF

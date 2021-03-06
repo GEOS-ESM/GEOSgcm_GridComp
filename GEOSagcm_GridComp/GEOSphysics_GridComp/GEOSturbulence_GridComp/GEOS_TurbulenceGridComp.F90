@@ -2035,7 +2035,11 @@ contains
      call MAPL_GetPointer(IMPORT, USTAR,   'USTAR', RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
 
-     call MAPL_GetResource (MAPL, JASON_TUNING,        trim(COMP_NAME)//"_JASON_TUNING:",        default=1,          RC=STATUS); VERIFY_(STATUS)
+     if (LM .eq. 72) then
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=1,            RC=STATUS); VERIFY_(STATUS)
+     else
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=0,            RC=STATUS); VERIFY_(STATUS)
+     endif
 
 ! Get turbulence parameters from configuration
 !---------------------------------------------
@@ -2311,7 +2315,7 @@ contains
          do J=1,JM
          do I=1,IM
            if ( (SMTH_LEV(I,J) < 0) .AND. ((PLE(I,J,LM)-PLE(I,J,L)) >= SMTH_PRS) ) then
-             SMTH_LEV=L
+             SMTH_LEV(I,J)=L
            end if
          enddo
          enddo
