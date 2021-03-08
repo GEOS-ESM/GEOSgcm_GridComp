@@ -42,7 +42,7 @@ list( APPEND WW3ESMF_FTN
     w3wavemd.ftn
     w3wdasmd.ftn
     w3wdatmd.ftn
-    wmesmfmd.ftn
+    wmmaplmd.ftn
     wmfinlmd.ftn
     wmgridmd.ftn
     wminiomd.ftn
