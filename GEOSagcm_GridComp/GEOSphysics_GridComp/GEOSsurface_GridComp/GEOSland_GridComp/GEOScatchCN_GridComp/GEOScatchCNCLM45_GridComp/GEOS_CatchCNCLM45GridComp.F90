@@ -2503,7 +2503,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_1' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP1'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -2512,7 +2512,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_2' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP2'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -2521,7 +2521,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_3' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP3'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -2530,7 +2530,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_4' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP4'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -2539,7 +2539,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_5' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP5'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -2548,7 +2548,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_6' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP6'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -5121,7 +5121,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real :: ob, declin, zs, zc, max_decl, max_dayl
     integer :: year, iday, idayp1
 
-    real :: co2
+   ! real :: co2
     real, external :: getco2
 
     ! temporaries for call to SIBALB for each type
@@ -6605,6 +6605,10 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
       zbar = -sqrt(1.e-20+catdef(n)/bf1(n))+bf2(n)
       HT(:)=GHTCNT(:,N)
       CALL GNDTMP_CN(poros(n),zbar,ht,frice,tp,soilice)
+
+      ! At the CatchCNGridComp level, tp1, tp2, .., tp6 are export variables in units of Kelvin,
+      ! - rreichle & borescan, 6 Nov 2020
+
       tp1(n) = tp(1) + Tzero
       tp2(n) = tp(2) + Tzero
       tp3(n) = tp(3) + Tzero
@@ -7805,6 +7809,20 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
                 TC1_0=TC1_0, TC2_0=TC2_0, TC4_0=TC4_0                ,&
                 QA1_0=QA1_0, QA2_0=QA2_0, QA4_0=QA4_0                ,&
                 RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
+
+           ! Change units of TP1, TP2, .., TP6 export variables from Celsius to Kelvin.
+           ! This used to be done at the level the Surface GridComp.
+           ! With this change, gridded TSOIL[n] exports from Surface and tile-space TP[n] exports
+           ! from Catch are now consistently in units of Kelvin.
+           ! - rreichle, borescan, 6 Nov 2020
+           
+           TP1 = TP1 + MAPL_TICE
+           TP2 = TP2 + MAPL_TICE
+           TP3 = TP3 + MAPL_TICE
+           TP4 = TP4 + MAPL_TICE
+           TP5 = TP5 + MAPL_TICE
+           TP6 = TP6 + MAPL_TICE
+
 
              runsrf = RUNSURF    ! for N leaching, fzeng
 
