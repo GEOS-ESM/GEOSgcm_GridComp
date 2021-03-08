@@ -1358,7 +1358,7 @@ subroutine SetServices ( GC, RC )
     SHORT_NAME         = 'TSURF'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartRequired        ,&
+    RESTART            = RESTART                     ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
