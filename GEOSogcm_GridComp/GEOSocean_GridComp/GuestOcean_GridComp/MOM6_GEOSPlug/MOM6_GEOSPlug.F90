@@ -1180,8 +1180,8 @@ contains
 !---------------------------------------------------------------------------------------------
     Boundary%U_flux = 0.0;  Boundary%V_flux = 0.0 ! Initialize stress
 
-    Boundary%U_flux  (isc:iec,jsc:jec)= real( (U*cos_rot + V*sin_rot), kind=KIND(Boundary%p))
-    Boundary%V_flux  (isc:iec,jsc:jec)= real((-U*sin_rot + V*cos_rot), kind=KIND(Boundary%p))
+    Boundary%U_flux  (isc:iec,jsc:jec)= real( (U*cos_rot - V*sin_rot), kind=KIND(Boundary%p))
+    Boundary%V_flux  (isc:iec,jsc:jec)= real( (U*sin_rot + V*cos_rot), kind=KIND(Boundary%p))
 
 ! Set the time for MOM
 !---------------------
@@ -1573,3 +1573,12 @@ contains
 !====================================================================
 
 end module MOM6_GEOSPlugMod
+
+subroutine SetServices(gc, rc)
+   use ESMF
+   use MOM6_GEOSPlugMod, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc, rc=rc)
+end subroutine
+
