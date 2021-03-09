@@ -8669,7 +8669,7 @@ contains
       end if
 
       ! Horizontal resolution dependant defaults for minimum RH crit
-      tmprh = 1.0-min(0.20, max(0.01, 0.1*360./imsize))
+      tmprh = CEILING(100.0*(1.0-min(0.20, max(0.01, 0.1*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))/100.0
       call MAPL_GetResource( STATE, CLDPARAMS%MINRHCRIT    , 'MINRHCRIT:'    , DEFAULT=tmprh, RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource( STATE, CLDPARAMS%MAXRHCRIT    , 'MAXRHCRIT:'    , DEFAULT= 1.0 , RC=STATUS); VERIFY_(STATUS)
       tmprh = 0.5*(1.0+CLDPARAMS%MINRHCRIT)
@@ -8798,6 +8798,35 @@ contains
                     CLLS(I,J,K) , &
                     CLCN(I,J,K) , &
                     CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
+             ! 'Anvil' evaporation/sublimation partition from Conv-Parameterized not done in hystpdf
+             call evap3(           &
+                  DT_MOIST       , &
+                  CLDPARAMS%CCW_EVAP_EFF, &
+                  RHCRIT         , &
+                  PLO(I,J,K)     , &
+                  TEMP(I,J,K)    , &
+                  Q1(I,J,K)      , &
+                  QLCN(I,J,K)    , &
+                  QICN(I,J,K)    , &
+                  CLCN(I,J,K)    , &
+                  CLLS(I,J,K)    , &
+                  NACTL(I,J,K)   , &
+                  NACTI(I,J,K)   , &
+                  QST3(I,J,K)    )
+             call subl3(            &
+                  DT_MOIST       , &
+                  CLDPARAMS%CCW_EVAP_EFF, &
+                  RHCRIT         , &
+                  PLO(I,J,K)     , &
+                  TEMP(I,J,K)    , &
+                  Q1(I,J,K)      , &
+                  QLCN(I,J,K)    , &
+                  QICN(I,J,K)    , &
+                  CLCN(I,J,K)    , &
+                  CLLS(I,J,K)    , &
+                  NACTL(I,J,K)   , &
+                  NACTI(I,J,K)   , &
+                  QST3(I,J,K)    )
             end do ! IM loop
           end do ! JM loop
         end do ! LM loop
