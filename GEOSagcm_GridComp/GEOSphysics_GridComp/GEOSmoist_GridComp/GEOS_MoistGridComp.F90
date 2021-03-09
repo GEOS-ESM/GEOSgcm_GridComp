@@ -8669,7 +8669,7 @@ contains
       end if
 
       ! Horizontal resolution dependant defaults for minimum RH crit
-      tmprh = 1.0-min(0.20, max(0.01, 0.16*360./imsize))
+      tmprh = 1.0-min(0.20, max(0.01, 0.1*360./imsize))
       call MAPL_GetResource( STATE, CLDPARAMS%MINRHCRIT    , 'MINRHCRIT:'    , DEFAULT=tmprh, RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource( STATE, CLDPARAMS%MAXRHCRIT    , 'MAXRHCRIT:'    , DEFAULT= 1.0 , RC=STATUS); VERIFY_(STATUS)
       tmprh = 0.5*(1.0+CLDPARAMS%MINRHCRIT)
