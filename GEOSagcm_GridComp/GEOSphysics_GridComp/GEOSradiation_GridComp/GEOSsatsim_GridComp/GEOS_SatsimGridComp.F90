@@ -3398,6 +3398,24 @@ contains
 
 ! delp in Pascals, reff in microns
 
+#ifdef USE_MAPL_UNDEF
+      WHERE (RDFI == MAPL_UNDEF)
+        RDFI = 36.e-6
+      END WHERE
+      WHERE (RDFL == MAPL_UNDEF)
+        RDFL = 14.e-6
+      END WHERE
+      WHERE (RDFR == MAPL_UNDEF)
+        RDFR = 50.e-6
+      END WHERE
+      WHERE (RDFS == MAPL_UNDEF)
+        RDFS = 50.e-6
+      END WHERE
+      WHERE (RDFG == MAPL_UNDEF)
+        RDFG = 50.e-6
+      END WHERE
+#endif
+
       reff(:,:,:,1) = RDFI *1.e6
       reff(:,:,:,2) = RDFL *1.e6
       reff(:,:,:,3) = RDFR *1.e6

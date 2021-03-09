@@ -808,7 +808,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         ! default area dependent form: use dx ~ 100 km as the base
         ! -----------------------------------------------------------------------
         
-        s_leng = sqrt (sqrt (area1 (i)) / 1.e3)
+        s_leng = sqrt (sqrt (area1 (i) / 1.e10))
         t_land = dw_land * s_leng
         t_ocean = dw_ocean * s_leng
         h_var = t_land * land (i) + t_ocean * (1. - land (i))
@@ -2134,7 +2134,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         else
             evap = 0.0
         endif
-        qa (k) = max(0.,min(1.,qa(k) * (qi(k) + ql(k)-evap) / max(qi(k)+ql(k),qrmin)))     ! new total condensate / old condensate 
+        qa(k) = max(0.,min(1.,qa(k) * max(qi(k) + ql(k)-evap,0.0) / max(qi(k)+ql(k),qrmin)))     ! new total condensate / old condensate 
         qv (k) = qv (k) + evap
         ql (k) = ql (k) - evap
         q_liq (k) = q_liq (k) - evap
@@ -2350,7 +2350,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! combine water species
         ! -----------------------------------------------------------------------
         
-        if (.not. do_qa) cycle
+        if (do_qa) cycle
         
         if (rad_snow) then
             q_sol (k) = qi (k) + qs (k)
@@ -2408,34 +2408,37 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! binary cloud scheme
         ! -----------------------------------------------------------------------
          if (qpz > qrmin) then
-            ! Include ramp to keep low level RHCRIT at 1.0
+             ! Include ramp to restrivt PDF at low levels
              a1 = 1.0
              if (p1(k) .le. 75000.0) then
-               a1 = (1.0-h_var)
+                a1 = (1.0-h_var)
              else
-               a1 = (1.0-h_var) + (1.0-(1.0-h_var))/(19.) * &
-                    ((atan( (2.*(p1(k)- 75000.0)/(102000.-75000.0)-1.) * &
-                    tan(20.*pi/21.-0.5*pi) ) + 0.5*pi) * 21./pi - 1.)
+                a1 = (1.0-h_var) + (1.0-(1.0-h_var))/(19.) * &
+                     ((atan( (2.*(p1(k)- 75000.0)/(102000.-75000.0)-1.) * &
+                     tan(20.*pi/21.-0.5*pi) ) + 0.5*pi) * 21./pi - 1.)
              end if
              ! partial cloudiness by pdf:
              dq = max (qcmin, (1.0-a1) * qpz)
              q_plus = qpz + dq ! cloud free if qstar > q_plus
              q_minus = qpz - dq
-          !! top-hat
-          !  if (qstar < q_minus) then
-          !      qa (k) = 1. ! air fully saturated; 100 % cloud cover
-          !  elseif (qstar < q_plus .and. q_cond (k) > qc_crt) then
-          !      qa (k) = min(1., qa (k) + (q_plus - qstar) / (dq + dq) ) ! partial cloud cover
-          !  endif
-           ! triangular
-             if(q_plus.le.qstar) then
-               qa (k) = 0. ! no clouds 
-             elseif ( (qpz.le.qstar).and.(qstar.lt.q_plus) ) then ! partial cloud cover
-                qa (k) = min(1., (q_plus-qstar)*(q_plus-qstar) / ( (q_plus-q_minus)*(q_plus-qpz) ))
-             elseif ( (q_minus.le.qstar).and.(qstar.lt.qpz) ) then ! partial cloud cover
-                qa (k) = min(1., 1. - ( (qstar-q_minus)*(qstar-q_minus) / ( (q_plus-q_minus)*(qpz-q_minus) )))
-             elseif ( qstar.le.q_minus ) then
-                qa (k) = 1. ! air fully saturated; 100 % cloud cover
+             if (icloud_f == 3) then
+             ! triangular
+               if(q_plus.le.qstar) then
+                  ! no cloud change 
+               elseif ( (qpz.le.qstar).and.(qstar.lt.q_plus) ) then ! partial cloud cover
+                  qa (k) = min(1., qa (k) + (q_plus-qstar)*(q_plus-qstar) / ( (q_plus-q_minus)*(q_plus-qpz) ))
+               elseif ( (q_minus.le.qstar).and.(qstar.lt.qpz) ) then ! partial cloud cover
+                  qa (k) = min(1., qa (k) + 1. - ( (qstar-q_minus)*(qstar-q_minus) / ( (q_plus-q_minus)*(qpz-q_minus) )))
+               elseif ( qstar.le.q_minus ) then
+                  qa (k) = 1. ! air fully saturated; 100 % cloud cover
+               endif
+             else
+             ! top-hat
+               if (qstar < q_minus) then
+                 qa (k) = 1. ! air fully saturated; 100 % cloud cover
+               elseif (qstar < q_plus .and. q_cond (k) > qc_crt) then
+                 qa (k) = min(1., qa (k) + (q_plus - qstar) / (dq + dq) ) ! partial cloud cover
+               endif
              endif
          endif
         
@@ -3348,8 +3351,6 @@ subroutine fall_speed (ktop, kbot, pl, cnv_fraction, anv_icefall, lsc_icefall, &
                ! -----------------------------------------------------------------------
                 IWC    = IWC * 1.e3 ! Units are mg/m3
                 viCNV  = MAX(10.0,anv_icefall*(1.119*tc(k) + 14.21*log10(IWC) + 68.85))
-               ! Combine 
-                vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
                ! Combine 
                 vti (k) = viLSC*(1.0-cnv_fraction) + viCNV*(cnv_fraction)
                ! Update units from cm/s to m/s

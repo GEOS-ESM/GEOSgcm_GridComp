@@ -8694,9 +8694,14 @@ contains
       ENDIF
 
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_ICEPARAM,    'CNV_ICEPARAM:',    DEFAULT= 1.0   )
-      call MAPL_GetResource( STATE, CLDPARAMS%SCLM_DEEP,       'SCLM_DEEP:',       DEFAULT= 1.0   )
-      call MAPL_GetResource( STATE, CLDPARAMS%SCLM_SHALLOW,    'SCLM_SHALLOW:',    DEFAULT= 1.0   )
 
+      if(adjustl(CLDMICRO)=="GFDL") then
+        call MAPL_GetResource( STATE, CLDPARAMS%SCLM_DEEP,       'SCLM_DEEP:',       DEFAULT= 1.0   )
+        call MAPL_GetResource( STATE, CLDPARAMS%SCLM_SHALLOW,    'SCLM_SHALLOW:',    DEFAULT= 1.1   )
+      else
+        call MAPL_GetResource( STATE, CLDPARAMS%SCLM_DEEP,       'SCLM_DEEP:',       DEFAULT= 1.0   )
+        call MAPL_GetResource( STATE, CLDPARAMS%SCLM_SHALLOW,    'SCLM_SHALLOW:',    DEFAULT= 1.0   )
+      endif
 #ifdef _CUDA
       PDFFLAG       = INT(CLDPARAMS%PDFSHAPE)
       TANHRHCRIT    = INT( CLDPARAMS%TANHRHCRIT )
@@ -8714,10 +8719,6 @@ contains
         DQLDT_macro=QLCN+QLLS
         DQIDT_macro=QICN+QILS
         DQADT_macro=CLCN+CLLS
-     ! Clean up clouds before macrophysics
-        CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW, QGRAUPEL )
-     ! Clean up any negative specific humidity
-        CALL FILLQ2ZERO2( Q1, MASS, FILLQ  )
        ! add DeepCu CL tendency
         CLCN = CLCN +  CNV_MFD*iMASS*DT_MOIST*CLDPARAMS%SCLM_DEEP
        ! add DeepCu QL/QI to Convective
@@ -8784,50 +8785,19 @@ contains
              endif
              ALPHA = min( 0.25, 1.0 - min(ALPHA,1.) ) ! restrict RHcrit to > 75% 
              call hystpdf( &
-                      DT_MOIST    , &
-                      ALPHA       , &
-                      INT(CLDPARAMS%PDFSHAPE), &
-                      PLO(I,J,K)  , &
-                      Q1(I,J,K)   , &
-                      QLLS(I,J,K) , &
-                      QLCN(I,J,K) , &
-                      QILS(I,J,K) , &
-                      QICN(I,J,K) , &
-                      TEMP(I,J,K) , &
-                      CLLS(I,J,K) , &
-                      CLCN(I,J,K) , &
-                      CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
-#ifdef SKIP_THIS_DONE_IN_MICROPHYSICS
-             ! 'Anvil' evaporation/sublimation partition from Conv-Parameterized not done in hystpdf
-             call evap3(           &
-                  DT_MOIST       , &
-                  CLDPARAMS%CCW_EVAP_EFF, &
-                  RHCRIT         , &
-                  PLO(I,J,K)     , &
-                  TEMP(I,J,K)    , &
-                  Q1(I,J,K)      , &
-                  QLCN(I,J,K)    , &
-                  QICN(I,J,K)    , &
-                  CLCN(I,J,K)    , &
-                  CLLS(I,J,K)    , &
-                  NACTL(I,J,K)   , &
-                  NACTI(I,J,K)   , &
-                  QST3(I,J,K)    )
-             call subl3(            &
-                  DT_MOIST       , &
-                  CLDPARAMS%CCW_EVAP_EFF, &
-                  RHCRIT         , &
-                  PLO(I,J,K)     , &
-                  TEMP(I,J,K)    , &
-                  Q1(I,J,K)      , &
-                  QLCN(I,J,K)    , &
-                  QICN(I,J,K)    , &
-                  CLCN(I,J,K)    , &
-                  CLLS(I,J,K)    , &
-                  NACTL(I,J,K)   , &
-                  NACTI(I,J,K)   , &
-                  QST3(I,J,K)    )
-#endif
+                    DT_MOIST    , &
+                    ALPHA       , &
+                    INT(CLDPARAMS%PDFSHAPE), &
+                    PLO(I,J,K)  , &
+                    Q1(I,J,K)   , &
+                    QLLS(I,J,K) , &
+                    QLCN(I,J,K) , &
+                    QILS(I,J,K) , &
+                    QICN(I,J,K) , &
+                    TEMP(I,J,K) , &
+                    CLLS(I,J,K) , &
+                    CLCN(I,J,K) , &
+                    CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
             end do ! IM loop
           end do ! JM loop
         end do ! LM loop
@@ -8843,10 +8813,6 @@ contains
             QRAIN = QRAIN + CNV_PRC3*iMASS*DT_MOIST
           end where
         end if
-     ! Clean up clouds before microphysics
-        CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW, QGRAUPEL )
-     ! Clean up any negative specific humidity
-        CALL FILLQ2ZERO2( Q1, MASS, FILLQ  )
         DTDT_macro=  (TEMP-DTDT_macro)/DT_MOIST
         DQVDT_macro=(Q1-DQVDT_macro)/DT_MOIST
         DQLDT_macro=((QLCN+QLLS)-DQLDT_macro)/DT_MOIST
@@ -9039,11 +9005,11 @@ contains
       end if
 
     ! define some default effective radii
-      CLDREFFR = 100.0e-6 ! Rain
-      CLDREFFS = 140.0e-6 ! Snow
-      CLDREFFG = 140.0e-6 ! Graupel
-      CLDREFFI = CLDPARAMS%MIN_RI ! Cloud-Ice
-      CLDREFFL = CLDPARAMS%MIN_RL ! Cloud-Water
+      CLDREFFR = MAPL_UNDEF ! Rain
+      CLDREFFS = MAPL_UNDEF ! Snow
+      CLDREFFG = MAPL_UNDEF ! Graupel
+      CLDREFFI = MAPL_UNDEF ! Cloud-Ice
+      CLDREFFL = MAPL_UNDEF ! Cloud-Water
 
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_ENVF,  'CNV_ENVF:',   DEFAULT= 1.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%ANV_ENVF,  'ANV_ENVF:',   DEFAULT= 1.0    )
@@ -9408,10 +9374,6 @@ contains
          QRAIN    = RAD_QR
          QSNOW    = RAD_QS
          QGRAUPEL = RAD_QG
-     ! Clean up clouds after microphysics
-         CALL FIX_UP_CLOUDS( TEMP, Q1, QLLS, QILS, CLLS, QLCN, QICN, CLCN, QRAIN, QSNOW, QGRAUPEL )
-     ! Clean up any negative specific humidity
-         CALL FILLQ2ZERO2( Q1, MASS, FILLQ  )
      ! Fill rain/snow exports
          if (associated(QRTOT)) QRTOT = QRAIN
          if (associated(QSTOT)) QSTOT = QSNOW
@@ -9438,7 +9400,7 @@ contains
                      RAD_QV(I,J,K), RAD_QL(I,J,K), RAD_QI(I,J,K), RAD_QR(I,J,K), RAD_QS(I,J,K), RAD_QG(I,J,K), RAD_CF(I,J,K), &
                      CLDREFFL(I,J,K), CLDREFFI(I,J,K), FRLAND(I,J), CNV_FRACTION(I,J), INT(CLDPARAMS%FR_AN_WAT), & 
                      CLDPARAMS%FAC_RL, CLDPARAMS%MIN_RL, CLDPARAMS%MAX_RL, CLDPARAMS%FAC_RI, CLDPARAMS%MIN_RI, CLDPARAMS%MAX_RI, &
-                     CLDPARAMS%CCN_OCEAN, CLDPARAMS%CCN_LAND, CLDPARAMS%PRECIPRAD)
+                     CLDPARAMS%CCN_OCEAN, CLDPARAMS%CCN_LAND)
             enddo
           enddo
         enddo
@@ -9469,12 +9431,12 @@ contains
          where (QI_TOT .le. 0.0)
             CFICE =0.0
             NCPI=0.0
-            CLDREFFI = CLDPARAMS%MIN_RI
+            CLDREFFI = MAPL_UNDEF
          end where
          where (QL_TOT .le. 0.0)
             CFLIQ =0.0
             NCPL  =0.0
-            CLDREFFL = CLDPARAMS%MIN_RL
+            CLDREFFL = MAPL_UNDEF
          end where
 
          call MAPL_TimerOff(STATE,"---GFDL_CLDMICRO",RC=STATUS)
@@ -10372,12 +10334,12 @@ contains
          where (QI_TOT .le. 0.0)
             CFICE =0.0
             NCPI=0.0
-            CLDREFFI = CLDPARAMS%MIN_RI
+            CLDREFFI = MAPL_UNDEF
          end where
          where (QL_TOT .le. 0.0)
             CFLIQ =0.0
             NCPL  =0.0
-            CLDREFFL = CLDPARAMS%MIN_RL
+            CLDREFFL = MAPL_UNDEF
          end where
 
          if (associated(DQVDT_micro)) DQVDT_micro = (Q1 - DQVDT_micro         ) / DT_MOIST
@@ -11653,13 +11615,13 @@ do K= 1, LM
          where (QI_TOT .le. 0.0)
             CFICE =0.0
             NCPI=0.0
-            CLDREFFI = 36.0e-6
+            CLDREFFI = MAPL_UNDEF
          end where
 
          where (QL_TOT .le. 0.0)
             CFLIQ =0.0
             NCPL  =0.0
-            CLDREFFL = 14.0e-6
+            CLDREFFL = MAPL_UNDEF
          end where
 
          WHERE  (RAD_CF > 1e-4)

@@ -1833,6 +1833,19 @@ contains
    CWC (:,:,:,KRAIN  ) = QR
    CWC (:,:,:,KSNOW  ) = QS
 
+   WHERE (RI == MAPL_UNDEF)
+      RI = 36.e-6
+   END WHERE
+   WHERE (RL == MAPL_UNDEF)
+      RL = 14.e-6
+   END WHERE
+   WHERE (RR == MAPL_UNDEF)
+      RR = 50.e-6
+   END WHERE
+   WHERE (RS == MAPL_UNDEF)
+      RS = 50.e-6
+   END WHERE
+
    REFF(:,:,:,KICE   ) = RI * 1.0e6
    REFF(:,:,:,KLIQUID) = RL * 1.0e6
    REFF(:,:,:,KRAIN  ) = RR * 1.0e6

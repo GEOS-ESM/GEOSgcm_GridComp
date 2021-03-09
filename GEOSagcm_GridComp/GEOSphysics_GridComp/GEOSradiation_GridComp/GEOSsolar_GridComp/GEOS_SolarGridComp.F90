@@ -2932,6 +2932,20 @@ contains
       QQ3(:,:,2) = QL
       QQ3(:,:,3) = QR
       QQ3(:,:,4) = QS
+
+      WHERE (RI == MAPL_UNDEF)
+        RI = 36.e-6
+      END WHERE
+      WHERE (RL == MAPL_UNDEF)
+        RL = 14.e-6
+      END WHERE
+      WHERE (RR == MAPL_UNDEF)
+        RR = 50.e-6
+      END WHERE
+      WHERE (RS == MAPL_UNDEF)
+        RS = 50.e-6
+      END WHERE
+
       RR3(:,:,1) = RI*1.e6
       RR3(:,:,2) = RL*1.e6
       RR3(:,:,3) = RR*1.e6
