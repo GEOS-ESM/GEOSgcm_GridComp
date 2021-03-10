@@ -2307,7 +2307,7 @@ contains
          do J=1,JM
          do I=1,IM
            if ( (SMTH_LEV(I,J) < 0) .AND. ((PLE(I,J,LM)-PLE(I,J,L)) >= SMTH_PRS) ) then
-             SMTH_LEV=L
+             SMTH_LEV(I,J)=L
            end if
          enddo
          enddo
