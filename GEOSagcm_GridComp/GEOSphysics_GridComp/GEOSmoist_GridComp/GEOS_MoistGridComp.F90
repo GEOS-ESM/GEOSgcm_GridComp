@@ -102,7 +102,8 @@ module GEOS_MoistGridCompMod
       ,maxiens, icumulus_gf, closure_choice, deep, shal, mid&
       ,DEBUG_GF,USE_SCALE_DEP,DICYCLE,Hcts,KcScals&
       ,USE_TRACER_TRANSP,USE_TRACER_SCAVEN, TAU_DEEP, TAU_MID&
-      ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
+      ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1 &
+      ,GCspecies, GCmax, GCfsol 
 !-srf-gf-scheme
 
 !ALT-protection for GF
@@ -136,40 +137,6 @@ module GEOS_MoistGridCompMod
   integer :: DOSHLW
   real    :: MGVERSION
   integer :: DOGRAUPEL
-
-  ! For GEOS-Chem moist exports: not sure how to do this better...
-  ! cakelle2, 10/27/2020
-  integer, parameter                    :: GCmax = 28
-  character(len=ESMF_MAXSTR), parameter :: GCspecies(GCmax) = &
-                                                  (/ 'SO2',   &
-                                                     'SO4',   &
-                                                     'HNO3',  &
-                                                     'DST1',  &
-                                                     'DST2',  &
-                                                     'DST3',  &
-                                                     'DST4',  &
-                                                     'NIT',   &
-                                                     'SALA',  &
-                                                     'SALC',  &
-                                                     'BCPI',  &
-                                                     'BCPO',  &
-                                                     'OCPI',  &
-                                                     'OCPO',  &
-                                                     'ALD2',  &
-                                                     'ALK4',  &
-                                                     'CH2O',  &
-                                                     'Br2',   &
-                                                     'HBr',   &
-                                                     'MAP',   &
-                                                     'MEK',   &
-                                                     'MTPA',  &
-                                                     'MTPO',  &
-                                                     'MVK',   &
-                                                     'NH3',   &
-                                                     'NH4',   &
-                                                     'PAN',   &
-                                                     'CFC12'  /)
-                                                              
 
   private
 
@@ -3667,10 +3634,17 @@ contains
     DO I = 1,GCmax
        spcname = TRIM(GCspecies(I))
        call MAPL_AddExportSpec(GC,                                             &
-         SHORT_NAME='ConvScav_'//TRIM(spcname),                                &
-         LONG_NAME ='GEOS-Chem_'//TRIM(spcname)//'_tendency_due_to_conv_scav', &
+         SHORT_NAME='GF_ConvScav_'//TRIM(spcname),                             &
+         LONG_NAME ='GEOS-Chem_'//TRIM(spcname)//'_tendency_due_to_GF_conv_scav', &
          UNITS     ='kg m-2 s-1',                                              &
          DIMS      = MAPL_DimsHorzOnly,                                        &
+          __RC__ )
+       call MAPL_AddExportSpec(GC,                                             &
+         SHORT_NAME='GF_WetLossConvFrac_'//TRIM(spcname),                      &
+         LONG_NAME ='GEOS-Chem_'//TRIM(spcname)//'_fraction_lost_in_GF_convection', &
+         UNITS     ='1',                                                       &
+         DIMS      = MAPL_DimsHorzVert,                                        &
+         VLOCATION = MAPL_VLocationCenter,                                     &
           __RC__ )
     ENDDO
 
@@ -5334,7 +5308,8 @@ contains
       ! GEOS-Chem convective scavenging exports
       real, dimension(IM,JM,GCmax)                             :: GCinit
       real, dimension(IM,JM,GCmax)                             :: GCtend
-      real, pointer, dimension(:,:)                            :: GCptr
+      real, pointer, dimension(:,:)                            :: GCptr2d
+      real, pointer, dimension(:,:,:)                          :: GCptr3d
       integer                                                  :: GCii, GCind
       character(len=ESMF_MAXSTR)                               :: spcname
 
@@ -8219,7 +8194,13 @@ contains
            GF_AREA = AREA
          endif
 ! WMP
-         
+
+         ! For GEOS-Chem diagnostics
+         if ( .not. allocated(GCfsol) ) then
+            allocate(GCfsol(IM,JM,LM,GCmax))
+         endif        
+         GCfsol(:,:,:,:) = 0.0
+ 
          !- call GF/GEOS5 interface routine
          call GF_GEOS5_Interface( IM,JM,LM,KM,ITRCR,LONS,LATS,DT_MOIST                       &
                                  ,T, PLE, PLO, ZLE, ZLO, PK, U, V, OMEGA            & 
@@ -8240,7 +8221,7 @@ contains
                                  ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE, CLDMICRO &
                                  ,RASPARAMS%QC_CRIT_CN, AUTOC_CN_OCN                &
                                  ,XHO,FSCAV,CNAMES,QNAMES,DTRDT_GF                  &
-				 ,RSU_CN_GF,REV_CN_GF, PFI_CN_GF, PFL_CN_GF)
+                                 ,RSU_CN_GF,REV_CN_GF, PFI_CN_GF, PFL_CN_GF          )
                                                                    
          HHO      =  0.0
          HSO      =  0.0    
@@ -8659,13 +8640,20 @@ contains
 
       ! update to GEOS-Chem
       do GCii=1,GCmax
-         spcname = 'ConvScav_'//TRIM(GCspecies(GCii)) 
-         call MAPL_GetPointer(EXPORT, GCptr, TRIM(spcname), NotFoundOk=.TRUE., __RC__ ) 
-         if ( associated(GCptr) ) then
-            GCptr = ( GCtend(:,:,GCii) - GCinit(:,:,GCii) ) / (MAPL_GRAV*DT_MOIST)
+         spcname = 'GF_ConvScav_'//TRIM(GCspecies(GCii)) 
+         call MAPL_GetPointer(EXPORT, GCptr2d, TRIM(spcname), NotFoundOk=.TRUE., __RC__ ) 
+         if ( associated(GCptr2d) ) then
+            GCptr2d = ( GCtend(:,:,GCii) - GCinit(:,:,GCii) ) / (MAPL_GRAV*DT_MOIST)
+         endif
+         if ( allocated(GCfsol) ) then
+            spcname = 'GF_WetLossConvFrac_'//TRIM(GCspecies(GCii)) 
+            call MAPL_GetPointer(EXPORT, GCptr3d, TRIM(spcname), NotFoundOk=.TRUE., __RC__ ) 
+            if ( associated(GCptr3d) ) then
+               GCptr3d = GCfsol(:,:,:,GCii)
+            endif
          endif
       enddo
-
+      if ( allocated(GCfsol) ) deallocate(GCfsol)
 
       ! Fill in tracer tendencies
       !--------------------------
