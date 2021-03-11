@@ -94,6 +94,7 @@ include_directories (${ftn_dir} ${INC_ESMF} ${INC_NETCDF})
 
 esma_add_library (${this} 
    SRCS ${WW3ESMF_F90} 
+   DEPENDENCIES MAPL
    INCLUDES 
   )
 
