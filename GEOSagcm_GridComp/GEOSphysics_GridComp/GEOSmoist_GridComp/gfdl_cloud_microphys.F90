@@ -2350,7 +2350,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! combine water species
         ! -----------------------------------------------------------------------
         
-        if (do_qa) cycle
+        if (.not. do_qa) cycle
         
         if (rad_snow) then
             q_sol (k) = qi (k) + qs (k)
@@ -2408,7 +2408,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! binary cloud scheme
         ! -----------------------------------------------------------------------
          if (qpz > qrmin) then
-             ! Include ramp to restrivt PDF at low levels
+             ! Include ramp to restrict PDF at low levels
              a1 = 1.0
              if (p1(k) .le. 75000.0) then
                 a1 = (1.0-h_var)
@@ -2424,7 +2424,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
              if (icloud_f == 3) then
              ! triangular
                if(q_plus.le.qstar) then
-                  ! no cloud change 
+                 !qa (k) = 0.0  ! no cloud change 
                elseif ( (qpz.le.qstar).and.(qstar.lt.q_plus) ) then ! partial cloud cover
                   qa (k) = min(1., qa (k) + (q_plus-qstar)*(q_plus-qstar) / ( (q_plus-q_minus)*(q_plus-qpz) ))
                elseif ( (q_minus.le.qstar).and.(qstar.lt.qpz) ) then ! partial cloud cover
@@ -2434,10 +2434,12 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
                endif
              else
              ! top-hat
-               if (qstar < q_minus) then
-                 qa (k) = 1. ! air fully saturated; 100 % cloud cover
+               if(q_plus.le.qstar) then
+                 !qa (k) = 0.0  ! no cloud cover 
                elseif (qstar < q_plus .and. q_cond (k) > qc_crt) then
-                 qa (k) = min(1., qa (k) + (q_plus - qstar) / (dq + dq) ) ! partial cloud cover
+                 qa (k) = max(0.0, min(1., qa (k) + (q_plus - qstar) / (dq + dq) )) ! partial cloud cover
+               elseif (qstar .le. q_minus) then
+                 qa (k) = 1. ! air fully saturated; 100 % cloud cover
                endif
              endif
          endif

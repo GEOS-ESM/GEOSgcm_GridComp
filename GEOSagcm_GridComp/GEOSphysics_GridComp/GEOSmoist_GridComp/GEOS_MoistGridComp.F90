@@ -5310,7 +5310,6 @@ contains
 
       real, pointer, dimension(:,:,:) :: DQDTCN, DTHDTCN,DQCDTCN,DTDTFRIC
 
-      integer :: DOCLDMACRO
       real, pointer, dimension(:,:,:) :: UMF_SC, MFD_SC, DCM_SC, WUP_SC, QTUP_SC, &
                                          THLUP_SC, THVUP_SC, UUP_SC, VUP_SC 
       real, pointer, dimension(:,:,:) :: QCU_SC, QLU_SC, QIU_SC
@@ -6171,9 +6170,11 @@ contains
 
 #endif
 
+      integer :: JASON_TUNING
+
       !  Begin...
       !----------
-      Iam = trim(COMP_NAME) // 'Convect_Driver'
+      Iam = trim(COMP_NAME) // 'Moist_Driver'
 
       call MAPL_TimerOn(STATE,"-MISC1")
 
@@ -6184,6 +6185,12 @@ contains
 
       call ESMF_ConfigGetAttribute( CF, RAS_NO_NEG, Label='RAS_NO_NEG:', default=.FALSE. , RC=STATUS)
       VERIFY_(STATUS)
+
+      if(adjustl(CLDMICRO)=="GFDL") then
+        call MAPL_GetResource (STATE, JASON_TUNING, "JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
+      else
+        call MAPL_GetResource (STATE, JASON_TUNING, "JASON_TUNING:", default=1, RC=STATUS); VERIFY_(STATUS)
+      endif
 
       call MAPL_GetResource(STATE, CLEANUP_RH,               'CLEANUP_RH:',     DEFAULT= 1,     RC=STATUS)
       call MAPL_GetResource(STATE, RASPARAMS%CUFRICFAC,      'CUFRICFAC:',      DEFAULT= 1.000, RC=STATUS)
@@ -6340,22 +6347,23 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%RDRAG,     'RDRAG:'     ,DEFAULT=1.0,    RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%EPSVARW,   'EPSVARW:'   ,DEFAULT=5.e-4,  RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%PGFC,      'PGFC:'      ,DEFAULT=0.7,    RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,     'CRIQC:'     ,DEFAULT=0.9e-3, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%KEVP,      'KEVP:'      ,DEFAULT=2.e-6,  RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,     'SHLW_RDROP:',DEFAULT=8.e-6,  RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%THLSRC_FAC,'THLSRC_FAC:',DEFAULT=2.0,    RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%QTSRC_FAC, 'QTSRC_FAC:' ,DEFAULT=0.0,    RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%QTSRCHGT,  'QTSRCHGT:'  ,DEFAULT=20.0,   RC=STATUS)
 
-
-      if(adjustl(CLDMICRO)=="GFDL") then
-        call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT= 0  , RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 0.0, RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%RKM,     'RKM:'        ,DEFAULT= 8.0, RC=STATUS)
+      if(JASON_TUNING == 1) then
+        call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,     'CRIQC:'     ,DEFAULT=1.0e-3, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%THLSRC_FAC,'THLSRC_FAC:',DEFAULT= 0.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%QTSRC_FAC, 'QTSRC_FAC:' ,DEFAULT= 0.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%QTSRCHGT,  'QTSRCHGT:'  ,DEFAULT=20.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,  'FRC_RASN:'  ,DEFAULT= 0.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'       ,DEFAULT=12.0, RC=STATUS)
       else
-        call MAPL_GetResource(STATE, DOCLDMACRO,         'DOCLDMACRO:' ,DEFAULT= 1  , RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,'FRC_RASN:'   ,DEFAULT= 0.0, RC=STATUS)
-        call MAPL_GetResource(STATE, SHLWPARAMS%RKM,     'RKM:'        ,DEFAULT= 8.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,     'CRIQC:'     ,DEFAULT=0.9e-3, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%THLSRC_FAC,'THLSRC_FAC:',DEFAULT= 2.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%QTSRC_FAC, 'QTSRC_FAC:' ,DEFAULT= 0.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%QTSRCHGT,  'QTSRCHGT:'  ,DEFAULT=20.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,  'FRC_RASN:'  ,DEFAULT= 1.0, RC=STATUS)
+        call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'       ,DEFAULT= 4.0, RC=STATUS)
       endif
       call MAPL_GetResource(STATE, SHLWPARAMS%RKFRE,   'RKFRE:'      ,DEFAULT= 1.0, RC=STATUS)
 
@@ -8650,19 +8658,26 @@ contains
 
       ! Fill in tracer tendencies
       !--------------------------
-
+      
       KK=0
       do K=1,KM
          if(IS_FRIENDLY(K)) then
             KK = KK+1
-            TRPtrs(K)%Q(:,:,:) = XHO(:,:,:,KK)
-            ASSERT_(all(XHO(:,:,:,KK) >= 0.0))
+            do L=1,LM
+             do J=1,JM
+              do I=1,IM
+                TRPtrs(K)%Q(I,J,L) = MAX(0.0,XHO(I,J,L,KK))
+              end do
+             end do
+            end do
+          ! TRPtrs(K)%Q(:,:,:) = XHO(:,:,:,KK)
+          ! ASSERT_(all(XHO(:,:,:,KK) >= 0.0))
          end if
       end do
 
       call MAPL_TimerOff(STATE,"-POST_CNV")
 
-      if(adjustl(CLDMICRO)=="2MOMENT") then
+      if(JASON_TUNING == 1) then
          call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 1.0    )
       else
          call MAPL_GetResource( STATE, CLDPARAMS%PDFSHAPE,  'PDFSHAPE:',   DEFAULT= 2.0    )
@@ -8672,7 +8687,11 @@ contains
       tmprh = CEILING(100.0*(1.0-min(0.20, max(0.01, 0.1*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))/100.0
       call MAPL_GetResource( STATE, CLDPARAMS%MINRHCRIT    , 'MINRHCRIT:'    , DEFAULT=tmprh, RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource( STATE, CLDPARAMS%MAXRHCRIT    , 'MAXRHCRIT:'    , DEFAULT= 1.0 , RC=STATUS); VERIFY_(STATUS)
-      tmprh = 0.5*(1.0+CLDPARAMS%MINRHCRIT)
+      if(JASON_TUNING == 1) then
+        tmprh = 1.0
+      else
+        tmprh = 0.5*(1.0+CLDPARAMS%MINRHCRIT)
+      endif
       call MAPL_GetResource( STATE, CLDPARAMS%MAXRHCRITLAND, 'MAXRHCRITLAND:', DEFAULT=tmprh, RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetResource( STATE, CLDPARAMS%TANHRHCRIT   , 'TANHRHCRIT:'   , DEFAULT= 1.0 , RC=STATUS); VERIFY_(STATUS)
 
@@ -8695,13 +8714,14 @@ contains
 
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_ICEPARAM,    'CNV_ICEPARAM:',    DEFAULT= 1.0   )
 
-      if(adjustl(CLDMICRO)=="GFDL") then
+      if(JASON_TUNING == 1) then
         call MAPL_GetResource( STATE, CLDPARAMS%SCLM_DEEP,       'SCLM_DEEP:',       DEFAULT= 1.0   )
-        call MAPL_GetResource( STATE, CLDPARAMS%SCLM_SHALLOW,    'SCLM_SHALLOW:',    DEFAULT= 1.1   )
+        call MAPL_GetResource( STATE, CLDPARAMS%SCLM_SHALLOW,    'SCLM_SHALLOW:',    DEFAULT= 1.0   )
       else
         call MAPL_GetResource( STATE, CLDPARAMS%SCLM_DEEP,       'SCLM_DEEP:',       DEFAULT= 1.0   )
         call MAPL_GetResource( STATE, CLDPARAMS%SCLM_SHALLOW,    'SCLM_SHALLOW:',    DEFAULT= 1.0   )
       endif
+
 #ifdef _CUDA
       PDFFLAG       = INT(CLDPARAMS%PDFSHAPE)
       TANHRHCRIT    = INT( CLDPARAMS%TANHRHCRIT )
@@ -8711,7 +8731,7 @@ contains
       MAXRHCRITLAND = CLDPARAMS%MAXRHCRITLAND
 #endif
 
-      if (DOCLDMACRO==0) then
+      if (adjustl(CLDMICRO)=="GFDL") then
         call MAPL_TimerOn(STATE,"---CLDMACRO")
         TEMP = TH1*PK
         DTDT_macro=TEMP
@@ -8798,6 +8818,7 @@ contains
                     CLLS(I,J,K) , &
                     CLCN(I,J,K) , &
                     CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
+#ifdef DONT_SKIP
              ! 'Anvil' evaporation/sublimation partition from Conv-Parameterized not done in hystpdf
              call evap3(           &
                   DT_MOIST       , &
@@ -8827,6 +8848,7 @@ contains
                   NACTL(I,J,K)   , &
                   NACTI(I,J,K)   , &
                   QST3(I,J,K)    )
+#endif
             end do ! IM loop
           end do ! JM loop
         end do ! LM loop
@@ -8842,7 +8864,7 @@ contains
             QRAIN = QRAIN + CNV_PRC3*iMASS*DT_MOIST
           end where
         end if
-        DTDT_macro=  (TEMP-DTDT_macro)/DT_MOIST
+        DTDT_macro=(TEMP-DTDT_macro)/DT_MOIST
         DQVDT_macro=(Q1-DQVDT_macro)/DT_MOIST
         DQLDT_macro=((QLCN+QLLS)-DQLDT_macro)/DT_MOIST
         DQIDT_macro=((QICN+QILS)-DQIDT_macro)/DT_MOIST
@@ -9122,162 +9144,6 @@ contains
            NCPL = 0.
            NCPI = 0.
          endif
-
-         call MAPL_TimerOn(STATE,"---CLDMACRO")
-         if (DOCLDMACRO==1) then
-        ! Fill LTS and EIS
-         call FIND_EIS(TH1, QSS, TEMP, ZLE, PLO, KLCL, IM, JM, LM, LTS, EIS)
-        ! Clean up any negative specific humidity before macro+microphysics
-         call FILLQ2ZERO2( Q1, MASS, FILLQ)
-         REV_CN_X  = 0.0
-         REV_AN_X  = 0.0 
-         REV_LS_X  = 0.0
-         REV_SC_X  = 0.0
-         RSU_CN_X  = 0.0
-         RSU_AN_X  = 0.0
-         RSU_LS_X  = 0.0     
-         RSU_SC_X  = 0.0     
-         CN_PRC2   = 0.0 
-         LS_PRC2   = 0.0
-         AN_PRC2   = 0.0 
-         SC_PRC2   = 0.0 
-         CN_SNR    = 0.0 
-         LS_SNR    = 0.0  
-         AN_SNR    = 0.0
-         SC_SNR    = 0.0
-         DTDT_macro=TEMP
-         DQVDT_macro=Q1
-         DQLDT_macro=QLCN+QLLS
-         DQIDT_macro=QICN+QILS
-         DQADT_macro=CLCN+CLLS
-         PFI_CN_X  = 0.0
-         PFI_AN_X  = 0.0
-         PFI_LS_X  = 0.0
-         PFI_SC_X  = 0.0
-         PFL_CN_X  = 0.0
-         PFL_AN_X  = 0.0
-         PFL_LS_X  = 0.0    
-         PFL_SC_X  = 0.0    
-         SC_ICE    = 1.0
-         QSNOW_CN  = 0.0
-         QRAIN_CN  = 0.0
-         PFRZ      = 0.0
-         CNV_MFD_X   = CNV_MFD     ! needed for cloud fraction
-         CNV_DQLDT_X = CNV_DQLDT
-         CNV_PRC3_X  = CNV_PRC3
-         CNV_UPDF_X  = CNV_UPDF 
-        ! Fill CNV_FICE,CNV_NICE,CNV_NDROP assume still 1-moment
-         do K=1,LM
-          do J=1,JM
-           do I=1,IM
-             CNV_FICE(I,J,K) = ICE_FRACTION( TEMP(I,J,K), CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J) )
-           enddo
-          enddo
-         enddo
-         IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
-        ! GF scheme handles its own conv precipitation
-              CNV_PRC3_X  = 0.0
-              CNV_NDROP_X = 0.0
-              CNV_NICE_X  = 0.0
-         END IF
-         call  macro_cloud (      &
-              IM*JM, LM         , &
-              DT_MOIST          , &
-              PLO               , &
-              CNV_PLE           , &
-              PK                , &
-              SNOMAS            , &   ! <- surf
-              FRLANDICE         , &   ! <- surf
-              FRLAND            , &   ! <- surf
-              KH                , &   ! <- turb
-              CNV_MFD_X         , &   ! <- ras/gf
-              CNV_DQLDT_X       , &   ! <- ras/gf
-              CNV_PRC3_X        , &   ! <- ras/gf
-              CNV_UPDF_X        , &   ! <- ras/gf
-              MFD_SC            , &   ! <- shcu   
-              QLDET_SC          , &   ! <- shcu   
-              QIDET_SC          , &   ! <- shcu   
-              SHLW_PRC3         , &   ! <- shcu   
-              SHLW_SNO3         , &   ! <- shcu   
-              UFRC_SC           , &   ! <- shcu 
-              U1                , &
-              V1                , & 
-              TH1               , &              
-              Q1                , &
-              QLLS              , &
-              QLCN              , &
-              QILS              , &
-              QICN              , &
-              CLCN              , &
-              CLLS              , &           
-              CN_PRC2           , &            
-              CN_ARFX           , &
-              CN_SNR            , &
-              CLDPARAMS         , &
-              QST3              , &
-              DZET              , &
-              CNV_FRACTION      ,  &
-              QDDF3             , &
-                                ! Diagnostics
-              RHX_X             , &
-              REV_CN_X          , &
-              RSU_CN_X          , &
-              ACLL_CN_X,ACIL_CN_X   , &
-              PFL_CN_X,PFI_CN_X     , &
-              DLPDF_X,DIPDF_X,DLFIX_X,DIFIX_X,    &
-              DCNVL_X, DCNVi_X,       &
-              ALPHT_X, CFPDF_X, &
-              DQRL_X            , &
-              VFALLSN_CN_X      , &
-              VFALLRN_CN_X      , &
-              EVAPC_X , SUBLC_X ,  &
-                                ! End diagnostics
-             !!====2-Moment============
-              CNV_FICE          , &
-              CNV_NDROP_X       , &
-              CNV_NICE_X        , &
-              SC_NDROP          , &
-              SC_NICE           , &
-              SC_ICE            , &
-              NCPL              , &
-              NCPI              , &
-              PFRZ              , &
-              DNDCNV_X          , &
-              DNCCNV_X          , &
-              DT_RASP           , &
-              QRAIN_CN          , & !grid av
-              QSNOW_CN          , &
-              KCBL, LTS,  CONVPAR_OPTION)              
-      
-
-        ! Fill DTDT_MACRO diagnostic
-         TEMP    = TH1*PK
-         DTDT_macro=  (TEMP-DTDT_macro)/DT_MOIST
-         DQVDT_macro=(Q1-DQVDT_macro)/DT_MOIST
-         DQLDT_macro=((QLCN+QLLS)-DQLDT_macro)/DT_MOIST
-         DQIDT_macro=((QICN+QILS)-DQIDT_macro)/DT_MOIST
-         DQADT_macro=((CLCN+CLLS)-DQADT_macro)/DT_MOIST
-         else
-         REV_CN_X  = 0.0
-         REV_AN_X  = 0.0
-         REV_LS_X  = 0.0
-         REV_SC_X  = 0.0
-         RSU_CN_X  = 0.0
-         RSU_AN_X  = 0.0
-         RSU_LS_X  = 0.0
-         RSU_SC_X  = 0.0
-         PFI_CN_X  = 0.0
-         PFI_AN_X  = 0.0
-         PFI_LS_X  = 0.0
-         PFI_SC_X  = 0.0
-         PFL_CN_X  = 0.0
-         PFL_AN_X  = 0.0
-         PFL_LS_X  = 0.0
-         PFL_SC_X  = 0.0
-         EVAPC_X = 0.0
-         SUBLC_X = 0
-         endif
-         call MAPL_TimerOff(STATE,"---CLDMACRO")
 
          call MAPL_TimerOn(STATE,"---GFDL_CLDMICRO")
         ! Cloud
@@ -10779,7 +10645,6 @@ contains
          end if     
  
                        
-  if (DOCLDMACRO/=0) then   
   call  macro_cloud (                    &
               IM*JM, LM         , &
               DT_MOIST          , &
@@ -10848,7 +10713,6 @@ contains
               QRAIN_CN, & !grid av
               QSNOW_CN, &
               KCBL, LTS,  CONVPAR_OPTION)
-       endif ! DOCLDMACRO
 
 
        IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN   
@@ -12081,8 +11945,6 @@ do K= 1, LM
                  PLO*100.0 , DQ=DQSDT     ) !clean up only with respect to liquid water  DONIF
            if (associated(RHLIQ    ))   RHLIQ     =  Q1/QSS  !DONIF
                  
-         else if (adjustl(CLDMICRO)=="GFDL") then
-             QSS   = GEOS_QsatLQU(TEMP, PLO*100.0, DQ=DQSDT) !clean up only with respect to liquid water
          else
              DQSDT = GEOS_DQSAT (TEMP , PLO, QSAT=QSS ) 
          end if

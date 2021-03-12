@@ -2036,9 +2036,9 @@ contains
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
 
      if (LM .eq. 72) then
-       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=1,            RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, JASON_TUNING, "JASON_TUNING:", default=1, RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=0,            RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, JASON_TUNING, "JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
      endif
 
 ! Get turbulence parameters from configuration
@@ -2103,7 +2103,11 @@ contains
      endif
 
    ! Pressure Thickness at the surface for 1-2-1 smoother for THV (and U:V) [72L setup uses an index of 5-levels]
-     call MAPL_GetResource (MAPL, SMTH_PRS,     trim(COMP_NAME)//"_SMTH_PRS:",     default=50000.0,    RC=STATUS)
+     if (JASON_TUNING .eq. 1) then
+       call MAPL_GetResource (MAPL, SMTH_PRS,     trim(COMP_NAME)//"_SMTH_PRS:",     default=    0.0,    RC=STATUS)
+     else
+       call MAPL_GetResource (MAPL, SMTH_PRS,     trim(COMP_NAME)//"_SMTH_PRS:",     default=50000.0,    RC=STATUS)
+     endif
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",      default=0,            RC=STATUS)
      if (DO_SHOC /= 0) then
@@ -2308,7 +2312,6 @@ contains
       USM = U
       VSM = V
       if (SMTH_PRS /= 0) then
-      !===> Running 1-2-1 smooth of bottom levels of THV, U and V
          ! Use Pressure Thickness at the surface to determine index
          SMTH_LEV=-1
          do L=LM,1,-1
@@ -2323,19 +2326,22 @@ contains
          where (SMTH_LEV < 0)
            SMTH_LEV=LM-5
          end where
-         TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
-         USM(:,:,LM) =   U(:,:,LM-1)*0.25 +   U(:,:,LM  )*0.75
-         VSM(:,:,LM) =   V(:,:,LM-1)*0.25 +   V(:,:,LM  )*0.75
-         do J=1,JM
-         do I=1,IM
+      else
+         SMTH_LEV=LM-5
+      end if
+      !===> Running 1-2-1 smooth of bottom levels of THV, U and V
+      TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
+      USM(:,:,LM) =   U(:,:,LM-1)*0.25 +   U(:,:,LM  )*0.75
+      VSM(:,:,LM) =   V(:,:,LM-1)*0.25 +   V(:,:,LM  )*0.75
+      do J=1,JM
+       do I=1,IM
          do L=LM-1,SMTH_LEV(I,J),-1
             TSM(I,J,L) = THV(I,J,L-1)*0.25 + THV(I,J,L)*0.50 + THV(I,J,L+1)*0.25
             USM(I,J,L) =   U(I,J,L-1)*0.25 +   U(I,J,L)*0.50 +   U(I,J,L+1)*0.25
             VSM(I,J,L) =   V(I,J,L-1)*0.25 +   V(I,J,L)*0.50 +   V(I,J,L+1)*0.25
          end do
-         end do
-         end do
-      end if
+       end do
+      end do
 
       call MAPL_TimerOff(MAPL,"---PRELIMS")
 

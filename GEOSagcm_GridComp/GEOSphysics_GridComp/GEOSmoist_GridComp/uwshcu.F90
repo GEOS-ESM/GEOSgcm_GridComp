@@ -39,6 +39,24 @@ contains
       return
    end function exnerfn
 
+   REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
+   implicit none
+   real,intent(in) :: temp2 ! K
+   real :: temp,ptc
+   real, parameter :: max_temp = 46. !Celsius
+!   SELECT CASE(FRAC_MODIS)
+!   CASE (1)
+   temp = temp2-273.16 !Celsius
+   temp = min(max_temp,max(-max_temp,temp))
+   ptc  = 7.6725 + 1.0118*temp + 0.1422*temp**2 + &
+             0.0106*temp**3 + 3.39e-4 * temp**4 + &
+             3.95e-6 * temp**5
+   fract_liq_f = 1./(1.+exp(-ptc))
+!   CASE DEFAULT
+!   fract_liq_f = min(1., (max(0.,(temp2-t_ice))/(t_0-t_ice))**2)
+!   END SELECT
+   END FUNCTION
+
 
    subroutine compute_uwshcu_inv(idim, k0, ncnst, dt,pmid0_inv,     & ! INPUT
          zmid0_inv, exnmid0_inv, pifc0_inv, zifc0_inv, exnifc0_inv, &
@@ -4618,7 +4636,8 @@ contains
        dqsdT    = dble( GEOS_DQSAT(Tgeos, Pgeos/100., QSAT=Qgeos ) )
        gam      = (xlv/cp)*dqsdT
        err      =  qt - qs
-       nu       =  max(min((268._r8 - Ts)/20._r8,1.0_r8),0.0_r8)        
+       nu       = fract_liq_f( real(Ts,4) )
+!       nu       =  max(min((268._r8 - Ts)/20._r8,1.0_r8),0.0_r8)        
        leff     =  (1._r8 - nu)*xlv + nu*xls                  
        dlnqsdT  =  gam*(cp/leff)/qs
        dTdPis   =  thl
@@ -4917,12 +4936,13 @@ contains
       real*8               :: tc
       real                 :: temps,ps
       real*8               :: leff,nu,qc
-      integer            :: iteration
+      integer              :: iteration
       real*8               :: qs    ! Saturation specific humidity
 
       tc = thl*exnerfn(p)
 
-      nu = max(min((268._r8-tc)/20._r8,1.0_r8),0.0_r8)    ! ice fraction of condensate
+!      nu = max(min((268._r8-tc)/20._r8,1.0_r8),0.0_r8)    ! ice fraction of condensate
+      nu = fract_liq_f( real(tc,4) )
       leff = (1._r8- nu)*xlv + nu*xls    ! effective latent heat
 
       temps = tc
