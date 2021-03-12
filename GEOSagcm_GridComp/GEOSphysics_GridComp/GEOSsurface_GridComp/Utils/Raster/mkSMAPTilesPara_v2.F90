@@ -662,7 +662,7 @@ PROGRAM mkSMAPTilesPara_v2
       write(11,*)l_index
 
       open  (10, file ='til/'//trim(gfile)//'.til',form='formatted',status='unknown',action='write')
-      write (10,*)i_index, nc, nr, SRTM_maxcat
+      write (10,*)i_index,SRTM_maxcat, nc, nr 
       write (10,*)1
       write (10,*)'SMAP-EASEv2-'//trim(MGRID)
       write (10,*)nc_smap
@@ -824,10 +824,10 @@ PROGRAM mkSMAPTilesPara_v2
         infile = 'til/'//trim(EASElabel)//'_'//trim(EASElabel)//'-Pfafstetter.'
         
         open (10,file =  trim(infile)//'ind', form = 'formatted', action = 'read', status = 'old')
-        open (11,file =  trim(infile)//'til', form = 'formatted', action = 'write', status = 'unknown')
+        open (11,file =  trim(infile)//'TIL', form = 'formatted', action = 'write', status = 'unknown')
 
         read (10, *) NT, NF, NC, NR
-        write (11,'(3I10)')NT, NF, NC, NR
+        write (11,'(4I10)')NT, NF, NC, NR
         read (10, *) NG
         write(11, *) NG
         

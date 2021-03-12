@@ -4006,11 +4006,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 	    status = NF_CLOSE(ncid)
 	    endif
 	 end do 
-      end do
-
+       end do
+      
       if(process_peat) then 
          print *, 'PMAP_THRESH : ', pmap_thresh
-         allocate(pmapr (1:i_highd,1:j_highd))  
+         allocate(pmapr (1:i_highd,1:j_highd))
          status  = NF_OPEN ('data/CATCH/PEATMAP_mask.nc4', NF_NOWRITE, ncid)
          status  = NF_GET_VARA_REAL (ncid,NC_VarID(NCID,'PEATMAP'), (/1,1/),(/i_highd, j_highd/), pmapr) ; VERIFY_(STATUS)      
 
@@ -4029,7 +4029,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          deallocate (pmapr)
          status = NF_CLOSE(ncid)
       endif
-
+      
       deallocate (net_data1)
       deallocate (net_data2)
       deallocate (net_data3)
@@ -4106,6 +4106,29 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           raster  => grav_grid
       end if
 
+
+      ! compute peat fraction on tile for CLM45+      
+      
+      allocate(pmap  (1:maxcat))
+      allocate(count_soil(1:maxcat))  
+
+      pmap = 0.
+      count_soil = 0.
+      
+      do j=1,ny_adj
+         do i=1,nx_adj
+            if((iRaster(i,j).gt.0).and.(iRaster(i,j).le.maxcat)) then
+               count_soil(iRaster(i,j)) = count_soil(iRaster(i,j)) + 1. 
+               if (raster3(i,j)*sf >= cF_lim(4)) then
+                  pmap (iRaster(i,j)) = pmap(iRaster(i,j)) + 1                  
+               endif
+            endif
+         end do
+      end do
+
+      where (count_soil > 0) pmap = pmap /count_soil
+      
+      deallocate (count_soil)
 ! Deallocate large arrays
 
       allocate(land_pixels(1:size(iRaster,1),1:size(iRaster,2)))
@@ -4551,7 +4574,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       END DO
 !$OMP ENDPARALLELDO
 
-      call process_peatmap (nx, ny, gfiler, pmap)
+!      call process_peatmap (nx, ny, gfiler, pmap)
 
       inquire(file='clsm/catch_params.nc4', exist=file_exists)
 

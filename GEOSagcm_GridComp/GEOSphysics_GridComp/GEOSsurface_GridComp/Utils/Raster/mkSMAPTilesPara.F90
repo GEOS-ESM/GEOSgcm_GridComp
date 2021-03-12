@@ -599,7 +599,7 @@ PROGRAM mkSMAPTilesPara_v1
       write(11,*)l_index
 
       open  (10, file ='til/'//trim(gfile)//'.til',form='formatted',status='unknown',action='write')
-      write (10,*)i_index, nc, nr
+      write (10,*)i_index, SRTM_maxcat, nc, nr
       write (10,*)1
       write (10,*)'SMAP-EASEv2-'//trim(MGRID)
       write (10,*)nc_smap
@@ -680,7 +680,7 @@ PROGRAM mkSMAPTilesPara_v1
       ! create Grid2Catch transfer file
       ! -------------------------------
 
-      CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), MGRID=MGRID)  
+      ! CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), MGRID=MGRID)  
       
       ! now run mkCatchParam
       ! --------------------

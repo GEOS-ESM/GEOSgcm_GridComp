@@ -48,6 +48,8 @@
     character*1          :: opt
     character*8          :: LD = 'MODGEO'
     character*4          :: SD = 'HWSD'
+    character*7          :: PEATSOURCE   = 'GDLHWSD'
+    character*3          :: VEGZSOURCE   = 'D&S'
     character*4          :: EASE ='    '
     character*2          :: DL ='DC'
     character*6          :: MA = 'MODIS2'
@@ -69,6 +71,7 @@
     include 'netcdf.inc'	
     type (regrid_map), allocatable, dimension (:,:) :: maparc30, mapgeoland2,maparc60
     character*200 :: tmpstring, tmpstring1, tmpstring2
+    
 
 ! --------- VARIABLES FOR *OPENMP* PARALLEL ENVIRONMENT ------------
 !
@@ -226,12 +229,16 @@ integer :: n_threads=1
       GridnameT='til/'//trim(Gridname)  
     endif 
 
+    if(process_peat) PEATSOURCE   = 'PEATMAP'
+    if(jpl_height)   VEGZSOURCE   = 'JPL'
     if(n_threads == 1) then
 
        write (log_file,'(a)')trim(LD)
        write (log_file,'(a)')trim(MA)
        write (log_file,'(a)')trim(SD)   
        write (log_file,'(a)')trim(MaskFile)
+       write (log_file,'(a)')trim(PEATSOURCE)
+       write (log_file,'(a)')trim(VEGZSOURCE)
        write (log_file,'(a)')'                              '
        write (log_file,'(a)')'============================================================'
        write (log_file,'(a)')'............ Begin CLSM parameter generation:...............'    

@@ -441,11 +441,12 @@ endfor
 
 close,1
 
-load_colors
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[720,800], Z_Buffer=0
+load_colors
 Erase,255
+
 !p.background = 255
 
 !P.position=0
@@ -2152,7 +2153,7 @@ endfor
 upval = max(canop_tiles)
 
 limits = [-60,-180,90,180]
-load_colors
+
 colors = [27,26,25,24,23,22,21,20,40,41,42,43,44,45,46,47,48]
 colors = reverse (colors)
 n_levels = n_elements (colors)
@@ -2162,6 +2163,7 @@ levels = [lwval,lwval+(upval-lwval)/(n_levels -1) +indgen(n_levels -1)*(upval-lw
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[800,400], Z_Buffer=0
+load_colors
 Erase,255
 !p.background = 255
 !P.position=0
@@ -2223,7 +2225,6 @@ END
 
 PRO plot_three_vars2, ncat, tile_id, data1, data2, data3
 
-load_colors
 im = n_elements(tile_id[*,0])
 jm = n_elements(tile_id[0,*])
 
@@ -2257,6 +2258,7 @@ n_levels = n_elements (colors)
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[720,900], Z_Buffer=0
+load_colors
 Erase,255
 !p.background = 255
 
@@ -2334,10 +2336,11 @@ END
 
 pro plot_soilalb, ncat, tile_id,VISDR, VISDF, NIRDR, NIRDF
 
-load_colors
+
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[720,500], Z_Buffer=0
+load_colors
 Erase,255
 !p.background = 255
 
@@ -2654,13 +2657,15 @@ for k = 0, N_levels -1 do begin
 	blue (k+1) = b_in (k)
 endfor
 
+thisDevice = !D.Name
+set_plot,'Z'
+Device, Set_Resolution=[1080,600], Z_Buffer=0
+
 TVLCT,red,green,blue
 
 colors = indgen (N_levels) + 1
 
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[1080,600], Z_Buffer=0
+
 Erase,255
 !p.background = 255
 
@@ -2950,7 +2955,7 @@ upval = max(z2)
 lwval = min(z2)
 
 limits = [-60,-180,90,180]
-load_colors
+
 colors = [27,26,25,24,23,22,21,20,40,41,42,43,44,45,46,47,48]
 colors = reverse (colors)
 n_levels = n_elements (colors)
@@ -2960,6 +2965,7 @@ levels = [lwval,lwval+(upval-lwval)/(n_levels -1) +indgen(n_levels -1)*(upval-lw
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[800,400], Z_Buffer=0
+load_colors
 Erase,255
 !p.background = 255
 !P.position=0
@@ -3009,8 +3015,6 @@ end
 ; ====================================================================================
 pro country_codes, tile_id
 
-load_random_colors
-
 im = n_elements(tile_id[*,0])
 jm = n_elements(tile_id[0,*])
 
@@ -3059,6 +3063,7 @@ limits = [-60,-180,90,180]
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[800,400], Z_Buffer=0
+load_random_colors
 Erase,255
 !p.background = 255
 !P.position=0
@@ -3222,11 +3227,11 @@ skip_lai:
 
 sea_label = ['DJF','MAM','JJA','SON']
 
-load_colors
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[720,600], Z_Buffer=0
 ;Device, Set_Resolution=[720,500], Z_Buffer=0
+load_colors
 Erase,255
 !p.background = 255
 
@@ -3357,14 +3362,14 @@ for k = 0, N_levels -1 do begin
 	green(k+1) = g_in (k)
 	blue (k+1) = b_in (k)
 endfor
-
+thisDevice = !D.Name
+set_plot,'Z'
+Device, Set_Resolution=[800,500], Z_Buffer=0
 TVLCT,red,green,blue
 colors = indgen (N_levels) + 1
 
 limits = [-60,-180,90,180]
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[800,500], Z_Buffer=0
+
 Erase,255
 !p.background = 255
 
@@ -3482,7 +3487,7 @@ end
  pro irrig_method, ncat, tile_id
 
 ; Rerad 0.25-degree GRIPC and MIRCA data
-load_colors
+
 filename = '../irrig.dat'
 limits = [-60.,-180.,90.,-180.]
 if file_test ('limits.idl') then restore,'limits.idl'
@@ -3538,6 +3543,7 @@ position_col   = [0.20, 0.02, 0.80, 0.05]
 thisDevice = !D.Name
 set_plot,'Z'
 Device, Set_Resolution=[850,1100], Z_Buffer=0,SET_FONT='Helvetica Bold', /TT_FONT
+load_colors
 ;set_plot,'PS'
 !P.font=0
 ;Device, FILENAME= plotdir + 'IrrigMethod.ps',/color,/PORTRAIT,xsi=0.9*8.2, ysi=0.9*11.7, xoff=.7, yoff=.5, _extra=_extra,/INCHES
@@ -3576,7 +3582,7 @@ end
  pro plot_lai_minmax, ncat, tile_id
 
 ; Rerad 0.25-degree GRIPC and MIRCA data
-load_colors
+
 filename = '../irrig.dat'
 limits = [-60.,-180.,90.,-180.]
 if file_test ('limits.idl') then restore,'limits.idl'
@@ -3613,6 +3619,11 @@ endfor
 LAI_MN (where (LAI_MN eq 0.)) = !VALUES.F_NAN
 LAI_MX (where (LAI_MX eq 0.)) = !VALUES.F_NAN
 
+thisDevice = !D.Name
+set_plot,'Z'
+Device, Set_Resolution=[850,1100], Z_Buffer=0,SET_FONT='Helvetica Bold', /TT_FONT
+
+load_colors
 r_in  = [253,224,255,238,205,193,152,  0,124,  0,  0,  0,  0,  0,  0, 48,110, 85]
 g_in  = [253,238,255,238,205,255,251,255,252,255,238,205,139,128,100,128,139,107]
 b_in  = [253,224,  0,  0,  0,193,152,127,  0,  0,  0,  0,  0,  0,  0, 20, 61, 47]
@@ -3642,9 +3653,7 @@ position_row2 = [0.02, 0.10, 0.98, 0.45]
 
 position_col   = [0.20, 0.02, 0.80, 0.05] 
 
-thisDevice = !D.Name
-set_plot,'Z'
-Device, Set_Resolution=[850,1100], Z_Buffer=0,SET_FONT='Helvetica Bold', /TT_FONT
+
 Erase,255
 !p.background = 255 
 !P.position=0
@@ -3780,7 +3789,7 @@ end
 
 pro plot_crop_times, ncat, tile_id
   
-load_colors
+
 filename = '../irrig.dat'
 limits = [-60.,-180.,90.,-180.]
 if file_test ('limits.idl') then restore,'limits.idl'
@@ -3877,6 +3886,7 @@ thisDevice = !D.Name
 
 set_plot,'Z'
 Device, Set_Resolution=[850,1100], Z_Buffer=0,SET_FONT='Helvetica Bold', /TT_FONT
+load_colors
 ;set_plot,'PS'
 ;!P.font=0
 ;Device, FILENAME= plotdir + 'gia_irrig_params.ps',/color,/PORTRAIT,xsi=0.9*8.2, ysi=0.9*11.7, xoff=.7, yoff=.5, _extra=_extra,/INCHES
@@ -3942,7 +3952,7 @@ for n = 0, 25 do begin
 	endfor
       endif else begin
 	for i = 0l, n_elements (data_grid) -1l do begin
-	    if(data_grid(i) gt 0.)  then oplot,[lons(i), lons(i)], [lats(i), lats(i)],psym=8,color= colors2(value_locate (doy,data_grid(i)))	
+	    if((data_grid(i) gt 0.) and (data_grid(i) le 366.))  then oplot,[lons(i), lons(i)], [lats(i), lats(i)],psym=8,color= colors2(value_locate (doy,data_grid(i)))	
 	endfor
 
       endelse
@@ -4019,7 +4029,7 @@ for n = 0, 25 do begin
 	     endfor
          endif else begin
 	     for i = 0l, n_elements (data_grid) -1l do begin
-	         if(data_grid(i) gt 0.) then oplot,[lons(i), lons(i)], [lats(i), lats(i)],psym=8,color= colors2(value_locate (doy,data_grid(i)))	
+	         if((data_grid(i) gt 0.) and (data_grid(i) le 366.)) then oplot,[lons(i), lons(i)], [lats(i), lats(i)],psym=8,color= colors2(value_locate (doy,data_grid(i)))	
 	     endfor
          endelse
          

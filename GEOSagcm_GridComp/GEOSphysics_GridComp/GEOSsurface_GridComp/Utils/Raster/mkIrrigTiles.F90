@@ -5,20 +5,25 @@ PROGRAM mkIrrigTiles
 
   use MAPL
   use MAPL_ConstantsMod,               ONLY:   &
-       MAPL_RADIUS               
+       MAPL_RADIUS, MAPL_PI               
   use gFTL_StringVector  
   use pFIO
+  use rmTinyCatchParaMod,              ONLY: NC_VarID, RegridRaster
+  use CubedSphere_GridMod
+  use easeV2_conv
+  use MAPL_SortMod
   
   implicit none
+  include 'netcdf.inc'
   character*40                    :: BCSNAME, TILFILE, IMxJM
   character*1                     :: opt
-  integer                         :: n, iargc, NXT, ITILES, NTILES, RC
+  integer                         :: n, iargc, NXT, ITILES, NTILES, RC, NC_RASTER, NR_RASTER
   character*256                   :: arg
   real                            :: thresh
   integer, pointer, dimension (:) :: tile_id, irr_crp_tile, irr_pad
   character*200                   :: filename
-
-    
+  type(Netcdf4_FileFormatter)     :: InFmt
+  
   ! Read arguments
   
   nxt = 1
@@ -41,6 +46,10 @@ PROGRAM mkIrrigTiles
         BCSNAME = trim(arg)
      case ('r')
         IMxJM   = trim(arg)
+     case ('x')
+        read(arg,'(i6)') nc_raster
+     case ('y')
+        read(arg,'(i6)') nr_raster
      case ('p')
         read (arg,* ) RC
         thresh = RC / 100.
@@ -55,21 +64,23 @@ PROGRAM mkIrrigTiles
   end do
 
   call create_irrig_mask
+  call write_raster_file('irrigation'//trim(IMxJM)//'.dat' )
+  call write_tilfile    ('irrigation'//trim(IMxJM)//'.dat' )
   call write_clim_files ('green_clim'//trim(IMxJM)//'.data')
-  call write_clim_files ('lai_clim'//trim(IMxJM)//'.data')
-  call write_clim_files ('lnfm_clim'//trim(IMxJM)//'.data')
-  call write_clim_files ('ndvi_clim'//trim(IMxJM)//'.data')
-  call write_clim_files ('visdf'//trim(IMxJM)//'.dat')
-  call write_clim_files ('nirdf'//trim(IMxJM)//'.dat')
+  call write_clim_files ('lai_clim'//trim(IMxJM)//'.data'  )
+  call write_clim_files ('lnfm_clim'//trim(IMxJM)//'.data' )
+  call write_clim_files ('ndvi_clim'//trim(IMxJM)//'.data' )
+  call write_clim_files ('visdf'//trim(IMxJM)//'.dat'      )
+  call write_clim_files ('nirdf'//trim(IMxJM)//'.dat'      )
 
-  call write_nc4_files ('clsm/catch_params.nc4')
-  call write_nc4_files ('clsm/catchcn_params.nc4')
-  call write_nc4_files ('irrigation'//trim(IMxJM)//'.dat')
-  call write_nc4_files ('vegdyn'//trim(IMxJM)//'.dat')
+  call write_nc4_files   ('clsm/catch_params.nc4'  )
+  call write_nc4_files   ('clsm/catchcn_params.nc4')
+  call write_nc4_files   ('irrigation'//trim(IMxJM)//'.dat')
+  call write_nc4_files   ('vegdyn'//trim(IMxJM)//'.dat')
   call reset_irrig_fracs ('IRRIG/'//trim(BCSNAME)//'/irrigation'//trim(IMxJM)//'.dat')
 
   call write_tables
-  call write_tilfile ('irrigation'//trim(IMxJM)//'.dat')
+  
   
 contains
 
@@ -80,7 +91,6 @@ contains
     real, allocatable, dimension (:)    :: IRRIGFRAC, PADDYFRAC
     real,    allocatable, dimension (:) :: tile_lon, tile_lat
     real                                :: minlon,maxlon,minlat,maxlat
-    type(Netcdf4_FileFormatter)         :: InFmt
     integer                             :: tindex1,pfaf1, v
     
     filename = trim(BCSNAME)//'/clsm/catchment.def'
@@ -291,7 +301,6 @@ contains
     character(*), intent (in)        :: infile
     real, allocatable, dimension (:) :: PADDYFRAC, IRRIGFRAC
     real, allocatable, dimension (:) :: CROPIRRIGFRAC
-    type(Netcdf4_FileFormatter)      :: InFmt
     type(FileMetadata)               :: Cfg
     integer                          :: j,dim1
     type(Variable), pointer          :: myVariable
@@ -356,7 +365,7 @@ contains
 
     implicit none
     character(*), intent (in)        :: infile
-    type(Netcdf4_FileFormatter)      :: InFmt,OutFmt
+    type(Netcdf4_FileFormatter)      :: OutFmt
     type(FileMetadata)               :: InCfg,OutCfg
     integer                          :: dim1,dim2, ndims, i, j
     type(StringVariableMap), pointer :: variables
@@ -587,7 +596,6 @@ contains
     integer, dimension (:,:), allocatable :: iRtable, iWtable
     real,    dimension (:,:), allocatable :: rRtable, rWtable
     integer :: i, n, icol, rcol
-    type(Netcdf4_FileFormatter)           :: InFmt
     real,allocatable                      :: ITY(:), BF3(:)
 
     allocate (ITY (1: ITILES))
@@ -823,13 +831,12 @@ contains
     implicit none
 
     character(*), intent (in) :: infile
-    integer      :: NT, NC, NR, NT_NEW,NG, IDUM, i, N, icol, rcol, non_land
+    integer      :: NT, NPF, NC, NR, NT_NEW,NG, IDUM, i, N, icol, rcol, non_land
     character*20 :: cdum
     integer, dimension (:,:), allocatable :: iRtable, iWtable
     real,    dimension (:,:), allocatable :: rRtable, rWtable
     integer*8, allocatable, dimension (:) :: rSRTM, wSRTM
     real, allocatable, dimension (:) :: IRRIGFRAC, PADDYFRAC
-    type(Netcdf4_FileFormatter)      :: InFmt
     
     call InFmt%open(trim(BCSNAME)//'/'//trim(infile), pFIO_READ,rc=rc) ; VERIFY_(RC)
     allocate (IRRIGFRAC (1:NTILES))
@@ -840,11 +847,11 @@ contains
     
     open (10,file =  trim(BCSNAME)//'/'//trim(tilfile), form = 'formatted', action = 'read', status = 'old')
     open (11,file = 'IRRIG/'//trim(BCSNAME)//'/'//trim(tilfile), form = 'formatted', action = 'write', status = 'unknown')
-
-    read (10, *) NT, NC, NR
+    
+    read (10, *) NT, NPF, NC, NR
     NT_NEW   = NT + ITILES - NTILES
     non_land = NT - NTILES
-    write (11,'(3I10)')NT_NEW, NC, NR
+    write (11,'(4I10)')NT_NEW, NPF, NC, NR
     read (10, *) NG
     write(11, *) NG
     
@@ -926,17 +933,20 @@ contains
           if( irr_crp_tile(n) > 0) then
              ! either irrig crop or paddy thus non-irrig tile fraction and pfaf fraction
              if(irr_pad(n) <= 2) then
-                rWtable(n-1,4) = (1. - IRRIGFRAC(tile_id(n))- PADDYFRAC(tile_id(n))) *  rWtable(n-1,4)
-                rWtable(n-1,5) = (1. - IRRIGFRAC(tile_id(n))- PADDYFRAC(tile_id(n))) *  rWtable(n-1,5)
+                rWtable(n-1,1) = (1. - IRRIGFRAC(tile_id(n))- PADDYFRAC(tile_id(n))) *  rWtable(n-1,1) ! area
+                rWtable(n-1,4) = (1. - IRRIGFRAC(tile_id(n))- PADDYFRAC(tile_id(n))) *  rWtable(n-1,4) ! cell frac
+                rWtable(n-1,5) = (1. - IRRIGFRAC(tile_id(n))- PADDYFRAC(tile_id(n))) *  rWtable(n-1,5) ! pfaf_frac
              endif
              ! irrigated crop tile
              if(irr_pad(n) == 1) then
+                rWtable(n,1)   = IRRIGFRAC(tile_id(n)) * rWtable(n,1)
                 rWtable(n,4)   = IRRIGFRAC(tile_id(n)) * rWtable(n,4)
                 rWtable(n,5)   = IRRIGFRAC(tile_id(n)) * rWtable(n,5)               
              endif
 
              ! irrigated paddy tile
              if(irr_pad(n) >= 2) then
+                rWtable(n,1)   = PADDYFRAC(tile_id(n)) * rWtable(n,1)
                 rWtable(n,4)   = PADDYFRAC(tile_id(n)) * rWtable(n,4)
                 rWtable(n,5)   = PADDYFRAC(tile_id(n)) * rWtable(n,5)                  
              endif
@@ -963,5 +973,432 @@ contains
     close (11, status = 'keep')
     
   END SUBROUTINE write_tilfile
-  
+
+  ! ----------------------------------------------------------------------------------
+
+  SUBROUTINE write_raster_file (infile)
+
+    implicit none
+    character(*), intent (in) :: infile
+    REAL,          PARAMETER     :: UNDEF = -9999.
+    
+    ! Global Irrigated Area data (GIA)
+    ! --------------------------------
+    
+    integer,       parameter :: NX_GIA = 43200
+    integer,       parameter :: NY_GIA = 21600,  NY_GIAData = 18000  
+    character*300, parameter :: GIA_file = 'data/CATCH/IRRIGATION/global_irrigated_areas.nc4'
+
+    ! GRIPC data
+    ! ----------
+    
+    integer,       parameter :: NX_gripc = 86400
+    integer,       parameter :: NY_gripc = 43200,  NY_GripcData = 36000
+    character*300, parameter :: GRIPC_file = 'data/CATCH/IRRIGATION/irrigtype_salmon2013.flt'
+
+    integer, target, allocatable, dimension (:,:) :: gripc, gia, tid_old, tid_new
+    integer, pointer,dimension (:,:)              :: subset_tidold, subset_gripc, subset_tidnew
+    integer, allocatable, dimension (:,:)         :: data_in
+    real,    allocatable, dimension (:,:)         :: rdata_in
+    integer :: i,j,n,k, r, status, NCID
+    integer :: NT, NPF, NC, NR, NG, IM, JM, i_ease, j_ease
+    character*20 :: GRIDNAME
+    real*8        :: dxy, d2r, r2d, lats, lons
+    real*8,   allocatable :: xs(:,:), ys(:,:)
+    real          :: x,y, xout, yout
+    character*5   :: MGRID
+    integer       :: i1s, i2s, i1n, i2n, j1w, j2w, j1e, j2e, i1, i2, j1, j2, icol, rcol
+    real, allocatable, dimension(:)    :: irrtile_lat, irrtile_lon, tile_area
+    real, allocatable, dimension(:)    :: pix_cnt
+    integer, dimension (:,:), allocatable :: iRtable, iWtable
+    real,    dimension (:,:), allocatable :: rRtable, rWtable
+    integer*8, allocatable, dimension (:) :: rSRTM, wSRTM
+    real, allocatable, dimension (:) :: IRRIGFRAC, PADDYFRAC
+    
+    call InFmt%open(trim(BCSNAME)//'/'//trim(infile), pFIO_READ,rc=rc) ; VERIFY_(RC)
+    allocate (IRRIGFRAC (1:NTILES))
+    allocate (PADDYFRAC (1:NTILES))
+    call MAPL_VarRead (InFmt,'PADDYFRAC', PADDYFRAC, rc=rc) ; VERIFY_(RC)
+    call MAPL_VarRead (InFmt,'IRRIGFRAC', IRRIGFRAC, rc=rc) ; VERIFY_(RC)
+    call inFmt%close (rc=rc)
+    
+    allocate (gia     (1:nc_raster, nr_raster))
+    allocate (gripc   (1:nc_raster, nr_raster))
+
+    ! GIA irrigated pixel mask at 30 arcsec
+    ! -------------------------------------
+    
+    allocate(data_in(NX_GIA,NY_GIA)) 
+    data_in = UNDEF   
+    status = NF_OPEN (trim(GIA_file),NF_NOWRITE, ncid) ; VERIFY_(STATUS)    
+    
+    do j = NY_GIAData, 1, -1
+       status = NF_GET_VARA_INT(NCID,NC_VarID(NCID,'IrrigClass') ,(/1,j/),(/NX_GIA, 1/), data_in (:,j + 3600 )) ; VERIFY_(STATUS)           
+    end do
+      
+    status = NF_CLOSE(NCID) ; VERIFY_(STATUS)
+    ! we select only 1,2, & 3
+    where (data_in < 1)
+       data_in = undef
+    end where
+    where (data_in > 3)
+       data_in = undef
+    end where
+
+    gia = undef
+    
+    if (NC_RASTER /= NX_GIA) then
+       call RegridRaster (data_in, gia)
+    else
+       gia = data_in
+    endif
+    DEALLOCATE (data_in)
+    
+    ! GRIPC paddy and crop mask at 30 arcsec
+    ! --------------------------------------
+    
+    allocate( rdata_in(NX_gripc,NY_gripc)) 
+    rdata_in = UNDEF
+      
+    open ( 10, file = trim(GRIPC_file), form = 'unformatted', access='direct', recl=(NX_gripc))
+    
+    !- Read input file::
+    
+    do j = 1, NY_gripcdata
+       r = NY_gripc -j + 1
+       read(10,rec=j) rdata_in(:, r)
+       do i = 1, NX_gripc
+          ! 2 crop, 3 paddy
+          if( rdata_in(i, r) <= 1. ) rdata_in(i, r) = undef
+          if( rdata_in(i, r) == 4. ) rdata_in(i, r) = undef
+       end do
+    end do
+    close(10)
+
+    if (NC_RASTER /= NX_gripc) then
+       call RegridRaster (nint(rdata_in), gripc)
+    else
+       gripc = nint(rdata_in)
+    endif
+    DEALLOCATE (rdata_in)
+
+    where (gia == undef)
+       gripc = undef
+    endwhere
+
+    where ((gia > 0) .and. (gripc == undef))
+       gripc = 2
+    end where
+
+    ! tile_id rasters
+    ! ---------------
+
+    allocate (tid_old (1:nc_raster, nr_raster))
+    allocate (tid_new (1:nc_raster, nr_raster))
+    tid_new = 0
+        
+    open (10,file=trim(BCSNAME)//'/rst/'//tilfile(1:index(tilfile,'.')-1)//'.rst',status='old',action='read',  &
+         form='unformatted',convert='little_endian')
+    open (11,file='IRRIG/'//trim(BCSNAME)//'/rst/'//tilfile(1:index(tilfile,'.')-1)//'.rst',status='unknown',action='write',  &
+         form='unformatted',convert='little_endian')
+    
+    do j=1,nr_raster       
+       ! read a row       
+       read(10) tid_old (:,j)
+    end do
+
+    close (10, status = 'keep')    
+
+    ! create raster
+    ! -------------
+
+      open (10,file =  trim(BCSNAME)//'/'//trim(tilfile), form = 'formatted', action = 'read', status = 'old')
+    read (10, *) NT, NPF, NC, NR
+    read (10, *) NG
+    read (10, '(a)') GRIDNAME
+    read (10, *) IM
+    read (10, *) JM
+    
+    if(index(tilfile,"EASE")/=0) then
+       
+       open (12,file = 'IRRIG/'//trim(BCSNAME)//'/'//trim(adjustl(GRIDNAME))//'_'//trim(adjustl(GRIDNAME))//'-Irrigation.TIL', form = 'formatted', action = 'write', status = 'unknown')
+       write (12, *) ITILES, NPF, NC, NR
+       write (12, *) 2
+       write (12, '(a)') trim(GRIDNAME)
+       write (12, *) IM
+       write (12, *) JM
+       write (12, '(a)') trim(GRIDNAME)//'-Irr'
+       write (12, *) IM
+       write (12, *) JM
+
+       if (NG == 2) then
+          read (10, '(a)') GRIDNAME
+          read (10, *) K
+          read (10, *) K          
+       end if
+
+       icol = 5
+       rcol = 3
+       allocate (iRtable (1:NTILES, 1:icol))
+       allocate (iWtable (1:ITILES, 1:icol))
+       allocate (rRtable (1:NTILES, 1:rcol))
+       allocate (rWtable (1:ITILES, 1:rcol))
+       allocate (rSRTM   (1:NTILES))
+       allocate (wSRTM   (1:ITILES))
+       
+       do n = 1,  ntiles
+          read (10,'(i10,i9,2f10.4,2i5,f19.12,i10,i15,e13.4)') iRtable (n,1),iRtable (n,2),rRtable(n,1),rRtable(n,2),iRtable (n,3),iRtable (n,4),rRtable(n,3),iRtable (n,5),rSRTM(n)
+       end do
+       
+       do i = 1, icol
+          iWtable (:,i) = iRtable (tile_id,i) 
+       end do
+       do i = 1, rcol
+          rWtable (:,i) = rRtable (tile_id,i) 
+       end do
+       wSRTM = rSRTM(tile_id)
+       ! rWtable(n,3) - split cell fractions
+       do n = 1, ITILES
+          if( irr_crp_tile(n) > 0) then
+             ! either irrig crop or paddy thus non-irrig tile fraction 
+             if(irr_pad(n) <= 2) rWtable(n-1,3) = (1. - IRRIGFRAC(tile_id(n)) - PADDYFRAC(tile_id(n))) *  rWtable(n-1,3)
+            
+             ! irrigated crop tile
+             if(irr_pad(n) == 1) rWtable(n,3)   = IRRIGFRAC(tile_id(n)) * rWtable(n,3)
+
+             ! irrigated paddy tile
+             if(irr_pad(n) >= 2) rWtable(n,3)   = PADDYFRAC(tile_id(n)) * rWtable(n,3)
+          endif
+       end do
+       
+    endif
+    close (10, status = 'keep')
+
+    ! Allocate and define the Cell vertices
+    !--------------------------------------
+
+    if(index(tilfile,"EASE")/=0) then
+       
+       allocate(xs(IM+1,JM+1), ys(IM+1,JM+1),stat=STATUS)  
+       if(index(tilfile,"M09")/=0) MGRID = 'M09'
+       if(index(tilfile,"M36")/=0) MGRID = 'M36'
+       
+       do  j = 1, JM
+          do i = 1, IM
+             x = real(i-1)        -0.5
+              y = real(JM - j)+0.5
+              call easeV2_inverse(MGRID, x, y, yout, xout)
+              ys (i,j) = dble(yout)
+              xs (i,j) = dble(xout)
+           end do
+        end do
+        
+        do  j = JM + 1, JM + 1
+           do i = IM + 1, IM + 1
+              x = real(i-1)         -0.5
+              y =  -0.5
+              call easeV2_inverse(MGRID, x, y, yout, xout)
+              ys (i,j) = dble(yout)
+              xs (i,j) = dble(xout)        
+           end do
+        end do
+
+        where (ys > 90.)
+           ys = 90.D0
+        endwhere
+        where (ys < -90.)
+           ys = -90.D0
+        endwhere
+        where (xs > 180.)
+           xs = 180.D0
+        endwhere
+        where (xs < -180.)
+           xs = -180.D0
+        endwhere
+     else
+        allocate(xs(IM+1,(IM+1)*6), ys(IM+1,(IM+1)*6),stat=STATUS)  
+        call Get_CubedSphere_Grid(IM+1, (IM+1)*6, xs, ys, 0, .true.)
+     endif
+
+     dxy = 360.D0/dble(nc_raster)
+
+     ! populate new tid raster
+ 
+     if(index(tilfile,"EASE")/=0) then     
+        do j=2,JM-1
+           do i = 1,IM
+
+              i1s = floor   ((xs (i,j) + 180.)/dxy) + 1
+              i2s = ceiling ((xs (i+1,j) + 180.)/dxy) + 1
+              i1n = floor   ((xs (i,j+1) + 180.)/dxy) + 1
+              i2n = ceiling ((xs (i+1,j+1) + 180.)/dxy) + 1
+              j1w = floor   ((ys (i,j) + 90.)/dxy) + 1  
+              j2w = ceiling ((ys (i,j+1) + 90.)/dxy) + 1 
+              j1e = floor   ((ys (i+1,j) + 90.)/dxy) + 1 
+              j2e = ceiling ((ys (i+1,j+1) + 90.)/dxy) + 1
+              
+              i1 = max(1, minval ((/i1s,i1n/)))
+              i2 = min(nc_raster, maxval ((/i2s,i2n/)))
+              j1 = max(1, minval ((/j1w,j1e/)))
+              j2 = min(nr_raster,maxval ((/j2w,j2e/)))
+              if (i2 > i1) then
+                 if (associated (subset_tidold)) NULLIFY (subset_tidold)
+                 if (associated (subset_tidnew)) NULLIFY (subset_tidnew)
+                 if (associated (subset_gripc))  NULLIFY (subset_gripc )             
+                 subset_tidold => tid_old (i1:i2,j1:j2)
+                 subset_tidnew => tid_new (i1:i2,j1:j2)
+                 subset_gripc  => gripc   (i1:i2,j1:j2)
+                 
+                 ! update tile id raster
+                 call update_raster (subset_tidold, subset_gripc, subset_tidnew)
+              endif
+           end do
+        end do
+
+     else
+        ! cubed-sphere
+        do k = 1,6
+           do j=1,IM
+              do i = 1,IM
+                 
+                 i1s = floor   ((xs (i,j + (k-1)*IM) + 180.)/dxy) + 1
+                 i2s = ceiling ((xs (i+1,j + (k-1)*IM) + 180.)/dxy) + 1
+                 i1n = floor   ((xs (i,j+1 + (k-1)*IM) + 180.)/dxy) + 1
+                 i2n = ceiling ((xs (i+1,j + 1 + (k-1)*IM) + 180.)/dxy) + 1
+                 j1w = floor   ((ys (i,j+ (k-1)*IM) + 90.)/dxy) + 1  
+                 j2w = ceiling ((ys (i,j+1 + (k-1)*IM) + 90.)/dxy) + 1 
+                 j1e = floor   ((ys (i+1,j + (k-1)*IM) + 90.)/dxy) + 1 
+                 j2e = ceiling ((ys (i+1,j + 1 + (k-1)*IM) + 90.)/dxy) + 1
+                 
+                 i1 = minval ((/i1s,i1n/))
+                 i2 = maxval ((/i2s,i2n/))
+                 j1 = minval ((/j1w,j1e/))
+                 j2 = maxval ((/j2w,j2e/))
+                 if (associated (subset_tidold)) NULLIFY (subset_tidold)
+                 if (associated (subset_tidnew)) NULLIFY (subset_tidnew)
+                 if (associated (subset_gripc))  NULLIFY (subset_gripc )
+                 subset_tidold => tid_old (i1:i2,j1:j2)
+                 subset_tidnew => tid_new (i1:i2,j1:j2)
+                 subset_gripc  => gripc   (i1:i2,j1:j2)
+
+                 ! update tile id raster
+                 call update_raster (subset_tidold, subset_gripc, subset_tidnew)
+
+              end do
+           end do
+        end do
+     endif
+
+     ! write raster file
+     print *, 'Writing irrigation raster ..'
+     do j=1,nr_raster       
+        ! read a row       
+        write (11) tid_new (:,j)
+     end do
+    
+     close (11, status = 'keep')    
+     
+     if(index(tilfile,"EASE")/=0) then
+        
+        d2r    = (dble(MAPL_PI)/180.D0)
+        ! write new til file only for EASE grids
+        allocate (tile_area   (1: ITILES))
+        allocate (irrtile_lat (1: ITILES))
+        allocate (irrtile_lon (1: ITILES))
+        allocate (pix_cnt     (1: ITILES))
+
+        pix_cnt     = 0.
+        tile_area   = 0.
+        irrtile_lat = 0.
+        irrtile_lon = 0.
+        
+        do j=1,nr_raster
+           lats = -90.D0 + dxy/2.D0 + (j-1)*dxy
+           do i = 1, nc_raster
+              if((tid_new(i,j) >= 1).and.(tid_new(i,j) <= ITILES)) then
+                 lons = -180.D0 + dxy/2.D0 + (i-1)*dxy
+                 irrtile_lat(tid_new(i,j)) = irrtile_lat(tid_new(i,j)) + real(lats)
+                 irrtile_lon(tid_new(i,j)) = irrtile_lon(tid_new(i,j)) + real(lons)
+                 tile_area  (tid_new(i,j)) = tile_area  (tid_new(i,j)) + &
+                      real((sin(d2r*(lats+0.5*dxy)) - sin(d2r*(lats-0.5*dxy)))*(dxy*d2r))
+                 pix_cnt (tid_new(i,j)) = pix_cnt (tid_new(i,j)) + 1.
+              endif
+           end do
+        end do
+        where (pix_cnt > 0.)
+           irrtile_lat = irrtile_lat / pix_cnt
+           irrtile_lon = irrtile_lon / pix_cnt
+        end where
+
+        do n = 1, ITILES
+           if(tile_area(n) > 0) then
+              write (12,'(I10,3E20.12,9(2I10,E20.12,I10))') 100,tile_area(n),irrtile_lon(n),irrtile_lat(n),iWtable (n,3),iWtable (n,4),rWtable(n,3),1,&
+                   iWtable (n,2),1,1.,iWtable (n,2)
+           else
+              write (12,'(I10,3E20.12,9(2I10,E20.12,I10))') 100,tile_area(n),irrtile_lon(n-1),irrtile_lat(n-1),iWtable (n,3),iWtable (n,4),rWtable(n,3),1,&
+                   iWtable (n,2),1,1.,iWtable (n,2)
+           endif
+        end do
+        close (12, status = 'keep')
+     endif
+         
+  END SUBROUTINE write_raster_file
+
+  ! --------------------------------------------------------------------
+
+  SUBROUTINE update_raster (subset_tidold, subset_gripc, subset_tidnew)
+
+    implicit none
+    integer, dimension (:,:), intent (in)   :: subset_tidold, subset_gripc
+    integer, dimension (:,:), intent (inout):: subset_tidnew
+    integer  :: tid_land(1), tid_crop(1), tid_pad(1),n, NPLUS, NPADDY, NCROP
+    integer, allocatable, dimension (:) :: loc_int
+    logical, allocatable, dimension (:) :: unq_mask
+
+    NPLUS = count(subset_tidold >= 1 .and. subset_tidold <= NTILES)
+    
+    if (NPLUS > 0) then
+       NPADDY = count(subset_gripc == 3)
+       NCROP  = count(subset_gripc == 2)
+
+       allocate (loc_int (1:NPLUS))
+       allocate (unq_mask(1:NPLUS))
+       loc_int = pack(subset_tidold,mask = (subset_tidold >= 1 .and. subset_tidold <= NTILES))
+       call MAPL_Sort (loc_int)
+       unq_mask = .true.
+       do n = 2,NPLUS 
+          unq_mask(n) = .not.(loc_int(n) == loc_int(n-1))
+       end do
+       
+       do n = 1,NPLUS
+          if( unq_mask(n)) then
+             tid_land = findloc (tile_id,loc_int(n),mask = (irr_pad == 0))
+             if(tid_land(1) > 0) then
+                where (subset_tidold == loc_int(n) .and. subset_gripc < 2)
+                   subset_tidnew = tid_land(1)
+                endwhere
+             endif
+             if(NPADDY > 0) then
+                tid_pad = findloc (tile_id,loc_int(n),mask = (irr_pad >= 2))
+                if(tid_pad(1)  > 0) then
+                    where (subset_tidold == loc_int(n) .and. subset_gripc == 3)
+                      subset_tidnew = tid_pad(1)                      
+                   endwhere
+                endif
+             endif
+
+             if(NCROP > 0) then
+                tid_crop= findloc (tile_id,loc_int(n),mask = (irr_pad == 1))
+                if(tid_crop(1)  > 0) then
+                    where (subset_tidold == loc_int(n) .and. subset_gripc == 2)
+                      subset_tidnew = tid_crop(1)
+                   endwhere
+                endif
+             endif            
+          endif
+       end do
+       DEALLOCATE (loc_int, unq_mask)
+    endif
+  END SUBROUTINE update_raster
+ 
 END PROGRAM mkIrrigTiles

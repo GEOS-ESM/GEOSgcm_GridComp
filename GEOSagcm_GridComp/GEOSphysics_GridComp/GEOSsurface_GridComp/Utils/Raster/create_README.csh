@@ -1595,6 +1595,9 @@ mkdir -p clsm/plots
 
 cd clsm/plots/
 
+module purge
+module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
+source ../../bin/g5_modules
 module load idl/8.5
 
 idl  <<EOB
@@ -1610,6 +1613,6 @@ cd $workdir
 
 /bin/rm clsm/plots/clsm_plots.pro
 
-module unload tool/idl-8.5
+module purge
 
 

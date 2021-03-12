@@ -402,6 +402,35 @@ endif
 
 set OUTDIR = `date +'%Y%m%d%H%M%S'`
 
+# -------------------------
+# Get SPONSOR GROUP ID
+# -------------------------
+
+set group = ""
+set sponsorinfo = `getsponsor`
+
+while ("$group" == "")
+   @ n = 1
+   while ($n < $#sponsorinfo)
+      if ($sponsorinfo[$n] =~ g[0..9]*) then
+         set group = $sponsorinfo[$n]
+         #--break  # uncomment this line to make 1st entry the default
+      endif
+      @ n++
+   end
+
+   getsponsor
+   if ("$group" != "") then
+      echo -n "select group: [$group] "
+   else
+      echo -n "select group:  "
+   endif
+   
+   set reponse = $<
+   if ("$reponse" != "") set group = $reponse
+   
+end
+
 #######################################################################
 #                        LatLon Case
 #######################################################################
@@ -430,7 +459,7 @@ cat << _EOF_ > $BCJOB
 
 #SBATCH --output=$pwd/logs/$BCNAME.log
 #SBATCH --error=$pwd/logs/$BCNAME.err
-#SBATCH --account=g0620
+#SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
 #SBATCH --job-name=$BCNAME.j
@@ -596,7 +625,7 @@ cat << _EOF_ > $BCJOB
 
 #SBATCH --output=$pwd/logs/$BCNAME.log
 #SBATCH --error=$pwd/logs/$BCNAME.err
-#SBATCH --account=g0620
+#SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
 #SBATCH --job-name=$BCNAME.j
@@ -782,7 +811,7 @@ cat << _EOF_ > $BCJOB
 
 #SBATCH --output=$pwd/logs/$BCNAME.log
 #SBATCH --error=$pwd/logs/$BCNAME.err
-#SBATCH --account=g0620
+#SBATCH --account=$group
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=28
 #SBATCH --job-name=$BCNAME.j
@@ -828,7 +857,7 @@ endif
 
 /bin/mv clsm  clsm.${IM}x${JM}
 /bin/cp til/SMAP_${EVERSION}_${MGRID}_${RS}.til clsm.${IM}x${JM}
-/bin/cp til//${THISGRID}_${THISGRID}-Pfafstetter.til clsm.${IM}x${JM}
+/bin/cp til//${THISGRID}_${THISGRID}-Pfafstetter.TIL clsm.${IM}x${JM}
 
 cd clsm.${IM}x${JM}
    /bin/mv irrig.dat irrigation_${RS}_DE.dat
@@ -892,9 +921,9 @@ cd ../../
 /bin/mv    $BCJOB                $BCNAME
 /bin/rm -r $OUTDIR
 
-#mkdir -p IRRIG/$BCNAME/clsm
-#bin/mkIrrigTiles.x -b $BCNAME -t SMAP_${EVERSION}_${MGRID}_${RS}.til -r _${RS}_DE -p $IRRIGTHRES
-#/bin/cp $BCNAME/${THISGRID}_${THISGRID}-Pfafstetter.til IRRIG/$BCNAME/.
+#mkdir -p IRRIG/$BCNAME/clsm IRRIG/$BCNAME/rst
+#bin/mkIrrigTiles.x -x 43200 -y 21600 -b $BCNAME -t SMAP_${EVERSION}_${MGRID}_${RS}.til -r _${RS}_DE -p $IRRIGTHRES
+#/bin/cp $BCNAME/${THISGRID}_${THISGRID}-Pfafstetter.TIL IRRIG/$BCNAME/.
 _EOF_
 
 
@@ -910,19 +939,19 @@ end # End Ocean Resolution Loop
 
 #######################################################################
 
-echo " "
-echo "Do you want to submit ${C2}MAKE_BCS${CR} jobs to run in the background? (Y/N)"
-echo "-------------------------------------------------------------------"
-echo " "
-set dummy = `echo $<`
-set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
-if(.$dummy == .Y | .$dummy == YES ) then
-    foreach job ($make_bcs_jobs)
-      nohup ./$job &
-    end
-else
-    foreach job ($make_bcs_jobs)
-      sbatch $job 
-    end
-endif
+#echo " "
+#echo "Do you want to submit ${C2}MAKE_BCS${CR} jobs to run in the background? (Y/N)"
+#echo "-------------------------------------------------------------------"
+#echo " "
+#set dummy = `echo $<`
+#set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
+#if(.$dummy == .Y | .$dummy == YES ) then
+#    foreach job ($make_bcs_jobs)
+#      nohup ./$job &
+#    end
+#else
+foreach job ($make_bcs_jobs)
+    sbatch $job 
+end
+#endif
 
