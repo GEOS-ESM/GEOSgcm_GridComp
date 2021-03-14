@@ -9227,8 +9227,8 @@ contains
         ! Ice
          FQAi =  MIN(1.0,MAX(QICN/MAX(RAD_QI,1.E-8),0.0))
      ! Cloud liquid & Ice tendencies (these exports are confusing, for now keep them zeros)
-         REV_LS_X = REV_LS_X + REV_MC_X
-         RSU_LS_X = RSU_LS_X + RSU_MC_X
+         REV_LS_X = REV_MC_X
+         RSU_LS_X = RSU_MC_X
      ! Convert precip diagnostics from mm/day to kg m-2 s-1
          PRCP_RAIN    = PRCP_RAIN    / 86400.
          PRCP_SNOW    = PRCP_SNOW    / 86400.
