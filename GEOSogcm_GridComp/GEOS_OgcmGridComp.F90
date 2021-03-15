@@ -230,7 +230,7 @@ contains
 ! ----------------------------------------------------------------
 
     if (DO_OBIO/=0) then
-       OBIO = MAPL_AddChild(GC, NAME='OBIOtest', SS=ObioSetServices, RC=STATUS)
+       OBIO = MAPL_AddChild(GC, NAME='OBIO_OGCM', SS=ObioSetServices, RC=STATUS)
        VERIFY_(STATUS)
        ORAD = MAPL_AddChild(GC, NAME='ORAD', SS=OradBioSetServices, RC=STATUS)
        VERIFY_(STATUS)

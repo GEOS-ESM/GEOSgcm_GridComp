@@ -1264,6 +1264,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(EXPORT,VNT   , 'VENT'    ,    RC=STATUS)
    VERIFY_(STATUS)
 
+!  Retrieve pointers to exports from all children except OBIO
    do I = 1, size(GCS)
       if (trim(GCnames(I)) .ne. 'OBIO') then
 
