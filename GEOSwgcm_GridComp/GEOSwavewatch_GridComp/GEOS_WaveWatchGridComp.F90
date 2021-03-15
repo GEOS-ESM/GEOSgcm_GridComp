@@ -21,7 +21,7 @@ module GEOS_WaveWatchGridCompMod
     use NUOPC_Model, only: label_Advance, label_DataInitialize
 
 !   WW3 modules
-    use WMESMFMD, only : WW3_SetServices => SetServices
+    use WMMAPLMD, only : WW3_SetServices => SetServices
 
     use, intrinsic :: ISO_FORTRAN_ENV
 
