@@ -12,9 +12,7 @@ module GEOS_OceanbiogeochemGridCompMod
 ! !USES:
   use ESMF
   use MAPL
-#ifdef USE_ODAS
-      use obio_iodas_iau_mod
-#endif
+
   implicit none
   private
 
@@ -441,36 +439,6 @@ module GEOS_OceanbiogeochemGridCompMod
     RESTART                 = MAPL_RestartSkip,               &
     RC=STATUS )
     VERIFY_(STATUS)
-
-#ifdef USE_ODAS
-    call MAPL_AddInternalSpec(GC,                             &
-    SHORT_NAME = 'CHLOROPHYLL',                               &
-    LONG_NAME  = 'chlorophyll_concentration',                 &
-    UNITS      = 'mg m-3',                                    &
-    DIMS       = MAPL_DimsHorzVert,                           &
-    VLOCATION  = MAPL_VLocationCenter,                        &
-    DEFAULT    = 0.2,                                         &
-    FRIENDLYTO = 'OANA',                                      &
-    RESTART    = MAPL_RestartSkip,                            & 
-    __RC__  )
-
-    call MAPL_AddExportSpec(GC,                               &
-    SHORT_NAME = 'OCEANCOLOR',                                &
-    LONG_NAME  = 'surface_chlorophyll_concentration',         &
-    UNITS      = 'mg m-3',                                    &
-    DIMS       = MAPL_DimsHorzOnly,                           &
-    VLOCATION  = MAPL_VLocationNone,                          &
-    __RC__  )
-
-    call MAPL_AddImportSpec(GC,                               &
-    SHORT_NAME = 'CHLOROPHYLLinc',                            &
-    LONG_NAME  = 'chlorophyll_concentration_increment',       &
-    UNITS      = 'mg m-3',                                    &
-    DIMS       = MAPL_DimsHorzVert,                           &
-    VLOCATION  = MAPL_VLocationCenter,                        &
-    RESTART    = MAPL_RestartSkip,                            &
-    __RC__  )
-#endif
 
 ! !INTERNAL STATE:
 
@@ -907,9 +875,7 @@ add2export=.true., &
                      RingInterval = RingInterval,  &
                      Sticky       = .FALSE.,       &
                      RC=STATUS  )
-#ifdef USE_ODAS
-    call set_chlorophyll(mapl);
-#endif
+                     
 ! Stop Total timer
 !-----------------
 
@@ -1458,11 +1424,6 @@ BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
      enddo
     enddo
 
-#ifdef USE_ODAS
-    call apply_iau(import, mapl, mask = merge(tsource = 1.0, fsource = 0.0, mask = (dh /= mapl_undef)));
-    call set_chlorophyll(mapl);
-#endif
-
     if ( associated(PCO2) ) &
       where ( DH(:,:,1) > 1.0E10 ) PCO2 = MAPL_UNDEF
     if ( associated(FCO2) ) &
@@ -1489,25 +1450,5 @@ BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
   end subroutine RUN
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-#ifdef USE_ODAS
-    subroutine set_chlorophyll(mapl)
-
-      type(mapl_metacomp), intent(inout) :: mapl; 
-
-      character(len = 32) :: names(1:4) = ["DIATOM", "CHLORO", "CYANO", "COCCO"];
-      real, pointer :: v(:, :, :) => null(), w(:, :) => null();
-      integer :: i;
-
-        v => mapl_get3dptr(name = "CHLOROPHYLL", mapl = mapl); 
-        w => mapl_get2dptr(name = "OCEANCOLOR", mapl = mapl); 
-        v = 0.0;
-
-        do i = 1, size(array = names); v = v + mapl_get3dptr(name = names(i), mapl = mapl);  
-        enddo;
-        w = v(:, :, 1); 
-
-    end subroutine;    
-#endif
 
 end module GEOS_OceanbiogeochemGridCompMod
