@@ -482,6 +482,7 @@ module GEOS_OceanbiogeochemGridCompMod
     VLOCATION  = MAPL_VLocationCenter,                        &
     DEFAULT    = 5.0,                                         &
     FRIENDLYTO = 'OCEAN:OANA',                                     &
+add2export=.true., &
     RC=STATUS  )
     VERIFY_(STATUS)
 
