@@ -84,6 +84,8 @@ module catch_constants
   REAL,    PARAMETER, PUBLIC :: C_CANOP  = 200.   ! J/K - heat capacity associated w/ tc
   REAL,    PARAMETER, PUBLIC :: SATCAPFR = 0.2    ! SATCAP = SATCAPFR * LAI
 
+  ! peatCLSM implementation 3-16-2021
 
+  REAL, PARAMETER, PUBLIC :: POROS_HighLat
 
 end module catch_constants
