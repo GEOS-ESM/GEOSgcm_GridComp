@@ -86,6 +86,6 @@ module catch_constants
 
   ! peatCLSM implementation 3-16-2021
 
-  REAL, PARAMETER, PUBLIC :: POROS_HighLat
+  REAL, PARAMETER, PUBLIC :: POROS_HighLat = 0.9
 
 end module catch_constants
