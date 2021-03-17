@@ -620,7 +620,9 @@ CONTAINS
           RZEXC(N)=0.
           SRFEXC(N)=0.
         ENDIF
-        ENDDO
+     ENDDO
+     
+     peat_firsttime = .false.
 
 !**** ---------------------------------------------------
 !**** DETERMINE INITIAL VALUE OF RZEQ:
