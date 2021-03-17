@@ -146,9 +146,9 @@ contains
 ! Set the Initialize, Run entry point
 ! -----------------------------------
 
-        call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_INITIALIZE, Initialize, __RC__)
-        call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_RUN,        Run,        __RC__)
-        call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_FINALIZE,   Finalize,   __RC__)
+!ALT        call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_INITIALIZE, Initialize, __RC__)
+!ALT        call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_RUN,        Run,        __RC__)
+!ALT        call MAPL_GridCompSetEntryPoint(GC, ESMF_METHOD_FINALIZE,   Finalize,   __RC__)
 
 
 ! Store private internal state in GC
@@ -277,6 +277,7 @@ contains
 - regrid imports
 #endif
 
+#if 0
 !BOP
 
 ! ! IROUTINE: INITIALIZE -- Initialize method for the WM component
@@ -415,6 +416,7 @@ contains
 ! time stamping
       call ESMF_ClockGet(clock, currTime=currTime, rc=status)
       VERIFY_(STATUS)
+#if 0
       call ESMF_StateGet(GIM(WW3GC), "uutrue", field, rc=status)
       VERIFY_(STATUS)
       call NUOPC_SetTimestamp(field, currTime, rc=status)
@@ -430,6 +432,7 @@ contains
 !      print *,'calling DataInitialize'
       call ESMF_MethodExecute (GCS(WW3GC), label=label_DataInitialize, RC=STATUS)
       VERIFY_(STATUS)
+#endif
 ! Get the grid
 ! ------------
 ! this might be involved. If the call below does not work, we need to get a
@@ -814,7 +817,7 @@ contains
 
    end subroutine Finalize
 
-
+#endif
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

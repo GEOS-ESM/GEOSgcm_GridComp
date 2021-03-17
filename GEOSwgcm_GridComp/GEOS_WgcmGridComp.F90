@@ -887,6 +887,7 @@ contains
 
       ! this section needs to be executed only for WW3:
       ! propagate the WW3 grid up to the WGCM.
+#if 0
       if (self%wave_model == wave_model_ww3) then 
           call MAPL_Get(MAPL, GCS=GCS, GIM=GIM, GEX=GEX, __RC__)
           call MAPL_Set(MAPL, ChildInit=.false., __RC__)
@@ -898,7 +899,7 @@ contains
           call ESMF_GridCompGet(GCS(WM), grid=GRID, __RC__)
           call ESMF_GridCompSet(GC, grid=GRID, __RC__)
       end if
-
+#endif
 
 ! Get the grid
 ! ------------
@@ -1036,11 +1037,11 @@ contains
       call MAPL_GetPointer(IMPORT, FRACI, 'FRACI',    __RC__)
 #endif
 
-      if (MAPL_AM_I_Root()) write (OUTPUT_UNIT,*) 'DEBUG::WGCM  Run...'
+!      if (MAPL_AM_I_Root()) write (OUTPUT_UNIT,*) 'DEBUG::WGCM  Run...'
 
       call MAPL_GenericRunChildren (GC, IMPORT, EXPORT, CLOCK, RC=STATUS )
 
-      if (MAPL_AM_I_Root()) write (OUTPUT_UNIT,*) 'DEBUG::WGCM  ...done.'
+!      if (MAPL_AM_I_Root()) write (OUTPUT_UNIT,*) 'DEBUG::WGCM  ...done.'
 
 ! Stop the timers
 ! ---------------

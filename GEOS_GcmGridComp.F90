@@ -2681,7 +2681,6 @@ contains
         ! Also, we could have specified srcMaskValues, and dstMaskValues,
         ! we might need to attach a mask to the grid
 
-        print *, '************** !!!! created routeHandle A2W !!!'
      end if
 
      call ESMF_FieldRegrid(srcField=srcField, dstField=dstField, &
@@ -2725,7 +2724,6 @@ contains
         ! Also, we could have specified srcMaskValues, and dstMaskValues,
         ! we might need to attach a mask to the grid
 
-        print *, '************** !!!! created routeHandle W2A !!!'
      end if
 
      call ESMF_FieldRegrid(srcField=srcField, dstField=dstField, &
@@ -2769,7 +2767,6 @@ contains
         ! Also, we could have specified srcMaskValues, and dstMaskValues,
         ! we might need to attach a mask to the grid
 
-        print *, '************** !!!! created routeHandle O2W !!!'
      end if
 
      call ESMF_FieldRegrid(srcField=srcField, dstField=dstField, &
@@ -2815,7 +2812,6 @@ contains
         ! Also, we could have specified srcMaskValues, and dstMaskValues,
         ! we might need to attach a mask to the grid
 
-        print *, '************** !!!! created routeHandle W2O !!!'
      end if
 
      call ESMF_FieldRegrid(srcField=srcField, dstField=dstField, &
