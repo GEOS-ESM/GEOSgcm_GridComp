@@ -383,7 +383,7 @@ contains
         ALLOCATE (FLOOD    (1:NTILES))
         ALLOCATE (SPRINKLER(1:NTILES))
         ALLOCATE (DRIP     (1:NTILES))
-        CALL ReadProcess_IMethod (NTILES, sprinkler, drip, flood)
+        CALL ReadProcess_IMethod (NTILES, sprinkler, drip, flood)        
         
         ! MERGING PROCEDURE
         ! =================
@@ -997,6 +997,8 @@ contains
 
         close (10, status = 'keep')
         
+        CALL update_IMethod_bycounty (NTILES, f_sprink, f_drip, f_flood)
+
         status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'SPRINKLERFR') ,(/1/),(/NTILES/), f_sprink) ; VERIFY_(STATUS)
         status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'DRIPFR'     ) ,(/1/),(/NTILES/), f_drip  ) ; VERIFY_(STATUS)
         status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'FLOODFR'    ) ,(/1/),(/NTILES/), f_flood ) ; VERIFY_(STATUS)
@@ -1005,6 +1007,76 @@ contains
 
       END SUBROUTINE ReadProcess_IMethod
  
+      !----------------------------------------------------------------------------------------
+
+      SUBROUTINE update_IMethod_bycounty (NTILES, f_sprink, f_drip, f_flood)
+
+        implicit none
+        integer, INTENT (IN)                :: NTILES
+        real, dimension (:), INTENT(INOUT)  :: f_sprink, f_drip, f_flood
+        integer,       parameter            :: NX_cb = 43200, NY_cb = 21600,  NY_cbData = 10800
+        integer,       parameter            :: cb_states = 56, cb_county = 900, cb_countyUS = 3220
+        integer                             :: i,j, n, status, ncid, I0(1), j0(1),SS, CCC
+        real,    dimension(:,:),allocatable :: SFR, DFR, FFR
+        integer, dimension  (:),allocatable :: GEOID
+        integer, dimension(:,:),allocatable :: POLYID
+        real (kind =8)                      :: XG(NX_cb),YG(NY_cb), y0, x0, dxy
+        integer                             :: ii(NX_cb),jj(NY_cb)
+        
+        allocate (SFR (1:cb_county,1:cb_states))
+        allocate (DFR (1:cb_county,1:cb_states))
+        allocate (FFR (1:cb_county,1:cb_states))
+        allocate (GEOID   (1:cb_countyUS))
+        allocate (POLYID(1:NX_cb,1:NY_cb))
+
+        POLYID = -9999
+
+        status = NF_OPEN ('data/CATCH/IRRIGATION/cb_2015_us_country_30arcsec.nc4',NF_NOWRITE, ncid) ; VERIFY_(STATUS)    
+        do j = 1, NY_cbData
+           status = NF_GET_VARA_INT(NCID,VarID(NCID,'POLYID') ,(/1,j/),(/NX_cb, 1/), POLYID (:,NY_cb - j + 1)) ; VERIFY_(STATUS) ! reading north to south
+        end do
+        do j = 1, cb_states
+           status = NF_GET_VARA_REAL(NCID,VarID(NCID,'SPRINKLERFR') ,(/1,j/),(/cb_county, 1/), SFR (:,j)) ; VERIFY_(STATUS)
+           status = NF_GET_VARA_REAL(NCID,VarID(NCID,'DRIPFR'     ) ,(/1,j/),(/cb_county, 1/), DFR (:,j)) ; VERIFY_(STATUS)
+           status = NF_GET_VARA_REAL(NCID,VarID(NCID,'FLOODFR'    ) ,(/1,j/),(/cb_county, 1/), FFR (:,j)) ; VERIFY_(STATUS) 
+        end do
+        status = NF_GET_VARA_INT(NCID,VarID(NCID,'GEOID'    ) ,(/1/),(/cb_countyUS/), GEOID) ; VERIFY_(STATUS) 
+        status = NF_CLOSE(NCID) ; VERIFY_(STATUS)
+
+        dxy = 360.d0/NX_cb
+        do i = 1, NX_cb 
+           xg(i) = (i-1)*dxy -180.d0 + dxy/2.d0
+        end do
+        do i = 1, NY_cb
+           yg(i) = (i-1)*dxy -90.d0 + dxy/2.d0
+        end do
+
+        do n = 1, NTILES
+           
+           x0 = dble (tile_lon(n))
+           y0 = dble (tile_lat(n))
+           II = 0
+           JJ = 0
+           WHERE ((xg >= x0).and.(xg < x0 + dxy)) II = 1
+           WHERE ((yg >= y0).and.(yg < y0 + dxy)) JJ = 1
+           
+           I0 = FINDLOC(II,1)
+           J0 = FINDLOC(JJ,1)
+
+           if((POLYID(I0(1), J0(1)) >= 1).AND.(POLYID(I0(1), J0(1)) <= cb_countyUS)) then
+              SS = GEOID(POLYID(I0(1),J0(1))) / 1000
+              CCC= GEOID(POLYID(I0(1),J0(1))) - SS*1000
+              f_sprink (n) = SFR (CCC,SS)
+              f_drip   (n) = DFR (CCC,SS)
+              f_flood  (n) = FFR (CCC,SS)
+           endif
+           
+        END DO
+        
+        deallocate (SFR, DFR, FFR, GEOID, POLYID)
+        
+      END SUBROUTINE update_IMethod_bycounty
+      
       !----------------------------------------------------------------------------------------
 
       SUBROUTINE ReadProcess_MIRCA (NC, NR, NTILES, tile_id, MIFRAC, MRFRAC)
