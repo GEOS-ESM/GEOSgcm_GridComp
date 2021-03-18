@@ -13,7 +13,10 @@ MODULE ConvPar_GF_GEOS5
 USE module_gate
 USE MAPL
 !
-USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
+USE Henrys_law_ConstantsMod,      ONLY : get_HenrysLawCts
+USE geoschemchem_moist_interface, ONLY : compute_ki_gcc_aerosol, compute_ki_gcc_gas, &
+                                         GCCfsol, GCCmax, GCCparams, is_gcc_species, &
+                                         get_gcc_diagID
 !.. USE GTMP_2_GFCONVPAR, only : GTMP_2_GFCONVPAR_interface
 
  IMPLICIT NONE
@@ -21,8 +24,7 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
  PUBLIC  GF_GEOS5_INTERFACE, maxiens, icumulus_gf, closure_choice, deep, shal, mid &
         ,DEBUG_GF,USE_SCALE_DEP,DICYCLE,TAU_DEEP,TAU_MID,Hcts &
         ,USE_TRACER_TRANSP, USE_TRACER_SCAVEN&
-        ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1,KcScals &
-        ,GCmax, GCfsol, GCspecies
+        ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
 
  !- for internal debugging
  PUBLIC GF_GEOS5_DRV       !- for debugging purposes (set private for normal runs)
@@ -155,10 +157,9 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
    REAL :: hstar,dhr,ak0,dak
  END TYPE Hcts_vars
  TYPE (Hcts_vars), ALLOCATABLE :: Hcts(:)
- TYPE KcScal_vars
-   REAL :: KcScal1,KcScal2,KcScal3
- END TYPE KcScal_vars
- TYPE (KcScal_vars), ALLOCATABLE :: KcScals(:)
+
+ ! local array for GEOS-Chem diagnostics
+ REAL, ALLOCATABLE            :: GCCfsol_local(:,:,:)
  
  CHARACTER(LEN=10),PARAMETER  :: host_model = 'NEW_GEOS5'
 !
@@ -166,41 +167,6 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 !CHARACTER(LEN=10),PARAMETER  :: host_model = 'OLD_GEOS5'
 
  INTEGER :: whoami_all
-
-! For GEOS-Chem moist exports: not sure how to do this better...
-! cakelle2, 10/27/2020
- integer, parameter                            :: GCmax = 28
- real, allocatable                             :: GCfsol(:,:,:,:)
- real, allocatable                             :: GCfsol_local(:,:,:)
- character(len=5), parameter                   :: GCspecies(GCmax) = &
-                                                  (/ 'SO2',   &
-                                                     'SO4',   &
-                                                     'HNO3',  &
-                                                     'DST1',  &
-                                                     'DST2',  &
-                                                     'DST3',  &
-                                                     'DST4',  &
-                                                     'NIT',   &
-                                                     'SALA',  &
-                                                     'SALC',  &
-                                                     'BCPI',  &
-                                                     'BCPO',  &
-                                                     'OCPI',  &
-                                                     'OCPO',  &
-                                                     'ALD2',  &
-                                                     'ALK4',  &
-                                                     'CH2O',  &
-                                                     'Br2',   &
-                                                     'HBr',   &
-                                                     'MAP',   &
-                                                     'MEK',   &
-                                                     'MTPA',  &
-                                                     'MTPO',  &
-                                                     'MVK',   &
-                                                     'NH3',   &
-                                                     'NH4',   &
-                                                     'PAN',   &
-                                                     'CFC12'  /)
 
 CONTAINS
 !---------------------------------------------------------------------------------------------------
@@ -1262,9 +1228,9 @@ ENDIF
       ENDDO;ENDDO
 
       ! Hacky GC diagnostics 
-      if(allocated(GCfsol))then
-       allocate(GCfsol_local(GCmax,itf-its+1,kte-kts+1))
-       GCfsol_local(:,:,:) = 0.0
+      if(allocated(GCCfsol))then
+       allocate(GCCfsol_local(GCCmax,itf-its+1,kte-kts+1))
+       GCCfsol_local(:,:,:) = 0.0
       endif
      ENDIF
      !- pbl  (i) = depth of pbl layer (m)
@@ -1819,16 +1785,16 @@ loop1:  do n=1,maxiens
          enddo
       ENDDO
 
-      ! Hacky diagnostics
-      if(allocated(GCfsol))then
+      ! GEOS-Chem FSOL diagnostics 
+      if(allocated(GCCfsol))then
        do k=kts,ktf
        do i=its,itf
-       do ispc=1,GCmax
-         GCfsol(i,j,mzp-k+1,ispc) = GCfsol_local(ispc,i,k)
+       do ispc=1,GCCmax
+         GCCfsol(i,j,mzp-k+1,ispc) = GCCfsol_local(ispc,i,k)
        enddo
        enddo
        enddo
-       if(allocated(GCfsol_local)) deallocate(GCfsol_local)
+       if(allocated(GCCfsol_local)) deallocate(GCCfsol_local)
       endif
       
      ENDIF
@@ -3887,7 +3853,7 @@ IF(USE_TRACER_TRANSP==1)  THEN
    !- note: here "sc_up_chem" stores the total in-cloud tracer mixing ratio (i.e., including the portion
    !        embedded in the condensates).
    call get_incloud_sc_chem_up(cumulus,FSCAV,mtp,se_chem,se_cup_chem,sc_up_chem,pw_up_chem,tot_pw_up_chem      &
-                             ,zo_cup,rho,po,po_cup,qrco,tempco,pwo,zuo,up_massentro,up_massdetro                &
+                             ,zo_cup,rho,po,po_cup,qco,qrco,tempco,pwo,zuo,up_massentro,up_massdetro                &
                              ,vvel2d,vvel1d,k22,kbcon,ktop,klcl,ierr,itf,ktf,its,ite, kts,kte)
 
 ! b) chem - downdraft
@@ -9950,9 +9916,10 @@ ENDIF
 
 !------------------------------------------------------------------------------------
   SUBROUTINE get_incloud_sc_chem_up(cumulus,fscav,mtp,se,se_cup,sc_up,pw_up,tot_pw_up_chem&
-                                   ,z_cup,rho,po,po_cup  &
+                                   ,z_cup,rho,po,po_cup,qco  &
                                    ,qrco,tempco,pwo,zuo,up_massentro,up_massdetro,vvel2d,vvel1d  &
                                    ,k22,kbcon,ktop,klcl,ierr,itf,ktf,its,ite, kts,kte)
+
      IMPLICIT NONE
      !-inputs
      integer                               ,intent (in)  :: itf,ktf, its,ite, kts,kte
@@ -9961,7 +9928,7 @@ ENDIF
      character *(*)                        ,intent (in)  :: cumulus
      real, dimension (mtp)                 ,intent (in)  :: FSCAV
      real, dimension (mtp ,its:ite,kts:kte),intent (in)  :: se,se_cup
-     real, dimension (its:ite,kts:kte)     ,intent (in)  :: z_cup,rho,po_cup,qrco,tempco,pwo,zuo &
+     real, dimension (its:ite,kts:kte)     ,intent (in)  :: z_cup,rho,po_cup,qco,qrco,tempco,pwo,zuo &
                                                            ,up_massentro,up_massdetro,po     
                             
      
@@ -9980,16 +9947,13 @@ ENDIF
      real :: x_add,dz,XZZ,XZD,XZE,denom,henry_coef,w_upd,fliq,dp
      integer :: i,k,ispc
      real, parameter :: cte_w_upd = 10. ! m/s
-     real, parameter :: kc_gcc = 5.e-3  ! s-1    !!! use this autoconversion parameter for GEOS-Chem species
      real, parameter :: kc = 2.e-3  ! s-1        !!! autoconversion parameter in GF is lower than what is used in GOCART
      real, dimension (mtp ,its:ite,kts:kte) ::  factor_temp
      ! for GEOS-Chem
      real                    :: fsol
-     integer                 :: nGC, GCii
+     integer                 :: GCCii
      logical, dimension(mtp) :: is_gcc
-     real                    :: kc_scaled
-     real, parameter         :: TEMP1 = 237.0
-     real, parameter         :: TEMP2 = 258.0
+     real                    :: kc_scaled, ftemp
  
      !--initialization
      sc_up          = se_cup
@@ -10030,11 +9994,7 @@ ENDIF
 
      !Flag GEOS-Chem species
      do ispc = 1,mtp
-        if ( TRIM(CHEM_NAME(ispc)(1:4)) == 'SPC_' ) then
-           is_gcc(ispc) = .true.
-        else
-           is_gcc(ispc) = .false.
-        endif
+        is_gcc(ispc) = is_gcc_species(CHEM_NAME(ispc))
      enddo
 
      DO i=its,itf
@@ -10079,46 +10039,33 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 	    
             do ispc = 1,mtp
                 ! Check for GEOS-Chem diagnostics...
-                GCii = -1
-                do nGC = 1,GCmax
-                    if(TRIM(CHEM_NAME(ispc)(5:len(CHEM_NAME(ispc))))==TRIM(GCspecies(nGC))) then
-                        GCii=nGC
-                        exit
-                    endif
-                enddo
+                GCCii = get_gcc_diagID(CHEM_NAME(ispc))
 
                 IF(fscav(ispc) > 1.e-6) THEN ! aerosol scavenging
 
-                    !!! testing only
-!                    if ( MAPL_am_I_Root().and.i==1.and.k==start_level(i)+1 ) then
-!                     write(*,*) 'Aerosol scavening: ',TRIM(CHEM_NAME(ispc)),USE_TRACER_SCAVEN,is_gcc(ispc),fscav(ispc),KcScals(ispc)%KcScal1,KcScals(ispc)%KcScal2,KcScals(ispc)%KcScal3
-!                    endif 
-                     
                     !--formulation 1 as in GOCART with RAS conv_par
                     if(USE_TRACER_SCAVEN==1) & 
-                    pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- FSCAV(ispc) * (dz/1000.))))
+                       pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- FSCAV(ispc) * (dz/1000.))))
         
                     !--formulation 2 as in GOCART                    
                     if(USE_TRACER_SCAVEN==2) then
                        ! GEOS-Chem uses additional scalings... 
                        if ( is_gcc(ispc) ) then
-                          kc_scaled = kc_gcc ! start with default factor, then scale depending on species 
-                          if ( tempco(i,k) < TEMP1 ) then
-                             kc_scaled = kc_scaled * KcScals(ispc)%KcScal1
-                          else if ( (tempco(i,k)>=TEMP1) .and. (tempco(i,k)<TEMP2) ) then
-                             kc_scaled = kc_scaled * KcScals(ispc)%KcScal2
-                          else
-                             kc_scaled = kc_scaled * KcScals(ispc)%KcScal3
-                          endif
-                          fsol = max(0.,(1.-exp(- kc_scaled * (dz/w_upd)))*fscav(ispc))
-                          pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
-                          ! diagnostics
-                          if (GCii>0) GCfsol_local(GCii,i,k) = fsol 
+                          call compute_ki_gcc_aerosol ( tempco(i,k), GCCparams(ispc)%KcScal1, GCCparams(ispc)%KcScal2, GCCparams(ispc)%KcScal3, kc_scaled ) 
+                          ftemp = fscav(ispc)  ! apply aerosol scavenging efficiency 
 
                        ! default formulation
                        else
-                          pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
+                          kc_scaled = kc
+                          ftemp     = factor_temp(ispc,i,k)
                        endif
+                       fsol = max(0.,(1.-exp(- kc_scaled * (dz/w_upd)))*ftemp)
+                       !pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
+                       pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
+
+                       ! GEOS-Chem diagnostics
+                       if (GCCii>0) GCCfsol_local(GCCii,i,k) = fsol 
+
                     endif
 
                     !--formulation 3 - orignal GF conv_par
@@ -10138,11 +10085,6 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                     !--- equilibrium tracer concentration - Henry's law
                     henry_coef=henry(ispc,tempco(i,k),rho(i,k))
 
-                    !!! testing only
-!                    if ( MAPL_am_I_Root().and.i==1.and.k==start_level(i)+1 ) then
-!                     write(*,*) 'Gas scavening: ',TRIM(CHEM_NAME(ispc)),USE_TRACER_SCAVEN,Hcts(ispc)%hstar,Hcts(ispc)%dhr,Hcts(ispc)%ak0,Hcts(ispc)%ak0,henry_coef
-!                    endif 
-
                     if(USE_TRACER_SCAVEN==3) then
                       !--- cloud liquid water tracer concentration
                       conc_mxr(ispc) = (henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k)) )* sc_up(ispc,i,k)
@@ -10152,21 +10094,21 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 		    
 		    else
                     
-		      !-- this the 'alpha' parameter in Eq 8 of Mari et al (2000 JGR) = X_aq/X_total
- 		      fliq = henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k))
+                      !-- this the 'alpha' parameter in Eq 8 of Mari et al (2000 JGR) = X_aq/X_total
+                      if ( is_gcc(ispc) ) then
+                         call compute_ki_gcc_gas ( tempco(i,k), po_cup(i,k), qco(i,k), qrco(i,k), henry_coef, &
+                            GCCparams(ispc)%liq_and_gas, GCCparams(ispc)%convfaci2g, GCCparams(ispc)%retfactor, kc_scaled )
+                      else
+                         fliq = henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k))
+                         kc_scaled = kc*fliq
+                      endif
 
                       !---   aqueous-phase concentration in rain water
-                      ! use different kc for GEOS-Chem species
-                      if ( is_gcc(ispc) ) then
-                         kc_scaled = kc_gcc
-                      else
-                         kc_scaled = kc
-                      endif 
-                      fsol = max(0.,(1.-exp(-fliq*kc_scaled*dz/w_upd))) !*factor_temp(ispc,i,k))
+                      fsol = max(0.,(1.-exp(-kc_scaled*dz/w_upd))) !*factor_temp(ispc,i,k))
                       pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
 
-                      ! diagnostics
-                      if (GCii>0) GCfsol_local(GCii,i,k) = fsol 
+                      ! GEOS-Chem diagnostics
+                      if (GCCii>0) GCCfsol_local(GCCii,i,k) = fsol 
 
 
                     endif		    

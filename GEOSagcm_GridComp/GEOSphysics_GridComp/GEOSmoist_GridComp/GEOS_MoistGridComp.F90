@@ -100,10 +100,14 @@ module GEOS_MoistGridCompMod
 !-srf-gf-scheme
   USE ConvPar_GF_GEOS5, only: gf_geos5_interface &
       ,maxiens, icumulus_gf, closure_choice, deep, shal, mid&
-      ,DEBUG_GF,USE_SCALE_DEP,DICYCLE,Hcts,KcScals&
+      ,DEBUG_GF,USE_SCALE_DEP,DICYCLE,Hcts&
       ,USE_TRACER_TRANSP,USE_TRACER_SCAVEN, TAU_DEEP, TAU_MID&
-      ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1 &
-      ,GCspecies, GCmax, GCfsol 
+      ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
+
+  USE geoschemchem_moist_interface, only : get_GCC_diagID, GCCmax, GCCspecies, GCCscav, & 
+                                           GCCparams_init, GCCparams_set, GCCparams_cleanup, &
+                                           GCCdiag_Count, GCCdiag_init, GCCdiag_cleanup, &
+                                           GCCdiag_AddExports, GCCdiag_FillExports
 !-srf-gf-scheme
 
 !ALT-protection for GF
@@ -199,11 +203,6 @@ contains
     character(len=ESMF_MAXSTR) :: FRIENDLIES_NCPL , FRIENDLIES_NCPI , &
                                   FRIENDLIES_NRAIN, FRIENDLIES_NSNOW, FRIENDLIES_NGRAUPEL
     character(len=ESMF_MAXSTR) :: FRIENDLIES_QRAIN, FRIENDLIES_QSNOW, FRIENDLIES_QGRAUPEL
- 
-    ! GEOS-Chem exports
-    integer                    :: I
-    character(len=ESMF_MAXSTR) :: spcname
-
 
     !=============================================================================
 
@@ -3630,24 +3629,6 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-    ! Add selected GEOS-Chem wet scavenging exports (cakelle2, 10/27/2020)
-    DO I = 1,GCmax
-       spcname = TRIM(GCspecies(I))
-       call MAPL_AddExportSpec(GC,                                             &
-         SHORT_NAME='GF_ConvScav_'//TRIM(spcname),                             &
-         LONG_NAME ='GEOS-Chem_'//TRIM(spcname)//'_tendency_due_to_GF_conv_scav', &
-         UNITS     ='kg m-2 s-1',                                              &
-         DIMS      = MAPL_DimsHorzOnly,                                        &
-          __RC__ )
-       call MAPL_AddExportSpec(GC,                                             &
-         SHORT_NAME='GF_WetLossConvFrac_'//TRIM(spcname),                      &
-         LONG_NAME ='GEOS-Chem_'//TRIM(spcname)//'_fraction_lost_in_GF_convection', &
-         UNITS     ='1',                                                       &
-         DIMS      = MAPL_DimsHorzVert,                                        &
-         VLOCATION = MAPL_VLocationCenter,                                     &
-          __RC__ )
-    ENDDO
-
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='LFR',                                            &
          LONG_NAME ='lightning_flash_rate',                           &
@@ -4767,9 +4748,10 @@ contains
 
 !========================================================================================             
 
+    ! Add GEOS-Chem related exports (cakelle2, 3/15/2021)
+    CALL GCCdiag_AddExports ( GC, __RC__ )
 
     !EOS
-
 
     ! Set the Profiling timers
     ! ------------------------
@@ -5295,7 +5277,6 @@ contains
       real, pointer, dimension(:    ) :: FSCAV_, &  ! holding array for all tracers
                                          FSCAV      ! container for friendly to moist tracers
       real, dimension(4) :: Vect_Hcts
-      real, dimension(3) :: Vect_KcScal
 
       ! Aerosol convective scavenging internal pointers (2D column-averages);  must deallocate!!!
       ! CAR 
@@ -5306,12 +5287,9 @@ contains
       integer                                                  :: ind
 
       ! GEOS-Chem convective scavenging exports
-      real, dimension(IM,JM,GCmax)                             :: GCinit
-      real, dimension(IM,JM,GCmax)                             :: GCtend
-      real, pointer, dimension(:,:)                            :: GCptr2d
-      real, pointer, dimension(:,:,:)                          :: GCptr3d
-      integer                                                  :: GCii, GCind
-      character(len=ESMF_MAXSTR)                               :: spcname
+      real, allocatable, dimension(:,:,:)                      :: GCCinit
+      real, allocatable, dimension(:,:,:)                      :: GCCtend
+      integer                                                  :: GCind
 
       integer                                                  :: i_src_mode
       integer                                                  :: i_dst_mode
@@ -6797,12 +6775,7 @@ contains
               Hcts(1:KM)%ak0   = -1.
               Hcts(1:KM)%dak   = -1.
         ENDIF
-        ALLOCATE(KcScals(KM), stat=STATUS); VERIFY_(STATUS)
-        IF(STATUS==0) THeN
-           KcScals(1:KM)%KcScal1 = 1.
-           KcScals(1:KM)%KcScal2 = 1.
-           KcScals(1:KM)%KcScal3 = 1.
-        ENDIF
+        CALL GCCparams_init(KM, __RC__ )
       ENDIF
 
       QNAMES = " "
@@ -6883,16 +6856,9 @@ contains
               Hcts(k)%ak0   = Vect_Hcts(3)
               Hcts(k)%dak   = Vect_Hcts(4)
            ENDIF
-           ! KC scale factors for GEOS-Chem
-           Vect_KcScal(:) = 1.0
-           call ESMF_AttributeGet  (FIELD,"SetofKcScalFactors",isPresent=isPresent,  RC=STATUS)
-           VERIFY_(STATUS)
-           if (isPresent) then
-              call ESMF_AttributeGet  (FIELD,"SetofKcScalFactors",Vect_KcScal,  RC=STATUS)
-              KcScals(k)%KcScal1 = Vect_KcScal(1)
-              KcScals(k)%KcScal2 = Vect_KcScal(2)
-              KcScals(k)%KcScal3 = Vect_KcScal(3)
-           ENDIF
+
+           ! Populate GCC parameter
+           CALL GCCparams_set(FIELD,k, __RC__ )
          ENDIF
 
          ! Check aerosol names
@@ -8041,8 +8007,16 @@ contains
       CMSScarma = 0.0
 
       ! GEOS-Chem species (cakelle2, 10/27/2020)
-      GCinit(:,:,:) = 0.0
-      GCtend(:,:,:) = 0.0
+      CALL GCCdiag_Count( EXPORT, __RC__ )
+      CALL GCCdiag_init(IM,JM,LM, __RC__ )
+      if ( ALLOCATED(GCCscav) ) then
+         allocate(GCCinit(IM,JM,GCCmax),stat=STATUS)
+         ASSERT_(STATUS==0)
+         allocate(GCCtend(IM,JM,GCCmax),stat=STATUS)
+         ASSERT_(STATUS==0)
+         GCCinit(:,:,:) = 0.0
+         GCCtend(:,:,:) = 0.0
+      endif
 
       !! Now loop over tracers and accumulate initial column loading
       !! tendency  kg/m2/s CAR
@@ -8102,18 +8076,13 @@ contains
                endif
             endif
             ! update to GEOS-Chem (cakelle2, 10/27/2020)
+            if(ALLOCATED(GCCinit)) then
             if(CNAME == 'GEOSCHEMCHEM' ) then
-               spcname = trim(QNAME(5:)) ! remove prefix ('SPC_')
-               GCind = -1
-               do GCii=1,GCmax
-                  if(trim(spcname)==trim(GCspecies(GCii))) then
-                     GCind = GCii
-                     exit
-                  endif
-               enddo
+               GCind = get_GCC_diagID(QNAME)
                if ( GCind > 0 ) then
-                  GCinit(:,:,GCind) = GCinit(:,:,GCind) + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
+                  GCCinit(:,:,GCind) = GCCinit(:,:,GCind) + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
                endif
+            endif
             endif
          end if
       end do
@@ -8195,12 +8164,6 @@ contains
          endif
 ! WMP
 
-         ! For GEOS-Chem diagnostics
-         if ( .not. allocated(GCfsol) ) then
-            allocate(GCfsol(IM,JM,LM,GCmax))
-         endif        
-         GCfsol(:,:,:,:) = 0.0
- 
          !- call GF/GEOS5 interface routine
          call GF_GEOS5_Interface( IM,JM,LM,KM,ITRCR,LONS,LATS,DT_MOIST                       &
                                  ,T, PLE, PLO, ZLE, ZLO, PK, U, V, OMEGA            & 
@@ -8612,17 +8575,12 @@ contains
                endif
             endif
             ! update to GEOS-Chem (cakelle2, 10/27/2020)
-            if(CNAME == 'GEOSCHEMCHEM' ) then
-               spcname = trim(QNAME(5:)) ! remove prefix ('SPC_')
-               GCind = -1
-               do GCii=1,GCmax
-                  if(trim(spcname)==trim(GCspecies(GCii))) then
-                     GCind = GCii
-                     exit
+            if(ALLOCATED(GCCtend))then
+               if(CNAME == 'GEOSCHEMCHEM' ) then
+                  GCind = get_GCC_diagID(QNAME)
+                  if ( GCind > 0 ) then
+                     GCCtend(:,:,GCind) = GCCtend(:,:,GCind) + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
                   endif
-               enddo
-               if ( GCind > 0 ) then
-                  GCtend(:,:,GCind) = GCtend(:,:,GCind) + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
                endif
             endif
          endif
@@ -8639,21 +8597,15 @@ contains
       if (associated(DSSDTcarma))  DSSDTcarma = (DSSDTcarma - CMSScarma) / (MAPL_GRAV*DT_MOIST)
 
       ! update to GEOS-Chem
-      do GCii=1,GCmax
-         spcname = 'GF_ConvScav_'//TRIM(GCspecies(GCii)) 
-         call MAPL_GetPointer(EXPORT, GCptr2d, TRIM(spcname), NotFoundOk=.TRUE., __RC__ ) 
-         if ( associated(GCptr2d) ) then
-            GCptr2d = ( GCtend(:,:,GCii) - GCinit(:,:,GCii) ) / (MAPL_GRAV*DT_MOIST)
-         endif
-         if ( allocated(GCfsol) ) then
-            spcname = 'GF_WetLossConvFrac_'//TRIM(GCspecies(GCii)) 
-            call MAPL_GetPointer(EXPORT, GCptr3d, TRIM(spcname), NotFoundOk=.TRUE., __RC__ ) 
-            if ( associated(GCptr3d) ) then
-               GCptr3d = GCfsol(:,:,:,GCii)
-            endif
-         endif
-      enddo
-      if ( allocated(GCfsol) ) deallocate(GCfsol)
+      IF ( ALLOCATED(GCCscav) ) THEN
+          ASSERT_(ALLOCATED(GCCtend))
+          ASSERT_(ALLOCATED(GCCinit))
+          GCCscav(:,:,:) = ( GCCtend(:,:,:) - GCCinit(:,:,:) ) / (MAPL_GRAV*DT_MOIST)      
+      ENDIF
+      CALL GCCdiag_FillExports( EXPORT, __RC__ )
+      CALL GCCdiag_cleanup ( __RC__ )
+      IF ( ALLOCATED(GCCtend) ) DEALLOCATE(GCCtend)
+      IF ( ALLOCATED(GCCinit) ) DEALLOCATE(GCCinit)
 
       ! Fill in tracer tendencies
       !--------------------------
@@ -8892,7 +8844,7 @@ contains
       VERIFY_(STATUS)
       IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
          DEALLOCATE(Hcts , stat=STATUS); VERIFY_(STATUS)
-         DEALLOCATE(KcScals , stat=STATUS); VERIFY_(STATUS)
+         CALL GCCparams_cleanup( __RC__ )
       ENDIF
 
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_BETA,       'CNV_BETA:',       DEFAULT= 10.0    )
