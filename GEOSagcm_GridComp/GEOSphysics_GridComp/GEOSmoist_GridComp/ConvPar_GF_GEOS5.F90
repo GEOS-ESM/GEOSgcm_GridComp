@@ -10059,7 +10059,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                           kc_scaled = kc
                           ftemp     = factor_temp(ispc,i,k)
                        endif
-                       fsol = max(0.,(1.-exp(- kc_scaled * (dz/w_upd)))*ftemp)
+                       fsol = min(1.,max(0.,(1.-exp(- kc_scaled * (dz/w_upd)))*ftemp))
                        !pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
                        pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
 
@@ -10097,14 +10097,15 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                       !-- this the 'alpha' parameter in Eq 8 of Mari et al (2000 JGR) = X_aq/X_total
                       if ( is_gcc(ispc) ) then
                          call compute_ki_gcc_gas ( tempco(i,k), po_cup(i,k), qco(i,k), qrco(i,k), henry_coef, &
-                            GCCparams(ispc)%liq_and_gas, GCCparams(ispc)%convfaci2g, GCCparams(ispc)%retfactor, kc_scaled )
+                            GCCparams(ispc)%liq_and_gas, GCCparams(ispc)%convfaci2g, GCCparams(ispc)%retfactor, &
+                            GCCparams(ispc)%online_cldliq, kc_scaled )
                       else
                          fliq = henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k))
                          kc_scaled = kc*fliq
                       endif
 
                       !---   aqueous-phase concentration in rain water
-                      fsol = max(0.,(1.-exp(-kc_scaled*dz/w_upd))) !*factor_temp(ispc,i,k))
+                      fsol = min(1.,max(0.,(1.-exp(-kc_scaled*dz/w_upd)))) !*factor_temp(ispc,i,k))
                       pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
 
                       ! GEOS-Chem diagnostics

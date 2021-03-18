@@ -68,8 +68,10 @@ USE MAPL
    ! for aerosols
    REAL    :: KcScal1,KcScal2,KcScal3
    ! for gases
-   REAL    :: convfaci2g,retfactor
+   REAL    :: convfaci2g
+   REAL    :: retfactor
    REAL    :: liq_and_gas
+   REAL    :: online_cldliq 
  END TYPE GCCparams_vars
  TYPE (GCCparams_vars), ALLOCATABLE :: GCCparams(:)
 
@@ -158,7 +160,7 @@ CONTAINS
 
        call MAPL_AddExportSpec(GC,                                             &
          SHORT_NAME='GF_ConvScav_'//TRIM(spcname),                             &
-         LONG_NAME ='GEOS-Chem_'//TRIM(spcname)//'_tendency_due_to_GF_conv_scav', &
+         LONG_NAME ='GEOS-Chem_'//TRIM(spcname)//'_dry_air_tendency_due_to_GF_conv_scav', &
          UNITS     ='kg m-2 s-1',                                              &
          DIMS      = MAPL_DimsHorzOnly,                                        &
           __RC__ )
@@ -344,12 +346,13 @@ CONTAINS
     __Iam__('GCCparams_init')
     ALLOCATE(GCCparams(KM), STAT=STATUS ) 
     ASSERT_(STATUS==0)
-    GCCparams(1:KM)%KcScal1     = 1.
-    GCCparams(1:KM)%KcScal2     = 1.
-    GCCparams(1:KM)%KcScal3     = 1.
-    GCCparams(1:KM)%retfactor   = 1.
-    GCCparams(1:KM)%liq_and_gas = 0.
-    GCCparams(1:KM)%convfaci2g  = 0.
+    GCCparams(1:KM)%KcScal1        = 1.
+    GCCparams(1:KM)%KcScal2        = 1.
+    GCCparams(1:KM)%KcScal3        = 1.
+    GCCparams(1:KM)%retfactor      = 1.
+    GCCparams(1:KM)%online_cldliq  = 1.
+    GCCparams(1:KM)%liq_and_gas    = 0.
+    GCCparams(1:KM)%convfaci2g     = 0.
     RETURN_(ESMF_SUCCESS)
   END SUBROUTINE GCCparams_init
 !-----------------------------------------------------------------------------------------
@@ -391,8 +394,14 @@ CONTAINS
        call ESMF_AttributeGet (FIELD,"ConvFacI2G",ival, __RC__ )
        GCCparams(k)%convfaci2g = ival
     endif
+    call ESMF_AttributeGet (FIELD,"OnlineCLDLIQ",isPresent=isPresent, __RC__ )
+    if (isPresent) then
+       call ESMF_AttributeGet (FIELD,"OnlineCLDLIQ",ival, __RC__ )
+       GCCparams(k)%online_cldliq = ival
+    endif
 
     RETURN_(ESMF_SUCCESS)
+
   END SUBROUTINE GCCparams_set
 !-----------------------------------------------------------------------------------------
 
@@ -479,7 +488,7 @@ CONTAINS
 !-----------------------------------------------------------------------------------------
 
 
-   SUBROUTINE compute_ki_gcc_gas( temp, press, q, cldh2o, heff, liq_and_gas, convfaci2g, retfactor, kc_scaled )
+   SUBROUTINE compute_ki_gcc_gas( temp, press, q, cldh2o, heff, liq_and_gas, convfaci2g, retfactor, online_cldliq, kc_scaled )
     !=====================================================================================
     !BOP
     ! !DESCRIPTION:
@@ -497,6 +506,7 @@ CONTAINS
      real,    intent(in)      :: liq_and_gas        ! species considers ice and liquid phase?
      real,    intent(in)      :: convfaci2g         ! conversion factor for ice/gas ratio
      real,    intent(in)      :: retfactor          ! retention factor [unitless] 
+     real,    intent(in)      :: online_cldliq      ! calculate cloud liquid/ice online or use default GEOS-Chem parameterization
      real,    intent(out)     :: kc_scaled          ! loss rate [s-1]
 
      ! parameter
@@ -504,8 +514,6 @@ CONTAINS
      real, parameter       :: T_ice  = 250.16  ! K, as in ConvPar_GF_GEOS5
      real, parameter       :: TEMP3  = 248.0   ! K
      real, parameter       :: TEMP4  = 268.0   ! K
-
-     logical, parameter    :: ONLINE_CLDLIQ = .FALSE.
 
      ! local variables
      real            :: fract_liq_f
@@ -520,7 +528,7 @@ CONTAINS
 
      ! compute cloud liquid water content and cloud ice water. 
      ! Compute either based on environmental variables or use original GEOS-Chem formulation
-     if ( ONLINE_CLDLIQ ) then
+     if ( online_cldliq == 1.0 ) then
         ! compute from cloud total water, using formulation as suggested by Saulo Freitas
         fract_liq_f = min(1., (max(0.,(temp-T_ice))/(T_zero-T_ice))**2)
         ! liquid and ice water in kg/kg 

@@ -8080,7 +8080,7 @@ contains
             if(CNAME == 'GEOSCHEMCHEM' ) then
                GCind = get_GCC_diagID(QNAME)
                if ( GCind > 0 ) then
-                  GCCinit(:,:,GCind) = GCCinit(:,:,GCind) + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
+                  GCCinit(:,:,GCind) = GCCinit(:,:,GCind) + sum(XHO(:,:,:,KK)*DP(:,:,:)/(1.-Q(:,:,:)),dim=3) 
                endif
             endif
             endif
@@ -8579,7 +8579,7 @@ contains
                if(CNAME == 'GEOSCHEMCHEM' ) then
                   GCind = get_GCC_diagID(QNAME)
                   if ( GCind > 0 ) then
-                     GCCtend(:,:,GCind) = GCCtend(:,:,GCind) + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
+                     GCCtend(:,:,GCind) = GCCtend(:,:,GCind) + sum(XHO(:,:,:,KK)*DP(:,:,:)/(1.-Q(:,:,:)),dim=3) 
                   endif
                endif
             endif
