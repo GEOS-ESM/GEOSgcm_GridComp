@@ -4398,11 +4398,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       if(associated( TH)) TH      = TH  + CH(:,N)*TC(:,N)*FR(:,N)
       if(associated( QH)) QH      = QH  + CQ(:,N)*QC(:,N)*FR(:,N)
       if(associated(Z0H)) Z0H     = Z0H + ZT             *FR(:,N)
-      if(associated(GST)) GST     = GST + WW(:,N)        *FR(:,N)
       if(associated(VNT)) VNT     = VNT + UUU            *FR(:,N)
 
       WW(:,N) = max(CH(:,N)*(TC(:,N)-TA-(MAPL_GRAV/MAPL_CP)*DZE)/TA + MAPL_VIREPS*CQ(:,N)*(QC(:,N)-QA),0.0)
       WW(:,N) = (HPBL*MAPL_GRAV*WW(:,N))**(2./3.)
+      if(associated(GST)) GST     = GST + WW(:,N)        *FR(:,N)
 
    end do SUBTILES
 
@@ -5138,7 +5138,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     logical, save :: first = .true.
     integer*8, save :: istep = 1 ! gkw: legacy variable from offline
 
-    real :: co2
+   ! real :: co2
     real, external :: getco2
 
     ! temporaries for call to SIBALB for each type
