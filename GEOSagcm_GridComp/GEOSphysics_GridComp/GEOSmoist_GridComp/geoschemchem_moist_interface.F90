@@ -38,6 +38,7 @@ USE MAPL
   PUBLIC  :: GCCdiag_AddExports
   PUBLIC  :: GCCdiag_FillExports
   PUBLIC  :: GCCdiag_Count
+  PUBLIC  :: get_w_upd_gcc
 !
 !
 ! !PRIVATE MEMBER FUNCTIONS:
@@ -72,6 +73,7 @@ USE MAPL
    REAL    :: retfactor
    REAL    :: liq_and_gas
    REAL    :: online_cldliq 
+   REAL    :: online_vud    
  END TYPE GCCparams_vars
  TYPE (GCCparams_vars), ALLOCATABLE :: GCCparams(:)
 
@@ -353,6 +355,7 @@ CONTAINS
     GCCparams(1:KM)%online_cldliq  = 1.
     GCCparams(1:KM)%liq_and_gas    = 0.
     GCCparams(1:KM)%convfaci2g     = 0.
+    GCCparams(1:KM)%online_vud     = 1.
     RETURN_(ESMF_SUCCESS)
   END SUBROUTINE GCCparams_init
 !-----------------------------------------------------------------------------------------
@@ -398,6 +401,11 @@ CONTAINS
     if (isPresent) then
        call ESMF_AttributeGet (FIELD,"OnlineCLDLIQ",ival, __RC__ )
        GCCparams(k)%online_cldliq = ival
+    endif
+    call ESMF_AttributeGet (FIELD,"OnlineVUD",isPresent=isPresent, __RC__ )
+    if (isPresent) then
+       call ESMF_AttributeGet (FIELD,"OnlineVUD",ival, __RC__ )
+       GCCparams(k)%online_vud = ival
     endif
 
     RETURN_(ESMF_SUCCESS)
@@ -606,5 +614,35 @@ CONTAINS
 
   END FUNCTION gcc_e_ice
 !-----------------------------------------------------------------------------------------
+
+
+  FUNCTION get_w_upd_gcc( vud, xland, online_vud ) RESULT( w_upd )
+    !=====================================================================================
+    !BOP
+    ! !DESCRIPTION:
+    !  Return updraft vertical velocity to be used for GEOS-Chem convective washout. 
+    !EOP
+    !=====================================================================================
+    real, intent(in) :: vud        ! online updraft velocity [m/s]
+    real, intent(in) :: xland      ! land flag (1.-FRLAND): greater value means more water 
+    real, intent(in) :: online_vud ! use online vud (1.0) or set vud based on land/water (0.0)
+    real             :: w_upd      ! updraft velocity to use 
+    ! use environment vud if specified so 
+    if ( online_vud == 1.0 ) then
+       w_upd = vud
+    ! use parameterization otherwise: 10m/s over land, 5m/s over water.
+    else
+       ! over water
+       if ( xland > 0.9 ) then
+          w_upd = 5.0
+       ! over land
+       else
+          w_upd = 10.0
+       endif
+    endif
+
+  END FUNCTION get_w_upd_gcc
+!-----------------------------------------------------------------------------------------
+
 
 END MODULE geoschemchem_moist_interface

@@ -16,7 +16,7 @@ USE MAPL
 USE Henrys_law_ConstantsMod,      ONLY : get_HenrysLawCts
 USE geoschemchem_moist_interface, ONLY : compute_ki_gcc_aerosol, compute_ki_gcc_gas, &
                                          GCCfsol, GCCmax, GCCparams, is_gcc_species, &
-                                         get_gcc_diagID
+                                         get_gcc_diagID, get_w_upd_gcc
 !.. USE GTMP_2_GFCONVPAR, only : GTMP_2_GFCONVPAR_interface
 
  IMPLICIT NONE
@@ -1227,7 +1227,7 @@ ENDIF
         !se_chem(1:mtp,i,k) = 1.e-3*exp(-(max(0.,float(k-kpbli(i)))/float(kpbli(i))))+1.e-4
       ENDDO;ENDDO
 
-      ! Hacky GC diagnostics 
+      ! Local array for GEOS-Chem diagnostics 
       if(allocated(GCCfsol))then
        allocate(GCCfsol_local(GCCmax,itf-its+1,kte-kts+1))
        GCCfsol_local(:,:,:) = 0.0
@@ -3853,8 +3853,8 @@ IF(USE_TRACER_TRANSP==1)  THEN
    !- note: here "sc_up_chem" stores the total in-cloud tracer mixing ratio (i.e., including the portion
    !        embedded in the condensates).
    call get_incloud_sc_chem_up(cumulus,FSCAV,mtp,se_chem,se_cup_chem,sc_up_chem,pw_up_chem,tot_pw_up_chem      &
-                             ,zo_cup,rho,po,po_cup,qco,qrco,tempco,pwo,zuo,up_massentro,up_massdetro                &
-                             ,vvel2d,vvel1d,k22,kbcon,ktop,klcl,ierr,itf,ktf,its,ite, kts,kte)
+                             ,zo_cup,rho,po,po_cup,qco,qrco,tempco,pwo,zuo,up_massentro,up_massdetro           &
+                             ,vvel2d,vvel1d,xland,k22,kbcon,ktop,klcl,ierr,itf,ktf,its,ite, kts,kte)
 
 ! b) chem - downdraft
    call get_incloud_sc_chem_dd(cumulus,FSCAV,mtp,se_chem,se_cup_chem,sc_dn_chem,pw_dn_chem ,pw_up_chem,sc_up_chem &
@@ -9917,7 +9917,7 @@ ENDIF
 !------------------------------------------------------------------------------------
   SUBROUTINE get_incloud_sc_chem_up(cumulus,fscav,mtp,se,se_cup,sc_up,pw_up,tot_pw_up_chem&
                                    ,z_cup,rho,po,po_cup,qco  &
-                                   ,qrco,tempco,pwo,zuo,up_massentro,up_massdetro,vvel2d,vvel1d  &
+                                   ,qrco,tempco,pwo,zuo,up_massentro,up_massdetro,vvel2d,vvel1d,xland &
                                    ,k22,kbcon,ktop,klcl,ierr,itf,ktf,its,ite, kts,kte)
 
      IMPLICIT NONE
@@ -9934,6 +9934,7 @@ ENDIF
      
      real,    dimension (its:ite,kts:kte)  ,intent (in)  :: vvel2d
      real,    dimension (its:ite        )  ,intent (in)  :: vvel1d
+     real,    dimension (its:ite        )  ,intent (in)  :: xland
  
      !-outputs
      real, dimension (mtp ,its:ite,kts:kte),intent (out) :: sc_up,pw_up
@@ -9950,6 +9951,7 @@ ENDIF
      real, parameter :: kc = 2.e-3  ! s-1        !!! autoconversion parameter in GF is lower than what is used in GOCART
      real, dimension (mtp ,its:ite,kts:kte) ::  factor_temp
      ! for GEOS-Chem
+     real                    :: this_w_upd
      real                    :: fsol
      integer                 :: GCCii
      logical, dimension(mtp) :: is_gcc
@@ -10052,14 +10054,16 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                        ! GEOS-Chem uses additional scalings... 
                        if ( is_gcc(ispc) ) then
                           call compute_ki_gcc_aerosol ( tempco(i,k), GCCparams(ispc)%KcScal1, GCCparams(ispc)%KcScal2, GCCparams(ispc)%KcScal3, kc_scaled ) 
-                          ftemp = fscav(ispc)  ! apply aerosol scavenging efficiency 
+                          ftemp      = fscav(ispc)  ! apply aerosol scavenging efficiency 
+                          this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), GCCparams(ispc)%online_vud )
 
                        ! default formulation
                        else
-                          kc_scaled = kc
-                          ftemp     = factor_temp(ispc,i,k)
+                          kc_scaled  = kc
+                          this_w_upd = w_upd
+                          ftemp      = factor_temp(ispc,i,k)
                        endif
-                       fsol = min(1.,max(0.,(1.-exp(- kc_scaled * (dz/w_upd)))*ftemp))
+                       fsol = min(1.,max(0.,(1.-exp(- kc_scaled * (dz/this_w_upd)))*ftemp))
                        !pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
                        pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
 
@@ -10099,13 +10103,15 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                          call compute_ki_gcc_gas ( tempco(i,k), po_cup(i,k), qco(i,k), qrco(i,k), henry_coef, &
                             GCCparams(ispc)%liq_and_gas, GCCparams(ispc)%convfaci2g, GCCparams(ispc)%retfactor, &
                             GCCparams(ispc)%online_cldliq, kc_scaled )
+                         this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), GCCparams(ispc)%online_vud )
                       else
-                         fliq = henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k))
-                         kc_scaled = kc*fliq
+                         fliq       = henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k))
+                         kc_scaled  = kc*fliq
+                         this_w_upd = w_upd
                       endif
 
                       !---   aqueous-phase concentration in rain water
-                      fsol = min(1.,max(0.,(1.-exp(-kc_scaled*dz/w_upd)))) !*factor_temp(ispc,i,k))
+                      fsol = min(1.,max(0.,(1.-exp(-kc_scaled*dz/this_w_upd)))) !*factor_temp(ispc,i,k))
                       pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
 
                       ! GEOS-Chem diagnostics
