@@ -180,7 +180,8 @@ module gfdl2_cloud_microphys_mod
     ! qs0_crt = 0.6e-3
     ! c_psaci = 0.1
     ! c_pgacs = 0.1
-    
+    ! c_pgaci = 0.05
+ 
     ! -----------------------------------------------------------------------
     !> namelist parameters
     ! -----------------------------------------------------------------------
@@ -242,8 +243,9 @@ module gfdl2_cloud_microphys_mod
     real :: qs_mlt = 1.0e-6 !< max cloud water due to snow melt
     
     real :: ql_gen = 1.0e-3 !< max cloud water generation during remapping step if fast_sat_adj = .t.
-    real :: qi_gen = 1.82e-6 !< max cloud ice generation during remapping step
-    
+! GFDL    real :: qi_gen = 1.82e-6 !< max cloud ice generation during remapping step
+    real :: qi_gen = 9.82679e-5 !< max cloud ice generation at -40 C
+
     ! cloud condensate upper bounds: "safety valves" for ql & qi
     
     real :: ql0_max = 2.0e-3 !< max cloud water value (auto converted to rain)
@@ -260,6 +262,7 @@ module gfdl2_cloud_microphys_mod
     real :: c_piacr = 5.0 !< accretion: rain to ice:
     real :: c_cracw = 0.9 !< rain accretion efficiency
     real :: c_pgacs = 2.0e-3 !< snow to graupel "accretion" eff. (was 0.1 in zetac)
+    real :: c_pgaci = 0.05   !<  ice to graupel "accretion" eff.
     
     ! decreasing clin to reduce csacw (so as to reduce cloud water --- > snow)
     
@@ -314,7 +317,7 @@ module gfdl2_cloud_microphys_mod
         tau_g2v, tau_v2g, &
         tau_revp, tau_frz, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v,      &
-        tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs,           &
+        tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci,  &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin,              &
         rad_snow, rad_graupel, rad_rain, cld_min, use_ppm, mono_prof,         &
         do_sedi_heat, sedi_transport, do_sedi_w, de_ice, icloud_f, irain_f, mp_print
@@ -328,7 +331,7 @@ module gfdl2_cloud_microphys_mod
         tau_g2v, tau_v2g, &
         tau_revp, tau_frz, &
         sat_adj0, c_piacr, tau_imlt, tau_v2l, tau_l2v,      &
-        tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs,           &
+        tau_i2s, tau_l2r, qi_lim, ql_gen, c_paut, c_psaci, c_pgacs, c_pgaci,  &
         z_slope_liq, z_slope_ice, prog_ccn, c_cracw, alin, clin,              &
         rad_snow, rad_graupel, rad_rain, cld_min, use_ppm, mono_prof,         &
         do_sedi_heat, sedi_transport, do_sedi_w, de_ice, icloud_f, irain_f, mp_print
@@ -1254,8 +1257,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
         ! with subgrid variability
         ! -----------------------------------------------------------------------
 
-#define INCLOUD
-#ifdef INCLOUD
        ! Use In-Cloud condensate
        qadum = max(qa,qrmin)
        ql = ql/qadum
@@ -1298,42 +1299,6 @@ subroutine warm_rain (dt, ktop, kbot, dp, dz, tz, qv, ql, qr, qi, qs, qg, qa, &
        ! Revert In-Cloud condensate
        ql = ql*qadum
        qi = qi*qadum
-#else
-        call linear_prof (kbot - ktop + 1, ql (ktop), dl (ktop), z_slope_liq, h_var)
-
-        do k = ktop, kbot
-            qc0 = fac_rc * ccn (k)
-            if (tz (k) > t_wfr + dt_fr) then
-                dl (k) = min (max (1.e-6, dl (k)), 0.5 * ql (k))
-                ! --------------------------------------------------------------------
-                ! as in klein's gfdl am2 stratiform scheme (with subgrid variations)
-                ! --------------------------------------------------------------------
-                if (use_ccn) then
-                    ! --------------------------------------------------------------------
-                    ! ccn is formulted as ccn = ccn_surface * (den / den_surface)
-                    ! --------------------------------------------------------------------
-                    qc = qc0
-                else
-                    qc = qc0 / den (k)
-                endif
-                dq = 0.5 * (ql (k) + dl (k) - qc)
-                ! --------------------------------------------------------------------
-                ! dq = dl if qc == q_minus = ql - dl
-                ! dq = 0 if qc == q_plus = ql + dl
-                ! --------------------------------------------------------------------
-                if (dq > 0.) then ! q_plus > qc
-                    ! --------------------------------------------------------------------
-                    ! revised continuous form: linearly decays (with subgrid dl) to zero at qc == ql + dl
-                    ! --------------------------------------------------------------------
-                    sink = min (1., dq / dl (k)) * dt * c_praut (k) * den (k) * exp (so3 * log (ql (k)))
-                    sink = min(ql(k), max(0.,sink))
-                    ql (k) = ql (k) - sink
-                    qr (k) = qr (k) + sink
-                    qa (k) = qa (k) * SQRT( max(qi(k)+ql(k),0.0) / max(qi(k) + ql(k) + sink,qrmin ) )
-                endif
-            endif
-        enddo
-#endif
     endif
 
 end subroutine warm_rain
@@ -1534,15 +1499,15 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     real, dimension (ktop:kbot) :: cvm, q_liq, q_sol
     
     real :: rdts, fac_g2v, fac_v2g, fac_i2s, fac_imlt, fac_frz
-    real :: tz, qv, ql, qr, qi, qs, qg, melt
+    real :: tz, qv, ql, qr, qi, qs, qg, melt, newqi, newql
     real :: pracs, psacw, pgacw, psacr, pgacr, pgaci, praci, psaci
     real :: pgmlt, psmlt, pgfr, pgaut, psaut, pgsub
-    real :: tc, tsq, dqs0, qden, qim, qsm, ptc
-    real :: dt5, rqi, factor, sink, qi_crt
+    real :: tc, tsq, dqs0, qden, qim, qsm
+    real :: dt5, factor, sink, qi_crt
     real :: tmp, qsw, qsi, dqsdt, dq
     real :: dtmp, qc, q_plus, q_minus
     
-    integer :: k
+    integer :: k, it
     
     dt5 = 0.5 * dts
     
@@ -1579,15 +1544,21 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     ! sources of snow: cold rain, auto conversion + accretion (from cloud ice)
     ! sat_adj (deposition; requires pre - existing snow) ; initial snow comes from auto conversion
     ! -----------------------------------------------------------------------
-   
+  
+
     do k = ktop, kbot
-        if (tzk (k) > tice .and. qik (k) > qcmin) then
+
+      do it = 1,5
+
+        if (tzk (k) > tice) then
+
+            newql = new_liq_condensate(dt5, tzk (k), qlk (k), qik (k))
             
             ! -----------------------------------------------------------------------
             ! pimlt: instant melting of cloud ice
             ! -----------------------------------------------------------------------
             
-            melt = min (qik (k), fac_imlt * (tzk (k) - tice) / icpk (k))
+            melt = min (newql, fac_imlt * (tzk (k) - tice) / icpk (k))
             tmp = min (melt, dim (ql_mlt, qlk (k))) ! max ql amount
             qlk (k) = qlk (k) + tmp
             qrk (k) = qrk (k) + melt - tmp
@@ -1596,21 +1567,24 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             q_sol (k) = q_sol (k) - melt
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tzk (k) = tzk (k) - melt * lhi (k) / cvm (k)
-            
-        elseif (tzk (k) <= tice .and. qlk (k) > qcmin) then
-            
+
+        endif
+
+        if (tzk (k) <= tice) then
+
+            newqi = new_ice_condensate(dt5, tzk (k), qlk (k), qik (k))
+ 
             ! -----------------------------------------------------------------------
             ! pihom: homogeneous freezing of cloud water into cloud ice
             ! this is the 1st occurance of liquid water freezing in the split mp process
             ! -----------------------------------------------------------------------
-            
+
             dtmp = tice - tzk (k)
-            ! Update factor to use the MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
-            tc = max(t_wfr-tice, tzk(k)-tice) ! convert to celcius
-            ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
-            factor = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
-            sink = min (qlk (k) * factor, dtmp / icpk (k))
-            qi_crt = qi_gen * min (qi_lim, 0.1 * (tice - tzk (k))) / den (k)
+            sink = max(0.0,min (newqi, fac_frz * dtmp / icpk (k)))
+    ! WRF   qi_crt = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.15 * dtmp)))
+    ! GFDL !qi_crt = qi_gen * min (qi_lim, 0.1 * dtmp) / den (k)
+! GEOS ! WMP impose CALIPSO ice polynomial from 0 C to -40 C on qi0_crt  
+            qi_crt = calipso_ice_polynomial(tzk(k)) * qi_gen / den (k)
             tmp = min (sink, dim (qi_crt, qik (k)))
             qlk (k) = qlk (k) - sink
             qsk (k) = qsk (k) + sink - tmp
@@ -1621,8 +1595,11 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             tzk (k) = tzk (k) + sink * lhi (k) / cvm (k)
             
         endif
+
+      enddo
+
     enddo
-    
+  
     ! -----------------------------------------------------------------------
     ! vertical subgrid variability
     ! -----------------------------------------------------------------------
@@ -1797,19 +1774,16 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 ! similar to lfo 1983: eq. 21 solved implicitly
                 ! threshold from wsm6 scheme, hong et al 2004, eq (13) : qi0_crt ~0.8e-4
                 ! -----------------------------------------------------------------------
-                
-                qim = qi0_crt / den (k)
-                
+               
+! GEOS ! WMP impose CALIPSO ice polynomial from 0 C to -40 C on qi0_crt  
+                qim = calipso_ice_polynomial(tz) * qi0_crt / den (k)
+        ! WMP Use h_var to add some resolution dependence on critical qi
+        ! WMP   qim = (h_var**3) * qi0_crt / den (k)
+ 
                 ! -----------------------------------------------------------------------
                 ! assuming linear subgrid vertical distribution of cloud ice
                 ! the mismatch computation following lin et al. 1994, mwr
                 ! -----------------------------------------------------------------------
-                
-                if (const_vi) then
-                    tmp = fac_i2s
-                else
-                    tmp = fac_i2s * exp (0.025 * tc)
-                endif
                 
                 di (k) = max (di (k), qrmin)
                 q_plus = qi + di (k)
@@ -1819,14 +1793,11 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                     else
                         dq = qi - qim
                     endif
-                    psaut = tmp * dq
+                    psaut = fac_i2s * dq
                 else
                     psaut = 0.
                 endif
-                ! -----------------------------------------------------------------------
-                ! sink is no greater than 75% of qi
-                ! -----------------------------------------------------------------------
-                sink = min (0.75 * qi, psaci + psaut)
+                sink = min (qi, psaci + psaut)
                 qi = qi - sink
                 qs = qs + sink
                 
@@ -2036,16 +2007,18 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
     real :: rh, rqi, tin, qsw, qsi, qpz, qstar
     real :: dqsdt, dwsdt, dq, dq0, factor, tmp, oldqa, qlcn
     real :: q_plus, q_minus, dt_evap, dt_pisub
-    real :: evap, sink, tc, pisub, q_adj, dtmp, ptc
+    real :: evap, sink, tc, pisub, q_adj, dtmp
     real :: pssub, pgsub, tsq, qden, fac_g2v, fac_v2g
-    real :: a1
+    real :: newqi, fac_frz
  
     integer :: k
     
     if (fast_sat_adj) then
         dt_evap = 0.5 * dts
+        dt_pisub = 0.5 * dts
     else
         dt_evap = dts
+        dt_pisub = dts
     endif
     
     ! -----------------------------------------------------------------------
@@ -2057,7 +2030,9 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
     
     fac_g2v = 1. - exp (- dts / tau_g2v)
     fac_v2g = 1. - exp (- dts / tau_v2g)
-   
+  
+    fac_frz = 1. - exp (- dts / tau_frz)
+ 
     ! -----------------------------------------------------------------------
     ! define heat capacity and latend heat coefficient
     ! -----------------------------------------------------------------------
@@ -2155,7 +2130,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         
         dtmp = t_wfr - tz (k) ! [ - 40, - 48]
         if (dtmp > 0. .and. ql (k) > qcmin) then
-            sink = min (ql (k), ql (k) * dtmp * 0.125, dtmp / icpk (k))
+            sink = min (ql (k), tau_frz * dtmp / icpk (k))
             ql (k) = ql (k) - sink
             qi (k) = qi (k) + sink
             q_liq (k) = q_liq (k) - sink
@@ -2175,23 +2150,19 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! bigg mechanism
         ! -----------------------------------------------------------------------
         
-        if (fast_sat_adj) then
-            dt_pisub = 0.5 * dts
-        else
-            dt_pisub = dts
-            tc = tice - tz (k)
-            if (ql (k) > qrmin .and. tc > 0.) then
-                sink = 3.3333e-10 * dts * (exp (0.66 * tc) - 1.) * den (k) * ql (k) * ql (k)
-                sink = min (ql (k), tc / icpk (k), sink)
-                ql (k) = ql (k) - sink
-                qi (k) = qi (k) + sink
-                q_liq (k) = q_liq (k) - sink
-                q_sol (k) = q_sol (k) + sink
-                cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-                tz (k) = tz (k) + sink * lhi (k) / cvm (k)
-            endif ! significant ql existed
-        endif
-        
+        tc = tice - tz (k)
+        if (ql (k) > qrmin .and. tc > 0.) then
+            newqi = new_ice_condensate(dts, tz (k), ql (k), qi (k))
+            sink = 3.3333e-10 * dts * (exp (0.66 * tc) - 1.) * den (k) * ql (k) * ql (k)
+            sink = max(0.0,min (newqi, tau_frz * tc / icpk (k), sink))
+            ql (k) = ql (k) - sink
+            qi (k) = qi (k) + sink
+            q_liq (k) = q_liq (k) - sink
+            q_sol (k) = q_sol (k) + sink
+            cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
+            tz (k) = tz (k) + sink * lhi (k) / cvm (k)
+        endif ! significant ql existed
+       
         ! -----------------------------------------------------------------------
         ! update capacity heat and latend heat coefficient
         ! -----------------------------------------------------------------------
@@ -2220,9 +2191,10 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
             endif
             if (dq > 0.) then ! vapor - > ice
                 tmp = tice - tz (k)
-                ! 20160912: the following should produce more ice at higher altitude
-                ! qi_crt = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.1 * tmp))) / den (k)
-                qi_crt = qi_gen * min (qi_lim, 0.1 * tmp) / den (k)
+       ! WRF    qi_crt = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.15 * tmp)))
+       ! GFDL   qi_crt = qi_gen * min (qi_lim, 0.1 * tmp) / den (k)
+! GEOS ! WMP impose CALIPSO ice polynomial from 0 C to -40 C on qi0_crt  
+                qi_crt = calipso_ice_polynomial(tz(k))  * qi_gen / den (k)
                 sink = min (sink, max (qi_crt - qi (k), pidep), tmp / tcpk (k))
             else ! ice -- > vapor
                 pidep = pidep * min (1., dim (tz (k), t_sub) * 0.2)
@@ -2388,18 +2360,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
             ! mixed phase:
             qsi = iqs1 (tin, den (k))
             qsw = wqs1 (tin, den (k))
-            if (q_cond (k) > 3.e-6) then
-                rqi = q_sol (k) / q_cond (k)
-            else
-                ! -----------------------------------------------------------------------
-                ! mostly liquid water q_cond (k) at initial cloud development stage
-                ! -----------------------------------------------------------------------
-            !!! rqi = (tice - tin) / (tice - t_wfr)
-                ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
-                tc = tin-tice ! convert to celcius
-                ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
-                rqi = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
-            endif
+! GEOS ! WMP impose CALIPSO ice polynomial from 0 C to -40 C on qi0_crt  
+            rqi = calipso_ice_polynomial(tin)
             qstar = rqi * qsi + (1. - rqi) * qsw
         endif
         
@@ -2408,36 +2370,27 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! binary cloud scheme
         ! -----------------------------------------------------------------------
          if (qpz > qrmin) then
-             ! Include ramp to restrict PDF at low levels
-             a1 = 1.0
-             if (p1(k) .le. 75000.0) then
-                a1 = (1.0-h_var)
-             else
-                a1 = (1.0-h_var) + (1.0-(1.0-h_var))/(19.) * &
-                     ((atan( (2.*(p1(k)- 75000.0)/(102000.-75000.0)-1.) * &
-                     tan(20.*pi/21.-0.5*pi) ) + 0.5*pi) * 21./pi - 1.)
-             end if
              ! partial cloudiness by pdf:
-             dq = max (qcmin, (1.0-a1) * qpz)
+             dq = max (qcmin, h_var * qpz)
              q_plus = qpz + dq ! cloud free if qstar > q_plus
              q_minus = qpz - dq
              if (icloud_f == 3) then
              ! triangular
                if(q_plus.le.qstar) then
-                 !qa (k) = 0.0  ! no cloud change 
+                  qa (k) = 0.0  ! no cloud
                elseif ( (qpz.le.qstar).and.(qstar.lt.q_plus) ) then ! partial cloud cover
-                  qa (k) = min(1., qa (k) + (q_plus-qstar)*(q_plus-qstar) / ( (q_plus-q_minus)*(q_plus-qpz) ))
+                  qa (k) = min(1., (q_plus-qstar)*(q_plus-qstar) / ( (q_plus-q_minus)*(q_plus-qpz) ))
                elseif ( (q_minus.le.qstar).and.(qstar.lt.qpz) ) then ! partial cloud cover
-                  qa (k) = min(1., qa (k) + 1. - ( (qstar-q_minus)*(qstar-q_minus) / ( (q_plus-q_minus)*(qpz-q_minus) )))
+                  qa (k) = min(1., 1. - ( (qstar-q_minus)*(qstar-q_minus) / ( (q_plus-q_minus)*(qpz-q_minus) )))
                elseif ( qstar.le.q_minus ) then
                   qa (k) = 1. ! air fully saturated; 100 % cloud cover
                endif
              else
              ! top-hat
                if(q_plus.le.qstar) then
-                 !qa (k) = 0.0  ! no cloud cover 
+                 qa (k) = 0.0  ! no cloud cover 
                elseif (qstar < q_plus .and. q_cond (k) > qc_crt) then
-                 qa (k) = max(0.0, min(1., qa (k) + (q_plus - qstar) / (dq + dq) )) ! partial cloud cover
+                 qa (k) = max(0.0, min(1., (q_plus - qstar) / (dq + dq) )) ! partial cloud cover
                elseif (qstar .le. q_minus) then
                  qa (k) = 1. ! air fully saturated; 100 % cloud cover
                endif
@@ -3512,11 +3465,8 @@ subroutine setupm
     csaci = csacw * c_psaci
     
     cgacw = pie * rnzg * gam350 * gcon / (4. * act (6) ** 0.875)
-    ! cgaci = cgacw * 0.1
     
-    ! sjl, may 28, 2012
-    cgaci = cgacw * 0.05
-    ! sjl, may 28, 2012
+    cgaci = cgacw * c_pgaci
     
     cracw = craci ! cracw = 3.27206196043822
     cracw = c_cracw * cracw
@@ -4459,12 +4409,13 @@ subroutine qs_table (n)
     integer, intent (in) :: n
     
     real :: delt = 0.1
-    real :: tmin, tem, esh20
+    real :: tmin, tem, esh40
     real :: wice, wh2o, fac0, fac1, fac2
-    real :: esupc (200)
+    real :: esupc (400)
     
     integer :: i
-    
+    real :: tc
+ 
     tmin = table_ice - 160.
     
     ! -----------------------------------------------------------------------
@@ -4480,31 +4431,34 @@ subroutine qs_table (n)
     enddo
     
     ! -----------------------------------------------------------------------
-    ! compute es over water between - 20 deg c and 102 deg c.
+    ! compute es over water between - 40 deg c and 102 deg c.
     ! -----------------------------------------------------------------------
     
-    do i = 1, 1221
-        tem = 253.16 + delt * real (i - 1)
+    do i = 1, 1421
+        tem = 233.16 + delt * real (i - 1)
         fac0 = (tem - t_ice) / (tem * t_ice)
         fac1 = fac0 * lv0
         fac2 = (dc_vap * log (tem / t_ice) + fac1) / rvgas
-        esh20 = e00 * exp (fac2)
-        if (i <= 200) then
-            esupc (i) = esh20
+        esh40 = e00 * exp (fac2)
+        if (i <= 400) then
+            esupc (i) = esh40
         else
-            table (i + 1400) = esh20
+            table (i + 1200) = esh40
         endif
     enddo
     
     ! -----------------------------------------------------------------------
-    ! derive blended es over ice and supercooled water between - 20 deg c and 0 deg c
+    ! derive blended es over ice and supercooled water between - 40 deg c and 0 deg c
     ! -----------------------------------------------------------------------
     
-    do i = 1, 200
-        tem = 253.16 + delt * real (i - 1)
-        wice = 0.05 * (table_ice - tem)
-        wh2o = 0.05 * (tem - 253.16)
-        table (i + 1400) = wice * table (i + 1400) + wh2o * esupc (i)
+    do i = 1, 400
+        tem = 233.16 + delt * real (i - 1)
+      ! wice = 0.05 * (table_ice - tem)
+      ! wh2o = 0.05 * (tem - 253.16)
+! GEOS ! WMP impose CALIPSO ice polynomial from 0 C to -40 C on qi0_crt  
+        wice = calipso_ice_polynomial(tem)
+        wh2o = 1.0 - wice
+        table (i + 1200) = wice * table (i + 1200) + wh2o * esupc (i)
     enddo
     
 end subroutine qs_table
@@ -4874,5 +4828,48 @@ subroutine cloud_diagnosis (is, ie, js, je, den, qw, qi, qr, qs, qg, t, &
     enddo
     
 end subroutine cloud_diagnosis
+
+real function new_ice_condensate(dt, tk, qlk, qik)
+
+     real, intent(in) :: dt, tk, qlk, qik
+     real :: ptc, ifrac
+
+     ifrac = calipso_ice_polynomial(tk)
+     if (qlk+qik > qcmin) then
+        new_ice_condensate = max(0.0,ifrac*(qlk+qik) - qik)
+     else
+        new_ice_condensate = 0.0
+     endif
+ 
+end function new_ice_condensate
+
+real function new_liq_condensate(dt, tk, qlk, qik)
+
+     real, intent(in) :: dt, tk, qlk, qik
+     real :: lfrac
+
+     lfrac = 1.0 - calipso_ice_polynomial(tk)
+     if (qlk+qik > qcmin) then
+        new_liq_condensate = max(0.0,lfrac*(qlk+qik) - qlk)
+     else
+        new_liq_condensate = 0.0
+     endif
+
+end function new_liq_condensate
+
+real function calipso_ice_polynomial(tk)
+  ! Citation: Hu, Y., S. Rodier, K. Xu, W. Sun, J. Huang, B. Lin, P. Zhai, and D. Josset (2010), 
+  !           Occurrence, liquid water content, and fraction of supercooled water clouds from 
+  !           combined CALIOP/IIR/MODIS measurements, J. Geophys. Res., 115, D00H34, 
+  !           doi:10.1029/2009JD012384. 
+     real, intent(in) :: tk ! temperature in K
+     real :: tc, ptc
+
+     tc = min(0.0,max(t_wfr-tice, tk-tice)) ! convert to celcius
+     ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
+     calipso_ice_polynomial = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+   ! Returning the fraction of ice for given T(K)
+
+end function calipso_ice_polynomial
 
 end module gfdl2_cloud_microphys_mod

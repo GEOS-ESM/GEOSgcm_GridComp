@@ -43,15 +43,14 @@ contains
    implicit none
    real,intent(in) :: temp2 ! K
    real :: temp,ptc
-   real, parameter :: max_temp = 46. !Celsius
 !   SELECT CASE(FRAC_MODIS)
 !   CASE (1)
    temp = temp2-273.16 !Celsius
-   temp = min(max_temp,max(-max_temp,temp))
+   temp = min(0.0,max(-46.0,temp))
    ptc  = 7.6725 + 1.0118*temp + 0.1422*temp**2 + &
              0.0106*temp**3 + 3.39e-4 * temp**4 + &
              3.95e-6 * temp**5
-   fract_liq_f = 1./(1.+exp(-ptc))
+   fract_liq_f = (1./(1.+exp(-ptc)))
 !   CASE DEFAULT
 !   fract_liq_f = min(1., (max(0.,(temp2-t_ice))/(t_0-t_ice))**2)
 !   END SELECT
