@@ -1146,7 +1146,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real,              dimension(IM,JM)      :: PEGWD_X, PEORO_X,  PERAY_X,  PEBKG_X, BKGERR_X
 
       real,              dimension(IM,JM,LM  ) :: DUDT_GWD_GEOS , DVDT_GWD_GEOS , DTDT_GWD_GEOS
-      real,              dimension(IM,JM,LM  ) :: DUDT_ORO_GEOS , DVDT_ORO_GEOS , DTDT_ORO_GEOS
+      real,              dimension(IM,JM,LM  ) :: DUDT_ORG_GEOS , DVDT_ORG_GEOS , DTDT_ORG_GEOS
       real,              dimension(IM,JM     ) :: TAUXB_TMP_GEOS, TAUYB_TMP_GEOS
       real,              dimension(IM,JM     ) :: TAUXO_TMP_GEOS, TAUYO_TMP_GEOS
 
@@ -1691,7 +1691,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                PLE,       T,          U,          V,      SGH,   PREF, &
                PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
                DUDT_GWD_GEOS,  DVDT_GWD_GEOS,   DTDT_GWD_GEOS,         &
-               DUDT_ORO_GEOS,  DVDT_ORO_GEOS,   DTDT_ORO_GEOS,         &
+               DUDT_ORG_GEOS,  DVDT_ORG_GEOS,   DTDT_ORG_GEOS,         &
                TAUXO_TMP_GEOS, TAUYO_TMP_GEOS,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
                TAUXB_TMP_GEOS, TAUYB_TMP_GEOS,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
                FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
@@ -1718,15 +1718,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                RC=STATUS            )
          VERIFY_(STATUS)
          ! ADD THE GEOS TENDENCIES OUTPUT
-         if ( (GEOS_GWORO /= 0.0) .OR. (GEOS_GWBKG /= 0.0) ) then
+         if ( GEOS_GWBKG /= 0.0 ) then
            DUDT_GWD=DUDT_GWD_GEOS+DUDT_GWD
            DVDT_GWD=DVDT_GWD_GEOS+DVDT_GWD
            DTDT_GWD=DTDT_GWD_GEOS+DTDT_GWD
            TAUXB_TMP=TAUXB_TMP_GEOS+TAUXB_TMP
            TAUYB_TMP=TAUYB_TMP_GEOS+TAUYB_TMP
-           DUDT_ORO=DUDT_ORO_GEOS+DUDT_ORG
-           DVDT_ORO=DVDT_ORO_GEOS+DVDT_ORG
-           DTDT_ORO=DTDT_ORO_GEOS+DTDT_ORG
+         endif
+         if ( GEOS_GWORO /= 0.0 ) then
+           DUDT_ORG=DUDT_ORG_GEOS+DUDT_ORG
+           DVDT_ORG=DVDT_ORG_GEOS+DVDT_ORG
+           DTDT_ORG=DTDT_ORG_GEOS+DTDT_ORG
            TAUXO_TMP=TAUXO_TMP_GEOS+TAUXO_TMP
            TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP
          endif
