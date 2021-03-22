@@ -5651,7 +5651,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(associated(RMELTOC002)) RMELTOC002 = RMELT(:,9) 
         if(associated(FSWCHANGE )) FSWCHANGE  = FSW_CHANGE
         if(associated(WATERTABLED )) then
-           WATERTABLED = MIN((CATDEF/(BF1 + 1.e-15))**(0.5) - BF2, CDCR2/(1.-WPWET)/POROS)/1000.
+           WATERTABLED = MIN(CATDEF/SQRT(BF1 + 1.e-15) - BF2, CDCR2/(1.-WPWET)/POROS)/1000.
         endif        
         if(associated(TPSN1)) then
            where(WESNN(1,:)>0.)

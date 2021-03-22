@@ -7813,7 +7813,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         if(associated(FSWCHANGE )) FSWCHANGE  = FSW_CHANGE
 
         if(associated(WATERTABLED )) then
-           WATERTABLED = MIN((CATDEF/(BF1 + 1.e-15))**(0.5) - BF2, CDCR2/(1.-WPWET)/POROS)/1000.
+           WATERTABLED = MIN(CATDEF/SQRT(BF1 + 1.e-15) - BF2, CDCR2/(1.-WPWET)/POROS)/1000.
         endif
 
         if(associated(TPSN1OUT)) then
