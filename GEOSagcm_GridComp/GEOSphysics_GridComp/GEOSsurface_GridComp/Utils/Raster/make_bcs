@@ -51,11 +51,11 @@ HRCODE:
 echo " "
 echo "Enter the ${C1}Atmospheric Horizontal Resolution Code(s)${CR} to build:"
 echo "----------------------------------------------------------------------------------------------"
-echo "     Lat/Lon                     Cubed-Sphere                  SMAP-EASEv2"
+echo "     Lat/Lon                     Cubed-Sphere                  EASE (land-only)"
 echo "----------------------------------------------------------------------------------------------"
 echo "   ${C2}b --  2  deg  ${CR}              ${C2}c48  --  2   deg ${CR}          ${C2}m9  --  9km EASEv2 Grid ${CR}"
 echo "   ${C2}c --  1  deg  ${CR}              ${C2}c90  --  1   deg ${CR}          ${C2}m36 -- 36km EASEv2 Grid ${CR}"
-echo "                                                          ${C2}m25 -- 25km EASEv2 Grid ${CR}"
+echo "                                                          ${C2}m25 -- 25km EASEv1 Grid ${CR}"
 echo "   ${C2}d -- 1/2 deg  ${CR}              ${C2}c180 -- 1/2  deg (${C1}56-km${C2}) ${CR}"
 echo "   ${C2}e -- 1/4 deg (${C1}35-km${C2})        c360 -- 1/4  deg (${C1}28-km${C2}) ${CR} "
 echo "   ${C2}                            c720 -- 1/8  deg (${C1}14-km${C2}) ${CR}"
@@ -106,6 +106,28 @@ endif
 
 #######################################################################
 
+LBCSV:
+echo
+echo "Select the choice of ${C1}Land BCs version ${CR} to use:"
+echo "      where:  ${C2}F25  -- Fortuna-2_5"
+echo "              ${C2}GM4  -- /discover/nobackup/ltakacs/bcs/Ganymed-4_0/"
+echo "              ${C2}ICA  -- /discover/nobackup/ltakacs/bcs/Icarus/"
+echo "              ${C2}NL3  -- /discover/nobackup/ltakacs/bcs/Icarus-NLv3/"
+echo "              ${C2}NL4  -- /discover/nobackup/projects/gmao/smap/bcs_temporary/NLv4/"
+echo "              ${C2}NL4p -- /discover/nobackup/projects/gmao/smap/bcs_temporary/NLv4p/"
+echo "              ${C2}parameter configuration and ancillary data."
+echo "               NOTE: Current source codes cannot reproduce archived BCs due to compiler differences,"
+echo "               bug fixes and code improvements that have taken place the since archived BCs data were created."
+echo "               Nevertheless the impact of those differences on science is insignificant."
+echo "                                      "
+echo "              (OR If you want to use the latest under development version of land BCs, press ENTER.)"
+set dummy = `echo $<`
+set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
+set lbcsv =  DEF
+if( $dummy == 'F25'  | $$dummy == 'GM4'  | dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL4p') set lbcsv = $dummy
+
+#######################################################################
+
 ORSLV:
 echo
 echo "Enter the ${C1}Ocean Resolution Code(s)${CR} to build:"
@@ -115,12 +137,9 @@ echo "              ${C2}O3 --  High-Resolution    OSTIA 1/8 deg${CR} (Lon/Lat D
 echo "              ${C2}T1 --   Low-Resolution Tripolar 3   deg${CR} (MOM-Tripolar-Ocean:  120x65  ) "
 echo "              ${C2}T2 --   Med-Resolution Tripolar 1   deg${CR} (MOM-Tripolar-Ocean:  360x200 ) "
 echo "              ${C2}T3 --  High-Resolution Tripolar 1/2 deg${CR} (MOM-Tripolar-Ocean:  720x410 ) "
-echo "              ${C2}T4 --  High-Resolution Tripolar 1/4 deg${CR} (MOM-Tripolar-Ocean: 1440x1080 ) "
-echo "              ${C2}CS --  Cubed-Sphere Ocean              ${CR} (Cubed-Sphere Data-Ocean with Old Land) "
-echo "              ${C2}NL1--   Low-Resolution Reynolds 1   deg${CR} (Lon/Lat Data-Ocean:  360x180 with New Land) "
-echo "              ${C2}NL2--   Med-Resolution Reynolds 1/4 deg${CR} (Lon/Lat Data-Ocean: 1440x720 with New Land) "
-echo "              ${C2}NL3--  High-Resolution    OSTIA 1/8 deg${CR} (Lon/Lat Data-Ocean: 2880x1440 with New Land) "
-echo "              ${C2}NCS--  Cubed-Sphere Ocean              ${CR} (Cubed-Sphere Data-Ocean with New Land) "
+echo "              ${C2}T4 --  High-Resolution Tripolar 1/4 deg${CR} (MOM-Tripolar-Ocean: 1440x1080) "
+echo "              ${C2}CS --  Cubed-Sphere Ocean              ${CR} (Cubed-Sphere Data-Ocean      ) "
+echo "              (Select anything just to move forward for land-only EASE grids.)"
 set dummy = `echo $<`
 set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
 set orslvs =  $dummy[1]
@@ -132,11 +151,7 @@ foreach orslv ($dummy)
       $orslv != 'T2' & \
       $orslv != 'T3' & \
       $orslv != 'T4' & \
-      $orslv != 'NL1'& \
-      $orslv != 'NL2'& \
-      $orslv != 'NL3'& \
-      $orslv != 'CS' & \
-      $orslv != 'NCS') goto ORSLV
+      $orslv != 'CS') goto ORSLV
   if( $orslv != "$orslvs" ) set orslvs = `echo ${orslvs} ${orslv}`
 end
 
@@ -145,6 +160,7 @@ end
 echo ""
 echo "${C1}Atmospheric Codes:${CR} ${C2}$HRCODES${CR}"
 echo "${C1} Ocean Resolution:${CR} ${C2}$orslvs${CR}"
+echo "${C1} Land BCs version:${CR} ${C2}$lbcsv${CR}"
 
 #######################################################################
 #######################################################################
@@ -156,47 +172,50 @@ set make_bcs_jobs = ''
 # Loop over All Ocean Resolution Codes
 # ------------------------------------
 
-set GLOBAL_CATCH_DATA = /discover/nobackup/ltakacs/bcs/LandSurfaceData_for_Catchment_Parameters/global.cat_id.catch.ORIG.DL
-#set HOSTNAME = `hostname | rev | cut -c3- | rev | cut -c1-8`
-if ( -f /discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/GEOS5_10arcsec_mask.nc ) then
-    set l_data = /discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/
+foreach orslv ($orslvs)
+
+#######################################################################
+#                Select land-lakes-ice-ocean mask file
+#######################################################################
+
+if ( -f /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/GEOS5_10arcsec_mask.nc ) then
+    set l_data = /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/
 else
     set l_data = /nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/
 endif
 
-foreach orslv ($orslvs)
+if ( $orslv == O1 | $orslv == T1 | $orslv == T2 | $orslv == T3 ) then
 
-if( $orslv == NL1 | $orslv == T1 | $orslv == T2 | $orslv == T3) then
-    # Great-Lakes & Caspian-Sea treated as Model LAKE tiles, Surface Temperatures will be Model Derived
-    # -------------------------------------------------------------------------------------------------
-    set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask_freshwater-lakes.nc
+# Great-Lakes & Caspian-Sea treated as Model LAKE tiles, Surface Temperatures will be Model Derived
+# -------------------------------------------------------------------------------------------------
+
+    if ( $lbcsv == F25 | $lbcsv == GM4 | $lbcsv == ICA ) then
+	set GLOBAL_CATCH_DATA = ${l_data}/global.cat_id.catch.DL
+    else
+	set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask_freshwater-lakes.nc
+    endif
+
+else if ( $orslv == O2 | $orslv == O3 | $orslv == CS ) then
+
+# Great-Lakes & Caspian-Sea treated as Model OCEAN tiles, Surface Temperatures will be taken from OCEAN SST Data
+# --------------------------------------------------------------------------------------------------------------
+
+    if ( $lbcsv == F25 | $lbcsv == GM4 | $lbcsv == ICA ) then
+	set GLOBAL_CATCH_DATA = ${l_data}/global.cat_id.catch.GreatLakesCaspian_Updated.DL
+    else
+	set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask.nc
+    endif
+    
+else
+
+    echo " !!!! Invalid Ocean Resolution, stopping !!!! "
+    exit
+
 endif
 
-if( $orslv == NL2 | $orslv == NL3 | $orslv == NCS ) then
-    # Great-Lakes & Caspian-Sea treated as Model Ocean tiles, Surface Temperatures will be Model Derived
-    # --------------------------------------------------------------------------------------------------
-    set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask.nc
-endif
+set MASKFILE = `echo ${GLOBAL_CATCH_DATA} | rev | cut -d / -f1 | rev `
 
-if( $orslv == O1 ) then
-    # Great-Lakes & Caspian-Sea treated as Model LAKE tiles, Surface Temperatures will be Model Derived
-    # -------------------------------------------------------------------------------------------------
-    set GLOBAL_CATCH_DATA = ${l_data}/global.cat_id.catch.DL
-endif
-
-if( $orslv == O2 | $orslv == CS ) then
-    # Great-Lakes & Caspian-Sea treated as Model OCEAN tiles, Surface Temperatures will be taken from OCEAN SST Data
-    # --------------------------------------------------------------------------------------------------------------
-    set GLOBAL_CATCH_DATA = ${l_data}/global.cat_id.catch.GreatLakesCaspian_Updated.DL
-endif
-
-if( $orslv == O3 ) then
-    # Great-Lakes & Caspian-Sea treated as Model OCEAN tiles, Surface Temperatures will be taken from OCEAN SST Data
-    # --------------------------------------------------------------------------------------------------------------
-    set GLOBAL_CATCH_DATA = ${l_data}/global.cat_id.catch.GreatLakesCaspian_Updated.DL
-endif
-
-    set MASKFILE = `echo ${GLOBAL_CATCH_DATA} | rev | cut -d / -f1 | rev `
+#######################################################################
 
 echo ""
     
@@ -210,15 +229,15 @@ set LATLON_OCEAN = FALSE
 set TRIPOL_OCEAN = FALSE
 set CUBED_SPHERE_OCEAN = FALSE
 
-if( $orslv == O1 | $orslv == NL1 ) then
+if( $orslv == O1 ) then
     @ imo = 360   # Lat/Lon Data-Ocean (Reynolds 1-deg)
     @ jmo = 180   # Lat/Lon Data-Ocean (Reynolds 1-deg)
 endif
-if( $orslv == O2 | $orslv == NL2 ) then
+if( $orslv == O2 ) then
     @ imo = 1440  # Lat/Lon Data-Ocean (Reynolds 1/4-deg)
     @ jmo = 720   # Lat/Lon Data-Ocean (Reynolds 1/4-deg)
 endif
-if( $orslv == O3 | $orslv == NL3 ) then
+if( $orslv == O3 ) then
     @ imo = 2880  # Lat/Lon Data-Ocean (OSTIA 1/8-deg)
     @ jmo = 1440  # Lat/Lon Data-Ocean (OSTIA 1/8-deg)
 endif
@@ -239,7 +258,7 @@ if( $orslv == T4 ) then
     @ jmo = 1080   # MOM Tripolar-Ocean
 endif
 
-if( $orslv == NL1 | $orslv == NL2 | $orslv == NL3 | $orslv == O1 | $orslv == O2| $orslv == O3 ) then
+if( $orslv == O1 | $orslv == O2| $orslv == O3 ) then
     set LATLON_OCEAN = TRUE
     set     DATENAME = DE
     set     POLENAME = PE
@@ -249,7 +268,7 @@ if( $orslv == T1 | $orslv == T2 | $orslv == T3 | $orslv == T4 ) then
     set     DATENAME = TM
     set     POLENAME = TM
 endif
-if( $orslv == CS | $orslv == NCS ) set CUBED_SPHERE_OCEAN = TRUE
+if( $orslv == CS ) set CUBED_SPHERE_OCEAN = TRUE
 
 # -------------------------------------
 # Loop over All Atmospheric Resolutions
@@ -495,9 +514,9 @@ if( $LATLON_OCEAN == TRUE ) then
     bin/CombineRasters.x -f 0 -t ${NT} DE${IMO}xPE${JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t ${NT} DC${IM}xPC${JM} DE${IMO}xPE${JMO}-Pfafstetter
     setenv OMP_NUM_THREADS 1
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g DC${IM}xPC${JM}_DE${IMO}xPE${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g DC${IM}xPC${JM}_DE${IMO}xPE${JMO}-Pfafstetter -v $lbcsv
     setenv OMP_NUM_THREADS ${NCPUS}
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g DC${IM}xPC${JM}_DE${IMO}xPE${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g DC${IM}xPC${JM}_DE${IMO}xPE${JMO}-Pfafstetter -v $lbcsv
     chmod 755 bin/create_README.csh
     bin/create_README.csh
 endif
@@ -507,9 +526,9 @@ if( $TRIPOL_OCEAN == TRUE ) then
     bin/CombineRasters.x -t ${NT} DC${IM}xPC${JM} ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
     bin/mk_runofftbl.x DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
     setenv OMP_NUM_THREADS 1
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g DE${IMO}xPE${JMO}_DE${IMO}xPE${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g DE${IMO}xPE${JMO}_DE${IMO}xPE${JMO}-Pfafstetter -v $lbcsv
     setenv OMP_NUM_THREADS ${NCPUS}
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g DE${IMO}xPE${JMO}_DE${IMO}xPE${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g DE${IMO}xPE${JMO}_DE${IMO}xPE${JMO}-Pfafstetter -v $lbcsv
     chmod 755 bin/create_README.csh
     bin/create_README.csh
 endif
@@ -661,9 +680,9 @@ if( $LATLON_OCEAN == TRUE ) then
     bin/CombineRasters.x -f 0 -t ${NT} DE${IMO}xPE${JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t ${NT} CF${NC}x6C DE${IMO}xPE${JMO}-Pfafstetter
     setenv OMP_NUM_THREADS 1
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_DE${IMO}xPE${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_DE${IMO}xPE${JMO}-Pfafstetter -v $lbcsv
     setenv OMP_NUM_THREADS ${NCPUS}
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_DE${IMO}xPE${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_DE${IMO}xPE${JMO}-Pfafstetter -v $lbcsv
     chmod 755 bin/create_README.csh
     bin/create_README.csh
 endif
@@ -674,9 +693,9 @@ if( $TRIPOL_OCEAN == TRUE ) then
     bin/CombineRasters.x -t ${NT} CF${NC}x6C ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
     bin/mk_runofftbl.x CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
     setenv OMP_NUM_THREADS 1
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter -v $lbcsv
     setenv OMP_NUM_THREADS ${NCPUS}
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter -v $lbcsv
     chmod 755 bin/create_README.csh
     bin/create_README.csh
 endif
@@ -685,9 +704,9 @@ if( $CUBED_SPHERE_OCEAN == TRUE ) then
     bin/CombineRasters.x -f 0 -t ${NT} CF${NC}x6C Pfafstetter >/dev/null
     bin/CombineRasters.x -t ${NT} CF${NC}x6C CF${NC}x6C-Pfafstetter
     setenv OMP_NUM_THREADS 1
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter -v $lbcsv
     setenv OMP_NUM_THREADS ${NCPUS}
-    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter 
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter -v $lbcsv 
     chmod 755 bin/create_README.csh
     bin/create_README.csh
 endif
@@ -838,7 +857,7 @@ bin/CombineRasters.x -f 0 -t 232000000 ${THISGRID} Pfafstetter > /dev/null
 bin/CombineRasters.x -t 232000000 ${THISGRID} ${THISGRID}-Pfafstetter
 /bin/mv til/${THISGRID}_${THISGRID}-Pfafstetter.til  til/${THISGRID}_${THISGRID}-Pfafstetter.ind 
 setenv OMP_NUM_THREADS 1
-bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID}
+bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID} -v $lbcsv 
 setenv OMP_NUM_THREADS ${NCPUS}
 head -1 clsm/mkCatchParam.log > smap_cmd
 chmod 755 smap_cmd

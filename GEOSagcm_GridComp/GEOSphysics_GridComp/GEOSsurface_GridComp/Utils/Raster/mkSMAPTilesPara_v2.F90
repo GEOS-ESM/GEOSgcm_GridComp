@@ -16,7 +16,7 @@ PROGRAM mkSMAPTilesPara_v2
       use LogRectRasterizeMod
       
       implicit none
-
+      character*4          :: LBSV = 'DEF'
       integer i,j,ig,jg,i0,iop,n,d1,d2,j1,j2,i1,i2,ix, jx,icount,pcount
       integer :: NC = i_raster, NR = j_raster, NT = 16330000, ND = 10000, ND_raster = 10000
       
@@ -92,7 +92,11 @@ PROGRAM mkSMAPTilesPara_v2
             i = i+1
             call getarg(i,PF)
             if (PF == 'T') pfaf_til = .true.
-            
+
+         elseif ( trim(arg) == '-v' ) then
+            i = i+1
+            call getarg(i,LBSV)
+                        
          else ! stop for any other arguments
             
             print *,'USAGE : bin/mkSMAPTiles -smap_grid MXX -pfaf_til T'
@@ -750,7 +754,7 @@ PROGRAM mkSMAPTilesPara_v2
       ! now run mkCatchParam
       ! --------------------
 
-      tmpstring1 = '-e EASE -g '//trim(gfile)
+      tmpstring1 = '-e EASE -g '//trim(gfile)//' -v '//trim(LBSV)
       write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
       tmpstring = 'bin/mkCatchParam.x '//trim(tmpstring2)//' '//trim(tmpstring1)
       print *,trim(tmpstring)

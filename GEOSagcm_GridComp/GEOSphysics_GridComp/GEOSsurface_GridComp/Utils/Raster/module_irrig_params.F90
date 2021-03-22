@@ -274,8 +274,9 @@ contains
         ! ----------
         
         status = NF_DEF_VAR(NCOutID, 'IRRIGTYPE'   , NF_FLOAT, 2 ,(/lid, cid/), vid)  ; VERIFY_(STATUS)
-        status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name', LEN_TRIM('Preferred Irrig Type : SPRINKLER(1) DRIP(2) FLOOD(3)'),      &
-             'Preferred Irrig Method : (1)SPRINKLER (2)DRIP (3)FLOOD')                      ; VERIFY_(STATUS)
+        status = NF_PUT_ATT_TEXT(NCOutID, vid, 'long_name',  &
+             LEN_TRIM('Preferred Irrig Type : Concurrent (0) SPRINKLER(1) DRIP(2) FLOOD(3) AVOID (negative)'),      &
+             'Preferred Irrig Type : Concurrent (0) SPRINKLER(1) DRIP(2) FLOOD(3) AVOID (negative)')            ; VERIFY_(STATUS)
         status = NF_PUT_ATT_TEXT(NCOutID, vid, 'units', 1,'-')                        ; VERIFY_(STATUS)       
         status = NF_PUT_ATT_REAL(NCOutID, vid, 'missing_value', NF_REAL,1,  UNDEFG)   ; VERIFY_(STATUS)
         
@@ -425,7 +426,7 @@ contains
         
         MI     = 0.
         MR     = 0.
-        IRRIGTYPE = 3
+        IRRIGTYPE = 0
     
         IRRIGPLANT     = 998
         IRRIGHARVEST   = 998
@@ -806,11 +807,14 @@ contains
                     SF = 0.
                     DF = 0.
                     FF = 1.
+                    IRRIGTYPE (I, N) = 3 ! Always flood
                  ENDIF
-                 IF(N == 10) SF = 0.                                   ! Date palm
-                 IF(N == 22) SF = 0.                                   ! Cocoa
-                 ITYPE = (/SF, DF, FF/)
-                 IRRIGTYPE (I, N) = maxloc(ITYPE, 1)
+                 IF(N == 10) IRRIGTYPE (I, N) = -1 ! never sprinkler
+                 IF(N == 22) IRRIGTYPE (I, N) = -1 ! never sprinkler
+                 !IF(N == 10) SF = 0.                                   ! Date palm
+                 !IF(N == 22) SF = 0.                                   ! Cocoa
+                 !ITYPE = (/SF, DF, FF/)
+                 !IRRIGTYPE (I, N) = maxloc(ITYPE, 1)
               END DO
            ENDIF
         END DO
@@ -1031,7 +1035,7 @@ contains
 
         POLYID = -9999
 
-        status = NF_OPEN ('data/CATCH/IRRIGATION/cb_2015_us_country_30arcsec.nc4',NF_NOWRITE, ncid) ; VERIFY_(STATUS)    
+        status = NF_OPEN ('data/CATCH/IRRIGATION/cb_2015_us_county_30arcsec.nc4',NF_NOWRITE, ncid) ; VERIFY_(STATUS)    
         do j = 1, NY_cbData
            status = NF_GET_VARA_INT(NCID,VarID(NCID,'POLYID') ,(/1,j/),(/NX_cb, 1/), POLYID (:,NY_cb - j + 1)) ; VERIFY_(STATUS) ! reading north to south
         end do

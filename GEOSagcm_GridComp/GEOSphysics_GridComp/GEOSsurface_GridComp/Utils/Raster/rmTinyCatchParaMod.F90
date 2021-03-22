@@ -15,7 +15,7 @@ module rmTinyCatchParaMod
   implicit none
   logical, parameter :: error_file=.true.
   integer, parameter :: n_SoilClasses = 253
-  real, parameter :: gnu=1.0, zks = 2.0
+  real, parameter :: zks = 2.0
   integer, parameter :: i_raster = 8640, j_raster=4320
   integer, parameter :: ncat_gswp2 = 15238
   REAL, PARAMETER :: undef = 1.e+20
@@ -28,7 +28,7 @@ module rmTinyCatchParaMod
   include 'netcdf.inc'	
   logical :: preserve_soiltype = .false.
   character*100 :: c_data = 'data/CATCH/'
-  logical :: process_peat = .true.
+  
 
   private
 
@@ -41,17 +41,91 @@ module rmTinyCatchParaMod
   public mineral_perc, process_gswp2_veg,center_pix, soil_class
   public tgen, sat_param,REFORMAT_VEGFILES,base_param,ts_param
   public :: Get_MidTime, Time_Interp_Fac, compute_stats, c_data	
-  public :: ascat_r0, jpl_canoph,  NC_VarID,  process_peat 
-  logical, parameter, public :: jpl_height = .true.
-  INTEGER, PARAMETER, public :: SRTM_maxcat = 291284
-  
-type :: mineral_perc
-   real :: clay_perc
-   real :: silt_perc
-   real :: sand_perc
-end type mineral_perc
+  public :: ascat_r0, jpl_canoph,  NC_VarID,  init_bcs_config  
+  INTEGER, PARAMETER, public:: SRTM_maxcat = 291284
+  logical, public, save     :: process_peat = .true.
+  logical, public, save     :: jpl_height   = .true.
+  character*8, public, save :: LAIBCS  = 'MODGEO'
+  character*4, public, save :: SOILBCS = 'HWSD'
+  character*6, public, save :: MODALB  = 'MODIS2'
+  REAL, save                :: GNU = 1.0
+
+  type :: mineral_perc
+     real :: clay_perc
+     real :: silt_perc
+     real :: sand_perc
+  end type mineral_perc
 
 contains
+
+  SUBROUTINE init_bcs_config (LBSV)
+
+    implicit none
+
+    character(*), intent (in) :: LBSV
+! LAIBCS: Choice of LAI data set. DEFAULT : MODGEO
+!         GLASSA  : 8-day AVHRR climatology from the period 1981-2017 on  7200x3600 grid
+!         GLASSM  : 8-day MODIS climatology from the period 2000-2017 on  7200x3600 grid
+!         MODISV6 : 8-day climatology from the period 2002.01-2016.10 on  86400x43200 grid
+!         MODGEO  : MODIS with GEOLAND2 overlaid on South America, Afirca and Australia
+!         GEOLAND2: 10-day climatology from the period 1999-2011 on 40320x20160 grid               
+!         GSWP2   : Monthly climatology from the period 1982-1998 on 360x180 grid                  
+!         MODIS   : 8-day climatology from the period 2000-2013 on  43200x21600 grid
+!         GSWPH   : Monthly climatology from the period 1982-1998 on 43200x21600 grid              "
+! MODALB: Choice of MODIS Albedo data. DEFAULT : MODIS2                                            
+!         MODIS1 : 16-day Climatology from 1'x1 (21600x10800) MODIS data from the period 2000-2004 
+!         MODIS2 : 8-day Climatology from 30"x30"(43200x21600) MODIS data from the period 2001-2011 
+! SOILBCS:Choice of soil data. DEFAULT :HWSD                                                       
+!         HWSD : Merged HWSD-STATSGO2 soil properties on 43200x21600 with Woesten et al. (1999) Parameters   
+
+    select case (trim(LBSV))
+
+    case ("F25")
+       LAIBCS  = 'GSWP2'
+       SOILBCS = 'NGDC'
+       MODALB  = 'MODIS1'
+       GNU     = 2.17
+       process_peat = .false.
+       jpl_height   = .false.
+
+    case ("GM4", "ICA")
+       LAIBCS  = 'GSWP2'
+       SOILBCS = 'NGDC'
+       MODALB  = 'MODIS2'
+       process_peat = .false.
+       jpl_height   = .false.
+
+    case ("NL3")
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       process_peat = .false.
+       jpl_height   = .false.
+
+     case ("NL4")
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'      
+       process_peat = .false.
+       jpl_height   = .true.
+
+     case ("NL4p")
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       process_peat = .true.
+       jpl_height   = .true.
+
+    case ("DEF")
+       LAIBCS  = 'MODGEO'
+       SOILBCS = 'HWSD'
+       MODALB  = 'MODIS2'
+       process_peat = .true.
+       jpl_height   = .true.
+       
+    end select
+             
+  END SUBROUTINE init_bcs_config
 ! _____________________________________________________________________________________________
 !
 
@@ -5262,15 +5336,15 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       IMPLICIT NONE
 
-      real, parameter :: VALMAX=50.
+      real(kind =8), parameter :: VALMAX=50.
       REAL, intent (in) :: TOPMEAN,TOPVAR,TOPSKEW
       REAL, intent (out) :: COESKEW
       REAL, dimension (NAR), intent (out) :: STO,ACO
 
       INTEGER I
-      REAL ST(NAR),AC(NAR)
-      REAL TOPETA,TOPLAM,TOPSCAL,GAMLN,SCALE,ACLN
-      real cumac, cum2,cum3
+      REAL(kind =8) :: ST(NAR),AC(NAR)
+      REAL(kind =8) :: TOPETA,TOPLAM,TOPSCAL,GAMLN,SCALE,ACLN
+      real(kind =8) :: cumac, cum2,cum3
 
 !-------------------------------------------------------------------------
 
@@ -5289,15 +5363,16 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 ! compute the gamma parameters, eta (topeta) and lambda (toplam), and topscal
 ! which is the translation parameter
 
-         TOPETA=4./COESKEW**2
-         TOPLAM=SQRT(TOPETA)/SQRT(TOPVAR)
-         TOPSCAL=TOPMEAN-TOPETA/TOPLAM
+         TOPETA=4.D0/dble(COESKEW)**2
+         TOPLAM=DSQRT(TOPETA)/SQRT(TOPVAR)
+         TOPSCAL=dble(TOPMEAN)-TOPETA/TOPLAM
 
 ! evaluate the gamma function
 
-         CALL GAMMLN(TOPETA,GAMLN)
-
-         CUMAC=0.0
+!         CALL GAMMLN(TOPETA,GAMLN)
+         GAMLN = gammln_F90(TOPETA)
+         
+         CUMAC=0.D0
 
 ! compute the frequency distribution of ln(a/tanB)
 ! st(i) are the values of ln(a/tanB)
@@ -5305,18 +5380,18 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
          DO I=1,NAR
          
-            ST(I)=(FLOAT(I)-0.95)*(VALMAX-TOPSCAL)/FLOAT(NAR)+TOPSCAL
+            ST(I)=(dble(I)-0.95)*(VALMAX-TOPSCAL)/dble(NAR)+TOPSCAL
             SCALE=ST(I)-TOPSCAL
 
 ! below is the logarithmic form of the gamma distribution; this is required 
 ! because the numerical estimate of the logarithm of the gamma function 
 ! is more stable than the one of the gamma function.
           
-            ACLN=TOPETA*ALOG(TOPLAM)+(TOPETA-1.)*ALOG(SCALE)  &
+            ACLN=TOPETA*LOG(TOPLAM)+(TOPETA-1.)*LOG(SCALE)  &
                 -TOPLAM*SCALE-GAMLN
                       
-            IF(ACLN.LT.-10.) THEN
-               AC(I)=0.
+            IF(ACLN.LT.-10.D0) THEN
+               AC(I)=0.D0
             ELSE
                AC(I)=EXP(ACLN)
             ENDIF
@@ -5327,11 +5402,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 ! we want the relative frequencies to sum 1.
 
-         IF (CUMAC.eq.0.) THEN
+         IF (CUMAC.eq.0.D0) THEN
 !            write(*,*) 'distrib sum=',CUMAC
             stop
          endif
-         CUM2=0.
+         CUM2=0.D0
          DO I=1,NAR
             AC(I) = AC(I) / CUMAC
             CUM2=CUM2+AC(I)
@@ -5345,37 +5420,52 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          IF (COESKEW.LT.0.) then
 
             do i=1,nar
-               STO(I)=2.*TOPMEAN-ST(I)
-               ACO(I)=AC(I)
+               STO(I)=REAL(2.*dble(TOPMEAN)-ST(I))
+               ACO(I)=REAl(AC(I))
 
             enddo
          ELSE
-!            if (n .eq. idmax) then
-!               write(*,*) 'last catchment'
-!            endif
+
             do i=1,nar
-               STO(I)=ST(-I+NAR+1)
-               ACO(I)=AC(-I+NAR+1)
+               STO(I)=REAL(ST(-I+NAR+1))
+               ACO(I)=REAL(AC(-I+NAR+1))
             enddo
          ENDIF
 
-!         sum=0.
-!         do i=1,nar
-!            sum=sum+sto(i)*aco(i)
-!         end do
-
-!         sum=0.
-!         do i=1,nar
-!            sum=sum+aco(i)
-!         end do
-
-
     END subroutine tgen
 
+    ! ---------------------------------------------------------------------
   
+    FUNCTION gammln_F90 (xx)
+
+      IMPLICIT NONE
+      INTEGER :: i
+      REAL(kind =8), intent (in) :: xx
+      REAL(kind =8) :: gammln_F90
+      REAL(kind =8) :: ser,tmp,x,y
+      REAL(kind =8) :: stp = 2.5066282746310005D0
+      REAL(kind =8), DIMENSION(6) :: coef = (/76.18009172947146D0,&
+           -86.50532032941677D0,24.01409824083091D0,&
+           -1.231739572450155D0,0.1208650973866179D-2,&
+           -0.5395239384953D-5/)
+      
+      x=xx
+      tmp=x+5.5D0
+      tmp=(x+0.5D0)*log(tmp)-tmp
+      ser=1.000000000190015D0
+      y=x
+      do i=1,size(coef)
+         y=y+1.0D0
+         ser=ser+coef(i)/y
+      end do
+      
+      gammln_F90 = tmp+log(stp*ser/x)
+    
+    END FUNCTION gammln_F90
+ 
   ! ********************************************************************
 
-    SUBROUTINE GAMMLN(XX,GAMLN)
+    SUBROUTINE GAMMLN_RK (XX,GAMLN)
       
       implicit none
       DOUBLE PRECISION :: COF(6),STP,HALF,ONE,FPF,X,TMP,SER
@@ -5402,7 +5492,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       GAMLN=TMP+LOG(STP*SER)
       
-    END SUBROUTINE GAMMLN
+    END SUBROUTINE GAMMLN_RK
   
   ! ********************************************************************
 
