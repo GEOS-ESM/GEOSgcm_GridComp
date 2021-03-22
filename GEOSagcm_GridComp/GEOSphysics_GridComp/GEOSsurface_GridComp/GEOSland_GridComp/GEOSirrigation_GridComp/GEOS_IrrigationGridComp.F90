@@ -216,7 +216,7 @@ contains
     
     call MAPL_AddInternalSpec(GC                              ,&
          SHORT_NAME = 'IRRIGTYPE'                             ,&
-         LONG_NAME  = 'Preferred_Irrig_method=(1)SPRINKLER_(2)DRIP_(3)FLOOD',&
+         LONG_NAME  = 'Preferred_Irrig_method=(0)CONCURRENT_(1)SPRINKLER_(2)DRIP_(3)FLOOD_(negative)AVOID',&
          UNITS      = '1'                                     ,&
          DIMS       = MAPL_DimsTileOnly                       ,&
          VLOCATION  = MAPL_VLocationNone                      ,&
@@ -573,7 +573,7 @@ contains
        ! ==============================
 
        call IM%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, &
-       IRRIGTYPE, CROPIRRIGFRAC,SRATE,DRATE,FRATE)
+       CROPIRRIGFRAC,SRATE,DRATE,FRATE)
        
     endif
 
@@ -808,6 +808,7 @@ contains
        ! ==============================
 
        call IM%run_model (dofyr,local_hour,                   &
+            SPRINKLERFR, DRIPFR, FLOODFR,                     &
             CROPIRRIGFRAC,IRRIGPLANT,IRRIGHARVEST,IRRIGTYPE , &
             SMWP,SMSAT,SMREF,SMCNT, RZDEF,                    & 
             SPRINKLERRATE, DRIPRATE, FLOODRATE,               &

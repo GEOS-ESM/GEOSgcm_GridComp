@@ -20,7 +20,7 @@ MODULE IRRIGATION_MODULE
   ! https://github.com/NASA-LIS/LISF/blob/master/lis/surfacemodels/land/clsm.f2.5/irrigation/clsmf25_getirrigationstates.F90 
   ! Drip irrigation method calculation is similar to that of sprinkler, albeit the drip irrigation method assumes a 0% water loss.
   !
-  ! February 26, 2021 (Sarith Mahanama) - First Version
+  ! March 21, 2021 (Sarith Mahanama) - First Version
   !
   ! (1) EXPORTS - MODEL OUTPUTS TO THE LAND MODEL (IRRIGATION RATES):
   !    1) SPRINKLERRATE [kg m-2 s-1]
@@ -32,7 +32,7 @@ MODULE IRRIGATION_MODULE
   !    mosaic of upto 3 fractions: i) non-irrigated land, ii) irrigated crop, or iii) paddy.
   !    The model treats each fraction as a separate computational tile and runs on each individual fraction with own parameters and prognostics.
   !    All fractions inherited model and soil parameters from the main land tile that they belong to. A special treatment of setting BF3 to a high
-  !    value (25.) was applied to paddy/crop tiles to account for the uniquely flat nature of paddy/crop fields. Vegetation characteristics and vegetation dynamic
+  !    value (25.) was applied to paddy/crop tiles to account for the uniquely flat nature of farmlands. Vegetation characteristics and vegetation dynamic
   !    parameters for irrigated crop and paddy tiles were taken from the nearest grass or crops land tile. 
   !    During tiling and BCs data preparation, computed fractional coverages for land tiles were also adjusted
   !    to reflect each computational tile under the land grid component represents entirely one of the 3 irrigation surface types: a non-irrigated land,
@@ -88,7 +88,8 @@ MODULE IRRIGATION_MODULE
   !
   !     IRRIG_TRIGGER: 1 SPECIFIC INPUTS:
   !          DOFYR        : day of year
-  !          IRRIGTYPE    : Preferred Irrig method (NTILES, 26) - (1)SPRINKLER_(2)DRIP_(3)FLOOD
+  !          IRRIGTYPE    : Preferred Irrig method (NTILES, 26) -
+  !                         (0)CONCURRENT (default), (1)SPRINKLER ONLY (2)DRIP ONLY (3)FLOOD ONLY, and (-negative) AVOID this method 
   !          CROPIRRIGFRAC: Crop irrigated fraction (NTILES, 26) (per Section 2, fractions have been adjusted such that
   !                         CROPIRRIGFRAC is 1. on paddy tiles; the sum of available crop fractions is 1. on irrigated crop tiles;
   !                         and is zero on non-irrigated tiles.
@@ -155,6 +156,7 @@ MODULE IRRIGATION_MODULE
      procedure, private :: irrigrate_lai_trigger
      procedure, private :: irrigrate_crop_calendar
      procedure, private :: cwd => crop_water_deficit
+     procedure, private :: irrig_by_method
      procedure, private :: update_irates_lai
      procedure, private :: update_irates_ccalendar
      
@@ -242,86 +244,37 @@ contains
                                 
                 SELECT CASE (IRRIG_METHOD)                
                 CASE (0)  ! CONCURRENTLY SPRINKER + FLOOD + DRIP on corresponding fractions
-                   
-                   H1 = this%sprinkler_stime
-                   H2 = this%sprinkler_stime + this%sprinkler_dur
-                   IT = this%sprinkler_thres                   
-                   if ((HC >= H1).AND.(HC < H2)) then
-                      ! The model uses rootzone soil moisture state at H1 to compute irrigation rates for the day and
-                      ! maintains the same rate through out the irrigation duration (H1 <= HC < H2).
-                      if((ma <= IT).AND.(H1 == HC)) &
-                           SRATE (N,1) = this%cwd (ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
-                                               * SPRINKLERFR(N)/(H2 - H1)/3600.
-                   else
-                      SRATE (N,1) = 0.
-                   endif
-                   
-                   H1 = this%flood_stime
-                   H2 = this%flood_stime + this%flood_dur
-                   IT = this%flood_thres
-                   if ((HC >= H1).AND.(HC < H2)) then
-                      if((ma <= IT).AND.(H1 == HC)) &
-                           FRATE (N,1) = this%cwd (ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
-                                           * FLOODFR (N)/(H2 - H1)/3600.
-                   else
-                      FRATE (N,1) = 0.
-                   endif
 
-                   H1 = this%drip_stime
-                   H2 = this%drip_stime + this%drip_dur
-                   IT = this%sprinkler_thres 
-                   if ((HC >= H1).AND.(HC < H2)) then
-                      ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
-                      if((ma <= IT).AND.(H1 == HC)) DRATE (N,1) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),0.) * DRIPFR (N) /(H2 - H1)/3600.
-                   else
-                      DRATE (N,1) = 0.
-                   endif
+                   call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
+                        SRATE = SRATE (N,1), &
+                        DRATE = DRATE (N,1), &
+                        FRATE = FRATE (N,1))
+
+                   SRATE (N,1) =  SRATE (N,1)*SPRINKLERFR(N)
+                   DRATE (N,1) =  DRATE (N,1)*DRIPFR (N)
+                   FRATE (N,1) =  FRATE (N,1)*FLOODFR (N) 
                    
                 CASE (1)  ! SPRINKLER only
-                   
-                   H1 = this%sprinkler_stime
-                   H2 = this%sprinkler_stime + this%sprinkler_dur
-                   IT = this%sprinkler_thres    
-                   if ((HC >= H1).AND.(HC < H2)) then
-                      ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate. 
-                      if((ma <= IT).AND.(H1 == HC)) &
-                           SRATE (N,1) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
-                                               /(H2 - H1)/3600.
-                   else
-                      SRATE (N,1) = 0.
-                   endif
+
+                   call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
+                        SRATE = SRATE (N,1))
                    
                    DRATE (N,1) = 0.
                    FRATE (N,1) = 0.
                                       
                 CASE (2)  ! DRIP only
+
+                   call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
+                        DRATE = DRATE (N,1))
                    
-                   H1 = this%drip_stime
-                   H2 = this%drip_stime + this%drip_dur
-                   IT = this%sprinkler_thres 
-                   if ((HC >= H1).AND.(HC < H2)) then
-                      ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
-                      if((ma <= IT).AND.(H1 == HC)) DRATE (N,1) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),0.) &
-                                               /(H2 - H1)/3600.
-                   else
-                      DRATE (N,1) = 0.
-                   endif
                    SRATE (N,1) = 0.
                    FRATE (N,1) = 0.
 
                 CASE (3)  ! FLOOD only
-                   
-                   H1 = this%flood_stime
-                   H2 = this%flood_stime + this%flood_dur
-                   IT = this%flood_thres
-                   if ((HC >= H1).AND.(HC < H2)) then
-                      ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate. 
-                      if((ma <= IT).AND.(H1 == HC)) &
-                           FRATE (N,1) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
-                                           /(H2 - H1)/3600.
-                   else
-                      FRATE (N,1) = 0.
-                   endif
+
+                   call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
+                        FRATE = FRATE (N,1))
+
                    SRATE (N,1) = 0.
                    DRATE (N,1) = 0.
                    
@@ -375,6 +328,7 @@ contains
   ! ----------------------------------------------------------------------------
 
   SUBROUTINE irrigrate_crop_calendar(this,dofyr,local_hour, &
+       SPRINKLERFR, DRIPFR, FLOODFR,                        &
        CROPIRRIGFRAC,IRRIGPLANT, IRRIGHARVEST, IRRIGTYPE ,  &
        SMWP,SMSAT,SMREF,SMCNT, RZDEF,                       &  
        SPRINKLERRATE, DRIPRATE, FLOODRATE, SRATE, DRATE, FRATE)
@@ -382,7 +336,7 @@ contains
     implicit none
     class(irrigation_model),intent(inout):: this
     integer, intent (in)                 :: dofyr
-    real, dimension (:),   intent (in)   :: local_hour
+    real, dimension (:),   intent (in)   :: local_hour, SPRINKLERFR, DRIPFR, FLOODFR
     real, dimension (:),   intent (in)   :: SMWP, SMSAT, SMREF, SMCNT, RZDEF
     real, dimension(:,:),  intent (in)   :: CROPIRRIGFRAC ! NUM_CROPS
     real, dimension(:,:),  intent (in)   :: IRRIGTYPE     ! NUM_CROPS
@@ -390,8 +344,8 @@ contains
     real, dimension(:,:,:),intent (in)   :: IRRIGHARVEST  ! NUM_SEASONS, NUM_CROPS
     real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FLOODRATE
     real, dimension (:,:),intent (inout) :: SRATE, DRATE, FRATE
-    INTEGER                              :: NTILES, N, crop, sea
-    REAL                                 :: ma, H1, H2, HC, IT, ROOTFRAC
+    INTEGER                              :: NTILES, N, crop, sea, ITYPE, I
+    REAL                                 :: ma, H1, H2, HC, IT, ROOTFRAC, void_frac
     logical                              :: season_end (NUM_CROPS)
     NTILES = SIZE (local_hour)
          
@@ -424,65 +378,73 @@ contains
 
                          else
                             
-                            ! IRRIGATED CROP: compute sum of irrigrates from 25 crops. IRRIGTYPE is a pre-determined parameter that specifies the preferred irrigation type
-                            ! for the particular crop at the location.
+                            ! IRRIGATED CROP: compute sum of irrigrates from 25 crops.
+                            
                             ROOTFRAC = CROP_SEASON_STAGE (this%MIDS_LENGTH, dofyr,NINT(IRRIGPLANT(N, sea, crop)),NINT(IRRIGHARVEST(N, sea, crop)))
                             if(SMREF(N) > SMWP(N))then
                                ma = (SMCNT(N) - SMWP(N)) /(SMREF(N) - SMWP(N))
                             else
                                ma = -1.
                             endif
- 
-                            SELECT CASE (NINT(IRRIGTYPE(N,crop)))
-                            CASE (1)
-                               ! (1)SPRINKLER
-                               H1 = this%sprinkler_stime
-                               H2 = this%sprinkler_stime + this%sprinkler_dur
-                               IT = this%sprinkler_thres
-                               if ((HC >= H1).AND.(HC < H2)) then
+                            
+                            SOILM: if(ma >= 0) then
+                               
+                               ITYPE = NINT(IRRIGTYPE(N,crop))
+
+                               CROP_IMETHOD: if (ITYPE == 0) then
                                   
-                                  ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate. A caveat though, the land model does not run on a mosaic of 26 crop tiles
-                                  ! to compute SMCNT. The land model merely uses weighted averaged SRATE, DRATE and FRATE from individual crops and treats the irrigated crop tile
-                                  ! as a single computational unit. 
+                                  ! concurrently on sprinkler, drip and flood fractions
+                                  call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), &
+                                       SRATE = SRATE (N,crop), &
+                                       DRATE = DRATE (N,crop), &
+                                       FRATE = FRATE (N,crop))
                                   
-                                  if((ma >= 0.).AND.(ma <= IT).AND.(H1 == HC)) &
-                                       SRATE (N,crop) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
-                                       /(H2 - H1)/3600.
-                               else
-                                  SRATE (N,crop) = 0
-                               endif
-                               
-                            CASE (2)
-                               ! (2)DRIP
-                               H1 = this%drip_stime
-                               H2 = this%drip_stime + this%drip_dur
-                               IT = this%sprinkler_thres 
-                               if ((HC >= H1).AND.(HC < H2)) then
-                                  ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
-                                  if((ma >= 0.).AND.(ma <= IT).AND.(H1 == HC)) DRATE (N,crop) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),0.) &
-                                       /(H2 - H1)/3600.
-                               else
-                                  DRATE (N,crop) = 0.
-                               endif
-                               
-                            CASE (3)
-                               ! (3)FLOOD
-                               H1 = this%flood_stime
-                               H2 = this%flood_stime + this%flood_dur
-                               IT = this%flood_thres
-                               if ((HC >= H1).AND.(HC < H2)) then
-                                  ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
-                                  if((ma >= 0.).AND.(ma <= IT).AND.(H1 == HC)) &
-                                       FRATE (N,crop) = this%cwd(ROOTFRAC,SMCNT(N),SMREF(N),this%efcor) &
-                                       /(H2 - H1)/3600.
-                               else
-                                  FRATE (N,crop) = 0.
-                               endif
-                               
-                            CASE DEFAULT
-                               PRINT *, 'irrigrate_crop_calendar: IRRIG_METHOD can be 1,2, or3'
-                               CALL EXIT(1)
-                            END SELECT
+                                  SRATE (N,crop) =  SRATE (N,crop)*SPRINKLERFR(N)
+                                  DRATE (N,crop) =  DRATE (N,crop)*DRIPFR (N)
+                                  FRATE (N,crop) =  FRATE (N,crop)*FLOODFR (N)
+
+                               elseif (ITYPE > 0) then
+                                  
+                                  ! only this method
+                                  if (ITYPE == 1) call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), SRATE = SRATE (N,crop))
+                                  if (ITYPE == 2) call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), DRATE = DRATE (N,crop))
+                                  if (ITYPE == 3) call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), FRATE = FRATE (N,crop))
+
+                               elseif (ITYPE < 0) then
+                                  
+                                  ! crop does not use IRRIG_METHOD -(ITYPE)
+                                  void_frac = 0.                                  
+                                  DO I = 1,3
+                                     if(I == ABS(ITYPE))then
+                                        ! this itype isn't used by this crop other 2 fractions equally share this fraction
+                                        if (I == 1) then
+                                           void_frac = SPRINKLERFR(N)/2.
+                                           SRATE(N,crop) = 0.
+                                        endif
+                                        if (I == 2) then
+                                           void_frac = DRIPFR (N)/2.
+                                           DRATE(N,crop) = 0.
+                                        endif
+                                        if (I == 3)then
+                                           void_frac = FLOODFR (N)/2.
+                                           FRATE(N,crop) = 0.
+                                        endif
+                                     else
+                                        if (I == 1) call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), SRATE = SRATE (N,crop))
+                                        if (I == 2) call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), DRATE = DRATE (N,crop))
+                                        if (I == 3) call this%irrig_by_method (HC, ma, ROOTFRAC, SMCNT(N), SMREF(N), FRATE = FRATE (N,crop))
+                                     endif
+                                  END DO
+                                  DO I = 1,3
+                                     if(I /= ABS(ITYPE))then
+                                        if (I == 1) SRATE (N,crop) =  SRATE (N,crop)*(SPRINKLERFR(N) + void_frac)
+                                        if (I == 2) DRATE (N,crop) =  DRATE (N,crop)*(DRIPFR (N)     + void_frac)
+                                        if (I == 3) FRATE (N,crop) =  FRATE (N,crop)*(FLOODFR (N)    + void_frac)
+                                     endif
+                                  ENDDO
+
+                               endif CROP_IMETHOD
+                            endif SOILM
                          ENDIF PADDY_OR_CROP
                       ENDIF IS_SEASON
                    end IF IS_CROP
@@ -506,7 +468,7 @@ contains
     ! They are weighted averaged over 26 crop fractions.
 
     call this%update_irates (SPRINKLERRATE,DRIPRATE,FLOODRATE, &
-       IRRIGTYPE, CROPIRRIGFRAC,SRATE,DRATE,FRATE)
+       CROPIRRIGFRAC,SRATE,DRATE,FRATE)
     
   END SUBROUTINE irrigrate_crop_calendar
 
@@ -546,11 +508,11 @@ contains
   !...............................................................................
   
   SUBROUTINE update_irates_ccalendar(this,SPRINKLERRATE,DRIPRATE,FLOODRATE, &
-       IRRIGTYPE, CROPIRRIGFRAC,SRATE,DRATE,FRATE)
+       CROPIRRIGFRAC,SRATE,DRATE,FRATE)
 
     implicit none
     class(irrigation_model),intent(inout):: this
-    real, dimension(:,:),  intent (in)   :: CROPIRRIGFRAC, IRRIGTYPE ! NUM_CROPS
+    real, dimension(:,:),  intent (in)   :: CROPIRRIGFRAC ! NUM_CROPS
     real, dimension (:,:), intent (in)   :: SRATE, DRATE, FRATE
     real, dimension (:),intent (inout)   :: SPRINKLERRATE, DRIPRATE, FLOODRATE
     integer                              :: N, NT, crop
@@ -566,15 +528,72 @@ contains
     DO N = 1, NT
        if(SUM(CROPIRRIGFRAC(N,:)) > 0.) then
           DO crop = 1, NUM_CROPS
-             if (IRRIGTYPE (N,crop) == 1.) SPRINKLERRATE(N) = SPRINKLERRATE(N) + SRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
-             if (IRRIGTYPE (N,crop) == 2.) DRIPRATE(N)      = DRIPRATE(N)      + DRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
-             if (IRRIGTYPE (N,crop) == 3.) FLOODRATE(N)     = FLOODRATE(N)     + FRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
+             SPRINKLERRATE(N) = SPRINKLERRATE(N) + SRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
+             DRIPRATE(N)      = DRIPRATE(N)      + DRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
+             FLOODRATE(N)     = FLOODRATE(N)     + FRATE (N,crop)*CROPIRRIGFRAC(N,crop)/SUM(CROPIRRIGFRAC(N,:))
           END DO
        endif
     END DO
 
   END SUBROUTINE update_irates_ccalendar
 
+  ! ----------------------------------------------------------------------------
+
+  SUBROUTINE irrig_by_method (this, HC, ma, ROOTFRAC, SMCNT, SMREF, SRATE, DRATE, FRATE)
+
+    implicit none
+    class (irrigation_model), intent(inout) :: this
+    REAL, intent (in)                       :: HC, ma, ROOTFRAC,SMCNT, SMREF
+    REAL, optional, intent (inout)          :: SRATE, DRATE, FRATE 
+    REAL                                    :: H1, H2, IT
+
+    if(present (SRATE)) then
+       ! SPRINKLER IRRIGATION
+       H1 = this%sprinkler_stime
+       H2 = this%sprinkler_stime + this%sprinkler_dur
+       IT = this%sprinkler_thres
+       if ((HC >= H1).AND.(HC < H2)) then
+          ! The model uses rootzone soil moisture state at H1 to compute irrigation
+          ! rates for the day and maintains the same rate through out the irrigation
+          ! duration (H1 <= HC < H2).
+          if((ma <= IT).AND.(H1 == HC)) &
+               SRATE = this%cwd (ROOTFRAC,SMCNT,SMREF,this%efcor)/(H2 - H1)/3600.
+       else
+          SRATE = 0.
+       endif
+    endif
+
+    if(present (DRATE)) then
+       ! DRIP IRRIGATION
+       H1 = this%drip_stime
+       H2 = this%drip_stime + this%drip_dur
+       IT = this%sprinkler_thres 
+       if ((HC >= H1).AND.(HC < H2)) then
+          ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
+          ! Notice drip uses the same soil moisture threshold of sprinkler but with 0.% efficiency correction.
+          if((ma <= IT).AND.(H1 == HC)) &
+               DRATE = this%cwd(ROOTFRAC,SMCNT,SMREF,0.)/(H2 - H1)/3600.
+       else
+          DRATE = 0.
+       endif
+    endif
+
+    if(present (FRATE)) then
+       ! FLOOD IRRIGATION
+       H1 = this%flood_stime
+       H2 = this%flood_stime + this%flood_dur
+       IT = this%flood_thres
+       if ((HC >= H1).AND.(HC < H2)) then
+          ! use SMCNT at H1 during H1 <= HC < H2 to compute irrigrate.
+          if((ma <= IT).AND.(H1 == HC)) &
+               FRATE = this%cwd (ROOTFRAC,SMCNT,SMREF,this%efcor)/(H2 - H1)/3600.
+       else
+          FRATE = 0.
+       endif
+    endif
+    
+  END SUBROUTINE irrig_by_method
+  
   ! ----------------------------------------------------------------------------
 
   REAL FUNCTION crop_water_deficit (this, rootfrac, asmc, smcref, efcor)
