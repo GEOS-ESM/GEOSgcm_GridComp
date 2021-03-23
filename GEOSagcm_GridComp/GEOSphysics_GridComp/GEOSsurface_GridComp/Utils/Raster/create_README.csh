@@ -4,7 +4,7 @@
 ##  Setting environment variables ##
 ####################################
 
-setenv gfile `head -1 clsm/mkCatchParam.log | cut -d 'g' -f2 | cut -d '.' -f1`
+setenv gfile `head -1 clsm/mkCatchParam.log | cut -d 'g' -f2 | cut -d '.' -f1 | cut -d' ' -f2`
 setenv workdir `pwd`
 setenv NC `head -1 clsm/mkCatchParam.log | cut -d'x' -f3 | cut -d'-' -f1`
 setenv NR `head -1 clsm/mkCatchParam.log | cut -d'y' -f2 | cut -d'-' -f1`
