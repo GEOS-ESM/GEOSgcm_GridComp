@@ -3425,7 +3425,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
            write(*,*)'Warnning 1: pfafstetter mismatched' 
            stop
         endif
-        if(process_peat) then
+        if((process_peat).and.(soil_class_top(n) == 253)) then
            meanlu = 9.3
            stdev  = 0.12
            minlu  = 8.5
