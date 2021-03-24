@@ -960,19 +960,20 @@ end # End Ocean Resolution Loop
 
 #######################################################################
 
-#echo " "
-#echo "Do you want to submit ${C2}MAKE_BCS${CR} jobs to run in the background? (Y/N)"
-#echo "-------------------------------------------------------------------"
-#echo " "
-#set dummy = `echo $<`
-#set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
-#if(.$dummy == .Y | .$dummy == YES ) then
-#    foreach job ($make_bcs_jobs)
-#      nohup ./$job &
-#    end
-#else
-foreach job ($make_bcs_jobs)
-    sbatch $job 
-end
-#endif
+echo " "
+echo "Are you planning to run ${C2}MAKE_BCS${CR} jobs on an interactive node? (Y/N)"
+echo "Enter N if you wish to submit to the SLURM queue instead                     "
+echo "-----------------------------------------------------------------------------"
+echo " "
+set dummy = `echo $<`
+set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
+if(.$dummy == .Y | .$dummy == YES ) then
+    foreach job ($make_bcs_jobs)
+      nohup ./$job &
+    end
+else
+    foreach job ($make_bcs_jobs)
+	sbatch $job 
+    end
+endif
 
