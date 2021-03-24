@@ -176,6 +176,24 @@ module GEOS_OradBioGridCompMod
     RC=STATUS  )
     VERIFY_(STATUS)
 
+     call MAPL_AddImportSpec(GC                         ,&
+          LONG_NAME          = 'net_surface_downwelling_nir_beam_flux',&
+          UNITS              = 'W m-2'                       ,&
+          SHORT_NAME         = 'DRNIR'                       ,&
+          DIMS               = MAPL_DimsHorzOnly             ,&
+          VLOCATION          = MAPL_VLocationNone            ,&
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC                         ,&
+          LONG_NAME          = 'net_surface_downwelling_nir_diffuse_flux',&
+          UNITS              = 'W m-2'                       ,&
+          SHORT_NAME         = 'DFNIR'                       ,&
+          DIMS               = MAPL_DimsHorzOnly             ,&
+          VLOCATION          = MAPL_VLocationNone            ,&
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
     call MAPL_AddImportSpec(GC,                               &
     SHORT_NAME = 'FROCEAN',                                   &
     LONG_NAME  = 'ocean_fraction_of_grid_cell',               &
@@ -937,7 +955,9 @@ hr=1.0
 !  atmosphere.  These are called "grottoes" because they are assumed
 !  to have ocean underneath with land overhead.  Set irradiance to 0
 !  to represent this condition.
-       if (slp < 0.0 .or. slp >1.0E10)then
+!       if (slp < 0.0 .or. slp >1.0E10)then ! original line, EMS
+       if ((slp < 0.0 .or. slp >1.0E10) .or. (wspd == MAPL_UNDEF) .or. (ozone == MAPL_UNDEF) &
+           .or. (wvapor == MAPL_UNDEF) .or. (relhum == MAPL_UNDEF)) then ! extended to include additional variables, EMS
         Ed = 0.0
         Es = 0.0
         TIRRQ(i,j,:) = 0.0
