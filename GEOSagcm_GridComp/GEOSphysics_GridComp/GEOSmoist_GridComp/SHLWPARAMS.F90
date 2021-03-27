@@ -34,6 +34,7 @@
            real     :: thlsrc_fac         ! Scaling factor for thlsrc perturbation
            real     :: qtsrc_fac          ! Scaling factor for qtsrc perturbation
            real     :: qtsrchgt           ! Interpolation height for total water source
+           integer  :: cridist_opt
       endtype SHLWPARAM_TYPE
 
   end module SHLWPARAMS

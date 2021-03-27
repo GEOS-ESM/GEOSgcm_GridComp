@@ -919,6 +919,9 @@ contains
     logical :: windsrcavg
     real    :: rpen     ! penetrative entrainment efficiency
 
+
+    integer :: cridist_opt
+
     ! ----------------------- !
     ! For lateral entrainment !
     ! ----------------------- !
@@ -972,6 +975,7 @@ contains
     scverbose        = shlwparams%scverbose
     windsrcavg       = shlwparams%windsrcavg
     rpen             = shlwparams%rpen
+    cridist_opt      = shlwparams%cridist_opt
     rle       = shlwparams%rle      !  For critical stopping distance for lateral entrainment [no unit]
     rkm       = shlwparams%rkm      !  Determine the amount of air that is involved in buoyancy-sorting [no unit]
     mixscale  = shlwparams%mixscale !  Specifies vertical structure of mixing rate
@@ -2544,9 +2548,12 @@ contains
           !          scaleh is only used here.                                !
           ! ----------------------------------------------------------------- !
 
+           if (cridist_opt.eq.0) then
             cridis = rle*scaleh                 ! Original code
-           ! cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
- 
+           else
+            cridis = rle*(zifc0(k) - zifc0(k-1))  ! New code
+           end if 
+
           ! ---------------- !
           ! Buoyancy Sorting !
           ! ---------------- !                   

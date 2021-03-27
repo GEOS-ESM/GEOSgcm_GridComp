@@ -349,7 +349,7 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
         uin, vin, udt, vdt, dz, delp, area, dt_in,                        &
         land, cnv_fraction,                              &
         anv_icefall, lsc_icefall,                                         &
-        revap, isubl, evapc,                                              &
+        revap, isubl,                                                     &
         rain, snow, ice,                                                  &
         graupel, m2_rain, m2_sol, hydrostatic, phys_hydrostatic,          &
         iis, iie, jjs, jje, kks, kke, ktop, kbot)
@@ -381,7 +381,6 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
     real, intent (out), dimension (:, :, :) :: m2_rain, m2_sol ! Rain and Ice fluxes (Pa kg/kg)
     real, intent (out), dimension (:, :, :) :: revap ! Rain evaporation
     real, intent (out), dimension (:, :, :) :: isubl ! Ice sublimation
-    real, intent (out), dimension (:, :, :) :: evapc ! Cloud evaporation
     
     ! logical :: used
     
@@ -478,7 +477,7 @@ subroutine gfdl_cloud_microphys_driver (qv, ql, qr, qi, qs, qg, qa, qn,   &
             m2_sol, cond (:, j), area (:, j),                                  &
             land (:, j), cnv_fraction(:, j),    &
             anv_icefall, lsc_icefall,                                          &
-            revap, isubl, evapc,                                               &
+            revap, isubl,                                                      &
             udt, vdt, pt_dt,                                                   &
             qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, vt_r,      &
             vt_s, vt_g, vt_i, qn2)
@@ -626,7 +625,7 @@ end subroutine gfdl_cloud_microphys_driver
 subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         qg, qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes, &
         rain, snow, graupel, ice, m2_rain, m2_sol, cond, area1, land, &
-        cnv_fraction, anv_icefall, lsc_icefall, revap, isubl, evapc,          &
+        cnv_fraction, anv_icefall, lsc_icefall, revap, isubl,                 &
         u_dt, v_dt, pt_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt,   &
         w_var, vt_r, vt_s, vt_g, vt_i, qn2)
     
@@ -650,7 +649,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     real, intent (inout), dimension (is:, js:, ks:) :: qi, qs
     real, intent (inout), dimension (is:, js:, ks:) :: u_dt, v_dt, w, pt_dt, qa_dt
     real, intent (inout), dimension (is:, js:, ks:) :: qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt
-    real, intent (  out), dimension (is:, js:, ks:) :: revap, isubl, evapc
+    real, intent (  out), dimension (is:, js:, ks:) :: revap, isubl
     
     real, intent (inout), dimension (is:) :: rain, snow, ice, graupel, cond
     
@@ -665,7 +664,7 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
     real, dimension (ktop:kbot) :: dp0, dp1, dz0, dz1
     real, dimension (ktop:kbot) :: qv0, ql0, qr0, qi0, qs0, qg0, qa0
     real, dimension (ktop:kbot) :: t0, den, den0, tz, p1, denfac
-    real, dimension (ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1, evapc1
+    real, dimension (ktop:kbot) :: ccn, c_praut, m1_rain, m1_sol, m1, evap1, subl1
     real, dimension (ktop:kbot) :: u0, v0, u1, v1, w1
     
     real :: cpaut, rh_adj, rh_rain
@@ -836,7 +835,6 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         m2_sol (i, j, :) = 0.
         revap (i, j, :) = 0.
         isubl (i, j, :) = 0.
-        evapc (i, j, :) = 0.
  
         do n = 1, ntimes
             
@@ -919,12 +917,8 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             
             call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
-                denfac, vtsz, vtgz, vtrz, qaz, evapc1, rh_adj, rh_rain, dts, h_var)
+                denfac, vtsz, vtgz, vtrz, qaz, rh_adj, rh_rain, dts, h_var)
                         
-            do k = ktop, kbot
-                evapc (i,j,k) = evapc(i,j,k) + evapc1(k) * rdt
-            end do
-
         enddo ! ntimes
         
         ! -----------------------------------------------------------------------
@@ -1482,7 +1476,7 @@ end subroutine linear_prof
 ! =======================================================================
 
 subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
-        den, denfac, vts, vtg, vtr, qak, evapc, rh_adj, rh_rain, dts, h_var)
+        den, denfac, vts, vtg, vtr, qak, rh_adj, rh_rain, dts, h_var)
     
     implicit none
     
@@ -1491,7 +1485,6 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     real, intent (in), dimension (ktop:kbot) :: p1, dp1, den, denfac, vts, vtg, vtr
     
     real, intent (inout), dimension (ktop:kbot) :: tzk, qvk, qlk, qrk, qik, qsk, qgk, qak
-    real, intent(inout), dimension(ktop:kbot) :: evapc
 
     real, intent (in) :: rh_adj, rh_rain, dts, h_var
     
@@ -1513,7 +1506,6 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     
     rdts = 1. / dts
     
-    evapc(:) = 0.0
 
     ! -----------------------------------------------------------------------
     ! define conversion scalar / factor
@@ -1970,7 +1962,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     ! -----------------------------------------------------------------------
     
     call subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tzk, qvk, &
-        qlk, qrk, qik, qsk, qgk, qak, evapc, h_var, rh_rain)
+        qlk, qrk, qik, qsk, qgk, qak, h_var, rh_rain)
 
 end subroutine icloud
 
@@ -1979,7 +1971,7 @@ end subroutine icloud
 ! =======================================================================
 
 subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
-    ql, qr, qi, qs, qg, qa, evapc, h_var, rh_rain)
+    ql, qr, qi, qs, qg, qa, h_var, rh_rain)
     
     implicit none
     
@@ -1990,7 +1982,6 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
     real, intent (in) :: dts, rh_adj, h_var, rh_rain
 
     real, intent (inout), dimension (ktop:kbot) :: tz, qv, ql, qr, qi, qs, qg, qa
-    real, intent (inout), dimension(ktop:kbot) :: evapc    
 
     real, dimension (ktop:kbot) :: lcpk, icpk, tcpk, tcp3, lhl, lhi
     real, dimension (ktop:kbot) :: cvm, q_liq, q_sol, q_cond
@@ -2100,23 +2091,27 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! -----------------------------------------------------------------------
         ! cloud water < -- > vapor adjustment:
         ! -----------------------------------------------------------------------
-        
+
+#ifdef DOCLDEVAP
         qsw = wqs2 (tz (k), den (k), dwsdt)
         dq0 = qsw - qv (k)
         if (dq0 > 0.) then
-            factor = min (1., fac_l2v * (10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
-            evap = min (ql (k), factor * dq0 / (1. + tcp3 (k) * dwsdt))
+            factor = min (1., fac_l2v * sqrt(10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
+!            factor = min (1., fac_l2v * (10. * dq0 / qsw))
+            if (10.*dq0/qsw .lt. 1.) factor = 0.1*factor
+            evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
         else
             evap = 0.0
         endif
         qa(k) = max(0.,min(1.,qa(k) * max(qi(k) + ql(k)-evap,0.0) / max(qi(k)+ql(k),qrmin)))     ! new total condensate / old condensate 
+!        qa(k) = max(0.,min(1.,qa(k) * sqrt(max(qi(k) + ql(k)-evap,0.0) / max(qi(k)+ql(k),qrmin))))     ! new total condensate / old condensate 
         qv (k) = qv (k) + evap
         ql (k) = ql (k) - evap
         q_liq (k) = q_liq (k) - evap
         cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
         tz (k) = tz (k) - evap * lhl (k) / cvm (k)
         evapc(k) = evap
-        
+#endif
         ! -----------------------------------------------------------------------
         ! update heat capacity and latend heat coefficient
         ! -----------------------------------------------------------------------

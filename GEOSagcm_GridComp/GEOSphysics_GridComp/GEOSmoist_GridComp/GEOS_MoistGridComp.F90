@@ -6506,6 +6506,7 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%NITER_XC,         'NITER_XC:'       ,DEFAULT=2, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%ITER_CIN,         'ITER_CIN:'       ,DEFAULT=2, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_CINCIN,       'USE_CINCIN:'     ,DEFAULT=1, RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%CRIDIST_OPT,      'CRIDIST_OPT:'    ,DEFAULT=0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_SELF_DETRAIN, 'USE_SELF_DETRAIN:',DEFAULT=0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_MOMENFLX,     'USE_MOMENFLX:'   ,DEFAULT=1, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%USE_CUMPENENT,    'USE_CUMPENENT:'  ,DEFAULT=1, RC=STATUS)
@@ -8964,7 +8965,8 @@ contains
                   CNV_MFD(I,J,K)    , &   ! <- DeepCu
                   QLDET_SC(I,J,K)   , &   ! <- ShlwCu 
                   QIDET_SC(I,J,K)   , &   ! <- ShlwCu   
-                  MFD_SC(I,J,K)     , &   ! <- ShlwCu   
+!                  MFD_SC(I,J,K)     , &   ! <- ShlwCu   
+                  DCM_SC(I,J,K)     , &   ! <- ShlwCu   
                   QLCN(I,J,K)       , &
                   QICN(I,J,K)       , &
                   CLLS(I,J,K)       , &
@@ -8973,6 +8975,23 @@ contains
                   CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J), &
                   CONVPAR_OPTION )
        ! clean up clouds
+             EVAPC_X(I,J,K) = Q1(I,J,K)
+             call evap3 (                 &
+                  DT_MOIST              , &
+                  CLDPARAMS%CCW_EVAP_EFF, &
+                  1.0                   , &  ! this is not used in evap3
+                  PLO(I,J,K)            , &
+                  TEMP(I,J,K)           , &
+                  Q1(I,J,K)             , &
+                  QLCN(I,J,K)           , &
+                  QICN(I,J,K)           , &
+                  CLCN(I,J,K)           , &
+                  CLLS(I,J,K)           , &
+                  NACTL(I,J,K)          , & !
+                  NACTI(I,J,K)          , & !
+                  QST3(I,J,K)  )
+             EVAPC_X(I,J,K) = ( Q1(I,J,K) - EVAPC_X(I,J,K) ) / DT_MOIST
+
              call fix_up_clouds( Q1(I,J,K), TEMP(I,J,K), QLLS(I,J,K), QILS(I,J,K), CLLS(I,J,K), QLCN(I,J,K), QICN(I,J,K), CLCN(I,J,K) )
             end do ! IM loop
           end do ! JM loop
@@ -9373,7 +9392,7 @@ contains
                                AREA, DT_MOIST, FRLAND, CNV_FRACTION, &
                                CLDPARAMS%ANV_ICEFALL, CLDPARAMS%LS_ICEFALL, &
                              ! Output rain re-evaporation and sublimation
-                               REV_MC_X, RSU_MC_X, EVAPC_X, & 
+                               REV_MC_X, RSU_MC_X, & !EVAPC_X, & 
                              ! Output precipitates
                                PRCP_RAIN, PRCP_SNOW, PRCP_ICE, PRCP_GRAUPEL, &
                              ! Output mass flux during sedimentation (Pa kg/kg)
@@ -9399,6 +9418,12 @@ contains
      ! so lets be sure we get the real cloud tendency from micro here
          DQADT_micro = ( RAD_CF - CLCN - CLLS ) / DT_MOIST
      ! Redistribute CN/LS CF/QL/QI
+         CLCN = FQA*RAD_CF
+         CLLS = (1.-FQA)*RAD_CF
+         QLCN = FQAl*RAD_QL
+         QLLS = (1.-FQAl)*RAD_QL
+         QICN = FQAi*RAD_QI
+         QILS = (1.-FQAi)*RAD_QI
          call REDISTRIBUTE_CLOUDS(RAD_CF, RAD_QL, RAD_QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, Q1, TEMP)
      ! Get new CNV/TOT ratios
         ! Cloud
