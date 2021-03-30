@@ -34,5 +34,9 @@
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Shared/StieglitzSnow.F90 @GEOS-ESM/land-team @GEOS-ESM/landice-team
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Shared/SurfParams.F90    @GEOS-ESM/land-team @GEOS-ESM/landice-team
 
+# The Python Transition Team will own Python files
+# until the Python 3 transition is completed
+*.py @GEOS-ESM/python-transition-team
+
 # The GEOS CMake Team is the CODEOWNER for the CMakeLists.txt files in this repository
 CMakeLists.txt @GEOS-ESM/cmake-team

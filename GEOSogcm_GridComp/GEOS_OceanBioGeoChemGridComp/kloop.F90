@@ -43,7 +43,7 @@
       P_tend = 0.0
       P_tendr = 0.0
       ppz = 0.0
-      ylat = rlat*57.29578
+!      ylat = rlat*57.29578
       k = 1
       do while (k .le. km )
        if (H(k) >= 1.0E10) exit
