@@ -300,10 +300,12 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
            write(*,*)             &
                       tke(i,j,k), &
+                      au(i,j,k),  &
+                      Mu(i,j,k)
 !                      wb_test_1, &
 !                      wb_test_2, &
-                      aci(i,j,k), &
-                      real(qdiv, 4)
+!                      aci(i,j,k), &
+!                      real(qdiv, 4)
         end if
      end do
      end do

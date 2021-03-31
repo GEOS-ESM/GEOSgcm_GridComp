@@ -17,7 +17,7 @@ contains
 !
 subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                         ! in
                     discrete_type, implicit_flag, stochastic_flag, plume_type, &    ! in
-                    th00, dt, zl, zle, ple, rho, rhoe, exf, &                       ! in
+                    th00, dt, zl, zle, plo, ple, rho, rhoe, exf, &                  ! in
                     u, v, thl, qt, qv, ql, qi, thv, &                               ! in         
                     ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                     ustar, sh, evap, ice_ramp, &                                    ! in
@@ -32,7 +32,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     edmfdryv, edmfmoistv,  &                                        ! out
                     edmfmoistqc, &                                                  ! out
                     tke_mf, &                                                       ! out (diagnostics)
-                    ae, awu, awv, aw, aws, awqv, awql, awqi, Kh_mf, &               ! out (for solver)
+                    ae, awu, awv, aw, aws, awqv, awql, awqi, Kh_mf, Kh_t, Kh_q, &   ! out (for solver)
                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)
                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfqthl, mfwhl, & ! out (for SHOC)
                     au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
@@ -42,7 +42,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   integer, intent(in)                     :: IM, JM, LM, numup, discrete_type, implicit_flag, &
                                              stochastic_flag, plume_type, ET, kbotp
   integer, dimension(IM,JM), intent(in)   :: iras, jras
-  real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zl, exf, rho
+  real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zl, exf, rho, plo
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe, ui, vi, thli, qti, qvi, qli, qii, thvi
   real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, L0
   real, dimension(IM,JM), intent(inout)   :: zpbl
@@ -55,7 +55,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                                               edmfdryu, edmfmoistu, edmfdryv, edmfmoistv, &
                                               edmfmoistqc, tke_mf, &
                                               ae, aw, aws, awqv, awql, awqi, awu, awv, &
-                                              whl_mf, wqt_mf, wthv_mf, au, Mu, wu, Kh_mf
+                                              whl_mf, wqt_mf, wthv_mf, au, Mu, wu, Kh_mf, Kh_t, Kh_q
 
   real, dimension(IM,JM,LM), intent(out) :: buoyf, mfw2, mfw3, mfqt3, mfqt2, mfwqt, &
                                             mfhl2, mfqthl, mfwhl, E, D, wdet, &
@@ -69,7 +69,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   real :: wthv, wstar, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
           B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, EntEXP, EntEXPU, EntW, wf, &
           stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, idzle, ifac, test, mft_work, mfthvt_work, &
-          goth00, thlu_full, work, exfh
+          goth00, thlu_full, work, exfh, dsdz, dqdz
 
   ! Temporary (too slow; need to figure out how random number generator works)
   integer, dimension(numup,IM,JM,LM)  :: enti
@@ -185,10 +185,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   end do
 
   ! Get surface layer organized entrainment
-!  call A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
-!                      rho, rhoe, thl, qt, thv, 1, &                ! in
-!                      izsl, A_star, Mu0, zi_thermal)               ! out
-!  write(*,*) '*', izsl, Mu0
+  call A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
+                      rho, rhoe, thl, qt, thv, 1, &               ! in
+                      izsl, A_star, Mu0, zi_thermal)              ! out
+  write(*,*) '*', izsl, Mu0
 
   !
   ! Initialize updrafts
@@ -400,21 +400,27 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  B = goth00*( upthv(iup,i,j) - thv(i,j,k) )
 
                  ! Sample entrainment rate
-                 E(i,j,k) = E(i,j,k) + ent(iup,i,j,k)*upm(iup,i,j)
+!                 E(i,j,k) = E(i,j,k) + ent(iup,i,j,k)*upm(iup,i,j)
 
-                 ! Integrate momentum budget
+                 ! Integrate momentum budget (get Wn2, Mn, E, and EntExp)
                  if ( B > 0. ) then
-                    Mn     = upm(iup,i,j) + dzle*ent(iup,i,j,k)*upm(iup,i,j)
-                    EntExp = upm(iup,i,j)/Mn
-                    Wn2    = EntExp**2.**upw(iup,i,j)**2. + 2.*dzle*B ! Rio and Hourdin 2007 ( eq. A9 )   
+                    Wn2          = ( rhoe(i,j,k)*upw(iup,i,j)**2. + dzle*rho(i,j,k)*B )/rhoe(i,j,km1)
+                    Mn           = rhoe(i,j,km1)*upa(iup,i,j)*sqrt(Wn2)
+                    E(i,j,k)     = E(i,j,k) + ( Mn - upm(iup,i,j) )/dzle
+                    EntExp       = upm(iup,i,j)/Mn
+!                    Mn     = upm(iup,i,j) + dzle*ent(iup,i,j,k)*upm(iup,i,j)
+!                    EntExp = upm(iup,i,j)/Mn
+!                    Wn2    = EntExp**2.**upw(iup,i,j)**2. + 2.*dzle*B ! Rio and Hourdin 2007 ( eq. A9 )   
                  else
-                    Wn2 = ( upw(iup,i,j)**2. + 2.*dzle*B )/( 1. + 2.*dzle*ent(iup,i,j,k) )
+                    Wn2 = upw(iup,i,j)**2. + 2.*dzle*B
                     if ( Wn2 > 0. ) then
                        Mn = rhoe(i,j,km1)*upa(iup,i,j)*sqrt(Wn2)
                     else
                        Mn = 0.
                     end if
-                    EntExp = 1./( 1. + dzle*ent(iup,i,j,k) )
+                    EntExp   = 0.
+!                    Wn2 = ( upw(iup,i,j)**2. + 2.*dzle*B )/( 1. + 2.*dzle*ent(iup,i,j,k) )
+!                    EntExp = 1./( 1. + dzle*ent(iup,i,j,k) )
                  end if
                  EntExpU = EntExp
 
@@ -433,11 +439,12 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               mft_work    = upa(iup,i,j)*upw(iup,i,j)
 
               ! Determine stopping condition
-              if ( plume_type == 0 ) then
-                 stop_cond = Wn2 > 0.
-              else
-                 stop_cond = B > 0.
-              end if
+              stop_cond = Wn2 > 0.
+!              if ( plume_type == 0 ) then
+!                 stop_cond = Wn2 > 0.
+!              else
+!                 stop_cond = B > 0.
+!              end if
 
               ! Sample detrainment velocity
               wdet(i,j,k) = wdet(i,j,k) + upa(iup,i,j)*upw(iup,i,j)
@@ -455,7 +462,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
                  if ( plume_type == 1 ) then
                     upm(iup,i,j) = Mn
-                    upa(iup,i,j) = upm(iup,i,j)/( rhoe(i,j,km1)*upw(iup,i,j) )
+!                    upa(iup,i,j) = upm(iup,i,j)/( rhoe(i,j,km1)*upw(iup,i,j) )
                  end if
 
                  mfthvt = mfthvt + 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) + mfthvt_work )
@@ -544,6 +551,9 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
      do j = 1,JM
      do i = 1,IM
         if ( k >= 2 .and. k <= LM-1 ) then
+           ! Compute detrainment rate as residual
+           D(i,j,k) = E(i,j,k) - ( Mu(i,j,km1) - Mu(i,j,k) )/( zle(i,j,km1) - zle(i,j,k) )
+
            if ( au(i,j,k) > 0. .and. au(i,j,km1) > 0. ) then
               au_full(i,j,k)  = 0.5*( au(i,j,k)   + au(i,j,km1) )
               thlu_full       = 0.5*( thlu(i,j,k) + thlu(i,j,km1) )
@@ -569,6 +579,9 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               qlu_full(i,j,k) = 0.
            end if
         elseif ( k == LM ) then
+           ! Compute entrainment rate near surface as residual
+           E(i,j,LM) = Mu(i,j,LM-1)/zle(i,j,LM-1)
+
            if ( au(i,j,LM-1) > 0. ) then
               au_full(i,j,LM)  = au(i,j,LM-1)
               thlu_full        = thlu(i,j,LM-1)
@@ -601,9 +614,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
         hlu_full(i,j,k) = exf(i,j,k)*thlu_full + (mapl_grav/mapl_cp)*zl(i,j,k)
         Tu_full(i,j,k)  = exf(i,j,k)*thlu_full + (mapl_alhl/mapl_cp)*qlu_full(i,j,k)
 
-        ! Compute detrainmnet rate
-        D(i,j,k) = E(i,j,k) - ( Mu(i,j,km1) - Mu(i,j,k) )/( zle(i,j,km1) - zle(i,j,k) )
-
         ! Outputs needed for SHOC
         if ( k >= 2 ) then
            mfw2(i,j,k)   = 0.5*( aw2(i,j,k)    + aw2(i,j,km1) )
@@ -625,6 +635,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
            mfwhl(i,j,1)  = whl_mf(i,j,2)
         end if
      end do
+
      end do
   end do
 
@@ -649,6 +660,33 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
         end do
      end do
   end if
+
+  ! Text output
+  KH_t(:,:,:) = 0.
+  KH_q(:,:,:) = 0.
+  do i = 1,IM
+  do j = 1,JM
+     do k = 1,LM-1
+         dsdz = (  ( mapl_cp*exf(i,j,k)*thl(i,j,k)     + mapl_grav*zl(i,j,k)   + mapl_alhs*qi(i,j,k)   + mapl_alhl*ql(i,j,k) ) &
+                 - ( mapl_cp*exf(i,j,k+1)*thl(i,j,k+1) + mapl_grav*zl(i,j,k+1) + mapl_alhs*qi(i,j,k+1) + mapl_alhl*ql(i,j,k+1) ) )&
+                /( zl(i,j,k) - zl(i,j,k+1) )
+         work = -aws(i,j,k)/dsdz
+         if ( work > 0. ) then
+!            KH_t(i,j,k) = min( 1., 0.01*work )
+!            KH_t(i,j,k) = 0.05*work
+            aws(i,j,k)  = aws(i,j,k) + KH_t(i,j,k)*dsdz
+         end if
+
+         dqdz = ( qv(i,j,k) - qv(i,j,k+1) )/( zl(i,j,k) - zl(i,j,k+1) )
+         work = -awqv(i,j,k)/dqdz
+         if ( work > 0. ) then
+!            KH_q(i,j,k) = min( 1., 0.01*work )
+!            KH_q(i,j,k) = 0.05*work
+            awqv(i,j,k) = awqv(i,j,k) + KH_q(i,j,k)*dqdz
+         end if
+      end do
+   end do
+   end do
 
 end subroutine run_edmf
 
@@ -761,7 +799,8 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
            qtu_next  = f*qtu(i,j)  + ( 1. - f )*qt(i,j,k)
            wu2_next  = 2.*(rhoe(i,j,k)/rhoe(i,j,km1))*( wu2(i,j) + dz*B )
 
-           call condensation_edmf(qtu_next, thlu_next, ple(i,j,km1), thvu_next, qcu, wf, ice_ramp)           
+!           call condensation_edmf(qtu_next, thlu_next, ple(i,j,km1), thvu_next, qcu, wf, ice_ramp)           
+           thvu_next = thlu_next*( 1. + mapl_epsilon*qtu_next )
 
            if ( debug_flag /= 0 ) then
               write(*,*) km1, Mu_next, thvu_next, thv(i,j,km1)
@@ -776,16 +815,19 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
               wu2(i,j)  = wu2_next
               thlu(i,j) = thlu_next
               qtu(i,j)  = qtu_next
+              thvu(i,j) = thvu_next
            end if
         end if
      end do
      end do
   end do
 
-  do j = 1,JM
-  do i = 1,IM
-     A(i,j,:) = Mu0(i,j)*A(i,j,:)
-  end do
+  do k = 1,LM
+     do j = 1,JM
+     do i = 1,IM
+        A(i,j,k) = Mu0(i,j)*A(i,j,k)
+     end do
+     end do
   end do
 
 end subroutine A_star_closure

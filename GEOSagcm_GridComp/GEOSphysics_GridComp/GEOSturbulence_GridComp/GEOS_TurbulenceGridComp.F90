@@ -601,6 +601,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'ple_turb',                                  &
+       LONG_NAME  = 'ple_turb',                                  &
+       UNITS      = 'Pa',                                        &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
+       SHORT_NAME = 'pl_turb',                                   &
+       LONG_NAME  = 'pl_turb',                                   &
+       UNITS      = 'Pa',                                        &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationCenter,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                  &
        SHORT_NAME = 'exner_turb',                                &
        LONG_NAME  = 'exner_turb',                                &
        UNITS      = 'm',                                         &
@@ -2126,6 +2142,22 @@ contains
     call MAPL_AddExportSpec(GC,                                               &
          SHORT_NAME = 'KH_mf',                                                &
          LONG_NAME  = 'mass-flux_contribution_to_KH_for_numerical_stability', &
+         UNITS      = 'm+1 s-2',                                              &
+         DIMS       = MAPL_DimsHorzVert,                                      &
+         VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                               &
+         SHORT_NAME = 'KH_t',                                                &
+         LONG_NAME  = '', &
+         UNITS      = 'm+1 s-2',                                              &
+         DIMS       = MAPL_DimsHorzVert,                                      &
+         VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                               &
+         SHORT_NAME = 'KH_q',                                                &
+         LONG_NAME  = '', &
          UNITS      = 'm+1 s-2',                                              &
          DIMS       = MAPL_DimsHorzVert,                                      &
          VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
@@ -3722,10 +3754,10 @@ contains
 
    real, dimension(:,:), pointer        :: z_conv_edmf
 
-   real, dimension(:,:,:), pointer ::  tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, wthl_mf, KH_mf, tke_mf_ex
+   real, dimension(:,:,:), pointer ::  tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, wthl_mf, KH_mf, KH_t, KH_q, tke_mf_ex
 
    ! Exports for testing MYNN cloud-top entrainment
-   real, dimension(:,:,:), pointer :: zle_turb, exner_turb, u_turb, v_turb, &
+   real, dimension(:,:,:), pointer :: zle_turb, pl_turb, ple_turb, exner_turb, u_turb, v_turb, &
                                       thl_turb, qt_turb, thlv_turb, ql_turb, &
                                       ac_turb, thv_turb, &
                                       rh_turb, qsat_turb, dqs_turb, exf_turb
@@ -4021,6 +4053,10 @@ contains
      ! Diagnostic exports
      call MAPL_GetPointer(EXPORT, zle_turb,   'zle_turb',    RC=STATUS)
      VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, ple_turb,   'ple_turb',    RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, pl_turb,   'pl_turb',    RC=STATUS)
+     VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, exner_turb, 'exner_turb',  RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, thl_turb,   'thl_turb',    RC=STATUS)
@@ -4273,6 +4309,10 @@ contains
 
      call MAPL_GetPointer(EXPORT, KH_mf, 'KH_mf', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, KH_t,  'KH_t',  ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, KH_q,  'KH_q',  ALLOC=.TRUE., RC=STATUS)
+     VERIFY_(STATUS)
 
      call MAPL_GetPointer(EXPORT, au_full,   'au_full',   ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
@@ -4416,6 +4456,8 @@ contains
 
     ! Save thermodynamic exports
     if ( associated( zle_turb ) )  zle_turb   = ZLE
+    if ( associated( ple_turb ) )  ple_turb   = PLE
+    if ( associated( pl_turb ) )  pl_turb   = PLO
     if ( associated( exner_turb) ) exner_turb = EXF
     if ( associated( u_turb ) )    u_turb     = U
     if ( associated( v_turb ) )    v_turb     = V
@@ -4554,7 +4596,7 @@ if ( ET == 1 ) then
     else
        call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp, &                    ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                     th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
+                     th00, dt, z, zle, plo, ple, rho, rhoe, exf, &                   ! in
                      u, v, thl, qt, q, ql, qi, thv, &                                ! in
                      ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
@@ -4569,7 +4611,7 @@ if ( ET == 1 ) then
                      edmfdryv, edmfmoistv,  &                                        ! out
                      edmfmoistqc, &                                                  ! out
                      tke_mf, &                                                       ! out (diagnostics)
-                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, &       ! out (for solver)         
+                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, Kh_t, Kh_q, & ! out (for solver)         
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
@@ -4609,7 +4651,7 @@ if ( ET == 1 ) then
     else
        call run_edmf(IM, JM, LM, 1, iras, jras, edmf_kbotp, &                        ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                     th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
+                     th00, dt, z, zle, plo, ple, rho, rhoe, exf, &                   ! in
                      u, v, thl, qt, q, ql, qi, thv, &                                ! in
                      ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
@@ -4624,7 +4666,7 @@ if ( ET == 1 ) then
                      edmfdryv, edmfmoistv,  &                                        ! out
                      edmfmoistqc, &                                                  ! out
                      tke_mf, &                                                       ! out (diagnostics)
-                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, &       ! out (for solver)         
+                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, Kh_t, Kh_q, & ! out (for solver)         
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
@@ -4675,9 +4717,9 @@ if ( ET == 1 ) then
     else
        call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp,&                     ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                     th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
+                     th00, dt, z, zle, plo, ple, rho, rhoe, exf, &                   ! in
                      u, v, thl, qt, q, ql, qi, thv, &                                ! in
-                     ui, vi, thli, qti, qvi, qli, qii, thvi, &                             ! in
+                     ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in 
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
@@ -4690,7 +4732,7 @@ if ( ET == 1 ) then
                      edmfdryv, edmfmoistv,  &                                        ! out
                      edmfmoistqc, &                                                  ! out
                      tke_mf, &                                                       ! out (diagnostics)
-                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, &       ! out (for solver)         
+                     ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, Kh_t, Kh_q, & ! out (for solver)         
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
@@ -5787,24 +5829,29 @@ ENDIF
      if ( EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE == 0 ) then
         AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM) &
                          - 0.5*DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
+        AKQQ           = AKSS
         AKUU(:,:,2:LM) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM) &
                          - 0.5*DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
      else
         AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM)
+        AKQQ           = AKSS
         AKUU(:,:,2:LM) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,2:LM)
      end if
   else ! No AE3 factor in front of KM and KH
      if ( EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE == 0 ) then
         AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,2:LM) &
                          - 0.5*DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
+        AKQQ           = AKSS
         AKUU(:,:,2:LM) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,2:LM) &
                          - 0.5*DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
      else
-        AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,2:LM)
+!        AKSS(:,:,2:LM) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,2:LM)
+!        AKQQ           = AKSS
+        AKSS(:,:,2:LM) = - ( KH(:,:,1:LM-1) + KH_t(:,:,1:LM-1) )*RDZ(:,:,1:LM-1)*DMI(:,:,2:LM)
+        AKQQ(:,:,2:LM) = - ( KH(:,:,1:LM-1) + KH_q(:,:,1:LM-1) )*RDZ(:,:,1:LM-1)*DMI(:,:,2:LM)
         AKUU(:,:,2:LM) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,2:LM)
      end if
   end if
-  AKQQ = AKSS
 
   CKSS(:,:,LM) = -CT*DMI(:,:,LM)
   CKQQ(:,:,LM) = -CQ*DMI(:,:,LM)
@@ -5814,24 +5861,31 @@ ENDIF
      if ( EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE == 0 ) then
         CKSS(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
                            + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
+        CKQQ(:,:,1:LM-1) = CKSS(:,:,1:LM-1)  
         CKUU(:,:,1:LM-1) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
                            + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
      else
         CKSS(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)
+        CKQQ(:,:,1:LM-1) = CKSS(:,:,1:LM-1)  
         CKUU(:,:,1:LM-1) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*AE3(:,:,1:LM-1)*DMI(:,:,1:LM-1)
      end if
   else ! No AE3 factor in front of KM and KH
      if ( EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE == 0 ) then
-        CKSS(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
+!        CKSS(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
+!                           + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
+!        CKQQ(:,:,1:LM-1) = CKSS(:,:,1:LM-1)  
+        CKSS(:,:,1:LM-1) = - ( KH(:,:,1:LM-1) + KH_t(:,:,1:LM-1) )*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
+                           + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
+        CKQQ(:,:,1:LM-1) = - ( KH(:,:,1:LM-1) + KH_q(:,:,1:LM-1) )*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
                            + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
         CKUU(:,:,1:LM-1) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
                            + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
      else
         CKSS(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1)
+        CKQQ(:,:,1:LM-1) = CKSS(:,:,1:LM-1)  
         CKUU(:,:,1:LM-1) = - KM(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1)
      end if
   end if
-  CKQQ(:,:,1:LM-1) = CKSS(:,:,1:LM-1)  
  
   BKSS = 1.0 - ( CKSS + AKSS )
   BKQQ = 1.0 - ( CKQQ + AKQQ )
