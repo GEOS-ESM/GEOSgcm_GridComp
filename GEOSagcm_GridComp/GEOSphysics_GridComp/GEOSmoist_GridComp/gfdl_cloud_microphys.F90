@@ -4859,19 +4859,13 @@ real function ice_fraction(tk,cnv_fraction)
 end function ice_fraction
 
 real function anvil_ice_function(tk)
-  ! Anvil-Convective sigmoidal function like figure 7(right) of Hu et al 2010 in tropical convective regimes
+  ! Anvil-Convective polynomial modified MODIS function to resemble figure 7(right) of Hu et al 2010 in anvil convective regimes
      real, intent(in) :: tk ! temperature in K
-     real, parameter :: aT_ICE_ALL = 245.16
-     real, parameter :: aT_ICE_MAX = 261.16
-     real, parameter :: aICEFRPWR  = 2.0
+     real :: tc, ptc
 
-     anvil_ice_function  = 0.00
-     if ( tk <= aT_ICE_ALL ) then
-        anvil_ice_function = 1.000
-     else if ( (tk > aT_ICE_ALL) .AND. (tk <= aT_ICE_MAX) ) then
-        anvil_ice_function = SIN( 0.5*pi*( 1.00 - ( tk - aT_ICE_ALL ) / ( aT_ICE_MAX - aT_ICE_ALL ) ) )
-     end if
-     anvil_ice_function = MAX(MIN(anvil_ice_function,1.00),0.00)**aICEFRPWR
+     tc = min(0.0,max(t_wfr-tice, tk-tice)) ! convert to celcius
+     ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
+     anvil_ice_function = (1.0 - (1.0/(1.0 + exp(-1*ptc))))**4
    ! Returning the fraction of ice for given T(K)
 
 end function anvil_ice_function
