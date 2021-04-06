@@ -4998,6 +4998,15 @@ contains
      dTsf = (fsurfn - khis*(Tsf - T_top)) /   &
                 (khis - dfsurf_dT)
 
+     if(OBS) then
+       print*, 'old Ts, t_top:', Tsf, T_top
+       print*, 'aice: ',  aicen
+       print*, 'esnon: ', esnon
+       print*, 'eicen: ', eicen
+       print*, fsurfn,  khis*(Tsf - T_top)
+       print*, 'dTsf', dTsf
+     endif  
+
      Tsf = Tsf + dTsf
 
      if (Tsf > c0) then
@@ -5018,6 +5027,10 @@ contains
      shf     = -fsensn
      lhf     = -flatn
      fsurf   = fsurfn 
+
+     if(OBS) then
+       print*, 'new flux:',fsurfn, fcond
+     endif  
 
 
   end subroutine EXPLICIT_COUPLING   
