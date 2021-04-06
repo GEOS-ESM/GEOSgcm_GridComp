@@ -2036,10 +2036,6 @@ contains
          end if
       end do IR_BANDS
 
-if (mapl_am_i_root()) print*,'GOCART ext = ', sum(AEROSOL_EXT)
-if (mapl_am_i_root()) print*,'GOCART ssa = ', sum(AEROSOL_SSA)
-if (mapl_am_i_root()) print*,'GOCART asy = ', sum(AEROSOL_ASY)
-
 
       NA = 3
 
