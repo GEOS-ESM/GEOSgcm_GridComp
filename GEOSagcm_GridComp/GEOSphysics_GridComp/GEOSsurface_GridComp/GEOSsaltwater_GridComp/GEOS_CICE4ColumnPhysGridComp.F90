@@ -5001,6 +5001,8 @@ contains
      if(OBS) then
        print*, 'old Ts, t_top:', Tsf, T_top
        print*, 'aice: ',  aicen
+       print*, 'vice: ',  vicen
+       print*, 'hi: ',  hilyr*rnilyr
        print*, 'esnon: ', esnon
        print*, 'eicen: ', eicen
        print*, fsurfn,  khis*(Tsf - T_top)
@@ -5029,7 +5031,9 @@ contains
      fsurf   = fsurfn 
 
      if(OBS) then
+       print*, 'new Ts:', Tsf
        print*, 'new flux:',fsurfn, fcond
+       print*, 'shf, lhf:',shf, lhf
      endif  
 
 
