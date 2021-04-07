@@ -39,12 +39,19 @@ module GEOS_CICE4ColumnPhysGridComp
   use ice_constants,      only: m2_to_km2
   use ice_constants,      only: depressT
   use ice_constants,      only: Tocnfrz
-  use ice_constants,      only: Lfresh, rhos, cp_ice
+  use ice_constants,      only: Lfresh, rhoi, rhos, cp_ice
   use ice_domain_size,    only: init_column_physics
   use ice_itd,            only: init_itd, ilyr1, cleanup_itd
   use ice_therm_vertical, only: init_thermo_vertical,  &
                                 init_vertical_profile, &
                                 thermo_vertical,       &
+                                Tmlt,                  & 
+                                salin,                 &  
+                                ksno,                  &
+                                hs_min,                &  
+                                l_brine,               &  
+                                calculate_Tin_from_qin,     &
+                                calculate_ki_from_Tin,      &
                                 diagnose_internal_ice_temp, &
                                 frzmlt_bottom_lateral   
   use ice_state,          only: nt_tsfc, nt_iage, nt_volpn, init_trcr_depend
@@ -69,14 +76,6 @@ module GEOS_CICE4ColumnPhysGridComp
   integer, parameter :: NUM_SNOW_LAYERS    = 1
 
   logical ::      DUAL_OCEAN
-
-  type cice_state
-       integer:: CHOOSEMOSFC
-  end type cice_state
-
-  type cice_state_wrap
-      type(cice_state), pointer :: ptr
-  end type
 
   contains
 
@@ -122,11 +121,6 @@ module GEOS_CICE4ColumnPhysGridComp
     integer                                 :: NUM_ICE_LAYERS      ! set via resource parameter
     integer                                 :: NUM_ICE_CATEGORIES  ! set via resource parameter
     integer ::      iDUAL_OCEAN
-
-    type(cice_state_wrap) :: wrap
-    type(cice_state), pointer :: mystate
-    character(len=ESMF_MAXSTR)     :: SURFRC
-    type(ESMF_Config)              :: SCF
 
 !=============================================================================
 
@@ -700,6 +694,7 @@ module GEOS_CICE4ColumnPhysGridComp
         VLOCATION          = MAPL_VLocationNone          ,&
                                                RC=STATUS  ) 
      VERIFY_(STATUS)
+
 
 !  !INTERNAL STATE:
 
@@ -1632,6 +1627,16 @@ module GEOS_CICE4ColumnPhysGridComp
           RC=STATUS  ) 
    VERIFY_(STATUS)
 
+   call MAPL_AddExportSpec(GC                     ,&
+        SHORT_NAME         = 'FCONDREPAR'                ,&
+        LONG_NAME          = 'top_conductive_flux_repartitioned_to_ice_bottom',&
+        UNITS              = 'W m-2'                     ,&
+        DIMS               = MAPL_DimsTileOnly           ,&
+        UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+                                               RC=STATUS  ) 
+   VERIFY_(STATUS)
+
    call MAPL_AddExportSpec(GC,                     &
         SHORT_NAME         = 'FSURFN'                    ,&
         LONG_NAME          = 'net_heat_flux_at_ice_snow_surface_over_ice_categories' ,&
@@ -1917,16 +1922,6 @@ module GEOS_CICE4ColumnPhysGridComp
 
 !EOS
 
-    allocate(mystate,stat=status)
-    VERIFY_(status)
-    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
-    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=mystate%CHOOSEMOSFC, DEFAULT=1, __RC__ )
-    call ESMF_ConfigDestroy      (SCF, __RC__)
-    wrap%ptr => mystate
-    call ESMF_UserCompSetInternalState(gc, 'cice_private', wrap,status)
-    VERIFY_(status)
 
 ! Set the Profiling timers
 ! ------------------------
@@ -2317,8 +2312,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    integer         :: PRES_ICE
    integer         :: CHOOSEMOSFC
    integer         :: CHOOSEZ0
-   type(cice_state_wrap) :: wrap
-   type(cice_state), pointer :: mystate
+   character(len=ESMF_MAXSTR)     :: SURFRC
+   type(ESMF_Config)              :: SCF 
 
 !=============================================================================
 
@@ -2363,10 +2358,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call ESMF_UserCompGetInternalState(gc,'cice_private',wrap,status)
-    VERIFY_(status)
-    mystate => wrap%ptr
-    CHOOSEMOSFC = mystate%CHOOSEMOSFC
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=CHOOSEMOSFC, DEFAULT=1, __RC__ ) 
+    call ESMF_ConfigDestroy      (SCF, __RC__)
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0,    Label="CHOOSEZ0:",    DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)
@@ -3177,6 +3173,7 @@ contains
    real, pointer, dimension(:,:)  :: ALBSNe      => null()
    real, pointer, dimension(:,:)  :: FCONDBOTN   => null()
    real, pointer, dimension(:,:)  :: FCONDTOPN   => null()
+   real, pointer, dimension(:,:)  :: FCONDRP     => null()
    real, pointer, dimension(:,:)  :: TINZ        => null()
 
    ! pointers to CMIP5 exports (CICE)
@@ -3330,6 +3327,7 @@ contains
    real,               allocatable    :: RSIDE         (:)
    real,               allocatable    :: FSWTHRU       (:,:)        ! FSWTHRU is also an EXPORT 
    real,               allocatable    :: FCOND         (:,:)
+   real,               allocatable    :: FCONDR        (:,:)
    real,               allocatable    :: FCONDBOT      (:,:)
    real,               allocatable    :: TBOT          (:)
    real,               allocatable    :: FBOT          (:)
@@ -3552,6 +3550,7 @@ contains
    ! category dimensional exports
    call MAPL_GetPointer(EXPORT,FCONDBOTN,  'FCONDBOTN' ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FCONDTOPN,  'FCONDTOPN' ,  RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,FCONDRP,    'FCONDREPAR',  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,TINZ     ,  'TINZ'      ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SHICEN   ,  'SHICEN'    ,  RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,HLWUPN   ,  'HLWUPN'    ,  RC=STATUS); VERIFY_(STATUS)
@@ -3644,6 +3643,8 @@ contains
     VERIFY_(STATUS)
     allocate(FCOND     (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
+    allocate(FCONDR    (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
+    VERIFY_(STATUS)
     allocate(FCONDBOT  (NT,NUM_ICE_CATEGORIES),                STAT=STATUS)
     VERIFY_(STATUS)
     allocate(TBOT      (NT),                                   STAT=STATUS)
@@ -3724,7 +3725,7 @@ contains
 
 !     initialize arrays for CICE Thermodynamics
     call CICE_PREP_THERMO(TF,TRCRTYPE,TRACERS,MELTLN,FRAZLN,FRESHN,FRESHL,FSALTN,FSALTL,FHOCNN,FHOCNL,RSIDE,  &
-                            FSWTHRU,FCOND,FCONDBOT,TBOT,FBOT,ALBIN,ALBSN,ALBPND,ALBVRN,ALBNRN,ALBVFN,ALBNFN,FSWSFC,FSWINT,     &
+                            FSWTHRU,FCOND,FCONDR,FCONDBOT,TBOT,FBOT,ALBIN,ALBSN,ALBPND,ALBVRN,ALBNRN,ALBVFN,ALBNFN,FSWSFC,FSWINT,     &
                             ISWABS,SSWABS,FSWABS,MELTT,MELTS,MELTB,CONGEL,SNOICE,UW,VW,SLMASK,LATS,LONS,LATSO,LONSO,   &
                             FR8,FRCICE,SW,TAUAGE,ICE,NT,VOLPOND,DT,VOLICE,VOLSNO,ERGICE,ERGSNO,TS,VOLICE_DELTA,  &
                             NEWICEERG, SBLX, RC=STATUS)
@@ -4060,7 +4061,7 @@ contains
           call CICE_THERMO1(N,NSUB,NT,ICE,LATS,LONS,LATSO,LONSO,DT,TF,FR8TMP,TS,         &
                            ERGICE,ERGSNO,TAUXBOT,TAUYBOT,TBOT,ISWABS,SSWABS,             &
                            DO_POND,FBOT,RSIDE,PCU,PLS,FSURF,                             &
-                           FSWTHRU,FCOND,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,              &
+                           FSWTHRU,FCOND,FCONDR,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,              &
                            MELTT,MELTS,MELTB,CONGEL,SNOICE,VOLICE,VOLSNO,SHF,LHF,        &
                            VOLPOND,APONDN,HPONDN,TAUAGE,TRACERS,ALW,BLW,    &
                            FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,SBLX,RC=STATUS)
@@ -4156,6 +4157,14 @@ contains
          do N=1, NUM_ICE_CATEGORIES  
             where(FR8(:,N) <= puny)
                FCONDTOPN(:,N) = MAPL_UNDEF
+            endwhere   
+         enddo
+     endif    
+     if(associated(FCONDRP))  then
+         FCONDRP      = FCONDR
+         do N=1, NUM_ICE_CATEGORIES  
+            where(FR8(:,N) <= puny)
+               FCONDRP(:,N) = MAPL_UNDEF
             endwhere   
          enddo
      endif    
@@ -4594,6 +4603,7 @@ contains
     deallocate(RSIDE)
     deallocate(FSWTHRU)
     deallocate(FCOND)
+    deallocate(FCONDR)
     deallocate(FCONDBOT)
     deallocate(TBOT)
     deallocate(FBOT)
@@ -4645,7 +4655,7 @@ contains
 ! !INTERFACE:
 
   subroutine CICE_PREP_THERMO(TF, TRCRTYPE,TRACERS,MELTLN,FRAZLN,FRESHN,FRESHL,FSALTN,FSALTL,FHOCNN,FHOCNL,RSIDE,  &
-                              FSWTHRU,FCOND,FCONDBOT,TBOT,FBOT,ALBIN,ALBSN,ALBPND,ALBVRN,ALBNRN,ALBVFN,ALBNFN,FSWSFC,FSWINT,     &
+                              FSWTHRU,FCOND,FCONDR,FCONDBOT,TBOT,FBOT,ALBIN,ALBSN,ALBPND,ALBVRN,ALBNRN,ALBVFN,ALBNFN,FSWSFC,FSWINT,     &
                               ISWABS,SSWABS,FSWABS,MELTT,MELTS,MELTB,CONGEL,SNOICE,UW,VW,SLMASK,LATS,LONS,LATSO,LONSO,   &
                               FR ,FRCICE,SW,TAUAGE,ICE,NT,VOLPOND,DT,VOLICE,VOLSNO,ERGICE,ERGSNO,TS,VOLICE_DELTA,  &
                               NEWICEERG, SBLX, RC)
@@ -4680,6 +4690,7 @@ contains
     real,    intent(OUT)  :: RSIDE      (:)     ! ?
     real,    intent(OUT)  :: FSWTHRU    (:,:)   ! SW_flux_thru_ice_to_ocean 
     real,    intent(OUT)  :: FCOND      (:,:)   ! ?
+    real,    intent(OUT)  :: FCONDR     (:,:)   ! ?
     real,    intent(OUT)  :: FCONDBOT   (:,:)   ! ?
     real,    intent(OUT)  :: TBOT       (:)     ! ?
     real,    intent(OUT)  :: FBOT       (:)     ! ?
@@ -4763,6 +4774,7 @@ contains
     RSIDE              = 0.0
     FSWTHRU            = 0.0
     FCOND              = 0.0
+    FCONDR             = 0.0
     FCONDBOT           = 0.0
 
     TBOT               = 0.0
@@ -4853,6 +4865,176 @@ contains
     RETURN_(ESMF_SUCCESS)
   end subroutine CICE_PREP_THERMO
 
+
+
+! !IROUTINE: EXPLICIT_COUPLING - Explicit coupling between surface 
+!                                and top ice/snow layer
+! !INTERFACE:
+
+  subroutine  EXPLICIT_COUPLING(                             & 
+                           LAT,LON,DT,                       &
+                           OBS,                              & 
+                           AICEN,TS,                         &
+                           EICEN,ESNON,                      &
+                           FCOND, EVP,                       &
+                           VICEN, VSNON,                     &
+                           SHF,LHF,                          &
+                           ALW,BLW,LWUP,                     &
+                           FSWSFC,                           & 
+                           LWDNSRF, FSURF,                   & 
+                           DLHDT,SHD,EVD)
+
+! !ARGUMENTS:
+
+    real,    intent(IN)  :: LAT                ! lat
+    real,    intent(IN)  :: LON                ! lon
+    logical, intent(IN)  :: OBS        
+    real(kind=MAPL_R8),    intent(IN)  :: DT   ! time step 
+
+    real,    intent(IN)  :: ALW             ! linearization of \sigma T^4
+    real,    intent(IN)  :: BLW             ! linearization of \sigma T^4
+    real,    intent(IN)  :: LWDNSRF         ! longwave at surface
+    real,    intent(IN)  :: DLHDT           ! related to latent heat
+    real,    intent(IN)  :: SHD             ! related to sensible heat 
+    real,    intent(IN)  :: EVD             ! related to evap
+
+    real(kind=MAPL_R8),  intent(IN)  :: FSWSFC          ! ?
+
+    real,    intent(INOUT)  :: SHF          ! sensible heat flux
+    real,    intent(INOUT)  :: LHF          ! latent   heat flux
+    real,    intent(INOUT)  :: TS         ! skin temperature
+    real(kind=MAPL_R8),    intent(INOUT)  :: EVP         ! evaporation
+
+    real(kind=MAPL_R8),    intent(IN)  :: AICEN     ! fractions of water, ice types
+    real(kind=MAPL_R8),    intent(IN)  :: VICEN     ! volume of ice
+    real(kind=MAPL_R8),    intent(IN)  :: VSNON     ! volume of snow
+    real(kind=MAPL_R8),    intent(IN)  :: EICEN    ! ?
+    real(kind=MAPL_R8),    intent(IN)  :: ESNON    ! ?
+
+    real(kind=MAPL_R8),    intent(OUT)  :: FCOND      ! ?
+    real(kind=MAPL_R8),    intent(OUT)  :: LWUP    
+    real(kind=MAPL_R8),    intent(OUT)  :: FSURF    
+
+    
+    integer :: i, j, ij, k   ! indices
+
+    real (kind=MAPL_R8) ::  &
+         dTsf         , & ! change in Tsf
+         khmax        , & ! max allowed value of kh
+         ci               ! heat capacity of top ice layer
+
+    real (kind=MAPL_R8) ::  &
+         hslyr         , & 
+         hilyr         , & 
+         rnslyr        , &     
+         rnilyr        , &  
+         qn            , &             
+         ki            , &             
+         Tsf           , &             
+         lwupsrf       , &
+         fsurfn        , &
+         fsensn        , &
+         flatn         , &
+         flwoutn       , &    
+         dfsens_dT     , &
+         dflat_dT      , &
+         dflwout_dT    , &
+         dfsurf_dT     , &
+         khis          , &  
+         keff_top      , &  
+         T_top       
+
+    logical             ::   &
+         l_snow           ! true if hsno > hs_min
+
+
+     rnslyr = real(NUM_SNOW_LAYERS,kind=MAPL_R8)
+     rnilyr = real(NUM_ICE_LAYERS, kind=MAPL_R8)
+
+     ! Check if snow layer thickness hsno > hs_min
+     hslyr = vsnon / (aicen*rnslyr)
+     if (hslyr > hs_min/rnslyr) then
+         l_snow = .true.
+     else
+         l_snow = .false.
+     endif
+
+     ! Calculate max conductivity to satisfy diffusive CFL condition
+
+     if (l_snow) then
+         khmax = rhos*cp_ice*hslyr / DT
+         qn = esnon*rnslyr/vsnon
+         T_top = (Lfresh + qn/rhos)/cp_ice
+         keff_top = 2.0 * ksno / hslyr
+     else
+         qn = eicen * rnilyr / vicen
+         T_top = calculate_Tin_from_qin(qn, Tmlt(1)) 
+         ! Compute heat capacity of the ice layer
+         if (l_brine) then
+            ci = cp_ice - Lfresh*Tmlt(1) /  (T_top*T_top)
+         else
+            ci = cp_ice
+         endif
+         hilyr = vicen / (aicen*rnilyr)
+         khmax = rhoi*ci*hilyr / DT
+         ki =  calculate_ki_from_Tin(T_top,salin(1))
+         keff_top = 2.0 * ki / hilyr
+     endif
+  
+     !khis(ij) = min(keff(i,j), khmax)
+     khis = keff_top
+
+     flwoutn = -alw - blw * TS
+     Tsf = Ts - MAPL_TICE 
+     fsensn = -shf
+     flatn  = -lhf
+     fsurfn = fswsfc + fsensn + flatn + lwdnsrf + flwoutn
+     dfsens_dT = -shd 
+     dflat_dT =  -dlhdt
+     dflwout_dT = -blw 
+     dfsurf_dT = dfsens_dT + dflat_dT + dflwout_dT
+     
+
+     dTsf = (fsurfn - khis*(Tsf - T_top)) /   &
+                (khis - dfsurf_dT)
+
+     if(OBS) then
+       print*, 'old Ts, t_top:', Tsf, T_top
+       print*, 'aice: ',  aicen
+       print*, 'esnon: ', esnon
+       print*, 'eicen: ', eicen
+       print*, fsurfn,  khis*(Tsf - T_top)
+       print*, 'dTsf', dTsf
+     endif  
+
+     Tsf = Tsf + dTsf
+
+     if (Tsf > c0) then
+         dTsf = dTsf - Tsf
+         Tsf = c0
+     endif
+
+     Ts = Tsf + MAPL_TICE   ! for output
+
+     fsensn  = fsensn  + dTsf*dfsens_dT
+     flatn   = flatn   + dTsf*dflat_dT
+     flwoutn = flwoutn + dTsf*dflwout_dT
+     fsurfn  = fsurfn  + dTsf*dfsurf_dT
+     evp     = evp     + dTsf*evd
+     fcond   = khis  * (Tsf - T_top)
+
+     lwup    = -flwoutn
+     shf     = -fsensn
+     lhf     = -flatn
+     fsurf   = fsurfn 
+
+     if(OBS) then
+       print*, 'new flux:',fsurfn, fcond
+     endif  
+
+
+  end subroutine EXPLICIT_COUPLING   
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! !IROUTINE: CICE_THERMO1 - Computes 1st step of CICE Thermodynamics
@@ -4862,7 +5044,7 @@ contains
   subroutine CICE_THERMO1 (N,NSUB,NT,ICE,LATS,LONS,LATSO,LONSO,DT,TF,FR,TS,              &
                            ERGICE,ERGSNO,TAUXBOT,TAUYBOT,TBOT,ISWABS,SSWABS,             &
                            DO_POND,FBOT,RSIDE,PCU,PLS,FSUR,                              &
-                           FSWTHRU,FCOND,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,              &
+                           FSWTHRU,FCOND,FCONDR,FCONDBOT,EVP,FRESHN,FSALTN,FHOCNN,       &
                            MELTT,MELTS,MELTB,CONGEL,SNOICE,VOLICE,VOLSNO,SHF,LHF,        &
                            VOLPOND,APONDN,HPONDN,TAUAGE,TRACERS,ALW,BLW,    &
                            FSWSFC,FSWINT,FSWABS,LWDNSRF,EVD,SHD,SNO,SBLX,RC)
@@ -4931,6 +5113,7 @@ contains
     real,    intent(INOUT)  :: FSWTHRU (:,:)   ! shortwave thru water, how can it be modified?
     real,    intent(INOUT)  :: FCOND   (:,:)   ! ?
     real,    intent(INOUT)  :: FCONDBOT(:,:)   ! ?
+    real,    intent(INOUT)  :: FCONDR  (:,:)   ! ?
 
     real,    intent(IN)     :: DT 
     real(kind=MAPL_R8)      :: DTDB               ! DT (time step) in R8 for CICE
@@ -4959,7 +5142,7 @@ contains
                                          MELTTDB, MELTSDB, MELTBDB, CONGELDB,SNOICEDB,&
                                          DSHDB, BLWDB, LATSDB, LONSDB, MLT_ONSETDB,   &
                                          FRZ_ONSETDB, FRDB, VOLICEDB, VOLSNODB,       &
-                                         SBLXDB,                                      & 
+                                         SBLXDB, FCONDRPDB,                           & 
                                          APONDNDB, HPONDNDB, RDUMDB, FRAINDB           
 
     real(kind=MAPL_R8), dimension(NT)                  :: FRCICE
@@ -5001,9 +5184,6 @@ contains
 
           TAUAGE(K,NSUB) = TAUAGE(K,NSUB) + DT
 
-          TRACERS(nt_tsfc, NSUB) = TS(K,N) - TFfresh
-          TRACERS(nt_iage, NSUB) = TAUAGE(K, NSUB)
-          TRACERS(nt_volpn,NSUB) = VOLPOND(K,NSUB)
 
           LWUPSRF        = ALW(K) + BLW(K)*TS(K,N) ! use TS (in Kelvin) here
           FSURF(1,1)     = FSWSFC(K,NSUB) - SHF(K) - LHF(K) + LWDNSRF(K) - LWUPSRF
@@ -5018,11 +5198,8 @@ contains
           FSWINTDB       =  FSWINT(K,NSUB)
           FSURFDB(1,1)   =  FSWSFCDB(1,1) - SHF(K) - LHF(K) + LWDNSRF(K) - LWUPSRF
           DFSDTDB        =  DFSDT
-          SHF0DB         = -SHF(K)
-          LHF0DB         = -LHF(K)
           LWUP0DB        = -LWUPSRF
 
-          TRACERSDB      =  TRACERS(:,NSUB)
           LWDNSRFDB      =  LWDNSRF(K)
           SNODB          =  SNO(K)
           TBOTDB         =  TBOT(K)
@@ -5052,9 +5229,37 @@ contains
           FRZ_ONSETDB    =  0.0
           YDAYDB         =  0.0
           SBLXDB         =  0.0
+          FCONDRPDB      =  0.0
           FRDB           =  FR(K,N)
           VOLICEDB       = VOLICE(K,NSUB)
           VOLSNODB       = VOLSNO(K,NSUB)
+   
+          call  EXPLICIT_COUPLING(                           & 
+                           LATSD(1,1),LONSD(1,1),DTDB,       &
+                           OBSERVE(1,1),                     &
+                           FR(K,N),TS(K,N),                  &
+                           ERGICE_TMP(1),ERGSNO_TMP(1),      &
+                           FCONDDB(1,1), EVPDB(1,1),         &
+                           VOLICEDB(1,1), VOLSNODB(1,1),     &
+                           SHF(K),LHF(K),                    &
+                           ALW(K),BLW(K), LWUP0DB(1,1),      &
+                           FSWSFCDB(1,1),                    & 
+                           LWDNSRF(K), FSURFDB(1,1),         & 
+                           DLHDT,SHD(K),EVD(K))
+
+          ! up to this point, TS, FSURF, SHF, LHF and LWUP0DB 
+          ! have been updated and should be held fixed
+
+          SHF0DB         = -SHF(K)
+          LHF0DB         = -LHF(K)
+          LWUPSRF        = -LWUP0DB(1,1) 
+          EVP(K)         = EVPDB(1,1)
+          ! fill in tracers array  
+          TRACERS(nt_tsfc, NSUB) = TS(K,N) - TFfresh
+          TRACERS(nt_iage, NSUB) = TAUAGE(K, NSUB)
+          TRACERS(nt_volpn,NSUB) = VOLPOND(K,NSUB)
+
+          TRACERSDB      =  TRACERS(:,NSUB)
 
           call thermo_vertical(                &
                1,1,DTDB,1,one,one,             &
@@ -5084,7 +5289,7 @@ contains
                DFSDTDB,DSHDB,DLHDTDB,BLWDB,    &
                LATSDB, LONSDB, OBSERVE,        &
                FCONDBOTDB,    SBLXDB,          &
-
+               FCONDRPDB,                      &
                MLT_ONSETDB,   FRZ_ONSETDB,     &
                YDAYDB,          L_STOP,        &
                IDUM,          JDUM             )
@@ -5097,20 +5302,19 @@ contains
 
           ERGICE(K,:,NSUB)   = ERGICE_TMP(:)
           ERGSNO(K,:,NSUB)   = ERGSNO_TMP(:)
-          SHF0               =  SHF0DB
-          LHF0               =  LHF0DB
+          !SHF0               =  SHF0DB
+          !LHF0               =  LHF0DB
           TRACERS(:, NSUB)   =  TRACERSDB
           FSWTHRU(K,N)       =  FSWTHRUDB(1,1)
           FCOND(K,NSUB)      =  FCONDDB(1,1)
           FCONDBOT(K,NSUB)   =  FCONDBOTDB(1,1)
           FSURF              =  FSURFDB(1,1)
           FSUR(K)            =  FSURF(1,1)
-          LWUPSRF            = -LWUP0DB(1,1) 
           !*** EVP computed by CICE has an opposite sign:
           !*** condensation > 0, water vapor goes down
           !*** sublimation  < 0, water vapor goes up
-          EVP(K)             =  -EVPDB(1,1)
           SBLX(K)            =  SBLXDB(1,1)
+          FCONDR(K,NSUB)     =  FCONDRPDB(1,1)
           FRESHN(K)          =  FRESHNDB(1,1)
           FSALTN(K)          =  FSALTNDB(1,1)
           FHOCNN(K)          =  FHOCNNDB(1,1)
@@ -5123,11 +5327,12 @@ contains
           VOLICE(K,N)        =  VOLICEDB(1,1)
           VOLSNO(K,N)        =  VOLSNODB(1,1)
           ! need to update these for aggregation later
-          SHF(K)             = -SHF0(1,1)
-          LHF(K)             = -LHF0(1,1)
+          !SHF(K)             = -SHF0(1,1)
+          !LHF(K)             = -LHF0(1,1)
           FSWSFC(K,N)        =  FSWSFCDB(1,1)
 
-          TS(K,N)            =  TRACERS(nt_tsfc,NSUB) + TFfresh
+          ! do not reload Ts from tracer array since it is already computed
+          !TS(K,N)            =  TRACERS(nt_tsfc,NSUB) + TFfresh
           TAUAGE(K,NSUB)     =  TRACERS(nt_iage,NSUB)
 
           if ( (DO_POND==1) .and. trim(SHORTWAVE) == 'dEdd') then
