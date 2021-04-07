@@ -7796,7 +7796,6 @@ contains
          CNV_FRACTION = 0.0 
 
     ! CNV_FRACTION Criteria
-      if(JASON_TUNING == 1) then
         call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
@@ -7811,22 +7810,6 @@ contains
               CNV_FRACTION =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
            END WHERE
         endif
-      else
-        call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 0.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
-        VERIFY_(STATUS)
-        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-          ! CAPE
-           WHERE (CAPE .ne. MAPL_UNDEF)
-              CNV_FRACTION =SQRT(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
-           END WHERE
-        endif
-      endif
       if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
 
       if (SHLWPARAMS%FRC_RASN < 0.0) then
@@ -8976,23 +8959,6 @@ contains
                   QST3(I,J,K)       , &
                   CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J), &
                   CONVPAR_OPTION )
-       ! clean up clouds
-             EVAPC_X(I,J,K) = Q1(I,J,K)
-             call evap3 (                 &
-                  DT_MOIST              , &
-                  CLDPARAMS%CCW_EVAP_EFF, &
-                  1.0                   , &  ! this is not used in evap3
-                  PLO(I,J,K)            , &
-                  TEMP(I,J,K)           , &
-                  Q1(I,J,K)             , &
-                  QLCN(I,J,K)           , &
-                  QICN(I,J,K)           , &
-                  CLCN(I,J,K)           , &
-                  CLLS(I,J,K)           , &
-                  NACTL(I,J,K)          , & !
-                  NACTI(I,J,K)          , & !
-                  QST3(I,J,K)  )
-             EVAPC_X(I,J,K) = ( Q1(I,J,K) - EVAPC_X(I,J,K) ) / DT_MOIST
        ! Send the condensates through the pdf after convection
        !  Use Slingo-Ritter (1985) formulation for critical relative humidity
              if (CLDPARAMS%TURNRHCRIT .LT. 0) then
@@ -9051,6 +9017,24 @@ contains
                       CLCN(I,J,K) , &
                       CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
              ENDIF
+       ! evaporation/sublimation for CN/LS
+             EVAPC_X(I,J,K) = Q1(I,J,K)
+             call evap3 (                 &
+                  DT_MOIST              , &
+                  CLDPARAMS%CCW_EVAP_EFF, &
+                  RHCRIT                , &  
+                  PLO(I,J,K)            , &
+                  TEMP(I,J,K)           , &
+                  Q1(I,J,K)             , &
+                  QLCN(I,J,K)           , &
+                  QICN(I,J,K)           , &
+                  CLCN(I,J,K)           , &
+                  CLLS(I,J,K)           , &
+                  NACTL(I,J,K)          , & !
+                  NACTI(I,J,K)          , & !
+                  QST3(I,J,K)  )
+             EVAPC_X(I,J,K) = ( Q1(I,J,K) - EVAPC_X(I,J,K) ) / DT_MOIST
+       ! cleanup clouds
              call fix_up_clouds( Q1(I,J,K), TEMP(I,J,K), QLLS(I,J,K), QILS(I,J,K), CLLS(I,J,K), QLCN(I,J,K), QICN(I,J,K), CLCN(I,J,K) )
             end do ! IM loop
           end do ! JM loop
@@ -9603,7 +9587,7 @@ contains
          CFICE=MAX(MIN(CFICE, 1.0), 0.0)
          where (QI_TOT .le. 0.0)
             CFICE =0.0
-            NCPI=0.0
+            NCPI  =0.0
             CLDREFFI = MAPL_UNDEF
          end where
          where (QL_TOT .le. 0.0)

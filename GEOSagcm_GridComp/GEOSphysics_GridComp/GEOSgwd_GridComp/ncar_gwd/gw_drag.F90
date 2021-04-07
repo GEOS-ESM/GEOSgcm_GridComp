@@ -61,7 +61,7 @@ contains
 !===============================================================================
 
 
-  subroutine gw_intr_ncar(pcols,      pver,         dt,         pgwv,              &
+  subroutine gw_intr_ncar(pcols,      pver,         dt,                            &
           beres_desc,   beres_band,   oro_band,                                    &
           pint_dev,     t_dev,        u_dev,        v_dev,      ht_dpc_dev,        &
           sgh_dev,      pref_dev,                                                  & 
@@ -71,7 +71,7 @@ contains
           taugwdx_dev,  taugwdy_dev,  tauox_dev,    tauoy_dev,  feo_dev,           &
           taubkgx_dev,  taubkgy_dev,  taubx_dev,    tauby_dev,  feb_dev,           &
           fepo_dev,     fepb_dev,     utbsrc_dev,   vtbsrc_dev, ttbsrc_dev,        &
-          bgstressmax,  effgworo,     effgwbkg,     rc            )
+          effgworo,     effgwbkg,     rc            )
 
 !-----------------------------------------------------------------------
 ! Interface for multiple gravity wave drag parameterization.
@@ -81,11 +81,9 @@ contains
     integer, intent(in   ) :: pcols                    ! number of columns
     integer, intent(in   ) :: pver                     ! number of vertical layers
     real,    intent(in   ) :: dt                       ! time step
-    integer, intent(in   ) :: pgwv                     ! number of waves allowed                (Default = 4, 0 nullifies)
     type(GWBand),          intent(inout) :: oro_band   ! Band descriptor
     type(GWBand),          intent(inout) :: beres_band ! Band descriptor
     type(BeresSourceDesc), intent(inout) :: beres_desc ! Table descriptor for Beres scheme
-    real,    intent(in   ) :: bgstressmax              ! Max of equatorial profile of BG stress factor
     real,    intent(in   ) :: effgwbkg                 ! tendency efficiency for background gwd (Default = 0.125)
     real,    intent(in   ) :: effgworo                 ! tendency efficiency for orographic gwd (Default = 0.125)
     real,    intent(in   ) :: pint_dev(pcols,pver+1)   ! pressure at the layer edges
@@ -192,7 +190,6 @@ contains
 
     !!real(r8) ::  pint_dev_r8(pcols,pver+1) , pmid_dev_r8(pcols,pver) , t_dev_r8(pcols,pver) 
 
-    real(r8)  :: bgstressmax_ff              ! Max of equatorial profile of BG stress factor
     real(r8)  :: effgwbkg_ff                 ! tendency efficiency for background gwd (Default = 0.125)
     real(r8)  :: effgworo_ff                 ! tendency efficiency for orographic gwd (Default = 0.125)
     real(r8)  :: pint_dev_ff(pcols,pver+1)   ! pressure at the layer edges
@@ -222,7 +219,7 @@ contains
     real(r8)  :: v_gwt_ff(pcols,pver)        ! meridional tendency wind at layers
 
 
-    real(r8)  :: effgw_dp, dt_ff
+    real(r8)  :: dt_ff
 !-----------------------------------------------------------------------------
 
 ! Initialize accumulated tendencies
@@ -279,9 +276,9 @@ call gw_prof (pcols , pver, pint_dev_ff , pmid_dev_ff , t_dev_ff , rhoi, nm, ni 
 
 
 !get rid of lchnk
-    effgw_dp = effgwbkg
+    effgwbkg_ff = effgwbkg
     call gw_beres_ifc( beres_band, &
-       pcols, pver, dt_ff , effgw_dp,  &
+       pcols, pver, dt_ff , effgwbkg_ff,  &
        u_dev_ff , v_dev_ff, t_dev_ff, &
        pref_dev_ff, pint_dev_ff, & 
        pdel_dev_ff , rpdel_dev_ff, lnpint_dev_ff, &

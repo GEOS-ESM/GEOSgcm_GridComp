@@ -4080,6 +4080,8 @@ contains
          RAD_QR = 0.
          RAD_QS = 0.
          RAD_QG = 0.
+         RAD_RI = MAPL_UNDEF
+         RAD_RL = MAPL_UNDEF
       end if
 
    end subroutine RADCOUPLE
