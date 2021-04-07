@@ -53,7 +53,7 @@
     character*40       :: lai_name 
     integer, parameter :: log_file = 998
     include 'netcdf.inc'	
-    type (regrid_map), allocatable, dimension (:,:) :: maparc30, mapgeoland2,maparc60
+    type (regrid_map) :: maparc30, mapgeoland2,maparc60
     character*200 :: tmpstring, tmpstring1, tmpstring2
     
 
@@ -268,7 +268,7 @@ integer :: n_threads=1
        if((trim(LAIBCS) == 'MODGEO').or.(trim(LAIBCS) == 'GEOLAND2')) then 
           inquire(file='clsm/lai.GEOLAND2_10-DayClim', exist=file_exists)
           if (.not.file_exists) then
-             allocate (mapgeoland2 (1:40320,1:20160))
+             !allocate (mapgeoland2 (1:40320,1:20160))
              call create_mapping (nc,nr,40320,20160,mapgeoland2, gridnamer)         
              lai_name = 'GEOLAND2_10-DayClim/geoland2_' 
              if(trim(LAIBCS) == 'GEOLAND2') then
@@ -276,12 +276,14 @@ integer :: n_threads=1
              else
                 call hres_lai_no_gswp (40320,20160,mapgeoland2,gridnamer, lai_name, merge=1) 
              endif
-             if(allocated(mapgeoland2)) deallocate (mapgeoland2)
+             ! if(allocated(mapgeoland2)) deallocate (mapgeoland2)
+             deallocate (mapgeoland2%map)
+             deallocate (mapgeoland2%ij_index)
           endif
        endif
        
        if ((LAIBCS == 'MODGEO').or.(LAIBCS == 'MODIS').or.(MODALB == 'MODIS2')) then
-          allocate (maparc30    (1:43200,1:21600))
+          ! allocate (maparc30    (1:43200,1:21600))
           call create_mapping (nc,nr,43200,21600,maparc30,    gridnamer)
        endif
        
@@ -291,8 +293,8 @@ integer :: n_threads=1
           if (trim(LAIBCS) == 'GSWP2') then 
              call process_gswp2_veg (nc,nr,regrid,'grnFrac',gridnamer)
           else
-             if (.not. allocated(maparc30)) then 
-                allocate (maparc30    (1:43200,1:21600))
+             if (size(maparc30%ij_index,1) /= 43200) then 
+                ! allocate (maparc30    (1:43200,1:21600))
                 call create_mapping (nc,nr,43200,21600,maparc30,    gridnamer)
              endif
              call hres_gswp2 (43200,21600, maparc30, gridnamer,'green') 
@@ -306,8 +308,8 @@ integer :: n_threads=1
           
           if (trim(LAIBCS) == 'GSWP2') call process_gswp2_veg (nc,nr,regrid,'LAI',gridnamer) 
           if (trim(LAIBCS) == 'GSWPH') then
-             if (.not. allocated(maparc30)) then 
-                allocate (maparc30    (1:43200,1:21600))
+             if (size(maparc30%ij_index,1) /= 43200) then 
+                ! allocate (maparc30    (1:43200,1:21600))
                 call create_mapping (nc,nr,43200,21600,maparc30,    gridnamer)
              endif
              inquire(file='clsm/lai.MODIS_8-DayClim', exist=file_exists)
@@ -358,10 +360,12 @@ integer :: n_threads=1
           inquire(file='clsm/AlbMap.WS.16-day.tile.0.7_5.0.dat', exist=file_exists)
           if (.not.file_exists) then
              if(.not.F25Tag) then 
-                allocate (maparc60    (1:21600,1:10800))
+                ! allocate (maparc60    (1:21600,1:10800))
                 call create_mapping (nc,nr,21600,10800,maparc60,    gridnamer)
                 call modis_alb_on_tiles_high (21600,10800,maparc60,MODALB,gridnamer)
-                if(allocated (maparc30)) deallocate (maparc60)
+                ! if(allocated (maparc30)) deallocate (maparc60)
+                deallocate (maparc60%map)
+                deallocate (maparc60%ij_index)
              else
                 call modis_alb_on_tiles (nc,nr,ease_grid,regrid,gridnamet,gridnamer)
              endif
@@ -374,8 +378,9 @@ integer :: n_threads=1
        endif
        write (log_file,'(a,a,a)')'Done putting ',trim(MODALB), ' Albedo on the tile space  .............5'
        
-       if(allocated (maparc30)) deallocate (maparc30)
-       
+       !if(allocated (maparc30)) deallocate (maparc30)
+       deallocate (maparc30%map)
+       deallocate (maparc30%ij_index)
        inquire(file='clsm/visdf.dat', exist=file_exists)
        if ((redo_modis).or.(.not.file_exists)) then
           if(.not.F25Tag) then

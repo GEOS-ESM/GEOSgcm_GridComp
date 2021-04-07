@@ -27,7 +27,7 @@ private
 
 public :: soil_para_hwsd,hres_lai,hres_gswp2, merge_lai_data, grid2tile_modis6
 public :: modis_alb_on_tiles_high,modis_scale_para_high,hres_lai_no_gswp
-public :: histogram, regrid_map, create_mapping, esa2mosaic , esa2clm, ESA2CLM_45
+public :: histogram, create_mapping, esa2mosaic , esa2clm, ESA2CLM_45
 public :: grid2tile_ndep_t2m_alb, CREATE_ROUT_PARA_FILE, map_country_codes, get_country_codes
 public :: CLM45_fixed_parameters, CLM45_clim_parameters, gimms_clim_ndvi, grid2tile_glass,  open_landparam_nc4_files
 
@@ -38,12 +38,16 @@ integer  , parameter :: nc_esa = 129600, nr_esa = 64800
 real, parameter      :: pi= MAPL_PI,RADIUS=MAPL_RADIUS
 integer, parameter   :: N_GADM = 256 + 1, N_STATES = 50
 
-type :: regrid_map
-
+type :: do_regrid
    integer                               :: NT
    integer, dimension (N_tiles_per_cell) :: TID
    integer, dimension (N_tiles_per_cell) :: count
-
+end type do_regrid
+type, public :: regrid_map
+   integer :: nc_data = 1
+   integer :: nr_data = 1
+   integer, allocatable, dimension (:,:)   :: ij_index
+   type(do_regrid), pointer, dimension (:) :: map
 end type regrid_map
 
 contains
@@ -1821,8 +1825,8 @@ END SUBROUTINE HISTOGRAM
    implicit none
 
    integer, intent (in) :: nc,nr,nc_data,nr_data
-   type (regrid_map), intent (inout), dimension (nc_data,nr_data) :: rmap
-   integer :: i,j,n, i1,i2,j1,j2,ncatch, nbins, status, NPLUS
+   type (regrid_map), intent (inout) :: rmap
+   integer :: i,j,n, i1,i2,j1,j2,ncatch, nbins, status, NPLUS,pix_count
    REAL,    allocatable, DIMENSION (:) :: loc_val
    INTEGER, ALLOCATABLE, DIMENSION (:) :: density, loc_int
    logical, dimension (:), allocatable :: unq_mask    
@@ -1854,26 +1858,35 @@ END SUBROUTINE HISTOGRAM
    dy_data = 180./real(nr_data)
    dx_geos = 360./real(nc)
    dy_geos = 180./real(nr)
-   rmap%NT    = 0
 
    if((nc_data  >= nc).and.(nr_data >= nr)) then
 
       allocate(iraster(nc_data,nr_data),stat=STATUS); VERIFY_(STATUS)
       call RegridRaster(tile_id,iraster)
-  
+      NPLUS = count(iraster >= 1 .and. iraster <= ncatch)
+      allocate (rmap%ij_index(1:nc_data, 1:nr_data))
+      allocate (rmap%map (1:NPLUS))     
+      rmap%map%NT = 0
+      pix_count = 1
       do j = 1,nr_data
          do i =  1,nc_data
             if((iraster (i,j) >=1).and.(iraster (i,j) <=ncatch)) then
-               rmap(i,j)%NT = 1
-               rmap(i,j)%TID  (rmap(i,j)%NT) = iraster (i,j)
-               rmap(i,j)%count(rmap(i,j)%NT) = 1
+               rmap%map(pix_count)%NT = 1
+               rmap%map(pix_count)%TID  (rmap%map(pix_count)%NT) = iraster (i,j)
+               rmap%map(pix_count)%count(rmap%map(pix_count)%NT) = 1
+               rmap%ij_index(i,j) = pix_count
+               pix_count = pix_count + 1
             endif
          end do
       end do
       deallocate (iraster) ; VERIFY_(STATUS)
 
    else
-      
+      NPLUS = count(tile_id >= 1 .and. tile_id <= ncatch)
+      allocate (rmap%ij_index(1:nc_data, 1:nr_data))
+      allocate (rmap%map (1:NPLUS))     
+      rmap%map%NT = 0
+      pix_count   = 1
       do j = 1,nr_data
          
          lat1 = -90. + (j-1)*dy_data
@@ -1909,28 +1922,33 @@ END SUBROUTINE HISTOGRAM
                   
                   DO N =1,NBINS
                      if(density(n) > 0) then 
-                        rmap(i,j)%NT = rmap(i,j)%NT + 1
-                        if(rmap(i,j)%NT > N_tiles_per_cell) then
-                           print *,'N_tiles_per_cell exceeded :', rmap(i,j)%NT
+                        rmap%map(pix_count)%NT = rmap%map(pix_count)%NT + 1
+                        if(rmap%map(pix_count)%NT > N_tiles_per_cell) then
+                           print *,'N_tiles_per_cell exceeded :', rmap%map(pix_count)%NT
                            print *,i,j,i1,i2,j1,j2
-                           print *,'NT',rmap(i,j)%NT 
-                           print *,rmap(i,j)%TID
-                           print *,rmap(i,j)%count
+                           print *,'NT',rmap%map(pix_count)%NT 
+                           print *,rmap%map(pix_count)%TID
+                           print *,rmap%map(pix_count)%count
                            stop
                         endif
-                        rmap(i,j)%TID  (rmap(i,j)%NT) = NINT(loc_val(n))
-                        rmap(i,j)%count(rmap(i,j)%NT) = density(n)
+                        rmap%map(pix_count)%TID  (rmap%map(pix_count)%NT) = NINT(loc_val(n))
+                        rmap%map(pix_count)%count(rmap%map(pix_count)%NT) = density(n)
+                        
                      endif
                   END DO
+                  rmap%ij_index(i,j) = pix_count
+                  pix_count = pix_count + 1
                   deallocate (loc_val, density)
                   deallocate (loc_int, unq_mask)
                endif
                NULLIFY (subset)
             else
                if((tile_id (i1,j1) > 0).and.(tile_id(i1,j1).le.ncatch)) then
-                  rmap(i,j)%NT       = 1
-                  rmap(i,j)%TID(1)   = tile_id (i1,j1)
-                  rmap(i,j)%COUNT(1) = 1
+                  rmap%map(pix_count)%NT       = 1
+                  rmap%map(pix_count)%TID(1)   = tile_id (i1,j1)
+                  rmap%map(pix_count)%COUNT(1) = 1
+                  rmap%ij_index(i,j) = pix_count
+                  pix_count = pix_count + 1
                endif
             endif
          end do
@@ -2451,10 +2469,10 @@ END SUBROUTINE modis_scale_para_high
 !
   implicit none 
   integer, intent (in) :: nc_data,nr_data
-  type (regrid_map), intent (in), dimension (nc_data,nr_data) :: rmap
+  type (regrid_map), intent (in) :: rmap
   character*6 :: MA
   character(*)  :: gfiler
-  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj
+  integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj, pix_count
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2
   character*100 :: fname,fout
@@ -2574,24 +2592,26 @@ END SUBROUTINE modis_scale_para_high
                    status = NF_GET_VARA_INT (ncid,5,(/1,1,time_slice/),(/nc_10,nr_10,1/),net_data2); VERIFY_(STATUS)
 
                    do j = jLL,jLL + nr_10 -1 
-                      do i = iLL, iLL + nc_10 -1 
+                      do i = iLL, iLL + nc_10 -1
+                         pix_count = rmap%ij_index(i,j)
                          if(net_data1(i-iLL +1 ,j - jLL +1) > 0) then
-                            if(rmap(i,j)%nt > 0) then
-                               do n = 1, rmap(i,j)%nt
-                                  vec_AlbVis(rmap(i,j)%tid(n))  = vec_AlbVis(rmap(i,j)%tid(n)) +  &
-                                       sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n) 
-                                  count_AlbVis(rmap(i,j)%tid(n))= count_AlbVis(rmap(i,j)%tid(n)) + &
-                                        1.*rmap(i,j)%count(n)
+                            
+                            if(rmap%map(pix_count)%nt > 0) then
+                               do n = 1, rmap%map(pix_count)%nt
+                                  vec_AlbVis(rmap%map(pix_count)%tid(n))  = vec_AlbVis(rmap%map(pix_count)%tid(n)) +  &
+                                       sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n) 
+                                  count_AlbVis(rmap%map(pix_count)%tid(n))= count_AlbVis(rmap%map(pix_count)%tid(n)) + &
+                                        1.*rmap%map(pix_count)%count(n)
                                end do
                             endif
                          endif
                          if(net_data2(i-iLL +1 ,j - jLL +1) > 0) then
-                            if(rmap(i,j)%nt > 0) then
-                               do n = 1, rmap(i,j)%nt
-                                  vec_AlbNir(rmap(i,j)%tid(n))  = vec_AlbNir(rmap(i,j)%tid(n)) +  &
-                                       sf*net_data2(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n) 
-                                  count_AlbNir(rmap(i,j)%tid(n))= count_AlbNir(rmap(i,j)%tid(n)) + &
-                                        1.*rmap(i,j)%count(n)
+                            if(rmap%map(pix_count)%nt > 0) then
+                               do n = 1, rmap%map(pix_count)%nt
+                                  vec_AlbNir(rmap%map(pix_count)%tid(n))  = vec_AlbNir(rmap%map(pix_count)%tid(n)) +  &
+                                       sf*net_data2(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n) 
+                                  count_AlbNir(rmap%map(pix_count)%tid(n))= count_AlbNir(rmap%map(pix_count)%tid(n)) + &
+                                        1.*rmap%map(pix_count)%count(n)
                                end do
                             endif
                           endif
@@ -3145,7 +3165,7 @@ END SUBROUTINE modis_scale_para_high
   integer, intent (in) :: nc_data,nr_data
   real, parameter :: dxy = 1.
   integer :: QSize
-  type (regrid_map), intent (in), dimension (nc_data,nr_data) :: rmap
+  type (regrid_map), intent (in) :: rmap
   character(*)  :: gfiler,lai_name
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr,nx,ny
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
@@ -3159,7 +3179,7 @@ END SUBROUTINE modis_scale_para_high
   REAL, ALLOCATABLE, dimension (:)      :: vec_lai, count_lai,tile_lon, tile_lat &
        , x, y !, distance
   real, allocatable, target, dimension (:,:) :: lai_grid
-  INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l
+  INTEGER ::imn,imx,jmn,jmx,mval,d1,d2,l,pix_count
   character(len=4), dimension (:), allocatable :: MMDD, MMDD_next
   logical :: regrid
   REAL :: sf, dum,dist_save,tile_distance,minlat,maxlat,minlon,maxlon
@@ -3301,13 +3321,14 @@ END SUBROUTINE modis_scale_para_high
                   do j = jLL,jLL + nr_10 -1 
                      do i = iLL, iLL + nc_10 -1 
                         if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) then
-                           if(rmap(i,j)%nt > 0) then
-                              do n = 1, rmap(i,j)%nt
-                                 if(vec_lai(rmap(i,j)%tid(n)) == -9999.) vec_lai(rmap(i,j)%tid(n)) = 0.                                 
-                                 vec_lai(rmap(i,j)%tid(n))   = vec_lai(rmap(i,j)%tid(n)) + &
-                                      sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n)
-                                 count_lai(rmap(i,j)%tid(n)) = &
-                                      count_lai(rmap(i,j)%tid(n)) + 1.*rmap(i,j)%count(n)                                     
+                           pix_count = rmap%ij_index(i,j)
+                           if(rmap%map(pix_count)%nt > 0) then
+                              do n = 1, rmap%map(pix_count)%nt
+                                 if(vec_lai(rmap%map(pix_count)%tid(n)) == -9999.) vec_lai(rmap%map(pix_count)%tid(n)) = 0.                                 
+                                 vec_lai(rmap%map(pix_count)%tid(n))   = vec_lai(rmap%map(pix_count)%tid(n)) + &
+                                      sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n)
+                                 count_lai(rmap%map(pix_count)%tid(n)) = &
+                                      count_lai(rmap%map(pix_count)%tid(n)) + 1.*rmap%map(pix_count)%count(n)                                     
                               end do
                            endif
                         endif
@@ -3466,7 +3487,7 @@ END SUBROUTINE modis_scale_para_high
   integer :: n,maxcat,i,j,k,ncid,i_highd,j_highd,nx_adj,ny_adj,ierr
   integer :: status,iLL,jLL,ix,jx,vid,nc_10,nr_10,n_tslices,d_undef,t,  &
       time_slice,time_slice_next,yr,mn,dd,yr1,mn1,dd1,i1,i2
-  type (regrid_map), intent (in), dimension (nc_data,nr_data) :: rmap
+  type (regrid_map), intent (in) :: rmap
   real :: dum, gyr,gmn,gdy,gyr1,gmn1,gdy1, slice1,slice2
   character*100 :: fname,fout
   character*10 :: string
@@ -3482,7 +3503,7 @@ END SUBROUTINE modis_scale_para_high
        af_lai_time
   integer, intent(in), optional :: merge
   real, parameter :: dxy = 1.
-  integer         :: nx, ny, QSize
+  integer         :: nx, ny, QSize, pix_count
   REAL, ALLOCATABLE, dimension (:) :: x,y,tile_lon, tile_lat
   real, allocatable, target, dimension (:,:) :: data_grid
   integer, pointer, dimension (:,:) :: QSub
@@ -3603,13 +3624,14 @@ END SUBROUTINE modis_scale_para_high
               do j = jLL,jLL + nr_10 -1 
                  do i = iLL, iLL + nc_10 -1 
                     if(net_data1(i-iLL +1 ,j - jLL +1) /= d_undef) then
-                       if(rmap(i,j)%nt > 0) then
-                          do n = 1, rmap(i,j)%nt
-                             if(vec_lai(rmap(i,j)%tid(n)) == -9999.) vec_lai(rmap(i,j)%tid(n)) = 0.                                 
-                             vec_lai(rmap(i,j)%tid(n))   = vec_lai(rmap(i,j)%tid(n)) + &
-                                  sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap(i,j)%count(n)
-                             count_lai(rmap(i,j)%tid(n)) = &
-                                  count_lai(rmap(i,j)%tid(n)) + 1.*rmap(i,j)%count(n)                                     
+                       pix_count = rmap%ij_index(i,j)
+                       if(rmap%map(pix_count)%nt > 0) then
+                          do n = 1, rmap%map(pix_count)%nt
+                             if(vec_lai(rmap%map(pix_count)%tid(n)) == -9999.) vec_lai(rmap%map(pix_count)%tid(n)) = 0.                                 
+                             vec_lai(rmap%map(pix_count)%tid(n))   = vec_lai(rmap%map(pix_count)%tid(n)) + &
+                                  sf*net_data1(i-iLL +1 ,j - jLL +1)*rmap%map(pix_count)%count(n)
+                             count_lai(rmap%map(pix_count)%tid(n)) = &
+                                  count_lai(rmap%map(pix_count)%tid(n)) + 1.*rmap%map(pix_count)%count(n)                                     
                           end do
                        endif
                     endif

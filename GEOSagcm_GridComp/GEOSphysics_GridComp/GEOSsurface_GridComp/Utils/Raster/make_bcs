@@ -1,6 +1,25 @@
 #!/bin/tcsh -f
 
 #######################################################################
+# This script creates surface tiles, and writes all model input files
+#    (.til, .rst and land parameter) in BCSDIR for any specified
+#    combination of atmospheric and ocean grid resolutions.  
+#  
+#                             ---- USAGE ----
+# 1) STEP 1 : build the model.
+# 2) STEP 2 : create a link to install/bin from the working directory.
+# 3) STEP 3 : bin/make_bcs
+#             Answer the following questions:
+#             a) Enter the Atmospheric Horizontal Resolution Code(s) to build:
+#             b) Select the choice of Land BCs version to use: 
+#             c) Enter the Ocean Resolution Code(s) to build:
+#                (Note this selection is not relevant to land-only EASE grids)
+#             d) Enter sponsor code.
+#  
+#######################################################################
+
+
+#######################################################################
 #                     Set GEOS5/ESMADIR Variables
 #######################################################################
 
@@ -128,33 +147,42 @@ if( $dummy == 'F25'  | $$dummy == 'GM4'  | dummy == 'ICA'  | $dummy == 'NL3'  | 
 
 #######################################################################
 
-ORSLV:
-echo
-echo "Enter the ${C1}Ocean Resolution Code(s)${CR} to build:"
-echo "      where:  ${C2}O1 --   Low-Resolution Reynolds 1   deg${CR} (Lon/Lat Data-Ocean:  360x180 ) "
-echo "              ${C2}O2 --   Med-Resolution Reynolds 1/4 deg${CR} (Lon/Lat Data-Ocean: 1440x720 ) "
-echo "              ${C2}O3 --  High-Resolution    OSTIA 1/8 deg${CR} (Lon/Lat Data-Ocean: 2880x1440) "
-echo "              ${C2}T1 --   Low-Resolution Tripolar 3   deg${CR} (MOM-Tripolar-Ocean:  120x65  ) "
-echo "              ${C2}T2 --   Med-Resolution Tripolar 1   deg${CR} (MOM-Tripolar-Ocean:  360x200 ) "
-echo "              ${C2}T3 --  High-Resolution Tripolar 1/2 deg${CR} (MOM-Tripolar-Ocean:  720x410 ) "
-echo "              ${C2}T4 --  High-Resolution Tripolar 1/4 deg${CR} (MOM-Tripolar-Ocean: 1440x1080) "
-echo "              ${C2}CS --  Cubed-Sphere Ocean              ${CR} (Cubed-Sphere Data-Ocean      ) "
-echo "              (Select anything just to move forward for land-only EASE grids.)"
-set dummy = `echo $<`
-set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
-set orslvs =  $dummy[1]
-foreach orslv ($dummy)
-  if( $orslv != 'O1' & \
-      $orslv != 'O2' & \
-      $orslv != 'O3' & \
-      $orslv != 'T1' & \
-      $orslv != 'T2' & \
-      $orslv != 'T3' & \
-      $orslv != 'T4' & \
-      $orslv != 'CS') goto ORSLV
-  if( $orslv != "$orslvs" ) set orslvs = `echo ${orslvs} ${orslv}`
-end
+if($HRCODES == m9 | $HRCODES == m36 | $HRCODES == m25) then
 
+    set orslvs = O1
+
+else
+
+ORSLV:
+    
+    echo
+    echo "Enter the ${C1}Ocean Resolution Code(s)${CR} to build:"
+    echo "      where:  ${C2}O1 --   Low-Resolution Reynolds 1   deg${CR} (Lon/Lat Data-Ocean:  360x180 ) "
+    echo "              ${C2}O2 --   Med-Resolution Reynolds 1/4 deg${CR} (Lon/Lat Data-Ocean: 1440x720 ) "
+    echo "              ${C2}O3 --  High-Resolution    OSTIA 1/8 deg${CR} (Lon/Lat Data-Ocean: 2880x1440) "
+    echo "              ${C2}T1 --   Low-Resolution Tripolar 3   deg${CR} (MOM-Tripolar-Ocean:  120x65  ) "
+    echo "              ${C2}T2 --   Med-Resolution Tripolar 1   deg${CR} (MOM-Tripolar-Ocean:  360x200 ) "
+    echo "              ${C2}T3 --  High-Resolution Tripolar 1/2 deg${CR} (MOM-Tripolar-Ocean:  720x410 ) "
+    echo "              ${C2}T4 --  High-Resolution Tripolar 1/4 deg${CR} (MOM-Tripolar-Ocean: 1440x1080) "
+    echo "              ${C2}CS --  Cubed-Sphere Ocean              ${CR} (Cubed-Sphere Data-Ocean      ) "
+    echo "              (Select anything just to move forward for land-only EASE grids.)"
+    set dummy = `echo $<`
+    set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
+    set orslvs =  $dummy[1]
+    foreach orslv ($dummy)
+    if( $orslv != 'O1' & \
+	$orslv != 'O2' & \
+	$orslv != 'O3' & \
+	$orslv != 'T1' & \
+	$orslv != 'T2' & \
+	$orslv != 'T3' & \
+	$orslv != 'T4' & \
+	$orslv != 'CS') goto ORSLV
+	if( $orslv != "$orslvs" ) set orslvs = `echo ${orslvs} ${orslv}`
+    end
+
+endif
+    
 #######################################################################
 
 echo ""
@@ -506,6 +534,7 @@ cd ../
 if( -e DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
 setenv MASKFILE $MASKFILE
 source bin/g5_modules
+limit stacksize unlimited
 bin/mkLatLonRaster.x -x ${NX} -y ${NY}  -t -1 ${IM} ${JM} >/dev/null
 bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
 
@@ -641,6 +670,200 @@ mkdir -p $BCDIR
 
 echo "${C1}     Creating:${CR} ${C2}$BCJOB${CR}"
 /bin/rm -f     $BCJOB
+if ($HRCODE == c2880 | $HRCODE == c3072 | $HRCODE == c5760) then
+cat << _EOF_ > $BCJOB
+#!/bin/csh -x
+
+#SBATCH --output=$pwd/logs/$BCNAME.log
+#SBATCH --error=$pwd/logs/$BCNAME.err
+#SBATCH --account=$group
+#SBATCH --time=12:00:00
+#SBATCH --ntasks=1
+#SBATCH --job-name=$BCNAME.j
+#SBATCH --chdir=$pwd/$BCDIR
+#SBATCH --constraint=sky
+
+setenv ESMADIR $ESMADIR
+
+cd $pwd
+cd $BCDIR
+
+/bin/ln -s $pwd/bin
+mkdir -p til rst data/MOM clsm/plots
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/INPUT/ data/MOM/360x200
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/INPUT/ data/MOM/720x410
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/INPUT/ data/MOM/1440x1080
+
+cd data 
+ln -s $l_data CATCH
+
+cd ../
+ 
+if( -e CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
+setenv MASKFILE $MASKFILE
+source bin/g5_modules
+limit stacksize unlimited
+bin/mkCubeFVRaster.x -x ${NX} -y ${NY} ${NC} >/dev/null 
+bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
+
+if( $LATLON_OCEAN == TRUE ) then
+    bin/mkLatLonRaster.x -x ${NX} -y ${NY} -b DE -p PE -t 0 ${IMO} ${JMO} >/dev/null
+    bin/CombineRasters.x -f 0 -t ${NT} DE${IMO}xPE${JMO} Pfafstetter >/dev/null
+    bin/CombineRasters.x -t ${NT} CF${NC}x6C DE${IMO}xPE${JMO}-Pfafstetter
+    setenv OMP_NUM_THREADS 1
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_DE${IMO}xPE${JMO}-Pfafstetter -v $lbcsv
+endif
+
+if( $TRIPOL_OCEAN == TRUE ) then
+    bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/MOM/${imo}x${jmo}/grid_spec.nc > /dev/null
+    bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
+    bin/CombineRasters.x -t ${NT} CF${NC}x6C ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    bin/mk_runofftbl.x CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
+    setenv OMP_NUM_THREADS 1
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter -v $lbcsv
+endif
+
+if( $CUBED_SPHERE_OCEAN == TRUE ) then
+    bin/CombineRasters.x -f 0 -t ${NT} CF${NC}x6C Pfafstetter >/dev/null
+    bin/CombineRasters.x -t ${NT} CF${NC}x6C CF${NC}x6C-Pfafstetter
+    setenv OMP_NUM_THREADS 1
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter -v $lbcsv 
+endif
+_EOF_
+
+chmod 755 $BCJOB
+set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB`
+
+cat << _EOF_ > $BCJOB-2
+#!/bin/csh -x
+
+#SBATCH --output=$pwd/logs/$BCNAME-2.log
+#SBATCH --error=$pwd/logs/$BCNAME-2.err
+#SBATCH --account=$group
+#SBATCH --time=12:00:00
+#SBATCH --ntasks=28
+#SBATCH --job-name=$BCNAME-2.j
+#SBATCH --chdir=$pwd/$BCDIR
+#SBATCH --constraint=sky
+
+setenv ESMADIR $ESMADIR
+
+cd $pwd
+cd $BCDIR
+ 
+setenv MASKFILE $MASKFILE
+source bin/g5_modules
+limit stacksize unlimited
+
+if( $LATLON_OCEAN == TRUE ) then
+    setenv OMP_NUM_THREADS ${NCPUS}
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_DE${IMO}xPE${JMO}-Pfafstetter -v $lbcsv
+    chmod 755 bin/create_README.csh
+    bin/create_README.csh
+endif
+
+if( $TRIPOL_OCEAN == TRUE ) then
+    setenv OMP_NUM_THREADS ${NCPUS}
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter -v $lbcsv
+    chmod 755 bin/create_README.csh
+    bin/create_README.csh
+endif
+
+if( $CUBED_SPHERE_OCEAN == TRUE ) then
+    setenv OMP_NUM_THREADS ${NCPUS}
+    bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter -v $lbcsv 
+    chmod 755 bin/create_README.csh
+    biin/create_README.csh
+endif
+
+/bin/mv clsm  clsm.C${NC}
+/bin/cp til/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til clsm.C${NC}
+/bin/rm clsm.C${NC}/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.file
+
+cd clsm.C${NC}
+   /bin/mv irrig.dat irrigation_${RC}.dat
+   /bin/mv vegdyn.data   vegdyn_${RC}.dat
+   /bin/mv nirdf.dat      nirdf_${RC}.dat
+   /bin/mv visdf.dat      visdf_${RC}.dat
+   /bin/mv   lai.dat   lai_clim_${RC}.data
+   /bin/mv green.dat green_clim_${RC}.data
+   /bin/mv lnfm.dat   lnfm_clim_${RC}.data
+   /bin/mv ndvi.dat   ndvi_clim_${RC}.data
+   /bin/mv MODELFPARmean.dat MODELFPARmean_${RC}.dat 
+   /bin/mv MODELFPARstd.dat  MODELFPARstd_${RC}.dat  
+   /bin/mv MODISFPARmean.dat MODISFPARmean_${RC}.dat 
+   /bin/mv MODISFPARstd.dat  MODISFPARstd_${RC}.dat  
+   /bin/mv MODISNIRmean.dat  MODISNIRmean_${RC}.dat  
+   /bin/mv MODISNIRstd.dat   MODISNIRstd_${RC}.dat   
+   /bin/mv MODISVISmean.dat  MODISVISmean_${RC}.dat  
+   /bin/mv MODISVISstd.dat   MODISVISstd_${RC}.dat   
+
+/bin/rm -f sedfile
+if( $CUBED_SPHERE_OCEAN == TRUE ) then
+cat > sedfile << EOF
+s/${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter/OC${nc}x${nc6}-CF/g
+s/CF${NC}x6C/PE${nc}x${nc6}-CF/g
+EOF
+sed -f sedfile       CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til > tile.file
+/bin/mv -f tile.file CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til
+/bin/rm -f sedfile
+else
+cat > sedfile << EOF
+s/CF${NC}x6C/PE${nc}x${nc6}-CF/g
+s/${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter/PE${imo}x${jmo}-${DATENAME}/g
+EOF
+sed -f sedfile       CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til > tile.file
+/bin/mv -f tile.file CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til
+/bin/rm -f sedfile
+endif
+
+cd ../
+
+/bin/rm -rf         CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+/bin/mv clsm.C${NC} CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+                cd  CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+              mkdir clsm
+            /bin/mv ar.new \
+                    bf.dat \
+                    ts.dat \
+                    catchment.def \
+                    cti_stats.dat \
+                    tau_param.dat \
+                    soil_param.dat \
+                    mosaic_veg_typs_fracs \
+		    soil_param.first \
+		    README \
+		    bad_sat_param.tiles \
+		    lai.* \
+                    AlbMap* \
+		    plots \
+                    CLM_veg_typs_fracs \
+                    CLM4.5_veg_typs_fracs \
+                    mkCatchParam.log \
+                    CLM_NDep_SoilAlb_T2m \
+                    CLM4.5_abm_peatf_gdp_hdm_fc \
+  		    catch_params.nc4 \
+		    catchcn_params.nc4 \
+		    country_and_state_code.data \
+                    clsm
+                cd  ../ 
+
+/bin/mv rst CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+/bin/mv til CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}
+/bin/mv $BCJOB-2 CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}/.
+cd ../../
+/bin/mv    $BCDIR/$BCNAME .
+/bin/mv    $BCJOB-2              $BCNAME
+/bin/rm -r $OUTDIR
+
+#mkdir -p IRRIG/$BCNAME/clsm
+#bin/mkIrrigTiles.x -b $BCNAME -t CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til -r _${RC} -p $IRRIGTHRES
+
+_EOF_
+chmod 755 $BCJOB-2
+set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB-2`
+
+else
 cat << _EOF_ > $BCJOB
 #!/bin/csh -x
 
@@ -672,6 +895,7 @@ cd ../
 if( -e CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout ) /bin/rm -f CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}.stdout
 setenv MASKFILE $MASKFILE
 source bin/g5_modules
+limit stacksize unlimited
 bin/mkCubeFVRaster.x -x ${NX} -y ${NY} ${NC} >/dev/null 
 bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
 
@@ -797,6 +1021,7 @@ cd ../../
 _EOF_
 chmod 755 $BCJOB
 set make_bcs_jobs = `echo $make_bcs_jobs $BCJOB`
+endif
 
 endif # End Cube Test
 
@@ -849,6 +1074,7 @@ cd data
 ln -s $l_data CATCH
 cd ../
 source bin/g5_modules
+limit stacksize unlimited
 if ( $EVERSION == EASEv2 ) then
 setenv MASKFILE ${MASKFILE}
 bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
@@ -960,20 +1186,28 @@ end # End Ocean Resolution Loop
 
 #######################################################################
 
-echo " "
-echo "Are you planning to run ${C2}MAKE_BCS${CR} jobs on an interactive node? (Y/N)"
-echo "Enter N if you wish to submit to the SLURM queue instead                     "
-echo "-----------------------------------------------------------------------------"
-echo " "
-set dummy = `echo $<`
-set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
-if(.$dummy == .Y | .$dummy == YES ) then
-    foreach job ($make_bcs_jobs)
-      nohup ./$job &
-    end
-else
-    foreach job ($make_bcs_jobs)
-	sbatch $job 
-    end
+#echo " "
+#echo "Are you planning to run ${C2}MAKE_BCS${CR} jobs on an interactive node? (Y/N)"
+#echo "Enter N if you wish to submit to the SLURM queue instead                     "
+#echo "-----------------------------------------------------------------------------"
+#echo " "
+#set dummy = `echo $<`
+#set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
+#if(.$dummy == .Y | .$dummy == YES ) then
+#    foreach job ($make_bcs_jobs)
+#      nohup ./$job &
+#    end
+#else
+foreach job ($make_bcs_jobs)
+
+set jobid="`sbatch $job |  cut -d' ' -f4`"
+echo $jobid
+
+if( -e $job-2) then
+set jobid="`sbatch --dependency=afterok:$jobid $make_bcs_jobs[2] |  cut -d' ' -f4`"
+echo $jobid
+exit
 endif
+end
+#endif
 

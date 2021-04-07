@@ -1019,7 +1019,7 @@ contains
         integer, INTENT (IN)                :: NTILES
         real, dimension (:), INTENT(INOUT)  :: f_sprink, f_drip, f_flood
         integer,       parameter            :: NX_cb = 43200, NY_cb = 21600,  NY_cbData = 10800
-        integer,       parameter            :: cb_states = 56, cb_county = 900, cb_countyUS = 3220
+        integer,       parameter            :: cb_states = 72, cb_county = 900, cb_countyUS = 3220
         integer                             :: i,j, n, status, ncid, I0(1), j0(1),SS, CCC
         real,    dimension(:,:),allocatable :: SFR, DFR, FFR
         integer, dimension  (:),allocatable :: GEOID

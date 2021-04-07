@@ -5299,7 +5299,6 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       endif
     end SUBROUTINE CURVE2
 
-
 ! ******************************************************************
 
       subroutine tgen (                         &
@@ -5336,15 +5335,15 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       IMPLICIT NONE
 
-      real(kind =8), parameter :: VALMAX=50.
+      real, parameter :: VALMAX=50.
       REAL, intent (in) :: TOPMEAN,TOPVAR,TOPSKEW
       REAL, intent (out) :: COESKEW
       REAL, dimension (NAR), intent (out) :: STO,ACO
 
       INTEGER I
-      REAL(kind =8) :: ST(NAR),AC(NAR)
-      REAL(kind =8) :: TOPETA,TOPLAM,TOPSCAL,GAMLN,SCALE,ACLN
-      real(kind =8) :: cumac, cum2,cum3
+      REAL ST(NAR),AC(NAR)
+      REAL TOPETA,TOPLAM,TOPSCAL,GAMLN,SCALE,ACLN
+      real cumac, cum2,cum3
 
 !-------------------------------------------------------------------------
 
@@ -5363,16 +5362,15 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 ! compute the gamma parameters, eta (topeta) and lambda (toplam), and topscal
 ! which is the translation parameter
 
-         TOPETA=4.D0/dble(COESKEW)**2
-         TOPLAM=DSQRT(TOPETA)/SQRT(TOPVAR)
-         TOPSCAL=dble(TOPMEAN)-TOPETA/TOPLAM
+         TOPETA=4./COESKEW**2
+         TOPLAM=SQRT(TOPETA)/SQRT(TOPVAR)
+         TOPSCAL=TOPMEAN-TOPETA/TOPLAM
 
 ! evaluate the gamma function
 
-!         CALL GAMMLN(TOPETA,GAMLN)
-         GAMLN = gammln_F90(TOPETA)
-         
-         CUMAC=0.D0
+         CALL GAMMLN (TOPETA,GAMLN)
+
+         CUMAC=0.0
 
 ! compute the frequency distribution of ln(a/tanB)
 ! st(i) are the values of ln(a/tanB)
@@ -5380,18 +5378,18 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
          DO I=1,NAR
          
-            ST(I)=(dble(I)-0.95)*(VALMAX-TOPSCAL)/dble(NAR)+TOPSCAL
+            ST(I)=(FLOAT(I)-0.95)*(VALMAX-TOPSCAL)/FLOAT(NAR)+TOPSCAL
             SCALE=ST(I)-TOPSCAL
 
 ! below is the logarithmic form of the gamma distribution; this is required 
 ! because the numerical estimate of the logarithm of the gamma function 
 ! is more stable than the one of the gamma function.
           
-            ACLN=TOPETA*LOG(TOPLAM)+(TOPETA-1.)*LOG(SCALE)  &
+            ACLN=TOPETA*ALOG(TOPLAM)+(TOPETA-1.)*ALOG(SCALE)  &
                 -TOPLAM*SCALE-GAMLN
                       
-            IF(ACLN.LT.-10.D0) THEN
-               AC(I)=0.D0
+            IF(ACLN.LT.-10.) THEN
+               AC(I)=0.
             ELSE
                AC(I)=EXP(ACLN)
             ENDIF
@@ -5402,11 +5400,11 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
 ! we want the relative frequencies to sum 1.
 
-         IF (CUMAC.eq.0.D0) THEN
+         IF (CUMAC.eq.0.) THEN
 !            write(*,*) 'distrib sum=',CUMAC
             stop
          endif
-         CUM2=0.D0
+         CUM2=0.
          DO I=1,NAR
             AC(I) = AC(I) / CUMAC
             CUM2=CUM2+AC(I)
@@ -5420,52 +5418,36 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          IF (COESKEW.LT.0.) then
 
             do i=1,nar
-               STO(I)=REAL(2.*dble(TOPMEAN)-ST(I))
-               ACO(I)=REAl(AC(I))
+               STO(I)=2.*TOPMEAN-ST(I)
+               ACO(I)=AC(I)
 
             enddo
          ELSE
-
+!            if (n .eq. idmax) then
+!               write(*,*) 'last catchment'
+!            endif
             do i=1,nar
-               STO(I)=REAL(ST(-I+NAR+1))
-               ACO(I)=REAL(AC(-I+NAR+1))
+               STO(I)=ST(-I+NAR+1)
+               ACO(I)=AC(-I+NAR+1)
             enddo
          ENDIF
 
+!         sum=0.
+!         do i=1,nar
+!            sum=sum+sto(i)*aco(i)
+!         end do
+
+!         sum=0.
+!         do i=1,nar
+!            sum=sum+aco(i)
+!         end do
+
+
     END subroutine tgen
-
-    ! ---------------------------------------------------------------------
-  
-    FUNCTION gammln_F90 (xx)
-
-      IMPLICIT NONE
-      INTEGER :: i
-      REAL(kind =8), intent (in) :: xx
-      REAL(kind =8) :: gammln_F90
-      REAL(kind =8) :: ser,tmp,x,y
-      REAL(kind =8) :: stp = 2.5066282746310005D0
-      REAL(kind =8), DIMENSION(6) :: coef = (/76.18009172947146D0,&
-           -86.50532032941677D0,24.01409824083091D0,&
-           -1.231739572450155D0,0.1208650973866179D-2,&
-           -0.5395239384953D-5/)
-      
-      x=xx
-      tmp=x+5.5D0
-      tmp=(x+0.5D0)*log(tmp)-tmp
-      ser=1.000000000190015D0
-      y=x
-      do i=1,size(coef)
-         y=y+1.0D0
-         ser=ser+coef(i)/y
-      end do
-      
-      gammln_F90 = tmp+log(stp*ser/x)
-    
-    END FUNCTION gammln_F90
  
   ! ********************************************************************
 
-    SUBROUTINE GAMMLN_RK (XX,GAMLN)
+    SUBROUTINE GAMMLN (XX,GAMLN)
       
       implicit none
       DOUBLE PRECISION :: COF(6),STP,HALF,ONE,FPF,X,TMP,SER
@@ -5492,7 +5474,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
       GAMLN=TMP+LOG(STP*SER)
       
-    END SUBROUTINE GAMMLN_RK
+    END SUBROUTINE GAMMLN
   
   ! ********************************************************************
 
