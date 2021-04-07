@@ -103,6 +103,11 @@ module GEOS_MoistGridCompMod
       ,DEBUG_GF,USE_SCALE_DEP,DICYCLE,Hcts&
       ,USE_TRACER_TRANSP,USE_TRACER_SCAVEN, TAU_DEEP, TAU_MID&
       ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
+
+  USE geoschemchem_moist_interface, only : get_GCC_diagID, GCCmax, GCCspecies, GCCscav, & 
+                                           GCCparams_init, GCCparams_set, GCCparams_cleanup, &
+                                           GCCdiag_Count, GCCdiag_init, GCCdiag_cleanup, &
+                                           GCCdiag_AddExports, GCCdiag_FillExports
 !-srf-gf-scheme
 
 !ALT-protection for GF
@@ -3624,7 +3629,6 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='LFR',                                            &
          LONG_NAME ='lightning_flash_rate',                           &
@@ -4744,9 +4748,10 @@ contains
 
 !========================================================================================             
 
+    ! Add GEOS-Chem related exports (cakelle2, 3/15/2021)
+    CALL GCCdiag_AddExports ( GC, __RC__ )
 
     !EOS
-
 
     ! Set the Profiling timers
     ! ------------------------
@@ -5280,6 +5285,11 @@ contains
       character(len=ESMF_MAXSTR)                               :: QNAME,  CNAME, ENAME
       character(len=ESMF_MAXSTR), pointer, dimension(:)        :: QNAMES, CNAMES
       integer                                                  :: ind
+
+      ! GEOS-Chem convective scavenging exports
+      real, allocatable, dimension(:,:,:)                      :: GCCinit
+      real, allocatable, dimension(:,:,:)                      :: GCCtend
+      integer                                                  :: GCind
 
       integer                                                  :: i_src_mode
       integer                                                  :: i_dst_mode
@@ -6759,12 +6769,13 @@ contains
       VERIFY_(STATUS)
       IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
         ALLOCATE(Hcts(KM), stat=STATUS); VERIFY_(STATUS)
-	IF(STATUS==0) THeN
+        IF(STATUS==0) THeN
               Hcts(1:KM)%hstar = -1.
               Hcts(1:KM)%dhr   = -1.
               Hcts(1:KM)%ak0   = -1.
               Hcts(1:KM)%dak   = -1.
         ENDIF
+        CALL GCCparams_init(KM, __RC__ )
       ENDIF
 
       QNAMES = " "
@@ -6845,6 +6856,9 @@ contains
               Hcts(k)%ak0   = Vect_Hcts(3)
               Hcts(k)%dak   = Vect_Hcts(4)
            ENDIF
+
+           ! Populate GCC parameter
+           CALL GCCparams_set(FIELD,k, __RC__ )
          ENDIF
 
          ! Check aerosol names
@@ -7992,6 +8006,18 @@ contains
       CMDUcarma = 0.0
       CMSScarma = 0.0
 
+      ! GEOS-Chem species (cakelle2, 10/27/2020)
+      CALL GCCdiag_Count( EXPORT, __RC__ )
+      CALL GCCdiag_init(IM,JM,LM, __RC__ )
+      if ( ALLOCATED(GCCscav) ) then
+         allocate(GCCinit(IM,JM,GCCmax),stat=STATUS)
+         ASSERT_(STATUS==0)
+         allocate(GCCtend(IM,JM,GCCmax),stat=STATUS)
+         ASSERT_(STATUS==0)
+         GCCinit(:,:,:) = 0.0
+         GCCtend(:,:,:) = 0.0
+      endif
+
       !! Now loop over tracers and accumulate initial column loading
       !! tendency  kg/m2/s CAR
 
@@ -8048,6 +8074,15 @@ contains
                      END SELECT
                   endif
                endif
+            endif
+            ! update to GEOS-Chem (cakelle2, 10/27/2020)
+            if(ALLOCATED(GCCinit)) then
+            if(CNAME == 'GEOSCHEMCHEM' ) then
+               GCind = get_GCC_diagID(QNAME)
+               if ( GCind > 0 ) then
+                  GCCinit(:,:,GCind) = GCCinit(:,:,GCind) + sum(XHO(:,:,:,KK)*DP(:,:,:)/(1.-Q(:,:,:)),dim=3) 
+               endif
+            endif
             endif
          end if
       end do
@@ -8128,7 +8163,7 @@ contains
            GF_AREA = AREA
          endif
 ! WMP
-         
+
          !- call GF/GEOS5 interface routine
          call GF_GEOS5_Interface( IM,JM,LM,KM,ITRCR,LONS,LATS,DT_MOIST                       &
                                  ,T, PLE, PLO, ZLE, ZLO, PK, U, V, OMEGA            & 
@@ -8149,7 +8184,7 @@ contains
                                  ,NCPL, NCPI, CNV_NICE, CNV_NDROP, CNV_FICE, CLDMICRO &
                                  ,RASPARAMS%QC_CRIT_CN, AUTOC_CN_OCN                &
                                  ,XHO,FSCAV,CNAMES,QNAMES,DTRDT_GF                  &
-				 ,RSU_CN_GF,REV_CN_GF, PFI_CN_GF, PFL_CN_GF)
+                                 ,RSU_CN_GF,REV_CN_GF, PFI_CN_GF, PFL_CN_GF          )
                                                                    
          HHO      =  0.0
          HSO      =  0.0    
@@ -8516,24 +8551,36 @@ contains
                   end if
                END SELECT
             endif
-         end if
-         if(CNAME == 'CARMA') then   ! Diagnostics for CARMA tracers
-            ! Check name to see if it is a "pc" element
-            ENAME = ''
-            ind= index(QNAME, '::')
-            if (ind> 0) then
-               ENAME = trim(QNAME(ind+2:ind+3))  ! Component name (e.g., GOCART, CARMA)
-               if(ENAME == 'pc') then
-                  SELECT CASE (QNAME(1:4))
-                  CASE ('dust') ! CARMA DUST
-                     if(associated(DDUDTcarma)) then
-                        DDUDTcarma = DDUDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
-                     end if
-                  CASE ('seas') ! CARMA SEASALT
-                     if(associated(DSSDTcarma)) then
-                        DSSDTcarma = DSSDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
-                     end if
-                  END SELECT
+         ! cakelle2: I presume this is a bug fix and the CARMA loop should be within
+         ! the IS_FRIENDLY statement (10/27/2020)
+         !end if
+            if(CNAME == 'CARMA') then   ! Diagnostics for CARMA tracers
+               ! Check name to see if it is a "pc" element
+               ENAME = ''
+               ind= index(QNAME, '::')
+               if (ind> 0) then
+                  ENAME = trim(QNAME(ind+2:ind+3))  ! Component name (e.g., GOCART, CARMA)
+                  if(ENAME == 'pc') then
+                     SELECT CASE (QNAME(1:4))
+                     CASE ('dust') ! CARMA DUST
+                        if(associated(DDUDTcarma)) then
+                           DDUDTcarma = DDUDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
+                        end if
+                     CASE ('seas') ! CARMA SEASALT
+                        if(associated(DSSDTcarma)) then
+                           DSSDTcarma = DSSDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
+                        end if
+                     END SELECT
+                  endif
+               endif
+            endif
+            ! update to GEOS-Chem (cakelle2, 10/27/2020)
+            if(ALLOCATED(GCCtend))then
+               if(CNAME == 'GEOSCHEMCHEM' ) then
+                  GCind = get_GCC_diagID(QNAME)
+                  if ( GCind > 0 ) then
+                     GCCtend(:,:,GCind) = GCCtend(:,:,GCind) + sum(XHO(:,:,:,KK)*DP(:,:,:)/(1.-Q(:,:,:)),dim=3) 
+                  endif
                endif
             endif
          endif
@@ -8549,6 +8596,16 @@ contains
       if (associated(DDUDTcarma))  DDUDTcarma = (DDUDTcarma - CMDUcarma) / (MAPL_GRAV*DT_MOIST)
       if (associated(DSSDTcarma))  DSSDTcarma = (DSSDTcarma - CMSScarma) / (MAPL_GRAV*DT_MOIST)
 
+      ! update to GEOS-Chem
+      IF ( ALLOCATED(GCCscav) ) THEN
+          ASSERT_(ALLOCATED(GCCtend))
+          ASSERT_(ALLOCATED(GCCinit))
+          GCCscav(:,:,:) = ( GCCtend(:,:,:) - GCCinit(:,:,:) ) / (MAPL_GRAV*DT_MOIST)      
+      ENDIF
+      CALL GCCdiag_FillExports( EXPORT, __RC__ )
+      CALL GCCdiag_cleanup ( __RC__ )
+      IF ( ALLOCATED(GCCtend) ) DEALLOCATE(GCCtend)
+      IF ( ALLOCATED(GCCinit) ) DEALLOCATE(GCCinit)
 
       ! Fill in tracer tendencies
       !--------------------------
@@ -8787,6 +8844,7 @@ contains
       VERIFY_(STATUS)
       IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
          DEALLOCATE(Hcts , stat=STATUS); VERIFY_(STATUS)
+         CALL GCCparams_cleanup( __RC__ )
       ENDIF
 
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_BETA,       'CNV_BETA:',       DEFAULT= 10.0    )
