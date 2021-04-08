@@ -1144,7 +1144,7 @@ contains
         MRFRAC = 0.
 
         n_used = MIN(n_threads, NCROPS/2)
-        
+        if(NTILES > 6000000) n_used = 1 ! otherwise multiple threads will run out of virtual memory
         allocate(low_ind(n_used))
         allocate(upp_ind(n_used))
         low_ind(1)         = 1

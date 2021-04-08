@@ -773,7 +773,7 @@ if( $CUBED_SPHERE_OCEAN == TRUE ) then
     setenv OMP_NUM_THREADS ${NCPUS}
     bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_CF${NC}x6C-Pfafstetter -v $lbcsv 
     chmod 755 bin/create_README.csh
-    biin/create_README.csh
+    bin/create_README.csh
 endif
 
 /bin/mv clsm  clsm.C${NC}
