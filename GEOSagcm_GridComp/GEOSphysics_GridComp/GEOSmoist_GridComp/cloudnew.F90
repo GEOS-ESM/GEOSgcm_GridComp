@@ -3826,7 +3826,7 @@ contains
       ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
       ICEFRCTm = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
       ! Combine MODIS polynomial with an Anvil version MODIS^4 
-      ICEFRCT = (ICEFRCTm**4)*CNV_FRACTION + ICEFRCTm*(1.0-CNV_FRACTION)
+      ICEFRCT = (ICEFRCTm**3)*CNV_FRACTION + ICEFRCTm*(1.0-CNV_FRACTION)
 
    end function ICE_FRACTION
 

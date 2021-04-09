@@ -4855,20 +4855,10 @@ end function new_liq_condensate
 real function ice_fraction(tk,cnv_fraction)
      real, intent(in) :: tk ! temperature in K
      real, intent(in) :: cnv_fraction ! diagniosed convective fraction for deep convective anvil clouds
-     ice_fraction = anvil_ice_function(tk)*cnv_fraction + calipso_ice_polynomial(tk)*(1.0-cnv_fraction)
+     real :: mpoly
+     mpoly = calipso_ice_polynomial(tk)
+     ice_fraction = (mpoly**3)*cnv_fraction + mpoly*(1.0-cnv_fraction)
 end function ice_fraction
-
-real function anvil_ice_function(tk)
-  ! Anvil-Convective polynomial modified MODIS function to resemble figure 7(right) of Hu et al 2010 in anvil convective regimes
-     real, intent(in) :: tk ! temperature in K
-     real :: tc, ptc
-
-     tc = min(0.0,max(t_wfr-tice, tk-tice)) ! convert to celcius
-     ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
-     anvil_ice_function = (1.0 - (1.0/(1.0 + exp(-1*ptc))))**4
-   ! Returning the fraction of ice for given T(K)
-
-end function anvil_ice_function
 
 real function calipso_ice_polynomial(tk)
   ! Citation: Hu, Y., S. Rodier, K. Xu, W. Sun, J. Huang, B. Lin, P. Zhai, and D. Josset (2010), 
@@ -4877,12 +4867,10 @@ real function calipso_ice_polynomial(tk)
   !           doi:10.1029/2009JD012384. 
      real, intent(in) :: tk ! temperature in K
      real :: tc, ptc
-
      tc = min(0.0,max(t_wfr-tice, tk-tice)) ! convert to celcius
      ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
      calipso_ice_polynomial = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
    ! Returning the fraction of ice for given T(K)
-
 end function calipso_ice_polynomial
 
 end module gfdl2_cloud_microphys_mod

@@ -360,6 +360,30 @@ contains
      VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME = 'DTDT_ORO_NCAR',                                  &
+        LONG_NAME  = 'air_temperature_tendency_due_to_orographic_GWD', &
+        UNITS      = 'K s-1',                                  &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME = 'DUDT_ORO_NCAR',                                  &
+        LONG_NAME  = 'tendency_of_eastward_wind_due_to_orographic_GWD',               &
+        UNITS      = 'm s-2',                                     &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
+        SHORT_NAME = 'DVDT_ORO_NCAR',                                  &
+        LONG_NAME  = 'tendency_of_northward_wind_due_to_orographic_GWD',              &
+        UNITS      = 'm s-2',                                     &
+        DIMS       = MAPL_DimsHorzVert,                           &
+        VLOCATION  = MAPL_VLocationCenter,             RC=STATUS  )
+     VERIFY_(STATUS)
+
+     call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME = 'DTDT_ORO',                                  &
         LONG_NAME  = 'air_temperature_tendency_due_to_orographic_GWD', &
         UNITS      = 'K s-1',                                  &
@@ -1142,7 +1166,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       real, pointer, dimension(:,:,:)  :: DTDT_BKG, DUDT_BKG, DVDT_BKG
       real, pointer, dimension(:,:,:)  :: DTDT_RAY, DUDT_RAY, DVDT_RAY
       real, pointer, dimension(:,:,:)  :: DTGENBKG, DUGENBKG, DVGENBKG
-      
+     
+      real, pointer, dimension(:,:,:)  :: TMP3D
+ 
 ! local variables
 
       real,              dimension(IM,JM,LM  ) :: ZM, PMID, PDEL, RPDEL, PMLN
@@ -1704,6 +1730,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if (.not. USE_NCEP_GWD) then
 
        if (USE_NCAR_GWD) then
+         ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
+         call gw_intr_ncar(IM*JM,    LM,         DT,                  &
+              beres_desc, beres_band, oro_band,                       &
+              PLE,       T,          U,          V,      HT_dpc,      &
+              SGH,       PREF,                                        &
+              PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
+              DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
+              DUDT_ORG_NCAR,  DVDT_ORG_NCAR,   DTDT_ORG_NCAR,         &
+              TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  &
+              TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  &
+              NCAR_EFFGWORO, &
+              NCAR_EFFGWBKG, &
+              RC=STATUS            )
+         VERIFY_(STATUS)
           ! Use GEOS GWD only for Extratropical background sources...
          if ( (GEOS_EFFGWORO /= 0.0) .OR. (GEOS_EFFGWBKG /= 0.0) ) then
           call gw_intr   (IM*JM,      LM,         DT,                  &
@@ -1732,34 +1772,25 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           TAUXO_TMP_GEOS = 0.0
           TAUYO_TMP_GEOS = 0.0
          endif
-         ! Use new NCAR code convective+oro (excludes extratropical bkg sources)
-         call gw_intr_ncar(IM*JM,    LM,         DT,                  &
-              beres_desc, beres_band, oro_band,                       &
-              PLE,       T,          U,          V,      HT_dpc,      &
-              SGH,       PREF,                                        &
-              PMID,      PDEL,       RPDEL,      PILN,   ZM,    LATS, &
-              DUDT_GWD_NCAR,  DVDT_GWD_NCAR,   DTDT_GWD_NCAR,         &
-              DUDT_ORG_NCAR,  DVDT_ORG_NCAR,   DTDT_ORG_NCAR,         &
-              TAUXO_TMP_NCAR, TAUYO_TMP_NCAR,  TAUXO_3D,   TAUYO_3D,  FEO_3D,   &
-              TAUXB_TMP_NCAR, TAUYB_TMP_NCAR,  TAUXB_3D,   TAUYB_3D,  FEB_3D,   &
-              FEPO_3D,   FEPB_3D,    DUBKGSRC,   DVBKGSRC,  DTBKGSRC, &
-              NCAR_EFFGWORO, &
-              NCAR_EFFGWBKG, &
-              RC=STATUS            )
-         VERIFY_(STATUS)
         ! COMBINE THE OUTPUT TENDENCIES
+      call MAPL_GetPointer(EXPORT, TMP3D, 'DUDT_ORO_NCAR', RC=STATUS); VERIFY_(STATUS)
+      if(associated(TMP3D)) TMP3D = DUDT_ORG_NCAR
+      call MAPL_GetPointer(EXPORT, TMP3D, 'DVDT_ORO_NCAR', RC=STATUS); VERIFY_(STATUS)
+      if(associated(TMP3D)) TMP3D = DVDT_ORG_NCAR
+      call MAPL_GetPointer(EXPORT, TMP3D, 'DTDT_ORO_NCAR', RC=STATUS); VERIFY_(STATUS)
+      if(associated(TMP3D)) TMP3D = DTDT_ORG_NCAR
          ! Total 
-         DUDT_GWD=DUDT_GWD_GEOS+DUDT_GWD_NCAR
-         DVDT_GWD=DVDT_GWD_GEOS+DVDT_GWD_NCAR
-         DTDT_GWD=DTDT_GWD_GEOS+DTDT_GWD_NCAR
+         DUDT_GWD=DUDT_GWD_GEOS+DUDT_GWD_NCAR-DUDT_ORG_NCAR
+         DVDT_GWD=DVDT_GWD_GEOS+DVDT_GWD_NCAR-DVDT_ORG_NCAR
+         DTDT_GWD=DTDT_GWD_GEOS+DTDT_GWD_NCAR-DTDT_ORG_NCAR
          TAUXB_TMP=TAUXB_TMP_GEOS+TAUXB_TMP_NCAR
          TAUYB_TMP=TAUYB_TMP_GEOS+TAUYB_TMP_NCAR
          ! Orographic 
-         DUDT_ORG=DUDT_ORG_GEOS+DUDT_ORG_NCAR
-         DVDT_ORG=DVDT_ORG_GEOS+DVDT_ORG_NCAR
-         DTDT_ORG=DTDT_ORG_GEOS+DTDT_ORG_NCAR
-         TAUXO_TMP=TAUXO_TMP_GEOS+TAUXO_TMP_NCAR
-         TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
+         DUDT_ORG=DUDT_ORG_GEOS!+DUDT_ORG_NCAR
+         DVDT_ORG=DVDT_ORG_GEOS!+DVDT_ORG_NCAR
+         DTDT_ORG=DTDT_ORG_GEOS!+DTDT_ORG_NCAR
+         TAUXO_TMP=TAUXO_TMP_GEOS!+TAUXO_TMP_NCAR
+         TAUYO_TMP=TAUYO_TMP_GEOS!+TAUYO_TMP_NCAR
        else
           ! Use GEOS GWD    
           call gw_intr   (IM*JM,      LM,         DT,                  &

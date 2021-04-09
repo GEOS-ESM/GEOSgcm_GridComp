@@ -68,9 +68,8 @@ contains
           pmid_dev,     pdel_dev,     rpdel_dev,    lnpint_dev, zm_dev,  rlat_dev, &
           dudt_gwd_dev, dvdt_gwd_dev, dtdt_gwd_dev,                                &
           dudt_org_dev, dvdt_org_dev, dtdt_org_dev,                                &
-          taugwdx_dev,  taugwdy_dev,  tauox_dev,    tauoy_dev,  feo_dev,           &
-          taubkgx_dev,  taubkgy_dev,  taubx_dev,    tauby_dev,  feb_dev,           &
-          fepo_dev,     fepb_dev,     utbsrc_dev,   vtbsrc_dev, ttbsrc_dev,        &
+          taugwdx_dev,  taugwdy_dev,  &
+          taubkgx_dev,  taubkgy_dev,  &
           effgworo,     effgwbkg,     rc            )
 
 !-----------------------------------------------------------------------
@@ -108,19 +107,8 @@ contains
     real,    intent(  out) :: dtdt_org_dev(pcols,pver) ! temperature tendency at layer  due to orography GWD
     real,    intent(  out) :: taugwdx_dev(pcols)       ! zonal      gravity wave surface    stress
     real,    intent(  out) :: taugwdy_dev(pcols)       ! meridional gravity wave surface    stress
-    real,    intent(  out) :: tauox_dev(pcols,pver+1)  ! zonal      orographic gravity wave stress
-    real,    intent(  out) :: tauoy_dev(pcols,pver+1)  ! meridional orographic gravity wave stress
-    real,    intent(  out) :: feo_dev  (pcols,pver+1)  ! energy flux of orographic gravity waves
-    real,    intent(  out) :: fepo_dev (pcols,pver+1)  ! pseudoenergy flux of orographic gravity waves
     real,    intent(  out) :: taubkgx_dev(pcols)       ! zonal      gravity wave background stress
     real,    intent(  out) :: taubkgy_dev(pcols)       ! meridional gravity wave background stress
-    real,    intent(  out) :: taubx_dev(pcols,pver+1)  ! zonal      background gravity wave stress
-    real,    intent(  out) :: tauby_dev(pcols,pver+1)  ! meridional background gravity wave stress
-    real,    intent(  out) :: feb_dev  (pcols,pver+1)  ! energy flux of background gravity waves
-    real,    intent(  out) :: fepb_dev (pcols,pver+1)  ! pseudoenergy flux of background gravity waves
-    real,    intent(  out) :: utbsrc_dev(pcols,pver)   ! dU/dt below background launch level
-    real,    intent(  out) :: vtbsrc_dev(pcols,pver)   ! dV/dt below background launch level
-    real,    intent(  out) :: ttbsrc_dev(pcols,pver)   ! dT/dt below background launch level
 
     integer, optional, intent(out) :: RC               ! return code
 
@@ -318,24 +306,10 @@ call gw_prof (pcols , pver, pint_dev_ff , pmid_dev_ff , t_dev_ff , rhoi, nm, ni 
      dvdt_org_dev(1:pcols,1:pver) = REAL( v_gwt_org_ff(1:pcols,1:pver))  !meridional wind tendency at layer  due to orography GWD
      dtdt_org_dev(1:pcols,1:pver) = REAL( t_gwt_org_ff(1:pcols,1:pver))  !temperature tendency at layer  due to orography GWD
 
-
-
      taugwdx_dev(1:pcols)         = 0.0  !zonal      gravity wave surface    stress
      taugwdy_dev(1:pcols)         = 0.0  !meridional gravity wave surface    stress
-     tauox_dev(1:pcols,1:pver+1)  = 0.0  !zonal      orographic gravity wave stress
-     tauoy_dev(1:pcols,1:pver+1)  = 0.0  !meridional orographic gravity wave stress
-     feo_dev  (1:pcols,1:pver+1)  = 0.0  !energy flux of orographic gravity waves
-     fepo_dev (1:pcols,1:pver+1)  = 0.0  !pseudoenergy flux of orographic gravity waves
      taubkgx_dev(1:pcols)         = 0.0  !zonal      gravity wave background stress
      taubkgy_dev(1:pcols)         = 0.0  !meridional gravity wave background stress
-     taubx_dev(1:pcols,1:pver+1)  = 0.0  !zonal      background gravity wave stress
-     tauby_dev(1:pcols,1:pver+1)  = 0.0  !meridional background gravity wave stress
-     feb_dev  (1:pcols,1:pver+1)  = 0.0  !energy flux of background gravity waves
-     fepb_dev (1:pcols,1:pver+1)  = 0.0  !pseudoenergy flux of background gravity waves
-     utbsrc_dev(1:pcols,1:pver)   = 0.0  !dU/dt below background launch level
-     vtbsrc_dev(1:pcols,1:pver)   = 0.0  !dV/dt below background launch level
-     ttbsrc_dev(1:pcols,1:pver)   = 0.0  !dT/dt below background launch level
-
 
     return
   end subroutine gw_intr_ncar
