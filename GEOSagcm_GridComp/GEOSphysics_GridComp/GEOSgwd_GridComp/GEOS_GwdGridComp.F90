@@ -91,13 +91,8 @@ module GEOS_GwdGridCompMod
   real :: GEOS_EFFGWBKG 
   real :: GEOS_EFFGWORO 
   integer :: GEOS_PGWV
-
   real :: NCAR_EFFGWBKG
   real :: NCAR_EFFGWORO 
-  integer :: NCAR_PGWV
-
-  real(MAPL_R8) :: NCAR_GW_DC
-  real(MAPL_R8) :: NCAR_WAVELENGTH
 
 contains
 
@@ -155,26 +150,6 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource( MAPL, USE_NCAR_GWD, Label="USE_NCAR_GWD:",  default=.false., RC=STATUS)
     VERIFY_(STATUS)
-    if (USE_NCAR_GWD) then
-       call MAPL_GetResource( MAPL, GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.0, RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.250, RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, GEOS_PGWV,     Label="GEOS_PGWV:",     default=4,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.800, RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.000, RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, NCAR_PGWV,     Label="NCAR_PGWV:",     default=32,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, NCAR_GW_DC,    Label="NCAR_GW_DC:",    default=2.5_MAPL_R8, RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, NCAR_WAVELENGTH, Label="NCAR_WAVELENGTH:", default=1.e5_MAPL_R8, RC=STATUS)
-       VERIFY_(STATUS)
-    endif
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -892,6 +867,12 @@ contains
     character(len=ESMF_MAXPATHLEN) :: BERES_FILE_NAME
     character(len=ESMF_MAXSTR)     :: ERRstring
 
+    real(MAPL_R8) :: NCAR_PRNDL
+    real(MAPL_R8) :: NCAR_QBO_HDEPTH_SCALING
+    integer       :: NCAR_PGWV
+    real(MAPL_R8) :: NCAR_GW_DC
+    real(MAPL_R8) :: NCAR_WAVELENGTH
+
 !=============================================================================
 
    ! Begin...
@@ -919,15 +900,27 @@ contains
       !++jtb 03/2020
       !-----------------------------------
       if (USE_NCAR_GWD) then
+
+         call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50_MAPL_R8, RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=0.25_MAPL_R8, RC=STATUS)
+         VERIFY_(STATUS)
+
          call gw_common_init( .FALSE. , 1 , & 
                               1.0_MAPL_R8 * MAPL_GRAV , &
                               1.0_MAPL_R8 * MAPL_RGAS , &
                               1.0_MAPL_R8 * MAPL_CP , &
-                              0.50_MAPL_R8 , 0.25_MAPL_R8, ERRstring )
+                              NCAR_PRNDL, NCAR_QBO_HDEPTH_SCALING, ERRstring )
 
          ! Beres Scheme File
          call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
             default=' /discover/nobackup/projects/gmao/share/gmao_ops/fvInput/g5gcm/gwd/newmfspectra40_dc25.nc', RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_PGWV,       Label="NCAR_PGWV:",       default=32,          RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_GW_DC,      Label="NCAR_GW_DC:",      default=2.5_MAPL_R8, RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_WAVELENGTH, Label="NCAR_WAVELENGTH:", default=1.e5_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
 
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_desc, NCAR_PGWV, NCAR_GW_DC, NCAR_WAVELENGTH )
@@ -1073,7 +1066,20 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     endif
     endif
 
-    if (.not. USE_NCAR_GWD) then
+    if (USE_NCAR_GWD) then
+       call MAPL_GetResource( MAPL, GEOS_PGWV,     Label="GEOS_PGWV:",     default=4,     RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetResource( MAPL, GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetResource( MAPL, GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.250, RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.800, RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.000, RC=STATUS)
+       VERIFY_(STATUS)
+    else
        call MAPL_GetResource( MAPL, effgworo, Label="EFFGWORO:", default=0.250, RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, effgwbkg, Label="EFFGWBKG:", default=0.125, RC=STATUS)
@@ -1095,8 +1101,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------
     CALL MAPL_GetResource( MAPL, Z1,   Label="RAYLEIGH_Z1:",   default=75000.,  RC=STATUS)
     VERIFY_(STATUS)
-    CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=172800., RC=STATUS)
-    VERIFY_(STATUS)
+    if( LM .eq. 72 ) then
+      CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=172800., RC=STATUS)
+      VERIFY_(STATUS)
+    else
+      CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=432000., RC=STATUS)
+      VERIFY_(STATUS)
+    endif
     CALL MAPL_GetResource( MAPL, H0,   Label="RAYLEIGH_H0:",   default=7000.,	RC=STATUS)
     VERIFY_(STATUS)
     CALL MAPL_GetResource( MAPL, HH,   Label="RAYLEIGH_HH:",   default=7500.,	RC=STATUS)
@@ -1773,24 +1784,25 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           TAUYO_TMP_GEOS = 0.0
          endif
         ! COMBINE THE OUTPUT TENDENCIES
-      call MAPL_GetPointer(EXPORT, TMP3D, 'DUDT_ORO_NCAR', RC=STATUS); VERIFY_(STATUS)
-      if(associated(TMP3D)) TMP3D = DUDT_ORG_NCAR
-      call MAPL_GetPointer(EXPORT, TMP3D, 'DVDT_ORO_NCAR', RC=STATUS); VERIFY_(STATUS)
-      if(associated(TMP3D)) TMP3D = DVDT_ORG_NCAR
-      call MAPL_GetPointer(EXPORT, TMP3D, 'DTDT_ORO_NCAR', RC=STATUS); VERIFY_(STATUS)
-      if(associated(TMP3D)) TMP3D = DTDT_ORG_NCAR
+         call MAPL_GetPointer(EXPORT, TMP3D, 'DUDT_ORO_NCAR', RC=STATUS); VERIFY_(STATUS)
+         if(associated(TMP3D)) TMP3D = DUDT_ORG_NCAR
+         call MAPL_GetPointer(EXPORT, TMP3D, 'DVDT_ORO_NCAR', RC=STATUS); VERIFY_(STATUS)
+         if(associated(TMP3D)) TMP3D = DVDT_ORG_NCAR
+         call MAPL_GetPointer(EXPORT, TMP3D, 'DTDT_ORO_NCAR', RC=STATUS); VERIFY_(STATUS)
+         if(associated(TMP3D)) TMP3D = DTDT_ORG_NCAR
          ! Total 
-         DUDT_GWD=DUDT_GWD_GEOS+DUDT_GWD_NCAR-DUDT_ORG_NCAR
-         DVDT_GWD=DVDT_GWD_GEOS+DVDT_GWD_NCAR-DVDT_ORG_NCAR
-         DTDT_GWD=DTDT_GWD_GEOS+DTDT_GWD_NCAR-DTDT_ORG_NCAR
-         TAUXB_TMP=TAUXB_TMP_GEOS+TAUXB_TMP_NCAR
-         TAUYB_TMP=TAUYB_TMP_GEOS+TAUYB_TMP_NCAR
+         DUDT_GWD=DUDT_GWD_GEOS+DUDT_GWD_NCAR
+         DVDT_GWD=DVDT_GWD_GEOS+DVDT_GWD_NCAR
+         DTDT_GWD=DTDT_GWD_GEOS+DTDT_GWD_NCAR
+         ! Background 
+         TAUXB_TMP=0.0 !TAUXB_TMP_GEOS+TAUXB_TMP_NCAR
+         TAUYB_TMP=0.0 !TAUYB_TMP_GEOS+TAUYB_TMP_NCAR
          ! Orographic 
-         DUDT_ORG=DUDT_ORG_GEOS!+DUDT_ORG_NCAR
-         DVDT_ORG=DVDT_ORG_GEOS!+DVDT_ORG_NCAR
-         DTDT_ORG=DTDT_ORG_GEOS!+DTDT_ORG_NCAR
-         TAUXO_TMP=TAUXO_TMP_GEOS!+TAUXO_TMP_NCAR
-         TAUYO_TMP=TAUYO_TMP_GEOS!+TAUYO_TMP_NCAR
+         DUDT_ORG=DUDT_ORG_GEOS+DUDT_ORG_NCAR
+         DVDT_ORG=DVDT_ORG_GEOS+DVDT_ORG_NCAR
+         DTDT_ORG=DTDT_ORG_GEOS+DTDT_ORG_NCAR
+         TAUXO_TMP=0.0 !TAUXO_TMP_GEOS+TAUXO_TMP_NCAR
+         TAUYO_TMP=0.0 !TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
        else
           ! Use GEOS GWD    
           call gw_intr   (IM*JM,      LM,         DT,                  &
