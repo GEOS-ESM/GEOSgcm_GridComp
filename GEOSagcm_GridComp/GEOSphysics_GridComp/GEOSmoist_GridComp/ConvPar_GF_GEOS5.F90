@@ -17,6 +17,7 @@ USE MAPL
 !
 USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 !.. USE GTMP_2_GFCONVPAR, only : GTMP_2_GFCONVPAR_interface
+USE cldmacro, ONLY: make_DropletNumber, make_IceNumber
 
  IMPLICIT NONE
  PRIVATE
@@ -424,7 +425,7 @@ CONTAINS
     REAL    :: tem1,dz,air_dens, src_cnvtr,snk_cnvtr,dz_int,tau_cp
     CHARACTER(len=10) :: ENV_SETTING='DEFAULT'! ! 'CURRENT'/'DEFAULT'
     INTEGER, PARAMETER :: itest=1!3 
-    REAL :: RL, RI, disp_factor,x1,x2
+    REAL :: RL, RI, disp_factor,x1,x2, dQi, dQl, dNi, dNl
 
     !--- to reproduce model behavior when using single-moment and version X0039_p5/f525_p5_fp of Dec 2019
     IF(ZERO_DIFF == 1) THEN
@@ -1010,41 +1011,39 @@ ENDIF
       ENDDO
   ENDIF
 
+  !IF(adjustl(CLDMICRO) =="2MOMENT") then 
+  
   IF(adjustl(CLDMICRO) =="2MOMENT") then 
+  
     !- we adjust convective cloud condensate and number here
         DO j=1,myp
          DO i=1,mxp
           DO k=1,mzp 
 
-             tem1 = T(i,j,k)             
-             RL =   10.0  + (12.0*(283.0- tem1)/40.0)             
-             RL =   min(max(RL, 10.0), 30.0)*1.e-6              
-             RI =   100.0 + (80.0*(tem1- 253.0)/40.0)
-             RI =   min(max(RI, 20.0), 250.0)*1.e-6
+             tem1 = fract_liq_f(T(i,j,k))
+      
+             !-calculate tends
+             dQi =  DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
+             dQl =  DT_moist * SRC_CI(flip(k),i,j) * tem1             
+             dNi = make_IceNumber (dQi, T(i,j,k)) ! Use Thompson Microphysics conversions
+             dNl = make_DropletNumber (dQl, 0.0, FRLAND(i, j))
              
-             tem1 = 1.- (tem1 - 235.0) /38.0 
-             tem1 =  min(max(0.0, tem1), 1.0)
- 
-             ! make up some "number" sources. In the future this should depend explicitly on the convective mphysics
-             disp_factor =  10.0 ! used to account somehow for the size dist
- 
-             !-outputs 
-             QLCN (i,j,k) = QLCN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
-             QICN (i,j,k) = QICN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * tem1
-
-             SRC_NL(flip(k),i,j) = SRC_CI(flip(k),i,j)* (1.0-tem1) /(1.333 * MAPL_PI*RL*RL*RL*997.0*disp_factor)
-             SRC_NI(flip(k),i,j)= SRC_CI(flip(k),i,j) * tem1 /(1.333 * MAPL_PI *RI*RI*RI*500.0*disp_factor)
-
-             NCPL (i,j,k) = NCPL (i,j,k) + DT_moist *SRC_NL(flip(k),i,j)                
-             NCPI (i,j,k) = NCPI (i,j,k) + DT_moist *SRC_NI(flip(k),i,j)     
-             CNV_FICE (i, j, k)   =   tem1
+             QLCN (i,j,k) = QLCN (i,j,k) + dQi
+             QICN (i,j,k) = QICN (i,j,k) + dQl
+            
+             NCPL (i,j,k) = NCPL (i,j,k) + dNl               
+             NCPI (i,j,k) = NCPI (i,j,k) + dNi     
+             CNV_FICE (i, j, k)   =   1.0-tem1
 
              DZ       = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
              air_dens = 100.*PLO_n(i,j,k)/(287.04*T_n(i,j,k)*(1.+0.608*Q_n(i,j,k)))
                                               
              if (CNV_MFD (i,j,k)  .gt. 0.) then 
-                CNV_NICE (i,j,k)=   SRC_NI(flip(k),i,j)*DZ * air_dens/CNV_MFD (i,j,k) 
-                CNV_NDROP(i,j,k)=   SRC_NL(flip(k),i,j)*DZ * air_dens/CNV_MFD (i,j,k) 
+                CNV_NICE (i,j,k)=   dNi*DZ * air_dens/CNV_MFD (i,j,k) !diagnostics
+                CNV_NDROP(i,j,k)=   dNl*DZ * air_dens/CNV_MFD (i,j,k) 
+             else
+                CNV_NICE (i,j,k)=   MAPL_UNDEF !diagnostics
+                CNV_NDROP(i,j,k)=   MAPL_UNDEF 
              endif 
           ENDDO
          ENDDO 

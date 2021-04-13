@@ -209,6 +209,9 @@ real(r8), parameter :: mi0l_min = 4._r8/3._r8*pi*rhow*(4.e-6_r8)**3
    real(r8), parameter :: latvap      = MAPL_ALHL
    real(r8), parameter :: latice      = MAPL_ALHF
    real(r8), parameter :: rhmini_in       = 0.90_r8       ! Minimum rh for ice cloud fraction > 0.
+   real(r8), parameter :: epsilon     = MAPL_VIREPS
+  
+   
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!   
 
 
@@ -262,7 +265,7 @@ logical  :: do_sb_physics ! do SB 2001 autoconversion or accretion physics
 contains
 !===============================================================================
 subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_eff_factor_in, &
-                         nccons_in, nicons_in, ncnst_in, ninst_in, ngcons_in, ngnst_in)
+                         nccons_in, nicons_in, ncnst_in, ninst_in, ngcons_in, ngnst_in, muicst_in)
 
 !subroutine micro_mg_init( &
 !     kind, gravit, rair, rh2o, cpair,    &
@@ -318,7 +321,7 @@ subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_ef
   real(r8), intent(in)  :: ncnst_in
   real(r8), intent(in)  :: ninst_in
   logical, intent(in)   :: ngcons_in
-  real(r8), intent(in)  :: ngnst_in
+  real(r8), intent(in)  :: ngnst_in, muicst_in
 
   character(128) :: errstring    ! Output status (non-blank for error return)
 
@@ -331,10 +334,10 @@ subroutine micro_mg_init(micro_mg_dcs, micro_mg_do_graupel_in,  micro_mg_berg_ef
   errstring = ' '
   
   call wv_sat_methods_init(kind, tmelt_in, 273.15_r8, 373.15_r8, &
-     35._r8, 35._r8, errstring)
+     35._r8, epsilon, errstring)
      
   call micro_mg_utils_init(kind, rair, rh2o, cpair, tmelt_in, latvap, latice, &
-       micro_mg_dcs)
+       micro_mg_dcs, muicst_in)
  
  
          
@@ -417,7 +420,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              qrr8,                          qsr8,                          &
                              nrr8,                          nsr8,                          &
                              qgrr8,                         ngrr8,                         &
-                             relvarr8,                     accre_enhanr8,                  &
+                             relvarr8,                     accre_enhanr8,  accre_enhan_icer8,                 &
                              plevr8,                       pdelr8,                         &
                              cldfr8,               liqcldfr8,            icecldfr8,  qsatfacr8,          &
                              qcsinksum_rate1ordr8,                                         &
@@ -495,7 +498,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              qrr8,                          qsr8,                          &
                              nrr8,                          nsr8,                          &
                              qgrr8,                          ngrr8,                         &
-                             relvarr8,                      accre_enhanr8,                  &
+                             relvarr8,                      accre_enhanr8,  accre_enhan_icer8,                &
                              plevr8,                       pdelr8,                         &
                              cldfr8,               liqcldfr8,            icecldfr8,  qsatfacr8,          &
                              qcsinksum_rate1ordr8,                                         &
@@ -623,8 +626,8 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
       end where 
       
       
-      npccninr8  = max(npccninr8*cldfr8 - ncr8, 0.0)/DT_MOIST 
-      naair8     = max(naair8*cldfr8 -  nir8, 0.0)/DT_MOIST ! only for cirrus
+      ! npccninr8  = max(npccninr8*cldfr8 - ncr8, 0.0)/DT_MOIST 
+      ! naair8     = max(naair8*cldfr8 -  nir8, 0.0)/DT_MOIST ! only for cirrus
        
     
      call accum_mg_tend(0) !initialize accum values
@@ -632,7 +635,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
      num_steps_micro = MAX(INT(DT_MOIST/DT_MICRO),1)
      DT_R8 = DT_MOIST / num_steps_micro
      
-     !!!!!!!!!!!!!!Iteration
+     !!!!!!!!!!!!!!Iteration 
   
   
       DO N_MICRO = 1, num_steps_micro      
@@ -650,8 +653,8 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                   ncr8   = NCPL_tmp  
                   nir8   = NCPI_tmp                      
                   
-                 ! npccninr8  = max(npccninr8*cldfr8 - ncr8, 0.0)/DT_R8 !make sure these are considered tendencies below
-                 ! naair8     = max(naair8*cldfr8 -  nir8, 0.0)/DT_R8 
+                  npccninr8  = max(npccninr8*liqcldfr8 - ncr8, 0.0)/DT_R8 !make sure these are considered tendencies below
+                  naair8     = max(naair8*icecldfr8 -  nir8, 0.0)/DT_R8 
        
                   DO K  =  1, LM
                    if (TEMP_tmp(1,K) .lt. 100.0) then 
@@ -669,7 +672,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
                              qrr8,                          qsr8,                          &
                              nrr8,                          nsr8,                          &
                              qgrr8,                         ngrr8,                         &
-                             relvarr8,                     accre_enhanr8,                  &
+                             relvarr8,                     accre_enhanr8, accre_enhan_icer8,                  &
                              plevr8,                       pdelr8,                         &
                              cldfr8,               liqcldfr8,            icecldfr8,  qsatfacr8,          &
                              qcsinksum_rate1ordr8,                                         &
@@ -789,7 +792,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
 			                     NCPL_tmp (1,K)           , &
                                  NCNUC_tmp(1,K), &     
 			                     RHC_tmp(1,K), &
-                                 CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND        )                   
+                                 CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, .TRUE.)                   
                              
 
                              CF_tmp  =  CLLS_tmp + CLCN_tmp
@@ -991,7 +994,7 @@ subroutine micro_mg_tend_interface ( DT_MICRO, SHAPE, ALPH_tmp, SCICE_tmp, FQA_t
        
        reff_rainr8_accum = reff_rainr8_accum  +reff_rainr8
        reff_snowr8_accum =  reff_snowr8_accum  +   reff_snowr8
-       reff_graur8_accum =   reff_graur8_accum +  reff_graur8_accum
+       reff_graur8_accum =   reff_graur8_accum +  reff_graur8
        
        qcsevapr8_accum = qcsevapr8_accum  + qcsevapr8
        qisevapr8_accum = qisevapr8_accum  + qisevapr8
@@ -1225,7 +1228,7 @@ subroutine micro_mg_tend ( &
      qrn,                          qsn,                          &
      nrn,                          nsn,                          &
      qgr,                          ngr,                          &
-     relvar,                       accre_enhan,                  &
+     relvar,                       accre_enhan, accre_enhan_ice,                 &
      p,                            pdel,                         &
      cldn,    liqcldf,        icecldf,       qsatfac,            &
      qcsinksum_rate1ord,                                         &
@@ -1358,6 +1361,7 @@ subroutine micro_mg_tend ( &
 
   real(r8), intent(in) :: relvar(mgncol,nlev)      ! cloud water relative variance (-)
   real(r8), intent(in) :: accre_enhan(mgncol,nlev) ! optional accretion
+   real(r8), intent(in) :: accre_enhan_ice(mgncol,nlev) ! optional accretion
                                              ! enhancement factor (-)
 
   real(r8), intent(in) :: p(mgncol,nlev)        ! air pressure (pa)
@@ -1937,6 +1941,7 @@ subroutine micro_mg_tend ( &
         else
            call qsat_ice(t(i,k), p(i,k), esi(i,k), qvi(i,k))
 
+
            ! Scale the water saturation values to reflect subgrid scale
            ! ice cloud fraction, where ice clouds begin forming at a
            ! gridbox average relative humidity of rhmini (not 1).
@@ -2206,14 +2211,19 @@ subroutine micro_mg_tend ( &
         !note: this is gridbox averaged
         !nnuccd = (naai-ni/icldm)/mtime*icldm
         !nnuccd = max(nnuccd,0._r8)
-        nnuccd = naai ! only pass tendencies since we are substeeping 
+         nnuccd = naai ! only pass tendencies since we are substeeping 
         !nimax = naai*icldm
-        nimax = naai*mtime/icldm
+        
+      
+        
+        !since GEOS produces condensate in the same way as liquid we need to apply the nucleation tendency here DONIF
+        ni = max(ni + naai*deltat, 0._r8)
+        nimax = naai*deltat/icldm ! DONIF
 
         !Calc mass of new particles using new crystal mass...
         !also this will be multiplied by mtime as nnuccd is...
 
-        mnuccd = nnuccd * mi0
+        mnuccd = nnuccd * mi0 
 
      elsewhere
         nnuccd = 0._r8
@@ -2490,9 +2500,11 @@ subroutine micro_mg_tend ( &
        ! call ice_autoconversion(t(:,k), qiic(:,k), lami(:,k), n0i(:,k), &
        !      dcs, prci(:,k), nprci(:,k), mgncol, ts_auto_ice)
        
+       
         call ice_autoconversion(t(:,k), qiic(:,k), lami(:,k), niic(:,k), &
               dcs, prci(:,k), nprci(:,k), mgncol, ts_auto_ice) !donif
        
+                  
      else
         ! Add in the particles that we have already converted to snow, and
         ! don't do any further autoconversion of ice.
@@ -2726,7 +2738,7 @@ subroutine micro_mg_tend ( &
 
      if (do_cldice) then
         call accrete_cloud_ice_snow(t(:,k), rho(:,k), asn(:,k), qiic(:,k), niic(:,k), &
-             qsic(:,k), lams(:,k), n0s(:,k), prai(:,k), nprai(:,k), mgncol)
+             qsic(:,k), lams(:,k), n0s(:,k), prai(:,k), nprai(:,k), mgncol, accre_enhan_ice(:, k))
      else
         prai(:,k) = 0._r8
         nprai(:,k) = 0._r8
