@@ -1067,7 +1067,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     endif
 
     if (USE_NCAR_GWD) then
-       call MAPL_GetResource( MAPL, GEOS_PGWV,     Label="GEOS_PGWV:",     default=4,     RC=STATUS)
+       call MAPL_GetResource( MAPL, GEOS_PGWV,     Label="GEOS_PGWV:",     default=32,    RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, RC=STATUS)
        VERIFY_(STATUS)
@@ -1101,13 +1101,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------
     CALL MAPL_GetResource( MAPL, Z1,   Label="RAYLEIGH_Z1:",   default=75000.,  RC=STATUS)
     VERIFY_(STATUS)
-    if( LM .eq. 72 ) then
-      CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=172800., RC=STATUS)
-      VERIFY_(STATUS)
-    else
-      CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=432000., RC=STATUS)
-      VERIFY_(STATUS)
-    endif
+    CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=172800., RC=STATUS)
+    VERIFY_(STATUS)
     CALL MAPL_GetResource( MAPL, H0,   Label="RAYLEIGH_H0:",   default=7000.,	RC=STATUS)
     VERIFY_(STATUS)
     CALL MAPL_GetResource( MAPL, HH,   Label="RAYLEIGH_HH:",   default=7500.,	RC=STATUS)
