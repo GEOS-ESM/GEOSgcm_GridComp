@@ -399,7 +399,7 @@
   ! PEAT CLSM - ensure low CATDEF on peat tiles
   ! -------------------------------------------
   
-  where (catch(sca)%poros .gt. 90.)
+  where (catch(sca)%poros .gt. 0.90)
      catch(sca)%catdef = 100.
      catch(sca)%rzexc  = 0.
      catch(sca)%srfexc = 0.
