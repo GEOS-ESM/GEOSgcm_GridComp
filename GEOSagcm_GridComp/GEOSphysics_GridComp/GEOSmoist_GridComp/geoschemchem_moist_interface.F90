@@ -39,6 +39,7 @@ USE MAPL
   PUBLIC  :: GCCdiag_FillExports
   PUBLIC  :: GCCdiag_Count
   PUBLIC  :: get_w_upd_gcc
+  PUBLIC  :: henry_gcc
 !
 !
 ! !PRIVATE MEMBER FUNCTIONS:
@@ -496,7 +497,7 @@ CONTAINS
 !-----------------------------------------------------------------------------------------
 
 
-   SUBROUTINE compute_ki_gcc_gas( temp, press, q, cldh2o, heff, liq_and_gas, convfaci2g, retfactor, online_cldliq, kc_scaled )
+   SUBROUTINE compute_ki_gcc_gas( temp, press, q, cldh2o, Heff, liq_and_gas, convfaci2g, retfactor, online_cldliq, kc_scaled, l2g )
     !=====================================================================================
     !BOP
     ! !DESCRIPTION:
@@ -510,12 +511,13 @@ CONTAINS
      real,    intent(in)      :: press              ! pressure [Pa] 
      real,    intent(in)      :: q                  ! water vapor mixing ratio [kg/kg] 
      real,    intent(in)      :: cldh2o             ! cloud total water [kg/kg] 
-     real,    intent(in)      :: heff               ! effective gas/aq Henry constant [-]
+     real,    intent(in)      :: Heff               ! effective gas/aq Henry constant [-]
      real,    intent(in)      :: liq_and_gas        ! species considers ice and liquid phase?
      real,    intent(in)      :: convfaci2g         ! conversion factor for ice/gas ratio
      real,    intent(in)      :: retfactor          ! retention factor [unitless] 
      real,    intent(in)      :: online_cldliq      ! calculate cloud liquid/ice online or use default GEOS-Chem parameterization
      real,    intent(out)     :: kc_scaled          ! loss rate [s-1]
+     real,    intent(out)     :: l2g                ! liquid to gas ratio 
 
      ! parameter
      real, parameter       :: T_zero = 273.16  ! K, as in ConvPar_GF_GEOS5 
@@ -526,7 +528,7 @@ CONTAINS
      ! local variables
      real            :: fract_liq_f
      real            :: cldliq, cldice, c_h2o
-     real            :: i2g, l2g
+     real            :: i2g     
      real            :: c_tot, f_l, f_i
      real            :: airdens
 
@@ -545,14 +547,14 @@ CONTAINS
         ! to convert to cm3/cm3, need air density
         airdens = 100.*press/(287.04*temp*(1.+0.608*q))
         cldliq  = cldliq*airdens*1.e-3      ! cm3/cm3
-        cldice  = cldice*airdens*1.e-3      ! cm3/cm33
+        cldice  = cldice*airdens*1.e-3      ! cm3/cm3
 
      else
         ! original GEOS-Chem formulation
         IF ( temp >= TEMP4 ) THEN
            cldliq = 1e-6
         ELSE IF ( temp > TEMP3 .and. temp < TEMP4 ) THEN
-           cldliq = 1e-6 * ((temp - 248.0) / 20.0 )
+           cldliq = 1e-6 * ((temp-TEMP3)/(TEMP4-TEMP3))
         ELSE
            cldliq = 0.0
         ENDIF
@@ -582,7 +584,7 @@ CONTAINS
      if ( temp >= TEMP4 ) then
         kc_scaled = KC_DEFAULT * ( f_l + f_l )
      else if ( temp > TEMP3 .and. temp < TEMP4 ) THEN
-        kc_scaled = KC_DEFAULT * ( ( retfactor * f_L ) + F_I )
+        kc_scaled = KC_DEFAULT * ( ( retfactor * f_l ) + f_i )
      else
         kc_scaled = KC_DEFAULT * f_i
      endif
@@ -644,5 +646,30 @@ CONTAINS
   END FUNCTION get_w_upd_gcc
 !-----------------------------------------------------------------------------------------
 
+  FUNCTION henry_gcc( hstar, dhr, ak0, dak, temp ) RESULT( henry_coeff )  
+    !=====================================================================================
+    !BOP
+    ! !DESCRIPTION:
+    !  Return henry coefficient (liquid to gas) as defined by GEOS-Chem 
+    !EOP
+    !=====================================================================================
+    real, intent(in) :: hstar               ! Henry coefficient [M/atm]]
+    real, intent(in) :: dhr                 ! temperature dependency of hstar [-d ln(kH) / d(1/T)]
+    real, intent(in) :: ak0                 ! pKa value [-]
+    real, intent(in) :: dak                 ! temperature dependency of ak0, currently not used
+    real, intent(in) :: temp                ! ambient temperature [K]
+    real             :: henry_coeff         ! effective gas/aq constant [-] 
+    ! parameter
+    real, parameter :: pH   = 4.5 
+    REAL, PARAMETER :: TREF = 298.15d0      ! [K          ]
+    REAL, PARAMETER :: R    = 8.3144598d0   ! [J K-1 mol-1]
+    REAL, PARAMETER :: ATM  = 101.325d0     ! [mPa (!)    ]
+    ! starts here
+    henry_coeff = hstar * exp( dhr * (1./temp - 1./TREF) ) * R * temp / ATM
+    if ( ak0 > 0.0 ) then
+       henry_coeff = henry_coeff * ( 1.0 + 10.0**( pH - ak0 ) )
+    endif
+
+  END FUNCTION henry_gcc
 
 END MODULE geoschemchem_moist_interface

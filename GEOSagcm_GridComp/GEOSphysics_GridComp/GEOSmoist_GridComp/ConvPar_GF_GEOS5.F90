@@ -16,7 +16,7 @@ USE MAPL
 USE Henrys_law_ConstantsMod,      ONLY : get_HenrysLawCts
 USE geoschemchem_moist_interface, ONLY : compute_ki_gcc_aerosol, compute_ki_gcc_gas, &
                                          GCCfsol, GCCmax, GCCparams, is_gcc_species, &
-                                         get_gcc_diagID, get_w_upd_gcc
+                                         get_gcc_diagID, get_w_upd_gcc, henry_gcc
 !.. USE GTMP_2_GFCONVPAR, only : GTMP_2_GFCONVPAR_interface
 
  IMPLICIT NONE
@@ -9955,7 +9955,7 @@ ENDIF
      real                    :: fsol
      integer                 :: GCCii
      logical, dimension(mtp) :: is_gcc
-     real                    :: kc_scaled, ftemp
+     real                    :: kc_scaled, ftemp, l2g
  
      !--initialization
      sc_up          = se_cup
@@ -10056,7 +10056,6 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                           call compute_ki_gcc_aerosol ( tempco(i,k), GCCparams(ispc)%KcScal1, GCCparams(ispc)%KcScal2, GCCparams(ispc)%KcScal3, kc_scaled ) 
                           ftemp      = fscav(ispc)  ! apply aerosol scavenging efficiency 
                           this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), GCCparams(ispc)%online_vud )
-
                        ! default formulation
                        else
                           kc_scaled  = kc
@@ -10064,6 +10063,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                           ftemp      = factor_temp(ispc,i,k)
                        endif
                        fsol = min(1.,max(0.,(1.-exp(- kc_scaled * (dz/this_w_upd)))*ftemp))
+
                        !pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
                        pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
 
@@ -10087,7 +10087,11 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                 ELSEIF(Hcts(ispc)%hstar>1.e-6) THEN ! tracer gas phase scavenging
 
                     !--- equilibrium tracer concentration - Henry's law
-                    henry_coef=henry(ispc,tempco(i,k),rho(i,k))
+                    if ( is_gcc(ispc) ) then
+                       henry_coef=henry_gcc(Hcts(ispc)%hstar,Hcts(ispc)%dhr,Hcts(ispc)%ak0,Hcts(ispc)%dak,tempco(i,k))
+                    else
+                       henry_coef=henry(ispc,tempco(i,k),rho(i,k))
+                    endif
 
                     if(USE_TRACER_SCAVEN==3) then
                       !--- cloud liquid water tracer concentration
@@ -10102,7 +10106,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                       if ( is_gcc(ispc) ) then
                          call compute_ki_gcc_gas ( tempco(i,k), po_cup(i,k), qco(i,k), qrco(i,k), henry_coef, &
                             GCCparams(ispc)%liq_and_gas, GCCparams(ispc)%convfaci2g, GCCparams(ispc)%retfactor, &
-                            GCCparams(ispc)%online_cldliq, kc_scaled )
+                            GCCparams(ispc)%online_cldliq, kc_scaled, l2g )
                          this_w_upd = get_w_upd_gcc( vvel2d(i,k), xland(i), GCCparams(ispc)%online_vud )
                       else
                          fliq       = henry_coef*qrco(i,k) /(1.+henry_coef*qrco(i,k))
@@ -10116,7 +10120,6 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 
                       ! GEOS-Chem diagnostics
                       if (GCCii>0) GCCfsol_local(GCCii,i,k) = fsol 
-
 
                     endif		    
 		    
