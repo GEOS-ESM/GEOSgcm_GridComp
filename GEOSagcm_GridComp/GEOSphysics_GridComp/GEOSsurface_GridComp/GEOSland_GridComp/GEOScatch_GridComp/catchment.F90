@@ -286,7 +286,6 @@
       integer  numout
       integer  n_out
       integer  n_outs(20)
-      logical, save :: peat_firsttime = .true.
       numout =  0
 
 ! choose output point by lon and lat Input lons and lats are in radians
@@ -604,19 +603,8 @@
           POTFRC(N)=1.
        ENDIF
 
-!****   MB: RESET VARIABLES OVER PEATLANDS (only needed when starting a spin up from scratch, 
-!****   some PEATCLSM functions cause problems for catdef>1000, normally catdef never higher than 1000 for peat tiles)
-!****   PEAT-clsm kicks in if porosity is 0.93 (Bechtold et al., 2019)
-!       This check should go to mk_restarts - this is not the place       
-        IF(POROS(N) .GE. 0.9 .AND. CATDEF(N) .GE. 1000 .AND. peat_firsttime) THEN
-          CATDEF(N)=100.
-          RZEXC(N)=0.
-          SRFEXC(N)=0.
-        ENDIF
      ENDDO
      
-        peat_firsttime = .false.
-
 !**** ---------------------------------------------------
 !**** DETERMINE INITIAL VALUE OF RZEQ:
 
