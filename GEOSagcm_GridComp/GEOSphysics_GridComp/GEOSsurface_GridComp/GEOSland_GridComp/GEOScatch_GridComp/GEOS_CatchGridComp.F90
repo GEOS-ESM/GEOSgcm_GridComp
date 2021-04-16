@@ -1872,7 +1872,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'snow_depth_within_snow_covered_area_fraction'   ,&
+    LONG_NAME          = 'snow_depth_in_snow_covered_area' ,&
     UNITS              = 'm'                         ,&
     SHORT_NAME         = 'SNOWDP'                    ,&
     DIMS               = MAPL_DimsTileOnly           ,&
@@ -4036,8 +4036,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! variables for call catch with choice of tile to print
         real                            :: lonbeg,lonend,latbeg,latend
 
-#ifdef DBG_CATCH_INPUTS
-        ! vars for debugging purposes
+!#sqz_for_ldas_coupling 2020 
+        ! vars for debugging purposes and for ldas_incr
         type(ESMF_Grid)                 :: TILEGRID
         type (MAPL_LocStream)           :: LOCSTREAM
         integer, pointer                :: mask(:)
@@ -4046,8 +4046,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         logical, save                   :: firsttime=.true.
         integer                         :: unit
 	integer 			:: NT_GLOBAL
-
-#endif
 
         ! Offline case
 
@@ -4090,6 +4088,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:) :: sndzn1_incr
         real, pointer, dimension(:) :: sndzn2_incr
         real, pointer, dimension(:) :: sndzn3_incr
+        real, allocatable, dimension(:) :: global_tmp_incr
+        real, allocatable, dimension(:) :: local_tmp_incr
 
         real, pointer, dimension(:,:) :: ghtcnt_incr
         real, pointer, dimension(:,:) :: wesnn_incr
@@ -4097,10 +4097,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         real, pointer, dimension(:,:) :: sndzn_incr
 
         type(ESMF_Field)              :: Field
-        integer                       :: unit
-        type(ESMF_Grid)               :: TILEGRID
-        type(MAPL_LocStream)          :: LOCSTREAM
-        integer, pointer              :: mask(:)
         type(ESMF_ALARM)              :: LDAS_ALARM, CORRECTOR_ALARM
 
         character(len=ESMF_MAXSTR)    :: LDASINC_FILE_TMPL
@@ -5339,6 +5335,9 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                     call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
                     VERIFY_(STATUS)
 
+                    NT_GLOBAL = size(mask)
+                    allocate(global_tmp_incr(NT_GLOBAL),source =0.0)
+                    allocate(local_tmp_incr(NTILES), source = 0.0)
 
                        call WRITE_PARALLEL('LDAS_coupling: load nc LDAS increment file')
                        InNCIO = MAPL_NCIOOpen(LDASINC_FILE,rc=rc)
@@ -5346,51 +5345,77 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        do nv=1,nVars
                           call MAPL_NCIOGetVarName(InNCIO,nv,vname)
                           call MAPL_NCIOVarGetDims(InNCIO,vname,nDims,dimSizes)
-                          if ( trim(vname) == "TCFSAT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcfsat_incr)
-                          if ( trim(vname) == "TCFTRN_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcftrn_incr)
-                          if ( trim(vname) == "TCFWLT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),tcfwlt_incr)
-                          if ( trim(vname) == "QCFSAT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcftrn_incr)
-                          if ( trim(vname) == "QCFTRN_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcftrn_incr)
-                          if ( trim(vname) == "QCFWLT_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname),qcfwlt_incr )
-                          if ( trim(vname) == "CAPAC_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), catdef_incr )
-                          if ( trim(vname) == "CATDEF_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), catdef_incr )
-                          if ( trim(vname) == "RZEXC_INCR" )  &
-                               call MAPL_VarRead ( InNCIO,trim(vname), rzexc_incr )
-                          if ( trim(vname) == "SRFEXC_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), srfexc_incr )
-                          if ( trim(vname) == "GHTCNT1_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt1_incr )
-                          if ( trim(vname) == "GHTCNT2_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt2_incr )
-                          if ( trim(vname) == "GHTCNT3_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt3_incr )
-                          if ( trim(vname) == "GHTCNT4_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt4_incr )
-                          if ( trim(vname) == "GHTCNT5_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt5_incr )
-                          if ( trim(vname) == "GHTCNT6_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), ghtcnt6_incr )
-                          if ( trim(vname) == "WESNN1_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn1_incr )
-                          if ( trim(vname) == "WESNN2_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn2_incr )
-                          if ( trim(vname) == "WESNN3_INCR" ) &
-                               call MAPL_VarRead ( InNCIO,trim(vname), wesnn3_incr )
+                       if (MAPL_AM_I_Root(VM)) then
+                       call MAPL_VarRead (InNCIO ,trim(vname), global_tmp_incr)
+                       endif
+                       call ArrayScatter(local_tmp_incr, global_tmp_incr, tilegrid, mask=mask, rc=status)
+                       VERIFY_(STATUS)
+                          
+                       if ( trim(vname) == "TCFSAT_INCR" )   tcfsat_incr = local_tmp_incr
+                       if ( trim(vname) == "TCFTRN_INCR" )   tcftrn_incr = local_tmp_incr
+                       if ( trim(vname) == "TCFWLT_INCR" )   tcfwlt_incr = local_tmp_incr
+                       if ( trim(vname) == "QCFSAT_INCR" )   qcfsat_incr = local_tmp_incr
+                       if ( trim(vname) == "QCFTRN_INCR" )   qcftrn_incr = local_tmp_incr
+                       if ( trim(vname) == "QCFWLT_INCR" )   qcfwlt_incr = local_tmp_incr
+                       if ( trim(vname) == "CAPAC_INCR" )    capac_incr  = local_tmp_incr
+                       if ( trim(vname) == "CATDEF_INCR" )   catdef_incr = local_tmp_incr
+                       if ( trim(vname) == "RZEXC_INCR" )    rzexc_incr  = local_tmp_incr
+                       if ( trim(vname) == "SRFEXC_INCR" )   srfexc_incr = local_tmp_incr
+                       if ( trim(vname) == "GHTCNT1_INCR" )  ghtcnt1_incr= local_tmp_incr
+                       if ( trim(vname) == "GHTCNT2_INCR" )  ghtcnt2_incr= local_tmp_incr
+                       if ( trim(vname) == "GHTCNT3_INCR" )  ghtcnt3_incr= local_tmp_incr
+                       if ( trim(vname) == "GHTCNT4_INCR" )  ghtcnt4_incr= local_tmp_incr
+                       if ( trim(vname) == "GHTCNT5_INCR" )  ghtcnt5_incr= local_tmp_incr
+                       if ( trim(vname) == "GHTCNT6_INCR" )  ghtcnt6_incr= local_tmp_incr
+                       if ( trim(vname) == "WESNN1_INCR" )   wesnn1_incr = local_tmp_incr
+                       if ( trim(vname) == "WESNN2_INCR" )   wesnn2_incr = local_tmp_incr
+                       if ( trim(vname) == "WESNN3_INCR" )   wesnn3_incr = local_tmp_incr
+                       if ( trim(vname) == "HTSNNN1_INCR" )  htsnnn1_incr = local_tmp_incr
+                       if ( trim(vname) == "HTSNNN2_INCR" )  htsnnn2_incr = local_tmp_incr
+                       if ( trim(vname) == "HTSNNN3_INCR" )  htsnnn3_incr = local_tmp_incr
+                       if ( trim(vname) == "SNDZN1_INCR" )   sndzn1_incr = local_tmp_incr
+                       if ( trim(vname) == "SNDZN2_INCR" )   sndzn2_incr = local_tmp_incr
+                       if ( trim(vname) == "SNDZN3_INCR" )   sndzn3_incr = local_tmp_incr
+
                        enddo !nv
 
 
                        call MAPL_NCIOClose(InNCIO)
                        call WRITE_PARALLEL('LDAS_coupling:loaded nc LDAS increment file')
+                    deallocate(local_tmp_incr, global_tmp_incr)
 
-                    deallocate(mask)
+! verif ------
+                    unit = GETFILE( "ldas_incr_verif.data", form="unformatted", RC=STATUS ) 
+
+                   call MAPL_VarWrite(unit, tilegrid, tcfsat_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, tcftrn_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, tcfwlt_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, qcfsat_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, qcftrn_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, qcfwlt_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, capac_incr,  mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, catdef_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, rzexc_incr,  mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, srfexc_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, ghtcnt1_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, ghtcnt2_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, ghtcnt3_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, ghtcnt4_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, ghtcnt5_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, ghtcnt6_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, wesnn1_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, wesnn2_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, wesnn3_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, htsnnn1_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, htsnnn2_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, htsnnn3_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, sndzn1_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, sndzn2_incr, mask=mask, rc=status); VERIFY_(STATUS)
+                   call MAPL_VarWrite(unit, tilegrid, sndzn3_incr, mask=mask, rc=status); VERIFY_(STATUS)
+
+                    call FREE_FILE(unit, RC=STATUS)
+                    call WRITE_PARALLEL('LDAS_coupling: ldas_incr_verif.data for verif LDAS increment')
+!---- end verif ---
 
 
                     ! consolidate increment arrays  
