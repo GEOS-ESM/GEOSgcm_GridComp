@@ -961,7 +961,7 @@ contains
     real              :: Tfreeze
 
     integer :: ID
-    integer :: PHASE
+    integer :: PHASE, PHASE_
     integer, allocatable :: PREDICTOR_CHLD(:)
     real, pointer     :: FR(:,:) => null()
     real, pointer     :: FRI(:,:,:) => null()
@@ -974,6 +974,17 @@ contains
     call ESMF_GridCompGet( gc, NAME=comp_name, currentPhase=PHASE, RC=status )
     VERIFY_(status)
     Iam = trim(comp_name) // Iam
+
+! YV This is a temporary fix to wrong phase bug
+!----------------------------------------------
+
+    if(phase==11) then
+       phase_=1
+    else if(phase==12) then
+       phase_=2
+    else
+       phase_=phase
+    end if
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
@@ -1228,7 +1239,7 @@ contains
              call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, PrivateState%CLOCK, RC=STATUS)
              VERIFY_(STATUS)
           else
-             if (PHASE == 1) then
+             if (PHASE_ == 1) then
                 ! corrector
                 call ESMF_GridCompRun( GCS(OCNd), importState=GIM(OCNd), &
                      exportState=GEX(OCNd), clock=CLOCK, phase=1, userRC=STATUS)
@@ -1250,7 +1261,7 @@ contains
              end if
           end if
 
-          if (DUAL_OCEAN .and. PHASE == 1) then
+          if (DUAL_OCEAN .and. PHASE_ == 1) then
              ! calculate temperature correction to send back to MOM
              call MAPL_GetPointer(GIM(OCN), DEL_TEMP, 'DEL_TEMP', RC=STATUS)
              VERIFY_(STATUS)
