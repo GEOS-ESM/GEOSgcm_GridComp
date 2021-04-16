@@ -9930,6 +9930,7 @@ ENDIF
                ! - if tracer is type "carbon" then set coefficient to 0 for hydrophobic
                if( TRIM(CHEM_name (ispc)(1:len_trim('OCphobic') )) == 'OCphobic') factor_temp(ispc,:,:) = 0.0 
 
+
                ! - suppress scavenging most aerosols at cold T except BCn1 (hydrophobic), dust, and HNO3
                if( TRIM(CHEM_name (ispc)(1:len_trim('BCphobic') )) == 'BCphobic') then 
                   where(tempco < 258.) factor_temp(ispc,:,:) = 0.0 
@@ -9943,7 +9944,7 @@ ENDIF
                    TRIM(CHEM_name (ispc)) == 'SO2'      .or. &
                    TRIM(CHEM_name (ispc)) == 'SO4'      .or. &
 
-                   TRIM(CHEM_name (ispc)) == 'nitrate'  .or. &
+                   TRIM(CHEM_name (ispc)(1:len_trim('NO3an') )) == 'NO3an'  .or. &
                    TRIM(CHEM_name (ispc)) == 'bromine'  .or. &
                    TRIM(CHEM_name (ispc)) == 'NH3'      .or. &
                    TRIM(CHEM_name (ispc)) == 'NH4a'          ) then 
@@ -10072,38 +10073,28 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
   real   , intent(in) :: temp,rhoair
   real :: henry_coef
   real :: fct ,tcorr, corrh
-
+ 
   !--- define some constants!
-  real, parameter:: rgas  =  8.32e-2 ! atm M^-1 K^-1 ! 8.314 gas constant [J/(mol*K)]
-  real, parameter:: avogad=  6.022e23! Avogadro constant [1/mol]
-  real, parameter:: rhoH2O=  999.9668! density of water [kg/m3]
-  real, parameter:: temp0 =    298.15! standard temperature [K]
-  real, parameter:: temp0i= 1./298.15! inverse of standard temperature [K]
-  real, parameter:: MWH2O =	18.02! molecular mass of water [kg/kmol]
-  real, parameter:: MWAIR =	28.97! effective molecular mass of air [kg/kmol]
-  real, parameter:: conv3 = avogad / 1.0e6!  [mol(g)/m3(air)]  to [molec(g)/cm3(air)]
-  real, parameter:: conv4 = 100.	  !  [m]	  to [cm]
-  real, parameter:: conv5 = 1000.	  !  [m^3]	    to [l]
-  real, parameter:: conv7 = 1/conv5	  !  [l]    to [m^3]
-  real, parameter:: conv6 = 1. / 101325.  !  [Pa]	    to [atm]
-  real, parameter:: hplus = 1.175E-4	  !  for cloud water. pH is asuumed to be 3.93: pH=3.93 =>hplus=10**(-pH)
-
+  real, parameter:: rgas  =  8.205e-2 ! atm M^-1 K^-1 ! 8.314 gas constant [J/(mol*K)]
+  real, parameter:: temp0i= 1./298.15 ! inverse of standard temperature [K]
+  real, parameter:: hplus = 1.175E-4  !  for cloud water. pH is asuumed to be 3.93: pH=3.93 =>hplus=10**(-pH)
+ 
   ! aqueous-phase concentrations XXXa [mol/m3(air)]!
   ! gas-phase concentrations XXXg [mol/m3(air)]!
   ! Henry constants XXXh for scavenging [mol/(l*atm)]!
   ! converted to [(mol(aq)/m3(aq))/(mol(g)/m3(air))], i.e. dimensionless!
   ! in equilibrium XXXa = XXXh * LWC * XXXg!
   tcorr = 1./temp - temp0i
-  fct   = conv7 * rgas * temp
-
+  fct   = rgas * temp
+ 
   !-taking into account the acid dissociation constant
   ! ak=ak0*exp(dak*(1/t-1/298))
   corrh=1.+Hcts(ispc)%ak0 * exp(Hcts(ispc)%dak * tcorr)/hplus
-
+ 
   !-- for concentration in mol[specie]/mol[air] - Eq 5 in 'Compilation of Henry's law constants (version 4.0) for
   !-- water as solvent, R. Sander, ACP 2015'.
-  henry_coef =  Hcts(ispc)%hstar* exp(Hcts(ispc)%dhr*tcorr) * fct * corrh 
-
+  henry_coef =  Hcts(ispc)%hstar* exp(Hcts(ispc)%dhr*tcorr) * fct * corrh
+ 
   END FUNCTION henry
 
 !---------------------------------------------------------------------------------------------------

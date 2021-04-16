@@ -1221,7 +1221,7 @@ contains
                          'CN       ', 'RHOS     ', 'WET2     ',   &
                          'SNOMAS   ', 'SNOWDP   ', 'ITY      ',   &
                          'LHFX     ', 'Q2M      ', 'Q10M     ',   &
-                         'T10M     '                          /), &
+                         'T10M     ', 'WCSF     '             /), &
         DST_ID      = CHEM,                                       &
         SRC_ID      = SURF,                                       &
                                                        RC=STATUS  )
