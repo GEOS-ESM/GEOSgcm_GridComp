@@ -519,10 +519,6 @@ contains
     call ESMF_FieldDestroy(field0, rc=status)
     VERIFY_(STATUS)
 
-#ifdef __GFORTRAN__
-    deallocate(tile_area_src)
-#endif
-    
     ! redist pfaf (NOTE: me might need a second routehandle for integers)
 
     route%pfaf => arbSeq

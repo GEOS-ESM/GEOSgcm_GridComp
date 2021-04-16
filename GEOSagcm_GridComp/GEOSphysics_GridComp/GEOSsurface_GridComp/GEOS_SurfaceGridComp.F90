@@ -79,8 +79,6 @@ module GEOS_SurfaceGridCompMod
 
 !EOP
 
-
-     
   integer ::        LAKE
   integer ::     LANDICE
   integer ::       OCEAN 
@@ -92,15 +90,20 @@ module GEOS_SurfaceGridCompMod
   integer, parameter :: NUM_CHILDREN = 4
 #endif
 
-  integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
-  integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
-  integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
   INTEGER            :: catchswim,landicegoswim
 
   character(len=ESMF_MAXSTR), pointer :: GCNames(:)
   integer                    :: CHILD_MASK(NUM_CHILDREN)
-  integer :: DO_OBIO, ATM_CO2, CHOOSEMOSFC 
+  integer :: DO_OBIO, ATM_CO2
+  integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
+
+! used only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR
+  integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
+  integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
+  integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
+  integer, parameter :: ATM_CO2_FOUR = 4
+!
 
   character(len=ESMF_MAXSTR) :: LAND_PARAMS ! land parameter option
 
@@ -139,7 +142,6 @@ module GEOS_SurfaceGridCompMod
      module procedure MKTILE_1D
      module procedure MKTILE_UNGRIDDED
   end interface
-
 
    contains
 
@@ -222,10 +224,9 @@ module GEOS_SurfaceGridCompMod
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, DO_OBIO,        Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, DO_OBIO, label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2, DEFAULT=0, __RC__ ) 
 
-    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2,   DEFAULT=0, __RC__ ) 
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:', value=catchswim, DEFAULT=0, __RC__ ) 
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LANDICE4SNWALB:', value=landicegoswim, DEFAULT=0, __RC__ ) 
     call ESMF_ConfigGetAttribute (SCF, label='LAND_PARAMS:', value=LAND_PARAMS, DEFAULT="Icarus", __RC__ )
@@ -580,37 +581,7 @@ module GEOS_SurfaceGridCompMod
                                                        RC=STATUS  )
     VERIFY_(STATUS)
 
-    if((DO_OBIO/=0).OR. (ATM_CO2 == 4)) then
-
-       call MAPL_AddImportSpec(GC,                              &
-            SHORT_NAME         = 'CO2SC',                             &
-            LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
-            UNITS              = '1e-6',                              &
-            DIMS               = MAPL_DimsHorzOnly,                   &
-            VLOCATION          = MAPL_VLocationNone,                  &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-       
-       call MAPL_AddImportSpec(GC,                              &
-            SHORT_NAME         = 'FSWBAND',                           &
-            LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air', &
-            UNITS              = 'W m-2',                             &
-            DIMS               = MAPL_DimsHorzOnly,                   &
-            UNGRIDDED_DIMS     = (/NB_CHOU/),                         &
-            VLOCATION          = MAPL_VLocationNone,                  &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-
-       call MAPL_AddImportSpec(GC,                              &
-            SHORT_NAME         = 'FSWBANDNA',                         &
-            LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol', &
-            UNITS              = 'W m-2',                             &
-            DIMS               = MAPL_DimsHorzOnly,                   &
-            UNGRIDDED_DIMS     = (/NB_CHOU/),                         &
-            VLOCATION          = MAPL_VLocationNone,                  &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-    endif
+    if((DO_OBIO/=0).OR. (ATM_CO2 == ATM_CO2_FOUR)) call OBIO_setServices(NB_CHOU, RC)
 
     if (DO_GOSWIM) then
 
@@ -3133,6 +3104,48 @@ module GEOS_SurfaceGridCompMod
  
     RETURN_(ESMF_SUCCESS)
   
+    contains
+
+    subroutine OBIO_setServices(NB_CHOU, RC)
+
+      integer,           intent(   IN) ::  NB_CHOU
+      integer, optional, intent(  OUT) ::  RC
+
+      character(len=ESMF_MAXSTR), parameter     :: IAm="OBIO_setServices"
+      integer                                   :: STATUS
+
+      call MAPL_AddImportSpec(GC,                              &
+           SHORT_NAME         = 'CO2SC',                             &
+           LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
+           UNITS              = '1e-6',                              &
+           DIMS               = MAPL_DimsHorzOnly,                   &
+           VLOCATION          = MAPL_VLocationNone,                  &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+       
+      call MAPL_AddImportSpec(GC,                              &
+           SHORT_NAME         = 'FSWBAND',                           &
+           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air', &
+           UNITS              = 'W m-2',                             &
+           DIMS               = MAPL_DimsHorzOnly,                   &
+           UNGRIDDED_DIMS     = (/NB_CHOU/),                         &
+           VLOCATION          = MAPL_VLocationNone,                  &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                              &
+           SHORT_NAME         = 'FSWBANDNA',                         &
+           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol', &
+           UNITS              = 'W m-2',                             &
+           DIMS               = MAPL_DimsHorzOnly,                   &
+           UNGRIDDED_DIMS     = (/NB_CHOU/),                         &
+           VLOCATION          = MAPL_VLocationNone,                  &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      RETURN_(ESMF_SUCCESS)
+    end subroutine OBIO_setServices
+
   end subroutine SetServices
 
 
@@ -3203,6 +3216,7 @@ module GEOS_SurfaceGridCompMod
     integer                                 :: NT
     integer                                 :: K
     integer                                 :: userRC, NumInitPhases
+    INTEGER                                 :: LSM_CHOICE
 
     character(len=ESMF_MAXSTR), parameter   :: INITIALIZED_EXPORTS(4) = (/'FROCEAN  ', &
                              'FRLAKE   ', &
@@ -3379,8 +3393,10 @@ module GEOS_SurfaceGridCompMod
 
 ! Init land and snow constants, currently different in Icarus and GEOSldas
 !-----------------------------------------------------------------------
-
-    call SurfParams_init(LAND_PARAMS)
+    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+    call SurfParams_init(LAND_PARAMS,LSM_CHOICE,RC=STATUS)
+    VERIFY_(STATUS)
 
 ! Handle river routing (if required)
 !-----------------------------------
@@ -4781,7 +4797,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:)   :: LWDNSRF   => NULL()
     real, pointer, dimension(:,:)   :: ALW       => NULL()
     real, pointer, dimension(:,:)   :: BLW       => NULL()
-    real, pointer, dimension(:,:)   :: CO2SC     => NULL()
     real, pointer, dimension(:,:)   :: AERO_DP_I => NULL()
     real, pointer, dimension(:,:,:) :: AERO_DP   => NULL()
     real, pointer, dimension(:,:,:) :: DUDP      => NULL()
@@ -4804,8 +4819,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:,:) :: SSSV      => NULL()
     real, pointer, dimension(:,:,:) :: SSWT      => NULL()
     real, pointer, dimension(:,:,:) :: SSSD      => NULL()
-    real, pointer, dimension(:,:,:) :: FSWBAND   => NULL()
-    real, pointer, dimension(:,:,:) :: FSWBANDNA => NULL()
     real, pointer, dimension(:,:)   :: DTSDT     => NULL()
 
 ! Pointers to internals
@@ -5090,7 +5103,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:) :: LWBTILE         => NULL()
     real, pointer, dimension(:) :: ALWTILE         => NULL()
     real, pointer, dimension(:) :: BLWTILE         => NULL()
-    real, pointer, dimension(:) :: CO2SCTILE       => NULL()
     real, pointer, dimension(:,:) :: DUDPTILE      => NULL()
     real, pointer, dimension(:,:) :: DUSVTILE      => NULL()
     real, pointer, dimension(:,:) :: DUWTTILE      => NULL()
@@ -5111,8 +5123,6 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: SSSVTILE      => NULL()
     real, pointer, dimension(:,:) :: SSWTTILE      => NULL()
     real, pointer, dimension(:,:) :: SSSDTILE      => NULL()
-    real, pointer, dimension(:,:) :: FSWBANDTILE   => NULL()
-    real, pointer, dimension(:,:) :: FSWBANDNATILE => NULL()
     real, pointer, dimension(:)   :: DTSDTTILE     => NULL()
 
 ! These are tile versions of internals
@@ -5345,6 +5355,18 @@ module GEOS_SurfaceGridCompMod
     real, pointer, dimension(:,:) :: ZTH   => NULL()
     real, pointer, dimension(:,:) :: SLR   => NULL()
 
+! following three active only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR (=4)
+!   IMPORTS
+    real, pointer, dimension(:,:)   :: CO2SC     => NULL()
+    real, pointer, dimension(:,:,:) :: FSWBAND   => NULL()
+    real, pointer, dimension(:,:,:) :: FSWBANDNA => NULL()
+
+!   tiled versio of IMPORTS
+    real, pointer, dimension(:)   :: CO2SCTILE     => NULL()
+    real, pointer, dimension(:,:) :: FSWBANDTILE   => NULL()
+    real, pointer, dimension(:,:) :: FSWBANDNATILE => NULL()
+!
+
 ! for reading "forced" precip
     real, pointer, dimension(:,:) :: PTTe => NULL()
 
@@ -5456,12 +5478,6 @@ module GEOS_SurfaceGridCompMod
 
     NUM_AERO_DP = 0
 
-    if((DO_OBIO/=0)  .OR. (ATM_CO2 == 4)) then
-       call MAPL_GetPointer(IMPORT  , CO2SC   , 'CO2SC'    , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA', RC=STATUS); VERIFY_(STATUS)
-    endif
-  
     ! Get contents of AERO_DP bundle, put them in an ungridded dimension
     if (DO_GOSWIM) then
 
@@ -5732,6 +5748,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(IMPORT, SNOFL   , 'SNO'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, ICEFL   , 'ICE'    ,  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, FRZRFL  , 'FRZR'   ,  RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, TA      ,  'TA'    ,  RC=STATUS); VERIFY_(STATUS)
 
 ! This is the default behavior, with all surface components seeing uncorrected precip
 !------------------------------------------------------------------------------------
@@ -5795,7 +5812,7 @@ module GEOS_SurfaceGridCompMod
           SNO = 0.
           ICE = 0.
           FRZR= 0.
-       elsewhere (PRECSUM > 1.15741e-6)  ! Above is not true .AND. model precip > 0.1  mm/day
+       elsewhere (PRECSUM > 1.15741e-6)  ! Above is not true .AND. model precip > 0.1  mm/day. Note: 0.1mm/day = 0.1/86400 = 1.15741e-6
           PCSCALE = PTTe / PRECSUM
           RCU  = PCSCALE*RCU
           RLS  = PCSCALE*RLS
@@ -6372,20 +6389,6 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
     allocate(SSSDTILE(NT,NUM_SSSD), STAT=STATUS)
     VERIFY_(STATUS)
-
-    if((DO_OBIO/=0) .OR. (ATM_CO2 == 4)) then
-       allocate(CO2SCTILE(NT), STAT=STATUS)
-       VERIFY_(STATUS)
-       allocate(FSWBANDTILE(  NT,NB_CHOU), STAT=STATUS)
-       VERIFY_(STATUS)
-       allocate(FSWBANDNATILE(NT,NB_CHOU), STAT=STATUS)
-       VERIFY_(STATUS)
-    else
-       nullify(  CO2SCTILE         )
-       nullify(  FSWBANDTILE       )
-       nullify(FSWBANDNATILE       )
-    endif
-
     allocate(  DTSDTTILE(NT), STAT=STATUS)
     VERIFY_(STATUS)
 
@@ -6479,18 +6482,6 @@ module GEOS_SurfaceGridCompMod
           call MAPL_LocStreamTransform(LOCSTREAM, SSSDTILE(:,K), SSSD(:,:,K), RC=STATUS); VERIFY_(STATUS)
        end do
     end if
-
-    if((DO_OBIO/=0) .OR. (ATM_CO2 == 4)) then
-
-       call MAPL_LocStreamTransform(LOCSTREAM, CO2SCTILE, CO2SC,    RC=STATUS); VERIFY_(STATUS)
-
-       do K = 1, NB_CHOU
-          call MAPL_LocStreamTransform(LOCSTREAM, FSWBANDTILE(  :,K), FSWBAND(  :,:,K), RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_LocStreamTransform(LOCSTREAM, FSWBANDNATILE(:,K), FSWBANDNA(:,:,K), RC=STATUS)
-          VERIFY_(STATUS)
-       end do
-    endif
 
     ! option to interpolate effective wind vectors such that
     ! stresses computed in all children will have smooth curl/divergence 
@@ -7753,27 +7744,47 @@ module GEOS_SurfaceGridCompMod
           where(WET1 == MAPL_UNDEF) WET1 = 1.0
       endif
 
-! Modify TSOIL to Kelvin
-!-----------------------
 
-      if( associated(TSOIL1) ) then
-             where ( TSOIL1 /= MAPL_Undef ) TSOIL1 = TSOIL1 + MAPL_TICE
+! Fill imports/exports for OBIO
+!-------------------------------
+      if((DO_OBIO/=0) .OR. (ATM_CO2 == ATM_CO2_FOUR)) then 
+        call OBIO_fillExports(OCEAN, IMPORT,&
+                              LOCSTREAM, GIM,&
+                              surf_internal_state%xform_in(OCEAN), &
+                              NT, NB_CHOU,&
+                              CO2SC,     FSWBAND,     FSWBANDNA,&
+                              CO2SCTILE, FSWBANDTILE, FSWBANDNATILE,&
+                              RC)
+      else
+        nullify(  CO2SCTILE   )
+        nullify(  FSWBANDTILE )
+        nullify(FSWBANDNATILE )
       endif
-      if( associated(TSOIL2) ) then
-             where ( TSOIL2 /= MAPL_Undef ) TSOIL2 = TSOIL2 + MAPL_TICE
-      endif
-      if( associated(TSOIL3) ) then
-             where ( TSOIL3 /= MAPL_Undef ) TSOIL3 = TSOIL3 + MAPL_TICE
-      endif
-      if( associated(TSOIL4) ) then
-             where ( TSOIL4 /= MAPL_Undef ) TSOIL4 = TSOIL4 + MAPL_TICE
-      endif
-      if( associated(TSOIL5) ) then
-             where ( TSOIL5 /= MAPL_Undef ) TSOIL5 = TSOIL5 + MAPL_TICE
-      endif
-      if( associated(TSOIL6) ) then
-             where ( TSOIL6 /= MAPL_Undef ) TSOIL6 = TSOIL6 + MAPL_TICE
-      endif
+
+! Moved change of units for soil temperature export variables down to Catch[CN] Gridcomp.
+! With this change, gridded TSOIL[n] exports from Surface and tile-space TP[n] exports
+! from Catch are now consistently in units of Kelvin.
+! - rreichle & borescan, 6 Nov 2020
+!
+!-----------------------      
+!      if( associated(TSOIL1) ) then
+!             where ( TSOIL1 /= MAPL_Undef ) TSOIL1 = TSOIL1 + MAPL_TICE
+!      endif
+!      if( associated(TSOIL2) ) then
+!             where ( TSOIL2 /= MAPL_Undef ) TSOIL2 = TSOIL2 + MAPL_TICE
+!      endif
+!      if( associated(TSOIL3) ) then
+!             where ( TSOIL3 /= MAPL_Undef ) TSOIL3 = TSOIL3 + MAPL_TICE
+!      endif
+!      if( associated(TSOIL4) ) then
+!             where ( TSOIL4 /= MAPL_Undef ) TSOIL4 = TSOIL4 + MAPL_TICE
+!      endif
+!      if( associated(TSOIL5) ) then
+!             where ( TSOIL5 /= MAPL_Undef ) TSOIL5 = TSOIL5 + MAPL_TICE
+!      endif
+!      if( associated(TSOIL6) ) then
+!             where ( TSOIL6 /= MAPL_Undef ) TSOIL6 = TSOIL6 + MAPL_TICE
+!      endif
 
 ! Fill SNOMAS over Glaciers
 !--------------------------
@@ -8169,11 +8180,6 @@ module GEOS_SurfaceGridCompMod
          call FILLIN_TILE(GIM(type), 'DISCHARGE',  DISCHARGETILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
       end if
 
-      if((DO_OBIO/=0) .OR. (ATM_CO2 == 4)) then 
-         call FILLIN_TILE(GIM(type), 'CO2SC',  CO2SCTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
-         call FILLIN_TILE(GIM(type), 'FSWBAND'  , FSWBANDTILE  , XFORM, RC=STATUS); VERIFY_(STATUS)
-         call FILLIN_TILE(GIM(type), 'FSWBANDNA', FSWBANDNATILE, XFORM, RC=STATUS); VERIFY_(STATUS)
-      endif
       call FILLIN_TILE(GIM(type), 'ZTH',    ZTHTILE, XFORM, RC=STATUS); VERIFY_(STATUS)
 
       call FILLIN_TILE(GIM(type), 'THATM',  THTILE,  XFORM, RC=STATUS); VERIFY_(STATUS)
@@ -9582,6 +9588,64 @@ module GEOS_SurfaceGridCompMod
 
       RETURN_(ESMF_SUCCESS)
     end subroutine RouteRunoff
+
+    subroutine OBIO_fillExports(type, IMPORT, &
+                                LOCSTREAM, GIM, &
+                                XFORM, &
+                                NT, NB_CHOU, &
+                                CO2SC,     FSWBAND,     FSWBANDNA,&
+                                CO2SCTILE, FSWBANDTILE, FSWBANDNATILE,&
+                                RC)
+
+      integer,           intent(   IN )     :: TYPE
+      type(ESMF_State),  intent(inout)      :: IMPORT ! Import state
+      type(MAPL_LocStream), intent(in)      :: LOCSTREAM
+      type(ESMF_State), pointer, intent(in) :: GIM(:)
+      type(MAPL_LocStreamXFORM), intent(in) :: XFORM
+
+      integer,           intent(   IN) ::  NT
+      integer,           intent(   IN) ::  NB_CHOU
+      integer, optional, intent(  OUT) ::  RC
+
+      real, pointer ::  CO2SCTILE(:), CO2SC(:,:),&
+                        FSWBANDTILE(:,:), FSWBAND(:,:,:),&
+                        FSWBANDNATILE(:,:), FSWBANDNA(:,:,:)
+
+      character(len=ESMF_MAXSTR), parameter     :: IAm="OBIO_fillExports"
+      integer                                   :: STATUS
+      integer                                   :: K
+
+!      type (ESMF_State),      pointer         :: GIM(:)
+!      type (T_SURFACE_STATE), pointer         :: SURF_INTERNAL_STATE
+!      type (MAPL_LocStream)                   :: LOCSTREAM
+!      type (MAPL_LocStreamXFORM)              :: XFORM
+
+      call MAPL_GetPointer(IMPORT  , CO2SC   , 'CO2SC'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA', RC=STATUS); VERIFY_(STATUS)
+
+      allocate(CO2SCTILE(NT), STAT=STATUS)
+      VERIFY_(STATUS)
+      allocate(FSWBANDTILE(  NT,NB_CHOU), STAT=STATUS)
+      VERIFY_(STATUS)
+      allocate(FSWBANDNATILE(NT,NB_CHOU), STAT=STATUS)
+      VERIFY_(STATUS)
+
+      call MAPL_LocStreamTransform(LOCSTREAM, CO2SCTILE, CO2SC,    RC=STATUS); VERIFY_(STATUS)
+      do K = 1, NB_CHOU
+        call MAPL_LocStreamTransform(LOCSTREAM, FSWBANDTILE(  :,K), FSWBAND(  :,:,K), RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_LocStreamTransform(LOCSTREAM, FSWBANDNATILE(:,K), FSWBANDNA(:,:,K), RC=STATUS)
+        VERIFY_(STATUS)
+      end do
+
+!      XFORM = surf_internal_state%xform_in(type)
+      call FILLIN_TILE(GIM(type), 'CO2SC',     CO2SCTILE,     XFORM, RC=STATUS); VERIFY_(STATUS)
+      call FILLIN_TILE(GIM(type), 'FSWBAND'  , FSWBANDTILE  , XFORM, RC=STATUS); VERIFY_(STATUS)
+      call FILLIN_TILE(GIM(type), 'FSWBANDNA', FSWBANDNATILE, XFORM, RC=STATUS); VERIFY_(STATUS)
+
+      RETURN_(ESMF_SUCCESS)
+    end subroutine OBIO_fillExports
 
 end module GEOS_SurfaceGridCompMod
 
