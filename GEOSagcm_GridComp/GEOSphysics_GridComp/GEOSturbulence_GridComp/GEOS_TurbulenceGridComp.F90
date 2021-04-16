@@ -2104,9 +2104,9 @@ contains
 
    ! Pressure Thickness at the surface for 1-2-1 smoother for THV (and U:V) [72L setup uses an index of 5-levels]
      if (JASON_TUNING .eq. 1) then
-       call MAPL_GetResource (MAPL, SMTH_PRS,     trim(COMP_NAME)//"_SMTH_PRS:",     default=    0.0,    RC=STATUS)
+       call MAPL_GetResource (MAPL, SMTH_PRS,     trim(COMP_NAME)//"_SMTH_PRS:",     default=     0.0,    RC=STATUS)
      else
-       call MAPL_GetResource (MAPL, SMTH_PRS,     trim(COMP_NAME)//"_SMTH_PRS:",     default=50000.0,    RC=STATUS)
+       call MAPL_GetResource (MAPL, SMTH_PRS,     trim(COMP_NAME)//"_SMTH_PRS:",     default= 50000.0,    RC=STATUS)
      endif
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",      default=0,            RC=STATUS)
@@ -2313,26 +2313,27 @@ contains
       VSM = V
       if (SMTH_PRS /= 0) then
          ! Use Pressure Thickness at the surface to determine index
-         SMTH_LEV=-1
-         do L=LM,1,-1
-         do J=1,JM
-         do I=1,IM
-           if ( (SMTH_LEV(I,J) < 0) .AND. ((PLE(I,J,LM)-PLE(I,J,L)) >= SMTH_PRS) ) then
-             SMTH_LEV(I,J)=L
-           end if
-         enddo
-         enddo
-         enddo
-         where (SMTH_LEV < 0)
-           SMTH_LEV=LM-5
-         end where
+         SMTH_LEV=LM
+         if (SMTH_PRS > 0.0) then
+          do L=LM,1,-1
+           do J=1,JM
+            do I=1,IM
+              if ( (SMTH_LEV(I,J) == LM) .AND. ((PLE(I,J,LM)-PLE(I,J,L)) >= SMTH_PRS) ) then
+                SMTH_LEV(I,J)=L
+              end if
+            enddo
+           enddo
+          enddo
+         endif
       else
          SMTH_LEV=LM-5
       end if
       !===> Running 1-2-1 smooth of bottom levels of THV, U and V
-      TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
-      USM(:,:,LM) =   U(:,:,LM-1)*0.25 +   U(:,:,LM  )*0.75
-      VSM(:,:,LM) =   V(:,:,LM-1)*0.25 +   V(:,:,LM  )*0.75
+      where (SMTH_LEV .lt. LM)
+        TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
+        USM(:,:,LM) =   U(:,:,LM-1)*0.25 +   U(:,:,LM  )*0.75
+        VSM(:,:,LM) =   V(:,:,LM-1)*0.25 +   V(:,:,LM  )*0.75
+      end where
       do J=1,JM
        do I=1,IM
          do L=LM-1,SMTH_LEV(I,J),-1
@@ -2877,25 +2878,6 @@ contains
 
       if (CALC_TCZPBL) then
          TCZPBL = MAPL_UNDEF
-
-       if (JASON_TUNING .eq. 1) then
-         thetavs = T(:,:,LM)*(1.0+MAPL_VIREPS*Q(:,:,LM)/(1.0-Q(:,:,LM)))*(TH(:,:,LM)/T(:,:,LM))
-         tcrib(:,:,LM) = 0.0
-         do I = 1, IM
-            do J = 1, JM
-               do L=LM-1,1,-1
-                  thetavh(I,J) = T(I,J,L)*(1.0+MAPL_VIREPS*Q(I,J,L)/(1.0-Q(I,J,L)))*(TH(I,J,L)/T(I,J,L))
-                  uv2h(I,J) = max(U(I,J,L)**2+V(I,J,L)**2,1.0E-8)
-                  tcrib(I,J,L) = MAPL_GRAV*(thetavh(I,J)-thetavs(I,J))*Z(I,J,L)/(thetavs(I,J)*uv2h(I,J))
-                  if (tcrib(I,J,L) >= tcri_crit) then
-                     TCZPBL(I,J) = Z(I,J,L+1)+(tcri_crit-tcrib(I,J,L+1))/(tcrib(I,J,L)-tcrib(I,J,L+1))*(Z(I,J,L)-Z(I,J,L+1))
-                     KPBLTC(I,J) = float(L)
-                     exit
-                  end if
-               end do
-            end do
-         end do
-       else
          tcrib(:,:,LM) = 0.0
          do I = 1, IM
             do J = 1, JM
@@ -2910,8 +2892,6 @@ contains
                end do
             end do
          end do
-       endif
-
          where (TCZPBL<0.)
             TCZPBL = Z(:,:,LM)
             KPBLTC = float(LM)

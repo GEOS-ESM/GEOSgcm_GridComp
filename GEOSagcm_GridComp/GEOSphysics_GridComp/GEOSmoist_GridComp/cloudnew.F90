@@ -2030,14 +2030,13 @@ contains
 
       TEo = TE
 
-      fQi = ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
       DQSx  = DQSAT( TE, PL, QSAT=QSx )
       CFx = CF*tmpARR
       QCx = QC*tmpARR
       QVx = ( QV - QSx*AF )*tmpARR
 
-      if ( AF >= 1.0 )    QVx = QSx*1.e-4 
-      if ( AF > 0. )  QAx = QA/AF
+      if ( AF >= 1.0 )  QVx = QSx*1.e-4 
+      if ( AF >  0.0 )  QAx = QA/AF
 
       QT  = QCx + QVx
 
@@ -2055,7 +2054,7 @@ contains
          QCp = QCn
          CFp = CFn
          TEp = TEn
-         fQip= fQi
+         fQi = ice_fraction( TEp, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
 
          if(pdfflag.lt.2) then
 
@@ -2063,7 +2062,7 @@ contains
             sigmaqt2  = ALPHA*QSn
 
          elseif(pdfflag.eq.2) then
-            ! for triangular, symmetric: sigmaqt1 = sigmaqt2 = alpha*qsn (alpha is half width)
+            ! for triangular, symmetric: sigmaqt1 = sigmaqt2 = alpha*QSn (alpha is half width)
             ! for triangular, skewed r : sigmaqt1 < sigmaqt2
             ! try: skewed right below 500 mb
 !!!       if(pl.lt.500.) then
@@ -2073,12 +2072,15 @@ contains
 !!!       sigmaqt1  = 2*ALPHA*QSn*0.4
 !!!       sigmaqt2  = 2*ALPHA*QSn*0.6
 !!!       endif
+     !  ! Shift triangle-pdf to the left in convective regimes by CNV_FRACTION
+     !    sigmaqt1 = ALPHA*QSn*(1.0-CNV_FRACTION) + 2*ALPHA*QSn*0.8*CNV_FRACTION
+     !    sigmaqt2 = ALPHA*QSn*(1.0-CNV_FRACTION) + 2*ALPHA*QSn*0.2*CNV_FRACTION
          elseif(pdfflag .eq. 4) then !lognormal (sigma is dimmensionless)
             sigmaqt1 =  max(ALPHA/sqrt(3.0), 0.001)
          endif
 
-         call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,CFn)
-         call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,QCn)
+         call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,QSn,CFn)
+         call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,QSn,QCn)
 
          IF(USE_AEROSOL_NN) THEN
            DQCALL = QCn - QCp
@@ -2100,7 +2102,7 @@ contains
                  NLv              , &
                  NIv              , &
                  DQCALL           , &
-                 fQi                , & 
+                 fQi              , & 
                  CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND, &
                  .false.)
          ENDIF
@@ -2144,6 +2146,7 @@ contains
       QCo = QCn
       QVo = QVn
       TEo = TEn
+      fQi = ice_fraction( TEo, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
 
       ! Update prognostic variables.  Deal with special case of AF=1
       ! Temporary variables QCo, QAo become updated grid means.
@@ -2333,7 +2336,7 @@ contains
 !! WMP - 2018-05-17 - This section of code is repetitive (so skip it)....
 #ifdef SKIP_WMP
          if(pdfflag.eq.2) then
-! for triangular, symmetric: sigmaqt1 = sigmaqt2 = alpha*qsn (alpha is half width)
+! for triangular, symmetric: sigmaqt1 = sigmaqt2 = alpha*QSn (alpha is half width)
 ! for triangular, skewed r : sigmaqt1 < sigmaqt2
 ! try: skewed right below 500 mb
 !!!       if(pl.lt.500.) then
@@ -2346,8 +2349,8 @@ contains
          endif
 #endif
 
-         call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,CFn)
-         call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,qsn,QCn)
+         call pdffrac(PDFSHAPE,qt,sigmaqt1,sigmaqt2,QSn,CFn)
+         call pdfcondensate(PDFSHAPE,qt,sigmaqt1,sigmaqt2,QSn,QCn)
 
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          ! These lines represent adjustments
@@ -2643,9 +2646,9 @@ contains
       !Minimum allowed env RH
       minrhx    = 0.001  
 
-      !Addition of condensate from RAS
+      !Addition of condensate from Deep Convection
       TEND = DCF*iMASS
-      fQi  = 0.0 + ICEPARAM*ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+      fQi  = ICEPARAM*ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
       QLA  = QLA + (1.0-fQi)* TEND*DT
       QIA  = QIA +    fQi   * TEND*DT
 
@@ -3826,7 +3829,7 @@ contains
       ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
       ICEFRCTm = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
       ! Combine MODIS polynomial with an Anvil version MODIS^4 
-      ICEFRCT = (ICEFRCTm**3)*CNV_FRACTION + ICEFRCTm*(1.0-CNV_FRACTION)
+      ICEFRCT = (ICEFRCTm**4)*CNV_FRACTION + ICEFRCTm*(1.0-CNV_FRACTION)
 
    end function ICE_FRACTION
 
@@ -4080,8 +4083,8 @@ contains
          RAD_QR = 0.
          RAD_QS = 0.
          RAD_QG = 0.
-         RAD_RI = MAPL_UNDEF
-         RAD_RL = MAPL_UNDEF
+       ! RAD_RI = MAPL_UNDEF
+       ! RAD_RL = MAPL_UNDEF
       end if
 
    end subroutine RADCOUPLE

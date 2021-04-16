@@ -1544,13 +1544,11 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
 
         if (tzk (k) > tice) then
 
-            newql = new_liq_condensate(tzk (k), cnv_fraction, qlk (k), qik (k))
-            
             ! -----------------------------------------------------------------------
             ! pimlt: instant melting of cloud ice
             ! -----------------------------------------------------------------------
             
-            melt = min (newql, fac_imlt * (tzk (k) - tice) / icpk (k))
+            melt = min (qik (k), fac_imlt * (tzk (k) - tice) / icpk (k))
             tmp = min (melt, dim (ql_mlt, qlk (k))) ! max ql amount
             qlk (k) = qlk (k) + tmp
             qrk (k) = qrk (k) + melt - tmp
@@ -2092,26 +2090,22 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! cloud water < -- > vapor adjustment:
         ! -----------------------------------------------------------------------
 
-#ifdef DOCLDEVAP
         qsw = wqs2 (tz (k), den (k), dwsdt)
         dq0 = qsw - qv (k)
         if (dq0 > 0.) then
-            factor = min (1., fac_l2v * sqrt(10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
-!            factor = min (1., fac_l2v * (10. * dq0 / qsw))
-            if (10.*dq0/qsw .lt. 1.) factor = 0.1*factor
+          ! factor = min (1., fac_l2v * sqrt(10. * dq0 / qsw)) ! the rh dependent factor = 1 at 90%
+            factor = min (1., fac_l2v * (10. * dq0 / qsw))
+          ! if (10.*dq0/qsw .lt. 1.) factor = 0.1*factor
             evap = min (ql (k), factor * ql(k) / (1. + tcp3 (k) * dwsdt))
         else
             evap = 0.0
         endif
         qa(k) = max(0.,min(1.,qa(k) * max(qi(k) + ql(k)-evap,0.0) / max(qi(k)+ql(k),qrmin)))     ! new total condensate / old condensate 
-!        qa(k) = max(0.,min(1.,qa(k) * sqrt(max(qi(k) + ql(k)-evap,0.0) / max(qi(k)+ql(k),qrmin))))     ! new total condensate / old condensate 
         qv (k) = qv (k) + evap
         ql (k) = ql (k) - evap
         q_liq (k) = q_liq (k) - evap
         cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
         tz (k) = tz (k) - evap * lhl (k) / cvm (k)
-        evapc(k) = evap
-#endif
         ! -----------------------------------------------------------------------
         ! update heat capacity and latend heat coefficient
         ! -----------------------------------------------------------------------
@@ -2189,7 +2183,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
        ! WRF    qi_crt = 4.92e-11 * exp (1.33 * log (1.e3 * exp (0.15 * tmp)))
        ! GFDL   qi_crt = qi_gen * min (qi_lim, 0.1 * tmp) / den (k)
 ! GEOS ! WMP impose CALIPSO ice polynomial from 0 C to -40 C on qi_crt  
-                qi_crt = ice_fraction(tz(k),cnv_fraction)  * qi_gen / den (k)
+                qi_crt = ice_fraction(tz(k),cnv_fraction) * qi_gen / den (k)
                 sink = min (sink, max (qi_crt - qi (k), pidep), tmp / tcpk (k))
             else ! ice -- > vapor
                 pidep = pidep * min (1., dim (tz (k), t_sub) * 0.2)
@@ -4857,7 +4851,7 @@ real function ice_fraction(tk,cnv_fraction)
      real, intent(in) :: cnv_fraction ! diagniosed convective fraction for deep convective anvil clouds
      real :: mpoly
      mpoly = calipso_ice_polynomial(tk)
-     ice_fraction = (mpoly**3)*cnv_fraction + mpoly*(1.0-cnv_fraction)
+     ice_fraction = (mpoly**4)*cnv_fraction + mpoly*(1.0-cnv_fraction)
 end function ice_fraction
 
 real function calipso_ice_polynomial(tk)

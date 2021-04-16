@@ -1067,7 +1067,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     endif
 
     if (USE_NCAR_GWD) then
-       call MAPL_GetResource( MAPL, GEOS_PGWV,     Label="GEOS_PGWV:",     default=32,    RC=STATUS)
+       call MAPL_GetResource( MAPL, GEOS_PGWV,     Label="GEOS_PGWV:",     default=NINT(32*LM/181.0),    RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, GEOS_BGSTRESS, Label="GEOS_BGSTRESS:", default=0.000, RC=STATUS)
        VERIFY_(STATUS)
@@ -1075,7 +1075,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.250, RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=0.800, RC=STATUS)
+       call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=1.000, RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.000, RC=STATUS)
        VERIFY_(STATUS)

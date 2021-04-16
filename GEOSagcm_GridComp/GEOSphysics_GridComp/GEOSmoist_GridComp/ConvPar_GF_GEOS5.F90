@@ -8223,7 +8223,8 @@ ENDIF
     real   ,optional ,intent(in)  :: Tpert(kts:kte)
     real   ,intent(out)           :: x_aver
     integer                       :: i,local_order_aver,order_aver, i_beg,i_end,ic
-    real,    parameter            :: frac_ave_layer_ocean= 0.3
+!    real,    parameter            :: frac_ave_layer_ocean= 0.3
+    real,    parameter            :: frac_ave_layer_ocean= 1.
     real                          :: count,dp,dp_layer,effec_frac,x_ave_layer
 
     !-- dimensions of the average:
@@ -9108,7 +9109,8 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
 
 !  local variables in this routine
 
-     real, parameter              :: frh_crit=0.7
+     real, parameter              :: frh_crit_O=0.7
+     real, parameter              :: frh_crit_L=0.5
      real, parameter              :: delz_oversh = 0.1 !--- height of cloud overshoot is 10% higher than the LNB.
                                                        !--- Typically it can 2 - 2.5km higher, but it depends on
 				                       !--- the severity of the thunderstorm.
@@ -9116,7 +9118,7 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
      real,    dimension (its:ite) ::   cap_max
      integer                      ::   i,k,k1,k2,kfinalzu
      real                         ::   plus,hetest,dz,dbythresh,denom &
-                                      ,dzh,del_cap_max,fx,x_add,Z_overshoot
+                                      ,dzh,del_cap_max,fx,x_add,Z_overshoot,frh_crit
      real   , dimension (kts:kte) ::   dby
      integer, dimension (its:ite) ::   start_level
 
@@ -9187,7 +9189,8 @@ loop2:      do while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
                    !print*,"frh=", k,dz,qo(i,k)/qeso(i,k)
                 enddo
                 frh(i) = frh(i)/(dzh+1.e-16)
-               
+                frh_crit =frh_crit_O*xland(i)*frh_crit_O + frh_crit_L*(1.-xland(i))
+	       
 	       !fx     = 2.*(frh(i) - frh_crit) !- linear
                !fx     = 4.*(frh(i) - frh_crit)* abs(frh(i) - frh_crit) !-quadratic
                 fx     = ((2./0.78)*exp(-(frh(i) - frh_crit)**2)*(frh(i) - frh_crit)) !- exponential
@@ -11035,7 +11038,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
      RH_cr_OCEAN = 0.9
      RH_cr_LAND  = 0.9
  else
-     RH_cr_OCEAN = 0.95
+     RH_cr_OCEAN = 0.90
      RH_cr_LAND  = 0.85
  endif
  
@@ -11967,7 +11970,9 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
    	      0.0106*temp**3 + 3.39e-4 * temp**4    + &
      	      3.95e-6 * temp**5
        fract_liq_f = 1./(1.+exp(-ptc)) 
-   
+!WMP skew ice fraction for deep convective clouds
+       fract_liq_f = fract_liq_f**4
+!WMP 
    CASE DEFAULT 
        fract_liq_f =  min(1., (max(0.,(temp2-t_ice))/(t_0-t_ice))**2)
 
