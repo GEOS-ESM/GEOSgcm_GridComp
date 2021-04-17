@@ -25,7 +25,7 @@ module GEOSseaice_GridCompMod
   public SetServices
 
   character(len=ESMF_MAXSTR)          :: SEAICE_NAME
-  integer            :: DO_DATASEAICE
+  integer                             :: DO_DATASEAICE
 
 ! !DESCRIPTION:
 !
