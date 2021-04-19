@@ -5384,39 +5384,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                        call WRITE_PARALLEL('LDAS_coupling:loaded nc LDAS increment file')
                     deallocate(local_tmp_incr, global_tmp_incr)
 
-! verif ------
-                    unit = GETFILE( "ldas_incr_verif.data", form="unformatted", RC=STATUS ) 
-
-                   call MAPL_VarWrite(unit, tilegrid, tcfsat_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, tcftrn_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, tcfwlt_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, qcfsat_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, qcftrn_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, qcfwlt_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, capac_incr,  mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, catdef_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, rzexc_incr,  mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, srfexc_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, ghtcnt1_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, ghtcnt2_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, ghtcnt3_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, ghtcnt4_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, ghtcnt5_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, ghtcnt6_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, wesnn1_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, wesnn2_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, wesnn3_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, htsnnn1_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, htsnnn2_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, htsnnn3_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, sndzn1_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, sndzn2_incr, mask=mask, rc=status); VERIFY_(STATUS)
-                   call MAPL_VarWrite(unit, tilegrid, sndzn3_incr, mask=mask, rc=status); VERIFY_(STATUS)
-
-                    call FREE_FILE(unit, RC=STATUS)
-                    call WRITE_PARALLEL('LDAS_coupling: ldas_incr_verif.data for verif LDAS increment')
-!---- end verif ---
-
 
                     ! consolidate increment arrays  
                     allocate(ghtcnt_incr(6,NTILES))
