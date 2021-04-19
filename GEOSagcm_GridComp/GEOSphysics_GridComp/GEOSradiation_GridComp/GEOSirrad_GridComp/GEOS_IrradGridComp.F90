@@ -1833,6 +1833,19 @@ contains
    CWC (:,:,:,KRAIN  ) = QR
    CWC (:,:,:,KSNOW  ) = QS
 
+   WHERE (RI == MAPL_UNDEF)
+      RI = 36.e-6
+   END WHERE
+   WHERE (RL == MAPL_UNDEF)
+      RL = 14.e-6
+   END WHERE
+   WHERE (RR == MAPL_UNDEF)
+      RR = 50.e-6
+   END WHERE
+   WHERE (RS == MAPL_UNDEF)
+      RS = 50.e-6
+   END WHERE
+
    REFF(:,:,:,KICE   ) = RI * 1.0e6
    REFF(:,:,:,KLIQUID) = RL * 1.0e6
    REFF(:,:,:,KRAIN  ) = RR * 1.0e6
@@ -3326,10 +3339,14 @@ contains
       allocate(OLRB11RG_1D(IM*JM),__STAT__)
       allocate(DOLRB11RG_DT_1D(IM*JM),__STAT__)
 
-      ICLD = 4
-      INFLGLW = 2
-      ICEFLGLW = 3
-      LIQFLGLW = 1
+      call MAPL_GetResource(MAPL,ICLD    ,'RRTMG_ICLD:'  ,DEFAULT=4,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,INFLGLW ,'RRTMG_INFLG:' ,DEFAULT=2,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,ICEFLGLW,'RRTMG_ICEFLG:',DEFAULT=3,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,LIQFLGLW,'RRTMG_LIQFLG:',DEFAULT=1,RC=STATUS)
+      VERIFY_(STATUS)
 
       !  Set flag for flux derivative calculation
       IDRV = 1

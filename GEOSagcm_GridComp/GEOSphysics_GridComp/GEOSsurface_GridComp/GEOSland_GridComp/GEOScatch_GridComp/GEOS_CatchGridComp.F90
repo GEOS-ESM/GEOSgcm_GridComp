@@ -4908,7 +4908,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         ! get total solid precip
         ! --------------------------------------------------------------------------
 
-        SLDTOT = SNO+ICE+FRZR
+        SLDTOT = SNO+ICE!WMP+FRZR
         
 	! protect the forcing from unsavory values, as per practice in offline
 	! driver

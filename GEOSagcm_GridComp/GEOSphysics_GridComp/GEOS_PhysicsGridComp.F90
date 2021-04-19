@@ -1067,8 +1067,9 @@ contains
      call MAPL_AddConnectivity ( GC,                                  &
          SHORT_NAME  = (/'QV   ','QL   ','QI   ','QR   ','QS   ',     &
                          'QLLS ','QILS ','QLCN ','QICN ',             &
-                         'QRTOT','QSTOT',                             &
-                         'RL   ','RR   ','RI   ','RS   ','FCLD ' /),  &
+                         'QRTOT','QSTOT','QGTOT',                     &
+                         'RL   ','RR   ','RI   ','RS   ','RG   ',     &
+                         'FCLD ' /),  &
          DST_ID      = RAD,                                           &
          SRC_ID      = MOIST,                                         &
                                                            RC=STATUS  )
@@ -1170,13 +1171,20 @@ contains
 
 ! Imports for GWD
 !----------------
-
-     call MAPL_AddConnectivity ( GC,                               &
-         SHORT_NAME  = (/'Q      '/),                              &
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'Q', 'DTDT_moist','CNV_FRC','DTDTCN'/),   &
          DST_ID      = GWD,                                        &
          SRC_ID      = MOIST,                                      &
                                                         RC=STATUS  )
-     VERIFY_(STATUS)
+    VERIFY_(STATUS)
+
+! connections needed for NCEP GWD
+    call MAPL_AddConnectivity ( GC,                                &
+         SHORT_NAME  = (/'KPBL'/),                                 &
+         DST_ID      = GWD,                                        &
+         SRC_ID      = TURBL,                                      &
+                                                        RC=STATUS  )
+    VERIFY_(STATUS)
 
 ! Chemistry Imports
 ! -----------------
@@ -1219,7 +1227,7 @@ contains
                          'CN       ', 'RHOS     ', 'WET2     ',   &
                          'SNOMAS   ', 'SNOWDP   ', 'ITY      ',   &
                          'LHFX     ', 'Q2M      ', 'Q10M     ',   &
-                         'T10M     ', 'WCSF     '             /), &
+                         'T10M     '                          /), &
         DST_ID      = CHEM,                                       &
         SRC_ID      = SURF,                                       &
                                                        RC=STATUS  )
@@ -1363,21 +1371,6 @@ contains
     VERIFY_(STATUS)
     
 
-! New connections needed for NCEP GWD
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'KPBL'/),                                 &
-         DST_ID      = GWD,                                        &
-         SRC_ID      = TURBL,                                      &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddConnectivity ( GC,                                &
-         SHORT_NAME  = (/'DTDT_moist','CNV_FRC   ','DTDTCN    '/), & 
-         DST_ID      = GWD,                                        &
-         SRC_ID      = MOIST,                                      &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
 !EOP
 
 ! Disable connectivities of Surface imports that are filled manually from 
@@ -1392,7 +1385,7 @@ contains
      VERIFY_(STATUS)
 
 !AMM terminate TA import - will fill it here with value after moist
-     if ( SYNCTQ.eq.1.) then
+     if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
           SHORT_NAME = (/ 'TA ' /),        &
           CHILD      = SURF,               &
@@ -1407,7 +1400,7 @@ contains
      VERIFY_(STATUS)
 
 !AMM terminate T and TH imports to turb - will fill it here with value after moist
-     if ( SYNCTQ.eq.1.) then
+     if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport    ( GC,  &
           SHORT_NAME = (/'T ','TH' /),     & 
           CHILD      = TURBL,              &
@@ -1427,7 +1420,7 @@ contains
      VERIFY_(STATUS)
 
 !AMM terminate TH import to moist - will fill it here with value after gwd
-     if ( SYNCTQ.eq.1.) then
+     if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport  ( GC,    &
           SHORT_NAME = (/'T'/),            &
           CHILD = MOIST,                   &
@@ -1447,8 +1440,10 @@ contains
           CHILD = CHEM,                    &
           RC=STATUS)
        VERIFY_(STATUS)
+     endif
 
 !AMM terminate T import for RAD - will fill it here with value after turb
+     if ( SYNCTQ.ge.1.) then
        call MAPL_TerminateImport  ( GC,    &
           SHORT_NAME = (/'T'/),            &     
           CHILD = RAD,                     &
@@ -2173,7 +2168,7 @@ contains
 ! Initialize Passive Tracer QW
 ! ----------------------------
        if (NWAT == 5) then
-       QW = QV+QLLS+QLCN+QILS+QICN
+         QW = QV+QLLS+QLCN+QILS+QICN
        elseif (NWAT == 8) then
          QW = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL
        endif
@@ -2402,7 +2397,7 @@ contains
 
 !----------------------
 
-    if ( SYNCTQ.eq.1. ) then
+    if ( SYNCTQ.ge.1. ) then
 
 !  AMM  1/24/14 - Code to sequentially update T after each child - get pointer to T in gwd export
 !                All control for this is here - children just have added exports to be used here
@@ -2431,15 +2426,19 @@ contains
      call MAPL_GetPointer ( GEX(TURBL), SAFDIFFUSE, 'SAFDIFFUSE', alloc = .true.,  RC=STATUS) 
 !  get pointer to turb export of S after run 2
      call MAPL_GetPointer ( GEX(TURBL), SAFUPDATE,  'SAFUPDATE',  alloc = .true.,  RC=STATUS) 
-!  get pointer to T in chem and rad import bundles
-     call MAPL_GetPointer ( GIM(CHEM), THFORCHEM,  'TH', RC=STATUS)
-     call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS)
+!  get pointer to T in rad import bundles
      call MAPL_GetPointer ( GIM(RAD),  TFORRAD,    'T',  RC=STATUS)
 
 !  AMM - Will need PK to get from T to TH and back
       allocate(PK(IM,JM,LM),stat=STATUS);VERIFY_(STATUS)
      !PK = ((0.5*(PLE(:,:,0:LM-1) +  PLE(:,:,1:LM  ) ))/100000.)**(MAPL_RGAS/MAPL_CP)
       PK = ((0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))) / MAPL_P00)**MAPL_KAPPA
+    endif
+
+    if ( SYNCTQ.eq.1. ) then
+!  get pointer to T in chem import bundles
+     call MAPL_GetPointer ( GIM(CHEM), THFORCHEM,  'TH', RC=STATUS)
+     call MAPL_GetPointer ( GIM(CHEM), TFORCHEM,   'T',  RC=STATUS)
     endif
 
 !-srf-gf-scheme
@@ -2469,7 +2468,7 @@ contains
 
 !
 !  AMM - compute TH using T after GWD and write on moist import state TH
-    if ( SYNCTQ.eq.1. ) then
+    if ( SYNCTQ.ge.1. ) then
      TFORMOIST = TGWD
      THFORMOIST = TGWD / PK
     endif
@@ -2488,7 +2487,7 @@ contains
 !----------------
 
 !  AMM - Update TA for surf using TH after MOIST
-    if ( SYNCTQ.eq.1. ) then
+    if ( SYNCTQ.ge.1. ) then
      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
        allocate(HGT(IM,JM,LM+1),stat=STATUS);VERIFY_(STATUS)
        do k = 1,LM+1
@@ -2501,7 +2500,7 @@ contains
     endif
 
 !-srf-gf-scheme
-    if(SYNCTQ.eq.1. .AND. DXDT_BL==1) then
+    if(SYNCTQ.ge.1. .AND. DXDT_BL==1) then
        DTDT_BL=THAFMOIST*PK
        DQDT_BL=QV
     endif
@@ -2536,7 +2535,7 @@ contains
 !  AMM - compute S after MOIST ( use moist S export and add phi s) and stuff S into turb TR bundle
 !        write on turb imports of T and TH with values after moist
 
-    if ( SYNCTQ.eq.1. ) then
+    if ( SYNCTQ.ge.1. ) then
      do k = 1,LM
      SFORTURB(:,:,k) = SAFTERMOIST(:,:,k) + ZLE(:,:,LM) * MAPL_GRAV
      enddo
@@ -2554,7 +2553,7 @@ contains
 ! Surface Stage 2
 !----------------
 
-    if ( SYNCTQ.eq.1. ) then
+    if ( SYNCTQ.ge.1. ) then
 !AMM - update TA for surface using turb updated S - assume change in S is all change in T
      if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) then
        allocate(DTSURFAFTURB(IM,JM),stat=STATUS);VERIFY_(STATUS)
@@ -2565,7 +2564,7 @@ contains
        TFORSURF = TFORSURF + ( SAFDIFFUSE(:,:,LM) - SFORTURB(:,:,LM) ) / MAPL_CP
      endif
 ! set THFORCHEM and TFORRAD using turb run 1 updated S - assume change in S is all change in T
-     THFORCHEM = THFORTURB + (SAFDIFFUSE -SFORTURB) / (PK * MAPL_CP)
+     if (SYNCTQ.eq.1.) THFORCHEM = THFORTURB + (SAFDIFFUSE -SFORTURB) / (PK * MAPL_CP)
      TFORRAD = TFORTURB + (SAFDIFFUSE -SFORTURB) / MAPL_CP
     endif
 
@@ -2580,7 +2579,7 @@ contains
 ! Turbulence Stage 2
 !-------------------
 
-    if ( SYNCTQ.eq.1. ) then
+    if ( SYNCTQ.ge.1. ) then
 !AMM  update turb S import using S from the result of turb 1
      SFORTURB = SAFDIFFUSE
     endif
@@ -2604,7 +2603,7 @@ contains
     endif
 
 !-srf-gf-scheme
-    if(SYNCTQ.eq.1. .AND. DXDT_BL==1) then
+    if(SYNCTQ.ge.1. .AND. DXDT_BL==1) then
        DTDT_BL=(TFORRAD-DTDT_BL)/DT
        DQDT_BL=(QV-DQDT_BL)/DT
     endif
@@ -2630,7 +2629,7 @@ contains
     call MAPL_TimerOff(STATE,GCNames(I))
 
 !AMM
-    if ( SYNCTQ.eq.1. ) then
+    if ( SYNCTQ.ge.1. ) then
       deallocate(PK)
       if ( (LM .ne. 72) .and. (HGT_SURFACE .gt. 0.0) ) deallocate(HGT)
     endif
@@ -2856,13 +2855,14 @@ contains
    !  Compute Total Water Mass Change due to Physics Sources and Sinks
    !  ----------------------------------------------------------------
        if (NWAT == 5) then
-          DQ = QV+QLLS+QLCN+QILS+QICN                      - QW  ! - DT*DQVDTCHM  We do not keep dry-mass budget for CHEM constituents
+          DQ = QV+QLLS+QLCN+QILS+QICN                      - QW !- DT*DQVDTCHM ! Who added this comment::: We do not keep dry-mass budget for CHEM constituents
        elseif (NWAT == 8) then
-          DQ = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL - QW  ! - DT*DQVDTCHM  We do not keep dry-mass budget for CHEM constituents
+          DQ = QV+QLLS+QLCN+QILS+QICN+QRAIN+QSNOW+QGRAUPEL - QW !- DT*DQVDTCHM ! Who added this comment::: We do not keep dry-mass budget for CHEM constituents
        endif
 
    !  Modify P and Q such that Pdry is conserved
    !  ------------------------------------------
+#ifdef ORIGDRY
              ple_new = ple*1.0_8
                sumdq = 0.0
          DPDT(:,:,0) = 0.0
@@ -2882,6 +2882,25 @@ contains
                 endif
               end do
        end do
+#else
+       ple_new = ple*1.0_8
+       DPDT(:,:,0) = 0.0
+       do l=1,lm
+             dpe(:,:)  = 1. + dq(:,:,l)
+             ple_new(:,:,l) = ple_new(:,:,l-1) + (ple(:,:,l)-ple(:,:,l-1)) * dpe(:,:)
+             dpdt(:,:,l) = (ple_new(:,:,l)-ple(:,:,l))/DT
+ 
+             do N=1,NQ
+                call ESMFL_BundleGetPointertoData( BUNDLE, trim(NAMES(N)), PTR3D, RC=STATUS)
+                VERIFY_(STATUS)
+                if( trim(NAMES(N)) /= 'CLCN'       .and. & ! Exclude: Advected Convective and Large-Scale
+                    trim(NAMES(N)) /= 'CLLS'     )  then   ! -------- Cloud Fractions
+                PTR3D(:,:,l) = PTR3d(:,:,l) / dpe(:,:)
+                endif
+              end do
+       end do
+
+#endif
 
    ! Create New Dry Mass Variables
    ! -----------------------------

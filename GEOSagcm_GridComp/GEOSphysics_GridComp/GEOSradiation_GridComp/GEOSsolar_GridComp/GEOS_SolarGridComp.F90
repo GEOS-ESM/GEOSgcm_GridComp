@@ -2932,6 +2932,20 @@ contains
       QQ3(:,:,2) = QL
       QQ3(:,:,3) = QR
       QQ3(:,:,4) = QS
+
+      WHERE (RI == MAPL_UNDEF)
+        RI = 36.e-6
+      END WHERE
+      WHERE (RL == MAPL_UNDEF)
+        RL = 14.e-6
+      END WHERE
+      WHERE (RR == MAPL_UNDEF)
+        RR = 50.e-6
+      END WHERE
+      WHERE (RS == MAPL_UNDEF)
+        RS = 50.e-6
+      END WHERE
+
       RR3(:,:,1) = RI*1.e6
       RR3(:,:,2) = RL*1.e6
       RR3(:,:,3) = RR*1.e6
@@ -3763,10 +3777,14 @@ contains
 ! Prepare Input for RRTMG
 
 ! Set flags related to cloud properties
-      ICLD = 4
-      INFLGSW = 2
-      ICEFLGSW = 3
-      LIQFLGSW = 1
+      call MAPL_GetResource(MAPL,ICLD    ,'RRTMG_ICLD:'  ,DEFAULT=4,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,INFLGSW ,'RRTMG_INFLG:' ,DEFAULT=2,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,ICEFLGSW,'RRTMG_ICEFLG:',DEFAULT=3,RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL,LIQFLGSW,'RRTMG_LIQFLG:',DEFAULT=1,RC=STATUS)
+      VERIFY_(STATUS)
 
       NCOL = size(Q,1)
 
