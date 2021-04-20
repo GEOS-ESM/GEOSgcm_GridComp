@@ -95,33 +95,33 @@ contains
 ! ---------------------------------------
 
     Iam = 'SetServices'
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, CONFIG=CF, __RC__ )
     Iam = trim(COMP_NAME) // Iam
 
 
 ! Set the state variable specs.
 ! -----------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, MAPL, __RC__ )
 
 ! Get constants from CF
 ! ---------------------
 
-    call MAPL_GetResource ( MAPL,       DO_DATASEAICE,     Label="USE_DATASEAICE:" ,       DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL,  DO_DATASEAICE,  Label="USE_DATASEAICE:" ,  DEFAULT=1, __RC__ )
+
+! Initialize these IDs (0 means not used)
+! ---------------------------------------
+    ICE = 0
+    ICEd = 0
 
     if(DO_DATASEAICE/=0) then
        SEAICE_NAME="DATASEAICE"
-       ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=DataSeaiceSetServices, RC=STATUS)
-       VERIFY_(STATUS)
+       ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=DataSeaiceSetServices, __RC__)
     else
        call MAPL_GetResource ( MAPL, SEAICE_NAME, Label="SEAICE_NAME:", DEFAULT="CICE4", __RC__ )
        select case (trim(SEAICE_NAME))
           case ("CICE4")
-             ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=CICE4SeaIceSetServices, RC=STATUS)
-             VERIFY_(STATUS)
+             ICE = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=CICE4SeaIceSetServices, __RC__)
           case default
              charbuf_ = "SEAICE_NAME: " // trim(SEAICE_NAME) // " is not implemented, ABORT!"
              call WRITE_PARALLEL(charbuf_)
@@ -129,14 +129,12 @@ contains
        end select
     endif
 
-    call MAPL_GetResource(MAPL, iDUAL_OCEAN, 'DUAL_OCEAN:', default=0, RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GetResource( MAPL, iDUAL_OCEAN, 'DUAL_OCEAN:', default=0, __RC__ )
     DUAL_OCEAN = iDUAL_OCEAN /= 0
 
-    ICEd = 0
     if (dual_ocean) then
-       ICEd = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=DataSeaiceSetServices, RC=STATUS) 
-       VERIFY_(STATUS)
+       SEAICE_NAME="DATASEAICE"
+       ICEd = MAPL_AddChild(GC, NAME=SEAICE_NAME, SS=DataSeaiceSetServices, __RC__) 
     endif
 
 ! Set the state variable specs.
@@ -145,174 +143,365 @@ contains
 
 !  !IMPORT STATE:
 
-    call MAPL_AddImportSpec(GC,                               &
-         SHORT_NAME         = 'FROCEAN',                           &
-         LONG_NAME          = 'fraction_of_gridbox_covered_by_ocean',&
-         UNITS              = '1',                                 &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                               &
-         SHORT_NAME         = 'TAUX',                              &
-         LONG_NAME          = 'Agrid_eastward_stress_on_ocean',     &
-         UNITS              = 'N m-2',                             &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                               &
-         SHORT_NAME         = 'TAUY',                              &
-         LONG_NAME          = 'Agrid_northward_stress_on_ocean',    &
-         UNITS              = 'N m-2',                             &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+   ! import states from child components will be promoted here 
 
 
-     call MAPL_AddImportSpec(GC,                    &
-        SHORT_NAME         = 'FRESH',                         &
-        LONG_NAME          = 'fresh_water_flux_due_to_ice_dynamics', &
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsHorzOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                             &
-        SHORT_NAME         = 'FSALT',                         &
-        LONG_NAME          = 'salt_flux_due_to_ice_dynamics', &
-        UNITS              = 'kg m-2 s-1',                            &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddImportSpec(GC,                             &
-        SHORT_NAME         = 'FHOCN',                         &
-        LONG_NAME          = 'heat_flux_due_to_ice_dynamics', &
-        UNITS              = 'W m-2',                            &
-        DIMS               = MAPL_DimsHorzOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        RC=STATUS  )
-     VERIFY_(STATUS)
-
-
-    if (dual_ocean) then
-       call MAPL_AddImportSpec(GC,                            &
-         SHORT_NAME         = 'FRACICEd',                           &
-         LONG_NAME          = 'fractional_cover_of_seaice',        &
-         UNITS              = '1',                                 &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-       VERIFY_(STATUS)
-    endif
-
-
-!ALT Note the FRACICE from datasea is inhereted (in AMIP or dual_ocean)
 
 !  !EXPORT STATE:
 
 
 ! Exports of child
 
-    call MAPL_AddExportSpec ( GC   ,                          &
-         SHORT_NAME = 'TW',                                        &
-         CHILD_ID   = OCN,                                         &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-    call MAPL_AddExportSpec ( GC   ,                          &
-         SHORT_NAME = 'SW',                                        &
-         CHILD_ID   = OCN,                                         &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-    call MAPL_AddExportSpec ( GC   ,                          &
-         SHORT_NAME = 'UW',                                        &
-         CHILD_ID   = OCN,                                         &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-    call MAPL_AddExportSpec ( GC   ,                          &
-         SHORT_NAME = 'VW',                                        &
-         CHILD_ID   = OCN,                                         &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
+    if(DO_DATASEAICE==0) then
 
-    if(DO_DATASEA==0) then
-       call MAPL_AddExportSpec ( GC   ,                          &
-            SHORT_NAME = 'DH',                                        &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC   ,                          &
-            SHORT_NAME = 'UWB',                                        &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC   ,                          &
-            SHORT_NAME = 'VWB',                                        &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-       if (trim(OCEAN_NAME) == "MOM") then
-          call MAPL_AddExportSpec ( GC   ,                          &
-               SHORT_NAME = 'SSH',                                       &
-               CHILD_ID   = OCN,                                         &
-               RC=STATUS  )
-          VERIFY_(STATUS)
-       endif
-       call MAPL_AddExportSpec ( GC   ,                          &
-            SHORT_NAME = 'SLV',                                       &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-       if (trim(OCEAN_NAME) == "MOM") then
-          call MAPL_AddExportSpec ( GC   ,                               &
-               SHORT_NAME = 'PBO',                                       &
-               CHILD_ID   = OCN,                                         &
-               RC=STATUS  )
-          VERIFY_(STATUS)
-       endif
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'UI',                                   &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
 
-       call MAPL_AddExportSpec ( GC   ,                          &
-            SHORT_NAME = 'T',                                         &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC   ,                          &
-            SHORT_NAME = 'S',                                         &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-    end if
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'VI',                                   &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'VEL',                                  &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TAUXBOT',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TAUYBOT',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TAUXOCNB',                             &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TAUYOCNB',                             &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'STROCNXB',                             &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'STROCNYB',                             &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'FRACICE',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'STRENGTH',                             &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'DIVU',                                 &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'DIVUOCN',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TAUADIV',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TAU1DIV',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TAUODIV',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'SHEAR',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'HICE',                                 &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'HICE0',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'HSNO',                                 &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'HSNO0',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'DRAFT',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'DRAFT0',                               &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'AICE',                                 &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'AICEU',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'DAIDTD',                               &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'DVIDTD',                               &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'DVIRDGDT',                             &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'STRCORX',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'STRCORY',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'STRTLTX',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'STRTLTY',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'STRINTX',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'STRINTY',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TAUXI',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TAUYI',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TAUXIB',                               &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TAUYIB',                               &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'UOCN',                                 &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'VOCN',                                 &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'SSH',                                  &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'SLV',                                  &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'FROCEAN',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'AREA',                                 &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TMASK',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'ICEUMASK0',                            &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'ICEUMASK1',                            &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'ANGLET',                               &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'ANGLEU',                               &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TRANSIX',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TRANSIY',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TRANSIMX',                             &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'TRANSIMY',                             &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'FRESH',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'FSALT',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'FHOCN',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'SIG1',                                 &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'SIG2',                                 &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'DAIDTNUDG',                            &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'DVIDTNUDG',                            &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'AICEN',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'VICEN',                                &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'HIFLXE',                               &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+
+        call MAPL_AddExportSpec ( GC   ,                          &
+             SHORT_NAME = 'HIFLXN',                               &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
+    endif
 
 !EOS
 
-    if(DO_DATASEA==0) then
-       call MAPL_TerminateImport    ( GC, SHORT_NAME=               &
-          [character(len=9) :: 'TAUX  ','TAUY  ',                   &
-            'PENUVR','PENPAR','PENUVF','PENPAF', 'DRNIR', 'DFNIR',  &
-            'DISCHARGE', 'LWFLX', 'SHFLX', 'QFLUX', 'RAIN', 'SNOW', &
-            'SFLX','SWHEAT'],                                       &  ! do not terminate import of PEN_OCN since it is not used in the `plug'
-            CHILD=OCN,                          RC=STATUS  )
-       VERIFY_(STATUS)
+    
+    if(DUAL_OCEAN) then
+       ! in dual ocean mode, both Dataseaice and CICEDyna are running,
+       ! but HI, SI and TI have dimensions consistent with CICE4ColumnPhys,
+       ! not SimpleSeaice; the other CICE vars are copies of those from
+       ! CICEDyna and they will be filled  
+       call MAPL_TerminateImport    ( GC, SHORT_NAME=              &
+          [character(len=9) :: 'HI'     ,     'SI'    ,            &     
+                               'FRACICE',     'TI'    ,            &
+                               'VOLICE' ,     'VOLSNO',            &    
+                               'ERGICE ',     'ERGSNO',            & 
+                               'MPOND'  ,     'TAUAGE'],           &
+            CHILD=ICEd,          __RC__  )
     end if
+
 
 ! Set the Initialize, Run, Finalize entry points
 ! ----------------------------------------------
 
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=status)
-    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, __RC__ )
 ! phase 1
-    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,        RC=status)
-    VERIFY_(STATUS)
+    call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,        __RC__ )
 ! phase 2 - this is only used in the predictor part of the replay for dual ocean
     if (DUAL_OCEAN) then
-       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,        RC=status)
-       VERIFY_(STATUS)
+       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,     __RC__ )
     end if
 
 
@@ -320,18 +509,14 @@ contains
 ! Generic SetServices--This creates the generic state and calls SetServices for children
 !---------------------------------------------------------------------------------------
 
-    call MAPL_GenericSetServices    ( GC, RC=STATUS )
-    VERIFY_(STATUS)
+    call MAPL_GenericSetServices    ( GC, __RC__ )
 
 ! Set the Profiling timers
 ! ------------------------
 
-    call MAPL_TimerAdd(GC,   name="INITIALIZE" ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,   name="RUN"        ,RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_TimerAdd(GC,   name="--ModRun"   ,RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_TimerAdd(GC,   name="INITIALIZE" ,__RC__)
+    call MAPL_TimerAdd(GC,   name="RUN"        ,__RC__)
+    call MAPL_TimerAdd(GC,   name="--ModRun"   ,__RC__)
 
 ! All Done
 !---------
