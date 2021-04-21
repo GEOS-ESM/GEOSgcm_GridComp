@@ -553,7 +553,6 @@ contains
 ! Local derived type aliases
 
     type (MAPL_MetaComp),     pointer   :: State
-    type (ESMF_Grid)                    :: Grid
     type (T_PrivateState),    pointer   :: PrivateSTATE
     type (T_PrivateState_Wrap)          :: WRAP
     integer                             :: IM, JM, LM
@@ -573,15 +572,13 @@ contains
 ! -----------------------------------------------------------
 
     Iam = "Initialize"
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, grid=GRID, RC=status )
-    VERIFY_(STATUS)
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, grid=GRID, __RC__ )
     Iam = trim(comp_name) // trim(Iam)
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, State, RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetObjectFromGC ( GC, State, __RC__ )
 
 ! Profilers
 !----------
@@ -595,15 +592,13 @@ contains
     call MAPL_Get(STATE,             &
          GIM       = GIM,                        &
          GEX       = GEX,                        &
-                                       RC=STATUS )
-    VERIFY_(STATUS)
+                                          __RC__ )
 
 
 ! Allocate the private state...
 !------------------------------
 
-    allocate( PrivateSTATE , stat=STATUS )
-    VERIFY_(STATUS)
+    allocate( PrivateSTATE , __stat__ )
 
     wrap%ptr => PrivateState
 
@@ -615,46 +610,17 @@ contains
 
 ! Initialize the PrivateState. First the time...
 !-----------------------------------------------
-    call MAPL_GetResource(STATE,DT,  Label="RUN_DT:",    RC=STATUS)             ! Get AGCM Heartbeat
-    VERIFY_(status)
-    call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, RC=STATUS) ! set Default OCEAN_DT to AGCM Heartbeat
-    VERIFY_(status)
+    call MAPL_GetResource(STATE,DT,  Label="RUN_DT:",    __RC__)             ! Get AGCM Heartbeat
+    call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, __RC__) ! set Default OCEAN_DT to AGCM Heartbeat
 
-    CALL ESMF_TimeIntervalSet(timeStep, S=NINT(DT), RC=status)
-    VERIFY_(status)
+    CALL ESMF_TimeIntervalSet(timeStep, S=NINT(DT), __RC__)
 
-    call ESMF_ClockGet(CLOCK, currTIME=currTime, RC=STATUS)
-    VERIFY_(STATUS)
+    call ESMF_ClockGet(CLOCK, currTIME=currTime, __RC__)
 
 !ALT: check with Max about moving the clock 1 step forward
     PrivateState%clock = ESMF_ClockCreate(NAME = TRIM(OCEAN_NAME)//"Clock", &
-         timeStep=timeStep, startTime=currTime, rc=status)
-    VERIFY_(status)
+         timeStep=timeStep, startTime=currTime, __rc__)
 
-
-! Initialize the Ocean Model.
-!
-!  This verifies the Grid and the Time against the private restarts.
-!
-!  Verifying that the GuestOcean grid and decomposition match those
-!  inherited by the component. This is simply asserting that the
-!  local im, jm, and lm are the same and making sure its internal
-!  communication is consistent with the VM in the host's grid, probably
-!  by initializing the guests's internal communication with the
-!  communicator that comes from the VM in the Grid's Layout.
-!
-!  Note thet tha bulletin board states , GIM(:) and GEX(:), have been created and
-!  populated with nodata fields. The ESMF arrays will be filled later.
-
-!-----------------------------------------------------------------------
-
-! Get sizes from my internal state
-!---------------------------------
-    call MAPL_Get(STATE, &
-         IM=IM, &
-         JM=JM, &
-         RC=STATUS)
-    VERIFY_(STATUS)
 
 ! Once we know we have a valid  ESMF grid, we can call MAPL_GenericInitialize.
 ! This will allow us to use the built-in checkpoint/restart for our states.
@@ -662,8 +628,7 @@ contains
 
 
     call MAPL_TimerOff(STATE,"TOTAL"     )
-    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, RC=status )
-    VERIFY_(STATUS)
+    call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, __RC__ )
 
  
     call MAPL_TimerOff(STATE,"INITIALIZE")
@@ -806,15 +771,13 @@ contains
 ! -----------------------------------------------------
 
     Iam = "Run"
-    call ESMF_GridCompGet( gc, NAME=comp_name, currentPhase=PHASE, RC=status )
-    VERIFY_(status)
+    call ESMF_GridCompGet( gc, NAME=comp_name, currentPhase=PHASE, __RC__ )
     Iam = trim(comp_name) // Iam
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
-    call MAPL_GetObjectFromGC ( GC, STATE, RC=status)
-    VERIFY_(status)
+    call MAPL_GetObjectFromGC ( GC, STATE, __RC__ )
 
 ! Profilers
 !----------
@@ -824,7 +787,7 @@ contains
 
 ! Get child's import ad export to use as a bulletin board
 !--------------------------------------------------------
-    call MAPL_Get(STATE,             &
+    call MAPL_Get(STATE,                         &
          GCS       = GCS,                        &
          GIM       = GIM,                        &
          GEX       = GEX,                        &
@@ -832,16 +795,13 @@ contains
          LATS      = LATS,                       &
          IM        = IM,                         &
          JM        = JM,                         &
-         LM        = LM,                         &
-                                       RC=STATUS )
-    VERIFY_(STATUS)
+                                       __RC__    )
 
 
 ! Check the clocks to set set-up the "run-to" time
 !-------------------------------------------------
 
-    call ESMF_ClockGet( CLOCK, currTime=endTime, RC=STATUS)
-    VERIFY_(status)
+    call ESMF_ClockGet( CLOCK, currTime=endTime, __RC__ )
 
 ! Get GuestModel's private internal state
 !---------------------------------
@@ -851,203 +811,35 @@ contains
 
     PrivateSTATE => WRAP%PTR
 
-    call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
-    VERIFY_(status)
+    call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, __RC__ )
 
     if (myTime > EndTime) then
-       call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_REVERSE,rc=status)
-       VERIFY_(status)
+       call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_REVERSE,__rc__)
        do
-         call ESMF_ClockAdvance(PrivateState%Clock,rc=status)
-         VERIFY_(status)
-         call ESMF_ClockGet(PrivateState%Clock,currTime=ct,rc=status)
-         VERIFY_(status)
+         call ESMF_ClockAdvance(PrivateState%Clock,__rc__)
+         call ESMF_ClockGet(PrivateState%Clock,currTime=ct,__rc__)
          if (ct==endTime) exit
        enddo
-       call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_FORWARD,rc=status)
-       VERIFY_(status)
-       call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
-       VERIFY_(status)
+       call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_FORWARD,__rc__)
+       call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, __RC__ )
     end if
 
     if( MyTime <= EndTime ) then ! Time to run
 
-! We get the ocean-land mask (now computed in Initialize of Plug)
-! ---------------------------------------------------------------
-       if(DO_DATASEA==0) then
-          select case(trim(OCEAN_NAME))
-             case ("MOM")
-                call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', __RC__)
-                MASK => MASK3D(:,:,1)
-             case ("MOM6")
-                call MAPL_GetPointer(GEX(OCN), MASK, 'MOM_2D_MASK', __RC__)
-             end select
-       else
-          allocate(MASK3D(IM,JM,LM), STAT=STATUS); VERIFY_(STATUS)
-          MASK3D=1.0
-          allocate(MASK(IM,JM), STAT=STATUS); VERIFY_(STATUS)
-          MASK=1.0
-       end if
 
-! Get ocean time step and misc. parameters
-!-----------------------------------------
 
-       call MAPL_GetResource(STATE,DT,  Label="RUN_DT:",    RC=STATUS)             ! Get AGCM Heartbeat
-       VERIFY_(status)
-       call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, RC=STATUS) ! set Default OCEAN_DT to AGCM Heartbeat
-       VERIFY_(status)
+       !call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       !call MAPL_GetPointer(GEX(OCN), SW,   'SW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
 
-! Get pointers to imports
-!--------------------------------------------------------------------------------
-       call MAPL_GetPointer(IMPORT, FROCEAN, 'FROCEAN', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, TAUXi, 'TAUX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, TAUYi, 'TAUY'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, PENUVRi, 'PENUVR'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, PENPARi, 'PENPAR'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, PENUVFi, 'PENUVF'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, PENPAFi, 'PENPAF'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, DRNIRi, 'DRNIR'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, DFNIRi, 'DFNIR'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, HEATi, 'SWHEAT' , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, DISCHARGEi, 'DISCHARGE'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, LWFLXi, 'LWFLX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, SHFLXi, 'SHFLX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, QFLUXi, 'QFLUX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, SNOWi, 'SNOW'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, RAINi, 'RAIN'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FHOCN, 'FHOCN'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FRESH, 'FRESH'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FSALT, 'FSALT'   , RC=STATUS); VERIFY_(STATUS)
-
-! Get pointers from ImExState
-!----------------------------
-       if(DO_DATASEA==0) then
-          call MAPL_GetPointer(GIM(OCN), TAUX, 'TAUX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), TAUY, 'TAUY'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PENUVR, 'PENUVR'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PENPAR, 'PENPAR'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PENUVF, 'PENUVF'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), PENPAF, 'PENPAF'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), DRNIR, 'DRNIR'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), DFNIR, 'DFNIR'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), HEAT, 'SWHEAT', RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), DISCHARGE, 'DISCHARGE'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), LWFLX, 'LWFLX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), SHFLX, 'SHFLX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), QFLUX, 'QFLUX'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), RAIN, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), SNOW, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); VERIFY_(STATUS) ! and do not add import of PEN_OCN here since it is not used in the `plug'
-       end if
-
-       call MAPL_GetPointer(IMPORT, PEN_OCN, 'PEN_OCN',RC=STATUS); VERIFY_(STATUS)
-
-       call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GEX(OCN), SW,   'SW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-
-       if (dual_ocean) then
-          call MAPL_GetPointer(GEX(OCNd), TWd,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(IMPORT, FId, 'FRACICEd'   , RC=STATUS); VERIFY_(STATUS)
-       end if
+       !if (dual_ocean) then
+       !   call MAPL_GetPointer(GEX(OCNd), TWd,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+       !   call MAPL_GetPointer(IMPORT, FId, 'FRACICEd'   , RC=STATUS); VERIFY_(STATUS)
+       !end if
        
-       if(DO_DATASEA==0) then
-          call MAPL_GetPointer(GEX(OCN), FRZMLT,   'FRZMLT'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-       end if
-
-! Get pointers to exports
-!--------------------------------------------------------
-
-       call MAPL_GetPointer(EXPORT, TS_FOUND,'TS_FOUND', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SS_FOUND,'SS_FOUND', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, FRZMLTe,'FRZMLT', RC=STATUS); VERIFY_(STATUS)
-
-! Diagnostics exports
-!---------------------------------------------------------
-       call MAPL_GetPointer(EXPORT, RFLUX,  'RFLUX' , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, FROCEANe,'FROCEAN', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, TAUXe, 'TAUX'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, TAUYe, 'TAUY'   , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, HEATe, 'SWHEAT' , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, DISCHARGEe, 'DISCHARGE'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, LWFLXe, 'LWFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SWFLXe, 'SWFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SHFLXe, 'SHFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, QFLUXe, 'QFLUX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, RAINe, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SNOWe, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, SFLXe, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, PEN_OCNe,'PEN_OCN', RC=STATUS); VERIFY_(STATUS)
-
-       if(associated(FROCEANe)) FROCEANe = FROCEAN
-
-! Allocate space for temporary arrays
-!------------------------------------
-
-       allocate(WGHT(IM,JM), STAT=STATUS); VERIFY_(STATUS)
-
-! Weight for ocean grid
-!----------------------
-       wght=0.0
-       where(MASK>0)
-          WGHT = FROCEAN/MASK
-       elsewhere
-          WGHT = 0.0
-       end where
-
-       if(DO_DATASEA==0) then
-! Copy imports into ImEx variables
-!---------------------------------
-          PENUVR = PENUVRi * WGHT
-          PENPAR = PENPARi * WGHT
-          PENUVF = PENUVFi * WGHT
-          PENPAF = PENPAFi * WGHT
-          DRNIR = DRNIRi * WGHT
-          DFNIR = DFNIRi * WGHT
-          DISCHARGE = DISCHARGEi * WGHT
-          LWFLX = LWFLXi * WGHT
-          QFLUX = QFLUXi * WGHT
-          SHFLX = (SHFLXi- FHOCN) * WGHT
-          RAIN = (RAINi+FRESH) * WGHT
-          SNOW = SNOWi * WGHT
-          SFLX = FSALT * WGHT
-
-! This stress forces the ocean, combined with sea ice bottom stress later
-!------------------------------------------------------------------------
-          TAUX = TAUXi * WGHT
-          TAUY = TAUYi * WGHT
 
 
-! Prepare radiative heating for ocean
-!------------------------------------
 
-          if(associated(RFLUX )) RFLUX  = 0.0
-          select case (trim(OCEAN_NAME))
-             case ("MOM", "DATASEA")
-                do L=1,LM
-                   HEAT(:,:,L) = HEATi(:,:,L)*WGHT
-                   if(associated(RFLUX)) then
-                      RFLUX = RFLUX + (1.0-MASK3D(:,:,L))*HEAT(:,:,L)
-                   end if
-                end do
-             case ("MOM6")
-                ! No 3D Mask from MOM6. Do nothing for now!
-          end select
-
-          if (associated(HEATe)) HEATe = HEAT
-          if (associated(TAUXe)) TAUXe = TAUX
-          if (associated(TAUYe)) TAUYe = TAUY
-          if (associated(DISCHARGEe)) DISCHARGEe = DISCHARGE
-          if (associated(LWFLXe)) LWFLXe = LWFLX
-          if (associated(SWFLXe)) SWFLXe = PENUVR+PENPAR+PENUVF+PENPAF+DRNIR+DFNIR
-          if (associated(SHFLXe)) SHFLXe = SHFLX
-          if (associated(QFLUXe)) QFLUXe = QFLUX
-          if (associated(RAINe)) RAINe = RAIN
-          if (associated(SNOWe)) SNOWe = SNOW
-          if (associated(SFLXe)) SFLXe = SFLX
-          if (associated(PEN_OCNe)) PEN_OCNe = PEN_OCN
-       end if !DO_DATASEA
-
-! Loop the ocean model
+! Loop the sea ice model
 !---------------------
 
        NUM = 0
@@ -1060,67 +852,27 @@ contains
           call MAPL_TimerOn (STATE,"--ModRun")
 
           if (.not. DUAL_OCEAN) then
-             call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, PrivateState%CLOCK, RC=STATUS)
-             VERIFY_(STATUS)
+             call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, PrivateState%CLOCK, __RC__)
           else
              if (PHASE == 1) then
                 ! corrector
-                call ESMF_GridCompRun( GCS(OCNd), importState=GIM(OCNd), &
-                     exportState=GEX(OCNd), clock=CLOCK, phase=1, userRC=STATUS)
+                call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
+                     exportState=GEX(ICEd), clock=CLOCK, phase=1, userRC=STATUS)
                 VERIFY_(STATUS)
-                call MAPL_GenericRunCouplers( STATE, CHILD=OCNd, CLOCK=CLOCK, RC=STATUS )
+                call MAPL_GenericRunCouplers( STATE, CHILD=OCNd, CLOCK=CLOCK, __RC__ )
+                call ESMF_GridCompRun( GCS(ICE), importState=GIM(ICE), &
+                     exportState=GEX(ICE), clock=CLOCK, phase=1, userRC=STATUS)
                 VERIFY_(STATUS)
-                call ESMF_GridCompRun( GCS(OCN), importState=GIM(OCN), &
-                     exportState=GEX(OCN), clock=CLOCK, phase=1, userRC=STATUS)
-                VERIFY_(STATUS)
-                call MAPL_GenericRunCouplers( STATE, CHILD=OCN, CLOCK=CLOCK, RC=STATUS )
-                VERIFY_(STATUS)
+                call MAPL_GenericRunCouplers( STATE, CHILD=OCN, CLOCK=CLOCK, __RC__ )
              else
                 ! predictor
-                call ESMF_GridCompRun( GCS(OCNd), importState=GIM(OCNd), &
-                     exportState=GEX(OCNd), clock=CLOCK, phase=1, userRC=STATUS)
+                call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
+                     exportState=GEX(ICEd), clock=CLOCK, phase=1, userRC=STATUS)
                 VERIFY_(STATUS)
-                call MAPL_GenericRunCouplers( STATE, CHILD=OCNd, CLOCK=CLOCK, RC=STATUS )
-                VERIFY_(STATUS)
+                call MAPL_GenericRunCouplers( STATE, CHILD=OCNd, CLOCK=CLOCK, __RC__ )
              end if
           end if
 
-          if (DUAL_OCEAN .and. PHASE == 1) then
-             ! calculate temperature correction to send back to MOM
-             call MAPL_GetPointer(GIM(OCN), DEL_TEMP, 'DEL_TEMP', RC=STATUS)
-             VERIFY_(STATUS)
-             call MAPL_GetPointer(GIM(OCNd), FI , 'FRACICE'  , RC=STATUS)
-             VERIFY_(STATUS)
-             
-             call MAPL_GetResource(STATE,TAU_SST, Label="TAU_SST:", default=432000.0 ,RC=STATUS)
-             VERIFY_(status)
-
-             call MAPL_GetResource(STATE,TAU_SST_UNDER_ICE, Label="TAU_SST_UNDER_ICE:", default=86400.0 ,RC=STATUS)
-             VERIFY_(status)
-
-             ! we should have valid pointers to TW and TWd by now
-             
-             DEL_TEMP = 0.0 ! we do not want uninitiazed variables
-             where(MASK > 0.0 .and. FI < 0.05)
-
-                ! what about relaxation
-                DEL_TEMP = (TWd - TW)*DT/(DT+TAU_SST)
-
-             end where
-
-             where(MASK > 0.0 .and. FI >= 0.05 .and. FId > FI)
-                ! 0.054 (C/psu) is the ratio between the freezing temperature and salinity of brine.
-                ! -0.054*SW gives salinity dependent freezing temperature 
-                ! ideally this const should be from the ocean model, but doing so is difficult here
-                DEL_TEMP = ((-0.054*SW+MAPL_TICE) - TW)*DT/(DT+TAU_SST_UNDER_ICE)
-
-             end where
-
-             ! put it back to MOM
-             call ESMF_GridCompRun( GCS(OCN), importState=GIM(OCN), &
-               exportState=GEX(OCN), clock=CLOCK, phase=2, userRC=STATUS )
-             VERIFY_(STATUS)
-          end if
           
           call MAPL_TimerOff(STATE,"--ModRun")
           call MAPL_TimerOn (STATE,"TOTAL")
@@ -1128,69 +880,13 @@ contains
 ! Bump the time in the internal state
 !------------------------------------
 
-          call ESMF_ClockAdvance( PrivateState%clock,                    rc=status)
-          VERIFY_(status)
-          call ESMF_ClockGet    ( PrivateState%clock, currTime= myTime , rc=status)
-          VERIFY_(status)
+          call ESMF_ClockAdvance( PrivateState%clock,                    __rc__ )
+          call ESMF_ClockGet    ( PrivateState%clock, currTime= myTime , __rc__ )
 
           NUM = NUM + 1
 
        end do
 
-       if(associated(SS_FOUND)) then
-          SS_FOUND = OrphanSalinity
-          where(WGHT > 0.0)
-             SS_FOUND = SW
-          end where
-       end if
-
-       if(associated(FRZMLTe)) then
-          if(DO_DATASEA == 0) then
-             where(WGHT > 0.0 )
-                FRZMLTe = FRZMLT
-             end where
-          else
-             FRZMLTe = 0.0
-          end if          
-       end if
-
-       if (DUAL_OCEAN) then
-          !ALT we might not have FI yet, so let get it again
-          call MAPL_GetPointer(GIM(OCNd), FI , 'FRACICE'  , RC=STATUS)
-          VERIFY_(STATUS)
-          where(WGHT > 0.0)
-             where(FI < 0.05)
-                TS_FOUND = TWd
-             elsewhere
-                TS_FOUND = TW
-             end where
-          end where
-       else
-          where(WGHT > 0.0)
-             TS_FOUND = TW
-          end where
-       end if
-
-! Update orphan points
-       if(DO_DATASEA == 0) then
-          WGHT=FROCEAN*(1-MASK)
-          Tfreeze=MAPL_TICE-0.054*OrphanSalinity
-
-          where(wght>0.0)
-             TS_FOUND=TS_FOUND+ &
-                      DT*(LWFLXi+(PENUVR+PENPAR+PENUVF+PENPAF+DRNIR+DFNIR - PEN_OCN)-SHFLXi-QFLUXi*MAPL_ALHL-MAPL_ALHF*SNOWi+FHOCN)/(OrphanDepth*MAPL_RHO_SEAWATER*MAPL_CAPWTR) ! explicit update in time
-             FRZMLTe = (Tfreeze - TS_FOUND) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*OrphanDepth)/DT
-             TS_FOUND=max(TS_FOUND, Tfreeze)
-          end where
-
-       end if
-
-       deallocate(WGHT, STAT=STATUS); VERIFY_(STATUS)
-
-       if(DO_DATASEA/=0) then
-          deallocate(MASK3D, STAT=STATUS); VERIFY_(STATUS)
-          deallocate(MASK, STAT=STATUS); VERIFY_(STATUS)
-       end if
 
     end if ! Time to run
 
