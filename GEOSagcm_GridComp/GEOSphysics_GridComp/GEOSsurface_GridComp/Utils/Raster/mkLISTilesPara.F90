@@ -5,6 +5,7 @@ PROGRAM mkLISTilesPara
   use process_hres_data
   use rmTinyCatchParaMod
   use MAPL_SortMod
+  use iso_fortran_env
 
   implicit none
   integer  , parameter :: nc_esa = 129600, nr_esa = 64800, SRTM_maxcat = 291284
@@ -116,7 +117,7 @@ SUBROUTINE create_files (nc,nr,gfile,filename)
   real :: x0, y0
   real :: lat,lon,da, x1,x2,x3,x4,x5, ox1,ox2,ox3,ox4,ox5
   integer, dimension(:,:), allocatable :: tileid
-  real*4, dimension (:,:), allocatable ::    q0
+  real(kind=REAL64), dimension (:,:), allocatable ::    q0
   real, dimension (:), allocatable :: tile_ele,tile_area_land
   integer, allocatable :: catid(:,:)
   integer, allocatable :: subset_catid(:,:)
@@ -182,9 +183,9 @@ SUBROUTINE create_files (nc,nr,gfile,filename)
      
   endif
 
-  dxh= 360._8/nc
-  dyh= 180._8/nr
-  d2r= PI/180._8
+  dxh= 360._REAL64/nc
+  dyh= 180._REAL64/nr
+  d2r= PI/180._REAL64
 
   catCount = 0
 
@@ -400,7 +401,7 @@ SUBROUTINE create_files (nc,nr,gfile,filename)
     
      do j = 1,nr
         write(21) tileid(:,j)
-        lats = -90._8 + (j - 0.5_8)*dyh
+        lats = -90._REAL64 + (j - 0.5_REAL64)*dyh
         
         do i = 1,nc
            if((tileid(i,j) > 0).and.(tileid(i,j) <= ncells))then
@@ -484,8 +485,8 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   logical, dimension (:), allocatable :: unq_mask      
   integer :: dx_esa, dy_esa, NBINS, NPLUS
   integer :: catid_index, catNo,catCount
-  integer*8, allocatable, dimension (:) ::  SRTM_catid 
-  integer*8 :: pfaf_dbl
+  integer(kind=INT64), allocatable, dimension (:) ::  SRTM_catid 
+  integer(kind=INT64) :: pfaf_dbl
   real,    dimension (max_pfaf_smap) :: pfaf_area
   integer, dimension (max_pfaf_smap) :: pfaf_index
   character (*), intent (in) :: filename
@@ -493,7 +494,7 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   integer :: ncells,status,i,j,k,ix1,ix2,iy1,iy2,im,jm, dateline, ix,jx
   integer :: ncid,ii,jj
   real    :: dx, dy
-  real (kind =8) :: dxh, dyh,d2r,lats, dyvh, dxvh
+  real (kind =REAL64) :: dxh, dyh,d2r,lats, dyvh, dxvh
   integer :: n,nc_domain,nr_domain,i_offset,j_offset, nc_global,nr_global,msk2rst
   character*11 :: glabel1
   character*9  :: glabel2 
@@ -501,7 +502,7 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   real :: x0, y0
   real :: lat,lon,da, x1,x2,x3,x4,x5, ox1,ox2,ox3,ox4,ox5
   integer, dimension(:,:), allocatable :: tileid
-  real*4, dimension (:,:), allocatable ::    q0, raster
+  real(kind=REAL64), dimension (:,:), allocatable ::    q0, raster
   real, dimension (:), allocatable     :: tile_ele,tile_area_land
   logical :: regrid, counted
 
@@ -631,12 +632,12 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   
   SRTM_catid (SRTM_maxcat + 1) = 190000000
   SRTM_catid (SRTM_maxcat + 2) = 200000000 
-  dxvh= 360._8/nc_esa
-  dyvh= 180._8/nr_esa
-  d2r= PI/180._8
+  dxvh= 360._REAL64/nc_esa
+  dyvh= 180._REAL64/nr_esa
+  d2r= PI/180._REAL64
 
-  dxh = 360._8/nc
-  dyh = 180._8/nr
+  dxh = 360._REAL64/nc
+  dyh = 180._REAL64/nr
 
   catCount = 0
 
@@ -719,7 +720,7 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
                  pfaf_index(n) = nint (loc_val (n))
                  
                  do jx = iy1,iy2 
-                    lats = -90._8 + (jx - 0.5_8)*dyvh
+                    lats = -90._REAL64 + (jx - 0.5_REAL64)*dyvh
                     do ix = ix1, ix2 
                        if(geos_msk (ix -ix1 + 1,jx - iy1 + 1) == nint (loc_val (n))) then 
                           pfaf_area(n) = pfaf_area(n) + (sin(d2r*(lats+0.5*dyvh)) -sin(d2r*(lats-0.5*dyvh)))*(dxvh*d2r)
@@ -754,7 +755,7 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
  
   do j = 1,nr
      write(21) tileid(:,j)
-     lats = -90._8 + (j - 0.5_8)*dyh
+     lats = -90._REAL64 + (j - 0.5_REAL64)*dyh
 
      do i = 1,nc
         if((tileid(i,j) > 0).and.(tileid(i,j) <= ncells))then

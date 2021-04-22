@@ -13,6 +13,7 @@ use MAPL_SortMod
 use date_time_util  
 use leap_year
 use MAPL_ConstantsMod
+use iso_fortran_env
 
 #if defined USE_EXTERNAL_FINDLOC
 use findloc_mod, only: findloc
@@ -2643,8 +2644,8 @@ END SUBROUTINE modis_scale_para_high
   character*2 :: VV,HH
   integer, allocatable, dimension (:,:) :: &
          net_data1
-  integer (kind=2) , allocatable, target, dimension (:,:) :: LAI_HIGH
-  integer (kind=2), pointer, dimension (:,:) :: Raster
+  integer (kind=INT16) , allocatable, target, dimension (:,:) :: LAI_HIGH
+  integer (kind=INT16), pointer, dimension (:,:) :: Raster
   REAL, ALLOCATABLE, dimension (:) :: vec_lai, count_lai
   REAL, ALLOCATABLE, dimension (:) :: gswp2_lai_bf,gswp2_lai_af,gswp2_lai 
   integer, allocatable, target, dimension (:,:) :: tile_id
@@ -3714,16 +3715,16 @@ END SUBROUTINE modis_scale_para_high
       logical, allocatable, dimension(:,:) :: land_pixels
       integer, allocatable, dimension (:,:) :: &
          net_data1,net_data2,net_data3,net_data4,net_data5,net_data6 ,net_data7 
-      integer (kind=2) , allocatable, target, dimension (:,:) :: SOIL_HIGH,  &
+      integer (kind=INT16) , allocatable, target, dimension (:,:) :: SOIL_HIGH,  &
           sand_top,clay_top,oc_top,sand_sub,clay_sub,oc_sub, grav_grid
-      integer (kind=2), pointer, dimension (:,:) :: Raster, &  
+      integer (kind=INT16), pointer, dimension (:,:) :: Raster, &  
            Raster1,Raster2,Raster3,Raster4,Raster5,Raster6
-      integer (kind=4), allocatable, dimension (:) :: tileid_vec,arrayA,arrayB          
-      integer (kind=2), allocatable, dimension (:) ::  &
+      integer (kind=INT32), allocatable, dimension (:) :: tileid_vec,arrayA,arrayB          
+      integer (kind=INT16), allocatable, dimension (:) ::  &
          data_vec1, data_vec2,data_vec3, data_vec4,data_vec5, data_vec6
       REAL, ALLOCATABLE, dimension (:) :: soildepth, grav_vec,soc_vec,poc_vec,&
              ncells_top,ncells_top_pro,ncells_sub_pro 
-      integer(kind=2) , allocatable, dimension (:) :: ss_clay,    &
+      integer(kind=INT16) , allocatable, dimension (:) :: ss_clay,    &
              ss_sand,ss_clay_all,ss_sand_all,ss_oc_all
       REAL, ALLOCATABLE :: count_soil(:)
       integer, allocatable, target, dimension (:,:) :: tile_id
@@ -5314,7 +5315,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           INTEGER :: NBINS, NPLUS, PFAF,N,L, I1,I2,J1,J2,I,J,K,IL1,IL2,JL1,JL2,NC_RAT
           REAL    :: mnx,mxx,mny,mxy, lats, dxy30
           INTEGER, PARAMETER :: NC_SRTM = 21600, NR_SRTM = 10800 
-          REAL    :: dx =360._8/NC_ESA,dy = 180._8/NR_ESA, d2r = PI/180._8
+          REAL    :: dx =360._REAL64/NC_ESA,dy = 180._REAL64/NR_ESA, d2r = PI/180._REAL64
           integer :: max_pfaf_smap = 40
           INTEGER, TARGET,  ALLOCATABLE, DIMENSION (:,:) :: raster, tileid_index,&
                SUBSET_MSK
@@ -5412,7 +5413,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
           allocate (pfaf_area (1:max_pfaf_smap))
           allocate (pfaf_index(1:max_pfaf_smap))
           
-          dxy30  = 360._8/nc
+          dxy30  = 360._REAL64/nc
           NC_RAT = nc_esa/nc
 
           DO N = 1, NCAT
@@ -5440,7 +5441,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
              ALLOCATE (TILEID_INDEX(1 : I2 - I1 +1 , 1 : J2 - J1 + 1))
 
              DO J = J1, J2 
-                lats = -90._8 + (j - 0.5_8)*dy
+                lats = -90._REAL64 + (j - 0.5_REAL64)*dy
                 SUBSET_AREA(:,J-J1 + 1) = (sin(d2r*(lats+0.5*dy)) -sin(d2r*(lats-0.5*dy)))*(dx*d2r)
              END DO
 
@@ -6307,7 +6308,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
       integer :: i(GC),j(GR), k,n, status, ncid, varid, maxcat, I0(1), j0(1)
       INTEGER, TARGET, ALLOCATABLE, dimension (:,:):: ST_grid, cnt_grid
       real    :: lat_mn, lat_mx, lon_mn, lon_mx
-      real (kind =8) :: XG(GC),YG(GR), y0, x0, dxy
+      real (kind =REAL64) :: XG(GC),YG(GR), y0, x0, dxy
                   
       DATA ST_NAME  /             &
            'AK  1 Alaska          ' ,&

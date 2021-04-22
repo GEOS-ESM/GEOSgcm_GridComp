@@ -26,6 +26,8 @@ module StieglitzSnow
  
   USE SurfParams,   ONLY: WEMIN, AICEV, AICEN
 
+  USE iso_fortran_env
+
   public :: snowrt                        ! used by LandIce, Catchment
   public :: TRID                          ! used by LandIce
   public :: SNOW_ALBEDO                   ! used by LandIce, Catchment, and LDAS
@@ -1025,7 +1027,7 @@ contains
 
         topthick = dzmax(1)
         do i=2,N_snow
-           thickdist(i-1) = 1.0/real(N_snow-1,kind=4)
+           thickdist(i-1) = 1.0/real(N_snow-1,kind=REAL32)
         enddo
 
       else

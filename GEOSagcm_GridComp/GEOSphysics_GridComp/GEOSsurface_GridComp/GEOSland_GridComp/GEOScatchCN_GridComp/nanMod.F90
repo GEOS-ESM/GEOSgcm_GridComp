@@ -15,19 +15,49 @@ module nanMod
 !
 ! !USES:
 !
+
+  use iso_fortran_env
+  use ieee_arithmetic
+
 ! !PUBLIC TYPES:
   implicit none
   save
   private
-  public :: inf, nan, bigint
+  public :: inf, nan, inf64, nan64, bigint
 ! signaling nan
-  real*8, parameter :: inf8 = O'0777600000000000000000'
-  real*8, parameter :: nan8 = O'0777610000000000000000'
-  real*4, parameter :: inf4 = O'17740000000'
-  real*4, parameter :: nan4 = O'17760000000'
-  real,   parameter :: inf = inf4
-  real,   parameter :: nan = nan4
   integer,  parameter :: bigint = O'17777777777'
+
+  contains
+
+   function nan() result(nan_32)
+      real(REAL32) :: nan_32
+
+      nan_32 = ieee_value(nan_32,  ieee_quiet_nan)
+
+   end function nan
+
+   function nan64() result(nan_64)
+      real(REAL64) :: nan_64
+
+      nan_64 = ieee_value(nan_64,  ieee_quiet_nan)
+
+   end function nan64
+
+   function inf() result(inf_32)
+      real(REAL32) :: inf_32
+
+      inf_32 = ieee_value(inf_32,  ieee_positive_inf)
+
+   end function inf
+
+   function inf64() result(inf_64)
+      real(REAL64) :: inf_64
+
+      inf_64 = ieee_value(inf_64,  ieee_positive_inf)
+
+   end function inf64
+
+
 !
 ! !REVISION HISTORY:
 ! Created by Mariana Vertenstein based on cam module created by

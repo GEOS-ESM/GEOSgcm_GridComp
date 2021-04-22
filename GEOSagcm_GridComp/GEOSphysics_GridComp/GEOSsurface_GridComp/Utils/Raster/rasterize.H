@@ -335,8 +335,8 @@
     dxi   = 1.0/dx
     dyi   = 1.0/dy
 
-    d2r    = (2._8*RASTER_PI)/range
-    r2d    = range/(2._8*RASTER_PI)
+    d2r    = (2._REAL64*RASTER_PI)/range
+    r2d    = range/(2._REAL64*RASTER_PI)
 
     !  Report
 
@@ -559,10 +559,10 @@
     REAL_   :: x0, y0
 
 
-    if    (abs(miny+90._8) < 1.e-10_8) then
+    if    (abs(miny+90._REAL64) < 1.e-10_REAL64) then
        i1 = 1
        i2 = xsize
-    elseif(abs(maxy-90._8) < 1.e-10_8) then
+    elseif(abs(maxy-90._REAL64) < 1.e-10_REAL64) then
        i1 = 1 
        i2 = xsize
     else

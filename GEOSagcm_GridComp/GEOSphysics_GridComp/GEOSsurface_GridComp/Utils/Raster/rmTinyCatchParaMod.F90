@@ -10,6 +10,7 @@ module rmTinyCatchParaMod
   use date_time_util  
   use leap_year
   use MAPL_ConstantsMod
+  use iso_fortran_env
   
   implicit none
   logical, parameter :: error_file=.true.
@@ -414,7 +415,7 @@ do while (datetime_le_refdatetime(before_time,end_time))
    yr1= after_time%year -2000    !(k+12)/12
    mn1= after_time%month         !mod(k+12,12)+1
    dy1= after_time%day
-   write (mmdd,'(i2.2,a1,i2.2)'),mn,'.',dy
+   write (mmdd,'(i2.2,a1,i2.2)') mn,'.',dy
 
    fname ='data/CATCH/MODIS_8-DayClim/' &
 	 //'MOD15A2.YYYY.'//mmdd//'.global_2.5min.data'
@@ -729,26 +730,26 @@ END SUBROUTINE modis_lai
     INTEGER :: ip,ip2,nc_gcm,nr_gcm,nc_ocean,nr_ocean,pick_val,k,nc,nr
     INTEGER :: typ,pfs,ig,jg,indx,indx_old,j_dum,ierr,n,count,count_remain,i_dum
     REAL :: lat,lon,mx_frac,da,tarea
-    REAL(KIND=8) :: fr_gcm,fr_ocean,fr_cat,lats,dx,dy,d2r
+    REAL(KIND=REAL64) :: fr_gcm,fr_ocean,fr_cat,lats,dx,dy,d2r
     INTEGER :: im,jm,i,j,jk,ik,jx
     INTEGER :: l,imn,imx,jmn,jmx
     CHARACTER*30 :: version
     CHARACTER*128 :: fname,gname,gout,gpath
     character*300 :: string1, string2
-    integer(kind=4), allocatable, dimension(:,:) :: grid
-    integer(kind=4), allocatable, dimension(:,:) :: grida
-    REAL (kind=8), PARAMETER :: threshold=0.01,RADIUS=MAPL_RADIUS,pi= MAPL_PI 
-    real(kind=8), allocatable, dimension(:) :: tile_frac,total_area,pfaf,tile_area(:),lon_c(:),lat_c(:),int_c(:)
+    integer(kind=INT32), allocatable, dimension(:,:) :: grid
+    integer(kind=INT32), allocatable, dimension(:,:) :: grida
+    REAL (kind=REAL64), PARAMETER :: threshold=0.01,RADIUS=MAPL_RADIUS,pi= MAPL_PI 
+    real(kind=REAL64), allocatable, dimension(:) :: tile_frac,total_area,pfaf,tile_area(:),lon_c(:),lat_c(:),int_c(:)
     character*2 :: dateline,poles
     integer, allocatable, dimension(:) :: rev_indx
     real, allocatable, dimension(:,:):: tile_frac_2d
-    integer(kind=4),allocatable :: GRIDX(:,:)
+    integer(kind=INT32),allocatable :: GRIDX(:,:)
     !
     nc=i_raster 
     nr=j_raster
-    dx  = 360._8/nc
-    dy  = 180._8/nr
-    d2r = PI/180._8
+    dx  = 360._REAL64/nc
+    dy  = 180._REAL64/nr
+    d2r = PI/180._REAL64
 
     print *,'Revised tile space..:','clsm/'//trim(gout)//'-Pfaf.notiny'
     
@@ -1022,7 +1023,7 @@ END SUBROUTINE modis_lai
     da = radius*radius*pi*pi/24./24./180./180./1000000.
     
     do jk =1,nr
-       lats = -90._8 + (jk - 0.5_8)*dy
+       lats = -90._REAL64 + (jk - 0.5_REAL64)*dy
        read (11) grid(:,1)
        do ik = 1,nc
           grida(ik,1)=rev_indx(grid(ik,1))
@@ -1697,7 +1698,7 @@ END SUBROUTINE modis_scale_para
     integer :: nc_gcm,nr_gcm,nc_ocean,nr_ocean
     REAL :: lat,lon,fr_gcm,fr_cat,tarea
     INTEGER :: typ,pfs,ig,jg,j_dum,ierr,indx_dum,indr1,indr2,indr3 ,ip2
-    REAL (kind=8), PARAMETER :: RADIUS=MAPL_RADIUS,pi= MAPL_PI 
+    REAL (kind=REAL64), PARAMETER :: RADIUS=MAPL_RADIUS,pi= MAPL_PI 
     character*100 :: path,fname,fout,metpath,gtopo30
     character (*) :: gfilet,gfiler
     character*10 :: dline
@@ -1718,9 +1719,9 @@ END SUBROUTINE modis_scale_para
     i_sib = nx
     j_sib = ny
 
-    dx  = 360._8/i_sib
-    dy  = 180._8/j_sib
-    d2r = PI/180._8
+    dx  = 360._REAL64/i_sib
+    dy  = 180._REAL64/j_sib
+    d2r = PI/180._REAL64
 
     open (10,file=trim(gtopo30),form='unformatted',status='old')
     read (10) q0
@@ -1785,7 +1786,7 @@ END SUBROUTINE modis_scale_para
     
     do j=1,j_sib
 
-       lats = -90._8 + (j - 0.5_8)*dy
+       lats = -90._REAL64 + (j - 0.5_REAL64)*dy
        read (10)(catid(i),i=1,i_sib)
 
        do i=1,i_sib          
@@ -2179,6 +2180,7 @@ END SUBROUTINE modis_scale_para
     integer, allocatable ::  mos_veg(:,:)
     real, allocatable :: veg_frac(:,:)
     integer :: j,k,mcls
+    integer :: nx
     INTEGER CATID(nx),cls,cls2,bcls
     REAL, allocatable :: veg(:,:),bare_frac(:),zdep2_g(:,:)
     REAL :: fmax0,dummy,tem(6),mfrac,sfrac,bfrac
@@ -2194,7 +2196,7 @@ END SUBROUTINE modis_scale_para
     CHARACTER*20 :: version,resoln,continent
     character*2 :: chyear
     integer :: mon,smon,imon,year
-    integer :: nx,ny,status
+    integer :: ny,status
     logical :: regrid,ease_grid
     integer, pointer :: Raster(:,:)
     real, pointer, dimension (:)  :: z2, z0
@@ -6009,7 +6011,7 @@ subroutine RegridRaster(Rin,Rout)
   integer, intent(IN)  :: Rin(:,:)
   integer, intent(OUT) :: Rout(:,:)
 
-  REAL(KIND=8) :: xx, yy
+  REAL(KIND=REAL64) :: xx, yy
   integer :: i,j,ii,jj
 
   xx = size(Rin ,1)/float(size(Rout,1))
@@ -6032,7 +6034,7 @@ subroutine RegridRaster1(Rin,Rout)
   integer*1, intent(IN)  :: Rin(:,:)
   integer*1, intent(OUT) :: Rout(:,:)
 
-  REAL(KIND=8) :: xx, yy
+  REAL(KIND=REAL64) :: xx, yy
   integer :: i,j,ii,jj
 
   xx = size(Rin ,1)/float(size(Rout,1))
@@ -6056,7 +6058,7 @@ subroutine RegridRaster2(Rin,Rout)
   integer(kind=2), intent(IN)  :: Rin(:,:)
   integer(kind=2), intent(OUT) :: Rout(:,:)
 
-  REAL(KIND=8) :: xx, yy
+  REAL(KIND=REAL64) :: xx, yy
   integer :: i,j,ii,jj
 
   xx = size(Rin ,1)/float(size(Rout,1))
@@ -6080,7 +6082,7 @@ subroutine RegridRasterReal(Rin,Rout)
   real, intent(IN)  :: Rin(:,:)
   real, intent(OUT) :: Rout(:,:)
 
-  REAL(KIND=8) :: xx, yy
+  REAL(KIND=REAL64) :: xx, yy
   integer :: i,j,ii,jj
 
   xx = size(Rin ,1)/float(size(Rout,1))
@@ -6429,10 +6431,10 @@ if(np.lt.nl+nr+1.or.nl.lt.0.or.nr.lt.0.or.ld.gt.m.or.m.gt.MMAX  &
     	sum=0. 
     if(ipj.eq.0) sum=1. 
     do k=1,nr 
-      sum=sum+dfloat(k)**ipj 
+      sum=sum+float(k)**ipj 
     end do 
     do k=1,nl 
-      sum=sum+dfloat(-k)**ipj 
+      sum=sum+float(-k)**ipj 
     end do 
     mm=min(ipj,2*m-ipj) 
     do imj=-mm,mm,2 
@@ -6478,8 +6480,9 @@ END SUBROUTINE savgol
  Subroutine LUDCMP(A,N,NP,INDX,D,CODE)
 INTEGER, PARAMETER :: NMAX=100
 REAL, PARAMETER :: TINY=1E-12
+ INTEGER NP,N
  real  AMAX,DUM, SUM, A(NP,NP),VV(NMAX)
- INTEGER CODE, D, INDX(N),NP,N,I,J,K,IMAX
+ INTEGER CODE, D, INDX(N),I,J,K,IMAX
 
  D=1; CODE=0
 

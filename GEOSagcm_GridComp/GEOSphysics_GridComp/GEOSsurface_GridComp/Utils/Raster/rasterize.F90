@@ -4,6 +4,7 @@
 module LogRectRasterizeMod
 
   use MAPL_SORTMOD
+  use iso_fortran_env
 
   implicit none
   private
@@ -115,7 +116,7 @@ subroutine SortTiling(Raster,rTable,iTable)
   REAL_,   intent(INOUT) :: rTable(:,:)
 
   integer,   dimension(size(iTable,2)) :: old, new
-  integer*8, dimension(size(iTable,2)) :: key, key0
+  integer(kind=INT64), dimension(size(iTable,2)) :: key, key0
   integer :: ip, i, j, k
 
   ip = size(rTable,2)

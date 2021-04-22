@@ -26,6 +26,10 @@ include_directories(${INC_NETCDF})
 esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL)
 target_link_libraries(${this} PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
 
+if (CMAKE_Fortran_COMPILER_ID MATCHES "NAG")
+   target_compile_options (${this} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:-maxcontin=1024>)
+endif ()
+
 if(NOT FORTRAN_COMPILER_SUPPORTS_FINDLOC)
    target_compile_definitions(${this} PRIVATE USE_EXTERNAL_FINDLOC)
 endif ()

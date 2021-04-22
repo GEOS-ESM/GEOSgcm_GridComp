@@ -1,8 +1,9 @@
 
 module CubedSphere_GridMod
 use MAPL_ConstantsMod
+use iso_fortran_env
 
-#define r8 kind=8
+#define r8 kind=REAL64
 
   implicit none
 
@@ -12,10 +13,10 @@ use MAPL_ConstantsMod
   private
 
 #ifdef EIGHT_BYTE
- integer, parameter:: f_p = 8!selected_real_kind(15)   ! same as 12 on Altix
+ integer, parameter:: f_p = REAL64!selected_real_kind(15)   ! same as 12 on Altix
 #else
 ! Higher precisions for grid geometrical factors:
- integer, parameter:: f_p = 8!selected_real_kind(20)
+ integer, parameter:: f_p = REAL64!selected_real_kind(20)
 #endif
 
 contains
