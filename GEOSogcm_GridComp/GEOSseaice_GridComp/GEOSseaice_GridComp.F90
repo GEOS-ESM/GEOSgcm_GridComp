@@ -2,7 +2,7 @@
 
 #include "MAPL_Generic.h"
 
-module GEOSseaice_GridCompMod
+module GEOS_SeaIceGridCompMod
 
 !BOP
 ! !MODULE:  GEOSseaice_GridCompMod -- Implements ESMF wrapper to invoke the DATASEAICE/CICE4/CICE6 seaice models.
@@ -145,12 +145,25 @@ contains
 
    ! import states from child components will be promoted here 
 
-
+   if (DUAL_OCEAN)
+        
+      call MAPL_AddImportSpec(GC,                                       &
+         SHORT_NAME         = 'SS_FOUND',                               &
+         LONG_NAME          = 'foundation_salinity_for_interface_layer',&
+         UNITS              = 'PSU',                                    &
+         DIMS               = MAPL_DimsHorzOnly,                        &
+         VLOCATION          = MAPL_VLocationNone,                       &
+                                                                 __RC__ )
+   endif 
 
 !  !EXPORT STATE:
 
 
 ! Exports of child
+    call MAPL_AddExportSpec ( GC   ,                              &
+             SHORT_NAME = 'FRACICE',                              &
+             CHILD_ID   = ICE ,                                   &
+                                                           __RC__ )
 
     if(DO_DATASEAICE==0) then
 
@@ -199,10 +212,6 @@ contains
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
 
-        call MAPL_AddExportSpec ( GC   ,                          &
-             SHORT_NAME = 'FRACICE',                              &
-             CHILD_ID   = ICE ,                                   &
-                                                           __RC__ )
 
         call MAPL_AddExportSpec ( GC   ,                          &
              SHORT_NAME = 'STRENGTH',                             &
@@ -676,27 +685,9 @@ contains
     type (ESMF_State       ), pointer   :: GEX(:)
 
 ! Pointers to Imports
+    real, pointer :: SS_FOUNDi(:,:) 
 
     real, pointer :: FROCEAN(:,:)
-    real, pointer :: TAUXi(:,:)
-    real, pointer :: TAUYi(:,:)
-    real, pointer :: PENUVRi(:,:)
-    real, pointer :: PENPARi(:,:)
-    real, pointer :: PENUVFi(:,:)
-    real, pointer :: PENPAFi(:,:)
-    real, pointer :: DRNIRi(:,:)
-    real, pointer :: DFNIRi(:,:)
-    real, pointer :: HEATi(:,:,:)
-    real, pointer :: DISCHARGEi(:,:)
-    real, pointer :: LWFLXi(:,:)
-    real, pointer :: SHFLXi(:,:)
-    real, pointer :: QFLUXi(:,:)
-    real, pointer :: SNOWi(:,:)
-    real, pointer :: RAINi(:,:)
-    real, pointer :: FHOCN(:,:)
-    real, pointer :: FRESH(:,:)
-    real, pointer :: FSALT(:,:)
-    real, pointer :: PEN_OCN(:,:)
 
 ! Pointers to Exports
 
@@ -724,26 +715,31 @@ contains
 
 ! Pointers to imports of child
 
-    real, pointer :: TAUX(:,:)
-    real, pointer :: TAUY(:,:)
-    real, pointer :: PENUVR(:,:)
-    real, pointer :: PENPAR(:,:)
-    real, pointer :: PENUVF(:,:)
-    real, pointer :: PENPAF(:,:)
-    real, pointer :: DRNIR(:,:)
-    real, pointer :: DFNIR(:,:)
-    real, pointer :: HEAT(:,:,:)
-    real, pointer :: DISCHARGE(:,:)
-    real, pointer :: LWFLX(:,:)
-    real, pointer :: SHFLX(:,:)
-    real, pointer :: QFLUX(:,:)
-    real, pointer :: RAIN(:,:)
-    real, pointer :: SNOW(:,:)
-    real, pointer :: SFLX(:,:)
-    real, pointer :: FI(:,:)
-    real, pointer :: FId(:,:)
+    real, pointer, dimension(:,:,:) :: TIO8 => null()
+    real, pointer, dimension(:,:,:) :: FRO8 => null()
+    real, pointer, dimension(:,:,:) :: VOLICEO => null()
+    real, pointer, dimension(:,:,:) :: VOLSNOO => null()
+    real, pointer, dimension(:,:,:) :: TAUAGEO => null()
+    real, pointer, dimension(:,:,:) :: MPONDO => null()
+    real, pointer, dimension(:,:,:) :: ERGICEO => null()
+    real, pointer, dimension(:,:,:) :: ERGSNOO => null()
+    real, pointer, dimension(:,:)   :: AICEDO => null()
+    real, pointer, dimension(:,:)   :: HICEDO => null()
+    real, pointer, dimension(:,:)   :: HSNODO => null()
+
+    real, pointer, dimension(:,:,:) :: TIO8d => null()
+    real, pointer, dimension(:,:,:) :: FRO8d => null()
+    real, pointer, dimension(:,:,:) :: VOLICEOd => null()
+    real, pointer, dimension(:,:,:) :: VOLSNOOd => null()
+    real, pointer, dimension(:,:,:) :: TAUAGEOd => null()
+    real, pointer, dimension(:,:,:) :: MPONDOd => null()
+    real, pointer, dimension(:,:,:) :: ERGICEOd => null()
+    real, pointer, dimension(:,:,:) :: ERGSNOOd => null()
 
 ! Pointers to exports of child
+    real, pointer :: FId(:,:)
+    real, pointer, dimension(:,:)   :: DAIDTNUDG => null()
+    real, pointer, dimension(:,:)   :: DVIDTNUDG => null()
 
 
 
@@ -755,8 +751,11 @@ contains
     integer           :: LM
     integer           :: NUM
     real, allocatable :: WGHT(:,:)
-    real              :: DT, TAU_SST
-    real              :: TAU_SST_UNDER_ICE
+    real              :: DT, TAU_SIT
+    integer           :: CAT_DIST               ! parameters for sea ice nudging
+    real              :: HIN, RN,  TAU_SIT      ! parameters for sea ice nudging
+
+
     real, pointer     :: LONS  (:,:)
     real, pointer     :: LATS  (:,:)
 
@@ -826,18 +825,40 @@ contains
 
     if( MyTime <= EndTime ) then ! Time to run
 
+       if (dual_ocean) then
+
+           call MAPL_GetPointer(IMPORT   , SS_FOUNDi , 'SS_FOUND', __RC__)
+
+           call MAPL_GetPointer(GIM(ICE) , FRO8     , 'FRACICE',  __RC__)
+           call MAPL_GetPointer(GIM(ICE) , TIO8     , 'TI'     ,  __RC__)
+           call MAPL_GetPointer(GIM(ICE) , VOLICEO  , 'VOLICE' ,  __RC__)
+           call MAPL_GetPointer(GIM(ICE) , VOLSNOO  , 'VOLSNO' ,  __RC__)
+           call MAPL_GetPointer(GIM(ICE) , ERGICEO  , 'ERGICE' ,  __RC__)
+           call MAPL_GetPointer(GIM(ICE) , ERGSNOO  , 'ERGSNO' ,  __RC__)
+           call MAPL_GetPointer(GIM(ICE) , TAUAGEO  , 'TAUAGE' ,  __RC__)
+           call MAPL_GetPointer(GIM(ICE) , MPONDO   , 'MPOND'  ,  __RC__)
+
+           call MAPL_GetPointer(GIM(ICEd), FRO8d    , 'FRACICE',  __RC__)
+           call MAPL_GetPointer(GIM(ICEd), TIO8d    , 'TI'     ,  __RC__)
+           call MAPL_GetPointer(GIM(ICEd), VOLICEOd , 'VOLICE' ,  __RC__)
+           call MAPL_GetPointer(GIM(ICEd), VOLSNOOd , 'VOLSNO' ,  __RC__)
+           call MAPL_GetPointer(GIM(ICEd), ERGICEOd , 'ERGICE' ,  __RC__)
+           call MAPL_GetPointer(GIM(ICEd), ERGSNOOd , 'ERGSNO' ,  __RC__)
+           call MAPL_GetPointer(GIM(ICEd), TAUAGEOd , 'TAUAGE' ,  __RC__)
+           call MAPL_GetPointer(GIM(ICEd), MPONDOd  , 'MPOND'  ,  __RC__)
 
 
-       !call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-       !call MAPL_GetPointer(GEX(OCN), SW,   'SW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+           call MAPL_GetPointer(GEX(ICE) , AICEDO    , 'AICE'    , __RC__)  ! SA: AICE needs to be looked into
+           call MAPL_GetPointer(GEX(ICE) , HICEDO    , 'HICE'    , __RC__)  ! BZ: These diags need to be updated
+           call MAPL_GetPointer(GEX(ICE) , HSNODO    , 'HSNO'    , __RC__)  ! after ice nudging
+           call MAPL_GetPointer(GEX(ICE) , DAIDTNUDG , 'DAIDTNUDG' , alloc=.TRUE., __RC__)
+           call MAPL_GetPointer(GEX(ICE) , DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., __RC__)
+           call MAPL_GetPointer(GEX(ICEd), FId       , 'FRACICE'   , alloc=.true., __RC__)
 
-       !if (dual_ocean) then
-       !   call MAPL_GetPointer(GEX(OCNd), TWd,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
-       !   call MAPL_GetPointer(IMPORT, FId, 'FRACICEd'   , RC=STATUS); VERIFY_(STATUS)
-       !end if
+       end if
        
-
-
+       call MAPL_GetResource(STATE,DT,  Label="RUN_DT:",    __RC__)             ! Get AGCM Heartbeat
+       call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, __RC__) ! set Default OCEAN_DT to AGCM Heartbeat
 
 ! Loop the sea ice model
 !---------------------
@@ -854,22 +875,76 @@ contains
           if (.not. DUAL_OCEAN) then
              call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, PrivateState%CLOCK, __RC__)
           else
+             call MAPL_GetResource( MAPL, HIN, Label="SEA_ICE_NUDGING_HINEW:" , DEFAULT=0.5, __RC__ )
+             call MAPL_GetResource( MAPL, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1, __RC__ )
              if (PHASE == 1) then
                 ! corrector
                 call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
                      exportState=GEX(ICEd), clock=CLOCK, phase=1, userRC=STATUS)
                 VERIFY_(STATUS)
-                call MAPL_GenericRunCouplers( STATE, CHILD=OCNd, CLOCK=CLOCK, __RC__ )
+                call MAPL_GenericRunCouplers( STATE, CHILD=ICEd, CLOCK=CLOCK, __RC__ )
                 call ESMF_GridCompRun( GCS(ICE), importState=GIM(ICE), &
                      exportState=GEX(ICE), clock=CLOCK, phase=1, userRC=STATUS)
                 VERIFY_(STATUS)
-                call MAPL_GenericRunCouplers( STATE, CHILD=OCN, CLOCK=CLOCK, __RC__ )
+                call MAPL_GenericRunCouplers( STATE, CHILD=ICE, CLOCK=CLOCK, __RC__ )
+
+                TIO8d = TIO8
+                FRO8d = FRO8
+                VOLICEOd = VOLICEO
+                VOLSNOOd = VOLSNOO
+                TAUAGEOd = TAUAGEO
+                MPONDOd = MPONDO
+                ERGICEOd = ERGICEO
+                ERGSNOOd = ERGSNOO
+                call MAPL_GetResource(MAPL,TAU_SIT, LABEL="SEA_ICE_NUDGING_RELAX:", default=86400.0, __RC__)
+                call MAPL_GetResource(MAPL,RN , Label="SEA_ICE_NUDGING_R:" , DEFAULT=0.1, __RC__)
+                call ice_nudging(FRO8d,         TIO8d,          &
+                                 VOLICEOd,      VOLSNOOd,       &
+                                 ERGICEOd,      ERGSNOOd,       &
+                                 TAUAGEOd,      MPONDOd,        &
+                                 FId,           HIN,            &
+                                 NUM_ICE_CATEGORIES,            &
+                                 TAU_SIT,       RN,             &
+                                 NUM_ICE_LAYERS,                &
+                                 NUM_SNOW_LAYERS,               &
+                                 CAT_DIST,      DT,             &
+                                 salinity = SS_FOUNDi,          &
+                                 ai_tend = DAIDTNUDG,           &
+                                 vi_tend = DVIDTNUDG )
+                 if(associated(AICEDO)) then
+                     where(AICEDO/=MAPL_UNDEF)
+                        AICEDO = sum(FRO8d, dim=3)
+                     endwhere
+                 endif
+                 if(associated(HICEDO)) then
+                     where(HICEDO/=MAPL_UNDEF)
+                        HICEDO = sum(VOLICEOd, dim=3)
+                     endwhere
+                 endif
+                 if(associated(HSNODO)) then
+                     where(HSNODO/=MAPL_UNDEF)
+                        HSNODO = sum(VOLSNOOd, dim=3)
+                     endwhere
+                 endif
              else
                 ! predictor
                 call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
                      exportState=GEX(ICEd), clock=CLOCK, phase=1, userRC=STATUS)
                 VERIFY_(STATUS)
                 call MAPL_GenericRunCouplers( STATE, CHILD=OCNd, CLOCK=CLOCK, __RC__ )
+
+                call ice_nudging(FRO8d,       TIO8d,       &
+                            VOLICEOd,      VOLSNOOd,       &
+                            ERGICEOd,      ERGSNOOd,       &
+                            TAUAGEOd,      MPONDOd,        &
+                            FId,           HIN,            &
+                            NUM_ICE_CATEGORIES,            &
+                            DT,            0.0,            &
+                            NUM_ICE_LAYERS,                &
+                            NUM_SNOW_LAYERS,               &
+                            CAT_DIST,      DT)
+
+                
              end if
           end if
 
@@ -903,4 +978,4 @@ contains
 
   end subroutine Run
 
-end module GEOSseaice_GridCompMod
+end module GEOS_SeaIceGridCompMod
