@@ -956,7 +956,7 @@ contains
                 call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
                      exportState=GEX(ICEd), clock=CLOCK, phase=1, userRC=STATUS)
                 VERIFY_(STATUS)
-                call MAPL_GenericRunCouplers( STATE, CHILD=OCNd, CLOCK=CLOCK, __RC__ )
+                call MAPL_GenericRunCouplers( STATE, CHILD=ICEd, CLOCK=CLOCK, __RC__ )
 
                 call ice_nudging(FRO8d,       TIO8d,       &
                             VOLICEOd,      VOLSNOOd,       &
