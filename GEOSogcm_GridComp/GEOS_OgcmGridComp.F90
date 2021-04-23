@@ -1233,6 +1233,7 @@ contains
     VERIFY_(STATUS)
     call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
     VERIFY_(STATUS)
+    ! *MARK*
     !if (SEAICEd /= 0) then
     !   call ESMF_StateGet (GIM(SEAICEd), 'TI', FIELD, RC=STATUS)
     !   VERIFY_(STATUS)
@@ -1581,9 +1582,9 @@ contains
     real, pointer, dimension(:,:,:) :: ERGSNOO => null()
     real, pointer, dimension(:,:)   :: DAIDTNUDG => null()
     real, pointer, dimension(:,:)   :: DVIDTNUDG => null()
-    real, pointer, dimension(:,:)   :: AICEDO => null()
-    real, pointer, dimension(:,:)   :: HICEDO => null()
-    real, pointer, dimension(:,:)   :: HSNODO => null()
+    !real, pointer, dimension(:,:)   :: AICEDO => null()
+    !real, pointer, dimension(:,:)   :: HICEDO => null()
+    !real, pointer, dimension(:,:)   :: HSNODO => null()
 
     !real, pointer, dimension(:,:,:) :: VOLICEOd => null()
     !real, pointer, dimension(:,:,:) :: VOLSNOOd => null()
@@ -1628,8 +1629,8 @@ contains
     integer :: PHASE_
     integer, allocatable :: CHLD(:)
     ! *MARK*
-    integer :: CAT_DIST                  ! parameters for sea ice nudging
-    real    :: HIN, RN, DT, TAU_SIT      ! parameters for sea ice nudging 
+    !integer :: CAT_DIST                  ! parameters for sea ice nudging
+    !real    :: HIN, RN, DT, TAU_SIT      ! parameters for sea ice nudging 
 
 !=============================================================================
 
@@ -1882,8 +1883,8 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer(GIM(SEAICE), FHOCNO  , 'FHOCN'  ,  RC=STATUS)
        VERIFY_(STATUS)
-       if(dual_ocean) then
        ! *MARK* 
+       !if(dual_ocean) then
        ! call MAPL_GetPointer(GIM(SEAICEd), FRO8d    , 'FRACICE',  RC=STATUS)
        ! VERIFY_(STATUS)
        ! call MAPL_GetPointer(GIM(SEAICEd), TIO8d    ,  'TI'    ,  RC=STATUS)
@@ -1904,13 +1905,13 @@ contains
        !  VERIFY_(STATUS)
        !  call MAPL_GetPointer(GEX(SEAICE), DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., RC=STATUS)
        !  VERIFY_(STATUS)
-         call MAPL_GetPointer(GEX(SEAICE), AICEDO , 'AICE' , RC=STATUS)  ! SA: AICE needs to be looked into
-         VERIFY_(STATUS)
-         call MAPL_GetPointer(GEX(SEAICE), HICEDO , 'HICE' , RC=STATUS)  ! BZ: not clear about why they are needed here
-         VERIFY_(STATUS)
-         call MAPL_GetPointer(GEX(SEAICE), HSNODO , 'HSNO' , RC=STATUS)
-         VERIFY_(STATUS)
-       endif
+       !  call MAPL_GetPointer(GEX(SEAICE), AICEDO , 'AICE' , RC=STATUS)  ! SA: AICE needs to be looked into
+       !  VERIFY_(STATUS)
+       !  call MAPL_GetPointer(GEX(SEAICE), HICEDO , 'HICE' , RC=STATUS)  
+       !  VERIFY_(STATUS)
+       !  call MAPL_GetPointer(GEX(SEAICE), HSNODO , 'HSNO' , RC=STATUS)
+       !  VERIFY_(STATUS)
+      ! endif
     endif
 
    call MAPL_GetPointer(GIM(OCEAN), LWFLXO, 'LWFLX',  RC=STATUS)
@@ -2261,70 +2262,72 @@ contains
     VERIFY_(STATUS)
     call MAPL_LocStreamTransform( ExchGrid, HI     ,  HIO   , RC=STATUS)
     VERIFY_(STATUS)
-
-    if(DUAL_OCEAN) then
-        call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource (MAPL, DT, Label="DT:", DEFAULT=DT, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource (MAPL, HIN, Label="SEA_ICE_NUDGING_HINEW:" , DEFAULT=0.5, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource (MAPL, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1, RC=STATUS)
-        VERIFY_(STATUS)
-        if(PHASE == 2) then ! phase 2 is predictor
-           call ice_nudging(FRO8d,         TIO8d,          &
-                            VOLICEOd,      VOLSNOOd,       &
-                            ERGICEOd,      ERGSNOOd,       &
-                            TAUAGEOd,      MPONDOd,        &
-                            FRO,           HIN,            &
-                            NUM_ICE_CATEGORIES,            &
-                            DT,            0.0,            &
-                            NUM_ICE_LAYERS,                &
-                            NUM_SNOW_LAYERS,               &
-                            CAT_DIST,      DT)
-        else ! corrector
-           TIO8d = TIO8
-           FRO8d = FRO8
-           VOLICEOd = VOLICEO
-           VOLSNOOd = VOLSNOO
-           TAUAGEOd = TAUAGEO
-           MPONDOd = MPONDO
-           ERGICEOd = ERGICEO
-           ERGSNOOd = ERGSNOO
-           call MAPL_GetResource(MAPL,TAU_SIT, LABEL="SEA_ICE_NUDGING_RELAX:", default=86400.0,RC=STATUS)
-           VERIFY_(STATUS)
-           call MAPL_GetResource(MAPL,RN , Label="SEA_ICE_NUDGING_R:" , DEFAULT=0.1, RC=STATUS)
-           VERIFY_(STATUS)
-           call ice_nudging(FRO8d,         TIO8d,          &
-                            VOLICEOd,      VOLSNOOd,       &
-                            ERGICEOd,      ERGSNOOd,       &
-                            TAUAGEOd,      MPONDOd,        &
-                            FRO,           HIN,            &
-                            NUM_ICE_CATEGORIES,            &
-                            TAU_SIT,       RN,             & 
-                            NUM_ICE_LAYERS,                &
-                            NUM_SNOW_LAYERS,               &
-                            CAT_DIST,      DT,             &               
-                            salinity = SS_FOUNDO,          &
-                            ai_tend = DAIDTNUDG,           &
-                            vi_tend = DVIDTNUDG )
-           if(associated(AICEDO)) then
-               where(AICEDO/=MAPL_UNDEF)
-                   AICEDO = sum(FRO8d, dim=3)
-               endwhere
-           endif  
-           if(associated(HICEDO)) then
-               where(HICEDO/=MAPL_UNDEF)
-                   HICEDO = sum(VOLICEOd, dim=3)
-               endwhere
-           endif  
-           if(associated(HSNODO)) then
-               where(HSNODO/=MAPL_UNDEF)
-                   HSNODO = sum(VOLSNOOd, dim=3)
-               endwhere
-           endif  
-        endif
-    endif 
+   
+    ! *MARK*
+    ! ice nudging is done in GEOS_SeaiceGridComp
+    !if(DUAL_OCEAN) then
+    !    call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
+    !    VERIFY_(STATUS)
+    !    call MAPL_GetResource (MAPL, DT, Label="DT:", DEFAULT=DT, RC=STATUS)
+    !    VERIFY_(STATUS)
+    !    call MAPL_GetResource (MAPL, HIN, Label="SEA_ICE_NUDGING_HINEW:" , DEFAULT=0.5, RC=STATUS)
+    !    VERIFY_(STATUS)
+    !    call MAPL_GetResource (MAPL, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1, RC=STATUS)
+    !    VERIFY_(STATUS)
+    !    if(PHASE == 2) then ! phase 2 is predictor
+    !       call ice_nudging(FRO8d,         TIO8d,          &
+    !                        VOLICEOd,      VOLSNOOd,       &
+    !                        ERGICEOd,      ERGSNOOd,       &
+    !                        TAUAGEOd,      MPONDOd,        &
+    !                        FRO,           HIN,            &
+    !                        NUM_ICE_CATEGORIES,            &
+    !                        DT,            0.0,            &
+    !                        NUM_ICE_LAYERS,                &
+    !                        NUM_SNOW_LAYERS,               &
+    !                        CAT_DIST,      DT)
+    !    else ! corrector
+    !       TIO8d = TIO8
+    !       FRO8d = FRO8
+    !       VOLICEOd = VOLICEO
+    !       VOLSNOOd = VOLSNOO
+    !       TAUAGEOd = TAUAGEO
+    !       MPONDOd = MPONDO
+    !       ERGICEOd = ERGICEO
+    !       ERGSNOOd = ERGSNOO
+    !       call MAPL_GetResource(MAPL,TAU_SIT, LABEL="SEA_ICE_NUDGING_RELAX:", default=86400.0,RC=STATUS)
+    !       VERIFY_(STATUS)
+    !       call MAPL_GetResource(MAPL,RN , Label="SEA_ICE_NUDGING_R:" , DEFAULT=0.1, RC=STATUS)
+    !       VERIFY_(STATUS)
+    !       call ice_nudging(FRO8d,         TIO8d,          &
+    !                        VOLICEOd,      VOLSNOOd,       &
+    !                        ERGICEOd,      ERGSNOOd,       &
+    !                        TAUAGEOd,      MPONDOd,        &
+    !                        FRO,           HIN,            &
+    !                        NUM_ICE_CATEGORIES,            &
+    !                        TAU_SIT,       RN,             & 
+    !                        NUM_ICE_LAYERS,                &
+    !                        NUM_SNOW_LAYERS,               &
+    !                        CAT_DIST,      DT,             &               
+    !                        salinity = SS_FOUNDO,          &
+    !                        ai_tend = DAIDTNUDG,           &
+    !                        vi_tend = DVIDTNUDG )
+    !       if(associated(AICEDO)) then
+    !           where(AICEDO/=MAPL_UNDEF)
+    !               AICEDO = sum(FRO8d, dim=3)
+    !           endwhere
+    !       endif  
+    !       if(associated(HICEDO)) then
+    !           where(HICEDO/=MAPL_UNDEF)
+    !               HICEDO = sum(VOLICEOd, dim=3)
+    !           endwhere
+    !       endif  
+    !       if(associated(HSNODO)) then
+    !           where(HSNODO/=MAPL_UNDEF)
+    !               HSNODO = sum(VOLSNOOd, dim=3)
+    !           endwhere
+    !       endif  
+    !    endif
+    !endif 
 
     if (DO_CICE_THERMO == 0) then  
        call MAPL_LocStreamTransform( ExchGrid, TI     ,  TIO   , RC=STATUS)

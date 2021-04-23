@@ -153,6 +153,7 @@ contains
          UNITS              = 'PSU',                                    &
          DIMS               = MAPL_DimsHorzOnly,                        &
          VLOCATION          = MAPL_VLocationNone,                       &
+         RESTART            = MAPL_RestartSkip,                         &
                                                                  __RC__ )
    endif 
 
@@ -498,7 +499,7 @@ contains
                                'VOLICE' ,     'VOLSNO',            &    
                                'ERGICE ',     'ERGSNO',            & 
                                'MPOND'  ,     'TAUAGE'],           &
-            CHILD=ICEd,          __RC__  )
+                               CHILD=ICEd,                 __RC__  )
     end if
 
 
@@ -638,9 +639,21 @@ contains
 
     call MAPL_TimerOff(STATE,"TOTAL"     )
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, __RC__ )
+    call MAPL_TimerOn(STATE,"TOTAL"     )
 
- 
+    if (ICEd /= 0) then
+       call ESMF_StateGet (GIM(ICEd), 'TI', FIELD, __RC__)
+       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., __RC__)
+       call ESMF_StateGet (GIM(ICEd), 'HI', FIELD, __RC__)
+       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., __RC__)
+       call ESMF_StateGet (GIM(ICEd), 'SI', FIELD, __RC__)
+       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., __RC__)
+    end if
+
+    call MAPL_TimerOff(STATE,"TOTAL"     )
     call MAPL_TimerOff(STATE,"INITIALIZE")
+
+
 
 ! All Done
 !---------
@@ -676,6 +689,7 @@ contains
 ! Local derived type aliases
 
     type (MAPL_MetaComp),     pointer   :: STATE
+    type (ESMF_Config)                  :: CF
     type (ESMF_Time)                    :: EndTime
     type (ESMF_Time)                    :: MyTime,ct
     type (T_PrivateState),    pointer   :: PrivateSTATE
@@ -684,60 +698,50 @@ contains
     type (ESMF_State       ), pointer   :: GIM(:)
     type (ESMF_State       ), pointer   :: GEX(:)
 
+
+    integer, parameter                  :: NUM_SNOW_LAYERS=1
+    integer                             :: NUM_ICE_CATEGORIES
+    integer                             :: NUM_ICE_LAYERS
+
+    integer                             :: DO_CICE_THERMO
+
+
 ! Pointers to Imports
     real, pointer :: SS_FOUNDi(:,:) 
 
-    real, pointer :: FROCEAN(:,:)
 
 ! Pointers to Exports
 
-    real, pointer :: TS_FOUND (:,:)
-    real, pointer :: SS_FOUND (:,:)
-    real, pointer :: FRZMLTe(:,:)
 
 ! Diagnostics exports
 
-    real, pointer :: RFLUX (:,:)
-    real, pointer :: TAUXe (:,:)
-    real, pointer :: TAUYe (:,:)
-    real, pointer :: HEATe (:,:,:)
-    real, pointer :: FROCEANe (:,:)
-    real, pointer :: DISCHARGEe(:,:)
-    real, pointer :: LWFLXe(:,:)
-    real, pointer :: SWFLXe(:,:)
-    real, pointer :: SHFLXe(:,:)
-    real, pointer :: QFLUXe(:,:)
-    real, pointer :: RAINe(:,:)
-    real, pointer :: SNOWe(:,:)
-    real, pointer :: SFLXe(:,:)
-    real, pointer :: PEN_OCNe(:,:)
 
 
 ! Pointers to imports of child
 
-    real, pointer, dimension(:,:,:) :: TIO8 => null()
-    real, pointer, dimension(:,:,:) :: FRO8 => null()
+    real, pointer, dimension(:,:,:) :: TIO8    => null()
+    real, pointer, dimension(:,:,:) :: FRO8    => null()
     real, pointer, dimension(:,:,:) :: VOLICEO => null()
     real, pointer, dimension(:,:,:) :: VOLSNOO => null()
     real, pointer, dimension(:,:,:) :: TAUAGEO => null()
-    real, pointer, dimension(:,:,:) :: MPONDO => null()
+    real, pointer, dimension(:,:,:) :: MPONDO  => null()
     real, pointer, dimension(:,:,:) :: ERGICEO => null()
     real, pointer, dimension(:,:,:) :: ERGSNOO => null()
-    real, pointer, dimension(:,:)   :: AICEDO => null()
-    real, pointer, dimension(:,:)   :: HICEDO => null()
-    real, pointer, dimension(:,:)   :: HSNODO => null()
+    real, pointer, dimension(:,:)   :: AICEDO  => null()
+    real, pointer, dimension(:,:)   :: HICEDO  => null()
+    real, pointer, dimension(:,:)   :: HSNODO  => null()
 
-    real, pointer, dimension(:,:,:) :: TIO8d => null()
-    real, pointer, dimension(:,:,:) :: FRO8d => null()
-    real, pointer, dimension(:,:,:) :: VOLICEOd => null()
-    real, pointer, dimension(:,:,:) :: VOLSNOOd => null()
-    real, pointer, dimension(:,:,:) :: TAUAGEOd => null()
+    real, pointer, dimension(:,:,:) :: TIO8d   => null()
+    real, pointer, dimension(:,:,:) :: FRO8d   => null()
+    real, pointer, dimension(:,:,:) :: VOLICEOd=> null()
+    real, pointer, dimension(:,:,:) :: VOLSNOOd=> null()
+    real, pointer, dimension(:,:,:) :: TAUAGEOd=> null()
     real, pointer, dimension(:,:,:) :: MPONDOd => null()
-    real, pointer, dimension(:,:,:) :: ERGICEOd => null()
-    real, pointer, dimension(:,:,:) :: ERGSNOOd => null()
+    real, pointer, dimension(:,:,:) :: ERGICEOd=> null()
+    real, pointer, dimension(:,:,:) :: ERGSNOOd=> null()
 
 ! Pointers to exports of child
-    real, pointer :: FId(:,:)
+    real, pointer, dimension(:,:)   :: FId       => null()
     real, pointer, dimension(:,:)   :: DAIDTNUDG => null()
     real, pointer, dimension(:,:)   :: DVIDTNUDG => null()
 
@@ -748,29 +752,21 @@ contains
     integer           :: I,J,L
     integer           :: IM
     integer           :: JM
-    integer           :: LM
     integer           :: NUM
-    real, allocatable :: WGHT(:,:)
     real              :: DT, TAU_SIT
     integer           :: CAT_DIST               ! parameters for sea ice nudging
     real              :: HIN, RN,  TAU_SIT      ! parameters for sea ice nudging
 
 
-    real, pointer     :: LONS  (:,:)
-    real, pointer     :: LATS  (:,:)
 
     integer           :: ID
     integer           :: PHASE
-    real, pointer     :: FR(:,:) => null()
-    real, pointer     :: FRI(:,:,:) => null()
-    integer, allocatable :: PREDICTOR_CHLD(:)
-    character(len=ESMF_MAXSTR) :: replayMode
 
 ! Get the component's name and set-up traceback handle.
 ! -----------------------------------------------------
 
     Iam = "Run"
-    call ESMF_GridCompGet( gc, NAME=comp_name, currentPhase=PHASE, __RC__ )
+    call ESMF_GridCompGet( gc, NAME=comp_name,  CONFIG=CF, currentPhase=PHASE, __RC__ )
     Iam = trim(comp_name) // Iam
 
 ! Get my internal MAPL_Generic state
@@ -783,6 +779,24 @@ contains
 
     call MAPL_TimerOn (STATE,"RUN"  )
     call MAPL_TimerOn (STATE,"TOTAL")
+
+! Get constants from CF
+! ---------------------
+
+    call MAPL_GetResource ( MAPL,       DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,       DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+    if (DO_CICE_THERMO /= 0) then
+       call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
+       VERIFY_(STATUS)
+       call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
+       VERIFY_(STATUS)
+    else
+       NUM_ICE_CATEGORIES = 1
+       NUM_ICE_LAYERS     = 1
+    endif
+
+
 
 ! Get child's import ad export to use as a bulletin board
 !--------------------------------------------------------
@@ -855,6 +869,15 @@ contains
            call MAPL_GetPointer(GEX(ICE) , DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., __RC__)
            call MAPL_GetPointer(GEX(ICEd), FId       , 'FRACICE'   , alloc=.true., __RC__)
 
+           ! copy to dataseaice imports as the ice nudging is done via dataseaice states 
+           TIO8d    = TIO8
+           FRO8d    = FRO8
+           VOLICEOd = VOLICEO
+           VOLSNOOd = VOLSNOO
+           TAUAGEOd = TAUAGEO
+           MPONDOd  = MPONDO
+           ERGICEOd = ERGICEO
+
        end if
        
        call MAPL_GetResource(STATE,DT,  Label="RUN_DT:",    __RC__)             ! Get AGCM Heartbeat
@@ -888,16 +911,19 @@ contains
                 VERIFY_(STATUS)
                 call MAPL_GenericRunCouplers( STATE, CHILD=ICE, CLOCK=CLOCK, __RC__ )
 
-                TIO8d = TIO8
-                FRO8d = FRO8
+                ! this copy is necessary because CICEDyna updates these variables
+                TIO8d    = TIO8
+                FRO8d    = FRO8
                 VOLICEOd = VOLICEO
                 VOLSNOOd = VOLSNOO
                 TAUAGEOd = TAUAGEO
-                MPONDOd = MPONDO
+                MPONDOd  = MPONDO
                 ERGICEOd = ERGICEO
                 ERGSNOOd = ERGSNOO
+
                 call MAPL_GetResource(MAPL,TAU_SIT, LABEL="SEA_ICE_NUDGING_RELAX:", default=86400.0, __RC__)
                 call MAPL_GetResource(MAPL,RN , Label="SEA_ICE_NUDGING_R:" , DEFAULT=0.1, __RC__)
+
                 call ice_nudging(FRO8d,         TIO8d,          &
                                  VOLICEOd,      VOLSNOOd,       &
                                  ERGICEOd,      ERGSNOOd,       &
@@ -946,6 +972,16 @@ contains
 
                 
              end if
+
+             TIO8    = TIO8d
+             FRO8    = FRO8d
+             VOLICEO = VOLICEOd
+             VOLSNOO = VOLSNOOd
+             TAUAGEO = TAUAGEOd
+             MPONDO  = MPONDOd
+             ERGICEO = ERGICEOd
+             ERGSNOO = ERGSNOOd
+
           end if
 
           
