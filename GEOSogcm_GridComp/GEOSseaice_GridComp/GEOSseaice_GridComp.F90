@@ -165,18 +165,17 @@ contains
              SHORT_NAME = 'FRACICE',                              &
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
-
-    if(DO_DATASEAICE==0) then
-
-        call MAPL_AddExportSpec ( GC   ,                          &
+    call MAPL_AddExportSpec ( GC   ,                              &
              SHORT_NAME = 'UI',                                   &
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
 
-        call MAPL_AddExportSpec ( GC   ,                          &
+    call MAPL_AddExportSpec ( GC   ,                              &
              SHORT_NAME = 'VI',                                   &
              CHILD_ID   = ICE ,                                   &
                                                            __RC__ )
+
+    if(DO_DATASEAICE==0) then
 
         call MAPL_AddExportSpec ( GC   ,                          &
              SHORT_NAME = 'VEL',                                  &
