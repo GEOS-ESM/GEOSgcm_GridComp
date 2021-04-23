@@ -34,7 +34,7 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
         ,zero_diff , nmp, lsmp, cnmp,moist_trigger,frac_modis,max_tq_tend  &
 	,cum_fadj_massflx, cum_use_excess, cum_ave_layer, adv_trigger      &
 	,use_smooth_prof, evap_fix,output_sound,use_cloud_dissipation      &
-	,use_smooth_tend,GF_convpar_init
+	,use_smooth_tend,GF_convpar_init,beta_sh,c0_shal
  
  PUBLIC GF_GEOS5_DRV,make_DropletNumber ,make_IceNumber,fract_liq_f &
        ,use_gustiness, use_random_num, dcape_threshold
@@ -115,11 +115,12 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
  INTEGER :: BC_METH 	      = 1 ! 0: simple arithmetic mean around k22
          		          ! 1: mass weighted mean around k22 
 
- INTEGER :: OVERSHOOT         = 0 != 0, 1   
+ REAL    :: OVERSHOOT         = 0.!= 0, 1   
 
  INTEGER :: AUTOCONV          = 1     != 1, 3 or 4 autoconversion formulation: (1) Kessler, (3) Kessler with temp dependence, (4) Sundvisqt
  REAL    ::  C0_DEEP          = 2.e-3 != default= 3.e-3   conversion rate (cloud to rain, m-1) - for deep      plume
  REAL    ::  C0_MID           = 2.e-3 != default= 2.e-3   conversion rate (cloud to rain, m-1) - for congestus plume
+ REAL    ::  C0_SHAL          = 0.    != default= 0.e-3   conversion rate (cloud to rain, m-1) - for shallow   plume
  REAL    ::  QRC_CRIT         = 2.e-4 != default= 2.e-4   kg/kg
  REAL    ::  C1               = 0.0   != default= 1.e-3   conversion rate (cloud to rain, m-1) - for the 'C1d' detrainment approach
 
@@ -172,6 +173,7 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
  REAL    :: use_random_num = 0.
 
  REAL    :: dcape_threshold = 0.
+ REAL    :: beta_sh = 3. 
  !------------------- internal variables  -------------------
 
  !-- turn ON/OFF deep/shallow/mid plumes
@@ -2018,7 +2020,7 @@ loop1:  do n=1,maxiens
      !-- deep convection
      DO i=its,itf
       if(do_this_column(i,j) == 0) CYCLE
-       CONPRR(i,j)=cprr4d(i,j,deep) *fixout_qv(i)+cprr4d(i,j,mid) *fixout_qv(i)
+       CONPRR(i,j)= (cprr4d(i,j,deep) + cprr4d(i,j,mid) + cprr4d(i,j,shal)) * fixout_qv(i)
      ENDDO
 
      !-- deep + shallow + mid convection
@@ -2368,11 +2370,10 @@ loop1:  do n=1,maxiens
        , qes_cup, q_cup, he_cup, hes_cup, z_cup, p_cup, gamma_cup, t_cup &
        ,qeso_cup,qo_cup,heo_cup,heso_cup,zo_cup,       gammao_cup,tn_cup &
        ,xqes_cup,xq_cup,xhe_cup,xhes_cup,xz_cup                        &
-       ,xt_cup,hcot,                                                   &
-
-        dby,hc,clw_all,                                                &
-        dbyo,qco,qrcdo,hcdo,qcdo,dbydo,hco,                            &
-        xdby,xzu,xzd,   xhc, cupclw,pwo_eff,                           &
+       ,xt_cup,hcot,evap_bcb                                           &
+       ,dby,hc,clw_all                                                 &
+       ,dbyo,qco,qrcdo,hcdo,qcdo,dbydo,hco                             &
+       ,xdby,xzu,xzd,xhc,cupclw,pwo_eff,                               &
 
   ! cd  = detrainment function for updraft
   ! cdd = detrainment function for downdraft
@@ -2548,7 +2549,7 @@ ENDIF
       ELSE
        if(cumulus == 'deep'   ) then; cap_maxs=10.  ; cap_max_inc=50. ; endif
        if(cumulus == 'mid'    ) then; cap_maxs=10.  ; cap_max_inc=50. ; endif
-       if(cumulus == 'shallow') then; cap_maxs=25.  ; cap_max_inc=35. ; endif
+       if(cumulus == 'shallow') then; cap_maxs=25.  ; cap_max_inc=50. ; endif
       ENDIF
 !
 !--- lambda_U parameter for momentum transport
@@ -2595,6 +2596,7 @@ ENDIF
         c1d   (i,:) = 0.0
         xf_ens(i,:) = 0.0
         pr_ens(i,:) = 0.0
+	evap_bcb(i,:) = 0.0
         cap_max_increment(i)=cap_max_inc
        enddo
 !
@@ -4845,11 +4847,11 @@ ENDIF ! vertical discretization formulation
 !
 !--- rainfall evap below cloud base
 !
-       if(USE_REBCB == 1)                                                             &
+       if(USE_REBCB == 1)                                                              &
        call rain_evap_below_cloudbase(cumulus,itf,ktf, its,ite, kts,kte,ierr,kbcon,ktop&
-                                      ,xmb,psur,xland,qo_cup                          &
-                                      ,po_cup,qes_cup,pwavo,edto,pwevo,pwo,pwdo       &
-                                      ,pre,prec_flx,evap_flx,outt,outq,outbuoy  )
+                                      ,xmb,psur,xland,qo_cup,t_cup                     &
+                                      ,po_cup,qes_cup,pwavo,edto,pwevo,pwo,pwdo        &
+                                      ,pre,prec_flx,evap_flx,outt,outq,outbuoy,evap_bcb)
 
 
 !
@@ -5383,6 +5385,7 @@ ENDIF
        call set_grads_var(jl,k,nvar,vvel1d(i),"W1d"//cty ,'W1s /m/s','2d')
        call set_grads_var(jl,k,nvar,us(i,k),"us"//cty ,'U /m/s','3d')
        call set_grads_var(jl,k,nvar,outu(i,k)*86400./(1.e-16+xmb(i)),"delu"//cty ,'dellu','3d')
+       call set_grads_var(jl,k,nvar,evap_bcb(i,k)*1000.,"evcb"//cty ,'g/kg','3d')
 
        call set_grads_var(jl,k,nvar,tot_pw_up_chem(1,i),"pwup"//cty ,'pwup','2d')
        call set_grads_var(jl,k,nvar,tot_pw_dn_chem(1,i),"pwdn"//cty ,'pwdn','2d')
@@ -6429,7 +6432,7 @@ ENDIF
     !real,   dimension (its:ite,kts:kte) :: qc2
 
         !--- no precip for small clouds
-        if(name.eq.'shallow')  c0 = 0.0
+        if(name.eq.'shallow')  c0 = c0_shal
         if(name.eq.'mid'    )  c0 = c0_mid
         if(name.eq.'deep'   )  c0 = c0_deep
         do i=its,itf
@@ -6503,7 +6506,7 @@ ENDIF
 	    !--- production term => condensation/diffusional growth
             cup         = max(0.,qc(i,k)-qrch-qrc(i,k))/dz
 	     
-            if(name.eq.'shallow')then
+            if(c0 < 1.e-6)then
                 qrc (i,k) = clw_all(i,k)
                 qc  (i,k) = qrc(i,k)+min(qc(i,k),qrch)
                 pwav(i)   = 0.
@@ -6677,9 +6680,9 @@ ENDIF
           ENDDO
            
 	  IF(ZERO_DIFF==0) THEN 
-	    if(pwav(i) <= 0. .and. name /= 'shallow') then
+	    if(pwav(i) < 0.) then
 	      ierr(i)=66
-	      ierrc(i)="pwav zero"
+	      ierrc(i)="pwav negative"
 	    endif
 	  ENDIF
 	  
@@ -6750,7 +6753,7 @@ ENDIF
      real delt,tem1
 
         !--- no precip for small clouds
-        if(name.eq.'shallow')  c0 = 0.0
+        if(name.eq.'shallow')  c0 = c0_shal
         if(name.eq.'mid'    )  c0 = c0_mid
         if(name.eq.'deep'   )  c0 = c0_deep
         do i=its,itf
@@ -6812,7 +6815,7 @@ ENDIF
             endif
 
             cx0     = (c1d(i,k)+c0)*DZ
-            if(name.eq.'shallow') cx0 = 0.
+            if(c0 < 1.e-6) cx0 = 0.
 
             qrc(i,k)= clw_all(i,k)/(1.+cx0)
             pw (i,k)= cx0*max(0.,qrc(i,k) -qrc_crit)! units kg[rain]/kg[air]
@@ -7342,11 +7345,12 @@ ENDIF
      real :: dz,dh,Z_overshoot
      integer :: i,k,ipr,kdefi,kstart,kbegzu,kfinalzu
      integer, dimension (its:ite) :: start_level
-     real, parameter :: delz_oversh = 0.1 !--- height of cloud overshoot is 10% higher than the LNB.
+     real  :: delz_oversh !--- height of cloud overshoot is 10% higher than the LNB.
                                           !--- Typically it can 2 - 2.5km higher, but it depends on
 					  !--- the severity of the thunderstorm.
      
-     hcot=0.0
+     delz_oversh = OVERSHOOT
+     hcot        = 0.0
      if(name == 'shallow') return
 
      DO i=its,itf
@@ -7372,7 +7376,7 @@ ENDIF
        enddo
        if(ktop(i).le.kbcon(i)+1) ierr(i)=41
        !----------------
-       if(OVERSHOOT == 1 .and. ierr(i) == 0) then 
+       if(OVERSHOOT > 0. .and. ierr(i) == 0) then 
            Z_overshoot = (1. + delz_oversh) * z_cup(i,ktop(i))
            do k=ktop(i),ktf-2
 	      if(Z_overshoot < z_cup(i,k)) then
@@ -7402,15 +7406,15 @@ ENDIF
   real :: zuh(kts:kte),zul(kts:kte),  pmaxzu ! pressure height of max zu for deep
   real,   parameter :: px =45./120. ! px sets the pressure level of max zu. its range is from 1 to 120.
   real,   parameter :: px2=45./120. ! px sets the pressure level of max zu. its range is from 1 to 120.
-  integer:: itest                ! 5=gamma+beta, 4=gamma, 1=beta
+  integer:: itest                   ! 5=gamma+beta, 4=gamma, 1=beta
 
-  integer:: minzu,maxzul,maxzuh
+  integer:: minzu,maxzul,maxzuh,kstart
   logical :: do_smooth
 
   !-------- gama pdf
   real, parameter :: beta_deep=1.25,g_beta_deep=0.8974707
   INTEGER :: k1
-  real :: lev_start,g_alpha2,g_a,y1,x1,g_b,a,b,alpha2,csum,zubeg,wgty,dp_layer
+  real :: lev_start,g_alpha2,g_a,y1,x1,g_b,a,b,alpha2,csum,zubeg,wgty,dp_layer,slope
   real, dimension(30) :: x_alpha,g_alpha
   data  (x_alpha(k),k=1,30)/                                    & 
                 3.699999,3.699999,3.699999,3.699999,            &
@@ -7571,6 +7575,7 @@ ENDIF
       !- beta parameter: must be larger than 1, higher makes the profile sharper around the maximum zu
       beta    = max(1.1, 2.1 - 0.5*hei_updf) 
 
+!--- tmp IF(cumulus == 'deep') beta =beta_sh
       !print*,"hei=",jl,pmaxzu,hei_updf,beta!(pmaxzu-(psur-100.))/( -(psur-100.) +  0.5*( 0.25*(psur-100.) + 0.75*po_cup(kt) ))
 
       kb_adj=minloc(abs(po_cup(kts:kt)-pmaxzu),1)
@@ -7869,7 +7874,10 @@ ENDIF
       krmax        = float(level_max_zu)/float(kt+1)
       krmax        = min(krmax,0.99)
 
-      beta= 3.0!smaller => sharper detrainment layer
+     !beta= beta_sh!smaller => sharper detrainment layer
+      beta= ((1.-xland)*0.43 +xland)*beta_sh
+          
+     !beta= 3.0!smaller => sharper detrainment layer
      !beta = 1.+4.*(float(JL))/40.
       
       !- this alpha imposes the maximum zu at kpbli
@@ -7890,6 +7898,14 @@ ENDIF
      !do k=(klcl-1),kts+1,-1
      !  zu(k)=zu(k+1)*0.5
      !enddo
+     !-- special treatment below kbcon - linear Zu
+     !zu(kts)=0.
+     !kstart=kbcon
+     !slope=(zu(kstart)-zu(kts))/(po_cup(kstart)-po_cup(kts))
+     !do k=kstart-1,kts+1,-1
+     !  zu(k) = zu(kstart)-slope*(po_cup(kstart)-po_cup(k))
+     !  print*,"k=",zu(kstart),zu(k),zu(kts)
+     !enddo
      !-- smooth section
      !IF( .not. do_smooth) then
      ! zul(kts+1)=zu(kts+1)*0.1
@@ -7905,7 +7921,7 @@ ENDIF
   !---------------------------------------------------------
   ELSEIF(draft == "DOWN" ) then
       IF(cumulus == 'shallow') return
-      IF(cumulus == 'mid' ) beta =2.5 !6.5  
+      IF(cumulus == 'mid' ) beta =2.5
       IF(cumulus == 'deep') beta =2.5
 
       hei_down=(1.-xland)*hei_down_LAND+xland*hei_down_OCEAN
@@ -9110,9 +9126,9 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
 
      real, parameter              :: frh_crit_O=0.7
      real, parameter              :: frh_crit_L=0.5
-     real, parameter              :: delz_oversh = 0.1 !--- height of cloud overshoot is 10% higher than the LNB.
-                                                       !--- Typically it can 2 - 2.5km higher, but it depends on
-				                       !--- the severity of the thunderstorm.
+     real                         :: delz_oversh !--- height of cloud overshoot is 10% higher than the LNB.
+                                                 !--- Typically it can 2 - 2.5km higher, but it depends on
+				                 !--- the severity of the thunderstorm.
 
      real,    dimension (its:ite) ::   cap_max
      integer                      ::   i,k,k1,k2,kfinalzu
@@ -9121,6 +9137,7 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
      real   , dimension (kts:kte) ::   dby
      integer, dimension (its:ite) ::   start_level
 
+     delz_oversh = OVERSHOOT
      hcot = 0.0
      dby  = 0.0
      start_level = 0
@@ -9188,7 +9205,7 @@ loop2:      do while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
                    !print*,"frh=", k,dz,qo(i,k)/qeso(i,k)
                 enddo
                 frh(i) = frh(i)/(dzh+1.e-16)
-                frh_crit =frh_crit_O*xland(i)*frh_crit_O + frh_crit_L*(1.-xland(i))
+                frh_crit =frh_crit_O*xland(i) + frh_crit_L*(1.-xland(i))
 	       
 	       !fx     = 2.*(frh(i) - frh_crit) !- linear
                !fx     = 4.*(frh(i) - frh_crit)* abs(frh(i) - frh_crit) !-quadratic
@@ -9264,7 +9281,7 @@ loop2:      do while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
          if(ktop(i).le.kbcon(i)+1) ierr(i)=41
 
          !----------------
-         if(OVERSHOOT == 1 .and. ierr(i) == 0) then 
+         if(OVERSHOOT > 1.e-6 .and. ierr(i) == 0) then 
            Z_overshoot = (1. + delz_oversh) * z_cup(i,ktop(i))
            do k=ktop(i),ktf-2
 	      if(Z_overshoot < z_cup(i,k)) then
@@ -11005,47 +11022,45 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 !---------------------------------------------------------------------------------------------------
 
  SUBROUTINE rain_evap_below_cloudbase(cumulus,itf,ktf, its,ite, kts,kte,ierr,kbcon,ktop,xmb,psur,xland&
-                                    ,qo_cup,po_cup,qes_cup,pwavo,edto,pwevo,pwo,pwdo&
-				    ,pre,prec_flx,evap_flx,outt,outq,outbuoy)
+                                    ,qo_cup,t_cup,po_cup,qes_cup,pwavo,edto,pwevo,pwo,pwdo&
+				    ,pre,prec_flx,evap_flx,outt,outq,outbuoy,evap_bcb)
 
  implicit none
  real, parameter :: alpha1=5.44e-4 & !1/sec
                    ,alpha2=5.09e-3 & !unitless
 		   ,alpha3=0.5777  & !unitless
-		   ,c_conv=0.05    !conv fraction area, unitless
+		   ,c_conv=0.05      !conv fraction area, unitless
  
  character*(*)                      ,intent(in)    :: cumulus
  integer                            ,intent(in)    :: itf,ktf, its,ite, kts,kte
  integer, dimension(its:ite)        ,intent(in)    :: ierr,kbcon,ktop
  real,    dimension(its:ite)        ,intent(in)    :: psur,xland,pwavo,edto,pwevo,xmb
- real,    dimension(its:ite,kts:kte),intent(in)    :: po_cup,qo_cup,qes_cup,pwo,pwdo
+ real,    dimension(its:ite,kts:kte),intent(in)    :: po_cup,qo_cup,qes_cup,pwo,pwdo,t_cup
  real,    dimension(its:ite)        ,intent(inout) :: pre
  real,    dimension(its:ite,kts:kte),intent(inout) :: outt,outq,outbuoy,prec_flx,evap_flx
 
-!real,    dimension(its:ite)        ,intent(out)      :: tot_evap_bcb
-!real,    dimension(its:ite,kts:kte),intent(out)      :: evap_bcb
+ real,    dimension(its:ite,kts:kte),intent(out)   :: evap_bcb
 
  !-- locals
  integer :: i,k
- real    :: RH_cr , del_t,del_q,dp,q_deficit
- real,    dimension(its:ite,kts:kte) :: evap_bcb
- real,    dimension(its:ite)         :: tot_evap_bcb
+ real    :: RH_cr , del_t,del_q,dp,q_deficit, pqsat
+ real    :: RH_cr_OCEAN,RH_cr_LAND
+ real,    dimension(its:ite) :: tot_evap_bcb,eff_c_conv
 
- real::  RH_cr_OCEAN,RH_cr_LAND
-
- if(icumulus_gf(shal) == ON ) then 
-     RH_cr_OCEAN = 0.9
-     RH_cr_LAND  = 0.9
+ if(cumulus == 'shallow') then
+     RH_cr_OCEAN   = 1.
+     RH_cr_LAND    = 1.
+     eff_c_conv(:) = min(0.2,max(xmb(:),c_conv))
  else
-     RH_cr_OCEAN = 0.90
-     RH_cr_LAND  = 0.85
+     RH_cr_OCEAN   = 0.90
+     RH_cr_LAND    = 0.85
+     eff_c_conv(:) = c_conv
  endif
- 
- evap_bcb     = 0.0
+
  prec_flx     = 0.0
  evap_flx     = 0.0
  tot_evap_bcb = 0.0
- if(cumulus == 'shallow') return
+!! if(cumulus == 'shallow') return
  
  do i=its,itf
      
@@ -11069,10 +11084,11 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
         !---rainfall evaporation below cloud base
 	if(k <= kbcon(i)) then
          q_deficit = max(0.,(RH_cr*qes_cup(i,k) -qo_cup(i,k)))
+        !pqsat=satur_spec_hum(t_cup(i,k),po_cup(i,k))
        
          !--units here: kg[water]/kg[air}/sec
-         evap_bcb(i,k) = c_conv * alpha1 * q_deficit * &
-                      ( sqrt(po_cup(i,k)/psur(i))/alpha2 * prec_flx(i,k+1)/c_conv )**alpha3 
+         evap_bcb(i,k) = eff_c_conv(i) * alpha1 * q_deficit * &
+                      ( sqrt(po_cup(i,k)/psur(i))/alpha2 * prec_flx(i,k+1)/eff_c_conv(i) )**alpha3 
        
          !--units here: kg[water]/kg[air}/sec * kg[air]/m3 * m = kg[water]/m2/sec
          evap_bcb(i,k)= evap_bcb(i,k)*dp/g
@@ -11130,7 +11146,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
      integer :: i,k
      prec_flx = 0.0
      evap_flx = 0.0
-     if(cumulus == 'shallow') return
+!!     if(cumulus == 'shallow') return
      
      DO i=its,itf
          if (ierr(i)  /= 0) cycle
@@ -12364,7 +12380,7 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
        !--- source of enviroment moistening/cooling due to the 'remained' cloud dissipation into it.
        outqc_diss = ( qrc_diss * (1.-frh) ) / cloud_lifetime
        
-       if(versionx==1) then 
+       if(versionx==1 .or. COUPL_MPHYSICS == .false.) then 
        
          outt_diss  = -outqc_diss*(xlv/cp) !--- cooling
        
@@ -12418,7 +12434,7 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
                  ,zero_diff ,use_momentum_transp ,moist_trigger,frac_modis                &
                  ,cum_use_excess,cum_ave_layer,adv_trigger,use_smooth_prof, evap_fix      &
                  ,use_cloud_dissipation,use_smooth_tend,use_gustiness, use_random_num     &
-		 ,dcape_threshold
+		 ,dcape_threshold,beta_sh,c0_shal
    
     inquire (file = trim (fn_nml), exist = exists)
     if (.not. exists) then
@@ -12441,7 +12457,7 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
       print*, 'satur_calc         ' , satur_calc       
       print*, 'autoconv           ' , autoconv              
       print*, 'bc_meth            ' , bc_meth            
-      print*, 'overshoot          ' , overshoot        
+      print*, 'overshoot          ' , real(overshoot          ,4)        
       print*, 'use_wetbulb        ' , use_wetbulb      
       print*, 'hei_down_land      ' , real(cum_hei_down_land  ,4)
       print*, 'hei_down_ocean     ' , real(cum_hei_down_ocean ,4)
@@ -12452,6 +12468,7 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
       print*, 'cum_use_excess     ' , cum_use_excess   
       print*, 'c0_deep            ' , real(c0_deep            ,4)
       print*, 'c0_mid             ' , real(c0_mid             ,4)
+      print*, 'c0_shal            ' , real(c0_shal            ,4)
       print*, 'c1                 ' , real(c1                 ,4)
       print*, 'qrc_crit           ' , real(qrc_crit           ,4)
       print*, 'lambau_deep        ' , real(lambau_deep        ,4)
@@ -12481,6 +12498,7 @@ REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
       print*, 'use_cloud_dissipat ' , real(use_cloud_dissipation,4)
       print*, 'use_gustiness      ' , use_gustiness
       print*, 'use_random_num     ' , use_random_num
+      print*, 'beta_sh            ' , beta_sh
       print*,"==============================================="
       call flush(6)
     endif
