@@ -74,7 +74,7 @@ contains
 ! Local vars
     type  (MAPL_MetaComp), pointer     :: MAPL
     type  (ESMF_Config)                :: CF
-    integer ::      iDUAL_OCEAN
+    integer                            :: iDUAL_OCEAN
     character(len=ESMF_MAXSTR)         :: charbuf_
     !character(len=ESMF_MAXSTR)         :: sharedObj
 
@@ -147,6 +147,17 @@ contains
    endif 
 
 !  !EXPORT STATE:
+   if (DUAL_OCEAN)
+
+      call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME         = 'FRACICEd',                               &
+         LONG_NAME          = 'fractional_cover_of_seaice',             &
+         UNITS              = '1',                                      &
+         DIMS               = MAPL_DimsHorzOnly,                        &
+         VLOCATION          = MAPL_VLocationNone,                       &
+                                                                 __RC__ )
+
+   endif 
 
 
 ! Exports of child
@@ -667,10 +678,10 @@ contains
 
 
 ! Pointers to Imports
-    real, pointer :: SS_FOUNDi(:,:) 
-
+    real, pointer, dimension(:,:)   :: SS_FOUNDi => null()
 
 ! Pointers to Exports
+    real, pointer, dimension(:,:)   :: FRd       => null()
 
 
 ! Diagnostics exports
@@ -773,6 +784,7 @@ contains
     if (dual_ocean) then
 
        call MAPL_GetPointer(IMPORT   , SS_FOUNDi , 'SS_FOUND', __RC__)
+       call MAPL_GetPointer(EXPORT   , FRd ,       'FRACICEd', __RC__)
 
        call MAPL_GetPointer(GIM(ICE) , FRO8     , 'FRACICE',  __RC__)
        call MAPL_GetPointer(GIM(ICE) , TIO8     , 'TI'     ,  __RC__)
@@ -798,7 +810,7 @@ contains
        call MAPL_GetPointer(GEX(ICE) , HSNODO    , 'HSNO'    , __RC__)  ! after ice nudging
        call MAPL_GetPointer(GEX(ICE) , DAIDTNUDG , 'DAIDTNUDG' , alloc=.TRUE., __RC__)
        call MAPL_GetPointer(GEX(ICE) , DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., __RC__)
-       call MAPL_GetPointer(GEX(ICEd), FId       , 'FRACICE'   , alloc=.true., __RC__)
+       call MAPL_GetPointer(GEX(ICEd), FId       , 'FRACICE'   , alloc=.TRUE., __RC__)
 
        ! copy to dataseaice imports as the ice nudging is done via dataseaice states 
        TIO8d    = TIO8
@@ -840,6 +852,10 @@ contains
           VERIFY_(STATUS)
           call MAPL_GenericRunCouplers( STATE, CHILD=ICE, CLOCK=CLOCK, __RC__ )
 
+          if(associated(FRd)) then
+             FRd = FId 
+          endif 
+
           ! this copy is necessary because CICEDyna updates these variables
           TIO8d    = TIO8
           FRO8d    = FRO8
@@ -854,18 +870,19 @@ contains
           call MAPL_GetResource(MAPL,RN , Label="SEA_ICE_NUDGING_R:" , DEFAULT=0.1, __RC__)
 
           call ice_nudging(FRO8d,         TIO8d,          &
-               VOLICEOd,      VOLSNOOd,       &
-               ERGICEOd,      ERGSNOOd,       &
-               TAUAGEOd,      MPONDOd,        &
-               FId,           HIN,            &
-               NUM_ICE_CATEGORIES,            &
-               TAU_SIT,       RN,             &
-               NUM_ICE_LAYERS,                &
-               NUM_SNOW_LAYERS,               &
-               CAT_DIST,      DT,             &
-               salinity = SS_FOUNDi,          &
-               ai_tend = DAIDTNUDG,           &
-               vi_tend = DVIDTNUDG )
+                           VOLICEOd,      VOLSNOOd,       &
+                           ERGICEOd,      ERGSNOOd,       &
+                           TAUAGEOd,      MPONDOd,        &
+                           FId,           HIN,            &
+                           NUM_ICE_CATEGORIES,            &
+                           TAU_SIT,       RN,             &
+                           NUM_ICE_LAYERS,                &
+                           NUM_SNOW_LAYERS,               &
+                           CAT_DIST,      DT,             &
+                           salinity = SS_FOUNDi,          &
+                           ai_tend = DAIDTNUDG,           &
+                           vi_tend = DVIDTNUDG )
+
           if(associated(AICEDO)) then
              where(AICEDO/=MAPL_UNDEF)
                 AICEDO = sum(FRO8d, dim=3)
@@ -888,17 +905,16 @@ contains
           VERIFY_(STATUS)
           call MAPL_GenericRunCouplers( STATE, CHILD=ICEd, CLOCK=CLOCK, __RC__ )
 
-          call ice_nudging(FRO8d,       TIO8d,       &
-               VOLICEOd,      VOLSNOOd,       &
-               ERGICEOd,      ERGSNOOd,       &
-               TAUAGEOd,      MPONDOd,        &
-               FId,           HIN,            &
-               NUM_ICE_CATEGORIES,            &
-               DT,            0.0,            &
-               NUM_ICE_LAYERS,                &
-               NUM_SNOW_LAYERS,               &
-               CAT_DIST,      DT)
-
+          call ice_nudging(FRO8d,         TIO8d,          &
+                           VOLICEOd,      VOLSNOOd,       &
+                           ERGICEOd,      ERGSNOOd,       &
+                           TAUAGEOd,      MPONDOd,        &
+                           FId,           HIN,            &
+                           NUM_ICE_CATEGORIES,            &
+                           DT,            0.0,            &
+                           NUM_ICE_LAYERS,                &
+                           NUM_SNOW_LAYERS,               &
+                           CAT_DIST,      DT)
 
        end if
 
