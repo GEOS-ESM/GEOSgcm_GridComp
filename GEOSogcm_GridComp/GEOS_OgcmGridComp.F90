@@ -33,7 +33,8 @@ module GEOS_OgcmGridCompMod
 ! 
 !   {\tt GEOS\_Ogcm} is a light-weight gridded component that implements the
 !      interface to the ogcm components. The ogcm computational components
-!      (MOMx/GuestOcean, CICEx, OceanRadiation, OceanBioGeochemistry, etc) are its children.
+!      (MOMx/GuestOcean, CICEx/GEOS_Seaice, OceanRadiation, OceanBioGeochemistry, etc)
+!      are its children.
 !      This component currently serves as an interface between the exchange
 !      grid and the ocean's grid. Its ``natural'' grid is the ocean part of the 
 !      exchange grid, and all its imports and exports are on this grid. The natural
@@ -50,7 +51,6 @@ module GEOS_OgcmGridCompMod
 !
 !EOP
 
-  integer, parameter :: NUM_3D_ICE_TRACERS=3
   integer, parameter :: NUM_SNOW_LAYERS=1
   integer            :: NUM_ICE_CATEGORIES
   integer            :: NUM_ICE_LAYERS
@@ -727,7 +727,7 @@ contains
 
   if(DUAL_OCEAN) then 
      call MAPL_AddConnectivity ( GC,  &
-          SRC_NAME  = (/'FRACICE'/), & 
+          SRC_NAME  = (/'FRACICEd'/), & 
           DST_NAME  = (/'FRACICEd'/), & 
           DST_ID = OCEAN,             &
           SRC_ID = SEAICE,            &
