@@ -34,17 +34,6 @@ module GEOS_SeaIceGridCompMod
 !
 !EOP
 
-  type :: T_PrivateState
-     type(ESMF_Clock)  :: CLOCK
-  end type T_PrivateState
-
-  type :: T_PrivateState_Wrap
-     type(T_PrivateState), pointer :: ptr
-  end type T_PrivateState_Wrap
-
-
-
-
   integer ::          ICE
   integer ::          ICEd
   logical ::      DUAL_OCEAN
@@ -562,15 +551,11 @@ contains
 ! Local derived type aliases
 
     type (MAPL_MetaComp),     pointer   :: State
-    type (T_PrivateState),    pointer   :: PrivateSTATE
-    type (T_PrivateState_Wrap)          :: WRAP
     integer                             :: IM, JM, LM
     real                                :: DT
 
     type (ESMF_State       ), pointer   :: GIM(:)
     type (ESMF_State       ), pointer   :: GEX(:)
-    type (ESMF_TimeInterval)            :: timeStep
-    type (ESMF_Time)                    :: currTime
 
 
 !=============================================================================
@@ -604,31 +589,11 @@ contains
                                           __RC__ )
 
 
-! Allocate the private state...
-!------------------------------
-
-    allocate( PrivateSTATE , __stat__ )
-
-    wrap%ptr => PrivateState
-
-! And put it in the GC
-!---------------------
-
-    CALL ESMF_UserCompSetInternalState( GC, TRIM(SEAICE_NAME)//'_internal_state', WRAP, STATUS )
-    VERIFY_(status)
-
 ! Initialize the PrivateState. First the time...
 !-----------------------------------------------
     call MAPL_GetResource(STATE,DT,  Label="RUN_DT:",    __RC__)             ! Get AGCM Heartbeat
     call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, __RC__) ! set Default OCEAN_DT to AGCM Heartbeat
 
-    CALL ESMF_TimeIntervalSet(timeStep, S=NINT(DT), __RC__)
-
-    call ESMF_ClockGet(CLOCK, currTIME=currTime, __RC__)
-
-!ALT: check with Max about moving the clock 1 step forward
-    PrivateState%clock = ESMF_ClockCreate(NAME = TRIM(OCEAN_NAME)//"Clock", &
-         timeStep=timeStep, startTime=currTime, __rc__)
 
 
 ! Once we know we have a valid  ESMF grid, we can call MAPL_GenericInitialize.
@@ -689,10 +654,6 @@ contains
 
     type (MAPL_MetaComp),     pointer   :: STATE
     type (ESMF_Config)                  :: CF
-    type (ESMF_Time)                    :: EndTime
-    type (ESMF_Time)                    :: MyTime,ct
-    type (T_PrivateState),    pointer   :: PrivateSTATE
-    type (T_PrivateState_Wrap)          :: WRAP
     type (ESMF_GridComp    ), pointer   :: GCS(:)
     type (ESMF_State       ), pointer   :: GIM(:)
     type (ESMF_State       ), pointer   :: GEX(:)
@@ -751,7 +712,6 @@ contains
     integer           :: I,J,L
     integer           :: IM
     integer           :: JM
-    integer           :: NUM
     real              :: DT, TAU_SIT
     integer           :: CAT_DIST               ! parameters for sea ice nudging
     real              :: HIN, RN,  TAU_SIT      ! parameters for sea ice nudging
@@ -810,195 +770,152 @@ contains
                                        __RC__    )
 
 
-! Check the clocks to set set-up the "run-to" time
-!-------------------------------------------------
+    if (dual_ocean) then
 
-    call ESMF_ClockGet( CLOCK, currTime=endTime, __RC__ )
+       call MAPL_GetPointer(IMPORT   , SS_FOUNDi , 'SS_FOUND', __RC__)
 
-! Get GuestModel's private internal state
-!---------------------------------
+       call MAPL_GetPointer(GIM(ICE) , FRO8     , 'FRACICE',  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , TIO8     , 'TI'     ,  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , VOLICEO  , 'VOLICE' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , VOLSNOO  , 'VOLSNO' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , ERGICEO  , 'ERGICE' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , ERGSNOO  , 'ERGSNO' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , TAUAGEO  , 'TAUAGE' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , MPONDO   , 'MPOND'  ,  __RC__)
 
-    CALL ESMF_UserCompGetInternalState( GC, TRIM(OCEAN_NAME)//'_internal_state', WRAP, STATUS )
-    VERIFY_(STATUS)
+       call MAPL_GetPointer(GIM(ICEd), FRO8d    , 'FRACICE',  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), TIO8d    , 'TI'     ,  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), VOLICEOd , 'VOLICE' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), VOLSNOOd , 'VOLSNO' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), ERGICEOd , 'ERGICE' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), ERGSNOOd , 'ERGSNO' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), TAUAGEOd , 'TAUAGE' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), MPONDOd  , 'MPOND'  ,  __RC__)
 
-    PrivateSTATE => WRAP%PTR
 
-    call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, __RC__ )
+       call MAPL_GetPointer(GEX(ICE) , AICEDO    , 'AICE'    , __RC__)  ! SA: AICE needs to be looked into
+       call MAPL_GetPointer(GEX(ICE) , HICEDO    , 'HICE'    , __RC__)  ! BZ: These diags need to be updated
+       call MAPL_GetPointer(GEX(ICE) , HSNODO    , 'HSNO'    , __RC__)  ! after ice nudging
+       call MAPL_GetPointer(GEX(ICE) , DAIDTNUDG , 'DAIDTNUDG' , alloc=.TRUE., __RC__)
+       call MAPL_GetPointer(GEX(ICE) , DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., __RC__)
+       call MAPL_GetPointer(GEX(ICEd), FId       , 'FRACICE'   , alloc=.true., __RC__)
 
-    if (myTime > EndTime) then
-       call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_REVERSE,__rc__)
-       do
-         call ESMF_ClockAdvance(PrivateState%Clock,__rc__)
-         call ESMF_ClockGet(PrivateState%Clock,currTime=ct,__rc__)
-         if (ct==endTime) exit
-       enddo
-       call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_FORWARD,__rc__)
-       call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, __RC__ )
+       ! copy to dataseaice imports as the ice nudging is done via dataseaice states 
+       TIO8d    = TIO8
+       FRO8d    = FRO8
+       VOLICEOd = VOLICEO
+       VOLSNOOd = VOLSNOO
+       TAUAGEOd = TAUAGEO
+       MPONDOd  = MPONDO
+       ERGICEOd = ERGICEO
+
     end if
 
-    if( MyTime <= EndTime ) then ! Time to run
+    call MAPL_GetResource(STATE,DT,  Label="RUN_DT:",    __RC__)             ! Get AGCM Heartbeat
+    call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, __RC__) ! set Default OCEAN_DT to AGCM Heartbeat
 
-       if (dual_ocean) then
+    ! Loop the sea ice model
+    !---------------------
 
-           call MAPL_GetPointer(IMPORT   , SS_FOUNDi , 'SS_FOUND', __RC__)
+    
+    ! Run ocean for one time step (DT)
+    !---------------------------------
+    
+    call MAPL_TimerOff(STATE,"TOTAL")
+    call MAPL_TimerOn (STATE,"--ModRun")
 
-           call MAPL_GetPointer(GIM(ICE) , FRO8     , 'FRACICE',  __RC__)
-           call MAPL_GetPointer(GIM(ICE) , TIO8     , 'TI'     ,  __RC__)
-           call MAPL_GetPointer(GIM(ICE) , VOLICEO  , 'VOLICE' ,  __RC__)
-           call MAPL_GetPointer(GIM(ICE) , VOLSNOO  , 'VOLSNO' ,  __RC__)
-           call MAPL_GetPointer(GIM(ICE) , ERGICEO  , 'ERGICE' ,  __RC__)
-           call MAPL_GetPointer(GIM(ICE) , ERGSNOO  , 'ERGSNO' ,  __RC__)
-           call MAPL_GetPointer(GIM(ICE) , TAUAGEO  , 'TAUAGE' ,  __RC__)
-           call MAPL_GetPointer(GIM(ICE) , MPONDO   , 'MPOND'  ,  __RC__)
+    if (.not. DUAL_OCEAN) then
+       call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, __RC__)
+    else
+       call MAPL_GetResource( MAPL, HIN, Label="SEA_ICE_NUDGING_HINEW:" , DEFAULT=0.5, __RC__ )
+       call MAPL_GetResource( MAPL, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1, __RC__ )
+       if (PHASE == 1) then
+          ! corrector
+          call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
+               exportState=GEX(ICEd), clock=CLOCK, phase=1, userRC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GenericRunCouplers( STATE, CHILD=ICEd, CLOCK=CLOCK, __RC__ )
+          call ESMF_GridCompRun( GCS(ICE), importState=GIM(ICE), &
+               exportState=GEX(ICE), clock=CLOCK, phase=1, userRC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GenericRunCouplers( STATE, CHILD=ICE, CLOCK=CLOCK, __RC__ )
 
-           call MAPL_GetPointer(GIM(ICEd), FRO8d    , 'FRACICE',  __RC__)
-           call MAPL_GetPointer(GIM(ICEd), TIO8d    , 'TI'     ,  __RC__)
-           call MAPL_GetPointer(GIM(ICEd), VOLICEOd , 'VOLICE' ,  __RC__)
-           call MAPL_GetPointer(GIM(ICEd), VOLSNOOd , 'VOLSNO' ,  __RC__)
-           call MAPL_GetPointer(GIM(ICEd), ERGICEOd , 'ERGICE' ,  __RC__)
-           call MAPL_GetPointer(GIM(ICEd), ERGSNOOd , 'ERGSNO' ,  __RC__)
-           call MAPL_GetPointer(GIM(ICEd), TAUAGEOd , 'TAUAGE' ,  __RC__)
-           call MAPL_GetPointer(GIM(ICEd), MPONDOd  , 'MPOND'  ,  __RC__)
+          ! this copy is necessary because CICEDyna updates these variables
+          TIO8d    = TIO8
+          FRO8d    = FRO8
+          VOLICEOd = VOLICEO
+          VOLSNOOd = VOLSNOO
+          TAUAGEOd = TAUAGEO
+          MPONDOd  = MPONDO
+          ERGICEOd = ERGICEO
+          ERGSNOOd = ERGSNOO
 
+          call MAPL_GetResource(MAPL,TAU_SIT, LABEL="SEA_ICE_NUDGING_RELAX:", default=86400.0, __RC__)
+          call MAPL_GetResource(MAPL,RN , Label="SEA_ICE_NUDGING_R:" , DEFAULT=0.1, __RC__)
 
-           call MAPL_GetPointer(GEX(ICE) , AICEDO    , 'AICE'    , __RC__)  ! SA: AICE needs to be looked into
-           call MAPL_GetPointer(GEX(ICE) , HICEDO    , 'HICE'    , __RC__)  ! BZ: These diags need to be updated
-           call MAPL_GetPointer(GEX(ICE) , HSNODO    , 'HSNO'    , __RC__)  ! after ice nudging
-           call MAPL_GetPointer(GEX(ICE) , DAIDTNUDG , 'DAIDTNUDG' , alloc=.TRUE., __RC__)
-           call MAPL_GetPointer(GEX(ICE) , DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., __RC__)
-           call MAPL_GetPointer(GEX(ICEd), FId       , 'FRACICE'   , alloc=.true., __RC__)
+          call ice_nudging(FRO8d,         TIO8d,          &
+               VOLICEOd,      VOLSNOOd,       &
+               ERGICEOd,      ERGSNOOd,       &
+               TAUAGEOd,      MPONDOd,        &
+               FId,           HIN,            &
+               NUM_ICE_CATEGORIES,            &
+               TAU_SIT,       RN,             &
+               NUM_ICE_LAYERS,                &
+               NUM_SNOW_LAYERS,               &
+               CAT_DIST,      DT,             &
+               salinity = SS_FOUNDi,          &
+               ai_tend = DAIDTNUDG,           &
+               vi_tend = DVIDTNUDG )
+          if(associated(AICEDO)) then
+             where(AICEDO/=MAPL_UNDEF)
+                AICEDO = sum(FRO8d, dim=3)
+             endwhere
+          endif
+          if(associated(HICEDO)) then
+             where(HICEDO/=MAPL_UNDEF)
+                HICEDO = sum(VOLICEOd, dim=3)
+             endwhere
+          endif
+          if(associated(HSNODO)) then
+             where(HSNODO/=MAPL_UNDEF)
+                HSNODO = sum(VOLSNOOd, dim=3)
+             endwhere
+          endif
+       else
+          ! predictor
+          call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
+               exportState=GEX(ICEd), clock=CLOCK, phase=1, userRC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GenericRunCouplers( STATE, CHILD=ICEd, CLOCK=CLOCK, __RC__ )
 
-           ! copy to dataseaice imports as the ice nudging is done via dataseaice states 
-           TIO8d    = TIO8
-           FRO8d    = FRO8
-           VOLICEOd = VOLICEO
-           VOLSNOOd = VOLSNOO
-           TAUAGEOd = TAUAGEO
-           MPONDOd  = MPONDO
-           ERGICEOd = ERGICEO
+          call ice_nudging(FRO8d,       TIO8d,       &
+               VOLICEOd,      VOLSNOOd,       &
+               ERGICEOd,      ERGSNOOd,       &
+               TAUAGEOd,      MPONDOd,        &
+               FId,           HIN,            &
+               NUM_ICE_CATEGORIES,            &
+               DT,            0.0,            &
+               NUM_ICE_LAYERS,                &
+               NUM_SNOW_LAYERS,               &
+               CAT_DIST,      DT)
+
 
        end if
-       
-       call MAPL_GetResource(STATE,DT,  Label="RUN_DT:",    __RC__)             ! Get AGCM Heartbeat
-       call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, __RC__) ! set Default OCEAN_DT to AGCM Heartbeat
 
-! Loop the sea ice model
-!---------------------
+       TIO8    = TIO8d
+       FRO8    = FRO8d
+       VOLICEO = VOLICEOd
+       VOLSNOO = VOLSNOOd
+       TAUAGEO = TAUAGEOd
+       MPONDO  = MPONDOd
+       ERGICEO = ERGICEOd
+       ERGSNOO = ERGSNOOd
 
-       NUM = 0
-       do while ( MyTime <= endTime )
-
-! Run ocean for one time step (DT)
-!---------------------------------
-
-          call MAPL_TimerOff(STATE,"TOTAL")
-          call MAPL_TimerOn (STATE,"--ModRun")
-
-          if (.not. DUAL_OCEAN) then
-             call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, PrivateState%CLOCK, __RC__)
-          else
-             call MAPL_GetResource( MAPL, HIN, Label="SEA_ICE_NUDGING_HINEW:" , DEFAULT=0.5, __RC__ )
-             call MAPL_GetResource( MAPL, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1, __RC__ )
-             if (PHASE == 1) then
-                ! corrector
-                call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
-                     exportState=GEX(ICEd), clock=CLOCK, phase=1, userRC=STATUS)
-                VERIFY_(STATUS)
-                call MAPL_GenericRunCouplers( STATE, CHILD=ICEd, CLOCK=CLOCK, __RC__ )
-                call ESMF_GridCompRun( GCS(ICE), importState=GIM(ICE), &
-                     exportState=GEX(ICE), clock=CLOCK, phase=1, userRC=STATUS)
-                VERIFY_(STATUS)
-                call MAPL_GenericRunCouplers( STATE, CHILD=ICE, CLOCK=CLOCK, __RC__ )
-
-                ! this copy is necessary because CICEDyna updates these variables
-                TIO8d    = TIO8
-                FRO8d    = FRO8
-                VOLICEOd = VOLICEO
-                VOLSNOOd = VOLSNOO
-                TAUAGEOd = TAUAGEO
-                MPONDOd  = MPONDO
-                ERGICEOd = ERGICEO
-                ERGSNOOd = ERGSNOO
-
-                call MAPL_GetResource(MAPL,TAU_SIT, LABEL="SEA_ICE_NUDGING_RELAX:", default=86400.0, __RC__)
-                call MAPL_GetResource(MAPL,RN , Label="SEA_ICE_NUDGING_R:" , DEFAULT=0.1, __RC__)
-
-                call ice_nudging(FRO8d,         TIO8d,          &
-                                 VOLICEOd,      VOLSNOOd,       &
-                                 ERGICEOd,      ERGSNOOd,       &
-                                 TAUAGEOd,      MPONDOd,        &
-                                 FId,           HIN,            &
-                                 NUM_ICE_CATEGORIES,            &
-                                 TAU_SIT,       RN,             &
-                                 NUM_ICE_LAYERS,                &
-                                 NUM_SNOW_LAYERS,               &
-                                 CAT_DIST,      DT,             &
-                                 salinity = SS_FOUNDi,          &
-                                 ai_tend = DAIDTNUDG,           &
-                                 vi_tend = DVIDTNUDG )
-                 if(associated(AICEDO)) then
-                     where(AICEDO/=MAPL_UNDEF)
-                        AICEDO = sum(FRO8d, dim=3)
-                     endwhere
-                 endif
-                 if(associated(HICEDO)) then
-                     where(HICEDO/=MAPL_UNDEF)
-                        HICEDO = sum(VOLICEOd, dim=3)
-                     endwhere
-                 endif
-                 if(associated(HSNODO)) then
-                     where(HSNODO/=MAPL_UNDEF)
-                        HSNODO = sum(VOLSNOOd, dim=3)
-                     endwhere
-                 endif
-             else
-                ! predictor
-                call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
-                     exportState=GEX(ICEd), clock=CLOCK, phase=1, userRC=STATUS)
-                VERIFY_(STATUS)
-                call MAPL_GenericRunCouplers( STATE, CHILD=ICEd, CLOCK=CLOCK, __RC__ )
-
-                call ice_nudging(FRO8d,       TIO8d,       &
-                            VOLICEOd,      VOLSNOOd,       &
-                            ERGICEOd,      ERGSNOOd,       &
-                            TAUAGEOd,      MPONDOd,        &
-                            FId,           HIN,            &
-                            NUM_ICE_CATEGORIES,            &
-                            DT,            0.0,            &
-                            NUM_ICE_LAYERS,                &
-                            NUM_SNOW_LAYERS,               &
-                            CAT_DIST,      DT)
-
-                
-             end if
-
-             TIO8    = TIO8d
-             FRO8    = FRO8d
-             VOLICEO = VOLICEOd
-             VOLSNOO = VOLSNOOd
-             TAUAGEO = TAUAGEOd
-             MPONDO  = MPONDOd
-             ERGICEO = ERGICEOd
-             ERGSNOO = ERGSNOOd
-
-          end if
-
-          
-          call MAPL_TimerOff(STATE,"--ModRun")
-          call MAPL_TimerOn (STATE,"TOTAL")
-
-! Bump the time in the internal state
-!------------------------------------
-
-          call ESMF_ClockAdvance( PrivateState%clock,                    __rc__ )
-          call ESMF_ClockGet    ( PrivateState%clock, currTime= myTime , __rc__ )
-
-          NUM = NUM + 1
-
-       end do
+    end if
 
 
-    end if ! Time to run
+    call MAPL_TimerOff(STATE,"--ModRun")
+    call MAPL_TimerOn (STATE,"TOTAL")
 
 ! Profilers
 !----------
