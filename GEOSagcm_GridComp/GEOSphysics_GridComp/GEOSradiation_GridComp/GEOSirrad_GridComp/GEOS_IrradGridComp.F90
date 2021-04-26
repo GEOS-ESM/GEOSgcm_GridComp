@@ -539,7 +539,7 @@ contains
     call MAPL_AddImportSpec(GC,                                   &
        LONG_NAME  = 'aerosols',                                   &
        UNITS      = 'kg kg-1',                                    &
-       SHORT_NAME = 'AERO_RAD',                                   &
+       SHORT_NAME = 'AERO',                                   &
        DIMS       = MAPL_DimsHorzVert,                            &
        VLOCATION  = MAPL_VLocationCenter,                         &
        DATATYPE   = MAPL_StateItem,                               &
@@ -1945,9 +1945,8 @@ contains
 
    call MAPL_TimerOn(MAPL,"---AEROSOLS")
 
-   call ESMF_StateGet(IMPORT, 'AERO_RAD', AERO, RC=STATUS)
+   call ESMF_StateGet(IMPORT, 'AERO', AERO, RC=STATUS)
    VERIFY_(STATUS)
-
 
    call ESMF_AttributeGet(aero, name='implements_aerosol_optics_method', &
                                 value=implements_aerosol_optics, RC=STATUS)

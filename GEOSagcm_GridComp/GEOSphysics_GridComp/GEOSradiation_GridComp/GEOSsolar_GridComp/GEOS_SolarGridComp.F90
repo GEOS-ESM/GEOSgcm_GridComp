@@ -570,25 +570,13 @@ contains
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'aerosols',                                              &
        UNITS      = 'kg kg-1',                                               &
-       SHORT_NAME = 'AERO_RAD',                                              &
+       SHORT_NAME = 'AERO',                                                  &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationCenter,                                    &
        DATATYPE   = MAPL_StateItem,                                          &
        RESTART    = MAPL_RestartSkip,                                        &
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
-
-#if 0
-    call MAPL_AddImportSpec(GC,                                   &
-       LONG_NAME  = 'aerosols_from_GOCARTng',                     &
-       UNITS      = 'kg kg-1',                                    &
-       SHORT_NAME = 'AERO2G_RAD',                                 &
-       DIMS       = MAPL_DimsHorzVert,                            &
-       VLOCATION  = MAPL_VLocationCenter,                         &
-       DATATYPE   = MAPL_StateItem,                               &
-       RESTART    = MAPL_RestartSkip,                             &
-                                                       __RC__  )
-#endif
 
     call MAPL_AddImportSpec(GC,                                              &
        LONG_NAME  = 'surface_albedo_for_visible_beam',                       &
@@ -1628,14 +1616,6 @@ contains
     real, allocatable, dimension(:,:,:,:):: AEROSOL_SSA
     real, allocatable, dimension(:,:,:,:):: AEROSOL_ASY
 
-! AERO2G_RAD state varaibles
-! ---------------------------
-   type (ESMF_State)                    :: AERO2G
-   real, allocatable, dimension(:,:,:,:):: AEROSOL2G_EXT
-   real, allocatable, dimension(:,:,:,:):: AEROSOL2G_SSA
-   real, allocatable, dimension(:,:,:,:):: AEROSOL2G_ASY
-
-
     integer            :: band
     logical            :: implements_aerosol_optics
     logical            :: USE_RRTMGP, USE_RRTMGP_IRRAD
@@ -1984,7 +1964,7 @@ contains
 
        call MAPL_TimerOn (MAPL,"-AEROSOLS", RC=STATUS); VERIFY_(STATUS)
 
-       call ESMF_StateGet(IMPORT, 'AERO_RAD', AERO, RC=STATUS)
+       call ESMF_StateGet(IMPORT, 'AERO', AERO, RC=STATUS)
        VERIFY_(STATUS)
 
        call ESMF_AttributeGet(aero, name='implements_aerosol_optics_method', &
@@ -2597,8 +2577,7 @@ contains
 !  are dimensions by LM levels. This will be asserted later.
 !-----------------------------------------------------------------
 
-!            if (NAMESimp(K)=="AERO") then
-            if (NAMESimp(K)=="AERO_RAD") then
+            if (NAMESimp(K)=="AERO") then
 
                if(NO_AERO) then ! This is a no aerosol call done for "clean" diagnostics
                   NA = 0
@@ -2653,8 +2632,8 @@ contains
 
          if(SLICESimp(K) > 0) then ! Skip PREF
 
-!            if (NAMESimp(K)=="AERO") then
-            if (NAMESimp(K)=="AERO_RAD") then
+            if (NAMESimp(K)=="AERO") then
+!            if (NAMESimp(K)=="AERO_RAD") then
 
                _ASSERT(size(AEROSOL_EXT,3)==LM,'needs informative message')
                _ASSERT(size(AEROSOL_SSA,3)==LM,'needs informative message')
@@ -2713,8 +2692,6 @@ contains
 
             else
                if (SLICESimp(K) /= 1) then
-!               if ((SLICESimp(K) /= 1) .AND. (trim(NAMESimp(K)) /= 'AERO2G_RAD')) then
-
                   call ESMFL_StateGetPointerToData(IMPORT, PTR3, NAMESimp(K), RC=STATUS)
                   VERIFY_(STATUS)
                   call ReOrder(BUFIMP(L1),Ptr3,DAYTIME,NUMMAX,HorzDims,size(Ptr3,3),PACKIT)
@@ -2733,10 +2710,8 @@ contains
                   else if (trim(NAMESimp(K)) == 'ZTH') then
                      call ReOrder(BUFIMP(L1),ZTH,DAYTIME,NUMMAX,HorzDims,1,PACKIT)
                   else 
-!                     if (trim(NAMESimp(K)) /= 'AERO2G_RAD') then ! accomodation for GOCARTng
-                        call ESMFL_StateGetPointerToData(IMPORT, PTR2, NAMESimp(K), __RC__)
-                        call ReOrder(BUFIMP(L1),Ptr2,DAYTIME,NUMMAX,HorzDims,1,PACKIT)
-!                     end if
+                     call ESMFL_StateGetPointerToData(IMPORT, PTR2, NAMESimp(K), __RC__)
+                     call ReOrder(BUFIMP(L1),Ptr2,DAYTIME,NUMMAX,HorzDims,1,PACKIT)
                   end if
 
                   LN = L1 + NUMMAX - 1
