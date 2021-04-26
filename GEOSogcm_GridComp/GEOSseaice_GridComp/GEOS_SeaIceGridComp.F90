@@ -134,7 +134,7 @@ contains
 
    ! import states from child components will be promoted here 
 
-   if (DUAL_OCEAN)
+   if (DUAL_OCEAN) then
         
       call MAPL_AddImportSpec(GC,                                       &
          SHORT_NAME         = 'SS_FOUND',                               &
@@ -147,7 +147,7 @@ contains
    endif 
 
 !  !EXPORT STATE:
-   if (DUAL_OCEAN)
+   if (DUAL_OCEAN) then
 
       call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME         = 'FRACICEd',                               &
@@ -567,6 +567,7 @@ contains
 
     type (ESMF_State       ), pointer   :: GIM(:)
     type (ESMF_State       ), pointer   :: GEX(:)
+    type (ESMF_FIELD       )            :: FIELD
 
 
 !=============================================================================
@@ -577,7 +578,7 @@ contains
 ! -----------------------------------------------------------
 
     Iam = "Initialize"
-    call ESMF_GridCompGet( GC, NAME=COMP_NAME, grid=GRID, __RC__ )
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME,  __RC__ )
     Iam = trim(comp_name) // trim(Iam)
 
 ! Get my internal MAPL_Generic state
@@ -723,7 +724,7 @@ contains
     integer           :: I,J,L
     integer           :: IM
     integer           :: JM
-    real              :: DT, TAU_SIT
+    real              :: DT 
     integer           :: CAT_DIST               ! parameters for sea ice nudging
     real              :: HIN, RN,  TAU_SIT      ! parameters for sea ice nudging
 
@@ -753,7 +754,7 @@ contains
 ! Get constants from CF
 ! ---------------------
 
-    call MAPL_GetResource ( MAPL,       DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,       DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( STATE,       DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,       DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     if (DO_CICE_THERMO /= 0) then
@@ -774,8 +775,6 @@ contains
          GCS       = GCS,                        &
          GIM       = GIM,                        &
          GEX       = GEX,                        &
-         LONS      = LONS,                       &
-         LATS      = LATS,                       &
          IM        = IM,                         &
          JM        = JM,                         &
                                        __RC__    )
@@ -839,8 +838,8 @@ contains
     if (.not. DUAL_OCEAN) then
        call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, __RC__)
     else
-       call MAPL_GetResource( MAPL, HIN, Label="SEA_ICE_NUDGING_HINEW:" , DEFAULT=0.5, __RC__ )
-       call MAPL_GetResource( MAPL, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1, __RC__ )
+       call MAPL_GetResource( STATE, HIN, Label="SEA_ICE_NUDGING_HINEW:" , DEFAULT=0.5, __RC__ )
+       call MAPL_GetResource( STATE, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1, __RC__ )
        if (PHASE == 1) then
           ! corrector
           call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
@@ -866,8 +865,8 @@ contains
           ERGICEOd = ERGICEO
           ERGSNOOd = ERGSNOO
 
-          call MAPL_GetResource(MAPL,TAU_SIT, LABEL="SEA_ICE_NUDGING_RELAX:", default=86400.0, __RC__)
-          call MAPL_GetResource(MAPL,RN , Label="SEA_ICE_NUDGING_R:" , DEFAULT=0.1, __RC__)
+          call MAPL_GetResource(STATE,TAU_SIT, LABEL="SEA_ICE_NUDGING_RELAX:", default=86400.0, __RC__)
+          call MAPL_GetResource(STATE,RN     , Label="SEA_ICE_NUDGING_R:"    , DEFAULT=0.1,     __RC__)
 
           call ice_nudging(FRO8d,         TIO8d,          &
                            VOLICEOd,      VOLSNOOd,       &
