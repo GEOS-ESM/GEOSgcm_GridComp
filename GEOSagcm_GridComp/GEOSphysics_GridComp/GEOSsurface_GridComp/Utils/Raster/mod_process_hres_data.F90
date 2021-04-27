@@ -623,7 +623,7 @@ contains
  
     do k = 1, maxcat
 
-       read (11,'(i8,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
+       read (11,'(i10,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
        tile_lat = (minlat + maxlat)/2.
        scale = (ABS (tile_lat) - 32.)/10.
        scale = min (max(scale,0.),1.)
@@ -780,7 +780,7 @@ contains
           csf2 = 100. * csf2 / ftot 
        endif
     
-       write (10,'(2I8,4I3,4f7.2,2I3,2f7.2)')     &
+       write (10,'(2I10,4I3,4f7.2,2I3,2f7.2)')     &
             tid,cid,cpt1, cpt2, cst1, cst2, cpf1, cpf2, csf1, csf2, &
             esa_clm_veg (1), esa_clm_veg (2), esa_clm_frac(1), esa_clm_frac(2)
     end do
@@ -1348,7 +1348,7 @@ contains
 
     do k = 1, maxcat
 
-       read (11,'(i8,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
+       read (11,'(i10,i8,5(2x,f9.4))') tid,cid,minlon,maxlon,minlat,maxlat
        tile_lat = (minlat + maxlat)/2.
        scale = (ABS (tile_lat) - 32.)/10.
        scale = min (max(scale,0.),1.)
@@ -1489,7 +1489,7 @@ contains
           csf2 = 100. * csf2 / ftot 
        endif
     
-       write (10,'(2I8,4I3,4f7.2,2I3,2f7.2)')     &
+       write (10,'(2I10,4I3,4f7.2,2I3,2f7.2)')     &
             tid,cid,cpt1, cpt2, cst1, cst2, cpf1, cpf2, csf1, csf2, &
             esa_clm_veg (1), esa_clm_veg (2), esa_clm_frac(1), esa_clm_frac(2)
 
@@ -1704,7 +1704,7 @@ contains
  
     do k = 1, maxcat
 
-       read (11,'(i8,i8,5(2x,f9.4))') tid,cid
+       read (11,'(i10,i8,5(2x,f9.4))') tid,cid
        tem = 0.
        tem(1:6)=veg (k,1:6)
 
@@ -1745,7 +1745,7 @@ contains
           if (sfrac == 0.) mos2 = mos1 ! No secondary type
           if(.not.jpl_height) z2(k) = VGZ2(mos1)
           ityp (k) = mos1
-          write (10,'(i8,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
+          write (10,'(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
             tid,cid,mos1,mos2,100.*mfrac,100.*sfrac, z2(k), z0 (k)
           
        endif
@@ -4667,14 +4667,14 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
 
          wp_wetness = a_wp(fac) /a_poros(fac)
 
-         write (11,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')tindex,pfafindex,      &
+         write (11,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')tindex,pfafindex,      &
                fac_surf, fac, a_bee(fac),a_psis(fac),a_poros(fac),&
                a_aksat(fac)/exp(-1.0*zks*gnu),wp_wetness,soildepth(n),                 &
                grav_vec(n),soc_vec(n),poc_vec(n), &
                a_sand(fac_surf),a_clay(fac_surf),a_sand(fac),a_clay(fac), &
 	       a_wpsurf(fac_surf)/a_porosurf(fac_surf),a_porosurf(fac_surf), pmap(n)
 	       	    
-         write (12,'(i8,i8,4f10.7)')tindex,pfafindex, &
+         write (12,'(i10,i8,4f10.7)')tindex,pfafindex, &
 	       atau_2cm(fac_surf),btau_2cm(fac_surf),atau(fac_surf),btau(fac_surf)  
 
          if (allocated (parms4file)) then
@@ -4693,7 +4693,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
   	 endif
       end do
       write (11,'(a)')'                    '
-      write (11,'(a)')'FMT=i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4'
+      write (11,'(a)')'FMT=i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4'
       write (11,'(a)')'TileIndex PfafID SoilClassTop SoilClassProfile BEE PSIS POROS Ks_at_SURF WPWET SoilDepth %Grav %OCTop %OCProf %Sand_top %Clay_top %Sand_prof %Clay_prof WPWET_SURF POROS_SURF'
       close (10, status = 'keep')	            
       close (11, status = 'keep')	            
@@ -5748,7 +5748,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
        if(count_pix(i,3) > 0.) abm_int = NINT(abm  (i) / count_pix(i,3))
        if(count_pix(i,4) > 0.) hdm_r   = hdm   (i) / count_pix(i,4)
              
-       write (10,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) tid, cid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(sc_com)  
+       write (10,'(2I10, i3, f8.4, f8.2, f10.2, f8.4)' ) tid, cid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(sc_com)  
 
     end do
 
@@ -6437,9 +6437,9 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
          endif
 
          if(st_code <= 50) then
-            write (10, '(i8, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), ST_NAME (ST_CODE)
+            write (10, '(i10, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), ST_NAME (ST_CODE)
          else
-            write (10, '(i8, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), 'OUTSIDE USA'
+            write (10, '(i10, 2I4, 1x, a48, a20)') n, cnt_code, st_code, CNT_NAME(FINDLOC(INDEX_RANGE, CNT_CODE)), 'OUTSIDE USA'
          endif
       
      END DO

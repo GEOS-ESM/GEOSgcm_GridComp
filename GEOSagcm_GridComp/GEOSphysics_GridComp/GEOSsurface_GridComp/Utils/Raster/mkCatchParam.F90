@@ -95,8 +95,6 @@ integer :: n_threads=1
 !
 !$OMP ENDPARALLEL
 
-    print *, running_omp , n_threads
-
 !   call system('cd data/ ; ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/ CATCH')
 !   call system('cd ..')
 
@@ -150,7 +148,6 @@ integer :: n_threads=1
           read(arg,'(i6)') nr
        case ('g')
           GridName = trim(arg)
-          print *,trim(GridName)
        case ('v')
           LBSV = trim(arg)
           call init_bcs_config (trim(LBSV))
@@ -449,10 +446,12 @@ integer :: n_threads=1
        if (.not.file_exists) call CLM45_clim_parameters (nc,nr,gridnamer)   
        write (log_file,'(a)')'Done creating CLM4.5 lightening frequency clim ...........11'
 
-       call map_country_codes (nc,nr,gridnamer)
+       inquire(file='clsm/country_and_state_code.data', exist=file_exists)
+       if (.not.file_exists) call map_country_codes (nc,nr,gridnamer)
        write (log_file,'(a)')'Done mapping country and state codes .....................12'
 
-       call create_irrig_params (nc,nr,gridnamer)
+       inquire(file='clsm/irrig.dat', exist=file_exists)
+       if (.not.file_exists) call create_irrig_params (nc,nr,gridnamer)
        write (log_file,'(a)')'Done computing irrigation model parameters ...............13'
        
        ! call albedo4catchcn (gridnamet)

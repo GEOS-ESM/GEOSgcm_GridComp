@@ -349,7 +349,7 @@ contains
         allocate (field_cap(1:NTILES))
         
         do n = 1, NTILES
-           read (10,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) i, vid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(n)
+           read (10,'(2I0, i3, f8.4, f8.2, f10.2, f8.4)' ) i, vid, abm_int, peatf_r, gdp_r, hdm_r, field_cap(n)
         end do
 
         status = NF_PUT_VARA_REAL(NCOutID,VarID(NCOutID,'FIELDCAP'  ) ,(/1/),(/NTILES/),field_cap ) ; VERIFY_(STATUS)
@@ -982,7 +982,7 @@ contains
         f_drip   = 0.
         
         tile_loop : do n = 1, NTILES
-           read (10, '(i8, 2I4)') j, cnt_code, st_code
+           read (10, '(i10, 2I4)') j, cnt_code, st_code
            if (cnt_code < 257) then
               if(tarea (cnt_code) > 0.) then
                  f_flood (n) = flood (cnt_code)

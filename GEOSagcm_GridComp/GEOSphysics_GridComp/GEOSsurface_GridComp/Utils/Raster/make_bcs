@@ -72,8 +72,10 @@ echo "Enter the ${C1}Atmospheric Horizontal Resolution Code(s)${CR} to build:"
 echo "----------------------------------------------------------------------------------------------"
 echo "     Lat/Lon                     Cubed-Sphere                  EASE (land-only)"
 echo "----------------------------------------------------------------------------------------------"
-echo "   ${C2}b --  2  deg  ${CR}              ${C2}c48  --  2   deg ${CR}          ${C2}m9  --  9km EASEv2 Grid ${CR}"
-echo "   ${C2}c --  1  deg  ${CR}              ${C2}c90  --  1   deg ${CR}          ${C2}m36 -- 36km EASEv2 Grid ${CR}"
+echo "   ${C2}b --  2  deg  ${CR}              ${C2}c48  --  2   deg ${CR}          ${C2}m1  --  1km EASEv2 Grid ${CR}"
+echo "   ${C2}c --  1  deg  ${CR}              ${C2}c90  --  1   deg ${CR}          ${C2}m2  --  3km EASEv2 Grid ${CR}"
+echo "                                                          ${C2}m9  --  9km EASEv2 Grid ${CR}"
+echo "                                                          ${C2}m36 -- 36km EASEv2 Grid ${CR}"
 echo "                                                          ${C2}m25 -- 25km EASEv1 Grid ${CR}"
 echo "   ${C2}d -- 1/2 deg  ${CR}              ${C2}c180 -- 1/2  deg (${C1}56-km${C2}) ${CR}"
 echo "   ${C2}e -- 1/4 deg (${C1}35-km${C2})        c360 -- 1/4  deg (${C1}28-km${C2}) ${CR} "
@@ -111,6 +113,8 @@ foreach HRCODE ($dummy)
        $HRCODE != 'c2880'   & \
        $HRCODE != 'c3072'   & \
        $HRCODE != 'c5760'   & \
+       $HRCODE != 'm1'      & \
+       $HRCODE != 'm3'      & \
        $HRCODE != 'm9'      & \
        $HRCODE != 'm36'     & \
        $HRCODE != 'm25') goto HRCODE
@@ -143,11 +147,11 @@ echo "              (OR If you want to use the latest under development version 
 set dummy = `echo $<`
 set dummy = `echo $dummy | tr "[:lower:]" "[:upper:]"`
 set lbcsv =  DEF
-if( $dummy == 'F25'  | $$dummy == 'GM4'  | dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL4p') set lbcsv = $dummy
+if( $dummy == 'F25'  | $dummy == 'GM4'  | $dummy == 'ICA'  | $dummy == 'NL3'  | $dummy == 'NL4'  | $dummy == 'NL4p') set lbcsv = $dummy
 
 #######################################################################
 
-if($HRCODES == m9 | $HRCODES == m36 | $HRCODES == m25) then
+if($HRCODES == m1 | $HRCODES == m3 | $HRCODES == m9 | $HRCODES == m36 | $HRCODES == m25) then
 
     set orslvs = O1
 
@@ -423,6 +427,18 @@ if( $HRCODE == c5760 ) then
      set grid = cube
      @ NX = 43200
      @ NY = 21600
+endif
+if( $HRCODE == m1 ) then
+     set im = 34704
+     set jm = 14616
+     set grid = ease
+     set MGRID = M01
+endif
+if( $HRCODE == m3 ) then
+     set im = 11568
+     set jm = 4872
+     set grid = ease
+     set MGRID = M03
 endif
 if( $HRCODE == m9 ) then
      set im = 3856
@@ -1077,11 +1093,13 @@ source bin/g5_modules
 limit stacksize unlimited
 if ( $EVERSION == EASEv2 ) then
 setenv MASKFILE ${MASKFILE}
-bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
-bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID} -pfaf_til T
-bin/CombineRasters.x -f 0 -t 232000000 ${THISGRID} Pfafstetter > /dev/null
-bin/CombineRasters.x -t 232000000 ${THISGRID} ${THISGRID}-Pfafstetter
-/bin/mv til/${THISGRID}_${THISGRID}-Pfafstetter.til  til/${THISGRID}_${THISGRID}-Pfafstetter.ind 
+if(${MGRID} == M09 | ${MGRID} == M36) then 
+    bin/mkLandRaster.x -x ${NX} -y ${NY} -v -t ${NT}
+    bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID} -pfaf_til T
+    bin/CombineRasters.x -f 0 -t 232000000 ${THISGRID} Pfafstetter > /dev/null
+    bin/CombineRasters.x -t 232000000 ${THISGRID} ${THISGRID}-Pfafstetter
+    /bin/mv til/${THISGRID}_${THISGRID}-Pfafstetter.til  til/${THISGRID}_${THISGRID}-Pfafstetter.ind 
+endif
 setenv OMP_NUM_THREADS 1
 bin/mkSMAPTilesPara_v2.x -smap_grid ${MGRID} -v $lbcsv 
 setenv OMP_NUM_THREADS ${NCPUS}

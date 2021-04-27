@@ -1466,7 +1466,7 @@ END SUBROUTINE modis_lai
       endif
        if (typ == 100) then
           ip2 = n 
-          read (20,'(i8,i8,2(2x,i3),2(2x,f6.4))')     &
+          read (20,'(i10,i8,2(2x,i3),2(2x,f6.4))')     &
             indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
        endif
        if(ierr /= 0)write (*,*)'Problem reading'
@@ -1958,7 +1958,7 @@ END SUBROUTINE modis_scale_para
  !         limits(j,1) = max(limits(j,1),(i_index(j)-1)*dx_gcm -180. - dx_gcm/2.)       
  !         limits(j,2) = min(limits(j,2),(i_index(j)-1)*dx_gcm -180. + dx_gcm/2.)  
  !      endif
-       write (10,'(i8,i8,5(2x,f9.4))')j+ip1,id(j+ip1),limits(j,1),   &
+       write (10,'(i10,i8,5(2x,f9.4))')j+ip1,id(j+ip1),limits(j,1),   &
             limits(j,2),limits(j,3),limits(j,4),tile_ele(j)       
     end do
 
@@ -2470,11 +2470,11 @@ END SUBROUTINE modis_scale_para
             if(.not.jpl_height) z2(j) = VGZ2(mos_veg(j,1))
             mos_veg(j,1) = mos_veg(j-1,1)
             mos_veg(j,2) = mos_veg(j-1,2)
-            write (10,'(i8,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
+            write (10,'(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
                  j+ip1,id(j+ip1),mos_veg(j-1,1),mos_veg(j-1,2),veg_frac(j,1),veg_frac(j,2),z2(j), z0 (j)           
        else
        if(.not.jpl_height) z2(j) = VGZ2(mos_veg(j,1))
-       write (10,'(i8,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
+       write (10,'(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')     &
             j+ip1,id(j+ip1),mos_veg(j,1),mos_veg(j,2),veg_frac(j,1),veg_frac(j,2),z2(j), z0 (j)
        endif
     end do
@@ -2540,6 +2540,7 @@ END SUBROUTINE modis_scale_para
     do n = 1,ip
       if (ease_grid) then  
          read(10,*,IOSTAT=ierr) typ,pfs,lon,lat,ig,jg,fr_gcm,i_dum
+!         print *, n,typ,pfs,lon,lat,ig,jg,fr_gcm,i_dum
       else
 	 read(10,'(I10,3E20.12,9(2I10,E20.12,I10))',IOSTAT=ierr)     &    
             typ,tarea,lon,lat,ig,jg,fr_gcm,indx_dum,pfs,i_dum,fr_cat,j_dum
@@ -2618,12 +2619,12 @@ END SUBROUTINE modis_scale_para
 
        if((i > ip1).and.(i <= ip2))then
           if(((id(i).ge.5000142).and.(id(i).le.5025829)))then
-             write(20,'(i8,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1)*11.1/9.1,var(indx_old(i),2), &
+             write(20,'(i10,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1)*11.1/9.1,var(indx_old(i),2), &
                   var(indx_old(i),3),var(indx_old(i),4),var(indx_old(i),5),itext(indx_old(i),2),            &
                   var(indx_old(i),6)
           else
 
-             write(20,'(i8,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1),var(indx_old(i),2), & 
+             write(20,'(i10,i8,5(1x,f8.4),i5,e18.3)')i,id(i),var(indx_old(i),1),var(indx_old(i),2), & 
                   var(indx_old(i),3),var(indx_old(i),4),var(indx_old(i),5),itext(indx_old(i),2),   &
                   var(indx_old(i),6)
           endif
@@ -2831,7 +2832,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
  
      do n=1,nbcatch
  
-        read(11,'(i8,i8,5(1x,f8.4))') tindex1,pfaf1,meanlu,stdev  &
+        read(11,'(i10,i8,5(1x,f8.4))') tindex1,pfaf1,meanlu,stdev  &
              ,minlu,maxlu,coesk                                  
         read(10,*) tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),    &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n)                        
@@ -2974,16 +2975,16 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
         ! Writing the parameters, in the same order as in catchment.def
         !      if((ars1(n).lt.0.).and.(ars2(n).le.0.3).and.(ars3(n).le.0.04).and.(arw1(n).ne.9999.))then
         if((arw1(n).ne.9999.).and.(ars1(n).ne.9999.))then   
-           write(20,'(i8,i8,f5.2,11(2x,e14.7))')   &
+           write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
                 tindex2(n),pfaf2(n),gnu,   &
                 ars1(n),ars2(n),ars3(n),                   &
                 ara1(n),ara2(n),ara3(n),ara4(n),           &
                 arw1(n),arw2(n),arw3(n),arw4(n) 
-           write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(n),bf2(n),bf3(n)
-           write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+           write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(n),bf2(n),bf3(n)
+           write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
                 tsa1(n),tsa2(n),tsb1(n),tsb2(n)
            
-           write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),    &
+           write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),    &
                 BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n)  
         else
  
@@ -3019,7 +3020,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
              if (error_file) then
                 write (41,*)n,k
              endif
-             write(20,'(i8,i8,f5.2,11(2x,e14.7))')   &
+             write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
                   tindex2(n),pfaf2(n),gnu,   &
                   ars1(k),ars2(k),ars3(k),                   &
                   ara1(k),ara2(k),ara3(k),ara4(k),           &
@@ -3036,10 +3037,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
              arw3(n)=arw3(k)
              arw4(n)=arw4(k)
              
-             write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-             write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+             write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
+             write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
                   tsa1(k),tsa2(k),tsb1(k),tsb2(k)             
-             write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
+             write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
                   BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k)  
              
           else
@@ -3069,10 +3070,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                         ars1(k),ars2(k),ars3(k),                   &
                         ara1(k),ara2(k),ara3(k),ara4(k),           &
                         arw1(k),arw2(k),arw3(k),arw4(k) 
-                   write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-                   write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+                   write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
+                   write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
                         tsa1(k),tsa2(k),tsb1(k),tsb2(k)             
-                   write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
+                   write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
                         BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k)  
                    ars1(n)=ars1(k)
                    ars2(n)=ars2(k)
@@ -3123,10 +3124,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
               ars1(k),ars2(k),ars3(k),                   &
               ara1(k),ara2(k),ara3(k),ara4(k),           &
               arw1(k),arw2(k),arw3(k),arw4(k) 
-         write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-         write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+         write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
+         write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
               tsa1(k),tsa2(k),tsb1(k),tsb2(k)
-         write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
+         write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)') tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),    &
               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k)  
 
       endif
@@ -3404,10 +3405,10 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
      good_sand =0.
  
      do n=1,nbcatch
-        read(11,'(i8,i8,5(1x,f8.4))') tindex1,pfaf1,meanlu,stdev  &
+        read(11,'(i10,i8,5(1x,f8.4))') tindex1,pfaf1,meanlu,stdev  &
              ,minlu,maxlu,coesk                                  
  
-        read(10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)') &
+        read(10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4)') &
 	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),      &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
 	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
@@ -3635,24 +3636,24 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
      END DO	
 
      DO n=1,nbcatch
-         read(10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
+         read(10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
 	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),         &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
 	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
 	     a_sand_surf(n),a_clay_surf(n),atile_sand(n),atile_clay(n) ,   &
 	     wpwet_surf(n),poros_surf(n), pmap(n)
      if((ars1(n).ne.9999.).and.(arw1(n).ne.9999.))then   
-      write(20,'(i8,i8,f5.2,11(2x,e14.7))')         &
+      write(20,'(i10,i8,f5.2,11(2x,e14.7))')         &
                      tindex2(n),pfaf2(n),gnu,       &
                      ars1(n),ars2(n),ars3(n),         &
                      ara1(n),ara2(n),ara3(n),ara4(n), &
                      arw1(n),arw2(n),arw3(n),arw4(n) 
 
-      write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(n),bf2(n),bf3(n)
-      write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+      write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(n),bf2(n),bf3(n)
+      write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
           tsa1(n),tsa2(n),tsb1(n),tsb2(n)
 
-      write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
+      write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
 	     tindex2(n),pfaf2(n),soil_class_top(n),soil_class_com(n),      &
              BEE(n), PSIS(n),POROS(n),COND(n),WPWET(n),soildepth(n),       &
 	     grav_vec(n),soc_vec(n),poc_vec(n),                            &
@@ -3730,16 +3731,16 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             !                BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k) 
          endif
          
-         write(20,'(i8,i8,f5.2,11(2x,e14.7))')   &
+         write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
               tindex2(n),pfaf2(n),gnu,   &
               ars1(k),ars2(k),ars3(k),                   &
               ara1(k),ara2(k),ara3(k),ara4(k),           &
               arw1(k),arw2(k),arw3(k),arw4(k) 
-        write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-        write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+        write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
+        write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
           tsa1(k),tsa2(k),tsb1(k),tsb2(k)
 
-        write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
+        write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)') &
               tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),      &
               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),       &
               grav_vec(k),soc_vec(k),poc_vec(k),                            &
@@ -3792,15 +3793,15 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             endif
          enddo
          write (41,*)n,k
-         write(20,'(i8,i8,f5.2,11(2x,e14.7))')   &
+         write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
               tindex2(n),pfaf2(n),gnu,   &
               ars1(k),ars2(k),ars3(k),                   &
               ara1(k),ara2(k),ara3(k),ara4(k),           &
               arw1(k),arw2(k),arw3(k),arw4(k) 
-         write(30,'(i8,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
-         write(40,'(i8,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
+         write(30,'(i10,i8,f5.2,3(2x,e13.7))')tindex2(n),pfaf2(n),gnu,bf1(k),bf2(k),bf3(k)
+         write(40,'(i10,i8,f5.2,4(2x,e13.7))')tindex2(n),pfaf2(n),gnu,    &
               tsa1(k),tsa2(k),tsb1(k),tsb2(k)
-         write(42,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')&
+         write(42,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')&
               tindex2(n),pfaf2(n),soil_class_top(k),soil_class_com(k),         &
               BEE(k), PSIS(k),POROS(k),COND(k),WPWET(k),soildepth(k),       &
               grav_vec(k),soc_vec(k),poc_vec(k),                            &

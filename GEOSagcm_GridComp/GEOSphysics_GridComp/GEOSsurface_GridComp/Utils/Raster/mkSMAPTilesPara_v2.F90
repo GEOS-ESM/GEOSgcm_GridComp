@@ -195,7 +195,7 @@ PROGRAM mkSMAPTilesPara_v2
          call mkEASEv2Raster
          
       else
-         call write_tilfile 
+         if((trim(MGRID) == 'M09').or.(trim(MGRID) == 'M36'))call write_tilfile 
       endif
       
       if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then         
@@ -710,7 +710,7 @@ PROGRAM mkSMAPTilesPara_v2
 
             mxy = clat 
 
-            write (11,'(i8,i8,5(2x,f9.4), i4)')l,pfaf,mnx,mxx,mny,mxy,tile_ele(l)
+            write (11,'(i10,i8,5(2x,f9.4), i4)')l,pfaf,mnx,mxx,mny,mxy,tile_ele(l)
 
          endif
 
@@ -719,7 +719,7 @@ PROGRAM mkSMAPTilesPara_v2
          fr_gcm= tile_area(l)/smap_grid_area(jg*ND +  ig)
 
          if (index(MaskFile,'GEOS5_10arcsec_mask') /= 0) then
-            write(10,'(i10,i9,2f10.4,2i5,f19.12,i10,i15,e13.4)') &
+            write(10,'(i10,i9,2f10.4,2i6,f19.12,i10,i15,e13.4)') &
                  typ,pfaf,clon,clat,ig-1,jg-1,fr_gcm ,pfaf,SRTM_catid(cindex) 
          else
             write(10,'(i10,i9,2f10.4,2i5,f19.12,i10,e13.4,i8)') &

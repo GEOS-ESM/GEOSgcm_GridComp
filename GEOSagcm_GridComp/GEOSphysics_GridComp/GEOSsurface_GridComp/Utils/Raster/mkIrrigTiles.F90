@@ -617,7 +617,7 @@ contains
     allocate (rWtable (1:ITILES, 1:rcol))
 
     do n = 1, NTILES
-        read (10,'(i8,i8,5(2x,f9.4))') iRtable(n,:),rRtable(n,:)
+        read (10,'(i10,i8,5(2x,f9.4))') iRtable(n,:),rRtable(n,:)
     end do
     
     do i = 1, icol
@@ -628,7 +628,7 @@ contains
     end do
 
     do n = 1, ITILES
-       write (11,'(i8,i8,5(2x,f9.4))') n, iWtable(n,2),rWtable(n,:)
+       write (11,'(i10,i8,5(2x,f9.4))') n, iWtable(n,2),rWtable(n,:)
     end do
     
     deallocate (iRtable, iWtable,rRtable, rWtable)
@@ -648,7 +648,7 @@ contains
     allocate (rWtable (1:ITILES, 1:rcol))
 
     do n = 1, NTILES
-       read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')iRtable(n,:),rRtable(n,:)
+       read (10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')iRtable(n,:),rRtable(n,:)
     end do
 
     do i = 1, icol
@@ -659,7 +659,7 @@ contains
     end do
 
     do n = 1, ITILES
-       write (11,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')n,iWtable (n,2:) ,rWtable(n,:)
+       write (11,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')n,iWtable (n,2:) ,rWtable(n,:)
     end do
     
     deallocate (iRtable, iWtable,rRtable, rWtable)    
@@ -679,7 +679,7 @@ contains
     allocate (rWtable (1:ITILES, 1:rcol))
 
     do n = 1, NTILES
-       read (10,'(i8,i8,f5.2,11(2x,e14.7))') iRtable(n,:),rRtable(n,:)
+       read (10,'(i10,i8,f5.2,11(2x,e14.7))') iRtable(n,:),rRtable(n,:)
     end do
 
     do i = 1, icol
@@ -690,7 +690,7 @@ contains
     end do
     
     do n = 1, ITILES
-       write (11,'(i8,i8,f5.2,11(2x,e14.7))')n,iWtable (n,2) ,rWtable(n,:)
+       write (11,'(i10,i8,f5.2,11(2x,e14.7))')n,iWtable (n,2) ,rWtable(n,:)
     end do
     
     deallocate (iRtable, iWtable,rRtable, rWtable)
@@ -710,7 +710,7 @@ contains
     allocate (BF3     (1:ITILES))
     
     do n = 1, NTILES
-       read (10,'(i8,i8,f5.2,3(2x,e13.7))') iRtable(n,:),rRtable(n,:)
+       read (10,'(i10,i8,f5.2,3(2x,e13.7))') iRtable(n,:),rRtable(n,:)
     end do
 
     do i = 1, icol
@@ -726,7 +726,7 @@ contains
     end where
     rWtable (:,rcol) = BF3
     do n = 1, ITILES
-       write (11,'(i8,i8,f5.2,3(2x,e13.7))') n, iWtable(n,2),rWtable(n,:)
+       write (11,'(i10,i8,f5.2,3(2x,e13.7))') n, iWtable(n,2),rWtable(n,:)
     end do
     
     deallocate (iRtable, iWtable,rRtable, rWtable, BF3)
@@ -745,7 +745,7 @@ contains
     allocate (rWtable (1:ITILES, 1:rcol))
 
     do n = 1, NTILES
-       read (10,'(i8,i8,f5.2,4(2x,e13.7))') iRtable(n,:),rRtable(n,:)
+       read (10,'(i10,i8,f5.2,4(2x,e13.7))') iRtable(n,:),rRtable(n,:)
     end do
 
     do i = 1, icol
@@ -756,7 +756,7 @@ contains
     end do
     
     do n = 1, ITILES
-       write (11,'(i8,i8,f5.2,4(2x,e13.7))')n, iWtable(n,2),rWtable(n,:)
+       write (11,'(i10,i8,f5.2,4(2x,e13.7))')n, iWtable(n,2),rWtable(n,:)
     end do
     deallocate (iRtable, iWtable,rRtable, rWtable)
     close (10, status = 'keep')
@@ -774,7 +774,7 @@ contains
     allocate (rWtable (1:ITILES, 1:rcol))
 
     do n = 1, NTILES
-       read (10,'(i8,i8,4f10.7)')iRtable(n,:),rRtable(n,:)
+       read (10,'(i10,i8,4f10.7)')iRtable(n,:),rRtable(n,:)
     end do
 
     do i = 1, icol
@@ -785,7 +785,7 @@ contains
     end do
 
     do n = 1, ITILES
-       write (11,'(i8,i8,4f10.7)')n, iWtable(n,2),rWtable(n,:)
+       write (11,'(i10,i8,4f10.7)')n, iWtable(n,2),rWtable(n,:)
     end do
     
     deallocate (iRtable, iWtable,rRtable, rWtable)
@@ -804,7 +804,7 @@ contains
     allocate (rWtable (1:ITILES, 1:rcol))
 
     do n = 1, NTILES
-        read (10,'(i8,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')iRtable(n,:),rRtable(n,:)
+        read (10,'(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')iRtable(n,:),rRtable(n,:)
     end do
 
     do i = 1, icol
@@ -815,7 +815,7 @@ contains
     end do
 
     do n = 1, ITILES
-       write (11,'(i8,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')n, iWtable(n,2),INT(ITY(n)),iWtable(n,4),rWtable(n,:)
+       write (11,'(i10,i8,2(2x,i3),2(2x,f6.2),2x,f6.3,2x,f10.7)')n, iWtable(n,2),INT(ITY(n)),iWtable(n,4),rWtable(n,:)
     end do
     
     deallocate (iRtable, iWtable,rRtable, rWtable)
