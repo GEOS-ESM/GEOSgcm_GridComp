@@ -7,7 +7,7 @@ set (alldirs
   GEOS_OradBioGridComp
   )
 
-set (dependencies GEOSdatasea_GridComp  GEOSdataseaice_GridComp GuestOcean_GridComp GEOSCICEDyna_GridComp MAPL LANL_cice)
+set (dependencies GEOSdatasea_GridComp GEOSdataseaice_GridComp GuestOcean_GridComp GEOS_Seaice_GridComp MAPL LANL_cice)
 
 esma_add_library (${this}
   SRCS GEOS_OgcmGridComp.F90
