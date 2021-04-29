@@ -626,6 +626,20 @@ contains
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, __RC__ )
     call MAPL_TimerOn(STATE,"TOTAL"     )
 
+    call ESMF_StateGet (GIM(ICE), 'TI', FIELD, RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMF_StateGet (GIM(ICE), 'HI', FIELD, RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
+    VERIFY_(STATUS)
+
+    call ESMF_StateGet (GIM(ICE), 'SI', FIELD, RC=STATUS)
+    VERIFY_(STATUS)
+    call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
+    VERIFY_(STATUS)
+
     if (ICEd /= 0) then
        call ESMF_StateGet (GIM(ICEd), 'TI', FIELD, __RC__)
        call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., __RC__)
@@ -734,12 +748,8 @@ contains
     integer           :: IM
     integer           :: JM
     real              :: DT 
-    integer           :: CAT_DIST               ! parameters for sea ice nudging
-    real              :: HIN, RN,  TAU_SIT      ! parameters for sea ice nudging
 
 
-
-    integer           :: ID
     integer           :: PHASE
 
 ! Get the component's name and set-up traceback handle.
@@ -937,8 +947,6 @@ contains
     real, pointer, dimension(:,:)   :: SS_FOUNDi => null()
 
 ! Pointers to Exports
-    real, pointer, dimension(:,:)   :: FRd       => null()
-
 
 ! Diagnostics exports
 
