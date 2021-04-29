@@ -2262,6 +2262,26 @@ contains
     VERIFY_(STATUS)
     call MAPL_LocStreamTransform( ExchGrid, HI     ,  HIO   , RC=STATUS)
     VERIFY_(STATUS)
+
+    ! call Run2 of SEAICE to do ice nudging 
+    if (dual_ocean) then
+        if(PHASE==1) then
+             ! phase 3 correponds to phase 1, i.e. corrector
+             call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(ID), &
+                  exportState=GEX(ID), clock=CLOCK, phase=3, userRC=STATUS )
+             VERIFY_(STATUS)
+             call MAPL_GenericRunCouplers( MAPL, CHILD=ID, CLOCK=CLOCK, RC=STATUS )
+             VERIFY_(STATUS)
+        else
+             ! phase 4 correponds to phase 2, i.e. predictor
+             call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(ID), &
+                  exportState=GEX(ID), clock=CLOCK, phase=4, userRC=STATUS )
+             VERIFY_(STATUS)
+             call MAPL_GenericRunCouplers( MAPL, CHILD=ID, CLOCK=CLOCK, RC=STATUS )
+             VERIFY_(STATUS)
+        endif
+    endif
+
    
     ! *MARK*
     ! ice nudging is done in GEOS_SeaiceGridComp

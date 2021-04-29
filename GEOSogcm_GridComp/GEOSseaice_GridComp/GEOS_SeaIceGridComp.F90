@@ -508,9 +508,15 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, __RC__ )
 ! phase 1
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,        __RC__ )
-! phase 2 - this is only used in the predictor part of the replay for dual ocean
     if (DUAL_OCEAN) then
+! phase 2 - this is only used in the predictor part of the replay for dual ocean
        call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run,     __RC__ )
+! phase 3 - this is only used in the corrector part of the replay for dual ocean
+!           ice nudging only
+       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run2,    __RC__ )
+! phase 4 - this is only used in the predictor part of the replay for dual ocean
+!           ice nudging only
+       call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,	  Run2,    __RC__ )
     end if
 
 
@@ -526,6 +532,9 @@ contains
     call MAPL_TimerAdd(GC,   name="INITIALIZE" ,__RC__)
     call MAPL_TimerAdd(GC,   name="RUN"        ,__RC__)
     call MAPL_TimerAdd(GC,   name="--ModRun"   ,__RC__)
+    if (DUAL_OCEAN) then
+       call MAPL_TimerAdd(GC,   name="--IceNudging"   ,__RC__)
+    endif
 
 ! All Done
 !---------
@@ -838,8 +847,6 @@ contains
     if (.not. DUAL_OCEAN) then
        call MAPL_GenericRunChildren(GC, IMPORT, EXPORT, CLOCK, __RC__)
     else
-       call MAPL_GetResource( STATE, HIN, Label="SEA_ICE_NUDGING_HINEW:" , DEFAULT=0.5, __RC__ )
-       call MAPL_GetResource( STATE, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1, __RC__ )
        if (PHASE == 1) then
           ! corrector
           call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
@@ -855,20 +862,246 @@ contains
              FRd = FId 
           endif 
 
-          ! this copy is necessary because CICEDyna updates these variables
-          TIO8d    = TIO8
-          FRO8d    = FRO8
-          VOLICEOd = VOLICEO
-          VOLSNOOd = VOLSNOO
-          TAUAGEOd = TAUAGEO
-          MPONDOd  = MPONDO
-          ERGICEOd = ERGICEO
-          ERGSNOOd = ERGSNOO
+       else
+          ! predictor
+          call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
+               exportState=GEX(ICEd), clock=CLOCK, phase=1, userRC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GenericRunCouplers( STATE, CHILD=ICEd, CLOCK=CLOCK, __RC__ )
 
-          call MAPL_GetResource(STATE,TAU_SIT, LABEL="SEA_ICE_NUDGING_RELAX:", default=86400.0, __RC__)
-          call MAPL_GetResource(STATE,RN     , Label="SEA_ICE_NUDGING_R:"    , DEFAULT=0.1,     __RC__)
+       end if
 
-          call ice_nudging(FRO8d,         TIO8d,          &
+       TIO8    = TIO8d
+       FRO8    = FRO8d
+       VOLICEO = VOLICEOd
+       VOLSNOO = VOLSNOOd
+       TAUAGEO = TAUAGEOd
+       MPONDO  = MPONDOd
+       ERGICEO = ERGICEOd
+       ERGSNOO = ERGSNOOd
+
+    end if
+
+    call MAPL_TimerOff(STATE,"--ModRun")
+
+! Profilers
+!----------
+    call MAPL_TimerOff(STATE,"RUN"  )
+
+! All Done
+!---------
+
+    RETURN_(ESMF_SUCCESS)
+
+  end subroutine Run
+
+! !IROUTINE: Run2        -- Run method for nudging sea ice in dual-ocean corrector stage
+
+! !INTERFACE:
+
+  subroutine Run2 ( gc, import, export, clock, rc )
+
+! !ARGUMENTS:
+
+    type(ESMF_GridComp), intent(INOUT) :: gc     ! Gridded component
+    type(ESMF_State),    intent(INOUT) :: import ! Import state
+    type(ESMF_State),    intent(INOUT) :: export ! Export state
+    type(ESMF_Clock),    intent(INOUT) :: clock  ! The supervisor clock
+    integer, optional,   intent(  OUT) :: rc     ! Error code:
+
+!EOP
+
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR)          :: IAm
+    integer                             :: STATUS
+    character(len=ESMF_MAXSTR)          :: COMP_NAME
+
+! Local derived type aliases
+
+    type (MAPL_MetaComp),     pointer   :: STATE
+    type (ESMF_Config)                  :: CF
+    type (ESMF_GridComp    ), pointer   :: GCS(:)
+    type (ESMF_State       ), pointer   :: GIM(:)
+    type (ESMF_State       ), pointer   :: GEX(:)
+
+
+    integer, parameter                  :: NUM_SNOW_LAYERS=1
+    integer                             :: NUM_ICE_CATEGORIES
+    integer                             :: NUM_ICE_LAYERS
+
+    integer                             :: DO_CICE_THERMO
+
+
+! Pointers to Imports
+    real, pointer, dimension(:,:)   :: SS_FOUNDi => null()
+
+! Pointers to Exports
+    real, pointer, dimension(:,:)   :: FRd       => null()
+
+
+! Diagnostics exports
+
+
+
+! Pointers to imports of child
+
+    real, pointer, dimension(:,:,:) :: TIO8    => null()
+    real, pointer, dimension(:,:,:) :: FRO8    => null()
+    real, pointer, dimension(:,:,:) :: VOLICEO => null()
+    real, pointer, dimension(:,:,:) :: VOLSNOO => null()
+    real, pointer, dimension(:,:,:) :: TAUAGEO => null()
+    real, pointer, dimension(:,:,:) :: MPONDO  => null()
+    real, pointer, dimension(:,:,:) :: ERGICEO => null()
+    real, pointer, dimension(:,:,:) :: ERGSNOO => null()
+    real, pointer, dimension(:,:)   :: AICEDO  => null()
+    real, pointer, dimension(:,:)   :: HICEDO  => null()
+    real, pointer, dimension(:,:)   :: HSNODO  => null()
+
+    real, pointer, dimension(:,:,:) :: TIO8d   => null()
+    real, pointer, dimension(:,:,:) :: FRO8d   => null()
+    real, pointer, dimension(:,:,:) :: VOLICEOd=> null()
+    real, pointer, dimension(:,:,:) :: VOLSNOOd=> null()
+    real, pointer, dimension(:,:,:) :: TAUAGEOd=> null()
+    real, pointer, dimension(:,:,:) :: MPONDOd => null()
+    real, pointer, dimension(:,:,:) :: ERGICEOd=> null()
+    real, pointer, dimension(:,:,:) :: ERGSNOOd=> null()
+
+! Pointers to exports of child
+    real, pointer, dimension(:,:)   :: FId       => null()
+    real, pointer, dimension(:,:)   :: DAIDTNUDG => null()
+    real, pointer, dimension(:,:)   :: DVIDTNUDG => null()
+
+
+
+! Locals
+
+    integer           :: I,J,L
+    integer           :: IM
+    integer           :: JM
+    real              :: DT 
+    integer           :: CAT_DIST               ! parameters for sea ice nudging
+    real              :: HIN, RN,  TAU_SIT      ! parameters for sea ice nudging
+
+
+
+    integer           :: ID
+    integer           :: PHASE
+
+! Get the component's name and set-up traceback handle.
+! -----------------------------------------------------
+
+    Iam = "Run2"
+    call ESMF_GridCompGet( gc, NAME=comp_name,  CONFIG=CF, currentPhase=PHASE, __RC__ )
+    Iam = trim(comp_name) // Iam
+
+! Get my internal MAPL_Generic state
+!-----------------------------------
+
+    call MAPL_GetObjectFromGC ( GC, STATE, __RC__ )
+
+! Profilers
+!----------
+
+    call MAPL_TimerOn (STATE,"RUN"  )
+    call MAPL_TimerOn (STATE,"TOTAL")
+
+! Get constants from CF
+! ---------------------
+
+    call MAPL_GetResource ( STATE,       DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,       DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+    if (DO_CICE_THERMO /= 0) then
+       call ESMF_ConfigGetAttribute(CF, NUM_ICE_CATEGORIES, Label="CICE_N_ICE_CATEGORIES:" , RC=STATUS)
+       VERIFY_(STATUS)
+       call ESMF_ConfigGetAttribute(CF, NUM_ICE_LAYERS,     Label="CICE_N_ICE_LAYERS:" ,     RC=STATUS)
+       VERIFY_(STATUS)
+    else
+       NUM_ICE_CATEGORIES = 1
+       NUM_ICE_LAYERS     = 1
+    endif
+
+
+
+! Get child's import ad export to use as a bulletin board
+!--------------------------------------------------------
+    call MAPL_Get(STATE,                         &
+         GCS       = GCS,                        &
+         GIM       = GIM,                        &
+         GEX       = GEX,                        &
+         IM        = IM,                         &
+         JM        = JM,                         &
+                                       __RC__    )
+
+
+    if (dual_ocean) then
+
+       call MAPL_GetPointer(IMPORT   , SS_FOUNDi , 'SS_FOUND', __RC__)
+
+       call MAPL_GetPointer(GIM(ICE) , FRO8     , 'FRACICE',  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , TIO8     , 'TI'     ,  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , VOLICEO  , 'VOLICE' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , VOLSNOO  , 'VOLSNO' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , ERGICEO  , 'ERGICE' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , ERGSNOO  , 'ERGSNO' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , TAUAGEO  , 'TAUAGE' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICE) , MPONDO   , 'MPOND'  ,  __RC__)
+
+       call MAPL_GetPointer(GIM(ICEd), FRO8d    , 'FRACICE',  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), TIO8d    , 'TI'     ,  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), VOLICEOd , 'VOLICE' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), VOLSNOOd , 'VOLSNO' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), ERGICEOd , 'ERGICE' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), ERGSNOOd , 'ERGSNO' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), TAUAGEOd , 'TAUAGE' ,  __RC__)
+       call MAPL_GetPointer(GIM(ICEd), MPONDOd  , 'MPOND'  ,  __RC__)
+
+
+       call MAPL_GetPointer(GEX(ICE) , AICEDO    , 'AICE'    , __RC__)  ! SA: AICE needs to be looked into
+       call MAPL_GetPointer(GEX(ICE) , HICEDO    , 'HICE'    , __RC__)  ! BZ: These diags need to be updated
+       call MAPL_GetPointer(GEX(ICE) , HSNODO    , 'HSNO'    , __RC__)  ! after ice nudging
+       call MAPL_GetPointer(GEX(ICE) , DAIDTNUDG , 'DAIDTNUDG' , alloc=.TRUE., __RC__)
+       call MAPL_GetPointer(GEX(ICE) , DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., __RC__)
+       call MAPL_GetPointer(GEX(ICEd), FId       , 'FRACICE'   , alloc=.TRUE., __RC__)
+
+       ! copy to dataseaice imports as the ice nudging is done via dataseaice states 
+       TIO8d    = TIO8
+       FRO8d    = FRO8
+       VOLICEOd = VOLICEO
+       VOLSNOOd = VOLSNOO
+       TAUAGEOd = TAUAGEO
+       MPONDOd  = MPONDO
+       ERGICEOd = ERGICEO
+       ERGSNOOd = ERGSNOO
+
+    end if
+
+    call MAPL_GetResource(STATE,DT,  Label="RUN_DT:",    __RC__)             ! Get AGCM Heartbeat
+    call MAPL_GetResource(STATE,DT,  Label="OCEAN_DT:",  DEFAULT=DT, __RC__) ! set Default OCEAN_DT to AGCM Heartbeat
+
+    ! Loop the sea ice model
+    !---------------------
+
+    
+    ! Run ocean for one time step (DT)
+    !---------------------------------
+    
+    call MAPL_TimerOff(STATE,"TOTAL")
+    call MAPL_TimerOn (STATE,"--IceNudging")
+
+    
+    _ASSERT(DUAL_OCEAN, 'This method should only run in dual ocean mode')
+
+    call MAPL_GetResource( STATE, HIN     , Label="SEA_ICE_NUDGING_HINEW:"    , DEFAULT=0.5, __RC__ )
+    call MAPL_GetResource( STATE, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1  , __RC__ )
+
+    if (PHASE == 1) then
+ 
+        call MAPL_GetResource( STATE, TAU_SIT , LABEL="SEA_ICE_NUDGING_RELAX:"    , default=86400.0, __RC__)
+        call MAPL_GetResource( STATE, RN      , Label="SEA_ICE_NUDGING_R:"        , DEFAULT=0.1,     __RC__)
+
+        call ice_nudging(  FRO8d,         TIO8d,          &
                            VOLICEOd,      VOLSNOOd,       &
                            ERGICEOd,      ERGSNOOd,       &
                            TAUAGEOd,      MPONDOd,        &
@@ -897,13 +1130,7 @@ contains
                 HSNODO = sum(VOLSNOOd, dim=3)
              endwhere
           endif
-       else
-          ! predictor
-          call ESMF_GridCompRun( GCS(ICEd), importState=GIM(ICEd), &
-               exportState=GEX(ICEd), clock=CLOCK, phase=1, userRC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_GenericRunCouplers( STATE, CHILD=ICEd, CLOCK=CLOCK, __RC__ )
-
+    else  
           call ice_nudging(FRO8d,         TIO8d,          &
                            VOLICEOd,      VOLSNOOd,       &
                            ERGICEOd,      ERGSNOOd,       &
@@ -914,28 +1141,21 @@ contains
                            NUM_ICE_LAYERS,                &
                            NUM_SNOW_LAYERS,               &
                            CAT_DIST,      DT)
-
-       end if
-
-       TIO8    = TIO8d
-       FRO8    = FRO8d
-       VOLICEO = VOLICEOd
-       VOLSNOO = VOLSNOOd
-       TAUAGEO = TAUAGEOd
-       MPONDO  = MPONDOd
-       ERGICEO = ERGICEOd
-       ERGSNOO = ERGSNOOd
-
     end if
 
+    TIO8    = TIO8d
+    FRO8    = FRO8d
+    VOLICEO = VOLICEOd
+    VOLSNOO = VOLSNOOd
+    TAUAGEO = TAUAGEOd
+    MPONDO  = MPONDOd
+    ERGICEO = ERGICEOd
+    ERGSNOO = ERGSNOOd
 
-    call MAPL_TimerOff(STATE,"--ModRun")
-    call MAPL_TimerOn (STATE,"TOTAL")
+    call MAPL_TimerOff (STATE,"--IceNudging")
 
 ! Profilers
 !----------
-
-    call MAPL_TimerOff(STATE,"TOTAL")
     call MAPL_TimerOff(STATE,"RUN"  )
 
 ! All Done
@@ -943,6 +1163,6 @@ contains
 
     RETURN_(ESMF_SUCCESS)
 
-  end subroutine Run
+  end subroutine Run2
 
 end module GEOS_SeaIceGridCompMod
