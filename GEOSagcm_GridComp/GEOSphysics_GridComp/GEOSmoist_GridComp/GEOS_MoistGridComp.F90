@@ -12885,26 +12885,36 @@ do K= 1, LM
 
       
       
-      do i=1,IM
-        do j=1,JM
-          if (TS(i,j).le.293.) then
-          do k=1,LM
-            if (ZLO(i,j,k)>IMPOSECLD_BOT .and. ZLO(i,j,k)<IMPOSECLD_TOP) then
-              if (maxval(RAD_CF(i,j,1:k-1))<0.9) then
-                RAD_CF(i,j,k) = max(RAD_CF(i,j,k),IMPOSECLD_FRCMIN)
-                RAD_QL(i,j,k) = max(RAD_QL(i,j,k),IMPOSECLD_QCMIN)
-              end if
-            end if
-          end do
-          end if
-        end do
-      end do
+!      do i=1,IM
+!        do j=1,JM
+!          if (TS(i,j).le.293.) then
+!          do k=1,LM
+!            if (ZLO(i,j,k)>IMPOSECLD_BOT .and. ZLO(i,j,k)<IMPOSECLD_TOP) then
+!              if (maxval(RAD_CF(i,j,1:k-1))<0.9) then
+!                RAD_CF(i,j,k) = max(RAD_CF(i,j,k),IMPOSECLD_FRCMIN)
+!                RAD_QL(i,j,k) = max(RAD_QL(i,j,k),IMPOSECLD_QCMIN)
+!              end if
+!            end if
+!          end do
+!          end if
+!        end do
+!      end do
 !      where (ZLO.gt.IMPOSECLD_BOT .and. ZLO.lt.IMPOSECLD_TOP) 
 !        RAD_CF = max(RAD_CF,IMPOSECLD_FRCMIN)
 !        RAD_QL = max(RAD_QL,IMPOSECLD_QCMIN)
 !      end where
-
-
+      ! DAN
+      do i = 1,IM
+      do j = 1,JM
+         do k = 1,LM
+            if ( ZLO(i,j,k) > IMPOSECLD_BOT .and. ZLO(i,j,k) < IMPOSECLD_TOP ) then
+               RAD_CF(i,j,k) = max( RAD_CF(i,j,k), IMPOSECLD_FRCMIN )
+               RAD_QL(i,j,k) = max( RAD_QL(i,j,k), IMPOSECLD_QCMIN )
+            end if
+         end do
+      end do
+      end do
+   
       IF ( INT(CLDPARAMS%DISABLE_RAD)==1 ) THEN
          RAD_QL     = 0.
          RAD_QI     = 0.

@@ -16,15 +16,14 @@ real, parameter :: kappa = MAPL_RGAS/MAPL_CP
 real, parameter :: ep2   = MAPL_RVAP/MAPL_RGAS - 1.
 
 ! MYNN constants 
-real, parameter :: Pr     = 0.74
-real, parameter :: gamma1 = 0.235
-real, parameter :: B1     = 24.
-real, parameter :: B2     = 15.
-real, parameter :: C2     = 0.729
-real, parameter :: C4     = 0.
-real, parameter :: C5     = 0.2
-
-double precision, parameter :: C3 = 0.34d0
+real, parameter ::             Pr     = 0.74
+real, parameter ::             gamma1 = 0.235
+real, parameter ::             B1     = 24.
+real, parameter ::             B2     = 15.
+real, parameter ::             C2     = 0.729
+real, parameter ::             C4     = 0.
+real, parameter ::             C5     = 0.2
+double precision, parameter :: C3     = 0.34d0
 
 real, parameter :: A1 = B1*( 1. - 3.*gamma1 )/6.
 
@@ -301,7 +300,8 @@ subroutine run_mynn(IM, JM, LM, &                                               
            write(*,*)             &
                       tke(i,j,k), &
                       au(i,j,k),  &
-                      Mu(i,j,k)
+                      Mu(i,j,k),  &
+                      aci(i,j,k)
 !                      wb_test_1, &
 !                      wb_test_2, &
 !                      aci(i,j,k), &

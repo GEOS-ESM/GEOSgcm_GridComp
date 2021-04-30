@@ -6095,7 +6095,7 @@ ENDIF
         BKTKE = BKIX
         AKTKE = AKIX
 
-        if ( MYNN_LEVEL == 3 ) then
+        if ( MYNN_LEVEL >= 3 ) then
            AKIX = AKTPE
            BKIX = BKTPE
            call VTRILU(AKIX, BKIX, CKTPE)
@@ -9087,7 +9087,7 @@ end subroutine Poisson
               if ( discrete_type == 0 ) then ! centered
                  ifac = ( zle(i,j,k) - zl(i,j,kp1) )/( zl(i,j,k) - zl(i,j,kp1) )
                     
-                 aci(i,j,k)      = ac(i,j,kp1)      + ifac*( ac(i,j,k)      - ac(i,j,kp1) )
+                 aci(i,j,k)      = max( 0., ac(i,j,kp1)      + ifac*( ac(i,j,k)      - ac(i,j,kp1) ) )
                  Ai_moist(i,j,k) = A_moist(i,j,kp1) + ifac*( A_moist(i,j,k) - A_moist(i,j,kp1) )
                  Bi_moist(i,j,k) = B_moist(i,j,kp1) + ifac*( B_moist(i,j,k) - B_moist(i,j,kp1) )
               elseif ( discrete_type == 1 ) then ! upwind
@@ -9095,11 +9095,11 @@ end subroutine Poisson
                  Ai_moist(i,j,k) = A_moist(i,j,k)
                  Bi_moist(i,j,k) = B_moist(i,j,k)
               elseif ( discrete_type == 2 ) then
-                 aci(i,j,k)      = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, ac)
+                 aci(i,j,k)      = max( 0., interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, ac) )
                  Ai_moist(i,j,k) = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, A_moist)
                  Bi_moist(i,j,k) = interp_carpenter1990_up(IM, JM, LM, i, j, k, zle, zl, B_moist)
               elseif ( discrete_type == 3 ) then
-                 aci(i,j,k)      = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, ac)
+                 aci(i,j,k)      = max( 0., interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, ac) )
                  Ai_moist(i,j,k) = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, A_moist)
                  Bi_moist(i,j,k) = interp_carpenter1990_down(IM, JM, LM, i, j, k, zle, zl, B_moist)
               end if

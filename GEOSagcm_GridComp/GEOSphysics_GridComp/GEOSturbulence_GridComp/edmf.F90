@@ -188,7 +188,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   call A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
                       rho, rhoe, thl, qt, thv, 1, &               ! in
                       izsl, A_star, Mu0, zi_thermal)              ! out
-  write(*,*) '*', izsl, Mu0
+!  write(*,*) '*', izsl, Mu0
 
   !
   ! Initialize updrafts
@@ -774,9 +774,9 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
         qtu(i,j)  = qt(i,j,LM)
         thvu(i,j) = thv(i,j,LM)
 
-        if ( debug_flag /= 0 ) then
-           write(*,*) LM-1, Mu(i,j), thvu(i,j), thv(i,j,LM-1)
-        end if
+!        if ( debug_flag /= 0 ) then
+!           write(*,*) LM-1, Mu(i,j), thvu(i,j), thv(i,j,LM-1)
+!        end if
      end if
   end do
   end do
@@ -802,9 +802,9 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
 !           call condensation_edmf(qtu_next, thlu_next, ple(i,j,km1), thvu_next, qcu, wf, ice_ramp)           
            thvu_next = thlu_next*( 1. + mapl_epsilon*qtu_next )
 
-           if ( debug_flag /= 0 ) then
-              write(*,*) km1, Mu_next, thvu_next, thv(i,j,km1)
-           end if
+!           if ( debug_flag /= 0 ) then
+!              write(*,*) km1, Mu_next, thvu_next, thv(i,j,km1)
+!           end if
 
            if ( wu2_next <= wu2(i,j) ) then
               zi(i,j) = zle(i,j,k)
