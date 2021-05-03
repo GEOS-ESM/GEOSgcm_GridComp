@@ -624,32 +624,6 @@ contains
 
     call MAPL_TimerOff(STATE,"TOTAL"     )
     call MAPL_GenericInitialize( GC, IMPORT, EXPORT, CLOCK, __RC__ )
-    call MAPL_TimerOn(STATE,"TOTAL"     )
-
-    call ESMF_StateGet (GIM(ICE), 'TI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_StateGet (GIM(ICE), 'HI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-    VERIFY_(STATUS)
-
-    call ESMF_StateGet (GIM(ICE), 'SI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-    VERIFY_(STATUS)
-
-    if (ICEd /= 0) then
-       call ESMF_StateGet (GIM(ICEd), 'TI', FIELD, __RC__)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., __RC__)
-       call ESMF_StateGet (GIM(ICEd), 'HI', FIELD, __RC__)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., __RC__)
-       call ESMF_StateGet (GIM(ICEd), 'SI', FIELD, __RC__)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., __RC__)
-    end if
-
-    call MAPL_TimerOff(STATE,"TOTAL"     )
     call MAPL_TimerOff(STATE,"INITIALIZE")
 
 

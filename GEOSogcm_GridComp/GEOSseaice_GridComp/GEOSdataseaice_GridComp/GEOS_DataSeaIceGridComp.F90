@@ -496,23 +496,23 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Check that they are friendly
 !-----------------------------
 
-    call ESMF_StateGet (IMPORT, 'TI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(FRIENDLY,'needs informative message')
+   ! call ESMF_StateGet (IMPORT, 'TI', FIELD, RC=STATUS)
+   ! VERIFY_(STATUS)
+   ! call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
+   ! VERIFY_(STATUS)
+   ! _ASSERT(FRIENDLY,'needs informative message')
 
-    call ESMF_StateGet (IMPORT, 'HI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(FRIENDLY,'needs informative message')
+   ! call ESMF_StateGet (IMPORT, 'HI', FIELD, RC=STATUS)
+   ! VERIFY_(STATUS)
+   ! call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
+   ! VERIFY_(STATUS)
+   ! _ASSERT(FRIENDLY,'needs informative message')
 
-    call ESMF_StateGet (IMPORT, 'SI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    _ASSERT(FRIENDLY,'needs informative message')
+   ! call ESMF_StateGet (IMPORT, 'SI', FIELD, RC=STATUS)
+   ! VERIFY_(STATUS)
+   ! call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
+   ! VERIFY_(STATUS)
+   ! _ASSERT(FRIENDLY,'needs informative message')
 
 !  Pointers to Exports
 !---------------------
