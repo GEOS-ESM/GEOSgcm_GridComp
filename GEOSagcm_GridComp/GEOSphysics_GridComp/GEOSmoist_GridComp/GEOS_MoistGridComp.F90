@@ -3692,6 +3692,15 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='LFR_GCC_UPTD',                                   &
+         LONG_NAME ='updated_lightning_flash_rate_for_GEOSCHEMchem',  &
+         UNITS     ='km-2 s-1',                                       &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         VLOCATION = MAPL_VLocationNone,                              &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
     call MAPL_AddExportSpec(GC,                                    &
          SHORT_NAME='THMOIST',                                     & 
          LONG_NAME ='potential_temperature_after_all_of_moist',   &
@@ -5338,7 +5347,8 @@ contains
       real, pointer, dimension(:,:,:) :: FRZ_TT, DCNVL, DCNVi,QSATi,QSATl,RCCODE,TRIEDLV,QVRAS
 
       real, pointer, dimension(:,:  ) :: LFR,A1X1,A2X2,A3X3,A4X4,A5X5
-      real, pointer, dimension(:,:  ) :: LFR_GCC
+      real, pointer, dimension(:,:  ) :: LFR_GCC, LFR_GCC_UPTD
+      real   , dimension(IM,JM)       :: T_440, CNV_CVW_440
 
       !Whether to guard against negatives
       logical                         :: RAS_NO_NEG
@@ -12609,6 +12619,30 @@ do K= 1, LM
                                    TS,          &
                                    LFR_GCC,     &
                                           __RC__ )
+         CALL MAPL_TimerOff(STATE,"--FLASH", __RC__ )
+      ENDIF
+
+      CALL MAPL_GetPointer( EXPORT, LFR_GCC_UPTD, 'LFR_GCC_UPTD', NotFoundOk=.TRUE., __RC__ )
+      IF ( ASSOCIATED( LFR_GCC_UPTD ) ) THEN
+         CALL MAPL_TimerOn (STATE,"--FLASH", __RC__ )
+         CALL Get_hemcoFlashrate ( STATE,        &
+                                   IMPORT,       &
+                                   IM, JM, LM,   &
+                                   T,            &
+                                   PLE,          &
+                                   ZLE,          &
+                                   CNV_MFC,      &
+                                   AREA,         &
+                                   TS,           &
+                                   LFR_GCC_UPTD, &
+                                          __RC__ )
+
+         ! Set LFR to zero if T@440 hPa below threshold and no vertical motion
+         call VertInterp(T_440,T,log(PLE),log(44000.),STATUS)
+         VERIFY_(STATUS)
+         call VertInterp(CNV_CVW_440,CNV_CVW,log(PLE),log(44000.),STATUS)
+         VERIFY_(STATUS)
+         WHERE ( T_440<245. .AND. CNV_CVW_440<=0.0 ) LFR_GCC_UPTD = 0.0
          CALL MAPL_TimerOff(STATE,"--FLASH", __RC__ )
       ENDIF
 
