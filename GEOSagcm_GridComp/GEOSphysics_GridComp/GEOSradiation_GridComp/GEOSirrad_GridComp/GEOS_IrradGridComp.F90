@@ -65,7 +65,7 @@ module GEOS_IrradGridCompMod
   use MAPL
   use GEOS_UtilsMod
 
-  use rrtmg_lw_rad, only: rrtmg_lw  !  RRTMG Code
+  use rrtmg_lw_rad, only: rrtmg_lw
   use rrtmg_lw_init, only: rrtmg_lw_ini
   use parrrtm, only: ngptlw
 
@@ -1523,12 +1523,6 @@ contains
 ! Variables for RRTMG Code
 ! ------------------------
 
-   integer :: icld      ! Cloud overlap method
-                        !    0: Clear only
-                        !    1: Random
-                        !    2: Maximum/random
-                        !    3: Maximum
-   integer :: inflglw         ! Flag for cloud optical properties
    integer :: iceflglw        ! Flag for ice particle specification
    integer :: liqflglw        ! Flag for liquid droplet specification
    integer :: idrv            ! Flux for derivative calculation: 0=no derivative, 1=yes derivative
@@ -1537,20 +1531,18 @@ contains
    real,    allocatable, dimension(:,:)   :: FCLD_R
    real,    allocatable, dimension(:,:)   :: TLEV_R       ! Edge Level temperature
    real,    allocatable, dimension(:,:)   :: PLE_R        ! Reverse of level pressure
-   real,    allocatable, dimension(:,:)   :: ZL_R         ! Reverse of level height
+   real,    allocatable, dimension(:,:)   :: ZM_R         ! Reverse of layer height
    real,    allocatable, dimension(:,:)   :: EMISS        ! Surface emissivity at 16 RRTMG bands
    real,    allocatable, dimension(:,:)   :: CLIQWP       ! Cloud liquid water path 
    real,    allocatable, dimension(:,:)   :: CICEWP       ! Cloud ice water path 
    real,    allocatable, dimension(:,:)   :: RELIQ        ! Cloud liquid effective radius 
    real,    allocatable, dimension(:,:)   :: REICE        ! Cloud ice effective radius 
-   real,    allocatable, dimension(:,:,:) :: TAUCLD
    real,    allocatable, dimension(:,:,:) :: TAUAER
    real,    allocatable, dimension(:,:)   :: PL_R, T_R,  Q_R, O2_R,  O3_R
    real,    allocatable, dimension(:,:)   :: CO2_R, CH4_R, N2O_R, CFC11_R, CFC12_R, CFC22_R, CCL4_R
    real,    allocatable, dimension(:)     :: TSFC
    real,    allocatable, dimension(:,:)   :: UFLX, DFLX, UFLXC, DFLXC, DUFLX_DT, DUFLXC_DT
-   real,    allocatable, dimension(:,:)   :: HR, HRC
-   integer, allocatable, dimension(:,:)   :: CLOUDFLAG
+   integer, allocatable, dimension(:,:)   :: CLEARCOUNTS
    real,    allocatable, dimension(:)     :: ALAT
    real,    allocatable, dimension(:)     :: OLRB06RG_1D, DOLRB06RG_DT_1D
    real,    allocatable, dimension(:)     :: OLRB09RG_1D, DOLRB09RG_DT_1D
@@ -3283,16 +3275,18 @@ contains
       call MAPL_GetResource(MAPL,PARTITION_SIZE,'RRTMGLW_PARTITION_SIZE:',DEFAULT=4,RC=STATUS)
       VERIFY_(STATUS)
 
+      ! reversed profiles for RRTMG (1=bottom layer)
+      ! note 0:LM indexing for [PT]LEV_R
+      ! but 1:LM+1 for [UD]FLX[C] and DUFLX[C]_DT
       allocate(FCLD_R(IM*JM,LM),__STAT__)
       allocate(TLEV_R(IM*JM,0:LM),__STAT__)
       allocate(PLE_R(IM*JM,0:LM),__STAT__)
-      allocate(ZL_R(IM*JM,LM),__STAT__)
+      allocate(ZM_R(IM*JM,LM),__STAT__)
       allocate(EMISS(IM*JM,NB_RRTMG),__STAT__)
       allocate(CLIQWP(IM*JM,LM),__STAT__)
       allocate(CICEWP(IM*JM,LM),__STAT__)
       allocate(RELIQ(IM*JM,LM),__STAT__)
       allocate(REICE(IM*JM,LM),__STAT__)
-      allocate(TAUCLD(IM*JM,NB_RRTMG,LM),__STAT__)
       allocate(TAUAER(IM*JM,LM,NB_RRTMG),__STAT__)
       allocate(PL_R(IM*JM,LM),__STAT__)
       allocate(T_R(IM*JM,LM),__STAT__)
@@ -3313,9 +3307,7 @@ contains
       allocate(DFLXC(IM*JM,LM+1),__STAT__)
       allocate(DUFLX_DT(IM*JM,LM+1),__STAT__)
       allocate(DUFLXC_DT(IM*JM,LM+1),__STAT__)
-      allocate(HR(IM*JM,LM+1),__STAT__)
-      allocate(HRC(IM*JM,LM+1),__STAT__)
-      allocate(CLOUDFLAG(IM*JM,4),__STAT__)
+      allocate(CLEARCOUNTS(IM*JM,4),__STAT__)
       allocate(ALAT(IM*JM),__STAT__)
       allocate(OLRB06RG_1D(IM*JM),__STAT__)
       allocate(DOLRB06RG_DT_1D(IM*JM),__STAT__)
@@ -3326,60 +3318,66 @@ contains
       allocate(OLRB11RG_1D(IM*JM),__STAT__)
       allocate(DOLRB11RG_DT_1D(IM*JM),__STAT__)
 
-      ICLD = 4
-      INFLGLW = 2
+      ! choices for cloud physical to optical conversion
       ICEFLGLW = 3
       LIQFLGLW = 1
 
-      !  Set flag for flux derivative calculation
+      ! set flag for flux derivative calculation
       IDRV = 1
 
+      ! reverse super-layer interface indicies
       LCLDMH = LM - LCLDMH + 1
       LCLDLM = LM - LCLDLM + 1
 
       call MAPL_TimerOn(MAPL,"---RRTMG_FLIP",RC=STATUS)
       VERIFY_(STATUS)
  
+      ! collapse horizontal indicies and flip in vertical
+      !   (RRTMG indexed bottom to top)
       IJ = 0
-      do j=1,jm
-      do i=1,im
+      do J = 1,JM
+      do I = 1,IM
          IJ = IJ + 1
-         TSFC(IJ)    = TS(I,J)
-         EMISS(IJ,:) = EMIS(i,j)
 
-         ALAT(IJ)    = LATS(I,J)
+         TSFC (IJ)   = TS  (I,J)
+         EMISS(IJ,:) = EMIS(I,J) ! all bands get same emissivity
+         ALAT (IJ)   = LATS(I,J)
 
-         DP(1) = (PLE(I,J,1)-PLE(I,J,0))
-         do k = 2, LM
+         ! calculation of level temperature (still in model ordering)
+         ! note: PLE(0:LM) but TLEV(1:LM+1)
+         DP(1) = PLE(I,J,1)-PLE(I,J,0)
+         do K = 2,LM
             DP(K) = (PLE(I,J,K)-PLE(I,J,K-1) )
-            TLEV(k)=  (T(I,J,k-1)* DP(k) + T(I,J,k) * DP(k-1)) &
-                     /            (DP(k-1) + DP(k))
+            TLEV(K) = (T(I,J,K-1) * DP(K) + T(I,J,K) * DP(K-1)) &
+                      / (DP(K-1) + DP(K))
          enddo
+         TLEV(LM+1) = T2M(I,J) ! 'surface'
+         TLEV(   1) = TLEV(2)  ! model top
 
-         TLEV(LM+1) = T2M(I,J)
-         TLEV(   1) = TLEV(2)
+         !  Flip in vertical
+         do K = 1,LM
+            LV = LM-K+1  ! LM --> 1
 
-         !  Flip vertical and convert to Real*8
-         !  RRTMG is indexed bottom to top.
-         !  Cloud WP and effective particle size
-         !  have already been reversed.
-
-         do k=1, LM
-            LV = LM-k+1
-
+            ! Convert content [kg/kg] to path [g/m2]
+            ! using hydrostatic eqn dp/g ~ rho*dz,
+            ! so conversion factor is 1000*dp/g ~ 1.02*100*dp.
+            ! pmn: why not use MAPL_GRAV explicitly?
             xx = 1.02*100*DP(LV)
-            CLIQWP(IJ,k) = xx*CWC(I,J,LV,KLIQUID)
-            CICEWP(IJ,k) = xx*CWC(I,J,LV,KICE)
-            RELIQ (IJ,k) =   REFF(I,J,LV,KLIQUID)
-            REICE (IJ,k) =   REFF(I,J,LV,KICE   )
+            CLIQWP(IJ,K) = xx*CWC(I,J,LV,KLIQUID)
+            CICEWP(IJ,K) = xx*CWC(I,J,LV,KICE)
+            RELIQ (IJ,K) =   REFF(I,J,LV,KLIQUID)
+            REICE (IJ,K) =   REFF(I,J,LV,KICE   )
                
+            ! impose RRTMG re_liq limits
             if    (LIQFLGLW.eq.0) then
+               ! pmn: this one not available inside RRTMG_LW
                RELIQ(IJ,K) = min(max(RELIQ(IJ,K),5.0),10.0)
             elseif (LIQFLGLW.eq.1) then
                RELIQ(IJ,K) = min(max(RELIQ(IJ,K),2.5),60.0)
             endif
 
-            if    (ICEFLGLW.eq.0) then
+            ! impose RRTMG re_ice limits
+            if     (ICEFLGLW.eq.0) then
                REICE(IJ,K) = min(max(REICE(IJ,K),10.0),30.0)
             elseif (ICEFLGLW.eq.1) then
                REICE(IJ,K) = min(max(REICE(IJ,K),13.0),130.0)
@@ -3388,38 +3386,60 @@ contains
             elseif (ICEFLGLW.eq.3) then
                REICE(IJ,K) = min(max(REICE(IJ,K), 5.0),140.0)
             elseif (ICEFLGLW.eq.4) then
-               REICE(IJ,K) = min(max(REICE(IJ,K)*2., 1.0),200.0)
+               REICE(IJ,K) = min(max(REICE(IJ,K)*2.,1.0),200.0)
             endif
 
-            PLE_R  (IJ,k-1) = PLE(I,J,LV)/100.
-            TLEV_R (IJ,k-1) = TLEV(LV+1)
-            PL_R   (IJ,k) = PL(I,J,LV)/100.
-            T_R    (IJ,k) = T(I,J,LV)
-            Q_R    (IJ,k) = Q(I,J,LV) / (1.-Q(I,J,LV)) * (MAPL_AIRMW/MAPL_H2OMW)  ! Specific humidity to Volume Mixing Ratio
-            O3_R   (IJ,k) = O3(I,J,LV) * (MAPL_AIRMW/MAPL_O3MW)  ! Mass to Volume Mixing Ratio
-            CH4_R  (IJ,k) = CH4(I,J,LV)
-            N2O_R  (IJ,k) = N2O(I,J,LV)
-            CO2_R  (IJ,k) = CO2
-            O2_R   (IJ,k) = O2
-            CCL4_R (IJ,k) = CCL4
-            CFC11_R(IJ,k) = CFC11(I,J,LV)
-            CFC12_R(IJ,k) = CFC12(I,J,LV)
-            CFC22_R(IJ,k) = HCFC22(I,J,LV)
-            FCLD_R (IJ,k) = FCLD(I,J,LV)
+            ! flipping for LEVEL quantities
+            ! PLE_R(0:LM) = PLE(LM:0)
+            ! TLEV_R(0:LM) = TLEV(LM+1:1)
+            ! top-of-model LEVEL (RRTMG LM) done later
+            PLE_R  (IJ,K-1) = PLE(I,J,LV)/100. ! [hPa]
+            TLEV_R (IJ,K-1) = TLEV(LV+1)
 
+            ! more flipping for layer quantities
+            ! Q [specific humidity] --> Q_R [volume mixing ratio]
+            ! O3 [mass mixing ratio] --> O3_R [volume mixing ratio]
+            PL_R   (IJ,K) = PL(I,J,LV)/100.  ! [hPa]
+            T_R    (IJ,K) = T(I,J,LV)
+            Q_R    (IJ,K) = Q(I,J,LV) / (1.-Q(I,J,LV)) * (MAPL_AIRMW/MAPL_H2OMW)
+            O3_R   (IJ,K) = O3(I,J,LV) * (MAPL_AIRMW/MAPL_O3MW)
+            CH4_R  (IJ,K) = CH4(I,J,LV)
+            N2O_R  (IJ,K) = N2O(I,J,LV)
+            CO2_R  (IJ,K) = CO2
+            O2_R   (IJ,K) = O2
+            CCL4_R (IJ,K) = CCL4
+            CFC11_R(IJ,K) = CFC11(I,J,LV)
+            CFC12_R(IJ,K) = CFC12(I,J,LV)
+            CFC22_R(IJ,K) = HCFC22(I,J,LV)
+            FCLD_R (IJ,K) = FCLD(I,J,LV)
+
+            ! RRTMG_LW does not scatter, so pass ABSORPTION aerosol
+            ! optical thickness to RRTMG. Remember that SSAA is the
+            ! aerosol system's *un*-normalized single scattering albedo,
+            ! which is actually tau_ext * omega0 = tau_scat, and TAUA
+            ! is the aerosol extinction optical thickness.
             TAUAER(IJ,K,:) = TAUA(I,J,LV,:) - SSAA(I,J,LV,:)
 
-            TAUCLD(IJ,:,k) = 0.0
          enddo
 
-         PLE_R (IJ,LM) = PLE(I,J,0)/100.
+         ! finish off top-of-model LEVEL
+         PLE_R (IJ,LM) = PLE(I,J,0)/100. ! [hPa]
          TLEV_R(IJ,LM) = TLEV(1)
 
-         ZL_R(IJ,1) = 0. ! Assume lowest level ZL_R = 0.
-         do k=2,LM
-            ! dz = RT/g x dp/p
-            ZL_R(IJ,k) = ZL_R(IJ,k-1)+MAPL_RGAS*TLEV_R(IJ,k)/MAPL_GRAV*(PL_R(IJ,k-1)-PL_R(IJ,k))/PLE_R(IJ,k)
+         ! Calculate the LAYER (mid-point) heights.
+         ! The interlayer distances are needed for the calculations
+         ! of inter-layer correlation for cloud overlapping in RRTMG.
+         ! Only *relative* distances matter, so wolog set ZM_R(1) = 0.
+         ! pmn: 2021-04-21 this calculation was wrong in earlier revisions.
+         ZM_R(IJ,1) = 0.
+         do K=2,LM
+            ! dz ~ RT/g x dp/p by hysrostatic eqn and ideal gas eqn.
+            ! The jump from LAYER k-1 to k is centered on LEVEL k-1
+            !   since the RRTMG LEVEL (LE[V]_R) indices are zero-based
+            ZM_R(IJ,K) = ZM_R(IJ,K-1) + MAPL_RGAS*TLEV_R(IJ,K-1)/MAPL_GRAV &
+                                        * (PL_R(IJ,K-1)-PL_R(IJ,K))/PLE_R(IJ,K-1)
          enddo
+
       enddo ! IM
       enddo ! JM
 
@@ -3429,7 +3449,9 @@ contains
       call MAPL_TimerOn(MAPL,"---RRTMG_INIT",RC=STATUS)
       VERIFY_(STATUS)
  
-      call RRTMG_LW_INI(1.004e3)
+! pmn: consider putting futher up calling tree?
+! pmn: only needs to be done once per run, but does consume memory
+      call RRTMG_LW_INI
 
       call MAPL_TimerOff(MAPL,"---RRTMG_INIT",RC=STATUS)
       VERIFY_(STATUS)
@@ -3437,17 +3459,15 @@ contains
       call MAPL_TimerOn(MAPL,"---RRTMG_RUN",RC=STATUS)
       VERIFY_(STATUS)
 
-      call RRTMG_LW (IM*JM     ,LM    ,ICLD    ,    IDRV, &
-              PL_R    ,PLE_R    ,T_R    ,TLEV_R    ,TSFC    , &
-              Q_R  ,O3_R   ,CO2_R  ,CH4_R  ,N2O_R  ,O2_R, &
-              CFC11_R, CFC12_R, CFC22_R, CCL4_R , EMISS, &
-              INFLGLW ,ICEFLGLW, LIQFLGLW, FCLD_R  , &
-              TAUCLD ,CICEWP ,CLIQWP ,REICE ,RELIQ , &
-              TAUAER  , ZL_R, LCLDLM, LCLDMH, &
-              UFLX, DFLX, HR, UFLXC, DFLXC, HRC, DUFLX_DT, DUFLXC_DT, CLOUDFLAG, &
+      call RRTMG_LW (IM*JM, LM, PARTITION_SIZE, IDRV, &
+              PL_R, PLE_R, T_R, TLEV_R, TSFC, EMISS, &
+              Q_R, O3_R, CO2_R, CH4_R, N2O_R, O2_R, &
+              CFC11_R, CFC12_R, CFC22_R, CCL4_R, &
+              FCLD_R, CICEWP, CLIQWP, REICE, RELIQ, ICEFLGLW, LIQFLGLW, &
+              TAUAER, ZM_R, ALAT, DOY, LCLDLM, LCLDMH, CLEARCOUNTS, &
+              UFLX, DFLX, UFLXC, DFLXC, DUFLX_DT, DUFLXC_DT, &
               OLRB06RG_1D, DOLRB06RG_DT_1D, OLRB09RG_1D, DOLRB09RG_DT_1D, &
-              OLRB10RG_1D, DOLRB10RG_DT_1D, OLRB11RG_1D, DOLRB11RG_DT_1D, &
-              DOY, ALAT, CoresPerNode, PARTITION_SIZE)
+              OLRB10RG_1D, DOLRB10RG_DT_1D, OLRB11RG_1D, DOLRB11RG_DT_1D)
 
       call MAPL_TimerOff(MAPL,"---RRTMG_RUN",RC=STATUS)
       VERIFY_(STATUS)
@@ -3455,52 +3475,51 @@ contains
       call MAPL_TimerOn(MAPL,"---RRTMG_FLIP",RC=STATUS)
       VERIFY_(STATUS)
  
+      ! for outputs, unpack flattened horizontal and flip back vertical
       IJ = 0
-      do j = 1, JM
-      do i = 1, IM
+      do J = 1,JM
+      do I = 1,IM
          IJ = IJ + 1
+
+         ! convert super-band clearCounts to cloud fractions
          if(associated(CLDTTLW)) then
-            CLDTTLW(I,J) = 1.0 - CLOUDFLAG(IJ,1)/float(NGPTLW)
+            CLDTTLW(I,J) = 1.0 - CLEARCOUNTS(IJ,1)/float(NGPTLW)
          endif
-
          if(associated(CLDHILW)) then
-            CLDHILW(I,J) = 1.0 - CLOUDFLAG(IJ,2)/float(NGPTLW)
+            CLDHILW(I,J) = 1.0 - CLEARCOUNTS(IJ,2)/float(NGPTLW)
          endif
-
          if(associated(CLDMDLW)) then
-            CLDMDLW(I,J) = 1.0 - CLOUDFLAG(IJ,3)/float(NGPTLW)
+            CLDMDLW(I,J) = 1.0 - CLEARCOUNTS(IJ,3)/float(NGPTLW)
          endif
-
          if(associated(CLDLOLW)) then
-            CLDLOLW(I,J) = 1.0 - CLOUDFLAG(IJ,4)/float(NGPTLW)
+            CLDLOLW(I,J) = 1.0 - CLEARCOUNTS(IJ,4)/float(NGPTLW)
          endif
 
-         ! Flip vertical and convert to Real*4
-
-         do k=0,LM
-            LV = LM-k+1
-            FLXU_INT(i,j,k) =-UFLX     (IJ,LV)
-            FLXD_INT(i,j,k) = DFLX     (IJ,LV)
-            FLCU_INT(i,j,k) =-UFLXC    (IJ,LV)
-            FLCD_INT(i,j,k) = DFLXC    (IJ,LV)
-            DFDTS   (i,j,k) =-DUFLX_DT (IJ,LV)
-            DFDTSC  (i,j,k) =-DUFLXC_DT(IJ,LV)
+         ! upward negative in GEOS-5 convention
+         do K = 0,LM
+            LV = LM-K+1
+            FLXU_INT(I,J,K) =-UFLX     (IJ,LV)
+            FLXD_INT(I,J,K) = DFLX     (IJ,LV)
+            FLCU_INT(I,J,K) =-UFLXC    (IJ,LV)
+            FLCD_INT(I,J,K) = DFLXC    (IJ,LV)
+            DFDTS   (I,J,K) =-DUFLX_DT (IJ,LV)
+            DFDTSC  (I,J,K) =-DUFLXC_DT(IJ,LV)
          enddo
-!mjs:  Corrected emitted at the surface to remove reflected
-!      from upward. Note that emiss is the same for all bands,
-!      so we use band 1 for the total flux.
 
-         SFCEM_INT(i,j) = -UFLX(IJ,1) + DFLX(IJ,1)*(1.0-EMISS(IJ,1))
+         ! Reflected LW is not counted in surface emitted. Also, for now,
+         ! surface emitted is positive downwards consistent with Chou-Suarez.
+         ! (Note: All bands use the same emissivity)
+         SFCEM_INT(I,J) = -( UFLX(IJ,1) - DFLX(IJ,1)*(1.-EMIS(I,J)) )
 
          ! band 6 window and band 9-11 water vapor products
-         OLRB06RG_INT(i,j) = OLRB06RG_1D(IJ)
-         DOLRB06RG_DT(i,j) = DOLRB06RG_DT_1D(IJ)
-         OLRB09RG_INT(i,j) = OLRB09RG_1D(IJ)
-         DOLRB09RG_DT(i,j) = DOLRB09RG_DT_1D(IJ)
-         OLRB10RG_INT(i,j) = OLRB10RG_1D(IJ)
-         DOLRB10RG_DT(i,j) = DOLRB10RG_DT_1D(IJ)
-         OLRB11RG_INT(i,j) = OLRB11RG_1D(IJ)
-         DOLRB11RG_DT(i,j) = DOLRB11RG_DT_1D(IJ)
+         OLRB06RG_INT (I,J) = OLRB06RG_1D     (IJ)
+         DOLRB06RG_DT (I,J) = DOLRB06RG_DT_1D (IJ)
+         OLRB09RG_INT (I,J) = OLRB09RG_1D     (IJ)
+         DOLRB09RG_DT (I,J) = DOLRB09RG_DT_1D (IJ)
+         OLRB10RG_INT (I,J) = OLRB10RG_1D     (IJ)
+         DOLRB10RG_DT (I,J) = DOLRB10RG_DT_1D (IJ)
+         OLRB11RG_INT (I,J) = OLRB11RG_1D     (IJ)
+         DOLRB11RG_DT (I,J) = DOLRB11RG_DT_1D (IJ)
 
       enddo ! IM
       enddo ! JM
@@ -3517,13 +3536,12 @@ contains
       deallocate(FCLD_R,__STAT__)
       deallocate(TLEV_R,__STAT__)
       deallocate(PLE_R,__STAT__)
-      deallocate(ZL_R,__STAT__)
+      deallocate(ZM_R,__STAT__)
       deallocate(EMISS,__STAT__)
       deallocate(CLIQWP,__STAT__)
       deallocate(CICEWP,__STAT__)
       deallocate(RELIQ,__STAT__)
       deallocate(REICE,__STAT__)
-      deallocate(TAUCLD,__STAT__)
       deallocate(TAUAER,__STAT__)
       deallocate(PL_R,__STAT__)
       deallocate(T_R,__STAT__)
@@ -3544,9 +3562,7 @@ contains
       deallocate(DFLXC,__STAT__)
       deallocate(DUFLX_DT,__STAT__)
       deallocate(DUFLXC_DT,__STAT__)
-      deallocate(HR,__STAT__)
-      deallocate(HRC,__STAT__)
-      deallocate(CLOUDFLAG,__STAT__)
+      deallocate(CLEARCOUNTS,__STAT__)
       deallocate(ALAT,__STAT__)
       deallocate(OLRB06RG_1D,__STAT__)
       deallocate(DOLRB06RG_DT_1D,__STAT__)
@@ -3574,9 +3590,8 @@ contains
    FLC_INT  = FLCD_INT  + FLCU_INT
    FLA_INT  = FLAD_INT  + FLAU_INT
    
-! Ming-Dah defines the surface emitted as positive downwards
-!-----------------------------------------------------------
-
+   ! Revert to SFCEM to a positive quantity.
+   ! Earlier surface emitted positive downwards per Chou-Suarez.
    SFCEM_INT = -SFCEM_INT
 
 ! Save surface temperature in internal state

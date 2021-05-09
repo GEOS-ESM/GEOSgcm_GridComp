@@ -1,9 +1,7 @@
-      module rrlw_con
+module rrlw_con
 
-       !use parkind, only : rb => kind 
-
-      implicit none
-      save
+   implicit none
+   save
 
 !------------------------------------------------------------------
 ! rrtmg_lw constants
@@ -31,12 +29,12 @@
 !  secdy :  real   : seconds per day  
 !------------------------------------------------------------------
 
-      real  :: fluxfac, heatfac
-      real  :: oneminus, pi, grav
-      real  :: planck, boltz, clight
-      real  :: avogad, alosmt, gascon
-      real  :: radcn1, radcn2
-      real  :: sbcnst, secdy
+   real  :: fluxfac, heatfac
+   real  :: oneminus, pi, grav
+   real  :: planck, boltz, clight
+   real  :: avogad, alosmt, gascon
+   real  :: radcn1, radcn2
+   real  :: sbcnst, secdy
 
-      end module rrlw_con
+end module rrlw_con
 

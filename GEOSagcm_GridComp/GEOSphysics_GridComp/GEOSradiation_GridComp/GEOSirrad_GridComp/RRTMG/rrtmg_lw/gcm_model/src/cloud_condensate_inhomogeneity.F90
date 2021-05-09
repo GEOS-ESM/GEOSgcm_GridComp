@@ -1,16 +1,122 @@
-      module WaterDistributionMod
-          !use parkind, only : im => kind , rb => kind 
-        implicit none
-        save
+module cloud_condensate_inhomogeneity
 
-        integer, parameter  :: N1 = 1000
-        integer, parameter  :: N2 = 140
+   use iso_fortran_env, only : error_unit
 
-      contains
+   implicit none
 
-      subroutine tabulate_xcw_beta(xcw)
+   ! state is saved outside of scope
+   save
 
-      real , dimension(N1,N2), intent(out) :: xcw
+   ! all fields and methods hidden unless declared public below
+   private
+
+   ! lookup table dimensions
+   integer, parameter :: n1 = 1000
+   integer, parameter :: n2 = 140
+
+   ! inhomogeneity type and table
+   integer :: inhm = 0
+   real, allocatable :: xcw(:,:)
+
+   ! initialization status
+   logical :: initialized = .false.
+
+   ! public interface
+   public :: initialize_inhomogeneity   ! get resources
+   public :: release_inhomogeneity      ! release resources
+   public :: condensate_inhomogeneous   ! test if inhomogeneous or not
+   public :: zcw_lookup                 ! lookup zcw if inhomogeneous
+
+contains
+
+   subroutine initialize_inhomogeneity (ih)
+
+      ! ih == 0: homogeneous
+      ! ih == 1: inhomogeneous, beta  distribution
+      ! ih == 0: inhomogeneous, gamma distribution
+
+      integer, intent(in) :: ih
+
+      if (initialized) then
+         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+         error stop 'must release_inhomogeneity first'
+      end if
+
+      if (ih == 1) then
+         call tabulate_xcw_beta
+      elseif (ih == 2) then
+         call tabulate_xcw_gamma
+      elseif (ih /= 0) then
+         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+         write(error_unit,*) 'ih == ', ih
+         error stop 'unknown inhomogeneity type: ih'
+      endif
+
+      initialized = .true.
+      inhm = ih
+
+   end subroutine initialize_inhomogeneity
+
+   subroutine release_inhomogeneity 
+      if (allocated(xcw)) deallocate(xcw)
+      initialized = .false.
+      inhm = 0
+   end subroutine release_inhomogeneity
+
+   function condensate_inhomogeneous result (inhomo)
+      logical :: inhomo
+      if (.not. initialized) then
+         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+         error stop 'must initialize_inhomogeneity first'
+      end if 
+      inhomo = (inhm > 0)
+   end function condensate_inhomogeneous
+
+   ! -----------------------------------------------------------
+   function zcw_lookup (cdf, sigma_qcw) result (zcw)
+   ! -----------------------------------------------------------
+   ! Horizontally inhomogeneous cloud condensate:
+   ! Determine ZCW = ratio of cloud condensate mixing ratio QC
+   !   to its mean value for all cloudy cells in this layer.
+   ! -----------------------------------------------------------
+
+      real, intent(in) :: cdf        ! condensate cumulative prob in [0,1]
+      real, intent(in) :: sigma_qcw  ! relative std deviation
+      real :: zcw
+
+      integer :: ind1, ind2
+      real :: rind1, rind2
+
+      if (.not. condensate_inhomogeneous()) then
+         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+         error stop 'zcw_lookup only works if condensate_inhomogeneous()'
+      end if 
+
+      ! bilinear interpolation of ZCW tabulated in array XCW as a func of
+      !   * cumulative condensate probability CDF
+      !   * relative standard deviation SIGMA_QCW
+      ! Take care that the definition of RIND2 is consistent with
+      !   subroutines TABULATE_XCW
+
+      rind1 = cdf * (n1 - 1) + 1.0
+      ind1  = max(1, min(int(rind1), n1-1))
+      rind1 = rind1 - ind1
+      rind2 = 40.0 * sigma_qcw - 3.0
+      ind2  = max(1, min(int(rind2), n2-1))
+      rind2 = rind2 - ind2
+
+      zcw =  (1.0-rind1) * (1.0-rind2) * xcw(ind1,ind2)     &
+           + (1.0-rind1) * rind2       * xcw(ind1,ind2+1)   &
+           + rind1 * (1.0-rind2)       * xcw(ind1+1,ind2)   &
+           + rind1 * rind2             * xcw(ind1+1,ind2+1)
+
+   end function zcw_lookup
+
+
+   subroutine tabulate_xcw_beta
+
+      if (allocated(xcw)) deallocate(xcw)
+      allocate (xcw(n1,n2))
 
       xcw(:,  1) = (/&
          0.1000E-04, 0.7137E+00, 0.7315E+00, 0.7426E+00,&
@@ -35153,11 +35259,12 @@
          0.1997E+02, 0.2108E+02, 0.2238E+02, 0.2394E+02,&
          0.0000E+00, 0.0000E+00, 0.0000E+00, 0.0000E+00/)
 
-      end subroutine tabulate_xcw_beta
+   end subroutine tabulate_xcw_beta
 
-      subroutine tabulate_xcw_gamma(xcw)
+   subroutine tabulate_xcw_gamma
 
-      real , dimension(N1,N2), intent(out) :: xcw
+      if (allocated(xcw)) deallocate(xcw)
+      allocate (xcw(n1,n2))
 
       xcw(:,  1) = (/&
          0.1000E-04, 0.7192E+00, 0.7364E+00, 0.7470E+00,&
@@ -70300,6 +70407,6 @@
          0.2105E+02, 0.2245E+02, 0.2414E+02, 0.2624E+02,&
          0.0000E+00, 0.0000E+00, 0.0000E+00, 0.0000E+00/)
 
-      end subroutine tabulate_xcw_gamma
+   end subroutine tabulate_xcw_gamma
 
-      end module WaterDistributionMod
+end module cloud_condensate_inhomogeneity

@@ -1,9 +1,4 @@
-!     path:      $Source$
-!     author:    $Author$
-!     revision:  $Revision$
-!     created:   $Date$
-!
-      module rrtmg_lw_init
+module rrtmg_lw_init
 
 !  --------------------------------------------------------------------------
 ! |                                                                          |
@@ -16,7 +11,6 @@
 !  --------------------------------------------------------------------------
 
 ! ------- Modules -------
-       !use parkind, only : im => kind , rb => kind 
       use rrlw_wvn
       use rrtmg_lw_setcoef, only: lwatmref, lwavplank, lwavplankderiv
 
@@ -25,7 +19,7 @@
       contains
 
 ! **************************************************************************
-      subroutine rrtmg_lw_ini(cpdair)
+      subroutine rrtmg_lw_ini
 ! **************************************************************************
 !
 !  Original version:       Michael J. Iacono; July, 1998
@@ -41,10 +35,6 @@
       use parrrtm, only : mg, nbndlw, ngptlw
       use rrlw_tbl, only: ntbl, tblint, pade, bpade, tau_tbl, exp_tbl, tfn_tbl
       use rrlw_vsn, only: hvrini, hnamini
-
-      real , intent(in) :: cpdair     ! Specific heat capacity of dry air
-                                              ! at constant pressure at 273 K
-                                              ! (J kg-1 K-1)
 
 ! ------- Local -------
 
@@ -71,7 +61,7 @@
       hvrini = '$Revision$'
 
 ! Initialize model data
-      call lwdatinit(cpdair)
+      call lwdatinit
       call lwcmbdat               ! g-point interval reduction data
       call lwcldpr                ! cloud optical properties
       call lwatmref               ! reference MLS profile
@@ -175,7 +165,7 @@
       end subroutine rrtmg_lw_ini
 
 !***************************************************************************
-      subroutine lwdatinit(cpdair)
+      subroutine lwdatinit
 !***************************************************************************
 
 ! --------- Modules ----------
@@ -188,10 +178,6 @@
 
       save 
  
-      real , intent(in) :: cpdair      ! Specific heat capacity of dry air
-                                               ! at constant pressure at 273 K
-                                               ! (J kg-1 K-1)
-
 ! Longwave spectral band limits (wavenumbers)
       wavenum1(:) = (/ 10. , 350. , 500. , 630. , 700. , 820. , &
                       980. ,1080. ,1180. ,1390. ,1480. ,1800. , &
@@ -254,29 +240,6 @@
 !     They were previously obtained from the relations:
 !          radcn1 = 2.*planck*clight*clight*1.e-07
 !          radcn2 = planck*clight/boltz
-
-!     Heatfac is the factor by which delta-flux / delta-pressure is
-!     multiplied, with flux in W/m-2 and pressure in mbar, to get 
-!     the heating rate in units of degrees/day.  It is equal to:
-!     Original value:
-!           (g)x(#sec/day)x(1e-5)/(specific heat of air at const. p)
-!           Here, cpdair (1.004) is in units of J g-1 K-1, and the 
-!           constant (1.e-5) converts mb to Pa and g-1 to kg-1.
-!        =  (9.8066)(86400)(1e-5)/(1.004)
-!      heatfac = 8.4391 
-!
-!     Modified value for consistency with CAM3:
-!           (g)x(#sec/day)x(1e-5)/(specific heat of air at const. p)
-!           Here, cpdair (1.00464) is in units of J g-1 K-1, and the
-!           constant (1.e-5) converts mb to Pa and g-1 to kg-1.
-!        =  (9.80616)(86400)(1e-5)/(1.00464)
-!      heatfac = 8.43339130434 
-!
-!     Calculated value:
-!        (grav) x (#sec/day) / (specific heat of dry air at const. p x 1.e2)
-!           Here, cpdair is in units of J kg-1 K-1, and the constant (1.e2) 
-!           converts mb to Pa when heatfac is multiplied by W m-2 mb-1. 
-      heatfac = grav * secdy / (cpdair * 1.e2 )
 
       end subroutine lwdatinit
 
@@ -2020,16 +1983,9 @@
 
 ! --------- Modules ----------
 
-      use rrlw_cld, only: abscld1, absliq0, absliq1, &
-                          absice0, absice1, absice2, absice3, absice4
+      use rrlw_cld, only: absliq1, absice0, absice1, absice2, absice3, absice4
 
       save
-
-! ABSCLDn is the liquid water absorption coefficient (m2/g). 
-! For INFLAG = 1.
-      abscld1 = 0.0602410 
-!  
-! Everything below is for INFLAG = 2.
 
 ! ABSICEn(J,IB) are the parameters needed to compute the liquid water 
 ! absorption coefficient in spectral region IB for ICEFLAG=n.  The units
@@ -2422,10 +2378,7 @@
        8.923315e-03 ,8.741803e-03 ,8.571472e-03 ,8.411860e-03 ,8.262543e-03 , &
        8.123136e-03 /)
 
-! For LIQFLAG = 0.
-      absliq0 = 0.0903614 
-
-! For LIQFLAG = 1.  In each band, the absorption
+! For LIQFLAG = 1. In each band, the absorption
 ! coefficients are listed for a range of effective radii from 2.5
 ! to 59.5 microns in increments of 1.0 micron.
       absliq1(:, 1) = (/ &
@@ -3313,4 +3266,4 @@
 
       end subroutine lwcldpr
 
-      end module rrtmg_lw_init
+end module rrtmg_lw_init

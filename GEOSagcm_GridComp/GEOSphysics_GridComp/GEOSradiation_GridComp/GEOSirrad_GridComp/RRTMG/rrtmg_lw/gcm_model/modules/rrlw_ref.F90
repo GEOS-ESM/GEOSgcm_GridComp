@@ -1,11 +1,6 @@
-#include "_gpudef.inc"    
-     
-      module rrlw_ref
+module rrlw_ref
 
-       !use parkind, only : im => kind , rb => kind 
-
-      implicit none
-      
+   implicit none
 
 !------------------------------------------------------------------
 ! rrtmg_lw reference atmosphere 
@@ -24,25 +19,7 @@
 ! chi_mls:  real   : 
 !------------------------------------------------------------------
 
-      real , dimension(59) :: pref
-      real , dimension(59) :: preflog
-      real , dimension(59) :: tref
-      real :: chi_mls(7,59)
+   real, dimension(59) :: pref, preflog, tref
+   real :: chi_mls(7,59)
 
-      ! (dmb 2012) These GPU arrays are defined as constant so that they are cached.
-      ! This is really needed because they accessed in quite a scattered pattern.
-      real _gpucon :: chi_mlsd(7,59)
-      real _gpucon :: preflogd(59)
-      real _gpucon :: trefd(59)
-
-      contains
-      ! (dmb 2012) Copy the reference arrays over to the GPU
-      subroutine copyToGPUref()
-
-        chi_mlsd = chi_mls
-        preflogd = preflog
-        trefd = tref
-
-      end subroutine 
-
-      end module rrlw_ref
+end module rrlw_ref

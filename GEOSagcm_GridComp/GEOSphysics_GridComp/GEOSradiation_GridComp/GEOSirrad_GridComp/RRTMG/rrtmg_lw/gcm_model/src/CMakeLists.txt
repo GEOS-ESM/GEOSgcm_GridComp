@@ -1,14 +1,17 @@
 esma_set_this(OVERRIDE RRTMG)
 
 set (srcs
-  mcica_random_numbers.F90 rrtmg_lw_init.F90
+  rrtmg_lw_init.F90
   rrtmg_lw_rad.F90
-  rrtmg_lw_rtrn.F90 rrtmg_lw_rtrnmr.F90
-  rrtmg_lw_setcoef.F90 WaterDistributionMod.F90
-  gmcica_subcol_gen_lw.F90 gpu_rrtmg_lw_rtrnmc.F90
-  gpu_rrtmg_lw_setcoef.F90 gpu_rrtmg_lw_taumol.F90
-  gpu_rrtmg_lw_cldprmc.F90
+  rrtmg_lw_setcoef.F90
+  cloud_condensate_inhomogeneity.F90 cloud_subcol_gen.F90
+  rrtmg_lw_rtrnmc.F90
+  rrtmg_lw_setcoef.F90 rrtmg_lw_taumol.F90
+  rrtmg_lw_cldprmc.F90
   )
+
+# was after rad above
+# rrtmg_lw_rtrn.F90 rrtmg_lw_rtrnmr.F90
 
 set (k_g_srcs
    rrtmg_lw_k_g_01.F90
