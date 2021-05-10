@@ -235,10 +235,10 @@
 # GEOSagcm=>SCALE_ALBFPAR: 0
 # GEOSldas=>SCALE_ALBFPAR: 0
 
-# ---- Print Resource Parameters
+# ---- Print Resource Parameter Values to Log File
 #
-#    0: Non-Default values
-#    1: ALL values
+#    0: Print only parameter values that differ from default settings
+#    1: Print all parameter values
 #
 # GEOSagcm=>PRINTRC: 1
 # GEOSldas=>PRINTRC: 1
