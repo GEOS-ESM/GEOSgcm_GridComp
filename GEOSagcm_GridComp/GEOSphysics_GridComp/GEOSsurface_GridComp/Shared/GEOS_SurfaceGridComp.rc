@@ -234,3 +234,11 @@
 #
 # GEOSagcm=>SCALE_ALBFPAR: 0
 # GEOSldas=>SCALE_ALBFPAR: 0
+
+# ---- Print Resource Parameters
+#
+#    0: Non-Default values
+#    1: ALL values
+#
+# GEOSagcm=>PRINTRC: 1
+# GEOSldas=>PRINTRC: 1
