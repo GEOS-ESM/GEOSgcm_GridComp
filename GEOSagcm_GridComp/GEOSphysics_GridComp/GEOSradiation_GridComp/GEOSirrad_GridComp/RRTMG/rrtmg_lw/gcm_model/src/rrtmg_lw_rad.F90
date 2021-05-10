@@ -189,8 +189,8 @@ contains
       real, intent(out) :: dflxc (ncol,nlay+1)  ! Clear sky LW downward flux [W/m2]
 
       ! change in upward longwave flux wrt surface temperature [W/m2/K]
-      real, intent(out) :: duflx_dt  (ncol,nlay)  ! total sky
-      real, intent(out) :: duflxc_dt (ncol,nlay)  ! clear sky
+      real, intent(out) :: duflx_dt  (ncol,nlay+1)  ! total sky
+      real, intent(out) :: duflxc_dt (ncol,nlay+1)  ! clear sky
 
       ! OLR for bands 9-11 and temperature derivatives [W/m2, W/m2/K]
       real, intent(out), dimension(ncol) :: olrb06, dolrb06_dt
@@ -429,8 +429,8 @@ contains
       real, intent(out) :: dflxc (ncol,nlay+1)  ! Clear sky LW downward flux [W/m2]
 
       ! change in upward longwave flux wrt surface temperature [W/m2/K]
-      real, intent(out) :: duflx_dt  (ncol,nlay)  ! total sky
-      real, intent(out) :: duflxc_dt (ncol,nlay)  ! clear sky
+      real, intent(out) :: duflx_dt  (ncol,nlay+1)  ! total sky
+      real, intent(out) :: duflxc_dt (ncol,nlay+1)  ! clear sky
 
       ! OLR for bands 9-11 and temperature derivatives [W/m2, W/m2/K]
       real, intent(out), dimension(ncol) :: olrb06, dolrb06_dt
