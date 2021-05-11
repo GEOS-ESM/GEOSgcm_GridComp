@@ -36,15 +36,15 @@ contains
       integer, intent(in) :: ncol  ! number of columns
       integer, intent(in) :: nlay  ! number of layers
       
-      real,    intent(in) :: cldfmc(ncol,ngptlw,nlay+1)  ! cloud fraction [mcica]
-      real,    intent(in) :: ciwpmc(ncol,ngptlw,nlay+1)  ! in-cloud ice water path [mcica]
-      real,    intent(in) :: clwpmc(ncol,ngptlw,nlay+1)  ! in-cloud liquid water path [mcica]
+      real,    intent(in) :: cldfmc(ncol,ngptlw,nlay)  ! cloud fraction [mcica]
+      real,    intent(in) :: ciwpmc(ncol,ngptlw,nlay)  ! in-cloud ice water path [mcica]
+      real,    intent(in) :: clwpmc(ncol,ngptlw,nlay)  ! in-cloud liquid water path [mcica]
 
       real,    intent(in) :: reice(ncol,nlay)          ! ice crystal effective size [um]
       real,    intent(in) :: reliq(ncol,nlay)          ! liq droplet effective radius [um]
 
       integer, intent(in) :: iceflag, liqflag            ! cloud optical depth methods
-      integer, intent(in) :: ngb(140)
+      integer, intent(in) :: ngb(ngptlw)
 
       real,    intent(out) :: taucmc(ncol,ngptlw,nlay)   ! cloud optical depth [mcica]
       integer, intent(out) :: icldlyr(ncol,nlay)         ! cloudy in any layer of COLUMN
@@ -55,18 +55,19 @@ contains
       integer :: ilay                      ! layer index
       integer :: ib                        ! spectral band index
       integer :: ig                        ! g-point interval index
-      integer :: index 
 
       real    :: abscoice                  ! ice absorption coefficients
       real    :: abscoliq                  ! liquid absorption coefficients
       real    :: cwp                       ! cloud water path
       real    :: radice                    ! cloud ice effective size (microns)
-      real    :: factor                    ! 
-      real    :: fint                      ! 
       real    :: radliq                    ! cloud liquid droplet radius (microns)
 
-      real, parameter :: eps = 1.e-6       ! epsilon
-      real, parameter :: cldmin = 1.e-20   ! minimum value for cloud quantities
+      ! table lookup parameters
+      integer :: index
+      real :: factor, fint
+
+      real, parameter :: cldmin = 1.e-20   ! minimum value for cloud fraction
+      real, parameter :: cwpmin = 1.e-20   ! minimum value for cloud water path
 
 ! ------- Definitions -------
 
@@ -143,15 +144,14 @@ contains
                endif
                cwp = ciwpmc(icol,ig,ilay) + clwpmc(icol,ig,ilay)
    
-               ! (dmb 2012) the stop commands were removed because
-               !   they aren't supported on the GPU
-               if (cldfmc(icol,ig,ilay) > cldmin .and. cwp > cldmin > cldmin) then
+               if (cldfmc(icol,ig,ilay) > cldmin .and. cwp > cwpmin) then
 
                   radice = reice(icol,ilay)
 
                   ! Calculation of absorption coefficients due to ice clouds.
                   if (ciwpmc(icol,ig,ilay) == 0.) then
-                     abscoice = 0.0 
+
+                     abscoice = 0. 
 	 
                   elseif (iceflag == 0) then
 
@@ -204,10 +204,17 @@ contains
                      abscoice = &
                         absice4(index,ib) + fint * &
                         (absice4(index+1,ib) - (absice4(index,ib)))
+
+                  else
+                     error stop 'cldprmc: invalid iceflag'
                   endif
                   
                   ! Calculation of absorption coefficients due to water clouds.
-                  if (liqflag == 1) then
+                  if (clwpmc(icol,ig,ilay) == 0.) then
+
+                     abscoliq = 0. 
+	 
+                  elseif (liqflag == 1) then
 
                      ! 16 cloud bands
                      radliq = reliq(icol,ilay)
@@ -219,6 +226,9 @@ contains
                      abscoliq = &
                         absliq1(index,ib) + fint * &
                         (absliq1(index+1,ib) - (absliq1(index,ib)))
+
+                  else
+                     error stop 'cldprmc: invalid liqflag'
                   endif
 
                   taucmc(icol,ig,ilay) = ciwpmc(icol,ig,ilay) * abscoice + &

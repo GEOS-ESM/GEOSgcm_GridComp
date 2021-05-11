@@ -225,8 +225,6 @@ contains
                absclds = 1. - exp(-odclds)
                efclfracs = absclds * cldfmc(icol,ig,lev)
 
-               odtot = odepth + odclds
-                
                ! table lookup based on optical depth:
                ! bpade    1/(pade constant)
                ! tau_tbl  clear sky optical depth look-up table
@@ -244,11 +242,10 @@ contains
                itgas = tblint * tblind + 0.5 
                agas(lev) = 1. - exp_tbl(itgas)
                tfacgas = tfn_tbl(itgas)
-
                odepth = tau_tbl(itgas)
-               odtot = odepth + odclds
 
                ! gas and cloud
+               odtot = odepth + odclds
                tblind = odtot/(bpade+odtot)
                ittot = tblint * tblind + 0.5 
                atot(lev) = 1. - exp_tbl(ittot)
@@ -357,6 +354,8 @@ contains
                odclds = secdiff * taucmc(icol,ig,lev)
                absclds = 1. - exp(-odclds)
                efclfracs = absclds * cldfmc(icol,ig,lev)
+
+! pmn: can we eliminate some repeated calcs from down loop? at least for clds?
 
                radlu = radlu - radlu * (agas(lev) + &
                    efclfracs * (1. - agas(lev))) + &

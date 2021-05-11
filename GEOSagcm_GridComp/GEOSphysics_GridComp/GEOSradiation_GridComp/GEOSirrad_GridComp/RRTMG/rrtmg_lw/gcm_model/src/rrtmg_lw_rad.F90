@@ -7,6 +7,8 @@ module rrtmg_lw_rad
    use rrtmg_lw_taumol, only : taumol
    use rrtmg_lw_rtrnmc, only : rtrnmc
 
+   use iso_fortran_env, only : error_unit  ! for debugging
+
    implicit none
 
 contains
@@ -106,7 +108,6 @@ contains
    ! -----------------------------------------------------------------------------
 
       use parrrtm, only: nbndlw
-      use iso_fortran_env, only : error_unit
 
       ! ----- Input -----
 
