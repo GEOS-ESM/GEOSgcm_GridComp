@@ -33,7 +33,7 @@ contains
 
       ! ih == 0: homogeneous
       ! ih == 1: inhomogeneous, beta  distribution
-      ! ih == 0: inhomogeneous, gamma distribution
+      ! ih == 2: inhomogeneous, gamma distribution
 
       integer, intent(in) :: ih
 

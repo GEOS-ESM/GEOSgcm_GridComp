@@ -56,11 +56,11 @@ contains
       integer :: ib                        ! spectral band index
       integer :: ig                        ! g-point interval index
 
-      real    :: abscoice                  ! ice absorption coefficients
-      real    :: abscoliq                  ! liquid absorption coefficients
       real    :: cwp                       ! cloud water path
       real    :: radice                    ! cloud ice effective size (microns)
       real    :: radliq                    ! cloud liquid droplet radius (microns)
+      real    :: abscoice                  ! ice absorption coefficients
+      real    :: abscoliq                  ! liquid absorption coefficients
 
       ! table lookup parameters
       integer :: index

@@ -31,7 +31,7 @@ contains
                  ncol, nsubcol, nlay, &
                  zmid, alat, doy, &
                  play, cldfrac, ciwp, clwp, &
-                 cldf_stoch, clwp_stoch, ciwp_stoch)
+                 cldf_stoch, ciwp_stoch, clwp_stoch)
 !----------------------------------------------------------------------------------------------
 !
 ! Original code: Based on Raisanen et al., QJRMS, 2004.
@@ -46,7 +46,7 @@ contains
 ! Given a profile of cloud fraction, cloud water and cloud ice, produce a set of subcolumns.
 ! Each subcolumn has cloud fraction in {0,1} at each level.
 ! If (.not. condensate_inhomogeneous()), each layer within each subcolumn has uniform
-!   cloud liquid and cloud ice concentration.
+!   cloud ice and cloud liquid concentration.
 ! If (condensate_inhomogeneous()), each layer has horizontal condensate variability.
 ! The ensemble of subcolumns statistically reproduces the cloud fraction within each layer
 !   and its prescribed vertical overlap, and, if (condensate_inhomogeneous()), the PDF of
@@ -55,8 +55,9 @@ contains
 !   initialize_inhomogeneity().
 ! 
 ! Overlap assumption:
-! Exponential (generalized) overlap (Raisannen, Pincus) using correlations
-!   alpha and rcorr based on decorrelation length scales from Oreopoulos et al.
+! Exponential (generalized) overlap (Raisanen et al., 2004, Pincus et al., 2005) using
+! correlations alpha and rcorr based on decorrelation length scales from Oreopoulos et
+! al., 2012.
 ! 
 !---------------------------------------------------------------------------------------------
 
@@ -73,8 +74,8 @@ contains
 
       ! output subcolumns, one subcolum per gpoint
       real,    intent(out) :: cldf_stoch(ncol,nsubcol,nlay)  ! cloud fraction 
-      real,    intent(out) :: clwp_stoch(ncol,nsubcol,nlay)  ! in-cloud liq water path
       real,    intent(out) :: ciwp_stoch(ncol,nsubcol,nlay)  ! in-cloud ice water path
+      real,    intent(out) :: clwp_stoch(ncol,nsubcol,nlay)  ! in-cloud liq water path
    
       ! ----- Locals -----
 

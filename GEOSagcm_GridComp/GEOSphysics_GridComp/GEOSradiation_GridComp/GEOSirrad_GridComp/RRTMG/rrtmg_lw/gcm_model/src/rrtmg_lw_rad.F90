@@ -549,7 +549,7 @@ contains
          pncol, ngptlw, nlay, &
          p_zm, p_alat, dyofyr, &
          p_play, p_cldf, p_ciwp, p_clwp, &
-         cldfmc, clwpmc, ciwpmc)
+         cldfmc, ciwpmc, clwpmc)
 
       ! for super-band cloud fractions
 

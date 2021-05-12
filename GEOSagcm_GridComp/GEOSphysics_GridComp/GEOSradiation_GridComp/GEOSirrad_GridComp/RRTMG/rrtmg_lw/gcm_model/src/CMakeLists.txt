@@ -10,9 +10,6 @@ set (srcs
   rrtmg_lw_cldprmc.F90
   )
 
-# was after rad above
-# rrtmg_lw_rtrn.F90 rrtmg_lw_rtrnmr.F90
-
 set (k_g_srcs
    rrtmg_lw_k_g_01.F90
    rrtmg_lw_k_g_02.F90
