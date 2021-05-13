@@ -1,6 +1,7 @@
 esma_set_this ()
 
 set (alldirs
+  GEOSirrigation_GridComp
   GEOSvegdyn_GridComp
   GEOScatch_GridComp
   GEOScatchCN_GridComp

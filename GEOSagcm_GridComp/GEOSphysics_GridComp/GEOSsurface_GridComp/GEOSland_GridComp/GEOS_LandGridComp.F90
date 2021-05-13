@@ -11,12 +11,14 @@ module GEOS_LandGridCompMod
 ! calculation of energy and water fluxes impacting the lowest layer
 ! of the atmospheric grid.  In order to operate on the tilespace
 ! specified by its parent, GEOS\_LandGridComp runs its child VegdynGridComp
-! to determine relevant time-dependent land-surface characteristics.
+! to determine relevant time-dependent land-surface characteristics. 
 ! All parameters calculated in VegdynGridComp are required by CatchGridComp.
 ! Furthermore, several exports of the Vegdyn routines are also exports
 ! from the Land composite, for use in other modules, such as the case
 ! for lai and grn needed in radiation.  Vegdyn will be updated first.
-! Then the catchment call will be issued.  The composite exports
+! Then the catchment call will be issued. IrrigationGridComp
+! was added to compute  IRRIGRATE IMPORT required by land models.
+! The composite exports
 ! consist of the union of the catchment exports with a subset of the 
 ! vegdyn exports.  All imports and exports are on the prescribed tile
 ! grid in the (IM, JM)=(NTILES, 1) convention.  
@@ -27,9 +29,10 @@ module GEOS_LandGridCompMod
   use ESMF
   use MAPL
 
-  use GEOS_VegdynGridCompMod,  only : VegdynSetServices   => SetServices
-  use GEOS_CatchGridCompMod,   only : CatchSetServices    => SetServices
-  use GEOS_CatchCNGridCompMod, only : CatchCNSetServices  => SetServices
+  use GEOS_VegdynGridCompMod,     only : VegdynSetServices     => SetServices
+  use GEOS_IrrigationGridCompMod, only : IrrigationSetServices => SetServices
+  use GEOS_CatchGridCompMod,      only : CatchSetServices      => SetServices
+  use GEOS_CatchCNGridCompMod,    only : CatchCNSetServices    => SetServices
 !  use GEOS_RouteGridCompMod,   only : RouteSetServices    => SetServices
 
   implicit none
@@ -44,8 +47,9 @@ module GEOS_LandGridCompMod
 
 
   integer                                 :: VEGDYN
-  integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:)
+  integer, allocatable                    :: CATCH(:), ROUTE (:), CATCHCN (:), IRRIGATION(:)
   INTEGER                                 :: LSM_CHOICE, RUN_ROUTE, DO_GOSWIM
+  LOGICAL                                 :: RUN_IRRIG
 
 contains
 
@@ -65,7 +69,7 @@ contains
 ! !DESCRIPTION:  The SetServices for the Physics GC needs to register its
 !   Initialize and Run.  It uses the MAPL\_Generic construct for defining 
 !   state specs and couplings among its children.  In addition, it creates the   
-!   children GCs (VegDyn, Catch, CatchCN, Route) and runs their respective SetServices.
+!   children GCs (VegDyn, Catch, CatchCN, Irrigation, Route) and runs their respective SetServices.
 
 !EOP
 
@@ -141,7 +145,7 @@ contains
 
     VEGDYN  = MAPL_AddChild(GC, NAME='VEGDYN'//trim(tmp), SS=VegdynSetServices, RC=STATUS)
     VERIFY_(STATUS)
-
+    
 ! Get CHOICE OF  Land Surface Model (1:Catch, 2:Catch-CN)
 ! and Runoff Routing Model (0: OFF, 1: ON)
 ! -------------------------------------------------------
@@ -152,9 +156,10 @@ contains
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigGetAttribute (SCF, label='RUN_ROUTE:'  , value=RUN_ROUTE  , DEFAULT=0, __RC__ )
+    call ESMF_ConfigGetAttribute (SCF, label='RUN_IRRIG:'  , value=RUN_IRRIG  , DEFAULT=.false., __RC__ )
     call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
-
+   
     SELECT CASE (LSM_CHOICE)
 
     CASE (1) 
@@ -190,7 +195,21 @@ contains
        end if
        
     END SELECT
-
+    
+    IF(RUN_IRRIG) THEN
+       allocate (IRRIGATION(NUM_CATCH), stat=status)
+       if (NUM_CATCH == 1) then
+          IRRIGATION(1) = MAPL_AddChild(GC, NAME='IRRIGATION', SS=IrrigationSetServices, RC=STATUS)
+          VERIFY_(STATUS)
+       else
+          do I = 1, NUM_CATCH
+             WRITE(TMP,'(I3.3)') I
+             GCName  = 'ens' // trim(TMP) // ':IRRIGATION'
+             IRRIGATION(I) = MAPL_AddChild(GC, NAME=GCName, SS=IrrigationSetServices, RC=STATUS)
+             VERIFY_(STATUS)
+          end do
+       end if
+    ENDIF    
 !    IF(RUN_ROUTE == 1) THEN
 !       if (NUM_CATCH == 1) then
 !          ROUTE(1) = MAPL_AddChild(GC, NAME='ROUTE', SS=RouteSetServices, RC=STATUS)
@@ -516,6 +535,11 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, &
             SHORT_NAME = 'PRLAND', &
+            CHILD_ID = CATCH(1), &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, &
+            SHORT_NAME = 'IRRLAND', &
             CHILD_ID = CATCH(1), &
             RC=STATUS  )
        VERIFY_(STATUS)
@@ -1053,6 +1077,8 @@ contains
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'PRLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'IRRLAND',  CHILD_ID = CATCHCN(1), RC=STATUS  )
+       VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SNOLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
        VERIFY_(STATUS)
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DRPARLAND' ,  CHILD_ID = CATCHCN(1), RC=STATUS  )
@@ -1301,6 +1327,13 @@ contains
 
     END SELECT
 
+    IF(RUN_IRRIG) THEN
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'SPRINKLERRATE', CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FLOODRATE',     CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'DRIPRATE',      CHILD_ID = IRRIGATION(1),RC=STATUS  ) ; VERIFY_(STATUS)       
+    ENDIF
+
+    
 ! These are from RUN1 of vegdyn and the first catchment instance
     call MAPL_AddExportSpec ( GC, &
                               SHORT_NAME = 'LAI', &
@@ -1327,13 +1360,6 @@ contains
                               CHILD_ID = VEGDYN,&
                               RC=STATUS  )
     VERIFY_(STATUS) 
-!    IF(RUN_ROUTE == 1) THEN
-!       call MAPL_AddExportSpec ( GC, &
-!            SHORT_NAME = 'QOUTFLOW', &
-!            CHILD_ID = ROUTE(1),     &
-!            RC=STATUS  )
-!       VERIFY_(STATUS)       
-!    ENDIF
 
 !EOS
     
@@ -1359,6 +1385,24 @@ contains
                                                       RC=STATUS )
           VERIFY_(STATUS)
 
+          IF(RUN_IRRIG) THEN
+             call MAPL_AddConnectivity (                                         &
+                  GC                                                            ,&
+                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '/) ,&
+                  SRC_ID =  CATCH(I)                                            ,&
+                  DST_ID =  IRRIGATION(I)                                       ,&
+                  RC=STATUS )
+             VERIFY_(STATUS)
+             
+             call MAPL_AddConnectivity (                                         &
+                  GC                                                            ,&
+                  SHORT_NAME = (/'SPRINKLERRATE','DRIPRATE     ','FLOODRATE    '/),&
+                  SRC_ID =  IRRIGATION(I)                                       ,&
+                  DST_ID =  CATCH(I)                                            ,& 
+                  RC=STATUS )
+             VERIFY_(STATUS)             
+          ENDIF
+          
 !          IF(RUN_ROUTE == 1) THEN
 !             call MAPL_AddConnectivity (                              &
 !                  GC                                                 ,&
@@ -1378,7 +1422,24 @@ contains
             DST_ID =  CATCHCN(I)                               ,         &
             SRC_ID =  VEGDYN                                   ,         &
                                                       RC=STATUS ) 
-
+          IF(RUN_IRRIG) THEN
+             call MAPL_AddConnectivity (                                         &
+                  GC                                                            ,&
+                  SHORT_NAME  = (/'POROS   ','WPWET   ','VGWMAX  ','WCRZ    '/) ,&
+                  SRC_ID =  CATCHCN(I)                                          ,&
+                  DST_ID =  IRRIGATION(I)                                       ,&
+                  RC=STATUS )
+             VERIFY_(STATUS)
+            
+             call MAPL_AddConnectivity (                                         &
+                  GC                                                            ,&
+                  SHORT_NAME = (/'SPRINKLERRATE','DRIPRATE     ','FLOODRATE    '/),&
+                  SRC_ID =  IRRIGATION(I)                                       ,&
+                  DST_ID =  CATCHCN(I)                                          ,& 
+                  RC=STATUS )
+             VERIFY_(STATUS)             
+          ENDIF
+          
 !          IF(RUN_ROUTE == 1) THEN
 !             call MAPL_AddConnectivity (                              &
 !                  GC                                                 ,&
@@ -1390,6 +1451,17 @@ contains
 !             VERIFY_(STATUS)            
 !          ENDIF
        END SELECT
+
+       IF(RUN_IRRIG) THEN
+          call MAPL_AddConnectivity (                              &
+               GC                                                 ,&
+               SHORT_NAME  = (/'LAI  '/)                          ,&
+               SRC_ID =  VEGDYN                                   ,&
+               DST_ID =  IRRIGATION(I)                            ,&
+               
+               RC=STATUS )
+          VERIFY_(STATUS)            
+       ENDIF
     END DO
 
 
@@ -1406,6 +1478,7 @@ contains
 
     if (allocated(CATCH)) deallocate(CATCH)
     if (allocated(CATCHCN)) deallocate(CATCHCN)
+    if (allocated(IRRIGATION)) deallocate(IRRIGATION)
 
     RETURN_(ESMF_SUCCESS)
   

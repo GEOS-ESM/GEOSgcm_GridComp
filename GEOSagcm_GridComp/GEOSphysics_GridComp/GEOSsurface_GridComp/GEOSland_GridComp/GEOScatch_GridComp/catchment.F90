@@ -2840,8 +2840,8 @@
           CAPAC(CHNO) = AMAX1(0., CAPAC(CHNO) - EINT(CHNO))
           RZEXC(CHNO) = RZEXC(CHNO) -  EVEG(CHNO)
           SRFEXC(CHNO) = SRFEXC(CHNO) - ESOI(CHNO)
-        ENDIF
-
+       ENDIF
+       
 !****
  100  CONTINUE
 !****
