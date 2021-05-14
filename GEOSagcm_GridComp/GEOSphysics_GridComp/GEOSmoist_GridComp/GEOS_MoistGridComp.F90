@@ -7968,6 +7968,8 @@ contains
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS)
         VERIFY_(STATUS)
+        call MAPL_GetResource(STATE,CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS)
+        VERIFY_(STATUS)
         call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 1.e6, RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
@@ -7975,7 +7977,7 @@ contains
         if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
           ! CAPE
            WHERE (CAPE .ne. MAPL_UNDEF)
-              CNV_FRACTION =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
+              CNV_FRACTION =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))**CNV_FRACTION_EXP
            END WHERE
         endif
       endif
@@ -8920,18 +8922,28 @@ contains
       SHLW_PRC3 = DQRDT_SC    ! [kg/kg/s]
       SHLW_SNO3 = DQSDT_SC    ! [kg/kg/s]
 
-      dum2d = 0.
-!      SC_PRC2 = 0.
-      DO K = 1,LM
-!         SC_PRC2 = SC_PRC2 + DQRDT_SC(:,:,K)*MASS(:,:,K)
-         dum2d = dum2d + (DQSDT_SC(:,:,k)+DQRDT_SC(:,:,k)+DQVDT_SC(:,:,k)+QLENT_SC(:,:,k)+QLSUB_SC(:,:,k)+QIENT_SC(:,:,k)+QISUB_SC(:,:,k))*MASS(:,:,k)+QLDET_SC(:,:,k)+QIDET_SC(:,:,k)
-      END DO
-      if (associated(SC_QT)) SC_QT = dum2d
-      dum2d = 0.
-      DO K = 1,LM
-         dum2d = dum2d + (MAPL_CP*DTHDT_SC(:,:,k)*PK(:,:,k) + MAPL_ALHL*DQVDT_SC(:,:,k)-MAPL_ALHF*DQIDT_SC(:,:,k))*MASS(:,:,k)
-      END DO
-      if (associated(SC_MSE)) SC_MSE = dum2d
+      if (associated(SC_QT)) then
+        ! column integral of UW total water tendency, for checking conservation
+        dum2d = 0.
+        DO K = 1,LM
+           dum2d = dum2d + (DQSDT_SC(:,:,k)+DQRDT_SC(:,:,k)+DQVDT_SC(:,:,k) &
+                         + QLENT_SC(:,:,k)+QLSUB_SC(:,:,k)+QIENT_SC(:,:,k)  &
+                         + QISUB_SC(:,:,k))*MASS(:,:,k)+QLDET_SC(:,:,k)     &
+                         + QIDET_SC(:,:,k)
+        END DO
+        SC_QT = dum2d
+      end if
+
+      if (associated(SC_MSE)) then
+        ! column integral of UW moist static energy tendency
+        dum2d = 0.
+        DO K = 1,LM
+           dum2d = dum2d + (MAPL_CP*DTHDT_SC(:,:,k)*PK(:,:,k) &
+                         + MAPL_ALHL*DQVDT_SC(:,:,k)          &
+                         - MAPL_ALHF*DQIDT_SC(:,:,k))*MASS(:,:,k)
+        END DO
+        SC_MSE = dum2d
+      end if
 
       if (associated(CUSH_SC)) CUSH_SC = CUSH
 
@@ -9512,7 +9524,7 @@ contains
        ! Send the condensates through the pdf after convection
        !  Use Slingo-Ritter (1985) formulation for critical relative humidity
              if (CLDPARAMS%TURNRHCRIT .LT. 0) then
-                 TURNRHCRIT   = PLO(I, J, NINT(KPBLSC(I,J)))
+                 TURNRHCRIT   = PLO(I, J, NINT(KPBLSC(I,J)))-50.  ! 50mb above KHSFC top
                  tmpminrhcrit = tmprhO             *(1.0-FRLAND(I,J)) + tmprhL                 *FRLAND(I,J)
                  tmpmaxrhcrit = CLDPARAMS%MAXRHCRIT*(1.0-FRLAND(I,J)) + CLDPARAMS%MAXRHCRITLAND*FRLAND(I,J)
              else
@@ -9529,7 +9541,7 @@ contains
                    ALPHAl = tmpmaxrhcrit
                 else
                    ALPHAl = tmpminrhcrit + (tmpmaxrhcrit-tmpminrhcrit)/(19.) * &
-                           ((atan( (2.*(PLO(i,j,k)-TURNRHCRIT)/( CNV_PLE(i,j,LM)-TURNRHCRIT)-1.) * &
+                           ((atan( (2.*(PLO(i,j,k)-TURNRHCRIT)/min(100., CNV_PLE(i,j,LM)-TURNRHCRIT)-1.) * &
                            tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
                 endif
              endif

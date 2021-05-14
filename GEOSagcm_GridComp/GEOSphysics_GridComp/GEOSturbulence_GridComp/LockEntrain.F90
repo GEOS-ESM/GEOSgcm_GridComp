@@ -1264,7 +1264,7 @@ contains
 ! tpfac scales up bstar by inv. ratio of
 ! heat-bubble area to stagnant area
 
-      tep  = tep * (1.+ tpfac * b_star(i,j)/MAPL_GRAV)
+      tep  = tep * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV) )
 !!  tep  = tep * (1.+ tpfac * b_star(i,j)*u_star(i,j)/MAPL_GRAV)
 
 !search for level where this is exceeded              
