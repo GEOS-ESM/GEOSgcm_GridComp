@@ -1,8 +1,3 @@
-! (dmb 2012) This is the GPU version of the cldprmc routine.  I have parallelized across 
-! all 3 dimensions (columns, g-points, and layers) to make this routine run very fast on the GPU.  
-! The greatest speedup was obtained by switching the indices for the cloud variables so that 
-! the columns were the least significant (leftmost) dimension
-
 module rrtmg_lw_cldprmc
 
 !  --------------------------------------------------------------------------
@@ -16,6 +11,7 @@ module rrtmg_lw_cldprmc
 !  --------------------------------------------------------------------------
 
    use parrrtm, only : ngptlw
+   use rrlw_wvn, only: ngb
    use rrlw_cld, only: &
      absliq1, absice0, absice1, absice2, absice3, absice4, &
      ice1b
@@ -25,10 +21,9 @@ module rrtmg_lw_cldprmc
 contains
 	  
    ! ------------------------------------------------------------------------------
-   subroutine cldprmc(ncol, nlay, &
+   subroutine cldprmc (ncol, nlay, &
                       cldfmc, ciwpmc, clwpmc, reice, reliq, &
-                      iceflag, liqflag, ngb, &
-                      taucmc, icldlyr)
+                      iceflag, liqflag, taucmc, cloudy)
    ! ------------------------------------------------------------------------------
    ! Compute the cloud optical depths for each cloudy layer
    ! The g-point indices are really McICA subcolumns
@@ -36,37 +31,34 @@ contains
       integer, intent(in) :: ncol  ! number of columns
       integer, intent(in) :: nlay  ! number of layers
       
-      real,    intent(in) :: cldfmc(ncol,ngptlw,nlay)  ! cloud fraction [mcica]
-      real,    intent(in) :: ciwpmc(ncol,ngptlw,nlay)  ! in-cloud ice water path [mcica]
-      real,    intent(in) :: clwpmc(ncol,ngptlw,nlay)  ! in-cloud liquid water path [mcica]
+      real,    intent(in) :: cldfmc (nlay,ngptlw,ncol)    ! cloud fraction [mcica]
+      real,    intent(in) :: ciwpmc (nlay,ngptlw,ncol)    ! in-cloud ice water path [mcica]
+      real,    intent(in) :: clwpmc (nlay,ngptlw,ncol)    ! in-cloud liq water path [mcica]
 
-      real,    intent(in) :: reice(ncol,nlay)          ! ice crystal effective size [um]
-      real,    intent(in) :: reliq(ncol,nlay)          ! liq droplet effective radius [um]
+      real,    intent(in) :: reice (nlay,ncol)            ! ice crystal effective size [um]
+      real,    intent(in) :: reliq (nlay,ncol)            ! liq droplet effective radius [um]
 
-      integer, intent(in) :: iceflag, liqflag            ! cloud optical depth methods
-      integer, intent(in) :: ngb(ngptlw)
+      integer, intent(in) :: iceflag, liqflag             ! cloud optical depth methods
 
-      real,    intent(out) :: taucmc(ncol,ngptlw,nlay)   ! cloud optical depth [mcica]
-      integer, intent(out) :: icldlyr(ncol,nlay)         ! cloudy in any layer of COLUMN
+      real,    intent(out) :: taucmc (nlay,ngptlw,ncol)   ! cloud optical depth [mcica]
+      logical, intent(out) :: cloudy (nlay,ncol)          ! gridbox cloudy for any gpoint
 
       ! ------- Local -------
 
-      integer :: icol                      ! gridcolumn index
-      integer :: ilay                      ! layer index
-      integer :: ib                        ! spectral band index
-      integer :: ig                        ! g-point interval index
+      integer :: icol      ! gridcolumn index
+      integer :: ilay      ! layer index
+      integer :: ig        ! g-point interval index
+      integer :: ib        ! spectral band index
 
-      real    :: cwp                       ! cloud water path
-      real    :: radice                    ! cloud ice effective size (microns)
-      real    :: radliq                    ! cloud liquid droplet radius (microns)
-      real    :: abscoice                  ! ice absorption coefficients
-      real    :: abscoliq                  ! liquid absorption coefficients
+      real    :: radice    ! cloud ice effective size (microns)
+      real    :: radliq    ! cloud liquid droplet radius (microns)
+      real    :: abscoice  ! ice absorption coefficients
+      real    :: abscoliq  ! liquid absorption coefficients
 
       ! table lookup parameters
       integer :: index
       real :: factor, fint
 
-      real, parameter :: cldmin = 1.e-20   ! minimum value for cloud fraction
       real, parameter :: cwpmin = 1.e-20   ! minimum value for cloud water path
 
 ! ------- Definitions -------
@@ -127,118 +119,208 @@ contains
 !                    based on the work of J. Pinto (private communication).
 !                    Linear interpolation is used to get the absorption 
 !                    coefficients for the input effective radius.
+!                    Liquid effective radius limited to [2.5,60.0] um.
 
-      icldlyr = 0
-      taucmc = 0.
+      ! flag gridbox if cloudy for any g-point
+      cloudy = .false.
       do icol = 1,ncol
          do ilay = 1,nlay
             do ig = 1,ngptlw
-
-               ! (dmb 2012) all of the cloud variables have been modified
-               !   so that the column dimensions is least significant.
-
-               if (cldfmc(icol,ig,ilay) == 1. ) then
-                  ! flag if layer is cloudy in any layer of the column
-                  ! i.e., for any subcolumn (g-point) at that layer
-                  icldlyr(icol,ilay) = 1
+               if (cldfmc(ilay,ig,icol) > 0.) then
+                  cloudy(ilay,icol) = .true.
+                  exit
                endif
-               cwp = ciwpmc(icol,ig,ilay) + clwpmc(icol,ig,ilay)
-   
-               if (cldfmc(icol,ig,ilay) > cldmin .and. cwp > cwpmin) then
-
-                  radice = reice(icol,ilay)
-
-                  ! Calculation of absorption coefficients due to ice clouds.
-                  if (ciwpmc(icol,ig,ilay) == 0.) then
-
-                     abscoice = 0. 
-	 
-                  elseif (iceflag == 0) then
-
-                     ! 1 cloud band
-                     abscoice = absice0(1) + absice0(2)/radice
-
-                  elseif (iceflag == 1) then
-
-                     ! 5 cloud bands
-                     ib = ice1b(ngb(ig))
-                     abscoice = absice1(1,ib) + absice1(2,ib)/radice
-
-                  ! For iceflag=2 option, ice particle effective radius
-                  !   is limited to 5.0 to 131.0 microns
-                  elseif (iceflag == 2) then
-
-                     ! 16 cloud bands
-                     factor = (radice - 2.)/3. 
-                     index = int(factor)
-                     if (index == 43) index = 42
-                     fint = factor - float(index)
-                     ib = ngb(ig)
-                     abscoice = &
-                        absice2(index,ib) + fint * &
-                        (absice2(index+1,ib) - (absice2(index,ib))) 
-            
-                  ! For iceflag=3 option, ice particle generalized effective
-                  !   size is limited to 5.0 to 140.0 microns
-                  elseif (iceflag == 3) then
-
-                     ! 16 cloud bands
-                     factor = (radice - 2.)/3. 
-                     index = int(factor)
-                     if (index == 46) index = 45
-                     fint = factor - float(index)
-                     ib = ngb(ig)
-                     abscoice = &
-                        absice3(index,ib) + fint * &
-                        (absice3(index+1,ib) - (absice3(index,ib)))
-
-                  ! For iceflag=4 option, ice particle effective diameter
-                  !   is limited to 1.0 to 200.0 microns
-                  elseif (iceflag == 4) then
-
-                     ! 16 cloud bands
-                     factor = radice
-                     index = int(factor)
-                     fint = factor - float(index)
-                     ib = ngb(ig)
-                     abscoice = &
-                        absice4(index,ib) + fint * &
-                        (absice4(index+1,ib) - (absice4(index,ib)))
-
-                  else
-                     error stop 'cldprmc: invalid iceflag'
-                  endif
-                  
-                  ! Calculation of absorption coefficients due to water clouds.
-                  if (clwpmc(icol,ig,ilay) == 0.) then
-
-                     abscoliq = 0. 
-	 
-                  elseif (liqflag == 1) then
-
-                     ! 16 cloud bands
-                     radliq = reliq(icol,ilay)
-                     index = int(radliq - 1.5)
-                     if (index == 0) index = 1
-                     if (index == 58) index = 57
-                     fint = radliq - 1.5  - float(index)
-                     ib = ngb(ig)
-                     abscoliq = &
-                        absliq1(index,ib) + fint * &
-                        (absliq1(index+1,ib) - (absliq1(index,ib)))
-
-                  else
-                     error stop 'cldprmc: invalid liqflag'
-                  endif
-
-                  taucmc(icol,ig,ilay) = ciwpmc(icol,ig,ilay) * abscoice + &
-                                         clwpmc(icol,ig,ilay) * abscoliq
-
-               endif
-        
             end do
          end do
       end do
+
+      ! zero cloud optical thickness default
+      taucmc = 0.
+
+! pmn make sure radius limits in GC are consistent with variable RE[ICE,LIQ]
+! pmn check extrapolation past end
+! pmn move some of limits into here where they should be for tables
+            
+      ! Calculation of absorption coefficients due to ice clouds
+      if (iceflag == 0) then
+
+         do icol = 1,ncol
+            do ilay = 1,nlay
+               if (cloudy(ilay,icol)) then
+
+                  ! 1 cloud band
+                  radice = reice(ilay,icol)
+                  abscoice = absice0(1) + absice0(2) / radice
+
+                  do ig = 1,ngptlw
+                     if (cldfmc(ilay,ig,icol) > 0. &
+                        .and. ciwpmc(ilay,ig,icol) > cwpmin) then
+
+                        taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
+
+                     end if
+                  end do  ! g-point
+
+               end if  ! cloudy for any gpoint
+            end do  ! layer
+         end do  ! column
+
+      elseif (iceflag == 1) then
+
+         do icol = 1,ncol
+            do ilay = 1,nlay
+               if (cloudy(ilay,icol)) then
+
+                  radice = reice(ilay,icol)
+
+                  do ig = 1,ngptlw
+                     if (cldfmc(ilay,ig,icol) > 0. &
+                        .and. ciwpmc(ilay,ig,icol) > cwpmin) then
+
+                        ! 5 cloud bands
+                        ib = ice1b(ngb(ig))
+                        abscoice = absice1(1,ib) + absice1(2,ib) / radice
+                        taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
+
+                     endif
+                  end do  ! g-point
+
+               end if  ! cloudy for any gpoint
+            end do  ! layer
+         end do  ! column
+
+      elseif (iceflag == 2) then
+
+         do icol = 1,ncol
+            do ilay = 1,nlay
+               if (cloudy(ilay,icol)) then
+
+                  ! ice particle effective radius [5.0,131.0] um
+                  radice = reice(ilay,icol)
+                  factor = (radice - 2.)/3. 
+                  index = int(factor)
+                  if (index == 43) index = 42
+                  fint = factor - float(index)
+
+                  do ig = 1,ngptlw
+                     if (cldfmc(ilay,ig,icol) > 0. &
+                        .and. ciwpmc(ilay,ig,icol) > cwpmin) then
+
+                        ! 16 cloud bands
+                        ib = ngb(ig)
+                        abscoice = &
+                           absice2(index,ib) + fint * &
+                           (absice2(index+1,ib) - (absice2(index,ib))) 
+                        taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
+
+                     endif
+                  end do  ! g-point
+
+               end if  ! cloudy for any gpoint
+            end do  ! layer
+         end do  ! column
+
+      elseif (iceflag == 3) then
+
+         do icol = 1,ncol
+            do ilay = 1,nlay
+               if (cloudy(ilay,icol)) then
+
+                  ! ice particle generalized effective size [5.0,140.0] um
+                  radice = reice(ilay,icol)
+                  factor = (radice - 2.)/3. 
+                  index = int(factor)
+                  if (index == 46) index = 45
+                  fint = factor - float(index)
+
+                  do ig = 1,ngptlw
+                     if (cldfmc(ilay,ig,icol) > 0. &
+                        .and. ciwpmc(ilay,ig,icol) > cwpmin) then
+
+                        ! 16 cloud bands
+                        ib = ngb(ig)
+                        abscoice = &
+                           absice3(index,ib) + fint * &
+                           (absice3(index+1,ib) - (absice3(index,ib)))
+                        taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
+
+                     endif
+                  end do  ! g-point
+
+               end if  ! cloudy for any gpoint
+            end do  ! layer
+         end do  ! column
+
+      elseif (iceflag == 4) then
+
+         do icol = 1,ncol
+            do ilay = 1,nlay
+               if (cloudy(ilay,icol)) then
+
+                  ! ice particle effective diameter [1.0,200.0] um
+                  radice = reice(ilay,icol)
+                  factor = radice
+                  index = int(factor)
+                  fint = factor - float(index)
+
+                  do ig = 1,ngptlw
+                     if (cldfmc(ilay,ig,icol) > 0. &
+                        .and. ciwpmc(ilay,ig,icol) > cwpmin) then
+
+                        ! 16 cloud bands
+                        ib = ngb(ig)
+                        abscoice = &
+                           absice4(index,ib) + fint * &
+                           (absice4(index+1,ib) - (absice4(index,ib)))
+                        taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
+
+                     endif
+                  end do  ! g-point
+
+               end if  ! cloudy for any gpoint
+            end do  ! layer
+         end do  ! column
+                  
+      else
+         error stop 'cldprmc: invalid iceflag'
+      endif
+        
+      ! Calculation of absorption coefficients due to water clouds
+      if (liqflag == 1) then
+
+         do icol = 1,ncol
+            do ilay = 1,nlay
+               if (cloudy(ilay,icol)) then
+
+                  ! liquid effective radius [2.5,60.0] um
+                  radliq = reliq(ilay,icol)
+                  index = int(radliq - 1.5)
+                  if (index == 0) index = 1
+                  if (index == 58) index = 57
+                  fint = radliq - 1.5  - float(index)
+
+                  do ig = 1,ngptlw
+                     if (cldfmc(ilay,ig,icol) > 0. &
+                           .and. clwpmc(ilay,ig,icol) > cwpmin) then
+
+                        ! 16 cloud bands
+                        ib = ngb(ig)
+                        abscoliq = &
+                           absliq1(index,ib) + fint * &
+                           (absliq1(index+1,ib) - (absliq1(index,ib)))
+                        taucmc(ilay,ig,icol) = taucmc(ilay,ig,icol) + &
+                           clwpmc(ilay,ig,icol) * abscoliq
+
+                     endif
+                  end do  ! g-point
+
+               end if  ! cloudy for any gpoint
+            end do  ! layer
+         end do  ! column
+
+      else
+         error stop 'cldprmc: invalid liqflag'
+      endif
 
    end subroutine cldprmc
 

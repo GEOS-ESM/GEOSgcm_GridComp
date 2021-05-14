@@ -35,7 +35,7 @@ contains
 
    !-----------------------------------------------------
    subroutine rtrnmc (ncol, nlay, idrv, ngb, &
-      semiss, taug, pfracs, icldlyr, cldfmc, taucmc, &
+      semiss, taug, pfracs, cloudy, cldfmc, taucmc, &
       totuflux, totdflux, totuclfl, totdclfl, &
       dtotuflux_dt, dtotuclfl_dt, &
       olrb06, olrb09, olrb10, olrb11, &
@@ -74,9 +74,9 @@ contains
       real,    intent(in) :: semiss  (ncol,nbndlw)       ! surface emissivity
       real,    intent(in) :: taug    (ncol,nlay,ngptlw)  ! gas optical depth
       real,    intent(in) :: pfracs  (ncol,nlay,ngptlw)  ! Planck fractions
-      integer, intent(in) :: icldlyr (ncol,nlay)         ! cloud flag (for ANY g-point)
-      real,    intent(in) :: cldfmc  (ncol,ngptlw,nlay)  ! cloud fraction
-      real,    intent(in) :: taucmc  (ncol,ngptlw,nlay)  ! cloud optical thickness
+      logical, intent(in) :: cloudy  (nlay,ncol)         ! cloudy for ANY g-point
+      real,    intent(in) :: cldfmc  (nlay,ngptlw,ncol)  ! cloud fraction
+      real,    intent(in) :: taucmc  (nlay,ngptlw,ncol)  ! cloud optical thickness
      
       ! spectrally summed fluxes and upward flux derivatives wrt Tsurf
       real, intent(out) :: totuflux     (ncol,0:nlay)  ! upward longwave flux (W/m2)
@@ -178,6 +178,7 @@ contains
          gdtotuclfl_dt = 0. 
       endif
 
+! pmn: check new ordering is better ie, icol last ilay first
       ! main loop
       ! g-points are "monochromatic" in CKD
       do icol = 1,ncol
@@ -216,14 +217,14 @@ contains
             odepth = secdiff * taug(icol,lev,ig)
             if (odepth .lt. 0.) odepth = 0. 
 
-            ! cloudy layer (for any g-point)
-            if (icldlyr(icol,lev) == 1) then
+            ! cloudy for any g-point
+            if (cloudy(lev,icol)) then
 
                iclddn = 1  ! flag any cloud in column
 
-               odclds = secdiff * taucmc(icol,ig,lev)
+               odclds = secdiff * taucmc(lev,ig,icol)
                absclds = 1. - exp(-odclds)
-               efclfracs = absclds * cldfmc(icol,ig,lev)
+               efclfracs = absclds * cldfmc(lev,ig,icol)
 
                ! table lookup based on optical depth:
                ! bpade    1/(pade constant)
@@ -279,7 +280,7 @@ contains
                gassrc = agas(lev) * bbdgas
                radld = radld - radld * (agas(lev) + &
                   efclfracs * (1. - agas(lev))) + &
-                  gassrc + cldfmc(icol,ig,lev) * &
+                  gassrc + cldfmc(lev,ig,icol) * &
                   (bbdtot * atot(lev) - gassrc)
                gdrad(icol,ig,lev-1) = gdrad(icol,ig,lev-1) + radld
 
@@ -347,24 +348,24 @@ contains
          ! Upward radiative transfer loop
          do lev = 1,nlay
 
-            ! cloudy layer (for any g-point)
-            if (icldlyr(icol,lev) == 1) then
+            ! cloudy for any g-point
+            if (cloudy(lev,icol)) then
 
                gassrc = bbugas(lev) * agas(lev)
-               odclds = secdiff * taucmc(icol,ig,lev)
+               odclds = secdiff * taucmc(lev,ig,icol)
                absclds = 1. - exp(-odclds)
-               efclfracs = absclds * cldfmc(icol,ig,lev)
+               efclfracs = absclds * cldfmc(lev,ig,icol)
 
 ! pmn: can we eliminate some repeated calcs from down loop? at least for clds?
 
                radlu = radlu - radlu * (agas(lev) + &
                    efclfracs * (1. - agas(lev))) + &
-                   gassrc + cldfmc(icol,ig,lev) * &
+                   gassrc + cldfmc(lev,ig,icol) * &
                    (bbutot(lev) * atot(lev) - gassrc)
                gurad(icol,ig,lev) = gurad(icol,ig,lev) + radlu
                if (idrv == 1) then
-                  d_radlu_dt = d_radlu_dt * cldfmc(icol,ig,lev)        * (1. - atot(lev)) + &
-                               d_radlu_dt * (1. - cldfmc(icol,ig,lev)) * (1. - agas(lev))
+                  d_radlu_dt = d_radlu_dt * cldfmc(lev,ig,icol)        * (1. - atot(lev)) + &
+                               d_radlu_dt * (1. - cldfmc(lev,ig,icol)) * (1. - agas(lev))
 ! pmn: -----
 ! pmn: this makes sense as the sum of the transmitted sensitivities for the cloudy
 ! pmn: and clear portions, but why use atot here vs. aboth for the non-derivative?

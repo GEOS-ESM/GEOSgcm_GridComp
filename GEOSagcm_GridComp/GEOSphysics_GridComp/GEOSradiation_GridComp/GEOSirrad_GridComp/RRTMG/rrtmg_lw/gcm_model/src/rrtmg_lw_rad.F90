@@ -316,6 +316,11 @@ contains
         error stop 'negative values in input: tauaer'
       end if
 
+      ! Call model and data initialization, compute lookup tables, perform
+      ! In a GCM this call should be placed in the model initialization
+      ! area, since this has to be called only once.  
+      ! call rrtmg_lw_ini()
+
       ! set up condensate inhomogeneity tables
       call initialize_inhomogeneity(1)
 ! pmn: put in GCM init eventually
@@ -360,9 +365,9 @@ contains
    ! ------------------------------------------------------------------
 
       use parrrtm, only : nbndlw, ngptlw
-      use rrlw_con, only: fluxfac, oneminus, pi
       use rrlw_wvn, only: ngb
-      use cloud_subcol_gen, only: generate_stochastic_clouds, clearCounts_threeBand
+      use cloud_subcol_gen, only: &
+         generate_stochastic_clouds, clearCounts_threeBand
 
       ! ----- Input -----
 
@@ -443,14 +448,17 @@ contains
       ! ===============================
 
       ! general
-      real :: p_zm   (pncol,nlay)    ! mid-layer heights
+      real :: p_zm   (nlay,pncol)    ! mid-layer heights [m]
       real :: p_alat (pncol)         ! latitudes
-      real :: p_play (pncol,nlay)    ! layer pressures [hPa]
+      real :: p_play (nlay,pncol)    ! layer pressures [hPa]
       real :: p_tlay (pncol,nlay)    ! layer temperatures [K]
       real :: p_plev (pncol,0:nlay)  ! level (interface) pressures [hPa]
       real :: p_tlev (pncol,0:nlay)  ! level (interface) temperatures [K]
       real :: p_tsfc (pncol)         ! surface temperature [K]
       real :: p_emis (pncol,nbndlw)  ! lw surface emissivity
+
+      ! old ordering
+      real :: o_play (pncol,nlay)    ! layer pressures [hPa]
 
       ! molecular volume mixing ratios
       real, dimension (pncol,nlay) :: &
@@ -458,11 +466,11 @@ contains
          p_cfc11vmr, p_cfc12vmr, p_cfc22vmr, p_ccl4vmr
 
       ! cloud input profiles
-      real :: p_cldf (pncol,nlay)  ! Cloud fraction
-      real :: p_ciwp (pncol,nlay)  ! In-cloud ice water path [g/m2]
-      real :: p_clwp (pncol,nlay)  ! In-cloud liquid water path [g/m2]
-      real :: p_rei  (pncol,nlay)  ! Cloud ice particle effective size [um]
-      real :: p_rel  (pncol,nlay)  ! Cloud water drop effective radius [um]
+      real :: p_cldf (nlay,pncol)  ! Cloud fraction
+      real :: p_ciwp (nlay,pncol)  ! In-cloud ice water path [g/m2]
+      real :: p_clwp (nlay,pncol)  ! In-cloud liquid water path [g/m2]
+      real :: p_rei  (nlay,pncol)  ! Cloud ice particle effective size [um]
+      real :: p_rel  (nlay,pncol)  ! Cloud water drop effective radius [um]
 
       ! Aerosol optical depth at mid-point of LW spectral bands
       real :: p_tauaer (pncol,nlay,nbndlw)
@@ -472,14 +480,14 @@ contains
       real :: pfracs (pncol,nlay,ngptlw)  ! Planck fractions
 
       ! mcica generated clouds
-      real :: cldfmc (pncol,ngptlw,nlay)  ! cloud fraction
-      real :: ciwpmc (pncol,ngptlw,nlay)  ! cloud ice water path [g/m2]
-      real :: clwpmc (pncol,ngptlw,nlay)  ! cloud liq water path [g/m2]
-      real :: taucmc (pncol,ngptlw,nlay)  ! cloud optical depth
-      integer :: p_clearCounts(pncol,4)   ! for super-band cld fractions
+      real :: cldfmc (nlay,ngptlw,pncol)  ! cloud fraction
+      real :: ciwpmc (nlay,ngptlw,pncol)  ! cloud ice water path [g/m2]
+      real :: clwpmc (nlay,ngptlw,pncol)  ! cloud liq water path [g/m2]
+      real :: taucmc (nlay,ngptlw,pncol)  ! cloud optical depth
+      integer :: p_clearCounts (4,pncol)  ! for super-band cld fractions
 
-      ! cloudy for ANY subcol of column? [0=no,1=yes]
-      integer :: icldlyr (pncol,nlay)
+      ! cloudy for ANY subcol/gpoint of column?
+      logical :: cloudy (nlay,pncol)
 
       ! spectrally summed fluxes and upward flux derivatives wrt Tsurf
       real :: totuflux     (pncol,0:nlay)  ! upward longwave flux (W/m2)
@@ -503,20 +511,27 @@ contains
       ! when it is set to 16 (see rrtmg_lw_setcoef() for details))
       integer, parameter :: istart = 1
 
-      ! set some globals
-      oneminus = 1. - 1.e-6 
-      pi = 2. * asin(1. )
-      fluxfac = pi * 2.e4                   ! orig:   fluxfac = pi * 2.d4  
-! pmn: put this in init of make parameters in _con
+      ! indices
+      integer :: ilev, ilay, n
+
+      ! copy partition and reorder for speed
+      p_alat = alat (colstart:(colstart+pncol-1))
+      p_tsfc = tsfc (colstart:(colstart+pncol-1))
+      do ilay = 1,nlay
+        p_zm   (ilay,:) = zm   (colstart:(colstart+pncol-1),ilay)
+        p_play (ilay,:) = play (colstart:(colstart+pncol-1),ilay)
+        p_cldf (ilay,:) = cldf (colstart:(colstart+pncol-1),ilay)
+        p_ciwp (ilay,:) = ciwp (colstart:(colstart+pncol-1),ilay)
+        p_clwp (ilay,:) = clwp (colstart:(colstart+pncol-1),ilay)
+        p_rei  (ilay,:) = rei  (colstart:(colstart+pncol-1),ilay)
+        p_rel  (ilay,:) = rel  (colstart:(colstart+pncol-1),ilay)
+      end do
 
       ! copy partition
-      p_zm       = zm       (colstart:(colstart+pncol-1),:)
-      p_alat     = alat     (colstart:(colstart+pncol-1))
-      p_play     = play     (colstart:(colstart+pncol-1),:)
+      o_play     = play     (colstart:(colstart+pncol-1),:)
       p_tlay     = tlay     (colstart:(colstart+pncol-1),:)
       p_plev     = plev     (colstart:(colstart+pncol-1),:)
       p_tlev     = tlev     (colstart:(colstart+pncol-1),:)
-      p_tsfc     = tsfc     (colstart:(colstart+pncol-1))
       p_emis     = emis     (colstart:(colstart+pncol-1),:)
       p_h2ovmr   = h2ovmr   (colstart:(colstart+pncol-1),:)
       p_o3vmr    = o3vmr    (colstart:(colstart+pncol-1),:)
@@ -525,23 +540,13 @@ contains
       p_n2ovmr   = n2ovmr   (colstart:(colstart+pncol-1),:)
       p_o2vmr    = o2vmr    (colstart:(colstart+pncol-1),:)
       p_covmr    = 0.
+! pmn: consider adding CO absorption since it is calculable !!!!!!!!!!!!!
+! pmn: i.e., pass through from RRTMG_LW
       p_cfc11vmr = cfc11vmr (colstart:(colstart+pncol-1),:)
       p_cfc12vmr = cfc12vmr (colstart:(colstart+pncol-1),:)
       p_cfc22vmr = cfc22vmr (colstart:(colstart+pncol-1),:)
       p_ccl4vmr  = ccl4vmr  (colstart:(colstart+pncol-1),:)
-! pmn: consider adding CO absorption since it is calculable !!!!!!!!!!!!!
-! pmn: i.e., pass through from RRTMG_LW
-      p_cldf     = cldf     (colstart:(colstart+pncol-1),:)
-      p_ciwp     = ciwp     (colstart:(colstart+pncol-1),:)
-      p_clwp     = clwp     (colstart:(colstart+pncol-1),:)
-      p_rei      = rei      (colstart:(colstart+pncol-1),:)
-      p_rel      = rel      (colstart:(colstart+pncol-1),:)
       p_tauaer   = tauaer   (colstart:(colstart+pncol-1),:,:)
-
-      ! Call model and data initialization, compute lookup tables, perform
-      ! In a GCM this call should be placed in the model initialization
-      ! area, since this has to be called only once.  
-      ! call rrtmg_lw_ini()
 
       ! Generate stochastic subcolumns of cloud physical properties
 
@@ -561,8 +566,7 @@ contains
 
       call cldprmc (pncol, nlay, &
         cldfmc, ciwpmc, clwpmc, p_rei, p_rel, &
-        iceflglw, liqflglw, ngb, &
-        taucmc, icldlyr)
+        iceflglw, liqflglw, taucmc, cloudy)
 
       ! Calculate information needed by the radiative transfer routine
       ! that is specific to this atmosphere, especially some of the 
@@ -570,26 +574,30 @@ contains
       ! by interpolating data from stored reference atmospheres. 
 
       call setcoef (pncol, nlay, istart, idrv, &
-         p_play, p_tlay, p_plev, p_tlev, p_tsfc, p_emis, &
+         o_play, p_tlay, p_plev, p_tlev, p_tsfc, p_emis, &
          p_h2ovmr, p_o3vmr, p_co2vmr, p_ch4vmr, p_n2ovmr, p_o2vmr, p_covmr, &
          p_cfc11vmr, p_cfc12vmr, p_cfc22vmr, p_ccl4vmr)
 
       ! Calculate the gaseous optical depths and Planck fractions for 
       ! each longwave spectral band. Also adds in aerosol optical depths.
 
-      call taumol (pncol, nlay, ngb, p_play, p_tauaer, taug, pfracs)
+      call taumol (pncol, nlay, ngb, o_play, p_tauaer, taug, pfracs)
 
       ! Call the radiative transfer routine
 
       call rtrnmc (pncol, nlay, idrv, ngb, &
-         p_emis, taug, pfracs, icldlyr, cldfmc, taucmc, &
+         p_emis, taug, pfracs, cloudy, cldfmc, taucmc, &
          totuflux, totdflux, totuclfl, totdclfl, &
          dtotuflux_dt, dtotuclfl_dt, &
          p_olrb06, p_olrb09, p_olrb10, p_olrb11, &
          p_dolrb06_dt, p_dolrb09_dt, p_dolrb10_dt, p_dolrb11_dt)
 
       ! copy the partitioned results back
-      clearCounts (colstart:(colstart+pncol-1),:) = p_clearCounts
+      do n = 1,4
+         clearCounts (colstart:(colstart+pncol-1),n) = p_clearCounts(n,:)
+      end do
+
+      ! copy the partitioned results back
       uflx  (colstart:(colstart+pncol-1),1:(nlay+1)) = totuflux(:,0:nlay)
       dflx  (colstart:(colstart+pncol-1),1:(nlay+1)) = totdflux(:,0:nlay)
       uflxc (colstart:(colstart+pncol-1),1:(nlay+1)) = totuclfl(:,0:nlay)

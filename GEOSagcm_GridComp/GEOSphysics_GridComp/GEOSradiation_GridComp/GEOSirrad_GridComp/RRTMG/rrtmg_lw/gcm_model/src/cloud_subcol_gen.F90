@@ -16,71 +16,74 @@ module cloud_subcol_gen
 
 ! --------- Module variables ----------
 
-      use cloud_condensate_inhomogeneity, only: condensate_inhomogeneous, zcw_lookup
+   use cloud_condensate_inhomogeneity, only: &
+      condensate_inhomogeneous, zcw_lookup
+   use rrlw_con, only : r2d
 
-      implicit none
-      private
+   implicit none
+   private
 
-      public :: generate_stochastic_clouds 
-      public :: clearCounts_threeBand
+   public :: generate_stochastic_clouds 
+   public :: clearCounts_threeBand
 
 contains
 
-!----------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------
    subroutine generate_stochastic_clouds( &
                  ncol, nsubcol, nlay, &
                  zmid, alat, doy, &
                  play, cldfrac, ciwp, clwp, &
                  cldf_stoch, ciwp_stoch, clwp_stoch)
-!----------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------
 !
 ! Original code: Based on Raisanen et al., QJRMS, 2004.
 ! Original Contact: Cecile Hannay (hannay@ucar.edu)
 ! 
 ! Modifications:
 ! ...
-! Peter Norris, GMAO, Apr 2021:
+! Peter Norris, GMAO, Apr-May 2021:
 !   Tidy up code and comments
 !   Keep only exponential (generalized) overlap.
+!   Abstract and reorder indices for CPU efficiency.
 !
-! Given a profile of cloud fraction, cloud water and cloud ice, produce a set of subcolumns.
-! Each subcolumn has cloud fraction in {0,1} at each level.
-! If (.not. condensate_inhomogeneous()), each layer within each subcolumn has uniform
-!   cloud ice and cloud liquid concentration.
-! If (condensate_inhomogeneous()), each layer has horizontal condensate variability.
-! The ensemble of subcolumns statistically reproduces the cloud fraction within each layer
-!   and its prescribed vertical overlap, and, if (condensate_inhomogeneous()), the PDF of
-!   cloud liquid and ice within each layer and its prescribed vertical correlation.
+!   Given a profile of cloud fraction, cloud water and cloud ice, produce a set of
+! subcolumns. Each subcolumn has cloud fraction in {0,1} at each level.
+!   If not condensate_inhomogeneous(), each layer within each subcolumn has uniform
+! cloud ice and cloud liquid concentration. If condensate_inhomogeneous(), each layer
+! has horizontal condensate variability.
+!   The ensemble of subcolumns statistically reproduces the cloud fraction within each
+! layer and its prescribed vertical overlap, and, if condensate_inhomogeneous(), the
+! PDF of cloud liquid and ice within each layer and its prescribed vertical correlation.
 ! Whether there is condensate inhomogeneity, and the condensate PDF if so, are set in
-!   initialize_inhomogeneity().
+! initialize_inhomogeneity().
 ! 
 ! Overlap assumption:
 ! Exponential (generalized) overlap (Raisanen et al., 2004, Pincus et al., 2005) using
 ! correlations alpha and rcorr based on decorrelation length scales from Oreopoulos et
 ! al., 2012.
 ! 
-!---------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------
 
       integer, intent(in) :: ncol                 ! number of gridcolumns
-      integer, intent(in) :: nsubcol              ! number of subcols to generate / gridcol
+      integer, intent(in) :: nsubcol              ! #subcols to generate / gridcol
       integer, intent(in) :: nlay                 ! number of model layers
-      real,    intent(in) :: zmid    (ncol,nlay)  ! Hgt of midpoints above sfc [m]
-      real,    intent(in) :: alat    (ncol)       ! Latitude of gridcolumn
+      real,    intent(in) :: zmid    (nlay,ncol)  ! Hgt of midpoints above sfc [m]
+      real,    intent(in) :: alat         (ncol)  ! Latitude of gridcolumn
       integer, intent(in) :: doy                  ! Day of year
-      real,    intent(in) :: play    (ncol,nlay)  ! layer pressures [mb]
-      real,    intent(in) :: cldfrac (ncol,nlay)  ! layer cloud fraction
-      real,    intent(in) :: ciwp    (ncol,nlay)  ! in-cld ice water path
-      real,    intent(in) :: clwp    (ncol,nlay)  ! in-cld liquid water path
+      real,    intent(in) :: play    (nlay,ncol)  ! layer pressures [mb]
+      real,    intent(in) :: cldfrac (nlay,ncol)  ! layer cloud fraction
+      real,    intent(in) :: ciwp    (nlay,ncol)  ! in-cld ice water path
+      real,    intent(in) :: clwp    (nlay,ncol)  ! in-cld liquid water path
 
-      ! output subcolumns, one subcolum per gpoint
-      real,    intent(out) :: cldf_stoch(ncol,nsubcol,nlay)  ! cloud fraction 
-      real,    intent(out) :: ciwp_stoch(ncol,nsubcol,nlay)  ! in-cloud ice water path
-      real,    intent(out) :: clwp_stoch(ncol,nsubcol,nlay)  ! in-cloud liq water path
+      ! output subcolumns
+      real,    intent(out) :: cldf_stoch (nlay,nsubcol,ncol)  ! cloud fraction 
+      real,    intent(out) :: ciwp_stoch (nlay,nsubcol,ncol)  ! in-cloud ice water path
+      real,    intent(out) :: clwp_stoch (nlay,nsubcol,ncol)  ! in-cloud liq water path
    
       ! ----- Locals -----
 
       ! layer pressures [Pa] used for seeding
-      real :: pmid(ncol,nlay)
+      real :: pmid(nlay,ncol)
 
       ! decorrelation length scales for cldfrac and condensate
       real :: adl(ncol), rdl(ncol)
@@ -105,10 +108,11 @@ contains
       logical :: cond_inhomo
      
       ! indices
-      integer :: icol, isubcol, ilev
+      integer :: icol, isubcol, ilay
       
       ! midpoint pressure in [Pa] for seeding
       pmid = play * 1.e2
+!pmn: probably not necessary to scale whole array when only bottom few layers used
 
       ! save for speed
       cond_inhomo = condensate_inhomogeneous()
@@ -127,7 +131,7 @@ contains
       else
          am3 = 4.*amr/365.*(doy-91)
       endif
-      adl = (am1+am2*exp(-(alat*180./3.141592-am3)**2/am4**2))*1.e3  ! [m]
+      adl = (am1+am2*exp(-(alat*r2d-am3)**2/am4**2))*1.e3  ! [m]
 
       ! condensate decorrelation length scale
       am1 = 0.72192
@@ -139,7 +143,7 @@ contains
       else
          am3 = 4.*amr/365.*(doy-91)
       endif
-      rdl = (am1+am2*exp(-(alat*180./3.141592-am3)**2/am4**2))*1.e3  ! [m]
+      rdl = (am1+am2*exp(-(alat*r2d-am3)**2/am4**2))*1.e3  ! [m]
         
       ! --------------------------
       ! outer loop over gridcolumn
@@ -149,11 +153,11 @@ contains
          ! ------------------------------------
          ! exponential inter-layer correlations
          ! ------------------------------------
-         alpha(1) = 0.0
-         rcorr(1) = 0.0
-         do ilev = 2, nlay
-            alpha(ilev) = exp( -(zmid(icol,ilev)-zmid(icol,ilev-1)) / adl(icol) )
-            rcorr(ilev) = exp( -(zmid(icol,ilev)-zmid(icol,ilev-1)) / rdl(icol) )
+         alpha(1) = 0. ! not used
+         rcorr(1) = 0. ! not used
+         do ilay = 2, nlay
+            alpha(ilay) = exp( -(zmid(ilay,icol)-zmid(ilay-1,icol)) / adl(icol) )
+            rcorr(ilay) = exp( -(zmid(ilay,icol)-zmid(ilay-1,icol)) / rdl(icol) )
          end do
 
          ! -----------------------
@@ -169,8 +173,8 @@ contains
             ! pmn ... why do we have to reset seed at beginning of every subcol?
             ! pmn ... no real harm and allowed parallel generation in old gpu code
       
-            seed1 = (pmid(icol,1) - int(pmid(icol,1))) * 1000000000 + isubcol * 11 
-            seed3 = (pmid(icol,3) - int(pmid(icol,3))) * 1000000000 + isubcol * 13 
+            seed1 = (pmid(1,icol) - int(pmid(1,icol))) * 1000000000 + isubcol * 11 
+            seed3 = (pmid(3,icol) - int(pmid(3,icol))) * 1000000000 + isubcol * 13 
             seed2 = seed1 + isubcol
             seed4 = seed3 - isubcol 
   
@@ -178,33 +182,33 @@ contains
             ! apply overlap assumption
             ! ------------------------
 
-            do ilev = 1,nlay
+            do ilay = 1,nlay
                call kissvec(seed1,seed2,seed3,seed4,rand_num)
-               cdf1(ilev) = rand_num
+               cdf1(ilay) = rand_num
                call kissvec(seed1,seed2,seed3,seed4,rand_num)
-               cdf2(ilev) = rand_num
+               cdf2(ilay) = rand_num
             end do
 
             ! exponential overlap in cloud fraction
-            do ilev = 2,nlay
-               if (cdf2(ilev) < alpha(ilev)) then
-                  cdf1(ilev) = cdf1(ilev-1)
+            do ilay = 2,nlay
+               if (cdf2(ilay) < alpha(ilay)) then
+                  cdf1(ilay) = cdf1(ilay-1)
                end if
             end do
 
             ! exponential overlap in condensate
             if (cond_inhomo) then
 
-               do ilev = 1,nlay
+               do ilay = 1,nlay
                   call kissvec(seed1,seed2,seed3,seed4,rand_num)
-                  cdf2(ilev) = rand_num
+                  cdf2(ilay) = rand_num
                   call kissvec(seed1,seed2,seed3,seed4,rand_num)
-                  cdf3(ilev) = rand_num 
+                  cdf3(ilay) = rand_num 
                end do
 
-               do ilev = 2,nlay
-                  if (cdf2(ilev) < rcorr(ilev)) then
-                     cdf3(ilev) = cdf3(ilev-1) 
+               do ilay = 2,nlay
+                  if (cdf2(ilay) < rcorr(ilay)) then
+                     cdf3(ilay) = cdf3(ilay-1) 
                   end if
                end do
 
@@ -214,17 +218,17 @@ contains
             ! generate subcolumns
             ! -------------------
 
-            do ilev = 1,nlay
-               cfs = cldfrac(icol,ilev)
+            do ilay = 1,nlay
+               cfs = cldfrac(ilay,icol)
 
                ! if a cloudy subcolumn
-               if (cdf1(ilev) >= 1. - cfs) then
+               if (cdf1(ilay) >= 1. - cfs) then
 
-                  cldf_stoch(icol,isubcol,ilev) = 1. 
+                  cldf_stoch(ilay,isubcol,icol) = 1. 
 
                   ! condensate is horizontally homogeneous by default
-                  clwp_stoch(icol,isubcol,ilev) = clwp(icol,ilev)
-                  ciwp_stoch(icol,isubcol,ilev) = ciwp(icol,ilev)
+                  ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol)
+                  clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol)
           
                   ! horizontal condensate variability if requested
                   if (cond_inhomo) then  
@@ -239,22 +243,22 @@ contains
                      endif
 
                      ! horizontally variable clouds
-                     zcw = zcw_lookup(cdf3(ilev),sigma_qcw)
-                     clwp_stoch(icol,isubcol,ilev) = clwp(icol,ilev) * zcw
-                     ciwp_stoch(icol,isubcol,ilev) = ciwp(icol,ilev) * zcw
+                     zcw = zcw_lookup(cdf3(ilay),sigma_qcw)
+                     ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol) * zcw
+                     clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol) * zcw
                   
                   end if
 
                else
 
                   ! a clear subcolumn
-                  cldf_stoch(icol,isubcol,ilev) = 0. 
-                  clwp_stoch(icol,isubcol,ilev) = 0. 
-                  ciwp_stoch(icol,isubcol,ilev) = 0. 
+                  cldf_stoch(ilay,isubcol,icol) = 0. 
+                  ciwp_stoch(ilay,isubcol,icol) = 0. 
+                  clwp_stoch(ilay,isubcol,icol) = 0. 
 
                endif
            
-            end do  ! level
+            end do  ! layer
 
          end do  ! isubcol
       end do  ! icol
@@ -298,9 +302,8 @@ contains
 ! ------------------------------------------------------------------------------------
    subroutine clearCounts_threeBand( &
                  ncol, nsubcol, nlay, cloudLM, cloudMH, cldf_stoch, &
-                 clearCounts)
+                 clearCnts)
 ! ------------------------------------------------------------------------------------
-!
 ! count clear subcolumns per gridcolumn for whole column and three pressure bands
 ! layers [1,         cloudLM] are in low  pressure band
 ! layers [cloudLM+1, cloudMH] are in mid  pressure band
@@ -312,67 +315,69 @@ contains
       integer, intent(in)  :: nlay               ! number of layers
       integer, intent(in)  :: cloudLM, cloudMH   ! layer indices as above
 
-      real,    intent(in)  :: cldf_stoch(ncol,nsubcol,nlay)  ! cloud fraction [mcica]
+      real,    intent(in)  :: cldf_stoch(nlay,nsubcol,ncol)  ! cloud fraction
 
-      integer, intent(out) :: clearCounts(ncol,4)  ! counts of clear subcolumns
-                                                   ! (,1) whole column
-                                                   ! (,2) high pressure band only
-                                                   ! (,3) mid  pressure band only
-                                                   ! (,4) low  pressure band only
+      integer, intent(out) :: clearCnts(4,ncol)  ! counts of clear subcolumns
+                                                 ! (1,) whole column
+                                                 ! (2,) high pressure band only
+                                                 ! (3,) mid  pressure band only
+                                                 ! (4,) low  pressure band only
                                           
       ! locals
-      integer :: icol, isubcol, ilev, tk
+      integer :: icol, isubcol, ilay
+      logical :: cloud_found
 
       ! zero counters
-      clearCounts = 0
+      clearCnts = 0
+! pmn reorder first index for better LOCALITY in layers?
  
-      do icol = 1, ncol
-         do isubcol = 1, nsubcol
+      do icol = 1,ncol
+         do isubcol = 1,nsubcol
 
             ! whole subcolumn
             ! remember cldf_stoch in {0,1}
-            tk = 0
-            do ilev = 1, nlay
-               if (cldf_stoch(icol,isubcol,ilev) > 0.5) then 
-                  tk = 1
+            cloud_found = .false.
+            do ilay = 1, nlay
+               if (cldf_stoch(ilay,isubcol,icol) > 0.) then 
+                  cloud_found = .true.
                   exit
                end if
             end do
-            if (tk .eq. 0) & 
-               clearCounts(icol,1) = clearCounts(icol,1) + 1
+            if (.not. cloud_found) &
+               clearCnts(1,icol) = clearCnts(1,icol) + 1
 
             ! high pressure band
-            tk = 0
-            do ilev = cloudMH+1, nlay
-               if (cldf_stoch(icol,isubcol,ilev) > 0.5) then 
-                  tk = 1
+            cloud_found = .false.
+            do ilay = cloudMH+1, nlay
+               if (cldf_stoch(ilay,isubcol,icol) > 0.) then 
+                  cloud_found = .true.
                   exit
                end if
             end do
-            if (tk .eq. 0) & 
-               clearCounts(icol,2) = clearCounts(icol,2) + 1
+            if (.not. cloud_found) &
+               clearCnts(2,icol) = clearCnts(2,icol) + 1
 
             ! mid pressure band
-            tk = 0
-            do ilev = cloudLM+1, cloudMH
-               if (cldf_stoch(icol,isubcol,ilev) > 0.5) then 
-                  tk = 1
+            cloud_found = .false.
+            do ilay = cloudLM+1, cloudMH
+               if (cldf_stoch(ilay,isubcol,icol) > 0.) then 
+                  cloud_found = .true.
                   exit
                end if
             end do
-            if (tk .eq. 0) & 
-               clearCounts(icol,3) = clearCounts(icol,3) + 1
+            if (.not. cloud_found) &
+               clearCnts(3,icol) = clearCnts(3,icol) + 1
 
             ! low pressure band
-            tk = 0
-            do ilev = 1, cloudLM
-               if (cldf_stoch(icol,isubcol,ilev) > 0.5) then 
-                  tk = 1
+            cloud_found = .false.
+            do ilay = 1, cloudLM
+               if (cldf_stoch(ilay,isubcol,icol) > 0.) then 
+                  cloud_found = .true.
                   exit
                end if
             end do
-            if (tk .eq. 0) & 
-               clearCounts(icol,4) = clearCounts(icol,4) + 1
+            if (.not. cloud_found) &
+               clearCnts(4,icol) = clearCnts(4,icol) + 1
 
          end do  ! isubcol
       end do  ! icol
