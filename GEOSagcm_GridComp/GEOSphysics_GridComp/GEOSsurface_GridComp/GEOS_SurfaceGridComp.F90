@@ -225,11 +225,11 @@ module GEOS_SurfaceGridCompMod
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
     call MAPL_GetResource (MAPL, DO_OBIO, label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetResource (SCF, ATM_CO2, label='ATM_CO2:', DEFAULT=0, __RC__ ) 
+    call MAPL_GetResource (SCF, ATM_CO2, label='ATM_CO2:', DEFAULT=2, __RC__ ) 
 
     call MAPL_GetResource (SCF, catchswim,     label='N_CONST_LAND4SNWALB:',    DEFAULT=0,        __RC__ )
     call MAPL_GetResource (SCF, landicegoswim, label='N_CONST_LANDICE4SNWALB:', DEFAULT=0,        __RC__ )
-    call MAPL_GetResource (SCF, LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="Icarus", __RC__ )
+    call MAPL_GetResource (SCF, LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="NRv7.2", __RC__ )
     call MAPL_GetResource (SCF, CHOOSEMOSFC,   label='CHOOSEMOSFC:',            DEFAULT=1,        __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
 

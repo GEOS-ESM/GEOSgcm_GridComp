@@ -215,7 +215,7 @@ subroutine SetServices ( GC, RC )
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
     call MAPL_GetResource (SCF, SURFLAY,             label='SURFLAY:',             DEFAULT=50.,     __RC__ )
-    call MAPL_GetResource (SCF, Z0_FORMULATION,      label='Z0_FORMULATION:',      DEFAULT=2,       __RC__ )
+    call MAPL_GetResource (SCF, Z0_FORMULATION,      label='Z0_FORMULATION:',      DEFAULT=4,       __RC__ )
     call MAPL_GetResource (SCF, USE_ASCATZ0,         label='USE_ASCATZ0:',         DEFAULT=0,       __RC__ )
     call MAPL_GetResource (SCF, CHOOSEMOSFC,         label='CHOOSEMOSFC:',         DEFAULT=1,       __RC__ )
     call MAPL_GetResource (SCF, USE_FWET_FOR_RUNOFF, label='USE_FWET_FOR_RUNOFF:', DEFAULT=.FALSE., __RC__ )
