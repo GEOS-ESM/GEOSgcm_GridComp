@@ -3840,6 +3840,10 @@ contains
                                      ! else: conventional partitioning
      integer :: EDMF_THERMAL_PLUME   ! 0:    JPL mass flux scheme
                                      ! else: thermal plume model
+     integer :: EDMF_TEST            ! 0:    do nothing
+                                     ! else: test EDMF feature
+     integer :: EDMF_DEBUG           ! 0:    do nothing
+                                     ! else: output internal EDMF state
 
      ! MYNN parameters
      integer :: MYNN_LEVEL           ! 2:    level-2.5 
@@ -4505,6 +4509,8 @@ contains
     call MAPL_GetResource (MAPL, EDMF_DISCRETE,        "EDMF_DISCRETE:",        default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_CONSISTENT,      "EDMF_CONSISTENT:",      default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_THERMAL_PLUME,   "EDMF_THERMAL_PLUME:",   default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_TEST,            "EDMF_TEST:",            default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, EDMF_DEBUG,           "EDMF_DEBUG:",           default=0,  RC=STATUS)
 
     call MAPL_GetResource (MAPL, EntWFac,              "EDMF_ENTWFAC:",         default=0.3333, RC=STATUS)
     call MAPL_GetResource (MAPL, EDMF_KBOTP,           "EDMF_KBOTP:",           default=0,  RC=STATUS)  
@@ -4595,8 +4601,9 @@ if ( ET == 1 ) then
                  EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
     else
        call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp, &                    ! in
-                     edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                     th00, dt, z, zle, plo, ple, rho, rhoe, exf, &                   ! in
+                     edmf_discrete, edmf_implicit, edmf_stochastic, &                ! in
+                     edmf_thermal_plume, edmf_test, edmf_debug, &                    ! in
+                     th00, dt, z, zle, ple, rho, rhoe, exf, &                        ! in
                      u, v, thl, qt, q, ql, qi, thv, &                                ! in
                      ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
@@ -4650,8 +4657,9 @@ if ( ET == 1 ) then
                  EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
     else
        call run_edmf(IM, JM, LM, 1, iras, jras, edmf_kbotp, &                        ! in
-                     edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                     th00, dt, z, zle, plo, ple, rho, rhoe, exf, &                   ! in
+                     edmf_discrete, edmf_implicit, edmf_stochastic, &                ! in
+                     edmf_thermal_plume, edmf_test, edmf_debug, &                    ! in
+                     th00, dt, z, zle, ple, rho, rhoe, exf, &                        ! in
                      u, v, thl, qt, q, ql, qi, thv, &                                ! in
                      ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
@@ -4716,8 +4724,9 @@ if ( ET == 1 ) then
                  EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
     else
        call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp,&                     ! in
-                     edmf_discrete, edmf_implicit, edmf_stochastic, edmf_thermal_plume, & ! in
-                     th00, dt, z, zle, plo, ple, rho, rhoe, exf, &                   ! in
+                     edmf_discrete, edmf_implicit, edmf_stochastic, &                ! in
+                     edmf_thermal_plume, edmf_test, edmf_debug, &                    ! in
+                     th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
                      u, v, thl, qt, q, ql, qi, thv, &                                ! in
                      ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in 

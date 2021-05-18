@@ -433,7 +433,7 @@ subroutine mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &      
   ! Compute total fluxes
   ! 
 
-  if ( DOMF /= 0. .and. CONSISTENT_TYPE /= 0 ) then
+  if ( DOMF /= 0. .and. CONSISTENT_TYPE == 2 ) then
      whl = -KH*dhldz + whl_explicit + whl_mf
      wqt = -KH*dqtdz + wqt_explicit + wqt_mf
   else
@@ -446,7 +446,7 @@ subroutine mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &      
   !
 
   ! Buoyancy produduction
-  if ( domf /= 0. .and. consistent_type /= 0 ) then
+  if ( domf /= 0. .and. consistent_type == 2 ) then
      tket_B = -KH*N2 + wb_explicit + goth00*wthv_mf
   else
      tket_B = -KH*N2 + wb_explicit
@@ -581,7 +581,7 @@ subroutine implicit_M(IM, JM, LM, &                                             
            end if
         end if
 
-        if ( DOMF /= 0. .and. CONSISTENT_TYPE /= 0 ) then
+        if ( DOMF /= 0. .and. CONSISTENT_TYPE == 2 ) then
            tket_B(i,j,k) = -KH*N2(i,j,k)    + wb_explicit  + goth00*wthv_mf(i,j,k)
            whl           = -KH*dhldz(i,j,k) + whl_explicit + whl_mf(i,j,k)
            wqt           = -KH*dqtdz(i,j,k) + wqt_explicit + wqt_mf(i,j,k)
