@@ -14,13 +14,8 @@ set (exe_srcs
   mk_CatchCNRestarts.F90		    
   mk_CatchRestarts.F90		    
   mk_LakeLandiceSaltRestarts.F90	    
-  mk_RouteRestarts.F90		    
-#  mk_catch_restart.F90		    
-#  mk_vegdyn_restart.F90		    
-  newcatch.F90			    
-#  newvegdyn.f90			    
-#  replace_params.F90		    
-  strip_vegdyn.F90                    
+  mk_RouteRestarts.F90
+  mk_GEOSldasRestarts.F90
 )  
 
 include_directories(${INC_ESMF})
@@ -32,10 +27,17 @@ esma_add_library (${this}
 
 foreach (src ${exe_srcs})
   string (REGEX REPLACE ".F90" "" exe ${src})
-  ecbuild_add_executable (
-    TARGET ${exe}
-    SOURCES ${src}
-    LIBS MAPL gftl-shared GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared ${this})
+  if (ESMA_USE_GFE_NAMESPACE)
+    ecbuild_add_executable (
+      TARGET ${exe}
+      SOURCES ${src}
+      LIBS MAPL GFTL_SHARED::gftl-shared GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared ${this})
+  else ()
+    ecbuild_add_executable (
+      TARGET ${exe}
+      SOURCES ${src}
+      LIBS MAPL gftl-shared GEOS_SurfaceShared GEOSroute_GridComp GEOS_LandShared ${this})
+  endif ()
 endforeach ()
 
 install(PROGRAMS mk_Restarts DESTINATION bin)
