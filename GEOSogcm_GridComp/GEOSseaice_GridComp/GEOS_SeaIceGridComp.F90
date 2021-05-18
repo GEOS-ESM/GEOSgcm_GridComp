@@ -676,7 +676,7 @@ contains
 
 
 ! Pointers to Imports
-    real, pointer, dimension(:,:)   :: SS_FOUNDi => null()
+    !real, pointer, dimension(:,:)   :: SS_FOUNDi => null()
 
 ! Pointers to Exports
     real, pointer, dimension(:,:)   :: FRd       => null()
@@ -731,6 +731,7 @@ contains
 
     Iam = "Run"
     call ESMF_GridCompGet( gc, NAME=comp_name,  CONFIG=CF, currentPhase=PHASE, __RC__ )
+    PHASE = PHASE - 10
     Iam = trim(comp_name) // Iam
 
 ! Get my internal MAPL_Generic state
@@ -775,7 +776,7 @@ contains
 
     if (dual_ocean) then
 
-       call MAPL_GetPointer(IMPORT   , SS_FOUNDi , 'SS_FOUND', __RC__)
+       !call MAPL_GetPointer(IMPORT   , SS_FOUNDi , 'SS_FOUND', __RC__)
        call MAPL_GetPointer(EXPORT   , FRd ,       'FRACICEd', __RC__)
 
        call MAPL_GetPointer(GIM(ICE) , FRO8     , 'FRACICE',  __RC__)
@@ -975,6 +976,7 @@ contains
 
     Iam = "Run2"
     call ESMF_GridCompGet( gc, NAME=comp_name,  CONFIG=CF, currentPhase=PHASE, __RC__ )
+    PHASE = PHASE - 10
     Iam = trim(comp_name) // Iam
 
 ! Get my internal MAPL_Generic state
@@ -1019,7 +1021,6 @@ contains
 
     if (dual_ocean) then
 
-       call MAPL_GetPointer(IMPORT   , SS_FOUNDi , 'SS_FOUND', __RC__)
 
        call MAPL_GetPointer(GIM(ICE) , FRO8     , 'FRACICE',  __RC__)
        call MAPL_GetPointer(GIM(ICE) , TIO8     , 'TI'     ,  __RC__)
@@ -1078,10 +1079,11 @@ contains
     call MAPL_GetResource( STATE, HIN     , Label="SEA_ICE_NUDGING_HINEW:"    , DEFAULT=0.5, __RC__ )
     call MAPL_GetResource( STATE, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1  , __RC__ )
 
-    if (PHASE == 1) then
+    if (PHASE == 3) then
  
         call MAPL_GetResource( STATE, TAU_SIT , LABEL="SEA_ICE_NUDGING_RELAX:"    , default=86400.0, __RC__)
         call MAPL_GetResource( STATE, RN      , Label="SEA_ICE_NUDGING_R:"        , DEFAULT=0.1,     __RC__)
+        call MAPL_GetPointer(IMPORT   , SS_FOUNDi , 'SS_FOUND', __RC__)
 
         call ice_nudging(  FRO8d,         TIO8d,          &
                            VOLICEOd,      VOLSNOOd,       &
