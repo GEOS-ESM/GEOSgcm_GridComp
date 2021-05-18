@@ -158,10 +158,10 @@ contains
       integer, intent(in)  :: ncol                       ! number of columns
       integer, intent(in)  :: nlay                       ! number of layers
       integer, intent(in)  :: ngb    (ngptlw)            ! band indicies for g-points
-      real,    intent(in)  :: pavel  (ncol,nlay)         ! layer pressures [hPa]
-      real,    intent(in)  :: taua   (ncol,nlay,nbndlw)  ! aerosol optical depths
-      real,    intent(out) :: taug   (ncol,nlay,ngptlw)  ! gas optical depths
-      real,    intent(out) :: pfracs (ncol,nlay,ngptlw)  ! Planck fractions
+      real,    intent(in)  :: pavel  (nlay,ncol)         ! layer pressures [hPa]
+      real,    intent(in)  :: taua   (nlay,nbndlw,ncol)  ! aerosol optical depths
+      real,    intent(out) :: taug   (nlay,ngptlw,ncol)  ! gas optical depths
+      real,    intent(out) :: pfracs (nlay,ngptlw,ncol)  ! Planck fractions
 
       ! Calculate gaseous optical depth and Planck fractions
       !   for each spectral band
@@ -208,9 +208,9 @@ contains
       use rrlw_kg01
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
-      real,    intent(in)    :: pavel(ncol,nlay)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
+      real,    intent(in)    :: pavel(nlay,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, indm, ig
       real :: pp, corradj, scalen2, tauself, taufor, taun2
@@ -225,56 +225,56 @@ contains
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(1) + 1
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(1) + 1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
-         pp = pavel(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(1) + 1
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(1) + 1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
+         pp = pavel(lay,icol)
          corradj =  1.
          if (pp .lt. 250.) then
             corradj = 1. - 0.15 * (250. - pp) / 154.4 
          endif
-         scalen2 = colbrd(icol,lay) * scaleminorn2(icol,lay)
+         scalen2 = colbrd(lay,icol) * scaleminorn2(lay,icol)
 
          do ig = 1,ng1
-            tauself = selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol) * (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) -  forref(indf,ig))) 
             taun2 = scalen2 * (ka_mn2(indm,ig) + & 
-               minorfrac(icol,lay) * (ka_mn2(indm+1,ig) - ka_mn2(indm,ig)))
-            taug(icol,lay,ig) = corradj * (colh2o(icol,lay) * &
-               (fac00(icol,lay) * absa(ind0,  ig) + &
-                fac10(icol,lay) * absa(ind0+1,ig) + &
-                fac01(icol,lay) * absa(ind1,  ig) + &
-                fac11(icol,lay) * absa(ind1+1,ig))  & 
+               minorfrac(lay,icol) * (ka_mn2(indm+1,ig) - ka_mn2(indm,ig)))
+            taug(lay,ig,icol) = corradj * (colh2o(lay,icol) * &
+               (fac00(lay,icol) * absa(ind0,  ig) + &
+                fac10(lay,icol) * absa(ind0+1,ig) + &
+                fac01(lay,icol) * absa(ind1,  ig) + &
+                fac11(lay,icol) * absa(ind1+1,ig))  & 
                + tauself + taufor + taun2)
-            pfracs(icol,lay,ig) = fracrefa(ig)
+            pfracs(lay,ig,icol) = fracrefa(ig)
          enddo
 
       else  ! upper atmosphere
 
-         ind0 = ((jp(icol,lay)-13)*5+(jt(icol,lay)-1))*nspb(1) + 1
-         ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(1) + 1
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
-         pp = pavel(icol,lay)
+         ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(1) + 1
+         ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(1) + 1
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
+         pp = pavel(lay,icol)
          corradj = 1. - 0.15 * (pp / 95.6)
-         scalen2 = colbrd(icol,lay) * scaleminorn2(icol,lay)
+         scalen2 = colbrd(lay,icol) * scaleminorn2(lay,icol)
 
          do ig = 1,ng1
-            taufor = forfac(icol,lay) * (forref(indf,ig) + &
-               forfrac(icol,lay) * (forref(indf+1,ig) - forref(indf,ig))) 
+            taufor = forfac(lay,icol) * (forref(indf,ig) + &
+               forfrac(lay,icol) * (forref(indf+1,ig) - forref(indf,ig))) 
             taun2 = scalen2 * (kb_mn2(indm,ig) + & 
-               minorfrac(icol,lay) * (kb_mn2(indm+1,ig) - kb_mn2(indm,ig)))
-            taug(icol,lay,ig) = corradj * (colh2o(icol,lay) * &
-               (fac00(icol,lay) * absb(ind0,  ig) + &
-                fac10(icol,lay) * absb(ind0+1,ig) + &
-                fac01(icol,lay) * absb(ind1,  ig) + &
-                fac11(icol,lay) * absb(ind1+1,ig))  &  
+               minorfrac(lay,icol) * (kb_mn2(indm+1,ig) - kb_mn2(indm,ig)))
+            taug(lay,ig,icol) = corradj * (colh2o(lay,icol) * &
+               (fac00(lay,icol) * absb(ind0,  ig) + &
+                fac10(lay,icol) * absb(ind0+1,ig) + &
+                fac01(lay,icol) * absb(ind1,  ig) + &
+                fac11(lay,icol) * absb(ind1+1,ig))  &  
                + taufor + taun2)
-            pfracs(icol,lay,ig) = fracrefb(ig)
+            pfracs(lay,ig,icol) = fracrefb(ig)
          enddo
 
       endif
@@ -302,9 +302,9 @@ contains
       use rrlw_kg02
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
-      real,    intent(in)    :: pavel(ncol,nlay)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
+      real,    intent(in)    :: pavel(nlay,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, ig
       real :: pp, corradj, tauself, taufor
@@ -315,43 +315,43 @@ contains
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(2) + 1
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(2) + 1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
-         pp = pavel(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(2) + 1
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(2) + 1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
+         pp = pavel(lay,icol)
          corradj = 1. - .05 * (pp - 100.) / 900. 
 
          do ig = 1,ng2
-            tauself = selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol) * (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor =  forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor =  forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
-            taug(icol,lay,ngs1+ig) = corradj * (colh2o(icol,lay) * &
-               (fac00(icol,lay) * absa(ind0,  ig) + &
-                fac10(icol,lay) * absa(ind0+1,ig) + &
-                fac01(icol,lay) * absa(ind1,  ig) + &
-                fac11(icol,lay) * absa(ind1+1,ig))  &
+            taug(lay,ngs1+ig,icol) = corradj * (colh2o(lay,icol) * &
+               (fac00(lay,icol) * absa(ind0,  ig) + &
+                fac10(lay,icol) * absa(ind0+1,ig) + &
+                fac01(lay,icol) * absa(ind1,  ig) + &
+                fac11(lay,icol) * absa(ind1+1,ig))  &
                + tauself + taufor)
-            pfracs(icol,lay,ngs1+ig) = fracrefa(ig)
+            pfracs(lay,ngs1+ig,icol) = fracrefa(ig)
          enddo
 
       else  ! Upper atmosphere
 
-         ind0 = ((jp(icol,lay)-13)*5+(jt(icol,lay)-1))*nspb(2) + 1
-         ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(2) + 1
-         indf = indfor(icol,lay)
+         ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(2) + 1
+         ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(2) + 1
+         indf = indfor(lay,icol)
 
          do ig = 1,ng2
-            taufor = forfac(icol,lay) * (forref(indf,ig) + &
-               forfrac(icol,lay) * (forref(indf+1,ig) - forref(indf,ig))) 
-            taug(icol,lay,ngs1+ig) = colh2o(icol,lay) * &
-               (fac00(icol,lay) * absb(ind0,  ig) + &
-                fac10(icol,lay) * absb(ind0+1,ig) + &
-                fac01(icol,lay) * absb(ind1,  ig) + &
-                fac11(icol,lay) * absb(ind1+1,ig))  &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + &
+               forfrac(lay,icol) * (forref(indf+1,ig) - forref(indf,ig))) 
+            taug(lay,ngs1+ig,icol) = colh2o(lay,icol) * &
+               (fac00(lay,icol) * absb(ind0,  ig) + &
+                fac10(lay,icol) * absb(ind0+1,ig) + &
+                fac01(lay,icol) * absb(ind1,  ig) + &
+                fac11(lay,icol) * absb(ind1+1,ig))  &
                + taufor
-            pfracs(icol,lay,ngs1+ig) = fracrefb(ig)
+            pfracs(lay,ngs1+ig,icol) = fracrefb(ig)
          enddo
 
       endif  ! lower/upper
@@ -379,8 +379,8 @@ contains
       use rrlw_kg03
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, indm, ig
       integer :: js, js1, jmn2o, jpl
@@ -433,51 +433,51 @@ contains
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
 
-         speccomb = colh2o(icol,lay) + rat_h2oco2(icol,lay)*colco2(icol,lay)
-         specparm = colh2o(icol,lay)/speccomb
+         speccomb = colh2o(lay,icol) + rat_h2oco2(lay,icol)*colco2(lay,icol)
+         specparm = colh2o(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
          specmult = 8. *(specparm)
          js = 1 + int(specmult)
          fs = mod(specmult,1.0 )        
 
-         speccomb1 = colh2o(icol,lay) + rat_h2oco2_1(icol,lay)*colco2(icol,lay)
-         specparm1 = colh2o(icol,lay)/speccomb1
+         speccomb1 = colh2o(lay,icol) + rat_h2oco2_1(lay,icol)*colco2(lay,icol)
+         specparm1 = colh2o(lay,icol)/speccomb1
          if (specparm1 .ge. oneminus) specparm1 = oneminus
          specmult1 = 8. *(specparm1)
          js1 = 1 + int(specmult1)
          fs1 = mod(specmult1,1.0 )
 
-         speccomb_mn2o = colh2o(icol,lay) + refrat_m_a*colco2(icol,lay)
-         specparm_mn2o = colh2o(icol,lay)/speccomb_mn2o
+         speccomb_mn2o = colh2o(lay,icol) + refrat_m_a*colco2(lay,icol)
+         specparm_mn2o = colh2o(lay,icol)/speccomb_mn2o
          if (specparm_mn2o .ge. oneminus) specparm_mn2o = oneminus
          specmult_mn2o = 8. *specparm_mn2o
          jmn2o = 1 + int(specmult_mn2o)
          fmn2o = mod(specmult_mn2o,1.0 )
-         fmn2omf = minorfrac(icol,lay)*fmn2o
+         fmn2omf = minorfrac(lay,icol)*fmn2o
 !  In atmospheres where the amount of N2O is too great to be considered
 !  a minor species, adjust the column amount of N2O by an empirical factor 
 !  to obtain the proper contribution.
-         chi_n2o = coln2o(icol,lay)/coldry(icol,lay)
-         ratn2o = 1.e20 *chi_n2o/chi_mls(4,jp(icol,lay)+1)
+         chi_n2o = coln2o(lay,icol)/coldry(lay,icol)
+         ratn2o = 1.e20 *chi_n2o/chi_mls(4,jp(lay,icol)+1)
          if (ratn2o .gt. 1.5 ) then
             adjfac = 0.5 +(ratn2o-0.5 )**0.65 
-            adjcoln2o = adjfac*chi_mls(4,jp(icol,lay)+1)*coldry(icol,lay)*1.e-20 
+            adjcoln2o = adjfac*chi_mls(4,jp(lay,icol)+1)*coldry(lay,icol)*1.e-20 
          else
-            adjcoln2o = coln2o(icol,lay)
+            adjcoln2o = coln2o(lay,icol)
          endif
 
-         speccomb_planck = colh2o(icol,lay)+refrat_planck_a*colco2(icol,lay)
-         specparm_planck = colh2o(icol,lay)/speccomb_planck
+         speccomb_planck = colh2o(lay,icol)+refrat_planck_a*colco2(lay,icol)
+         specparm_planck = colh2o(lay,icol)/speccomb_planck
          if (specparm_planck .ge. oneminus) specparm_planck=oneminus
          specmult_planck = 8. *specparm_planck
          jpl= 1 + int(specmult_planck)
          fpl = mod(specmult_planck,1.0 )
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(3) + js
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(3) + js1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(3) + js
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(3) + js1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
 
          if (specparm .lt. 0.125 ) then
             p = fs - 1
@@ -485,29 +485,29 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else if (specparm .gt. 0.875 ) then
             p = -fs 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else
-            fac000 = (1.  - fs) * fac00(icol,lay)
-            fac010 = (1.  - fs) * fac10(icol,lay)
-            fac100 = fs * fac00(icol,lay)
-            fac110 = fs * fac10(icol,lay)
+            fac000 = (1.  - fs) * fac00(lay,icol)
+            fac010 = (1.  - fs) * fac10(lay,icol)
+            fac100 = fs * fac00(lay,icol)
+            fac110 = fs * fac10(lay,icol)
          endif
          if (specparm1 .lt. 0.125 ) then
             p = fs1 - 1
@@ -515,41 +515,41 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else if (specparm1 .gt. 0.875 ) then
             p = -fs1 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else
-            fac001 = (1.  - fs1) * fac01(icol,lay)
-            fac011 = (1.  - fs1) * fac11(icol,lay)
-            fac101 = fs1 * fac01(icol,lay)
-            fac111 = fs1 * fac11(icol,lay)
+            fac001 = (1.  - fs1) * fac01(lay,icol)
+            fac011 = (1.  - fs1) * fac11(lay,icol)
+            fac101 = fs1 * fac01(lay,icol)
+            fac111 = fs1 * fac11(lay,icol)
          endif
 
          do ig = 1,ng3
-            tauself = selffac(icol,lay)* (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol)* (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
             n2om1 = ka_mn2o(jmn2o,indm,ig) + fmn2o * &
                (ka_mn2o(jmn2o+1,indm,ig) - ka_mn2o(jmn2o,indm,ig))
             n2om2 = ka_mn2o(jmn2o,indm+1,ig) + fmn2o * &
                (ka_mn2o(jmn2o+1,indm+1,ig) - ka_mn2o(jmn2o,indm+1,ig))
-            absn2o = n2om1 + minorfrac(icol,lay) * (n2om2 - n2om1)
+            absn2o = n2om1 + minorfrac(lay,icol) * (n2om2 - n2om1)
 
             if (specparm .lt. 0.125 ) then
                tau_major = speccomb * &
@@ -599,77 +599,77 @@ contains
                    fac111 * absa(ind1+10,ig))
             endif
 
-            taug(icol,lay,ngs2+ig) = tau_major + tau_major1 &
+            taug(lay,ngs2+ig,icol) = tau_major + tau_major1 &
                + tauself + taufor + adjcoln2o * absn2o
-            pfracs(icol,lay,ngs2+ig) = fracrefa(ig,jpl) + fpl * &
+            pfracs(lay,ngs2+ig,icol) = fracrefa(ig,jpl) + fpl * &
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
     
       else  ! upper atmosphere
 
-         speccomb = colh2o(icol,lay) + rat_h2oco2(icol,lay)*colco2(icol,lay)
-         specparm = colh2o(icol,lay)/speccomb
+         speccomb = colh2o(lay,icol) + rat_h2oco2(lay,icol)*colco2(lay,icol)
+         specparm = colh2o(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
          specmult = 4. *(specparm)
          js = 1 + int(specmult)
          fs = mod(specmult,1.0 )
 
-         speccomb1 = colh2o(icol,lay) + rat_h2oco2_1(icol,lay)*colco2(icol,lay)
-         specparm1 = colh2o(icol,lay)/speccomb1
+         speccomb1 = colh2o(lay,icol) + rat_h2oco2_1(lay,icol)*colco2(lay,icol)
+         specparm1 = colh2o(lay,icol)/speccomb1
          if (specparm1 .ge. oneminus) specparm1 = oneminus
          specmult1 = 4. *(specparm1)
          js1 = 1 + int(specmult1)
          fs1 = mod(specmult1,1.0 )
 
-         fac000 = (1.  - fs) * fac00(icol,lay)
-         fac010 = (1.  - fs) * fac10(icol,lay)
-         fac100 = fs * fac00(icol,lay)
-         fac110 = fs * fac10(icol,lay)
-         fac001 = (1.  - fs1) * fac01(icol,lay)
-         fac011 = (1.  - fs1) * fac11(icol,lay)
-         fac101 = fs1 * fac01(icol,lay)
-         fac111 = fs1 * fac11(icol,lay)
+         fac000 = (1.  - fs) * fac00(lay,icol)
+         fac010 = (1.  - fs) * fac10(lay,icol)
+         fac100 = fs * fac00(lay,icol)
+         fac110 = fs * fac10(lay,icol)
+         fac001 = (1.  - fs1) * fac01(lay,icol)
+         fac011 = (1.  - fs1) * fac11(lay,icol)
+         fac101 = fs1 * fac01(lay,icol)
+         fac111 = fs1 * fac11(lay,icol)
 
-         speccomb_mn2o = colh2o(icol,lay) + refrat_m_b*colco2(icol,lay)
-         specparm_mn2o = colh2o(icol,lay)/speccomb_mn2o
+         speccomb_mn2o = colh2o(lay,icol) + refrat_m_b*colco2(lay,icol)
+         specparm_mn2o = colh2o(lay,icol)/speccomb_mn2o
          if (specparm_mn2o .ge. oneminus) specparm_mn2o = oneminus
          specmult_mn2o = 4. *specparm_mn2o
          jmn2o = 1 + int(specmult_mn2o)
          fmn2o = mod(specmult_mn2o,1.0 )
-         fmn2omf = minorfrac(icol,lay)*fmn2o
+         fmn2omf = minorfrac(lay,icol)*fmn2o
 !  In atmospheres where the amount of N2O is too great to be considered
 !  a minor species, adjust the column amount of N2O by an empirical factor 
 !  to obtain the proper contribution.
-         chi_n2o = coln2o(icol,lay)/coldry(icol,lay)
-         ratn2o = 1.e20*chi_n2o/chi_mls(4,jp(icol,lay)+1)
+         chi_n2o = coln2o(lay,icol)/coldry(lay,icol)
+         ratn2o = 1.e20*chi_n2o/chi_mls(4,jp(lay,icol)+1)
          if (ratn2o .gt. 1.5 ) then
             adjfac = 0.5 +(ratn2o-0.5 )**0.65 
-            adjcoln2o = adjfac*chi_mls(4,jp(icol,lay)+1)*coldry(icol,lay)*1.e-20 
+            adjcoln2o = adjfac*chi_mls(4,jp(lay,icol)+1)*coldry(lay,icol)*1.e-20 
          else
-            adjcoln2o = coln2o(icol,lay)
+            adjcoln2o = coln2o(lay,icol)
          endif
 
-         speccomb_planck = colh2o(icol,lay)+refrat_planck_b*colco2(icol,lay)
-         specparm_planck = colh2o(icol,lay)/speccomb_planck
+         speccomb_planck = colh2o(lay,icol)+refrat_planck_b*colco2(lay,icol)
+         specparm_planck = colh2o(lay,icol)/speccomb_planck
          if (specparm_planck .ge. oneminus) specparm_planck=oneminus
          specmult_planck = 4. *specparm_planck
          jpl= 1 + int(specmult_planck)
          fpl = mod(specmult_planck,1.0 )
 
-         ind0 = ((jp(icol,lay)-13)*5+(jt(icol,lay)-1))*nspb(3) + js
-         ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(3) + js1
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
+         ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(3) + js
+         ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(3) + js1
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
 
          do ig = 1,ng3
-            taufor = forfac(icol,lay) * (forref(indf,ig) + &
-               forfrac(icol,lay) * (forref(indf+1,ig) - forref(indf,ig))) 
+            taufor = forfac(lay,icol) * (forref(indf,ig) + &
+               forfrac(lay,icol) * (forref(indf+1,ig) - forref(indf,ig))) 
             n2om1 = kb_mn2o(jmn2o,indm,ig) + fmn2o * &
                (kb_mn2o(jmn2o+1,indm,ig)-kb_mn2o(jmn2o,indm,ig))
             n2om2 = kb_mn2o(jmn2o,indm+1,ig) + fmn2o * &
                (kb_mn2o(jmn2o+1,indm+1,ig)-kb_mn2o(jmn2o,indm+1,ig))
-            absn2o = n2om1 + minorfrac(icol,lay) * (n2om2 - n2om1)
-            taug(icol,lay,ngs2+ig) = &
+            absn2o = n2om1 + minorfrac(lay,icol) * (n2om2 - n2om1)
+            taug(lay,ngs2+ig,icol) = &
                speccomb * &
                (fac000 * absb(ind0,  ig) + &
                 fac100 * absb(ind0+1,ig) + &
@@ -681,7 +681,7 @@ contains
                 fac011 * absb(ind1+5,ig) + &
                 fac111 * absb(ind1+6,ig))  &
                + taufor + adjcoln2o * absn2o
-            pfracs(icol,lay,ngs2+ig) = fracrefb(ig,jpl) + fpl * &
+            pfracs(lay,ngs2+ig,icol) = fracrefb(ig,jpl) + fpl * &
                (fracrefb(ig,jpl+1)-fracrefb(ig,jpl))
          enddo
 
@@ -709,8 +709,8 @@ contains
       use rrlw_kg04
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, ig
       integer :: js, js1, jpl
@@ -739,31 +739,31 @@ contains
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
 
-         speccomb = colh2o(icol,lay) + rat_h2oco2(icol,lay)*colco2(icol,lay)
-         specparm = colh2o(icol,lay)/speccomb
+         speccomb = colh2o(lay,icol) + rat_h2oco2(lay,icol)*colco2(lay,icol)
+         specparm = colh2o(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
          specmult = 8. *(specparm)
          js = 1 + int(specmult)
          fs = mod(specmult,1.0 )
 
-         speccomb1 = colh2o(icol,lay) + rat_h2oco2_1(icol,lay)*colco2(icol,lay)
-         specparm1 = colh2o(icol,lay)/speccomb1
+         speccomb1 = colh2o(lay,icol) + rat_h2oco2_1(lay,icol)*colco2(lay,icol)
+         specparm1 = colh2o(lay,icol)/speccomb1
          if (specparm1 .ge. oneminus) specparm1 = oneminus
          specmult1 = 8. *(specparm1)
          js1 = 1 + int(specmult1)
          fs1 = mod(specmult1,1.0 )
 
-         speccomb_planck = colh2o(icol,lay)+refrat_planck_a*colco2(icol,lay)
-         specparm_planck = colh2o(icol,lay)/speccomb_planck
+         speccomb_planck = colh2o(lay,icol)+refrat_planck_a*colco2(lay,icol)
+         specparm_planck = colh2o(lay,icol)/speccomb_planck
          if (specparm_planck .ge. oneminus) specparm_planck=oneminus
          specmult_planck = 8. *specparm_planck
          jpl= 1 + int(specmult_planck)
          fpl = mod(specmult_planck,1.0 )
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(4) + js
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(4) + js1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(4) + js
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(4) + js1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
 
          if (specparm .lt. 0.125 ) then
             p = fs - 1
@@ -771,29 +771,29 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else if (specparm .gt. 0.875 ) then
             p = -fs 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else
-            fac000 = (1.  - fs) * fac00(icol,lay)
-            fac010 = (1.  - fs) * fac10(icol,lay)
-            fac100 = fs * fac00(icol,lay)
-            fac110 = fs * fac10(icol,lay)
+            fac000 = (1.  - fs) * fac00(lay,icol)
+            fac010 = (1.  - fs) * fac10(lay,icol)
+            fac100 = fs * fac00(lay,icol)
+            fac110 = fs * fac10(lay,icol)
          endif
 
          if (specparm1 .lt. 0.125 ) then
@@ -802,35 +802,35 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else if (specparm1 .gt. 0.875 ) then
             p = -fs1 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else
-            fac001 = (1.  - fs1) * fac01(icol,lay)
-            fac011 = (1.  - fs1) * fac11(icol,lay)
-            fac101 = fs1 * fac01(icol,lay)
-            fac111 = fs1 * fac11(icol,lay)
+            fac001 = (1.  - fs1) * fac01(lay,icol)
+            fac011 = (1.  - fs1) * fac11(lay,icol)
+            fac101 = fs1 * fac01(lay,icol)
+            fac111 = fs1 * fac11(lay,icol)
          endif
 
          do ig = 1,ng4
-            tauself = selffac(icol,lay)* (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol)* (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
 
             if (specparm .lt. 0.125 ) then
@@ -881,49 +881,49 @@ contains
                    fac111 * absa(ind1+10,ig))
             endif
 
-            taug(icol,lay,ngs3+ig) = &
+            taug(lay,ngs3+ig,icol) = &
                tau_major + tau_major1 + tauself + taufor
-            pfracs(icol,lay,ngs3+ig) = fracrefa(ig,jpl) + fpl * &
+            pfracs(lay,ngs3+ig,icol) = fracrefa(ig,jpl) + fpl * &
                  (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
     
       else  ! upper atmosphere
 
-         speccomb = colo3(icol,lay) + rat_o3co2(icol,lay)*colco2(icol,lay)
-         specparm = colo3(icol,lay)/speccomb
+         speccomb = colo3(lay,icol) + rat_o3co2(lay,icol)*colco2(lay,icol)
+         specparm = colo3(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
          specmult = 4. *(specparm)
          js = 1 + int(specmult)
          fs = mod(specmult,1.0 )
 
-         speccomb1 = colo3(icol,lay) + rat_o3co2_1(icol,lay)*colco2(icol,lay)
-         specparm1 = colo3(icol,lay)/speccomb1
+         speccomb1 = colo3(lay,icol) + rat_o3co2_1(lay,icol)*colco2(lay,icol)
+         specparm1 = colo3(lay,icol)/speccomb1
          if (specparm1 .ge. oneminus) specparm1 = oneminus
          specmult1 = 4. *(specparm1)
          js1 = 1 + int(specmult1)
          fs1 = mod(specmult1,1.0 )
 
-         fac000 = (1.  - fs) * fac00(icol,lay)
-         fac010 = (1.  - fs) * fac10(icol,lay)
-         fac100 = fs * fac00(icol,lay)
-         fac110 = fs * fac10(icol,lay)
-         fac001 = (1.  - fs1) * fac01(icol,lay)
-         fac011 = (1.  - fs1) * fac11(icol,lay)
-         fac101 = fs1 * fac01(icol,lay)
-         fac111 = fs1 * fac11(icol,lay)
+         fac000 = (1.  - fs) * fac00(lay,icol)
+         fac010 = (1.  - fs) * fac10(lay,icol)
+         fac100 = fs * fac00(lay,icol)
+         fac110 = fs * fac10(lay,icol)
+         fac001 = (1.  - fs1) * fac01(lay,icol)
+         fac011 = (1.  - fs1) * fac11(lay,icol)
+         fac101 = fs1 * fac01(lay,icol)
+         fac111 = fs1 * fac11(lay,icol)
 
-         speccomb_planck = colo3(icol,lay)+refrat_planck_b*colco2(icol,lay)
-         specparm_planck = colo3(icol,lay)/speccomb_planck
+         speccomb_planck = colo3(lay,icol)+refrat_planck_b*colco2(lay,icol)
+         specparm_planck = colo3(lay,icol)/speccomb_planck
          if (specparm_planck .ge. oneminus) specparm_planck=oneminus
          specmult_planck = 4. *specparm_planck
          jpl= 1 + int(specmult_planck)
          fpl = mod(specmult_planck,1.0 )
 
-         ind0 = ((jp(icol,lay)-13)*5+(jt(icol,lay)-1))*nspb(4) + js
-         ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(4) + js1
+         ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(4) + js
+         ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(4) + js1
 
          do ig = 1,ng4
-            taug(icol,lay,ngs3+ig) = &
+            taug(lay,ngs3+ig,icol) = &
                speccomb * &
                (fac000 * absb(ind0,  ig) + &
                 fac100 * absb(ind0+1,ig) + &
@@ -934,20 +934,20 @@ contains
                 fac101 * absb(ind1+1,ig) + &
                 fac011 * absb(ind1+5,ig) + &
                 fac111 * absb(ind1+6,ig))
-            pfracs(icol,lay,ngs3+ig) = fracrefb(ig,jpl) + fpl * &
+            pfracs(lay,ngs3+ig,icol) = fracrefb(ig,jpl) + fpl * &
                (fracrefb(ig,jpl+1)-fracrefb(ig,jpl))
          enddo
 
 ! Empirical modification to code to improve stratospheric cooling rates
 ! for co2. Revised to apply weighting for g-point reduction in this band.
 
-         taug(icol,lay,ngs3+8)=taug(icol,lay,ngs3+8)*0.92
-         taug(icol,lay,ngs3+9)=taug(icol,lay,ngs3+9)*0.88
-         taug(icol,lay,ngs3+10)=taug(icol,lay,ngs3+10)*1.07
-         taug(icol,lay,ngs3+11)=taug(icol,lay,ngs3+11)*1.1
-         taug(icol,lay,ngs3+12)=taug(icol,lay,ngs3+12)*0.99
-         taug(icol,lay,ngs3+13)=taug(icol,lay,ngs3+13)*0.88
-         taug(icol,lay,ngs3+14)=taug(icol,lay,ngs3+14)*0.943
+         taug(lay,ngs3+8,icol)=taug(lay,ngs3+8,icol)*0.92
+         taug(lay,ngs3+9,icol)=taug(lay,ngs3+9,icol)*0.88
+         taug(lay,ngs3+10,icol)=taug(lay,ngs3+10,icol)*1.07
+         taug(lay,ngs3+11,icol)=taug(lay,ngs3+11,icol)*1.1
+         taug(lay,ngs3+12,icol)=taug(lay,ngs3+12,icol)*0.99
+         taug(lay,ngs3+13,icol)=taug(lay,ngs3+13,icol)*0.88
+         taug(lay,ngs3+14,icol)=taug(lay,ngs3+14,icol)*0.943
 
       endif  ! lower/upper
 
@@ -974,8 +974,8 @@ contains
       use rrlw_kg05
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, indm, ig
       integer :: js, js1, jmo3, jpl
@@ -1010,41 +1010,42 @@ contains
       do lay  = 1,nlay
 
       ! lower atmosphere
+!pmn: which better? loop or if
       !do lay  = 1, laytrop(icol)
       if (lay <= laytrop(icol)) then
-         speccomb = colh2o(icol,lay) + rat_h2oco2(icol,lay)*colco2(icol,lay)
-         specparm = colh2o(icol,lay)/speccomb
+         speccomb = colh2o(lay,icol) + rat_h2oco2(lay,icol)*colco2(lay,icol)
+         specparm = colh2o(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
          specmult = 8. *(specparm)
          js = 1 + int(specmult)
          fs = mod(specmult,1.0 )
 
-         speccomb1 = colh2o(icol,lay) + rat_h2oco2_1(icol,lay)*colco2(icol,lay)
-         specparm1 = colh2o(icol,lay)/speccomb1
+         speccomb1 = colh2o(lay,icol) + rat_h2oco2_1(lay,icol)*colco2(lay,icol)
+         specparm1 = colh2o(lay,icol)/speccomb1
          if (specparm1 .ge. oneminus) specparm1 = oneminus
          specmult1 = 8. *(specparm1)
          js1 = 1 + int(specmult1)
          fs1 = mod(specmult1,1.0 )
 
-         speccomb_mo3 = colh2o(icol,lay) + refrat_m_a*colco2(icol,lay)
-         specparm_mo3 = colh2o(icol,lay)/speccomb_mo3
+         speccomb_mo3 = colh2o(lay,icol) + refrat_m_a*colco2(lay,icol)
+         specparm_mo3 = colh2o(lay,icol)/speccomb_mo3
          if (specparm_mo3 .ge. oneminus) specparm_mo3 = oneminus
          specmult_mo3 = 8. *specparm_mo3
          jmo3 = 1 + int(specmult_mo3)
          fmo3 = mod(specmult_mo3,1.0 )
 
-         speccomb_planck = colh2o(icol,lay)+refrat_planck_a*colco2(icol,lay)
-         specparm_planck = colh2o(icol,lay)/speccomb_planck
+         speccomb_planck = colh2o(lay,icol)+refrat_planck_a*colco2(lay,icol)
+         specparm_planck = colh2o(lay,icol)/speccomb_planck
          if (specparm_planck .ge. oneminus) specparm_planck=oneminus
          specmult_planck = 8. *specparm_planck
          jpl= 1 + int(specmult_planck)
          fpl = mod(specmult_planck,1.0 )
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(5) + js
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(5) + js1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(5) + js
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(5) + js1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
 
          if (specparm .lt. 0.125 ) then
             p = fs - 1
@@ -1052,29 +1053,29 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else if (specparm .gt. 0.875 ) then
             p = -fs 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else
-            fac000 = (1.  - fs) * fac00(icol,lay)
-            fac010 = (1.  - fs) * fac10(icol,lay)
-            fac100 = fs * fac00(icol,lay)
-            fac110 = fs * fac10(icol,lay)
+            fac000 = (1.  - fs) * fac00(lay,icol)
+            fac010 = (1.  - fs) * fac10(lay,icol)
+            fac100 = fs * fac00(lay,icol)
+            fac110 = fs * fac10(lay,icol)
          endif
 
          if (specparm1 .lt. 0.125 ) then
@@ -1083,41 +1084,41 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else if (specparm1 .gt. 0.875 ) then
             p = -fs1 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else
-            fac001 = (1.  - fs1) * fac01(icol,lay)
-            fac011 = (1.  - fs1) * fac11(icol,lay)
-            fac101 = fs1 * fac01(icol,lay)
-            fac111 = fs1 * fac11(icol,lay)
+            fac001 = (1.  - fs1) * fac01(lay,icol)
+            fac011 = (1.  - fs1) * fac11(lay,icol)
+            fac101 = fs1 * fac01(lay,icol)
+            fac111 = fs1 * fac11(lay,icol)
          endif
 
          do ig = 1,ng5
-            tauself = selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol) * (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor =  forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor =  forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
             o3m1 = ka_mo3(jmo3,indm,ig) + fmo3 * &
                (ka_mo3(jmo3+1,indm,ig)-ka_mo3(jmo3,indm,ig))
             o3m2 = ka_mo3(jmo3,indm+1,ig) + fmo3 * &
                (ka_mo3(jmo3+1,indm+1,ig)-ka_mo3(jmo3,indm+1,ig))
-            abso3 = o3m1 + minorfrac(icol,lay)*(o3m2-o3m1)
+            abso3 = o3m1 + minorfrac(lay,icol)*(o3m2-o3m1)
 
             if (specparm .lt. 0.125 ) then
                tau_major = speccomb * &
@@ -1167,53 +1168,54 @@ contains
                    fac111 * absa(ind1+10,ig))
             endif
 
-            taug(icol,lay,ngs4+ig) = &
+            taug(lay,ngs4+ig,icol) = &
                tau_major + tau_major1 + tauself + taufor &
-                 + abso3 * colo3(icol,lay) &
-                 + colccl4(icol,lay) * ccl4(ig)
-            pfracs(icol,lay,ngs4+ig) = fracrefa(ig,jpl) + fpl * &
+                 + abso3 * colo3(lay,icol) &
+                 + colccl4(lay,icol) * ccl4(ig)
+            pfracs(lay,ngs4+ig,icol) = fracrefa(ig,jpl) + fpl * &
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
 
       else  ! upper atmosphere
 
+!pmn: which better? loop or if
       !do lay = laytrop(icol)+1, nlay
 
-         speccomb = colo3(icol,lay) + rat_o3co2(icol,lay)*colco2(icol,lay)
-         specparm = colo3(icol,lay)/speccomb
+         speccomb = colo3(lay,icol) + rat_o3co2(lay,icol)*colco2(lay,icol)
+         specparm = colo3(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
          specmult = 4. *(specparm)
          js = 1 + int(specmult)
          fs = mod(specmult,1.0 )
 
-         speccomb1 = colo3(icol,lay) + rat_o3co2_1(icol,lay)*colco2(icol,lay)
-         specparm1 = colo3(icol,lay)/speccomb1
+         speccomb1 = colo3(lay,icol) + rat_o3co2_1(lay,icol)*colco2(lay,icol)
+         specparm1 = colo3(lay,icol)/speccomb1
          if (specparm1 .ge. oneminus) specparm1 = oneminus
          specmult1 = 4. *(specparm1)
          js1 = 1 + int(specmult1)
          fs1 = mod(specmult1,1.0 )
 
-         fac000 = (1.  - fs) * fac00(icol,lay)
-         fac010 = (1.  - fs) * fac10(icol,lay)
-         fac100 = fs * fac00(icol,lay)
-         fac110 = fs * fac10(icol,lay)
-         fac001 = (1.  - fs1) * fac01(icol,lay)
-         fac011 = (1.  - fs1) * fac11(icol,lay)
-         fac101 = fs1 * fac01(icol,lay)
-         fac111 = fs1 * fac11(icol,lay)
+         fac000 = (1.  - fs) * fac00(lay,icol)
+         fac010 = (1.  - fs) * fac10(lay,icol)
+         fac100 = fs * fac00(lay,icol)
+         fac110 = fs * fac10(lay,icol)
+         fac001 = (1.  - fs1) * fac01(lay,icol)
+         fac011 = (1.  - fs1) * fac11(lay,icol)
+         fac101 = fs1 * fac01(lay,icol)
+         fac111 = fs1 * fac11(lay,icol)
 
-         speccomb_planck = colo3(icol,lay)+refrat_planck_b*colco2(icol,lay)
-         specparm_planck = colo3(icol,lay)/speccomb_planck
+         speccomb_planck = colo3(lay,icol)+refrat_planck_b*colco2(lay,icol)
+         specparm_planck = colo3(lay,icol)/speccomb_planck
          if (specparm_planck .ge. oneminus) specparm_planck=oneminus
          specmult_planck = 4. *specparm_planck
          jpl= 1 + int(specmult_planck)
          fpl = mod(specmult_planck,1.0 )
 
-         ind0 = ((jp(icol,lay)-13)*5+(jt(icol,lay)-1))*nspb(5) + js
-         ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(5) + js1
+         ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(5) + js
+         ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(5) + js1
          
          do ig = 1,ng5
-            taug(icol,lay,ngs4+ig) = &
+            taug(lay,ngs4+ig,icol) = &
                speccomb * &
                (fac000 * absb(ind0,  ig) + &
                 fac100 * absb(ind0+1,ig) + &
@@ -1224,8 +1226,8 @@ contains
                 fac101 * absb(ind1+1,ig) + &
                 fac011 * absb(ind1+5,ig) + &
                 fac111 * absb(ind1+6,ig))  &
-               + colccl4(icol,lay) * ccl4(ig)
-            pfracs(icol,lay,ngs4+ig) = fracrefb(ig,jpl) + fpl * &
+               + colccl4(lay,icol) * ccl4(ig)
+            pfracs(lay,ngs4+ig,icol) = fracrefb(ig,jpl) + fpl * &
                (fracrefb(ig,jpl+1)-fracrefb(ig,jpl))
          enddo
 
@@ -1253,8 +1255,8 @@ contains
       use rrlw_kg06
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, indm, ig
       real :: chi_co2, ratco2, adjfac, adjcolco2
@@ -1273,47 +1275,47 @@ contains
 ! In atmospheres where the amount of CO2 is too great to be considered
 ! a minor species, adjust the column amount of CO2 by an empirical factor 
 ! to obtain the proper contribution.
-         chi_co2 = colco2(icol,lay)/(coldry(icol,lay))
-         ratco2 = 1.e20 *chi_co2/chi_mls(2,jp(icol,lay)+1)
+         chi_co2 = colco2(lay,icol)/(coldry(lay,icol))
+         ratco2 = 1.e20 *chi_co2/chi_mls(2,jp(lay,icol)+1)
          if (ratco2 .gt. 3.0 ) then
             adjfac = 2.0 +(ratco2-2.0 )**0.77 
-            adjcolco2 = adjfac*chi_mls(2,jp(icol,lay)+1)*coldry(icol,lay)*1.e-20 
+            adjcolco2 = adjfac*chi_mls(2,jp(lay,icol)+1)*coldry(lay,icol)*1.e-20 
          else
-            adjcolco2 = colco2(icol,lay)
+            adjcolco2 = colco2(lay,icol)
          endif
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(6) + 1
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(6) + 1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(6) + 1
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(6) + 1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
 
          do ig = 1,ng6
-            tauself = selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol) * (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig)))
-            absco2 = (ka_mco2(indm,ig) + minorfrac(icol,lay) * &
+            absco2 = (ka_mco2(indm,ig) + minorfrac(lay,icol) * &
                (ka_mco2(indm+1,ig) - ka_mco2(indm,ig)))
-            taug(icol,lay,ngs5+ig) = colh2o(icol,lay) * &
-               (fac00(icol,lay) * absa(ind0,  ig) + &
-                fac10(icol,lay) * absa(ind0+1,ig) + &
-                fac01(icol,lay) * absa(ind1,  ig) + &
-                fac11(icol,lay) * absa(ind1+1,ig))  &
+            taug(lay,ngs5+ig,icol) = colh2o(lay,icol) * &
+               (fac00(lay,icol) * absa(ind0,  ig) + &
+                fac10(lay,icol) * absa(ind0+1,ig) + &
+                fac01(lay,icol) * absa(ind1,  ig) + &
+                fac11(lay,icol) * absa(ind1+1,ig))  &
                + tauself + taufor &
                + adjcolco2 * absco2 &
-               + colcfc11(icol,lay) * cfc11adj(ig) &
-               + colcfc12(icol,lay) * cfc12(ig)
-            pfracs(icol,lay,ngs5+ig) = fracrefa(ig)
+               + colcfc11(lay,icol) * cfc11adj(ig) &
+               + colcfc12(lay,icol) * cfc12(ig)
+            pfracs(lay,ngs5+ig,icol) = fracrefa(ig)
          enddo
 
       else  ! upper atmosphere
 
          do ig = 1,ng6
-            taug(icol,lay,ngs5+ig) = 0.0  &
-               + colcfc11(icol,lay) * cfc11adj(ig) &
-               + colcfc12(icol,lay) * cfc12(ig)
-            pfracs(icol,lay,ngs5+ig) = fracrefa(ig)
+            taug(lay,ngs5+ig,icol) = 0.0  &
+               + colcfc11(lay,icol) * cfc11adj(ig) &
+               + colcfc12(lay,icol) * cfc12(ig)
+            pfracs(lay,ngs5+ig,icol) = fracrefa(ig)
          enddo
 
       endif  ! lower/upper
@@ -1341,8 +1343,8 @@ contains
       use rrlw_kg07
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, indm, ig
       integer :: js, js1, jmco2, jpl
@@ -1377,22 +1379,22 @@ contains
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
 
-         speccomb = colh2o(icol,lay) + rat_h2oo3(icol,lay)*colo3(icol,lay)
-         specparm = colh2o(icol,lay)/speccomb
+         speccomb = colh2o(lay,icol) + rat_h2oo3(lay,icol)*colo3(lay,icol)
+         specparm = colh2o(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
          specmult = 8. *(specparm)
          js = 1 + int(specmult)
          fs = mod(specmult,1.0 )
 
-         speccomb1 = colh2o(icol,lay) + rat_h2oo3_1(icol,lay)*colo3(icol,lay)
-         specparm1 = colh2o(icol,lay)/speccomb1
+         speccomb1 = colh2o(lay,icol) + rat_h2oo3_1(lay,icol)*colo3(lay,icol)
+         specparm1 = colh2o(lay,icol)/speccomb1
          if (specparm1 .ge. oneminus) specparm1 = oneminus
          specmult1 = 8. *(specparm1)
          js1 = 1 + int(specmult1)
          fs1 = mod(specmult1,1.0 )
 
-         speccomb_mco2 = colh2o(icol,lay) + refrat_m_a*colo3(icol,lay)
-         specparm_mco2 = colh2o(icol,lay)/speccomb_mco2
+         speccomb_mco2 = colh2o(lay,icol) + refrat_m_a*colo3(lay,icol)
+         specparm_mco2 = colh2o(lay,icol)/speccomb_mco2
          if (specparm_mco2 .ge. oneminus) specparm_mco2 = oneminus
          specmult_mco2 = 8. *specparm_mco2
 
@@ -1402,27 +1404,27 @@ contains
 !  In atmospheres where the amount of CO2 is too great to be considered
 !  a minor species, adjust the column amount of CO2 by an empirical factor 
 !  to obtain the proper contribution.
-         chi_co2 = colco2(icol,lay)/(coldry(icol,lay))
-         ratco2 = 1.e20*chi_co2/chi_mls(2,jp(icol,lay)+1)
+         chi_co2 = colco2(lay,icol)/(coldry(lay,icol))
+         ratco2 = 1.e20*chi_co2/chi_mls(2,jp(lay,icol)+1)
          if (ratco2 .gt. 3.0 ) then
             adjfac = 3.0 +(ratco2-3.0 )**0.79 
-            adjcolco2 = adjfac*chi_mls(2,jp(icol,lay)+1)*coldry(icol,lay)*1.e-20 
+            adjcolco2 = adjfac*chi_mls(2,jp(lay,icol)+1)*coldry(lay,icol)*1.e-20 
          else
-            adjcolco2 = colco2(icol,lay)
+            adjcolco2 = colco2(lay,icol)
          endif
 
-         speccomb_planck = colh2o(icol,lay)+refrat_planck_a*colo3(icol,lay)
-         specparm_planck = colh2o(icol,lay)/speccomb_planck
+         speccomb_planck = colh2o(lay,icol)+refrat_planck_a*colo3(lay,icol)
+         specparm_planck = colh2o(lay,icol)/speccomb_planck
          if (specparm_planck .ge. oneminus) specparm_planck=oneminus
          specmult_planck = 8. *specparm_planck
          jpl= 1 + int(specmult_planck)
          fpl = mod(specmult_planck,1.0 )
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(7) + js
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(7) + js1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(7) + js
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(7) + js1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
 
          if (specparm .lt. 0.125 ) then
             p = fs - 1
@@ -1430,29 +1432,29 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else if (specparm .gt. 0.875 ) then
             p = -fs 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else
-            fac000 = (1.  - fs) * fac00(icol,lay)
-            fac010 = (1.  - fs) * fac10(icol,lay)
-            fac100 = fs * fac00(icol,lay)
-            fac110 = fs * fac10(icol,lay)
+            fac000 = (1.  - fs) * fac00(lay,icol)
+            fac010 = (1.  - fs) * fac10(lay,icol)
+            fac100 = fs * fac00(lay,icol)
+            fac110 = fs * fac10(lay,icol)
          endif
          if (specparm1 .lt. 0.125 ) then
             p = fs1 - 1
@@ -1460,41 +1462,41 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else if (specparm1 .gt. 0.875 ) then
             p = -fs1 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else
-            fac001 = (1.  - fs1) * fac01(icol,lay)
-            fac011 = (1.  - fs1) * fac11(icol,lay)
-            fac101 = fs1 * fac01(icol,lay)
-            fac111 = fs1 * fac11(icol,lay)
+            fac001 = (1.  - fs1) * fac01(lay,icol)
+            fac011 = (1.  - fs1) * fac11(lay,icol)
+            fac101 = fs1 * fac01(lay,icol)
+            fac111 = fs1 * fac11(lay,icol)
          endif
 
          do ig = 1,ng7
-            tauself = selffac(icol,lay)* (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol)* (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
             co2m1 = ka_mco2(jmco2,indm,ig) + fmco2 * &
                (ka_mco2(jmco2+1,indm,ig) - ka_mco2(jmco2,indm,ig))
             co2m2 = ka_mco2(jmco2,indm+1,ig) + fmco2 * &
                (ka_mco2(jmco2+1,indm+1,ig) - ka_mco2(jmco2,indm+1,ig))
-            absco2 = co2m1 + minorfrac(icol,lay) * (co2m2 - co2m1)
+            absco2 = co2m1 + minorfrac(lay,icol) * (co2m2 - co2m1)
 
             if (specparm .lt. 0.125 ) then
                tau_major = speccomb * &
@@ -1544,10 +1546,10 @@ contains
                    fac111 * absa(ind1+10,ig))
             endif
 
-            taug(icol,lay,ngs6+ig) = &
+            taug(lay,ngs6+ig,icol) = &
                tau_major + tau_major1 + tauself + taufor &
                  + adjcolco2 * absco2
-            pfracs(icol,lay,ngs6+ig) = fracrefa(ig,jpl) + fpl * &
+            pfracs(lay,ngs6+ig,icol) = fracrefa(ig,jpl) + fpl * &
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
 
@@ -1556,40 +1558,40 @@ contains
 !  In atmospheres where the amount of CO2 is too great to be considered
 !  a minor species, adjust the column amount of CO2 by an empirical factor 
 !  to obtain the proper contribution.
-         chi_co2 = colco2(icol,lay)/(coldry(icol,lay))
-         ratco2 = 1.e20*chi_co2/chi_mls(2,jp(icol,lay)+1)
+         chi_co2 = colco2(lay,icol)/(coldry(lay,icol))
+         ratco2 = 1.e20*chi_co2/chi_mls(2,jp(lay,icol)+1)
          if (ratco2 .gt. 3.0 ) then
             adjfac = 2.0 +(ratco2-2.0 )**0.79 
-            adjcolco2 = adjfac*chi_mls(2,jp(icol,lay)+1)*coldry(icol,lay)*1.e-20 
+            adjcolco2 = adjfac*chi_mls(2,jp(lay,icol)+1)*coldry(lay,icol)*1.e-20 
          else
-            adjcolco2 = colco2(icol,lay)
+            adjcolco2 = colco2(lay,icol)
          endif
 
-         ind0 = ((jp(icol,lay)-13)*5+(jt(icol,lay)-1))*nspb(7) + 1
-         ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(7) + 1
-         indm = indminor(icol,lay)
+         ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(7) + 1
+         ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(7) + 1
+         indm = indminor(lay,icol)
 
          do ig = 1,ng7
-            absco2 = kb_mco2(indm,ig) + minorfrac(icol,lay) * &
+            absco2 = kb_mco2(indm,ig) + minorfrac(lay,icol) * &
                (kb_mco2(indm+1,ig) - kb_mco2(indm,ig))
-            taug(icol,lay,ngs6+ig) = colo3(icol,lay) * &
-               (fac00(icol,lay) * absb(ind0,  ig) + &
-                fac10(icol,lay) * absb(ind0+1,ig) + &
-                fac01(icol,lay) * absb(ind1,  ig) + &
-                fac11(icol,lay) * absb(ind1+1,ig))  &
+            taug(lay,ngs6+ig,icol) = colo3(lay,icol) * &
+               (fac00(lay,icol) * absb(ind0,  ig) + &
+                fac10(lay,icol) * absb(ind0+1,ig) + &
+                fac01(lay,icol) * absb(ind1,  ig) + &
+                fac11(lay,icol) * absb(ind1+1,ig))  &
                + adjcolco2 * absco2
-            pfracs(icol,lay,ngs6+ig) = fracrefb(ig)
+            pfracs(lay,ngs6+ig,icol) = fracrefb(ig)
          enddo
 
 ! Empirical modification to code to improve stratospheric cooling rates
 ! for o3.  Revised to apply weighting for g-point reduction in this band.
 
-         taug(icol,lay,ngs6+6)=taug(icol,lay,ngs6+6)*0.92 
-         taug(icol,lay,ngs6+7)=taug(icol,lay,ngs6+7)*0.88 
-         taug(icol,lay,ngs6+8)=taug(icol,lay,ngs6+8)*1.07 
-         taug(icol,lay,ngs6+9)=taug(icol,lay,ngs6+9)*1.1 
-         taug(icol,lay,ngs6+10)=taug(icol,lay,ngs6+10)*0.99 
-         taug(icol,lay,ngs6+11)=taug(icol,lay,ngs6+11)*0.855 
+         taug(lay,ngs6+6,icol)=taug(lay,ngs6+6,icol)*0.92 
+         taug(lay,ngs6+7,icol)=taug(lay,ngs6+7,icol)*0.88 
+         taug(lay,ngs6+8,icol)=taug(lay,ngs6+8,icol)*1.07 
+         taug(lay,ngs6+9,icol)=taug(lay,ngs6+9,icol)*1.1 
+         taug(lay,ngs6+10,icol)=taug(lay,ngs6+10,icol)*0.99 
+         taug(lay,ngs6+11,icol)=taug(lay,ngs6+11,icol)*0.855 
 
       endif  ! lower/upper
 
@@ -1616,8 +1618,8 @@ contains
       use rrlw_kg08
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, indm, ig
       real :: tauself, taufor, absco2, abso3, absn2o
@@ -1640,44 +1642,44 @@ contains
 !  In atmospheres where the amount of CO2 is too great to be considered
 !  a minor species, adjust the column amount of CO2 by an empirical factor 
 !  to obtain the proper contribution.
-         chi_co2 = colco2(icol,lay)/(coldry(icol,lay))
-         ratco2 = 1.e20 *chi_co2/chi_mls(2,jp(icol,lay)+1)
+         chi_co2 = colco2(lay,icol)/(coldry(lay,icol))
+         ratco2 = 1.e20 *chi_co2/chi_mls(2,jp(lay,icol)+1)
          if (ratco2 .gt. 3.0 ) then
             adjfac = 2.0 +(ratco2-2.0 )**0.65 
-            adjcolco2 = adjfac*chi_mls(2,jp(icol,lay)+1)*coldry(icol,lay)*1.e-20 
+            adjcolco2 = adjfac*chi_mls(2,jp(lay,icol)+1)*coldry(lay,icol)*1.e-20 
          else
-            adjcolco2 = colco2(icol,lay)
+            adjcolco2 = colco2(lay,icol)
          endif
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(8) + 1
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(8) + 1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(8) + 1
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(8) + 1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
 
          do ig = 1,ng8
-            tauself = selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol) * (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig)))
-            absco2 = (ka_mco2(indm,ig) + minorfrac(icol,lay) * &
+            absco2 = (ka_mco2(indm,ig) + minorfrac(lay,icol) * &
                (ka_mco2(indm+1,ig) - ka_mco2(indm,ig)))
-            abso3 = (ka_mo3(indm,ig) + minorfrac(icol,lay) * &
+            abso3 = (ka_mo3(indm,ig) + minorfrac(lay,icol) * &
                (ka_mo3(indm+1,ig) - ka_mo3(indm,ig)))
-            absn2o = (ka_mn2o(indm,ig) + minorfrac(icol,lay) * &
+            absn2o = (ka_mn2o(indm,ig) + minorfrac(lay,icol) * &
                (ka_mn2o(indm+1,ig) - ka_mn2o(indm,ig)))
-            taug(icol,lay,ngs7+ig) = colh2o(icol,lay) * &
-               (fac00(icol,lay) * absa(ind0,ig)   + &
-                fac10(icol,lay) * absa(ind0+1,ig) + &
-                fac01(icol,lay) * absa(ind1,ig)   + &
-                fac11(icol,lay) * absa(ind1+1,ig))  &
+            taug(lay,ngs7+ig,icol) = colh2o(lay,icol) * &
+               (fac00(lay,icol) * absa(ind0,ig)   + &
+                fac10(lay,icol) * absa(ind0+1,ig) + &
+                fac01(lay,icol) * absa(ind1,ig)   + &
+                fac11(lay,icol) * absa(ind1+1,ig))  &
                + tauself + taufor &
                + adjcolco2 * absco2 &
-               + colo3(icol,lay) * abso3 &
-               + coln2o(icol,lay) * absn2o &
-               + colcfc12(icol,lay) * cfc12(ig) &
-               + colcfc22(icol,lay) * cfc22adj(ig)
-            pfracs(icol,lay,ngs7+ig) = fracrefa(ig)
+               + colo3(lay,icol) * abso3 &
+               + coln2o(lay,icol) * absn2o &
+               + colcfc12(lay,icol) * cfc12(ig) &
+               + colcfc22(lay,icol) * cfc22adj(ig)
+            pfracs(lay,ngs7+ig,icol) = fracrefa(ig)
          enddo
 
       else  ! upper atmosphere
@@ -1685,34 +1687,34 @@ contains
 !  In atmospheres where the amount of CO2 is too great to be considered
 !  a minor species, adjust the column amount of CO2 by an empirical factor 
 !  to obtain the proper contribution.
-         chi_co2 = colco2(icol,lay)/coldry(icol,lay)
-         ratco2 = 1.e20 *chi_co2/chi_mls(2,jp(icol,lay)+1)
+         chi_co2 = colco2(lay,icol)/coldry(lay,icol)
+         ratco2 = 1.e20 *chi_co2/chi_mls(2,jp(lay,icol)+1)
          if (ratco2 .gt. 3.0 ) then
             adjfac = 2.0 +(ratco2-2.0 )**0.65 
-            adjcolco2 = adjfac*chi_mls(2,jp(icol,lay)+1) * coldry(icol,lay)*1.e-20 
+            adjcolco2 = adjfac*chi_mls(2,jp(lay,icol)+1) * coldry(lay,icol)*1.e-20 
          else
-            adjcolco2 = colco2(icol,lay)
+            adjcolco2 = colco2(lay,icol)
          endif
 
-         ind0 = ((jp(icol,lay)-13)*5+(jt(icol,lay)-1))*nspb(8) + 1
-         ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(8) + 1
-         indm = indminor(icol,lay)
+         ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(8) + 1
+         ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(8) + 1
+         indm = indminor(lay,icol)
 
          do ig = 1,ng8
-            absco2 = (kb_mco2(indm,ig) + minorfrac(icol,lay) * &
+            absco2 = (kb_mco2(indm,ig) + minorfrac(lay,icol) * &
                (kb_mco2(indm+1,ig) - kb_mco2(indm,ig)))
-            absn2o = (kb_mn2o(indm,ig) + minorfrac(icol,lay) * &
+            absn2o = (kb_mn2o(indm,ig) + minorfrac(lay,icol) * &
                (kb_mn2o(indm+1,ig) - kb_mn2o(indm,ig)))
-            taug(icol,lay,ngs7+ig) = colo3(icol,lay) * &
-               (fac00(icol,lay) * absb(ind0,  ig) + &
-                fac10(icol,lay) * absb(ind0+1,ig) + &
-                fac01(icol,lay) * absb(ind1,  ig) + &
-                fac11(icol,lay) * absb(ind1+1,ig)) &
+            taug(lay,ngs7+ig,icol) = colo3(lay,icol) * &
+               (fac00(lay,icol) * absb(ind0,  ig) + &
+                fac10(lay,icol) * absb(ind0+1,ig) + &
+                fac01(lay,icol) * absb(ind1,  ig) + &
+                fac11(lay,icol) * absb(ind1+1,ig)) &
                + adjcolco2 * absco2 &
-               + coln2o(icol,lay) * absn2o & 
-               + colcfc12(icol,lay) * cfc12(ig) &
-               + colcfc22(icol,lay) * cfc22adj(ig)
-            pfracs(icol,lay,ngs7+ig) = fracrefb(ig)
+               + coln2o(lay,icol) * absn2o & 
+               + colcfc12(lay,icol) * cfc12(ig) &
+               + colcfc22(lay,icol) * cfc22adj(ig)
+            pfracs(lay,ngs7+ig,icol) = fracrefb(ig)
          enddo
 
       endif  ! lower/upper
@@ -1740,8 +1742,8 @@ contains
       use rrlw_kg09
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer  :: icol, lay, ind0, ind1, inds, indf, indm, ig
       integer  :: js, js1, jmn2o, jpl
@@ -1776,22 +1778,22 @@ contains
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
 
-         speccomb = colh2o(icol,lay) + rat_h2och4(icol,lay)*colch4(icol,lay)
-         specparm = colh2o(icol,lay)/speccomb
+         speccomb = colh2o(lay,icol) + rat_h2och4(lay,icol)*colch4(lay,icol)
+         specparm = colh2o(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
          specmult = 8. *(specparm)
          js = 1 + int(specmult)
          fs = mod(specmult,1.0 )
 
-         speccomb1 = colh2o(icol,lay) + rat_h2och4_1(icol,lay)*colch4(icol,lay)
-         specparm1 = colh2o(icol,lay)/speccomb1
+         speccomb1 = colh2o(lay,icol) + rat_h2och4_1(lay,icol)*colch4(lay,icol)
+         specparm1 = colh2o(lay,icol)/speccomb1
          if (specparm1 .ge. oneminus) specparm1 = oneminus
          specmult1 = 8. *(specparm1)
          js1 = 1 + int(specmult1)
          fs1 = mod(specmult1,1.0 )
 
-         speccomb_mn2o = colh2o(icol,lay) + refrat_m_a*colch4(icol,lay)
-         specparm_mn2o = colh2o(icol,lay)/speccomb_mn2o
+         speccomb_mn2o = colh2o(lay,icol) + refrat_m_a*colch4(lay,icol)
+         specparm_mn2o = colh2o(lay,icol)/speccomb_mn2o
          if (specparm_mn2o .ge. oneminus) specparm_mn2o = oneminus
          specmult_mn2o = 8. *specparm_mn2o
          jmn2o = 1 + int(specmult_mn2o)
@@ -1800,27 +1802,27 @@ contains
 !  In atmospheres where the amount of N2O is too great to be considered
 !  a minor species, adjust the column amount of N2O by an empirical factor 
 !  to obtain the proper contribution.
-         chi_n2o = coln2o(icol,lay)/(coldry(icol,lay))
-         ratn2o = 1.e20 *chi_n2o/chi_mls(4,jp(icol,lay)+1)
+         chi_n2o = coln2o(lay,icol)/(coldry(lay,icol))
+         ratn2o = 1.e20 *chi_n2o/chi_mls(4,jp(lay,icol)+1)
          if (ratn2o .gt. 1.5 ) then
             adjfac = 0.5 +(ratn2o-0.5 )**0.65 
-            adjcoln2o = adjfac*chi_mls(4,jp(icol,lay)+1)*coldry(icol,lay)*1.e-20 
+            adjcoln2o = adjfac*chi_mls(4,jp(lay,icol)+1)*coldry(lay,icol)*1.e-20 
          else
-            adjcoln2o = coln2o(icol,lay)
+            adjcoln2o = coln2o(lay,icol)
          endif
 
-         speccomb_planck = colh2o(icol,lay)+refrat_planck_a*colch4(icol,lay)
-         specparm_planck = colh2o(icol,lay)/speccomb_planck
+         speccomb_planck = colh2o(lay,icol)+refrat_planck_a*colch4(lay,icol)
+         specparm_planck = colh2o(lay,icol)/speccomb_planck
          if (specparm_planck .ge. oneminus) specparm_planck=oneminus
          specmult_planck = 8. *specparm_planck
          jpl= 1 + int(specmult_planck)
          fpl = mod(specmult_planck,1.0 )
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(9) + js
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(9) + js1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(9) + js
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(9) + js1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
 
          if (specparm .lt. 0.125 ) then
             p = fs - 1
@@ -1828,29 +1830,29 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else if (specparm .gt. 0.875 ) then
             p = -fs 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else
-            fac000 = (1.  - fs) * fac00(icol,lay)
-            fac010 = (1.  - fs) * fac10(icol,lay)
-            fac100 = fs * fac00(icol,lay)
-            fac110 = fs * fac10(icol,lay)
+            fac000 = (1.  - fs) * fac00(lay,icol)
+            fac010 = (1.  - fs) * fac10(lay,icol)
+            fac100 = fs * fac00(lay,icol)
+            fac110 = fs * fac10(lay,icol)
          endif
 
          if (specparm1 .lt. 0.125 ) then
@@ -1859,41 +1861,41 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else if (specparm1 .gt. 0.875 ) then
             p = -fs1 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else
-            fac001 = (1.  - fs1) * fac01(icol,lay)
-            fac011 = (1.  - fs1) * fac11(icol,lay)
-            fac101 = fs1 * fac01(icol,lay)
-            fac111 = fs1 * fac11(icol,lay)
+            fac001 = (1.  - fs1) * fac01(lay,icol)
+            fac011 = (1.  - fs1) * fac11(lay,icol)
+            fac101 = fs1 * fac01(lay,icol)
+            fac111 = fs1 * fac11(lay,icol)
          endif
 
          do ig = 1,ng9
-            tauself = selffac(icol,lay)* (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol)* (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
             n2om1 = ka_mn2o(jmn2o,indm,ig) + fmn2o * &
                (ka_mn2o(jmn2o+1,indm,ig) - ka_mn2o(jmn2o,indm,ig))
             n2om2 = ka_mn2o(jmn2o,indm+1,ig) + fmn2o * &
                (ka_mn2o(jmn2o+1,indm+1,ig) - ka_mn2o(jmn2o,indm+1,ig))
-            absn2o = n2om1 + minorfrac(icol,lay) * (n2om2 - n2om1)
+            absn2o = n2om1 + minorfrac(lay,icol) * (n2om2 - n2om1)
 
             if (specparm .lt. 0.125 ) then
                tau_major = speccomb * &
@@ -1943,10 +1945,10 @@ contains
                    fac111 * absa(ind1+10,ig))
             endif
 
-            taug(icol,lay,ngs8+ig) = &
+            taug(lay,ngs8+ig,icol) = &
                tau_major + tau_major1 + tauself + taufor &
                  + adjcoln2o * absn2o
-            pfracs(icol,lay,ngs8+ig) = fracrefa(ig,jpl) + fpl * &
+            pfracs(lay,ngs8+ig,icol) = fracrefa(ig,jpl) + fpl * &
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
 
@@ -1955,29 +1957,29 @@ contains
 !  In atmospheres where the amount of N2O is too great to be considered
 !  a minor species, adjust the column amount of N2O by an empirical factor 
 !  to obtain the proper contribution.
-         chi_n2o = coln2o(icol,lay)/(coldry(icol,lay))
-         ratn2o = 1.e20 *chi_n2o/chi_mls(4,jp(icol,lay)+1)
+         chi_n2o = coln2o(lay,icol)/(coldry(lay,icol))
+         ratn2o = 1.e20 *chi_n2o/chi_mls(4,jp(lay,icol)+1)
          if (ratn2o .gt. 1.5 ) then
             adjfac = 0.5 +(ratn2o-0.5 )**0.65 
-            adjcoln2o = adjfac*chi_mls(4,jp(icol,lay)+1)*coldry(icol,lay)*1.e-20 
+            adjcoln2o = adjfac*chi_mls(4,jp(lay,icol)+1)*coldry(lay,icol)*1.e-20 
          else
-            adjcoln2o = coln2o(icol,lay)
+            adjcoln2o = coln2o(lay,icol)
          endif
 
-         ind0 = ((jp(icol,lay)-13)*5+(jt(icol,lay)-1))*nspb(9) + 1
-         ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(9) + 1
-         indm = indminor(icol,lay)
+         ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(9) + 1
+         ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(9) + 1
+         indm = indminor(lay,icol)
 
          do ig = 1,ng9
-            absn2o = kb_mn2o(indm,ig) + minorfrac(icol,lay) * &
+            absn2o = kb_mn2o(indm,ig) + minorfrac(lay,icol) * &
                (kb_mn2o(indm+1,ig) - kb_mn2o(indm,ig))
-            taug(icol,lay,ngs8+ig) = colch4(icol,lay) * &
-               (fac00(icol,lay) * absb(ind0,  ig) + &
-                fac10(icol,lay) * absb(ind0+1,ig) + &
-                fac01(icol,lay) * absb(ind1,  ig) + &
-                fac11(icol,lay) * absb(ind1+1,ig)) &
+            taug(lay,ngs8+ig,icol) = colch4(lay,icol) * &
+               (fac00(lay,icol) * absb(ind0,  ig) + &
+                fac10(lay,icol) * absb(ind0+1,ig) + &
+                fac01(lay,icol) * absb(ind1,  ig) + &
+                fac11(lay,icol) * absb(ind1+1,ig)) &
                + adjcoln2o * absn2o
-            pfracs(icol,lay,ngs8+ig) = fracrefb(ig)
+            pfracs(lay,ngs8+ig,icol) = fracrefb(ig)
          enddo
 
       endif  ! lower/upper
@@ -2002,8 +2004,8 @@ contains
       use rrlw_kg10
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, ig
       real :: tauself, taufor
@@ -2014,41 +2016,41 @@ contains
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(10) + 1
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(10) + 1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(10) + 1
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(10) + 1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
 
          do ig = 1,ng10
-            tauself = selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol) * (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
-            taug(icol,lay,ngs9+ig) = colh2o(icol,lay) * &
-               (fac00(icol,lay) * absa(ind0,  ig) + &
-                fac10(icol,lay) * absa(ind0+1,ig) + &
-                fac01(icol,lay) * absa(ind1,  ig) + &
-                fac11(icol,lay) * absa(ind1+1,ig))  &
+            taug(lay,ngs9+ig,icol) = colh2o(lay,icol) * &
+               (fac00(lay,icol) * absa(ind0,  ig) + &
+                fac10(lay,icol) * absa(ind0+1,ig) + &
+                fac01(lay,icol) * absa(ind1,  ig) + &
+                fac11(lay,icol) * absa(ind1+1,ig))  &
                + tauself + taufor
-            pfracs(icol,lay,ngs9+ig) = fracrefa(ig)
+            pfracs(lay,ngs9+ig,icol) = fracrefa(ig)
          enddo
 
       else  ! upper atmosphere
    
-         ind0 = ((jp(icol,lay)-13)*5+(jt(icol,lay)-1))*nspb(10) + 1
-         ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(10) + 1
-         indf = indfor(icol,lay)
+         ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(10) + 1
+         ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(10) + 1
+         indf = indfor(lay,icol)
 
          do ig = 1,ng10
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
-            taug(icol,lay,ngs9+ig) = colh2o(icol,lay) * &
-               (fac00(icol,lay) * absb(ind0,  ig) + &
-                fac10(icol,lay) * absb(ind0+1,ig) + &
-                fac01(icol,lay) * absb(ind1,  ig) + &
-                fac11(icol,lay) * absb(ind1+1,ig))  &
+            taug(lay,ngs9+ig,icol) = colh2o(lay,icol) * &
+               (fac00(lay,icol) * absb(ind0,  ig) + &
+                fac10(lay,icol) * absb(ind0+1,ig) + &
+                fac01(lay,icol) * absb(ind1,  ig) + &
+                fac11(lay,icol) * absb(ind1+1,ig))  &
                + taufor
-            pfracs(icol,lay,ngs9+ig) = fracrefb(ig)
+            pfracs(lay,ngs9+ig,icol) = fracrefb(ig)
          enddo
 
       end if  ! lower/upper
@@ -2074,8 +2076,8 @@ contains
       use rrlw_kg11
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, indm, ig
       real :: scaleo2, tauself, taufor, tauo2
@@ -2090,47 +2092,47 @@ contains
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(11) + 1
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(11) + 1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
-         scaleo2 = colo2(icol,lay)*scaleminor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(11) + 1
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(11) + 1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
+         scaleo2 = colo2(lay,icol)*scaleminor(lay,icol)
          do ig = 1,ng11
-            tauself = selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol) * (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig)))
-            tauo2 = scaleo2 * (ka_mo2(indm,ig) + minorfrac(icol,lay) * &
+            tauo2 = scaleo2 * (ka_mo2(indm,ig) + minorfrac(lay,icol) * &
                (ka_mo2(indm+1,ig) - ka_mo2(indm,ig)))
-            taug(icol,lay,ngs10+ig) = colh2o(icol,lay) * &
-               (fac00(icol,lay) * absa(ind0,  ig) + &
-                fac10(icol,lay) * absa(ind0+1,ig) + &
-                fac01(icol,lay) * absa(ind1,  ig) + &
-                fac11(icol,lay) * absa(ind1+1,ig))  &
+            taug(lay,ngs10+ig,icol) = colh2o(lay,icol) * &
+               (fac00(lay,icol) * absa(ind0,  ig) + &
+                fac10(lay,icol) * absa(ind0+1,ig) + &
+                fac01(lay,icol) * absa(ind1,  ig) + &
+                fac11(lay,icol) * absa(ind1+1,ig))  &
                + tauself + taufor + tauo2
-            pfracs(icol,lay,ngs10+ig) = fracrefa(ig)
+            pfracs(lay,ngs10+ig,icol) = fracrefa(ig)
          enddo
 
       else  ! upper atmosphere
 
-         ind0 = ((jp(icol,lay)-13)*5+(jt(icol,lay)-1))*nspb(11) + 1
-         ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(11) + 1
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
-         scaleo2 = colo2(icol,lay)*scaleminor(icol,lay)
+         ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(11) + 1
+         ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(11) + 1
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
+         scaleo2 = colo2(lay,icol)*scaleminor(lay,icol)
          do ig = 1,ng11
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
-            tauo2 = scaleo2 * (kb_mo2(indm,ig) + minorfrac(icol,lay) * &
+            tauo2 = scaleo2 * (kb_mo2(indm,ig) + minorfrac(lay,icol) * &
                (kb_mo2(indm+1,ig) - kb_mo2(indm,ig)))
-            taug(icol,lay,ngs10+ig) = colh2o(icol,lay) * &
-               (fac00(icol,lay) * absb(ind0,  ig) + &
-                fac10(icol,lay) * absb(ind0+1,ig) + &
-                fac01(icol,lay) * absb(ind1,  ig) + &
-                fac11(icol,lay) * absb(ind1+1,ig))  &
+            taug(lay,ngs10+ig,icol) = colh2o(lay,icol) * &
+               (fac00(lay,icol) * absb(ind0,  ig) + &
+                fac10(lay,icol) * absb(ind0+1,ig) + &
+                fac01(lay,icol) * absb(ind1,  ig) + &
+                fac11(lay,icol) * absb(ind1+1,ig))  &
                + taufor + tauo2
-            pfracs(icol,lay,ngs10+ig) = fracrefb(ig)
+            pfracs(lay,ngs10+ig,icol) = fracrefb(ig)
          enddo
 
       endif  ! lower/upper
@@ -2157,8 +2159,8 @@ contains
       use rrlw_kg12
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, ig
       integer :: js, js1, jpl
@@ -2184,31 +2186,31 @@ contains
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
 
-         speccomb = colh2o(icol,lay) + rat_h2oco2(icol,lay)*colco2(icol,lay)
-         specparm = colh2o(icol,lay)/speccomb
+         speccomb = colh2o(lay,icol) + rat_h2oco2(lay,icol)*colco2(lay,icol)
+         specparm = colh2o(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
          specmult = 8. *(specparm)
          js = 1 + int(specmult)
          fs = mod(specmult,1.0 )
 
-         speccomb1 = colh2o(icol,lay) + rat_h2oco2_1(icol,lay)*colco2(icol,lay)
-         specparm1 = colh2o(icol,lay)/speccomb1
+         speccomb1 = colh2o(lay,icol) + rat_h2oco2_1(lay,icol)*colco2(lay,icol)
+         specparm1 = colh2o(lay,icol)/speccomb1
          if (specparm1 .ge. oneminus) specparm1 = oneminus
          specmult1 = 8. *(specparm1)
          js1 = 1 + int(specmult1)
          fs1 = mod(specmult1,1.0 )
 
-         speccomb_planck = colh2o(icol,lay)+refrat_planck_a*colco2(icol,lay)
-         specparm_planck = colh2o(icol,lay)/speccomb_planck
+         speccomb_planck = colh2o(lay,icol)+refrat_planck_a*colco2(lay,icol)
+         specparm_planck = colh2o(lay,icol)/speccomb_planck
          if (specparm_planck .ge. oneminus) specparm_planck=oneminus
          specmult_planck = 8. *specparm_planck
          jpl= 1 + int(specmult_planck)
          fpl = mod(specmult_planck,1.0 )
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(12) + js
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(12) + js1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(12) + js
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(12) + js1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
 
          if (specparm .lt. 0.125 ) then
             p = fs - 1
@@ -2216,29 +2218,29 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else if (specparm .gt. 0.875 ) then
             p = -fs 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else
-            fac000 = (1.  - fs) * fac00(icol,lay)
-            fac010 = (1.  - fs) * fac10(icol,lay)
-            fac100 = fs * fac00(icol,lay)
-            fac110 = fs * fac10(icol,lay)
+            fac000 = (1.  - fs) * fac00(lay,icol)
+            fac010 = (1.  - fs) * fac10(lay,icol)
+            fac100 = fs * fac00(lay,icol)
+            fac110 = fs * fac10(lay,icol)
          endif
 
          if (specparm1 .lt. 0.125 ) then
@@ -2247,35 +2249,35 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else if (specparm1 .gt. 0.875 ) then
             p = -fs1 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else
-            fac001 = (1.  - fs1) * fac01(icol,lay)
-            fac011 = (1.  - fs1) * fac11(icol,lay)
-            fac101 = fs1 * fac01(icol,lay)
-            fac111 = fs1 * fac11(icol,lay)
+            fac001 = (1.  - fs1) * fac01(lay,icol)
+            fac011 = (1.  - fs1) * fac11(lay,icol)
+            fac101 = fs1 * fac01(lay,icol)
+            fac111 = fs1 * fac11(lay,icol)
          endif
 
          do ig = 1,ng12
-            tauself = selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol) * (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
 
             if (specparm .lt. 0.125 ) then
@@ -2326,17 +2328,17 @@ contains
                    fac111 * absa(ind1+10,ig))
             endif
 
-            taug(icol,lay,ngs11+ig) = &
+            taug(lay,ngs11+ig,icol) = &
                tau_major + tau_major1 + tauself + taufor
-            pfracs(icol,lay,ngs11+ig) = fracrefa(ig,jpl) + fpl * &
+            pfracs(lay,ngs11+ig,icol) = fracrefa(ig,jpl) + fpl * &
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
    
       else  ! upper atmosphere
 
          do ig = 1,ng12
-            taug(icol,lay,ngs11+ig) = 0.0 
-            pfracs(icol,lay,ngs11+ig) = 0.0 
+            taug(lay,ngs11+ig,icol) = 0.0 
+            pfracs(lay,ngs11+ig,icol) = 0.0 
          enddo
 
       endif  ! lower/upper
@@ -2363,8 +2365,8 @@ contains
       use rrlw_kg13
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, indm, ig
       integer :: js, js1, jmco2, jmco, jpl
@@ -2405,22 +2407,22 @@ contains
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
 
-         speccomb = colh2o(icol,lay) + rat_h2on2o(icol,lay)*coln2o(icol,lay)
-         specparm = colh2o(icol,lay)/speccomb
+         speccomb = colh2o(lay,icol) + rat_h2on2o(lay,icol)*coln2o(lay,icol)
+         specparm = colh2o(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
          specmult = 8. *(specparm)
          js = 1 + int(specmult)
          fs = mod(specmult,1.0 )
 
-         speccomb1 = colh2o(icol,lay) + rat_h2on2o_1(icol,lay)*coln2o(icol,lay)
-         specparm1 = colh2o(icol,lay)/speccomb1
+         speccomb1 = colh2o(lay,icol) + rat_h2on2o_1(lay,icol)*coln2o(lay,icol)
+         specparm1 = colh2o(lay,icol)/speccomb1
          if (specparm1 .ge. oneminus) specparm1 = oneminus
          specmult1 = 8. *(specparm1)
          js1 = 1 + int(specmult1)
          fs1 = mod(specmult1,1.0 )
 
-         speccomb_mco2 = colh2o(icol,lay) + refrat_m_a*coln2o(icol,lay)
-         specparm_mco2 = colh2o(icol,lay)/speccomb_mco2
+         speccomb_mco2 = colh2o(lay,icol) + refrat_m_a*coln2o(lay,icol)
+         specparm_mco2 = colh2o(lay,icol)/speccomb_mco2
          if (specparm_mco2 .ge. oneminus) specparm_mco2 = oneminus
          specmult_mco2 = 8. *specparm_mco2
          jmco2 = 1 + int(specmult_mco2)
@@ -2429,34 +2431,34 @@ contains
 !  In atmospheres where the amount of CO2 is too great to be considered
 !  a minor species, adjust the column amount of CO2 by an empirical factor 
 !  to obtain the proper contribution.
-         chi_co2 = colco2(icol,lay)/(coldry(icol,lay))
+         chi_co2 = colco2(lay,icol)/(coldry(lay,icol))
          ratco2 = 1.e20 *chi_co2/3.55e-4 
          if (ratco2 .gt. 3.0 ) then
             adjfac = 2.0 +(ratco2-2.0 )**0.68 
-            adjcolco2 = adjfac*3.55e-4*coldry(icol,lay)*1.e-20 
+            adjcolco2 = adjfac*3.55e-4*coldry(lay,icol)*1.e-20 
          else
-            adjcolco2 = colco2(icol,lay)
+            adjcolco2 = colco2(lay,icol)
          endif
 
-         speccomb_mco = colh2o(icol,lay) + refrat_m_a3*coln2o(icol,lay)
-         specparm_mco = colh2o(icol,lay)/speccomb_mco
+         speccomb_mco = colh2o(lay,icol) + refrat_m_a3*coln2o(lay,icol)
+         specparm_mco = colh2o(lay,icol)/speccomb_mco
          if (specparm_mco .ge. oneminus) specparm_mco = oneminus
          specmult_mco = 8. *specparm_mco
          jmco = 1 + int(specmult_mco)
          fmco = mod(specmult_mco,1.0 )
 
-         speccomb_planck = colh2o(icol,lay)+refrat_planck_a*coln2o(icol,lay)
-         specparm_planck = colh2o(icol,lay)/speccomb_planck
+         speccomb_planck = colh2o(lay,icol)+refrat_planck_a*coln2o(lay,icol)
+         specparm_planck = colh2o(lay,icol)/speccomb_planck
          if (specparm_planck .ge. oneminus) specparm_planck=oneminus
          specmult_planck = 8. *specparm_planck
          jpl= 1 + int(specmult_planck)
          fpl = mod(specmult_planck,1.0 )
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(13) + js
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(13) + js1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(13) + js
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(13) + js1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
 
          if (specparm .lt. 0.125 ) then
             p = fs - 1
@@ -2464,29 +2466,29 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else if (specparm .gt. 0.875 ) then
             p = -fs 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else
-            fac000 = (1.  - fs) * fac00(icol,lay)
-            fac010 = (1.  - fs) * fac10(icol,lay)
-            fac100 = fs * fac00(icol,lay)
-            fac110 = fs * fac10(icol,lay)
+            fac000 = (1.  - fs) * fac00(lay,icol)
+            fac010 = (1.  - fs) * fac10(lay,icol)
+            fac100 = fs * fac00(lay,icol)
+            fac110 = fs * fac10(lay,icol)
          endif
 
          if (specparm1 .lt. 0.125 ) then
@@ -2495,46 +2497,46 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else if (specparm1 .gt. 0.875 ) then
             p = -fs1 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else
-            fac001 = (1.  - fs1) * fac01(icol,lay)
-            fac011 = (1.  - fs1) * fac11(icol,lay)
-            fac101 = fs1 * fac01(icol,lay)
-            fac111 = fs1 * fac11(icol,lay)
+            fac001 = (1.  - fs1) * fac01(lay,icol)
+            fac011 = (1.  - fs1) * fac11(lay,icol)
+            fac101 = fs1 * fac01(lay,icol)
+            fac111 = fs1 * fac11(lay,icol)
          endif
 
          do ig = 1,ng13
-            tauself = selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol) * (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
             co2m1 = ka_mco2(jmco2,indm,ig) + fmco2 * &
                (ka_mco2(jmco2+1,indm,ig) - ka_mco2(jmco2,indm,ig))
             co2m2 = ka_mco2(jmco2,indm+1,ig) + fmco2 * &
                (ka_mco2(jmco2+1,indm+1,ig) - ka_mco2(jmco2,indm+1,ig))
-            absco2 = co2m1 + minorfrac(icol,lay) * (co2m2 - co2m1)
+            absco2 = co2m1 + minorfrac(lay,icol) * (co2m2 - co2m1)
             com1 = ka_mco(jmco,indm,ig) + fmco * &
                (ka_mco(jmco+1,indm,ig) - ka_mco(jmco,indm,ig))
             com2 = ka_mco(jmco,indm+1,ig) + fmco * &
                (ka_mco(jmco+1,indm+1,ig) - ka_mco(jmco,indm+1,ig))
-            absco = com1 + minorfrac(icol,lay) * (com2 - com1)
+            absco = com1 + minorfrac(lay,icol) * (com2 - com1)
 
             if (specparm .lt. 0.125 ) then
                tau_major = speccomb * &
@@ -2584,22 +2586,22 @@ contains
                    fac111 * absa(ind1+10,ig))
             endif
 
-            taug(icol,lay,ngs12+ig) = &
+            taug(lay,ngs12+ig,icol) = &
                tau_major + tau_major1 + tauself + taufor &
                  + adjcolco2 * absco2 &
-                 + colco(icol,lay) * absco
-            pfracs(icol,lay,ngs12+ig) = fracrefa(ig,jpl) + fpl * &
+                 + colco(lay,icol) * absco
+            pfracs(lay,ngs12+ig,icol) = fracrefa(ig,jpl) + fpl * &
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
 
       else  ! upper atmosphere
 
-         indm = indminor(icol,lay)
+         indm = indminor(lay,icol)
          do ig = 1,ng13
-            abso3 = kb_mo3(indm,ig) + minorfrac(icol,lay) * &
+            abso3 = kb_mo3(indm,ig) + minorfrac(lay,icol) * &
                (kb_mo3(indm+1,ig) - kb_mo3(indm,ig))
-            taug(icol,lay,ngs12+ig) = colo3(icol,lay) * abso3
-            pfracs(icol,lay,ngs12+ig) = fracrefb(ig)
+            taug(lay,ngs12+ig,icol) = colo3(lay,icol) * abso3
+            pfracs(lay,ngs12+ig,icol) = fracrefb(ig)
          enddo
 
       endif  ! lower/upper
@@ -2624,8 +2626,8 @@ contains
       use rrlw_kg14
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, ig
       real :: tauself, taufor
@@ -2636,35 +2638,35 @@ contains
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(14) + 1
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(14) + 1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(14) + 1
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(14) + 1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
          do ig = 1,ng14
-            tauself = selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol) * (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
-            taug(icol,lay,ngs13+ig) = colco2(icol,lay) * &
-               (fac00(icol,lay) * absa(ind0,  ig) + &
-                fac10(icol,lay) * absa(ind0+1,ig) + &
-                fac01(icol,lay) * absa(ind1,  ig) + &
-                fac11(icol,lay) * absa(ind1+1,ig))  &
+            taug(lay,ngs13+ig,icol) = colco2(lay,icol) * &
+               (fac00(lay,icol) * absa(ind0,  ig) + &
+                fac10(lay,icol) * absa(ind0+1,ig) + &
+                fac01(lay,icol) * absa(ind1,  ig) + &
+                fac11(lay,icol) * absa(ind1+1,ig))  &
                + tauself + taufor
-            pfracs(icol,lay,ngs13+ig) = fracrefa(ig)
+            pfracs(lay,ngs13+ig,icol) = fracrefa(ig)
          enddo
 
       else  ! upper atmosphere
 
-         ind0 = ((jp(icol,lay)-13)*5+(jt(icol,lay)-1))*nspb(14) + 1
-         ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(14) + 1
+         ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(14) + 1
+         ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(14) + 1
          do ig = 1,ng14
-            taug(icol,lay,ngs13+ig) = colco2(icol,lay) * &
-               (fac00(icol,lay) * absb(ind0,  ig) + &
-                fac10(icol,lay) * absb(ind0+1,ig) + &
-                fac01(icol,lay) * absb(ind1,  ig) + &
-                fac11(icol,lay) * absb(ind1+1,ig))
-            pfracs(icol,lay,ngs13+ig) = fracrefb(ig)
+            taug(lay,ngs13+ig,icol) = colco2(lay,icol) * &
+               (fac00(lay,icol) * absb(ind0,  ig) + &
+                fac10(lay,icol) * absb(ind0+1,ig) + &
+                fac01(lay,icol) * absb(ind1,  ig) + &
+                fac11(lay,icol) * absb(ind1+1,ig))
+            pfracs(lay,ngs13+ig,icol) = fracrefb(ig)
          enddo
 
       endif  ! lower/upper
@@ -2692,8 +2694,8 @@ contains
       use rrlw_kg15
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, indm, ig
       integer :: js, js1, jmn2, jpl
@@ -2724,41 +2726,41 @@ contains
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
 
-         speccomb = coln2o(icol,lay) + rat_n2oco2(icol,lay)*colco2(icol,lay)
-         specparm = coln2o(icol,lay)/speccomb
+         speccomb = coln2o(lay,icol) + rat_n2oco2(lay,icol)*colco2(lay,icol)
+         specparm = coln2o(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
          specmult = 8. *(specparm)
          js = 1 + int(specmult)
          fs = mod(specmult,1.0 )
 
-         speccomb1 = coln2o(icol,lay) + rat_n2oco2_1(icol,lay)*colco2(icol,lay)
-         specparm1 = coln2o(icol,lay)/speccomb1
+         speccomb1 = coln2o(lay,icol) + rat_n2oco2_1(lay,icol)*colco2(lay,icol)
+         specparm1 = coln2o(lay,icol)/speccomb1
          if (specparm1 .ge. oneminus) specparm1 = oneminus
          specmult1 = 8. *(specparm1)
          js1 = 1 + int(specmult1)
          fs1 = mod(specmult1,1.0 )
 
-         speccomb_mn2 = coln2o(icol,lay) + refrat_m_a*colco2(icol,lay)
-         specparm_mn2 = coln2o(icol,lay)/speccomb_mn2
+         speccomb_mn2 = coln2o(lay,icol) + refrat_m_a*colco2(lay,icol)
+         specparm_mn2 = coln2o(lay,icol)/speccomb_mn2
          if (specparm_mn2 .ge. oneminus) specparm_mn2 = oneminus
          specmult_mn2 = 8. *specparm_mn2
          jmn2 = 1 + int(specmult_mn2)
          fmn2 = mod(specmult_mn2,1.0 )
 
-         speccomb_planck = coln2o(icol,lay)+refrat_planck_a*colco2(icol,lay)
-         specparm_planck = coln2o(icol,lay)/speccomb_planck
+         speccomb_planck = coln2o(lay,icol)+refrat_planck_a*colco2(lay,icol)
+         specparm_planck = coln2o(lay,icol)/speccomb_planck
          if (specparm_planck .ge. oneminus) specparm_planck=oneminus
          specmult_planck = 8. *specparm_planck
          jpl= 1 + int(specmult_planck)
          fpl = mod(specmult_planck,1.0 )
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(15) + js
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(15) + js1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
-         indm = indminor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(15) + js
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(15) + js1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
+         indm = indminor(lay,icol)
          
-         scalen2 = colbrd(icol,lay)*scaleminor(icol,lay)
+         scalen2 = colbrd(lay,icol)*scaleminor(lay,icol)
 
          if (specparm .lt. 0.125 ) then
             p = fs - 1
@@ -2766,29 +2768,29 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else if (specparm .gt. 0.875 ) then
             p = -fs 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else
-            fac000 = (1.  - fs) * fac00(icol,lay)
-            fac010 = (1.  - fs) * fac10(icol,lay)
-            fac100 = fs * fac00(icol,lay)
-            fac110 = fs * fac10(icol,lay)
+            fac000 = (1.  - fs) * fac00(lay,icol)
+            fac010 = (1.  - fs) * fac10(lay,icol)
+            fac100 = fs * fac00(lay,icol)
+            fac110 = fs * fac10(lay,icol)
          endif
          if (specparm1 .lt. 0.125 ) then
             p = fs1 - 1
@@ -2796,41 +2798,41 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else if (specparm1 .gt. 0.875 ) then
             p = -fs1 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else
-            fac001 = (1.  - fs1) * fac01(icol,lay)
-            fac011 = (1.  - fs1) * fac11(icol,lay)
-            fac101 = fs1 * fac01(icol,lay)
-            fac111 = fs1 * fac11(icol,lay)
+            fac001 = (1.  - fs1) * fac01(lay,icol)
+            fac011 = (1.  - fs1) * fac11(lay,icol)
+            fac101 = fs1 * fac01(lay,icol)
+            fac111 = fs1 * fac11(lay,icol)
          endif
 
          do ig = 1,ng15
-            tauself = selffac(icol,lay)* (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol)* (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor = forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor = forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
             n2m1 = ka_mn2(jmn2,indm,ig) + fmn2 * &
                (ka_mn2(jmn2+1,indm,ig) - ka_mn2(jmn2,indm,ig))
             n2m2 = ka_mn2(jmn2,indm+1,ig) + fmn2 * &
                (ka_mn2(jmn2+1,indm+1,ig) - ka_mn2(jmn2,indm+1,ig))
-            taun2 = scalen2 * (n2m1 + minorfrac(icol,lay) * (n2m2 - n2m1))
+            taun2 = scalen2 * (n2m1 + minorfrac(lay,icol) * (n2m2 - n2m1))
 
             if (specparm .lt. 0.125 ) then
                tau_major = speccomb * &
@@ -2880,17 +2882,17 @@ contains
                    fac111 * absa(ind1+10,ig))
             endif
 
-            taug(icol,lay,ngs14+ig) = &
+            taug(lay,ngs14+ig,icol) = &
                tau_major + tau_major1 + tauself + taufor + taun2
-            pfracs(icol,lay,ngs14+ig) = fracrefa(ig,jpl) + fpl * &
+            pfracs(lay,ngs14+ig,icol) = fracrefa(ig,jpl) + fpl * &
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
     
       else  ! upper atmosphere
 
          do ig = 1,ng15
-            taug(icol,lay,ngs14+ig) = 0.0 
-            pfracs(icol,lay,ngs14+ig) = 0.0 
+            taug(lay,ngs14+ig,icol) = 0.0 
+            pfracs(lay,ngs14+ig,icol) = 0.0 
          enddo
 
       endif  ! lower/upper
@@ -2917,8 +2919,8 @@ contains
       use rrlw_kg16
 
       integer, intent(in)    :: ncol, nlay
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
-      real,    intent(inout) :: pfracs(ncol,nlay,ngptlw)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
+      real,    intent(inout) :: pfracs(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ind0, ind1, inds, indf, ig
       integer :: js, js1, jpl
@@ -2943,31 +2945,31 @@ contains
 
       ! lower atmosphere
       if (lay <= laytrop(icol)) then
-         speccomb = colh2o(icol,lay) + rat_h2och4(icol,lay)*colch4(icol,lay)
-         specparm = colh2o(icol,lay)/speccomb
+         speccomb = colh2o(lay,icol) + rat_h2och4(lay,icol)*colch4(lay,icol)
+         specparm = colh2o(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
          specmult = 8. *(specparm)
          js = 1 + int(specmult)
          fs = mod(specmult,1.0 )
 
-         speccomb1 = colh2o(icol,lay) + rat_h2och4_1(icol,lay)*colch4(icol,lay)
-         specparm1 = colh2o(icol,lay)/speccomb1
+         speccomb1 = colh2o(lay,icol) + rat_h2och4_1(lay,icol)*colch4(lay,icol)
+         specparm1 = colh2o(lay,icol)/speccomb1
          if (specparm1 .ge. oneminus) specparm1 = oneminus
          specmult1 = 8. *(specparm1)
          js1 = 1 + int(specmult1)
          fs1 = mod(specmult1,1.0 )
 
-         speccomb_planck = colh2o(icol,lay)+refrat_planck_a*colch4(icol,lay)
-         specparm_planck = colh2o(icol,lay)/speccomb_planck
+         speccomb_planck = colh2o(lay,icol)+refrat_planck_a*colch4(lay,icol)
+         specparm_planck = colh2o(lay,icol)/speccomb_planck
          if (specparm_planck .ge. oneminus) specparm_planck=oneminus
          specmult_planck = 8. *specparm_planck
          jpl= 1 + int(specmult_planck)
          fpl = mod(specmult_planck,1.0 )
 
-         ind0 = ((jp(icol,lay)-1)*5+(jt(icol,lay)-1))*nspa(16) + js
-         ind1 = (jp(icol,lay)*5+(jt1(icol,lay)-1))*nspa(16) + js1
-         inds = indself(icol,lay)
-         indf = indfor(icol,lay)
+         ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(16) + js
+         ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(16) + js1
+         inds = indself(lay,icol)
+         indf = indfor(lay,icol)
 
          if (specparm .lt. 0.125 ) then
             p = fs - 1
@@ -2975,29 +2977,29 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else if (specparm .gt. 0.875 ) then
             p = -fs 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac000 = fk0*fac00(icol,lay)
-            fac100 = fk1*fac00(icol,lay)
-            fac200 = fk2*fac00(icol,lay)
-            fac010 = fk0*fac10(icol,lay)
-            fac110 = fk1*fac10(icol,lay)
-            fac210 = fk2*fac10(icol,lay)
+            fac000 = fk0*fac00(lay,icol)
+            fac100 = fk1*fac00(lay,icol)
+            fac200 = fk2*fac00(lay,icol)
+            fac010 = fk0*fac10(lay,icol)
+            fac110 = fk1*fac10(lay,icol)
+            fac210 = fk2*fac10(lay,icol)
          else
-            fac000 = (1.  - fs) * fac00(icol,lay)
-            fac010 = (1.  - fs) * fac10(icol,lay)
-            fac100 = fs * fac00(icol,lay)
-            fac110 = fs * fac10(icol,lay)
+            fac000 = (1.  - fs) * fac00(lay,icol)
+            fac010 = (1.  - fs) * fac10(lay,icol)
+            fac100 = fs * fac00(lay,icol)
+            fac110 = fs * fac10(lay,icol)
          endif
 
          if (specparm1 .lt. 0.125 ) then
@@ -3006,35 +3008,35 @@ contains
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else if (specparm1 .gt. 0.875 ) then
             p = -fs1 
             p4 = p**4
             fk0 = p4
             fk1 = 1 - p - 2.0 *p4
             fk2 = p + p4
-            fac001 = fk0*fac01(icol,lay)
-            fac101 = fk1*fac01(icol,lay)
-            fac201 = fk2*fac01(icol,lay)
-            fac011 = fk0*fac11(icol,lay)
-            fac111 = fk1*fac11(icol,lay)
-            fac211 = fk2*fac11(icol,lay)
+            fac001 = fk0*fac01(lay,icol)
+            fac101 = fk1*fac01(lay,icol)
+            fac201 = fk2*fac01(lay,icol)
+            fac011 = fk0*fac11(lay,icol)
+            fac111 = fk1*fac11(lay,icol)
+            fac211 = fk2*fac11(lay,icol)
          else
-            fac001 = (1. - fs1) * fac01(icol,lay)
-            fac011 = (1. - fs1) * fac11(icol,lay)
-            fac101 = fs1 * fac01(icol,lay)
-            fac111 = fs1 * fac11(icol,lay)
+            fac001 = (1. - fs1) * fac01(lay,icol)
+            fac011 = (1. - fs1) * fac11(lay,icol)
+            fac101 = fs1 * fac01(lay,icol)
+            fac111 = fs1 * fac11(lay,icol)
          endif
 
          do ig = 1,ng16
-            tauself = selffac(icol,lay)* (selfref(inds,ig) + selffrac(icol,lay) * &
+            tauself = selffac(lay,icol)* (selfref(inds,ig) + selffrac(lay,icol) * &
                (selfref(inds+1,ig) - selfref(inds,ig)))
-            taufor =  forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * &
+            taufor =  forfac(lay,icol) * (forref(indf,ig) + forfrac(lay,icol) * &
                (forref(indf+1,ig) - forref(indf,ig))) 
 
             if (specparm .lt. 0.125 ) then
@@ -3085,23 +3087,23 @@ contains
                    fac111 * absa(ind1+10,ig))
             endif
 
-            taug(icol,lay,ngs15+ig) = &
+            taug(lay,ngs15+ig,icol) = &
                tau_major + tau_major1 + tauself + taufor
-            pfracs(icol,lay,ngs15+ig) = fracrefa(ig,jpl) + fpl * &
+            pfracs(lay,ngs15+ig,icol) = fracrefa(ig,jpl) + fpl * &
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
 
       else  ! upper atmosphere
 
-         ind0 = ((jp(icol,lay)-13)*5+(jt(icol,lay)-1))*nspb(16) + 1
-         ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(16) + 1
+         ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(16) + 1
+         ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(16) + 1
          do ig = 1,ng16
-            taug(icol,lay,ngs15+ig) = colch4(icol,lay) * &
-               (fac00(icol,lay) * absb(ind0,  ig) + &
-                fac10(icol,lay) * absb(ind0+1,ig) + &
-                fac01(icol,lay) * absb(ind1,  ig) + &
-                fac11(icol,lay) * absb(ind1+1,ig))
-            pfracs(icol,lay,ngs15+ig) = fracrefb(ig)
+            taug(lay,ngs15+ig,icol) = colch4(lay,icol) * &
+               (fac00(lay,icol) * absb(ind0,  ig) + &
+                fac10(lay,icol) * absb(ind0+1,ig) + &
+                fac01(lay,icol) * absb(ind1,  ig) + &
+                fac11(lay,icol) * absb(ind1+1,ig))
+            pfracs(lay,ngs15+ig,icol) = fracrefb(ig)
          enddo
 
       endif  ! lower/upper
@@ -3118,17 +3120,16 @@ contains
 
       integer, intent(in)    :: ncol, nlay, ngptlw, nbndlw
       integer, intent(in)    :: ngb(ngptlw)
-      real,    intent(in)    :: taua(ncol,nlay,nbndlw)
-      real,    intent(inout) :: taug(ncol,nlay,ngptlw)
+      real,    intent(in)    :: taua(nlay,nbndlw,ncol)
+      real,    intent(inout) :: taug(nlay,ngptlw,ncol)
 
       integer :: icol, lay, ig
      
-! pmn terrible index order !!!!
       do icol = 1,ncol
-         do lay = 1,nlay
-            do ig = 1,ngptlw
+         do ig = 1,ngptlw
+            do lay = 1,nlay
 
-               taug(icol,lay,ig) = taug(icol,lay,ig) + taua(icol,lay,ngb(ig))
+               taug(lay,ig,icol) = taug(lay,ig,icol) + taua(lay,ngb(ig),icol)
 
             end do
          end do

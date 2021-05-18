@@ -1,3 +1,4 @@
+!pmn: recombine?
 ! (dmb 2012) This is the GPU version of the rtrnmc subroutine. This has been greatly
 ! modified to be efficiently run on the GPU. Originally, there was a g-point loop within
 ! this subroutine to perform the summation of the fluxes over the g-points. This has been
@@ -71,20 +72,20 @@ contains
 
       integer, intent(in) :: ngb(ngptlw)  ! band index of g-point
 
-      real,    intent(in) :: semiss  (ncol,nbndlw)       ! surface emissivity
-      real,    intent(in) :: taug    (ncol,nlay,ngptlw)  ! gas optical depth
-      real,    intent(in) :: pfracs  (ncol,nlay,ngptlw)  ! Planck fractions
-      logical, intent(in) :: cloudy  (nlay,ncol)         ! cloudy for ANY g-point
+      real,    intent(in) :: semiss  (     nbndlw,ncol)  ! surface emissivity
+      real,    intent(in) :: taug    (nlay,ngptlw,ncol)  ! gas optical depth
+      real,    intent(in) :: pfracs  (nlay,ngptlw,ncol)  ! Planck fractions
+      logical, intent(in) :: cloudy  (nlay,       ncol)  ! cloudy for ANY g-point
       real,    intent(in) :: cldfmc  (nlay,ngptlw,ncol)  ! cloud fraction
       real,    intent(in) :: taucmc  (nlay,ngptlw,ncol)  ! cloud optical thickness
      
       ! spectrally summed fluxes and upward flux derivatives wrt Tsurf
-      real, intent(out) :: totuflux     (ncol,0:nlay)  ! upward longwave flux (W/m2)
-      real, intent(out) :: totdflux     (ncol,0:nlay)  ! downward longwave flux (W/m2)
-      real, intent(out) :: totuclfl     (ncol,0:nlay)  ! clrsky upward lw flux (W/m2)
-      real, intent(out) :: totdclfl     (ncol,0:nlay)  ! clrsky downward lw flux (W/m2)
-      real, intent(out) :: dtotuflux_dt (ncol,0:nlay)  ! d/d(Tsurf) (W/m2/K)
-      real, intent(out) :: dtotuclfl_dt (ncol,0:nlay)  ! d/d(Tsurf) (W/m2/K)
+      real, intent(out) :: totuflux     (0:nlay,ncol)  ! upward longwave flux (W/m2)
+      real, intent(out) :: totdflux     (0:nlay,ncol)  ! downward longwave flux (W/m2)
+      real, intent(out) :: totuclfl     (0:nlay,ncol)  ! clrsky upward lw flux (W/m2)
+      real, intent(out) :: totdclfl     (0:nlay,ncol)  ! clrsky downward lw flux (W/m2)
+      real, intent(out) :: dtotuflux_dt (0:nlay,ncol)  ! d/d(Tsurf) (W/m2/K)
+      real, intent(out) :: dtotuclfl_dt (0:nlay,ncol)  ! d/d(Tsurf) (W/m2/K)
 
       ! TOA OLR in bands 6 & 9-11 and their derivatives wrt Tsurf
       real, intent(out) :: olrb06     (ncol)  ! (W/m2)
@@ -99,7 +100,7 @@ contains
       ! ----- Local -----
    
       ! g-point fluxes
-      real, dimension (ncol,ngptlw,0:nlay) :: &
+      real, dimension (0:nlay,ngptlw,ncol) :: &
          gurad,          & ! upward longwave flux (W/m2)
          gdrad,          & ! downward longwave flux (W/m2)
          gclrurad,       & ! clear sky upward longwave flux (W/m2)
@@ -209,12 +210,12 @@ contains
          ! Downward radiative transfer loop
          do lev = nlay,1,-1
 
-            plfrac = pfracs(icol,lev,ig)
-            blay = planklay(icol,lev,ibnd)
-            dplankup = planklev(icol,lev,  ibnd) - blay
-            dplankdn = planklev(icol,lev-1,ibnd) - blay
+            plfrac = pfracs(lev,ig,icol)
+            blay = planklay(ibnd,lev,icol)
+            dplankup = planklev(ibnd,lev,  icol) - blay
+            dplankdn = planklev(ibnd,lev-1,icol) - blay
 
-            odepth = secdiff * taug(icol,lev,ig)
+            odepth = secdiff * taug(lev,ig,icol)
             if (odepth .lt. 0.) odepth = 0. 
 
             ! cloudy for any g-point
@@ -282,7 +283,7 @@ contains
                   efclfracs * (1. - agas(lev))) + &
                   gassrc + cldfmc(lev,ig,icol) * &
                   (bbdtot * atot(lev) - gassrc)
-               gdrad(icol,ig,lev-1) = gdrad(icol,ig,lev-1) + radld
+               gdrad(lev-1,ig,icol) = gdrad(lev-1,ig,icol) + radld
 
             else  ! clear layer
 
@@ -301,7 +302,7 @@ contains
                ! where bbd is effective Planck func for layer.
 
                radld = radld + (bbdgas - radld) * agas(lev)
-               gdrad(icol,ig,lev-1) = gdrad(icol,ig,lev-1) + radld
+               gdrad(lev-1,ig,icol) = gdrad(lev-1,ig,icol) + radld
 
             endif
 
@@ -311,10 +312,10 @@ contains
 
             if (iclddn == 1) then
                radclrd = radclrd + (bbdgas-radclrd) * agas(lev) 
-               gclrdrad(icol,ig,lev-1) = gclrdrad(icol,ig,lev-1) + radclrd
+               gclrdrad(lev-1,ig,icol) = gclrdrad(lev-1,ig,icol) + radclrd
             else
                radclrd = radld
-               gclrdrad(icol,ig,lev-1) = gdrad(icol,ig,lev-1)
+               gclrdrad(lev-1,ig,icol) = gdrad(lev-1,ig,icol)
             endif
 
          enddo  ! downward loop
@@ -327,22 +328,22 @@ contains
          ! they are defined in subroutine setcoef. 
     
          ! surface emission
-         rad0 = pfracs(icol,1,ig) * plankbnd(icol,ibnd)
+         rad0 = pfracs(1,ig,icol) * plankbnd(ibnd,icol)
          if (idrv == 1) then
-            d_rad0_dt = pfracs(icol,1,ig) * dplankbnd_dt(icol,ibnd)
+            d_rad0_dt = pfracs(1,ig,icol) * dplankbnd_dt(ibnd,icol)
          endif
 
          ! Add in specular reflection of surface downward radiance
-         reflect = 1. - semiss(icol,ibnd)
+         reflect = 1. - semiss(ibnd,icol)
          radlu   = rad0 + reflect * radld
          radclru = rad0 + reflect * radclrd
-         gurad   (icol,ig,0) = gurad   (icol,ig,0) + radlu
-         gclrurad(icol,ig,0) = gclrurad(icol,ig,0) + radclru
+         gurad   (0,ig,icol) = gurad   (0,ig,icol) + radlu
+         gclrurad(0,ig,icol) = gclrurad(0,ig,icol) + radclru
          if (idrv == 1) then
             d_radlu_dt   = d_rad0_dt
             d_radclru_dt = d_rad0_dt
-            gdtotuflux_dt(icol,ig,0) = d_radlu_dt
-            gdtotuclfl_dt(icol,ig,0) = d_radclru_dt
+            gdtotuflux_dt(0,ig,icol) = d_radlu_dt
+            gdtotuclfl_dt(0,ig,icol) = d_radclru_dt
          endif
 
          ! Upward radiative transfer loop
@@ -362,7 +363,7 @@ contains
                    efclfracs * (1. - agas(lev))) + &
                    gassrc + cldfmc(lev,ig,icol) * &
                    (bbutot(lev) * atot(lev) - gassrc)
-               gurad(icol,ig,lev) = gurad(icol,ig,lev) + radlu
+               gurad(lev,ig,icol) = gurad(lev,ig,icol) + radlu
                if (idrv == 1) then
                   d_radlu_dt = d_radlu_dt * cldfmc(lev,ig,icol)        * (1. - atot(lev)) + &
                                d_radlu_dt * (1. - cldfmc(lev,ig,icol)) * (1. - agas(lev))
@@ -370,16 +371,16 @@ contains
 ! pmn: this makes sense as the sum of the transmitted sensitivities for the cloudy
 ! pmn: and clear portions, but why use atot here vs. aboth for the non-derivative?
 ! pmn: -----
-                  gdtotuflux_dt(icol,ig,lev) = gdtotuflux_dt(icol,ig,lev) + d_radlu_dt
+                  gdtotuflux_dt(lev,ig,icol) = gdtotuflux_dt(lev,ig,icol) + d_radlu_dt
                endif
 
             else  ! clear layer
 
                radlu = radlu + (bbugas(lev) - radlu) * agas(lev)
-               gurad(icol,ig,lev) = gurad(icol,ig,lev) + radlu
+               gurad(lev,ig,icol) = gurad(lev,ig,icol) + radlu
                if (idrv == 1) then
                   d_radlu_dt = d_radlu_dt * (1. - agas(lev))
-                  gdtotuflux_dt(icol,ig,lev) = gdtotuflux_dt(icol,ig,lev) + d_radlu_dt
+                  gdtotuflux_dt(lev,ig,icol) = gdtotuflux_dt(lev,ig,icol) + d_radlu_dt
                endif
 
             endif
@@ -391,18 +392,18 @@ contains
 
             if (iclddn == 1) then
                radclru = radclru + (bbugas(lev) - radclru) * agas(lev) 
-               gclrurad(icol,ig,lev) = gclrurad(icol,ig,lev) + radclru
+               gclrurad(lev,ig,icol) = gclrurad(lev,ig,icol) + radclru
             else
                radclru = radlu
-               gclrurad(icol,ig,lev) = gurad(icol,ig,lev)
+               gclrurad(lev,ig,icol) = gurad(lev,ig,icol)
             endif
             if (idrv == 1) then
                if (iclddn == 1) then
                   d_radclru_dt = d_radclru_dt * (1. - agas(lev))
-                  gdtotuclfl_dt(icol,ig,lev) = gdtotuclfl_dt(icol,ig,lev) + d_radclru_dt
+                  gdtotuclfl_dt(lev,ig,icol) = gdtotuclfl_dt(lev,ig,icol) + d_radclru_dt
                else
                   d_radclru_dt = d_radlu_dt
-                  gdtotuclfl_dt(icol,ig,lev) = gdtotuflux_dt(icol,ig,lev)
+                  gdtotuclfl_dt(lev,ig,icol) = gdtotuflux_dt(lev,ig,icol)
                endif
             endif
 
@@ -411,15 +412,15 @@ contains
          ! modify g-points values so later summation is simpler 
          tblind = wtdiff * delwave(ibnd) * fluxfac
          do lev = 0,nlay  
-           gurad   (icol,ig,lev) = gurad   (icol,ig,lev) * tblind
-           gdrad   (icol,ig,lev) = gdrad   (icol,ig,lev) * tblind
-           gclrurad(icol,ig,lev) = gclrurad(icol,ig,lev) * tblind
-           gclrdrad(icol,ig,lev) = gclrdrad(icol,ig,lev) * tblind
+           gurad   (lev,ig,icol) = gurad   (lev,ig,icol) * tblind
+           gdrad   (lev,ig,icol) = gdrad   (lev,ig,icol) * tblind
+           gclrurad(lev,ig,icol) = gclrurad(lev,ig,icol) * tblind
+           gclrdrad(lev,ig,icol) = gclrdrad(lev,ig,icol) * tblind
          end do
          if (idrv == 1) then
            do lev = 0,nlay
-             gdtotuflux_dt(icol,ig,lev) = gdtotuflux_dt(icol,ig,lev) * tblind
-             gdtotuclfl_dt(icol,ig,lev) = gdtotuclfl_dt(icol,ig,lev) * tblind
+             gdtotuflux_dt(lev,ig,icol) = gdtotuflux_dt(lev,ig,icol) * tblind
+             gdtotuclfl_dt(lev,ig,icol) = gdtotuclfl_dt(lev,ig,icol) * tblind
            end do
          endif
 
@@ -427,55 +428,70 @@ contains
       end do  ! column
 
       ! zero spectral sum accumulators
-      totuflux     = 0.
-      totdflux     = 0.
-      totuclfl     = 0.
-      totdclfl     = 0.
-      olrb06       = 0.
-      olrb09       = 0.
-      olrb10       = 0.
-      olrb11       = 0.
-      dtotuflux_dt = 0.
-      dtotuclfl_dt = 0.
-      dolrb06_dt   = 0.
-      dolrb09_dt   = 0.
-      dolrb10_dt   = 0.
-      dolrb11_dt   = 0.
+      totuflux = 0.
+      totdflux = 0.
+      totuclfl = 0.
+      totdclfl = 0.
+      olrb06   = 0.
+      olrb09   = 0.
+      olrb10   = 0.
+      olrb11   = 0.
+      if (idrv == 1) then
+         dtotuflux_dt = 0.
+         dtotuclfl_dt = 0.
+         dolrb06_dt   = 0.
+         dolrb09_dt   = 0.
+         dolrb10_dt   = 0.
+         dolrb11_dt   = 0.
+      end if
 
       ! Adds up the indivial g-point fluxes to arrive at a final
       ! upward and downward flux value for each column and layer.
+! pmn test different loop order
 
       do icol = 1,ncol
       do lev = 0,nlay
-
          do ig = 1,ngptlw
-            totuflux(icol,lev) = totuflux(icol,lev) + gurad   (icol,ig,lev)
-            totdflux(icol,lev) = totdflux(icol,lev) + gdrad   (icol,ig,lev)
-            totuclfl(icol,lev) = totuclfl(icol,lev) + gclrurad(icol,ig,lev)
-            totdclfl(icol,lev) = totdclfl(icol,lev) + gclrdrad(icol,ig,lev)
-            if (lev == nlay) then
-               if (ngb(ig) ==  6) olrb06(icol) = olrb06(icol) + gurad(icol,ig,nlay)
-               if (ngb(ig) ==  9) olrb09(icol) = olrb09(icol) + gurad(icol,ig,nlay)
-               if (ngb(ig) == 10) olrb10(icol) = olrb10(icol) + gurad(icol,ig,nlay)
-               if (ngb(ig) == 11) olrb11(icol) = olrb11(icol) + gurad(icol,ig,nlay)
-            end if
+            totuflux(lev,icol) = totuflux(lev,icol) + gurad   (lev,ig,icol)
+            totdflux(lev,icol) = totdflux(lev,icol) + gdrad   (lev,ig,icol)
+            totuclfl(lev,icol) = totuclfl(lev,icol) + gclrurad(lev,ig,icol)
+            totdclfl(lev,icol) = totdclfl(lev,icol) + gclrdrad(lev,ig,icol)
          end do
- 
-         if (idrv == 1) then
-            do ig = 1,ngptlw
-               dtotuflux_dt(icol,lev) = dtotuflux_dt(icol,lev) + gdtotuflux_dt(icol,ig,lev)
-               dtotuclfl_dt(icol,lev) = dtotuclfl_dt(icol,lev) + gdtotuclfl_dt(icol,ig,lev)
-               if (lev == nlay) then
-                  if (ngb(ig) ==  6) dolrb06_dt(icol) = dolrb06_dt(icol) + gdtotuflux_dt(icol,ig,nlay)
-                  if (ngb(ig) ==  9) dolrb09_dt(icol) = dolrb09_dt(icol) + gdtotuflux_dt(icol,ig,nlay)
-                  if (ngb(ig) == 10) dolrb10_dt(icol) = dolrb10_dt(icol) + gdtotuflux_dt(icol,ig,nlay)
-                  if (ngb(ig) == 11) dolrb11_dt(icol) = dolrb11_dt(icol) + gdtotuflux_dt(icol,ig,nlay)
-               end if
-            end do
-         end if
+      end do
+      end do
 
-      end do  ! lev
-      end do  ! icol
+! pmn: seperate index for ig's in an band?
+      do icol = 1,ncol
+         do ig = 1,ngptlw
+            if (ngb(ig) ==  6) olrb06(icol) = olrb06(icol) + gurad(nlay,ig,icol)
+            if (ngb(ig) ==  9) olrb09(icol) = olrb09(icol) + gurad(nlay,ig,icol)
+            if (ngb(ig) == 10) olrb10(icol) = olrb10(icol) + gurad(nlay,ig,icol)
+            if (ngb(ig) == 11) olrb11(icol) = olrb11(icol) + gurad(nlay,ig,icol)
+         end do
+      end do
+
+      if (idrv == 1) then
+
+         do icol = 1,ncol
+         do lev = 0,nlay
+            do ig = 1,ngptlw
+               dtotuflux_dt(lev,icol) = dtotuflux_dt(lev,icol) + gdtotuflux_dt(lev,ig,icol)
+               dtotuclfl_dt(lev,icol) = dtotuclfl_dt(lev,icol) + gdtotuclfl_dt(lev,ig,icol)
+            end do
+         end do
+         end do
+
+! pmn: seperate index for ig's in an band?
+         do icol = 1,ncol
+            do ig = 1,ngptlw
+               if (ngb(ig) ==  6) dolrb06_dt(icol) = dolrb06_dt(icol) + gdtotuflux_dt(nlay,ig,icol)
+               if (ngb(ig) ==  9) dolrb09_dt(icol) = dolrb09_dt(icol) + gdtotuflux_dt(nlay,ig,icol)
+               if (ngb(ig) == 10) dolrb10_dt(icol) = dolrb10_dt(icol) + gdtotuflux_dt(nlay,ig,icol)
+               if (ngb(ig) == 11) dolrb11_dt(icol) = dolrb11_dt(icol) + gdtotuflux_dt(nlay,ig,icol)
+            end do
+         end do
+
+      end if
 
    end subroutine rtrnmc
 

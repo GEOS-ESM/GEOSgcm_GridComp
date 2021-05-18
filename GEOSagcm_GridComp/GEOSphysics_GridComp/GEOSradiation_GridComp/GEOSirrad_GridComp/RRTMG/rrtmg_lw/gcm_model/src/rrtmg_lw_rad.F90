@@ -448,20 +448,17 @@ contains
       ! ===============================
 
       ! general
-      real :: p_zm   (nlay,pncol)    ! mid-layer heights [m]
-      real :: p_alat (pncol)         ! latitudes
-      real :: p_play (nlay,pncol)    ! layer pressures [hPa]
-      real :: p_tlay (pncol,nlay)    ! layer temperatures [K]
-      real :: p_plev (pncol,0:nlay)  ! level (interface) pressures [hPa]
-      real :: p_tlev (pncol,0:nlay)  ! level (interface) temperatures [K]
-      real :: p_tsfc (pncol)         ! surface temperature [K]
-      real :: p_emis (pncol,nbndlw)  ! lw surface emissivity
-
-      ! old ordering
-      real :: o_play (pncol,nlay)    ! layer pressures [hPa]
+      real :: p_zm     (nlay,pncol)  ! mid-layer heights [m]
+      real :: p_alat        (pncol)  ! latitudes
+      real :: p_play   (nlay,pncol)  ! layer pressures [hPa]
+      real :: p_tlay   (nlay,pncol)  ! layer temperatures [K]
+      real :: p_plev (0:nlay,pncol)  ! level (interface) pressures [hPa]
+      real :: p_tlev (0:nlay,pncol)  ! level (interface) temperatures [K]
+      real :: p_tsfc        (pncol)  ! surface temperature [K]
+      real :: p_emis (nbndlw,pncol)  ! lw surface emissivity
 
       ! molecular volume mixing ratios
-      real, dimension (pncol,nlay) :: &
+      real, dimension (nlay,pncol) :: &
          p_h2ovmr, p_o3vmr, p_co2vmr, p_ch4vmr, p_n2ovmr, p_o2vmr, p_covmr, &
          p_cfc11vmr, p_cfc12vmr, p_cfc22vmr, p_ccl4vmr
 
@@ -473,11 +470,11 @@ contains
       real :: p_rel  (nlay,pncol)  ! Cloud water drop effective radius [um]
 
       ! Aerosol optical depth at mid-point of LW spectral bands
-      real :: p_tauaer (pncol,nlay,nbndlw)
+      real :: p_tauaer (nlay,nbndlw,pncol)
 
       ! gas optical depths and Planck fractions
-      real :: taug   (pncol,nlay,ngptlw)  ! gas + aerosol optical depth
-      real :: pfracs (pncol,nlay,ngptlw)  ! Planck fractions
+      real :: taug   (nlay,ngptlw,pncol)  ! gas + aerosol optical depth
+      real :: pfracs (nlay,ngptlw,pncol)  ! Planck fractions
 
       ! mcica generated clouds
       real :: cldfmc (nlay,ngptlw,pncol)  ! cloud fraction
@@ -490,12 +487,12 @@ contains
       logical :: cloudy (nlay,pncol)
 
       ! spectrally summed fluxes and upward flux derivatives wrt Tsurf
-      real :: totuflux     (pncol,0:nlay)  ! upward longwave flux (W/m2)
-      real :: totdflux     (pncol,0:nlay)  ! downward longwave flux (W/m2)
-      real :: totuclfl     (pncol,0:nlay)  ! clrsky upward lw flux (W/m2)
-      real :: totdclfl     (pncol,0:nlay)  ! clrsky downward lw flux (W/m2)
-      real :: dtotuflux_dt (pncol,0:nlay)  ! d/d(Tsurf) (W/m2/K)
-      real :: dtotuclfl_dt (pncol,0:nlay)  ! d/d(Tsurf) (W/m2/K)
+      real :: totuflux     (0:nlay,pncol)  ! upward longwave flux (W/m2)
+      real :: totdflux     (0:nlay,pncol)  ! downward longwave flux (W/m2)
+      real :: totuclfl     (0:nlay,pncol)  ! clrsky upward lw flux (W/m2)
+      real :: totdclfl     (0:nlay,pncol)  ! clrsky downward lw flux (W/m2)
+      real :: dtotuflux_dt (0:nlay,pncol)  ! d/d(Tsurf) (W/m2/K)
+      real :: dtotuclfl_dt (0:nlay,pncol)  ! d/d(Tsurf) (W/m2/K)
 
       ! TOA OLR in bands 6 & 9-11 and their derivatives wrt Tsurf
       real :: p_olrb06     (pncol)  ! (W/m2)
@@ -512,41 +509,44 @@ contains
       integer, parameter :: istart = 1
 
       ! indices
-      integer :: ilev, ilay, n
+      integer :: ilev, ilay, ibnd, n
 
       ! copy partition and reorder for speed
       p_alat = alat (colstart:(colstart+pncol-1))
       p_tsfc = tsfc (colstart:(colstart+pncol-1))
       do ilay = 1,nlay
-        p_zm   (ilay,:) = zm   (colstart:(colstart+pncol-1),ilay)
-        p_play (ilay,:) = play (colstart:(colstart+pncol-1),ilay)
-        p_cldf (ilay,:) = cldf (colstart:(colstart+pncol-1),ilay)
-        p_ciwp (ilay,:) = ciwp (colstart:(colstart+pncol-1),ilay)
-        p_clwp (ilay,:) = clwp (colstart:(colstart+pncol-1),ilay)
-        p_rei  (ilay,:) = rei  (colstart:(colstart+pncol-1),ilay)
-        p_rel  (ilay,:) = rel  (colstart:(colstart+pncol-1),ilay)
-      end do
-
-      ! copy partition
-      o_play     = play     (colstart:(colstart+pncol-1),:)
-      p_tlay     = tlay     (colstart:(colstart+pncol-1),:)
-      p_plev     = plev     (colstart:(colstart+pncol-1),:)
-      p_tlev     = tlev     (colstart:(colstart+pncol-1),:)
-      p_emis     = emis     (colstart:(colstart+pncol-1),:)
-      p_h2ovmr   = h2ovmr   (colstart:(colstart+pncol-1),:)
-      p_o3vmr    = o3vmr    (colstart:(colstart+pncol-1),:)
-      p_co2vmr   = co2vmr   (colstart:(colstart+pncol-1),:)
-      p_ch4vmr   = ch4vmr   (colstart:(colstart+pncol-1),:)
-      p_n2ovmr   = n2ovmr   (colstart:(colstart+pncol-1),:)
-      p_o2vmr    = o2vmr    (colstart:(colstart+pncol-1),:)
-      p_covmr    = 0.
+         p_zm       (ilay,:) = zm       (colstart:(colstart+pncol-1),ilay)
+         p_play     (ilay,:) = play     (colstart:(colstart+pncol-1),ilay)
+         p_tlay     (ilay,:) = tlay     (colstart:(colstart+pncol-1),ilay)
+         p_cldf     (ilay,:) = cldf     (colstart:(colstart+pncol-1),ilay)
+         p_ciwp     (ilay,:) = ciwp     (colstart:(colstart+pncol-1),ilay)
+         p_clwp     (ilay,:) = clwp     (colstart:(colstart+pncol-1),ilay)
+         p_rei      (ilay,:) = rei      (colstart:(colstart+pncol-1),ilay)
+         p_rel      (ilay,:) = rel      (colstart:(colstart+pncol-1),ilay)
+         p_h2ovmr   (ilay,:) = h2ovmr   (colstart:(colstart+pncol-1),ilay)
+         p_o3vmr    (ilay,:) = o3vmr    (colstart:(colstart+pncol-1),ilay)
+         p_co2vmr   (ilay,:) = co2vmr   (colstart:(colstart+pncol-1),ilay)
+         p_ch4vmr   (ilay,:) = ch4vmr   (colstart:(colstart+pncol-1),ilay)
+         p_n2ovmr   (ilay,:) = n2ovmr   (colstart:(colstart+pncol-1),ilay)
+         p_o2vmr    (ilay,:) = o2vmr    (colstart:(colstart+pncol-1),ilay)
+         p_covmr    (ilay,:) = 0.
 ! pmn: consider adding CO absorption since it is calculable !!!!!!!!!!!!!
 ! pmn: i.e., pass through from RRTMG_LW
-      p_cfc11vmr = cfc11vmr (colstart:(colstart+pncol-1),:)
-      p_cfc12vmr = cfc12vmr (colstart:(colstart+pncol-1),:)
-      p_cfc22vmr = cfc22vmr (colstart:(colstart+pncol-1),:)
-      p_ccl4vmr  = ccl4vmr  (colstart:(colstart+pncol-1),:)
-      p_tauaer   = tauaer   (colstart:(colstart+pncol-1),:,:)
+         p_cfc11vmr (ilay,:) = cfc11vmr (colstart:(colstart+pncol-1),ilay)
+         p_cfc12vmr (ilay,:) = cfc12vmr (colstart:(colstart+pncol-1),ilay)
+         p_cfc22vmr (ilay,:) = cfc22vmr (colstart:(colstart+pncol-1),ilay)
+         p_ccl4vmr  (ilay,:) = ccl4vmr  (colstart:(colstart+pncol-1),ilay)
+      end do
+      do ilev = 0,nlay
+         p_plev (ilev,:) = plev (colstart:(colstart+pncol-1),ilev)
+         p_tlev (ilev,:) = tlev (colstart:(colstart+pncol-1),ilev)
+      end do
+      do ibnd = 1,nbndlw
+         p_emis (ibnd,:) = emis (colstart:(colstart+pncol-1),ibnd)
+         do ilay = 1,nlay
+            p_tauaer (ilay,ibnd,:) = tauaer (colstart:(colstart+pncol-1),ilay,ibnd)
+        end do
+      end do
 
       ! Generate stochastic subcolumns of cloud physical properties
 
@@ -561,6 +561,9 @@ contains
       call clearCounts_threeBand( &
          pncol, ngptlw, nlay, cloudLM, cloudMH, cldfmc, &
          p_clearCounts)
+      do n = 1,4
+         clearCounts (colstart:(colstart+pncol-1),n) = p_clearCounts(n,:)
+      end do
 
       ! cloud physical to physical properties
 
@@ -573,15 +576,17 @@ contains
       ! coefficients and indices needed to compute the optical depths
       ! by interpolating data from stored reference atmospheres. 
 
+! pmn: check use of idrv, no more optionals, etc.
       call setcoef (pncol, nlay, istart, idrv, &
-         o_play, p_tlay, p_plev, p_tlev, p_tsfc, p_emis, &
+         p_play, p_tlay, p_plev, p_tlev, p_tsfc, p_emis, &
          p_h2ovmr, p_o3vmr, p_co2vmr, p_ch4vmr, p_n2ovmr, p_o2vmr, p_covmr, &
          p_cfc11vmr, p_cfc12vmr, p_cfc22vmr, p_ccl4vmr)
 
       ! Calculate the gaseous optical depths and Planck fractions for 
       ! each longwave spectral band. Also adds in aerosol optical depths.
 
-      call taumol (pncol, nlay, ngb, o_play, p_tauaer, taug, pfracs)
+! pmn: remove ngb from taumol and rtrnmc
+      call taumol (pncol, nlay, ngb, p_play, p_tauaer, taug, pfracs)
 
       ! Call the radiative transfer routine
 
@@ -592,30 +597,29 @@ contains
          p_olrb06, p_olrb09, p_olrb10, p_olrb11, &
          p_dolrb06_dt, p_dolrb09_dt, p_dolrb10_dt, p_dolrb11_dt)
 
-      ! copy the partitioned results back
-      do n = 1,4
-         clearCounts (colstart:(colstart+pncol-1),n) = p_clearCounts(n,:)
+      ! copy the partitioned fluxes back
+      do ilev = 0,nlay
+         uflx  (colstart:(colstart+pncol-1),ilev+1) = totuflux(ilev,:)
+         dflx  (colstart:(colstart+pncol-1),ilev+1) = totdflux(ilev,:)
+         uflxc (colstart:(colstart+pncol-1),ilev+1) = totuclfl(ilev,:)
+         dflxc (colstart:(colstart+pncol-1),ilev+1) = totdclfl(ilev,:)
+         if (idrv == 1) then
+            duflx_dt (colstart:(colstart+pncol-1),ilev+1) = dtotuflux_dt(ilev,:)
+            duflxc_dt(colstart:(colstart+pncol-1),ilev+1) = dtotuclfl_dt(ilev,:)
+         end if
       end do
-
-      ! copy the partitioned results back
-      uflx  (colstart:(colstart+pncol-1),1:(nlay+1)) = totuflux(:,0:nlay)
-      dflx  (colstart:(colstart+pncol-1),1:(nlay+1)) = totdflux(:,0:nlay)
-      uflxc (colstart:(colstart+pncol-1),1:(nlay+1)) = totuclfl(:,0:nlay)
-      dflxc (colstart:(colstart+pncol-1),1:(nlay+1)) = totdclfl(:,0:nlay)
-      olrb06(colstart:(colstart+pncol-1)) = p_olrb06(:)
-      olrb09(colstart:(colstart+pncol-1)) = p_olrb09(:)
-      olrb10(colstart:(colstart+pncol-1)) = p_olrb10(:)
-      olrb11(colstart:(colstart+pncol-1)) = p_olrb11(:)
+      olrb06(colstart:(colstart+pncol-1)) = p_olrb06
+      olrb09(colstart:(colstart+pncol-1)) = p_olrb09
+      olrb10(colstart:(colstart+pncol-1)) = p_olrb10
+      olrb11(colstart:(colstart+pncol-1)) = p_olrb11
       if (idrv == 1) then
-         duflx_dt (colstart:(colstart+pncol-1),1:(nlay+1)) = dtotuflux_dt(:,0:nlay)
-         duflxc_dt(colstart:(colstart+pncol-1),1:(nlay+1)) = dtotuclfl_dt(:,0:nlay)
-         dolrb06_dt(colstart:(colstart+pncol-1)) = p_dolrb06_dt(:)
-         dolrb09_dt(colstart:(colstart+pncol-1)) = p_dolrb09_dt(:)
-         dolrb10_dt(colstart:(colstart+pncol-1)) = p_dolrb10_dt(:)
-         dolrb11_dt(colstart:(colstart+pncol-1)) = p_dolrb11_dt(:)
+         dolrb06_dt(colstart:(colstart+pncol-1)) = p_dolrb06_dt
+         dolrb09_dt(colstart:(colstart+pncol-1)) = p_dolrb09_dt
+         dolrb10_dt(colstart:(colstart+pncol-1)) = p_dolrb10_dt
+         dolrb11_dt(colstart:(colstart+pncol-1)) = p_dolrb11_dt
       end if
-! pmn: these copies can be cleaned up RHS without ()
 
+      ! free internal stae of setcoef
       call setcoef_free
 
    end subroutine rrtmg_lw_part
