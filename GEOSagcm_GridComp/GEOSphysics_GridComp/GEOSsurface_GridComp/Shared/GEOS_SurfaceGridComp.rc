@@ -56,8 +56,8 @@
 #
 #    CATCHMENT-CN model versions
 #    ---------------------------
-#    CN_CLM4 : Fanwei Zeng's science-validated and published Catchment-CN.4.0 (e0004s_transientCO2_05)     
-#
+#    CN_CLM4  : Fanwei Zeng's science-validated and published Catchment-CN.4.0 (e0004s_transientCO2_05)     
+#    CN_CLM45 : Eunjee Lee's Catchment-CN.4.5 simulations 
 # GEOSagcm=>LAND_PARAMS: NRv7.2
 # GEOSldas=>LAND_PARAMS: NRv7.2
 
