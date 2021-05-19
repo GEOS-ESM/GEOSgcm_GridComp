@@ -230,11 +230,12 @@ contains
 ! ----------------------------------------------------------------
 
     if (DO_OBIO/=0) then
-       OBIO = MAPL_AddChild(GC, NAME='OBIO', SS=ObioSetServices, RC=STATUS)
+       OBIO = MAPL_AddChild(GC, NAME='OBIO_OGCM', SS=ObioSetServices, RC=STATUS)
        VERIFY_(STATUS)
        ORAD = MAPL_AddChild(GC, NAME='ORAD', SS=OradBioSetServices, RC=STATUS)
        VERIFY_(STATUS)
     else
+       OBIO = 0
        ORAD = MAPL_AddChild(GC, NAME='ORAD', SS=OradSetServices, RC=STATUS)
        VERIFY_(STATUS)
     end if
@@ -973,73 +974,71 @@ contains
            RC=STATUS  )
       VERIFY_(STATUS)
 
-      if(DO_DATAATM==0) then
-        call MAPL_AddImportSpec(GC,                             &
-             LONG_NAME          = 'Black Carbon Dry Deposition',&
-             UNITS              = 'kg m-2 s-1'                 ,&
-             SHORT_NAME         = 'BCDP'                       ,&
-             DIMS               = MAPL_DimsTileOnly            ,&
-             UNGRIDDED_DIMS     = (/NUM_BCDP/)                 ,&
-             VLOCATION          = MAPL_VLocationNone           ,&
-             RESTART            = MAPL_RestartSkip             ,&
-             RC=STATUS  ) 
-        VERIFY_(STATUS)
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'Black Carbon Dry Deposition',&
+           UNITS              = 'kg m-2 s-1'                 ,&
+           SHORT_NAME         = 'BCDP'                       ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NUM_BCDP/)                 ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
      
-        call MAPL_AddImportSpec(GC,                             &
-             LONG_NAME          = 'Black Carbon Wet Deposition',&
-             UNITS              = 'kg m-2 s-1'                 ,&
-             SHORT_NAME         = 'BCWT'                       ,&
-             DIMS               = MAPL_DimsTileOnly            ,&
-             UNGRIDDED_DIMS     = (/NUM_BCWT/)                 ,&
-             VLOCATION          = MAPL_VLocationNone           ,&
-             RESTART            = MAPL_RestartSkip             ,&
-             RC=STATUS  ) 
-        VERIFY_(STATUS)
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'Black Carbon Wet Deposition',&
+           UNITS              = 'kg m-2 s-1'                 ,&
+           SHORT_NAME         = 'BCWT'                       ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NUM_BCWT/)                 ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
      
-        call MAPL_AddImportSpec(GC,                               &
-             LONG_NAME          = 'Organic Carbon Dry Deposition',&
-             UNITS              = 'kg m-2 s-1'                   ,&
-             SHORT_NAME         = 'OCDP'                         ,&
-             DIMS               = MAPL_DimsTileOnly              ,&
-             UNGRIDDED_DIMS     = (/NUM_OCDP/)                   ,&
-             VLOCATION          = MAPL_VLocationNone             ,&
-             RESTART            = MAPL_RestartSkip               ,&
-             RC=STATUS  ) 
-        VERIFY_(STATUS)
+      call MAPL_AddImportSpec(GC,                               &
+           LONG_NAME          = 'Organic Carbon Dry Deposition',&
+           UNITS              = 'kg m-2 s-1'                   ,&
+           SHORT_NAME         = 'OCDP'                         ,&
+           DIMS               = MAPL_DimsTileOnly              ,&
+           UNGRIDDED_DIMS     = (/NUM_OCDP/)                   ,&
+           VLOCATION          = MAPL_VLocationNone             ,&
+           RESTART            = MAPL_RestartSkip               ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
      
-        call MAPL_AddImportSpec(GC,                               &
-             LONG_NAME          = 'Organic Carbon Wet Deposition',&
-             UNITS              = 'kg m-2 s-1'                   ,&
-             SHORT_NAME         = 'OCWT'                         ,&
-             DIMS               = MAPL_DimsTileOnly              ,&
-             UNGRIDDED_DIMS     = (/NUM_OCWT/)                   ,&
-             VLOCATION          = MAPL_VLocationNone             ,&
-             RESTART            = MAPL_RestartSkip               ,&
-             RC=STATUS  ) 
-        VERIFY_(STATUS)
+      call MAPL_AddImportSpec(GC,                               &
+           LONG_NAME          = 'Organic Carbon Wet Deposition',&
+           UNITS              = 'kg m-2 s-1'                   ,&
+           SHORT_NAME         = 'OCWT'                         ,&
+           DIMS               = MAPL_DimsTileOnly              ,&
+           UNGRIDDED_DIMS     = (/NUM_OCWT/)                   ,&
+           VLOCATION          = MAPL_VLocationNone             ,&
+           RESTART            = MAPL_RestartSkip               ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+   
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
+           UNITS              = 'W m-2'                      ,&
+           SHORT_NAME         = 'FSWBAND'                    ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
      
-        call MAPL_AddImportSpec(GC,                             &
-             LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
-             UNITS              = 'W m-2'                      ,&
-             SHORT_NAME         = 'FSWBAND'                    ,&
-             DIMS               = MAPL_DimsTileOnly            ,&
-             UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
-             VLOCATION          = MAPL_VLocationNone           ,&
-             RESTART            = MAPL_RestartSkip             ,&
-             RC=STATUS  ) 
-        VERIFY_(STATUS)
-     
-        call MAPL_AddImportSpec(GC,                             &
-             LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
-             UNITS              = 'W m-2'                      ,&
-             SHORT_NAME         = 'FSWBANDNA'                  ,&
-             DIMS               = MAPL_DimsTileOnly            ,&
-             UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
-             VLOCATION          = MAPL_VLocationNone           ,&
-             RESTART            = MAPL_RestartSkip             ,&
-             RC=STATUS  ) 
-        VERIFY_(STATUS)
-      end if
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
+           UNITS              = 'W m-2'                      ,&
+           SHORT_NAME         = 'FSWBANDNA'                  ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
 
 !     if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
         ! Ocean to OceanBio
@@ -2179,7 +2178,7 @@ contains
        call MAPL_GetPointer(GEX(OCEAN ), VWBO ,  'VWB'    , alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
     end if
-    
+
     if (DO_CICE_THERMO == 0) then  
        call MAPL_GetPointer(GEX(SEAICE), FRO  ,  'FRACICE', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
@@ -2215,6 +2214,7 @@ contains
           CHLD = (/OBIO,ORAD,SEAICEd,SEAICE,OCEAN/)
           DO N=1, size(CHLD)
              ID = CHLD(N)
+             if (ID <= 0) cycle
              call ESMF_GridCompRun( GCS(ID), importState=GIM(ID), &
                   exportState=GEX(ID), clock=CLOCK, phase=1, userRC=STATUS )
              VERIFY_(STATUS)
@@ -2230,6 +2230,7 @@ contains
           CHLD = (/OBIO,ORAD,SEAICEd,OCEAN/)
           DO N=1, size(CHLD)
              ID = CHLD(N)
+             if (ID <= 0) cycle
              if (ID /= OCEAN) then
                 phase_ = 1
              else
