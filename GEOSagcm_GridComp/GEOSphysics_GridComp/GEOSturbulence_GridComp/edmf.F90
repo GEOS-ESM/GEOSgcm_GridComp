@@ -43,7 +43,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   integer, intent(in)                     :: IM, JM, LM, numup, discrete_type, implicit_flag, &
                                              stochastic_flag, plume_type, ET, kbotp, test_flag, debug_flag
   integer, dimension(IM,JM), intent(in)   :: iras, jras
-  real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zl, exf, rho, plo
+  real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zl, exf, rho
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe, ui, vi, thli, qti, qvi, qli, qii, thvi
   real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, L0
   real, dimension(IM,JM), intent(inout)   :: zpbl
