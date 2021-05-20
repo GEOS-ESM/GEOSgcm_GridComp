@@ -1218,8 +1218,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:,:)   :: DFDTSC
    real, pointer, dimension(:,:,:)   :: DFDTSCNA
 
-   real, pointer, dimension(:,:  )   :: OLRB06RG_INT, OLRB09RG_INT, OLRB10RG_INT, OLRB11RG_INT
-   real, pointer, dimension(:,:  )   :: DOLRB06RG_DT, DOLRB09RG_DT, DOLRB10RG_DT, DOLRB11RG_DT
+   real, pointer, dimension(:,:  ) :: &
+      OLRB06RG_INT, OLRB09RG_INT, OLRB10RG_INT, OLRB11RG_INT, &
+      DOLRB06RG_DTS, DOLRB09RG_DTS, DOLRB10RG_DTS, DOLRB11RG_DTS
 
    real, external :: getco2
 
@@ -1335,14 +1336,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(INTERNAL, DFDTSNA,   'DFDTSNA', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL, DFDTSCNA,  'DFDTSCNA',RC=STATUS); VERIFY_(STATUS)
 
-   call MAPL_GetPointer(INTERNAL, OLRB06RG_INT, 'OLRB06RG'   , __RC__)
-   call MAPL_GetPointer(INTERNAL, DOLRB06RG_DT, 'DOLRB06RGDT', __RC__)
-   call MAPL_GetPointer(INTERNAL, OLRB09RG_INT, 'OLRB09RG'   , __RC__)
-   call MAPL_GetPointer(INTERNAL, DOLRB09RG_DT, 'DOLRB09RGDT', __RC__)
-   call MAPL_GetPointer(INTERNAL, OLRB10RG_INT, 'OLRB10RG'   , __RC__)
-   call MAPL_GetPointer(INTERNAL, DOLRB10RG_DT, 'DOLRB10RGDT', __RC__)
-   call MAPL_GetPointer(INTERNAL, OLRB11RG_INT, 'OLRB11RG'   , __RC__)
-   call MAPL_GetPointer(INTERNAL, DOLRB11RG_DT, 'DOLRB11RGDT', __RC__)
+   call MAPL_GetPointer(INTERNAL, OLRB06RG_INT,  'OLRB06RG'   , __RC__)
+   call MAPL_GetPointer(INTERNAL, DOLRB06RG_DTS, 'DOLRB06RGDT', __RC__)
+   call MAPL_GetPointer(INTERNAL, OLRB09RG_INT,  'OLRB09RG'   , __RC__)
+   call MAPL_GetPointer(INTERNAL, DOLRB09RG_DTS, 'DOLRB09RGDT', __RC__)
+   call MAPL_GetPointer(INTERNAL, OLRB10RG_INT,  'OLRB10RG'   , __RC__)
+   call MAPL_GetPointer(INTERNAL, DOLRB10RG_DTS, 'DOLRB10RGDT', __RC__)
+   call MAPL_GetPointer(INTERNAL, OLRB11RG_INT,  'OLRB11RG'   , __RC__)
+   call MAPL_GetPointer(INTERNAL, DOLRB11RG_DTS, 'DOLRB11RGDT', __RC__)
 
 ! Determine calling sequence
 !---------------------------
@@ -1541,13 +1542,13 @@ contains
    real,    allocatable, dimension(:,:)   :: PL_R, T_R,  Q_R, O2_R,  O3_R
    real,    allocatable, dimension(:,:)   :: CO2_R, CH4_R, N2O_R, CFC11_R, CFC12_R, CFC22_R, CCL4_R
    real,    allocatable, dimension(:)     :: TSFC
-   real,    allocatable, dimension(:,:)   :: UFLX, DFLX, UFLXC, DFLXC, DUFLX_DT, DUFLXC_DT
+   real,    allocatable, dimension(:,:)   :: UFLX, DFLX, UFLXC, DFLXC, DUFLX_DTS, DUFLXC_DTS
    integer, allocatable, dimension(:,:)   :: CLEARCOUNTS
    real,    allocatable, dimension(:)     :: ALAT
-   real,    allocatable, dimension(:)     :: OLRB06RG_1D, DOLRB06RG_DT_1D
-   real,    allocatable, dimension(:)     :: OLRB09RG_1D, DOLRB09RG_DT_1D
-   real,    allocatable, dimension(:)     :: OLRB10RG_1D, DOLRB10RG_DT_1D
-   real,    allocatable, dimension(:)     :: OLRB11RG_1D, DOLRB11RG_DT_1D
+   real,    allocatable, dimension(:)     :: OLRB06RG_1D, DOLRB06RG_DTS_1D
+   real,    allocatable, dimension(:)     :: OLRB09RG_1D, DOLRB09RG_DTS_1D
+   real,    allocatable, dimension(:)     :: OLRB10RG_1D, DOLRB10RG_DTS_1D
+   real,    allocatable, dimension(:)     :: OLRB11RG_1D, DOLRB11RG_DTS_1D
 
    ! pmn: should we update these?
    real, parameter :: O2   = 0.2090029E+00 ! preexisting
@@ -3277,7 +3278,7 @@ contains
 
       ! reversed profiles for RRTMG (1=bottom layer)
       ! note 0:LM indexing for [PT]LEV_R
-      ! but 1:LM+1 for [UD]FLX[C] and DUFLX[C]_DT
+      ! but 1:LM+1 for [UD]FLX[C] and DUFLX[C]_DTS
       allocate(FCLD_R(IM*JM,LM),__STAT__)
       allocate(TLEV_R(IM*JM,0:LM),__STAT__)
       allocate(PLE_R(IM*JM,0:LM),__STAT__)
@@ -3305,18 +3306,18 @@ contains
       allocate(DFLX(IM*JM,LM+1),__STAT__)
       allocate(UFLXC(IM*JM,LM+1),__STAT__)
       allocate(DFLXC(IM*JM,LM+1),__STAT__)
-      allocate(DUFLX_DT(IM*JM,LM+1),__STAT__)
-      allocate(DUFLXC_DT(IM*JM,LM+1),__STAT__)
+      allocate(DUFLX_DTS(IM*JM,LM+1),__STAT__)
+      allocate(DUFLXC_DTS(IM*JM,LM+1),__STAT__)
       allocate(CLEARCOUNTS(IM*JM,4),__STAT__)
       allocate(ALAT(IM*JM),__STAT__)
       allocate(OLRB06RG_1D(IM*JM),__STAT__)
-      allocate(DOLRB06RG_DT_1D(IM*JM),__STAT__)
+      allocate(DOLRB06RG_DTS_1D(IM*JM),__STAT__)
       allocate(OLRB09RG_1D(IM*JM),__STAT__)
-      allocate(DOLRB09RG_DT_1D(IM*JM),__STAT__)
+      allocate(DOLRB09RG_DTS_1D(IM*JM),__STAT__)
       allocate(OLRB10RG_1D(IM*JM),__STAT__)
-      allocate(DOLRB10RG_DT_1D(IM*JM),__STAT__)
+      allocate(DOLRB10RG_DTS_1D(IM*JM),__STAT__)
       allocate(OLRB11RG_1D(IM*JM),__STAT__)
-      allocate(DOLRB11RG_DT_1D(IM*JM),__STAT__)
+      allocate(DOLRB11RG_DTS_1D(IM*JM),__STAT__)
 
       ! choices for cloud physical to optical conversion
       ICEFLGLW = 3
@@ -3465,9 +3466,9 @@ contains
               CFC11_R, CFC12_R, CFC22_R, CCL4_R, &
               FCLD_R, CICEWP, CLIQWP, REICE, RELIQ, ICEFLGLW, LIQFLGLW, &
               TAUAER, ZM_R, ALAT, DOY, LCLDLM, LCLDMH, CLEARCOUNTS, &
-              UFLX, DFLX, UFLXC, DFLXC, DUFLX_DT, DUFLXC_DT, &
-              OLRB06RG_1D, DOLRB06RG_DT_1D, OLRB09RG_1D, DOLRB09RG_DT_1D, &
-              OLRB10RG_1D, DOLRB10RG_DT_1D, OLRB11RG_1D, DOLRB11RG_DT_1D)
+              UFLX, DFLX, UFLXC, DFLXC, DUFLX_DTS, DUFLXC_DTS, &
+              OLRB06RG_1D, DOLRB06RG_DTS_1D, OLRB09RG_1D, DOLRB09RG_DTS_1D, &
+              OLRB10RG_1D, DOLRB10RG_DTS_1D, OLRB11RG_1D, DOLRB11RG_DTS_1D)
 
       call MAPL_TimerOff(MAPL,"---RRTMG_RUN",RC=STATUS)
       VERIFY_(STATUS)
@@ -3498,12 +3499,12 @@ contains
          ! upward negative in GEOS-5 convention
          do K = 0,LM
             LV = LM-K+1
-            FLXU_INT(I,J,K) =-UFLX     (IJ,LV)
-            FLXD_INT(I,J,K) = DFLX     (IJ,LV)
-            FLCU_INT(I,J,K) =-UFLXC    (IJ,LV)
-            FLCD_INT(I,J,K) = DFLXC    (IJ,LV)
-            DFDTS   (I,J,K) =-DUFLX_DT (IJ,LV)
-            DFDTSC  (I,J,K) =-DUFLXC_DT(IJ,LV)
+            FLXU_INT(I,J,K) =-UFLX      (IJ,LV)
+            FLXD_INT(I,J,K) = DFLX      (IJ,LV)
+            FLCU_INT(I,J,K) =-UFLXC     (IJ,LV)
+            FLCD_INT(I,J,K) = DFLXC     (IJ,LV)
+            DFDTS   (I,J,K) =-DUFLX_DTS (IJ,LV)
+            DFDTSC  (I,J,K) =-DUFLXC_DTS(IJ,LV)
          enddo
 
          ! Reflected LW is not counted in surface emitted. Also, for now,
@@ -3512,14 +3513,14 @@ contains
          SFCEM_INT(I,J) = -( UFLX(IJ,1) - DFLX(IJ,1)*(1.-EMIS(I,J)) )
 
          ! band 6 window and band 9-11 water vapor products
-         OLRB06RG_INT (I,J) = OLRB06RG_1D     (IJ)
-         DOLRB06RG_DT (I,J) = DOLRB06RG_DT_1D (IJ)
-         OLRB09RG_INT (I,J) = OLRB09RG_1D     (IJ)
-         DOLRB09RG_DT (I,J) = DOLRB09RG_DT_1D (IJ)
-         OLRB10RG_INT (I,J) = OLRB10RG_1D     (IJ)
-         DOLRB10RG_DT (I,J) = DOLRB10RG_DT_1D (IJ)
-         OLRB11RG_INT (I,J) = OLRB11RG_1D     (IJ)
-         DOLRB11RG_DT (I,J) = DOLRB11RG_DT_1D (IJ)
+         OLRB06RG_INT  (I,J) = OLRB06RG_1D      (IJ)
+         DOLRB06RG_DTS (I,J) = DOLRB06RG_DTS_1D (IJ)
+         OLRB09RG_INT  (I,J) = OLRB09RG_1D      (IJ)
+         DOLRB09RG_DTS (I,J) = DOLRB09RG_DTS_1D (IJ)
+         OLRB10RG_INT  (I,J) = OLRB10RG_1D      (IJ)
+         DOLRB10RG_DTS (I,J) = DOLRB10RG_DTS_1D (IJ)
+         OLRB11RG_INT  (I,J) = OLRB11RG_1D      (IJ)
+         DOLRB11RG_DTS (I,J) = DOLRB11RG_DTS_1D (IJ)
 
       enddo ! IM
       enddo ! JM
@@ -3560,18 +3561,18 @@ contains
       deallocate(DFLX,__STAT__)
       deallocate(UFLXC,__STAT__)
       deallocate(DFLXC,__STAT__)
-      deallocate(DUFLX_DT,__STAT__)
-      deallocate(DUFLXC_DT,__STAT__)
+      deallocate(DUFLX_DTS,__STAT__)
+      deallocate(DUFLXC_DTS,__STAT__)
       deallocate(CLEARCOUNTS,__STAT__)
       deallocate(ALAT,__STAT__)
       deallocate(OLRB06RG_1D,__STAT__)
-      deallocate(DOLRB06RG_DT_1D,__STAT__)
+      deallocate(DOLRB06RG_DTS_1D,__STAT__)
       deallocate(OLRB09RG_1D,__STAT__)
-      deallocate(DOLRB09RG_DT_1D,__STAT__)
+      deallocate(DOLRB09RG_DTS_1D,__STAT__)
       deallocate(OLRB10RG_1D,__STAT__)
-      deallocate(DOLRB10RG_DT_1D,__STAT__)
+      deallocate(DOLRB10RG_DTS_1D,__STAT__)
       deallocate(OLRB11RG_1D,__STAT__)
-      deallocate(DOLRB11RG_DT_1D,__STAT__)
+      deallocate(DOLRB11RG_DTS_1D,__STAT__)
 
       call MAPL_TimerOff(MAPL,"--RRTMG",RC=STATUS)
       VERIFY_(STATUS)
@@ -3989,7 +3990,7 @@ contains
 
        if(associated(OLRB06RG).or.associated(TBRB06RG)) then
          allocate(OLRBNN(IM,JM),__STAT__)
-         OLRBNN = OLRB06RG_INT + DOLRB06RG_DT * DELT
+         OLRBNN = OLRB06RG_INT + DOLRB06RG_DTS * DELT
          if(associated(OLRB06RG)) OLRB06RG = OLRBNN
          if(associated(TBRB06RG)) then
            ! brightness temperature for RRTMG band 06
@@ -4001,7 +4002,7 @@ contains
 
        if(associated(OLRB09RG).or.associated(TBRB09RG)) then
          allocate(OLRBNN(IM,JM),__STAT__)
-         OLRBNN = OLRB09RG_INT + DOLRB09RG_DT * DELT
+         OLRBNN = OLRB09RG_INT + DOLRB09RG_DTS * DELT
          if(associated(OLRB09RG)) OLRB09RG = OLRBNN
          if(associated(TBRB09RG)) then
            ! brightness temperature for RRTMG band 09
@@ -4013,7 +4014,7 @@ contains
 
        if(associated(OLRB10RG).or.associated(TBRB10RG)) then
          allocate(OLRBNN(IM,JM),__STAT__)
-         OLRBNN = OLRB10RG_INT + DOLRB10RG_DT * DELT
+         OLRBNN = OLRB10RG_INT + DOLRB10RG_DTS * DELT
          if(associated(OLRB10RG)) OLRB10RG = OLRBNN
          if(associated(TBRB10RG)) then
            ! brightness temperature for RRTMG band 10
@@ -4025,7 +4026,7 @@ contains
 
        if(associated(OLRB11RG).or.associated(TBRB11RG)) then
          allocate(OLRBNN(IM,JM),__STAT__)
-         OLRBNN = OLRB11RG_INT + DOLRB11RG_DT * DELT
+         OLRBNN = OLRB11RG_INT + DOLRB11RG_DTS * DELT
          if(associated(OLRB11RG)) OLRB11RG = OLRBNN
          if(associated(TBRB11RG)) then
            ! brightness temperature for RRTMG band 11

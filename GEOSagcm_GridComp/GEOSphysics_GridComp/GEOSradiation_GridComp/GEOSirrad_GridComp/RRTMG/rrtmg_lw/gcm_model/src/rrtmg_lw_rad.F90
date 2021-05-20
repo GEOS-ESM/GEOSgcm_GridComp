@@ -21,9 +21,9 @@ contains
       cfc11vmr, cfc12vmr, cfc22vmr, ccl4vmr, &
       cldf, ciwp, clwp, rei, rel, iceflglw, liqflglw, &
       tauaer, zm, alat, dyofyr, cloudLM, cloudMH, clearCounts, &
-      uflx, dflx, uflxc, dflxc, duflx_dt, duflxc_dt, &
-      olrb06, dolrb06_dt, olrb09, dolrb09_dt, &
-      olrb10, dolrb10_dt, olrb11, dolrb11_dt)
+      uflx, dflx, uflxc, dflxc, duflx_dTs, duflxc_dTs, &
+      olrb06, dolrb06_dTs, olrb09, dolrb09_dTs, &
+      olrb10, dolrb10_dTs, olrb11, dolrb11_dTs)
    ! -----------------------------------------------------------------------------
    !
    ! This program is the driver subroutine for RRTMG_LW, the AER LW radiation 
@@ -71,7 +71,8 @@ contains
    ! (2) Normal forward calculation with optional calculation of the change
    !     in upward flux as a function of surface temperature for clear sky
    !     and total sky flux. Flux partial derivatives are provided in arrays
-   !     duflx_dt and duflxc_dt for total and clear sky. (idrv=1)
+   !     duflx_dTs and duflxc_dTs for total and clear sky. (idrv=1)
+   ! NB: if idrv=0 DO NOT use any d_dTs, since values will be  undefined.
    !
    ! ------- Modifications -------
    !
@@ -117,7 +118,7 @@ contains
       integer, intent(in) :: psize  ! column partitioning size
 
       ! for requesting upwards flux derivatives wrt surface tempeerature
-      integer, intent(in) :: idrv   ! 0: normal, 1: adds duflx_dt and duflxc_dt
+      integer, intent(in) :: idrv   ! 0: normal, 1: adds d/dTs derivs
 
       ! column characterization
       real,    intent(in) :: play (ncol,nlay)    ! Layer pressures [hPa] 
@@ -190,14 +191,14 @@ contains
       real, intent(out) :: dflxc (ncol,nlay+1)  ! Clear sky LW downward flux [W/m2]
 
       ! change in upward longwave flux wrt surface temperature [W/m2/K]
-      real, intent(out) :: duflx_dt  (ncol,nlay+1)  ! total sky
-      real, intent(out) :: duflxc_dt (ncol,nlay+1)  ! clear sky
+      real, intent(out) :: duflx_dTs  (ncol,nlay+1)  ! total sky
+      real, intent(out) :: duflxc_dTs (ncol,nlay+1)  ! clear sky
 
       ! OLR for bands 9-11 and temperature derivatives [W/m2, W/m2/K]
-      real, intent(out), dimension(ncol) :: olrb06, dolrb06_dt
-      real, intent(out), dimension(ncol) :: olrb09, dolrb09_dt
-      real, intent(out), dimension(ncol) :: olrb10, dolrb10_dt
-      real, intent(out), dimension(ncol) :: olrb11, dolrb11_dt
+      real, intent(out), dimension(ncol) :: olrb06, dolrb06_dTs
+      real, intent(out), dimension(ncol) :: olrb09, dolrb09_dTs
+      real, intent(out), dimension(ncol) :: olrb10, dolrb10_dTs
+      real, intent(out), dimension(ncol) :: olrb11, dolrb11_dTs
 
       ! ----- Locals -----
       integer :: n, nparts
@@ -339,9 +340,9 @@ contains
             cfc11vmr, cfc12vmr, cfc22vmr, ccl4vmr, &
             cldf, ciwp, clwp, rei, rel, iceflglw, liqflglw, &
             tauaer, zm, alat, dyofyr, cloudLM, cloudMH, clearCounts, &
-            uflx, dflx, uflxc, dflxc, duflx_dt, duflxc_dt, &
-            olrb06, dolrb06_dt, olrb09, dolrb09_dt, &
-            olrb10, dolrb10_dt, olrb11, dolrb11_dt)
+            uflx, dflx, uflxc, dflxc, duflx_dTs, duflxc_dTs, &
+            olrb06, dolrb06_dTs, olrb09, dolrb09_dTs, &
+            olrb10, dolrb10_dTs, olrb11, dolrb11_dTs)
 
       end do
 
@@ -359,13 +360,13 @@ contains
       cfc11vmr, cfc12vmr, cfc22vmr, ccl4vmr, &
       cldf, ciwp, clwp, rei, rel, iceflglw, liqflglw, &
       tauaer, zm, alat, dyofyr, cloudLM, cloudMH, clearCounts, &
-      uflx, dflx, uflxc, dflxc, duflx_dt, duflxc_dt, &
-      olrb06, dolrb06_dt, olrb09, dolrb09_dt, &
-      olrb10, dolrb10_dt, olrb11, dolrb11_dt)
+      uflx, dflx, uflxc, dflxc, duflx_dTs, duflxc_dTs, &
+      olrb06, dolrb06_dTs, olrb09, dolrb09_dTs, &
+      olrb10, dolrb10_dTs, olrb11, dolrb11_dTs)
    ! ------------------------------------------------------------------
 
       use parrrtm, only : nbndlw, ngptlw
-      use rrlw_wvn, only: ngb
+! pmn: are these parameter or runtime constants?
       use cloud_subcol_gen, only: &
          generate_stochastic_clouds, clearCounts_threeBand
 
@@ -377,7 +378,7 @@ contains
       integer, intent(in) :: pncol     ! Number of columns in this partition
       integer, intent(in) :: colstart  ! Starting column of this partition
       integer, intent(in) :: nlay      ! Number of model layers
-      integer, intent(in) :: idrv      ! 0: normal, 1: adds duflx_dt and duflxc_dt
+      integer, intent(in) :: idrv      ! 0: normal, 1: adds d/dTs derivs
 
       ! column characterization
       real,    intent(in) :: play (ncol,nlay)    ! Layer pressures [hPa] 
@@ -435,14 +436,14 @@ contains
       real, intent(out) :: dflxc (ncol,nlay+1)  ! Clear sky LW downward flux [W/m2]
 
       ! change in upward longwave flux wrt surface temperature [W/m2/K]
-      real, intent(out) :: duflx_dt  (ncol,nlay+1)  ! total sky
-      real, intent(out) :: duflxc_dt (ncol,nlay+1)  ! clear sky
+      real, intent(out) :: duflx_dTs  (ncol,nlay+1)  ! total sky
+      real, intent(out) :: duflxc_dTs (ncol,nlay+1)  ! clear sky
 
       ! OLR for bands 9-11 and temperature derivatives [W/m2, W/m2/K]
-      real, intent(out), dimension(ncol) :: olrb06, dolrb06_dt
-      real, intent(out), dimension(ncol) :: olrb09, dolrb09_dt
-      real, intent(out), dimension(ncol) :: olrb10, dolrb10_dt
-      real, intent(out), dimension(ncol) :: olrb11, dolrb11_dt
+      real, intent(out), dimension(ncol) :: olrb06, dolrb06_dTs
+      real, intent(out), dimension(ncol) :: olrb09, dolrb09_dTs
+      real, intent(out), dimension(ncol) :: olrb10, dolrb10_dTs
+      real, intent(out), dimension(ncol) :: olrb11, dolrb11_dTs
 
       ! local partitioned variables ...
       ! ===============================
@@ -487,22 +488,22 @@ contains
       logical :: cloudy (nlay,pncol)
 
       ! spectrally summed fluxes and upward flux derivatives wrt Tsurf
-      real :: totuflux     (0:nlay,pncol)  ! upward longwave flux (W/m2)
-      real :: totdflux     (0:nlay,pncol)  ! downward longwave flux (W/m2)
-      real :: totuclfl     (0:nlay,pncol)  ! clrsky upward lw flux (W/m2)
-      real :: totdclfl     (0:nlay,pncol)  ! clrsky downward lw flux (W/m2)
-      real :: dtotuflux_dt (0:nlay,pncol)  ! d/d(Tsurf) (W/m2/K)
-      real :: dtotuclfl_dt (0:nlay,pncol)  ! d/d(Tsurf) (W/m2/K)
+      real :: totuflux      (0:nlay,pncol)  ! upward longwave flux [W/m2]
+      real :: totdflux      (0:nlay,pncol)  ! downward longwave flux [W/m2]
+      real :: totuclfl      (0:nlay,pncol)  ! clrsky upward lw flux [W/m2]
+      real :: totdclfl      (0:nlay,pncol)  ! clrsky downward lw flux [W/m2]
+      real :: dtotuflux_dTs (0:nlay,pncol)  ! d/d(Tsurf) [W/m2/K]
+      real :: dtotuclfl_dTs (0:nlay,pncol)  ! d/d(Tsurf) [W/m2/K]
 
       ! TOA OLR in bands 6 & 9-11 and their derivatives wrt Tsurf
-      real :: p_olrb06     (pncol)  ! (W/m2)
-      real :: p_olrb09     (pncol)  ! (W/m2)
-      real :: p_olrb10     (pncol)  ! (W/m2)
-      real :: p_olrb11     (pncol)  ! (W/m2)
-      real :: p_dolrb06_dt (pncol)  ! (W/m2/K)
-      real :: p_dolrb09_dt (pncol)  ! (W/m2/K)
-      real :: p_dolrb10_dt (pncol)  ! (W/m2/K)
-      real :: p_dolrb11_dt (pncol)  ! (W/m2/K)
+      real :: p_olrb06      (pncol)  ! [W/m2]
+      real :: p_olrb09      (pncol)  ! [W/m2]
+      real :: p_olrb10      (pncol)  ! [W/m2]
+      real :: p_olrb11      (pncol)  ! [W/m2]
+      real :: p_dolrb06_dTs (pncol)  ! [W/m2/K]
+      real :: p_dolrb09_dTs (pncol)  ! [W/m2/K]
+      real :: p_dolrb10_dTs (pncol)  ! [W/m2/K]
+      real :: p_dolrb11_dTs (pncol)  ! [W/m2/K]
 
       ! keep at one (handle to unused special treatment of band 16
       ! when it is set to 16 (see rrtmg_lw_setcoef() for details))
@@ -576,7 +577,6 @@ contains
       ! coefficients and indices needed to compute the optical depths
       ! by interpolating data from stored reference atmospheres. 
 
-! pmn: check use of idrv, no more optionals, etc.
       call setcoef (pncol, nlay, istart, idrv, &
          p_play, p_tlay, p_plev, p_tlev, p_tsfc, p_emis, &
          p_h2ovmr, p_o3vmr, p_co2vmr, p_ch4vmr, p_n2ovmr, p_o2vmr, p_covmr, &
@@ -585,17 +585,16 @@ contains
       ! Calculate the gaseous optical depths and Planck fractions for 
       ! each longwave spectral band. Also adds in aerosol optical depths.
 
-! pmn: remove ngb from taumol and rtrnmc
-      call taumol (pncol, nlay, ngb, p_play, p_tauaer, taug, pfracs)
+      call taumol (pncol, nlay, p_play, p_tauaer, taug, pfracs)
 
       ! Call the radiative transfer routine
 
-      call rtrnmc (pncol, nlay, idrv, ngb, &
+      call rtrnmc (pncol, nlay, idrv, &
          p_emis, taug, pfracs, cloudy, cldfmc, taucmc, &
          totuflux, totdflux, totuclfl, totdclfl, &
-         dtotuflux_dt, dtotuclfl_dt, &
+         dtotuflux_dTs, dtotuclfl_dTs, &
          p_olrb06, p_olrb09, p_olrb10, p_olrb11, &
-         p_dolrb06_dt, p_dolrb09_dt, p_dolrb10_dt, p_dolrb11_dt)
+         p_dolrb06_dTs, p_dolrb09_dTs, p_dolrb10_dTs, p_dolrb11_dTs)
 
       ! copy the partitioned fluxes back
       do ilev = 0,nlay
@@ -604,8 +603,8 @@ contains
          uflxc (colstart:(colstart+pncol-1),ilev+1) = totuclfl(ilev,:)
          dflxc (colstart:(colstart+pncol-1),ilev+1) = totdclfl(ilev,:)
          if (idrv == 1) then
-            duflx_dt (colstart:(colstart+pncol-1),ilev+1) = dtotuflux_dt(ilev,:)
-            duflxc_dt(colstart:(colstart+pncol-1),ilev+1) = dtotuclfl_dt(ilev,:)
+            duflx_dTs (colstart:(colstart+pncol-1),ilev+1) = dtotuflux_dTs(ilev,:)
+            duflxc_dTs(colstart:(colstart+pncol-1),ilev+1) = dtotuclfl_dTs(ilev,:)
          end if
       end do
       olrb06(colstart:(colstart+pncol-1)) = p_olrb06
@@ -613,10 +612,10 @@ contains
       olrb10(colstart:(colstart+pncol-1)) = p_olrb10
       olrb11(colstart:(colstart+pncol-1)) = p_olrb11
       if (idrv == 1) then
-         dolrb06_dt(colstart:(colstart+pncol-1)) = p_dolrb06_dt
-         dolrb09_dt(colstart:(colstart+pncol-1)) = p_dolrb09_dt
-         dolrb10_dt(colstart:(colstart+pncol-1)) = p_dolrb10_dt
-         dolrb11_dt(colstart:(colstart+pncol-1)) = p_dolrb11_dt
+         dolrb06_dTs(colstart:(colstart+pncol-1)) = p_dolrb06_dTs
+         dolrb09_dTs(colstart:(colstart+pncol-1)) = p_dolrb09_dTs
+         dolrb10_dTs(colstart:(colstart+pncol-1)) = p_dolrb10_dTs
+         dolrb11_dTs(colstart:(colstart+pncol-1)) = p_dolrb11_dTs
       end if
 
       ! free internal stae of setcoef

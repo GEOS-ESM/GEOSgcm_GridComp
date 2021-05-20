@@ -11,7 +11,7 @@ module rrtmg_lw_taumol
 !  --------------------------------------------------------------------------
 
    use parrrtm,  only : nbndlw, ngptlw
-   use rrlw_wvn, only : nspa, nspb
+   use rrlw_wvn, only : nspa, nspb, ngb
    use rrlw_con, only : oneminus
    use rrtmg_lw_setcoef
 
@@ -151,13 +151,12 @@ module rrtmg_lw_taumol
 
 contains
 
-   !-------------------------------------------------------------
-   subroutine taumol (ncol, nlay, ngb, pavel, taua, taug, pfracs)
-   !-------------------------------------------------------------
+   !--------------------------------------------------------
+   subroutine taumol (ncol, nlay, pavel, taua, taug, pfracs)
+   !--------------------------------------------------------
 
       integer, intent(in)  :: ncol                       ! number of columns
       integer, intent(in)  :: nlay                       ! number of layers
-      integer, intent(in)  :: ngb    (ngptlw)            ! band indicies for g-points
       real,    intent(in)  :: pavel  (nlay,ncol)         ! layer pressures [hPa]
       real,    intent(in)  :: taua   (nlay,nbndlw,ncol)  ! aerosol optical depths
       real,    intent(out) :: taug   (nlay,ngptlw,ncol)  ! gas optical depths
@@ -183,7 +182,7 @@ contains
       call taugb16 (ncol, nlay, taug, pfracs)
 
       ! add the aerosol optical depths to the gas optical depths
-      call addAerosols (ncol, nlay, ngptlw, nbndlw, ngb, taua, taug)
+      call addAerosols (ncol, nlay, taua, taug)
 
    end subroutine taumol
 
@@ -3114,12 +3113,11 @@ contains
    end subroutine taugb16
 
 
-   ! ------------------------------------------------------------------
-   subroutine addAerosols (ncol, nlay, ngptlw, nbndlw, ngb, taua, taug)
-   ! ------------------------------------------------------------------
+   ! ---------------------------------------------
+   subroutine addAerosols (ncol, nlay, taua, taug)
+   ! ---------------------------------------------
 
-      integer, intent(in)    :: ncol, nlay, ngptlw, nbndlw
-      integer, intent(in)    :: ngb(ngptlw)
+      integer, intent(in)    :: ncol, nlay
       real,    intent(in)    :: taua(nlay,nbndlw,ncol)
       real,    intent(inout) :: taug(nlay,ngptlw,ncol)
 
