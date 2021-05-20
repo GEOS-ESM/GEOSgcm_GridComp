@@ -731,7 +731,7 @@ contains
 
     Iam = "Run"
     call ESMF_GridCompGet( gc, NAME=comp_name,  CONFIG=CF, currentPhase=PHASE, __RC__ )
-    PHASE = PHASE - 10
+    if (PHASE >= 10) PHASE = PHASE - 10
     Iam = trim(comp_name) // Iam
 
 ! Get my internal MAPL_Generic state
@@ -806,13 +806,13 @@ contains
        call MAPL_GetPointer(GEX(ICEd), FId       , 'FRACICE'   , alloc=.TRUE., __RC__)
 
        ! copy to dataseaice imports as the ice nudging is done via dataseaice states 
-       TIO8d    = TIO8
-       FRO8d    = FRO8
-       VOLICEOd = VOLICEO
-       VOLSNOOd = VOLSNOO
-       TAUAGEOd = TAUAGEO
-       MPONDOd  = MPONDO
-       ERGICEOd = ERGICEO
+       !TIO8d    = TIO8
+       !FRO8d    = FRO8
+       !VOLICEOd = VOLICEO
+       !VOLSNOOd = VOLSNOO
+       !TAUAGEOd = TAUAGEO
+       !MPONDOd  = MPONDO
+       !ERGICEOd = ERGICEO
 
     end if
 
@@ -856,14 +856,14 @@ contains
 
        end if
 
-       TIO8    = TIO8d
-       FRO8    = FRO8d
-       VOLICEO = VOLICEOd
-       VOLSNOO = VOLSNOOd
-       TAUAGEO = TAUAGEOd
-       MPONDO  = MPONDOd
-       ERGICEO = ERGICEOd
-       ERGSNOO = ERGSNOOd
+       !TIO8    = TIO8d
+       !FRO8    = FRO8d
+       !VOLICEO = VOLICEOd
+       !VOLSNOO = VOLSNOOd
+       !TAUAGEO = TAUAGEOd
+       !MPONDO  = MPONDOd
+       !ERGICEO = ERGICEOd
+       !ERGSNOO = ERGSNOOd
 
     end if
 
@@ -976,8 +976,8 @@ contains
 
     Iam = "Run2"
     call ESMF_GridCompGet( gc, NAME=comp_name,  CONFIG=CF, currentPhase=PHASE, __RC__ )
-    PHASE = PHASE - 10
     Iam = trim(comp_name) // Iam
+    if (PHASE >= 10) PHASE = PHASE - 10
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------

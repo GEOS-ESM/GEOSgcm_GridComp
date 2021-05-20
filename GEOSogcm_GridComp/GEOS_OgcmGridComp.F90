@@ -1548,6 +1548,12 @@ contains
     real, pointer, dimension(:) :: SS_FOUND => null()
     real, pointer, dimension(:) :: FRZMLT   => null()
 
+    !real, pointer                           :: LONS     (:  ) => null()
+    !real, pointer                           :: LATS     (:  ) => null()
+    !real :: LONSD, LATSD
+    !real, parameter  :: rad_to_deg = 180.0/MAPL_PI
+    !integer                     :: L 
+
     real, allocatable, dimension(:) :: VARTILE
 
     integer                     :: N, K
@@ -1575,7 +1581,7 @@ contains
     Iam = 'Run'
     call ESMF_GridCompGet( GC, name=COMP_NAME, currentPhase=PHASE, RC=status)
     VERIFY_(STATUS)
-    PHASE = PHASE - 10   
+    if (PHASE >= 10) PHASE = PHASE - 10   
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
@@ -1595,6 +1601,8 @@ contains
 
     call MAPL_Get(MAPL,             &
          ExchangeGrid  = ExchGrid,  &
+    !     TILELONS  = LONS,          &
+    !     TILELATS  = LATS,          &
          GIM       = GIM,           & 
          GEX       = GEX,           &
          GCS       = GCS,           &
@@ -1937,6 +1945,23 @@ contains
     call MAPL_LocStreamTransform( ExchGrid, HIO    ,  HI    , RC=STATUS)
     VERIFY_(STATUS)
 
+    !   do k=1,size(LONS)
+    !       LATSD = LATS(k) *  rad_to_deg
+    !       LONSD = LONS(K) *  rad_to_deg
+    !       if((abs(LATSD-(-58.7553977966309)) < 1.e-3) .and. (abs(LONSD- 58.47026) < 1.e-3)) then
+    !          do n=1, NUM_ICE_CATEGORIES
+    !            print*, FR8(k,n), VOLICE(k,n), VOLSNO(k,N)
+    !            do l=1,NUM_ICE_LAYERS 
+    !               print*,  ERGICE (K,l,N)
+    !            enddo
+    !            do l=1,NUM_SNOW_LAYERS 
+    !               print*,  ERGSNO (K,l,N)
+    !            enddo
+    !          enddo     
+    !          print*, '====================================='
+    !       endif 
+    !   enddo   
+
     
     if (DO_CICE_THERMO == 0) then  
       call MAPL_LocStreamTransform( ExchGrid, TIO    ,  TI    , RC=STATUS)
@@ -2201,17 +2226,17 @@ contains
     if (dual_ocean) then
         if(PHASE==1) then
              ! phase 3 correponds to phase 1, i.e. corrector
-             call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(ID), &
-                  exportState=GEX(ID), clock=CLOCK, phase=3, userRC=STATUS )
+             call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(SEAICE), &
+                  exportState=GEX(SEAICE), clock=CLOCK, phase=3, userRC=STATUS )
              VERIFY_(STATUS)
-             call MAPL_GenericRunCouplers( MAPL, CHILD=ID, CLOCK=CLOCK, RC=STATUS )
+             call MAPL_GenericRunCouplers( MAPL, CHILD=SEAICE, CLOCK=CLOCK, RC=STATUS )
              VERIFY_(STATUS)
         else
              ! phase 4 correponds to phase 2, i.e. predictor
-             call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(ID), &
-                  exportState=GEX(ID), clock=CLOCK, phase=4, userRC=STATUS )
+             call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(SEAICE), &
+                  exportState=GEX(SEAICE), clock=CLOCK, phase=4, userRC=STATUS )
              VERIFY_(STATUS)
-             call MAPL_GenericRunCouplers( MAPL, CHILD=ID, CLOCK=CLOCK, RC=STATUS )
+             call MAPL_GenericRunCouplers( MAPL, CHILD=SEAICE, CLOCK=CLOCK, RC=STATUS )
              VERIFY_(STATUS)
         endif
     endif
@@ -2347,6 +2372,25 @@ contains
            !endif
           enddo
        enddo
+     
+       !do k=1,size(LONS)
+       !    LATSD = LATS(k) *  rad_to_deg
+       !    LONSD = LONS(K) *  rad_to_deg
+       !    if((abs(LATSD-(-58.7553977966309)) < 1.e-3) .and. (abs(LONSD- 58.47026) < 1.e-3)) then
+       !       print*, 'after update'
+       !       print*, 'Phase = ', PHASE
+       !       do n=1, NUM_ICE_CATEGORIES
+       !         print*, FR8(k,n), VOLICE(k,n), VOLSNO(k,N)
+       !         do l=1,NUM_ICE_LAYERS 
+       !            print*,  ERGICE (K,l,N)
+       !         enddo
+       !         do l=1,NUM_SNOW_LAYERS 
+       !            print*,  ERGSNO (K,l,N)
+       !         enddo
+       !       enddo     
+       !    endif 
+       !enddo   
+
        
        if(associated(TAUXIBOT)) then
           call MAPL_LocStreamTransform( ExchGrid, TAUXIBOT, TAUXIBOTO, RC=STATUS) 
