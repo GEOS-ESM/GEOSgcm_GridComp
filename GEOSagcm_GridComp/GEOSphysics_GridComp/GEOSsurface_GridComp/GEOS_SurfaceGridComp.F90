@@ -2691,7 +2691,7 @@ module GEOS_SurfaceGridCompMod
        RC=STATUS  ) 
      VERIFY_(STATUS)
 
-  IF(LSM_CHOICE==2) THEN     
+  IF(LSM_CHOICE > 1) THEN     
      call MAPL_AddExportSpec(GC                         ,&
           LONG_NAME          = 'CN_exposed_leaf-area_index',&
           UNITS              = '1'                         ,&
@@ -6134,7 +6134,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetPointer(EXPORT  , RMELTOC001 , 'RMELTOC001',  RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT  , RMELTOC002 , 'RMELTOC002',  RC=STATUS); VERIFY_(STATUS)
 
-    IF(LSM_CHOICE==2) THEN
+    IF(LSM_CHOICE > 1) THEN
        call MAPL_GetPointer(EXPORT  , CNLAI   , 'CNLAI'  ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNTLAI  , 'CNTLAI' ,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT  , CNSAI   , 'CNSAI'  ,  RC=STATUS); VERIFY_(STATUS)
@@ -6705,7 +6705,7 @@ module GEOS_SurfaceGridCompMod
     call MKTILE(RMELTOC001 ,RMELTOC001TILE ,NT,RC=STATUS); VERIFY_(STATUS)
     call MKTILE(RMELTOC002 ,RMELTOC002TILE ,NT,RC=STATUS); VERIFY_(STATUS)
     
-    IF (LSM_CHOICE ==2) THEN
+    IF (LSM_CHOICE > 1) THEN
        call MKTILE(CNLAI   ,CNLAITILE   ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNTLAI  ,CNTLAITILE  ,NT,RC=STATUS); VERIFY_(STATUS)
        call MKTILE(CNSAI   ,CNSAITILE   ,NT,RC=STATUS); VERIFY_(STATUS)
@@ -8398,7 +8398,7 @@ module GEOS_SurfaceGridCompMod
       call MAPL_GetPointer(GEX(type), dum, 'RMELTOC002' , ALLOC=associated(RMELTOC002TILE ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
 
-      IF (LSM_CHOICE ==2) THEN
+      IF (LSM_CHOICE > 1) THEN
          call MAPL_GetPointer(GEX(type), dum, 'CNLAI'   , ALLOC=associated(CNLAITILE   ), notFoundOK=.true., RC=STATUS)
          VERIFY_(STATUS)
          call MAPL_GetPointer(GEX(type), dum, 'CNTLAI'  , ALLOC=associated(CNTLAITILE  ), notFoundOK=.true., RC=STATUS)
