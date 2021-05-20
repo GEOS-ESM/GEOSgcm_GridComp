@@ -9583,8 +9583,8 @@ contains
        total_water = max(0.0, Q1 + QLLS + QILS )
 
        ! define resolved gradients on edges 
-       do k=1,LM-1
-          if (DO_MYNN == 0) then
+       do k = 1,LM-1
+          if ( DO_MYNN == 0 ) then
              wrk1 = 1.0 / (ZLO(:,:,k)-ZLO(:,:,k+1)) 
              wrk3 = KH(:,:,k) * wrk1
 
@@ -9650,30 +9650,20 @@ contains
                              + edmf_wqt(:,:,k)
              whlsec(:,:,k) = ( 1.0 -edmf_frc(:,:,k) )*0.5*( whl_sec(:,:,kd) + whl_sec(:,:,ku) )&
                              + edmf_whl(:,:,k)
-          else
-             if ( EDMF_CONSISTENT_TYPE /= 1 ) then
-                w3var(:,:,k)    = 0. ! unused for this option 
-                w2var(:,:,k)    = 0. ! unused for this option 
-                hlsec(:,:,k)    = max( 0., 0.5*( hl2_sec(:,:,kd) + hl2_sec(:,:,ku) ) )
-                qtsec(:,:,k)    = max( 0., 0.5*( qt2_sec(:,:,kd) + qt2_sec(:,:,ku) ) )
-                hlqtsec(:,:,k)  = 0.5*( hlqt_sec(:,:,kd) + hlqt_sec(:,:,ku) )
-                wqtsec(:,:,k)   = 0.5*( wqt_sec(:,:,kd) + wqt_sec(:,:,ku) )
-                whlsec(:,:,k)   = 0.5*( whl_sec(:,:,kd) + whl_sec(:,:,ku) )
-             else ! for "naive" consistent partitioning
-                w3var(:,:,k)    = 0. ! unused for this option 
-                w2var(:,:,k)    = 0. ! unused for this option 
-                hlsec(:,:,k)    = max( 0., 0.5*( hl2_sec(:,:,kd) + hl2_sec(:,:,ku) ) + edmf_hl2(:,:,k) )
-                qtsec(:,:,k)    = max( 0., 0.5*( qt2_sec(:,:,kd) + qt2_sec(:,:,ku) ) + edmf_qt2(:,:,k) )
-                hlqtsec(:,:,k)  = 0.5*( hlqt_sec(:,:,kd) + hlqt_sec(:,:,ku) ) + edmf_hlqt(:,:,k) 
-                wqtsec(:,:,k)   = 0.5*( wqt_sec(:,:,kd) + wqt_sec(:,:,ku) )   + edmf_wqt(:,:,k)
-                whlsec(:,:,k)   = 0.5*( whl_sec(:,:,kd) + whl_sec(:,:,ku) )   + edmf_whl(:,:,k)
-             end if
-          end if
 
-          ! Restrict QT variance, 5-20% of qstar.
-          qtsec(:,:,k) = min(qtsec(:,:,k),(0.2*QSS(:,:,k))**2)
-!          qtsec(k) = max(min(qtsec(:,:,k),(0.2*QSS(:,:,k))**2),(0.05*QSS(:,:,k))**2)
-          hlsec(:,:,k) = min(hlsec(:,:,k),4.0) 
+             ! Restrict QT variance, 5-20% of qstar.
+             qtsec(:,:,k) = min(qtsec(:,:,k),(0.2*QSS(:,:,k))**2)
+   !          qtsec(k) = max(min(qtsec(:,:,k),(0.2*QSS(:,:,k))**2),(0.05*QSS(:,:,k))**2)
+             hlsec(:,:,k) = min(hlsec(:,:,k),4.0) 
+          else
+             w3var(:,:,k)   = 0. ! unused for this option 
+             w2var(:,:,k)   = 0. ! unused for this option 
+             hlsec(:,:,k)   = max( 0., 0.5*( hl2_sec(:,:,kd) + hl2_sec(:,:,ku) ) )
+             qtsec(:,:,k)   = max( 0., 0.5*( qt2_sec(:,:,kd) + qt2_sec(:,:,ku) ) )
+             hlqtsec(:,:,k) = 0.5*( hlqt_sec(:,:,kd) + hlqt_sec(:,:,ku) )
+             wqtsec(:,:,k)  = 0.5*( wqt_sec(:,:,kd) + wqt_sec(:,:,ku) )
+             whlsec(:,:,k)  = 0.5*( whl_sec(:,:,kd) + whl_sec(:,:,ku) )
+          end if
 
           ! Ensure realizibility 
           hlqtsec(:,:,k) = sign( min( abs(hlqtsec(:,:,k)), sqrt(hlsec(:,:,k)*qtsec(:,:,k)) ), hlqtsec(:,:,k) )
