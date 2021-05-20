@@ -1269,7 +1269,7 @@ subroutine SetServices ( GC, RC )
     SHORT_NAME         = 'TSURF'                     ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
-    RESTART            = MAPL_RestartRequired        ,&
+    RESTART            = RESTART                     ,&
                                            RC=STATUS  ) 
   VERIFY_(STATUS)
 
@@ -1955,7 +1955,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_1' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP1'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1964,7 +1964,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_2' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP2'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1973,7 +1973,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_3' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP3'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1982,7 +1982,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_4' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP4'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -1991,7 +1991,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_5' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP5'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -2000,7 +2000,7 @@ subroutine SetServices ( GC, RC )
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_6' ,&
-    UNITS              = 'C'                         ,&
+    UNITS              = 'K'                         ,&  ! units now K, rreichle & borescan, 6 Nov 2020
     SHORT_NAME         = 'TP6'                       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -3457,11 +3457,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
       if(associated( TH)) TH      = TH  + CH(:,N)*TC(:,N)*FR(:,N)
       if(associated( QH)) QH      = QH  + CQ(:,N)*QC(:,N)*FR(:,N)
       if(associated(Z0H)) Z0H     = Z0H + ZT             *FR(:,N)
-      if(associated(GST)) GST     = GST + WW(:,N)        *FR(:,N)
       if(associated(VNT)) VNT     = VNT + UUU            *FR(:,N)
 
       WW(:,N) = max(CH(:,N)*(TC(:,N)-TA-(MAPL_GRAV/MAPL_CP)*DZE)/TA + MAPL_VIREPS*CQ(:,N)*(QC(:,N)-QA),0.0)
       WW(:,N) = (HPBL*MAPL_GRAV*WW(:,N))**(2./3.)
+      if(associated(GST)) GST     = GST + WW(:,N)        *FR(:,N)
 
    end do SUBTILES
 
@@ -5449,7 +5449,20 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
              RCONSTIT=RCONSTIT, RMELT=RMELT, TOTDEPOS=TOTDEPOS, LHACC=LHACC)
 
         end if
+        
+        ! Change units of TP1, TP2, .., TP6 export variables from Celsius to Kelvin.
+        ! This used to be done at the level the Surface GridComp.
+        ! With this change, gridded TSOIL[x] exports from Surface and tile-space TP[x] exports
+        ! from Catch are now consistently in units of Kelvin.
+        ! - rreichle, borescan, 6 Nov 2020
 
+        TP1 = TP1 + MAPL_TICE
+        TP2 = TP2 + MAPL_TICE
+        TP3 = TP3 + MAPL_TICE
+        TP4 = TP4 + MAPL_TICE
+        TP5 = TP5 + MAPL_TICE
+        TP6 = TP6 + MAPL_TICE
+                
         call MAPL_TimerOff ( MAPL, "-CATCH" )
 
         if (OFFLINE_MODE /=0) then

@@ -12,9 +12,7 @@ module GEOS_OceanbiogeochemGridCompMod
 ! !USES:
   use ESMF
   use MAPL
-#ifdef USE_ODAS
-      use obio_iodas_iau_mod
-#endif
+
   implicit none
   private
 
@@ -308,7 +306,7 @@ module GEOS_OceanbiogeochemGridCompMod
     LONG_NAME  = 'fractional_cover_of_seaice',                &
     UNITS      = '1',                                         &
     DIMS       = MAPL_DimsHorzOnly,                           &
-    UNGRIDDED_DIMS = (/NUM_ICE_CATEGORIES/),                  &
+!    UNGRIDDED_DIMS = (/NUM_ICE_CATEGORIES/),                  &
     VLOCATION  = MAPL_VLocationNone,                          &
     RESTART    = MAPL_RestartSkip,                            &
     RC=STATUS  )
@@ -442,36 +440,6 @@ module GEOS_OceanbiogeochemGridCompMod
     RC=STATUS )
     VERIFY_(STATUS)
 
-#ifdef USE_ODAS
-    call MAPL_AddInternalSpec(GC,                             &
-    SHORT_NAME = 'CHLOROPHYLL',                               &
-    LONG_NAME  = 'chlorophyll_concentration',                 &
-    UNITS      = 'mg m-3',                                    &
-    DIMS       = MAPL_DimsHorzVert,                           &
-    VLOCATION  = MAPL_VLocationCenter,                        &
-    DEFAULT    = 0.2,                                         &
-    FRIENDLYTO = 'OANA',                                      &
-    RESTART    = MAPL_RestartSkip,                            & 
-    __RC__  )
-
-    call MAPL_AddExportSpec(GC,                               &
-    SHORT_NAME = 'OCEANCOLOR',                                &
-    LONG_NAME  = 'surface_chlorophyll_concentration',         &
-    UNITS      = 'mg m-3',                                    &
-    DIMS       = MAPL_DimsHorzOnly,                           &
-    VLOCATION  = MAPL_VLocationNone,                          &
-    __RC__  )
-
-    call MAPL_AddImportSpec(GC,                               &
-    SHORT_NAME = 'CHLOROPHYLLinc',                            &
-    LONG_NAME  = 'chlorophyll_concentration_increment',       &
-    UNITS      = 'mg m-3',                                    &
-    DIMS       = MAPL_DimsHorzVert,                           &
-    VLOCATION  = MAPL_VLocationCenter,                        &
-    RESTART    = MAPL_RestartSkip,                            &
-    __RC__  )
-#endif
-
 ! !INTERNAL STATE:
 
     call MAPL_AddInternalSpec(GC,                             &
@@ -482,6 +450,7 @@ module GEOS_OceanbiogeochemGridCompMod
     VLOCATION  = MAPL_VLocationCenter,                        &
     DEFAULT    = 5.0,                                         &
     FRIENDLYTO = 'OCEAN:OANA',                                     &
+add2export=.true., &
     RC=STATUS  )
     VERIFY_(STATUS)
 
@@ -906,9 +875,7 @@ module GEOS_OceanbiogeochemGridCompMod
                      RingInterval = RingInterval,  &
                      Sticky       = .FALSE.,       &
                      RC=STATUS  )
-#ifdef USE_ODAS
-    call set_chlorophyll(mapl);
-#endif
+                     
 ! Stop Total timer
 !-----------------
 
@@ -1004,7 +971,7 @@ real :: tq(50)
     real, pointer, dimension(:,:,:) :: S => null()
     real, pointer, dimension(:,:,:) :: TIRRQ => null()
     real, pointer, dimension(:,:,:) :: CDOMABSQ => null()
-    real, pointer, dimension(:,:,:) :: FRACICE => null()
+!    real, pointer, dimension(:,:,:) :: FRACICE => null()
     real, pointer, dimension(:,:)   :: FR => null()
     real, pointer, dimension(:,:,:)   :: DRY_DUST => null()
     real, pointer, dimension(:,:,:)   :: WET_DUST => null()
@@ -1159,7 +1126,9 @@ real :: tq(50)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, S,       'S',       RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FRACICE, 'FRACICE', RC=STATUS)
+!    call MAPL_GetPointer(IMPORT, FRACICE, 'FRACICE', RC=STATUS)
+!    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, FRICE, 'FRACICE', RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, FR, 'FROCEAN', RC=STATUS)
     VERIFY_(STATUS)
@@ -1300,8 +1269,12 @@ real :: tq(50)
 
 ! Get total seaice fraction
 !--------------------------
-    allocate(FRICE(IM,JM), __STAT__)
-    FRICE = SUM(FRACICE, DIM=3)
+!    allocate(FRICE(IM,JM), __STAT__)
+!    FRICE = SUM(FRACICE, DIM=3)
+
+!  FRACICE from Import state is already in 2d. These two lines of code must have been 
+!  before FRACICE was a 2d variable. EMS
+
 
 ! Allocate BIO and other variables
 !---------------------------------
@@ -1333,13 +1306,12 @@ tq=10.0
               + DRY_DUST(i,j,4)+WET_DUST(i,j,4)+SED_DUST(i,j,4)        &
               + DRY_DUST(i,j,5)+WET_DUST(i,j,5)+SED_DUST(i,j,5))
 !    Convert Fe from kg m-2 s-1 to nmol Fe m-2 s-1
-!       Fe = (1.0E12/MOLWGHT_FE)*Fedep
+       Fe = (1.0E12/MOLWGHT_FE)*Fedep
 !#ifdef DATAATM
 !!    For data atmosphere, use pre-calculated fractions and content
 !!    and use only the first fraction
 !      Fe = DRY_CLAY(i,j)/3600.0   ! convert from nmFe m-2 h-1 to s-1
 !#endif
-
 
 !
 !  There are mismatches between the ocean, land and atmosphere in GEOS-5
@@ -1362,7 +1334,6 @@ endif
 !if (discharg > 0.0)then
 !write(6,*)'i,j,discharg = ',i,j,discharg
 !endif
-
 
        BIO(:,1)   = NITRATE(i,j,:)
        BIO(:,2)   = AMMON(i,j,:)
@@ -1397,6 +1368,7 @@ endif
          call daysetbio( LM, State%rik, State%cchl, CCHLRATIO1,     &
                          AVGQ1, GCMAX, BIO, DH(i,j,:), RIKD, WSSC)
        endif
+
        call kloop ( LM, DT,        State%solFe,      State%remin,   &
                     State%rkn,     State%rks,        State%rkf,     &
                     State%cnratio, State%cfratio,    CCHLRATIO1,    &
@@ -1408,6 +1380,7 @@ endif
 !                    tq, CDOMABSQ(i,j,:),aco2, wspd, slp,            &
                     TIRRQ(i,j,:),CDOMABSQ(i,j,:), aco2, wspd, slp,  &
                     T(i,j,:)-MAPL_TICE, S(i,j,:), PCO, CFLX, PPZ)
+
 
 BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
        NITRATE(i,j,:)  = BIO(:,1)
@@ -1451,11 +1424,6 @@ BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
      enddo
     enddo
 
-#ifdef USE_ODAS
-    call apply_iau(import, mapl, mask = merge(tsource = 1.0, fsource = 0.0, mask = (dh /= mapl_undef)));
-    call set_chlorophyll(mapl);
-#endif
-    
     if ( associated(PCO2) ) &
       where ( DH(:,:,1) > 1.0E10 ) PCO2 = MAPL_UNDEF
     if ( associated(FCO2) ) &
@@ -1463,7 +1431,7 @@ BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
 
     deallocate(COSZ  )
     deallocate(SLR   )
-    deallocate(FRICE)
+!    deallocate(FRICE)
     deallocate(BIO   )
     deallocate(GCMAX ) ; deallocate(WSSC  ) ; deallocate(AVGQ1 )
     deallocate(CCHLRATIO1 )
@@ -1474,7 +1442,6 @@ BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
 
 !  All done
 !-----------
-
     call MAPL_TimerOff(MAPL,"RUN" )
     call MAPL_TimerOff(MAPL,"TOTAL")
 
@@ -1483,25 +1450,5 @@ BIO = max(BIO,0.0)    !reduce MOM4 propensity for negative values
   end subroutine RUN
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-#ifdef USE_ODAS
-    subroutine set_chlorophyll(mapl)
-
-      type(mapl_metacomp), intent(inout) :: mapl; 
-
-      character(len = 32) :: names(1:4) = ["DIATOM", "CHLORO", "CYANO", "COCCO"];
-      real, pointer :: v(:, :, :) => null(), w(:, :) => null();
-      integer :: i;
-
-        v => mapl_get3dptr(name = "CHLOROPHYLL", mapl = mapl); 
-        w => mapl_get2dptr(name = "OCEANCOLOR", mapl = mapl); 
-        v = 0.0;
-
-        do i = 1, size(array = names); v = v + mapl_get3dptr(name = names(i), mapl = mapl);  
-        enddo;
-        w = v(:, :, 1); 
-
-    end subroutine;    
-#endif
 
 end module GEOS_OceanbiogeochemGridCompMod

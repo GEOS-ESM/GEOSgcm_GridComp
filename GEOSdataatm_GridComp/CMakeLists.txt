@@ -8,7 +8,7 @@ set (srcs
 
 esma_add_library (${this}
    SRCS ${srcs}
-   DEPENDENCIES MAPL LANL_cice GEOS_Shared
+   DEPENDENCIES MAPL CICE4 GEOS_Shared
    INCLUDES ${INC_ESMF})
 
 target_compile_definitions (${this} PRIVATE USE_CICE USE_R8)

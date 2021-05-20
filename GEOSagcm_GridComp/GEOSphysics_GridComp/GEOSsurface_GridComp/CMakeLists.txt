@@ -22,5 +22,6 @@ else ()
 
 endif()
 
+esma_add_subdirectories(Utils)
 
 

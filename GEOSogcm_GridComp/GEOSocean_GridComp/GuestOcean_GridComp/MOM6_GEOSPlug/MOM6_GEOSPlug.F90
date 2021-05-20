@@ -903,11 +903,6 @@ contains
        AREA = real(Tmp2, kind=G5KIND)
     end if
 
-    if(associated(sea_lev)) then
-       call ocean_model_data_get(Ocean_State, Ocean, 'sea_lev', Tmp2, g_isc, g_jsc) ! includes inv baro in M
-       sea_lev = real(merge(tsource = Tmp2, fsource = real(MAPL_UNDEF), mask = (MASK(:, :) > 0.0)), kind=G5KIND)
-    end if
-
     deallocate(Tmp2)
 
 ! All Done
@@ -1185,8 +1180,8 @@ contains
 !---------------------------------------------------------------------------------------------
     Boundary%U_flux = 0.0;  Boundary%V_flux = 0.0 ! Initialize stress
 
-    Boundary%U_flux  (isc:iec,jsc:jec)= real( (U*cos_rot + V*sin_rot), kind=KIND(Boundary%p))
-    Boundary%V_flux  (isc:iec,jsc:jec)= real((-U*sin_rot + V*cos_rot), kind=KIND(Boundary%p))
+    Boundary%U_flux  (isc:iec,jsc:jec)= real( (U*cos_rot - V*sin_rot), kind=KIND(Boundary%p))
+    Boundary%V_flux  (isc:iec,jsc:jec)= real( (U*sin_rot + V*cos_rot), kind=KIND(Boundary%p))
 
 ! Set the time for MOM
 !---------------------
@@ -1578,3 +1573,12 @@ contains
 !====================================================================
 
 end module MOM6_GEOSPlugMod
+
+subroutine SetServices(gc, rc)
+   use ESMF
+   use MOM6_GEOSPlugMod, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc, rc=rc)
+end subroutine
+

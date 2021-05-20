@@ -11,7 +11,7 @@ esma_add_subdirectories(
 esma_add_library (${this}
   SRCS ${SRCS}
   DEPENDENCIES MAPL fms_r8 mom6
-# TYPE SHARED
+  TYPE SHARED
   )
 
 # Specs for r8 version

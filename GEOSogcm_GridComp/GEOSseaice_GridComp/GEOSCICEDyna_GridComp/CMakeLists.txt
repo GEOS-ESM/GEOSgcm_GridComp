@@ -2,7 +2,7 @@ esma_set_this ()
 
 esma_add_library (${this} 
    SRCS GEOS_CICEDynaGridComp.F90 
-   DEPENDENCIES MAPL LANL_cice
+   DEPENDENCIES MAPL CICE4
    INCLUDES ${INC_ESMF})
 
 target_compile_definitions(${this} PRIVATE DIAGOUT MODIFY_TOPOGRAPHY USE_R8)

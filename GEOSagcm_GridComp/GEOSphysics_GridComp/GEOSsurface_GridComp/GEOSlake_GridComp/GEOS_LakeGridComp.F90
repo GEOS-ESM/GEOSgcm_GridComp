@@ -24,6 +24,14 @@ module GEOS_LakeGridCompMod
   integer, parameter :: WATER = 2
   integer, parameter :: NUM_SUBTILES = 2
 
+  type lake_state
+       integer:: CHOOSEMOSFC
+  end type lake_state
+
+  type lake_state_wrap
+      type(lake_state), pointer :: ptr
+  end type
+
 ! !PUBLIC MEMBER FUNCTIONS:
 
   public SetServices
@@ -69,8 +77,15 @@ module GEOS_LakeGridCompMod
     integer                                 :: STATUS
     character(len=ESMF_MAXSTR)              :: COMP_NAME
 
+    type(lake_state_wrap) :: wrap
+    type(lake_state), pointer :: mystate
+    character(len=ESMF_MAXSTR)     :: SURFRC
+    type(ESMF_Config)              :: SCF
+    type (MAPL_MetaComp), pointer   :: MAPL
+    type(ESMF_Config)              :: CF
 
 !=============================================================================
+               !_VERIFY(status)
 
 ! Begin...
 
@@ -831,6 +846,22 @@ module GEOS_LakeGridCompMod
 
 !EOS
 
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_Get(MAPL,cf=cf,RC=STATUS )
+    VERIFY_(STATUS)
+
+    allocate(mystate,stat=status)
+    VERIFY_(status)
+    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
+    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
+    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=mystate%CHOOSEMOSFC, DEFAULT=1, __RC__ )
+    call ESMF_ConfigDestroy      (SCF, __RC__)
+    wrap%ptr => mystate
+    call ESMF_UserCompSetInternalState(gc, 'lake_private', wrap,status)
+    VERIFY_(status)
 
 ! Set the Profiling timers
 ! ------------------------
@@ -983,8 +1014,8 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    integer                        :: CHOOSEMOSFC
    integer                        :: CHOOSEZ0
-   character(len=ESMF_MAXSTR)     :: SURFRC
-   type(ESMF_Config)              :: SCF 
+   type(lake_state_wrap) :: wrap
+   type(lake_state), pointer :: mystate
 
 !=============================================================================
 
@@ -1019,11 +1050,10 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Get parameters (0:Louis, 1:Monin-Obukhov)
 ! -----------------------------------------
-    call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
-    SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=CHOOSEMOSFC, DEFAULT=1, __RC__ ) 
-    call ESMF_ConfigDestroy      (SCF, __RC__)
+    call ESMF_UserCompGetInternalState(gc,'lake_private',wrap,status)
+    VERIFY_(status)
+    mystate => wrap%ptr
+    CHOOSEMOSFC = mystate%CHOOSEMOSFC
 
     call MAPL_GetResource ( MAPL, CHOOSEZ0, Label="CHOOSEZ0:", DEFAULT=3, RC=STATUS)
     VERIFY_(STATUS)

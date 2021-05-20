@@ -27,6 +27,7 @@ list( APPEND MOM6_SRCS
    src/core/MOM_continuity.F90
    src/core/MOM_continuity_PPM.F90
    src/core/MOM_CoriolisAdv.F90
+   src/core/MOM_density_integrals.F90
    src/core/MOM_dynamics_split_RK2.F90
    src/core/MOM_dynamics_unsplit.F90
    src/core/MOM_dynamics_unsplit_RK2.F90
@@ -36,21 +37,22 @@ list( APPEND MOM6_SRCS
    src/core/MOM_interface_heights.F90
    src/core/MOM_isopycnal_slopes.F90
    src/core/MOM_open_boundary.F90
-   src/core/MOM_PressureForce_analytic_FV.F90
    src/core/MOM_PressureForce.F90
+   src/core/MOM_PressureForce_FV.F90
    src/core/MOM_PressureForce_Montgomery.F90
    src/core/MOM_transcribe_grid.F90
    src/core/MOM_unit_tests.F90
    src/core/MOM_variables.F90
    src/core/MOM_verticalGrid.F90
-   src/diagnostics//MOM_debugging.F90
-   src/diagnostics//MOM_diagnostics.F90
-   src/diagnostics//MOM_obsolete_diagnostics.F90
-   src/diagnostics//MOM_obsolete_params.F90
-   src/diagnostics//MOM_PointAccel.F90
-   src/diagnostics//MOM_sum_output.F90
-   src/diagnostics//MOM_wave_speed.F90
-   src/diagnostics//MOM_wave_structure.F90
+   src/diagnostics/MOM_debugging.F90
+   src/diagnostics/MOM_diagnostics.F90
+   src/diagnostics/MOM_obsolete_diagnostics.F90
+   src/diagnostics/MOM_obsolete_params.F90
+   src/diagnostics/MOM_PointAccel.F90
+   src/diagnostics/MOM_spatial_means.F90
+   src/diagnostics/MOM_sum_output.F90
+   src/diagnostics/MOM_wave_speed.F90
+   src/diagnostics/MOM_wave_structure.F90
    src/equation_of_state/MOM_EOS.F90
    src/equation_of_state/MOM_EOS_linear.F90
    src/equation_of_state/MOM_EOS_NEMO.F90
@@ -92,31 +94,31 @@ list( APPEND MOM6_SRCS
    src/framework/MOM_array_transform.F90
    src/framework/MOM_checksums.F90
    src/framework/MOM_coms.F90
-   src/framework/MOM_constants.F90
+   src/framework/MOM_coupler_types.F90
    src/framework/MOM_cpu_clock.F90
-   src/framework/MOM_diag_manager_wrapper.F90
+   src/framework/MOM_data_override.F90
    src/framework/MOM_diag_mediator.F90
    src/framework/MOM_diag_remap.F90
    src/framework/MOM_diag_vkernels.F90
    src/framework/MOM_document.F90
    src/framework/MOM_domains.F90
    src/framework/MOM_dyn_horgrid.F90
+   src/framework/MOM_ensemble_manager.F90
    src/framework/MOM_error_handler.F90
    src/framework/MOM_file_parser.F90
    src/framework/MOM_get_input.F90
    src/framework/MOM_hor_index.F90
    src/framework/MOM_horizontal_regridding.F90
+   src/framework/MOM_interpolate.F90
    src/framework/MOM_intrinsic_functions.F90
    src/framework/MOM_io.F90
    src/framework/MOM_random.F90
    src/framework/MOM_restart.F90
    src/framework/MOM_safe_alloc.F90
-   src/framework/MOM_spatial_means.F90
    src/framework/MOM_string_functions.F90
-   src/framework/MOM_time_manager.F90
-   src/framework/MOM_transform_FMS.F90
    src/framework/MOM_unit_scaling.F90
    src/framework/MOM_write_cputime.F90
+   src/ice_shelf/MOM_ice_shelf_diag_mediator.F90
    src/ice_shelf/MOM_ice_shelf_dynamics.F90
    src/ice_shelf/MOM_ice_shelf.F90
    src/ice_shelf/MOM_ice_shelf_initialize.F90
@@ -236,7 +238,6 @@ list( APPEND MOM6_SRCS
    pkg/CVMix-src/src/shared/cvmix_shear.F90
    pkg/CVMix-src/src/shared/cvmix_tidal.F90
    pkg/CVMix-src/src/shared/cvmix_utils.F90
-   pkg/geoKdTree/kdtree.f90
    pkg/GSW-Fortran/modules/gsw_mod_baltic_data.f90
    pkg/GSW-Fortran/modules/gsw_mod_error_functions.f90
    pkg/GSW-Fortran/modules/gsw_mod_freezing_poly_coefficients.f90
@@ -429,14 +430,33 @@ list( APPEND MOM6_SRCS
    pkg/GSW-Fortran/toolbox/gsw_util_sort_real.f90
    pkg/GSW-Fortran/toolbox/gsw_util_xinterp1.f90
    pkg/GSW-Fortran/toolbox/gsw_z_from_p.f90
-   pkg/MOM6_DA_hooks/src/core/ocean_da_core.F90
-   pkg/MOM6_DA_hooks/src/core/ocean_da_types.F90
-   pkg/MOM6_DA_hooks/src/core/write_ocean_obs.F90
+#  choose FMS1 interface
+   config_src/infra/FMS1/MOM_coms_infra.F90
+   config_src/infra/FMS1/MOM_constants.F90
+   config_src/infra/FMS1/MOM_couplertype_infra.F90
+   config_src/infra/FMS1/MOM_cpu_clock_infra.F90
+   config_src/infra/FMS1/MOM_data_override_infra.F90
+   config_src/infra/FMS1/MOM_diag_manager_infra.F90
+   config_src/infra/FMS1/MOM_domain_infra.F90
+   config_src/infra/FMS1/MOM_ensemble_manager_infra.F90
+   config_src/infra/FMS1/MOM_error_infra.F90
+   config_src/infra/FMS1/MOM_interp_infra.F90
+   config_src/infra/FMS1/MOM_io_infra.F90
+   config_src/infra/FMS1/MOM_time_manager.F90
 )
 
 list( APPEND MOM6_SRCS
-   config_src/coupled_driver/MOM_surface_forcing_gfdl.F90
-   config_src/coupled_driver/ocean_model_MOM.F90
+   config_src/drivers/FMS_cap/MOM_surface_forcing_gfdl.F90
+   config_src/drivers/FMS_cap/ocean_model_MOM.F90
+   # oda
+   config_src/external/ODA_hooks/kdtree.f90
+   config_src/external/ODA_hooks/ocean_da_core.F90
+   config_src/external/ODA_hooks/ocean_da_types.F90
+   config_src/external/ODA_hooks/write_ocean_obs.F90
+   # tracer
+   config_src/external/GFDL_ocean_BGC/FMS_coupler_util.F90
+   config_src/external/GFDL_ocean_BGC/generic_tracer.F90
+   config_src/external/GFDL_ocean_BGC/generic_tracer_utils.F90
 )
 
 set (MOM6_path ${CMAKE_CURRENT_SOURCE_DIR}/../@mom6)
@@ -449,12 +469,22 @@ esma_add_library (${this}
   SRCS ${SRCS}
   DEPENDENCIES fms_r8
   INCLUDES
-  $<BUILD_INTERFACE:${MOM6_path}/config_src/dynamic> 
+  $<BUILD_INTERFACE:${MOM6_path}/config_src/memory/dynamic_nonsymmetric> 
+#  choose FMS1 interface
+  $<BUILD_INTERFACE:${MOM6_path}/config_src/infra/FMS1>
   $<BUILD_INTERFACE:${MOM6_path}/src/framework>
   TYPE SHARED
 )
 
 target_compile_definitions (${this} PRIVATE use_netCDF)
+
+# This 'resets' the Intel DEBUG flags for MOM6. The stock debug flags use
+# 'all,noarg_temp_created' which seem to be too aggressive for FMS/MOM6. This
+# moves them back to the 'bounds,uninit' GEOS used to build with.
+if (CMAKE_Fortran_COMPILER_ID MATCHES "Intel" AND CMAKE_BUILD_TYPE MATCHES Debug)
+   string(REPLACE "all,noarg_temp_created" "bounds,uninit" _tmp "${GEOS_Fortran_FLAGS_DEBUG}")
+   set (CMAKE_Fortran_FLAGS_DEBUG "${_tmp}")
+endif ()
 
 # Specs for r8 version
 string(REPLACE " " ";" tmp ${FREAL8})

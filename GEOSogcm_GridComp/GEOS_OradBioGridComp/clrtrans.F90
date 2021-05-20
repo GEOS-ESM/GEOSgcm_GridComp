@@ -179,6 +179,7 @@
       data b0,b1,b2,b3 /5.026,-0.01138,9.552E-6,-2.698E-9/
       data ifst /0/
 
+
       if (ifst .eq. 0)then
        rn = 1.341    !index of refraction of pure seawater
        roair = 1.2E3     !density of air g/m3
