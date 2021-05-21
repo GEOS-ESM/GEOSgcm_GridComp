@@ -219,10 +219,9 @@ contains
       !     upper - n2, p = 142.5490 mb, t = 215.70 K
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
          ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(1) + 1
          ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(1) + 1
@@ -252,7 +251,10 @@ contains
             pfracs(lay,ig,icol) = fracrefa(ig)
          enddo
 
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
          ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(1) + 1
          ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(1) + 1
@@ -276,9 +278,8 @@ contains
             pfracs(lay,ig,icol) = fracrefb(ig)
          enddo
 
-      endif
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb1
@@ -309,10 +310,9 @@ contains
       real :: pp, corradj, tauself, taufor
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
          ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(2) + 1
          ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(2) + 1
@@ -335,7 +335,10 @@ contains
             pfracs(lay,ngs1+ig,icol) = fracrefa(ig)
          enddo
 
-      else  ! Upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
          ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(2) + 1
          ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(2) + 1
@@ -353,9 +356,8 @@ contains
             pfracs(lay,ngs1+ig,icol) = fracrefb(ig)
          enddo
 
-      endif  ! lower/upper
-      
-      end do  ! layer
+      end do  ! upper layers
+
       end do  ! column
 
    end subroutine taugb2
@@ -427,10 +429,9 @@ contains
       refrat_m_b = refrat_planck_b
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
          speccomb = colh2o(lay,icol) + rat_h2oco2(lay,icol)*colco2(lay,icol)
          specparm = colh2o(lay,icol)/speccomb
@@ -604,7 +605,10 @@ contains
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
     
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
          speccomb = colh2o(lay,icol) + rat_h2oco2(lay,icol)*colco2(lay,icol)
          specparm = colh2o(lay,icol)/speccomb
@@ -684,9 +688,8 @@ contains
                (fracrefb(ig,jpl+1)-fracrefb(ig,jpl))
          enddo
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb3
@@ -733,10 +736,9 @@ contains
       refrat_planck_b = chi_mls(3,13)/chi_mls(2,13)
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
          speccomb = colh2o(lay,icol) + rat_h2oco2(lay,icol)*colco2(lay,icol)
          specparm = colh2o(lay,icol)/speccomb
@@ -886,7 +888,10 @@ contains
                  (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
     
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
          speccomb = colo3(lay,icol) + rat_o3co2(lay,icol)*colco2(lay,icol)
          specparm = colo3(lay,icol)/speccomb
@@ -948,9 +953,8 @@ contains
          taug(lay,ngs3+13,icol)=taug(lay,ngs3+13,icol)*0.88
          taug(lay,ngs3+14,icol)=taug(lay,ngs3+14,icol)*0.943
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb4
@@ -1006,12 +1010,10 @@ contains
       refrat_planck_b = chi_mls(3,43)/chi_mls(2,43)
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-!pmn: which better? loop or if
-      !do lay  = 1, laytrop(icol)
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
+
          speccomb = colh2o(lay,icol) + rat_h2oco2(lay,icol)*colco2(lay,icol)
          specparm = colh2o(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
@@ -1175,10 +1177,10 @@ contains
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
 
-      else  ! upper atmosphere
+      end do  ! lower layers
 
-!pmn: which better? loop or if
-      !do lay = laytrop(icol)+1, nlay
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
          speccomb = colo3(lay,icol) + rat_o3co2(lay,icol)*colco2(lay,icol)
          specparm = colo3(lay,icol)/speccomb
@@ -1230,9 +1232,8 @@ contains
                (fracrefb(ig,jpl+1)-fracrefb(ig,jpl))
          enddo
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb5
@@ -1266,10 +1267,9 @@ contains
       !     upper - cfc11, cfc12
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
 ! In atmospheres where the amount of CO2 is too great to be considered
 ! a minor species, adjust the column amount of CO2 by an empirical factor 
@@ -1308,7 +1308,10 @@ contains
             pfracs(lay,ngs5+ig,icol) = fracrefa(ig)
          enddo
 
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
          do ig = 1,ng6
             taug(lay,ngs5+ig,icol) = 0.0  &
@@ -1317,9 +1320,8 @@ contains
             pfracs(lay,ngs5+ig,icol) = fracrefa(ig)
          enddo
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb6
@@ -1373,10 +1375,9 @@ contains
       refrat_m_a = refrat_planck_a
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
          speccomb = colh2o(lay,icol) + rat_h2oo3(lay,icol)*colo3(lay,icol)
          specparm = colh2o(lay,icol)/speccomb
@@ -1552,7 +1553,10 @@ contains
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
 
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
 !  In atmospheres where the amount of CO2 is too great to be considered
 !  a minor species, adjust the column amount of CO2 by an empirical factor 
@@ -1592,9 +1596,8 @@ contains
          taug(lay,ngs6+10,icol)=taug(lay,ngs6+10,icol)*0.99 
          taug(lay,ngs6+11,icol)=taug(lay,ngs6+11,icol)*0.855 
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb7
@@ -1633,10 +1636,9 @@ contains
       !     upper - n2o, p = 8.716e-2 mb, t = 226.03 K
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
 !  In atmospheres where the amount of CO2 is too great to be considered
 !  a minor species, adjust the column amount of CO2 by an empirical factor 
@@ -1681,7 +1683,10 @@ contains
             pfracs(lay,ngs7+ig,icol) = fracrefa(ig)
          enddo
 
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
 !  In atmospheres where the amount of CO2 is too great to be considered
 !  a minor species, adjust the column amount of CO2 by an empirical factor 
@@ -1716,9 +1721,8 @@ contains
             pfracs(lay,ngs7+ig,icol) = fracrefb(ig)
          enddo
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb8
@@ -1772,10 +1776,9 @@ contains
       refrat_m_a = chi_mls(1,3)/chi_mls(6,3)
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
          speccomb = colh2o(lay,icol) + rat_h2och4(lay,icol)*colch4(lay,icol)
          specparm = colh2o(lay,icol)/speccomb
@@ -1951,7 +1954,10 @@ contains
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
 
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
 !  In atmospheres where the amount of N2O is too great to be considered
 !  a minor species, adjust the column amount of N2O by an empirical factor 
@@ -1981,9 +1987,8 @@ contains
             pfracs(lay,ngs8+ig,icol) = fracrefb(ig)
          enddo
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb9
@@ -2010,10 +2015,9 @@ contains
       real :: tauself, taufor
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
          ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(10) + 1
          ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(10) + 1
@@ -2034,8 +2038,11 @@ contains
             pfracs(lay,ngs9+ig,icol) = fracrefa(ig)
          enddo
 
-      else  ! upper atmosphere
-   
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
+
          ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(10) + 1
          ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(10) + 1
          indf = indfor(lay,icol)
@@ -2052,9 +2059,8 @@ contains
             pfracs(lay,ngs9+ig,icol) = fracrefb(ig)
          enddo
 
-      end if  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb10
@@ -2086,10 +2092,9 @@ contains
       !     upper - o2, p = 4.758820 mb, t = 250.85 K
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
          ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(11) + 1
          ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(11) + 1
@@ -2113,7 +2118,10 @@ contains
             pfracs(lay,ngs10+ig,icol) = fracrefa(ig)
          enddo
 
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
          ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(11) + 1
          ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(11) + 1
@@ -2134,9 +2142,8 @@ contains
             pfracs(lay,ngs10+ig,icol) = fracrefb(ig)
          enddo
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb11
@@ -2180,10 +2187,9 @@ contains
       refrat_planck_a = chi_mls(1,10)/chi_mls(2,10)
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
          speccomb = colh2o(lay,icol) + rat_h2oco2(lay,icol)*colco2(lay,icol)
          specparm = colh2o(lay,icol)/speccomb
@@ -2333,16 +2339,18 @@ contains
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
    
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
          do ig = 1,ng12
             taug(lay,ngs11+ig,icol) = 0.0 
             pfracs(lay,ngs11+ig,icol) = 0.0 
          enddo
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb12
@@ -2401,10 +2409,9 @@ contains
       refrat_m_a3 = chi_mls(1,3)/chi_mls(4,3)
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
          speccomb = colh2o(lay,icol) + rat_h2on2o(lay,icol)*coln2o(lay,icol)
          specparm = colh2o(lay,icol)/speccomb
@@ -2593,7 +2600,10 @@ contains
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
 
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
          indm = indminor(lay,icol)
          do ig = 1,ng13
@@ -2603,9 +2613,8 @@ contains
             pfracs(lay,ngs12+ig,icol) = fracrefb(ig)
          enddo
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb13
@@ -2632,10 +2641,9 @@ contains
       real :: tauself, taufor
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
          ind0 = ((jp(lay,icol)-1)*5+(jt(lay,icol)-1))*nspa(14) + 1
          ind1 = (jp(lay,icol)*5+(jt1(lay,icol)-1))*nspa(14) + 1
@@ -2655,7 +2663,10 @@ contains
             pfracs(lay,ngs13+ig,icol) = fracrefa(ig)
          enddo
 
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
          ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(14) + 1
          ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(14) + 1
@@ -2668,9 +2679,8 @@ contains
             pfracs(lay,ngs13+ig,icol) = fracrefb(ig)
          enddo
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb14
@@ -2720,10 +2730,9 @@ contains
       refrat_m_a = refrat_planck_a
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
 
          speccomb = coln2o(lay,icol) + rat_n2oco2(lay,icol)*colco2(lay,icol)
          specparm = coln2o(lay,icol)/speccomb
@@ -2887,16 +2896,18 @@ contains
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
     
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
          do ig = 1,ng15
             taug(lay,ngs14+ig,icol) = 0.0 
             pfracs(lay,ngs14+ig,icol) = 0.0 
          enddo
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb15
@@ -2940,10 +2951,10 @@ contains
       refrat_planck_a = chi_mls(1,6)/chi_mls(6,6)
 
       do icol = 1,ncol
-      do lay  = 1,nlay
 
       ! lower atmosphere
-      if (lay <= laytrop(icol)) then
+      do lay = 1,laytrop(icol)
+
          speccomb = colh2o(lay,icol) + rat_h2och4(lay,icol)*colch4(lay,icol)
          specparm = colh2o(lay,icol)/speccomb
          if (specparm .ge. oneminus) specparm = oneminus
@@ -3092,7 +3103,10 @@ contains
                (fracrefa(ig,jpl+1)-fracrefa(ig,jpl))
          enddo
 
-      else  ! upper atmosphere
+      end do  ! lower layers
+
+      ! upper atmosphere
+      do lay = laytrop(icol)+1, nlay
 
          ind0 = ((jp(lay,icol)-13)*5+(jt(lay,icol)-1))*nspb(16) + 1
          ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(16) + 1
@@ -3105,9 +3119,8 @@ contains
             pfracs(lay,ngs15+ig,icol) = fracrefb(ig)
          enddo
 
-      endif  ! lower/upper
+      end do  ! upper layers
 
-      end do  ! layer
       end do  ! column
 
    end subroutine taugb16
@@ -3121,15 +3134,12 @@ contains
       real,    intent(in)    :: taua(nlay,nbndlw,ncol)
       real,    intent(inout) :: taug(nlay,ngptlw,ncol)
 
-      integer :: icol, lay, ig
+      integer :: icol, lay, ig, ibnd
      
       do icol = 1,ncol
          do ig = 1,ngptlw
-            do lay = 1,nlay
-
-               taug(lay,ig,icol) = taug(lay,ig,icol) + taua(lay,ngb(ig),icol)
-
-            end do
+            ibnd = ngb(ig)
+            taug(:,ig,icol) = taug(:,ig,icol) + taua(:,ibnd,icol)
          end do
       end do
 

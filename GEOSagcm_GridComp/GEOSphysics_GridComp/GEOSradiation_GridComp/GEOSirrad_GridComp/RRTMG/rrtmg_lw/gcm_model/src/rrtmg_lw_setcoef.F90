@@ -15,6 +15,8 @@ module rrtmg_lw_setcoef
    use rrlw_con, only : grav, avogad
    use rrlw_ref
 
+   use iso_fortran_env, only : error_unit
+
    implicit none
 
    ! lower / upper atmosphere separator (see code)
@@ -90,6 +92,7 @@ contains
       real    :: dbdtlev, dbdtlay
       real    :: plog, fp, ft, ft1, water, scalefac, factor, compfp
       real    :: amm, amttl, wvttl, wvsh, summol, btemp, wv, lcoldry
+      logical :: upper_atmosphere_found
 
       ! allocate or reallocate as necessary
       if (allocated (laytrop)) then
@@ -289,8 +292,8 @@ contains
          endif
          t0frac = tz(0,icol) - 159. - float(indlev0)
 
-         ! laytrop is the highest layer with pavel > ~95.6 hPa
-         ! (see below for details)
+         ! laytrop is highest layer with pavel > ~95.6 hPa (details below)
+         upper_atmosphere_found = .false.
          laytrop(icol) = 0
 
          ! layer loop (bottom up)
@@ -439,7 +442,17 @@ contains
             ! lower atmosphere
             if (plog > 4.56) then
 
-               ! So laytrop counts the layers with pavel > exp(4.56) ~ 95.6 hPa.
+               if (upper_atmosphere_found) then
+                 ! upper atmosphere has already been found, so should never
+                 ! be here in the lower atmosphere again unless there is a
+                 ! non-monotonically-decreasing pressure with height. This
+                 ! will mess up current laytrop method, so die.
+                 write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+                 write(error_unit,*) 'icol, lay, plog:', icol, lay, plog
+                 error stop 'RRTMG LW pressure misordering'
+               end if
+
+               ! laytrop counts the layers with pavel > exp(4.56) ~ 95.6 hPa.
                ! But pavel is strictly decreasing with height in model atmosphere.
                ! So pavel(lay <= laytrop) > ~95.6 hPa and pavel(lay > laytrop) <= ~95.6 hPa
                laytrop(icol) = laytrop(icol) + 1
@@ -482,40 +495,17 @@ contains
 
                rat_n2oco2  (lay,icol) = chi_mls(4,jp(lay,icol)  ) / chi_mls(2,jp(lay,icol)  )
                rat_n2oco2_1(lay,icol) = chi_mls(4,jp(lay,icol)+1) / chi_mls(2,jp(lay,icol)+1)
-!pmn: others must be initialized to zero? or to NaN if not needed
 
-               ! Calculate needed column amounts.
-               colh2o  (lay,icol) = 1.e-20 * h2ovmr  (lay,icol) * lcoldry
-               colco2  (lay,icol) = 1.e-20 * co2vmr  (lay,icol) * lcoldry
-               colo3   (lay,icol) = 1.e-20 * o3vmr   (lay,icol) * lcoldry
-               coln2o  (lay,icol) = 1.e-20 * n2ovmr  (lay,icol) * lcoldry
-               colch4  (lay,icol) = 1.e-20 * ch4vmr  (lay,icol) * lcoldry
-               colo2   (lay,icol) = 1.e-20 * o2vmr   (lay,icol) * lcoldry
-               colco   (lay,icol) = 1.e-20 * covmr   (lay,icol) * lcoldry
-               colcfc11(lay,icol) = 1.e-20 * cfc11vmr(lay,icol) * lcoldry
-               colcfc12(lay,icol) = 1.e-20 * cfc12vmr(lay,icol) * lcoldry
-               colcfc22(lay,icol) = 1.e-20 * cfc22vmr(lay,icol) * lcoldry
-               colccl4 (lay,icol) = 1.e-20 * ccl4vmr (lay,icol) * lcoldry
-               colbrd  (lay,icol) = 1.e-20 * wbroad  (lay,icol)
-               if (colco2(lay,icol) == 0.) colco2(lay,icol) = 1.e-32 * lcoldry
-               if (colo3 (lay,icol) == 0.) colo3 (lay,icol) = 1.e-32 * lcoldry
-               if (coln2o(lay,icol) == 0.) coln2o(lay,icol) = 1.e-32 * lcoldry
-               if (colch4(lay,icol) == 0.) colch4(lay,icol) = 1.e-32 * lcoldry
-               if (colco (lay,icol) == 0.) colco (lay,icol) = 1.e-32 * lcoldry
+            else
 
-            else  ! upper atmosphere (above laytrop)
+               ! upper atmosphere (above laytrop)
+               upper_atmosphere_found = .true.
 
                ! factors needed for water vapor foreign-continuum
                forfac(lay,icol) = scalefac/(1.+water)
                factor = (tavel(lay,icol)-188.)/36. 
                indfor(lay,icol) = 3
                forfrac(lay,icol) = factor - 1.
-
-               ! factors needed to separately include the water vapor
-               ! self-continuum in the calc'n of absorption coefficient
-               selffac(lay,icol) = water * forfac(lay,icol)
-!pmn? others selfrac, indself
-!pmn? perhaps self not needed in upper atmosphere, set to NaN?
 
                ! factors needed to separately include the minor gases
                ! in the calculation of absorption coefficient
@@ -534,28 +524,28 @@ contains
                rat_o3co2   (lay,icol) = chi_mls(3,jp(lay,icol)  ) / chi_mls(2,jp(lay,icol)  )
                rat_o3co2_1 (lay,icol) = chi_mls(3,jp(lay,icol)+1) / chi_mls(2,jp(lay,icol)+1)
 
-! pmn? others must be initialized to zero? or NaN not needed in upper atmos?
-
-               ! Calculate needed column amounts.
-               colh2o  (lay,icol) = 1.e-20 * h2ovmr  (lay,icol) * lcoldry
-               colco2  (lay,icol) = 1.e-20 * co2vmr  (lay,icol) * lcoldry
-               colo3   (lay,icol) = 1.e-20 * o3vmr   (lay,icol) * lcoldry
-               coln2o  (lay,icol) = 1.e-20 * n2ovmr  (lay,icol) * lcoldry
-               colch4  (lay,icol) = 1.e-20 * ch4vmr  (lay,icol) * lcoldry
-               colo2   (lay,icol) = 1.e-20 * o2vmr   (lay,icol) * lcoldry
-               colco   (lay,icol) = 1.e-20 * covmr   (lay,icol) * lcoldry
-               colcfc11(lay,icol) = 1.e-20 * cfc11vmr(lay,icol) * lcoldry
-               colcfc12(lay,icol) = 1.e-20 * cfc12vmr(lay,icol) * lcoldry
-               colcfc22(lay,icol) = 1.e-20 * cfc22vmr(lay,icol) * lcoldry
-               colccl4 (lay,icol) = 1.e-20 * ccl4vmr (lay,icol) * lcoldry
-               colbrd  (lay,icol) = 1.e-20 * wbroad  (lay,icol)
-               if (colco2(lay,icol) == 0.) colco2(lay,icol) = 1.e-32 * lcoldry
-               if (colo3 (lay,icol) == 0.) colo3 (lay,icol) = 1.e-32 * lcoldry
-               if (coln2o(lay,icol) == 0.) coln2o(lay,icol) = 1.e-32 * lcoldry
-               if (colch4(lay,icol) == 0.) colch4(lay,icol) = 1.e-32 * lcoldry
-               if (colco (lay,icol) == 0.) colco (lay,icol) = 1.e-32 * lcoldry
-
             end if
+
+            ! Calculate needed column amounts.
+            colh2o  (lay,icol) = 1.e-20 * h2ovmr  (lay,icol) * lcoldry
+            colco2  (lay,icol) = 1.e-20 * co2vmr  (lay,icol) * lcoldry
+            colo3   (lay,icol) = 1.e-20 * o3vmr   (lay,icol) * lcoldry
+            coln2o  (lay,icol) = 1.e-20 * n2ovmr  (lay,icol) * lcoldry
+            colch4  (lay,icol) = 1.e-20 * ch4vmr  (lay,icol) * lcoldry
+            colo2   (lay,icol) = 1.e-20 * o2vmr   (lay,icol) * lcoldry
+            colco   (lay,icol) = 1.e-20 * covmr   (lay,icol) * lcoldry
+            colcfc11(lay,icol) = 1.e-20 * cfc11vmr(lay,icol) * lcoldry
+            colcfc12(lay,icol) = 1.e-20 * cfc12vmr(lay,icol) * lcoldry
+            colcfc22(lay,icol) = 1.e-20 * cfc22vmr(lay,icol) * lcoldry
+            colccl4 (lay,icol) = 1.e-20 * ccl4vmr (lay,icol) * lcoldry
+            colbrd  (lay,icol) = 1.e-20 * wbroad  (lay,icol)
+
+            ! require some minor absorbers to be non-zero
+            if (colco2(lay,icol) == 0.) colco2(lay,icol) = 1.e-32 * lcoldry
+            if (colo3 (lay,icol) == 0.) colo3 (lay,icol) = 1.e-32 * lcoldry
+            if (coln2o(lay,icol) == 0.) coln2o(lay,icol) = 1.e-32 * lcoldry
+            if (colch4(lay,icol) == 0.) colch4(lay,icol) = 1.e-32 * lcoldry
+            if (colco (lay,icol) == 0.) colco (lay,icol) = 1.e-32 * lcoldry
 
             ! We have now isolated the layer ln pressure and temperature,
             ! between two reference pressures and two reference temperatures 

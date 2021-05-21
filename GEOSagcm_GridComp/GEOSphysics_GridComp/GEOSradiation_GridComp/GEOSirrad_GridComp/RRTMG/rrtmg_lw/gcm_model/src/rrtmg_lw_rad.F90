@@ -366,7 +366,6 @@ contains
    ! ------------------------------------------------------------------
 
       use parrrtm, only : nbndlw, ngptlw
-! pmn: are these parameter or runtime constants?
       use cloud_subcol_gen, only: &
          generate_stochastic_clouds, clearCounts_threeBand
 
