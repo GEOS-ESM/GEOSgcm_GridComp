@@ -4421,7 +4421,8 @@ contains
       Z   = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
       PLO = 0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))
 
-      TV  = T *( 1.0 + MAPL_VIREPS * Q - QL - QI ) 
+!      TV  = T *( 1.0 + MAPL_VIREPS * Q - QL - QI ) 
+      TV  = T *( 1.0 + MAPL_EPSILON * Q - QL - QI ) 
       THV = TV*(TH/T)
 
       TVE = (TV(:,:,1:LM-1) + TV(:,:,2:LM))*0.5
@@ -4440,7 +4441,7 @@ contains
       rho = plo/( mapl_rgas*tv )
 
       !===> Running 1-2-1 smooth of bottom 5 levels of Virtual Pot. Temp.
-      if ( LM .eq. 72 .or. DO_MYNN /= 0 .or. DO_SHOC /= 0 ) then
+      if ( LM .eq. 72 .and. DO_MYNN == 0 .and. DO_SHOC == 0 ) then
          THV(:,:,LM  ) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
          THV(:,:,LM-1) = THV(:,:,LM-2)*0.25 + THV(:,:,LM-1)*0.50 + THV(:,:,LM  )*0.25 
          THV(:,:,LM-2) = THV(:,:,LM-3)*0.25 + THV(:,:,LM-2)*0.50 + THV(:,:,LM-1)*0.25 
@@ -6429,7 +6430,8 @@ ENDIF
           QL = QLCN + QLLS
           QI = QICN + QILS
 
-          TV  = ( ( H - MAPL_GRAV*ZLO )/MAPL_CP )*( 1.0 + MAPL_VIREPS * QV - QL - QI ) 
+!          TV  = ( ( H - MAPL_GRAV*ZLO )/MAPL_CP )*( 1.0 + MAPL_VIREPS * QV - QL - QI ) 
+          TV  = ( ( H - MAPL_GRAV*ZLO )/MAPL_CP )*( 1.0 + MAPL_EPSILON * QV - QL - QI ) 
 
           call implicit_M(IM, JM, LM, &                                        ! in
                           th00, ZLO, PLE, U, V, H, QV, QL, Tv, tke_new, &      ! in

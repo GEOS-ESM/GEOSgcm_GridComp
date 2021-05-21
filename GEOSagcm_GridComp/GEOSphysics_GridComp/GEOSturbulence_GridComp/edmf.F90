@@ -8,7 +8,8 @@ implicit none
 real, parameter ::     &
      WSTARmin = 1.e-3, &
      zpblmin  = 100.,  &
-     onethird = 1./3.
+     onethird = 1./3., &
+     au0      = 0.1
 
 contains
 
@@ -88,9 +89,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   logical, dimension(numup,IM,JM) :: active_updraft
 
   ! Thermal plume stuff 
-  integer, dimension(IM,JM) :: izsl
-  real, dimension(IM,JM,LM) :: A_star
-  real, dimension(IM,JM)    :: Mu0, zi_thermal
+  integer, dimension(IM,JM)   :: izsl
+  real, dimension(IM,JM,LM)   :: A_star
+  real, dimension(IM,JM,0:LM) :: f_thermal
+  real, dimension(IM,JM)      :: Mu0, zi_thermal
 
   real, dimension(numup) :: upa_out
 
@@ -190,7 +192,11 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   ! Get surface layer organized entrainment
   call A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
                       rho, rhoe, thl, qt, thv, debug_flag, &      ! in
-                      izsl, A_star, Mu0, zi_thermal)              ! out
+                      izsl, A_star, Mu0, zi_thermal, f_thermal)   ! out
+
+  if ( plume_type == 1 ) then
+     E = A_star
+  end if
 
   !
   ! Initialize updrafts
@@ -225,13 +231,22 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
            
            wlv = wmin + ( wmax - wmin )*real(iup-1)/real(numup)
            wtv = wmin + ( wmax - wmin )*real(iup)/real(numup)
-       
-           upw(iup,i,j)   = 0.5*( wlv + wtv ) 
-           upa(iup,i,j)   = 0.5*erf(wtv*work) - 0.5*erf(wlv*work)       
-           upu(iup,i,j)   = ui(i,j,kbot)
-           upv(iup,i,j)   = vi(i,j,kbot)
-           upqt(iup,i,j)  = qti(i,j,kbot)  + 0.32*upw(iup,i,j)*sigmaQT/sigmaW ! 0.32~=0.58*0.55 (Stull 1988)
-           upthv(iup,i,j) = thvi(i,j,kbot) + 0.58*upw(iup,i,j)*sigmaTH/sigmaW ! Stull 1988
+
+           if ( plume_type == 0 ) then
+              upw(iup,i,j)   = 0.5*( wlv + wtv ) 
+              upa(iup,i,j)   = 0.5*erf(wtv*work) - 0.5*erf(wlv*work)       
+              upu(iup,i,j)   = ui(i,j,kbot)
+              upv(iup,i,j)   = vi(i,j,kbot)
+              upqt(iup,i,j)  = qti(i,j,kbot)  + 0.32*upw(iup,i,j)*sigmaQT/sigmaW ! 0.32~=0.58*0.55 (Stull 1988)
+              upthv(iup,i,j) = thvi(i,j,kbot) + 0.58*upw(iup,i,j)*sigmaTH/sigmaW ! Stull 1988
+           else
+              upa(iup,i,j)   = au0/real(numup)
+              upw(iup,i,j)   = A_star(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
+              upu(iup,i,j)   = u(i,j,LM)
+              upv(iup,i,j)   = v(i,j,LM)
+              upqt(iup,i,j)  = qt(i,j,LM)
+              upthv(iup,i,j) = thv(i,j,LM)
+           end if
 
            upm(iup,i,j) = rhoe(i,j,kbot)*upa(iup,i,j)*upw(iup,i,j)
 
@@ -254,8 +269,14 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
         ! Compute condensation and thl, ql, qi
         do iup = 1,numup
-           call condensation_edmfA(upthv(iup,i,j), upqt(iup,i,j), ple(i,j,kbot), &
-                                   upthl(iup,i,j), upql(iup,i,j), upqi(iup,i,j), ice_ramp)
+!           if ( plume_type == 0 ) then
+              call condensation_edmfA(upthv(iup,i,j), upqt(iup,i,j), ple(i,j,kbot), &
+                                      upthl(iup,i,j), upql(iup,i,j), upqi(iup,i,j), ice_ramp)
+!           else
+!              upthl(iup,i,j) = upthv(iup,i,j)/( 1. + mapl_epsilon*upqt(iup,i,j) )
+!              upql(iup,i,j)  = 0.
+!              upqi(iup,i,j)  = 0.
+!           end if
         end do
      else
         active_updraft(:,i,j) = .false.
@@ -402,42 +423,23 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  end if
 
               elseif ( plume_type == 1 ) then ! thermal plume
-                 ! Compute buoyancy
-                 B = goth00*( upthv(iup,i,j) - thv(i,j,k) )
+                 ! Integrate vertical velocity budget
+                 B   = goth00*( upthv(iup,i,j) - thv(i,j,k) )
+                 Wn2 = f_thermal(i,j,k)**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
 
-                 ! Sample entrainment rate
-!                 E(i,j,k) = E(i,j,k) + ent(iup,i,j,k)*upm(iup,i,j)
-
-                 ! Integrate momentum budget (get Wn2, Mn, E, and EntExp)
-                 if ( B > 0. ) then
-                    Wn2          = ( rhoe(i,j,k)*upw(iup,i,j)**2. + dzle*rho(i,j,k)*B )/rhoe(i,j,km1)
-                    Mn           = rhoe(i,j,km1)*upa(iup,i,j)*sqrt(Wn2)
-                    E(i,j,k)     = E(i,j,k) + ( Mn - upm(iup,i,j) )/dzle
-                    EntExp       = upm(iup,i,j)/Mn
-!                    Mn     = upm(iup,i,j) + dzle*ent(iup,i,j,k)*upm(iup,i,j)
-!                    EntExp = upm(iup,i,j)/Mn
-!                    Wn2    = EntExp**2.**upw(iup,i,j)**2. + 2.*dzle*B ! Rio and Hourdin 2007 ( eq. A9 )   
-                 else
-                    Wn2 = upw(iup,i,j)**2. + 2.*dzle*B
-                    if ( Wn2 > 0. ) then
-                       Mn = rhoe(i,j,km1)*upa(iup,i,j)*sqrt(Wn2)
-                    else
-                       Mn = 0.
-                    end if
-                    EntExp   = 0.
-!                    Wn2 = ( upw(iup,i,j)**2. + 2.*dzle*B )/( 1. + 2.*dzle*ent(iup,i,j,k) )
-!                    EntExp = 1./( 1. + dzle*ent(iup,i,j,k) )
-                 end if
-                 EntExpU = EntExp
+                 ! Integrate mass flux budget
+                 Mn = upm(iup,i,j)/f_thermal(i,j,k)
 
                  ! Integrate scalar budgets
-                 QTn  = qt(i,j,k)*( 1. - EntExp )  + upqt(iup,i,j)*EntExp
-                 THLn = thl(i,j,k)*( 1. - EntExp ) + upthl(iup,i,j)*EntExp
-                 Un   = u(i,j,k)*( 1. - EntExpU )  + upu(iup,i,j)*EntExpU
-                 Vn   = v(i,j,k)*( 1. - EntExpU )  + upv(iup,i,j)*EntExpU
+                 QTn  = qt(i,j,k)*( 1. - f_thermal(i,j,k) )  + upqt(iup,i,j)*f_thermal(i,j,k)
+                 THLn = thl(i,j,k)*( 1. - f_thermal(i,j,k) ) + upthl(iup,i,j)*f_thermal(i,j,k)
+                 Un   = u(i,j,k)*( 1. - f_thermal(i,j,k) )  + upu(iup,i,j)*f_thermal(i,j,k)
+                 Vn   = v(i,j,k)*( 1. - f_thermal(i,j,k) )  + upv(iup,i,j)*f_thermal(i,j,k)
 
                  ! Condensation
                  call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
+!                 QCn  = 0.
+!                 THVn = THLn*( 1. + mapl_epsilon*QTn )
               end if
               
               ! Intermediate quantities 
@@ -468,7 +470,9 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
                  if ( plume_type == 1 ) then
                     upm(iup,i,j) = Mn
-!                    upa(iup,i,j) = upm(iup,i,j)/( rhoe(i,j,km1)*upw(iup,i,j) )
+                    if ( B > 0 ) then
+                       upa(iup,i,j) = upm(iup,i,j)/( rhoe(i,j,km1)*upw(iup,i,j) )
+                    end if
                  end if
 
                  mfthvt = mfthvt + 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) + mfthvt_work )
@@ -542,7 +546,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
            end if
 
            if ( debug_flag /= 0 ) then
-              write(*,'(I4,12F7.2)') k-1, sum(100.*upa_out(:)), 100.*edmfmoista(1,1,k), 100.*upa_out(:)
+              write(*,'(I4,12F7.2)') k-1, sum(100.*upa_out(:)), 100.*edmfmoista(1,1,k-1), 100.*upa_out(:)
+!              write(*,*) k-1, 100*upa(1,1,1), upw(1,1,1)
            end if
         else
            wu(i,j,k)   = 0.
@@ -707,21 +712,22 @@ end subroutine run_edmf
 ! A_star_closure
 !
 subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
-                          rho, rhoe, thl, qt, thv, debug_flag, &       ! in
-                          izsl, A, Mu0, zi)                            ! out
+                          rho, rhoe, thl, qt, thv, debug_flag, &      ! in
+                          izsl, A, Mu0, zi, f)                        ! out
 
-  integer, intent(in)                     :: IM, JM, LM, debug_flag
-  real, intent(in)                        :: ice_ramp, th00
-  real, dimension(IM,JM,LM), intent(in)   :: zl, thl, qt, thv, rho
-  real, dimension(IM,JM,0:LM), intent(in) :: zle, rhoe, ple
-  integer, dimension(IM,JM), intent(out)  :: izsl
-  real, dimension(IM,JM), intent(out)     :: Mu0, zi
-  real, dimension(IM,JM,LM), intent(out)  :: A
+  integer, intent(in)                      :: IM, JM, LM, debug_flag
+  real, intent(in)                         :: ice_ramp, th00
+  real, dimension(IM,JM,LM), intent(in)    :: zl, thl, qt, thv, rho
+  real, dimension(IM,JM,0:LM), intent(in)  :: zle, rhoe, ple
+  integer, dimension(IM,JM), intent(out)   :: izsl
+  real, dimension(IM,JM), intent(out)      :: Mu0, zi
+  real, dimension(IM,JM,LM), intent(out)   :: A
+  real, dimension(IM,JM,0:LM), intent(out) :: f
 
-  integer                     :: i, j, k, km1
-  real                        :: dthvdz, dz, B, wf, qcu, f, Mu_next, wu2_next, &
+  integer                     :: i, j, k, km1, iter
+  real                        :: dthvdz, dz, B, wf, qcu, Mu_next, wu2_next, &
                                  thlu_next, qtu_next, thvu_next, goth00
-  real, dimension(IM,JM)      :: A_star_sum, A_star2_int, Mu, thlu, qtu, thvu, wu2
+  real, dimension(IM,JM)      :: A_star_sum, A_star2_int, Mu, thlu, qtu, thvu, wu2, wu0
   logical, dimension(IM,JM)   :: conv_flag, sl_flag, test_flag
 
   goth00 = mapl_grav/th00
@@ -768,70 +774,82 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
   ! Normalize A_star and initialize test plume
   do j = 1,JM
   do i = 1,IM
-     test_flag(i,j) = conv_flag(i,j)
-
      if ( conv_flag(i,j) ) then
-        ! Note: this loop needs to be refactored for column-major order
+        wu0(i,j)         = 0.
         A_star2_int(i,j) = 0.
-        do k = LM,izsl(i,j)+1,-1
+        do k = LM,izsl(i,j)+1,-1         ! Note: this loop needs to be refactored for column-major order
            dz = zle(i,j,k-1) - zle(i,j,k)
 
            A(i,j,k)         = A(i,j,k)/A_star_sum(i,j)
            A_star2_int(i,j) = A_star2_int(i,j) + A(i,j,k)**2.*dz/rho(i,j,k)
         end do
-
-        ! Initialize plume
-        Mu(i,j)   = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )
-        wu2(i,j)  = 0.
-        thlu(i,j) = thl(i,j,LM)
-        qtu(i,j)  = qt(i,j,LM)
-        thvu(i,j) = thv(i,j,LM)
-
-!        if ( debug_flag /= 0 ) then
-!           write(*,*) LM-1, Mu(i,j), thvu(i,j), thv(i,j,LM-1)
-!        end if
      end if
   end do
   end do
 
   ! Find magnitude and height of maximum plume velocity and compute Mu0 accordingly
-  do k = LM-1,1,-1
-     km1 = k - 1
+  wu0(i,j) = 0.
+  do iter = 1,5
 
      do j = 1,JM
      do i = 1,IM
-        if ( test_flag(i,j) ) then
-           dz = zle(i,j,km1) - zle(i,j,k)
+        ! Initialize plume
+        Mu(i,j)   = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )
+        wu2(i,j)  = wu0(i,j)**2.
+        thlu(i,j) = thl(i,j,LM)
+        qtu(i,j)  = qt(i,j,LM)
+        thvu(i,j) = thv(i,j,LM)
 
-           Mu_next = Mu(i,j) + A(i,j,k)*dz
-
-           f = Mu(i,j)/Mu_next
-           B = goth00*( thvu(i,j) - thv(i,j,k) )
-
-           thlu_next = f*thlu(i,j) + ( 1. - f )*thl(i,j,k)
-           qtu_next  = f*qtu(i,j)  + ( 1. - f )*qt(i,j,k)
-           wu2_next  = f**2.*wu2(i,j) + 2.*dz*B
-
-!           call condensation_edmf(qtu_next, thlu_next, ple(i,j,km1), thvu_next, qcu, wf, ice_ramp)           
-           thvu_next = thlu_next*( 1. + mapl_epsilon*qtu_next )
-
-!           if ( debug_flag /= 0 ) then
-!              write(*,*) km1, Mu_next, thvu_next, thv(i,j,km1)
-!           end if
-
-           if ( wu2_next <= wu2(i,j) ) then
-              zi(i,j) = zle(i,j,k)
-              Mu0(i,j) = sqrt( wu2(i,j) )/( 2.*zi(i,j)*A_star2_int(i,j) )
-              test_flag(i,j) = .false.
-           else
-              Mu(i,j)   = Mu_next
-              wu2(i,j)  = wu2_next
-              thlu(i,j) = thlu_next
-              qtu(i,j)  = qtu_next
-              thvu(i,j) = thvu_next
-           end if
-        end if
+        test_flag(i,j) = conv_flag(i,j)
      end do
+     end do
+
+     f(:,:,:) = 1.
+     do k = LM-1,1,-1
+        km1 = k - 1
+
+        do j = 1,JM
+        do i = 1,IM
+           if ( test_flag(i,j) ) then
+              dz = zle(i,j,km1) - zle(i,j,k)
+              
+              Mu_next = Mu(i,j) + A(i,j,k)*dz
+
+              f(i,j,k) = Mu(i,j)/Mu_next
+              
+              B = goth00*( thvu(i,j) - thv(i,j,k) )
+              
+              thlu_next = f(i,j,k)*thlu(i,j) + ( 1. - f(i,j,k) )*thl(i,j,k)
+              qtu_next  = f(i,j,k)*qtu(i,j)  + ( 1. - f(i,j,k) )*qt(i,j,k)
+              wu2_next  = f(i,j,k)**2.*wu2(i,j) + 2.*dz*B
+
+              if ( debug_flag /= 0 ) then
+!                 write(*,*) k, sqrt(wu2(i,j)), B, thvu(i,j) 
+!                 write(*,*) k, sqrt(wu2(i,j)), thlu(i,j), qtu(i,j) 
+              end if
+              
+              ! call condensation_edmf(qtu_next, thlu_next, ple(i,j,km1), thvu_next, qcu, wf, ice_ramp)           
+              thvu_next = thlu_next*( 1. + mapl_epsilon*qtu_next )
+
+              if ( wu2_next <= wu2(i,j) ) then
+                 zi(i,j)        = zle(i,j,k)
+                 Mu0(i,j)       = sqrt( wu2(i,j) )/( 2.*zi(i,j)*A_star2_int(i,j) )
+                 wu0(i,j)       = Mu0(i,j)*A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
+                 test_flag(i,j) = .false.
+
+                 if ( debug_flag /= 0 ) then
+!                    write(*,*) '*', iter, wu0(i,j) 
+                 end if
+              else
+                 Mu(i,j)   = Mu_next
+                 wu2(i,j)  = wu2_next
+                 thlu(i,j) = thlu_next
+                 qtu(i,j)  = qtu_next
+                 thvu(i,j) = thvu_next
+              end if
+           end if
+        end do
+        end do
      end do
   end do
 
@@ -923,8 +941,8 @@ enddo
 
  THL=(T-get_alhl(T,ice_ramp)/mapl_cp*QC)/EXN
  wf=water_f(T,ice_ramp)
- QL=QC*ice_ramp
- QI=QC*(1.-ice_ramp) 
+ QL=QC*wf
+ QI=QC*(1.-wf) 
 
 end subroutine condensation_edmfA
 
