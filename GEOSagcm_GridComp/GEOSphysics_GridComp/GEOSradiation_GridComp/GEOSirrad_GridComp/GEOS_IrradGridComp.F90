@@ -1526,7 +1526,7 @@ contains
 
    integer :: iceflglw        ! Flag for ice particle specification
    integer :: liqflglw        ! Flag for liquid droplet specification
-   integer :: idrv            ! Flux for derivative calculation: 0=no derivative, 1=yes derivative
+   logical :: Ts_derivs       ! calculate Tsurf derivatives of upward fluxes
    integer :: NN, IJ, LV
 
    real,    allocatable, dimension(:,:)   :: FCLD_R
@@ -3323,8 +3323,8 @@ contains
       ICEFLGLW = 3
       LIQFLGLW = 1
 
-      ! set flag for flux derivative calculation
-      IDRV = 1
+      ! calculate derivatives of upward flux with Tsurf
+      Ts_derivs = .true.
 
       ! reverse super-layer interface indicies
       LCLDMH = LM - LCLDMH + 1
@@ -3460,7 +3460,7 @@ contains
       call MAPL_TimerOn(MAPL,"---RRTMG_RUN",RC=STATUS)
       VERIFY_(STATUS)
 
-      call RRTMG_LW (IM*JM, LM, PARTITION_SIZE, IDRV, &
+      call RRTMG_LW (IM*JM, LM, PARTITION_SIZE, TS_DERIVS, &
               PL_R, PLE_R, T_R, TLEV_R, TSFC, EMISS, &
               Q_R, O3_R, CO2_R, CH4_R, N2O_R, O2_R, &
               CFC11_R, CFC12_R, CFC22_R, CCL4_R, &

@@ -15,7 +15,7 @@ contains
 
    ! -----------------------------------------------------------------------------
    subroutine rrtmg_lw( &
-      ncol, nlay, psize, idrv, &
+      ncol, nlay, psize, dudTs, &
       play, plev, tlay, tlev, tsfc, emis, & 
       h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, &
       cfc11vmr, cfc12vmr, cfc22vmr, ccl4vmr, &
@@ -61,18 +61,18 @@ contains
    ! RRTMG_LW currently treats only aerosol absorption; scattering
    ! capability is not presently available.
    !
-   ! The optional calculation of the change in upward flux as a function of
-   ! surface temperature is available (controlled by input flag idrv). This
-   ! can be utilized to approximate adjustments to the upward flux profile
-   ! caused only by a change in surface temperature between full radiation
-   ! calls. This feature uses the pre-calculated derivative of the Planck
-   ! function with respect to surface temperature. 
-   ! (1) Normal forward calculation for the input profile (idrv=0)
-   ! (2) Normal forward calculation with optional calculation of the change
-   !     in upward flux as a function of surface temperature for clear sky
-   !     and total sky flux. Flux partial derivatives are provided in arrays
-   !     duflx_dTs and duflxc_dTs for total and clear sky. (idrv=1)
-   ! NB: if idrv=0 DO NOT use any d_dTs, since values will be  undefined.
+   ! The optional calculation of the change in upward flux as a function
+   ! of surface temperature is controlled by input flag dudTs. This can be
+   ! utilized to approximate adjustments to the upward flux profile caused
+   ! only by a change in surface temperature between full radiation calls.
+   ! This feature uses the pre-calculated derivative of the Planck function
+   ! with respect to surface temperature: 
+   ! (dudTs false) Normal forward calculation;
+   ! (dudTs true ) Normal forward calculation with optional calculation
+   !    of the change in upward flux as a function of surface temperature
+   !    for total-sky and clear-sky flux. Flux partial derivatives are
+   !    provided in arrays duflx_dTs and duflxc_dTs respectively.
+   ! If dudTs false, DO NOT use any d_dTs, as values will be undefined.
    !
    ! ------- Modifications -------
    !
@@ -117,8 +117,8 @@ contains
       integer, intent(in) :: nlay   ! Number of model layers
       integer, intent(in) :: psize  ! column partitioning size
 
-      ! for requesting upwards flux derivatives wrt surface tempeerature
-      integer, intent(in) :: idrv   ! 0: normal, 1: adds d/dTs derivs
+      ! for requesting upwards flux derivatives wrt Tsurf
+      logical, intent(in) :: dudTs
 
       ! column characterization
       real,    intent(in) :: play (ncol,nlay)    ! Layer pressures [hPa] 
@@ -335,7 +335,7 @@ contains
 
          call rrtmg_lw_part (nparts, ncol, &
             n * psize + 1, min(psize, ncol - n * psize), &
-            nlay, idrv, play, plev, tlay, tlev, tsfc, emis, & 
+            nlay, dudTs, play, plev, tlay, tlev, tsfc, emis, & 
             h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, &
             cfc11vmr, cfc12vmr, cfc22vmr, ccl4vmr, &
             cldf, ciwp, clwp, rei, rel, iceflglw, liqflglw, &
@@ -354,7 +354,7 @@ contains
 
    ! ------------------------------------------------------------------
    subroutine rrtmg_lw_part( &
-      nparts, ncol, colstart, pncol, nlay, idrv, &
+      nparts, ncol, colstart, pncol, nlay, dudTs, &
       play, plev, tlay, tlev, tsfc, emis, & 
       h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, &
       cfc11vmr, cfc12vmr, cfc22vmr, ccl4vmr, &
@@ -377,7 +377,7 @@ contains
       integer, intent(in) :: pncol     ! Number of columns in this partition
       integer, intent(in) :: colstart  ! Starting column of this partition
       integer, intent(in) :: nlay      ! Number of model layers
-      integer, intent(in) :: idrv      ! 0: normal, 1: adds d/dTs derivs
+      logical, intent(in) :: dudTs     ! true adds d/dTs derivs
 
       ! column characterization
       real,    intent(in) :: play (ncol,nlay)    ! Layer pressures [hPa] 
@@ -576,7 +576,7 @@ contains
       ! coefficients and indices needed to compute the optical depths
       ! by interpolating data from stored reference atmospheres. 
 
-      call setcoef (pncol, nlay, istart, idrv, &
+      call setcoef (pncol, nlay, istart, dudTs, &
          p_play, p_tlay, p_plev, p_tlev, p_tsfc, p_emis, &
          p_h2ovmr, p_o3vmr, p_co2vmr, p_ch4vmr, p_n2ovmr, p_o2vmr, p_covmr, &
          p_cfc11vmr, p_cfc12vmr, p_cfc22vmr, p_ccl4vmr)
@@ -588,7 +588,7 @@ contains
 
       ! Call the radiative transfer routine
 
-      call rtrnmc (pncol, nlay, idrv, &
+      call rtrnmc (pncol, nlay, dudTs, &
          p_emis, taug, pfracs, cloudy, cldfmc, taucmc, &
          totuflux, totdflux, totuclfl, totdclfl, &
          dtotuflux_dTs, dtotuclfl_dTs, &
@@ -601,7 +601,7 @@ contains
          dflx  (colstart:(colstart+pncol-1),ilev+1) = totdflux(ilev,:)
          uflxc (colstart:(colstart+pncol-1),ilev+1) = totuclfl(ilev,:)
          dflxc (colstart:(colstart+pncol-1),ilev+1) = totdclfl(ilev,:)
-         if (idrv == 1) then
+         if (dudTs) then
             duflx_dTs (colstart:(colstart+pncol-1),ilev+1) = dtotuflux_dTs(ilev,:)
             duflxc_dTs(colstart:(colstart+pncol-1),ilev+1) = dtotuclfl_dTs(ilev,:)
          end if
@@ -610,7 +610,7 @@ contains
       olrb09(colstart:(colstart+pncol-1)) = p_olrb09
       olrb10(colstart:(colstart+pncol-1)) = p_olrb10
       olrb11(colstart:(colstart+pncol-1)) = p_olrb11
-      if (idrv == 1) then
+      if (dudTs) then
          dolrb06_dTs(colstart:(colstart+pncol-1)) = p_dolrb06_dTs
          dolrb09_dTs(colstart:(colstart+pncol-1)) = p_dolrb09_dTs
          dolrb10_dTs(colstart:(colstart+pncol-1)) = p_dolrb10_dTs

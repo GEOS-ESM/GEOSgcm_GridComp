@@ -50,7 +50,7 @@ contains
 
    !----------------------------------------------------------------------------
    subroutine setcoef ( &
-      ncol, nlay, istart, idrv, &
+      ncol, nlay, istart, dudTs, &
       pavel, tavel, pz, tz, tbound, semiss, &
       h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, covmr, &
       cfc11vmr, cfc12vmr, cfc22vmr, ccl4vmr)
@@ -65,7 +65,7 @@ contains
       integer, intent(in) :: ncol    ! number of gridcolumns
       integer, intent(in) :: nlay    ! number of layers
       integer, intent(in) :: istart  ! see code
-      integer, intent(in) :: idrv    ! Planck derivative option flag
+      logical, intent(in) :: dudTs   ! Planck derivative option flag
 
       real, intent(in) :: pavel    (nlay,ncol)  ! layer pressures [hPa]
       real, intent(in) :: tavel    (nlay,ncol)  ! layer temperatures [K]
@@ -333,7 +333,7 @@ contains
                      (totplnk(indbound,iband) + tbndfrac * dbdtlev)
                   dbdtlev = totplnk(indlev0+1,iband)-totplnk(indlev0,iband)
                   planklev(iband,0,icol) = totplnk(indlev0,iband) + t0frac * dbdtlev
-                  if (idrv == 1) then 
+                  if (dudTs) then 
                      dbdtlev = totplnkderiv(indbound+1,iband) - totplnkderiv(indbound,iband)
                      dplankbnd_dTs(iband,icol) = semiss(iband,icol) * &
                         (totplnkderiv(indbound,iband) + tbndfrac * dbdtlev)
@@ -364,7 +364,7 @@ contains
 ! line was in error by using totplnk instead of totplk16
                   dbdtlev = totplk16(indlev0+1) - totplk16(indlev0)
                   planklev(iband,0,icol) = totplk16(indlev0) + t0frac * dbdtlev
-                  if (idrv == 1) then
+                  if (dudTs) then
                      dbdtlev = totplk16deriv(indbound+1) - totplk16deriv(indbound)
                      dplankbnd_dTs(iband,icol) = semiss(iband,icol) * &
                         (totplk16deriv(indbound) + tbndfrac * dbdtlev)
@@ -381,7 +381,7 @@ contains
                      (totplnk(indbound,iband) + tbndfrac * dbdtlev)
                   dbdtlev = totplnk(indlev0+1,iband) - totplnk(indlev0,iband)
                   planklev(iband,0,icol) = totplnk(indlev0,iband) + t0frac * dbdtlev
-                  if (idrv == 1) then 
+                  if (dudTs) then 
                      dbdtlev = totplnkderiv(indbound+1,iband) - totplnkderiv(indbound,iband)
                      dplankbnd_dTs(iband,icol) = semiss(iband,icol) * &
                         (totplnkderiv(indbound,iband) + tbndfrac * dbdtlev)
