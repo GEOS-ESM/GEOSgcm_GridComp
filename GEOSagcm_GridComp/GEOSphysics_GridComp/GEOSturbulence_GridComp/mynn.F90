@@ -3,7 +3,7 @@ module mynn
 ! References: "NN09" Nakanishi, M. and Niino, 2009: Development of an improved turbulence closure model
 !                            for the atmospheric boundary layer. J. Meteor. Soc. Japan, 87, 895-912
 
-use MAPL_ConstantsMod, only: MAPL_GRAV, MAPL_CP, MAPL_ALHL, MAPL_RGAS, MAPL_RVAP, MAPL_P00, MAPL_VIREPS
+use MAPL_ConstantsMod, only: MAPL_GRAV, MAPL_CP, MAPL_ALHL, MAPL_RGAS, MAPL_RVAP, MAPL_P00
 
 implicit none
 
@@ -459,7 +459,7 @@ subroutine mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &      
   hlqtt_M = -whl*dqtdz - wqt*dhldz
 
   ! Mass flux transport of TKE
-  if ( CONSISTENT_TYPE == 0 ) then
+  if ( CONSISTENT_TYPE == 0 .or. CONSISTENT_TYPE == 1 ) then
      we    = -au*wu/( 1. - au )
      we_up = -au_up*wu_up/( 1. - au_up )
      
@@ -472,8 +472,11 @@ subroutine mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &      
      tket_T_mf3 =   max(0., D)*( we - wdet )**2./rhoe
      tket_T_mf4 = - ( 1. - au_up )*w2e_up*( we_up - we )/dzle
 
-!     tket_T_mf = 0.
-     tket_T_mf = tket_T_mf1 + tket_T_mf2 + tket_T_mf3 + tket_T_mf4
+     if ( CONSISTENT_TYPE == 0 ) then
+        tket_T_mf = tket_T_mf1 + tket_T_mf2 + tket_T_mf3 + tket_T_mf4
+     else
+        tket_T_mf = 0.
+     end if
   else
      tket_T_mf1 = 0.
      tket_T_mf2 = 0.

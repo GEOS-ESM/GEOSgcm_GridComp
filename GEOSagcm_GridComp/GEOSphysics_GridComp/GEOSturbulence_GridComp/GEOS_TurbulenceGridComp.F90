@@ -4421,8 +4421,7 @@ contains
       Z   = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
       PLO = 0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))
 
-!      TV  = T *( 1.0 + MAPL_VIREPS * Q - QL - QI ) 
-      TV  = T *( 1.0 + MAPL_EPSILON * Q - QL - QI ) 
+      TV  = T *( 1.0 + MAPL_VIREPS * Q - QL - QI ) 
       THV = TV*(TH/T)
 
       TVE = (TV(:,:,1:LM-1) + TV(:,:,2:LM))*0.5
@@ -6430,8 +6429,7 @@ ENDIF
           QL = QLCN + QLLS
           QI = QICN + QILS
 
-!          TV  = ( ( H - MAPL_GRAV*ZLO )/MAPL_CP )*( 1.0 + MAPL_VIREPS * QV - QL - QI ) 
-          TV  = ( ( H - MAPL_GRAV*ZLO )/MAPL_CP )*( 1.0 + MAPL_EPSILON * QV - QL - QI ) 
+          TV  = ( ( H - MAPL_GRAV*ZLO )/MAPL_CP )*( 1.0 + MAPL_VIREPS * QV - QL - QI ) 
 
           call implicit_M(IM, JM, LM, &                                        ! in
                           th00, ZLO, PLE, U, V, H, QV, QL, Tv, tke_new, &      ! in
@@ -8261,7 +8259,7 @@ ust=ust2(IH)
 pblh=pblh2(IH)
 
 pblh=max(pblh,pblhmin)
-wthv=wthl+mapl_epsilon*thv3(IH,kte)*wqt
+wthv=wthl+mapl_vireps*thv3(IH,kte)*wqt
 
 ! if surface buoyancy is positive then mass-flux, otherwise not
   IF ( wthv > 0.0 ) then
@@ -8881,7 +8879,7 @@ enddo
 T=EXN*THL+get_alhl(T,ice_ramp)/mapl_cp*QC
 QS=geos_qsat(T,P,pascals=.true.,ramp=ice_ramp)
 QC=max(QT-QS,0.)
-THV=(THL+get_alhl(T,ice_ramp)/mapl_cp*QC/EXN)*(1.+(mapl_epsilon)*(QT-QC)-QC)
+THV=(THL+get_alhl(T,ice_ramp)/mapl_cp*QC/EXN)*(1.+(mapl_vireps)*(QT-QC)-QC)
 wf=water_f(T,ice_ramp)
 
 end subroutine condensation_edmf
@@ -8913,7 +8911,7 @@ QC=0.
 T=EXN*THL
 
 do i=1,NITER
-   T=EXN*THV/(1.+mapl_epsilon*(QT-QC)-QC)
+   T=EXN*THV/(1.+mapl_vireps*(QT-QC)-QC)
    QS=geos_qsat(T,P,pascals=.true.,ramp=ice_ramp)
    QCOLD=QC
    QC=max(0.5*QC+0.5*(QT-QS),0.)
