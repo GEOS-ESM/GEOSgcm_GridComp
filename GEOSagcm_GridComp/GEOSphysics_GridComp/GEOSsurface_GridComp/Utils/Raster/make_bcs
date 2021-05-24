@@ -77,7 +77,7 @@ echo "--------------------------------------------------------------------------
 echo "     Lat/Lon                     Cubed-Sphere                  EASE (land-only)"
 echo "----------------------------------------------------------------------------------------------"
 echo "   ${C2}b --  2  deg  ${CR}              ${C2}c12  --  8   deg ${CR}          ${C2}m1  --  1km EASEv2 Grid ${CR}"
-echo "   ${C2}c --  1  deg  ${CR}              ${C2}c24  --  4   deg ${CR}          ${C2}m2  --  3km EASEv2 Grid ${CR}"
+echo "   ${C2}c --  1  deg  ${CR}              ${C2}c24  --  4   deg ${CR}          ${C2}m3  --  3km EASEv2 Grid ${CR}"
 echo "   ${C2}d -- 1/2 deg  ${CR}              ${C2}c48  --  2   deg ${CR}          ${C2}m9  --  9km EASEv2 Grid ${CR}"
 echo "   ${C2}e -- 1/4 deg  ${CR}              ${C2}c90  --  1   deg ${CR}          ${C2}m36 -- 36km EASEv2 Grid ${CR}"
 echo "   ${C2}                            c180 -- 1/2  deg (${C1}56-km${C2}) ${CR}  ${C2}m25 -- 25km EASEv1 Grid ${CR}"
