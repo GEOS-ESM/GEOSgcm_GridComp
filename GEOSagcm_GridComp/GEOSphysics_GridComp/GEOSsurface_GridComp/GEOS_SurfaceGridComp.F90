@@ -2750,7 +2750,7 @@ module GEOS_SurfaceGridCompMod
           LONG_NAME          = 'CN_fine_root_carbon'       ,&
           UNITS              = 'kg m-2'                    ,&
           SHORT_NAME         = 'CNFROOTC'                  ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
+          DIMS               = MAPL_DimsHorzOnly           ,&
           VLOCATION          = MAPL_VLocationNone          ,&
           RC=STATUS  )
      VERIFY_(STATUS)
