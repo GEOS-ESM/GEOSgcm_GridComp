@@ -3648,6 +3648,13 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DSUDTcarma ',                                    &
+         LONG_NAME ='carma_sulfate_tendency_due_to_conv_scav',        &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         RC=STATUS  )
+    VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='LFR',                                            &
@@ -5300,7 +5307,7 @@ contains
       ! Aerosol convective scavenging internal pointers (2D column-averages);  must deallocate!!!
       ! CAR 
       real, pointer, dimension(:,: )                           :: DDUDT, &
-           DSSDT, DOCDT, DBCDT, DSUDT,  DNIDT, DNH4ADT, DNH3DT, DBRCDT, DDUDTcarma, DSSDTcarma
+           DSSDT, DOCDT, DBCDT, DSUDT,  DNIDT, DNH4ADT, DNH3DT, DBRCDT, DDUDTcarma, DSSDTcarma, DSUDTcarma
       character(len=ESMF_MAXSTR)                               :: QNAME,  CNAME, ENAME
       character(len=ESMF_MAXSTR), pointer, dimension(:)        :: QNAMES, CNAMES
       integer                                                  :: ind
@@ -5977,7 +5984,7 @@ contains
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
 
       real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU, CMNI, CMNH3, CMNH4A, CMBRC
-      real   , dimension(IM,JM)           :: CMDUcarma, CMSScarma
+      real   , dimension(IM,JM)           :: CMDUcarma, CMSScarma, CMSUcarma
        
       real :: sigmaqt, qcn, cfn, qsatn, dqlls, dqils, qt
 
@@ -6638,6 +6645,7 @@ contains
       call MAPL_GetPointer(EXPORT, DBRCDT,    'DBRCDT'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DDUDTcarma,  'DDUDTcarma'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DSSDTcarma,  'DSSDTcarma'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DSUDTcarma,  'DSUDTcarma'    , RC=STATUS); VERIFY_(STATUS)
 
       !AMM sync t,q extra diagnostic
       call MAPL_GetPointer(EXPORT, THMOIST,  'THMOIST' , RC=STATUS); VERIFY_(STATUS)
@@ -8012,6 +8020,7 @@ contains
       if(associated(DBRCDT))  DBRCDT=  0.0
       if(associated(DDUDTcarma)) DDUDTcarma =  0.0
       if(associated(DSSDTcarma)) DSSDTcarma =  0.0
+      if(associated(DSUDTcarma)) DSUDTcarma =  0.0
 
       CMDU   = 0.0
       CMSS   = 0.0
@@ -8024,6 +8033,7 @@ contains
       CMBRC  = 0.0
       CMDUcarma = 0.0
       CMSScarma = 0.0
+      CMSUcarma = 0.0
 
       !! Now loop over tracers and accumulate initial column loading
       !! tendency  kg/m2/s CAR
@@ -8089,6 +8099,10 @@ contains
                      CASE ('seas') ! CARMA SEASALT
                         if(associated(DSSDTcarma)) then
                            CMSScarma = CMSScarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
+                        end if
+                     CASE ('sulf') ! CARMA SULFATE
+                        if(associated(DSUDTcarma)) then
+                           CMSUcarma = CMSUcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
                         end if
                      END SELECT
                   endif
@@ -8590,6 +8604,10 @@ contains
                      if(associated(DSSDTcarma)) then
                         DSSDTcarma = DSSDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
                      end if
+                  CASE ('sulf') ! CARMA SULFATE
+                     if(associated(DSUDTcarma)) then
+                        DSUDTcarma = DSUDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
+                     end if
                   END SELECT
                endif
             endif
@@ -8608,6 +8626,7 @@ contains
 
       if (associated(DDUDTcarma))  DDUDTcarma = (DDUDTcarma - CMDUcarma) / (MAPL_GRAV*DT_MOIST)
       if (associated(DSSDTcarma))  DSSDTcarma = (DSSDTcarma - CMSScarma) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DSUDTcarma))  DSUDTcarma = (DSUDTcarma - CMSUcarma) / (MAPL_GRAV*DT_MOIST)
 
 
       ! Fill in tracer tendencies
