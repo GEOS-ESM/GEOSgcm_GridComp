@@ -23,43 +23,35 @@ program FillMomGrid
   integer, parameter     :: TILUNIT1  = 22
   integer, parameter     :: TILUNIT2  = 23
 
-  REAL(KIND=8),   parameter     :: PI        = MAPL_PI
+  REAL(KIND=REAL64),   parameter     :: PI        = MAPL_PI
 
-  integer                :: IARGC
   integer                :: nxt, argl, fill
-  integer                :: i, j, k, l, ip
-  integer                :: STATUS, i1, i2, nvars, rvars
+  integer                :: i, j, k
+  integer                :: STATUS
   integer                :: ip1, ip2
   integer                :: io, jo
   integer                :: nx1, nx2, ny1, ny2, nx, ny
-  integer                :: maxtiles, hash
+  integer                :: maxtiles
   integer                :: LineOcn 
   integer                :: count0,count1,count_rate
 
-  REAL(KIND=8),     pointer     :: MOMLAT(:,:)          ! Lats of MOM's T-cell centers
-  REAL(KIND=8),     pointer     :: MOMWET(:,:)          ! TMASK of MOM's grid cells
+  REAL(KIND=REAL64),     pointer     :: MOMLAT(:,:)          ! Lats of MOM's T-cell centers
+  REAL(KIND=REAL64),     pointer     :: MOMWET(:,:)          ! TMASK of MOM's grid cells
 
   integer,   allocatable :: RST1(:,:)
   integer,   allocatable :: RST2(:  )
-  integer,   allocatable :: iTable(:,:)
 
-  REAL(KIND=8) ,    allocatable :: Table1(:,:) 
-  REAL(KIND=8) ,    allocatable :: Table2(:,:) 
-  REAL(KIND=8) ,    allocatable :: rTable(:,:)
-  REAL(KIND=8) ,    allocatable :: cc(:), ss(:)
-  REAL(KIND=8)                  :: dx, dy, area, xc, yc, d2r, vv(4)
-  REAL(KIND=8)                  :: lats, lons, da
+  REAL(KIND=REAL64) ,    allocatable :: Table1(:,:) 
+  REAL(KIND=REAL64) ,    allocatable :: Table2(:,:) 
+  REAL(KIND=REAL64)                  :: lons
 
   logical                :: DoZip
   logical                :: Verb
-  logical                :: found
-  logical                :: Merge
                          
   character*4            :: tildir, rstdir
   character*1            :: Opt 
   character*128          :: arg
   character*128          :: Overlay=''
-  character*128          :: GridName1, GridName2
   character*128          :: Grid1, Grid2
   character*128          :: TilFile, RstFile
   character*128          :: GridFile
@@ -78,15 +70,15 @@ INCLUDE "netcdf.inc"
     rstdir='rst/'   ! Write in current dir
     maxtiles=4000000
 
-    I = iargc()
+    I = command_argument_count()
 
     if(I < 2 .or. I > 11) then
        print *, trim(Usage)
-       call exit(1)
+       error stop 1
     end if
 
     nxt = 1
-    call getarg(nxt,arg)
+    call get_command_argument(nxt,arg)
 
     do while(arg(1:1)=='-')
        opt=arg(2:2)
@@ -95,7 +87,7 @@ INCLUDE "netcdf.inc"
        if(argl==2) then
           if(scan(opt,'zvh')==0) then
              nxt = nxt + 1
-             call getarg(nxt,arg)
+             call get_command_argument(nxt,arg)
           end if
        else
           arg = arg(3:)
@@ -117,28 +109,28 @@ INCLUDE "netcdf.inc"
           Overlay = trim(arg)
        case default
           print *, trim(Usage)
-          call exit(1)
+          error stop 1
        end select
 
        nxt = nxt + 1
-       call getarg(nxt,arg)
+       call get_command_argument(nxt,arg)
     end do
 
     Grid1 = ARG
 
     nxt = nxt + 1
-    call getarg(nxt,arg)
+    call get_command_argument(nxt,arg)
 
     Grid2 = ARG
 
     nxt = nxt + 1
-    call getarg(nxt,arg)
+    call get_command_argument(nxt,arg)
 
     GridFile = arg
 
     if(trim(Overlay)=='') then
       print*, 'Must Provide Overlay'
-      call exit(0)
+      error stop 1
     end if
 
     call ReadGridFile(GridFile, MOMLAT, MOMWET)
@@ -251,7 +243,7 @@ INCLUDE "netcdf.inc"
           if(Pix2 <= 0) cycle 
           io = nint(Table1(3,Pix2))
           jo = nint(Table1(4,Pix2))
-          if(MOMLAT(io,jo) > 30.0 .or. MOMLAT(io,jo) < -30.0) then  ! if at higher latitudes
+          if(MOMLAT(io,jo) > 40.0 .or. MOMLAT(io,jo) < -45.0) then  ! if at higher latitudes
              if(MOMWET(io,jo) > 0.5) then ! if this is a MOM ocean point
                if(Pix1 /= LineOcn) Rst1(i,j) = LineOcn
              endif
@@ -285,7 +277,7 @@ INCLUDE "netcdf.inc"
 ! All done
 
     if(Verb) print * , 'Terminated Normally'
-    call exit(0)
+    stop
 
 contains
 
@@ -298,20 +290,15 @@ contains
     integer :: ID, ITMP, ndims, dimid(3)
 
     ITMP = NF_INQ_VARID    (NCID,  NAME, ID )
-!    print *, name
     ASSERT_(ITMP==NF_NOERR)
 
     ITMP = NF_INQ_VARNDIMS (NCID, ID, ndims)
-!    print *, ndims
     ASSERT_(ITMP==NF_NOERR)
-    !ASSERT_(ndims==2)
 
     itmp = NF_INQ_VARDIMID (NCID, ID, diMId)
-!    print *, dimid
     ASSERT_(ITMP==NF_NOERR)
 
     itmp = NF_INQ_DIMLEN   (NCID, DIMID(nn),XY)
-!    print *, Xy
     ASSERT_(ITMP==NF_NOERR)
 
     return
@@ -320,77 +307,35 @@ contains
   subroutine ReadGridFile(FILE, LAT, WET)
     
     character*(*),      intent(IN ) :: FILE
-    REAL(KIND=8), pointer                  :: LAT(:,:)
-    REAL(KIND=8), pointer                  :: WET(:,:)
+    REAL(KIND=REAL64), pointer                  :: LAT(:,:)
+    REAL(KIND=REAL64), pointer                  :: WET(:,:)
 
-    integer :: STATUS, NCID, VARID, j
-    integer :: SIZ_XVERT_X, SIZ_XVERT_Y
-    integer :: SIZ_YVERT_X, SIZ_YVERT_Y 
+    integer :: STATUS, NCID, VARID
+    integer :: SIZ_XVERT_X
+    integer :: SIZ_YVERT_Y 
     logical :: newstyle
     integer :: ID, ITMP
 
     Status=NF_OPEN(FILE,NF_NOWRITE,NCID)
     ASSERT_(STATUS==NF_NOERR)
 
-    ITMP = NF_INQ_VARID    (NCID, 'x_vert_T', ID )
-    newstyle = ITMP==NF_NOERR
+    call fieldSize(NCID,'lon_centers',SIZ_XVERT_X,1)
+    call fieldSize(NCID,'lat_centers',SIZ_YVERT_Y,2)
 
+    allocate(LAT(SIZ_XVERT_X,SIZ_YVERT_Y),stat=STATUS)
+    ASSERT_(STATUS==0)
+    allocate(WET(SIZ_XVERT_X,SIZ_YVERT_Y),stat=STATUS)
+    ASSERT_(STATUS==0)
 
-    if( NEWSTYLE) then
+    STATUS = NF_INQ_VARID     (NCID,  'lat_centers', VARID )
+    ASSERT_(STATUS==NF_NOERR)
+    status = NF_GET_VAR_DOUBLE(NCID, VARID, LAT)
+    ASSERT_(STATUS==NF_NOERR)
 
-       call fieldSize(NCID,'x_vert_T',SIZ_XVERT_X,1)
-       call fieldSize(NCID,'y_vert_T',SIZ_YVERT_Y,2)
-
-       allocate(LAT(SIZ_XVERT_X,SIZ_YVERT_Y),stat=STATUS)
-       ASSERT_(STATUS==0)
-       allocate(WET(SIZ_XVERT_X,SIZ_YVERT_Y),stat=STATUS)
-       ASSERT_(STATUS==0)
-
-       STATUS = NF_INQ_VARID     (NCID,  'y_T', VARID )
-       ASSERT_(STATUS==NF_NOERR)
-       status = NF_GET_VAR_DOUBLE(NCID, VARID, LAT)
-       ASSERT_(STATUS==NF_NOERR)
-
-       STATUS = NF_INQ_VARID     (NCID,  'wet', VARID )
-       ASSERT_(STATUS==NF_NOERR)
-       STATUS = NF_GET_VAR_DOUBLE(NCID, VARID, WET)
-       ASSERT_(STATUS==NF_NOERR)
-
-!!$       print *, 'Newstyle'
-!!$       print *, 'xs: ',xvert(1,1,:)
-!!$       print *, 'ys: ',yvert(1,1,:)
-
-    else
-
-       call fieldSize(NCID,'geolon_vert_t',SIZ_XVERT_X,1)
-       call fieldSize(NCID,'geolat_vert_t',SIZ_YVERT_Y,2)
-
-
-       SIZ_XVERT_X = SIZ_XVERT_X-1
-       SIZ_YVERT_Y = SIZ_YVERT_Y-1
-!       print *, SIZ_XVERT_X,SIZ_YVERT_Y
-
-       allocate(LAT(SIZ_XVERT_X,SIZ_YVERT_Y),stat=STATUS)
-       ASSERT_(STATUS==0)
-       allocate(WET(SIZ_XVERT_X,SIZ_YVERT_Y),stat=STATUS)
-       ASSERT_(STATUS==0)
-
-       STATUS = NF_INQ_VARID     (NCID,  'geolat_t', VARID )
-       ASSERT_(STATUS==NF_NOERR)
-       status = NF_GET_VAR_DOUBLE(NCID, VARID, LAT)
-       ASSERT_(STATUS==NF_NOERR)
-
-       STATUS = NF_INQ_VARID     (NCID,  'wet', VARID )
-       ASSERT_(STATUS==NF_NOERR)
-       STATUS = NF_GET_VAR_DOUBLE(NCID, VARID, WET)
-       ASSERT_(STATUS==NF_NOERR)
-
-!!$       print *, 'Oldstyle'
-!!$       print *, 'xs: ',vertx(1,1),vertx(2,1),vertx(2,2),vertx(1,2)
-!!$       print *, 'ys: ',verty(1,1),verty(2,1),verty(2,2),verty(1,2)
-
-
-    endif
+    STATUS = NF_INQ_VARID     (NCID,  'mask', VARID )
+    ASSERT_(STATUS==NF_NOERR)
+    STATUS = NF_GET_VAR_DOUBLE(NCID, VARID, WET)
+    ASSERT_(STATUS==NF_NOERR)
 
   end subroutine READGRIDFILE
 

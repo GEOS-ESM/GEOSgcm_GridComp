@@ -236,16 +236,6 @@ if ( $orslv == O1 | $orslv == T1 | $orslv == T2 | $orslv == T3 | $orslv == T4 ) 
 	set GLOBAL_CATCH_DATA = ${l_data}/GEOS5_10arcsec_mask_freshwater-lakes.nc
     endif
 
-MOMGRID:	
-    echo
-    echo "Select the ${C1}MOM Grid version to use:"
-    echo "      where:  ${C2}m5 --   MOM5 Grid ${CR} "
-    echo "              ${C2}m6 --   MOM6 Grid ${CR} "   
-    set MOMGRID = `echo $<`
-    set MOMGRID = `echo $MOMGRID | tr "[:lower:]" "[:upper:]"`
-
-    if( $MOMGRID != 'M5'   & \
-        $MOMGRID != 'M6' ) goto MOMGRID
 	 
 else if ( $orslv == O2 | $orslv == O3 | $orslv == CS ) then
 
@@ -558,9 +548,9 @@ cd $BCDIR
 
 /bin/ln -s $pwd/bin
 mkdir -p til rst data/MOM clsm/plots
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/INPUT/ data/MOM/360x200
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/INPUT/ data/MOM/720x410
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/INPUT/ data/MOM/1440x1080
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/ data/MOM/360x200
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/ data/MOM/720x410
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/ data/MOM/1440x1080
 
 cd data 
 ln -s $l_data CATCH
@@ -586,9 +576,12 @@ if( $LATLON_OCEAN == TRUE ) then
     bin/create_README.csh
 endif
 if( $TRIPOL_OCEAN == TRUE ) then
-    if($MOMGRID == M5 | $MOMGRID == M6) then
-	bin/mkMOMAquaRaster.x -x $NX -y $NY  data/MOM/${imo}x${jmo}/grid_spec.nc > /dev/null
-    endif
+	bin/mkMOMAquaRaster.x -x $NX -y $NY  data/MOM/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
+    /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
+    /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
+    bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/MOM/${imo}x${jmo}/MAPL_Tripolar.nc 
+    /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
+    /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
     bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t ${NT} DC${IM}xPC${JM} ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
     bin/mk_runofftbl.x DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
@@ -729,9 +722,9 @@ cd $BCDIR
 
 /bin/ln -s $pwd/bin
 mkdir -p til rst data/MOM clsm/plots
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/INPUT/ data/MOM/360x200
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/INPUT/ data/MOM/720x410
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/INPUT/ data/MOM/1440x1080
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/ data/MOM/360x200
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/ data/MOM/720x410
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/ data/MOM/1440x1080
 
 cd data 
 ln -s $l_data CATCH
@@ -754,9 +747,12 @@ if( $LATLON_OCEAN == TRUE ) then
 endif
 
 if( $TRIPOL_OCEAN == TRUE ) then
-    if($MOMGRID == M5 | $MOMGRID == M6) then
-	bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/MOM/${imo}x${jmo}/grid_spec.nc > /dev/null
-    endif
+	bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/MOM/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
+    /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
+    /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
+    bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/MOM/${imo}x${jmo}/MAPL_Tripolar.nc 
+    /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
+    /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
     bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t ${NT} CF${NC}x6C ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
     bin/mk_runofftbl.x CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
@@ -925,9 +921,9 @@ cd $BCDIR
 
 /bin/ln -s $pwd/bin
 mkdir -p til rst data/MOM clsm/plots
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/INPUT/ data/MOM/360x200
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/INPUT/ data/MOM/720x410
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/INPUT/ data/MOM/1440x1080
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o360x200/ data/MOM/360x200
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/ data/MOM/720x410
+ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/ data/MOM/1440x1080
 
 cd data 
 ln -s $l_data CATCH
@@ -954,7 +950,12 @@ if( $LATLON_OCEAN == TRUE ) then
 endif
 
 if( $TRIPOL_OCEAN == TRUE ) then
-    bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/MOM/${imo}x${jmo}/grid_spec.nc > /dev/null
+	bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/MOM/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
+    /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
+    /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
+    bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/MOM/${imo}x${jmo}/MAPL_Tripolar.nc 
+    /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
+    /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
     bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
     bin/CombineRasters.x -t ${NT} CF${NC}x6C ${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
     bin/mk_runofftbl.x CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter
