@@ -4018,7 +4018,12 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
 
    NT = size(TA)
-
+   ! Leave if there are no tiles in the processor
+   ! --------------------------------------------
+   if (NT < 1) then
+      RETURN_(ESMF_SUCCESS)
+   endif
+   
    allocate(TVA(NT),STAT=STATUS)
    VERIFY_(STATUS)
    allocate(TVS(NT),STAT=STATUS)
@@ -5014,7 +5019,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, allocatable, dimension(:) :: car1, car2, car4
     real, allocatable, dimension(:) :: para
     real, allocatable, dimension(:) :: dayl, dayl_fac
-    real, allocatable, dimension(:), save :: nee, npp, gpp, sr, padd, frootc, vegc, xsmr,burn, closs, fsel
+    real, allocatable, dimension(:), save :: nee, npp, gpp, sr, padd, frootc, vegc, xsmr,burn, closs
     real, allocatable, dimension(:) :: nfire, som_closs, fsnow
     real, allocatable, dimension(:) :: ndeploy, denit, sminn_leached, sminn, fire_nloss
     real, allocatable, dimension(:) :: leafn, leafc, gross_nmin, net_nmin, nfix_to_sminn, actual_immob
@@ -5538,7 +5543,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         IF (RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,  RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
-
+        ! Leave if there are no tiles in the processor
+        ! --------------------------------------------
+        if (NTILES < 1) then
+           RETURN_(ESMF_SUCCESS)
+        endif
+        
     allocate(   ityp(ntiles,nveg,nzone) )
     allocate(   fveg(ntiles,nveg,nzone) )
     allocate(   wtzone   (ntiles,nzone) )
@@ -6336,7 +6346,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
     if(.not. allocated(xsmr)) allocate(    xsmr(ntiles) )
     if(.not. allocated(burn)) allocate(    burn(ntiles) )
     if(.not. allocated(closs))allocate(   closs(ntiles) )
-    if(.not. allocated(fsel ))allocate(   fsel (ntiles) )
+
     allocate(             nfire(ntiles) )
     allocate(         som_closs(ntiles) )
     allocate(    dayl(ntiles) )
@@ -7317,7 +7327,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        if(associated(CNTOTLITC          )) cntotlitc           = 1.e-3*totlitc           * cnsum 
        if(associated(CNCWDC             )) cncwdc              = 1.e-3*cwdc              * cnsum 
        if(associated(CNROOT             )) cnroot              = 1.e-3*rootc             * cnsum          
-       if(associated(CNFSEL             )) cnfsel              = fsel                    
+       if(associated(CNFSEL             )) cnfsel              = 0. 
        ! reset summing arrays
        ! --------------------
        tgwm    = 0.
@@ -8660,6 +8670,12 @@ subroutine RUN0(gc, import, export, clock, rc)
 
   ! Number of tiles and a dummy real array
   ntiles = size(HTSNNN1)
+  ! Leave if there are no tiles in the processor
+  ! --------------------------------------------
+  if (NTILES < 1) then
+     RETURN_(ESMF_SUCCESS)
+  endif
+  
   allocate(dummy(ntiles), stat=status)
   VERIFY_(status)
   ! Reset WW

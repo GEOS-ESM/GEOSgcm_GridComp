@@ -4083,6 +4083,11 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    NT = size(TA)
 
+   ! Leave if there are no tiles in the processor
+   ! --------------------------------------------
+   if (NT < 1) then
+      RETURN_(ESMF_SUCCESS)
+   endif
    allocate(TVA(NT),STAT=STATUS)
    VERIFY_(STATUS)
    allocate(TVS(NT),STAT=STATUS)
@@ -5538,7 +5543,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         IF (RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,  RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
-
+        
+        ! Leave if there are no tiles in the processor
+        ! --------------------------------------------
+        if (NTILES < 1) then
+           RETURN_(ESMF_SUCCESS)
+        endif
     allocate(   ityp(ntiles,nveg,nzone) )
     allocate(   fveg(ntiles,nveg,nzone) )
     allocate( wtzone(ntiles,nzone) )
@@ -8363,6 +8373,12 @@ subroutine RUN0(gc, import, export, clock, rc)
 
   ! Number of tiles and a dummy real array
   ntiles = size(HTSNNN1)
+  
+  ! Leave if there are no tiles in the processor
+  ! --------------------------------------------
+  if (NTILES < 1) then
+     RETURN_(ESMF_SUCCESS)
+  endif
   allocate(dummy(ntiles), stat=status)
   VERIFY_(status)
   ! Reset WW
