@@ -811,7 +811,7 @@ contains
     VERIFY_(STATUS)
     
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'TUNPERT',                                      &
+         SHORT_NAME = 'DTDTUNPERT',                                   &
          LONG_NAME  = 'unperturbed_air_temperature_tendency',         &
          UNITS      = 'K s-1',                                        &
          DIMS       =  MAPL_DimsHorzVert,                             &
@@ -819,33 +819,49 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'UUNPERT',                                      &
+         SHORT_NAME = 'DUDTUNPERT',                                   &
          LONG_NAME  = 'unperturtbed_tendency_of_eastward_wind',       &
-         UNITS      = 'm s-2',                                     &
+         UNITS      = 'm s-2 s-1',                                    &
          DIMS       =  MAPL_DimsHorzVert,                             &
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'VUNPERT',                                      &
-         LONG_NAME  = 'unperturtbed_tendency_of_northward_wind',       &
-         UNITS      = 'm s-2',                                     &
+         SHORT_NAME = 'DVDTUNPERT',                                   &
+         LONG_NAME  = 'unperturtbed_tendency_of_northward_wind',      &
+         UNITS      = 'm s-2 s-1',                                    &
          DIMS       =  MAPL_DimsHorzVert,                             &
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'QUNPERT',                                      &
+         SHORT_NAME = 'QVUNPERT',                                     &
+         LONG_NAME  = 'unperturbed_water_vapor',                      &
+         UNITS      = 'kg kg-1',                                      &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQVDTUNPERT',                                  &
          LONG_NAME  = 'unperturbed_tendency_of_water_vapor',          &
-         UNITS      = 'n/a',                                          &
+         UNITS      = 'kg kg-1 s-1',                                  &
          DIMS       =  MAPL_DimsHorzVert,                             &
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'QPERT',                                        &
+         SHORT_NAME = 'QVPERT',                                       &
+         LONG_NAME  = 'stochastically_pert_water_vapor',              &
+         UNITS      = 'kg kg-1',                                      &
+         DIMS       =  MAPL_DimsHorzVert,                             &
+         VLOCATION  =  MAPL_VLocationCenter,                          &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME = 'DQVDTPERT',                                    &
          LONG_NAME  = 'stochastically_pert_tendency_of_water_vapor',  &
-         UNITS      = 'kg m-2 s-1',                                   &
+         UNITS      = 'kg kg-1 s-1',                                   &
          DIMS       =  MAPL_DimsHorzVert,                             &
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
@@ -853,7 +869,7 @@ contains
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME = 'DUDTSTOCH',                                    &
          LONG_NAME  = 'eastward_wind_tendency_due_to_stochastic_physics', &
-         UNITS      = 'm s-2',                                        &
+         UNITS      = 'm s-2 s-1',                                    &
          DIMS       =  MAPL_DimsHorzVert,                             &
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
@@ -861,7 +877,7 @@ contains
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME = 'DVDTSTOCH',                                    &
          LONG_NAME  = 'northward_wind_tendency_due_to_stochastic_physics', &
-         UNITS      = 'm s-2',                                        &
+         UNITS      = 'm s-2 s-1',                                    &
          DIMS       =  MAPL_DimsHorzVert,                             &
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
@@ -875,9 +891,9 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
     call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME = 'DQDTSTOCH',                                    &
+         SHORT_NAME = 'DQVDTSTOCH',                                   &
          LONG_NAME  = 'water_vapor_tendency_due_to_stochastic_physics', &
-         UNITS      = 'kg m-2 s-1',                                   &
+         UNITS      = 'kg kg-1 s-1',                                  &
          DIMS       =  MAPL_DimsHorzVert,                             &
          VLOCATION  =  MAPL_VLocationCenter,                          &
          RC=STATUS  )
@@ -2001,9 +2017,10 @@ contains
    real, pointer, dimension(:,:,:)     :: RNDPERT,RNDPTR
    real, pointer, dimension(:,:,:)     :: SKEBU_WT,SKEBV_WT
    real, pointer, dimension(:,:,:)     :: SKEBU,SKEBV
-   real, pointer, dimension(:,:,:)     :: DUDTSTOCH, DVDTSTOCH, DTDTSTOCH, DQDTSTOCH 
-   real, pointer, dimension(:,:,:)     :: QPERT 
-   real, pointer, dimension(:,:,:)     :: TUNPERT, UUNPERT, VUNPERT, QUNPERT
+   real, pointer, dimension(:,:,:)     :: DUDTSTOCH, DVDTSTOCH, DTDTSTOCH, DQVDTSTOCH 
+   real, pointer, dimension(:,:,:)     :: DQVDTPERT
+   real, pointer, dimension(:,:,:)     :: QVPERT, QVUNPERT
+   real, pointer, dimension(:,:,:)     :: DTDTUNPERT, DUDTUNPERT, DVDTUNPERT, DQVDTUNPERT
    real, pointer, dimension(:,:,:)     :: TIR, TIM, TIMFRIC, TIT, TIF
    real, pointer, dimension(:,:,:)     :: UIM, VIM, WIM, THIM
    real, pointer, dimension(:,:,:)     :: UIT, VIT, SIT
@@ -2364,15 +2381,19 @@ contains
     if (DO_SPPT) then   
        call MAPL_GetPointer (EXPORT, RNDPTR,    'RNDPTR',    RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer (EXPORT, TUNPERT,   'TUNPERT',   RC=STATUS)
+       call MAPL_GetPointer (EXPORT, DTDTUNPERT, 'DTDTUNPERT',   RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer (EXPORT, UUNPERT,   'UUNPERT',   RC=STATUS)
+       call MAPL_GetPointer (EXPORT, DUDTUNPERT, 'DUDTUNPERT',  RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer (EXPORT, VUNPERT,   'VUNPERT',   RC=STATUS)
+       call MAPL_GetPointer (EXPORT, DVDTUNPERT, 'DVDTUNPERT',  RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer (EXPORT, QUNPERT,   'QUNPERT',   RC=STATUS)
+       call MAPL_GetPointer (EXPORT, DQVDTUNPERT, 'DQVDTUNPERT',   RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer (EXPORT, QPERT,     'QPERT',     RC=STATUS)
+       call MAPL_GetPointer (EXPORT, DQVDTPERT, 'DQVDTPERT',  RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer (EXPORT, QVUNPERT,  'QVUNPERT',   RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_GetPointer (EXPORT, QVPERT,    'QVPERT',     RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer (EXPORT, DUDTSTOCH, 'DUDTSTOCH', RC=STATUS)
        VERIFY_(STATUS)
@@ -2380,7 +2401,7 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer (EXPORT, DTDTSTOCH, 'DTDTSTOCH', RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer (EXPORT, DQDTSTOCH, 'DQDTSTOCH', RC=STATUS)
+       call MAPL_GetPointer (EXPORT, DQVDTSTOCH, 'DQVDTSTOCH', RC=STATUS)
        VERIFY_(STATUS)
     endif 
     if (DO_SKEB) then
@@ -2706,23 +2727,25 @@ contains
     IF( DO_SPPT ) THEN 
        allocate(TMP(IM,JM,LM),stat=STATUS)
        VERIFY_(STATUS)
-       if( associated(UUNPERT) ) UUNPERT = DUDT
-       if( associated(VUNPERT) ) VUNPERT = DVDT
-       TMP = 0.
-       DO L=1,LM
-           TMP(:,:,L) = DUDT(:,:,L)*RNDPERT(:,:,L)
-          DUDT(:,:,L) = DUDT(:,:,L) +   TMP(:,:,L)
-       ENDDO 
-       if( associated(DUDTSTOCH) ) DUDTSTOCH = TMP
-       TMP = 0.
-       DO L=1,LM
-           TMP(:,:,L) = DVDT(:,:,L)*RNDPERT(:,:,L)
-          DVDT(:,:,L) = DVDT(:,:,L) +   TMP(:,:,L)
-       ENDDO 
-       if( associated(DVDTSTOCH) ) DVDTSTOCH = TMP
+       if( associated(DUDT) .and. associated(DVDT) ) then
+          if( associated(DUDTUNPERT) ) DUDTUNPERT = DUDT
+          if( associated(DVDTUNPERT) ) DVDTUNPERT = DVDT
+          TMP = 0.
+          DO L=1,LM
+              TMP(:,:,L) = DUDT(:,:,L)*RNDPERT(:,:,L)
+             DUDT(:,:,L) = DUDT(:,:,L) +   TMP(:,:,L)
+          ENDDO 
+          if( associated(DUDTSTOCH) ) DUDTSTOCH = TMP
+          TMP = 0.
+          DO L=1,LM
+              TMP(:,:,L) = DVDT(:,:,L)*RNDPERT(:,:,L)
+             DVDT(:,:,L) = DVDT(:,:,L) +   TMP(:,:,L)
+          ENDDO 
+          if( associated(DVDTSTOCH) ) DVDTSTOCH = TMP
+       endif
     ENDIF
 
-    IF ( DO_SKEB ) THEN 
+    IF ( DO_SKEB .and. associated(DUDT) .and. associated(DVDT) ) THEN 
        DO L=1,LM
           DUDT(:,:,L)= DUDT(:,:,L) + SKEBU(:,:,L)
           DVDT(:,:,L)= DVDT(:,:,L) + SKEBV(:,:,L)
@@ -2751,6 +2774,13 @@ contains
        allocate(TOT(IM,JM,LM),stat=STATUS)
        VERIFY_(STATUS)
 
+       if ( .not.associated(TIR) .or. .not.associated(STN) .or. &
+            .not.associated(TTN) .or. .not.associated(FRI) .or. &
+            .not.associated(TIG) .or. .not.associated(TICU) ) then
+            status=99
+            if( MAPL_am_I_root() ) print*, "GEOS_PhysicsGridComp: missing T-tend pointer, aborting ..."
+            VERIFY_(STATUS)
+       endif
        TOT = TIR   &  ! Mass-Weighted Temperature Tendency due to Radiation
            + STN   &  ! Mass-Weighted Temperature Tendency due to Turbulent Mixing
            + TTN   &  ! Mass-Weighted Temperature Tendency due to Moist Processes
@@ -2761,7 +2791,7 @@ contains
        IF(DO_SPPT) THEN 
           allocate(TFORQS(IM,JM,LM))
           TFORQS = T + DT*TOT*DPI
-          if( associated(TUNPERT) ) TUNPERT = TOT
+          if( associated(DTDTUNPERT) ) DTDTUNPERT = TOT
           DO L=1,LM
             TMP(:,:,L) = (TOT(:,:,L) - TIG(:,:,L) ) *RNDPERT(:,:,L) ! Remove contribution from GWD before rndpert 
             TOT(:,:,L) =  TOT(:,:,L) + TMP(:,:,L)
@@ -2816,7 +2846,7 @@ contains
 
        if(associated(DTDTTOT)) DTDTTOT = TOT * DPI
        if (DO_SPPT) then
-          if(associated(TUNPERT)) TUNPERT = TUNPERT * DPI
+          if(associated(DTDTUNPERT)) DTDTUNPERT = DTDTUNPERT * DPI
        end if
        deallocate(TOT)  
     end if
@@ -2961,6 +2991,12 @@ contains
 ! -------------
     IF(DO_SPPT) THEN 
 
+        if ( .not.associated(DQVDTMST) .or. .not.associated(DQVDTTRB) .or. .not.associated(DQVDTCHM) ) then
+           status=99
+           if( MAPL_am_I_root() ) print*, "GEOS_PhysicsGridComp: missing Q-tend pointer, aborting ..."
+            VERIFY_(STATUS)
+        endif
+
         ! Create Proxy for Updated Pressure due to Moist Physics
         !-------------------------------------------------------
          allocate(  dp_mst(IM,JM,  LM),STAT=STATUS ) ; VERIFY_(STATUS)
@@ -2986,10 +3022,13 @@ contains
 
         ! Compute Stochastic Perturbation
         ! -------------------------------
-          if( associated(QUNPERT)   ) QUNPERT   = QV
-          if( associated(DQDTSTOCH) ) DQDTSTOCH = QV
+          if( associated(QVUNPERT)    ) QVUNPERT    = QV
+          if( associated(DQVDTPERT)   ) DQVDTPERT   = QV
+          if( associated(DQVDTSTOCH)  ) DQVDTSTOCH  = QV
+          if( associated(DQVDTUNPERT) ) DQVDTUNPERT = DQVDTMST + DQVDTTRB + DQVDTCHM
           DO L=1,LM
             TMP(:,:,L) = (DQVDTMST(:,:,L)+DQVDTTRB(:,:,L))*RNDPERT(:,:,L)
+            if( associated(DQVDTSTOCH) ) DQVDTSTOCH(:,:,L) = TMP(:,:,L)
             TMP(:,:,L) = QV(:,:,L) + max(DT*TMP(:,:,L),-QV(:,:,L))
           ENDDO
           allocate(qs(IM,JM))
@@ -3001,7 +3040,7 @@ contains
                 QV(:,:,L) = TMP(:,:,L)
              endwhere
           ENDDO
-          if( associated(QPERT) )         QPERT =   QV
+!         if( associated(DQVDTSTOCH) ) DQVDTSTOCH = (QV - DQVDTSTOCH)/DT 
 
         ! Create Water Mass after Stochastic Perturbation
         ! -----------------------------------------------
@@ -3088,7 +3127,8 @@ contains
           endif
           enddo
 
-          if( associated(DQDTSTOCH) ) DQDTSTOCH = ( QV - DQDTSTOCH )/DT
+          if( associated(QVPERT)    ) QVPERT = QV
+          if( associated(DQVDTPERT) ) DQVDTPERT = (QV-DQVDTPERT)/DT
 
           deallocate(  dp_mst    )
           deallocate( ple_mst    )
