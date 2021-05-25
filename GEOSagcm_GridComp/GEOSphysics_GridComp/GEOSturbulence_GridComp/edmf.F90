@@ -9,7 +9,7 @@ real, parameter ::     &
      WSTARmin = 1.e-3, &
      zpblmin  = 100.,  &
      onethird = 1./3., &
-     au0      = 0.1,   &
+     au0      = 0.1,  &
      delta    = 2.E-3
 
 contains
@@ -92,7 +92,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
   ! Thermal plume stuff 
   integer, dimension(IM,JM)   :: izsl
-  real                        :: f, fw
+  real                        :: E_work, D_work
   real, dimension(IM,JM,LM)   :: A_star
   real, dimension(IM,JM,0:LM) :: f_thermal
   real, dimension(IM,JM)      :: Mu0, zi_thermal
@@ -242,7 +242,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               upthv(iup,i,j) = thvi(i,j,kbot) + 0.58*upw(iup,i,j)*sigmaTH/sigmaW ! Stull 1988
            else
               upa(iup,i,j)   = au0/real(numup)
-              upw(iup,i,j)   = A_star(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
+              upw(iup,i,j)   = E(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
               upu(iup,i,j)   = u(i,j,LM)
               upv(iup,i,j)   = v(i,j,LM)
               upqt(iup,i,j)  = qt(i,j,LM)
@@ -270,14 +270,14 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
         ! Compute condensation and thl, ql, qi
         do iup = 1,numup
-!           if ( plume_type == 0 ) then
+           if ( test_flag == 0 ) then
               call condensation_edmfA(upthv(iup,i,j), upqt(iup,i,j), ple(i,j,kbot), &
                                       upthl(iup,i,j), upql(iup,i,j), upqi(iup,i,j), ice_ramp)
-!           else
-!              upthl(iup,i,j) = upthv(iup,i,j)/( 1. + mapl_vireps*upqt(iup,i,j) )
-!              upql(iup,i,j)  = 0.
-!              upqi(iup,i,j)  = 0.
-!           end if
+           else
+              upthl(iup,i,j) = upthv(iup,i,j)/( 1. + mapl_vireps*upqt(iup,i,j) )
+              upql(iup,i,j)  = 0.
+              upqi(iup,i,j)  = 0.
+           end if
         end do
      else
         active_updraft(:,i,j) = .false.
@@ -286,7 +286,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   end do
 
   if ( debug_flag /= 0 ) then
-     write(*,'(I4,12F7.2)') LM-1, sum(100.*upa(:,1,1)), 0., 100.*upa(:,1,1)
+!     write(*,'(I4,12F7.2)') LM-1, sum(100.*upa(:,1,1)), 0., 100.*upa(:,1,1)
   end if
 
   !
@@ -380,14 +380,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     call Poisson(1, 1, 1, 1, entf(iup,i,j,k), enti(iup,i,j,k), the_seed)
                     ent(iup,i,j,k) = real(enti(iup,i,j,k))*ent0*idzle
                  end if
-
-                 ! increase entrainment if local minimum of thv
-!                 if ( thv(i,j,k) < thv(i,j,kp1) .and. thv(i,j,k) < thv(i,j,km1) ) then
-!                    ent(iup,i,j,k) = ent(iup,i,j,k) + 5.*ent0/L0(i,j)
-!                 end if
-
-                 ! Limit entrainment length scale using surface
-!                 ent(iup,i,j,k) = max( ent(iup,i,j,k), 1./(3.*zl(i,j,k)) ) ! Cheinet 2003
               else
                  ! negative L0 means 0 entrainment  
                  ent(:,i,j,:) = 0. ! check
@@ -408,8 +400,13 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  Un   = u(i,j,k)*( 1. - EntExpU )  + upu(iup,i,j)*EntExpU
                  Vn   = v(i,j,k)*( 1. - EntExpU )  + upv(iup,i,j)*EntExpU
 
-                 ! Condensation                 
-                 call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
+                 ! Condensation
+                 if ( test_flag == 0 ) then
+                    call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
+                 else
+                    QCn  = 0.
+                    THVn = THLn*( 1. + mapl_vireps*QTn )
+                 end if
 
                  ! Buoyancy
                  B = goth00*( 0.5*( THVn + upthv(iup,i,j) ) - thv(i,j,k) )
@@ -427,38 +424,36 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  ! Integrate vertical velocity budget
                  B = goth00*( upthv(iup,i,j) - thv(i,j,k) )
 
-                 f  = f_thermal(i,j,k)
-                 fw = f
-                 ! Integrate mass flux and plume momentum budgets
-!                 if ( upql(i,j,k) == 0. ) then
-!                    f  = f_thermal(i,j,k)
-!                    fw = f
-!                 else
-!                    f  = 1./( 1. - 0.6*dzle*delta )
-!                    fw = ( 1. - dzle*delta )/( 1. - 0.6*dzle*delta )
-!                 end if
+                 Wn2 = f_thermal(i,j,k)**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
 
-                 Mn = upm(iup,i,j)/f
+                 if ( Wn2 > 0. ) then
+                    if ( B > 0. ) then
+                       Mn     = upm(iup,i,j)/f_thermal(i,j,k)
+                       E_work = max( 0., ( upm(iup,i,j)/f_thermal(i,j,k) - upm(iup,i,j) )/dzle )
+                       D_work = 0.
+                    else
+                       Mn     = rhoe(i,j,k-1)*upa(iup,i,j)*sqrt(Wn2)
+                       E_work = max( 0., ( upm(iup,i,j)/f_thermal(i,j,k) - upm(iup,i,j) )/dzle )
+                       D_work = max( 0., E_work - ( Mn - upm(iup,i,j) )/dzle )
+                    end if
 
-                 if ( test_flag == 0 ) then
-                    Wn2 = fw**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
-                 else
-                    Wn2 = max( 0., ( upm(iup,i,j)*upw(iup,i,j) + dzle*rho(i,j,k)*upa(iup,i,j)*B )/Mn )**2.
-                 end if
+                    ! Integrate scalar budgets
+                    THLn = ( upm(iup,i,j)*upthl(iup,i,j) + dzle*E_work*thl(i,j,k) )/( Mn + dzle*D_work )
+                    QTn  = ( upm(iup,i,j)*upqt(iup,i,j) + dzle*E_work*qt(i,j,k) )/( Mn + dzle*D_work )
+                    Un   = ( upm(iup,i,j)*upu(iup,i,j) + dzle*E_work*u(i,j,k) )/( Mn + dzle*D_work )
+                    Vn   = ( upm(iup,i,j)*upu(iup,i,j) + dzle*E_work*v(i,j,k) )/( Mn + dzle*D_work )
 
-                 ! Integrate scalar budgets
-                 QTn  = qt(i,j,k)*( 1. - f )  + upqt(iup,i,j)*f
-                 THLn = thl(i,j,k)*( 1. - f ) + upthl(iup,i,j)*f
-                 Un   = u(i,j,k)*( 1. - f )   + upu(iup,i,j)*f
-                 Vn   = v(i,j,k)*( 1. - f )   + upv(iup,i,j)*f
+                    ! Condensation
+                    if ( test_flag == 0 ) then
+                       call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
+                    else
+                       QCn  = 0.
+                       THVn = THLn*( 1. + mapl_vireps*QTn )
+                    end if
 
-                 ! Condensation
-                 call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
-!                 QCn  = 0.
-!                 THVn = THLn*( 1. + mapl_vireps*QTn )
-
-                 if ( debug_flag /= 0 .and. iup == 1 ) then
-!                    write(*,*) k, B, upw(iup,i,j)
+                    if ( debug_flag /= 0 .and. iup == 1 ) then
+                       write(*,*) k, B, upw(iup,i,j), sqrt(Wn2)
+                    end if
                  end if
               end if
               
@@ -490,9 +485,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
                  if ( plume_type == 1 ) then
                     upm(iup,i,j) = Mn
-                    if ( B > 0 ) then
-                       upa(iup,i,j) = upm(iup,i,j)/( rhoe(i,j,km1)*upw(iup,i,j) )
-                    end if
+                    upa(iup,i,j) = upm(iup,i,j)/( rhoe(i,j,km1)*upw(iup,i,j) )
                  end if
 
                  mfthvt = mfthvt + 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) + mfthvt_work )
@@ -566,7 +559,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
            end if
 
            if ( debug_flag /= 0 ) then
-              write(*,'(I4,12F7.2)') k-1, sum(100.*upa_out(:)), 100.*edmfmoista(1,1,k-1), 100.*upa_out(:)
+!              write(*,'(I4,12F7.2)') k-1, sum(100.*upa_out(:)), 100.*edmfmoista(1,1,k-1), 100.*upa_out(:)
 !              write(*,*) k-1, 100*upa(1,1,1), upw(1,1,1)
            end if
         else
@@ -843,22 +836,23 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
               qtu_next  = f(i,j,k)*qtu(i,j)  + ( 1. - f(i,j,k) )*qt(i,j,k)
               wu2_next  = f(i,j,k)**2.*wu2(i,j) + 2.*dz*B
 
-!              if ( debug_flag /= 0 ) then
-!                 write(*,'(I4,2F7.2)') k, sqrt(wu2(i,j)), sqrt(wu2_next)
-!              end if
+              if ( debug_flag /= 0 ) then
+!                 write(*,'(I4,2F7.2)') k, B, sqrt(wu2(i,j)), sqrt(wu2_next)
+                 write(*,*) k, B, sqrt(wu2(i,j)), sqrt(wu2_next)
+              end if
               
               ! call condensation_edmf(qtu_next, thlu_next, ple(i,j,km1), thvu_next, qcu, wf, ice_ramp)           
               thvu_next = thlu_next*( 1. + mapl_vireps*qtu_next )
 
-              if ( wu2_next <= wu2(i,j) ) then
+              if ( B <= 0. ) then
                  zi(i,j)        = zle(i,j,k)
                  Mu0(i,j)       = sqrt( wu2(i,j) )/( 2.*zi(i,j)*A_star2_int(i,j) )
                  wu0(i,j)       = Mu0(i,j)*A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
                  test_flag(i,j) = .false.
 
-!                 if ( debug_flag /= 0 ) then
-!                    write(*,*) '*', iter, wu0(i,j) 
-!                 end if
+                 if ( debug_flag /= 0 ) then
+                    write(*,*) '*', iter, wu0(i,j) 
+                 end if
               else
                  Mu(i,j)   = Mu_next
                  wu2(i,j)  = wu2_next
