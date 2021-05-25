@@ -1922,7 +1922,7 @@ module GEOS_CICE4ColumnPhysGridComp
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile     (SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=mystate%CHOOSEMOSFC, DEFAULT=1, __RC__ )
+    call MAPL_GetResource (SCF, mystate%CHOOSEMOSFC, label='CHOOSEMOSFC:', DEFAULT=1, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
     wrap%ptr => mystate
     call ESMF_UserCompSetInternalState(gc, 'cice_private', wrap,status)
