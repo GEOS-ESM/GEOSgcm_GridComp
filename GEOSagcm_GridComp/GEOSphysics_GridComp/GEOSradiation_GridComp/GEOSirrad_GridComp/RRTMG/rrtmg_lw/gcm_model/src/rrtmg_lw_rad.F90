@@ -22,8 +22,7 @@ contains
       cldf, ciwp, clwp, rei, rel, iceflglw, liqflglw, &
       tauaer, zm, alat, dyofyr, cloudLM, cloudMH, clearCounts, &
       uflx, dflx, uflxc, dflxc, duflx_dTs, duflxc_dTs, &
-      olrb06, dolrb06_dTs, olrb09, dolrb09_dTs, &
-      olrb10, dolrb10_dTs, olrb11, dolrb11_dTs)
+      band_output, olrb, dolrb_dTs)
    ! -----------------------------------------------------------------------------
    !
    ! This program is the driver subroutine for RRTMG_LW, the AER LW radiation 
@@ -194,11 +193,14 @@ contains
       real, intent(out) :: duflx_dTs  (ncol,nlay+1)  ! total sky
       real, intent(out) :: duflxc_dTs (ncol,nlay+1)  ! clear sky
 
-      ! OLR for bands 9-11 and temperature derivatives [W/m2, W/m2/K]
-      real, intent(out), dimension(ncol) :: olrb06, dolrb06_dTs
-      real, intent(out), dimension(ncol) :: olrb09, dolrb09_dTs
-      real, intent(out), dimension(ncol) :: olrb10, dolrb10_dTs
-      real, intent(out), dimension(ncol) :: olrb11, dolrb11_dTs
+      ! ----- band OLRs -----
+
+      ! which band OLRs to calculate?
+      logical, intent(in) :: band_output (nbndlw)
+
+      ! band OLRs and d/dTs
+      real, intent(out) :: olrb      (nbndlw,ncol)  ! [W/m2]
+      real, intent(out) :: dolrb_dTs (nbndlw,ncol)  ! [W/m2/K]
 
       ! ----- Locals -----
       integer :: n, nparts
@@ -341,8 +343,7 @@ contains
             cldf, ciwp, clwp, rei, rel, iceflglw, liqflglw, &
             tauaer, zm, alat, dyofyr, cloudLM, cloudMH, clearCounts, &
             uflx, dflx, uflxc, dflxc, duflx_dTs, duflxc_dTs, &
-            olrb06, dolrb06_dTs, olrb09, dolrb09_dTs, &
-            olrb10, dolrb10_dTs, olrb11, dolrb11_dTs)
+            band_output, olrb, dolrb_dTs)
 
       end do
 
@@ -361,8 +362,7 @@ contains
       cldf, ciwp, clwp, rei, rel, iceflglw, liqflglw, &
       tauaer, zm, alat, dyofyr, cloudLM, cloudMH, clearCounts, &
       uflx, dflx, uflxc, dflxc, duflx_dTs, duflxc_dTs, &
-      olrb06, dolrb06_dTs, olrb09, dolrb09_dTs, &
-      olrb10, dolrb10_dTs, olrb11, dolrb11_dTs)
+      band_output, olrb, dolrb_dTs)
    ! ------------------------------------------------------------------
 
       use parrrtm, only : nbndlw, ngptlw
@@ -438,11 +438,14 @@ contains
       real, intent(out) :: duflx_dTs  (ncol,nlay+1)  ! total sky
       real, intent(out) :: duflxc_dTs (ncol,nlay+1)  ! clear sky
 
-      ! OLR for bands 9-11 and temperature derivatives [W/m2, W/m2/K]
-      real, intent(out), dimension(ncol) :: olrb06, dolrb06_dTs
-      real, intent(out), dimension(ncol) :: olrb09, dolrb09_dTs
-      real, intent(out), dimension(ncol) :: olrb10, dolrb10_dTs
-      real, intent(out), dimension(ncol) :: olrb11, dolrb11_dTs
+      ! ----- band OLRs -----
+
+      ! which band OLRs to calculate?
+      logical, intent(in) :: band_output (nbndlw)
+
+      ! band OLRs and d/dTs
+      real, intent(out) :: olrb      (nbndlw,ncol)  ! [W/m2]
+      real, intent(out) :: dolrb_dTs (nbndlw,ncol)  ! [W/m2/K]
 
       ! local partitioned variables ...
       ! ===============================
@@ -494,15 +497,9 @@ contains
       real :: dtotuflux_dTs (0:nlay,pncol)  ! d/d(Tsurf) [W/m2/K]
       real :: dtotuclfl_dTs (0:nlay,pncol)  ! d/d(Tsurf) [W/m2/K]
 
-      ! TOA OLR in bands 6 & 9-11 and their derivatives wrt Tsurf
-      real :: p_olrb06      (pncol)  ! [W/m2]
-      real :: p_olrb09      (pncol)  ! [W/m2]
-      real :: p_olrb10      (pncol)  ! [W/m2]
-      real :: p_olrb11      (pncol)  ! [W/m2]
-      real :: p_dolrb06_dTs (pncol)  ! [W/m2/K]
-      real :: p_dolrb09_dTs (pncol)  ! [W/m2/K]
-      real :: p_dolrb10_dTs (pncol)  ! [W/m2/K]
-      real :: p_dolrb11_dTs (pncol)  ! [W/m2/K]
+      ! band OLRs and d/dTs
+      real :: p_olrb      (nbndlw,pncol)  ! [W/m2]
+      real :: p_dolrb_dTs (nbndlw,pncol)  ! [W/m2/K]
 
       ! keep at one (handle to unused special treatment of band 16
       ! when it is set to 16 (see rrtmg_lw_setcoef() for details))
@@ -592,8 +589,7 @@ contains
          p_emis, taug, pfracs, cloudy, cldfmc, taucmc, &
          totuflux, totdflux, totuclfl, totdclfl, &
          dtotuflux_dTs, dtotuclfl_dTs, &
-         p_olrb06, p_olrb09, p_olrb10, p_olrb11, &
-         p_dolrb06_dTs, p_dolrb09_dTs, p_dolrb10_dTs, p_dolrb11_dTs)
+         band_output, p_olrb, p_dolrb_dTs)
 
       ! copy the partitioned fluxes back
       do ilev = 0,nlay
@@ -606,16 +602,15 @@ contains
             duflxc_dTs(colstart:(colstart+pncol-1),ilev+1) = dtotuclfl_dTs(ilev,:)
          end if
       end do
-      olrb06(colstart:(colstart+pncol-1)) = p_olrb06
-      olrb09(colstart:(colstart+pncol-1)) = p_olrb09
-      olrb10(colstart:(colstart+pncol-1)) = p_olrb10
-      olrb11(colstart:(colstart+pncol-1)) = p_olrb11
-      if (dudTs) then
-         dolrb06_dTs(colstart:(colstart+pncol-1)) = p_dolrb06_dTs
-         dolrb09_dTs(colstart:(colstart+pncol-1)) = p_dolrb09_dTs
-         dolrb10_dTs(colstart:(colstart+pncol-1)) = p_dolrb10_dTs
-         dolrb11_dTs(colstart:(colstart+pncol-1)) = p_dolrb11_dTs
-      end if
+
+      ! band OLRs
+      do ibnd = 1,nbndlw
+         if (band_output(ibnd)) then
+            olrb(ibnd,colstart:(colstart+pncol-1)) = p_olrb(ibnd,:)
+            if (dudTs) &
+               dolrb_dTs(ibnd,colstart:(colstart+pncol-1)) = p_dolrb_dTs(ibnd,:)
+         end if
+      end do
 
       ! free internal stae of setcoef
       call setcoef_free

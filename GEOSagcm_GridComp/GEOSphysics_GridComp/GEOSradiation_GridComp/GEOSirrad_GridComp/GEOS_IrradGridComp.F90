@@ -67,7 +67,7 @@ module GEOS_IrradGridCompMod
 
   use rrtmg_lw_rad, only: rrtmg_lw
   use rrtmg_lw_init, only: rrtmg_lw_ini
-  use parrrtm, only: ngptlw
+  use parrrtm, only: ngptlw, nbndlw
 
   ! for RRTMGP
   use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
@@ -1529,6 +1529,10 @@ contains
    logical :: Ts_derivs       ! calculate Tsurf derivatives of upward fluxes
    integer :: NN, IJ, LV
 
+   ! which bands require olr output?
+   ! (only RRTMG currently)
+   logical :: band_output (nbndlw)
+
    real,    allocatable, dimension(:,:)   :: FCLD_R
    real,    allocatable, dimension(:,:)   :: TLEV_R       ! Edge Level temperature
    real,    allocatable, dimension(:,:)   :: PLE_R        ! Reverse of level pressure
@@ -1545,10 +1549,7 @@ contains
    real,    allocatable, dimension(:,:)   :: UFLX, DFLX, UFLXC, DFLXC, DUFLX_DTS, DUFLXC_DTS
    integer, allocatable, dimension(:,:)   :: CLEARCOUNTS
    real,    allocatable, dimension(:)     :: ALAT
-   real,    allocatable, dimension(:)     :: OLRB06RG_1D, DOLRB06RG_DTS_1D
-   real,    allocatable, dimension(:)     :: OLRB09RG_1D, DOLRB09RG_DTS_1D
-   real,    allocatable, dimension(:)     :: OLRB10RG_1D, DOLRB10RG_DTS_1D
-   real,    allocatable, dimension(:)     :: OLRB11RG_1D, DOLRB11RG_DTS_1D
+   real,    allocatable, dimension(:,:)   :: OLRBRG, DOLRBRG_DTS
 
    ! pmn: should we update these?
    real, parameter :: O2   = 0.2090029E+00 ! preexisting
@@ -3310,14 +3311,8 @@ contains
       allocate(DUFLXC_DTS(IM*JM,LM+1),__STAT__)
       allocate(CLEARCOUNTS(IM*JM,4),__STAT__)
       allocate(ALAT(IM*JM),__STAT__)
-      allocate(OLRB06RG_1D(IM*JM),__STAT__)
-      allocate(DOLRB06RG_DTS_1D(IM*JM),__STAT__)
-      allocate(OLRB09RG_1D(IM*JM),__STAT__)
-      allocate(DOLRB09RG_DTS_1D(IM*JM),__STAT__)
-      allocate(OLRB10RG_1D(IM*JM),__STAT__)
-      allocate(DOLRB10RG_DTS_1D(IM*JM),__STAT__)
-      allocate(OLRB11RG_1D(IM*JM),__STAT__)
-      allocate(DOLRB11RG_DTS_1D(IM*JM),__STAT__)
+      allocate(OLRBRG      (nbndlw,IM*JM),__STAT__)
+      allocate(DOLRBRG_DTS (nbndlw,IM*JM),__STAT__)
 
       ! choices for cloud physical to optical conversion
       ICEFLGLW = 3
@@ -3326,13 +3321,45 @@ contains
       ! calculate derivatives of upward flux with Tsurf
       Ts_derivs = .true.
 
-      ! reverse super-layer interface indicies
-      LCLDMH = LM - LCLDMH + 1
-      LCLDLM = LM - LCLDLM + 1
+      ! select which bands require olr output ...
+      ! should be consistent with required exports
+
+      band_output = .false.  ! none by default
+
+      ! NOTE: band 16 should be requested with caution ...
+      ! Band 16 is technically 2600-3250 cm-1. But when RT
+      ! is performed across all 16 bands, as it is in GEOS-5
+      ! usage, then band 16 includes the integrated Planck
+      ! values from 2600 cm-1 to infinity. So, the brightness
+      ! temperature (Tbr) calculations in Update_Flx(), which
+      ! use specified wavenumber endpoints, may require
+      ! modification for band 16 (pmn: TODO).
+
+      ! NOTE: currently calc bands 6,9,10,11 and do so
+      ! whether or not exports are requested. ater on may
+      ! further refine to calculate ONLY when requested.
+      ! A bit worried about restarts and what happens if
+      ! initially not requested and then requested for a
+      ! subsequent run segment. If implement this, will
+      ! use, for example ... (pmn: TODO)
+      !   if (associated(OLRB06RG).or.associated(TBRB06RG)) then
+      !      ...
+      !   endif
+      ! Do we even need internal state, or should be carry it
+      ! for every band but just not calculate unless needed.
+
+      band_output ( 6) = .true.
+      band_output ( 9) = .true.
+      band_output (10) = .true.
+      band_output (11) = .true.
 
       call MAPL_TimerOn(MAPL,"---RRTMG_FLIP",RC=STATUS)
       VERIFY_(STATUS)
  
+      ! reverse super-layer interface indicies
+      LCLDMH = LM - LCLDMH + 1
+      LCLDLM = LM - LCLDLM + 1
+
       ! collapse horizontal indicies and flip in vertical
       !   (RRTMG indexed bottom to top)
       IJ = 0
@@ -3467,8 +3494,7 @@ contains
               FCLD_R, CICEWP, CLIQWP, REICE, RELIQ, ICEFLGLW, LIQFLGLW, &
               TAUAER, ZM_R, ALAT, DOY, LCLDLM, LCLDMH, CLEARCOUNTS, &
               UFLX, DFLX, UFLXC, DFLXC, DUFLX_DTS, DUFLXC_DTS, &
-              OLRB06RG_1D, DOLRB06RG_DTS_1D, OLRB09RG_1D, DOLRB09RG_DTS_1D, &
-              OLRB10RG_1D, DOLRB10RG_DTS_1D, OLRB11RG_1D, DOLRB11RG_DTS_1D)
+              BAND_OUTPUT, OLRBRG, DOLRBRG_DTS)
 
       call MAPL_TimerOff(MAPL,"---RRTMG_RUN",RC=STATUS)
       VERIFY_(STATUS)
@@ -3513,14 +3539,14 @@ contains
          SFCEM_INT(I,J) = -( UFLX(IJ,1) - DFLX(IJ,1)*(1.-EMIS(I,J)) )
 
          ! band 6 window and band 9-11 water vapor products
-         OLRB06RG_INT  (I,J) = OLRB06RG_1D      (IJ)
-         DOLRB06RG_DTS (I,J) = DOLRB06RG_DTS_1D (IJ)
-         OLRB09RG_INT  (I,J) = OLRB09RG_1D      (IJ)
-         DOLRB09RG_DTS (I,J) = DOLRB09RG_DTS_1D (IJ)
-         OLRB10RG_INT  (I,J) = OLRB10RG_1D      (IJ)
-         DOLRB10RG_DTS (I,J) = DOLRB10RG_DTS_1D (IJ)
-         OLRB11RG_INT  (I,J) = OLRB11RG_1D      (IJ)
-         DOLRB11RG_DTS (I,J) = DOLRB11RG_DTS_1D (IJ)
+         OLRB06RG_INT  (I,J) = OLRBRG      ( 6,IJ)
+         DOLRB06RG_DTS (I,J) = DOLRBRG_DTS ( 6,IJ)
+         OLRB09RG_INT  (I,J) = OLRBRG      ( 9,IJ)
+         DOLRB09RG_DTS (I,J) = DOLRBRG_DTS ( 9,IJ)
+         OLRB10RG_INT  (I,J) = OLRBRG      (10,IJ)
+         DOLRB10RG_DTS (I,J) = DOLRBRG_DTS (10,IJ)
+         OLRB11RG_INT  (I,J) = OLRBRG      (11,IJ)
+         DOLRB11RG_DTS (I,J) = DOLRBRG_DTS (11,IJ)
 
       enddo ! IM
       enddo ! JM
@@ -3565,14 +3591,8 @@ contains
       deallocate(DUFLXC_DTS,__STAT__)
       deallocate(CLEARCOUNTS,__STAT__)
       deallocate(ALAT,__STAT__)
-      deallocate(OLRB06RG_1D,__STAT__)
-      deallocate(DOLRB06RG_DTS_1D,__STAT__)
-      deallocate(OLRB09RG_1D,__STAT__)
-      deallocate(DOLRB09RG_DTS_1D,__STAT__)
-      deallocate(OLRB10RG_1D,__STAT__)
-      deallocate(DOLRB10RG_DTS_1D,__STAT__)
-      deallocate(OLRB11RG_1D,__STAT__)
-      deallocate(DOLRB11RG_DTS_1D,__STAT__)
+      deallocate(OLRBRG,__STAT__)
+      deallocate(DOLRBRG_DTS,__STAT__)
 
       call MAPL_TimerOff(MAPL,"--RRTMG",RC=STATUS)
       VERIFY_(STATUS)

@@ -28,8 +28,7 @@ contains
       semiss, taug, pfracs, cloudy, cldfmc, taucmc, &
       totuflux, totdflux, totuclfl, totdclfl, &
       dtotuflux_dTs, dtotuclfl_dTs, &
-      olrb06, olrb09, olrb10, olrb11, &
-      dolrb06_dTs, dolrb09_dTs, dolrb10_dTs, dolrb11_dTs)
+      band_output, olrb, dolrb_dTs)
    !-----------------------------------------------------
    !
    !  Original version:   E. J. Mlawer, et al. RRTM_V3.0
@@ -57,7 +56,7 @@ contains
 
       integer, intent(in) :: ncol   ! number of columns
       integer, intent(in) :: nlay   ! number of layers
-      logical, intent(in) :: dudTs  ! do duflx/dTsurf calcs
+      logical, intent(in) :: dudTs  ! do d(upflux)/d(Tsurf) calcs
 
       real,    intent(in) :: semiss  (     nbndlw,ncol)  ! surface emissivity
       real,    intent(in) :: taug    (nlay,ngptlw,ncol)  ! gas optical depth
@@ -74,26 +73,15 @@ contains
       real, intent(out) :: dtotuflux_dTs (0:nlay,ncol)  ! d/d(Tsurf) [W/m2/K]
       real, intent(out) :: dtotuclfl_dTs (0:nlay,ncol)  ! d/d(Tsurf) [W/m2/K]
 
-      ! TOA OLR in bands 6 & 9-11 and their derivatives wrt Tsurf
-      real, intent(out) :: olrb06      (ncol)  ! [W/m2]
-      real, intent(out) :: olrb09      (ncol)  ! [W/m2]
-      real, intent(out) :: olrb10      (ncol)  ! [W/m2]
-      real, intent(out) :: olrb11      (ncol)  ! [W/m2]
-      real, intent(out) :: dolrb06_dTs (ncol)  ! [W/m2/K]
-      real, intent(out) :: dolrb09_dTs (ncol)  ! [W/m2/K]
-      real, intent(out) :: dolrb10_dTs (ncol)  ! [W/m2/K]
-      real, intent(out) :: dolrb11_dTs (ncol)  ! [W/m2/K]
+      ! which band OLRs to calculate?
+      logical, intent(in) :: band_output (nbndlw)
+
+      ! band OLRs and d/dTs
+      real, intent(out) :: olrb      (nbndlw,ncol)  ! [W/m2]
+      real, intent(out) :: dolrb_dTs (nbndlw,ncol)  ! [W/m2/K]
 
       ! ----- Local -----
    
-! pmn: perhaps provide as input via GEOS GC
-      ! specify which band olr output to calculate
-      logical :: band_output (nbndlw)
-      logical :: any_band_output
-
-      ! band olr accumulators [W/m2,W/m2/K]
-      real, dimension (nbndlw,ncol) :: olrb, dolrb_dTs
-
       real :: agas(nlay)    ! gas absorptivity
       real :: atot(nlay)    ! gas and cloud absorptivity
       real :: bbugas(nlay)  ! gas Planck function for upward rt
@@ -119,7 +107,7 @@ contains
       real :: rad0       ! surface emitted radiance
       real :: reflect    ! surface reflectance
 
-      real :: plfrac, blay, dplankup, dplankdn, sumfac
+      real :: plfrac, blay, dplankup, dplankdn, sumfac, duflx
 
       ! derivatives with respect to surface temperature
       real :: d_rad0_dTs, d_radlu_dTs, d_radclru_dTs
@@ -163,20 +151,8 @@ contains
          dtotuclfl_dTs = 0.
       end if
 
-      ! select which bands require output ...
-      ! should be consistent with intent(out) above
-
-      band_output = .false.  ! none by default
-      band_output ( 6) = .true.
-      band_output ( 9) = .true.
-      band_output (10) = .true.
-      band_output (11) = .true.
-
-      ! shortcut used for speed
-      any_band_output = any(band_output)
-
       ! zero band output accumulators
-      if (any_band_output) then
+      if (any(band_output)) then
          olrb = 0.
          if (dudTs) dolrb_dTs = 0.
       end if 
@@ -390,7 +366,8 @@ contains
 
             endif
 
-            totuflux(lev,icol) = totuflux(lev,icol) + sumfac * radlu
+            duflx = sumfac * radlu
+            totuflux(lev,icol) = totuflux(lev,icol) + duflx
             if (dudTs) dtotuflux_dTs(lev,icol) = &
                dtotuflux_dTs(lev,icol) + sumfac * d_radlu_dTs
 
@@ -417,31 +394,15 @@ contains
 
          enddo  ! layer
           
-!pmn: small savings by precalc sumfac* earlier???? only needed for TOA
-
          ! OLR band output (we are at TOA)
          if (band_output(ibnd)) then
-            olrb(ibnd,icol) = olrb(ibnd,icol) + sumfac * radlu
+            olrb(ibnd,icol) = olrb(ibnd,icol) + duflx
             if (dudTs) dolrb_dTs(ibnd,icol) = &
                dolrb_dTs(ibnd,icol) + sumfac * d_radlu_dTs
          end if
 
       end do  ! g-point
       end do  ! column
-
-      ! load intent(out) band outputs
-      if (any_band_output) then
-         olrb06 = olrb( 6,:)
-         olrb09 = olrb( 9,:)
-         olrb10 = olrb(10,:)
-         olrb11 = olrb(11,:)
-         if (dudTs) then
-            dolrb06_dTs = dolrb_dTs( 6,:)
-            dolrb09_dTs = dolrb_dTs( 9,:)
-            dolrb10_dTs = dolrb_dTs(10,:)
-            dolrb11_dTs = dolrb_dTs(11,:)
-         end if
-      end if
 
    end subroutine rtrnmc
 
