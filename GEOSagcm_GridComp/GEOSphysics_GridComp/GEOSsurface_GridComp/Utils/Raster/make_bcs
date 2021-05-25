@@ -590,12 +590,12 @@ if( $TRIPOL_OCEAN == TRUE ) then
     setenv OMP_NUM_THREADS ${NCPUS}
     if ($SKIPLAND != YES) bin/mkCatchParam.x -x ${NX} -y ${NY} -g DE${IMO}xPE${JMO}_DE${IMO}xPE${JMO}-Pfafstetter -v $lbcsv
     chmod 755 bin/create_README.csh
-    bin/create_README.csh
-    /bin/cp til/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.TRN clsm.C${NC}
+    bin/create_README.csh    
 endif
 
 /bin/mv clsm  clsm.${IM}x${JM}
 /bin/cp til/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til clsm.${IM}x${JM}
+if( $TRIPOL_OCEAN == TRUE ) /bin/cp til/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.TRN clsm.${IM}x${JM}
 /bin/rm clsm.${IM}x${JM}/DC${IM}xPC${JM}_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.file
 
 cd clsm.${IM}x${JM}
@@ -804,7 +804,6 @@ if( $TRIPOL_OCEAN == TRUE ) then
     if ($SKIPLAND != YES) bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter -v $lbcsv
     chmod 755 bin/create_README.csh
     bin/create_README.csh
-    /bin/cp til/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.TRN clsm.C${NC}
 endif
 
 if( $CUBED_SPHERE_OCEAN == TRUE ) then
@@ -816,6 +815,7 @@ endif
 
 /bin/mv clsm  clsm.C${NC}
 /bin/cp til/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til clsm.C${NC}
+if( $TRIPOL_OCEAN == TRUE ) /bin/cp til/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.TRN clsm.C${NC}
 /bin/rm clsm.C${NC}/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.file
 
 cd clsm.C${NC}
@@ -965,7 +965,6 @@ if( $TRIPOL_OCEAN == TRUE ) then
     if ($SKIPLAND != YES) bin/mkCatchParam.x -x ${NX} -y ${NY} -g CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter -v $lbcsv
     chmod 755 bin/create_README.csh
     bin/create_README.csh
-    /bin/cp til/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.TRN clsm.C${NC}
 endif
 
 if( $CUBED_SPHERE_OCEAN == TRUE ) then
@@ -981,6 +980,7 @@ endif
 
 /bin/mv clsm  clsm.C${NC}
 /bin/cp til/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.til clsm.C${NC}
+if( $TRIPOL_OCEAN == TRUE ) /bin/cp til/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.TRN clsm.C${NC}
 /bin/rm clsm.C${NC}/CF${NC}x6C_${DATENAME}${IMO}x${POLENAME}${JMO}-Pfafstetter.file
 
 cd clsm.C${NC}

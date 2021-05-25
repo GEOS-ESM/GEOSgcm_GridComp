@@ -1,5 +1,7 @@
+!#include "Raster.h"
 #define VERIFY_(A)   IF(A/=0)THEN;PRINT *,'ERROR AT LINE ', __LINE__;STOP;ENDIF
 #define ASSERT_(A)   if(.not.A)then;print *,'Error:',__FILE__,__LINE__;stop;endif
+
 
 program FillMomGrid
 
@@ -25,38 +27,51 @@ program FillMomGrid
 
   REAL(KIND=REAL64),   parameter     :: PI        = MAPL_PI
 
+  integer                :: IARGC
   integer                :: nxt, argl, fill
-  integer                :: i, j, k
-  integer                :: STATUS
-  integer                :: ip1, ip2
+  integer                :: i, j, k, l, ip
+  integer                :: STATUS, i1, i2, nvars, rvars
+  integer                :: ip1, ip2, nf1, nf2
   integer                :: io, jo
+  integer                :: im, jm
   integer                :: nx1, nx2, ny1, ny2, nx, ny
-  integer                :: maxtiles
+  integer                :: maxtiles, hash
   integer                :: LineOcn 
   integer                :: count0,count1,count_rate
+
+  REAL(KIND=REAL64)      :: xmin, ymin, xmax, ymax, xs, ys
 
   REAL(KIND=REAL64),     pointer     :: MOMLAT(:,:)          ! Lats of MOM's T-cell centers
   REAL(KIND=REAL64),     pointer     :: MOMWET(:,:)          ! TMASK of MOM's grid cells
 
   integer,   allocatable :: RST1(:,:)
   integer,   allocatable :: RST2(:  )
+  integer,   allocatable :: iTable(:,:)
 
-  REAL(KIND=REAL64) ,    allocatable :: Table1(:,:) 
-  REAL(KIND=REAL64) ,    allocatable :: Table2(:,:) 
-  REAL(KIND=REAL64)                  :: lons
+  REAL(KIND=REAL64),    allocatable :: Table1(:,:) 
+  REAL(KIND=REAL64),    allocatable :: Table2(:,:) 
+  REAL(KIND=REAL64),    allocatable :: rTable(:,:)
+  REAL(KIND=REAL64),    allocatable :: cc(:), ss(:)
+  REAL(KIND=REAL64)                  :: dx, dy, area, xc, yc, d2r, vv(4)
+  REAL(KIND=REAL64)                  :: lats, lons, da
 
   logical                :: DoZip
   logical                :: Verb
+  logical                :: found
+  logical                :: Merge
                          
   character*4            :: tildir, rstdir
   character*1            :: Opt 
   character*128          :: arg
   character*128          :: Overlay=''
+  character*128          :: OverlayO=''
+  character*128          :: GridName1, GridName2
   character*128          :: Grid1, Grid2
   character*128          :: TilFile, RstFile
+  character*128          :: TilFile1
   character*128          :: GridFile
   character*128          :: &
-      Usage = "FillMomGrid -v -h -z -t MT -g GF -f TYPE BOTTOMRASTER TOPRASTER MOM_GRIDSPEC"
+      Usage = "FillMomGrid -v -z -t MT -g GF -f TYPE BOTTOMRASTER TOPRASTER MOM_GRIDSPEC"
 
   integer :: Pix1, Pix2
 
@@ -74,10 +89,11 @@ INCLUDE "netcdf.inc"
 
     if(I < 2 .or. I > 11) then
        print *, trim(Usage)
-       error stop 1
+       call exit(1)
     end if
 
     nxt = 1
+    !call getarg(nxt,arg)
     call get_command_argument(nxt,arg)
 
     do while(arg(1:1)=='-')
@@ -87,6 +103,7 @@ INCLUDE "netcdf.inc"
        if(argl==2) then
           if(scan(opt,'zvh')==0) then
              nxt = nxt + 1
+             !call getarg(nxt,arg)
              call get_command_argument(nxt,arg)
           end if
        else
@@ -107,36 +124,47 @@ INCLUDE "netcdf.inc"
           read(arg,*) maxtiles
        case ('g')
           Overlay = trim(arg)
+       !case ('o')
+       !   OverlayO = trim(arg)
        case default
           print *, trim(Usage)
-          error stop 1
+          call exit(1)
        end select
 
        nxt = nxt + 1
+       !call getarg(nxt,arg)
        call get_command_argument(nxt,arg)
     end do
 
     Grid1 = ARG
 
     nxt = nxt + 1
+    !call getarg(nxt,arg)
     call get_command_argument(nxt,arg)
 
     Grid2 = ARG
 
     nxt = nxt + 1
+    !call getarg(nxt,arg)
     call get_command_argument(nxt,arg)
 
     GridFile = arg
 
     if(trim(Overlay)=='') then
       print*, 'Must Provide Overlay'
-      error stop 1
+      call exit(0)
     end if
+    !if(trim(OverlayO)=='') then
+    !  print*, 'Must Provide OverlayO'
+    !  call exit(0)
+    !end if
 
     call ReadGridFile(GridFile, MOMLAT, MOMWET)
 
     print*, 'MOM grid dims'
     print*, size(MOMWET,dim=1), size(MOMWET,dim=2)
+    print*, 'grid1: ', trim(adjustl(Grid1))
+    print*, 'grid2: ', trim(adjustl(Grid2))
 
 
     if(DoZip) then
@@ -145,6 +173,7 @@ INCLUDE "netcdf.inc"
     else
        TilFile = trim(tildir)//trim(Overlay)//'.til'
        RstFile = trim(rstdir)//trim(Overlay)//'.rst'
+       TilFile1 = trim(tildir)//trim(OverlayO)//'.til'
     end if
 
 ! Input files:
@@ -163,8 +192,11 @@ INCLUDE "netcdf.inc"
 
 ! Read raster sizes info from .til headers
 
-    read(TILUNIT1,*) ip1, nx1, ny1
-    read(TILUNIT2,*) ip2, nx,  ny
+    read(TILUNIT1,*) ip1, nf1, nx1, ny1
+    read(TILUNIT2,*) ip2, nf2, nx,  ny
+
+    print*, 'nx1 = ', nx1, ' nx = ', nx
+    print*, 'ny1 = ', ny1, ' ny = ', ny
 
 ! Both grids must be based on same shape rasters
 
@@ -179,24 +211,29 @@ INCLUDE "netcdf.inc"
     allocate(rst2(nx), stat=status)
     VERIFY_(STATUS)
 
-    allocate(Table1(6,ip1),         stat=status)
+    allocate(Table1(8,ip1),         stat=status)
     VERIFY_(STATUS)
-    allocate(Table2(6,ip2),           stat=status)
+    allocate(Table2(8,ip2),           stat=status)
+    VERIFY_(STATUS)
+
+    allocate(iTable(0:3,maxtiles),stat=status)
+    VERIFY_(STATUS)
+    allocate(rTable(1:4,maxtiles),stat=status)
     VERIFY_(STATUS)
 
 ! Read input tables
 
     read(TILUNIT1,*) k
     read(TILUNIT1,*) Grid1
-    read(TILUNIT1,*) nx1
-    read(TILUNIT1,*) ny1
+    read(TILUNIT1,*) im
+    read(TILUNIT1,*) jm
     do j=2,k
        read(TILUNIT1,*)
        read(TILUNIT1,*)
        read(TILUNIT1,*)
     end do
 
-    if(Verb) print *, 'First  input grid: ',trim(Grid1), ip1, nx1, ny1
+    print *, 'First  input grid: ',trim(Grid1), ip1, im, jm
 
     read(TILUNIT2,*) k
     read(TILUNIT2,*) Grid2
@@ -208,19 +245,27 @@ INCLUDE "netcdf.inc"
        read(TILUNIT2,*)
     end do
 
-    if(Verb) print *, 'Second input grid: ',trim(Grid2), ip2, nx2, ny2
+    print *, 'Second input grid: ',trim(Grid2), ip2, nx2, ny2
 
     do k=1,ip1
-       read(TILUNIT1,*) Table1(1:2,k),lons,lons,Table1(3:6,k)
+       read(TILUNIT1,*) Table1(:,k)
     enddo
 
     do k=1,ip2
-       read(TILUNIT2,*) Table2(1:2,k),lons,lons,Table2(3:6,k)
+       read(TILUNIT2,*) Table2(:,k)
        if(nint(Table2(1,k)) == 0) then
-          LineOcn = nint(Table2(6,k))
+          LineOcn = nint(Table2(8,k))
        endif
     enddo
 
+    xmin = -180.0_8
+    xmax =  180.0_8
+    ymin =  -90.0_8
+    ymax =   90.0_8
+
+    dx    = (xmax-xmin)/nx
+    dy    = (ymax-ymin)/ny
+    d2r   = (2._8*PI)/360.0_8
 
     if(Verb) then
        call system_clock(count1)
@@ -233,6 +278,12 @@ INCLUDE "netcdf.inc"
 
     LATITUDES: do j=1,ny
 
+       lats = -90._8 + (j - 0.5_8)*dy
+       da   = (sin(d2r*(lats+0.5*dy)) - &
+               sin(d2r*(lats-0.5*dy))   )*(dx*d2r)
+
+       area  = da
+
        read(RSTUNIT2) Rst1(:,j)
        read(RSTUNIT1) Rst2
 
@@ -241,11 +292,15 @@ INCLUDE "netcdf.inc"
           Pix1  = Rst1(i,j)
           Pix2  = Rst2(i)
           if(Pix2 <= 0) cycle 
-          io = nint(Table1(3,Pix2))
-          jo = nint(Table1(4,Pix2))
-          if(MOMLAT(io,jo) > 40.0 .or. MOMLAT(io,jo) < -45.0) then  ! if at higher latitudes
+          io = nint(Table1(5,Pix2))
+          jo = nint(Table1(6,Pix2))
+          if(MOMLAT(io,jo) > 37.5 .or. MOMLAT(io,jo) < -60.0) then  ! if at higher latitudes
              if(MOMWET(io,jo) > 0.5) then ! if this is a MOM ocean point
-               if(Pix1 /= LineOcn) Rst1(i,j) = LineOcn
+               if(Pix1 /= LineOcn) then
+                    Rst1(i,j) = LineOcn
+                    Table2(2,Pix1) = Table2(2,Pix1) - area
+                    Table2(2,LineOcn) = Table2(2,LineOcn) + area
+               endif
              endif
           endif
 
@@ -259,9 +314,33 @@ INCLUDE "netcdf.inc"
     enddo LATITUDES  !  End raster J-loop
     
 
+    do k=1,ip2
+       iTable(0,k) = nint(Table2(1,k))
+       iTable(2:3,k) = nint(Table2(5:6,k))
+       rTable(1,k) = Table2(3,k)
+       rTable(2,k) = Table2(4,k)
+       rTable(3,k) = Table2(2,k)
+       rTable(4,k) = rTable(3,k)
+    enddo
 ! Write .til and .rst files
+    print *, 'Writing land til file...'
+    call WriteTiling(TilFile, (/Grid2/), (/ip2/), (/1/), (/ip2/),      &
+                   nx, ny, iTable(:,:ip2), rTable(:4,:ip2), Dozip, Verb )
 
-    if(Verb) print *, 'Writing raster file...'
+    !do k=1,ip1
+    !   iTable(0,k) = nint(Table1(1,k))
+    !   iTable(2:3,k) = nint(Table1(5:6,k))
+    !   rTable(1,k) = Table1(3,k)
+    !   rTable(2,k) = Table1(4,k)
+    !   rTable(3,k) = Table1(2,k)
+    !   rTable(4,k) = rTable(3,k)
+    !enddo
+
+    !print *, 'Writing ocn til file...'
+    !call WriteTiling(TilFile1, (/Grid1/), (/im/), (/jm/), (/ip1/),      &
+    !               nx, ny, iTable(:,:ip1), rTable(:4,:ip1), Dozip, Verb )
+
+    print *, 'Writing raster file...'
     call WriteRaster(RstFile,Rst1,DoZip)
 
     if(Verb) then
@@ -276,8 +355,8 @@ INCLUDE "netcdf.inc"
 
 ! All done
 
-    if(Verb) print * , 'Terminated Normally'
-    stop
+    print * , 'Terminated Normally'
+    call exit(0)
 
 contains
 
@@ -290,15 +369,20 @@ contains
     integer :: ID, ITMP, ndims, dimid(3)
 
     ITMP = NF_INQ_VARID    (NCID,  NAME, ID )
+!    print *, name
     ASSERT_(ITMP==NF_NOERR)
 
     ITMP = NF_INQ_VARNDIMS (NCID, ID, ndims)
+!    print *, ndims
     ASSERT_(ITMP==NF_NOERR)
+    !ASSERT_(ndims==2)
 
     itmp = NF_INQ_VARDIMID (NCID, ID, diMId)
+!    print *, dimid
     ASSERT_(ITMP==NF_NOERR)
 
     itmp = NF_INQ_DIMLEN   (NCID, DIMID(nn),XY)
+!    print *, Xy
     ASSERT_(ITMP==NF_NOERR)
 
     return
@@ -338,6 +422,7 @@ contains
     ASSERT_(STATUS==NF_NOERR)
 
   end subroutine READGRIDFILE
+
 
   end program FillMomGrid
 
