@@ -242,7 +242,7 @@ n = 1
 
 is_OFFLINE = OFFLINE_MODE /= 0
 
-call ESMF_ConfigGetAttribute (SCF, label='LAND_PARAMS:', value=LAND_PARAMS, DEFAULT="Icarus", __RC__ )
+call ESMF_ConfigGetAttribute (SCF, label='LAND_PARAMS:', value=LAND_PARAMS, DEFAULT="CN_CLM4", __RC__ )
 call SurfParams_init(LAND_PARAMS,LSM_CHOICE,rc=status) 
 _VERIFY(STATUS)
 
