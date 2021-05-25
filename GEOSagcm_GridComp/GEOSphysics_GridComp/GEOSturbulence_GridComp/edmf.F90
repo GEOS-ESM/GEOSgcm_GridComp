@@ -91,11 +91,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   logical, dimension(numup,IM,JM) :: active_updraft
 
   ! Thermal plume stuff 
-  integer, dimension(IM,JM)   :: izsl
-  real                        :: E_work, D_work
-  real, dimension(IM,JM,LM)   :: A_star
-  real, dimension(IM,JM,0:LM) :: f_thermal
-  real, dimension(IM,JM)      :: Mu0, zi_thermal
+  real                      :: E_work, D_work
+  real, dimension(IM,JM,LM) :: f_thermal, ent_sl
 
   kbot = LM - kbotp
 
@@ -191,12 +188,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   end do
 
   ! Get surface layer organized entrainment
-  call A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
-                      rho, rhoe, thl, qt, thv, debug_flag, &      ! in
-                      izsl, A_star, Mu0, zi_thermal, f_thermal)   ! out
-
   if ( plume_type == 1 ) then
-     E = A_star
+     call A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
+                         rho, rhoe, thl, qt, thv, debug_flag, &      ! in
+                         E, f_thermal, ent_sl)                       ! out
   end if
 
   !
@@ -726,21 +721,19 @@ end subroutine run_edmf
 !
 subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
                           rho, rhoe, thl, qt, thv, debug_flag, &      ! in
-                          izsl, A, Mu0, zi, f)                        ! out
+                          A, f, ent_sl)                               ! out
 
   integer, intent(in)                      :: IM, JM, LM, debug_flag
   real, intent(in)                         :: ice_ramp, th00
   real, dimension(IM,JM,LM), intent(in)    :: zl, thl, qt, thv, rho
   real, dimension(IM,JM,0:LM), intent(in)  :: zle, rhoe, ple
-  integer, dimension(IM,JM), intent(out)   :: izsl
-  real, dimension(IM,JM), intent(out)      :: Mu0, zi
-  real, dimension(IM,JM,LM), intent(out)   :: A
-  real, dimension(IM,JM,0:LM), intent(out) :: f
+  real, dimension(IM,JM,LM), intent(out)   :: A, f, ent_sl
 
   integer                     :: i, j, k, km1, iter
   real                        :: dthvdz, dz, B, wf, qcu, Mu_next, wu2_next, &
                                  thlu_next, qtu_next, thvu_next, goth00
-  real, dimension(IM,JM)      :: A_star_sum, A_star2_int, Mu, thlu, qtu, thvu, wu2, wu0
+  integer, dimension(IM,JM)   :: izsl
+  real, dimension(IM,JM)      :: A_star_sum, A_star2_int, zi, Mu0, Mu, thlu, qtu, thvu, wu2, wu0
   logical, dimension(IM,JM)   :: conv_flag, sl_flag, test_flag
 
   goth00 = mapl_grav/th00
@@ -828,7 +821,8 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
               
               Mu_next = Mu(i,j) + A(i,j,k)*dz
 
-              f(i,j,k) = Mu(i,j)/Mu_next
+              f(i,j,k)      = Mu(i,j)/Mu_next
+              ent_sl(i,j,k) = -log(f(i,j,k))/dz
               
               B = goth00*( thvu(i,j) - thv(i,j,k) )
               
