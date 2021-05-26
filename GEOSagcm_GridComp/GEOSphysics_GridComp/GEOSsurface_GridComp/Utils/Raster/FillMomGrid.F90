@@ -335,7 +335,7 @@ INCLUDE "netcdf.inc"
     end do
     k = count (pfaf_yes == 0)
     print *, ' # of submerged cats', k
-    ip3 = ip2 - count (pfaf_yes == 0)
+    ip3 = ip2 - k
     
     allocate (pfaf_rem (1: ip3))
     pfaf_rem = pack (pfaf_yes, mask = (pfaf_yes > 0))
@@ -363,12 +363,12 @@ INCLUDE "netcdf.inc"
     ! --------------------------------
     !            SUMMARY
     ! --------------------------------
-    print *, '                           Original       FillMOM         Reindexed'
+    print *, '                           Original       FillMOM         Re-indexed'
     print *, ' '
-    print *, ' # of ocean pixels  ', count (Rst0 == 290189), count (Rst1 == 290189), count (Rst3 == ip3-2)
-    print *, ' # of lake pixels   ', count (Rst0 == 290190), count (Rst1 == 290190), count (Rst3 == ip3-1)
-    print *, ' # of landice pixels', count (Rst0 == 290191), count (Rst1 == 290191), count (Rst3 == ip3)
-    print *, ' # of land pixels   ', count (Rst0 <= 290188), count (Rst1 <= 290188), count (Rst3 <= ip3-3)
+    print *, ' # of ocean pixels  ', count (Rst0 == ip2-2), count (Rst1 == ip2-2), count (Rst3 == ip3-2)
+    print *, ' # of lake pixels   ', count (Rst0 == ip2-1), count (Rst1 == ip2-1), count (Rst3 == ip3-1)
+    print *, ' # of landice pixels', count (Rst0 == ip2  ), count (Rst1 == ip2  ), count (Rst3 == ip3  )
+    print *, ' # of land pixels   ', count (Rst0 <= ip2-3), count (Rst1 <= ip2-3), count (Rst3 <= ip3-3)
     print *, ' MINVAL             ', minval(Rst0), minval (Rst1), minval (Rst3)
     print *, ' MAXVAL             ', maxval(Rst0), maxval (Rst1), maxval (Rst3)   
 
