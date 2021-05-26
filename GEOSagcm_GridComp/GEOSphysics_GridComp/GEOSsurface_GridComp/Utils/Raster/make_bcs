@@ -137,14 +137,14 @@ endif
 
 LBCSV:
 echo
-echo "Select the choice of ${C1}Land BCs version ${CR} to use:"
-echo "      where:  ${C2}F25  -- Fortuna-2_5"
-echo "              ${C2}GM4  -- /discover/nobackup/ltakacs/bcs/Ganymed-4_0/"
-echo "              ${C2}ICA  -- /discover/nobackup/ltakacs/bcs/Icarus/"
-echo "              ${C2}NL3  -- /discover/nobackup/ltakacs/bcs/Icarus-NLv3/"
-echo "              ${C2}NL4  -- /discover/nobackup/projects/gmao/smap/bcs_temporary/NLv4/"
-echo "              ${C2}NL4p -- /discover/nobackup/projects/gmao/smap/bcs_temporary/NLv4p/"
-echo "              ${C2}parameter configuration and ancillary data."
+echo "Select the ${C1}Land BCs version ${CR} to use:"
+echo "      where:  ${C2}F25  -- for Fortuna-2_5"
+echo "              ${C2}GM4  -- for /discover/nobackup/ltakacs/bcs/Ganymed-4_0/"
+echo "              ${C2}ICA  -- for /discover/nobackup/ltakacs/bcs/Icarus/"
+echo "              ${C2}NL3  -- for /discover/nobackup/ltakacs/bcs/Icarus-NLv3/"
+echo "              ${C2}NL4  -- for /discover/nobackup/projects/gmao/smap/bcs_temporary/NLv4/"
+echo "              ${C2}NL4p -- for /discover/nobackup/projects/gmao/smap/bcs_temporary/NLv4p/"
+echo "              ${C2}equivalent parameter configuration and ancillary data."
 echo "               NOTE: Due to compiler differences, code improvements and bug fixes that"
 echo "               have taken place since above archived BCs were created, some parameter "
 echo "               files produced by current source codes may differ with those in archived BCs."

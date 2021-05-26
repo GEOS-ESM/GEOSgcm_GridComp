@@ -31,7 +31,7 @@ program FillMomGrid
   integer                :: nxt, argl, fill
   integer                :: i, j, k, l, ip
   integer                :: STATUS, i1, i2, nvars, rvars
-  integer                :: ip1, ip2, nf1, nf2
+  integer                :: ip1, ip2, nf1, nf2, ip3
   integer                :: io, jo
   integer                :: im, jm
   integer                :: nx1, nx2, ny1, ny2, nx, ny
@@ -44,16 +44,16 @@ program FillMomGrid
   REAL(KIND=REAL64),     pointer     :: MOMLAT(:,:)          ! Lats of MOM's T-cell centers
   REAL(KIND=REAL64),     pointer     :: MOMWET(:,:)          ! TMASK of MOM's grid cells
 
-  integer,   allocatable :: RST1(:,:)
-  integer,   allocatable :: RST2(:  )
+  integer,   allocatable :: RST1(:,:), RST3(:,:), RST0(:,:)
+  integer,   allocatable :: RST2(:  ) 
   integer,   allocatable :: iTable(:,:)
 
   REAL(KIND=REAL64),    allocatable :: Table1(:,:) 
   REAL(KIND=REAL64),    allocatable :: Table2(:,:) 
   REAL(KIND=REAL64),    allocatable :: rTable(:,:)
   REAL(KIND=REAL64),    allocatable :: cc(:), ss(:)
-  REAL(KIND=REAL64)                  :: dx, dy, area, xc, yc, d2r, vv(4)
-  REAL(KIND=REAL64)                  :: lats, lons, da
+  REAL(KIND=REAL64)                 :: dx, dy, area, xc, yc, d2r, vv(4)
+  REAL(KIND=REAL64)                 :: lats, lons, da
 
   logical                :: DoZip
   logical                :: Verb
@@ -74,7 +74,8 @@ program FillMomGrid
       Usage = "FillMomGrid -v -z -t MT -g GF -f TYPE BOTTOMRASTER TOPRASTER MOM_GRIDSPEC"
 
   integer :: Pix1, Pix2
-
+  integer,   allocatable, dimension (:) :: pfaf_yes, pfaf_rem, pfaf_new
+  
 INCLUDE "netcdf.inc"
 ! Argument defaults
 
@@ -220,6 +221,11 @@ INCLUDE "netcdf.inc"
     VERIFY_(STATUS)
     allocate(rTable(1:4,maxtiles),stat=status)
     VERIFY_(STATUS)
+    
+    allocate(rst0(nx,ny), stat=status)
+    VERIFY_(STATUS)
+    allocate(rst3(nx,ny), stat=status)
+    VERIFY_(STATUS)
 
 ! Read input tables
 
@@ -286,7 +292,7 @@ INCLUDE "netcdf.inc"
 
        read(RSTUNIT2) Rst1(:,j)
        read(RSTUNIT1) Rst2
-
+       Rst0 (:,j) = Rst1(:,j)
        LONGITUDES: do i=1,nx
 
           Pix1  = Rst1(i,j)
@@ -312,20 +318,65 @@ INCLUDE "netcdf.inc"
        end if
 
     enddo LATITUDES  !  End raster J-loop
-    
 
-    do k=1,ip2
-       iTable(0,k) = nint(Table2(1,k))
-       iTable(2:3,k) = nint(Table2(5:6,k))
-       rTable(1,k) = Table2(3,k)
-       rTable(2,k) = Table2(4,k)
-       rTable(3,k) = Table2(2,k)
-       rTable(4,k) = rTable(3,k)
+    
+    ! reindex Pfafstetter
+    ! -------------------
+    allocate (pfaf_yes (1:ip2))
+    allocate (pfaf_new (1:ip2))
+
+    pfaf_yes = 0
+    pfaf_new = 0
+    
+    do j = 1, ny
+       do i = 1, nx
+          pfaf_yes(Rst1(i,j))=Rst1(i,j) 
+       end do
+    end do
+    k = count (pfaf_yes == 0)
+    print *, ' # of submerged cats', k
+    ip3 = ip2 - count (pfaf_yes == 0)
+    
+    allocate (pfaf_rem (1: ip3))
+    pfaf_rem = pack (pfaf_yes, mask = (pfaf_yes > 0))
+
+    ! new pfaf table
+    
+    do k=1,ip3
+       iTable(0,k) = nint(Table2(1,pfaf_rem(k)))
+       iTable(2:3,k) = nint(Table2(5:6,pfaf_rem(k)))
+       rTable(1,k) = Table2(3,pfaf_rem(k))
+       rTable(2,k) = Table2(4,pfaf_rem(k))
+       rTable(3,k) = Table2(2,pfaf_rem(k))
+       rTable(4,k) = rTable(3,pfaf_rem(k))
+       pfaf_new (pfaf_rem(k)) =k 
     enddo
+
+    ! new pfaf raster
+
+    do j = 1, ny
+       do i = 1, nx
+          Rst3 (i,j) = pfaf_new (Rst1(i,j)) 
+       end do
+    end do
+
+    ! --------------------------------
+    !            SUMMARY
+    ! --------------------------------
+    print *, '                           Original       FillMOM         Reindexed'
+    print *, ' '
+    print *, ' # of ocean pixels  ', count (Rst0 == 290189), count (Rst1 == 290189), count (Rst3 == ip3-2)
+    print *, ' # of lake pixels   ', count (Rst0 == 290190), count (Rst1 == 290190), count (Rst3 == ip3-1)
+    print *, ' # of landice pixels', count (Rst0 == 290191), count (Rst1 == 290191), count (Rst3 == ip3)
+    print *, ' # of land pixels   ', count (Rst0 <= 290188), count (Rst1 <= 290188), count (Rst3 <= ip3-3)
+    print *, ' MINVAL             ', minval(Rst0), minval (Rst1), minval (Rst3)
+    print *, ' MAXVAL             ', maxval(Rst0), maxval (Rst1), maxval (Rst3)   
+
+    
 ! Write .til and .rst files
     print *, 'Writing land til file...'
-    call WriteTiling(TilFile, (/Grid2/), (/ip2/), (/1/), (/ip2/),      &
-                   nx, ny, iTable(:,:ip2), rTable(:4,:ip2), Dozip, Verb )
+    call WriteTiling(TilFile, (/Grid2/), (/ip3/), (/1/), (/ip3/),      &
+                   nx, ny, iTable(:,:ip3), rTable(:4,:ip3), Dozip, Verb )
 
     !do k=1,ip1
     !   iTable(0,k) = nint(Table1(1,k))
@@ -341,7 +392,7 @@ INCLUDE "netcdf.inc"
     !               nx, ny, iTable(:,:ip1), rTable(:4,:ip1), Dozip, Verb )
 
     print *, 'Writing raster file...'
-    call WriteRaster(RstFile,Rst1,DoZip)
+    call WriteRaster(RstFile,Rst3,DoZip)
 
     if(Verb) then
        call system_clock(count1)
