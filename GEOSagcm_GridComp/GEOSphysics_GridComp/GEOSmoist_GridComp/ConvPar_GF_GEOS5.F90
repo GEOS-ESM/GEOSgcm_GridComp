@@ -16,6 +16,8 @@ USE MAPL
 USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 !.. USE GTMP_2_GFCONVPAR, only : GTMP_2_GFCONVPAR_interface
 
+USE cldmacro, ONLY: make_DropletNumber, make_IceNumber
+
  IMPLICIT NONE
  PRIVATE
  PUBLIC  GF_GEOS5_INTERFACE, maxiens, icumulus_gf, closure_choice, deep, shal, mid &
@@ -65,6 +67,8 @@ USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 
  REAL :: tau_deep = 5400. ! deep      convective timescale
  REAL :: tau_mid  = 3600. ! congestus convective timescale
+ 
+INTEGER :: FRAC_MODIS     = 0 != use fraction liq/ice content derived from MODIS/CALIPO sensors
  
  !------------------- internal variables
  !-- turn ON/OFF deep/shallow/mid plumes
@@ -305,8 +309,8 @@ CONTAINS
     INTEGER :: status,alloc_stat ,wantrank=-99999
     REAL    :: tem1,dz,air_dens
     CHARACTER(len=10) :: ENV_SETTING='DEFAULT'! ! 'CURRENT'/'DEFAULT'
-    INTEGER, PARAMETER :: itest=1!3 !tmp
-    REAL :: RL, RI, disp_factor,x1,x2
+    INTEGER, PARAMETER :: itest=1!3 
+    REAL :: RL, RI, disp_factor,x1,x2, dQi, dQl, dNi, dNl
 
 !-initialization
     do_this_column =0
@@ -785,45 +789,39 @@ ENDIF
       ENDDO
   ENDIF
 
-  !IF(adjustl(CLDMICRO) =="2MOMENT") then ! DONIF
+  !IF(adjustl(CLDMICRO) =="2MOMENT") then 
   
-  IF(.FALSE.) then ! DONIF
-   
+  IF(adjustl(CLDMICRO) =="2MOMENT") then 
+  
     !- we adjust convective cloud condensate and number here
         DO j=1,myp
          DO i=1,mxp
           DO k=1,mzp 
 
-             tem1 = T(i,j,k)             
-             RL =   10.0  + (12.0*(283.0- tem1)/40.0)             
-             RL =   min(max(RL, 10.0), 30.0)*1.e-6              
-             RI =   100.0 + (80.0*(tem1- 253.0)/40.0)
-             RI =   min(max(RI, 20.0), 250.0)*1.e-6
+             tem1 = fract_liq_f(T(i,j,k))
+      
+             !-calculate tends
+             dQi =  DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
+             dQl =  DT_moist * SRC_CI(flip(k),i,j) * tem1             
+             dNi = make_IceNumber (dQi, T(i,j,k)) ! Use Thompson Microphysics conversions
+             dNl = make_DropletNumber (dQl, 0.0, FRLAND(i, j))
              
-          !  tem1 =  min(1., (max(0.,(T(i,j,k)-T_ice))/(T_0-T_ice))**2)   
-             tem1 = 1.- (tem1 - 235.0) /38.0 
-             tem1 =  min(max(0.0, tem1), 1.0)
- 
-             ! make up some "number" sources. In the future this should depend explicitly on the convective mphysics
-             disp_factor =  10.0 ! used to account somehow for the size dist
- 
-             !-outputs 
-             QLCN (i,j,k) = QLCN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * (1.0-tem1)
-             QICN (i,j,k) = QICN (i,j,k)     + DT_moist * SRC_CI(flip(k),i,j) * tem1
-
-             SRC_NL(flip(k),i,j) = SRC_CI(flip(k),i,j)* (1.0-tem1) /(1.333 * MAPL_PI*RL*RL*RL*997.0*disp_factor)
-             SRC_NI(flip(k),i,j)= SRC_CI(flip(k),i,j) * tem1 /(1.333 * MAPL_PI *RI*RI*RI*500.0*disp_factor)
-
-             NCPL (i,j,k) = NCPL (i,j,k) + DT_moist *SRC_NL(flip(k),i,j)                
-             NCPI (i,j,k) = NCPI (i,j,k) + DT_moist *SRC_NI(flip(k),i,j)     
-	     CNV_FICE (i, j, k)   =   tem1
+             QLCN (i,j,k) = QLCN (i,j,k) + dQi
+             QICN (i,j,k) = QICN (i,j,k) + dQl
+            
+             NCPL (i,j,k) = NCPL (i,j,k) + dNl               
+             NCPI (i,j,k) = NCPI (i,j,k) + dNi     
+             CNV_FICE (i, j, k)   =   1.0-tem1
 
              DZ       = -( ZLE(i,j,k) - ZLE(i,j,k-1) )
              air_dens = 100.*PLO_n(i,j,k)/(287.04*T_n(i,j,k)*(1.+0.608*Q_n(i,j,k)))
                                               
              if (CNV_MFD (i,j,k)  .gt. 0.) then 
-                CNV_NICE (i,j,k)=   SRC_NI(flip(k),i,j)*DZ * air_dens/CNV_MFD (i,j,k) 
-                CNV_NDROP(i,j,k)=   SRC_NL(flip(k),i,j)*DZ * air_dens/CNV_MFD (i,j,k) 
+                CNV_NICE (i,j,k)=   dNi*DZ * air_dens/CNV_MFD (i,j,k) !diagnostics
+                CNV_NDROP(i,j,k)=   dNl*DZ * air_dens/CNV_MFD (i,j,k) 
+             else
+                CNV_NICE (i,j,k)=   MAPL_UNDEF !diagnostics
+                CNV_NDROP(i,j,k)=   MAPL_UNDEF 
              endif 
           ENDDO
          ENDDO 
@@ -10589,4 +10587,27 @@ end subroutine fct1d3
      ENDDO	   
    END   SUBROUTINE get_precip_fluxes
 
+
+REAL FUNCTION fract_liq_f(temp2) ! temp2 in Kelvin, fraction between 0 and 1.
+   implicit none
+   real,intent(in)  :: temp2 ! K
+   real             :: temp,ptc
+   real, parameter  :: max_temp = 46. !Celsius
+   SELECT CASE(FRAC_MODIS)
+   
+   CASE (1) 
+       temp = temp2-273.16 !Celsius
+       temp = min(max_temp,max(-max_temp,temp))
+       ptc  = 7.6725 + 1.0118*temp + 0.1422*temp**2 + & 
+   	      0.0106*temp**3 + 3.39e-4 * temp**4    + &
+     	      3.95e-6 * temp**5
+       fract_liq_f = 1./(1.+exp(-ptc)) 
+   
+   CASE DEFAULT 
+       fract_liq_f =  min(1., (max(0.,(temp2-t_ice))/(t_0-t_ice))**2)
+
+   END SELECT
+
+ END FUNCTION
+ 
 END MODULE ConvPar_GF_GEOS5
