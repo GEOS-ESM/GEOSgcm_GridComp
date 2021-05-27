@@ -1073,11 +1073,11 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, GEOS_EFFGWBKG, Label="GEOS_EFFGWBKG:", default=0.125, RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.250, RC=STATUS)
+       call MAPL_GetResource( MAPL, GEOS_EFFGWORO, Label="GEOS_EFFGWORO:", default=0.000, RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=1.000, RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.000, RC=STATUS)
+       call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, RC=STATUS)
        VERIFY_(STATUS)
     else
        call MAPL_GetResource( MAPL, effgworo, Label="EFFGWORO:", default=0.250, RC=STATUS)
@@ -1790,14 +1790,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
          DVDT_GWD=DVDT_GWD_GEOS+DVDT_GWD_NCAR
          DTDT_GWD=DTDT_GWD_GEOS+DTDT_GWD_NCAR
          ! Background 
-         TAUXB_TMP=0.0 !TAUXB_TMP_GEOS+TAUXB_TMP_NCAR
-         TAUYB_TMP=0.0 !TAUYB_TMP_GEOS+TAUYB_TMP_NCAR
+         TAUXB_TMP=TAUXB_TMP_GEOS+TAUXB_TMP_NCAR
+         TAUYB_TMP=TAUYB_TMP_GEOS+TAUYB_TMP_NCAR
          ! Orographic 
          DUDT_ORG=DUDT_ORG_GEOS+DUDT_ORG_NCAR
          DVDT_ORG=DVDT_ORG_GEOS+DVDT_ORG_NCAR
          DTDT_ORG=DTDT_ORG_GEOS+DTDT_ORG_NCAR
-         TAUXO_TMP=0.0 !TAUXO_TMP_GEOS+TAUXO_TMP_NCAR
-         TAUYO_TMP=0.0 !TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
+         TAUXO_TMP=TAUXO_TMP_GEOS+TAUXO_TMP_NCAR
+         TAUYO_TMP=TAUYO_TMP_GEOS+TAUYO_TMP_NCAR
        else
           ! Use GEOS GWD    
           call gw_intr   (IM*JM,      LM,         DT,                  &

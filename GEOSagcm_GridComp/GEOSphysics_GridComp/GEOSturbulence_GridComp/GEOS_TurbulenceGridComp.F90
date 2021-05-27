@@ -1936,7 +1936,7 @@ contains
 
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
      real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA, TSM, USM, VSM
-     real, dimension(IM,JM,0:LM)         :: PKE
+     real, dimension(IM,JM,0:LM)         :: PKE, ZSM
      integer, dimension(IM,JM)           :: SMTH_LEV
 
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
@@ -2273,44 +2273,6 @@ contains
                    ALLOC_TCZPBL = .TRUE.
       endif
 
-      call MAPL_TimerOn(MAPL,"---PRELIMS")
-
-      ! Compute the edge heights using Arakawa-Suarez hydrostatic equation
-      !---------------------------------------------------------------------------
-
-      PKE = (PLE/MAPL_P00)**MAPL_KAPPA
-      ZLE(:,:,LM) = 0.0
-      do L = LM, 1, -1
-         ZLE(:,:,L-1) = ZLE(:,:,L) + (MAPL_CP/MAPL_GRAV)*TH(:,:,L)*(PKE(:,:,L)-PKE(:,:,L-1))
-      end do
-
-      ! Layer height, pressure, and virtual temperatures
-      !-------------------------------------------------
-
-      QL  = QLCN + QLLS
-      QI  = QICN + QILS
-      QA  = CLCN + CLLS ! Currently not used in REFRESHKS
-      Z   = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
-      PLO = 0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))
-
-      if (associated(ZLS))  ZLS = Z
-      if (associated(ZLES)) ZLES = ZLE
-
-      TV  = T *( 1.0 + MAPL_VIREPS * Q - QL - QI ) 
-      THV = TV*(TH/T)
-
-      TVE = (TV(:,:,1:LM-1) + TV(:,:,2:LM))*0.5
-
-      ! Miscellaneous factors
-      !----------------------
-
-      RDZ = PLE(:,:,1:LM-1) / ( MAPL_RGAS * TVE )
-      RDZ = RDZ(:,:,1:LM-1) / (Z(:,:,1:LM-1)-Z(:,:,2:LM))
-      DMI = (MAPL_GRAV*DT)/(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
-
-      TSM = THV
-      USM = U
-      VSM = V
       if (SMTH_PRS /= 0) then
          ! Use Pressure Thickness at the surface to determine index
          SMTH_LEV=LM
@@ -2328,6 +2290,57 @@ contains
       else
          SMTH_LEV=LM-5
       end if
+
+      call MAPL_TimerOn(MAPL,"---PRELIMS")
+
+      ! Compute the edge heights using Arakawa-Suarez hydrostatic equation
+      !---------------------------------------------------------------------------
+
+      PKE = (PLE/MAPL_P00)**MAPL_KAPPA
+      ZLE(:,:,LM) = 0.0
+      do L = LM, 1, -1
+         ZLE(:,:,L-1) = ZLE(:,:,L) + (MAPL_CP/MAPL_GRAV)*TH(:,:,L)*(PKE(:,:,L)-PKE(:,:,L-1))
+      end do
+      !===> Running 1-2-1 smooth of bottom levels of ZLE
+      ZSM = ZLE
+      where (SMTH_LEV .lt. LM)
+        ZSM(:,:,LM) = ZLE(:,:,LM-1)*0.25 + ZLE(:,:,LM  )*0.75
+      end where
+      do J=1,JM
+       do I=1,IM
+         do L=LM-1,SMTH_LEV(I,J),-1
+            ZSM(I,J,L) = ZLE(I,J,L-1)*0.25 + ZLE(I,J,L)*0.50 + ZLE(I,J,L+1)*0.25
+         end do
+       end do
+      end do
+
+      ! Layer height, pressure, and virtual temperatures
+      !-------------------------------------------------
+
+      QL  = QLCN + QLLS
+      QI  = QICN + QILS
+      QA  = CLCN + CLLS ! Currently not used in REFRESHKS
+      Z   = 0.5*(ZSM(:,:,0:LM-1)+ZSM(:,:,1:LM))
+      PLO = 0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))
+
+      if (associated(ZLS))  ZLS = Z
+      if (associated(ZLES)) ZLES = ZSM
+
+      TV  = T *( 1.0 + MAPL_VIREPS * Q - QL - QI ) 
+      THV = TV*(TH/T)
+
+      TVE = (TV(:,:,1:LM-1) + TV(:,:,2:LM))*0.5
+
+      ! Miscellaneous factors
+      !----------------------
+
+      RDZ = PLE(:,:,1:LM-1) / ( MAPL_RGAS * TVE )
+      RDZ = RDZ(:,:,1:LM-1) / (Z(:,:,1:LM-1)-Z(:,:,2:LM))
+      DMI = (MAPL_GRAV*DT)/(PLE(:,:,1:LM)-PLE(:,:,0:LM-1))
+
+      TSM = THV
+      USM = U
+      VSM = V
       !===> Running 1-2-1 smooth of bottom levels of THV, U and V
       where (SMTH_LEV .lt. LM)
         TSM(:,:,LM) = THV(:,:,LM-1)*0.25 + THV(:,:,LM  )*0.75
@@ -2453,7 +2466,7 @@ contains
 
       if (DO_SHOC == 0) then
         call LOUIS_KS(                      &
-            Z,ZLE(:,:,1:LM-1),TSM,USM,VSM,ZPBL, &    
+            Z,ZSM(:,:,1:LM-1),TSM,USM,VSM,ZPBL, &    
             KH(:,:,1:LM-1),KM(:,:,1:LM-1),  &
             RI(:,:,1:LM-1),DU(:,:,1:LM-1),  &    
             LOUIS, MINSHEAR, MINTHICK,      &

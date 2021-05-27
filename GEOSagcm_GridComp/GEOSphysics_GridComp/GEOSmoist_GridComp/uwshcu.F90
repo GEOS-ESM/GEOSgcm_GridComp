@@ -1619,14 +1619,14 @@ contains
 
 
 
-        lts =  0.0
-        do k = 2,k0-1
-           if (pmid0(k).lt.70000.0) then
-             lts = t0(k-1)/exnmid0(k-1)  ! theta
-             exit
-           end if
-        end do
-        lts = lts - t0(1)/exnmid0(1)
+!        lts =  0.0
+!        do k = 2,k0-1
+!           if (pmid0(k).lt.70000.0) then
+!             lts = t0(k-1)/exnmid0(k-1)  ! theta
+!             exit
+!           end if
+!        end do
+!        lts = lts - t0(1)/exnmid0(1)
 
         !------------------------------------------------------------------------!
         ! Case 1. LCL height is higher than PBL interface ( 'pLCL <=ps0(kinv-1)' ) !
@@ -1710,7 +1710,7 @@ contains
  35    continue
        if( cin .lt. 0. ) limit_cin(i) = 1.
        cin = max(0.,cin)
-       cin = max(cin,0.04*(lts-18.))   ! kludge to reduce UW in StCu regions
+!       cin = max(cin,0.04*(lts-18.))   ! kludge to reduce UW in StCu regions
 
 
        if( klfc .ge. k0 ) then

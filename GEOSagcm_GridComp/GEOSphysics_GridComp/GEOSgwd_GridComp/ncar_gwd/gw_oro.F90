@@ -338,7 +338,7 @@ subroutine gw_oro_ifc( band, &
 
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
-   logical  :: gw_apply_tndmax  	!- default .TRUE. for Anisotropic: "Sean" limiters
+   logical, parameter :: gw_apply_tndmax = .TRUE. !- default .TRUE. for Anisotropic: "Sean" limiters
 
    character(len=1) :: cn
    character(len=9) :: fname(4)
@@ -352,10 +352,6 @@ subroutine gw_oro_ifc( band, &
    allocate(tau(ncol,band%ngwv:band%ngwv,pver+1))
    allocate(gwut(ncol,pver,band%ngwv:band%ngwv))
    allocate(c(ncol,band%ngwv:band%ngwv))
-
-
-     gw_apply_tndmax  = .FALSE.
-
 
 ! Efficiency of gravity wave momentum transfer.
      effgw(:) = effgw_oro
@@ -374,10 +370,10 @@ subroutine gw_oro_ifc( band, &
      end do
 
 !WMP pressure scaling from GEOS
-     pint_adj = 1.0
-     where (pint < 1000.0)
-       pint_adj = (pint/1000.0)**3
-     endwhere
+!    pint_adj = 1.0
+!    where (pint < 1000.0)
+!      pint_adj = (pint/1000.0)**3
+!    endwhere
 !WMP pressure scaling from GEOS
 
      ! Solve for the drag profile with orographic sources.
