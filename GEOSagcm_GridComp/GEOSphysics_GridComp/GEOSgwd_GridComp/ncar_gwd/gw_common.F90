@@ -281,7 +281,7 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
      src_level, tend_level, dt, t,    &
      piln, rhoi,    nm,   ni, ubm,  ubi,  xv,    yv,   &
      effgw,      c, kvtt, tau,  utgw,  vtgw, &
-     ttgw,  egwdffi,   gwut, dttdf, dttke, ro_adjust, &
+     ttgw,  egwdffi,   gwut, dttdf, dttke, ro_adjust, tau_adjust, &
      kwvrdg, satfac_in, lapply_effgw_in )
 
   !-----------------------------------------------------------------------
@@ -374,6 +374,10 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! Adjustment parameter for IGWs.
   real(r8), intent(in), optional :: &
        ro_adjust(ncol,-band%ngwv:band%ngwv,pver+1)
+
+  ! Adjustment parameter for TAU.
+  real(r8), intent(in), optional :: &
+       tau_adjust(ncol,pver+1)
 
   ! Diagnosed horizontal wavenumber for ridges.
   real(r8), intent(in), optional :: &
@@ -514,6 +518,18 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
            end where
         end if
 
+ !! WMP from GEOS
+ !      if (present(tau_adjust)) then
+ !         tausat = tausat * tau_adjust(:,k)
+ !      end if
+ !      if (k == ktop  ) tausat = 0.0
+ !      if (k == ktop+1) tausat = tausat*0.02
+ !      if (k == ktop+2) tausat = tausat*0.05
+ !      if (k == ktop+3) tausat = tausat*0.10
+ !      if (k == ktop+4) tausat = tausat*0.20
+ !      if (k == ktop+5) tausat = tausat*0.50
+ !! WMP from GEOS
+
         if (present(kwvrdg)) then
            where (src_level >= k)
               ! Compute stress for each wave. The stress at this level is the
@@ -647,6 +663,12 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
         ! new stress will be smaller than the old stress, causing stress
         ! divergence in the next layer down. This smoothes large stress
         ! divergences downward while conserving total stress.
+        ! Include a protection on SMALL gwut to prevent floating point
+        ! issues.
+        !--------------------------------------------------
+        where( abs(gwut(:,k,l)) < 1.e-15_r8 )
+           gwut(:,k,l) = 0._r8
+        endwhere   
         where (k <= tend_level)
            tau(:,l,k+1) = tau(:,l,k) + & 
                 abs(gwut(:,k,l)) * delp(:,k) / gravit 

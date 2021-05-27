@@ -44,7 +44,7 @@ contains
 !==========================================================================
 
 !------------------------------------
-subroutine gw_beres_init (file_name , band, desc )
+subroutine gw_beres_init (file_name, band, desc, pgwv, gw_dc, wavelength)
 #include <netcdf.inc>
 
   character(len=*), intent(in) :: file_name
@@ -52,14 +52,12 @@ subroutine gw_beres_init (file_name , band, desc )
 
   type(BeresSourceDesc), intent(inout) :: desc
 
+  integer, intent(in) :: pgwv
+  real(r8), intent(in) :: gw_dc, wavelength
 
   ! Stuff for Beres convective gravity wave source.
   real(r8), allocatable :: mfcc(:,:,:), hdcc(:)
   integer  :: hd_mfcc , mw_mfcc, ps_mfcc, ngwv_file, ps_mfcc_mid
-
-  real(r8) :: gw_dc, wavelength
-  integer  :: pgwv
-
 
   ! Vars needed by NetCDF operators
   integer  :: ncid, dimid, varid, status
@@ -108,10 +106,11 @@ subroutine gw_beres_init (file_name , band, desc )
 !!!  pgwv = 32
 !!!  gw_dc = 2.5D0  
 
-  ! Hardwire for now
-  gw_dc = 2.5_r8
-  pgwv  = 32
-  wavelength = 1.e5_r8
+! ! Hardwire for now
+! gw_dc = 2.5_r8
+! pgwv  = 32
+! wavelength = 1.e5_r8
+! WMP now pased in from GEOS_GwdGridComp
   band  = GWBand(pgwv, gw_dc, 1.0_r8, wavelength )
 
 
