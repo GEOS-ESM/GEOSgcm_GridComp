@@ -4622,6 +4622,12 @@ if ( ET == 1 ) then
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
+#ifdef EDMF_DIAG
+                     qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
+                     qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
+                     thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
+                     thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
+#endif
                      au, wu, Mu, E, D, wdet)                                         ! out (for MYNN-EDMF consistent partitioning)
     end if
  elseif ( ET == 2 ) then
@@ -4678,6 +4684,12 @@ if ( ET == 1 ) then
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
+#ifdef EDMF_DIAG
+                     qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
+                     qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
+                     thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
+                     thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
+#endif
                      au, wu, Mu, E, D, wdet)                                         ! out (for MYNN-EDMF consistent partitioning)
     end if ! EDMF_SCHEME == 0
 
@@ -4745,6 +4757,12 @@ if ( ET == 1 ) then
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
                      au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
+#ifdef EDMF_DIAG
+                     qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
+                     qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
+                     thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
+                     thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
+#endif
                      au, wu, Mu, E, D, wdet)                                         ! out (for MYNN-EDMF consistent partitioning)         
     end if ! EDMF_SCHEME == 0
  else

@@ -1,3 +1,5 @@
+#define EDMF_DIAG 1
+
 module edmf_mod
 
 use MAPL_ConstantsMod, only: mapl_grav, mapl_cp, mapl_alhl, mapl_p00, mapl_vireps, mapl_alhs, mapl_kappa
@@ -39,6 +41,12 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)
                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfqthl, mfwhl, & ! out (for SHOC)
                     au_full, hlu_full, qtu_full, acu_full, Tu_full, qlu_full, &     ! out (for MOIST)
+#ifdef EDMF_DIAG
+                    qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
+                    qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
+                    thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
+                    thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
+#endif
                     au, wu, Mu, E, D, wdet)                                         ! out (for MYNN-EDMF consistent partitioning)
   
   ! Inputs
@@ -58,6 +66,12 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                                               edmfdryu, edmfmoistu, edmfdryv, edmfmoistv, &
                                               edmfmoistqc, tke_mf, &
                                               ae, aw, aws, awqv, awql, awqi, awu, awv, &
+#ifdef EDMF_DIAG
+                                              qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
+                                              qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
+                                              thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
+                                              thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
+#endif
                                               whl_mf, wqt_mf, wthv_mf, au, Mu, wu, Kh_mf, Kh_t, Kh_q
 
   real, dimension(IM,JM,LM), intent(out) :: buoyf, mfw2, mfw3, mfqt3, mfqt2, mfwqt, &
@@ -165,6 +179,34 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   E    = 0.
   D    = 0.
   wdet = 0.
+
+#ifdef EDMF_DIAG
+  qt_plume1  = qti
+  qt_plume2  = qti
+  qt_plume3  = qti
+  qt_plume4  = qti
+  qt_plume5  = qti
+  qt_plume6  = qti
+  qt_plume7  = qti
+  qt_plume8  = qti
+  qt_plume9  = qti
+  qt_plume10 = qti
+
+  thl_plume1  = thvi
+  thl_plume2  = thvi
+  thl_plume3  = thvi
+  thl_plume4  = thvi
+  thl_plume5  = thvi
+  thl_plume6  = thvi
+  thl_plume7  = thvi
+  thl_plume8  = thvi
+  thl_plume9  = thvi
+  thl_plume10 = thvi
+#endif
+
+  !
+  !
+  !
 
   ! Loop across surface tiles
   do j = 1,JM
@@ -392,6 +434,45 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  edmfdryv(i,j,k)   = edmfdryv(i,j,k)   + upa(iup,i,j)*upv(iup,i,j)
               end if
 
+#ifdef EDMF_DIAG
+              if ( iup == 1 ) then
+                 qt_plume1(i,j,k)  = upqt(iup,i,j)
+                 thl_plume1(i,j,k) = upthv(iup,i,j)
+              elseif ( iup == 2 ) then
+                 qt_plume2(i,j,k)  = upqt(iup,i,j)
+                 thl_plume2(i,j,k) = upthv(iup,i,j)
+              elseif ( iup == 3 ) then
+                 qt_plume3(i,j,k)  = upqt(iup,i,j)
+                 thl_plume3(i,j,k) = upthv(iup,i,j)
+              elseif ( iup == 4 ) then
+                 qt_plume4(i,j,k)  = upqt(iup,i,j)
+                 thl_plume4(i,j,k) = upthv(iup,i,j)
+              elseif ( iup == 5 ) then
+                 qt_plume5(i,j,k)  = upqt(iup,i,j)
+                 thl_plume5(i,j,k) = upthv(iup,i,j)
+              elseif ( iup == 6 ) then
+                 qt_plume6(i,j,k)  = upqt(iup,i,j)
+                 thl_plume6(i,j,k) = upthv(iup,i,j)
+              elseif ( iup == 7 ) then
+                 qt_plume7(i,j,k)  = upqt(iup,i,j)
+                 thl_plume7(i,j,k) = upthv(iup,i,j)
+              elseif ( iup == 8 ) then
+                 qt_plume8(i,j,k)  = upqt(iup,i,j)
+                 thl_plume8(i,j,k) = upthv(iup,i,j)
+              elseif ( iup == 9 ) then
+                 qt_plume9(i,j,k)  = upqt(iup,i,j)
+                 thl_plume9(i,j,k) = upthv(iup,i,j)
+              elseif ( iup == 10 ) then
+                 qt_plume10(i,j,k)  = upqt(iup,i,j)
+                 thl_plume10(i,j,k) = upthv(iup,i,j)
+              end if
+#endif
+
+
+              !
+              !
+              !
+              
               ! Compute fractional entrainment rate
               if ( L0(i,j) > 0. ) then
                  if ( stochastic_flag /= 0 ) then
