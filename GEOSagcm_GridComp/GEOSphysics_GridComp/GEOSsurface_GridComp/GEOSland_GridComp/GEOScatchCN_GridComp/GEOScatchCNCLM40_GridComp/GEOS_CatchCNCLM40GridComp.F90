@@ -4083,11 +4083,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    NT = size(TA)
 
-   ! Leave if there are no tiles in the processor
-   ! --------------------------------------------
-   if (NT < 1) then
-      RETURN_(ESMF_SUCCESS)
-   endif
    allocate(TVA(NT),STAT=STATUS)
    VERIFY_(STATUS)
    allocate(TVS(NT),STAT=STATUS)
@@ -5543,12 +5538,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         IF (RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,  RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
-        
-        ! Leave if there are no tiles in the processor
-        ! --------------------------------------------
-        if (NTILES < 1) then
-           RETURN_(ESMF_SUCCESS)
-        endif
+
     allocate(   ityp(ntiles,nveg,nzone) )
     allocate(   fveg(ntiles,nveg,nzone) )
     allocate( wtzone(ntiles,nzone) )
@@ -7627,9 +7617,9 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         ! --------------------------------------------------------------------------
         ! Update raditation exports
         ! --------------------------------------------------------------------------
-
-
+       
         call MAPL_TimerOn(MAPL,"-ALBEDO")
+        if (ntiles > 0) then
         call    SIBALB(NTILES, VEG1,LAI1,GRN, ZTH,         & 
                        BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
                        ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )         ! instantaneous snow-free albedos on tiles
@@ -7691,8 +7681,9 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
         ALBNR   = ALBNR    *(1.-ASNOW) + SNONR    *ASNOW
         ALBNF   = ALBNF    *(1.-ASNOW) + SNONF    *ASNOW
+        endif
         call MAPL_TimerOff(MAPL,"-ALBEDO")
-
+        
         LWNDSRF = LWDNSRF - HLWUP
 
         ! --------------------------------------------------------------------------
@@ -8373,12 +8364,6 @@ subroutine RUN0(gc, import, export, clock, rc)
 
   ! Number of tiles and a dummy real array
   ntiles = size(HTSNNN1)
-  
-  ! Leave if there are no tiles in the processor
-  ! --------------------------------------------
-  if (NTILES < 1) then
-     RETURN_(ESMF_SUCCESS)
-  endif
   allocate(dummy(ntiles), stat=status)
   VERIFY_(status)
   ! Reset WW

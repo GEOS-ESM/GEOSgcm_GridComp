@@ -4018,11 +4018,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    VERIFY_(STATUS)
 
    NT = size(TA)
-   ! Leave if there are no tiles in the processor
-   ! --------------------------------------------
-   if (NT < 1) then
-      RETURN_(ESMF_SUCCESS)
-   endif
    
    allocate(TVA(NT),STAT=STATUS)
    VERIFY_(STATUS)
@@ -5543,11 +5538,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         IF (RUN_IRRIG /= 0) call MAPL_GetPointer(EXPORT,IRRIGRATE ,'IRRIGRATE' ,  RC=STATUS); VERIFY_(STATUS)
 
         NTILES = size(PS)
-        ! Leave if there are no tiles in the processor
-        ! --------------------------------------------
-        if (NTILES < 1) then
-           RETURN_(ESMF_SUCCESS)
-        endif
         
     allocate(   ityp(ntiles,nveg,nzone) )
     allocate(   fveg(ntiles,nveg,nzone) )
@@ -6447,6 +6437,18 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     NextTime = CURRENT_TIME + DELT
 
+    ! 0-land tiles processors hang in MAPL_ReadForcing
+    ! Thus moved reading lnfm here
+    ! ------------------------------------------------
+    
+    if(mod(AGCM_S_ofday,nint(dtcn)) == 0) then
+        ! Get lightening frequency clim file name from configuration
+       call MAPL_GetResource ( MAPL, LNFMFILE, label = 'LNFM_FILE:', default = 'lnfm.dat', RC=STATUS )
+       VERIFY_(STATUS)
+       call MAPL_ReadForcing(MAPL,'LNFM',LNFMFILE,CURRENT_TIME,lnfm,ON_TILES=.true.,RC=STATUS)
+       VERIFY_(STATUS)
+    endif
+
     if(ntiles > 0) then ! gkw: skip threads with no land tiles
 
 ! gkw: assign new vegetation types and fractions
@@ -7054,7 +7056,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
          ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )         ! instantaneous snow-free albedos on tiles
 
     if  ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then 
-
+       
        if(.not.allocated (MODISVISmean )) allocate (MODISVISmean  (1:NTILES))
        if(.not.allocated (MODISVISstd  )) allocate (MODISVISstd   (1:NTILES))
        if(.not.allocated (MODISNIRmean )) allocate (MODISNIRmean  (1:NTILES))
@@ -7090,7 +7092,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
 
     call STIEGLITZSNOW_CALC_TPSNOW(NTILES, HTSNNN(1,:), WESNN(1,:), TPSN1OUT1, FICE1)
     TPSN1OUT1 =  TPSN1OUT1 + Tzero
-    
+
     call   SNOW_ALBEDO(NTILES,N_snow, N_CONST_LAND4SNWALB, VEG1, LAI1, ZTH,        &
          RHOFS,                                              &   
          SNWALB_VISMAX, SNWALB_NIRMAX, SLOPE,                & 
@@ -7131,7 +7133,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
     SNONR(:) = SNONR(:)*fveg1(:) + SNONR_tmp(:)*fveg2(:)
     SNOVF(:) = SNOVF(:)*fveg1(:) + SNOVF_tmp(:)*fveg2(:)
     SNONF(:) = SNONF(:)*fveg1(:) + SNONF_tmp(:)*fveg2(:)
-
+ 
     ! --------------------------------------------------------------------------
     ! albedo/swnet partitioning
     ! --------------------------------------------------------------------------
@@ -7203,16 +7205,6 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        call upd_curr_date_time( AGCM_YY, AGCM_MM, AGCM_DD, dofyr, &
             AGCM_HH, AGCM_MI, AGCM_S )
        
-       ! do lnfm interpolation
-       call ESMF_ClockGet  ( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
-       VERIFY_(STATUS)
-
-       ! Get lightening frequency clim file name from configuration
-       call MAPL_GetResource ( MAPL, LNFMFILE, label = 'LNFM_FILE:', default = 'lnfm.dat', RC=STATUS )
-       VERIFY_(STATUS)
-
-       call MAPL_ReadForcing(MAPL,'LNFM',LNFMFILE,CURRENT_TIME,lnfm,ON_TILES=.true.,RC=STATUS)
-       VERIFY_(STATUS)
        ! compute mean state over interval
        ! --------------------------------
        do nz = 1,nzone
@@ -7244,7 +7236,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
        
        lats_degree = lats / MAPL_PI * 180.
        lons_degree = lons / MAPL_PI * 180.
-       
+
        call CN_Driver(istep_cn,ntiles,nveg,nzone,dayl,                                           &
             tgwm,tpm,tp2,tp3,tp4,tp5,tp6,sfmm,rzmm,wpwet,                                        &
             psis,bee,poros,vgwmax,bflowm,totwatm,runsrfm,                                        &
@@ -7873,8 +7865,8 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         ! Update raditation exports
         ! --------------------------------------------------------------------------
 
-
         call MAPL_TimerOn(MAPL,"-ALBEDO")
+        if(ntiles > 0) then
         call    SIBALB(NTILES, VEG1,LAI1,GRN, ZTH,         & 
                        BGALBVR, BGALBVF, BGALBNR, BGALBNF, & ! gkw: MODIS soil background albedo
                        ALBVR, ALBNR, ALBVF, ALBNF, MODIS_SCALE=.TRUE.  )         ! instantaneous snow-free albedos on tiles
@@ -7903,14 +7895,14 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
                        ALBVR_tmp, ALBNR_tmp, ALBVF_tmp, ALBNF_tmp, MODIS_SCALE=.TRUE.  ) ! instantaneous snow-free albedos on tiles
 
         if ((SCALE_ALBFPAR == 1).OR.(SCALE_ALBFPAR == 3)) then
-           if(ntiles > 0) then
+
               do n = 1,NTILES
                  ThisFPAR  = (unscaled_fpar(n,3)*FVG(N,3) + unscaled_fpar(n,4)*FVG(N,4))/(FVG(N,3) + FVG(N,4) + 1.e-20)
                  ZFPAR    = (ThisFPAR - MODELFPARmean (n)) / MODELFPARstd (n)
                  ALBVF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISVISstd(n) + MODISVISmean (n)))
                  ALBNF_tmp(n) = AMIN1 (1., AMAX1(0.001,ZFPAR * MODISNIRstd(n) + MODISNIRmean (n)))          
               end do
-           endif
+
            if(allocated (MODISVISmean)) deallocate (MODISVISmean, MODISVISstd, MODISNIRmean, MODISNIRstd, MODELFPARmean, MODELFPARstd)
         endif
 
@@ -7936,6 +7928,7 @@ call catch_calc_soil_moist( ntiles, veg1, dzsf, vgwmax, cdcr1, cdcr2, psis, bee,
         ALBVF   = ALBVF    *(1.-ASNOW) + SNOVF    *ASNOW
         ALBNR   = ALBNR    *(1.-ASNOW) + SNONR    *ASNOW
         ALBNF   = ALBNF    *(1.-ASNOW) + SNONF    *ASNOW
+        endif        
         call MAPL_TimerOff(MAPL,"-ALBEDO")
 
         LWNDSRF = LWDNSRF - HLWUP
@@ -8670,11 +8663,6 @@ subroutine RUN0(gc, import, export, clock, rc)
 
   ! Number of tiles and a dummy real array
   ntiles = size(HTSNNN1)
-  ! Leave if there are no tiles in the processor
-  ! --------------------------------------------
-  if (NTILES < 1) then
-     RETURN_(ESMF_SUCCESS)
-  endif
   
   allocate(dummy(ntiles), stat=status)
   VERIFY_(status)
