@@ -9,7 +9,7 @@ real, parameter ::     &
      WSTARmin = 1.e-3, &
      zpblmin  = 100.,  &
      onethird = 1./3., &
-     au0      = 0.1,  &
+     au0      = 0.2,  &
      delta    = 2.E-3
 
 contains
@@ -72,7 +72,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   real :: wthv, wstar, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
           B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, EntEXP, EntEXPU, EntW, wf, &
           stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, idzle, ifac, test, mft_work, mfthvt_work, &
-          goth00, thlu_full, work, exfh, dsdz, dqdz
+          goth00, thlu_full, work, exfh, dsdz, dqdz, wu0, dthv0, dqt0, thvu0, qtu0, thv_high, thv_low, &
+          thvmin, thvmax
 
   ! Temporary (too slow; need to figure out how random number generator works)
   integer, dimension(numup,IM,JM,LM)  :: enti
@@ -220,6 +221,24 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
         
         work = 1./( sqrt(2.)*sigmaW )
 
+        if ( plume_type == 1 ) then
+           wu0   = E(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
+           dthv0 = th00*wu0**2./( 2.*mapl_grav*( zle(i,j,LM-1) - zle(i,j,LM) ) )
+           dqt0  = dthv0*evap(i,j)/wthv
+
+           thvu0 = thv(i,j,LM) + dthv0
+           qtu0  = qt(i,j,LM)  + dqt0
+
+           ! Temporary
+           sigmaTH = 0.75*dthv0
+           sigmaQT = 1.3*dqt0
+
+           thvmin = thv(i,j,LM)
+           thvmax = thvu0 + 3.*sigmaTH
+
+           work = 1./( sqrt(2.)*sigmaTH )
+        end if
+
         QTsrfF  = 0.
         THVsrfF = 0.
         do iup = 1,numup
@@ -236,12 +255,18 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               upqt(iup,i,j)  = qti(i,j,kbot)  + 0.32*upw(iup,i,j)*sigmaQT/sigmaW ! 0.32~=0.58*0.55 (Stull 1988)
               upthv(iup,i,j) = thvi(i,j,kbot) + 0.58*upw(iup,i,j)*sigmaTH/sigmaW ! Stull 1988
            else
-              upa(iup,i,j)   = au0/real(numup)
-              upw(iup,i,j)   = E(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
+              thv_low  = thvmin + ( thvmax - thvmin )*real(iup-1)/real(numup)
+              thv_high = thvmin + ( thvmax - thvmin )*real(iup)/real(numup)
+
+              upthv(iup,i,j) = 0.5*( thv_low + thv_high )
+              upa(iup,i,j)   = au0*( 0.5*erf(( thv_high - thvu0 )*work) - 0.5*erf( ( thv_low - thvu0 )*work) )
+              upw(iup,i,j)   = wu0
               upu(iup,i,j)   = u(i,j,LM)
               upv(iup,i,j)   = v(i,j,LM)
-              upqt(iup,i,j)  = qt(i,j,LM)
-              upthv(iup,i,j) = thv(i,j,LM)
+              upqt(iup,i,j)  = max( 0., qtu0 + 0.4*( upthv(iup,i,j) - thvu0 )*sigmaQT/sigmaTH )
+!              upqt(iup,i,j)  = qtu0
+!              upa(iup,i,j)   = au0/real(numup)
+!              upthv(iup,i,j) = thv(i,j,LM) + dthv0
            end if
 
            upm(iup,i,j) = rhoe(i,j,kbot)*upa(iup,i,j)*upw(iup,i,j)
@@ -281,7 +306,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   end do
 
   if ( debug_flag /= 0 ) then
-!     write(*,'(I4,12F7.2)') LM-1, sum(100.*upa(:,1,1)), 0., 100.*upa(:,1,1)
+     write(*,'(I4,12F7.2)') LM-1, sum(100.*upa(:,1,1)), 0., 100.*upa(:,1,1)
   end if
 
   !
@@ -447,7 +472,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     end if
 
                     if ( debug_flag /= 0 .and. iup == 1 ) then
-                       write(*,*) k, B, upw(iup,i,j), sqrt(Wn2)
+!                       write(*,*) k, B, upw(iup,i,j), sqrt(Wn2)
                     end if
                  end if
               end if
@@ -554,7 +579,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
            end if
 
            if ( debug_flag /= 0 ) then
-!              write(*,'(I4,12F7.2)') k-1, sum(100.*upa_out(:)), 100.*edmfmoista(1,1,k-1), 100.*upa_out(:)
+              write(*,'(I4,12F7.2)') k-1, sum(100.*upa_out(:)), 100.*edmfmoista(1,1,k-1), 100.*upa_out(:)
 !              write(*,*) k-1, 100*upa(1,1,1), upw(1,1,1)
            end if
         else
@@ -832,7 +857,7 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
 
               if ( debug_flag /= 0 ) then
 !                 write(*,'(I4,2F7.2)') k, B, sqrt(wu2(i,j)), sqrt(wu2_next)
-                 write(*,*) k, B, sqrt(wu2(i,j)), sqrt(wu2_next)
+!                 write(*,*) k, B, sqrt(wu2(i,j)), sqrt(wu2_next)
               end if
               
               ! call condensation_edmf(qtu_next, thlu_next, ple(i,j,km1), thvu_next, qcu, wf, ice_ramp)           
@@ -845,7 +870,7 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
                  test_flag(i,j) = .false.
 
                  if ( debug_flag /= 0 ) then
-                    write(*,*) '*', iter, wu0(i,j) 
+!                    write(*,*) '*', iter, wu0(i,j) 
                  end if
               else
                  Mu(i,j)   = Mu_next
