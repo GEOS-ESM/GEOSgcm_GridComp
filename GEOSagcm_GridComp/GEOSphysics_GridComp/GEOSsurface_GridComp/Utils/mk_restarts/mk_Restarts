@@ -105,15 +105,6 @@ $mk_catch_log = "mk_catch.log";
         $cmd = "$Bin/mk_RouteRestarts OutData/\*.til $yyyymm";
         system_($cmd);
     }
-
-    #-------------------
-    # irrigation restart
-    #-------------------
-
-    #if (-e $irrig_file) {
-#	$cmd = "/bin/cp $irrig_file irrigation_internal_rst";
-#	system_($cmd);
-#    }
     wait_for_pid($pid) if $pid;
 }
 
