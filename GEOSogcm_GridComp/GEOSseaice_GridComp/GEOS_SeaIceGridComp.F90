@@ -571,12 +571,10 @@ contains
 ! Local derived type aliases
 
     type (MAPL_MetaComp),     pointer   :: State
-    integer                             :: IM, JM, LM
     real                                :: DT
 
     type (ESMF_State       ), pointer   :: GIM(:)
     type (ESMF_State       ), pointer   :: GEX(:)
-    type (ESMF_FIELD       )            :: FIELD
 
 
 !=============================================================================
@@ -696,9 +694,6 @@ contains
     real, pointer, dimension(:,:,:) :: MPONDO  => null()
     real, pointer, dimension(:,:,:) :: ERGICEO => null()
     real, pointer, dimension(:,:,:) :: ERGSNOO => null()
-    real, pointer, dimension(:,:)   :: AICEDO  => null()
-    real, pointer, dimension(:,:)   :: HICEDO  => null()
-    real, pointer, dimension(:,:)   :: HSNODO  => null()
 
     real, pointer, dimension(:,:,:) :: TIO8d   => null()
     real, pointer, dimension(:,:,:) :: FRO8d   => null()
@@ -711,14 +706,10 @@ contains
 
 ! Pointers to exports of child
     real, pointer, dimension(:,:)   :: FId       => null()
-    real, pointer, dimension(:,:)   :: DAIDTNUDG => null()
-    real, pointer, dimension(:,:)   :: DVIDTNUDG => null()
-
 
 
 ! Locals
 
-    integer           :: I,J,L
     integer           :: IM
     integer           :: JM
     real              :: DT 
@@ -797,22 +788,7 @@ contains
        call MAPL_GetPointer(GIM(ICEd), TAUAGEOd , 'TAUAGE' ,  __RC__)
        call MAPL_GetPointer(GIM(ICEd), MPONDOd  , 'MPOND'  ,  __RC__)
 
-
-       call MAPL_GetPointer(GEX(ICE) , AICEDO    , 'AICE'    , __RC__)  ! SA: AICE needs to be looked into
-       call MAPL_GetPointer(GEX(ICE) , HICEDO    , 'HICE'    , __RC__)  ! BZ: These diags need to be updated
-       call MAPL_GetPointer(GEX(ICE) , HSNODO    , 'HSNO'    , __RC__)  ! after ice nudging
-       call MAPL_GetPointer(GEX(ICE) , DAIDTNUDG , 'DAIDTNUDG' , alloc=.TRUE., __RC__)
-       call MAPL_GetPointer(GEX(ICE) , DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., __RC__)
        call MAPL_GetPointer(GEX(ICEd), FId       , 'FRACICE'   , alloc=.TRUE., __RC__)
-
-       ! copy to dataseaice imports as the ice nudging is done via dataseaice states 
-       !TIO8d    = TIO8
-       !FRO8d    = FRO8
-       !VOLICEOd = VOLICEO
-       !VOLSNOOd = VOLSNOO
-       !TAUAGEOd = TAUAGEO
-       !MPONDOd  = MPONDO
-       !ERGICEOd = ERGICEO
 
     end if
 
@@ -823,7 +799,7 @@ contains
     !---------------------
 
     
-    ! Run ocean for one time step (DT)
+    ! Run sea ice for one time step (DT)
     !---------------------------------
     
     call MAPL_TimerOff(STATE,"TOTAL")
@@ -855,15 +831,6 @@ contains
           call MAPL_GenericRunCouplers( STATE, CHILD=ICEd, CLOCK=CLOCK, __RC__ )
 
        end if
-
-       !TIO8    = TIO8d
-       !FRO8    = FRO8d
-       !VOLICEO = VOLICEOd
-       !VOLSNOO = VOLSNOOd
-       !TAUAGEO = TAUAGEOd
-       !MPONDO  = MPONDOd
-       !ERGICEO = ERGICEOd
-       !ERGSNOO = ERGSNOOd
 
     end if
 
@@ -959,16 +926,12 @@ contains
 
 ! Locals
 
-    integer           :: I,J,L
     integer           :: IM
     integer           :: JM
     real              :: DT 
     integer           :: CAT_DIST               ! parameters for sea ice nudging
     real              :: HIN, RN,  TAU_SIT      ! parameters for sea ice nudging
 
-
-
-    integer           :: ID
     integer           :: PHASE
 
 ! Get the component's name and set-up traceback handle.
