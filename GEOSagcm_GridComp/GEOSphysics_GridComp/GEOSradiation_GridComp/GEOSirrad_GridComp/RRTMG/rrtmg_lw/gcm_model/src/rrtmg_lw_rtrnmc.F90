@@ -107,7 +107,8 @@ contains
       real :: rad0       ! surface emitted radiance
       real :: reflect    ! surface reflectance
 
-      real :: plfrac, blay, dplankup, dplankdn, sumfac, duflx
+      real :: plfrac, blay, dplankup, dplankdn
+      real :: sumfac, deluflux, deluderiv
 
       ! derivatives with respect to surface temperature
       real :: d_rad0_dTs, d_radlu_dTs, d_radclru_dTs
@@ -186,6 +187,10 @@ contains
          ! TOA downward LW is zero
          ! and column starts "clear"
          radld = 0.; radclrd = 0. 
+
+         ! see below ... this flag is set false at the top of every SUB-column
+         ! (g-point) of the current gridcolumn, but becomes true at the first
+         ! layer (going down) in which ANY of the sub-columns is cloudy.
          down_streams_diverge = .false.
 
          ! Downward radiative transfer loop
@@ -197,59 +202,87 @@ contains
             dplankdn = planklev(ibnd,lev-1,icol) - blay
 
             odepth = secdiff * taug(lev,ig,icol)
-            if (odepth .lt. 0.) odepth = 0. 
+            if (odepth < 0.) odepth = 0. 
 
-            ! if layer is cloudy for any gpoint/subcol then
-            ! use cloudy RT (even if this subcol is clear)
-!pmn: have sub-branch for clear subcol?? to save calcs
+            ! ---------------------------------------------------
+            ! Table lookup for efficiency based on optical depth:
+            ! ---------------------------------------------------
+            ! Optical depth, tau, is converted to a discretized
+            ! table index, itau in [0:ntbl], by
+            !    tblind = tau / (bpade + tau)
+            !    itau = tblint * tblind + 0.5
+            ! where bpade = 1/(pade constant),
+            !       tblint = float(ntbl),
+            !   and [0:ntbl] is the dimension of the tables.
+            !
+            ! The three look-up-tables (LUTs) are:
+            ! (1) tau_tbl = Optical depth LUT.
+            !        Internally
+            !           tau_tbl(itau) = bpade * chi/(1-chi)
+            !        where chi = itau / tblint.
+            !     As such, tau_tbl(itau) is a discretized
+            !     version of tau consistent with itau. Since
+            !     it is this descretized tau that is used for
+            !     the other two table generations (see below)
+            !     it is important to use this descretized tau
+            !     externally (rather than the original tau),
+            !     for consistency.
+            !
+            ! (2) exp_tbl = Exponential LUT for transmittance.
+            !        Internally = exp(-tau_tbl(itau)).
+            !
+            ! (3) tfn_tbl = Tau transition function LUT.
+            !     (i.e. the transition of the Planck function
+            !     from that for the mean layer temperature to
+            !     that for the layer boundary temperature as
+            !     a function of optical depth. The "linear in
+            !     tau" method is used to make the table.)
+            !     Internally also a function of tau_tbl(itau).
+            ! ---------------------------------------------------
 
-            if (cloudy(lev,icol)) then
+            ! gas only
+            tblind = odepth / (bpade + odepth)
+            itgas = tblint * tblind + 0.5 
+            agas(lev) = 1. - exp_tbl(itgas)
+            tfacgas = tfn_tbl(itgas)
+            bbdgas      = plfrac * (blay + tfacgas * dplankdn)
+            bbugas(lev) = plfrac * (blay + tfacgas * dplankup)
 
-               ! Have now reached a layer that is cloudy (in any of
-               ! its gpoint/subcols) on the way down. Above here the
-               ! clear- and total-sky downward streams were identical.
-               ! Here and below they must be separately calculated.
-               down_streams_diverge = .true.
+            ! Update of downward LW, radld, through a layer
+            ! of transmissivity T:
+            !   radld -> radld * T + bbd * (1-T)
+            !         -> radld + (bbd - radld) * (1-T)
+            ! where bbd is effective Planck func for layer.
+
+            if (taucmc(lev,ig,icol) <= 0.) then
+
+               ! through a clear layer, so gas only
+               radld = radld + (bbdgas - radld) * agas(lev)
+
+            else
+
+               ! through a cloudy layer, so gas plus cloud ...
 
                odclds = secdiff * taucmc(lev,ig,icol)
                absclds = 1. - exp(-odclds)
                efclfracs = absclds * cldfmc(lev,ig,icol)
 
-               ! table lookup based on optical depth:
-               ! bpade    1/(pade constant)
-               ! tau_tbl  clear sky optical depth look-up table
-               !          (used in cloudy radiative transfer)
-               ! exp_tbl  exponential look-up table for transmittance
-               ! tfn_tbl  tau transition function look-up table
-               !          (i.e. the transition of the Planck function
-               !          from that for the mean layer temperature to
-               !          that for the layer boundary temperature as
-               !          a function of optical depth. The "linear in
-               !          tau" method is used to make the table.)
-
-               ! gas only
-               tblind = odepth/(bpade+odepth)
-               itgas = tblint * tblind + 0.5 
-               agas(lev) = 1. - exp_tbl(itgas)
-               tfacgas = tfn_tbl(itgas)
+               ! since cloud optical depth must be added in, we should
+               ! add it to the *discretized* gas optical depth, since
+               ! the latter is what is actually used to generate the
+               ! exp_tbl and tfn_tbl table values above.
                odepth = tau_tbl(itgas)
-
-               ! gas and cloud
                odtot = odepth + odclds
-               tblind = odtot/(bpade+odtot)
+
+               tblind = odtot / (bpade + odtot)
                ittot = tblint * tblind + 0.5 
                atot(lev) = 1. - exp_tbl(ittot)
                tfactot = tfn_tbl(ittot)
-
-               bbdgas      = plfrac * (blay + tfacgas * dplankdn)
-               bbugas(lev) = plfrac * (blay + tfacgas * dplankup)
                bbdtot      = plfrac * (blay + tfactot * dplankdn)
                bbutot(lev) = plfrac * (blay + tfactot * dplankup)
 
-               ! Update of downward LW, radld, through a mixed
-               ! gas and cloud layer. See simpler clear (gas
-               ! only) case in else-branch first.
-               !    If f is cloud fraction, then effective
+               ! A mixed gas and cloud layer:
+               ! If f is cloud fraction, then effective
                ! layer absorbtivity is
                !   alayer = (1-f) * agas + f * aboth
                ! where
@@ -272,37 +305,29 @@ contains
                   gassrc + cldfmc(lev,ig,icol) * &
                   (bbdtot * atot(lev) - gassrc)
 
-            else  ! clear layer (in every gpoint/subcolumn)
-
-               tblind = odepth/(bpade+odepth)
-               itgas = tblint * tblind + 0.5 
-               agas(lev) = 1. - exp_tbl(itgas)
-               tausfac = tfn_tbl(itgas)
-
-               bbdgas      = plfrac * (blay + tausfac * dplankdn)
-               bbugas(lev) = plfrac * (blay + tausfac * dplankup)
-
-               ! Update of downward LW, radld, through a layer
-               ! of transmissivity T:
-               !   radld -> radld * T + bbd * (1-T)
-               !         -> radld + (bbd - radld) * (1-T)
-               ! where bbd is effective Planck func for layer.
-
-               radld = radld + (bbdgas - radld) * agas(lev)
-
             endif
+
+            ! spectrally integrate downward flux (total-sky)
             totdflux(lev-1,icol) = totdflux(lev-1,icol) + sumfac * radld
 
-            ! Set clear-sky stream to total-sky stream as long as layers
-            ! remain clear. Streams diverge when a cloud is reached, and
-            ! clear-sky stream must be computed separately from that point.
+            ! total-sky and clear-sky fluxes (for downward, totdflux and
+            ! totdclfl, respectively) are spectrally integrated across
+            ! all gpoints (subcolumns). Therefore, the downward total-
+            ! and clear-sky flux streams will be the same at the TOA and
+            ! working down through completely clear layers. But once a
+            ! layer is reached which is cloudy in at least one subcolumn,
+            ! the two streams diverge for that layer and all layers below.
 
+            if (.not. down_streams_diverge) then
+               if (cloudy(lev,icol)) down_streams_diverge = .true.
+            end if
             if (down_streams_diverge) then
                radclrd = radclrd + (bbdgas-radclrd) * agas(lev) 
             else
                radclrd = radld
             endif
 
+            ! spectrally integrate downward flux (clear-sky)
             totdclfl(lev-1,icol) = totdclfl(lev-1,icol) + sumfac * radclrd
 
          enddo  ! downward loop
@@ -334,16 +359,22 @@ contains
          ! Upward radiative transfer loop
          do lev = 1,nlay
 
-            ! cloudy for any g-point
-            if (cloudy(lev,icol)) then
+            if (taucmc(lev,ig,icol) <= 0.) then
 
-               gassrc = bbugas(lev) * agas(lev)
+               ! clear subcolumn layer
+               radlu = radlu + (bbugas(lev) - radlu) * agas(lev)
+               if (dudTs) d_radlu_dTs = d_radlu_dTs * (1. - agas(lev))
+
+            else
+
+               ! cloudy subcolumn layer
                odclds = secdiff * taucmc(lev,ig,icol)
                absclds = 1. - exp(-odclds)
                efclfracs = absclds * cldfmc(lev,ig,icol)
 
 ! pmn: can we eliminate some repeated calcs from down loop? at least for clds?
 
+               gassrc = bbugas(lev) * agas(lev)
                radlu = radlu - radlu * (agas(lev) + &
                    efclfracs * (1. - agas(lev))) + &
                    gassrc + cldfmc(lev,ig,icol) * &
@@ -359,46 +390,41 @@ contains
 ! pmn: -----
                endif
 
-            else  ! clear layer
-
-               radlu = radlu + (bbugas(lev) - radlu) * agas(lev)
-               if (dudTs) d_radlu_dTs = d_radlu_dTs * (1. - agas(lev))
-
             endif
 
-            duflx = sumfac * radlu
-            totuflux(lev,icol) = totuflux(lev,icol) + duflx
-            if (dudTs) dtotuflux_dTs(lev,icol) = &
-               dtotuflux_dTs(lev,icol) + sumfac * d_radlu_dTs
+            ! spectrally integrate upward flux (total-sky)
+            deluflux = sumfac * radlu
+            totuflux(lev,icol) = totuflux(lev,icol) + deluflux
 
-            ! Set clear sky stream to total sky stream as long as all layers
-            ! are clear (iclddn=0). Streams must be calculated separately at 
-            ! all layers when a cloud is present (iclddn=1), because surface 
-            ! reflectance is different for each stream.
+            ! If downward streams diverged, then upward streams must also
+            ! because surface reflected flux is different for each stream.
 
             if (down_streams_diverge) then
                radclru = radclru + (bbugas(lev) - radclru) * agas(lev) 
             else
                radclru = radlu
             endif
+
+            ! spectrally integrate upward flux (clear-sky)
             totuclfl(lev,icol) = totuclfl(lev,icol) + sumfac * radclru
+
             if (dudTs) then
                if (down_streams_diverge) then
                   d_radclru_dTs = d_radclru_dTs * (1. - agas(lev))
                else
                   d_radclru_dTs = d_radlu_dTs
                endif
-               dtotuclfl_dTs(lev,icol) = &
-                  dtotuclfl_dTs(lev,icol) + sumfac * d_radclru_dTs
+               deluderiv = sumfac * d_radlu_dTs
+               dtotuflux_dTs(lev,icol) = dtotuflux_dTs(lev,icol) + deluderiv
+               dtotuclfl_dTs(lev,icol) = dtotuclfl_dTs(lev,icol) + sumfac * d_radclru_dTs
             endif
 
          enddo  ! layer
           
          ! OLR band output (we are at TOA)
          if (band_output(ibnd)) then
-            olrb(ibnd,icol) = olrb(ibnd,icol) + duflx
-            if (dudTs) dolrb_dTs(ibnd,icol) = &
-               dolrb_dTs(ibnd,icol) + sumfac * d_radlu_dTs
+            olrb(ibnd,icol) = olrb(ibnd,icol) + deluflux
+            if (dudTs) dolrb_dTs(ibnd,icol) = dolrb_dTs(ibnd,icol) + deluderiv
          end if
 
       end do  ! g-point

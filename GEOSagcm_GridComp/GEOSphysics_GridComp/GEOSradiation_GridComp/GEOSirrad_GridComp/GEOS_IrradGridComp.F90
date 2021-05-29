@@ -68,6 +68,7 @@ module GEOS_IrradGridCompMod
   use rrtmg_lw_rad, only: rrtmg_lw
   use rrtmg_lw_init, only: rrtmg_lw_ini
   use parrrtm, only: ngptlw, nbndlw
+  use rrlw_wvn, only: wavenum1, wavenum2
 
   ! for RRTMGP
   use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
@@ -133,19 +134,67 @@ module GEOS_IrradGridCompMod
 
 !EOP
 
-  ! RRTMGP internal state
-  ! This will be attached to the Gridded Component
-  ! used to provide efficient initialization
-  type ty_RRTMGP_state
-    private
-    logical :: initialized = .false.
-    type (ty_gas_optics_rrtmgp) :: k_dist
-  end type ty_RRTMGP_state
+   ! -------------------------------------------
+   ! Select which RRTMG bands support OLR output
+   ! -------------------------------------------
+   !    via OLRBbbRG and TBRBbbRG exports ...
+   ! (These exports require support space in the
+   ! internal state so we choose only the ones we want
+   ! to offer here at compile time. In the future, if
+   ! most of the bands are required, then we will change
+   ! strategy and reserve space for ALL of them in the
+   ! internal state. In that case we would only require
+   ! runtime band selection via the EXPORTS chosen.)
 
-  ! wrapper to access RRTMGP internal state
-  type ty_RRTMGP_wrap
-    type (ty_RRTMGP_state), pointer :: ptr => null()
-  end type ty_RRTMGP_wrap
+   ! NOTE: band 16 should be requested with caution ...
+   ! Band 16 is technically 2600-3250 cm-1. But when RT
+   ! is performed across all 16 bands, as it is in GEOS-5
+   ! usage, then band 16 includes the integrated Planck
+   ! values from 2600 cm-1 to infinity. So, the brightness
+   ! temperature (Tbr) calculations in Update_Flx(), which
+   ! use specified wavenumber endpoints, may require mod-
+   ! ification for band 16 (pmn: TODO). For the moment,
+   ! the limits [2600,3250] are used. 
+
+   ! Which bands are supported?
+   !    (Currently RRTMG only)
+   !    (actual calculation only if export is requested)
+   ! Supported?    Band  Requested by (and use)
+   logical, parameter :: band_output_supported (nbndlw) = [ &
+      .false. , &!  01
+      .false. , &!  02
+      .false. , &!  03
+      .false. , &!  04
+      .false. , &!  05
+      .true.  , &!  06   A. Collow (Window)
+      .false. , &!  07
+      .false. , &!  08
+      .true.  , &!  09   W. Putman (Water Vapor)
+      .true.  , &!  10   W. Putman (Water Vapor)
+      .true.  , &!  11   W. Putman (Water Vapor)
+      .false. , &!  12
+      .false. , &!  13
+      .false. , &!  14
+      .false. , &!  15
+      .false. ]  !  16
+
+   ! PS: We may later have an RRTMG internal state like
+   ! RRTMGP below with various rrtmg_lw_init data, etc.
+
+   ! -----------------------------------------------
+   ! RRTMGP internal state
+   ! This will be attached to the Gridded Component
+   ! used to provide efficient initialization
+   type ty_RRTMGP_state
+     private
+     logical :: initialized = .false.
+     type (ty_gas_optics_rrtmgp) :: k_dist
+   end type ty_RRTMGP_state
+
+   ! wrapper to access RRTMGP internal state
+   type ty_RRTMGP_wrap
+     type (ty_RRTMGP_state), pointer :: ptr => null()
+   end type ty_RRTMGP_wrap
 
 contains
 
@@ -188,6 +237,13 @@ contains
 
     type (ty_RRTMGP_state), pointer :: rrtmgp_state => null()
     type (ty_RRTMGP_wrap)           :: wrap
+
+    ! for OLRBbbRG, TBRBbbRG
+    real :: RFLAG
+    logical :: USE_RRTMG
+    integer :: ibnd
+    character*2 :: bb
+    character*9 :: wvn_rng  ! xxxx-yyyy
 
 !=============================================================================
 
@@ -241,6 +297,13 @@ contains
     VERIFY_(STATUS)
 
     ACCUMINT = nint(DT)
+
+
+! Is RRTMG LW being run?
+! ----------------------
+
+    call ESMF_ConfigGetAttribute( CF, RFLAG, LABEL='USE_RRTMG_IRRAD:', DEFAULT=0.0, __RC__)
+    USE_RRTMG = RFLAG /= 0.0
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -687,69 +750,31 @@ contains
         VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'OLRB06RG',                                  &
-        LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band06 (820-980 cm-1)', &
-        UNITS      = 'W m-2',                                     &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+    if (USE_RRTMG) then
+       do ibnd = 1,nbndlw
+          if (band_output_supported(ibnd)) then
+             write(bb,'(I0.2)') ibnd
+             write(wvn_rng,'(I0,"-",I0)') nint(wavenum1(ibnd)), nint(wavenum2(ibnd))
+   
+             call MAPL_AddExportSpec(GC,                                    &
+                SHORT_NAME = 'OLRB'//bb//'RG',                              &
+                LONG_NAME  = 'upwelling_longwave_flux_at_TOA_in_RRTMG_band' &
+                                //bb//' ('//trim(wvn_rng)//' cm-1)',        &
+                UNITS      = 'W m-2',                                       &
+                DIMS       = MAPL_DimsHorzOnly,                             &
+                VLOCATION  = MAPL_VLocationNone,                     __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'TBRB06RG',                                  &
-        LONG_NAME  = 'brightness_temperature_in_RRTMG_band06 (820-980 cm-1)',         &
-        UNITS      = 'K',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+             call MAPL_AddExportSpec(GC,                                    &
+                SHORT_NAME = 'TBRB'//bb//'RG',                              &
+                LONG_NAME  = 'brightness_temperature_in_RRTMG_band'         &
+                                //bb//' ('//trim(wvn_rng)//' cm-1)',        &
+                UNITS      = 'K',                                           &
+                DIMS       = MAPL_DimsHorzOnly,                             &
+                VLOCATION  = MAPL_VLocationNone,                     __RC__ )
 
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'OLRB09RG',                                  &
-        LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band09 (1180-1390 cm-1)', &
-        UNITS      = 'W m-2',                                     &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'TBRB09RG',                                  &
-        LONG_NAME  = 'brightness_temperature_in_RRTMG_band09 (1180-1390 cm-1)',         &
-        UNITS      = 'K',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'OLRB10RG',                                  &
-        LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band10 (1390-1480 cm-1)', &
-        UNITS      = 'W m-2',                                     &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'TBRB10RG',                                  &
-        LONG_NAME  = 'brightness_temperature_in_RRTMG_band10 (1390-1480 cm-1)',         &
-        UNITS      = 'K',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'OLRB11RG',                                  &
-        LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band11 (1480-1800 cm-1)', &
-        UNITS      = 'W m-2',                                     &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                   &
-        SHORT_NAME = 'TBRB11RG',                                  &
-        LONG_NAME  = 'brightness_temperature_in_RRTMG_band11 (1480-1800 cm-1)',         &
-        UNITS      = 'K',                                         &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
-    VERIFY_(STATUS)
+          end if
+       end do
+    end if
 
     call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'FLNS',                                      &
@@ -1035,62 +1060,29 @@ contains
         VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddInternalSpec(GC,                                 &
-        SHORT_NAME = 'OLRB06RG',                                  &
-        LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band06', &
-        UNITS      = 'W m-2',                                     &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+    if (USE_RRTMG) then
+       do ibnd = 1,nbndlw
+          if (band_output_supported(ibnd)) then
+             write(bb,'(I0.2)') ibnd
 
-    call MAPL_AddInternalSpec(GC,                                 &
-        SHORT_NAME = 'DOLRB06RGDT',                               &
-        LONG_NAME  = 'derivative_of_upwelling_longwave_flux_at_toa_in_RRTMG_band06_wrt_surface_temp', &
-        UNITS      = 'W m-2 K-1',                                 &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+             call MAPL_AddInternalSpec(GC,                                       &
+                SHORT_NAME = 'OLRB'//bb//'RG',                                   &
+                LONG_NAME  = 'upwelling_longwave_flux_at_TOA_in_RRTMG_band'//bb, &
+                UNITS      = 'W m-2',                                            &
+                DIMS       = MAPL_DimsHorzOnly,                                  &
+                VLOCATION  = MAPL_VLocationNone,                          __RC__ )
 
-    call MAPL_AddInternalSpec(GC,                                 &
-        SHORT_NAME = 'OLRB09RG',                                  &
-        LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band09', &
-        UNITS      = 'W m-2',                                     &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+             call MAPL_AddInternalSpec(GC,                                       &
+                SHORT_NAME = 'DOLRB'//bb//'RGDT',                                &
+                LONG_NAME  = 'derivative_of_upwelling_longwave_flux_at_TOA'//    &
+                                '_in_RRTMG_band'//bb//'_wrt_surface_temp',       &
+                UNITS      = 'W m-2 K-1',                                        &
+                DIMS       = MAPL_DimsHorzOnly,                                  &
+                VLOCATION  = MAPL_VLocationNone,                          __RC__ )
 
-    call MAPL_AddInternalSpec(GC,                                 &
-        SHORT_NAME = 'DOLRB09RGDT',                               &
-        LONG_NAME  = 'derivative_of_upwelling_longwave_flux_at_toa_in_RRTMG_band09_wrt_surface_temp', &
-        UNITS      = 'W m-2 K-1',                                 &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
-
-    call MAPL_AddInternalSpec(GC,                                 &
-        SHORT_NAME = 'OLRB10RG',                                  &
-        LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band10', &
-        UNITS      = 'W m-2',                                     &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
-
-    call MAPL_AddInternalSpec(GC,                                 &
-        SHORT_NAME = 'DOLRB10RGDT',                               &
-        LONG_NAME  = 'derivative_of_upwelling_longwave_flux_at_toa_in_RRTMG_band10_wrt_surface_temp', &
-        UNITS      = 'W m-2 K-1',                                 &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
-
-    call MAPL_AddInternalSpec(GC,                                 &
-        SHORT_NAME = 'OLRB11RG',                                  &
-        LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band11', &
-        UNITS      = 'W m-2',                                     &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
-
-    call MAPL_AddInternalSpec(GC,                                 &
-        SHORT_NAME = 'DOLRB11RGDT',                               &
-        LONG_NAME  = 'derivative_of_upwelling_longwave_flux_at_toa_in_RRTMG_band11_wrt_surface_temp', &
-        UNITS      = 'W m-2 K-1',                                 &
-        DIMS       = MAPL_DimsHorzOnly,                           &
-        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
-
+          end if
+       end do
+    end if
 
 !EOS
 
@@ -1218,10 +1210,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:,:)   :: DFDTSC
    real, pointer, dimension(:,:,:)   :: DFDTSCNA
 
-   real, pointer, dimension(:,:  ) :: &
-      OLRB06RG_INT, OLRB09RG_INT, OLRB10RG_INT, OLRB11RG_INT, &
-      DOLRB06RG_DTS, DOLRB09RG_DTS, DOLRB10RG_DTS, DOLRB11RG_DTS
-
    real, external :: getco2
 
 ! Concerning what radiation to use
@@ -1239,6 +1227,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    type (ESMF_VM)                    :: VM
    integer                           :: CoresPerNode
    integer                           :: COMM
+
+   ! which bands require OLR output?
+   ! (only RRTMG currently; OLRBbbRG, TBRBbbRG)
+   real, pointer, dimension(:,:) :: ptr2d
+   logical :: band_output (nbndlw)
+   integer :: ibnd
+   character*2 :: bb
 
 !=============================================================================
 
@@ -1314,6 +1309,28 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      USE_CHOU_SORAD  = .not.USE_RRTMG_SORAD
    end if
 
+   ! select which bands require OLRB output ...
+   ! ------------------------------------------
+   ! Currently only available for RRTMG
+   ! must be supported AND requested by export 'OLRBbbRG' OR 'TBRBbbRG'
+   if (USE_RRTMG) then
+      do ibnd = 1,nbndlw
+         band_output(ibnd) = .false.
+         if (.not. band_output_supported(ibnd)) cycle
+         write(bb,'(I0.2)') ibnd
+         call MAPL_GetPointer(EXPORT, ptr2d, 'OLRB'//bb//'RG', __RC__)
+         if (associated(ptr2d)) then
+            band_output(ibnd) = .true.
+            cycle
+         end if
+         call MAPL_GetPointer(EXPORT, ptr2d, 'TBRB'//bb//'RG', __RC__)
+         if (associated(ptr2d)) then
+            band_output(ibnd) = .true.
+            cycle
+         end if
+      end do
+   end if
+
 ! Pointers to Internals; these are needed by both Update and Refresh
 !-------------------------------------------------------------------
 
@@ -1335,15 +1352,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(INTERNAL, DFDTSC,    'DFDTSC',RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL, DFDTSNA,   'DFDTSNA', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL, DFDTSCNA,  'DFDTSCNA',RC=STATUS); VERIFY_(STATUS)
-
-   call MAPL_GetPointer(INTERNAL, OLRB06RG_INT,  'OLRB06RG'   , __RC__)
-   call MAPL_GetPointer(INTERNAL, DOLRB06RG_DTS, 'DOLRB06RGDT', __RC__)
-   call MAPL_GetPointer(INTERNAL, OLRB09RG_INT,  'OLRB09RG'   , __RC__)
-   call MAPL_GetPointer(INTERNAL, DOLRB09RG_DTS, 'DOLRB09RGDT', __RC__)
-   call MAPL_GetPointer(INTERNAL, OLRB10RG_INT,  'OLRB10RG'   , __RC__)
-   call MAPL_GetPointer(INTERNAL, DOLRB10RG_DTS, 'DOLRB10RGDT', __RC__)
-   call MAPL_GetPointer(INTERNAL, OLRB11RG_INT,  'OLRB11RG'   , __RC__)
-   call MAPL_GetPointer(INTERNAL, DOLRB11RG_DTS, 'DOLRB11RGDT', __RC__)
 
 ! Determine calling sequence
 !---------------------------
@@ -1529,10 +1537,6 @@ contains
    logical :: Ts_derivs       ! calculate Tsurf derivatives of upward fluxes
    integer :: NN, IJ, LV
 
-   ! which bands require olr output?
-   ! (only RRTMG currently)
-   logical :: band_output (nbndlw)
-
    real,    allocatable, dimension(:,:)   :: FCLD_R
    real,    allocatable, dimension(:,:)   :: TLEV_R       ! Edge Level temperature
    real,    allocatable, dimension(:,:)   :: PLE_R        ! Reverse of level pressure
@@ -1678,8 +1682,8 @@ contains
    real, pointer, dimension(:,:  )   :: DSFDTS
 
    ! for compact multi-export handling
-   real, pointer, dimension(:,:  ) :: ptr2D
-   real, pointer, dimension(:,:,:) :: ptr3D
+   real, pointer, dimension(:,:  ) :: ptr2d
+   real, pointer, dimension(:,:,:) :: ptr3d
    type S_
      character(len=:), allocatable :: str
    end type S_
@@ -3321,38 +3325,6 @@ contains
       ! calculate derivatives of upward flux with Tsurf
       Ts_derivs = .true.
 
-      ! select which bands require olr output ...
-      ! should be consistent with required exports
-
-      band_output = .false.  ! none by default
-
-      ! NOTE: band 16 should be requested with caution ...
-      ! Band 16 is technically 2600-3250 cm-1. But when RT
-      ! is performed across all 16 bands, as it is in GEOS-5
-      ! usage, then band 16 includes the integrated Planck
-      ! values from 2600 cm-1 to infinity. So, the brightness
-      ! temperature (Tbr) calculations in Update_Flx(), which
-      ! use specified wavenumber endpoints, may require
-      ! modification for band 16 (pmn: TODO).
-
-      ! NOTE: currently calc bands 6,9,10,11 and do so
-      ! whether or not exports are requested. ater on may
-      ! further refine to calculate ONLY when requested.
-      ! A bit worried about restarts and what happens if
-      ! initially not requested and then requested for a
-      ! subsequent run segment. If implement this, will
-      ! use, for example ... (pmn: TODO)
-      !   if (associated(OLRB06RG).or.associated(TBRB06RG)) then
-      !      ...
-      !   endif
-      ! Do we even need internal state, or should be carry it
-      ! for every band but just not calculate unless needed.
-
-      band_output ( 6) = .true.
-      band_output ( 9) = .true.
-      band_output (10) = .true.
-      band_output (11) = .true.
-
       call MAPL_TimerOn(MAPL,"---RRTMG_FLIP",RC=STATUS)
       VERIFY_(STATUS)
  
@@ -3538,18 +3510,22 @@ contains
          ! (Note: All bands use the same emissivity)
          SFCEM_INT(I,J) = -( UFLX(IJ,1) - DFLX(IJ,1)*(1.-EMIS(I,J)) )
 
-         ! band 6 window and band 9-11 water vapor products
-         OLRB06RG_INT  (I,J) = OLRBRG      ( 6,IJ)
-         DOLRB06RG_DTS (I,J) = DOLRBRG_DTS ( 6,IJ)
-         OLRB09RG_INT  (I,J) = OLRBRG      ( 9,IJ)
-         DOLRB09RG_DTS (I,J) = DOLRBRG_DTS ( 9,IJ)
-         OLRB10RG_INT  (I,J) = OLRBRG      (10,IJ)
-         DOLRB10RG_DTS (I,J) = DOLRBRG_DTS (10,IJ)
-         OLRB11RG_INT  (I,J) = OLRBRG      (11,IJ)
-         DOLRB11RG_DTS (I,J) = DOLRBRG_DTS (11,IJ)
-
       enddo ! IM
       enddo ! JM
+
+      ! band OLR and brightness temperatures
+      do ibnd = 1,nbndlw
+         if (band_output(ibnd)) then
+            write(bb,'(I0.2)') ibnd
+
+            call MAPL_GetPointer(INTERNAL, ptr2d, 'OLRB'//bb//'RG', __RC__)
+            ptr2d = reshape(OLRBRG (ibnd,:), [IM,JM])
+
+            call MAPL_GetPointer(INTERNAL, ptr2d, 'DOLRB'//bb//'RGDT', __RC__)
+            ptr2d = reshape(DOLRBRG_DTS (ibnd,:), [IM,JM])
+
+         end if
+      end do
 
       call MAPL_TimerOff(MAPL,"---RRTMG_FLIP",RC=STATUS)
       VERIFY_(STATUS)
@@ -3730,10 +3706,6 @@ contains
    real, pointer, dimension(:,:  )   :: OLC
    real, pointer, dimension(:,:  )   :: OLCC5
    real, pointer, dimension(:,:  )   :: OLA
-   real, pointer, dimension(:,:  )   :: OLRB06RG, TBRB06RG
-   real, pointer, dimension(:,:  )   :: OLRB09RG, TBRB09RG
-   real, pointer, dimension(:,:  )   :: OLRB10RG, TBRB10RG
-   real, pointer, dimension(:,:  )   :: OLRB11RG, TBRB11RG
    real, pointer, dimension(:,:  )   :: FLNS
    real, pointer, dimension(:,:  )   :: FLNSNA
    real, pointer, dimension(:,:  )   :: FLNSC
@@ -3744,11 +3716,12 @@ contains
    real, pointer, dimension(:,:  )   :: LCSC5
    real, pointer, dimension(:,:  )   :: LAS
    real, pointer, dimension(:,:  )   :: CLDTT
+   real, pointer, dimension(:,:  )   :: ptr2d
 
    real, pointer, dimension(:,:,:)   :: FCLD
    real, pointer, dimension(:    )   :: PREF
 
-   real, allocatable, dimension(:,:) :: DUMTT, OLRBNN
+   real, allocatable, dimension(:,:) :: DUMTT, OLRB
 
 !  Begin...
 !----------
@@ -3780,14 +3753,6 @@ contains
    call MAPL_GetPointer(EXPORT,   OLC   ,    'OLC'   ,RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,   OLCC5 ,    'OLCC5' ,RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,   OLA   ,    'OLA'   ,RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT, OLRB06RG,  'OLRB06RG',RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT, TBRB06RG,  'TBRB06RG',RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT, OLRB09RG,  'OLRB09RG',RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT, TBRB09RG,  'TBRB09RG',RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT, OLRB10RG,  'OLRB10RG',RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT, TBRB10RG,  'TBRB10RG',RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT, OLRB11RG,  'OLRB11RG',RC=STATUS); VERIFY_(STATUS)
-   call MAPL_GetPointer(EXPORT, TBRB11RG,  'TBRB11RG',RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,   LWS   ,    'LWS'   ,RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,   LWSA  ,    'LWSA'  ,RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,   LCS   ,    'LCS'   ,RC=STATUS); VERIFY_(STATUS)
@@ -3933,15 +3898,6 @@ contains
        if(associated(FLNSC )) FLNSC  =  FLC_INT(:,:,LM) + DFDTSC  (:,:,LM) * DELT
        if(associated(FLNSA )) FLNSA  =  FLA_INT(:,:,LM) + DFDTSCNA(:,:,LM) * DELT
 
-       if(associated(OLRB06RG)) OLRB06RG = MAPL_UNDEF
-       if(associated(TBRB06RG)) TBRB06RG = MAPL_UNDEF
-       if(associated(OLRB09RG)) OLRB09RG = MAPL_UNDEF
-       if(associated(TBRB09RG)) TBRB09RG = MAPL_UNDEF
-       if(associated(OLRB10RG)) OLRB10RG = MAPL_UNDEF
-       if(associated(TBRB10RG)) TBRB10RG = MAPL_UNDEF
-       if(associated(OLRB11RG)) OLRB11RG = MAPL_UNDEF
-       if(associated(TBRB11RG)) TBRB11RG = MAPL_UNDEF
-
    ! RRTMG is a special case because its no-aerosol cases are missing
    else if( USE_RRTMG ) THEN
 
@@ -4008,55 +3964,38 @@ contains
        if(associated(FLNSC )) FLNSC  = FLC_INT(:,:,LM) + DFDTSC(:,:,LM) * DELT
        if(associated(FLNSA )) FLNSA  = MAPL_UNDEF
 
-       if(associated(OLRB06RG).or.associated(TBRB06RG)) then
-         allocate(OLRBNN(IM,JM),__STAT__)
-         OLRBNN = OLRB06RG_INT + DOLRB06RG_DTS * DELT
-         if(associated(OLRB06RG)) OLRB06RG = OLRBNN
-         if(associated(TBRB06RG)) then
-           ! brightness temperature for RRTMG band 06
-           wn1 = 820.e2; wn2 = 980.e2  ! NB: [m-1]
-           call Tbr_from_band_flux(IM, JM, OLRBNN, wn1, wn2, TBRB06RG, __RC__)
-         end if
-         deallocate(OLRBNN)
-       end if
+       ! band OLR and/or TBR output
+       do ibnd = 1,nbndlw
+          if (band_output(ibnd)) then
 
-       if(associated(OLRB09RG).or.associated(TBRB09RG)) then
-         allocate(OLRBNN(IM,JM),__STAT__)
-         OLRBNN = OLRB09RG_INT + DOLRB09RG_DTS * DELT
-         if(associated(OLRB09RG)) OLRB09RG = OLRBNN
-         if(associated(TBRB09RG)) then
-           ! brightness temperature for RRTMG band 09
-           wn1 = 1180.e2; wn2 = 1390.e2  ! NB: [m-1]
-           call Tbr_from_band_flux(IM, JM, OLRBNN, wn1, wn2, TBRB09RG, __RC__)
-         end if
-         deallocate(OLRBNN)
-       end if
+             write(bb,'(I0.2)') ibnd
+             allocate(OLRB(IM,JM),__STAT__)
 
-       if(associated(OLRB10RG).or.associated(TBRB10RG)) then
-         allocate(OLRBNN(IM,JM),__STAT__)
-         OLRBNN = OLRB10RG_INT + DOLRB10RG_DTS * DELT
-         if(associated(OLRB10RG)) OLRB10RG = OLRBNN
-         if(associated(TBRB10RG)) then
-           ! brightness temperature for RRTMG band 10
-           wn1 = 1390.e2; wn2 = 1480.e2  ! NB: [m-1]
-           call Tbr_from_band_flux(IM, JM, OLRBNN, wn1, wn2, TBRB10RG, __RC__)
-         end if
-         deallocate(OLRBNN)
-       end if
+             ! get last full calculation
+             call MAPL_GetPointer(INTERNAL, ptr2d, 'OLRB'//bb//'RG', __RC__)
+             OLRB = ptr2d
 
-       if(associated(OLRB11RG).or.associated(TBRB11RG)) then
-         allocate(OLRBNN(IM,JM),__STAT__)
-         OLRBNN = OLRB11RG_INT + DOLRB11RG_DTS * DELT
-         if(associated(OLRB11RG)) OLRB11RG = OLRBNN
-         if(associated(TBRB11RG)) then
-           ! brightness temperature for RRTMG band 11
-           wn1 = 1480.e2; wn2 = 1800.e2  ! NB: [m-1]
-           call Tbr_from_band_flux(IM, JM, OLRBNN, wn1, wn2, TBRB11RG, __RC__)
-         end if
-         deallocate(OLRBNN)
-       end if
+             ! update for surface temperature on heartbeat
+             call MAPL_GetPointer(INTERNAL, ptr2d, 'DOLRB'//bb//'RGDT', __RC__)
+             OLRB = OLRB + ptr2d * DELT
 
-   endif
+             ! fill OLRBbbRG if requested
+             call MAPL_GetPointer(EXPORT, ptr2d, 'OLRB'//bb//'RG', __RC__)
+             if (associated(ptr2d)) ptr2D = OLRB
+
+             ! calculate TBRBbbRG if requested
+             call MAPL_GetPointer(EXPORT, ptr2d, 'TBRB'//bb//'RG', __RC__)
+             if (associated(ptr2d)) then
+                wn1 = wavenum1(ibnd)*100.; wn2 = wavenum2(ibnd)*100.  ! [m-1]
+                call Tbr_from_band_flux(IM, JM, OLRB, wn1, wn2, ptr2d, __RC__)
+             end if
+
+             deallocate(OLRB)
+
+          end if
+       end do
+
+   endif  ! RRTMG
 
    ! update reference linearization to current temperature
    ! pmn: should be deprecated because its moving along the line passing
