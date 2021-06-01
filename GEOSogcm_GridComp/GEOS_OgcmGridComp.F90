@@ -80,8 +80,6 @@ module GEOS_OgcmGridCompMod
   integer ::        OBIO
   integer ::        ORAD
   integer ::      SEAICE
-  !integer ::      SEAICEr
-  !integer ::      SEAICEd
   integer ::       OCEAN
 
   logical ::      DUAL_OCEAN
@@ -733,7 +731,6 @@ contains
           SRC_ID = SEAICE,            &
           RC=STATUS  )
      VERIFY_(STATUS)
-     ! *MARK*
      ! ice nudging needs it 
      call MAPL_AddConnectivity ( GC,  &
           SHORT_NAME  = (/'SS_FOUND'/), & 
@@ -1499,12 +1496,9 @@ contains
     real, pointer, dimension(:,:) :: UWBO => null()
     real, pointer, dimension(:,:) :: VWBO => null()
 
-    ! *MARK*
     real, pointer, dimension(:,:,:) :: TIO8 => null()
-   ! real, pointer, dimension(:,:,:) :: TIO8d => null()
     real, pointer, dimension(:,:)   :: FRI => null()
     real, pointer, dimension(:,:,:) :: FRO8 => null()
-   ! real, pointer, dimension(:,:,:) :: FRO8d => null()
     real, pointer, dimension(:,:)   :: FRO => null()
     real, pointer, dimension(:,:)   :: TIO => null()
     real, pointer, dimension(:,:,:) :: VOLICEO => null()
@@ -1513,19 +1507,6 @@ contains
     real, pointer, dimension(:,:,:) :: MPONDO => null()
     real, pointer, dimension(:,:,:) :: ERGICEO => null()
     real, pointer, dimension(:,:,:) :: ERGSNOO => null()
-    !real, pointer, dimension(:,:)   :: DAIDTNUDG => null()
-    !real, pointer, dimension(:,:)   :: DVIDTNUDG => null()
-    !real, pointer, dimension(:,:)   :: AICEDO => null()
-    !real, pointer, dimension(:,:)   :: HICEDO => null()
-    !real, pointer, dimension(:,:)   :: HSNODO => null()
-
-    !real, pointer, dimension(:,:,:) :: VOLICEOd => null()
-    !real, pointer, dimension(:,:,:) :: VOLSNOOd => null()
-    !real, pointer, dimension(:,:,:) :: TAUAGEOd => null()
-    !real, pointer, dimension(:,:,:) :: MPONDOd => null()
-
-    !real, pointer, dimension(:,:,:) :: ERGICEOd => null()
-    !real, pointer, dimension(:,:,:) :: ERGSNOOd => null()
 
     real, pointer, dimension(:,:) :: LWFLXO => null()
     real, pointer, dimension(:,:) :: SHFLXO => null()
@@ -1548,12 +1529,6 @@ contains
     real, pointer, dimension(:) :: SS_FOUND => null()
     real, pointer, dimension(:) :: FRZMLT   => null()
 
-    !real, pointer                           :: LONS     (:  ) => null()
-    !real, pointer                           :: LATS     (:  ) => null()
-    !real :: LONSD, LATSD
-    !real, parameter  :: rad_to_deg = 180.0/MAPL_PI
-    !integer                     :: L 
-
     real, allocatable, dimension(:) :: VARTILE
 
     integer                     :: N, K
@@ -1567,9 +1542,6 @@ contains
     integer :: PHASE
     integer :: PHASE_
     integer, allocatable :: CHLD(:)
-    ! *MARK*
-    !integer :: CAT_DIST                  ! parameters for sea ice nudging
-    !real    :: HIN, RN, DT, TAU_SIT      ! parameters for sea ice nudging 
 
 !=============================================================================
 
@@ -1601,8 +1573,6 @@ contains
 
     call MAPL_Get(MAPL,             &
          ExchangeGrid  = ExchGrid,  &
-    !     TILELONS  = LONS,          &
-    !     TILELATS  = LATS,          &
          GIM       = GIM,           & 
          GEX       = GEX,           &
          GCS       = GCS,           &
@@ -1825,35 +1795,6 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer(GIM(SEAICE), FHOCNO  , 'FHOCN'  ,  RC=STATUS)
        VERIFY_(STATUS)
-       ! *MARK* 
-       !if(dual_ocean) then
-       ! call MAPL_GetPointer(GIM(SEAICEd), FRO8d    , 'FRACICE',  RC=STATUS)
-       ! VERIFY_(STATUS)
-       ! call MAPL_GetPointer(GIM(SEAICEd), TIO8d    ,  'TI'    ,  RC=STATUS)
-       ! VERIFY_(STATUS)
-       ! call MAPL_GetPointer(GIM(SEAICEd), VOLICEOd , 'VOLICE' ,  RC=STATUS)
-       ! VERIFY_(STATUS)
-       ! call MAPL_GetPointer(GIM(SEAICEd), VOLSNOOd , 'VOLSNO' ,  RC=STATUS)
-       ! VERIFY_(STATUS)
-       ! call MAPL_GetPointer(GIM(SEAICEd), ERGICEOd , 'ERGICE' ,  RC=STATUS)
-       ! VERIFY_(STATUS)
-       ! call MAPL_GetPointer(GIM(SEAICEd), ERGSNOOd , 'ERGSNO' ,  RC=STATUS)
-       ! VERIFY_(STATUS)
-       ! call MAPL_GetPointer(GIM(SEAICEd), TAUAGEOd , 'TAUAGE' ,  RC=STATUS)
-       ! VERIFY_(STATUS)
-       ! call MAPL_GetPointer(GIM(SEAICEd), MPONDOd  , 'MPOND'  ,  RC=STATUS)
-       ! VERIFY_(STATUS)
-       !  call MAPL_GetPointer(GEX(SEAICE), DAIDTNUDG , 'DAIDTNUDG' , alloc=.TRUE., RC=STATUS)
-       !  VERIFY_(STATUS)
-       !  call MAPL_GetPointer(GEX(SEAICE), DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., RC=STATUS)
-       !  VERIFY_(STATUS)
-       !  call MAPL_GetPointer(GEX(SEAICE), AICEDO , 'AICE' , RC=STATUS)  ! SA: AICE needs to be looked into
-       !  VERIFY_(STATUS)
-       !  call MAPL_GetPointer(GEX(SEAICE), HICEDO , 'HICE' , RC=STATUS)  
-       !  VERIFY_(STATUS)
-       !  call MAPL_GetPointer(GEX(SEAICE), HSNODO , 'HSNO' , RC=STATUS)
-       !  VERIFY_(STATUS)
-      ! endif
     endif
 
    call MAPL_GetPointer(GIM(OCEAN), LWFLXO, 'LWFLX',  RC=STATUS)
@@ -1945,23 +1886,6 @@ contains
     call MAPL_LocStreamTransform( ExchGrid, HIO    ,  HI    , RC=STATUS)
     VERIFY_(STATUS)
 
-    !   do k=1,size(LONS)
-    !       LATSD = LATS(k) *  rad_to_deg
-    !       LONSD = LONS(K) *  rad_to_deg
-    !       if((abs(LATSD-(-58.7553977966309)) < 1.e-3) .and. (abs(LONSD- 58.47026) < 1.e-3)) then
-    !          do n=1, NUM_ICE_CATEGORIES
-    !            print*, FR8(k,n), VOLICE(k,n), VOLSNO(k,N)
-    !            do l=1,NUM_ICE_LAYERS 
-    !               print*,  ERGICE (K,l,N)
-    !            enddo
-    !            do l=1,NUM_SNOW_LAYERS 
-    !               print*,  ERGSNO (K,l,N)
-    !            enddo
-    !          enddo     
-    !          print*, '====================================='
-    !       endif 
-    !   enddo   
-
     
     if (DO_CICE_THERMO == 0) then  
       call MAPL_LocStreamTransform( ExchGrid, TIO    ,  TI    , RC=STATUS)
@@ -2017,17 +1941,6 @@ contains
        enddo
        deallocate(VARTILE, STAT=STATUS)
        VERIFY_(STATUS)
-       ! *MARK*
-       !if(dual_ocean) then
-       !  TIO8d = TIO8
-       !  FRO8d = FRO8
-       !  VOLICEOd = VOLICEO
-       !  VOLSNOOd = VOLSNOO
-       !  TAUAGEOd = TAUAGEO
-       !  MPONDOd = MPONDO
-       !  ERGICEOd = ERGICEO
-       !  ERGSNOOd = ERGSNOO
-       !endif
        if (.not. (dual_ocean .and. phase==2) ) then
 ! for efficiency, dont need these if running predictor in dual ocean
         call MAPL_LocStreamTransform( ExchGrid, FRESHO,    FRESH,   RC=STATUS) 
@@ -2138,11 +2051,7 @@ contains
     else
        call MAPL_GetPointer(GEX(SEAICE), FRI  ,  'FRACICE', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
-       ! *MARK* 
-       !if(DUAL_OCEAN) then
-       !   call MAPL_GetPointer(GEX(SEAICEd), FRO  ,  'FRACICE', alloc=.true., RC=STATUS)
-       !   VERIFY_(STATUS)
-       !endif   
+
        if(associated(TAUXIBOT)) then
           call MAPL_GetPointer(GEX(SEAICE), TAUXIBOTO , 'TAUXBOT' , alloc=.true., RC=STATUS)
           VERIFY_(STATUS)
@@ -2163,12 +2072,8 @@ contains
        if (PHASE == 1) then
           ! corrector
           ! run explicitly phase 1 of all the children
-          ! *MARK*
-          !allocate(CHLD(5), stat=status)
           allocate(CHLD(4), stat=status)
           VERIFY_(STATUS)
-          ! *MARK*
-          !CHLD = (/OBIO,ORAD,SEAICEd,SEAICE,OCEAN/)
           CHLD = (/OBIO,ORAD,SEAICE,OCEAN/)
           DO N=1, size(CHLD)
              ID = CHLD(N)
@@ -2185,14 +2090,10 @@ contains
        ! run explicitly the children excluding "real" seaice (ocean has the data part inside guest)
           allocate(CHLD(4), stat=status)
           VERIFY_(STATUS)
-          ! *MARK*
-          !CHLD = (/OBIO,ORAD,SEAICEd,OCEAN/)
           CHLD = (/OBIO,ORAD,SEAICE,OCEAN/)
           DO N=1, size(CHLD)
              ID = CHLD(N)
              if (ID <= 0) cycle
-             ! *MARK*
-             !if (ID /= OCEAN) then
              if (ID /= OCEAN .and. ID /= SEAICE) then
                 phase_ = 1
              else
@@ -2241,73 +2142,6 @@ contains
         endif
     endif
 
-   
-    ! *MARK*
-    ! ice nudging is done in GEOS_SeaiceGridComp
-    !if(DUAL_OCEAN) then
-    !    call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
-    !    VERIFY_(STATUS)
-    !    call MAPL_GetResource (MAPL, DT, Label="DT:", DEFAULT=DT, RC=STATUS)
-    !    VERIFY_(STATUS)
-    !    call MAPL_GetResource (MAPL, HIN, Label="SEA_ICE_NUDGING_HINEW:" , DEFAULT=0.5, RC=STATUS)
-    !    VERIFY_(STATUS)
-    !    call MAPL_GetResource (MAPL, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1, RC=STATUS)
-    !    VERIFY_(STATUS)
-    !    if(PHASE == 2) then ! phase 2 is predictor
-    !       call ice_nudging(FRO8d,         TIO8d,          &
-    !                        VOLICEOd,      VOLSNOOd,       &
-    !                        ERGICEOd,      ERGSNOOd,       &
-    !                        TAUAGEOd,      MPONDOd,        &
-    !                        FRO,           HIN,            &
-    !                        NUM_ICE_CATEGORIES,            &
-    !                        DT,            0.0,            &
-    !                        NUM_ICE_LAYERS,                &
-    !                        NUM_SNOW_LAYERS,               &
-    !                        CAT_DIST,      DT)
-    !    else ! corrector
-    !       TIO8d = TIO8
-    !       FRO8d = FRO8
-    !       VOLICEOd = VOLICEO
-    !       VOLSNOOd = VOLSNOO
-    !       TAUAGEOd = TAUAGEO
-    !       MPONDOd = MPONDO
-    !       ERGICEOd = ERGICEO
-    !       ERGSNOOd = ERGSNOO
-    !       call MAPL_GetResource(MAPL,TAU_SIT, LABEL="SEA_ICE_NUDGING_RELAX:", default=86400.0,RC=STATUS)
-    !       VERIFY_(STATUS)
-    !       call MAPL_GetResource(MAPL,RN , Label="SEA_ICE_NUDGING_R:" , DEFAULT=0.1, RC=STATUS)
-    !       VERIFY_(STATUS)
-    !       call ice_nudging(FRO8d,         TIO8d,          &
-    !                        VOLICEOd,      VOLSNOOd,       &
-    !                        ERGICEOd,      ERGSNOOd,       &
-    !                        TAUAGEOd,      MPONDOd,        &
-    !                        FRO,           HIN,            &
-    !                        NUM_ICE_CATEGORIES,            &
-    !                        TAU_SIT,       RN,             & 
-    !                        NUM_ICE_LAYERS,                &
-    !                        NUM_SNOW_LAYERS,               &
-    !                        CAT_DIST,      DT,             &               
-    !                        salinity = SS_FOUNDO,          &
-    !                        ai_tend = DAIDTNUDG,           &
-    !                        vi_tend = DVIDTNUDG )
-    !       if(associated(AICEDO)) then
-    !           where(AICEDO/=MAPL_UNDEF)
-    !               AICEDO = sum(FRO8d, dim=3)
-    !           endwhere
-    !       endif  
-    !       if(associated(HICEDO)) then
-    !           where(HICEDO/=MAPL_UNDEF)
-    !               HICEDO = sum(VOLICEOd, dim=3)
-    !           endwhere
-    !       endif  
-    !       if(associated(HSNODO)) then
-    !           where(HSNODO/=MAPL_UNDEF)
-    !               HSNODO = sum(VOLSNOOd, dim=3)
-    !           endwhere
-    !       endif  
-    !    endif
-    !endif 
-
     if (DO_CICE_THERMO == 0) then  
        call MAPL_LocStreamTransform( ExchGrid, TI     ,  TIO   , RC=STATUS)
        VERIFY_(STATUS)
@@ -2316,21 +2150,6 @@ contains
        VERIFY_(STATUS)
     else
        do n=1,NUM_ICE_CATEGORIES
-          ! *MARK* 
-          !if(dual_ocean) then
-          ! call MAPL_LocStreamTransform( ExchGrid, FR8(:,N),  FRO8d(:,:,N),  &
-          !   INTERP=useInterp, RC=STATUS)
-          ! call MAPL_LocStreamTransform( ExchGrid, TI8(:,N),  TIO8d(:,:,N),  &
-          !   INTERP=useInterp, RC=STATUS)
-          ! call MAPL_LocStreamTransform( ExchGrid, VOLICE(:,N),  VOLICEOd(:,:,N),  &
-          !   INTERP=useInterp, RC=STATUS)
-          ! call MAPL_LocStreamTransform( ExchGrid, VOLSNO(:,N),  VOLSNOOd(:,:,N),  &
-          !   INTERP=useInterp, RC=STATUS)
-          ! call MAPL_LocStreamTransform( ExchGrid, TAUAGE(:,N),  TAUAGEOd(:,:,N),  &
-          !   INTERP=useInterp, RC=STATUS)
-          ! call MAPL_LocStreamTransform( ExchGrid, MPOND(:,N),  MPONDOd(:,:,N),  &
-          !   INTERP=useInterp, RC=STATUS)
-          !else
            call MAPL_LocStreamTransform( ExchGrid, TI8(:,N),  TIO8(:,:,N), RC=STATUS) 
            VERIFY_(STATUS)
            call MAPL_LocStreamTransform( ExchGrid, FR8(:,N),  FRO8(:,:,N),  & 
@@ -2348,49 +2167,17 @@ contains
           call MAPL_LocStreamTransform( ExchGrid, MPOND (:,  N), &
                MPONDO(:,:,N), RC=STATUS) 
            VERIFY_(STATUS)
-          !endif
           do k=1,NUM_ICE_LAYERS 
-           !if(dual_ocean) then
-           !  call MAPL_LocStreamTransform( ExchGrid, ERGICE (:,  K,N),  &
-           !       ERGICEOd(:,:,NUM_ICE_LAYERS*(N-1)+K),RC=STATUS) 
-           !  VERIFY_(STATUS)
-           !else
              call MAPL_LocStreamTransform( ExchGrid, ERGICE (:,  K,N),  &
                   ERGICEO(:,:,NUM_ICE_LAYERS*(N-1)+K),RC=STATUS) 
              VERIFY_(STATUS)
-           !endif
           enddo
           do k=1,NUM_SNOW_LAYERS 
-           !if(dual_ocean) then
-           !  call MAPL_LocStreamTransform( ExchGrid, ERGSNO (:,  K,N),  &
-           !       ERGSNOOd(:,:,NUM_SNOW_LAYERS*(N-1)+K),RC=STATUS) 
-           !  VERIFY_(STATUS)
-           !else
              call MAPL_LocStreamTransform( ExchGrid, ERGSNO (:,  K,N),  &
                   ERGSNOO(:,:,NUM_SNOW_LAYERS*(N-1)+K),RC=STATUS) 
              VERIFY_(STATUS)
-           !endif
           enddo
        enddo
-     
-       !do k=1,size(LONS)
-       !    LATSD = LATS(k) *  rad_to_deg
-       !    LONSD = LONS(K) *  rad_to_deg
-       !    if((abs(LATSD-(-58.7553977966309)) < 1.e-3) .and. (abs(LONSD- 58.47026) < 1.e-3)) then
-       !       print*, 'after update'
-       !       print*, 'Phase = ', PHASE
-       !       do n=1, NUM_ICE_CATEGORIES
-       !         print*, FR8(k,n), VOLICE(k,n), VOLSNO(k,N)
-       !         do l=1,NUM_ICE_LAYERS 
-       !            print*,  ERGICE (K,l,N)
-       !         enddo
-       !         do l=1,NUM_SNOW_LAYERS 
-       !            print*,  ERGSNO (K,l,N)
-       !         enddo
-       !       enddo     
-       !    endif 
-       !enddo   
-
        
        if(associated(TAUXIBOT)) then
           call MAPL_LocStreamTransform( ExchGrid, TAUXIBOT, TAUXIBOTO, RC=STATUS) 
