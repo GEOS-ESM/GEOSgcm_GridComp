@@ -287,13 +287,13 @@ PROGRAM mk_RouteRestarts
   ! STEP 4: Now write route_internal_rst
 
   call create_route_internal_nc4 (N_All,NCOUT)   
-  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'AREACAT'   ), (/1/), (/N_All/),AREACAT )
-  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'LENGSC'    ), (/1/), (/N_All/),LENGSC  )
-  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'DNSTR'     ), (/1/), (/N_All/),REAL(DNST2))
-  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'WSTREAM'   ), (/1/), (/N_All/),WSTREAM )
-  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'WRIVER'    ), (/1/), (/N_All/),WRIVER  )
-  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'ORIVERMOUTH'), (/1/),(/N_All/),REAL (ORIVERMOUTH))
-  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'LRIVERMOUTH'), (/1/),(/N_All/),REAL (LRIVERMOUTH))
+  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'AREACAT'   ), (/1,1/), (/N_All,1/),AREACAT )
+  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'LENGSC'    ), (/1,1/), (/N_All,1/),LENGSC  )
+  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'DNSTR'     ), (/1,1/), (/N_All,1/),REAL(DNST2))
+  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'WSTREAM'   ), (/1,1/), (/N_All,1/),WSTREAM )
+  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'WRIVER'    ), (/1,1/), (/N_All,1/),WRIVER  )
+  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'ORIVERMOUTH'), (/1,1/),(/N_All,1/),REAL (ORIVERMOUTH))
+  STATUS = NF_PUT_VARA_REAL(NCOUT,VarID(NCOUT,'LRIVERMOUTH'), (/1,1/),(/N_All,1/),REAL (LRIVERMOUTH))
   status = NF_CLOSE (NCOUT)  
 
   deallocate (AREACAT,LENGSC, WSTREAM,WRIVER, tmp_var)
@@ -339,57 +339,58 @@ contains
 
     integer, intent (in)       :: catch
     integer, intent (inout)    :: NCFOutID    
-    integer :: CatchID, TimID, VID, status 
+    integer :: CatchID, Latid, TimID, VID, status 
 
     status = NF_CREATE ('OutData/route_internal_rst', NF_NETCDF4, NCFOutID)
-    status = NF_DEF_DIM(NCFOutID, 'tile', catch, CatchID)
+    status = NF_DEF_DIM(NCFOutID, 'lon', catch, CatchID)
+    status = NF_DEF_DIM(NCFOutID, 'lat'    , 1,  LatID)
     status = NF_DEF_DIM(NCFOutID, 'time'   , 1 , TimID)
     
     status = NF_DEF_VAR(NCFOutID, 'time'  , NF_DOUBLE, 1 , TimID  , vid)
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'units', &
          LEN_TRIM('minutes since  2014-01-01 00:00:00'), trim('minutes since 2014-01-01 00:00:00'))   
-    status = NF_DEF_VAR(NCFOutID, 'AREACAT'  , NF_FLOAT, 1 , CatchID  , vid)
+    status = NF_DEF_VAR(NCFOutID, 'AREACAT'  , NF_FLOAT, 2 , (/CatchID,LatID/), vid)
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'long_name',&
          LEN_TRIM('AREA OF CATCHMENT'),trim('AREA OF CATCHMENT')) 
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'units', &
          LEN_TRIM('km+2'), trim('km+2')) 
     
-    status = NF_DEF_VAR(NCFOutID, 'LENGSC' , NF_FLOAT, 1 , CatchID , vid)
+    status = NF_DEF_VAR(NCFOutID, 'LENGSC' , NF_FLOAT, 2 , (/CatchID,LatID/) , vid)
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'long_name', &
          LEN_TRIM('LENGTH OF CHANNEL SEGMENT'),          &
          trim('LENGTH OF CHANNEL SEGMENT')) 
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'units',     &
          LEN_TRIM('km'), trim('km')) 
     
-    status = NF_DEF_VAR(NCFOutID, 'DNSTR' , NF_FLOAT, 1 , CatchID , vid)
+    status = NF_DEF_VAR(NCFOutID, 'DNSTR' , NF_FLOAT, 2 , (/CatchID,LatID/) , vid)
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'long_name', &
          LEN_TRIM('INDEX OF DOWNTREAM CATCHMENT'),       &
          trim('INDEX OF DOWNTREAM CATCHMENT')) 
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'units',     &
          LEN_TRIM('-'), trim('-')) 
     
-    status = NF_DEF_VAR(NCFOutID, 'WSTREAM' , NF_FLOAT, 1 , CatchID , vid)
+    status = NF_DEF_VAR(NCFOutID, 'WSTREAM' , NF_FLOAT, 2 , (/CatchID,LatID/) , vid)
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'long_name', &
          LEN_TRIM('VOLUME OF WATER IN LOCAL STREAM'),    &
          trim('VOLUME OF WATER IN LOCAL STREAM')) 
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'units',     &
          LEN_TRIM('m+3'), trim('m+3'))    
     
-    status = NF_DEF_VAR(NCFOutID, 'WRIVER' , NF_FLOAT, 1 , CatchID , vid)
+    status = NF_DEF_VAR(NCFOutID, 'WRIVER' , NF_FLOAT, 1 , (/CatchID,LatID/) , vid)
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'long_name', &
          LEN_TRIM('VOLUME OF WATER IN RIVER'),           &
          trim('VOLUME OF WATER IN RIVER')) 
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'units',     &
          LEN_TRIM('m+3'), trim('m+3'))        
     
-    status = NF_DEF_VAR(NCFOutID, 'ORIVERMOUTH' , NF_FLOAT, 1 , CatchID , vid)
+    status = NF_DEF_VAR(NCFOutID, 'ORIVERMOUTH' , NF_FLOAT, 2 , (/CatchID,LatID/) , vid)
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'long_name', &
          LEN_TRIM('TileID of the ocean tile at the river mouth'),           &
          trim('TileID of the ocean tile at the river mouth')) 
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'units',     &
          LEN_TRIM('-'), trim('-'))        
     
-    status = NF_DEF_VAR(NCFOutID, 'LRIVERMOUTH' , NF_FLOAT, 1 , CatchID , vid)
+    status = NF_DEF_VAR(NCFOutID, 'LRIVERMOUTH' , NF_FLOAT, 2 , (/CatchID,LatID/) , vid)
     status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'long_name', &
          LEN_TRIM('TileID of the lake tile at the river mouth'),           &
          trim('TileID of the lake tile at the river mouth')) 

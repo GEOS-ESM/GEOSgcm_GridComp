@@ -60,7 +60,7 @@ MODULE routing_model
        
        WSTREAM(N)    = WSTREAM(N)  + RUNCATCH(N) * RRM_DT
        LS            = AREACAT(N) / (AMAX1(1.,LENGSC (N)))
-       ROFF          = RUNCATCH(N) * AREACAT(N)
+       ROFF          = RUNCATCH(N) 
        IF(ROFF < 2. ) THEN
           COEFF = RESCONST (LS, P1, P2)
        ELSEIF(ROFF > 10.) THEN
