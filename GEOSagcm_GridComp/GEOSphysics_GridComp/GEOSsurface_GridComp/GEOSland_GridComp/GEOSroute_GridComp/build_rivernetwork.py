@@ -21,8 +21,8 @@ from statistics import mode
 from scipy.io import FortranFile
 import math
 import sys
-import gmplot
-        
+#import gmplot
+
 ######################################
 # Read streamflow station information
 ######################################
@@ -38,7 +38,7 @@ file = input("Enter station lat/lon information file name with full path \
               \n \
               \n ")
 sta_info = []
-with open(file) as fh:
+with open(file,encoding="ISO-8859-1") as fh:
     rd = csv.DictReader(fh, delimiter=',')
     for row in rd:
         sta_info.append(row)
@@ -50,7 +50,7 @@ for x in range(0,N_STA) : lats[x], lons[x], snames[x] = sta_info[x].values()
 # Create basin information file
 ################################
 
-OUTDIR = '../river_basin_infor/'
+OUTDIR = 'river_basin_infor/'
 
 if not os.path.exists(OUTDIR):
         os.mkdir(OUTDIR)
@@ -158,7 +158,7 @@ else:
 #######################
 
 # (1) Pfafstetter Index raster
-SRTMPfaf = Dataset('SRTM_PfafData.nc',mode='r')
+SRTMPfaf = Dataset('/discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/SRTM-TopoData/SRTM_PfafData.nc',mode='r')
 glat     = np.array (SRTMPfaf.variables['latitude'][:])
 glon     = np.array (SRTMPfaf.variables['longitude'][:])
 catid    = np.array (SRTMPfaf.variables['CatchIndex'][:])
@@ -166,7 +166,7 @@ DXY = 360./21600. # Pfafstetter index raster resolution
 SRTMPfaf.close()
 
 # (2) River Network information
-RNetWork =  Dataset ('RiverNetwork_information.nc4',mode='r')
+RNetWork =  Dataset ('/discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/SRTM-TopoData/RiverNetwork_information.nc4',mode='r')
 num_catchs       = np.array (RNetWork.variables['NUM_CATCHS'][:])
 downstream_lon   = np.array (RNetWork.variables['DownStream_lon'][:])
 downstream_lat   = np.array (RNetWork.variables['DownStream_lat'][:])
@@ -372,7 +372,7 @@ with PdfPages(OUTDIR + 'basin_maps.pdf') as pdf:
         boundary.append (np.array([lons_up,lons_down]).max())   
         
         # 1) draw google maps
-        BasinMaps.draw_basinmaps_html (sname_strip,lats_down,lats_up,lons_down,lons_up)
+        #BasinMaps.draw_basinmaps_html (sname_strip,lats_down,lats_up,lons_down,lons_up)
         outfile.write ("<tr><td>%s</td><td>%s</td></tr>" % (snames[n], '<a href="' + sname_strip + '.html">' + sname_strip + '</a>'))
         
         # 2) plot maps

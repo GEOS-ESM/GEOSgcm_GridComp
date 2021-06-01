@@ -171,11 +171,11 @@
 
 # ---- Run river routing model interactively 
 #
-#    0 : Default - NO
-#    1 : YES
+#    .FALSE. : Default 
+#    .TRUE.  : YES run river routing
 #
-# GEOSagcm=>RUN_ROUTE: 0
-# GEOSldas=>RUN_ROUTE: 0
+# GEOSagcm=>RUN_ROUTE: .FALSE.
+# GEOSldas=>RUN_ROUTE: .FALSE.
 
 # ---- Time step for river routing [s]
 #

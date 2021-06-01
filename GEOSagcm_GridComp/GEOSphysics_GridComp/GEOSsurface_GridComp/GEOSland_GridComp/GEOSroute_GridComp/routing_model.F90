@@ -3,25 +3,25 @@ MODULE routing_model
   IMPLICIT NONE
 
   private
-  public :: river_routing, SEARCH_DNST, ROUTE_DT
-  integer                   ,    parameter :: ROUTE_DT = 3600
+  public :: river_routing, SEARCH_DNST, RRM_TIMESTEP
+  integer,    parameter :: RRM_TIMESTEP = 3600 ! timestep used for calibrating P1,P2,P3,P4,P5,P6
 
   CONTAINS
-
 
   ! ------------------------------------------------------------------------
 
   SUBROUTINE RIVER_ROUTING (                &
-       NCAT,                                &
+       NCAT,RRM_DT,                         &
        RUNCATCH,AREACAT,LENGSC,             &
        WSTREAM,WRIVER,                      &
-       QSFLOW,QOUTFLOW)
+       SFLOW,DISCHARGE)
     
     IMPLICIT NONE
     INTEGER, INTENT(IN)                     :: NCAT
+    REAL,    INTENT(IN)                     :: RRM_DT
     REAL,    INTENT(IN),   DIMENSION (NCAT) :: RUNCATCH,AREACAT,LENGSC
     REAL,    INTENT(INOUT),DIMENSION (NCAT) :: WSTREAM, WRIVER
-    REAL,    INTENT(OUT),  DIMENSION (NCAT) :: QSFLOW,QOUTFLOW
+    REAL,    INTENT(OUT),  DIMENSION (NCAT) :: SFLOW,DISCHARGE
 
     REAL,   PARAMETER    :: K_SIMPLE = 0.111902, K_RES_MAX = 0.8                       ! m1_r2com_c1
     REAL,   PARAMETER    :: P1 = 0.010611, P2 = 0.188556, P3 = 0.096864,   &
@@ -45,37 +45,38 @@ MODULE routing_model
 
     ! Routing Model Diagnostics
     ! -------------------------
-    !**** QSFLOW    = TRANSFER OF MOISTURE FROM STREAM VARIABLE TO RIVER VARIABLE [m^3/s]
-    !**** QINFLOW   = TRANSFER OF RIVER WATER FROM UPSTREAM CATCHMENTS [m^3/s] - i.e. sum of
-    !                 QOUTFLOWs from all upstream catchments. This is computed outside this subroutine
-    !**** QOUTFLOW  = TRANSFER OF RIVER WATER TO THE DOWNSTREAM CATCHMENT  [m^3/s]
+    !**** SFLOW     = WATER TRANSFER RATE FROM STREAMS TO THE LOCAL RIVER CHANNEL [m^3/s]
+    !**** INFLOW    = TRANSFER OF RIVER WATER FROM UPSTREAM CATCHMENTS [m^3/s]
+    !                 i.e. sum of DISCHARGEs  from all upstream catchments.
+    !                 This is computed outside this subroutine.
+    !**** DISCHARGE = TRANSFER OF RIVER WATER TO THE DOWNSTREAM CATCHMENT  [m^3/s]
 
-    QSFLOW   = 0.
-    QOUTFLOW = 0.       
+    SFLOW     = 0.
+    DISCHARGE = 0.       
  
     DO N=1,NCAT
               
        ! Updating WSTREAM
        
-       WSTREAM(N)    = WSTREAM(N)  + RUNCATCH(N) * REAL (ROUTE_DT)
+       WSTREAM(N)    = WSTREAM(N)  + RUNCATCH(N) * RRM_DT
        LS            = AREACAT(N) / (AMAX1(1.,LENGSC (N)))
        ROFF          = RUNCATCH(N) * AREACAT(N)
        IF(ROFF < 2. ) THEN
-             COEFF = RESCONST (LS, P1, P2)
-          ELSEIF(ROFF > 10.) THEN
-             COEFF = RESCONST (LS, P3, P4)
-          ELSE
-             COEFF1 = RESCONST (LS, P1, P2)    
-             COEFF2 = RESCONST (LS, P3, P4)   
-             COEFF  = COEFF1 + (ROFF - 2.)*(COEFF2 - COEFF1)/8.
-          ENDIF
+          COEFF = RESCONST (LS, P1, P2)
+       ELSEIF(ROFF > 10.) THEN
+          COEFF = RESCONST (LS, P3, P4)
+       ELSE
+          COEFF1 = RESCONST (LS, P1, P2)    
+          COEFF2 = RESCONST (LS, P3, P4)   
+          COEFF  = COEFF1 + (ROFF - 2.)*(COEFF2 - COEFF1)/8.
+       ENDIF
 
        IF(COEFF > K_RES_MAX) COEFF = K_SIMPLE
  
-       QSFLOW(N)     = COEFF * WSTREAM(N)
-       WSTREAM(N)    = WSTREAM(N) - QSFLOW(N)
-       WRIVER(N)     = WRIVER(N)  + QSFLOW(N)
-       QSFLOW(N)     = QSFLOW(N) / REAL (ROUTE_DT) 
+       SFLOW(N)     = COEFF * WSTREAM(N)
+       WSTREAM(N)   = WSTREAM(N) - SFLOW(N)
+       WRIVER(N)    = WRIVER(N)  + SFLOW(N)
+       SFLOW(N)     = SFLOW(N) / RRM_DT 
 
        ! Updating WRIVER
        
@@ -83,9 +84,9 @@ MODULE routing_model
        COEFF         = RESCONST (LS, P5, P6)
        IF(COEFF > K_RES_MAX) COEFF = K_SIMPLE 
 
-       QOUTFLOW(N)   = COEFF * WRIVER(N)
-       WRIVER(N)     = WRIVER(N)   - QOUTFLOW(N)
-       QOUTFLOW(N)   = QOUTFLOW(N) / REAL (ROUTE_DT) 
+       DISCHARGE(N)  = COEFF * WRIVER(N)
+       WRIVER(N)     = WRIVER(N)   - DISCHARGE(N)
+       DISCHARGE(N)  = DISCHARGE(N) / RRM_DT 
        
     ENDDO
    
@@ -93,7 +94,7 @@ MODULE routing_model
     
   END SUBROUTINE RIVER_ROUTING
 
-! -------------------------------------------------------------------------------------------------------
+! -------------------------------------------------------------------------------------------
 
   REAL FUNCTION RESCONST (LS, P1, P2)
 
@@ -105,7 +106,7 @@ MODULE routing_model
 
   END FUNCTION RESCONST
 
-! -------------------------------------------------------------------------------------------------------
+! -------------------------------------------------------------------------------------------
   
   RECURSIVE SUBROUTINE SEARCH_DNST (K, NCAT_G, DNST, Pfaf_all, DNST_OUT)
     
