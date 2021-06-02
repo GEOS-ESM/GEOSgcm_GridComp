@@ -2126,14 +2126,14 @@ contains
     ! call Run2 of SEAICE to do ice nudging 
     if (dual_ocean) then
         if(PHASE==1) then
-             ! phase 3 correponds to phase 1, i.e. corrector
+             ! phase 3 is corrector stage same as phase 1
              call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(SEAICE), &
                   exportState=GEX(SEAICE), clock=CLOCK, phase=3, userRC=STATUS )
              VERIFY_(STATUS)
              call MAPL_GenericRunCouplers( MAPL, CHILD=SEAICE, CLOCK=CLOCK, RC=STATUS )
              VERIFY_(STATUS)
         else
-             ! phase 4 correponds to phase 2, i.e. predictor
+             ! phase 4 predictor stage same as phase 2
              call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(SEAICE), &
                   exportState=GEX(SEAICE), clock=CLOCK, phase=4, userRC=STATUS )
              VERIFY_(STATUS)

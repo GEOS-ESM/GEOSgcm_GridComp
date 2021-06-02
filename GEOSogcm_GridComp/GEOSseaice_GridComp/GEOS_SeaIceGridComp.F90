@@ -674,7 +674,6 @@ contains
 
 
 ! Pointers to Imports
-    !real, pointer, dimension(:,:)   :: SS_FOUNDi => null()
 
 ! Pointers to Exports
     real, pointer, dimension(:,:)   :: FRd       => null()
@@ -767,7 +766,6 @@ contains
 
     if (dual_ocean) then
 
-       !call MAPL_GetPointer(IMPORT   , SS_FOUNDi , 'SS_FOUND', __RC__)
        call MAPL_GetPointer(EXPORT   , FRd ,       'FRACICEd', __RC__)
 
        call MAPL_GetPointer(GIM(ICE) , FRO8     , 'FRACICE',  __RC__)
