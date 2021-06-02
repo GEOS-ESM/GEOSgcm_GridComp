@@ -1553,7 +1553,7 @@ contains
     Iam = 'Run'
     call ESMF_GridCompGet( GC, name=COMP_NAME, currentPhase=PHASE, RC=status)
     VERIFY_(STATUS)
-    if (PHASE >= 10) PHASE = PHASE - 10   
+    if (PHASE >= 10) PHASE = PHASE - 10 ! to be replaced with MAPL get_phase   
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state

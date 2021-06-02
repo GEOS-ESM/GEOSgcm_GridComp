@@ -721,7 +721,7 @@ contains
 
     Iam = "Run"
     call ESMF_GridCompGet( gc, NAME=comp_name,  CONFIG=CF, currentPhase=PHASE, __RC__ )
-    if (PHASE >= 10) PHASE = PHASE - 10
+    if (PHASE >= 10) PHASE = PHASE - 10 ! to be replaced with MAPL get_phase   
     Iam = trim(comp_name) // Iam
 
 ! Get my internal MAPL_Generic state
@@ -938,7 +938,7 @@ contains
     Iam = "Run2"
     call ESMF_GridCompGet( gc, NAME=comp_name,  CONFIG=CF, currentPhase=PHASE, __RC__ )
     Iam = trim(comp_name) // Iam
-    if (PHASE >= 10) PHASE = PHASE - 10
+    if (PHASE >= 10) PHASE = PHASE - 10 ! to be replaced with MAPL get_phase   
 
 ! Get my internal MAPL_Generic state
 !-----------------------------------
