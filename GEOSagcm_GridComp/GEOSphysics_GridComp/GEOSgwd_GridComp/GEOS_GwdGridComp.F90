@@ -65,6 +65,7 @@ module GEOS_GwdGridCompMod
         KERES_DEV, BKGERR_DEV
   use cudafor
 #else
+  use gw_rdg, only : gw_rdg_init
   use gw_oro, only : gw_oro_init
   use gw_convect, only : gw_beres_init, BeresSourceDesc
   use gw_common, only: GWBand, gw_common_init
@@ -86,6 +87,7 @@ module GEOS_GwdGridCompMod
   type(GWBand)          :: beres_band
   type(BeresSourceDesc) :: beres_desc
   type(GWBand)          :: oro_band
+  type(GWBand)          :: rdg_band
 
   real :: GEOS_BGSTRESS
   real :: GEOS_EFFGWBKG 
@@ -670,6 +672,7 @@ contains
              VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
         VERIFY_(STATUS)      
      end if
+
 ! from moist
      call MAPL_AddImportSpec(GC,                              &
           SHORT_NAME='DTDT_moist',                            &
@@ -872,6 +875,7 @@ contains
     integer       :: NCAR_PGWV
     real(MAPL_R8) :: NCAR_GW_DC
     real(MAPL_R8) :: NCAR_WAVELENGTH
+    real(MAPL_R8) :: NCAR_SOUTH_FAC
 
 !=============================================================================
 
@@ -916,16 +920,35 @@ contains
          call MAPL_GetResource( MAPL, BERES_FILE_NAME, Label="BERES_FILE_NAME:", &
             default=' /discover/nobackup/projects/gmao/share/gmao_ops/fvInput/g5gcm/gwd/newmfspectra40_dc25.nc', RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_PGWV,       Label="NCAR_PGWV:",       default=32,          RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_PGWV,       Label="NCAR_BKG_PGWV:",       default=32,          RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_GW_DC,      Label="NCAR_GW_DC:",      default=2.5_MAPL_R8, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_GW_DC,      Label="NCAR_BKG_GW_DC:",      default=2.5_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_WAVELENGTH, Label="NCAR_WAVELENGTH:", default=1.e5_MAPL_R8, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_WAVELENGTH, Label="NCAR_BKG_WAVELENGTH:", default=1.e5_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
 
          call gw_beres_init( BERES_FILE_NAME , beres_band, beres_desc, NCAR_PGWV, NCAR_GW_DC, NCAR_WAVELENGTH )
 
-         call gw_oro_init ( oro_band )
+         ! Orographic Scheme
+         call MAPL_GetResource( MAPL, NCAR_PGWV,       Label="NCAR_ORO_PGWV:",       default=0,           RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_GW_DC,      Label="NCAR_ORO_GW_DC:",      default=2.5_MAPL_R8, RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_WAVELENGTH, Label="NCAR_ORO_WAVELENGTH:", default=1.e5_MAPL_R8, RC=STATUS)
+         VERIFY_(STATUS)
+         call MAPL_GetResource( MAPL, NCAR_SOUTH_FAC, Label="NCAR_ORO_SOUTH_FAC:", default=2.0_MAPL_R8, RC=STATUS)
+         VERIFY_(STATUS)
+
+         call gw_oro_init ( oro_band, NCAR_GW_DC, NCAR_WAVELENGTH, NCAR_PGWV, NCAR_SOUTH_FAC )
+
+  !    MXDIS(1,1,1)=1000.
+  !    ANGLL(1,1,1)=45.
+  !    ANIXY(1,1,1)=0.9
+  !    CLNGT(1,1,1)=150.
+  !    HWDTH(1,1,1)=100.
+  !    GBXAR(1,1)  = 100.**2
+  !    NRDG=16
+  !!!!   call gw_rdg_init ( rdg_band, NCAR_GW_DC, NCAR_WAVELENGTH, NCAR_PGWV )
       end if
 
       ! All done
@@ -1077,7 +1100,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call MAPL_GetResource( MAPL, NCAR_EFFGWBKG, Label="NCAR_EFFGWBKG:", default=1.000, RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=1.000, RC=STATUS)
+       call MAPL_GetResource( MAPL, NCAR_EFFGWORO, Label="NCAR_EFFGWORO:", default=0.125, RC=STATUS)
        VERIFY_(STATUS)
     else
        call MAPL_GetResource( MAPL, effgworo, Label="EFFGWORO:", default=0.250, RC=STATUS)
@@ -1144,6 +1167,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       !++jtb Array for moist/deepconv heating
       real, pointer, dimension(:,:,:)  :: HT_dpc, TRATE
       real, pointer, dimension(:,:)    :: CNVF
+      !++jtb pointers for NCAR Orographic GWP
+      !     (in Internal State)
+      real, pointer, dimension(:,:,:)  :: MXDIS
+      real, pointer, dimension(:,:,:)  :: CLNGT
+      real, pointer, dimension(:,:,:)  :: HWDTH
+      real, pointer, dimension(:,:,:)  :: ANGLL
+      real, pointer, dimension(:,:,:)  :: ANIXY
+      real, pointer, dimension(:,:)    :: GBXAR
 
 !  Pointers to Export state
 
@@ -1241,6 +1272,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
       type (ESMF_Grid)  :: esmfgrid
       integer           :: COUNTS(3)
 
+! NCAR GWD vars
+      integer :: NRDG
 !  Begin...
 !----------
 
