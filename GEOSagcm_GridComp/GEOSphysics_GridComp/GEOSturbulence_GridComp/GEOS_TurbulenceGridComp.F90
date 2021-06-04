@@ -2171,6 +2171,31 @@ contains
          VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
     VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec(GC,                        &
+         SHORT_NAME = 'qt2_mf',                        &
+         LONG_NAME  = 'mass-flux_contribution_to_qt2', &
+         UNITS      = 'm+2 s-2',                       &
+         DIMS       = MAPL_DimsHorzVert,               &
+         VLOCATION  = MAPL_VLocationEdge,             RC=STATUS )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                &
+       SHORT_NAME = 'qt2t_M_mf',                                    &
+       LONG_NAME  = 'mean-gradient_production_of_total_water_specific_humidity_variance', &
+       UNITS      = 's-1',                                       &
+       DEFAULT    = 0.0,                                         &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                &
+       SHORT_NAME = 'qt2t_T_mf',                                    &
+       LONG_NAME  = 'turbulent_transport_of_total_water_specific_humidity_variance', &
+       UNITS      = 's-1',                                       &
+       DIMS       = MAPL_DimsHorzVert,                           &
+       VLOCATION  = MAPL_VLocationEdge,               RC=STATUS  )
+    VERIFY_(STATUS)
+
 !
 ! Exports for testing MYNN cloud-top entrainment
 !
@@ -3749,12 +3774,14 @@ contains
                                             A_moist, B_moist, ace_moist, &
                                             qsat_moist
 
-   real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, tke_mf
+   real, dimension(IM,JM,0:LM)          ::  ae3,aw3,aws3,awqv3,awql3,awqi3,awu3,awv3, tke_mf, &
+                                            qt2_mf, qt2t_M_mf, qt2t_T_mf
 !   real, dimension(IM,JM,0:LM)          ::  awhl3, awqt3, awthv3 ! for EDMF contribution to MYNN
 
    real, dimension(:,:), pointer        :: z_conv_edmf
 
-   real, dimension(:,:,:), pointer ::  tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, wthl_mf, KH_mf, KH_t, KH_q, tke_mf_ex
+   real, dimension(:,:,:), pointer ::  tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, wthl_mf, KH_mf, KH_t, KH_q, &
+                                       tke_mf_ex, qt2_mf_ex, qt2t_M_mf_ex, qt2t_T_mf_ex
 
    ! Exports for testing MYNN cloud-top entrainment
    real, dimension(:,:,:), pointer :: zle_turb, pl_turb, ple_turb, exner_turb, u_turb, v_turb, &
@@ -4334,6 +4361,13 @@ contains
      call MAPL_GetPointer(EXPORT, tke_mf_ex, 'tke_mf', RC=STATUS)
      VERIFY_(STATUS)
 
+     call MAPL_GetPointer(EXPORT, qt2_mf_ex, 'qt2_mf', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, qt2t_M_mf_ex, 'qt2t_M_mf', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, qt2t_T_mf_ex, 'qt2t_T_mf', RC=STATUS)
+     VERIFY_(STATUS)
+
      call MAPL_GetPointer(EXPORT, exf_turb, 'exf_turb', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, wthl_mf,  'wthl_mf',  RC=STATUS)
@@ -4618,6 +4652,7 @@ if ( ET == 1 ) then
                      edmfdryv, edmfmoistv,  &                                        ! out
                      edmfmoistqc, &                                                  ! out
                      tke_mf, &                                                       ! out (diagnostics)
+                     qt2_mf, qt2t_M_mf, qt2t_T_mf, &                                 ! out (diagnostics)
                      ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, Kh_t, Kh_q, & ! out (for solver)         
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
@@ -4679,7 +4714,8 @@ if ( ET == 1 ) then
                      edmfdryu, edmfmoistu,  &                                        ! out
                      edmfdryv, edmfmoistv,  &                                        ! out
                      edmfmoistqc, &                                                  ! out
-                     tke_mf, &                                                       ! out (diagnostics)
+                     tke_mf, &                                                       ! out (diagnostics
+                     qt2_mf, qt2t_M_mf, qt2t_T_mf, &                                 ! out (diagnostics)
                      ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, Kh_t, Kh_q, & ! out (for solver)         
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
@@ -4753,6 +4789,7 @@ if ( ET == 1 ) then
                      edmfdryv, edmfmoistv,  &                                        ! out
                      edmfmoistqc, &                                                  ! out
                      tke_mf, &                                                       ! out (diagnostics)
+                     qt2_mf, qt2t_M_mf, qt2t_T_mf, &                                 ! out (diagnostics)
                      ae3, awu3, awv3, aw3, aws3, awqv3, awql3, awqi3, Kh_mf, Kh_t, Kh_q, & ! out (for solver)         
                      whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)      
                      buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfhlqt, mfwhl, & ! out (for SHOC)
@@ -4818,6 +4855,10 @@ end if
 !end if
 
 if ( associated(tke_mf_ex) ) tke_mf_ex = tke_mf
+
+if ( associated(qt2_mf_ex) ) qt2_mf_ex = qt2_mf
+if ( associated(qt2t_m_mf_ex) ) qt2t_M_mf_ex = qt2t_M_mf
+if ( associated(qt2t_T_mf_ex) ) qt2t_T_mf_ex = qt2t_T_mf
 
 #ifdef EDMF_DIAG
      if (associated(edmf_qt_plume1)) edmf_qt_plume1 = qt_plume1

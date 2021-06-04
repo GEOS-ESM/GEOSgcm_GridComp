@@ -2,7 +2,7 @@
 
 module edmf_mod
 
-use MAPL_ConstantsMod, only: mapl_grav, mapl_cp, mapl_alhl, mapl_p00, mapl_vireps, mapl_alhs, mapl_kappa
+use MAPL_ConstantsMod, only: mapl_grav, mapl_cp, mapl_alhl, mapl_p00, mapl_vireps, mapl_alhs, mapl_kappa, mapl_rgas
 !use MAPL_Mod, only:          mapl_undef
 
 implicit none
@@ -11,8 +11,10 @@ real, parameter ::     &
      WSTARmin = 1.e-3, &
      zpblmin  = 100.,  &
      onethird = 1./3., &
-     au0      = 0.2,  &
-     delta    = 2.E-3
+     au0      = 0.15,  &
+!     delta    = 3.E-3
+     delta    = 0., &
+     cb       = 1./3.
 
 contains
 
@@ -37,6 +39,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     edmfdryv, edmfmoistv,  &                                        ! out
                     edmfmoistqc, &                                                  ! out
                     tke_mf, &                                                       ! out (diagnostics)
+                    qt2_mf, qt2t_M, qt2t_T, &                                       ! out (diagnostics)
                     ae, awu, awv, aw, aws, awqv, awql, awqi, Kh_mf, Kh_t, Kh_q, &   ! out (for solver)
                     whl_mf, wqt_mf, wthv_mf, &                                      ! out (for MYNN-EDMF inconsistent partitioning)
                     buoyf, mfw2, mfw3, mfqt3, mfwqt, mfqt2, mfhl2, mfqthl, mfwhl, & ! out (for SHOC)
@@ -66,6 +69,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                                               edmfdryu, edmfmoistu, edmfdryv, edmfmoistv, &
                                               edmfmoistqc, tke_mf, &
                                               ae, aw, aws, awqv, awql, awqi, awu, awv, &
+                                              qt2_mf, qt2t_M, qt2t_T, &
 #ifdef EDMF_DIAG
                                               qt_plume1,qt_plume2,qt_plume3,qt_plume4,qt_plume5, &
                                               qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
@@ -84,18 +88,18 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   integer :: i, j, k, km1, kp1, iup, kbot
 
   real :: wthv, wstar, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
-          B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, EntEXP, EntEXPU, EntW, wf, &
+          B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, Mn_test, EntEXP, EntEXPU, EntW, wf, &
           stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, idzle, ifac, test, mft_work, mfthvt_work, &
-          goth00, thlu_full, work, exfh, dsdz, dqdz, wu0, dthv0, dqt0, thvu0, qtu0, thv_high, thv_low, &
-          thvmin, thvmax
+          goth00, thlu_full, work, work2, exfh, dsdz, dqdz, wu0, thv_high, thv_low, thvmin, thvmax, &
+          dthv0, thv0, foo
 
   ! Temporary (too slow; need to figure out how random number generator works)
   integer, dimension(numup,IM,JM,LM)  :: enti
   real, dimension(numup,IM,JM,LM)     :: entf, ent
 
-  real, dimension(IM,JM,LM) :: thlu, qtu, qlu, edmfmoistql
+  real, dimension(IM,JM,LM) :: thlu, qtu, qlu, edmfmoistql, A
 
-  real, dimension(IM,JM,0:LM) :: aw2, ahl2, aqt2, aw3, aqt3, aqthl
+  real, dimension(IM,JM,0:LM) :: aw2, ahl2, aqt2, aw3, aqt3, aqthl, exfh_plume
 
   integer, dimension(2)  :: seedmf, the_seed
 
@@ -112,6 +116,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   kbot = LM - kbotp
 
   goth00 = mapl_grav/th00
+
+  exfh_plume = (ple(i,j,k)/mapl_p00)**mapl_kappa
 
   !
   ! Initialize arrays
@@ -150,6 +156,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
   ! 
   tke_mf = 0.
+
+  qt2_mf = 0.
+  qt2t_M = 0.
+  qt2t_T = 0.
 
   ! Intermediate quantities for SHOC cloud scheme in MOIST
   aw2   = 0.
@@ -192,16 +202,16 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   qt_plume9  = qti
   qt_plume10 = qti
 
-  thl_plume1  = thvi
-  thl_plume2  = thvi
-  thl_plume3  = thvi
-  thl_plume4  = thvi
-  thl_plume5  = thvi
-  thl_plume6  = thvi
-  thl_plume7  = thvi
-  thl_plume8  = thvi
-  thl_plume9  = thvi
-  thl_plume10 = thvi
+  thl_plume1  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
+  thl_plume2  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
+  thl_plume3  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
+  thl_plume4  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
+  thl_plume5  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
+  thl_plume6  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
+  thl_plume7  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
+  thl_plume8  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
+  thl_plume9  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
+  thl_plume10 = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
 #endif
 
   !
@@ -234,7 +244,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   if ( plume_type == 1 ) then
      call A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
                          rho, rhoe, thl, qt, thv, debug_flag, &      ! in
-                         E, f_thermal, ent_sl)                       ! out
+                         A, f_thermal, ent_sl)                       ! out
   end if
 
   !
@@ -264,34 +274,36 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
         work = 1./( sqrt(2.)*sigmaW )
 
         if ( plume_type == 1 ) then
-           wu0   = E(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
-           dthv0 = th00*wu0**2./( 2.*mapl_grav*( zle(i,j,LM-1) - zle(i,j,LM) ) )
-           dqt0  = dthv0*evap(i,j)/wthv
+           work  = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/(  A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) ) &
+                                                              + A(i,j,LM-1)*( zle(i,j,LM-2) - zle(i,j,LM-1) ) )
+           work2 = rhoe(i,j,LM-2)/rhoe(i,j,LM-1) 
 
-           thvu0 = thv(i,j,LM) + dthv0
-           qtu0  = qt(i,j,LM)  + dqt0
+           wu0 = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
 
-           ! Temporary
+           dthv0 = max( thv(i,j,LM) - thv(i,j,LM-1), &
+                        wu0**2.*( ( work2/work )**2. - work**2. )/( 2.*cb*goth00*( zle(i,j,LM-2) - zle(i,j,LM-1) ) ) )
+
+           thv0    = thv(i,j,LM-1) + dthv0
            sigmaTH = 0.75*dthv0
-           sigmaQT = 1.3*dqt0
 
-           thvmin = thv(i,j,LM)
-           thvmax = thvu0 + 3.*sigmaTH
+           thvmin = thv(i,j,LM-1)
+           thvmax = thv0 + 3.*sigmaTH
 
-           work = 1./( sqrt(2.)*sigmaTH )
+           work  = 1./( sqrt(2.)*sigmaTH )
+           work2 = au0/( 0.5*( erf(( thvmax - thv0 )*work) - erf(( thvmin - thv0 )*work) ) )
         end if
 
         QTsrfF  = 0.
         THVsrfF = 0.
         do iup = 1,numup
-           active_updraft(iup,i,j) = .true.
-           
-           wlv = wmin + ( wmax - wmin )*real(iup-1)/real(numup)
-           wtv = wmin + ( wmax - wmin )*real(iup)/real(numup)
+           active_updraft(iup,i,j) = .true.         
 
            if ( plume_type == 0 ) then
+              wlv = wmin + ( wmax - wmin )*real(iup-1)/real(numup)
+              wtv = wmin + ( wmax - wmin )*real(iup)/real(numup)
+
               upw(iup,i,j)   = 0.5*( wlv + wtv ) 
-              upa(iup,i,j)   = 0.5*erf(wtv*work) - 0.5*erf(wlv*work)       
+              upa(iup,i,j)   = 0.5*( erf(wtv*work) - erf(wlv*work) )
               upu(iup,i,j)   = ui(i,j,kbot)
               upv(iup,i,j)   = vi(i,j,kbot)
               upqt(iup,i,j)  = qti(i,j,kbot)  + 0.32*upw(iup,i,j)*sigmaQT/sigmaW ! 0.32~=0.58*0.55 (Stull 1988)
@@ -301,14 +313,11 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               thv_high = thvmin + ( thvmax - thvmin )*real(iup)/real(numup)
 
               upthv(iup,i,j) = 0.5*( thv_low + thv_high )
-              upa(iup,i,j)   = au0*( 0.5*erf(( thv_high - thvu0 )*work) - 0.5*erf( ( thv_low - thvu0 )*work) )
               upw(iup,i,j)   = wu0
+              upa(iup,i,j)   = 0.5*work2*( erf(( thv_high - thv0 )*work) - erf(( thv_low - thv0 )*work) )
               upu(iup,i,j)   = u(i,j,LM)
               upv(iup,i,j)   = v(i,j,LM)
-              upqt(iup,i,j)  = max( 0., qtu0 + 0.4*( upthv(iup,i,j) - thvu0 )*sigmaQT/sigmaTH )
-!              upqt(iup,i,j)  = qtu0
-!              upa(iup,i,j)   = au0/real(numup)
-!              upthv(iup,i,j) = thv(i,j,LM) + dthv0
+              upqt(iup,i,j)  = qt(i,j,LM-1) + ( upthv(iup,i,j) - thv(i,j,LM-1) )*evap(i,j)/wthv
            end if
 
            upm(iup,i,j) = rhoe(i,j,kbot)*upa(iup,i,j)*upw(iup,i,j)
@@ -437,34 +446,34 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 #ifdef EDMF_DIAG
               if ( iup == 1 ) then
                  qt_plume1(i,j,k)  = upqt(iup,i,j)
-                 thl_plume1(i,j,k) = upthv(iup,i,j)
+                 thl_plume1(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
               elseif ( iup == 2 ) then
                  qt_plume2(i,j,k)  = upqt(iup,i,j)
-                 thl_plume2(i,j,k) = upthv(iup,i,j)
+                 thl_plume2(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
               elseif ( iup == 3 ) then
                  qt_plume3(i,j,k)  = upqt(iup,i,j)
-                 thl_plume3(i,j,k) = upthv(iup,i,j)
+                 thl_plume3(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
               elseif ( iup == 4 ) then
                  qt_plume4(i,j,k)  = upqt(iup,i,j)
-                 thl_plume4(i,j,k) = upthv(iup,i,j)
+                 thl_plume4(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
               elseif ( iup == 5 ) then
                  qt_plume5(i,j,k)  = upqt(iup,i,j)
-                 thl_plume5(i,j,k) = upthv(iup,i,j)
+                 thl_plume5(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
               elseif ( iup == 6 ) then
                  qt_plume6(i,j,k)  = upqt(iup,i,j)
-                 thl_plume6(i,j,k) = upthv(iup,i,j)
+                 thl_plume6(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
               elseif ( iup == 7 ) then
                  qt_plume7(i,j,k)  = upqt(iup,i,j)
-                 thl_plume7(i,j,k) = upthv(iup,i,j)
+                 thl_plume7(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
               elseif ( iup == 8 ) then
                  qt_plume8(i,j,k)  = upqt(iup,i,j)
-                 thl_plume8(i,j,k) = upthv(iup,i,j)
+                 thl_plume8(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
               elseif ( iup == 9 ) then
                  qt_plume9(i,j,k)  = upqt(iup,i,j)
-                 thl_plume9(i,j,k) = upthv(iup,i,j)
+                 thl_plume9(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
               elseif ( iup == 10 ) then
                  qt_plume10(i,j,k)  = upqt(iup,i,j)
-                 thl_plume10(i,j,k) = upthv(iup,i,j)
+                 thl_plume10(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
               end if
 #endif
 
@@ -522,19 +531,40 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  end if
 
               elseif ( plume_type == 1 ) then ! thermal plume
-                 ! Integrate vertical velocity budget
-                 B = goth00*( upthv(iup,i,j) - thv(i,j,k) )
+                 !
+                 foo = max( 0., min( 1., ( thv(i,j,k-1) - thv(i,j,k) )/( upthv(iup,i,j) - thv(i,j,k) ) ) )
 
-                 Wn2 = f_thermal(i,j,k)**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
+                 !
+                 E(i,j,k) = E(i,j,k) + A(i,j,k) + 0.4*upm(iup,i,j)*delta
+
+                 ! Integrate vertical velocity budget
+                 B = cb*goth00*( upthv(iup,i,j) - thv(i,j,k) )
+
+!                 Wn2 = f_thermal(i,j,k)**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
+                 Wn2 = ( ( 1. - dzle*delta )/( 1./f_thermal(i,j,k) - 0.6*dzle*delta ) )**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
 
                  if ( Wn2 > 0. ) then
                     if ( B > 0. ) then
-                       Mn     = upm(iup,i,j)/f_thermal(i,j,k)
-                       E_work = max( 0., ( upm(iup,i,j)/f_thermal(i,j,k) - upm(iup,i,j) )/dzle )
-                       D_work = 0.
+!                       Mn     = upm(iup,i,j)/f_thermal(i,j,k)
+!                       E_work = max( 0., ( upm(iup,i,j)/f_thermal(i,j,k) - upm(iup,i,j) )/dzle )
+!                       D_work = 0.
+
+                       Mn     = max( 0., upm(iup,i,j)*( 1./f_thermal(i,j,k) - 0.6*dzle*delta ) )
+                       E_work = upm(iup,i,j)*max( 0., ( 1./f_thermal(i,j,k) - 1. )/dzle + 0.4*delta )
+                       D_work = upm(iup,i,j)*delta
                     else
-                       Mn     = rhoe(i,j,k-1)*upa(iup,i,j)*sqrt(Wn2)
-                       E_work = max( 0., ( upm(iup,i,j)/f_thermal(i,j,k) - upm(iup,i,j) )/dzle )
+!                       Mn     = rhoe(i,j,k-1)*upa(iup,i,j)*sqrt(Wn2)
+!                       E_work = max( 0., ( upm(iup,i,j)/f_thermal(i,j,k) - upm(iup,i,j) )/dzle )
+!                       D_work = max( 0., E_work - ( Mn - upm(iup,i,j) )/dzle )
+
+                       Mn_test = max( 0., upm(iup,i,j)*( 1./f_thermal(i,j,k) - 0.6*dzle*delta ) )
+                       if ( Mn_test/( rhoe(i,j,k-1)*sqrt(Wn2) ) > upa(iup,i,j) ) then
+                          Mn = rhoe(i,j,k-1)*upa(iup,i,j)*sqrt(Wn2)
+                       else
+                          Mn = Mn_test
+                       end if
+                          
+                       E_work = upm(iup,i,j)*max( 0., ( 1./f_thermal(i,j,k) - 1. )/dzle + 0.4*delta )
                        D_work = max( 0., E_work - ( Mn - upm(iup,i,j) )/dzle )
                     end if
 
@@ -670,8 +700,17 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
            qlu(i,j,k)  = 0.
         end if
         Mu(i,j,k)     = rhoe(i,j,k)*au(i,j,k)*wu(i,j,k)
+
         tke_mf(i,j,k) = au(i,j,k)/( 1. - au(i,j,k) )*wu(i,j,k)**2.
         ae(i,j,k)     = ( 1. - edmfdrya(i,j,k) - edmfmoista(i,j,k) )*EDfac 
+
+        ! q'^2 budget
+        qt2_mf(i,j,k) = au(i,j,k)*( 1. - au(i,j,k) )*( qtu(i,j,k) - qti(i,j,k) )**2./( 1. - au(i,j,k) )**2.
+        qt2t_M(i,j,k) = -2.*Mu(i,j,k)/rhoe(i,j,k)*( qtu(i,j,k) - qti(i,j,k) )/( 1. - au(i,j,k) )*( qt(i,j,k) - qt(i,j,k+1) )/( zl(i,j,k) - zl(i,j,k+1) ) 
+!        qt2t_T(i,j,k) = ( -(  ( 1. - 2.*au(i,j,k-1) )*Mu(i,j,k-1)*( qtu(i,j,k-1) - qti(i,j,k-1) )**2./( 1. - au(i,j,k-1) )**2. &
+!                            - ( 1. - 2.*au(i,j,k) )*Mu(i,j,k)*( qtu(i,j,k) - qti(i,j,k) )**2./( 1. - au(i,j,k) )**2. ) &
+!                          \( zle(i,j,k-1) - zle(i,j,k) ) &
+!                          - ( E(i,j,k) + D(i,j,k) )*( qtu(i,j,k) - qti(i,j,k) )**2./( 1. - au(i,j,k) )**2. )/rhoe(i,j,k)
      end do ! i = 1,IM
      end do ! j = 1,JM
   end do ! k = LM,2,-1
@@ -837,7 +876,7 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
 
   integer                     :: i, j, k, km1, iter
   real                        :: dthvdz, dz, B, wf, qcu, Mu_next, wu2_next, &
-                                 thlu_next, qtu_next, thvu_next, goth00
+                                 thlu_next, qtu_next, thvu_next, goth00, E_work, D_work
   integer, dimension(IM,JM)   :: izsl
   real, dimension(IM,JM)      :: A_star_sum, A_star2_int, zi, Mu0, Mu, thlu, qtu, thvu, wu2, wu0
   logical, dimension(IM,JM)   :: conv_flag, sl_flag, test_flag
@@ -925,23 +964,28 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
            if ( test_flag(i,j) ) then
               dz = zle(i,j,km1) - zle(i,j,k)
               
-              Mu_next = Mu(i,j) + A(i,j,k)*dz
-
-              f(i,j,k)      = Mu(i,j)/Mu_next
+              f(i,j,k)      = Mu(i,j)/( Mu(i,j) + A(i,j,k)*dz )
               ent_sl(i,j,k) = -log(f(i,j,k))/dz
+
+              Mu_next = max( 0., Mu(i,j)*( 1./f(i,j,k) - 0.6*dz*delta ) )
+              E_work  = Mu(i,j)*max( 0., ( 1./f(i,j,k) - 1. )/dz + 0.4*delta )
+              D_work  = Mu(i,j)*delta
               
-              B = goth00*( thvu(i,j) - thv(i,j,k) )
+              B = cb*goth00*( thvu(i,j) - thv(i,j,k) )
+
+              thlu_next = ( Mu(i,j)*thlu(i,j) + dz*E_work*thl(i,j,k) )/( Mu_next + dz*D_work )
+              qtu_next  = ( Mu(i,j)*qtu(i,j)  + dz*E_work*qt(i,j,k) )/( Mu_next + dz*D_work )
+              wu2_next  = ( ( 1. - dz*delta )/( 1./f(i,j,k) - 0.6*dz*delta ) )**2.*wu2(i,j) + 2.*dz*B
               
-              thlu_next = f(i,j,k)*thlu(i,j) + ( 1. - f(i,j,k) )*thl(i,j,k)
-              qtu_next  = f(i,j,k)*qtu(i,j)  + ( 1. - f(i,j,k) )*qt(i,j,k)
-              wu2_next  = f(i,j,k)**2.*wu2(i,j) + 2.*dz*B
+!              thlu_next = f(i,j,k)*thlu(i,j) + ( 1. - f(i,j,k) )*thl(i,j,k)
+!              qtu_next  = f(i,j,k)*qtu(i,j)  + ( 1. - f(i,j,k) )*qt(i,j,k)
+!              wu2_next  = f(i,j,k)**2.*wu2(i,j) + 2.*dz*B
 
               if ( debug_flag /= 0 ) then
 !                 write(*,'(I4,2F7.2)') k, B, sqrt(wu2(i,j)), sqrt(wu2_next)
 !                 write(*,*) k, B, sqrt(wu2(i,j)), sqrt(wu2_next)
               end if
               
-              ! call condensation_edmf(qtu_next, thlu_next, ple(i,j,km1), thvu_next, qcu, wf, ice_ramp)           
               thvu_next = thlu_next*( 1. + mapl_vireps*qtu_next )
 
               if ( B <= 0. ) then
