@@ -35,7 +35,7 @@
 #    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2)
 #    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
 #
-# GEOSagcm=>CHOOSEMOSFC: 1
+            CHOOSEMOSFC: 1
 # GEOSldas=>CHOOSEMOSFC: 0
 
 # ---- Thickness of surface layer for soil moisture [mm]
@@ -43,7 +43,7 @@
 #    50.0 : Ganymed-4 and later, SMAP L4_SM 
 #    20.0 : Ganymed-3 and earlier
 #
-# GEOSagcm=>SURFLAY: 50.0
+            SURFLAY: 50.0
 # GEOSldas=>SURFLAY: 50.0
  
 # ---- Assorted Catchment/snow model parameters associated with certain model versions:
@@ -58,7 +58,7 @@
 #    ---------------------------
 #    CN_CLM4 : Fanwei Zeng's science-validated and published Catchment-CN.4.0 (e0004s_transientCO2_05)     
 #
-# GEOSagcm=>LAND_PARAMS: NRv7.2
+            LAND_PARAMS: NRv7.2
 # GEOSldas=>LAND_PARAMS: NRv7.2
 
 # ---- Formulation for turbulent roughness length (z0)
@@ -70,7 +70,7 @@
 #    4 : Icarus-NLv3 (f525_fp)
 #                      SMAP NRv8.1
 #
-# GEOSagcm=>Z0_FORMULATION: 4
+            Z0_FORMULATION: 4
 # GEOSldas=>Z0_FORMULATION: 4
 
 # ---- Compute runoff from large-scale and convective storms
@@ -88,13 +88,13 @@
 #               the GCM depends strongly on resolution, presumably requiring tuned FWETC and FWETL
 #               values that depend on the atmospheric resolution.
 #
-# GEOSagcm=>USE_FWET_FOR_RUNOFF: .FALSE.	
+            USE_FWET_FOR_RUNOFF: .FALSE.	
 # GEOSldas=>USE_FWET_FOR_RUNOFF: .FALSE.
 #
-# GEOSagcm=>FWETC: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE.
+            FWETC: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE.
 # GEOSldas=>FWETC: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE. 
 #	
-# GEOSagcm=>FWETL: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE.    	
+            FWETL: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE.    	
 # GEOSldas=>FWETL: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE.
 
 # ---- ASCAT-derived turbulent roughness length
@@ -102,7 +102,7 @@
 #    0 : Default - do not use ASCAT information.
 #    1 : Replace model roughness length with ASCAT z0 where climatological NDVI<0.2.
 #
-# GEOSagcm=>USE_ASCATZ0: 0
+            USE_ASCATZ0: 0
 # GEOSldas=>USE_ASCATZ0: 0
 
 # ---- Prescribe interannually varying LAI, VISDF, and NIRDF from MODIS V006
@@ -112,7 +112,7 @@
 #    0 : DEFAULT climatologies in BCSDIR are used
 #    1 : Prescribe interannually varying  MCD15A2H.006 LAI and MCD43GF.006 VISDF and NIRDF albedo 
 #
-# GEOSagcm=>MODIS_DVG: 0                     # NOT yet used in GEOSldas
+            MODIS_DVG: 0                     # NOT yet used in GEOSldas
 
 
 #--------------------------------------------------------#
@@ -127,7 +127,7 @@
 #    3 : Use GOCART aerosols *except* black carbon 
 #    4 : Use GOCART aerosols *except* organic carbon
 #
-# GEOSagcm=>AEROSOL_DEPOSITION: 0
+            AEROSOL_DEPOSITION: 0
 # GEOSldas=>AEROSOL_DEPOSITION: 0
 
 # ---- Number of constituents for GOSWIM (the GOddard SnoW Impurity Module)
@@ -137,10 +137,10 @@
 #    0 : Default, GOSWIM snow albedo scheme is turned OFF for land/landice
 #    9 : GOSWIM snow albedo scheme is turned ON for land/landice
 #
-# GEOSagcm=>N_CONST_LAND4SNWALB: 0
+            N_CONST_LAND4SNWALB: 0
 # GEOSldas=>N_CONST_LAND4SNWALB: 0
 #
-# GEOSagcm=>N_CONST_LANDICE4SNWALB: 0        # NOT yet used in GEOSldas
+            N_CONST_LANDICE4SNWALB: 0        # NOT yet used in GEOSldas
 
 
 #--------------------------------------------------------#
@@ -152,7 +152,7 @@
 #    0 : Do NOT run irrigation module (default)
 #    1 : YES, run irrigation module
 #
-# GEOSagcm=>RUN_IRRIG: 0
+            RUN_IRRIG: 0
 # GEOSldas=>RUN_IRRIG: 0
 
 # ---- Irrigation model method 
@@ -161,7 +161,7 @@
 #    1 : Sprinkler irrigation only
 #    2 : Flood irrigation only
 #
-# GEOSagcm=>IRRIG_METHOD: 0
+            IRRIG_METHOD: 0
 # GEOSldas=>IRRIG_METHOD: 0
 
 
@@ -174,12 +174,12 @@
 #    0 : Default - NO
 #    1 : YES
 #
-# GEOSagcm=>RUN_ROUTE: 0
+            RUN_ROUTE: 0
 # GEOSldas=>RUN_ROUTE: 0
 
 # ---- Time step for river routing [s]
 #
-# GEOSagcm=>RRM_DT: 3600
+            RRM_DT: 3600
 # GEOSldas=>RRM_DT: 3600 
 
 
@@ -191,7 +191,7 @@
 #
 # NOTE: Time step for water/energy routines is controlled by HEARTBEAT_DT in CAP.rc.
 #
-# GEOSagcm=>DTCN: 5400
+            DTCN: 5400
 # GEOSldas=>DTCN: 5400
 
 # ---- Atmospheric CO2
@@ -206,8 +206,8 @@
 #    3: CMIP5 recommended annual average global mean concentrations from getco2.F90 (1765-2150)
 #    4: Import AGCM model CO2 (GCM only, does not work with GEOSldas!)
 #
-# GEOSagcm=>ATM_CO2: 2
-# GEOSagcm=>CO2: 350.e-6
+            ATM_CO2: 2
+            CO2: 350.e-6
 #
 # GEOSldas=>ATM_CO2: 2
 # GEOSldas=>CO2: 350.e-6
@@ -222,7 +222,7 @@
 #    3 : Estimated LAI/SAI using anomalies at the beginning of the forecast and climatological LAI/SAI
 #    4 : Write LAI/SAI anomalies in catchcn_internal_rst for above option 3
 #
-# GEOSagcm=>PRESCRIBE_DVG: 0
+            PRESCRIBE_DVG: 0
 # GEOSldas=>PRESCRIBE_DVG: 0
 
 # ---- Scale CATCHCN ALBEDO and FPAR
@@ -232,5 +232,5 @@
 #    2 : Scale albedo to match CDFs of model fPAR to MODIS CDFs of fPAR 
 #    3 : Perform both 1 and 2 above 
 #
-# GEOSagcm=>SCALE_ALBFPAR: 0
+            SCALE_ALBFPAR: 0
 # GEOSldas=>SCALE_ALBFPAR: 0
