@@ -7875,9 +7875,9 @@ contains
       do K=1,KM
          if(IS_FRIENDLY(K)) then
             KK = KK+1
-            PRINT *, "*******TESTING: QNAME, FSCAV_, FSCAV********"
+            !PRINT *, "*******TESTING: QNAME, FSCAV_, FSCAV********"
             FSCAV(KK) = FSCAV_(K)
-            PRINT *, QNAMES(K), FSCAV_(K), FSCAV(KK)
+            !PRINT *, QNAMES(K), FSCAV_(K), FSCAV(KK)
             XHO(:,:,:,KK) = TRPtrs(K)%Q(:,:,:)
          end if
       end do
