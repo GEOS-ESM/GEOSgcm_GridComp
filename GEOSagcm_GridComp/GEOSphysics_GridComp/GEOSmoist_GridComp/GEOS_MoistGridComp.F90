@@ -3561,6 +3561,73 @@ contains
     ! Aerosol Scavenging diagnostics/export states
     ! ------------------------------
     call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DDU2gDT ',                                         &
+         LONG_NAME ='dust_tendency_due_to_conv_scav',                 &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         __RC__  )
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DSS2gDT ',                                         &
+         LONG_NAME ='sea_salt_tendency_due_to_conv_scav',             &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         __RC__  )
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DOC2gDT ',                                         &
+         LONG_NAME ='organic_carbon_tendency_due_to_conv_scav',       &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         __RC__  )
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DBC2gDT ',                                         &
+         LONG_NAME ='black_carbon_tendency_due_to_conv_scav',         &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         __RC__  )
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DSU2gDT ',                                         &
+         LONG_NAME ='sulfate_tendency_due_to_conv_scav',              &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         __RC__  )
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DNI2gDT',                                          &
+         LONG_NAME ='nitrate_tendency_due_to_conv_scav',              &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         __RC__  )
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DNH4A2gDT',                                        &
+         LONG_NAME ='ammonium_aerosol_tendency_due_to_conv_scav',     &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         __RC__  )
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DNH32gDT',                                         &
+         LONG_NAME ='ammonia_tendency_due_to_conv_scav',              &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         __RC__  )
+
+    call MAPL_AddExportSpec(GC,                                       &
+         SHORT_NAME='DBRC2gDT',                                          &
+         LONG_NAME ='brown_carbon_tendency_due_to_conv_scav',              &
+         UNITS     ='kg m-2 s-1',                                     &
+         DIMS      = MAPL_DimsHorzOnly,                               &
+         __RC__  )
+
+
+
+
+
+    call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='DDUDT ',                                         & 
          LONG_NAME ='dust_tendency_due_to_conv_scav',                 &
          UNITS     ='kg m-2 s-1',                                     &
@@ -5301,6 +5368,8 @@ contains
       ! CAR 
       real, pointer, dimension(:,: )                           :: DDUDT, &
            DSSDT, DOCDT, DBCDT, DSUDT,  DNIDT, DNH4ADT, DNH3DT, DBRCDT, DDUDTcarma, DSSDTcarma
+      real, pointer, dimension(:,: )                           :: DDU2gDT, &
+           DSS2gDT, DOC2gDT, DBC2gDT, DSU2gDT,  DNI2gDT, DNH4A2gDT, DNH32gDT, DBRC2gDT
       character(len=ESMF_MAXSTR)                               :: QNAME,  CNAME, ENAME
       character(len=ESMF_MAXSTR), pointer, dimension(:)        :: QNAMES, CNAMES
       integer                                                  :: ind
@@ -5978,6 +6047,7 @@ contains
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
 
       real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU, CMNI, CMNH3, CMNH4A, CMBRC
+      real   , dimension(IM,JM)           :: CMDU2g, CMSS2g, CMOC2g, CMBC2g, CMSU2g, CMNI2g, CMNH32g, CMNH4A2g, CMBRC2g
       real   , dimension(IM,JM)           :: CMDUcarma, CMSScarma
        
       real :: sigmaqt, qcn, cfn, qsatn, dqlls, dqils, qt
@@ -6628,6 +6698,16 @@ contains
       call MAPL_GetPointer(EXPORT, ENTLAM,     'ENTLAM'    , RC=STATUS); VERIFY_(STATUS)
       ! Aerosol Scavenging
       ! CAR 12/5/08
+      call MAPL_GetPointer(EXPORT, DDU2gDT,     'DDU2gDT'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DSS2gDT,     'DSS2gDT'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DBC2gDT,     'DBC2gDT'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DOC2gDT,     'DOC2gDT'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DSU2gDT,     'DSU2gDT'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DNI2gDT,     'DNI2gDT'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DNH4A2gDT,   'DNH4A2gDT'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DNH32gDT,    'DNH32gDT'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, DBRC2gDT,    'DBRC2gDT'   , RC=STATUS); VERIFY_(STATUS)
+
       call MAPL_GetPointer(EXPORT, DDUDT,     'DDUDT'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DSSDT,     'DSSDT'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, DBCDT,     'DBCDT'    , RC=STATUS); VERIFY_(STATUS)
@@ -6878,8 +6958,8 @@ contains
          ! Check aerosol names
          ! CAR 12/5/08
 
-         !PRINT *, "*********NAME CHECKING:*******"
-         !PRINT *, trim(QNAMES(K))
+!         PRINT *, "*********NAME CHECKING:*******"
+!         PRINT *, trim(QNAMES(K))
 
          ! Remove qualifier from variable name:  GOCART::du001->du001
          ! CAR 12/5/08
@@ -6891,8 +6971,8 @@ contains
             CNAMES(K) = trim(QNAME(1:ind-1))  ! Component name (e.g., GOCART, CARMA)
             QNAMES(K) = trim(QNAME(ind+2:))
          end if
-         !PRINT *, "******CROPPED NAME CHECKING*******"
-         !PRINT *, trim(QNAMES(K)), FSCAV_(K)
+!         PRINT *, "******CROPPED NAME CHECKING*******"
+!         PRINT *, trim(QNAMES(K)), FSCAV_(K)
 
 
          ! Get pointer to the quantity, its tendency, its surface value,
@@ -7795,9 +7875,9 @@ contains
       do K=1,KM
          if(IS_FRIENDLY(K)) then
             KK = KK+1
-            !PRINT *, "*******TESTING: QNAME, FSCAV_, FSCAV********"
+            PRINT *, "*******TESTING: QNAME, FSCAV_, FSCAV********"
             FSCAV(KK) = FSCAV_(K)
-            !PRINT *, QNAMES(K), FSCAV_(K), FSCAV(KK)
+            PRINT *, QNAMES(K), FSCAV_(K), FSCAV(KK)
             XHO(:,:,:,KK) = TRPtrs(K)%Q(:,:,:)
          end if
       end do
@@ -8002,6 +8082,16 @@ contains
       ! Compute initial mass loading for aerosols; CAR 12/19/08
       ! -------------------------------------------------------
       !! First initialize everything to zero
+      if(associated(DDU2gDT))   DDU2gDT =  0.0
+      if(associated(DSS2gDT))   DSS2gDT =  0.0
+      if(associated(DBC2gDT))   DBC2gDT =  0.0
+      if(associated(DOC2gDT))   DOC2gDT =  0.0
+      if(associated(DSU2gDT))   DSU2gDT =  0.0
+      if(associated(DNI2gDT))   DNI2gDT =  0.0
+      if(associated(DNH4A2gDT)) DNH4A2gDT =  0.0
+      if(associated(DNH32gDT))  DNH32gDT =  0.0
+      if(associated(DBRC2gDT))  DBRC2gDT=  0.0
+
       if(associated(DDUDT))   DDUDT =  0.0
       if(associated(DSSDT))   DSSDT =  0.0
       if(associated(DBCDT))   DBCDT =  0.0
@@ -8013,6 +8103,16 @@ contains
       if(associated(DBRCDT))  DBRCDT=  0.0
       if(associated(DDUDTcarma)) DDUDTcarma =  0.0
       if(associated(DSSDTcarma)) DSSDTcarma =  0.0
+
+      CMDU2g   = 0.0
+      CMSS2g   = 0.0
+      CMOC2g   = 0.0
+      CMBC2g   = 0.0
+      CMSU2g   = 0.0
+      CMNI2g   = 0.0
+      CMNH4A2g = 0.0
+      CMNH32g  = 0.0
+      CMBRC2g  = 0.0
 
       CMDU   = 0.0
       CMSS   = 0.0
@@ -8028,13 +8128,59 @@ contains
 
       !! Now loop over tracers and accumulate initial column loading
       !! tendency  kg/m2/s CAR
-
+!if(mapl_am_i_root()) print*,'MOIST CNAMES = ',CNAMES
       KK=0
       do K=1,KM
          if(IS_FRIENDLY(K)) then
             KK = KK + 1
             QNAME = trim(QNAMES(K))
             CNAME = trim(CNAMES(K))
+            if((CNAME == 'DU') .or. (CNAME == 'SS') .or. (CNAME == 'NI') .or. (CNAME == 'SU') .or. &
+               (CNAME == 'CA.oc') .or. (CNAME == 'CA.bc') .or. (CNAME == 'CA.br')) then   ! Diagnostics for GOCART2G tracers
+               SELECT CASE (QNAME(1:3))
+               CASE ('DU0')
+                  if(associated(DDU2gDT)) then
+                     CMDU2g = CMDU2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('SS0')
+                  if(associated(DSS2gDT)) then
+                     CMSS2g = CMSS2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('SO4')
+                  if(associated(DSU2gDT)) then
+                     CMSU2g = CMSU2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('NO3')
+                  if(associated(DNI2gDT)) then
+                     CMNI2g = CMNI2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('NH3')
+                  if(associated(DNH32gDT)) then
+                     CMNH32g = CMNH32g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('NH4')
+                  if(associated(DNH4A2gDT)) then
+                     CMNH4A2g = CMNH4A2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               END SELECT
+
+               SELECT CASE (QNAME(1:13))
+               CASE ('CAphilicCA.bc')
+                  if(associated(DBC2gDT)) then
+                     DBC2gDT = DBC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+!               CASE ('OCp')
+               CASE ('CAphilicCA.oc')
+                  if(associated(DOC2gDT)) then
+                     DOC2gDT = DOC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('CAphilicCA.br')
+                  if(associated(DBRC2gDT)) then
+                     DBRC2gDT = DBRC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               END SELECT
+            endif
+
             if(CNAME == 'GOCART') then   ! Diagnostics for GOCART tracers
                SELECT CASE (QNAME(1:3))
                CASE ('du0')
@@ -8075,6 +8221,7 @@ contains
                   end if
                END SELECT
             endif
+
             if(CNAME == 'CARMA') then   ! Diagnostics for CARMA tracers
                ! Check name to see if it is a "pc" element
                ENAME = ''
@@ -8534,44 +8681,90 @@ contains
             KK = KK + 1
             QNAME = trim(QNAMES(K))
             CNAME = trim(CNAMES(K))
+            if((CNAME == 'DU') .or. (CNAME == 'SS') .or. (CNAME == 'NI') .or. (CNAME == 'SU') .or. &
+               (CNAME == 'CA.oc') .or. (CNAME == 'CA.bc') .or. (CNAME == 'CA.br')) then   ! Diagnostics for GOCART2G tracers
+               SELECT CASE (QNAME(1:3))
+               CASE ('DU0')
+                  if(associated(DDU2gDT)) then
+                     DDU2gDT = DDU2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+              CASE ('SS0')
+                  if(associated(DSS2gDT)) then
+                     DSS2gDT = DSS2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('SO4')
+                  if(associated(DSU2gDT)) then
+                     DSU2gDT = DSU2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('NO3')
+                  if(associated(DNI2gDT)) then
+                     DNI2gDT = DNI2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('NH3')
+                  if(associated(DNH32gDT)) then
+                     DNH32gDT = DNH32gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('NH4')
+                  if(associated(DNH4A2gDT)) then
+                     DNH4A2gDT = DNH4A2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               END SELECT
+
+               SELECT CASE (QNAME(1:13))
+               CASE ('CAphilicCA.bc')
+                  if(associated(DBC2gDT)) then
+                     DBC2gDT = DBC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+!               CASE ('OCp')
+               CASE ('CAphilicCA.oc')
+                  if(associated(DOC2gDT)) then
+                     DOC2gDT = DOC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               CASE ('CAphilicCA.br')
+                  if(associated(DBRC2gDT)) then
+                     DBRC2gDT = DBRC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
+               END SELECT
+            endif
+
             if(CNAME == 'GOCART') then   ! Diagnostics for GOCART tracers
                SELECT CASE (QNAME(1:3))
                CASE ('du0')
                   if(associated(DDUDT)) then
-                     DDUDT = DDUDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     CMDU = CMDU + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('ss0')
                   if(associated(DSSDT)) then
-                     DSSDT = DSSDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     CMSS = CMSS + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('BCp')
                   if(associated(DBCDT)) then
-                     DBCDT = DBCDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     CMBC = CMBC + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('OCp')
                   if(associated(DOCDT)) then
-                     DOCDT = DOCDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     CMOC = CMOC + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('SO4')
                   if(associated(DSUDT)) then
-                     DSUDT = DSUDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     CMSU = CMSU + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('NO3')
                   if(associated(DNIDT)) then
-                     DNIDT = DNIDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     CMNI = CMNI + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('NH3')
                   if(associated(DNH3DT)) then
-                     DNH3DT = DNH3DT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     CMNH3 = CMNH3 + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('NH4')
                   if(associated(DNH4ADT)) then
-                     DNH4ADT = DNH4ADT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     CMNH4A = CMNH4A + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('BRC')
                   if(associated(DBRCDT)) then
-                     DBRCDT = DBRCDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
-                  end if 
+                     CMBRC = CMBRC + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                  end if
                END SELECT
             endif
          end if
@@ -8596,6 +8789,16 @@ contains
             endif
          endif
       end do
+
+      if (associated(DDU2gDT))   DDU2gDT = (DDU2gDT - CMDU2g) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DSS2gDT))   DSS2gDT = (DSS2gDT - CMSS2g) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DBC2gDT))   DBC2gDT = (DBC2gDT - CMBC2g) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DOC2gDT))   DOC2gDT = (DOC2gDT - CMOC2g) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DSU2gDT))   DSU2gDT = (DSU2gDT - CMSU2g) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DNI2gDT))   DNI2gDT = (DNI2gDT - CMNI2g) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DNH32gDT))  DNH32gDT = (DNH32gDT - CMNH32g) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DNH4A2gDT)) DNH4A2gDT = (DNH4A2gDT - CMNH4A2g) / (MAPL_GRAV*DT_MOIST)
+      if (associated(DBRC2gDT))  DBRC2gDT= (DBRC2gDT- CMBRC2g)/ (MAPL_GRAV*DT_MOIST)
 
       if (associated(DDUDT))   DDUDT = (DDUDT - CMDU) / (MAPL_GRAV*DT_MOIST)
       if (associated(DSSDT))   DSSDT = (DSSDT - CMSS) / (MAPL_GRAV*DT_MOIST)
