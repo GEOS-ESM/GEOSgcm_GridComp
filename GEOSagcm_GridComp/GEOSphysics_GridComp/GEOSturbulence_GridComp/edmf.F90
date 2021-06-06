@@ -245,6 +245,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
      call A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
                          rho, rhoe, thl, qt, thv, debug_flag, &      ! in
                          A, f_thermal, ent_sl)                       ! out
+     E = A
   end if
 
   !
@@ -535,7 +536,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  foo = max( 0., min( 1., ( thv(i,j,k-1) - thv(i,j,k) )/( upthv(iup,i,j) - thv(i,j,k) ) ) )
 
                  !
-                 E(i,j,k) = E(i,j,k) + A(i,j,k) + 0.4*upm(iup,i,j)*delta
+                 E(i,j,k) = E(i,j,k) + 0.4*upm(iup,i,j)*delta
 
                  ! Integrate vertical velocity budget
                  B = cb*goth00*( upthv(iup,i,j) - thv(i,j,k) )
@@ -548,7 +549,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 !                       Mn     = upm(iup,i,j)/f_thermal(i,j,k)
 !                       E_work = max( 0., ( upm(iup,i,j)/f_thermal(i,j,k) - upm(iup,i,j) )/dzle )
 !                       D_work = 0.
-
                        Mn     = max( 0., upm(iup,i,j)*( 1./f_thermal(i,j,k) - 0.6*dzle*delta ) )
                        E_work = upm(iup,i,j)*max( 0., ( 1./f_thermal(i,j,k) - 1. )/dzle + 0.4*delta )
                        D_work = upm(iup,i,j)*delta
@@ -580,10 +580,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     else
                        QCn  = 0.
                        THVn = THLn*( 1. + mapl_vireps*QTn )
-                    end if
-
-                    if ( debug_flag /= 0 .and. iup == 1 ) then
-!                       write(*,*) k, B, upw(iup,i,j), sqrt(Wn2)
                     end if
                  end if
               end if
@@ -690,8 +686,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
            end if
 
            if ( debug_flag /= 0 ) then
-              write(*,'(I4,12F7.2)') k-1, sum(100.*upa_out(:)), 100.*edmfmoista(1,1,k-1), 100.*upa_out(:)
-!              write(*,*) k-1, 100*upa(1,1,1), upw(1,1,1)
+              write(*,'(I4,12F7.2)') k-1, sum(100.*upa_out(:)), 100.*edmfmoista(i,j,k-1), 100.*upa_out(:)
            end if
         else
            wu(i,j,k)   = 0.
@@ -733,10 +728,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               if ( edmfmoista(i,j,k) > 0. .and. edmfmoista(i,j,km1) > 0. ) then
                  acu_full(i,j,k) = min( au_full(i,j,k), 0.5*( edmfmoista(i,j,k) + edmfmoista(i,j,km1) ) )
                  qlu_full(i,j,k) = 0.5*( qlu(i,j,k) + qlu(i,j,km1) )
-!              else if (      edmfmoista(i,j,k+1) == 0. &
-!                       .and. edmfmoista(i,j,k) > 0. .and. edmfmoista(i,j,km1) == 0. ) then
-!                 acu_full(i,j,k) = min( au_full(i,j,k), edmfmoista(i,j,k) )
-!                 qlu_full(i,j,k) = qlu(i,j,k)
               else
                  acu_full(i,j,k) = 0.
                  qlu_full(i,j,k) = 0.
@@ -977,15 +968,6 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
               qtu_next  = ( Mu(i,j)*qtu(i,j)  + dz*E_work*qt(i,j,k) )/( Mu_next + dz*D_work )
               wu2_next  = ( ( 1. - dz*delta )/( 1./f(i,j,k) - 0.6*dz*delta ) )**2.*wu2(i,j) + 2.*dz*B
               
-!              thlu_next = f(i,j,k)*thlu(i,j) + ( 1. - f(i,j,k) )*thl(i,j,k)
-!              qtu_next  = f(i,j,k)*qtu(i,j)  + ( 1. - f(i,j,k) )*qt(i,j,k)
-!              wu2_next  = f(i,j,k)**2.*wu2(i,j) + 2.*dz*B
-
-              if ( debug_flag /= 0 ) then
-!                 write(*,'(I4,2F7.2)') k, B, sqrt(wu2(i,j)), sqrt(wu2_next)
-!                 write(*,*) k, B, sqrt(wu2(i,j)), sqrt(wu2_next)
-              end if
-              
               thvu_next = thlu_next*( 1. + mapl_vireps*qtu_next )
 
               if ( B <= 0. ) then
@@ -993,10 +975,6 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
                  Mu0(i,j)       = sqrt( wu2(i,j) )/( 2.*zi(i,j)*A_star2_int(i,j) )
                  wu0(i,j)       = Mu0(i,j)*A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
                  test_flag(i,j) = .false.
-
-                 if ( debug_flag /= 0 ) then
-!                    write(*,*) '*', iter, wu0(i,j) 
-                 end if
               else
                  Mu(i,j)   = Mu_next
                  wu2(i,j)  = wu2_next

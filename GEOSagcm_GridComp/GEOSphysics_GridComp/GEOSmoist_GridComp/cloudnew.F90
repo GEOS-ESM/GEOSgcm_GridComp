@@ -2357,10 +2357,8 @@ contains
             hl = TEn + (mapl_grav/mapl_cp)*zl - (alhx/mapl_cp)*QCn
             qt = QVn + QCn
 
-!            hle = ( hl - au*hlu )/( 1. - au ) 
-!            qte = ( qt - au*qtu )/( 1. - au )
-            hle = hl
-            qte = qt
+            hle = ( hl - au*hlu )/( 1. - au ) 
+            qte = ( qt - au*qtu )/( 1. - au )
 
             call gaussian(zl, 100.*pl, hle, qte, hl2, qt2, hlqt, &
                           Tce, qle, ace_moist, &
@@ -2371,9 +2369,6 @@ contains
             TEn = au*Tu  + ( 1. - au )*Tce
             QCn = au*qlu + ( 1. - au )*qle
             CFn = acu    + ( 1. - au )*ace_moist
-
-            ! Test
-!            ace_moist = 0.
 
             fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
          endif
