@@ -70,7 +70,6 @@ contains
 !
 subroutine run_mynn(IM, JM, LM, &                                                   ! in
                     DEBUG_FLAG, DOMF, MYNN_LEVEL, CONSISTENT_TYPE, &                ! in
-                    L_TYPE_1, L_TYPE_2, L_TYPE_3, WQL_TYPE, WRF_CG_FLAG, &          ! in
                     alpha1, alpha2, alpha3, alpha4, &                               ! in (length scale parameters)
                     th00, ice_ramp, ple, pl, rhoe, zle, zlo, &                      ! in
                     u, v, T, qv, ql, qi, thl, qt, thv, &                            ! in (mean atmospheric state)
@@ -79,9 +78,8 @@ subroutine run_mynn(IM, JM, LM, &                                               
                     aci, Ai_moist, Bi_moist, &                                      ! in
                     tke, hl2, qt2, hlqt, &                                          ! inout (turbulent state)
                     ws_explicit, wqv_explicit, wql_explicit, &                      ! inout (counter-gradient fluxes)
-                    KM, KH, K_tke, itau, qdiv_out, SM25, SH25, L_out, L_qt2_out, &  ! out
-                    Beta_hl, Beta_qt, EM, EH, &                                     ! out
-                    LS_out, LB_out, LT_out, &                                       ! out
+                    KM, KH, K_tke, itau, qdiv_out, SM25, SH25, L_out, &             ! out
+                    Beta_hl, Beta_qt, &                                             ! out
                     tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &           ! out
                     tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &               ! out
                     tke_surf, hl2_surf, qt2_surf, hlqt_surf)                        ! out
@@ -89,8 +87,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
   use MAPL_ConstantsMod, only: MAPL_KARMAN
   use MAPL_SatVaporMod, only: MAPL_EQsat
 
-  integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, &
-                                                WQL_TYPE, WRF_CG_FLAG, DEBUG_FLAG, L_TYPE_1, L_TYPE_2, L_TYPE_3
+  integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, DEBUG_FLAG
   real, intent(in)                           :: th00, ice_ramp, DOMF
   double precision, intent(in)               :: alpha1, alpha2, alpha3, alpha4
   real, dimension(IM,JM), intent(in)         :: u_star, H_surf, E_surf
@@ -98,11 +95,10 @@ subroutine run_mynn(IM, JM, LM, &                                               
   real, dimension(IM,JM,0:LM), intent(in)    :: ple, zle, rhoe, whl_mf, wqt_mf, wthv_mf, &
                                                 au, Mu, wu, Ai_moist, Bi_moist, aci
   real, dimension(IM,JM,0:LM), intent(inout) :: tke, hl2, qt2, hlqt, ws_explicit, wqv_explicit, wql_explicit
-  real, dimension(IM,JM), intent(out)        :: tke_surf, hl2_surf, qt2_surf, hlqt_surf, LT_out
-  real, dimension(IM,JM,0:LM), intent(out)   :: KM, KH, itau, qdiv_out, SM25, SH25, EM, EH, L_out, L_qt2_out, Beta_hl, Beta_qt, &
+  real, dimension(IM,JM), intent(out)        :: tke_surf, hl2_surf, qt2_surf, hlqt_surf
+  real, dimension(IM,JM,0:LM), intent(out)   :: KM, KH, itau, qdiv_out, SM25, SH25, L_out, Beta_hl, Beta_qt, &
                                                 tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &
-                                                tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &
-                                                LS_out, LB_out
+                                                tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4
   real, dimension(IM,JM,LM), intent(out)     :: K_tke
 
   integer :: i, j, k, kp1, km1
@@ -120,10 +116,10 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
   real, dimension(IM,JM)      :: wb_surf, LMO
   real, dimension(IM,JM,LM)   :: hl
-  real, dimension(IM,JM,0:LM) :: S2, N2, zeta, A, B
+  real, dimension(IM,JM,0:LM) :: S2, N2, zeta, A, B, EM, EH
 
   double precision, dimension(IM,JM)      :: w_star, LT
-  double precision, dimension(IM,JM,0:LM) :: q, L, L_qt2, LS, LB
+  double precision, dimension(IM,JM,0:LM) :: q, L, LS, LB
 
   goth00 = MAPL_GRAV/th00
 
@@ -196,7 +192,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
   ! Test
   if ( .not. initialized_mynn ) then
      call initialize_mynn(IM, JM, LM, &
-                          L_TYPE_2, L_TYPE_3, alpha1, alpha2, alpha3, alpha4, &
+                          alpha1, alpha2, alpha3, alpha4, &
                           th00, ice_ramp, hl, qt, tke, hl2, qt2, hlqt, q, &
                           zle, zlo, S2, N2, &
                           u_star, wb_surf, LMO, &
@@ -205,11 +201,11 @@ subroutine run_mynn(IM, JM, LM, &                                               
      initialized_mynn = .true.
   end if
 
-  call mynn_length(IM, JM, LM, &                                         ! in
-                   L_TYPE_2, L_TYPE_3, alpha1, alpha2, alpha3, alpha4, & ! in
-                   th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, &      ! in
-                   thv, ple, pl, &                                       ! in
-                   L, L_qt2, LS, LB, LT, w_star)                         ! out
+  call mynn_length(IM, JM, LM, &                                    ! in
+                   alpha1, alpha2, alpha3, alpha4, &                ! in
+                   th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
+                   thv, ple, pl, &                                  ! in
+                   L, LS, LB, LT, w_star)                           ! out
 
   do k = 1,LM-1
 
@@ -238,17 +234,9 @@ subroutine run_mynn(IM, JM, LM, &                                               
         Lq          = L(i,j,k)*real( sqrt(2.*tke(i,j,k)), 8 )
 
         ! Compute thermodyanamic (co-)variances from level-2.5 closure
-        if ( L_TYPE_1 == 0 ) then 
-           hl2_25  = qdiv*B2*L2*SH25(i,j,k)*dhldz**2.
-           qt2_25  = qdiv*B2*L2*SH25(i,j,k)*dqtdz**2.
-           hlqt_25 = qdiv*B2*L2*SH25(i,j,k)*dhldz*dqtdz
-        else
-           L_hlqt = sqrt( L(i,j,k)*L_qt2(i,j,k) )
-
-           hl2_25  = qdiv*B2*L(i,j,k)**2.d0*SH25(i,j,k)*dhldz**2.
-           hlqt_25 = qdiv*B2*L(i,j,k)*L_hlqt*SH25(i,j,k)*dhldz*dqtdz
-           qt2_25  = qdiv*B2*L(i,j,k)*L_qt2(i,j,k)*SH25(i,j,k)*dqtdz**2.
-        end if
+        hl2_25  = qdiv*B2*L2*SH25(i,j,k)*dhldz**2.
+        qt2_25  = qdiv*B2*L2*SH25(i,j,k)*dqtdz**2.
+        hlqt_25 = qdiv*B2*L2*SH25(i,j,k)*dhldz*dqtdz
 
         !
         if ( MYNN_LEVEL == 2 ) then
@@ -270,7 +258,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
         end if
 
         ! Compute diffusivities and second-order tendencies
-        call mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &                                               ! in
+        call mynn_tendency(mynn_level, domf, consistent_type, &                                                            ! in
                            th00, rhoe(i,j,k), Beta_hl(i,j,k), Beta_qt(i,j,k), hl2(i,j,k), qt2(i,j,k), hlqt(i,j,k), &       ! in
                            dzle, dhldz, dqtdz, dqldz, N2(i,j,k), S2(i,j,k), &                                              ! in
                            L2, Lq, SM25(i,j,k), SH25(i,j,k), EM(i,j,k), EH(i,j,k), hl2_25, qt2_25, hlqt_25, &              ! in
@@ -324,18 +312,14 @@ subroutine run_mynn(IM, JM, LM, &                                               
   K_tke(:,:,LM) = K_tke(:,:,LM-1)
 
   !
-  L_out     = L
-  L_qt2_out = L_qt2
-  LS_out    = LS
-  LB_out    = LB
-  LT_out    = LT
+  L_out = L
 
 end subroutine run_mynn
 
 !
 ! mynn_tendency
 !
-subroutine mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &      ! in
+subroutine mynn_tendency(mynn_level, domf, consistent_type, &                   ! in
                          th00, rhoe, Beta_hl, Beta_qt, hl2, qt2, hlqt, &        ! in
                          dzle, dhldz, dqtdz, dqldz, N2, S2, &                   ! in
                          L2, Lq, SM25, SH, EM, EH, hl2_25, qt2_25, hlqt_25, &   ! in
@@ -348,7 +332,7 @@ subroutine mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &      
 
   implicit none
 
-  integer, intent(in)          :: mynn_level, consistent_type, wrf_cg_flag
+  integer, intent(in)          :: mynn_level, consistent_type
   real, intent(in)             :: domf, th00, rhoe, Beta_hl, Beta_qt, dzle, dhldz, dqtdz, dqldz, N2, S2, &
                                   SM25, SH, EM, EH, &
                                   whl_mf, wqt_mf, wthv_mf, hl2, qt2, hlqt, hl2_25, qt2_25, hlqt_25, &
@@ -377,22 +361,9 @@ subroutine mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &      
      thv2  = max( 0.d0, Beta_hl*hlthv + Beta_qt*qtthv )
 
      ! Compute counter-gradient flux of conserved variables
-     if ( wrf_cg_flag == 0 ) then
-        hlthv_p = hlthv - hlthv_25
-        qtthv_p = qtthv - qtthv_25
-     else
-        if ( hlthv_25 >= 0. ) then
-           hlthv_p = max( 0., hlthv - hlthv_25 )
-        else
-           hlthv_p = min( 0., hlthv - hlthv_25 )
-        end if
-        
-        if ( qtthv_25 >= 0. ) then
-           qtthv_p = max( 0., qtthv - qtthv_25 )
-        else
-           qtthv_p = min( 0., qtthv - qtthv_25 )
-        end if
-     end if
+     hlthv_p = hlthv - hlthv_25
+     qtthv_p = qtthv - qtthv_25
+
      whl_explicit = Lq*EH*goth00*hlthv_p
      wqt_explicit = Lq*EH*goth00*qtthv_p
 
@@ -493,17 +464,17 @@ end subroutine mynn_tendency
 !
 subroutine implicit_M(IM, JM, LM, &                                                       ! in
                       th00, zlo, ple, u, v, h, qv, ql, Tv, tke, &                         ! in
-                      Beta_hl, Beta_qt, L, L_qt2, qdiv, SM25, SH25, &                     ! in
+                      Beta_hl, Beta_qt, L, qdiv, SM25, SH25, &                            ! in
                       ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf, & ! in
                       hl2, qt2, hlqt, &                                                   ! inout
                       tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &                          ! out
                       rhoe, dhldz, dqtdz, dqldz, S2, N2, &                                ! out
-                      MYNN_LEVEL, DOMF, CONSISTENT_TYPE, L_TYPE_1)                          ! in
+                      MYNN_LEVEL, DOMF, CONSISTENT_TYPE)                                  ! in
 
-  integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, L_TYPE_1
+  integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE
   real, intent(in)                           :: th00, DOMF
   real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, h, qv, ql, Tv 
-  real, dimension(IM,JM,0:LM), intent(in)    :: ple, tke, Beta_hl, Beta_qt, L, L_qt2, qdiv, SM25, SH25, &
+  real, dimension(IM,JM,0:LM), intent(in)    :: ple, tke, Beta_hl, Beta_qt, L, qdiv, SM25, SH25, &
                                                 ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf
   real, dimension(IM,JM,0:LM), intent(inout) :: hl2, qt2, hlqt
   real, dimension(IM,JM,0:LM), intent(out)   :: tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
@@ -556,17 +527,9 @@ subroutine implicit_M(IM, JM, LM, &                                             
         wqt_explicit = wqv_explicit(i,j,k) + wql_explicit(i,j,k)
 
         !
-        if ( L_TYPE_1 == 0 ) then
-           hl2_25  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)**2.
-           hlqt_25 = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
-           qt2_25  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dqtdz(i,j,k)**2.
-        else
-           L_hlqt = sqrt( L(i,j,k)*L_qt2(i,j,k) )
-
-           hl2_25  = qdiv(i,j,k)*B2*L(i,j,k)**2.*SH25(i,j,k)*dhldz(i,j,k)**2.
-           hlqt_25 = qdiv(i,j,k)*B2*L(i,j,k)*L_hlqt*SH25(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
-           qt2_25  = qdiv(i,j,k)*B2*L(i,j,k)*L_qt2(i,j,k)*SH25(i,j,k)*dqtdz(i,j,k)**2.
-        end if
+        hl2_25  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)**2.
+        hlqt_25 = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
+        qt2_25  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dqtdz(i,j,k)**2.
 
         if ( mynn_level == 2 ) then
            wb_explicit = 0.
@@ -608,11 +571,11 @@ end subroutine implicit_M
 !
 ! mynn_length 
 !
-subroutine mynn_length(IM, JM, LM, &                                         ! in
-                       L_TYPE_2, L_TYPE_3, alpha1, alpha2, alpha3, alpha4, & ! in
-                       th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, &      ! in
-                       thv, ple, pl, &                                       ! in
-                       L, L_qt2, LS, LB, LT, w_star)                         ! out
+subroutine mynn_length(IM, JM, LM, &                                    ! in
+                       alpha1, alpha2, alpha3, alpha4, &                ! in
+                       th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
+                       thv, ple, pl, &                                  ! in
+                       L, LS, LB, LT, w_star)                           ! out
 
   use MAPL_ConstantsMod, only: MAPL_KARMAN
 
@@ -632,7 +595,7 @@ subroutine mynn_length(IM, JM, LM, &                                         ! i
   real, parameter :: zi2ph1 = zi2 + h1
 
 
-  integer, intent(in)                                  :: IM, JM, LM, L_TYPE_2, L_TYPE_3
+  integer, intent(in)                                  :: IM, JM, LM
   real, intent(in)                                     :: th00, ice_ramp
   double precision, intent(in)                         :: alpha1, alpha2, alpha3, alpha4
   real, dimension(IM,JM), intent(in)                   :: wb_surf, LMO
@@ -640,7 +603,7 @@ subroutine mynn_length(IM, JM, LM, &                                         ! i
   real, dimension(IM,JM,0:LM), intent(in)              :: zle, N2, ple
   double precision, dimension(IM,JM,0:LM), intent(in)  :: q
   double precision, dimension(IM,JM), intent(out)      :: w_star, LT
-  double precision, dimension(IM,JM,0:LM), intent(out) :: L, L_qt2, LS, LB
+  double precision, dimension(IM,JM,0:LM), intent(out) :: L, LS, LB
 
   integer                            :: i, j, k, kk, kkm1
   real                               :: qdz, zeta
@@ -692,23 +655,11 @@ subroutine mynn_length(IM, JM, LM, &                                         ! i
         if ( N2(i,j,k) > 0. ) then
            N = sqrt( N2(i,j,k) )
 
-           if ( L_TYPE_2 == 0 ) then
-              LB_test = q(i,j,k)/N
-           else
-              call boulac(IM, JM, LM, i, j, k, &                    ! in
-                          th00, ice_ramp, zlo, zle, pl, ple, thv, & ! in
-                          q(i,j,k), N, &                            ! in
-                          LB_test)                                  ! out    
-           end if
+           LB_test = q(i,j,k)/N
 
-           if ( L_TYPE_3 == 0 ) then
-              N_test    = q(i,j,k)/LB_test
-              LB(i,j,k) = alpha2*( LB_test )*( 1.d0 + alpha3/alpha2*sqrt( w_star(i,j)/( N_test*LT(i,j) ) ) )
-              LF        = alpha2*( LB_test )
-           else
-              LB(i,j,k) = alpha2*( LB_test )
-              LF        = alpha2*( LB_test )              
-           end if
+           N_test    = q(i,j,k)/LB_test
+           LB(i,j,k) = alpha2*( LB_test )*( 1.d0 + alpha3/alpha2*sqrt( w_star(i,j)/( N_test*LT(i,j) ) ) )
+           LF        = alpha2*( LB_test )
         else
            LB(i,j,k) = 1.d+10
            LF        = LB(i,j,k)
@@ -716,7 +667,6 @@ subroutine mynn_length(IM, JM, LM, &                                         ! i
         
         ! Harmonically average length scales
         L(i,j,k)     = min( LF, LB(i,j,k)/( LB(i,j,k)/LS(i,j,k) + LB(i,j,k)/LT(i,j) + 1.d0 ) ) ! NN09 (52)
-        L_qt2(i,j,k) = min( LF, 1.d+10/( 1.d+10/LS(i,j,k) + 1.d+10/LT(i,j) + 1.d0 ) ) 
      end do
      end do
   end do
@@ -730,7 +680,7 @@ end subroutine mynn_length
 ! initialize_mynn
 !
 subroutine initialize_mynn(IM, JM, LM, &
-                           L_TYPE_2, L_TYPE_3, alpha1, alpha2, alpha3, alpha4, &
+                           alpha1, alpha2, alpha3, alpha4, &
                            th00, ice_ramp, hl, qt, tke, hl2, qt2, hlqt, q, &
                            zle, zlo, S2, N2, &
                            u_star, wb_surf, LMO, &
@@ -747,7 +697,7 @@ real, parameter :: flq = 0.
 
 real, parameter :: phm = phh*B2/(B1*pmz)**twothirds
        
-integer, intent(in)                                    :: IM, JM, LM, L_TYPE_2, L_TYPE_3
+integer, intent(in)                                    :: IM, JM, LM
 real, intent(in)                                       :: th00, ice_ramp
 double precision, intent(in)                           :: alpha1, alpha2, alpha3, alpha4
 real, dimension(IM,JM), intent(in)                     :: u_star, wb_surf, LMO
@@ -761,7 +711,7 @@ real                                    :: idzlo, L2
 double precision, dimension(IM,JM)      :: w_star
 real, dimension(IM,JM,0:LM)             :: SM2, SH2, dhldz, dqtdz
 double precision, dimension(IM,JM)      :: LT
-double precision, dimension(IM,JM,0:LM) :: GM, GH, L, L_qt2, LS, LB
+double precision, dimension(IM,JM,0:LM) :: GM, GH, L, LS, LB
 
 
 !
@@ -801,11 +751,11 @@ end do
 
 ! Iterate to initialize TKE
 do iter = 1,niter
-   call mynn_length(IM, JM, LM, &                                         ! in
-                    L_TYPE_2, L_TYPE_3, alpha1, alpha2, alpha3, alpha4, & ! in
-                    th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, &      ! in
-                    thv, ple, pl, &                                       ! in
-                    L, L_qt2, LS, LB, LT, w_star)                         ! out      
+   call mynn_length(IM, JM, LM, &                                    ! in
+                    alpha1, alpha2, alpha3, alpha4, &                ! in
+                    th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
+                    thv, ple, pl, &                                  ! in
+                    L, LS, LB, LT, w_star)                           ! out      
 
    do k = 1,LM-1
       do j = 1,JM
@@ -1055,7 +1005,7 @@ end subroutine boulac
 ! mynn_predict_correct
 !
 subroutine mynn_predict_correct(IM, JM, LM, &                                         ! in
-                                mynn_level, wrf_cg_flag, domf, consistent_type, &     ! in
+                                mynn_level, domf, consistent_type, &                  ! in
                                 th00, zle, ple, rhoe, tke, hl2, qt2, hlqt, &          ! in
                                 dhldz, dqtdz, dqldz, N2, S2, &                        ! in (gradient information)
                                 Beta_hl, Beta_qt, qdiv, L, SM25, SH25, EM, EH, &      ! in
@@ -1067,7 +1017,7 @@ subroutine mynn_predict_correct(IM, JM, LM, &                                   
 
   implicit none
 
-  integer, intent(in)                     :: IM, JM, LM, mynn_level, consistent_type, wrf_cg_flag
+  integer, intent(in)                     :: IM, JM, LM, mynn_level, consistent_type
   real, intent(in)                        :: domf, th00
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe, Beta_hl, Beta_qt, &
                                              dhldz, dqtdz, dqldz, N2, S2, &
@@ -1107,13 +1057,13 @@ subroutine mynn_predict_correct(IM, JM, LM, &                                   
         hlqt_25 = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
 
         ! Compute diffusivities and second-order tendencies
-        call mynn_tendency(mynn_level, wrf_cg_flag, domf, consistent_type, &                                               ! in
-                           th00, rhoe(i,j,k), Beta_hl(i,j,k), Beta_qt(i,j,k), hl2(i,j,k), qt2(i,j,k), hlqt(i,j,k), &       ! in
-                           dzle, dhldz(i,j,k), dqtdz(i,j,k), dqldz(i,j,k), N2(i,j,k), S2(i,j,k), &                         ! in
-                           L2, Lq, SM25(i,j,k), SH25(i,j,k), EM(i,j,k), EH(i,j,k), hl2_25, qt2_25, hlqt_25, &              ! in
-                           tke(i,j,k), tke(i,j,km1), Mu(i,j,k), Mu(i,j,km1), au(i,j,k), au(i,j,km1), &                     ! in (for tket_T_mf)
-                           wu(i,j,k), wu(i,j,km1), E(i,j,k), D(i,j,k), wdet(i,j,k), &                                      ! in (for tket_T_mf)
-                           whl_mf(i,j,k), wqt_mf(i,j,k), wthv_mf(i,j,k), &                                                 ! in
+        call mynn_tendency(mynn_level, domf, consistent_type, &                                                      ! in
+                           th00, rhoe(i,j,k), Beta_hl(i,j,k), Beta_qt(i,j,k), hl2(i,j,k), qt2(i,j,k), hlqt(i,j,k), & ! in
+                           dzle, dhldz(i,j,k), dqtdz(i,j,k), dqldz(i,j,k), N2(i,j,k), S2(i,j,k), &                   ! in
+                           L2, Lq, SM25(i,j,k), SH25(i,j,k), EM(i,j,k), EH(i,j,k), hl2_25, qt2_25, hlqt_25, &        ! in
+                           tke(i,j,k), tke(i,j,km1), Mu(i,j,k), Mu(i,j,km1), au(i,j,k), au(i,j,km1), &               ! in (for tket_T_mf)
+                           wu(i,j,k), wu(i,j,km1), E(i,j,k), D(i,j,k), wdet(i,j,k), &                                ! in (for tket_T_mf)
+                           whl_mf(i,j,k), wqt_mf(i,j,k), wthv_mf(i,j,k), &                                           ! in
                            KM(i,j,k), KH, ws_explicit, wqv_explicit, wql_explicit, &                                 ! out
                            tket_M_test, tket_B_test, tket_T_mf_test, hl2t_M_test, qt2t_M_test, hlqtt_M_test, &       ! out
                            tket_T_mf1_test, tket_T_mf2_test, tket_T_mf3_test, tket_T_mf4_test)                       ! out
@@ -1232,4 +1182,21 @@ end module mynn
 !!$                           - B*( -KH*dhldz(i,j,k) + whl_explicit ) )
 !!$              
 !!$        wql_explicit = wql + KH*dqldz
+!!$     end if
+
+!!$     if ( wrf_cg_flag == 0 ) then
+!!$        hlthv_p = hlthv - hlthv_25
+!!$        qtthv_p = qtthv - qtthv_25
+!!$     else
+!!$        if ( hlthv_25 >= 0. ) then
+!!$           hlthv_p = max( 0., hlthv - hlthv_25 )
+!!$        else
+!!$           hlthv_p = min( 0., hlthv - hlthv_25 )
+!!$        end if
+!!$        
+!!$        if ( qtthv_25 >= 0. ) then
+!!$           qtthv_p = max( 0., qtthv - qtthv_25 )
+!!$        else
+!!$           qtthv_p = min( 0., qtthv - qtthv_25 )
+!!$        end if
 !!$     end if

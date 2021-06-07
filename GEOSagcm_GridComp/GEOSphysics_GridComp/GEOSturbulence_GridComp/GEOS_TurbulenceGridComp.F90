@@ -2236,31 +2236,6 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'LS_mynn',                                               &
-       SHORT_NAME = 'LS_mynn',                                               &
-       UNITS      = 'm',                                                     &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                           RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'LB_mynn',                                               &
-       SHORT_NAME = 'LB_mynn',                                               &
-       UNITS      = 'm',                                                     &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                           RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                              &
-       LONG_NAME  = 'LT_mynn',                                               &
-       SHORT_NAME = 'LT_mynn',                                               &
-       UNITS      = 'm',                                                     &
-       DIMS       = MAPL_DimsHorzOnly,                                       &
-       VLOCATION  = MAPL_VLocationNone,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
 ! !INTERNAL STATE:
 
 !
@@ -2916,44 +2891,11 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'non-dimensional_counter-gradient_momentum_flux',        &
-       UNITS      = '1',                                                     &
-       DEFAULT    = 0.,                                                      &
-       FRIENDLYTO = 'TURBULENCE',                                            &
-       SHORT_NAME = 'EM',                                                    &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'non-dimensional_counter-gradient_scalar_flux',          &
-       UNITS      = '1',                                                     &
-       DEFAULT    = 0.,                                                      &
-       FRIENDLYTO = 'TURBULENCE',                                            &
-       SHORT_NAME = 'EH',                                                    &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'turbulence_length_scale_from_mynn',                     &
        UNITS      = 'm',                                                     &
        DEFAULT    = 0.,                                                      &
        FRIENDLYTO = 'TURBULENCE',                                            &
        SHORT_NAME = 'L_mynn',                                                &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                                      &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'turbulence_length_scale_from_mynn_for_humidity_variance_dissipation', &
-       UNITS      = 'm',                                                     &
-       DEFAULT    = 0.,                                                      &
-       FRIENDLYTO = 'TURBULENCE',                                            &
-       SHORT_NAME = 'L_qt2',                                                 &
        DIMS       = MAPL_DimsHorzVert,                                       &
        VLOCATION  = MAPL_VLocationEdge,                                      &
                                                                   RC=STATUS  )
@@ -3327,7 +3269,7 @@ contains
                                            TKEBUOY,TKESHEAR,TKEDISS,TKETRANS
 
 ! MYNN-related variables
-    integer                         :: MYNN_LEVEL, MYNN_LENGTH_1, MYNN_LENGTH_2, MYNN_LENGTH_3
+    integer                         :: MYNN_LEVEL
     real, dimension(:,:,:), pointer :: tke_new, hl2, qt2, hlqt, &
                                        tke_new2, &
                                        beta_hl, beta_qt, KM_mynn, KH_mynn, &
@@ -3336,7 +3278,7 @@ contains
                                        AKTKE, BKTKE, CKTKE, AKTPE, BKTPE, CKTPE, &
                                        YTKE, YHL2, YQT2, YHLQT, &
                                        whl_mf, wqt_mf, wthv_mf, &
-                                       qdiv, SM25, SH25, EM, EH, L_mynn, L_qt2, K_tke, &
+                                       qdiv, SM25, SH25, L_mynn, K_tke, &
                                        au, Mu, E, D, wu, wdet, &
                                        tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4
 
@@ -3509,13 +3451,7 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, SH25,            'SH25',         RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, EM,              'EM',           RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, EH,              'EH',           RC=STATUS)
-    VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, L_mynn,          'L_mynn',       RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, L_qt2,           'L_qt2',        RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, tke_surf,        'tke_surf',     RC=STATUS)
     VERIFY_(STATUS)
@@ -3807,12 +3743,6 @@ contains
 
    integer :: DO_MYNN, DO_LOCK_MYNN
 
-   real, dimension(IM,JM)    :: LT_mynn
-   real, dimension(IM,JM,LM) :: LS_mynn, LB_mynn
-
-   real, dimension(:,:), pointer   :: LT_mynn_ex
-   real, dimension(:,:,:), pointer :: LS_mynn_ex, LB_mynn_ex
-
 ! SHOC PDF variables
 !    real, dimension(:,:,:),pointer     :: PDF_A,      &
 !                                          PDF_SIGW,   &
@@ -3876,22 +3806,12 @@ contains
      integer :: MYNN_LEVEL           ! 2:    level-2.5 
                                      ! 3:    level-3
                                      ! 4:    level-2.75
-     integer :: MYNN_LENGTH_1        ! 0:    buoyancy length always part of master length scale
-                                     ! else: buoyancy length scale not blended into length scale for humidity variance
-     integer :: MYNN_LENGTH_2        ! 0:    use nonlocal buoyancy length scale (Boulac)    
-                                     ! else: use local bouyancy length scale
-     integer :: MYNN_LENGTH_3        ! 0:    
-                                     ! else: 
      integer :: MYNN_IMPLICIT        ! 0:    implicit mean-gradient and buoyancy production of TKE
                                      ! else: explicit
      integer :: MYNN_DISCRETE        ! 0:    
                                      ! else: 
      integer :: MYNN_DEBUG           ! 0 (default): no debugging output in MYNN
                                      ! 1: print internal variables in MYNN subroutine
-     integer :: WQL_TYPE             ! 1 (default): counter-gradient liquid water flux (level-3 closure only)
-                                     ! 0: no counter-gradient liquid water flux
-     integer :: WRF_CG_FLAG          ! 1: (default): do not allow positive counter-gradient fluxes (like WRF-MYNN) 
-                                     ! 0: else
 
      real,dimension(IM,JM) :: L02
      
@@ -4383,14 +4303,6 @@ contains
      call MAPL_GetPointer(EXPORT, gamma_fa_entrain_ex, 'gamma_fa_entrain', RC=STATUS)
      VERIFY_(STATUS)
 
-     ! MYNN length scale exports
-     call MAPL_GetPointer(EXPORT, LS_mynn_ex, 'LS_mynn', RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, LB_mynn_ex, 'LB_mynn', RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(EXPORT, LT_mynn_ex, 'LT_mynn', RC=STATUS)
-     VERIFY_(STATUS)
-
 ! Initialize some arrays
 
       LWCRT = RADLW - RADLWC
@@ -4552,15 +4464,9 @@ contains
     call MAPL_GetResource (MAPL, c_kh_mf,              "EDMF_c_kh_mf:",         default=0.,     RC=STATUS)
 
     call MAPL_GetResource (MAPL, MYNN_LEVEL,      "MYNN_LEVEL:",    default=2,  RC=STATUS)
-    call MAPL_GetResource (MAPL, MYNN_LENGTH_1,   "MYNN_LENGTH_1:", default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, MYNN_LENGTH_2,   "MYNN_LENGTH_2:", default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, MYNN_LENGTH_3,   "MYNN_LENGTH_3:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_IMPLICIT,   "MYNN_IMPLICIT:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_DISCRETE,   "MYNN_DISCRETE:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_DEBUG,      "MYNN_DEBUG:",    default=0,  RC=STATUS)
-
-    call MAPL_GetResource (MAPL, WQL_TYPE,        "TURBULENCE_WQL_TYPE:",    default=1,  RC=STATUS)
-    call MAPL_GetResource (MAPL, WRF_CG_FLAG,     "TURBULENCE_WRF_CG_FLAG:", default=1,  RC=STATUS)
 ! get ice ramp
    call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0   )
 
@@ -5087,23 +4993,21 @@ ENDIF
         end if
 
         ! Run MYNN
-        call run_mynn(IM, JM, LM, &                                                ! in      
-                      MYNN_DEBUG, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &                      ! in
-                      MYNN_LENGTH_1, MYNN_LENGTH_2, MYNN_LENGTH_3, WQL_TYPE, WRF_CG_FLAG, & ! in      
-                      mynn_alpha1, mynn_alpha2, mynn_alpha3, mynn_alpha4, &        ! in 
-                      th00, ice_ramp, PLE, PLO, RHOE, ZLE, Z, &                    ! in      
-                      U, V, T, Q, QL, QI, THL, QT, THV, &                          ! in      
-                      USTAR, SH, EVAP, &                                           ! in      
-                      whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &           ! in      
-                      acei_moist, Ai_moist, Bi_moist, &                            ! in
-                      tke_new, hl2, qt2, hlqt, &                                   ! inout   
-                      ws_explicit, wqv_explicit, wql_explicit, &                   ! inout     
-                      KM_mynn, KH_mynn, K_tke, itau_mynn, qdiv, SM25, SH25, L_mynn, L_qt2, & ! out
-                      beta_hl, beta_qt, EM, EH, &                                  ! out
-                      LS_mynn, LB_mynn, LT_mynn, &                                 ! out
-                      tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &        ! out     
-                      tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &            ! out
-                      tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                     ! out 
+        call run_mynn(IM, JM, LM, &                                                   ! in      
+                      MYNN_DEBUG, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &                ! in
+                      mynn_alpha1, mynn_alpha2, mynn_alpha3, mynn_alpha4, &           ! in 
+                      th00, ice_ramp, PLE, PLO, RHOE, ZLE, Z, &                       ! in      
+                      U, V, T, Q, QL, QI, THL, QT, THV, &                             ! in      
+                      USTAR, SH, EVAP, &                                              ! in      
+                      whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &              ! in      
+                      acei_moist, Ai_moist, Bi_moist, &                               ! in
+                      tke_new, hl2, qt2, hlqt, &                                      ! inout   
+                      ws_explicit, wqv_explicit, wql_explicit, &                      ! inout     
+                      KM_mynn, KH_mynn, K_tke, itau_mynn, qdiv, SM25, SH25, L_mynn, & ! out
+                      beta_hl, beta_qt, &                                             ! out
+                      tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &           ! out     
+                      tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &               ! out
+                      tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                        ! out 
 
         ! Save diffusivities
         KM = KM_mynn
@@ -5111,10 +5015,6 @@ ENDIF
            KH_mynn = KH_mynn + KH_mf ! additional diffusivity for stability of EDMF
         end if
         KH = KH_mynn
-
-        if ( associated(LS_mynn_ex) ) LS_mynn_ex = LS_mynn
-        if ( associated(LB_mynn_ex) ) LB_mynn_ex = LB_mynn
-        if ( associated(LT_mynn_ex) ) LT_mynn_ex = LT_mynn
 
         call MAPL_TimerOff (MAPL,name="---MYNN" ,RC=STATUS)
         VERIFY_(STATUS)
@@ -6251,7 +6151,7 @@ ENDIF
     real, dimension(:,:,:), allocatable :: QL, QI, Tv, ZLO, dhldz, dqtdz, dqldz, S2, N2, rhoe, RDZ_HALF, PLO
     real, dimension(:,:,:), allocatable :: U, V, H, QV, QLLS, QLCN, QILS, QICN
 
-    integer                             :: KM, K,L, DO_MYNN, wrf_cg_flag, MYNN_LENGTH_1
+    integer                             :: KM, K,L, DO_MYNN
 
     logical                             :: FRIENDLY
     logical                             :: WEIGHTED
@@ -6440,10 +6340,6 @@ ENDIF
           VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, EDMF_CONSISTENT, "EDMF_CONSISTENT:",        default=0, RC=STATUS)
           VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, WRF_CG_FLAG,     "TURBULENCE_WRF_CG_FLAG:", default=1, RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, MYNN_LENGTH_1,     "MYNN_LENGTH_1:",        default=0,  RC=STATUS)
-          VERIFY_(STATUS)
 
           call MAPL_GetPointer(EXPORT, tket_M,    'tket_M',    ALLOC=.TRUE., RC=STATUS)
           VERIFY_(STATUS)
@@ -6492,13 +6388,13 @@ ENDIF
 
           call implicit_M(IM, JM, LM, &                                        ! in
                           th00, ZLO, PLE, U, V, H, QV, QL, Tv, tke_new, &      ! in
-                          Beta_hl, Beta_qt, L_mynn, L_qt2, qdiv, SM25, SH25, & ! in
+                          Beta_hl, Beta_qt, L_mynn, qdiv, SM25, SH25, &        ! in
                           ws_explicit, wqv_explicit, wql_explicit, &           ! in
                           whl_mf, wqt_mf, wthv_mf, &                           ! in
                           hl2, qt2, hlqt, &                                    ! in
                           tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &           ! out
                           rhoe, dhldz, dqtdz, dqldz, S2, N2, &                 ! out
-                          MYNN_LEVEL, DOMF, EDMF_CONSISTENT, MYNN_LENGTH_1)
+                          MYNN_LEVEL, DOMF, EDMF_CONSISTENT)
           
           YTKE(:,:,0)      = 0.
           YTKE(:,:,1:LM-1) = DT*( tket_M(:,:,1:LM-1) + tket_B(:,:,1:LM-1) + tket_T_mf(:,:,1:LM-1) )
@@ -6622,7 +6518,7 @@ if ( trim(name) /= 'S' .and. trim(name) /= 'Q' .and. trim(name) /= 'QLLS' &
 !!$       ! Corrector step
 !!$       if ( trim(name) == 'tke_new2' ) then
 !!$          call mynn_predict_correct(IM, JM, LM, &                                         ! in
-!!$                                    mynn_level, wrf_cg_flag, domf, edmf_consistent, &     ! in
+!!$                                    mynn_level, domf, edmf_consistent, &                  ! in
 !!$                                    th00, zle, ple, rhoe, tke_new, hl2, qt2, hlqt, &      ! in
 !!$                                    dhldz, dqtdz, dqldz, N2, S2, &                        ! in (gradient information)
 !!$                                    Beta_hl, Beta_qt, L_mynn, qdiv, SM25, SH25, EM, EH, & ! in
