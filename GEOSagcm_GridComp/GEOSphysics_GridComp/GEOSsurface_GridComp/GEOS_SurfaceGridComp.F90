@@ -225,12 +225,12 @@ module GEOS_SurfaceGridCompMod
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
     call MAPL_GetResource (MAPL, DO_OBIO, label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='ATM_CO2:', value=ATM_CO2, DEFAULT=0, __RC__ ) 
+    call MAPL_GetResource (SCF, ATM_CO2, label='ATM_CO2:', DEFAULT=2, __RC__ ) 
 
-    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:', value=catchswim, DEFAULT=0, __RC__ ) 
-    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LANDICE4SNWALB:', value=landicegoswim, DEFAULT=0, __RC__ ) 
-    call ESMF_ConfigGetAttribute (SCF, label='LAND_PARAMS:', value=LAND_PARAMS, DEFAULT="Icarus", __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:', value=CHOOSEMOSFC, DEFAULT=1, __RC__ ) 
+    call MAPL_GetResource (SCF, catchswim,     label='N_CONST_LAND4SNWALB:',    DEFAULT=0,        __RC__ )
+    call MAPL_GetResource (SCF, landicegoswim, label='N_CONST_LANDICE4SNWALB:', DEFAULT=0,        __RC__ )
+    call MAPL_GetResource (SCF, LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="NRv7.2", __RC__ )
+    call MAPL_GetResource (SCF, CHOOSEMOSFC,   label='CHOOSEMOSFC:',            DEFAULT=1,        __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
     if ( (catchswim/=0) .or. (landicegoswim/=0) .or. (DO_OBIO/=0)) then
@@ -8504,7 +8504,7 @@ module GEOS_SurfaceGridCompMod
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'ISTSFC', ALLOC=associated(ISTSFCTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
-      call MAPL_GetPointer(GEX(type), dum, 'SSKINW2',ALLOC=associated(SSKINWTILE ), notFoundOK=.true., RC=STATUS)
+      call MAPL_GetPointer(GEX(type), dum, 'SSKINW', ALLOC=associated(SSKINWTILE ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(GEX(type), dum, 'MELTT', ALLOC=associated(MELTTTILE  ), notFoundOK=.true., RC=STATUS)
       VERIFY_(STATUS)
@@ -9235,7 +9235,7 @@ module GEOS_SurfaceGridCompMod
          VERIFY_(STATUS)
       end if
       if(associated(SSKINWTILE)) then
-         call FILLOUT_TILE(GEX(type), 'SSKINW2',SSKINWTILE, XFORM, RC=STATUS)
+         call FILLOUT_TILE(GEX(type), 'SSKINW',SSKINWTILE, XFORM, RC=STATUS)
          VERIFY_(STATUS)
       end if
       if(associated(MELTTTILE)) then
