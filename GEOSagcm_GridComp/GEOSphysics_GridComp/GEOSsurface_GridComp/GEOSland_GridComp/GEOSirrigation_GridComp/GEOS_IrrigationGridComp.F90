@@ -559,6 +559,23 @@ contains
     call MAPL_GetPointer(EXPORT, DRIPRATE,      'DRIPRATE',     ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT, FLOODRATE,     'FLOODRATE',    ALLOC=.true., RC=STATUS) ; VERIFY_(STATUS)
 
+    ! Update IRRIGFRAC and PADDYFRAC for applications that are run on regular tiles in which IRRIGFRAC and PADDYFRAC in BCs are fractions.
+    ! The irrigation model would run on tiles whose IRRIGFRAC + PADDYFRAC > IRRIG_THRES (defult is 0.5) assuming the larger 
+    ! of the two fractions is the dominant surface type.
+
+    where (IRRIGFRAC + PADDYFRAC > IM%IRRIG_THRES)
+       where (PADDYFRAC >= IRRIGFRAC)
+          PADDYFRAC = 1.
+          IRRIGFRAC = 0.
+       elsewhere
+          PADDYFRAC = 0.
+          IRRIGFRAC = 1.
+       endwhere
+    elsewhere
+       PADDYFRAC = 0.
+       IRRIGFRAC = 0.
+    endwhere
+
     if (IRRIG_TRIGGER == 0) then
 
        ! LAI based trigger: scale soil moisture to LAI seasonal cycle

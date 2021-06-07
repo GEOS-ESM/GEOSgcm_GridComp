@@ -118,7 +118,8 @@ MODULE IRRIGATION_MODULE
   type, public :: irrig_params
      
      ! Below parameters can be set via RC file.
-     
+
+     REAL :: irrig_thres      =  0.5 ! threshold of tile fraction to turn the irrigation model on. 
      REAL :: lai_thres        =  0.6 ! threshold of LAI range to turn irrigation on
      REAL :: efcor            = 30.0 ! Efficiency Correction (% water loss: efcor = 0% denotes 100% efficient water use)
      REAL :: MIDS_LENGTH      =  0.6 ! Mid-season length as a fraction of crop growing season length (to be used with IRRIG_TRIGGER: 1)
@@ -191,6 +192,7 @@ contains
     CALL ESMF_ConfigGetAttribute (SCF, label='IRR_EFCOR:'      , VALUE=IP%efcor,           DEFAULT=DP%efcor          , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='LAI_THRES:'      , VALUE=IP%lai_thres,       DEFAULT=DP%lai_thres      , __RC__ )
     CALL ESMF_ConfigGetAttribute (SCF, label='MIDS_LENGTH:'    , VALUE=IP%MIDS_LENGTH,     DEFAULT=DP%lai_thres      , __RC__ )
+    CALL ESMF_ConfigGetAttribute (SCF, label='IRRIG_THRES:'    , VALUE=IP%irrig_thres,     DEFAULT=DP%irrig_thres    , __RC__ )
     CALL ESMF_ConfigDestroy      (SCF, __RC__)
 
   END SUBROUTINE init_model

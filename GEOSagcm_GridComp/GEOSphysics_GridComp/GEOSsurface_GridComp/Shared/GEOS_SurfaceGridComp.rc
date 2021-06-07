@@ -179,6 +179,7 @@
 # 
 # ----- Below default parameter values can also be changed via this resource file:
 #
+# IRRIG_THRES:     0.5 # threshold of tile fraction to turn the irrigation model on. 
 # LAI_THRES:       0.6 # threshold of LAI range to turn irrigation on
 # SPRINKLER_STIME: 6.0 # sprinkler irrigatrion start time [hours]
 # SPRINKLER_DUR:   4.0 # sprinkler irrigation duration [hours]
