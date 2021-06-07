@@ -7875,9 +7875,9 @@ contains
       do K=1,KM
          if(IS_FRIENDLY(K)) then
             KK = KK+1
-            !PRINT *, "*******TESTING: QNAME, FSCAV_, FSCAV********"
+!            PRINT *, "*******TESTING: QNAME, FSCAV_, FSCAV********"
             FSCAV(KK) = FSCAV_(K)
-            !PRINT *, QNAMES(K), FSCAV_(K), FSCAV(KK)
+!            PRINT *, QNAMES(K), FSCAV_(K), FSCAV(KK)
             XHO(:,:,:,KK) = TRPtrs(K)%Q(:,:,:)
          end if
       end do
@@ -8167,16 +8167,16 @@ contains
                SELECT CASE (QNAME(1:13))
                CASE ('CAphilicCA.bc')
                   if(associated(DBC2gDT)) then
-                     DBC2gDT = DBC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     CMBC2g = CMBC2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
 !               CASE ('OCp')
                CASE ('CAphilicCA.oc')
                   if(associated(DOC2gDT)) then
-                     DOC2gDT = DOC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     CMOC2g = CMOC2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('CAphilicCA.br')
                   if(associated(DBRC2gDT)) then
-                     DBRC2gDT = DBRC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     CMBRC2g = CMBRC2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                END SELECT
             endif
