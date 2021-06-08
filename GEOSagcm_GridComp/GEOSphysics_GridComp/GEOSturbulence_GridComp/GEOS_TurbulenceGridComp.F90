@@ -3738,10 +3738,9 @@ contains
                                            edmf_thl_plume8,edmf_thl_plume9,edmf_thl_plume10
 #endif
 
-   real             :: edmf_wa, edmf_wb
-   double precision :: mynn_alpha1, mynn_alpha2, mynn_alpha3, mynn_alpha4
+   real :: edmf_wa, edmf_wb
 
-   integer :: DO_MYNN, DO_LOCK_MYNN
+   integer :: DO_MYNN
 
 ! SHOC PDF variables
 !    real, dimension(:,:,:),pointer     :: PDF_A,      &
@@ -3985,12 +3984,6 @@ contains
      end if
 
       call MAPL_GetResource (MAPL, DO_MYNN,      "TURBULENCE_DO_MYNN:",   default=0, RC=STATUS)
-      call MAPL_GetResource (MAPL, DO_LOCK_MYNN, "TURBULENCE_LOCK_MYNN:", default=0, RC=STATUS)
-
-      call MAPL_GetResource(MAPL, mynn_alpha1, "MYNN_ALPHA1:", default=0.23d0, RC=STATUS)
-      call MAPL_GetResource(MAPL, mynn_alpha2, "MYNN_ALPHA2:", default=1.d0,   RC=STATUS)
-      call MAPL_GetResource(MAPL, mynn_alpha3, "MYNN_ALPHA3:", default=5.d0,   RC=STATUS)
-      call MAPL_GetResource(MAPL, mynn_alpha4, "MYNN_ALPHA4:", default=100.d0,  RC=STATUS)
 
       call MAPL_GetResource(MAPL, edmf_wa, 'EDMF_WA:', default=1.,  RC=STATUS)
       call MAPL_GetResource(MAPL, edmf_wb, 'EDMF_WB:', default=1.5, RC=STATUS)
@@ -4986,16 +4979,9 @@ ENDIF
                          ace_moist, A_moist, B_moist, &  ! in
                          acei_moist, Ai_moist, Bi_moist) ! out
 
-        if ( DO_LOCK_MYNN == 0 ) then
-           LOCK_ON = 0
-        else
-           LOCK_ON = 1
-        end if
-
         ! Run MYNN
         call run_mynn(IM, JM, LM, &                                                   ! in      
                       MYNN_DEBUG, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &                ! in
-                      mynn_alpha1, mynn_alpha2, mynn_alpha3, mynn_alpha4, &           ! in 
                       th00, ice_ramp, PLE, PLO, RHOE, ZLE, Z, &                       ! in      
                       U, V, T, Q, QL, QI, THL, QT, THV, &                             ! in      
                       USTAR, SH, EVAP, &                                              ! in      
@@ -6140,18 +6126,23 @@ ENDIF
     real, dimension(:,:,:), pointer     :: AK, BK, CK
 
     ! For implicit mean-gradient production of second-order moments option
-    integer                             :: MYNN_IMPLICIT, MYNN_LEVEL, EDMF_CONSISTENT
-    real                                :: DOMF
+    integer                             :: DO_MYNN, MYNN_IMPLICIT, MYNN_LEVEL, EDMF_CONSISTENT, MYNN_DEBUG, MYNN_CORRECT, MYNN_DISCRETE
+    real                                :: DOMF, ice_ramp
 
-    real, dimension(:,:), pointer       :: SH, EVAP
+    real, dimension(:,:), pointer       :: USTAR, SH, EVAP
     real, dimension(:,:,:), pointer     :: tket_M, tket_B, tket_D, &
                                            hl2t_M, hl2t_T, hl2t_D, qt2t_M, qt2t_T, qt2t_D, hlqtt_M, hlqtt_T, hlqtt_D, &
                                            ws_implicit, wqv_implicit, wql_implicit, wthl_implicit, wqt_implicit, &
-                                           exner
-    real, dimension(:,:,:), allocatable :: QL, QI, Tv, ZLO, dhldz, dqtdz, dqldz, S2, N2, rhoe, RDZ_HALF, PLO
-    real, dimension(:,:,:), allocatable :: U, V, H, QV, QLLS, QLCN, QILS, QICN
+                                           exner, A_moist, B_moist, ace_moist
 
-    integer                             :: KM, K,L, DO_MYNN
+    real, dimension(:,:,:), allocatable :: U, V, H, QV, QLCN, QLLS, QICN, QILS
+    real, dimension(:,:,:), allocatable :: T, QL, QI, EXF, TH, TV, QT, THL, THV
+    real, dimension(:,:,:), allocatable :: ZLO, PLO, RHOE, RDZ_HALF, acei_moist, Ai_moist, Bi_moist
+
+    real(kind=MAPL_R8), dimension(IM,JM,0:LM) :: SX_HALF ! pointer for solving at half levels
+    real(kind=MAPL_R8), dimension(IM,JM,0:LM) :: AKIX, BKIX ! Coefficients for solving at half levels
+
+    integer                             :: KM, K,L
 
     logical                             :: FRIENDLY
     logical                             :: WEIGHTED
@@ -6160,9 +6151,6 @@ ENDIF
     
     real,               dimension(IM,JM,LM) :: DP
     real(kind=MAPL_R8), dimension(IM,JM,LM) :: SX
-    real(kind=MAPL_R8), dimension(IM,JM,0:LM) :: SX_HALF ! pointer for solving at half levels
-
-    real(kind=MAPL_R8), dimension(IM,JM,0:LM) :: AKIX, BKIX ! Coefficients for solving at half levels
 
     integer :: i, j, ll
 
@@ -6171,8 +6159,23 @@ ENDIF
 
 ! Get MYNN flags
 !---------------
-    call MAPL_GetResource(MAPL, MYNN_IMPLICIT,   'MYNN_IMPLICIT:',      default=0,  RC=STATUS)
-    call MAPL_GetResource(MAPL, DO_MYNN,         'TURBULENCE_DO_MYNN:', default=0, RC=STATUS)
+    call MAPL_GetResource(MAPL, MYNN_IMPLICIT,   'MYNN_IMPLICIT:',      default=0,     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, DO_MYNN,         'TURBULENCE_DO_MYNN:', default=0,     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, MYNN_LEVEL,      'MYNN_LEVEL:',         default=2,     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, MYNN_DEBUG,      'MYNN_DEBUG:',         default=2,     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, ICE_RAMP,        'ICE_RAMP:',           default=-40.0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, MYNN_CORRECT,    'MYNN_CORRECT:',       default=0,     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, MYNN_DISCRETE,   'MYNN_DISCRETE:',      default=0,     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, DOMF,            'EDMF_DOMF:',          default=0., RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, EDMF_CONSISTENT, 'EDMF_CONSISTENT:',    default=0, RC=STATUS)
     VERIFY_(STATUS)
 
 ! Get pointers to implicit diffusive thermodynamic fluxes
@@ -6196,18 +6199,23 @@ ENDIF
        call MAPL_GetPointer(EXPORT, wql_implicit, 'wql_implicit', RC=STATUS)
        VERIFY_(STATUS)
     end if
-    call MAPL_GetPointer(IMPORT, SH,   'SH',   RC=STATUS)
+
+    call MAPL_GetPointer(IMPORT, USTAR, 'USTAR', RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, EVAP, 'EVAP', RC=STATUS)
+    call MAPL_GetPointer(IMPORT, SH,    'SH',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, EVAP,  'EVAP',  RC=STATUS)
+    VERIFY_(STATUS)
+
+    call MAPL_GetPointer(IMPORT,  A_moist,   'A_moist',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,  B_moist,   'B_moist',   RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT,  ace_moist, 'ace_moist', RC=STATUS)
     VERIFY_(STATUS)
 
 ! Initialize height of full levels
 !---------------------------------
-    if (      ( DO_MYNN /= 0 .and. MYNN_IMPLICIT == 0 ) &
-         .or. associated(ws_implicit) .or. associated(wqv_implicit) .or. associated(wql_implicit) ) then
-       allocate(ZLO(IM,JM,LM))
-       ZLO = 0.5*( ZLE(:,:,0:LM-1) + ZLE(:,:,1:LM) )
-    end if
 
     if ( associated(wthl_implicit) ) then
        allocate(exner(IM,JM,LM))
@@ -6216,11 +6224,13 @@ ENDIF
 
 ! Allocate arrays for implicit mean-gradient production option
 !-------------------------------------------------------------
-    if ( DO_MYNN /= 0 .and. MYNN_IMPLICIT ==  0 ) then
-       allocate(U(IM,JM,LM), V(IM,JM,LM), H(IM,JM,LM), QV(IM,JM,LM), QLCN(IM,JM,LM), QLLS(IM,JM,LM), QICN(IM,JM,LM), QILS(IM,JM,LM))
-       allocate(QL(IM,JM,LM), QI(IM,JM,LM), plo(IM,JM,LM), rhoe(IM,JM,LM+1), RDZ_HALF(IM,JM,LM), &
-                dhldz(IM,JM,LM+1), dqtdz(IM,JM,LM+1), dqldz(IM,JM,LM+1), S2(IM,JM,LM+1), N2(IM,JM,LM+1))
-                
+    if ( DO_MYNN /= 0 .and. MYNN_IMPLICIT == 0 ) then
+       allocate(U(IM,JM,LM), V(IM,JM,LM), H(IM,JM,LM), QV(IM,JM,LM), QLCN(IM,JM,LM), &
+                QLLS(IM,JM,LM), QICN(IM,JM,LM), QILS(IM,JM,LM))
+       allocate(T(IM,JM,LM), QL(IM,JM,LM), QI(IM,JM,LM), EXF(IM,JM,LM), TH(IM,JM,LM), &
+                TV(IM,JM,LM), QT(IM,JM,LM), THL(IM,JM,LM), THV(IM,JM,LM))
+       allocate(zlo(IM,JM,LM), plo(IM,JM,LM), rhoe(IM,JM,LM+1), RDZ_HALF(IM,JM,LM), &
+                acei_moist(IM,JM,LM+1), Ai_moist(IM,JM,LM+1), Bi_moist(IM,JM,LM+1))
     end if
 
 ! Get the bundles containing the quantities to be diffused, 
@@ -6336,11 +6346,6 @@ ENDIF
 ! --------------------------------------------------------------------------------
 
        if ( trim(name) == 'tke_new' .and. DO_MYNN /= 0 .and. MYNN_IMPLICIT == 0 ) then
-          call MAPL_GetResource(MAPL, DOMF,            "EDMF_DOMF:",             default=0., RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, EDMF_CONSISTENT, "EDMF_CONSISTENT:",        default=0, RC=STATUS)
-          VERIFY_(STATUS)
-
           call MAPL_GetPointer(EXPORT, tket_M,    'tket_M',    ALLOC=.TRUE., RC=STATUS)
           VERIFY_(STATUS)
           call MAPL_GetPointer(EXPORT, tket_B,    'tket_B',    ALLOC=.TRUE., RC=STATUS)
@@ -6381,26 +6386,38 @@ ENDIF
           end if
           VERIFY_(STATUS)
 
-          QL = QLCN + QLLS
-          QI = QICN + QILS
+          ZLO = 0.5*( ZLE(:,:,0:LM-1) + ZLE(:,:,1:LM) )
+          PLO = 0.5*( PLE(:,:,0:LM-1) + PLE(:,:,1:LM) )
+          EXF = (PLO/mapl_p00)**(MAPL_RGAS/MAPL_CP)
 
-          TV  = ( ( H - MAPL_GRAV*ZLO )/MAPL_CP )*( 1.0 + MAPL_VIREPS * QV - QL - QI ) 
+          T   = ( H - MAPL_GRAV*ZLO )/MAPL_CP
+          QL  = QLCN + QLLS
+          QI  = QICN + QILS
+
+          TH  = T/EXF
+          TV  = T*( 1.0 + MAPL_VIREPS * QV - QL - QI ) 
+          QT  = QV + QL + QI
+
+          THL = TH - ( mapl_alhl*QL + mapl_alhs*QI )/(mapl_cp*EXF)
+          THV = TV/EXF
+
+          RHOE(:,:,1:LM-1) = PLE(:,:,1:LM-1)/(MAPL_RGAS*0.5*( TV(:,:,1:LM-1) + TV(:,:,2:LM) )) 
+          RHOE(:,:,0)      = PLE(:,:,0)/(MAPL_RGAS*TV(:,:,1))
+          RHOE(:,:,LM)     = PLE(:,:,LM)/(MAPL_RGAS*TV(:,:,LM))
 
           call implicit_M(IM, JM, LM, &                                        ! in
-                          th00, ZLO, PLE, U, V, H, QV, QL, Tv, tke_new, &      ! in
+                          th00, ZLO, PLE, U, V, H, QV, QL, TV, tke_new, &      ! in
                           Beta_hl, Beta_qt, L_mynn, qdiv, SM25, SH25, &        ! in
                           ws_explicit, wqv_explicit, wql_explicit, &           ! in
                           whl_mf, wqt_mf, wthv_mf, &                           ! in
                           hl2, qt2, hlqt, &                                    ! in
                           tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &           ! out
-                          rhoe, dhldz, dqtdz, dqldz, S2, N2, &                 ! out
-                          MYNN_LEVEL, DOMF, EDMF_CONSISTENT)
+                          MYNN_LEVEL, DOMF, EDMF_CONSISTENT)                   ! in
           
           YTKE(:,:,0)      = 0.
           YTKE(:,:,1:LM-1) = DT*( tket_M(:,:,1:LM-1) + tket_B(:,:,1:LM-1) + tket_T_mf(:,:,1:LM-1) )
           YTKE(:,:,LM)     = TKE_SURF(:,:)
 
-          call MAPL_GetResource (MAPL, MYNN_LEVEL, "MYNN_LEVEL:", default=2,  RC=STATUS)
           if ( MYNN_LEVEL >= 3 ) then
              YQT2(:,:,0)      = 0.
              YQT2(:,:,1:LM-1) = DT*qt2t_M(:,:,1:LM-1)
@@ -6515,55 +6532,64 @@ if ( trim(name) /= 'S' .and. trim(name) /= 'Q' .and. trim(name) /= 'QLLS' &
           call VTRISOLVE(AK,BK,CK,SX,SG)
        end if
 
-!!$       ! Corrector step
-!!$       if ( trim(name) == 'tke_new2' ) then
-!!$          call mynn_predict_correct(IM, JM, LM, &                                         ! in
-!!$                                    mynn_level, domf, edmf_consistent, &                  ! in
-!!$                                    th00, zle, ple, rhoe, tke_new, hl2, qt2, hlqt, &      ! in
-!!$                                    dhldz, dqtdz, dqldz, N2, S2, &                        ! in (gradient information)
-!!$                                    Beta_hl, Beta_qt, L_mynn, qdiv, SM25, SH25, EM, EH, & ! in
-!!$                                    au, Mu, E, D, wu, wdet, &                             ! in (for consistent partitioning of TKE)
-!!$                                    whl_mf, wqt_mf, wthv_mf, &                            ! in (for non-consistent partitioning of TKE)
-!!$                                    K_tke, itau_mynn, &                                   ! inout
-!!$                                    tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, & ! inout
-!!$                                    tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4)       ! inout
-!!$         
-!!$
-!!$          PLO = 0.5*( PLE(:,:,0:LM-1) + PLE(:,:,1:LM) )
-!!$
-!!$          RDZ_HALF(:,:,1:LM)   = PLO(:,:,1:LM)/(MAPL_RGAS*TV(:,:,1:LM)*( ZLE(:,:,0:LM-1) - ZLE(:,:,1:LM) ))
-!!$          DMI_HALF(:,:,1:LM-1) = MAPL_GRAV*DT/( PLO(:,:,2:LM) - PLO(:,:,1:LM-1) )
-!!$
-!!$          AKTKE(:,:,0)      = 0.
-!!$          AKTKE(:,:,1:LM-1) = -K_tke(:,:,1:LM-1)*RDZ_HALF(:,:,1:LM-1)*DMI_HALF(:,:,1:LM-1)
-!!$          AKTKE(:,:,LM)     = 0.
-!!$
-!!$          CKTKE(:,:,0)      = 0.
-!!$          CKTKE(:,:,1:LM-1) = -K_tke(:,:,2:LM)*RDZ_HALF(:,:,2:LM)*DMI_HALF(:,:,1:LM-1)
-!!$          CKTKE(:,:,LM)     = 0.
-!!$
-!!$          BKTKE(:,:,0)      = 1.
-!!$          BKTKE(:,:,1:LM-1) = 1. + DT*itau_mynn(:,:,1:LM-1)/B1 - ( CKTKE(:,:,1:LM-1) + AKTKE(:,:,1:LM-1) )
-!!$          BKTKE(:,:,LM)     = 1.
-!!$     
-!!$          YTKE(:,:,0)      = 0.
-!!$          YTKE(:,:,1:LM-1) = DT*( tket_M(:,:,1:LM-1) + tket_B(:,:,1:LM-1) + tket_T_mf(:,:,1:LM-1) )
-!!$          YTKE(:,:,LM)     = TKE_SURF(:,:)
-!!$
-!!$          AKIX = AKTKE
-!!$          BKIX = BKTKE
-!!$          call VTRILU(AKIX, BKIX, CKTKE)
-!!$          BKTKE = BKIX
-!!$          AKTKE = AKIX
-!!$
-!!$          SX_HALF(:,:,0)      = 0.
-!!$          SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YTKE(:,:,1:LM-1)
-!!$          SX_HALF(:,:,LM)     = YTKE(:,:,LM)
-!!$
-!!$          call VTRISOLVE(AKTKE, BKTKE, CKTKE, SX_HALF, SG)
-!!$
-!!$          SX_HALF = max( 0., SX_HALF )
-!!$       end if
+       ! Corrector step
+       if ( trim(name) == 'tke_new2' .and. MYNN_CORRECT /= 0 ) then
+          ! Interpolate MYNN profiles to half levels
+          call interp_mynn(IM, JM, LM, &                   ! in
+                           mynn_discrete, &                ! in
+                           zle, zlo, &                     ! in
+                           ace_moist, A_moist, B_moist, &  ! in
+                           acei_moist, Ai_moist, Bi_moist) ! out
+
+          ! Run MYNN
+          call run_mynn(IM, JM, LM, &                                                   ! in      
+                        MYNN_DEBUG, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &                ! in
+                        th00, ice_ramp, PLE, PLO, RHOE, ZLE, ZLO, &                     ! in      
+                        U, V, T, QV, QL, QI, THL, QT, THV, &                            ! in      
+                        USTAR, SH, EVAP, &                                              ! in      
+                        whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &              ! in      
+                        acei_moist, Ai_moist, Bi_moist, &                               ! in
+                        tke_new, hl2, qt2, hlqt, &                                      ! inout   
+                        ws_explicit, wqv_explicit, wql_explicit, &                      ! inout     
+                        KM_mynn, KH_mynn, K_tke, itau_mynn, qdiv, SM25, SH25, L_mynn, & ! out
+                        beta_hl, beta_qt, &                                             ! out
+                        tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &           ! out     
+                        tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &               ! out
+                        tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                        ! out 
+          
+          RDZ_HALF(:,:,1:LM)   = PLO(:,:,1:LM)/(MAPL_RGAS*TV(:,:,1:LM)*( ZLE(:,:,0:LM-1) - ZLE(:,:,1:LM) ))
+          DMI_HALF(:,:,1:LM-1) = MAPL_GRAV*DT/( PLO(:,:,2:LM) - PLO(:,:,1:LM-1) )
+
+          AKTKE(:,:,0)      = 0.
+          AKTKE(:,:,1:LM-1) = -K_tke(:,:,1:LM-1)*RDZ_HALF(:,:,1:LM-1)*DMI_HALF(:,:,1:LM-1)
+          AKTKE(:,:,LM)     = 0.
+
+          CKTKE(:,:,0)      = 0.
+          CKTKE(:,:,1:LM-1) = -K_tke(:,:,2:LM)*RDZ_HALF(:,:,2:LM)*DMI_HALF(:,:,1:LM-1)
+          CKTKE(:,:,LM)     = 0.
+
+          BKTKE(:,:,0)      = 1.
+          BKTKE(:,:,1:LM-1) = 1. + DT*itau_mynn(:,:,1:LM-1)/B1 - ( CKTKE(:,:,1:LM-1) + AKTKE(:,:,1:LM-1) )
+          BKTKE(:,:,LM)     = 1.
+     
+          YTKE(:,:,0)      = 0.
+          YTKE(:,:,1:LM-1) = DT*( tket_M(:,:,1:LM-1) + tket_B(:,:,1:LM-1) + tket_T_mf(:,:,1:LM-1) )
+          YTKE(:,:,LM)     = TKE_SURF(:,:)
+
+          AKIX = AKTKE
+          BKIX = BKTKE
+          call VTRILU(AKIX, BKIX, CKTKE)
+          BKTKE = BKIX
+          AKTKE = AKIX
+
+          SX_HALF(:,:,0)      = 0.
+          SX_HALF(:,:,1:LM-1) = S(:,:,1:LM-1) + YTKE(:,:,1:LM-1)
+          SX_HALF(:,:,LM)     = YTKE(:,:,LM)
+
+          call VTRISOLVE(AKTKE, BKTKE, CKTKE, SX_HALF, SG)
+
+          SX_HALF = max( 0., SX_HALF )
+       end if
 
 ! Compute the surface fluxes
 !---------------------------

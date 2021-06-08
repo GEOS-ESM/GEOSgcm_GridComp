@@ -25,6 +25,11 @@ real, parameter ::             C4     = 0.
 real, parameter ::             C5     = 0.2
 double precision, parameter :: C3     = 0.34d0
 
+double precision, parameter :: alpha1 = 0.23d0
+double precision, parameter :: alpha2 = 1.d0
+double precision, parameter :: alpha3 = 5.d0
+double precision, parameter :: alpha4 = 100.d0
+
 real, parameter :: A1 = B1*( 1. - 3.*gamma1 )/6.
 
 double precision, parameter :: C1 = gamma1 - 1./(3.*A1*B1**onethird)
@@ -70,7 +75,6 @@ contains
 !
 subroutine run_mynn(IM, JM, LM, &                                                   ! in
                     DEBUG_FLAG, DOMF, MYNN_LEVEL, CONSISTENT_TYPE, &                ! in
-                    alpha1, alpha2, alpha3, alpha4, &                               ! in (length scale parameters)
                     th00, ice_ramp, ple, pl, rhoe, zle, zlo, &                      ! in
                     u, v, T, qv, ql, qi, thl, qt, thv, &                            ! in (mean atmospheric state)
                     u_star, H_surf, E_surf, &                                       ! in (surface state)
@@ -89,7 +93,6 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
   integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, DEBUG_FLAG
   real, intent(in)                           :: th00, ice_ramp, DOMF
-  double precision, intent(in)               :: alpha1, alpha2, alpha3, alpha4
   real, dimension(IM,JM), intent(in)         :: u_star, H_surf, E_surf
   real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, T, qv, ql, qi, thv, thl, qt, E, D, wdet, pl
   real, dimension(IM,JM,0:LM), intent(in)    :: ple, zle, rhoe, whl_mf, wqt_mf, wthv_mf, &
@@ -468,7 +471,6 @@ subroutine implicit_M(IM, JM, LM, &                                             
                       ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf, & ! in
                       hl2, qt2, hlqt, &                                                   ! inout
                       tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &                          ! out
-                      rhoe, dhldz, dqtdz, dqldz, S2, N2, &                                ! out
                       MYNN_LEVEL, DOMF, CONSISTENT_TYPE)                                  ! in
 
   integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE
@@ -477,13 +479,12 @@ subroutine implicit_M(IM, JM, LM, &                                             
   real, dimension(IM,JM,0:LM), intent(in)    :: ple, tke, Beta_hl, Beta_qt, L, qdiv, SM25, SH25, &
                                                 ws_explicit, wqv_explicit, wql_explicit, whl_mf, wqt_mf, wthv_mf
   real, dimension(IM,JM,0:LM), intent(inout) :: hl2, qt2, hlqt
-  real, dimension(IM,JM,0:LM), intent(out)   :: tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, &
-                                                dhldz, dqtdz, dqldz, S2, N2, rhoe
+  real, dimension(IM,JM,0:LM), intent(out)   :: tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M
 
   integer :: i, j, k, kp1
 
   real                      :: idzlo, whl, wqt, whl_explicit, wqt_explicit, wb_explicit, goth00, &
-                               T, Tve, KM, KH, L_hlqt, hl2_25, qt2_25, hlqt_25
+                               T, Tve, KM, KH, L_hlqt, hl2_25, qt2_25, hlqt_25, dhldz, dqtdz, dqldz, S2, N2, rhoe
   real, dimension(IM,JM,LM) :: hl, qt
 
   double precision :: Lq, L2 ! this precision may be unecessary
@@ -512,24 +513,24 @@ subroutine implicit_M(IM, JM, LM, &                                             
         KH = Lq*SH25(i,j,k)
         
         idzlo        = 1./( zlo(i,j,k) - zlo(i,j,kp1) )
-        dhldz(i,j,k) = ( hl(i,j,k) - hl(i,j,kp1) )*idzlo
-        dqtdz(i,j,k) = ( qt(i,j,k) - qt(i,j,kp1) )*idzlo
-        dqldz(i,j,k) = ( ql(i,j,k) - ql(i,j,kp1) )*idzlo
+        dhldz = ( hl(i,j,k) - hl(i,j,kp1) )*idzlo
+        dqtdz = ( qt(i,j,k) - qt(i,j,kp1) )*idzlo
+        dqldz = ( ql(i,j,k) - ql(i,j,kp1) )*idzlo
 
         ! Compute density
         Tve         = 0.5*( Tv(i,j,k) + TV(i,j,kp1) )
-        rhoe(i,j,k) = ple(i,j,k)/(MAPL_RGAS*Tve)
+        rhoe = ple(i,j,k)/(MAPL_RGAS*Tve)
 
-        N2(i,j,k) = goth00*( Beta_hl(i,j,k)*dhldz(i,j,k) + Beta_qt(i,j,k)*dqtdz(i,j,k) )
-        S2(i,j,k) = (( u(i,j,k) - u(i,j,kp1) )*idzlo)**2. + ( (v(i,j,k) - v(i,j,kp1) )*idzlo)**2.
+        N2 = goth00*( Beta_hl(i,j,k)*dhldz + Beta_qt(i,j,k)*dqtdz )
+        S2 = (( u(i,j,k) - u(i,j,kp1) )*idzlo)**2. + ( (v(i,j,k) - v(i,j,kp1) )*idzlo)**2.
 
         whl_explicit = ws_explicit(i,j,k)/MAPL_CP - lvocp*wql_explicit(i,j,k)
         wqt_explicit = wqv_explicit(i,j,k) + wql_explicit(i,j,k)
 
         !
-        hl2_25  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)**2.
-        hlqt_25 = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz(i,j,k)*dqtdz(i,j,k)
-        qt2_25  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dqtdz(i,j,k)**2.
+        hl2_25  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz**2.
+        hlqt_25 = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dhldz*dqtdz
+        qt2_25  = qdiv(i,j,k)*B2*L2*SH25(i,j,k)*dqtdz**2.
 
         if ( mynn_level == 2 ) then
            wb_explicit = 0.
@@ -549,19 +550,19 @@ subroutine implicit_M(IM, JM, LM, &                                             
         end if
 
         if ( DOMF /= 0. .and. CONSISTENT_TYPE == 2 ) then
-           tket_B(i,j,k) = -KH*N2(i,j,k)    + wb_explicit  + goth00*wthv_mf(i,j,k)
-           whl           = -KH*dhldz(i,j,k) + whl_explicit + whl_mf(i,j,k)
-           wqt           = -KH*dqtdz(i,j,k) + wqt_explicit + wqt_mf(i,j,k)
+           tket_B(i,j,k) = -KH*N2    + wb_explicit  + goth00*wthv_mf(i,j,k)
+           whl           = -KH*dhldz + whl_explicit + whl_mf(i,j,k)
+           wqt           = -KH*dqtdz + wqt_explicit + wqt_mf(i,j,k)
         else
-           tket_B(i,j,k) = -KH*N2(i,j,k)    + wb_explicit
-           whl           = -KH*dhldz(i,j,k) + whl_explicit
-           wqt           = -KH*dqtdz(i,j,k) + wqt_explicit
+           tket_B(i,j,k) = -KH*N2    + wb_explicit
+           whl           = -KH*dhldz + whl_explicit
+           wqt           = -KH*dqtdz + wqt_explicit
         end if
 
-        tket_M(i,j,k)  = KM*S2(i,j,k)
-        hl2t_M(i,j,k)  = -2.*whl*dhldz(i,j,k)
-        qt2t_M(i,j,k)  = -2.*wqt*dqtdz(i,j,k)
-        hlqtt_M(i,j,k) = -whl*dqtdz(i,j,k) - wqt*dhldz(i,j,k)
+        tket_M(i,j,k)  = KM*S2
+        hl2t_M(i,j,k)  = -2.*whl*dhldz
+        qt2t_M(i,j,k)  = -2.*wqt*dqtdz
+        hlqtt_M(i,j,k) = -whl*dqtdz - wqt*dhldz
      end do
      end do
   end do
