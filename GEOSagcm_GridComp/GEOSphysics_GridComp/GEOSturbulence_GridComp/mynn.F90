@@ -74,7 +74,7 @@ contains
 ! run_mynn
 !
 subroutine run_mynn(IM, JM, LM, &                                                   ! in
-                    DEBUG_FLAG, DOMF, MYNN_LEVEL, CONSISTENT_TYPE, &                ! in
+                    DEBUG_FLAG, TEST_FLAG, DOMF, MYNN_LEVEL, CONSISTENT_TYPE, &     ! in
                     th00, ice_ramp, ple, pl, rhoe, zle, zlo, &                      ! in
                     u, v, T, qv, ql, qi, thl, qt, thv, &                            ! in (mean atmospheric state)
                     u_star, H_surf, E_surf, &                                       ! in (surface state)
@@ -91,7 +91,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
   use MAPL_ConstantsMod, only: MAPL_KARMAN
   use MAPL_SatVaporMod, only: MAPL_EQsat
 
-  integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, DEBUG_FLAG
+  integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, DEBUG_FLAG, TEST_FLAG
   real, intent(in)                           :: th00, ice_ramp, DOMF
   real, dimension(IM,JM), intent(in)         :: u_star, H_surf, E_surf
   real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, T, qv, ql, qi, thv, thl, qt, E, D, wdet, pl
@@ -195,6 +195,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
   ! Test
   if ( .not. initialized_mynn ) then
      call initialize_mynn(IM, JM, LM, &
+                          TEST_FLAG, &
                           alpha1, alpha2, alpha3, alpha4, &
                           th00, ice_ramp, hl, qt, tke, hl2, qt2, hlqt, q, &
                           zle, zlo, S2, N2, &
@@ -204,11 +205,17 @@ subroutine run_mynn(IM, JM, LM, &                                               
      initialized_mynn = .true.
   end if
 
-  call mynn_length(IM, JM, LM, &                                    ! in
-                   alpha1, alpha2, alpha3, alpha4, &                ! in
-                   th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
-                   thv, ple, pl, &                                  ! in
-                   L, LS, LB, LT, w_star)                           ! out
+  if ( TEST_FLAG == 0 ) then
+     call mynn_length(IM, JM, LM, &                                    ! in
+                      alpha1, alpha2, alpha3, alpha4, &                ! in
+                      th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
+                      thv, ple, pl, &                                  ! in
+                      L, LS, LB, LT, w_star)                           ! out
+  else
+     call mynn_length_new(IM, JM, LM, &                 ! in
+                          th00, zle, zlo, q, N2, thv, & ! in
+                          L)                            ! out
+  end if
 
   do k = 1,LM-1
 
@@ -678,9 +685,54 @@ subroutine mynn_length(IM, JM, LM, &                                    ! in
 end subroutine mynn_length
 
 !
+! mynn_length_new
+!
+subroutine mynn_length_new(IM, JM, LM, &                 ! in
+                           th00, zle, zlo, q, N2, thv, & ! in
+                           L)                            ! out
+
+  use MAPL_ConstantsMod, only: MAPL_KARMAN
+
+  integer, intent(in)                                  :: IM, JM, LM
+  real, intent(in)                                     :: th00
+  real, dimension(IM,JM,LM), intent(in)                :: zlo, thv
+  real, dimension(IM,JM,0:LM), intent(in)              :: zle, N2
+  double precision, dimension(IM,JM,0:LM), intent(in)  :: q
+  double precision, dimension(IM,JM,0:LM), intent(out) :: L
+
+  integer :: i, j, k
+  double precision :: N, LS, LB, LT
+
+  ! Compute master length scale
+  do k = 1,LM-1
+     do j = 1,JM
+     do i = 1,IM
+        LS = MAPL_KARMAN*zle(i,j,k)
+        
+        ! Compute buoyancy length scale
+        if ( N2(i,j,k) > 0. ) then
+           N = sqrt( N2(i,j,k) )
+
+           LB = 0.4*q(i,j,k)/N
+        else
+           LB = 1.d+10
+        end if
+
+        LT = 400.
+        
+        ! Harmonically average length scales
+        L(i,j,k) = LB/( LB/LS + LB/LT + 1.d0 )
+     end do
+     end do
+  end do
+
+end subroutine mynn_length_new
+
+!
 ! initialize_mynn
 !
 subroutine initialize_mynn(IM, JM, LM, &
+                           TEST_FLAG, &
                            alpha1, alpha2, alpha3, alpha4, &
                            th00, ice_ramp, hl, qt, tke, hl2, qt2, hlqt, q, &
                            zle, zlo, S2, N2, &
@@ -696,9 +748,7 @@ real, parameter :: phh = 1.
 real, parameter :: flt = 0.
 real, parameter :: flq = 0.
 
-real, parameter :: phm = phh*B2/(B1*pmz)**twothirds
-       
-integer, intent(in)                                    :: IM, JM, LM
+integer, intent(in)                                    :: IM, JM, LM, TEST_FLAG
 real, intent(in)                                       :: th00, ice_ramp
 double precision, intent(in)                           :: alpha1, alpha2, alpha3, alpha4
 real, dimension(IM,JM), intent(in)                     :: u_star, wb_surf, LMO
@@ -752,11 +802,17 @@ end do
 
 ! Iterate to initialize TKE
 do iter = 1,niter
-   call mynn_length(IM, JM, LM, &                                    ! in
-                    alpha1, alpha2, alpha3, alpha4, &                ! in
-                    th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
-                    thv, ple, pl, &                                  ! in
-                    L, LS, LB, LT, w_star)                           ! out      
+   if ( TEST_FLAG == 0 ) then
+      call mynn_length(IM, JM, LM, &                                    ! in
+                       alpha1, alpha2, alpha3, alpha4, &                ! in
+                       th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
+                       thv, ple, pl, &                                  ! in
+                       L, LS, LB, LT, w_star)                           ! out      
+   else
+      call mynn_length_new(IM, JM, LM, &                 ! in
+                           th00, zle, zlo, q, N2, thv, & ! in
+                           L)                            ! out
+   end if
 
    do k = 1,LM-1
       do j = 1,JM

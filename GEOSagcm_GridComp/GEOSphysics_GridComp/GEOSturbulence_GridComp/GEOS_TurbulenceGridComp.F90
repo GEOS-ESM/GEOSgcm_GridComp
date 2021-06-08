@@ -3809,6 +3809,8 @@ contains
                                      ! else: explicit
      integer :: MYNN_DISCRETE        ! 0:    
                                      ! else: 
+     integer :: MYNN_TEST            ! 0: do nothing
+                                     ! 1: test MYNN feature
      integer :: MYNN_DEBUG           ! 0 (default): no debugging output in MYNN
                                      ! 1: print internal variables in MYNN subroutine
 
@@ -4460,6 +4462,7 @@ contains
     call MAPL_GetResource (MAPL, MYNN_IMPLICIT,   "MYNN_IMPLICIT:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_DISCRETE,   "MYNN_DISCRETE:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_DEBUG,      "MYNN_DEBUG:",    default=0,  RC=STATUS)
+    call MAPL_GetResource (MAPL, MYNN_TEST,       "MYNN_TEST:",     default=0,  RC=STATUS)
 ! get ice ramp
    call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0   )
 
@@ -4972,6 +4975,8 @@ ENDIF
         call MAPL_TimerOn (MAPL,name="---MYNN" ,RC=STATUS)
         VERIFY_(STATUS)
 
+        LOCK_ON = 0
+
         ! Interpolate MYNN profiles to half levels
         call interp_mynn(IM, JM, LM, &                   ! in
                          mynn_discrete, &                ! in
@@ -4981,7 +4986,7 @@ ENDIF
 
         ! Run MYNN
         call run_mynn(IM, JM, LM, &                                                   ! in      
-                      MYNN_DEBUG, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &                ! in
+                      MYNN_DEBUG, MYNN_TEST, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &     ! in
                       th00, ice_ramp, PLE, PLO, RHOE, ZLE, Z, &                       ! in      
                       U, V, T, Q, QL, QI, THL, QT, THV, &                             ! in      
                       USTAR, SH, EVAP, &                                              ! in      
@@ -6126,7 +6131,8 @@ ENDIF
     real, dimension(:,:,:), pointer     :: AK, BK, CK
 
     ! For implicit mean-gradient production of second-order moments option
-    integer                             :: DO_MYNN, MYNN_IMPLICIT, MYNN_LEVEL, EDMF_CONSISTENT, MYNN_DEBUG, MYNN_CORRECT, MYNN_DISCRETE
+    integer                             :: DO_MYNN, MYNN_IMPLICIT, MYNN_LEVEL, EDMF_CONSISTENT, MYNN_DEBUG, MYNN_TEST, &
+                                           MYNN_CORRECT, MYNN_DISCRETE
     real                                :: DOMF, ice_ramp
 
     real, dimension(:,:), pointer       :: USTAR, SH, EVAP
@@ -6166,6 +6172,8 @@ ENDIF
     call MAPL_GetResource(MAPL, MYNN_LEVEL,      'MYNN_LEVEL:',         default=2,     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, MYNN_DEBUG,      'MYNN_DEBUG:',         default=2,     RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, MYNN_TEST,       "MYNN_TEST:",          default=0,     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, ICE_RAMP,        'ICE_RAMP:',           default=-40.0, RC=STATUS)
     VERIFY_(STATUS)
@@ -6543,7 +6551,7 @@ if ( trim(name) /= 'S' .and. trim(name) /= 'Q' .and. trim(name) /= 'QLLS' &
 
           ! Run MYNN
           call run_mynn(IM, JM, LM, &                                                   ! in      
-                        MYNN_DEBUG, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &                ! in
+                        MYNN_DEBUG, MYNN_TEST, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &     ! in
                         th00, ice_ramp, PLE, PLO, RHOE, ZLE, ZLO, &                     ! in      
                         U, V, T, QV, QL, QI, THL, QT, THV, &                            ! in      
                         USTAR, SH, EVAP, &                                              ! in      

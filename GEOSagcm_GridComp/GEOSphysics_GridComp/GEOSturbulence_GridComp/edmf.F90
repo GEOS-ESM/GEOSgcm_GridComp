@@ -103,8 +103,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
   integer, dimension(2)  :: seedmf, the_seed
 
-  logical :: stop_cond
-
   real, dimension(numup) :: upa_out
   logical, dimension(IM,JM)       :: work_flag
   logical, dimension(numup,IM,JM) :: active_updraft
@@ -342,14 +340,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
 
         ! Compute condensation and thl, ql, qi
         do iup = 1,numup
-           if ( test_flag == 0 ) then
-              call condensation_edmfA(upthv(iup,i,j), upqt(iup,i,j), ple(i,j,kbot), &
-                                      upthl(iup,i,j), upql(iup,i,j), upqi(iup,i,j), ice_ramp)
-           else
-              upthl(iup,i,j) = upthv(iup,i,j)/( 1. + mapl_vireps*upqt(iup,i,j) )
-              upql(iup,i,j)  = 0.
-              upqi(iup,i,j)  = 0.
-           end if
+           call condensation_edmfA(upthv(iup,i,j), upqt(iup,i,j), ple(i,j,kbot), &
+                                   upthl(iup,i,j), upql(iup,i,j), upqi(iup,i,j), ice_ramp)
         end do
      else
         active_updraft(:,i,j) = .false.
@@ -512,12 +504,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  Vn   = v(i,j,k)*( 1. - EntExpU )  + upv(iup,i,j)*EntExpU
 
                  ! Condensation
-                 if ( test_flag == 0 ) then
-                    call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
-                 else
-                    QCn  = 0.
-                    THVn = THLn*( 1. + mapl_vireps*QTn )
-                 end if
+                 call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
 
                  ! Buoyancy
                  B = goth00*( 0.5*( THVn + upthv(iup,i,j) ) - thv(i,j,k) )
@@ -541,22 +528,14 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                  ! Integrate vertical velocity budget
                  B = cb*goth00*( upthv(iup,i,j) - thv(i,j,k) )
 
-!                 Wn2 = f_thermal(i,j,k)**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
                  Wn2 = ( ( 1. - dzle*delta )/( 1./f_thermal(i,j,k) - 0.6*dzle*delta ) )**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
 
                  if ( Wn2 > 0. ) then
                     if ( B > 0. ) then
-!                       Mn     = upm(iup,i,j)/f_thermal(i,j,k)
-!                       E_work = max( 0., ( upm(iup,i,j)/f_thermal(i,j,k) - upm(iup,i,j) )/dzle )
-!                       D_work = 0.
                        Mn     = max( 0., upm(iup,i,j)*( 1./f_thermal(i,j,k) - 0.6*dzle*delta ) )
                        E_work = upm(iup,i,j)*max( 0., ( 1./f_thermal(i,j,k) - 1. )/dzle + 0.4*delta )
                        D_work = upm(iup,i,j)*delta
                     else
-!                       Mn     = rhoe(i,j,k-1)*upa(iup,i,j)*sqrt(Wn2)
-!                       E_work = max( 0., ( upm(iup,i,j)/f_thermal(i,j,k) - upm(iup,i,j) )/dzle )
-!                       D_work = max( 0., E_work - ( Mn - upm(iup,i,j) )/dzle )
-
                        Mn_test = max( 0., upm(iup,i,j)*( 1./f_thermal(i,j,k) - 0.6*dzle*delta ) )
                        if ( Mn_test/( rhoe(i,j,k-1)*sqrt(Wn2) ) > upa(iup,i,j) ) then
                           Mn = rhoe(i,j,k-1)*upa(iup,i,j)*sqrt(Wn2)
@@ -575,12 +554,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
                     Vn   = ( upm(iup,i,j)*upu(iup,i,j) + dzle*E_work*v(i,j,k) )/( Mn + dzle*D_work )
 
                     ! Condensation
-                    if ( test_flag == 0 ) then
-                       call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
-                    else
-                       QCn  = 0.
-                       THVn = THLn*( 1. + mapl_vireps*QTn )
-                    end if
+                    call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
                  end if
               end if
               
@@ -588,19 +562,11 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
               mfthvt_work = upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j)
               mft_work    = upa(iup,i,j)*upw(iup,i,j)
 
-              ! Determine stopping condition
-              stop_cond = Wn2 > 0.
-!              if ( plume_type == 0 ) then
-!                 stop_cond = Wn2 > 0.
-!              else
-!                 stop_cond = B > 0.
-!              end if
-
               ! Sample detrainment velocity
               wdet(i,j,k) = wdet(i,j,k) + upa(iup,i,j)*upw(iup,i,j)
 
               ! Update plume
-              if ( stop_cond ) then
+              if ( Wn2 > 0. ) then
                  upw(iup,i,j)   = sqrt(Wn2)
                  upthv(iup,i,j) = THVn
                  upthl(iup,i,j) = THLn
