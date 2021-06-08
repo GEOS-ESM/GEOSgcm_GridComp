@@ -908,13 +908,13 @@ contains
                        'US           ','VS           ',                                    &
                        'SPEED        ','DZ           ','PLE          ','W            ',    &
                        'PREF         ','TROPP_BLENDED','S            ','PLK          ',    &
-                       'PV           ','OMEGA        ','PKE          '/),                  &
+                       'PV           ','OMEGA        ','PKE          ','TV           '/),  &
          DST_NAME  = (/'U     ','V     ','TH    ','T     ',                                &
                        'ZLE   ','PS    ','TA    ','QA    ',                                &
                        'UA    ','VA    ',                                                  &
                        'SPEED ','DZ    ','PLE   ','W     ',                                &
                        'PREF  ','TROPP ','S     ','PLK   ',                                &
-                       'PV    ','OMEGA ','PKE   '/),                                       &
+                       'PV    ','OMEGA ','PKE   ','TV    '/),                              &
          DST_ID = PHYS,                                                                    &
          SRC_ID = SDYN,                                                                    &
          RC=STATUS  )
