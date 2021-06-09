@@ -16,6 +16,7 @@ module gw_drag_ncar
   use MAPL_ConstantsMod, only: MAPL_P00,  MAPL_CP, MAPL_GRAV, &
                                MAPL_RGAS, MAPL_VIREPS
 
+  use gw_rdg, only     : gw_rdg_ifc
   use gw_oro, only     : gw_oro_ifc
   use gw_convect, only : BeresSourceDesc, gw_beres_ifc
   use gw_common, only  : GWBand,gw_prof
@@ -61,17 +62,18 @@ contains
 !===============================================================================
 
 
-  subroutine gw_intr_ncar(pcols,      pver,         dt,         pgwv,              &
+  subroutine gw_intr_ncar(pcols,      pver,         dt,         nrdg,              &    
           beres_desc,   beres_band,   oro_band,                                    &
           pint_dev,     t_dev,        u_dev,        v_dev,      ht_dpc_dev,        &
-          sgh_dev,      pref_dev,                                                  & 
+          sgh_dev,      mxdis_dev,    hwdth_dev,    clngt_dev,  angll_dev,         &
+          anixy_dev,    gbxar_dev,    pref_dev,                                    & 
           pmid_dev,     pdel_dev,     rpdel_dev,    lnpint_dev, zm_dev,  rlat_dev, &
           dudt_gwd_dev, dvdt_gwd_dev, dtdt_gwd_dev,                                &
           dudt_org_dev, dvdt_org_dev, dtdt_org_dev,                                &
-          taugwdx_dev,  taugwdy_dev,  tauox_dev,    tauoy_dev,  feo_dev,           &
-          taubkgx_dev,  taubkgy_dev,  taubx_dev,    tauby_dev,  feb_dev,           &
-          fepo_dev,     fepb_dev,     utbsrc_dev,   vtbsrc_dev, ttbsrc_dev,        &
-          bgstressmax,  effgworo,     effgwbkg,     rc            )
+          dudt_rdg_dev, dvdt_rdg_dev, dtdt_rdg_dev,                                &
+          taugwdx_dev,  taugwdy_dev,  &
+          taubkgx_dev,  taubkgy_dev,  &
+          effgworo,     effgwbkg,     rc            )
 
 !-----------------------------------------------------------------------
 ! Interface for multiple gravity wave drag parameterization.
@@ -80,12 +82,13 @@ contains
 !------------------------------Arguments--------------------------------
     integer, intent(in   ) :: pcols                    ! number of columns
     integer, intent(in   ) :: pver                     ! number of vertical layers
+!++jtb 01/25/21
+    integer, intent(in   ) :: nrdg                     ! number of Ridges per gridbox
+!--jtb
     real,    intent(in   ) :: dt                       ! time step
-    integer, intent(in   ) :: pgwv                     ! number of waves allowed                (Default = 4, 0 nullifies)
     type(GWBand),          intent(inout) :: oro_band   ! Band descriptor
     type(GWBand),          intent(inout) :: beres_band ! Band descriptor
     type(BeresSourceDesc), intent(inout) :: beres_desc ! Table descriptor for Beres scheme
-    real,    intent(in   ) :: bgstressmax              ! Max of equatorial profile of BG stress factor
     real,    intent(in   ) :: effgwbkg                 ! tendency efficiency for background gwd (Default = 0.125)
     real,    intent(in   ) :: effgworo                 ! tendency efficiency for orographic gwd (Default = 0.125)
     real,    intent(in   ) :: pint_dev(pcols,pver+1)   ! pressure at the layer edges
@@ -94,6 +97,14 @@ contains
     real,    intent(in   ) :: v_dev(pcols,pver)        ! meridional wind at layers
     real,    intent(in   ) :: ht_dpc_dev(pcols,pver)   ! moist heating in layers
     real,    intent(in   ) :: sgh_dev(pcols)           ! standard deviation of orography
+!++jtb 01/25/21 New topo vars
+    real,    intent(in   ) :: mxdis_dev(pcols,nrdg)     ! obstacle/ridge height 
+    real,    intent(in   ) :: hwdth_dev(pcols,nrdg)     ! obstacle width
+    real,    intent(in   ) :: clngt_dev(pcols,nrdg)     ! obstacle along-crest length
+    real,    intent(in   ) :: angll_dev(pcols,nrdg)     ! obstacle orientation
+    real,    intent(in   ) :: anixy_dev(pcols,nrdg)     ! obstacle ansitropy param 
+    real,    intent(in   ) :: gbxar_dev(pcols)          ! duplicate grid box area
+!!--jtb
     real,    intent(in   ) :: pref_dev(pver+1)         ! reference pressure at the layeredges
     real,    intent(in   ) :: pmid_dev(pcols,pver)     ! pressure at the layers
     real,    intent(in   ) :: pdel_dev(pcols,pver)     ! pressure thickness at the layers
@@ -108,21 +119,13 @@ contains
     real,    intent(  out) :: dudt_org_dev(pcols,pver) ! zonal wind tendency at layer due to orography GWD
     real,    intent(  out) :: dvdt_org_dev(pcols,pver) ! meridional wind tendency at layer  due to orography GWD
     real,    intent(  out) :: dtdt_org_dev(pcols,pver) ! temperature tendency at layer  due to orography GWD
+    real,    intent(  out) :: dudt_rdg_dev(pcols,pver) ! zonal wind tendency at layer due to orography GWD
+    real,    intent(  out) :: dvdt_rdg_dev(pcols,pver) ! meridional wind tendency at layer  due to orography GWD
+    real,    intent(  out) :: dtdt_rdg_dev(pcols,pver) ! temperature tendency at layer  due to orography GWD
     real,    intent(  out) :: taugwdx_dev(pcols)       ! zonal      gravity wave surface    stress
     real,    intent(  out) :: taugwdy_dev(pcols)       ! meridional gravity wave surface    stress
-    real,    intent(  out) :: tauox_dev(pcols,pver+1)  ! zonal      orographic gravity wave stress
-    real,    intent(  out) :: tauoy_dev(pcols,pver+1)  ! meridional orographic gravity wave stress
-    real,    intent(  out) :: feo_dev  (pcols,pver+1)  ! energy flux of orographic gravity waves
-    real,    intent(  out) :: fepo_dev (pcols,pver+1)  ! pseudoenergy flux of orographic gravity waves
     real,    intent(  out) :: taubkgx_dev(pcols)       ! zonal      gravity wave background stress
     real,    intent(  out) :: taubkgy_dev(pcols)       ! meridional gravity wave background stress
-    real,    intent(  out) :: taubx_dev(pcols,pver+1)  ! zonal      background gravity wave stress
-    real,    intent(  out) :: tauby_dev(pcols,pver+1)  ! meridional background gravity wave stress
-    real,    intent(  out) :: feb_dev  (pcols,pver+1)  ! energy flux of background gravity waves
-    real,    intent(  out) :: fepb_dev (pcols,pver+1)  ! pseudoenergy flux of background gravity waves
-    real,    intent(  out) :: utbsrc_dev(pcols,pver)   ! dU/dt below background launch level
-    real,    intent(  out) :: vtbsrc_dev(pcols,pver)   ! dV/dt below background launch level
-    real,    intent(  out) :: ttbsrc_dev(pcols,pver)   ! dT/dt below background launch level
 
     integer, optional, intent(out) :: RC               ! return code
 
@@ -187,12 +190,10 @@ contains
 
     real(r8), allocatable    :: c  (:,:)    ! wave phase speeds
     real(r8), allocatable    :: tau(:,:,:)  ! wave Reynolds stress
-    real(r8), allocatable    :: gwut(:,:,:) ! wind speed tendency from each wave
 
 
     !!real(r8) ::  pint_dev_r8(pcols,pver+1) , pmid_dev_r8(pcols,pver) , t_dev_r8(pcols,pver) 
 
-    real(r8)  :: bgstressmax_ff              ! Max of equatorial profile of BG stress factor
     real(r8)  :: effgwbkg_ff                 ! tendency efficiency for background gwd (Default = 0.125)
     real(r8)  :: effgworo_ff                 ! tendency efficiency for orographic gwd (Default = 0.125)
     real(r8)  :: pint_dev_ff(pcols,pver+1)   ! pressure at the layer edges
@@ -222,8 +223,24 @@ contains
     real(r8)  :: v_gwt_ff(pcols,pver)        ! meridional tendency wind at layers
 
 
-    real(r8)  :: effgw_dp, dt_ff
+    real(r8)  :: effgw_dp, dt_ff, effgw_rdg, effgw_rdg_max, rdg_cd_llb
+    integer   :: pverp, pcnst
+    logical   :: trpd_leewv
+
+!++jtb 01/25/21 double precision copies of new topo vars
+    real(r8) :: mxdis_dev_ff(pcols,nrdg)     ! obstacle/ridge height 
+    real(r8) :: hwdth_dev_ff(pcols,nrdg)     ! obstacle width
+    real(r8) :: clngt_dev_ff(pcols,nrdg)     ! obstacle along-crest length
+    real(r8) :: angll_dev_ff(pcols,nrdg)     ! obstacle orientation
+    real(r8) :: anixy_dev_ff(pcols,nrdg)     ! obstacle ansitropy param 
+    real(r8) :: gbxar_dev_ff(pcols)          ! duplicate grid box area
+!!--jtb
+
 !-----------------------------------------------------------------------------
+
+! Misc dimensions needed by some NCAR codes
+  pverp=pver+1
+  pcnst=1
 
 ! Initialize accumulated tendencies
 ! and other things ...
@@ -254,21 +271,24 @@ contains
 
 ! Heating 
 !----------
-ht_dpc_dev_ff  =  ht_dpc_dev
+ ht_dpc_dev_ff  =  ht_dpc_dev
 
-! SGH
+! SGH and other topo
 !----------
-sgh_dev_ff  =  sgh_dev
+   sgh_dev_ff =   sgh_dev
+ mxdis_dev_ff = mxdis_dev   ! obstacle/ridge height 
+ hwdth_dev_ff = hwdth_dev   ! obstacle width
+ clngt_dev_ff = clngt_dev   ! obstacle along-crest length
+ angll_dev_ff = angll_dev   ! obstacle orientation
+ anixy_dev_ff = anixy_dev   ! obstacle ansitropy param 
+ gbxar_dev_ff = gbxar_dev   ! duplicate grid box area
+!
 
-
-call gw_prof (pcols , pver, pint_dev_ff , pmid_dev_ff , t_dev_ff , rhoi, nm, ni )
-
+   call gw_prof (pcols , pver, pint_dev_ff , pmid_dev_ff , t_dev_ff , rhoi, nm, ni )
 
    ! Allocate wavenumber fields.
    allocate(tau(pcols,-beres_band%ngwv:beres_band%ngwv,pver+1))
-   !!allocate(gwut(ncol,pver,-band%ngwv:band%ngwv))
    allocate(c(pcols,-beres_band%ngwv:beres_band%ngwv))
-
 
     zi(:,pver+1) = 0.0
     do k=2,pver 
@@ -276,12 +296,9 @@ call gw_prof (pcols , pver, pint_dev_ff , pmid_dev_ff , t_dev_ff , rhoi, nm, ni 
     end do
     zi(:,1) = zi(:,2) + 0.5*( zm_dev_ff(:,1) - zm_dev_ff(:,2)  )
 
-
-
-!get rid of lchnk
-    effgw_dp = 0.5_r8
+    effgwbkg_ff = effgwbkg
     call gw_beres_ifc( beres_band, &
-       pcols, pver, dt_ff , effgw_dp,  &
+       pcols, pver, dt_ff , effgwbkg_ff,  &
        u_dev_ff , v_dev_ff, t_dev_ff, &
        pref_dev_ff, pint_dev_ff, & 
        pdel_dev_ff , rpdel_dev_ff, lnpint_dev_ff, &
@@ -290,29 +307,51 @@ call gw_prof (pcols , pver, pint_dev_ff , pmid_dev_ff , t_dev_ff , rhoi, nm, ni 
        ht_dpc_dev_ff,beres_desc,rlat_dev_ff, &
        u_gwt_dc_ff, v_gwt_dc_ff, t_gwt_dc_ff, &
        flx_heat)
-
        u_gwt_ff = u_gwt_ff + u_gwt_dc_ff
        v_gwt_ff = v_gwt_ff + v_gwt_dc_ff
        t_gwt_ff = t_gwt_ff + t_gwt_dc_ff
 
-
-     effgworo_ff=0.125
-     call gw_oro_ifc( oro_band, &
-       pcols, pver, dt_ff , effgworo_ff,  &
-       u_dev_ff , v_dev_ff, t_dev_ff, &
-       pint_dev_ff, pmid_dev_ff, & 
-       pdel_dev_ff , rpdel_dev_ff, lnpint_dev_ff, &
-       zm_dev_ff, zi, &
-       nm, ni, rhoi, kvtt,  &
-       sgh_dev_ff   ,rlat_dev_ff, &
-       u_gwt_org_ff, v_gwt_org_ff, t_gwt_org_ff, &
-       flx_heat)
-
-
+     if (nrdg > 0) then
+       trpd_leewv    = .FALSE.
+       effgw_rdg     = effgworo
+       effgw_rdg_max = 1.0_r8
+       rdg_cd_llb    = 1.0_r8
+       call gw_rdg_ifc( &
+         pcols, pver, pverp, pcnst, nrdg, dt_ff, &
+         u_dev_ff , v_dev_ff, t_dev_ff, &
+         pint_dev_ff, pmid_dev_ff, &
+         pdel_dev_ff, rpdel_dev_ff, &
+         lnpint_dev_ff, zm_dev_ff, zi, &
+         ni, nm, rhoi, &
+         kvtt, &
+         effgw_rdg, effgw_rdg_max, &
+         hwdth_dev_ff, clngt_dev_ff, gbxar_dev_ff, &
+         mxdis_dev_ff, angll_dev_ff, anixy_dev_ff, &
+         rdg_cd_llb, trpd_leewv, &
+         flx_heat, &
+         u_gwt_org_ff, v_gwt_org_ff, t_gwt_org_ff )
+       dudt_rdg_dev(1:pcols,1:pver) = REAL( u_gwt_org_ff(1:pcols,1:pver))  !zonal wind tendency at layer due to orography GWD
+       dvdt_rdg_dev(1:pcols,1:pver) = REAL( v_gwt_org_ff(1:pcols,1:pver))  !meridional wind tendency at layer  due to orography GWD
+       dtdt_rdg_dev(1:pcols,1:pver) = REAL( t_gwt_org_ff(1:pcols,1:pver))  !temperature tendency at layer  due to orography GWD
        u_gwt_ff = u_gwt_ff + u_gwt_org_ff
        v_gwt_ff = v_gwt_ff + v_gwt_org_ff
        t_gwt_ff = t_gwt_ff + t_gwt_org_ff
-
+     else
+       effgworo_ff=effgworo
+       call gw_oro_ifc( oro_band, &
+         pcols, pver, dt_ff , effgworo_ff,  &
+         u_dev_ff , v_dev_ff, t_dev_ff, &
+         pint_dev_ff, pmid_dev_ff, &
+         pdel_dev_ff , rpdel_dev_ff, lnpint_dev_ff, &
+         zm_dev_ff, zi, &
+         nm, ni, rhoi, kvtt,  &
+         sgh_dev_ff   ,rlat_dev_ff, &
+         u_gwt_org_ff, v_gwt_org_ff, t_gwt_org_ff, &
+         flx_heat)
+       u_gwt_ff = u_gwt_ff + u_gwt_org_ff
+       v_gwt_ff = v_gwt_ff + v_gwt_org_ff
+       t_gwt_ff = t_gwt_ff + t_gwt_org_ff
+     endif
 
      dudt_gwd_dev(1:pcols,1:pver) = REAL( u_gwt_ff(1:pcols,1:pver))  !zonal wind tendency at layer 
      dvdt_gwd_dev(1:pcols,1:pver) = REAL( v_gwt_ff(1:pcols,1:pver))  !meridional wind tendency at layer 
@@ -321,24 +360,10 @@ call gw_prof (pcols , pver, pint_dev_ff , pmid_dev_ff , t_dev_ff , rhoi, nm, ni 
      dvdt_org_dev(1:pcols,1:pver) = REAL( v_gwt_org_ff(1:pcols,1:pver))  !meridional wind tendency at layer  due to orography GWD
      dtdt_org_dev(1:pcols,1:pver) = REAL( t_gwt_org_ff(1:pcols,1:pver))  !temperature tendency at layer  due to orography GWD
 
-
-
      taugwdx_dev(1:pcols)         = 0.0  !zonal      gravity wave surface    stress
      taugwdy_dev(1:pcols)         = 0.0  !meridional gravity wave surface    stress
-     tauox_dev(1:pcols,1:pver+1)  = 0.0  !zonal      orographic gravity wave stress
-     tauoy_dev(1:pcols,1:pver+1)  = 0.0  !meridional orographic gravity wave stress
-     feo_dev  (1:pcols,1:pver+1)  = 0.0  !energy flux of orographic gravity waves
-     fepo_dev (1:pcols,1:pver+1)  = 0.0  !pseudoenergy flux of orographic gravity waves
      taubkgx_dev(1:pcols)         = 0.0  !zonal      gravity wave background stress
      taubkgy_dev(1:pcols)         = 0.0  !meridional gravity wave background stress
-     taubx_dev(1:pcols,1:pver+1)  = 0.0  !zonal      background gravity wave stress
-     tauby_dev(1:pcols,1:pver+1)  = 0.0  !meridional background gravity wave stress
-     feb_dev  (1:pcols,1:pver+1)  = 0.0  !energy flux of background gravity waves
-     fepb_dev (1:pcols,1:pver+1)  = 0.0  !pseudoenergy flux of background gravity waves
-     utbsrc_dev(1:pcols,1:pver)   = 0.0  !dU/dt below background launch level
-     vtbsrc_dev(1:pcols,1:pver)   = 0.0  !dV/dt below background launch level
-     ttbsrc_dev(1:pcols,1:pver)   = 0.0  !dT/dt below background launch level
-
 
     return
   end subroutine gw_intr_ncar

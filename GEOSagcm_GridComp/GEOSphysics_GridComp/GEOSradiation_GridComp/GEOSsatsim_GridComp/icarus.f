@@ -449,7 +449,7 @@
               write (6,*) 'Input variable out of range'
               write (6,*) 'rangevec:'
               write (6,*) rangevec
-              flush(6)
+              call flush(6)
               STOP
         endif
       enddo

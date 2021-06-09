@@ -119,8 +119,8 @@ module LockEntrain
    REAL, ALLOCATABLE, DIMENSION(:,:  ), DEVICE :: FRLAND_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: T_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: QV_dev
-   REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: QLLS_dev
-   REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: QILS_dev
+   REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: QL_dev
+   REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: QI_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: U_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: V_dev
    REAL, ALLOCATABLE, DIMENSION(:,:,:), DEVICE :: ZFULL_dev
@@ -770,9 +770,12 @@ contains
 ! deep ones
             if ( zsml(i,j) .lt. 1600. ) then 
                wentr_tmp = wentr_tmp * ( zsml(i,j) / 800. )
+!               wentr_tmp = wentr_tmp * (0.5 + zsml(i,j)/1600.)
             else
                wentr_tmp = 2.*wentr_tmp
+!               wentr_tmp = 1.5*wentr_tmp
             endif
+
 !-----------------------------------------
 
 !!AMM106 !----------------------------------------
@@ -1232,7 +1235,7 @@ contains
 
 
       real     :: tep,z1,z2,t1,t2,qp,pp,qsp,dqp,dqsp,u1,v1,u2,v2,du
-      real     :: entfr,entrate_x,vscale
+      real     :: entfr,entrate_x,vscale,lts
       integer  :: k
 
 
@@ -1261,10 +1264,19 @@ contains
 ! tpfac scales up bstar by inv. ratio of
 ! heat-bubble area to stagnant area
 
-      tep  = tep * (1.+ tpfac * b_star(i,j)/MAPL_GRAV)
+      tep  = tep * (1.+ min(0.01,tpfac * b_star(i,j)/MAPL_GRAV) )
 !!  tep  = tep * (1.+ tpfac * b_star(i,j)*u_star(i,j)/MAPL_GRAV)
 
 !search for level where this is exceeded              
+
+      lts =  0.0
+      do k = nlev-1,2,-1
+         if (p(i,j,k).lt.70000.0) then
+           lts = t(i,j,k-1)*(1e5/p(i,j,k))**0.286
+           exit
+         end if
+      end do
+      lts = lts - t(i,j,nlev-1)*(1e5/p(i,j,nlev-1))**0.286
 
       t1   = t(i,j,nlev)
       v1   = v(i,j,nlev)
@@ -1299,8 +1311,10 @@ contains
 
          dqp   = max( qp - qsp, 0. )/(1.+(MAPL_ALHL/MAPL_CP)*dqsp )
          qp    = qp - dqp
-         tep   = tep  + pceff * MAPL_ALHL * dqp/MAPL_CP  ! "Precipitation efficiency" basically means fraction
-! of condensation heating that gets applied to parcel
+         tep = tep + (pceff + 0.5*(1.-pceff)*(1.+TANH(lts-18.)))*MAPL_ALHL * dqp/MAPL_CP
+!                           Set pceff to 1 where LTS is high
+!           tep   = tep  + pceff * MAPL_ALHL * dqp/MAPL_CP  ! "Precipitation efficiency" basically means fraction
+                                                            ! of condensation heating that gets applied to parcel
 
 
 ! If parcel temperature (tep) colder than env (t2)
@@ -1384,7 +1398,7 @@ contains
       svpar   = svp
       h1      = zf(i,j,toplev)
       t1      = t(toplev)
-      entrate = 0.2/200.
+      entrate = 1.0/1000.
 
       !search for level where parcel is warmer than env             
 

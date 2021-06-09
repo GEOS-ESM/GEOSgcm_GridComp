@@ -808,12 +808,16 @@ contains
     latdeg = rlat(i)*180./PI_GWD
 !
     if (-15.3 < latdeg .and. latdeg < 15.3) then
-!!AMM  flat_gw = 1.2*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
-!!AMM  if (flat_gw < 1.2 .and. abs(latdeg) <= 3.) flat_gw = 1.2
-!!AMM  flat_gw = 2.5*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
-!!AMM  if (flat_gw < 2.5 .and. abs(latdeg) <= 3.) flat_gw = 2.5
-       flat_gw = bgstressmax*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
-       if (flat_gw < bgstressmax .and. abs(latdeg) <= 3.) flat_gw = bgstressmax
+       if (bgstressmax == 0.0) then
+          flat_gw =  0.10
+       else
+!!AMM    flat_gw = 1.2*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
+!!AMM    if (flat_gw < 1.2 .and. abs(latdeg) <= 3.) flat_gw = 1.2
+!!AMM    flat_gw = 2.5*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
+!!AMM    if (flat_gw < 2.5 .and. abs(latdeg) <= 3.) flat_gw = 2.5
+         flat_gw = bgstressmax*dexp(-dble((abs(latdeg)-3.)/8.0)**2) 
+         if (flat_gw < bgstressmax .and. abs(latdeg) <= 3.) flat_gw = bgstressmax
+       end if
     else if (latdeg > -31. .and. latdeg <= -15.3) then
        flat_gw =  0.10
     else if (latdeg <  31. .and. latdeg >=  15.3) then

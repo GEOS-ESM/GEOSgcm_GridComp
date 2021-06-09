@@ -15,6 +15,7 @@ set (srcs
   ncar_gwd/gw_diffusion.F90
   ncar_gwd/gw_common.F90
   ncar_gwd/gw_convect.F90
+  ncar_gwd/gw_rdg.F90
   ncar_gwd/gw_oro.F90
   ncar_gwd/gw_drag.F90
   )
