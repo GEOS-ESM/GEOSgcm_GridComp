@@ -51,7 +51,6 @@ contains
       integer :: ib        ! spectral band index
 
       real    :: radice    ! cloud ice effective size (microns)
-      real    :: radliq    ! cloud liquid droplet radius (microns)
       real    :: abscoice  ! ice absorption coefficients
       real    :: abscoliq  ! liquid absorption coefficients
 
@@ -59,7 +58,9 @@ contains
       integer :: index
       real :: factor, fint
 
-      real, parameter :: cwpmin = 1.e-20   ! minimum value for cloud water path
+      ! tiny threshold value for cloud water path, at or below
+      ! which ice or liquid are treated as optically inactive.
+      real, parameter :: cwp_negligible = 1.e-20
 
 ! ------- Definitions -------
 
@@ -137,10 +138,6 @@ contains
       ! zero cloud optical thickness default
       taucmc = 0.
 
-! pmn make sure radius limits in GC are consistent with variable RE[ICE,LIQ]
-! pmn check extrapolation past end
-! pmn move some of limits into here where they should be for tables
-            
       ! Calculation of absorption coefficients due to ice clouds
       if (iceflag == 0) then
 
@@ -149,12 +146,11 @@ contains
                if (cloudy(ilay,icol)) then
 
                   ! 1 cloud band
-                  radice = reice(ilay,icol)
-                  abscoice = absice0(1) + absice0(2) / radice
+                  abscoice = absice0(1) + absice0(2) / reice(ilay,icol)
 
                   do ig = 1,ngptlw
                      if (cldfmc(ilay,ig,icol) > 0. &
-                        .and. ciwpmc(ilay,ig,icol) > cwpmin) then
+                        .and. ciwpmc(ilay,ig,icol) > cwp_negligible) then
 
                         taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
 
@@ -175,7 +171,7 @@ contains
 
                   do ig = 1,ngptlw
                      if (cldfmc(ilay,ig,icol) > 0. &
-                        .and. ciwpmc(ilay,ig,icol) > cwpmin) then
+                        .and. ciwpmc(ilay,ig,icol) > cwp_negligible) then
 
                         ! 5 cloud bands
                         ib = ice1b(ngb(ig))
@@ -196,15 +192,26 @@ contains
                if (cloudy(ilay,icol)) then
 
                   ! ice particle effective radius [5.0,131.0] um
-                  radice = reice(ilay,icol)
-                  factor = (radice - 2.)/3. 
+                  factor = (reice(ilay,icol) - 2.)/3. 
                   index = int(factor)
-                  if (index == 43) index = 42
+                  if (index >= 43) then
+                     if (index == 43) then 
+                        index = 42
+                     else
+                        error stop 'cldprmc: iceflag 2: excessive high-radius extrapolation forbidden!'
+                     end if
+                  else if (index <= 0) then
+                     if (index == 0) then 
+                        index = 1
+                     else
+                        error stop 'cldprmc: iceflag 2: excessive low-radius extrapolation forbidden!'
+                     end if
+                  end if
                   fint = factor - float(index)
 
                   do ig = 1,ngptlw
                      if (cldfmc(ilay,ig,icol) > 0. &
-                        .and. ciwpmc(ilay,ig,icol) > cwpmin) then
+                        .and. ciwpmc(ilay,ig,icol) > cwp_negligible) then
 
                         ! 16 cloud bands
                         ib = ngb(ig)
@@ -227,15 +234,26 @@ contains
                if (cloudy(ilay,icol)) then
 
                   ! ice particle generalized effective size [5.0,140.0] um
-                  radice = reice(ilay,icol)
-                  factor = (radice - 2.)/3. 
+                  factor = (reice(ilay,icol) - 2.)/3. 
                   index = int(factor)
-                  if (index == 46) index = 45
+                  if (index >= 46) then
+                     if (index == 46) then 
+                        index = 45
+                     else
+                        error stop 'cldprmc: iceflag 3: excessive high-radius extrapolation forbidden!'
+                     end if
+                  else if (index <= 0) then
+                     if (index == 0) then 
+                        index = 1
+                     else
+                        error stop 'cldprmc: iceflag 3: excessive low-radius extrapolation forbidden!'
+                     end if
+                  end if
                   fint = factor - float(index)
 
                   do ig = 1,ngptlw
                      if (cldfmc(ilay,ig,icol) > 0. &
-                        .and. ciwpmc(ilay,ig,icol) > cwpmin) then
+                        .and. ciwpmc(ilay,ig,icol) > cwp_negligible) then
 
                         ! 16 cloud bands
                         ib = ngb(ig)
@@ -258,14 +276,26 @@ contains
                if (cloudy(ilay,icol)) then
 
                   ! ice particle effective diameter [1.0,200.0] um
-                  radice = reice(ilay,icol)
-                  factor = radice
+                  factor = reice(ilay,icol)
                   index = int(factor)
+                  if (index >= 200) then
+                     if (index == 200) then 
+                        index = 199
+                     else
+                        error stop 'cldprmc: iceflag 4: excessive high-radius extrapolation forbidden!'
+                     end if
+                  else if (index <= 0) then
+                     if (index == 0) then 
+                        index = 1
+                     else
+                        error stop 'cldprmc: iceflag 4: excessive low-radius extrapolation forbidden!'
+                     end if
+                  end if
                   fint = factor - float(index)
 
                   do ig = 1,ngptlw
                      if (cldfmc(ilay,ig,icol) > 0. &
-                        .and. ciwpmc(ilay,ig,icol) > cwpmin) then
+                        .and. ciwpmc(ilay,ig,icol) > cwp_negligible) then
 
                         ! 16 cloud bands
                         ib = ngb(ig)
@@ -293,15 +323,26 @@ contains
                if (cloudy(ilay,icol)) then
 
                   ! liquid effective radius [2.5,60.0] um
-                  radliq = reliq(ilay,icol)
-                  index = int(radliq - 1.5)
-                  if (index == 0) index = 1
-                  if (index == 58) index = 57
-                  fint = radliq - 1.5  - float(index)
+                  factor = reliq(ilay,icol) - 1.5
+                  index = int(factor)
+                  if (index >= 58) then
+                     if (index == 58) then 
+                        index = 57
+                     else
+                        error stop 'cldprmc: liqflag 1: excessive high-radius extrapolation forbidden!'
+                     end if
+                  else if (index <= 0) then
+                     if (index == 0) then 
+                        index = 1
+                     else
+                        error stop 'cldprmc: liqflag 1: excessive low-radius extrapolation forbidden!'
+                     end if
+                  end if
+                  fint = factor - float(index)
 
                   do ig = 1,ngptlw
                      if (cldfmc(ilay,ig,icol) > 0. &
-                           .and. clwpmc(ilay,ig,icol) > cwpmin) then
+                           .and. clwpmc(ilay,ig,icol) > cwp_negligible) then
 
                         ! 16 cloud bands
                         ib = ngb(ig)
@@ -321,6 +362,25 @@ contains
       else
          error stop 'cldprmc: invalid liqflag'
       endif
+
+      ! refine cloudy flag (for greater speed in rtrnmc) so that
+      ! flags gridbox if OPTICALLY cloudy for any g-point. Issue
+      ! is that cloudy() layers defined above may still not have
+      ! any OPTICALLY significantly cloud (all taucmc may be zero),
+      ! in which case they should be reclassed to .not.cloudy().
+      do icol = 1,ncol
+         layer: do ilay = 1,nlay
+            if (cloudy(ilay,icol)) then 
+               do ig = 1,ngptlw
+                  ! if at least one g-point is optically cloudy
+                  !    then layer remains cloudy
+                  if (taucmc(ilay,ig,icol) > 0.) cycle layer
+               end do
+               ! no optically cloudy g-points so reclassed not cloudy
+               cloudy(ilay,icol) = .false. 
+            end if
+         end do layer
+      end do
 
    end subroutine cldprmc
 

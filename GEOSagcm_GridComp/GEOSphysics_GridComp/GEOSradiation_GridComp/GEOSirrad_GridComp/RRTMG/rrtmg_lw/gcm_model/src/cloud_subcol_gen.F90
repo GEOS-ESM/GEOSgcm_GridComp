@@ -226,10 +226,6 @@ contains
 
                   cldf_stoch(ilay,isubcol,icol) = 1. 
 
-                  ! condensate is horizontally homogeneous by default
-                  ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol)
-                  clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol)
-          
                   ! horizontal condensate variability if requested
                   if (cond_inhomo) then  
 
@@ -247,6 +243,12 @@ contains
                      ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol) * zcw
                      clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol) * zcw
                   
+                  else
+
+                     ! condensate is horizontally homogeneous
+                     ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol)
+                     clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol)
+          
                   end if
 
                else
