@@ -19,8 +19,8 @@ module GEOS_TurbulenceGridCompMod
   use MAPL
   use LockEntrain
   use shoc
-  use mynn, only : run_mynn, implicit_M, mynn_predict_correct, B1, B2
-  use edmf_mod, only : run_edmf, A_star_closure
+  use mynn, only : run_mynn, implicit_M, B1, B2
+  use edmf_mod, only : run_edmf
   use MAPL_SatVaporMod, only: MAPL_EQsat
 
 #ifdef _CUDA
@@ -3784,8 +3784,6 @@ contains
      ! EDMF parameters
      integer :: EDMF_SCHEME          ! 0:    Kay's EDMF scheme
                                      ! else: Dave's refactoring of Kay's scheme
-     integer :: EDMF_KBOTP           ! 0:    initialize updrafts at surface
-                                     ! k:    initialize k levels above surface
      integer :: EDMF_IMPLICIT        ! 0:    explicit discretization of mass flux terms
                                      ! else: implicit "              "  "    "    "
      integer :: EDMF_STOCHASTIC      ! 0:    stochastic entrainment
@@ -4454,7 +4452,6 @@ contains
     call MAPL_GetResource (MAPL, EDMF_DEBUG,           "EDMF_DEBUG:",           default=0,  RC=STATUS)
 
     call MAPL_GetResource (MAPL, EntWFac,              "EDMF_ENTWFAC:",         default=0.3333, RC=STATUS)
-    call MAPL_GetResource (MAPL, EDMF_KBOTP,           "EDMF_KBOTP:",           default=0,  RC=STATUS)  
 
     call MAPL_GetResource (MAPL, c_kh_mf,              "EDMF_c_kh_mf:",         default=0.,     RC=STATUS)
 
@@ -4536,7 +4533,7 @@ if ( ET == 1 ) then
 #endif
                  EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
     else
-       call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp, &                    ! in
+       call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, &                ! in
                      edmf_thermal_plume, edmf_test, edmf_debug, &                    ! in
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                        ! in
@@ -4599,7 +4596,7 @@ if ( ET == 1 ) then
 #endif
                  EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
     else
-       call run_edmf(IM, JM, LM, 1, iras, jras, edmf_kbotp, &                        ! in
+       call run_edmf(IM, JM, LM, 1, iras, jras, &                                    ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, &                ! in
                      edmf_thermal_plume, edmf_test, edmf_debug, &                    ! in
                      th00, dt, z, zle, ple, rho, rhoe, exf, &                        ! in
@@ -4673,10 +4670,10 @@ if ( ET == 1 ) then
 #endif
                  EDMF_DISCRETE, EDMF_IMPLICIT, EDMF_STOCHASTIC)
     else
-       call run_edmf(IM, JM, LM, numup, iras, jras, edmf_kbotp,&                     ! in
+       call run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
                      edmf_discrete, edmf_implicit, edmf_stochastic, &                ! in
                      edmf_thermal_plume, edmf_test, edmf_debug, &                    ! in
-                     th00, dt, z, zle, ple, rho, rhoe, exf, &                             ! in
+                     th00, dt, z, zle, ple, rho, rhoe, exf, &                        ! in
                      u, v, thl, qt, q, ql, qi, thv, &                                ! in
                      ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in 

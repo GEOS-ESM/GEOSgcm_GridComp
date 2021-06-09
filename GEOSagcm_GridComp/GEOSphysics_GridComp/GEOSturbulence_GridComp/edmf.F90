@@ -21,7 +21,7 @@ contains
 !
 ! edmf
 !
-subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                         ! in
+subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                                ! in
                     discrete_type, implicit_flag, stochastic_flag, &                ! in
                     plume_type, test_flag, debug_flag, &                            ! in
                     th00, dt, zl, zle, ple, rho, rhoe, exf, &                       ! in
@@ -54,7 +54,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   
   ! Inputs
   integer, intent(in)                     :: IM, JM, LM, numup, discrete_type, implicit_flag, &
-                                             stochastic_flag, plume_type, ET, kbotp, test_flag, debug_flag
+                                             stochastic_flag, plume_type, ET, test_flag, debug_flag
   integer, dimension(IM,JM), intent(in)   :: iras, jras
   real, dimension(IM,JM,LM), intent(in)   :: u, v, thl, qt, thv, qv, ql, qi, zl, exf, rho
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe, ui, vi, thli, qti, qvi, qli, qii, thvi
@@ -111,7 +111,11 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, kbotp, &                     
   real                      :: E_work, D_work
   real, dimension(IM,JM,LM) :: f_thermal, ent_sl
 
-  kbot = LM - kbotp
+  if ( plume_type == 0 ) then
+     kbot = LM
+  else
+     kbot = LM - 1
+  end if
 
   goth00 = mapl_grav/th00
 
