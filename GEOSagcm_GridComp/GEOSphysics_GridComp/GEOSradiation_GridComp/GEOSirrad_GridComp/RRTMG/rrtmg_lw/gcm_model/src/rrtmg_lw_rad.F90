@@ -480,11 +480,11 @@ contains
       real :: pfracs (nlay,ngptlw,pncol)  ! Planck fractions
 
       ! mcica generated clouds
-      real :: cldfmc (nlay,ngptlw,pncol)  ! cloud fraction
-      real :: ciwpmc (nlay,ngptlw,pncol)  ! cloud ice water path [g/m2]
-      real :: clwpmc (nlay,ngptlw,pncol)  ! cloud liq water path [g/m2]
-      real :: taucmc (nlay,ngptlw,pncol)  ! cloud optical depth
-      integer :: p_clearCounts (4,pncol)  ! for super-band cld fractions
+      logical :: cldymc (nlay,ngptlw,pncol)  ! cloudy or not?
+      real    :: ciwpmc (nlay,ngptlw,pncol)  ! cloud ice water path [g/m2]
+      real    :: clwpmc (nlay,ngptlw,pncol)  ! cloud liq water path [g/m2]
+      real    :: taucmc (nlay,ngptlw,pncol)  ! cloud optical depth
+      integer :: p_clearCounts (4,pncol)     ! for super-band cld fractions
 
       ! cloudy for ANY subcol/gpoint of column?
       logical :: cloudy (nlay,pncol)
@@ -551,12 +551,12 @@ contains
          pncol, ngptlw, nlay, &
          p_zm, p_alat, dyofyr, &
          p_play, p_cldf, p_ciwp, p_clwp, &
-         cldfmc, ciwpmc, clwpmc)
+         cldymc, ciwpmc, clwpmc)
 
       ! for super-band cloud fractions
 
       call clearCounts_threeBand( &
-         pncol, ngptlw, nlay, cloudLM, cloudMH, cldfmc, &
+         pncol, ngptlw, nlay, cloudLM, cloudMH, cldymc, &
          p_clearCounts)
       do n = 1,4
          clearCounts (colstart:(colstart+pncol-1),n) = p_clearCounts(n,:)
@@ -565,7 +565,7 @@ contains
       ! cloud physical to physical properties
 
       call cldprmc (pncol, nlay, &
-        cldfmc, ciwpmc, clwpmc, p_rei, p_rel, &
+        cldymc, ciwpmc, clwpmc, p_rei, p_rel, &
         iceflglw, liqflglw, taucmc, cloudy)
 
       ! Calculate information needed by the radiative transfer routine
@@ -586,7 +586,7 @@ contains
       ! Call the radiative transfer routine
 
       call rtrnmc (pncol, nlay, dudTs, &
-         p_emis, taug, pfracs, cloudy, cldfmc, taucmc, &
+         p_emis, taug, pfracs, cloudy, taucmc, &
          totuflux, totdflux, totuclfl, totdclfl, &
          dtotuflux_dTs, dtotuclfl_dTs, &
          band_output, p_olrb, p_dolrb_dTs)

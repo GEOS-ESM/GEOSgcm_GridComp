@@ -25,7 +25,7 @@ contains
 
    !-----------------------------------------------------
    subroutine rtrnmc (ncol, nlay, dudTs, &
-      semiss, taug, pfracs, cloudy, cldfmc, taucmc, &
+      semiss, taug, pfracs, cloudy, taucmc, &
       totuflux, totdflux, totuclfl, totdclfl, &
       dtotuflux_dTs, dtotuclfl_dTs, &
       band_output, olrb, dolrb_dTs)
@@ -52,6 +52,11 @@ contains
    !  ative of upward flux respect to surface temperature using the
    !  pre-tabulated derivative of the Planck function with respect 
    !  to temperature integrated over each spectral band.
+   ! 
+   !  PMN 2021/06 This version depends explicity on binary subcolumn
+   !  clouds i.e., cldfmc in {0,1}. Thus, no clear / cloudy portion
+   !  breakdown is needed and the optical cloudiness of a subcolumn
+   !  / g-point gridcell is totally specified by taucmc = 0. or > 0.
    !-------------------------------------------------------
 
       integer, intent(in) :: ncol   ! number of columns
@@ -62,7 +67,6 @@ contains
       real,    intent(in) :: taug    (nlay,ngptlw,ncol)  ! gas optical depth
       real,    intent(in) :: pfracs  (nlay,ngptlw,ncol)  ! Planck fractions
       logical, intent(in) :: cloudy  (nlay,       ncol)  ! cloudy for ANY g-point
-      real,    intent(in) :: cldfmc  (nlay,ngptlw,ncol)  ! cloud fraction
       real,    intent(in) :: taucmc  (nlay,ngptlw,ncol)  ! cloud optical thickness
      
       ! spectrally summed fluxes and upward flux derivatives wrt Tsurf
@@ -83,19 +87,16 @@ contains
       ! ----- Local -----
    
       real :: agas(nlay)    ! gas absorptivity
-      real :: atot(nlay)    ! gas and cloud absorptivity
+      real :: atot(nlay)    ! mixed gas plus cloud absorptivity
       real :: bbugas(nlay)  ! gas Planck function for upward rt
-      real :: bbutot(nlay)  ! gas and cloud Planck function for upward calc.
+      real :: bbutot(nlay)  ! gas and cloud Planck function for upward rt
      
       real :: secdiff    ! diffusivity angle
       real :: odepth     ! gas optical depth
-      real :: odclds     ! cloud optical depth
-      real :: absclds    ! cloud absorption
-      real :: efclfracs  ! effective cloud fraction
+      real :: odcld      ! cloud optical depth
       real :: odtot      ! optical depth of gas and cloud
       real :: tfacgas    ! gas pade factor, used for planck fn
       real :: tfactot    ! gas and cloud pade factor, used for planck fn
-      real :: tausfac    ! general pade factor, used for planck fn
       real :: bbdgas     ! gas planck function for downward rt
       real :: gassrc     ! source radiance due to gas only
       real :: bbdtot     ! gas and cloud planck function for downward rt
@@ -248,11 +249,9 @@ contains
             bbdgas      = plfrac * (blay + tfacgas * dplankdn)
             bbugas(lev) = plfrac * (blay + tfacgas * dplankup)
 
-            ! Update of downward LW, radld, through a layer
-            ! of transmissivity T:
-            !   radld -> radld * T + bbd * (1-T)
-            !         -> radld + (bbd - radld) * (1-T)
-            ! where bbd is effective Planck func for layer.
+            ! Update of LW, rad, through a layer of transmissivity T:
+            !   rad -> rad * T + bbd * (1-T) = rad + (bbd - rad) * A
+            ! where bbd is effective Planck func and A = 1-T.
 
             if (taucmc(lev,ig,icol) <= 0.) then
 
@@ -261,18 +260,17 @@ contains
 
             else
 
-               ! through a cloudy layer, so gas plus cloud ...
+               ! through a cloudy layer, so mixed gas plus cloud ...
+               ! REMEMBER: binary clouds, no clear/cloudy portion
 
-               odclds = secdiff * taucmc(lev,ig,icol)
-               absclds = 1. - exp(-odclds)
-               efclfracs = absclds * cldfmc(lev,ig,icol)
+               odcld = secdiff * taucmc(lev,ig,icol)
 
                ! since cloud optical depth must be added in, we should
                ! add it to the *discretized* gas optical depth, since
                ! the latter is what is actually used to generate the
                ! exp_tbl and tfn_tbl table values above.
                odepth = tau_tbl(itgas)
-               odtot = odepth + odclds
+               odtot = odepth + odcld
 
                tblind = odtot / (bpade + odtot)
                ittot = tblint * tblind + 0.5 
@@ -281,29 +279,7 @@ contains
                bbdtot      = plfrac * (blay + tfactot * dplankdn)
                bbutot(lev) = plfrac * (blay + tfactot * dplankup)
 
-               ! A mixed gas and cloud layer:
-               ! If f is cloud fraction, then effective
-               ! layer absorbtivity is
-               !   alayer = (1-f) * agas + f * aboth
-               ! where
-               !   aboth = 1 - Tboth = 1 - Tgas * Tcld
-               !     = 1 - (1-agas) * (1-acld)
-               !     = agas + acld - agas * acld,
-               ! so
-               !   alayer = agas + f * acld * (1-agas)
-               !          = agas + efclfracs * (1-agas),
-               ! hence attenuation term, -radld * alayer, below.
-               !   For source terms,
-               ! slayer = f * bbdtot * atot + (1-f) * bbdgas * agas
-               !        = f * bbdtot * atot + (1-f) * gassrc
-               !        = gassrc + f * (bbdtot * atot - gassrc),
-               ! as below.
-
-               gassrc = agas(lev) * bbdgas
-               radld = radld - radld * (agas(lev) + &
-                  efclfracs * (1. - agas(lev))) + &
-                  gassrc + cldfmc(lev,ig,icol) * &
-                  (bbdtot * atot(lev) - gassrc)
+               radld = radld + (bbdtot - radld) * atot(lev)
 
             endif
 
@@ -322,7 +298,7 @@ contains
                if (cloudy(lev,icol)) down_streams_diverge = .true.
             end if
             if (down_streams_diverge) then
-               radclrd = radclrd + (bbdgas-radclrd) * agas(lev) 
+               radclrd = radclrd + (bbdgas - radclrd) * agas(lev) 
             else
                radclrd = radld
             endif
@@ -363,32 +339,13 @@ contains
 
                ! clear subcolumn layer
                radlu = radlu + (bbugas(lev) - radlu) * agas(lev)
-               if (dudTs) d_radlu_dTs = d_radlu_dTs * (1. - agas(lev))
+               if (dudTs) d_radlu_dTs = d_radlu_dTs - d_radlu_dTs * agas(lev)
 
             else
 
                ! cloudy subcolumn layer
-               odclds = secdiff * taucmc(lev,ig,icol)
-               absclds = 1. - exp(-odclds)
-               efclfracs = absclds * cldfmc(lev,ig,icol)
-
-! pmn: can we eliminate some repeated calcs from down loop? at least for clds?
-
-               gassrc = bbugas(lev) * agas(lev)
-               radlu = radlu - radlu * (agas(lev) + &
-                   efclfracs * (1. - agas(lev))) + &
-                   gassrc + cldfmc(lev,ig,icol) * &
-                   (bbutot(lev) * atot(lev) - gassrc)
-
-               if (dudTs) then
-                  d_radlu_dTs = d_radlu_dTs *       cldfmc(lev,ig,icol)  * (1. - atot(lev)) + &
-                                d_radlu_dTs * (1. - cldfmc(lev,ig,icol)) * (1. - agas(lev))
-! pmn: -----
-! pmn: make above more efficient
-! pmn: this makes sense as the sum of the transmitted sensitivities for the cloudy
-! pmn: and clear portions, but why use atot here vs. aboth for the non-derivative?
-! pmn: -----
-               endif
+               radlu = radlu + (bbutot(lev) - radlu) * atot(lev)
+               if (dudTs) d_radlu_dTs = d_radlu_dTs - d_radlu_dTs * atot(lev)
 
             endif
 
@@ -410,7 +367,7 @@ contains
 
             if (dudTs) then
                if (down_streams_diverge) then
-                  d_radclru_dTs = d_radclru_dTs * (1. - agas(lev))
+                  d_radclru_dTs = d_radclru_dTs - d_radclru_dTs * agas(lev)
                else
                   d_radclru_dTs = d_radlu_dTs
                endif

@@ -14,6 +14,10 @@ module cloud_subcol_gen
 ! Input gridcolumn cloud profiles: cloud fraction and in-cloud ice and liquid
 ! water paths. Output will be stochastic subcolumn arrays of these variables.
 
+! PMN 2021/06: This version makes the binary (cldf_stoch in {0,1}) nature of 
+! cloud output explicit by changing to a logical cldy_stoch in {true,false}, 
+! which may permit some exterior efficiency improvements.
+
 ! --------- Module variables ----------
 
    use cloud_condensate_inhomogeneity, only: &
@@ -23,8 +27,16 @@ module cloud_subcol_gen
    implicit none
    private
 
+   ! tiny threshold value for cloud water path, at or below which each of
+   ! ice and liquid water parths are separately reset to zero. If both are
+   ! thus reset, then the subcolumn gridcell is reset to .not.cloudy. The
+   ! idea here is mainly efficiency, since external processing of cloudy
+   ! cells usually takes longer.
+   real, parameter :: cwp_tiny = 1.e-20
+
    public :: generate_stochastic_clouds 
    public :: clearCounts_threeBand
+   public :: cwp_tiny
 
 contains
 
@@ -33,7 +45,7 @@ contains
                  ncol, nsubcol, nlay, &
                  zmid, alat, doy, &
                  play, cldfrac, ciwp, clwp, &
-                 cldf_stoch, ciwp_stoch, clwp_stoch)
+                 cldy_stoch, ciwp_stoch, clwp_stoch)
 !----------------------------------------------------------------------------------------
 !
 ! Original code: Based on Raisanen et al., QJRMS, 2004.
@@ -76,7 +88,7 @@ contains
       real,    intent(in) :: clwp    (nlay,ncol)  ! in-cld liquid water path
 
       ! output subcolumns
-      real,    intent(out) :: cldf_stoch (nlay,nsubcol,ncol)  ! cloud fraction 
+      logical, intent(out) :: cldy_stoch (nlay,nsubcol,ncol)  ! cloudy or not?
       real,    intent(out) :: ciwp_stoch (nlay,nsubcol,ncol)  ! in-cloud ice water path
       real,    intent(out) :: clwp_stoch (nlay,nsubcol,ncol)  ! in-cloud liq water path
    
@@ -105,7 +117,7 @@ contains
 
       ! other locals
       real :: cfs, zcw, sigma_qcw
-      logical :: cond_inhomo
+      logical :: cond_inhomo, ciwp_negligible, clwp_negligible
      
       ! indices
       integer :: icol, isubcol, ilay
@@ -224,7 +236,7 @@ contains
                ! if a cloudy subcolumn
                if (cdf1(ilay) >= 1. - cfs) then
 
-                  cldf_stoch(ilay,isubcol,icol) = 1. 
+                  cldy_stoch(ilay,isubcol,icol) = .true. 
 
                   ! horizontal condensate variability if requested
                   if (cond_inhomo) then  
@@ -251,10 +263,20 @@ contains
           
                   end if
 
+                  ! reset negligible water paths to zero (see comment in introduction)
+                  ciwp_negligible = (ciwp_stoch(ilay,isubcol,icol) <= cwp_tiny)
+                  if (ciwp_negligible) ciwp_stoch(ilay,isubcol,icol) = 0.
+                  clwp_negligible = (clwp_stoch(ilay,isubcol,icol) <= cwp_tiny)
+                  if (clwp_negligible) clwp_stoch(ilay,isubcol,icol) = 0.
+
+                  ! reset cloudy status if both negligible
+                  if (ciwp_negligible .and. clwp_negligible) &
+                     cldy_stoch(ilay,isubcol,icol) = .false.
+
                else
 
                   ! a clear subcolumn
-                  cldf_stoch(ilay,isubcol,icol) = 0. 
+                  cldy_stoch(ilay,isubcol,icol) = .false. 
                   ciwp_stoch(ilay,isubcol,icol) = 0. 
                   clwp_stoch(ilay,isubcol,icol) = 0. 
 
@@ -303,7 +325,7 @@ contains
 
 ! ------------------------------------------------------------------------------------
    subroutine clearCounts_threeBand( &
-                 ncol, nsubcol, nlay, cloudLM, cloudMH, cldf_stoch, &
+                 ncol, nsubcol, nlay, cloudLM, cloudMH, cldy_stoch, &
                  clearCnts)
 ! ------------------------------------------------------------------------------------
 ! count clear subcolumns per gridcolumn for whole column and three pressure bands
@@ -317,7 +339,7 @@ contains
       integer, intent(in)  :: nlay               ! number of layers
       integer, intent(in)  :: cloudLM, cloudMH   ! layer indices as above
 
-      real,    intent(in)  :: cldf_stoch(nlay,nsubcol,ncol)  ! cloud fraction
+      logical, intent(in)  :: cldy_stoch(nlay,nsubcol,ncol)  ! cloudy or not?
 
       integer, intent(out) :: clearCnts(4,ncol)  ! counts of clear subcolumns
                                                  ! (1,) whole column
@@ -331,16 +353,14 @@ contains
 
       ! zero counters
       clearCnts = 0
-! pmn reorder first index for better LOCALITY in layers?
  
       do icol = 1,ncol
          do isubcol = 1,nsubcol
 
             ! whole subcolumn
-            ! remember cldf_stoch in {0,1}
             cloud_found = .false.
             do ilay = 1, nlay
-               if (cldf_stoch(ilay,isubcol,icol) > 0.) then 
+               if (cldy_stoch(ilay,isubcol,icol)) then 
                   cloud_found = .true.
                   exit
                end if
@@ -351,7 +371,7 @@ contains
             ! high pressure band
             cloud_found = .false.
             do ilay = cloudMH+1, nlay
-               if (cldf_stoch(ilay,isubcol,icol) > 0.) then 
+               if (cldy_stoch(ilay,isubcol,icol)) then 
                   cloud_found = .true.
                   exit
                end if
@@ -362,7 +382,7 @@ contains
             ! mid pressure band
             cloud_found = .false.
             do ilay = cloudLM+1, cloudMH
-               if (cldf_stoch(ilay,isubcol,icol) > 0.) then 
+               if (cldy_stoch(ilay,isubcol,icol)) then 
                   cloud_found = .true.
                   exit
                end if
@@ -373,7 +393,7 @@ contains
             ! low pressure band
             cloud_found = .false.
             do ilay = 1, cloudLM
-               if (cldf_stoch(ilay,isubcol,icol) > 0.) then 
+               if (cldy_stoch(ilay,isubcol,icol)) then 
                   cloud_found = .true.
                   exit
                end if

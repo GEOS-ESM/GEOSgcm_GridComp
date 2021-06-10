@@ -22,7 +22,7 @@ contains
 	  
    ! ------------------------------------------------------------------------------
    subroutine cldprmc (ncol, nlay, &
-                      cldfmc, ciwpmc, clwpmc, reice, reliq, &
+                      cldymc, ciwpmc, clwpmc, reice, reliq, &
                       iceflag, liqflag, taucmc, cloudy)
    ! ------------------------------------------------------------------------------
    ! Compute the cloud optical depths for each cloudy layer
@@ -31,9 +31,9 @@ contains
       integer, intent(in) :: ncol  ! number of columns
       integer, intent(in) :: nlay  ! number of layers
       
-      real,    intent(in) :: cldfmc (nlay,ngptlw,ncol)    ! cloud fraction [mcica]
-      real,    intent(in) :: ciwpmc (nlay,ngptlw,ncol)    ! in-cloud ice water path [mcica]
-      real,    intent(in) :: clwpmc (nlay,ngptlw,ncol)    ! in-cloud liq water path [mcica]
+      logical, intent(in) :: cldymc (nlay,ngptlw,ncol)    ! cloudy or not? [mcica]
+      real,    intent(in) :: ciwpmc (nlay,ngptlw,ncol)    ! ice water path [mcica]
+      real,    intent(in) :: clwpmc (nlay,ngptlw,ncol)    ! liq water path [mcica]
 
       real,    intent(in) :: reice (nlay,ncol)            ! ice crystal effective size [um]
       real,    intent(in) :: reliq (nlay,ncol)            ! liq droplet effective radius [um]
@@ -57,10 +57,6 @@ contains
       ! table lookup parameters
       integer :: index
       real :: factor, fint
-
-      ! tiny threshold value for cloud water path, at or below
-      ! which ice or liquid are treated as optically inactive.
-      real, parameter :: cwp_negligible = 1.e-20
 
 ! ------- Definitions -------
 
@@ -127,10 +123,10 @@ contains
       do icol = 1,ncol
          do ilay = 1,nlay
             do ig = 1,ngptlw
-               if (cldfmc(ilay,ig,icol) > 0.) then
+               if (cldymc(ilay,ig,icol)) then
                   cloudy(ilay,icol) = .true.
                   exit
-               endif
+               end if
             end do
          end do
       end do
@@ -149,11 +145,10 @@ contains
                   abscoice = absice0(1) + absice0(2) / reice(ilay,icol)
 
                   do ig = 1,ngptlw
-                     if (cldfmc(ilay,ig,icol) > 0. &
-                        .and. ciwpmc(ilay,ig,icol) > cwp_negligible) then
-
-                        taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
-
+                     if (cldymc(ilay,ig,icol)) then
+                        if (ciwpmc(ilay,ig,icol) > 0.) then
+                           taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
+                        end if
                      end if
                   end do  ! g-point
 
@@ -170,15 +165,16 @@ contains
                   radice = reice(ilay,icol)
 
                   do ig = 1,ngptlw
-                     if (cldfmc(ilay,ig,icol) > 0. &
-                        .and. ciwpmc(ilay,ig,icol) > cwp_negligible) then
+                     if (cldymc(ilay,ig,icol)) then
+                        if (ciwpmc(ilay,ig,icol) > 0.) then
 
-                        ! 5 cloud bands
-                        ib = ice1b(ngb(ig))
-                        abscoice = absice1(1,ib) + absice1(2,ib) / radice
-                        taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
+                           ! 5 cloud bands
+                           ib = ice1b(ngb(ig))
+                           abscoice = absice1(1,ib) + absice1(2,ib) / radice
+                           taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
 
-                     endif
+                        end if
+                     end if
                   end do  ! g-point
 
                end if  ! cloudy for any gpoint
@@ -210,17 +206,18 @@ contains
                   fint = factor - float(index)
 
                   do ig = 1,ngptlw
-                     if (cldfmc(ilay,ig,icol) > 0. &
-                        .and. ciwpmc(ilay,ig,icol) > cwp_negligible) then
+                     if (cldymc(ilay,ig,icol)) then
+                        if (ciwpmc(ilay,ig,icol) > 0.) then
 
-                        ! 16 cloud bands
-                        ib = ngb(ig)
-                        abscoice = &
-                           absice2(index,ib) + fint * &
-                           (absice2(index+1,ib) - (absice2(index,ib))) 
-                        taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
+                           ! 16 cloud bands
+                           ib = ngb(ig)
+                           abscoice = &
+                              absice2(index,ib) + fint * &
+                              (absice2(index+1,ib) - (absice2(index,ib))) 
+                           taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
 
-                     endif
+                        end if
+                     end if
                   end do  ! g-point
 
                end if  ! cloudy for any gpoint
@@ -252,17 +249,18 @@ contains
                   fint = factor - float(index)
 
                   do ig = 1,ngptlw
-                     if (cldfmc(ilay,ig,icol) > 0. &
-                        .and. ciwpmc(ilay,ig,icol) > cwp_negligible) then
+                     if (cldymc(ilay,ig,icol)) then
+                        if (ciwpmc(ilay,ig,icol) > 0.) then
 
-                        ! 16 cloud bands
-                        ib = ngb(ig)
-                        abscoice = &
-                           absice3(index,ib) + fint * &
-                           (absice3(index+1,ib) - (absice3(index,ib)))
-                        taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
+                           ! 16 cloud bands
+                           ib = ngb(ig)
+                           abscoice = &
+                              absice3(index,ib) + fint * &
+                              (absice3(index+1,ib) - (absice3(index,ib)))
+                           taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
 
-                     endif
+                        end if
+                     end if
                   end do  ! g-point
 
                end if  ! cloudy for any gpoint
@@ -294,17 +292,18 @@ contains
                   fint = factor - float(index)
 
                   do ig = 1,ngptlw
-                     if (cldfmc(ilay,ig,icol) > 0. &
-                        .and. ciwpmc(ilay,ig,icol) > cwp_negligible) then
+                     if (cldymc(ilay,ig,icol)) then
+                        if (ciwpmc(ilay,ig,icol) > 0.) then
 
-                        ! 16 cloud bands
-                        ib = ngb(ig)
-                        abscoice = &
-                           absice4(index,ib) + fint * &
-                           (absice4(index+1,ib) - (absice4(index,ib)))
-                        taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
+                           ! 16 cloud bands
+                           ib = ngb(ig)
+                           abscoice = &
+                              absice4(index,ib) + fint * &
+                              (absice4(index+1,ib) - (absice4(index,ib)))
+                           taucmc(ilay,ig,icol) = ciwpmc(ilay,ig,icol) * abscoice
 
-                     endif
+                        end if
+                     end if
                   end do  ! g-point
 
                end if  ! cloudy for any gpoint
@@ -341,18 +340,19 @@ contains
                   fint = factor - float(index)
 
                   do ig = 1,ngptlw
-                     if (cldfmc(ilay,ig,icol) > 0. &
-                           .and. clwpmc(ilay,ig,icol) > cwp_negligible) then
+                     if (cldymc(ilay,ig,icol)) then
+                        if (clwpmc(ilay,ig,icol) > 0.) then
 
-                        ! 16 cloud bands
-                        ib = ngb(ig)
-                        abscoliq = &
-                           absliq1(index,ib) + fint * &
-                           (absliq1(index+1,ib) - (absliq1(index,ib)))
-                        taucmc(ilay,ig,icol) = taucmc(ilay,ig,icol) + &
-                           clwpmc(ilay,ig,icol) * abscoliq
+                           ! 16 cloud bands
+                           ib = ngb(ig)
+                           abscoliq = &
+                              absliq1(index,ib) + fint * &
+                              (absliq1(index+1,ib) - (absliq1(index,ib)))
+                           taucmc(ilay,ig,icol) = taucmc(ilay,ig,icol) + &
+                              clwpmc(ilay,ig,icol) * abscoliq
 
-                     endif
+                        end if
+                     end if
                   end do  ! g-point
 
                end if  ! cloudy for any gpoint
@@ -361,7 +361,7 @@ contains
 
       else
          error stop 'cldprmc: invalid liqflag'
-      endif
+      end if
 
       ! refine cloudy flag (for greater speed in rtrnmc) so that
       ! flags gridbox if OPTICALLY cloudy for any g-point. Issue
