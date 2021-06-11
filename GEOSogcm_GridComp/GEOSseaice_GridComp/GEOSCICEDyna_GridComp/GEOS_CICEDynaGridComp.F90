@@ -1333,6 +1333,24 @@ module GEOS_CICEDynaGridCompMod
     VLOCATION          = MAPL_VLocationNone,                  &
                                                    RC=STATUS  )
   VERIFY_(STATUS)
+
+  !*CALLBACK*
+  !=================================================================================
+  ! an ESMF state to pass information b.w. GCs using callback
+  ! to be connected by ??? to the import in CICE4ColumnPhys
+  !
+  ! call MAPL_AddExportSpec(GC                           ,&
+  !        SHORT_NAME         = 'SURFSTATE'                 ,&
+  !        LONG_NAME          = 'surface_state_for_seaice_thermo_couling',  &
+  !        UNITS              = 'W m-2'                     ,&
+  !        UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&    
+  !        DIMS               = MAPL_DimsTileOnly           ,&
+  !        VLOCATION          = MAPL_VLocationNone          ,&
+  !        DATATYPE           = MAPL_StateItem,              &
+  !        RC=STATUS  )
+  ! VERIFY_(STATUS)
+  !=================================================================================
+
 !EOS
 
     call MAPL_TimerAdd(GC,    name="INITIALIZE",RC=STATUS)
@@ -1751,6 +1769,15 @@ module GEOS_CICEDynaGridCompMod
 #if 0
     deallocate(ICEUM)
 #endif
+
+    !*CALLBACK*
+    !=====================================================================================
+    !call ESMF_StateGet(EXPORT, 'SURFSTATE', SURFST, __RC__)
+    !
+    !!attach the thermo coupling method
+    !
+    !call ESMF_MethodAdd(SURFST, label='thermo_coupling', userRoutine=thermo_coupling, __RC__)
+    !=====================================================================================
 
 ! All Done
 !---------
@@ -2891,5 +2918,30 @@ end subroutine RUN
   end subroutine Finalize
 
 
+  !*CALLBACK*
+  !=====================================================================================
+  !subroutine thermo_coupling(state, rc)
+  !   implicit none
+
+  !! Arguments
+  !! ---------
+  !   type(ESMF_State)     :: state
+  !   integer, intent(out) :: rc
+  !
+  !   real, dimension(:,:,), pointer         :: ts 
+  !
+  !   call ESMF_AttributeGet(state, name='surface_ice_temperature', value=fld_name, __RC__)
+  !   call MAPL_GetPointer(state, ts, trim(fld_name), __RC__)
+  !
+  !   !perform locstreamTrans_T2T+T2G(ts) -> tsg (grid variable)
+  !
+  !   ! update tsg 
+  !   tsg = tsg + 1.0  ! true updates will be a call to CICE6 thermo update routine 
+  !
+  !   !perform locstreamTrans_G2T+T2T(tsg)  -> ts (tile variable)
+  !
+  !end subroutine thermo_coupling
+
+  !=====================================================================================
 
 end module GEOS_CICEDynaGridCompMod

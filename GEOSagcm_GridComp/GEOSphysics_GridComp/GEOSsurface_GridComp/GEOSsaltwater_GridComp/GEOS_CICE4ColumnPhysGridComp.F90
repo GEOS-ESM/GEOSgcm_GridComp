@@ -1178,6 +1178,20 @@ module GEOS_CICE4ColumnPhysGridComp
           RC=STATUS  )
       VERIFY_(STATUS)
 
+      !*CALLBACK*
+      ! an ESMF state to pass information b.w. GCs using callback
+      call MAPL_AddImportSpec(GC                           ,&
+          SHORT_NAME         = 'SURFSTATE'                 ,&
+          LONG_NAME          = 'surface_state_for_seaice_thermo_couling',  &
+          UNITS              = 'W m-2'                     ,&
+          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&    
+          DIMS               = MAPL_DimsTileOnly           ,&
+          VLOCATION          = MAPL_VLocationNone          ,&
+          DATATYPE           = MAPL_StateItem,              &
+          RESTART            = MAPL_RestartSkip,            &
+          RC=STATUS  )
+      VERIFY_(STATUS)
+
       !call MAPL_AddImportSpec(GC,                                  &
       !    SHORT_NAME         = 'TFREEZE',                        &
       !    LONG_NAME          = 'freezing_temperature_for_interface_layer',&
@@ -1187,6 +1201,9 @@ module GEOS_CICE4ColumnPhysGridComp
       !    DEFAULT            = MAPL_TICE-1.8,                     &
       !    RC=STATUS  )
       !VERIFY_(STATUS)
+ 
+
+  
 
 ! Additions for LANL CICE Thermodynamics
 !----------------------------------
@@ -4028,6 +4045,38 @@ contains
     if(associated(TAUYI)) TAUYI = TYI
 
 
+    !*CALLBACK*
+    !==============================================================================================
+    !call ESMF_StateGet(IMPORT, 'SURFSTATE', SURFST, RC=STATUS)
+    !VERIFY_(STATUS)
+    !call ESMF_AttributeGet(SURFST, name='implements_thermo_coupling_method', &
+    !                            value=implements_thermo_coupling, RC=STATUS)
+    !VERIFY_(STATUS)
+    !if (implements_implements_thermo_coupling) then
+
+    !   call ESMF_AttributeGet(SURFST, name='surface_ice_temperature', value=AS_FIELD_NAME, RC=STATUS)
+    !   VERIFY_(STATUS)
+    !   if (AS_FIELD_NAME /= '') then   
+    !      call MAPL_GetPointer(SURFST, AS_PTR_2D, trim(AS_FIELD_NAME), RC=STATUS)
+    !      VERIFY_(STATUS)
+    !      AS_PTR_2D = TS !*** pass ice/snow surface temperature
+    !   endif 
+    !       
+    !    .....            !*** more fields to be passed
+    !
+    !    ! execute the aero provider's optics method
+    !    call ESMF_MethodExecute(SURFST, label="thermo_couling", userRC=AS_STATUS, RC=STATUS)
+    !    VERIFY_(AS_STATUS)
+    !    VERIFY_(STATUS)
+    !endif   
+    !
+    !************************************************************************************************
+    !
+    !      surface flux and temperature updated by sea ice
+    !      continue updating relevant fields and pass them to surf  
+    ! 
+    !************************************************************************************************
+    !==============================================================================================
 
 
 !xxxxxxxxxxxxxxxxxxxxxxxxxxLANL CICE: 2 step update procedure-- STARTS xxxxxxxxxxxxxxxxxxxxxxxxx
