@@ -14,7 +14,7 @@ real, parameter ::     &
      au0      = 0.15,  &
 !     delta    = 3.E-3
      delta    = 0., &
-     cb       = 1./3.
+     cb       = 2./3.
 
 contains
 
@@ -111,10 +111,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   real                      :: E_work, D_work
   real, dimension(IM,JM,LM) :: f_thermal, ent_sl
 
-#ifdef EDMF_DIAG
-  real, dimension(IM,JM,0:LM) :: exfh_plume, thli_plume
-#endif
-
   if ( plume_type == 0 ) then
      kbot = LM
   else
@@ -195,33 +191,27 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   wdet = 0.
 
 #ifdef EDMF_DIAG
-  qt_plume1  = qti
-  qt_plume2  = qti
-  qt_plume3  = qti
-  qt_plume4  = qti
-  qt_plume5  = qti
-  qt_plume6  = qti
-  qt_plume7  = qti
-  qt_plume8  = qti
-  qt_plume9  = qti
-  qt_plume10 = qti
+  qt_plume1  = 0.
+  qt_plume2  = 0.
+  qt_plume3  = 0.
+  qt_plume4  = 0.
+  qt_plume5  = 0.
+  qt_plume6  = 0.
+  qt_plume7  = 0.
+  qt_plume8  = 0.
+  qt_plume9  = 0.
+  qt_plume10 = 0.
 
-  exfh_plume = (ple(i,j,k)/mapl_p00)**mapl_kappa
-
-  thli_plume(:,:,0)    = thl(:,:,1)
-  thli_plume(:,:,2:LM) = 0.5*( thv(:,:,1:LM-1) + thv(:,:,2:LM) ) 
-  thli_plume(:,:,LM)   = thl(:,:,LM)
-
-  thl_plume1  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
-  thl_plume2  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
-  thl_plume3  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
-  thl_plume4  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
-  thl_plume5  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
-  thl_plume6  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
-  thl_plume7  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
-  thl_plume8  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
-  thl_plume9  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
-  thl_plume10 = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
+  thl_plume1  = 0.
+  thl_plume2  = 0.
+  thl_plume3  = 0.
+  thl_plume4  = 0.
+  thl_plume5  = 0.
+  thl_plume6  = 0.
+  thl_plume7  = 0.
+  thl_plume8  = 0.
+  thl_plume9  = 0.
+  thl_plume10 = 0.
 #endif
 
   !
@@ -450,35 +440,35 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
 #ifdef EDMF_DIAG
               if ( iup == 1 ) then
-                 qt_plume1(i,j,k)  = upqt(iup,i,j)
-                 thl_plume1(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
+                 qt_plume1(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+                 thl_plume1(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
               elseif ( iup == 2 ) then
-                 qt_plume2(i,j,k)  = upqt(iup,i,j)
-                 thl_plume2(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
+                 qt_plume2(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+                 thl_plume2(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
               elseif ( iup == 3 ) then
-                 qt_plume3(i,j,k)  = upqt(iup,i,j)
-                 thl_plume3(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
+                 qt_plume3(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+                 thl_plume3(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
               elseif ( iup == 4 ) then
-                 qt_plume4(i,j,k)  = upqt(iup,i,j)
-                 thl_plume4(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
+                 qt_plume4(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+                 thl_plume4(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
               elseif ( iup == 5 ) then
-                 qt_plume5(i,j,k)  = upqt(iup,i,j)
-                 thl_plume5(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
+                 qt_plume5(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+                 thl_plume5(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
               elseif ( iup == 6 ) then
-                 qt_plume6(i,j,k)  = upqt(iup,i,j)
-                 thl_plume6(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
+                 qt_plume6(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+                 thl_plume6(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
               elseif ( iup == 7 ) then
-                 qt_plume7(i,j,k)  = upqt(iup,i,j)
-                 thl_plume7(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
+                 qt_plume7(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+                 thl_plume7(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
               elseif ( iup == 8 ) then
-                 qt_plume8(i,j,k)  = upqt(iup,i,j)
-                 thl_plume8(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
+                 qt_plume8(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+                 thl_plume8(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
               elseif ( iup == 9 ) then
-                 qt_plume9(i,j,k)  = upqt(iup,i,j)
-                 thl_plume9(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
+                 qt_plume9(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+                 thl_plume9(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
               elseif ( iup == 10 ) then
-                 qt_plume10(i,j,k)  = upqt(iup,i,j)
-                 thl_plume10(i,j,k) = upthl(iup,i,j)*exfh_plume(i,j,k) + (MAPL_GRAV/MAPL_CP)*zl(i,j,k)
+                 qt_plume10(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+                 thl_plume10(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
               end if
 #endif
 
