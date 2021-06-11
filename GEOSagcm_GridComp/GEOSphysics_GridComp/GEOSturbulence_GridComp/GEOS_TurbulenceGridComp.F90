@@ -6423,7 +6423,7 @@ ENDIF
           if ( associated(wqv_ed) ) then
              wqv_ed(:,:,0)      = 0.
              wqv_ed(:,:,1:LM-1) = -mapl_alhl*rhoe(:,:,1:LM-1)*KH_mynn(:,:,1:LM-1)*( QV(:,:,1:LM-1) - QV(:,:,2:LM) )/( ZLO(:,:,1:LM-1) - ZLO(:,:,2:LM) ) 
-             wqv_ed(:,:,LM)     = mapl_alhl*rhoe(:,:,LM)*EVAP(:,:)
+             wqv_ed(:,:,LM)     = mapl_alhl*EVAP(:,:)
           end if
           if ( associated(wql_ed) ) then
              wql_ed(:,:,0)      = 0.

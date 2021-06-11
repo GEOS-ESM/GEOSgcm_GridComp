@@ -99,7 +99,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
   real, dimension(IM,JM,LM) :: thlu, qtu, qlu, edmfmoistql, A
 
-  real, dimension(IM,JM,0:LM) :: aw2, ahl2, aqt2, aw3, aqt3, aqthl, exfh_plume
+  real, dimension(IM,JM,0:LM) :: aw2, ahl2, aqt2, aw3, aqt3, aqthl
 
   integer, dimension(2)  :: seedmf, the_seed
 
@@ -111,6 +111,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   real                      :: E_work, D_work
   real, dimension(IM,JM,LM) :: f_thermal, ent_sl
 
+#ifdef EDMF_DIAG
+  real, dimension(IM,JM,0:LM) :: exfh_plume, thli_plume
+#endif
+
   if ( plume_type == 0 ) then
      kbot = LM
   else
@@ -118,8 +122,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   end if
 
   goth00 = mapl_grav/th00
-
-  exfh_plume = (ple(i,j,k)/mapl_p00)**mapl_kappa
 
   !
   ! Initialize arrays
@@ -204,16 +206,22 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   qt_plume9  = qti
   qt_plume10 = qti
 
-  thl_plume1  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
-  thl_plume2  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
-  thl_plume3  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
-  thl_plume4  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
-  thl_plume5  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
-  thl_plume6  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
-  thl_plume7  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
-  thl_plume8  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
-  thl_plume9  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
-  thl_plume10 = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zl
+  exfh_plume = (ple(i,j,k)/mapl_p00)**mapl_kappa
+
+  thli_plume(:,:,0)    = thl(:,:,1)
+  thli_plume(:,:,2:LM) = 0.5*( thv(:,:,1:LM-1) + thv(:,:,2:LM) ) 
+  thli_plume(:,:,LM)   = thl(:,:,LM)
+
+  thl_plume1  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
+  thl_plume2  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
+  thl_plume3  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
+  thl_plume4  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
+  thl_plume5  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
+  thl_plume6  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
+  thl_plume7  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
+  thl_plume8  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
+  thl_plume9  = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
+  thl_plume10 = thli*exfh_plume + (MAPL_GRAV/MAPL_CP)*zle
 #endif
 
   !
@@ -259,12 +267,12 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
      zpbl(i,j) = max( zpbl(i,j), zpblmin )
 
-     wthv = sh(i,j)/mapl_cp + mapl_vireps*th00*evap(i,j)
+     wthv = ( sh(i,j)/mapl_cp + mapl_vireps*th00*evap(i,j) )/rhoe(i,j,LM)
 
      if ( wthv > 0. .and. thv(i,j,LM-1) < thv(i,j,LM) ) then
         wstar = max( wstarmin, (goth00*wthv*zpbl(i,j))**onethird )
 
-        qstar  = evap(i,j)/wstar
+        qstar  = evap(i,j)/(rhoe(i,j,LM)*wstar)
         thstar = wthv/wstar
         
         sigmaW  = AlphaW*wstar
@@ -320,7 +328,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               upa(iup,i,j)   = 0.5*work2*( erf(( thv_high - thv0 )*work) - erf(( thv_low - thv0 )*work) )
               upu(iup,i,j)   = u(i,j,LM)
               upv(iup,i,j)   = v(i,j,LM)
-              upqt(iup,i,j)  = qt(i,j,LM-1) + ( upthv(iup,i,j) - thv(i,j,LM-1) )*evap(i,j)/wthv
+              upqt(iup,i,j)  = qt(i,j,LM-1) + ( upthv(iup,i,j) - thv(i,j,LM-1) )*evap(i,j)/(rhoe(i,j,LM)*wthv)
            end if
 
            upm(iup,i,j) = rhoe(i,j,kbot)*upa(iup,i,j)*upw(iup,i,j)
@@ -338,8 +346,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
         ! Change surface QT so that the fluxes from the mass flux equal prescribed values 
         ! We do not need to worry about the negative values as they should not exist
-        if ( kbot == 0. .and. QTsrfF > evap(i,j) .and. evap(i,j) > 0. )  then
-           upqt(:,i,j) = ( upqt(:,i,j) - qti(i,j,kbot) )*evap(i,j)/QTsrfF + qti(i,j,kbot)
+        if ( kbot == 0. .and. QTsrfF > evap(i,j)/rhoe(i,j,LM) .and. evap(i,j) > 0. )  then
+           upqt(:,i,j) = ( upqt(:,i,j) - qti(i,j,kbot) )*evap(i,j)/(rhoe(i,j,LM)*QTsrfF) + qti(i,j,kbot)
         end if
 
         ! Compute condensation and thl, ql, qi
