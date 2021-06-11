@@ -4853,8 +4853,9 @@ real function ice_fraction(tk,cnv_fraction)
      real, intent(in) :: tk ! temperature in K
      real, intent(in) :: cnv_fraction ! diagniosed convective fraction for deep convective anvil clouds
      real :: mpoly
-     mpoly = calipso_ice_polynomial(tk)
-     ice_fraction = (mpoly**4)*cnv_fraction + mpoly*(1.0-cnv_fraction)
+  !  mpoly = calipso_ice_polynomial(tk)
+  !  ice_fraction = (mpoly**4)*cnv_fraction + mpoly*(1.0-cnv_fraction)
+     ice_fraction = calipso_ice_polynomial(tk)
 end function ice_fraction
 
 real function calipso_ice_polynomial(tk)

@@ -170,7 +170,8 @@ module cloudnew
    real,    constant :: RHSUP_ICE
    real,    constant :: SHR_EVAP_FAC
    real,    constant :: MIN_CLD_WATER
-   real,    constant :: CLD_EVP_EFF
+   real,    constant :: CCW_EVP_EFF
+   real,    constant :: CCI_EVP_EFF
    integer, constant :: NSMAX
    real,    constant :: LS_SDQV2
    real,    constant :: LS_SDQV3
@@ -297,7 +298,8 @@ module cloudnew
    real    :: RHSUP_ICE
    real    :: SHR_EVAP_FAC
    real    :: MIN_CLD_WATER
-   real    :: CLD_EVP_EFF
+   real    :: CCW_EVP_EFF
+   real    :: CCI_EVP_EFF
    integer :: NSMAX
    real    :: LS_SDQV2
    real    :: LS_SDQV3
@@ -687,7 +689,8 @@ contains
          RHSUP_ICE     = CLDPARAMS%SUPERSAT
          SHR_EVAP_FAC  = CLDPARAMS%SHEAR_EVAP_FAC
          MIN_CLD_WATER = CLDPARAMS%MIN_ALLOW_CCW
-         CLD_EVP_EFF   = CLDPARAMS%CCW_EVAP_EFF
+         CCW_EVP_EFF   = CLDPARAMS%CCW_EVAP_EFF
+         CCI_EVP_EFF   = CLDPARAMS%CCI_EVAP_EFF
          NSMAX         = INT( CLDPARAMS%NSUB_AUTOCONV  )
          LS_SDQV2      = CLDPARAMS%LS_SUND_INTER
          LS_SDQV3      = CLDPARAMS%LS_SUND_COLD
@@ -1094,7 +1097,7 @@ contains
 
             call evap3(            &
                   DT             , &
-                  CLD_EVP_EFF    , &
+                  CCW_EVP_EFF    , &
                   RHCRIT         , &
                   PP_dev(I,K)    , &
                   TEMP           , &
@@ -1109,7 +1112,7 @@ contains
 
             call subl3(            &
                   DT             , & 
-                  CLD_EVP_EFF    , &
+                  CCI_EVP_EFF    , &
                   RHCRIT         , &
                   PP_dev(I,K)    , &
                   TEMP           , &
@@ -2754,8 +2757,6 @@ contains
       real, parameter :: K_COND  =  2.4e-2        ! J m**-1 s**-1 K**-1
       real, parameter :: DIFFU   =  2.2e-5        ! m**2 s**-1
 
-     !A_EFF = CLD_EVP_EFF
-
       NN = 50.*1.0e6
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -3827,9 +3828,10 @@ contains
       ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
       tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
       ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
-      ICEFRCTm = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
-      ! Combine MODIS polynomial with an Anvil version MODIS^4 
-      ICEFRCT = (ICEFRCTm**4)*CNV_FRACTION + ICEFRCTm*(1.0-CNV_FRACTION)
+      ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+    ! ICEFRCTm = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+    ! ! Combine MODIS polynomial with an Anvil version MODIS^4 
+    ! ICEFRCT = (ICEFRCTm**4)*CNV_FRACTION + ICEFRCTm*(1.0-CNV_FRACTION)
 
    end function ICE_FRACTION
 

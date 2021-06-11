@@ -73,7 +73,7 @@ module GEOS_MoistGridCompMod
        ! CLDPARAMS Constants are loaded into constant memory
        CNV_BETA, ANV_BETA, LS_BETA, RH00, C_00, LWCRIT, C_ACC, &
        C_EV_R, C_EV_S, CLDVOL2FRC, RHSUP_ICE, SHR_EVAP_FAC, MIN_CLD_WATER, &
-       CLD_EVP_EFF, NSMAX, LS_SDQV2, LS_SDQV3, LS_SDQVT1, ANV_SDQV2, &
+       CCW_EVP_EFF, CCI_EVP_EFF, NSMAX, LS_SDQV2, LS_SDQV3, LS_SDQVT1, ANV_SDQV2, &
        ANV_SDQV3, ANV_SDQVT1, ANV_TO_LS, CCN_OCEAN, CCN_LAND, &
        DISABLE_RAD, ANV_ICEFALL_C, LS_ICEFALL_C, REVAP_OFF_P, CNVENVFC, ANVENVFC, SCENVFC, LSENVFC, &
        WRHODEP, T_ICE_ALL, CNVICEPARAM, ICEFRPWR, CNVDDRFC, ANVDDRFC, &
@@ -8858,8 +8858,15 @@ contains
 
       IF(ADJUSTL(CONVPAR_OPTION) == 'GF' .and. icumulus_gf(shal) == 1) THEN
         call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 5.0e-4  )
+        call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 5.0e-4  )
       ELSE
-        call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 3.0e-3  )
+        if( LM .eq. 72 ) then
+          call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 3.0e-3  )
+          call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 3.0e-3  )
+        else
+          call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 9.0e-3  )
+          call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 6.0e-3  )
+        endif
       ENDIF
 
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_ICEPARAM,    'CNV_ICEPARAM:',    DEFAULT= 1.0   )
@@ -8941,7 +8948,7 @@ contains
              SUBLC_X(I,J,K) = Q1(I,J,K)
              call subl3 (                 &
                   DT_MOIST              , &
-                  CLDPARAMS%CCW_EVAP_EFF, &
+                  CLDPARAMS%CCI_EVAP_EFF, &
                   RHCRIT                , &
                   PLO(I,J,K)            , &
                   TEMP(I,J,K)           , &
@@ -9129,9 +9136,9 @@ contains
           call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     )
         else
           call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
-          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.2     )
-          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 0.2     )
-          call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.0     )
+          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
+          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
+          call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     )
         endif
       endif
 
@@ -9922,7 +9929,8 @@ contains
          RHSUP_ICE     = CLDPARAMS%SUPERSAT
          SHR_EVAP_FAC  = CLDPARAMS%SHEAR_EVAP_FAC
          MIN_CLD_WATER = CLDPARAMS%MIN_ALLOW_CCW
-         CLD_EVP_EFF   = CLDPARAMS%CCW_EVAP_EFF
+         CCW_EVP_EFF   = CLDPARAMS%CCW_EVAP_EFF
+         CCI_EVP_EFF   = CLDPARAMS%CCI_EVAP_EFF
          NSMAX         = INT( CLDPARAMS%NSUB_AUTOCONV  )
          LS_SDQV2      = CLDPARAMS%LS_SUND_INTER
          LS_SDQV3      = CLDPARAMS%LS_SUND_COLD

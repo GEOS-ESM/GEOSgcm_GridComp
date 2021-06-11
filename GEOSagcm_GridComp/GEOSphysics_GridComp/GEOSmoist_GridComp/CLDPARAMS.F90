@@ -23,6 +23,7 @@
            real               :: SHEAR_EVAP_FAC        ! 11
            real               :: MIN_ALLOW_CCW         ! 12
            real               :: CCW_EVAP_EFF          ! 13
+           real               :: CCI_EVAP_EFF          ! 13
            real               :: NSUB_AUTOCONV         ! 14
            real               :: LS_SUND_INTER         ! 15
            real               :: LS_SUND_COLD          ! 16
