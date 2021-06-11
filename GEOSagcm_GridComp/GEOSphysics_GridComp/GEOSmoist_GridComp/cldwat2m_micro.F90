@@ -63,7 +63,7 @@ module cldwat2m_micro
    real(r8), parameter :: rhoh2o      = MAPL_RHOWTR
    real(r8), parameter :: latvap      = MAPL_ALHL
    real(r8), parameter :: latice      = MAPL_ALHF !!!!!big BUGGGG 03/06/14 
-   real(r8), parameter :: epsilon     = MAPL_VIREPS
+   real(r8), parameter :: epsilon     = MAPL_EPSILON
    
    real, parameter :: deltat_micro     = 300.0 ! Donif hardcoded for now
    
@@ -477,7 +477,7 @@ contains
          nsoot, rnsoot, ui_scale, dcrit, mtimesc, &
          nnuccdo, nnuccco, nsacwio, nsubio, nprcio, &
          npraio, npccno, npsacwso, nsubco, nprao, nprc1o, nbincontactdust,  &
-         ts_auto_ice, rflx, sflx)
+         ts_auto_ice, rflx, sflx, accre_enhan, accre_enhan_ice)
 
 
       !Author: Hugh Morrison, Andrew Gettelman, NCAR
@@ -497,8 +497,9 @@ contains
 #ifdef GEOS5
       integer,  intent (in) :: pcols, pver    
       real(r8), intent (in) :: nimm (pcols,pver)    ! immersion ice nuclei concentration tendency (kg-1 s-1) 
-      real(r8), intent (in) :: miu_disp , ui_scale, dcrit, mtimesc, ts_auto_ice! miu value in Liu autoconversion. Ui scale is used to tune olrcf by decreasing uised  
+      real(r8), intent (in) :: miu_disp , ui_scale, dcrit, mtimesc, ts_auto_ice ! miu value in Liu autoconversion. Ui scale is used to tune olrcf by decreasing uised  
       real(r8), intent (in) :: nsoot (pcols,pver) , rnsoot (pcols,pver)  
+       real(r8), intent (in) :: accre_enhan(pcols,pver), accre_enhan_ice(pcols,pver)
 
 
       !!integer,  parameter  :: pverp=pver+1
@@ -2390,18 +2391,18 @@ contains
                if (qric(i,k).ge.1.e-8_r8 .and. qniic(i,k).ge.1.e-8_r8 .and. & 
                      t(i,k).le.273.15_r8) then
 
-                  pracs(k) = pi*pi*ecr*(((1.2_r8*umr(k)-0.95_r8*ums(k))**2+ &  !!BUGGGGG (11/05/15)
+                  pracs(k) = (pi*pi*ecr*(((1.2_r8*umr(k)-0.95_r8*ums(k))**2+ &  !!BUGGGGG (11/05/15)
                         0.08_r8*ums(k)*umr(k))**0.5_r8*(rhow/rho(i,k))* &
                         n0r(k)*n0s(k)* &
                         (5._r8/(lamr(k)**6*lams(k))+ &
                         2._r8/(lamr(k)**5*lams(k)**2)+ &
-                        0.5_r8/(lamr(k)**4*lams(k)**3)))
+                        0.5_r8/(lamr(k)**4*lams(k)**3))))*accre_enhan_ice(i, k)
 
-                  npracs(k) = pi/2._r8*ecr*(1.7_r8*(unr(k)-uns(k))**2+ &
+                  npracs(k) = (pi/2._r8*ecr*(1.7_r8*(unr(k)-uns(k))**2+ &
                         0.3_r8*unr(k)*uns(k))**0.5_r8*n0r(k)*n0s(k)* &
                         (1._r8/(lamr(k)**3*lams(k))+ &
                         1._r8/(lamr(k)**2*lams(k)**2)+ &
-                        1._r8/(lamr(k)*lams(k)**3))
+                        1._r8/(lamr(k)*lams(k)**3)))*accre_enhan_ice(i, k)
 
                else
                   pracs(k)=0._r8
@@ -2436,10 +2437,9 @@ contains
 
                   ! include sub-grid distribution of cloud water
 
-                  pra(k) = cons12/(cons3*cons20)* &
-                        67._r8*(qcic(i,k)*qric(i,k))**1.15_r8
-                  npra(k) = pra(k)/(qcic(i,k)/ncic(i,k))
-
+                  pra(k) = accre_enhan(i, k)*(cons12/(cons3*cons20)* &
+                        67._r8*(qcic(i,k)*qric(i,k))**1.15_r8)
+                  npra(k) = accre_enhan(i, k)*pra(k)/(qcic(i,k)/ncic(i,k))
                else
                   pra(k)=0._r8
                   npra(k)=0._r8
