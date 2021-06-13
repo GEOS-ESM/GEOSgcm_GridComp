@@ -51,7 +51,7 @@ module GEOS_CatchGridCompMod
   USE MAPL_BaseMod
   USE lsm_routines, ONLY : sibalb, catch_calc_soil_moist
 
-!#sqz_for_ldas_coupling 
+!for_ldas_coupling 
   use catch_incr
   use ESMF_CFIOMOD, only:  StrTemplate => ESMF_CFIOstrTemplate
   use ESMF_CFIOUtilMod, only: strToInt
@@ -124,7 +124,7 @@ type OFFLINE_WRAP
    type(T_OFFLINE_MODE), pointer :: ptr=>null()
 end type OFFLINE_WRAP
 
-!#sqz_for_ldas_coupling
+!for_ldas_coupling
 type T_CATCH_STATE
     private
     type (ESMF_FieldBundle)  :: Bundle
@@ -214,7 +214,7 @@ subroutine SetServices ( GC, RC )
 ! Set the Run entry points
 ! ------------------------
 
-!#sqz_for_ldas_coupling  
+!for_ldas_coupling  
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize,RC=STATUS )
 !#--
 
@@ -2679,7 +2679,7 @@ subroutine SetServices ( GC, RC )
 
 !EOS
 
-!#sqz_for_ldas_coupling 
+!for_ldas_coupling 
     call MAPL_TimerAdd(GC,    name="INITIALIZE",RC=STATUS)
     VERIFY_(STATUS)
 !#--
@@ -2709,7 +2709,7 @@ subroutine SetServices ( GC, RC )
 
 end subroutine SetServices 
 
-!#sqz_for_ldas_coupling 
+!for_ldas_coupling 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! !IROUTINE: Initialize -- Initialize method for the GEOS catchment component
 
@@ -2740,9 +2740,6 @@ end subroutine SetServices
     type (MAPL_LocStream       )            :: LOCSTREAM
     type (ESMF_Grid            )            :: GRID
     type (ESMF_Grid            )            :: TILEGRID
-    type (ESMF_Alarm           )            :: ALARM_L, ALARM_C
-    type (ESMF_TimeInterval    )            :: Interval_l, Interval_c
-
     integer , parameter                     :: N_INCR =25
     integer                                 :: KND, DIMS, HW, LOCATION
     character(len=ESMF_MAXSTR)              :: INCR_NAMES(25)
@@ -2750,9 +2747,18 @@ end subroutine SetServices
     type (CATCH_wrap)                       :: WRAP2
     type (ESMF_Field)                       :: FIELD
     integer                                 :: I
-    integer                                 :: LDAS_INTERVAL, ADAS_INTERVAL
-    integer                                 :: LDAS_INTERVAL_CENTER
+
     integer                                 :: LDAS_INCR
+
+    type (ESMF_Alarm)                       :: ALARM_L, ALARM_C
+    integer                                 :: ADAS_INTERVAL
+    integer                                 :: LDAS_INTERVAL
+    type (ESMF_TimeInterval)                :: Interval_l, Interval_c
+    type(ESMF_Time)                         :: CurrentTime
+    type(ESMF_TimeInterval)                 :: t0sec_l 
+    integer                                 :: LandAssim_DT
+    integer                                 :: LandAssim_T0
+    integer                                 :: T0sec, h, m, s 
 
 !=============================================================================
 
@@ -2791,12 +2797,8 @@ end subroutine SetServices
     call ESMF_UserCompSetInternalState ( GC, 'CATCH_STATE',wrap2,status )
     VERIFY_(STATUS)
 
-! Test for LDAS increments
+!  LDAS increments
 !------------------------------
-
-    call MAPL_GetResource ( MAPL, LDAS_INTERVAL, Label="LDAS_INTERVAL:", &
-         DEFAULT=10800, RC=STATUS)
-    VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, LDAS_INCR, Label="LDAS_INCR:", &
          DEFAULT=0, RC=STATUS)
@@ -2868,25 +2870,40 @@ end subroutine SetServices
       call ESMF_AlarmSet(ALARM_C, ringing=.false., rc=status)
        VERIFY_(STATUS)
 
-      ! LDAS increment interval/ alarm
-       call MAPL_GetResource ( MAPL, LDAS_INTERVAL, Label="LDAS_INTERVAL:", &
+      ! LDAS increment alarm
+       call MAPL_GetResource ( MAPL, LDAS_INTERVAL, Label="LANDASSIM_DT:", &
           DEFAULT=10800, RC=STATUS)
-       VERIFY_(STATUS)
-       LDAS_INTERVAL_CENTER = LDAS_INTERVAL/2
+       VERIFY_(STATUS) 
 
-       call ESMF_TimeIntervalSet(Interval_l, s=LDAS_INTERVAL_CENTER, rc = STATUS  )
+       call ESMF_TimeIntervalSet(Interval_l, s=LDAS_INTERVAL, rc = STATUS  )
        VERIFY_(STATUS)
 
+       call MAPL_GetResource ( MAPL, LandAssim_T0, Label="LANDASSIM_T0:", &
+          DEFAULT=013000, RC=STATUS)
+       VERIFY_(STATUS)  
 
-       ALARM_L = ESMF_AlarmCreate(name="LDAS_ALARM",clock=CLOCK, &
-                 ringInterval=Interval_l,RC=STATUS)
+       h = LandAssim_T0/10000
+       m = mod(LandAssim_T0,10000)/100
+       s = mod(LandAssim_T0,100)
+       T0sec = h*3600 + m*60 + s
+       call ESMF_TimeIntervalSet(t0sec_l, S=T0sec , RC=STATUS)
        VERIFY_(STATUS)
-              call MAPL_StateAlarmAdd(MAPL,ALARM_L,RC=STATUS)
+
+       call ESMF_ClockGet(clock, currTime=CurrentTime, rc=status) 
+       VERIFY_(status)
+
+      ALARM_L = ESMF_AlarmCreate( name="LDAS_ALARM",clock=CLOCK, &
+      ringTime= CurrentTime + t0sec_l,                &
+      ringInterval=Interval_l,                       &
+      rc=status   ) 
+      VERIFY_(status)
+
+       call MAPL_StateAlarmAdd(MAPL,ALARM_L,RC=STATUS)
        VERIFY_(STATUS)
 
        call MAPL_StateAlarmGet(MAPL,ALARM_L,"LDAS_ALARM",RC=STATUS)
        VERIFY_(STATUS)
-       call ESMF_AlarmSet(ALARM_L, ringing=.true., rc=status)
+       call ESMF_AlarmSet(ALARM_L, ringing=.false., rc=status)
        VERIFY_(STATUS)
 
        call WRITE_PARALLEL( 'LDAS_coupling: complete initialze ')
@@ -4036,7 +4053,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! variables for call catch with choice of tile to print
         real                            :: lonbeg,lonend,latbeg,latend
 
-!#sqz_for_ldas_coupling 2020 
+!for_ldas_coupling 
         ! vars for debugging purposes and for ldas_incr
         type(ESMF_Grid)                 :: TILEGRID
         type (MAPL_LocStream)           :: LOCSTREAM
@@ -4058,7 +4075,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         integer                     :: ens_id_width
 
-!#sqz_for_ldas_coupling
+!for_ldas_coupling
         type (T_CATCH_STATE), pointer           :: CATCH_INTERNAL_STATE
         type (CATCH_WRAP)                       :: wrap2
 
@@ -4103,7 +4120,8 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         character(len=ESMF_MAXSTR)    :: LDASINC_FILE
         character(len=ESMF_MAXSTR)    :: DATE
         integer                       :: nymd, nhms
-        integer                       :: LDAS_INTERVAL
+        
+        
         integer                       :: LDAS_INCR
         logical                       :: fexist
 
@@ -5208,7 +5226,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         call ESMF_ConfigGetAttribute ( CF, latend, Label="PRINTLATEND:", DEFAULT=MAPL_UNDEF, RC=STATUS )
 ! ----------------------------------------------------------------------------------------
 
-!#sqz_for_ldas_coupling 
+!for_ldas_coupling 
 !--------------------------------------------------------------------
 ! LDAS increments application to Catchment states during coupled run 
 !--------------------------------------------------------------------
@@ -5218,16 +5236,12 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         CATCH_INTERNAL_STATE => WRAP2%PTR
 
-        call MAPL_GetResource ( MAPL, LDAS_INTERVAL, Label="LDAS_INTERVAL:", &
-             DEFAULT=10800, RC=STATUS)
-        VERIFY_(STATUS)
-
         call MAPL_GetResource ( MAPL, LDAS_INCR, Label="LDAS_INCR:", &
              DEFAULT=0, RC=STATUS)
         VERIFY_(STATUS)
         if(LDAS_INCR >0 )  then
 
-           call WRITE_PARALLEL(' LDAS_coupling: LDAS_INCR =1,apply correction')
+           !call WRITE_PARALLEL(' LDAS_coupling: LDAS_INCR =1,apply correction')
            ! get ADAS CORRECTOR ALARM 
            call MAPL_StateAlarmGet(MAPL,CORRECTOR_ALARM,"CORRECTOR_ALARM",RC=STATUS)
            VERIFY_(STATUS)
@@ -5248,7 +5262,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            endif ! CORRECTOR_ALARM ring 
            if (CATCH_INTERNAL_STATE%LDAS_CORRECTOR) then
-              call WRITE_PARALLEL (' LDAS_coupling: LDAS_CORRECTOR true ' )
+             ! call WRITE_PARALLEL (' LDAS_coupling: LDAS_CORRECTOR true ' )
               ! field list 
               call ESMF_FieldBundleGet(Catch_Internal_State%bundle,"TCFSAT_INCR",field=field,RC=STATUS) ; VERIFY_(STATUS)
               call ESMF_FieldGet(field,0,tcfsat_incr,RC=STATUS) ; VERIFY_(STATUS)
@@ -5309,7 +5323,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
                  call ESMF_AlarmRingerOff(LDAS_ALARM, RC=STATUS)
                  VERIFY_(STATUS)
 
-                 call WRITE_PARALLEL('LDAS_coupling: L_ALARM is ringing, checking for new LDAS increment file')
+                 call WRITE_PARALLEL('LDAS_coupling: ALARM_L is ringing, checking for new LDAS increment file')
 
                  ! get LDAS incr file name
                  call ESMF_TimeGet(CURRENT_TIME,timeString=DATE,RC=STATUS)
@@ -5431,8 +5445,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
                  endif !if LDAS_incr file exist  
 
-              else
-                 !call WRITE_PARALLEL(' LDAS_coupling: LDAS_ALARM not ringing.')
               endif ! if LDAS alarm  ring
 
            endif ! if CatchInternalState%LDAS_CORRECTOR=.true.
