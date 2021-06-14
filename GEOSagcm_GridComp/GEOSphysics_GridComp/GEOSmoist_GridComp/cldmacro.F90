@@ -50,7 +50,8 @@ module cldmacro
    real    :: RHSUP_ICE
    real    :: SHR_EVAP_FAC
    real    :: MIN_CLD_WATER
-   real    :: CLD_EVP_EFF
+   real    :: CCW_EVP_EFF
+   real    :: CCI_EVP_EFF
    integer :: NSMAX
    real    :: LS_SDQV2
    real    :: LS_SDQV3
@@ -326,7 +327,8 @@ contains
       RHSUP_ICE     = CLDPARAMS%SUPERSAT
       SHR_EVAP_FAC  = CLDPARAMS%SHEAR_EVAP_FAC
       MIN_CLD_WATER = CLDPARAMS%MIN_ALLOW_CCW
-      CLD_EVP_EFF   = CLDPARAMS%CCW_EVAP_EFF
+      CCW_EVP_EFF   = CLDPARAMS%CCW_EVAP_EFF
+      CCI_EVP_EFF   = CLDPARAMS%CCW_EVAP_EFF
       NSMAX         = INT( CLDPARAMS%NSUB_AUTOCONV  )
       LS_SDQV2      = CLDPARAMS%LS_SUND_INTER
       LS_SDQV3      = CLDPARAMS%LS_SUND_COLD
@@ -1914,7 +1916,7 @@ subroutine hystpdf_new( &
 
       real :: A_eff
 
-      A_EFF = CLD_EVP_EFF
+      A_EFF = CCW_EVP_EFF
 
       NN = 50.*1.0e6
 
@@ -2012,7 +2014,7 @@ subroutine hystpdf_new( &
 
       real :: A_eff
 
-      A_EFF = CLD_EVP_EFF
+      A_EFF = CCI_EVP_EFF
 
       NN = 5.*1.0e6
 

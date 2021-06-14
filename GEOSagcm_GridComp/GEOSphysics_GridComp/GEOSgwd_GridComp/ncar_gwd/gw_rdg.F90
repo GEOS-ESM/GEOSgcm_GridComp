@@ -94,10 +94,9 @@ contains
 !------------------------------------
 !> \section arg_table_gw_rdg_init  Argument Table
 !! \htmlinclude gw_rdg_init.html
-subroutine gw_rdg_init (band, gw_dc, wavelength, pgwv)
+subroutine gw_rdg_init (gw_dc, wavelength, pgwv)
 #include <netcdf.inc>
 
-  type(GWBand), intent(inout) :: band
   real(r8), intent(in) :: gw_dc,wavelength
   integer, intent(in)  :: pgwv
 
@@ -108,7 +107,7 @@ subroutine gw_rdg_init (band, gw_dc, wavelength, pgwv)
   !----------------------------------------------
 
   band  = GWBand(pgwv, gw_dc, 1.0_r8, wavelength )
-      
+  
 end subroutine gw_rdg_init
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -252,7 +251,9 @@ subroutine gw_rdg_ifc( &
    real(r8) :: utgw(ncol,pver)       ! zonal wind tendency
    real(r8) :: vtgw(ncol,pver)       ! meridional wind tendency
    real(r8) :: ttgw(ncol,pver)       ! temperature tendency
+#ifdef CAM
    real(r8) :: qtgw(ncol,pver,pcnst) ! constituents tendencies
+#endif
 
    ! Effective gravity wave diffusivity at interfaces.
    real(r8) :: egwdffi(ncol,pverp)
@@ -267,29 +268,22 @@ subroutine gw_rdg_ifc( &
    real(r8) :: taury(ncol,pverp)
    real(r8) :: taury0(ncol,pverp)
 
-   ! U,V tendency accumulators
-   !real(r8) :: utrdg(ncol,pver)
-   !real(r8) :: vtrdg(ncol,pver)
-
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
+
+   logical, parameter :: gw_apply_tndmax = .TRUE. !- default .TRUE. for Anisotropic: "Sean" limiters
 
    character(len=4) :: type         ! BETA or GAMMA (just BETA for now)
    character(len=1) :: cn
    character(len=9) :: fname(4)
    !----------------------------------------------------------------------------
 
-   ! Calculate necessary thermodyanmic profiles for GW
-   !call gw_prof(ncol, pver,  pint, pmid, gw_cpair, t , rhoi, nm, ni)
-
-   
    ! Allocate wavenumber fields.
    allocate(tau(ncol,  band%ngwv:band%ngwv  , pverp))
    allocate(gwut(ncol,pver,band%ngwv:band%ngwv  ))
    allocate(c(ncol,band%ngwv:band%ngwv))
 
    type='BETA'
-
 
    ! initialize accumulated momentum fluxes and tendencies
    taurx = 0._r8
@@ -324,7 +318,7 @@ subroutine gw_rdg_ifc( &
          tauoro, taudsw, tau, & 
          ldo_trapped_waves=trpd_leewv)
 
-#if 0
+#ifdef CAM
 !CAM call
     call gw_drag_prof(ncol, pver, band, &
          pint, pmid, delp, src_level, tend_level, dt, &
@@ -343,9 +337,8 @@ subroutine gw_rdg_ifc( &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
           ttgw, egwdffi,  gwut, dttdf, dttke,            &
           kwvrdg=kwvrdg,                                 &  
-          satfac_in = 1._r8  )
-
-
+          satfac_in = 1._r8,                                   &
+          lapply_effgw_in=gw_apply_tndmax)
 
      flx_heat(:ncol) = 0._r8
 
@@ -356,26 +349,6 @@ subroutine gw_rdg_ifc( &
          vtrdg(:,k) = vtrdg(:,k) + vtgw(:,k)
          ttrdg(:,k) = ttrdg(:,k) + ttgw(:,k)
       end do
-#if 0
-! disable tracer mixing in GW for now.
-      do icnst = 1, pcnst
-      do k = 1, pver
-         qtrdg(:,k,icnst) = qtrdg(:,k,icnst) + qtgw(:,k,icnst)
-      end do
-      end do
-#endif
-
-#ifdef UNITTEST
-write(*,*) "rdg: ",minval(utgw),maxval(utgw)
-#endif
-
-#if 0
-      do m = 1, pcnst
-         do k = 1, pver
-            !ptend%q(:ncol,k,m) = ptend%q(:ncol,k,m) + qtgw(:,k,m)
-         end do
-      end do
-#endif
 
       do k = 1, pver+1
          taurx0(:,k) =  tau(:,0,k)*xv
@@ -384,12 +357,17 @@ write(*,*) "rdg: ",minval(utgw),maxval(utgw)
          taury(:,k)  =  taury(:,k) + taury0(:,k)
       end do
 
-      if (nn == 1) then
-      end if
-
+#ifdef CAM
+! disable tracer mixing in GW for now.
+      do icnst = 1, pcnst
+      do k = 1, pver
+         qtrdg(:,k,icnst) = qtrdg(:,k,icnst) + qtgw(:,k,icnst)
+      end do
+      end do
       if (nn <= 6) then
          write(cn, '(i1)') nn
       end if
+#endif
 
    end do ! end of loop over multiple ridges
 
@@ -413,10 +391,6 @@ write(*,*) "rdg: ",minval(utgw),maxval(utgw)
       call endrun('gw_rdg_calc: FATAL: type must be either BETA or GAMMA'&
                   //' type= '//type)
    end if
-
-#ifdef SCMTEST
-   write(*,*) " DID GW_RDG .... (OFFLINE)"
-#endif
 
    deallocate(tau, gwut, c)
 
@@ -454,6 +428,7 @@ write(*,*) "rdg: ",minval(utgw),maxval(utgw)
 
   !----------------------------------------------------------------------
 
+#if 1
 ! NCAR CESM2 values
 !-------------------
  gw_rdg_do_divstream		= .TRUE.
@@ -470,9 +445,7 @@ write(*,*) "rdg: ",minval(utgw),maxval(utgw)
  gw_rdg_orovmin			= 1.0e-3
  gw_rdg_orostratmin		= 0.002
  gw_rdg_orom2min		= 0.1
-
-#if 0
-! Scinocca & Mcfarlane 2000 values
+#else
 !----------------------------------
  gw_rdg_do_divstream		= .FALSE.
  gw_rdg_C_BetaMax_DS		= 0.

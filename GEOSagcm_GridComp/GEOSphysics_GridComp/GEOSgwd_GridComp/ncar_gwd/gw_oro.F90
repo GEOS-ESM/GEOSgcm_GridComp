@@ -369,8 +369,8 @@ subroutine gw_oro_ifc( band, &
         end if
      end do
 
+     pint_adj = 1.0
 !WMP pressure scaling from GEOS
-!    pint_adj = 1.0
 !    where (pint < 1000.0)
 !      pint_adj = (pint/1000.0)**3
 !    endwhere

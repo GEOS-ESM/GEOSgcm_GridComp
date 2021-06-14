@@ -170,7 +170,8 @@ module cloudnew
    real,    constant :: RHSUP_ICE
    real,    constant :: SHR_EVAP_FAC
    real,    constant :: MIN_CLD_WATER
-   real,    constant :: CLD_EVP_EFF
+   real,    constant :: CCW_EVP_EFF
+   real,    constant :: CCI_EVP_EFF
    integer, constant :: NSMAX
    real,    constant :: LS_SDQV2
    real,    constant :: LS_SDQV3
@@ -197,12 +198,6 @@ module cloudnew
    real,    constant :: CNVDDRFC
    real,    constant :: ANVDDRFC
    real,    constant :: LSDDRFC
-   integer, constant :: TANHRHCRIT
-   real,             :: MINRHCRIT
-   real,    constant :: MINRHCRIT_I
-   real,    constant :: MAXRHCRIT
-   real,    constant :: TURNRHCRIT
-   real,    constant :: MAXRHCRITLAND
    integer, constant :: FR_LS_WAT
    integer, constant :: FR_LS_ICE
    integer, constant :: FR_AN_WAT
@@ -297,7 +292,8 @@ module cloudnew
    real    :: RHSUP_ICE
    real    :: SHR_EVAP_FAC
    real    :: MIN_CLD_WATER
-   real    :: CLD_EVP_EFF
+   real    :: CCW_EVP_EFF
+   real    :: CCI_EVP_EFF
    integer :: NSMAX
    real    :: LS_SDQV2
    real    :: LS_SDQV3
@@ -325,10 +321,6 @@ module cloudnew
    real    :: ANVDDRFC
    real    :: SCDDRFC
    real    :: LSDDRFC
-   integer :: tanhrhcrit
-   real    :: minrhcrit, minrhcrit_i
-   real    :: maxrhcrit
-   real    :: turnrhcrit
    real    :: MIN_RI, MAX_RI, FAC_RI, MIN_RL, MAX_RL, FAC_RL, CFPBL_EXP
    integer :: FR_LS_WAT, FR_LS_ICE, FR_AN_WAT, FR_AN_ICE
    real    :: maxrhcritland
@@ -436,6 +428,9 @@ contains
          SNRAN_dev        , &
          SNRSC_dev        , &
          CLDPARAMS        , &
+         minrhcrit        , &
+         maxrhcrit        , &
+         turnrhcrit       , &
          QST3_dev         , &
          DZET_dev         , &
          QDDF3_dev        , &
@@ -482,6 +477,7 @@ contains
       real   , intent(in   ), value :: DT
 #else
       type (CLDPARAM_TYPE), intent(in)          :: CLDPARAMS
+      real, intent(in   ), dimension(IRUN)      :: minrhcrit,maxrhcrit,turnrhcrit 
 
       integer, intent(in   )                    :: IRUN ! IM*JM
       integer, intent(in   )                    :: LM   ! LM
@@ -687,7 +683,8 @@ contains
          RHSUP_ICE     = CLDPARAMS%SUPERSAT
          SHR_EVAP_FAC  = CLDPARAMS%SHEAR_EVAP_FAC
          MIN_CLD_WATER = CLDPARAMS%MIN_ALLOW_CCW
-         CLD_EVP_EFF   = CLDPARAMS%CCW_EVAP_EFF
+         CCW_EVP_EFF   = CLDPARAMS%CCW_EVAP_EFF
+         CCI_EVP_EFF   = CLDPARAMS%CCI_EVAP_EFF
          NSMAX         = INT( CLDPARAMS%NSUB_AUTOCONV  )
          LS_SDQV2      = CLDPARAMS%LS_SUND_INTER
          LS_SDQV3      = CLDPARAMS%LS_SUND_COLD
@@ -714,11 +711,6 @@ contains
          CNVDDRFC      = CLDPARAMS%CNV_DDRF
          ANVDDRFC      = CLDPARAMS%ANV_DDRF
          LSDDRFC       = CLDPARAMS%LS_DDRF
-         TANHRHCRIT    = INT( CLDPARAMS%TANHRHCRIT )
-         MINRHCRIT_I   = CLDPARAMS%MINRHCRIT
-         MAXRHCRIT     = CLDPARAMS%MAXRHCRIT
-         TURNRHCRIT    = CLDPARAMS%TURNRHCRIT
-         MAXRHCRITLAND = CLDPARAMS%MAXRHCRITLAND
          FR_LS_WAT     = INT( CLDPARAMS%FR_LS_WAT )
          FR_LS_ICE     = INT( CLDPARAMS%FR_LS_ICE )
          FR_AN_WAT     = INT( CLDPARAMS%FR_AN_WAT )
@@ -744,11 +736,6 @@ contains
 #else
       RUN_LOOP: DO I = 1, IRUN
 #endif
-
-       ! Outside of coherent convective regions bring RHCRIT up to MAXRHCRIT 
-       !   to remove some resolution sensitivity in low-level stratus clouds
-       ! MINRHCRIT  = MAXRHCRIT*(1.0-CNV_FRACTION_dev(I)) + MINRHCRIT_I*(CNV_FRACTION_dev(I))
-         MINRHCRIT  = MINRHCRIT_I
 
          K_LOOP: DO K = 1, LM         
             if (K == 1) then
@@ -996,15 +983,10 @@ contains
                DZET_below = DZET_dev(i,k+1)
             end if
   
-            call pdf_spread (&
-                  K,LM,&
-                  U_dev(I,K),U_above,U_below,&
-                  V_dev(I,K),V_above,V_below,&
-                  KH_dev(I,K-1),DZET_above,DZET_below,&
-                  CNV_UPDFRC_dev(I,K),PP_dev(I,K),ALPHA,&
-                  ALPHT_dev(I,K),ALPH1_dev(I,K),ALPH2_dev(I,K), & 
-                  FRLAND_dev(I),&
-                  CONVPAR_OPTION   ) 
+            call pdf_spread ( &
+                  PP_dev(I,K),PPE_dev(I,LM),TROPP_dev(I),&
+                  minrhcrit(I), maxrhcrit(I), turnrhcrit(I),&
+                  ALPHA, ALPHT_dev(I,K) ) 
 
             ! impose a minimum amount of variability
             ALPHA    = MAX(  ALPHA , 1.0 - RH00 )
@@ -1094,7 +1076,7 @@ contains
 
             call evap3(            &
                   DT             , &
-                  CLD_EVP_EFF    , &
+                  CCW_EVP_EFF    , &
                   RHCRIT         , &
                   PP_dev(I,K)    , &
                   TEMP           , &
@@ -1109,7 +1091,7 @@ contains
 
             call subl3(            &
                   DT             , & 
-                  CLD_EVP_EFF    , &
+                  CCI_EVP_EFF    , &
                   RHCRIT         , &
                   PP_dev(I,K)    , &
                   TEMP           , &
@@ -1681,44 +1663,28 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine pdf_spread (K,LM,&
-         U,U_above,U_below,&
-         V,V_above,V_below,&
-         KH,&
-         DZ_above,DZ_below,&
-         UPDF,PP,ALPHA,&
-         ALPHT_DIAG, ALPH1_DIAG, ALPH2_DIAG,&
-         FRLAND , & 
-         CONVPAR_OPTION   ) 
+   subroutine pdf_spread (PP,PPsfc,TROPP, &
+         minrhcrit, maxrhcrit, turnrhcrit, &
+         ALPHA, ALPHT_DIAG)
 
-      integer, intent(in)  :: k,lm
-      real,    intent(in)  :: U,U_above,U_below
-      real,    intent(in)  :: V,V_above,V_below
-      real,    intent(in)  :: DZ_above,DZ_below
-      real,    intent(in)  :: UPDF,PP
-      real,    intent(in)  :: KH
+      real,    intent(in)  :: PP,PPsfc,TROPP
+      real,    intent(in)  :: minrhcrit, maxrhcrit, turnrhcrit
       real,    intent(out) :: ALPHA
-      real,    intent(out) :: ALPH1_DIAG, ALPH2_DIAG, ALPHT_DIAG
-      real,    intent(in)  :: FRLAND
-      character(LEN=*), INTENT(IN) :: CONVPAR_OPTION
+      real,    intent(out) :: ALPHT_DIAG
 
-      real    :: A1,A2,A3
-      real    :: tempmaxrh
+      real    :: a1, Al, Au, TURNRHCRIT_UP
 
+#ifdef OLD_RHCRIT
       ! alpha is the 1/2*width so RH_crit=1.0-alpha
-
-      if (tanhrhcrit.eq.1) then
 
          !  Use Slingo-Ritter (1985) formulation for critical relative humidity
          !  array a1 holds the critical rh, ranges from 0.8 to 1
 
-         tempmaxrh = maxrhcrit
-         if (frland > 0.05) tempmaxrh = maxrhcritland
          a1 = 1.0
          if (pp .le. turnrhcrit) then
             a1 = minrhcrit
          else
-            a1 = minrhcrit + (tempmaxrh-minrhcrit)/(19.) * &
+            a1 = minrhcrit + (maxrhcrit-minrhcrit)/(19.) * &
                   ((atan( (2.*(pp- turnrhcrit)/(1020.-turnrhcrit)-1.) * &
                   tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
          end if
@@ -1727,57 +1693,33 @@ contains
 
          alpha = 1. - a1
 
-      else
+         ALPHA = MIN( ALPHA , 0.25 )  ! restrict RHcrit to > 75% 
+#else
 
-         alpha = 0.001 ! 0.1% RH SLOP
+       !  Use Slingo-Ritter (1985) formulation for critical relative humidity
+           ! lower turn from maxrhcrit
+             if (pp .le. TURNRHCRIT) then
+                Al = minrhcrit
+             else
+                Al = minrhcrit + (maxrhcrit-minrhcrit)/(19.) * &
+                         ((atan( (2.*(pp-TURNRHCRIT)/(PPsfc-TURNRHCRIT)-1.) * &
+                         tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
+             endif
+           ! upper turn back to maxrhcrit
+             TURNRHCRIT_UP = TROPP/100.0 ! Pa to mb
+             IF (TURNRHCRIT_UP == MAPL_UNDEF) TURNRHCRIT_UP = 100.
+             if (pp .le. TURNRHCRIT_UP) then
+                Au = maxrhcrit
+             else
+                Au = maxrhcrit - (maxrhcrit-minrhcrit)/(19.) * &
+                        ((atan( (2.*(pp-TURNRHCRIT_UP)/(TURNRHCRIT-TURNRHCRIT_UP)-1.) * &
+                        tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
+             endif
+           ! combine and limit
+             ALPHA = min( 0.25, 1.0 - min(max(Al,Au),1.) ) ! restrict RHcrit to > 75% 
 
-         !! DIRECTIONAL SHEAR == ABS( e_normal dot [U_z,V_z] ) 
-   
-         A1 = 0.
+#endif
 
-         A3 = 1./SQRT( U**2 + V**2 + 0.01 )  ! inverse of wind mag 
-
-         A2 = V * A3 ! x-component of unit normal to (U,V) 
-
-         if (k > 1 .and. k < lm) then
-            A1 = ( A2 * ( U_above - U_below ) &
-                  / ( DZ_above+DZ_below ) )
-         end if
-
-         A2 = -U * A3 ! y-component of unit normal to (U,V) 
-
-         if (k > 1 .and. k < lm) then
-            A1 = ( A2 * ( V_above - V_below )  & 
-                  / ( DZ_above+DZ_below ) )  + A1
-         end if
-
-         A1 = ABS( A1 )  ! A1 is now magnitude of veering shear at layers in (m/s) /m.  Thus, A1=.001  ==> 1 m/s/km
-
-         ALPHA = ALPHA  +  10.*A1  
-
-         ALPH1_DIAG = 10.*A1
-
-         !! Total shear = SQRT( [U_z,V_z] dot [U_z,V_z] )
-
-         A1  = 0.
-         if (k > 1 .and. k < lm) then
-            A1 = ( ( U_above - U_below )/ ( DZ_above+DZ_below ) )**2 & 
-                  + ( ( V_above - V_below )/ ( DZ_above+DZ_below ) )**2  
-         end if
-
-         A1  = SQRT ( A1 )  ! A1 is now magnitude of TOTAL shear at layers in (m/s) /m.  Thus, A1=.001  ==> 1 m/s/km
-
-         ALPHA = ALPHA  +  3.33*A1
-
-         !! KH values ~100 m+2 s-1 typical of strong PBLs
-
-         ALPHA = ALPHA  +  0.002*KH
-
-         ALPH2_DIAG = 0.002*KH
-
-      end if               ! end of slingo ritter if-sequence
-
-      ALPHA = MIN( ALPHA , 0.25 )  ! restrict RHcrit to > 75% 
       ALPHT_DIAG = ALPHA
 
    end subroutine pdf_spread
@@ -2753,8 +2695,6 @@ contains
       real, parameter :: EPSILON =  MAPL_H2OMW/MAPL_AIRMW
       real, parameter :: K_COND  =  2.4e-2        ! J m**-1 s**-1 K**-1
       real, parameter :: DIFFU   =  2.2e-5        ! m**2 s**-1
-
-     !A_EFF = CLD_EVP_EFF
 
       NN = 50.*1.0e6
 

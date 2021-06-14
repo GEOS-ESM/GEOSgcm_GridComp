@@ -1505,7 +1505,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     dt5 = 0.5 * dts
     
     rdts = 1. / dts
-    
+   
+    fac_frz = 1. - exp (- dts / tau_frz)
 
     ! -----------------------------------------------------------------------
     ! define conversion scalar / factor
@@ -1516,8 +1517,7 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     fac_v2g = 1. - exp (- dts / tau_v2g)
     
     fac_imlt = 1. - exp (- dt5 / tau_imlt)
-    fac_frz  = 1. - exp (- dt5 / tau_frz)
-
+    
     ! -----------------------------------------------------------------------
     ! define heat capacity and latend heat coefficient
     ! -----------------------------------------------------------------------
@@ -1539,11 +1539,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
   
 
     do k = ktop, kbot
-
-      do it = 1,5
-
-        if (tzk (k) > tice) then
-
+        if (tzk (k) > tice .and. qik (k) > qcmin) then
+            
             ! -----------------------------------------------------------------------
             ! pimlt: instant melting of cloud ice
             ! -----------------------------------------------------------------------
@@ -1558,9 +1555,8 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             cvm (k) = c_air + qvk (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
             tzk (k) = tzk (k) - melt * lhi (k) / cvm (k)
 
-        endif
+        elseif (tzk (k) <= tice .and. qlk (k) > qcmin) then
 
-        if (tzk (k) <= tice) then
 
             newqi = new_ice_condensate(tzk (k), cnv_fraction, qlk (k), qik (k))
  
@@ -1585,9 +1581,6 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
             tzk (k) = tzk (k) + sink * lhi (k) / cvm (k)
             
         endif
-
-      enddo
-
     enddo
   
     ! -----------------------------------------------------------------------
@@ -1775,6 +1768,12 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                 ! the mismatch computation following lin et al. 1994, mwr
                 ! -----------------------------------------------------------------------
                 
+                if (const_vi) then
+                    tmp = fac_i2s
+                else
+                    tmp = fac_i2s * exp (0.025 * tc)
+                endif
+                
                 di (k) = max (di (k), qrmin)
                 q_plus = qi + di (k)
                 if (q_plus > (qim + qrmin)) then
@@ -1783,11 +1782,14 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
                     else
                         dq = qi - qim
                     endif
-                    psaut = fac_i2s * dq
+                    psaut = tmp * dq
                 else
                     psaut = 0.
                 endif
-                sink = min (qi, psaci + psaut)
+                ! -----------------------------------------------------------------------
+                ! sink is no greater than 75% of qi
+                ! -----------------------------------------------------------------------
+                sink = min (0.75 * qi, psaci + psaut)
                 qi = qi - sink
                 qs = qs + sink
                 
@@ -2122,7 +2124,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         
         dtmp = t_wfr - tz (k) ! [ - 40, - 48]
         if (dtmp > 0. .and. ql (k) > qcmin) then
-            sink = min (ql (k), tau_frz * dtmp / icpk (k))
+            sink = min (ql (k), fac_frz * dtmp / icpk (k))
             ql (k) = ql (k) - sink
             qi (k) = qi (k) + sink
             q_liq (k) = q_liq (k) - sink
@@ -2146,7 +2148,7 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         if (ql (k) > qrmin .and. tc > 0.) then
             newqi = new_ice_condensate(tz (k), cnv_fraction, ql (k), qi (k))
             sink = 3.3333e-10 * dts * (exp (0.66 * tc) - 1.) * den (k) * ql (k) * ql (k)
-            sink = max(0.0,min (newqi, tau_frz * tc / icpk (k), sink))
+            sink = max(0.0,min (newqi, fac_frz * tc / icpk (k), sink))
             ql (k) = ql (k) - sink
             qi (k) = qi (k) + sink
             q_liq (k) = q_liq (k) - sink
