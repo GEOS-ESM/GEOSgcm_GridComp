@@ -974,6 +974,7 @@ contains
     Iam = "Run"
     call ESMF_GridCompGet( gc, NAME=comp_name, currentPhase=PHASE, RC=status )
     VERIFY_(status)
+    if (PHASE >= 10) PHASE = PHASE - 10 ! to be replaced by MAPL get_phase 
     Iam = trim(comp_name) // Iam
 
 ! Get my internal MAPL_Generic state
