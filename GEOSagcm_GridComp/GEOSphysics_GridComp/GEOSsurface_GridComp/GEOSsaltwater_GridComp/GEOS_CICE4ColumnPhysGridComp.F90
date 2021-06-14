@@ -4074,6 +4074,8 @@ contains
     !
     !      surface flux and temperature updated by sea ice
     !      continue updating relevant fields and pass them to surf  
+    !    DTS = AS_PTR_2D - TS
+    !    .....
     ! 
     !************************************************************************************************
     !==============================================================================================
