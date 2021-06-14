@@ -5198,7 +5198,7 @@ contains
        call WRITE_PARALLEL ("INITIALIZED aer_cloud_init for 1moment")
     end if
 
-    if(adjustl(CLDMICRO)=="GFDL") then
+    if( LM .eq. 72 ) then
        call MAPL_GetResource (MAPL, JASON_TUNING, "JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
     else
        call MAPL_GetResource (MAPL, JASON_TUNING, "JASON_TUNING:", default=1, RC=STATUS); VERIFY_(STATUS)
@@ -6124,6 +6124,8 @@ contains
       real, dimension(IM,JM,LM) :: LWC_X, IWC_X, CIRRUS_FREQ_HOM_X, CIRRUS_FREQ_HET_X
       real, dimension(IM,JM) ::  CLDREFFI_TOP_X, CLDREFFL_TOP_X,  NCPL_TOP_X, NCPI_TOP_X, NCPL_CLDBASEX
 
+
+      real, dimension(IM,JM)    :: turnrhcrit2D, minrhcrit2D, maxrhcrit2D
 
       real, dimension(IM,JM,LM) :: ALPHT_X
       real, dimension(IM,JM,LM) :: ALPH1_X
@@ -7725,7 +7727,6 @@ contains
          CNV_FRACTION = 0.0 
 
     ! CNV_FRACTION Criteria
-      if(JASON_TUNING == 1) then
         call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
@@ -7740,31 +7741,13 @@ contains
               CNV_FRACTION =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
            END WHERE
         endif
-      else
-        call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 1.e6, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
-        VERIFY_(STATUS)
-        if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
-          ! CAPE
-           WHERE (CAPE .ne. MAPL_UNDEF)
-              CNV_FRACTION =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))**CNV_FRACTION_EXP
-           END WHERE
-        endif
-      endif
-      if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
+       if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
 
-      if (SHLWPARAMS%FRC_RASN < 0.0) then
-         FRC_RASN_2D = ABS(SHLWPARAMS%FRC_RASN)*(1.0-FRLAND)*CNV_FRACTION
-      else
-         FRC_RASN_2D = SHLWPARAMS%FRC_RASN
-      endif
+       if (SHLWPARAMS%FRC_RASN < 0.0) then
+          FRC_RASN_2D = ABS(SHLWPARAMS%FRC_RASN)*(1.0-FRLAND)*CNV_FRACTION
+       else
+          FRC_RASN_2D = SHLWPARAMS%FRC_RASN
+       endif
 
       K0 = LM
       ICMIN    = max(1,count(PREF < PMIN_DET))
@@ -8853,18 +8836,36 @@ contains
          call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT, 'TURNRHCRIT:'   , DEFAULT= 750.0 )
       end if
 
-      call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT= 300.0 )
-      call MAPL_GetResource( STATE, CLDPARAMS%SLOPERHCRIT, 'SLOPERHCRIT:', DEFAULT= 20.0  )
+      if(adjustl(CLDMICRO)=="2MOMENT") then
+        call MAPL_GetResource( STATE, CLDPARAMS%TURNRHCRIT_UP, 'TURNRHCRIT_UP:', DEFAULT= 300.0 )
+        call MAPL_GetResource( STATE, CLDPARAMS%SLOPERHCRIT, 'SLOPERHCRIT:', DEFAULT= 20.0  )
+      else
+        tmprhL = min(0.99,(1.0-min(0.20, max(0.01, 0.035*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
+        tmprhO = min(0.99,(1.0-min(0.20, max(0.01, 0.140*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
+        do J=1,JM
+           do I=1,IM
+             if (CLDPARAMS%TURNRHCRIT .LT. 0) then
+               turnrhcrit2D(I,J) = PLO(I, J, NINT(KPBLSC(I,J)))-50.  ! 50mb above KHSFC top
+               minrhcrit2D(I,J) = tmprhO             *(1.0-FRLAND(I,J)) + tmprhL                 *FRLAND(I,J)
+               maxrhcrit2D(I,J) = CLDPARAMS%MAXRHCRIT*(1.0-FRLAND(I,J)) + CLDPARAMS%MAXRHCRITLAND*FRLAND(I,J)
+             else
+               turnrhcrit2D(I,J) = MIN( CLDPARAMS%TURNRHCRIT , CLDPARAMS%TURNRHCRIT-(1020-CNV_PLE(i,j,LM)) )
+               minrhcrit2D(I,J) = CLDPARAMS%MINRHCRIT
+               maxrhcrit2D(I,J) = CLDPARAMS%MAXRHCRIT*(1.0-FRLAND(I,J)) + CLDPARAMS%MAXRHCRITLAND*FRLAND(I,J)
+             endif
+           end do
+        end do
+      endif
 
       IF(ADJUSTL(CONVPAR_OPTION) == 'GF' .and. icumulus_gf(shal) == 1) THEN
         call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 5.0e-4  )
         call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 5.0e-4  )
       ELSE
-        if( LM .eq. 72 ) then
+        if( JASON_TUNING == 1 ) then
           call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 3.0e-3  )
           call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 3.0e-3  )
         else
-          call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 3.0e-3  )
+          call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 1.0e-3  )
           call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 6.0e-3  )
         endif
       ENDIF
@@ -9125,21 +9126,14 @@ contains
 
       if (adjustl(CLDMICRO) =="GFDL") then
           call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
-          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.8     )
-          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 0.8     )
+          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
+          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
           call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= -999.99 ) ! irrelevant
       else
-        if( LM .eq. 72 ) then
           call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
           call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
           call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
           call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     )
-        else
-          call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
-          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
-          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
-          call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     )
-        endif
       endif
 
       if(adjustl(CLDMICRO)=="2MOMENT") then
@@ -9289,8 +9283,6 @@ contains
          PFI_LS_X = 0.
         ! Liquid
          PFL_LS_X = 0.
-#define HYSTPDF
-#ifdef HYSTPDF
      ! Put condensates in touch with the PDF
         tmprhL = min(0.99,(1.0-min(0.20, max(0.01, 0.035*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
         tmprhO = min(0.99,(1.0-min(0.20, max(0.01, 0.140*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
@@ -9299,15 +9291,9 @@ contains
             do I=1,IM
        ! Send the condensates through the pdf after convection
        !  Use Slingo-Ritter (1985) formulation for critical relative humidity
-             if (CLDPARAMS%TURNRHCRIT .LT. 0) then
-                 TURNRHCRIT   = PLO(I, J, NINT(KPBLSC(I,J)))-50.  ! 50mb above KHSFC top
-                 tmpminrhcrit = tmprhO             *(1.0-FRLAND(I,J)) + tmprhL                 *FRLAND(I,J)
-                 tmpmaxrhcrit = CLDPARAMS%MAXRHCRIT*(1.0-FRLAND(I,J)) + CLDPARAMS%MAXRHCRITLAND*FRLAND(I,J)
-             else
-                 TURNRHCRIT   = MIN( CLDPARAMS%TURNRHCRIT , CLDPARAMS%TURNRHCRIT-(1020-CNV_PLE(i,j,LM)) )
-                 tmpminrhcrit = CLDPARAMS%MINRHCRIT
-                 tmpmaxrhcrit = CLDPARAMS%MAXRHCRIT*(1.0-FRLAND(I,J)) + CLDPARAMS%MAXRHCRITLAND*FRLAND(I,J)
-             endif
+             TURNRHCRIT   = TURNRHCRIT2D(I,J)
+             tmpminrhcrit = minrhcrit2D(I,J)
+             tmpmaxrhcrit = maxrhcrit2D(I,J)
              ALPHA = tmpmaxrhcrit
            ! lower turn from maxrhcrit
              if (PLO(i,j,k) .le. TURNRHCRIT) then
@@ -9371,7 +9357,6 @@ contains
             end do ! IM loop
           end do ! JM loop
         end do ! LM loop
-#endif
         ! Cloud
          RAD_CF = MIN(CLCN+CLLS,1.0)
         ! Liquid
@@ -10325,6 +10310,9 @@ contains
               AN_SNR            , &
               SC_SNR            , &
               CLDPARAMS         , &
+              minrhcrit2D       , &
+              maxrhcrit2D       , &
+              turnrhcrit2D      , &
               QST3              , &
               DZET              , &
               QDDF3             , &
