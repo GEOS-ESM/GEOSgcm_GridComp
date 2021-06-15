@@ -11,10 +11,8 @@ real, parameter ::     &
      WSTARmin = 1.e-3, &
      zpblmin  = 100.,  &
      onethird = 1./3., &
-     au0      = 0.15,  &
 !     delta    = 3.E-3
-     delta    = 0., &
-     cb       = 2./3.
+     delta    = 0.
 
 contains
 
@@ -29,7 +27,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                     ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                     ustar, sh, evap, ice_ramp, &                                    ! in
                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in
-                    ET, L0, ENT0, EDfac, EntWFac, Wa, Wb, &                         ! in
+                    ET, L0, ENT0, EDfac, EntWFac, Wa, Wb, au0, cth, &                ! in
                     zpbl, &                                                         ! inout
                     edmfdrya, edmfmoista, &                                         ! out
                     edmfdryw, edmfmoistw, &                                         ! out
@@ -60,7 +58,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe, ui, vi, thli, qti, qvi, qli, qii, thvi
   real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, L0
   real, dimension(IM,JM), intent(inout)   :: zpbl
-  real, intent(in)                        :: th00, ice_ramp, dt, EntWFac, ENT0, Wa, Wb, pwmin, pwmax, &
+  real, intent(in)                        :: th00, ice_ramp, dt, EntWFac, ENT0, Wa, Wb, au0, cth, pwmin, pwmax, &
                                              AlphaW, AlphaQT, AlphaTH, EDfac, c_kh_mf
  
   ! Outputs
@@ -91,7 +89,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
           B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, Mn_test, EntEXP, EntEXPU, EntW, wf, &
           stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, idzle, ifac, test, mft_work, mfthvt_work, &
           goth00, thlu_full, work, work2, exfh, dsdz, dqdz, wu0, thv_high, thv_low, thvmin, thvmax, &
-          dthv0, thv0, foo
+          dthv0, thvu0, qtu0, foo
 
   ! Temporary (too slow; need to figure out how random number generator works)
   integer, dimension(numup,IM,JM,LM)  :: enti
@@ -103,7 +101,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
   integer, dimension(2)  :: seedmf, the_seed
 
-  real, dimension(numup) :: upa_out
+  real, dimension(numup) :: upa_out, upac_out
   logical, dimension(IM,JM)       :: work_flag
   logical, dimension(numup,IM,JM) :: active_updraft
 
@@ -242,9 +240,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
   ! Get surface layer organized entrainment
   if ( plume_type == 1 ) then
-     call A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
-                         rho, rhoe, thl, qt, thv, debug_flag, &      ! in
-                         A, f_thermal, ent_sl)                       ! out
+     call A_star_closure(IM, JM, LM, &                       ! in
+                         th00, wb, au0, debug_flag, &        ! in
+                         zle, zl, rho, rhoe, thl, qt, thv, & ! in
+                         A, f_thermal, ent_sl)               ! out
      E = A
   end if
 
@@ -280,18 +279,21 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
            work2 = rhoe(i,j,LM-2)/rhoe(i,j,LM-1) 
 
            wu0 = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
+           write(*,*) '*', wu0
 
            dthv0 = max( thv(i,j,LM) - thv(i,j,LM-1), &
-                        wu0**2.*( ( work2/work )**2. - work**2. )/( 2.*cb*goth00*( zle(i,j,LM-2) - zle(i,j,LM-1) ) ) )
+                        wu0**2.*( ( work2/work )**2. - work**2. )/( 2.*wb*goth00*( zle(i,j,LM-2) - zle(i,j,LM-1) ) ) )
 
-           thv0    = thv(i,j,LM-1) + dthv0
-           sigmaTH = 0.75*dthv0
+           qtu0 = qt(i,j,LM-1) + dthv0*evap(i,j)/(rhoe(i,j,LM-1)*wthv)
+
+           thvu0    = thv(i,j,LM-1) + dthv0
+           sigmaTH = cth*dthv0
 
            thvmin = thv(i,j,LM-1)
-           thvmax = thv0 + 3.*sigmaTH
+           thvmax = thvu0 + 3.*sigmaTH
 
            work  = 1./( sqrt(2.)*sigmaTH )
-           work2 = au0/( 0.5*( erf(( thvmax - thv0 )*work) - erf(( thvmin - thv0 )*work) ) )
+           work2 = au0/( 0.5*( erf(( thvmax - thvu0 )*work) - erf(( thvmin - thvu0 )*work) ) )
         end if
 
         QTsrfF  = 0.
@@ -315,10 +317,11 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
               upthv(iup,i,j) = 0.5*( thv_low + thv_high )
               upw(iup,i,j)   = wu0
-              upa(iup,i,j)   = 0.5*work2*( erf(( thv_high - thv0 )*work) - erf(( thv_low - thv0 )*work) )
+              upa(iup,i,j)   = 0.5*work2*( erf(( thv_high - thvu0 )*work) - erf(( thv_low - thvu0 )*work) )
               upu(iup,i,j)   = u(i,j,LM)
               upv(iup,i,j)   = v(i,j,LM)
               upqt(iup,i,j)  = qt(i,j,LM-1) + ( upthv(iup,i,j) - thv(i,j,LM-1) )*evap(i,j)/(rhoe(i,j,LM)*wthv)
+!              upqt(iup,i,j) = qtu0
            end if
 
            upm(iup,i,j) = rhoe(i,j,kbot)*upa(iup,i,j)*upw(iup,i,j)
@@ -440,35 +443,55 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
 #ifdef EDMF_DIAG
               if ( iup == 1 ) then
-                 qt_plume1(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
-                 thl_plume1(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+!                 qt_plume1(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+!                 thl_plume1(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+                 qt_plume1(i,j,k)  = upw(iup,i,j)
+                 thl_plume1(i,j,k) = upthv(iup,i,j) - thvi(i,j,k)
               elseif ( iup == 2 ) then
-                 qt_plume2(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
-                 thl_plume2(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+!                 qt_plume2(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+!                 thl_plume2(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+                 qt_plume2(i,j,k)  = upw(iup,i,j)
+                 thl_plume2(i,j,k) = upthv(iup,i,j) - thvi(i,j,k)
               elseif ( iup == 3 ) then
-                 qt_plume3(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
-                 thl_plume3(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+!                 qt_plume3(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+!                 thl_plume3(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+                 qt_plume3(i,j,k)  = upw(iup,i,j)
+                 thl_plume3(i,j,k) = upthv(iup,i,j) - thvi(i,j,k)
               elseif ( iup == 4 ) then
-                 qt_plume4(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
-                 thl_plume4(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+!                 qt_plume4(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+!                 thl_plume4(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+                 qt_plume4(i,j,k)  = upw(iup,i,j)
+                 thl_plume4(i,j,k) = upthv(iup,i,j) - thvi(i,j,k)
               elseif ( iup == 5 ) then
-                 qt_plume5(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
-                 thl_plume5(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+!                 qt_plume5(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+!                 thl_plume5(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+                 qt_plume5(i,j,k)  = upw(iup,i,j)
+                 thl_plume5(i,j,k) = upthv(iup,i,j) - thvi(i,j,k)
               elseif ( iup == 6 ) then
-                 qt_plume6(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
-                 thl_plume6(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+!                 qt_plume6(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+!                 thl_plume6(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+                 qt_plume6(i,j,k)  = upw(iup,i,j)
+                 thl_plume6(i,j,k) = upthv(iup,i,j) - thvi(i,j,k)
               elseif ( iup == 7 ) then
-                 qt_plume7(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
-                 thl_plume7(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+!                 qt_plume7(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+!                 thl_plume7(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+                 qt_plume7(i,j,k)  = upw(iup,i,j)
+                 thl_plume7(i,j,k) = upthv(iup,i,j) - thvi(i,j,k)
               elseif ( iup == 8 ) then
-                 qt_plume8(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
-                 thl_plume8(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+ !                qt_plume8(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+ !                thl_plume8(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+                 qt_plume8(i,j,k)  = upw(iup,i,j)
+                 thl_plume8(i,j,k) = upthv(iup,i,j) - thvi(i,j,k)
               elseif ( iup == 9 ) then
-                 qt_plume9(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
-                 thl_plume9(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+ !                qt_plume9(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+ !                thl_plume9(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+                 qt_plume9(i,j,k)  = upw(iup,i,j)
+                 thl_plume9(i,j,k) = upthv(iup,i,j) - thvi(i,j,k)
               elseif ( iup == 10 ) then
-                 qt_plume10(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
-                 thl_plume10(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+ !                qt_plume10(i,j,k)  = upqt(iup,i,j) - qti(i,j,k)
+ !                thl_plume10(i,j,k) = ( upthl(iup,i,j) - thli(i,j,k) )*exfh
+                 qt_plume10(i,j,k)  = upw(iup,i,j)
+                 thl_plume10(i,j,k) = upthv(iup,i,j) - thvi(i,j,k)
               end if
 #endif
 
@@ -528,7 +551,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                  E(i,j,k) = E(i,j,k) + 0.4*upm(iup,i,j)*delta
 
                  ! Integrate vertical velocity budget
-                 B = cb*goth00*( upthv(iup,i,j) - thv(i,j,k) )
+                 B = wb*goth00*( upthv(iup,i,j) - thv(i,j,k) )
 
                  Wn2 = ( ( 1. - dzle*delta )/( 1./f_thermal(i,j,k) - 0.6*dzle*delta ) )**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
 
@@ -586,13 +609,19 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                  mfthvt = mfthvt + 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) + mfthvt_work )
                  mft    = mft    + 0.5*(                upa(iup,i,j)*upw(iup,i,j) + mft_work )
 
-                 upa_out(iup) = upa(iup,i,j)
+                 upa_out(iup)  = upa(iup,i,j)
+                 if ( upql(iup,i,j) > 0. ) then
+                    upac_out(iup) = upa(iup,i,j)
+                 else
+                    upac_out(iup) = 0.
+                 end if
               else
                  mfthvt = mfthvt + 0.5*mfthvt_work
                  mft    = mft    + 0.5*mft_work
 
                  active_updraft(iup,i,j) = .false.
                  upa_out(iup)            = 0.
+                 upac_out(iup)           = 0.
               end if
            end if ! active_updraft(iup,i,j)
         end do ! iup = 1,numup
@@ -654,7 +683,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
            end if
 
            if ( debug_flag /= 0 ) then
-              write(*,'(I4,12F7.2)') k-1, sum(100.*upa_out(:)), 100.*edmfmoista(i,j,k-1), 100.*upa_out(:)
+              write(*,'(I4,12F7.2)') k-1, sum(100.*upa_out(:)), sum(100.*upac_out(:)), 100.*upa_out(:)
            end if
         else
            wu(i,j,k)   = 0.
@@ -823,14 +852,15 @@ end subroutine run_edmf
 !
 ! A_star_closure
 !
-subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
-                          rho, rhoe, thl, qt, thv, debug_flag, &      ! in
-                          A, f, ent_sl)                               ! out
+subroutine A_star_closure(IM, JM, LM, &                       ! in
+                          th00, wb, au0, debug_flag, &        ! in
+                          zle, zl, rho, rhoe, thl, qt, thv, & ! in
+                          A, f, ent_sl)                       ! out
 
   integer, intent(in)                      :: IM, JM, LM, debug_flag
-  real, intent(in)                         :: ice_ramp, th00
+  real, intent(in)                         :: th00, wb, au0
   real, dimension(IM,JM,LM), intent(in)    :: zl, thl, qt, thv, rho
-  real, dimension(IM,JM,0:LM), intent(in)  :: zle, rhoe, ple
+  real, dimension(IM,JM,0:LM), intent(in)  :: zle, rhoe
   real, dimension(IM,JM,LM), intent(out)   :: A, f, ent_sl
 
   integer                     :: i, j, k, km1, iter
@@ -930,7 +960,7 @@ subroutine A_star_closure(IM, JM, LM, th00, zle, zl, ple, ice_ramp, & ! in
               E_work  = Mu(i,j)*max( 0., ( 1./f(i,j,k) - 1. )/dz + 0.4*delta )
               D_work  = Mu(i,j)*delta
               
-              B = cb*goth00*( thvu(i,j) - thv(i,j,k) )
+              B = wb*goth00*( thvu(i,j) - thv(i,j,k) )
 
               thlu_next = ( Mu(i,j)*thlu(i,j) + dz*E_work*thl(i,j,k) )/( Mu_next + dz*D_work )
               qtu_next  = ( Mu(i,j)*qtu(i,j)  + dz*E_work*qt(i,j,k) )/( Mu_next + dz*D_work )

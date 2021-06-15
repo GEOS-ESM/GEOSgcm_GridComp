@@ -3746,7 +3746,7 @@ contains
                                            edmf_thl_plume8,edmf_thl_plume9,edmf_thl_plume10
 #endif
 
-   real :: edmf_wa, edmf_wb
+   real :: edmf_wa, edmf_wb, edmf_au0, edmf_cth
 
    integer :: DO_MYNN
 
@@ -3993,6 +3993,8 @@ contains
 
       call MAPL_GetResource(MAPL, edmf_wa, 'EDMF_WA:', default=1.,  RC=STATUS)
       call MAPL_GetResource(MAPL, edmf_wb, 'EDMF_WB:', default=1.5, RC=STATUS)
+      call MAPL_GetResource(MAPL, edmf_au0, 'EDMF_AU0:', default=0.15, RC=STATUS)
+      call MAPL_GetResource(MAPL, edmf_cth, 'EDMF_CTH:', default=0.5, RC=STATUS)
 
       ! Make sure SHOC and MYNN are not running at the same time
       _ASSERT( .not. ( DO_SHOC /= 0 .and. DO_MYNN /= 0) , 'SHOC and MYNN cannot be turned on at the same time!' )
@@ -4548,7 +4550,7 @@ if ( ET == 1 ) then
                      ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
-                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
+                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, edmf_au0, edmf_cth, & ! in       
                      zpbl_mf, &                                                      ! inout
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
@@ -4611,7 +4613,7 @@ if ( ET == 1 ) then
                      ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
-                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
+                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, edmf_au0, edmf_cth, & ! in       
                      zpbl_mf, &                                                      ! inout
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
@@ -4685,7 +4687,7 @@ if ( ET == 1 ) then
                      ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in 
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
-                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in       
+                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, edmf_au0, edmf_cth, & ! in       
                      zpbl_mf, &                                                      ! inout
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
