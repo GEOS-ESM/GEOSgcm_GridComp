@@ -2030,6 +2030,10 @@ module GEOS_CICE4ColumnPhysGridComp
     integer                             :: DO_POND
     integer                             :: PRES_ICE
 
+    !*CALLBACK*
+    type(ESMF_Field)                    :: fld
+    type(ESMF_Grid)                     :: tilegrid
+
 !=============================================================================
 
 ! Begin... 
@@ -2133,6 +2137,18 @@ module GEOS_CICE4ColumnPhysGridComp
 
     call MAPL_GenericInitialize ( GC, IMPORT, EXPORT, CLOCK,  RC=STATUS)
     VERIFY_(STATUS)
+
+    !*CALLBACK*
+    !==============================================================================================
+    call ESMF_StateGet(IMPORT, 'SURFSTATE', SURFST, RC=STATUS)
+    VERIFY_(STATUS)
+
+    ! *** need to have a MAPL_get for tilegrid ***
+
+    fld = MAPL_FieldCreateEmpty(trim('surface_ice_temperature', tilegrid, __RC__)
+    call MAPL_FieldAllocCommit(fld, dims=MAPL_DimsTileOnly, location=MAPL_VLocationNone, typekind=MAPL_R4, hw=0, ungrid=(/NUM_ICE_CATEGORIES/),   __RC__)
+    call MAPL_StateAdd(SURFST, fld, __RC__)
+    !==============================================================================================
  
 ! All Done
 !---------
@@ -4047,28 +4063,19 @@ contains
 
     !*CALLBACK*
     !==============================================================================================
-    !call ESMF_StateGet(IMPORT, 'SURFSTATE', SURFST, RC=STATUS)
-    !VERIFY_(STATUS)
-    !call ESMF_AttributeGet(SURFST, name='implements_thermo_coupling_method', &
-    !                            value=implements_thermo_coupling, RC=STATUS)
-    !VERIFY_(STATUS)
-    !if (implements_implements_thermo_coupling) then
+    call ESMF_StateGet(IMPORT, 'SURFSTATE', SURFST, RC=STATUS)
+    VERIFY_(STATUS)
 
-    !   call ESMF_AttributeGet(SURFST, name='surface_ice_temperature', value=AS_FIELD_NAME, RC=STATUS)
-    !   VERIFY_(STATUS)
-    !   if (AS_FIELD_NAME /= '') then   
-    !      call MAPL_GetPointer(SURFST, AS_PTR_2D, trim(AS_FIELD_NAME), RC=STATUS)
-    !      VERIFY_(STATUS)
-    !      AS_PTR_2D = TS !*** pass ice/snow surface temperature
-    !   endif 
+    call MAPL_GetPointer(SURFST, AS_PTR_2D, 'surface_ice_temperature', RC=STATUS)
+    VERIFY_(STATUS)
+    AS_PTR_2D = TS !*** pass ice/snow surface temperature
     !       
     !    .....            !*** more fields to be passed
     !
-    !    ! execute the aero provider's optics method
-    !    call ESMF_MethodExecute(SURFST, label="thermo_couling", userRC=AS_STATUS, RC=STATUS)
-    !    VERIFY_(AS_STATUS)
-    !    VERIFY_(STATUS)
-    !endif   
+    !    ! execute the sea ice thermo couling method
+    call ESMF_MethodExecute(SURFST, label="thermo_couling", userRC=AS_STATUS, RC=STATUS)
+    VERIFY_(AS_STATUS)
+    VERIFY_(STATUS)
     !
     !************************************************************************************************
     !

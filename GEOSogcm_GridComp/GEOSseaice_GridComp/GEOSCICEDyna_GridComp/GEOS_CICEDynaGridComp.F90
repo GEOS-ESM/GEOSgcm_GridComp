@@ -1339,16 +1339,16 @@ module GEOS_CICEDynaGridCompMod
   ! an ESMF state to pass information b.w. GCs using callback
   ! to be connected by ??? to the import in CICE4ColumnPhys
   !
-  ! call MAPL_AddExportSpec(GC                           ,&
-  !        SHORT_NAME         = 'SURFSTATE'                 ,&
-  !        LONG_NAME          = 'surface_state_for_seaice_thermo_couling',  &
-  !        UNITS              = 'W m-2'                     ,&
-  !        UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&    
-  !        DIMS               = MAPL_DimsTileOnly           ,&
-  !        VLOCATION          = MAPL_VLocationNone          ,&
-  !        DATATYPE           = MAPL_StateItem,              &
-  !        RC=STATUS  )
-  ! VERIFY_(STATUS)
+   call MAPL_AddExportSpec(GC                           ,&
+          SHORT_NAME         = 'SURFSTATE'                 ,&
+          LONG_NAME          = 'surface_state_for_seaice_thermo_couling',  &
+          UNITS              = 'W m-2'                     ,&
+          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/)      ,&    
+          DIMS               = MAPL_DimsTileOnly           ,&
+          VLOCATION          = MAPL_VLocationNone          ,&
+          DATATYPE           = MAPL_StateItem,              &
+          RC=STATUS  )
+   VERIFY_(STATUS)
   !=================================================================================
 
 !EOS
@@ -1772,11 +1772,11 @@ module GEOS_CICEDynaGridCompMod
 
     !*CALLBACK*
     !=====================================================================================
-    !call ESMF_StateGet(EXPORT, 'SURFSTATE', SURFST, __RC__)
-    !
+    call ESMF_StateGet(EXPORT, 'SURFSTATE', SURFST, __RC__)
+    
     !!attach the thermo coupling method
     !
-    !call ESMF_MethodAdd(SURFST, label='thermo_coupling', userRoutine=thermo_coupling, __RC__)
+    call ESMF_MethodAdd(SURFST, label='thermo_coupling', userRoutine=thermo_coupling, __RC__)
     !=====================================================================================
 
 ! All Done
@@ -2920,18 +2920,17 @@ end subroutine RUN
 
   !*CALLBACK*
   !=====================================================================================
-  !subroutine thermo_coupling(state, rc)
-  !   implicit none
+  subroutine thermo_coupling(state, rc)
+     implicit none
 
   !! Arguments
   !! ---------
-  !   type(ESMF_State)     :: state
-  !   integer, intent(out) :: rc
+     type(ESMF_State)     :: state
+     integer, intent(out) :: rc
   !
-  !   real, dimension(:,:,), pointer         :: ts 
+     real, dimension(:,:), pointer         :: ts 
   !
-  !   call ESMF_AttributeGet(state, name='surface_ice_temperature', value=fld_name, __RC__)
-  !   call MAPL_GetPointer(state, ts, trim(fld_name), __RC__)
+     call MAPL_GetPointer(state, ts, 'surface_ice_temperature', __RC__)
   !
   !   !perform locstreamTrans_T2T+T2G(ts) -> tsg (grid variable)
   !
@@ -2940,7 +2939,7 @@ end subroutine RUN
   !
   !   !perform locstreamTrans_G2T+T2T(tsg)  -> ts (tile variable)
   !
-  !end subroutine thermo_coupling
+  end subroutine thermo_coupling
 
   !=====================================================================================
 
