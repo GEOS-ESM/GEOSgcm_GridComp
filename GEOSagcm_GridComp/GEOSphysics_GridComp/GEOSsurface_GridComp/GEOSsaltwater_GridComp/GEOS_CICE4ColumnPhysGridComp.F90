@@ -2033,6 +2033,7 @@ module GEOS_CICE4ColumnPhysGridComp
     !*CALLBACK*
     type(ESMF_Field)                    :: fld
     type(ESMF_Grid)                     :: tilegrid
+    type(ESMF_State)                    :: SURFST
 
 !=============================================================================
 
@@ -3295,6 +3296,11 @@ contains
    real, pointer, dimension(:)    :: TW        => null()
    real, pointer, dimension(:)    :: SW        => null()
    real, pointer, dimension(:)    :: FRZMLT    => null() 
+
+   !*CALLBACK*
+   real, pointer, dimension(:)    :: AS_PTR_2D  => null() 
+   type(ESMF_State)               :: SURFST
+   
 
    real, pointer, dimension(:,:)       :: TS  => null()
    real,    dimension(NT)              :: SHF

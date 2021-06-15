@@ -1434,6 +1434,9 @@ module GEOS_CICEDynaGridCompMod
     type(ESMF_Time)                        :: currTime  
     integer                                :: CPLS 
 
+    !*CALLBACK*
+    type(ESMF_State)                       : SURFST
+
 
 #ifdef MODIFY_TOPOGRAPHY
     type (MAPL_LocStream       )            :: EXCH
