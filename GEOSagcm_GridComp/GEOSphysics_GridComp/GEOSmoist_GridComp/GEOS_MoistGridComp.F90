@@ -5286,9 +5286,9 @@ contains
     end if
 
     if( LM .eq. 72 ) then
-       call MAPL_GetResource (MAPL, JASON_TUNING, "JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
-    else
        call MAPL_GetResource (MAPL, JASON_TUNING, "JASON_TUNING:", default=1, RC=STATUS); VERIFY_(STATUS)
+    else
+       call MAPL_GetResource (MAPL, JASON_TUNING, "JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
     endif
 
 !-srf-gf-scheme
@@ -9357,7 +9357,7 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%QC_CRIT_ANV,    'QC_CRIT_ANV:',    DEFAULT= 8.0e-4  )
 
 
-      if (adjustl(CLDMICRO) =="GFDL") then
+      if (JASON_TUNING == 0) then
           call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
           call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
           call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
