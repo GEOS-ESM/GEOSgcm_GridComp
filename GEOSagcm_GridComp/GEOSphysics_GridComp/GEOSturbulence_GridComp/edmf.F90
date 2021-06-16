@@ -11,8 +11,8 @@ real, parameter ::     &
      WSTARmin = 1.e-3, &
      zpblmin  = 100.,  &
      onethird = 1./3., &
-!     delta    = 3.E-3
-     delta    = 0.
+     r        = 2.,    &
+     lambda   = 40.
 
 contains
 
@@ -81,12 +81,12 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                                             au_full, hlu_full, qtu_full, acu_full, &
                                             Tu_full, qlu_full
 
-  real, dimension(numup,IM,JM) :: upm, upw, upthl, upqt, upql, upqi, upa, upu, upv, upthv
+  real, dimension(numup,IM,JM) :: upm, upw, upthl, upqt, upql, upqi, upa, upu, upv, upthv, D_frac
 
   integer :: i, j, k, km1, kp1, iup, kbot
 
   real :: wthv, wstar, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
-          B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, Mn_test, EntEXP, EntEXPU, EntW, wf, &
+          B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, Mn_test, au_test, EntEXP, EntEXPU, EntW, wf, &
           stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, idzle, ifac, test, mft_work, mfthvt_work, &
           goth00, thlu_full, work, work2, exfh, dsdz, dqdz, wu0, thv_high, thv_low, thvmin, thvmax, &
           dthv0, thvu0, qtu0, foo
@@ -107,7 +107,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
   ! Thermal plume stuff 
   real                      :: E_work, D_work
-  real, dimension(IM,JM,LM) :: f_thermal, ent_sl
+  real, dimension(IM,JM)    :: zi, Phi, au_total
+  real, dimension(IM,JM,LM) :: f_thermal
 
   if ( plume_type == 0 ) then
      kbot = LM
@@ -243,7 +244,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
      call A_star_closure(IM, JM, LM, &                       ! in
                          th00, wb, au0, debug_flag, &        ! in
                          zle, zl, rho, rhoe, thl, qt, thv, & ! in
-                         A, f_thermal, ent_sl)               ! out
+                         A, f_thermal, zi, Phi)              ! out
      E = A
   end if
 
@@ -279,7 +280,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
            work2 = rhoe(i,j,LM-2)/rhoe(i,j,LM-1) 
 
            wu0 = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
-           write(*,*) '*', wu0
+           write(*,*) '*', zi(i,j), Phi(i,j), wu0
 
            dthv0 = max( thv(i,j,LM) - thv(i,j,LM-1), &
                         wu0**2.*( ( work2/work )**2. - work**2. )/( 2.*wb*goth00*( zle(i,j,LM-2) - zle(i,j,LM-1) ) ) )
@@ -332,6 +333,11 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
            THVsrfF = THVsrfF + upa(iup,i,j)*upw(iup,i,j)*( upthv(iup,i,j) - thvi(i,j,kbot) )
         end do
 
+        au_total(i,j) = sum(upa(:,i,j))
+        do iup = 1,numup
+           D_frac(iup,i,j) = upa(iup,i,j)/au_total(i,j)
+        enddo
+        
         ! Change surface THV so that the fluxes from the mass flux equal prescribed values
         if ( kbot == 0 .and. THVsrfF > wthv ) then
            upthv(:,i,j) = ( upthv(:,i,j) - thvi(i,j,kbot) )*wthv/THVsrfF + thvi(i,j,kbot)
@@ -495,7 +501,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               end if
 #endif
 
-
               !
               !
               !
@@ -544,31 +549,33 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                  end if
 
               elseif ( plume_type == 1 ) then ! thermal plume
-                 !
-                 foo = max( 0., min( 1., ( thv(i,j,k-1) - thv(i,j,k) )/( upthv(iup,i,j) - thv(i,j,k) ) ) )
-
-                 !
-                 E(i,j,k) = E(i,j,k) + 0.4*upm(iup,i,j)*delta
-
                  ! Integrate vertical velocity budget
                  B = wb*goth00*( upthv(iup,i,j) - thv(i,j,k) )
 
-                 Wn2 = ( ( 1. - dzle*delta )/( 1./f_thermal(i,j,k) - 0.6*dzle*delta ) )**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
+                 Wn2 = f_thermal(i,j,k)**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
 
                  if ( Wn2 > 0. ) then
                     if ( B > 0. ) then
-                       Mn     = max( 0., upm(iup,i,j)*( 1./f_thermal(i,j,k) - 0.6*dzle*delta ) )
-                       E_work = upm(iup,i,j)*max( 0., ( 1./f_thermal(i,j,k) - 1. )/dzle + 0.4*delta )
-                       D_work = upm(iup,i,j)*delta
+                       E_work  = upm(iup,i,j)*( 1./f_thermal(i,j,k) - 1. )/dzle
+                       Mn_test = upm(iup,i,j) + dzle*E_work
+                       au_test = max( 0., Mn_test/( rhoe(i,j,k-1)*sqrt(Wn2) ) - D_frac(iup,i,j)*( sqrt(lambda*zle(i,j,km1)) - sqrt(lambda*zle(i,j,k)) )/( r*zi(i,j) ) )
+
+                       Mn     = Mn_test
+                       D_work = 0.
+!                       Mn     = rhoe(i,j,km1)*au_test*sqrt(Wn2)
+!                       D_work = max( 0., E_work - ( Mn - upm(iup,i,j) )/dzle )
+                       if ( Mn == 0. ) then
+                          Wn2 = 0.
+                       end if
                     else
-                       Mn_test = max( 0., upm(iup,i,j)*( 1./f_thermal(i,j,k) - 0.6*dzle*delta ) )
+                       Mn_test = upm(iup,i,j)/f_thermal(i,j,k)
                        if ( Mn_test/( rhoe(i,j,k-1)*sqrt(Wn2) ) > upa(iup,i,j) ) then
                           Mn = rhoe(i,j,k-1)*upa(iup,i,j)*sqrt(Wn2)
                        else
                           Mn = Mn_test
                        end if
                           
-                       E_work = upm(iup,i,j)*max( 0., ( 1./f_thermal(i,j,k) - 1. )/dzle + 0.4*delta )
+                       E_work = upm(iup,i,j)*( 1./f_thermal(i,j,k) - 1. )/dzle
                        D_work = max( 0., E_work - ( Mn - upm(iup,i,j) )/dzle )
                     end if
 
@@ -625,6 +632,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               end if
            end if ! active_updraft(iup,i,j)
         end do ! iup = 1,numup
+
+        au_total = sum(upa(:,i,j))
 
         ! Outputs needed for SHOC in TURBULENCE
         buoyf(i,j,k) = buoyf(i,j,k) + exf(i,j,k)*( mfthvt - mft*thv(i,j,k) )
@@ -855,19 +864,20 @@ end subroutine run_edmf
 subroutine A_star_closure(IM, JM, LM, &                       ! in
                           th00, wb, au0, debug_flag, &        ! in
                           zle, zl, rho, rhoe, thl, qt, thv, & ! in
-                          A, f, ent_sl)                       ! out
+                          A, f, zi, Mu0)                      ! out
 
   integer, intent(in)                      :: IM, JM, LM, debug_flag
   real, intent(in)                         :: th00, wb, au0
   real, dimension(IM,JM,LM), intent(in)    :: zl, thl, qt, thv, rho
   real, dimension(IM,JM,0:LM), intent(in)  :: zle, rhoe
-  real, dimension(IM,JM,LM), intent(out)   :: A, f, ent_sl
+  real, dimension(IM,JM), intent(out)      :: zi, Mu0
+  real, dimension(IM,JM,LM), intent(out)   :: A, f
 
   integer                     :: i, j, k, km1, iter
   real                        :: dthvdz, dz, B, wf, qcu, Mu_next, wu2_next, &
                                  thlu_next, qtu_next, thvu_next, goth00, E_work, D_work
   integer, dimension(IM,JM)   :: izsl
-  real, dimension(IM,JM)      :: A_star_sum, A_star2_int, zi, Mu0, Mu, thlu, qtu, thvu, wu2, wu0
+  real, dimension(IM,JM)      :: A_star_sum, A_star2_int, Mu, thlu, qtu, thvu, wu2, wu0
   logical, dimension(IM,JM)   :: conv_flag, sl_flag, test_flag
 
   goth00 = mapl_grav/th00
@@ -953,18 +963,17 @@ subroutine A_star_closure(IM, JM, LM, &                       ! in
            if ( test_flag(i,j) ) then
               dz = zle(i,j,km1) - zle(i,j,k)
               
-              f(i,j,k)      = Mu(i,j)/( Mu(i,j) + A(i,j,k)*dz )
-              ent_sl(i,j,k) = -log(f(i,j,k))/dz
+              f(i,j,k) = Mu(i,j)/( Mu(i,j) + A(i,j,k)*dz )
 
-              Mu_next = max( 0., Mu(i,j)*( 1./f(i,j,k) - 0.6*dz*delta ) )
-              E_work  = Mu(i,j)*max( 0., ( 1./f(i,j,k) - 1. )/dz + 0.4*delta )
-              D_work  = Mu(i,j)*delta
+              Mu_next = Mu(i,j)/f(i,j,k)
+              E_work  = Mu(i,j)*( 1./f(i,j,k) - 1. )/dz
+              D_work  = 0.
               
               B = wb*goth00*( thvu(i,j) - thv(i,j,k) )
 
               thlu_next = ( Mu(i,j)*thlu(i,j) + dz*E_work*thl(i,j,k) )/( Mu_next + dz*D_work )
               qtu_next  = ( Mu(i,j)*qtu(i,j)  + dz*E_work*qt(i,j,k) )/( Mu_next + dz*D_work )
-              wu2_next  = ( ( 1. - dz*delta )/( 1./f(i,j,k) - 0.6*dz*delta ) )**2.*wu2(i,j) + 2.*dz*B
+              wu2_next  = f(i,j,k)**2.*wu2(i,j) + 2.*dz*B
               
               thvu_next = thlu_next*( 1. + mapl_vireps*qtu_next )
 

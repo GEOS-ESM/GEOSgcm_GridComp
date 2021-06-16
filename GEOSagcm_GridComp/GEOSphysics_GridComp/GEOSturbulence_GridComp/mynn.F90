@@ -452,8 +452,10 @@ subroutine run_mynn(IM, JM, LM, &                                               
            write(*,*)             &
                       tke(i,j,k), &
                       au(i,j,k),  &
-                      Mu(i,j,k),  &
-                      aci(i,j,k)
+!                      Mu(i,j,k),  &
+                      thl(i,j,k), &
+                      1000.*qt(i,j,k)
+!                      aci(i,j,k)
 !                      wb_test_1, &
 !                      wb_test_2, &
 !                      aci(i,j,k), &
