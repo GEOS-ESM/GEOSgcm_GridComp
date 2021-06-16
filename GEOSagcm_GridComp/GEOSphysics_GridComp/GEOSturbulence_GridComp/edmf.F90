@@ -12,7 +12,7 @@ real, parameter ::     &
      zpblmin  = 100.,  &
      onethird = 1./3., &
      r        = 2.,    &
-     lambda   = 40.
+     lambda   = 20.
 
 contains
 
@@ -336,6 +336,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
         au_total(i,j) = sum(upa(:,i,j))
         do iup = 1,numup
            D_frac(iup,i,j) = upa(iup,i,j)/au_total(i,j)
+           upa(iup,i,j)    = upa(iup,i,j) - D_frac(iup,i,j)*sqrt(lambda*zle(i,j,LM-1))/(r*zi(i,j))
+           upm(iup,i,j)    = rhoe(i,j,kbot)*upa(iup,i,j)*upw(iup,i,j)
         enddo
         
         ! Change surface THV so that the fluxes from the mass flux equal prescribed values
@@ -558,12 +560,16 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                     if ( B > 0. ) then
                        E_work  = upm(iup,i,j)*( 1./f_thermal(i,j,k) - 1. )/dzle
                        Mn_test = upm(iup,i,j) + dzle*E_work
-                       au_test = max( 0., Mn_test/( rhoe(i,j,k-1)*sqrt(Wn2) ) - D_frac(iup,i,j)*( sqrt(lambda*zle(i,j,km1)) - sqrt(lambda*zle(i,j,k)) )/( r*zi(i,j) ) )
+                       if ( upql(iup,i,j) == 0. ) then
+                          au_test = max( 0., Mn_test/( rhoe(i,j,k-1)*sqrt(Wn2) ) - D_frac(iup,i,j)*( sqrt(lambda*zle(i,j,km1)) - sqrt(lambda*zle(i,j,k)) )/( r*zi(i,j) ) )
+                       else
+                          au_test = max( 0., Mn_test/( rhoe(i,j,k-1)*sqrt(Wn2) ) )
+                       end if
 
-                       Mn     = Mn_test
-                       D_work = 0.
-!                       Mn     = rhoe(i,j,km1)*au_test*sqrt(Wn2)
-!                       D_work = max( 0., E_work - ( Mn - upm(iup,i,j) )/dzle )
+!                       Mn     = Mn_test
+!                       D_work = 0.
+                       Mn     = rhoe(i,j,km1)*au_test*sqrt(Wn2)
+                       D_work = max( 0., E_work - ( Mn - upm(iup,i,j) )/dzle )
                        if ( Mn == 0. ) then
                           Wn2 = 0.
                        end if

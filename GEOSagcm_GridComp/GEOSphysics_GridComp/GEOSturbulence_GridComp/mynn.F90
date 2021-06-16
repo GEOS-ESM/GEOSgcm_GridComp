@@ -687,7 +687,7 @@ subroutine mynn_length(IM, JM, LM, &                                    ! in
         end if
         
         ! Harmonically average length scales
-        L(i,j,k)     = min( LF, LB(i,j,k)/( LB(i,j,k)/LS(i,j,k) + LB(i,j,k)/LT(i,j) + 1.d0 ) ) ! NN09 (52)
+        L(i,j,k) = min( LF, LB(i,j,k)/( LB(i,j,k)/LS(i,j,k) + LB(i,j,k)/LT(i,j) + 1.d0 ) ) ! NN09 (52)
      end do
      end do
   end do
