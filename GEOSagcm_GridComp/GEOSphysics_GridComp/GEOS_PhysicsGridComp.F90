@@ -119,7 +119,7 @@ contains
     character(len=ESMF_MAXSTR)              :: SURFRC
     type(ESMF_Config)                       :: SCF 
     character(len=ESMF_MAXSTR)              :: USE_GFS_MOIST
-    logical                                 :: LUSE_GFS_MOIST
+    logical                                 :: LUSE_GFS_MOIST = .false.
 
 !=============================================================================
 
@@ -141,11 +141,15 @@ contains
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_RUN,  Run,        RC=STATUS )
     VERIFY_(STATUS)
 
+! Get MAP_generic state
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    VERIFY_(STATUS)
+
 ! Decide which moist to us
     call MAPL_GetResource ( MAPL, USE_GFS_MOIST, Label="USE_GFS_MOIST:",DEFAULT='FALSE', RC=STATUS)
     VERIFY_(STATUS)
-    if (trim(USE_GFS_MOIST) == 'TRUE') LUSE_GFS_MOIST=.TRUE.
-
+    if (trim(USE_GFS_MOIST) == 'TRUE') LUSE_GFS_MOIST=.true.
+    print *, LUSE_GFS_MOIST, USE_GFS_MOIST
 ! Create children`s gridded components and invoke their SetServices
 ! -----------------------------------------------------------------
 
@@ -174,7 +178,7 @@ contains
 ! Set the state variable specs.
 ! -----------------------------
 
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_OBIO, Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
