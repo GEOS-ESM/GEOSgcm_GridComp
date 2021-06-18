@@ -6645,7 +6645,11 @@ contains
 
       call MAPL_GetResource(STATE, SHLWPARAMS%RPEN,      'RPEN:'      ,DEFAULT=3.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RLE,       'RLE:'       ,DEFAULT=0.1, RC=STATUS)
-      call MAPL_GetResource(STATE, SHLWPARAMS%MIXSCALE,  'MIXSCALE:'  ,DEFAULT=3000.0, RC=STATUS)
+      if(JASON_TUNING == 1) then
+        call MAPL_GetResource(STATE, SHLWPARAMS%MIXSCALE,  'MIXSCALE:'  ,DEFAULT=0.0, RC=STATUS)
+      else
+        call MAPL_GetResource(STATE, SHLWPARAMS%MIXSCALE,  'MIXSCALE:'  ,DEFAULT=3000.0, RC=STATUS)
+      endif
       call MAPL_GetResource(STATE, SHLWPARAMS%DETRHGT,   'DETRHGT:'   ,DEFAULT=1800.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RMAXFRAC,  'RMAXFRAC:'  ,DEFAULT=0.1,  RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%MUMIN1,    'MUMIN1:'    ,DEFAULT=0.906, RC=STATUS)
@@ -7950,23 +7954,43 @@ contains
     !    CNV_FRACTION = 0.0  --->  Large-scale
     !    CNV_FRACTION = 1.0  --->  Deep-Convection
          CNV_FRACTION = 0.0 
-
+         
     ! CNV_FRACTION Criteria
-        call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT= 1.e6, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
-        VERIFY_(STATUS)
+        if(JASON_TUNING == 1) then
+          call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GetResource(STATE,CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS)
+          VERIFY_(STATUS)
+          GF_MIN_AREA = 1.e6
+          call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT=GF_MIN_AREA, RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
+          VERIFY_(STATUS)
+        else
+          call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GetResource(STATE,CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    0.5, RC=STATUS)
+          VERIFY_(STATUS)
+          GF_MIN_AREA = (111000.0*360.0/FLOAT(imsize*4))**2
+          call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT=GF_MIN_AREA, RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
+          VERIFY_(STATUS)
+        endif
         if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
           ! CAPE
            WHERE (CAPE .ne. MAPL_UNDEF)
               CNV_FRACTION =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
            END WHERE
         endif
-       if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
+        if (CNV_FRACTION_EXP /= 1.0) then
+          CNV_FRACTION = CNV_FRACTION**CNV_FRACTION_EXP
+        endif
+        if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
 
        if (SHLWPARAMS%FRC_RASN < 0.0) then
           FRC_RASN_2D = ABS(SHLWPARAMS%FRC_RASN)*(1.0-FRLAND)*CNV_FRACTION
@@ -9095,11 +9119,11 @@ contains
         call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 5.0e-4  )
       ELSE
         if( JASON_TUNING == 1 ) then
+          call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
+          call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 4.0e-3  )
+        else
           call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 3.0e-3  )
           call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 3.0e-3  )
-        else
-          call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 1.0e-3  )
-          call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 6.0e-3  )
         endif
       ENDIF
 
@@ -9318,11 +9342,12 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%CNV_BETA,       'CNV_BETA:',       DEFAULT= 10.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%ANV_BETA,       'ANV_BETA:',       DEFAULT= 4.0     )
       call MAPL_GetResource( STATE, CLDPARAMS%LS_BETA,        'LS_BETA:',        DEFAULT= 4.0     )
+
       call MAPL_GetResource( STATE, CLDPARAMS%RH_CRIT,        'RH_CRIT:',        DEFAULT= 1.0     )
       call MAPL_GetResource( STATE, CLDPARAMS%QC_CRIT_LS,     'QC_CRIT_LS:',     DEFAULT= 8.0e-4  )
       call MAPL_GetResource( STATE, CLDPARAMS%ACCRETION,      'ACCRETION:',      DEFAULT= 2.0     )
 
-      call MAPL_GetResource(STATE, CLDPARAMS%RAIN_REVAP_FAC, 'RAIN_REVAP_FAC:', DEFAULT= 1.0 ,RC=STATUS)
+      call MAPL_GetResource(STATE, CLDPARAMS%RAIN_REVAP_FAC, 'RAIN_REVAP_FAC:', DEFAULT= 1.00 ,RC=STATUS)
 
       call MAPL_GetResource( STATE, CLDPARAMS%VOL_TO_FRAC,    'VOL_TO_FRAC:',    DEFAULT= -1.0    )
       call MAPL_GetResource( STATE, CLDPARAMS%SUPERSAT,       'SUPERSAT:',       DEFAULT= 0.0     )
@@ -9356,17 +9381,13 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%LS_DDRF,        'LS_DDRF:',        DEFAULT= 0.0     )
       call MAPL_GetResource( STATE, CLDPARAMS%QC_CRIT_ANV,    'QC_CRIT_ANV:',    DEFAULT= 8.0e-4  )
 
-
-      if (JASON_TUNING == 0) then
-          call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
-          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
-          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
-          call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= -999.99 ) ! irrelevant
+      call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.    )
+      call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0   )
+      call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0   )
+      if (LM .eq. 72) then
+        call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',      DEFAULT= 0.5   )
       else
-          call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.      )
-          call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0     )
-          call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0     )
-          call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',        DEFAULT= 0.5     )
+        call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',      DEFAULT= 0.25  )
       endif
 
       if(adjustl(CLDMICRO)=="2MOMENT") then

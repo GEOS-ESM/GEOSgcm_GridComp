@@ -337,24 +337,6 @@ module cloudnew
    real, parameter :: GFAC = 1.e5/MAPL_GRAV 
    real, parameter :: R_AIR = 3.47e-3 !m3 Pa kg-1K-1
 
-  ! ICE_FRACTION constants
-        ! In anvil/convective clouds
-   real, parameter :: aT_ICE_ALL = 245.16
-   real, parameter :: aT_ICE_MAX = 261.16
-   real, parameter :: aICEFRPWR  = 2.0
-        ! Over snow/ice
-   real, parameter :: iT_ICE_ALL = MAPL_TICE-40.0
-   real, parameter :: iT_ICE_MAX = MAPL_TICE
-   real, parameter :: iICEFRPWR  = 4.0
-        ! Over Land
-   real, parameter :: lT_ICE_ALL = 239.16
-   real, parameter :: lT_ICE_MAX = 261.16
-   real, parameter :: lICEFRPWR  = 2.0
-        ! Over Oceans
-   real, parameter :: oT_ICE_ALL = 238.16
-   real, parameter :: oT_ICE_MAX = 263.16
-   real, parameter :: oICEFRPWR  = 4.0
-
   ! LDRADIUS4 constants
    real, parameter :: r13  = 1./3.
    real, parameter :: be   = r13 - 0.11
@@ -1857,7 +1839,7 @@ contains
       real ,   intent(in   ) :: Dt,CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND
       real                   :: fQi,dQil,DQmax, QLTOT, QITOT, FQA
       integer                :: n
-      integer, parameter     :: MaxIterations=1
+      integer, parameter     :: MaxIterations=5
       logical                :: converged
       real                   :: taufrz=450 ! timescale for freezing (seconds)
 
@@ -1873,7 +1855,7 @@ contains
 
       ! melt ice using ICE_FRACTION
       fQi = ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
-      if ( fQi < 1.0 ) then
+      if ( (fQi < 1.0) .and. (TE > MAPL_TICE) ) then
          DQmax = (TE-MAPL_TICE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
          dQil  = QITOT*(1.0-fQi)
          dQil  = min(dQil, DQmax)
@@ -1885,10 +1867,9 @@ contains
 
       ! freeze liquid using ICE_FRACTION 
       fQi = ice_fraction( TE, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
-      if ( fQi > 0.0 ) then
+      if ( (fQi > 0.0) .and. (TE <= MAPL_TICE) ) then
          DQmax = (MAPL_TICE-TE)*MAPL_CP/(MAPL_ALHS-MAPL_ALHL)
          dQil  = QLTOT *(1.0 - EXP( -Dt * fQi / taufrz ) )
-        !dQil  = QLTOT*fQi
          dQil  = min(dQil, DQmax)
          dQil  = max(  0., dQil )
          QLTOT = max(QLTOT-dQil, 0.)
@@ -2883,9 +2864,7 @@ contains
 
       real, intent(in   ) :: SUNDQV2, SUNDQV3, SUNDQT1
 
-      integer :: NSMX
-
-      real    :: ACF0, ACF, DTX
+      real    :: ACF0, ACF
       real    :: C00x, iQCcrx, F2, F3,RATE,dQP,QCm
       real    :: dqfac
       integer :: NS, K
@@ -2900,9 +2879,6 @@ contains
       !   subroutine "ACCRETE_EVAP_PRECIP"       !
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-      NSMX = NSMAX
-      DTX  = DT/NSMX
 
       CALL SUNDQ3_ICE3(TE, SUNDQV2, SUNDQV3, SUNDQT1, F2, F3 )
 
@@ -3101,7 +3077,7 @@ contains
       real, parameter :: B_SUB   = 1.00
          
          
-      integer :: NS, NSMX, itr,L
+      integer :: NS, itr,L
 
       logical, parameter :: taneff = .false.
 
@@ -3451,6 +3427,25 @@ contains
       
       real :: RHO, XIm,LXIm, VF_A, VF_L, tpp_hPa, VF_PSC, wgt1, wgt2
 
+      real :: tc, IWC
+
+      real, parameter :: aaC = - 4.18334e-5
+      real, parameter :: bbC = - 0.00525867
+      real, parameter :: ccC = - 0.0486519
+      real, parameter :: ddC = 0.00251197
+      real, parameter :: eeC = 1.91523
+
+      real, parameter :: aaL = - 1.70704e-5
+      real, parameter :: bbL = - 0.00319109
+      real, parameter :: ccL = - 0.0169876
+      real, parameter :: ddL = 0.00410839
+      real, parameter :: eeL = 1.93644
+
+      real :: rBB, C0, C1, DIAM, lnP
+
+      real, parameter :: vf_min = 1.e-5 !< min fall speed for cloud ice, snow, graupel
+      real, parameter :: vi_max = 0.5   !< max fall speed for ice
+
 ! ------ For polar stratospheric clouds with single-moment microphysics ------
 
       REAL :: oneThird,ricecm,logsigicesq,ndensice,h2ocond,fluxcorr
@@ -3470,6 +3465,7 @@ contains
       REAL, PARAMETER :: BLEND_DEPTH_hPa = 50.
 ! ----------------------------------------------------------------------------
 
+    if (WXR > 0.) then
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
       ! Uses Eq. 1 Lawrence and Crutzen (1998, Tellus 50B, 263-289) 
       ! Except midlat form is taken to be for LS cloud, and tropical
@@ -3508,14 +3504,49 @@ contains
     !    VF = VF * ( 100./MAX(PL,10.) )**WXR
     !    VF = VF * SIN( 0.5*MAPL_PI*MIN(1.0,100./PL)**WXR )
          VF = VF * MIN(WXR,SIN( 0.5*MAPL_PI*MIN(1.0,100./PL)))
-      endif
+     endif
 
-#ifdef DONT_SKIP_ICE_THICKEN
-    ! More slowing at low levels in extratropics (Again NOT in LC98!!! ) 
-      if ( KH > 2.0 ) then
-        VF = VF * 0.01
+   else
+
+      tc = TE-MAPL_TICE
+     ! -----------------------------------------------------------------------
+     ! Combine 'large-scale' Deng and Mace (2008, grl)
+     ! -----------------------------------------------------------------------
+      if ( ( F > 0.) .and. ( QI > 0. ) ) then
+         IWC = (QI/F)*1000.*100.*PL/(MAPL_RGAS*TE) ! Units are g/m3
+      else
+         IWC = 0.
       end if
-#endif
+      VF_L   = 10.0**(log10(IWC) * (tc * (aaL * tc + bbL) + ccL) + ddL * tc + eeL)
+     ! -----------------------------------------------------------------------
+     ! With 'convective' Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in 
+     !                               midlatitude cirrus: Results from SPartICus'
+     ! -----------------------------------------------------------------------
+      IWC    = IWC * 1.e3 ! Units are mg/m3
+      VF_A  = MAX(10.0,1.119*tc + 14.21*log10(IWC) + 68.85)
+     ! Combine the two
+      VF = ANVIL*VF_A + LARGESCALE*VF_L
+     ! Convert from cm/s to m/s
+      VF = 0.01 * VF
+     ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
+     !------ice cloud effective radius ----- [klaus wyser, 1998]
+      if(TE>273.15) then
+        rBB  = -2.
+      else
+        IWC  = IWC * 1.e-3 ! Units are g/m3
+        rBB  = -2. + log10(1.e3*IWC/50.)*(1.e-3*(273.15-TE)**1.5)
+      endif
+      rBB   = MIN((MAX(rBB,-6.)),-2.)
+      DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
+      lnP   = log(MAX(1.0,PL))
+      C0    = -1.04 + 0.298*lnP
+      C1    =  0.67 - 0.097*lnP
+     ! apply pressure scaling
+      VF = VF * (C0 + C1*log(DIAM))
+     ! Limits
+      VF = min (vi_max, max (vf_min, VF))
+
+   endif
 
 #ifdef SKIP_PSC_FOR_NOW
 ! ------------------- Settling velocity for PSCs: -------------------
@@ -3802,42 +3833,6 @@ contains
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-#ifdef _CUDA
-   attributes(device) &
-#endif
-   real function ICEFRAC(T,T_TRANS,T_FREEZ)
-
-      real, intent(in) :: T
-      real, intent(in),optional :: T_TRANS
-      real, intent(in),optional :: T_FREEZ
-
-      real :: T_X,T_F
-
-      if (present( T_TRANS )) then 
-         T_X = T_TRANS
-      else
-         T_X = T_ICE_MAX
-      endif
-      if (present( T_FREEZ )) then 
-         T_F = T_FREEZ
-      else
-         T_F = T_ICE_ALL
-      endif
-
-
-      if ( T < T_F ) ICEFRAC=1.000
-
-      if ( T > T_X ) ICEFRAC=0.000
-
-      if ( T <= T_X .and. T >= T_F ) then 
-         ICEFRAC = 1.00 - ( T - T_F ) /( T_X - T_F )
-      endif
-
-   end function ICEFRAC
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 #ifdef _CUDA
    attributes(device) &
