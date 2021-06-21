@@ -143,89 +143,58 @@ contains
     REAL_, pointer                  :: XVERT(:,:,:)
     REAL_, pointer                  :: YVERT(:,:,:)
 
-    integer :: STATUS, NCID, VARID, j
+    integer :: STATUS, NCID, VARID
     integer :: SIZ_XVERT_X, SIZ_XVERT_Y
     integer :: SIZ_YVERT_X, SIZ_YVERT_Y 
     REAL_, pointer :: VERTX(:,:),VERTY(:,:)
-    logical :: newstyle
-    integer :: ID, ITMP
 
     Status=NF_OPEN(FILE,NF_NOWRITE,NCID)
     _ASSERT(STATUS==NF_NOERR,'needs informative message')
 
-    ITMP = NF_INQ_VARID    (NCID, 'x_vert_T', ID )
-    newstyle = ITMP==NF_NOERR
+
+    call fieldSize(NCID,'lon_corners',SIZ_XVERT_X,1)
+    call fieldSize(NCID,'lat_corners',SIZ_YVERT_Y,2)
 
 
-    if( NEWSTYLE) then
-
-       call fieldSize(NCID,'x_vert_T',SIZ_XVERT_X,1)
-       call fieldSize(NCID,'y_vert_T',SIZ_YVERT_Y,2)
-
-       allocate(XVERT(SIZ_XVERT_X,SIZ_YVERT_Y,4),stat=STATUS)
-       _ASSERT(STATUS==0,'needs informative message')
-       allocate(YVERT(SIZ_XVERT_X,SIZ_YVERT_Y,4),stat=STATUS)
-       _ASSERT(STATUS==0,'needs informative message')
-
-       STATUS = NF_INQ_VARID     (NCID,  'x_vert_T', VARID )
-       _ASSERT(STATUS==NF_NOERR,'needs informative message')
-       status = NF_GET_VAR_DOUBLE(NCID, VARID, XVERT)
-       _ASSERT(STATUS==NF_NOERR,'needs informative message')
-
-       STATUS = NF_INQ_VARID     (NCID,  'y_vert_T', VARID )
-       _ASSERT(STATUS==NF_NOERR,'needs informative message')
-       STATUS = NF_GET_VAR_DOUBLE(NCID, VARID, YVERT)
-       _ASSERT(STATUS==NF_NOERR,'needs informative message')
-
-!!$       print *, 'Newstyle'
-!!$       print *, 'xs: ',xvert(1,1,:)
-!!$       print *, 'ys: ',yvert(1,1,:)
-
-    else
-
-       call fieldSize(NCID,'geolon_vert_t',SIZ_XVERT_X,1)
-       call fieldSize(NCID,'geolat_vert_t',SIZ_YVERT_Y,2)
-
-       allocate(VERTX(SIZ_XVERT_X,SIZ_YVERT_Y),stat=STATUS)
-       _ASSERT(STATUS==0,'needs informative message')
-       allocate(VERTY(SIZ_XVERT_X,SIZ_YVERT_Y),stat=STATUS)
-       _ASSERT(STATUS==0,'needs informative message')
+    allocate(VERTX(SIZ_XVERT_X,SIZ_YVERT_Y),stat=STATUS)
+    _ASSERT(STATUS==0,'needs informative message')
+    allocate(VERTY(SIZ_XVERT_X,SIZ_YVERT_Y),stat=STATUS)
+    _ASSERT(STATUS==0,'needs informative message')
 
 !       print *, SIZ_XVERT_X,SIZ_YVERT_Y
 
-       SIZ_XVERT_X = SIZ_XVERT_X-1
-       SIZ_YVERT_Y = SIZ_YVERT_Y-1
+    SIZ_XVERT_X = SIZ_XVERT_X-1
+    SIZ_YVERT_Y = SIZ_YVERT_Y-1
 
-       allocate(XVERT(SIZ_XVERT_X,SIZ_YVERT_Y,4),stat=STATUS)
-       _ASSERT(STATUS==0,'needs informative message')
-       allocate(YVERT(SIZ_XVERT_X,SIZ_YVERT_Y,4),stat=STATUS)
-       _ASSERT(STATUS==0,'needs informative message')
+    allocate(XVERT(SIZ_XVERT_X,SIZ_YVERT_Y,4),stat=STATUS)
+    _ASSERT(STATUS==0,'needs informative message')
+    allocate(YVERT(SIZ_XVERT_X,SIZ_YVERT_Y,4),stat=STATUS)
+    _ASSERT(STATUS==0,'needs informative message')
 
-       STATUS = NF_INQ_VARID     (NCID,  'geolon_vert_t', VARID )
-       _ASSERT(STATUS==NF_NOERR,'needs informative message')
-       status = NF_GET_VAR_DOUBLE(NCID, VARID, VERTX)
-       _ASSERT(STATUS==NF_NOERR,'needs informative message')
+    STATUS = NF_INQ_VARID     (NCID,  'lon_corners', VARID )
+    _ASSERT(STATUS==NF_NOERR,'needs informative message')
+    status = NF_GET_VAR_DOUBLE(NCID, VARID, VERTX)
+    _ASSERT(STATUS==NF_NOERR,'needs informative message')
 
-       STATUS = NF_INQ_VARID     (NCID,  'geolat_vert_t', VARID )
-       _ASSERT(STATUS==NF_NOERR,'needs informative message')
-       STATUS = NF_GET_VAR_DOUBLE(NCID, VARID, VERTY)
-       _ASSERT(STATUS==NF_NOERR,'needs informative message')
+    STATUS = NF_INQ_VARID     (NCID,  'lat_corners', VARID )
+    _ASSERT(STATUS==NF_NOERR,'needs informative message')
+    STATUS = NF_GET_VAR_DOUBLE(NCID, VARID, VERTY)
+    _ASSERT(STATUS==NF_NOERR,'needs informative message')
 
 !!$       print *, 'Oldstyle'
 !!$       print *, 'xs: ',vertx(1,1),vertx(2,1),vertx(2,2),vertx(1,2)
 !!$       print *, 'ys: ',verty(1,1),verty(2,1),verty(2,2),verty(1,2)
 
-       XVERT(:,:,1) = VERTX(1:siz_xvert_x  ,1:siz_yvert_y  )
-       XVERT(:,:,2) = VERTX(2:siz_xvert_x+1,1:siz_yvert_y  )
-       XVERT(:,:,3) = VERTX(2:siz_xvert_x+1,2:siz_yvert_y+1)
-       XVERT(:,:,4) = VERTX(1:siz_xvert_x  ,2:siz_yvert_y+1)
+    XVERT(:,:,1) = VERTX(1:siz_xvert_x  ,1:siz_yvert_y  )
+    XVERT(:,:,2) = VERTX(2:siz_xvert_x+1,1:siz_yvert_y  )
+    XVERT(:,:,3) = VERTX(2:siz_xvert_x+1,2:siz_yvert_y+1)
+    XVERT(:,:,4) = VERTX(1:siz_xvert_x  ,2:siz_yvert_y+1)
 
-       yVERT(:,:,1) = VERTy(1:siz_xvert_x  ,1:siz_yvert_y  )
-       yVERT(:,:,2) = VERTy(2:siz_xvert_x+1,1:siz_yvert_y  )
-       yVERT(:,:,3) = VERTy(2:siz_xvert_x+1,2:siz_yvert_y+1)
-       yVERT(:,:,4) = VERTy(1:siz_xvert_x  ,2:siz_yvert_y+1)
+    yVERT(:,:,1) = VERTy(1:siz_xvert_x  ,1:siz_yvert_y  )
+    yVERT(:,:,2) = VERTy(2:siz_xvert_x+1,1:siz_yvert_y  )
+    yVERT(:,:,3) = VERTy(2:siz_xvert_x+1,2:siz_yvert_y+1)
+    yVERT(:,:,4) = VERTy(1:siz_xvert_x  ,2:siz_yvert_y+1)
 
-    endif
 
   end subroutine READGRIDFILE
 
