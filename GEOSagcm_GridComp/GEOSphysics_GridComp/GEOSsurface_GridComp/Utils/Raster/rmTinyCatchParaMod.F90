@@ -759,7 +759,7 @@ END SUBROUTINE modis_lai
       swit =0
       DO n=1 , maxcat
          read (10,*) tindex,pfafindex, soil_class_top
-         write (22,'(i8,i8,4f10.7)')tindex,pfafindex,atau2(soil_class_top), &
+         write (22,'(i10,i8,4f10.7)')tindex,pfafindex,atau2(soil_class_top), &
               btau2(soil_class_top),atau5(soil_class_top),btau5(soil_class_top)
               read (11,*) tindex,pfafindex, soil_class_com
 
@@ -781,7 +781,7 @@ END SUBROUTINE modis_lai
         
         cond=lcond(soil_gswp)/exp(-1.*zks*gnu)
         wpwet=lwpwet(soil_gswp)/lporo(soil_gswp) 
-        write (21,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)')tindex,pfafindex,   &
+        write (21,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.3)')tindex,pfafindex,   &
         soil_class_top,soil_class_com,lBEE(soil_gswp), lPSIS(soil_gswp),          &
         lPORO(soil_gswp),COND,WPWET,soildepth(n)
          
@@ -1394,7 +1394,7 @@ END SUBROUTINE modis_lai
     character*30, dimension (2,2) :: geosname
     integer, allocatable, dimension (:) :: vegcls 
     real, allocatable, dimension (:) :: &
-         modisalb,scale_fac,albvf,albnf,lat,lon, &
+         modisalb,scale_fac,albvf,albnf, lat,lon, &
          green,lai,lai_before,lai_after,grn_before,grn_after
     real, allocatable, dimension (:) :: &
          calbvf,calbnf
@@ -1412,7 +1412,6 @@ END SUBROUTINE modis_lai
     fname='clsm/catchment.def'
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)maxcat
-
     allocate (albvf    (1:maxcat))
     allocate (albnf    (1:maxcat))
     allocate (calbvf   (1:maxcat))
@@ -1594,7 +1593,8 @@ END SUBROUTINE modis_lai
 
         !call sibalb(                                    &
         !     albvr,albvr,albvf,albnf,                   &
-        !     lai, green, 0.0, snw, vegcls, maxcat)  
+        !     lai, green, 0.0, snw, vegcls, maxcat)
+
         call sibalb (                  &
              MAXCAT,vegcls,lai,green,  &
              albvf, albnf)
@@ -1618,8 +1618,8 @@ END SUBROUTINE modis_lai
            if(unit2==20)write (unit2) (calbvf(n),n=1,maxcat)
            if(unit2==21)write (unit2) (calbnf(n),n=1,maxcat)
         
-           if(unit2==20) modisalb = modisalb/calbvf
-           if(unit2==21) modisalb = modisalb/calbnf
+           if(unit2==20) modisalb = modisalb/(calbvf + 1.e-20)
+           if(unit2==21) modisalb = modisalb/(calbnf + 1.e-20)
 
 	   do n =1, maxcat
 	   if(modisalb(n).le.0)then 
@@ -3065,7 +3065,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
                       write (41,*)n,k
                    endif
                    
-                   write(20,'(i8,i8,f5.2,11(2x,e14.7))')   &
+                   write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
                         tindex2(n),pfaf2(n),gnu,   &
                         ars1(k),ars2(k),ars3(k),                   &
                         ara1(k),ara2(k),ara3(k),ara4(k),           &
@@ -3119,7 +3119,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
             endif
          enddo
          write (41,*)n,k
-         write(20,'(i8,i8,f5.2,11(2x,e14.7))')   &
+         write(20,'(i10,i8,f5.2,11(2x,e14.7))')   &
               tindex2(n),pfaf2(n),gnu,   &
               ars1(k),ars2(k),ars3(k),                   &
               ara1(k),ara2(k),ara3(k),ara4(k),           &

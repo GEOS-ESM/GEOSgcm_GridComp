@@ -2126,7 +2126,7 @@ END SUBROUTINE HISTOGRAM
     integer :: yy,j,month
     integer, allocatable, dimension (:) :: vegcls 
     real, allocatable, dimension (:) :: &
-         modisvf, modisnf,albvf,albnf,lat,lon, &
+         modisvf, modisnf,albvf,albnf, lat,lon, &
          green,lai,lai_before,lai_after,grn_before,grn_after
     real, allocatable, dimension (:) :: &
          calbvf,calbnf
@@ -2140,7 +2140,6 @@ END SUBROUTINE HISTOGRAM
     fname='clsm/catchment.def'
     open (10,file=fname,status='old',action='read',form='formatted')
     read (10,*)maxcat
-
     allocate (albvf    (1:maxcat))
     allocate (albnf    (1:maxcat))
     allocate (calbvf   (1:maxcat))
@@ -2180,7 +2179,7 @@ END SUBROUTINE HISTOGRAM
       endif
        if (typ == 100) then
           ip2 = n 
-          read (20,'(i8,i8,2(2x,i3),2(2x,f6.4))')     &
+          read (20,'(i10,i8,2(2x,i3),2(2x,f6.4))')     &
             indr1,indr1,vegcls(ip2),indr1,fr_gcm,fr_gcm
        endif
        if(ierr /= 0)write (*,*)'Problem reading', n, ease_grid
@@ -2377,8 +2376,9 @@ END SUBROUTINE HISTOGRAM
          green  = (slice1*grn_before + slice2*grn_after)
           
         !  call sibalb(                                    &
-        !       albvr,albnr,albvf,albnf,                   &
-        !       lai, green, 0.0, snw, vegcls, maxcat)  
+        !       albvr,albvr,albvf,albnf,                   &
+        !       lai, green, 0.0, snw, vegcls, maxcat)
+
          call sibalb (                  &
               MAXCAT,vegcls,lai,green,  &
               albvf, albnf)
@@ -2395,9 +2395,9 @@ END SUBROUTINE HISTOGRAM
              calbvf = calbvf/tsteps
              calbnf = calbnf/tsteps
 
-             modisvf = modisvf/calbvf
-             modisnf = modisnf/calbnf
-           
+             modisvf = modisvf/(calbvf + 1.e-20)
+             modisnf = modisnf/(calbnf + 1.e-20)
+
              do n =1, maxcat
 !                if(modisvf(n).le.0)print *,'Negative MODISVF scale param at cell',n, modisvf(n)
 !                if(modisnf(n).le.0)print *,'Negative MODISNF scale param at cell',n, modisnf(n)
@@ -5491,7 +5491,7 @@ integer, dimension(:), allocatable :: low_ind, upp_ind
              pfaf_index = 0
              pfaf_area  = 0.
 
-             READ (10,'(i8,i8,5(2x,f9.4), i4)')l,pfaf,mnx,mxx,mny,mxy
+             READ (10,'(i10,i8,5(2x,f9.4), i4)')l,pfaf,mnx,mxx,mny,mxy
 
              IL1 = FLOOR  ((180. + mnx)/DXY30 + 1.)
              IL2 = CEILING((180. + mxx)/DXY30 + 1.)

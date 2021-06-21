@@ -143,7 +143,6 @@ echo "              ${C2}GM4  -- for /discover/nobackup/ltakacs/bcs/Ganymed-4_0/
 echo "              ${C2}ICA  -- for /discover/nobackup/ltakacs/bcs/Icarus/"
 echo "              ${C2}NL3  -- for /discover/nobackup/ltakacs/bcs/Icarus-NLv3/"
 echo "              ${C2}NL4  -- for /discover/nobackup/projects/gmao/smap/bcs_temporary/NLv4/"
-echo "              ${C2}NL4p -- for /discover/nobackup/projects/gmao/smap/bcs_temporary/NLv4p/"
 echo "              ${C2}equivalent parameter configuration and ancillary data."
 echo "               NOTE: Due to compiler differences, code improvements and bug fixes that"
 echo "               have taken place since above archived BCs were created, some parameter "
@@ -175,9 +174,10 @@ ORSLV:
     echo "              ${C2}O3 --  High-Resolution    OSTIA 1/8 deg${CR} (Lon/Lat Data-Ocean: 2880x1440) "
     echo "              ${C2}T1 --   Low-Resolution Tripolar 3   deg${CR} (MOM-Tripolar-Ocean:  120x65  ) "
     echo "              ${C2}T2 --   Med-Resolution Tripolar 1   deg${CR} (MOM-Tripolar-Ocean:  360x200 ) "
-    echo "              ${C2}T2MOM6 --   Med-Resolution Tripolar 1   deg${CR} (MOM6-Tripolar-Ocean:  360x210 ) "
     echo "              ${C2}T3 --  High-Resolution Tripolar 1/2 deg${CR} (MOM-Tripolar-Ocean:  720x410 ) "
     echo "              ${C2}T4 --  High-Resolution Tripolar 1/4 deg${CR} (MOM-Tripolar-Ocean: 1440x1080) "
+    echo "              ${C2}T2MOM6 --   Med-Resolution Tripolar 1   deg${CR} (MOM6-Tripolar-Ocean:  360x210 ) "
+    echo "              ${C2}T4MOM6 --  High-Resolution Tripolar 1/4 deg${CR} (MOM6-Tripolar-Ocean: 1440x1080) "
     echo "              ${C2}CS --  Cubed-Sphere Ocean              ${CR} (Cubed-Sphere Data-Ocean      ) "
     echo "              (Select anything just to move forward for land-only EASE grids.)"
     set dummy = `echo $<`
@@ -189,9 +189,10 @@ ORSLV:
 	$orslv != 'O3' & \
 	$orslv != 'T1' & \
 	$orslv != 'T2' & \
-	$orslv != 'T2MOM6' & \
 	$orslv != 'T3' & \
 	$orslv != 'T4' & \
+	$orslv != 'T2MOM6' & \
+	$orslv != 'T4MOM6' & \
 	$orslv != 'CS') goto ORSLV
 	if( $orslv != "$orslvs" ) set orslvs = `echo ${orslvs} ${orslv}`
     end
@@ -227,7 +228,7 @@ else
     set l_data = /nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/
 endif
 
-if ( $orslv == O1 | $orslv == T1 | $orslv == T2 | $orslv == T2MOM6 | $orslv == T3 | $orslv == T4 ) then
+if ( $orslv == O1 | $orslv == T1 | $orslv == T2 | $orslv == T3 | $orslv == T4 | $orslv == T2MOM6 | $orslv == T4MOM6 ) then
 
 # Great-Lakes & Caspian-Sea treated as Model LAKE tiles, Surface Temperatures will be Model Derived
 # -------------------------------------------------------------------------------------------------
@@ -293,10 +294,6 @@ if( $orslv == T2 ) then
     @ imo = 360  # MOM Tripolar-Ocean
     @ jmo = 200  # MOM Tripolar-Ocean
 endif
-if( $orslv == T2MOM6 ) then
-    @ imo = 360  # MOM6 Tripolar-Ocean
-    @ jmo = 210  # MOM6 Tripolar-Ocean
-endif
 if( $orslv == T3 ) then
     @ imo = 720   # MOM Tripolar-Ocean
     @ jmo = 410   # MOM Tripolar-Ocean
@@ -305,14 +302,28 @@ if( $orslv == T4 ) then
     @ imo = 1440   # MOM Tripolar-Ocean
     @ jmo = 1080   # MOM Tripolar-Ocean
 endif
+if( $orslv == T2MOM6 ) then
+    @ imo = 360  # MOM6 Tripolar-Ocean
+    @ jmo = 210  # MOM6 Tripolar-Ocean
+endif
+if( $orslv == T4MOM6 ) then
+    @ imo = 1440   # MOM6 Tripolar-Ocean
+    @ jmo = 1080   # MOM6 Tripolar-Ocean
+endif
 
 if( $orslv == O1 | $orslv == O2| $orslv == O3 ) then
     set LATLON_OCEAN = TRUE
     set     DATENAME = DE
     set     POLENAME = PE
 endif
-if( $orslv == T1 | $orslv == T2 | $orslv == T2MOM6 | $orslv == T3 | $orslv == T4 ) then
+if( $orslv == T1 | $orslv == T2 | $orslv == T3 | $orslv == T4 ) then 
     set TRIPOL_OCEAN = TRUE
+    set MOM_VERSION = MOM5
+    set     DATENAME = TM
+    set     POLENAME = TM
+else if ( $orslv == T2MOM6 | $orslv == T4MOM6 ) then
+    set TRIPOL_OCEAN = TRUE
+    set MOM_VERSION = MOM6
     set     DATENAME = TM
     set     POLENAME = TM
 endif
@@ -553,11 +564,11 @@ cd $pwd
 cd $BCDIR
 
 /bin/ln -s $pwd/bin
-mkdir -p til rst data/MOM clsm/plots
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/NLv3/MOM5/CF0090x6C_TM0360xTM0200/ data/MOM/360x200
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/NLv3/MOM6/CF0090x6C_TM0360xTM0210/ data/MOM/360x210
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/ data/MOM/720x410
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/ data/MOM/1440x1080
+mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/1440x1080 data/MOM5/1440x1080
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
 ln -s $l_data CATCH
@@ -583,10 +594,10 @@ if( $LATLON_OCEAN == TRUE ) then
     bin/create_README.csh
 endif
 if( $TRIPOL_OCEAN == TRUE ) then
-	bin/mkMOMAquaRaster.x -x $NX -y $NY  data/MOM/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
+	bin/mkMOMAquaRaster.x -x $NX -y $NY  data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
     /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
     /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
-    bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/MOM/${imo}x${jmo}/MAPL_Tripolar.nc 
+    bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc 
     /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
     /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
     bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
@@ -728,11 +739,11 @@ cd $pwd
 cd $BCDIR
 
 /bin/ln -s $pwd/bin
-mkdir -p til rst data/MOM clsm/plots
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/NLv3/MOM5/CF0090x6C_TM0360xTM0200/ data/MOM/360x200
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/NLv3/MOM6/CF0090x6C_TM0360xTM0210/ data/MOM/360x210
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/ data/MOM/720x410
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/ data/MOM/1440x1080
+mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/1440x1080 data/MOM5/1440x1080
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
 ln -s $l_data CATCH
@@ -755,10 +766,10 @@ if( $LATLON_OCEAN == TRUE ) then
 endif
 
 if( $TRIPOL_OCEAN == TRUE ) then
-	bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/MOM/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
+	bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
     /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
     /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
-    bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/MOM/${imo}x${jmo}/MAPL_Tripolar.nc 
+    bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc 
     /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
     /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
     bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
@@ -928,11 +939,11 @@ cd $pwd
 cd $BCDIR
 
 /bin/ln -s $pwd/bin
-mkdir -p til rst data/MOM clsm/plots
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/NLv3/MOM5/CF0090x6C_TM0360xTM0200/ data/MOM/360x200
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/NLv3/MOM6/CF0090x6C_TM0360xTM0210/ data/MOM/360x210
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a90x540_o720x410/ data/MOM/720x410
-ln -s /home/yvikhlia/nobackup/coupled/Forcings/a180x1080_o1440x1080/ data/MOM/1440x1080
+mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/360x200 data/MOM5/360x200
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/720x410 data/MOM5/720x410
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM5/1440x1080 data/MOM5/1440x1080
+ln -s /discover/nobackup/projects/gmao/ssd/aogcm/ocean_bcs/MOM6/1440x1080 data/MOM6/1440x1080
 
 cd data 
 ln -s $l_data CATCH
@@ -959,10 +970,10 @@ if( $LATLON_OCEAN == TRUE ) then
 endif
 
 if( $TRIPOL_OCEAN == TRUE ) then
-	bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/MOM/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
+	bin/mkMOMAquaRaster.x -x ${NX} -y ${NY}  data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc > /dev/null
     /bin/cp til/Pfafstetter.til til/Pfafstetter-ORIG.til
     /bin/cp rst/Pfafstetter.rst rst/Pfafstetter-ORIG.rst
-    bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/MOM/${imo}x${jmo}/MAPL_Tripolar.nc 
+    bin/FillMomGrid.x -f 0 -g Pfafstetter-M ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter data/${MOM_VERSION}/${imo}x${jmo}/MAPL_Tripolar.nc 
     /bin/mv til/Pfafstetter-M.til til/Pfafstetter.til
     /bin/mv rst/Pfafstetter-M.rst rst/Pfafstetter.rst
     bin/CombineRasters.x -f 0 -t ${NT} ${DATENAME}${IMO}x${POLENAME}${JMO} Pfafstetter >/dev/null
@@ -1122,7 +1133,7 @@ cd $pwd
 cd $BCDIR
 
 /bin/ln -s $pwd/bin
-mkdir -p til rst data/MOM clsm/plots
+mkdir -p til rst data/MOM5 data/MOM6 clsm/plots
 cd data 
 ln -s $l_data CATCH
 cd ../
