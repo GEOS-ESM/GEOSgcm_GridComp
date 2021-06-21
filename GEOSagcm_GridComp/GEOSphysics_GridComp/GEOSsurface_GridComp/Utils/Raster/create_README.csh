@@ -584,7 +584,7 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 	 file name: catchment.def
 	 read (10,*) NTILES
 	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,5(2x,f9.4))') tile_index,pfaf_code,   &
+		read (10,'(i10,i8,5(2x,f9.4))') tile_index,pfaf_code,   &
 		min_lon,max_lon,min_lat,max_lat, mean_elevation (m) 
          end do
 	 
@@ -602,7 +602,7 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 	 file name: cti_stats.dat
 	 read (10,*) NTILES
 	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,5(1x,f8.4))') tile_index,pfaf_code,   &
+		read (10,'(i10,i8,5(1x,f8.4))') tile_index,pfaf_code,   &
 		cti_mean, cti_std, cti_min, cti_max, cti_skew
 	 enddo
 
@@ -624,7 +624,7 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 _EOI_
 if( $mysoil == HWSD ) then
 cat << _EOS1_ > clsm/soil
-		read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
+		read (10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
 		tile_index,pfaf_code,soil_class_top,soil_class_com,BEE,              &
 		PSIS,POROS,COND, WPWET, DP2BR, gravel,OrgCarbon_top,                 &
 		OrgCarbon_rz,sand_top,clay_top,sand_rz,clay_rz,WPWET_top, POROS_top, PMAP
@@ -948,7 +948,7 @@ cat << _EOS1_ > clsm/soil
 _EOS1_
 else
 cat << _EOS2_ > clsm/soil	 
- 		read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4)')  &
+ 		read (10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4)')  &
 		tile_index,pfaf_code,soil_class_top,              &
 		soil_class_com,BEE, PSIS,POROS,COND,              &
 		WPWET,soildepth	
@@ -1366,7 +1366,7 @@ cat << _EOF0_ > clsm/README1
 	 surfexec and rzexec
 	 file name : tau_param.dat
          do n = 1, ${NTILES}
-		read (10,'(i8,i8,4f10.7)')    &
+		read (10,'(i10,i8,4f10.7)')    &
 			tile_index,pfaf_code,atau2,btau2,atau5,btau5
 	 end do
 	 where:
@@ -1379,7 +1379,7 @@ cat << _EOF0_ > clsm/README1
 	 root zone and water table
 	 file name : ts.dat
    	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,f5.2,4(2x,e13.7))')tile_index,pfaf_code,gnu,   &
+		read (10,'(i10,i8,f5.2,4(2x,e13.7))')tile_index,pfaf_code,gnu,   &
 	             tsa1,tsa2,tsb1,tsb2
       	 end do
 
@@ -1392,7 +1392,7 @@ cat << _EOF0_ > clsm/README1
        6.2.3 Baseflow parameters
 	 file name : bf.dat
 	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,f5.2,3(2x,e13.7))')tile_index,pfaf_code,gnu,bf1,bf2,bf3
+		read (10,'(i10,i8,f5.2,3(2x,e13.7))')tile_index,pfaf_code,gnu,bf1,bf2,bf3
 	 end do
 
 	 where:
@@ -1404,7 +1404,7 @@ cat << _EOF0_ > clsm/README1
        6.2.4 Area fractioning parameters
 	 file name : ar.new
 	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,f5.2,11(2x,e13.7))')tile_index,pfaf_code,gnu,  &
+		read (10,'(i10,i8,f5.2,11(2x,e13.7))')tile_index,pfaf_code,gnu,  &
 			ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4
 	 end do
 
