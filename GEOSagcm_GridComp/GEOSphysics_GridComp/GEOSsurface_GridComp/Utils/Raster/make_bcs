@@ -316,14 +316,15 @@ if( $orslv == O1 | $orslv == O2| $orslv == O3 ) then
     set     DATENAME = DE
     set     POLENAME = PE
 endif
+set  MOM_VERSION = MOM5
 if( $orslv == T1 | $orslv == T2 | $orslv == T3 | $orslv == T4 ) then 
     set TRIPOL_OCEAN = TRUE
-    set MOM_VERSION = MOM5
+    set  MOM_VERSION = MOM5
     set     DATENAME = TM
     set     POLENAME = TM
 else if ( $orslv == T2MOM6 | $orslv == T4MOM6 ) then
     set TRIPOL_OCEAN = TRUE
-    set MOM_VERSION = MOM6
+    set  MOM_VERSION = MOM6
     set     DATENAME = TM
     set     POLENAME = TM
 endif
