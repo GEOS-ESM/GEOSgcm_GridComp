@@ -1812,6 +1812,23 @@ contains
                                                                   RC=STATUS  )
     VERIFY_(STATUS)
 
+    ! Test
+    call MAPL_AddExportSpec ( gc,                                 &
+         SHORT_NAME = 'wu0',                                      &
+         LONG_NAME  = '',                                         &
+         UNITS      = 'ms-1',                                     &
+         DIMS       = MAPL_DimsHorzOnly,                          &
+         VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                 &
+         SHORT_NAME = 'dthv0',                                    &
+         LONG_NAME  = '',                                         &
+         UNITS      = 'K',                                        &
+         DIMS       = MAPL_DimsHorzOnly,                          &
+         VLOCATION  = MAPL_VLocationNone,              RC=STATUS  )
+     VERIFY_(STATUS)
+
 !    call MAPL_AddExportSpec(GC,                                              &
 !       LONG_NAME  = 'SHOC_PDF_relative_area_fraction',                       &
 !       UNITS      = '1',                                                     &
@@ -3722,6 +3739,9 @@ contains
                                             qt2_mf, qt2t_M_mf, qt2t_T_mf
 !   real, dimension(IM,JM,0:LM)          ::  awhl3, awqt3, awthv3 ! for EDMF contribution to MYNN
 
+   real, dimension(IM,JM) :: wu0, dthv0
+   real, dimension(:,:), pointer :: wu0_ex, dthv0_ex
+
    real, dimension(:,:), pointer        :: z_conv_edmf
 
    real, dimension(:,:,:), pointer ::  tket_M, tket_B, hl2t_M, qt2t_M, hlqtt_M, wthl_mf, wqt_mf, KH_mf, KH_t, KH_q, &
@@ -3746,7 +3766,7 @@ contains
                                            edmf_thl_plume8,edmf_thl_plume9,edmf_thl_plume10
 #endif
 
-   real :: edmf_wa, edmf_wb, edmf_au0, edmf_cth
+   real :: edmf_wa, edmf_wb, edmf_au0, edmf_cth1, edmf_cth2, edmf_lambda
 
    integer :: DO_MYNN
 
@@ -3993,8 +4013,11 @@ contains
 
       call MAPL_GetResource(MAPL, edmf_wa, 'EDMF_WA:', default=1.,  RC=STATUS)
       call MAPL_GetResource(MAPL, edmf_wb, 'EDMF_WB:', default=1.5, RC=STATUS)
-      call MAPL_GetResource(MAPL, edmf_au0, 'EDMF_AU0:', default=0.15, RC=STATUS)
-      call MAPL_GetResource(MAPL, edmf_cth, 'EDMF_CTH:', default=0.5, RC=STATUS)
+
+      call MAPL_GetResource(MAPL, edmf_au0,    'EDMF_AU0:',    default=0.20, RC=STATUS)
+      call MAPL_GetResource(MAPL, edmf_cth1,   'EDMF_CTH1:',   default=7.5, RC=STATUS)
+      call MAPL_GetResource(MAPL, edmf_cth2,   'EDMF_CTH2:',   default=1.1, RC=STATUS)
+      call MAPL_GetResource(MAPL, edmf_lambda, 'EDMF_LAMBDA:', default=20., RC=STATUS)
 
       ! Make sure SHOC and MYNN are not running at the same time
       _ASSERT( .not. ( DO_SHOC /= 0 .and. DO_MYNN /= 0) , 'SHOC and MYNN cannot be turned on at the same time!' )
@@ -4282,6 +4305,11 @@ contains
      call MAPL_GetPointer(EXPORT, tke_mf_ex, 'tke_mf', RC=STATUS)
      VERIFY_(STATUS)
 
+     call MAPL_GetPointer(EXPORT, wu0_ex,   'wu0', RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(EXPORT, dthv0_ex, 'dthv0', RC=STATUS)
+     VERIFY_(STATUS)
+
      call MAPL_GetPointer(EXPORT, qt2_mf_ex, 'qt2_mf', RC=STATUS)
      VERIFY_(STATUS)
      call MAPL_GetPointer(EXPORT, qt2t_M_mf_ex, 'qt2t_M_mf', RC=STATUS)
@@ -4550,7 +4578,8 @@ if ( ET == 1 ) then
                      ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
-                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, edmf_au0, edmf_cth, & ! in       
+                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in
+                     edmf_au0, edmf_cth1, edmf_cth2, edmf_lambda, &                  ! in       
                      zpbl_mf, &                                                      ! inout
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
@@ -4571,6 +4600,7 @@ if ( ET == 1 ) then
                      thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
                      thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
+                     wu0, dthv0, &
                      au, wu, Mu, E, D, wdet)                                         ! out (for MYNN-EDMF consistent partitioning)
     end if
  elseif ( ET == 2 ) then
@@ -4613,7 +4643,8 @@ if ( ET == 1 ) then
                      ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in                                         
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
-                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, edmf_au0, edmf_cth, & ! in       
+                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in
+                     edmf_au0, edmf_cth1, edmf_cth2, edmf_lambda, &                  ! in       
                      zpbl_mf, &                                                      ! inout
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
@@ -4634,6 +4665,7 @@ if ( ET == 1 ) then
                      thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
                      thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
+                     wu0, dthv0, &
                      au, wu, Mu, E, D, wdet)                                         ! out (for MYNN-EDMF consistent partitioning)
     end if ! EDMF_SCHEME == 0
 
@@ -4687,7 +4719,8 @@ if ( ET == 1 ) then
                      ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                      ustar, sh, evap, ice_ramp, &                                    ! in 
                      pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in 
-                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, edmf_au0, edmf_cth, & ! in       
+                     ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in
+                     edmf_au0, edmf_cth1, edmf_cth2, edmf_lambda, &                  ! in       
                      zpbl_mf, &                                                      ! inout
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
@@ -4707,6 +4740,7 @@ if ( ET == 1 ) then
                      qt_plume6,qt_plume7,qt_plume8,qt_plume9,qt_plume10, &
                      thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
                      thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
+                     wu0, dthv0, &
 #endif
                      au, wu, Mu, E, D, wdet)                                         ! out (for MYNN-EDMF consistent partitioning)         
     end if ! EDMF_SCHEME == 0
@@ -4824,6 +4858,9 @@ if ( associated(qt2t_T_mf_ex) ) qt2t_T_mf_ex = qt2t_T_mf
      if (associated(edmf_whl)) edmf_whl=mfwhl
      if (associated(edmf_mf)) edmf_mf=edmfmoista*edmfmoistw+edmfdrya*edmfdryw 
 
+     if ( associated(wu0_ex) )   wu0_ex = wu0
+     if ( associated(dthv0_ex) ) dthv0_ex = dthv0
+
 ELSE
 ! if there is no mass-flux
 !
@@ -4869,6 +4906,9 @@ ELSE
     Tu_full  = hlu_full - (mapl_grav/mapl_cp)*z
     qlu_full = 0.
     if ( associated( exf_turb ) ) exf_turb = exf
+
+     if ( associated(wu0_ex) )   wu0_ex   = 0.
+     if ( associated(dthv0_ex) ) dthv0_ex = 0.
 
     zpbl_mf = 0.
     KPBLmf  = float(LM)

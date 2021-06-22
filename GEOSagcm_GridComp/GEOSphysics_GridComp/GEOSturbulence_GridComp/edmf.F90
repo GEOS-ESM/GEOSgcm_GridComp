@@ -11,8 +11,7 @@ real, parameter ::     &
      WSTARmin = 1.e-3, &
      zpblmin  = 100.,  &
      onethird = 1./3., &
-     r        = 2.,    &
-     lambda   = 20.
+     r        = 2.
 
 contains
 
@@ -27,7 +26,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                     ui, vi, thli, qti, qvi, qli, qii, thvi, &                       ! in
                     ustar, sh, evap, ice_ramp, &                                    ! in
                     pwmin, pwmax, AlphaW, AlphaQT, AlphaTH, c_kh_mf, &              ! in
-                    ET, L0, ENT0, EDfac, EntWFac, Wa, Wb, au0, cth, &                ! in
+                    ET, L0, ENT0, EDfac, EntWFac, Wa, Wb, &                         ! in
+                    au0, cth1, cth2, lambda, &                                      ! in
                     zpbl, &                                                         ! inout
                     edmfdrya, edmfmoista, &                                         ! out
                     edmfdryw, edmfmoistw, &                                         ! out
@@ -48,6 +48,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                     thl_plume1,thl_plume2,thl_plume3,thl_plume4,thl_plume5, &
                     thl_plume6,thl_plume7,thl_plume8,thl_plume9,thl_plume10, &
 #endif
+                    wu0, dthv0, &
                     au, wu, Mu, E, D, wdet)                                         ! out (for MYNN-EDMF consistent partitioning)
   
   ! Inputs
@@ -58,7 +59,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   real, dimension(IM,JM,0:LM), intent(in) :: zle, ple, rhoe, ui, vi, thli, qti, qvi, qli, qii, thvi
   real, dimension(IM,JM), intent(in)      :: ustar, sh, evap, L0
   real, dimension(IM,JM), intent(inout)   :: zpbl
-  real, intent(in)                        :: th00, ice_ramp, dt, EntWFac, ENT0, Wa, Wb, au0, cth, pwmin, pwmax, &
+  real, intent(in)                        :: th00, ice_ramp, dt, EntWFac, ENT0, Wa, Wb, au0, cth1, cth2, lambda, pwmin, pwmax, &
                                              AlphaW, AlphaQT, AlphaTH, EDfac, c_kh_mf
  
   ! Outputs
@@ -81,6 +82,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                                             au_full, hlu_full, qtu_full, acu_full, &
                                             Tu_full, qlu_full
 
+  real, dimension(IM,JM), intent(out) :: wu0, dthv0
+
   real, dimension(numup,IM,JM) :: upm, upw, upthl, upqt, upql, upqi, upa, upu, upv, upthv, D_frac
 
   integer :: i, j, k, km1, kp1, iup, kbot
@@ -88,8 +91,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   real :: wthv, wstar, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
           B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, Mn_test, au_test, EntEXP, EntEXPU, EntW, wf, &
           stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, idzle, ifac, test, mft_work, mfthvt_work, &
-          goth00, thlu_full, work, work2, exfh, dsdz, dqdz, wu0, thv_high, thv_low, thvmin, thvmax, &
-          dthv0, thvu0, qtu0, foo
+          goth00, thlu_full, work, work2, exfh, dsdz, dqdz, thv_high, thv_low, thvmin, thvmax, &
+          thvu0, qtu0, foo
 
   ! Temporary (too slow; need to figure out how random number generator works)
   integer, dimension(numup,IM,JM,LM)  :: enti
@@ -279,16 +282,20 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                                                               + A(i,j,LM-1)*( zle(i,j,LM-2) - zle(i,j,LM-1) ) )
            work2 = rhoe(i,j,LM-2)/rhoe(i,j,LM-1) 
 
-           wu0 = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
-           write(*,*) '*', zi(i,j), Phi(i,j), wu0
+           wu0(i,j) = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
 
-           dthv0 = max( thv(i,j,LM) - thv(i,j,LM-1), &
-                        wu0**2.*( ( work2/work )**2. - work**2. )/( 2.*wb*goth00*( zle(i,j,LM-2) - zle(i,j,LM-1) ) ) )
+           wstar  = ( goth00*wthv*zi(i,j) )**onethird
+           thstar = wthv/wstar 
+ 
+           dthv0(i,j) = cth1*wu0(i,j)*thstar/wstar
+!           dthv0 = max( thv(i,j,LM) - thv(i,j,LM-1), &
+!                        wu0**2.*( ( work2/work )**2. - work**2. )/( 2.*wb*goth00*( zle(i,j,LM-2) - zle(i,j,LM-1) ) ) )
+           write(*,*) wu0(i,j), wu0(i,j)/wstar, goth00*dthv0(i,j), dthv0(i,j)/thstar
 
-           qtu0 = qt(i,j,LM-1) + dthv0*evap(i,j)/(rhoe(i,j,LM-1)*wthv)
+           qtu0 = qt(i,j,LM-1) + dthv0(i,j)*evap(i,j)/(rhoe(i,j,LM-1)*wthv)
 
-           thvu0    = thv(i,j,LM-1) + dthv0
-           sigmaTH = cth*dthv0
+           thvu0   = thv(i,j,LM-1) + dthv0(i,j)
+           sigmaTH = cth2*dthv0(i,j)
 
            thvmin = thv(i,j,LM-1)
            thvmax = thvu0 + 3.*sigmaTH
@@ -317,7 +324,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               thv_high = thvmin + ( thvmax - thvmin )*real(iup)/real(numup)
 
               upthv(iup,i,j) = 0.5*( thv_low + thv_high )
-              upw(iup,i,j)   = wu0
+              upw(iup,i,j)   = wu0(i,j)
               upa(iup,i,j)   = 0.5*work2*( erf(( thv_high - thvu0 )*work) - erf(( thv_low - thvu0 )*work) )
               upu(iup,i,j)   = u(i,j,LM)
               upv(iup,i,j)   = v(i,j,LM)
