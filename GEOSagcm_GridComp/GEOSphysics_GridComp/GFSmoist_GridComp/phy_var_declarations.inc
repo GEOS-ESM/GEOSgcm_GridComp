@@ -4,7 +4,8 @@
       integer, parameter    :: itc=0, ntchm=0
       integer, parameter    :: ntqv=1, ntcw=2, ntiw=3, ntclamt=8, ntrw=5, ntsw=6, & 
                                ntrnc=-99, ntsnc=-99, ntgl=7, ntgnc=-99, ntinc=-99, &
-                               ntlnc=-99, ntke=9, ntwa=-99, ntia=-99, ntchs=-99
+                               ntlnc=-99, ntke=9, ntwa=-99, ntia=-99, ntchs=-99, &
+                               ntoz=4
       integer, parameter    :: ntot3d=6, ncnvw=6, ncnvc=-999, ncnvcld3d=1
       integer, parameter    :: nleffr=1, nieffr=2, nreffr=3, nseffr=4, ngeffr=5
       integer, parameter    :: npdf3d=0, num_p3d=5
