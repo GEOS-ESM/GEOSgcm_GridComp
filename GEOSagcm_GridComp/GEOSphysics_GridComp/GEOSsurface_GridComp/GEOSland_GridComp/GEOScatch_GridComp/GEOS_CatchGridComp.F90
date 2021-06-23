@@ -214,30 +214,30 @@ subroutine SetServices ( GC, RC )
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
 
-    call ESMF_ConfigGetAttribute (SCF, label='SURFLAY:'            , value=SURFLAY,            DEFAULT=50., __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='Z0_FORMULATION:'     , value=Z0_FORMULATION,     DEFAULT=2  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='USE_ASCATZ0:'        , value=USE_ASCATZ0,        DEFAULT=0  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='CHOOSEMOSFC:'        , value=CHOOSEMOSFC,        DEFAULT=1  , __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='USE_FWET_FOR_RUNOFF:', value=USE_FWET_FOR_RUNOFF,DEFAULT=.FALSE., __RC__ )
+    call MAPL_GetResource (SCF, SURFLAY,             label='SURFLAY:',             DEFAULT=50.,     __RC__ )
+    call MAPL_GetResource (SCF, Z0_FORMULATION,      label='Z0_FORMULATION:',      DEFAULT=4,       __RC__ )
+    call MAPL_GetResource (SCF, USE_ASCATZ0,         label='USE_ASCATZ0:',         DEFAULT=0,       __RC__ )
+    call MAPL_GetResource (SCF, CHOOSEMOSFC,         label='CHOOSEMOSFC:',         DEFAULT=1,       __RC__ )
+    call MAPL_GetResource (SCF, USE_FWET_FOR_RUNOFF, label='USE_FWET_FOR_RUNOFF:', DEFAULT=.FALSE., __RC__ )
     
     if (.NOT. USE_FWET_FOR_RUNOFF) then
-       call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT= 0.02, __RC__ )
-       call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT= 0.02, __RC__ )
+       call MAPL_GetResource (SCF, FWETC, label='FWETC:', DEFAULT= 0.02, __RC__ )
+       call MAPL_GetResource (SCF, FWETL, label='FWETL:', DEFAULT= 0.02, __RC__ )
     else
-       call ESMF_ConfigGetAttribute (SCF, label='FWETC:' , value=FWETC, DEFAULT=0.005, __RC__ )
-       call ESMF_ConfigGetAttribute (SCF, label='FWETL:' , value=FWETL, DEFAULT=0.025, __RC__ )
+       call MAPL_GetResource (SCF, FWETC, label='FWETC:', DEFAULT=0.005, __RC__ )
+       call MAPL_GetResource (SCF, FWETL, label='FWETL:', DEFAULT=0.025, __RC__ )
     endif
 
     ! GOSWIM ANOW_ALBEDO 
     ! 0 : GOSWIM snow albedo scheme is turned off
     ! 9 : i.e. N_CONSTIT in Stieglitz to turn on GOSWIM snow albedo scheme 
-    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:', value=N_CONST_LAND4SNWALB, DEFAULT=0  , __RC__ )
+    call MAPL_GetResource (SCF, N_CONST_LAND4SNWALB, label='N_CONST_LAND4SNWALB:', DEFAULT=0  , __RC__ )
 
     ! 1: Use all GOCART aerosol values, 0: turn OFF everythying, 
     ! 2: turn off dust ONLY,3: turn off Black Carbon ONLY,4: turn off Organic Carbon ONLY
     ! __________________________________________
-    call ESMF_ConfigGetAttribute (SCF, label='AEROSOL_DEPOSITION:' , value=AEROSOL_DEPOSITION,  DEFAULT=0  , __RC__ )
-    call ESMF_ConfigDestroy      (SCF, __RC__)
+    call MAPL_GetResource (SCF, AEROSOL_DEPOSITION, label='AEROSOL_DEPOSITION:', DEFAULT=0  , __RC__ )
+    call ESMF_ConfigDestroy(SCF, __RC__)
 
 ! Set the Run entry points
 ! ------------------------

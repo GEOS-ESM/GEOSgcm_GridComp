@@ -78,7 +78,7 @@ subroutine SetServices ( GC, RC )
        CATCHCN = MAPL_AddChild('CATCHCNCLM45', 'setservices_', parentGC=GC, sharedObj='libGEOScatchCNCLM45_GridComp.so', RC=STATUS)
        VERIFY_(STATUS)       
     else
-       _ASSERT( .false., " LSM_CHOICE should 2 (CLM40) or 3 (CLM45)")
+       _ASSERT( .false., " LSM_CHOICE should equal 2 (CLM40) or 3 (CLM45)")
     endif
 
 

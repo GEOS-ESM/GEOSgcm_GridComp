@@ -8503,6 +8503,7 @@ contains
 
       else   ! if UW shallow scheme not called
 
+        UMF_SC    = 0.
         MFD_SC    = 0.
         SHLW_PRC3 = 0.
         SHLW_SNO3 = 0.      
@@ -13637,7 +13638,7 @@ do K= 1, LM
     REAL, DIMENSION(IM,JM,LM),    INTENT(IN)    :: T
     REAL, DIMENSION(IM,JM,0:LM),  INTENT(IN)    :: PLE
     REAL, DIMENSION(IM,JM,0:LM),  INTENT(IN)    :: ZLE
-    REAL, DIMENSION(IM,JM,LM),    INTENT(IN)    :: CNV_MFC
+    REAL, DIMENSION(IM,JM,0:LM),  INTENT(IN)    :: CNV_MFC
     REAL, DIMENSION(IM,JM),       INTENT(IN)    :: AREA
     REAL, DIMENSION(IM,JM),       INTENT(IN)    :: TS
     REAL, DIMENSION(:,:),         POINTER       :: LFR

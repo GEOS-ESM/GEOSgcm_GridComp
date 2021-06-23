@@ -151,8 +151,8 @@ contains
     call MAPL_GetResource (MAPL, SURFRC, label = 'SURFRC:', default = 'GEOS_SurfaceGridComp.rc', RC=STATUS) ; VERIFY_(STATUS)
     SCF = ESMF_ConfigCreate(rc=status) ; VERIFY_(STATUS)
     call ESMF_ConfigLoadFile(SCF,SURFRC,rc=status) ; VERIFY_(STATUS)
-    call ESMF_ConfigGetAttribute (SCF, label='RUN_ROUTE:'  , value=RUN_ROUTE  , DEFAULT=0, __RC__ )
-    call ESMF_ConfigGetAttribute (SCF, label='N_CONST_LAND4SNWALB:'  , value=DO_GOSWIM  , DEFAULT=0, __RC__ )
+    call MAPL_GetResource (SCF, RUN_ROUTE, label='RUN_ROUTE:',           DEFAULT=0, __RC__ )
+    call MAPL_GetResource (SCF, DO_GOSWIM, label='N_CONST_LAND4SNWALB:', DEFAULT=0, __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
 
     SELECT CASE (LSM_CHOICE)
