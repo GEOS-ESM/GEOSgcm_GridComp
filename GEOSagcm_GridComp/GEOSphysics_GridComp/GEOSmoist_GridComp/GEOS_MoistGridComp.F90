@@ -76,7 +76,7 @@ module GEOS_MoistGridCompMod
        CCW_EVP_EFF, CCI_EVP_EFF, NSMAX, LS_SDQV2, LS_SDQV3, LS_SDQVT1, ANV_SDQV2, &
        ANV_SDQV3, ANV_SDQVT1, ANV_TO_LS, CCN_OCEAN, CCN_LAND, &
        DISABLE_RAD, ANV_ICEFALL_C, LS_ICEFALL_C, REVAP_OFF_P, CNVENVFC, ANVENVFC, SCENVFC, LSENVFC, &
-       WRHODEP, T_ICE_ALL, CNVICEPARAM, ICEFRPWR, CNVDDRFC, ANVDDRFC, &
+       T_ICE_ALL, CNVICEPARAM, ICEFRPWR, CNVDDRFC, ANVDDRFC, &
        LSDDRFC, TANHRHCRIT, MINRHCRIT, MAXRHCRIT, TURNRHCRIT, MAXRHCRITLAND, TURNRHCRIT_UP, &
        FR_LS_WAT, FR_LS_ICE, FR_AN_WAT, FR_AN_ICE, MIN_RL, MIN_RI, MAX_RL, &
        MAX_RI, FAC_RL, FAC_RI, PDFFLAG, ICE_SETTLE
@@ -6173,7 +6173,7 @@ contains
       ! Control for stochasticity in CNV
       integer                             :: STOCHASTIC_CNV
 
-      real :: icefall
+      real :: TMP_ICEFALL
       real :: cNN, cNN_OCEAN, cNN_LAND, CONVERT
 
       real   , dimension(IM,JM)           :: CMDU, CMSS, CMOC, CMBC, CMSU, CMNI
@@ -9149,12 +9149,13 @@ contains
       call MAPL_GetResource( STATE, CLDPARAMS%QC_CRIT_ANV,    'QC_CRIT_ANV:',    DEFAULT= 8.0e-4  )
 
       call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.    )
-      call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0   )
-      call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0   )
-      if (LM .eq. 72) then
-        call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',      DEFAULT= 0.5   )
+      if (adjustl(CLDMICRO) =="GFDL") then
+        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0   )
+        call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0   )
       else
-        call MAPL_GetResource( STATE, CLDPARAMS%WRHODEP,        'WRHODEP:',      DEFAULT= 0.25  )
+        TMP_ICEFALL = 0.5*(72.0/FLOAT(LM))
+        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL )
+        call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= TMP_ICEFALL )
       endif
 
       if(adjustl(CLDMICRO)=="2MOMENT") then
@@ -9956,7 +9957,6 @@ contains
          ANVENVFC      = CLDPARAMS%ANV_ENVF
          SCENVFC       = CLDPARAMS%SC_ENVF
          LSENVFC       = CLDPARAMS%LS_ENVF
-         WRHODEP       = CLDPARAMS%WRHODEP 
          T_ICE_ALL     = CLDPARAMS%ICE_RAMP + MAPL_TICE
          CNVICEPARAM   = CLDPARAMS%CNV_ICEPARAM
          ICEFRPWR      = INT( CLDPARAMS%CNV_ICEFRPWR + .001 )
