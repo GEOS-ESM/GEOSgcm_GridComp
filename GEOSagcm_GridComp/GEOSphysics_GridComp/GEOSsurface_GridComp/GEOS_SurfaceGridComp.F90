@@ -263,12 +263,18 @@ module GEOS_SurfaceGridCompMod
     call ESMF_UserCompSetInternalState ( GC, 'SURF_state',wrap,status )
     VERIFY_(STATUS)
 
-! Get CHOICE OF  Land Surface Model (1:Catch, 2:Catch-CN)
+! Get CHOICE OF  Land Surface Model (1:Catch, 2:Catch-CN4.0, 3:Catch-CN4.5)
 ! and Runoff Routing Model (0: OFF, 1: ON)
 ! -------------------------------------------------------
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
+    ! adjust LAND_PPARAMS default choice if LSM is catchCN
+    if (LSM_CHOICE.eq.2) then
+       call MAPL_GetResource (MAPL, LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM4", __RC__ )
+    elseif (LSM_CHOICE.eq.3) then
+       call MAPL_GetResource (MAPL, LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM45", __RC__ )
+    end if
 
 ! Set the state variable specs.
 ! -----------------------------
