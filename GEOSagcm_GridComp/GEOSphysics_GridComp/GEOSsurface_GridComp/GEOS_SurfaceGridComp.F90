@@ -227,22 +227,24 @@ module GEOS_SurfaceGridCompMod
     ! Get CHOICE OF  Land Surface Model (1:Catch, 2:Catch-CN4.0, 3:Catch-CN4.5)
     ! and Runoff Routing Model (0: OFF, 1: ON)
     ! -------------------------------------------------------
-    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetResource (MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource (MAPL, DO_OBIO, label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource (SCF, ATM_CO2, label='ATM_CO2:', DEFAULT=2, __RC__ ) 
 
-    call MAPL_GetResource (SCF, catchswim,     label='N_CONST_LAND4SNWALB:',    DEFAULT=0,        __RC__ )
-    call MAPL_GetResource (SCF, landicegoswim, label='N_CONST_LANDICE4SNWALB:', DEFAULT=0,        __RC__ )
-    if (LSM_CHOICE.eq.1) then
-       call MAPL_GetResource (SCF, LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="NRv7.2", __RC__ )
+    call MAPL_GetResource (SCF, catchswim,     label='N_CONST_LAND4SNWALB:',    DEFAULT=0,          __RC__ )
+    call MAPL_GetResource (SCF, landicegoswim, label='N_CONST_LANDICE4SNWALB:', DEFAULT=0,          __RC__ )
+    if     (LSM_CHOICE.eq.1) then
+       call MAPL_GetResource (SCF,  LAND_PARAMS,   label='LAND_PARAMS:',        DEFAULT="NRv7.2",   __RC__ )
     elseif (LSM_CHOICE.eq.2) then                                                                                             
-       call MAPL_GetResource (MAPL, LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM4", __RC__ )           
+       call MAPL_GetResource (MAPL, LAND_PARAMS,   label='LAND_PARAMS:',        DEFAULT="CN_CLM4",  __RC__ )           
     elseif (LSM_CHOICE.eq.3) then                                                                                         
-       call MAPL_GetResource (MAPL, LAND_PARAMS,   label='LAND_PARAMS:',            DEFAULT="CN_CLM45", __RC__ )          
+       call MAPL_GetResource (MAPL, LAND_PARAMS,   label='LAND_PARAMS:',        DEFAULT="CN_CLM45", __RC__ )          
+    else
+       _ASSERT(.FALSE.,'unknown LSM_CHOICE')
     end if
-    call MAPL_GetResource (SCF, CHOOSEMOSFC,   label='CHOOSEMOSFC:',            DEFAULT=1,        __RC__ )
+    call MAPL_GetResource (SCF, CHOOSEMOSFC,   label='CHOOSEMOSFC:',            DEFAULT=1,          __RC__ )
     call ESMF_ConfigDestroy      (SCF, __RC__)
-
+    
     if ( (catchswim/=0) .or. (landicegoswim/=0) .or. (DO_OBIO/=0)) then
        do_goswim=.true.
     else
