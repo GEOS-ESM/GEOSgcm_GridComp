@@ -83,6 +83,7 @@ module GEOS_SurfaceGridCompMod
   integer ::     LANDICE
   integer ::       OCEAN 
   integer ::        LAND 
+  integer ::     HPRECIP
 
 #ifdef AQUA_PLANET
   integer, parameter :: NUM_CHILDREN = 1
@@ -97,6 +98,7 @@ module GEOS_SurfaceGridCompMod
   integer :: DO_OBIO, ATM_CO2
   integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
+  logical :: DO_HETER_PRECIP
 
 ! used only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
@@ -239,6 +241,15 @@ module GEOS_SurfaceGridCompMod
        do_goswim=.false.
     endif
     
+    call MAPL_GetResource (MAPL, DO_HETER_PRECIP, label="HETEROGENEOUS_PRECIP:",DEFAULT=.false., __RC__)
+    if (DO_HETER_PRECIP) then
+       !ALT replace MOM with HPRECIP
+       call MAPL_GetResource ( MAPL, sharedObj,  Label="MOM_GEOS5PLUGMOD:", DEFAULT="libMOM_GEOS5PlugMod.so", __RC__ )
+       HPRECIP = MAPL_AddChild('HPRECIP','setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
+    else
+       HPRECIP = 0
+    end if
+
 ! Set the Run entry point
 ! -----------------------
 
