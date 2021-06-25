@@ -2855,14 +2855,14 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! ADAS corrector interval/alarm
        ! Need to know length of the ADAS Corrector segment, because LDAS increments are added
        !    *only* during the Corrector segment and not during the subsequent Predictor segment.
-       call MAPL_GetResource ( MAPL, ADAS_INTERVAL, Label="ADAS_INTERVAL:", &
+       call MAPL_GetResource ( MAPL, ADAS_INTERVAL, Label="ASSIMILATION_CYCLE:", &
             DEFAULT=21600, RC=STATUS)
        VERIFY_(STATUS)
        
        call ESMF_TimeIntervalSet(Interval_c, s=ADAS_INTERVAL, rc = STATUS  )
        VERIFY_(STATUS)
 
-       ALARM_C = ESMF_AlarmCreate(name="CORRECTOR_ALARM",clock=CLOCK, &
+       ALARM_C = ESMF_AlarmCreate(name="SEGMENT_ALARM",clock=CLOCK, &
                  ringInterval=Interval_c,RC=STATUS)
        VERIFY_(STATUS)
 
@@ -4092,7 +4092,7 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         type(ESMF_Grid)               :: TILEGRID
         type(MAPL_LocStream)          :: LOCSTREAM
         integer, pointer              :: mask(:)
-        type(ESMF_ALARM)              :: LDAS_ALARM, CORRECTOR_ALARM
+        type(ESMF_ALARM)              :: LDAS_ALARM, SEGMENT_ALARM
 
         character(len=ESMF_MAXSTR)    :: LDASINC_FILE_TMPL
         character(len=ESMF_MAXSTR)    :: LDASINC_FILE
@@ -5172,24 +5172,24 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
         if(LDAS_INCR >0 )  then
 
            ! LDAS increments are added *only* during the ADAS Corrector segment and not during the
-           ! subsequent Predictor segment.  This is controlled by CORRECTOR_ALARM.
+           ! subsequent Predictor segment.  This is controlled by SEGMENT_ALARM.
            
-           ! get ADAS CORRECTOR ALARM 
-           call MAPL_StateAlarmGet(MAPL,CORRECTOR_ALARM,"CORRECTOR_ALARM",RC=STATUS)
+           ! get ADAS SEGMENT ALARM 
+           call MAPL_StateAlarmGet(MAPL,SEGMENT_ALARM,"SEGMENT_ALARM",RC=STATUS)
            VERIFY_(STATUS)
            
-           if(ESMF_AlarmIsRinging(CORRECTOR_ALARM, RC=STATUS)) then
-              ! in ADAS corrector segment 
-              call ESMF_AlarmRingerOff(CORRECTOR_ALARM, RC=STATUS)
+           if(ESMF_AlarmIsRinging(SEGMENT_ALARM, RC=STATUS)) then
+              ! segment switching point  
+              call ESMF_AlarmRingerOff(SEGMENT_ALARM, RC=STATUS)
               VERIFY_(STATUS)
-              ! handle LDAS switch during ADAS corrector segment 
+              ! handle LDAS corrector switch  
               if (CATCH_INTERNAL_STATE%LDAS_CORRECTOR) then
                  CATCH_INTERNAL_STATE%LDAS_CORRECTOR = .FALSE.
               else
                  CATCH_INTERNAL_STATE%LDAS_CORRECTOR = .TRUE.
               endif
 
-           endif ! CORRECTOR_ALARM ring 
+           endif ! SEGMENT_ALARM ring 
 
            if (CATCH_INTERNAL_STATE%LDAS_CORRECTOR) then
               ! field list 
