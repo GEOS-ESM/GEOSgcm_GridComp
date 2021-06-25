@@ -973,7 +973,7 @@ contains
          VERIFY_(STATUS)
          call gw_oro_init ( oro_band, NCAR_GW_DC, NCAR_WAVELENGTH, NCAR_PGWV, NCAR_SOUTH_FAC )
          ! Ridge Scheme
-         call MAPL_GetResource( MAPL, NCAR_NRDG,       Label="NCAR_NRDG:",           default=16,           RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_NRDG,       Label="NCAR_NRDG:",           default=0,            RC=STATUS)
          VERIFY_(STATUS)
          if (NCAR_NRDG > 0) then
            call gw_rdg_init ( NCAR_GW_DC, NCAR_WAVELENGTH, NCAR_PGWV )
