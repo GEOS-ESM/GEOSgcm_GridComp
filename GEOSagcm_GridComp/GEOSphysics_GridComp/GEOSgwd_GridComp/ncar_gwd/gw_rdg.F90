@@ -290,6 +290,7 @@ subroutine gw_rdg_ifc( &
    taury = 0._r8 
    utrdg = 0._r8
    vtrdg = 0._r8
+   ttrdg = 0._r8
    flx_heat = 0._r8
    
    do nn = 1, n_rdg

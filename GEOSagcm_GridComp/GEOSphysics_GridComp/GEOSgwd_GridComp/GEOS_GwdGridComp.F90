@@ -82,7 +82,7 @@ module GEOS_GwdGridCompMod
   public SetServices
 
 !EOP
-  logical, save      :: FIRST_RUN = .true.
+  logical, save      :: FIRST_RUN = .false.
   logical            :: USE_NCAR_GWD
   logical, parameter :: USE_NCEP_GWD = .false.
   type(GWBand)          :: beres_band
@@ -940,7 +940,7 @@ contains
 
          call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=0.25_MAPL_R8, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=1.00_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
 
          call gw_common_init( .FALSE. , 1 , & 
@@ -973,7 +973,7 @@ contains
          VERIFY_(STATUS)
          call gw_oro_init ( oro_band, NCAR_GW_DC, NCAR_WAVELENGTH, NCAR_PGWV, NCAR_SOUTH_FAC )
          ! Ridge Scheme
-         call MAPL_GetResource( MAPL, NCAR_NRDG,       Label="NCAR_NRDG:",           default=0,            RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_NRDG,       Label="NCAR_NRDG:",           default=16,           RC=STATUS)
          VERIFY_(STATUS)
          if (NCAR_NRDG > 0) then
            call gw_rdg_init ( NCAR_GW_DC, NCAR_WAVELENGTH, NCAR_PGWV )
