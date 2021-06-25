@@ -108,6 +108,7 @@ module GEOS_SurfaceGridCompMod
 !
 
   character(len=ESMF_MAXSTR) :: LAND_PARAMS ! land parameter option
+  character(len=ESMF_MAXSTR) :: SharedObj
 
   type T_Routing
      integer :: srcTileID, dstTileID,     &
@@ -244,7 +245,7 @@ module GEOS_SurfaceGridCompMod
     call MAPL_GetResource (MAPL, DO_HETER_PRECIP, label="HETEROGENEOUS_PRECIP:",DEFAULT=.false., __RC__)
     if (DO_HETER_PRECIP) then
        !ALT replace MOM with HPRECIP
-       call MAPL_GetResource ( MAPL, sharedObj,  Label="MOM_GEOS5PLUGMOD:", DEFAULT="libMOM_GEOS5PlugMod.so", __RC__ )
+       call MAPL_GetResource ( MAPL, sharedObj,  Label="GEOS_HetPrecip:", DEFAULT="libGEOShetprecip_GridComp.so≈", __RC__ )
        HPRECIP = MAPL_AddChild('HPRECIP','setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
     else
        HPRECIP = 0
@@ -3055,7 +3056,11 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_Get(MAPL, GCNAMES = GCNames, RC=STATUS)
     VERIFY_(STATUS)
-    _ASSERT(NUM_CHILDREN == size(GCNames),'needs informative message')
+    if (.not. do_heter_precip) then
+       _ASSERT(NUM_CHILDREN == size(GCNames),'needs informative message')
+    else
+       _ASSERT(NUM_CHILDREN == size(GCNames)-1,'needs informative message')
+    end if
 
     CHILD_MASK(OCEAN  ) = MAPL_OCEAN
 #ifndef AQUA_PLANET
@@ -5403,6 +5408,8 @@ module GEOS_SurfaceGridCompMod
     real, allocatable :: PRECSUM(:,:)
     character(len=ESMF_MAXPATHLEN) :: SolCycFileName
     logical :: PersistSolar
+
+    real, pointer :: het_precip_fac(:) => NULL()
     
 !=============================================================================
 
@@ -6430,6 +6437,24 @@ module GEOS_SurfaceGridCompMod
     call MAPL_LocStreamTransform( LOCSTREAM, ALWTILE  , ALW,     RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM, BLWTILE  , BLW,     RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM, DTSDTTILE, DTSDT,   RC=STATUS); VERIFY_(STATUS)
+
+
+    if(do_heter_precip) then
+       I = HPRECIP
+       call ESMF_GridCompRun(GCS(I), &
+            importState=GIM(I), exportState=GEX(I), &
+            clock=CLOCK, userRC=STATUS )
+       VERIFY_(STATUS)
+       !get export WEIGHT, i.e. the heterogeneous precipitation factor
+       call MAPL_GetPointer(GEX(I), het_precip_fac, 'WEIGHT', RC=status)
+       VERIFY_(STATUS)
+       !apply weight to the 5 precips
+       pcutile = pcutile * het_precip_fac
+       plstile = plstile * het_precip_fac
+       snofltile = snofltile * het_precip_fac
+       icefltile = icefltile * het_precip_fac
+       frzrfltile = frzrfltile * het_precip_fac
+    end if
 
     if (DO_GOSWIM) then
        do K = 1, NUM_DUDP
