@@ -8924,8 +8924,6 @@ contains
         DQRDT_macro=QRAIN
         DQSDT_macro=QSNOW
         DQST3 = GEOS_DQSAT(TEMP, PLO, QSAT=QST3)
-        tmprhL = min(0.99,(1.0-min(0.20, max(0.01, 0.035*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
-        tmprhO = min(0.99,(1.0-min(0.20, max(0.01, 0.140*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
         do K=1,LM
           do J=1,JM
            do I=1,IM
@@ -8953,6 +8951,37 @@ contains
                   QST3(I,J,K)       , &
                   CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J), &
                   CONVPAR_OPTION )
+       ! Send the condensates through the pdf after convection
+       !  Use Slingo-Ritter (1985) formulation for critical relative humidity
+             TURNRHCRIT   = TURNRHCRIT2D(I,J)
+             tmpminrhcrit = minrhcrit2D(I,J)
+             tmpmaxrhcrit = maxrhcrit2D(I,J)
+             ALPHA = tmpmaxrhcrit
+           ! lower turn from maxrhcrit
+             if (PLO(i,j,k) .le. TURNRHCRIT) then
+                ALPHAl = tmpminrhcrit
+             else
+                if (k.eq.LM) then
+                   ALPHAl = tmpmaxrhcrit
+                else
+                   ALPHAl = tmpminrhcrit + (tmpmaxrhcrit-tmpminrhcrit)/(19.) * &
+                           ((atan( (2.*(PLO(i,j,k)-TURNRHCRIT)/min(100., CNV_PLE(i,j,LM)-TURNRHCRIT)-1.) * &
+                           tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
+                endif
+             endif
+           ! upper turn back to maxrhcrit
+             TURNRHCRIT_UP = TROPP(i,j)/100.0
+             IF (TURNRHCRIT_UP == MAPL_UNDEF) TURNRHCRIT_UP = 100.
+             if (PLO(i,j,k) .le. TURNRHCRIT_UP) then
+                ALPHAu = tmpmaxrhcrit
+             else
+                ALPHAu = tmpmaxrhcrit - (tmpmaxrhcrit-tmpminrhcrit)/(19.) * &
+                        ((atan( (2.*(PLO(i,j,k)-TURNRHCRIT_UP)/( TURNRHCRIT-TURNRHCRIT_UP)-1.) * &
+                        tan(20.*MAPL_PI/21.-0.5*MAPL_PI) ) + 0.5*MAPL_PI) * 21./MAPL_PI - 1.)
+             endif
+           ! combine and limit
+             ALPHA = min( 0.25, 1.0 - min(max(ALPHAl,ALPHAu),1.) ) ! restrict RHcrit to > 75% 
+             RHCRIT = 1.0 - ALPHA
        ! evaporation/sublimation for CN/LS
              EVAPC_X(I,J,K) = Q1(I,J,K)
              call evap3 (                 &
@@ -9306,8 +9335,6 @@ contains
         ! Liquid
          PFL_LS_X = 0.
      ! Put condensates in touch with the PDF
-        tmprhL = min(0.99,(1.0-min(0.20, max(0.01, 0.035*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
-        tmprhO = min(0.99,(1.0-min(0.20, max(0.01, 0.140*SQRT(SQRT(((111000.0*360.0/FLOAT(imsize))**2)/1.e10))))))
         do K=1,LM
           do J=1,JM
             do I=1,IM
@@ -9479,6 +9506,8 @@ contains
      ! Fill precip diagnostics
          LS_PRC2 = PRCP_RAIN
          LS_SNR  = PRCP_SNOW + PRCP_ICE + PRCP_GRAUPEL
+     ! cleanup suspended precipitation condensates
+         call FIX_UP_PRECIP(RAD_QR, RAD_QS, RAD_QG, RAD_QV, TEMP)
      ! Fill vapor/rain/snow/graupel state
          Q1       = RAD_QV
          QRAIN    = RAD_QR
@@ -9504,6 +9533,9 @@ contains
          do K = 1, LM
            do J = 1, JM
              do I = 1, IM
+              ! cleanup clouds
+               call fix_up_clouds( Q1(I,J,K), TEMP(I,J,K), QLLS(I,J,K), QILS(I,J,K), CLLS(I,J,K), QLCN(I,J,K), QICN(I,J,K), CLCN(I,J,K) )
+              ! get radiative properties
                RHX_X(I,J,K) = Q1(I,J,K)/GEOS_QSAT( TEMP(I,J,K), PLO(I,J,K) )
                call RADCOUPLE ( TEMP(I,J,K), PLO(I,J,K), CLLS(I,J,K), CLCN(I,J,K), &
                      Q1(I,J,K), QLLS(I,J,K), QILS(I,J,K), QLCN(I,J,K), QICN(I,J,K), QRAIN(I,J,K), QSNOW(I,J,K), QGRAUPEL(I,J,K), NACTL(I,J,K), NACTI(I,J,K), &
@@ -14212,10 +14244,36 @@ END SUBROUTINE Get_hemcoFlashrate
       end where
    end subroutine FIX_UP_RAD_CLOUDS
 
+
+   subroutine FIX_UP_PRECIP(QRAIN, QSNOW, QGRAUPEL, QV, TE)
+      real, dimension(:,:,:), intent(inout) :: QRAIN, QSNOW, QGRAUPEL, QV, TE
+
+      WHERE (QRAIN < 1.e-8)
+        QV    = QV + QRAIN
+        TE    = TE - (MAPL_ALHL/MAPL_CP)*QRAIN
+        QRAIN = 0.0
+      END WHERE
+
+      WHERE (QSNOW < 1.e-8)
+        QV    = QV + QSNOW
+        TE    = TE - (MAPL_ALHS/MAPL_CP)*QSNOW
+        QSNOW = 0.0
+      END WHERE
+
+      WHERE (QGRAUPEL < 1.e-8)
+        QV    = QV + QGRAUPEL
+        TE    = TE - (MAPL_ALHS/MAPL_CP)*QGRAUPEL
+        QGRAUPEL = 0.0
+      END WHERE
+
+   end subroutine FIX_UP_PRECIP
+
    subroutine REDISTRIBUTE_CLOUDS(CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE)
       real, dimension(:,:,:), intent(inout) :: CF, QL, QI, CLCN, CLLS, QLCN, QLLS, QICN, QILS, QV, TE
 
       WHERE (QL < 1.e-8)
+        QV   = QV + QL
+        TE   = TE - (MAPL_ALHL/MAPL_CP)*QL
         QL   = 0.0
         QLLS = 0.0
         QLCN = 0.0
@@ -14225,6 +14283,8 @@ END SUBROUTINE Get_hemcoFlashrate
       END WHERE
 
       WHERE (QI < 1.e-8)
+        QV   = QV + QI
+        TE   = TE - (MAPL_ALHS/MAPL_CP)*QI
         QI   = 0.0
         QILS = 0.0
         QICN = 0.0
