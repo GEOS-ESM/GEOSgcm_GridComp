@@ -256,7 +256,7 @@ contains
     totalPrecip = PCU(1,1)+PLS(1,1)+SNO(1,1)+ICE(1,1)+FRZR(1,1)
     if (totalPrecip == 0.0) then
        print *,'WARNING: zero precip.'
-       psub = 0.0
+       psub = 1.0
        _RETURN(ESMF_SUCCESS)
     end if
 
@@ -319,7 +319,7 @@ contains
      end do
 
      ! scale the precip factor to make sure we preserve the grid box precip
-     total = sum(psub)
+     total = sum(psub)/nt
      if (total /= 0.0) psub = psub/total
 
 ! all done
