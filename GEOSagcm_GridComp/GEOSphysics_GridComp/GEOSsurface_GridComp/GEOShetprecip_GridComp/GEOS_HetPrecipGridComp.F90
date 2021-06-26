@@ -240,17 +240,26 @@ contains
 
     call random_number(rn) ! rn is array of size NT
 
+!   generate new QVAR
+    qvar=rho*qvar+sqrho*rn
+
     call MAPL_GetPointer(IMPORT, PCU, 'PCU', __RC__)
     call MAPL_GetPointer(IMPORT, PLS, 'PLS', __RC__)
     call MAPL_GetPointer(IMPORT, SNO, 'SNO', __RC__)
     call MAPL_GetPointer(IMPORT, ICE, 'ICE', __RC__)
     call MAPL_GetPointer(IMPORT, FRZR, 'FRZR', __RC__)
 
+    !ALT: the alloc-.true. is there from laziness
+    call MAPL_GetPointer(EXPORT, psub, 'WEIGHT', alloc=.true., __RC__)
+
 !ALT: single column assumption: 1 grid cell
     totalPrecip = PCU(1,1)+PLS(1,1)+SNO(1,1)+ICE(1,1)+FRZR(1,1)
+    if (totalPrecip == 0.0) then
+       print *,'WARNING: zero precip.'
+       psub = 0.0
+       _RETURN(ESMF_SUCCESS)
+    end if
 
-!   generate new QVAR
-    qvar=rho*qvar+sqrho*rn
 
 ! determine fracdry
 
@@ -263,10 +272,7 @@ contains
        fracdry=fracdrymax
     end if
 
-    !ALT: the alloc-.true. is there from laziness
-    call MAPL_GetPointer(EXPORT, psub, 'WEIGHT', alloc=.true., __RC__)
-
-    allocate(psum(NT), krank(NT), __STAT__)
+    allocate(psum(0:NT), krank(NT), __STAT__)
 
     ! sort QVAR
     call rankdata(nt, qvar, krank, __RC__)
@@ -314,7 +320,7 @@ contains
 
      ! scale the precip factor to make sure we preserve the grid box precip
      total = sum(psub)
-     psub = psub/total
+     if (total /= 0.0) psub = psub/total
 
 ! all done
      deallocate(psum,krank, rn) 
@@ -330,27 +336,17 @@ contains
        integer, optional, intent(out) :: rc
        
        integer :: status
-       integer :: n, k
-       integer :: klow
-       real :: plow
-       real, allocatable :: ptest(:)
+       integer, allocatable :: ptest(:)
+       integer, parameter :: large_int = 2**21
        
        allocate(ptest(nt), __STAT__)
-       ptest=qtest
-       
-       do n=1,nt
+       ptest=int(qtest*large_int)
+       krank = [1:nt]
 
-          plow=MAPL_Undef ! set it to a large value
-          klow=-1
-          do k=1,nt
-             if(ptest(k) < plow) then
-                plow=ptest(k)
-                klow=k
-             endif
-          end do
-          krank(klow)=n
-          !???            ptest(klow)=10000000.
-       end do
+       call MAPL_Sort(ptest, krank)
+
+       deallocate(ptest)
+
        _RETURN(ESMF_SUCCESS)
      end subroutine rankdata
 
