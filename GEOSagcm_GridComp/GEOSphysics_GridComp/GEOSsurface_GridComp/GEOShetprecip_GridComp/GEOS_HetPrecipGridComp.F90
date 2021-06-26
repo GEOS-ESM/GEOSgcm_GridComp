@@ -123,6 +123,8 @@ contains
     real :: totalArea
     integer, pointer :: tiletypes(:) => null()
 
+    call MAPL_GenericInitialize(GC, IMPORT, EXPORT, CLOCK, __RC__)
+
     E = EXP(1.0)
 
     ! get MAPL
@@ -171,8 +173,6 @@ contains
        cdfv(i)=cdfv(i-1)+pdfv(i) ! construct CDF
     end do
     cdfv=cdfv/cdfv(NPDF) ! final scaling, just to be sure
-
-    call MAPL_GenericInitialize(GC, IMPORT, EXPORT, CLOCK, __RC__)
 
     ! get qvar
 
@@ -357,3 +357,11 @@ contains
   end subroutine Run
 
 end module GEOS_HetPrecipGridCompMod
+
+subroutine SetServices(gc, rc)
+   use ESMF
+   use GEOS_HetPrecipGridCompMod, only : mySetservices=>SetServices
+   type(ESMF_GridComp) :: gc
+   integer, intent(out) :: rc
+   call mySetServices(gc,rc=rc)
+end subroutine

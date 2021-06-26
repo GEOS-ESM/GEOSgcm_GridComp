@@ -242,15 +242,6 @@ module GEOS_SurfaceGridCompMod
        do_goswim=.false.
     endif
     
-    call MAPL_GetResource (MAPL, DO_HETER_PRECIP, label="HETEROGENEOUS_PRECIP:",DEFAULT=.false., __RC__)
-    if (DO_HETER_PRECIP) then
-       !ALT replace MOM with HPRECIP
-       call MAPL_GetResource ( MAPL, sharedObj,  Label="GEOS_HetPrecip:", DEFAULT="libGEOShetprecip_GridComp.so≈", __RC__ )
-       HPRECIP = MAPL_AddChild('HPRECIP','setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
-    else
-       HPRECIP = 0
-    end if
-
 ! Set the Run entry point
 ! -----------------------
 
@@ -3048,6 +3039,17 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 #endif
 
+    call MAPL_GetResource (MAPL, DO_HETER_PRECIP, label="HETEROGENEOUS_PRECIP:",DEFAULT=.false., __RC__)
+    if (DO_HETER_PRECIP) then
+       !ALT replace MOM with HPRECIP
+       call MAPL_GetResource ( MAPL, sharedObj,  Label="GEOS_HetPrecip:", DEFAULT="libGEOShetprecip_GridComp.so", __RC__ )
+       HPRECIP = MAPL_AddChild('HPRECIP','setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
+    else
+       HPRECIP = 0
+    end if
+
+
+
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
@@ -3313,6 +3315,15 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
 
     end do
+
+    if (DO_HETER_PRECIP) then
+       I = HPRECIP
+       call MAPL_GetObjectFromGC ( GCS(I) ,   CHILD_MAPL,   RC=STATUS )
+       VERIFY_(STATUS)
+       call MAPL_Set (CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
+       VERIFY_(STATUS)
+    end if
+
     call MAPL_TimerOff(MAPL,"LocStreamCreate")
 
 ! Call Initialize for every Child
