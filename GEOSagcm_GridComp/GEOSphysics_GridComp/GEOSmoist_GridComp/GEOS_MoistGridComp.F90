@@ -24,6 +24,9 @@ module GEOS_MoistGridCompMod
 
   use gfdl2_cloud_microphys_mod
 
+  use HCF_vars_calc, only: hcfcalc
+  use Conv_Trig_Pot_Mod, only: ctp_hi_low
+
 #ifndef _CUDA
   use CLOUDNEW, only: PROGNO_CLOUD, ICE_FRACTION, T_CLOUD_CTL, pdfcondensate, pdffrac, RADCOUPLE
 #else
@@ -1724,6 +1727,63 @@ contains
          VLOCATION = MAPL_VLocationNone,                         &
          RC=STATUS  )
     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'TBM',                                       &
+         LONG_NAME = 'buoyant_mixing_potential_temp_threshold',    &
+         UNITS     = 'K',                                          &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'BCLH',                                      &
+         LONG_NAME = 'height_of_convective_threshold',             &
+         UNITS     = 'm',                                          &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'BCLP',                                      &
+         LONG_NAME = 'pressure_of_convective_threshold',           &
+         UNITS     = 'Pa',                                         &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'TDEF',                                      &
+         LONG_NAME = 'potential_temperature_deficit_needed_to_initiate_convection', &
+         UNITS     = 'K',                                          &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'CTP',                                       &
+         LONG_NAME = 'convective_triggering_potential',            &
+         UNITS     = 'K',                                          &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                               &
+         SHORT_NAME = 'HILOW',                                     &
+         LONG_NAME = 'low_level_humidity',                         &
+         UNITS     = 'K',                                          &
+         DIMS      = MAPL_DimsHorzOnly,                            &
+         VLOCATION = MAPL_VLocationNone,                         &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
+
+
 
     call MAPL_AddExportSpec(GC,                               &
          SHORT_NAME ='RL',                                          & 
@@ -5229,6 +5289,8 @@ contains
                                          THVLSRC_SC, TKEAVG_SC, CLDTOP_SC, CUSH
       real, pointer, dimension(:,:  ) :: CNT_SC, CNB_SC
 
+      real, pointer, dimension(:,:  ) :: TBM, BCLH, BCLP, TDEF, CTP, HILOW
+
       real, pointer, dimension(:,:,:) :: CNV_DQLDT            , &
            CNV_MF0              , &
            CNV_MFD              , &
@@ -6423,6 +6485,14 @@ contains
       call MAPL_GetPointer(EXPORT, CLDREFFG, 'RG'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT, CLDNCCN,  'CLDNCCN' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(EXPORT,DTDTFRIC, 'DTDTFRIC' , RC=STATUS); VERIFY_(STATUS)
+
+! Land-Atmosphere Coupling Diagnostics
+      call MAPL_GetPointer(EXPORT, TBM,   'TBM'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, BCLH,  'BCLH'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, BCLP,  'BCLP'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, TDEF,  'TDEF'  , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, CTP,   'CTP'   , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, HILOW, 'HILOW' , RC=STATUS); VERIFY_(STATUS)
 
 !!! shallow vars
       call MAPL_GetPointer(EXPORT, CBMF_SC,  'CBMF_SC' , RC=STATUS); VERIFY_(STATUS)
@@ -8164,6 +8234,51 @@ contains
           call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'  ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS);TAU_EC =0.0
           !print*,"sizes=",size(ERRMD),size(MUPMD);flush(6)
          ENDIF
+
+
+!------------------------------------------------------------------------------
+! Land-Atmosphere Coupling Diagnostics
+
+     ! Convective Triggering Potential
+     if (associated(CTP) .or. associated(HILOW)) then
+
+         if (.not. associated(CTP)) allocate( CTP(IM,JM) )
+         if (.not. associated(HILOW)) allocate( HILOW(IM,JM) )  
+
+         do I = 1,IM
+           do J = 1,JM
+              call ctp_hi_low ( LM, T(I,J,:), Q1(I,J,:),                 &
+                                100.*PLO(I,J,:), T2M(I,J), Q2M(I,J),     &
+                                PLE(I,J,LM), CTP(I,J), HILOW(I,J), MAPL_UNDEF )         
+           end do
+         end do 
+
+     end if
+
+   
+     ! Heated Condensation Framework
+     if ( associated(TBM) .or. associated(BCLH) .or. associated(BCLP) .or. associated(TDEF) ) then
+
+         if (.not. associated(TBM)) allocate( TBM(IM,JM) )
+         if (.not. associated(BCLH)) allocate( BCLH(IM,JM) )
+         if (.not. associated(BCLP)) allocate( BCLP(IM,JM) )
+         if (.not. associated(TDEF)) allocate( TDEF(IM,JM) )
+
+         do I = 1,IM
+           do J = 1,JM
+              call hcfcalc ( LM, MAPL_UNDEF, T(I,J,:), 100.*PLO(I,J,:),        &
+                             Q1(I,J,:), ZLO(I,J,:), T2M(I,J), PLE(I,J,LM),     &
+                             Q2M(I,J), 2.0, TBM(I,J), BCLH(I,J),               &
+                             BCLP(I,J), TDEF(I,J)  ) !,                   &
+         !               TRAN_H , TRAN_P , TRAN_T,                             &
+         !               SHDEF_M, LHDEF_M, EADV_M                              )
+           end do
+         end do
+
+     end if
+
+!------------------------------------------------------------------------------
+
 
 ! WMP
 ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRACTION dependence
