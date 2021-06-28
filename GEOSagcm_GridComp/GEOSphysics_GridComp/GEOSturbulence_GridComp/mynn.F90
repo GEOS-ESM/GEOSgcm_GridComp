@@ -449,12 +449,13 @@ subroutine run_mynn(IM, JM, LM, &                                               
 !              wb_test  = 3.*A2*tau_test*(-w2_test*N2(i,j,k) + ( 1. - C3 )*goth002*( thv2_25  + thv2_p ) )
            end if
 
-           write(*,*)             &
-                      tke(i,j,k), &
-                      au(i,j,k),  &
+           write(*,'(12F7.2)') zle(i,j,k), au(i,j,k), aci(i,j,k), real(qdiv, 4)
+!           write(*,*)             &
+!                      tke(i,j,k), &
+!                      au(i,j,k),  &
 !                      Mu(i,j,k),  &
-                      thl(i,j,k), &
-                      1000.*qt(i,j,k)
+!                      thl(i,j,k), &
+!                      1000.*qt(i,j,k)
 !                      aci(i,j,k)
 !                      wb_test_1, &
 !                      wb_test_2, &

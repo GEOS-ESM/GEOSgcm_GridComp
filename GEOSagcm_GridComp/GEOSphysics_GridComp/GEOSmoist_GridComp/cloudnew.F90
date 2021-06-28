@@ -1171,7 +1171,6 @@ contains
                   s_moist(I,K),        &
                   sigma_s_moist(I,K) )
             else
-
             call hystpdf(          &
                   DT             , &
                   ALPHA          , &
@@ -2350,7 +2349,7 @@ contains
             ace_moist = QCn
 
             fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
-         elseif ( pdfflag == 7 ) then ! Double Gaussian with consistent partitioning
+         elseif ( pdfflag == 7 ) then ! Top-hats for convective clouds, Gaussian for stratiform
             ! Update the liquid water static energy
             ALHX = ( 1. - fQi )*MAPL_ALHL + fQi*MAPL_ALHS
 
@@ -2369,6 +2368,24 @@ contains
             TEn = au*Tu  + ( 1. - au )*Tce
             QCn = au*qlu + ( 1. - au )*qle
             CFn = acu    + ( 1. - au )*ace_moist
+
+            fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
+         elseif ( pdfflag == 8 ) then ! Top-hats for convective clouds, no stratiform
+            ALHX = ( 1. - fQi )*MAPL_ALHL + fQi*MAPL_ALHS
+
+            hl = TEn + (mapl_grav/mapl_cp)*zl - (alhx/mapl_cp)*QCn
+            qt = QVn + QCn
+
+            hle = ( hl - au*hlu )/( 1. - au ) 
+            qte = ( qt - au*qtu )/( 1. - au )
+
+            ace_moist = 0.
+
+            Tce = hle - (mapl_grav/mapl_cp)*zl
+
+            TEn = au*Tu  + ( 1. - au )*Tce
+            QCn = au*qlu 
+            CFn = acu    
 
             fQi = ice_fraction( TEn, CNV_FRACTION, SNOMAS, FRLANDICE, FRLAND )
          endif

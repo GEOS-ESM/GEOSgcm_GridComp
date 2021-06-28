@@ -290,7 +290,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
            dthv0(i,j) = cth1*wu0(i,j)*thstar/wstar
 !           dthv0 = max( thv(i,j,LM) - thv(i,j,LM-1), &
 !                        wu0**2.*( ( work2/work )**2. - work**2. )/( 2.*wb*goth00*( zle(i,j,LM-2) - zle(i,j,LM-1) ) ) )
-           write(*,*) wu0(i,j), wu0(i,j)/wstar, goth00*dthv0(i,j), dthv0(i,j)/thstar
 
            qtu0 = qt(i,j,LM-1) + dthv0(i,j)*evap(i,j)/(rhoe(i,j,LM-1)*wthv)
 
