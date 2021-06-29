@@ -2856,7 +2856,7 @@ subroutine Initialize ( GC, IMPORT, EXPORT, CLOCK, RC )
        ! Need to know length of the ADAS Corrector segment, because LDAS increments are added
        !    *only* during the Corrector segment and not during the subsequent Predictor segment.
        call MAPL_GetResource ( MAPL, ADAS_INTERVAL, Label="ASSIMILATION_CYCLE:", &
-            DEFAULT=21600, RC=STATUS)
+             RC=STATUS)
        VERIFY_(STATUS)
        
        call ESMF_TimeIntervalSet(Interval_c, s=ADAS_INTERVAL, rc = STATUS  )
@@ -5185,8 +5185,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
               ! handle LDAS corrector switch  
               if (CATCH_INTERNAL_STATE%LDAS_CORRECTOR) then
                  CATCH_INTERNAL_STATE%LDAS_CORRECTOR = .FALSE.
-              else
-                 CATCH_INTERNAL_STATE%LDAS_CORRECTOR = .TRUE.
               endif
 
            endif ! SEGMENT_ALARM ring 
