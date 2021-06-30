@@ -177,8 +177,8 @@
                                                      !    1.0 represents the last day of year 11
 
       ! profile
-      real, intent(in) :: play   (ncol,nlay)         ! Layer pressures (hPa, mb)
-      real, intent(in) :: plev   (ncol,nlay+1)       ! Interface pressures (hPa, mb)
+      real, intent(in) :: play   (ncol,nlay)         ! Layer pressures (hPa)
+      real, intent(in) :: plev   (ncol,nlay+1)       ! Interface pressures (hPa)
       real, intent(in) :: tlay   (ncol,nlay)         ! Layer temperatures (K)
       real, intent(in) :: tlev   (ncol,nlay+1)       ! Interface temperatures (K)
       real, intent(in) :: tsfc   (ncol)              ! Surface temperature (K)
@@ -254,7 +254,7 @@
 
       ! ----- Locals -----
 
-      integer :: npart, pncol
+      integer :: pncol
       
 #ifdef _CUDA
       type(cudadeviceprop) :: prop
@@ -591,8 +591,8 @@
       real, intent(in), optional :: solcycfrac
 
       ! profile
-      real, intent(in) :: gplay   (gncol,nlay)         ! Layer pressures (hPa, mb)
-      real, intent(in) :: gplev   (gncol,nlay+1)       ! Interface pressures (hPa, mb)
+      real, intent(in) :: gplay   (gncol,nlay)         ! Layer pressures (hPa)
+      real, intent(in) :: gplev   (gncol,nlay+1)       ! Interface pressures (hPa)
       real, intent(in) :: gtlay   (gncol,nlay)         ! Layer temperatures (K)
       real, intent(in) :: gtlev   (gncol,nlay+1)       ! Interface temperatures (K)
       real, intent(in) :: gtsfc   (gncol)              ! Surface temperature (K)
@@ -643,20 +643,20 @@
 
       ! ----- Output -----
 
-      real, intent(out) :: swuflx  (ncol,nlay+1)       ! Total sky SW up   flux (W/m2)
-      real, intent(out) :: swdflx  (ncol,nlay+1)       ! Total sky SW down flux (W/m2)
-      real, intent(out) :: swuflxc (ncol,nlay+1)       ! Clear sky SW up   flux (W/m2)
-      real, intent(out) :: swdflxc (ncol,nlay+1)       ! Clear sky SW down flux (W/m2)
-      real, intent(out) :: swhr    (ncol,nlay)         ! Total sky SW heating rate (K/d)
-      real, intent(out) :: swhrc   (ncol,nlay)         ! Clear sky SW heating rate (K/d)
+      real, intent(out) :: swuflx  (gncol,nlay+1)      ! Total sky SW up   flux (W/m2)
+      real, intent(out) :: swdflx  (gncol,nlay+1)      ! Total sky SW down flux (W/m2)
+      real, intent(out) :: swuflxc (gncol,nlay+1)      ! Clear sky SW up   flux (W/m2)
+      real, intent(out) :: swdflxc (gncol,nlay+1)      ! Clear sky SW down flux (W/m2)
+      real, intent(out) :: swhr    (gncol,nlay)        ! Total sky SW heating rate (K/d)
+      real, intent(out) :: swhrc   (gncol,nlay)        ! Clear sky SW heating rate (K/d)
 
       ! Output added for Land/Surface process
-      real , intent(out) :: nirr   (ncol)              ! Near-IR direct  down SW flux (w/m2)
-      real , intent(out) :: nirf   (ncol)              ! Near-IR diffuse down SW flux (w/m2)
-      real , intent(out) :: parr   (ncol)              ! Visible direct  down SW flux (w/m2)
-      real , intent(out) :: parf   (ncol)              ! Visible diffuse down SW flux (w/m2)
-      real , intent(out) :: uvrr   (ncol)              ! UV      direct  down SW flux (w/m2)
-      real , intent(out) :: uvrf   (ncol)              ! UV      diffuse down SW flux (w/m2)
+      real , intent(out) :: nirr   (gncol)             ! Near-IR direct  down SW flux (w/m2)
+      real , intent(out) :: nirf   (gncol)             ! Near-IR diffuse down SW flux (w/m2)
+      real , intent(out) :: parr   (gncol)             ! Visible direct  down SW flux (w/m2)
+      real , intent(out) :: parf   (gncol)             ! Visible diffuse down SW flux (w/m2)
+      real , intent(out) :: uvrr   (gncol)             ! UV      direct  down SW flux (w/m2)
+      real , intent(out) :: uvrf   (gncol)             ! UV      diffuse down SW flux (w/m2)
 
 ! ----- Local -----
 

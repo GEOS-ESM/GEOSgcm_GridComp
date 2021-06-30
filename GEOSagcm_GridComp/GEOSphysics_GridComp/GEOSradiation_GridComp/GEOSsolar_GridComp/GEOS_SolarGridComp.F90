@@ -2427,7 +2427,7 @@ contains
       integer :: L, L1, LN, J, J1, JN, NA, K
       integer :: NUMLIT, NUM2DO
 
-      real, pointer :: QQ3(:,:,:), RR3(:,:,:),  PTR3(:,:,:)
+      real, pointer :: QQ3(:,:,:), RR3(:,:,:), PTR3(:,:,:)
       real, pointer :: PTR2(:,:), RH(:,:), PL(:,:), O3(:,:), PLTMP(:,:)
 
       character(len=ESMF_MAXSTR), allocatable :: NAMESimp(:), NAMESint(:)
@@ -2958,11 +2958,8 @@ contains
       ! Water amounts and effective radii are in arrays indexed by species
       !-------------------------------------------------------------------
 
-      allocate(QQ3(size(Q,1),size(Q,2),4),STAT=STATUS)
-      VERIFY_(STATUS)
-
-      allocate(RR3(size(Q,1),size(Q,2),4),STAT=STATUS)
-      VERIFY_(STATUS)
+      allocate(QQ3 (size(Q,1),size(Q,2),4),__STAT__)
+      allocate(RR3 (size(Q,1),size(Q,2),4),__STAT__)
 
       QQ3(:,:,1) = QI
       QQ3(:,:,2) = QL
@@ -2976,8 +2973,7 @@ contains
       ! Convert odd oxygen, which is the model prognostic, to ozone
       !------------------------------------------------------------
 
-      allocate(O3 (size(Q,1),size(Q,2)  ),STAT=STATUS)
-      VERIFY_(STATUS)
+      allocate(O3 (size(Q,1),size(Q,2)),__STAT__)
 
       O3 = OX
       WHERE(PL < 100.)
@@ -4099,11 +4095,9 @@ contains
       ! Deallocate the working inputs
       !------------------------------
 
+      deallocate (PL, RH, PLTMP)
       deallocate (QQ3, RR3)
-      deallocate (RH, PL)
       deallocate (O3)
-      deallocate (PLTMP)
-
       deallocate (TAUA, SSAA, ASYA)
 
       call MAPL_TimerOn(MAPL,"-BALANCE")
