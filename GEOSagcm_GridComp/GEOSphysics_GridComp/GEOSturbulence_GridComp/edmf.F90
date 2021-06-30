@@ -950,7 +950,7 @@ subroutine A_star_closure(IM, JM, LM, &                       ! in
   end do
 
   ! Find magnitude and height of maximum plume velocity and compute Mu0 accordingly
-  wu0(i,j) = 0.
+  wu0(:,:) = 0.01
   do iter = 1,1
 
      do j = 1,JM
@@ -958,9 +958,9 @@ subroutine A_star_closure(IM, JM, LM, &                       ! in
         ! Initialize plume
         Mu(i,j)   = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )
         wu2(i,j)  = wu0(i,j)**2.
-        thlu(i,j) = thl(i,j,LM)
-        qtu(i,j)  = qt(i,j,LM)
-        thvu(i,j) = thv(i,j,LM)
+        thlu(i,j) = thl(i,j,LM-1)
+        qtu(i,j)  = qt(i,j,LM-1)
+        thvu(i,j) = thv(i,j,LM-1)
 
         test_flag(i,j) = conv_flag(i,j)
      end do
@@ -989,7 +989,7 @@ subroutine A_star_closure(IM, JM, LM, &                       ! in
               
               thvu_next = thlu_next*( 1. + mapl_vireps*qtu_next )
 
-              if ( B <= 0. ) then
+              if ( B < 0. ) then
                  zi(i,j)        = zle(i,j,k)
                  Mu0(i,j)       = sqrt( wu2(i,j) )/( 2.*zi(i,j)*A_star2_int(i,j) )
                  wu0(i,j)       = Mu0(i,j)*A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
