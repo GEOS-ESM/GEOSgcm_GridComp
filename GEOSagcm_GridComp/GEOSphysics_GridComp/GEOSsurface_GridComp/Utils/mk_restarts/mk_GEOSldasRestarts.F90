@@ -70,12 +70,12 @@ PROGRAM mk_GEOSldasRestarts
 
   integer, parameter :: ntiles_cn = 1684725, ntiles_cat = 1653157
   character(len=300), parameter :: &
-       InCNRestart = '/gpfsm/dnb42/projects/p16/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/M09/20151231/catchcn_internal_rst', &
+       InCNRestart = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/M09/20151231/catchcn_internal_rst', &
        InCNTilFile = '/discover/nobackup/ltakacs/bcs/Heracles-NL/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til',                        &
-       InCatRestart= '/gpfsm/dnb42/projects/p16/ssd/land/l_data/LandRestarts_for_Regridding/Catch/M09/20170101/catch_internal_rst', &
+       InCatRestart= '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/Catch/M09/20170101/catch_internal_rst', &
        InCatTilFile= '/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/' &
                       //'SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til',                                                   &        
-       InCatRest45 = '/gpfsm/dnb42/projects/p16/ssd/land/l_data/LandRestarts_for_Regridding/Catch/M09/20170101/catch_internal_rst', &
+       InCatRest45 = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/Catch/M09/20170101/catch_internal_rst', &
        InCatTil45  = '/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/' &
                       //'SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'            
   REAL        :: SURFLAY = 50.
@@ -758,13 +758,13 @@ contains
     endif
 
     if(trim(MODEL) == 'catch') then
-       call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/Catch/catch_internal_rst' , pFIO_READ,rc=rc)
+       call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/Catch/catch_internal_rst' , pFIO_READ,rc=rc)
     end if
     if(index(MODEL, 'catchcn') /=0) then
       if (clm45) then
-         call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, rc=rc)
+         call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, rc=rc)
       else
-         call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy' , pFIO_READ, rc=rc)
+         call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy' , pFIO_READ, rc=rc)
       endif
    end if
    meta_data = InFmt%read(rc=rc)
@@ -2509,7 +2509,7 @@ contains
      ! create output catchcn_internal_rst
      if(index(model,'catchcn') /=0) then 
         if (clm45) then
-           call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, rc=rc) ; VERIFY_(RC)
+           call InFmt%open('/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, rc=rc) ; VERIFY_(RC)
         else
            call InFmt%open(trim(InCNRestart ), pFIO_READ, rc=rc)
         endif
