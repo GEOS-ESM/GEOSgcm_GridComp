@@ -1171,7 +1171,7 @@ contains
                   ANVFRC_dev(I,K), &
                   KH_dev(I,K-1)  , &
                   VFALL          , &
-                  EXTRATROPICAL, TROPICAL, TROPP_dev(I) )
+                  EXTRATROPICAL, TROPICAL, CNV_FRACTION_dev(I), TROPP_dev(I) )
             VFALLICE_AN_dev(I,K) = VFALL
 
             CALL ICEFALL(          &
@@ -1207,7 +1207,7 @@ contains
                   CLDFRC_dev(I,K), &
                   KH_dev(I,K-1)  , &
                   VFALL          , &
-                  EXTRATROPICAL, TROPICAL, TROPP_dev(I) )
+                  EXTRATROPICAL, TROPICAL, CNV_FRACTION_dev(I), TROPP_dev(I) )
             VFALLICE_LS_dev(I,K) = VFALL
 
             CALL ICEFALL(          &
@@ -3414,7 +3414,7 @@ contains
 #ifdef _CUDA
    attributes(device) &
 #endif
-   subroutine SETTLE_VEL( WXR, QI, PL, TE, F, KH, VF, LARGESCALE, ANVIL, TROPP_Pa )
+   subroutine SETTLE_VEL( WXR, QI, PL, TE, F, KH, VF, LARGESCALE, ANVIL, CNV_FRACTION, TROPP_Pa )
 
       real, intent(in   ) :: WXR 
       real, intent(in   ) :: TE
@@ -3422,7 +3422,7 @@ contains
       real, intent(in   ) :: KH
       real, intent(out  ) :: VF
 
-      real, intent(in) :: ANVIL, LARGESCALE
+      real, intent(in) :: ANVIL, LARGESCALE, CNV_FRACTION
       real, intent(in) :: TROPP_Pa
       
       real :: RHO, XIm,LXIm, VF_A, VF_L, tpp_hPa, VF_PSC, wgt1, wgt2
@@ -3441,7 +3441,7 @@ contains
       real, parameter :: ddL = 0.00410839
       real, parameter :: eeL = 1.93644
 
-      real :: rBB, C0, C1, DIAM, lnP
+      real :: PFAC, rBB, C0, C1, DIAM, lnP
 
       real, parameter :: vf_min = 1.e-5 !< min fall speed for cloud ice, snow, graupel
       real, parameter :: vi_max = 0.5   !< max fall speed for ice
@@ -3465,7 +3465,6 @@ contains
       REAL, PARAMETER :: BLEND_DEPTH_hPa = 50.
 ! ----------------------------------------------------------------------------
 
-    if (WXR > 0.) then
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
       ! Uses Eq. 1 Lawrence and Crutzen (1998, Tellus 50B, 263-289) 
       ! Except midlat form is taken to be for LS cloud, and tropical
@@ -3486,129 +3485,19 @@ contains
          LXIm = 0.0
       end if
 
-    ! Convective anvil
-       VF_A = 128.6 + 53.2*LXIm + 5.5*LXIm**2
-
-    ! Mid-latitude cirrus
-       VF_L = 109.0*(XIm**0.16)
- 
-    ! Combine the two
-       VF = ANVIL*VF_A + LARGESCALE*VF_L
-
-    ! Convert from cm/s to m/s
-       VF = 0.01 * VF
-
+    ! Pressure factor
     ! Reduce/increase fall speeds for high/low pressure (NOT in LC98!!! ) 
     ! Assume unmodified they represent situation at 100 mb
-      if (WXR > 0.) then
-    !    VF = VF * ( 100./MAX(PL,10.) )**WXR
-    !    VF = VF * SIN( 0.5*MAPL_PI*MIN(1.0,100./PL)**WXR )
-         VF = VF * MIN(WXR,SIN( 0.5*MAPL_PI*MIN(1.0,100./PL)))
-     endif
+       PFAC = SIN( 0.5*MAPL_PI*MIN(1.0,100./PL))
 
-   else
+    ! Convective anvil Convert from cm/s to m/s
+       VF_A = 0.01 * (128.6 + 53.2*LXIm + 5.5*LXIm**2) * MIN(ANVIL,PFAC)
 
-      tc = TE-MAPL_TICE
-     ! -----------------------------------------------------------------------
-     ! Combine 'large-scale' Deng and Mace (2008, grl)
-     ! -----------------------------------------------------------------------
-      if ( ( F > 0.) .and. ( QI > 0. ) ) then
-         IWC = (QI/F)*1000.*100.*PL/(MAPL_RGAS*TE) ! Units are g/m3
-      else
-         IWC = 0.
-      end if
-      VF_L   = 10.0**(log10(IWC) * (tc * (aaL * tc + bbL) + ccL) + ddL * tc + eeL)
-     ! -----------------------------------------------------------------------
-     ! With 'convective' Mishra et al (2014, JGR) 'Parameterization of ice fall speeds in 
-     !                               midlatitude cirrus: Results from SPartICus'
-     ! -----------------------------------------------------------------------
-      IWC    = IWC * 1.e3 ! Units are mg/m3
-      VF_A  = MAX(10.0,1.119*tc + 14.21*log10(IWC) + 68.85)
-     ! Combine the two
-      VF = ANVIL*VF_A + LARGESCALE*VF_L
-     ! Convert from cm/s to m/s
-      VF = 0.01 * VF
-     ! Include pressure sensitivity (eq 14 in https://doi.org/10.1175/JAS-D-12-0124.1)
-     !------ice cloud effective radius ----- [klaus wyser, 1998]
-      if(TE>273.15) then
-        rBB  = -2.
-      else
-        IWC  = IWC * 1.e-3 ! Units are g/m3
-        rBB  = -2. + log10(1.e3*IWC/50.)*(1.e-3*(273.15-TE)**1.5)
-      endif
-      rBB   = MIN((MAX(rBB,-6.)),-2.)
-      DIAM  = 2.0*(377.4 + 203.3 * rBB+ 37.91 * rBB **2 + 2.3696 * rBB **3)
-      lnP   = log(MAX(1.0,PL))
-      C0    = -1.04 + 0.298*lnP
-      C1    =  0.67 - 0.097*lnP
-     ! apply pressure scaling
-      VF = VF * (C0 + C1*log(DIAM))
-     ! Limits
-      VF = min (vi_max, max (vf_min, VF))
-
-   endif
-
-#ifdef SKIP_PSC_FOR_NOW
-! ------------------- Settling velocity for PSCs: -------------------
-
-!    Change TROPP_Pa from Pa to hPa to match units of PL
-      tpp_hPa = TROPP_Pa/100.  
-
-!    If tropopause pressure is undefined set equal to 100. hPa
-      IF (TROPP_Pa == MAPL_UNDEF) tpp_hPa = 100.
-
-      IF( (PL < tpp_hPa) .AND.(QI > 0.) ) THEN
-
-       mdens = (RHO/1000.)*MAPL_AVOGAD*1.00E-06/MAPL_AIRMW
-       h2ocond = mdens*QI*MAPL_AIRMW/MAPL_H2OMW
-       logsigicesq = LOG(sigice)*LOG(sigice)
-       ndensice = densice/massh2o
-       oneThird = 1./3.
-       rmedice = (3.0*h2ocond/(ndensice*4.0*MAPL_PI*nice))**(oneThird)*EXP(-3.0/2.0*logsigicesq)
-
-       IF(rmedice == 0.0 ) THEN
-
-        VF_PSC = 0.0
-
-       ELSE
-
-! rmedice comes in as cm but need m so divide by 100
-! densice is g/cm**3 but needs kg/m**3 so multiply by 1000
-! -------------------------------------------------------------
-        radius = 0.01*rmedice
-        rhoi = densice*1000.
-        mfp = .22508/(sigsq*mdens*1.e6)
-        dynvis = bet*TE**1.5/(TE+s)
-        fluxcorr = EXP(8.0*LOG(sigice)*LOG(sigice))
-
-! took out divide by 100 so VF units m/s
-! --------------------------------------
-        VF_PSC = fluxcorr*(0.2222*rhoi*radius*radius*MAPL_GRAV/dynvis*(1.+ mfp/radius*(a+b*exp(-cc*radius/mfp))))
-
-       END IF
-
-      END IF
-
-! --------- Modify VF with VF_PSC in the lower stratosphere ---------
-     
-      IF( (PL < tpp_hPa) .AND. (PL > (tpp_hPa-BLEND_DEPTH_hPa)) .AND. (QI > 0.) ) THEN
-       wgt1 = ((tpp_hPa-BLEND_DEPTH_hPa)-PL)/(-BLEND_DEPTH_hPa)
-       wgt2 = 1.-wgt1
-      ELSE IF (PL <= (tpp_hPa-BLEND_DEPTH_hPa) .AND. (QI > 0.) ) THEN
-       wgt1 = 0.0
-       wgt2 = 1.0
-      ELSE
-      END IF
-       
-
-      IF( (PL < tpp_hPa) .AND. (QI > 0.) ) THEN
-        VF = VF*wgt1+VF_PSC*wgt2
-      ELSE
-        VF = VF
-      END IF
-
-! -------------------------------------------------------------------
-#endif
+    ! Mid-latitude cirrus
+       VF_L = 0.01 * (109.0*(XIm**0.16)) * MIN(LARGESCALE,PFAC)
+ 
+    ! Combine the two
+       VF = CNV_FRACTION*VF_A + (1.0-CNV_FRACTION)*VF_L
 
    end SUBROUTINE SETTLE_VEL
 

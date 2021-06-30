@@ -188,7 +188,11 @@ module gfdl2_cloud_microphys_mod
     
     real :: cld_min = 0.05 !< minimum cloud fraction
     real :: tice = 273.16 !< set tice = 165. to trun off ice - phase phys (kessler emulator)
-    
+   
+    real :: log_10 = log (10.)
+    real :: tice0 = 273.16 - 0.01
+    real :: t_wfr = 273.16 - 40.0 ! supercooled water can exist down to - 48 c, which is the "absolute"
+ 
     real :: t_min = 178. !< min temp to freeze - dry all water vapor
     real :: t_sub = 184. !< min temp for sublimation of cloud ice
     real :: mp_time = 150. !< maximum micro - physics time step (sec)
@@ -301,8 +305,6 @@ module gfdl2_cloud_microphys_mod
     logical :: mp_print = .false. !< cloud microphysics debugging printout
     
     ! real :: global_area = - 1.
-    
-    real :: log_10, tice0, t_wfr
     
     ! -----------------------------------------------------------------------
     ! namelist
@@ -2006,10 +2008,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
     
     if (fast_sat_adj) then
         dt_evap = 0.5 * dts
-        dt_pisub = 0.5 * dts
     else
         dt_evap = dts
-        dt_pisub = dts
     endif
     
     ! -----------------------------------------------------------------------
@@ -2144,18 +2144,23 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         ! bigg mechanism
         ! -----------------------------------------------------------------------
         
-        tc = tice - tz (k)
-        if (ql (k) > qrmin .and. tc > 0.) then
-            newqi = new_ice_condensate(tz (k), cnv_fraction, ql (k), qi (k))
-            sink = 3.3333e-10 * dts * (exp (0.66 * tc) - 1.) * den (k) * ql (k) * ql (k)
-            sink = max(0.0,min (newqi, fac_frz * tc / icpk (k), sink))
-            ql (k) = ql (k) - sink
-            qi (k) = qi (k) + sink
-            q_liq (k) = q_liq (k) - sink
-            q_sol (k) = q_sol (k) + sink
-            cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
-            tz (k) = tz (k) + sink * lhi (k) / cvm (k)
-        endif ! significant ql existed
+        if (fast_sat_adj) then
+            dt_pisub = 0.5 * dts
+        else
+            dt_pisub = dts
+            tc = tice - tz (k)
+            if (ql (k) > qrmin .and. tc > 0.) then
+                newqi = new_ice_condensate(tz (k), cnv_fraction, ql (k), qi (k))
+                sink = 3.3333e-10 * dts * (exp (0.66 * tc) - 1.) * den (k) * ql (k) * ql (k)
+                sink = max(0.0,min (newqi, fac_frz * tc / icpk (k), sink))
+                ql (k) = ql (k) - sink
+                qi (k) = qi (k) + sink
+                q_liq (k) = q_liq (k) - sink
+                q_sol (k) = q_sol (k) + sink
+                cvm (k) = c_air + qv (k) * c_vap + q_liq (k) * c_liq + q_sol (k) * c_ice
+                tz (k) = tz (k) + sink * lhi (k) / cvm (k)
+            endif ! significant ql existed
+        endif
        
         ! -----------------------------------------------------------------------
         ! update capacity heat and latend heat coefficient
@@ -3569,11 +3574,6 @@ subroutine gfdl_cloud_microphys_init ()
         call setupm
         do_setup = .false.
     endif
-    
-    log_10 = log (10.)
-    
-    tice0 = tice - 0.01
-    t_wfr = tice - 40.0 ! supercooled water can exist down to - 48 c, which is the "absolute"
     
     ! if (root_proc) write (logunit, nml = gfdl_cloud_microphys_nml)
     !
