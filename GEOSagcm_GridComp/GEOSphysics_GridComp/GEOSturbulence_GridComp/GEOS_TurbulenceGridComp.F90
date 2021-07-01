@@ -3757,6 +3757,8 @@ contains
    real, dimension(IM,JM)          :: zi_entrain, gamma_ml_entrain, gamma_fa_entrain
    integer, dimension(IM,JM)       :: ktop_entrain
 
+   real, dimension(IM,JM), target :: CT_DATA, USTAR_DATA, SH_DATA, EVAP_DATA
+
 #ifdef EDMF_DIAG
    real, dimension(:,:,:), pointer      :: edmf_qt_plume1,edmf_qt_plume2,edmf_qt_plume3,edmf_qt_plume4, &
                                            edmf_qt_plume5,edmf_qt_plume6,edmf_qt_plume7, &
@@ -3837,6 +3839,10 @@ contains
                                      ! 1: test MYNN feature
      integer :: MYNN_DEBUG           ! 0 (default): no debugging output in MYNN
                                      ! 1: print internal variables in MYNN subroutine
+
+     ! SCM parameters
+     integer :: SCM_DATA_SURF        ! 0:    use exchange coefficients from surface grid comp
+                                     ! else: prescribed surface exchange coefficients
 
      real,dimension(IM,JM) :: L02
      
@@ -4497,10 +4503,28 @@ contains
     call MAPL_GetResource (MAPL, MYNN_DISCRETE,   "MYNN_DISCRETE:", default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_DEBUG,      "MYNN_DEBUG:",    default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_TEST,       "MYNN_TEST:",     default=0,  RC=STATUS)
-! get ice ramp
-   call MAPL_GetResource(MAPL,ICE_RAMP,'ICE_RAMP:',DEFAULT= -40.0   )
 
-     call MAPL_TimerOn(MAPL,"---MASSFLUX")
+    call MAPL_GetResource(MAPL, ICE_RAMP,      'ICE_RAMP:',      DEFAULT= -40.0 )
+    call MAPL_GetResource(MAPL, SCM_DATA_SURF, 'SCM_DATA_SURF:', DEFAULT= 0 )
+    
+
+    call MAPL_TimerOn(MAPL,"---MASSFLUX")
+
+    ! Prescribed surface exchange coefficients
+    if ( SCM_DATA_SURF /= 0 ) then
+       CT_DATA(:,:) = 0.0081
+
+       USTAR_DATA(:,:) = sqrt(0.0002)*sqrt( U(:,:,LM)**2. + V(:,:,LM)**2. )
+       SH_DATA(:,:)    = -MAPL_CP*CT_DATA*RHOE(:,:,LM)*( TH(:,:,LM) - 298.76*(MAPL_P00/ple(:,:,LM))**(MAPL_RDRY/MAPL_CP) )
+       EVAP_DATA(:,:)  = -CT_DATA*RHOE(:,:,LM)*( Q(:,:,LM) - 2.038011639875219E-002 )
+
+       CT => CT_DATA
+       CQ => CT_DATA
+
+       USTAR => USTAR_DATA
+       SH    => SH_DATA
+       EVAP  => EVAP_DATA
+    end if
 
     ! Interpolate EDMF profiles to half levels
     call interp_edmf(IM, JM, LM, &                           ! in
@@ -4509,33 +4533,33 @@ contains
                      u, v, thl, qt, q, ql, qi, thv, &        ! in
                      ui, vi, thli, qti, qvi, qli, qii, thvi) ! out
 
-mfhl2 = 0.0
-mfhlqt = 0.0
-mfqt2 = 0.0
-mfw2 = 0.0
-mfw3 = 0.0
-mfqt3 = 0.0
-mfwqt = 0.0
-mfwhl = 0.0
-WHL_tmp = 0.0
-WQT_tmp = 0.0
-WTHV_tmp = 0.0
+    mfhl2 = 0.0
+    mfhlqt = 0.0
+    mfqt2 = 0.0
+    mfw2 = 0.0
+    mfw3 = 0.0
+    mfqt3 = 0.0
+    mfwqt = 0.0
+    mfwhl = 0.0
+    WHL_tmp = 0.0
+    WQT_tmp = 0.0
+    WTHV_tmp = 0.0
 
-edmf_hl2 = 0.0
-edmf_qt2 = 0.0
-edmf_hlqt = 0.0
+    edmf_hl2 = 0.0
+    edmf_qt2 = 0.0
+    edmf_hlqt = 0.0
 
-! Initialize MYNN-related internal variables
-whl_edmf       = 0.
-wqt_edmf       = 0.
-wthv_edmf      = 0.
-ws_explicit  = 0.
-wqv_explicit = 0.
-wql_explicit = 0.
+    ! Initialize MYNN-related internal variables
+    whl_edmf       = 0.
+    wqt_edmf       = 0.
+    wthv_edmf      = 0.
+    ws_explicit  = 0.
+    wqv_explicit = 0.
+    wql_explicit = 0.
 
 IF(DoMF .eq. 1.) then
     
-    aw3 = 0.0
+      aw3 = 0.0
      
       IRAS       = nint(LONS*100)
       JRAS       = nint(LATS*100)
@@ -6182,7 +6206,7 @@ ENDIF
 
     ! For implicit mean-gradient production of second-order moments option
     integer                             :: DO_MYNN, MYNN_LEVEL, EDMF_CONSISTENT, MYNN_DEBUG, MYNN_TEST, &
-                                           MYNN_CORRECT, MYNN_DISCRETE
+                                           MYNN_CORRECT, MYNN_DISCRETE, SCM_DATA_SURF
     real                                :: DOMF, ice_ramp
 
     real, dimension(:,:), pointer       :: USTAR, SH, EVAP
@@ -6203,6 +6227,8 @@ ENDIF
     logical                             :: FRIENDLY
     logical                             :: WEIGHTED
 
+    real, dimension(IM,JM), target :: CT_DATA
+
     real, dimension(IM,JM,0:LM) :: DMI_HALF
     
     real,               dimension(IM,JM,LM) :: DP
@@ -6213,8 +6239,13 @@ ENDIF
 ! AMM pointer to export of S after diffuse
     real, dimension(:,:,:), pointer     :: SAFDIFFUSE
 
-! Get MYNN flags
-!---------------
+! Get SCM flags
+!--------------
+    call MAPL_GetResource(MAPL, SCM_DATA_SURF, 'SCM_DATA_SURF:', default=0, RC=STATUS)
+    VERIFY_(STATUS)
+
+! Get MYNN-EDMF flags
+!--------------------
     call MAPL_GetResource(MAPL, DO_MYNN,         'TURBULENCE_DO_MYNN:', default=0,     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, MYNN_LEVEL,      'MYNN_LEVEL:',         default=2,     RC=STATUS)
@@ -6321,6 +6352,14 @@ ENDIF
                 TV(IM,JM,LM), QT(IM,JM,LM), THL(IM,JM,LM), THV(IM,JM,LM))
        allocate(zlo(IM,JM,LM), plo(IM,JM,LM), rhoe(IM,JM,LM+1), RDZ_HALF(IM,JM,LM), &
                 acei_moist(IM,JM,LM+1), Ai_moist(IM,JM,LM+1), Bi_moist(IM,JM,LM+1))
+    end if
+
+    ! Prescribed surface exchange coefficients
+    if ( SCM_DATA_SURF /= 0 ) then
+       CT_DATA(:,:) = 0.0081
+
+       CT => CT_DATA
+       CQ => CT_DATA
     end if
 
 ! Get the bundles containing the quantities to be diffused, 
@@ -6436,10 +6475,9 @@ ENDIF
 ! --------------------------------------------------------------------------------
 
        if ( trim(name) == 'tke_new' .and. DO_MYNN /= 0 ) then
-          ! Get thermodynamic profiles
           ZLO = 0.5*( ZLE(:,:,0:LM-1) + ZLE(:,:,1:LM) )
           PLO = 0.5*( PLE(:,:,0:LM-1) + PLE(:,:,1:LM) )
-
+          
           EXF = (PLO/mapl_p00)**(MAPL_RGAS/MAPL_CP)
           T   = ( H - MAPL_GRAV*ZLO )/MAPL_CP
           QL  = QLCN + QLLS
@@ -6451,7 +6489,7 @@ ENDIF
 
           THL = TH - ( mapl_alhl*QL + mapl_alhs*QI )/(mapl_cp*EXF)
           THV = TV/EXF
-
+    
           RHOE(:,:,1:LM-1) = PLE(:,:,1:LM-1)/(MAPL_RGAS*0.5*( TV(:,:,1:LM-1) + TV(:,:,2:LM) )) 
           RHOE(:,:,0)      = PLE(:,:,0)/(MAPL_RGAS*TV(:,:,1))
           RHOE(:,:,LM)     = PLE(:,:,LM)/(MAPL_RGAS*TV(:,:,LM))
@@ -6460,12 +6498,12 @@ ENDIF
           if ( associated(ws_ed) ) then
              ws_ed(:,:,0)      = 0.
              ws_ed(:,:,1:LM-1) = -rhoe(:,:,1:LM-1)*KH_mynn(:,:,1:LM-1)*( H(:,:,1:LM-1) - H(:,:,2:LM) )/( ZLO(:,:,1:LM-1) - ZLO(:,:,2:LM) ) 
-             ws_ed(:,:,LM)     = rhoe(:,:,LM)*SH(:,:)
+             ws_ed(:,:,LM)     = 0.
           end if
           if ( associated(wqv_ed) ) then
              wqv_ed(:,:,0)      = 0.
              wqv_ed(:,:,1:LM-1) = -mapl_alhl*rhoe(:,:,1:LM-1)*KH_mynn(:,:,1:LM-1)*( QV(:,:,1:LM-1) - QV(:,:,2:LM) )/( ZLO(:,:,1:LM-1) - ZLO(:,:,2:LM) ) 
-             wqv_ed(:,:,LM)     = mapl_alhl*EVAP(:,:)
+             wqv_ed(:,:,LM)     = 0.
           end if
           if ( associated(wql_ed) ) then
              wql_ed(:,:,0)      = 0.
@@ -6608,7 +6646,7 @@ if ( trim(name) /= 'S' .and. trim(name) /= 'Q' .and. trim(name) /= 'QLLS' &
           call VTRISOLVE(AK,BK,CK,SX,SG)
        end if
 
-       ! Corrector step
+       ! Corrector step (under construction)
        if ( trim(name) == 'tke_new2' .and. MYNN_CORRECT /= 0 ) then
           ! Interpolate MYNN profiles to half levels
           call interp_mynn(IM, JM, LM, &                   ! in
@@ -6618,20 +6656,20 @@ if ( trim(name) /= 'S' .and. trim(name) /= 'Q' .and. trim(name) /= 'QLLS' &
                            acei_moist, Ai_moist, Bi_moist) ! out
 
           ! Run MYNN
-          call run_mynn(IM, JM, LM, &                                                   ! in      
-                        MYNN_DEBUG, MYNN_TEST, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &     ! in
-                        th00, ice_ramp, PLE, PLO, RHOE, ZLE, ZLO, &                     ! in      
-                        U, V, T, QV, QL, QI, THL, QT, THV, &                            ! in      
-                        USTAR, SH, EVAP, &                                              ! in      
-                        whl_edmf, wqt_edmf, wthv_edmf, au, Mu, wu, E, D, wdet, &              ! in      
-                        acei_moist, Ai_moist, Bi_moist, &                               ! in
-                        tke_new, hl2, qt2, hlqt, &                                      ! inout   
-                        ws_explicit, wqv_explicit, wql_explicit, &                      ! inout     
-                        KM_mynn, KH_mynn, K_tke, itau_mynn, qdiv, SM25, SH25, L_mynn, & ! out
-                        beta_hl, beta_qt, &                                             ! out
-                        tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &           ! out     
-                        tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &               ! out
-                        tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                        ! out 
+!!$          call run_mynn(IM, JM, LM, &                                                   ! in      
+!!$                        MYNN_DEBUG, MYNN_TEST, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &     ! in
+!!$                        th00, ice_ramp, PLE, PLO, RHOE, ZLE, ZLO, &                     ! in      
+!!$                        U, V, T, QV, QL, QI, THL, QT, THV, &                            ! in      
+!!$                        USTAR, SH, EVAP, &                                              ! in      
+!!$                        whl_edmf, wqt_edmf, wthv_edmf, au, Mu, wu, E, D, wdet, &              ! in      
+!!$                        acei_moist, Ai_moist, Bi_moist, &                               ! in
+!!$                        tke_new, hl2, qt2, hlqt, &                                      ! inout   
+!!$                        ws_explicit, wqv_explicit, wql_explicit, &                      ! inout     
+!!$                        KM_mynn, KH_mynn, K_tke, itau_mynn, qdiv, SM25, SH25, L_mynn, & ! out
+!!$                        beta_hl, beta_qt, &                                             ! out
+!!$                        tket_M, tket_B, tket_T_mf, hl2t_M, qt2t_M, hlqtt_M, &           ! out     
+!!$                        tket_T_mf1, tket_T_mf2, tket_T_mf3, tket_T_mf4, &               ! out
+!!$                        tke_surf, hl2_SURF, qt2_surf, hlqt_surf)                        ! out 
           
           RDZ_HALF(:,:,1:LM)   = PLO(:,:,1:LM)/(MAPL_RGAS*TV(:,:,1:LM)*( ZLE(:,:,0:LM-1) - ZLE(:,:,1:LM) ))
           DMI_HALF(:,:,1:LM-1) = MAPL_GRAV*DT/( PLO(:,:,2:LM) - PLO(:,:,1:LM-1) )
