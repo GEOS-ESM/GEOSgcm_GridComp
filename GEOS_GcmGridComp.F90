@@ -1208,11 +1208,7 @@ contains
 ! Create XFORMs
 !--------------
 
-    if(DO_DATAATM/=0) then
-       skinname = 'DATAATM'
-    else
-       skinname = 'SALTWATER'
-    endif
+    skinname = 'SALTWATER'
 
    call MAPL_GetResource(MAPL, bypass_ogcm, "BYPASS_OGCM:", &
         default=0, rc=status)
