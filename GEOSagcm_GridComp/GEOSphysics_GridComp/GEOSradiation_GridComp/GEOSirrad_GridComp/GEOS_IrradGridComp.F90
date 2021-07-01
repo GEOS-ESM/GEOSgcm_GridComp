@@ -688,6 +688,22 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                   &
+        SHORT_NAME = 'OLRB06RG',                                  &
+        LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band06 (820-980 cm-1)', &
+        UNITS      = 'W m-2',                                     &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                   &
+        SHORT_NAME = 'TBRB06RG',                                  &
+        LONG_NAME  = 'brightness_temperature_in_RRTMG_band06 (820-980 cm-1)',         &
+        UNITS      = 'K',                                         &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,               RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME = 'OLRB09RG',                                  &
         LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band09 (1180-1390 cm-1)', &
         UNITS      = 'W m-2',                                     &
@@ -1020,6 +1036,20 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                 &
+        SHORT_NAME = 'OLRB06RG',                                  &
+        LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band06', &
+        UNITS      = 'W m-2',                                     &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+
+    call MAPL_AddInternalSpec(GC,                                 &
+        SHORT_NAME = 'DOLRB06RGDT',                               &
+        LONG_NAME  = 'derivative_of_upwelling_longwave_flux_at_toa_in_RRTMG_band06_wrt_surface_temp', &
+        UNITS      = 'W m-2 K-1',                                 &
+        DIMS       = MAPL_DimsHorzOnly,                           &
+        VLOCATION  = MAPL_VLocationNone,                   __RC__ )
+
+    call MAPL_AddInternalSpec(GC,                                 &
         SHORT_NAME = 'OLRB09RG',                                  &
         LONG_NAME  = 'upwelling_longwave_flux_at_toa_in_RRTMG_band09', &
         UNITS      = 'W m-2',                                     &
@@ -1188,8 +1218,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:,:)   :: DFDTSC
    real, pointer, dimension(:,:,:)   :: DFDTSCNA
 
-   real, pointer, dimension(:,:  )   :: OLRB09RG_INT, OLRB10RG_INT, OLRB11RG_INT
-   real, pointer, dimension(:,:  )   :: DOLRB09RG_DT, DOLRB10RG_DT, DOLRB11RG_DT
+   real, pointer, dimension(:,:  )   :: OLRB06RG_INT, OLRB09RG_INT, OLRB10RG_INT, OLRB11RG_INT
+   real, pointer, dimension(:,:  )   :: DOLRB06RG_DT, DOLRB09RG_DT, DOLRB10RG_DT, DOLRB11RG_DT
 
    real, external :: getco2
 
@@ -1305,6 +1335,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(INTERNAL, DFDTSNA,   'DFDTSNA', RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(INTERNAL, DFDTSCNA,  'DFDTSCNA',RC=STATUS); VERIFY_(STATUS)
 
+   call MAPL_GetPointer(INTERNAL, OLRB06RG_INT, 'OLRB06RG'   , __RC__)
+   call MAPL_GetPointer(INTERNAL, DOLRB06RG_DT, 'DOLRB06RGDT', __RC__)
    call MAPL_GetPointer(INTERNAL, OLRB09RG_INT, 'OLRB09RG'   , __RC__)
    call MAPL_GetPointer(INTERNAL, DOLRB09RG_DT, 'DOLRB09RGDT', __RC__)
    call MAPL_GetPointer(INTERNAL, OLRB10RG_INT, 'OLRB10RG'   , __RC__)
@@ -1390,8 +1422,10 @@ contains
    ! brng = VSL_BRNG_PHILOX4X32X10  ! 10-round Philox 4x32 counter, 2x32 key
    ! Alternatives are VSL_BRNG_ARS5 ! faster if AES-NI instructions hardware supported
    !
+#ifdef HAVE_MKL
    use MKL_VSL_TYPE
    use mo_rng_mklvsl_plus, only: ty_rng_mklvsl_plus
+#endif
 
    integer,                   intent(IN )    :: IM, JM, LM, CoresPerNode
    real,    dimension(IM,JM), intent(IN )    :: LATS, LONS
@@ -1518,6 +1552,7 @@ contains
    real,    allocatable, dimension(:,:)   :: HR, HRC
    integer, allocatable, dimension(:,:)   :: CLOUDFLAG
    real,    allocatable, dimension(:)     :: ALAT
+   real,    allocatable, dimension(:)     :: OLRB06RG_1D, DOLRB06RG_DT_1D
    real,    allocatable, dimension(:)     :: OLRB09RG_1D, DOLRB09RG_DT_1D
    real,    allocatable, dimension(:)     :: OLRB10RG_1D, DOLRB10RG_DT_1D
    real,    allocatable, dimension(:)     :: OLRB11RG_1D, DOLRB11RG_DT_1D
@@ -1552,10 +1587,9 @@ contains
    type(ty_gas_optics_rrtmgp), pointer           :: k_dist
    type(ty_gas_concs)                            :: gas_concs, gas_concs_subset
    type(ty_cloud_optics)                         :: cloud_optics
-   type(ty_source_func_lw)                       :: sources, sources_plus
+   type(ty_source_func_lw)                       :: sources
    type(ty_fluxes_broadband)                     :: fluxes_clrsky, fluxes_clrnoa, &
-                                                    fluxes_allsky, fluxes_allnoa, &
-                                                    fluxes_plus
+                                                    fluxes_allsky, fluxes_allnoa
 
    ! The band-space (ncol,nlay,nbnd) aerosol and in-cloud optical properties
    ! Polymorphic with dynamic type (#streams) defined later
@@ -1586,14 +1620,16 @@ contains
    real(wp), dimension(LM+1)      :: tlev_wp
    type (ESMF_Time)               :: ReferenceTime
    type (ESMF_TimeInterval)       :: RefreshInterval
-   real :: delTS_r
-   real(wp) delTS
+!  real :: delTS_r
+!  real(wp) delTS
 
    ! gridcolum presence of liq and ice clouds (ncol,nlay)
    real(wp), dimension(:,:), allocatable :: clwp, ciwp
 
    ! a column random number generator
+#ifdef HAVE_MKL
    type(ty_rng_mklvsl_plus) :: rng
+#endif
    integer, dimension(:), allocatable :: seeds
 
    ! uniform random numbers need by mcICA (ngpt,nlay,cols)
@@ -2460,7 +2496,7 @@ contains
       ! output reordered as above
       !                  10., 250., 500., 630., 700., 820.,  980., 1080., 1180., 1390., 1480., 1800., 2080., 2250., 2390., 2680.
       !                 250., 500., 630., 700., 820., 980., 1080., 1180., 1390., 1480., 1800., 2080., 2250., 2390., 2680., 3250.
-      ! clearly there are some differences (250, 2390, 2680) ... must redo aerosol tables
+      ! clearly there are some differences (250, 2390, 2680) ... have redone aerosol tables
       ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
       ! allocate input arrays
@@ -2662,18 +2698,18 @@ contains
       ! For 1scl, must also specify the number of Gauss angles (nga) below.
       ! For nstr, must also specify the number of phase function moments (nmom) below.
       ! After Feb2020 update:
-      ! For 2str, the default rte method is to use rescaled LW transport to account for
-      !   scattering (in which case nga is used). To explicity use 2 stream scattering,
-      !   must select u2s = .true.
-      ! NB: u2s does choose 2str optical_props. It only selects use_stream if 2str 
-      !   is explicitly hardwired by a allocate(ty_optical_props_2str ... ) below.
+      ! Even for optical_props_2str, the default rte method is to use rescaled LW transport
+      !   to account for scattering (in which case nga is used). To force explicit 2-stream
+      !   scattering, must select u2s = .true. and allocate optical_props_2str below.
       ! =======================================================================================
 
       ! instantiate clean_optical_props with desired streams
       allocate(ty_optical_props_2str::clean_optical_props,__STAT__)
-      nga  = 1 ! Used if 1scl or (2str but .not. use_2stream), in which case must be >= 1
+
+      ! default values
+      nga  = 1 ! Used if 1scl or (2str but .not. u2s), in which case must be >= 1
       nmom = 2 ! Used only if nstr, in which case must be >= 2
-      u2s = .true. ! forces explicit 2-stream scattering if optical_props_2str
+      u2s = .false. ! forces explicit 2-stream scattering if optical_props_2str
 
       ! allow user selection of nga and u2s as appropriate
       select type(clean_optical_props)
@@ -2685,6 +2721,7 @@ contains
             MAPL, nga ,'RRTMGP_LW_N_GAUSS_ANGLES:', DEFAULT=nga, __RC__)
           call MAPL_GetResource( &
             MAPL, u2s ,'RRTMGP_LW_USE_2STREAM:',    DEFAULT=u2s, __RC__)
+          _ASSERT(.not.u2s,'lw_solver_2stream() does not currently support Jacobians')
       end select
 
       ! the dirty_optical_props have the same number of streams
@@ -2703,15 +2740,15 @@ contains
       ! dirty_optical_props are copy initialized later if needed
       TEST_(clean_optical_props%init(k_dist))
       TEST_(sources%init(k_dist))
-      TEST_(sources_plus%init(k_dist))
 
       call MAPL_TimerOff(MAPL,"---RRTMGP_SETUP_3",__RC__)
 
-      ! numerical derivatives wrt surface temperature use a small delta TS
-      ! (set this to zero exactly to disable linearization for RRTMGP)
-      call MAPL_GetResource( MAPL, &
-        delTS_r, "RRTMGP_NUMERICAL_DFDTS_DELTS_IN_K:", DEFAULT=0.1, __RC__)
-      delTS = real(delTS_r, kind=wp)
+ ! RRTMGP Jacobian currently uses fixed internal delTS of 1K
+ !    ! numerical derivatives wrt surface temperature use a small delta TS
+ !    ! (set this to zero exactly to disable linearization for RRTMGP)
+ !    call MAPL_GetResource( MAPL, &
+ !      delTS_r, "RRTMGP_NUMERICAL_DFDTS_DELTS_IN_K:", DEFAULT=0.1, __RC__)
+ !    delTS = real(delTS_r, kind=wp)
 
       ! get cloud optical properties (band-only)
       if (need_cloud_optical_props) then
@@ -2935,7 +2972,6 @@ contains
             TEST_(clean_optical_props%alloc_nstr(nmom, ncols_subset, LM))
         end select
         TEST_(sources%alloc(ncols_subset, LM))
-        TEST_(sources_plus%alloc(ncols_subset, LM))
         if (allocated(cld_mask)) then
           deallocate(cld_mask, __STAT__)
         endif
@@ -2969,7 +3005,6 @@ contains
               TEST_(clean_optical_props%alloc_nstr(nmom, ncols_subset, LM))
           end select
           TEST_(sources%alloc(ncols_subset, LM))
-          TEST_(sources_plus%alloc(ncols_subset, LM))
           if (allocated(cld_mask)) then
             deallocate(cld_mask, __STAT__)
           endif
@@ -2991,13 +3026,14 @@ contains
           ! get column subset of the band-space in-cloud optical properties
           call MAPL_TimerOn(MAPL,"---RRTMGP_SUBSET",__RC__)
           TEST_(cloud_props%get_subset(colS, ncols_subset, cloud_props_subset))
-          call MAPL_TimerOff(MAPL,"--RRTMGP_SUBSET",__RC__)
+          call MAPL_TimerOff(MAPL,"---RRTMGP_SUBSET",__RC__)
 
-          call MAPL_TimerOn(MAPL,"--RRTMGP_MCICA",__RC__)
+          call MAPL_TimerOn(MAPL,"---RRTMGP_MCICA",__RC__)
 
           ! generate McICA random numbers for subset
           ! Note: really only needed where cloud fraction > 0 (speedup?)
           ! Also, perhaps later this can be parallelized?
+#ifdef HAVE_MKL
           do isub = 1, ncols_subset
             ! local 1d column index
             icol = colS + isub - 1
@@ -3015,6 +3051,7 @@ contains
             ! free the rng
             call rng%end()
           end do
+#endif
 
           ! cloud sampling to gpoints
           select case (cloud_overlap_type)
@@ -3039,26 +3076,13 @@ contains
           end select
           TEST_(draw_samples(cld_mask, cloud_props_subset, cloud_props_gpt))
 
-          call MAPL_TimerOff(MAPL,"--RRTMGP_MCICA",__RC__)
+          call MAPL_TimerOff(MAPL,"---RRTMGP_MCICA",__RC__)
 
         end if
 
         call MAPL_TimerOn(MAPL,"---RRTMGP_GAS_OPTICS",__RC__)
 
-        ! incremented surface temperature call for derivative purposes
-        ! NOTE: t_sfc only effects sources_plus.
-        !       clean_optical_props is dummy here.
-        if (delTS /= 0._wp) then
-          error_msg = k_dist%gas_optics( &
-            p_lay(colS:colE,:), p_lev(colS:colE,:), t_lay(colS:colE,:), &
-            t_sfc(colS:colE) + delTS, &
-            gas_concs_subset, clean_optical_props, sources_plus, &
-            tlev = t_lev(colS:colE,:))
-          TEST_(error_msg)
-        end if
-
         ! get gas optical properties and sources
-        ! this will just overwrite the previous dummy clean_optical_props
         error_msg = k_dist%gas_optics( &
           p_lay(colS:colE,:), p_lev(colS:colE,:), t_lay(colS:colE,:), &
           t_sfc(colS:colE), gas_concs_subset, clean_optical_props, sources, &
@@ -3076,20 +3100,9 @@ contains
           error_msg = rte_lw( &
             clean_optical_props, &
             top_at_1, sources, emis_sfc(:,colS:colE), &
-            fluxes_clrnoa, n_gauss_angles=nga, use_2stream=u2s)
+            fluxes_clrnoa, n_gauss_angles=nga, use_2stream=u2s, &
+            flux_up_Jac=dfupdts_clrnoa(colS:colE,:))
           TEST_(error_msg)
-          ! numerical derivative of fup wrt t_sfc
-          if (delTS /= 0._wp) then
-            fluxes_plus%flux_up => dfupdts_clrnoa(colS:colE,:)
-            error_msg = rte_lw( &
-              clean_optical_props, &
-              top_at_1, sources_plus, emis_sfc(:,colS:colE), &
-              fluxes_plus, n_gauss_angles=nga, use_2stream=u2s)
-            TEST_(error_msg)
-            dfupdts_clrnoa(colS:colE,:) = (fluxes_plus%flux_up - fluxes_clrnoa%flux_up) / delTS
-          else
-            dfupdts_clrnoa(colS:colE,:) = 0._wp
-          end if
         end if
 
         if (need_dirty_optical_props) then
@@ -3129,20 +3142,9 @@ contains
           error_msg = rte_lw( &
             clean_optical_props, &
             top_at_1, sources, emis_sfc(:,colS:colE), &
-            fluxes_allnoa, n_gauss_angles=nga, use_2stream=u2s)
+            fluxes_allnoa, n_gauss_angles=nga, use_2stream=u2s, &
+            flux_up_Jac=dfupdts_allnoa(colS:colE,:))
           TEST_(error_msg)
-          ! numerical derivative of fup wrt t_sfc
-          if (delTS /= 0._wp) then
-            fluxes_plus%flux_up => dfupdts_allnoa(colS:colE,:)
-            error_msg = rte_lw( &
-              clean_optical_props, &
-              top_at_1, sources_plus, emis_sfc(:,colS:colE), &
-              fluxes_plus, n_gauss_angles=nga, use_2stream=u2s)
-            TEST_(error_msg)
-            dfupdts_allnoa(colS:colE,:) = (fluxes_plus%flux_up - fluxes_allnoa%flux_up) / delTS
-          else
-            dfupdts_allnoa(colS:colE,:) = 0._wp
-          end if
         end if
 
         if (export_clrsky .or. export_allsky) then
@@ -3161,20 +3163,9 @@ contains
               error_msg = rte_lw( &
                 dirty_optical_props, &
                 top_at_1, sources, emis_sfc(:,colS:colE), &
-                fluxes_clrsky, n_gauss_angles=nga, use_2stream=u2s)
+                fluxes_clrsky, n_gauss_angles=nga, use_2stream=u2s, &
+                flux_up_Jac=dfupdts_clrsky(colS:colE,:))
               TEST_(error_msg)
-              ! numerical derivative of fup wrt t_sfc
-              if (delTS /= 0._wp) then
-                fluxes_plus%flux_up => dfupdts_clrsky(colS:colE,:)
-                error_msg = rte_lw( &
-                  dirty_optical_props, &
-                  top_at_1, sources_plus, emis_sfc(:,colS:colE), &
-                  fluxes_plus, n_gauss_angles=nga, use_2stream=u2s)
-                TEST_(error_msg)
-                dfupdts_clrsky(colS:colE,:) = (fluxes_plus%flux_up - fluxes_clrsky%flux_up) / delTS
-              else
-                dfupdts_clrsky(colS:colE,:) = 0._wp
-              end if
             end if
 
             ! dirty all-sky case
@@ -3189,20 +3180,9 @@ contains
               error_msg = rte_lw( &
                 dirty_optical_props, &
                 top_at_1, sources, emis_sfc(:,colS:colE), &
-                fluxes_allsky, n_gauss_angles=nga, use_2stream=u2s)
+                fluxes_allsky, n_gauss_angles=nga, use_2stream=u2s, &
+                flux_up_Jac=dfupdts_allsky(colS:colE,:))
               TEST_(error_msg)
-              ! numerical derivative of fup wrt t_sfc
-              if (delTS /= 0._wp) then
-                fluxes_plus%flux_up => dfupdts_allsky(colS:colE,:)
-                error_msg = rte_lw( &
-                  dirty_optical_props,  &
-                  top_at_1, sources_plus, emis_sfc(:,colS:colE),  &
-                  fluxes_plus, n_gauss_angles=nga, use_2stream=u2s)
-                TEST_(error_msg)
-                dfupdts_allsky(colS:colE,:) = (fluxes_plus%flux_up - fluxes_allsky%flux_up) / delTS
-              else
-                dfupdts_allsky(colS:colE,:) = 0._wp
-              end if
             end if
 
           else
@@ -3261,7 +3241,6 @@ contains
 
       ! clean up
       call sources%finalize()
-      call sources_plus%finalize()
       call clean_optical_props%finalize()
       if (need_dirty_optical_props) then
         call dirty_optical_props%finalize()
@@ -3338,6 +3317,8 @@ contains
       allocate(HRC(IM*JM,LM+1),__STAT__)
       allocate(CLOUDFLAG(IM*JM,4),__STAT__)
       allocate(ALAT(IM*JM),__STAT__)
+      allocate(OLRB06RG_1D(IM*JM),__STAT__)
+      allocate(DOLRB06RG_DT_1D(IM*JM),__STAT__)
       allocate(OLRB09RG_1D(IM*JM),__STAT__)
       allocate(DOLRB09RG_DT_1D(IM*JM),__STAT__)
       allocate(OLRB10RG_1D(IM*JM),__STAT__)
@@ -3464,7 +3445,8 @@ contains
               TAUCLD ,CICEWP ,CLIQWP ,REICE ,RELIQ , &
               TAUAER  , ZL_R, LCLDLM, LCLDMH, &
               UFLX, DFLX, HR, UFLXC, DFLXC, HRC, DUFLX_DT, DUFLXC_DT, CLOUDFLAG, &
-              OLRB09RG_1D, DOLRB09RG_DT_1D, OLRB10RG_1D, DOLRB10RG_DT_1D, OLRB11RG_1D, DOLRB11RG_DT_1D, &
+              OLRB06RG_1D, DOLRB06RG_DT_1D, OLRB09RG_1D, DOLRB09RG_DT_1D, &
+              OLRB10RG_1D, DOLRB10RG_DT_1D, OLRB11RG_1D, DOLRB11RG_DT_1D, &
               DOY, ALAT, CoresPerNode, PARTITION_SIZE)
 
       call MAPL_TimerOff(MAPL,"---RRTMG_RUN",RC=STATUS)
@@ -3510,7 +3492,9 @@ contains
 
          SFCEM_INT(i,j) = -UFLX(IJ,1) + DFLX(IJ,1)*(1.0-EMISS(IJ,1))
 
-         ! band 9-11 water vapor products
+         ! band 6 window and band 9-11 water vapor products
+         OLRB06RG_INT(i,j) = OLRB06RG_1D(IJ)
+         DOLRB06RG_DT(i,j) = DOLRB06RG_DT_1D(IJ)
          OLRB09RG_INT(i,j) = OLRB09RG_1D(IJ)
          DOLRB09RG_DT(i,j) = DOLRB09RG_DT_1D(IJ)
          OLRB10RG_INT(i,j) = OLRB10RG_1D(IJ)
@@ -3564,6 +3548,8 @@ contains
       deallocate(HRC,__STAT__)
       deallocate(CLOUDFLAG,__STAT__)
       deallocate(ALAT,__STAT__)
+      deallocate(OLRB06RG_1D,__STAT__)
+      deallocate(DOLRB06RG_DT_1D,__STAT__)
       deallocate(OLRB09RG_1D,__STAT__)
       deallocate(DOLRB09RG_DT_1D,__STAT__)
       deallocate(OLRB10RG_1D,__STAT__)
@@ -3708,6 +3694,7 @@ contains
    real, pointer, dimension(:,:  )   :: OLC
    real, pointer, dimension(:,:  )   :: OLCC5
    real, pointer, dimension(:,:  )   :: OLA
+   real, pointer, dimension(:,:  )   :: OLRB06RG, TBRB06RG
    real, pointer, dimension(:,:  )   :: OLRB09RG, TBRB09RG
    real, pointer, dimension(:,:  )   :: OLRB10RG, TBRB10RG
    real, pointer, dimension(:,:  )   :: OLRB11RG, TBRB11RG
@@ -3757,6 +3744,8 @@ contains
    call MAPL_GetPointer(EXPORT,   OLC   ,    'OLC'   ,RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,   OLCC5 ,    'OLCC5' ,RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,   OLA   ,    'OLA'   ,RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT, OLRB06RG,  'OLRB06RG',RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT, TBRB06RG,  'TBRB06RG',RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT, OLRB09RG,  'OLRB09RG',RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT, TBRB09RG,  'TBRB09RG',RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT, OLRB10RG,  'OLRB10RG',RC=STATUS); VERIFY_(STATUS)
@@ -3908,6 +3897,8 @@ contains
        if(associated(FLNSC )) FLNSC  =  FLC_INT(:,:,LM) + DFDTSC  (:,:,LM) * DELT
        if(associated(FLNSA )) FLNSA  =  FLA_INT(:,:,LM) + DFDTSCNA(:,:,LM) * DELT
 
+       if(associated(OLRB06RG)) OLRB06RG = MAPL_UNDEF
+       if(associated(TBRB06RG)) TBRB06RG = MAPL_UNDEF
        if(associated(OLRB09RG)) OLRB09RG = MAPL_UNDEF
        if(associated(TBRB09RG)) TBRB09RG = MAPL_UNDEF
        if(associated(OLRB10RG)) OLRB10RG = MAPL_UNDEF
@@ -3980,6 +3971,18 @@ contains
        if(associated(FLNSNA)) FLNSNA = MAPL_UNDEF
        if(associated(FLNSC )) FLNSC  = FLC_INT(:,:,LM) + DFDTSC(:,:,LM) * DELT
        if(associated(FLNSA )) FLNSA  = MAPL_UNDEF
+
+       if(associated(OLRB06RG).or.associated(TBRB06RG)) then
+         allocate(OLRBNN(IM,JM),__STAT__)
+         OLRBNN = OLRB06RG_INT + DOLRB06RG_DT * DELT
+         if(associated(OLRB06RG)) OLRB06RG = OLRBNN
+         if(associated(TBRB06RG)) then
+           ! brightness temperature for RRTMG band 06
+           wn1 = 820.e2; wn2 = 980.e2  ! NB: [m-1]
+           call Tbr_from_band_flux(IM, JM, OLRBNN, wn1, wn2, TBRB06RG, __RC__)
+         end if
+         deallocate(OLRBNN)
+       end if
 
        if(associated(OLRB09RG).or.associated(TBRB09RG)) then
          allocate(OLRBNN(IM,JM),__STAT__)

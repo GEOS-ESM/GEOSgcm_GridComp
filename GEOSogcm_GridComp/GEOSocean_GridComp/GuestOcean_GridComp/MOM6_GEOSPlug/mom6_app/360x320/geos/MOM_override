@@ -1,0 +1,26 @@
+! Blank file in which we can put "overrides" for parameters
+NK = 75
+#override USE_REGRIDDING = True
+#override BULKMIXEDLAYER = False
+#override COORD_FILE = "layer_coord.nc"
+USE_STORED_SLOPES = True
+USE_NEUTRAL_DIFFUSION = True
+SIMPLE_TKE_TO_KD = True
+REGRIDDING_COORDINATE_MODE = "Z*"
+ALE_COORDINATE_CONFIG = "FILE:vgrid.nc,dz"
+HMIX_FIXED = 0.5
+CFL_TRUNCATE_RAMP_TIME = 7200.
+Z_INIT_ALE_REMAPPING = True
+ENERGETICS_SFC_PBL = True
+
+! disable checksums
+RESTART_CHECKSUMS_REQUIRED = False
+
+#override DT_THERM = 450.
+BAD_VAL_SST_MIN = -3.0
+BAD_VAL_SSS_MAX = 55.0
+HFREEZE = 10.0
+
+!VERBOSITY = 9
+!DEBUG = True
+!REPORT_UNUSED_PARAMS = True

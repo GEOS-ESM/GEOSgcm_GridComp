@@ -1,3 +1,4 @@
+#include "MAPL_Generic.h"
 PROGRAM dbg_cnlsm_offline
 
 !
@@ -10,7 +11,9 @@ PROGRAM dbg_cnlsm_offline
 ! reading input variables from catchcn_inputs.data at every timestep. 
 ! - Sarith Mahanama (9-1-2018)
 !
+use ESMF
 use MAPL_ConstantsMod
+use MAPL_ExceptionHandling
 USE SURFPARAMS
 use CATCHMENT_CN_MODEL
 !USE MAPL_BaseMod,      ONLY: MAPL_UNDEF
@@ -168,6 +171,7 @@ type (c_inputs ), dimension(:) ,allocatable :: c_input
 type (c_params ), dimension(:) ,allocatable :: c_param
 type (c_updates), dimension(:) ,allocatable :: c_upds
 
+character(len=ESMF_MAXSTR) :: LAND_PARAMS ! land parameter option
 INTEGER,allocatable,dimension(:) :: CAT_ID
 REAL :: lonbeg,lonend,latbeg,latend
 REAL, allocatable, dimension (:,:) :: WESNN  ,HTSNNN ,SNDZN ,GHTCNT
@@ -193,6 +197,7 @@ real, allocatable, dimension (:) :: DHLAND, SWLAND, LWLAND, SHLAND, LHLAND, SNOL
 real, allocatable, dimension (:,:) :: FR
 logical :: is_OFFLINE
 integer :: OFFLINE_MODE = 0
+integer :: LSM_CHOICE = 2       ! hardcoded here as Catchment-CN (LSM_CHOICE = 2), since this routine is CN specific
 
 lonbeg = MAPL_UNDEF
 lonend = MAPL_UNDEF
@@ -237,7 +242,9 @@ n = 1
 
 is_OFFLINE = OFFLINE_MODE /= 0
 
-call SurfParams_init("GCM") 
+call ESMF_ConfigGetAttribute (SCF, label='LAND_PARAMS:', value=LAND_PARAMS, DEFAULT="CN_CLM4", __RC__ )
+call SurfParams_init(LAND_PARAMS,LSM_CHOICE,rc=status) 
+_VERIFY(STATUS)
 
 open (10,file=trim(scratch_dir)//'/catchcn_inputs.data' ,form ='unformatted', &
      action ='read', status ='old',convert='little_endian')

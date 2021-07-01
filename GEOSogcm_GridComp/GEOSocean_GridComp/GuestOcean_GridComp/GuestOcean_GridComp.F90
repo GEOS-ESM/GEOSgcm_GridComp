@@ -12,9 +12,6 @@ module GuestOcean_GridCompMod
   use MAPL
 #ifdef BUILD_MIT_OCEAN
   use MIT_GEOS5PlugMod, only: MITSetServices => SetServices  ! this sets IRF
-#else
-  use MOM_GEOS5PlugMod, only: MOMSetServices  => SetServices  ! this sets IRF
-  use MOM6_GEOSPlugMod, only: MOM6SetServices => SetServices  ! this sets IRF
 #endif
   use GEOS_DataSeaGridCompMod, only: DataSeaSetServices  => SetServices
 
@@ -87,6 +84,7 @@ contains
     type  (ESMF_Config)                :: CF
     integer ::      iDUAL_OCEAN
     character(len=ESMF_MAXSTR)         :: charbuf_
+    character(len=ESMF_MAXSTR)         :: sharedObj
 
 ! Begin...
 
@@ -110,7 +108,7 @@ contains
 
     call MAPL_GetResource ( MAPL,       DO_DATASEA,     Label="USE_DATASEA:" ,       DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL,       OrphanDepth,    Label="ORPHAN_DEPTH:" ,       DEFAULT=10.0, RC=STATUS)
+    call MAPL_GetResource ( MAPL,       OrphanDepth,    Label="OGCM_TOP_LAYER:" ,    DEFAULT=10.0, RC=STATUS)
     VERIFY_(STATUS)
 
     if(DO_DATASEA/=0) then
@@ -122,9 +120,11 @@ contains
        select case (trim(OCEAN_NAME))
 #ifndef BUILD_MIT_OCEAN
           case ("MOM")
-             OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOMSetServices, __RC__)
+             call MAPL_GetResource ( MAPL, sharedObj,  Label="MOM_GEOS5PLUGMOD:", DEFAULT="libMOM_GEOS5PlugMod.so", __RC__ )
+             OCN = MAPL_AddChild(OCEAN_NAME,'setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
           case ("MOM6")
-             OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MOM6SetServices, __RC__)
+             call MAPL_GetResource ( MAPL, sharedObj,  Label="MOM6_GEOSPLUG:", DEFAULT="libMOM6_GEOSPlug.so", __RC__ )
+             OCN = MAPL_AddChild(OCEAN_NAME,'setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
 #else
           case ("MIT")
              OCN = MAPL_AddChild(GC, NAME=OCEAN_NAME, SS=MITSetServices, __RC__)
@@ -182,10 +182,10 @@ contains
         SHORT_NAME         = 'PENUVR',                            &
         LONG_NAME          = 'net_downward_penetrating_direct_UV_flux',  &
         UNITS              = 'W m-2',                             &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=status  )
-    VERIFY_(status)
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RC=STATUS  )
+     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                            &
         SHORT_NAME         = 'PENPAR',                            &
@@ -250,25 +250,27 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-!!$     call MAPL_AddImportSpec(GC,                             &
-!!$        SHORT_NAME         = 'TR',                                &
-!!$        LONG_NAME          = 'tracer_mixing_ratios',              &
-!!$        UNITS              = '1',                                 &
-!!$        DIMS               = MAPL_DimsHorzVert,                   &
-!!$        VLOCATION          = MAPL_VLocationCenter,                &
-!!$        DATATYPE           = MAPL_BundleItem,                     &
-!!$                                                       RC=STATUS  )
-!!$     VERIFY_(STATUS)
-!!$
-!!$     call MAPL_AddImportSpec(GC,                             &
-!!$        SHORT_NAME         = 'TRFLUX',                            &
-!!$        LONG_NAME          = 'surface_fluxes_of_tracers',         &
-!!$        UNITS              = 'X',                                 &
-!!$        DIMS               = MAPL_DimsHorzOnly,                   &
-!!$        VLOCATION          = MAPL_VLocationNone,                  &
-!!$        DATATYPE           = MAPL_BundleItem,                     &
-!!$                                                       RC=STATUS  )
-!!$     VERIFY_(STATUS)
+    if (trim(OCEAN_NAME) == "MOM") then
+       call MAPL_AddImportSpec(GC,                             &
+           SHORT_NAME         = 'TR',                                &
+           LONG_NAME          = 'tracer_mixing_ratios',              &
+           UNITS              = '1',                                 &
+           DIMS               = MAPL_DimsHorzVert,                   &
+           VLOCATION          = MAPL_VLocationCenter,                &
+           DATATYPE           = MAPL_BundleItem,                     &
+                                                          RC=STATUS  )
+       VERIFY_(STATUS)
+   
+       call MAPL_AddImportSpec(GC,                             &
+           SHORT_NAME         = 'TRFLUX',                            &
+           LONG_NAME          = 'surface_fluxes_of_tracers',         &
+           UNITS              = 'X',                                 &
+           DIMS               = MAPL_DimsHorzOnly,                   &
+           VLOCATION          = MAPL_VLocationNone,                  &
+           DATATYPE           = MAPL_BundleItem,                     &
+                                                          RC=STATUS  )
+       VERIFY_(STATUS)
+    endif
 
     call MAPL_AddImportSpec(GC,                             &
         LONG_NAME          = 'surface_net_downward_longwave_flux',&
@@ -339,8 +341,28 @@ contains
         UNITS              = 'W m-2',                            &
         DIMS               = MAPL_DimsHorzOnly,                   &
         VLOCATION          = MAPL_VLocationNone,                  &
-                                                       RC=STATUS  )
+        RC=STATUS  )
      VERIFY_(STATUS)
+
+     call MAPL_AddImportSpec(GC,                                  &
+        SHORT_NAME         = 'PEN_OCN',                           &
+        LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer',     &
+        UNITS              = 'W m-2',                             &
+        DIMS               = MAPL_DimsHorzOnly,                   &
+        VLOCATION          = MAPL_VLocationNone,                  &
+        RC=STATUS  )
+     VERIFY_(STATUS)
+
+    if (dual_ocean) then
+       call MAPL_AddImportSpec(GC,                            &
+         SHORT_NAME         = 'FRACICEd',                           &
+         LONG_NAME          = 'fractional_cover_of_seaice',        &
+         UNITS              = '1',                                 &
+         DIMS               = MAPL_DimsHorzOnly,                   &
+         VLOCATION          = MAPL_VLocationNone,                  &
+         RC=STATUS  )
+       VERIFY_(STATUS)
+    endif
 
 !  ! Need to have this internal state to fill in orphan points:
 
@@ -359,14 +381,8 @@ contains
 
 !  !EXPORT STATE:
 
-    select case (trim(OCEAN_NAME))
-        case ("MOM", "DATASEA","MIT")
-            charbuf_ = 'MASKO'
-        case ("MOM6")
-            charbuf_ = 'MASK'
-    end select
-    call MAPL_AddExportSpec(GC,                               &
-         SHORT_NAME         = trim(charbuf_),                      &
+    call MAPL_AddExportSpec(GC,                                    &
+         SHORT_NAME         = 'MASKO',                             &
          LONG_NAME          = 'ocean_mask',                        &
          UNITS              = '1',                                 &
          DIMS               = MAPL_DimsHorzOnly,                   &
@@ -498,19 +514,28 @@ contains
           SHORT_NAME         = 'RAIN',                              &
           LONG_NAME          = 'ocean_rainfall',&
           UNITS              = 'kg m-2 s-1',                        &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=status  )
-    VERIFY_(status)
+          DIMS               = MAPL_DimsHorzOnly,                   &
+          VLOCATION          = MAPL_VLocationNone,                  &
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
     call MAPL_AddExportSpec(GC,                                 &
           SHORT_NAME         = 'SNOW',                              &
           LONG_NAME          = 'ocean_snowfall',&
           UNITS              = 'kg m-2 s-1',                        &
-         DIMS               = MAPL_DimsHorzOnly,                   &
-         VLOCATION          = MAPL_VLocationNone,                  &
-         RC=STATUS  )
-    VERIFY_(STATUS)
+          DIMS               = MAPL_DimsHorzOnly,                   &
+          VLOCATION          = MAPL_VLocationNone,                  &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec(GC,                                     &    
+          SHORT_NAME         = 'PEN_OCN',                           &    
+          LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer',&
+          UNITS              = 'W m-2',                             &    
+          DIMS               = MAPL_DimsHorzOnly,                   &    
+          VLOCATION          = MAPL_VLocationNone,                  &    
+          RC=STATUS  )
+     VERIFY_(STATUS)
 
 ! Exports of child
 
@@ -551,26 +576,25 @@ contains
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC   ,                          &
-            SHORT_NAME = 'SSH',                                       &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
+       if (trim(OCEAN_NAME) == "MOM") then
+          call MAPL_AddExportSpec ( GC   ,                          &
+               SHORT_NAME = 'SSH',                                       &
+               CHILD_ID   = OCN,                                         &
+               RC=STATUS  )
+          VERIFY_(STATUS)
+       endif
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'SLV',                                       &
             CHILD_ID   = OCN,                                         &
             RC=STATUS  )
        VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC   ,                               &
-            SHORT_NAME = 'FRAZIL',                                    &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
-       call MAPL_AddExportSpec ( GC   ,                               &
-            SHORT_NAME = 'PBO',                                       &
-            CHILD_ID   = OCN,                                         &
-            RC=STATUS  )
-       VERIFY_(STATUS)
+       if (trim(OCEAN_NAME) == "MOM") then
+          call MAPL_AddExportSpec ( GC   ,                               &
+               SHORT_NAME = 'PBO',                                       &
+               CHILD_ID   = OCN,                                         &
+               RC=STATUS  )
+          VERIFY_(STATUS)
+       endif
 
        call MAPL_AddExportSpec ( GC   ,                          &
             SHORT_NAME = 'T',                                         &
@@ -587,10 +611,11 @@ contains
 !EOS
 
     if(DO_DATASEA==0) then
-       call MAPL_TerminateImport    ( GC, SHORT_NAME= &
-          [character(len=9) :: 'TAUX  ','TAUY  ', &
-            'PENUVR','PENPAR','PENUVF','PENPAF', 'DRNIR', 'DFNIR', &
-            'DISCHARGE', 'LWFLX', 'SHFLX', 'QFLUX', 'RAIN', 'SNOW', 'SFLX','SWHEAT'], &
+       call MAPL_TerminateImport    ( GC, SHORT_NAME=               &
+          [character(len=9) :: 'TAUX  ','TAUY  ',                   &
+            'PENUVR','PENPAR','PENUVF','PENPAF', 'DRNIR', 'DFNIR',  &
+            'DISCHARGE', 'LWFLX', 'SHFLX', 'QFLUX', 'RAIN', 'SNOW', &
+            'SFLX','SWHEAT'],                                       &  ! do not terminate import of PEN_OCN since it is not used in the `plug'
             CHILD=OCN,                          RC=STATUS  )
        VERIFY_(STATUS)
     end if
@@ -682,8 +707,8 @@ contains
     type (ESMF_TimeInterval)            :: timeStep
     type (ESMF_Time)                    :: currTime
 
-    real, pointer :: MASK(:,:)
-    real, pointer :: MASKO(:,:)
+    real, pointer ::   MASK(:,:)
+    real, pointer ::  MASKO(:,:)
     real, pointer :: MASK3D(:,:,:)
     real, pointer :: DH(:,:,:)
 
@@ -790,27 +815,19 @@ contains
     call MAPL_TimerOn (STATE,"TOTAL"     )
 
     if(DO_DATASEA==0) then
+       call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,__RC__)
+
        select case (trim(OCEAN_NAME))
           case ("MOM")
-             call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,__RC__)
              call MAPL_GetPointer(GEX(OCN), MASK3D, 'MOM_3D_MASK', __RC__)
              MASK => MASK3D(:,:,1)
-             if(associated(MASKO)) MASKO = MASK
-          case ("MIT")
-             call MAPL_GetPointer(EXPORT, MASKO, 'MASKO'  , alloc=.true.,__RC__)
-             call MAPL_GetPointer(GEX(OCN), MASK3D, 'MIT_3D_MASK', __RC__)
-             MASK => MASK3D(:,:,1)
-             if(associated(MASKO)) MASKO = MASK
           case ("MOM6")
              call MAPL_GetPointer(GEX(OCN), MASK, 'MOM_2D_MASK', __RC__)
+          case ("MIT")
+             call MAPL_GetPointer(GEX(OCN), MASK3D, 'MIT_3D_MASK', __RC__)
+             MASK => MASK3D(:,:,1)
        end select
-
-! The following sets the depth in orphan points. This is needed to calculate SWHEAT in these points.
-! Unfortunately, frocean is zero at this point so we set OrphanDepth in all MOM land points.
-       call MAPL_GetPointer(GEX(OCN), DH, 'DH', __RC__)
-       where(MASK == 0.0)
-          DH(:,:,1) = OrphanDepth
-       end where
+       if(associated(MASKO)) MASKO = MASK
     end if
  
     call MAPL_TimerOff(STATE,"TOTAL"     )
@@ -880,12 +897,13 @@ contains
     real, pointer :: FHOCN(:,:)
     real, pointer :: FRESH(:,:)
     real, pointer :: FSALT(:,:)
+    real, pointer :: PEN_OCN(:,:)
 
 ! Pointers to Exports
 
     real, pointer :: TS_FOUND (:,:)
     real, pointer :: SS_FOUND (:,:)
-    real, pointer :: FRZMLT(:,:)
+    real, pointer :: FRZMLTe(:,:)
 
 ! Diagnostics exports
 
@@ -902,6 +920,7 @@ contains
     real, pointer :: RAINe(:,:)
     real, pointer :: SNOWe(:,:)
     real, pointer :: SFLXe(:,:)
+    real, pointer :: PEN_OCNe(:,:)
 
 
 ! Pointers to imports of child
@@ -923,14 +942,15 @@ contains
     real, pointer :: SNOW(:,:)
     real, pointer :: SFLX(:,:)
     real, pointer :: FI(:,:)
+    real, pointer :: FId(:,:)
 
 ! Pointers to exports of child
 
     real, pointer :: TW  (:,:)
     real, pointer :: SW  (:,:)
-    real, pointer :: MASK(:,:)
+    real, pointer ::   MASK(:,:)
     real, pointer :: MASK3D(:,:,:)
-    real, pointer :: FRAZIL(:,:)
+    real, pointer :: FRZMLT(:,:)
 
     real, pointer :: TWd  (:,:)
     real, pointer :: DEL_TEMP (:,:)
@@ -944,9 +964,10 @@ contains
     integer           :: NUM
     real, allocatable :: WGHT(:,:)
     real              :: DT, TAU_SST
+    real              :: TAU_SST_UNDER_ICE
     real, pointer     :: LONS  (:,:)
     real, pointer     :: LATS  (:,:)
-    real, parameter   :: OrphanSalinity=34.0
+    real, parameter   :: OrphanSalinity=34.0  ! SA: ought to revisit this in context of OGCM rewrite. In reality one should update S as well.
     real              :: Tfreeze
 
     integer :: ID
@@ -962,6 +983,7 @@ contains
     Iam = "Run"
     call ESMF_GridCompGet( gc, NAME=comp_name, currentPhase=PHASE, RC=status )
     VERIFY_(status)
+    if (PHASE >= 10) PHASE = PHASE - 10 ! to be replaced by MAPL get_phase 
     Iam = trim(comp_name) // Iam
 
 ! Get my internal MAPL_Generic state
@@ -1008,23 +1030,20 @@ contains
     call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
     VERIFY_(status)
 
-    call MAPL_GetResource(state,ReplayMode,  'REPLAY_MODE:',  default="NoReplay", RC=STATUS )
-    if (trim(replayMode)=="Regular" ) then
-       if (myTime > EndTime) then
-          call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_REVERSE,rc=status)
-          VERIFY_(status)
-          do
-            call ESMF_ClockAdvance(PrivateState%Clock,rc=status)
-            VERIFY_(status)
-            call ESMF_ClockGet(PrivateState%Clock,currTime=ct,rc=status)
-            VERIFY_(status)
-            if (ct==endTime) exit
-          enddo
-          call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_FORWARD,rc=status)
-          VERIFY_(status)
-          call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
-          VERIFY_(status)
-       end if
+    if (myTime > EndTime) then
+       call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_REVERSE,rc=status)
+       VERIFY_(status)
+       do
+         call ESMF_ClockAdvance(PrivateState%Clock,rc=status)
+         VERIFY_(status)
+         call ESMF_ClockGet(PrivateState%Clock,currTime=ct,rc=status)
+         VERIFY_(status)
+         if (ct==endTime) exit
+       enddo
+       call ESMF_ClockSet(PrivateState%Clock,direction=ESMF_DIRECTION_FORWARD,rc=status)
+       VERIFY_(status)
+       call ESMF_ClockGet( PrivateState%CLOCK, currTime=myTime, RC=STATUS)
+       VERIFY_(status)
     end if
 
     if( MyTime <= EndTime ) then ! Time to run
@@ -1097,18 +1116,21 @@ contains
           call MAPL_GetPointer(GIM(OCN), QFLUX, 'QFLUX'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), RAIN, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
           call MAPL_GetPointer(GIM(OCN), SNOW, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GIM(OCN), SFLX, 'SFLX'  , RC=STATUS); VERIFY_(STATUS) ! and do not add import of PEN_OCN here since it is not used in the `plug'
        end if
+
+       call MAPL_GetPointer(IMPORT, PEN_OCN, 'PEN_OCN',RC=STATUS); VERIFY_(STATUS)
 
        call MAPL_GetPointer(GEX(OCN), TW,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(GEX(OCN), SW,   'SW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
 
        if (dual_ocean) then
           call MAPL_GetPointer(GEX(OCNd), TWd,   'TW'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(IMPORT, FId, 'FRACICEd'   , RC=STATUS); VERIFY_(STATUS)
        end if
        
        if(DO_DATASEA==0) then
-          call MAPL_GetPointer(GEX(OCN), FRAZIL,   'FRAZIL'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
+          call MAPL_GetPointer(GEX(OCN), FRZMLT,   'FRZMLT'  , alloc=.true., RC=STATUS); VERIFY_(STATUS)
        end if
 
 ! Get pointers to exports
@@ -1116,7 +1138,7 @@ contains
 
        call MAPL_GetPointer(EXPORT, TS_FOUND,'TS_FOUND', RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SS_FOUND,'SS_FOUND', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT, FRZMLT,'FRZMLT', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, FRZMLTe,'FRZMLT', RC=STATUS); VERIFY_(STATUS)
 
 ! Diagnostics exports
 !---------------------------------------------------------
@@ -1133,6 +1155,7 @@ contains
        call MAPL_GetPointer(EXPORT, RAINe, 'RAIN'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SNOWe, 'SNOW'  , RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetPointer(EXPORT, SFLXe, 'SFLX'  , RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetPointer(EXPORT, PEN_OCNe,'PEN_OCN', RC=STATUS); VERIFY_(STATUS)
 
        if(associated(FROCEANe)) FROCEANe = FROCEAN
 
@@ -1168,7 +1191,7 @@ contains
           SFLX = FSALT * WGHT
 
 ! This stress forces the ocean, combined with sea ice bottom stress later
-
+!------------------------------------------------------------------------
           TAUX = TAUXi * WGHT
           TAUY = TAUYi * WGHT
 
@@ -1200,6 +1223,7 @@ contains
           if (associated(RAINe)) RAINe = RAIN
           if (associated(SNOWe)) SNOWe = SNOW
           if (associated(SFLXe)) SFLXe = SFLX
+          if (associated(PEN_OCNe)) PEN_OCNe = PEN_OCN
        end if !DO_DATASEA
 
 ! Loop the ocean model
@@ -1247,7 +1271,10 @@ contains
              call MAPL_GetPointer(GIM(OCNd), FI , 'FRACICE'  , RC=STATUS)
              VERIFY_(STATUS)
              
-             call MAPL_GetResource(STATE,TAU_SST, Label="TAU_SST:", default=86400.0 ,RC=STATUS)
+             call MAPL_GetResource(STATE,TAU_SST, Label="TAU_SST:", default=432000.0 ,RC=STATUS)
+             VERIFY_(status)
+
+             call MAPL_GetResource(STATE,TAU_SST_UNDER_ICE, Label="TAU_SST_UNDER_ICE:", default=86400.0 ,RC=STATUS)
              VERIFY_(status)
 
              ! we should have valid pointers to TW and TWd by now
@@ -1257,6 +1284,14 @@ contains
 
                 ! what about relaxation
                 DEL_TEMP = (TWd - TW)*DT/(DT+TAU_SST)
+
+             end where
+
+             where(MASK > 0.0 .and. FI >= 0.05 .and. FId > FI)
+                ! 0.054 (C/psu) is the ratio between the freezing temperature and salinity of brine.
+                ! -0.054*SW gives salinity dependent freezing temperature 
+                ! ideally this const should be from the ocean model, but doing so is difficult here
+                DEL_TEMP = ((-0.054*SW+MAPL_TICE) - TW)*DT/(DT+TAU_SST_UNDER_ICE)
 
              end where
 
@@ -1288,13 +1323,13 @@ contains
           end where
        end if
 
-       if(associated(FRZMLT)) then
+       if(associated(FRZMLTe)) then
           if(DO_DATASEA == 0) then
              where(WGHT > 0.0 )
-                FRZMLT = FRAZIL
+                FRZMLTe = FRZMLT
              end where
           else
-             FRZMLT = 0.0
+             FRZMLTe = 0.0
           end if          
        end if
 
@@ -1321,9 +1356,9 @@ contains
           Tfreeze=MAPL_TICE-0.054*OrphanSalinity
 
           where(wght>0.0)
-             TS_FOUND=TS_FOUND+ \
-             DT*(LWFLXi+HEATi(:,:,1)-SHFLXi-QFLUXi*MAPL_ALHL-MAPL_ALHF*SNOWi+FHOCN)/(OrphanDepth*MAPL_RHO_SEAWATER*MAPL_CAPWTR)
-             FRZMLT = (Tfreeze - TS_FOUND) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*OrphanDepth)/DT
+             TS_FOUND=TS_FOUND+ &
+                      DT*(LWFLXi+(PENUVR+PENPAR+PENUVF+PENPAF+DRNIR+DFNIR - PEN_OCN)-SHFLXi-QFLUXi*MAPL_ALHL-MAPL_ALHF*SNOWi+FHOCN)/(OrphanDepth*MAPL_RHO_SEAWATER*MAPL_CAPWTR) ! explicit update in time
+             FRZMLTe = (Tfreeze - TS_FOUND) * (MAPL_RHO_SEAWATER*MAPL_CAPWTR*OrphanDepth)/DT
              TS_FOUND=max(TS_FOUND, Tfreeze)
           end where
 

@@ -52,7 +52,8 @@
             tauaer  , zm, cloudMH, cloudHH, &
             uflx    ,dflx    ,hr      ,uflxc   ,dflxc,  hrc, &
             duflx_dt, duflxc_dt, cloudFlag, &
-            olrb09, dolrb09_dt, olrb10, dolrb10_dt, olrb11, dolrb11_dt, &
+            olrb06, dolrb06_dt, olrb09, dolrb09_dt, &
+            olrb10, dolrb10_dt, olrb11, dolrb11_dt, &
             dyofyr, alat, numCPUs, partition_size)
          ! -------- Description --------
 
@@ -163,6 +164,7 @@
          use parrrtm, only : nbndlw, ngptlw, maxxsec, mxmol, nbndlw
          use rrlw_con, only: fluxfac, heatfac, oneminus, pi
          use rrlw_wvn, only: ng, ngb, nspa, nspb, wavenum1, wavenum2, delwave
+         use iso_fortran_env, only : error_unit
 
          ! ------- Declarations -------
 
@@ -288,6 +290,7 @@
          !    Dimensions: (ncol,nlay)
          integer , intent(out), optional :: cloudFlag(:,:)
 
+         real, intent(out), dimension(:), optional :: olrb06, dolrb06_dt
          real, intent(out), dimension(:), optional :: olrb09, dolrb09_dt
          real, intent(out), dimension(:), optional :: olrb10, dolrb10_dt
          real, intent(out), dimension(:), optional :: olrb11, dolrb11_dt
@@ -309,6 +312,118 @@
          ! store the available device global and constant memory
          real gmem, cmem
          real t1,t2
+
+         ! ASSERTs to catch unphysical inputs
+         if (any(play   < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(play):', minval(play)
+           error stop 'negative values in input: play'
+         end if
+         if (any(plev   < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(plev):', minval(plev)
+           error stop 'negative values in input: plev'
+         end if
+         if (any(tlay   < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(tlay):', minval(tlay)
+           error stop 'negative values in input: tlay'
+         end if
+         if (any(tlev   < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(tlev):', minval(tlev)
+           error stop 'negative values in input: tlev'
+         end if
+         if (any(tsfc   < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(tsfc):', minval(tsfc)
+           error stop 'negative values in input: tsfc'
+         end if
+         if (any(h2ovmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(h2ovmr):', minval(h2ovmr)
+           error stop 'negative values in input: h2ovmr'
+         end if
+         if (any(o3vmr  < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(o3vmr):', minval(o3vmr)
+           error stop 'negative values in input: o3vmr'
+         end if
+         if (any(co2vmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(co2vmr):', minval(co2vmr)
+           error stop 'negative values in input: co2vmr'
+         end if
+         if (any(ch4vmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(ch4vmr):', minval(ch4vmr)
+           error stop 'negative values in input: ch4vmr'
+         end if
+         if (any(n2ovmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(n2ovmr):', minval(n2ovmr)
+           error stop 'negative values in input: n2ovmr'
+         end if
+         if (any(o2vmr  < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(o2vmr):', minval(o2vmr)
+           error stop 'negative values in input: o2vmr'
+         end if
+         if (any(cfc11vmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(cfc11vmr):', minval(cfc11vmr)
+           error stop 'negative values in input: cfc11vmr'
+         end if
+         if (any(cfc12vmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(cfc12vmr):', minval(cfc12vmr)
+           error stop 'negative values in input: cfc12vmr'
+         end if
+         if (any(cfc22vmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(cfc22vmr):', minval(cfc22vmr)
+           error stop 'negative values in input: cfc22vmr'
+         end if
+         if (any(ccl4vmr < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(ccl4vmr):', minval(ccl4vmr)
+           error stop 'negative values in input: ccl4vmr'
+         end if
+         if (any(emis    < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(emis):', minval(emis)
+           error stop 'negative values in input: emis'
+         end if
+         if (any(cldfrac < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(cldfrac):', minval(cldfrac)
+           error stop 'negative values in input: cldfrac'
+         end if
+         if (any(ciwp    < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(ciwp):', minval(ciwp)
+           error stop 'negative values in input: ciwp'
+         end if
+         if (any(clwp    < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(clwp):', minval(clwp)
+           error stop 'negative values in input: clwp'
+         end if
+         if (any(rei     < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(rei):', minval(rei)
+           error stop 'negative values in input: rei'
+         end if
+         if (any(rel     < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(rel):', minval(rel)
+           error stop 'negative values in input: rel'
+         end if
+         if (any(tauaer < 0.)) then
+           write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+           write(error_unit,*) 'minval(tauaer):', minval(tauaer)
+           error stop 'negative values in input: tauaer'
+         end if
 
 #ifdef _CUDA
 
@@ -396,7 +511,8 @@
                   tauaer  , zm, cloudMH, cloudHH, &
                   uflx    ,dflx    ,hr      ,uflxc   ,dflxc,  hrc, &
                   duflx_dt, duflxc_dt, cloudFlag, &
-                  olrb09, dolrb09_dt, olrb10, dolrb10_dt, olrb11, dolrb11_dt, &
+                  olrb06, dolrb06_dt, olrb09, dolrb09_dt, &
+                  olrb10, dolrb10_dt, olrb11, dolrb11_dt, &
                   dyofyr,alat)    
          end do
 
@@ -420,7 +536,8 @@
             tauaer  , zm, cloudMH, cloudHH, &
             uflx    ,dflx    ,hr      ,uflxc   ,dflxc,  hrc, &
             duflx_dt, duflxc_dt, cloudFlag, &
-            olrb09, dolrb09_dt, olrb10, dolrb10_dt, olrb11, dolrb11_dt, &
+            olrb06, dolrb06_dt, olrb09, dolrb09_dt, &
+            olrb10, dolrb10_dt, olrb11, dolrb11_dt, &
             dyofyr,alat)
 
 
@@ -551,10 +668,11 @@
          !    Dimensions: (ncol,nlay)
          integer , intent(out), optional :: cloudFlag(:,:)
 
+         real, intent(out), dimension(:), optional :: olrb06, dolrb06_dt
          real, intent(out), dimension(:), optional :: olrb09, dolrb09_dt
          real, intent(out), dimension(:), optional :: olrb10, dolrb10_dt
          real, intent(out), dimension(:), optional :: olrb11, dolrb11_dt
-         ! OLR for bands 9-11 and temperature derivatives (W/m2, W/m2/K)
+         ! OLR for bands 6 & 9-11 and temperature derivatives (W/m2, W/m2/K)
          !    Dimensions: (ncol)
 
          real  _gpudeva :: cldfmcd(:,:,:)         ! layer cloud fraction [mcica]
@@ -584,15 +702,15 @@
          integer  :: ig                        ! g-point loop index
          real  :: t1, t2
          ! Atmosphere
-         real  :: pavel(pncol,GPU_MAXLEVS+1)          ! layer pressures (mb) 
-         real  :: tavel(pncol,GPU_MAXLEVS+1)          ! layer temperatures (K)
-         real  :: pz(pncol,0:GPU_MAXLEVS+1)           ! level (interface) pressures (hPa, mb)
-         real  :: tz(pncol,0:GPU_MAXLEVS+1)           ! level (interface) temperatures (K)
+         real  :: pavel(pncol,GPU_MAXLEVS)          ! layer pressures (mb) 
+         real  :: tavel(pncol,GPU_MAXLEVS)          ! layer temperatures (K)
+         real  :: pz(pncol,0:GPU_MAXLEVS)           ! level (interface) pressures (hPa, mb)
+         real  :: tz(pncol,0:GPU_MAXLEVS)           ! level (interface) temperatures (K)
          real  :: tbound(pncol)                ! surface temperature (K)
-         real  :: coldry(pncol,GPU_MAXLEVS+1)         ! dry air column density (mol/cm2)
-         real  :: wbrodl(pncol,GPU_MAXLEVS+1)         ! broadening gas column density (mol/cm2)
-         real  :: wkl(pncol,mxmol,GPU_MAXLEVS+1)      ! molecular amounts (mol/cm-2)
-         real  :: wx(pncol,maxxsec,GPU_MAXLEVS+1)     ! cross-section amounts (mol/cm-2)
+         real  :: coldry(pncol,GPU_MAXLEVS)         ! dry air column density (mol/cm2)
+         real  :: wbrodl(pncol,GPU_MAXLEVS)         ! broadening gas column density (mol/cm2)
+         !real  :: wkl(pncol,mxmol,GPU_MAXLEVS+1)      ! molecular amounts (mol/cm-2)
+         !real  :: wx(pncol,maxxsec,GPU_MAXLEVS+1)     ! cross-section amounts (mol/cm-2)
          real  :: pwvcm(pncol)                 ! precipitable water vapor (cm)
          real  :: semiss(pncol,nbndlw)         ! lw surface emissivity
 
@@ -606,30 +724,30 @@
 
 
          ! Output
-         !real  :: totuflux(pncol,0:GPU_MAXLEVS+1)     ! upward longwave flux (w/m2)
-         !real  :: totdflux(pncol,0:GPU_MAXLEVS+1)     ! downward longwave flux (w/m2)
-         !real  :: fnet(pncol,0:GPU_MAXLEVS+1)         ! net longwave flux (w/m2)
-         !real  :: htr(pncol,0:GPU_MAXLEVS+1)          ! longwave heating rate (k/day)
-         !real  :: totuclfl(pncol,0:GPU_MAXLEVS+1)     ! clear sky upward longwave flux (w/m2)
-         !real  :: totdclfl(pncol,0:GPU_MAXLEVS+1)     ! clear sky downward longwave flux (w/m2)
-         !real  :: fnetc(pncol,0:GPU_MAXLEVS+1)        ! clear sky net longwave flux (w/m2)
-         !real  :: htrc(pncol,0:GPU_MAXLEVS+1)         ! clear sky longwave heating rate (k/day)
-         !real  :: dtotuflux_dt(pncol,0:GPU_MAXLEVS+1) ! change in upward longwave flux (w/m2/k)
+         !real  :: totuflux(pncol,0:GPU_MAXLEVS)     ! upward longwave flux (w/m2)
+         !real  :: totdflux(pncol,0:GPU_MAXLEVS)     ! downward longwave flux (w/m2)
+         !real  :: fnet(pncol,0:GPU_MAXLEVS)         ! net longwave flux (w/m2)
+         !real  :: htr(pncol,0:GPU_MAXLEVS)          ! longwave heating rate (k/day)
+         !real  :: totuclfl(pncol,0:GPU_MAXLEVS)     ! clear sky upward longwave flux (w/m2)
+         !real  :: totdclfl(pncol,0:GPU_MAXLEVS)     ! clear sky downward longwave flux (w/m2)
+         !real  :: fnetc(pncol,0:GPU_MAXLEVS)        ! clear sky net longwave flux (w/m2)
+         !real  :: htrc(pncol,0:GPU_MAXLEVS)         ! clear sky longwave heating rate (k/day)
+         !real  :: dtotuflux_dt(pncol,0:GPU_MAXLEVS) ! change in upward longwave flux (w/m2/k)
          ! with respect to surface temperature
-         !real  :: dtotuclfl_dt(pncol,0:GPU_MAXLEVS+1) ! change in clear sky upward longwave flux (w/m2/k)
+         !real  :: dtotuclfl_dt(pncol,0:GPU_MAXLEVS) ! change in clear sky upward longwave flux (w/m2/k)
          ! with respect to surface temperature
-         !real  ::  curad(pncol,ngptlw,0:GPU_MAXLEVS+1)     ! upward longwave flux (w/m2)
-         !real  ::   cdrad(pncol,ngptlw,0:GPU_MAXLEVS+1)     ! downward longwave flux (w/m2)
-         !real  ::   cclrurad(pncol,ngptlw,0:GPU_MAXLEVS+1)     ! clear sky upward longwave flux (w/m2)
-         !real  ::   cclrdrad(pncol,ngptlw,0:GPU_MAXLEVS+1)     ! clear sky downward longwave flux (w/m2)
+         !real  ::  curad(pncol,ngptlw,0:GPU_MAXLEVS)     ! upward longwave flux (w/m2)
+         !real  ::   cdrad(pncol,ngptlw,0:GPU_MAXLEVS)     ! downward longwave flux (w/m2)
+         !real  ::   cclrurad(pncol,ngptlw,0:GPU_MAXLEVS)     ! clear sky upward longwave flux (w/m2)
+         !real  ::   cclrdrad(pncol,ngptlw,0:GPU_MAXLEVS)     ! clear sky downward longwave flux (w/m2)
          !real  :: olrb10(pncol)      ! TOA OLR in band10 (W/m2)
          !real  :: dolrb10_dt(pncol)  ! change in TOA OLR in band10 (W/m2/K)
 
-         real  :: cldfracq(pncol,GPU_MAXLEVS+1)     ! Cloud fraction
+         real  :: cldfracq(pncol,GPU_MAXLEVS)     ! Cloud fraction
          !    Dimensions: (ngptlw,ncol,nlay)
-         real  :: ciwpq(pncol,GPU_MAXLEVS+1)     ! In-cloud ice water path (g/m2)
+         real  :: ciwpq(pncol,GPU_MAXLEVS)     ! In-cloud ice water path (g/m2)
          !    Dimensions: (ngptlw,ncol,nlay)
-         real  :: clwpq(pncol,GPU_MAXLEVS+1)     ! In-cloud liquid water path (g/m2)
+         real  :: clwpq(pncol,GPU_MAXLEVS)     ! In-cloud liquid water path (g/m2)
          !    Dimensions: (ngptlw,ncol,nlay)
          real  :: reiq(pncol,GPU_MAXLEVS)       ! Cloud ice particle effective size (microns)
          !    Dimensions: (ncol,nlay)
@@ -901,7 +1019,7 @@
          ! (dmb 2012) Copy the needed data of to the GPU for the SetCoef and Taumol kernels
 
 
-         call copyGPUTaumol( pavel, wx, coldry, tauaer, pncol, colstart, nlay , npart)
+         call copyGPUTaumol( pavel, coldry, tauaer, pncol, colstart, nlay , npart)
 
 
 
@@ -1020,6 +1138,8 @@
          htrcd = 0.0
          dtotuflux_dtd = 0.0
          dtotuclfl_dtd = 0.0
+         olrb06d = 0.0
+         dolrb06_dtd = 0.0
          olrb09d = 0.0
          dolrb09_dtd = 0.0
          olrb10d = 0.0
@@ -1055,6 +1175,7 @@
          dflxc(colstart:(colstart+pncol-1), 1:(nlayers+1)) = totdclfld(:,0:nlayers)
          hr(colstart:(colstart+pncol-1), 1:(nlayers+1)) = htrd(:,0:nlayers)
          hrc(colstart:(colstart+pncol-1), 1:(nlayers+1)) = htrcd(:,0:nlayers)
+         olrb06(colstart:(colstart+pncol-1)) = olrb06d(:)
          olrb09(colstart:(colstart+pncol-1)) = olrb09d(:)
          olrb10(colstart:(colstart+pncol-1)) = olrb10d(:)
          olrb11(colstart:(colstart+pncol-1)) = olrb11d(:)
@@ -1063,6 +1184,7 @@
 
             duflx_dt(colstart:(colstart+pncol-1), 1:(nlayers+1)) = dtotuflux_dtd(:,0:nlayers)
             duflxc_dt(colstart:(colstart+pncol-1), 1:(nlayers+1)) = dtotuclfl_dtd(:,0:nlayers)
+            dolrb06_dt(colstart:(colstart+pncol-1)) = dolrb06_dtd(:)
             dolrb09_dt(colstart:(colstart+pncol-1)) = dolrb09_dtd(:)
             dolrb10_dt(colstart:(colstart+pncol-1)) = dolrb10_dtd(:)
             dolrb11_dt(colstart:(colstart+pncol-1)) = dolrb11_dtd(:)

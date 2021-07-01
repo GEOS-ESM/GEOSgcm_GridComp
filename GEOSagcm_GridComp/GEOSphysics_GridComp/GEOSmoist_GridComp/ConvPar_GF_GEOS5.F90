@@ -778,7 +778,7 @@ IF(ITEST==2) THEN
                 !----------------------------------------------------------------------------------------------------
 ENDIF
              ENDDO
-             !print*,"iens=",iens,maxval(conv_cld_fr5d(i,j,:,IENS)),minval(conv_cld_fr5d(i,j,:,IENS));call flush(6)
+             !print*,"iens=",iens,maxval(conv_cld_fr5d(i,j,:,IENS)),minval(conv_cld_fr5d(i,j,:,IENS));flush(6)
             ENDDO
            ENDDO
         endif
@@ -852,7 +852,7 @@ ENDIF
         !~ print*,'use_scale_dep,dicycle          :',USE_SCALE_DEP,DICYCLE
         !~ print*,'scale depend: MID ',maxval(DX2d),minval(DX2d),maxval(SIGMA4d(:,:,MID)) ,minval(SIGMA4d(:,:,MID))
         !~ print*,'scale depend: DEEP',maxval(DX2d),minval(DX2d),maxval(SIGMA4d(:,:,DEEP)),minval(SIGMA4d(:,:,DEEP))
-        !~ CALL FLUSH(6)
+        !~ flush(6)
       !~ ENDIF
       DO IENS=1, maxiens
         if(icumulus_gf(IENS) == ON .and. IENS== DEEP) then
@@ -1325,7 +1325,7 @@ ENDIF
          zws(i) = 1.2*zws(i)**.3333
          !- temperature excess
          ztexec(i)     = max(0.,-1.5*pahfs/(zrho*zws(i)*1004.64)) ! K
-         !print*,"exce1=",pahfs,zrho,ztexec(i),zws(i),pgeoh,zo(i,1),topt(i,j);call flush(6)
+         !print*,"exce1=",pahfs,zrho,ztexec(i),zws(i),pgeoh,zo(i,1),topt(i,j);flush(6)
          !- moisture  excess
          zqexec(i)     = max(0.,-1.5*pqhfl/(zrho*zws(i)))        !kg kg-1
        endif   ! zws > 0
@@ -1452,7 +1452,7 @@ ENDIF
 
           if(DICYCLE==3) then
             if(k>kpbli(i))then
-              !if(k==kpbli(i)+1)print*,"PBL=",k,kpbli(i);call flush(6)
+              !if(k==kpbli(i)+1)print*,"PBL=",k,kpbli(i);flush(6)
               temp_new_dp(i,k)= temp_old(i,k) + (rthften (kr,i,j))*dt
                 qv_new_dp(i,k)=   qv_old(i,k) + (rqvften (kr,i,j))*dt
             else
@@ -2238,7 +2238,7 @@ loop1:  do n=1,maxiens
       !	       10 format(1x,I4,4E15.7)
       !     end do
       !     print*,"2GF =============================================================="
-      !     call flush(6)
+      !     flush(6)
       !ENDIF
 !
 !--- partition between liq/ice cloud contents
@@ -2293,7 +2293,7 @@ loop1:  do n=1,maxiens
            call get_cloud_bc(kts,kte,p_cup (i,kts:kte),plll,k22(i))
 
            call get_lcl(tlll,100.*plll,rlll,tlcl,plcl,dzlcl)
-           !print*,"MID",tlll,100.*plll,rlll,tlcl,plcl,dzlcl; call flush(6)
+           !print*,"MID",tlll,100.*plll,rlll,tlcl,plcl,dzlcl; flush(6)
            
 	   !-get LCL index
            if(dzlcl >= 0.) then ! LCL found (if dzlcl<0 => not found)
@@ -2481,7 +2481,7 @@ l_SIG:DO fase = 1,2
           DO i=its,itf
            if(ierr(i) /= 0)cycle
            ktop(i) = min(ktop(i),k_inv_layers(i,mid))
-           !print*,"ktop=",ktop(i),k_inv_layers(i,mid);call flush(6)
+           !print*,"ktop=",ktop(i),k_inv_layers(i,mid);flush(6)
           enddo
         endif
         !
@@ -2919,7 +2919,7 @@ ENDIF
       IF( DICYCLE>1) THEN
         do i=its,itf
           if(ierr(i) /= 0) cycle
-          print*,"cin=",cin0(i),0.5*zws(i)**2, omeg(i,kpbl(i),1)/(-g*rho(i,kpbl(i))) ;call flush(6)
+          print*,"cin=",cin0(i),0.5*zws(i)**2, omeg(i,kpbl(i),1)/(-g*rho(i,kpbl(i))) ;flush(6)
           if(cin0(i) + 0.5*zws(i)**2 < 0.)then !think about including the grid scale vertical velocity at KE calculation
                ierr(i)=19
                ierrc(i)="CIN negat"
@@ -4048,7 +4048,7 @@ IF(USE_TRACER_TRANSP==1)  THEN
 	   !if (MAPL_AM_I_ROOT())  then
            !if(evap_  (ispc) > wetdep_(ispc)) then
 	   !print*,"budget=",ispc,evap_  (ispc), wetdep_(ispc),trash_ (ispc),trim(CHEM_NAME(ispc))!,trash_ (ispc),trash2_(ispc)
-	   !call flush(6)
+	   !flush(6)
 	   !endif
            !if(evap_  (ispc) > wetdep_(ispc)) stop " eva<wet "
 	   !if(abs(trash_(ispc)) >1.e-6 ) then
@@ -4554,7 +4554,7 @@ ENDIF !- end of section for atmospheric composition
 !
         e=satvap(t(i,k))
         qes(i,k)=0.622*e/max(1.e-8,(p(i,k)-e))
-        !print*,"qes=",k,qes(i,k),e,p(i,k);call flush(6)
+        !print*,"qes=",k,qes(i,k),e,p(i,k);flush(6)
         IF(QES(I,K).LE.1.E-08)QES(I,K)=1.E-08
         IF(QES(I,K).GT.0.5   )QES(I,K)=0.5
         IF(QES(I,K).LT.Q(I,K))QES(I,K)=Q(I,K)
@@ -4605,7 +4605,7 @@ ENDIF !- end of section for atmospheric composition
          if(ierr(i).eq.0)then
          if(itest.le.0)HE (I,K)=g*Z(I,K)+1004.*T(I,K)+2.5E06*Q(I,K)
          HES(I,K)=g*Z(I,K)+1004.*T(I,K)+2.5E06*QES(I,K)
-         !print*,"HES=",k,HES(i,k),HE(I,K),Q(i,k),QES(I,K);call flush(6)
+         !print*,"HES=",k,HES(i,k),HE(I,K),Q(i,k),QES(I,K);flush(6)
          IF(HE(I,K).GE.HES(I,K))HE(I,K)=HES(I,K)
          endif
        enddo
@@ -6263,7 +6263,7 @@ loop0:        do k=kts,ktf
            !if(xff_shal(4)>0.0001) then
            !~ print*,"xff_shal1=",i,h_sfc_flux(i),le_sfc_flux(i),tsur(i)
            !~ print*,"xff_shal2=",xff_shal(4) , efic , fin , cape(i)
-           !~ call flush(6)
+           !~ flush(6)
            !endif
           else
            xff_shal(4) = 0.0
@@ -6668,7 +6668,7 @@ ENDIF !- end of section for atmospheric composition
 !~ if(cumulus == 'deep') then
 !~ LOCAL: do i=its,itf
  !~ !if( ( xlats(i)> LATPR-AG .and. xlats(i) <= LATPR+AG) ) then
- !~ ! print*,"XX=",i,xlons(i),xlats(i);call flush(6)
+ !~ ! print*,"XX=",i,xlons(i),xlats(i);flush(6)
  !~ !endif
  !~ if( (xlons(i)> LONPR -AG .and. xlons(i) <= LONPR +AG) .and. &
      !~ (xlats(i)> LATPR -AG .and. xlats(i) <= LATPR +AG) ) then
@@ -6705,7 +6705,7 @@ ENDIF !- end of section for atmospheric composition
 !~ a1_bl=a1_bl+dz*(tn_bl(i,k)*(1.+0.608*qo_bl(i,k))-t(i,k)*(1.+0.608*q(i,k)))/dtime
 !~ WRITE(7,*),"bl1=",k,tn_bl(i,k)-t(i,k),(qo_bl(i,k)-q(i,k)),dz*(tn_bl(i,k)*&
 !~ (1.+0.608*qo_bl(i,k))-t(i,k)*(1.+0.608*q(i,k)))/dtime,dz/g
-!~ call flush(4);call flush(7)
+!~ flush(4);flush(7)
 !~ endif
 !~ !=================
 
@@ -6724,7 +6724,7 @@ ENDIF !- end of section for atmospheric composition
 !~ write(7,*) "bl2=",xtime,kpbl(i),kbcon(i),a1_bl,aa1(i)
 !~ write(7,*) "bl3=",tau_bl(i),tau_ecmwf(i),(aa1(i)-tau_bl(i)*a1_bl/t_star)
 !~ write(7,*)"================================"
-!~ call flush(4);call flush(7)
+!~ flush(4);flush(7)
 !~ endif
 !~ !=================
 
@@ -7085,7 +7085,7 @@ ENDIF !- end of section for atmospheric composition
          kzi(i) = max(1     ,kzi(i))
          !print*,"1",kzi(i),i
          kzi(i) = min(kzimax,kzi(i))
-         !print*,"2",kzi(i),i;call flush(6)
+         !print*,"2",kzi(i),i;flush(6)
          pbl(i) = max( z(i,kzi(i))-ztop(i), z(i,1)-ztop(i) )
  enddo
 
@@ -7121,7 +7121,7 @@ ENDIF !- end of section for atmospheric composition
      if(name == 'shallow'.or. name == 'mid')then
          dbythresh=1.0
      endif
-     !         print*,"================================CUMULUS=",NAME; call flush(6)
+     !         print*,"================================CUMULUS=",NAME; flush(6)
      DO i=its,itf
        kfinalzu=ktf-2
        ktop(i)=kfinalzu
@@ -7153,7 +7153,7 @@ ENDIF !- end of section for atmospheric composition
           if(dby(k).lt.dbythresh*maxval(dby))then
               kfinalzu = k - 1
               ktop(i)  = kfinalzu
-              !print*,'hco4=',k,kfinalzu,ktop(i),kbcon(i)+1;call flush(6)
+              !print*,'hco4=',k,kfinalzu,ktop(i),kbcon(i)+1;flush(6)
               go to 412
           endif
         enddo
@@ -7165,13 +7165,13 @@ ENDIF !- end of section for atmospheric composition
           if(hcot(i,k) < heso_cup(i,k) )then
               kfinalzu = k - 1
               ktop(i)  = kfinalzu
-              !print*,'hco40=',k,kfinalzu,ktop(i),kbcon(i)+1;call flush(6)
+              !print*,'hco40=',k,kfinalzu,ktop(i),kbcon(i)+1;flush(6)
               exit
           endif
         enddo
        endif
        if(kfinalzu.le.kbcon(i)+1) ierr(i)=41
-       !~ print*,'hco5=',k,kfinalzu,ktop(i),kbcon(i)+1,ierr(i);call flush(6)
+       !~ print*,'hco5=',k,kfinalzu,ktop(i),kbcon(i)+1,ierr(i);flush(6)
       !
       ENDIF
      ENDDO
@@ -7816,7 +7816,7 @@ ENDIF
 !
 !--- DETERMINE THE LEVEL OF CONVECTIVE CLOUD BASE  - KBCON
 !
-!print*,"in cup-kbcon ======================";call flush(6)
+!print*,"in cup-kbcon ======================";flush(6)
       DO 27 i=its,itf
         kbcon(i)=1
         IF(ierr(I).ne.0)GO TO 27
@@ -7835,7 +7835,7 @@ ENDIF
                               + entr_rate_2d(i,k-1)*dz *heo (i,k-1)   ) / &
                         (1.+0.5*entr_rate_2d(i,k-1)*dz)
         !hcot(i,k)= hcot(i,k-1) ! for no entrainment
-!print*,"h2",k,hcot(I,k),heo(i,k),entr_rate_2d(i,k-1);call flush(6)
+!print*,"h2",k,hcot(I,k),heo(i,k),entr_rate_2d(i,k-1);flush(6)
         enddo
        !==
 
@@ -7857,12 +7857,12 @@ ENDIF
        !hetest= hkb(i)
         hetest= hcot(i,KBCON(I))
        !==
-!print*,"h3",k22(i),klcl(i),kbcon(i),hetest,hes_cup(I,KBCON(I));call flush(6)
+!print*,"h3",k22(i),klcl(i),kbcon(i),hetest,hes_cup(I,KBCON(I));flush(6)
        !IF(iloop.eq.5)hetest=HKB(I)
 
        IF(HETEST.LT.hes_cup(I,KBCON(I))) GO TO 31
 
-!print*,"h4",k22(i),kbcon(i),hetest,hes_cup(I,KBCON(I));call flush(6)
+!print*,"h4",k22(i),kbcon(i),hetest,hes_cup(I,KBCON(I));flush(6)
 !       cloud base pressure and max moist static energy pressure
 !       i.e., the depth (in mb) of the layer of negative buoyancy
        IF(KBCON(I)-K22(I).eq.1)go to 27
@@ -7883,7 +7883,7 @@ ENDIF
        if(iloop.eq.5)plus=150.
        if(iloop.eq.5.and.cap_max(i).gt.25)pbcdif=-P_cup(I,KBCON(I))+cap_max(i)
 !----------
-!print*,"h5",k22(i),kbcon(i),PBCDIF,plus;call flush(6)
+!print*,"h5",k22(i),kbcon(i),PBCDIF,plus;flush(6)
 
        IF(PBCDIF.GT.plus)THEN
 
@@ -7891,7 +7891,7 @@ ENDIF
 
             K22  (I)=K22(I)+1
             KBCON(I)=K22(I)+1
-!print*,"h6",k22(i),kbcon(i),PBCDIF,plus;call flush(6)
+!print*,"h6",k22(i),kbcon(i),PBCDIF,plus;flush(6)
 
             !==     since k22 has be changed, HKB has to be re-calculated
             x_add = float(use_excess)*(xlv*zqexec(i)+cp*ztexec(i))
@@ -7908,7 +7908,7 @@ ENDIF
                                   + entr_rate_2d(i,k-1)*dz* heo (i,k-1)        )/ &
                             (1.+0.5*entr_rate_2d(i,k-1)*dz)
                !hcot(i,k)= hcot(i,k-1) ! for no entrainment
-!print*,"h8",k,hcot(I,k),heo(i,k),entr_rate_2d(i,k-1);call flush(6)
+!print*,"h8",k,hcot(I,k),heo(i,k),entr_rate_2d(i,k-1);flush(6)
             enddo
             !==
 
@@ -7925,7 +7925,7 @@ ENDIF
             GO TO 32
        ENDIF
  27   CONTINUE
-      !print*,"out cup-kbcon ======================";call flush(6)
+      !print*,"out cup-kbcon ======================";flush(6)
    END SUBROUTINE cup_kbcon
 !------------------------------------------------------------------------------------
 
@@ -8002,7 +8002,7 @@ ENDIF
            !.. end do
            !.. print*,"PLE/PLO",0,PLO(1,1,1),PLE(1,1,0) 
            !.. print*,"2get-vars =============================================================="
-           !.. call flush(6)
+           !.. flush(6)
       !.. ENDIF
       
  END SUBROUTINE get_vars
@@ -8068,7 +8068,7 @@ ENDIF
     plcl=pp0*(tlcl/t0)**cpor
     dzlcl=127*(t0-ttd)
     if(dzlcl.le.0.)dzlcl=-999.
-    !print*,"1st meth",tlcl,plcl,dzlcl;call flush(6)
+    !print*,"1st meth",tlcl,plcl,dzlcl;flush(6)
     RETURN
     !================
     !-2nd method
@@ -8421,7 +8421,7 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
    runname='15geos5_'//cumulus
    runlabel=runname
 
-   print*,"writing grads control file:',trim(runname)//'.ctl",ntimes;call flush(6)
+   print*,"writing grads control file:',trim(runname)//'.ctl",ntimes;flush(6)
    !
    !number of variables to be written
    nvartotal=0
@@ -8515,8 +8515,8 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
      write(8,10) k,ple(k),t(k),th1(k),pk(k),1000.*q1(k),u1(k),zle(k),zlo(k),86400.*DYNF_Q(k)
      write(7,11) k,theta(k),pp(k),1000.*rv(k),up(k),zm3d(k),zt3d(k),vp(k),omega(k)
     enddo
-    call flush(7)
-    call flush(8)
+    flush(7)
+    flush(8)
  10 FORMAT(1x,i4,9F11.3)
  11 Format(1x,i4,8F11.3)
  END SUBROUTINE writetxt
@@ -8667,7 +8667,7 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
     DO K=KTF,KTS,-1
        if(PPABS(k) > 60.*100.) then
           JKT = k
-          !PRINT*,"JKT=",K,MZP+1-KTS ;CALL FLUSH(6)
+          !PRINT*,"JKT=",K,MZP+1-KTS ;flush(6)
           exit
        endif
     ENDDo
@@ -8897,7 +8897,7 @@ SUBROUTINE get_inversion_layers(cumulus,ierr,psur,po_cup,to_cup,zo_cup,k_inv_lay
            !~ if(hcot(i,k) < heso_cup(i,k) )then
                 !~ ierr(i)=102
                 !~ ierrc(i)="there is an inversion layer between k22 and klcl"
-                !~ print*,'inv=',k,k22(i),klcl(i);call flush(6)
+                !~ print*,'inv=',k,k22(i),klcl(i);flush(6)
                 !~ cycle
            !~ endif
         enddo
@@ -8940,7 +8940,7 @@ loop2:        DO while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
                     ierrc(i)="could not find reasonable kbcon in cup_kbcon"
                     Exit loop2
                 endif
-                !print*,"kbcon=",kbcon(i);call flush(6)
+                !print*,"kbcon=",kbcon(i);flush(6)
               enddo loop2
             !~ ENDIF
 
@@ -8997,7 +8997,7 @@ loop2:        DO while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
             !~ if(dby(k).lt.dbythresh*maxval(dby))then
               !~ kfinalzu = k - 1
               !~ ktop(i)  = kfinalzu
-               !~ !print*,'hco4=',k,kfinalzu,ktop(i),kbcon(i)+1;call flush(6)
+               !~ !print*,'hco4=',k,kfinalzu,ktop(i),kbcon(i)+1;flush(6)
               !~ go to 412
             !~ endif
            !~ enddo
@@ -9009,15 +9009,15 @@ loop2:        DO while (hcot(i,kbcon(i)) < HESO_cup(i,kbcon(i)))
              if(hcot(i,k) < heso_cup(i,k) )then
                kfinalzu = k - 1
                ktop(i)  = kfinalzu
-               !print*,'hco40=',k,kfinalzu,ktop(i),kbcon(i);call flush(6)
+               !print*,'hco40=',k,kfinalzu,ktop(i),kbcon(i);flush(6)
                exit
             endif
            enddo
          !~ endif
-         !~ print*,'hco5=',k,kfinalzu,ktop(i),kbcon(i);call flush(6)
+         !~ print*,'hco5=',k,kfinalzu,ktop(i),kbcon(i);flush(6)
 
          if(kfinalzu.le.kbcon(i)+1) ierr(i)=41
-!print*,"3",ierr(i),klcl(i),kbcon(i),ktop(i);call flush(6)
+!print*,"3",ierr(i),klcl(i),kbcon(i),ktop(i);flush(6)
 
      ENDDO
   END SUBROUTINE cup_cloud_limits
@@ -9930,6 +9930,7 @@ ENDIF
                ! - if tracer is type "carbon" then set coefficient to 0 for hydrophobic
                if( TRIM(CHEM_name (ispc)(1:len_trim('OCphobic') )) == 'OCphobic') factor_temp(ispc,:,:) = 0.0 
 
+
                ! - suppress scavenging most aerosols at cold T except BCn1 (hydrophobic), dust, and HNO3
                if( TRIM(CHEM_name (ispc)(1:len_trim('BCphobic') )) == 'BCphobic') then 
                   where(tempco < 258.) factor_temp(ispc,:,:) = 0.0 
@@ -9942,7 +9943,7 @@ ENDIF
                    TRIM(CHEM_name (ispc)) == 'SO2'      .or. &
                    TRIM(CHEM_name (ispc)) == 'SO4'      .or. &
 
-                   TRIM(CHEM_name (ispc)) == 'nitrate'  .or. &
+                   TRIM(CHEM_name (ispc)(1:len_trim('NO3an') )) == 'NO3an'  .or. &
                    TRIM(CHEM_name (ispc)) == 'bromine'  .or. &
                    TRIM(CHEM_name (ispc)) == 'NH3'      .or. &
                    TRIM(CHEM_name (ispc)) == 'NH4a'          ) then 
@@ -10071,38 +10072,28 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
   real   , intent(in) :: temp,rhoair
   real :: henry_coef
   real :: fct ,tcorr, corrh
-
+ 
   !--- define some constants!
-  real, parameter:: rgas  =  8.32e-2 ! atm M^-1 K^-1 ! 8.314 gas constant [J/(mol*K)]
-  real, parameter:: avogad=  6.022e23! Avogadro constant [1/mol]
-  real, parameter:: rhoH2O=  999.9668! density of water [kg/m3]
-  real, parameter:: temp0 =    298.15! standard temperature [K]
-  real, parameter:: temp0i= 1./298.15! inverse of standard temperature [K]
-  real, parameter:: MWH2O =	18.02! molecular mass of water [kg/kmol]
-  real, parameter:: MWAIR =	28.97! effective molecular mass of air [kg/kmol]
-  real, parameter:: conv3 = avogad / 1.0e6!  [mol(g)/m3(air)]  to [molec(g)/cm3(air)]
-  real, parameter:: conv4 = 100.	  !  [m]	  to [cm]
-  real, parameter:: conv5 = 1000.	  !  [m^3]	    to [l]
-  real, parameter:: conv7 = 1/conv5	  !  [l]    to [m^3]
-  real, parameter:: conv6 = 1. / 101325.  !  [Pa]	    to [atm]
-  real, parameter:: hplus = 1.175E-4	  !  for cloud water. pH is asuumed to be 3.93: pH=3.93 =>hplus=10**(-pH)
-
+  real, parameter:: rgas  =  8.205e-2 ! atm M^-1 K^-1 ! 8.314 gas constant [J/(mol*K)]
+  real, parameter:: temp0i= 1./298.15 ! inverse of standard temperature [K]
+  real, parameter:: hplus = 1.175E-4  !  for cloud water. pH is asuumed to be 3.93: pH=3.93 =>hplus=10**(-pH)
+ 
   ! aqueous-phase concentrations XXXa [mol/m3(air)]!
   ! gas-phase concentrations XXXg [mol/m3(air)]!
   ! Henry constants XXXh for scavenging [mol/(l*atm)]!
   ! converted to [(mol(aq)/m3(aq))/(mol(g)/m3(air))], i.e. dimensionless!
   ! in equilibrium XXXa = XXXh * LWC * XXXg!
   tcorr = 1./temp - temp0i
-  fct   = conv7 * rgas * temp
-
+  fct   = rgas * temp
+ 
   !-taking into account the acid dissociation constant
   ! ak=ak0*exp(dak*(1/t-1/298))
   corrh=1.+Hcts(ispc)%ak0 * exp(Hcts(ispc)%dak * tcorr)/hplus
-
+ 
   !-- for concentration in mol[specie]/mol[air] - Eq 5 in 'Compilation of Henry's law constants (version 4.0) for
   !-- water as solvent, R. Sander, ACP 2015'.
-  henry_coef =  Hcts(ispc)%hstar* exp(Hcts(ispc)%dhr*tcorr) * fct * corrh 
-
+  henry_coef =  Hcts(ispc)%hstar* exp(Hcts(ispc)%dhr*tcorr) * fct * corrh
+ 
   END FUNCTION henry
 
 !---------------------------------------------------------------------------------------------------
@@ -10264,8 +10255,8 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
       !return
       IF( MAPL_AM_I_ROOT() .and. irun == 0)THEN
          irun = 1  
-         print*,"=========================================================================";call flush(6)
-         print*," the following tracers will be transport by GF scheme                    ";call flush(6)
+         print*,"=========================================================================";flush(6)
+         print*," the following tracers will be transport by GF scheme                    ";flush(6)
 	 
 	 write(10,*)"================= table of tracers in the GF conv transport ==================="
          write(10,*)" SPC,  CHEM_NAME,  FSCAV               - the four Henrys law cts  -   Transport Flag"
@@ -10274,10 +10265,10 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 	               ,Hcts(ispc)%dhr,Hcts(ispc)%ak0  ,Hcts(ispc)%dak , CHEM_NAME_MASK     (ispc)
           if( CHEM_NAME_MASK     (ispc) == 1) then 
 	    print*,"GF is doing transp and wet removal of: ",trim(chem_name(ispc))
-	    call flush(6)
+	    flush(6)
           endif
 	 enddo
-         print*,"=========================================================================";call flush(6)
+         print*,"=========================================================================";flush(6)
 121	 format(1x,I4,A10,5F14.5,I4)
       ENDIF
     END subroutine interface_aerchem

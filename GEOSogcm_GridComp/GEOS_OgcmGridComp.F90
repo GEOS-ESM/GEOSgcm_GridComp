@@ -14,20 +14,12 @@ module GEOS_OgcmGridCompMod
   use ESMF
   use MAPL
 
-  use GEOS_OceanBioGeoChemGridCompMod,   only : ObioSetServices   => SetServices
-  use GEOS_OceanBioGridCompMod,          only : ObioSimpleSetServices => SetServices
-  use GEOS_OradBioGridCompMod,           only : OradBioSetServices   => SetServices
-  use GEOS_OradGridCompMod,              only : OradSetServices   => SetServices
+  use GEOS_OceanBioGeoChemGridCompMod,   only : ObioSetServices    => SetServices
+  use GEOS_OradBioGridCompMod,           only : OradBioSetServices => SetServices
+  use GEOS_OradGridCompMod,              only : OradSetServices    => SetServices
 
-  use GuestOcean_GridCompMod,            only : GuestOceanSetServices  => SetServices
-#ifdef BUILD_MIT_OCEAN
-  use GEOS_MITDynaGridCompMod,           only : SeaIceSetServices => SetServices
-#else
-  use GEOS_CICEDynaGridCompMod,          only : SeaIceSetServices => SetServices
-#endif
-  use GEOS_DataSeaIceGridCompMod,        only : DataSeaIceSetServices => SetServices
-
-  use ice_prescribed_mod,                only : ice_nudging                     
+  use GuestOcean_GridCompMod,            only : GuestOceanSetServices => SetServices
+  use GEOS_SeaIceGridCompMod,            only : SeaIceSetServices => SetServices
 
   implicit none
   private
@@ -40,7 +32,8 @@ module GEOS_OgcmGridCompMod
 ! 
 !   {\tt GEOS\_Ogcm} is a light-weight gridded component that implements the
 !      interface to the ogcm components. The ogcm computational components
-!      (MOMx/GuestOcean, CICEx, OceanRadiation, OceanBioGeochemistry, etc) are its children.
+!      (MOMx/GuestOcean, CICEx/GEOS_Seaice, OceanRadiation, OceanBioGeochemistry, etc)
+!      are its children.
 !      This component currently serves as an interface between the exchange
 !      grid and the ocean's grid. Its ``natural'' grid is the ocean part of the 
 !      exchange grid, and all its imports and exports are on this grid. The natural
@@ -57,10 +50,17 @@ module GEOS_OgcmGridCompMod
 !
 !EOP
 
-  integer, parameter :: NUM_3D_ICE_TRACERS=3
   integer, parameter :: NUM_SNOW_LAYERS=1
   integer            :: NUM_ICE_CATEGORIES
   integer            :: NUM_ICE_LAYERS
+
+  integer            :: DO_CICE_THERMO
+  integer            :: DO_DATASEAONLY
+  integer            :: DO_DATAICE
+  integer            :: DO_OBIO
+  integer            :: DO_DATAATM
+
+!if DO_OBIO =/ 0
   integer, parameter :: NUM_DUDP = 5
   integer, parameter :: NUM_DUWT = 5
   integer, parameter :: NUM_DUSD = 5
@@ -71,19 +71,14 @@ module GEOS_OgcmGridCompMod
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
   integer, parameter :: NB_CHOU_NIR  = 3 ! Number of near-IR bands
   integer, parameter :: NB_CHOU      = NB_CHOU_UV + NB_CHOU_NIR ! Total number of bands
-  integer            :: DO_CICE_THERMO
-  integer            :: DO_DATASEAONLY
-  integer            :: DO_DATAICE
-  integer            :: DO_OBIO
-  integer            :: DO_DATAATM
+!--------
 
+  character(len=ESMF_MAXSTR)          :: OCEAN_NAME
 !=============================================================================
 
   integer ::        OBIO
   integer ::        ORAD
   integer ::      SEAICE
-  integer ::      SEAICEr
-  integer ::      SEAICEd
   integer ::       OCEAN
 
   logical ::      DUAL_OCEAN
@@ -186,22 +181,24 @@ contains
     endif
 
 ! this get resource is repeated in Guest - change both together!
-    call MAPL_GetResource ( MAPL, DO_DATASEAONLY, Label="USE_DATASEA:" , DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_DATASEAONLY, Label="USE_DATASEA:" ,        DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_DATAICE, Label="USE_DATASEAICE:" , DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_DATAICE,     Label="USE_DATASEAICE:" ,     DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, DO_OBIO,        Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, DO_DATAATM,     Label="USE_DATAATM:" ,     DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_DATAATM,     Label="USE_DATAATM:" ,        DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, OCEAN_NAME,     Label="OCEAN_NAME:",          DEFAULT="MOM", __RC__ )
     
+! following logic is to make sure: configuration of cetain components (CICE, OBIO, etc) has associated models "active."
     if (DO_DATAATM/=0) then
        _ASSERT(DO_DATASEAONLY==0,'needs informative message')
     end if
     if (DO_DATASEAONLY/=0) then
        _ASSERT(DO_CICE_THERMO==0,'needs informative message')
-       _ASSERT(DO_DATAICE/=0,'needs informative message')
-       _ASSERT(DO_OBIO==0,'needs informative message')
+       _ASSERT(DO_DATAICE    /=0,'needs informative message')
+       _ASSERT(DO_OBIO       ==0,'needs informative message')
     end if
 
 ! Set the Run and initialize entry points
@@ -216,43 +213,26 @@ contains
        VERIFY_(STATUS)
     end if
 
-! Initialize these IDs (0 means not used)
-! ---------------------------------------
-    SEAICE = 0
-    SEAICEr = 0
-    SEAICEd = 0
-
 
 ! Create childrens gridded components and invoke their SetServices
 ! ----------------------------------------------------------------
 
     if (DO_OBIO/=0) then
-       OBIO = MAPL_AddChild(GC, NAME='OBIO', SS=ObioSetServices, RC=STATUS)
+       OBIO = MAPL_AddChild(GC, NAME='OBIO_OGCM', SS=ObioSetServices, RC=STATUS)
        VERIFY_(STATUS)
        ORAD = MAPL_AddChild(GC, NAME='ORAD', SS=OradBioSetServices, RC=STATUS)
        VERIFY_(STATUS)
     else
-       OBIO = MAPL_AddChild(GC, NAME='OBIO', SS=ObioSimpleSetServices, RC=STATUS)
-       VERIFY_(STATUS)
+       OBIO = 0
        ORAD = MAPL_AddChild(GC, NAME='ORAD', SS=OradSetServices, RC=STATUS)
        VERIFY_(STATUS)
     end if
     
-    if (DO_DATAICE/=0) then
-       SEAICE = MAPL_AddChild(GC, NAME='SEAICE', SS=DataSeaIceSetServices, RC=STATUS)
-       VERIFY_(STATUS)
-    else
-       SEAICE = MAPL_AddChild(GC, NAME='SEAICE', SS=SeaIceSetServices, RC=STATUS)
-       VERIFY_(STATUS)
-     end if
+    SEAICE = MAPL_AddChild(GC, NAME='SEAICE', SS=SeaIceSetServices, RC=STATUS)
+    VERIFY_(STATUS)
 
-     if (DUAL_OCEAN) then ! that is, running dual ocean
-       SEAICEd = MAPL_AddChild(GC, NAME='SEAICEdata', SS=DataSeaIceSetServices, RC=STATUS)
-       VERIFY_(STATUS)
-     endif
-
-     OCEAN = MAPL_AddChild(GC, NAME='OCEAN', SS=GuestOceanSetServices, RC=STATUS) 
-     VERIFY_(STATUS)
+    OCEAN = MAPL_AddChild(GC, NAME='OCEAN', SS=GuestOceanSetServices, RC=STATUS) 
+    VERIFY_(STATUS)
    
 ! Set the state variable specs.
 ! -----------------------------
@@ -306,14 +286,6 @@ contains
                                            RC=STATUS          ) 
   VERIFY_(STATUS)
 
-  call MAPL_AddImportSpec(GC,                            &
-    LONG_NAME          = 'surface_wind_speed'                ,&
-    UNITS              = 'm s-1'                             ,&
-    SHORT_NAME         = 'UU'                                ,&
-    DIMS               = MAPL_DimsTileOnly                   ,&
-    VLOCATION          = MAPL_VLocationNone                  ,&
-                                           RC=STATUS          ) 
-  VERIFY_(STATUS)
 
   call MAPL_AddImportSpec(GC,                            &
     LONG_NAME           = 'surface_air_pressure',             &
@@ -389,213 +361,11 @@ contains
        RC=STATUS  ) 
   VERIFY_(STATUS)
 
-  call MAPL_AddImportSpec(GC,                             &
-       LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
-       UNITS              = '1e-6'                       ,&
-       SHORT_NAME         = 'CO2SC'                      ,&
-       DIMS               = MAPL_DimsTileOnly            ,&
-       VLOCATION          = MAPL_VLocationNone           ,&
-       RESTART            = MAPL_RestartSkip             ,&
-       RC=STATUS  ) 
-  VERIFY_(STATUS)
-
   if (DO_OBIO/=0) then
-  do k=1, 33
-   write(unit = suffix, fmt = '(i2.2)') k
-   call MAPL_AddImportSpec(GC,                                &
-      SHORT_NAME = 'TAUA_'//suffix,                           &
-      LONG_NAME  = 'aerosol optical thickness',               &
-      UNITS      = '',                                        &
-      DIMS       = MAPL_DimsTileOnly,                         &
-      VLOCATION  = MAPL_VLocationNone,                        &
-      RC=STATUS  )
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                                &
-      SHORT_NAME = 'ASYMP_'//suffix,                          &
-      LONG_NAME  = 'asymmetry parameter',                     &
-      UNITS      = '',                                        &
-      DIMS       = MAPL_DimsTileOnly,                         &
-      VLOCATION  = MAPL_VLocationNone,                        &
-      RC=STATUS  )
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                                &
-      SHORT_NAME = 'SSALB_'//suffix,                          &
-      LONG_NAME  = 'single scattering albedo',                &
-      UNITS      = '',                                        &
-      DIMS       = MAPL_DimsTileOnly,                         &
-      VLOCATION  = MAPL_VLocationNone,                        &
-      RC=STATUS  )
-   VERIFY_(STATUS)
-  enddo
-  end if
-
-  call MAPL_AddImportSpec(GC,                             &
-       LONG_NAME          = 'Dust Dry Deposition'        ,&
-       UNITS              = 'kg m-2 s-1'                 ,&
-       SHORT_NAME         = 'DUDP'                       ,&
-       DIMS               = MAPL_DimsTileOnly            ,&
-       UNGRIDDED_DIMS     = (/NUM_DUDP/)                 ,&
-       VLOCATION          = MAPL_VLocationNone           ,&
-       RESTART            = MAPL_RestartSkip             ,&
-       RC=STATUS  ) 
-  VERIFY_(STATUS)
-     
-  call MAPL_AddImportSpec(GC,                             &
-       LONG_NAME          = 'Dust Wet Deposition'        ,&
-       UNITS              = 'kg m-2 s-1'                 ,&
-       SHORT_NAME         = 'DUWT'                       ,&
-       DIMS               = MAPL_DimsTileOnly            ,&
-       UNGRIDDED_DIMS     = (/NUM_DUWT/)                 ,&
-       VLOCATION          = MAPL_VLocationNone           ,&
-       RESTART            = MAPL_RestartSkip             ,&
-       RC=STATUS  ) 
-  VERIFY_(STATUS)
-     
-  call MAPL_AddImportSpec(GC,                             &
-       LONG_NAME          = 'Dust Sedimentation'         ,&
-       UNITS              = 'kg m-2 s-1'                 ,&
-       SHORT_NAME         = 'DUSD'                       ,&
-       DIMS               = MAPL_DimsTileOnly            ,&
-       UNGRIDDED_DIMS     = (/NUM_DUSD/)                 ,&
-       VLOCATION          = MAPL_VLocationNone           ,&
-       RESTART            = MAPL_RestartSkip             ,&
-       RC=STATUS  ) 
-  VERIFY_(STATUS)
-
-  call MAPL_AddImportSpec(GC,                                 &
-       SHORT_NAME = 'CCOVM',                                  &
-       LONG_NAME  = 'cloud cover',                            &
-       UNITS      = 'fraction (dimensionless)',               &
-       DIMS       = MAPL_DimsTileOnly,                        &
-       VLOCATION  = MAPL_VLocationNone,                       &
-       RC=STATUS  )
-  VERIFY_(STATUS)
-
-  call MAPL_AddImportSpec(GC,                                 &
-       SHORT_NAME = 'CDREM',                                  &
-       LONG_NAME  = 'cloud droplet effective radius',         &
-       UNITS      = '',                                       &
-       DIMS       = MAPL_DimsTileOnly,                        &
-       VLOCATION  = MAPL_VLocationNone,                       &
-       RC=STATUS  )
-  VERIFY_(STATUS)
-  
-  call MAPL_AddImportSpec(GC,                                 &
-       SHORT_NAME = 'RLWPM',                                  &
-       LONG_NAME  = 'cloud liquid water path',                &
-       UNITS      = '',                                       &
-       DIMS       = MAPL_DimsTileOnly,                        &
-       VLOCATION  = MAPL_VLocationNone,                       &
-       RC=STATUS  )
-  VERIFY_(STATUS)
-  
-  call MAPL_AddImportSpec(GC,                                 &
-       SHORT_NAME = 'CLDTCM',                                 &
-       LONG_NAME  = 'cloud optical thickness',                &
-       UNITS      = '',                                       &
-       DIMS       = MAPL_DimsTileOnly,                        &
-       VLOCATION  = MAPL_VLocationNone,                       &
-       RC=STATUS  )
-  VERIFY_(STATUS)
-
-  call MAPL_AddImportSpec(GC,                                 &
-       SHORT_NAME = 'RH',                                     &
-       LONG_NAME  = 'relative humidity',                      &
-       UNITS      = 'percent',                                &
-       DIMS       = MAPL_DimsTileOnly,                        &
-       VLOCATION  = MAPL_VLocationNone,                       &
-       RC=STATUS  )
-  VERIFY_(STATUS)     
-
-  call MAPL_AddImportSpec(GC,                                 &
-       SHORT_NAME = 'OZ',                                     &
-       LONG_NAME  = 'ozone thickness',                        &
-       UNITS      = 'Dobson units',                           &
-       DIMS       = MAPL_DimsTileOnly,                        &
-       VLOCATION  = MAPL_VLocationNone,                       &
-       RC=STATUS  )
-  VERIFY_(STATUS)
-  
-  call MAPL_AddImportSpec(GC,                                 &
-       SHORT_NAME = 'WV',                                     &
-       LONG_NAME  = 'water vapor',                            &
-       UNITS      = 'cm',                                     &
-       DIMS       = MAPL_DimsTileOnly,                        &
-       VLOCATION  = MAPL_VLocationNone,                       &
-       RC=STATUS  )
-  VERIFY_(STATUS)
-
-  if(DO_DATAATM==0) then
-     call MAPL_AddImportSpec(GC,                             &
-          LONG_NAME          = 'Black Carbon Dry Deposition',&
-          UNITS              = 'kg m-2 s-1'                 ,&
-          SHORT_NAME         = 'BCDP'                       ,&
-          DIMS               = MAPL_DimsTileOnly            ,&
-          UNGRIDDED_DIMS     = (/NUM_BCDP/)                 ,&
-          VLOCATION          = MAPL_VLocationNone           ,&
-          RESTART            = MAPL_RestartSkip             ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddImportSpec(GC,                             &
-          LONG_NAME          = 'Black Carbon Wet Deposition',&
-          UNITS              = 'kg m-2 s-1'                 ,&
-          SHORT_NAME         = 'BCWT'                       ,&
-          DIMS               = MAPL_DimsTileOnly            ,&
-          UNGRIDDED_DIMS     = (/NUM_BCWT/)                 ,&
-          VLOCATION          = MAPL_VLocationNone           ,&
-          RESTART            = MAPL_RestartSkip             ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddImportSpec(GC,                               &
-          LONG_NAME          = 'Organic Carbon Dry Deposition',&
-          UNITS              = 'kg m-2 s-1'                   ,&
-          SHORT_NAME         = 'OCDP'                         ,&
-          DIMS               = MAPL_DimsTileOnly              ,&
-          UNGRIDDED_DIMS     = (/NUM_OCDP/)                   ,&
-          VLOCATION          = MAPL_VLocationNone             ,&
-          RESTART            = MAPL_RestartSkip               ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddImportSpec(GC,                               &
-          LONG_NAME          = 'Organic Carbon Wet Deposition',&
-          UNITS              = 'kg m-2 s-1'                   ,&
-          SHORT_NAME         = 'OCWT'                         ,&
-          DIMS               = MAPL_DimsTileOnly              ,&
-          UNGRIDDED_DIMS     = (/NUM_OCWT/)                   ,&
-          VLOCATION          = MAPL_VLocationNone             ,&
-          RESTART            = MAPL_RestartSkip               ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddImportSpec(GC,                             &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
-          UNITS              = 'W m-2'                      ,&
-          SHORT_NAME         = 'FSWBAND'                    ,&
-          DIMS               = MAPL_DimsTileOnly            ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
-          VLOCATION          = MAPL_VLocationNone           ,&
-          RESTART            = MAPL_RestartSkip             ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-     call MAPL_AddImportSpec(GC,                             &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
-          UNITS              = 'W m-2'                      ,&
-          SHORT_NAME         = 'FSWBANDNA'                  ,&
-          DIMS               = MAPL_DimsTileOnly            ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
-          VLOCATION          = MAPL_VLocationNone           ,&
-          RESTART            = MAPL_RestartSkip             ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
+    call OBIO_SetServices(DO_DATAATM, RC)
   end if
   
-     ! These are supposed to be friendly to us
+! These are supposed to be friendly to us
 !----------------------------------------------
 
   call MAPL_AddImportSpec(GC,                            &
@@ -789,6 +559,15 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
+    call MAPL_AddImportSpec(GC,                                  &
+         SHORT_NAME         = 'PEN_OCN',                         &
+         LONG_NAME          = 'penetrated_shortwave_flux_at_the_bottom_of_first_ocean_model_layer', &
+         UNITS              = 'W m-2',                           &
+         DIMS               = MAPL_DimsTileOnly,                 &
+         VLOCATION          = MAPL_VLocationNone,                &
+         RC=STATUS  )
+    VERIFY_(STATUS)
+
 !  !EXPORT STATE:
 
   call MAPL_AddExportSpec(GC,                            &
@@ -882,7 +661,6 @@ contains
                                                    RC=STATUS  )
   VERIFY_(STATUS)
 
-
   if (DO_CICE_THERMO == 0) then  
      call MAPL_AddExportSpec(GC,                            &
           SHORT_NAME         = 'FRACICE',                           &
@@ -918,66 +696,23 @@ contains
 !---------------------------------
 
   if(DO_DATASEAONLY==0) then
-     ! Radiation to Ocean
-     call MAPL_AddConnectivity ( GC,  &
-          SHORT_NAME  = (/'SWHEAT'/), &
-          DST_ID = OCEAN,             &
-          SRC_ID = ORAD,              &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+!   if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
+       ! Radiation to Ocean
+       call MAPL_AddConnectivity ( GC,  &
+            SHORT_NAME  = (/'SWHEAT'/), &
+            DST_ID = OCEAN,             &
+            SRC_ID = ORAD,              &
+            RC=STATUS  )
+       VERIFY_(STATUS)
      
-     ! Ocean to Radiation
-     call MAPL_AddConnectivity ( GC,  &
-          SHORT_NAME  = (/'DH'/),     &
-          DST_ID = ORAD,              &
-          SRC_ID = OCEAN,             &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-  end if
-
-  if(DO_OBIO/=0) then
-
-     ! Ocean to OceanBio
-     call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'DH', 'T ', 'S '/),     &
-          DST_ID = OBIO,               &
-          SRC_ID = OCEAN,              &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-     
-     ! OceanRad to OceanBio
-     call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'TIRRQ'/),   &
-          DST_ID = OBIO,               &
-          SRC_ID = ORAD,               &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-
-     call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'CDOMABSQ'/),   &
-          DST_ID = OBIO,               &
-          SRC_ID = ORAD,               &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-     
-     ! OceanBio to OceanRad
-     call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'DIATOM','CHLORO','CYANO ','DINO  ',&
-                          'PHAEO ','COCCO ','CDET  ','PIC   ',&
-                          'CDC   ','AVGQ  '/), &
-          DST_ID = ORAD,               &
-          SRC_ID = OBIO,               &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-     
-     ! Seaice to OceanBio
-     call MAPL_AddConnectivity ( GC,   &
-          SHORT_NAME  = (/'FRACICE'/), &
-          DST_ID = OBIO,               &
-          SRC_ID = SEAICE,             &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-     
+       ! Ocean to Radiation
+       call MAPL_AddConnectivity ( GC,  &
+            SHORT_NAME  = (/'DH'/),     &
+            DST_ID = ORAD,              &
+            SRC_ID = OCEAN,             &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+!   end if
   end if
 
   call MAPL_AddConnectivity ( GC,  &
@@ -986,6 +721,23 @@ contains
           SRC_ID = SEAICE,            &
           RC=STATUS  )
   VERIFY_(STATUS)
+
+  if(DUAL_OCEAN) then 
+     call MAPL_AddConnectivity ( GC,  &
+          SRC_NAME  = (/'FRACICEd'/), & 
+          DST_NAME  = (/'FRACICEd'/), & 
+          DST_ID = OCEAN,             &
+          SRC_ID = SEAICE,            &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+     ! ice nudging needs it 
+     call MAPL_AddConnectivity ( GC,  &
+          SHORT_NAME  = (/'SS_FOUND'/), & 
+          DST_ID = SEAICE,            &
+          SRC_ID = OCEAN,             &
+          RC=STATUS  )
+     VERIFY_(STATUS)
+  endif
   
   if(DO_DATASEAONLY==0) then
      call MAPL_AddConnectivity ( GC,  &
@@ -995,23 +747,28 @@ contains
           RC=STATUS  )
      VERIFY_(STATUS)
      
-     call MAPL_AddConnectivity ( GC,  &
-          SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
-          'STROCNXB', 'STROCNYB', 'AICEU   ', 'FRESH   ', 'FSALT   ', 'FHOCN   '/), &
-          DST_ID = OCEAN,             &
-          SRC_ID = SEAICE,            &
-          RC=STATUS  )
-     VERIFY_(STATUS)
+     if (trim(OCEAN_NAME) == "MOM") then  ! MOM5
+       call MAPL_AddConnectivity ( GC,  &
+            SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
+                            'STROCNXB','STROCNYB', 'AICEU   ', 'FRESH   ', &
+                            'FSALT   ','FHOCN   '/), &
+            DST_ID = OCEAN,             &
+            SRC_ID = SEAICE,            &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+     else ! MOM6
+       call MAPL_AddConnectivity ( GC,  &
+            SHORT_NAME  = (/'TAUXBOT ','TAUYBOT ', 'HICE    ', 'HSNO    ', &
+                            'FRESH   ','FSALT   ', 'FHOCN   ', 'AICE    '/), &
+            DST_ID = OCEAN,             &
+            SRC_ID = SEAICE,            &
+            RC=STATUS  )
+       VERIFY_(STATUS)
+     endif
   end if
 
 ! Children's imports are in the ocean grid and are all satisfied
 !   by OGCM from exchange grid quantities.
-
-  if(DO_OBIO /= 0) then
-     call MAPL_TerminateImport(GC, SHORT_NAME = ['PS    ','UU    ','OZ    ','WV    ',&
-          'RH    ','CCOVM ','CLDTCM','RLWPM ','CDREM '], CHILD=ORAD, RC=STATUS  )
-     VERIFY_(STATUS)
-  end if
   
   call MAPL_TerminateImport    ( GC, ALL=.true., RC=STATUS  )
 
@@ -1046,7 +803,277 @@ contains
     VERIFY_(STATUS)
  
     RETURN_(ESMF_SUCCESS)
+ 
+    contains
+
+    subroutine OBIO_SetServices(DO_DATAATM, RC)
+    
+      integer,                intent(IN   ) ::  DO_DATAATM
+      integer, optional,      intent(  OUT) ::  RC
+      integer                               :: STATUS
+
+      integer          :: k
+
+      call MAPL_AddImportSpec(GC,                            &
+         LONG_NAME          = 'surface_wind_speed'        ,&
+         UNITS              = 'm s-1'                     ,&
+         SHORT_NAME         = 'UU'                        ,&
+         DIMS               = MAPL_DimsTileOnly           ,&
+         VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS          ) 
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                             &
+         LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
+         UNITS              = '1e-6'                       ,&
+         SHORT_NAME         = 'CO2SC'                      ,&
+         DIMS               = MAPL_DimsTileOnly            ,&
+         VLOCATION          = MAPL_VLocationNone           ,&
+         RESTART            = MAPL_RestartSkip             ,&
+         RC=STATUS  ) 
+      VERIFY_(STATUS)
+
+      do k=1, 33
+        write(unit = suffix, fmt = '(i2.2)') k
+        call MAPL_AddImportSpec(GC,                               &
+             SHORT_NAME = 'TAUA_'//suffix,                        &
+             LONG_NAME  = 'aerosol optical thickness',            &
+             UNITS      = '',                                     &
+             DIMS       = MAPL_DimsTileOnly,                      &
+             VLOCATION  = MAPL_VLocationNone,                     &
+             RC=STATUS  )
+        VERIFY_(STATUS)
+
+        call MAPL_AddImportSpec(GC,                               &
+             SHORT_NAME = 'ASYMP_'//suffix,                       &
+             LONG_NAME  = 'asymmetry parameter',                  &
+             UNITS      = '',                                     &
+             DIMS       = MAPL_DimsTileOnly,                      &
+             VLOCATION  = MAPL_VLocationNone,                     &
+             RC=STATUS  )
+        VERIFY_(STATUS)
+
+        call MAPL_AddImportSpec(GC,                               &
+             SHORT_NAME = 'SSALB_'//suffix,                       &  
+             LONG_NAME  = 'single scattering albedo',             &
+             UNITS      = '',                                     &
+             DIMS       = MAPL_DimsTileOnly,                      &
+             VLOCATION  = MAPL_VLocationNone,                     &
+             RC=STATUS  )
+        VERIFY_(STATUS)
+      enddo
+
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'Dust Dry Deposition'        ,&
+           UNITS              = 'kg m-2 s-1'                 ,&
+           SHORT_NAME         = 'DUDP'                       ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NUM_DUDP/)                 ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'Dust Wet Deposition'        ,&
+           UNITS              = 'kg m-2 s-1'                 ,&
+           SHORT_NAME         = 'DUWT'                       ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NUM_DUWT/)                 ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+     
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'Dust Sedimentation'         ,&
+           UNITS              = 'kg m-2 s-1'                 ,&
+           SHORT_NAME         = 'DUSD'                       ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NUM_DUSD/)                 ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                             &
+           SHORT_NAME = 'CCOVM',                              &
+           LONG_NAME  = 'cloud cover',                        &
+           UNITS      = 'fraction (dimensionless)',           &
+           DIMS       = MAPL_DimsTileOnly,                    &
+           VLOCATION  = MAPL_VLocationNone,                   &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                                 &
+           SHORT_NAME = 'CDREM',                                  &
+           LONG_NAME  = 'cloud droplet effective radius',         &
+           UNITS      = '',                                       &
+           DIMS       = MAPL_DimsTileOnly,                        &
+           VLOCATION  = MAPL_VLocationNone,                       &
+           RC=STATUS  )
+      VERIFY_(STATUS)
   
+      call MAPL_AddImportSpec(GC,                                 &
+           SHORT_NAME = 'RLWPM',                                  &
+           LONG_NAME  = 'cloud liquid water path',                &
+           UNITS      = '',                                       &
+           DIMS       = MAPL_DimsTileOnly,                        &
+           VLOCATION  = MAPL_VLocationNone,                       &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+  
+      call MAPL_AddImportSpec(GC,                                 &
+           SHORT_NAME = 'CLDTCM',                                 &
+           LONG_NAME  = 'cloud optical thickness',                &
+           UNITS      = '',                                       &
+           DIMS       = MAPL_DimsTileOnly,                        &
+           VLOCATION  = MAPL_VLocationNone,                       &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                                 &
+           SHORT_NAME = 'RH',                                     &
+           LONG_NAME  = 'relative humidity',                      &
+           UNITS      = 'percent',                                &
+           DIMS       = MAPL_DimsTileOnly,                        &
+           VLOCATION  = MAPL_VLocationNone,                       &
+           RC=STATUS  )
+      VERIFY_(STATUS)     
+
+      call MAPL_AddImportSpec(GC,                                 &
+           SHORT_NAME = 'OZ',                                     &
+           LONG_NAME  = 'ozone thickness',                        &
+           UNITS      = 'Dobson units',                           &
+           DIMS       = MAPL_DimsTileOnly,                        &
+           VLOCATION  = MAPL_VLocationNone,                       &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+  
+      call MAPL_AddImportSpec(GC,                                 &
+           SHORT_NAME = 'WV',                                     &
+           LONG_NAME  = 'water vapor',                            &
+           UNITS      = 'cm',                                     &
+           DIMS       = MAPL_DimsTileOnly,                        &
+           VLOCATION  = MAPL_VLocationNone,                       &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'Black Carbon Dry Deposition',&
+           UNITS              = 'kg m-2 s-1'                 ,&
+           SHORT_NAME         = 'BCDP'                       ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NUM_BCDP/)                 ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+     
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'Black Carbon Wet Deposition',&
+           UNITS              = 'kg m-2 s-1'                 ,&
+           SHORT_NAME         = 'BCWT'                       ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NUM_BCWT/)                 ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+     
+      call MAPL_AddImportSpec(GC,                               &
+           LONG_NAME          = 'Organic Carbon Dry Deposition',&
+           UNITS              = 'kg m-2 s-1'                   ,&
+           SHORT_NAME         = 'OCDP'                         ,&
+           DIMS               = MAPL_DimsTileOnly              ,&
+           UNGRIDDED_DIMS     = (/NUM_OCDP/)                   ,&
+           VLOCATION          = MAPL_VLocationNone             ,&
+           RESTART            = MAPL_RestartSkip               ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+     
+      call MAPL_AddImportSpec(GC,                               &
+           LONG_NAME          = 'Organic Carbon Wet Deposition',&
+           UNITS              = 'kg m-2 s-1'                   ,&
+           SHORT_NAME         = 'OCWT'                         ,&
+           DIMS               = MAPL_DimsTileOnly              ,&
+           UNGRIDDED_DIMS     = (/NUM_OCWT/)                   ,&
+           VLOCATION          = MAPL_VLocationNone             ,&
+           RESTART            = MAPL_RestartSkip               ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+   
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
+           UNITS              = 'W m-2'                      ,&
+           SHORT_NAME         = 'FSWBAND'                    ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+     
+      call MAPL_AddImportSpec(GC,                             &
+           LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
+           UNITS              = 'W m-2'                      ,&
+           SHORT_NAME         = 'FSWBANDNA'                  ,&
+           DIMS               = MAPL_DimsTileOnly            ,&
+           UNGRIDDED_DIMS     = (/NB_CHOU/)                  ,&
+           VLOCATION          = MAPL_VLocationNone           ,&
+           RESTART            = MAPL_RestartSkip             ,&
+           RC=STATUS  ) 
+      VERIFY_(STATUS)
+
+!     if (trim(OCEAN_NAME) == "MOM") then  ! MOM5 only
+        ! Ocean to OceanBio
+        call MAPL_AddConnectivity ( GC,   &
+             SHORT_NAME  = (/'DH', 'T ', 'S '/),     &
+             DST_ID = OBIO,               &
+             SRC_ID = OCEAN,              &
+             RC=STATUS  )
+        VERIFY_(STATUS)
+!     end if
+     
+      ! OceanRad to OceanBio
+      call MAPL_AddConnectivity ( GC,   &
+           SHORT_NAME  = (/'TIRRQ'/),   &
+           DST_ID = OBIO,               &
+           SRC_ID = ORAD,               &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddConnectivity ( GC,   &
+           SHORT_NAME  = (/'CDOMABSQ'/),   &
+           DST_ID = OBIO,               &
+           SRC_ID = ORAD,               &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+     
+      ! OceanBio to OceanRad
+      call MAPL_AddConnectivity ( GC,   &
+           SHORT_NAME  = (/'DIATOM','CHLORO','CYANO ','DINO  ',&
+                           'PHAEO ','COCCO ','CDET  ','PIC   ',&
+                           'CDC   ','AVGQ  '/), &
+           DST_ID = ORAD,               &
+           SRC_ID = OBIO,               &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+     
+      ! Seaice to OceanBio
+      call MAPL_AddConnectivity ( GC,   &
+           SHORT_NAME  = (/'FRACICE'/), &
+           DST_ID = OBIO,               &
+           SRC_ID = SEAICE,             &
+           RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_TerminateImport(GC, SHORT_NAME = ['PS    ','UU    ','OZ    ','WV    ',&
+          'RH    ','CCOVM ','CLDTCM','RLWPM ','CDREM '], CHILD=ORAD, RC=STATUS  )
+      VERIFY_(STATUS)
+
+    end subroutine OBIO_SetServices
+ 
   end subroutine SetServices
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1195,72 +1222,6 @@ contains
     call MAPL_GridGet(grid, localCellCountPerDim=COUNTS, RC=STATUS)
     VERIFY_(STATUS)
 
-! Tag seaice's friendly imports
-!-----------------------------
-
-    call ESMF_StateGet (GIM(SEAICE), 'TI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-    VERIFY_(STATUS)
-    if (SEAICEd /= 0) then
-       call ESMF_StateGet (GIM(SEAICEd), 'TI', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       call ESMF_StateGet (GIM(SEAICEd), 'HI', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       call ESMF_StateGet (GIM(SEAICEd), 'SI', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-    end if
-    VERIFY_(STATUS)
-
-    if(DO_CICE_THERMO/=0) then
-       call ESMF_StateGet (GIM(SEAICE), 'FRACICE', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-
-       call ESMF_StateGet (GIM(SEAICE), 'VOLICE', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-
-       call ESMF_StateGet (GIM(SEAICE), 'VOLSNO', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-
-       call ESMF_StateGet (GIM(SEAICE), 'ERGICE', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-
-       call ESMF_StateGet (GIM(SEAICE), 'ERGSNO', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-
-       call ESMF_StateGet (GIM(SEAICE), 'TAUAGE', FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-
-       call ESMF_StateGet (GIM(SEAICE), 'MPOND',  FIELD, RC=STATUS)
-       VERIFY_(STATUS)
-       call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-       VERIFY_(STATUS)
-    end if
-
-    call ESMF_StateGet (GIM(SEAICE), 'HI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-    VERIFY_(STATUS)
-
-    call ESMF_StateGet (GIM(SEAICE), 'SI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeSet  (FIELD, NAME="FriendlyToSEAICE", VALUE=.true., RC=STATUS)
-    VERIFY_(STATUS)
 
 ! Fill the ocean fraction exposed to atmosphere (skin area) 
 !   in the childrens import, if they want it
@@ -1285,12 +1246,16 @@ contains
 ! Put OBIO tracers into the OCEAN's tracer bundle.
 !-------------------------------------------------
 
-!    if (DO_DATASEAONLY==0) then
-!       call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
-!       VERIFY_(STATUS)
-!       call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )
-!       VERIFY_(STATUS)
-!    end if
+    if (DO_DATASEAONLY==0) then
+       if (trim(OCEAN_NAME) == "MOM") then
+         call ESMF_StateGet(GIM(OCEAN), 'TR', BUNDLE, RC=STATUS)
+         VERIFY_(STATUS)
+         if (DO_OBIO/=0) then
+            call MAPL_GridCompGetFriendlies(GCS(OBIO),"OCEAN", BUNDLE, RC=STATUS )
+            VERIFY_(STATUS)
+         end if
+      endif
+    end if
 
 !   The section below attempts to make an intellegent guess of the default
 !   for INTERPOLATE_SST 
@@ -1332,10 +1297,6 @@ contains
     if( OCUBE ) then
        ORES = 4*(ORES/6)
     end if
-
-#ifdef __GFORTRAN__
-    deallocate(gnames, gridim, gridjm)
-#endif
 
     if (ARES > ORES) then
        ! Ocean grid is coarser; we should interpolate
@@ -1463,6 +1424,7 @@ contains
     real, pointer, dimension(:) :: FRESH => null()
     real, pointer, dimension(:) :: FSALT => null()
     real, pointer, dimension(:) :: FHOCN => null()
+    real, pointer, dimension(:) :: PEN_OCN => null()
 
 ! Pointers to ocn grid versions
 
@@ -1529,14 +1491,13 @@ contains
     real, pointer, dimension(:,:) :: STROCNXB => null() 
     real, pointer, dimension(:,:) :: STROCNYB => null()
     real, pointer, dimension(:,:) :: AICEU => null()
+    real, pointer, dimension(:,:) :: AICE  => null()
     real, pointer, dimension(:,:) :: UWBO => null()
     real, pointer, dimension(:,:) :: VWBO => null()
 
     real, pointer, dimension(:,:,:) :: TIO8 => null()
-    real, pointer, dimension(:,:,:) :: TIO8d => null()
     real, pointer, dimension(:,:)   :: FRI => null()
     real, pointer, dimension(:,:,:) :: FRO8 => null()
-    real, pointer, dimension(:,:,:) :: FRO8d => null()
     real, pointer, dimension(:,:)   :: FRO => null()
     real, pointer, dimension(:,:)   :: TIO => null()
     real, pointer, dimension(:,:,:) :: VOLICEO => null()
@@ -1545,19 +1506,6 @@ contains
     real, pointer, dimension(:,:,:) :: MPONDO => null()
     real, pointer, dimension(:,:,:) :: ERGICEO => null()
     real, pointer, dimension(:,:,:) :: ERGSNOO => null()
-    real, pointer, dimension(:,:)   :: DAIDTNUDG => null()
-    real, pointer, dimension(:,:)   :: DVIDTNUDG => null()
-    real, pointer, dimension(:,:)   :: AICEDO => null()
-    real, pointer, dimension(:,:)   :: HICEDO => null()
-    real, pointer, dimension(:,:)   :: HSNODO => null()
-
-    real, pointer, dimension(:,:,:) :: VOLICEOd => null()
-    real, pointer, dimension(:,:,:) :: VOLSNOOd => null()
-    real, pointer, dimension(:,:,:) :: TAUAGEOd => null()
-    real, pointer, dimension(:,:,:) :: MPONDOd => null()
-
-    real, pointer, dimension(:,:,:) :: ERGICEOd => null()
-    real, pointer, dimension(:,:,:) :: ERGSNOOd => null()
 
     real, pointer, dimension(:,:) :: LWFLXO => null()
     real, pointer, dimension(:,:) :: SHFLXO => null()
@@ -1567,6 +1515,7 @@ contains
     real, pointer, dimension(:,:) :: FRESHO   => null()
     real, pointer, dimension(:,:) :: FSALTO   => null()
     real, pointer, dimension(:,:) :: FHOCNO   => null()
+    real, pointer, dimension(:,:) :: PEN_OCNO => null()
 
 ! Pointers to exports
 
@@ -1592,8 +1541,6 @@ contains
     integer :: PHASE
     integer :: PHASE_
     integer, allocatable :: CHLD(:)
-    integer :: CAT_DIST                  ! parameters for sea ice nudging
-    real    :: HIN, RN, DT, TAU_SIT      ! parameters for sea ice nudging 
 
 !=============================================================================
 
@@ -1605,6 +1552,7 @@ contains
     Iam = 'Run'
     call ESMF_GridCompGet( GC, name=COMP_NAME, currentPhase=PHASE, RC=status)
     VERIFY_(STATUS)
+    if (PHASE >= 10) PHASE = PHASE - 10 ! to be replaced with MAPL get_phase   
     Iam = trim(COMP_NAME) // Iam
 
 ! Get my internal MAPL_Generic state
@@ -1623,11 +1571,11 @@ contains
 !-----------------------------------
 
     call MAPL_Get(MAPL,             &
-         ExchangeGrid  = ExchGrid,               &
-         GIM       = GIM,                        &
-         GEX       = GEX,                        &
-         GCS       = GCS,                        &
-                                       RC=STATUS )
+         ExchangeGrid  = ExchGrid,  &
+         GIM       = GIM,           & 
+         GEX       = GEX,           &
+         GCS       = GCS,           &
+    RC=STATUS )
     VERIFY_(STATUS)
 
 ! Pointers to imports
@@ -1642,8 +1590,6 @@ contains
     call MAPL_GetPointer(IMPORT, TAUYI   ,  'TAUYI'  , RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, USTR3   ,  'OUSTAR3', RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, UU      ,  'UU',      RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PS      ,  'PS'  , RC=STATUS)
     VERIFY_(STATUS)
@@ -1667,7 +1613,7 @@ contains
     VERIFY_(STATUS)
 
     if (DO_CICE_THERMO /= 0) then  
-       call MAPL_GetPointer(IMPORT, TI8      ,  'TI'     , RC=STATUS)
+       call MAPL_GetPointer(IMPORT, TI8     ,  'TI'     , RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(IMPORT, FR8     , 'FRACICE' , RC=STATUS)
        VERIFY_(STATUS)
@@ -1684,60 +1630,13 @@ contains
        call MAPL_GetPointer(IMPORT, MPOND   , 'MPOND'   , RC=STATUS)
        VERIFY_(STATUS)
     else
-       call MAPL_GetPointer(IMPORT, TI       ,  'TI'     , RC=STATUS)
+       call MAPL_GetPointer(IMPORT, TI      ,  'TI'     , RC=STATUS)
        VERIFY_(STATUS)
     endif 
     
-    call MAPL_GetPointer(IMPORT, CO2SC   ,  'CO2SC'  , RC=STATUS)
-    VERIFY_(STATUS)
-
     if (DO_OBIO/=0) then
-    do k=1, 33
-     write(unit = suffix, fmt = '(i2.2)') k
-     call MAPL_GetPointer(IMPORT, ATAUA(k)%b,'TAUA_'//suffix,   RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, AASYMP(k)%b,'ASYMP_'//suffix, RC=STATUS)
-     VERIFY_(STATUS)
-     call MAPL_GetPointer(IMPORT, ASSALB(k)%b,'SSALB_'//suffix, RC=STATUS)
-     VERIFY_(STATUS)
-    enddo
+      call OBIO_RunTransforms(DO_DATAATM, RC)
     endif
-
-    call MAPL_GetPointer(IMPORT, DUDP    ,  'DUDP'   , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, DUWT    ,  'DUWT'   , RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, DUSD    ,  'DUSD'   , RC=STATUS)
-    VERIFY_(STATUS)
-    if(DO_DATAATM==0) then
-       call MAPL_GetPointer(IMPORT, BCDP    ,  'BCDP'   , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, BCWT    ,  'BCWT'   , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, OCDP    ,  'OCDP'   , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, OCWT    ,  'OCWT'   , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'   , RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA' , RC=STATUS)
-       VERIFY_(STATUS)
-    end if
-
-    call MAPL_GetPointer(IMPORT, CCOVM,     'CCOVM',   RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, CDREM,     'CDREM',   RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, RLWPM,     'RLWPM',   RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, CLDTCM,    'CLDTCM',  RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, RH,        'RH',      RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, OZ,        'OZ',      RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, WV,        'WV',      RC=STATUS)
-    VERIFY_(STATUS)
 
     call MAPL_GetPointer(IMPORT, LWFLX, 'LWFLX', RC=STATUS)
     VERIFY_(STATUS)
@@ -1745,15 +1644,17 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, QFLUX, 'QFLUX', RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, SNOW, 'SNOW', RC=STATUS)
+    call MAPL_GetPointer(IMPORT, SNOW,  'SNOW' , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, RAIN, 'RAIN', RC=STATUS)
+    call MAPL_GetPointer(IMPORT, RAIN,  'RAIN' , RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FRESH,   'FRESH'  , RC=STATUS)
+    call MAPL_GetPointer(IMPORT, FRESH, 'FRESH', RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FSALT,   'FSALT'  , RC=STATUS)
+    call MAPL_GetPointer(IMPORT, FSALT, 'FSALT', RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT, FHOCN,   'FHOCN'  , RC=STATUS)
+    call MAPL_GetPointer(IMPORT, FHOCN, 'FHOCN', RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, PEN_OCN,'PEN_OCN',RC=STATUS)
     VERIFY_(STATUS)
 
 ! Verify that the saltwater ice variables are friendly to seaice
@@ -1833,46 +1734,6 @@ contains
     call MAPL_GetPointer(GIM(OCEAN ), USTR3O  ,  'OUSTAR3', notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(GIM(OCEAN ), PSO     ,  'PS'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
 
-    if(DO_OBIO /= 0) then
-       call MAPL_GetPointer(GIM(OBIO ), USTR3B  ,  'OUSTAR3'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), UUB     ,  'UU'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), PSB     ,  'PS'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-
-       call MAPL_GetPointer(GIM(OBIO ), CO2SCB  ,  'CO2SC'    , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-
-       do k=1, 33
-          write(unit = suffix, fmt = '(i2.2)') k
-          call MAPL_GetPointer(GIM(ORAD ), ATAUAO(k)%b, 'TAUA_'//suffix , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(ORAD ), AASYMPO(k)%b,'ASYMP_'//suffix, notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(ORAD ), ASSALBO(k)%b,'SSALB_'//suffix, notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       enddo
-       call MAPL_GetPointer(GIM(ORAD ), UUO     ,  'UU'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), PSO     ,  'PS'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-
-       call MAPL_GetPointer(GIM(OBIO ), DUDPB   ,  'DUDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), DUWTB   ,  'DUWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), DUSDB   ,  'DUSD'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(OBIO ), DISCHARGEOB   ,  'DISCHARGE'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-
-       if(DO_DATAATM==0) then
-          call MAPL_GetPointer(GIM(OBIO ), BCDPB   ,  'BCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OBIO ), BCWTB   ,  'BCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OBIO ), OCDPB   ,  'OCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(OBIO ), OCWTB   ,  'OCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-          
-          call MAPL_GetPointer(GIM(ORAD ), FSWBANDR   , 'FSWBAND'   , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
-          call MAPL_GetPointer(GIM(ORAD ), FSWBANDNAR , 'FSWBANDNA' , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
-       end if
-
-       call MAPL_GetPointer(GIM(ORAD ), CCOVMO  ,  'CCOVM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), CDREMO  ,  'CDREM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), RLWPMO  ,  'RLWPM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), CLDTCMO ,  'CLDTCM' , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), RHO     ,  'RH'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), OZO     ,  'OZ'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(GIM(ORAD ), WVO     ,  'WV'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
-    end if
-    
     if(DO_DATASEAONLY==0) then
        call MAPL_GetPointer(GIM(OCEAN  ), PENUVRM ,  'PENUVR',  RC=STATUS)
        VERIFY_(STATUS)
@@ -1933,34 +1794,6 @@ contains
        VERIFY_(STATUS)
        call MAPL_GetPointer(GIM(SEAICE), FHOCNO  , 'FHOCN'  ,  RC=STATUS)
        VERIFY_(STATUS)
-       if(dual_ocean) then
-        call MAPL_GetPointer(GIM(SEAICEd), FRO8d    , 'FRACICE',  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), TIO8d    ,  'TI'    ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), VOLICEOd , 'VOLICE' ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), VOLSNOOd , 'VOLSNO' ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), ERGICEOd , 'ERGICE' ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), ERGSNOOd , 'ERGSNO' ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), TAUAGEOd , 'TAUAGE' ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GIM(SEAICEd), MPONDOd  , 'MPOND'  ,  RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GEX(SEAICE), DAIDTNUDG , 'DAIDTNUDG' , alloc=.TRUE., RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GEX(SEAICE), DVIDTNUDG , 'DVIDTNUDG' , alloc=.TRUE., RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GEX(SEAICE), AICEDO , 'AICE' , RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GEX(SEAICE), HICEDO , 'HICE' , RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetPointer(GEX(SEAICE), HSNODO , 'HSNO' , RC=STATUS)
-        VERIFY_(STATUS)
-       endif
     endif
 
    call MAPL_GetPointer(GIM(OCEAN), LWFLXO, 'LWFLX',  RC=STATUS)
@@ -1972,6 +1805,8 @@ contains
    call MAPL_GetPointer(GIM(OCEAN), SNOWO, 'SNOW',  RC=STATUS)
    VERIFY_(STATUS)
    call MAPL_GetPointer(GIM(OCEAN), RAINO, 'RAIN',  RC=STATUS)
+   VERIFY_(STATUS)
+   call MAPL_GetPointer(GIM(OCEAN), PEN_OCNO,'PEN_OCN',RC=STATUS)
    VERIFY_(STATUS)
 
 ! Transform imports to the ocean grid
@@ -2005,14 +1840,6 @@ contains
        call MAPL_LocStreamTransform( ExchGrid, USTR3B  ,  USTR3  , RC=STATUS) 
        VERIFY_(STATUS)
     endif
-    if(associated(UUB)) then
-       call MAPL_LocStreamTransform( ExchGrid, UUB     ,  UU     , RC=STATUS) 
-       VERIFY_(STATUS)
-    endif
-    if(associated(UUO)) then
-       call MAPL_LocStreamTransform( ExchGrid, UUO     ,  UU     , RC=STATUS)
-       VERIFY_(STATUS)
-    endif
     if(associated(PSB)) then
        call MAPL_LocStreamTransform( ExchGrid, PSB     ,  PS     , RC=STATUS) 
        VERIFY_(STATUS)
@@ -2021,112 +1848,7 @@ contains
        call MAPL_LocStreamTransform( ExchGrid, PSR     ,  PS     , RC=STATUS)
        VERIFY_(STATUS)
     endif
-    if(associated(CO2SCB)) then
-       call MAPL_LocStreamTransform( ExchGrid, CO2SCB  ,  CO2SC  , RC=STATUS) 
-       VERIFY_(STATUS)
-    endif
 
-    if (DO_OBIO/=0) then
-    do k=1, 33
-     if ( associated(ATAUAO(k)%b) ) then
-        call MAPL_LocStreamTransform( ExchGrid, ATAUAO(k)%b, ATAUA(k)%b, RC=STATUS)
-        VERIFY_(STATUS)
-     endif
-     if ( associated(AASYMPO(k)%b) ) then
-        call MAPL_LocStreamTransform( ExchGrid, AASYMPO(k)%b, AASYMP(k)%b, RC=STATUS)
-        VERIFY_(STATUS)
-     endif
-     if ( associated(ASSALBO(k)%b) ) then
-        call MAPL_LocStreamTransform( ExchGrid, ASSALBO(k)%b, ASSALB(k)%b, RC=STATUS)
-        VERIFY_(STATUS)
-     endif
-    enddo
-    endif
-
-    if(associated(DUDPB)) then
-       do N = 1, NUM_DUDP
-          call MAPL_LocStreamTransform( ExchGrid, DUDPB(:,:,N), DUDP(:,N), RC=STATUS )
-          VERIFY_(STATUS)
-       end do
-    endif
-    if(associated(DUWTB)) then
-       do N = 1, NUM_DUWT
-          call MAPL_LocStreamTransform( ExchGrid, DUWTB(:,:,N), DUWT(:,N), RC=STATUS )
-          VERIFY_(STATUS)
-       end do
-    endif
-    if(associated(DUSDB)) then
-       do N = 1, NUM_DUSD
-          call MAPL_LocStreamTransform( ExchGrid, DUSDB(:,:,N), DUSD(:,N), RC=STATUS )
-          VERIFY_(STATUS)
-       end do
-    endif
-    if(DO_DATAATM==0) then
-       if(associated(BCDPB)) then
-          do N = 1, NUM_BCDP
-             call MAPL_LocStreamTransform( ExchGrid, BCDPB(:,:,N), BCDP(:,N), RC=STATUS )
-             VERIFY_(STATUS)
-          end do
-       endif
-       if(associated(BCWTB)) then
-          do N = 1, NUM_BCWT
-             call MAPL_LocStreamTransform( ExchGrid, BCWTB(:,:,N), BCWT(:,N), RC=STATUS )
-             VERIFY_(STATUS)
-          end do
-       endif
-       if(associated(OCDPB)) then
-          do N = 1, NUM_OCDP
-             call MAPL_LocStreamTransform( ExchGrid, OCDPB(:,:,N), OCDP(:,N), RC=STATUS )
-             VERIFY_(STATUS)
-          end do
-       endif
-       if(associated(OCWTB)) then
-          do N = 1, NUM_OCWT
-             call MAPL_LocStreamTransform( ExchGrid, OCWTB(:,:,N), OCWT(:,N), RC=STATUS )
-             VERIFY_(STATUS)
-          end do
-       endif
-       if(associated(FSWBANDR)) then
-          do N = 1, NB_CHOU
-             call MAPL_LocStreamTransform( ExchGrid, FSWBANDR(:,:,N),   FSWBAND(:,N),   RC=STATUS )
-             VERIFY_(STATUS)
-          end do
-       endif
-       if(associated(FSWBANDNAR)) then
-          do N = 1, NB_CHOU
-             call MAPL_LocStreamTransform( ExchGrid, FSWBANDNAR(:,:,N), FSWBANDNA(:,N), RC=STATUS )
-             VERIFY_(STATUS)
-          end do
-       endif
-    end if
-    if ( associated(CCOVMO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, CCOVMO, CCOVM, RC=STATUS)
-       VERIFY_(STATUS)
-    endif
-    if ( associated(CDREMO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, CDREMO, CDREM, RC=STATUS)
-       VERIFY_(STATUS)
-    endif
-    if ( associated(RLWPMO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, RLWPMO, RLWPM, RC=STATUS)
-       VERIFY_(STATUS)
-    endif
-    if ( associated(CLDTCMO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, CLDTCMO, CLDTCM, RC=STATUS)
-       VERIFY_(STATUS)
-    endif
-    if ( associated(RHO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, RHO, RH, RC=STATUS)
-       VERIFY_(STATUS)
-    endif
-    if ( associated(OZO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, OZO, OZ, RC=STATUS)
-       VERIFY_(STATUS)
-    endif
-    if ( associated(WVO) ) then
-       call MAPL_LocStreamTransform( ExchGrid, WVO, WV, RC=STATUS)
-       VERIFY_(STATUS)
-    endif
     
     call MAPL_LocStreamTransform( ExchGrid, PENUVRO,  PENUVR, RC=STATUS) 
     VERIFY_(STATUS)
@@ -2218,16 +1940,6 @@ contains
        enddo
        deallocate(VARTILE, STAT=STATUS)
        VERIFY_(STATUS)
-       if(dual_ocean) then
-         TIO8d = TIO8
-         FRO8d = FRO8
-         VOLICEOd = VOLICEO
-         VOLSNOOd = VOLSNOO
-         TAUAGEOd = TAUAGEO
-         MPONDOd = MPONDO
-         ERGICEOd = ERGICEO
-         ERGSNOOd = ERGSNOO
-       endif
        if (.not. (dual_ocean .and. phase==2) ) then
 ! for efficiency, dont need these if running predictor in dual ocean
         call MAPL_LocStreamTransform( ExchGrid, FRESHO,    FRESH,   RC=STATUS) 
@@ -2248,6 +1960,8 @@ contains
     call MAPL_LocStreamTransform( ExchGrid, SNOWO,  SNOW, RC=STATUS) 
     VERIFY_(STATUS)
     call MAPL_LocStreamTransform( ExchGrid, RAINO,  RAIN, RC=STATUS) 
+    VERIFY_(STATUS)
+    call MAPL_LocStreamTransform( ExchGrid, PEN_OCNO,  PEN_OCN, RC=STATUS) 
     VERIFY_(STATUS)
 
 ! Pointers to tile outputs
@@ -2329,17 +2043,14 @@ contains
        call MAPL_GetPointer(GEX(OCEAN ), VWBO ,  'VWB'    , alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
     end if
-    
+
     if (DO_CICE_THERMO == 0) then  
        call MAPL_GetPointer(GEX(SEAICE), FRO  ,  'FRACICE', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
     else
        call MAPL_GetPointer(GEX(SEAICE), FRI  ,  'FRACICE', alloc=.true., RC=STATUS)
        VERIFY_(STATUS)
-       if(DUAL_OCEAN) then
-          call MAPL_GetPointer(GEX(SEAICEd), FRO  ,  'FRACICE', alloc=.true., RC=STATUS)
-          VERIFY_(STATUS)
-       endif   
+
        if(associated(TAUXIBOT)) then
           call MAPL_GetPointer(GEX(SEAICE), TAUXIBOTO , 'TAUXBOT' , alloc=.true., RC=STATUS)
           VERIFY_(STATUS)
@@ -2360,11 +2071,12 @@ contains
        if (PHASE == 1) then
           ! corrector
           ! run explicitly phase 1 of all the children
-          allocate(CHLD(5), stat=status)
+          allocate(CHLD(4), stat=status)
           VERIFY_(STATUS)
-          CHLD = (/OBIO,ORAD,SEAICEd,SEAICE,OCEAN/)
+          CHLD = (/OBIO,ORAD,SEAICE,OCEAN/)
           DO N=1, size(CHLD)
              ID = CHLD(N)
+             if (ID <= 0) cycle
              call ESMF_GridCompRun( GCS(ID), importState=GIM(ID), &
                   exportState=GEX(ID), clock=CLOCK, phase=1, userRC=STATUS )
              VERIFY_(STATUS)
@@ -2377,10 +2089,11 @@ contains
        ! run explicitly the children excluding "real" seaice (ocean has the data part inside guest)
           allocate(CHLD(4), stat=status)
           VERIFY_(STATUS)
-          CHLD = (/OBIO,ORAD,SEAICEd,OCEAN/)
+          CHLD = (/OBIO,ORAD,SEAICE,OCEAN/)
           DO N=1, size(CHLD)
              ID = CHLD(N)
-             if (ID /= OCEAN) then
+             if (ID <= 0) cycle
+             if (ID /= OCEAN .and. ID /= SEAICE) then
                 phase_ = 1
              else
                 phase_ = phase
@@ -2409,69 +2122,24 @@ contains
     call MAPL_LocStreamTransform( ExchGrid, HI     ,  HIO   , RC=STATUS)
     VERIFY_(STATUS)
 
-    if(DUAL_OCEAN) then
-        call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource (MAPL, DT, Label="DT:", DEFAULT=DT, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource (MAPL, HIN, Label="SEA_ICE_NUDGING_HINEW:" , DEFAULT=0.5, RC=STATUS)
-        VERIFY_(STATUS)
-        call MAPL_GetResource (MAPL, CAT_DIST, Label="SEA_ICE_NUDGING_CAT_DIST:" , DEFAULT=1, RC=STATUS)
-        VERIFY_(STATUS)
-        if(PHASE == 2) then ! phase 2 is predictor
-           call ice_nudging(FRO8d,         TIO8d,          &
-                            VOLICEOd,      VOLSNOOd,       &
-                            ERGICEOd,      ERGSNOOd,       &
-                            TAUAGEOd,      MPONDOd,        &
-                            FRO,           HIN,            &
-                            NUM_ICE_CATEGORIES,            &
-                            DT,            0.0,            &
-                            NUM_ICE_LAYERS,                &
-                            NUM_SNOW_LAYERS,               &
-                            CAT_DIST,      DT)
-        else ! corrector
-           TIO8d = TIO8
-           FRO8d = FRO8
-           VOLICEOd = VOLICEO
-           VOLSNOOd = VOLSNOO
-           TAUAGEOd = TAUAGEO
-           MPONDOd = MPONDO
-           ERGICEOd = ERGICEO
-           ERGSNOOd = ERGSNOO
-           call MAPL_GetResource(MAPL,TAU_SIT, LABEL="SEA_ICE_NUDGING_RELAX:", default=86400.0,RC=STATUS)
-           VERIFY_(STATUS)
-           call MAPL_GetResource(MAPL,RN , Label="SEA_ICE_NUDGING_R:" , DEFAULT=0.1, RC=STATUS)
-           VERIFY_(STATUS)
-           call ice_nudging(FRO8d,         TIO8d,          &
-                            VOLICEOd,      VOLSNOOd,       &
-                            ERGICEOd,      ERGSNOOd,       &
-                            TAUAGEOd,      MPONDOd,        &
-                            FRO,           HIN,            &
-                            NUM_ICE_CATEGORIES,            &
-                            TAU_SIT,       RN,             & 
-                            NUM_ICE_LAYERS,                &
-                            NUM_SNOW_LAYERS,               &
-                            CAT_DIST,      DT,             &               
-                            salinity = SS_FOUNDO,          &
-                            ai_tend = DAIDTNUDG,           &
-                            vi_tend = DVIDTNUDG )
-           if(associated(AICEDO)) then
-               where(AICEDO/=MAPL_UNDEF)
-                   AICEDO = sum(FRO8d, dim=3)
-               endwhere
-           endif  
-           if(associated(HICEDO)) then
-               where(HICEDO/=MAPL_UNDEF)
-                   HICEDO = sum(VOLICEOd, dim=3)
-               endwhere
-           endif  
-           if(associated(HSNODO)) then
-               where(HSNODO/=MAPL_UNDEF)
-                   HSNODO = sum(VOLSNOOd, dim=3)
-               endwhere
-           endif  
+    ! call Run2 of SEAICE to do ice nudging 
+    if (dual_ocean) then
+        if(PHASE==1) then
+             ! phase 3 is corrector stage same as phase 1
+             call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(SEAICE), &
+                  exportState=GEX(SEAICE), clock=CLOCK, phase=3, userRC=STATUS )
+             VERIFY_(STATUS)
+             call MAPL_GenericRunCouplers( MAPL, CHILD=SEAICE, CLOCK=CLOCK, RC=STATUS )
+             VERIFY_(STATUS)
+        else
+             ! phase 4 predictor stage same as phase 2
+             call ESMF_GridCompRun( GCS(SEAICE), importState=GIM(SEAICE), &
+                  exportState=GEX(SEAICE), clock=CLOCK, phase=4, userRC=STATUS )
+             VERIFY_(STATUS)
+             call MAPL_GenericRunCouplers( MAPL, CHILD=SEAICE, CLOCK=CLOCK, RC=STATUS )
+             VERIFY_(STATUS)
         endif
-    endif 
+    endif
 
     if (DO_CICE_THERMO == 0) then  
        call MAPL_LocStreamTransform( ExchGrid, TI     ,  TIO   , RC=STATUS)
@@ -2481,20 +2149,6 @@ contains
        VERIFY_(STATUS)
     else
        do n=1,NUM_ICE_CATEGORIES
-          if(dual_ocean) then
-           call MAPL_LocStreamTransform( ExchGrid, FR8(:,N),  FRO8d(:,:,N),  &
-             INTERP=useInterp, RC=STATUS)
-           call MAPL_LocStreamTransform( ExchGrid, TI8(:,N),  TIO8d(:,:,N),  &
-             INTERP=useInterp, RC=STATUS)
-           call MAPL_LocStreamTransform( ExchGrid, VOLICE(:,N),  VOLICEOd(:,:,N),  &
-             INTERP=useInterp, RC=STATUS)
-           call MAPL_LocStreamTransform( ExchGrid, VOLSNO(:,N),  VOLSNOOd(:,:,N),  &
-             INTERP=useInterp, RC=STATUS)
-           call MAPL_LocStreamTransform( ExchGrid, TAUAGE(:,N),  TAUAGEOd(:,:,N),  &
-             INTERP=useInterp, RC=STATUS)
-           call MAPL_LocStreamTransform( ExchGrid, MPOND(:,N),  MPONDOd(:,:,N),  &
-             INTERP=useInterp, RC=STATUS)
-          else
            call MAPL_LocStreamTransform( ExchGrid, TI8(:,N),  TIO8(:,:,N), RC=STATUS) 
            VERIFY_(STATUS)
            call MAPL_LocStreamTransform( ExchGrid, FR8(:,N),  FRO8(:,:,N),  & 
@@ -2512,28 +2166,15 @@ contains
           call MAPL_LocStreamTransform( ExchGrid, MPOND (:,  N), &
                MPONDO(:,:,N), RC=STATUS) 
            VERIFY_(STATUS)
-          endif
           do k=1,NUM_ICE_LAYERS 
-           if(dual_ocean) then
-             call MAPL_LocStreamTransform( ExchGrid, ERGICE (:,  K,N),  &
-                  ERGICEOd(:,:,NUM_ICE_LAYERS*(N-1)+K),RC=STATUS) 
-             VERIFY_(STATUS)
-           else
              call MAPL_LocStreamTransform( ExchGrid, ERGICE (:,  K,N),  &
                   ERGICEO(:,:,NUM_ICE_LAYERS*(N-1)+K),RC=STATUS) 
              VERIFY_(STATUS)
-           endif
           enddo
           do k=1,NUM_SNOW_LAYERS 
-           if(dual_ocean) then
-             call MAPL_LocStreamTransform( ExchGrid, ERGSNO (:,  K,N),  &
-                  ERGSNOOd(:,:,NUM_SNOW_LAYERS*(N-1)+K),RC=STATUS) 
-             VERIFY_(STATUS)
-           else
              call MAPL_LocStreamTransform( ExchGrid, ERGSNO (:,  K,N),  &
                   ERGSNOO(:,:,NUM_SNOW_LAYERS*(N-1)+K),RC=STATUS) 
              VERIFY_(STATUS)
-           endif
           enddo
        enddo
        
@@ -2606,6 +2247,224 @@ contains
     call MAPL_TimerOff(MAPL,"RUN" )
 
     RETURN_(ESMF_SUCCESS)
+   
+    contains
+
+    subroutine OBIO_RunTransforms(DO_DATAATM, RC)
+
+      integer,                    intent(IN   ) ::  DO_DATAATM
+      integer, optional,          intent(  OUT) ::  RC
+      
+      character(len=ESMF_MAXSTR), parameter :: IAm="OBIO_RunTransforms"
+      integer                               :: STATUS
+
+      integer          :: k
+
+      call MAPL_GetPointer(IMPORT, UU      ,  'UU',      RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, CO2SC   ,  'CO2SC'  , RC=STATUS)
+      VERIFY_(STATUS)
+
+      do k=1, 33
+        write(unit = suffix, fmt = '(i2.2)') k
+        call MAPL_GetPointer(IMPORT, ATAUA(k)%b,'TAUA_'//suffix,   RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, AASYMP(k)%b,'ASYMP_'//suffix, RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, ASSALB(k)%b,'SSALB_'//suffix, RC=STATUS)
+        VERIFY_(STATUS)
+      enddo
+
+      call MAPL_GetPointer(IMPORT, DUDP    ,  'DUDP'   , RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, DUWT    ,  'DUWT'   , RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, DUSD    ,  'DUSD'   , RC=STATUS)
+      VERIFY_(STATUS)
+
+      call MAPL_GetPointer(IMPORT, CCOVM,     'CCOVM',   RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, CDREM,     'CDREM',   RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, RLWPM,     'RLWPM',   RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, CLDTCM,    'CLDTCM',  RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, RH,        'RH',      RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, OZ,        'OZ',      RC=STATUS)
+      VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, WV,        'WV',      RC=STATUS)
+      VERIFY_(STATUS)
+
+      call MAPL_GetPointer(GIM(OBIO ), USTR3B  ,  'OUSTAR3'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), UUB     ,  'UU'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), PSB     ,  'PS'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), CO2SCB  ,  'CO2SC'    , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+
+      do k=1, 33
+        write(unit = suffix, fmt = '(i2.2)') k
+        call MAPL_GetPointer(GIM(ORAD ), ATAUAO(k)%b, 'TAUA_'//suffix , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GIM(ORAD ), AASYMPO(k)%b,'ASYMP_'//suffix, notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GIM(ORAD ), ASSALBO(k)%b,'SSALB_'//suffix, notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      enddo
+
+      call MAPL_GetPointer(GIM(ORAD ), UUO     ,  'UU'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), PSO     ,  'PS'       , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+
+      call MAPL_GetPointer(GIM(OBIO ), DUDPB   ,  'DUDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), DUWTB   ,  'DUWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), DUSDB   ,  'DUSD'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(OBIO ), DISCHARGEOB   ,  'DISCHARGE'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), CCOVMO  ,  'CCOVM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), CDREMO  ,  'CDREM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), RLWPMO  ,  'RLWPM'  , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), CLDTCMO ,  'CLDTCM' , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), RHO     ,  'RH'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), OZO     ,  'OZ'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(GIM(ORAD ), WVO     ,  'WV'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+
+      if(DO_DATAATM==0) then
+        call MAPL_GetPointer(IMPORT, BCDP      , 'BCDP'      , RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, BCWT      , 'BCWT'      , RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, OCDP      , 'OCDP'      , RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, OCWT      , 'OCWT'      , RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, FSWBAND   , 'FSWBAND'   , RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT, FSWBANDNA , 'FSWBANDNA' , RC=STATUS)
+        VERIFY_(STATUS)
+      end if
+
+      if(associated(UUB)) then
+         call MAPL_LocStreamTransform( ExchGrid, UUB     ,  UU     , RC=STATUS) 
+         VERIFY_(STATUS)
+      endif
+      if(associated(UUO)) then
+         call MAPL_LocStreamTransform( ExchGrid, UUO     ,  UU     , RC=STATUS)
+         VERIFY_(STATUS)
+      endif
+      if(associated(CO2SCB)) then
+         call MAPL_LocStreamTransform( ExchGrid, CO2SCB  ,  CO2SC  , RC=STATUS) 
+         VERIFY_(STATUS)
+      endif
+
+      do k=1, 33
+        if ( associated(ATAUAO(k)%b) ) then
+         call MAPL_LocStreamTransform( ExchGrid, ATAUAO(k)%b, ATAUA(k)%b, RC=STATUS)
+         VERIFY_(STATUS)
+        endif
+        if ( associated(AASYMPO(k)%b) ) then
+         call MAPL_LocStreamTransform( ExchGrid, AASYMPO(k)%b, AASYMP(k)%b, RC=STATUS)
+         VERIFY_(STATUS)
+        endif
+        if ( associated(ASSALBO(k)%b) ) then
+         call MAPL_LocStreamTransform( ExchGrid, ASSALBO(k)%b, ASSALB(k)%b, RC=STATUS)
+         VERIFY_(STATUS)
+        endif
+      enddo
+
+      if(associated(DUDPB)) then
+       do N = 1, NUM_DUDP
+          call MAPL_LocStreamTransform( ExchGrid, DUDPB(:,:,N), DUDP(:,N), RC=STATUS )
+          VERIFY_(STATUS)
+       end do
+      endif
+      if(associated(DUWTB)) then
+       do N = 1, NUM_DUWT
+          call MAPL_LocStreamTransform( ExchGrid, DUWTB(:,:,N), DUWT(:,N), RC=STATUS )
+          VERIFY_(STATUS)
+       end do
+      endif
+      if(associated(DUSDB)) then
+       do N = 1, NUM_DUSD
+          call MAPL_LocStreamTransform( ExchGrid, DUSDB(:,:,N), DUSD(:,N), RC=STATUS )
+          VERIFY_(STATUS)
+       end do
+      endif
+      if ( associated(CCOVMO) ) then
+        call MAPL_LocStreamTransform( ExchGrid, CCOVMO, CCOVM, RC=STATUS)
+        VERIFY_(STATUS)
+      endif
+      if ( associated(CDREMO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, CDREMO, CDREM, RC=STATUS)
+       VERIFY_(STATUS)
+      endif
+      if ( associated(RLWPMO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, RLWPMO, RLWPM, RC=STATUS)
+       VERIFY_(STATUS)
+      endif
+      if ( associated(CLDTCMO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, CLDTCMO, CLDTCM, RC=STATUS)
+       VERIFY_(STATUS)
+      endif
+      if ( associated(RHO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, RHO, RH, RC=STATUS)
+       VERIFY_(STATUS)
+      endif
+      if ( associated(OZO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, OZO, OZ, RC=STATUS)
+       VERIFY_(STATUS)
+      endif
+      if ( associated(WVO) ) then
+       call MAPL_LocStreamTransform( ExchGrid, WVO, WV, RC=STATUS)
+       VERIFY_(STATUS)
+      endif
+
+      if(DO_DATAATM==0) then
+        call MAPL_GetPointer(GIM(OBIO ), BCDPB   ,  'BCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GIM(OBIO ), BCWTB   ,  'BCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GIM(OBIO ), OCDPB   ,  'OCDP'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GIM(OBIO ), OCWTB   ,  'OCWT'     , notfoundOK=.true., RC=STATUS); VERIFY_(STATUS)
+          
+        call MAPL_GetPointer(GIM(ORAD ), FSWBANDR   , 'FSWBAND'   , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(GIM(ORAD ), FSWBANDNAR , 'FSWBANDNA' , notfoundOK=.true.,  RC=STATUS); VERIFY_(STATUS)
+      end if
+
+      if(DO_DATAATM==0) then
+       if(associated(BCDPB)) then
+          do N = 1, NUM_BCDP
+             call MAPL_LocStreamTransform( ExchGrid, BCDPB(:,:,N), BCDP(:,N), RC=STATUS )
+             VERIFY_(STATUS)
+          end do
+       endif
+       if(associated(BCWTB)) then
+          do N = 1, NUM_BCWT
+             call MAPL_LocStreamTransform( ExchGrid, BCWTB(:,:,N), BCWT(:,N), RC=STATUS )
+             VERIFY_(STATUS)
+          end do
+       endif
+       if(associated(OCDPB)) then
+          do N = 1, NUM_OCDP
+             call MAPL_LocStreamTransform( ExchGrid, OCDPB(:,:,N), OCDP(:,N), RC=STATUS )
+             VERIFY_(STATUS)
+          end do
+       endif
+       if(associated(OCWTB)) then
+          do N = 1, NUM_OCWT
+             call MAPL_LocStreamTransform( ExchGrid, OCWTB(:,:,N), OCWT(:,N), RC=STATUS )
+             VERIFY_(STATUS)
+          end do
+       endif
+       if(associated(FSWBANDR)) then
+          do N = 1, NB_CHOU
+             call MAPL_LocStreamTransform( ExchGrid, FSWBANDR(:,:,N),   FSWBAND(:,N),   RC=STATUS )
+             VERIFY_(STATUS)
+          end do
+       endif
+       if(associated(FSWBANDNAR)) then
+          do N = 1, NB_CHOU
+             call MAPL_LocStreamTransform( ExchGrid, FSWBANDNAR(:,:,N), FSWBANDNA(:,N), RC=STATUS )
+             VERIFY_(STATUS)
+          end do
+       endif
+      end if
+
+      RETURN_(ESMF_SUCCESS)
+    end subroutine OBIO_RunTransforms
 
   end subroutine RUN
 
