@@ -5198,10 +5198,10 @@ contains
        call WRITE_PARALLEL ("INITIALIZED aer_cloud_init for 1moment")
     end if
 
-    if( LM .eq. 72 ) then
-       call MAPL_GetResource (MAPL, JASON_TUNING, "JASON_TUNING:", default=1, RC=STATUS); VERIFY_(STATUS)
+    if( LM == 72 ) then
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=1, RC=STATUS); VERIFY_(STATUS)
     else
-       call MAPL_GetResource (MAPL, JASON_TUNING, "JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
     endif
 
 !-srf-gf-scheme
@@ -6425,12 +6425,6 @@ contains
 
       call MAPL_GetResource(STATE, SHLWPARAMS%RPEN,      'RPEN:'      ,DEFAULT=3.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RLE,       'RLE:'       ,DEFAULT=0.1, RC=STATUS)
-      if(JASON_TUNING == 1) then
-        call MAPL_GetResource(STATE, SHLWPARAMS%MIXSCALE,  'MIXSCALE:'  ,DEFAULT=0.0, RC=STATUS)
-      else
-        call MAPL_GetResource(STATE, SHLWPARAMS%MIXSCALE,  'MIXSCALE:'  ,DEFAULT=3000.0, RC=STATUS)
-      endif
-      call MAPL_GetResource(STATE, SHLWPARAMS%DETRHGT,   'DETRHGT:'   ,DEFAULT=1800.0, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RMAXFRAC,  'RMAXFRAC:'  ,DEFAULT=0.1,  RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%MUMIN1,    'MUMIN1:'    ,DEFAULT=0.906, RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RBUOY,     'RBUOY:'     ,DEFAULT=1.0,    RC=STATUS)
@@ -6439,8 +6433,10 @@ contains
       call MAPL_GetResource(STATE, SHLWPARAMS%PGFC,      'PGFC:'      ,DEFAULT=0.7,    RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%KEVP,      'KEVP:'      ,DEFAULT=2.e-6,  RC=STATUS)
       call MAPL_GetResource(STATE, SHLWPARAMS%RDROP,     'SHLW_RDROP:',DEFAULT=8.e-6,  RC=STATUS)
+      call MAPL_GetResource(STATE, SHLWPARAMS%DETRHGT,   'DETRHGT:'   ,DEFAULT=1800.0, RC=STATUS)
 
       if(JASON_TUNING == 1) then
+        call MAPL_GetResource(STATE, SHLWPARAMS%MIXSCALE,  'MIXSCALE:'  ,DEFAULT=0.0, RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,     'CRIQC:'     ,DEFAULT=1.0e-3, RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%THLSRC_FAC,'THLSRC_FAC:',DEFAULT= 0.0, RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%QTSRC_FAC, 'QTSRC_FAC:' ,DEFAULT= 0.0, RC=STATUS)
@@ -6448,6 +6444,7 @@ contains
         call MAPL_GetResource(STATE, SHLWPARAMS%FRC_RASN,  'FRC_RASN:'  ,DEFAULT= 0.0, RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%RKM,       'RKM:'       ,DEFAULT=12.0, RC=STATUS)
       else
+        call MAPL_GetResource(STATE, SHLWPARAMS%MIXSCALE,  'MIXSCALE:'  ,DEFAULT=3000.0, RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%CRIQC,     'CRIQC:'     ,DEFAULT=0.9e-3, RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%THLSRC_FAC,'THLSRC_FAC:',DEFAULT= 2.0, RC=STATUS)
         call MAPL_GetResource(STATE, SHLWPARAMS%QTSRC_FAC, 'QTSRC_FAC:' ,DEFAULT= 0.0, RC=STATUS)
@@ -7731,7 +7728,7 @@ contains
          CNV_FRACTION = 0.0 
          
     ! CNV_FRACTION Criteria
-        if(JASON_TUNING == 1) then
+      ! if(JASON_TUNING == 1) then
           call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
           VERIFY_(STATUS)
           call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
@@ -7743,19 +7740,19 @@ contains
           VERIFY_(STATUS)
           call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
           VERIFY_(STATUS)
-        else
-          call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_GetResource(STATE,CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    0.5, RC=STATUS)
-          VERIFY_(STATUS)
-          GF_MIN_AREA = (111000.0*360.0/FLOAT(imsize*4))**2
-          call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT=GF_MIN_AREA, RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
-          VERIFY_(STATUS)
-        endif
+      ! else
+      !   call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
+      !   VERIFY_(STATUS)
+      !   call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS)
+      !   VERIFY_(STATUS)
+      !   call MAPL_GetResource(STATE,CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    0.5, RC=STATUS)
+      !   VERIFY_(STATUS)
+      !   GF_MIN_AREA = (111000.0*360.0/FLOAT(imsize*4))**2
+      !   call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT=GF_MIN_AREA, RC=STATUS)
+      !   VERIFY_(STATUS)
+      !   call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
+      !   VERIFY_(STATUS)
+      ! endif
         if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
           ! CAPE
            WHERE (CAPE .ne. MAPL_UNDEF)
@@ -12644,8 +12641,8 @@ do K= 1, LM
          do i = 1,IM
            do j = 1,JM
              do k =  LM, 1, -1
-               if (ZLE(i,j,k).gt.10000.) exit
-               if ( ( RAD_CF(i,j,k) .ge. 1e-3 ) ) then
+               if (ZLE(i,j,k).gt.20000.) exit
+               if ( ( RAD_CF(i,j,k) .ge. 1e-2 ) ) then
                  CLDBASEx(i,j)  = ZLE(i,j,k)
                  exit
                end if
