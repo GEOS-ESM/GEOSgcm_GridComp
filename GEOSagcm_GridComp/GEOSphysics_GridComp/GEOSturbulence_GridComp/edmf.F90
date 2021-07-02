@@ -328,7 +328,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               upu(iup,i,j)   = u(i,j,LM)
               upv(iup,i,j)   = v(i,j,LM)
               upqt(iup,i,j)  = qt(i,j,LM-1) + ( upthv(iup,i,j) - thv(i,j,LM-1) )*evap(i,j)/(rhoe(i,j,LM)*wthv)
-!              upqt(iup,i,j) = qtu0
            end if
 
            upm(iup,i,j) = rhoe(i,j,kbot)*upa(iup,i,j)*upw(iup,i,j)
@@ -572,8 +571,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                           au_test = max( 0., Mn_test/( rhoe(i,j,k-1)*sqrt(Wn2) ) )
                        end if
 
-!                       Mn     = Mn_test
-!                       D_work = 0.
                        Mn     = rhoe(i,j,km1)*au_test*sqrt(Wn2)
                        D_work = max( 0., E_work - ( Mn - upm(iup,i,j) )/dzle )
                        if ( Mn == 0. ) then

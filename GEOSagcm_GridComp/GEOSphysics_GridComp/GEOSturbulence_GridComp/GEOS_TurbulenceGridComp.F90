@@ -3842,7 +3842,12 @@ contains
 
      ! SCM parameters
      integer :: SCM_DATA_SURF        ! 0:    use exchange coefficients from surface grid comp
-                                     ! else: prescribed surface exchange coefficients
+                                     ! else: prescribed surface conditions
+     integer :: SCM_DATA_FLUX        ! 0:    use prescribed surface fluxes
+                                     ! else: use prescribed surface exchange coefficients
+     real    :: SCM_DATA_SH          ! prescribed surface sensible heat flux
+     real    :: SCM_DATA_EVAP        ! prescribed surface latent heat flux
+                                     
 
      real,dimension(IM,JM) :: L02
      
@@ -4504,19 +4509,29 @@ contains
     call MAPL_GetResource (MAPL, MYNN_DEBUG,      "MYNN_DEBUG:",    default=0,  RC=STATUS)
     call MAPL_GetResource (MAPL, MYNN_TEST,       "MYNN_TEST:",     default=0,  RC=STATUS)
 
-    call MAPL_GetResource(MAPL, ICE_RAMP,      'ICE_RAMP:',      DEFAULT= -40.0 )
+    call MAPL_GetResource(MAPL, ICE_RAMP, 'ICE_RAMP:', DEFAULT= -40.0 )
+
     call MAPL_GetResource(MAPL, SCM_DATA_SURF, 'SCM_DATA_SURF:', DEFAULT= 0 )
-    
+    call MAPL_GetResource(MAPL, SCM_DATA_FLUX, 'SCM_DATA_FLUX:', DEFAULT= 0 )
+    call MAPL_GetResource(MAPL, SCM_DATA_SH,   'SCM_DATA_SH:',   DEFAULT= 0. )
+    call MAPL_GetResource(MAPL, SCM_DATA_EVAP, 'SCM_DATA_EVAP:', DEFAULT= 0. )
 
     call MAPL_TimerOn(MAPL,"---MASSFLUX")
 
     ! Prescribed surface exchange coefficients
     if ( SCM_DATA_SURF /= 0 ) then
-       CT_DATA(:,:) = 0.0081
+       if ( SCM_DATA_FLUX == 0 ) then
+          CT_DATA(:,:) = 0.
 
-       USTAR_DATA(:,:) = sqrt(0.0002)*sqrt( U(:,:,LM)**2. + V(:,:,LM)**2. )
-       SH_DATA(:,:)    = -MAPL_CP*CT_DATA*RHOE(:,:,LM)*( TH(:,:,LM) - 298.76*(MAPL_P00/ple(:,:,LM))**(MAPL_RDRY/MAPL_CP) )
-       EVAP_DATA(:,:)  = -CT_DATA*RHOE(:,:,LM)*( Q(:,:,LM) - 2.038011639875219E-002 )
+          SH_DATA(:,:)   = SCM_DATA_SH
+          EVAP_DATA(:,:) = SCM_DATA_EVAP/MAPL_ALHL
+       else
+          CT_DATA(:,:) = 0.0081
+
+          USTAR_DATA(:,:) = sqrt(0.0002)*sqrt( U(:,:,LM)**2. + V(:,:,LM)**2. )
+          SH_DATA(:,:)    = -MAPL_CP*CT_DATA*RHOE(:,:,LM)*( TH(:,:,LM) - 298.76*(MAPL_P00/ple(:,:,LM))**(MAPL_RDRY/MAPL_CP) )
+          EVAP_DATA(:,:)  = -CT_DATA*RHOE(:,:,LM)*( Q(:,:,LM) - 2.038011639875219E-002 )
+       end if
 
        CT => CT_DATA
        CQ => CT_DATA
@@ -5904,9 +5919,6 @@ ENDIF
      end if
   else ! No AE3 factor in front of KM and KH
      if ( EDMF_IMPLICIT == 1 .and. EDMF_DISCRETE == 0 ) then
-!        CKSS(:,:,1:LM-1) = - KH(:,:,1:LM-1)*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
-!                           + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
-!        CKQQ(:,:,1:LM-1) = CKSS(:,:,1:LM-1)  
         CKSS(:,:,1:LM-1) = - ( KH(:,:,1:LM-1) + KH_t(:,:,1:LM-1) )*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
                            + 0.5*DMI(:,:,1:LM-1)*RHOAW3(:,:,1:LM-1)
         CKQQ(:,:,1:LM-1) = - ( KH(:,:,1:LM-1) + KH_q(:,:,1:LM-1) )*RDZ(:,:,1:LM-1)*DMI(:,:,1:LM-1) &
@@ -5932,9 +5944,9 @@ ENDIF
         BKQQ(:,:,LM) = BKQQ(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
         BKUU(:,:,LM) = BKUU(:,:,LM) - DMI(:,:,LM)*RHOAW3(:,:,LM-1)
 
-        BKSS(:,:,1:LM-1) = BKSS(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2))
-        BKQQ(:,:,1:LM-1) = BKQQ(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2))
-        BKUU(:,:,1:LM-1) = BKUU(:,:,1:LM-1) + DMI(:,:,1:LM-1)*(RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2))
+        BKSS(:,:,1:LM-1) = BKSS(:,:,1:LM-1) + DMI(:,:,1:LM-1)*( RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2) )
+        BKQQ(:,:,1:LM-1) = BKQQ(:,:,1:LM-1) + DMI(:,:,1:LM-1)*( RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2) )
+        BKUU(:,:,1:LM-1) = BKUU(:,:,1:LM-1) + DMI(:,:,1:LM-1)*( RHOAW3(:,:,1:LM-1) - RHOAW3(:,:,0:LM-2) )
      else 
         AKSS(:,:,2:LM) = AKSS(:,:,2:LM) - DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
         AKQQ(:,:,2:LM) = AKQQ(:,:,2:LM) - DMI(:,:,2:LM)*RHOAW3(:,:,1:LM-1)
@@ -5954,6 +5966,12 @@ ENDIF
   YQI(:,:,LM) = - DMI(:,:,LM)*RHOE(:,:,LM-1)*AWQI3(:,:,LM-1)
   YU(:,:,LM)  = - DMI(:,:,LM)*RHOE(:,:,LM-1)*AWU3(:,:,LM-1)
   YV(:,:,LM)  = - DMI(:,:,LM)*RHOE(:,:,LM-1)*AWV3(:,:,LM-1)
+
+  ! Add prescribed surface fluxes
+  if ( SCM_DATA_SURF /= 0 .and. SCM_DATA_FLUX == 0 ) then
+     YS(:,:,LM)  = YS(:,:,LM)  + DMI(:,:,LM)*SH(:,:)
+     YQV(:,:,LM) = YQV(:,:,LM) + DMI(:,:,LM)*EVAP(:,:)
+  end if
 
 !
 ! 2:LM -> 1:LM-1, 1:LM-1 -> 0:LM-2
@@ -6206,8 +6224,8 @@ ENDIF
 
     ! For implicit mean-gradient production of second-order moments option
     integer                             :: DO_MYNN, MYNN_LEVEL, EDMF_CONSISTENT, MYNN_DEBUG, MYNN_TEST, &
-                                           MYNN_CORRECT, MYNN_DISCRETE, SCM_DATA_SURF
-    real                                :: DOMF, ice_ramp
+                                           MYNN_CORRECT, MYNN_DISCRETE, SCM_DATA_SURF, SCM_DATA_FLUX
+    real                                :: DOMF, ice_ramp, SCM_DATA_SH, SCM_DATA_EVAP
 
     real, dimension(:,:), pointer       :: USTAR, SH, EVAP
     real, dimension(:,:,:), pointer     :: tket_M, tket_B, tket_D, &
@@ -6242,6 +6260,12 @@ ENDIF
 ! Get SCM flags
 !--------------
     call MAPL_GetResource(MAPL, SCM_DATA_SURF, 'SCM_DATA_SURF:', default=0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, SCM_DATA_FLUX, 'SCM_DATA_FLUX:', default=0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, SCM_DATA_SH,   'SCM_DATA_SH:',   default=0., RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource(MAPL, SCM_DATA_EVAP, 'SCM_DATA_EVAP:', default=0., RC=STATUS)
     VERIFY_(STATUS)
 
 ! Get MYNN-EDMF flags
@@ -6356,7 +6380,11 @@ ENDIF
 
     ! Prescribed surface exchange coefficients
     if ( SCM_DATA_SURF /= 0 ) then
-       CT_DATA(:,:) = 0.0081
+       if ( SCM_DATA_FLUX == 0 ) then
+          CT_DATA(:,:) = 0.
+       else
+          CT_DATA(:,:) = 0.0081
+       end if
 
        CT => CT_DATA
        CQ => CT_DATA
@@ -6709,10 +6737,18 @@ if ( trim(name) /= 'S' .and. trim(name) /= 'Q' .and. trim(name) /= 'QLLS' &
 !---------------------------
 
        if ( associated(SF) ) then
-          if ( size(SG) > 0 ) then
-             SF = CX*( SG - SX(:,:,LM) )
+          if ( SCM_DATA_SURF /= 0 .and. SCM_DATA_FLUX == 0 .and. ( trim(name) == 'S' .or. trim(name) == 'Q' ) ) then
+             if ( trim(name) == 'S' ) then
+                SF(:,:) = SCM_DATA_SH
+             elseif ( trim(name) == 'Q' ) then
+                SF(:,:) = SCM_DATA_EVAP
+             end if
           else
-             SF = 0.0
+             if ( size(SG) > 0 ) then
+                SF = CX*( SG - SX(:,:,LM) )
+             else
+                SF = 0.0
+             end if
           end if
        end if
 
