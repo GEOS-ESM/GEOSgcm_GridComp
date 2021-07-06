@@ -4531,14 +4531,15 @@ contains
           USTAR_DATA(:,:) = sqrt(0.0002)*sqrt( U(:,:,LM)**2. + V(:,:,LM)**2. )
           SH_DATA(:,:)    = -MAPL_CP*CT_DATA*RHOE(:,:,LM)*( TH(:,:,LM) - 298.76*(MAPL_P00/ple(:,:,LM))**(MAPL_RDRY/MAPL_CP) )
           EVAP_DATA(:,:)  = -CT_DATA*RHOE(:,:,LM)*( Q(:,:,LM) - 2.038011639875219E-002 )
+
+          USTAR => USTAR_DATA
        end if
 
        CT => CT_DATA
        CQ => CT_DATA
 
-       USTAR => USTAR_DATA
-       SH    => SH_DATA
-       EVAP  => EVAP_DATA
+       SH   => SH_DATA
+       EVAP => EVAP_DATA
     end if
 
     ! Interpolate EDMF profiles to half levels
