@@ -8686,43 +8686,43 @@ contains
                SELECT CASE (QNAME(1:3))
                CASE ('DU0')
                   if(associated(DDU2gDT)) then
-                     CMDU2g = CMDU2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DDU2gDT = DDU2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
               CASE ('SS0')
                   if(associated(DSS2gDT)) then
-                     CMSS2g = CMSS2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DSS2gDT = DSS2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('SO4')
                   if(associated(DSU2gDT)) then
-                     CMSU2g = CMSU2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DSU2gDT = DSU2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('NO3')
                   if(associated(DNI2gDT)) then
-                     CMNI2g = CMNI2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DNI2gDT = DNI2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('NH3')
                   if(associated(DNH32gDT)) then
-                     CMNH32g = CMNH32g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DNH32gDT = DNH32gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('NH4')
                   if(associated(DNH4A2gDT)) then
-                     CMNH4A2g = CMNH4A2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DNH4A2gDT = DNH4A2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                END SELECT
 
                SELECT CASE (QNAME(1:13))
                CASE ('CAphilicCA.bc')
                   if(associated(DBC2gDT)) then
-                     CMBC2g =CMBC2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DBC2gDT = DBC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
 !               CASE ('OCp')
                CASE ('CAphilicCA.oc')
                   if(associated(DOC2gDT)) then
-                     CMOC2g = CMOC2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DOC2gDT = DOC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('CAphilicCA.br')
                   if(associated(DBRC2gDT)) then
-                     CMBRC2g = CMBRC2g + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DBRC2gDT = DBRC2gDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                END SELECT
             endif
@@ -8731,39 +8731,39 @@ contains
                SELECT CASE (QNAME(1:3))
                CASE ('du0')
                   if(associated(DDUDT)) then
-                     CMDU = CMDU + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DDUDT = DDUDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('ss0')
                   if(associated(DSSDT)) then
-                     CMSS = CMSS + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DSSDT = DSSDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('BCp')
                   if(associated(DBCDT)) then
-                     CMBC = CMBC + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DBCDT = DBCDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('OCp')
                   if(associated(DOCDT)) then
-                     CMOC = CMOC + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DOCDT = DOCDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('SO4')
                   if(associated(DSUDT)) then
-                     CMSU = CMSU + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DSUDT = DSUDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('NO3')
                   if(associated(DNIDT)) then
-                     CMNI = CMNI + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DNIDT = DNIDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('NH3')
                   if(associated(DNH3DT)) then
-                     CMNH3 = CMNH3 + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DNH3DT = DNH3DT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('NH4')
                   if(associated(DNH4ADT)) then
-                     CMNH4A = CMNH4A + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DNH4ADT = DNH4ADT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                CASE ('BRC')
                   if(associated(DBRCDT)) then
-                     CMBRC = CMBRC + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
+                     DBRCDT = DBRCDT + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3)
                   end if
                END SELECT
             endif
