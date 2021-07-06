@@ -3757,7 +3757,7 @@ contains
    real, dimension(IM,JM)          :: zi_entrain, gamma_ml_entrain, gamma_fa_entrain
    integer, dimension(IM,JM)       :: ktop_entrain
 
-   real, dimension(IM,JM), target :: CT_DATA, USTAR_DATA, SH_DATA, EVAP_DATA
+   real, dimension(IM,JM), target :: CU_DATA, CT_DATA, USTAR_DATA, SH_DATA, EVAP_DATA, WSTAR
 
 #ifdef EDMF_DIAG
    real, dimension(:,:,:), pointer      :: edmf_qt_plume1,edmf_qt_plume2,edmf_qt_plume3,edmf_qt_plume4, &
@@ -4518,23 +4518,26 @@ contains
 
     call MAPL_TimerOn(MAPL,"---MASSFLUX")
 
-    ! Prescribed surface exchange coefficients
+    ! Prescribed surface conditions
     if ( SCM_DATA_SURF /= 0 ) then
        if ( SCM_DATA_FLUX == 0 ) then
+          CU_DATA(:,:) = 0.0002 ! Temporary
           CT_DATA(:,:) = 0.
 
           SH_DATA(:,:)   = SCM_DATA_SH
           EVAP_DATA(:,:) = SCM_DATA_EVAP/MAPL_ALHL
        else
+          CU_DATA(:,:) = 0.0002
           CT_DATA(:,:) = 0.0081
 
-          USTAR_DATA(:,:) = sqrt(0.0002)*sqrt( U(:,:,LM)**2. + V(:,:,LM)**2. )
+          USTAR_DATA(:,:) = sqrt(CU_DATA(:,:))*sqrt( U(:,:,LM)**2. + V(:,:,LM)**2. )
           SH_DATA(:,:)    = -MAPL_CP*CT_DATA*RHOE(:,:,LM)*( TH(:,:,LM) - 298.76*(MAPL_P00/ple(:,:,LM))**(MAPL_RDRY/MAPL_CP) )
           EVAP_DATA(:,:)  = -CT_DATA*RHOE(:,:,LM)*( Q(:,:,LM) - 2.038011639875219E-002 )
 
           USTAR => USTAR_DATA
        end if
 
+       CU => CU_DATA
        CT => CT_DATA
        CQ => CT_DATA
 
@@ -4548,6 +4551,8 @@ contains
                      zle, z, &                               ! in
                      u, v, thl, qt, q, ql, qi, thv, &        ! in
                      ui, vi, thli, qti, qvi, qli, qii, thvi) ! out
+
+    wstar(:,:) = 0.
 
     mfhl2 = 0.0
     mfhlqt = 0.0
@@ -4621,6 +4626,7 @@ if ( ET == 1 ) then
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in
                      edmf_au0, edmf_cth1, edmf_cth2, edmf_lambda, &                  ! in       
                      zpbl_mf, &                                                      ! inout
+                     wstar, &                                                        ! out
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
                      edmfdryqt, edmfmoistqt, &                                       ! out
@@ -4686,6 +4692,7 @@ if ( ET == 1 ) then
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in
                      edmf_au0, edmf_cth1, edmf_cth2, edmf_lambda, &                  ! in       
                      zpbl_mf, &                                                      ! inout
+                     wstar, &                                                        ! out
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
                      edmfdryqt, edmfmoistqt, &                                       ! out
@@ -4762,6 +4769,7 @@ if ( ET == 1 ) then
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in
                      edmf_au0, edmf_cth1, edmf_cth2, edmf_lambda, &                  ! in       
                      zpbl_mf, &                                                      ! inout
+                     wstar, &                                                        ! out
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
                      edmfdryqt, edmfmoistqt, &                                       ! out
@@ -5079,8 +5087,8 @@ ENDIF
                       MYNN_DEBUG, MYNN_TEST, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &     ! in
                       th00, ice_ramp, PLE, PLO, RHOE, ZLE, Z, &                       ! in      
                       U, V, T, Q, QL, QI, THL, QT, THV, &                             ! in      
-                      USTAR, SH, EVAP, &                                              ! in      
-                      whl_edmf, wqt_edmf, wthv_edmf, au, Mu, wu, E, D, wdet, &              ! in      
+                      USTAR, WSTAR, CU, SH, EVAP, &                                   ! in      
+                      whl_edmf, wqt_edmf, wthv_edmf, au, Mu, wu, E, D, wdet, &        ! in      
                       acei_moist, Ai_moist, Bi_moist, &                               ! in
                       tke_new, hl2, qt2, hlqt, &                                      ! inout   
                       ws_explicit, wqv_explicit, wql_explicit, &                      ! inout     

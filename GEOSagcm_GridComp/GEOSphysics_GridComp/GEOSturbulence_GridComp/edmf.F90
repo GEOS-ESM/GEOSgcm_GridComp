@@ -29,6 +29,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                     ET, L0, ENT0, EDfac, EntWFac, Wa, Wb, &                         ! in
                     au0, cth1, cth2, lambda, &                                      ! in
                     zpbl, &                                                         ! inout
+                    wstar, &                                                        ! out
                     edmfdrya, edmfmoista, &                                         ! out
                     edmfdryw, edmfmoistw, &                                         ! out
                     edmfdryqt, edmfmoistqt, &                                       ! out
@@ -63,6 +64,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                                              AlphaW, AlphaQT, AlphaTH, EDfac, c_kh_mf
  
   ! Outputs
+  real, dimension(IM,JM), intent(out) :: wstar
   real, dimension(IM,JM,0:LM), intent(out) :: edmfdrya, edmfmoista, edmfdryw, edmfmoistw, &
                                               edmfdryqt, edmfmoistqt, edmfdrythl, edmfmoistthl, &
                                               edmfdryu, edmfmoistu, edmfdryv, edmfmoistv, &
@@ -88,7 +90,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
   integer :: i, j, k, km1, kp1, iup, kbot
 
-  real :: wthv, wstar, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
+  real :: wthv, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
           B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, Mn_test, au_test, EntEXP, EntEXPU, EntW, wf, &
           stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, idzle, ifac, test, mft_work, mfthvt_work, &
           goth00, thlu_full, work, work2, exfh, dsdz, dqdz, thv_high, thv_low, thvmin, thvmax, &
@@ -124,6 +126,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   !
   ! Initialize arrays
   !
+
+  wstar(:,:) = 0.
 
   ! Outputs that are diagnostic updraft statistics
   edmfdrya     = 0.
@@ -263,12 +267,12 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
      wthv = ( sh(i,j)/mapl_cp + mapl_vireps*th00*evap(i,j) )/rhoe(i,j,LM)
 
      if ( wthv > 0. .and. thv(i,j,LM-1) < thv(i,j,LM) ) then
-        wstar = max( wstarmin, (goth00*wthv*zpbl(i,j))**onethird )
+        wstar(i,j) = max( wstarmin, (goth00*wthv*zpbl(i,j))**onethird )
 
-        qstar  = evap(i,j)/(rhoe(i,j,LM)*wstar)
-        thstar = wthv/wstar
+        qstar  = evap(i,j)/(rhoe(i,j,LM)*wstar(i,j))
+        thstar = wthv/wstar(i,j)
         
-        sigmaW  = AlphaW*wstar
+        sigmaW  = AlphaW*wstar(i,j)
         sigmaQT = AlphaQT*max( qstar, 0. )
         sigmaTH = AlphaTH*max( thstar, 0. )
 
@@ -284,10 +288,10 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
            wu0(i,j) = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
 
-           wstar  = ( goth00*wthv*zi(i,j) )**onethird
-           thstar = wthv/wstar 
+           wstar(i,j) = ( goth00*wthv*zi(i,j) )**onethird
+           thstar     = wthv/wstar(i,j) 
  
-           dthv0(i,j) = cth1*wu0(i,j)*thstar/wstar
+           dthv0(i,j) = cth1*wu0(i,j)*thstar/wstar(i,j)
 !           dthv0 = max( thv(i,j,LM) - thv(i,j,LM-1), &
 !                        wu0**2.*( ( work2/work )**2. - work**2. )/( 2.*wb*goth00*( zle(i,j,LM-2) - zle(i,j,LM-1) ) ) )
 
