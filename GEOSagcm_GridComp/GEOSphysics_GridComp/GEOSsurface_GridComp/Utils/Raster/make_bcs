@@ -157,7 +157,7 @@ set make_bcs_jobs = ''
 set GLOBAL_CATCH_DATA = /discover/nobackup/ltakacs/bcs/LandSurfaceData_for_Catchment_Parameters/global.cat_id.catch.ORIG.DL
 set HOSTNAME = `hostname | rev | cut -c3- | rev`
 if ( $HOSTNAME == discover ) then
-    set l_data = /discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001/
+    set l_data = /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/
 else
     set l_data = /nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/
 endif

@@ -11,7 +11,7 @@ set (alldirs
 esma_add_library (${this}
   SRCS GEOS_LandGridComp.F90
   SUBCOMPONENTS ${alldirs}
-  SUBDIRS Shared
+  SUBDIRS Shared 
   DEPENDENCIES GEOS_SurfaceShared GEOS_LandShared MAPL
   INCLUDES ${INC_ESMF})
 

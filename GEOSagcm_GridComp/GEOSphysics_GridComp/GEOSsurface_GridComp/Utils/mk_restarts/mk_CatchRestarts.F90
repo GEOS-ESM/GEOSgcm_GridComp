@@ -20,8 +20,6 @@ program  mk_CatchRestarts
   character*256 :: OutType
   character*256 :: arg(6)
 
-  integer :: zoom
-
   integer :: i, k, iargc, n, ntiles,ntiles_in, nplus, req
   integer, pointer  :: Id(:), tid_in (:)
   real,    pointer  :: loni(:),lono(:), lati(:), lato(:)
@@ -41,7 +39,7 @@ program  mk_CatchRestarts
   
   I = iargc()
 
-  if( I<5 .or. I>6 ) then
+  if( I<4 .or. I>5 ) then
      print *, "Wrong Number of arguments: ", i
      print *, trim(Usage)
      call exit(1)
@@ -54,9 +52,8 @@ program  mk_CatchRestarts
   read(arg(2),'(a)')  InTileFile
   read(arg(3),'(a)')  InRestart
   read(arg(4),*)  SURFLAY
-  read(arg(5),*)  zoom
 
-  if(I==6) then
+  if(I==5) then
      call getarg(6,OutType)
      OutIsOld = trim(OutType)=="OutIsOld"
   else

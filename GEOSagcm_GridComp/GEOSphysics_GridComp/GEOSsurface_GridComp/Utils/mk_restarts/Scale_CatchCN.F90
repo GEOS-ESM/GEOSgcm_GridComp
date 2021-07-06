@@ -17,10 +17,17 @@
 
   integer, parameter :: nveg = 4
   integer, parameter :: nzone = 3
-  integer, parameter :: VAR_COL = 40 ! number of CN column restart variables
-  integer, parameter :: VAR_PFT = 74 ! number of CN PFT variables per column
-  real               :: WEMIN_IN, WEMIN_OUT
+  integer            :: VAR_COL, VAR_PFT
+  integer, parameter :: VAR_COL_CLM40 = 40 ! number of CN column restart variables
+  integer, parameter :: VAR_PFT_CLM40 = 74 ! number of CN PFT variables per column
+  integer, parameter :: npft    = 19  
+  integer, parameter :: VAR_COL_CLM45 = 35 ! number of CN column restart variables
+  integer, parameter :: VAR_PFT_CLM45 = 75 ! number of CN PFT variables per column
   
+  real               :: WEMIN_IN, WEMIN_OUT
+  logical            :: clm45  = .false.
+  integer :: un_dim3
+
   type catch_rst
        real, pointer ::        bf1(:)
        real, pointer ::        bf2(:)
@@ -90,6 +97,11 @@
        real, pointer ::    BGALBNF(:)
        real, pointer ::    CNCOL(:,:)
        real, pointer ::    CNPFT(:,:)
+       real, pointer ::    ABM     (:)
+       real, pointer ::    FIELDCAP(:)
+       real, pointer ::    HDM     (:)
+       real, pointer ::    GDP     (:)
+       real, pointer ::    PEATF   (:)       
   endtype catch_rst
 
   type(catch_rst) catch(3)
@@ -161,14 +173,14 @@
   if (filetype == 0) then
      call formatter(1)%open(trim(fname1),pFIO_READ,rc=rc)
      call formatter(2)%open(trim(fname2),pFIO_READ,rc=rc)
-     cfg(1)=formatter(1)%read(rc=rc)
+     cfg(1)=formatter(1)%read(rc=rc) 
      cfg(2)=formatter(2)%read(rc=rc)
-  else
-     open(unit=10, file=trim(fname1),  form='unformatted')
-     open(unit=20, file=trim(fname2),  form='unformatted')
-     open(unit=30, file=trim(fname3),  form='unformatted')
+ ! else
+ !    open(unit=10, file=trim(fname1),  form='unformatted')
+ !    open(unit=20, file=trim(fname2),  form='unformatted')
+ !    open(unit=30, file=trim(fname3),  form='unformatted')
   end if
-
+  
 ! Get SURFLAY Value
 ! -----------------
   read(arg(4),*) SURFLAY
@@ -183,19 +195,30 @@
   end if
   print *, 'SURFLAY: ',SURFLAY
 
+  VAR_COL = VAR_COL_CLM40 
+  VAR_PFT = VAR_PFT_CLM40
+
   if (filetype ==0) then
 
      ntiles = cfg(1)%get_dimension('tile',rc=rc)
-
-  else
-
-!    Determine NTILES
-!    ----------------
-     bpos=0
-     read(10)
-     epos = ftell(10)            ! ending position of file pointer
-     ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
-     rewind 10
+     un_dim3 = cfg(1)%get_dimension('unknown_dim3',rc=rc)
+     if(un_dim3 == 105) then
+        clm45  = .true.
+        VAR_COL = VAR_COL_CLM45 
+        VAR_PFT = VAR_PFT_CLM45
+        print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
+     else
+        print *, 'Processing CLM40 restarts : ', VAR_COL, VAR_PFT, clm45
+     endif
+!  else
+!
+!!    Determine NTILES
+!!    ----------------
+!     bpos=0
+!     read(10)
+!     epos = ftell(10)            ! ending position of file pointer
+!     ntiles = (epos-bpos)/4-2    ! record size (in 4 byte words; 
+!     rewind 10
 
   end if
 
@@ -213,11 +236,11 @@
   new = 2
   
   if (filetype ==0) then
-     call readcatch_nc4 ( catch(old), formatter(old), cfg(old) )
-     call readcatch_nc4 ( catch(new), formatter(new), cfg(new) )
-  else
-     call readcatch ( 10,catch(old) )
-     call readcatch ( 20,catch(new) )
+     call readcatchcn_nc4 ( catch(old), formatter(old), cfg(old) )
+     call readcatchcn_nc4 ( catch(new), formatter(new), cfg(new) )
+!  else
+!     call readcatchcn ( 10,catch(old) )
+!     call readcatchcn ( 20,catch(new) )
   end if
 
 ! Create Scaled Catch
@@ -402,9 +425,9 @@
      cfg(3) = cfg(2)
      call formatter(3)%create(fname3,rc=rc)
      call formatter(3)%write(cfg(3),rc=rc)
-     call writecatch_nc4 ( catch(sca), formatter(3) ,cfg(3) )
-  else
-     call writecatch ( 30,catch(sca) )
+     call writecatchcn_nc4 ( catch(sca), formatter(3) ,cfg(3) )
+!  else
+!     call writecatchcn ( 30,catch(sca) )
   end if
 
 100 format(1x,'Total  Tiles: ',i10)
@@ -490,17 +513,22 @@
        allocate( catch%    BGALBNF(ntiles) )
        allocate( catch%      CNCOL(ntiles,nzone*VAR_COL))
        allocate( catch%      CNPFT(ntiles,nzone*nveg*VAR_PFT))
+       allocate( catch%        ABM(ntiles) )
+       allocate( catch%   FIELDCAP(ntiles) )
+       allocate( catch%        HDM(ntiles) )
+       allocate( catch%        GDP(ntiles) )
+       allocate( catch%      PEATF(ntiles) )
+       
    return
    end subroutine allocatch
 
-   subroutine readcatch_nc4 (catch,formatter,cfg)
+   subroutine readcatchcn_nc4 (catch,formatter,cfg)
    type(catch_rst) catch
    type(Filemetadata) :: cfg
    type(Netcdf4_Fileformatter) :: formatter
    integer :: j, dim1,dim2
    type(Variable), pointer :: myVariable
    character(len=:), pointer :: dname
-   
 
        call MAPL_VarRead(formatter,"BF1",catch%bf1)
        call MAPL_VarRead(formatter,"BF2",catch%bf2)
@@ -578,16 +606,33 @@
        myVariable => cfg%get_variable("CNCOL")
        dname => myVariable%get_ith_dimension(2)
        dim1 = cfg%get_dimension(dname)
+       if(clm45) then          
+          call MAPL_VarRead(formatter,"ABM",     catch%ABM , rc = rc    )
+          call MAPL_VarRead(formatter,"FIELDCAP",catch%FIELDCAP)
+          call MAPL_VarRead(formatter,"HDM",     catch%HDM     )
+          call MAPL_VarRead(formatter,"GDP",     catch%GDP     )
+          call MAPL_VarRead(formatter,"PEATF",   catch%PEATF   )
+       endif
        do j=1,dim1
           call MAPL_VarRead(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j)
        enddo
+       ! The following three lines were added as a bug fix by smahanam on 5 Oct 2020
+       ! (to be merged into the "develop" branch in late 2020):
+       ! The length of the 2nd dim of CNPFT differs from that of CNCOL.  Prior to this fix,
+       ! CNPFT was not read in its entirety and some elements remained uninitialized (or zero),
+       ! resulting in bad values in the "regridded" (re-tiled) restart file. 
+       ! This impacted re-tiled restarts for both CNCLM40 and CLCLM45.
+       ! - reichle, 23 Nov 2020
+       myVariable => cfg%get_variable("CNPFT")
+       dname => myVariable%get_ith_dimension(2)
+       dim1 = cfg%get_dimension(dname)       
        do j=1,dim1
           call MAPL_VarRead(formatter,"CNPFT",catch%CNPFT(:,j),offset1=j)
        enddo
    return
-   end subroutine readcatch_nc4
+   end subroutine readcatchcn_nc4
 
-   subroutine readcatch (unit,catch)
+   subroutine readcatchcn (unit,catch)
    integer unit, i,j,n
    type(catch_rst) catch
 
@@ -672,9 +717,9 @@
           read(unit) catch%    CNPFT (:,i)
        end do
    return
-   end subroutine readcatch
+   end subroutine readcatchcn
 
-   subroutine writecatch_nc4 (catch,formatter,cfg)
+   subroutine writecatchcn_nc4 (catch,formatter,cfg)
    type(catch_rst) catch
    type(Netcdf4_fileformatter) :: formatter
    type(filemetadata) :: cfg
@@ -759,6 +804,7 @@
        myVariable => cfg%get_variable("CNCOL")
        dname => myVariable%get_ith_dimension(2)
        dim1 = cfg%get_dimension(dname)
+
        do j=1,dim1
           call MAPL_VarWrite(formatter,"CNCOL",catch%CNCOL(:,j),offset1=j)
        enddo
@@ -773,7 +819,6 @@
        allocate (var (dim1))
        var = 0.
 
-       call MAPL_VarWrite(formatter,"SFMCM",  var)
        call MAPL_VarWrite(formatter,"BFLOWM", var)
        call MAPL_VarWrite(formatter,"TOTWATM",var)
        call MAPL_VarWrite(formatter,"TAIRM",  var)
@@ -790,10 +835,33 @@
           call MAPL_VarWrite(formatter,"RZMM",var,offset1=j)
        end do
 
+       if (clm45) then
+          do j=1,dim1
+             call MAPL_VarWrite(formatter,"SFMM",  var,offset1=j)
+          enddo
+
+          call MAPL_VarWrite(formatter,"ABM",     catch%ABM, rc =rc     )
+          call MAPL_VarWrite(formatter,"FIELDCAP",catch%FIELDCAP)
+          call MAPL_VarWrite(formatter,"HDM",     catch%HDM     )
+          call MAPL_VarWrite(formatter,"GDP",     catch%GDP     )
+          call MAPL_VarWrite(formatter,"PEATF",   catch%PEATF   )
+          call MAPL_VarWrite(formatter,"RHM",     var)
+          call MAPL_VarWrite(formatter,"WINDM",   var)
+          call MAPL_VarWrite(formatter,"RAINFM",  var)
+          call MAPL_VarWrite(formatter,"SNOWFM",  var)
+          call MAPL_VarWrite(formatter,"RUNSRFM", var)
+          call MAPL_VarWrite(formatter,"AR1M",    var)
+          call MAPL_VarWrite(formatter,"T2M10D",  var)
+          call MAPL_VarWrite(formatter,"TPREC10D",var)
+          call MAPL_VarWrite(formatter,"TPREC60D",var)
+       else
+          call MAPL_VarWrite(formatter,"SFMCM",  var)          
+       endif
+       
        myVariable => cfg%get_variable("PSNSUNM")
        dname => myVariable%get_ith_dimension(2)
        dim1 = cfg%get_dimension(dname)
-       dname => myVariable%get_ith_dimension(2)
+       dname => myVariable%get_ith_dimension(3)
        dim2 = cfg%get_dimension(dname)
        do i=1,dim2 
           do j=1,dim1
@@ -803,9 +871,9 @@
        end do
        call formatter%close()
    return
-   end subroutine writecatch_nc4
+   end subroutine writecatchcn_nc4
 
-   subroutine writecatch (unit,catch)
+   subroutine writecatchcn (unit,catch)
    integer unit, i,j,n
    type(catch_rst) catch
 
@@ -891,7 +959,7 @@
        end do
 
    return
-   end subroutine writecatch
+   end subroutine writecatchcn
 
   end
 

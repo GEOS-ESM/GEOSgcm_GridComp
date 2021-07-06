@@ -297,7 +297,7 @@ pro check_regrid_carbon
 
 BCSDIR1   = '/discover/nobackup/smahanam/bcs/Heracles-4_3/Heracles-4_3_MERRA-3/SMAP_EASEv2_M09/'
 GFILE1    = 'SMAP_EASEv2_M09_3856x1624'
-OutDir1   = '/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/M09/20151231/'
+OutDir1   = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/CatchCN/M09/20151231/'
 int_rst1  = 'catchcn_internal_rst'
 
 BCSDIR2   = '/discover/nobackup/smahanam/bcs/Heracles-4_3/Heracles-4_3_MERRA-3/CF0180x6C_DE1440xPE0720/'
