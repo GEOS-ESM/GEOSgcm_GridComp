@@ -10,7 +10,7 @@ module rmTinyCatchParaMod
   use date_time_util  
   use leap_year
   use MAPL_ConstantsMod
-  use module_sibalb, ONLY: sibalb
+  use lsm_routines, ONLY: sibalb
   
   implicit none
   logical, parameter :: error_file=.true.
@@ -1397,7 +1397,7 @@ END SUBROUTINE modis_lai
          modisalb,scale_fac,albvf,albnf, lat,lon, &
          green,lai,lai_before,lai_after,grn_before,grn_after
     real, allocatable, dimension (:) :: &
-         calbvf,calbnf
+         calbvf,calbnf, zero_array, one_array, albvr,albnr
     character*300 :: ifile1,ifile2,ofile
     integer, dimension(12), parameter :: days_in_month_nonleap = &
          (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
@@ -1423,7 +1423,11 @@ END SUBROUTINE modis_lai
     allocate (grn_before (1:maxcat))
     allocate (lai_after  (1:maxcat))
     allocate (grn_after  (1:maxcat))
-    allocate (vegcls   (1:maxcat))
+    allocate (vegcls     (1:maxcat))
+    allocate (zero_array (1:maxcat))
+    allocate (one_array  (1:maxcat))
+    allocate (albvr      (1:maxcat))
+    allocate (albnr      (1:maxcat))    
     close (10,status='keep')
 
     date_time_new%year   =2002
@@ -1479,7 +1483,11 @@ END SUBROUTINE modis_lai
     calbvf   =0.
     calbnf   =0.
     modisalb =0.
-
+    zero_array = 0.
+    one_array  = 1.
+    albvr      = 0.
+    albnr      = 0.
+    
     unit1 =10
     unit2 =20
     unit3 =30
@@ -1591,14 +1599,11 @@ END SUBROUTINE modis_lai
         
         tsteps = tsteps + 1.
 
-        !call sibalb(                                    &
-        !     albvr,albvr,albvf,albnf,                   &
-        !     lai, green, 0.0, snw, vegcls, maxcat)
-
-        call sibalb (                  &
-             MAXCAT,vegcls,lai,green,  &
-             albvf, albnf)
-         
+        call sibalb (                                 &
+             MAXCAT,vegcls,lai,green, zero_array,     &
+             one_array,one_array,one_array,one_array, &
+             ALBVR, ALBNR, albvf, albnf)
+                 
         calbvf = calbvf + albvf
         calbnf = calbnf + albnf
               
@@ -1650,6 +1655,7 @@ END SUBROUTINE modis_lai
   deallocate (green,lai)
   deallocate (vegcls)
   deallocate (calbvf,calbnf)
+  deallocate (zero_array, one_array, albvr, albnr)
   
   unit1 =10
   unit2 =20

@@ -10,7 +10,6 @@ read_riveroutlet.F90
 CubedSphere_GridMod.F90 
 rmTinyCatchParaMod.F90
 comp_CATCHCN_AlbScale_parameters.F90
-module_sibalb.F90
 zip.c
 util.c
 )  
@@ -22,7 +21,7 @@ endif ()
 include_directories(${INC_ESMF})
 include_directories(${INC_NETCDF})
 
-esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL)
+esma_add_library(${this} SRCS ${srcs} DEPENDENCIES MAPL GEOS_LandShared)
 target_link_libraries(${this} PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
 
 if(NOT FORTRAN_COMPILER_SUPPORTS_FINDLOC)
