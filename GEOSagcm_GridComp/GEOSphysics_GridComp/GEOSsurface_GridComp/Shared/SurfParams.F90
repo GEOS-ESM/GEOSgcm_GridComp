@@ -94,7 +94,7 @@ module SurfParams
     else if (LSM_CHOICE==2) then
 
 	select case (LAND_PARAMS)
-       	case ("CN_CLM4")  ! parameters to reproduce Fanwei Zeng's Catchment-CN.4.0 runs (e0004s_transientCO2_05) done with build /gpfsm/dnb31/fzeng/LDASsa_m3-16_0_p2_CatchCatchCN_for_MERRA3
+       	case ("CN_CLM40")  ! parameters to reproduce Fanwei Zeng's Catchment-CN.4.0 runs (e0004s_transientCO2_05) done with build /gpfsm/dnb31/fzeng/LDASsa_m3-16_0_p2_CatchCatchCN_for_MERRA3
          	LAND_FIX        = .TRUE.
          	CSOIL_2         = 70000. ! Post H5_0
          	WEMIN           = 13.
@@ -111,6 +111,7 @@ module SurfParams
 
      else if (LSM_CHOICE==3) then
 	select case (LAND_PARAMS)      
+
 	case ("CN_CLM45")  ! parameters to reproduce Eunjee Lee's Catchment-CN4.5 fire carbon emission simulations
                 LAND_FIX 	= .TRUE.
                 CSOIL_2  	= 70000. ! Post H5_0
