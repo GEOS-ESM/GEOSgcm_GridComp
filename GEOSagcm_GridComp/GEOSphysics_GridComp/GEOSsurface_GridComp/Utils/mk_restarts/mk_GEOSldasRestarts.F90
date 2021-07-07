@@ -37,7 +37,7 @@ PROGRAM mk_GEOSldasRestarts
   character*256 :: BCSDIR, SPONSORCODE, EXPNAME, EXPDIR, TILFILE, SFL, PFILE
   character*400 :: CMD
   character*8   :: YYYYMMDD
-  character(len=:), allocatable :: model_arg, model
+  character(len=:), allocatable :: model, catch_scaler
 
   real, parameter :: ECCENTRICITY  = 0.0167
   real, parameter :: PERIHELION    = 102.0
@@ -172,7 +172,7 @@ PROGRAM mk_GEOSldasRestarts
      case ('l')
         EXPDIR = trim(arg)
      case ('m')
-        MODEL_ARG = StrLowCase(trim(arg))
+        MODEL = StrLowCase(trim(arg))
      case ('r')
         REORDER = trim(arg)
      case ('s')
@@ -190,17 +190,17 @@ PROGRAM mk_GEOSldasRestarts
      call getarg(nxt,arg)
   end do
 
-  if (index(model_ARG, 'catchcn') /=0 ) then
+  if (index(model, 'catchcn') /=0 ) then
      if((INDEX(BCSDIR, 'NL') == 0).AND.(INDEX(BCSDIR, 'OutData') == 0)) then
         print *,'Land BCs in : ',trim(BCSDIR)
-        print *,'do not support ',trim (model_arg)
+        print *,'do not support ',trim (model)
         stop
      endif
 
-     if (index(model_arg,'45') /=0) clm45 = .true.
-     model = 'catchcn'
+     if (index(model,'45') /=0) clm45 = .true.
+     catch_scaler = 'Scale_CatchCN'
   else
-     model = 'catch'
+     catch_scaler = 'Scale_Catch'
   endif
 
 
@@ -260,7 +260,7 @@ PROGRAM mk_GEOSldasRestarts
         write(10,'(a)')' ' 
         write(10,'(a)')'mpirun -np 56 '//trim(cmd)//' -j Y'
 
-        write(10,'(a)')'bin/Scale_'//model//' InData/'//model//'_internal_rst OutData/'//model//'_internal_rst '//model//'_internal_rst '//trim(SFL)
+        write(10,'(a)')'bin/'//trim(catch_scaler)//' InData/'//model//'_internal_rst OutData/'//model//'_internal_rst '//model//'_internal_rst '//trim(SFL)
 
         close (10, status ='keep')
         call system('chmod 755 mkLDASsa.j')
