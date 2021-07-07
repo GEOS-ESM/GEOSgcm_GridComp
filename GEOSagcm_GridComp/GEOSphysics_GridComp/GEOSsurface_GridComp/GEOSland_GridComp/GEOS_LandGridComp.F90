@@ -919,8 +919,9 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
-       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)  
-
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WATERTABLED', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FSWCHANGE',  CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)
        if (DO_GOSWIM /= 0) then
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU002', CHILD_ID = CATCH(1), RC=STATUS) ; VERIFY_(STATUS)     
@@ -1286,7 +1287,8 @@ contains
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTBC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
        call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RMELTOC002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)  
-
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'WATERTABLED',CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)
+       call MAPL_AddExportSpec ( GC, SHORT_NAME = 'FSWCHANGE',  CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)
        if (DO_GOSWIM /= 0) then
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU001', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
           call MAPL_AddExportSpec ( GC, SHORT_NAME = 'RDU002', CHILD_ID = CATCHCN(1), RC=STATUS) ; VERIFY_(STATUS)     
