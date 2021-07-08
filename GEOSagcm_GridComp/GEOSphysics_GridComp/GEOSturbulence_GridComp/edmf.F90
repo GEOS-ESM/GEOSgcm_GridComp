@@ -294,10 +294,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
            thstar     = wthv/wstar(i,j) 
  
            dthv0(i,j) = cth1*wu0(i,j)*thstar/wstar(i,j)
-!           dthv0 = max( thv(i,j,LM) - thv(i,j,LM-1), &
-!                        wu0**2.*( ( work2/work )**2. - work**2. )/( 2.*wb*goth00*( zle(i,j,LM-2) - zle(i,j,LM-1) ) ) )
-
-           qtu0 = qt(i,j,LM-1) + dthv0(i,j)*evap(i,j)/(rhoe(i,j,LM-1)*wthv)
+           qtu0       = qt(i,j,LM-1) + dthv0(i,j)*evap(i,j)/(rhoe(i,j,LM-1)*wthv)
 
            thvu0   = thv(i,j,LM-1) + dthv0(i,j)
            sigmaTH = cth2*dthv0(i,j)
@@ -329,7 +326,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               thv_high = thvmin + ( thvmax - thvmin )*real(iup)/real(numup)
 
               upthv(iup,i,j) = 0.5*( thv_low + thv_high )
-!              upw(iup,i,j)   = wu0(i,j)
               if ( au_fac(i,j) > 0. ) then
                  upw(iup,i,j) = sqrt( 2.*wb*goth00*( zle(i,j,LM-2) - zle(i,j,LM-1) )*( upthv(iup,i,j) - thv(i,j,LM-1) )/au_fac(i,j) )
               else
@@ -349,7 +345,12 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
            THVsrfF = THVsrfF + upa(iup,i,j)*upw(iup,i,j)*( upthv(iup,i,j) - thvi(i,j,kbot) )
         end do
 
-        au_total(i,j) = sum(upa(:,i,j))
+        ! Adjust area fraction so that mass flux is correct at half level nearest surface
+        upa(:,i,j) = upa(:,i,j)*wu0(i,j)*sum( upa(:,i,j) )/sum( upa(:,i,j)*upw(:,i,j) )
+        upm(:,i,j) = rhoe(:,i,j)*upa(:,i,j)*upw(:,i,j)
+
+        ! Apply detrainment at first model level
+        au_total(i,j) = sum( upa(:,i,j) )
         do iup = 1,numup
            D_frac(iup,i,j) = upa(iup,i,j)/au_total(i,j)
            upa(iup,i,j)    = upa(iup,i,j) - D_frac(iup,i,j)*sqrt(lambda*zle(i,j,LM-1))/(r*zi(i,j))
@@ -571,12 +572,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                  B = wb*goth00*( upthv(iup,i,j) - thv(i,j,k) )
 
                  !
-                 eps = max( 0., 1./500. - ( 1./f_thermal(i,j,k) - 1. )/dzle )
-!                 if ( B >= 0. ) then
-!                    eps = max( 0., 1./500. - ( 1./f_thermal(i,j,k) - 1. )/dzle )
-!                 else
-!                    eps = 0.
-!                 end if
+                 eps = max( 0., 1./L0(i,j) - ( 1./f_thermal(i,j,k) - 1. )/dzle )
 
 !                 Wn2 = f_thermal(i,j,k)**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
                  Wn2 = upw(iup,i,j)**2./( 1./f_thermal(i,j,k) + dzle*eps  )**2. + 2.*dzle*B                 
