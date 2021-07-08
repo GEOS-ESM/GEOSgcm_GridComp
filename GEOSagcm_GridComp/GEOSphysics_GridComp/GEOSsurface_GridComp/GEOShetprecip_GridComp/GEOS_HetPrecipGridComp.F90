@@ -5,6 +5,7 @@
 module GEOS_HetPrecipGridCompMod
   use ESMF
   use MAPL
+  use random
   implicit none
 
   public SetServices
@@ -186,7 +187,7 @@ contains
     ! ...TBD...
 
     if (all(qvar == 0.0)) then
-       call RANDOM_NUMBER(qvar)
+       call RANDOM_NORMAL(qvar)
     end if
 
     _RETURN(ESMF_SUCCESS)
@@ -220,6 +221,7 @@ contains
     real :: pperhr
     integer :: NT
     integer :: i, iopt, n, itile
+    integer :: ilargest
     integer, allocatable :: krank(:)
     real, pointer :: psub(:) => null()
     real, allocatable :: psum(:)
@@ -238,7 +240,7 @@ contains
     NT = size(QVAR)
     allocate(rn(NT), __STAT__)
 
-    call random_number(rn) ! rn is array of size NT
+    call random_normal(rn) ! rn is array of size NT
 
 !   generate new QVAR
     qvar=rho*qvar+sqrho*rn
@@ -272,22 +274,25 @@ contains
        fracdry=fracdrymax
     end if
 
-    allocate(psum(0:NT), krank(NT), __STAT__)
+    allocate(psum(NT), krank(NT), __STAT__)
 
     ! sort QVAR
     call rankdata(nt, qvar, krank, __RC__)
 
     ! compute a partial sum of tile areas in the ranked order
-    psum(0) = 0.0
     do n = 1,NT
        itile = krank(n)
-       psum(n) =  psum(n-1) + norm_tile_area(itile)
+       if (n == 1) then
+          psum(itile) = norm_tile_area(itile)
+       else
+          psum(itile) = psum(krank(n-1)) + norm_tile_area(itile)
+       end if
     end do
 
     ! bring the partial sum to the "middle" of the last ranked tile
     do n = 1,NT
        itile = krank(n)
-       psum(n) =  psum(n) - 0.5*norm_tile_area(itile)
+       psum(itile) =  psum(itile) - 0.5*norm_tile_area(itile)
     end do
 
     ! Note psum is the same variable as qranked in Randy's IDL code
@@ -318,9 +323,26 @@ contains
        end if
      end do
 
+     ! add a protection for the case of non-zero grid precip but the scheme
+     ! resulted in zero precip for all the tiles. Then we assign all precip to
+     ! the tile with the largest qvar
+     total = 0.0
+     ilargest = -1
+     do i=1,nt
+        total = total + psub(i)
+        ilargest = max(krank(i), ilargest)
+     end do
+     _ASSERT(ilargest > 0, 'Could not find largest QVAR')
+     if(total == 0.0) psub(ilargest) = 1.0
+
      ! scale the precip factor to make sure we preserve the grid box precip
-     total = sum(psub)/nt
-     if (total /= 0.0) psub = psub/total
+!ALT: old scaling, assumes uniform area tiles     total = sum(psub)/nt
+     total = 0.0
+     do i=1,nt
+        total = total + psub(i)*norm_tile_area(i)
+     end do
+     psub = psub/total
+
 
 ! all done
      deallocate(psum,krank, rn) 

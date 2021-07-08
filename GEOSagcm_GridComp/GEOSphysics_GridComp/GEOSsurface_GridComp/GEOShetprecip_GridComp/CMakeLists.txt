@@ -1,6 +1,7 @@
 esma_set_this ()
 
 set (SRCS
+  random.F90
   GEOS_HetPrecipGridComp.F90
   )
 
