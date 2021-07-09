@@ -11,7 +11,7 @@ module GEOS_HetPrecipGridCompMod
   public SetServices
   ! some module variables
   integer, parameter :: NPDF=24
-  integer :: STEPS_PER_HOUR
+  integer, parameter :: SECONDS_PER_DAY = 24*3600 ! should be 86400
 
   real :: rho ! autocorrelation
   real :: sqrho ! = sqrt(1-rho**2) autocorrelation
@@ -123,6 +123,7 @@ contains
     real, pointer :: qvar(:) => null()
     real :: totalArea
     integer, pointer :: tiletypes(:) => null()
+    integer :: STEPS_PER_HOUR
 
     call MAPL_GenericInitialize(GC, IMPORT, EXPORT, CLOCK, __RC__)
 
@@ -218,7 +219,7 @@ contains
     real, parameter :: xlo=log10(0.07), xhi=log10(20.)
     real, parameter :: ylo=0.9, yhi=0.0, fracdrymax=0.95
     real :: fracdry, yinterp
-    real :: pperhr
+    real :: pperday
     integer :: NT
     integer :: i, iopt, n, itile
     integer :: ilargest
@@ -265,10 +266,10 @@ contains
 
 ! determine fracdry
 
-    pperhr=log10(totalPrecip*STEPS_PER_HOUR)
+    pperday=log10(totalPrecip*SECONDS_PER_DAY)
 
-    yinterp=ylo+((pperhr-xlo)/(xhi-xlo))*(yhi-ylo)
-    if (pperhr > xhi) yinterp = yhi
+    yinterp=ylo+((pperday-xlo)/(xhi-xlo))*(yhi-ylo)
+    if (pperday > xhi) yinterp = yhi
     fracdry=yinterp
     if(fracdry > fracdrymax) then 
        fracdry=fracdrymax
