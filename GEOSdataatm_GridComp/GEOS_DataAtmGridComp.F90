@@ -18,6 +18,7 @@ module GEOS_DataAtmGridCompMod
   use GEOS_SurfaceGridCompMod,    only : SurfSetServices      => SetServices
   use GEOS_UtilsMod
 
+  use ice_init,           only: dealloc_column_physics
 
   implicit none
   private
