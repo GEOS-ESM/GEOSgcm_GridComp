@@ -158,7 +158,7 @@ PROGRAM mk_GEOSldasRestarts
         print *,'(1) to create an initial catch(cn)_internal_rst file ready for an offline experiment :'
         print *,'--------------------------------------------------------------------------------------'
         print *,'(1.1) mpirun -np 1 bin/mk_GEOSldasRestarts.x -a SPONSORCODE -b BCSDIR -m MODEL -s SURFLAY(20/50)'
-        print *,'where MODEL : catch or catchcn'
+        print *,'where MODEL : catch, catchcnclm40, catchcnclm45'
         print *,'(1.2) sbatch mkLDAS.j'
         print *,'   '
         print *,'(2) to reorder an LDASsa restart file to the order of the BCs for use in an GCM experiment :'
