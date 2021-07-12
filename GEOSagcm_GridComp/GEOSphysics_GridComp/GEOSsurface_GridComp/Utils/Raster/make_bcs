@@ -172,12 +172,11 @@ ORSLV:
     echo "      where:  ${C2}O1 --   Low-Resolution Reynolds 1   deg${CR} (Lon/Lat Data-Ocean:  360x180 ) "
     echo "              ${C2}O2 --   Med-Resolution Reynolds 1/4 deg${CR} (Lon/Lat Data-Ocean: 1440x720 ) "
     echo "              ${C2}O3 --  High-Resolution    OSTIA 1/8 deg${CR} (Lon/Lat Data-Ocean: 2880x1440) "
-    echo "              ${C2}T1 --   Low-Resolution Tripolar 3   deg${CR} (MOM-Tripolar-Ocean:  120x65  ) "
     echo "              ${C2}T2 --   Med-Resolution Tripolar 1   deg${CR} (MOM-Tripolar-Ocean:  360x200 ) "
     echo "              ${C2}T3 --  High-Resolution Tripolar 1/2 deg${CR} (MOM-Tripolar-Ocean:  720x410 ) "
     echo "              ${C2}T4 --  High-Resolution Tripolar 1/4 deg${CR} (MOM-Tripolar-Ocean: 1440x1080) "
     echo "              ${C2}T1MOM6 --   Low-Resolution Tripolar 5   deg${CR} (MOM6-Tripolar-Ocean:  72x36 ) "
-    echo "              ${C2}T2MOM6 --   Med-Resolution Tripolar 1   deg${CR} (MOM6-Tripolar-Ocean:  360x210 ) "
+#    echo "              ${C2}T2MOM6 --   Med-Resolution Tripolar 1   deg${CR} (MOM6-Tripolar-Ocean:  360x210 ) "
     echo "              ${C2}T4MOM6 --  High-Resolution Tripolar 1/4 deg${CR} (MOM6-Tripolar-Ocean: 1440x1080) "
     echo "              ${C2}CS --  Cubed-Sphere Ocean              ${CR} (Cubed-Sphere Data-Ocean      ) "
     echo "              (Select anything just to move forward for land-only EASE grids.)"
@@ -188,7 +187,6 @@ ORSLV:
     if( $orslv != 'O1' & \
 	$orslv != 'O2' & \
 	$orslv != 'O3' & \
-	$orslv != 'T1' & \
 	$orslv != 'T2' & \
 	$orslv != 'T3' & \
 	$orslv != 'T4' & \
@@ -230,7 +228,7 @@ else
     set l_data = /nobackup/gmao_SIteam/ModelData/l_data/LandBCs_files_for_mkCatchParam/V001/
 endif
 
-if ( $orslv == O1 | $orslv == T1 | $orslv == T2 | $orslv == T3 | $orslv == T4 | \
+if ( $orslv == O1 | $orslv == T2 | $orslv == T3 | $orslv == T4 | \
     $orslv == T1MOM6 | $orslv == T2MOM6 | $orslv == T4MOM6 ) then
 
 # Great-Lakes & Caspian-Sea treated as Model LAKE tiles, Surface Temperatures will be Model Derived
@@ -289,10 +287,6 @@ if( $orslv == O3 ) then
     @ imo = 2880  # Lat/Lon Data-Ocean (OSTIA 1/8-deg)
     @ jmo = 1440  # Lat/Lon Data-Ocean (OSTIA 1/8-deg)
 endif
-if( $orslv == T1 ) then
-    @ imo = 120   # MOM Tripolar-Ocean
-    @ jmo = 65    # MOM Tripolar-Ocean
-endif
 if( $orslv == T2 ) then
     @ imo = 360  # MOM Tripolar-Ocean
     @ jmo = 200  # MOM Tripolar-Ocean
@@ -324,7 +318,7 @@ if( $orslv == O1 | $orslv == O2| $orslv == O3 ) then
     set     POLENAME = PE
 endif
 set  MOM_VERSION = MOM5
-if( $orslv == T1 | $orslv == T2 | $orslv == T3 | $orslv == T4 ) then 
+if( $orslv == T2 | $orslv == T3 | $orslv == T4 ) then 
     set TRIPOL_OCEAN = TRUE
     set  MOM_VERSION = MOM5
     set     DATENAME = TM
