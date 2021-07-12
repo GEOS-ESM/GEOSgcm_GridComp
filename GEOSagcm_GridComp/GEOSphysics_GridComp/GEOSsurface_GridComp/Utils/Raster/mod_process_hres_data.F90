@@ -13,7 +13,7 @@ use MAPL_SortMod
 use date_time_util  
 use leap_year
 use MAPL_ConstantsMod
-use module_sibalb, ONLY: sibalb
+use lsm_routines, ONLY: sibalb
 
 #if defined USE_EXTERNAL_FINDLOC
 use findloc_mod, only: findloc
@@ -2129,7 +2129,7 @@ END SUBROUTINE HISTOGRAM
          modisvf, modisnf,albvf,albnf, lat,lon, &
          green,lai,lai_before,lai_after,grn_before,grn_after
     real, allocatable, dimension (:) :: &
-         calbvf,calbnf
+         calbvf,calbnf, zero_array, one_array, albvr,albnr
     character*300 :: ifile1,ifile2,ofile
     integer, dimension(12), parameter :: days_in_month_nonleap = &
          (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
@@ -2153,6 +2153,10 @@ END SUBROUTINE HISTOGRAM
     allocate (lai_after  (1:maxcat))
     allocate (grn_after  (1:maxcat))
     allocate (vegcls     (1:maxcat))
+    allocate (zero_array (1:maxcat))
+    allocate (one_array  (1:maxcat))
+    allocate (albvr      (1:maxcat))
+    allocate (albnr      (1:maxcat))
     close (10,status='keep')
 
     fname=trim(gfile)//'.til'
@@ -2193,6 +2197,10 @@ END SUBROUTINE HISTOGRAM
     calbnf   =0.
     modisvf  =0.
     modisnf  =0.
+    zero_array = 0.
+    one_array  = 1.
+    albvr      = 0.
+    albnr      = 0.
 
 ! MODIS Albedo files
     if(MA == 'MODIS1') then 
@@ -2375,13 +2383,10 @@ END SUBROUTINE HISTOGRAM
          call Time_Interp_Fac (date_time_new, gf_green_time, af_green_time, slice1, slice2)
          green  = (slice1*grn_before + slice2*grn_after)
           
-        !  call sibalb(                                    &
-        !       albvr,albvr,albvf,albnf,                   &
-        !       lai, green, 0.0, snw, vegcls, maxcat)
-
-         call sibalb (                  &
-              MAXCAT,vegcls,lai,green,  &
-              albvf, albnf)
+         call sibalb (                                 &
+              MAXCAT,vegcls,lai,green, zero_array,     &
+              one_array,one_array,one_array,one_array, &
+              ALBVR, ALBNR, albvf, albnf)
          
           calbvf = calbvf + albvf
           calbnf = calbnf + albnf         
@@ -2448,6 +2453,7 @@ END SUBROUTINE HISTOGRAM
       deallocate (vegcls)
       deallocate (calbvf,calbnf)
       deallocate (lai_before,grn_before, lai_after,grn_after)
+      deallocate (zero_array, one_array, albvr, albnr)
 
       close (10, status='keep')
       close (11, status='keep')        

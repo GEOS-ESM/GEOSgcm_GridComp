@@ -172,13 +172,18 @@ endif
 set WGRID=AGCM
 set int_str1="`printf 'by overlaying the atmospheric grid on ${NPfafs} number of hydraulic catchments \\n in ${MYMASK} mask file.'`"
 set sec2_til="`printf 'area, longitude, latitude, ig, jg, cell_frac, integer,   & \\n \
-                    pfaf_code, pfaf_index, pfaf_frac'`"
+                    pfaf_code, integer, pfaf_frac'`"
 set pfafin_des="`printf 'catchment index (1-$NPfafs) after sorting Pfafstetter codes in ascending order'`"  
 set pfaf_des="`printf 'Pfafstetter code of the hydrologic catchment'`"
 if( $MYMASK == GEOS5_10arcsec_mask  | $MYMASK == GEOS5_10arcsec_mask.nc | $MYMASK == GEOS5_10arcsec_mask_freshwater-lakes.nc ) set pfaf_des=`echo "${pfafin_des}"`
 set pfaf_dest=`echo "${pfaf_des}"`
 set sec2_til2="`printf ' (9)    area      [x EarthRadius^2 km2]  tile area\\n\
-        (10)   pfaf_frac [-]      fraction of the pfafstetter catchment\\n '`" 
+        (10)   pfaf_frac [-]      fraction of the pfafstetter catchment\\n \
+	** Since the purpose of this README file is to describe land parameters and land specific fields,\\n \
+	    above description is specific to type 100 land tiles. Other surface types use some of the columns\\n \
+	    to store different fields. For e.g. columns 8 and 9 in type 0 ocean tiles contains i-index and j-index\\n \
+	    of the ocean grid cell where the ocean tile is located while column 11 contains the fraction\\n \
+	    of the ocean grid cell. '`" 
 set rout_smap
 
 if(`echo $gfile | cut -d '_' -f1` == SMAP | $ease == EASE) then
@@ -574,11 +579,11 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 	 (1)    type      [-]      tile type (100-land; 19-lakes; 20-ice)
 	 (2)    longitude [degree] longitude at the centroid of the tile
 	 (3)    latitude  [degree] latitude at the centroid of the tile
-	 (4)    ig        [-]      i-index of the global grid cell where the tile is located
-	 (5)    jg        [-]      j-index of the global grid cell where the tile is located
+	 (4)    ig        [-]      i-index of the atmospheric grid cell where the tile is located
+	 (5)    jg        [-]      j-index of the atmospheric grid cell where the tile is located
 	 (6)    pfaf_code [-]      ${pfaf_dest} 
 	 (7)    pfaf_index[-]      ${pfafin_des} 
-	 (8)    cell_frac [-]      fraction of the global grid cell    
+	 (8)    cell_frac [-]      fraction of the atmospheric grid cell    
 	`echo "${sec2_til2}"`
        2.2.2 Western, eastern, southern, northern edges and mean elevation of tiles
 	 file name: catchment.def
@@ -1527,7 +1532,6 @@ cat << _EOF1_ > clsm/README2
          mouth_lon [degree] longitude at the river mouth
          mouth_lat [degree] latitude at the river mouth
 
-`echo "${rout_smap}"`
   7.3 References
 	 Verdin, K.L., and J.P. Verdin (1999). A topographical system for delineation 
 	    and codification of the Earths river basins. J. of Hydrology (218), 1-12.
