@@ -105,6 +105,8 @@ module GEOS_MoistGridCompMod
       ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
 !-srf-gf-scheme
 
+  USE moist_gcc_interface, only : GCC_AddExports, GCC_check_params, GCC_get_ndiag, GCC_get_diagID, GCC_FillExport2d
+
 !ALT-protection for GF
   USE ConvectionMod, only: Disable_Convection
 !ALT-protection for GF
@@ -4768,6 +4770,8 @@ contains
 
 !========================================================================================             
 
+    ! Add GEOS-Chem related exports (cakelle2, 3/15/2021)
+    CALL GCC_AddExports ( GC, __RC__ )
 
     !EOS
 
@@ -5308,6 +5312,11 @@ contains
       integer                                                  :: i_src_mode
       integer                                                  :: i_dst_mode
 
+      ! GEOS-Chem convection exports (cakelle2, 3/15/2021)
+      real, allocatable, dimension(:,:,:)                      :: GCCinit
+      real, allocatable, dimension(:,:)                        :: GCCtend
+      integer                                                  :: GCCndiag, diagID
+
       real, pointer, dimension(:,:)   :: PGENTOT , PREVTOT
 
       !Record vars at top pf moist
@@ -5686,7 +5695,8 @@ contains
       ! GEOS-Chem stuff
       character(len=ESMF_MAXSTR)      :: SpcName 
       REAL, DIMENSION(3)              :: Vect_KcScal
-      REAL                            :: ival
+      LOGICAL                         :: is_gcc
+      REAL                            :: retfactor, liq_and_gas, convfaci2g, online_cldliq, online_vud 
 
       !!real,    dimension(IM,JM,  LM)  :: QILS, QICN ! Soon to be moved into internal state
 
@@ -6909,50 +6919,19 @@ contains
            ! GEOS-Chem stuff, only needed for GF and if species is actually friendly to MOIST
            !------------------------------------
            if (IS_FRIENDLY(K)) then
-              ! is this a GEOS-Chem species?
               SpcName = QNAMES(K)
-              if ( LEN(TRIM(SpcName)) > 4 ) then
-                 if ( TRIM(SpcName(1:4)) == 'SPC_' ) then
-                    Hcts(k)%is_gcc = .TRUE.
-                    !Hcts(k)%is_gcc = .FALSE.
-                 endif
-              endif
-              if ( Hcts(k)%is_gcc ) then
-                 ! KC scale factors for GEOS-Chem
-                 Vect_KcScal(:) = 1.0
-                 call ESMF_AttributeGet  (FIELD,"SetofKcScalFactors",isPresent=isPresent, __RC__ )
-                 if (isPresent) then
-                    call ESMF_AttributeGet  (FIELD,"SetofKcScalFactors",Vect_KcScal, __RC__ )
-                    Hcts(k)%KcScal1 = Vect_KcScal(1)
-                    Hcts(k)%KcScal2 = Vect_KcScal(2)
-                    Hcts(k)%KcScal3 = Vect_KcScal(3)
-                 endif
-                 ! Gas-phase washout parameter for GEOS-Chem
-                 call ESMF_AttributeGet (FIELD,"RetentionFactor",isPresent=isPresent, __RC__ )
-                 if (isPresent) then
-                    call ESMF_AttributeGet (FIELD,"RetentionFactor",ival, __RC__ )
-                    Hcts(k)%retfactor = ival
-                 endif
-                 call ESMF_AttributeGet (FIELD,"LiqAndGas",isPresent=isPresent, __RC__ )
-                 if (isPresent) then
-                    call ESMF_AttributeGet (FIELD,"LiqAndGas",ival, __RC__ )
-                    Hcts(k)%liq_and_gas = ival
-                 endif
-                 call ESMF_AttributeGet (FIELD,"ConvFacI2G",isPresent=isPresent, __RC__ )
-                 if (isPresent) then
-                    call ESMF_AttributeGet (FIELD,"ConvFacI2G",ival, __RC__ )
-                    Hcts(k)%convfaci2g = ival
-                 endif
-                 call ESMF_AttributeGet (FIELD,"OnlineCLDLIQ",isPresent=isPresent, __RC__ )
-                 if (isPresent) then
-                    call ESMF_AttributeGet (FIELD,"OnlineCLDLIQ",ival, __RC__ )
-                    Hcts(k)%online_cldliq = ival
-                 endif
-                 call ESMF_AttributeGet (FIELD,"OnlineVUD",isPresent=isPresent, __RC__ )
-                 if (isPresent) then
-                    call ESMF_AttributeGet (FIELD,"OnlineVUD",ival, __RC__ )
-                    Hcts(k)%online_vud = ival
-                 endif
+              call GCC_check_params(EXPORT,k,SpcName,FIELD,is_gcc,Vect_KcScal,retfactor,liq_and_gas,&
+                                    convfaci2g,online_cldliq,online_vud, __RC__ )
+              if ( is_gcc ) then
+                 Hcts(k)%is_gcc        = .TRUE.
+                 Hcts(k)%KcScal1       = Vect_KcScal(1)
+                 Hcts(k)%KcScal2       = Vect_KcScal(2)
+                 Hcts(k)%KcScal3       = Vect_KcScal(3)
+                 Hcts(k)%retfactor     = retfactor
+                 Hcts(k)%liq_and_gas   = liq_and_gas
+                 Hcts(k)%convfaci2g    = convfaci2g
+                 Hcts(k)%online_cldliq = online_cldliq
+                 Hcts(k)%online_vud    = online_vud
               end if
            end if
          ENDIF
@@ -8088,6 +8067,17 @@ contains
       CMDUcarma = 0.0
       CMSScarma = 0.0
 
+      ! GEOS-Chem species (cakelle2, 3/15/2021)
+      GCCndiag = GCC_get_ndiag( 1 )
+      if ( GCCndiag > 0 ) then
+         allocate(GCCinit(IM,JM,GCCndiag),stat=STATUS)
+         ASSERT_(STATUS==0)
+         allocate(GCCtend(IM,JM),stat=STATUS)
+         ASSERT_(STATUS==0)
+         GCCinit(:,:,:) = 0.0
+         GCCtend(:,:) = 0.0
+      endif
+
       !! Now loop over tracers and accumulate initial column loading
       !! tendency  kg/m2/s CAR
 
@@ -8155,6 +8145,13 @@ contains
                         end if
                      END SELECT
                   endif
+               endif
+            endif
+            ! update to GEOS-Chem (cakelle2, 3/15/2021)
+            if(ALLOCATED(GCCinit)) then
+               DiagID = GCC_get_diagID(1,KK)
+               if ( DiagID > 0 ) then
+                  GCCinit(:,:,DiagID) = GCCinit(:,:,DiagID) + sum(XHO(:,:,:,KK)*DP(:,:,:)/(1.-Q(:,:,:)),dim=3)
                endif
             endif
          end if
@@ -8637,24 +8634,36 @@ contains
                   end if 
                END SELECT
             endif
-         end if
-         if(CNAME == 'CARMA') then   ! Diagnostics for CARMA tracers
-            ! Check name to see if it is a "pc" element
-            ENAME = ''
-            ind= index(QNAME, '::')
-            if (ind> 0) then
-               ENAME = trim(QNAME(ind+2:ind+3))  ! Component name (e.g., GOCART, CARMA)
-               if(ENAME == 'pc') then
-                  SELECT CASE (QNAME(1:4))
-                  CASE ('dust') ! CARMA DUST
-                     if(associated(DDUDTcarma)) then
-                        DDUDTcarma = DDUDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
-                     end if
-                  CASE ('seas') ! CARMA SEASALT
-                     if(associated(DSSDTcarma)) then
-                        DSSDTcarma = DSSDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
-                     end if
-                  END SELECT
+         ! cakelle2: I presume this is a bug fix and the CARMA loop should be within
+         ! the IS_FRIENDLY statement (03/15/2021)
+         !end if
+            if(CNAME == 'CARMA') then   ! Diagnostics for CARMA tracers
+               ! Check name to see if it is a "pc" element
+               ENAME = ''
+               ind= index(QNAME, '::')
+               if (ind> 0) then
+                  ENAME = trim(QNAME(ind+2:ind+3))  ! Component name (e.g., GOCART, CARMA)
+                  if(ENAME == 'pc') then
+                     SELECT CASE (QNAME(1:4))
+                     CASE ('dust') ! CARMA DUST
+                        if(associated(DDUDTcarma)) then
+                           DDUDTcarma = DDUDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
+                        end if
+                     CASE ('seas') ! CARMA SEASALT
+                        if(associated(DSSDTcarma)) then
+                           DSSDTcarma = DSSDTcarma + sum(XHO(:,:,:,KK)*DP(:,:,:),dim=3) 
+                        end if
+                     END SELECT
+                  endif
+               endif
+            endif
+            ! update to GEOS-Chem (cakelle2, 3/15/2021)
+            if ( ALLOCATED(GCCtend) ) then
+               DiagID = GCC_get_diagID(1,KK)
+               if ( DiagID > 0 ) then
+                  GCCtend(:,:) = GCCtend(:,:) + sum(XHO(:,:,:,KK)*DP(:,:,:)/(1.-Q(:,:,:)),dim=3)
+                  GCCtend(:,:) = ( GCCtend(:,:) - GCCinit(:,:,DiagID) ) / (MAPL_GRAV*DT_MOIST)
+                  CALL GCC_FillExport2d( EXPORT, IM, JM, GCCtend, DiagID, __RC__ )
                endif
             endif
          endif
@@ -8673,6 +8682,9 @@ contains
       if (associated(DDUDTcarma))  DDUDTcarma = (DDUDTcarma - CMDUcarma) / (MAPL_GRAV*DT_MOIST)
       if (associated(DSSDTcarma))  DSSDTcarma = (DSSDTcarma - CMSScarma) / (MAPL_GRAV*DT_MOIST)
 
+      ! Fill GEOS-Chem exports and deallocate GEOS-Chem arrays
+      IF ( ALLOCATED(GCCtend) ) DEALLOCATE(GCCtend)
+      IF ( ALLOCATED(GCCinit) ) DEALLOCATE(GCCinit)      
 
       ! Fill in tracer tendencies
       !--------------------------

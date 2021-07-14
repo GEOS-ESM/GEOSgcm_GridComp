@@ -25,6 +25,11 @@ USE MAPL
   PUBLIC  :: compute_ki_gcc_gas
   PUBLIC  :: get_w_upd_gcc
   PUBLIC  :: henry_gcc
+  PUBLIC  :: GCC_AddExports
+  PUBLIC  :: GCC_FillExport2d
+  PUBLIC  :: GCC_check_params
+  PUBLIC  :: GCC_get_ndiag
+  PUBLIC  :: GCC_get_diagID
 !
 !
 ! !PRIVATE MEMBER FUNCTIONS:
@@ -48,8 +53,290 @@ USE MAPL
 !
   REAL, PARAMETER       :: KC_DEFAULT_GCC = 5.e-3  ! s-1  ! Default autoconversion parameter for GEOS-Chem species
 
+! Species for which to provide diagnostics. Need to hardcode this since we create the export during SetServices,
+! when we cannot yet import the species information from GEOS-Chem... 
+ INTEGER, PARAMETER             :: GCCmax = 28
+ CHARACTER(LEN=5), PARAMETER    :: GCCspecies(GCCmax) =     &
+                                            (/ 'SO2',   &
+                                               'SO4',   &
+                                               'HNO3',  &
+                                               'DST1',  &
+                                               'DST2',  &
+                                               'DST3',  &
+                                               'DST4',  &
+                                               'NIT',   &
+                                               'SALA',  &
+                                               'SALC',  &
+                                               'BCPI',  &
+                                               'BCPO',  &
+                                               'OCPI',  &
+                                               'OCPO',  &
+                                               'ALD2',  &
+                                               'ALK4',  &
+                                               'CH2O',  &
+                                               'Br2',   &
+                                               'HBr',   &
+                                               'MAP',   &
+                                               'MEK',   &
+                                               'MTPA',  &
+                                               'MTPO',  &
+                                               'MVK',   &
+                                               'NH3',   &
+                                               'NH4',   &
+                                               'PAN',   &
+                                               'CFC12'  /)
+
+   ! Helper arrays to keep track of requested diagnostics
+   INTEGER, SAVE     :: ConvScavDiag(GCCmax) = -1
+   INTEGER, SAVE     :: ConvFracDiag(GCCmax) = -1
+
 CONTAINS
 !EOC
+
+!---------------------------------------------------------------------------------------------------
+    !=====================================================================================
+    !BOP
+    ! !DESCRIPTION:
+    !  Create the GF diagnostics exports for selected GEOS-Chem species 
+    !EOP
+    !=====================================================================================
+  SUBROUTINE GCC_AddExports( GC, RC )
+    TYPE(ESMF_GridComp), INTENT(INOUT)  :: GC       ! Ref to GridComp
+    INTEGER,             INTENT(OUT)    :: RC       ! Success or failure
+    !LOCAL VARIABLES:
+    INTEGER                         :: I
+    CHARACTER(LEN=ESMF_MAXSTR)      :: spcname
+
+    __Iam__('GCCdiag_AddExports')
+
+    DO I = 1,GCCmax
+       spcname = TRIM(GCCspecies(I))
+
+       call MAPL_AddExportSpec(GC,                                             &
+         SHORT_NAME='GF_ConvScav_'//TRIM(spcname),                             &
+         LONG_NAME ='GEOS-Chem_'//TRIM(spcname)//'_dry_air_tendency_due_to_GF_conv_scav', &
+         UNITS     ='kg m-2 s-1',                                              &
+         DIMS      = MAPL_DimsHorzOnly,                                        &
+          __RC__ )
+
+       call MAPL_AddExportSpec(GC,                                             &
+         SHORT_NAME='GF_WetLossConvFrac_'//TRIM(spcname),                      &
+         LONG_NAME ='GEOS-Chem_'//TRIM(spcname)//'_fraction_lost_in_GF_convection', &
+         UNITS     ='1',                                                       &
+         DIMS      = MAPL_DimsHorzVert,                                        &
+         VLOCATION = MAPL_VLocationCenter,                                     &
+          __RC__ )
+    ENDDO
+
+    _RETURN(ESMF_SUCCESS)
+
+  END SUBROUTINE GCC_AddExports
+!EOC
+
+!---------------------------------------------------------------------------------------------------
+  SUBROUTINE GCC_FillExport2d( EXPORT, IM, JM, Arr2d, DiagID, RC ) 
+    !=====================================================================================
+    !BOP
+    ! !DESCRIPTION:
+    !  Fill the GEOS-Chem 2d export with the passed array
+    !EOP
+    !=====================================================================================
+    TYPE(ESMF_State), INTENT(INOUT)   :: EXPORT    
+    INTEGER,          INTENT(IN)      :: IM, JM    
+    REAL,             INTENT(IN)      :: Arr2d(IM,JM) 
+    INTEGER,          INTENT(IN)      :: DiagID
+    INTEGER,          INTENT(OUT)     :: RC
+    ! Local variables
+    INTEGER                           :: I, II, cnt
+    CHARACTER(LEN=ESMF_MAXSTR)        :: diagname
+    REAL, POINTER, DIMENSION(:,:)     :: GCptr2d
+
+    __Iam__('GCC_FillExport2d')
+
+    ! Get species index for the given diagnostics index. The passed diagnostics index
+    ! denotes the nth active diagnostics in the list of GEOS-Chem species available for
+    ! diagnostics. Need to map it back to the actual index in the full list of GEOS-Chem
+    ! species as specified in array GCCspecies
+    cnt = 0
+    II = -1
+    do I = 1,GCCmax
+        if ( ConvScavDiag(I) > 0 ) cnt = cnt + 1 
+        if ( cnt == DiagID ) then
+           II = I
+           exit
+        endif
+    enddo
+    ASSERT_(II>0)
+    ! Now that species index is known, can construct diagnostics name and fill it
+    diagname = 'GF_ConvScav_'//TRIM(GCCspecies(II))
+    call MAPL_GetPointer(EXPORT, GCptr2d, TRIM(diagname), NotFoundOk=.TRUE., __RC__ )
+    if ( associated(GCptr2d) ) GCptr2d = Arr2d
+    _RETURN(ESMF_SUCCESS)
+
+  END SUBROUTINE GCC_FillExport2d
+!EOC
+
+!---------------------------------------------------------------------------------------------------
+  SUBROUTINE GCC_check_params( EXPORT, k, SpcName, FIELD, is_gcc, Vect_KcScal, retfactor, &
+                               liq_and_gas, convfaci2g, online_cldliq, online_vud, RC )
+    !=====================================================================================
+    !BOP
+    ! !DESCRIPTION:
+    !  Check for GEOS-Chem parameters 
+    !EOP
+    !=====================================================================================
+    TYPE(ESMF_State), INTENT(INOUT)   :: EXPORT    ! Export state
+    INTEGER,          INTENT(IN)      :: k             ! Species ID in MOIST
+    CHARACTER(LEN=*), INTENT(IN)      :: spcname
+    TYPE(ESMF_FIELD), INTENT(INOUT)   :: FIELD
+    LOGICAL, INTENT(OUT)              :: is_gcc
+    REAL, DIMENSION(3), INTENT(OUT)   :: Vect_KcScal
+    REAL, INTENT(OUT)                 :: retfactor
+    REAL, INTENT(OUT)                 :: liq_and_gas
+    REAL, INTENT(OUT)                 :: convfaci2g
+    REAL, INTENT(OUT)                 :: online_cldliq
+    REAL, INTENT(OUT)                 :: online_vud
+    INTEGER, INTENT(OUT)              :: RC       ! Success or failure
+    ! Local variables
+    CHARACTER(LEN=ESMF_MAXSTR)        :: shortname
+    CHARACTER(LEN=ESMF_MAXSTR)        :: diagname
+    INTEGER                           :: I
+    LOGICAL                           :: isPresent
+    REAL, POINTER, DIMENSION(:,:)     :: GCptr2d
+    REAL, POINTER, DIMENSION(:,:,:)   :: GCptr3d
+
+    __Iam__('GCC_check_params')
+
+    ! Default initial values
+    is_gcc = .FALSE.
+    Vect_KcScal(:) = 1.0
+    retfactor      = 1.0
+    liq_and_gas    = 0.0
+    online_cldliq  = 0.0
+    online_vud     = 1.0
+    ! check if this is a GEOS-Chem species
+    if ( LEN(TRIM(SpcName)) > 4 ) then
+    if ( TRIM(SpcName(1:4)) == 'SPC_' ) then
+       is_gcc = .TRUE.
+       ! KC scale factors for GEOS-Chem
+       call ESMF_AttributeGet  (FIELD,"SetofKcScalFactors",isPresent=isPresent, __RC__ )
+       if (isPresent) then
+          call ESMF_AttributeGet  (FIELD,"SetofKcScalFactors",Vect_KcScal, __RC__ )
+       endif
+       ! Gas-phase washout parameter for GEOS-Chem
+       call ESMF_AttributeGet (FIELD,"RetentionFactor",isPresent=isPresent, __RC__ )
+       if (isPresent) then
+          call ESMF_AttributeGet (FIELD,"RetentionFactor",retfactor, __RC__ )
+       endif
+       call ESMF_AttributeGet (FIELD,"LiqAndGas",isPresent=isPresent, __RC__ )
+       if (isPresent) then
+          call ESMF_AttributeGet (FIELD,"LiqAndGas",liq_and_gas, __RC__ )
+       endif
+       call ESMF_AttributeGet (FIELD,"ConvFacI2G",isPresent=isPresent, __RC__ )
+       if (isPresent) then
+          call ESMF_AttributeGet (FIELD,"ConvFacI2G",convfaci2g, __RC__ )
+       endif
+       call ESMF_AttributeGet (FIELD,"OnlineCLDLIQ",isPresent=isPresent, __RC__ )
+       if (isPresent) then
+          call ESMF_AttributeGet (FIELD,"OnlineCLDLIQ",online_cldliq, __RC__ )
+       endif
+       call ESMF_AttributeGet (FIELD,"OnlineVUD",isPresent=isPresent, __RC__ )
+       if (isPresent) then
+          call ESMF_AttributeGet (FIELD,"OnlineVUD",online_vud, __RC__ )
+       endif
+       ! check if exports are requested for this species. If so, store the species 
+       ! index as used by MOIST in the corresponding slot in the local diagnostics
+       ! counter array
+       shortname = SpcName(5:LEN(TRIM(SpcName)))
+       diagname = 'GF_ConvScav_'//TRIM(shortname)
+       call MAPL_GetPointer(EXPORT, GCptr2d, TRIM(diagname), NotFoundOk=.TRUE., __RC__ )
+       if ( associated(GCptr2d) ) then
+          do I=1,GCCmax
+             if ( TRIM(GCCspecies(I)) == TRIM(shortname) ) then
+                ConvScavDiag(I) = k
+                exit
+             endif
+          enddo   
+       endif
+       diagname = 'GF_WetLossConvFrac_'//TRIM(shortname)
+       call MAPL_GetPointer(EXPORT, GCptr3d, TRIM(diagname), NotFoundOk=.TRUE., __RC__ )
+       if ( associated(GCptr3d) ) then
+          do I=1,GCCmax
+             if ( TRIM(GCCspecies(I)) == TRIM(shortname) ) then
+                ConvFracDiag(I) = k
+                exit
+             endif
+          enddo   
+       endif
+    end if
+    end if
+
+    _RETURN(ESMF_SUCCESS)
+
+  END SUBROUTINE GCC_check_params
+!EOC
+
+!---------------------------------------------------------------------------------------------------
+  FUNCTION GCC_get_ndiag( diagtype ) RESULT ( ndiag )
+    !=====================================================================================
+    !BOP
+    ! !DESCRIPTION:
+    !  Returns the number of 'active' diagnostics for type 1 or 2 
+    !EOP
+    !=====================================================================================
+    integer, intent(in) :: diagtype
+    integer             :: ndiag
+    ! local variables
+    integer             :: I
+    ! starts here
+    ndiag = 0
+    if ( diagtype == 1 ) then
+       do I=1,GCCmax
+           if ( ConvScavDiag(I) > 0 ) ndiag = ndiag + 1
+       enddo
+    end if
+    if ( diagtype == 2 ) then
+       do I=1,GCCmax
+           if ( ConvFracDiag(I) > 0 ) ndiag = ndiag + 1
+       enddo
+    end if
+  END FUNCTION GCC_get_ndiag 
+
+!---------------------------------------------------------------------------------------------------
+  FUNCTION GCC_get_diagID( diagtype, specID ) RESULT ( diagID )
+    !=====================================================================================
+    !BOP
+    ! !DESCRIPTION:
+    !  Maps the MOIST species index to the corresponding GEOS-Chem diagnstics list 
+    !EOP
+    !=====================================================================================
+    integer, intent(in) :: diagtype   ! diagnostics type
+    integer, intent(in) :: specID     ! species index as counted by MOIST
+    integer             :: diagID     ! GEOS-chem diagnostics ID
+    ! local variables
+    integer             :: I, diagCount
+    ! starts here
+    diagID = 0
+    diagCount = 0
+    if ( diagtype == 1 ) then
+       do I=1,GCCmax
+           if ( ConvScavDiag(I) > 0 ) diagCount = diagCount + 1
+           if ( ConvScavDiag(I) == specID ) then
+              diagID = diagCount
+              exit
+           endif
+       enddo
+    end if
+    if ( diagtype == 2 ) then
+       do I=1,GCCmax
+           if ( ConvFracDiag(I) > 0 ) diagCount = diagCount + 1
+           if ( ConvFracDiag(I) == specID ) then
+              diagID = diagCount
+              exit
+           endif
+       enddo
+    end if
+  END FUNCTION GCC_get_diagID
 
 !---------------------------------------------------------------------------------------------------
   FUNCTION henry_gcc( hstar, dhr, ak0, dak, temp ) RESULT( henry_coeff )
