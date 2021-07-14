@@ -5683,6 +5683,11 @@ contains
 
   real, dimension(:,:,:,:,:), allocatable :: buffer
 
+      ! GEOS-Chem stuff
+      character(len=ESMF_MAXSTR)      :: SpcName 
+      REAL, DIMENSION(3)              :: Vect_KcScal
+      REAL                            :: ival
+
       !!real,    dimension(IM,JM,  LM)  :: QILS, QICN ! Soon to be moved into internal state
 
       logical ALLOC_PTYPE
@@ -6786,11 +6791,20 @@ contains
       VERIFY_(STATUS)
       IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
         ALLOCATE(Hcts(KM), stat=STATUS); VERIFY_(STATUS)
-	IF(STATUS==0) THeN
-              Hcts(1:KM)%hstar = -1.
-              Hcts(1:KM)%dhr   = -1.
-              Hcts(1:KM)%ak0   = -1.
-              Hcts(1:KM)%dak   = -1.
+        IF(STATUS==0) THEN
+           Hcts(1:KM)%hstar           = -1.
+           Hcts(1:KM)%dhr             = -1.
+           Hcts(1:KM)%ak0             = -1.
+           Hcts(1:KM)%dak             = -1.
+           Hcts(1:KM)%is_gcc          = .FALSE. 
+           Hcts(1:KM)%KcScal1         = 1.
+           Hcts(1:KM)%KcScal2         = 1.
+           Hcts(1:KM)%KcScal3         = 1.
+           Hcts(1:KM)%convfaci2g      = 1.
+           Hcts(1:KM)%retfactor       = 1.
+           Hcts(1:KM)%liq_and_gas     = 0.
+           Hcts(1:KM)%online_cldliq   = 0.
+           Hcts(1:KM)%online_vud      = 1.0
         ENDIF
       ENDIF
 
@@ -6854,26 +6868,6 @@ contains
             FSCAV_(K) = 0.0 ! no scavenging
          end if
 
-         ! Get items for the wet removal parameterization for gases based on the Henry's Law
-         !-------------------------------
-         IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
-           Vect_Hcts(:)=-99.
-           call ESMF_AttributeGet  (FIELD,"SetofHenryLawCts",isPresent=isPresent,  RC=STATUS)
-           VERIFY_(STATUS)
-           if (isPresent) then
-              call ESMF_AttributeGet  (FIELD,"SetofHenryLawCts",Vect_Hcts,  RC=STATUS)
-              !.. if (MAPL_AM_I_ROOT()) then
-                 !.. PRINT*,"spcname=",k,trim(QNAMES(K)),FSCAV_(K)
-                 !.. print*,"Vect_Hcts=",Vect_Hcts(:),statUS
-                 !.. flush(6)
-              !.. ENDIF
-              Hcts(k)%hstar = Vect_Hcts(1)
-              Hcts(k)%dhr   = Vect_Hcts(2)
-              Hcts(k)%ak0   = Vect_Hcts(3)
-              Hcts(k)%dak   = Vect_Hcts(4)
-           ENDIF
-         ENDIF
-
          ! Check aerosol names
          ! CAR 12/5/08
 
@@ -6893,6 +6887,75 @@ contains
          !PRINT *, "******CROPPED NAME CHECKING*******"
          !PRINT *, trim(QNAMES(K)), FSCAV_(K)
 
+         ! Get items for the wet removal parameterization for gases based on the Henry's Law
+         !-------------------------------
+         IF(ADJUSTL(CONVPAR_OPTION) == 'GF') THEN
+           Vect_Hcts(:)=-99.
+           call ESMF_AttributeGet  (FIELD,"SetofHenryLawCts",isPresent=isPresent,  RC=STATUS)
+           VERIFY_(STATUS)
+           if (isPresent) then
+              call ESMF_AttributeGet  (FIELD,"SetofHenryLawCts",Vect_Hcts,  RC=STATUS)
+              !.. if (MAPL_AM_I_ROOT()) then
+                 !.. PRINT*,"spcname=",k,trim(QNAMES(K)),FSCAV_(K)
+                 !.. print*,"Vect_Hcts=",Vect_Hcts(:),statUS
+                 !.. flush(6)
+              !.. ENDIF
+              Hcts(k)%hstar = Vect_Hcts(1)
+              Hcts(k)%dhr   = Vect_Hcts(2)
+              Hcts(k)%ak0   = Vect_Hcts(3)
+              Hcts(k)%dak   = Vect_Hcts(4)
+           endif
+
+           ! GEOS-Chem stuff, only needed for GF and if species is actually friendly to MOIST
+           !------------------------------------
+           if (IS_FRIENDLY(K)) then
+              ! is this a GEOS-Chem species?
+              SpcName = QNAMES(K)
+              if ( LEN(TRIM(SpcName)) > 4 ) then
+                 if ( TRIM(SpcName(1:4)) == 'SPC_' ) then
+                    Hcts(k)%is_gcc = .TRUE.
+                    !Hcts(k)%is_gcc = .FALSE.
+                 endif
+              endif
+              if ( Hcts(k)%is_gcc ) then
+                 ! KC scale factors for GEOS-Chem
+                 Vect_KcScal(:) = 1.0
+                 call ESMF_AttributeGet  (FIELD,"SetofKcScalFactors",isPresent=isPresent, __RC__ )
+                 if (isPresent) then
+                    call ESMF_AttributeGet  (FIELD,"SetofKcScalFactors",Vect_KcScal, __RC__ )
+                    Hcts(k)%KcScal1 = Vect_KcScal(1)
+                    Hcts(k)%KcScal2 = Vect_KcScal(2)
+                    Hcts(k)%KcScal3 = Vect_KcScal(3)
+                 endif
+                 ! Gas-phase washout parameter for GEOS-Chem
+                 call ESMF_AttributeGet (FIELD,"RetentionFactor",isPresent=isPresent, __RC__ )
+                 if (isPresent) then
+                    call ESMF_AttributeGet (FIELD,"RetentionFactor",ival, __RC__ )
+                    Hcts(k)%retfactor = ival
+                 endif
+                 call ESMF_AttributeGet (FIELD,"LiqAndGas",isPresent=isPresent, __RC__ )
+                 if (isPresent) then
+                    call ESMF_AttributeGet (FIELD,"LiqAndGas",ival, __RC__ )
+                    Hcts(k)%liq_and_gas = ival
+                 endif
+                 call ESMF_AttributeGet (FIELD,"ConvFacI2G",isPresent=isPresent, __RC__ )
+                 if (isPresent) then
+                    call ESMF_AttributeGet (FIELD,"ConvFacI2G",ival, __RC__ )
+                    Hcts(k)%convfaci2g = ival
+                 endif
+                 call ESMF_AttributeGet (FIELD,"OnlineCLDLIQ",isPresent=isPresent, __RC__ )
+                 if (isPresent) then
+                    call ESMF_AttributeGet (FIELD,"OnlineCLDLIQ",ival, __RC__ )
+                    Hcts(k)%online_cldliq = ival
+                 endif
+                 call ESMF_AttributeGet (FIELD,"OnlineVUD",isPresent=isPresent, __RC__ )
+                 if (isPresent) then
+                    call ESMF_AttributeGet (FIELD,"OnlineVUD",ival, __RC__ )
+                    Hcts(k)%online_vud = ival
+                 endif
+              end if
+           end if
+         ENDIF
 
          ! Get pointer to the quantity, its tendency, its surface value,
          !   the surface flux, and the sensitivity of the surface flux.
