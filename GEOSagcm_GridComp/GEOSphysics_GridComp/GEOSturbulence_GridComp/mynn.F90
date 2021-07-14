@@ -23,7 +23,8 @@ real, parameter ::             B2     = 15.
 real, parameter ::             C2     = 0.729
 real, parameter ::             C4     = 0.
 real, parameter ::             C5     = 0.2
-double precision, parameter :: C3     = 0.34d0
+!double precision, parameter :: C3     = 0.34d0
+double precision, parameter :: C3     = 1.d0
 
 double precision, parameter :: alpha1 = 0.23d0
 double precision, parameter :: alpha2 = 1.d0
@@ -75,9 +76,9 @@ contains
 !
 subroutine run_mynn(IM, JM, LM, &                                                   ! in
                     DEBUG_FLAG, TEST_FLAG, DOMF, MYNN_LEVEL, CONSISTENT_TYPE, &     ! in
-                    th00, ice_ramp, ple, pl, rhoe, zle, zlo, &                      ! in
+                    th00, ple, pl, rhoe, zle, zlo, &                                ! in
                     u, v, T, qv, ql, qi, thl, qt, thv, &                            ! in (mean atmospheric state)
-                    u_star, w_star, cm, H_surf, E_surf, &                           ! in (surface state)
+                    u_star, w_star_edmf, cm, H_surf, E_surf, &                      ! in (surface state)
                     whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &              ! in (updraft state)
                     aci, Ai_moist, Bi_moist, &                                      ! in
                     tke, hl2, qt2, hlqt, &                                          ! inout (turbulent state)
@@ -92,8 +93,8 @@ subroutine run_mynn(IM, JM, LM, &                                               
   use MAPL_SatVaporMod, only: MAPL_EQsat
 
   integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, DEBUG_FLAG, TEST_FLAG
-  real, intent(in)                           :: th00, ice_ramp, DOMF
-  real, dimension(IM,JM), intent(in)         :: u_star, w_star, cm, H_surf, E_surf
+  real, intent(in)                           :: th00, DOMF
+  real, dimension(IM,JM), intent(in)         :: u_star, w_star_edmf, cm, H_surf, E_surf
   real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, T, qv, ql, qi, thv, thl, qt, E, D, wdet, pl
   real, dimension(IM,JM,0:LM), intent(in)    :: ple, zle, rhoe, whl_mf, wqt_mf, wthv_mf, &
                                                 au, Mu, wu, Ai_moist, Bi_moist, aci
@@ -120,11 +121,11 @@ subroutine run_mynn(IM, JM, LM, &                                               
           hlthv, qtthv, thv2, hlthv_p, qtthv_p, thv2_p, SM,  &
           we, we_up, tkee, tkee_up, w2e_up, EM, EH
 
-  real, dimension(IM,JM)      :: wb_surf, LMO, u_star_total
+  real, dimension(IM,JM)      :: wb_surf, u_star_total
   real, dimension(IM,JM,LM)   :: hl
   real, dimension(IM,JM,0:LM) :: S2, N2, zeta, A, B
 
-  double precision, dimension(IM,JM)      :: w_star_mynn, LT
+  double precision, dimension(IM,JM)      :: LT
   double precision, dimension(IM,JM,0:LM) :: q, L, LS, LB
  
   goth00  = MAPL_GRAV/th00
@@ -166,10 +167,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
   ! Compute some surface and TOA quantities
   do j = 1,JM
   do i = 1,IM
-     u_star_total(i,j) = sqrt( u_star(i,j)**2. + cm(i,j)*w_star(i,j)**2. )
-
      wb_surf(i,j) = goth00*( H_surf(i,j)/(MAPL_CP*rhoe(i,j,LM)) + ep2*th00*E_surf(i,j)/rhoe(i,j,LM) )
-     LMO(i,j)     = -u_star_total(i,j)**3./(MAPL_KARMAN*wb_surf(i,j))
 
      KM(i,j,0)  = 0.
      KM(i,j,LM) = 0.
@@ -187,7 +185,43 @@ subroutine run_mynn(IM, JM, LM, &                                               
      S2(i,j,LM) = 0.
 
      tket_B(i,j,LM) = wb_surf(i,j)
+  end do
+  end do
 
+  ! Test
+  if ( .not. initialized_mynn ) then
+     call initialize_mynn(IM, JM, LM, &
+                          DOMF, TEST_FLAG, &
+                          alpha1, alpha2, alpha3, alpha4, &
+                          th00, hl, qt, tke, hl2, qt2, hlqt, q, &
+                          zle, zlo, S2, N2, &
+                          cm, u_star, w_star_edmf, wb_surf, &
+                          thv)
+
+     initialized_mynn = .true.
+  end if
+
+  if ( TEST_FLAG == 0 ) then
+     call mynn_length(IM, JM, LM, &                           ! in
+                      DOMF, alpha1, alpha2, alpha3, alpha4, & ! in
+                      cm, u_star, w_star_edmf, wb_surf, &     ! in
+                      th00, zle, zlo, q, N2, &                ! in
+                      L, LS, LB, LT, u_star_total)            ! out
+  else
+     call mynn_length_new(IM, JM, LM, &                 ! in
+                          th00, zle, zlo, q, N2, thv, & ! in
+                          L)                            ! out
+     if ( DOMF == 0. ) then
+        do j = 1,JM
+        do i = 1,IM
+           u_star_total(i,j) = u_star(i,j)
+        end do
+        end do
+     end if
+  end if
+
+  do j = 1,JM
+  do i = 1,IM
      th_star = H_surf(i,j)/(MAPL_CP*rhoe(i,j,LM)*u_star_total(i,j))
      q_star  = E_surf(i,j)/(rhoe(i,j,LM)*u_star_total(i,j))
 
@@ -197,31 +231,6 @@ subroutine run_mynn(IM, JM, LM, &                                               
      hlqt_surf(i,j) = sqrt(hl2_surf(i,j)*qt2_surf(i,j)) ! temporary
   end do
   end do
-
-  ! Test
-  if ( .not. initialized_mynn ) then
-     call initialize_mynn(IM, JM, LM, &
-                          TEST_FLAG, &
-                          alpha1, alpha2, alpha3, alpha4, &
-                          th00, ice_ramp, hl, qt, tke, hl2, qt2, hlqt, q, &
-                          zle, zlo, S2, N2, &
-                          u_star_total, wb_surf, LMO, &
-                          thv, ple, pl)
-
-     initialized_mynn = .true.
-  end if
-
-  if ( TEST_FLAG == 0 ) then
-     call mynn_length(IM, JM, LM, &                                    ! in
-                      alpha1, alpha2, alpha3, alpha4, &                ! in
-                      th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
-                      thv, ple, pl, &                                  ! in
-                      L, LS, LB, LT, w_star_mynn)                      ! out
-  else
-     call mynn_length_new(IM, JM, LM, &                 ! in
-                          th00, zle, zlo, q, N2, thv, & ! in
-                          L)                            ! out
-  end if
 
   do k = 1,LM-1
 
@@ -595,11 +604,11 @@ end subroutine implicit_M
 !
 ! mynn_length 
 !
-subroutine mynn_length(IM, JM, LM, &                                    ! in
-                       alpha1, alpha2, alpha3, alpha4, &                ! in
-                       th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
-                       thv, ple, pl, &                                  ! in
-                       L, LS, LB, LT, w_star)                           ! out
+subroutine mynn_length(IM, JM, LM, &                           ! in
+                       DOMF, alpha1, alpha2, alpha3, alpha4, & ! in
+                       cm, u_star, w_star_edmf, wb_surf, &     ! in
+                       th00, zle, zlo, q, N2, &                ! in
+                       L, LS, LB, LT, u_star_total)            ! out
 
   use MAPL_ConstantsMod, only: MAPL_KARMAN
 
@@ -620,19 +629,21 @@ subroutine mynn_length(IM, JM, LM, &                                    ! in
 
 
   integer, intent(in)                                  :: IM, JM, LM
-  real, intent(in)                                     :: th00, ice_ramp
+  real, intent(in)                                     :: DOMF, th00
   double precision, intent(in)                         :: alpha1, alpha2, alpha3, alpha4
-  real, dimension(IM,JM), intent(in)                   :: wb_surf, LMO
-  real, dimension(IM,JM,LM), intent(in)                :: zlo, thv, pl
-  real, dimension(IM,JM,0:LM), intent(in)              :: zle, N2, ple
+  real, dimension(IM,JM), intent(in)                   :: cm, u_star, w_star_edmf, wb_surf
+  real, dimension(IM,JM,LM), intent(in)                :: zlo
+  real, dimension(IM,JM,0:LM), intent(in)              :: zle, N2
+  real, dimension(IM,JM), intent(out)                  :: u_star_total
   double precision, dimension(IM,JM,0:LM), intent(in)  :: q
-  double precision, dimension(IM,JM), intent(out)      :: w_star, LT
+  double precision, dimension(IM,JM), intent(out)      :: LT
   double precision, dimension(IM,JM,0:LM), intent(out) :: L, LS, LB
 
   integer                            :: i, j, k, kk, kkm1
   real                               :: qdz, zeta
+  real, dimension(IM,JM)             :: LMO
   double precision                   :: N, LF, LB_test, N_test
-  double precision, dimension(IM,JM) :: work1, work2
+  double precision, dimension(IM,JM) :: work1, work2, w_star
 
   ! Compute integrals for turbulence length scale
   work1(:,:) = 1.d-5
@@ -656,8 +667,17 @@ subroutine mynn_length(IM, JM, LM, &                                    ! in
   ! Compute turbulence length scale and CBL vertical velocity scale
   do j = 1,JM
   do i = 1,IM
-     LT(i,j)     = alpha1*( work1(i,j)/work2(i,j) ) ! NN09 (54)
-     w_star(i,j) = ( max( 0.d0, wb_surf(i,j) )*LT(i,j) )**onethird
+     LT(i,j) = alpha1*( work1(i,j)/work2(i,j) ) ! NN09 (54)
+
+     if ( DOMF == 0. ) then
+        w_star(i,j) = ( max( 0.d0, wb_surf(i,j) )*LT(i,j) )**onethird
+     else
+        w_star(i,j) = w_star_edmf(i,j)
+     end if
+
+     u_star_total(i,j) = sqrt( u_star(i,j)**2. + cm(i,j)*w_star(i,j)**2. )
+
+     LMO(i,j) = -u_star_total(i,j)**3./(MAPL_KARMAN*wb_surf(i,j))
   end do
   end do
 
@@ -748,12 +768,12 @@ end subroutine mynn_length_new
 ! initialize_mynn
 !
 subroutine initialize_mynn(IM, JM, LM, &
-                           TEST_FLAG, &
+                           DOMF, TEST_FLAG, &
                            alpha1, alpha2, alpha3, alpha4, &
-                           th00, ice_ramp, hl, qt, tke, hl2, qt2, hlqt, q, &
+                           th00, hl, qt, tke, hl2, qt2, hlqt, q, &
                            zle, zlo, S2, N2, &
-                           u_star, wb_surf, LMO, &
-                           thv, ple, pl)
+                           cm, u_star, w_star_edmf, wb_surf, &
+                           thv)
 
 use MAPL_ConstantsMod, only: MAPL_KARMAN
 
@@ -765,17 +785,17 @@ real, parameter :: flt = 0.
 real, parameter :: flq = 0.
 
 integer, intent(in)                                    :: IM, JM, LM, TEST_FLAG
-real, intent(in)                                       :: th00, ice_ramp
+real, intent(in)                                       :: th00, DOMF
 double precision, intent(in)                           :: alpha1, alpha2, alpha3, alpha4
-real, dimension(IM,JM), intent(in)                     :: u_star, wb_surf, LMO
-real, dimension(IM,JM,0:LM), intent(in)                :: zle, S2, N2, ple
-real, dimension(IM,JM,LM), intent(in)                  :: zlo, hl, qt, thv, pl
+real, dimension(IM,JM), intent(in)                     :: cm, u_star, w_star_edmf, wb_surf
+real, dimension(IM,JM,0:LM), intent(in)                :: zle, S2, N2
+real, dimension(IM,JM,LM), intent(in)                  :: zlo, hl, qt, thv
 real, dimension(IM,JM,0:LM), intent(inout)             :: tke, hl2, qt2, hlqt
 double precision, dimension(IM,JM,0:LM), intent(inout) :: q
 
 integer                                 :: iter, i, j, k, kp1
 real                                    :: idzlo, L2
-double precision, dimension(IM,JM)      :: w_star_mynn
+real, dimension(IM,JM)                  :: u_star_total
 real, dimension(IM,JM,0:LM)             :: SM2, SH2, dhldz, dqtdz
 double precision, dimension(IM,JM)      :: LT
 double precision, dimension(IM,JM,0:LM) :: GM, GH, L, LS, LB
@@ -819,11 +839,11 @@ end do
 ! Iterate to initialize TKE
 do iter = 1,niter
    if ( TEST_FLAG == 0 ) then
-      call mynn_length(IM, JM, LM, &                                    ! in
-                       alpha1, alpha2, alpha3, alpha4, &                ! in
-                       th00, ice_ramp, wb_surf, zle, zlo, q, N2, LMO, & ! in
-                       thv, ple, pl, &                                  ! in
-                       L, LS, LB, LT, w_star_mynn)                      ! out      
+      call mynn_length(IM, JM, LM, &                           ! in
+                       DOMF, alpha1, alpha2, alpha3, alpha4, & ! in
+                       cm, u_star, w_star_edmf, wb_surf, &     ! in
+                       th00, zle, zlo, q, N2, &                ! in
+                       L, LS, LB, LT, u_star_total)            ! out
    else
       call mynn_length_new(IM, JM, LM, &                 ! in
                            th00, zle, zlo, q, N2, thv, & ! in
