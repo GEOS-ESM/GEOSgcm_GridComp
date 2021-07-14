@@ -4,7 +4,7 @@
 ##  Setting environment variables ##
 ####################################
 
-setenv gfile `head -1 clsm/mkCatchParam.log | cut -d 'g' -f2 | cut -d '.' -f1`
+setenv gfile `head -1 clsm/mkCatchParam.log | cut -d 'g' -f2 | cut -d '.' -f1 | cut -d' ' -f2`
 setenv workdir `pwd`
 setenv NC `head -1 clsm/mkCatchParam.log | cut -d'x' -f3 | cut -d'-' -f1`
 setenv NR `head -1 clsm/mkCatchParam.log | cut -d'y' -f2 | cut -d'-' -f1`
@@ -172,13 +172,18 @@ endif
 set WGRID=AGCM
 set int_str1="`printf 'by overlaying the atmospheric grid on ${NPfafs} number of hydraulic catchments \\n in ${MYMASK} mask file.'`"
 set sec2_til="`printf 'area, longitude, latitude, ig, jg, cell_frac, integer,   & \\n \
-                    pfaf_code, pfaf_index, pfaf_frac'`"
+                    pfaf_code, integer, pfaf_frac'`"
 set pfafin_des="`printf 'catchment index (1-$NPfafs) after sorting Pfafstetter codes in ascending order'`"  
 set pfaf_des="`printf 'Pfafstetter code of the hydrologic catchment'`"
 if( $MYMASK == GEOS5_10arcsec_mask  | $MYMASK == GEOS5_10arcsec_mask.nc | $MYMASK == GEOS5_10arcsec_mask_freshwater-lakes.nc ) set pfaf_des=`echo "${pfafin_des}"`
 set pfaf_dest=`echo "${pfaf_des}"`
 set sec2_til2="`printf ' (9)    area      [x EarthRadius^2 km2]  tile area\\n\
-        (10)   pfaf_frac [-]      fraction of the pfafstetter catchment\\n '`" 
+        (10)   pfaf_frac [-]      fraction of the pfafstetter catchment\\n \
+	** Since the purpose of this README file is to describe land parameters and land specific fields,\\n \
+	    above description is specific to type 100 land tiles. Other surface types use some of the columns\\n \
+	    to store different fields. For e.g. columns 8 and 9 in type 0 ocean tiles contains i-index and j-index\\n \
+	    of the ocean grid cell where the ocean tile is located while column 11 contains the fraction\\n \
+	    of the ocean grid cell. '`" 
 set rout_smap
 
 if(`echo $gfile | cut -d '_' -f1` == SMAP | $ease == EASE) then
@@ -574,17 +579,17 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 	 (1)    type      [-]      tile type (100-land; 19-lakes; 20-ice)
 	 (2)    longitude [degree] longitude at the centroid of the tile
 	 (3)    latitude  [degree] latitude at the centroid of the tile
-	 (4)    ig        [-]      i-index of the global grid cell where the tile is located
-	 (5)    jg        [-]      j-index of the global grid cell where the tile is located
+	 (4)    ig        [-]      i-index of the atmospheric grid cell where the tile is located
+	 (5)    jg        [-]      j-index of the atmospheric grid cell where the tile is located
 	 (6)    pfaf_code [-]      ${pfaf_dest} 
 	 (7)    pfaf_index[-]      ${pfafin_des} 
-	 (8)    cell_frac [-]      fraction of the global grid cell    
+	 (8)    cell_frac [-]      fraction of the atmospheric grid cell    
 	`echo "${sec2_til2}"`
        2.2.2 Western, eastern, southern, northern edges and mean elevation of tiles
 	 file name: catchment.def
 	 read (10,*) NTILES
 	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,5(2x,f9.4))') tile_index,pfaf_code,   &
+		read (10,'(i10,i8,5(2x,f9.4))') tile_index,pfaf_code,   &
 		min_lon,max_lon,min_lat,max_lat, mean_elevation (m) 
          end do
 	 
@@ -602,7 +607,7 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 	 file name: cti_stats.dat
 	 read (10,*) NTILES
 	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,5(1x,f8.4))') tile_index,pfaf_code,   &
+		read (10,'(i10,i8,5(1x,f8.4))') tile_index,pfaf_code,   &
 		cti_mean, cti_std, cti_min, cti_max, cti_skew
 	 enddo
 
@@ -624,7 +629,7 @@ APPENDIX I - mkCatchParam tag, input options, and log ..........................
 _EOI_
 if( $mysoil == HWSD ) then
 cat << _EOS1_ > clsm/soil
-		read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
+		read (10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4,3f7.3,4f7.3,2f10.4, f8.4)')  &
 		tile_index,pfaf_code,soil_class_top,soil_class_com,BEE,              &
 		PSIS,POROS,COND, WPWET, DP2BR, gravel,OrgCarbon_top,                 &
 		OrgCarbon_rz,sand_top,clay_top,sand_rz,clay_rz,WPWET_top, POROS_top, PMAP
@@ -948,7 +953,7 @@ cat << _EOS1_ > clsm/soil
 _EOS1_
 else
 cat << _EOS2_ > clsm/soil	 
- 		read (10,'(i8,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4)')  &
+ 		read (10,'(i10,i8,i4,i4,3f8.4,f12.8,f7.4,f10.4)')  &
 		tile_index,pfaf_code,soil_class_top,              &
 		soil_class_com,BEE, PSIS,POROS,COND,              &
 		WPWET,soildepth	
@@ -1366,7 +1371,7 @@ cat << _EOF0_ > clsm/README1
 	 surfexec and rzexec
 	 file name : tau_param.dat
          do n = 1, ${NTILES}
-		read (10,'(i8,i8,4f10.7)')    &
+		read (10,'(i10,i8,4f10.7)')    &
 			tile_index,pfaf_code,atau2,btau2,atau5,btau5
 	 end do
 	 where:
@@ -1379,7 +1384,7 @@ cat << _EOF0_ > clsm/README1
 	 root zone and water table
 	 file name : ts.dat
    	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,f5.2,4(2x,e13.7))')tile_index,pfaf_code,gnu,   &
+		read (10,'(i10,i8,f5.2,4(2x,e13.7))')tile_index,pfaf_code,gnu,   &
 	             tsa1,tsa2,tsb1,tsb2
       	 end do
 
@@ -1392,7 +1397,7 @@ cat << _EOF0_ > clsm/README1
        6.2.3 Baseflow parameters
 	 file name : bf.dat
 	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,f5.2,3(2x,e13.7))')tile_index,pfaf_code,gnu,bf1,bf2,bf3
+		read (10,'(i10,i8,f5.2,3(2x,e13.7))')tile_index,pfaf_code,gnu,bf1,bf2,bf3
 	 end do
 
 	 where:
@@ -1404,7 +1409,7 @@ cat << _EOF0_ > clsm/README1
        6.2.4 Area fractioning parameters
 	 file name : ar.new
 	 do n = 1, ${NTILES}
-		read (10,'(i8,i8,f5.2,11(2x,e13.7))')tile_index,pfaf_code,gnu,  &
+		read (10,'(i10,i8,f5.2,11(2x,e13.7))')tile_index,pfaf_code,gnu,  &
 			ars1,ars2,ars3,ara1,ara2,ara3,ara4,arw1,arw2,arw3,arw4
 	 end do
 
@@ -1527,7 +1532,6 @@ cat << _EOF1_ > clsm/README2
          mouth_lon [degree] longitude at the river mouth
          mouth_lat [degree] latitude at the river mouth
 
-`echo "${rout_smap}"`
   7.3 References
 	 Verdin, K.L., and J.P. Verdin (1999). A topographical system for delineation 
 	    and codification of the Earths river basins. J. of Hydrology (218), 1-12.
@@ -1595,7 +1599,10 @@ mkdir -p clsm/plots
 
 cd clsm/plots/
 
-module load tool/idl-8.5
+module purge
+module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
+source ../../bin/g5_modules
+module load idl/8.5
 
 idl  <<EOB
 
@@ -1610,6 +1617,6 @@ cd $workdir
 
 /bin/rm clsm/plots/clsm_plots.pro
 
-module unload tool/idl-8.5
+module purge
 
 

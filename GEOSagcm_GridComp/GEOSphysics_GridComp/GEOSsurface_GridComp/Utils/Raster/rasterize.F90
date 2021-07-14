@@ -4,7 +4,8 @@
 module LogRectRasterizeMod
 
   use MAPL_SORTMOD
-
+  use rmTinyCatchParaMod, ONLY: SRTM_maxcat
+  
   implicit none
   private
 
@@ -213,7 +214,7 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
 
   if(DoZip) then
      call ZipBuff(trim(File)//char(0),trim(Line)//char(0),0,1,1)
-     write(LINE,'(3I10)') ip, nx, ny
+     write(LINE,'(4I10)') ip, SRTM_maxcat, nx, ny
      call ZipBuff(trim(File)//char(0),trim(Line)//char(0),1,1,1)
      write(LINE,'(I10)' ) ng
      call ZipBuff(trim(File)//char(0),trim(Line)//char(0),1,1,1)
@@ -234,7 +235,7 @@ subroutine WriteTilingIR(File, GridName, im, jm, ipx, nx, ny, iTable, rTable, Zi
         Inquire(Unit=Unit,Opened=Opened)
      end do
      open (UNIT,file=trim(File), form='formatted', status='unknown')
-     write(UNIT,'(3I10)') ip, nx, ny             
+     write(UNIT,'(4I10)') ip, SRTM_maxcat, nx, ny             
      write(UNIT,'(I10)' ) ng              
      do l=1,ng
         ix=index(GridName(l),'/',Back=.true.)
@@ -350,7 +351,7 @@ subroutine OpenTiling(Unit, File, GridName, im, jm, ip, nx, ny, Zip, Verb)
   if(DoZip) then
      Unit = -1
      call ZipBuff(trim(File)//char(0),trim(Line)//char(0),0,1,1)
-     write(LINE,'(3I10)') ip, nx, ny
+     write(LINE,'(4I10)') ip, SRTM_maxcat, nx, ny
      call ZipBuff(trim(File)//char(0),trim(Line)//char(0),1,1,1)
      write(LINE,'(I10)' ) 1
      call ZipBuff(trim(File)//char(0),trim(Line)//char(0),1,1,1)
@@ -369,7 +370,7 @@ subroutine OpenTiling(Unit, File, GridName, im, jm, ip, nx, ny, Zip, Verb)
         Inquire(Unit=Unit,Opened=Opened)
      end do
      open (UNIT,file=trim(File), form='formatted', status='unknown')
-     write(UNIT,'(3I10)') ip, nx, ny             
+     write(UNIT,'(4I10)') ip,SRTM_maxcat, nx, ny             
      write(UNIT,'(I10)' ) 1
      ix=index(GridName   ,'/',Back=.true.)
      write(UNIT, *       ) trim(GridName   (ix+1:))

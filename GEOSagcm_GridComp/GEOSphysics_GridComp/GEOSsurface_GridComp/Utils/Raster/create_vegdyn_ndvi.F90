@@ -355,7 +355,7 @@ contains
       implicit none
 
       ! 1) JPL Canopy Height 
-      ! /discover/nobackup/rreichle/l_data/LandBCs_files_for_mkCatchParam/V001//Simard_Pinto_3DGlobalVeg_JGR.nc4
+      ! /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001//Simard_Pinto_3DGlobalVeg_JGR.nc4
      
       integer, intent (in)               :: nc, nr, ntiles
       real, pointer, dimension (:), intent (inout) :: z2

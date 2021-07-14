@@ -29,7 +29,7 @@ PROGRAM mk_RouteRestarts
 
   INCLUDE 'netcdf.inc'
 
-  RouteDataFile = '/gpfsm/dnb42/projects/p16/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/SRTM-TopoData/Pfafcatch-routing.dat'
+  RouteDataFile = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/SRTM-TopoData/Pfafcatch-routing.dat'
 
   I = command_argument_count()
   
@@ -49,7 +49,7 @@ PROGRAM mk_RouteRestarts
 
   MM = RestartTime (5: 6)
 
-  inFile = '/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/route/' &
+  inFile = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding/route/' &
                //'route_internal_rst.YYYY'//MM//'01'
 
   print '(a150)','ROUTE_INTERNAL_RST(restarts) : '//trim(inFile)

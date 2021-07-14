@@ -7,7 +7,7 @@ PROGRAM mkLISTilesPara
   use MAPL_SortMod
 
   implicit none
-  integer  , parameter :: nc_esa = 129600, nr_esa = 64800, SRTM_maxcat = 291284
+  integer  , parameter :: nc_esa = 129600, nr_esa = 64800
   real     , parameter :: pi= MAPL_PI
   integer  , parameter :: HYDRO1k_maxcat = 6000000
   integer, parameter   :: nc_gswp2 = 360, nr_gswp2 = 180, n_gswp2 =15238 
@@ -80,11 +80,11 @@ endif
  ! create Grid2Catch transfer file
  ! -------------------------------
  
- CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), deltaXY=dx)  
+ ! CALL CREATE_ROUT_PARA_FILE (NC, NR, trim(gfile), deltaXY=dx)  
 
 tmpstring1 = '-e EASE -g '//trim(gfile) 
 write(tmpstring2,'(2(a2,x,i5,x))')'-x',nc,'-y',nr
-tmpstring = 'bin/mkCatchParam_openmp '//trim(tmpstring2)//' '//trim(tmpstring1)
+tmpstring = 'bin/mkCatchParam.x '//trim(tmpstring2)//' '//trim(tmpstring1)
 print *,trim(tmpstring)
 
 call system(tmpstring)
@@ -228,9 +228,9 @@ SUBROUTINE create_files (nc,nr,gfile,filename)
 ! opening and writing  .til and .rst cti_stat and catchment.def files
 ! -------------------------------------------------------------------
 
-  open (11,file='/discover/nobackup/rreichle/l_data/geos5/bcs/SiB2_V2/DE/GSWP2_1by1/FV_360x180_DE_360x180_DE.til', &
+  open (11,file='/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/SiB2_V2/DE/GSWP2_1by1/FV_360x180_DE_360x180_DE.til', &
        form='formatted',action='READ',status='OLD')
-  open (12,file='/discover/nobackup/rreichle/l_data/geos5/bcs/SiB2_V2/DE/GSWP2_1by1/cti_stats.dat',                &
+  open (12,file='/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/SiB2_V2/DE/GSWP2_1by1/cti_stats.dat',                &
        form='formatted',action='READ',status='OLD')
 
   read (11,*) i
@@ -552,7 +552,7 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   
   nc_global = nint(360./dx)
   nr_global = nint(180./dy)
-  
+
   if (nc_domain == 0) nc_domain = nc_global
   if (nr_domain == 0) nr_domain = nr_global
   
@@ -597,7 +597,7 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   tileid   = 0
   
   write (20,*) ncells
-  write (20,*) 2
+  write (20,*) 1
   write (20,'(a11)') glabel1
   write (20,*) nc_global
   if (dateline == 0) then
@@ -605,13 +605,13 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   else
      write (20,*) nr_global
   endif
-  write (20,'(a9)') glabel2
-  write (20,*) nc_domain
-  if (dateline == 0) then
-     write (20,*) nr_domain + 1
-  else
-     write (20,*) nr_domain
-  endif
+ !  write (20,'(a9)') glabel2
+ ! write (20,*) nc_domain
+ ! if (dateline == 0) then
+ !    write (20,*) nr_domain + 1
+ ! else
+ !    write (20,*) nr_domain
+ ! endif
  
   regrid = .true.
   dx_esa = ceiling(real(nc_esa) / real(nc_global)) ! x-dimension (or # of ESA columns within the raster grid cell)
@@ -783,12 +783,12 @@ SUBROUTINE create_files_esa (nc, nr, gfile,filename)
   write (20,*) nc_global
   read  (19,*) nr_global
   write (20,*) nr_global
-  read  (19,'(a9)') glabel2
-  write (20,'(a9)') glabel2
-  read (19,*) nc_domain
-  write (20,*) nc_domain
-  read (19,*) nr_domain
-  write (20,*) nr_domain
+!  read  (19,'(a9)') glabel2
+!  write (20,'(a9)') glabel2
+!  read (19,*) nc_domain
+!  write (20,*) nc_domain
+!  read (19,*) nr_domain
+!  write (20,*) nr_domain
   
   write(23,*) ncells
   
