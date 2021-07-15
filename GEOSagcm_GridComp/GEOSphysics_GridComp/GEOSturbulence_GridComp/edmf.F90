@@ -91,8 +91,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   real :: wthv, qstar, thstar, sigmaw, sigmaqt, sigmath, z0, wmin, wmax, wlv, wtv, wp, &
           B, QTn, THLn, THVn, QCn, Un, Vn, Wn, Wn2, Mn, Mn_test, au_test, EntEXP, EntEXPU, EntW, wf, &
           stmp, QTsrfF, THVsrfF, mft, mfthvt, dzle, idzle, ifac, test, mft_work, mfthvt_work, &
-          goth00, thlu_full, work, work2, exfh, dsdz, dqdz, thv_high, thv_low, thvmin, thvmax, &
-          thvu0, qtu0, foo, eps
+          goth00, thlu_full, work1, work2, exfh, dsdz, dqdz, thv_high, thv_low, thvmin, thvmax, &
+          thvu0, qtu0, foo, eps, pdf_fac1, pdf_fac2
 
   ! Temporary (too slow; need to figure out how random number generator works)
   integer, dimension(numup,IM,JM,LM)  :: enti
@@ -277,14 +277,14 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
         wmin = sigmaW*pwmin ! vertical velocity of least energetic updraft
         wmax = sigmaW*pwmax ! "        "        "  most  "         "
         
-        work = 1./( sqrt(2.)*sigmaW )
+        pdf_fac1 = 1./( sqrt(2.)*sigmaW )
 
         if ( plume_type == 1 ) then
-           work  = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/(  A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) ) &
+           work1  = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/(  A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) ) &
                                                               + A(i,j,LM-1)*( zle(i,j,LM-2) - zle(i,j,LM-1) ) )
            work2 = rhoe(i,j,LM-2)/rhoe(i,j,LM-1) 
 
-           au_fac(i,j) = ( work2/work )**2. - work**2.
+           au_fac(i,j) = ( work2/work1 )**2. - work1**2.
 
            wu0(i,j) = A(i,j,LM)*( zle(i,j,LM-1) - zle(i,j,LM) )/( au0*rhoe(i,j,LM-1) )
 
@@ -300,8 +300,8 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
            thvmin = thv(i,j,LM-1)
            thvmax = thvu0 + 3.*sigmaTH
 
-           work  = 1./( sqrt(2.)*sigmaTH )
-           work2 = au0/( 0.5*( erf(( thvmax - thvu0 )*work) - erf(( thvmin - thvu0 )*work) ) )
+           pdf_fac1 = 1./( sqrt(2.)*sigmaTH )
+           pdf_fac2 = au0/( 0.5*( erf(( thvmax - thvu0 )*pdf_fac1) - erf(( thvmin - thvu0 )*pdf_fac1) ) )
         end if
 
         QTsrfF  = 0.
@@ -314,7 +314,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               wtv = wmin + ( wmax - wmin )*real(iup)/real(numup)
 
               upw(iup,i,j)   = 0.5*( wlv + wtv ) 
-              upa(iup,i,j)   = 0.5*( erf(wtv*work) - erf(wlv*work) )
+              upa(iup,i,j)   = 0.5*( erf(wtv*pdf_fac1) - erf(wlv*pdf_fac1) )
               upu(iup,i,j)   = ui(i,j,kbot)
               upv(iup,i,j)   = vi(i,j,kbot)
               upqt(iup,i,j)  = qti(i,j,kbot)  + 0.32*upw(iup,i,j)*sigmaQT/sigmaW ! 0.32~=0.58*0.55 (Stull 1988)
@@ -329,7 +329,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               else
                  upw(iup,i,j) = wu0(i,j)
               end if
-              upa(iup,i,j)   = 0.5*work2*( erf(( thv_high - thvu0 )*work) - erf(( thv_low - thvu0 )*work) )
+              upa(iup,i,j)   = 0.5*pdf_fac2*( erf(( thv_high - thvu0 )*pdf_fac1) - erf(( thv_low - thvu0 )*pdf_fac1) )
               upu(iup,i,j)   = u(i,j,LM)
               upv(iup,i,j)   = v(i,j,LM)
               upqt(iup,i,j)  = qt(i,j,LM-1) + ( upthv(iup,i,j) - thv(i,j,LM-1) )*evap(i,j)/(rhoe(i,j,LM)*wthv)
@@ -566,11 +566,21 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                  end if
 
               elseif ( plume_type == 1 ) then ! thermal plume
-                 ! Integrate vertical velocity budget
-                 B = wb*goth00*( upthv(iup,i,j) - thv(i,j,k) )
-
-                 !
+                 ! Compute entrainment rate 
                  eps = max( 0., 1./L0(i,j) - ( 1./f_thermal(i,j,k) - 1. )/dzle )
+
+                 ! Integrate scalar budgets
+                 THLn = ( upthl(iup,i,j) + dzle*eps*thl(i,j,k) )/( 1. + dzle*eps )
+                 QTn  = ( upqt(iup,i,j) + dzle*eps*qt(i,j,k) )/( 1. + dzle*eps )
+                 Un   = ( upu(iup,i,j) + dzle*eps*u(i,j,k) )/( 1. + dzle*eps )
+                 Vn   = ( upv(iup,i,j) + dzle*eps*v(i,j,k) )/( 1. + dzle*eps )
+
+                 ! Condensation
+                 call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
+
+                 ! Integrate vertical velocity budget
+!                 B = wb*goth00*( upthv(iup,i,j) - thv(i,j,k) )
+                 B = wb*goth00*( 0.5*( THVn + upthv(iup,i,j) ) - thv(i,j,k) )
 
 !                 Wn2 = f_thermal(i,j,k)**2.*upw(iup,i,j)**2. + 2.*dzle*B                 
                  Wn2 = upw(iup,i,j)**2./( 1./f_thermal(i,j,k) + dzle*eps  )**2. + 2.*dzle*B                 
@@ -604,13 +614,13 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                     D_plume = max( 0., E_plume - ( Mn - upm(iup,i,j) )/dzle )
 
                     ! Integrate scalar budgets
-                    THLn = ( upm(iup,i,j)*upthl(iup,i,j) + dzle*E_plume*thl(i,j,k) )/( Mn + dzle*D_plume )
-                    QTn  = ( upm(iup,i,j)*upqt(iup,i,j) + dzle*E_plume*qt(i,j,k) )/( Mn + dzle*D_plume )
-                    Un   = ( upm(iup,i,j)*upu(iup,i,j) + dzle*E_plume*u(i,j,k) )/( Mn + dzle*D_plume )
-                    Vn   = ( upm(iup,i,j)*upu(iup,i,j) + dzle*E_plume*v(i,j,k) )/( Mn + dzle*D_plume )
+!                    THLn = ( upm(iup,i,j)*upthl(iup,i,j) + dzle*E_plume*thl(i,j,k) )/( Mn + dzle*D_plume )
+!                    QTn  = ( upm(iup,i,j)*upqt(iup,i,j) + dzle*E_plume*qt(i,j,k) )/( Mn + dzle*D_plume )
+!                    Un   = ( upm(iup,i,j)*upu(iup,i,j) + dzle*E_plume*u(i,j,k) )/( Mn + dzle*D_plume )
+!                    Vn   = ( upm(iup,i,j)*upu(iup,i,j) + dzle*E_plume*v(i,j,k) )/( Mn + dzle*D_plume )
 
                     ! Condensation
-                    call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
+!                    call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
                  end if
               end if
               
@@ -862,18 +872,18 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
          dsdz = (  ( mapl_cp*exf(i,j,k)*thl(i,j,k)     + mapl_grav*zl(i,j,k)   + mapl_alhs*qi(i,j,k)   + mapl_alhl*ql(i,j,k) ) &
                  - ( mapl_cp*exf(i,j,k+1)*thl(i,j,k+1) + mapl_grav*zl(i,j,k+1) + mapl_alhs*qi(i,j,k+1) + mapl_alhl*ql(i,j,k+1) ) )&
                 /( zl(i,j,k) - zl(i,j,k+1) )
-         work = -aws(i,j,k)/dsdz
-         if ( work > 0. ) then
-!            KH_t(i,j,k) = min( 1., 0.01*work )
-!            KH_t(i,j,k) = 0.05*work
+         work1 = -aws(i,j,k)/dsdz
+         if ( work1 > 0. ) then
+!            KH_t(i,j,k) = min( 1., 0.01*work1 )
+!            KH_t(i,j,k) = 0.05*work1
             aws(i,j,k)  = aws(i,j,k) + KH_t(i,j,k)*dsdz
          end if
 
          dqdz = ( qv(i,j,k) - qv(i,j,k+1) )/( zl(i,j,k) - zl(i,j,k+1) )
-         work = -awqv(i,j,k)/dqdz
-         if ( work > 0. ) then
-!            KH_q(i,j,k) = min( 1., 0.01*work )
-!            KH_q(i,j,k) = 0.05*work
+         work1 = -awqv(i,j,k)/dqdz
+         if ( work1 > 0. ) then
+!            KH_q(i,j,k) = min( 1., 0.01*work1 )
+!            KH_q(i,j,k) = 0.05*work1
             awqv(i,j,k) = awqv(i,j,k) + KH_q(i,j,k)*dqdz
          end if
       end do
