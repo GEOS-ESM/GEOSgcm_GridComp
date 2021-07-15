@@ -313,6 +313,8 @@ if( $orslv == T4MOM6 ) then
     @ jmo = 1080   # MOM6 Tripolar-Ocean
 endif
 
+set TRIPOL_OCEAN = TRUE
+
 if( $orslv == O1 | $orslv == O2| $orslv == O3 ) then
     set LATLON_OCEAN = TRUE
     set     DATENAME = DE
@@ -330,6 +332,8 @@ else if ( $orslv == T1MOM6 | $orslv == T2MOM6 | $orslv == T4MOM6 ) then
     set     DATENAME = TM
     set     POLENAME = TM
 endif
+
+set CUBED_SPHERE_OCEAN = TRUE
 if( $orslv == CS ) set CUBED_SPHERE_OCEAN = TRUE
 
 # -------------------------------------
