@@ -109,7 +109,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
   logical, dimension(numup,IM,JM) :: active_updraft
 
   ! Thermal plume stuff 
-  real                      :: E_plume, D_plume
+  real                      :: E_plume
   real, dimension(IM,JM)    :: zi, Phi, au_total, au_fac, wstar
   real, dimension(IM,JM,LM) :: f_thermal
 
@@ -610,17 +610,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                           Mn = max( 0., Mn_test - dzle*upm(iup,i,j)*eps )
                        end if
                     end if
-
-                    D_plume = max( 0., E_plume - ( Mn - upm(iup,i,j) )/dzle )
-
-                    ! Integrate scalar budgets
-!                    THLn = ( upm(iup,i,j)*upthl(iup,i,j) + dzle*E_plume*thl(i,j,k) )/( Mn + dzle*D_plume )
-!                    QTn  = ( upm(iup,i,j)*upqt(iup,i,j) + dzle*E_plume*qt(i,j,k) )/( Mn + dzle*D_plume )
-!                    Un   = ( upm(iup,i,j)*upu(iup,i,j) + dzle*E_plume*u(i,j,k) )/( Mn + dzle*D_plume )
-!                    Vn   = ( upm(iup,i,j)*upu(iup,i,j) + dzle*E_plume*v(i,j,k) )/( Mn + dzle*D_plume )
-
-                    ! Condensation
-!                    call condensation_edmf(QTn, THLn, ple(i,j,km1), THVn, QCn, wf, ice_ramp)
                  end if
               end if
               
@@ -760,26 +749,12 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
            ! Compute detrainment rate as residual
            D(i,j,k) = E(i,j,k) - ( Mu(i,j,km1) - Mu(i,j,k) )/( zle(i,j,km1) - zle(i,j,k) )
 
-           if ( au(i,j,k) > 0. .and. au(i,j,km1) > 0. ) then
-              au_full(i,j,k)  = 0.5*( au(i,j,k)   + au(i,j,km1) )
-              thlu_full       = 0.5*( thlu(i,j,k) + thlu(i,j,km1) )
-              qtu_full(i,j,k) = 0.5*( qtu(i,j,k)  + qtu(i,j,km1) )
-              
-              if ( edmfmoista(i,j,k) > 0. .and. edmfmoista(i,j,km1) > 0. ) then
-                 acu_full(i,j,k) = min( au_full(i,j,k), 0.5*( edmfmoista(i,j,k) + edmfmoista(i,j,km1) ) )
-                 qlu_full(i,j,k) = 0.5*( qlu(i,j,k) + qlu(i,j,km1) )
-              else
-                 acu_full(i,j,k) = 0.
-                 qlu_full(i,j,k) = 0.
-              end if
-           else
-              au_full(i,j,k)  = 0.
-              thlu_full       = thl(i,j,k)
-              qtu_full(i,j,k) = qt(i,j,k)
-                 
-              acu_full(i,j,k) = 0.
-              qlu_full(i,j,k) = 0.
-           end if
+           au_full(i,j,k)  = 0.5*( au(i,j,k)   + au(i,j,km1) )
+           thlu_full       = 0.5*( thlu(i,j,k) + thlu(i,j,km1) )
+           qtu_full(i,j,k) = 0.5*( qtu(i,j,k)  + qtu(i,j,km1) )
+
+           acu_full(i,j,k) = min( au_full(i,j,k), 0.5*( edmfmoista(i,j,k) + edmfmoista(i,j,km1) ) )
+           qlu_full(i,j,k) = 0.5*( qlu(i,j,k) + qlu(i,j,km1) )
         elseif ( k == LM ) then
            ! Compute entrainment rate near surface as residual
            E(i,j,LM) = Mu(i,j,LM-1)/zle(i,j,LM-1)
