@@ -3851,7 +3851,6 @@ contains
 
      real,dimension(IM,JM) :: L02
      
-
      real,dimension(IM,JM,LM)           :: QT,THL,EXF
      real    :: alfac
 
@@ -3913,10 +3912,6 @@ contains
      real(kind=MAPL_R8), dimension(IM,JM,0:LM) :: AKIX, BKIX ! Coefficients for solving at half levels
 
      real, dimension(IM,JM,LM) :: DZ, DTM, TM
-
-     ! A_star closure test
-     real, dimension(IM,JM,LM) :: A_star 
-     integer, dimension(IM,JM) :: izsl
 
 #ifdef _CUDA
      type(dim3) :: Grid, Block
@@ -4530,19 +4525,25 @@ contains
           CU_DATA(:,:) = 0.0002
           CT_DATA(:,:) = 0.0081
 
-          USTAR_DATA(:,:) = sqrt(CU_DATA(:,:))*sqrt( U(:,:,LM)**2. + V(:,:,LM)**2. )
-          SH_DATA(:,:)    = -MAPL_CP*CT_DATA*RHOE(:,:,LM)*( TH(:,:,LM) - 298.76*(MAPL_P00/ple(:,:,LM))**(MAPL_RDRY/MAPL_CP) )
-          EVAP_DATA(:,:)  = -CT_DATA*RHOE(:,:,LM)*( Q(:,:,LM) - 2.038011639875219E-002 )
-
-          USTAR => USTAR_DATA
+          SH_DATA(:,:)   = -MAPL_CP*CT_DATA*RHOE(:,:,LM)*( TH(:,:,LM) - 298.76*(MAPL_P00/ple(:,:,LM))**(MAPL_RDRY/MAPL_CP) )
+          EVAP_DATA(:,:) = -CT_DATA*RHOE(:,:,LM)*( Q(:,:,LM) - 2.038011639875219E-002 )
        end if
+
+       call get_zi(IM, JM, LM, &
+                   zle, thv, &
+                   zpbl_mf)
+
+       WSTAR(:,:) = ( zpbl_mf(:,:)*MAPL_GRAV/th00*( SH_DATA(:,:)/MAPL_CP + EVAP_DATA(:,:) )/RHOE(:,:,LM) )**(1./3.)
+
+       USTAR_DATA(:,:) = sqrt(CU_DATA(:,:))*sqrt( U(:,:,LM)**2. + V(:,:,LM)**2. + WSTAR(:,:)**2. )
 
        CU => CU_DATA
        CT => CT_DATA
        CQ => CT_DATA
 
-       SH   => SH_DATA
-       EVAP => EVAP_DATA
+       USTAR => USTAR_DATA
+       SH    => SH_DATA
+       EVAP  => EVAP_DATA
     end if
 
     ! Interpolate EDMF profiles to half levels
@@ -4551,8 +4552,6 @@ contains
                      zle, z, &                               ! in
                      u, v, thl, qt, q, ql, qi, thv, &        ! in
                      ui, vi, thli, qti, qvi, qli, qii, thvi) ! out
-
-    wstar(:,:) = 0.
 
     mfhl2 = 0.0
     mfhlqt = 0.0
@@ -4626,7 +4625,6 @@ if ( ET == 1 ) then
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in
                      edmf_au0, edmf_cth1, edmf_cth2, edmf_lambda, &                  ! in       
                      zpbl_mf, &                                                      ! inout
-                     wstar, &                                                        ! out
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
                      edmfdryqt, edmfmoistqt, &                                       ! out
@@ -4692,7 +4690,6 @@ if ( ET == 1 ) then
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in
                      edmf_au0, edmf_cth1, edmf_cth2, edmf_lambda, &                  ! in       
                      zpbl_mf, &                                                      ! inout
-                     wstar, &                                                        ! out
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
                      edmfdryqt, edmfmoistqt, &                                       ! out
@@ -4769,7 +4766,6 @@ if ( ET == 1 ) then
                      ET, L02, ENT0, EDfac, EntWFac, edmf_wa, edmf_wb, &              ! in
                      edmf_au0, edmf_cth1, edmf_cth2, edmf_lambda, &                  ! in       
                      zpbl_mf, &                                                      ! inout
-                     wstar, &                                                        ! out
                      edmfdrya, edmfmoista, &                                         ! out
                      edmfdryw, edmfmoistw, &                                         ! out
                      edmfdryqt, edmfmoistqt, &                                       ! out
@@ -5087,7 +5083,7 @@ ENDIF
                       MYNN_DEBUG, MYNN_TEST, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &     ! in
                       th00, ice_ramp, PLE, PLO, RHOE, ZLE, Z, &                       ! in      
                       U, V, T, Q, QL, QI, THL, QT, THV, &                             ! in      
-                      USTAR, WSTAR, CU, SH, EVAP, &                                   ! in      
+                      USTAR, SH, EVAP, &                                              ! in      
                       whl_edmf, wqt_edmf, wthv_edmf, au, Mu, wu, E, D, wdet, &        ! in      
                       acei_moist, Ai_moist, Bi_moist, &                               ! in
                       tke_new, hl2, qt2, hlqt, &                                      ! inout   
@@ -8145,6 +8141,49 @@ subroutine ComputeZPBL(IRUN, LM, ZLE, AW, ZPBLmf, KPBLmf)
   enddo
 
 end subroutine ComputeZPBL
+
+!
+! get_zi
+!
+subroutine get_zi(IM, JM, LM, &
+                  zle, thv, &
+                  zi)
+
+  integer, intent(in)                     :: IM, JM, LM
+  real, dimension(IM,JM,0:LM), intent(in) :: zle 
+  real, dimension(IM,JM,LM), intent(in)   :: thv 
+  real, dimension(IM,JM), intent(out)     :: zi
+
+  integer :: i, j, k
+  logical, dimension(IM,JM) :: search_flag
+  real, dimension(IM,JM) :: thvp
+
+  do i = 1,IM
+  do j = 1,JM
+     zi(i,j) = 0.
+
+     if ( thv(i,j,LM-1) < thv(i,j,LM) ) then
+        search_flag(i,j) = .true.
+        thvp(i,j)        = thv(i,j,LM-1)
+     else
+        search_flag(i,j) = .false.
+     end if
+  end do
+  end do
+
+  do k = LM-1,1,-1
+     do j = 1,JM
+     do i = 1,IM
+        if ( search_flag(i,j) .and. thvp(i,j) < thv(i,j,k) ) then
+           zi(i,j) = zle(i,j,k)
+
+           search_flag(i,j) = .false.
+        end if
+     end do
+     end do
+  end do
+
+end subroutine get_zi
 
 SUBROUTINE EDMF(its,ite,kts,kte,dt,zlo3,exf3,zw3,pw3,rhoe3,nup,&
               u3,v3,thl3,thv3,t3,qt3,qv3,ql3,qi3,&

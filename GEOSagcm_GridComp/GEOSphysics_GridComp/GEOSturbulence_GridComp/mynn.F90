@@ -77,7 +77,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
                     DEBUG_FLAG, TEST_FLAG, DOMF, MYNN_LEVEL, CONSISTENT_TYPE, &     ! in
                     th00, ice_ramp, ple, pl, rhoe, zle, zlo, &                      ! in
                     u, v, T, qv, ql, qi, thl, qt, thv, &                            ! in (mean atmospheric state)
-                    u_star, w_star, cm, H_surf, E_surf, &                           ! in (surface state)
+                    u_star, H_surf, E_surf, &                                       ! in (surface state)
                     whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &              ! in (updraft state)
                     aci, Ai_moist, Bi_moist, &                                      ! in
                     tke, hl2, qt2, hlqt, &                                          ! inout (turbulent state)
@@ -93,7 +93,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
   integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, DEBUG_FLAG, TEST_FLAG
   real, intent(in)                           :: th00, ice_ramp, DOMF
-  real, dimension(IM,JM), intent(in)         :: u_star, w_star, cm, H_surf, E_surf
+  real, dimension(IM,JM), intent(in)         :: u_star, H_surf, E_surf
   real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, T, qv, ql, qi, thv, thl, qt, E, D, wdet, pl
   real, dimension(IM,JM,0:LM), intent(in)    :: ple, zle, rhoe, whl_mf, wqt_mf, wthv_mf, &
                                                 au, Mu, wu, Ai_moist, Bi_moist, aci
@@ -120,7 +120,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
           hlthv, qtthv, thv2, hlthv_p, qtthv_p, thv2_p, SM,  &
           we, we_up, tkee, tkee_up, w2e_up, EM, EH
 
-  real, dimension(IM,JM)      :: wb_surf, LMO, u_star_total
+  real, dimension(IM,JM)      :: wb_surf, LMO
   real, dimension(IM,JM,LM)   :: hl
   real, dimension(IM,JM,0:LM) :: S2, N2, zeta, A, B
 
@@ -166,10 +166,8 @@ subroutine run_mynn(IM, JM, LM, &                                               
   ! Compute some surface and TOA quantities
   do j = 1,JM
   do i = 1,IM
-     u_star_total(i,j) = sqrt( u_star(i,j)**2. + cm(i,j)*w_star(i,j)**2. )
-
      wb_surf(i,j) = goth00*( H_surf(i,j)/(MAPL_CP*rhoe(i,j,LM)) + ep2*th00*E_surf(i,j)/rhoe(i,j,LM) )
-     LMO(i,j)     = -u_star_total(i,j)**3./(MAPL_KARMAN*wb_surf(i,j))
+     LMO(i,j)     = -u_star(i,j)**3./(MAPL_KARMAN*wb_surf(i,j))
 
      KM(i,j,0)  = 0.
      KM(i,j,LM) = 0.
@@ -188,10 +186,10 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
      tket_B(i,j,LM) = wb_surf(i,j)
 
-     th_star = H_surf(i,j)/(MAPL_CP*rhoe(i,j,LM)*u_star_total(i,j))
-     q_star  = E_surf(i,j)/(rhoe(i,j,LM)*u_star_total(i,j))
+     th_star = H_surf(i,j)/(MAPL_CP*rhoe(i,j,LM)*u_star(i,j))
+     q_star  = E_surf(i,j)/(rhoe(i,j,LM)*u_star(i,j))
 
-     tke_surf(i,j)  = 0.5*c_tke_surf*u_star_total(i,j)**2.
+     tke_surf(i,j)  = 0.5*c_tke_surf*u_star(i,j)**2.
      hl2_surf(i,j)  = c_th2_surf*th_star**2.
      qt2_surf(i,j)  = c_th2_surf*q_star**2.
      hlqt_surf(i,j) = sqrt(hl2_surf(i,j)*qt2_surf(i,j)) ! temporary
@@ -205,7 +203,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
                           alpha1, alpha2, alpha3, alpha4, &
                           th00, ice_ramp, hl, qt, tke, hl2, qt2, hlqt, q, &
                           zle, zlo, S2, N2, &
-                          u_star_total, wb_surf, LMO, &
+                          u_star, wb_surf, LMO, &
                           thv, ple, pl)
 
      initialized_mynn = .true.

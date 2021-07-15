@@ -29,7 +29,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                     ET, L0, ENT0, EDfac, EntWFac, Wa, Wb, &                         ! in
                     au0, cth1, cth2, lambda, &                                      ! in
                     zpbl, &                                                         ! inout
-                    wstar, &                                                        ! out
                     edmfdrya, edmfmoista, &                                         ! out
                     edmfdryw, edmfmoistw, &                                         ! out
                     edmfdryqt, edmfmoistqt, &                                       ! out
@@ -64,7 +63,6 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                                              AlphaW, AlphaQT, AlphaTH, EDfac, c_kh_mf
  
   ! Outputs
-  real, dimension(IM,JM), intent(out) :: wstar
   real, dimension(IM,JM,0:LM), intent(out) :: edmfdrya, edmfmoista, edmfdryw, edmfmoistw, &
                                               edmfdryqt, edmfmoistqt, edmfdrythl, edmfmoistthl, &
                                               edmfdryu, edmfmoistu, edmfdryv, edmfmoistv, &
@@ -112,7 +110,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 
   ! Thermal plume stuff 
   real                      :: E_plume, D_plume
-  real, dimension(IM,JM)    :: zi, Phi, au_total, au_fac
+  real, dimension(IM,JM)    :: zi, Phi, au_total, au_fac, wstar
   real, dimension(IM,JM,LM) :: f_thermal
 
   if ( plume_type == 0 ) then
