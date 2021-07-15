@@ -4,7 +4,18 @@
 ! !MODULE: moist_gcc_interface 
 !
 ! !DESCRIPTION: This module contains routines and variables to control 
-!  the convective washout of GEOS-Chem species by GEOS moist. 
+!  the convective washout of GEOS-Chem species by GEOS moist. This includes 
+!  routines to compute the washout fraction of gases and aerosols, using the
+!  same paraterizations as used within the GEOS-Chem CTM. These parameterizations
+!  require a few additional species attributes (other than the Henry coefficients),
+!  which are also obtained from the species bundles.\\
+!  In addition to the washout parameterization routines, this module also contains 
+!  routines to diagnose the column integrated loss of a species due to convective 
+!  washout as well as the washout fraction per grid cell. These diagnostics are
+!  made available for all species listed below. More species can be added to this
+!  list as needed.\\
+!  In order to avoid excessive memory usage / computations, diagnostics are only
+!  calculated for the fields requested in HISTORY.rc.\\ 
 !\\
 !\\
 ! !INTERFACE:
@@ -26,10 +37,12 @@ USE MAPL
   PUBLIC  :: get_w_upd_gcc
   PUBLIC  :: henry_gcc
   PUBLIC  :: GCC_AddExports
-  PUBLIC  :: GCC_FillExport2d
+  PUBLIC  :: GCC_FillExportConvScav
+  PUBLIC  :: GCC_FillExportConvFrac
   PUBLIC  :: GCC_check_params
   PUBLIC  :: GCC_get_ndiag
   PUBLIC  :: GCC_get_diagID
+  PUBLIC  :: GCC_ConvFrac
 !
 !
 ! !PRIVATE MEMBER FUNCTIONS:
@@ -43,7 +56,7 @@ USE MAPL
 !  Group, March 2000.
 !
 ! !REVISION HISTORY:
-!  20210312 - christoph.a.keller@nasa.gov - initial version
+!  20210315 - christoph.a.keller@nasa.gov - initial version
 !  See https://github.com/GEOS-ESM/GEOSgcm_GridComp for full history
 !EOP
 !------------------------------------------------------------------------------
@@ -51,7 +64,8 @@ USE MAPL
 !
 ! !DEFINED PARAMETERS:
 !
-  REAL, PARAMETER       :: KC_DEFAULT_GCC = 5.e-3  ! s-1  ! Default autoconversion parameter for GEOS-Chem species
+  ! Default autoconversion parameter for GEOS-Chem species [s-1]
+  REAL, PARAMETER       :: KC_DEFAULT_GCC = 5.e-3
 
 ! Species for which to provide diagnostics. Need to hardcode this since we create the export during SetServices,
 ! when we cannot yet import the species information from GEOS-Chem... 
@@ -86,9 +100,18 @@ USE MAPL
                                                'PAN',   &
                                                'CFC12'  /)
 
-   ! Helper arrays to keep track of requested diagnostics
+   ! Name templates for diagnostics
+   CHARACTER(LEN=ESMF_MAXSTR), PARAMETER     :: Prefix_ConvScav = 'GCC_ConvScav_GF_'
+   CHARACTER(LEN=ESMF_MAXSTR), PARAMETER     :: Prefix_ConvFrac = 'GCC_ConvFrac_GF_'
+
+   ! Helper arrays to keep track of requested diagnostics. If the diagnostics are to be filled for one
+   ! of the species, the corresponding slot in the array below will be filled with the species index
+   ! as used by MOIST.
    INTEGER, SAVE     :: ConvScavDiag(GCCmax) = -1
    INTEGER, SAVE     :: ConvFracDiag(GCCmax) = -1
+
+   ! Public array to hold the convective fractions of all requested species. These are 3D fields.
+   REAL, ALLOCATABLE :: GCC_ConvFrac(:,:,:,:)
 
 CONTAINS
 !EOC
@@ -113,14 +136,14 @@ CONTAINS
        spcname = TRIM(GCCspecies(I))
 
        call MAPL_AddExportSpec(GC,                                             &
-         SHORT_NAME='GF_ConvScav_'//TRIM(spcname),                             &
+         SHORT_NAME=TRIM(Prefix_ConvScav)//TRIM(spcname),                         &
          LONG_NAME ='GEOS-Chem_'//TRIM(spcname)//'_dry_air_tendency_due_to_GF_conv_scav', &
          UNITS     ='kg m-2 s-1',                                              &
          DIMS      = MAPL_DimsHorzOnly,                                        &
           __RC__ )
 
        call MAPL_AddExportSpec(GC,                                             &
-         SHORT_NAME='GF_WetLossConvFrac_'//TRIM(spcname),                      &
+         SHORT_NAME=TRIM(Prefix_ConvFrac)//TRIM(spcname),                  &
          LONG_NAME ='GEOS-Chem_'//TRIM(spcname)//'_fraction_lost_in_GF_convection', &
          UNITS     ='1',                                                       &
          DIMS      = MAPL_DimsHorzVert,                                        &
@@ -134,11 +157,11 @@ CONTAINS
 !EOC
 
 !---------------------------------------------------------------------------------------------------
-  SUBROUTINE GCC_FillExport2d( EXPORT, IM, JM, Arr2d, DiagID, RC ) 
+  SUBROUTINE GCC_FillExportConvScav( EXPORT, IM, JM, Arr2d, DiagID, RC ) 
     !=====================================================================================
     !BOP
     ! !DESCRIPTION:
-    !  Fill the GEOS-Chem 2d export with the passed array
+    !  Fill the GEOS-Chem exports fro the convective scavenging 
     !EOP
     !=====================================================================================
     TYPE(ESMF_State), INTENT(INOUT)   :: EXPORT    
@@ -151,7 +174,7 @@ CONTAINS
     CHARACTER(LEN=ESMF_MAXSTR)        :: diagname
     REAL, POINTER, DIMENSION(:,:)     :: GCptr2d
 
-    __Iam__('GCC_FillExport2d')
+    __Iam__('GCC_FillExportConvScav')
 
     ! Get species index for the given diagnostics index. The passed diagnostics index
     ! denotes the nth active diagnostics in the list of GEOS-Chem species available for
@@ -168,12 +191,56 @@ CONTAINS
     enddo
     ASSERT_(II>0)
     ! Now that species index is known, can construct diagnostics name and fill it
-    diagname = 'GF_ConvScav_'//TRIM(GCCspecies(II))
+    diagname = TRIM(Prefix_ConvScav)//TRIM(GCCspecies(II))
     call MAPL_GetPointer(EXPORT, GCptr2d, TRIM(diagname), NotFoundOk=.TRUE., __RC__ )
     if ( associated(GCptr2d) ) GCptr2d = Arr2d
     _RETURN(ESMF_SUCCESS)
 
-  END SUBROUTINE GCC_FillExport2d
+  END SUBROUTINE GCC_FillExportConvScav
+!EOC
+
+!---------------------------------------------------------------------------------------------------
+  SUBROUTINE GCC_FillExportConvFrac( EXPORT, DiagID, RC ) 
+    !=====================================================================================
+    !BOP
+    ! !DESCRIPTION:
+    !  Fill the GEOS-Chem exports for the convective fractions.
+    !EOP
+    !=====================================================================================
+    TYPE(ESMF_State), INTENT(INOUT)   :: EXPORT    
+    INTEGER,          INTENT(IN)      :: DiagID
+    INTEGER,          INTENT(OUT)     :: RC
+    ! Local variables
+    INTEGER                           :: I, II, cnt
+    CHARACTER(LEN=ESMF_MAXSTR)        :: diagname
+    REAL, POINTER, DIMENSION(:,:,:)   :: GCptr3d
+
+    __Iam__('GCC_FillExportConvFrac')
+
+    if ( allocated(GCC_ConvFrac) ) then
+       ! Get species index for the given diagnostics index. The passed diagnostics index
+       ! denotes the nth active diagnostics in the list of GEOS-Chem species available for
+       ! diagnostics. Need to map it back to the actual index in the full list of GEOS-Chem
+       ! species as specified in array GCCspecies
+       cnt = 0
+       II = -1
+       do I = 1,GCCmax
+           if ( ConvFracDiag(I) > 0 ) cnt = cnt + 1 
+           if ( cnt == DiagID ) then
+              II = I
+              exit
+           endif
+       enddo
+       ASSERT_(II>0)
+       ! Now that species index is known, can construct diagnostics name and fill it
+       diagname = TRIM(Prefix_ConvFrac)//TRIM(GCCspecies(II))
+       call MAPL_GetPointer(EXPORT, GCptr3d, TRIM(diagname), NotFoundOk=.TRUE., __RC__ )
+       if ( associated(GCptr3d) ) GCptr3d = GCC_ConvFrac(:,:,:,DiagID)
+    endif
+
+    _RETURN(ESMF_SUCCESS)
+
+  END SUBROUTINE GCC_FillExportConvFrac
 !EOC
 
 !---------------------------------------------------------------------------------------------------
@@ -248,7 +315,7 @@ CONTAINS
        ! index as used by MOIST in the corresponding slot in the local diagnostics
        ! counter array
        shortname = SpcName(5:LEN(TRIM(SpcName)))
-       diagname = 'GF_ConvScav_'//TRIM(shortname)
+       diagname = TRIM(Prefix_ConvScav)//TRIM(shortname)
        call MAPL_GetPointer(EXPORT, GCptr2d, TRIM(diagname), NotFoundOk=.TRUE., __RC__ )
        if ( associated(GCptr2d) ) then
           do I=1,GCCmax
@@ -258,7 +325,7 @@ CONTAINS
              endif
           enddo   
        endif
-       diagname = 'GF_WetLossConvFrac_'//TRIM(shortname)
+       diagname = TRIM(Prefix_ConvFrac)//TRIM(shortname)
        call MAPL_GetPointer(EXPORT, GCptr3d, TRIM(diagname), NotFoundOk=.TRUE., __RC__ )
        if ( associated(GCptr3d) ) then
           do I=1,GCCmax
@@ -371,7 +438,6 @@ CONTAINS
     endif
     ! limit henry coefficient to 1.0e30
     henry_coeff = real( min(h8,1.0d+30) )
-    !write(*,*) 'henry_gcc (B)',hstar,dhr,ak0,dak,temp,henry_coeff
 
   END FUNCTION henry_gcc
 

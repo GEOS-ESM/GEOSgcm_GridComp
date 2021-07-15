@@ -105,7 +105,8 @@ module GEOS_MoistGridCompMod
       ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
 !-srf-gf-scheme
 
-  USE moist_gcc_interface, only : GCC_AddExports, GCC_check_params, GCC_get_ndiag, GCC_get_diagID, GCC_FillExport2d
+  USE moist_gcc_interface, only : GCC_AddExports, GCC_check_params, GCC_get_ndiag, GCC_get_diagID, &
+                                  GCC_FillExportConvScav, GCC_FillExportConvFrac, GCC_ConvFrac
 
 !ALT-protection for GF
   USE ConvectionMod, only: Disable_Convection
@@ -8077,6 +8078,13 @@ contains
          GCCinit(:,:,:) = 0.0
          GCCtend(:,:) = 0.0
       endif
+      GCCndiag = GCC_get_ndiag( 2 )
+      if ( GCCndiag > 0 ) then
+         if ( allocated(GCC_ConvFrac) ) deallocate(GCC_ConvFrac)
+         allocate(GCC_ConvFrac(IM,JM,LM,GCCndiag),stat=STATUS)
+         ASSERT_(STATUS==0)
+         GCC_ConvFrac(:,:,:,:) = 0.0
+      endif
 
       !! Now loop over tracers and accumulate initial column loading
       !! tendency  kg/m2/s CAR
@@ -8149,7 +8157,7 @@ contains
             endif
             ! update to GEOS-Chem (cakelle2, 3/15/2021)
             if(ALLOCATED(GCCinit)) then
-               DiagID = GCC_get_diagID(1,KK)
+               DiagID = GCC_get_diagID(1,K)
                if ( DiagID > 0 ) then
                   GCCinit(:,:,DiagID) = GCCinit(:,:,DiagID) + sum(XHO(:,:,:,KK)*DP(:,:,:)/(1.-Q(:,:,:)),dim=3)
                endif
@@ -8659,11 +8667,18 @@ contains
             endif
             ! update to GEOS-Chem (cakelle2, 3/15/2021)
             if ( ALLOCATED(GCCtend) ) then
-               DiagID = GCC_get_diagID(1,KK)
+               DiagID = GCC_get_diagID(1,K) ! note: this needs to be K, not KK!
                if ( DiagID > 0 ) then
                   GCCtend(:,:) = GCCtend(:,:) + sum(XHO(:,:,:,KK)*DP(:,:,:)/(1.-Q(:,:,:)),dim=3)
                   GCCtend(:,:) = ( GCCtend(:,:) - GCCinit(:,:,DiagID) ) / (MAPL_GRAV*DT_MOIST)
-                  CALL GCC_FillExport2d( EXPORT, IM, JM, GCCtend, DiagID, __RC__ )
+                  CALL GCC_FillExportConvScav( EXPORT, IM, JM, GCCtend, DiagID, __RC__ )
+               endif
+            endif
+            ! also check for GEOS-Chem convective fraction diagnostics
+            if ( ALLOCATED(GCC_ConvFrac) ) then
+               DiagID = GCC_get_diagID(2,K)
+               if ( DiagID > 0 ) then
+                  CALL GCC_FillExportConvFrac( EXPORT, DiagID, __RC__ )
                endif
             endif
          endif
@@ -8682,9 +8697,10 @@ contains
       if (associated(DDUDTcarma))  DDUDTcarma = (DDUDTcarma - CMDUcarma) / (MAPL_GRAV*DT_MOIST)
       if (associated(DSSDTcarma))  DSSDTcarma = (DSSDTcarma - CMSScarma) / (MAPL_GRAV*DT_MOIST)
 
-      ! Fill GEOS-Chem exports and deallocate GEOS-Chem arrays
-      IF ( ALLOCATED(GCCtend) ) DEALLOCATE(GCCtend)
-      IF ( ALLOCATED(GCCinit) ) DEALLOCATE(GCCinit)      
+      ! Deallocate GEOS-Chem arrays
+      IF ( ALLOCATED(GCCtend     ) ) DEALLOCATE(GCCtend)
+      IF ( ALLOCATED(GCCinit     ) ) DEALLOCATE(GCCinit)
+      IF ( ALLOCATED(GCC_ConvFrac) ) DEALLOCATE(GCC_ConvFrac)
 
       ! Fill in tracer tendencies
       !--------------------------

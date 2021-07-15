@@ -15,7 +15,8 @@ USE MAPL
 !
 USE Henrys_law_ConstantsMod, ONLY: get_HenrysLawCts
 USE moist_gcc_interface,     ONLY: compute_ki_gcc_aerosol, compute_ki_gcc_gas, &
-                                   get_w_upd_gcc, henry_gcc
+                                   get_w_upd_gcc, henry_gcc, &
+                                   GCC_get_ndiag, GCC_get_diagID, GCC_ConvFrac
 !.. USE GTMP_2_GFCONVPAR, only : GTMP_2_GFCONVPAR_interface
 
  IMPLICIT NONE
@@ -162,6 +163,9 @@ USE moist_gcc_interface,     ONLY: compute_ki_gcc_aerosol, compute_ki_gcc_gas, &
    LOGICAL :: is_gcc
 END TYPE Hcts_vars
  TYPE (Hcts_vars), ALLOCATABLE :: Hcts(:)
+
+ ! local array for GEOS-Chem washout fraction diagnostics
+ REAL, ALLOCATABLE            :: GCC_ConvFrac_local(:,:,:)
  
  CHARACTER(LEN=10),PARAMETER  :: host_model = 'NEW_GEOS5'
 !
@@ -1126,6 +1130,9 @@ ENDIF
 
     REAL :: dp,dq,exner, dtdt,PTEN,PQEN,PAPH,ZRHO,PAHFS,PQHFL,ZKHVFL,PGEOH
     REAL :: fixouts,dt_inv
+
+    ! GEOS-Chem update (cakelle2, 3/15/2021)
+    INTEGER :: ndiag 
 !----------------------------------------------------------------------
     !-do not change this
     itf=ite
@@ -1223,6 +1230,16 @@ ENDIF
         !temporary
         !se_chem(1:mtp,i,k) = 1.e-3*exp(-(max(0.,float(k-kpbli(i)))/float(kpbli(i))))+1.e-4
       ENDDO;ENDDO
+
+      ! Local array for GEOS-Chem diagnostics
+      if(allocated(GCC_ConvFrac))then
+         ndiag = GCC_get_ndiag(2)
+         if ( ndiag > 0 ) then
+            allocate(GCC_ConvFrac_local(ndiag,itf-its+1,kte-kts+1))
+            GCC_ConvFrac_local(:,:,:) = 0.0
+         endif
+      endif
+
      ENDIF
      !- pbl  (i) = depth of pbl layer (m)
      !- kpbli(i) = index of zo(i,k)
@@ -1775,6 +1792,18 @@ loop1:  do n=1,maxiens
            ENDIF
          enddo
       ENDDO
+
+      ! GEOS-Chem wet scavenging fraction diagnostics
+      if(allocated(GCC_ConvFrac_local))then
+       do k=kts,ktf
+       do i=its,itf
+       do ispc=1,ndiag
+         GCC_ConvFrac(i,j,mzp-k+1,ispc) = GCC_ConvFrac_local(ispc,i,k)
+       enddo
+       enddo
+       enddo
+       deallocate(GCC_ConvFrac_local)
+      endif
      ENDIF
 
  100 CONTINUE
@@ -9931,6 +9960,7 @@ ENDIF
      real            :: fsol
      real            :: kc_scaled, ftemp, l2g
      logical         :: is_gcc    
+     integer         :: DiagID
  
      !--initialization
      sc_up          = se_cup
@@ -10012,6 +10042,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 	    
             do ispc = 1,mtp
                 is_gcc = Hcts(ispc)%is_gcc
+                if ( is_gcc .and. allocated(GCC_ConvFrac_local) ) DiagID = GCC_get_diagID(2,ispc)
                 IF(fscav(ispc) > 1.e-6) THEN ! aerosol scavenging
                                         
                     !--formulation 1 as in GOCART with RAS conv_par
@@ -10037,6 +10068,9 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                        !pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(- kc * (dz/w_upd)))*factor_temp(ispc,i,k))
                        fsol = min(1.,max(0.,(1.-exp(- kc_scaled * (dz/this_w_upd)))*ftemp))
                        pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
+
+                       ! GEOS-Chem diagnostics
+                       if ( DiagID > 0 ) GCC_ConvFrac_local(DiagID,i,k) = fsol
                     endif
 
                     !--formulation 3 - orignal GF conv_par
@@ -10087,6 +10121,9 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
                       !pw_up(ispc,i,k) = max(0.,sc_up(ispc,i,k)*(1.-exp(-fliq*kc*dz/w_upd)))!*factor_temp(ispc,i,k))
                       fsol = min(1.,max(0.,(1.-exp(-kc_scaled*dz/this_w_upd)))) !*factor_temp(ispc,i,k))
                       pw_up(ispc,i,k) = sc_up(ispc,i,k)*fsol
+
+                      ! GEOS-Chem diagnostics
+                      if ( DiagID > 0 ) GCC_ConvFrac_local(DiagID,i,k) = fsol
 
                     endif		    
 		    
