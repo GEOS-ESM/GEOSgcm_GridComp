@@ -300,7 +300,8 @@ contains
 
     ! use that and the cdfw/v to calculate heterogeneneous factor
 
-    do itile=1,nt
+    do n = 1,nt
+       itile = krank(n)
        if(psum(itile) < fracdry) then
           psub(itile)=0.
        else
