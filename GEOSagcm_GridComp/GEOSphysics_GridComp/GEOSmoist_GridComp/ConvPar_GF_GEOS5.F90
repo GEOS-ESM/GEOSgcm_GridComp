@@ -10042,6 +10042,7 @@ loopk:      do k=start_level(i)+1,ktop(i)+1
 	    
             do ispc = 1,mtp
                 is_gcc = Hcts(ispc)%is_gcc
+                DiagID = -1
                 if ( is_gcc .and. allocated(GCC_ConvFrac_local) ) DiagID = GCC_get_diagID(2,ispc)
                 IF(fscav(ispc) > 1.e-6) THEN ! aerosol scavenging
                                         

@@ -105,6 +105,7 @@ module GEOS_MoistGridCompMod
       ,USE_FLUX_FORM, USE_FCT, USE_TRACER_EVAP,ALP1
 !-srf-gf-scheme
 
+! GEOS-Chem update
   USE moist_gcc_interface, only : GCC_AddExports, GCC_check_params, GCC_get_ndiag, GCC_get_diagID, &
                                   GCC_FillExportConvScav, GCC_FillExportConvFrac, GCC_ConvFrac
 
