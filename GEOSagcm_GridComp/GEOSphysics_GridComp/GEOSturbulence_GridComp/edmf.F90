@@ -617,11 +617,9 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
               mfthvt_work = upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j)
               mft_work    = upa(iup,i,j)*upw(iup,i,j)
 
-              ! Sample detrainment velocity
-              wdet(i,j,k) = wdet(i,j,k) + upa(iup,i,j)*upw(iup,i,j)
-
               ! Update plume
               if ( Wn2 > 0. ) then
+                 ! Update plume properties
                  upw(iup,i,j)   = sqrt(Wn2)
                  upthv(iup,i,j) = THVn
                  upthl(iup,i,j) = THLn
@@ -631,21 +629,27 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
                  upu(iup,i,j)   = Un
                  upv(iup,i,j)   = Vn
 
+                 ! Sample detrainment velocity (before updating area fraction)
+                 wdet(i,j,k) = wdet(i,j,k) + upa(iup,i,j)*upw(iup,i,j)
+
                  if ( plume_type == 1 ) then
                     upm(iup,i,j) = Mn
                     upa(iup,i,j) = upm(iup,i,j)/( rhoe(i,j,km1)*upw(iup,i,j) )
                  end if
 
+                 !
                  mfthvt = mfthvt + 0.5*( upa(iup,i,j)*upw(iup,i,j)*upthv(iup,i,j) + mfthvt_work )
                  mft    = mft    + 0.5*(                upa(iup,i,j)*upw(iup,i,j) + mft_work )
 
-                 upa_out(iup)  = upa(iup,i,j)
+                 ! Save area fractions for text output
+                 upa_out(iup) = upa(iup,i,j)
                  if ( upql(iup,i,j) > 0. ) then
                     upac_out(iup) = upa(iup,i,j)
                  else
                     upac_out(iup) = 0.
                  end if
               else
+                 !
                  mfthvt = mfthvt + 0.5*mfthvt_work
                  mft    = mft    + 0.5*mft_work
 
@@ -737,7 +741,7 @@ subroutine run_edmf(IM, JM, LM, numup, iras, jras, &                            
 !                          - ( E(i,j,k) + D(i,j,k) )*( qtu(i,j,k) - qti(i,j,k) )**2./( 1. - au(i,j,k) )**2. )/rhoe(i,j,k)
      end do ! i = 1,IM
      end do ! j = 1,JM
-  end do ! k = LM,2,-1
+  end do ! k = kbot,2,-1
 
   ! Interpolate updraft properties to full levels
   do k = 1,LM

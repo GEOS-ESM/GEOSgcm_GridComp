@@ -75,7 +75,7 @@ contains
 !
 subroutine run_mynn(IM, JM, LM, &                                                   ! in
                     DEBUG_FLAG, TEST_FLAG, DOMF, MYNN_LEVEL, CONSISTENT_TYPE, &     ! in
-                    th00, ice_ramp, ple, pl, rhoe, zle, zlo, &                      ! in
+                    th00, ice_ramp, ple, pl, rhoe, rho, zle, zlo, &                 ! in
                     u, v, T, qv, ql, qi, thl, qt, thv, &                            ! in (mean atmospheric state)
                     u_star, H_surf, E_surf, &                                       ! in (surface state)
                     whl_mf, wqt_mf, wthv_mf, au, Mu, wu, E, D, wdet, &              ! in (updraft state)
@@ -94,7 +94,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
   integer, intent(in)                        :: IM, JM, LM, MYNN_LEVEL, CONSISTENT_TYPE, DEBUG_FLAG, TEST_FLAG
   real, intent(in)                           :: th00, ice_ramp, DOMF
   real, dimension(IM,JM), intent(in)         :: u_star, H_surf, E_surf
-  real, dimension(IM,JM,LM), intent(in)      :: zlo, u, v, T, qv, ql, qi, thv, thl, qt, E, D, wdet, pl
+  real, dimension(IM,JM,LM), intent(in)      :: zlo, rho, u, v, T, qv, ql, qi, thv, thl, qt, E, D, wdet, pl
   real, dimension(IM,JM,0:LM), intent(in)    :: ple, zle, rhoe, whl_mf, wqt_mf, wthv_mf, &
                                                 au, Mu, wu, Ai_moist, Bi_moist, aci
   real, dimension(IM,JM,0:LM), intent(inout) :: tke, hl2, qt2, hlqt, ws_explicit, wqv_explicit, wql_explicit
@@ -118,7 +118,7 @@ subroutine run_mynn(IM, JM, LM, &                                               
           goth00, Cw_low, Cw_high, dzle, Cw_25, goth002, &
           hlthv_25, qtthv_25, thv2_25, &! for debugging2
           hlthv, qtthv, thv2, hlthv_p, qtthv_p, thv2_p, SM,  &
-          we, we_up, tkee, tkee_up, w2e_up, EM, EH
+          we, we_down, tkee, tkee_down, w2e, EM, EH
 
   real, dimension(IM,JM)      :: wb_surf, LMO
   real, dimension(IM,JM,LM)   :: hl
@@ -408,16 +408,23 @@ subroutine run_mynn(IM, JM, LM, &                                               
 
         ! Mass flux transport of TKE
         if ( CONSISTENT_TYPE == 0 .or. CONSISTENT_TYPE == 1 ) then
-           we      = -au(i,j,k)*wu(i,j,k)/( 1. - au(i,j,k) )
-           we_up   = -au(i,j,km1)*wu(i,j,km1)/( 1. - au(i,j,km1) )      
-           tkee    = tke(i,j,k)/( 1. - au(i,j,k) )
-           tkee_up = tke(i,j,km1)/( 1. - au(i,j,km1) )
-           w2e_up  = twothirds*tkee_up
+           we   = -au(i,j,k)*wu(i,j,k)/( 1. - au(i,j,k) )
+           tkee = tke(i,j,k)/( 1. - au(i,j,k) )
+
+           w2e = twothirds*tkee
+
+           if ( k <= LM-2 ) then
+              we_down   = -au(i,j,kp1)*wu(i,j,kp1)/( 1. - au(i,j,kp1) )      
+              tkee_down = tke(i,j,kp1)/( 1. - au(i,j,kp1) )
+           else
+              we_down   = 0.
+              tkee_down = 0.
+           end if
            
-           tket_T_mf1(i,j,k) = ( Mu(i,j,km1)*tkee_up - Mu(i,j,k)*tkee )/(dzle*rhoe(i,j,k))
-           tket_T_mf2(i,j,k) = - max(0., E(i,j,k))*tkee/rhoe(i,j,k)
-           tket_T_mf3(i,j,k) =   max(0., D(i,j,k))*( we - wdet(i,j,k) )**2./rhoe(i,j,k)
-           tket_T_mf4(i,j,k) = - ( 1. - au(i,j,km1) )*w2e_up*( we_up - we )/dzle
+           tket_T_mf1(i,j,k) = ( Mu(i,j,k)*tkee - Mu(i,j,kp1)*tkee_down )/( ( zle(i,j,k) - zle(i,j,kp1) )*rho(i,j,kp1))
+           tket_T_mf2(i,j,k) = - max(0., E(i,j,kp1))*tkee/rho(i,j,kp1)
+           tket_T_mf3(i,j,k) =   max(0., D(i,j,kp1))*( we - wdet(i,j,k) )**2./rho(i,j,kp1)
+           tket_T_mf4(i,j,k) = - ( 1. - au(i,j,k) )*w2e*( we - we_down )/( zle(i,j,k) - zle(i,j,kp1) )
 
            if ( CONSISTENT_TYPE == 0 ) then
               tket_T_mf(i,j,k) = tket_T_mf1(i,j,k) + tket_T_mf2(i,j,k) + tket_T_mf3(i,j,k) + tket_T_mf4(i,j,k)

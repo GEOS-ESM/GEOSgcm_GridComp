@@ -5081,7 +5081,7 @@ ENDIF
         ! Run MYNN
         call run_mynn(IM, JM, LM, &                                                   ! in      
                       MYNN_DEBUG, MYNN_TEST, DOMF, MYNN_LEVEL, EDMF_CONSISTENT, &     ! in
-                      th00, ice_ramp, PLE, PLO, RHOE, ZLE, Z, &                       ! in      
+                      th00, ice_ramp, PLE, PLO, RHOE, RHO, ZLE, Z, &                  ! in      
                       U, V, T, Q, QL, QI, THL, QT, THV, &                             ! in      
                       USTAR, SH, EVAP, &                                              ! in      
                       whl_edmf, wqt_edmf, wthv_edmf, au, Mu, wu, E, D, wdet, &        ! in      
