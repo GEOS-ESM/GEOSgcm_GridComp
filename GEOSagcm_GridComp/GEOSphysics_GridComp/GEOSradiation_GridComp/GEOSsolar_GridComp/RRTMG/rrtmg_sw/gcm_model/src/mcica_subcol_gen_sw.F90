@@ -19,9 +19,8 @@ module mcica_subcol_gen_sw
       contains
 !-------------------------------------------------------------------------------------------------
       subroutine mcica_sw(ncol, nlay, nsubcol, icld, irng, play, cld, clwp, ciwp, &
-                               tauc, ssac, asmc, fsfc, cld_stoch, clwp_stoch, ciwp_stoch, &
-                               tauc_stoch, ssac_stoch, asmc_stoch, fsfc_stoch, changeSeed, CDF,&
-                               CDF2, CDF3, alpha, zm, alat, DOY, rdl, adl) 
+                          cld_stoch, clwp_stoch, ciwp_stoch, &
+                          changeSeed, CDF, CDF2, CDF3, alpha, zm, alat, DOY, rdl, adl) 
 !-------------------------------------------------------------------------------------------------
 
   !----------------------------------------------------------------------------------------------------------------
@@ -105,14 +104,6 @@ module mcica_subcol_gen_sw
                                                       !    Dimensions: (ncol,nlay)
       real , intent(in) :: ciwp(:,:)          ! in-cloud ice water path (g/m2)
                                                       !    Dimensions: (ncol,nlay)
-      real , intent(in) :: tauc(:,:,:)        ! in-cloud optical depth (non-delta scaled)
-                                                      !    Dimensions: (nbndsw,ncol,nlay)
-      real , intent(in) :: ssac(:,:,:)        ! in-cloud single scattering albedo (non-delta scaled)
-                                                      !    Dimensions: (nbndsw,ncol,nlay)
-      real , intent(in) :: asmc(:,:,:)        ! in-cloud asymmetry parameter (non-delta scaled)
-                                                      !    Dimensions: (nbndsw,ncol,nlay)
-      real , intent(in) :: fsfc(:,:,:)        ! in-cloud forward scattering fraction (non-delta scaled)
-                                                      !    Dimensions: (nbndsw,ncol,nlay)
       real , intent(out), dimension(:,:,:) :: CDF       
       real , intent(out), dimension(:,:,:) :: CDF2
       real , intent(out), dimension(:,:,:) :: CDF3
@@ -127,14 +118,6 @@ module mcica_subcol_gen_sw
       real , intent(out) :: clwp_stoch(:,:,:) ! subcolumn in-cloud liquid water path
                                                       !    Dimensions: (ngptsw,ncol,nlay)
       real , intent(out) :: ciwp_stoch(:,:,:) ! subcolumn in-cloud ice water path
-                                                      !    Dimensions: (ngptsw,ncol,nlay)
-      real , intent(out) :: tauc_stoch(:,:,:) ! subcolumn in-cloud optical depth
-                                                      !    Dimensions: (ngptsw,ncol,nlay)
-      real , intent(out) :: ssac_stoch(:,:,:) ! subcolumn in-cloud single scattering albedo
-                                                      !    Dimensions: (ngptsw,ncol,nlay)
-      real , intent(out) :: asmc_stoch(:,:,:) ! subcolumn in-cloud asymmetry parameter
-                                                      !    Dimensions: (ngptsw,ncol,nlay)
-      real , intent(out) :: fsfc_stoch(:,:,:) ! subcolumn in-cloud forward scattering fraction
                                                       !    Dimensions: (ngptsw,ncol,nlay)
       
 ! -- Local variables
@@ -395,30 +378,15 @@ end if
                   
                   clwp_stoch(i,ilev,isubcol) = clwp(i,ilev) * ZCW
                   ciwp_stoch(i,ilev,isubcol) = ciwp(i,ilev) * ZCW
-                  n = ngb(isubcol) - ngbm
-                  tauc_stoch(i,ilev,isubcol) = tauc(i,ilev,n)
-                  ssac_stoch(i,ilev,isubcol) = ssac(i,ilev,n)
-                  asmc_stoch(i,ilev,isubcol) = asmc(i,ilev,n)
-                  fsfc_stoch(i,ilev,isubcol) = fsfc(i,ilev,n)
-                
                 
                elseif ( CDF(i,ilev,isubcol)>=(1.0 - cld(i,ilev)) ) then
                   cld_stoch(i,ilev,isubcol) = 1.0 
                   clwp_stoch(i,ilev,isubcol) = clwp(i,ilev)
                   ciwp_stoch(i,ilev,isubcol) = ciwp(i,ilev)
-                  n = ngb(isubcol) - ngbm
-                  tauc_stoch(i,ilev,isubcol) = tauc(i,ilev,n)
-                  ssac_stoch(i,ilev,isubcol) = ssac(i,ilev,n)
-                  asmc_stoch(i,ilev,isubcol) = asmc(i,ilev,n)
-                  fsfc_stoch(i,ilev,isubcol) = fsfc(i,ilev,n)
                else
                   cld_stoch(i,ilev,isubcol) = 0. 
                   clwp_stoch(i,ilev,isubcol) = 0. 
                   ciwp_stoch(i,ilev,isubcol) = 0. 
-                  tauc_stoch(i,ilev,isubcol) = 0. 
-                  ssac_stoch(i,ilev,isubcol) = 1. 
-                  asmc_stoch(i,ilev,isubcol) = 0. 
-                  fsfc_stoch(i,ilev,isubcol) = 0. 
                endif
             enddo
          enddo

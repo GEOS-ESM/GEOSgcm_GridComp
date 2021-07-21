@@ -1,9 +1,4 @@
-!     path:      $Source$
-!     author:    $Author$
-!     revision:  $Revision$
-!     created:   $Date$
-
-      module rrtmg_sw_setcoef
+module rrtmg_sw_setcoef
 
 !  --------------------------------------------------------------------------
 ! |                                                                          |
@@ -17,309 +12,254 @@
 
 ! ------- Modules -------
 
-      !use parkind, only : im => kind , rb => kind 
-      use parrrsw, only : mxmol
-      use rrsw_ref, only : pref, preflog, tref
-      use rrsw_vsn, only : hvrset, hnamset
+   use parrrsw, only : mxmol
+   use rrsw_ref, only : pref, preflog, tref
 
-      implicit none
+   implicit none
 
-      contains
+contains
 
-!----------------------------------------------------------------------------
-      subroutine setcoef_sw(ncol, nlayers, pavel, tavel, pz, tz, tbound, coldry, wkl, &
-                            laytrop, layswtch, laylow, jp, jt, jt1, &
-                            co2mult, colch4, colco2, colh2o, colmol, coln2o, &
-                            colo2, colo3, fac00, fac01, fac10, fac11, &
-                            selffac, selffrac, indself, forfac, forfrac, indfor)
-!----------------------------------------------------------------------------
-!
-! Purpose:  For a given atmosphere, calculate the indices and
-! fractions related to the pressure and temperature interpolations.
+   !----------------------------------------------------------------------------
+   subroutine setcoef_sw( &
+      ncol, nlayers, pavel, tavel, coldry, wkl, &
+      laytrop, laylow, jp, jt, jt1, &
+      co2mult, colch4, colco2, colh2o, colmol, coln2o, &
+      colo2, colo3, fac00, fac01, fac10, fac11, &
+      selffac, selffrac, indself, forfac, forfrac, indfor)
+   !----------------------------------------------------------------------------
+   !
+   ! Purpose:  For a given atmosphere, calculate the indices and
+   ! fractions related to the pressure and temperature interpolations.
 
-! Modifications:
-! Original: J. Delamere, AER, Inc. (version 2.5, 02/04/01)
-! Revised: Rewritten and adapted to ECMWF F90, JJMorcrette 030224
-! Revised: For uniform rrtmg formatting, MJIacono, Jul 2006
+   ! Modifications:
+   ! Original: J. Delamere, AER, Inc. (version 2.5, 02/04/01)
+   ! Revised: Rewritten and adapted to ECMWF F90, JJMorcrette 030224
+   ! Revised: For uniform rrtmg formatting, MJIacono, Jul 2006
+   !
+   !----------------------------------------------------------------------------
 
-! ------ Declarations -------
+      ! ----- Input -----
 
-! ----- Input -----
-      integer, intent(in) :: ncol
-
-      integer , intent(in) :: nlayers         ! total number of layers
+      integer, intent(in) :: ncol            ! number of gridcols
+      integer, intent(in) :: nlayers         ! number of layers
       
-      real , intent(in) :: pavel(:,:)            ! layer pressures (mb) 
+      real, intent(in) :: pavel(:,:)            ! layer pressures (mb) 
                                                       !    Dimensions: (nlayers)
-      real , intent(in) :: tavel(:,:)            ! layer temperatures (K)
+      real, intent(in) :: tavel(:,:)            ! layer temperatures (K)
                                                       !    Dimensions: (nlayers)
-      real , intent(in) :: pz(:,0:)              ! level (interface) pressures (hPa, mb)
-                                                      !    Dimensions: (0:nlayers)
-      real , intent(in) :: tz(:,0:)              ! level (interface) temperatures (K)
-                                                      !    Dimensions: (0:nlayers)
-      real , intent(in) :: tbound(:)             ! surface temperature (K)
-      real , intent(in) :: coldry(:,:)           ! dry air column density (mol/cm2)
+      real, intent(in) :: coldry(:,:)           ! dry air column density (mol/cm2)
                                                       !    Dimensions: (nlayers)
-      real , intent(in) :: wkl(:,:,:)            ! molecular amounts (mol/cm-2)
+      real, intent(in) :: wkl(:,:,:)            ! molecular amounts (mol/cm-2)
                                                       !    Dimensions: (mxmol,nlayers)
+      ! ----- Output -----
 
-! ----- Output -----
-      integer , intent(out) :: laytrop(:)        ! tropopause layer index
-      integer , intent(out) :: layswtch(:)       ! 
-      integer , intent(out) :: laylow(:)         ! 
+      integer, intent(out) :: laytrop(:)        ! tropopause layer index
+      integer, intent(out) :: laylow(:)         ! 
 
-      integer , intent(out) :: jp(:,:)           ! 
+      integer, intent(out) :: jp(:,:)           ! 
                                                       !    Dimensions: (nlayers)
-      integer , intent(out) :: jt(:,:)           !
+      integer, intent(out) :: jt(:,:)           !
                                                       !    Dimensions: (nlayers)
-      integer , intent(out) :: jt1(:,:)          !
-                                                      !    Dimensions: (nlayers)
-
-      real , intent(out) :: colh2o(:,:)          ! column amount (h2o)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: colco2(:,:)          ! column amount (co2)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: colo3(:,:)           ! column amount (o3)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: coln2o(:,:)          ! column amount (n2o)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: colch4(:,:)          ! column amount (ch4)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: colo2(:,:)           ! column amount (o2)
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: colmol(:,:)          ! 
-                                                      !    Dimensions: (nlayers)
-      real , intent(out) :: co2mult(:,:)         !
+      integer, intent(out) :: jt1(:,:)          !
                                                       !    Dimensions: (nlayers)
 
-      integer , intent(out) :: indself(:,:) 
+      real, intent(out) :: colh2o(:,:)          ! column amount (h2o)
                                                       !    Dimensions: (nlayers)
-      integer , intent(out) :: indfor(:,:) 
+      real, intent(out) :: colco2(:,:)          ! column amount (co2)
                                                       !    Dimensions: (nlayers)
-      real , intent(out) :: selffac(:,:) 
+      real, intent(out) :: colo3(:,:)           ! column amount (o3)
                                                       !    Dimensions: (nlayers)
-      real , intent(out) :: selffrac(:,:) 
+      real, intent(out) :: coln2o(:,:)          ! column amount (n2o)
                                                       !    Dimensions: (nlayers)
-      real , intent(out) :: forfac(:,:) 
+      real, intent(out) :: colch4(:,:)          ! column amount (ch4)
                                                       !    Dimensions: (nlayers)
-      real , intent(out) :: forfrac(:,:) 
+      real, intent(out) :: colo2(:,:)           ! column amount (o2)
+                                                      !    Dimensions: (nlayers)
+      real, intent(out) :: colmol(:,:)          ! 
+                                                      !    Dimensions: (nlayers)
+      real, intent(out) :: co2mult(:,:)         !
                                                       !    Dimensions: (nlayers)
 
-      real , intent(out) :: fac00(:,:) , fac01(:,:) , fac10(:,:) , fac11(:,:)  
+      integer, intent(out) :: indself(:,:) 
+                                                      !    Dimensions: (nlayers)
+      integer, intent(out) :: indfor(:,:) 
+                                                      !    Dimensions: (nlayers)
+      real, intent(out) :: selffac(:,:) 
+                                                      !    Dimensions: (nlayers)
+      real, intent(out) :: selffrac(:,:) 
+                                                      !    Dimensions: (nlayers)
+      real, intent(out) :: forfac(:,:) 
+                                                      !    Dimensions: (nlayers)
+      real, intent(out) :: forfrac(:,:) 
+                                                      !    Dimensions: (nlayers)
 
-! ----- Local -----
+      real, intent(out) :: fac00(:,:), fac01(:,:), fac10(:,:), fac11(:,:)  
 
-      integer  :: indbound
-      integer  :: indlev0
-      integer  :: lay
-      integer  :: jp1
-      integer  :: iplon
+      ! ----- Local -----
 
-      real  :: stpfac
-      real  :: tbndfrac
-      real  :: t0frac
-      real  :: plog
-      real  :: fp
-      real  :: ft
-      real  :: ft1
-      real  :: water
-      real  :: scalefac
-      real  :: factor
-      real  :: co2reg
-      real  :: compfp
+      integer :: icol, lay, jp1
+      real :: plog, fp, ft, ft1, water, scalefac, factor, co2reg, compfp
 
+      ! Initializations
+      real, parameter :: stpfac = 296. / 1013. 
 
-! Initializations
- stpfac = 296. /1013. 
-
-   
-
-!$acc kernels present(pavel, layswtch, laytrop, laylow)
- layswtch = 0
- laytrop = 0
- laylow = 0
- do iplon = 1, ncol
-    do lay = 1, nlayers
-         plog = log(pavel(iplon,lay) )
-         if (plog .ge. 4.56) laytrop(iplon) = laytrop(iplon) + 1
-         if (plog .ge. 6.62) laylow(iplon) = laylow(iplon) + 1
-    end do
- end do
-!$acc end kernels
-
-
-
-!$acc kernels loop present(pavel, tavel, pz, tz, tbound) &
-!$acc present(coldry, wkl, jp, jt, jt1, colh2o, colco2) &
-!$acc present(colo3, coln2o, colch4, colo2, colmol, co2mult, indself) &
-!$acc present(indfor, selffac, selffrac, forfac, forfrac, fac00, fac01, fac10, fac11)
-do iplon = 1, ncol
-
-
-      indbound = tbound(iplon) - 159. 
-      tbndfrac = tbound(iplon) - int(tbound(iplon))
-      
-      
-      
-      indlev0  = tz(iplon,0)  - 159. 
-      t0frac   = tz(iplon,0)  - int(tz(iplon,0) )
-
-
-! Begin layer loop
-
-
-      do lay = 1, nlayers
-! Find the two reference pressures on either side of the
-! layer pressure.  Store them in JP and JP1.  Store in FP the
-! fraction of the difference (in ln(pressure)) between these
-! two values that the layer pressure lies.
-
-         plog = log(pavel(iplon,lay) )
-         jp(iplon,lay)  = int(36.  - 5*(plog+0.04 ))
-         if (jp(iplon,lay)  .lt. 1) then
-            jp(iplon,lay)  = 1
-         elseif (jp(iplon,lay)  .gt. 58) then
-            jp(iplon,lay)  = 58
-         endif
-         jp1 = jp(iplon,lay)  + 1
-         fp = 5.  * (preflog(jp(iplon,lay) ) - plog)
-
-! Determine, for each reference pressure (JP and JP1), which
-! reference temperature (these are different for each  
-! reference pressure) is nearest the layer temperature but does
-! not exceed it.  Store these indices in JT and JT1, resp.
-! Store in FT (resp. FT1) the fraction of the way between JT
-! (JT1) and the next highest reference temperature that the 
-! layer temperature falls.
-
-         jt(iplon,lay)  = int(3.  + (tavel(iplon,lay) -tref(jp(iplon,lay) ))/15. )
-         if (jt(iplon,lay)  .lt. 1) then
-            jt(iplon,lay)  = 1
-         elseif (jt(iplon,lay)  .gt. 4) then
-            jt(iplon,lay)  = 4
-         endif
-         ft = ((tavel(iplon,lay) -tref(jp(iplon,lay) ))/15. ) - float(jt(iplon,lay) -3)
-         jt1(iplon,lay)  = int(3.  + (tavel(iplon,lay) -tref(jp1))/15. )
-         if (jt1(iplon,lay)  .lt. 1) then
-            jt1(iplon,lay)  = 1
-         elseif (jt1(iplon,lay)  .gt. 4) then
-            jt1(iplon,lay)  = 4
-         endif
-         ft1 = ((tavel(iplon,lay) -tref(jp1))/15. ) - float(jt1(iplon,lay) -3)
-
-         water = wkl(iplon,1,lay) /coldry(iplon,lay) 
-         scalefac = pavel(iplon,lay)  * stpfac / tavel(iplon,lay) 
-
-! If the pressure is less than ~100mb, perform a different
-! set of species interpolations.
-
-         if (plog .le. 4.56 ) then
-
-                  forfac(iplon,lay)  = scalefac / (1.+water)
-         factor = (tavel(iplon,lay) -188.0 )/36.0 
-         indfor(iplon,lay)  = 3
-         forfrac(iplon,lay)  = factor - 1.0 
-
-! Calculate needed column amounts.
-
-         colh2o(iplon,lay)  = 1.e-20  * wkl(iplon,1,lay) 
-         colco2(iplon,lay)  = 1.e-20  * wkl(iplon,2,lay) 
-         colo3(iplon,lay)   = 1.e-20  * wkl(iplon,3,lay) 
-         coln2o(iplon,lay)  = 1.e-20  * wkl(iplon,4,lay) 
-         colch4(iplon,lay)  = 1.e-20  * wkl(iplon,6,lay) 
-         colo2(iplon,lay)   = 1.e-20  * wkl(iplon,7,lay) 
-         colmol(iplon,lay)  = 1.e-20  * coldry(iplon,lay)  + colh2o(iplon,lay) 
-         if (colco2(iplon,lay)  .eq. 0. ) colco2(iplon,lay)  = 1.e-32  * coldry(iplon,lay) 
-         if (coln2o(iplon,lay)  .eq. 0. ) coln2o(iplon,lay)  = 1.e-32  * coldry(iplon,lay) 
-         if (colch4(iplon,lay)  .eq. 0. ) colch4(iplon,lay)  = 1.e-32  * coldry(iplon,lay) 
-         if (colo2(iplon,lay)   .eq. 0. ) colo2(iplon,lay)   = 1.e-32  * coldry(iplon,lay) 
-         co2reg = 3.55e-24  * coldry(iplon,lay) 
-         co2mult(iplon,lay) = (colco2(iplon,lay)  - co2reg) * &
-               272.63 *exp(-1919.4 /tavel(iplon,lay) )/(8.7604e-4 *tavel(iplon,lay) )
-
-         selffac(iplon,lay)  = 0. 
-         selffrac(iplon,lay) = 0. 
-         indself(iplon,lay)  = 0
-
-
-         else
-
-         
-
-! Set up factors needed to separately include the water vapor
-! foreign-continuum in the calculation of absorption coefficient.
-
-         forfac(iplon,lay)  = scalefac / (1.+water)
-         factor = (332.0 -tavel(iplon,lay) )/36.0 
-         indfor(iplon,lay)  = min(2, max(1, int(factor)))
-         forfrac(iplon,lay)  = factor - float(indfor(iplon,lay) )
-
-! Set up factors needed to separately include the water vapor
-! self-continuum in the calculation of absorption coefficient.
-
-         selffac(iplon,lay)  = water * forfac(iplon,lay) 
-         factor = (tavel(iplon,lay) -188.0 )/7.2 
-         indself(iplon,lay)  = min(9, max(1, int(factor)-7))
-         selffrac(iplon,lay)  = factor - float(indself(iplon,lay)  + 7)
-
-! Calculate needed column amounts.
-
-         colh2o(iplon,lay)  = 1.e-20  * wkl(iplon,1,lay) 
-         colco2(iplon,lay)  = 1.e-20  * wkl(iplon,2,lay) 
-         colo3(iplon,lay)  = 1.e-20  * wkl(iplon,3,lay) 
-!           colo3(lay) = 0. 
-!           colo3(lay) = colo3(lay)/1.16 
-         coln2o(iplon,lay)  = 1.e-20  * wkl(iplon,4,lay) 
-         colch4(iplon,lay)  = 1.e-20  * wkl(iplon,6,lay) 
-         colo2(iplon,lay)  = 1.e-20  * wkl(iplon,7,lay) 
-         colmol(iplon,lay)  = 1.e-20  * coldry(iplon,lay)  + colh2o(iplon,lay) 
-!           colco2(lay) = 0. 
-!           colo3(lay) = 0. 
-!           coln2o(lay) = 0. 
-!           colch4(lay) = 0. 
-!           colo2(lay) = 0. 
-!           colmol(lay) = 0. 
-         if (colco2(iplon,lay)  .eq. 0. ) colco2(iplon,lay)  = 1.e-32  * coldry(iplon,lay) 
-         if (coln2o(iplon,lay)  .eq. 0. ) coln2o(iplon,lay)  = 1.e-32  * coldry(iplon,lay) 
-         if (colch4(iplon,lay)  .eq. 0. ) colch4(iplon,lay)  = 1.e-32  * coldry(iplon,lay) 
-         if (colo2(iplon,lay)  .eq. 0. ) colo2(iplon,lay)  = 1.e-32  * coldry(iplon,lay) 
-! Using E = 1334.2 cm-1.
-         co2reg = 3.55e-24  * coldry(iplon,lay) 
-         co2mult(iplon,lay) = (colco2(iplon,lay)  - co2reg) * &
-               272.63 *exp(-1919.4 /tavel(iplon,lay) )/(8.7604e-4 *tavel(iplon,lay) )
-      
-        end if
-! We have now isolated the layer ln pressure and temperature,
-! between two reference pressures and two reference temperatures 
-! (for each reference pressure).  We multiply the pressure 
-! fraction FP with the appropriate temperature fractions to get 
-! the factors that will be needed for the interpolation that yields
-! the optical depths (performed in routines TAUGBn for band n).
-
-         compfp = 1.  - fp
-         fac10(iplon,lay)  = compfp * ft
-         fac00(iplon,lay)  = compfp * (1.  - ft)
-         fac11(iplon,lay)  = fp * ft1
-         fac01(iplon,lay)  = fp * (1.  - ft1)
-
-! End layer loop
+      !$acc kernels present(pavel, laytrop, laylow)
+      laytrop = 0
+      laylow = 0
+      do icol = 1,ncol
+         do lay = 1,nlayers
+            plog = log(pavel(icol,lay))
+            if (plog >= 4.56) laytrop(icol) = laytrop(icol) + 1
+            if (plog >= 6.62) laylow(icol) = laylow(icol) + 1
+         end do
       end do
+      !$acc end kernels
 
-! End column loop
-      end do
-!$acc end kernels
+      !$acc kernels loop present(pavel, tavel) &
+      !$acc present(coldry, wkl, jp, jt, jt1, colh2o, colco2) &
+      !$acc present(colo3, coln2o, colch4, colo2, colmol, co2mult, indself) &
+      !$acc present(indfor, selffac, selffrac, forfac, forfrac, fac00, fac01, fac10, fac11)
+      do icol = 1, ncol
+         do lay = 1, nlayers
 
-end subroutine setcoef_sw
+            ! Find the two reference pressures on either side of the
+            ! layer pressure.  Store them in JP and JP1. Store in FP the
+            ! fraction of the difference (in ln(pressure)) between these
+            ! two values that the layer pressure lies.
 
-!***************************************************************************
-      subroutine swatmref
-!***************************************************************************
+            plog = log(pavel(icol,lay))
+            jp(icol,lay) = int(36. - 5*(plog+0.04 ))
+            if (jp(icol,lay) < 1) then
+               jp(icol,lay) = 1
+            elseif (jp(icol,lay) > 58) then
+               jp(icol,lay) = 58
+            endif
+            jp1 = jp(icol,lay) + 1
+            fp = 5. * (preflog(jp(icol,lay) ) - plog)
+
+            ! Determine, for each reference pressure (JP and JP1), which
+            ! reference temperature (these are different for each  
+            ! reference pressure) is nearest the layer temperature but does
+            ! not exceed it. Store these indices in JT and JT1, resp.
+            ! Store in FT (resp. FT1) the fraction of the way between JT
+            ! (JT1) and the next highest reference temperature that the 
+            ! layer temperature falls.
+
+            jt(icol,lay) = int(3. + (tavel(icol,lay)-tref(jp(icol,lay)))/15.)
+            if (jt(icol,lay) < 1) then
+               jt(icol,lay) = 1
+            elseif (jt(icol,lay) > 4) then
+               jt(icol,lay) = 4
+            endif
+            ft = ((tavel(icol,lay)-tref(jp(icol,lay)))/15.) - float(jt(icol,lay)-3)
+            jt1(icol,lay) = int(3. + (tavel(icol,lay)-tref(jp1))/15.)
+            if (jt1(icol,lay) < 1) then
+               jt1(icol,lay) = 1
+            elseif (jt1(icol,lay) > 4) then
+               jt1(icol,lay) = 4
+            endif
+            ft1 = ((tavel(icol,lay)-tref(jp1))/15.) - float(jt1(icol,lay)-3)
+
+            water = wkl(icol,1,lay) / coldry(icol,lay) 
+            scalefac = pavel(icol,lay)  * stpfac / tavel(icol,lay) 
+
+            ! If the pressure is less than ~100mb, perform a different
+            ! set of species interpolations.
+
+            if (plog <= 4.56 ) then
+
+               forfac(icol,lay) = scalefac / (1.+water)
+               factor = (tavel(icol,lay)-188.) / 36. 
+               indfor(icol,lay) = 3
+               forfrac(icol,lay) = factor - 1. 
+
+               ! Calculate needed column amounts.
+
+               colh2o(icol,lay) = 1.e-20 * wkl(icol,1,lay) 
+               colco2(icol,lay) = 1.e-20 * wkl(icol,2,lay) 
+               colo3 (icol,lay) = 1.e-20 * wkl(icol,3,lay) 
+               coln2o(icol,lay) = 1.e-20 * wkl(icol,4,lay) 
+               colch4(icol,lay) = 1.e-20 * wkl(icol,6,lay) 
+               colo2 (icol,lay) = 1.e-20 * wkl(icol,7,lay) 
+               colmol(icol,lay) = 1.e-20 * coldry(icol,lay) + colh2o(icol,lay) 
+               if (colco2(icol,lay) == 0.) colco2(icol,lay) = 1.e-32 * coldry(icol,lay) 
+               if (coln2o(icol,lay) == 0.) coln2o(icol,lay) = 1.e-32 * coldry(icol,lay) 
+               if (colch4(icol,lay) == 0.) colch4(icol,lay) = 1.e-32 * coldry(icol,lay) 
+               if (colo2 (icol,lay) == 0.) colo2 (icol,lay) = 1.e-32 * coldry(icol,lay) 
+               co2reg = 3.55e-24 * coldry(icol,lay) 
+               co2mult(icol,lay) = (colco2(icol,lay) - co2reg) * &
+                  272.63 * exp(-1919.4/tavel(icol,lay)) / (8.7604e-4 * tavel(icol,lay))
+
+               selffac(icol,lay)  = 0. 
+               selffrac(icol,lay) = 0. 
+               indself(icol,lay)  = 0
+
+            else
+
+               ! Set up factors needed to separately include the water vapor
+               ! foreign-continuum in the calculation of absorption coefficient.
+
+               forfac(icol,lay) = scalefac / (1.+water)
+               factor = (332.-tavel(icol,lay))/36. 
+               indfor(icol,lay) = min(2,max(1,int(factor)))
+               forfrac(icol,lay) = factor - float(indfor(icol,lay))
+
+               ! Set up factors needed to separately include the water vapor
+               ! self-continuum in the calculation of absorption coefficient.
+
+               selffac(icol,lay) = water * forfac(icol,lay) 
+               factor = (tavel(icol,lay)-188.)/7.2 
+               indself(icol,lay) = min(9,max(1,int(factor)-7))
+               selffrac(icol,lay) = factor - float(indself(icol,lay) + 7)
+
+               ! Calculate needed column amounts.
+
+               colh2o(icol,lay) = 1.e-20 * wkl(icol,1,lay) 
+               colco2(icol,lay) = 1.e-20 * wkl(icol,2,lay) 
+               colo3 (icol,lay) = 1.e-20 * wkl(icol,3,lay) 
+               coln2o(icol,lay) = 1.e-20 * wkl(icol,4,lay) 
+               colch4(icol,lay) = 1.e-20 * wkl(icol,6,lay) 
+               colo2 (icol,lay) = 1.e-20 * wkl(icol,7,lay) 
+               colmol(icol,lay) = 1.e-20 * coldry(icol,lay) + colh2o(icol,lay) 
+               if (colco2(icol,lay) == 0.) colco2(icol,lay) = 1.e-32 * coldry(icol,lay) 
+               if (coln2o(icol,lay) == 0.) coln2o(icol,lay) = 1.e-32 * coldry(icol,lay) 
+               if (colch4(icol,lay) == 0.) colch4(icol,lay) = 1.e-32 * coldry(icol,lay) 
+               if (colo2 (icol,lay) == 0.) colo2 (icol,lay) = 1.e-32 * coldry(icol,lay) 
+               ! Using E = 1334.2 cm-1.
+               co2reg = 3.55e-24 * coldry(icol,lay) 
+               co2mult(icol,lay) = (colco2(icol,lay) - co2reg) * &
+                  272.63 * exp(-1919.4/tavel(icol,lay))/(8.7604e-4 * tavel(icol,lay))
+      
+            end if
+
+            ! We have now isolated the layer ln pressure and temperature,
+            ! between two reference pressures and two reference temperatures 
+            ! (for each reference pressure). We multiply the pressure 
+            ! fraction FP with the appropriate temperature fractions to get 
+            ! the factors that will be needed for the interpolation that yields
+            ! the optical depths (performed in routines TAUGBn for band n).
+
+            compfp = 1. - fp
+            fac10(icol,lay) = compfp * ft
+            fac00(icol,lay) = compfp * (1.-ft)
+            fac11(icol,lay) = fp * ft1
+            fac01(icol,lay) = fp * (1.-ft1)
+
+         end do  ! layer loop
+      end do  ! column loop
+      !$acc end kernels
+
+   end subroutine setcoef_sw
+
+   !***************************************************************************
+   subroutine swatmref
+   !***************************************************************************
 
       save
  
-! These pressures are chosen such that the ln of the first pressure
-! has only a few non-zero digits (i.e. ln(PREF(1)) = 6.96000) and
-! each subsequent ln(pressure) differs from the previous one by 0.2.
+      ! These pressures are chosen such that the ln of the first pressure
+      ! has only a few non-zero digits (i.e. ln(PREF(1)) = 6.96000) and
+      ! each subsequent ln(pressure) differs from the previous one by 0.2.
 
       pref(:) = (/ &
           1.05363e+03 ,8.62642e+02 ,7.06272e+02 ,5.78246e+02 ,4.73428e+02 , &
@@ -349,8 +289,8 @@ end subroutine setcoef_sw
           -3.0400e+00 ,-3.2400e+00 ,-3.4400e+00 ,-3.6400e+00 ,-3.8400e+00 , &
           -4.0400e+00 ,-4.2400e+00 ,-4.4400e+00 ,-4.6400e+00  /)
 
-! These are the temperatures associated with the respective 
-! pressures for the MLS standard atmosphere. 
+      ! These are the temperatures associated with the respective 
+      ! pressures for the MLS standard atmosphere. 
 
       tref(:) = (/ &
            2.9420e+02 , 2.8799e+02 , 2.7894e+02 , 2.6925e+02 , 2.5983e+02 , &
@@ -366,8 +306,8 @@ end subroutine setcoef_sw
            2.0887e+02 , 2.0340e+02 , 1.9792e+02 , 1.9290e+02 , 1.8809e+02 , &
            1.8329e+02 , 1.7849e+02 , 1.7394e+02 , 1.7212e+02  /)
 
-      end subroutine swatmref
+   end subroutine swatmref
 
-      end module rrtmg_sw_setcoef
+end module rrtmg_sw_setcoef
 
 

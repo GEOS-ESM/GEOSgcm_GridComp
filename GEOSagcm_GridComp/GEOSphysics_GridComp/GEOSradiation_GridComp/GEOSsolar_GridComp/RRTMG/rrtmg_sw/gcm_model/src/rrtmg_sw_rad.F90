@@ -72,10 +72,9 @@
       subroutine rrtmg_sw ( &
          rpart, ncol, nlay, &
          scon, adjes, coszen, isolvar, &
-         play, plev, tlay, tlev, tsfc, &
+         play, plev, tlay, &
          h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, &
-         inflgsw, iceflgsw, liqflgsw, &
-         tauc, ssac, asmc, fsfc, & ! pmn: these are probably unused inputs. eliminate?
+         iceflgsw, liqflgsw, &
          cld, ciwp, clwp, rei, rel, &
          icld, dyofyr, zm, alat, &
          iaer, tauaer, ssaaer, asmaer, &
@@ -89,19 +88,7 @@
 
 !pmn: put heating rates outside??
 
-!pmn: verify what is needed
-      use parrrsw,  only : nbndsw, ngptsw, nstr, nmol, mxmol, &
-                           jpband, jpb1, jpb2, rrsw_scon
-      use rrsw_aer, only : rsrtaua, rsrpiza, rsrasya
-      use rrsw_con, only : heatfac, oneminus, pi,  grav, avogad
-      use rrsw_wvn, only : wavenum1, wavenum2
-      use rrsw_cld, only : extliq1, ssaliq1, asyliq1, &
-                           extice2, ssaice2, asyice2, &
-                           extice3, ssaice3, asyice3, fdlice3, &
-                           extice4, ssaice4, asyice4, &
-                           abari, bbari, cbari, dbari, ebari, fbari
-      use rrsw_wvn, only : wavenum2, ngb
-      use rrsw_ref, only : preflog, tref
+      use parrrsw,  only : nbndsw
 #ifdef _CUDA
       use cudafor
 #endif 
@@ -190,9 +177,9 @@
       ! (not just in a mean sense as for isolvar = 1). We do this by adjusting the quiet sun
       ! svar_i term (see the code).
 
-      real, intent(in), optional :: indsolvar(2)     ! Facular and sunspot amplitude scale facs (isolvar=1),
+      real, intent(in), optional :: indsolvar (2)    ! Facular and sunspot amplitude scale facs (isolvar=1),
                                                      !    or Mg and SB indices (isolvar=2)
-      real, intent(in), optional :: bndscl(nbndsw)   ! Scale factors for each band
+      real, intent(in), optional :: bndscl (nbndsw)  ! Scale factors for each band
       real, intent(in), optional :: solcycfrac       ! Fraction of averaged 11-year solar cycle (0-1)
                                                      !    at current time (isolvar=1)
                                                      !    0. represents the first day of year 1
@@ -203,8 +190,6 @@
       real, intent(in) :: play   (ncol,nlay)         ! Layer pressures (hPa)
       real, intent(in) :: plev   (ncol,nlay+1)       ! Interface pressures (hPa)
       real, intent(in) :: tlay   (ncol,nlay)         ! Layer temperatures (K)
-      real, intent(in) :: tlev   (ncol,nlay+1)       ! Interface temperatures (K)
-      real, intent(in) :: tsfc   (ncol)              ! Surface temperature (K)
 
       ! gases
       ! -----
@@ -217,16 +202,11 @@
 
       ! cloud optics flags
       ! ------------------
-      integer, intent(in) :: inflgsw                 ! Flag for cloud optical properties
       integer, intent(in) :: iceflgsw                ! Flag for ice particle specification
       integer, intent(in) :: liqflgsw                ! Flag for liquid droplet specification
 
       ! clouds
       ! ------
-      real, intent(in) :: tauc   (ncol,nlay,nbndsw)  ! In-cloud optical depth
-      real, intent(in) :: ssac   (ncol,nlay,nbndsw)  ! In-cloud single scattering albedo
-      real, intent(in) :: asmc   (ncol,nlay,nbndsw)  ! In-cloud asymmetry parameter
-      real, intent(in) :: fsfc   (ncol,nlay,nbndsw)  ! In-cloud forward scattering fraction
       real, intent(in) :: cld    (ncol,nlay)         ! Cloud fraction
       real, intent(in) :: ciwp   (ncol,nlay)         ! In-cloud ice water path (g/m2)
       real, intent(in) :: clwp   (ncol,nlay)         ! In-cloud liquid water path (g/m2)
@@ -313,16 +293,6 @@
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
         write(error_unit,*) 'minval(tlay):', minval(tlay)
         error stop 'negative values in input: tlay'
-      end if
-      if (any(tlev   < 0.)) then
-        write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
-        write(error_unit,*) 'minval(tlev):', minval(tlev)
-        error stop 'negative values in input: tlev'
-      end if
-      if (any(tsfc   < 0.)) then
-        write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
-        write(error_unit,*) 'minval(tsfc):', minval(tsfc)
-        error stop 'negative values in input: tsfc'
       end if
       if (any(h2ovmr < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
@@ -489,10 +459,9 @@
       call rrtmg_sw_sub ( &
          pncol, ncol, nlay, &
          scon, adjes, coszen, isolvar, &
-         play, plev, tlay, tlev, tsfc, &
+         play, plev, tlay, &
          h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, &
-         inflgsw, iceflgsw, liqflgsw, &
-         tauc, ssac, asmc, fsfc, &
+         iceflgsw, liqflgsw, &
          cld, ciwp, clwp, rei, rel, &
          icld, dyofyr, zm, alat, &
          iaer, tauaer, ssaaer, asmaer, &
@@ -509,10 +478,9 @@
       subroutine rrtmg_sw_sub ( &
          pncol, gncol, nlay, &
          scon, adjes, gcoszen, isolvar, &
-         gplay, gplev, gtlay, gtlev, gtsfc, &
+         gplay, gplev, gtlay, &
          gh2ovmr, go3vmr, gco2vmr, gch4vmr, gn2ovmr, go2vmr, &
-         inflgsw, iceflgsw, liqflgsw, &
-         gtauc, gssac, gasmc, gfsfc, &
+         iceflgsw, liqflgsw, &
          gcld, gciwp, gclwp, grei, grel, &
          icld, dyofyr, gzm, galat, &
          iaer, gtauaer, gssaaer, gasmaer, &
@@ -524,17 +492,17 @@
          bndscl, indsolvar, solcycfrac)
 
 
-      use parrrsw, only : nbndsw, ngptsw, nstr, nmol, mxmol, &
+!?pmn: all needed?
+      use parrrsw, only : nbndsw, ngptsw, nmol, mxmol, &
                           jpband, jpb1, jpb2, rrsw_scon
-      use rrsw_aer, only : rsrtaua, rsrpiza, rsrasya
-      use rrsw_con, only : heatfac, oneminus, pi,  grav, avogad
+      use rrsw_con, only : heatfac, oneminus, pi, grav, avogad
       use rrsw_wvn, only : wavenum1, wavenum2
       use rrsw_cld, only : extliq1, ssaliq1, asyliq1, &
                            extice2, ssaice2, asyice2, &
                            extice3, ssaice3, asyice3, fdlice3, &
                            extice4, ssaice4, asyice4, &
                            abari, bbari, cbari, dbari, ebari, fbari
-      use rrsw_wvn, only : wavenum2, ngb, icxa, nspa, nspb
+      use rrsw_wvn, only : ngb, icxa, nspa, nspb
       use rrsw_ref, only : preflog, tref
       use tab_xcw
       use NRLSSI2, only : initialize_NRLSSI2, &
@@ -623,7 +591,7 @@
       real, intent(in) :: adjes                        ! Flux adjustment for Earth/Sun distance
       real, intent(in) :: gcoszen (gncol)              ! Cosine of solar zenith angle
 
-      ! solar variability --- see rrtmg_sw()
+      ! solar variability
       integer, intent(in) :: isolvar
       real, intent(in), optional :: indsolvar (2)
       real, intent(in), optional :: bndscl (nbndsw)
@@ -633,8 +601,6 @@
       real, intent(in) :: gplay   (gncol,nlay)         ! Layer pressures (hPa)
       real, intent(in) :: gplev   (gncol,nlay+1)       ! Interface pressures (hPa)
       real, intent(in) :: gtlay   (gncol,nlay)         ! Layer temperatures (K)
-      real, intent(in) :: gtlev   (gncol,nlay+1)       ! Interface temperatures (K)
-      real, intent(in) :: gtsfc   (gncol)              ! Surface temperature (K)
 
       ! gases
       real, intent(in) :: gh2ovmr (gncol,nlay)         ! H2O volume mixing ratio
@@ -645,15 +611,10 @@
       real, intent(in) :: go2vmr  (gncol,nlay)         ! Oxygen volume mixing ratio
 
       ! cloud optics flags
-      integer, intent(in) :: inflgsw                   ! Flag for cloud optical props
       integer, intent(in) :: iceflgsw                  ! Flag for ice particle specifn
       integer, intent(in) :: liqflgsw                  ! Flag for liquid droplet specifn
       
       ! clouds
-      real, intent(in) :: gtauc   (gncol,nlay,nbndsw)  ! In-cloud optical depth
-      real, intent(in) :: gssac   (gncol,nlay,nbndsw)  ! In-cloud single scat albedo
-      real, intent(in) :: gasmc   (gncol,nlay,nbndsw)  ! In-cloud asymmetry param
-      real, intent(in) :: gfsfc   (gncol,nlay,nbndsw)  ! In-cloud forward scat frac
       real, intent(in) :: gcld    (gncol,nlay)         ! Cloud fraction
       real, intent(in) :: gciwp   (gncol,nlay)         ! In-cloud ice water path (g/m2)
       real, intent(in) :: gclwp   (gncol,nlay)         ! In-cloud liquid water path (g/m2)
@@ -699,52 +660,47 @@
 
       ! ----- Locals -----
 
-! Control
 !? pmn review all used
      
-      integer :: istart              ! beginning band of calculation
-      integer :: iend                ! ending band of calculation
-      integer :: icpr                ! cldprop/cldprmc use flag
-      integer :: iout                ! output option flag
-      integer :: idelm               ! delta-m scaling flag
-                                     ! [0 = direct and diffuse fluxes are unscaled]
-                                     ! [1 = direct and diffuse fluxes are scaled]
-                                     ! (total downward fluxes are always delta scaled)
+      ! Control
+      integer :: istart                  ! beginning band of calculation
+      integer :: iend                    ! ending band of calculation
+      real :: zepsec, zepzen             ! epsilon
+      real :: zdpgcp                     ! flux to heating conversion ratio
 
-      integer :: ibnd, icol, ilay, ilev
+      integer :: ibnd, icol, ilay, ilev  ! various indices
 
-      real :: zepsec, zepzen         ! epsilon
-      real :: zdpgcp                 ! flux to heating conversion ratio
+      ! Atmosphere
+      real :: coldry (pncol,nlay+1)      ! dry air column amount
+      real :: wkl (pncol,mxmol,nlay)     ! molecular amounts (mol/cm-2)
 
-! Atmosphere
+      ! solar input
+      real :: coszen (pncol)             ! Cosine of solar zenith angle
+      real :: cossza (pncol)             ! Cosine of solar zenith angle
+      real :: adjflux (jpband)           ! adjustment for curr Earth/Sun distance
+      real :: swdflx_at_top (gncol)      ! swdflx at TOA
 
-      real :: coldry (pncol,nlay+1)          ! dry air column amount
-      real :: wkl (pncol,mxmol,nlay)         ! molecular amounts (mol/cm-2)
-
-      real :: cossza (pncol)                 ! Cosine of solar zenith angle
-      real :: adjflux (jpband)              ! adjustment for current Earth/Sun distance
-                                            !  default value of 1368.22 Wm-2 at 1 AU
-!? pmn
-
-      real :: albdir (pncol,nbndsw)          ! surface albedo, direct          ! zalbp
-      real :: albdif (pncol,nbndsw)          ! surface albedo, diffuse         ! zalbd
+      ! surface albedos
+      real :: albdir (pncol,nbndsw)      ! surface albedo, direct
+      real :: albdif (pncol,nbndsw)      ! surface albedo, diffuse
       
+      ! cloud overlap
       real :: rdl (pncol), adl (pncol)
-
-      real :: CDF  (pncol,nlay,ngptsw)
-      real :: CDF2 (pncol,nlay,ngptsw)
-      real :: CDF3 (pncol,nlay,ngptsw)
+      real :: CDF   (pncol,nlay,ngptsw)
+      real :: CDF2  (pncol,nlay,ngptsw)
+      real :: CDF3  (pncol,nlay,ngptsw)
       real :: alpha (pncol,nlay)
 
-! Atmosphere - setcoef
+      ! Atmosphere - setcoef
+      ! --------------------
 
-      integer :: laytrop (pncol)             ! tropopause layer index
-      integer :: layswtch (pncol)            ! tropopause layer index
-      integer :: laylow (pncol)              ! tropopause layer index
-      integer :: jp (pncol,nlay+1)           ! 
-      integer :: jt (pncol,nlay+1)           !
+      integer :: laytrop  (pncol)            ! tropopause layer index
+      integer :: laylow   (pncol)            ! tropopause layer index
+      integer :: jp  (pncol,nlay+1)          ! 
+      integer :: jt  (pncol,nlay+1)          !
       integer :: jt1 (pncol,nlay+1)          !
 
+      ! gasesous absorbers
       real :: colh2o  (pncol,nlay+1)         ! column amount (h2o)
       real :: colco2  (pncol,nlay+1)         ! column amount (co2)
       real :: colo3   (pncol,nlay+1)         ! column amount (o3)
@@ -764,24 +720,17 @@
       real, dimension (pncol,nlay+1) :: &
          fac00, fac01, fac10, fac11  
       
+      ! general
       real :: play (pncol,nlay)               ! Layer pressures (hPa)
       real :: plev (pncol,nlay+1)             ! Interface pressures (hPa)
       real :: tlay (pncol,nlay)               ! Layer temperatures (K)
-      real :: tlev (pncol,nlay+1)             ! Interface temperatures (K)
-      real :: tsfc (pncol)                    ! Surface temperature (K)
-                                                      
-      real :: coszen (pncol)   
-      real :: swdflx_at_top (gncol)         ! swdflx at TOA
 
-! Atmosphere/clouds - cldprop
+      ! Atmosphere/clouds - cldprop
+      ! ---------------------------
 
-      integer :: ncbands                     ! num of cloud spectral bands
+      integer :: ncbands                      ! num of cloud spectral bands
 
       real :: cld  (pncol,nlay)               ! Cloud fraction
-      real :: tauc (pncol,nlay,nbndsw)        ! In-cloud optical depth
-      real :: ssac (pncol,nlay,nbndsw)        ! In-cloud single scattering 
-      real :: asmc (pncol,nlay,nbndsw)        ! In-cloud asymmetry parameter
-      real :: fsfc (pncol,nlay,nbndsw)        ! In-cloud forward scat frac
       real :: ciwp (pncol,nlay)               ! In-cloud ice water path (g/m2)
       real :: clwp (pncol,nlay)               ! In-cloud liq water path (g/m2)
       real :: rei  (pncol,nlay)               ! Cloud ice effective radius (um)
@@ -803,19 +752,20 @@
       real :: ciwpmcl (pncol,nlay+1,ngptsw)   ! in-cloud ice water path [mcica]
       real :: clwpmcl (pncol,nlay+1,ngptsw)   ! in-cloud liquid water path [mcica]
 
-! Atmosphere/clouds/aerosol - spcvrt,spcvmc
+      ! Atmosphere/clouds/aerosol - spcvrt,spcvmc
+      ! -----------------------------------------
 
 !? pmn why nlay+1
       real :: ztauc (pncol,nlay+1,nbndsw)     ! cloud optical depth
       real :: ztaucorig (pncol,nlay+1,nbndsw) ! unscaled cloud optical depth
       real :: zasyc (pncol,nlay+1,nbndsw)     ! cloud asymmetry parameter 
-                                             !  (first moment of phase function)
       real :: zomgc (pncol,nlay+1,nbndsw)     ! cloud single scattering albedo
    
       real :: taua (pncol,nlay+1,nbndsw)
       real :: asya (pncol,nlay+1,nbndsw)
       real :: omga (pncol,nlay+1,nbndsw)
 
+!? pmn why nlay+2
       real :: zbbfu    (pncol,nlay+2)         ! temporary up SW flux (w/m2)
       real :: zbbfd    (pncol,nlay+2)         ! temporary down SW flux (w/m2)
       real :: zbbcu    (pncol,nlay+2)         ! temporary clear sky up SW flux (w/m2)
@@ -831,7 +781,8 @@
       real :: znifddir (pncol,nlay+2)         ! temporary near-IR down direct SW flux (w/m2)
       real :: znicddir (pncol,nlay+2)         ! temporary clear sky near-IR down direct SW flux (w/m2)
 
-! Optional output fields 
+      ! Output fields 
+      ! -------------
 
       real :: swnflx   (pncol,nlay+2)         ! Total sky SW net flux (W/m2)
       real :: swnflxc  (pncol,nlay+2)         ! Clear sky SW net flux (W/m2)
@@ -886,14 +837,11 @@
 
       real, parameter :: sbc = 5.67e-08    ! Stefan-Boltzmann constant (W/m2K4)
 
-      integer :: ix, n, imol               ! Loop indices
-      real :: amm, summol                  ! 
+      integer :: n, imol, gicol            ! Loop indices
       real :: adjflx                       ! flux adjustment for Earth/Sun distance
-      integer :: gicol
       
       integer :: ipart, ncol_clr, ncol_cld, col_last, cols, cole, ncol
       integer :: irng, cc
-      real :: tt1, tt2
 
       ! other solar variability locals
       ! ------------------------------
@@ -918,8 +866,6 @@
 !? pmn
       istart = jpb1
       iend = jpb2
-      iout = 0
-      icpr = 1
 
       ! solar variability: default values
       solvar(:) = 1.
@@ -1160,7 +1106,7 @@
 
       ! Combine with solar constant scaling for Kurucz
       ! (done separately via svar_ for NRLSSI2)
-      if (isolvar .lt. 0) then
+      if (isolvar < 0) then
          adjflux(jpb1:jpb2) = adjflux(jpb1:jpb2) * solvar(jpb1:jpb2)
       endif
       
@@ -1184,12 +1130,13 @@
          end if
       end do
 
+!? pmn do as for lw eventually
       if (icld==4) then
          call TABULATE_XCW_BETA
       end if
 
 !$acc data copyout(swuflxc, swdflxc, swuflx, swdflx, swnflxc, swnflx, swhrc, swhr) &
-!$acc create(laytrop, layswtch, laylow, jp, jt, jt1, &
+!$acc create(laytrop, laylow, jp, jt, jt1, &
 !$acc co2mult, colch4, colco2, colh2o, colmol, coln2o, &
 !$acc colo2, colo3, fac00, fac01, fac10, fac11, &
 !$acc selffac, selffrac, indself, forfac, forfrac, indfor, &
@@ -1202,8 +1149,8 @@
 !$acc ztra,ztrao,ztrad,ztrado,&
 !$acc zfd,zfu,zdbt,zgco,&
 !$acc zomco,zrdnd,ztaug, ztaur,zsflxzen,ssi)&
-!$acc create(ciwp, clwp, cld, tauc, ssac, asmc, fsfc, rei, rel, rdl, adl) &
-!$acc create(play, tlay, plev, tlev, tsfc, cldflag, coszen, swdflx_at_top) &
+!$acc create(ciwp, clwp, cld, rei, rel, rdl, adl) &
+!$acc create(play, tlay, plev, cldflag, coszen, swdflx_at_top) &
 !$acc create(coldry, wkl, znirr,znirf,zparr,zparf,zuvrr,zuvrf) &
 !$acc create(extliq1, ssaliq1, asyliq1, extice2, ssaice2, asyice2) &
 !$acc create(extice3, ssaice3, asyice3, fdlice3, abari, bbari, cbari, dbari, ebari, fbari) &
@@ -1251,13 +1198,13 @@
 !$acc copyin(ka27,kb27,sfluxref27, rayl27)&
 !$acc copyin(irradnceo27,facbrghto27,snsptdrko27)&
 !$acc copyin(kao28,kbo28,sfluxrefo28)&
-!$acc copyin(ka28,kb28,sfluxref28,gtauc, gssac, gasmc, gfsfc)&
+!$acc copyin(ka28,kb28,sfluxref28)&
 !$acc copyin(irradnceo28,facbrghto28,snsptdrko28)&
 !$acc copyin(kao29,kbo29,selfrefo29,forrefo29,sfluxrefo29,absh2oo29,absco2o29)&
 !$acc copyin(ka29,kb29,selfref29,forref29,sfluxref29,absh2o29,absco229)&
 !$acc copyin(irradnceo29,facbrghto29,snsptdrko29)&
 !$acc copyin(gh2ovmr, gco2vmr, go3vmr, gn2ovmr, gch4vmr, go2vmr)&
-!$acc copyin(gcld, gciwp, gclwp, grei, grel, gplay, gplev, gtlay, gtlev, gtsfc)&
+!$acc copyin(gcld, gciwp, gclwp, grei, grel, gplay, gplev, gtlay)&
 !$acc copyin(gasdir, galdir, gasdif, galdif,gicol_cld,gicol_clr,gcoszen)&
 !$acc copyout(nirr,nirf,parr,parf,uvrr,uvrf)
 
@@ -1278,9 +1225,6 @@
       clwpmcl = 0.     
       !$acc end kernels
   
-      ! dir/dif fluxes are delta-scaled
-      idelm = 1
-
       ! zero aerosols
       !$acc kernels
       taua = 0.
@@ -1296,7 +1240,7 @@
       ! partitioning over clear (cc=1) and cloudy (cc=2) columns
       ! --------------------------------------------------------
 
-      do cc = 1,2
+      do cc = 1,2  ! outer loop over clear then cloudy columns
 
          if (cc==1) then 
          
@@ -1321,20 +1265,25 @@
             if (cole > col_last) cole = col_last
             ncol = cole - cols + 1
 
+!?pmn defaults for clear cc==1 I thinjk ... add comment
             ! zero McICA cloud optical props
             !$acc kernels            
             taormc = 0.
             taucmc = 0.
             ssacmc = 1.
             asmcmc = 0.
+!?pmn needed --- dont think so
             fsfcmc = 0.
             !$acc end kernels            
 
-            ! -------------
-            ! Clear columns
-            ! -------------
+            ! copy inputs into partition
+            ! --------------------------
 
             if (cc==1) then    
+
+               ! -------------
+               ! Clear columns
+               ! -------------
 
                !$acc kernels loop private(gicol)
                do icol = 1,ncol
@@ -1375,8 +1324,6 @@
                   play(icol,:) = gplay(gicol,1:nlay)
                   plev(icol,:) = gplev(gicol,1:nlay+1)
                   tlay(icol,:) = gtlay(gicol,1:nlay)
-                  tlev(icol,:) = gtlev(gicol,1:nlay+1)
-                  tsfc(icol)   = gtsfc(gicol)
 
                enddo
                !$acc end kernels
@@ -1389,6 +1336,7 @@
                      taua(icol,1:nlay,:) = gtauaer(gicol,1:nlay,:)
                      asya(icol,1:nlay,:) = gasmaer(gicol,1:nlay,:)
                      omga(icol,1:nlay,:) = gssaaer(gicol,1:nlay,:)
+!?pmn this ordering is very inefficient
                   enddo
                   !$acc end kernels
                endif   
@@ -1410,9 +1358,9 @@
 
             else
 
-            ! --------------
-            ! Cloudy columns
-            ! --------------
+               ! --------------
+               ! Cloudy columns
+               ! --------------
           
                !$acc kernels loop private(gicol)
                do icol = 1,ncol
@@ -1453,8 +1401,6 @@
                   play(icol,:) = gplay(gicol,1:nlay)
                   plev(icol,:) = gplev(gicol,1:nlay+1)
                   tlay(icol,:) = gtlay(gicol,1:nlay)
-                  tlev(icol,:) = gtlev(gicol,1:nlay+1)
-                  tsfc(icol)   = gtsfc(gicol)
                   cld (icol,:) = gcld (gicol,1:nlay)
                   ciwp(icol,:) = gciwp(gicol,1:nlay)
                   clwp(icol,:) = gclwp(gicol,1:nlay)
@@ -1476,17 +1422,6 @@
                   end do
                   !$acc end kernels
                endif
-
-               ! copy in partition (cloud optics)
-               !$acc kernels 
-               do icol = 1,ncol
-                  gicol = gicol_cld(icol + cols - 1)
-                  tauc(icol,1:nlay,:) = gtauc(gicol,1:nlay,:)
-                  ssac(icol,1:nlay,:) = gssac(gicol,1:nlay,:)
-                  asmc(icol,1:nlay,:) = gasmc(gicol,1:nlay,:)
-                  fsfc(icol,1:nlay,:) = gfsfc(gicol,1:nlay,:)
-               enddo
-               !$acc end kernels
 
                ! copy in partition (gases)
                !$acc kernels
@@ -1524,6 +1459,7 @@
             enddo
             !$acc end kernels
 
+            ! gases also to molecules/cm^2
             !$acc kernels
             do icol = 1,ncol
                do ilay = 1,nlay
@@ -1534,22 +1470,26 @@
             end do
             !$acc end kernels
 
+!issue that pncol is full partition(=dimension) while ncol is actual used
+! so either input pncol as well to dimension or else only send in actual 
+! needed like in LW ... study
+!pmn needed working on and the replacing by abstract as per LW
             ! McICA subcolumn generation
             if (cc==2) then
                call mcica_sw( &
                   ncol, nlay, ngptsw, icld, irng, play, &
-                  cld, clwp, ciwp, tauc, ssac, asmc, fsfc, &
+                  cld, clwp, ciwp, &
                   cldfmcl, clwpmcl, ciwpmcl, &
-                  taucmc, ssacmc, asmcmc, fsfcmc, 1, CDF, CDF2, CDF3, alpha, zm, &
+                  1, CDF, CDF2, CDF3, alpha, zm, &
                   alat, dyofyr, rdl, adl)
             end if   
 
             ! cloud optical property generation
             if (cc==2) then
                call cldprmc_sw( &
-                  ncol, nlay, inflgsw, iceflgsw, liqflgsw,  &
+                  ncol, nlay, iceflgsw, liqflgsw,  &
                   cldfmcl, ciwpmcl, clwpmcl, rei, rel, &
-                  taormc, taucmc, ssacmc, asmcmc, fsfcmc)
+                  taormc, taucmc, ssacmc, asmcmc)
             end if
 
             ! Calculate information needed by the radiative transfer routine
@@ -1558,23 +1498,21 @@
             ! by interpolating data from stored reference atmospheres.
 
             call setcoef_sw( &
-               ncol, nlay, play, tlay, plev, tlev, tsfc, &
-               coldry, wkl, &
-               laytrop, layswtch, laylow, jp, jt, jt1, &
+               ncol, nlay, play, tlay, coldry, wkl, &
+               laytrop, laylow, jp, jt, jt1, &
                co2mult, colch4, colco2, colh2o, colmol, coln2o, &
                colo2, colo3, fac00, fac01, fac10, fac11, &
                selffac, selffrac, indself, forfac, forfrac, indfor)
 
             ! compute sw radiative fluxes
             call spcvmc_sw( &
-               cc, pncol, ncol, nlay, istart, iend, icpr, idelm, iout, &
-               play, tlay, plev, tlev, &
-               tsfc, albdif, albdir, &
+               cc, pncol, ncol, nlay, istart, iend, &
+               play, tlay, albdif, albdir, &
                cldfmcl, taucmc, asmcmc, ssacmc, taormc, &
                taua, asya, omga,cossza, coldry, adjflux, &
                isolvar, svar_f, svar_s, svar_i, &
                svar_f_bnd, svar_s_bnd, svar_i_bnd, &
-               laytrop, layswtch, laylow, jp, jt, jt1, &
+               laytrop, laylow, jp, jt, jt1, &
                co2mult, colch4, colco2, colh2o, colmol, &
                coln2o, colo2, colo3, &
                fac00, fac01, fac10, fac11, &
@@ -1678,13 +1616,13 @@
 
          enddo  ! over partitions
 
-      enddo  ! over cc
+      enddo  ! outer loop (cc) over clear then cloudy columns
 
       ! If the user requests 'normalized' fluxes, divide
       ! the fluxes by the solar constant times coszen
       ! MAT This requires only lit points passed in
 
-      if (normFlx==1) then
+      if (normFlx == 1) then
 
          !$acc kernels
          swdflx_at_top(:) = max(swdflx(:,nlay+1),1e-7)

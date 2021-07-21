@@ -2283,7 +2283,6 @@ contains
       real, pointer, dimension(:,:)   :: FSWBAND ! Flux shortwave surface per band
       real, pointer, dimension(:,:)   :: FSWBANDA ! Flux shortwave surface per band no aerosol
                                          
-      integer :: INFLGSW         ! Flag for cloud optical properties
       integer :: ICEFLGSW        ! Flag for ice particle specification
       integer :: LIQFLGSW        ! Flag for liquid droplet specification
       integer :: ICLD            ! Flag for cloud overlap
@@ -2295,7 +2294,6 @@ contains
 
       real, allocatable, dimension(:,:)   :: TLEV, TLEV_R, PLE_R
       real, allocatable, dimension(:,:)   :: FCLD_R, CLIQWP, CICEWP, RELIQ, REICE
-      real, allocatable, dimension(:,:,:) :: TAUCLD, SSACLD, ASMCLD, FSFCLD
 
       real, allocatable, dimension(:,:,:) :: TAUAER, SSAAER, ASMAER
       real, allocatable, dimension(:,:)   :: DPR, PL_R, T_R,  Q_R, O2_R, O3_R, ZL_R
@@ -3711,11 +3709,6 @@ contains
       allocate(CICEWP(size(Q,1),size(Q,2)),__STAT__)
       allocate(RELIQ (size(Q,1),size(Q,2)),__STAT__)
       allocate(REICE (size(Q,1),size(Q,2)),__STAT__)
-      ! cloud optical properties
-      allocate(TAUCLD(size(Q,1),size(Q,2),NB_RRTMG),__STAT__)
-      allocate(SSACLD(size(Q,1),size(Q,2),NB_RRTMG),__STAT__)
-      allocate(ASMCLD(size(Q,1),size(Q,2),NB_RRTMG),__STAT__)
-      allocate(FSFCLD(size(Q,1),size(Q,2),NB_RRTMG),__STAT__)
       ! aerosol optical properties
       allocate(TAUAER(size(Q,1),size(Q,2),NB_RRTMG),__STAT__)
       allocate(SSAAER(size(Q,1),size(Q,2),NB_RRTMG),__STAT__)
@@ -3756,7 +3749,6 @@ contains
 
 !? pmn: describe meanings 
       ICLD = 4
-      INFLGSW = 2
       ICEFLGSW = 3
       LIQFLGSW = 1
 
@@ -3821,12 +3813,6 @@ contains
          WHERE (RELIQ < 2.5)  RELIQ = 2.5
          WHERE (RELIQ > 60.)  RELIQ = 60.
       END IF
-
-      ! zero outputs (necessary?)
-      TAUCLD = 0.0
-      SSACLD = 0.0
-      ASMCLD = 0.0
-      FSFCLD = 0.0
 
       ! regular (non-flipped) interface temperatures
       TLEV(:,2:LM)=(T(:,1:LM-1)* DPR(:,2:LM) + T(:,2:LM) * DPR(:,1:LM-1)) &
@@ -3989,10 +3975,9 @@ contains
       call RRTMG_SW ( &
          RPART, NCOL, LM, &
          SC, ADJES, ZT, ISOLVAR, &
-         PL_R, PLE_R, T_R, TLEV_R, TS, &
+         PL_R, PLE_R, T_R, &
          Q_R, O3_R, CO2_R, CH4_R, N2O_R, O2_R, &
-         INFLGSW, ICEFLGSW, LIQFLGSW, &
-         TAUCLD, SSACLD, ASMCLD, FSFCLD, &
+         ICEFLGSW, LIQFLGSW, &
          FCLD_R, CICEWP, CLIQWP, REICE, RELIQ, &
          ICLD, DYOFYR, ZL_R, ALAT, &
          IAER, TAUAER, SSAAER, ASMAER, &
@@ -4046,10 +4031,6 @@ contains
       deallocate(CICEWP,__STAT__)
       deallocate(RELIQ ,__STAT__)
       deallocate(REICE ,__STAT__)
-      deallocate(TAUCLD,__STAT__)
-      deallocate(SSACLD,__STAT__)
-      deallocate(ASMCLD,__STAT__)
-      deallocate(FSFCLD,__STAT__)
 
       deallocate(TAUAER,__STAT__)
       deallocate(SSAAER,__STAT__)
@@ -4088,7 +4069,7 @@ contains
 
    else
 
-      _ASSERT(.FALSE.,'unknown SW rdiation scheme!')
+      _ASSERT(.FALSE.,'unknown SW radiation scheme!')
 
    end if SCHEME
 
