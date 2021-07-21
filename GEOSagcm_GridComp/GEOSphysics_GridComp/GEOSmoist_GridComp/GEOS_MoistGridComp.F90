@@ -12549,7 +12549,7 @@ do K= 1, LM
          endif
       else
          if (associated(TT_PRCP))   TT_PRCP = TPREC
-         if (associated(SNR) .AND. associated(PTYPE)) then
+         if (associated(SNR) .AND. associated(PTYPE) .AND. LDIAGNOSE_PRECIP_TYPE) then
             SNR = 0.0
             do J=1,JM
                do I=1,IM
@@ -12559,7 +12559,7 @@ do K= 1, LM
          else
             if (associated(SNR))   SNR = LS_SNR + AN_SNR + CN_SNR + SC_SNR
          endif
-         if (associated(ICE) .AND. associated(PTYPE)) then
+         if (associated(ICE) .AND. associated(PTYPE) .AND. LDIAGNOSE_PRECIP_TYPE) then
             ICE = 0.0
             do J=1,JM
                do I=1,IM
@@ -12569,7 +12569,7 @@ do K= 1, LM
          else
             if (associated(ICE))   ICE = 0.0
          endif
-         if (associated(FRZR) .AND. associated(PTYPE)) then
+         if (associated(FRZR) .AND. associated(PTYPE) .AND. LDIAGNOSE_PRECIP_TYPE) then
             FRZR = 0.0
             do J=1,JM
                do I=1,IM
@@ -12580,7 +12580,7 @@ do K= 1, LM
          else
             if (associated(FRZR ))   FRZR = 0.0
          endif
-         if (associated(RAIN) .AND. associated(PTYPE)) then
+         if (associated(RAIN) .AND. associated(PTYPE) .AND. LDIAGNOSE_PRECIP_TYPE) then
             RAIN = 0.0
             if (associated(PRECU)) PRECU = 0.0
             if (associated(PRELS)) PRELS = 0.0
