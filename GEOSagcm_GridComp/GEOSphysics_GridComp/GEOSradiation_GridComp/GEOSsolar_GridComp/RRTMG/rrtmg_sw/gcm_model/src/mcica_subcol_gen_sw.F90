@@ -1,10 +1,11 @@
 module mcica_subcol_gen_sw
 
+   use cloud_condensate_inhomogeneity, only: &
+      condensate_inhomogeneous, zcw_lookup
    use parrrsw, only : nbndsw, ngptsw
    use rrsw_con, only: grav
    use rrsw_wvn, only: ngb
    use rrsw_vsn
-   use tab_xcw
     
    implicit none
 
@@ -95,28 +96,25 @@ contains
       
       ! -- Local variables
 
-      real, intent(out)  :: adl(:)                
-      real, intent(out)  :: rdl(:)
+      real, intent(out) :: adl(:)                
+      real, intent(out) :: rdl(:)
     
       ! Constants (min value for cloud fraction and cloud water and ice)
-      real , parameter :: cldmin = 1.0e-20  ! min cloud fraction
+      real, parameter :: cldmin = 1.0e-20    ! min cloud fraction
 
       ! Variables related to random number and seed 
-     
       integer :: seed1, seed2, seed3, seed4  ! seed (kissvec)
       real :: rand_num                       ! random number (kissvec)
 
       ! Indices
-      integer  :: ilev, isubcol, i, n, icol   ! indices
-      integer  :: inhm
-      real     :: am1,am2,am3,am4,amr
-      real     :: sigma_qcw
-      real     :: rind1, rind2
-      integer  :: ind1, ind2
-      real     :: zcw
+      integer :: ilev, isubcol, i, n, icol   ! indices
+      real    :: am1,am2,am3,am4,amr
+      real    :: sigma_qcw, zcw
+      logical :: cond_inhomo
       !------------------------------------------------------------------------------------------ 
 
-      inhm = 0
+      ! save for speed
+      cond_inhomo = condensate_inhomogeneous()
 
       !$acc kernels
       CDF  = 0.
@@ -204,9 +202,8 @@ contains
          end do
       end do
       !$acc end kernels
-      inhm = 1
     
-      if (inhm >= 1) then
+      if (cond_inhomo) then
         
          !$acc kernels  
          do i = 1, ncol
@@ -256,7 +253,7 @@ contains
       do ilev = 1,nlay
          do i = 1, ncol
             do isubcol = 1, nsubcol
-               if (inhm >= 1 .and. cdf(i,ilev,isubcol) >= (1. - cld(i,ilev))) then
+               if (cond_inhomo .and. cdf(i,ilev,isubcol) >= (1. - cld(i,ilev))) then
 
                   cld_stoch(i,ilev,isubcol) = 1. 
                   
@@ -270,18 +267,7 @@ contains
                   endif
                   
                   ! horizontally variable clouds
-                  rind1 = cdf3(i,ilev,isubcol) * (n1 - 1) + 1.
-                  ind1  = max(1, min(int(rind1), n1-1))
-                  rind1 = rind1 - ind1
-                  rind2 = 40. * sigma_qcw - 3.
-                  ind2  = max(1, min(int(rind2), n2-1))
-                  rind2 = rind2 - ind2
-
-                  zcw = (1.0-rind1) * (1.0-rind2) * xcw(ind1,ind2) &
-                      + (1.0-rind1) * rind2       * xcw(ind1,ind2+1) &
-                      + rind1 * (1.0-rind2)       * xcw(ind1+1,ind2) &
-                      + rind1 * rind2             * xcw(ind1+1,ind2+1)
-                   
+                  zcw = zcw_lookup(cdf3(i,ilev,isubcol),sigma_qcw)
                   clwp_stoch(i,ilev,isubcol) = clwp(i,ilev) * zcw
                   ciwp_stoch(i,ilev,isubcol) = ciwp(i,ilev) * zcw
                 

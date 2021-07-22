@@ -52,39 +52,39 @@
 #define gpu_device 
 #endif
     
-   module rrtmg_sw_rad
+module rrtmg_sw_rad
 
-! --------- Modules ---------
+   use rrsw_vsn
+   use mcica_subcol_gen_sw, only: mcica_sw
+   use cloud_condensate_inhomogeneity, only: &
+      initialize_inhomogeneity, release_inhomogeneity
+   use rrtmg_sw_cldprmc, only: cldprmc_sw
+   use rrtmg_sw_setcoef, only: setcoef_sw
+   use rrtmg_sw_spcvmc, only: spcvmc_sw
+   use iso_fortran_env, only : error_unit
 
-      use rrsw_vsn
-      use mcica_subcol_gen_sw, only: mcica_sw
-      use rrtmg_sw_cldprmc, only: cldprmc_sw
-      use rrtmg_sw_setcoef, only: setcoef_sw
-      use rrtmg_sw_spcvmc, only: spcvmc_sw
-      use iso_fortran_env, only : error_unit
+   implicit none
 
-      implicit none
+   public :: rrtmg_sw, earth_sun
 
-      public :: rrtmg_sw, earth_sun
+contains
 
-   contains
+   subroutine rrtmg_sw ( &
+      rpart, ncol, nlay, &
+      scon, adjes, coszen, isolvar, &
+      play, plev, tlay, &
+      h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, &
+      iceflgsw, liqflgsw, &
+      cld, ciwp, clwp, rei, rel, &
+      dyofyr, zm, alat, &
+      iaer, tauaer, ssaaer, asmaer, &
+      asdir, asdif, aldir, aldif, &
+      normFlx, numCPUs, &
+      swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
+      nirr, nirf, parr, parf, uvrr, uvrf, &
 
-      subroutine rrtmg_sw ( &
-         rpart, ncol, nlay, &
-         scon, adjes, coszen, isolvar, &
-         play, plev, tlay, &
-         h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, &
-         iceflgsw, liqflgsw, &
-         cld, ciwp, clwp, rei, rel, &
-         dyofyr, zm, alat, &
-         iaer, tauaer, ssaaer, asmaer, &
-         asdir, asdif, aldir, aldif, &
-         normFlx, numCPUs, &
-         swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
-         nirr, nirf, parr, parf, uvrr, uvrf, &
-
-         ! optional inputs
-         bndscl, indsolvar, solcycfrac)
+      ! optional inputs
+      bndscl, indsolvar, solcycfrac)
 
 !pmn: put heating rates outside??
 
@@ -375,6 +375,10 @@
         error stop 'negative values in input: ssaaer'
       end if
 
+      ! set up condensate inhomogeneity tables
+      call initialize_inhomogeneity(1)
+! pmn: put in GCM init eventually
+
       ! set column partition size pncol
       ! -------------------------------
 
@@ -461,24 +465,27 @@
          ! optional inputs
          bndscl, indsolvar, solcycfrac)
                                                       
-      end subroutine rrtmg_sw                                                     
+      ! release condensate inhomogeneity resources
+      call release_inhomogeneity
+
+   end subroutine rrtmg_sw                                                     
 
 
-      subroutine rrtmg_sw_sub ( &
-         pncol, gncol, nlay, &
-         scon, adjes, gcoszen, isolvar, &
-         gplay, gplev, gtlay, &
-         gh2ovmr, go3vmr, gco2vmr, gch4vmr, gn2ovmr, go2vmr, &
-         iceflgsw, liqflgsw, &
-         gcld, gciwp, gclwp, grei, grel, &
-         dyofyr, gzm, galat, &
-         iaer, gtauaer, gssaaer, gasmaer, &
-         gasdir, gasdif, galdir, galdif, &
-         normFlx, swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
-         nirr, nirf, parr, parf, uvrr, uvrf, &
+   subroutine rrtmg_sw_sub ( &
+      pncol, gncol, nlay, &
+      scon, adjes, gcoszen, isolvar, &
+      gplay, gplev, gtlay, &
+      gh2ovmr, go3vmr, gco2vmr, gch4vmr, gn2ovmr, go2vmr, &
+      iceflgsw, liqflgsw, &
+      gcld, gciwp, gclwp, grei, grel, &
+      dyofyr, gzm, galat, &
+      iaer, gtauaer, gssaaer, gasmaer, &
+      gasdir, gasdif, galdir, galdif, &
+      normFlx, swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
+      nirr, nirf, parr, parf, uvrr, uvrf, &
 
-         ! optional inputs
-         bndscl, indsolvar, solcycfrac)
+      ! optional inputs
+      bndscl, indsolvar, solcycfrac)
 
 
 !?pmn: all needed?
@@ -493,7 +500,6 @@
                            abari, bbari, cbari, dbari, ebari, fbari
       use rrsw_wvn, only : ngb, icxa, nspa, nspb
       use rrsw_ref, only : preflog, tref
-      use tab_xcw
       use NRLSSI2, only : initialize_NRLSSI2, &
                           adjust_solcyc_amplitudes, &
                           interpolate_indices, &
@@ -1116,9 +1122,6 @@
          end if
       end do
 
-!? pmn do as for lw eventually
-      call TABULATE_XCW_BETA
-
 !$acc data copyout(swuflxc, swdflxc, swuflx, swdflx, swnflxc, swnflx, swhrc, swhr) &
 !$acc create(laytrop, laylow, jp, jt, jt1, &
 !$acc co2mult, colch4, colco2, colh2o, colmol, coln2o, &
@@ -1191,8 +1194,6 @@
 !$acc copyin(gcld, gciwp, gclwp, grei, grel, gplay, gplev, gtlay)&
 !$acc copyin(gasdir, galdir, gasdif, galdif,gicol_cld,gicol_clr,gcoszen)&
 !$acc copyout(nirr,nirf,parr,parf,uvrr,uvrf)
-
-!$acc data copyin(XCW)
 
 !$acc update device(extliq1, ssaliq1, asyliq1, extice2, ssaice2, asyice2) &
 !$acc device(extice3, ssaice3, asyice3, fdlice3, abari, bbari, cbari, dbari, ebari, fbari) &
@@ -1628,23 +1629,21 @@
 
       endif
 
-      !$acc end data ! for XCW
-
       !$acc end data
       
-      end subroutine rrtmg_sw_sub
+   end subroutine rrtmg_sw_sub
 
-!*************************************************************************
-      real  function earth_sun(idn)
-!*************************************************************************
-!
-!  Purpose: Function to calculate the correction factor of Earth's orbit
-!  for current day of the year
 
-!  idn        : Day of the year
-!  earth_sun  : square of the ratio of mean to actual Earth-Sun distance
-
-! ------- Modules -------
+   !-----------------------------------------------------------------------
+   real function earth_sun(idn)
+   !-----------------------------------------------------------------------
+   !
+   !  Purpose: Function to calculate the correction factor of Earth's orbit
+   !  for current day of the year
+   ! 
+   !  idn        : Day of the year
+   !  earth_sun  : square of the ratio of mean to actual Earth-Sun distance
+   !-----------------------------------------------------------------------
 
       use rrsw_con, only : pi
 
@@ -1659,8 +1658,8 @@
       earth_sun = 1.000110  + .034221  * cos(gamma) + .001289  * sin(gamma) + &
                    .000719  * cos(2. *gamma) + .000077  * sin(2. *gamma)
 
-      end function earth_sun
+   end function earth_sun
 
-   end module rrtmg_sw_rad
+end module rrtmg_sw_rad
 
 
