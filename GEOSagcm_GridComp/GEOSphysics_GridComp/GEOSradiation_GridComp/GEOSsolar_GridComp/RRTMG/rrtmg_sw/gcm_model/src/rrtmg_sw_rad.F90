@@ -76,7 +76,7 @@
          h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, &
          iceflgsw, liqflgsw, &
          cld, ciwp, clwp, rei, rel, &
-         icld, dyofyr, zm, alat, &
+         dyofyr, zm, alat, &
          iaer, tauaer, ssaaer, asmaer, &
          asdir, asdif, aldir, aldif, &
          normFlx, numCPUs, &
@@ -213,13 +213,8 @@
       real, intent(in) :: rei    (ncol,nlay)         ! Cloud ice effective radius (microns)
       real, intent(in) :: rel    (ncol,nlay)         ! Cloud water drop effective radius (microns)
 
-      ! cloud overlap
-      ! -------------
-      integer, intent(in) :: icld                    ! Cloud overlap method
-                                                     !    0: Clear only
-                                                     !    1: Random
-                                                     !    2: Maximum/random
-                                                     !    3: Maximum
+      ! cloud overlap (exponential)
+      ! ---------------------------
       integer, intent(in) :: dyofyr                  ! Day of the year
       real, intent(in) :: zm     (ncol,nlay)         ! Heights of level midpoints
       real, intent(in) :: alat   (ncol)              ! Latitude of column
@@ -380,12 +375,6 @@
         error stop 'negative values in input: ssaaer'
       end if
 
-      if (icld < 0 .or. icld > 4) then
-        write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
-        write(error_unit,*) 'icld:', icld
-        error stop 'require icld in [0,4]'
-      end if
-
       ! set column partition size pncol
       ! -------------------------------
 
@@ -463,7 +452,7 @@
          h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, &
          iceflgsw, liqflgsw, &
          cld, ciwp, clwp, rei, rel, &
-         icld, dyofyr, zm, alat, &
+         dyofyr, zm, alat, &
          iaer, tauaer, ssaaer, asmaer, &
          asdir, asdif, aldir, aldif, &
          normFlx, swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
@@ -482,7 +471,7 @@
          gh2ovmr, go3vmr, gco2vmr, gch4vmr, gn2ovmr, go2vmr, &
          iceflgsw, liqflgsw, &
          gcld, gciwp, gclwp, grei, grel, &
-         icld, dyofyr, gzm, galat, &
+         dyofyr, gzm, galat, &
          iaer, gtauaer, gssaaer, gasmaer, &
          gasdir, gasdif, galdir, galdif, &
          normFlx, swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
@@ -622,7 +611,6 @@
       real, intent(in) :: grel    (gncol,nlay)         ! Cloud drop effective radius (um)
                                                       
       ! cloud overlap
-      integer, intent(in) :: icld                      ! Cloud overlap method
       integer, intent(in) :: dyofyr                    ! Day of the year
       real, intent(in) :: gzm     (gncol,nlay)         ! Heights of level midpoints
       real, intent(in) :: galat   (gncol)              ! Latitudes of columns
@@ -840,8 +828,7 @@
       integer :: n, imol, gicol            ! Loop indices
       real :: adjflx                       ! flux adjustment for Earth/Sun distance
       
-      integer :: ipart, ncol_clr, ncol_cld, col_last, cols, cole, ncol
-      integer :: irng, cc
+      integer :: ipart, ncol_clr, ncol_cld, col_last, cols, cole, ncol, cc
 
       ! other solar variability locals
       ! ------------------------------
@@ -861,7 +848,6 @@
       zepzen = 1.e-10
       oneminus = 1.0 - zepsec
       pi = 2. * asin(1.)
-      irng = 0
 
 !? pmn
       istart = jpb1
@@ -1131,9 +1117,7 @@
       end do
 
 !? pmn do as for lw eventually
-      if (icld==4) then
-         call TABULATE_XCW_BETA
-      end if
+      call TABULATE_XCW_BETA
 
 !$acc data copyout(swuflxc, swdflxc, swuflx, swdflx, swnflxc, swnflx, swhrc, swhr) &
 !$acc create(laytrop, laylow, jp, jt, jt1, &
@@ -1208,7 +1192,7 @@
 !$acc copyin(gasdir, galdir, gasdif, galdif,gicol_cld,gicol_clr,gcoszen)&
 !$acc copyout(nirr,nirf,parr,parf,uvrr,uvrf)
 
-!$acc data copyin(XCW) if(icld==4)
+!$acc data copyin(XCW)
 
 !$acc update device(extliq1, ssaliq1, asyliq1, extice2, ssaice2, asyice2) &
 !$acc device(extice3, ssaice3, asyice3, fdlice3, abari, bbari, cbari, dbari, ebari, fbari) &
@@ -1477,10 +1461,10 @@
             ! McICA subcolumn generation
             if (cc==2) then
                call mcica_sw( &
-                  ncol, nlay, ngptsw, icld, irng, play, &
+                  ncol, nlay, ngptsw, play, &
                   cld, clwp, ciwp, &
                   cldfmcl, clwpmcl, ciwpmcl, &
-                  1, CDF, CDF2, CDF3, alpha, zm, &
+                  CDF, CDF2, CDF3, alpha, zm, &
                   alat, dyofyr, rdl, adl)
             end if   
 
@@ -1644,8 +1628,7 @@
 
       endif
 
-      ! end of data statement for xcw with icld==4
-      !$acc end data
+      !$acc end data ! for XCW
 
       !$acc end data
       

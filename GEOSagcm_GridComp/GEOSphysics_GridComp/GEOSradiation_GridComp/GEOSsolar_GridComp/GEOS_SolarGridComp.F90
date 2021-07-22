@@ -2285,7 +2285,6 @@ contains
                                          
       integer :: ICEFLGSW        ! Flag for ice particle specification
       integer :: LIQFLGSW        ! Flag for liquid droplet specification
-      integer :: ICLD            ! Flag for cloud overlap
 
       real, pointer, dimension(:  )       :: ALAT
       real, pointer, dimension(:  )       :: TS
@@ -3748,7 +3747,6 @@ contains
       ! -------------------------------------
 
 !? pmn: describe meanings 
-      ICLD = 4
       ICEFLGSW = 3
       LIQFLGSW = 1
 
@@ -3979,7 +3977,7 @@ contains
          Q_R, O3_R, CO2_R, CH4_R, N2O_R, O2_R, &
          ICEFLGSW, LIQFLGSW, &
          FCLD_R, CICEWP, CLIQWP, REICE, RELIQ, &
-         ICLD, DYOFYR, ZL_R, ALAT, &
+         DYOFYR, ZL_R, ALAT, &
          IAER, TAUAER, SSAAER, ASMAER, &
          ALBVR, ALBVF, ALBNR, ALBNF, &
          NORMFLX, CoresPerNode, &
