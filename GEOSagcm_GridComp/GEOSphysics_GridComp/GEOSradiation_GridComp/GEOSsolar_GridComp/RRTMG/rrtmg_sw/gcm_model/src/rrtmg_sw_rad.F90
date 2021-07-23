@@ -678,13 +678,6 @@ contains
       real :: albdir (pncol,nbndsw)      ! surface albedo, direct
       real :: albdif (pncol,nbndsw)      ! surface albedo, diffuse
       
-      ! cloud overlap
-      real :: rdl (pncol), adl (pncol)
-      real :: CDF   (pncol,nlay,ngptsw)
-      real :: CDF2  (pncol,nlay,ngptsw)
-      real :: CDF3  (pncol,nlay,ngptsw)
-      real :: alpha (pncol,nlay)
-
       ! Atmosphere - setcoef
       ! --------------------
 
@@ -834,7 +827,11 @@ contains
       integer :: n, imol, gicol            ! Loop indices
       real :: adjflx                       ! flux adjustment for Earth/Sun distance
       
-      integer :: ipart, ncol_clr, ncol_cld, col_last, cols, cole, ncol, cc
+      integer :: ipart, ncol_clr, ncol_cld, col_last, cols, cole, cc
+
+      ! ncol is the actual number of gridcols in a partition, cf. pncol,
+      ! the maximum number. May have ncol < pncol on final partition.
+      integer :: ncol
 
       ! other solar variability locals
       ! ------------------------------
@@ -1136,13 +1133,12 @@ contains
 !$acc ztra,ztrao,ztrad,ztrado,&
 !$acc zfd,zfu,zdbt,zgco,&
 !$acc zomco,zrdnd,ztaug, ztaur,zsflxzen,ssi)&
-!$acc create(ciwp, clwp, cld, rei, rel, rdl, adl) &
+!$acc create(ciwp, clwp, cld, rei, rel) &
 !$acc create(play, tlay, plev, cldflag, coszen, swdflx_at_top) &
 !$acc create(coldry, wkl, znirr,znirf,zparr,zparf,zuvrr,zuvrf) &
 !$acc create(extliq1, ssaliq1, asyliq1, extice2, ssaice2, asyice2) &
 !$acc create(extice3, ssaice3, asyice3, fdlice3, abari, bbari, cbari, dbari, ebari, fbari) &
 !$acc create(taua, asya, omga,gtauaer,gssaaer,gasmaer, zm, alat) &
-!$acc create(CDF, CDF2, CDF3, alpha) &
 !$acc copyin(wavenum2, ngb) &
 !$acc copyin(tref, preflog, albdif, albdir, cossza)&
 !$acc copyin(icxa, adjflux, nspa, nspb)&
@@ -1462,11 +1458,10 @@ contains
             ! McICA subcolumn generation
             if (cc==2) then
                call mcica_sw( &
-                  ncol, nlay, ngptsw, play, &
-                  cld, clwp, ciwp, &
-                  cldfmcl, clwpmcl, ciwpmcl, &
-                  CDF, CDF2, CDF3, alpha, zm, &
-                  alat, dyofyr, rdl, adl)
+                  pncol, ncol, ngptsw, nlay, &
+                  zm, alat, dyofyr, &
+                  play, cld, ciwp, clwp, &
+                  cldfmcl, ciwpmcl, clwpmcl) 
             end if   
 
             ! cloud optical property generation

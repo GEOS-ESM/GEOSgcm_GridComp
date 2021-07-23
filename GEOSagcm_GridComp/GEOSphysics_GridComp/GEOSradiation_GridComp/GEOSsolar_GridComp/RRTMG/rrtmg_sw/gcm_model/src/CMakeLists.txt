@@ -3,7 +3,7 @@ esma_set_this (OVERRIDE RRTMG_SW)
 set (srcs
   NRLSSI2.F90
   cloud_condensate_inhomogeneity.F90 # cloud_subcol_gen.F90
-  mcica_random_numbers.F90 mcica_subcol_gen_sw.F90 rrtmg_sw_cldprmc.F90
+  mcica_subcol_gen_sw.F90 rrtmg_sw_cldprmc.F90
   rrtmg_sw_init.F90 rrtmg_sw_rad.F90 rrtmg_sw_setcoef.F90 rrtmg_sw_spcvmc.F90
   rrtmg_sw_taumol.F90
   )

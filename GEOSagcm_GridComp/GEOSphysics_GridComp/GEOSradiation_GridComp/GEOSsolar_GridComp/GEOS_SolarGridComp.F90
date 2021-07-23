@@ -3820,11 +3820,11 @@ contains
 
       ! flip in vertical ...
 
-      PLE_R (:,1:LM+1) = PLE(:,LM+1:1:-1)/100.  ! hPa
+      PLE_R (:,1:LM+1) = PLE (:,LM+1:1:-1) / 100.  ! hPa
       TLEV_R(:,1:LM+1) = TLEV(:,LM+1:1:-1)
 
-      PL_R  (:,1:LM  ) = PL (:,LM:1:-1) / 100.  ! hPa
-      T_R   (:,1:LM  ) = T  (:,LM:1:-1)
+      PL_R  (:,1:LM  ) = PL  (:,LM:1:-1)   / 100.  ! hPa
+      T_R   (:,1:LM  ) = T   (:,LM:1:-1)
 
       ! Specific humidity is converted to Volume Mixing Ratio
       Q_R   (:,1:LM  ) = Q  (:,LM:1:-1) / (1.-Q(:,LM:1:-1)) * (MAPL_AIRMW/MAPL_H2OMW) 
