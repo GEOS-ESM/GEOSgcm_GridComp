@@ -544,6 +544,7 @@ subroutine gw_beres_ifc( band, &
    real(r8) :: taury(ncol,pver+1)
    real(r8) :: taury0(ncol,pver+1)
 
+   real(r8) :: pint_adj(ncol,pver+1)
 
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
@@ -585,6 +586,13 @@ subroutine gw_beres_ifc( band, &
 
 
 
+     pint_adj = 1.0
+!WMP pressure scaling from GEOS to 0.2mb
+     where (pint < 20.0)
+       pint_adj = (pint/20.0)**3
+     endwhere
+!WMP pressure scaling from GEOS
+
      ! satfac_in is 2 by default for CAM5
 
      ! Solve for the drag profile with orographic sources.
@@ -594,8 +602,8 @@ subroutine gw_beres_ifc( band, &
           effgw,c,          kvtt,  tau,  utgw,  vtgw, &
           ttgw, egwdffi,  gwut, dttdf, dttke,            &
           satfac_in = 1._r8,                                   &
-          lapply_effgw_in=gw_apply_tndmax)
-
+          lapply_effgw_in=gw_apply_tndmax, &
+          tau_adjust=pint_adj)
 
 
      ! For orographic waves, don't bother with taucd, since there are no

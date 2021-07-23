@@ -314,7 +314,7 @@ contains
      if (nrdg > 0) then
        trpd_leewv    = .FALSE.
        effgw_rdg     = effgworo
-       effgw_rdg_max = 1.0_r8
+       effgw_rdg_max = effgworo
        rdg_cd_llb    = 1.0_r8
        call gw_rdg_ifc( &
          pcols, pver, pverp, pcnst, nrdg, dt_ff, &

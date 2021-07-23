@@ -2087,9 +2087,9 @@ contains
      call MAPL_GetPointer(IMPORT,FRLAND,  'FRLAND', RC=STATUS); VERIFY_(STATUS)
 
      if (LM .eq. 72) then
-       call MAPL_GetResource (MAPL, JASON_TUNING, "JASON_TUNING:", default=1, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=1, RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, JASON_TUNING, "JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
+       call MAPL_GetResource (MAPL, JASON_TUNING, trim(COMP_NAME)//"_JASON_TUNING:", default=0, RC=STATUS); VERIFY_(STATUS)
      endif
 
 ! Get turbulence parameters from configuration
@@ -2100,11 +2100,18 @@ contains
        call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.2,          RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=50.0,         RC=STATUS); VERIFY_(STATUS)
      else
-       call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=3.0,          RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
-       LAMBDADISS = MIN(50.0,80.0*720.0/FLOAT(imsize))
-       call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=LAMBDADISS,   RC=STATUS); VERIFY_(STATUS)
+       if (LM .eq. 181) then
+         call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=3.0,          RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=20.0,         RC=STATUS); VERIFY_(STATUS)
+       else
+         call MAPL_GetResource (MAPL, LOUIS,        trim(COMP_NAME)//"_LOUIS:",        default=3.0,          RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetResource (MAPL, ALHFAC,       trim(COMP_NAME)//"_ALHFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetResource (MAPL, ALMFAC,       trim(COMP_NAME)//"_ALMFAC:",       default=1.1,          RC=STATUS); VERIFY_(STATUS)
+        !LAMBDADISS = MIN(50.0,80.0*720.0/FLOAT(imsize))
+         call MAPL_GetResource (MAPL, LAMBDADISS,   trim(COMP_NAME)//"_LAMBDADISS:",   default=40.0,         RC=STATUS); VERIFY_(STATUS)
+       endif
      endif
      call MAPL_GetResource (MAPL, LAMBDAM,      trim(COMP_NAME)//"_LAMBDAM:",      default=160.0,        RC=STATUS); VERIFY_(STATUS)
      call MAPL_GetResource (MAPL, LAMBDAM2,     trim(COMP_NAME)//"_LAMBDAM2:",     default=1.0,          RC=STATUS); VERIFY_(STATUS)

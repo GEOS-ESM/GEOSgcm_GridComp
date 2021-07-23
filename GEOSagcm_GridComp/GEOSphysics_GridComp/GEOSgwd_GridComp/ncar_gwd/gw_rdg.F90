@@ -271,6 +271,8 @@ subroutine gw_rdg_ifc( &
    ! Energy change used by fixer.
    real(r8) :: de(ncol)
 
+   real(r8) :: pint_adj(ncol,pverp)
+
    logical, parameter :: gw_apply_tndmax = .TRUE. !- default .TRUE. for Anisotropic: "Sean" limiters
 
    character(len=4) :: type         ! BETA or GAMMA (just BETA for now)
@@ -331,6 +333,13 @@ subroutine gw_rdg_ifc( &
          satfac_in = 1._r8 )
 #endif
 
+     pint_adj = 1.0
+!WMP pressure scaling from GEOS to 10mb
+     where (pint < 1000.0)
+       pint_adj = (pint/1000.0)**3
+     endwhere
+!WMP pressure scaling from GEOS
+
 ! GEOS call
      call gw_drag_prof(ncol, pver, band, pint, delp, rdelp, & 
           src_level, tend_level,   dt, t,    &
@@ -339,7 +348,8 @@ subroutine gw_rdg_ifc( &
           ttgw, egwdffi,  gwut, dttdf, dttke,            &
           kwvrdg=kwvrdg,                                 &  
           satfac_in = 1._r8,                                   &
-          lapply_effgw_in=gw_apply_tndmax)
+          lapply_effgw_in=gw_apply_tndmax,   &
+          tau_adjust=pint_adj)
 
      flx_heat(:ncol) = 0._r8
 
