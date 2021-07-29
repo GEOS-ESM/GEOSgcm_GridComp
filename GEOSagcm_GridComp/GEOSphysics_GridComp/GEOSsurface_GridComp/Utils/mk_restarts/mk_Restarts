@@ -282,10 +282,10 @@ if (\$catchcnFLG) then
         set params = ( \$OUT_til \$IN_til \$catchcnIN \$surflay \$rsttime )
         \$mk_CatchCNRestarts_X \$params
     endif
-    if ($cnlen[0] == 4 && \$rescaleFLG) then
+    if ($cnlen[0] == 4) then
         set OUT_til   = `ls OutData/\*.til | cut -d '/' -f2`
-        /bin/ln -s \$OUT_til OutData/OutTileFile
-        /bin/ln -s \$OUT_til InData/OutTileFile
+        /bin/cp OutData/\*.til OutData/OutTileFile
+        /bin/cp OutData/\*.til InData/OutTileFile
         set CN_VERSION = $cnlist[0]
         set RESTART_ID = $cnlist[1]
         set RESTART_PATH = $cnlist[2]
