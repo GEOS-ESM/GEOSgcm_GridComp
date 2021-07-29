@@ -231,9 +231,9 @@ PROGRAM mk_GEOSldasRestarts
      if(JOBFILE == 'N') then
 
         call system('mkdir -p InData/  OutData/')
-        tmpstring =  'ln -s '//trim(BCSDIR)//'/'//trim(TILFILE)//' InData/OutTileFile'
+        tmpstring =  'cp '//trim(BCSDIR)//'/'//trim(TILFILE)//' InData/OutTileFile'
         call system(tmpstring)
-        tmpstring =  'ln -s '//trim(BCSDIR)//'/'//trim(TILFILE)//' OutData/OutTileFile'
+        tmpstring =  'cp '//trim(BCSDIR)//'/'//trim(TILFILE)//' OutData/OutTileFile'
         call system(tmpstring)
         tmpstring =  'ln -s '//trim(BCSDIR)//'/clsm OutData/clsm'
         call system(tmpstring)
