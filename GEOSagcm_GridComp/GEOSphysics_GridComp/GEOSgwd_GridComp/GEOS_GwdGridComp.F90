@@ -82,7 +82,7 @@ module GEOS_GwdGridCompMod
   public SetServices
 
 !EOP
-  logical, save      :: FIRST_RUN = .false.
+  logical, save      :: FIRST_RUN = .true.
   logical            :: USE_NCAR_GWD
   logical, parameter :: USE_NCEP_GWD = .false.
   type(GWBand)          :: beres_band
@@ -940,7 +940,7 @@ contains
 
          call MAPL_GetResource( MAPL, NCAR_PRNDL, Label="NCAR_PRNDL:", default=0.50_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=0.80_MAPL_R8, RC=STATUS)
+         call MAPL_GetResource( MAPL, NCAR_QBO_HDEPTH_SCALING, Label="NCAR_QBO_HDEPTH_SCALING:", default=0.50_MAPL_R8, RC=STATUS)
          VERIFY_(STATUS)
 
          call gw_common_init( .FALSE. , 1 , & 
@@ -1160,7 +1160,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! -----------------
     CALL MAPL_GetResource( MAPL, Z1,   Label="RAYLEIGH_Z1:",   default=75000.,  RC=STATUS)
     VERIFY_(STATUS)
-    CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=172800., RC=STATUS)
+!!  CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=172800., RC=STATUS)
+    CALL MAPL_GetResource( MAPL, TAU1, Label="RAYLEIGH_TAU1:", default=0., RC=STATUS)
     VERIFY_(STATUS)
     CALL MAPL_GetResource( MAPL, H0,   Label="RAYLEIGH_H0:",   default=7000.,	RC=STATUS)
     VERIFY_(STATUS)
@@ -1829,14 +1830,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      ! ANIXY(1,1,1)=0.9
      ! CLNGT(1,1,1)=150.
      ! HWDTH(1,1,1)=100.
-     ! GBXAR(1,1)  = 100.**2
+     ! GBXAR(1,1)  =100.**2
 
        WHERE (ANGLL < -180)
          ANGLL = 0.0
        END WHERE
        if (FIRST_RUN .and. (NCAR_NRDG > 0)) then
         IF (MAPL_AM_I_ROOT()) write(*,*) 'GWD internal state: '
-        call Write_Profile(       AREA , AREA, ESMFGRID, 'AREA' )
+        call Write_Profile( 1.e-6*AREA , AREA, ESMFGRID, 'AREA' )
         call Write_Profile(       GBXAR, AREA, ESMFGRID, 'GBXAR')
         do nrdg = 1, NCAR_NRDG
            IF (MAPL_AM_I_ROOT()) write(*,*) 'NRDG: ', nrdg
@@ -2478,16 +2479,19 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 ! Rayleigh friction
 !------------------
-
+        if (TAU1 > 0.0) then
           ZREF     = H0 * LOG(MAPL_P00/(0.5*(PREF(K)+PREF(K+1))))
           KRAY     = (1.0/TAU1)*( 1.0 - TANH( (Z1-ZREF)/HH ) )
           KRAY     = KRAY/(1+DT*KRAY)
-
           DUDT_RAH(I,K) = -U(I,K)*KRAY
           DVDT_RAH(I,K) = -V(I,K)*KRAY
-
           DTDT_RAH(I,K) = - ((U(I,K) + (0.5*DT)*DUDT_RAH(I,K))*DUDT_RAH(I,K) + &
                              (V(I,K) + (0.5*DT)*DVDT_RAH(I,K))*DVDT_RAH(I,K)   ) * (1.0/MAPL_CP)
+        else
+          DUDT_RAH(I,K) = 0.0
+          DVDT_RAH(I,K) = 0.0
+          DTDT_RAH(I,K) = 0.0
+        endif
 
           DUDT_TOT(I,K) = DUDT_RAH(I,K) + DUDT_GWD(I,K)
           DVDT_TOT(I,K) = DVDT_RAH(I,K) + DVDT_GWD(I,K)

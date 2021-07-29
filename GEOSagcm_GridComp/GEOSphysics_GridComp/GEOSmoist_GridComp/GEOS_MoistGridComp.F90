@@ -529,28 +529,6 @@ contains
     VERIFY_(STATUS)                                                                          
 
     call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME = 'PKE',                                         &
-         LONG_NAME  = 'edge_p$^\kappa$',                      &
-         UNITS      = 'Pa$^\kappa$',                               &
-         DIMS       = MAPL_DimsHorzVert,                            &
-         VLOCATION  = MAPL_VLocationEdge,                           &
-         AVERAGING_INTERVAL = AVRGNINT,                             &
-         REFRESH_INTERVAL   = RFRSHINT,                             &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                              &
-         SHORT_NAME = 'PLK',                                       &
-         LONG_NAME  = 'mid-layer_p$^\kappa$',                      &
-         UNITS      = 'Pa$^\kappa$',                               &
-         DIMS       = MAPL_DimsHorzVert,                            &
-         VLOCATION  = MAPL_VLocationCenter,                           &
-         AVERAGING_INTERVAL = AVRGNINT,                             &
-         REFRESH_INTERVAL   = RFRSHINT,                             &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                              &
          SHORT_NAME = 'PREF',                                       &
          LONG_NAME  = 'reference_air_pressure',                     &
          UNITS      = 'Pa',                                         &
@@ -559,6 +537,17 @@ contains
          AVERAGING_INTERVAL = AVRGNINT,                             &
          REFRESH_INTERVAL   = RFRSHINT,                             &
          RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'ZLE',                                       &
+         LONG_NAME  = 'geopotential_height',                       &
+         UNITS      = 'm',                                         &
+         DIMS       =  MAPL_DimsHorzVert,                          &
+         VLOCATION  =  MAPL_VLocationEdge,                         &
+         AVERAGING_INTERVAL = AVRGNINT,                             &
+         REFRESH_INTERVAL   = RFRSHINT,                             &
+                                                        RC=STATUS  )
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                              &
@@ -5437,7 +5426,7 @@ contains
            CLDREFFI                             
 
 
-      real, pointer, dimension(:,:,:) :: T, PLE, U, V, W, TH
+      real, pointer, dimension(:,:,:) :: T, ZL0, PLE, U, V, W, TH
       real, pointer, dimension(:,:)   :: TROPP
       real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE
       real, pointer, dimension(    :) :: PREF
@@ -6505,6 +6494,7 @@ contains
       call MAPL_GetPointer(IMPORT, AREA,    'AREA'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, PLE,     'PLE'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, PREF,    'PREF'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, ZL0,     'ZLE'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, KH,      'KH'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TKE,     'TKE'     , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TH,      'TH'      , RC=STATUS); VERIFY_(STATUS)
@@ -7649,12 +7639,12 @@ contains
 
 !-srf - placed here before the cumulus parameterizations are called.
       if(associated(CNV_DQLDT)) CNV_DQLDT =  0.0
-      ZLE(:,:,LM) = 0.
+      do L=LM,0,-1
+         ZLE(:,:,L) = ZL0(:,:,L) - ZL0(:,:,LM) 
+      end do
       do L=LM,1,-1
-         ZLE(:,:,L-1) = TH (:,:,L) * (1.+MAPL_VIREPS*Q(:,:,L))
-         ZLO(:,:,L  ) = ZLE(:,:,L) + (MAPL_CP/MAPL_GRAV)*( PKE(:,:,L)-PK (:,:,L  ) ) * ZLE(:,:,L-1)
-         ZLE(:,:,L-1) = ZLO(:,:,L) + (MAPL_CP/MAPL_GRAV)*( PK (:,:,L)-PKE(:,:,L-1) ) * ZLE(:,:,L-1)
-         DZET(:,:,L ) = ZLE(:,:,L-1) - ZLE(:,:,L)
+         ZLO(:,:,L) = 0.5*(ZLE(:,:,L-1) + ZLE(:,:,L))
+         DZET(:,:,L) =     ZLE(:,:,L-1) - ZLE(:,:,L)
       end do
 
       GZLE  = MAPL_GRAV * ZLE
@@ -7728,31 +7718,17 @@ contains
          CNV_FRACTION = 0.0 
          
     ! CNV_FRACTION Criteria
-      ! if(JASON_TUNING == 1) then
-          call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_GetResource(STATE,CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS)
-          VERIFY_(STATUS)
-          GF_MIN_AREA = 1.e6
-          call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT=GF_MIN_AREA, RC=STATUS)
-          VERIFY_(STATUS)
-          call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
-          VERIFY_(STATUS)
-      ! else
-      !   call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.0, RC=STATUS)
-      !   VERIFY_(STATUS)
-      !   call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.0, RC=STATUS)
-      !   VERIFY_(STATUS)
-      !   call MAPL_GetResource(STATE,CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    0.5, RC=STATUS)
-      !   VERIFY_(STATUS)
-      !   GF_MIN_AREA = (111000.0*360.0/FLOAT(imsize*4))**2
-      !   call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT=GF_MIN_AREA, RC=STATUS)
-      !   VERIFY_(STATUS)
-      !   call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
-      !   VERIFY_(STATUS)
-      ! endif
+        call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetResource(STATE,CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    1.0, RC=STATUS)
+        VERIFY_(STATUS)
+        GF_MIN_AREA = 1.e6
+        call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT=GF_MIN_AREA, RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
+        VERIFY_(STATUS)
         if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
           ! CAPE
            WHERE (CAPE .ne. MAPL_UNDEF)
@@ -8886,8 +8862,8 @@ contains
           call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
           call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 4.0e-3  )
         else
-          call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 3.0e-3  )
-          call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 3.0e-3  )
+          call MAPL_GetResource( STATE, CLDPARAMS%CCW_EVAP_EFF,   'CCW_EVAP_EFF:',   DEFAULT= 4.0e-3  )
+          call MAPL_GetResource( STATE, CLDPARAMS%CCI_EVAP_EFF,   'CCI_EVAP_EFF:',   DEFAULT= 1.0e-3  )
         endif
       ENDIF
 
@@ -8992,9 +8968,9 @@ contains
                   QICN(I,J,K)           , &
                   CLCN(I,J,K)           , &
                   CLLS(I,J,K)           , &
-                  NACTL(I,J,K)          , & !
-                  NACTI(I,J,K)          , & !
-                  QST3(I,J,K)  )
+                  NACTL(I,J,K)          , &
+                  NACTI(I,J,K)          , &
+                  QST3(I,J,K)           )
              EVAPC_X(I,J,K) = ( Q1(I,J,K) - EVAPC_X(I,J,K) ) / DT_MOIST
              SUBLC_X(I,J,K) = Q1(I,J,K)
              call subl3 (                 &
@@ -9008,9 +8984,9 @@ contains
                   QICN(I,J,K)           , &
                   CLCN(I,J,K)           , &
                   CLLS(I,J,K)           , &
-                  NACTL(I,J,K)          , & !
-                  NACTI(I,J,K)          , & !
-                  QST3(I,J,K)  )
+                  NACTL(I,J,K)          , &
+                  NACTI(I,J,K)          , &
+                  QST3(I,J,K)           )
              SUBLC_X(I,J,K) = ( Q1(I,J,K) - SUBLC_X(I,J,K) ) / DT_MOIST
        ! cleanup clouds
              call fix_up_clouds( Q1(I,J,K), TEMP(I,J,K), QLLS(I,J,K), QILS(I,J,K), CLLS(I,J,K), QLCN(I,J,K), QICN(I,J,K), CLCN(I,J,K) )
@@ -9038,6 +9014,8 @@ contains
         DQSDT_macro=(QSNOW-DQSDT_macro)/DT_MOIST
         TH1 = TEMP/PK
      ! Zero-out 3D CNV/ANV/SHL CLDMACRO Precipitation & Fluxes
+        REV_AN_X = 0.0
+        RSU_AN_X = 0.0
         PFI_CN_X = 0.0
         PFL_CN_X = 0.0
         PFI_AN_X = 0.0
@@ -9179,7 +9157,7 @@ contains
         call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0   )
         call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0   )
       else
-        TMP_ICEFALL = 0.5*(72.0/FLOAT(LM))
+        TMP_ICEFALL = 0.333333*(72.0/FLOAT(LM))
         call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL )
         call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= TMP_ICEFALL )
       endif
@@ -9290,8 +9268,6 @@ contains
         ! Temperature (K)
          TEMP = TH1*PK
         ! Delta-Z layer thickness (gfdl expects this to be negative)
-       ! DZ = TH1 * (PKE(:,:,0:LM-1) - PKE(:,:,1:LM)) * MAPL_CP/MAPL_GRAV
-       ! DZ = ( ZLE(:,:,1:LM)-ZLE(:,:,0:LM-1) )
          DZ = -1.0*DZET
         ! Get cloud nuclei particle numbers
          if (USE_AEROSOL_NN) then
@@ -9400,6 +9376,7 @@ contains
                       CNV_FRACTION(I,J), SNOMAS(I,J), FRLANDICE(I,J), FRLAND(I,J))
              ENDIF
              call fix_up_clouds( Q1(I,J,K), TEMP(I,J,K), QLLS(I,J,K), QILS(I,J,K), CLLS(I,J,K), QLCN(I,J,K), QICN(I,J,K), CLCN(I,J,K) )
+             RHX_X(I,J,K) = Q1(I,J,K)/GEOS_QSAT( TEMP(I,J,K), PLO(I,J,K) )
             end do ! IM loop
           end do ! JM loop
         end do ! LM loop
@@ -9427,7 +9404,6 @@ contains
          FQAl =  MIN(1.0,MAX(QLCN/MAX(RAD_QL,1.E-8),0.0))
         ! Ice
          FQAi =  MIN(1.0,MAX(QICN/MAX(RAD_QI,1.E-8),0.0))
-
         ! Execute GFDL microphysics
          call gfdl_cloud_microphys_driver( &
                              ! Input water/cloud species and liquid+ice CCN [NACTL+NACTI]
@@ -9533,7 +9509,6 @@ contains
               ! cleanup clouds
                call fix_up_clouds( Q1(I,J,K), TEMP(I,J,K), QLLS(I,J,K), QILS(I,J,K), CLLS(I,J,K), QLCN(I,J,K), QICN(I,J,K), CLCN(I,J,K) )
               ! get radiative properties
-               RHX_X(I,J,K) = Q1(I,J,K)/GEOS_QSAT( TEMP(I,J,K), PLO(I,J,K) )
                call RADCOUPLE ( TEMP(I,J,K), PLO(I,J,K), CLLS(I,J,K), CLCN(I,J,K), &
                      Q1(I,J,K), QLLS(I,J,K), QILS(I,J,K), QLCN(I,J,K), QICN(I,J,K), QRAIN(I,J,K), QSNOW(I,J,K), QGRAUPEL(I,J,K), NACTL(I,J,K), NACTI(I,J,K), &
                      RAD_QV(I,J,K), RAD_QL(I,J,K), RAD_QI(I,J,K), RAD_QR(I,J,K), RAD_QS(I,J,K), RAD_QG(I,J,K), RAD_CF(I,J,K), &
@@ -14275,8 +14250,8 @@ END SUBROUTINE Get_hemcoFlashrate
         QLLS = 0.0
         QLCN = 0.0
       ELSE WHERE
-        QLCN = MIN(QL,QLCN)
-        QLLS = MAX(QL-QLCN,0.0)
+        QLCN = MAX(0.0,MIN(QL,QLCN))
+        QLLS = MAX(0.0,QL-QLCN)
       END WHERE
 
       WHERE (QI < 1.e-8)
@@ -14286,11 +14261,11 @@ END SUBROUTINE Get_hemcoFlashrate
         QILS = 0.0
         QICN = 0.0
       ELSE WHERE
-        QICN = MIN(QI,QICN)
-        QILS = MAX(QI-QICN,0.0)
+        QICN = MAX(0.0,MIN(QI,QICN))
+        QILS = MAX(0.0,QI-QICN)
       END WHERE
 
-      WHERE (CF < 1.e-5)
+      WHERE ( (CF < 1.e-5) .or. (QL+QI < 1.e-8) )
         CF   = 0.0
         CLLS = 0.0
         CLCN = 0.0

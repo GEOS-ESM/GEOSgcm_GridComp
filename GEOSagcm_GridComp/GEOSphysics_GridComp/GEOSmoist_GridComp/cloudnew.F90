@@ -3636,14 +3636,13 @@ contains
           IF(USE_AEROSOL_NN) THEN
             !- cloud drop number concentration #/m3
             !- from the aerosol model + ....
-            NNX = NNL
+            NNX = MAX(NNL,1.e3)
           ELSE
             !- cloud drop number concentration #/m3
             NNX = NN
           ENDIF
-          NNX = MAX(NNX,1.e3)
           !- radius in meters
-          RADIUS = aewc * (WC/NNX)**be
+          RADIUS = MIN(60.e-6,MAX(2.5e-6,aewc * (WC/NNX)**be))
   
        ELSEIF(ITYPE == ICE) THEN
 
@@ -3659,14 +3658,6 @@ contains
          BB     = MIN((MAX(BB,-6.)),-2.) 
          RADIUS = 377.4 + 203.3 * BB+ 37.91 * BB **2 + 2.3696 * BB **3
          RADIUS = RADIUS * 1.e-6 !- convert to meter
-        ! combine with aerosol number concentration averaged with above
-         IF(USE_AEROSOL_NN) THEN 
-            NNX = MAX(NNI,1.e3)
-           !- radius in meters from eq12b of https://doi.org/10.1029/2001JD000470
-            RADIUS1 = (3.0*WC/(4.0*MAPL_PI*RHO_I*1.e3*NNX))**r13
-           ! Combine
-            RADIUS = 0.5*(RADIUS1+RADIUS)
-         ENDIF
 
       ELSE
         STOP "WRONG HYDROMETEOR type: CLOUD = 1 OR ICE = 2"
@@ -3687,9 +3678,10 @@ contains
       ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
       tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
       ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
-      ICEFRCTm = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
-      ! Combine MODIS polynomial with an Anvil version MODIS^4 
-      ICEFRCT = (ICEFRCTm**4)*CNV_FRACTION + ICEFRCTm*(1.0-CNV_FRACTION)
+      ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+!WMP !ICEFRCTm = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+!WMP !! Combine MODIS polynomial with an Anvil version MODIS^4 
+!WMP !ICEFRCT = (ICEFRCTm**4)*CNV_FRACTION + ICEFRCTm*(1.0-CNV_FRACTION)
 
    end function ICE_FRACTION
 

@@ -223,33 +223,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'PLK',                                       &
-         LONG_NAME  = 'mid-layer_p$^\kappa$',                      &
-         UNITS      = 'Pa$^\kappa$',                               &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationCenter,                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'PKE',                                       &
-         LONG_NAME  = 'edge_p$^\kappa$',                      &
-         UNITS      = 'Pa$^\kappa$',                               &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationEdge,                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                                    &
-         SHORT_NAME = 'TH',                                        &
-         LONG_NAME  = 'potential_temperature',                     &
-         UNITS      = 'K',                                         &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationCenter,                       &
-                                                        RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                                    &
          SHORT_NAME = 'T',                                         &
          LONG_NAME  = 'air_temperature',                           &
          UNITS      = 'K',                                         &
@@ -1986,7 +1959,7 @@ contains
    real                                :: SYNCTQ, DOPHYSICS
    real                                :: HGT_SURFACE
   
-   real, pointer, dimension(:,:,:)     :: S, T, ZLE, TH, PLE, PLK, U, V, W
+   real, pointer, dimension(:,:,:)     :: S, T, ZLE, TH, PLE, PK, U, V, W
    real, pointer, dimension(:,:,:)     :: DM, DPI, TOT, FRI, TTN, STN,TMP
    real, pointer, dimension(:,:,:)     :: QV, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, QW
    real, pointer, dimension(:,:,:)     :: ptr3d
@@ -2053,7 +2026,7 @@ contains
    real, pointer, dimension(:,:)       :: UA, VA, TFORSURF
    real, pointer, dimension(:,:,:)     :: SFORTURB, THFORTURB, TFORTURB
    real, pointer, dimension(:,:,:)     :: SAFDIFFUSE, SAFUPDATE
-   real, allocatable, dimension(:,:,:) :: PK, HGT, DTAFTURB
+   real, allocatable, dimension(:,:,:) :: HGT, DTAFTURB
    real, allocatable, dimension(:,:,:) :: TDPOLD, TDPNEW
    real, allocatable, dimension(:,:,:) :: TFORQS
    real, allocatable, dimension(:,:)   :: qs,pmean,DTSURFAFTURB
@@ -2208,10 +2181,8 @@ contains
     call MAPL_GetPointer(IMPORT,  W,       'W'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,  T,       'T'      , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,  S,       'S'      , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,  TH,      'TH'     , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,  ZLE,     'ZLE'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,  PLE,     'PLE'    , RC=STATUS); VERIFY_(STATUS)
-    call MAPL_GetPointer(IMPORT,  PLK,     'PLK'    , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT,  AREA,    'AREA'   , RC=STATUS); VERIFY_(STATUS)
 
     allocate( TDPOLD(IM,JM,LM),stat=STATUS )
@@ -2450,9 +2421,8 @@ contains
 !  get pointer to T in rad import bundles
      call MAPL_GetPointer ( GIM(RAD),  TFORRAD,    'T',  RC=STATUS)
 
-!  AMM - Will need PK to get from T to TH and back
+!  Will need PK to get from T to TH and back
       allocate(PK(IM,JM,LM),stat=STATUS);VERIFY_(STATUS)
-     !PK = ((0.5*(PLE(:,:,0:LM-1) +  PLE(:,:,1:LM  ) ))/100000.)**(MAPL_RGAS/MAPL_CP)
       PK = ((0.5*(PLE(:,:,0:LM-1)+PLE(:,:,1:LM))) / MAPL_P00)**MAPL_KAPPA
     endif
 

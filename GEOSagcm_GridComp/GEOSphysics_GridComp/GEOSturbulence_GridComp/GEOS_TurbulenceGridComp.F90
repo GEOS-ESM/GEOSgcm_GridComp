@@ -259,6 +259,16 @@ contains
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
+      call MAPL_AddImportSpec(GC,                                    &
+         SHORT_NAME = 'ZLE',                                       &
+         LONG_NAME  = 'geopotential_height',                       &
+         UNITS      = 'm',                                         &
+         DIMS       =  MAPL_DimsHorzVert,                          &
+         VLOCATION  =  MAPL_VLocationEdge,                         &
+         RESTART    = MAPL_RestartSkip,                           &
+                                                        RC=STATUS  )
+      VERIFY_(STATUS)
+
       call MAPL_AddImportSpec(GC,                                 &
          SHORT_NAME = 'T',                                        &
          LONG_NAME  = 'air_temperature',                          &
@@ -1382,16 +1392,6 @@ contains
     VERIFY_(STATUS)
 
     call MAPL_AddInternalSpec(GC,                                            &
-       LONG_NAME  = 'geopotential_height_above_surface',                     &
-       SHORT_NAME = 'ZLE',                                                   &
-       UNITS      = 'm',                                                     &
-       DIMS       = MAPL_DimsHorzVert,                                       &
-       VLOCATION  = MAPL_VLocationEdge,                                      &
-       RESTART    = MAPL_RestartSkip,                            &
-                                                                  RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddInternalSpec(GC,                                            &
        LONG_NAME  = 'turbulence_tendency_for_dry_static_energy',             &
        SHORT_NAME = 'SINC',                                                  &
        UNITS      = 'm+2 s-3',                                               &
@@ -1744,10 +1744,12 @@ contains
 ! Get all pointers that are needed by both REFRESH and DIFFUSE
 !-------------------------------------------------------------
 
-! Get pressure structure; this is instantaneous.
+! Get pressure & height structure; this is instantaneous.
 !-----------------------------------------------
 
      call MAPL_GetPointer(IMPORT,  PLE,   'PLE',     RC=STATUS)
+     VERIFY_(STATUS)
+     call MAPL_GetPointer(IMPORT,  ZLE,   'ZLE',     RC=STATUS)
      VERIFY_(STATUS)
 
 ! Get surface exchange coefficients
@@ -1798,8 +1800,6 @@ contains
     call MAPL_GetPointer(INTERNAL, EKV,   'EKV',     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, FKV,   'FKV',     RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, ZLE,   'ZLE',     RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, SINC,  'SINC',    RC=STATUS)
     VERIFY_(STATUS)
@@ -1969,7 +1969,7 @@ contains
 
      real, dimension(IM,JM,1:LM-1)       :: TVE, RDZ
      real, dimension(IM,JM,LM)           :: THV, TV, Z, DMI, PLO, QL, QI, QA, TSM, USM, VSM
-     real, dimension(IM,JM,0:LM)         :: PKE, ZSM
+     real, dimension(IM,JM,0:LM)         :: ZSM, ZL0
      integer, dimension(IM,JM)           :: SMTH_LEV
 
      real, dimension(:,:,:), pointer     :: EKH, EKM, KHLS, KMLS, KHRAD, KHSFC
@@ -2357,23 +2357,18 @@ contains
 
       call MAPL_TimerOn(MAPL,"---PRELIMS")
 
-      ! Compute the edge heights using Arakawa-Suarez hydrostatic equation
-      !---------------------------------------------------------------------------
-
-      PKE = (PLE/MAPL_P00)**MAPL_KAPPA
-      ZLE(:,:,LM) = 0.0
-      do L = LM, 1, -1
-         ZLE(:,:,L-1) = ZLE(:,:,L) + (MAPL_CP/MAPL_GRAV)*TH(:,:,L)*(PKE(:,:,L)-PKE(:,:,L-1))
-      end do
       !===> Running 1-2-1 smooth of bottom levels of ZLE
-      ZSM = ZLE
+      do L=0,LM
+         ZL0(:,:,L) = ZLE(:,:,L) - ZLE(:,:,LM) ! height above the surface 
+      enddo
+      ZSM = ZL0
       where (SMTH_LEV .lt. LM)
-        ZSM(:,:,LM) = ZLE(:,:,LM-1)*0.25 + ZLE(:,:,LM  )*0.75
+        ZSM(:,:,LM) = ZL0(:,:,LM-1)*0.25 + ZL0(:,:,LM  )*0.75
       end where
       do J=1,JM
        do I=1,IM
          do L=LM-1,SMTH_LEV(I,J),-1
-            ZSM(I,J,L) = ZLE(I,J,L-1)*0.25 + ZLE(I,J,L)*0.50 + ZLE(I,J,L+1)*0.25
+            ZSM(I,J,L) = ZL0(I,J,L-1)*0.25 + ZL0(I,J,L)*0.50 + ZL0(I,J,L+1)*0.25
          end do
        end do
       end do
@@ -3962,6 +3957,7 @@ end subroutine RUN1
 !------------
 
       call MAPL_GetPointer(IMPORT,    PLE,     'PLE', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,    ZLE,     'ZLE', RC=STATUS); VERIFY_(STATUS)
 
 ! Get the tendecy sensitivities computed in RUN1
 !-----------------------------------------------
@@ -3978,8 +3974,6 @@ end subroutine RUN1
       call MAPL_GetPointer(INTERNAL, EKV,   'EKV',   RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL, FKV,   'FKV',   RC=STATUS)
-      VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, ZLE,   'ZLE',   RC=STATUS)
       VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL, SINC,  'SINC',    RC=STATUS)
       VERIFY_(STATUS)
