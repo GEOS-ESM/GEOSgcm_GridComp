@@ -80,7 +80,7 @@ contains
       real, dimension(pncol) :: adl, rdl
 
       ! inter-layer correlations for cldfrac and condensate
-      real, dimension(pncol,nlay) :: alpha
+      real, dimension(pncol,nlay) :: alpha, rcorr
 
       ! related to decorrelation lengths
       real :: am1, am2, am3, am4, amr
@@ -105,19 +105,18 @@ contains
       ! save for speed
       cond_inhomo = condensate_inhomogeneous()
 
-      !$acc kernels
       cdf1 = 0.
       cdf2 = 0.
       cdf3 = 0.
       alpha = 0.
-      !$acc end kernels
+      rcorr = 0.
 
       ! -----------------------------------
       ! compute decorrelation length scales
       ! -----------------------------------
 
+!pmn y
       ! cloud presence decorrelation length scale
-      !$acc kernels
       am1 = 1.4315
       am2 = 2.1219
       am4 = -25.584
@@ -131,6 +130,7 @@ contains
          adl(icol) = (am1+am2*exp(-(alat(icol)*180./3.141592-am3)**2/am4**2))*1.e3  ! [m]
       end do
 
+!pmn y
       ! condensate decorrelation length scale
       am1 = 0.72192
       am2 = 0.78996
@@ -144,18 +144,19 @@ contains
       do icol = 1,ncol
          rdl(icol) = (am1+am2*exp(-(alat(icol)*180./3.141592-am3)**2/am4**2))*1.e3  ! [m]
       end do
-      !$acc end kernels      
    
-      !$acc kernels
+!pmn y
       do icol = 1,ncol
          alpha(icol,1) = 0.
          do ilay = 2,nlay
             alpha(icol,ilay) = exp(-(zmid(icol,ilay) - zmid(icol,ilay-1)) / adl(icol))
          end do
       end do
-      !$acc end kernels
      
-      !$acc kernels
+! pmn icol ily nsub ie (nsub,ily,icl)
+! but non-zero-diff <<<<<<<<<<<<<<<<<<<<<  !!!!
+! preserve zero-diff as longg as possible so work on other parts of code first
+
       do ilay = 1,nlay
          do icol = 1,ncol
             seed1 = (play(icol,1) - int(play(icol,1))) * 100000000 - ilay
@@ -171,9 +172,8 @@ contains
             end do
          end do
       end do
-      !$acc end kernels        
     
-      !$acc kernels
+!pmn y (isub,ilay,icol)
       do icol = 1,ncol
          do isubcol = 1,nsubcol
             do ilay = 2,nlay
@@ -183,20 +183,16 @@ contains
             end do
          end do
       end do
-      !$acc end kernels
     
       if (cond_inhomo) then
         
-         !$acc kernels  
          do icol = 1,ncol
-            alpha(icol,1) = 0.
+            rcorr(icol,1) = 0.
             do ilay = 2,nlay
-               alpha(icol,ilay) = exp(-(zmid(icol,ilay) - zmid(icol,ilay-1)) / rdl(icol))
+               rcorr(icol,ilay) = exp(-(zmid(icol,ilay) - zmid(icol,ilay-1)) / rdl(icol))
             end do
          end do
-         !$acc end kernels
         
-         !$acc kernels
          do ilay = 1,nlay
             do icol = 1,ncol
                seed1 = (play(icol,1) - int(play(icol,1))) * 100000000 - ilay
@@ -211,19 +207,16 @@ contains
                end do
             end do
          end do
-         !$acc end kernels
 
-         !$acc kernels
          do icol = 1,ncol
             do isubcol = 1,nsubcol
                do ilay = 2,nlay
-                  if (cdf2(icol,ilay,isubcol) < alpha(icol,ilay)) then
+                  if (cdf2(icol,ilay,isubcol) < rcorr(icol,ilay)) then
                      cdf3(icol,ilay,isubcol) = cdf3(icol,ilay-1,isubcol)
                   end if
                end do
             end do
          end do
-         !$acc end kernels        
       end if
 
       ! where the subcolumn is cloudy, the subcolumn cloud fraction is 1;
@@ -231,10 +224,12 @@ contains
       ! where there is a cloud, define the subcolumn cloud properties,
       ! otherwise set these to zero
 
-      !$acc kernels 
+!pmn refactor of cond_inhomo
+! otherwise I think y
       do ilay = 1,nlay
          do icol = 1,ncol
             do isubcol = 1,nsubcol
+
                if (cond_inhomo .and. cdf1(icol,ilay,isubcol) >= (1. - cld(icol,ilay))) then
 
                   cld_stoch(icol,ilay,isubcol) = 1. 
@@ -270,7 +265,9 @@ contains
             enddo
          enddo
       enddo
-      !$acc end kernels
+
+! ilay, icol: zmid, play, alpha, rcorr, cld, ciwp, clwp
+! isubcol, ilay, icol: _stoch, and perhaps cdf* ?
 
    end subroutine mcica_sw
 

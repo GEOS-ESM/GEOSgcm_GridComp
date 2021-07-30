@@ -46,12 +46,6 @@
 ! ****************************************************************************
 
     
-#ifdef _CUDA
-#define gpu_device ,device
-#else
-#define gpu_device 
-#endif
-    
 module rrtmg_sw_rad
 
    use rrsw_vsn
@@ -89,9 +83,6 @@ contains
 !pmn: put heating rates outside??
 
       use parrrsw,  only : nbndsw
-#ifdef _CUDA
-      use cudafor
-#endif 
 
       
       ! ----- Inputs -----
@@ -262,15 +253,6 @@ contains
 
       integer :: pncol
       
-#ifdef _CUDA
-      type(cudadeviceprop) :: prop
-      real :: gmem
-      integer :: err
-      integer :: munits
-      integer :: numDevices, numCPUsPerGPU
-      real :: maxmem
-#endif
-      
       ! ASSERTs to catch unphysical or invalid inputs
       ! ----------------------------------------------
 
@@ -385,65 +367,7 @@ contains
       if (rpart > 0) then
          pncol = rpart
       else
-
-#ifdef _CUDA
- 
-      err = cudaGetDeviceProperties( prop, 0)
-      gmem = prop%totalGlobalMem / (1024.0 * 1024.0)
-      !print *, "total GPU global memory is ", gmem , "MB"
-
-      err = cudaGetDeviceCount(numDevices)
-      !print *, "total number of GPUs is ", numDevices
-
-      numCPUsPerGPU = ceiling( real(numCPUs) / real(numDevices) )
-      !print *, "number of CPUs per GPU is ", numCPUsPerGPU
-
-      maxmem = gmem/real(numCPUsPerGPU)
-      !print *, "available GPU global memory per CPU is ", maxmem , "MB"
-      
-      ! dmb 2013
-      ! Here 
-      ! The optimal partition size is determined by the following conditions
-      ! 1. Powers of 2 are the most efficient.
-      ! 2. The second to largest power of 2 that can fit on 
-      !    the GPU is most efficient.
-      ! 3. Having a small remainder for the final partiion is inefficient.
-      
-      if (gmem > 5000) then
-         pncol = 4096
-      else if (gmem > 3000) then
-         pncol = 2048
-      else if (gmem > 1000) then
-         pncol = 1024
-      else 
-         pncol = 512
-      end if
-
-      !print *,"pncol based on gmem is: ", pncol 
-
-      pncol = pncol / numCPUsPerGPU
-
-      !print *,"pncol based on gmem per numCPUsPerGPU is: ", pncol 
-
-      ! the smallest allowed partition size is 32
-      do err = 1, 6
-          if (pncol > ncol .and. pncol>32) then 
-              pncol = pncol/2
-          end if
-      end do
-      
-      ! if we have a very large number of columns, account for the 
-      ! static ncol memory requirement 
-      if (ncol>29000 .and. pncol>4000) then
-          pncol = pncol/2
-      end if
-
-#else
-      pncol = 2
-      
-#endif 
-
-      !print *, "Final partition size is ", pncol
+         pncol = 2
       end if
       
       ! do a partition
@@ -793,18 +717,18 @@ contains
       real :: svar_i_bnd (jpband)  ! baseline irradiance multiplier (by band)
 
 !? pmn
-      real gpu_device :: zgco  (pncol,ngptsw,nlay+1), zomco  (pncol,ngptsw,nlay+1)  
-      real gpu_device :: zrdnd (pncol,ngptsw,nlay+1) 
-      real gpu_device :: zref  (pncol,ngptsw,nlay+1), zrefo  (pncol,ngptsw,nlay+1)  
-      real gpu_device :: zrefd (pncol,ngptsw,nlay+1), zrefdo (pncol,ngptsw,nlay+1)  
-      real gpu_device :: ztauo (pncol,ngptsw,nlay)  
-      real gpu_device :: zdbt  (pncol,ngptsw,nlay+1), ztdbt  (pncol,ngptsw,nlay+1)   
-      real gpu_device :: ztra  (pncol,ngptsw,nlay+1), ztrao  (pncol,ngptsw,nlay+1)  
-      real gpu_device :: ztrad (pncol,ngptsw,nlay+1), ztrado (pncol,ngptsw,nlay+1)  
-      real gpu_device :: zfd   (pncol,ngptsw,nlay+1), zfu    (pncol,ngptsw,nlay+1)  
-      real gpu_device :: zsflxzen(pncol,ngptsw)
-      real gpu_device :: ssi   (pncol,ngptsw)
-      real gpu_device :: ztaur (pncol,nlay,ngptsw), ztaug (pncol,nlay,ngptsw) 
+      real :: zgco  (pncol,ngptsw,nlay+1), zomco  (pncol,ngptsw,nlay+1)  
+      real :: zrdnd (pncol,ngptsw,nlay+1) 
+      real :: zref  (pncol,ngptsw,nlay+1), zrefo  (pncol,ngptsw,nlay+1)  
+      real :: zrefd (pncol,ngptsw,nlay+1), zrefdo (pncol,ngptsw,nlay+1)  
+      real :: ztauo (pncol,ngptsw,nlay)  
+      real :: zdbt  (pncol,ngptsw,nlay+1), ztdbt  (pncol,ngptsw,nlay+1)   
+      real :: ztra  (pncol,ngptsw,nlay+1), ztrao  (pncol,ngptsw,nlay+1)  
+      real :: ztrad (pncol,ngptsw,nlay+1), ztrado (pncol,ngptsw,nlay+1)  
+      real :: zfd   (pncol,ngptsw,nlay+1), zfu    (pncol,ngptsw,nlay+1)  
+      real :: zsflxzen(pncol,ngptsw)
+      real :: ssi   (pncol,ngptsw)
+      real :: ztaur (pncol,nlay,ngptsw), ztaug (pncol,nlay,ngptsw) 
 
       integer :: npart_clr, npart_cld, npart
       integer, dimension (gncol) :: &
@@ -1119,104 +1043,19 @@ contains
          end if
       end do
 
-!$acc data copyout(swuflxc, swdflxc, swuflx, swdflx, swnflxc, swnflx, swhrc, swhr) &
-!$acc create(laytrop, laylow, jp, jt, jt1, &
-!$acc co2mult, colch4, colco2, colh2o, colmol, coln2o, &
-!$acc colo2, colo3, fac00, fac01, fac10, fac11, &
-!$acc selffac, selffrac, indself, forfac, forfrac, indfor, &
-!$acc zbbfu, zbbfd, zbbcu, zbbcd,zbbfddir, zbbcddir, zuvfd, zuvcd, zuvfddir, &
-!$acc zuvcddir, znifd, znicd, znifddir,znicddir, &
-!$acc cldfmcl, ciwpmcl, clwpmcl,  &
-!$acc taormc, taucmc, ssacmc, asmcmc, fsfcmc) &
-!$acc deviceptr(zref,zrefo,zrefd,zrefdo,&
-!$acc ztauo,ztdbt,&
-!$acc ztra,ztrao,ztrad,ztrado,&
-!$acc zfd,zfu,zdbt,zgco,&
-!$acc zomco,zrdnd,ztaug, ztaur,zsflxzen,ssi)&
-!$acc create(ciwp, clwp, cld, rei, rel) &
-!$acc create(play, tlay, plev, cldflag, coszen, swdflx_at_top) &
-!$acc create(coldry, wkl, znirr,znirf,zparr,zparf,zuvrr,zuvrf) &
-!$acc create(extliq1, ssaliq1, asyliq1, extice2, ssaice2, asyice2) &
-!$acc create(extice3, ssaice3, asyice3, fdlice3, abari, bbari, cbari, dbari, ebari, fbari) &
-!$acc create(taua, asya, omga,gtauaer,gssaaer,gasmaer, zm, alat) &
-!$acc copyin(wavenum2, ngb) &
-!$acc copyin(tref, preflog, albdif, albdir, cossza)&
-!$acc copyin(icxa, adjflux, nspa, nspb)&
-!$acc copyin(svar_f, svar_s, svar_i)&
-!$acc copyin(svar_f_bnd, svar_s_bnd, svar_i_bnd)&
-!$acc copyin(kao16,kbo16,selfrefo16,forrefo16,sfluxrefo16)&
-!$acc copyin(ka16,kb16,selfref16,forref16,sfluxref16)&
-!$acc copyin(irradnceo16,facbrghto16,snsptdrko16)&
-!$acc copyin(kao17,kbo17,selfrefo17,forrefo17,sfluxrefo17)&
-!$acc copyin(ka17,kb17,selfref17,forref17,sfluxref17)&
-!$acc copyin(irradnceo17,facbrghto17,snsptdrko17)&
-!$acc copyin(kao18,kbo18,selfrefo18,forrefo18,sfluxrefo18)&
-!$acc copyin(ka18,kb18,selfref18,forref18,sfluxref18)&
-!$acc copyin(irradnceo18,facbrghto18,snsptdrko18)&
-!$acc copyin(kao19,kbo19,selfrefo19,forrefo19,sfluxrefo19)&
-!$acc copyin(ka19,kb19,selfref19,forref19,sfluxref19)&
-!$acc copyin(irradnceo19,facbrghto19,snsptdrko19)&
-!$acc copyin(kao20,kbo20,selfrefo20,forrefo20,sfluxrefo20,absch4o20)&
-!$acc copyin(ka20,kb20,selfref20,forref20,sfluxref20,absch420)&
-!$acc copyin(irradnceo20,facbrghto20,snsptdrko20)&
-!$acc copyin(kao21,kbo21,selfrefo21,forrefo21,sfluxrefo21)&
-!$acc copyin(ka21,kb21,selfref21,forref21,sfluxref21)&
-!$acc copyin(irradnceo21,facbrghto21,snsptdrko21)&
-!$acc copyin(kao22,kbo22,selfrefo22,forrefo22,sfluxrefo22)&
-!$acc copyin(ka22,kb22,selfref22,forref22,sfluxref22)&
-!$acc copyin(irradnceo22,facbrghto22,snsptdrko22)&
-!$acc copyin(kao23,selfrefo23,forrefo23,sfluxrefo23,raylo23)&
-!$acc copyin(ka23,selfref23,forref23,sfluxref23,rayl23)&
-!$acc copyin(irradnceo23,facbrghto23,snsptdrko23)&
-!$acc copyin(kao24,kbo24,selfrefo24,forrefo24,sfluxrefo24,abso3ao24,abso3bo24,raylao24,raylbo24)&
-!$acc copyin(ka24,kb24,selfref24,forref24,sfluxref24,abso3a24,abso3b24,rayla24,raylb24)&
-!$acc copyin(irradnceo24,facbrghto24,snsptdrko24)&
-!$acc copyin(kao25,sfluxrefo25,abso3ao25,abso3bo25,raylo25)&
-!$acc copyin(ka25,sfluxref25,abso3a25,abso3b25,rayl25)&
-!$acc copyin(irradnceo25,facbrghto25,snsptdrko25)&
-!$acc copyin(sfluxrefo26)&
-!$acc copyin(sfluxref26,gzm,galat)&
-!$acc copyin(irradnceo26,facbrghto26,snsptdrko26)&
-!$acc copyin(kao27,kbo27,sfluxrefo27, raylo27)&
-!$acc copyin(ka27,kb27,sfluxref27, rayl27)&
-!$acc copyin(irradnceo27,facbrghto27,snsptdrko27)&
-!$acc copyin(kao28,kbo28,sfluxrefo28)&
-!$acc copyin(ka28,kb28,sfluxref28)&
-!$acc copyin(irradnceo28,facbrghto28,snsptdrko28)&
-!$acc copyin(kao29,kbo29,selfrefo29,forrefo29,sfluxrefo29,absh2oo29,absco2o29)&
-!$acc copyin(ka29,kb29,selfref29,forref29,sfluxref29,absh2o29,absco229)&
-!$acc copyin(irradnceo29,facbrghto29,snsptdrko29)&
-!$acc copyin(gh2ovmr, gco2vmr, go3vmr, gn2ovmr, gch4vmr, go2vmr)&
-!$acc copyin(gcld, gciwp, gclwp, grei, grel, gplay, gplev, gtlay)&
-!$acc copyin(gasdir, galdir, gasdif, galdif,gicol_cld,gicol_clr,gcoszen)&
-!$acc copyout(nirr,nirf,parr,parf,uvrr,uvrf)
-
-!$acc update device(extliq1, ssaliq1, asyliq1, extice2, ssaice2, asyice2) &
-!$acc device(extice3, ssaice3, asyice3, fdlice3, abari, bbari, cbari, dbari, ebari, fbari) &
-!$acc device(preflog)
-
       ! number of pncol partitions needed for each of clear and cloudy profiles
       npart_clr = ceiling( real(ncol_clr) / real(pncol) )
       npart_cld = ceiling( real(ncol_cld) / real(pncol) )
 
       ! zero McICA cloud physical props
-      !$acc kernels    
       cldfmcl = 0.
       ciwpmcl = 0.
       clwpmcl = 0.     
-      !$acc end kernels
   
       ! zero aerosols
-      !$acc kernels
       taua = 0.
       asya = 0.
       omga = 1.
-      !$acc end kernels
-
-      ! aerosols requested
-      if (iaer==10) then
-         !$acc update device(gtauaer,gssaaer,gasmaer)
-      end if
 
       ! partitioning over clear (cc=1) and cloudy (cc=2) columns
       ! --------------------------------------------------------
@@ -1248,14 +1087,12 @@ contains
 
 !?pmn defaults for clear cc==1 I thinjk ... add comment
             ! zero McICA cloud optical props
-            !$acc kernels            
             taormc = 0.
             taucmc = 0.
             ssacmc = 1.
             asmcmc = 0.
 !?pmn needed --- dont think so
             fsfcmc = 0.
-            !$acc end kernels            
 
             ! copy inputs into partition
             ! --------------------------
@@ -1266,7 +1103,6 @@ contains
                ! Clear columns
                ! -------------
 
-               !$acc kernels loop private(gicol)
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)
 
@@ -1295,10 +1131,8 @@ contains
                   albdif(icol,9) = (gasdif(gicol)+galdif(gicol))/2.
 
                enddo
-               !$acc end kernels      
 
                ! copy in partition (general)
-               !$acc kernels 
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)
     
@@ -1307,11 +1141,9 @@ contains
                   tlay(icol,:) = gtlay(gicol,1:nlay)
 
                enddo
-               !$acc end kernels
 
                ! copy in partition (aerosols)
                if (iaer==10) then
-                  !$acc kernels
                   do icol = 1,ncol
                      gicol = gicol_clr(icol + cols - 1)
                      taua(icol,1:nlay,:) = gtauaer(gicol,1:nlay,:)
@@ -1319,11 +1151,9 @@ contains
                      omga(icol,1:nlay,:) = gssaaer(gicol,1:nlay,:)
 !?pmn this ordering is very inefficient
                   enddo
-                  !$acc end kernels
                endif   
 
                ! copy in partition (gases)
-               !$acc kernels
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)
                   wkl(icol,1,:) = gh2ovmr(gicol,1:nlay)
@@ -1335,7 +1165,6 @@ contains
                   wkl(icol,7,:) = go2vmr (gicol,1:nlay)   
                   coszen(icol)  = gcoszen(gicol)
                 end do
-                !$acc end kernels
 
             else
 
@@ -1343,7 +1172,6 @@ contains
                ! Cloudy columns
                ! --------------
           
-               !$acc kernels loop private(gicol)
                do icol = 1,ncol
                   gicol = gicol_cld(icol + cols - 1)
      
@@ -1372,10 +1200,8 @@ contains
                   albdif(icol,9) = (gasdif(gicol)+galdif(gicol))/2.
 
                enddo
-               !$acc end kernels               
           
                ! copy in partition (general and cloud physical props)
-               !$acc kernels 
                do icol = 1,ncol
                   gicol = gicol_cld(icol + cols - 1)
      
@@ -1390,22 +1216,18 @@ contains
                   zm  (icol,:) = gzm  (gicol,1:nlay)
                   alat(icol)   = galat(gicol)
                enddo
-               !$acc end kernels
 
                ! copy in partition (aerosols)
                if (iaer==10) then
-                  !$acc kernels    
                   do icol = 1,ncol
                      gicol = gicol_cld(icol + cols - 1)
                      taua(icol,1:nlay,:) = gtauaer(gicol,1:nlay,:)
                      asya(icol,1:nlay,:) = gasmaer(gicol,1:nlay,:)
                      omga(icol,1:nlay,:) = gssaaer(gicol,1:nlay,:)
                   end do
-                  !$acc end kernels
                endif
 
                ! copy in partition (gases)
-               !$acc kernels
                do icol = 1,ncol
                   gicol = gicol_cld(icol + cols - 1)
                   wkl(icol,1,:) = gh2ovmr(gicol,1:nlay)
@@ -1417,20 +1239,16 @@ contains
                   wkl(icol,7,:) = go2vmr(gicol,1:nlay)  
                   coszen(icol)  = gcoszen(gicol)
                enddo
-               !$acc end kernels
 
             end if  ! clear or cloudy columns
 
             ! limit tiny cosine zenith angles
-            !$acc kernels
             do icol = 1,ncol
                cossza(icol) = max(zepzen,coszen(icol))
             enddo
-            !$acc end kernels  
 
             ! evaluate dry air molecules/cm^2
             ! (see details in rrtmg_lw_rad())
-            !$acc kernels
             do icol = 1,ncol
                do ilay = 1,nlay
                   coldry(icol,ilay) = (plev(icol,ilay)-plev(icol,ilay+1)) * 1.e3 * avogad / &
@@ -1438,10 +1256,8 @@ contains
                      (1. + wkl(icol,1,ilay)))
                enddo
             enddo
-            !$acc end kernels
 
             ! gases also to molecules/cm^2
-            !$acc kernels
             do icol = 1,ncol
                do ilay = 1,nlay
                   do imol = 1,nmol
@@ -1449,7 +1265,6 @@ contains
                   end do
                end do
             end do
-            !$acc end kernels
 
 !issue that pncol is full partition(=dimension) while ncol is actual used
 ! so either input pncol as well to dimension or else only send in actual 
@@ -1509,7 +1324,6 @@ contains
 
             if (cc==1) then  ! clear columns
 
-               !$acc kernels loop independent
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)
         
@@ -1537,10 +1351,8 @@ contains
                   swhr (gicol,nlay) = 0. 
 
                enddo
-               !$acc end kernels 
 
                ! surface broadband fluxes
-               !$acc kernels loop independent
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)
                   nirr(gicol) = znirr(icol)
@@ -1550,11 +1362,9 @@ contains
                   uvrr(gicol) = zuvrr(icol)
                   uvrf(gicol) = zuvrf(icol) - zuvrr(icol)
                end do
-               !$acc end kernels 
 
             else ! cloudy columns
 
-               !$acc kernels loop independent
                do icol = 1,ncol
                   gicol = gicol_cld(icol + cols - 1)
                   do ilev = 1,nlay+1
@@ -1578,9 +1388,7 @@ contains
                   swhr (gicol,nlay) = 0. 
 
                enddo
-               !$acc end kernels 
 
-               !$acc kernels loop independent
                do icol = 1,ncol
                   gicol = gicol_cld(icol + cols - 1)
                   nirr(gicol) = znirr(icol)
@@ -1590,7 +1398,6 @@ contains
                   uvrr(gicol) = zuvrr(icol)
                   uvrf(gicol) = zuvrf(icol) - zuvrr(icol)
                enddo
-               !$acc end kernels 
 
             endif  ! clear/cloudy
 
@@ -1604,7 +1411,6 @@ contains
 
       if (normFlx == 1) then
 
-         !$acc kernels
          swdflx_at_top(:) = max(swdflx(:,nlay+1),1e-7)
 
          do ilev = 1,nlay+1
@@ -1620,11 +1426,9 @@ contains
          parf(:) = parf(:) / swdflx_at_top(:)
          uvrr(:) = uvrr(:) / swdflx_at_top(:)
          uvrf(:) = uvrf(:) / swdflx_at_top(:)
-         !$acc end kernels
 
       endif
 
-      !$acc end data
       
    end subroutine rrtmg_sw_sub
 

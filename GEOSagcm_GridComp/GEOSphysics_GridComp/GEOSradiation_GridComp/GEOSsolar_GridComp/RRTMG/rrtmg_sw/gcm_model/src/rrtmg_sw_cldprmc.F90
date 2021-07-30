@@ -95,13 +95,10 @@ contains
       real :: extcoice, gice, ssacoice, forwice
       real :: extcoliq, gliq, ssacoliq, forwliq
 
-      !$acc kernels loop present(cldfmc, ciwpmc, clwpmc, relqmc, reicmc, taucmc, ssacmc, asmcmc, taormc)
       do iplon = 1, ncol
 
-         !$acc loop 
          do lay = 1, nlayers
 
-            !$acc loop private(fdelta,extcoice,gice,ssacoice,forwice,extcoliq,gliq,ssacoliq,forwliq)
             do ig = 1, ngptsw 
 
 !?pmn: ordering is reverse of efficient
@@ -278,7 +275,6 @@ contains
             enddo  ! g-points
          enddo  ! layers
       enddo  ! columns
-      !$acc end kernels
 
    end subroutine cldprmc_sw
 

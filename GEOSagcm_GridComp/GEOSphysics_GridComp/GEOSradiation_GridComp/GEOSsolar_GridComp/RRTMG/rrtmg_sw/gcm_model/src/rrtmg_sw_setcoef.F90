@@ -103,7 +103,6 @@ contains
       ! Initializations
       real, parameter :: stpfac = 296. / 1013. 
 
-      !$acc kernels present(pavel, laytrop, laylow)
       laytrop = 0
       laylow = 0
       do icol = 1,ncol
@@ -113,12 +112,7 @@ contains
             if (plog >= 6.62) laylow(icol) = laylow(icol) + 1
          end do
       end do
-      !$acc end kernels
 
-      !$acc kernels loop present(pavel, tavel) &
-      !$acc present(coldry, wkl, jp, jt, jt1, colh2o, colco2) &
-      !$acc present(colo3, coln2o, colch4, colo2, colmol, co2mult, indself) &
-      !$acc present(indfor, selffac, selffrac, forfac, forfrac, fac00, fac01, fac10, fac11)
       do icol = 1, ncol
          do lay = 1, nlayers
 
@@ -247,7 +241,6 @@ contains
 
          end do  ! layer loop
       end do  ! column loop
-      !$acc end kernels
 
    end subroutine setcoef_sw
 

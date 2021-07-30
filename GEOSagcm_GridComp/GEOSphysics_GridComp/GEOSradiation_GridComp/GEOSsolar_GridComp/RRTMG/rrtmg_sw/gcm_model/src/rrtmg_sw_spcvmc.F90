@@ -1,9 +1,3 @@
-#ifdef _CUDA
-#define gpu_device ,device
-#else
-#define gpu_device 
-#endif
-
 module rrtmg_sw_spcvmc
 
 !  --------------------------------------------------------------------------
@@ -173,18 +167,19 @@ contains
       real, intent(in) :: fac11(:,:) 
                                                                !   Dimensions: (nlayers)
 
-      real, intent(inout) gpu_device :: zgco(tncol,ngptsw,nlayers+1), zomco(tncol,ngptsw,nlayers+1)  
-      real, intent(inout) gpu_device :: zrdnd(tncol,ngptsw,nlayers+1) 
-      real, intent(inout) gpu_device :: zref(tncol,ngptsw,nlayers+1)  , zrefo(tncol,ngptsw,nlayers+1)  
-      real, intent(inout) gpu_device :: zrefd(tncol,ngptsw,nlayers+1)  , zrefdo(tncol,ngptsw,nlayers+1)  
-      real, intent(inout) gpu_device :: ztauo(tncol,ngptsw,nlayers)  
-      real, intent(inout) gpu_device :: zdbt(tncol,ngptsw,nlayers+1)  ,ztdbt(tncol,ngptsw,nlayers+1)   
-      real, intent(inout) gpu_device :: ztra(tncol,ngptsw,nlayers+1)  , ztrao(tncol,ngptsw,nlayers+1)  
-      real, intent(inout) gpu_device :: ztrad(tncol,ngptsw,nlayers+1)  , ztrado(tncol,ngptsw,nlayers+1)  
-      real, intent(inout) gpu_device :: zfd(tncol,ngptsw,nlayers+1)  , zfu(tncol,ngptsw,nlayers+1)   
-      real, intent(inout) gpu_device :: ztaur(tncol,nlayers,ngptsw), ztaug(tncol,nlayers,ngptsw) 
-      real, intent(inout) gpu_device :: zsflxzen(tncol,ngptsw)
-      real, intent(inout) gpu_device :: ssi(tncol,ngptsw)
+! pmn why inout?
+      real, intent(inout) :: zgco(tncol,ngptsw,nlayers+1), zomco(tncol,ngptsw,nlayers+1)  
+      real, intent(inout) :: zrdnd(tncol,ngptsw,nlayers+1) 
+      real, intent(inout) :: zref(tncol,ngptsw,nlayers+1)  , zrefo(tncol,ngptsw,nlayers+1)  
+      real, intent(inout) :: zrefd(tncol,ngptsw,nlayers+1)  , zrefdo(tncol,ngptsw,nlayers+1)  
+      real, intent(inout) :: ztauo(tncol,ngptsw,nlayers)  
+      real, intent(inout) :: zdbt(tncol,ngptsw,nlayers+1)  ,ztdbt(tncol,ngptsw,nlayers+1)   
+      real, intent(inout) :: ztra(tncol,ngptsw,nlayers+1)  , ztrao(tncol,ngptsw,nlayers+1)  
+      real, intent(inout) :: ztrad(tncol,ngptsw,nlayers+1)  , ztrado(tncol,ngptsw,nlayers+1)  
+      real, intent(inout) :: zfd(tncol,ngptsw,nlayers+1)  , zfu(tncol,ngptsw,nlayers+1)   
+      real, intent(inout) :: ztaur(tncol,nlayers,ngptsw), ztaug(tncol,nlayers,ngptsw) 
+      real, intent(inout) :: zsflxzen(tncol,ngptsw)
+      real, intent(inout) :: ssi(tncol,ngptsw)
    
       ! ------- Output -------
                                                                !   All Dimensions: (nlayers+1)
@@ -227,7 +222,6 @@ contains
 
       ! ------------------------------------------------------------------
 
-      !$acc kernels     
       pbbcd    = 0. 
       pbbcu    = 0. 
       pbbfd    = 0. 
@@ -251,7 +245,6 @@ contains
       zuvrr    = 0.
       zuvrf    = 0.
       klev     = nlayers
-      !$acc end kernels      
 
       ! Calculate the optical depths for gaseous absorption and Rayleigh scattering     
       call taumol_sw( &
@@ -262,7 +255,6 @@ contains
          isolvar, svar_f, svar_s, svar_i, svar_f_bnd, svar_s_bnd, svar_i_bnd, &
          ssi, zsflxzen, ztaug, ztaur)
 
-      !$acc kernels 
       do icol = 1, ncol
 
          ! Top of shortwave spectral band loop, jb = 16 -> 29; ibm = 1 -> 14
@@ -294,15 +286,11 @@ contains
 
          end do
       end do
-      !$acc end kernels     
 
-      !$acc kernels loop 
       do icol = 1, ncol
 
-         !$acc loop private(zf,zwf,ibm,ikl,jb)
          do iw = 1,112
 
-            !$acc loop seq
             do jk=1,klev
 
                ikl = klev+1-jk
@@ -326,22 +314,18 @@ contains
          end do
 
       end do
-      !$acc end kernels               
 
       ! Clear sky reflectivities
       call reftra_sw (ncol, nlayers, &
                       pcldfmc, zgco, prmu0, ztauo, zomco, &
                       zrefo, zrefdo, ztrao, ztrado, 1)
 
-      !$acc kernels loop    
       do icol = 1, ncol
 
          ! Combine clear and cloudy reflectivies and optical depths     
 
-         !$acc loop
          do iw = 1, 112
             
-            !$acc loop seq
             do jk=1,klev
 
                ! Combine clear and cloudy contributions for total sky
@@ -356,13 +340,11 @@ contains
             enddo          
         end do
       end do
-      !$acc end kernels
 
       ! compute the fluxes from the optical depths and reflectivities
 
       ! Vertical quadrature for clear-sky fluxes
 
-      !$acc kernels 
       do icol = 1, ncol
 
          ! Top of shortwave spectral band loop, jb = 16 -> 29; ibm = 1 -> 14
@@ -376,7 +358,6 @@ contains
     
          end do
       end do
-      !$acc end kernels  
 
       call vrtqdr_sw(ncol, klev, &
                      zrefo, zrefdo, ztrao, ztrado, &
@@ -384,13 +365,10 @@ contains
                      zfd, zfu, ztra)
 
       ! perform band integration for clear cases      
-      !$acc kernels loop
       do icol = 1, ncol
     
-         !$acc loop    
          do ikl=1,klev+1
             
-            !$acc loop seq
             do iw = 1, 112
                jb = ngb(iw)
       
@@ -430,7 +408,6 @@ contains
             enddo  ! spectral loop
          enddo  ! layer loop
       enddo  ! column loop
-      !$acc end kernels
 
       !!!!!!!!!!!!!!!!
       !! END CLEAR  !!
@@ -438,7 +415,6 @@ contains
 
       if (cc == 2) then
 
-         !$acc kernels 
          do icol = 1, ncol
             do iw = 1, 112
                do jk=1,klev
@@ -471,7 +447,6 @@ contains
                enddo    
             end do
          end do
-         !$acc end kernels
 
          ! Total sky reflectivities      
          call reftra_sw (ncol, nlayers, &
@@ -480,11 +455,8 @@ contains
 !?pmn       
          klev = nlayers
 
-         !$acc kernels loop    
          do icol = 1,ncol
-            !$acc loop
             do iw = 1,112
-               !$acc loop seq
                do jk=1,klev
                   ikl = klev+1-jk 
 
@@ -511,17 +483,13 @@ contains
                enddo          
             end do
          end do
-         !$acc end kernels
 
-         !$acc kernels
          zrdnd = 0.
          zgco  = 0.
          zomco = 0.
          zfd   = 0.
          zfu   = 0.
-         !$acc end kernels
 
-         !$acc kernels 
          do icol = 1, ncol
         
             ! Top of shortwave spectral band loop, jb = 16 -> 29; ibm = 1 -> 14
@@ -535,7 +503,6 @@ contains
     
             end do
          enddo           
-         !$acc end kernels  
                  
          ! Vertical quadrature for cloudy fluxes
 
@@ -551,13 +518,10 @@ contains
 !?pmn
          klev = nlayers
 
-         !$acc kernels loop
          do icol = 1, ncol
     
-            !$acc loop    
             do ikl=1,klev+1
             
-               !$acc loop seq
                do iw = 1, 112
                   jb = ngb(iw)
       
@@ -597,22 +561,18 @@ contains
                enddo  ! spectral loop
             enddo  ! layer loop
          enddo  ! column loop
-         !$acc end kernels
 
       else  ! cc /= 2
 
-         !$acc kernels
          pbbfd    = pbbcd
          pbbfu    = pbbcu
          puvfd    = puvcd
          puvfddir = puvcddir
          pnifd    = pnicd
          pnifddir = pnicddir
-         !$acc end kernels    
 
       end if
 
-      !$acc kernels
       do icol = 1, ncol
          do iw = 1, 112
             jb = ngb(iw)
@@ -650,7 +610,6 @@ contains
 
          end do
       enddo                    
-      !$acc end kernels
 
    end subroutine spcvmc_sw
 
@@ -709,24 +668,24 @@ contains
                                                                ! and transmissivity calculation; 
                                                                !   Dimensions: (:)
 
-      real, intent(in) gpu_device :: pgg(:,:,:)                        ! asymmetry parameter
+      real, intent(in) :: pgg(:,:,:)                        ! asymmetry parameter
                                                                !   Dimensions: (:)
-      real, intent(in) gpu_device :: ptau(:,:,:)                       ! optical depth
+      real, intent(in) :: ptau(:,:,:)                       ! optical depth
                                                                !   Dimensions: (:)
-      real, intent(in) gpu_device :: pw(:,:,:)                         ! single scattering albedo 
+      real, intent(in) :: pw(:,:,:)                         ! single scattering albedo 
                                                                !   Dimensions: (:)
       real, intent(in) :: prmuzl(:)                       ! cosine of solar zenith angle
       integer, intent(in) :: ac
 
       ! ------- Output -------
 
-      real, intent(out) gpu_device :: pref(:,:,:)                    ! direct beam reflectivity
+      real, intent(out) :: pref(:,:,:)                    ! direct beam reflectivity
                                                                !   Dimensions: (:+1)
-      real, intent(out) gpu_device :: prefd(:,:,:)                   ! diffuse beam reflectivity
+      real, intent(out) :: prefd(:,:,:)                   ! diffuse beam reflectivity
                                                                !   Dimensions: (:+1)
-      real, intent(out) gpu_device :: ptra(:,:,:)                    ! direct beam transmissivity
+      real, intent(out) :: ptra(:,:,:)                    ! direct beam transmissivity
                                                                !   Dimensions: (:+1)
-      real, intent(out) gpu_device :: ptrad(:,:,:)                   ! diffuse beam transmissivity
+      real, intent(out) :: ptrad(:,:,:)                   ! diffuse beam transmissivity
                                                                !   Dimensions: (:+1)
       ! ------- Local -------
 
@@ -759,11 +718,8 @@ contains
       zwcrit = 0.9999995 
       kmodts = 2
       
-      !$acc kernels loop
       do icol=1,ncol
-         !$acc loop
          do iw=1,112
-            !$acc loop private(zgamma1, zgamma2, zgamma3, zgamma4)
             do jk=1,nlayers
 
                prmuz = prmuzl(icol)
@@ -919,7 +875,6 @@ contains
             end do  
          end do
       end do
-      !$acc end kernels
 
    end subroutine reftra_sw
                            
@@ -947,34 +902,34 @@ contains
       integer, intent (in) :: ncol                   ! number of gridcols
       integer, intent (in) :: klev                   ! number of model layers
     
-      real, intent(in) gpu_device :: pref(:,:,:)                      ! direct beam reflectivity
+      real, intent(in) :: pref(:,:,:)                      ! direct beam reflectivity
                                                               !   Dimensions: (:+1)
-      real, intent(in) gpu_device :: prefd(:,:,:)                     ! diffuse beam reflectivity
+      real, intent(in) :: prefd(:,:,:)                     ! diffuse beam reflectivity
                                                               !   Dimensions: (:+1)
-      real, intent(in) gpu_device :: ptra(:,:,:)                      ! direct beam transmissivity
+      real, intent(in) :: ptra(:,:,:)                      ! direct beam transmissivity
                                                               !   Dimensions: (:+1)
-      real, intent(in) gpu_device :: ptrad(:,:,:)                     ! diffuse beam transmissivity
-                                                              !   Dimensions: (:+1)
-
-      real, intent(in) gpu_device :: pdbt(:,:,:)  
-                                                              !   Dimensions: (:+1)
-      real, intent(in) gpu_device :: ptdbt(:,:,:)  
+      real, intent(in) :: ptrad(:,:,:)                     ! diffuse beam transmissivity
                                                               !   Dimensions: (:+1)
 
-      real, intent(inout) gpu_device :: prdnd(:,:,:)  
+      real, intent(in) :: pdbt(:,:,:)  
                                                               !   Dimensions: (:+1)
-      real, intent(inout) gpu_device :: prup(:,:,:)  
+      real, intent(in) :: ptdbt(:,:,:)  
                                                               !   Dimensions: (:+1)
-      real, intent(inout) gpu_device :: prupd(:,:,:)  
+
+      real, intent(inout) :: prdnd(:,:,:)  
                                                               !   Dimensions: (:+1)
-      real, intent(inout) gpu_device :: ztdn(:,:,:)
+      real, intent(inout) :: prup(:,:,:)  
+                                                              !   Dimensions: (:+1)
+      real, intent(inout) :: prupd(:,:,:)  
+                                                              !   Dimensions: (:+1)
+      real, intent(inout) :: ztdn(:,:,:)
                                                               
       ! ----- Output -----
 
-      real, intent(out) gpu_device :: pfd(:,:,:)                    ! downwelling flux (W/m2)
+      real, intent(out) :: pfd(:,:,:)                    ! downwelling flux (W/m2)
                                                               !   Dimensions: (:+1,ngptsw)
                                                               ! unadjusted for earth/sun distance or zenith angle
-      real, intent(inout) gpu_device :: pfu(:,:,:)                    ! upwelling flux (W/m2)
+      real, intent(inout) :: pfu(:,:,:)                    ! upwelling flux (W/m2)
                                                               !   Dimensions: (:+1,ngptsw)
                                                               ! unadjusted for earth/sun distance or zenith angle
     
@@ -998,9 +953,7 @@ contains
       ! Link lowest layer with surface
       ! this kernel has a lot of dependencies
 
-      !$acc kernels loop
       do icol = 1,ncol
-         !$acc loop private(zreflect)
          do iw = 1,112
       
             zreflect = 1. / (1. - prefd(icol,iw,klev+1) * prefd(icol,iw,klev))
@@ -1012,14 +965,10 @@ contains
 
           end do
       end do
-      !$acc end kernels
       
       ! Pass from bottom to top 
-      !$acc kernels loop
       do icol = 1, ncol
-         !$acc loop    
          do iw = 1, 112
-            !$acc loop seq 
             do jk = 1,klev-1
 
                ikp = klev+1-jk                       
@@ -1033,11 +982,8 @@ contains
             enddo
          end do
       end do
-      !$acc end kernels
 
-      !$acc kernels loop
       do icol = 1, ncol
-         !$acc loop
          do iw = 1, 112
 
             ! Upper boundary conditions
@@ -1048,16 +994,12 @@ contains
             prdnd(icol,iw,2) = prefd(icol,iw,1)  
          end do
       end do
-      !$acc end kernels      
       
-      !$acc kernels loop
       do icol = 1,ncol
-         !$acc loop
          do iw = 1,112
 
             ! Pass from top to bottom
 
-            !$acc loop seq
             do jk = 2,klev
                ikp = jk+1
 
@@ -1071,15 +1013,11 @@ contains
             enddo
          end do
       end do
-      !$acc end kernels
     
       ! Up and down-welling fluxes at levels
 
-      !$acc kernels loop
       do icol = 1,ncol
-         !$acc loop
          do iw = 1,112
-            !$acc loop 
             do jk = 1,klev+1
                zreflect = 1. / (1. - prdnd(icol,iw,jk) * prupd(icol,iw,jk))
                pfu(icol,iw,jk) = (ptdbt(icol,iw,jk) * prup(icol,iw,jk) + &
@@ -1089,7 +1027,6 @@ contains
             enddo
          end do
       end do
-      !$acc end kernels
       
    end subroutine vrtqdr_sw
 
