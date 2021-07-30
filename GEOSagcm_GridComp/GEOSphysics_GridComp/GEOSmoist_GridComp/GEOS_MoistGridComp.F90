@@ -9157,7 +9157,7 @@ contains
         call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0   )
         call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0   )
       else
-        TMP_ICEFALL = 0.333333*(72.0/FLOAT(LM))
+        TMP_ICEFALL = MIN(1.0,0.5*(72.0/FLOAT(LM))**3)
         call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL )
         call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= TMP_ICEFALL )
       endif
