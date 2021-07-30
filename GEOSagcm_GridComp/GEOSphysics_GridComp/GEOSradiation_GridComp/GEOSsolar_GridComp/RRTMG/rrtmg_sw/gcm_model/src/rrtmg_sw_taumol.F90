@@ -9,6 +9,11 @@
 ! |                                                                          |
 !  --------------------------------------------------------------------------
 
+! space saving function-like macros for linear interpolation
+! of a 2D-varaible in first and second arguments as follows ...
+#define LIN2_ARG1(VAR,I,J,FINT) (VAR(I,J) + FINT * (VAR(I+1,J)-VAR(I,J)))
+#define LIN2_ARG2(VAR,I,J,FINT) (VAR(I,J) + FINT * (VAR(I,J+1)-VAR(I,J)))
+
 module rrtmg_sw_taumol
 
    use rrsw_con, only: oneminus
@@ -347,8 +352,8 @@ contains
                       fac011 * absa(ind1 +9,ig) + &
                       fac111 * absa(ind1+10,ig)) + &
                      colh2o(icol,lay) * &
-                     (selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * (selfref(inds+1,ig) - selfref(inds,ig))) + &
-                      forfac (icol,lay) * (forref (indf,ig) + forfrac (icol,lay) * (forref (indf+1,ig) - forref (indf,ig)))) 
+                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
+                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
 !                 ssa(lay,ig) = tauray / taug(lay,ig)
                   taur(icol,lay,ig) = tauray
     
@@ -525,8 +530,8 @@ contains
                       fac011 * absa(ind1+9, ig) + &
                       fac111 * absa(ind1+10,ig)) + &
                      colh2o(icol,lay) * &
-                     (selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * (selfref(inds+1,ig) - selfref(inds,ig))) + &
-                      forfac (icol,lay) * (forref (indf,ig) + forfrac (icol,lay) * (forref (indf+1,ig) - forref (indf,ig)))) 
+                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
+                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
                   taur(icol,lay,ngs16+ig) = tauray
                enddo
 
@@ -562,7 +567,7 @@ contains
                       fac011 * absb(ind1+5,ig) + &
                       fac111 * absb(ind1+6,ig)) + &
                      colh2o(icol,lay) * &
-                     forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * (forref(indf+1,ig) - forref(indf,ig))) 
+                     forfac(icol,lay) * LIN2_ARG1(forref,indf,ig,forfrac(icol,lay)) 
 !                 ssa(lay,ngs16+ig) = tauray / taug(lay,ngs16+ig)
                   taur(icol,lay,ngs16+ig) = tauray
                enddo
@@ -590,18 +595,17 @@ contains
                   fs = mod(specmult, 1.)
                   do ig = 1,ng17 
                      if (isolvar < 0) &
-                        sfluxzen(icol,ngs16+ig) = &
-                           sfluxref(ig,js) + fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
+                        sfluxzen(icol,ngs16+ig) = LIN2_ARG2(sfluxref,ig,js,fs)
                      if (isolvar >= 0 .and. isolvar <= 2) &
                         ssi(icol,ngs16+ig) = &
-                           svar_f * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                           svar_s * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                           svar_i * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                           svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
+                           svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                           svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                      if (isolvar == 3) &
                         ssi(icol,ngs16+ig) = &
-                           svar_f_bnd(ngb(ngs16+ig)) * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                           svar_s_bnd(ngb(ngs16+ig)) * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                           svar_i_bnd(ngb(ngs16+ig)) * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                           svar_f_bnd(ngb(ngs16+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
+                           svar_s_bnd(ngb(ngs16+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                           svar_i_bnd(ngb(ngs16+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
                   end do
                end if
             end if
@@ -716,14 +720,14 @@ contains
                      sfluxref(ig,js) + fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
                if (lay == laysolfr .and. isolvar >= 0 .and. isolvar <= 2) &
                   ssi(icol,ngs17+ig) = &
-                     svar_f * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                     svar_s * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                     svar_i * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                     svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
+                     svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                     svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                if (lay == laysolfr .and. isolvar == 3) &
                   ssi(icol,ngs17+ig) = &
-                     svar_f_bnd(ngb(ngs17+ig)) * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                     svar_s_bnd(ngb(ngs17+ig)) * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                     svar_i_bnd(ngb(ngs17+ig)) * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                     svar_f_bnd(ngb(ngs17+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
+                     svar_s_bnd(ngb(ngs17+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                     svar_i_bnd(ngb(ngs17+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
             end do
          end do
       end do
@@ -765,8 +769,8 @@ contains
                       fac011 * absa(ind1+9, ig) + &
                       fac111 * absa(ind1+10,ig)) + &
                      colh2o(icol,lay) * &
-                     (selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * (selfref(inds+1,ig) - selfref(inds,ig))) + &
-                      forfac (icol,lay) * (forref (indf,ig) + forfrac (icol,lay) * (forref (indf+1,ig) - forref (indf,ig)))) 
+                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
+                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
 !                 ssa(lay,ngs17+ig) = tauray / taug(lay,ngs17+ig)
                   taur(icol,lay,ngs17+ig) = tauray
                enddo
@@ -905,20 +909,20 @@ contains
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
         
-               do ig = 1 , ng19
+               do ig = 1,ng19
                   if (isolvar < 0) &
                      sfluxzen(icol,ngs18+ig) = &
                         sfluxref(ig,js) + fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
                   if (isolvar >= 0 .and. isolvar <= 2) &
                      ssi(icol,ngs18+ig) = &
-                        svar_f * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                        svar_s * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                        svar_i * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                        svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
+                        svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                        svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                   if (isolvar == 3) &
                      ssi(icol,ngs18+ig) = &
-                        svar_f_bnd(ngb(ngs18+ig)) * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                        svar_s_bnd(ngb(ngs18+ig)) * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                        svar_i_bnd(ngb(ngs18+ig)) * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                        svar_f_bnd(ngb(ngs18+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
+                        svar_s_bnd(ngb(ngs18+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                        svar_i_bnd(ngb(ngs18+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
                end do
             end if
          end do
@@ -965,8 +969,8 @@ contains
                       fac011 * absa(ind1+9, ig) + &
                       fac111 * absa(ind1+10,ig)) + &
                      colh2o(icol,lay) * &
-                     (selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * (selfref(inds+1,ig) - selfref(inds,ig))) + & 
-                      forfac (icol,lay) * (forref (indf,ig) + forfrac (icol,lay) * (forref (indf+1,ig) - forref (indf,ig)))) 
+                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
+                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
 !                 ssa(lay,ngs18+ig) = tauray / taug(lay,ngs18+ig)
                   taur(icol,lay,ngs18+ig) = tauray   
                enddo
@@ -1121,9 +1125,9 @@ contains
                        fac10(icol,lay) * absa(ind0+1,ig) + &
                        fac01(icol,lay) * absa(ind1,  ig) + &
                        fac11(icol,lay) * absa(ind1+1,ig)) + &
-                      selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * (selfref(inds+1,ig) - selfref(inds,ig))) + &
-                      forfac (icol,lay) * (forref (indf,ig) + forfrac (icol,lay) * (forref (indf+1,ig) - forref (indf,ig)))) &
-                      + colch4(icol,lay) * absch4(ig)
+                      selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
+                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay))) &
+                     + colch4(icol,lay) * absch4(ig)
 !                 ssa(lay,ngs19+ig) = tauray / taug(lay,ngs19+ig)
                   taur(icol,lay,ngs19+ig) = tauray 
                enddo
@@ -1141,7 +1145,7 @@ contains
                       fac10(icol,lay) * absb(ind0+1,ig) + &
                       fac01(icol,lay) * absb(ind1,  ig) + &
                       fac11(icol,lay) * absb(ind1+1,ig) + &
-                      forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * (forref(indf+1,ig) - forref(indf,ig)))) &
+                      forfac(icol,lay) * LIN2_ARG1(forref,indf,ig,forfrac(icol,lay))) &
                      + colch4(icol,lay) * absch4(ig)
 !                 ssa(lay,ngs19+ig) = tauray / taug(lay,ngs19+ig)
                   taur(icol,lay,ngs19+ig) = tauray 
@@ -1259,14 +1263,14 @@ contains
                         sfluxref(ig,js) + fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
                   if (isolvar >= 0 .and. isolvar <= 2) &
                      ssi(icol,ngs20+ig) = &
-                        svar_f * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                        svar_s * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                        svar_i * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                        svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
+                        svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                        svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                   if (isolvar == 3) &
                      ssi(icol,ngs20+ig) = &
-                        svar_f_bnd(ngb(ngs20+ig)) * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                        svar_s_bnd(ngb(ngs20+ig)) * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                        svar_i_bnd(ngb(ngs20+ig)) * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                        svar_f_bnd(ngb(ngs20+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
+                        svar_s_bnd(ngb(ngs20+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                        svar_i_bnd(ngb(ngs20+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
                end do
             end if
          end do
@@ -1313,8 +1317,8 @@ contains
                       fac011 * absa(ind1+9, ig) + &
                       fac111 * absa(ind1+10,ig)) + &
                      colh2o(icol,lay) * &
-                     (selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * (selfref(inds+1,ig) - selfref(inds,ig))) + &
-                      forfac (icol,lay) * (forref (indf,ig) + forfrac (icol,lay) * (forref (indf+1,ig) - forref (indf,ig))))
+                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
+                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
 !                 ssa(lay,ngs20+ig) = tauray / taug(lay,ngs20+ig)
                   taur(icol,lay,ngs20+ig) = tauray
                enddo
@@ -1352,7 +1356,7 @@ contains
                       fac011 * absb(ind1+5,ig) + &
                       fac111 * absb(ind1+6,ig)) + &
                      colh2o(icol,lay) * &
-                     forfac(icol,lay) * (forref(indf,ig) + forfrac(icol,lay) * (forref(indf+1,ig) - forref(indf,ig)))
+                     forfac(icol,lay) * LIN2_ARG1(forref,indf,ig,forfrac(icol,lay)) 
 !                 ssa(lay,ngs20+ig) = tauray / taug(lay,ngs20+ig)
                   taur(icol,lay,ngs20+ig) = tauray
                enddo
@@ -1483,14 +1487,14 @@ contains
                         sfluxref(ig,js) + fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
                   if (isolvar >= 0 .and. isolvar <= 2) &
                      ssi(icol,ngs21+ig) = &
-                        svar_f * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                        svar_s * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                        svar_i * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                        svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
+                        svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                        svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                   if (isolvar == 3) &
                      ssi(icol,ngs21+ig) = &
-                        svar_f_bnd(ngb(ngs21+ig)) * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                        svar_s_bnd(ngb(ngs21+ig)) * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                        svar_i_bnd(ngb(ngs21+ig)) * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                        svar_f_bnd(ngb(ngs21+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
+                        svar_s_bnd(ngb(ngs21+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                        svar_i_bnd(ngb(ngs21+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
                end do
             end if
          end do
@@ -1538,8 +1542,8 @@ contains
                       fac011 * absa(ind1+9, ig) + &
                       fac111 * absa(ind1+10,ig)) + &
                      colh2o(icol,lay) * &
-                     (selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * (selfref(inds+1,ig) - selfref(inds,ig))) + &
-                      forfac (icol,lay) * (forref (indf,ig) + forfrac (icol,lay) * (forref (indf+1,ig) - forref (indf,ig)))) &
+                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
+                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay))) &
                      + o2cont
 !                 ssa(lay,ngs21+ig) = tauray / taug(lay,ngs21+ig)
                   taur(icol,lay,ngs21+ig) = tauray
@@ -1709,8 +1713,8 @@ contains
                       fac10(icol,lay) * absa(ind0+1,ig) + &
                       fac01(icol,lay) * absa(ind1,  ig) + &
                       fac11(icol,lay) * absa(ind1+1,ig)) + &
-                     selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * (selfref(inds+1,ig) - selfref(inds,ig))) + &
-                     forfac (icol,lay) * (forref (indf,ig) + forfrac (icol,lay) * (forref (indf+1,ig) - forref (indf,ig)))) 
+                     selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
+                     forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
 !                 ssa(lay,ngs22+ig) = tauray / taug(lay,ngs22+ig)
                   taur(icol,lay,ngs22+ig) = tauray
                enddo
@@ -1843,14 +1847,14 @@ contains
                      fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
                   if (isolvar >= 0 .and. isolvar <= 2) &
                      ssi(icol,ngs23+ig) = &
-                        svar_f * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                        svar_s * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                        svar_i * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                        svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
+                        svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                        svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                   if (isolvar == 3) &
                      ssi(icol,ngs23+ig) = &
-                        svar_f_bnd(ngb(ngs23+ig)) * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                        svar_s_bnd(ngb(ngs23+ig)) * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                        svar_i_bnd(ngb(ngs23+ig)) * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                        svar_f_bnd(ngb(ngs23+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
+                        svar_s_bnd(ngb(ngs23+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                        svar_i_bnd(ngb(ngs23+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
                end do
             end if
          end do
@@ -1898,8 +1902,8 @@ contains
                       fac111 * absa(ind1+10,ig)) + &
                      colo3(icol,lay) * abso3a(ig) + &
                      colh2o(icol,lay) * & 
-                     (selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * (selfref(inds+1,ig) - selfref(inds,ig))) + &
-                      forfac (icol,lay) * (forref (indf,ig) + forfrac (icol,lay) * (forref (indf+1,ig) - forref (indf,ig))))
+                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
+                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
 !                 ssa(lay,ngs23+ig) = tauray / taug(lay,ngs23+ig)
                   taur(icol,lay,ngs23+ig) = tauray
                enddo
@@ -2532,14 +2536,14 @@ contains
                      sfluxref(ig,js) + fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
                if (lay == laysolfr .and. isolvar >= 0 .and. isolvar <= 2) &
                   ssi(icol,ngs27+ig) = &
-                     svar_f * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                     svar_s * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                     svar_i * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                     svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
+                     svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                     svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                if (lay == laysolfr .and. isolvar == 3) &
                   ssi(icol,ngs27+ig) = &
-                     svar_f_bnd(ngb(ngs27+ig)) * (facbrght(ig,js) + fs * (facbrght(ig,js+1) - facbrght(ig,js))) + &
-                     svar_s_bnd(ngb(ngs27+ig)) * (snsptdrk(ig,js) + fs * (snsptdrk(ig,js+1) - snsptdrk(ig,js))) + &
-                     svar_i_bnd(ngb(ngs27+ig)) * (irradnce(ig,js) + fs * (irradnce(ig,js+1) - irradnce(ig,js)))
+                     svar_f_bnd(ngb(ngs27+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
+                     svar_s_bnd(ngb(ngs27+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                     svar_i_bnd(ngb(ngs27+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
                taur(icol,lay,ngs27+ig) = tauray
             enddo
          enddo
@@ -2680,8 +2684,8 @@ contains
                        fac10(icol,lay) * absa(ind0+1,ig) + &
                        fac01(icol,lay) * absa(ind1,  ig) + &
                        fac11(icol,lay) * absa(ind1+1,ig)) + &
-                     selffac(icol,lay) * (selfref(inds,ig) + selffrac(icol,lay) * (selfref(inds+1,ig) - selfref(inds,ig))) + &
-                     forfac (icol,lay) * (forref (indf,ig) + forfrac (icol,lay) * (forref (indf+1,ig) - forref (indf,ig)))) &
+                      selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
+                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay))) &
                      + colco2(icol,lay) * absco2(ig) 
 !                 ssa(lay,ngs28+ig) = tauray / taug(lay,ngs28+ig)
                   taur(icol,lay,ngs28+ig) = tauray
