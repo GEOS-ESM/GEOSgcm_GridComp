@@ -9154,10 +9154,19 @@ contains
 
       call MAPL_GetResource( STATE, CLDPARAMS%ICE_SETTLE,     'ICE_SETTLE:',     DEFAULT= 1.    )
       if (adjustl(CLDMICRO) =="GFDL") then
-        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 1.0   )
-        call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 1.0   )
+        call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= 0.8   )
+        call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= 0.8   )
       else
-        TMP_ICEFALL = MIN(1.0,0.5*(72.0/FLOAT(LM))**3)
+        SELECT CASE ( LM )
+           CASE ( 72 )
+              TMP_ICEFALL = 0.5
+           CASE ( 91 )
+              TMP_ICEFALL = 0.25
+           CASE ( 181 )
+              TMP_ICEFALL = 0.125
+           CASE DEFAULT
+              TMP_ICEFALL = 1.0
+        END SELECT
         call MAPL_GetResource( STATE, CLDPARAMS%ANV_ICEFALL,    'ANV_ICEFALL:',    DEFAULT= TMP_ICEFALL )
         call MAPL_GetResource( STATE, CLDPARAMS%LS_ICEFALL,     'LS_ICEFALL:',     DEFAULT= TMP_ICEFALL )
       endif
