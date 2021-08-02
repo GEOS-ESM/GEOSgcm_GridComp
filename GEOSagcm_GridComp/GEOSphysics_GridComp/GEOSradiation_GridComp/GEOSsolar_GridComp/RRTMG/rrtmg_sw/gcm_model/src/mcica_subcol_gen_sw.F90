@@ -57,7 +57,7 @@ contains
       real,    intent(in) :: zmid (pncol,nlay)  ! Hgt of midpoints [m]
       real,    intent(in) :: alat (pncol)       ! Latitude of gridcolumn
       integer, intent(in) :: doy                ! Day of year
-      real,    intent(in) :: play (pncol,nlay)  ! Layer pressures [Pa]
+      real,    intent(in) :: play (nlay,pncol)  ! Layer pressures [Pa]
 !pmn: these seem to be passed in as hPa!!!!!
       real,    intent(in) :: cld  (pncol,nlay)  ! Layer cloud fraction 
       real,    intent(in) :: ciwp (pncol,nlay)  ! In-cloud ice water path (g/m2)?
@@ -159,10 +159,10 @@ contains
 
       do ilay = 1,nlay
          do icol = 1,ncol
-            seed1 = (play(icol,1) - int(play(icol,1))) * 100000000 - ilay
-            seed2 = (play(icol,2) - int(play(icol,2))) * 100000000 + ilay
-            seed3 = (play(icol,3) - int(play(icol,3))) * 100000000 + ilay * 6.2
-            seed4 = (play(icol,4) - int(play(icol,4))) * 100000000           
+            seed1 = (play(1,icol) - int(play(1,icol))) * 100000000 - ilay
+            seed2 = (play(2,icol) - int(play(2,icol))) * 100000000 + ilay
+            seed3 = (play(3,icol) - int(play(3,icol))) * 100000000 + ilay * 6.2
+            seed4 = (play(4,icol) - int(play(4,icol))) * 100000000           
 !pmn: 8 zeros here cf 9 for LW!!!
             do isubcol = 1,nsubcol
                call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
@@ -195,10 +195,10 @@ contains
         
          do ilay = 1,nlay
             do icol = 1,ncol
-               seed1 = (play(icol,1) - int(play(icol,1))) * 100000000 - ilay
-               seed2 = (play(icol,2) - int(play(icol,2))) * 100000000 + ilay
-               seed3 = (play(icol,3) - int(play(icol,3))) * 100000000 + ilay * 6.2
-               seed4 = (play(icol,4) - int(play(icol,4))) * 100000000           
+               seed1 = (play(1,icol) - int(play(1,icol))) * 100000000 - ilay
+               seed2 = (play(2,icol) - int(play(2,icol))) * 100000000 + ilay
+               seed3 = (play(3,icol) - int(play(3,icol))) * 100000000 + ilay * 6.2
+               seed4 = (play(4,icol) - int(play(4,icol))) * 100000000           
                do isubcol = 1,nsubcol
                   call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
                   cdf2(icol,ilay,isubcol) = rand_num 
@@ -266,7 +266,7 @@ contains
          enddo
       enddo
 
-! ilay, icol: zmid, play, alpha, rcorr, cld, ciwp, clwp
+! ilay, icol: zmid, alpha, rcorr, cld, ciwp, clwp
 ! isubcol, ilay, icol: _stoch, and perhaps cdf* ?
 
    end subroutine mcica_sw

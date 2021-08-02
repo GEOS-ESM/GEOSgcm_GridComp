@@ -24,7 +24,7 @@ contains
    ! ---------------------------------------------------------------------------
    subroutine spcvmc_sw ( &
       cc, tncol, ncol, nlayers, istart, iend, &
-      pavel, tavel, palbd, palbp, &
+      palbd, palbp, &
       pcldfmc, ptaucmc, pasycmc, pomgcmc, ptaormc, &
       ptaua, pasya, pomga, prmu0, coldry,  adjflux, &
       isolvar, svar_f, svar_s, svar_i, &
@@ -90,10 +90,6 @@ contains
       integer, intent(in) :: jt1(:,:) 
                                                                !   Dimensions: (nlayers)
 
-      real, intent(in) :: pavel(:,:)                     ! layer pressure (hPa, mb) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: tavel(:,:)                     ! layer temperature (K)
-                                                               !   Dimensions: (nlayers)
       real, intent(in) :: coldry(:,:)                    ! dry air column density (mol/cm2)
                                                                !   Dimensions: (nlayers)
       real, intent(in) :: colmol(:,:) 
@@ -109,10 +105,9 @@ contains
       real, intent(in) :: svar_s_bnd(jpband)          ! Solar variability sunspot multiplier (by band)
       real, intent(in) :: svar_i_bnd(jpband)          ! Solar variability baseline irradiance multiplier (by band)
 
-      real, intent(in) :: palbd(:,:)                     ! surface albedo (diffuse)
-                                                               !   Dimensions: (nbndsw)
-      real, intent(in) :: palbp(:,:)                     ! surface albedo (direct)
-                                                               !   Dimensions: (nbndsw)
+      real, intent(in) :: palbd(nbndsw,tncol)         ! surface albedo (diffuse)
+      real, intent(in) :: palbp(nbndsw,tncol)         ! surface albedo (direct)
+
       real, intent(in) :: prmu0(:)                       ! cosine of solar zenith angle
       real, intent(in) :: pcldfmc(:,:,:)                 ! cloud fraction [mcica]
                                                                !   Dimensions: (nlayers,ngptsw)
@@ -270,8 +265,8 @@ contains
             !   Surface values
             ztrao (icol,iw,klev+1) = 0. 
             ztrado(icol,iw,klev+1) = 0. 
-            zrefo (icol,iw,klev+1) = palbp(icol,ibm) 
-            zrefdo(icol,iw,klev+1) = palbd(icol,ibm) 
+            zrefo (icol,iw,klev+1) = palbp(ibm,icol) 
+            zrefdo(icol,iw,klev+1) = palbd(ibm,icol) 
            
             ! Total sky    
             !   TOA direct beam    
@@ -281,8 +276,8 @@ contains
             zdbt  (icol,iw,klev+1) = 0. 
             ztra  (icol,iw,klev+1) = 0. 
             ztrad (icol,iw,klev+1) = 0. 
-            zref  (icol,iw,klev+1) = palbp(icol,ibm) 
-            zrefd (icol,iw,klev+1) = palbd(icol,ibm) 
+            zref  (icol,iw,klev+1) = palbp(ibm,icol) 
+            zrefd (icol,iw,klev+1) = palbd(ibm,icol) 
 
          end do
       end do
@@ -353,8 +348,8 @@ contains
             jb = ngb(iw)
             ibm = jb-15
 
-            zgco(icol,iw,klev+1)   =palbp(icol,ibm) 
-            zomco(icol,iw,klev+1)  =palbd(icol,ibm) 
+            zgco(icol,iw,klev+1)  = palbp(ibm,icol) 
+            zomco(icol,iw,klev+1) = palbd(ibm,icol) 
     
          end do
       end do
@@ -498,8 +493,8 @@ contains
                jb = ngb(iw)
                ibm = jb-15
 
-               zgco (icol,iw,klev+1) = palbp(icol,ibm) 
-               zomco(icol,iw,klev+1) = palbd(icol,ibm) 
+               zgco (icol,iw,klev+1) = palbp(ibm,icol) 
+               zomco(icol,iw,klev+1) = palbd(ibm,icol) 
     
             end do
          enddo           

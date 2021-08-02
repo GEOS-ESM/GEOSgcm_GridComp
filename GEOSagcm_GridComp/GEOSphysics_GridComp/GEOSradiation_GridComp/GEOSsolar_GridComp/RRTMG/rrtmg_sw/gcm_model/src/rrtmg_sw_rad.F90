@@ -84,7 +84,6 @@ contains
 
       use parrrsw,  only : nbndsw
 
-      
       ! ----- Inputs -----
 
       ! dimensions
@@ -254,7 +253,6 @@ contains
       integer :: pncol
       
       ! ASSERTs to catch unphysical or invalid inputs
-      ! ----------------------------------------------
 
       if (any(play   < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
@@ -362,17 +360,13 @@ contains
 ! pmn: put in GCM init eventually
 
       ! set column partition size pncol
-      ! -------------------------------
-
       if (rpart > 0) then
          pncol = rpart
       else
          pncol = 2
       end if
       
-      ! do a partition
-      ! --------------
-
+      ! do partitions
       call rrtmg_sw_sub ( &
          pncol, ncol, nlay, &
          scon, adjes, coszen, isolvar, &
@@ -385,7 +379,6 @@ contains
          asdir, asdif, aldir, aldif, &
          normFlx, swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
          nirr, nirf, parr, parf, uvrr, uvrf, &
-
          ! optional inputs
          bndscl, indsolvar, solcycfrac)
                                                       
@@ -407,23 +400,14 @@ contains
       gasdir, gasdif, galdir, galdif, &
       normFlx, swuflx, swdflx, swhr, swuflxc, swdflxc, swhrc, &
       nirr, nirf, parr, parf, uvrr, uvrf, &
-
       ! optional inputs
       bndscl, indsolvar, solcycfrac)
 
 
-!?pmn: all needed?
+     ! ----- Modules -----
       use parrrsw, only : nbndsw, ngptsw, nmol, mxmol, &
                           jpband, jpb1, jpb2, rrsw_scon
       use rrsw_con, only : heatfac, oneminus, pi, grav, avogad
-      use rrsw_wvn, only : wavenum1, wavenum2
-      use rrsw_cld, only : extliq1, ssaliq1, asyliq1, &
-                           extice2, ssaice2, asyice2, &
-                           extice3, ssaice3, asyice3, fdlice3, &
-                           extice4, ssaice4, asyice4, &
-                           abari, bbari, cbari, dbari, ebari, fbari
-      use rrsw_wvn, only : ngb, icxa, nspa, nspb
-      use rrsw_ref, only : preflog, tref
       use NRLSSI2, only : initialize_NRLSSI2, &
                           adjust_solcyc_amplitudes, &
                           interpolate_indices, &
@@ -432,70 +416,6 @@ contains
                           SB_avg, SB_0, &
                           isolvar_1_mean_svar_f, &
                           isolvar_1_mean_svar_s
-
-      use rrsw_kg16, kao16 => kao, kbo16 => kbo, selfrefo16 => selfrefo, forrefo16 => forrefo, sfluxrefo16 => sfluxrefo
-      use rrsw_kg16, ka16 => ka, kb16 => kb, selfref16 => selfref, forref16 => forref, sfluxref16 => sfluxref
-      use rrsw_kg16, irradnceo16 => irradnceo, facbrghto16 => facbrghto, snsptdrko16 => snsptdrko
-
-      use rrsw_kg17, kao17 => kao, kbo17 => kbo, selfrefo17 => selfrefo, forrefo17 => forrefo, sfluxrefo17 => sfluxrefo
-      use rrsw_kg17, ka17 => ka, kb17 => kb, selfref17 => selfref, forref17 => forref, sfluxref17 => sfluxref
-      use rrsw_kg17, irradnceo17 => irradnceo, facbrghto17 => facbrghto, snsptdrko17 => snsptdrko
-
-      use rrsw_kg18, kao18 => kao, kbo18 => kbo, selfrefo18 => selfrefo, forrefo18 => forrefo, sfluxrefo18 => sfluxrefo
-      use rrsw_kg18, ka18 => ka, kb18 => kb, selfref18 => selfref, forref18 => forref, sfluxref18 => sfluxref
-      use rrsw_kg18, irradnceo18 => irradnceo, facbrghto18 => facbrghto, snsptdrko18 => snsptdrko
-
-      use rrsw_kg19, kao19 => kao, kbo19 => kbo, selfrefo19 => selfrefo, forrefo19 => forrefo, sfluxrefo19 => sfluxrefo
-      use rrsw_kg19, ka19 => ka, kb19 => kb, selfref19 => selfref, forref19 => forref, sfluxref19 => sfluxref
-      use rrsw_kg19, irradnceo19 => irradnceo, facbrghto19 => facbrghto, snsptdrko19 => snsptdrko
-
-      use rrsw_kg20, kao20 => kao, kbo20 => kbo, selfrefo20 => selfrefo, forrefo20 => forrefo, &
-         sfluxrefo20 => sfluxrefo, absch4o20 => absch4o
-      use rrsw_kg20, ka20 => ka, kb20 => kb, selfref20 => selfref, forref20 => forref, &
-        sfluxref20 => sfluxref, absch420 => absch4
-      use rrsw_kg20, irradnceo20 => irradnceo, facbrghto20 => facbrghto, snsptdrko20 => snsptdrko
-
-      use rrsw_kg21, kao21 => kao, kbo21 => kbo, selfrefo21 => selfrefo, forrefo21 => forrefo, sfluxrefo21 => sfluxrefo
-      use rrsw_kg21, ka21 => ka, kb21 => kb, selfref21 => selfref, forref21 => forref, sfluxref21 => sfluxref
-      use rrsw_kg21, irradnceo21 => irradnceo, facbrghto21 => facbrghto, snsptdrko21 => snsptdrko
-
-      use rrsw_kg22, kao22 => kao, kbo22 => kbo, selfrefo22 => selfrefo, forrefo22 => forrefo, sfluxrefo22 => sfluxrefo
-      use rrsw_kg22, ka22 => ka, kb22 => kb, selfref22 => selfref, forref22 => forref, sfluxref22 => sfluxref
-      use rrsw_kg22, irradnceo22 => irradnceo, facbrghto22 => facbrghto, snsptdrko22 => snsptdrko
-
-      use rrsw_kg23, kao23 => kao, selfrefo23 => selfrefo, forrefo23 => forrefo, sfluxrefo23 => sfluxrefo, raylo23 => raylo
-      use rrsw_kg23, ka23 => ka, selfref23 => selfref, forref23 => forref, sfluxref23 => sfluxref, rayl23 => rayl
-      use rrsw_kg23, irradnceo23 => irradnceo, facbrghto23 => facbrghto, snsptdrko23 => snsptdrko
-
-      use rrsw_kg24, kao24 => kao, kbo24 => kbo, selfrefo24 => selfrefo, forrefo24 => forrefo, sfluxrefo24 => sfluxrefo
-      use rrsw_kg24, abso3ao24 => abso3ao, abso3bo24 => abso3bo, raylao24 => raylao, raylbo24 => raylbo
-      use rrsw_kg24, ka24 => ka, kb24 => kb, selfref24 => selfref, forref24 => forref, sfluxref24 => sfluxref
-      use rrsw_kg24, abso3a24 => abso3a, abso3b24 => abso3b, rayla24 => rayla, raylb24 => raylb
-      use rrsw_kg24, irradnceo24 => irradnceo, facbrghto24 => facbrghto, snsptdrko24 => snsptdrko
-
-      use rrsw_kg25, kao25 => kao, sfluxrefo25=>sfluxrefo
-      use rrsw_kg25, abso3ao25 => abso3ao, abso3bo25 => abso3bo, raylo25 => raylo
-      use rrsw_kg25, ka25 => ka, sfluxref25=>sfluxref
-      use rrsw_kg25, abso3a25 => abso3a, abso3b25 => abso3b, rayl25 => rayl
-      use rrsw_kg25, irradnceo25 => irradnceo, facbrghto25 => facbrghto, snsptdrko25 => snsptdrko
-     
-      use rrsw_kg26, sfluxrefo26 => sfluxrefo
-      use rrsw_kg26, sfluxref26 => sfluxref
-      use rrsw_kg26, irradnceo26 => irradnceo, facbrghto26 => facbrghto, snsptdrko26 => snsptdrko
-
-      use rrsw_kg27, kao27 => kao, kbo27 => kbo, sfluxrefo27 => sfluxrefo, rayl27=>rayl
-      use rrsw_kg27, ka27 => ka, kb27 => kb, sfluxref27 => sfluxref, raylo27=>raylo
-      use rrsw_kg27, irradnceo27 => irradnceo, facbrghto27 => facbrghto, snsptdrko27 => snsptdrko
-
-      use rrsw_kg28, kao28 => kao, kbo28 => kbo, sfluxrefo28 => sfluxrefo
-      use rrsw_kg28, ka28 => ka, kb28 => kb, sfluxref28 => sfluxref
-      use rrsw_kg28, irradnceo28 => irradnceo, facbrghto28 => facbrghto, snsptdrko28 => snsptdrko
-
-      use rrsw_kg29, kao29 => kao, kbo29 => kbo, selfrefo29 => selfrefo, forrefo29 => forrefo, sfluxrefo29 => sfluxrefo
-      use rrsw_kg29, absh2oo29 => absh2oo, absco2o29 => absco2o
-      use rrsw_kg29, ka29 => ka, kb29 => kb, selfref29 => selfref, forref29 => forref, sfluxref29 => sfluxref
-      use rrsw_kg29, absh2o29 => absh2o, absco229 => absco2
-      use rrsw_kg29, irradnceo29 => irradnceo, facbrghto29 => facbrghto, snsptdrko29 => snsptdrko
 
       ! ----- Inputs -----
       ! (see rrtmg_sw() for more detailed comments)
@@ -569,12 +489,12 @@ contains
       real, intent(out) :: swhrc   (gncol,nlay)        ! Clear sky SW heating rate (K/d)
 
       ! Output added for Land/Surface process
-      real , intent(out) :: nirr   (gncol)             ! Near-IR direct  down SW flux (w/m2)
-      real , intent(out) :: nirf   (gncol)             ! Near-IR diffuse down SW flux (w/m2)
-      real , intent(out) :: parr   (gncol)             ! Visible direct  down SW flux (w/m2)
-      real , intent(out) :: parf   (gncol)             ! Visible diffuse down SW flux (w/m2)
-      real , intent(out) :: uvrr   (gncol)             ! UV      direct  down SW flux (w/m2)
-      real , intent(out) :: uvrf   (gncol)             ! UV      diffuse down SW flux (w/m2)
+      real, intent(out) :: nirr   (gncol)             ! Near-IR direct  down SW flux (w/m2)
+      real, intent(out) :: nirf   (gncol)             ! Near-IR diffuse down SW flux (w/m2)
+      real, intent(out) :: parr   (gncol)             ! Visible direct  down SW flux (w/m2)
+      real, intent(out) :: parf   (gncol)             ! Visible diffuse down SW flux (w/m2)
+      real, intent(out) :: uvrr   (gncol)             ! UV      direct  down SW flux (w/m2)
+      real, intent(out) :: uvrf   (gncol)             ! UV      diffuse down SW flux (w/m2)
 
       ! ----- Locals -----
 
@@ -599,8 +519,8 @@ contains
       real :: swdflx_at_top (gncol)      ! swdflx at TOA
 
       ! surface albedos
-      real :: albdir (pncol,nbndsw)      ! surface albedo, direct
-      real :: albdif (pncol,nbndsw)      ! surface albedo, diffuse
+      real :: albdir (nbndsw,pncol)      ! surface albedo, direct
+      real :: albdif (nbndsw,pncol)      ! surface albedo, diffuse
       
       ! Atmosphere - setcoef
       ! --------------------
@@ -632,9 +552,9 @@ contains
          fac00, fac01, fac10, fac11  
       
       ! general
-      real :: play (pncol,nlay)               ! Layer pressures (hPa)
-      real :: plev (pncol,nlay+1)             ! Interface pressures (hPa)
-      real :: tlay (pncol,nlay)               ! Layer temperatures (K)
+      real :: play (nlay,  pncol)             ! Layer pressures (hPa)
+      real :: plev (nlay+1,pncol)             ! Interface pressures (hPa)
+      real :: tlay (nlay,  pncol)             ! Layer temperatures (K)
 
       ! Atmosphere/clouds - cldprop
       ! ---------------------------
@@ -657,7 +577,6 @@ contains
       real :: taormc (pncol,nlay+1,ngptsw)    ! unscaled in-cloud optl depth [mcica]
       real :: ssacmc (pncol,nlay+1,ngptsw)    ! in-cloud single scat albedo [mcica]
       real :: asmcmc (pncol,nlay+1,ngptsw)    ! in-cloud asymmetry param [mcica]
-      real :: fsfcmc (pncol,nlay+1,ngptsw)    ! in-cloud forward scat frac [mcica]
       
       real :: cldfmcl (pncol,nlay+1,ngptsw)   ! cloud fraction [mcica]
       real :: ciwpmcl (pncol,nlay+1,ngptsw)   ! in-cloud ice water path [mcica]
@@ -730,9 +649,9 @@ contains
       real :: ssi   (pncol,ngptsw)
       real :: ztaur (pncol,nlay,ngptsw), ztaug (pncol,nlay,ngptsw) 
 
+      integer :: ncol_clr, ncol_cld
       integer :: npart_clr, npart_cld, npart
-      integer, dimension (gncol) :: &
-         cldflag, gicol_clr, gicol_cld
+      integer, dimension (gncol) :: gicol_clr, gicol_cld
 
       real, parameter :: amd = 28.9660     ! Effective molecular weight of dry air (g/mol)
       real, parameter :: amw = 18.0160     ! Molecular weight of water vapor (g/mol)
@@ -751,7 +670,7 @@ contains
       integer :: n, imol, gicol            ! Loop indices
       real :: adjflx                       ! flux adjustment for Earth/Sun distance
       
-      integer :: ipart, ncol_clr, ncol_cld, col_last, cols, cole, cc
+      integer :: ipart, col_last, cols, cole, cc
 
       ! ncol is the actual number of gridcols in a partition, cf. pncol,
       ! the maximum number. May have ncol < pncol on final partition.
@@ -771,10 +690,10 @@ contains
       ! ---------------
 
 !? pmn
-      zepsec = 1.e-06
+      zepsec = 1.e-06	! pmn later incrp directly in oneminus ... may be NZD (non zero diff)
       zepzen = 1.e-10
       oneminus = 1.0 - zepsec
-      pi = 2. * asin(1.)
+      pi = 2. * asin(1.)	! pmn NZD as per LW in module as parameter
 
 !? pmn
       istart = jpb1
@@ -1023,18 +942,12 @@ contains
          adjflux(jpb1:jpb2) = adjflux(jpb1:jpb2) * solvar(jpb1:jpb2)
       endif
       
-      ! determine cloud profile
-      cldflag = 0
-      do gicol = 1,gncol
-         if (any(gcld(gicol,:) > 0)) cldflag(gicol) = 1
-      end do
-
-      ! build profile separation (clear/cloudy)
+      ! build profile separation based on cloudiness
+      ! i.e., count and index clear/cloudy grid columns
       ncol_clr = 0
       ncol_cld = 0
-
       do gicol = 1,gncol
-         if (cldflag(gicol)==1) then
+         if (any(gcld(gicol,:) > 0)) then
             ncol_cld = ncol_cld + 1
             gicol_cld(ncol_cld) = gicol
          else
@@ -1043,7 +956,7 @@ contains
          end if
       end do
 
-      ! number of pncol partitions needed for each of clear and cloudy profiles
+      ! num of length pncol partitions needed for clear/cloudy profiles
       npart_clr = ceiling( real(ncol_clr) / real(pncol) )
       npart_cld = ceiling( real(ncol_cld) / real(pncol) )
 
@@ -1062,18 +975,14 @@ contains
 
       do cc = 1,2  ! outer loop over clear then cloudy columns
 
-         if (cc==1) then 
-         
+         if (cc == 1) then 
             ! clear
             npart = npart_clr
             col_last = ncol_clr
-
          else
-        
             ! cloudy
             npart = npart_cld
             col_last = ncol_cld
-         
          end if
 
          ! loop over partitions
@@ -1085,14 +994,12 @@ contains
             if (cole > col_last) cole = col_last
             ncol = cole - cols + 1
 
-!?pmn defaults for clear cc==1 I thinjk ... add comment
+!?pmn defaults for clear cc==1 I think ... add comment
             ! zero McICA cloud optical props
             taormc = 0.
             taucmc = 0.
             ssacmc = 1.
             asmcmc = 0.
-!?pmn needed --- dont think so
-            fsfcmc = 0.
 
             ! copy inputs into partition
             ! --------------------------
@@ -1111,24 +1018,24 @@ contains
                   ! near IR bands 14=nbndsw and 1-8
                   ! 820-12850 cm-1, 0.778-12.2 um
                   do ibnd=1,8
-                     albdir(icol,ibnd) = galdir(gicol)
-                     albdif(icol,ibnd) = galdif(gicol)
+                     albdir(ibnd,icol) = galdir(gicol)
+                     albdif(ibnd,icol) = galdif(gicol)
                   enddo
-                  albdir(icol,nbndsw) = galdir(gicol)
-                  albdif(icol,nbndsw) = galdif(gicol)
+                  albdir(nbndsw,icol) = galdir(gicol)
+                  albdif(nbndsw,icol) = galdif(gicol)
 
                   ! UV/Vis bands 10-13
                   ! 16000-50000 cm-1, 0.200-0.625 um
                   do ibnd=10,13
-                     albdir(icol,ibnd) = gasdir(gicol)
-                     albdif(icol,ibnd) = gasdif(gicol)
+                     albdir(ibnd,icol) = gasdir(gicol)
+                     albdif(ibnd,icol) = gasdif(gicol)
                   enddo
 
                   ! Transition band 9
                   ! 12850-16000 cm-1, 0.625-0.778 um
                   ! Take average, dmlee
-                  albdir(icol,9) = (gasdir(gicol)+galdir(gicol))/2.
-                  albdif(icol,9) = (gasdif(gicol)+galdif(gicol))/2.
+                  albdir(9,icol) = (gasdir(gicol)+galdir(gicol))/2.
+                  albdif(9,icol) = (gasdif(gicol)+galdif(gicol))/2.
 
                enddo
 
@@ -1136,9 +1043,9 @@ contains
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)
     
-                  play(icol,:) = gplay(gicol,1:nlay)
-                  plev(icol,:) = gplev(gicol,1:nlay+1)
-                  tlay(icol,:) = gtlay(gicol,1:nlay)
+                  play(:,icol) = gplay(gicol,1:nlay)
+                  plev(:,icol) = gplev(gicol,1:nlay+1)
+                  tlay(:,icol) = gtlay(gicol,1:nlay)
 
                enddo
 
@@ -1180,24 +1087,24 @@ contains
                   ! near IR bands 14=nbndsw and 1-8
                   ! 820-12850 cm-1, 0.778-12.2 um
                   do ibnd=1,8
-                     albdir(icol,ibnd) = galdir(gicol)
-                     albdif(icol,ibnd) = galdif(gicol)
+                     albdir(ibnd,icol) = galdir(gicol)
+                     albdif(ibnd,icol) = galdif(gicol)
                   enddo
-                  albdir(icol,nbndsw) = galdir(gicol)
-                  albdif(icol,nbndsw) = galdif(gicol)
+                  albdir(nbndsw,icol) = galdir(gicol)
+                  albdif(nbndsw,icol) = galdif(gicol)
 
                   ! UV/Vis bands 10-13
                   ! 16000-50000 cm-1, 0.200-0.625 um
                   do ibnd=10,13
-                     albdir(icol,ibnd) = gasdir(gicol)
-                     albdif(icol,ibnd) = gasdif(gicol)
+                     albdir(ibnd,icol) = gasdir(gicol)
+                     albdif(ibnd,icol) = gasdif(gicol)
                   enddo
 
                   ! Transition band 9
                   ! 12850-16000 cm-1, 0.625-0.778 um
                   ! Take average, dmlee
-                  albdir(icol,9) = (gasdir(gicol)+galdir(gicol))/2.
-                  albdif(icol,9) = (gasdif(gicol)+galdif(gicol))/2.
+                  albdir(9,icol) = (gasdir(gicol)+galdir(gicol))/2.
+                  albdif(9,icol) = (gasdif(gicol)+galdif(gicol))/2.
 
                enddo
           
@@ -1205,9 +1112,9 @@ contains
                do icol = 1,ncol
                   gicol = gicol_cld(icol + cols - 1)
      
-                  play(icol,:) = gplay(gicol,1:nlay)
-                  plev(icol,:) = gplev(gicol,1:nlay+1)
-                  tlay(icol,:) = gtlay(gicol,1:nlay)
+                  play(:,icol) = gplay(gicol,1:nlay)
+                  plev(:,icol) = gplev(gicol,1:nlay+1)
+                  tlay(:,icol) = gtlay(gicol,1:nlay)
                   cld (icol,:) = gcld (gicol,1:nlay)
                   ciwp(icol,:) = gciwp(gicol,1:nlay)
                   clwp(icol,:) = gclwp(gicol,1:nlay)
@@ -1251,7 +1158,7 @@ contains
             ! (see details in rrtmg_lw_rad())
             do icol = 1,ncol
                do ilay = 1,nlay
-                  coldry(icol,ilay) = (plev(icol,ilay)-plev(icol,ilay+1)) * 1.e3 * avogad / &
+                  coldry(icol,ilay) = (plev(ilay,icol)-plev(ilay+1,icol)) * 1.e3 * avogad / &
                      (1.e2 * grav * ((1.-wkl(icol,1,ilay)) * amd + wkl(icol,1,ilay) * amw) * &
                      (1. + wkl(icol,1,ilay)))
                enddo
@@ -1293,7 +1200,7 @@ contains
             ! by interpolating data from stored reference atmospheres.
 
             call setcoef_sw( &
-               ncol, nlay, play, tlay, coldry, wkl, &
+               pncol, ncol, nlay, play, tlay, coldry, wkl, &
                laytrop, laylow, jp, jt, jt1, &
                co2mult, colch4, colco2, colh2o, colmol, coln2o, &
                colo2, colo3, fac00, fac01, fac10, fac11, &
@@ -1302,7 +1209,7 @@ contains
             ! compute sw radiative fluxes
             call spcvmc_sw( &
                cc, pncol, ncol, nlay, istart, iend, &
-               play, tlay, albdif, albdir, &
+               albdif, albdir, &
                cldfmcl, taucmc, asmcmc, ssacmc, taormc, &
                taua, asya, omga,cossza, coldry, adjflux, &
                isolvar, svar_f, svar_s, svar_i, &
@@ -1343,7 +1250,7 @@ contains
 
                   ! heating rates
                   do ilay = 1,nlay
-                     zdpgcp = heatfac / (plev(icol,ilay) - plev(icol,ilay+1))
+                     zdpgcp = heatfac / (plev(ilay,icol) - plev(ilay+1,icol))
                      swhrc(gicol,ilay) = (swnflxc(icol,ilay+1) - swnflxc(icol,ilay) ) * zdpgcp
                      swhr (gicol,ilay) = (swnflx (icol,ilay+1) - swnflx (icol,ilay) ) * zdpgcp
                   enddo
@@ -1380,7 +1287,7 @@ contains
                   enddo
 
                   do ilay = 1,nlay
-                     zdpgcp = heatfac / (plev(icol,ilay) - plev(icol,ilay+1))
+                     zdpgcp = heatfac / (plev(ilay,icol) - plev(ilay+1,icol))
                      swhrc(gicol,ilay) = (swnflxc(icol,ilay+1) - swnflxc(icol,ilay)) * zdpgcp
                      swhr (gicol,ilay) = (swnflx (icol,ilay+1) - swnflx (icol,ilay)) * zdpgcp
                   enddo
@@ -1429,7 +1336,6 @@ contains
 
       endif
 
-      
    end subroutine rrtmg_sw_sub
 
 

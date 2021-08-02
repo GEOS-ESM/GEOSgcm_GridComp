@@ -21,7 +21,7 @@ contains
 
    !----------------------------------------------------------------------------
    subroutine setcoef_sw( &
-      ncol, nlayers, pavel, tavel, coldry, wkl, &
+      pncol, ncol, nlayers, pavel, tavel, coldry, wkl, &
       laytrop, laylow, jp, jt, jt1, &
       co2mult, colch4, colco2, colh2o, colmol, coln2o, &
       colo2, colo3, fac00, fac01, fac10, fac11, &
@@ -40,13 +40,12 @@ contains
 
       ! ----- Input -----
 
-      integer, intent(in) :: ncol            ! number of gridcols
+      integer, intent(in) :: pncol           ! dimensioned num of gridcols
+      integer, intent(in) :: ncol            ! actual number of gridcols
       integer, intent(in) :: nlayers         ! number of layers
       
-      real, intent(in) :: pavel(:,:)            ! layer pressures (mb) 
-                                                      !    Dimensions: (nlayers)
-      real, intent(in) :: tavel(:,:)            ! layer temperatures (K)
-                                                      !    Dimensions: (nlayers)
+      real, intent(in) :: pavel(nlayers,pncol)            ! layer pressures (mb) 
+      real, intent(in) :: tavel(nlayers,pncol)            ! layer temperatures (K)
       real, intent(in) :: coldry(:,:)           ! dry air column density (mol/cm2)
                                                       !    Dimensions: (nlayers)
       real, intent(in) :: wkl(:,:,:)            ! molecular amounts (mol/cm-2)
@@ -107,7 +106,7 @@ contains
       laylow = 0
       do icol = 1,ncol
          do lay = 1,nlayers
-            plog = log(pavel(icol,lay))
+            plog = log(pavel(lay,icol))
             if (plog >= 4.56) laytrop(icol) = laytrop(icol) + 1
             if (plog >= 6.62) laylow(icol) = laylow(icol) + 1
          end do
@@ -121,7 +120,7 @@ contains
             ! fraction of the difference (in ln(pressure)) between these
             ! two values that the layer pressure lies.
 
-            plog = log(pavel(icol,lay))
+            plog = log(pavel(lay,icol))
             jp(icol,lay) = int(36. - 5*(plog+0.04 ))
             if (jp(icol,lay) < 1) then
                jp(icol,lay) = 1
@@ -139,23 +138,23 @@ contains
             ! (JT1) and the next highest reference temperature that the 
             ! layer temperature falls.
 
-            jt(icol,lay) = int(3. + (tavel(icol,lay)-tref(jp(icol,lay)))/15.)
+            jt(icol,lay) = int(3. + (tavel(lay,icol)-tref(jp(icol,lay)))/15.)
             if (jt(icol,lay) < 1) then
                jt(icol,lay) = 1
             elseif (jt(icol,lay) > 4) then
                jt(icol,lay) = 4
             endif
-            ft = ((tavel(icol,lay)-tref(jp(icol,lay)))/15.) - float(jt(icol,lay)-3)
-            jt1(icol,lay) = int(3. + (tavel(icol,lay)-tref(jp1))/15.)
+            ft = ((tavel(lay,icol)-tref(jp(icol,lay)))/15.) - float(jt(icol,lay)-3)
+            jt1(icol,lay) = int(3. + (tavel(lay,icol)-tref(jp1))/15.)
             if (jt1(icol,lay) < 1) then
                jt1(icol,lay) = 1
             elseif (jt1(icol,lay) > 4) then
                jt1(icol,lay) = 4
             endif
-            ft1 = ((tavel(icol,lay)-tref(jp1))/15.) - float(jt1(icol,lay)-3)
+            ft1 = ((tavel(lay,icol)-tref(jp1))/15.) - float(jt1(icol,lay)-3)
 
             water = wkl(icol,1,lay) / coldry(icol,lay) 
-            scalefac = pavel(icol,lay)  * stpfac / tavel(icol,lay) 
+            scalefac = pavel(lay,icol)  * stpfac / tavel(lay,icol) 
 
             ! If the pressure is less than ~100mb, perform a different
             ! set of species interpolations.
@@ -163,7 +162,7 @@ contains
             if (plog <= 4.56 ) then
 
                forfac(icol,lay) = scalefac / (1.+water)
-               factor = (tavel(icol,lay)-188.) / 36. 
+               factor = (tavel(lay,icol)-188.) / 36. 
                indfor(icol,lay) = 3
                forfrac(icol,lay) = factor - 1. 
 
@@ -182,7 +181,7 @@ contains
                if (colo2 (icol,lay) == 0.) colo2 (icol,lay) = 1.e-32 * coldry(icol,lay) 
                co2reg = 3.55e-24 * coldry(icol,lay) 
                co2mult(icol,lay) = (colco2(icol,lay) - co2reg) * &
-                  272.63 * exp(-1919.4/tavel(icol,lay)) / (8.7604e-4 * tavel(icol,lay))
+                  272.63 * exp(-1919.4/tavel(lay,icol)) / (8.7604e-4 * tavel(lay,icol))
 
                selffac(icol,lay)  = 0. 
                selffrac(icol,lay) = 0. 
@@ -194,7 +193,7 @@ contains
                ! foreign-continuum in the calculation of absorption coefficient.
 
                forfac(icol,lay) = scalefac / (1.+water)
-               factor = (332.-tavel(icol,lay))/36. 
+               factor = (332.-tavel(lay,icol))/36. 
                indfor(icol,lay) = min(2,max(1,int(factor)))
                forfrac(icol,lay) = factor - float(indfor(icol,lay))
 
@@ -202,7 +201,7 @@ contains
                ! self-continuum in the calculation of absorption coefficient.
 
                selffac(icol,lay) = water * forfac(icol,lay) 
-               factor = (tavel(icol,lay)-188.)/7.2 
+               factor = (tavel(lay,icol)-188.)/7.2 
                indself(icol,lay) = min(9,max(1,int(factor)-7))
                selffrac(icol,lay) = factor - float(indself(icol,lay) + 7)
 
@@ -222,7 +221,7 @@ contains
                ! Using E = 1334.2 cm-1.
                co2reg = 3.55e-24 * coldry(icol,lay) 
                co2mult(icol,lay) = (colco2(icol,lay) - co2reg) * &
-                  272.63 * exp(-1919.4/tavel(icol,lay))/(8.7604e-4 * tavel(icol,lay))
+                  272.63 * exp(-1919.4/tavel(lay,icol))/(8.7604e-4 * tavel(lay,icol))
       
             end if
 
