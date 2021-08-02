@@ -296,6 +296,7 @@ if (\$catchcnFLG) then
         \$mk_GEOSldasRestarts_X \$params
     endif
     if (\$rescaleFLG) then
+        set catchcnIN = InData/catchcn\${CN_VERSION}_internal_rst\*
         set catchcn_regrid = OutData/\$catchcnIN:t
         set catchcn_scaled = \${catchcn_regrid}.scaled
         set params = ( \$catchcnIN \$catchcn_regrid \$catchcn_scaled \$surflay )
