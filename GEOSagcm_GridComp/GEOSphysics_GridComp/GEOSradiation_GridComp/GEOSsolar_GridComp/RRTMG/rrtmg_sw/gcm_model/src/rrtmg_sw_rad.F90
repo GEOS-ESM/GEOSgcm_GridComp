@@ -212,7 +212,7 @@ contains
       ! aerosols (optical props, non-delta-scaled)
       ! ------------------------------------------
       integer, intent(in) :: iaer                    ! aerosol flag (0=off, 10=on)
-      real, intent(in) :: tauaer (ncol,nlay,nbndsw)  ! aer optical depth    (iaer=10 only)
+      real, intent(in) :: tauaer (ncol,nlay,nbndsw)  ! aer optical depth      (iaer=10 only)
       real, intent(in) :: ssaaer (ncol,nlay,nbndsw)  ! aer single scat albedo (iaer=10 only)
       real, intent(in) :: asmaer (ncol,nlay,nbndsw)  ! aer asymmetry param    (iaer=10 only)
 
@@ -591,9 +591,9 @@ contains
       real :: zasyc (pncol,nlay+1,nbndsw)     ! cloud asymmetry parameter 
       real :: zomgc (pncol,nlay+1,nbndsw)     ! cloud single scattering albedo
    
-      real :: taua (pncol,nlay+1,nbndsw)
-      real :: asya (pncol,nlay+1,nbndsw)
-      real :: omga (pncol,nlay+1,nbndsw)
+      real :: taua (nlay+1,nbndsw,pncol)
+      real :: asya (nlay+1,nbndsw,pncol)
+      real :: omga (nlay+1,nbndsw,pncol)
 
 !? pmn why nlay+2
       real :: zbbfu    (pncol,nlay+2)         ! temporary up SW flux (w/m2)
@@ -966,6 +966,7 @@ contains
       clwpmcl = 0.     
   
       ! zero aerosols
+!?pmn extra vertical layer for some reason
       taua = 0.
       asya = 0.
       omga = 1.
@@ -1053,13 +1054,15 @@ contains
                if (iaer==10) then
                   do icol = 1,ncol
                      gicol = gicol_clr(icol + cols - 1)
-                     taua(icol,1:nlay,:) = gtauaer(gicol,1:nlay,:)
-                     asya(icol,1:nlay,:) = gasmaer(gicol,1:nlay,:)
-                     omga(icol,1:nlay,:) = gssaaer(gicol,1:nlay,:)
-!?pmn this ordering is very inefficient
+                     do ibnd = 1,nbndsw
+                        taua(1:nlay,ibnd,icol) = gtauaer(gicol,1:nlay,ibnd)
+                        asya(1:nlay,ibnd,icol) = gasmaer(gicol,1:nlay,ibnd)
+                        omga(1:nlay,ibnd,icol) = gssaaer(gicol,1:nlay,ibnd)
+                     enddo
                   enddo
                endif   
 
+!?pmn this ordering is very inefficient
                ! copy in partition (gases)
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)
@@ -1128,9 +1131,11 @@ contains
                if (iaer==10) then
                   do icol = 1,ncol
                      gicol = gicol_cld(icol + cols - 1)
-                     taua(icol,1:nlay,:) = gtauaer(gicol,1:nlay,:)
-                     asya(icol,1:nlay,:) = gasmaer(gicol,1:nlay,:)
-                     omga(icol,1:nlay,:) = gssaaer(gicol,1:nlay,:)
+                     do ibnd = 1,nbndsw
+                        taua(1:nlay,ibnd,icol) = gtauaer(gicol,1:nlay,ibnd)
+                        asya(1:nlay,ibnd,icol) = gasmaer(gicol,1:nlay,ibnd)
+                        omga(1:nlay,ibnd,icol) = gssaaer(gicol,1:nlay,ibnd)
+                     end do
                   end do
                endif
 
@@ -1211,7 +1216,7 @@ contains
                cc, pncol, ncol, nlay, istart, iend, &
                albdif, albdir, &
                cldfmcl, taucmc, asmcmc, ssacmc, taormc, &
-               taua, asya, omga,cossza, coldry, adjflux, &
+               taua, asya, omga, cossza, coldry, adjflux, &
                isolvar, svar_f, svar_s, svar_i, &
                svar_f_bnd, svar_s_bnd, svar_i_bnd, &
                laytrop, laylow, jp, jt, jt1, &

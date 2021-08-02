@@ -26,7 +26,7 @@ contains
       cc, tncol, ncol, nlayers, istart, iend, &
       palbd, palbp, &
       pcldfmc, ptaucmc, pasycmc, pomgcmc, ptaormc, &
-      ptaua, pasya, pomga, prmu0, coldry,  adjflux, &
+      ptaua, pasya, pomga, prmu0, coldry, adjflux, &
       isolvar, svar_f, svar_s, svar_i, &
       svar_f_bnd, svar_s_bnd, svar_i_bnd, &
       laytrop, laylow, jp, jt, jt1, &
@@ -120,14 +120,9 @@ contains
       real, intent(in) :: ptaormc(:,:,:)                 ! cloud optical depth, non-delta scaled [mcica]
                                                                !   Dimensions: (nlayers,ngptsw)
    
-                                                               !   Dimensions: (nlayers,ngptsw)
-      real, intent(in) :: ptaua(:,:,:)                  ! aerosol optical depth
-                                                               !   Dimensions: (nlayers,nbndsw)
-      real, intent(in) :: pasya(:,:,:)                  ! aerosol asymmetry parameter
-                                                               !   Dimensions: (nlayers,nbndsw)
-      real, intent(in) :: pomga(:,:,:)                  ! aerosol single scattering albedo
-                                                               !   Dimensions: (nlayers,nbndsw)
-
+      real, intent(in) :: ptaua(nlayers+1,nbndsw,tncol)        ! aerosol optical depth
+      real, intent(in) :: pasya(nlayers+1,nbndsw,tncol)        ! aerosol asymmetry parameter
+      real, intent(in) :: pomga(nlayers+1,nbndsw,tncol)        ! aerosol single scattering albedo
                                                                
                                                                
       real, intent(in) :: colh2o(:,:) 
@@ -293,9 +288,9 @@ contains
                ibm = jb-15
 
                ! Clear-sky optical parameters including aerosols
-               ztauo(icol,iw,jk) = ztaur(icol,ikl,iw) + ztaug(icol,ikl,iw) + ptaua(icol,ikl,ibm)      
-               zomco(icol,iw,jk) = ztaur(icol,ikl,iw) + ptaua(icol,ikl,ibm) * pomga(icol,ikl,ibm)
-               zgco (icol,iw,jk) = pasya(icol,ikl,ibm) * pomga(icol,ikl,ibm) * ptaua(icol,ikl,ibm) / zomco(icol,iw,jk)   
+               ztauo(icol,iw,jk) = ztaur(icol,ikl,iw) + ztaug(icol,ikl,iw) + ptaua(ikl,ibm,icol)      
+               zomco(icol,iw,jk) = ztaur(icol,ikl,iw) + ptaua(ikl,ibm,icol) * pomga(ikl,ibm,icol)
+               zgco (icol,iw,jk) = pasya(ikl,ibm,icol) * pomga(ikl,ibm,icol) * ptaua(ikl,ibm,icol) / zomco(icol,iw,jk)   
                zomco(icol,iw,jk) = zomco(icol,iw,jk) / ztauo(icol,iw,jk)
                
                zf = zgco(icol,iw,jk)
@@ -418,9 +413,9 @@ contains
                   jb = ngb(iw)
                   ibm = jb-15
 
-                  ze1 = ztaur(icol,ikl,iw) + ptaua(icol,ikl,ibm) * pomga(icol,ikl,ibm) 
-                  ze2 = pasya(icol,ikl,ibm) * pomga(icol,ikl,ibm) * ptaua(icol,ikl,ibm) / ze1
-                  ze1 = ze1 / (ztaur(icol,ikl,iw) + ztaug(icol,ikl,iw) + ptaua(icol,ikl,ibm))
+                  ze1 = ztaur(icol,ikl,iw) + ptaua(ikl,ibm,icol) * pomga(ikl,ibm,icol) 
+                  ze2 = pasya(ikl,ibm,icol) * pomga(ikl,ibm,icol) * ptaua(ikl,ibm,icol) / ze1
+                  ze1 = ze1 / (ztaur(icol,ikl,iw) + ztaug(icol,ikl,iw) + ptaua(ikl,ibm,icol))
                
                   ! delta scale 
                   zf = ze2*ze2
@@ -709,7 +704,7 @@ contains
 
       ! ------------------------------------------------------------------
 
-      zsr3 = sqrt(3. )
+      zsr3 = sqrt(3.)
       zwcrit = 0.9999995 
       kmodts = 2
       
