@@ -37,20 +37,17 @@ contains
 
       ! ------- Input -------
 
-      integer, intent(in) :: pncol           ! Dimensioned number of gridcols
+      integer, intent(in) :: pncol           ! Dimensioned num of gridcols
       integer, intent(in) :: ncol            ! Actual number of gridcols
       integer, intent(in) :: nlayers         ! number of layers
       integer, intent(in) :: iceflag         ! see definitions
       integer, intent(in) :: liqflag         ! see definitions
 
-      real, intent(in) :: cldfmc(:,:,:)          ! cloud fraction [mcica]
-                                                      !    Dimensions: (ngptsw,nlayers)
-      real, intent(in) :: ciwpmc(:,:,:)          ! cloud ice water path [mcica]
-                                                      !    Dimensions: (ngptsw,nlayers)
-      real, intent(in) :: clwpmc(:,:,:)          ! cloud liquid water path [mcica]
-                                                      !    Dimensions: (ngptsw,nlayers)
-      real, intent(in) :: relqmc(nlayers,pncol)       ! cloud liquid particle effective radius (microns)
-      real, intent(in) :: reicmc(nlayers,pncol)       ! cloud ice particle effective radius (microns)
+      real, intent(in) :: cldfmc(nlayers,ngptsw,pncol)  ! cloud fraction [mcica]
+      real, intent(in) :: ciwpmc(nlayers,ngptsw,pncol)  ! cloud ice water path [mcica]
+      real, intent(in) :: clwpmc(nlayers,ngptsw,pncol)  ! cloud liquid water path [mcica]
+      real, intent(in) :: relqmc(nlayers,pncol)         ! cloud liquid particle effective radius (microns)
+      real, intent(in) :: reicmc(nlayers,pncol)         ! cloud ice particle effective radius (microns)
                                                       ! specific definition of reicmc depends on setting of iceflag:
                                                       ! iceflag = 0: (inactive)
                                                       !              
@@ -103,14 +100,14 @@ contains
 !?pmn: ordering is reverse of efficient
 !?pmn: what if cloud not present where are outputs zeroed ???
 
-               cwp = ciwpmc(icol,lay,ig) + clwpmc(icol,lay,ig)  
-               if (cldfmc(icol,lay,ig) >= cldmin .and. cwp >= cldmin) then
+               cwp = ciwpmc(lay,ig,icol) + clwpmc(lay,ig,icol)  
+               if (cldfmc(lay,ig,icol) >= cldmin .and. cwp >= cldmin) then
 
                   ! ---------------------------------------------------------
                   ! Calculation of absorption coefficients due to ice clouds.
                   ! ---------------------------------------------------------
 
-                  if (ciwpmc(icol,lay,ig) == 0.) then
+                  if (ciwpmc(lay,ig,icol) == 0.) then
 
                      extcoice = 0.
                      ssacoice = 0.
@@ -201,7 +198,7 @@ contains
                   ! Calculation of absorption coefficients due to water clouds.
                   ! -----------------------------------------------------------
 
-                  if (clwpmc(icol,lay,ig) == 0.) then
+                  if (clwpmc(lay,ig,icol) == 0.) then
 
                      extcoliq = 0.
                      ssacoliq = 0.
@@ -230,8 +227,8 @@ contains
                   
                   endif
    
-                  tauliqorig = clwpmc(icol,lay,ig) * extcoliq
-                  tauiceorig = ciwpmc(icol,lay,ig) * extcoice
+                  tauliqorig = clwpmc(lay,ig,icol) * extcoliq
+                  tauiceorig = ciwpmc(lay,ig,icol) * extcoice
                   taormc(icol,lay,ig) = tauliqorig + tauiceorig
 
                   ssaliq = ssacoliq * (1. - forwliq) / (1. - forwliq * ssacoliq)

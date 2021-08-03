@@ -65,10 +65,9 @@ contains
 
       ! output subcolumns
       ! (units of water paths are the same as for inputs ciwp and clwp)
-      real,    intent(out) ::  cld_stoch (pncol,nlay+1,nsubcol)  ! Cloud fraction 
-      real,    intent(out) :: ciwp_stoch (pncol,nlay+1,nsubcol)  ! In-cloud ice water path
-      real,    intent(out) :: clwp_stoch (pncol,nlay+1,nsubcol)  ! In-cloud liq water path
-!pmn: investimage if nlay+1 needed here or in caller
+      real,    intent(out) ::  cld_stoch (nlay,nsubcol,pncol)  ! Cloud fraction 
+      real,    intent(out) :: ciwp_stoch (nlay,nsubcol,pncol)  ! In-cloud ice water path
+      real,    intent(out) :: clwp_stoch (nlay,nsubcol,pncol)  ! In-cloud liq water path
       
       ! ----- Locals -----
 
@@ -232,7 +231,7 @@ contains
 
                if (cond_inhomo .and. cdf1(icol,ilay,isubcol) >= (1. - cld(ilay,icol))) then
 
-                  cld_stoch(icol,ilay,isubcol) = 1. 
+                  cld_stoch(ilay,isubcol,icol) = 1. 
                   
                   ! Cloud fraction sets level of inhomogeneity
                   if (cld(ilay,icol) .gt. 0.99) then
@@ -245,21 +244,21 @@ contains
                   
                   ! horizontally variable clouds
                   zcw = zcw_lookup(cdf3(icol,ilay,isubcol),sigma_qcw)
-                  clwp_stoch(icol,ilay,isubcol) = clwp(ilay,icol) * zcw
-                  ciwp_stoch(icol,ilay,isubcol) = ciwp(ilay,icol) * zcw
+                  clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol) * zcw
+                  ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol) * zcw
                 
                elseif (cdf1(icol,ilay,isubcol) >= (1. - cld(ilay,icol))) then
 
-                   cld_stoch(icol,ilay,isubcol) = 1. 
-                  clwp_stoch(icol,ilay,isubcol) = clwp(ilay,icol)
-                  ciwp_stoch(icol,ilay,isubcol) = ciwp(ilay,icol)
+                   cld_stoch(ilay,isubcol,icol) = 1. 
+                  clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol)
+                  ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol)
 
                else
 
                   ! a clear subcolumn
-                   cld_stoch(icol,ilay,isubcol) = 0. 
-                  clwp_stoch(icol,ilay,isubcol) = 0. 
-                  ciwp_stoch(icol,ilay,isubcol) = 0. 
+                   cld_stoch(ilay,isubcol,icol) = 0. 
+                  clwp_stoch(ilay,isubcol,icol) = 0. 
+                  ciwp_stoch(ilay,isubcol,icol) = 0. 
 
                endif
             enddo
@@ -267,7 +266,7 @@ contains
       enddo
 
 ! ilay, icol: alpha, rcorr
-! isubcol, ilay, icol: _stoch, and perhaps cdf* ?
+! isubcol, ilay, icol: stoch, and perhaps cdf* ?
 
    end subroutine mcica_sw
 

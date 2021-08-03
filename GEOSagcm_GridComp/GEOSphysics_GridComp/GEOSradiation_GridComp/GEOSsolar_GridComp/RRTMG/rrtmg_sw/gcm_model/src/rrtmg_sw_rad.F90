@@ -578,9 +578,9 @@ contains
       real :: ssacmc (pncol,nlay+1,ngptsw)    ! in-cloud single scat albedo [mcica]
       real :: asmcmc (pncol,nlay+1,ngptsw)    ! in-cloud asymmetry param [mcica]
       
-      real :: cldfmcl (pncol,nlay+1,ngptsw)   ! cloud fraction [mcica]
-      real :: ciwpmcl (pncol,nlay+1,ngptsw)   ! in-cloud ice water path [mcica]
-      real :: clwpmcl (pncol,nlay+1,ngptsw)   ! in-cloud liquid water path [mcica]
+      real :: cldfmcl (nlay,ngptsw,pncol)   ! cloud fraction [mcica]
+      real :: ciwpmcl (nlay,ngptsw,pncol)   ! in-cloud ice water path [mcica]
+      real :: clwpmcl (nlay,ngptsw,pncol)   ! in-cloud liquid water path [mcica]
 
       ! Atmosphere/clouds/aerosol - spcvrt,spcvmc
       ! -----------------------------------------

@@ -106,8 +106,7 @@ contains
       real, intent(in) :: palbp(nbndsw,tncol)         ! surface albedo (direct)
 
       real, intent(in) :: prmu0(:)                       ! cosine of solar zenith angle
-      real, intent(in) :: pcldfmc(:,:,:)                 ! cloud fraction [mcica]
-                                                               !   Dimensions: (nlayers,ngptsw)
+      real, intent(in) :: pcldfmc(nlayers,ngptsw,tncol)  ! cloud fraction [mcica]
       real, intent(in) :: ptaucmc(:,:,:)                 ! cloud optical depth [mcica]
                                                                !   Dimensions: (nlayers,ngptsw)
       real, intent(in) :: pasycmc(:,:,:)                 ! cloud asymmetry parameter [mcica]
@@ -449,8 +448,8 @@ contains
 
                   ! Combine clear and cloudy contributions for total sky
 
-                  zclear = 1. - pcldfmc(icol,ikl,iw) 
-                  zcloud = pcldfmc(icol,ikl,iw) 
+                  zclear = 1. - pcldfmc(ikl,iw,icol) 
+                  zcloud = pcldfmc(ikl,iw,icol) 
 
                   zref (icol,iw,jk) = zclear * zrefo (icol,iw,jk) + zcloud * zref (icol,iw,jk)  
                   zrefd(icol,iw,jk) = zclear * zrefdo(icol,iw,jk) + zcloud * zrefd(icol,iw,jk)  
@@ -710,7 +709,7 @@ contains
             do jk=1,nlayers
 
                prmuz = prmuzl(icol)
-               if ((.not.(pcldfmc(icol,nlayers+1-jk,iw)) > 1.e-12) .and. ac==0) then
+               if ((.not.(pcldfmc(nlayers+1-jk,iw,icol)) > 1.e-12) .and. ac==0) then
 
                   pref (icol,iw,jk) = 0. 
                   ptra (icol,iw,jk) = 1. 
