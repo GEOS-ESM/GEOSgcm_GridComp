@@ -79,7 +79,7 @@ contains
       real, dimension(pncol) :: adl, rdl
 
       ! inter-layer correlations for cldfrac and condensate
-      real, dimension(pncol,nlay) :: alpha, rcorr
+      real, dimension(nlay,pncol) :: alpha, rcorr
 
       ! related to decorrelation lengths
       real :: am1, am2, am3, am4, amr
@@ -89,7 +89,7 @@ contains
       real :: rand_num                       ! random number (rng_kiss)
 
       ! random number arrays used for overlap
-      real, dimension(pncol,nlay,nsubcol) :: &
+      real, dimension(nlay,nsubcol,pncol) :: &
          cdf1, &  ! for cloud presence
          cdf2, &  ! auxilliary
          cdf3     ! for cloud condensate
@@ -120,7 +120,7 @@ contains
       am2 = 2.1219
       am4 = -25.584
       amr = 7.
-      if (doy .gt. 181) then
+      if (doy > 181) then
          am3 = -4.*amr/365*(doy-272)
       else
          am3 = 4.*amr/365.*(doy-91)
@@ -135,7 +135,7 @@ contains
       am2 = 0.78996
       am4 = 40.404
       amr = 8.5
-      if (doy .gt. 181) then
+      if (doy > 181) then
          am3 = -4.*amr/365*(doy-272)
       else
          am3 = 4.*amr/365.*(doy-91)
@@ -144,17 +144,15 @@ contains
          rdl(icol) = (am1+am2*exp(-(alat(icol)*180./3.141592-am3)**2/am4**2))*1.e3  ! [m]
       end do
    
-!pmn y
       do icol = 1,ncol
-         alpha(icol,1) = 0.
+         alpha(1,icol) = 0.
          do ilay = 2,nlay
-            alpha(icol,ilay) = exp(-(zmid(ilay,icol) - zmid(ilay-1,icol)) / adl(icol))
+            alpha(ilay,icol) = exp(-(zmid(ilay,icol) - zmid(ilay-1,icol)) / adl(icol))
          end do
       end do
      
-! pmn icol ily nsub ie (nsub,ily,icl)
-! but non-zero-diff <<<<<<<<<<<<<<<<<<<<<  !!!!
-! preserve zero-diff as longg as possible so work on other parts of code first
+! pmn eventually reorder but not now cos will break zero-diff
+! preserve zero-diff as long as possible so work on other parts of code first
 
       do ilay = 1,nlay
          do icol = 1,ncol
@@ -165,19 +163,18 @@ contains
 !pmn: 8 zeros here cf 9 for LW!!!
             do isubcol = 1,nsubcol
                call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-               cdf1(icol,ilay,isubcol) = rand_num 
+               cdf1(ilay,isubcol,icol) = rand_num 
                call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-               cdf2(icol,ilay,isubcol) = rand_num 
+               cdf2(ilay,isubcol,icol) = rand_num 
             end do
          end do
       end do
     
-!pmn y (isub,ilay,icol)
       do icol = 1,ncol
          do isubcol = 1,nsubcol
             do ilay = 2,nlay
-               if (cdf2(icol,ilay,isubcol) < alpha(icol,ilay)) then
-                  cdf1(icol,ilay,isubcol) = cdf1(icol,ilay-1,isubcol) 
+               if (cdf2(ilay,isubcol,icol) < alpha(ilay,icol)) then
+                  cdf1(ilay,isubcol,icol) = cdf1(ilay-1,isubcol,icol) 
                end if
             end do
          end do
@@ -186,9 +183,9 @@ contains
       if (cond_inhomo) then
         
          do icol = 1,ncol
-            rcorr(icol,1) = 0.
+            rcorr(1,icol) = 0.
             do ilay = 2,nlay
-               rcorr(icol,ilay) = exp(-(zmid(ilay,icol) - zmid(ilay-1,icol)) / rdl(icol))
+               rcorr(ilay,icol) = exp(-(zmid(ilay,icol) - zmid(ilay-1,icol)) / rdl(icol))
             end do
          end do
         
@@ -200,9 +197,9 @@ contains
                seed4 = (play(4,icol) - int(play(4,icol))) * 100000000           
                do isubcol = 1,nsubcol
                   call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-                  cdf2(icol,ilay,isubcol) = rand_num 
+                  cdf2(ilay,isubcol,icol) = rand_num 
                   call rng_kiss(seed1,seed2,seed3,seed4,rand_num)
-                  cdf3(icol,ilay,isubcol) = rand_num 
+                  cdf3(ilay,isubcol,icol) = rand_num 
                end do
             end do
          end do
@@ -210,8 +207,8 @@ contains
          do icol = 1,ncol
             do isubcol = 1,nsubcol
                do ilay = 2,nlay
-                  if (cdf2(icol,ilay,isubcol) < rcorr(icol,ilay)) then
-                     cdf3(icol,ilay,isubcol) = cdf3(icol,ilay-1,isubcol)
+                  if (cdf2(ilay,isubcol,icol) < rcorr(ilay,icol)) then
+                     cdf3(ilay,isubcol,icol) = cdf3(ilay-1,isubcol,icol)
                   end if
                end do
             end do
@@ -224,30 +221,29 @@ contains
       ! otherwise set these to zero
 
 !pmn refactor of cond_inhomo
-! otherwise I think y
-      do ilay = 1,nlay
-         do icol = 1,ncol
-            do isubcol = 1,nsubcol
+      do icol = 1,ncol
+         do isubcol = 1,nsubcol
+            do ilay = 1,nlay
 
-               if (cond_inhomo .and. cdf1(icol,ilay,isubcol) >= (1. - cld(ilay,icol))) then
+               if (cond_inhomo .and. cdf1(ilay,isubcol,icol) >= 1. - cld(ilay,icol)) then
 
                   cld_stoch(ilay,isubcol,icol) = 1. 
                   
                   ! Cloud fraction sets level of inhomogeneity
-                  if (cld(ilay,icol) .gt. 0.99) then
+                  if (cld(ilay,icol) > 0.99) then
                      sigma_qcw = 0.5
-                  elseif (cld(ilay,icol) .gt. 0.9) then
+                  elseif (cld(ilay,icol) > 0.9) then
                      sigma_qcw = 0.71
                   else  
                      sigma_qcw = 1.0
                   endif
                   
                   ! horizontally variable clouds
-                  zcw = zcw_lookup(cdf3(icol,ilay,isubcol),sigma_qcw)
+                  zcw = zcw_lookup(cdf3(ilay,isubcol,icol),sigma_qcw)
                   clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol) * zcw
                   ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol) * zcw
                 
-               elseif (cdf1(icol,ilay,isubcol) >= (1. - cld(ilay,icol))) then
+               elseif (cdf1(ilay,isubcol,icol) >= 1. - cld(ilay,icol)) then
 
                    cld_stoch(ilay,isubcol,icol) = 1. 
                   clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol)
@@ -264,9 +260,6 @@ contains
             enddo
          enddo
       enddo
-
-! ilay, icol: alpha, rcorr
-! isubcol, ilay, icol: stoch, and perhaps cdf* ?
 
    end subroutine mcica_sw
 
