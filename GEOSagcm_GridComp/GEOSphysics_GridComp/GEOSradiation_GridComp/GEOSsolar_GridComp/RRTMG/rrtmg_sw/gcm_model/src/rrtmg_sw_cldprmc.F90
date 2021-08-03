@@ -25,7 +25,7 @@ module rrtmg_sw_cldprmc
 contains
 
    ! ----------------------------------------------------------------------
-   subroutine cldprmc_sw(ncol, nlayers, iceflag, liqflag, &
+   subroutine cldprmc_sw(pncol, ncol, nlayers, iceflag, liqflag, &
                          cldfmc, ciwpmc, clwpmc, reicmc, relqmc, &
                          taormc, taucmc, ssacmc, asmcmc)
    ! ----------------------------------------------------------------------
@@ -37,7 +37,8 @@ contains
 
       ! ------- Input -------
 
-      integer, intent(in) :: ncol            ! number of gridcols
+      integer, intent(in) :: pncol           ! Dimensioned number of gridcols
+      integer, intent(in) :: ncol            ! Actual number of gridcols
       integer, intent(in) :: nlayers         ! number of layers
       integer, intent(in) :: iceflag         ! see definitions
       integer, intent(in) :: liqflag         ! see definitions
@@ -48,10 +49,8 @@ contains
                                                       !    Dimensions: (ngptsw,nlayers)
       real, intent(in) :: clwpmc(:,:,:)          ! cloud liquid water path [mcica]
                                                       !    Dimensions: (ngptsw,nlayers)
-      real, intent(in) :: relqmc(:,:)           ! cloud liquid particle effective radius (microns)
-                                                      !    Dimensions: (nlayers)
-      real, intent(in) :: reicmc(:,:)           ! cloud ice particle effective radius (microns)
-                                                      !    Dimensions: (nlayers)
+      real, intent(in) :: relqmc(nlayers,pncol)       ! cloud liquid particle effective radius (microns)
+      real, intent(in) :: reicmc(nlayers,pncol)       ! cloud ice particle effective radius (microns)
                                                       ! specific definition of reicmc depends on setting of iceflag:
                                                       ! iceflag = 0: (inactive)
                                                       !              
@@ -76,7 +75,7 @@ contains
 
       ! ------- Local -------
 
-      integer :: ib, lay, istr, index, icx, ig, iplon
+      integer :: ib, lay, istr, index, icx, ig, icol
 
       real, parameter :: eps = 1.e-06      ! epsilon
       real, parameter :: cldmin = 1.e-20   ! minimum value for cloud quantities
@@ -95,7 +94,7 @@ contains
       real :: extcoice, gice, ssacoice, forwice
       real :: extcoliq, gliq, ssacoliq, forwliq
 
-      do iplon = 1, ncol
+      do icol = 1, ncol
 
          do lay = 1, nlayers
 
@@ -104,14 +103,14 @@ contains
 !?pmn: ordering is reverse of efficient
 !?pmn: what if cloud not present where are outputs zeroed ???
 
-               cwp = ciwpmc(iplon,lay,ig) + clwpmc(iplon,lay,ig)  
-               if (cldfmc(iplon,lay,ig) >= cldmin .and. cwp >= cldmin) then
+               cwp = ciwpmc(icol,lay,ig) + clwpmc(icol,lay,ig)  
+               if (cldfmc(icol,lay,ig) >= cldmin .and. cwp >= cldmin) then
 
                   ! ---------------------------------------------------------
                   ! Calculation of absorption coefficients due to ice clouds.
                   ! ---------------------------------------------------------
 
-                  if (ciwpmc(iplon,lay,ig) == 0.) then
+                  if (ciwpmc(icol,lay,ig) == 0.) then
 
                      extcoice = 0.
                      ssacoice = 0.
@@ -126,7 +125,7 @@ contains
                      ib = ngb(ig)
                      ib = icxa(ib)
 
-                     radice = reicmc(iplon,lay) 
+                     radice = reicmc(lay,icol) 
                      extcoice = (abari(ib) + bbari(ib)/radice)
                      ssacoice = 1. - cbari(ib) - dbari(ib) * radice
                      gice = ebari(ib) + fbari(ib) * radice
@@ -139,7 +138,7 @@ contains
                      
                      ! Ice particle effective radius is limited to 5.0 to 131.0 um.
 
-                     radice = reicmc(iplon,lay) 
+                     radice = reicmc(lay,icol) 
                      factor = (radice - 2.) / 3. 
                      index = int(factor)
                      if (index == 43) index = 42
@@ -158,7 +157,7 @@ contains
                     
                      ! Ice particle generalized effective size is limited to 5.0 to 140.0 um.
 
-                     radice = reicmc(iplon,lay) 
+                     radice = reicmc(lay,icol) 
                      factor = (radice - 2.) / 3. 
                      index = int(factor)
                      if (index == 46) index = 45
@@ -182,7 +181,7 @@ contains
 
                      ! ice particle effective diameter is limited to 1.0 to 200.0 um.
 
-                     radice = reicmc(iplon,lay) 
+                     radice = reicmc(lay,icol) 
                      factor = radice
                      index = int(factor)
                      fint = factor - float(index)
@@ -202,7 +201,7 @@ contains
                   ! Calculation of absorption coefficients due to water clouds.
                   ! -----------------------------------------------------------
 
-                  if (clwpmc(iplon,lay,ig) == 0.) then
+                  if (clwpmc(icol,lay,ig) == 0.) then
 
                      extcoliq = 0.
                      ssacoliq = 0.
@@ -211,7 +210,7 @@ contains
 
                   elseif (liqflag == 1) then
 
-                     radliq = relqmc(iplon,lay) 
+                     radliq = relqmc(lay,icol) 
                       
                      index = int(radliq - 1.5)
                      if (index == 0) index = 1
@@ -231,9 +230,9 @@ contains
                   
                   endif
    
-                  tauliqorig = clwpmc(iplon,lay,ig) * extcoliq
-                  tauiceorig = ciwpmc(iplon,lay,ig) * extcoice
-                  taormc(iplon,lay,ig) = tauliqorig + tauiceorig
+                  tauliqorig = clwpmc(icol,lay,ig) * extcoliq
+                  tauiceorig = ciwpmc(icol,lay,ig) * extcoice
+                  taormc(icol,lay,ig) = tauliqorig + tauiceorig
 
                   ssaliq = ssacoliq * (1. - forwliq) / (1. - forwliq * ssacoliq)
                   tauliq = (1. - forwliq * ssacoliq) * tauliqorig
@@ -242,13 +241,13 @@ contains
 
                   scatliq = ssaliq * tauliq
                   scatice = ssaice * tauice
-                  taucmc(iplon,lay,ig) = tauliq + tauice
+                  taucmc(icol,lay,ig) = tauliq + tauice
 
                   ! Ensure non-zero taucmc and scatice
-                  if (taucmc(iplon,lay,ig) == 0.) taucmc(iplon,lay,ig) = cldmin
+                  if (taucmc(icol,lay,ig) == 0.) taucmc(icol,lay,ig) = cldmin
                   if (scatice == 0.) scatice = cldmin
 
-                  ssacmc(iplon,lay,ig) = (scatliq + scatice) / taucmc(iplon,lay,ig)  
+                  ssacmc(icol,lay,ig) = (scatliq + scatice) / taucmc(icol,lay,ig)  
    
                   if (iceflag == 3) then
                      ! In accordance with the 1996 Fu paper, equation A.3, 
@@ -256,7 +255,7 @@ contains
                      ! or hexagonal ice crystals.
                      ! Set asymetry parameter to first moment (istr=1)
                      istr = 1
-                     asmcmc(iplon,lay,ig) = (1./(scatliq+scatice)) * &
+                     asmcmc(icol,lay,ig) = (1./(scatliq+scatice)) * &
                         (scatliq * (gliq**istr - forwliq) / (1. - forwliq) + &
                          scatice * ((gice-forwice) / (1. - forwice))**istr)
 
@@ -264,7 +263,7 @@ contains
                      ! This code is the standard method for delta-m scaling. 
                      ! Set asymetry parameter to first moment (istr=1)
                      istr = 1
-                     asmcmc(iplon,lay,ig) = &
+                     asmcmc(icol,lay,ig) = &
                           (scatliq * (gliq**istr - forwliq) / (1. - forwliq) + &
                            scatice * (gice**istr - forwice) / (1. - forwice))  &
                         / (scatliq + scatice)

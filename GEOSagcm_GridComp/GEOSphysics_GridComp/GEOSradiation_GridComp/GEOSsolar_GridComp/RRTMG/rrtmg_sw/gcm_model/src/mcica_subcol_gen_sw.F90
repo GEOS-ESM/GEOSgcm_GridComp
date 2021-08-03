@@ -54,14 +54,14 @@ contains
       integer, intent(in) :: ncol               ! Actual number of gridcols
       integer, intent(in) :: nsubcol            ! #Subcols to generate / gridcol
       integer, intent(in) :: nlay               ! Number of model layers
-      real,    intent(in) :: zmid (pncol,nlay)  ! Hgt of midpoints [m]
-      real,    intent(in) :: alat (pncol)       ! Latitude of gridcolumn
+      real,    intent(in) :: zmid (nlay,pncol)  ! Hgt of midpoints [m]
+      real,    intent(in) :: alat      (pncol)  ! Latitude of gridcolumn
       integer, intent(in) :: doy                ! Day of year
       real,    intent(in) :: play (nlay,pncol)  ! Layer pressures [Pa]
 !pmn: these seem to be passed in as hPa!!!!!
-      real,    intent(in) :: cld  (pncol,nlay)  ! Layer cloud fraction 
-      real,    intent(in) :: ciwp (pncol,nlay)  ! In-cloud ice water path (g/m2)?
-      real,    intent(in) :: clwp (pncol,nlay)  ! In-cloud liquid water path (g/m2)?
+      real,    intent(in) :: cld  (nlay,pncol)  ! Layer cloud fraction 
+      real,    intent(in) :: ciwp (nlay,pncol)  ! In-cloud ice water path (g/m2)?
+      real,    intent(in) :: clwp (nlay,pncol)  ! In-cloud liquid water path (g/m2)?
 
       ! output subcolumns
       ! (units of water paths are the same as for inputs ciwp and clwp)
@@ -149,7 +149,7 @@ contains
       do icol = 1,ncol
          alpha(icol,1) = 0.
          do ilay = 2,nlay
-            alpha(icol,ilay) = exp(-(zmid(icol,ilay) - zmid(icol,ilay-1)) / adl(icol))
+            alpha(icol,ilay) = exp(-(zmid(ilay,icol) - zmid(ilay-1,icol)) / adl(icol))
          end do
       end do
      
@@ -189,7 +189,7 @@ contains
          do icol = 1,ncol
             rcorr(icol,1) = 0.
             do ilay = 2,nlay
-               rcorr(icol,ilay) = exp(-(zmid(icol,ilay) - zmid(icol,ilay-1)) / rdl(icol))
+               rcorr(icol,ilay) = exp(-(zmid(ilay,icol) - zmid(ilay-1,icol)) / rdl(icol))
             end do
          end do
         
@@ -230,14 +230,14 @@ contains
          do icol = 1,ncol
             do isubcol = 1,nsubcol
 
-               if (cond_inhomo .and. cdf1(icol,ilay,isubcol) >= (1. - cld(icol,ilay))) then
+               if (cond_inhomo .and. cdf1(icol,ilay,isubcol) >= (1. - cld(ilay,icol))) then
 
                   cld_stoch(icol,ilay,isubcol) = 1. 
                   
                   ! Cloud fraction sets level of inhomogeneity
-                  if (cld(icol,ilay) .gt. 0.99) then
+                  if (cld(ilay,icol) .gt. 0.99) then
                      sigma_qcw = 0.5
-                  elseif (cld(icol,ilay) .gt. 0.9) then
+                  elseif (cld(ilay,icol) .gt. 0.9) then
                      sigma_qcw = 0.71
                   else  
                      sigma_qcw = 1.0
@@ -245,14 +245,14 @@ contains
                   
                   ! horizontally variable clouds
                   zcw = zcw_lookup(cdf3(icol,ilay,isubcol),sigma_qcw)
-                  clwp_stoch(icol,ilay,isubcol) = clwp(icol,ilay) * zcw
-                  ciwp_stoch(icol,ilay,isubcol) = ciwp(icol,ilay) * zcw
+                  clwp_stoch(icol,ilay,isubcol) = clwp(ilay,icol) * zcw
+                  ciwp_stoch(icol,ilay,isubcol) = ciwp(ilay,icol) * zcw
                 
-               elseif (cdf1(icol,ilay,isubcol) >= (1. - cld(icol,ilay))) then
+               elseif (cdf1(icol,ilay,isubcol) >= (1. - cld(ilay,icol))) then
 
                    cld_stoch(icol,ilay,isubcol) = 1. 
-                  clwp_stoch(icol,ilay,isubcol) = clwp(icol,ilay)
-                  ciwp_stoch(icol,ilay,isubcol) = ciwp(icol,ilay)
+                  clwp_stoch(icol,ilay,isubcol) = clwp(ilay,icol)
+                  ciwp_stoch(icol,ilay,isubcol) = ciwp(ilay,icol)
 
                else
 
@@ -266,7 +266,7 @@ contains
          enddo
       enddo
 
-! ilay, icol: zmid, alpha, rcorr, cld, ciwp, clwp
+! ilay, icol: alpha, rcorr
 ! isubcol, ilay, icol: _stoch, and perhaps cdf* ?
 
    end subroutine mcica_sw

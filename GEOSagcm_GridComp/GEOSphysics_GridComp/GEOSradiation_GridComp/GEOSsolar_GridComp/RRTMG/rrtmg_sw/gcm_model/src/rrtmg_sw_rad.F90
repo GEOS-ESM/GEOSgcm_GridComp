@@ -561,14 +561,14 @@ contains
 
       integer :: ncbands                      ! num of cloud spectral bands
 
-      real :: cld  (pncol,nlay)               ! Cloud fraction
-      real :: ciwp (pncol,nlay)               ! In-cloud ice water path (g/m2)
-      real :: clwp (pncol,nlay)               ! In-cloud liq water path (g/m2)
-      real :: rei  (pncol,nlay)               ! Cloud ice effective radius (um)
-      real :: rel  (pncol,nlay)               ! Cloud drop effective radius (um)
+      real :: cld  (nlay,pncol)               ! Cloud fraction
+      real :: ciwp (nlay,pncol)               ! In-cloud ice water path (g/m2)
+      real :: clwp (nlay,pncol)               ! In-cloud liq water path (g/m2)
+      real :: rei  (nlay,pncol)               ! Cloud ice effective radius (um)
+      real :: rel  (nlay,pncol)               ! Cloud drop effective radius (um)
       
-      real :: alat (pncol)
-      real :: zm (pncol,nlay)
+      real :: alat      (pncol)
+      real :: zm   (nlay,pncol)
                                                       
       real, dimension (pncol) :: &
          znirr, znirf, zparr, zparf, zuvrr, zuvrf
@@ -1063,7 +1063,6 @@ contains
                   enddo
                endif   
 
-!?pmn this ordering is very inefficient
                ! copy in partition (gases)
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)
@@ -1118,13 +1117,13 @@ contains
                   play(:,icol) = gplay(gicol,1:nlay)
                   plev(:,icol) = gplev(gicol,1:nlay+1)
                   tlay(:,icol) = gtlay(gicol,1:nlay)
-                  cld (icol,:) = gcld (gicol,1:nlay)
-                  ciwp(icol,:) = gciwp(gicol,1:nlay)
-                  clwp(icol,:) = gclwp(gicol,1:nlay)
-                  rei (icol,:) = grei (gicol,1:nlay) 
-                  rel (icol,:) = grel (gicol,1:nlay)
-                  zm  (icol,:) = gzm  (gicol,1:nlay)
-                  alat(icol)   = galat(gicol)
+                  cld (:,icol) = gcld (gicol,1:nlay)
+                  ciwp(:,icol) = gciwp(gicol,1:nlay)
+                  clwp(:,icol) = gclwp(gicol,1:nlay)
+                  rei (:,icol) = grei (gicol,1:nlay) 
+                  rel (:,icol) = grel (gicol,1:nlay)
+                  zm  (:,icol) = gzm  (gicol,1:nlay)
+                  alat  (icol) = galat  (gicol)
                   coszen(icol) = gcoszen(gicol)
                enddo
 
@@ -1145,11 +1144,11 @@ contains
                   gicol = gicol_cld(icol + cols - 1)
                   wkl(1,:,icol) = gh2ovmr(gicol,1:nlay)
                   wkl(2,:,icol) = gco2vmr(gicol,1:nlay)
-                  wkl(3,:,icol) = go3vmr(gicol,1:nlay)
+                  wkl(3,:,icol) = go3vmr (gicol,1:nlay)
                   wkl(4,:,icol) = gn2ovmr(gicol,1:nlay)
                   wkl(5,:,icol) = 0.
                   wkl(6,:,icol) = gch4vmr(gicol,1:nlay)
-                  wkl(7,:,icol) = go2vmr(gicol,1:nlay)  
+                  wkl(7,:,icol) = go2vmr (gicol,1:nlay)  
                enddo
 
             end if  ! clear or cloudy columns
@@ -1194,7 +1193,7 @@ contains
             ! cloud optical property generation
             if (cc==2) then
                call cldprmc_sw( &
-                  ncol, nlay, iceflgsw, liqflgsw,  &
+                  pncol, ncol, nlay, iceflgsw, liqflgsw,  &
                   cldfmcl, ciwpmcl, clwpmcl, rei, rel, &
                   taormc, taucmc, ssacmc, asmcmc)
             end if
