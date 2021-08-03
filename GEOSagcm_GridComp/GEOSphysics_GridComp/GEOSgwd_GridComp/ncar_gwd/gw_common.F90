@@ -523,12 +523,12 @@ subroutine gw_drag_prof(ncol, pver, band, pint, delp, rdelp, &
   ! WMP from GEOS
         if (present(tau_adjust)) then
            tausat = tausat * tau_adjust(:,k)
-           if (k == ktop  ) tausat = 0.0
-           if (k == ktop+1) tausat = tausat*0.02
-           if (k == ktop+2) tausat = tausat*0.05
-           if (k == ktop+3) tausat = tausat*0.10
-           if (k == ktop+4) tausat = tausat*0.20
-           if (k == ktop+5) tausat = tausat*0.50
+          !if (k == ktop  ) tausat = 0.0
+          !if (k == ktop+1) tausat = tausat*0.02
+          !if (k == ktop+2) tausat = tausat*0.05
+          !if (k == ktop+3) tausat = tausat*0.10
+          !if (k == ktop+4) tausat = tausat*0.20
+          !if (k == ktop+5) tausat = tausat*0.50
         end if
   ! WMP from GEOS
 

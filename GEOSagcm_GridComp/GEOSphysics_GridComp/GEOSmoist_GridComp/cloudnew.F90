@@ -3672,16 +3672,17 @@ contains
 #endif
    function ICE_FRACTION (TEMP,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND) RESULT(ICEFRCT)
       real, intent(in) :: TEMP,CNV_FRACTION,SNOMAS,FRLANDICE,FRLAND
-      real             :: ICEFRCTm, ICEFRCT
+      real             :: ICEFRCTm, ICEFRCTo, ICEFRCT
       real             :: tc, ptc 
 
       ! Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384) 
       tc = MAX(-46.0,MIN(TEMP-MAPL_TICE,46.0)) ! convert to celcius and limit range from -46:46 C
       ptc = 7.6725 + 1.0118*tc + 0.1422*tc**2 + 0.0106*tc**3 + 0.000339*tc**4 + 0.00000395*tc**5
-      ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
-!WMP !ICEFRCTm = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
-!WMP !! Combine MODIS polynomial with an Anvil version MODIS^4 
-!WMP !ICEFRCT = (ICEFRCTm**4)*CNV_FRACTION + ICEFRCTm*(1.0-CNV_FRACTION)
+     !ICEFRCT = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+      ICEFRCTm = 1.0 - (1.0/(1.0 + exp(-1*ptc)))
+      ICEFRCTo = 1.0 - (1.0/(1.0 + exp(-1*ptc)**4))
+      ! Combine MODIS polynomial with a tropical oceans version 
+      ICEFRCT = (ICEFRCTo**0.125)*CNV_FRACTION + ICEFRCTm*(1.0-CNV_FRACTION)
 
    end function ICE_FRACTION
 
