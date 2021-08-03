@@ -40,16 +40,15 @@ contains
 
       ! ----- Input -----
 
-      integer, intent(in) :: pncol           ! dimensioned num of gridcols
-      integer, intent(in) :: ncol            ! actual number of gridcols
-      integer, intent(in) :: nlayers         ! number of layers
+      integer, intent(in) :: pncol    ! dimensioned num of gridcols
+      integer, intent(in) :: ncol     ! actual number of gridcols
+      integer, intent(in) :: nlayers  ! number of layers
       
-      real, intent(in) :: pavel(nlayers,pncol)            ! layer pressures (mb) 
-      real, intent(in) :: tavel(nlayers,pncol)            ! layer temperatures (K)
-      real, intent(in) :: coldry(:,:)           ! dry air column density (mol/cm2)
-                                                      !    Dimensions: (nlayers)
-      real, intent(in) :: wkl(:,:,:)            ! molecular amounts (mol/cm-2)
-                                                      !    Dimensions: (mxmol,nlayers)
+      real, intent(in) :: pavel (nlayers,pncol)     ! layer pressures (mb) 
+      real, intent(in) :: tavel (nlayers,pncol)     ! layer temperatures (K)
+      real, intent(in) :: coldry(nlayers,pncol)     ! dry air column density (mol/cm2)
+      real, intent(in) :: wkl(mxmol,nlayers,pncol)  ! molecular amounts (mol/cm-2)
+
       ! ----- Output -----
 
       integer, intent(out) :: laytrop(:)        ! tropopause layer index
@@ -153,7 +152,7 @@ contains
             endif
             ft1 = ((tavel(lay,icol)-tref(jp1))/15.) - float(jt1(icol,lay)-3)
 
-            water = wkl(icol,1,lay) / coldry(icol,lay) 
+            water = wkl(1,lay,icol) / coldry(lay,icol) 
             scalefac = pavel(lay,icol)  * stpfac / tavel(lay,icol) 
 
             ! If the pressure is less than ~100mb, perform a different
@@ -168,18 +167,18 @@ contains
 
                ! Calculate needed column amounts.
 
-               colh2o(icol,lay) = 1.e-20 * wkl(icol,1,lay) 
-               colco2(icol,lay) = 1.e-20 * wkl(icol,2,lay) 
-               colo3 (icol,lay) = 1.e-20 * wkl(icol,3,lay) 
-               coln2o(icol,lay) = 1.e-20 * wkl(icol,4,lay) 
-               colch4(icol,lay) = 1.e-20 * wkl(icol,6,lay) 
-               colo2 (icol,lay) = 1.e-20 * wkl(icol,7,lay) 
-               colmol(icol,lay) = 1.e-20 * coldry(icol,lay) + colh2o(icol,lay) 
-               if (colco2(icol,lay) == 0.) colco2(icol,lay) = 1.e-32 * coldry(icol,lay) 
-               if (coln2o(icol,lay) == 0.) coln2o(icol,lay) = 1.e-32 * coldry(icol,lay) 
-               if (colch4(icol,lay) == 0.) colch4(icol,lay) = 1.e-32 * coldry(icol,lay) 
-               if (colo2 (icol,lay) == 0.) colo2 (icol,lay) = 1.e-32 * coldry(icol,lay) 
-               co2reg = 3.55e-24 * coldry(icol,lay) 
+               colh2o(icol,lay) = 1.e-20 * wkl(1,lay,icol) 
+               colco2(icol,lay) = 1.e-20 * wkl(2,lay,icol) 
+               colo3 (icol,lay) = 1.e-20 * wkl(3,lay,icol) 
+               coln2o(icol,lay) = 1.e-20 * wkl(4,lay,icol) 
+               colch4(icol,lay) = 1.e-20 * wkl(6,lay,icol) 
+               colo2 (icol,lay) = 1.e-20 * wkl(7,lay,icol) 
+               colmol(icol,lay) = 1.e-20 * coldry(lay,icol) + colh2o(icol,lay) 
+               if (colco2(icol,lay) == 0.) colco2(icol,lay) = 1.e-32 * coldry(lay,icol) 
+               if (coln2o(icol,lay) == 0.) coln2o(icol,lay) = 1.e-32 * coldry(lay,icol) 
+               if (colch4(icol,lay) == 0.) colch4(icol,lay) = 1.e-32 * coldry(lay,icol) 
+               if (colo2 (icol,lay) == 0.) colo2 (icol,lay) = 1.e-32 * coldry(lay,icol) 
+               co2reg = 3.55e-24 * coldry(lay,icol) 
                co2mult(icol,lay) = (colco2(icol,lay) - co2reg) * &
                   272.63 * exp(-1919.4/tavel(lay,icol)) / (8.7604e-4 * tavel(lay,icol))
 
@@ -207,19 +206,19 @@ contains
 
                ! Calculate needed column amounts.
 
-               colh2o(icol,lay) = 1.e-20 * wkl(icol,1,lay) 
-               colco2(icol,lay) = 1.e-20 * wkl(icol,2,lay) 
-               colo3 (icol,lay) = 1.e-20 * wkl(icol,3,lay) 
-               coln2o(icol,lay) = 1.e-20 * wkl(icol,4,lay) 
-               colch4(icol,lay) = 1.e-20 * wkl(icol,6,lay) 
-               colo2 (icol,lay) = 1.e-20 * wkl(icol,7,lay) 
-               colmol(icol,lay) = 1.e-20 * coldry(icol,lay) + colh2o(icol,lay) 
-               if (colco2(icol,lay) == 0.) colco2(icol,lay) = 1.e-32 * coldry(icol,lay) 
-               if (coln2o(icol,lay) == 0.) coln2o(icol,lay) = 1.e-32 * coldry(icol,lay) 
-               if (colch4(icol,lay) == 0.) colch4(icol,lay) = 1.e-32 * coldry(icol,lay) 
-               if (colo2 (icol,lay) == 0.) colo2 (icol,lay) = 1.e-32 * coldry(icol,lay) 
+               colh2o(icol,lay) = 1.e-20 * wkl(1,lay,icol) 
+               colco2(icol,lay) = 1.e-20 * wkl(2,lay,icol) 
+               colo3 (icol,lay) = 1.e-20 * wkl(3,lay,icol) 
+               coln2o(icol,lay) = 1.e-20 * wkl(4,lay,icol) 
+               colch4(icol,lay) = 1.e-20 * wkl(6,lay,icol) 
+               colo2 (icol,lay) = 1.e-20 * wkl(7,lay,icol) 
+               colmol(icol,lay) = 1.e-20 * coldry(lay,icol) + colh2o(icol,lay) 
+               if (colco2(icol,lay) == 0.) colco2(icol,lay) = 1.e-32 * coldry(lay,icol) 
+               if (coln2o(icol,lay) == 0.) coln2o(icol,lay) = 1.e-32 * coldry(lay,icol) 
+               if (colch4(icol,lay) == 0.) colch4(icol,lay) = 1.e-32 * coldry(lay,icol) 
+               if (colo2 (icol,lay) == 0.) colo2 (icol,lay) = 1.e-32 * coldry(lay,icol) 
                ! Using E = 1334.2 cm-1.
-               co2reg = 3.55e-24 * coldry(icol,lay) 
+               co2reg = 3.55e-24 * coldry(lay,icol) 
                co2mult(icol,lay) = (colco2(icol,lay) - co2reg) * &
                   272.63 * exp(-1919.4/tavel(lay,icol))/(8.7604e-4 * tavel(lay,icol))
       

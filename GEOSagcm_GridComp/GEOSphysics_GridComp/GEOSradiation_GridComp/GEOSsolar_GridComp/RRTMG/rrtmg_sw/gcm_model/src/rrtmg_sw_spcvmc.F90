@@ -26,7 +26,7 @@ contains
       cc, tncol, ncol, nlayers, istart, iend, &
       palbd, palbp, &
       pcldfmc, ptaucmc, pasycmc, pomgcmc, ptaormc, &
-      ptaua, pasya, pomga, prmu0, coldry, adjflux, &
+      ptaua, pasya, pomga, prmu0, adjflux, &
       isolvar, svar_f, svar_s, svar_i, &
       svar_f_bnd, svar_s_bnd, svar_i_bnd, &
       laytrop, laylow, jp, jt, jt1, &
@@ -88,9 +88,6 @@ contains
       integer, intent(in) :: jt(:,:) 
                                                                !   Dimensions: (nlayers)
       integer, intent(in) :: jt1(:,:) 
-                                                               !   Dimensions: (nlayers)
-
-      real, intent(in) :: coldry(:,:)                    ! dry air column density (mol/cm2)
                                                                !   Dimensions: (nlayers)
       real, intent(in) :: colmol(:,:) 
                                                                !   Dimensions: (nlayers)

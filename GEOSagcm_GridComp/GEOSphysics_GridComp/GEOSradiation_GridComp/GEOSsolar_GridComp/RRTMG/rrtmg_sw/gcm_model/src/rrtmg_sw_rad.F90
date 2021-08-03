@@ -509,8 +509,8 @@ contains
       integer :: ibnd, icol, ilay, ilev  ! various indices
 
       ! Atmosphere
-      real :: coldry (pncol,nlay+1)      ! dry air column amount
-      real :: wkl (pncol,mxmol,nlay)     ! molecular amounts (mol/cm-2)
+      real :: coldry    (nlay,pncol)     ! dry air column amount
+      real :: wkl (mxmol,nlay,pncol)     ! molecular amounts (mol/cm-2)
 
       ! solar input
       real :: coszen (pncol)             ! Cosine of solar zenith angle
@@ -1047,6 +1047,7 @@ contains
                   play(:,icol) = gplay(gicol,1:nlay)
                   plev(:,icol) = gplev(gicol,1:nlay+1)
                   tlay(:,icol) = gtlay(gicol,1:nlay)
+                  coszen(icol) = gcoszen(gicol)
 
                enddo
 
@@ -1066,14 +1067,13 @@ contains
                ! copy in partition (gases)
                do icol = 1,ncol
                   gicol = gicol_clr(icol + cols - 1)
-                  wkl(icol,1,:) = gh2ovmr(gicol,1:nlay)
-                  wkl(icol,2,:) = gco2vmr(gicol,1:nlay)
-                  wkl(icol,3,:) = go3vmr (gicol,1:nlay)
-                  wkl(icol,4,:) = gn2ovmr(gicol,1:nlay)
-                  wkl(icol,5,:) = 0.
-                  wkl(icol,6,:) = gch4vmr(gicol,1:nlay)
-                  wkl(icol,7,:) = go2vmr (gicol,1:nlay)   
-                  coszen(icol)  = gcoszen(gicol)
+                  wkl(1,:,icol) = gh2ovmr(gicol,1:nlay)
+                  wkl(2,:,icol) = gco2vmr(gicol,1:nlay)
+                  wkl(3,:,icol) = go3vmr (gicol,1:nlay)
+                  wkl(4,:,icol) = gn2ovmr(gicol,1:nlay)
+                  wkl(5,:,icol) = 0.
+                  wkl(6,:,icol) = gch4vmr(gicol,1:nlay)
+                  wkl(7,:,icol) = go2vmr (gicol,1:nlay)   
                 end do
 
             else
@@ -1125,6 +1125,7 @@ contains
                   rel (icol,:) = grel (gicol,1:nlay)
                   zm  (icol,:) = gzm  (gicol,1:nlay)
                   alat(icol)   = galat(gicol)
+                  coszen(icol) = gcoszen(gicol)
                enddo
 
                ! copy in partition (aerosols)
@@ -1142,14 +1143,13 @@ contains
                ! copy in partition (gases)
                do icol = 1,ncol
                   gicol = gicol_cld(icol + cols - 1)
-                  wkl(icol,1,:) = gh2ovmr(gicol,1:nlay)
-                  wkl(icol,2,:) = gco2vmr(gicol,1:nlay)
-                  wkl(icol,3,:) = go3vmr(gicol,1:nlay)
-                  wkl(icol,4,:) = gn2ovmr(gicol,1:nlay)
-                  wkl(icol,5,:) = 0.
-                  wkl(icol,6,:) = gch4vmr(gicol,1:nlay)
-                  wkl(icol,7,:) = go2vmr(gicol,1:nlay)  
-                  coszen(icol)  = gcoszen(gicol)
+                  wkl(1,:,icol) = gh2ovmr(gicol,1:nlay)
+                  wkl(2,:,icol) = gco2vmr(gicol,1:nlay)
+                  wkl(3,:,icol) = go3vmr(gicol,1:nlay)
+                  wkl(4,:,icol) = gn2ovmr(gicol,1:nlay)
+                  wkl(5,:,icol) = 0.
+                  wkl(6,:,icol) = gch4vmr(gicol,1:nlay)
+                  wkl(7,:,icol) = go2vmr(gicol,1:nlay)  
                enddo
 
             end if  ! clear or cloudy columns
@@ -1163,9 +1163,9 @@ contains
             ! (see details in rrtmg_lw_rad())
             do icol = 1,ncol
                do ilay = 1,nlay
-                  coldry(icol,ilay) = (plev(ilay,icol)-plev(ilay+1,icol)) * 1.e3 * avogad / &
-                     (1.e2 * grav * ((1.-wkl(icol,1,ilay)) * amd + wkl(icol,1,ilay) * amw) * &
-                     (1. + wkl(icol,1,ilay)))
+                  coldry(ilay,icol) = (plev(ilay,icol)-plev(ilay+1,icol)) * 1.e3 * avogad / &
+                     (1.e2 * grav * ((1.-wkl(1,ilay,icol)) * amd + wkl(1,ilay,icol) * amw) * &
+                     (1. + wkl(1,ilay,icol)))
                enddo
             enddo
 
@@ -1173,7 +1173,7 @@ contains
             do icol = 1,ncol
                do ilay = 1,nlay
                   do imol = 1,nmol
-                     wkl(icol,imol,ilay) = coldry(icol,ilay) * wkl(icol,imol,ilay)
+                     wkl(imol,ilay,icol) = coldry(ilay,icol) * wkl(imol,ilay,icol)
                   end do
                end do
             end do
@@ -1216,7 +1216,7 @@ contains
                cc, pncol, ncol, nlay, istart, iend, &
                albdif, albdir, &
                cldfmcl, taucmc, asmcmc, ssacmc, taormc, &
-               taua, asya, omga, cossza, coldry, adjflux, &
+               taua, asya, omga, cossza, adjflux, &
                isolvar, svar_f, svar_s, svar_i, &
                svar_f_bnd, svar_s_bnd, svar_i_bnd, &
                laytrop, laylow, jp, jt, jt1, &
