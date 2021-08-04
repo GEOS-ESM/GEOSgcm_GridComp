@@ -573,10 +573,10 @@ contains
       real, dimension (pncol) :: &
          znirr, znirf, zparr, zparf, zuvrr, zuvrf
       
-      real :: taucmc (pncol,nlay+1,ngptsw)    ! in-cloud optical depth [mcica]
-      real :: taormc (pncol,nlay+1,ngptsw)    ! unscaled in-cloud optl depth [mcica]
-      real :: ssacmc (pncol,nlay+1,ngptsw)    ! in-cloud single scat albedo [mcica]
-      real :: asmcmc (pncol,nlay+1,ngptsw)    ! in-cloud asymmetry param [mcica]
+      real :: taucmc (nlay,ngptsw,pncol)    ! in-cloud optical depth [mcica]
+      real :: taormc (nlay,ngptsw,pncol)    ! unscaled in-cloud optl depth [mcica]
+      real :: ssacmc (nlay,ngptsw,pncol)    ! in-cloud single scat albedo [mcica]
+      real :: asmcmc (nlay,ngptsw,pncol)    ! in-cloud asymmetry param [mcica]
       
       real :: cldfmcl (nlay,ngptsw,pncol)   ! cloud fraction [mcica]
       real :: ciwpmcl (nlay,ngptsw,pncol)   ! in-cloud ice water path [mcica]
@@ -960,11 +960,18 @@ contains
       npart_clr = ceiling( real(ncol_clr) / real(pncol) )
       npart_cld = ceiling( real(ncol_cld) / real(pncol) )
 
+!? but arent these overwritten by multiple partitions both cler and cloudy?? error ???
+! all cler cases come first so works, and all could cases probbly completely overwrite so ok.
+! but I dont like this probably better to deal with more transperantly inside loop.
       ! zero McICA cloud physical props
       cldfmcl = 0.
       ciwpmcl = 0.
       clwpmcl = 0.     
   
+!? but arent these overwritten by multiple partitions both cler and cloudy?? error ???
+!? pmn if aaer==10 completely overwritten so ok
+!? pmn if not never overwritten so ok
+!? but pron better to go do_aer and make more exp[licit
       ! zero aerosols
 !?pmn extra vertical layer for some reason
       taua = 0.
@@ -995,8 +1002,8 @@ contains
             if (cole > col_last) cole = col_last
             ncol = cole - cols + 1
 
-!?pmn defaults for clear cc==1 I think ... add comment
             ! zero McICA cloud optical props
+            ! these defaults remain for clear columns
             taormc = 0.
             taucmc = 0.
             ssacmc = 1.
@@ -1005,6 +1012,7 @@ contains
             ! copy inputs into partition
             ! --------------------------
 
+!? pmn looks to me like some unnec repetition over twio cc cases and could combine
             if (cc==1) then    
 
                ! -------------
@@ -1177,10 +1185,7 @@ contains
                end do
             end do
 
-!issue that pncol is full partition(=dimension) while ncol is actual used
-! so either input pncol as well to dimension or else only send in actual 
-! needed like in LW ... study
-!pmn needed working on and the replacing by abstract as per LW
+!pmn needs working on and the replacing by abstract as per LW
             ! McICA subcolumn generation
             if (cc==2) then
                call mcica_sw( &

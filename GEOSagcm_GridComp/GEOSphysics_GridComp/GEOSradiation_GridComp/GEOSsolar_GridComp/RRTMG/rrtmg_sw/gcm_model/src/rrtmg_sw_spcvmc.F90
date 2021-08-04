@@ -107,18 +107,14 @@ contains
 
       real, intent(in) :: prmu0(:)                       ! cosine of solar zenith angle
       real, intent(in) :: pcldfmc(nlayers,ngptsw,tncol)  ! cloud fraction [mcica]
-      real, intent(in) :: ptaucmc(:,:,:)                 ! cloud optical depth [mcica]
-                                                               !   Dimensions: (nlayers,ngptsw)
-      real, intent(in) :: pasycmc(:,:,:)                 ! cloud asymmetry parameter [mcica]
-                                                               !   Dimensions: (nlayers,ngptsw)
-      real, intent(in) :: pomgcmc(:,:,:)                 ! cloud single scattering albedo [mcica]
-                                                               !   Dimensions: (nlayers,ngptsw)
-      real, intent(in) :: ptaormc(:,:,:)                 ! cloud optical depth, non-delta scaled [mcica]
-                                                               !   Dimensions: (nlayers,ngptsw)
+      real, intent(in) :: ptaucmc(nlayers,ngptsw,tncol)  ! cloud optical depth [mcica]
+      real, intent(in) :: pasycmc(nlayers,ngptsw,tncol)  ! cloud asymmetry parameter [mcica]
+      real, intent(in) :: pomgcmc(nlayers,ngptsw,tncol)  ! cloud single scattering albedo [mcica]
+      real, intent(in) :: ptaormc(nlayers,ngptsw,tncol)  ! cloud optical depth, non-delta scaled [mcica]
    
-      real, intent(in) :: ptaua(nlayers+1,nbndsw,tncol)        ! aerosol optical depth
-      real, intent(in) :: pasya(nlayers+1,nbndsw,tncol)        ! aerosol asymmetry parameter
-      real, intent(in) :: pomga(nlayers+1,nbndsw,tncol)        ! aerosol single scattering albedo
+      real, intent(in) :: ptaua(nlayers+1,nbndsw,tncol)  ! aerosol optical depth
+      real, intent(in) :: pasya(nlayers+1,nbndsw,tncol)  ! aerosol asymmetry parameter
+      real, intent(in) :: pomga(nlayers+1,nbndsw,tncol)  ! aerosol single scattering albedo
                                                                
                                                                
       real, intent(in) :: colh2o(:,:) 
@@ -420,12 +416,12 @@ contains
                   ze2 = (ze2 - zf) / (1. - zf)
                
                   ! delta scale
-                  zomco(icol,iw,jk) = ztauo(icol,iw,jk) * ze1 + ptaucmc(icol,ikl,iw) * pomgcmc(icol,ikl,iw)
+                  zomco(icol,iw,jk) = ztauo(icol,iw,jk) * ze1 + ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol)
                         
-                  zgco (icol,iw,jk) = ptaucmc(icol,ikl,iw) * pomgcmc(icol,ikl,iw) * pasycmc(icol,ikl,iw) + &
+                  zgco (icol,iw,jk) = ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol) * pasycmc(ikl,iw,icol) + &
                                          ztauo(icol,iw,jk) * ze1 * ze2
                
-                  ztauo(icol,iw,jk) = ztauo(icol,iw,jk) + ptaucmc(icol,ikl,iw) 
+                  ztauo(icol,iw,jk) = ztauo(icol,iw,jk) + ptaucmc(ikl,iw,icol) 
      
                   zgco (icol,iw,jk) = zgco (icol,iw,jk) / zomco(icol,iw,jk)
                   zomco(icol,iw,jk) = zomco(icol,iw,jk) / ztauo(icol,iw,jk)
@@ -460,7 +456,7 @@ contains
 
                   ze1 = ztauo(icol,iw,jk) / prmu0(icol)   
                   zdbtmo = exp(-ze1)            
-                  ze1 = (ztauo(icol,iw,jk) - ptaucmc(icol,ikl,iw)) / prmu0(icol)           
+                  ze1 = (ztauo(icol,iw,jk) - ptaucmc(ikl,iw,icol)) / prmu0(icol)           
                   zdbtmc = exp(-ze1)
 
                   zdbt(icol,iw,jk) = zclear * zdbtmc + zcloud * zdbtmo
