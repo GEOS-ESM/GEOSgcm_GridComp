@@ -5534,7 +5534,7 @@ contains
                                          THVLSRC_SC, TKEAVG_SC, CLDTOP_SC, CUSH
       real, pointer, dimension(:,:  ) :: CNT_SC, CNB_SC
 
-! DG PDF variables
+! Diagnostic output from ADG PDF
     real, dimension(:,:,:),pointer     :: PDF_A,      &
                                           PDF_AX,     &
                                           PDF_SIGW1,  &
@@ -5552,12 +5552,19 @@ contains
                                           PDF_RQTTH,  &
                                           PDF_RWTH,   &
                                           PDF_RWQT
-
-    real, dimension(:,:,:),pointer     :: W2,        &
+! Inputs for ADG PDF
+    real, dimension(:,:,:),pointer     :: HL2,       &
+                                          HL3,       &
+                                          QT2,       &
+                                          QT3,       &
+                                          W2,        &
                                           W3,        &
+                                          HLQT,      &
                                           WQT,       &
                                           WQL,       &
-                                          WHL 
+                                          WHL,       &
+                                          EDMF_FRC
+    real, pointer, dimension(:,:,:) :: edmf_wqtavg,edmf_whlavg
 
     real, dimension(:,:,:),pointer     :: WTHV2,WTHV2_RAD
 
@@ -5587,8 +5594,6 @@ contains
       real, pointer, dimension(:,:,:) :: T, PLE, U, V, W, TH
       real, pointer, dimension(:,:)   :: TROPP
       real, pointer, dimension(:,:,:) :: DQDT, UI, VI, WI, TI, KH, TKE
-      real, pointer, dimension(:,:,:) :: edmf_wqtavg,edmf_whlavg !,qtflxtrb
-      real, pointer, dimension(:,:,:) :: HL2, QT2, QT3, HLQT, HL3, EDMF_FRC
       real, pointer, dimension(    :) :: PREF
       real, pointer, dimension(:,:,:) :: Q, QRAIN, QSNOW, QGRAUPEL, QLLS, QLCN, CLLS, CLCN, BYNCY, QILS, QICN, QCTOT,QITOT,QLTOT
       real, pointer, dimension(:,:,:) :: QPTOTLS, QRTOT, QSTOT,  CFLIQ, CFICE !DONIF
@@ -5988,7 +5993,7 @@ contains
       real,    dimension(IM,JM,  LM)  :: Q1, W1, U1, V1, TH1, CNV_PRC3,fQi,CFPBL,CNV_HAIL
 
       real                            :: IMPOSECLD_TOP,IMPOSECLD_BOT,IMPOSECLD_QCMIN,IMPOSECLD_FRCMIN
-!      integer                         :: DOSHLW,SHLWDIAG
+
       integer                         :: SHLWDIAG
       real,    dimension(IM,JM,  LM)  :: SHLW_PRC3,SHLW_SNO3,UFRC_SC
       real,    dimension(IM,JM,0:LM)  :: CNV_PLE,ZLE
@@ -6611,10 +6616,10 @@ contains
       call MAPL_GetPointer(INTERNAL, QICN,     'QICN'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(INTERNAL, NCPL,     'NCPL'    , RC=STATUS); VERIFY_(STATUS)  !DONIF
       call MAPL_GetPointer(INTERNAL, NCPI,     'NCPI'    , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, PDF_A,    'PDF_A'   , RC=STATUS); VERIFY_(STATUS) 
       call MAPL_GetPointer(INTERNAL, NRAIN,    'NRAIN'    , RC=STATUS); VERIFY_(STATUS)  
       call MAPL_GetPointer(INTERNAL, NSNOW,    'NSNOW'    , RC=STATUS); VERIFY_(STATUS)      
       call MAPL_GetPointer(INTERNAL, NGRAUPEL, 'NGRAUPEL'    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, PDF_A,    'PDF_A'   , RC=STATUS); VERIFY_(STATUS) 
        
       if (DOSHLW /= 0) then
        call MAPL_GetPointer(INTERNAL, CUSH,  'CUSH'    , RC=STATUS); VERIFY_(STATUS)  !DONIF
@@ -6640,9 +6645,6 @@ contains
       call MAPL_GetPointer(IMPORT, PREF,    'PREF'    , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, KH,      'KH'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TKE,     'TKE'     , RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, edmf_wqtavg, 'edmf_wqtavg', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT, edmf_whlavg, 'edmf_whlavg', RC=STATUS); VERIFY_(STATUS)
-!      call MAPL_GetPointer(IMPORT, qtflxtrb, 'QTFLXTRB', RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TH,      'TH'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, U,       'U'       , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, V,       'V'       , RC=STATUS); VERIFY_(STATUS)
@@ -6663,8 +6665,7 @@ contains
       call MAPL_GetPointer(IMPORT, EVAP     ,'EVAP '   ,RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, T        ,'T'       ,RC=STATUS); VERIFY_(STATUS)
 
-      ! Get pointers to prognostics second-order moments
-
+      ! Get pointers to inputs for ADG PDF
       call MAPL_GetPointer(IMPORT, EDMF_FRC,'EDMF_FRC',RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, W2 ,    'W2' ,    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, W3 ,    'W3' ,    RC=STATUS); VERIFY_(STATUS)
@@ -6675,6 +6676,8 @@ contains
       call MAPL_GetPointer(IMPORT, QT2  ,  'QT2',    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, QT3  ,  'QT3',    RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, HLQT,   'HLQT',   RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, edmf_wqtavg, 'edmf_wqtavg', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT, edmf_whlavg, 'edmf_whlavg', RC=STATUS); VERIFY_(STATUS)
 
 
 

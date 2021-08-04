@@ -2311,7 +2311,7 @@ contains
          TEn = TEp + (1.0-fQi)*(MAPL_ALHL/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF ) &
                +      fQi* (MAPL_ALHS/MAPL_CP)*( (QCn - QCp)*(1.-AF) + (QAo-QAx)*AF )
 
-!         if (abs(Ten - Tep) .lt. 0.00001) exit 
+         if (abs(Ten - Tep) .lt. 0.00001) exit 
 
          DQS  = DQSAT( TEn, PL, QSAT=QSn )
 

@@ -3050,7 +3050,7 @@ contains
      real :: NumUpR,ETr
      integer :: NumUp,ET,DOCLASP
      real :: pwmin,pwmax,AlphaW,AlphaQT,AlphaTH,L0,L0fac,ENT0,EDfac
-     real                            :: DOMF,DOMFCOND,STOCHENT 
+     real                            :: DOMF,STOCHENT 
 
      integer :: EDMF_IMPLICIT        ! 1 (default): implicit discretization of mass flux terms
                                      ! 0: explicit
@@ -3232,11 +3232,11 @@ contains
      end if
 
      call MAPL_GetResource (MAPL, PDFSHAPE,  'PDFSHAPE:',   DEFAULT = 1.0    )
-     call MAPL_GetResource (MAPL, HL2TUNE,   'HL2TUNE:',    DEFAULT = 1.0    )
-     call MAPL_GetResource (MAPL, QT2TUNE,   'QT2TUNE:',    DEFAULT = 1.0    )
+     call MAPL_GetResource (MAPL, HL2TUNE,   'HL2TUNE:',    DEFAULT = 0.3    )
+     call MAPL_GetResource (MAPL, QT2TUNE,   'QT2TUNE:',    DEFAULT = 2.0    )
      call MAPL_GetResource (MAPL, HLQT2TUNE, 'HLQT2TUNE:',  DEFAULT = 1.0    )
      call MAPL_GetResource (MAPL, QT2SCALE,  'QT2SCALE:',   DEFAULT = 2000.0    )
-     call MAPL_GetResource (MAPL, QT3_TSCALE,'QT3_TSCALE:', DEFAULT = 7200.0    )
+     call MAPL_GetResource (MAPL, QT3_TSCALE,'QT3_TSCALE:', DEFAULT = 3600.0    )
 
 ! Get pointers from export state...
 !-----------------------------------
@@ -3654,7 +3654,6 @@ contains
   ! if true then 
     call MAPL_GetResource (MAPL, DOMF, "EDMF_DOMF:", default=0.,  RC=STATUS)
     call MAPL_GetResource (MAPL, DOCLASP, "DOCLASP:", default=0,  RC=STATUS)
-    call MAPL_GetResource (MAPL, DOMFCOND, "EDMF_COND:", default=0.,  RC=STATUS)
     call MAPL_GetResource (MAPL, STOCHENT, "EDMF_STOCHENT:", default=1.,  RC=STATUS)
     call MAPL_GetResource (MAPL,EntWFac,"EDMF_ENTWFAC:",default=0.3333, RC=STATUS)  
     call MAPL_GetResource (MAPL, EDMF_DISCRETE_TYPE, "EDMF_DISCRETE_TYPE:", default=0,  RC=STATUS)
@@ -4655,8 +4654,8 @@ ENDIF
             do J = 1, JM
                temparray(1:LM+1) = KH(I,J,0:LM)
                do L = LM,2,-1
-                  locmax = min(maxloc(temparray,1),LM)
-!                  locmax = maxloc(temparray,1)
+!                  locmax = min(maxloc(temparray,1),LM)
+                  locmax = maxloc(temparray,1)
                   minlval = max(0.001,0.0001*maxval(temparray))
                   if(temparray(locmax-1)<minlval.and.temparray(locmax+1)<minlval) temparray(locmax) = minlval
                enddo

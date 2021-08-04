@@ -83,6 +83,7 @@ module GEOS_SurfaceGridCompMod
   integer ::     LANDICE
   integer ::       OCEAN 
   integer ::        LAND 
+  integer ::     HPRECIP
 
 #ifdef AQUA_PLANET
   integer, parameter :: NUM_CHILDREN = 1
@@ -97,6 +98,7 @@ module GEOS_SurfaceGridCompMod
   integer :: DO_OBIO, ATM_CO2
   integer :: CHOOSEMOSFC 
   logical :: DO_GOSWIM
+  logical :: DO_HETER_PRECIP
 
 ! used only when DO_OBIO==1 or ATM_CO2 == ATM_CO2_FOUR
   integer, parameter :: NB_CHOU_UV   = 5 ! Number of UV bands
@@ -106,6 +108,7 @@ module GEOS_SurfaceGridCompMod
 !
 
   character(len=ESMF_MAXSTR) :: LAND_PARAMS ! land parameter option
+  character(len=ESMF_MAXSTR) :: SharedObj
 
   type T_Routing
      integer :: srcTileID, dstTileID,     &
@@ -3135,6 +3138,17 @@ module GEOS_SurfaceGridCompMod
     VERIFY_(STATUS)
 #endif
 
+    call MAPL_GetResource (MAPL, DO_HETER_PRECIP, label="HETEROGENEOUS_PRECIP:",DEFAULT=.false., __RC__)
+    if (DO_HETER_PRECIP) then
+       !ALT replace MOM with HPRECIP
+       call MAPL_GetResource ( MAPL, sharedObj,  Label="GEOS_HetPrecip:", DEFAULT="libGEOShetprecip_GridComp.so", __RC__ )
+       HPRECIP = MAPL_AddChild('HPRECIP','setservices_', parentGC=GC, sharedObj=sharedObj,  __RC__)
+    else
+       HPRECIP = 0
+    end if
+
+
+
 ! Get my internal MAPL_Generic state
 !-----------------------------------
 
@@ -3143,7 +3157,11 @@ module GEOS_SurfaceGridCompMod
 
     call MAPL_Get(MAPL, GCNAMES = GCNames, RC=STATUS)
     VERIFY_(STATUS)
-    _ASSERT(NUM_CHILDREN == size(GCNames),'needs informative message')
+    if (.not. do_heter_precip) then
+       _ASSERT(NUM_CHILDREN == size(GCNames),'needs informative message')
+    else
+       _ASSERT(NUM_CHILDREN == size(GCNames)-1,'needs informative message')
+    end if
 
     CHILD_MASK(OCEAN  ) = MAPL_OCEAN
 #ifndef AQUA_PLANET
@@ -3396,6 +3414,15 @@ module GEOS_SurfaceGridCompMod
        VERIFY_(STATUS)
 
     end do
+
+    if (DO_HETER_PRECIP) then
+       I = HPRECIP
+       call MAPL_GetObjectFromGC ( GCS(I) ,   CHILD_MAPL,   RC=STATUS )
+       VERIFY_(STATUS)
+       call MAPL_Set (CHILD_MAPL, LOCSTREAM=LOCSTREAM, RC=STATUS )
+       VERIFY_(STATUS)
+    end if
+
     call MAPL_TimerOff(MAPL,"LocStreamCreate")
 
 ! Call Initialize for every Child
@@ -4449,13 +4476,13 @@ module GEOS_SurfaceGridCompMod
     MFTHSRC(:,:,:) = -999.
     MFW(:,:,:) = -999.
     MFAREA(:,:,:) = -999.
-    print *,'filling with -999'
+!    print *,'filling with -999'
     TTILE(:,:,:) = -999.
     QTILE(:,:,:) = -999.
     SHTILE(:,:,:) = -999.
     EVTILE(:,:,:) = -999.
 
-    print *,'assigning tile values'
+!    print *,'assigning tile values'
 !    QTILE(1,1,1:NT) = QHTILE
 !    TTILE(1,1,1:NT) = THTILE
     do I = 1,IM
@@ -4465,19 +4492,19 @@ module GEOS_SurfaceGridCompMod
          TTILE(I,J,1:NT) = THTILE
          T2SRF(I,J) = SUM(THTILE)/NT
          Q2SRF(I,J) = SUM(QHTILE)/NT
-         print *,'tavg = ',T2SRF
-         print *,'qavg = ',Q2SRF
+ !        print *,'tavg = ',T2SRF
+ !        print *,'qavg = ',Q2SRF
          TQSRF(I,J) = SUM( (THTILE-T2SRF(I,J))*(QHTILE-Q2SRF(I,J)) ) / NT
-         print *,'tqsrf=',TQSRF
+!         print *,'tqsrf=',TQSRF
          T2SRF(I,J) = SUM( (THTILE-T2SRF(I,J))**2 ) / NT
          Q2SRF(I,J) = SUM( (QHTILE-Q2SRF(I,J))**2 ) / NT
 
-         print *,'TA = ',TA(I,J)
-         print *,'QA = ',QA(I,J)
+!         print *,'TA = ',TA(I,J)
+!         print *,'QA = ',QA(I,J)
 !        end do
       end do
     end do
-    print *,'tile values assigned.'
+!    print *,'tile values assigned.'
 
     allocate(SH_TILE(NT),STAT=STATUS)
     VERIFY_(STATUS)
@@ -4651,10 +4678,10 @@ module GEOS_SurfaceGridCompMod
       end do  ! JM loop
     end do  ! IM loop
 
-    print *,'MFQTSRC=',MFQTSRC(:,:,1:NUMUPI)
-    print *,'MFTHSRC=',MFTHSRC(:,:,1:NUMUPI)
-    print *,'MFW=',MFW(:,:,1:NUMUPI)
-    print *,'MFAREA=',MFAREA(:,:,1:NUMUPI)
+!    print *,'MFQTSRC=',MFQTSRC(:,:,1:NUMUPI)
+!    print *,'MFTHSRC=',MFTHSRC(:,:,1:NUMUPI)
+!    print *,'MFW=',MFW(:,:,1:NUMUPI)
+!    print *,'MFAREA=',MFAREA(:,:,1:NUMUPI)
 
     deallocate(BUOY_TILE)
     deallocate(SH_TILE)
@@ -5768,6 +5795,8 @@ module GEOS_SurfaceGridCompMod
     real, allocatable :: PRECSUM(:,:)
     character(len=ESMF_MAXPATHLEN) :: SolCycFileName
     logical :: PersistSolar
+
+    real, pointer :: het_precip_fac(:) => NULL()
     
 !=============================================================================
 
@@ -6795,6 +6824,24 @@ module GEOS_SurfaceGridCompMod
     call MAPL_LocStreamTransform( LOCSTREAM, ALWTILE  , ALW,     RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM, BLWTILE  , BLW,     RC=STATUS); VERIFY_(STATUS)
     call MAPL_LocStreamTransform( LOCSTREAM, DTSDTTILE, DTSDT,   RC=STATUS); VERIFY_(STATUS)
+
+
+    if(do_heter_precip) then
+       I = HPRECIP
+       call ESMF_GridCompRun(GCS(I), &
+            importState=GIM(I), exportState=GEX(I), &
+            clock=CLOCK, userRC=STATUS )
+       VERIFY_(STATUS)
+       !get export WEIGHT, i.e. the heterogeneous precipitation factor
+       call MAPL_GetPointer(GEX(I), het_precip_fac, 'WEIGHT', RC=status)
+       VERIFY_(STATUS)
+       !apply weight to the 5 precips
+       pcutile = pcutile * het_precip_fac
+       plstile = plstile * het_precip_fac
+       snofltile = snofltile * het_precip_fac
+       icefltile = icefltile * het_precip_fac
+       frzrfltile = frzrfltile * het_precip_fac
+    end if
 
     if (DO_GOSWIM) then
        do K = 1, NUM_DUDP
