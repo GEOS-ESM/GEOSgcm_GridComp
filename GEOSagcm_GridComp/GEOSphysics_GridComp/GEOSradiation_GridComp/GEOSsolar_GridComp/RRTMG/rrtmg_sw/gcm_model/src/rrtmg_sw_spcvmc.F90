@@ -29,15 +29,15 @@ contains
       ptaua, pasya, pomga, prmu0, adjflux, &
       isolvar, svar_f, svar_s, svar_i, &
       svar_f_bnd, svar_s_bnd, svar_i_bnd, &
-      laytrop, laylow, jp, jt, jt1, &
+      laytrop, jp, jt, jt1, &
       co2mult, colch4, colco2, colh2o, colmol, coln2o, colo2, colo3, &
       fac00, fac01, fac10, fac11, &
       selffac, selffrac, indself, forfac, forfrac, indfor, &
       pbbfd, pbbfu, pbbcd, pbbcu, puvfd, puvcd, pnifd, pnicd, &
       pbbfddir, pbbcddir, puvfddir, puvcddir, pnifddir, pnicddir,&
-      zgco,zomco,zrdnd,zref,zrefo,zrefd,zrefdo,ztauo,zdbt,ztdbt,&
-      ztra,ztrao,ztrad,ztrado,zfd,zfu,ztaug, ztaur, zsflxzen, ssi,&
-      znirr,znirf,zparr,zparf,zuvrr,zuvrf)
+      zgco, zomco, zrdnd, zref, zrefo, zrefd, zrefdo, ztauo, zdbt, ztdbt,&
+      ztra, ztrao, ztrad, ztrado, zfd, zfu, ztaug, ztaur, zsflxzen, ssi,&
+      znirr, znirf, zparr, zparf, zuvrr, zuvrf)
    ! ---------------------------------------------------------------------------
    !
    ! Purpose: Contains spectral loop to compute the shortwave radiative fluxes, 
@@ -76,19 +76,15 @@ contains
       integer, intent(in) :: nlayers
       integer, intent(in) :: istart
       integer, intent(in) :: iend
-      integer, intent(in) :: laytrop(:)
-      integer, intent(in) :: laylow(:)
+      integer, intent(in) :: laytrop (tncol)
 
       integer, intent(in) :: indfor(:,:) 
                                                                !   Dimensions: (nlayers)
       integer, intent(in) :: indself(:,:) 
                                                                !   Dimensions: (nlayers)
-      integer, intent(in) :: jp(:,:) 
-                                                               !   Dimensions: (nlayers)
-      integer, intent(in) :: jt(:,:) 
-                                                               !   Dimensions: (nlayers)
-      integer, intent(in) :: jt1(:,:) 
-                                                               !   Dimensions: (nlayers)
+      integer, intent(in) :: jp  (nlayers,tncol) 
+      integer, intent(in) :: jt  (nlayers,tncol) 
+      integer, intent(in) :: jt1 (nlayers,tncol) 
       real, intent(in) :: colmol(:,:) 
                                                                !   Dimensions: (nlayers)
       real, intent(in) :: adjflux(:)                  ! Earth/Sun distance adjustment
@@ -230,7 +226,7 @@ contains
 
       ! Calculate the optical depths for gaseous absorption and Rayleigh scattering     
       call taumol_sw( &
-         ncol, nlayers, &
+         tncol, ncol, nlayers, &
          colh2o, colco2, colch4, colo2, colo3, colmol, &
          laytrop, jp, jt, jt1, fac00, fac01, fac10, fac11, &
          selffac, selffrac, indself, forfac, forfrac, indfor, &

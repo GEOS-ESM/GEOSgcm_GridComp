@@ -24,7 +24,7 @@ module rrtmg_sw_taumol
 contains
 
    !----------------------------------------------------------------------------
-   subroutine taumol_sw(ncol, nlayers, &
+   subroutine taumol_sw(pncol, ncol, nlayers, &
                         colh2o, colco2, colch4, colo2, colo3, colmol, &
                         laytrop, jp, jt, jt1, &
                         fac00, fac01, fac10, fac11, &
@@ -33,16 +33,14 @@ contains
                         svar_f_bnd, svar_s_bnd, svar_i_bnd, &
                         ssi, sfluxzen, taug, taur)
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)       ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -95,7 +93,7 @@ contains
 
       ! Calculate gaseous optical depth and planck fractions for each spectral band.
 
-      call taumol16(ncol, nlayers, &
+      call taumol16(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -104,7 +102,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol17(ncol, nlayers, &
+      call taumol17(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -113,7 +111,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol18(ncol, nlayers, &
+      call taumol18(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -122,7 +120,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol19(ncol, nlayers, &
+      call taumol19(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -131,7 +129,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol20(ncol, nlayers, &
+      call taumol20(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -140,7 +138,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol21(ncol, nlayers, &
+      call taumol21(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -149,7 +147,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol22(ncol, nlayers, &
+      call taumol22(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -158,7 +156,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol23(ncol, nlayers, &
+      call taumol23(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -167,7 +165,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol24(ncol, nlayers, &
+      call taumol24(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -176,7 +174,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol25(ncol, nlayers, &
+      call taumol25(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -185,7 +183,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol26(ncol, nlayers, &
+      call taumol26(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -194,7 +192,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol27(ncol, nlayers, &
+      call taumol27(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -203,7 +201,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol28(ncol, nlayers, &
+      call taumol28(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -212,7 +210,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol29(ncol, nlayers, &
+      call taumol29(pncol, ncol, nlayers, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -224,7 +222,7 @@ contains
    end subroutine
 
    !----------------------------------------------------------------------------
-   subroutine taumol16(ncol, nlayers, &
+   subroutine taumol16(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -244,16 +242,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -335,8 +331,8 @@ contains
                fac011 = (1. - fs) * fac11(icol,lay) 
                fac101 =       fs  * fac01(icol,lay) 
                fac111 =       fs  * fac11(icol,lay) 
-               ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(16) + js
-               ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(16) + js
+               ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(16) + js
+               ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(16) + js
                inds = indself(icol,lay) 
                indf = indfor(icol,lay) 
                tauray = colmol(icol,lay) * rayl
@@ -368,11 +364,11 @@ contains
          do lay = 1,nlayers
             if (lay > laytrop(icol)) then
             !do lay = laytrop(icol) +1, nlayers
-               if (jp(icol,lay-1) < layreffr .and. jp(icol,lay) >= layreffr) then
+               if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) then
                   laysolfr = lay
                end if
-               ind0 = ((jp(icol,lay)-13)*5+(jt (icol,lay)-1))*nspb(16) + 1
-               ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(16) + 1
+               ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(16) + 1
+               ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(16) + 1
                tauray = colmol(icol,lay) * rayl
 
                do ig = 1,ng16
@@ -401,7 +397,7 @@ contains
    end subroutine taumol16
 
    !----------------------------------------------------------------------------
-   subroutine taumol17(ncol, nlayers, &
+   subroutine taumol17(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -421,16 +417,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -513,8 +507,8 @@ contains
                fac011 = (1. - fs) * fac11(icol,lay) 
                fac101 =       fs  * fac01(icol,lay) 
                fac111 =       fs  * fac11(icol,lay) 
-               ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(17) + js
-               ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(17) + js
+               ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(17) + js
+               ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(17) + js
                inds = indself(icol,lay) 
                indf = indfor(icol,lay) 
                tauray = colmol(icol,lay) * rayl
@@ -551,8 +545,8 @@ contains
                fac011 = (1. - fs) * fac11(icol,lay) 
                fac101 =       fs  * fac01(icol,lay) 
                fac111 =       fs  * fac11(icol,lay) 
-               ind0 = ((jp(icol,lay)-13)*5+(jt (icol,lay)-1))*nspb(17) + js
-               ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(17) + js
+               ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(17) + js
+               ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(17) + js
                indf = indfor(icol,lay) 
                tauray = colmol(icol,lay) * rayl
 
@@ -581,7 +575,7 @@ contains
          do lay = 2,nlayers
             if (lay > laytrop(icol)) then 
           
-               if ((jp(icol,lay-1) < layreffr) .and. (jp(icol,lay) >= layreffr)) then
+               if ((jp(lay-1,icol) < layreffr) .and. (jp(lay,icol) >= layreffr)) then
                   laysolfr = lay
                end if
           
@@ -615,7 +609,7 @@ contains
    end subroutine taumol17
 
    !----------------------------------------------------------------------------
-   subroutine taumol18(ncol, nlayers, &
+   subroutine taumol18(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -635,16 +629,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -712,7 +704,7 @@ contains
             specmult = 8. * specparm
             js = 1 + int(specmult)
             fs = mod(specmult, 1.)
-            if (jp(icol,lay) < layreffr .and. jp(icol,lay+1) >= layreffr) &
+            if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
                laysolfr = min(lay+1,laytrop(icol) )
             do ig = 1,ng18
                if (lay == laysolfr .and. isolvar < 0) &
@@ -752,8 +744,8 @@ contains
                fac011 = (1. - fs) * fac11(icol,lay) 
                fac101 =       fs  * fac01(icol,lay) 
                fac111 =       fs  * fac11(icol,lay) 
-               ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(18) + js
-               ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(18) + js
+               ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(18) + js
+               ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(18) + js
                inds = indself(icol,lay) 
                indf = indfor(icol,lay) 
                tauray = colmol(icol,lay) * rayl
@@ -779,8 +771,8 @@ contains
 
                ! Upper atmosphere loop
                !do lay = laytrop(icol) +1, nlayers
-               ind0 = ((jp(icol,lay)-13)*5+(jt (icol,lay)-1))*nspb(18) + 1
-               ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(18) + 1
+               ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(18) + 1
+               ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(18) + 1
                tauray = colmol(icol,lay) * rayl
 
                do ig = 1,ng18
@@ -799,7 +791,7 @@ contains
    end subroutine taumol18
 
    !----------------------------------------------------------------------------
-   subroutine taumol19(ncol, nlayers, &
+   subroutine taumol19(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -819,16 +811,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -898,7 +888,7 @@ contains
          ! Lower atmosphere loop      
          do lay = 1,laytrop(icol) 
             
-            if (jp(icol,lay) < layreffr .and. jp(icol,lay+1) >= layreffr) &
+            if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
                laysolfr = min(lay+1,laytrop(icol) )
      
             if (lay == laysolfr) then 
@@ -952,8 +942,8 @@ contains
                fac011 = (1. - fs) * fac11(icol,lay) 
                fac101 =       fs  * fac01(icol,lay) 
                fac111 =       fs  * fac11(icol,lay) 
-               ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(19) + js
-               ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(19) + js
+               ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(19) + js
+               ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(19) + js
                inds = indself(icol,lay) 
                indf = indfor(icol,lay) 
                tauray = colmol(icol,lay) * rayl
@@ -977,8 +967,8 @@ contains
             else
 
                ! Upper atmosphere loop
-               ind0 = ((jp(icol,lay)-13)*5+(jt (icol,lay)-1))*nspb(19) + 1
-               ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(19) + 1
+               ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(19) + 1
+               ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(19) + 1
                tauray = colmol(icol,lay) * rayl
 
                do ig = 1,ng19
@@ -997,7 +987,7 @@ contains
    end subroutine taumol19
 
    !----------------------------------------------------------------------------
-   subroutine taumol20(ncol, nlayers, &
+   subroutine taumol20(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -1019,16 +1009,14 @@ contains
 
       implicit none
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -1089,7 +1077,7 @@ contains
       do icol = 1,ncol
          laysolfr = laytrop(icol)
          do lay = 1,laytrop(icol)
-            if (jp(icol,lay) < layreffr .and. jp(icol,lay+1) >= layreffr) &
+            if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
                laysolfr = min(lay+1,laytrop(icol) )
             if (lay == laysolfr) then 
                do ig = 1,ng20 
@@ -1113,8 +1101,8 @@ contains
          do lay = 1,nlayers 
             if (lay <= laytrop(icol)) then
          
-               ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(20) + 1
-               ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(20) + 1
+               ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(20) + 1
+               ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(20) + 1
                inds = indself(icol,lay) 
                indf = indfor(icol,lay) 
                tauray = colmol(icol,lay) * rayl
@@ -1134,8 +1122,8 @@ contains
             else
 
                ! Upper atmosphere loop
-               ind0 = ((jp(icol,lay)-13)*5+(jt (icol,lay)-1))*nspb(20) + 1
-               ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(20) + 1
+               ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(20) + 1
+               ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(20) + 1
                indf = indfor(icol,lay) 
                tauray = colmol(icol,lay) * rayl
 
@@ -1157,7 +1145,7 @@ contains
    end subroutine taumol20
 
    !----------------------------------------------------------------------------
-   subroutine taumol21(ncol, nlayers, &
+   subroutine taumol21(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -1177,16 +1165,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -1248,7 +1234,7 @@ contains
       do icol = 1,ncol
          laysolfr = laytrop(icol)        
          do lay=1,laytrop(icol)
-            if (jp(icol,lay) < layreffr .and. jp(icol,lay+1) >= layreffr) &
+            if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
                laysolfr = min(lay+1,laytrop(icol) )
             if (lay == laysolfr) then 
                speccomb = colh2o(icol,lay) + strrat*colco2(icol,lay) 
@@ -1300,8 +1286,8 @@ contains
                fac011 = (1. - fs) * fac11(icol,lay) 
                fac101 =       fs  * fac01(icol,lay) 
                fac111 =       fs  * fac11(icol,lay) 
-               ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(21) + js
-               ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(21) + js
+               ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(21) + js
+               ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(21) + js
                inds = indself(icol,lay) 
                indf = indfor(icol,lay) 
                tauray = colmol(icol,lay) * rayl
@@ -1340,8 +1326,8 @@ contains
                fac011 = (1. - fs) * fac11(icol,lay) 
                fac101 =       fs  * fac01(icol,lay) 
                fac111 =       fs  * fac11(icol,lay) 
-               ind0 = ((jp(icol,lay) -13)*5+(jt (icol,lay)-1))*nspb(21) + js
-               ind1 = ((jp(icol,lay) -12)*5+(jt1(icol,lay)-1))*nspb(21) + js
+               ind0 = ((jp(lay,icol) -13)*5+(jt (lay,icol)-1))*nspb(21) + js
+               ind1 = ((jp(lay,icol) -12)*5+(jt1(lay,icol)-1))*nspb(21) + js
                indf = indfor(icol,lay) 
                tauray = colmol(icol,lay) * rayl
 
@@ -1367,7 +1353,7 @@ contains
    end subroutine taumol21
 
    !----------------------------------------------------------------------------
-   subroutine taumol22(ncol, nlayers, &
+   subroutine taumol22(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -1387,16 +1373,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -1470,7 +1454,7 @@ contains
 
          ! Lower atmosphere loop
          do lay = 1,laytrop(icol) 
-            if (jp(icol,lay) < layreffr .and. jp(icol,lay+1) >= layreffr) &
+            if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
                laysolfr = min(lay+1,laytrop(icol) )
                  
             if (lay == laysolfr) then 
@@ -1525,8 +1509,8 @@ contains
                fac011 = (1. - fs) * fac11(icol,lay) 
                fac101 =       fs  * fac01(icol,lay) 
                fac111 =       fs  * fac11(icol,lay) 
-               ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(22) + js
-               ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(22) + js
+               ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(22) + js
+               ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(22) + js
                inds = indself(icol,lay) 
                indf = indfor(icol,lay) 
                tauray = colmol(icol,lay) * rayl
@@ -1553,8 +1537,8 @@ contains
 
                ! Upper atmosphere loop
                o2cont = 4.35e-4 *colo2(icol,lay) /(350.0 *2.0 )
-               ind0 = ((jp(icol,lay)-13)*5+(jt (icol,lay)-1))*nspb(22) + 1
-               ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(22) + 1
+               ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(22) + 1
+               ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(22) + 1
                tauray = colmol(icol,lay) * rayl
 
                do ig = 1,ng22
@@ -1574,7 +1558,7 @@ contains
    end subroutine taumol22
 
    !----------------------------------------------------------------------------
-   subroutine taumol23(ncol, nlayers, &
+   subroutine taumol23(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -1594,16 +1578,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -1674,7 +1656,7 @@ contains
 
          ! Lower atmosphere loop
          do lay = 1,laytrop(icol) 
-            if (jp(icol,lay) < layreffr .and. jp(icol,lay+1) >= layreffr) &
+            if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
                laysolfr = min(lay+1,laytrop(icol) )
 
             if (lay == laysolfr) then 
@@ -1699,10 +1681,10 @@ contains
          ! Lower atmosphere loop
          do lay = 1,nlayers 
             if (lay <= laytrop(icol)) then
-               if (jp(icol,lay) < layreffr .and. jp(icol,lay+1) >= layreffr) &
+               if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
                   laysolfr = min(lay+1,laytrop(icol) )
-               ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(23) + 1
-               ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(23) + 1
+               ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(23) + 1
+               ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(23) + 1
                inds = indself(icol,lay) 
                indf = indfor(icol,lay) 
 
@@ -1734,7 +1716,7 @@ contains
    end subroutine taumol23
 
    !----------------------------------------------------------------------------
-   subroutine taumol24(ncol, nlayers, &
+   subroutine taumol24(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -1754,16 +1736,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -1832,7 +1812,7 @@ contains
 
          ! Lower atmosphere loop
          do lay = 1,laytrop(icol) 
-            if (jp(icol,lay) < layreffr .and. jp(icol,lay+1) >= layreffr) &
+            if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
                laysolfr = min(lay+1,laytrop(icol) )
             if (lay == laysolfr) then
                speccomb = colh2o(icol,lay) + strrat*colo2(icol,lay) 
@@ -1884,8 +1864,8 @@ contains
                fac011 = (1. - fs) * fac11(icol,lay) 
                fac101 =       fs  * fac01(icol,lay) 
                fac111 =       fs  * fac11(icol,lay) 
-               ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(24) + js
-               ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(24) + js
+               ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(24) + js
+               ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(24) + js
                inds = indself(icol,lay) 
                indf = indfor (icol,lay) 
 
@@ -1911,8 +1891,8 @@ contains
             else
 
                ! Upper atmosphere loop
-               ind0 = ((jp(icol,lay)-13)*5+(jt (icol,lay)-1))*nspb(24) + 1
-               ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(24) + 1
+               ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(24) + 1
+               ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(24) + 1
 
                do ig = 1,ng24
                   tauray = colmol(icol,lay) * raylb(ig)
@@ -1932,7 +1912,7 @@ contains
    end subroutine taumol24
 
    !----------------------------------------------------------------------------
-   subroutine taumol25(ncol, nlayers, &
+   subroutine taumol25(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -1952,16 +1932,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -2028,10 +2006,10 @@ contains
 
          ! Lower atmosphere loop
          do lay = 1,laytrop(icol) 
-            if (jp(icol,lay) < layreffr .and. jp(icol,lay+1) >= layreffr) &
+            if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
                laysolfr = min(lay+1,laytrop(icol) )
-            ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(25) + 1
-            ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(25) + 1
+            ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(25) + 1
+            ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(25) + 1
 
             do ig = 1,ng25
                tauray = colmol(icol,lay) * rayl(ig)
@@ -2070,7 +2048,7 @@ contains
    end subroutine taumol25
 
    !----------------------------------------------------------------------------
-   subroutine taumol26(ncol, nlayers, &
+   subroutine taumol26(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -2089,16 +2067,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -2196,7 +2172,7 @@ contains
    end subroutine taumol26
 
    !----------------------------------------------------------------------------
-   subroutine taumol27(ncol, nlayers, &
+   subroutine taumol27(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -2215,16 +2191,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -2299,8 +2273,8 @@ contains
 
          ! Lower atmosphere loop
          do lay = 1,laytrop(icol) 
-            ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(27) + 1
-            ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(27) + 1
+            ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(27) + 1
+            ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(27) + 1
 
             do ig = 1,ng27
                tauray = colmol(icol,lay) * rayl(ig)
@@ -2318,10 +2292,10 @@ contains
 
          ! Upper atmosphere loop
          do lay = laytrop(icol)+1, nlayers
-            if (jp(icol,lay-1) < layreffr .and. jp(icol,lay) >= layreffr) &
+            if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) &
                laysolfr = lay
-            ind0 = ((jp(icol,lay)-13)*5+(jt (icol,lay)-1))*nspb(27) + 1
-            ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(27) + 1
+            ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(27) + 1
+            ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(27) + 1
 
             do ig = 1,ng27
                tauray = colmol(icol,lay) * rayl(ig)
@@ -2349,7 +2323,7 @@ contains
    end subroutine taumol27
 
    !----------------------------------------------------------------------------
-   subroutine taumol28(ncol, nlayers, &
+   subroutine taumol28(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -2368,16 +2342,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -2477,8 +2449,8 @@ contains
             fac011 = (1. - fs) * fac11(icol,lay) 
             fac101 =       fs  * fac01(icol,lay) 
             fac111 =       fs  * fac11(icol,lay) 
-            ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(28) + js
-            ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(28) + js
+            ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(28) + js
+            ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(28) + js
             tauray = colmol(icol,lay) * rayl
 
             do ig = 1,ng28
@@ -2500,7 +2472,7 @@ contains
 
          ! Upper atmosphere loop
          do lay = laytrop(icol) +1, nlayers
-            if (jp(icol,lay-1) < layreffr .and. jp(icol,lay) >= layreffr) &
+            if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) &
                laysolfr = lay
             speccomb = colo3(icol,lay) + strrat*colo2(icol,lay) 
             specparm = colo3(icol,lay) / speccomb 
@@ -2516,8 +2488,8 @@ contains
             fac011 = (1. - fs) * fac11(icol,lay) 
             fac101 =       fs  * fac01(icol,lay) 
             fac111 =       fs  * fac11(icol,lay) 
-            ind0 = ((jp(icol,lay)-13)*5+(jt (icol,lay)-1))*nspb(28) + js
-            ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(28) + js
+            ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(28) + js
+            ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(28) + js
             tauray = colmol(icol,lay) * rayl
 
             do ig = 1,ng28
@@ -2552,7 +2524,7 @@ contains
    end subroutine taumol28
 
    !----------------------------------------------------------------------------
-   subroutine taumol29(ncol, nlayers, &
+   subroutine taumol29(pncol, ncol, nlayers, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -2572,16 +2544,14 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: ncol
-      integer, intent(in)  :: nlayers            ! total number of layers
+      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
+      integer, intent(in)  :: ncol            ! Actual number of gridcols
+      integer, intent(in)  :: nlayers         ! total number of layers
 
-      integer, intent(in)  :: laytrop(:)            ! tropopause layer index
-      integer, intent(in)  :: jp(:,:)               ! 
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt(:,:)               !
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: jt1(:,:)              !
-                                                         !   Dimensions: (nlayers)
+      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
+      integer, intent(in)  :: jp  (nlayers,pncol)
+      integer, intent(in)  :: jt  (nlayers,pncol)
+      integer, intent(in)  :: jt1 (nlayers,pncol)
 
       real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
                                                          !   Dimensions: (nlayers)
@@ -2643,7 +2613,7 @@ contains
         
          laysolfr = nlayers
          do lay = laytrop(icol) +1, nlayers
-            if (jp(icol,lay-1) < layreffr .and. jp(icol,lay) >= layreffr) &
+            if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) &
                laysolfr = lay
 
             if (lay == laysolfr) then 
@@ -2672,8 +2642,8 @@ contains
          ! Lower atmosphere loop
          do lay = 1,nlayers 
             if (lay <= laytrop(icol)) then
-               ind0 = ((jp(icol,lay)-1)*5+(jt (icol,lay)-1))*nspa(29) + 1
-               ind1 = ( jp(icol,lay)   *5+(jt1(icol,lay)-1))*nspa(29) + 1
+               ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(29) + 1
+               ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(29) + 1
                inds = indself(icol,lay) 
                indf = indfor(icol,lay) 
                tauray = colmol(icol,lay) * rayl
@@ -2694,8 +2664,8 @@ contains
             else 
 
                ! Upper atmosphere loop
-               ind0 = ((jp(icol,lay)-13)*5+(jt (icol,lay)-1))*nspb(29) + 1
-               ind1 = ((jp(icol,lay)-12)*5+(jt1(icol,lay)-1))*nspb(29) + 1
+               ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(29) + 1
+               ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(29) + 1
                tauray = colmol(icol,lay) * rayl
 
                do ig = 1,ng29

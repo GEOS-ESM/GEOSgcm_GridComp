@@ -525,11 +525,10 @@ contains
       ! Atmosphere - setcoef
       ! --------------------
 
-      integer :: laytrop  (pncol)            ! tropopause layer index
-      integer :: laylow   (pncol)            ! tropopause layer index
-      integer :: jp  (pncol,nlay+1)          ! 
-      integer :: jt  (pncol,nlay+1)          !
-      integer :: jt1 (pncol,nlay+1)          !
+      integer :: laytrop  (pncol)          ! tropopause layer index
+      integer :: jp  (nlay,pncol)          ! 
+      integer :: jt  (nlay,pncol)          !
+      integer :: jt1 (nlay,pncol)          !
 
       ! gasesous absorbers
       real :: colh2o  (pncol,nlay+1)         ! column amount (h2o)
@@ -1210,7 +1209,7 @@ contains
 
             call setcoef_sw( &
                pncol, ncol, nlay, play, tlay, coldry, wkl, &
-               laytrop, laylow, jp, jt, jt1, &
+               laytrop, jp, jt, jt1, &
                co2mult, colch4, colco2, colh2o, colmol, coln2o, &
                colo2, colo3, fac00, fac01, fac10, fac11, &
                selffac, selffrac, indself, forfac, forfrac, indfor)
@@ -1223,7 +1222,7 @@ contains
                taua, asya, omga, cossza, adjflux, &
                isolvar, svar_f, svar_s, svar_i, &
                svar_f_bnd, svar_s_bnd, svar_i_bnd, &
-               laytrop, laylow, jp, jt, jt1, &
+               laytrop, jp, jt, jt1, &
                co2mult, colch4, colco2, colh2o, colmol, &
                coln2o, colo2, colo3, &
                fac00, fac01, fac10, fac11, &

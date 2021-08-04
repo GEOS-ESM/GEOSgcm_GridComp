@@ -1,5 +1,5 @@
-!?pmn ordering, seperation of ifs so not inside loop???
 !?pmn Check to ensure all calculated quantities are within physical limits.
+!?pmn use of cldmin needs improving
 
 ! space saving function-like macros for linear interpolation
 ! of a 2D-varaible in first and second arguments as follows ...
@@ -20,7 +20,7 @@ module rrtmg_sw_cldprmc
 
    ! ------- Modules -------
 
-   use parrrsw, only : ngptsw, jpband, jpb1, jpb2
+   use parrrsw, only : ngptsw
    use rrsw_cld, only : extliq1, ssaliq1, asyliq1, &
                         extice2, ssaice2, asyice2, &
                         extice3, ssaice3, asyice3, fdlice3, &
@@ -51,55 +51,57 @@ contains
       integer, intent(in) :: iceflag         ! see definitions
       integer, intent(in) :: liqflag         ! see definitions
 
-      real, intent(in) :: cldfmc(nlayers,ngptsw,pncol)  ! cloud fraction [mcica]
-      real, intent(in) :: ciwpmc(nlayers,ngptsw,pncol)  ! cloud ice water path [mcica]
-      real, intent(in) :: clwpmc(nlayers,ngptsw,pncol)  ! cloud liq water path [mcica]
-      real, intent(in) :: relqmc(nlayers,pncol)         ! cloud liq particle effective radius (um)
-      real, intent(in) :: reicmc(nlayers,pncol)         ! cloud ice particle effective radius (um)
-                                                        ! specific defn of reicmc depends on iceflag:
-                                                        ! iceflag = 1: ice effective radius, r_ec,
-                                                        !   (Ebert and Curry, 1992), r_ec range is
-                                                        !   limited to 13. to 130. um;
-                                                        ! iceflag = 2: ice effective radius, r_k,
-                                                        !   (Key, Streamer Ref. Manual, 1996)
-                                                        !   r_k range is limited to 5. to 131. um;
-                                                        ! iceflag = 3: generalized effective size,
-                                                        !   dge, (Fu, 1996), dge range is limited
-                                                        !   to 5. to 140. um [dge = 1.0315 * r_ec].
+      real, intent(in) :: cldfmc (nlayers,ngptsw,pncol)  ! cloud fraction [mcica]
+      real, intent(in) :: ciwpmc (nlayers,ngptsw,pncol)  ! cloud ice water path [mcica]
+      real, intent(in) :: clwpmc (nlayers,ngptsw,pncol)  ! cloud liq water path [mcica]
+      real, intent(in) :: relqmc (nlayers,pncol)         ! cloud liq particle effective radius (um)
+      real, intent(in) :: reicmc (nlayers,pncol)         ! cloud ice particle effective radius (um)
+                                                         ! specific defn of reicmc depends on iceflag:
+                                                         ! iceflag = 1: ice effective radius, r_ec,
+                                                         !   (Ebert and Curry, 1992), r_ec range is
+                                                         !   limited to 13. to 130. um;
+                                                         ! iceflag = 2: ice effective radius, r_k,
+                                                         !   (Key, Streamer Ref. Manual, 1996)
+                                                         !   r_k range is limited to 5. to 131. um;
+                                                         ! iceflag = 3: generalized effective size,
+                                                         !   dge, (Fu, 1996), dge range is limited
+                                                         !   to 5. to 140. um [dge = 1.0315 * r_ec].
 
       ! ------- Output -------
 
       ! Note: inout because ASSUMED that clear values already set by default externally.
-      real, intent(inout) :: taucmc(nlayers,ngptsw,pncol)  ! cloud opt depth (delta scaled)
-      real, intent(inout) :: ssacmc(nlayers,ngptsw,pncol)  ! single scat albedo (delta scaled)
-      real, intent(inout) :: asmcmc(nlayers,ngptsw,pncol)  ! asymmetry param (delta scaled)
-      real, intent(inout) :: taormc(nlayers,ngptsw,pncol)  ! cloud opt depth (non-delta scaled)
+      real, intent(inout) :: taucmc (nlayers,ngptsw,pncol)  ! cloud opt depth (delta scaled)
+      real, intent(inout) :: ssacmc (nlayers,ngptsw,pncol)  ! single scat albedo (delta scaled)
+      real, intent(inout) :: asmcmc (nlayers,ngptsw,pncol)  ! asymmetry param (delta scaled)
+      real, intent(inout) :: taormc (nlayers,ngptsw,pncol)  ! cloud opt depth (non-delta scaled)
 
       ! ------- Local -------
 
-      integer :: ib, lay, istr, ig, icol
-
-      real, parameter :: eps = 1.e-06      ! epsilon
+      real, parameter :: eps = 1.e-06      ! small number cf 1.
       real, parameter :: cldmin = 1.e-20   ! minimum value for cloud quantities
 
-      real :: radliq                       ! cloud liquid droplet radius (microns)
-      real :: radice                       ! cloud ice effective size (microns)
+      integer :: ib, lay, istr, ig, icol
 
       ! table lookup parameters
       integer :: index
       real :: factor, fint
 
+      ! intermediates
+      real :: radliq, radice
       real :: tauiceorig, scatice, ssaice, tauice
       real :: tauliqorig, scatliq, ssaliq, tauliq
       real :: fdelta
 
       logical :: cloudy (nlayers,ngptsw,pncol)
 
-      real, dimension(nlayers,ngptsw,pncol) :: &
+      real, dimension (nlayers,ngptsw,pncol) :: &
          extcoice, gice, ssacoice, forwice, &
          extcoliq, gliq, ssacoliq, forwliq
 
-      ! set cloudy flag
+      ! --------------------------------
+      ! Locations where do cloud optics.
+      ! --------------------------------
+
       do icol = 1, ncol
          cloudy(:,:,icol) = cldfmc(:,:,icol) >= cldmin .and. &
             (ciwpmc(:,:,icol) + clwpmc(:,:,icol)) >= cldmin
@@ -281,9 +283,9 @@ contains
 
       endif  ! liquid options
 
-      ! ------------------------------------------
-      ! Combine ice and liquid optical properties.
-      ! ------------------------------------------
+      ! --------------------------------------------------------------------
+      ! Perform delta-scaling and Combine ice and liquid optical properties.
+      ! --------------------------------------------------------------------
 
       do icol = 1, ncol
          do ig = 1, ngptsw 

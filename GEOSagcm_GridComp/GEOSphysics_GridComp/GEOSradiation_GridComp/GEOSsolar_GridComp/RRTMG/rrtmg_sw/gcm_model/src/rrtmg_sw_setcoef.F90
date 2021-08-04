@@ -1,3 +1,5 @@
+!? pmn size of mxmol ?
+
 module rrtmg_sw_setcoef
 
 !  --------------------------------------------------------------------------
@@ -14,6 +16,7 @@ module rrtmg_sw_setcoef
 
    use parrrsw, only : mxmol
    use rrsw_ref, only : pref, preflog, tref
+   use iso_fortran_env, only : error_unit
 
    implicit none
 
@@ -22,7 +25,7 @@ contains
    !----------------------------------------------------------------------------
    subroutine setcoef_sw( &
       pncol, ncol, nlayers, pavel, tavel, coldry, wkl, &
-      laytrop, laylow, jp, jt, jt1, &
+      laytrop, jp, jt, jt1, &
       co2mult, colch4, colco2, colh2o, colmol, coln2o, &
       colo2, colo3, fac00, fac01, fac10, fac11, &
       selffac, selffrac, indself, forfac, forfrac, indfor)
@@ -44,22 +47,18 @@ contains
       integer, intent(in) :: ncol     ! actual number of gridcols
       integer, intent(in) :: nlayers  ! number of layers
       
-      real, intent(in) :: pavel (nlayers,pncol)     ! layer pressures (mb) 
-      real, intent(in) :: tavel (nlayers,pncol)     ! layer temperatures (K)
-      real, intent(in) :: coldry(nlayers,pncol)     ! dry air column density (mol/cm2)
-      real, intent(in) :: wkl(mxmol,nlayers,pncol)  ! molecular amounts (mol/cm-2)
+      real, intent(in) :: pavel     (nlayers,pncol)  ! layer pressures (mb) 
+      real, intent(in) :: tavel     (nlayers,pncol)  ! layer temperatures (K)
+      real, intent(in) :: coldry    (nlayers,pncol)  ! dry air column density (mol/cm2)
+      real, intent(in) :: wkl (mxmol,nlayers,pncol)  ! molecular amounts (mol/cm-2)
 
       ! ----- Output -----
 
-      integer, intent(out) :: laytrop(:)        ! tropopause layer index
-      integer, intent(out) :: laylow(:)         ! 
+      integer, intent(out) :: laytrop (pncol)        ! tropopause layer index
 
-      integer, intent(out) :: jp(:,:)           ! 
-                                                      !    Dimensions: (nlayers)
-      integer, intent(out) :: jt(:,:)           !
-                                                      !    Dimensions: (nlayers)
-      integer, intent(out) :: jt1(:,:)          !
-                                                      !    Dimensions: (nlayers)
+      integer, intent(out) :: jp  (nlayers,pncol)           ! 
+      integer, intent(out) :: jt  (nlayers,pncol)           !
+      integer, intent(out) :: jt1 (nlayers,pncol)           !
 
       real, intent(out) :: colh2o(:,:)          ! column amount (h2o)
                                                       !    Dimensions: (nlayers)
@@ -101,14 +100,17 @@ contains
       ! Initializations
       real, parameter :: stpfac = 296. / 1013. 
 
+      ! locate tropopause: laytrop in [1,nlayers-1] required
       laytrop = 0
-      laylow = 0
       do icol = 1,ncol
          do lay = 1,nlayers
             plog = log(pavel(lay,icol))
             if (plog >= 4.56) laytrop(icol) = laytrop(icol) + 1
-            if (plog >= 6.62) laylow(icol) = laylow(icol) + 1
          end do
+         if (laytrop(icol) == 0 .or. laytrop(icol) == nlayers) then
+            write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
+            write(error_unit,*) 'tropopause not found at icol:', icol
+         endif
       end do
 
       do icol = 1, ncol
@@ -120,14 +122,14 @@ contains
             ! two values that the layer pressure lies.
 
             plog = log(pavel(lay,icol))
-            jp(icol,lay) = int(36. - 5*(plog+0.04 ))
-            if (jp(icol,lay) < 1) then
-               jp(icol,lay) = 1
-            elseif (jp(icol,lay) > 58) then
-               jp(icol,lay) = 58
+            jp(lay,icol) = int(36. - 5*(plog+0.04 ))
+            if (jp(lay,icol) < 1) then
+               jp(lay,icol) = 1
+            elseif (jp(lay,icol) > 58) then
+               jp(lay,icol) = 58
             endif
-            jp1 = jp(icol,lay) + 1
-            fp = 5. * (preflog(jp(icol,lay) ) - plog)
+            jp1 = jp(lay,icol) + 1
+            fp = 5. * (preflog(jp(lay,icol) ) - plog)
 
             ! Determine, for each reference pressure (JP and JP1), which
             ! reference temperature (these are different for each  
@@ -137,20 +139,20 @@ contains
             ! (JT1) and the next highest reference temperature that the 
             ! layer temperature falls.
 
-            jt(icol,lay) = int(3. + (tavel(lay,icol)-tref(jp(icol,lay)))/15.)
-            if (jt(icol,lay) < 1) then
-               jt(icol,lay) = 1
-            elseif (jt(icol,lay) > 4) then
-               jt(icol,lay) = 4
+            jt(lay,icol) = int(3. + (tavel(lay,icol)-tref(jp(lay,icol)))/15.)
+            if (jt(lay,icol) < 1) then
+               jt(lay,icol) = 1
+            elseif (jt(lay,icol) > 4) then
+               jt(lay,icol) = 4
             endif
-            ft = ((tavel(lay,icol)-tref(jp(icol,lay)))/15.) - float(jt(icol,lay)-3)
-            jt1(icol,lay) = int(3. + (tavel(lay,icol)-tref(jp1))/15.)
-            if (jt1(icol,lay) < 1) then
-               jt1(icol,lay) = 1
-            elseif (jt1(icol,lay) > 4) then
-               jt1(icol,lay) = 4
+            ft = ((tavel(lay,icol)-tref(jp(lay,icol)))/15.) - float(jt(lay,icol)-3)
+            jt1(lay,icol) = int(3. + (tavel(lay,icol)-tref(jp1))/15.)
+            if (jt1(lay,icol) < 1) then
+               jt1(lay,icol) = 1
+            elseif (jt1(lay,icol) > 4) then
+               jt1(lay,icol) = 4
             endif
-            ft1 = ((tavel(lay,icol)-tref(jp1))/15.) - float(jt1(icol,lay)-3)
+            ft1 = ((tavel(lay,icol)-tref(jp1))/15.) - float(jt1(lay,icol)-3)
 
             water = wkl(1,lay,icol) / coldry(lay,icol) 
             scalefac = pavel(lay,icol)  * stpfac / tavel(lay,icol) 
