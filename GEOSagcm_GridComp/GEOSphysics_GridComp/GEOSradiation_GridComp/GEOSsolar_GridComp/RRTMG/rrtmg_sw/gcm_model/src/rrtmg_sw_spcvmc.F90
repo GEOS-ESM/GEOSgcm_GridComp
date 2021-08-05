@@ -35,7 +35,8 @@ contains
       selffac, selffrac, indself, forfac, forfrac, indfor, &
       pbbfd, pbbfu, pbbcd, pbbcu, puvfd, puvcd, pnifd, pnicd, &
       pbbfddir, pbbcddir, puvfddir, puvcddir, pnifddir, pnicddir,&
-      zgco, zomco, zrdnd, zref, zrefo, zrefd, zrefdo, ztauo, zdbt, ztdbt,&
+                   zrdnd, zref, zrefo, zrefd, zrefdo, ztauo, zdbt, ztdbt,&
+!     zgco, zomco, zrdnd, zref, zrefo, zrefd, zrefdo, ztauo, zdbt, ztdbt,&
       ztra, ztrao, ztrad, ztrado, zfd, zfu, ztaug, ztaur, zsflxzen, ssi,&
       znirr, znirf, zparr, zparf, zuvrr, zuvrf)
    ! ---------------------------------------------------------------------------
@@ -127,18 +128,28 @@ contains
          :: fac00, fac01, fac10, fac11
 
 ! pmn why inout?
-      real, intent(inout) :: zgco(tncol,ngptsw,nlayers+1), zomco(tncol,ngptsw,nlayers+1)  
-      real, intent(inout) :: zrdnd(tncol,ngptsw,nlayers+1) 
-      real, intent(inout) :: zref(tncol,ngptsw,nlayers+1)  , zrefo(tncol,ngptsw,nlayers+1)  
-      real, intent(inout) :: zrefd(tncol,ngptsw,nlayers+1)  , zrefdo(tncol,ngptsw,nlayers+1)  
-      real, intent(inout) :: ztauo(tncol,ngptsw,nlayers)  
-      real, intent(inout) :: zdbt(tncol,ngptsw,nlayers+1)  ,ztdbt(tncol,ngptsw,nlayers+1)   
-      real, intent(inout) :: ztra(tncol,ngptsw,nlayers+1)  , ztrao(tncol,ngptsw,nlayers+1)  
-      real, intent(inout) :: ztrad(tncol,ngptsw,nlayers+1)  , ztrado(tncol,ngptsw,nlayers+1)  
-      real, intent(inout) :: zfd(tncol,ngptsw,nlayers+1)  , zfu(tncol,ngptsw,nlayers+1)   
-      real, intent(inout) :: ztaur(tncol,nlayers,ngptsw), ztaug(tncol,nlayers,ngptsw) 
-      real, intent(inout) :: zsflxzen(tncol,ngptsw)
-      real, intent(inout) :: ssi(tncol,ngptsw)
+      real, intent(inout) :: zrdnd (tncol,ngptsw,nlayers+1) 
+      real, intent(inout) :: zref  (tncol,ngptsw,nlayers+1), zrefo  (tncol,ngptsw,nlayers+1)  
+      real, intent(inout) :: zrefd (tncol,ngptsw,nlayers+1), zrefdo (tncol,ngptsw,nlayers+1)  
+      real, intent(inout) :: ztauo (tncol,ngptsw,nlayers)  
+      real, intent(inout) :: zdbt  (tncol,ngptsw,nlayers+1), ztdbt  (tncol,ngptsw,nlayers+1)   
+      real, intent(inout) :: ztra  (tncol,ngptsw,nlayers+1), ztrao  (tncol,ngptsw,nlayers+1)  
+      real, intent(inout) :: ztrad (tncol,ngptsw,nlayers+1), ztrado (tncol,ngptsw,nlayers+1)  
+      real, intent(inout) :: zfd   (tncol,ngptsw,nlayers+1), zfu    (tncol,ngptsw,nlayers+1)   
+      real, intent(inout) :: ztaur (tncol,nlayers,ngptsw),   ztaug  (tncol,nlayers,ngptsw) 
+      real, intent(inout) :: zsflxzen(tncol,ngptsw),         ssi    (tncol,ngptsw)
+!? pmn these are reported back but dont need to be a GPU thing I think
+!     real :: zrdnd (pncol,ngptsw,nlay+1)
+!     real :: zref  (pncol,ngptsw,nlay+1), zrefo  (pncol,ngptsw,nlay+1)
+!     real :: zrefd (pncol,ngptsw,nlay+1), zrefdo (pncol,ngptsw,nlay+1)
+!     real :: ztauo (pncol,ngptsw,nlay)
+!     real :: zdbt  (pncol,ngptsw,nlay+1), ztdbt  (pncol,ngptsw,nlay+1)
+!     real :: ztra  (pncol,ngptsw,nlay+1), ztrao  (pncol,ngptsw,nlay+1)
+!     real :: ztrad (pncol,ngptsw,nlay+1), ztrado (pncol,ngptsw,nlay+1)
+!     real :: zfd   (pncol,ngptsw,nlay+1), zfu    (pncol,ngptsw,nlay+1)
+!     real :: zsflxzen(pncol,ngptsw)
+!     real :: ssi   (pncol,ngptsw)
+!     real :: ztaur (pncol,nlay,ngptsw), ztaug (pncol,nlay,ngptsw)
    
       ! ------- Output -------
                                                                !   All Dimensions: (nlayers+1)
@@ -178,6 +189,8 @@ contains
       real :: zwf, tauorig
 
       integer :: icol
+
+      real :: zgco  (tncol,ngptsw,nlayers+1), zomco  (tncol,ngptsw,nlayers+1)  
 
       ! ------------------------------------------------------------------
 
@@ -273,11 +286,13 @@ contains
          end do
 
       end do
+!?pmn zgco&zomco set (not in) for 1:klev
 
       ! Clear sky reflectivities
       call reftra_sw (ncol, nlayers, &
                       pcldfmc, zgco, prmu0, ztauo, zomco, &
                       zrefo, zrefdo, ztrao, ztrado, 1)
+!?pmn zgco&zomco used only 1:klev
 
       do icol = 1, ncol
 
@@ -314,14 +329,19 @@ contains
 
             zgco(icol,iw,klev+1)  = palbp(ibm,icol) 
             zomco(icol,iw,klev+1) = palbd(ibm,icol) 
+!?pmn these are obviously now being reused for different purpose
     
          end do
       end do
+!?pmn zgco&zomco set (not in) for klev+1
+!?pmn so now have overwritten everthing that came in without using so at most (out)
 
       call vrtqdr_sw(ncol, klev, &
                      zrefo, zrefdo, ztrao, ztrado, &
                      zdbt, zrdnd, zgco, zomco, ztdbt, &
                      zfd, zfu, ztra)
+!?pmn zgco&zomco updated from  bottom value
+!?pmn but never used below
 
       ! perform band integration for clear cases      
       do icol = 1, ncol
@@ -406,11 +426,13 @@ contains
                enddo    
             end do
          end do
+!?pmn again zgco&zomco set (not in) 1:klev for cc==2
 
          ! Total sky reflectivities      
          call reftra_sw (ncol, nlayers, &
                          pcldfmc, zgco, prmu0, ztauo, zomco, &
                          zref, zrefd, ztra, ztrad, 0)
+!?pmn zgco&zomco 1:klev used only
 !?pmn       
          klev = nlayers
 
@@ -444,8 +466,9 @@ contains
          end do
 
          zrdnd = 0.
-         zgco  = 0.
-         zomco = 0.
+         zgco  = 0.  !pmn needed?
+         zomco = 0.  !pmn needed?
+!?pmn zgco&zomco completely set to zero so start again for cc==2
          zfd   = 0.
          zfu   = 0.
 
@@ -459,9 +482,13 @@ contains
 
                zgco (icol,iw,klev+1) = palbp(ibm,icol) 
                zomco(icol,iw,klev+1) = palbd(ibm,icol) 
+!?pmn these are obviously now being reused for different purpose
     
             end do
          enddo           
+!?pmn zgco&zomco set (not in) klev+1 cc==2
+!?pmn think on klev+1 value used
+
                  
          ! Vertical quadrature for cloudy fluxes
 
@@ -469,6 +496,8 @@ contains
                         zref, zrefd, ztra, ztrad, &
                         zdbt, zrdnd, zgco, zomco, ztdbt, &
                         zfd, zfu, ztrao)
+!?pmn zgco&zomco updated from  bottom value
+!?pmn but never used below cc==2
 
          ! Upwelling and downwelling fluxes at levels
          !   Two-stream calculations go from top to bottom; 
@@ -878,8 +907,12 @@ contains
       real, intent(inout) :: prdnd(:,:,:)  
                                                               !   Dimensions: (:+1)
       real, intent(inout) :: prup(:,:,:)  
+!xpmn real, intent(in) :: prup(:,:,:)  
                                                               !   Dimensions: (:+1)
       real, intent(inout) :: prupd(:,:,:)  
+!xpmn real, intent(in) :: prupd(:,:,:)  
+!?pmn seems like only the value at klev+1 used from input
+!?pmn and no need to be out? for prup too.
                                                               !   Dimensions: (:+1)
       real, intent(inout) :: ztdn(:,:,:)
                                                               

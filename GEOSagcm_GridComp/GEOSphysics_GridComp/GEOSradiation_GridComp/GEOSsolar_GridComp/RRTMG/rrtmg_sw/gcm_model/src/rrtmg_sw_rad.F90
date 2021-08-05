@@ -504,6 +504,7 @@ contains
       ! Atmosphere
       real :: coldry    (nlay,pncol)     ! dry air column amount
       real :: wkl (mxmol,nlay,pncol)     ! molecular amounts (mol/cm-2)
+!?pmn abbreviate mxmol and get rid of wkl altogether even better
 
       ! solar input
       real :: coszen (pncol)             ! Cosine of solar zenith angle
@@ -518,10 +519,8 @@ contains
       ! Atmosphere - setcoef
       ! --------------------
 
-      integer :: laytrop  (pncol)          ! tropopause layer index
-      integer :: jp  (nlay,pncol)          ! 
-      integer :: jt  (nlay,pncol)          !
-      integer :: jt1 (nlay,pncol)          !
+      ! tropopause layer index
+      integer :: laytrop   (pncol) 
 
       ! gasesous absorbers
       real :: colh2o  (nlay,pncol)         ! column amount (h2o)
@@ -531,6 +530,7 @@ contains
       real :: colo2   (nlay,pncol)         ! column amount (o2)
       real :: colmol  (nlay,pncol)         ! column amount
 
+      ! continuum interpolation coefficients
       integer :: indself (nlay,pncol) 
       integer :: indfor  (nlay,pncol) 
       real :: selffac    (nlay,pncol) 
@@ -538,8 +538,9 @@ contains
       real :: forfac     (nlay,pncol) 
       real :: forfrac    (nlay,pncol) 
 
-      real, dimension (nlay,pncol) :: &
-         fac00, fac01, fac10, fac11  
+      ! pressure and temperature interpolation coefficients
+      integer, dimension (nlay,pncol) :: jp, jt, jt1
+      real,    dimension (nlay,pncol) :: fac00, fac01, fac10, fac11  
       
       ! general
       real :: play (nlay,  pncol)             ! Layer pressures (hPa)
@@ -549,32 +550,32 @@ contains
       ! Atmosphere/clouds - cldprop
       ! ---------------------------
 
-      integer :: ncbands                      ! num of cloud spectral bands
+      integer :: ncbands                    ! num of cloud spectral bands
 
-      real :: cld  (nlay,pncol)               ! Cloud fraction
-      real :: ciwp (nlay,pncol)               ! In-cloud ice water path (g/m2)
-      real :: clwp (nlay,pncol)               ! In-cloud liq water path (g/m2)
-      real :: rei  (nlay,pncol)               ! Cloud ice effective radius (um)
-      real :: rel  (nlay,pncol)               ! Cloud drop effective radius (um)
+      real :: cld  (nlay,pncol)             ! Cloud fraction
+      real :: ciwp (nlay,pncol)             ! In-cloud ice water path [g/m2]
+      real :: clwp (nlay,pncol)             ! In-cloud liq water path [g/m2]
+      real :: rei  (nlay,pncol)             ! Cloud ice effective radius [um]
+      real :: rel  (nlay,pncol)             ! Cloud drop effective radius [um]
       
-      real :: alat      (pncol)
-      real :: zm   (nlay,pncol)
+      real :: alat      (pncol)             ! latitude for cloud overlap
+      real :: zm   (nlay,pncol)		    ! mid-layer hgt for cld overlap [m]
                                                       
-      real, dimension (pncol) :: &
-         znirr, znirf, zparr, zparf, zuvrr, zuvrf
-      
-      real :: taucmc (nlay,ngptsw,pncol)    ! in-cloud optical depth [mcica]
-      real :: taormc (nlay,ngptsw,pncol)    ! unscaled in-cloud optl depth [mcica]
-      real :: ssacmc (nlay,ngptsw,pncol)    ! in-cloud single scat albedo [mcica]
-      real :: asmcmc (nlay,ngptsw,pncol)    ! in-cloud asymmetry param [mcica]
-      
       real :: cldfmcl (nlay,ngptsw,pncol)   ! cloud fraction [mcica]
       real :: ciwpmcl (nlay,ngptsw,pncol)   ! in-cloud ice water path [mcica]
       real :: clwpmcl (nlay,ngptsw,pncol)   ! in-cloud liquid water path [mcica]
 
+      real :: taucmc  (nlay,ngptsw,pncol)   ! in-cloud optical depth [mcica]
+      real :: taormc  (nlay,ngptsw,pncol)   ! unscaled in-cloud optl depth [mcica]
+      real :: ssacmc  (nlay,ngptsw,pncol)   ! in-cloud single scat albedo [mcica]
+      real :: asmcmc  (nlay,ngptsw,pncol)   ! in-cloud asymmetry param [mcica]
+      
       ! Atmosphere/clouds/aerosol - spcvrt,spcvmc
       ! -----------------------------------------
 
+      real, dimension (pncol) :: &
+         znirr, znirf, zparr, zparf, zuvrr, zuvrf
+      
 !? pmn why nlay+1
       real :: ztauc (pncol,nlay+1,nbndsw)     ! cloud optical depth
       real :: ztaucorig (pncol,nlay+1,nbndsw) ! unscaled cloud optical depth
@@ -601,6 +602,20 @@ contains
       real :: znifddir (pncol,nlay+2)         ! temporary near-IR down direct SW flux (w/m2)
       real :: znicddir (pncol,nlay+2)         ! temporary clear sky near-IR down direct SW flux (w/m2)
 
+!? pmn these are reported back but dont need to be a GPU thing I think
+!     real :: zgco  (pncol,ngptsw,nlay+1), zomco  (pncol,ngptsw,nlay+1)  
+      real :: zrdnd (pncol,ngptsw,nlay+1) 
+      real :: zref  (pncol,ngptsw,nlay+1), zrefo  (pncol,ngptsw,nlay+1)  
+      real :: zrefd (pncol,ngptsw,nlay+1), zrefdo (pncol,ngptsw,nlay+1)  
+      real :: ztauo (pncol,ngptsw,nlay)  
+      real :: zdbt  (pncol,ngptsw,nlay+1), ztdbt  (pncol,ngptsw,nlay+1)   
+      real :: ztra  (pncol,ngptsw,nlay+1), ztrao  (pncol,ngptsw,nlay+1)  
+      real :: ztrad (pncol,ngptsw,nlay+1), ztrado (pncol,ngptsw,nlay+1)  
+      real :: zfd   (pncol,ngptsw,nlay+1), zfu    (pncol,ngptsw,nlay+1)  
+      real :: zsflxzen(pncol,ngptsw)
+      real :: ssi   (pncol,ngptsw)
+      real :: ztaur (pncol,nlay,ngptsw), ztaug (pncol,nlay,ngptsw) 
+
       ! Output fields 
       ! -------------
 
@@ -624,20 +639,6 @@ contains
       real :: svar_f_bnd (jpband)  ! facular multiplier (by band)
       real :: svar_s_bnd (jpband)  ! sunspot multiplier (by band)
       real :: svar_i_bnd (jpband)  ! baseline irradiance multiplier (by band)
-
-!? pmn
-      real :: zgco  (pncol,ngptsw,nlay+1), zomco  (pncol,ngptsw,nlay+1)  
-      real :: zrdnd (pncol,ngptsw,nlay+1) 
-      real :: zref  (pncol,ngptsw,nlay+1), zrefo  (pncol,ngptsw,nlay+1)  
-      real :: zrefd (pncol,ngptsw,nlay+1), zrefdo (pncol,ngptsw,nlay+1)  
-      real :: ztauo (pncol,ngptsw,nlay)  
-      real :: zdbt  (pncol,ngptsw,nlay+1), ztdbt  (pncol,ngptsw,nlay+1)   
-      real :: ztra  (pncol,ngptsw,nlay+1), ztrao  (pncol,ngptsw,nlay+1)  
-      real :: ztrad (pncol,ngptsw,nlay+1), ztrado (pncol,ngptsw,nlay+1)  
-      real :: zfd   (pncol,ngptsw,nlay+1), zfu    (pncol,ngptsw,nlay+1)  
-      real :: zsflxzen(pncol,ngptsw)
-      real :: ssi   (pncol,ngptsw)
-      real :: ztaur (pncol,nlay,ngptsw), ztaug (pncol,nlay,ngptsw) 
 
       integer :: ncol_clr, ncol_cld
       integer :: npart_clr, npart_cld, npart
@@ -1220,7 +1221,8 @@ contains
                zbbfd, zbbfu, zbbcd, zbbcu, zuvfd, &
                zuvcd, znifd, znicd, &
                zbbfddir, zbbcddir, zuvfddir, zuvcddir, znifddir, znicddir,&
-               zgco,zomco,zrdnd,zref,zrefo,zrefd,zrefdo,ztauo,zdbt,ztdbt,&
+                          zrdnd,zref,zrefo,zrefd,zrefdo,ztauo,zdbt,ztdbt,&
+!              zgco,zomco,zrdnd,zref,zrefo,zrefd,zrefdo,ztauo,zdbt,ztdbt,&
                ztra,ztrao,ztrad,ztrado,zfd,zfu,ztaug, ztaur, zsflxzen, ssi,&
                znirr,znirf,zparr,zparf,zuvrr,zuvrf)
 
