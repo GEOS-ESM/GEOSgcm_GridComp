@@ -26,8 +26,8 @@ contains
    subroutine setcoef_sw( &
       pncol, ncol, nlayers, pavel, tavel, coldry, wkl, &
       laytrop, jp, jt, jt1, &
-      co2mult, colch4, colco2, colh2o, colmol, coln2o, &
-      colo2, colo3, fac00, fac01, fac10, fac11, &
+      colch4, colco2, colh2o, colmol, colo2, colo3, &
+      fac00, fac01, fac10, fac11, &
       selffac, selffrac, indself, forfac, forfrac, indfor)
    !----------------------------------------------------------------------------
    !
@@ -54,48 +54,34 @@ contains
 
       ! ----- Output -----
 
-      integer, intent(out) :: laytrop (pncol)        ! tropopause layer index
+      integer, intent(out) :: laytrop     (pncol)    ! tropopause layer index
+      integer, intent(out) :: jp  (nlayers,pncol)
+      integer, intent(out) :: jt  (nlayers,pncol)
+      integer, intent(out) :: jt1 (nlayers,pncol)
 
-      integer, intent(out) :: jp  (nlayers,pncol)           ! 
-      integer, intent(out) :: jt  (nlayers,pncol)           !
-      integer, intent(out) :: jt1 (nlayers,pncol)           !
+      real, intent(out) :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real, intent(out) :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real, intent(out) :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real, intent(out) :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real, intent(out) :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real, intent(out) :: colmol (nlayers,pncol)    ! 
 
-      real, intent(out) :: colh2o(:,:)          ! column amount (h2o)
-                                                      !    Dimensions: (nlayers)
-      real, intent(out) :: colco2(:,:)          ! column amount (co2)
-                                                      !    Dimensions: (nlayers)
-      real, intent(out) :: colo3(:,:)           ! column amount (o3)
-                                                      !    Dimensions: (nlayers)
-      real, intent(out) :: coln2o(:,:)          ! column amount (n2o)
-                                                      !    Dimensions: (nlayers)
-      real, intent(out) :: colch4(:,:)          ! column amount (ch4)
-                                                      !    Dimensions: (nlayers)
-      real, intent(out) :: colo2(:,:)           ! column amount (o2)
-                                                      !    Dimensions: (nlayers)
-      real, intent(out) :: colmol(:,:)          ! 
-                                                      !    Dimensions: (nlayers)
-      real, intent(out) :: co2mult(:,:)         !
-                                                      !    Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(out) :: indself  (nlayers,pncol) 
+      integer, intent(out) :: indfor   (nlayers,pncol) 
+      real,    intent(out) :: selffac  (nlayers,pncol) 
+      real,    intent(out) :: selffrac (nlayers,pncol) 
+      real,    intent(out) :: forfac   (nlayers,pncol) 
+      real,    intent(out) :: forfrac  (nlayers,pncol) 
 
-      integer, intent(out) :: indself(:,:) 
-                                                      !    Dimensions: (nlayers)
-      integer, intent(out) :: indfor(:,:) 
-                                                      !    Dimensions: (nlayers)
-      real, intent(out) :: selffac(:,:) 
-                                                      !    Dimensions: (nlayers)
-      real, intent(out) :: selffrac(:,:) 
-                                                      !    Dimensions: (nlayers)
-      real, intent(out) :: forfac(:,:) 
-                                                      !    Dimensions: (nlayers)
-      real, intent(out) :: forfrac(:,:) 
-                                                      !    Dimensions: (nlayers)
-
-      real, intent(out) :: fac00(:,:), fac01(:,:), fac10(:,:), fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(out),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! ----- Local -----
 
       integer :: icol, lay, jp1
-      real :: plog, fp, ft, ft1, water, scalefac, factor, co2reg, compfp
+      real :: plog, fp, ft, ft1, water, scalefac, factor, compfp
 
       ! Initializations
       real, parameter :: stpfac = 296. / 1013. 
@@ -162,67 +148,56 @@ contains
 
             if (plog <= 4.56 ) then
 
-               forfac(icol,lay) = scalefac / (1.+water)
+               forfac(lay,icol) = scalefac / (1.+water)
                factor = (tavel(lay,icol)-188.) / 36. 
-               indfor(icol,lay) = 3
-               forfrac(icol,lay) = factor - 1. 
+               indfor(lay,icol) = 3
+               forfrac(lay,icol) = factor - 1. 
 
                ! Calculate needed column amounts.
 
-               colh2o(icol,lay) = 1.e-20 * wkl(1,lay,icol) 
-               colco2(icol,lay) = 1.e-20 * wkl(2,lay,icol) 
-               colo3 (icol,lay) = 1.e-20 * wkl(3,lay,icol) 
-               coln2o(icol,lay) = 1.e-20 * wkl(4,lay,icol) 
-               colch4(icol,lay) = 1.e-20 * wkl(6,lay,icol) 
-               colo2 (icol,lay) = 1.e-20 * wkl(7,lay,icol) 
-               colmol(icol,lay) = 1.e-20 * coldry(lay,icol) + colh2o(icol,lay) 
-               if (colco2(icol,lay) == 0.) colco2(icol,lay) = 1.e-32 * coldry(lay,icol) 
-               if (coln2o(icol,lay) == 0.) coln2o(icol,lay) = 1.e-32 * coldry(lay,icol) 
-               if (colch4(icol,lay) == 0.) colch4(icol,lay) = 1.e-32 * coldry(lay,icol) 
-               if (colo2 (icol,lay) == 0.) colo2 (icol,lay) = 1.e-32 * coldry(lay,icol) 
-               co2reg = 3.55e-24 * coldry(lay,icol) 
-               co2mult(icol,lay) = (colco2(icol,lay) - co2reg) * &
-                  272.63 * exp(-1919.4/tavel(lay,icol)) / (8.7604e-4 * tavel(lay,icol))
+               colh2o(lay,icol) = 1.e-20 * wkl(1,lay,icol) 
+               colco2(lay,icol) = 1.e-20 * wkl(2,lay,icol) 
+               colo3 (lay,icol) = 1.e-20 * wkl(3,lay,icol) 
+               colch4(lay,icol) = 1.e-20 * wkl(6,lay,icol) 
+               colo2 (lay,icol) = 1.e-20 * wkl(7,lay,icol) 
+               colmol(lay,icol) = 1.e-20 * coldry(lay,icol) + colh2o(lay,icol) 
+               if (colco2(lay,icol) == 0.) colco2(lay,icol) = 1.e-32 * coldry(lay,icol) 
+               if (colch4(lay,icol) == 0.) colch4(lay,icol) = 1.e-32 * coldry(lay,icol) 
+               if (colo2 (lay,icol) == 0.) colo2 (lay,icol) = 1.e-32 * coldry(lay,icol) 
 
-               selffac(icol,lay)  = 0. 
-               selffrac(icol,lay) = 0. 
-               indself(icol,lay)  = 0
+               selffac(lay,icol)  = 0. 
+               selffrac(lay,icol) = 0. 
+               indself(lay,icol)  = 0
 
             else
 
                ! Set up factors needed to separately include the water vapor
                ! foreign-continuum in the calculation of absorption coefficient.
 
-               forfac(icol,lay) = scalefac / (1.+water)
+               forfac(lay,icol) = scalefac / (1.+water)
                factor = (332.-tavel(lay,icol))/36. 
-               indfor(icol,lay) = min(2,max(1,int(factor)))
-               forfrac(icol,lay) = factor - float(indfor(icol,lay))
+               indfor(lay,icol) = min(2,max(1,int(factor)))
+               forfrac(lay,icol) = factor - float(indfor(lay,icol))
 
                ! Set up factors needed to separately include the water vapor
                ! self-continuum in the calculation of absorption coefficient.
 
-               selffac(icol,lay) = water * forfac(icol,lay) 
+               selffac(lay,icol) = water * forfac(lay,icol) 
                factor = (tavel(lay,icol)-188.)/7.2 
-               indself(icol,lay) = min(9,max(1,int(factor)-7))
-               selffrac(icol,lay) = factor - float(indself(icol,lay) + 7)
+               indself(lay,icol) = min(9,max(1,int(factor)-7))
+               selffrac(lay,icol) = factor - float(indself(lay,icol) + 7)
 
                ! Calculate needed column amounts.
 
-               colh2o(icol,lay) = 1.e-20 * wkl(1,lay,icol) 
-               colco2(icol,lay) = 1.e-20 * wkl(2,lay,icol) 
-               colo3 (icol,lay) = 1.e-20 * wkl(3,lay,icol) 
-               coln2o(icol,lay) = 1.e-20 * wkl(4,lay,icol) 
-               colch4(icol,lay) = 1.e-20 * wkl(6,lay,icol) 
-               colo2 (icol,lay) = 1.e-20 * wkl(7,lay,icol) 
-               colmol(icol,lay) = 1.e-20 * coldry(lay,icol) + colh2o(icol,lay) 
-               if (colco2(icol,lay) == 0.) colco2(icol,lay) = 1.e-32 * coldry(lay,icol) 
-               if (coln2o(icol,lay) == 0.) coln2o(icol,lay) = 1.e-32 * coldry(lay,icol) 
-               if (colch4(icol,lay) == 0.) colch4(icol,lay) = 1.e-32 * coldry(lay,icol) 
-               if (colo2 (icol,lay) == 0.) colo2 (icol,lay) = 1.e-32 * coldry(lay,icol) 
-               ! Using E = 1334.2 cm-1.
-               co2reg = 3.55e-24 * coldry(lay,icol) 
-               co2mult(icol,lay) = (colco2(icol,lay) - co2reg) * &
-                  272.63 * exp(-1919.4/tavel(lay,icol))/(8.7604e-4 * tavel(lay,icol))
+               colh2o(lay,icol) = 1.e-20 * wkl(1,lay,icol) 
+               colco2(lay,icol) = 1.e-20 * wkl(2,lay,icol) 
+               colo3 (lay,icol) = 1.e-20 * wkl(3,lay,icol) 
+               colch4(lay,icol) = 1.e-20 * wkl(6,lay,icol) 
+               colo2 (lay,icol) = 1.e-20 * wkl(7,lay,icol) 
+               colmol(lay,icol) = 1.e-20 * coldry(lay,icol) + colh2o(lay,icol) 
+               if (colco2(lay,icol) == 0.) colco2(lay,icol) = 1.e-32 * coldry(lay,icol) 
+               if (colch4(lay,icol) == 0.) colch4(lay,icol) = 1.e-32 * coldry(lay,icol) 
+               if (colo2 (lay,icol) == 0.) colo2 (lay,icol) = 1.e-32 * coldry(lay,icol) 
       
             end if
 
@@ -234,10 +209,10 @@ contains
             ! the optical depths (performed in routines TAUGBn for band n).
 
             compfp = 1. - fp
-            fac10(icol,lay) = compfp * ft
-            fac00(icol,lay) = compfp * (1.-ft)
-            fac11(icol,lay) = fp * ft1
-            fac01(icol,lay) = fp * (1.-ft1)
+            fac10(lay,icol) = compfp * ft
+            fac00(lay,icol) = compfp * (1.-ft)
+            fac11(lay,icol) = fp * ft1
+            fac01(lay,icol) = fp * (1.-ft1)
 
          end do  ! layer loop
       end do  ! column loop

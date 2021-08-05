@@ -2295,8 +2295,8 @@ contains
       real, allocatable, dimension(:,:)   :: FCLD_R, CLIQWP, CICEWP, RELIQ, REICE
 
       real, allocatable, dimension(:,:,:) :: TAUAER, SSAAER, ASMAER
-      real, allocatable, dimension(:,:)   :: DPR, PL_R, T_R,  Q_R, O2_R, O3_R, ZL_R
-      real, allocatable, dimension(:,:)   :: CO2_R, CH4_R, N2O_R
+      real, allocatable, dimension(:,:)   :: DPR, PL_R, T_R, Q_R, O2_R, O3_R, ZL_R
+      real, allocatable, dimension(:,:)   :: CO2_R, CH4_R
       real, allocatable, dimension(:,:)   :: SWUFLX, SWDFLX, SWHR, SWUFLXC, SWDFLXC, SWHRC 
       real, allocatable, dimension(:)     :: NIRR_R, NIRF_R, PARR_R, PARF_R, UVRR_R, UVRF_R
 
@@ -3722,7 +3722,6 @@ contains
       allocate(O3_R  (size(Q,1),size(Q,2)),__STAT__)
       allocate(CO2_R (size(Q,1),size(Q,2)),__STAT__)
       allocate(CH4_R (size(Q,1),size(Q,2)),__STAT__)
-      allocate(N2O_R (size(Q,1),size(Q,2)),__STAT__)
       ! output fluxes and heating rates
       allocate(SWUFLX (size(Q,1),size(Q,2)+1),__STAT__)
       allocate(SWDFLX (size(Q,1),size(Q,2)+1),__STAT__)
@@ -3835,7 +3834,6 @@ contains
       ! chemistry and cloud fraction
       ! (cloud water paths and effective radii flipped already)
       CH4_R (:,1:LM  ) = CH4(:,LM:1:-1)
-      N2O_R (:,1:LM  ) = N2O(:,LM:1:-1)
       CO2_R (:,1:LM  ) = CO2
       O2_R  (:,1:LM  ) = O2
       FCLD_R(:,1:LM  ) = CL (:,LM:1:-1)
@@ -3974,7 +3972,7 @@ contains
          RPART, NCOL, LM, &
          SC, ADJES, ZT, ISOLVAR, &
          PL_R, PLE_R, T_R, &
-         Q_R, O3_R, CO2_R, CH4_R, N2O_R, O2_R, &
+         Q_R, O3_R, CO2_R, CH4_R, O2_R, &
          ICEFLGSW, LIQFLGSW, &
          FCLD_R, CICEWP, CLIQWP, REICE, RELIQ, &
          DYOFYR, ZL_R, ALAT, &
@@ -4042,7 +4040,6 @@ contains
       deallocate(O3_R  ,__STAT__)
       deallocate(CO2_R ,__STAT__)
       deallocate(CH4_R ,__STAT__)
-      deallocate(N2O_R ,__STAT__)
 
       deallocate(SWUFLX ,__STAT__)
       deallocate(SWDFLX ,__STAT__)

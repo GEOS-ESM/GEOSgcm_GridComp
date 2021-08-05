@@ -42,36 +42,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -251,36 +239,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -317,25 +293,25 @@ contains
          ! Lower atmosphere loop
          do lay = 1,nlayers
             if (lay <= laytrop(icol)) then 
-               speccomb = colh2o(icol,lay) + strrat1*colch4(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               speccomb = colh2o(lay,icol) + strrat1*colch4(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
-               fac000 = (1. - fs) * fac00(icol,lay) 
-               fac010 = (1. - fs) * fac10(icol,lay) 
-               fac100 =       fs  * fac00(icol,lay) 
-               fac110 =       fs  * fac10(icol,lay) 
-               fac001 = (1. - fs) * fac01(icol,lay) 
-               fac011 = (1. - fs) * fac11(icol,lay) 
-               fac101 =       fs  * fac01(icol,lay) 
-               fac111 =       fs  * fac11(icol,lay) 
+               fac000 = (1. - fs) * fac00(lay,icol) 
+               fac010 = (1. - fs) * fac10(lay,icol) 
+               fac100 =       fs  * fac00(lay,icol) 
+               fac110 =       fs  * fac10(lay,icol) 
+               fac001 = (1. - fs) * fac01(lay,icol) 
+               fac011 = (1. - fs) * fac11(lay,icol) 
+               fac101 =       fs  * fac01(lay,icol) 
+               fac111 =       fs  * fac11(lay,icol) 
                ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(16) + js
                ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(16) + js
-               inds = indself(icol,lay) 
-               indf = indfor(icol,lay) 
-               tauray = colmol(icol,lay) * rayl
+               inds = indself(lay,icol) 
+               indf = indfor(lay,icol) 
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng16
                   taug(icol,lay,ig) = speccomb * &
@@ -347,9 +323,9 @@ contains
                       fac101 * absa(ind1 +1,ig) + &
                       fac011 * absa(ind1 +9,ig) + &
                       fac111 * absa(ind1+10,ig)) + &
-                     colh2o(icol,lay) * &
-                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
-                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
+                     colh2o(lay,icol) * &
+                     (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
+                      forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
 !                 ssa(lay,ig) = tauray / taug(lay,ig)
                   taur(icol,lay,ig) = tauray
     
@@ -369,14 +345,14 @@ contains
                end if
                ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(16) + 1
                ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(16) + 1
-               tauray = colmol(icol,lay) * rayl
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng16
-                  taug(icol,lay,ig) = colch4(icol,lay) * &
-                     (fac00(icol,lay) * absb(ind0  ,ig) + &
-                      fac10(icol,lay) * absb(ind0+1,ig) + &
-                      fac01(icol,lay) * absb(ind1  ,ig) + &
-                      fac11(icol,lay) * absb(ind1+1,ig)) 
+                  taug(icol,lay,ig) = colch4(lay,icol) * &
+                     (fac00(lay,icol) * absb(ind0  ,ig) + &
+                      fac10(lay,icol) * absb(ind0+1,ig) + &
+                      fac01(lay,icol) * absb(ind1  ,ig) + &
+                      fac11(lay,icol) * absb(ind1+1,ig)) 
 
                   if (lay == laysolfr .and. isolvar < 0) &
                      sfluxzen(icol,ig) = sfluxref(ig) 
@@ -426,36 +402,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -493,25 +457,25 @@ contains
          do lay = 1,nlayers 
             if (lay <= laytrop(icol)) then
             !do lay = 1,laytrop(icol) 
-               speccomb = colh2o(icol,lay) + strrat*colco2(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
-               fac000 = (1. - fs) * fac00(icol,lay) 
-               fac010 = (1. - fs) * fac10(icol,lay) 
-               fac100 =       fs  * fac00(icol,lay) 
-               fac110 =       fs  * fac10(icol,lay) 
-               fac001 = (1. - fs) * fac01(icol,lay) 
-               fac011 = (1. - fs) * fac11(icol,lay) 
-               fac101 =       fs  * fac01(icol,lay) 
-               fac111 =       fs  * fac11(icol,lay) 
+               fac000 = (1. - fs) * fac00(lay,icol) 
+               fac010 = (1. - fs) * fac10(lay,icol) 
+               fac100 =       fs  * fac00(lay,icol) 
+               fac110 =       fs  * fac10(lay,icol) 
+               fac001 = (1. - fs) * fac01(lay,icol) 
+               fac011 = (1. - fs) * fac11(lay,icol) 
+               fac101 =       fs  * fac01(lay,icol) 
+               fac111 =       fs  * fac11(lay,icol) 
                ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(17) + js
                ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(17) + js
-               inds = indself(icol,lay) 
-               indf = indfor(icol,lay) 
-               tauray = colmol(icol,lay) * rayl
+               inds = indself(lay,icol) 
+               indf = indfor(lay,icol) 
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng17
                   taug(icol,lay,ngs16+ig) = speccomb * &
@@ -523,32 +487,32 @@ contains
                       fac101 * absa(ind1+1, ig) + &
                       fac011 * absa(ind1+9, ig) + &
                       fac111 * absa(ind1+10,ig)) + &
-                     colh2o(icol,lay) * &
-                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
-                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
+                     colh2o(lay,icol) * &
+                     (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
+                      forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
                   taur(icol,lay,ngs16+ig) = tauray
                enddo
 
             else
 
-               speccomb = colh2o(icol,lay) + strrat*colco2(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 4. * specparm
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
-               fac000 = (1. - fs) * fac00(icol,lay) 
-               fac010 = (1. - fs) * fac10(icol,lay) 
-               fac100 =       fs  * fac00(icol,lay) 
-               fac110 =       fs  * fac10(icol,lay) 
-               fac001 = (1. - fs) * fac01(icol,lay) 
-               fac011 = (1. - fs) * fac11(icol,lay) 
-               fac101 =       fs  * fac01(icol,lay) 
-               fac111 =       fs  * fac11(icol,lay) 
+               fac000 = (1. - fs) * fac00(lay,icol) 
+               fac010 = (1. - fs) * fac10(lay,icol) 
+               fac100 =       fs  * fac00(lay,icol) 
+               fac110 =       fs  * fac10(lay,icol) 
+               fac001 = (1. - fs) * fac01(lay,icol) 
+               fac011 = (1. - fs) * fac11(lay,icol) 
+               fac101 =       fs  * fac01(lay,icol) 
+               fac111 =       fs  * fac11(lay,icol) 
                ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(17) + js
                ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(17) + js
-               indf = indfor(icol,lay) 
-               tauray = colmol(icol,lay) * rayl
+               indf = indfor(lay,icol) 
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng17
                   taug(icol,lay,ngs16+ig) = speccomb * &
@@ -560,8 +524,8 @@ contains
                       fac101 * absb(ind1+1,ig) + &
                       fac011 * absb(ind1+5,ig) + &
                       fac111 * absb(ind1+6,ig)) + &
-                     colh2o(icol,lay) * &
-                     forfac(icol,lay) * LIN2_ARG1(forref,indf,ig,forfrac(icol,lay)) 
+                     colh2o(lay,icol) * &
+                     forfac(lay,icol) * LIN2_ARG1(forref,indf,ig,forfrac(lay,icol)) 
 !                 ssa(lay,ngs16+ig) = tauray / taug(lay,ngs16+ig)
                   taur(icol,lay,ngs16+ig) = tauray
                enddo
@@ -581,8 +545,8 @@ contains
           
                if (lay == laysolfr) then
               
-                  speccomb = colh2o(icol,lay) + strrat*colco2(icol,lay) 
-                  specparm = colh2o(icol,lay) / speccomb 
+                  speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
+                  specparm = colh2o(lay,icol) / speccomb 
                   if (specparm >= oneminus) specparm = oneminus
                   specmult = 4. * specparm
                   js = 1 + int(specmult)
@@ -638,36 +602,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -698,14 +650,14 @@ contains
       do icol = 1,ncol
          laysolfr = laytrop(icol)
          do lay = 1,laytrop(icol)
-            speccomb = colh2o(icol,lay) + strrat*colch4(icol,lay) 
-            specparm = colh2o(icol,lay) / speccomb 
+            speccomb = colh2o(lay,icol) + strrat*colch4(lay,icol) 
+            specparm = colh2o(lay,icol) / speccomb 
             if (specparm >= oneminus) specparm = oneminus
             specmult = 8. * specparm
             js = 1 + int(specmult)
             fs = mod(specmult, 1.)
             if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
-               laysolfr = min(lay+1,laytrop(icol) )
+               laysolfr = min(lay+1,laytrop(icol))
             do ig = 1,ng18
                if (lay == laysolfr .and. isolvar < 0) &
                   sfluxzen(icol,ngs17+ig) = &
@@ -730,25 +682,25 @@ contains
             if (lay <= laytrop(icol)) then
             !do lay = 1,laytrop(icol) 
        
-               speccomb = colh2o(icol,lay) + strrat*colch4(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               speccomb = colh2o(lay,icol) + strrat*colch4(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
-               fac000 = (1. - fs) * fac00(icol,lay) 
-               fac010 = (1. - fs) * fac10(icol,lay) 
-               fac100 =       fs  * fac00(icol,lay) 
-               fac110 =       fs  * fac10(icol,lay) 
-               fac001 = (1. - fs) * fac01(icol,lay) 
-               fac011 = (1. - fs) * fac11(icol,lay) 
-               fac101 =       fs  * fac01(icol,lay) 
-               fac111 =       fs  * fac11(icol,lay) 
+               fac000 = (1. - fs) * fac00(lay,icol) 
+               fac010 = (1. - fs) * fac10(lay,icol) 
+               fac100 =       fs  * fac00(lay,icol) 
+               fac110 =       fs  * fac10(lay,icol) 
+               fac001 = (1. - fs) * fac01(lay,icol) 
+               fac011 = (1. - fs) * fac11(lay,icol) 
+               fac101 =       fs  * fac01(lay,icol) 
+               fac111 =       fs  * fac11(lay,icol) 
                ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(18) + js
                ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(18) + js
-               inds = indself(icol,lay) 
-               indf = indfor(icol,lay) 
-               tauray = colmol(icol,lay) * rayl
+               inds = indself(lay,icol) 
+               indf = indfor(lay,icol) 
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng18
                   taug(icol,lay,ngs17+ig) = speccomb * &
@@ -760,9 +712,9 @@ contains
                       fac101 * absa(ind1+1, ig) + &
                       fac011 * absa(ind1+9, ig) + &
                       fac111 * absa(ind1+10,ig)) + &
-                     colh2o(icol,lay) * &
-                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
-                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
+                     colh2o(lay,icol) * &
+                     (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
+                      forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
 !                 ssa(lay,ngs17+ig) = tauray / taug(lay,ngs17+ig)
                   taur(icol,lay,ngs17+ig) = tauray
                enddo
@@ -773,14 +725,14 @@ contains
                !do lay = laytrop(icol) +1, nlayers
                ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(18) + 1
                ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(18) + 1
-               tauray = colmol(icol,lay) * rayl
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng18
-                  taug(icol,lay,ngs17+ig) = colch4(icol,lay) * &
-                     (fac00(icol,lay) * absb(ind0,  ig) + &
-                      fac10(icol,lay) * absb(ind0+1,ig) + &
-                      fac01(icol,lay) * absb(ind1,  ig) + &	  
-                      fac11(icol,lay) * absb(ind1+1,ig)) 
+                  taug(icol,lay,ngs17+ig) = colch4(lay,icol) * &
+                     (fac00(lay,icol) * absb(ind0,  ig) + &
+                      fac10(lay,icol) * absb(ind0+1,ig) + &
+                      fac01(lay,icol) * absb(ind1,  ig) + &	  
+                      fac11(lay,icol) * absb(ind1+1,ig)) 
 !                 ssa(lay,ngs17+ig) = tauray / taug(lay,ngs17+ig)
                   taur(icol,lay,ngs17+ig) = tauray
                enddo
@@ -820,36 +772,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -889,11 +829,11 @@ contains
          do lay = 1,laytrop(icol) 
             
             if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
-               laysolfr = min(lay+1,laytrop(icol) )
+               laysolfr = min(lay+1,laytrop(icol))
      
             if (lay == laysolfr) then 
-               speccomb = colh2o(icol,lay) + strrat*colco2(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
                js = 1 + int(specmult)
@@ -928,25 +868,25 @@ contains
          do lay = 1,nlayers
             if (lay <= laytrop(icol)) then
        
-               speccomb = colh2o(icol,lay) + strrat*colco2(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
-               fac000 = (1. - fs) * fac00(icol,lay) 
-               fac010 = (1. - fs) * fac10(icol,lay) 
-               fac100 =       fs  * fac00(icol,lay) 
-               fac110 =       fs  * fac10(icol,lay) 
-               fac001 = (1. - fs) * fac01(icol,lay) 
-               fac011 = (1. - fs) * fac11(icol,lay) 
-               fac101 =       fs  * fac01(icol,lay) 
-               fac111 =       fs  * fac11(icol,lay) 
+               fac000 = (1. - fs) * fac00(lay,icol) 
+               fac010 = (1. - fs) * fac10(lay,icol) 
+               fac100 =       fs  * fac00(lay,icol) 
+               fac110 =       fs  * fac10(lay,icol) 
+               fac001 = (1. - fs) * fac01(lay,icol) 
+               fac011 = (1. - fs) * fac11(lay,icol) 
+               fac101 =       fs  * fac01(lay,icol) 
+               fac111 =       fs  * fac11(lay,icol) 
                ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(19) + js
                ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(19) + js
-               inds = indself(icol,lay) 
-               indf = indfor(icol,lay) 
-               tauray = colmol(icol,lay) * rayl
+               inds = indself(lay,icol) 
+               indf = indfor(lay,icol) 
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1 , ng19
                   taug(icol,lay,ngs18+ig) = speccomb * &
@@ -958,9 +898,9 @@ contains
                       fac101 * absa(ind1+1, ig) + &
                       fac011 * absa(ind1+9, ig) + &
                       fac111 * absa(ind1+10,ig)) + &
-                     colh2o(icol,lay) * &
-                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
-                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
+                     colh2o(lay,icol) * &
+                     (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
+                      forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
 !                 ssa(lay,ngs18+ig) = tauray / taug(lay,ngs18+ig)
                   taur(icol,lay,ngs18+ig) = tauray   
                enddo
@@ -969,14 +909,14 @@ contains
                ! Upper atmosphere loop
                ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(19) + 1
                ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(19) + 1
-               tauray = colmol(icol,lay) * rayl
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng19
-                  taug(icol,lay,ngs18+ig) = colco2(icol,lay) * &
-                     (fac00(icol,lay) * absb(ind0,  ig) + &
-                      fac10(icol,lay) * absb(ind0+1,ig) + &
-                      fac01(icol,lay) * absb(ind1,  ig) + &
-                      fac11(icol,lay) * absb(ind1+1,ig)) 
+                  taug(icol,lay,ngs18+ig) = colco2(lay,icol) * &
+                     (fac00(lay,icol) * absb(ind0,  ig) + &
+                      fac10(lay,icol) * absb(ind0+1,ig) + &
+                      fac01(lay,icol) * absb(ind1,  ig) + &
+                      fac11(lay,icol) * absb(ind1+1,ig)) 
 !                 ssa(lay,ngs18+ig) = tauray / taug(lay,ngs18+ig) 
                   taur(icol,lay,ngs18+ig) = tauray   
                enddo
@@ -1018,36 +958,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -1078,7 +1006,7 @@ contains
          laysolfr = laytrop(icol)
          do lay = 1,laytrop(icol)
             if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
-               laysolfr = min(lay+1,laytrop(icol) )
+               laysolfr = min(lay+1,laytrop(icol))
             if (lay == laysolfr) then 
                do ig = 1,ng20 
                   if (isolvar < 0) &
@@ -1103,19 +1031,19 @@ contains
          
                ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(20) + 1
                ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(20) + 1
-               inds = indself(icol,lay) 
-               indf = indfor(icol,lay) 
-               tauray = colmol(icol,lay) * rayl
+               inds = indself(lay,icol) 
+               indf = indfor(lay,icol) 
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng20
-                  taug(icol,lay,ngs19+ig) = colh2o(icol,lay) * &
-                     ((fac00(icol,lay) * absa(ind0,  ig) + &
-                       fac10(icol,lay) * absa(ind0+1,ig) + &
-                       fac01(icol,lay) * absa(ind1,  ig) + &
-                       fac11(icol,lay) * absa(ind1+1,ig)) + &
-                      selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
-                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay))) &
-                     + colch4(icol,lay) * absch4(ig)
+                  taug(icol,lay,ngs19+ig) = colh2o(lay,icol) * &
+                     ((fac00(lay,icol) * absa(ind0,  ig) + &
+                       fac10(lay,icol) * absa(ind0+1,ig) + &
+                       fac01(lay,icol) * absa(ind1,  ig) + &
+                       fac11(lay,icol) * absa(ind1+1,ig)) + &
+                      selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
+                      forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol))) &
+                     + colch4(lay,icol) * absch4(ig)
 !                 ssa(lay,ngs19+ig) = tauray / taug(lay,ngs19+ig)
                   taur(icol,lay,ngs19+ig) = tauray 
                enddo
@@ -1124,17 +1052,17 @@ contains
                ! Upper atmosphere loop
                ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(20) + 1
                ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(20) + 1
-               indf = indfor(icol,lay) 
-               tauray = colmol(icol,lay) * rayl
+               indf = indfor(lay,icol) 
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng20
-                  taug(icol,lay,ngs19+ig) = colh2o(icol,lay) * &
-                     (fac00(icol,lay) * absb(ind0,  ig) + &
-                      fac10(icol,lay) * absb(ind0+1,ig) + &
-                      fac01(icol,lay) * absb(ind1,  ig) + &
-                      fac11(icol,lay) * absb(ind1+1,ig) + &
-                      forfac(icol,lay) * LIN2_ARG1(forref,indf,ig,forfrac(icol,lay))) &
-                     + colch4(icol,lay) * absch4(ig)
+                  taug(icol,lay,ngs19+ig) = colh2o(lay,icol) * &
+                     (fac00(lay,icol) * absb(ind0,  ig) + &
+                      fac10(lay,icol) * absb(ind0+1,ig) + &
+                      fac01(lay,icol) * absb(ind1,  ig) + &
+                      fac11(lay,icol) * absb(ind1+1,ig) + &
+                      forfac(lay,icol) * LIN2_ARG1(forref,indf,ig,forfrac(lay,icol))) &
+                     + colch4(lay,icol) * absch4(ig)
 !                 ssa(lay,ngs19+ig) = tauray / taug(lay,ngs19+ig)
                   taur(icol,lay,ngs19+ig) = tauray 
                enddo
@@ -1174,36 +1102,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -1235,10 +1151,10 @@ contains
          laysolfr = laytrop(icol)        
          do lay=1,laytrop(icol)
             if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
-               laysolfr = min(lay+1,laytrop(icol) )
+               laysolfr = min(lay+1,laytrop(icol))
             if (lay == laysolfr) then 
-               speccomb = colh2o(icol,lay) + strrat*colco2(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
                js = 1 + int(specmult)
@@ -1272,25 +1188,25 @@ contains
          do lay = 1,nlayers 
             if (lay <= laytrop(icol)) then 
         
-               speccomb = colh2o(icol,lay) + strrat*colco2(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
-               fac000 = (1. - fs) * fac00(icol,lay) 
-               fac010 = (1. - fs) * fac10(icol,lay) 
-               fac100 =       fs  * fac00(icol,lay) 
-               fac110 =       fs  * fac10(icol,lay) 
-               fac001 = (1. - fs) * fac01(icol,lay) 
-               fac011 = (1. - fs) * fac11(icol,lay) 
-               fac101 =       fs  * fac01(icol,lay) 
-               fac111 =       fs  * fac11(icol,lay) 
+               fac000 = (1. - fs) * fac00(lay,icol) 
+               fac010 = (1. - fs) * fac10(lay,icol) 
+               fac100 =       fs  * fac00(lay,icol) 
+               fac110 =       fs  * fac10(lay,icol) 
+               fac001 = (1. - fs) * fac01(lay,icol) 
+               fac011 = (1. - fs) * fac11(lay,icol) 
+               fac101 =       fs  * fac01(lay,icol) 
+               fac111 =       fs  * fac11(lay,icol) 
                ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(21) + js
                ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(21) + js
-               inds = indself(icol,lay) 
-               indf = indfor(icol,lay) 
-               tauray = colmol(icol,lay) * rayl
+               inds = indself(lay,icol) 
+               indf = indfor(lay,icol) 
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng21
                   taug(icol,lay,ngs20+ig) = speccomb * &
@@ -1302,9 +1218,9 @@ contains
                       fac101 * absa(ind1+1, ig) + &
                       fac011 * absa(ind1+9, ig) + &
                       fac111 * absa(ind1+10,ig)) + &
-                     colh2o(icol,lay) * &
-                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
-                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
+                     colh2o(lay,icol) * &
+                     (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
+                      forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
 !                 ssa(lay,ngs20+ig) = tauray / taug(lay,ngs20+ig)
                   taur(icol,lay,ngs20+ig) = tauray
                enddo
@@ -1312,24 +1228,24 @@ contains
             else
 
                ! Upper atmosphere loop
-               speccomb = colh2o(icol,lay) + strrat*colco2(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 4. * specparm
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
-               fac000 = (1. - fs) * fac00(icol,lay) 
-               fac010 = (1. - fs) * fac10(icol,lay) 
-               fac100 =       fs  * fac00(icol,lay) 
-               fac110 =       fs  * fac10(icol,lay) 
-               fac001 = (1. - fs) * fac01(icol,lay) 
-               fac011 = (1. - fs) * fac11(icol,lay) 
-               fac101 =       fs  * fac01(icol,lay) 
-               fac111 =       fs  * fac11(icol,lay) 
+               fac000 = (1. - fs) * fac00(lay,icol) 
+               fac010 = (1. - fs) * fac10(lay,icol) 
+               fac100 =       fs  * fac00(lay,icol) 
+               fac110 =       fs  * fac10(lay,icol) 
+               fac001 = (1. - fs) * fac01(lay,icol) 
+               fac011 = (1. - fs) * fac11(lay,icol) 
+               fac101 =       fs  * fac01(lay,icol) 
+               fac111 =       fs  * fac11(lay,icol) 
                ind0 = ((jp(lay,icol) -13)*5+(jt (lay,icol)-1))*nspb(21) + js
                ind1 = ((jp(lay,icol) -12)*5+(jt1(lay,icol)-1))*nspb(21) + js
-               indf = indfor(icol,lay) 
-               tauray = colmol(icol,lay) * rayl
+               indf = indfor(lay,icol) 
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng21
                   taug(icol,lay,ngs20+ig) = speccomb * &
@@ -1341,8 +1257,8 @@ contains
                       fac101 * absb(ind1+1,ig) + &
                       fac011 * absb(ind1+5,ig) + &
                       fac111 * absb(ind1+6,ig)) + &
-                     colh2o(icol,lay) * &
-                     forfac(icol,lay) * LIN2_ARG1(forref,indf,ig,forfrac(icol,lay)) 
+                     colh2o(lay,icol) * &
+                     forfac(lay,icol) * LIN2_ARG1(forref,indf,ig,forfrac(lay,icol)) 
 !                 ssa(lay,ngs20+ig) = tauray / taug(lay,ngs20+ig)
                   taur(icol,lay,ngs20+ig) = tauray
                enddo
@@ -1382,36 +1298,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -1455,11 +1359,11 @@ contains
          ! Lower atmosphere loop
          do lay = 1,laytrop(icol) 
             if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
-               laysolfr = min(lay+1,laytrop(icol) )
+               laysolfr = min(lay+1,laytrop(icol))
                  
             if (lay == laysolfr) then 
-               speccomb = colh2o(icol,lay) + o2adj*strrat*colo2(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               speccomb = colh2o(lay,icol) + o2adj*strrat*colo2(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
 !              odadj = specparm + o2adj * (1. - specparm)
@@ -1493,27 +1397,27 @@ contains
          do lay = 1,nlayers 
             if (lay<=laytrop(icol)) then
   
-               o2cont = 4.35e-4 *colo2(icol,lay) /(350.0 *2.0 )
-               speccomb = colh2o(icol,lay) + o2adj*strrat*colo2(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               o2cont = 4.35e-4 *colo2(lay,icol) /(350.0 *2.0 )
+               speccomb = colh2o(lay,icol) + o2adj*strrat*colo2(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
 !              odadj = specparm + o2adj * (1. - specparm)
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
-               fac000 = (1. - fs) * fac00(icol,lay) 
-               fac010 = (1. - fs) * fac10(icol,lay) 
-               fac100 =       fs  * fac00(icol,lay) 
-               fac110 =       fs  * fac10(icol,lay) 
-               fac001 = (1. - fs) * fac01(icol,lay) 
-               fac011 = (1. - fs) * fac11(icol,lay) 
-               fac101 =       fs  * fac01(icol,lay) 
-               fac111 =       fs  * fac11(icol,lay) 
+               fac000 = (1. - fs) * fac00(lay,icol) 
+               fac010 = (1. - fs) * fac10(lay,icol) 
+               fac100 =       fs  * fac00(lay,icol) 
+               fac110 =       fs  * fac10(lay,icol) 
+               fac001 = (1. - fs) * fac01(lay,icol) 
+               fac011 = (1. - fs) * fac11(lay,icol) 
+               fac101 =       fs  * fac01(lay,icol) 
+               fac111 =       fs  * fac11(lay,icol) 
                ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(22) + js
                ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(22) + js
-               inds = indself(icol,lay) 
-               indf = indfor(icol,lay) 
-               tauray = colmol(icol,lay) * rayl
+               inds = indself(lay,icol) 
+               indf = indfor(lay,icol) 
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng22
                   taug(icol,lay,ngs21+ig) = speccomb * &
@@ -1525,9 +1429,9 @@ contains
                       fac101 * absa(ind1+1, ig) + &
                       fac011 * absa(ind1+9, ig) + &
                       fac111 * absa(ind1+10,ig)) + &
-                     colh2o(icol,lay) * &
-                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
-                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay))) &
+                     colh2o(lay,icol) * &
+                     (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
+                      forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol))) &
                      + o2cont
 !                 ssa(lay,ngs21+ig) = tauray / taug(lay,ngs21+ig)
                   taur(icol,lay,ngs21+ig) = tauray
@@ -1536,17 +1440,17 @@ contains
             else
 
                ! Upper atmosphere loop
-               o2cont = 4.35e-4 *colo2(icol,lay) /(350.0 *2.0 )
+               o2cont = 4.35e-4 *colo2(lay,icol) /(350.0 *2.0 )
                ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(22) + 1
                ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(22) + 1
-               tauray = colmol(icol,lay) * rayl
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng22
-                  taug(icol,lay,ngs21+ig) = colo2(icol,lay) * o2adj * &
-                     (fac00(icol,lay) * absb(ind0,  ig) + &
-                      fac10(icol,lay) * absb(ind0+1,ig) + &
-                      fac01(icol,lay) * absb(ind1,  ig) + &
-                      fac11(icol,lay) * absb(ind1+1,ig)) + &
+                  taug(icol,lay,ngs21+ig) = colo2(lay,icol) * o2adj * &
+                     (fac00(lay,icol) * absb(ind0,  ig) + &
+                      fac10(lay,icol) * absb(ind0+1,ig) + &
+                      fac01(lay,icol) * absb(ind1,  ig) + &
+                      fac11(lay,icol) * absb(ind1+1,ig)) + &
                      o2cont
 !                 ssa(lay,ngs21+ig) = tauray / taug(lay,ngs21+ig)
                   taur(icol,lay,ngs21+ig) = tauray
@@ -1587,36 +1491,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -1657,7 +1549,7 @@ contains
          ! Lower atmosphere loop
          do lay = 1,laytrop(icol) 
             if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
-               laysolfr = min(lay+1,laytrop(icol) )
+               laysolfr = min(lay+1,laytrop(icol))
 
             if (lay == laysolfr) then 
                do ig = 1,ng23
@@ -1682,21 +1574,21 @@ contains
          do lay = 1,nlayers 
             if (lay <= laytrop(icol)) then
                if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
-                  laysolfr = min(lay+1,laytrop(icol) )
+                  laysolfr = min(lay+1,laytrop(icol))
                ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(23) + 1
                ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(23) + 1
-               inds = indself(icol,lay) 
-               indf = indfor(icol,lay) 
+               inds = indself(lay,icol) 
+               indf = indfor(lay,icol) 
 
                do ig = 1,ng23
-                  tauray = colmol(icol,lay) * rayl(ig)
-                  taug(icol,lay,ngs22+ig) = colh2o(icol,lay) * (givfac * &
-                     (fac00(icol,lay) * absa(ind0,  ig) + &
-                      fac10(icol,lay) * absa(ind0+1,ig) + &
-                      fac01(icol,lay) * absa(ind1,  ig) + &
-                      fac11(icol,lay) * absa(ind1+1,ig)) + &
-                     selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
-                     forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
+                  tauray = colmol(lay,icol) * rayl(ig)
+                  taug(icol,lay,ngs22+ig) = colh2o(lay,icol) * (givfac * &
+                     (fac00(lay,icol) * absa(ind0,  ig) + &
+                      fac10(lay,icol) * absa(ind0+1,ig) + &
+                      fac01(lay,icol) * absa(ind1,  ig) + &
+                      fac11(lay,icol) * absa(ind1+1,ig)) + &
+                     selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
+                     forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
 !                 ssa(lay,ngs22+ig) = tauray / taug(lay,ngs22+ig)
                   taur(icol,lay,ngs22+ig) = tauray
                enddo
@@ -1707,7 +1599,7 @@ contains
 !                 taug(lay,ngs22+ig) = colmol(lay) * rayl(ig)
 !                 ssa(lay,ngs22+ig) = 1.
                   taug(icol,lay,ngs22+ig) = 0. 
-                  taur(icol,lay,ngs22+ig) = colmol(icol,lay) * rayl(ig) 
+                  taur(icol,lay,ngs22+ig) = colmol(lay,icol) * rayl(ig) 
                enddo
             end if
          enddo
@@ -1745,36 +1637,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -1813,10 +1693,10 @@ contains
          ! Lower atmosphere loop
          do lay = 1,laytrop(icol) 
             if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
-               laysolfr = min(lay+1,laytrop(icol) )
+               laysolfr = min(lay+1,laytrop(icol))
             if (lay == laysolfr) then
-               speccomb = colh2o(icol,lay) + strrat*colo2(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               speccomb = colh2o(lay,icol) + strrat*colo2(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
                js = 1 + int(specmult)
@@ -1850,27 +1730,27 @@ contains
          do lay = 1,nlayers 
             if (lay <= laytrop(icol)) then
 
-               speccomb = colh2o(icol,lay) + strrat*colo2(icol,lay) 
-               specparm = colh2o(icol,lay) / speccomb 
+               speccomb = colh2o(lay,icol) + strrat*colo2(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
-               fac000 = (1. - fs) * fac00(icol,lay) 
-               fac010 = (1. - fs) * fac10(icol,lay) 
-               fac100 =       fs  * fac00(icol,lay) 
-               fac110 =       fs  * fac10(icol,lay) 
-               fac001 = (1. - fs) * fac01(icol,lay) 
-               fac011 = (1. - fs) * fac11(icol,lay) 
-               fac101 =       fs  * fac01(icol,lay) 
-               fac111 =       fs  * fac11(icol,lay) 
+               fac000 = (1. - fs) * fac00(lay,icol) 
+               fac010 = (1. - fs) * fac10(lay,icol) 
+               fac100 =       fs  * fac00(lay,icol) 
+               fac110 =       fs  * fac10(lay,icol) 
+               fac001 = (1. - fs) * fac01(lay,icol) 
+               fac011 = (1. - fs) * fac11(lay,icol) 
+               fac101 =       fs  * fac01(lay,icol) 
+               fac111 =       fs  * fac11(lay,icol) 
                ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(24) + js
                ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(24) + js
-               inds = indself(icol,lay) 
-               indf = indfor (icol,lay) 
+               inds = indself(lay,icol) 
+               indf = indfor (lay,icol) 
 
                do ig = 1,ng24
-                  tauray = colmol(icol,lay) * (rayla(ig,js) + fs * (rayla(ig,js+1) - rayla(ig,js)))
+                  tauray = colmol(lay,icol) * (rayla(ig,js) + fs * (rayla(ig,js+1) - rayla(ig,js)))
                   taug(icol,lay,ngs23+ig) = speccomb * &
                      (fac000 * absa(ind0,   ig) + &
                       fac100 * absa(ind0+1, ig) + &
@@ -1880,10 +1760,10 @@ contains
                       fac101 * absa(ind1+1, ig) + &
                       fac011 * absa(ind1+9, ig) + &
                       fac111 * absa(ind1+10,ig)) + &
-                     colo3(icol,lay) * abso3a(ig) + &
-                     colh2o(icol,lay) * & 
-                     (selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
-                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay)))
+                     colo3(lay,icol) * abso3a(ig) + &
+                     colh2o(lay,icol) * & 
+                     (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
+                      forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
 !                 ssa(lay,ngs23+ig) = tauray / taug(lay,ngs23+ig)
                   taur(icol,lay,ngs23+ig) = tauray
                enddo
@@ -1895,13 +1775,13 @@ contains
                ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(24) + 1
 
                do ig = 1,ng24
-                  tauray = colmol(icol,lay) * raylb(ig)
-                  taug(icol,lay,ngs23+ig) = colo2(icol,lay) * &
-                     (fac00(icol,lay) * absb(ind0,  ig) + &
-                      fac10(icol,lay) * absb(ind0+1,ig) + &
-                      fac01(icol,lay) * absb(ind1,  ig) + &
-                      fac11(icol,lay) * absb(ind1+1,ig)) + &
-                     colo3(icol,lay) * abso3b(ig)
+                  tauray = colmol(lay,icol) * raylb(ig)
+                  taug(icol,lay,ngs23+ig) = colo2(lay,icol) * &
+                     (fac00(lay,icol) * absb(ind0,  ig) + &
+                      fac10(lay,icol) * absb(ind0+1,ig) + &
+                      fac01(lay,icol) * absb(ind1,  ig) + &
+                      fac11(lay,icol) * absb(ind1+1,ig)) + &
+                     colo3(lay,icol) * abso3b(ig)
 !                 ssa(lay,ngs23+ig) = tauray / taug(lay,ngs23+ig)
                   taur(icol,lay,ngs23+ig) = tauray
                enddo
@@ -1941,36 +1821,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -2007,18 +1875,18 @@ contains
          ! Lower atmosphere loop
          do lay = 1,laytrop(icol) 
             if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
-               laysolfr = min(lay+1,laytrop(icol) )
+               laysolfr = min(lay+1,laytrop(icol))
             ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(25) + 1
             ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(25) + 1
 
             do ig = 1,ng25
-               tauray = colmol(icol,lay) * rayl(ig)
-               taug(icol,lay,ngs24+ig) = colh2o(icol,lay) * &
-                  (fac00(icol,lay) * absa(ind0,  ig) + &
-                   fac10(icol,lay) * absa(ind0+1,ig) + &
-                   fac01(icol,lay) * absa(ind1,  ig) + &
-                   fac11(icol,lay) * absa(ind1+1,ig)) + &
-                  colo3(icol,lay) * abso3a(ig) 
+               tauray = colmol(lay,icol) * rayl(ig)
+               taug(icol,lay,ngs24+ig) = colh2o(lay,icol) * &
+                  (fac00(lay,icol) * absa(ind0,  ig) + &
+                   fac10(lay,icol) * absa(ind0+1,ig) + &
+                   fac01(lay,icol) * absa(ind1,  ig) + &
+                   fac11(lay,icol) * absa(ind1+1,ig)) + &
+                  colo3(lay,icol) * abso3a(ig) 
 !              ssa(lay,ngs24+ig) = tauray / taug(lay,ngs24+ig)
                if (lay == laysolfr .and. isolvar < 0) &
                   sfluxzen(icol,ngs24+ig) = sfluxref(ig) 
@@ -2037,8 +1905,8 @@ contains
          ! Upper atmosphere loop
          do lay = laytrop(icol) +1, nlayers
             do ig = 1,ng25
-               tauray = colmol(icol,lay) * rayl(ig)
-               taug(icol,lay,ngs24+ig) = colo3(icol,lay) * abso3b(ig) 
+               tauray = colmol(lay,icol) * rayl(ig)
+               taug(icol,lay,ngs24+ig) = colo3(lay,icol) * abso3b(ig) 
 !              ssa(lay,ngs24+ig) = tauray / taug(lay,ngs24+ig)
                taur(icol,lay,ngs24+ig) = tauray
             enddo
@@ -2076,36 +1944,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -2154,7 +2010,7 @@ contains
                                        svar_s_bnd(ngb(ngs25+ig)) * snsptdrk(ig) + &
                                        svar_i_bnd(ngb(ngs25+ig)) * irradnce(ig)
                taug(icol,lay,ngs25+ig) = 0. 
-               taur(icol,lay,ngs25+ig) = colmol(icol,lay) * rayl(ig) 
+               taur(icol,lay,ngs25+ig) = colmol(lay,icol) * rayl(ig) 
             enddo
          enddo
 
@@ -2164,7 +2020,7 @@ contains
 !              taug(lay,ngs25+ig) = colmol(lay) * rayl(ig)
 !              ssa(lay,ngs25+ig) = 1.
                taug(icol,lay,ngs25+ig) = 0. 
-               taur(icol,lay,ngs25+ig) = colmol(icol,lay) * rayl(ig) 
+               taur(icol,lay,ngs25+ig) = colmol(lay,icol) * rayl(ig) 
             enddo
          enddo
       enddo
@@ -2200,36 +2056,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -2277,12 +2121,12 @@ contains
             ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(27) + 1
 
             do ig = 1,ng27
-               tauray = colmol(icol,lay) * rayl(ig)
-               taug(icol,lay,ngs26+ig) = colo3(icol,lay) * &
-                  (fac00(icol,lay) * absa(ind0,  ig) + &
-                   fac10(icol,lay) * absa(ind0+1,ig) + &
-                   fac01(icol,lay) * absa(ind1,  ig) + &
-                   fac11(icol,lay) * absa(ind1+1,ig))
+               tauray = colmol(lay,icol) * rayl(ig)
+               taug(icol,lay,ngs26+ig) = colo3(lay,icol) * &
+                  (fac00(lay,icol) * absa(ind0,  ig) + &
+                   fac10(lay,icol) * absa(ind0+1,ig) + &
+                   fac01(lay,icol) * absa(ind1,  ig) + &
+                   fac11(lay,icol) * absa(ind1+1,ig))
 !              ssa(lay,ngs26+ig) = tauray / taug(lay,ngs26+ig)
                taur(icol,lay,ngs26+ig) = tauray
             enddo
@@ -2298,12 +2142,12 @@ contains
             ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(27) + 1
 
             do ig = 1,ng27
-               tauray = colmol(icol,lay) * rayl(ig)
-               taug(icol,lay,ngs26+ig) = colo3(icol,lay) * &
-                  (fac00(icol,lay) * absb(ind0,  ig) + &
-                   fac10(icol,lay) * absb(ind0+1,ig) + &
-                   fac01(icol,lay) * absb(ind1,  ig) + & 
-                   fac11(icol,lay) * absb(ind1+1,ig))
+               tauray = colmol(lay,icol) * rayl(ig)
+               taug(icol,lay,ngs26+ig) = colo3(lay,icol) * &
+                  (fac00(lay,icol) * absb(ind0,  ig) + &
+                   fac10(lay,icol) * absb(ind0+1,ig) + &
+                   fac01(lay,icol) * absb(ind1,  ig) + & 
+                   fac11(lay,icol) * absb(ind1+1,ig))
 !              ssa(lay,ngs26+ig) = tauray / taug(lay,ngs26+ig)
                if (lay == laysolfr .and. isolvar < 0) &
                   sfluxzen(icol,ngs26+ig) = scalekur * sfluxref(ig) 
@@ -2351,36 +2195,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -2435,23 +2267,23 @@ contains
 
          ! Lower atmosphere loop
          do lay = 1,laytrop(icol) 
-            speccomb = colo3(icol,lay) + strrat*colo2(icol,lay) 
-            specparm = colo3(icol,lay) / speccomb 
+            speccomb = colo3(lay,icol) + strrat*colo2(lay,icol) 
+            specparm = colo3(lay,icol) / speccomb 
             if (specparm >= oneminus) specparm = oneminus
             specmult = 8. * specparm
             js = 1 + int(specmult)
             fs = mod(specmult, 1.)
-            fac000 = (1. - fs) * fac00(icol,lay) 
-            fac010 = (1. - fs) * fac10(icol,lay) 
-            fac100 =       fs  * fac00(icol,lay) 
-            fac110 =       fs  * fac10(icol,lay) 
-            fac001 = (1. - fs) * fac01(icol,lay) 
-            fac011 = (1. - fs) * fac11(icol,lay) 
-            fac101 =       fs  * fac01(icol,lay) 
-            fac111 =       fs  * fac11(icol,lay) 
+            fac000 = (1. - fs) * fac00(lay,icol) 
+            fac010 = (1. - fs) * fac10(lay,icol) 
+            fac100 =       fs  * fac00(lay,icol) 
+            fac110 =       fs  * fac10(lay,icol) 
+            fac001 = (1. - fs) * fac01(lay,icol) 
+            fac011 = (1. - fs) * fac11(lay,icol) 
+            fac101 =       fs  * fac01(lay,icol) 
+            fac111 =       fs  * fac11(lay,icol) 
             ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(28) + js
             ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(28) + js
-            tauray = colmol(icol,lay) * rayl
+            tauray = colmol(lay,icol) * rayl
 
             do ig = 1,ng28
                taug(icol,lay,ngs27+ig) = speccomb * &
@@ -2474,23 +2306,23 @@ contains
          do lay = laytrop(icol) +1, nlayers
             if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) &
                laysolfr = lay
-            speccomb = colo3(icol,lay) + strrat*colo2(icol,lay) 
-            specparm = colo3(icol,lay) / speccomb 
+            speccomb = colo3(lay,icol) + strrat*colo2(lay,icol) 
+            specparm = colo3(lay,icol) / speccomb 
             if (specparm >= oneminus) specparm = oneminus
             specmult = 4. * specparm
             js = 1 + int(specmult)
             fs = mod(specmult, 1.)
-            fac000 = (1. - fs) * fac00(icol,lay) 
-            fac010 = (1. - fs) * fac10(icol,lay) 
-            fac100 =       fs  * fac00(icol,lay) 
-            fac110 =       fs  * fac10(icol,lay) 
-            fac001 = (1. - fs) * fac01(icol,lay) 
-            fac011 = (1. - fs) * fac11(icol,lay) 
-            fac101 =       fs  * fac01(icol,lay) 
-            fac111 =       fs  * fac11(icol,lay) 
+            fac000 = (1. - fs) * fac00(lay,icol) 
+            fac010 = (1. - fs) * fac10(lay,icol) 
+            fac100 =       fs  * fac00(lay,icol) 
+            fac110 =       fs  * fac10(lay,icol) 
+            fac001 = (1. - fs) * fac01(lay,icol) 
+            fac011 = (1. - fs) * fac11(lay,icol) 
+            fac101 =       fs  * fac01(lay,icol) 
+            fac111 =       fs  * fac11(lay,icol) 
             ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(28) + js
             ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(28) + js
-            tauray = colmol(icol,lay) * rayl
+            tauray = colmol(lay,icol) * rayl
 
             do ig = 1,ng28
                taug(icol,lay,ngs27+ig) = speccomb * &
@@ -2553,36 +2385,24 @@ contains
       integer, intent(in)  :: jt  (nlayers,pncol)
       integer, intent(in)  :: jt1 (nlayers,pncol)
 
-      real,    intent(in)  :: colh2o(:,:)              ! column amount (h2o)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colco2(:,:)              ! column amount (co2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo3(:,:)               ! column amount (o3)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colch4(:,:)              ! column amount (ch4)
-                                                         !   Dimensions: (nlayers)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colo2(:,:)               ! column amount (o2)
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: colmol(:,:)              ! 
-                                                         !   Dimensions: (nlayers)
+      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
+      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
+      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
+      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
+      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
+      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
 
-      integer, intent(in)  :: indself(:,:)     
-                                                         !   Dimensions: (nlayers)
-      integer, intent(in)  :: indfor(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: selffrac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfac(:,:) 
-                                                         !   Dimensions: (nlayers)
-      real,    intent(in)  :: forfrac(:,:) 
-                                                         !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,pncol)
+      integer, intent(in) :: indfor   (nlayers,pncol)
+      real,    intent(in) :: selffac  (nlayers,pncol)
+      real,    intent(in) :: selffrac (nlayers,pncol)
+      real,    intent(in) :: forfac   (nlayers,pncol)
+      real,    intent(in) :: forfrac  (nlayers,pncol)
 
-      real,    intent(in)  :: &                     !
-                       fac00(:,:) , fac01(:,:) , &             !   Dimensions: (nlayers)
-                       fac10(:,:) , fac11(:,:)  
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,pncol) &
+         :: fac00, fac01, fac10, fac11
 
       ! Solar variability
       integer, intent(in)  :: isolvar               ! Flag for solar var method
@@ -2644,19 +2464,19 @@ contains
             if (lay <= laytrop(icol)) then
                ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(29) + 1
                ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(29) + 1
-               inds = indself(icol,lay) 
-               indf = indfor(icol,lay) 
-               tauray = colmol(icol,lay) * rayl
+               inds = indself(lay,icol) 
+               indf = indfor(lay,icol) 
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng29
-                  taug(icol,lay,ngs28+ig) = colh2o(icol,lay) * &
-                     ((fac00(icol,lay) * absa(ind0,  ig) + &
-                       fac10(icol,lay) * absa(ind0+1,ig) + &
-                       fac01(icol,lay) * absa(ind1,  ig) + &
-                       fac11(icol,lay) * absa(ind1+1,ig)) + &
-                      selffac(icol,lay) * LIN2_ARG1(selfref,inds,ig,selffrac(icol,lay)) + &
-                      forfac (icol,lay) * LIN2_ARG1( forref,indf,ig, forfrac(icol,lay))) &
-                     + colco2(icol,lay) * absco2(ig) 
+                  taug(icol,lay,ngs28+ig) = colh2o(lay,icol) * &
+                     ((fac00(lay,icol) * absa(ind0,  ig) + &
+                       fac10(lay,icol) * absa(ind0+1,ig) + &
+                       fac01(lay,icol) * absa(ind1,  ig) + &
+                       fac11(lay,icol) * absa(ind1+1,ig)) + &
+                      selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
+                      forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol))) &
+                     + colco2(lay,icol) * absco2(ig) 
 !                 ssa(lay,ngs28+ig) = tauray / taug(lay,ngs28+ig)
                   taur(icol,lay,ngs28+ig) = tauray
                enddo
@@ -2666,15 +2486,15 @@ contains
                ! Upper atmosphere loop
                ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(29) + 1
                ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(29) + 1
-               tauray = colmol(icol,lay) * rayl
+               tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng29
-                  taug(icol,lay,ngs28+ig) = colco2(icol,lay) * &
-                     (fac00(icol,lay) * absb(ind0,  ig) + &
-                      fac10(icol,lay) * absb(ind0+1,ig) + &
-                      fac01(icol,lay) * absb(ind1,  ig) + &
-                      fac11(icol,lay) * absb(ind1+1,ig)) &  
-                     + colh2o(icol,lay) * absh2o(ig) 
+                  taug(icol,lay,ngs28+ig) = colco2(lay,icol) * &
+                     (fac00(lay,icol) * absb(ind0,  ig) + &
+                      fac10(lay,icol) * absb(ind0+1,ig) + &
+                      fac01(lay,icol) * absb(ind1,  ig) + &
+                      fac11(lay,icol) * absb(ind1+1,ig)) &  
+                     + colh2o(lay,icol) * absh2o(ig) 
 !                 ssa(lay,ngs28+ig) = tauray / taug(lay,ngs28+ig)
                   taur(icol,lay,ngs28+ig) = tauray
                enddo

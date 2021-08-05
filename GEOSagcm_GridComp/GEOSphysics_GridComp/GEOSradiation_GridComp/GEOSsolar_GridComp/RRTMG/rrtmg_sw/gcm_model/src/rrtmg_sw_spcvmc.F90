@@ -30,7 +30,7 @@ contains
       isolvar, svar_f, svar_s, svar_i, &
       svar_f_bnd, svar_s_bnd, svar_i_bnd, &
       laytrop, jp, jt, jt1, &
-      co2mult, colch4, colco2, colh2o, colmol, coln2o, colo2, colo3, &
+      colch4, colco2, colh2o, colmol, colo2, colo3, &
       fac00, fac01, fac10, fac11, &
       selffac, selffrac, indself, forfac, forfrac, indfor, &
       pbbfd, pbbfu, pbbcd, pbbcu, puvfd, puvcd, pnifd, pnicd, &
@@ -78,14 +78,9 @@ contains
       integer, intent(in) :: iend
       integer, intent(in) :: laytrop (tncol)
 
-      integer, intent(in) :: indfor(:,:) 
-                                                               !   Dimensions: (nlayers)
-      integer, intent(in) :: indself(:,:) 
-                                                               !   Dimensions: (nlayers)
       integer, intent(in) :: jp  (nlayers,tncol) 
       integer, intent(in) :: jt  (nlayers,tncol) 
       integer, intent(in) :: jt1 (nlayers,tncol) 
-      real, intent(in) :: colmol(:,:) 
                                                                !   Dimensions: (nlayers)
       real, intent(in) :: adjflux(:)                  ! Earth/Sun distance adjustment
                                                                !   Dimensions: (jpband)
@@ -112,38 +107,24 @@ contains
       real, intent(in) :: pasya(nlayers+1,nbndsw,tncol)  ! aerosol asymmetry parameter
       real, intent(in) :: pomga(nlayers+1,nbndsw,tncol)  ! aerosol single scattering albedo
                                                                
-                                                               
-      real, intent(in) :: colh2o(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: colco2(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: colch4(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: co2mult(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: colo3(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: colo2(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: coln2o(:,:) 
-                                                               !   Dimensions: (nlayers)
+      real, intent(in) :: colh2o (nlayers,tncol) 
+      real, intent(in) :: colco2 (nlayers,tncol) 
+      real, intent(in) :: colch4 (nlayers,tncol) 
+      real, intent(in) :: colo3  (nlayers,tncol) 
+      real, intent(in) :: colo2  (nlayers,tncol) 
+      real, intent(in) :: colmol (nlayers,tncol) 
 
-      real, intent(in) :: forfac(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: forfrac(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: selffac(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: selffrac(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: fac00(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: fac01(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: fac10(:,:) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: fac11(:,:) 
-                                                               !   Dimensions: (nlayers)
+      ! continuum interpolation coefficients
+      integer, intent(in) :: indself  (nlayers,tncol)
+      integer, intent(in) :: indfor   (nlayers,tncol)
+      real,    intent(in) :: selffac  (nlayers,tncol)
+      real,    intent(in) :: selffrac (nlayers,tncol)
+      real,    intent(in) :: forfac   (nlayers,tncol)
+      real,    intent(in) :: forfrac  (nlayers,tncol)
+
+      ! pressure and temperature interpolation coefficients
+      real,    intent(in),  dimension (nlayers,tncol) &
+         :: fac00, fac01, fac10, fac11
 
 ! pmn why inout?
       real, intent(inout) :: zgco(tncol,ngptsw,nlayers+1), zomco(tncol,ngptsw,nlayers+1)  

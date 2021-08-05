@@ -67,7 +67,7 @@ contains
       rpart, ncol, nlay, &
       scon, adjes, coszen, isolvar, &
       play, plev, tlay, &
-      h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, &
+      h2ovmr, o3vmr, co2vmr, ch4vmr, o2vmr, &
       iceflgsw, liqflgsw, &
       cld, ciwp, clwp, rei, rel, &
       dyofyr, zm, alat, &
@@ -187,7 +187,6 @@ contains
       real, intent(in) :: o3vmr  (ncol,nlay)         ! O3 volume mixing ratio
       real, intent(in) :: co2vmr (ncol,nlay)         ! CO2 volume mixing ratio
       real, intent(in) :: ch4vmr (ncol,nlay)         ! Methane volume mixing ratio
-      real, intent(in) :: n2ovmr (ncol,nlay)         ! Nitrous oxide volume mixing ratio
       real, intent(in) :: o2vmr  (ncol,nlay)         ! Oxygen volume mixing ratio
 
       ! cloud optics flags
@@ -289,11 +288,6 @@ contains
         write(error_unit,*) 'minval(ch4vmr):', minval(ch4vmr)
         error stop 'negative values in input: ch4vmr'
       end if
-      if (any(n2ovmr < 0.)) then
-        write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
-        write(error_unit,*) 'minval(n2ovmr):', minval(n2ovmr)
-        error stop 'negative values in input: n2ovmr'
-      end if
       if (any(o2vmr  < 0.)) then
         write(error_unit,*) 'file:', __FILE__, ', line:', __LINE__
         write(error_unit,*) 'minval(o2vmr):', minval(o2vmr)
@@ -371,7 +365,7 @@ contains
          pncol, ncol, nlay, &
          scon, adjes, coszen, isolvar, &
          play, plev, tlay, &
-         h2ovmr, o3vmr, co2vmr, ch4vmr, n2ovmr, o2vmr, &
+         h2ovmr, o3vmr, co2vmr, ch4vmr, o2vmr, &
          iceflgsw, liqflgsw, &
          cld, ciwp, clwp, rei, rel, &
          dyofyr, zm, alat, &
@@ -392,7 +386,7 @@ contains
       pncol, gncol, nlay, &
       scon, adjes, gcoszen, isolvar, &
       gplay, gplev, gtlay, &
-      gh2ovmr, go3vmr, gco2vmr, gch4vmr, gn2ovmr, go2vmr, &
+      gh2ovmr, go3vmr, gco2vmr, gch4vmr, go2vmr, &
       iceflgsw, liqflgsw, &
       gcld, gciwp, gclwp, grei, grel, &
       dyofyr, gzm, galat, &
@@ -446,7 +440,6 @@ contains
       real, intent(in) :: go3vmr  (gncol,nlay)         ! O3 volume mixing ratio
       real, intent(in) :: gco2vmr (gncol,nlay)         ! CO2 volume mixing ratio
       real, intent(in) :: gch4vmr (gncol,nlay)         ! Methane volume mixing ratio
-      real, intent(in) :: gn2ovmr (gncol,nlay)         ! Nitrous oxide volume mixing ratio
       real, intent(in) :: go2vmr  (gncol,nlay)         ! Oxygen volume mixing ratio
 
       ! cloud optics flags
@@ -531,23 +524,21 @@ contains
       integer :: jt1 (nlay,pncol)          !
 
       ! gasesous absorbers
-      real :: colh2o  (pncol,nlay+1)         ! column amount (h2o)
-      real :: colco2  (pncol,nlay+1)         ! column amount (co2)
-      real :: colo3   (pncol,nlay+1)         ! column amount (o3)
-      real :: coln2o  (pncol,nlay+1)         ! column amount (n2o)
-      real :: colch4  (pncol,nlay+1)         ! column amount (ch4)
-      real :: colo2   (pncol,nlay+1)         ! column amount (o2)
-      real :: colmol  (pncol,nlay+1)         ! column amount
-      real :: co2mult (pncol,nlay+1)         ! column amount 
+      real :: colh2o  (nlay,pncol)         ! column amount (h2o)
+      real :: colco2  (nlay,pncol)         ! column amount (co2)
+      real :: colo3   (nlay,pncol)         ! column amount (o3)
+      real :: colch4  (nlay,pncol)         ! column amount (ch4)
+      real :: colo2   (nlay,pncol)         ! column amount (o2)
+      real :: colmol  (nlay,pncol)         ! column amount
 
-      integer :: indself (pncol,nlay+1) 
-      integer :: indfor  (pncol,nlay+1) 
-      real :: selffac    (pncol,nlay+1) 
-      real :: selffrac   (pncol,nlay+1) 
-      real :: forfac     (pncol,nlay+1) 
-      real :: forfrac    (pncol,nlay+1) 
+      integer :: indself (nlay,pncol) 
+      integer :: indfor  (nlay,pncol) 
+      real :: selffac    (nlay,pncol) 
+      real :: selffrac   (nlay,pncol) 
+      real :: forfac     (nlay,pncol) 
+      real :: forfrac    (nlay,pncol) 
 
-      real, dimension (pncol,nlay+1) :: &
+      real, dimension (nlay,pncol) :: &
          fac00, fac01, fac10, fac11  
       
       ! general
@@ -1076,7 +1067,7 @@ contains
                   wkl(1,:,icol) = gh2ovmr(gicol,1:nlay)
                   wkl(2,:,icol) = gco2vmr(gicol,1:nlay)
                   wkl(3,:,icol) = go3vmr (gicol,1:nlay)
-                  wkl(4,:,icol) = gn2ovmr(gicol,1:nlay)
+                  wkl(4,:,icol) = 0.
                   wkl(5,:,icol) = 0.
                   wkl(6,:,icol) = gch4vmr(gicol,1:nlay)
                   wkl(7,:,icol) = go2vmr (gicol,1:nlay)   
@@ -1152,7 +1143,7 @@ contains
                   wkl(1,:,icol) = gh2ovmr(gicol,1:nlay)
                   wkl(2,:,icol) = gco2vmr(gicol,1:nlay)
                   wkl(3,:,icol) = go3vmr (gicol,1:nlay)
-                  wkl(4,:,icol) = gn2ovmr(gicol,1:nlay)
+                  wkl(4,:,icol) = 0.
                   wkl(5,:,icol) = 0.
                   wkl(6,:,icol) = gch4vmr(gicol,1:nlay)
                   wkl(7,:,icol) = go2vmr (gicol,1:nlay)  
@@ -1210,8 +1201,8 @@ contains
             call setcoef_sw( &
                pncol, ncol, nlay, play, tlay, coldry, wkl, &
                laytrop, jp, jt, jt1, &
-               co2mult, colch4, colco2, colh2o, colmol, coln2o, &
-               colo2, colo3, fac00, fac01, fac10, fac11, &
+               colch4, colco2, colh2o, colmol, colo2, colo3, &
+               fac00, fac01, fac10, fac11, &
                selffac, selffrac, indself, forfac, forfrac, indfor)
 
             ! compute sw radiative fluxes
@@ -1223,8 +1214,7 @@ contains
                isolvar, svar_f, svar_s, svar_i, &
                svar_f_bnd, svar_s_bnd, svar_i_bnd, &
                laytrop, jp, jt, jt1, &
-               co2mult, colch4, colco2, colh2o, colmol, &
-               coln2o, colo2, colo3, &
+               colch4, colco2, colh2o, colmol, colo2, colo3, &
                fac00, fac01, fac10, fac11, &
                selffac, selffrac, indself, forfac, forfrac, indfor, &
                zbbfd, zbbfu, zbbcd, zbbcu, zuvfd, &
