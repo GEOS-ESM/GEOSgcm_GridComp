@@ -35,7 +35,7 @@ contains
       selffac, selffrac, indself, forfac, forfrac, indfor, &
       pbbfd, pbbfu, pbbcd, pbbcu, puvfd, puvcd, pnifd, pnicd, &
       pbbfddir, pbbcddir, puvfddir, puvcddir, pnifddir, pnicddir,&
-      zrdnd, zref, zrefo, zrefd, zrefdo, ztauo, zdbt, ztdbt,&
+      zrdnd, zref, zrefo, zrefd, zrefdo, ztauo, ztdbt, &
       ztra, ztrao, ztrad, ztrado, zfd, zfu, ztaug, ztaur, zsflxzen, ssi,&
       znirr, znirf, zparr, zparf, zuvrr, zuvrf)
    ! ---------------------------------------------------------------------------
@@ -131,7 +131,7 @@ contains
       real, intent(inout) :: zref  (tncol,ngptsw,nlayers+1), zrefo  (tncol,ngptsw,nlayers+1)  
       real, intent(inout) :: zrefd (tncol,ngptsw,nlayers+1), zrefdo (tncol,ngptsw,nlayers+1)  
       real, intent(inout) :: ztauo (tncol,ngptsw,nlayers)  
-      real, intent(inout) :: zdbt  (tncol,ngptsw,nlayers+1), ztdbt  (tncol,ngptsw,nlayers+1)   
+      real, intent(inout) :: ztdbt (tncol,ngptsw,nlayers+1)   
       real, intent(inout) :: ztra  (tncol,ngptsw,nlayers+1), ztrao  (tncol,ngptsw,nlayers+1)  
       real, intent(inout) :: ztrad (tncol,ngptsw,nlayers+1), ztrado (tncol,ngptsw,nlayers+1)  
       real, intent(inout) :: zfd   (tncol,ngptsw,nlayers+1), zfu    (tncol,ngptsw,nlayers+1)   
@@ -142,7 +142,7 @@ contains
 !     real :: zref  (pncol,ngptsw,nlay+1), zrefo  (pncol,ngptsw,nlay+1)
 !     real :: zrefd (pncol,ngptsw,nlay+1), zrefdo (pncol,ngptsw,nlay+1)
 !     real :: ztauo (pncol,ngptsw,nlay)
-!     real :: zdbt  (pncol,ngptsw,nlay+1), ztdbt  (pncol,ngptsw,nlay+1)
+!     real :: ztdbt  (pncol,ngptsw,nlay+1)
 !     real :: ztra  (pncol,ngptsw,nlay+1), ztrao  (pncol,ngptsw,nlay+1)
 !     real :: ztrad (pncol,ngptsw,nlay+1), ztrado (pncol,ngptsw,nlay+1)
 !     real :: zfd   (pncol,ngptsw,nlay+1), zfu    (pncol,ngptsw,nlay+1)
@@ -190,6 +190,7 @@ contains
       integer :: icol
 
       real :: zgco  (tncol,ngptsw,nlayers+1), zomco  (tncol,ngptsw,nlayers+1)  
+      real :: zdbt  (tncol,ngptsw,nlayers)
 
       ! ------------------------------------------------------------------
 
@@ -226,30 +227,26 @@ contains
          isolvar, svar_f, svar_s, svar_i, svar_f_bnd, svar_s_bnd, svar_i_bnd, &
          ssi, zsflxzen, ztaug, ztaur)
 
+      ! Set fixed boundary values.
+      ! The surface (klev+1) ref and tra never change from these values.
+      ! The TOA (1) ztdbt never changes.
       do icol = 1,ncol
 
-         ! Top of shortwave spectral band loop, jb = 16 -> 29; ibm = 1 -> 14
-
+         ! SW band loop, jb = 16 -> 29; ibm = 1 -> 14
          do iw = 1,ngptsw
             jb = ngb(iw)
             ibm = jb-15
 
-!?pmn       ! Clear-sky    
-!?pmn       !   TOA direct beam    
-           
-            ! Cloudy-sky    
-            !   Surface values
+            ! TOA direct beam    
+            ztdbt (icol,iw,1) = 1. 
+    
+            ! Clear-sky Surface values
             ztrao (icol,iw,klev+1) = 0. 
             ztrado(icol,iw,klev+1) = 0. 
             zrefo (icol,iw,klev+1) = palbp(ibm,icol) 
             zrefdo(icol,iw,klev+1) = palbd(ibm,icol) 
            
-            ! Total sky    
-            !   TOA direct beam    
-            ztdbt (icol,iw,1)      = 1. 
-    
-            !   Surface values
-            zdbt  (icol,iw,klev+1) = 0. 
+            ! Total sky Surface values
             ztra  (icol,iw,klev+1) = 0. 
             ztrad (icol,iw,klev+1) = 0. 
             zref  (icol,iw,klev+1) = palbp(ibm,icol) 
@@ -295,13 +292,13 @@ contains
 
       do icol = 1,ncol
 
-         ! Combine clear and cloudy reflectivies and optical depths     
+!x pmn   ! Combine clear and cloudy reflectivies and optical depths     
 
          do iw = 1,ngptsw
             
             do jk=1,klev
 
-               ! Combine clear and cloudy contributions for total sky
+!x pmn         ! Combine clear and cloudy contributions for total sky
 
                ! Direct beam transmittance        
 

@@ -607,7 +607,7 @@ contains
       real :: zref  (pncol,ngptsw,nlay+1), zrefo  (pncol,ngptsw,nlay+1)  
       real :: zrefd (pncol,ngptsw,nlay+1), zrefdo (pncol,ngptsw,nlay+1)  
       real :: ztauo (pncol,ngptsw,nlay)  
-      real :: zdbt  (pncol,ngptsw,nlay+1), ztdbt  (pncol,ngptsw,nlay+1)   
+      real :: ztdbt  (pncol,ngptsw,nlay+1)   
       real :: ztra  (pncol,ngptsw,nlay+1), ztrao  (pncol,ngptsw,nlay+1)  
       real :: ztrad (pncol,ngptsw,nlay+1), ztrado (pncol,ngptsw,nlay+1)  
       real :: zfd   (pncol,ngptsw,nlay+1), zfu    (pncol,ngptsw,nlay+1)  
@@ -1220,7 +1220,7 @@ contains
                zbbfd, zbbfu, zbbcd, zbbcu, zuvfd, &
                zuvcd, znifd, znicd, &
                zbbfddir, zbbcddir, zuvfddir, zuvcddir, znifddir, znicddir,&
-               zrdnd,zref,zrefo,zrefd,zrefdo,ztauo,zdbt,ztdbt,&
+               zrdnd,zref,zrefo,zrefd,zrefdo,ztauo,ztdbt,&
                ztra,ztrao,ztrad,ztrado,zfd,zfu,ztaug, ztaur, zsflxzen, ssi,&
                znirr,znirf,zparr,zparf,zuvrr,zuvrf)
 
