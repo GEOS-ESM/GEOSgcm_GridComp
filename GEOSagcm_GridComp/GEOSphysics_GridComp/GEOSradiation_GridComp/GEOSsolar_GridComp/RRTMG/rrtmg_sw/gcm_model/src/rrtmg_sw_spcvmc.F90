@@ -35,8 +35,7 @@ contains
       selffac, selffrac, indself, forfac, forfrac, indfor, &
       pbbfd, pbbfu, pbbcd, pbbcu, puvfd, puvcd, pnifd, pnicd, &
       pbbfddir, pbbcddir, puvfddir, puvcddir, pnifddir, pnicddir,&
-                   zrdnd, zref, zrefo, zrefd, zrefdo, ztauo, zdbt, ztdbt,&
-!     zgco, zomco, zrdnd, zref, zrefo, zrefd, zrefdo, ztauo, zdbt, ztdbt,&
+      zrdnd, zref, zrefo, zrefd, zrefdo, ztauo, zdbt, ztdbt,&
       ztra, ztrao, ztrad, ztrado, zfd, zfu, ztaug, ztaur, zsflxzen, ssi,&
       znirr, znirf, zparr, zparf, zuvrr, zuvrf)
    ! ---------------------------------------------------------------------------
@@ -336,10 +335,10 @@ contains
 !?pmn zgco&zomco set (not in) for klev+1
 !?pmn so now have overwritten everthing that came in without using so at most (out)
 
-      call vrtqdr_sw(ncol, klev, &
+      call vrtqdr_sw(tncol, ncol, klev, &
                      zrefo, zrefdo, ztrao, ztrado, &
                      zdbt, zrdnd, zgco, zomco, ztdbt, &
-                     zfd, zfu, ztra)
+                     zfd, zfu)
 !?pmn zgco&zomco updated from  bottom value
 !?pmn but never used below
 
@@ -492,10 +491,10 @@ contains
                  
          ! Vertical quadrature for cloudy fluxes
 
-         call vrtqdr_sw(ncol, klev, &
+         call vrtqdr_sw(tncol, ncol, klev, &
                         zref, zrefd, ztra, ztrad, &
                         zdbt, zrdnd, zgco, zomco, ztdbt, &
-                        zfd, zfu, ztrao)
+                        zfd, zfu)
 !?pmn zgco&zomco updated from  bottom value
 !?pmn but never used below cc==2
 
@@ -868,10 +867,10 @@ contains
                            
 
    ! --------------------------------------------------------------------------
-   subroutine vrtqdr_sw(ncol, klev, &
+   subroutine vrtqdr_sw(tncol, ncol, klev, &
                         pref, prefd, ptra, ptrad, &
                         pdbt, prdnd, prup, prupd, ptdbt, &
-                        pfd, pfu, ztdn)
+                        pfd, pfu)
    ! --------------------------------------------------------------------------
    ! Purpose: This routine performs the vertical quadrature integration
    !
@@ -884,10 +883,12 @@ contains
    ! Revision: Reformatted for consistency with rrtmg_lw: MJIacono, AER, Jul 2006
    !
    !-----------------------------------------------------------------------
+!?pmn input albedos by self, make prup[d] local and split last loop so seperate klev+1 ???
 
       ! ----- Input -----
 
-      integer, intent (in) :: ncol                   ! number of gridcols
+      integer, intent (in) :: tncol                  ! dimensioned num of gridcols
+      integer, intent (in) :: ncol                   ! actual number of gridcols
       integer, intent (in) :: klev                   ! number of model layers
     
       real, intent(in) :: pref(:,:,:)                      ! direct beam reflectivity
@@ -914,8 +915,6 @@ contains
 !?pmn seems like only the value at klev+1 used from input
 !?pmn and no need to be out? for prup too.
                                                               !   Dimensions: (:+1)
-      real, intent(inout) :: ztdn(:,:,:)
-                                                              
       ! ----- Output -----
 
       real, intent(out) :: pfd(:,:,:)                    ! downwelling flux (W/m2)
@@ -929,6 +928,8 @@ contains
 
       integer :: ikp, ikx, jk, icol, iw
       real :: zreflect, zreflectj
+
+      real :: ztdn (tncol,ngptsw,klev+1)
      
       ! ----- Definitions -----
       !
@@ -986,6 +987,7 @@ contains
             prdnd(icol,iw,2) = prefd(icol,iw,1)  
          end do
       end do
+!?pmn ztn levels 1 and 2 set (not in)
       
       do icol = 1,ncol
          do iw = 1,112
@@ -1005,6 +1007,7 @@ contains
             enddo
          end do
       end do
+!?pmn ztn levels 3:klev+1 set (not in) based on level below ... so all set none in
     
       ! Up and down-welling fluxes at levels
 
