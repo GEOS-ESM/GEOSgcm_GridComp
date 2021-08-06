@@ -710,8 +710,7 @@ contains
             do jk=1,nlayers
 
                prmuz = prmuzl(icol)
-               if ((.not.(pcldfmc(nlayers+1-jk,iw,icol)) > 1.e-12) .and. ac==0) then
-!!!! somethings wrong here
+               if (.not.(pcldfmc(nlayers+1-jk,iw,icol) > 1.e-12) .and. ac==0) then
 
                   pref (icol,iw,jk) = 0. 
                   ptra (icol,iw,jk) = 1. 
