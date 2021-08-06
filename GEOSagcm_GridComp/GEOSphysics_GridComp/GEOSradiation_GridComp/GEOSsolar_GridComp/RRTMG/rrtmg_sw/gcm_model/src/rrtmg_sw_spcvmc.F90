@@ -226,11 +226,11 @@ contains
          isolvar, svar_f, svar_s, svar_i, svar_f_bnd, svar_s_bnd, svar_i_bnd, &
          ssi, zsflxzen, ztaug, ztaur)
 
-      do icol = 1, ncol
+      do icol = 1,ncol
 
          ! Top of shortwave spectral band loop, jb = 16 -> 29; ibm = 1 -> 14
 
-         do iw = 1, 112
+         do iw = 1,ngptsw
             jb = ngb(iw)
             ibm = jb-15
 
@@ -258,9 +258,9 @@ contains
          end do
       end do
 
-      do icol = 1, ncol
+      do icol = 1,ncol
 
-         do iw = 1,112
+         do iw = 1,ngptsw
 
             do jk=1,klev
 
@@ -293,11 +293,11 @@ contains
                       zrefo, zrefdo, ztrao, ztrado, 1)
 !?pmn zgco&zomco used only 1:klev
 
-      do icol = 1, ncol
+      do icol = 1,ncol
 
          ! Combine clear and cloudy reflectivies and optical depths     
 
-         do iw = 1, 112
+         do iw = 1,ngptsw
             
             do jk=1,klev
 
@@ -318,11 +318,11 @@ contains
 
       ! Vertical quadrature for clear-sky fluxes
 
-      do icol = 1, ncol
+      do icol = 1,ncol
 
          ! Top of shortwave spectral band loop, jb = 16 -> 29; ibm = 1 -> 14
 
-         do iw = 1, 112
+         do iw = 1,ngptsw
             jb = ngb(iw)
             ibm = jb-15
 
@@ -343,11 +343,11 @@ contains
 !?pmn but never used below
 
       ! perform band integration for clear cases      
-      do icol = 1, ncol
+      do icol = 1,ncol
     
          do ikl=1,klev+1
             
-            do iw = 1, 112
+            do iw = 1,ngptsw
                jb = ngb(iw)
       
 !?pmn
@@ -393,8 +393,8 @@ contains
 
       if (cc == 2) then
 
-         do icol = 1, ncol
-            do iw = 1, 112
+         do icol = 1,ncol
+            do iw = 1,ngptsw
                do jk=1,klev
 
                   ikl=klev+1-jk
@@ -436,7 +436,7 @@ contains
          klev = nlayers
 
          do icol = 1,ncol
-            do iw = 1,112
+            do iw = 1,ngptsw
                do jk=1,klev
                   ikl = klev+1-jk 
 
@@ -471,11 +471,11 @@ contains
          zfd   = 0.
          zfu   = 0.
 
-         do icol = 1, ncol
+         do icol = 1,ncol
         
             ! Top of shortwave spectral band loop, jb = 16 -> 29; ibm = 1 -> 14
 
-            do iw = 1,112
+            do iw = 1,ngptsw
                jb = ngb(iw)
                ibm = jb-15
 
@@ -505,11 +505,11 @@ contains
 !?pmn
          klev = nlayers
 
-         do icol = 1, ncol
+         do icol = 1,ncol
     
             do ikl=1,klev+1
             
-               do iw = 1, 112
+               do iw = 1,ngptsw
                   jb = ngb(iw)
       
 !?pmn order
@@ -560,8 +560,8 @@ contains
 
       end if
 
-      do icol = 1, ncol
-         do iw = 1, 112
+      do icol = 1,ncol
+         do iw = 1,ngptsw
             jb = ngb(iw)
             ibm = jb - 15
 
@@ -706,11 +706,12 @@ contains
       kmodts = 2
       
       do icol=1,ncol
-         do iw=1,112
+         do iw=1,ngptsw
             do jk=1,nlayers
 
                prmuz = prmuzl(icol)
                if ((.not.(pcldfmc(nlayers+1-jk,iw,icol)) > 1.e-12) .and. ac==0) then
+!!!! somethings wrong here
 
                   pref (icol,iw,jk) = 0. 
                   ptra (icol,iw,jk) = 1. 
@@ -929,7 +930,7 @@ contains
       integer :: ikp, ikx, jk, icol, iw
       real :: zreflect, zreflectj
 
-      real :: ztdn (tncol,ngptsw,klev+1)
+      real :: ztdn (klev+1,ngptsw,tncol)
      
       ! ----- Definitions -----
       !
@@ -947,7 +948,7 @@ contains
       ! this kernel has a lot of dependencies
 
       do icol = 1,ncol
-         do iw = 1,112
+         do iw = 1,ngptsw
       
             zreflect = 1. / (1. - prefd(icol,iw,klev+1) * prefd(icol,iw,klev))
             prup(icol,iw,klev) = pref(icol,iw,klev) + (ptrad(icol,iw,klev) * &
@@ -960,8 +961,8 @@ contains
       end do
       
       ! Pass from bottom to top 
-      do icol = 1, ncol
-         do iw = 1, 112
+      do icol = 1,ncol
+         do iw = 1,ngptsw
             do jk = 1,klev-1
 
                ikp = klev+1-jk                       
@@ -976,21 +977,21 @@ contains
          end do
       end do
 
-      do icol = 1, ncol
-         do iw = 1, 112
+      do icol = 1,ncol
+         do iw = 1,ngptsw
 
             ! Upper boundary conditions
 
-            ztdn (icol,iw,1) = 1. 
+            ztdn (1,iw,icol) = 1. 
             prdnd(icol,iw,1) = 0. 
-            ztdn (icol,iw,2) = ptra (icol,iw,1)  
+            ztdn (2,iw,icol) = ptra (icol,iw,1)  
             prdnd(icol,iw,2) = prefd(icol,iw,1)  
          end do
       end do
 !?pmn ztn levels 1 and 2 set (not in)
       
       do icol = 1,ncol
-         do iw = 1,112
+         do iw = 1,ngptsw
 
             ! Pass from top to bottom
 
@@ -998,8 +999,8 @@ contains
                ikp = jk+1
 
                zreflect = 1. / (1. - prefd(icol,iw,jk) * prdnd(icol,iw,jk))
-               ztdn(icol,iw,ikp) = ptdbt(icol,iw,jk) * ptra(icol,iw,jk) + &
-                  (ptrad(icol,iw,jk) * ((ztdn(icol,iw,jk) - ptdbt(icol,iw,jk)) + &
+               ztdn(ikp,iw,icol) = ptdbt(icol,iw,jk) * ptra(icol,iw,jk) + &
+                  (ptrad(icol,iw,jk) * ((ztdn(jk,iw,icol) - ptdbt(icol,iw,jk)) + &
                   ptdbt(icol,iw,jk) * pref(icol,iw,jk) * prdnd(icol,iw,jk))) * zreflect
                prdnd(icol,iw,ikp) = prefd(icol,iw,jk) + ptrad(icol,iw,jk) * ptrad(icol,iw,jk) * &
                       prdnd(icol,iw,jk) * zreflect
@@ -1012,12 +1013,12 @@ contains
       ! Up and down-welling fluxes at levels
 
       do icol = 1,ncol
-         do iw = 1,112
+         do iw = 1,ngptsw
             do jk = 1,klev+1
                zreflect = 1. / (1. - prdnd(icol,iw,jk) * prupd(icol,iw,jk))
                pfu(icol,iw,jk) = (ptdbt(icol,iw,jk) * prup(icol,iw,jk) + &
-                  (ztdn(icol,iw,jk) - ptdbt(icol,iw,jk)) * prupd(icol,iw,jk)) * zreflect
-               pfd(icol,iw,jk) = ptdbt(icol,iw,jk) + (ztdn(icol,iw,jk) - ptdbt(icol,iw,jk) + &
+                  (ztdn(jk,iw,icol) - ptdbt(icol,iw,jk)) * prupd(icol,iw,jk)) * zreflect
+               pfd(icol,iw,jk) = ptdbt(icol,iw,jk) + (ztdn(jk,iw,icol) - ptdbt(icol,iw,jk) + &
                   ptdbt(icol,iw,jk) * prup(icol,iw,jk) * prdnd(icol,iw,jk)) * zreflect
             enddo
          end do
