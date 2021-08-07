@@ -189,7 +189,7 @@ contains
 
       integer :: icol
 
-      real :: zgco  (tncol,ngptsw,nlayers+1), zomco  (tncol,ngptsw,nlayers+1)  
+      real :: zgco  (tncol,ngptsw,nlayers), zomco  (tncol,ngptsw,nlayers)  
       real :: zdbt  (tncol,ngptsw,nlayers)
 
       ! ------------------------------------------------------------------
@@ -228,14 +228,12 @@ contains
          ssi, zsflxzen, ztaug, ztaur)
 
       ! Set fixed boundary values.
-      ! The surface (klev+1) ref and tra never change from these values.
-      ! The TOA (1) ztdbt never changes.
+      ! The surface (jk=klev+1) zref* and ztra* never change from these values.
+      ! The TOA ztdbt (jk=1) likewise  never changes.
       do icol = 1,ncol
-
-         ! SW band loop, jb = 16 -> 29; ibm = 1 -> 14
          do iw = 1,ngptsw
-            jb = ngb(iw)
-            ibm = jb-15
+            jb = ngb(iw) ! SW band: jb = 16:29
+            ibm = jb-15  !   => ibm = 1:14
 
             ! TOA direct beam    
             ztdbt (icol,iw,1) = 1. 
@@ -251,7 +249,6 @@ contains
             ztrad (icol,iw,klev+1) = 0. 
             zref  (icol,iw,klev+1) = palbp(ibm,icol) 
             zrefd (icol,iw,klev+1) = palbd(ibm,icol) 
-
          end do
       end do
 
@@ -282,13 +279,11 @@ contains
          end do
 
       end do
-!?pmn zgco&zomco set (not in) for 1:klev
 
       ! Clear sky reflectivities
       call reftra_sw (ncol, nlayers, &
                       pcldfmc, zgco, prmu0, ztauo, zomco, &
                       zrefo, zrefdo, ztrao, ztrado, 1)
-!?pmn zgco&zomco used only 1:klev
 
       do icol = 1,ncol
 
@@ -315,29 +310,10 @@ contains
 
       ! Vertical quadrature for clear-sky fluxes
 
-      do icol = 1,ncol
-
-         ! Top of shortwave spectral band loop, jb = 16 -> 29; ibm = 1 -> 14
-
-         do iw = 1,ngptsw
-            jb = ngb(iw)
-            ibm = jb-15
-
-            zgco(icol,iw,klev+1)  = palbp(ibm,icol) 
-            zomco(icol,iw,klev+1) = palbd(ibm,icol) 
-!?pmn these are obviously now being reused for different purpose
-    
-         end do
-      end do
-!?pmn zgco&zomco set (not in) for klev+1
-!?pmn so now have overwritten everthing that came in without using so at most (out)
-
       call vrtqdr_sw(tncol, ncol, klev, &
                      zrefo, zrefdo, ztrao, ztrado, &
-                     zdbt, zrdnd, zgco, zomco, ztdbt, &
+                     zdbt, zrdnd, ztdbt, &
                      zfd, zfu)
-!?pmn zgco&zomco updated from  bottom value
-!?pmn but never used below
 
       ! perform band integration for clear cases      
       do icol = 1,ncol
@@ -422,13 +398,11 @@ contains
                enddo    
             end do
          end do
-!?pmn again zgco&zomco set (not in) 1:klev for cc==2
 
          ! Total sky reflectivities      
          call reftra_sw (ncol, nlayers, &
                          pcldfmc, zgco, prmu0, ztauo, zomco, &
                          zref, zrefd, ztra, ztrad, 0)
-!?pmn zgco&zomco 1:klev used only
 !?pmn       
          klev = nlayers
 
@@ -462,38 +436,15 @@ contains
          end do
 
          zrdnd = 0.
-         zgco  = 0.  !pmn needed?
-         zomco = 0.  !pmn needed?
-!?pmn zgco&zomco completely set to zero so start again for cc==2
          zfd   = 0.
          zfu   = 0.
 
-         do icol = 1,ncol
-        
-            ! Top of shortwave spectral band loop, jb = 16 -> 29; ibm = 1 -> 14
-
-            do iw = 1,ngptsw
-               jb = ngb(iw)
-               ibm = jb-15
-
-               zgco (icol,iw,klev+1) = palbp(ibm,icol) 
-               zomco(icol,iw,klev+1) = palbd(ibm,icol) 
-!?pmn these are obviously now being reused for different purpose
-    
-            end do
-         enddo           
-!?pmn zgco&zomco set (not in) klev+1 cc==2
-!?pmn think on klev+1 value used
-
-                 
          ! Vertical quadrature for cloudy fluxes
 
          call vrtqdr_sw(tncol, ncol, klev, &
                         zref, zrefd, ztra, ztrad, &
-                        zdbt, zrdnd, zgco, zomco, ztdbt, &
+                        zdbt, zrdnd, ztdbt, &
                         zfd, zfu)
-!?pmn zgco&zomco updated from  bottom value
-!?pmn but never used below cc==2
 
          ! Upwelling and downwelling fluxes at levels
          !   Two-stream calculations go from top to bottom; 
@@ -866,7 +817,7 @@ contains
    ! --------------------------------------------------------------------------
    subroutine vrtqdr_sw(tncol, ncol, klev, &
                         pref, prefd, ptra, ptrad, &
-                        pdbt, prdnd, prup, prupd, ptdbt, &
+                        pdbt, prdnd, ptdbt, &
                         pfd, pfu)
    ! --------------------------------------------------------------------------
    ! Purpose: This routine performs the vertical quadrature integration
@@ -880,7 +831,6 @@ contains
    ! Revision: Reformatted for consistency with rrtmg_lw: MJIacono, AER, Jul 2006
    !
    !-----------------------------------------------------------------------
-!?pmn input albedos by self, make prup[d] local and split last loop so seperate klev+1 ???
 
       ! ----- Input -----
 
@@ -904,14 +854,6 @@ contains
 
       real, intent(inout) :: prdnd(:,:,:)  
                                                               !   Dimensions: (:+1)
-      real, intent(inout) :: prup(:,:,:)  
-!xpmn real, intent(in) :: prup(:,:,:)  
-                                                              !   Dimensions: (:+1)
-      real, intent(inout) :: prupd(:,:,:)  
-!xpmn real, intent(in) :: prupd(:,:,:)  
-!?pmn seems like only the value at klev+1 used from input
-!?pmn and no need to be out? for prup too.
-                                                              !   Dimensions: (:+1)
       ! ----- Output -----
 
       real, intent(out) :: pfd(:,:,:)                    ! downwelling flux (W/m2)
@@ -926,7 +868,9 @@ contains
       integer :: ikp, ikx, jk, icol, iw
       real :: zreflect, zreflectj
 
-      real :: ztdn (klev+1,ngptsw,tncol)
+      real :: ztdn  (klev+1,ngptsw,tncol)
+      real :: prup  (klev+1,ngptsw,tncol)  
+      real :: prupd (klev+1,ngptsw,tncol)  
      
       ! ----- Definitions -----
       !
@@ -940,17 +884,20 @@ contains
       !
       !-----------------------------------------------------------------------------
                    
-      ! Link lowest layer with surface
-      ! this kernel has a lot of dependencies
-
       do icol = 1,ncol
          do iw = 1,ngptsw
       
+            ! The klev+1 level of prup/prupd require palbp/palbd which
+            ! are already available in fixed klev+1 level of pref/prefd.
+            prup (klev+1,iw,icol) = pref (icol,iw,klev+1)
+            prupd(klev+1,iw,icol) = prefd(icol,iw,klev+1)
+
+            ! Link lowest layer with surface
             zreflect = 1. / (1. - prefd(icol,iw,klev+1) * prefd(icol,iw,klev))
-            prup(icol,iw,klev) = pref(icol,iw,klev) + (ptrad(icol,iw,klev) * &
+            prup(klev,iw,icol) = pref(icol,iw,klev) + (ptrad(icol,iw,klev) * &
                ((ptra(icol,iw,klev) - pdbt(icol,iw,klev)) * prefd(icol,iw,klev+1) + &
                pdbt(icol,iw,klev) * pref(icol,iw,klev+1))) * zreflect
-            prupd(icol,iw,klev) = prefd(icol,iw,klev) + ptrad(icol,iw,klev) * ptrad(icol,iw,klev) * &
+            prupd(klev,iw,icol) = prefd(icol,iw,klev) + ptrad(icol,iw,klev) * ptrad(icol,iw,klev) * &
                prefd(icol,iw,klev+1) * zreflect
 
           end do
@@ -963,12 +910,12 @@ contains
 
                ikp = klev+1-jk                       
                ikx = ikp-1
-               zreflectj = 1. / (1. - prupd(icol,iw,ikp) * prefd(icol,iw,ikx))
-               prup(icol,iw,ikx) = pref(icol,iw,ikx) + (ptrad(icol,iw,ikx) * &
-                  ((ptra(icol,iw,ikx) - pdbt(icol,iw,ikx)) * prupd(icol,iw,ikp) + &
-                  pdbt(icol,iw,ikx) * prup(icol,iw,ikp))) * zreflectj
-               prupd(icol,iw,ikx) = prefd(icol,iw,ikx) + ptrad(icol,iw,ikx) * ptrad(icol,iw,ikx) * &
-                  prupd(icol,iw,ikp) * zreflectj
+               zreflectj = 1. / (1. - prupd(ikp,iw,icol) * prefd(icol,iw,ikx))
+               prup(ikx,iw,icol) = pref(icol,iw,ikx) + (ptrad(icol,iw,ikx) * &
+                  ((ptra(icol,iw,ikx) - pdbt(icol,iw,ikx)) * prupd(ikp,iw,icol) + &
+                  pdbt(icol,iw,ikx) * prup(ikp,iw,icol))) * zreflectj
+               prupd(ikx,iw,icol) = prefd(icol,iw,ikx) + ptrad(icol,iw,ikx) * ptrad(icol,iw,ikx) * &
+                  prupd(ikp,iw,icol) * zreflectj
             enddo
          end do
       end do
@@ -1011,11 +958,11 @@ contains
       do icol = 1,ncol
          do iw = 1,ngptsw
             do jk = 1,klev+1
-               zreflect = 1. / (1. - prdnd(icol,iw,jk) * prupd(icol,iw,jk))
-               pfu(icol,iw,jk) = (ptdbt(icol,iw,jk) * prup(icol,iw,jk) + &
-                  (ztdn(jk,iw,icol) - ptdbt(icol,iw,jk)) * prupd(icol,iw,jk)) * zreflect
+               zreflect = 1. / (1. - prdnd(icol,iw,jk) * prupd(jk,iw,icol))
+               pfu(icol,iw,jk) = (ptdbt(icol,iw,jk) * prup(jk,iw,icol) + &
+                  (ztdn(jk,iw,icol) - ptdbt(icol,iw,jk)) * prupd(jk,iw,icol)) * zreflect
                pfd(icol,iw,jk) = ptdbt(icol,iw,jk) + (ztdn(jk,iw,icol) - ptdbt(icol,iw,jk) + &
-                  ptdbt(icol,iw,jk) * prup(icol,iw,jk) * prdnd(icol,iw,jk)) * zreflect
+                  ptdbt(icol,iw,jk) * prup(jk,iw,icol) * prdnd(icol,iw,jk)) * zreflect
             enddo
          end do
       end do
