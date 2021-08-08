@@ -35,7 +35,7 @@ contains
       selffac, selffrac, indself, forfac, forfrac, indfor, &
       pbbfd, pbbfu, pbbcd, pbbcu, puvfd, puvcd, pnifd, pnicd, &
       pbbfddir, pbbcddir, puvfddir, puvcddir, pnifddir, pnicddir,&
-      zrdnd, zref, zrefo, zrefd, zrefdo, ztauo, ztdbt, &
+      zref, zrefo, zrefd, zrefdo, ztauo, ztdbt, &
       ztra, ztrao, ztrad, ztrado, zfd, zfu, ztaug, ztaur, zsflxzen, ssi,&
       znirr, znirf, zparr, zparf, zuvrr, zuvrf)
    ! ---------------------------------------------------------------------------
@@ -127,7 +127,6 @@ contains
          :: fac00, fac01, fac10, fac11
 
 ! pmn why inout?
-      real, intent(inout) :: zrdnd (tncol,ngptsw,nlayers+1) 
       real, intent(inout) :: zref  (tncol,ngptsw,nlayers+1), zrefo  (tncol,ngptsw,nlayers+1)  
       real, intent(inout) :: zrefd (tncol,ngptsw,nlayers+1), zrefdo (tncol,ngptsw,nlayers+1)  
       real, intent(inout) :: ztauo (tncol,ngptsw,nlayers)  
@@ -138,7 +137,6 @@ contains
       real, intent(inout) :: ztaur (tncol,nlayers,ngptsw),   ztaug  (tncol,nlayers,ngptsw) 
       real, intent(inout) :: zsflxzen(tncol,ngptsw),         ssi    (tncol,ngptsw)
 !? pmn these are reported back but dont need to be a GPU thing I think
-!     real :: zrdnd (pncol,ngptsw,nlay+1)
 !     real :: zref  (pncol,ngptsw,nlay+1), zrefo  (pncol,ngptsw,nlay+1)
 !     real :: zrefd (pncol,ngptsw,nlay+1), zrefdo (pncol,ngptsw,nlay+1)
 !     real :: ztauo (pncol,ngptsw,nlay)
@@ -312,7 +310,7 @@ contains
 
       call vrtqdr_sw(tncol, ncol, klev, &
                      zrefo, zrefdo, ztrao, ztrado, &
-                     zdbt, zrdnd, ztdbt, &
+                     zdbt, ztdbt, &
                      zfd, zfu)
 
       ! perform band integration for clear cases      
@@ -435,7 +433,6 @@ contains
             end do
          end do
 
-         zrdnd = 0.
          zfd   = 0.
          zfu   = 0.
 
@@ -443,7 +440,7 @@ contains
 
          call vrtqdr_sw(tncol, ncol, klev, &
                         zref, zrefd, ztra, ztrad, &
-                        zdbt, zrdnd, ztdbt, &
+                        zdbt, ztdbt, &
                         zfd, zfu)
 
          ! Upwelling and downwelling fluxes at levels
@@ -817,7 +814,7 @@ contains
    ! --------------------------------------------------------------------------
    subroutine vrtqdr_sw(tncol, ncol, klev, &
                         pref, prefd, ptra, ptrad, &
-                        pdbt, prdnd, ptdbt, &
+                        pdbt, ptdbt, &
                         pfd, pfu)
    ! --------------------------------------------------------------------------
    ! Purpose: This routine performs the vertical quadrature integration
@@ -852,8 +849,6 @@ contains
       real, intent(in) :: ptdbt(:,:,:)  
                                                               !   Dimensions: (:+1)
 
-      real, intent(inout) :: prdnd(:,:,:)  
-                                                              !   Dimensions: (:+1)
       ! ----- Output -----
 
       real, intent(out) :: pfd(:,:,:)                    ! downwelling flux (W/m2)
@@ -871,6 +866,7 @@ contains
       real :: ztdn  (klev+1,ngptsw,tncol)
       real :: prup  (klev+1,ngptsw,tncol)  
       real :: prupd (klev+1,ngptsw,tncol)  
+      real :: prdnd (klev+1,ngptsw,tncol)  
      
       ! ----- Definitions -----
       !
@@ -926,12 +922,11 @@ contains
             ! Upper boundary conditions
 
             ztdn (1,iw,icol) = 1. 
-            prdnd(icol,iw,1) = 0. 
+            prdnd(1,iw,icol) = 0. 
             ztdn (2,iw,icol) = ptra (icol,iw,1)  
-            prdnd(icol,iw,2) = prefd(icol,iw,1)  
+            prdnd(2,iw,icol) = prefd(icol,iw,1)  
          end do
       end do
-!?pmn ztn levels 1 and 2 set (not in)
       
       do icol = 1,ncol
          do iw = 1,ngptsw
@@ -941,28 +936,27 @@ contains
             do jk = 2,klev
                ikp = jk+1
 
-               zreflect = 1. / (1. - prefd(icol,iw,jk) * prdnd(icol,iw,jk))
+               zreflect = 1. / (1. - prefd(icol,iw,jk) * prdnd(jk,iw,icol))
                ztdn(ikp,iw,icol) = ptdbt(icol,iw,jk) * ptra(icol,iw,jk) + &
                   (ptrad(icol,iw,jk) * ((ztdn(jk,iw,icol) - ptdbt(icol,iw,jk)) + &
-                  ptdbt(icol,iw,jk) * pref(icol,iw,jk) * prdnd(icol,iw,jk))) * zreflect
-               prdnd(icol,iw,ikp) = prefd(icol,iw,jk) + ptrad(icol,iw,jk) * ptrad(icol,iw,jk) * &
-                      prdnd(icol,iw,jk) * zreflect
+                  ptdbt(icol,iw,jk) * pref(icol,iw,jk) * prdnd(jk,iw,icol))) * zreflect
+               prdnd(ikp,iw,icol) = prefd(icol,iw,jk) + ptrad(icol,iw,jk) * ptrad(icol,iw,jk) * &
+                      prdnd(jk,iw,icol) * zreflect
 
             enddo
          end do
       end do
-!?pmn ztn levels 3:klev+1 set (not in) based on level below ... so all set none in
     
       ! Up and down-welling fluxes at levels
 
       do icol = 1,ncol
          do iw = 1,ngptsw
             do jk = 1,klev+1
-               zreflect = 1. / (1. - prdnd(icol,iw,jk) * prupd(jk,iw,icol))
+               zreflect = 1. / (1. - prdnd(jk,iw,icol) * prupd(jk,iw,icol))
                pfu(icol,iw,jk) = (ptdbt(icol,iw,jk) * prup(jk,iw,icol) + &
                   (ztdn(jk,iw,icol) - ptdbt(icol,iw,jk)) * prupd(jk,iw,icol)) * zreflect
                pfd(icol,iw,jk) = ptdbt(icol,iw,jk) + (ztdn(jk,iw,icol) - ptdbt(icol,iw,jk) + &
-                  ptdbt(icol,iw,jk) * prup(jk,iw,icol) * prdnd(icol,iw,jk)) * zreflect
+                  ptdbt(icol,iw,jk) * prup(jk,iw,icol) * prdnd(jk,iw,icol)) * zreflect
             enddo
          end do
       end do

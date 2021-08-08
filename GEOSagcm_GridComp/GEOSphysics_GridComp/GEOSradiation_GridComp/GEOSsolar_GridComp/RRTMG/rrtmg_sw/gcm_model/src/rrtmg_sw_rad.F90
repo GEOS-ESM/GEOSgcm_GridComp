@@ -603,7 +603,6 @@ contains
       real :: znicddir (pncol,nlay+2)         ! temporary clear sky near-IR down direct SW flux (w/m2)
 
 !? pmn these are reported back but dont need to be a GPU thing I think
-      real :: zrdnd (pncol,ngptsw,nlay+1) 
       real :: zref  (pncol,ngptsw,nlay+1), zrefo  (pncol,ngptsw,nlay+1)  
       real :: zrefd (pncol,ngptsw,nlay+1), zrefdo (pncol,ngptsw,nlay+1)  
       real :: ztauo (pncol,ngptsw,nlay)  
@@ -1220,7 +1219,7 @@ contains
                zbbfd, zbbfu, zbbcd, zbbcu, zuvfd, &
                zuvcd, znifd, znicd, &
                zbbfddir, zbbcddir, zuvfddir, zuvcddir, znifddir, znicddir,&
-               zrdnd,zref,zrefo,zrefd,zrefdo,ztauo,ztdbt,&
+               zref,zrefo,zrefd,zrefdo,ztauo,ztdbt,&
                ztra,ztrao,ztrad,ztrado,zfd,zfu,ztaug, ztaur, zsflxzen, ssi,&
                znirr,znirf,zparr,zparf,zuvrr,zuvrf)
 
