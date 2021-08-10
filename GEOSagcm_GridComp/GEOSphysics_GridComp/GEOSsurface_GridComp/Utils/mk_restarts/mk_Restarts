@@ -290,8 +290,10 @@ if (\$catchcnFLG) then
         set RESTART_ID = $cnlist[1]
         set RESTART_PATH = $cnlist[2]
         set RESTART_DOMAIN = $cnlist[3] 
-        set  RESTART_short = \${RESTART_PATH}/\${RESTART_ID}/output/\${RESTART_DOMAIN}/
-        set     PARAM_FILE = `ls \$RESTART_short/rc_out/*/*/*ldas_catparam* | head -1`
+        set RESTART_short = \${RESTART_PATH}/\${RESTART_ID}/output/\${RESTART_DOMAIN}/
+        set YYYY = `echo \${rsttime} | cut -c1-4`
+        set MM   = `echo \${rsttime} | cut -c5-6`
+        set PARAM_FILE = `ls \$RESTART_short/rc_out/Y\${YYYY}/M\${MM}/*ldas_catparam* | head -1`
         set params = ( -b OutData/ -d \$rsttime -e \$RESTART_ID -m catchcn\$CN_VERSION -s \$surflay -j Y -r R -p \$PARAM_FILE -l \$RESTART_short)
         \$mk_GEOSldasRestarts_X \$params
     endif
