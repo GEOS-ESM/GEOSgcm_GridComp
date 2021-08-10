@@ -79,9 +79,9 @@ contains
       integer, intent(in) :: jp  (nlayers,tncol) 
       integer, intent(in) :: jt  (nlayers,tncol) 
       integer, intent(in) :: jt1 (nlayers,tncol) 
-                                                               !   Dimensions: (nlayers)
-      real, intent(in) :: adjflux(:)                  ! Earth/Sun distance adjustment
-                                                               !   Dimensions: (jpband)
+
+      real, intent(in) :: adjflux(jpband)             ! Earth/Sun distance adjustment
+
       ! Solar variability
       integer, intent(in) :: isolvar                  ! Flag for solar variability method
       real, intent(in) :: svar_f                      ! Solar variability facular multiplier
@@ -93,8 +93,8 @@ contains
 
       real, intent(in) :: palbd(nbndsw,tncol)         ! surface albedo (diffuse)
       real, intent(in) :: palbp(nbndsw,tncol)         ! surface albedo (direct)
+      real, intent(in) :: prmu0(tncol)                ! cosine of solar zenith angle
 
-      real, intent(in) :: prmu0(:)                       ! cosine of solar zenith angle
       real, intent(in) :: pcldfmc(nlayers,ngptsw,tncol)  ! cloud fraction [mcica]
       real, intent(in) :: ptaucmc(nlayers,ngptsw,tncol)  ! cloud optical depth [mcica]
       real, intent(in) :: pasycmc(nlayers,ngptsw,tncol)  ! cloud asymmetry parameter [mcica]
@@ -163,18 +163,29 @@ contains
 
       integer :: icol
 
-      real :: zgco  (tncol,ngptsw,nlayers),   zomco  (tncol,ngptsw,nlayers)  
-      real :: ztauo (tncol,ngptsw,nlayers)  
-      real :: zdbt  (tncol,ngptsw,nlayers)
-      real :: ztdbt (tncol,ngptsw,nlayers+1)   
-      real :: zfd   (tncol,ngptsw,nlayers+1), zfu    (tncol,ngptsw,nlayers+1)   
-      real :: zref  (tncol,ngptsw,nlayers+1), zrefo  (tncol,ngptsw,nlayers+1)  
-      real :: zrefd (tncol,ngptsw,nlayers+1), zrefdo (tncol,ngptsw,nlayers+1)  
-      real :: ztra  (tncol,ngptsw,nlayers+1), ztrao  (tncol,ngptsw,nlayers+1)  
-      real :: ztrad (tncol,ngptsw,nlayers+1), ztrado (tncol,ngptsw,nlayers+1)  
-      real :: ztaur (tncol,nlayers,ngptsw),   ztaug  (tncol,nlayers,ngptsw) 
-      real :: zsflxzen (tncol,ngptsw), ssi (tncol,ngptsw)
-   
+      real :: zgco   (nlayers,ngptsw,tncol)
+      real :: zomco  (nlayers,ngptsw,tncol)  
+      real :: ztauo  (nlayers,ngptsw,tncol)  
+
+      real :: zdbt   (tncol,ngptsw,nlayers)
+      real :: ztdbt  (tncol,ngptsw,nlayers+1)   
+
+      real :: zfd    (tncol,ngptsw,nlayers+1)
+      real :: zfu    (tncol,ngptsw,nlayers+1)   
+      real :: zref   (tncol,ngptsw,nlayers+1)
+      real :: zrefo  (tncol,ngptsw,nlayers+1)  
+      real :: zrefd  (tncol,ngptsw,nlayers+1)
+      real :: zrefdo (tncol,ngptsw,nlayers+1)  
+      real :: ztra   (tncol,ngptsw,nlayers+1)
+      real :: ztrao  (tncol,ngptsw,nlayers+1)  
+      real :: ztrad  (tncol,ngptsw,nlayers+1)
+      real :: ztrado (tncol,ngptsw,nlayers+1)  
+
+      real :: ztaur  (tncol,nlayers,ngptsw)
+      real :: ztaug  (tncol,nlayers,ngptsw) 
+
+      real :: zsflxzen (tncol,ngptsw)
+      real :: ssi      (tncol,ngptsw)
 
       ! ------------------------------------------------------------------
 
@@ -237,51 +248,43 @@ contains
       end do
 
       do icol = 1,ncol
-
          do iw = 1,ngptsw
-
-            do jk=1,klev
+            do jk = 1,klev
 
                ikl = klev+1-jk
                jb = ngb(iw)
                ibm = jb-15
 
                ! Clear-sky optical parameters including aerosols
-               ztauo(icol,iw,jk) = ztaur(icol,ikl,iw) + ztaug(icol,ikl,iw) + ptaua(ikl,ibm,icol)      
-               zomco(icol,iw,jk) = ztaur(icol,ikl,iw) + ptaua(ikl,ibm,icol) * pomga(ikl,ibm,icol)
-               zgco (icol,iw,jk) = pasya(ikl,ibm,icol) * pomga(ikl,ibm,icol) * ptaua(ikl,ibm,icol) / zomco(icol,iw,jk)   
-               zomco(icol,iw,jk) = zomco(icol,iw,jk) / ztauo(icol,iw,jk)
+               ztauo(jk,iw,icol) = ztaur(icol,ikl,iw) + ztaug(icol,ikl,iw) + ptaua(ikl,ibm,icol)      
+               zomco(jk,iw,icol) = ztaur(icol,ikl,iw) + ptaua(ikl,ibm,icol) * pomga(ikl,ibm,icol)
+               zgco (jk,iw,icol) = pasya(ikl,ibm,icol) * pomga(ikl,ibm,icol) * ptaua(ikl,ibm,icol) / zomco(jk,iw,icol)   
+               zomco(jk,iw,icol) = zomco(jk,iw,icol) / ztauo(jk,iw,icol)
                
-               zf = zgco(icol,iw,jk)
+               zf = zgco(jk,iw,icol)
                zf = zf * zf
-               zwf = zomco(icol,iw,jk) * zf
-               ztauo(icol,iw,jk) = (1. - zwf) * ztauo(icol,iw,jk)
-               zomco(icol,iw,jk) = (zomco(icol,iw,jk) - zwf) / (1. - zwf)
-               zgco (icol,iw,jk) = (zgco(icol,iw,jk) - zf) / (1. - zf)
+               zwf = zomco(jk,iw,icol) * zf
+               ztauo(jk,iw,icol) = (1. - zwf) * ztauo(jk,iw,icol)
+               zomco(jk,iw,icol) = (zomco(jk,iw,icol) - zwf) / (1. - zwf)
+               zgco (jk,iw,icol) = (zgco (jk,iw,icol) - zf ) / (1. - zf )
 
             enddo    
          end do
-
       end do
 
       ! Clear sky reflectivities
-      call reftra_sw (ncol, nlayers, &
+      call reftra_sw (tncol, ncol, nlayers, &
                       pcldfmc, zgco, prmu0, ztauo, zomco, &
                       zrefo, zrefdo, ztrao, ztrado, 1)
 
-      do icol = 1,ncol
-
 !x pmn   ! Combine clear and cloudy reflectivies and optical depths     
-
-         do iw = 1,ngptsw
-            
-            do jk=1,klev
-
 !x pmn         ! Combine clear and cloudy contributions for total sky
+      do icol = 1,ncol
+         do iw = 1,ngptsw
+            do jk = 1,klev
 
                ! Direct beam transmittance        
-
-               ze1 = ztauo(icol,iw,jk) / prmu0(icol)      
+               ze1 = ztauo(jk,iw,icol) / prmu0(icol)      
                zdbtmc = exp(-ze1)
                zdbt(icol,iw,jk) = zdbtmc
                ztdbt(icol,iw,jk+1) = zdbt(icol,iw,jk) * ztdbt(icol,iw,jk)  
@@ -352,7 +355,7 @@ contains
 
          do icol = 1,ncol
             do iw = 1,ngptsw
-               do jk=1,klev
+               do jk = 1,klev
 
                   ikl=klev+1-jk
                   jb = ngb(iw)
@@ -369,22 +372,22 @@ contains
                   ze2 = (ze2 - zf) / (1. - zf)
                
                   ! delta scale
-                  zomco(icol,iw,jk) = ztauo(icol,iw,jk) * ze1 + ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol)
+                  zomco(jk,iw,icol) = ztauo(jk,iw,icol) * ze1 + ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol)
                         
-                  zgco (icol,iw,jk) = ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol) * pasycmc(ikl,iw,icol) + &
-                                         ztauo(icol,iw,jk) * ze1 * ze2
+                  zgco (jk,iw,icol) = ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol) * pasycmc(ikl,iw,icol) + &
+                                         ztauo(jk,iw,icol) * ze1 * ze2
                
-                  ztauo(icol,iw,jk) = ztauo(icol,iw,jk) + ptaucmc(ikl,iw,icol) 
+                  ztauo(jk,iw,icol) = ztauo(jk,iw,icol) + ptaucmc(ikl,iw,icol) 
      
-                  zgco (icol,iw,jk) = zgco (icol,iw,jk) / zomco(icol,iw,jk)
-                  zomco(icol,iw,jk) = zomco(icol,iw,jk) / ztauo(icol,iw,jk)
+                  zgco (jk,iw,icol) = zgco (jk,iw,icol) / zomco(jk,iw,icol)
+                  zomco(jk,iw,icol) = zomco(jk,iw,icol) / ztauo(jk,iw,icol)
                
                enddo    
             end do
          end do
 
          ! Total sky reflectivities      
-         call reftra_sw (ncol, nlayers, &
+         call reftra_sw (tncol, ncol, nlayers, &
                          pcldfmc, zgco, prmu0, ztauo, zomco, &
                          zref, zrefd, ztra, ztrad, 0)
 !?pmn       
@@ -392,7 +395,7 @@ contains
 
          do icol = 1,ncol
             do iw = 1,ngptsw
-               do jk=1,klev
+               do jk = 1,klev
                   ikl = klev+1-jk 
 
                   ! Combine clear and cloudy contributions for total sky
@@ -407,9 +410,9 @@ contains
 
                   ! Clear + Cloud
 
-                  ze1 = ztauo(icol,iw,jk) / prmu0(icol)   
+                  ze1 = ztauo(jk,iw,icol) / prmu0(icol)   
                   zdbtmo = exp(-ze1)            
-                  ze1 = (ztauo(icol,iw,jk) - ptaucmc(ikl,iw,icol)) / prmu0(icol)           
+                  ze1 = (ztauo(jk,iw,icol) - ptaucmc(ikl,iw,icol)) / prmu0(icol)           
                   zdbtmc = exp(-ze1)
 
                   zdbt(icol,iw,jk) = zclear * zdbtmc + zcloud * zdbtmo
@@ -529,7 +532,8 @@ contains
    end subroutine spcvmc_sw
 
    ! --------------------------------------------------------------------
-   subroutine reftra_sw(ncol, nlayers, pcldfmc, pgg, prmuzl, ptau, pw, &
+   subroutine reftra_sw(tncol, ncol, nlayers, &
+                        pcldfmc, pgg, prmuzl, ptau, pw, &
                         pref, prefd, ptra, ptrad, ac)
    ! --------------------------------------------------------------------
    ! Purpose: computes the reflectivity and transmissivity of a clear or 
@@ -576,20 +580,19 @@ contains
 
       ! ------- Input -------
 
-      integer, intent(in) :: nlayers
-      integer, intent(in) :: ncol
+      integer, intent (in) :: tncol                   ! dimensioned num of gridcols
+      integer, intent (in) :: ncol                    ! actual number of gridcols
+      integer, intent (in) :: nlayers
 
-      real, intent(in) :: pcldfmc(:,:,:)                           ! Logical flag for reflectivity and
-                                                               ! and transmissivity calculation; 
-                                                               !   Dimensions: (:)
 
-      real, intent(in) :: pgg(:,:,:)                        ! asymmetry parameter
-                                                               !   Dimensions: (:)
-      real, intent(in) :: ptau(:,:,:)                       ! optical depth
-                                                               !   Dimensions: (:)
-      real, intent(in) :: pw(:,:,:)                         ! single scattering albedo 
-                                                               !   Dimensions: (:)
-      real, intent(in) :: prmuzl(:)                       ! cosine of solar zenith angle
+      real, intent(in) :: pcldfmc (nlayers,ngptsw,tncol)   ! cloud fraction
+!?pmn redo this with logical mcica flag
+
+      real, intent(in) :: pgg     (nlayers,ngptsw,tncol)   ! asymmetry parameter
+      real, intent(in) :: ptau    (nlayers,ngptsw,tncol)   ! optical depth
+      real, intent(in) :: pw      (nlayers,ngptsw,tncol)   ! single scattering albedo 
+      real, intent(in) :: prmuzl                 (tncol)   ! cosine of solar zenith angle
+
       integer, intent(in) :: ac
 
       ! ------- Output -------
@@ -633,9 +636,9 @@ contains
       zwcrit = 0.9999995 
       kmodts = 2
       
-      do icol=1,ncol
-         do iw=1,ngptsw
-            do jk=1,nlayers
+      do icol = 1,ncol
+         do iw = 1,ngptsw
+            do jk = 1,nlayers
 
                prmuz = prmuzl(icol)
                if (.not.(pcldfmc(nlayers+1-jk,iw,icol) > 1.e-12) .and. ac==0) then
@@ -647,9 +650,9 @@ contains
 
                else
 
-                  zto1 = ptau(icol,iw,jk)  
-                  zw   = pw  (icol,iw,jk)  
-                  zg   = pgg (icol,iw,jk)    
+                  zto1 = ptau(jk,iw,icol)  
+                  zw   = pw  (jk,iw,icol)  
+                  zg   = pgg (jk,iw,icol)    
 
                   ! MAT Move zw and zg into 8-byte reals to avoid
                   ! MAT divide-by-zero in zwo calculation below
