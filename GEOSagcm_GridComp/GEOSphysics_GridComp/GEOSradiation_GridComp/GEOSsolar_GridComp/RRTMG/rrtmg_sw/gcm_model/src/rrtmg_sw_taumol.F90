@@ -16,6 +16,7 @@
 
 module rrtmg_sw_taumol
 
+   use parrrsw, only: ngptsw, jpband
    use rrsw_con, only: oneminus
    use rrsw_wvn, only: nspa, nspb
 
@@ -66,18 +67,14 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(inout) :: ssi(:,:)           ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(inout) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(inout) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(inout) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
 
       ! Calculate gaseous optical depth and planck fractions for each spectral band.
 
@@ -263,18 +260,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
@@ -426,18 +420,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
@@ -626,18 +617,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
@@ -796,18 +784,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
@@ -982,18 +967,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
@@ -1126,18 +1108,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
@@ -1322,18 +1301,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
@@ -1515,18 +1491,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
@@ -1661,18 +1634,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
@@ -1845,18 +1815,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
@@ -1968,18 +1935,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr
@@ -2080,18 +2044,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
@@ -2219,18 +2180,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
@@ -2409,18 +2367,15 @@ contains
       real,    intent(in)  :: svar_f                ! facular  multiplier
       real,    intent(in)  :: svar_s                ! sunspot  multiplier
       real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(:)         ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(:)         ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(:)         ! baseline multiplier (by band)
+      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
+      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
+      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(:,:)                ! spectral solar intensity with solar var
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: sfluxzen(:,:)           ! solar source function
-                                                         !   Dimensions: (ngptsw)
-      real,    intent(out) :: taug(:,:,:)             ! gaseous optical depth 
-                                                         !   Dimensions: (nlayers,ngptsw)
-      real,    intent(out) :: taur(:,:,:)             ! Rayleigh 
-                                                         !   Dimensions: (nlayers,ngptsw)
+      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
+      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+
       ! ----- Locals -----
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr

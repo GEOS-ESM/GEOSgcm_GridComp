@@ -35,7 +35,6 @@ contains
       selffac, selffrac, indself, forfac, forfrac, indfor, &
       pbbfd, pbbfu, pbbcd, pbbcu, puvfd, puvcd, pnifd, pnicd, &
       pbbfddir, pbbcddir, puvfddir, puvcddir, pnifddir, pnicddir, &
-      ztauo, ztdbt, ztaug, ztaur, zsflxzen, ssi, &
       znirr, znirf, zparr, zparf, zuvrr, zuvrf)
    ! ---------------------------------------------------------------------------
    !
@@ -125,18 +124,6 @@ contains
       real,    intent(in),  dimension (nlayers,tncol) &
          :: fac00, fac01, fac10, fac11
 
-! pmn why inout?
-      real, intent(inout) :: ztauo (tncol,ngptsw,nlayers)  
-      real, intent(inout) :: ztdbt (tncol,ngptsw,nlayers+1)   
-      real, intent(inout) :: ztaur (tncol,nlayers,ngptsw),   ztaug  (tncol,nlayers,ngptsw) 
-      real, intent(inout) :: zsflxzen(tncol,ngptsw),         ssi    (tncol,ngptsw)
-!? pmn these are reported back but dont need to be a GPU thing I think
-!     real :: ztauo (pncol,ngptsw,nlay)
-!     real :: ztdbt  (pncol,ngptsw,nlay+1)
-!     real :: zsflxzen(pncol,ngptsw)
-!     real :: ssi   (pncol,ngptsw)
-!     real :: ztaur (pncol,nlay,ngptsw), ztaug (pncol,nlay,ngptsw)
-   
       ! ------- Output -------
                                                                !   All Dimensions: (nlayers+1)
       real, intent(out) :: pbbcd(:,:) 
@@ -177,12 +164,17 @@ contains
       integer :: icol
 
       real :: zgco  (tncol,ngptsw,nlayers),   zomco  (tncol,ngptsw,nlayers)  
+      real :: ztauo (tncol,ngptsw,nlayers)  
       real :: zdbt  (tncol,ngptsw,nlayers)
+      real :: ztdbt (tncol,ngptsw,nlayers+1)   
       real :: zfd   (tncol,ngptsw,nlayers+1), zfu    (tncol,ngptsw,nlayers+1)   
       real :: zref  (tncol,ngptsw,nlayers+1), zrefo  (tncol,ngptsw,nlayers+1)  
       real :: zrefd (tncol,ngptsw,nlayers+1), zrefdo (tncol,ngptsw,nlayers+1)  
       real :: ztra  (tncol,ngptsw,nlayers+1), ztrao  (tncol,ngptsw,nlayers+1)  
       real :: ztrad (tncol,ngptsw,nlayers+1), ztrado (tncol,ngptsw,nlayers+1)  
+      real :: ztaur (tncol,nlayers,ngptsw),   ztaug  (tncol,nlayers,ngptsw) 
+      real :: zsflxzen (tncol,ngptsw), ssi (tncol,ngptsw)
+   
 
       ! ------------------------------------------------------------------
 
@@ -200,8 +192,8 @@ contains
       pnifd    = 0. 
       pnicddir = 0. 
       pnifddir = 0.
-      zsflxzen = 0.
-      ssi      = 0.
+!     zsflxzen = 0.
+!     ssi      = 0.
       znirr    = 0.
       znirf    = 0.
       zparr    = 0.
@@ -827,14 +819,12 @@ contains
       integer, intent (in) :: klev                    ! number of model layers
     
       real, intent(in) :: pref (tncol,ngptsw,klev+1)  ! direct beam reflectivity
-      real, intent(in) :: prefd(tncol,ngptsw,klev+1)  ! diffuse beam reflectivity
+      real, intent(in) :: prefd(tncol,ngptsw,klev+1)  ! diffuse reflectivity
       real, intent(in) :: ptra (tncol,ngptsw,klev+1)  ! direct beam transmissivity
-      real, intent(in) :: ptrad(tncol,ngptsw,klev+1)  ! diffuse beam transmissivity
+      real, intent(in) :: ptrad(tncol,ngptsw,klev+1)  ! diffuse transmissivity
 
-      real, intent(in) :: pdbt(:,:,:)  
-                                                              !   Dimensions: (:+1)
-      real, intent(in) :: ptdbt(:,:,:)  
-                                                              !   Dimensions: (:+1)
+      real, intent(in) :: pdbt (tncol,ngptsw,klev)    ! lyr mean dir beam transmittance
+      real, intent(in) :: ptdbt(tncol,ngptsw,klev+1)  ! total direct beam transmittance
 
       ! ----- Output -----
       ! unadjusted for earth/sun distance or zenith angle
@@ -852,18 +842,6 @@ contains
       real :: prupd (klev+1,ngptsw,tncol)  
       real :: prdnd (klev+1,ngptsw,tncol)  
      
-      ! ----- Definitions -----
-      !
-      ! pref(jk)   direct reflectance
-      ! prefd(jk)  diffuse reflectance
-      ! ptra(jk)   direct transmittance
-      ! ptrad(jk)  diffuse transmittance
-      !
-      ! pdbt(jk)   layer mean direct beam transmittance
-      ! ptdbt(jk)  total direct beam transmittance at levels
-      !
-      !-----------------------------------------------------------------------------
-                   
       do icol = 1,ncol
          do iw = 1,ngptsw
       

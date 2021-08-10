@@ -602,13 +602,6 @@ contains
       real :: znifddir (pncol,nlay+2)         ! temporary near-IR down direct SW flux (w/m2)
       real :: znicddir (pncol,nlay+2)         ! temporary clear sky near-IR down direct SW flux (w/m2)
 
-!? pmn these are reported back but dont need to be a GPU thing I think
-      real :: ztauo (pncol,ngptsw,nlay)  
-      real :: ztdbt  (pncol,ngptsw,nlay+1)   
-      real :: zsflxzen(pncol,ngptsw)
-      real :: ssi   (pncol,ngptsw)
-      real :: ztaur (pncol,nlay,ngptsw), ztaug (pncol,nlay,ngptsw) 
-
       ! Output fields 
       ! -------------
 
@@ -1211,10 +1204,8 @@ contains
                colch4, colco2, colh2o, colmol, colo2, colo3, &
                fac00, fac01, fac10, fac11, &
                selffac, selffrac, indself, forfac, forfrac, indfor, &
-               zbbfd, zbbfu, zbbcd, zbbcu, zuvfd, &
-               zuvcd, znifd, znicd, &
+               zbbfd, zbbfu, zbbcd, zbbcu, zuvfd, zuvcd, znifd, znicd, &
                zbbfddir, zbbcddir, zuvfddir, zuvcddir, znifddir, znicddir,&
-               ztauo, ztdbt, ztaug, ztaur, zsflxzen, ssi,&
                znirr,znirf,zparr,zparf,zuvrr,zuvrf)
 
             ! Copy out up and down, clear and total sky fluxes to output arrays.
