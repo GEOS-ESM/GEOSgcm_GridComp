@@ -603,13 +603,8 @@ contains
       real :: znicddir (pncol,nlay+2)         ! temporary clear sky near-IR down direct SW flux (w/m2)
 
 !? pmn these are reported back but dont need to be a GPU thing I think
-      real :: zref  (pncol,ngptsw,nlay+1), zrefo  (pncol,ngptsw,nlay+1)  
-      real :: zrefd (pncol,ngptsw,nlay+1), zrefdo (pncol,ngptsw,nlay+1)  
       real :: ztauo (pncol,ngptsw,nlay)  
       real :: ztdbt  (pncol,ngptsw,nlay+1)   
-      real :: ztra  (pncol,ngptsw,nlay+1), ztrao  (pncol,ngptsw,nlay+1)  
-      real :: ztrad (pncol,ngptsw,nlay+1), ztrado (pncol,ngptsw,nlay+1)  
-      real :: zfd   (pncol,ngptsw,nlay+1), zfu    (pncol,ngptsw,nlay+1)  
       real :: zsflxzen(pncol,ngptsw)
       real :: ssi   (pncol,ngptsw)
       real :: ztaur (pncol,nlay,ngptsw), ztaug (pncol,nlay,ngptsw) 
@@ -1219,8 +1214,7 @@ contains
                zbbfd, zbbfu, zbbcd, zbbcu, zuvfd, &
                zuvcd, znifd, znicd, &
                zbbfddir, zbbcddir, zuvfddir, zuvcddir, znifddir, znicddir,&
-               zref,zrefo,zrefd,zrefdo,ztauo,ztdbt,&
-               ztra,ztrao,ztrad,ztrado,zfd,zfu,ztaug, ztaur, zsflxzen, ssi,&
+               ztauo, ztdbt, ztaug, ztaur, zsflxzen, ssi,&
                znirr,znirf,zparr,zparf,zuvrr,zuvrf)
 
             ! Copy out up and down, clear and total sky fluxes to output arrays.

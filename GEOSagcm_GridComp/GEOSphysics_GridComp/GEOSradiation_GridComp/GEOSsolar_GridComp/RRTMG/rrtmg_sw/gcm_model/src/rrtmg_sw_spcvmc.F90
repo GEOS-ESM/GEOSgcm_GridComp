@@ -34,9 +34,8 @@ contains
       fac00, fac01, fac10, fac11, &
       selffac, selffrac, indself, forfac, forfrac, indfor, &
       pbbfd, pbbfu, pbbcd, pbbcu, puvfd, puvcd, pnifd, pnicd, &
-      pbbfddir, pbbcddir, puvfddir, puvcddir, pnifddir, pnicddir,&
-      zref, zrefo, zrefd, zrefdo, ztauo, ztdbt, &
-      ztra, ztrao, ztrad, ztrado, zfd, zfu, ztaug, ztaur, zsflxzen, ssi,&
+      pbbfddir, pbbcddir, puvfddir, puvcddir, pnifddir, pnicddir, &
+      ztauo, ztdbt, ztaug, ztaur, zsflxzen, ssi, &
       znirr, znirf, zparr, zparf, zuvrr, zuvrf)
    ! ---------------------------------------------------------------------------
    !
@@ -127,23 +126,13 @@ contains
          :: fac00, fac01, fac10, fac11
 
 ! pmn why inout?
-      real, intent(inout) :: zref  (tncol,ngptsw,nlayers+1), zrefo  (tncol,ngptsw,nlayers+1)  
-      real, intent(inout) :: zrefd (tncol,ngptsw,nlayers+1), zrefdo (tncol,ngptsw,nlayers+1)  
       real, intent(inout) :: ztauo (tncol,ngptsw,nlayers)  
       real, intent(inout) :: ztdbt (tncol,ngptsw,nlayers+1)   
-      real, intent(inout) :: ztra  (tncol,ngptsw,nlayers+1), ztrao  (tncol,ngptsw,nlayers+1)  
-      real, intent(inout) :: ztrad (tncol,ngptsw,nlayers+1), ztrado (tncol,ngptsw,nlayers+1)  
-      real, intent(inout) :: zfd   (tncol,ngptsw,nlayers+1), zfu    (tncol,ngptsw,nlayers+1)   
       real, intent(inout) :: ztaur (tncol,nlayers,ngptsw),   ztaug  (tncol,nlayers,ngptsw) 
       real, intent(inout) :: zsflxzen(tncol,ngptsw),         ssi    (tncol,ngptsw)
 !? pmn these are reported back but dont need to be a GPU thing I think
-!     real :: zref  (pncol,ngptsw,nlay+1), zrefo  (pncol,ngptsw,nlay+1)
-!     real :: zrefd (pncol,ngptsw,nlay+1), zrefdo (pncol,ngptsw,nlay+1)
 !     real :: ztauo (pncol,ngptsw,nlay)
 !     real :: ztdbt  (pncol,ngptsw,nlay+1)
-!     real :: ztra  (pncol,ngptsw,nlay+1), ztrao  (pncol,ngptsw,nlay+1)
-!     real :: ztrad (pncol,ngptsw,nlay+1), ztrado (pncol,ngptsw,nlay+1)
-!     real :: zfd   (pncol,ngptsw,nlay+1), zfu    (pncol,ngptsw,nlay+1)
 !     real :: zsflxzen(pncol,ngptsw)
 !     real :: ssi   (pncol,ngptsw)
 !     real :: ztaur (pncol,nlay,ngptsw), ztaug (pncol,nlay,ngptsw)
@@ -187,8 +176,13 @@ contains
 
       integer :: icol
 
-      real :: zgco  (tncol,ngptsw,nlayers), zomco  (tncol,ngptsw,nlayers)  
+      real :: zgco  (tncol,ngptsw,nlayers),   zomco  (tncol,ngptsw,nlayers)  
       real :: zdbt  (tncol,ngptsw,nlayers)
+      real :: zfd   (tncol,ngptsw,nlayers+1), zfu    (tncol,ngptsw,nlayers+1)   
+      real :: zref  (tncol,ngptsw,nlayers+1), zrefo  (tncol,ngptsw,nlayers+1)  
+      real :: zrefd (tncol,ngptsw,nlayers+1), zrefdo (tncol,ngptsw,nlayers+1)  
+      real :: ztra  (tncol,ngptsw,nlayers+1), ztrao  (tncol,ngptsw,nlayers+1)  
+      real :: ztrad (tncol,ngptsw,nlayers+1), ztrado (tncol,ngptsw,nlayers+1)  
 
       ! ------------------------------------------------------------------
 
@@ -432,9 +426,6 @@ contains
                enddo          
             end do
          end do
-
-         zfd   = 0.
-         zfu   = 0.
 
          ! Vertical quadrature for cloudy fluxes
 
@@ -831,18 +822,14 @@ contains
 
       ! ----- Input -----
 
-      integer, intent (in) :: tncol                  ! dimensioned num of gridcols
-      integer, intent (in) :: ncol                   ! actual number of gridcols
-      integer, intent (in) :: klev                   ! number of model layers
+      integer, intent (in) :: tncol                   ! dimensioned num of gridcols
+      integer, intent (in) :: ncol                    ! actual number of gridcols
+      integer, intent (in) :: klev                    ! number of model layers
     
-      real, intent(in) :: pref(:,:,:)                      ! direct beam reflectivity
-                                                              !   Dimensions: (:+1)
-      real, intent(in) :: prefd(:,:,:)                     ! diffuse beam reflectivity
-                                                              !   Dimensions: (:+1)
-      real, intent(in) :: ptra(:,:,:)                      ! direct beam transmissivity
-                                                              !   Dimensions: (:+1)
-      real, intent(in) :: ptrad(:,:,:)                     ! diffuse beam transmissivity
-                                                              !   Dimensions: (:+1)
+      real, intent(in) :: pref (tncol,ngptsw,klev+1)  ! direct beam reflectivity
+      real, intent(in) :: prefd(tncol,ngptsw,klev+1)  ! diffuse beam reflectivity
+      real, intent(in) :: ptra (tncol,ngptsw,klev+1)  ! direct beam transmissivity
+      real, intent(in) :: ptrad(tncol,ngptsw,klev+1)  ! diffuse beam transmissivity
 
       real, intent(in) :: pdbt(:,:,:)  
                                                               !   Dimensions: (:+1)
@@ -850,13 +837,10 @@ contains
                                                               !   Dimensions: (:+1)
 
       ! ----- Output -----
+      ! unadjusted for earth/sun distance or zenith angle
 
-      real, intent(out) :: pfd(:,:,:)                    ! downwelling flux (W/m2)
-                                                              !   Dimensions: (:+1,ngptsw)
-                                                              ! unadjusted for earth/sun distance or zenith angle
-      real, intent(inout) :: pfu(:,:,:)                    ! upwelling flux (W/m2)
-                                                              !   Dimensions: (:+1,ngptsw)
-                                                              ! unadjusted for earth/sun distance or zenith angle
+      real, intent(out) :: pfd(tncol,ngptsw,klev+1)   ! downwelling flux (W/m2)
+      real, intent(out) :: pfu(tncol,ngptsw,klev+1)   ! upwelling   flux (W/m2)
     
       ! ----- Local -----
 
