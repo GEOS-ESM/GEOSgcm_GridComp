@@ -170,16 +170,17 @@ contains
       real :: zdbt   (nlayers,  ngptsw,tncol)
       real :: ztdbt  (nlayers+1,ngptsw,tncol)   
 
-      real :: zfd    (tncol,ngptsw,nlayers+1)
-      real :: zfu    (tncol,ngptsw,nlayers+1)   
-      real :: zref   (tncol,ngptsw,nlayers+1)
-      real :: zrefo  (tncol,ngptsw,nlayers+1)  
-      real :: zrefd  (tncol,ngptsw,nlayers+1)
-      real :: zrefdo (tncol,ngptsw,nlayers+1)  
-      real :: ztra   (tncol,ngptsw,nlayers+1)
-      real :: ztrao  (tncol,ngptsw,nlayers+1)  
-      real :: ztrad  (tncol,ngptsw,nlayers+1)
-      real :: ztrado (tncol,ngptsw,nlayers+1)  
+      real :: zfd    (nlayers+1,ngptsw,tncol)
+      real :: zfu    (nlayers+1,ngptsw,tncol)   
+
+      real :: zref   (nlayers+1,ngptsw,tncol)
+      real :: zrefo  (nlayers+1,ngptsw,tncol)  
+      real :: zrefd  (nlayers+1,ngptsw,tncol)
+      real :: zrefdo (nlayers+1,ngptsw,tncol)  
+      real :: ztra   (nlayers+1,ngptsw,tncol)
+      real :: ztrao  (nlayers+1,ngptsw,tncol)  
+      real :: ztrad  (nlayers+1,ngptsw,tncol)
+      real :: ztrado (nlayers+1,ngptsw,tncol)  
 
       real :: ztaur  (tncol,nlayers,ngptsw)
       real :: ztaug  (tncol,nlayers,ngptsw) 
@@ -234,16 +235,16 @@ contains
             ztdbt (1,iw,icol) = 1. 
     
             ! Clear-sky Surface values
-            ztrao (icol,iw,klev+1) = 0. 
-            ztrado(icol,iw,klev+1) = 0. 
-            zrefo (icol,iw,klev+1) = palbp(ibm,icol) 
-            zrefdo(icol,iw,klev+1) = palbd(ibm,icol) 
+            ztrao (klev+1,iw,icol) = 0. 
+            ztrado(klev+1,iw,icol) = 0. 
+            zrefo (klev+1,iw,icol) = palbp(ibm,icol) 
+            zrefdo(klev+1,iw,icol) = palbd(ibm,icol) 
            
             ! Total sky Surface values
-            ztra  (icol,iw,klev+1) = 0. 
-            ztrad (icol,iw,klev+1) = 0. 
-            zref  (icol,iw,klev+1) = palbp(ibm,icol) 
-            zrefd (icol,iw,klev+1) = palbd(ibm,icol) 
+            ztra  (klev+1,iw,icol) = 0. 
+            ztrad (klev+1,iw,icol) = 0. 
+            zref  (klev+1,iw,icol) = palbp(ibm,icol) 
+            zrefd (klev+1,iw,icol) = palbd(ibm,icol) 
          end do
       end do
 
@@ -304,14 +305,11 @@ contains
 
       ! perform band integration for clear cases      
       do icol = 1,ncol
-    
          do ikl=1,klev+1
-            
             do iw = 1,ngptsw
-               jb = ngb(iw)
-      
-!?pmn
+
                jk=klev+2-ikl
+               jb = ngb(iw)
                ibm = jb-15
 
                ! Apply adjustment for correct Earth/Sun distance and zenith angle to incoming solar flux
@@ -327,18 +325,18 @@ contains
 
                ! Accumulate spectral fluxes over whole spectrum  
               
-               pbbcu   (icol,ikl) = pbbcu   (icol,ikl) + zincflx * zfu  (icol,iw,jk)  
-               pbbcd   (icol,ikl) = pbbcd   (icol,ikl) + zincflx * zfd  (icol,iw,jk)  
+               pbbcu   (icol,ikl) = pbbcu   (icol,ikl) + zincflx * zfu  (jk,iw,icol)  
+               pbbcd   (icol,ikl) = pbbcd   (icol,ikl) + zincflx * zfd  (jk,iw,icol)  
                pbbcddir(icol,ikl) = pbbcddir(icol,ikl) + zincflx * ztdbt(jk,iw,icol)  
               
                ! Accumulate direct fluxes for UV/visible bands
                if (ibm >= 10 .and. ibm <= 13) then
-                  puvcd   (icol,ikl)  = puvcd   (icol,ikl)  + zincflx * zfd  (icol,iw,jk)  
+                  puvcd   (icol,ikl)  = puvcd   (icol,ikl)  + zincflx * zfd  (jk,iw,icol)  
                   puvcddir(icol,ikl)  = puvcddir(icol,ikl)  + zincflx * ztdbt(jk,iw,icol)  
                  
                ! Accumulate direct fluxes for near-IR bands
                else if (ibm == 14 .or. ibm <= 9) then  
-                  pnicd   (icol,ikl) = pnicd   (icol,ikl) + zincflx * zfd  (icol,iw,jk)  
+                  pnicd   (icol,ikl) = pnicd   (icol,ikl) + zincflx * zfd  (jk,iw,icol)  
                   pnicddir(icol,ikl) = pnicddir(icol,ikl) + zincflx * ztdbt(jk,iw,icol)  
 
                endif 
@@ -403,10 +401,10 @@ contains
                   zclear = 1. - pcldfmc(ikl,iw,icol) 
                   zcloud = pcldfmc(ikl,iw,icol) 
 
-                  zref (icol,iw,jk) = zclear * zrefo (icol,iw,jk) + zcloud * zref (icol,iw,jk)  
-                  zrefd(icol,iw,jk) = zclear * zrefdo(icol,iw,jk) + zcloud * zrefd(icol,iw,jk)  
-                  ztra (icol,iw,jk) = zclear * ztrao (icol,iw,jk) + zcloud * ztra (icol,iw,jk)  
-                  ztrad(icol,iw,jk) = zclear * ztrado(icol,iw,jk) + zcloud * ztrad(icol,iw,jk)  
+                  zref (jk,iw,icol) = zclear * zrefo (jk,iw,icol) + zcloud * zref (jk,iw,icol)  
+                  zrefd(jk,iw,icol) = zclear * zrefdo(jk,iw,icol) + zcloud * zrefd(jk,iw,icol)  
+                  ztra (jk,iw,icol) = zclear * ztrao (jk,iw,icol) + zcloud * ztra (jk,iw,icol)  
+                  ztrad(jk,iw,icol) = zclear * ztrado(jk,iw,icol) + zcloud * ztrad(jk,iw,icol)  
 
                   ! Clear + Cloud
 
@@ -437,14 +435,11 @@ contains
          klev = nlayers
 
          do icol = 1,ncol
-    
             do ikl=1,klev+1
-            
                do iw = 1,ngptsw
-                  jb = ngb(iw)
-      
-!?pmn order
+
                   jk=klev+2-ikl
+                  jb = ngb(iw)
                   ibm = jb-15
 
                   ! Apply adjustment for correct Earth/Sun distance and zenith angle to incoming solar flux
@@ -458,20 +453,20 @@ contains
                   endif
 
                   ! Accumulate spectral fluxes over whole spectrum  
-                  pbbfu   (icol,ikl)  = pbbfu   (icol,ikl) + zincflx * zfu  (icol,iw,jk)  
-                  pbbfd   (icol,ikl)  = pbbfd   (icol,ikl) + zincflx * zfd  (icol,iw,jk)              
+                  pbbfu   (icol,ikl)  = pbbfu   (icol,ikl) + zincflx * zfu  (jk,iw,icol)  
+                  pbbfd   (icol,ikl)  = pbbfd   (icol,ikl) + zincflx * zfd  (jk,iw,icol)              
                   pbbfddir(icol,ikl)  = pbbfddir(icol,ikl) + zincflx * ztdbt(jk,iw,icol)  
 
                   ! Accumulate direct fluxes for UV/visible bands
                   if (ibm >= 10 .and. ibm <= 13) then
                  
-                     puvfd   (icol,ikl) = puvfd   (icol,ikl) + zincflx * zfd  (icol,iw,jk)  
+                     puvfd   (icol,ikl) = puvfd   (icol,ikl) + zincflx * zfd  (jk,iw,icol)  
                      puvfddir(icol,ikl) = puvfddir(icol,ikl) + zincflx * ztdbt(jk,iw,icol)  
                  
                   ! Accumulate direct fluxes for near-IR bands
                   else if (ibm == 14 .or. ibm <= 9) then  
                 
-                     pnifd   (icol,ikl) = pnifd   (icol,ikl) + zincflx * zfd  (icol,iw,jk)  
+                     pnifd   (icol,ikl) = pnifd   (icol,ikl) + zincflx * zfd  (jk,iw,icol)  
                      pnifddir(icol,ikl) = pnifddir(icol,ikl) + zincflx * ztdbt(jk,iw,icol)  
                    
                   endif
@@ -510,20 +505,20 @@ contains
             ! Accumulate surface direct fluxes for NIR
             if (ibm == 14 .or. ibm <= 8) then
                znirr(icol) = znirr(icol) + zincflx * ztdbt(klev+1,iw,icol)  ! Direct flux
-               znirf(icol) = znirf(icol) + zincflx * zfd  (icol,iw,klev+1)  ! Total flux
+               znirf(icol) = znirf(icol) + zincflx * zfd  (klev+1,iw,icol)  ! Total flux
             ! Accumulate surface direct fluxes for PAR
             else if (ibm >= 10 .and. ibm <= 11) then
                zparr(icol) = zparr(icol) + zincflx * ztdbt(klev+1,iw,icol)  ! Direct flux
-               zparf(icol) = zparf(icol) + zincflx * zfd  (icol,iw,klev+1)  ! Total flux
+               zparf(icol) = zparf(icol) + zincflx * zfd  (klev+1,iw,icol)  ! Total flux
             ! Accumulate surface direct fluxes for UV
             else if (ibm >= 12 .and. ibm <= 13) then
                zuvrr(icol) = zuvrr(icol) + zincflx * ztdbt(klev+1,iw,icol)  ! Direct flux
-               zuvrf(icol) = zuvrf(icol) + zincflx * zfd  (icol,iw,klev+1)  ! Total flux
+               zuvrf(icol) = zuvrf(icol) + zincflx * zfd  (klev+1,iw,icol)  ! Total flux
             else if ( ibm==9) then
                zparr(icol) = zparr(icol) + 0.5 * zincflx * ztdbt(klev+1,iw,icol)  ! Direct flux
-               zparf(icol) = zparf(icol) + 0.5 * zincflx * zfd  (icol,iw,klev+1)  ! Total flux
+               zparf(icol) = zparf(icol) + 0.5 * zincflx * zfd  (klev+1,iw,icol)  ! Total flux
                znirr(icol) = znirr(icol) + 0.5 * zincflx * ztdbt(klev+1,iw,icol)  ! Direct flux
-               znirf(icol) = znirf(icol) + 0.5 * zincflx * zfd  (icol,iw,klev+1)  ! Total flux
+               znirf(icol) = znirf(icol) + 0.5 * zincflx * zfd  (klev+1,iw,icol)  ! Total flux
             endif
 
          end do
@@ -597,14 +592,10 @@ contains
 
       ! ------- Output -------
 
-      real, intent(out) :: pref(:,:,:)                    ! direct beam reflectivity
-                                                               !   Dimensions: (:+1)
-      real, intent(out) :: prefd(:,:,:)                   ! diffuse beam reflectivity
-                                                               !   Dimensions: (:+1)
-      real, intent(out) :: ptra(:,:,:)                    ! direct beam transmissivity
-                                                               !   Dimensions: (:+1)
-      real, intent(out) :: ptrad(:,:,:)                   ! diffuse beam transmissivity
-                                                               !   Dimensions: (:+1)
+      real, intent(out) :: pref  (nlayers+1,ngptsw,tncol)  ! direct beam reflectivity
+      real, intent(out) :: prefd (nlayers+1,ngptsw,tncol)  ! diffuse beam reflectivity
+      real, intent(out) :: ptra  (nlayers+1,ngptsw,tncol)  ! direct beam transmissivity
+      real, intent(out) :: ptrad (nlayers+1,ngptsw,tncol)  ! diffuse beam transmissivity
       ! ------- Local -------
 
       integer :: jk, jl, kmodts
@@ -643,10 +634,10 @@ contains
                prmuz = prmuzl(icol)
                if (.not.(pcldfmc(nlayers+1-jk,iw,icol) > 1.e-12) .and. ac==0) then
 
-                  pref (icol,iw,jk) = 0. 
-                  ptra (icol,iw,jk) = 1. 
-                  prefd(icol,iw,jk) = 0. 
-                  ptrad(icol,iw,jk) = 1. 
+                  pref (jk,iw,icol) = 0. 
+                  ptra (jk,iw,icol) = 1. 
+                  prefd(jk,iw,icol) = 0. 
+                  ptrad(jk,iw,icol) = 1. 
 
                else
 
@@ -702,22 +693,22 @@ contains
 
                      ze1 = min(zto1/prmuz, 500.)
                      ze2 = exp(-ze1)
-                     pref(icol,iw,jk) = (zgt - za1 * (1. - ze2)) / (1. + zgt)
-                     ptra(icol,iw,jk) = 1. - pref(icol,iw,jk)  
+                     pref(jk,iw,icol) = (zgt - za1 * (1. - ze2)) / (1. + zgt)
+                     ptra(jk,iw,icol) = 1. - pref(jk,iw,icol)  
 
                      ! isotropic incidence
 
-                     prefd(icol,iw,jk) = zgt / (1. + zgt)
-                     ptrad(icol,iw,jk) = 1. - prefd(icol,iw,jk)          
+                     prefd(jk,iw,icol) = zgt / (1. + zgt)
+                     ptrad(jk,iw,icol) = 1. - prefd(jk,iw,icol)          
 
                      ! This is applied for consistency between total (delta-scaled) and direct (unscaled) 
                      ! calculations at very low optical depths (tau < 1.e-4) when the exponential lookup
                      ! table returns a transmittance of 1.
                      if (ze2 == 1.) then 
-                        pref (icol,iw,jk) = 0. 
-                        ptra (icol,iw,jk) = 1. 
-                        prefd(icol,iw,jk) = 0. 
-                        ptrad(icol,iw,jk) = 1. 
+                        pref (jk,iw,icol) = 0. 
+                        ptra (jk,iw,icol) = 1. 
+                        prefd(jk,iw,icol) = 0. 
+                        ptrad(jk,iw,icol) = 1. 
                      endif
 
                   else
@@ -773,19 +764,19 @@ contains
                      zdenr = zr4*zep1 + zr5*zem1
                      zdent = zt4*zep1 + zt5*zem1
                      if (zdenr .ge. -eps .and. zdenr .le. eps) then
-                        pref(icol,iw,jk) = eps
-                        ptra(icol,iw,jk) = zem2
+                        pref(jk,iw,icol) = eps
+                        ptra(jk,iw,icol) = zem2
                      else 
-                        pref(icol,iw,jk) = zw * (zr1*zep1 - zr2*zem1 - zr3*zem2) / zdenr
-                        ptra(icol,iw,jk) = zem2 - zem2 * zw * (zt1*zep1 - zt2*zem1 - zt3*zep2) / zdent
+                        pref(jk,iw,icol) = zw * (zr1*zep1 - zr2*zem1 - zr3*zem2) / zdenr
+                        ptra(jk,iw,icol) = zem2 - zem2 * zw * (zt1*zep1 - zt2*zem1 - zt3*zep2) / zdent
                      endif
 
                      ! diffuse beam
 
                      zemm = zem1*zem1
                      zdend = 1. / ((1. - zbeta * zemm) * zrkg)
-                     prefd(icol,iw,jk) = zgamma2 * (1. - zemm) * zdend
-                     ptrad(icol,iw,jk) = zrk2 * zem1 * zdend
+                     prefd(jk,iw,icol) = zgamma2 * (1. - zemm) * zdend
+                     ptrad(jk,iw,icol) = zrk2 * zem1 * zdend
 
                   endif
                endif         
@@ -821,10 +812,10 @@ contains
       integer, intent (in) :: ncol                    ! actual number of gridcols
       integer, intent (in) :: klev                    ! number of model layers
     
-      real, intent(in) :: pref (tncol,ngptsw,klev+1)  ! direct beam reflectivity
-      real, intent(in) :: prefd(tncol,ngptsw,klev+1)  ! diffuse reflectivity
-      real, intent(in) :: ptra (tncol,ngptsw,klev+1)  ! direct beam transmissivity
-      real, intent(in) :: ptrad(tncol,ngptsw,klev+1)  ! diffuse transmissivity
+      real, intent(in) :: pref (klev+1,ngptsw,tncol)  ! direct beam reflectivity
+      real, intent(in) :: prefd(klev+1,ngptsw,tncol)  ! diffuse reflectivity
+      real, intent(in) :: ptra (klev+1,ngptsw,tncol)  ! direct beam transmissivity
+      real, intent(in) :: ptrad(klev+1,ngptsw,tncol)  ! diffuse transmissivity
 
       real, intent(in) :: pdbt (klev,  ngptsw,tncol)  ! lyr mean dir beam transmittance
       real, intent(in) :: ptdbt(klev+1,ngptsw,tncol)  ! total direct beam transmittance
@@ -832,8 +823,8 @@ contains
       ! ----- Output -----
       ! unadjusted for earth/sun distance or zenith angle
 
-      real, intent(out) :: pfd(tncol,ngptsw,klev+1)   ! downwelling flux (W/m2)
-      real, intent(out) :: pfu(tncol,ngptsw,klev+1)   ! upwelling   flux (W/m2)
+      real, intent(out) :: pfd(klev+1,ngptsw,tncol)   ! downwelling flux (W/m2)
+      real, intent(out) :: pfu(klev+1,ngptsw,tncol)   ! upwelling   flux (W/m2)
     
       ! ----- Local -----
 
@@ -850,16 +841,16 @@ contains
       
             ! The klev+1 level of prup/prupd require palbp/palbd which
             ! are already available in fixed klev+1 level of pref/prefd.
-            prup (klev+1,iw,icol) = pref (icol,iw,klev+1)
-            prupd(klev+1,iw,icol) = prefd(icol,iw,klev+1)
+            prup (klev+1,iw,icol) = pref (klev+1,iw,icol)
+            prupd(klev+1,iw,icol) = prefd(klev+1,iw,icol)
 
             ! Link lowest layer with surface
-            zreflect = 1. / (1. - prefd(icol,iw,klev+1) * prefd(icol,iw,klev))
-            prup(klev,iw,icol) = pref(icol,iw,klev) + (ptrad(icol,iw,klev) * &
-               ((ptra(icol,iw,klev) - pdbt(klev,iw,icol)) * prefd(icol,iw,klev+1) + &
-               pdbt(klev,iw,icol) * pref(icol,iw,klev+1))) * zreflect
-            prupd(klev,iw,icol) = prefd(icol,iw,klev) + ptrad(icol,iw,klev) * ptrad(icol,iw,klev) * &
-               prefd(icol,iw,klev+1) * zreflect
+            zreflect = 1. / (1. - prefd(klev+1,iw,icol) * prefd(klev,iw,icol))
+            prup(klev,iw,icol) = pref(klev,iw,icol) + (ptrad(klev,iw,icol) * &
+               ((ptra(klev,iw,icol) - pdbt(klev,iw,icol)) * prefd(klev+1,iw,icol) + &
+               pdbt(klev,iw,icol) * pref(klev+1,iw,icol))) * zreflect
+            prupd(klev,iw,icol) = prefd(klev,iw,icol) + ptrad(klev,iw,icol) * ptrad(klev,iw,icol) * &
+               prefd(klev+1,iw,icol) * zreflect
 
           end do
       end do
@@ -871,11 +862,11 @@ contains
 
                ikp = klev+1-jk                       
                ikx = ikp-1
-               zreflectj = 1. / (1. - prupd(ikp,iw,icol) * prefd(icol,iw,ikx))
-               prup(ikx,iw,icol) = pref(icol,iw,ikx) + (ptrad(icol,iw,ikx) * &
-                  ((ptra(icol,iw,ikx) - pdbt(ikx,iw,icol)) * prupd(ikp,iw,icol) + &
+               zreflectj = 1. / (1. - prupd(ikp,iw,icol) * prefd(ikx,iw,icol))
+               prup(ikx,iw,icol) = pref(ikx,iw,icol) + (ptrad(ikx,iw,icol) * &
+                  ((ptra(ikx,iw,icol) - pdbt(ikx,iw,icol)) * prupd(ikp,iw,icol) + &
                   pdbt(ikx,iw,icol) * prup(ikp,iw,icol))) * zreflectj
-               prupd(ikx,iw,icol) = prefd(icol,iw,ikx) + ptrad(icol,iw,ikx) * ptrad(icol,iw,ikx) * &
+               prupd(ikx,iw,icol) = prefd(ikx,iw,icol) + ptrad(ikx,iw,icol) * ptrad(ikx,iw,icol) * &
                   prupd(ikp,iw,icol) * zreflectj
             enddo
          end do
@@ -888,8 +879,8 @@ contains
 
             ztdn (1,iw,icol) = 1. 
             prdnd(1,iw,icol) = 0. 
-            ztdn (2,iw,icol) = ptra (icol,iw,1)  
-            prdnd(2,iw,icol) = prefd(icol,iw,1)  
+            ztdn (2,iw,icol) = ptra (1,iw,icol)  
+            prdnd(2,iw,icol) = prefd(1,iw,icol)  
          end do
       end do
       
@@ -901,11 +892,11 @@ contains
             do jk = 2,klev
                ikp = jk+1
 
-               zreflect = 1. / (1. - prefd(icol,iw,jk) * prdnd(jk,iw,icol))
-               ztdn(ikp,iw,icol) = ptdbt(jk,iw,icol) * ptra(icol,iw,jk) + &
-                  (ptrad(icol,iw,jk) * ((ztdn(jk,iw,icol) - ptdbt(jk,iw,icol)) + &
-                  ptdbt(jk,iw,icol) * pref(icol,iw,jk) * prdnd(jk,iw,icol))) * zreflect
-               prdnd(ikp,iw,icol) = prefd(icol,iw,jk) + ptrad(icol,iw,jk) * ptrad(icol,iw,jk) * &
+               zreflect = 1. / (1. - prefd(jk,iw,icol) * prdnd(jk,iw,icol))
+               ztdn(ikp,iw,icol) = ptdbt(jk,iw,icol) * ptra(jk,iw,icol) + &
+                  (ptrad(jk,iw,icol) * ((ztdn(jk,iw,icol) - ptdbt(jk,iw,icol)) + &
+                  ptdbt(jk,iw,icol) * pref(jk,iw,icol) * prdnd(jk,iw,icol))) * zreflect
+               prdnd(ikp,iw,icol) = prefd(jk,iw,icol) + ptrad(jk,iw,icol) * ptrad(jk,iw,icol) * &
                       prdnd(jk,iw,icol) * zreflect
 
             enddo
@@ -918,9 +909,9 @@ contains
          do iw = 1,ngptsw
             do jk = 1,klev+1
                zreflect = 1. / (1. - prdnd(jk,iw,icol) * prupd(jk,iw,icol))
-               pfu(icol,iw,jk) = (ptdbt(jk,iw,icol) * prup(jk,iw,icol) + &
+               pfu(jk,iw,icol) = (ptdbt(jk,iw,icol) * prup(jk,iw,icol) + &
                   (ztdn(jk,iw,icol) - ptdbt(jk,iw,icol)) * prupd(jk,iw,icol)) * zreflect
-               pfd(icol,iw,jk) = ptdbt(jk,iw,icol) + (ztdn(jk,iw,icol) - ptdbt(jk,iw,icol) + &
+               pfd(jk,iw,icol) = ptdbt(jk,iw,icol) + (ztdn(jk,iw,icol) - ptdbt(jk,iw,icol) + &
                   ptdbt(jk,iw,icol) * prup(jk,iw,icol) * prdnd(jk,iw,icol)) * zreflect
             enddo
          end do
