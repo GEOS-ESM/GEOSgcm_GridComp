@@ -71,10 +71,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! Calculate gaseous optical depth and planck fractions for each spectral band.
 
@@ -264,10 +264,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -308,7 +308,7 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng16
-                  taug(icol,lay,ig) = speccomb * &
+                  taug(lay,ig,icol) = speccomb * &
                      (fac000 * absa(ind0   ,ig) + &
                       fac100 * absa(ind0 +1,ig) + &
                       fac010 * absa(ind0 +9,ig) + &
@@ -321,7 +321,7 @@ contains
                      (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
 !                 ssa(lay,ig) = tauray / taug(lay,ig)
-                  taur(icol,lay,ig) = tauray
+                  taur(lay,ig,icol) = tauray
     
                enddo
             end if
@@ -342,23 +342,23 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng16
-                  taug(icol,lay,ig) = colch4(lay,icol) * &
+                  taug(lay,ig,icol) = colch4(lay,icol) * &
                      (fac00(lay,icol) * absb(ind0  ,ig) + &
                       fac10(lay,icol) * absb(ind0+1,ig) + &
                       fac01(lay,icol) * absb(ind1  ,ig) + &
                       fac11(lay,icol) * absb(ind1+1,ig)) 
 
                   if (lay == laysolfr .and. isolvar < 0) &
-                     sfluxzen(icol,ig) = sfluxref(ig) 
+                     sfluxzen(ig,icol) = sfluxref(ig) 
                   if (lay == laysolfr .and. isolvar >= 0 .and. isolvar <= 2) &
-                     ssi(icol,ig) = svar_f * facbrght(ig) + &
+                     ssi(ig,icol) = svar_f * facbrght(ig) + &
                                     svar_s * snsptdrk(ig) + &
                                     svar_i * irradnce(ig)
                   if (lay == laysolfr .and. isolvar == 3) &
-                     ssi(icol,ig) = svar_f_bnd(ngb(ig)) * facbrght(ig) + &
+                     ssi(ig,icol) = svar_f_bnd(ngb(ig)) * facbrght(ig) + &
                                     svar_s_bnd(ngb(ig)) * snsptdrk(ig) + &
                                     svar_i_bnd(ngb(ig)) * irradnce(ig)
-                  taur(icol,lay,ig) = tauray  
+                  taur(lay,ig,icol) = tauray  
                enddo
             end if
          enddo
@@ -424,10 +424,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -469,7 +469,7 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng17
-                  taug(icol,lay,ngs16+ig) = speccomb * &
+                  taug(lay,ngs16+ig,icol) = speccomb * &
                      (fac000 * absa(ind0,   ig) + &
                       fac100 * absa(ind0+1, ig) + &
                       fac010 * absa(ind0+9, ig) + &
@@ -481,7 +481,7 @@ contains
                      colh2o(lay,icol) * &
                      (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
-                  taur(icol,lay,ngs16+ig) = tauray
+                  taur(lay,ngs16+ig,icol) = tauray
                enddo
 
             else
@@ -506,7 +506,7 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng17
-                  taug(icol,lay,ngs16+ig) = speccomb * &
+                  taug(lay,ngs16+ig,icol) = speccomb * &
                      (fac000 * absb(ind0,  ig) + &
                       fac100 * absb(ind0+1,ig) + &
                       fac010 * absb(ind0+5,ig) + &
@@ -518,7 +518,7 @@ contains
                      colh2o(lay,icol) * &
                      forfac(lay,icol) * LIN2_ARG1(forref,indf,ig,forfrac(lay,icol)) 
 !                 ssa(lay,ngs16+ig) = tauray / taug(lay,ngs16+ig)
-                  taur(icol,lay,ngs16+ig) = tauray
+                  taur(lay,ngs16+ig,icol) = tauray
                enddo
             endif
          enddo
@@ -544,14 +544,14 @@ contains
                   fs = mod(specmult, 1.)
                   do ig = 1,ng17 
                      if (isolvar < 0) &
-                        sfluxzen(icol,ngs16+ig) = LIN2_ARG2(sfluxref,ig,js,fs)
+                        sfluxzen(ngs16+ig,icol) = LIN2_ARG2(sfluxref,ig,js,fs)
                      if (isolvar >= 0 .and. isolvar <= 2) &
-                        ssi(icol,ngs16+ig) = &
+                        ssi(ngs16+ig,icol) = &
                            svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
                            svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                            svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                      if (isolvar == 3) &
-                        ssi(icol,ngs16+ig) = &
+                        ssi(ngs16+ig,icol) = &
                            svar_f_bnd(ngb(ngs16+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
                            svar_s_bnd(ngb(ngs16+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                            svar_i_bnd(ngb(ngs16+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
@@ -621,10 +621,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -648,15 +648,15 @@ contains
                laysolfr = min(lay+1,laytrop(icol))
             do ig = 1,ng18
                if (lay == laysolfr .and. isolvar < 0) &
-                  sfluxzen(icol,ngs17+ig) = &
+                  sfluxzen(ngs17+ig,icol) = &
                      sfluxref(ig,js) + fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
                if (lay == laysolfr .and. isolvar >= 0 .and. isolvar <= 2) &
-                  ssi(icol,ngs17+ig) = &
+                  ssi(ngs17+ig,icol) = &
                      svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
                      svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                      svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                if (lay == laysolfr .and. isolvar == 3) &
-                  ssi(icol,ngs17+ig) = &
+                  ssi(ngs17+ig,icol) = &
                      svar_f_bnd(ngb(ngs17+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
                      svar_s_bnd(ngb(ngs17+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                      svar_i_bnd(ngb(ngs17+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
@@ -691,7 +691,7 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng18
-                  taug(icol,lay,ngs17+ig) = speccomb * &
+                  taug(lay,ngs17+ig,icol) = speccomb * &
                      (fac000 * absa(ind0,   ig) + &
                       fac100 * absa(ind0+1, ig) + &
                       fac010 * absa(ind0+9, ig) + &
@@ -704,7 +704,7 @@ contains
                      (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
 !                 ssa(lay,ngs17+ig) = tauray / taug(lay,ngs17+ig)
-                  taur(icol,lay,ngs17+ig) = tauray
+                  taur(lay,ngs17+ig,icol) = tauray
                enddo
 
             else
@@ -716,13 +716,13 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng18
-                  taug(icol,lay,ngs17+ig) = colch4(lay,icol) * &
+                  taug(lay,ngs17+ig,icol) = colch4(lay,icol) * &
                      (fac00(lay,icol) * absb(ind0,  ig) + &
                       fac10(lay,icol) * absb(ind0+1,ig) + &
                       fac01(lay,icol) * absb(ind1,  ig) + &	  
                       fac11(lay,icol) * absb(ind1+1,ig)) 
 !                 ssa(lay,ngs17+ig) = tauray / taug(lay,ngs17+ig)
-                  taur(icol,lay,ngs17+ig) = tauray
+                  taur(lay,ngs17+ig,icol) = tauray
                enddo
             end if
          enddo
@@ -788,10 +788,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -826,15 +826,15 @@ contains
         
                do ig = 1,ng19
                   if (isolvar < 0) &
-                     sfluxzen(icol,ngs18+ig) = &
+                     sfluxzen(ngs18+ig,icol) = &
                         sfluxref(ig,js) + fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
                   if (isolvar >= 0 .and. isolvar <= 2) &
-                     ssi(icol,ngs18+ig) = &
+                     ssi(ngs18+ig,icol) = &
                         svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
                         svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                         svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                   if (isolvar == 3) &
-                     ssi(icol,ngs18+ig) = &
+                     ssi(ngs18+ig,icol) = &
                         svar_f_bnd(ngb(ngs18+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
                         svar_s_bnd(ngb(ngs18+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                         svar_i_bnd(ngb(ngs18+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
@@ -874,7 +874,7 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1 , ng19
-                  taug(icol,lay,ngs18+ig) = speccomb * &
+                  taug(lay,ngs18+ig,icol) = speccomb * &
                      (fac000 * absa(ind0,   ig) + &
                       fac100 * absa(ind0+1, ig) + &
                       fac010 * absa(ind0+9, ig) + &
@@ -887,7 +887,7 @@ contains
                      (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
 !                 ssa(lay,ngs18+ig) = tauray / taug(lay,ngs18+ig)
-                  taur(icol,lay,ngs18+ig) = tauray   
+                  taur(lay,ngs18+ig,icol) = tauray   
                enddo
             else
 
@@ -897,13 +897,13 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng19
-                  taug(icol,lay,ngs18+ig) = colco2(lay,icol) * &
+                  taug(lay,ngs18+ig,icol) = colco2(lay,icol) * &
                      (fac00(lay,icol) * absb(ind0,  ig) + &
                       fac10(lay,icol) * absb(ind0+1,ig) + &
                       fac01(lay,icol) * absb(ind1,  ig) + &
                       fac11(lay,icol) * absb(ind1+1,ig)) 
 !                 ssa(lay,ngs18+ig) = tauray / taug(lay,ngs18+ig) 
-                  taur(icol,lay,ngs18+ig) = tauray   
+                  taur(lay,ngs18+ig,icol) = tauray   
                enddo
             end if
          enddo
@@ -971,10 +971,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -992,13 +992,13 @@ contains
             if (lay == laysolfr) then 
                do ig = 1,ng20 
                   if (isolvar < 0) &
-                     sfluxzen(icol,ngs19+ig) = sfluxref(ig) 
+                     sfluxzen(ngs19+ig,icol) = sfluxref(ig) 
                   if (isolvar >= 0 .and. isolvar <= 2) &
-                     ssi(icol,ngs19+ig) = svar_f * facbrght(ig) + &
+                     ssi(ngs19+ig,icol) = svar_f * facbrght(ig) + &
                                           svar_s * snsptdrk(ig) + &
                                           svar_i * irradnce(ig)
                   if (isolvar == 3) &
-                     ssi(icol,ngs19+ig) = svar_f_bnd(ngb(ngs19+ig)) * facbrght(ig) + &
+                     ssi(ngs19+ig,icol) = svar_f_bnd(ngb(ngs19+ig)) * facbrght(ig) + &
                                           svar_s_bnd(ngb(ngs19+ig)) * snsptdrk(ig) + &
                                           svar_i_bnd(ngb(ngs19+ig)) * irradnce(ig)
                end do
@@ -1018,7 +1018,7 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng20
-                  taug(icol,lay,ngs19+ig) = colh2o(lay,icol) * &
+                  taug(lay,ngs19+ig,icol) = colh2o(lay,icol) * &
                      ((fac00(lay,icol) * absa(ind0,  ig) + &
                        fac10(lay,icol) * absa(ind0+1,ig) + &
                        fac01(lay,icol) * absa(ind1,  ig) + &
@@ -1027,7 +1027,7 @@ contains
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol))) &
                      + colch4(lay,icol) * absch4(ig)
 !                 ssa(lay,ngs19+ig) = tauray / taug(lay,ngs19+ig)
-                  taur(icol,lay,ngs19+ig) = tauray 
+                  taur(lay,ngs19+ig,icol) = tauray 
                enddo
             else
 
@@ -1038,7 +1038,7 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng20
-                  taug(icol,lay,ngs19+ig) = colh2o(lay,icol) * &
+                  taug(lay,ngs19+ig,icol) = colh2o(lay,icol) * &
                      (fac00(lay,icol) * absb(ind0,  ig) + &
                       fac10(lay,icol) * absb(ind0+1,ig) + &
                       fac01(lay,icol) * absb(ind1,  ig) + &
@@ -1046,7 +1046,7 @@ contains
                       forfac(lay,icol) * LIN2_ARG1(forref,indf,ig,forfrac(lay,icol))) &
                      + colch4(lay,icol) * absch4(ig)
 !                 ssa(lay,ngs19+ig) = tauray / taug(lay,ngs19+ig)
-                  taur(icol,lay,ngs19+ig) = tauray 
+                  taur(lay,ngs19+ig,icol) = tauray 
                enddo
             end if
          enddo
@@ -1112,10 +1112,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -1140,15 +1140,15 @@ contains
                fs = mod(specmult, 1.)
                do ig = 1,ng21
                   if (isolvar < 0) &
-                     sfluxzen(icol,ngs20+ig) = &
+                     sfluxzen(ngs20+ig,icol) = &
                         sfluxref(ig,js) + fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
                   if (isolvar >= 0 .and. isolvar <= 2) &
-                     ssi(icol,ngs20+ig) = &
+                     ssi(ngs20+ig,icol) = &
                         svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
                         svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                         svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                   if (isolvar == 3) &
-                     ssi(icol,ngs20+ig) = &
+                     ssi(ngs20+ig,icol) = &
                         svar_f_bnd(ngb(ngs20+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
                         svar_s_bnd(ngb(ngs20+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                         svar_i_bnd(ngb(ngs20+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
@@ -1188,7 +1188,7 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng21
-                  taug(icol,lay,ngs20+ig) = speccomb * &
+                  taug(lay,ngs20+ig,icol) = speccomb * &
                      (fac000 * absa(ind0,   ig) + &
                       fac100 * absa(ind0+1, ig) + &
                       fac010 * absa(ind0+9, ig) + &
@@ -1201,7 +1201,7 @@ contains
                      (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
 !                 ssa(lay,ngs20+ig) = tauray / taug(lay,ngs20+ig)
-                  taur(icol,lay,ngs20+ig) = tauray
+                  taur(lay,ngs20+ig,icol) = tauray
                enddo
 
             else
@@ -1227,7 +1227,7 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng21
-                  taug(icol,lay,ngs20+ig) = speccomb * &
+                  taug(lay,ngs20+ig,icol) = speccomb * &
                      (fac000 * absb(ind0,  ig) + &
                       fac100 * absb(ind0+1,ig) + &
                       fac010 * absb(ind0+5,ig) + &
@@ -1239,7 +1239,7 @@ contains
                      colh2o(lay,icol) * &
                      forfac(lay,icol) * LIN2_ARG1(forref,indf,ig,forfrac(lay,icol)) 
 !                 ssa(lay,ngs20+ig) = tauray / taug(lay,ngs20+ig)
-                  taur(icol,lay,ngs20+ig) = tauray
+                  taur(lay,ngs20+ig,icol) = tauray
                enddo
             end if
          enddo
@@ -1305,10 +1305,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -1347,15 +1347,15 @@ contains
                fs = mod(specmult, 1.)
                do ig = 1,ng22                                 
                   if (isolvar < 0) &
-                     sfluxzen(icol,ngs21+ig) = &
+                     sfluxzen(ngs21+ig,icol) = &
                         sfluxref(ig,js) + fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
                   if (isolvar >= 0 .and. isolvar <= 2) &
-                     ssi(icol,ngs21+ig) = &
+                     ssi(ngs21+ig,icol) = &
                         svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
                         svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                         svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                   if (isolvar == 3) &
-                     ssi(icol,ngs21+ig) = &
+                     ssi(ngs21+ig,icol) = &
                         svar_f_bnd(ngb(ngs21+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
                         svar_s_bnd(ngb(ngs21+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                         svar_i_bnd(ngb(ngs21+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
@@ -1396,7 +1396,7 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng22
-                  taug(icol,lay,ngs21+ig) = speccomb * &
+                  taug(lay,ngs21+ig,icol) = speccomb * &
                      (fac000 * absa(ind0,   ig) + &
                       fac100 * absa(ind0+1, ig) + &
                       fac010 * absa(ind0+9, ig) + &
@@ -1410,7 +1410,7 @@ contains
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol))) &
                      + o2cont
 !                 ssa(lay,ngs21+ig) = tauray / taug(lay,ngs21+ig)
-                  taur(icol,lay,ngs21+ig) = tauray
+                  taur(lay,ngs21+ig,icol) = tauray
                enddo
 
             else
@@ -1422,14 +1422,14 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng22
-                  taug(icol,lay,ngs21+ig) = colo2(lay,icol) * o2adj * &
+                  taug(lay,ngs21+ig,icol) = colo2(lay,icol) * o2adj * &
                      (fac00(lay,icol) * absb(ind0,  ig) + &
                       fac10(lay,icol) * absb(ind0+1,ig) + &
                       fac01(lay,icol) * absb(ind1,  ig) + &
                       fac11(lay,icol) * absb(ind1+1,ig)) + &
                      o2cont
 !                 ssa(lay,ngs21+ig) = tauray / taug(lay,ngs21+ig)
-                  taur(icol,lay,ngs21+ig) = tauray
+                  taur(lay,ngs21+ig,icol) = tauray
                enddo
             end if
          enddo
@@ -1495,10 +1495,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -1527,13 +1527,13 @@ contains
             if (lay == laysolfr) then 
                do ig = 1,ng23
                   if (isolvar < 0) &
-                     sfluxzen(icol,ngs22+ig) = sfluxref(ig) 
+                     sfluxzen(ngs22+ig,icol) = sfluxref(ig) 
                   if (isolvar >= 0 .and. isolvar <= 2) &
-                     ssi(icol,ngs22+ig) = svar_f * facbrght(ig) + &
+                     ssi(ngs22+ig,icol) = svar_f * facbrght(ig) + &
                                           svar_s * snsptdrk(ig) + &
                                           svar_i * irradnce(ig)
                   if (isolvar == 3) &
-                     ssi(icol,ngs22+ig) = svar_f_bnd(ngb(ngs22+ig)) * facbrght(ig) + &
+                     ssi(ngs22+ig,icol) = svar_f_bnd(ngb(ngs22+ig)) * facbrght(ig) + &
                                           svar_s_bnd(ngb(ngs22+ig)) * snsptdrk(ig) + &
                                           svar_i_bnd(ngb(ngs22+ig)) * irradnce(ig)
                end do
@@ -1555,7 +1555,7 @@ contains
 
                do ig = 1,ng23
                   tauray = colmol(lay,icol) * rayl(ig)
-                  taug(icol,lay,ngs22+ig) = colh2o(lay,icol) * (givfac * &
+                  taug(lay,ngs22+ig,icol) = colh2o(lay,icol) * (givfac * &
                      (fac00(lay,icol) * absa(ind0,  ig) + &
                       fac10(lay,icol) * absa(ind0+1,ig) + &
                       fac01(lay,icol) * absa(ind1,  ig) + &
@@ -1563,7 +1563,7 @@ contains
                      selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                      forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
 !                 ssa(lay,ngs22+ig) = tauray / taug(lay,ngs22+ig)
-                  taur(icol,lay,ngs22+ig) = tauray
+                  taur(lay,ngs22+ig,icol) = tauray
                enddo
             else
 
@@ -1571,8 +1571,8 @@ contains
                do ig = 1,ng23
 !                 taug(lay,ngs22+ig) = colmol(lay) * rayl(ig)
 !                 ssa(lay,ngs22+ig) = 1.
-                  taug(icol,lay,ngs22+ig) = 0. 
-                  taur(icol,lay,ngs22+ig) = colmol(lay,icol) * rayl(ig) 
+                  taug(lay,ngs22+ig,icol) = 0. 
+                  taur(lay,ngs22+ig,icol) = colmol(lay,icol) * rayl(ig) 
                enddo
             end if
          enddo
@@ -1638,10 +1638,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -1673,15 +1673,15 @@ contains
                fs = mod(specmult, 1.)
                do ig = 1,ng24
                   if (isolvar < 0) &
-                  sfluxzen(icol,ngs23+ig) = sfluxref(ig,js) + &
+                  sfluxzen(ngs23+ig,icol) = sfluxref(ig,js) + &
                      fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
                   if (isolvar >= 0 .and. isolvar <= 2) &
-                     ssi(icol,ngs23+ig) = &
+                     ssi(ngs23+ig,icol) = &
                         svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
                         svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                         svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                   if (isolvar == 3) &
-                     ssi(icol,ngs23+ig) = &
+                     ssi(ngs23+ig,icol) = &
                         svar_f_bnd(ngb(ngs23+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
                         svar_s_bnd(ngb(ngs23+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                         svar_i_bnd(ngb(ngs23+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
@@ -1721,7 +1721,7 @@ contains
 
                do ig = 1,ng24
                   tauray = colmol(lay,icol) * (rayla(ig,js) + fs * (rayla(ig,js+1) - rayla(ig,js)))
-                  taug(icol,lay,ngs23+ig) = speccomb * &
+                  taug(lay,ngs23+ig,icol) = speccomb * &
                      (fac000 * absa(ind0,   ig) + &
                       fac100 * absa(ind0+1, ig) + &
                       fac010 * absa(ind0+9, ig) + &
@@ -1735,7 +1735,7 @@ contains
                      (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
 !                 ssa(lay,ngs23+ig) = tauray / taug(lay,ngs23+ig)
-                  taur(icol,lay,ngs23+ig) = tauray
+                  taur(lay,ngs23+ig,icol) = tauray
                enddo
 
             else
@@ -1746,14 +1746,14 @@ contains
 
                do ig = 1,ng24
                   tauray = colmol(lay,icol) * raylb(ig)
-                  taug(icol,lay,ngs23+ig) = colo2(lay,icol) * &
+                  taug(lay,ngs23+ig,icol) = colo2(lay,icol) * &
                      (fac00(lay,icol) * absb(ind0,  ig) + &
                       fac10(lay,icol) * absb(ind0+1,ig) + &
                       fac01(lay,icol) * absb(ind1,  ig) + &
                       fac11(lay,icol) * absb(ind1+1,ig)) + &
                      colo3(lay,icol) * abso3b(ig)
 !                 ssa(lay,ngs23+ig) = tauray / taug(lay,ngs23+ig)
-                  taur(icol,lay,ngs23+ig) = tauray
+                  taur(lay,ngs23+ig,icol) = tauray
                enddo
             endif
          enddo
@@ -1819,10 +1819,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -1848,7 +1848,7 @@ contains
 
             do ig = 1,ng25
                tauray = colmol(lay,icol) * rayl(ig)
-               taug(icol,lay,ngs24+ig) = colh2o(lay,icol) * &
+               taug(lay,ngs24+ig,icol) = colh2o(lay,icol) * &
                   (fac00(lay,icol) * absa(ind0,  ig) + &
                    fac10(lay,icol) * absa(ind0+1,ig) + &
                    fac01(lay,icol) * absa(ind1,  ig) + &
@@ -1856,16 +1856,16 @@ contains
                   colo3(lay,icol) * abso3a(ig) 
 !              ssa(lay,ngs24+ig) = tauray / taug(lay,ngs24+ig)
                if (lay == laysolfr .and. isolvar < 0) &
-                  sfluxzen(icol,ngs24+ig) = sfluxref(ig) 
+                  sfluxzen(ngs24+ig,icol) = sfluxref(ig) 
                if (lay == laysolfr .and. isolvar >= 0 .and. isolvar <= 2) &
-                  ssi(icol,ngs24+ig) = svar_f * facbrght(ig) + &
+                  ssi(ngs24+ig,icol) = svar_f * facbrght(ig) + &
                                        svar_s * snsptdrk(ig) + &
                                        svar_i * irradnce(ig)
                if (lay == laysolfr .and. isolvar == 3) &
-                  ssi(icol,ngs24+ig) = svar_f_bnd(ngb(ngs24+ig)) * facbrght(ig) + &
+                  ssi(ngs24+ig,icol) = svar_f_bnd(ngb(ngs24+ig)) * facbrght(ig) + &
                                        svar_s_bnd(ngb(ngs24+ig)) * snsptdrk(ig) + &
                                        svar_i_bnd(ngb(ngs24+ig)) * irradnce(ig)
-               taur(icol,lay,ngs24+ig) = tauray
+               taur(lay,ngs24+ig,icol) = tauray
             enddo
          enddo
 
@@ -1873,9 +1873,9 @@ contains
          do lay = laytrop(icol) +1, nlayers
             do ig = 1,ng25
                tauray = colmol(lay,icol) * rayl(ig)
-               taug(icol,lay,ngs24+ig) = colo3(lay,icol) * abso3b(ig) 
+               taug(lay,ngs24+ig,icol) = colo3(lay,icol) * abso3b(ig) 
 !              ssa(lay,ngs24+ig) = tauray / taug(lay,ngs24+ig)
-               taur(icol,lay,ngs24+ig) = tauray
+               taur(lay,ngs24+ig,icol) = tauray
             enddo
          enddo
       enddo
@@ -1939,10 +1939,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -1964,17 +1964,17 @@ contains
 !              taug(lay,ngs25+ig) = colmol(lay) * rayl(ig)
 !              ssa(lay,ngs25+ig) = 1.
                if (lay == laysolfr .and. isolvar < 0) &
-                  sfluxzen(icol,ngs25+ig) = sfluxref(ig) 
+                  sfluxzen(ngs25+ig,icol) = sfluxref(ig) 
                if (lay == laysolfr .and. isolvar >= 0 .and. isolvar <= 2) &
-                  ssi(icol,ngs25+ig) = svar_f * facbrght(ig) + &
+                  ssi(ngs25+ig,icol) = svar_f * facbrght(ig) + &
                                        svar_s * snsptdrk(ig) + &
                                        svar_i * irradnce(ig)
                if (lay == laysolfr .and. isolvar == 3) &
-                  ssi(icol,ngs25+ig) = svar_f_bnd(ngb(ngs25+ig)) * facbrght(ig) + &
+                  ssi(ngs25+ig,icol) = svar_f_bnd(ngb(ngs25+ig)) * facbrght(ig) + &
                                        svar_s_bnd(ngb(ngs25+ig)) * snsptdrk(ig) + &
                                        svar_i_bnd(ngb(ngs25+ig)) * irradnce(ig)
-               taug(icol,lay,ngs25+ig) = 0. 
-               taur(icol,lay,ngs25+ig) = colmol(lay,icol) * rayl(ig) 
+               taug(lay,ngs25+ig,icol) = 0. 
+               taur(lay,ngs25+ig,icol) = colmol(lay,icol) * rayl(ig) 
             enddo
          enddo
 
@@ -1983,8 +1983,8 @@ contains
             do ig = 1,ng26
 !              taug(lay,ngs25+ig) = colmol(lay) * rayl(ig)
 !              ssa(lay,ngs25+ig) = 1.
-               taug(icol,lay,ngs25+ig) = 0. 
-               taur(icol,lay,ngs25+ig) = colmol(lay,icol) * rayl(ig) 
+               taug(lay,ngs25+ig,icol) = 0. 
+               taur(lay,ngs25+ig,icol) = colmol(lay,icol) * rayl(ig) 
             enddo
          enddo
       enddo
@@ -2048,10 +2048,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -2083,13 +2083,13 @@ contains
 
             do ig = 1,ng27
                tauray = colmol(lay,icol) * rayl(ig)
-               taug(icol,lay,ngs26+ig) = colo3(lay,icol) * &
+               taug(lay,ngs26+ig,icol) = colo3(lay,icol) * &
                   (fac00(lay,icol) * absa(ind0,  ig) + &
                    fac10(lay,icol) * absa(ind0+1,ig) + &
                    fac01(lay,icol) * absa(ind1,  ig) + &
                    fac11(lay,icol) * absa(ind1+1,ig))
 !              ssa(lay,ngs26+ig) = tauray / taug(lay,ngs26+ig)
-               taur(icol,lay,ngs26+ig) = tauray
+               taur(lay,ngs26+ig,icol) = tauray
             enddo
          enddo
 
@@ -2104,23 +2104,23 @@ contains
 
             do ig = 1,ng27
                tauray = colmol(lay,icol) * rayl(ig)
-               taug(icol,lay,ngs26+ig) = colo3(lay,icol) * &
+               taug(lay,ngs26+ig,icol) = colo3(lay,icol) * &
                   (fac00(lay,icol) * absb(ind0,  ig) + &
                    fac10(lay,icol) * absb(ind0+1,ig) + &
                    fac01(lay,icol) * absb(ind1,  ig) + & 
                    fac11(lay,icol) * absb(ind1+1,ig))
 !              ssa(lay,ngs26+ig) = tauray / taug(lay,ngs26+ig)
                if (lay == laysolfr .and. isolvar < 0) &
-                  sfluxzen(icol,ngs26+ig) = scalekur * sfluxref(ig) 
+                  sfluxzen(ngs26+ig,icol) = scalekur * sfluxref(ig) 
                if (lay == laysolfr .and. isolvar >= 0 .and. isolvar <= 2) &
-                  ssi(icol,ngs26+ig) = svar_f * facbrght(ig) + &
+                  ssi(ngs26+ig,icol) = svar_f * facbrght(ig) + &
                                        svar_s * snsptdrk(ig) + &
                                        svar_i * irradnce(ig)
                if (lay == laysolfr .and. isolvar == 3) &
-                  ssi(icol,ngs26+ig) = svar_f_bnd(ngb(ngs26+ig)) * facbrght(ig) + &
+                  ssi(ngs26+ig,icol) = svar_f_bnd(ngb(ngs26+ig)) * facbrght(ig) + &
                                        svar_s_bnd(ngb(ngs26+ig)) * snsptdrk(ig) + &
                                        svar_i_bnd(ngb(ngs26+ig)) * irradnce(ig)
-               taur(icol,lay,ngs26+ig) = tauray
+               taur(lay,ngs26+ig,icol) = tauray
             enddo
          enddo
       enddo
@@ -2184,10 +2184,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -2244,7 +2244,7 @@ contains
             tauray = colmol(lay,icol) * rayl
 
             do ig = 1,ng28
-               taug(icol,lay,ngs27+ig) = speccomb * &
+               taug(lay,ngs27+ig,icol) = speccomb * &
                   (fac000 * absa(ind0,   ig) + &
                    fac100 * absa(ind0+1, ig) + &
                    fac010 * absa(ind0+9, ig) + &
@@ -2254,7 +2254,7 @@ contains
                    fac011 * absa(ind1+9, ig) + &
                    fac111 * absa(ind1+10,ig)) 
 !              ssa(lay,ngs27+ig) = tauray / taug(lay,ngs27+ig)
-               taur(icol,lay,ngs27+ig) = tauray
+               taur(lay,ngs27+ig,icol) = tauray
             enddo
          enddo
 
@@ -2283,7 +2283,7 @@ contains
             tauray = colmol(lay,icol) * rayl
 
             do ig = 1,ng28
-               taug(icol,lay,ngs27+ig) = speccomb * &
+               taug(lay,ngs27+ig,icol) = speccomb * &
                   (fac000 * absb(ind0,  ig) + &
                    fac100 * absb(ind0+1,ig) + &
                    fac010 * absb(ind0+5,ig) + &
@@ -2294,19 +2294,19 @@ contains
                    fac111 * absb(ind1+6,ig)) 
 !              ssa(lay,ngs27+ig) = tauray / taug(lay,ngs27+ig)
                if (lay == laysolfr .and. isolvar < 0) &
-                  sfluxzen(icol,ngs27+ig) = &
+                  sfluxzen(ngs27+ig,icol) = &
                      sfluxref(ig,js) + fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
                if (lay == laysolfr .and. isolvar >= 0 .and. isolvar <= 2) &
-                  ssi(icol,ngs27+ig) = &
+                  ssi(ngs27+ig,icol) = &
                      svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
                      svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                      svar_i * LIN2_ARG2(irradnce,ig,js,fs)
                if (lay == laysolfr .and. isolvar == 3) &
-                  ssi(icol,ngs27+ig) = &
+                  ssi(ngs27+ig,icol) = &
                      svar_f_bnd(ngb(ngs27+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
                      svar_s_bnd(ngb(ngs27+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                      svar_i_bnd(ngb(ngs27+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
-               taur(icol,lay,ngs27+ig) = tauray
+               taur(lay,ngs27+ig,icol) = tauray
             enddo
          enddo
       enddo
@@ -2371,10 +2371,10 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(pncol,ngptsw)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(pncol,ngptsw)      ! solar source function
-      real,    intent(out) :: taug(pncol,nlayers,ngptsw)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(pncol,nlayers,ngptsw)  ! Rayleigh 
+      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
+      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
 
       ! ----- Locals -----
 
@@ -2394,13 +2394,13 @@ contains
             if (lay == laysolfr) then 
                do ig = 1,ng29
                   if (isolvar < 0) &
-                     sfluxzen(icol,ngs28+ig) = sfluxref(ig) 
+                     sfluxzen(ngs28+ig,icol) = sfluxref(ig) 
                   if (isolvar >= 0 .and. isolvar <= 2) &
-                     ssi(icol,ngs28+ig) = svar_f * facbrght(ig) + &
+                     ssi(ngs28+ig,icol) = svar_f * facbrght(ig) + &
                                           svar_s * snsptdrk(ig) + &
                                           svar_i * irradnce(ig)
                   if (isolvar == 3) &
-                     ssi(icol,ngs28+ig) = svar_f_bnd(ngb(ngs28+ig)) * facbrght(ig) + &
+                     ssi(ngs28+ig,icol) = svar_f_bnd(ngb(ngs28+ig)) * facbrght(ig) + &
                                           svar_s_bnd(ngb(ngs28+ig)) * snsptdrk(ig) + &
                                           svar_i_bnd(ngb(ngs28+ig)) * irradnce(ig)
                 end do
@@ -2424,7 +2424,7 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng29
-                  taug(icol,lay,ngs28+ig) = colh2o(lay,icol) * &
+                  taug(lay,ngs28+ig,icol) = colh2o(lay,icol) * &
                      ((fac00(lay,icol) * absa(ind0,  ig) + &
                        fac10(lay,icol) * absa(ind0+1,ig) + &
                        fac01(lay,icol) * absa(ind1,  ig) + &
@@ -2433,7 +2433,7 @@ contains
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol))) &
                      + colco2(lay,icol) * absco2(ig) 
 !                 ssa(lay,ngs28+ig) = tauray / taug(lay,ngs28+ig)
-                  taur(icol,lay,ngs28+ig) = tauray
+                  taur(lay,ngs28+ig,icol) = tauray
                enddo
 
             else 
@@ -2444,14 +2444,14 @@ contains
                tauray = colmol(lay,icol) * rayl
 
                do ig = 1,ng29
-                  taug(icol,lay,ngs28+ig) = colco2(lay,icol) * &
+                  taug(lay,ngs28+ig,icol) = colco2(lay,icol) * &
                      (fac00(lay,icol) * absb(ind0,  ig) + &
                       fac10(lay,icol) * absb(ind0+1,ig) + &
                       fac01(lay,icol) * absb(ind1,  ig) + &
                       fac11(lay,icol) * absb(ind1+1,ig)) &  
                      + colh2o(lay,icol) * absh2o(ig) 
 !                 ssa(lay,ngs28+ig) = tauray / taug(lay,ngs28+ig)
-                  taur(icol,lay,ngs28+ig) = tauray
+                  taur(lay,ngs28+ig,icol) = tauray
                enddo
             end if
          enddo

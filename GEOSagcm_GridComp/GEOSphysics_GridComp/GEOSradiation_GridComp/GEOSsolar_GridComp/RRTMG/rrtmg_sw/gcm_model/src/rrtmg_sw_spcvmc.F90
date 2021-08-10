@@ -182,11 +182,11 @@ contains
       real :: ztrad  (nlayers+1,ngptsw,tncol)
       real :: ztrado (nlayers+1,ngptsw,tncol)  
 
-      real :: ztaur  (tncol,nlayers,ngptsw)
-      real :: ztaug  (tncol,nlayers,ngptsw) 
+      real :: ztaur  (nlayers,ngptsw,tncol)
+      real :: ztaug  (nlayers,ngptsw,tncol) 
 
-      real :: zsflxzen (tncol,ngptsw)
-      real :: ssi      (tncol,ngptsw)
+      real :: zsflxzen (ngptsw,tncol)
+      real :: ssi      (ngptsw,tncol)
 
       ! ------------------------------------------------------------------
 
@@ -204,8 +204,6 @@ contains
       pnifd    = 0. 
       pnicddir = 0. 
       pnifddir = 0.
-!     zsflxzen = 0.
-!     ssi      = 0.
       znirr    = 0.
       znirf    = 0.
       zparr    = 0.
@@ -257,8 +255,8 @@ contains
                ibm = jb-15
 
                ! Clear-sky optical parameters including aerosols
-               ztauo(jk,iw,icol) = ztaur(icol,ikl,iw) + ztaug(icol,ikl,iw) + ptaua(ikl,ibm,icol)      
-               zomco(jk,iw,icol) = ztaur(icol,ikl,iw) + ptaua(ikl,ibm,icol) * pomga(ikl,ibm,icol)
+               ztauo(jk,iw,icol) = ztaur(ikl,iw,icol) + ztaug(ikl,iw,icol) + ptaua(ikl,ibm,icol)      
+               zomco(jk,iw,icol) = ztaur(ikl,iw,icol) + ptaua(ikl,ibm,icol) * pomga(ikl,ibm,icol)
                zgco (jk,iw,icol) = pasya(ikl,ibm,icol) * pomga(ikl,ibm,icol) * ptaua(ikl,ibm,icol) / zomco(jk,iw,icol)   
                zomco(jk,iw,icol) = zomco(jk,iw,icol) / ztauo(jk,iw,icol)
                
@@ -316,11 +314,11 @@ contains
 
                ! No solar variability and no solar cycle
                if (isolvar .lt. 0) then
-                  zincflx = adjflux(jb) * zsflxzen(icol,iw) * prmu0(icol)           
+                  zincflx = adjflux(jb) * zsflxzen(iw,icol) * prmu0(icol)           
                endif
                ! Solar variability with averaged or specified solar cycle
                if (isolvar .ge. 0) then
-                  zincflx = adjflux(jb) * ssi(icol,iw)      * prmu0(icol)           
+                  zincflx = adjflux(jb) * ssi(iw,icol)      * prmu0(icol)           
                endif
 
                ! Accumulate spectral fluxes over whole spectrum  
@@ -359,9 +357,9 @@ contains
                   jb = ngb(iw)
                   ibm = jb-15
 
-                  ze1 = ztaur(icol,ikl,iw) + ptaua(ikl,ibm,icol) * pomga(ikl,ibm,icol) 
+                  ze1 = ztaur(ikl,iw,icol) + ptaua(ikl,ibm,icol) * pomga(ikl,ibm,icol) 
                   ze2 = pasya(ikl,ibm,icol) * pomga(ikl,ibm,icol) * ptaua(ikl,ibm,icol) / ze1
-                  ze1 = ze1 / (ztaur(icol,ikl,iw) + ztaug(icol,ikl,iw) + ptaua(ikl,ibm,icol))
+                  ze1 = ze1 / (ztaur(ikl,iw,icol) + ztaug(ikl,iw,icol) + ptaua(ikl,ibm,icol))
                
                   ! delta scale 
                   zf = ze2*ze2
@@ -445,11 +443,11 @@ contains
                   ! Apply adjustment for correct Earth/Sun distance and zenith angle to incoming solar flux
                   ! No solar variability and no solar cycle
                   if (isolvar .lt. 0) then
-                     zincflx = adjflux(jb) * zsflxzen(icol,iw) * prmu0(icol)           
+                     zincflx = adjflux(jb) * zsflxzen(iw,icol) * prmu0(icol)           
                   endif
                   ! Solar variability with averaged or specified solar cycle
                   if (isolvar .ge. 0) then
-                     zincflx = adjflux(jb) * ssi     (icol,iw) * prmu0(icol)           
+                     zincflx = adjflux(jb) * ssi     (iw,icol) * prmu0(icol)           
                   endif
 
                   ! Accumulate spectral fluxes over whole spectrum  
@@ -495,11 +493,11 @@ contains
 
             ! No solar variability and no solar cycle
             if (isolvar .lt. 0) then
-               zincflx = adjflux(jb) * zsflxzen(icol,iw) * prmu0(icol)           
+               zincflx = adjflux(jb) * zsflxzen(iw,icol) * prmu0(icol)           
             endif
             ! Solar variability with averaged or specified solar cycle
             if (isolvar .ge. 0) then
-               zincflx = adjflux(jb) * ssi     (icol,iw) * prmu0(icol)           
+               zincflx = adjflux(jb) * ssi     (iw,icol) * prmu0(icol)           
             endif
             
             ! Accumulate surface direct fluxes for NIR
