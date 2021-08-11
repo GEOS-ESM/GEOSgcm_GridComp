@@ -87,23 +87,23 @@ contains
       real, intent(in) :: svar_f                      ! Solar variability facular multiplier
       real, intent(in) :: svar_s                      ! Solar variability sunspot multiplier
       real, intent(in) :: svar_i                      ! Solar variability baseline irradiance multiplier
-      real, intent(in) :: svar_f_bnd(jpband)          ! Solar variability facular multiplier (by band)
-      real, intent(in) :: svar_s_bnd(jpband)          ! Solar variability sunspot multiplier (by band)
-      real, intent(in) :: svar_i_bnd(jpband)          ! Solar variability baseline irradiance multiplier (by band)
+      real, intent(in) :: svar_f_bnd (jpband)         ! Solar variability facular multiplier (by band)
+      real, intent(in) :: svar_s_bnd (jpband)         ! Solar variability sunspot multiplier (by band)
+      real, intent(in) :: svar_i_bnd (jpband)         ! Solar variability baseline irradiance multiplier (by band)
 
-      real, intent(in) :: palbd(nbndsw,tncol)         ! surface albedo (diffuse)
-      real, intent(in) :: palbp(nbndsw,tncol)         ! surface albedo (direct)
-      real, intent(in) :: prmu0(tncol)                ! cosine of solar zenith angle
+      real, intent(in) :: palbd (nbndsw,tncol)        ! surface albedo (diffuse)
+      real, intent(in) :: palbp (nbndsw,tncol)        ! surface albedo (direct)
+      real, intent(in) :: prmu0        (tncol)        ! cosine of solar zenith angle
 
-      real, intent(in) :: pcldfmc(nlayers,ngptsw,tncol)  ! cloud fraction [mcica]
-      real, intent(in) :: ptaucmc(nlayers,ngptsw,tncol)  ! cloud optical depth [mcica]
-      real, intent(in) :: pasycmc(nlayers,ngptsw,tncol)  ! cloud asymmetry parameter [mcica]
-      real, intent(in) :: pomgcmc(nlayers,ngptsw,tncol)  ! cloud single scattering albedo [mcica]
-      real, intent(in) :: ptaormc(nlayers,ngptsw,tncol)  ! cloud optical depth, non-delta scaled [mcica]
+      real, intent(in) :: pcldfmc (nlayers,ngptsw,tncol)  ! cloud fraction [mcica]
+      real, intent(in) :: ptaucmc (nlayers,ngptsw,tncol)  ! cloud optical depth [mcica]
+      real, intent(in) :: pasycmc (nlayers,ngptsw,tncol)  ! cloud asymmetry parameter [mcica]
+      real, intent(in) :: pomgcmc (nlayers,ngptsw,tncol)  ! cloud single scattering albedo [mcica]
+      real, intent(in) :: ptaormc (nlayers,ngptsw,tncol)  ! cloud optical depth, non-delta scaled [mcica]
    
-      real, intent(in) :: ptaua(nlayers+1,nbndsw,tncol)  ! aerosol optical depth
-      real, intent(in) :: pasya(nlayers+1,nbndsw,tncol)  ! aerosol asymmetry parameter
-      real, intent(in) :: pomga(nlayers+1,nbndsw,tncol)  ! aerosol single scattering albedo
+      real, intent(in) :: ptaua (nlayers,nbndsw,tncol)  ! aerosol optical depth
+      real, intent(in) :: pasya (nlayers,nbndsw,tncol)  ! aerosol asymmetry parameter
+      real, intent(in) :: pomga (nlayers,nbndsw,tncol)  ! aerosol single scattering albedo
                                                                
       real, intent(in) :: colh2o (nlayers,tncol) 
       real, intent(in) :: colco2 (nlayers,tncol) 
@@ -121,29 +121,30 @@ contains
       real,    intent(in) :: forfrac  (nlayers,tncol)
 
       ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,tncol) &
+      real, intent(in), dimension (nlayers,tncol) &
          :: fac00, fac01, fac10, fac11
 
       ! ------- Output -------
-                                                               !   All Dimensions: (nlayers+1)
-      real, intent(out) :: pbbcd(:,:) 
-      real, intent(out) :: pbbcu(:,:) 
-      real, intent(out) :: pbbfd(:,:) 
-      real, intent(out) :: pbbfu(:,:) 
-      real, intent(out) :: pbbfddir(:,:) 
-      real, intent(out) :: pbbcddir(:,:) 
 
-      real, intent(out) :: puvcd(:,:) 
-      real, intent(out) :: puvfd(:,:) 
-      real, intent(out) :: puvcddir(:,:) 
-      real, intent(out) :: puvfddir(:,:) 
+      real, intent(out) :: pbbcd    (nlayers+1,tncol) 
+      real, intent(out) :: pbbcu    (nlayers+1,tncol) 
+      real, intent(out) :: pbbfd    (nlayers+1,tncol) 
+      real, intent(out) :: pbbfu    (nlayers+1,tncol) 
+      real, intent(out) :: pbbfddir (nlayers+1,tncol) 
+      real, intent(out) :: pbbcddir (nlayers+1,tncol) 
 
-      real, intent(out) :: pnicd(:,:) 
-      real, intent(out) :: pnifd(:,:) 
-      real, intent(out) :: pnicddir(:,:) 
-      real, intent(out) :: pnifddir(:,:) 
+      real, intent(out) :: puvcd    (nlayers+1,tncol) 
+      real, intent(out) :: puvfd    (nlayers+1,tncol) 
+      real, intent(out) :: puvcddir (nlayers+1,tncol) 
+      real, intent(out) :: puvfddir (nlayers+1,tncol) 
+
+      real, intent(out) :: pnicd    (nlayers+1,tncol) 
+      real, intent(out) :: pnifd    (nlayers+1,tncol) 
+      real, intent(out) :: pnicddir (nlayers+1,tncol) 
+      real, intent(out) :: pnifddir (nlayers+1,tncol) 
       
-      real, intent(out), dimension(:) :: znirr,znirf,zparr,zparf,zuvrr,zuvrf
+      real, intent(out), dimension(tncol) :: &
+         znirr, znirf, zparr, zparf, zuvrr, zuvrf
 
       ! ------- Local -------
 
@@ -323,19 +324,19 @@ contains
 
                ! Accumulate spectral fluxes over whole spectrum  
               
-               pbbcu   (icol,ikl) = pbbcu   (icol,ikl) + zincflx * zfu  (jk,iw,icol)  
-               pbbcd   (icol,ikl) = pbbcd   (icol,ikl) + zincflx * zfd  (jk,iw,icol)  
-               pbbcddir(icol,ikl) = pbbcddir(icol,ikl) + zincflx * ztdbt(jk,iw,icol)  
+               pbbcu   (ikl,icol) = pbbcu   (ikl,icol) + zincflx * zfu  (jk,iw,icol)  
+               pbbcd   (ikl,icol) = pbbcd   (ikl,icol) + zincflx * zfd  (jk,iw,icol)  
+               pbbcddir(ikl,icol) = pbbcddir(ikl,icol) + zincflx * ztdbt(jk,iw,icol)  
               
                ! Accumulate direct fluxes for UV/visible bands
                if (ibm >= 10 .and. ibm <= 13) then
-                  puvcd   (icol,ikl)  = puvcd   (icol,ikl)  + zincflx * zfd  (jk,iw,icol)  
-                  puvcddir(icol,ikl)  = puvcddir(icol,ikl)  + zincflx * ztdbt(jk,iw,icol)  
+                  puvcd   (ikl,icol)  = puvcd   (ikl,icol)  + zincflx * zfd  (jk,iw,icol)  
+                  puvcddir(ikl,icol)  = puvcddir(ikl,icol)  + zincflx * ztdbt(jk,iw,icol)  
                  
                ! Accumulate direct fluxes for near-IR bands
                else if (ibm == 14 .or. ibm <= 9) then  
-                  pnicd   (icol,ikl) = pnicd   (icol,ikl) + zincflx * zfd  (jk,iw,icol)  
-                  pnicddir(icol,ikl) = pnicddir(icol,ikl) + zincflx * ztdbt(jk,iw,icol)  
+                  pnicd   (ikl,icol) = pnicd   (ikl,icol) + zincflx * zfd  (jk,iw,icol)  
+                  pnicddir(ikl,icol) = pnicddir(ikl,icol) + zincflx * ztdbt(jk,iw,icol)  
 
                endif 
 
@@ -451,21 +452,21 @@ contains
                   endif
 
                   ! Accumulate spectral fluxes over whole spectrum  
-                  pbbfu   (icol,ikl)  = pbbfu   (icol,ikl) + zincflx * zfu  (jk,iw,icol)  
-                  pbbfd   (icol,ikl)  = pbbfd   (icol,ikl) + zincflx * zfd  (jk,iw,icol)              
-                  pbbfddir(icol,ikl)  = pbbfddir(icol,ikl) + zincflx * ztdbt(jk,iw,icol)  
+                  pbbfu   (ikl,icol)  = pbbfu   (ikl,icol) + zincflx * zfu  (jk,iw,icol)  
+                  pbbfd   (ikl,icol)  = pbbfd   (ikl,icol) + zincflx * zfd  (jk,iw,icol)              
+                  pbbfddir(ikl,icol)  = pbbfddir(ikl,icol) + zincflx * ztdbt(jk,iw,icol)  
 
                   ! Accumulate direct fluxes for UV/visible bands
                   if (ibm >= 10 .and. ibm <= 13) then
                  
-                     puvfd   (icol,ikl) = puvfd   (icol,ikl) + zincflx * zfd  (jk,iw,icol)  
-                     puvfddir(icol,ikl) = puvfddir(icol,ikl) + zincflx * ztdbt(jk,iw,icol)  
+                     puvfd   (ikl,icol) = puvfd   (ikl,icol) + zincflx * zfd  (jk,iw,icol)  
+                     puvfddir(ikl,icol) = puvfddir(ikl,icol) + zincflx * ztdbt(jk,iw,icol)  
                  
                   ! Accumulate direct fluxes for near-IR bands
                   else if (ibm == 14 .or. ibm <= 9) then  
                 
-                     pnifd   (icol,ikl) = pnifd   (icol,ikl) + zincflx * zfd  (jk,iw,icol)  
-                     pnifddir(icol,ikl) = pnifddir(icol,ikl) + zincflx * ztdbt(jk,iw,icol)  
+                     pnifd   (ikl,icol) = pnifd   (ikl,icol) + zincflx * zfd  (jk,iw,icol)  
+                     pnifddir(ikl,icol) = pnifddir(ikl,icol) + zincflx * ztdbt(jk,iw,icol)  
                    
                   endif
 

@@ -573,35 +573,29 @@ contains
       ! Atmosphere/clouds/aerosol - spcvrt,spcvmc
       ! -----------------------------------------
 
+      real :: taua (nlay,nbndsw,pncol)
+      real :: asya (nlay,nbndsw,pncol)
+      real :: omga (nlay,nbndsw,pncol)
+
+      ! SW flux temporaries [W/m2]
+      real :: zbbfu    (nlay+1,pncol)  ! all-SW  up
+      real :: zbbfd    (nlay+1,pncol)  ! all-SW  down
+      real :: zbbcu    (nlay+1,pncol)  ! all-SW  up          clear-sky
+      real :: zbbcd    (nlay+1,pncol)  ! all-SW  down        clear-sky
+      real :: zbbfddir (nlay+1,pncol)  ! all-SW  down direct
+      real :: zbbcddir (nlay+1,pncol)  ! all-SW  down direct clear-sky
+      real :: zuvfd    (nlay+1,pncol)  ! UV-Vis  down
+      real :: zuvcd    (nlay+1,pncol)  ! UV-Vis  down        clear-sky
+      real :: zuvfddir (nlay+1,pncol)  ! UV-Vis  down direct
+      real :: zuvcddir (nlay+1,pncol)  ! UV-Vis  down direct clear-sky
+      real :: znifd    (nlay+1,pncol)  ! near-IR down
+      real :: znicd    (nlay+1,pncol)  ! near-IR down        clear-sky
+      real :: znifddir (nlay+1,pncol)  ! near-IR down direct
+      real :: znicddir (nlay+1,pncol)  ! near-IR down direct clear-sky
+
       real, dimension (pncol) :: &
          znirr, znirf, zparr, zparf, zuvrr, zuvrf
       
-!? pmn why nlay+1
-      real :: ztauc (pncol,nlay+1,nbndsw)     ! cloud optical depth
-      real :: ztaucorig (pncol,nlay+1,nbndsw) ! unscaled cloud optical depth
-      real :: zasyc (pncol,nlay+1,nbndsw)     ! cloud asymmetry parameter 
-      real :: zomgc (pncol,nlay+1,nbndsw)     ! cloud single scattering albedo
-   
-      real :: taua (nlay+1,nbndsw,pncol)
-      real :: asya (nlay+1,nbndsw,pncol)
-      real :: omga (nlay+1,nbndsw,pncol)
-
-!? pmn why nlay+2
-      real :: zbbfu    (pncol,nlay+2)         ! temporary up SW flux (w/m2)
-      real :: zbbfd    (pncol,nlay+2)         ! temporary down SW flux (w/m2)
-      real :: zbbcu    (pncol,nlay+2)         ! temporary clear sky up SW flux (w/m2)
-      real :: zbbcd    (pncol,nlay+2)         ! temporary clear sky down SW flux (w/m2)
-      real :: zbbfddir (pncol,nlay+2)         ! temporary down direct SW flux (w/m2)
-      real :: zbbcddir (pncol,nlay+2)         ! temporary clear sky down direct SW flux (w/m2)
-      real :: zuvfd    (pncol,nlay+2)         ! temporary UV down SW flux (w/m2)
-      real :: zuvcd    (pncol,nlay+2)         ! temporary clear sky UV down SW flux (w/m2)
-      real :: zuvfddir (pncol,nlay+2)         ! temporary UV down direct SW flux (w/m2)
-      real :: zuvcddir (pncol,nlay+2)         ! temporary clear sky UV down direct SW flux (w/m2)
-      real :: znifd    (pncol,nlay+2)         ! temporary near-IR down SW flux (w/m2)
-      real :: znicd    (pncol,nlay+2)         ! temporary clear sky near-IR down SW flux (w/m2)
-      real :: znifddir (pncol,nlay+2)         ! temporary near-IR down direct SW flux (w/m2)
-      real :: znicddir (pncol,nlay+2)         ! temporary clear sky near-IR down direct SW flux (w/m2)
-
       ! Output fields 
       ! -------------
 
@@ -950,7 +944,6 @@ contains
 !? pmn if not never overwritten so ok
 !? but pron better to go do_aer and make more exp[licit
       ! zero aerosols
-!?pmn extra vertical layer for some reason
       taua = 0.
       asya = 0.
       omga = 1.
@@ -1218,10 +1211,10 @@ contains
         
                   ! up and down fluxes
                   do ilev = 1,nlay+1
-                     swuflxc(gicol,ilev) = zbbcu(icol,ilev) 
-                     swdflxc(gicol,ilev) = zbbcd(icol,ilev) 
-                     swuflx (gicol,ilev) = zbbfu(icol,ilev) 
-                     swdflx (gicol,ilev) = zbbfd(icol,ilev) 
+                     swuflxc(gicol,ilev) = zbbcu(ilev,icol) 
+                     swdflxc(gicol,ilev) = zbbcd(ilev,icol) 
+                     swuflx (gicol,ilev) = zbbfu(ilev,icol) 
+                     swdflx (gicol,ilev) = zbbfd(ilev,icol) 
                   enddo
 
                   ! net fluxes
@@ -1257,10 +1250,10 @@ contains
                do icol = 1,ncol
                   gicol = gicol_cld(icol + cols - 1)
                   do ilev = 1,nlay+1
-                     swuflxc(gicol,ilev) = zbbcu(icol,ilev) 
-                     swdflxc(gicol,ilev) = zbbcd(icol,ilev) 
-                     swuflx (gicol,ilev) = zbbfu(icol,ilev) 
-                     swdflx (gicol,ilev) = zbbfd(icol,ilev) 
+                     swuflxc(gicol,ilev) = zbbcu(ilev,icol) 
+                     swdflxc(gicol,ilev) = zbbcd(ilev,icol) 
+                     swuflx (gicol,ilev) = zbbfu(ilev,icol) 
+                     swdflx (gicol,ilev) = zbbfd(ilev,icol) 
                   enddo
 
                   do ilev = 1,nlay+1
