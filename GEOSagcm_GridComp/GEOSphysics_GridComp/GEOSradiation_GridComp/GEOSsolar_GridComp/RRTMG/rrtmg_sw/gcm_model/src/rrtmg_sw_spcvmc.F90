@@ -276,8 +276,7 @@ contains
       do icol = 1,ncol
          do iw = 1,ngptsw
             do jk = 1,nlay
-               ze1 = ztauo(jk,iw,icol) / prmu0(icol)      
-               zdbtmc = exp(-ze1)
+               zdbtmc = exp(-ztauo(jk,iw,icol) / prmu0(icol))
                zdbt(jk,iw,icol) = zdbtmc
                ztdbt(jk+1,iw,icol) = zdbt(jk,iw,icol) * ztdbt(jk,iw,icol)  
             enddo          
@@ -389,10 +388,8 @@ contains
 
                   ! Clear + Cloud
 
-                  ze1 = ztauo(jk,iw,icol) / prmu0(icol)   
-                  zdbtmo = exp(-ze1)            
-                  ze1 = (ztauo(jk,iw,icol) - ptaucmc(ikl,iw,icol)) / prmu0(icol)           
-                  zdbtmc = exp(-ze1)
+                  zdbtmo = exp(-ztauo(jk,iw,icol) / prmu0(icol))            
+                  zdbtmc = exp(-(ztauo(jk,iw,icol) - ptaucmc(ikl,iw,icol)) / prmu0(icol))
 
                   zdbt(jk,iw,icol) = zclear * zdbtmc + zcloud * zdbtmo
                   ztdbt(jk+1,iw,icol) = zdbt(jk,iw,icol) * ztdbt(jk,iw,icol)  
