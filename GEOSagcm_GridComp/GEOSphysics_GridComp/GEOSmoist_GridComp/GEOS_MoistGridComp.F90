@@ -5544,7 +5544,6 @@ contains
               
       real, dimension(IM,JM)  :: ZPBL
       integer, dimension(IM,JM)  :: KMIN_TROP
-      real, dimension(IM,JM)  :: dum2d
       real, parameter :: r_air = 3.47d-3 !m3 Pa kg-1K-1
       real, parameter :: pmin_trop = 10.0 !mbar minimum pressure to do cloud microphysics
 
@@ -8652,13 +8651,12 @@ contains
 
       if (associated(SC_MSE)) then
         ! column integral of UW moist static energy tendency
-        dum2d = 0.
+        SC_MSE = 0.
         DO K = 1,LM
-           dum2d = dum2d + (MAPL_CP*DTHDT_SC(:,:,k)*PK(:,:,k) &
+           SC_MSE = SC_MSE + (MAPL_CP*DTHDT_SC(:,:,k)*PK(:,:,k) &
                          + MAPL_ALHL*DQVDT_SC(:,:,k)          &
                          - MAPL_ALHF*DQIDT_SC(:,:,k))*MASS(:,:,k)
         END DO
-        SC_MSE = dum2d
       end if
 
       if (associated(CUSH_SC)) CUSH_SC = CUSH
