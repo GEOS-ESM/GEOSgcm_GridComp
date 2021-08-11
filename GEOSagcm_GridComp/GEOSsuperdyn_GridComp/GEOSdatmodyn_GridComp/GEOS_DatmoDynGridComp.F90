@@ -1196,8 +1196,8 @@ contains
          real, pointer, dimension(:,:,:) :: ptr3
     end type three_d_ptr
 
-    real, allocatable, dimension(:,:,:) :: PKE,PLO,QTDYN,TTDYN,OMOBS,THOBS
-    real, allocatable, dimension(:,:,:) :: UdQdx,VdQdy,UdTdx,VdTdy, CFMIPRLX
+    real, allocatable, dimension(:,:,:) :: PKE,ZLO,PLO,QTDYN,TTDYN,OMOBS,THOBS
+    real, allocatable, dimension(:,:,:) :: UdQdx,VdQdy,UdTdx,VdTdy, CFMIPRLX,CFMIPRLX1
     type(three_d_ptr), allocatable :: TRCarr(:)
     real, pointer , dimension(:,:,:) :: qdum
             real,allocatable, dimension(:) :: WF, XXX
@@ -1243,10 +1243,11 @@ contains
       real, dimension(4) :: VC 
 
       INTEGER :: NT, NLEVEL,I,J,VERTADV, useana, advscheme
+      real :: zrel,zrelp,qfloor       
 
-      LOGICAL :: USE_ASCII_DATA, AT_START, CFMIP, CFMIP2, isPresent
+      LOGICAL :: USE_ASCII_DATA, AT_START, CFMIP, CFMIP2, CFMIP3, isPresent
       LOGICAL, SAVE :: ALREADY_HAVE_DATA
-      integer, save :: I_time_step
+      integer, save :: I_time_step,cfcse
       real blendwgt
 
 !=============================================================================
@@ -1317,6 +1318,13 @@ contains
 
     call ESMF_ConfigGetAttribute( cf, CFMIP2, label ='SCM_CFMIP2:', &
                                     DEFAULT=.false., rc = status )
+                                    
+    call ESMF_ConfigGetAttribute( cf, CFMIP3, label ='SCM_CFMIP3:', &
+                                    DEFAULT=.false., rc = status )
+
+    call ESMF_ConfigGetAttribute( cf, CFCSE, label ='CGILS_CASE:', &
+                                    DEFAULT=0, rc = status )
+
 
     call ESMF_ConfigGetAttribute ( CF, OROGSGH,  Label="OROG_STDEV:", &
                                          DEFAULT=100.,  __RC__)
@@ -1666,7 +1674,8 @@ contains
       ALLOCATE( UdQdx(IM,JM,1:LM), __STAT__ )
 
       ALLOCATE( CFMIPRLX(IM,JM,1:LM), __STAT__ )
-
+      ALLOCATE( CFMIPRLX1(IM,JM,1:LM), __STAT__ )
+     
       ALLOCATE( THOBS(IM,JM,1:LM), __STAT__ )
       ALLOCATE( QTDYN(IM,JM,1:LM), __STAT__ )
       ALLOCATE( TTDYN(IM,JM,1:LM), __STAT__ )
@@ -1710,7 +1719,9 @@ contains
 
      ALLOCATE( PKE(IM,JM,0:LM), __STAT__ )
      ALLOCATE( PLO(IM,JM,1:LM), __STAT__ )
-     
+   ALLOCATE( ZLO(IM,JM,1:LM), __STAT__ )    
+
+ 
      do l=0,lm
         PLE(:,:,l)   = ( Fac0*PLE_DATA(ii,l) + Fac1*PLE_DATA(iip1,l) )
      end do
@@ -1809,6 +1820,9 @@ contains
       end do
       DZ(:,:)     =  0.5 * ( ZLE(:,:,LM-1) -  ZLE(:,:,LM) )
 
+     ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
+
+
         ! These quantities are special. Used in SFC to calculate CDs 
         ! In 3D GEOS5 they are just set == values_at_LM
       QA(:,:)     = (1.0-RELAX_TO_OBS)*Q(:,:,LM) + RELAX_TO_OBS*     &
@@ -1884,6 +1898,53 @@ contains
    end if
 
       CFMIPRLX = 0.00
+
+!    Forcing based on Phase 2 of CGILS intercomparison. See Blossey et al. (2016)
+      if ( CFMIP3 ) then  
+
+         ZLO = 0.5*(ZLE(:,:,0:LM-1)+ZLE(:,:,1:LM))
+
+         if (CFCSE .eq. 12) then
+           zrel=1200.
+           zrelp=1500.
+           qfloor=0.003581839
+         elseif (CFCSE .eq. 11) then
+           zrel=2500.
+           zrelp=3000.
+           qfloor=0.  !3.55e-3  ! not used in Blossey LES, but recommended for future
+         elseif (CFCSE .eq. 6) then
+           zrel=4000.
+           zrelp=4800.
+           qfloor=0.
+         else
+           print *,'error - define the right case'
+           RETURN_(ESMF_FAILURE)
+         endif
+         
+          where((ZLO>zrel).and.(ZLO<zrelp))
+              CFMIPRLX=1./(2.*10800.)*(1.-cos(3.14*(ZLO-zrel)/(zrelp-zrel)))
+          endwhere
+
+          where(ZLO>=zrelp) 
+              CFMIPRLX=1./10800.
+          endwhere
+          
+          
+           CFMIPRLX1=0. 
+           where((Q<qfloor) .and. (ZLO<1300.))
+           CFMIPRLX1=1./3600.
+           endwhere
+
+         T = T - CFMIPRLX * ( T - TOBS ) * DT 
+         Q = Q - CFMIPRLX * ( Q - QOBS ) * DT-CFMIPRLX1*(Q-qfloor)*DT  
+         if (associated(DTDTDYN))   DTDTDYN  = DTDTDYN  - CFMIPRLX * ( T - TOBS )
+         if (associated(DQVDTDYN))  DQVDTDYN = DQVDTDYN - CFMIPRLX * ( Q - QOBS )-CFMIPRLX1*(Q-qfloor)*DT
+
+   end if ! CFMIP3
+
+
+
+
 
 !       if ( NT ==  1 .and. .not. CFMIP2 ) then  ! cgils case
        if ( CFMIP ) then  ! cgils case
@@ -2079,7 +2140,7 @@ contains
       QLQL = 0.
       QIQI = 0.     
 
-       if ( CFMIP .or. CFMIP2 ) then
+       if ( CFMIP .or. CFMIP2 .or. CFMIP3 ) then
            CALL CFMIP_IC(trim(DATA)//'.bin', NT, NLEVEL,     &
                      LM ,                                &
                      PREF_IN,                            &
