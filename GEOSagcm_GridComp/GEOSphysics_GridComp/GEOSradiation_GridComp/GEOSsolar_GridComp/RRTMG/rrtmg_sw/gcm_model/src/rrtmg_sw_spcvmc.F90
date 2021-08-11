@@ -152,7 +152,7 @@ contains
       integer :: jk, ikl
       integer :: iw, jb, ibm
 
-      real :: ze1, ze2
+      real :: ssa, asy
       real :: zclear, zcloud
       real :: zincflx
       real :: zdbtmc, zdbtmo, zf, zwf, zreflect
@@ -256,7 +256,7 @@ contains
                zgco (jk,iw,icol) = pasya(ikl,ibm,icol) * pomga(ikl,ibm,icol) * ptaua(ikl,ibm,icol) / zomco(jk,iw,icol)   
                zomco(jk,iw,icol) = zomco(jk,iw,icol) / ztauo(jk,iw,icol)
                
-               ! delta-scaling with f = g**2
+               ! Delta-scaling with f = g**2
                zf = zgco(jk,iw,icol); zf = zf * zf
                zwf = zomco(jk,iw,icol) * zf
                ztauo(jk,iw,icol) = (1. - zwf) * ztauo(jk,iw,icol)
@@ -339,24 +339,21 @@ contains
                do jk = 1,nlay
                   ikl = nlay+1-jk
 
-                  ze1 = ztaur(ikl,iw,icol) + ptaua(ikl,ibm,icol) * pomga(ikl,ibm,icol) 
-                  ze2 = pasya(ikl,ibm,icol) * pomga(ikl,ibm,icol) * ptaua(ikl,ibm,icol) / ze1
-                  ze1 = ze1 / (ztaur(ikl,iw,icol) + ztaug(ikl,iw,icol) + ptaua(ikl,ibm,icol))
+                  ! Clear-sky optical parameters including aerosol
+                  ssa = ztaur(ikl,iw,icol) + ptaua(ikl,ibm,icol) * pomga(ikl,ibm,icol) 
+                  asy = pasya(ikl,ibm,icol) * pomga(ikl,ibm,icol) * ptaua(ikl,ibm,icol) / ssa
+                  ssa = ssa / (ztaur(ikl,iw,icol) + ztaug(ikl,iw,icol) + ptaua(ikl,ibm,icol))
                
-                  ! delta scale 
-                  zf = ze2 * ze2
-                  zwf = ze1 * zf
-                  ze1 = (ze1 - zwf) / (1. - zwf)
-                  ze2 = (ze2 - zf ) / (1. - zf )
-!ze2 ~ g
-!ze1 ~ om
+                  ! Delta-scaling with f = g**2
+                  zf = asy * asy
+                  zwf = ssa * zf
+                  ssa = (ssa - zwf) / (1. - zwf)
+                  asy = (asy - zf ) / (1. - zf )
                
-                  ! delta scale
-                  zomco(jk,iw,icol) = ztauo(jk,iw,icol) * ze1 + ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol)
-                        
+                  ! Add in cloud optical properties (which are already delta-scaled)
+                  zomco(jk,iw,icol) = ztauo(jk,iw,icol) * ssa + ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol)
                   zgco (jk,iw,icol) = ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol) * pasycmc(ikl,iw,icol) + &
-                                         ztauo(jk,iw,icol) * ze1 * ze2
-               
+                                        ztauo(jk, iw,icol) * ssa                  * asy
                   ztauo(jk,iw,icol) = ztauo(jk,iw,icol) + ptaucmc(ikl,iw,icol) 
      
                   zgco (jk,iw,icol) = zgco (jk,iw,icol) / zomco(jk,iw,icol)
@@ -366,27 +363,26 @@ contains
             end do
          end do
 
-         ! Total-sky reflectivities / transmissivities 
+         ! Clear + Cloud reflectivities / transmissivities.
+         ! These apply to cloudy grid cells.
          call reftra_sw (pncol, ncol, nlay, &
                          pcldfmc, zgco, prmu0, ztauo, zomco, &
                          zref, zrefd, ztra, ztrad, 0)
 
+         ! Combine clear and cloudy contributions for total sky
          do icol = 1,ncol
             do iw = 1,ngptsw
                do jk = 1,nlay
                   ikl = nlay+1-jk 
 
-                  ! Combine clear and cloudy contributions for total sky
-
+!? pmn simplify is binary!
                   zclear = 1. - pcldfmc(ikl,iw,icol) 
-                  zcloud = pcldfmc(ikl,iw,icol) 
+                  zcloud =      pcldfmc(ikl,iw,icol) 
 
                   zref (jk,iw,icol) = zclear * zrefo (jk,iw,icol) + zcloud * zref (jk,iw,icol)  
                   zrefd(jk,iw,icol) = zclear * zrefdo(jk,iw,icol) + zcloud * zrefd(jk,iw,icol)  
                   ztra (jk,iw,icol) = zclear * ztrao (jk,iw,icol) + zcloud * ztra (jk,iw,icol)  
                   ztrad(jk,iw,icol) = zclear * ztrado(jk,iw,icol) + zcloud * ztrad(jk,iw,icol)  
-
-                  ! Clear + Cloud
 
                   zdbtmo = exp(-ztauo(jk,iw,icol) / prmu0(icol))            
                   zdbtmc = exp(-(ztauo(jk,iw,icol) - ptaucmc(ikl,iw,icol)) / prmu0(icol))
@@ -398,7 +394,7 @@ contains
             end do
          end do
 
-         ! Vertical quadrature for cloudy fluxes
+         ! Vertical quadrature for total-sky fluxes
          call vrtqdr_sw(pncol, ncol, nlay, &
                         zref, zrefd, ztra, ztrad, &
                         zdbt, ztdbt, &
@@ -409,20 +405,18 @@ contains
          !   layer indexing is reversed to go bottom to top for output arrays
 
          do icol = 1,ncol
-            do ikl=1,nlay+1
+            do ikl = 1,nlay+1
+               jk = nlay+2-ikl
                do iw = 1,ngptsw
-
-                  jk=nlay+2-ikl
                   jb = ngb(iw)
                   ibm = jb-15
 
-                  ! Apply adjustment for correct Earth/Sun distance and zenith angle to incoming solar flux
-                  ! No solar variability and no solar cycle
+                  ! Adjust incoming flux for Earth/Sun distance and zenith angle
                   if (isolvar < 0) then
+                     ! No solar variability and no solar cycle
                      zincflx = adjflux(jb) * zsflxzen(iw,icol) * prmu0(icol)           
-                  endif
-                  ! Solar variability with averaged or specified solar cycle
-                  if (isolvar >= 0) then
+                  else
+                     ! Solar variability with averaged or specified solar cycle
                      zincflx = adjflux(jb) * ssi     (iw,icol) * prmu0(icol)           
                   endif
 
@@ -448,8 +442,11 @@ contains
 
       else  ! cc /= 2
 
-         pbbfd    = pbbcd
+         ! cc == 1 so clear so total-sky == clear-sky
+
          pbbfu    = pbbcu
+         pbbfd    = pbbcd
+         pbbfddir = pbbcddir
          puvfd    = puvcd
          puvfddir = puvcddir
          pnifd    = pnicd
@@ -457,22 +454,21 @@ contains
 
       end if
 
+      ! surface band fluxes
       do icol = 1,ncol
          do iw = 1,ngptsw
             jb = ngb(iw)
             ibm = jb - 15
 
-            ! Apply adjustment for correct Earth/Sun distance and zenith angle to incoming solar flux
-
-            ! No solar variability and no solar cycle
+            ! Adjust incoming flux for Earth/Sun distance and zenith angle
             if (isolvar < 0) then
+               ! No solar variability and no solar cycle
                zincflx = adjflux(jb) * zsflxzen(iw,icol) * prmu0(icol)           
-            endif
-            ! Solar variability with averaged or specified solar cycle
-            if (isolvar >= 0) then
+            else
+               ! Solar variability with averaged or specified solar cycle
                zincflx = adjflux(jb) * ssi     (iw,icol) * prmu0(icol)           
             endif
-            
+
             ! Band fluxes
             if (ibm == 14 .or. ibm <= 8) then
                ! near-IR
@@ -498,6 +494,9 @@ contains
       enddo                    
 
    end subroutine spcvmc_sw
+!?pmn: TODO outer ncol loop?
+!?pmn: TODO cldymc
+!?pmn: TODO improve routines below
 
    ! --------------------------------------------------------------------
    subroutine reftra_sw(pncol, ncol, nlay, &
