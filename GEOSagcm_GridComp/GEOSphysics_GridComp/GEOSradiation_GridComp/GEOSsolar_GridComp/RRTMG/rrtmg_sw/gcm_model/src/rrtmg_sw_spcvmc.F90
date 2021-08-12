@@ -165,14 +165,10 @@ contains
       real :: zfd    (nlay+1,ngptsw,pncol)
       real :: zfu    (nlay+1,ngptsw,pncol)   
 
-      real :: zref   (nlay+1,ngptsw,pncol)
-      real :: zrefo  (nlay+1,ngptsw,pncol)  
-      real :: zrefd  (nlay+1,ngptsw,pncol)
-      real :: zrefdo (nlay+1,ngptsw,pncol)  
-      real :: ztra   (nlay+1,ngptsw,pncol)
-      real :: ztrao  (nlay+1,ngptsw,pncol)  
-      real :: ztrad  (nlay+1,ngptsw,pncol)
-      real :: ztrado (nlay+1,ngptsw,pncol)  
+      real :: zref   (nlay+1,ngptsw,pncol)  ! direct beam reflectivity
+      real :: zrefd  (nlay+1,ngptsw,pncol)  ! diffuse     reflectivity
+      real :: ztra   (nlay+1,ngptsw,pncol)  ! direct beam transmissivity
+      real :: ztrad  (nlay+1,ngptsw,pncol)  ! diffuse     transmissivity
 
       real :: ztaur  (nlay,ngptsw,pncol)
       real :: ztaug  (nlay,ngptsw,pncol) 
@@ -216,27 +212,22 @@ contains
 !pmn? comibine icol loops and remove icol dimension from temporaries
 
       ! Set fixed boundary values.
-      ! The surface (jk=nlay+1) zref* and ztra* never change from these values.
-      ! The TOA ztdbt (jk=1) likewise never changes.
+      ! The sfc (jk=nlay+1) zref[d] & ztra[d] never change from these.
+      ! The TOA (jk=1) ztdbt likewise never change.
       do icol = 1,ncol
          do iw = 1,ngptsw
-            jb = ngb(iw) ! SW band: jb = 16:29
-            ibm = jb-15  !   => ibm = 1:14
+            jb = ngb(iw)  ! SW band: jb = 16:29
+            ibm = jb-15   !   => ibm = 1:14
 
+            ! Surface reflectivities / transmissivities
+            zref  (nlay+1,iw,icol) = palbp(ibm,icol) 
+            zrefd (nlay+1,iw,icol) = palbd(ibm,icol) 
+            ztra  (nlay+1,iw,icol) = 0. 
+            ztrad (nlay+1,iw,icol) = 0. 
+           
             ! TOA direct beam    
             ztdbt (1,iw,icol) = 1. 
     
-            ! Clear-sky Surface values
-            ztrao (nlay+1,iw,icol) = 0. 
-            ztrado(nlay+1,iw,icol) = 0. 
-            zrefo (nlay+1,iw,icol) = palbp(ibm,icol) 
-            zrefdo(nlay+1,iw,icol) = palbd(ibm,icol) 
-           
-            ! Total sky Surface values
-            ztra  (nlay+1,iw,icol) = 0. 
-            ztrad (nlay+1,iw,icol) = 0. 
-            zref  (nlay+1,iw,icol) = palbp(ibm,icol) 
-            zrefd (nlay+1,iw,icol) = palbd(ibm,icol) 
          end do
       end do
 
@@ -270,7 +261,7 @@ contains
       ! Clear-sky reflectivities / transmissivities
       call reftra_sw (pncol, ncol, nlay, &
                       pcldymc, zgco, prmu0, ztauo, zomco, &
-                      zrefo, zrefdo, ztrao, ztrado, 1)
+                      zref, zrefd, ztra, ztrad, .false.)	!1)
 
       ! Clear-sky direct beam transmittance        
       do icol = 1,ncol
@@ -284,7 +275,7 @@ contains
 
       ! Vertical quadrature for clear-sky fluxes
       call vrtqdr_sw(pncol, ncol, nlay, &
-                     zrefo, zrefdo, ztrao, ztrado, &
+                     zref, zrefd, ztra, ztrad, &
                      zdbt, ztdbt, &
                      zfd, zfu)
 
@@ -364,7 +355,7 @@ contains
          ! These apply to cloudy grid cells.
          call reftra_sw (pncol, ncol, nlay, &
                          pcldymc, zgco, prmu0, ztauo, zomco, &
-                         zref, zrefd, ztra, ztrad, 0)
+                         zref, zrefd, ztra, ztrad, .true.)	! 0)
 
          ! Choose clear|cloudy result and recalc direct transmission
          do icol = 1,ncol
@@ -375,13 +366,13 @@ contains
                   if (pcldymc(ikl,iw,icol)) then
                      ! cloudy: ztauo has been updated so recalculate
                      zdbt(jk,iw,icol) = exp(-ztauo(jk,iw,icol) / prmu0(icol))            
-                  else
-                     ! clear: zref/tra use clear values
-                     !    and zdbt retains clear value
-                     zref (jk,iw,icol) = zrefo (jk,iw,icol)
-                     zrefd(jk,iw,icol) = zrefdo(jk,iw,icol)
-                     ztra (jk,iw,icol) = ztrao (jk,iw,icol)
-                     ztrad(jk,iw,icol) = ztrado(jk,iw,icol)
+!                 else
+!                    ! clear: zref/tra use clear values
+!                    !    and zdbt retains clear value
+!                    zref (jk,iw,icol) = zrefo (jk,iw,icol)
+!                    zrefd(jk,iw,icol) = zrefdo(jk,iw,icol)
+!                    ztra (jk,iw,icol) = ztrao (jk,iw,icol)
+!                    ztrad(jk,iw,icol) = ztrado(jk,iw,icol)
                   end if
 
                   ztdbt(jk+1,iw,icol) = zdbt(jk,iw,icol) * ztdbt(jk,iw,icol)
@@ -496,7 +487,8 @@ contains
    ! --------------------------------------------------------------------
    subroutine reftra_sw(pncol, ncol, nlay, &
                         pcldymc, pgg, prmuzl, ptau, pw, &
-                        pref, prefd, ptra, ptrad, ac)
+                        pref, prefd, ptra, ptrad, & !ac)
+                        only_cloudy)
    ! --------------------------------------------------------------------
    ! Purpose: computes the reflectivity and transmissivity of a clear or 
    !   cloudy layer using a choice of various approximations.
@@ -523,7 +515,6 @@ contains
    !      ptra    : collimated beam transmissivity
    !      ptrad   : diffuse beam transmissivity
    !
-   !
    ! Method:
    ! -------
    !      standard delta-eddington, p.i.f.m., or d.o.m. layer calculations.
@@ -537,6 +528,8 @@ contains
    ! Original: J-JMorcrette, ECMWF, Feb 2003
    ! Revised for F90 reformatting: MJIacono, AER, Jul 2006
    ! Revised to add exponential lookup table: MJIacono, AER, Aug 2007
+!?pmn: suspect tble lookup was taken out to GPU-ize ... put back??
+!?pmn: I think LW has table lookup
    !
    ! ------------------------------------------------------------------
 
@@ -554,14 +547,20 @@ contains
       real,    intent(in) :: pw      (nlay,ngptsw,pncol)  ! single scattering albedo 
       real,    intent(in) :: prmuzl              (pncol)  ! cosine of solar zenith angle
 
-      integer, intent(in) :: ac
+!     integer, intent(in) :: ac
+      logical, intent(in) :: only_cloudy
 
       ! ------- Output -------
 
-      real, intent(out) :: pref  (nlay+1,ngptsw,pncol)  ! direct beam reflectivity
-      real, intent(out) :: prefd (nlay+1,ngptsw,pncol)  ! diffuse beam reflectivity
-      real, intent(out) :: ptra  (nlay+1,ngptsw,pncol)  ! direct beam transmissivity
-      real, intent(out) :: ptrad (nlay+1,ngptsw,pncol)  ! diffuse beam transmissivity
+!     real, intent(out) :: pref  (nlay+1,ngptsw,pncol)  ! direct beam reflectivity
+!     real, intent(out) :: prefd (nlay+1,ngptsw,pncol)  ! diffuse     reflectivity
+!     real, intent(out) :: ptra  (nlay+1,ngptsw,pncol)  ! direct beam transmissivity
+!     real, intent(out) :: ptrad (nlay+1,ngptsw,pncol)  ! diffuse     transmissivity
+      real, intent(inout) :: pref  (nlay+1,ngptsw,pncol)  ! direct beam reflectivity
+      real, intent(inout) :: prefd (nlay+1,ngptsw,pncol)  ! diffuse     reflectivity
+      real, intent(inout) :: ptra  (nlay+1,ngptsw,pncol)  ! direct beam transmissivity
+      real, intent(inout) :: ptrad (nlay+1,ngptsw,pncol)  ! diffuse     transmissivity
+
       ! ------- Local -------
 
       integer :: jk, kmodts
@@ -593,18 +592,31 @@ contains
       kmodts = 2
       
       do icol = 1,ncol
+         prmuz = prmuzl(icol)
          do iw = 1,ngptsw
             do jk = 1,nlay
 
-               prmuz = prmuzl(icol)
-               if (.not. pcldymc(nlay+1-jk,iw,icol) .and. ac == 0) then
+! first time called clear with ac=1
+!   so first time through calculates at all points cos first branch
+!   never satisfied --- good;
+! second time called clear+cloud with ac=0
+!   so second time only calculates for cloudy points, while clear
+!   gboxes get the simple first branch values --- again, good.
+!   Not wasting time on the claer points because already calculated
+!   them ... just overwrite them with prev values.
+! analternative is to have the outputs inout. first time calc all,
+!   second time just update cloudy points.
 
-                  pref (jk,iw,icol) = 0. 
-                  ptra (jk,iw,icol) = 1. 
-                  prefd(jk,iw,icol) = 0. 
-                  ptrad(jk,iw,icol) = 1. 
+!              if (.not. pcldymc(nlay+1-jk,iw,icol) .and. ac == 0) then
 
-               else
+!                 pref (jk,iw,icol) = 0. 
+!                 ptra (jk,iw,icol) = 1. 
+!                 prefd(jk,iw,icol) = 0. 
+!                 ptrad(jk,iw,icol) = 1. 
+
+!              else
+
+               if (.not. only_cloudy .or. pcldymc(nlay+1-jk,iw,icol)) then
 
                   zto1 = ptau(jk,iw,icol)  
                   zw   = pw  (jk,iw,icol)  
