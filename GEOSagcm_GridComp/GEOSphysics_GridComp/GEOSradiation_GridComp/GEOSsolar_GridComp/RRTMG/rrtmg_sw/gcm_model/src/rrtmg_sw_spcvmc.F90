@@ -252,13 +252,15 @@ contains
                ikl = nlay+1-jk
 
                ! Clear-sky optical parameters including aerosols
+               ! Gas: ssa=0, g=0, Rayleigh: ssa=1, g=0
                ztauo(jk,iw,icol) = ztaur(ikl,iw,icol) + ztaug(ikl,iw,icol) + ptaua(ikl,ibm,icol)      
                zomco(jk,iw,icol) = ztaur(ikl,iw,icol) + ptaua(ikl,ibm,icol) * pomga(ikl,ibm,icol)
-               zgco (jk,iw,icol) = pasya(ikl,ibm,icol) * pomga(ikl,ibm,icol) * ptaua(ikl,ibm,icol) / zomco(jk,iw,icol)   
+               zgco (jk,iw,icol) = (pasya(ikl,ibm,icol) * pomga(ikl,ibm,icol) * ptaua(ikl,ibm,icol)) &
+                                   / zomco(jk,iw,icol)   
                zomco(jk,iw,icol) = zomco(jk,iw,icol) / ztauo(jk,iw,icol)
                
                ! Delta-scaling with f = g**2
-               zf = zgco(jk,iw,icol) ** 2 !; zf = zf * zf
+               zf = zgco(jk,iw,icol) ** 2
                zwf = zomco(jk,iw,icol) * zf
                ztauo(jk,iw,icol) = (1. - zwf) * ztauo(jk,iw,icol)
                zomco(jk,iw,icol) = (zomco(jk,iw,icol) - zwf) / (1. - zwf)
@@ -332,6 +334,8 @@ contains
 
       if (cc == 2) then
 
+         ! Add in cloud optical properties (which are already delta-scaled)
+         ! (uses the pre-calculated clear-sky delta-scaled zomco and zgco)
          do icol = 1,ncol
             do iw = 1,ngptsw
                jb = ngb(iw)
@@ -339,25 +343,21 @@ contains
                do jk = 1,nlay
                   ikl = nlay+1-jk
 
-                  ! Clear-sky optical parameters including aerosol
-                  ssa = ztaur(ikl,iw,icol) + ptaua(ikl,ibm,icol) * pomga(ikl,ibm,icol) 
-                  asy = pasya(ikl,ibm,icol) * pomga(ikl,ibm,icol) * ptaua(ikl,ibm,icol) / ssa
-                  ssa = ssa / (ztaur(ikl,iw,icol) + ztaug(ikl,iw,icol) + ptaua(ikl,ibm,icol))
-               
-                  ! Delta-scaling with f = g**2
-                  zf = asy ** 2 ! * asy
-                  zwf = ssa * zf
-                  ssa = (ssa - zwf) / (1. - zwf)
-                  asy = (asy - zf ) / (1. - zf )
-               
-                  ! Add in cloud optical properties (which are already delta-scaled)
-                  zomco(jk,iw,icol) = ztauo(jk,iw,icol) * ssa + ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol)
-                  zgco (jk,iw,icol) = ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol) * pasycmc(ikl,iw,icol) + &
-                                        ztauo(jk, iw,icol) * ssa                  * asy
-                  ztauo(jk,iw,icol) = ztauo(jk,iw,icol) + ptaucmc(ikl,iw,icol) 
-     
-                  zgco (jk,iw,icol) = zgco (jk,iw,icol) / zomco(jk,iw,icol)
-                  zomco(jk,iw,icol) = zomco(jk,iw,icol) / ztauo(jk,iw,icol)
+                  ! only cloudy gridboxes need to add in cloud opt props
+                  if (pcldymc(ikl,iw,icol)) then
+                     zgco (jk,iw,icol) = &
+                        ztauo  (jk, iw,icol) * zomco  (jk, iw,icol) * zgco   (jk, iw,icol) + &
+                        ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol) * pasycmc(ikl,iw,icol)
+                     zomco(jk,iw,icol) = &
+                        ztauo  (jk,iw, icol) * zomco  (jk, iw,icol) + &
+                        ptaucmc(ikl,iw,icol) * pomgcmc(ikl,iw,icol)
+                     ztauo(jk,iw,icol) = &
+                        ztauo  (jk, iw,icol) + &
+                        ptaucmc(ikl,iw,icol) 
+        
+                     zgco (jk,iw,icol) = zgco (jk,iw,icol) / zomco(jk,iw,icol)
+                     zomco(jk,iw,icol) = zomco(jk,iw,icol) / ztauo(jk,iw,icol)
+                  end if
                
                enddo    
             end do
