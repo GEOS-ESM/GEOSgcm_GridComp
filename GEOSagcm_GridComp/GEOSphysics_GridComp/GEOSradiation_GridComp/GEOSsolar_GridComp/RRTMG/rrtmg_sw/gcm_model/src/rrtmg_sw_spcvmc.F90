@@ -153,10 +153,7 @@ contains
       integer :: jk, ikl
       integer :: iw, jb, ibm
 
-      real :: ssa, asy
-      real :: zclear, zcloud
-      real :: zincflx
-      real :: zdbtmc, zdbtmo, zf, zwf, zreflect
+      real :: zf, zwf, zincflx
 
       real :: zgco   (nlay,ngptsw,pncol)
       real :: zomco  (nlay,ngptsw,pncol)  
@@ -369,34 +366,25 @@ contains
                          pcldymc, zgco, prmu0, ztauo, zomco, &
                          zref, zrefd, ztra, ztrad, 0)
 
-         ! Combine clear and cloudy contributions for total sky
+         ! Choose clear|cloudy result and recalc direct transmission
          do icol = 1,ncol
             do iw = 1,ngptsw
                do jk = 1,nlay
                   ikl = nlay+1-jk 
 
-!? pmn simplify is binary! 
-!how to do?
-!cldymc is layer which cc is column as a whole
-
-!                 zclear = 1. - pcldfmc(ikl,iw,icol) 
-!                 zcloud =      pcldfmc(ikl,iw,icol) 
                   if (pcldymc(ikl,iw,icol)) then
-                     zclear = 0.; zcloud = 1.
+                     ! cloudy: ztauo has been updated so recalculate
+                     zdbt(jk,iw,icol) = exp(-ztauo(jk,iw,icol) / prmu0(icol))            
                   else
-                     zclear = 1.; zcloud = 0.
+                     ! clear: zref/tra use clear values
+                     !    and zdbt retains clear value
+                     zref (jk,iw,icol) = zrefo (jk,iw,icol)
+                     zrefd(jk,iw,icol) = zrefdo(jk,iw,icol)
+                     ztra (jk,iw,icol) = ztrao (jk,iw,icol)
+                     ztrad(jk,iw,icol) = ztrado(jk,iw,icol)
                   end if
 
-                  zref (jk,iw,icol) = zclear * zrefo (jk,iw,icol) + zcloud * zref (jk,iw,icol)  
-                  zrefd(jk,iw,icol) = zclear * zrefdo(jk,iw,icol) + zcloud * zrefd(jk,iw,icol)  
-                  ztra (jk,iw,icol) = zclear * ztrao (jk,iw,icol) + zcloud * ztra (jk,iw,icol)  
-                  ztrad(jk,iw,icol) = zclear * ztrado(jk,iw,icol) + zcloud * ztrad(jk,iw,icol)  
-
-                  zdbtmo = exp(-ztauo(jk,iw,icol) / prmu0(icol))            
-                  zdbtmc = exp(-(ztauo(jk,iw,icol) - ptaucmc(ikl,iw,icol)) / prmu0(icol))
-
-                  zdbt(jk,iw,icol) = zclear * zdbtmc + zcloud * zdbtmo
-                  ztdbt(jk+1,iw,icol) = zdbt(jk,iw,icol) * ztdbt(jk,iw,icol)  
+                  ztdbt(jk+1,iw,icol) = zdbt(jk,iw,icol) * ztdbt(jk,iw,icol)
 
                enddo          
             end do
