@@ -19,7 +19,7 @@ contains
       pncol, ncol, nsubcol, nlay, &
       zmid, alat, doy, &
       play, cld, ciwp, clwp, &
-      cld_stoch, ciwp_stoch, clwp_stoch)
+      cldy_stoch, ciwp_stoch, clwp_stoch)
    !---------------------------------------------------------------------------------------
    !
    ! Original code: Based on Raisanen et al., QJRMS, 2004.
@@ -31,6 +31,8 @@ contains
    !   Tidy up code and comments
    !   Keep only exponential (generalized) overlap.
    !   Abstract and reorder indices for CPU efficiency.
+   !   Aug-2021 Make binary clouds explicit using cldy_stoch logical rather
+   !     than cld_stoch = {0,1}. This may improve efficiency in caller.
    !
    !   Given a profile of cloud fraction, cloud water and cloud ice, produce a set of
    ! subcolumns. Each subcolumn has cloud fraction in {0,1} at each level.
@@ -65,7 +67,9 @@ contains
 
       ! output subcolumns
       ! (units of water paths are the same as for inputs ciwp and clwp)
-      real,    intent(out) ::  cld_stoch (nlay,nsubcol,pncol)  ! Cloud fraction 
+      ! (cldy_stoch logical makes binary clouds explicit rather than
+      ! previous cld_stoch = {0,1}. This may improve efficiency in caller.
+      logical, intent(out) :: cldy_stoch (nlay,nsubcol,pncol)  ! Cloudy or not?
       real,    intent(out) :: ciwp_stoch (nlay,nsubcol,pncol)  ! In-cloud ice water path
       real,    intent(out) :: clwp_stoch (nlay,nsubcol,pncol)  ! In-cloud liq water path
       
@@ -226,8 +230,9 @@ contains
             do ilay = 1,nlay
 
                if (cond_inhomo .and. cdf1(ilay,isubcol,icol) >= 1. - cld(ilay,icol)) then
+!?pmn: if cld=0. cannot get rand [0,1) >= 1. so clear triggered --- good
 
-                  cld_stoch(ilay,isubcol,icol) = 1. 
+                  cldy_stoch(ilay,isubcol,icol) = .true. 
                   
                   ! Cloud fraction sets level of inhomogeneity
                   if (cld(ilay,icol) > 0.99) then
@@ -245,14 +250,14 @@ contains
                 
                elseif (cdf1(ilay,isubcol,icol) >= 1. - cld(ilay,icol)) then
 
-                   cld_stoch(ilay,isubcol,icol) = 1. 
+                  cldy_stoch(ilay,isubcol,icol) = .true. 
                   clwp_stoch(ilay,isubcol,icol) = clwp(ilay,icol)
                   ciwp_stoch(ilay,isubcol,icol) = ciwp(ilay,icol)
 
                else
 
                   ! a clear subcolumn
-                   cld_stoch(ilay,isubcol,icol) = 0. 
+                  cldy_stoch(ilay,isubcol,icol) = .false. 
                   clwp_stoch(ilay,isubcol,icol) = 0. 
                   ciwp_stoch(ilay,isubcol,icol) = 0. 
 
@@ -283,6 +288,7 @@ contains
       seed4 = 30903 * iand (seed4, 65535) + ishft (seed4, -16)
       kiss = seed1 + seed2 + ishft (seed3, 16) + seed4
       ran_num = kiss * 2.328306e-10 + 0.5
+!?pmn: explicit force [0,1) ?????
 
    end subroutine rng_kiss
 

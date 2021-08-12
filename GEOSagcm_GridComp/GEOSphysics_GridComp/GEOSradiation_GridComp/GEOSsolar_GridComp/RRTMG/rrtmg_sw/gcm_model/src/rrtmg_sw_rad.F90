@@ -561,9 +561,9 @@ contains
       real :: alat      (pncol)             ! latitude for cloud overlap
       real :: zm   (nlay,pncol)		    ! mid-layer hgt for cld overlap [m]
                                                       
-      real :: cldfmcl (nlay,ngptsw,pncol)   ! cloud fraction [mcica]
-      real :: ciwpmcl (nlay,ngptsw,pncol)   ! in-cloud ice water path [mcica]
-      real :: clwpmcl (nlay,ngptsw,pncol)   ! in-cloud liquid water path [mcica]
+      logical :: cldymcl (nlay,ngptsw,pncol)   ! cloud or not? [mcica]
+      real    :: ciwpmcl (nlay,ngptsw,pncol)   ! in-cloud ice water path [mcica]
+      real    :: clwpmcl (nlay,ngptsw,pncol)   ! in-cloud liquid water path [mcica]
 
       real :: taucmc  (nlay,ngptsw,pncol)   ! in-cloud optical depth [mcica]
       real :: taormc  (nlay,ngptsw,pncol)   ! unscaled in-cloud optl depth [mcica]
@@ -926,16 +926,19 @@ contains
             gicol_clr(ncol_clr) = gicol
          end if
       end do
+!?pmn: note this is built on gridcol cldfrac not mcica
+!but if all layers have zero cld fraction then so will all mcica subcolumns (as long as kiss rand in [0,1) ???)
+!but reverse is not true ... can get a clear subcolumn even for cloudy column
 
       ! num of length pncol partitions needed for clear/cloudy profiles
       npart_clr = ceiling( real(ncol_clr) / real(pncol) )
       npart_cld = ceiling( real(ncol_cld) / real(pncol) )
 
-!? but arent these overwritten by multiple partitions both cler and cloudy?? error ???
-! all cler cases come first so works, and all could cases probbly completely overwrite so ok.
+!? but arent these overwritten by multiple partitions both clear and cloudy?? error ???
+! all clear cases come first so works, and all could cases probably completely overwrite so ok.
 ! but I dont like this probably better to deal with more transperantly inside loop.
       ! zero McICA cloud physical props
-      cldfmcl = 0.
+      cldymcl = .false.
       ciwpmcl = 0.
       clwpmcl = 0.     
   
@@ -1162,14 +1165,14 @@ contains
                   pncol, ncol, ngptsw, nlay, &
                   zm, alat, dyofyr, &
                   play, cld, ciwp, clwp, &
-                  cldfmcl, ciwpmcl, clwpmcl) 
+                  cldymcl, ciwpmcl, clwpmcl) 
             end if   
 
             ! cloud optical property generation
             if (cc==2) then
                call cldprmc_sw( &
                   pncol, ncol, nlay, iceflgsw, liqflgsw,  &
-                  cldfmcl, ciwpmcl, clwpmcl, rei, rel, &
+                  cldymcl, ciwpmcl, clwpmcl, rei, rel, &
                   taormc, taucmc, ssacmc, asmcmc)
             end if
 
@@ -1189,7 +1192,7 @@ contains
             call spcvmc_sw( &
                cc, pncol, ncol, nlay, istart, iend, &
                albdif, albdir, &
-               cldfmcl, taucmc, asmcmc, ssacmc, taormc, &
+               cldymcl, taucmc, asmcmc, ssacmc, taormc, &
                taua, asya, omga, cossza, adjflux, &
                isolvar, svar_f, svar_s, svar_i, &
                svar_f_bnd, svar_s_bnd, svar_i_bnd, &

@@ -34,7 +34,7 @@ contains
 
    ! ----------------------------------------------------------------------
    subroutine cldprmc_sw(pncol, ncol, nlayers, iceflag, liqflag, &
-                         cldfmc, ciwpmc, clwpmc, reicmc, relqmc, &
+                         cldymc, ciwpmc, clwpmc, reicmc, relqmc, &
                          taormc, taucmc, ssacmc, asmcmc)
    ! ----------------------------------------------------------------------
 
@@ -51,21 +51,19 @@ contains
       integer, intent(in) :: iceflag         ! see definitions
       integer, intent(in) :: liqflag         ! see definitions
 
-      real, intent(in) :: cldfmc (nlayers,ngptsw,pncol)  ! cloud fraction [mcica]
-      real, intent(in) :: ciwpmc (nlayers,ngptsw,pncol)  ! cloud ice water path [mcica]
-      real, intent(in) :: clwpmc (nlayers,ngptsw,pncol)  ! cloud liq water path [mcica]
-      real, intent(in) :: relqmc (nlayers,pncol)         ! cloud liq particle effective radius (um)
-      real, intent(in) :: reicmc (nlayers,pncol)         ! cloud ice particle effective radius (um)
-                                                         ! specific defn of reicmc depends on iceflag:
-                                                         ! iceflag = 1: ice effective radius, r_ec,
-                                                         !   (Ebert and Curry, 1992), r_ec range is
-                                                         !   limited to 13. to 130. um;
-                                                         ! iceflag = 2: ice effective radius, r_k,
-                                                         !   (Key, Streamer Ref. Manual, 1996)
-                                                         !   r_k range is limited to 5. to 131. um;
-                                                         ! iceflag = 3: generalized effective size,
-                                                         !   dge, (Fu, 1996), dge range is limited
-                                                         !   to 5. to 140. um [dge = 1.0315 * r_ec].
+      logical, intent(in) :: cldymc (nlayers,ngptsw,pncol)  ! cloudy or not? [mcica]
+      real,    intent(in) :: ciwpmc (nlayers,ngptsw,pncol)  ! cloud ice water path [mcica]
+      real,    intent(in) :: clwpmc (nlayers,ngptsw,pncol)  ! cloud liq water path [mcica]
+      real,    intent(in) :: relqmc (nlayers,pncol)         ! cloud liq ptle eff radius (um)
+      real,    intent(in) :: reicmc (nlayers,pncol)         ! cloud ice ptle eff radius (um)
+
+      ! Specific definition of reicmc depends on iceflag:
+      ! iceflag = 1: ice effective radius, r_ec, (Ebert and Curry, 1992),
+      !                 r_ec range is limited to 13. to 130. um;
+      ! iceflag = 2: ice effective radius, r_k, (Key, Streamer Ref. Manual, 1996),
+      !                 r_k range is limited to 5. to 131. um;
+      ! iceflag = 3: generalized effective size, dge, (Fu, 1996), 
+      !                 dge range is limited to 5. to 140. um [dge = 1.0315 * r_ec].
 
       ! ------- Output -------
 
@@ -103,9 +101,10 @@ contains
       ! --------------------------------
 
       do icol = 1, ncol
-         cloudy(:,:,icol) = cldfmc(:,:,icol) >= cldmin .and. &
+         cloudy(:,:,icol) = cldymc(:,:,icol) .and. &
             (ciwpmc(:,:,icol) + clwpmc(:,:,icol)) >= cldmin
       end do
+!?pmn: perhaps update cldymc here and make intent(inout)
 
       ! ---------------------------------------------------------
       ! Calculation of absorption coefficients due to ice clouds.

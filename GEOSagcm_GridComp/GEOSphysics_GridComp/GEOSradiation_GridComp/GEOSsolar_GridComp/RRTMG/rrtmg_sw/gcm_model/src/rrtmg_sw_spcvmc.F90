@@ -1,3 +1,4 @@
+!pmn? fix for binary cldymc
 module rrtmg_sw_spcvmc
 
 !  --------------------------------------------------------------------------
@@ -25,7 +26,7 @@ contains
    subroutine spcvmc_sw ( &
       cc, pncol, ncol, nlay, istart, iend, &
       palbd, palbp, &
-      pcldfmc, ptaucmc, pasycmc, pomgcmc, ptaormc, &
+      pcldymc, ptaucmc, pasycmc, pomgcmc, ptaormc, &
       ptaua, pasya, pomga, prmu0, adjflux, &
       isolvar, svar_f, svar_s, svar_i, &
       svar_f_bnd, svar_s_bnd, svar_i_bnd, &
@@ -95,11 +96,11 @@ contains
       real, intent(in) :: palbp (nbndsw,pncol)        ! surface albedo (direct)
       real, intent(in) :: prmu0        (pncol)        ! cosine of solar zenith angle
 
-      real, intent(in) :: pcldfmc (nlay,ngptsw,pncol)  ! cloud fraction [mcica]
-      real, intent(in) :: ptaucmc (nlay,ngptsw,pncol)  ! cloud optical depth [mcica]
-      real, intent(in) :: pasycmc (nlay,ngptsw,pncol)  ! cloud asymmetry parameter [mcica]
-      real, intent(in) :: pomgcmc (nlay,ngptsw,pncol)  ! cloud single scattering albedo [mcica]
-      real, intent(in) :: ptaormc (nlay,ngptsw,pncol)  ! cloud optical depth, non-delta scaled [mcica]
+      logical, intent(in) :: pcldymc (nlay,ngptsw,pncol)  ! cloudy or not? [mcica]
+      real,    intent(in) :: ptaucmc (nlay,ngptsw,pncol)  ! cloud optical depth [mcica]
+      real,    intent(in) :: pasycmc (nlay,ngptsw,pncol)  ! cloud asymmetry parameter [mcica]
+      real,    intent(in) :: pomgcmc (nlay,ngptsw,pncol)  ! cloud single scattering albedo [mcica]
+      real,    intent(in) :: ptaormc (nlay,ngptsw,pncol)  ! cloud optical depth, non-delta scaled [mcica]
    
       real, intent(in) :: ptaua (nlay,nbndsw,pncol)  ! aerosol optical depth
       real, intent(in) :: pasya (nlay,nbndsw,pncol)  ! aerosol asymmetry parameter
@@ -257,7 +258,7 @@ contains
                zomco(jk,iw,icol) = zomco(jk,iw,icol) / ztauo(jk,iw,icol)
                
                ! Delta-scaling with f = g**2
-               zf = zgco(jk,iw,icol); zf = zf * zf
+               zf = zgco(jk,iw,icol) ** 2 !; zf = zf * zf
                zwf = zomco(jk,iw,icol) * zf
                ztauo(jk,iw,icol) = (1. - zwf) * ztauo(jk,iw,icol)
                zomco(jk,iw,icol) = (zomco(jk,iw,icol) - zwf) / (1. - zwf)
@@ -269,15 +270,14 @@ contains
 
       ! Clear-sky reflectivities / transmissivities
       call reftra_sw (pncol, ncol, nlay, &
-                      pcldfmc, zgco, prmu0, ztauo, zomco, &
+                      pcldymc, zgco, prmu0, ztauo, zomco, &
                       zrefo, zrefdo, ztrao, ztrado, 1)
 
-      ! Direct beam transmittance        
+      ! Clear-sky direct beam transmittance        
       do icol = 1,ncol
          do iw = 1,ngptsw
             do jk = 1,nlay
-               zdbtmc = exp(-ztauo(jk,iw,icol) / prmu0(icol))
-               zdbt(jk,iw,icol) = zdbtmc
+               zdbt(jk,iw,icol) = exp(-ztauo(jk,iw,icol) / prmu0(icol))
                ztdbt(jk+1,iw,icol) = zdbt(jk,iw,icol) * ztdbt(jk,iw,icol)  
             enddo          
          end do
@@ -345,7 +345,7 @@ contains
                   ssa = ssa / (ztaur(ikl,iw,icol) + ztaug(ikl,iw,icol) + ptaua(ikl,ibm,icol))
                
                   ! Delta-scaling with f = g**2
-                  zf = asy * asy
+                  zf = asy ** 2 ! * asy
                   zwf = ssa * zf
                   ssa = (ssa - zwf) / (1. - zwf)
                   asy = (asy - zf ) / (1. - zf )
@@ -366,7 +366,7 @@ contains
          ! Clear + Cloud reflectivities / transmissivities.
          ! These apply to cloudy grid cells.
          call reftra_sw (pncol, ncol, nlay, &
-                         pcldfmc, zgco, prmu0, ztauo, zomco, &
+                         pcldymc, zgco, prmu0, ztauo, zomco, &
                          zref, zrefd, ztra, ztrad, 0)
 
          ! Combine clear and cloudy contributions for total sky
@@ -375,9 +375,17 @@ contains
                do jk = 1,nlay
                   ikl = nlay+1-jk 
 
-!? pmn simplify is binary!
-                  zclear = 1. - pcldfmc(ikl,iw,icol) 
-                  zcloud =      pcldfmc(ikl,iw,icol) 
+!? pmn simplify is binary! 
+!how to do?
+!cldymc is layer which cc is column as a whole
+
+!                 zclear = 1. - pcldfmc(ikl,iw,icol) 
+!                 zcloud =      pcldfmc(ikl,iw,icol) 
+                  if (pcldymc(ikl,iw,icol)) then
+                     zclear = 0.; zcloud = 1.
+                  else
+                     zclear = 1.; zcloud = 0.
+                  end if
 
                   zref (jk,iw,icol) = zclear * zrefo (jk,iw,icol) + zcloud * zref (jk,iw,icol)  
                   zrefd(jk,iw,icol) = zclear * zrefdo(jk,iw,icol) + zcloud * zrefd(jk,iw,icol)  
@@ -495,12 +503,11 @@ contains
 
    end subroutine spcvmc_sw
 !?pmn: TODO outer ncol loop?
-!?pmn: TODO cldymc
 !?pmn: TODO improve routines below
 
    ! --------------------------------------------------------------------
    subroutine reftra_sw(pncol, ncol, nlay, &
-                        pcldfmc, pgg, prmuzl, ptau, pw, &
+                        pcldymc, pgg, prmuzl, ptau, pw, &
                         pref, prefd, ptra, ptrad, ac)
    ! --------------------------------------------------------------------
    ! Purpose: computes the reflectivity and transmissivity of a clear or 
@@ -547,18 +554,17 @@ contains
 
       ! ------- Input -------
 
-      integer, intent (in) :: pncol                   ! dimensioned num of gridcols
-      integer, intent (in) :: ncol                    ! actual number of gridcols
-      integer, intent (in) :: nlay
+      integer, intent (in) :: pncol  ! dimensioned num of gridcols
+      integer, intent (in) :: ncol   ! actual number of gridcols
+      integer, intent (in) :: nlay   ! number of model layers
 
 
-      real, intent(in) :: pcldfmc (nlay,ngptsw,pncol)   ! cloud fraction
-!?pmn redo this with logical mcica flag
+      logical, intent(in) :: pcldymc (nlay,ngptsw,pncol)  ! cloudy or not?
 
-      real, intent(in) :: pgg     (nlay,ngptsw,pncol)   ! asymmetry parameter
-      real, intent(in) :: ptau    (nlay,ngptsw,pncol)   ! optical depth
-      real, intent(in) :: pw      (nlay,ngptsw,pncol)   ! single scattering albedo 
-      real, intent(in) :: prmuzl              (pncol)   ! cosine of solar zenith angle
+      real,    intent(in) :: pgg     (nlay,ngptsw,pncol)  ! asymmetry parameter
+      real,    intent(in) :: ptau    (nlay,ngptsw,pncol)  ! optical depth
+      real,    intent(in) :: pw      (nlay,ngptsw,pncol)  ! single scattering albedo 
+      real,    intent(in) :: prmuzl              (pncol)  ! cosine of solar zenith angle
 
       integer, intent(in) :: ac
 
@@ -603,7 +609,7 @@ contains
             do jk = 1,nlay
 
                prmuz = prmuzl(icol)
-               if (.not.(pcldfmc(nlay+1-jk,iw,icol) > 1.e-12) .and. ac==0) then
+               if (.not. pcldymc(nlay+1-jk,iw,icol) .and. ac == 0) then
 
                   pref (jk,iw,icol) = 0. 
                   ptra (jk,iw,icol) = 1. 
