@@ -115,7 +115,7 @@ module GEOS_MoistGridCompMod
 !  use m_zeit
 
  ! External lightning module
- USE Lightning_mod, ONLY : hemcoFlashrate
+ USE Lightning_mod, only: HEMCO_FlashRate
 
   implicit none
 
@@ -667,17 +667,6 @@ contains
          UNITS      = '1',                                     &
          DIMS       = MAPL_DimsHorzOnly,                           &
          VLOCATION  = MAPL_VLocationNone,                        &
-         AVERAGING_INTERVAL = AVRGNINT,                            &
-         REFRESH_INTERVAL   = RFRSHINT,                            &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddImportSpec(GC,                             &
-         SHORT_NAME = 'FROCEAN',                                   &
-         LONG_NAME  = 'areal_ocean_fraction',                      &
-         UNITS      = '1',                                         &
-         DIMS       = MAPL_DimsHorzOnly,                           &
-         VLOCATION  = MAPL_VLocationNone,                          &
          AVERAGING_INTERVAL = AVRGNINT,                            &
          REFRESH_INTERVAL   = RFRSHINT,                            &
          RC=STATUS  )
@@ -3648,61 +3637,6 @@ contains
          RC=STATUS  )
     VERIFY_(STATUS)
 
-
-    call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME='LFR',                                            &
-         LONG_NAME ='lightning_flash_rate',                           &
-         UNITS     ='km-2 s-1',                                       &
-         DIMS      = MAPL_DimsHorzOnly,                               &
-         VLOCATION = MAPL_VLocationNone,                              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME='A1X1',                                           &
-         LONG_NAME ='LFR_Term_number_1',                              &
-         UNITS     ='km-2 s-1',                                       &
-         DIMS      = MAPL_DimsHorzOnly,                               &
-         VLOCATION = MAPL_VLocationNone,                              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME='A2X2',                                           &
-         LONG_NAME ='LFR_Term_number_2',                              &
-         UNITS     ='km-2 s-1',                                       &
-         DIMS      = MAPL_DimsHorzOnly,                               &
-         VLOCATION = MAPL_VLocationNone,                              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME='A3X3',                                           &
-         LONG_NAME ='LFR_Term_number_3',                              &
-         UNITS     ='km-2 s-1',                                       &
-         DIMS      = MAPL_DimsHorzOnly,                               &
-         VLOCATION = MAPL_VLocationNone,                              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME='A4X4',                                           &
-         LONG_NAME ='LFR_Term_number_4',                              &
-         UNITS     ='km-2 s-1',                                       &
-         DIMS      = MAPL_DimsHorzOnly,                               &
-         VLOCATION = MAPL_VLocationNone,                              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                                       &
-         SHORT_NAME='A5X5',                                           &
-         LONG_NAME ='LFR_Term_number_5',                              &
-         UNITS     ='km-2 s-1',                                       &
-         DIMS      = MAPL_DimsHorzOnly,                               &
-         VLOCATION = MAPL_VLocationNone,                              &
-         RC=STATUS  )
-    VERIFY_(STATUS)
-
     call MAPL_AddExportSpec(GC,                                       &
          SHORT_NAME='LFR_GCC',                                        &
          LONG_NAME ='lightning_flash_rate_for_GEOSCHEMchem',          &
@@ -5270,7 +5204,7 @@ contains
       integer                         :: YEAR, MONTH, DAY, HR, SE, MN
       type (ESMF_Time)                :: CurrentTime
       real, pointer, dimension(:,:  ) :: LS_ARF, CN_ARF, AN_ARF, SC_ARF
-      real, pointer, dimension(:,:  ) :: PTYPE,FRZR,ICE,SNR,PRECU,PRELS,TS,SNOMAS,FRLANDICE,FRLAND,FROCEAN
+      real, pointer, dimension(:,:  ) :: PTYPE,FRZR,ICE,SNR,PRECU,PRELS,TS,SNOMAS,FRLANDICE,FRLAND
       real, pointer, dimension(:,:  ) :: IWP,LWP,CWP,TPW,CAPE,ZPBLCN,INHB,ZLCL,ZLFC,ZCBL,CCWP , KPBLIN, KPBLSC
       real, pointer, dimension(:,:  ) :: TVQ0,TVQ1,TVE0,TVE1,TVEX,DCPTE, TVQX2, TVQX1, CCNCOLUMN, NDCOLUMN, NCCOLUMN  !DONIF
       real, pointer, dimension(:,:,:,:) :: XHO
@@ -5351,7 +5285,6 @@ contains
       real, pointer, dimension(:,:,:) :: VFALLRN_AN,VFALLRN_LS,VFALLRN_CN,VFALLRN_SC
       real, pointer, dimension(:,:,:) :: FRZ_TT, DCNVL, DCNVi,QSATi,QSATl,RCCODE,TRIEDLV,QVRAS
 
-      real, pointer, dimension(:,:  ) :: LFR,A1X1,A2X2,A3X3,A4X4,A5X5
       real, pointer, dimension(:,:  ) :: LFR_GCC
 
       !Whether to guard against negatives
@@ -6306,7 +6239,6 @@ contains
       call MAPL_GetPointer(IMPORT, FRLANDICE,  'FRLANDICE'  , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , RC=STATUS); VERIFY_(STATUS)
       ! frland =0.0
-      call MAPL_GetPointer(IMPORT, FROCEAN, 'FROCEAN' , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TS,      'TS'      , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, TROPP,   'TROPP'   , RC=STATUS); VERIFY_(STATUS)
       call MAPL_GetPointer(IMPORT, KPBLIN,  'KPBL'    , RC=STATUS); VERIFY_(STATUS)
@@ -7406,7 +7338,7 @@ contains
       if(associated(CNV_DQLDT)) CNV_DQLDT =  0.0
       ZLE(:,:,LM) = 0.
       do L=LM,1,-1
-         ZLE(:,:,L-1) = TH (:,:,L) * (1.+MAPL_VIREPS*Q(:,:,L))
+         ZLE(:,:,L-1) = TH (:,:,L) * (1.+MAPL_VIREPS*Q(:,:,L))    ! This term is really THV
          ZLO(:,:,L  ) = ZLE(:,:,L) + (MAPL_CP/MAPL_GRAV)*( PKE(:,:,L)-PK (:,:,L  ) ) * ZLE(:,:,L-1)
          ZLE(:,:,L-1) = ZLO(:,:,L) + (MAPL_CP/MAPL_GRAV)*( PK (:,:,L)-PKE(:,:,L-1) ) * ZLE(:,:,L-1)
          DZET(:,:,L ) = ZLE(:,:,L-1) - ZLE(:,:,L)
@@ -12555,46 +12487,6 @@ do K= 1, LM
       !!   if(associated(SMOIST)) SMOIST = mapl_cp*th1*pk + (0.5*( geopenew(:,:,0:lm-1)+geopenew(:,:,1:lm) ))
       if(associated(SMOIST)) SMOIST = mapl_cp*th1*pk + gzlo
 
-      ! Parameterized lightning flash rates [km^{-2} s^{-1}]
-      !-----------------------------------------------------
-      CALL MAPL_GetPointer(EXPORT,  LFR,  'LFR', RC=STATUS)
-      VERIFY_(STATUS)
-      if (associated( LFR)) then
-       call MAPL_TimerOn (STATE,"--FLASH",RC=STATUS)
-       VERIFY_(STATUS)
-       CALL MAPL_GetPointer(EXPORT, A1X1, 'A1X1', ALLOC=.TRUE., RC=STATUS)
-       VERIFY_(STATUS)
-       CALL MAPL_GetPointer(EXPORT, A2X2, 'A2X2', ALLOC=.TRUE., RC=STATUS)
-       VERIFY_(STATUS)
-       CALL MAPL_GetPointer(EXPORT, A3X3, 'A3X3', ALLOC=.TRUE., RC=STATUS)
-       VERIFY_(STATUS)
-       CALL MAPL_GetPointer(EXPORT, A4X4, 'A4X4', ALLOC=.TRUE., RC=STATUS)
-       VERIFY_(STATUS)
-       CALL MAPL_GetPointer(EXPORT, A5X5, 'A5X5', ALLOC=.TRUE., RC=STATUS)
-       VERIFY_(STATUS)
-       CALL flash_rate(STATE,    &
-            IM*JM,    &
-            LM,       &
-            TS,       &
-            CNV_TOPP, &
-            FROCEAN,  &
-            CN_PRCP,  &
-            CAPE,     &
-            CNV_MFC,  &
-            TH,       &
-            PLE,      &
-            ZLE,      &
-            LFR,      &
-            A1X1,     &
-            A2X2,     &
-            A3X3,     &
-            A4X4,     &
-            A5X5,     &
-            RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_TimerOff(STATE,"--FLASH",RC=STATUS)
-       VERIFY_(STATUS)
-      end if
 
       ! Calculate flash rate following Murray et al. (2012), as used by GEOS-Chem 
       !-------------------------------------------------------------------------------------
@@ -13263,360 +13155,6 @@ do K= 1, LM
   end function FINDLCL
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-  SUBROUTINE flash_rate( STATE, nc, lm, TS, CCTP, FROCEAN, CN_PRCP, &
-       CAPE, CNV_MFC, TH, PLE, ZLE, strokeRate, &
-       A1X1, A2X2, A3X3, A4X4, A5X5, RC)
-
-    !=====================================================================================
-    !BOP
-    ! !DESCRIPTION:
-    !  Generate lightning flash rates [km$^{-2}$ s$^{-1}$] using a six-variable polynomial fit.\\
-    !
-    !
-    !  ORIGIN AND CONTACT\\
-    !  Dr. Dale Allen, Associate Research Scientist\\
-    !  Dept. of Atmospheric and Oceanic Science\\
-    !  University of Maryland\\
-    !  College Park, MD 20742\\
-    !  301-405-7629 (ph); 301-314-9482 (fax)\\
-    !  http://www.meto.umd.edu/~allen\\
-    !  
-    !
-    !  FORMULATION NOTES\\
-    !  Predictor variables are set to zero where CN\_PRCP is zero or where the 
-    !   optical depth cloud top height is less than 5.5 km.
-    !  The fit returns flash rates in units km$^{-2}$ day$^{-1}$.  Convert to 
-    !   km$^{-2}$ s$^{-1}$ for the export state.\\
-    !
-    !
-    !  OTHER NOTES OF INTEREST\\
-    !  MOIST sets CNV\_TOPP to zero if there is an absence of convection.
-    !EOP
-    ! !REVISION HISTORY
-    ! 30 Nov 2011 Nielsen     First crack
-    ! 29 Feb 2012 Nielsen     Accomodate CNV\_TOPP MAPL\_UNDEF for and after Fortuna-2\_5\_p4
-    !=====================================================================================
-
-    TYPE(MAPL_MetaComp), POINTER :: STATE ! Internal MAPL_Generic state
-
-    INTEGER, INTENT(IN) :: nc     ! Number of cells
-    INTEGER, INTENT(IN) :: lm     ! Number of layers
-
-    REAL, INTENT(IN), DIMENSION(nc) :: TS       ! Surface temperature [K]
-    REAL, INTENT(IN), DIMENSION(nc) :: CCTP     ! Convective cloud top pressure [Pa] with MAPL_UNDEFs
-    REAL, INTENT(IN), DIMENSION(nc) :: FROCEAN  ! Areal ocean fraction
-    REAL, INTENT(IN), DIMENSION(nc) :: CN_PRCP  ! Convective precipitation [kg m^{-2} s^{-1}]
-    REAL, INTENT(IN), DIMENSION(nc) :: CAPE     ! Convective available potential energy [J m^{-2}]
-
-    REAL, INTENT(IN), DIMENSION(nc,lm) :: TH        ! Potential temperature [K]
-    REAL, INTENT(IN), DIMENSION(nc,0:lm) :: CNV_MFC ! Convective mass flux [kg m^{-2} s^{-1}]
-    REAL, INTENT(IN), DIMENSION(nc,0:lm) :: PLE     ! Layer interface pressures  [Pa]
-    REAL, INTENT(IN), DIMENSION(nc,0:lm) :: ZLE     ! Layer depths [m]
-
-    REAL, INTENT(OUT), DIMENSION(nc) :: strokeRate  ! Flashes per second
-    REAL, INTENT(OUT), DIMENSION(nc) :: A1X1
-    REAL, INTENT(OUT), DIMENSION(nc) :: A2X2
-    REAL, INTENT(OUT), DIMENSION(nc) :: A3X3
-    REAL, INTENT(OUT), DIMENSION(nc) :: A4X4
-    REAL, INTENT(OUT), DIMENSION(nc) :: A5X5
-
-    ! Error log variables
-    ! -------------------
-    INTEGER :: STATUS
-    INTEGER, OPTIONAL, INTENT(OUT) :: RC
-    CHARACTER(LEN=ESMF_MAXSTR) :: IAm
-
-    ! Local variables
-    ! ---------------
-    INTEGER :: i            ! General-purpose integers
-    INTEGER :: k
-    INTEGER :: n
-
-    REAL :: a0c,a0m         ! Coefficients at continental and marine locations
-    REAL :: a1c,a1m
-    REAL :: a2c,a2m
-    REAL :: a3c,a3m
-    REAL :: a4c,a4m
-    REAL :: a5c,a5m
-
-    REAL :: x1Divisor       ! Divisors for x1-x5.
-    REAL :: x2Divisor
-    REAL :: x3Divisor
-    REAL :: x4Divisor
-    REAL :: x5Divisor
-
-    REAL :: x5Power         ! Exponent for the surface temperature deviation predictor
-
-    REAL :: sfcTLimit       ! Temperature thresholds
-    REAL :: airTLimit
-
-    REAL :: hPaCldTop       ! Cloud top limiter for weak/no convection
-
-    REAL, ALLOCATABLE, DIMENSION(:) :: x1         ! Five independent variables
-    REAL, ALLOCATABLE, DIMENSION(:) :: x2
-    REAL, ALLOCATABLE, DIMENSION(:) :: x3
-    REAL, ALLOCATABLE, DIMENSION(:) :: x4
-    REAL, ALLOCATABLE, DIMENSION(:) :: x5
-
-    REAL, ALLOCATABLE, DIMENSION(:) :: cloudTopAG ! Cloud top height above ground
-    REAL, ALLOCATABLE, DIMENSION(:) :: cnv_topp   ! Convective cloud top pressure with MAPL_UNDEFs
-    ! changed to zero
-
-    REAL, ALLOCATABLE, DIMENSION(:,:) :: dZ       ! Layer depths [m]
-    REAL, ALLOCATABLE, DIMENSION(:,:) :: p        ! Pressure at middle of layer [Pa]
-    REAL, ALLOCATABLE, DIMENSION(:,:) :: T        ! Air temperature at middle of layer [K]
-
-    INTEGER, ALLOCATABLE, DIMENSION(:)   :: weakCnvMask   ! Weak or no convection mask
-    INTEGER, ALLOCATABLE, DIMENSION(:,:) :: mask          ! Working mask
-    INTEGER, ALLOCATABLE, DIMENSION(:,:) :: cloudTopMask  ! Mask is 1 below cloud top
-
-    ! Preliminaries
-    ! -------------
-    RC = 0
-    strokeRate = 0
-    Iam = "flash_rate"
-
-    ! Coefficients of the predictors, marine locations
-    ! ------------------------------------------------
-    CALL MAPL_GetResource(STATE,a0m,'MARINE_A0:',DEFAULT= 0.0139868,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,a1m,'MARINE_A1:',DEFAULT= 0.0358764,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,a2m,'MARINE_A2:',DEFAULT=-0.0610214,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,a3m,'MARINE_A3:',DEFAULT=-0.0102320,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,a4m,'MARINE_A4:',DEFAULT= 0.0031352,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,a5m,'MARINE_A5:',DEFAULT= 0.0346241,RC=STATUS)
-    VERIFY_(STATUS)
-
-    ! Coefficients of the predictors, continental locations
-    ! -----------------------------------------------------
-    CALL MAPL_GetResource(STATE,a0c,'CONTINENT_A0:',DEFAULT=-0.0183172,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,a1c,'CONTINENT_A1:',DEFAULT=-0.0562338,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,a2c,'CONTINENT_A2:',DEFAULT= 0.1862740,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,a3c,'CONTINENT_A3:',DEFAULT=-0.0023363,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,a4c,'CONTINENT_A4:',DEFAULT=-0.0013838,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,a5c,'CONTINENT_A5:',DEFAULT= 0.0114759,RC=STATUS)
-    VERIFY_(STATUS)
-
-    ! Divisors for nondimensionalization of the predictors
-    ! ----------------------------------------------------
-    CALL MAPL_GetResource(STATE,x1Divisor,'X1_DIVISOR:',DEFAULT=4.36,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,x2Divisor,'X2_DIVISOR:',DEFAULT=9.27,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,x3Divisor,'X3_DIVISOR:',DEFAULT=34.4,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,x4Divisor,'X4_DIVISOR:',DEFAULT=21.4,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,x5Divisor,'X5_DIVISOR:',DEFAULT=14600.,RC=STATUS)
-    VERIFY_(STATUS)
-
-    ! Exponent for the surface temperature deviation predictor
-    ! --------------------------------------------------------
-    CALL MAPL_GetResource(STATE,x5Power,'X5_EXPONENT:',DEFAULT=3.00,RC=STATUS)
-    VERIFY_(STATUS)
-
-    ! Threshold temperatures
-    ! ----------------------
-    CALL MAPL_GetResource(STATE,sfcTLimit,'SFC_T_LIMIT:',DEFAULT=273.0,RC=STATUS)
-    VERIFY_(STATUS)
-    CALL MAPL_GetResource(STATE,airTLimit,'AIR_T_LIMIT:',DEFAULT=263.0,RC=STATUS)
-    VERIFY_(STATUS)
-
-    ! Cloud-top pressure limiter
-    ! --------------------------
-    CALL MAPL_GetResource(STATE,hPaCldTop,'CLOUD_TOP_LIMIT:',DEFAULT=500.,RC=STATUS)
-    VERIFY_(STATUS)
-
-    ! Layer depths [m]
-    ! ----------------
-    ALLOCATE(dZ(nc,lm),STAT=STATUS)
-    VERIFY_(STATUS)
-    dZ = zle(:,0:lm-1)-zle(:,1:lm)
-
-    ! Pressure at mid-layer [Pa]
-    ! --------------------------
-    ALLOCATE(p(nc,lm),STAT=STATUS)
-    VERIFY_(STATUS)
-    p = (ple(:,1:lm)+ple(:,0:lm-1))*0.50
-
-    ! Temperature at mid-layer [K]
-    ! ----------------------------
-    ALLOCATE(T(nc,lm),STAT=STATUS)
-    VERIFY_(STATUS)
-    T = TH*((p*1.00E-05)**(MAPL_RGAS/MAPL_CP))
-
-    ! Reset CNV_TOPPs MAPL_UNDEFs to zeroes
-    ! --------------------------------------
-    ALLOCATE(cnv_topp(nc),STAT=STATUS)
-    WHERE(CCTP == MAPL_UNDEF)
-       cnv_topp = 0.00
-    ELSEWHERE
-       cnv_topp = CCTP
-    END WHERE
-
-    ! Set weak/no convection mask
-    ! ---------------------------
-    ALLOCATE(weakCnvMask(nc),STAT=STATUS)
-    VERIFY_(STATUS)
-    weakCnvMask = 0
-    WHERE(cn_prcp == 0.00 .OR. cnv_topp >= hPaCldTop*100.00 .OR. cape >= MAPL_UNDEF) weakCnvMask = 1
-
-    ! Convective cloud top mask
-    ! -------------------------
-    ALLOCATE(cloudTopMask(nc,lm),STAT=STATUS)
-    VERIFY_(STATUS)
-    cloudTopMask = 0
-    DO k = 1,lm
-       WHERE(ple(1:nc,k) > cnv_topp(1:nc) .AND. cnv_topp(1:nc) > 0.00) cloudTopMask(1:nc,k) = 1
-    END DO
-
-    ! Cloud top distance above ground [m]
-    ! -----------------------------------
-    ALLOCATE(cloudTopAG(nc),STAT=STATUS)
-    VERIFY_(STATUS)
-    cloudTopAG = 0.00
-    DO i = 1,nc
-       n = SUM(cloudTopMask(i,1:lm))
-       IF(n > 0) cloudTopAG(i) = SUM(dZ(i,lm-n+1:lm))
-    END DO
-
-    ! X1: Cold cloud depth: Vertical extent [km] where T < airTLimit and p > cnv_topp
-    ! -------------------------------------------------------------------------------
-    ALLOCATE(x1(nc),STAT=STATUS)
-    VERIFY_(STATUS)
-    ALLOCATE(mask(nc,lm),STAT=STATUS)
-    VERIFY_(STATUS)
-
-    mask = 0
-    WHERE(T < airTLimit .AND. cloudTopMask == 1) mask = 1
-
-    x1 = 0.00
-    DO i = 1,nc
-       DO k = 1,lm
-          IF(mask(i,k) == 1) x1(i) = x1(i)+dZ(i,k)*0.001
-       END DO
-    END DO
-    WHERE(weakCnvMask == 1) x1 = 0.00
-    x1 = x1/x1Divisor
-
-    ! X4: Integrated convective mass flux
-    ! -----------------------------------
-    ALLOCATE(x4(nc),STAT=STATUS)
-    VERIFY_(STATUS)
-    x4 = 0.00
-    DO i = 1,nc
-       DO k = 1,lm
-          IF(mask(i,k) == 1) x4(i) = x4(i)+cnv_mfc(i,k)*dZ(i,k)
-       END DO
-    END DO
-    WHERE(weakCnvMask == 1) x4 = 0.00
-    x4 = x4/x4Divisor
-
-    ! X5: Surface temperature deviation from sfcTLimit, positive only.
-    ! Note: UNDEF TS test retains the ability to boot-strap moist_import_rst.
-    ! -----------------------------------------------------------------------
-    ALLOCATE(x5(nc),STAT=STATUS)
-    VERIFY_(STATUS)
-    WHERE(TS == MAPL_UNDEF)
-       x5 = 0.00
-    ELSEWHERE
-       x5 = TS-sfcTLimit
-    END WHERE
-    WHERE(weakCnvMask == 1) x5 = 0.00
-    WHERE(x5 < 0.00) x5 = 0.00
-    x5 = x5**x5Power/x5Divisor
-
-    ! X2: Total cloud depth [km]
-    ! --------------------------
-    ALLOCATE(x2(nc),STAT=STATUS)
-    VERIFY_(STATUS)
-    x2 = cloudTopAG*0.001
-    WHERE(weakCnvMask == 1) x2 = 0.00
-    x2 = x2/x2Divisor
-
-    ! X3: CAPE
-    ! --------
-    ALLOCATE(x3(nc),STAT=STATUS)
-    VERIFY_(STATUS)
-    x3 = cape
-    WHERE(weakCnvMask == 1) x3 = 0.00
-    x3 = x3/x3Divisor
-
-    ! Polynomial fit [units: km^{-2} s^{-1}] and individual
-    ! terms including marine and continental discrimination
-    ! -----------------------------------------------------
-    WHERE(frOcean >= 0.01)
-       strokeRate = (a0m + a1m*x1 + a2m*x2 + a3m*x3 + a4m*x4 + a5m*x5)/86400.00
-       A1X1 = a1m*x1/86400.00
-       A2X2 = a2m*x2/86400.00
-       A3X3 = a3m*x3/86400.00
-       A4X4 = a4m*x4/86400.00
-       A5X5 = a5m*x5/86400.00
-    ELSEWHERE
-       strokeRate = (a0c + a1c*x1 + a2c*x2 + a3c*x3 + a4c*x4 + a5c*x5)/86400.00
-       A1X1 = a1c*x1/86400.00
-       A2X2 = a2c*x2/86400.00
-       A3X3 = a3c*x3/86400.00
-       A4X4 = a4c*x4/86400.00
-       A5X5 = a5c*x5/86400.00
-    END WHERE
-
-    ! Eliminate negatives
-    ! -------------------
-    WHERE(strokeRate < 0.00) strokeRate = 0.00
-
-    ! Set rate to zero where any of x1 through x5 are zero
-    ! ----------------------------------------------------
-    WHERE(x1 == 0.00) strokeRate = 0.00
-    WHERE(x2 == 0.00) strokeRate = 0.00
-    WHERE(x3 == 0.00) strokeRate = 0.00
-    WHERE(x4 == 0.00) strokeRate = 0.00
-    WHERE(x5 == 0.00) strokeRate = 0.00
-
-    ! Clean up
-    ! --------
-    DEALLOCATE(x1,STAT=STATUS)
-    VERIFY_(STATUS)
-    DEALLOCATE(x2,STAT=STATUS)
-    VERIFY_(STATUS)
-    DEALLOCATE(x3,STAT=STATUS)
-    VERIFY_(STATUS)
-    DEALLOCATE(x4,STAT=STATUS)
-    VERIFY_(STATUS)
-    DEALLOCATE(x5,STAT=STATUS)
-    VERIFY_(STATUS)
-    DEALLOCATE(cnv_topp,STAT=STATUS)
-    VERIFY_(STATUS)
-    DEALLOCATE(dZ,STAT=STATUS)
-    VERIFY_(STATUS)
-    DEALLOCATE(p,STAT=STATUS)
-    VERIFY_(STATUS)
-    DEALLOCATE(T,STAT=STATUS)
-    VERIFY_(STATUS)
-    DEALLOCATE(cloudTopAG,STAT=STATUS)
-    VERIFY_(STATUS)
-    DEALLOCATE(mask,STAT=STATUS)
-    VERIFY_(STATUS)
-    DEALLOCATE(cloudTopMask,STAT=STATUS)
-    VERIFY_(STATUS)
-    DEALLOCATE(weakCnvMask,STAT=STATUS)
-    VERIFY_(STATUS)
-
-  END SUBROUTINE flash_rate
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
   SUBROUTINE Get_hemcoFlashrate ( STATE, IMPORT, IM, JM, LM, T, PLE, ZLE, CNV_MFC, &
                                   AREA,  TS, LFR, RC )
 
@@ -13651,7 +13189,6 @@ do K= 1, LM
     REAL, ALLOCATABLE                :: LWI(:,:)
     real, pointer, dimension(:,:)    :: LONS_RAD
     real, pointer, dimension(:,:)    :: LATS_RAD
-    real, pointer, dimension(:,:)    :: FROCEAN 
     real, pointer, dimension(:,:)    :: FRLAND 
     real, pointer, dimension(:,:)    :: FRACI
     REAL, SAVE                       :: OTDLISSCAL = -1.0
@@ -13661,7 +13198,6 @@ do K= 1, LM
     LFR = 0.0
 
 !---Calculate LWI, make water default value 
-    CALL MAPL_GetPointer(IMPORT, FROCEAN, 'FROCEAN' , __RC__ ) 
     CALL MAPL_GetPointer(IMPORT, FRLAND,  'FRLAND'  , __RC__ ) 
     CALL MAPL_GetPointer(IMPORT, FRACI,   'FRACI'   , __RC__ ) 
     ALLOCATE(LWI(IM,JM),STAT=RC)
@@ -13712,7 +13248,7 @@ do K= 1, LM
     ENDIF
 
 !---Get flashrate
-    CALL hemcoFlashrate (cellArea=AREA,          &
+    CALL HEMCO_FlashRate(cellArea=AREA,          &
                          lwi=LWI,                &
                          lonslocal=LONS,         &
                          latslocal=LATS,         &
