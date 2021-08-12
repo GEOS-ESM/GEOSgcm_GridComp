@@ -7718,6 +7718,7 @@ contains
          CNV_FRACTION = 0.0 
          
     ! CNV_FRACTION Criteria
+      if(JASON_TUNING == 1) then
         call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=  500.0, RC=STATUS)
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 1500.0, RC=STATUS)
@@ -7729,14 +7730,32 @@ contains
         VERIFY_(STATUS)
         call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 0, RC=STATUS)
         VERIFY_(STATUS)
+      else
+        call MAPL_GetResource(STATE,CNV_FRACTION_MIN, 'CNV_FRACTION_MIN:', DEFAULT=    0.00, RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetResource(STATE,CNV_FRACTION_MAX, 'CNV_FRACTION_MAX:', DEFAULT= 2000.00, RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetResource(STATE,CNV_FRACTION_EXP, 'CNV_FRACTION_EXP:', DEFAULT=    0.25, RC=STATUS)
+        VERIFY_(STATUS)
+        GF_MIN_AREA = 1.e6
+        call MAPL_GetResource(STATE,GF_MIN_AREA, 'GF_MIN_AREA:', DEFAULT=GF_MIN_AREA, RC=STATUS)
+        VERIFY_(STATUS)
+        call MAPL_GetResource(STATE,STOCHASTIC_CNV, 'STOCHASTIC_CNV:', DEFAULT= 1, RC=STATUS)
+        VERIFY_(STATUS)
+      endif
+
         if( CNV_FRACTION_MAX > CNV_FRACTION_MIN ) then
           ! CAPE
            WHERE (CAPE .ne. MAPL_UNDEF)
               CNV_FRACTION =(MAX(1.e-6,MIN(1.0,(CAPE-CNV_FRACTION_MIN)/(CNV_FRACTION_MAX-CNV_FRACTION_MIN))))
            END WHERE
         endif
-        if (CNV_FRACTION_EXP /= 1.0) then
+        if (CNV_FRACTION_EXP > 1.0) then
           CNV_FRACTION = CNV_FRACTION**CNV_FRACTION_EXP
+        elseif (CNV_FRACTION_EXP > 0.0) then
+          CNV_FRACTION = 1.0-(1.0-CNV_FRACTION)**(1.0/CNV_FRACTION_EXP)
+        else
+          CNV_FRACTION = 1
         endif
         if(associated(CNV_FRC )) CNV_FRC  = CNV_FRACTION
 
