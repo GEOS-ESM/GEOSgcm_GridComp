@@ -5339,7 +5339,7 @@ contains
           call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'	         ,default= 3600., RC=STATUS );VERIFY_(STATUS)
-          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'	         ,default= 7200., RC=STATUS );VERIFY_(STATUS)
+          call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'	         ,default= 5400., RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'	         ,default= 1,     RC=STATUS );VERIFY_(STATUS)
           call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'         ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
 
