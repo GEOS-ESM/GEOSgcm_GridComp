@@ -1,4 +1,3 @@
-!pmn use macro for linear interp?
 !  --------------------------------------------------------------------------
 ! |                                                                          |
 ! |  Copyright 2002-2009, Atmospheric & Environmental Research, Inc. (AER).  |
@@ -9,8 +8,8 @@
 ! |                                                                          |
 !  --------------------------------------------------------------------------
 
-! space saving function-like macros for linear interpolation
-! of a 2D-varaible in first and second arguments as follows ...
+! Space saving function-like macros for linear interpolation
+! of a 2D-variable in first and second arguments as follows ...
 #define LIN2_ARG1(VAR,I,J,FINT) (VAR(I,J) + FINT * (VAR(I+1,J)-VAR(I,J)))
 #define LIN2_ARG2(VAR,I,J,FINT) (VAR(I,J) + FINT * (VAR(I,J+1)-VAR(I,J)))
 
@@ -25,7 +24,7 @@ module rrtmg_sw_taumol
 contains
 
    !----------------------------------------------------------------------------
-   subroutine taumol_sw(pncol, ncol, nlayers, &
+   subroutine taumol_sw(pncol, ncol, nlay, &
                         colh2o, colco2, colch4, colo2, colo3, colmol, &
                         laytrop, jp, jt, jt1, &
                         fac00, fac01, fac10, fac11, &
@@ -34,32 +33,35 @@ contains
                         svar_f_bnd, svar_s_bnd, svar_i_bnd, &
                         ssi, sfluxzen, taug, taur)
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
+      ! dimensions
+      integer, intent(in) :: pncol, ncol, nlay
 
-      integer, intent(in)  :: laytrop     (pncol)       ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
+      ! tropopause layer index: laytrop in [1,nlay-1] assumed (from setcoef)
+      integer, intent(in) :: laytrop (pncol)
 
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
+      ! pressure and temp interpolation indices
+      integer, intent(in)  :: jp  (nlay,pncol)
+      integer, intent(in)  :: jt  (nlay,pncol)
+      integer, intent(in)  :: jt1 (nlay,pncol)
+
+      ! column amounts
+      real,    intent(in)  :: colh2o (nlay,pncol)
+      real,    intent(in)  :: colco2 (nlay,pncol)
+      real,    intent(in)  :: colo3  (nlay,pncol)
+      real,    intent(in)  :: colch4 (nlay,pncol)
+      real,    intent(in)  :: colo2  (nlay,pncol)
+      real,    intent(in)  :: colmol (nlay,pncol)  ! for Rayleigh scatt
 
       ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
+      integer, intent(in)  :: indself  (nlay,pncol)
+      integer, intent(in)  :: indfor   (nlay,pncol)
+      real,    intent(in)  :: selffac  (nlay,pncol)
+      real,    intent(in)  :: selffrac (nlay,pncol)
+      real,    intent(in)  :: forfac   (nlay,pncol)
+      real,    intent(in)  :: forfrac  (nlay,pncol)
 
       ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      real,    intent(in),  dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
 
       ! Solar variability
@@ -71,14 +73,15 @@ contains
       real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
       real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
 
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
+      ! outputs
+      real,    intent(out) :: ssi      (ngptsw,pncol)  ! spectral solar intensity with solar var
+      real,    intent(out) :: sfluxzen (ngptsw,pncol)  ! solar source function
+      real,    intent(out) :: taug(nlay,ngptsw,pncol)  ! Gaseous optical depth 
+      real,    intent(out) :: taur(nlay,ngptsw,pncol)  ! Rayleigh 
 
-      ! Calculate gaseous optical depth and planck fractions for each spectral band.
+      ! Calculate optical depths and solar inputs for each spectral band.
 
-      call taumol16(pncol, ncol, nlayers, &
+      call taumol16(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -87,7 +90,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol17(pncol, ncol, nlayers, &
+      call taumol17(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -96,7 +99,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol18(pncol, ncol, nlayers, &
+      call taumol18(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -105,7 +108,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol19(pncol, ncol, nlayers, &
+      call taumol19(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -114,7 +117,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol20(pncol, ncol, nlayers, &
+      call taumol20(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -123,7 +126,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol21(pncol, ncol, nlayers, &
+      call taumol21(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -132,7 +135,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol22(pncol, ncol, nlayers, &
+      call taumol22(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -141,7 +144,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol23(pncol, ncol, nlayers, &
+      call taumol23(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -150,7 +153,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol24(pncol, ncol, nlayers, &
+      call taumol24(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -159,7 +162,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol25(pncol, ncol, nlayers, &
+      call taumol25(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -168,7 +171,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol26(pncol, ncol, nlayers, &
+      call taumol26(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -177,7 +180,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol27(pncol, ncol, nlayers, &
+      call taumol27(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -186,7 +189,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol28(pncol, ncol, nlayers, &
+      call taumol28(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -195,7 +198,7 @@ contains
                     selffac, selffrac, indself, forfac, forfrac, indfor, &
                     ssi, sfluxzen, taug, taur)
 
-      call taumol29(pncol, ncol, nlayers, &
+      call taumol29(pncol, ncol, nlay, &
                     colh2o, colco2, colch4, colo2, colo3, colmol, &
                     laytrop, jp, jt, jt1, &
                     fac00, fac01, fac10, fac11, &
@@ -207,7 +210,7 @@ contains
    end subroutine
 
    !----------------------------------------------------------------------------
-   subroutine taumol16(pncol, ncol, nlayers, &
+   subroutine taumol16(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -227,49 +230,25 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -279,95 +258,98 @@ contains
       layreffr = 18
 
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
 
       do icol = 1,ncol
 
          ! Lower atmosphere loop
-         do lay = 1,nlayers
-            if (lay <= laytrop(icol)) then 
-               speccomb = colh2o(lay,icol) + strrat1*colch4(lay,icol) 
-               specparm = colh2o(lay,icol) / speccomb 
-               if (specparm >= oneminus) specparm = oneminus
-               specmult = 8. * specparm
-               js = 1 + int(specmult)
-               fs = mod(specmult, 1.)
-               fac000 = (1. - fs) * fac00(lay,icol) 
-               fac010 = (1. - fs) * fac10(lay,icol) 
-               fac100 =       fs  * fac00(lay,icol) 
-               fac110 =       fs  * fac10(lay,icol) 
-               fac001 = (1. - fs) * fac01(lay,icol) 
-               fac011 = (1. - fs) * fac11(lay,icol) 
-               fac101 =       fs  * fac01(lay,icol) 
-               fac111 =       fs  * fac11(lay,icol) 
-               ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(16) + js
-               ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(16) + js
-               inds = indself(lay,icol) 
-               indf = indfor(lay,icol) 
-               tauray = colmol(lay,icol) * rayl
+         do lay = 1,laytrop(icol)
+            speccomb = colh2o(lay,icol) + strrat1*colch4(lay,icol) 
+            specparm = colh2o(lay,icol) / speccomb 
+            if (specparm >= oneminus) specparm = oneminus
+            specmult = 8. * specparm
+            js = 1 + int(specmult)
+            fs = mod(specmult, 1.)
+            fac000 = (1. - fs) * fac00(lay,icol) 
+            fac010 = (1. - fs) * fac10(lay,icol) 
+            fac100 =       fs  * fac00(lay,icol) 
+            fac110 =       fs  * fac10(lay,icol) 
+            fac001 = (1. - fs) * fac01(lay,icol) 
+            fac011 = (1. - fs) * fac11(lay,icol) 
+            fac101 =       fs  * fac01(lay,icol) 
+            fac111 =       fs  * fac11(lay,icol) 
+            ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(16) + js
+            ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(16) + js
+            inds = indself(lay,icol) 
+            indf = indfor(lay,icol) 
+            tauray = colmol(lay,icol) * rayl
 
-               do ig = 1,ng16
-                  taug(lay,ig,icol) = speccomb * &
-                     (fac000 * absa(ind0   ,ig) + &
-                      fac100 * absa(ind0 +1,ig) + &
-                      fac010 * absa(ind0 +9,ig) + &
-                      fac110 * absa(ind0+10,ig) + &
-                      fac001 * absa(ind1   ,ig) + &
-                      fac101 * absa(ind1 +1,ig) + &
-                      fac011 * absa(ind1 +9,ig) + &
-                      fac111 * absa(ind1+10,ig)) + &
-                     colh2o(lay,icol) * &
-                     (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
-                      forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
-!                 ssa(lay,ig) = tauray / taug(lay,ig)
-                  taur(lay,ig,icol) = tauray
-    
-               enddo
-            end if
+            do ig = 1,ng16
+               taug(lay,ig,icol) = speccomb * &
+                  (fac000 * absa(ind0   ,ig) + &
+                   fac100 * absa(ind0 +1,ig) + &
+                   fac010 * absa(ind0 +9,ig) + &
+                   fac110 * absa(ind0+10,ig) + &
+                   fac001 * absa(ind1   ,ig) + &
+                   fac101 * absa(ind1 +1,ig) + &
+                   fac011 * absa(ind1 +9,ig) + &
+                   fac111 * absa(ind1+10,ig)) + &
+                  colh2o(lay,icol) * &
+                  (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
+                   forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
+               taur(lay,ig,icol) = tauray
+            enddo
+
          enddo
       end do
 
       ! Upper atmosphere loop
       do icol = 1,ncol
-         laysolfr = nlayers
-         do lay = 1,nlayers
-            if (lay > laytrop(icol)) then
-            !do lay = laytrop(icol) +1, nlayers
-               if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) then
-                  laysolfr = lay
-               end if
-               ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(16) + 1
-               ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(16) + 1
-               tauray = colmol(lay,icol) * rayl
+         laysolfr = nlay
+         do lay = laytrop(icol)+1,nlay
 
-               do ig = 1,ng16
-                  taug(lay,ig,icol) = colch4(lay,icol) * &
-                     (fac00(lay,icol) * absb(ind0  ,ig) + &
-                      fac10(lay,icol) * absb(ind0+1,ig) + &
-                      fac01(lay,icol) * absb(ind1  ,ig) + &
-                      fac11(lay,icol) * absb(ind1+1,ig)) 
+            if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) laysolfr = lay
+            ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(16) + 1
+            ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(16) + 1
+            tauray = colmol(lay,icol) * rayl
 
-                  if (lay == laysolfr .and. isolvar < 0) &
+            do ig = 1,ng16
+               taug(lay,ig,icol) = colch4(lay,icol) * &
+                  (fac00(lay,icol) * absb(ind0  ,ig) + &
+                   fac10(lay,icol) * absb(ind0+1,ig) + &
+                   fac01(lay,icol) * absb(ind1  ,ig) + &
+                   fac11(lay,icol) * absb(ind1+1,ig)) 
+               taur(lay,ig,icol) = tauray  
+            enddo
+
+            if (lay == laysolfr) then
+               if (isolvar < 0) then
+                  do ig = 1,ng16
                      sfluxzen(ig,icol) = sfluxref(ig) 
-                  if (lay == laysolfr .and. isolvar >= 0 .and. isolvar <= 2) &
+                  enddo
+               elseif (isolvar >= 0 .and. isolvar <= 2) then
+                  do ig = 1,ng16
                      ssi(ig,icol) = svar_f * facbrght(ig) + &
                                     svar_s * snsptdrk(ig) + &
                                     svar_i * irradnce(ig)
-                  if (lay == laysolfr .and. isolvar == 3) &
+                  enddo
+               elseif (isolvar == 3) then
+                  do ig = 1,ng16
                      ssi(ig,icol) = svar_f_bnd(ngb(ig)) * facbrght(ig) + &
                                     svar_s_bnd(ngb(ig)) * snsptdrk(ig) + &
                                     svar_i_bnd(ngb(ig)) * irradnce(ig)
-                  taur(lay,ig,icol) = tauray  
-               enddo
-            end if
+                  enddo
+               endif
+            endif
+
          enddo
       enddo
 
    end subroutine taumol16
 
    !----------------------------------------------------------------------------
-   subroutine taumol17(pncol, ncol, nlayers, &
+   subroutine taumol17(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -387,49 +369,25 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -439,15 +397,14 @@ contains
       strrat = 0.364641 
 
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
 
       do icol = 1,ncol
 
          ! Lower atmosphere loop
-         do lay = 1,nlayers 
+         do lay = 1,nlay ! laytrop(icol)
             if (lay <= laytrop(icol)) then
-            !do lay = 1,laytrop(icol) 
                speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
                specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
@@ -517,7 +474,6 @@ contains
                       fac111 * absb(ind1+6,ig)) + &
                      colh2o(lay,icol) * &
                      forfac(lay,icol) * LIN2_ARG1(forref,indf,ig,forfrac(lay,icol)) 
-!                 ssa(lay,ngs16+ig) = tauray / taug(lay,ngs16+ig)
                   taur(lay,ngs16+ig,icol) = tauray
                enddo
             endif
@@ -526,8 +482,8 @@ contains
         
       ! Upper atmosphere loop
       do icol = 1,ncol      
-         laysolfr = nlayers 
-         do lay = 2,nlayers
+         laysolfr = nlay 
+         do lay = 2,nlay
             if (lay > laytrop(icol)) then 
           
                if ((jp(lay-1,icol) < layreffr) .and. (jp(lay,icol) >= layreffr)) then
@@ -564,7 +520,7 @@ contains
    end subroutine taumol17
 
    !----------------------------------------------------------------------------
-   subroutine taumol18(pncol, ncol, nlayers, &
+   subroutine taumol18(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -584,49 +540,25 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -666,7 +598,7 @@ contains
       
       do icol = 1,ncol
 
-         do lay = 1,nlayers
+         do lay = 1,nlay  ! laytrop(icol)
             if (lay <= laytrop(icol)) then
             !do lay = 1,laytrop(icol) 
        
@@ -703,14 +635,13 @@ contains
                      colh2o(lay,icol) * &
                      (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
-!                 ssa(lay,ngs17+ig) = tauray / taug(lay,ngs17+ig)
                   taur(lay,ngs17+ig,icol) = tauray
                enddo
 
             else
 
                ! Upper atmosphere loop
-               !do lay = laytrop(icol) +1, nlayers
+               !do lay = laytrop(icol) +1, nlay
                ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(18) + 1
                ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(18) + 1
                tauray = colmol(lay,icol) * rayl
@@ -721,7 +652,6 @@ contains
                       fac10(lay,icol) * absb(ind0+1,ig) + &
                       fac01(lay,icol) * absb(ind1,  ig) + &	  
                       fac11(lay,icol) * absb(ind1+1,ig)) 
-!                 ssa(lay,ngs17+ig) = tauray / taug(lay,ngs17+ig)
                   taur(lay,ngs17+ig,icol) = tauray
                enddo
             end if
@@ -731,7 +661,7 @@ contains
    end subroutine taumol18
 
    !----------------------------------------------------------------------------
-   subroutine taumol19(pncol, ncol, nlayers, &
+   subroutine taumol19(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -751,49 +681,25 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -803,7 +709,7 @@ contains
       layreffr = 3      
       
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
 
       do icol = 1,ncol
@@ -844,13 +750,13 @@ contains
       end do
       
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
 
       do icol = 1,ncol
 
          ! Lower atmosphere loop      
-         do lay = 1,nlayers
+         do lay = 1,nlay  ! laytrop(icol)
             if (lay <= laytrop(icol)) then
        
                speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
@@ -886,7 +792,6 @@ contains
                      colh2o(lay,icol) * &
                      (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
-!                 ssa(lay,ngs18+ig) = tauray / taug(lay,ngs18+ig)
                   taur(lay,ngs18+ig,icol) = tauray   
                enddo
             else
@@ -902,7 +807,6 @@ contains
                       fac10(lay,icol) * absb(ind0+1,ig) + &
                       fac01(lay,icol) * absb(ind1,  ig) + &
                       fac11(lay,icol) * absb(ind1+1,ig)) 
-!                 ssa(lay,ngs18+ig) = tauray / taug(lay,ngs18+ig) 
                   taur(lay,ngs18+ig,icol) = tauray   
                enddo
             end if
@@ -912,7 +816,7 @@ contains
    end subroutine taumol19
 
    !----------------------------------------------------------------------------
-   subroutine taumol20(pncol, ncol, nlayers, &
+   subroutine taumol20(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -934,49 +838,25 @@ contains
 
       implicit none
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -1008,7 +888,7 @@ contains
 
       do icol = 1,ncol
 
-         do lay = 1,nlayers 
+         do lay = 1,nlay  ! laytrop(icol)
             if (lay <= laytrop(icol)) then
          
                ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(20) + 1
@@ -1026,7 +906,6 @@ contains
                       selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol))) &
                      + colch4(lay,icol) * absch4(ig)
-!                 ssa(lay,ngs19+ig) = tauray / taug(lay,ngs19+ig)
                   taur(lay,ngs19+ig,icol) = tauray 
                enddo
             else
@@ -1045,7 +924,6 @@ contains
                       fac11(lay,icol) * absb(ind1+1,ig) + &
                       forfac(lay,icol) * LIN2_ARG1(forref,indf,ig,forfrac(lay,icol))) &
                      + colch4(lay,icol) * absch4(ig)
-!                 ssa(lay,ngs19+ig) = tauray / taug(lay,ngs19+ig)
                   taur(lay,ngs19+ig,icol) = tauray 
                enddo
             end if
@@ -1055,7 +933,7 @@ contains
    end subroutine taumol20
 
    !----------------------------------------------------------------------------
-   subroutine taumol21(pncol, ncol, nlayers, &
+   subroutine taumol21(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -1075,49 +953,25 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -1158,13 +1012,13 @@ contains
       end do        
 
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
 
       do icol = 1,ncol  
       
          ! Lower atmosphere loop
-         do lay = 1,nlayers 
+         do lay = 1,nlay  ! laytrop(icol)
             if (lay <= laytrop(icol)) then 
         
                speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
@@ -1200,7 +1054,6 @@ contains
                      colh2o(lay,icol) * &
                      (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
-!                 ssa(lay,ngs20+ig) = tauray / taug(lay,ngs20+ig)
                   taur(lay,ngs20+ig,icol) = tauray
                enddo
 
@@ -1238,7 +1091,6 @@ contains
                       fac111 * absb(ind1+6,ig)) + &
                      colh2o(lay,icol) * &
                      forfac(lay,icol) * LIN2_ARG1(forref,indf,ig,forfrac(lay,icol)) 
-!                 ssa(lay,ngs20+ig) = tauray / taug(lay,ngs20+ig)
                   taur(lay,ngs20+ig,icol) = tauray
                enddo
             end if
@@ -1248,7 +1100,7 @@ contains
    end subroutine taumol21
 
    !----------------------------------------------------------------------------
-   subroutine taumol22(pncol, ncol, nlayers, &
+   subroutine taumol22(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -1268,49 +1120,25 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -1322,7 +1150,7 @@ contains
       o2adj = 1.6
       
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
 
       strrat = 0.022708
@@ -1342,7 +1170,6 @@ contains
                specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
-!              odadj = specparm + o2adj * (1. - specparm)
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
                do ig = 1,ng22                                 
@@ -1370,7 +1197,7 @@ contains
 
          ! Lower atmosphere loop
 
-         do lay = 1,nlayers 
+         do lay = 1,nlay  ! laytrop(icol)
             if (lay<=laytrop(icol)) then
   
                o2cont = 4.35e-4 *colo2(lay,icol) /(350.0 *2.0 )
@@ -1378,7 +1205,6 @@ contains
                specparm = colh2o(lay,icol) / speccomb 
                if (specparm >= oneminus) specparm = oneminus
                specmult = 8. * specparm
-!              odadj = specparm + o2adj * (1. - specparm)
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
                fac000 = (1. - fs) * fac00(lay,icol) 
@@ -1409,7 +1235,6 @@ contains
                      (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol))) &
                      + o2cont
-!                 ssa(lay,ngs21+ig) = tauray / taug(lay,ngs21+ig)
                   taur(lay,ngs21+ig,icol) = tauray
                enddo
 
@@ -1428,7 +1253,6 @@ contains
                       fac01(lay,icol) * absb(ind1,  ig) + &
                       fac11(lay,icol) * absb(ind1+1,ig)) + &
                      o2cont
-!                 ssa(lay,ngs21+ig) = tauray / taug(lay,ngs21+ig)
                   taur(lay,ngs21+ig,icol) = tauray
                enddo
             end if
@@ -1438,7 +1262,7 @@ contains
    end subroutine taumol22
 
    !----------------------------------------------------------------------------
-   subroutine taumol23(pncol, ncol, nlayers, &
+   subroutine taumol23(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -1458,49 +1282,25 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -1510,7 +1310,7 @@ contains
       givfac = 1.029
 
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
 
       layreffr = 6
@@ -1544,7 +1344,7 @@ contains
       do icol = 1,ncol
 
          ! Lower atmosphere loop
-         do lay = 1,nlayers 
+         do lay = 1,nlay  ! laytrop(icol)
             if (lay <= laytrop(icol)) then
                if (jp(lay,icol) < layreffr .and. jp(lay+1,icol) >= layreffr) &
                   laysolfr = min(lay+1,laytrop(icol))
@@ -1562,15 +1362,12 @@ contains
                       fac11(lay,icol) * absa(ind1+1,ig)) + &
                      selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                      forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
-!                 ssa(lay,ngs22+ig) = tauray / taug(lay,ngs22+ig)
                   taur(lay,ngs22+ig,icol) = tauray
                enddo
             else
 
                ! Upper atmosphere loop
                do ig = 1,ng23
-!                 taug(lay,ngs22+ig) = colmol(lay) * rayl(ig)
-!                 ssa(lay,ngs22+ig) = 1.
                   taug(lay,ngs22+ig,icol) = 0. 
                   taur(lay,ngs22+ig,icol) = colmol(lay,icol) * rayl(ig) 
                enddo
@@ -1581,7 +1378,7 @@ contains
    end subroutine taumol23
 
    !----------------------------------------------------------------------------
-   subroutine taumol24(pncol, ncol, nlayers, &
+   subroutine taumol24(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -1601,49 +1398,25 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -1653,7 +1426,7 @@ contains
       layreffr = 1   
         
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
 
       do icol = 1,ncol
@@ -1691,13 +1464,13 @@ contains
       end do
      
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
 
       do icol = 1,ncol
 
          ! Lower atmosphere loop
-         do lay = 1,nlayers 
+         do lay = 1,nlay  ! laytrop(icol)
             if (lay <= laytrop(icol)) then
 
                speccomb = colh2o(lay,icol) + strrat*colo2(lay,icol) 
@@ -1734,7 +1507,6 @@ contains
                      colh2o(lay,icol) * & 
                      (selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
-!                 ssa(lay,ngs23+ig) = tauray / taug(lay,ngs23+ig)
                   taur(lay,ngs23+ig,icol) = tauray
                enddo
 
@@ -1752,7 +1524,6 @@ contains
                       fac01(lay,icol) * absb(ind1,  ig) + &
                       fac11(lay,icol) * absb(ind1+1,ig)) + &
                      colo3(lay,icol) * abso3b(ig)
-!                 ssa(lay,ngs23+ig) = tauray / taug(lay,ngs23+ig)
                   taur(lay,ngs23+ig,icol) = tauray
                enddo
             endif
@@ -1762,7 +1533,7 @@ contains
    end subroutine taumol24
 
    !----------------------------------------------------------------------------
-   subroutine taumol25(pncol, ncol, nlayers, &
+   subroutine taumol25(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -1782,56 +1553,32 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
               fs, speccomb, specmult, specparm, tauray
 
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
        
       do icol = 1,ncol
@@ -1854,7 +1601,6 @@ contains
                    fac01(lay,icol) * absa(ind1,  ig) + &
                    fac11(lay,icol) * absa(ind1+1,ig)) + &
                   colo3(lay,icol) * abso3a(ig) 
-!              ssa(lay,ngs24+ig) = tauray / taug(lay,ngs24+ig)
                if (lay == laysolfr .and. isolvar < 0) &
                   sfluxzen(ngs24+ig,icol) = sfluxref(ig) 
                if (lay == laysolfr .and. isolvar >= 0 .and. isolvar <= 2) &
@@ -1870,11 +1616,10 @@ contains
          enddo
 
          ! Upper atmosphere loop
-         do lay = laytrop(icol) +1, nlayers
+         do lay = laytrop(icol) +1, nlay
             do ig = 1,ng25
                tauray = colmol(lay,icol) * rayl(ig)
                taug(lay,ngs24+ig,icol) = colo3(lay,icol) * abso3b(ig) 
-!              ssa(lay,ngs24+ig) = tauray / taug(lay,ngs24+ig)
                taur(lay,ngs24+ig,icol) = tauray
             enddo
          enddo
@@ -1883,7 +1628,7 @@ contains
    end subroutine taumol25
 
    !----------------------------------------------------------------------------
-   subroutine taumol26(pncol, ncol, nlayers, &
+   subroutine taumol26(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -1902,56 +1647,32 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
               fs, speccomb, specmult, specparm, tauray
 
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
        
       do icol = 1,ncol
@@ -1961,8 +1682,6 @@ contains
          ! Lower atmosphere loop
          do lay = 1,laytrop(icol) 
             do ig = 1,ng26 
-!              taug(lay,ngs25+ig) = colmol(lay) * rayl(ig)
-!              ssa(lay,ngs25+ig) = 1.
                if (lay == laysolfr .and. isolvar < 0) &
                   sfluxzen(ngs25+ig,icol) = sfluxref(ig) 
                if (lay == laysolfr .and. isolvar >= 0 .and. isolvar <= 2) &
@@ -1979,10 +1698,8 @@ contains
          enddo
 
          ! Upper atmosphere loop
-         do lay = laytrop(icol)+1, nlayers
+         do lay = laytrop(icol)+1, nlay
             do ig = 1,ng26
-!              taug(lay,ngs25+ig) = colmol(lay) * rayl(ig)
-!              ssa(lay,ngs25+ig) = 1.
                taug(lay,ngs25+ig,icol) = 0. 
                taur(lay,ngs25+ig,icol) = colmol(lay,icol) * rayl(ig) 
             enddo
@@ -1992,7 +1709,7 @@ contains
    end subroutine taumol26
 
    !----------------------------------------------------------------------------
-   subroutine taumol27(pncol, ncol, nlayers, &
+   subroutine taumol27(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -2011,49 +1728,25 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -2071,7 +1764,7 @@ contains
          scalekur = 50.15/48.37
 
          ! Compute the optical depth by interpolating in ln(pressure), 
-         ! temperature, and appropriate species.  Below LAYTROP, the water
+         ! temperature, and appropriate species. Below LAYTROP, the water
          ! vapor self-continuum is interpolated (in temperature) separately.  
 
          layreffr = 32
@@ -2088,15 +1781,14 @@ contains
                    fac10(lay,icol) * absa(ind0+1,ig) + &
                    fac01(lay,icol) * absa(ind1,  ig) + &
                    fac11(lay,icol) * absa(ind1+1,ig))
-!              ssa(lay,ngs26+ig) = tauray / taug(lay,ngs26+ig)
                taur(lay,ngs26+ig,icol) = tauray
             enddo
          enddo
 
-         laysolfr = nlayers
+         laysolfr = nlay
 
          ! Upper atmosphere loop
-         do lay = laytrop(icol)+1, nlayers
+         do lay = laytrop(icol)+1, nlay
             if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) &
                laysolfr = lay
             ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(27) + 1
@@ -2109,7 +1801,6 @@ contains
                    fac10(lay,icol) * absb(ind0+1,ig) + &
                    fac01(lay,icol) * absb(ind1,  ig) + & 
                    fac11(lay,icol) * absb(ind1+1,ig))
-!              ssa(lay,ngs26+ig) = tauray / taug(lay,ngs26+ig)
                if (lay == laysolfr .and. isolvar < 0) &
                   sfluxzen(ngs26+ig,icol) = scalekur * sfluxref(ig) 
                if (lay == laysolfr .and. isolvar >= 0 .and. isolvar <= 2) &
@@ -2128,7 +1819,7 @@ contains
    end subroutine taumol27
 
    !----------------------------------------------------------------------------
-   subroutine taumol28(pncol, ncol, nlayers, &
+   subroutine taumol28(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -2147,56 +1838,32 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
               fs, speccomb, specmult, specparm, tauray, strrat
 
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
        
       do icol = 1,ncol
@@ -2253,15 +1920,14 @@ contains
                    fac101 * absa(ind1+1, ig) + &
                    fac011 * absa(ind1+9, ig) + &
                    fac111 * absa(ind1+10,ig)) 
-!              ssa(lay,ngs27+ig) = tauray / taug(lay,ngs27+ig)
                taur(lay,ngs27+ig,icol) = tauray
             enddo
          enddo
 
-         laysolfr = nlayers
+         laysolfr = nlay
 
          ! Upper atmosphere loop
-         do lay = laytrop(icol) +1, nlayers
+         do lay = laytrop(icol) +1, nlay
             if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) &
                laysolfr = lay
             speccomb = colo3(lay,icol) + strrat*colo2(lay,icol) 
@@ -2292,7 +1958,6 @@ contains
                    fac101 * absb(ind1+1,ig) + &
                    fac011 * absb(ind1+5,ig) + &
                    fac111 * absb(ind1+6,ig)) 
-!              ssa(lay,ngs27+ig) = tauray / taug(lay,ngs27+ig)
                if (lay == laysolfr .and. isolvar < 0) &
                   sfluxzen(ngs27+ig,icol) = &
                      sfluxref(ig,js) + fs * (sfluxref(ig,js+1) - sfluxref(ig,js))
@@ -2314,7 +1979,7 @@ contains
    end subroutine taumol28
 
    !----------------------------------------------------------------------------
-   subroutine taumol29(pncol, ncol, nlayers, &
+   subroutine taumol29(pncol, ncol, nlay, &
                        colh2o, colco2, colch4, colo2, colo3, colmol, &
                        laytrop, jp, jt, jt1, &
                        fac00, fac01, fac10, fac11, &
@@ -2334,49 +1999,25 @@ contains
                             irradnce, facbrght, snsptdrk
       use rrsw_wvn, only : ngb
 
-      integer, intent(in)  :: pncol           ! Dimensioned num of gridcols
-      integer, intent(in)  :: ncol            ! Actual number of gridcols
-      integer, intent(in)  :: nlayers         ! total number of layers
-
-      integer, intent(in)  :: laytrop     (pncol)            ! tropopause layer index
-      integer, intent(in)  :: jp  (nlayers,pncol)
-      integer, intent(in)  :: jt  (nlayers,pncol)
-      integer, intent(in)  :: jt1 (nlayers,pncol)
-
-      real,    intent(in)  :: colh2o (nlayers,pncol)    ! column amount (h2o)
-      real,    intent(in)  :: colco2 (nlayers,pncol)    ! column amount (co2)
-      real,    intent(in)  :: colo3  (nlayers,pncol)    ! column amount (o3)
-      real,    intent(in)  :: colch4 (nlayers,pncol)    ! column amount (ch4)
-      real,    intent(in)  :: colo2  (nlayers,pncol)    ! column amount (o2)
-      real,    intent(in)  :: colmol (nlayers,pncol)    ! 
-
-      ! continuum interpolation coefficients
-      integer, intent(in) :: indself  (nlayers,pncol)
-      integer, intent(in) :: indfor   (nlayers,pncol)
-      real,    intent(in) :: selffac  (nlayers,pncol)
-      real,    intent(in) :: selffrac (nlayers,pncol)
-      real,    intent(in) :: forfac   (nlayers,pncol)
-      real,    intent(in) :: forfrac  (nlayers,pncol)
-
-      ! pressure and temperature interpolation coefficients
-      real,    intent(in),  dimension (nlayers,pncol) &
+      integer, intent(in) :: pncol, ncol, nlay
+      integer, intent(in) :: laytrop (pncol)
+      integer, intent(in), dimension (nlay,pncol) :: jp, jt, jt1
+      real,    intent(in), dimension (nlay,pncol) :: &
+         colh2o, colco2, colo3, colch4, colo2, colmol
+      integer, intent(in), dimension (nlay,pncol) :: indself, indfor
+      real,    intent(in), dimension (nlay,pncol) :: &
+         selffac, selffrac, forfac, forfrac
+      real,    intent(in), dimension (nlay,pncol) &
          :: fac00, fac01, fac10, fac11
+      integer, intent(in) :: isolvar
+      real,    intent(in) :: svar_f, svar_s, svar_i
+      real,    intent(in), dimension (jpband) :: &
+         svar_f_bnd, svar_s_bnd, svar_i_bnd
 
-      ! Solar variability
-      integer, intent(in)  :: isolvar               ! Flag for solar var method
-      real,    intent(in)  :: svar_f                ! facular  multiplier
-      real,    intent(in)  :: svar_s                ! sunspot  multiplier
-      real,    intent(in)  :: svar_i                ! baseline multiplier
-      real,    intent(in)  :: svar_f_bnd(jpband)    ! facular  multiplier (by band)
-      real,    intent(in)  :: svar_s_bnd(jpband)    ! sunspot  multiplier (by band)
-      real,    intent(in)  :: svar_i_bnd(jpband)    ! baseline multiplier (by band)
-
-      real,    intent(out) :: ssi(ngptsw,pncol)           ! spectral solar intensity with solar var
-      real,    intent(out) :: sfluxzen(ngptsw,pncol)      ! solar source function
-      real,    intent(out) :: taug(nlayers,ngptsw,pncol)  ! Gaseous optical depth 
-      real,    intent(out) :: taur(nlayers,ngptsw,pncol)  ! Rayleigh 
-
-      ! ----- Locals -----
+      real, intent(out) :: ssi       (ngptsw,pncol)
+      real, intent(out) :: sfluxzen  (ngptsw,pncol)
+      real, intent(out) :: taug (nlay,ngptsw,pncol)
+      real, intent(out) :: taur (nlay,ngptsw,pncol)
 
       integer :: icol, ig, ind0, ind1, inds, indf, js, lay, laysolfr, layreffr
       real :: fac000, fac001, fac010, fac011, fac100, fac101, fac110, fac111, &
@@ -2386,8 +2027,8 @@ contains
         
       do icol = 1,ncol
         
-         laysolfr = nlayers
-         do lay = laytrop(icol) +1, nlayers
+         laysolfr = nlay
+         do lay = laytrop(icol) +1, nlay
             if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) &
                laysolfr = lay
 
@@ -2409,13 +2050,13 @@ contains
       end do
 
       ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species.  Below LAYTROP, the water
+      ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
 
       do icol = 1,ncol
 
          ! Lower atmosphere loop
-         do lay = 1,nlayers 
+         do lay = 1,nlay  ! laytrop(icol)
             if (lay <= laytrop(icol)) then
                ind0 = ((jp(lay,icol)-1)*5+(jt (lay,icol)-1))*nspa(29) + 1
                ind1 = ( jp(lay,icol)   *5+(jt1(lay,icol)-1))*nspa(29) + 1
@@ -2432,7 +2073,6 @@ contains
                       selffac(lay,icol) * LIN2_ARG1(selfref,inds,ig,selffrac(lay,icol)) + &
                       forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol))) &
                      + colco2(lay,icol) * absco2(ig) 
-!                 ssa(lay,ngs28+ig) = tauray / taug(lay,ngs28+ig)
                   taur(lay,ngs28+ig,icol) = tauray
                enddo
 
@@ -2450,7 +2090,6 @@ contains
                       fac01(lay,icol) * absb(ind1,  ig) + &
                       fac11(lay,icol) * absb(ind1+1,ig)) &  
                      + colh2o(lay,icol) * absh2o(ig) 
-!                 ssa(lay,ngs28+ig) = tauray / taug(lay,ngs28+ig)
                   taur(lay,ngs28+ig,icol) = tauray
                enddo
             end if

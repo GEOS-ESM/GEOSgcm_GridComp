@@ -209,7 +209,7 @@ contains
          isolvar, svar_f, svar_s, svar_i, svar_f_bnd, svar_s_bnd, svar_i_bnd, &
          ssi, zsflxzen, ztaug, ztaur)
 
-!pmn? comibine icol loops and remove icol dimension from temporaries
+!pmn? combine icol loops and remove icol dimension from temporaries
 
       ! Set fixed boundary values.
       ! The sfc (jk=nlay+1) zref[d] & ztra[d] never change from these.
@@ -261,7 +261,7 @@ contains
       ! Clear-sky reflectivities / transmissivities
       call reftra_sw (pncol, ncol, nlay, &
                       pcldymc, zgco, prmu0, ztauo, zomco, &
-                      zref, zrefd, ztra, ztrad, .false.)	!1)
+                      zref, zrefd, ztra, ztrad, .false.)
 
       ! Clear-sky direct beam transmittance        
       do icol = 1,ncol
@@ -342,7 +342,6 @@ contains
                      ztauo(jk,iw,icol) = &
                         ztauo  (jk, iw,icol) + &
                         ptaucmc(ikl,iw,icol) 
-        
                      zgco (jk,iw,icol) = zgco (jk,iw,icol) / zomco(jk,iw,icol)
                      zomco(jk,iw,icol) = zomco(jk,iw,icol) / ztauo(jk,iw,icol)
                   end if
@@ -351,30 +350,20 @@ contains
             end do
          end do
 
-         ! Clear + Cloud reflectivities / transmissivities.
-         ! These apply to cloudy grid cells.
+         ! Update reflectivities / transmissivities for cloudy cells only
          call reftra_sw (pncol, ncol, nlay, &
                          pcldymc, zgco, prmu0, ztauo, zomco, &
-                         zref, zrefd, ztra, ztrad, .true.)	! 0)
+                         zref, zrefd, ztra, ztrad, .true.)
 
-         ! Choose clear|cloudy result and recalc direct transmission
+         ! Recalculate direct transmission
          do icol = 1,ncol
             do iw = 1,ngptsw
                do jk = 1,nlay
                   ikl = nlay+1-jk 
 
-                  if (pcldymc(ikl,iw,icol)) then
-                     ! cloudy: ztauo has been updated so recalculate
+                  ! cloudy ztauo has been updated so recalculate
+                  if (pcldymc(ikl,iw,icol)) &
                      zdbt(jk,iw,icol) = exp(-ztauo(jk,iw,icol) / prmu0(icol))            
-!                 else
-!                    ! clear: zref/tra use clear values
-!                    !    and zdbt retains clear value
-!                    zref (jk,iw,icol) = zrefo (jk,iw,icol)
-!                    zrefd(jk,iw,icol) = zrefdo(jk,iw,icol)
-!                    ztra (jk,iw,icol) = ztrao (jk,iw,icol)
-!                    ztrad(jk,iw,icol) = ztrado(jk,iw,icol)
-                  end if
-
                   ztdbt(jk+1,iw,icol) = zdbt(jk,iw,icol) * ztdbt(jk,iw,icol)
 
                enddo          
@@ -427,10 +416,9 @@ contains
             enddo  ! layer loop
          enddo  ! column loop
 
-      else  ! cc /= 2
+      else
 
          ! cc == 1 so clear so total-sky == clear-sky
-
          pbbfu    = pbbcu
          pbbfd    = pbbcd
          pbbfddir = pbbcddir
@@ -486,48 +474,46 @@ contains
 
    ! --------------------------------------------------------------------
    subroutine reftra_sw(pncol, ncol, nlay, &
-                        pcldymc, pgg, prmuzl, ptau, pw, &
-                        pref, prefd, ptra, ptrad, & !ac)
-                        only_cloudy)
+                        cloudy, pgg, prmuzl, ptau, pw, &
+                        pref, prefd, ptra, ptrad, &
+                        update_cloudy_cells_only)
    ! --------------------------------------------------------------------
    ! Purpose: computes the reflectivity and transmissivity of a clear or 
-   !   cloudy layer using a choice of various approximations.
+   !   cloudy layers using a choice of various approximations.
    !
-   ! Interface:  *rrtmg_sw_reftra* is called by *rrtmg_sw_spcvrt*
-   !
-   ! Description:
-   ! explicit arguments :
-   ! --------------------
-   ! inputs
-   ! ------ 
-   !      lrtchk  = .t. for all layers in clear profile
-   !      lrtchk  = .t. for cloudy layers in cloud profile 
-   !              = .f. for clear layers in cloud profile
+   ! inputs:
+   !      cloudy  = binary cloud presence flag
    !      pgg     = assymetry factor
-   !      prmuz   = cosine solar zenith angle
+   !      prmuzl  = cosine solar zenith angle
    !      ptau    = optical thickness
    !      pw      = single scattering albedo
    !
-   ! outputs
-   ! -------
+   ! outputs:
    !      pref    : collimated beam reflectivity
    !      prefd   : diffuse beam reflectivity 
    !      ptra    : collimated beam transmissivity
    !      ptrad   : diffuse beam transmissivity
    !
+   ! note:
+   !      This routine is intended to be run twice. First with clear-only
+   !      optical parameters and update_cloudy_cells_only false. This gives
+   !      the clear-sky reflectivities/transmissivities for every cell.
+   !      The second time through, it is run with cloud-adjusted optical
+   !      parameters and update_cloudy_cells_only true, which only updates
+   !      cells that actually have clouds. The clear-cells retain their
+   !      former clear outputs via the intent(inout) "outputs".
+   !
    ! Method:
-   ! -------
    !      standard delta-eddington, p.i.f.m., or d.o.m. layer calculations.
    !      kmodts  = 1 eddington (joseph et al., 1976)
-   !              = 2 pifm (zdunkowski et al., 1980)
+   !              = 2 pifm (zdunkowski et al., 1980)	<--
    !              = 3 discrete ordinates (liou, 1973)
    !
-   !
    ! Modifications:
-   ! --------------
    ! Original: J-JMorcrette, ECMWF, Feb 2003
    ! Revised for F90 reformatting: MJIacono, AER, Jul 2006
    ! Revised to add exponential lookup table: MJIacono, AER, Aug 2007
+   ! Cleaned up and nodified as per above note: PMNorris, GMAO, Aug 2021
 !?pmn: suspect tble lookup was taken out to GPU-ize ... put back??
 !?pmn: I think LW has table lookup
    !
@@ -540,22 +526,17 @@ contains
       integer, intent (in) :: nlay   ! number of model layers
 
 
-      logical, intent(in) :: pcldymc (nlay,ngptsw,pncol)  ! cloudy or not?
+      logical, intent(in) :: cloudy  (nlay,ngptsw,pncol)  ! cloudy or not?
 
       real,    intent(in) :: pgg     (nlay,ngptsw,pncol)  ! asymmetry parameter
       real,    intent(in) :: ptau    (nlay,ngptsw,pncol)  ! optical depth
       real,    intent(in) :: pw      (nlay,ngptsw,pncol)  ! single scattering albedo 
       real,    intent(in) :: prmuzl              (pncol)  ! cosine of solar zenith angle
 
-!     integer, intent(in) :: ac
-      logical, intent(in) :: only_cloudy
+      logical, intent(in) :: update_cloudy_cells_only
 
       ! ------- Output -------
 
-!     real, intent(out) :: pref  (nlay+1,ngptsw,pncol)  ! direct beam reflectivity
-!     real, intent(out) :: prefd (nlay+1,ngptsw,pncol)  ! diffuse     reflectivity
-!     real, intent(out) :: ptra  (nlay+1,ngptsw,pncol)  ! direct beam transmissivity
-!     real, intent(out) :: ptrad (nlay+1,ngptsw,pncol)  ! diffuse     transmissivity
       real, intent(inout) :: pref  (nlay+1,ngptsw,pncol)  ! direct beam reflectivity
       real, intent(inout) :: prefd (nlay+1,ngptsw,pncol)  ! diffuse     reflectivity
       real, intent(inout) :: ptra  (nlay+1,ngptsw,pncol)  ! direct beam transmissivity
@@ -596,27 +577,8 @@ contains
          do iw = 1,ngptsw
             do jk = 1,nlay
 
-! first time called clear with ac=1
-!   so first time through calculates at all points cos first branch
-!   never satisfied --- good;
-! second time called clear+cloud with ac=0
-!   so second time only calculates for cloudy points, while clear
-!   gboxes get the simple first branch values --- again, good.
-!   Not wasting time on the claer points because already calculated
-!   them ... just overwrite them with prev values.
-! analternative is to have the outputs inout. first time calc all,
-!   second time just update cloudy points.
-
-!              if (.not. pcldymc(nlay+1-jk,iw,icol) .and. ac == 0) then
-
-!                 pref (jk,iw,icol) = 0. 
-!                 ptra (jk,iw,icol) = 1. 
-!                 prefd(jk,iw,icol) = 0. 
-!                 ptrad(jk,iw,icol) = 1. 
-
-!              else
-
-               if (.not. only_cloudy .or. pcldymc(nlay+1-jk,iw,icol)) then
+               if (.not. update_cloudy_cells_only &
+                   .or. cloudy(nlay+1-jk,iw,icol)) then
 
                   zto1 = ptau(jk,iw,icol)  
                   zw   = pw  (jk,iw,icol)  
@@ -721,6 +683,8 @@ contains
                      ze2 = min(zto1 / prmuz, 5.)
 
 !?pmn no LUT!
+!pmn: this comment is out-of-date
+!pmn: and if we are using exp() I dont think the low tau branch is necessary anymore
                      ! Use exponential lookup table for transmittance, or expansion of 
                      ! exponential for low tau
                      if (ze1 <= od_lo) then 
