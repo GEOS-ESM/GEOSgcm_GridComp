@@ -306,10 +306,8 @@ contains
 
       ! Upper atmosphere loop
       do icol = 1,ncol
-         laysolfr = nlay
          do lay = laytrop(icol)+1,nlay
 
-            if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) laysolfr = lay
             ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(16) + 1
             ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(16) + 1
             tauray = colmol(lay,icol) * rayl
@@ -322,6 +320,32 @@ contains
                    fac11(lay,icol) * absb(ind1+1,ig)) 
                taur(lay,ig,icol) = tauray  
             enddo
+
+         enddo
+      enddo
+
+      ! Upper atmosphere loop
+      do icol = 1,ncol
+         laysolfr = nlay
+         do lay = laytrop(icol)+1,nlay
+
+            ! An explanation of the setting of laysolfr, ...
+            ! i.e., the level at which to evaluate solar itrradiance. For some bands
+            ! (not this one, but e.g., taumol17) this depends on the mix of absorbing
+            ! species, which changes with level. Say the following IF evaluates true
+            ! at layer k, i.e., jp(k-1) < layreffr <= jp(k), so jp jumps between k-1
+            ! and k. Then on the next iteration (lay=k+1), the test becomes
+            ! jp(k) < layreffr <= jp(k+1), which cannot be true since we already know
+            ! layreffr <= jp(k). In fact, for any lay=k+n, n >= 1, above k, the test
+            ! jp(k-1+n) < layreffr <= jp(k+n) fails since jp(k-1+n) >= jp(k) >= layreffr,
+            ! because jp(lay) is monotonically non-decreasing (see setcoef). So, we
+            ! conclude that if the following test is met for some lay, thereby setting
+            ! laysolfr, then laysolfr will remain at that value. So the solar irradiance
+            ! will be set for that lay and never reset. Conversely, if this test is
+            ! never met, laysolfr will remain at its default value of nlay and ssi
+            ! will be set for that top-of-model layer.
+
+            if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) laysolfr = lay
 
             if (lay == laysolfr) then
                if (isolvar < 0) then
@@ -341,6 +365,7 @@ contains
                                     svar_i_bnd(ngb(ig)) * irradnce(ig)
                   enddo
                endif
+               exit  ! added per above comment
             endif
 
          enddo
@@ -483,37 +508,32 @@ contains
       ! Upper atmosphere loop
       do icol = 1,ncol      
          laysolfr = nlay 
-         do lay = 2,nlay
-            if (lay > laytrop(icol)) then 
+         do lay = laytrop(icol)+1,nlay
+            if ((jp(lay-1,icol) < layreffr) .and. (jp(lay,icol) >= layreffr)) laysolfr = lay
           
-               if ((jp(lay-1,icol) < layreffr) .and. (jp(lay,icol) >= layreffr)) then
-                  laysolfr = lay
-               end if
-          
-               if (lay == laysolfr) then
-              
-                  speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
-                  specparm = colh2o(lay,icol) / speccomb 
-                  if (specparm >= oneminus) specparm = oneminus
-                  specmult = 4. * specparm
-                  js = 1 + int(specmult)
-                  fs = mod(specmult, 1.)
-                  do ig = 1,ng17 
-                     if (isolvar < 0) &
-                        sfluxzen(ngs16+ig,icol) = LIN2_ARG2(sfluxref,ig,js,fs)
-                     if (isolvar >= 0 .and. isolvar <= 2) &
-                        ssi(ngs16+ig,icol) = &
-                           svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
-                           svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
-                           svar_i * LIN2_ARG2(irradnce,ig,js,fs)
-                     if (isolvar == 3) &
-                        ssi(ngs16+ig,icol) = &
-                           svar_f_bnd(ngb(ngs16+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
-                           svar_s_bnd(ngb(ngs16+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
-                           svar_i_bnd(ngb(ngs16+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
-                  end do
-               end if
+            if (lay == laysolfr) then
+               speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
+               specparm = colh2o(lay,icol) / speccomb 
+               if (specparm >= oneminus) specparm = oneminus
+               specmult = 4. * specparm
+               js = 1 + int(specmult)
+               fs = mod(specmult, 1.)
+               do ig = 1,ng17 
+                  if (isolvar < 0) &
+                     sfluxzen(ngs16+ig,icol) = LIN2_ARG2(sfluxref,ig,js,fs)
+                  if (isolvar >= 0 .and. isolvar <= 2) &
+                     ssi(ngs16+ig,icol) = &
+                        svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
+                        svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                        svar_i * LIN2_ARG2(irradnce,ig,js,fs)
+                  if (isolvar == 3) &
+                     ssi(ngs16+ig,icol) = &
+                        svar_f_bnd(ngb(ngs16+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
+                        svar_s_bnd(ngb(ngs16+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
+                        svar_i_bnd(ngb(ngs16+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
+               end do
             end if
+
          enddo
       enddo   
 

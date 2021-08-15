@@ -87,6 +87,7 @@ contains
       real, parameter :: stpfac = 296. / 1013. 
 
       ! locate tropopause: laytrop in [1,nlayers-1] required
+      ! layer 1 is lowest, layer nlayers is at top of model atmosphere
       laytrop = 0
       do icol = 1,ncol
          do lay = 1,nlayers
@@ -105,7 +106,18 @@ contains
             ! Find the two reference pressures on either side of the
             ! layer pressure.  Store them in JP and JP1. Store in FP the
             ! fraction of the difference (in ln(pressure)) between these
-            ! two values that the layer pressure lies.
+            ! two values that the layer pressure lies. Notes:
+            ! :: jp is an index into pref and preflog.
+            ! :: jp is monotonically non-increasing function of pressure.
+            !    Since pressure will decrease with increasing lay (here
+            !    lay 1 is bottom), jp is a monotonically non-decreasing
+            !    function of lay. *In non-hydrostatic simulations with
+            !    very high resolution this potentially might be
+            !    violated in dynamic regions of strong downwards 
+            !    accelereation?* 
+            ! :: jp limited to [1,58] even though pref and preflog have
+            !    dimension (59). So jp+1 is always a valid index into
+            !    these arrays.
 
             plog = log(pavel(lay,icol))
             jp(lay,icol) = int(36. - 5*(plog+0.04 ))
