@@ -261,9 +261,8 @@ contains
       ! temperature, and appropriate species. Below LAYTROP, the water
       ! vapor self-continuum is interpolated (in temperature) separately.  
 
+      ! Lower atmosphere tau loop
       do icol = 1,ncol
-
-         ! Lower atmosphere loop
          do lay = 1,laytrop(icol)
             speccomb = colh2o(lay,icol) + strrat1*colch4(lay,icol) 
             specparm = colh2o(lay,icol) / speccomb 
@@ -284,7 +283,6 @@ contains
             inds = indself(lay,icol) 
             indf = indfor(lay,icol) 
             tauray = colmol(lay,icol) * rayl
-
             do ig = 1,ng16
                taug(lay,ig,icol) = speccomb * &
                   (fac000 * absa(ind0   ,ig) + &
@@ -300,18 +298,15 @@ contains
                    forfac (lay,icol) * LIN2_ARG1( forref,indf,ig, forfrac(lay,icol)))
                taur(lay,ig,icol) = tauray
             enddo
-
          enddo
       end do
 
-      ! Upper atmosphere loop
+      ! Upper atmosphere tau loop
       do icol = 1,ncol
          do lay = laytrop(icol)+1,nlay
-
             ind0 = ((jp(lay,icol)-13)*5+(jt (lay,icol)-1))*nspb(16) + 1
             ind1 = ((jp(lay,icol)-12)*5+(jt1(lay,icol)-1))*nspb(16) + 1
             tauray = colmol(lay,icol) * rayl
-
             do ig = 1,ng16
                taug(lay,ig,icol) = colch4(lay,icol) * &
                   (fac00(lay,icol) * absb(ind0  ,ig) + &
@@ -320,11 +315,10 @@ contains
                    fac11(lay,icol) * absb(ind1+1,ig)) 
                taur(lay,ig,icol) = tauray  
             enddo
-
          enddo
       enddo
 
-      ! Upper atmosphere loop
+      ! Upper atmosphere ssi loop
       do icol = 1,ncol
          laysolfr = nlay
          do lay = laytrop(icol)+1,nlay
@@ -346,7 +340,6 @@ contains
             ! will be set for that top-of-model layer.
 
             if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) laysolfr = lay
-
             if (lay == laysolfr) then
                if (isolvar < 0) then
                   do ig = 1,ng16
@@ -367,7 +360,6 @@ contains
                endif
                exit  ! added per above comment
             endif
-
          enddo
       enddo
 
@@ -421,14 +413,10 @@ contains
       layreffr = 30
       strrat = 0.364641 
 
-      ! Compute the optical depth by interpolating in ln(pressure), 
-      ! temperature, and appropriate species. Below LAYTROP, the water
-      ! vapor self-continuum is interpolated (in temperature) separately.  
-
       do icol = 1,ncol
+         do lay = 1,nlay
 
-         ! Lower atmosphere loop
-         do lay = 1,nlay ! laytrop(icol)
+            ! Lower atmosphere loop
             if (lay <= laytrop(icol)) then
                speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
                specparm = colh2o(lay,icol) / speccomb 
@@ -466,7 +454,7 @@ contains
                   taur(lay,ngs16+ig,icol) = tauray
                enddo
 
-            else
+            else  ! upper atmosphere
 
                speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
                specparm = colh2o(lay,icol) / speccomb 
@@ -505,12 +493,10 @@ contains
          enddo
       enddo
         
-      ! Upper atmosphere loop
       do icol = 1,ncol      
          laysolfr = nlay 
          do lay = laytrop(icol)+1,nlay
-            if ((jp(lay-1,icol) < layreffr) .and. (jp(lay,icol) >= layreffr)) laysolfr = lay
-          
+            if (jp(lay-1,icol) < layreffr .and. jp(lay,icol) >= layreffr) laysolfr = lay
             if (lay == laysolfr) then
                speccomb = colh2o(lay,icol) + strrat*colco2(lay,icol) 
                specparm = colh2o(lay,icol) / speccomb 
@@ -518,22 +504,27 @@ contains
                specmult = 4. * specparm
                js = 1 + int(specmult)
                fs = mod(specmult, 1.)
-               do ig = 1,ng17 
-                  if (isolvar < 0) &
+               if (isolvar < 0) then
+                  do ig = 1,ng17 
                      sfluxzen(ngs16+ig,icol) = LIN2_ARG2(sfluxref,ig,js,fs)
-                  if (isolvar >= 0 .and. isolvar <= 2) &
+                  end do
+               elseif (isolvar >= 0 .and. isolvar <= 2) then
+                  do ig = 1,ng17 
                      ssi(ngs16+ig,icol) = &
                         svar_f * LIN2_ARG2(facbrght,ig,js,fs) + &
                         svar_s * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                         svar_i * LIN2_ARG2(irradnce,ig,js,fs)
-                  if (isolvar == 3) &
+                  end do
+               elseif (isolvar == 3) then
+                  do ig = 1,ng17 
                      ssi(ngs16+ig,icol) = &
                         svar_f_bnd(ngb(ngs16+ig)) * LIN2_ARG2(facbrght,ig,js,fs) + &
                         svar_s_bnd(ngb(ngs16+ig)) * LIN2_ARG2(snsptdrk,ig,js,fs) + &
                         svar_i_bnd(ngb(ngs16+ig)) * LIN2_ARG2(irradnce,ig,js,fs)
-               end do
-            end if
-
+                  end do
+               endif
+               exit
+            endif
          enddo
       enddo   
 
