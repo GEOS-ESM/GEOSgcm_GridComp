@@ -1,4 +1,4 @@
-set (this RRTMG_mods)
+esma_set_this(OVERRIDE RRTMG_mods)
 
 set (srcs
   parrrtm.F90 rrlw_cld.F90 rrlw_con.F90 rrlw_kg01.F90
@@ -9,7 +9,7 @@ set (srcs
   dbmemory.F90
   )
 
-esma_add_library (${this} SRCS ${srcs} DEPENDENCIES GEOS_Shared MAPL_Base)
+esma_add_library (${this} SRCS ${srcs} DEPENDENCIES GEOS_Shared MAPL)
 
 file (COPY _gpudef.inc DESTINATION ${esma_include}/RRTMG)
 file (COPY _memdef.inc DESTINATION ${esma_include}/RRTMG)

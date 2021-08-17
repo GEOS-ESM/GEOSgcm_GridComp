@@ -14,7 +14,7 @@ module GEOS_DataSeaIceGridCompMod
 ! !USES: 
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
 
   use ice_state,          only: nt_Tsfc, nt_iage, nt_volpn, init_trcr_depend
   use ice_prescribed_mod
@@ -277,35 +277,14 @@ module GEOS_DataSeaIceGridCompMod
                                                    RC=STATUS  )
   VERIFY_(STATUS)
 
-  if (DO_CICE_THERMO == 0) then
-     call MAPL_AddExportSpec(GC,                                 &
-          SHORT_NAME         = 'FRACICE',                           &
-          LONG_NAME          = 'fractional_cover_of_seaice',        &
-          UNITS              = '1',                                 &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-  else
-     call MAPL_AddExportSpec(GC,                            &
-          SHORT_NAME         = 'FRACICE',                           &
-          LONG_NAME          = 'fractional_cover_of_seaice',        &
-          UNITS              = '1',                                 &
-          DIMS               = MAPL_DimsHorzOnly,                   &
-          UNGRIDDED_DIMS     = (/NUM_ICE_CATEGORIES/),              &
-          VLOCATION          = MAPL_VLocationNone,                  &
-          RC=STATUS  )
-     VERIFY_(STATUS)
-  end if
-
-!  call MAPL_AddExportSpec(GC,                                    &
-!       SHORT_NAME         = 'MELTQ',                             &
-!       LONG_NAME          = 'heat_of_melting_or_freezing',       &
-!       UNITS              = 'W m-2',                             &
-!       DIMS               = MAPL_DimsHorzOnly,                   &
-!       VLOCATION          = MAPL_VLocationNone,                  &
-!                                                RC=STATUS  )
-!  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC,                                 &
+       SHORT_NAME         = 'FRACICE',                           &
+       LONG_NAME          = 'fractional_cover_of_seaice',        &
+       UNITS              = '1',                                 &
+       DIMS               = MAPL_DimsHorzOnly,                   &
+       VLOCATION          = MAPL_VLocationNone,                  &
+       RC=STATUS  )
+  VERIFY_(STATUS)
 
   if (DO_CICE_THERMO /= 0) then
      call MAPL_AddExportSpec(GC,                                     &
@@ -438,7 +417,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! below are for CICE Thermo
    real, pointer, dimension(:,:,:):: FR8     => null()
    real, pointer, dimension(:,:,:):: TI8     => null()
-   real, pointer, dimension(:,:,:):: FRO     => null()
 
    real, pointer, dimension(:,:,:):: VOLICE  => null()
    real, pointer, dimension(:,:,:):: VOLSNO  => null()
@@ -452,6 +430,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    real, pointer, dimension(:,:)  :: LONS    => null()
 
    real, allocatable, dimension(:,:)  :: FRT 
+   real :: f
+
 ! above were for CICE Thermo
 
 
@@ -513,27 +493,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      VERIFY_(STATUS)
    end if
 
-! Check that they are friendly
-!-----------------------------
-
-    call ESMF_StateGet (IMPORT, 'TI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
-
-    call ESMF_StateGet (IMPORT, 'HI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
-
-    call ESMF_StateGet (IMPORT, 'SI', FIELD, RC=STATUS)
-    VERIFY_(STATUS)
-    call ESMF_AttributeGet  (FIELD, NAME="FriendlyToSEAICE", VALUE=FRIENDLY, RC=STATUS)
-    VERIFY_(STATUS)
-    ASSERT_(FRIENDLY)
-
 !  Pointers to Exports
 !---------------------
 
@@ -543,12 +502,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetPointer(EXPORT,      FR  , 'FRACICE'  , RC=STATUS)
     VERIFY_(STATUS)
-!   call MAPL_GetPointer(EXPORT,      MQ  , 'MELTQ'    , RC=STATUS)
-!   VERIFY_(STATUS)
-    if (DO_CICE_THERMO /= 0) then
-      call MAPL_GetPointer(EXPORT,      FRO , 'FRACICE'  , RC=STATUS)
-      VERIFY_(STATUS)
-    end if
 
 ! Set current time and calendar
 !------------------------------
@@ -611,51 +564,26 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
        if (any(FR < 0.0) .or. any(FR > 1.0)) then
           if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-          ASSERT_(.FALSE.)
+          _ASSERT(.FALSE.,'needs informative message')
        endif
      end if
    else
        call MAPL_ReadForcing(MAPL,'FRT',DATAFRTFILE, CURRENTTIME, FRT, INIT_ONLY=FCST, RC=STATUS)
        VERIFY_(STATUS)
 
-       if (any(FRT < 0.0) .or. any(FRT > 1.0)) then
-          if(MAPL_AM_I_ROOT()) print *, 'Error in fraci file. Negative or larger-than-one fraction found'
-          ASSERT_(.FALSE.)
-       endif
+! Sanity checks
+       do I=1, size(FRT,1)
+          do J=1, size(FRT,2)
+             f=FRT(I,J)
+             if (f==MAPL_UNDEF) cycle
+             if ((f < 0.0) .or. (f > 1.0)) then
+                print *, 'Error in fraci file. Negative or larger-than-one fraction found'
+                _ASSERT(.FALSE.,'needs informative message')
+             end if
+          end do
+       end do
 
-       FRCICE = real(sum(FR8,dim=3), kind=8)
-       do I=1,IM
-         do J=1,JM
-           FRDB       = FR8(I,J,:)
-           VOLICEDB   = VOLICE(I,J,:)
-           VOLSNODB   = VOLSNO(I,J,:)
-           ERGICEDB   = ERGICE(I,J,:)
-           ERGSNODB   = ERGSNO(I,J,:)
-           FRACICEDB  = FRT(I,J)
-           LATSDB     = LATS(I,J)
-           TFDB       = real(MAPL_TICE-1.81, kind=8)  ! here we want -1.8 degC in R8. FYI: MAPL_TICE   = 273.16
-                                                      ! Later, when SSS is available, import that to compute freezing temperature
-           TRACERS(nt_tsfc,:) = TI8(I,J,:)
-           TRACERSDB2         = TRACERS
-           FRWATERDB          = 1.0 - FRCICE(I,J)
-           call ice_prescribed_run2(1,1,1,(/1/),(/1/),              &
-                                 FRDB,             TRACERSDB2,      &
-                                 VOLICEDB,         VOLSNODB,        &
-                                 ERGICEDB,         ERGSNODB,        &
-                                 FRWATERDB,        FRCICE(I,J),     &
-                                 FRACICEDB,        TFDB,            &
-                                 LATSDB,           TNH,     TSH)
-           FR8(I,J,:)    = FRDB
-           VOLICE(I,J,:) = VOLICEDB
-           VOLSNO(I,J,:) = VOLSNODB
-           ERGICE(I,J,:) = ERGICEDB
-           ERGSNO(I,J,:) = ERGSNODB
-           TRACERS       = TRACERSDB2
-           TI8(I,J,:)    = TRACERS(nt_tsfc,:)
-         enddo
-       enddo
-
-       if(associated(FRO)) FRO = FR8
+       if(associated(FR)) FR = FRT
    end if ! (DO_CICE_THERMO == 0)
 
    if (DO_CICE_THERMO == 0) then

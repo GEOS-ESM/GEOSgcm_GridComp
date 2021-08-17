@@ -60,6 +60,7 @@
 !                      - moved SHR, EPSILON, SCONST, CSOIL_1,  CSOIL_2, N_sm, and SATCAPFR to
 !                        ../Shared/catch_constants.f90
 ! Justin, 20 Jun 2018  - moved CSOIL_2 to SURFPARAMS
+! Sarith , 20 Apr 2020  - introducing USE_FWET_FOR_RUNOFF and passing FWETL and FWETC via GEOS_SurfaceGridComp.rc
 
 MODULE CATCHMENT_CN_MODEL
   
@@ -88,11 +89,15 @@ MODULE CATCHMENT_CN_MODEL
        DZ1MAX            => CATCH_DZ1MAX,        &  
        SHR, SCONST, C_CANOP, N_sm, SATCAPFR   
 
-  USE SURFPARAMS,       ONLY: CSOIL_2
-
+  USE SURFPARAMS,       ONLY: CSOIL_2, RSWILT, &
+      LAND_FIX, FLWALPHA
 
   
-  USE lsm_routines
+  USE lsm_routines, only :                          &
+          INTERC, BASE, PARTITION, RZEQUIL, gndtp0, &   
+          catch_calc_soil_moist, gndtmp,            &
+          catch_calc_wtotl, dampen_tc_oscillations, &
+          PHIGT, DZTC, DZGT, FSN, SRUNOFF
   
   USE SIBALB_COEFF,  ONLY: coeffsib
   
@@ -128,10 +133,10 @@ CONTAINS
   ! This code represents a merge of the catchment model (as of April 28, 2009)
   ! and the most recent version of the "unified" model (from Sept. 20, 2006).
   
-  SUBROUTINE CATCHCN (                                                     &
-       NCH, LONS, LATS, DTSTEP, SFRAC, cat_id,                   &
+  SUBROUTINE CATCHCN (                                           &
+       NCH, LONS, LATS, DTSTEP, UFW4RO, FWETC, FWETL, cat_id,    &
        ITYP1,ITYP2,FVEG1,FVEG2,                                  &
-       DZSF, TRAINC,TRAINL, TSNOW, UM,                           &
+       DZSF, TRAINC,TRAINL, TSNOW, TICE, TFRZR, UM,              &
        ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
        ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
        ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
@@ -171,9 +176,10 @@ CONTAINS
     INTEGER, INTENT(IN) :: NCH
     INTEGER, INTENT(IN), DIMENSION(:) :: ITYP1, ITYP2, cat_id
     
-    REAL, INTENT(IN) :: DTSTEP, SFRAC
-    REAL, INTENT(IN), DIMENSION(:) :: DZSF, TRAINC, TRAINL, TSNOW,  UM,    &
-         FVEG1,   FVEG2,                                           &
+    REAL, INTENT(IN)    :: DTSTEP, FWETC, FWETL
+    LOGICAL, INTENT(IN) :: UFW4RO
+    REAL, INTENT(IN), DIMENSION(:) :: DZSF, TRAINC, TRAINL, TSNOW, &
+         TICE, TFRZR, UM, FVEG1,   FVEG2,                          &
          ETURB1, DEDQA1, DEDTC1, HSTURB1,DHSDQA1, DHSDTC1,         &
          ETURB2, DEDQA2, DEDTC2, HSTURB2,DHSDQA2, DHSDTC2,         &
          ETURB4, DEDQA4, DEDTC4, HSTURB4,DHSDQA4, DHSDTC4,         &
@@ -238,11 +244,11 @@ CONTAINS
     
     INTEGER I,K,N,LAYER
     
-    REAL, DIMENSION(NCH) :: CSOIL, CCANOP, ASNOW, traincx, trainlx,          &
+    REAL, DIMENSION(NCH) :: CSOIL, CCANOP, ASNOW, traincx, trainlx,         &
          RC, SATCAP, SNWFRC, POTFRC,  ESNFRC, EVSNOW, SHFLUXS, HLWUPS,      &
          HFTDS1, HFTDS2, HFTDS4, DHFT1, DHFT2, DHFT4, TPSNB,                &
          QSATTC, DQSDTC, SWSRF1, SWSRF2, SWSRF4, AR4,                       &
-         FCAN, THRU, RZEQOL, frice, srfmx,                                  &
+         FCAN, THRUL, THRUC, RZEQOL, frice, srfmx,                          &
          srfmn, RCST1, RCST2, EVAPFR, RDCX, EVAP1, EVAP2,                   &
          EVAP4, SHFLUX1, SHFLUX2, SHFLUX4, HLWUP1, HLWUP2, HLWUP4,          &
          GHFLUX1, GHFLUX2, GHFLUX4, RZI, TC1SF, TC2SF, TC4SF, ar1old,       &
@@ -335,14 +341,16 @@ CONTAINS
           
           write (*,*) NCH  
           write (*,*) DTSTEP  
-          write (*,*) SFRAC  
+          write (*,*) UFW4RO
           write (*,*) ITYP1(n_out)  
           write (*,*) ITYP2(n_out)  
           write (*,*) FVEG1(n_out)  
           write (*,*) FVEG2(n_out)  
           write (*,*) TRAINC(n_out)    
           write (*,*) TRAINL(n_out)    
-          write (*,*) TSNOW(n_out)    
+          write (*,*) TSNOW(n_out)  
+          write (*,*) TICE(n_out)    
+          write (*,*) TFRZR(n_out)      
           write (*,*) UM(n_out)  
           write (*,*) ETURB1(n_out)    
           write (*,*) DEDQA1(n_out)    
@@ -540,15 +548,15 @@ CONTAINS
         tc2_orig(n)=tc2(n)
         tc4_orig(n)=tc4(n)
 
-        ! Andrea Molod (Oct 21, 2016):
-
-        qa1(n) = min(max(qm(N),qsat1(N)),qa1(N))
-        qa1(n) = max(min(qm(N),qsat1(N)),qa1(N))
-        qa2(n) = min(max(qm(N),qsat2(N)),qa2(N))
-        qa2(n) = max(min(qm(N),qsat2(N)),qa2(N))
-        qa4(n) = min(max(qm(N),qsat4(N)),qa4(N))
-        qa4(n) = max(min(qm(N),qsat4(N)),qa4(N))
-
+        IF (LAND_FIX) THEN
+	   ! Andrea Molod (Oct 21, 2016):
+           qa1(n) = min(max(qm(N),qsat1(N)),qa1(N))
+           qa1(n) = max(min(qm(N),qsat1(N)),qa1(N))
+           qa2(n) = min(max(qm(N),qsat2(N)),qa2(N))
+           qa2(n) = max(min(qm(N),qsat2(N)),qa2(N))
+           qa4(n) = min(max(qm(N),qsat4(N)),qa4(N))
+           qa4(n) = max(min(qm(N),qsat4(N)),qa4(N))
+        END IF
 !        if(ityp1(n) .ge. 7) potfrc(n)=0.
 
 !     HSNACC is an energy accounting term designed to account (among other,
@@ -788,11 +796,11 @@ CONTAINS
         T1(1)  = TG1(N)-TF
         T1(2)  = TG2(N)-TF
         T1(3)  = TG4(N)-TF
-        AREA(1)= AR1(N) 
+        AREA(1)= AR1(N)
         AREA(2)= AR2(N) 
         AREA(3)= AR4(N) 
-        pr     = trainc(n)+trainl(n)+tsnow(n) 
-        snowf  = tsnow(n) 
+        pr     = trainc(n)+trainl(n)+tsnow(n)+tice(n)+tfrzr(n)
+        snowf  = tsnow(n)+tice(n)+tfrzr(n)
         dedea  = dedqas(n)*epsilon/psur(n) 
         dhsdea = dhsdqas(n)*epsilon/psur(n) 
         ea     = qm(n)*psur(n)/epsilon 
@@ -1127,12 +1135,12 @@ CONTAINS
 
 !**** UPDATE CANOPY INTERCEPTION; DETERMINE THROUGHFALL RATES.
 
-      CALL INTERC (                                                            &
-                   NCH, DTSTEP, TRAINLX, TRAINCX, SMELT,                       &
-                   SATCAP, SFRAC,BUG,                                          &
-                   CAPAC,                                                      &
-                   THRU                                                        &
-                  )
+        CALL INTERC (                                                    &
+             NCH, DTSTEP, FWETC, FWETL, TRAINLX, TRAINCX, SMELT,         &
+             SATCAP, BUG,                                                &
+             CAPAC,                                                      &
+             THRUL, THRUC                                                &
+             )
 
       IF (BUG) THEN
         WRITE(*,*) 'INTERC OK'
@@ -1140,11 +1148,11 @@ CONTAINS
 
 !**** DETERMINE SURFACE RUNOFF AND INFILTRATION RATES:
 
-      CALL SRUNOFF (                                                           &
-                    NCH,DTSTEP,AR1,ar2,ar4,THRU,frice,tp1,srfmx,BUG,           &
-                    SRFEXC,RUNSRF,                                             &
-                    QINFIL                                                     &
-                   )
+        CALL SRUNOFF ( NCH,DTSTEP,UFW4RO, FWETC, FWETL,                 &
+             AR1,ar2,ar4,THRUL, THRUC,frice,tp1,srfmx,BUG,              & 
+             SRFEXC,RUNSRF,                                             &
+             QINFIL                                                     &
+             )
 
       IF (BUG) THEN
         WRITE(*,*) 'SRUNOFF'
@@ -1188,7 +1196,7 @@ CONTAINS
           sfmc, rzmc, prmc,                                                    &
           werror, sfmcun, rzmcun, prmcun  )
 
-! Add differences due to adjustments to land moisture prognostics
+! Add differences due to adjustments to land mosture prognostics
       do n=1,nch
          if(werror(n) .le. 0.) runsrf(n)=runsrf(n)-werror(n)/dtstep
          if(werror(n) .gt. 0.) then
@@ -1278,8 +1286,8 @@ CONTAINS
        ! reichle, 12 Aug 2014
 
 !!!    IF (ityp1(N) .ge. 1) THEN ! gkw: would do TC correction on all types in unified 
-       IF (ityp1(N) .eq.-1) THEN ! gkw: using Helfand with viscous sublayer; don't need TC correction; using -1 skips this block
-
+!!!       IF (ityp1(N) .eq.-1) THEN ! gkw: using Helfand with viscous sublayer; don't need TC correction; using -1 skips this block
+     IF (LAND_FIX .OR. (ityp1(N) .ne. 1)) THEN   ! jkolassa Oct 2020: changed to be equivalent to catchment.F90; was previously set to always be false
         call dampen_tc_oscillations(dtstep,tm(N),tc1_orig(N),tc1(N),     &
              tc1_00(N),dtc1)
         call dampen_tc_oscillations(dtstep,tm(N),tc2_orig(N),tc2(N),     &
@@ -1355,43 +1363,43 @@ CONTAINS
                            DHSDTC4(N)
 
 !       Ensure that modifications made to QA and TC are not too large:
+        IF ( (.NOT. LAND_FIX) .OR. (ASNOW0(N) .EQ. 0. ) ) THEN
+           IF(ABS(QA1X-QA1(N)) .LE. 0.5*QA1(N)) THEN
+             QA1(N)=QA1X
+           ELSE
+             QA1(N)=QA1(N)+SIGN(0.5*QA1(N),QA1X-QA1(N))
+           ENDIF
 
-        IF(ABS(QA1X-QA1(N)) .LE. 0.5*QA1(N)) THEN
-            QA1(N)=QA1X
-          ELSE
-            QA1(N)=QA1(N)+SIGN(0.5*QA1(N),QA1X-QA1(N))
-          ENDIF
+           IF(ABS(QA2X-QA2(N)) .LE. 0.5*QA2(N)) THEN
+             QA2(N)=QA2X
+           ELSE
+             QA2(N)=QA2(N)+SIGN(0.5*QA2(N),QA2X-QA2(N))
+           ENDIF
 
-        IF(ABS(QA2X-QA2(N)) .LE. 0.5*QA2(N)) THEN
-            QA2(N)=QA2X
-          ELSE
-            QA2(N)=QA2(N)+SIGN(0.5*QA2(N),QA2X-QA2(N))
-          ENDIF
+           IF(ABS(QA4X-QA4(N)) .LE. 0.5*QA4(N)) THEN
+             QA4(N)=QA4X
+           ELSE
+             QA4(N)=QA4(N)+SIGN(0.5*QA4(N),QA4X-QA4(N))
+           ENDIF
 
-        IF(ABS(QA4X-QA4(N)) .LE. 0.5*QA4(N)) THEN
-            QA4(N)=QA4X
-          ELSE
-            QA4(N)=QA4(N)+SIGN(0.5*QA4(N),QA4X-QA4(N))
-          ENDIF
+           IF(ABS(TC1X-TC1(N)) .LE. 10.) THEN
+             TC1(N)=TC1X
+           ELSE
+             TC1(N)=TC1(N)+SIGN(10.,TC1X-TC1(N))
+           ENDIF
 
-        IF(ABS(TC1X-TC1(N)) .LE. 10.) THEN
-            TC1(N)=TC1X
-          ELSE
-            TC1(N)=TC1(N)+SIGN(10.,TC1X-TC1(N))
-          ENDIF
+           IF(ABS(TC2X-TC2(N)) .LE. 10.) THEN
+             TC2(N)=TC2X
+           ELSE
+             TC2(N)=TC2(N)+SIGN(10.,TC2X-TC2(N))
+           ENDIF
 
-        IF(ABS(TC2X-TC2(N)) .LE. 10.) THEN
-            TC2(N)=TC2X
-          ELSE
-            TC2(N)=TC2(N)+SIGN(10.,TC2X-TC2(N))
-          ENDIF
-
-        IF(ABS(TC4X-TC4(N)) .LE. 10.) THEN
-            TC4(N)=TC4X
-          ELSE
-            TC4(N)=TC4(N)+SIGN(10.,TC4X-TC4(N))
-          ENDIF
-
+           IF(ABS(TC4X-TC4(N)) .LE. 10.) THEN
+             TC4(N)=TC4X
+           ELSE
+             TC4(N)=TC4(N)+SIGN(10.,TC4X-TC4(N))
+           ENDIF
+        ENDIF ! IF ( (.NOT. LAND_FIX) .OR. (ASNOW0(N) .EQ. 0. ) ) 
 
 ! EVACC and SHACC are the differences ("errors") between what the land surface
 ! model computes for the evaporation and sensible heat flux and what the AGCM
@@ -1477,14 +1485,16 @@ CONTAINS
          
          write (*,*) NCH  
          write (*,*) DTSTEP  
-         write (*,*) SFRAC  
+         write (*,*) UFW4RO
          write (*,*) ITYP1(n_out)  
          write (*,*) ITYP2(n_out)  
          write (*,*) FVEG1(n_out)  
          write (*,*) FVEG2(n_out)  
          write (*,*) TRAINC(n_out)    
          write (*,*) TRAINL(n_out)    
-         write (*,*) TSNOW(n_out)    
+         write (*,*) TSNOW(n_out)  
+         write (*,*) TICE(n_out)    
+         write (*,*) TFRZR(n_out)        
          write (*,*) UM(n_out)  
          write (*,*) ETURB1(n_out)    
          write (*,*) DEDQA1(n_out)    
@@ -1688,7 +1698,7 @@ CONTAINS
 ! ---------------------------------------------------------------------
 
         SRFLW=SRFEXC(N)*DTSTEP/TSC0
-        IF(SRFLW < 0.    ) SRFLW = 0.005 * SRFLW ! C05 change
+        IF(SRFLW < 0.    ) SRFLW = FLWALPHA * SRFLW! C05 change
 !rr   following inserted by koster Sep 22, 2003
         rzdif=rzave/poros(n)-wpwet(n)
 !**** No moisture transport up if rz at wilting; employ ramping.
@@ -1735,7 +1745,7 @@ CONTAINS
           RZEXC(N)=VGWMAX(N)-RZEQ(N)
           CATDEF(N)=CATDEF(N)-EXCESS
           ENDIF
-
+ 
         IF(CATDEF(N) .LT. 0.) THEN
           RUNSRF(N)=RUNSRF(N)-CATDEF(N)
           CATDEF(N)=0.
@@ -1745,70 +1755,6 @@ CONTAINS
 
       RETURN
       END SUBROUTINE RZDRAIN
-
-!**** ===================================================
-!**** ///////////////////////////////////////////////////
-!**** ===================================================
-
-      SUBROUTINE SRUNOFF (                                                     &
-                          NCH,DTSTEP,AR1,ar2,ar4, THRU,frice,tp1,srfmx,BUG,    &
-                          SRFEXC,RUNSRF,                                       &
-                          QINFIL                                               &
-                         )
-
-      IMPLICIT NONE
-
-
-      INTEGER, INTENT(IN) :: NCH
-      REAL, INTENT(IN) :: DTSTEP
-      REAL, INTENT(IN), DIMENSION(NCH) :: AR1, ar2, ar4, THRU, frice, tp1,     &
-             srfmx
-      LOGICAL, INTENT(IN) :: BUG
-
-      REAL, INTENT(INOUT), DIMENSION(NCH) ::  SRFEXC ,RUNSRF
-
-      REAL, INTENT(OUT), DIMENSION(NCH) :: QINFIL
-
-      INTEGER N
-      REAL PTOTAL,srun0,frun,qin
-
-!**** - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-      DO N=1,NCH
-
-        PTOTAL=THRU(N)
-        frun=AR1(N)
-
-!        if(srfexc(n) .gt. 0.) then
-!          frun=frun+ar2(n)*(srfexc(n)/(srfmx(n)+1.e-20))
-!          frun=frun+ar4(n)*(srfexc(n)/(srfmx(n)+1.e-20))**2
-!          endif
-!        frun=frun+(1-frun)*frice(n)
-
-        srun0=PTOTAL*frun
-
-!**** Comment out this line in order to allow moisture
-!**** to infiltrate soil:
-!       if(tp1(n) .lt. 0.) srun0=ptotal
-
-        if(ptotal-srun0 .gt. srfmx(n)-srfexc(n))                               &
-                      srun0=ptotal-(srfmx(n)-srfexc(n)) 
-
-        if (srun0 .gt. ptotal) then
-          srun0=ptotal
-          endif
-
-        RUNSRF(N)=RUNSRF(N)+srun0
-        QIN=PTOTAL-srun0
-
-        SRFEXC(N)=SRFEXC(N)+QIN
-        RUNSRF(N)=RUNSRF(N)/DTSTEP
-        QINFIL(N)=QIN/DTSTEP
-         
-        ENDDO
-      
-      RETURN
-      END SUBROUTINE SRUNOFF
 
 !**** -----------------------------------------------------------------
 !**** /////////////////////////////////////////////////////////////////
@@ -2433,7 +2379,7 @@ CONTAINS
 
       INTEGER N
       REAL, DIMENSION(NCH) :: EA, ESATTC
-      REAL HESAT, RSWILT, ATERM, BTERM
+      REAL HESAT, ATERM, BTERM
 
 ! RDK 04/04/06
 !  VALUES OF BARE SOIL SURFACE RESISTANCE AT WILTING POINT, SATURATION
@@ -2442,7 +2388,7 @@ CONTAINS
 !!!   PARAMETER (RSWILT=5.e3) ! gkw: 63u
 !!!   PARAMETER (RSWILT=1.e9) ! gkw: 64u
 !!!   PARAMETER (RSWILT=2.e3) ! gkw: 65u
-      PARAMETER (RSWILT=2000.)! gkw: 66u & 67u
+!!!   PARAMETER (RSWILT=2000.)! gkw: 66u & 67u
 !****
 !**** -----------------------------------------------------------------
 

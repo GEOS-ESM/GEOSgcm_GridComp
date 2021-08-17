@@ -1,4 +1,4 @@
-!  $Id$
+!  $Id: GEOS_mkiauGridComp.F90,v 1.38.2.21.18.5.2.5 2019/10/22 20:53:09 ltakacs Exp $
 
 #include "MAPL_Generic.h"
 
@@ -14,17 +14,11 @@ module GEOS_mkiauGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
-  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
+  use MAPL
   use ESMF_CFIOFileMod
   use GEOS_UtilsMod
 ! use GEOS_RemapMod, only: myremap => remap
   use m_set_eta, only: set_eta
-  use m_chars, only: uppercase
-  use MAPL_GridManagerMod, only: grid_manager
-  use MAPL_RegridderManagerMod, only: regridder_manager
-  use MAPL_AbstractRegridderMod
-  use MAPL_RegridderSpecMod
   implicit none
   private
 
@@ -586,11 +580,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
   real, parameter                     :: EPS = MAPL_RVAP/MAPL_RGAS-1.0
 
-  character(len=ESMF_MAXSTR)          :: REPLAY_TIME_INTERP
+  character(len=ESMF_MAXSTR), save    :: FILEP1
+  character(len=ESMF_MAXSTR), save    :: FILEP0
+  character(len=ESMF_MAXSTR), save    :: FILEM1
+  character(len=ESMF_MAXSTR), save    :: FILEM2
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEP1
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEP0
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEM1
   character(len=ESMF_MAXSTR)          :: REPLAY_FILEM2
+  character(len=ESMF_MAXSTR)          :: REPLAY_TIME_INTERP
   character(len=ESMF_MAXSTR)          :: FILETMPL
   character(len=ESMF_MAXSTR)          :: GRIDINC
   character(len=ESMF_MAXSTR)          :: cremap
@@ -609,6 +607,9 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
   type(ESMF_Time)                     :: REPLAY_TIMEP0
   type(ESMF_Time)                     :: REPLAY_TIMEM1
   type(ESMF_Time)                     :: REPLAY_TIMEM2
+
+  type(ESMF_Alarm)                    :: ALARM
+  logical                             :: is_RegularReplay09_ringing
 
   integer                                 :: K,NQ,FID
   character(len=ESMF_MAXSTR), ALLOCATABLE :: RNAMES(:)
@@ -751,18 +752,37 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !------------------------
     call MAPL_GetResource(MAPL, GRIDINC,     LABEL="REPLAY_GRIDINC:", default="ANA",  RC=STATUS)
     VERIFY_(STATUS)
-    GRIDINC = uppercase(GRIDINC)
-    ASSERT_( trim(GRIDINC) == "ANA" .or. trim(GRIDINC) == "BKG" )
+    GRIDINC = ESMF_UtilStringUpperCase(GRIDINC)
+    _ASSERT( trim(GRIDINC) == "ANA" .or. trim(GRIDINC) == "BKG" ,'needs informative message')
 
     call MAPL_GetResource(MAPL, REPLAY_TIME_INTERP, LABEL="REPLAY_TIME_INTERP:", default="LINEAR",  RC=STATUS)
     VERIFY_(STATUS)
-    REPLAY_TIME_INTERP = uppercase(REPLAY_TIME_INTERP)
-    ASSERT_( trim(REPLAY_TIME_INTERP) == "LINEAR" .or. trim(REPLAY_TIME_INTERP) == "CUBIC" )
+    REPLAY_TIME_INTERP = ESMF_UtilStringUpperCase(REPLAY_TIME_INTERP)
+    _ASSERT( trim(REPLAY_TIME_INTERP) == "LINEAR" .or. trim(REPLAY_TIME_INTERP) == "CUBIC" ,'needs informative message')
 
+! Check for 09 Files
+! ------------------
+    call ESMF_ClockGetAlarm(Clock,'RegularReplay09',Alarm,rc=Status)
+    if(STATUS==ESMF_SUCCESS) then
+       is_RegularReplay09_ringing = ESMF_AlarmIsRinging( Alarm,rc=status )
+       VERIFY_(status)
+       if( is_RegularReplay09_ringing ) then
+           call MAPL_GetResource(MAPL, FILETMPL, LABEL="REPLAY_FILE09:", default="NULL", RC=STATUS)
+           VERIFY_(STATUS)
+           if( trim(FILETMPL) == "NULL" ) then
+           call MAPL_GetResource(MAPL, FILETMPL, LABEL="REPLAY_FILE:", RC=STATUS)
+           VERIFY_(STATUS)
+           endif
+       else
+           call MAPL_GetResource(MAPL, FILETMPL, LABEL="REPLAY_FILE:", RC=STATUS)
+           VERIFY_(STATUS)
+       endif
+    else
+           call MAPL_GetResource(MAPL, FILETMPL, LABEL="REPLAY_FILE:", RC=STATUS)
+           VERIFY_(STATUS)
+    endif
 
     call MAPL_GetResource(MAPL, REPLAY_MODE, LABEL="REPLAY_MODE:",    default="NULL", RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, FILETMPL,    LABEL="REPLAY_FILE:",    default="NULL", RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, CREMAP,      LABEL="REPLAY_REMAP:",   default="yes",  RC=STATUS)
     VERIFY_(STATUS)
@@ -811,15 +831,15 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call MAPL_GetResource(MAPL, REPLAY_O3_FACTOR, Label="REPLAY_O3_FACTOR:", default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, REPLAY_TS_FACTOR, Label="REPLAY_TS_FACTOR:", default=1.0 , RC=STATUS) ; VERIFY_(STATUS)
 
-      REPLAY_PHIS   = uppercase(REPLAY_PHIS)
-      REPLAY_TS     = uppercase(REPLAY_TS)
-      REPLAY_P      = uppercase(REPLAY_P )
-      REPLAY_U      = uppercase(REPLAY_U )
-      REPLAY_V      = uppercase(REPLAY_V )
-      REPLAY_T      = uppercase(REPLAY_T )
-      REPLAY_QV     = uppercase(REPLAY_QV)
-      REPLAY_O3     = uppercase(REPLAY_O3)
-      REPLAY_T_TYPE = uppercase(REPLAY_T_TYPE)
+      REPLAY_PHIS   = ESMF_UtilStringUpperCase(REPLAY_PHIS)
+      REPLAY_TS     = ESMF_UtilStringUpperCase(REPLAY_TS)
+      REPLAY_P      = ESMF_UtilStringUpperCase(REPLAY_P )
+      REPLAY_U      = ESMF_UtilStringUpperCase(REPLAY_U )
+      REPLAY_V      = ESMF_UtilStringUpperCase(REPLAY_V )
+      REPLAY_T      = ESMF_UtilStringUpperCase(REPLAY_T )
+      REPLAY_QV     = ESMF_UtilStringUpperCase(REPLAY_QV)
+      REPLAY_O3     = ESMF_UtilStringUpperCase(REPLAY_O3)
+      REPLAY_T_TYPE = ESMF_UtilStringUpperCase(REPLAY_T_TYPE)
 
     L_REPLAY_PHIS   = trim(REPLAY_PHIS)  .ne.'NO' .and. trim(REPLAY_PHIS)  .ne.'NULL'
     L_REPLAY_TS     = trim(REPLAY_TS)    .ne.'NO' .and. trim(REPLAY_TS)    .ne.'NULL'
@@ -834,13 +854,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(STATUS)
     call MAPL_GetResource(MAPL, DAMPEND,  LABEL="REPLAY_DAMPEND:", default=1.0, RC=status)
     VERIFY_(STATUS)
-    ASSERT_(DAMPBEG.le.DAMPEND   )
+    _ASSERT(DAMPBEG.le.DAMPEND   ,'needs informative message')
 
     call MAPL_GetResource(MAPL, BLEND_QV_AT_TP,  LABEL="REPLAY_BLEND_QV_AT_TP:", default=.FALSE., RC=status)
     VERIFY_(STATUS)
 
-       CREMAP = uppercase(CREMAP)
-      FIXWIND = uppercase(FIXWIND)
+       CREMAP = ESMF_UtilStringUpperCase(CREMAP)
+      FIXWIND = ESMF_UtilStringUpperCase(FIXWIND)
     DOWINDFIX = trim(FIXWIND)=="YES"
 
      CALL MAPL_GetResource(MAPL,JCAP,LABEL="MKIAU_JCAP:",default=-1,RC=STATUS)
@@ -848,7 +868,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
      USE_SPECFILT = (JCAP /= -1)
 
     if( DOWINDFIX .or. USE_SPECFILT ) then
-        ASSERT_( trim(GRIDINC) == "ANA" )
+        _ASSERT( trim(GRIDINC) == "ANA" ,'needs informative message')
     endif
 
 ! **********************************************************************
@@ -911,7 +931,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
         if(MAPL_AM_I_ROOT() ) then
            print *, 'Current nymd: ',nymd,'  nhms: ',nhms,'  FAC:  1.00000'
-           print *
         endif
 
     else
@@ -1001,10 +1020,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     call CFIO_Close      ( fid, STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_GetResource( MAPL, NX,  Label="NX:", RC=status )
-    VERIFY_(STATUS)
-    call MAPL_GetResource( MAPL, NY,  Label="NY:", RC=status )
-    VERIFY_(STATUS)
+    call MAPL_MakeDecomposition(nx,ny,rc=status)
+    VERIFY_(status)
 
     do_transforms = ( IMbkg_World /= IMana_World ) .or. &
                     ( JMbkg_World /= JMana_World ) .or. &
@@ -1070,18 +1087,18 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        ANA2BKGConsrv = (K /= 0)
 
        if (ana2bkgconsrv) then
-          mkiau_internal_state%ana2bkg_regridder => regridder_manager%make_regridder(GRIDana, GRIDbkg, REGRID_METHOD_CONSERVE, rc=status)
+          mkiau_internal_state%ana2bkg_regridder => new_regridder_manager%make_regridder(GRIDana, GRIDbkg, REGRID_METHOD_CONSERVE, rc=status)
           VERIFY_(status)
        else
-          mkiau_internal_state%ana2bkg_regridder => regridder_manager%make_regridder(GRIDana, GRIDbkg, REGRID_METHOD_BILINEAR, rc=status)
+          mkiau_internal_state%ana2bkg_regridder => new_regridder_manager%make_regridder(GRIDana, GRIDbkg, REGRID_METHOD_BILINEAR, rc=status)
           VERIFY_(status)
        end if
 
        if (bkg2anaConsrv) then
-          mkiau_internal_state%bkg2ana_regridder => regridder_manager%make_regridder(GRIDbkg, GRIDana, REGRID_METHOD_CONSERVE, rc=status)
+          mkiau_internal_state%bkg2ana_regridder => new_regridder_manager%make_regridder(GRIDbkg, GRIDana, REGRID_METHOD_CONSERVE, rc=status)
           VERIFY_(status)
        else
-          mkiau_internal_state%bkg2ana_regridder => regridder_manager%make_regridder(GRIDbkg, GRIDana, REGRID_METHOD_BILINEAR, rc=status)
+          mkiau_internal_state%bkg2ana_regridder => new_regridder_manager%make_regridder(GRIDbkg, GRIDana, REGRID_METHOD_BILINEAR, rc=status)
           VERIFY_(status)
        end if
 
@@ -1468,11 +1485,13 @@ CONTAINS
         VERIFY_(STATUS)
         call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
         VERIFY_(STATUS)
+             FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
         NEED_BUNDLEP0 = .FALSE.
-    else if( FILE_TIMEP0 .ne. REPLAY_TIMEP0 ) then
+    else if( (FILE_TIMEP0 .ne. REPLAY_TIMEP0) .or. (FILEP0 .ne. REPLAY_FILEP0) ) then
         call MAPL_CFIORead ( REPLAY_FILEP0, REPLAY_TIMEP0, RBUNDLEP0 , RC=status)
         VERIFY_(STATUS)
+             FILEP0 = REPLAY_FILEP0
         FILE_TIMEP0 = REPLAY_TIMEP0
     endif
 
@@ -1485,11 +1504,13 @@ CONTAINS
             VERIFY_(STATUS)
             call MAPL_CFIORead ( REPLAY_FILEM1, REPLAY_TIMEM1, RBUNDLEM1 , RC=status)
             VERIFY_(STATUS)
+                 FILEM1 = REPLAY_FILEM1
             FILE_TIMEM1 = REPLAY_TIMEM1
             NEED_BUNDLEM1 = .FALSE.
-        else if ( FILE_TIMEM1 .ne. REPLAY_TIMEM1 ) then
+        else if ( (FILE_TIMEM1 .ne. REPLAY_TIMEM1) .or. (FILEM1 .ne. REPLAY_FILEM1) ) then
             call MAPL_CFIORead ( REPLAY_FILEM1, REPLAY_TIMEM1, RBUNDLEM1 , RC=status)
             VERIFY_(STATUS)
+                 FILEM1 = REPLAY_FILEM1
             FILE_TIMEM1 = REPLAY_TIMEM1
         endif
 
@@ -1502,11 +1523,13 @@ CONTAINS
                 VERIFY_(STATUS)
                 call MAPL_CFIORead ( REPLAY_FILEP1, REPLAY_TIMEP1, RBUNDLEP1 , RC=status)
                 VERIFY_(STATUS)
+                     FILEP1 = REPLAY_FILEP1
                 FILE_TIMEP1 = REPLAY_TIMEP1
                 NEED_BUNDLEP1 = .FALSE.
-            else if ( FILE_TIMEP1 .ne. REPLAY_TIMEP1 ) then
+            else if ( FILE_TIMEP1 .ne. REPLAY_TIMEP1 .or. (FILEP1 .ne. REPLAY_FILEP1) ) then
                 call MAPL_CFIORead ( REPLAY_FILEP1, REPLAY_TIMEP1, RBUNDLEP1 , RC=status)
                 VERIFY_(STATUS)
+                     FILEP1 = REPLAY_FILEP1
                 FILE_TIMEP1 = REPLAY_TIMEP1
             endif
 
@@ -1518,11 +1541,13 @@ CONTAINS
                 VERIFY_(STATUS)
                 call MAPL_CFIORead ( REPLAY_FILEM2, REPLAY_TIMEM2, RBUNDLEM2 , RC=status)
                 VERIFY_(STATUS)
+                     FILEM2 = REPLAY_FILEM2
                 FILE_TIMEM2 = REPLAY_TIMEM2
                 NEED_BUNDLEM2 = .FALSE.
-            else if ( FILE_TIMEM2 .ne. REPLAY_TIMEM2 ) then
+            else if ( FILE_TIMEM2 .ne. REPLAY_TIMEM2 .or. (FILEM2 .ne. REPLAY_FILEM2) ) then
                 call MAPL_CFIORead ( REPLAY_FILEM2, REPLAY_TIMEM2, RBUNDLEM2 , RC=status)
                 VERIFY_(STATUS)
+                     FILEM2 = REPLAY_FILEM2
                 FILE_TIMEM2 = REPLAY_TIMEM2
             endif
         endif
@@ -2545,7 +2570,7 @@ CONTAINS
           VERIFY_(STATUS)
           if(associated(ptr3d)) ptr3d = 0.0
        else
-          ASSERT_(.false.) ! not yet implemented
+          _ASSERT(.false.,'needs informative message') ! not yet implemented
        endif
     end do
 
@@ -2795,9 +2820,9 @@ CONTAINS
       logical         match
                       match = .false.
 
-      name  = uppercase( trim(replay_name ) )
-      alias = uppercase( trim(replay_alias) )
-      var   = uppercase( trim(replay_var  ) )
+      name  = ESMF_UtilStringUpperCase( trim(replay_name ) )
+      alias = ESMF_UtilStringUpperCase( trim(replay_alias) )
+      var   = ESMF_UtilStringUpperCase( trim(replay_var  ) )
 
       if(     trim(var) == trim(alias) ) match = .true.
 

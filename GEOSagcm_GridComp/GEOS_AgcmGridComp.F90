@@ -1,4 +1,4 @@
-! $Id$
+! $Id: GEOS_AgcmGridComp.F90,v 1.85.12.25.2.1.18.1.2.1.6.1.10.10.2.1 2019/11/18 21:20:23 ltakacs Exp $
 
 #include "MAPL_Generic.h"
 
@@ -31,21 +31,17 @@ module GEOS_AgcmGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_TopoGetMod
 
   use GEOS_superdynGridCompMod,  only:  SDYN_SetServices => SetServices
   use GEOS_physicsGridCompMod,   only:  PHYS_SetServices => SetServices
   use MAPL_OrbGridCompMod,       only:  ORB_SetServices => SetServices
-  use m_chars,                   only:  uppercase
-  use MAPL_GridManagerMod, only: grid_manager
-  use MAPL_RegridderManagerMod, only: regridder_manager
-  use MAPL_AbstractRegridderMod
-  use MAPL_RegridderSpecMod
 
   use GEOS_RemapMod, only: myremap => remap
 
   use Chem_GroupMod
+  use Bundle_IncrementMod
 
   implicit none
   private
@@ -195,10 +191,9 @@ contains
 
     call MAPL_GetResource(MAPL, ReplayMode, Label='REPLAY_MODE:', default="NoReplay", RC=STATUS )
     VERIFY_(STATUS)
-    if(ANA_TS .and. ( adjustl(ReplayMode) /= "Exact_3D" .and. &
-                      adjustl(ReplayMode) /= "Exact_4D" .and. &
+    if(ANA_TS .and. ( adjustl(ReplayMode) /= "Exact"      .and. &
                       adjustl(ReplayMode) /= "Regular" ) ) then
-             ASSERT_( adjustl(ReplayMode) == "NoReplay"  )
+             _ASSERT( adjustl(ReplayMode) == "NoReplay"  ,'needs informative message')
     endif
  
 !BOS
@@ -335,7 +330,7 @@ contains
 ! !EXPORT STATE:
 
     call MAPL_AddExportSpec ( gc,                                      &
-         SHORT_NAME = 'DPSDT_CONSTRAINT',                              &
+         SHORT_NAME = 'DPSDT_CON',                                     &
          LONG_NAME  = 'surface_pressure_adjustment_due_to_constraint', &
          UNITS      = 'Pa s-1',                                        &
          DIMS       = MAPL_DimsHorzOnly,                               &
@@ -379,6 +374,14 @@ contains
     call MAPL_AddExportSpec ( gc,                                         &
          SHORT_NAME = 'DQVDT_ANA',                                        &
          LONG_NAME  = 'total_specific_humidity_vapor_analysis_tendency',  &
+         UNITS      = 'kg kg-1 s-1',                                      &
+         DIMS       = MAPL_DimsHorzVert,                                  &
+         VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddExportSpec ( gc,                                         &
+         SHORT_NAME = 'DQVDT_CON',                                        &
+         LONG_NAME  = 'total_specific_humidity_vapor_analysis_tendency_due_to_Constraint',  &
          UNITS      = 'kg kg-1 s-1',                                      &
          DIMS       = MAPL_DimsHorzVert,                                  &
          VLOCATION  = MAPL_VLocationCenter,                    RC=STATUS  )
@@ -664,6 +667,15 @@ contains
          VLOCATION        = MAPL_VLocationNone,                RC=STATUS  )
      VERIFY_(STATUS)
 
+    call MAPL_AddExportSpec ( GC,                                         &
+         SHORT_NAME       = 'TRADVI',                                     &
+         LONG_NAME        = 'advected_quantities_tendencies',             &
+         units            = 'dX s-1',                                     &
+         DIMS             = MAPL_DimsHorzVert,                            &
+         DATATYPE         = MAPL_BundleItem,                              &
+                                                               RC=STATUS  )
+    VERIFY_(STATUS)
+
 
 ! Create childrens gridded components and invoke their SetServices
 ! ----------------------------------------------------------------
@@ -893,11 +905,13 @@ contains
     call MAPL_AddConnectivity ( GC,                                                        &
          SRC_NAME  = (/'U            ','V            ','TH           ','T            ',    &
                        'ZLE          ','PS           ','TA           ','QA           ',    &
+                       'US           ','VS           ',                                    &
                        'SPEED        ','DZ           ','PLE          ','W            ',    &
                        'PREF         ','TROPP_BLENDED','S            ','PLK          ',    &
                        'PV           ','OMEGA        ','PKE          '/),                  &
          DST_NAME  = (/'U     ','V     ','TH    ','T     ',                                &
                        'ZLE   ','PS    ','TA    ','QA    ',                                &
+                       'UA    ','VA    ',                                                  &
                        'SPEED ','DZ    ','PLE   ','W     ',                                &
                        'PREF  ','TROPP ','S     ','PLK   ',                                &
                        'PV    ','OMEGA ','PKE   '/),                                       &
@@ -1069,6 +1083,8 @@ contains
    real                                :: RPL_INTERVAL
    real                                :: RPL_SHUTOFF
    real                                :: IAU4dFREQ
+   integer                             :: PREDICTOR_DURATION
+   integer                             :: MKIAU_FREQUENCY
    character(len=ESMF_MAXSTR), parameter :: INITIALIZED_EXPORTS(3) = &
         (/'PHIS  ', 'SGH   ', 'VARFLT' /)
 
@@ -1108,6 +1124,12 @@ contains
 
     call MAPL_Get ( STATE, GIM=GIM, GEX=GEX, RC=STATUS )
     VERIFY_(STATUS)
+
+! Initialize the advection increments bundle (TRADVI)
+! with tracer increment names 
+!-----------------------------------------------------
+
+    call Initialize_IncBundle_init(GC, GEX(PHYS), EXPORT, DYNinc, __RC__)
 
 ! Make sure that the physics tendencies are allocated
 !----------------------------------------------------
@@ -1199,20 +1221,33 @@ contains
    call ESMF_TimeIntervalSet(TIMEINT,  S=nint(DT) , RC=STATUS)
    VERIFY_(STATUS)
 
-   ALARM = ESMF_AlarmCreate( name='PredictorAlarm', &
-                             CLOCK = CLOCK, &
-                             RingInterval = TIMEINT  ,  &
+   ALARM = ESMF_AlarmCreate( name='PredictorAlarm',    &
+                             CLOCK = CLOCK,            &
                              RingTime     = ringTime,  & 
-                             RC           = STATUS      )
+                             RingInterval = TIMEINT,   &
+                             RC           = STATUS     )
    VERIFY_(STATUS)
    if(ringTime == currTime) then
       call ESMF_AlarmRingerOn(Alarm, rc=status)
       VERIFY_(STATUS)
    end if
 
-   ! Detect if running DasMode
-   ! -------------------------
+ ! if(MAPL_AM_I_ROOT() ) then
+ !    PRINT *
+ !    PRINT *,TRIM(Iam)//": PredictorAlarm settings"
+ !    call ESMF_TimeGet( currTIME, timeString=String, RC=STATUS)
+ !    VERIFY_(STATUS)
+ !    PRINT *,TRIM(Iam)//": CurrTime: ",trim(string)
+ !    call ESMF_TimeGet( RingTIME, timeString=String, RC=STATUS)
+ !    VERIFY_(STATUS)
+ !    PRINT *,TRIM(Iam)//": RingTime: ",trim(string)
+ !    PRINT *,TRIM(Iam)//": Is Ringing: ", ESMF_AlarmIsRinging(ALARM)
+ !    PRINT *
+ ! endif
 
+
+   ! Detect if running DasMode (Checking for AGCM_IMPORT)
+   ! ----------------------------------------------------
    call MAPL_GetResource( STATE, STRING, LABEL="IMPORT_RESTART_FILE:", RC=STATUS)
    IF (STATUS == ESMF_SUCCESS) THEN
       DasMode = .true.
@@ -1220,18 +1255,18 @@ contains
       DasMode = .false.
    END IF
 
+   ! Detect if running REPLAY
+   ! ------------------------
    call MAPL_GetResource( STATE, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
    VERIFY_(STATUS)
 
-! NoReplay, Exact, Intermittent, Regular
-   rplMode = adjustl(ReplayMode)
-   if(rplMode=="Regular" .or. rplMode == "Exact_3D" .or. rplMode == "Exact_4D") then
-      DasMode = .true.
+       rplMode = adjustl(ReplayMode)
+   if( rplMode=="Regular" .or. rplMode == "Exact" ) then
+       DasMode = .true.
    end if
 
    ! Disable the predictor alarm if not dasmode
    ! ------------------------------------------
-
    if (.not. DasMode) then
       call ESMF_AlarmDisable(ALARM, rc=status)
       VERIFY_(STATUS)
@@ -1240,14 +1275,13 @@ contains
    call MAPL_StateAlarmAdd(STATE,ALARM,RC=status)
    VERIFY_(STATUS)
 
-   if(adjustl(ReplayMode)=="Exact_3D" .or. adjustl(ReplayMode)=="Exact_4D") then
-      call MAPL_GetResource(STATE, RPL_SHUTOFF, 'REPLAY_SHUTOFF:', default=4000*21600., RC=STATUS ) ! Default: 1000 days
-      VERIFY_(STATUS)
-      call ESMF_TimeIntervalSet(TIMEINT, S=nint(RPL_SHUTOFF), RC=STATUS)
-      VERIFY_(STATUS)
+  ! Note: PREDICTOR_DURATION and MKIAU_FREQUENCY are Initialized in GCM_GridComp
+  ! ----------------------------------------------------------------------------
+    call MAPL_GetResource( STATE, PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", RC=STATUS ) ; VERIFY_(STATUS)
+    call MAPL_GetResource( STATE, MKIAU_FREQUENCY,    Label="MKIAU_FREQUENCY:",    RC=STATUS ) ; VERIFY_(STATUS)
 
-      ALARM = ESMF_AlarmCreate ( name='ReplayShutOff', clock=CLOCK, ringInterval=TIMEINT, sticky=.false., RC=STATUS )
-      VERIFY_(STATUS)
+   if(   (adjustl(ReplayMode)=="Exact"  ) .or.   &
+       ( (adjustl(ReplayMode)=="Regular") .and. (PREDICTOR_DURATION.gt.MKIAU_FREQUENCY/2) )  ) then
 
       call MAPL_GetResource(STATE, RPL_INTERVAL, 'REPLAY_INTERVAL:', default=21600., RC=STATUS )
       VERIFY_(STATUS)
@@ -1258,7 +1292,7 @@ contains
       VERIFY_(STATUS)
       call ESMF_AlarmRingerOn(ALARM, rc=status)
       VERIFY_(STATUS)
-      ASSERT_(POFFSET == RPL_INTERVAL)
+      _ASSERT(POFFSET == RPL_INTERVAL,'needs informative message')
    end if
 
 !  Create 4dIAU alarm
@@ -1361,8 +1395,12 @@ contains
    real, pointer, dimension(:,:,:)     :: DTDT   => null()
    real, pointer, dimension(:,:,:)     :: TENDAN => null()
 
+   real,   allocatable, dimension(:,:)   :: ALPHA2D
    real,   allocatable, dimension(:,:)   :: QFILL
    real,   allocatable, dimension(:,:)   :: QINT 
+   real,   allocatable, dimension(:,:)   :: ALF_BKS_INT
+   real,   allocatable, dimension(:,:)   :: DRY_BKG_INT
+   real,   allocatable, dimension(:,:)   :: DRY_ANA_INT
    real,   allocatable, dimension(:,:)   :: QDP_BKG_INT 
    real,   allocatable, dimension(:,:)   :: QDP_ANA_INT 
    real*8, allocatable, dimension(:,:)   :: SUMKE
@@ -1426,14 +1464,22 @@ contains
    real*8, allocatable, dimension(:,:)   :: sumq
    real*8, allocatable, dimension(:,:)   :: sum_qdp_bkg
    real*8, allocatable, dimension(:,:)   :: sum_qdp_ana
+   real*8, allocatable, dimension(:,:)   :: sum_dry_ana
+   real*8, allocatable, dimension(:,:)   :: sum_dry_bkg
    real,   allocatable, dimension(:,:,:) ::     qdp_bkg
    real,   allocatable, dimension(:,:,:) ::     qdp_ana
-   real,   allocatable, dimension(:,:,:) ::  ple_ana
-   real,   allocatable, dimension(:,:,:) ::   dp_ana
+   real,   allocatable, dimension(:,:,:) ::     dry_ana
+   real,   allocatable, dimension(:,:,:) ::     dry_bkg
+   real*8, allocatable, dimension(:,:,:) ::  ple_ana
+   real*8, allocatable, dimension(:,:,:) ::   dp_ana
    real,   allocatable, dimension(:,:,:) :: tdpold
    real,   allocatable, dimension(:,:,:) :: tdpnew
+   real,   allocatable, dimension(:,:,:) :: DQVCON
 
    real*8                                ::   gamma
+   real*8                                ::  alf_bks_ave
+   real*8                                ::  dry_bkg_ave
+   real*8                                ::  dry_ana_ave
    real*8                                ::  qdp_bkg_ave
    real*8                                ::  qdp_ana_ave
    real*8                                :: qint_ana_ave
@@ -1444,8 +1490,11 @@ contains
    integer                             :: NumFriendly
    integer                             :: K
    integer                             :: I
+   integer                             :: PREDICTOR_DURATION
+   integer                             :: MKIAU_FREQUENCY
    logical                             :: DasMode
    logical                             :: DO_PREDICTOR
+   logical                             :: Begin_REPLAY_Cycle
    logical                             :: LAST_CORRECTOR
    integer                             :: CONSTRAIN_DAS
    real                                :: ALPHA, BETA, TAUANL, DTX, IAUcoeff
@@ -1467,10 +1516,15 @@ contains
 
    integer                             :: unit
    logical                             :: is_ringing
-   logical,save                        :: is_shutoff=.false.
+   logical                             ::   is_ExactReplay09_ringing
+   logical                             :: is_RegularReplay09_ringing
+   logical                             :: is_shutoff
    character(len=ESMF_MAXSTR)          :: FILENAME
+   character(len=ESMF_MAXSTR)          :: FILETYPE
    character(len=ESMF_MAXSTR)          :: FileTmpl
+   character(len=ESMF_MAXSTR)          :: FileTmpl09
    character(len=ESMF_MAXSTR)          :: replayFile
+   character(len=ESMF_MAXSTR)          :: replayFile09
    character(len=ESMF_MAXSTR)          :: replayMode
    character(len=ESMF_MAXSTR)          :: rplMode
    type(ESMF_Time)                     :: currTime
@@ -1517,23 +1571,17 @@ contains
 !----------------------------------------------------------
 
     call MAPL_Get ( STATE, GCS=GCS, GIM=GIM, GEX=GEX,  &
-                                INTERNAL_ESMF_STATE=INTERNAL,      &
-                                IM=IM, JM=JM, LM=LM,               & 
-                                RC=STATUS )
+                    INTERNAL_ESMF_STATE=INTERNAL,      &
+                    IM=IM, JM=JM, LM=LM,               & 
+                    RC=STATUS )
     VERIFY_(STATUS)
 
     call ESMF_GridCompGet(GC, grid=grid, rc=status)
     VERIFY_(STATUS)
 
-! Get the specific 4dIAU alarm
-!-----------------------------
+! Get the 4DIAU alarm
+!--------------------
     call ESMF_ClockGetAlarm(clock, alarmname='4DIAUalarm', alarm=Alarm4D, rc=status)
-    VERIFY_(STATUS)
-
-! Get the specific IAU alarm
-!---------------------------
-
-    call MAPL_StateAlarmGet(STATE, ALARM, NAME='PredictorAlarm', RC=STATUS)
     VERIFY_(STATUS)
 
 ! Set the various time scales
@@ -1550,13 +1598,21 @@ contains
     call MAPL_GetResource( STATE, ISFCST,          Label="IS_FCST:",       default=0,      RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetResource( STATE, CONSTRAIN_DAS,   Label="CONSTRAIN_DAS:", default=1,      RC=STATUS); VERIFY_(STATUS)
 
+  ! Note: PREDICTOR_DURATION and MKIAU_FREQUENCY are Initialized in GCM_GridComp
+  ! ----------------------------------------------------------------------------
+    call MAPL_GetResource( STATE, PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", RC=STATUS ) ; VERIFY_(STATUS)
+    call MAPL_GetResource( STATE, MKIAU_FREQUENCY,    Label="MKIAU_FREQUENCY:",    RC=STATUS ) ; VERIFY_(STATUS)
+
     call MAPL_GetResource( STATE, ANA_IS_WEIGHTED, Label="ANA_IS_WEIGHTED:", default='NO', RC=STATUS)
     VERIFY_(STATUS)
-         ANA_IS_WEIGHTED = uppercase(ANA_IS_WEIGHTED)
+         ANA_IS_WEIGHTED = ESMF_UtilStringUpperCase(ANA_IS_WEIGHTED)
              IS_WEIGHTED =   adjustl(ANA_IS_WEIGHTED)=="YES" .or. adjustl(ANA_IS_WEIGHTED)=="NO"
-    ASSERT_( IS_WEIGHTED )
+    _ASSERT( IS_WEIGHTED ,'needs informative message')
              IS_WEIGHTED =   adjustl(ANA_IS_WEIGHTED)=="YES"
 
+
+   ! Detect if running DasMode (Checking for AGCM_IMPORT)
+   ! ----------------------------------------------------
     call MAPL_GetResource( STATE, STRING, LABEL="IMPORT_RESTART_FILE:", RC=STATUS)
     IF (STATUS == ESMF_SUCCESS) THEN
        DasMode = .true.
@@ -1564,12 +1620,12 @@ contains
        DasMode = .false.
     END IF
 
+   ! Detect if running REPLAY
+   ! ------------------------
     call MAPL_GetResource( STATE, ReplayMode, 'REPLAY_MODE:', default="NoReplay", RC=STATUS )
     VERIFY_(STATUS)
-
-! NoReplay, Exact, Intermittent, Regular
-    rplMode = adjustl(ReplayMode)
-    if(rplMode=="Regular" .or. rplMode == "Exact_3D" .or. rplMode == "Exact_4D") then
+       rplMode = adjustl(ReplayMode)
+    if(rplMode=="Regular" .or. rplMode == "Exact") then
        DasMode = .true.
     end if
 
@@ -1583,28 +1639,60 @@ contains
        TYPE = FREERUN
     else
 
-       DO_PREDICTOR = ESMF_AlarmIsRinging( ALARM, rc=status)
+    ! Get the specific IAU alarm
+    !---------------------------
+       call MAPL_StateAlarmGet(STATE, ALARM, NAME='PredictorAlarm', RC=STATUS)
+       VERIFY_(STATUS)
+
+       DO_PREDICTOR   = ESMF_AlarmIsRinging   ( ALARM, rc=status)
        VERIFY_(STATUS)
        LAST_CORRECTOR = ESMF_AlarmWillRingNext( ALARM, rc=status)
        VERIFY_(STATUS)
 
-REPLAYING: if (rplMode == "Regular") then
-!----------------------------------------
+REPLAYING: if ( DO_PREDICTOR .and. (rplMode == "Regular") ) then
+!-----------------------------------------------------------------------
                call ESMF_ClockGetAlarm(clock, 'startReplay', alarm, rc=status)
                VERIFY_(STATUS)
                LAST_CORRECTOR = ESMF_AlarmWillRingNext( ALARM, rc=status)
                VERIFY_(STATUS)
 
-           else if (rplMode == "Exact_3D" .or. rplMode == "Exact_4D") then
+           else if(  (rplMode=="Exact")   .or.  & 
+                   ( (rplMode=="Regular") .and. (PREDICTOR_DURATION.gt.MKIAU_FREQUENCY/2) )  ) then
 
+               ! Set Active PREDICTOR_STEP Alarm to OFF
+               ! --------------------------------------
                call ESMF_AlarmRingerOff(ALARM, RC=STATUS)
                VERIFY_(STATUS)
                DO_PREDICTOR = .FALSE.
-               call MAPL_GetResource ( STATE, FileTmpl,'REPLAY_FILE:', RC=STATUS )
-               VERIFY_(STATUS)
+
+               ! Get file template for READING Exact REPLAY Increment Files
+               ! ----------------------------------------------------------
+               if ( rplMode=="Exact" ) then
+                    call MAPL_GetResource ( STATE, FileTmpl,  'REPLAY_FILE:',                   RC=STATUS )
+                    VERIFY_(STATUS)
+                    call MAPL_GetResource ( STATE, FileTmpl09,'REPLAY_FILE09:', DEFAULT='NULL', RC=STATUS )
+                    VERIFY_(STATUS)
+               endif
+
+               ! Get file template for READING Regular REPLAY Increment Files produced during PREDICTOR Step
+               ! (This should be consistent with any USER-Supplied MKIAU_CHECKPOINT file)
+               ! -------------------------------------------------------------------------------------------
+               if ( rplMode=="Regular" .and. (PREDICTOR_DURATION.gt.MKIAU_FREQUENCY/2) ) then
+                    call MAPL_GetResource( STATE, FileName, "MKIAU_CHECKPOINT_FILE:", rc=status)
+                    VERIFY_(STATUS)
+                    call MAPL_GetResource( STATE, FileType, "MKIAU_CHECKPOINT_TYPE:", rc=status)
+                    VERIFY_(STATUS)
+                    if( FileType == 'binary' ) FileTmpl = trim(FileName) // '.%y4%m2%d2_%h2%n2z.' // 'bin'
+                    if( FileType == 'pnc4'   ) FileTmpl = trim(Filename) // '.%y4%m2%d2_%h2%n2z.' // 'nc4'
+                    FileTmpl09 = 'NULL'
+               endif
 
 ! If replay alarm is ringing, we need to reset state
 !---------------------------------------------------
+               call ESMF_ClockGetAlarm(Clock,'ReplayShutOff',Alarm,rc=Status)
+               VERIFY_(status)
+               is_shutoff = ESMF_AlarmIsRinging( Alarm,rc=Status)
+               VERIFY_(status)
 
                if (is_shutoff) then ! once this alarm rings, is_shutoff will remain true for the rest of the run 
                !  if ( MAPL_am_I_root() ) print *, 'Zeroing AGCM_IMPORT'
@@ -1622,15 +1710,36 @@ REPLAYING: if (rplMode == "Regular") then
                   VERIFY_(status)
                endif
 
-               call ESMF_ClockGetAlarm(Clock,'ExactReplay',Alarm,rc=Status)
+             ! Check for Beginning of REPLAY cycle
+             ! -----------------------------------
+               call ESMF_ClockGetAlarm(Clock,'replayCycle',Alarm,rc=Status)
+               VERIFY_(status) 
+               Begin_REPLAY_Cycle = ESMF_AlarmIsRinging( Alarm,rc=status )
                VERIFY_(status) 
 
+             ! Check Alarm for Beginning of EXACT_REPLAY09 cycle
+             ! -------------------------------------------------
+               call ESMF_ClockGetAlarm(Clock,'ExactReplay09',Alarm,rc=Status)
+               VERIFY_(status) 
+               is_ExactReplay09_ringing = ESMF_AlarmIsRinging( Alarm,rc=status )
+               VERIFY_(status) 
+
+             ! Check Alarm for REGULAR_REPLAY09 cycle
+             ! --------------------------------------
+               call ESMF_ClockGetAlarm(Clock,'RegularReplay09',Alarm,rc=Status)
+               VERIFY_(status) 
+               is_RegularReplay09_ringing = ESMF_AlarmIsRinging( Alarm,rc=status )
+               VERIFY_(status) 
+
+             ! Check for Last Corrector
+             ! -------------------------------------
+               call ESMF_ClockGetAlarm(Clock,'ExactReplay',Alarm,rc=Status)
+               VERIFY_(status) 
                LAST_CORRECTOR = ESMF_AlarmWillRingNext( ALARM, rc=status)
                VERIFY_(STATUS)
 
-               is_ringing = ESMF_AlarmIsRinging( Alarm,rc=status )
-               VERIFY_(status) 
-
+! Force IS_RINGING to be TRUE at Start-Up
+! ---------------------------------------
                if( first ) then
                    call ESMF_ClockGet(Clock, CurrTime=currTime, rc=Status)
                    VERIFY_(status) 
@@ -1641,32 +1750,51 @@ REPLAYING: if (rplMode == "Regular") then
 
                    first = .FALSE.
                endif
-               call GET_REPLAY_TIME ( STATE, CLOCK, REPLAY_TIME, RC )
+               call GET_REPLAY_TIME ( STATE, CLOCK, REPLAY_TIME, Begin_REPLAY_Cycle, RC )
                is_ringing = REPLAY_TIME /= REPLAY_TIME0
 
-               is_ringing = is_ringing .and. (.not. is_shutoff)
+               is_ringing = ( is_ringing .or. Begin_REPLAY_Cycle ) .and. (.not. is_shutoff)
 
-TIME_TO_REPLAY: if(is_ringing) then
-! ---------------------------------
-                   ! read import from file
-                   ! ---------------------
+               if(is_ringing) then
+               ! -----------------
+                   ! Read REPLAY file
+                   ! ----------------
 
                    REPLAY_TIME0 = REPLAY_TIME
-                   call MAPL_GetCurrentFile(FILETMPL=filetmpl, TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
-                   VERIFY_(status) 
-                 ! if(MAPL_AM_I_ROOT() ) then
-                 !    write(6,'(1x,a,a)') 'REPLAY File: ',trim(ReplayFile)
-                 !    print *
-                 ! endif
 
-                   unit = getfile(ReplayFile, FORM="unformatted", all_pes=.true., rc=status)
-                   VERIFY_(STATUS) 
-                   call MAPL_VarRead(UNIT=UNIT, STATE=IMPORT, RC=STATUS)
-                   VERIFY_(STATUS) 
-                   call FREE_FILE(unit, rc=status)
-                   VERIFY_(STATUS) 
+                   if( rplMode=="Exact" ) then
+                       if( is_ExactReplay09_ringing ) then
+                           if( filetmpl09.ne.'NULL' ) then
+                               call MAPL_GetCurrentFile(FILETMPL=filetmpl09, TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
+                               VERIFY_(status) 
+                           else
+                               call MAPL_GetCurrentFile(FILETMPL=filetmpl,   TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
+                               VERIFY_(status) 
+                           endif
+                       else
+                               call MAPL_GetCurrentFile(FILETMPL=filetmpl,   TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
+                               VERIFY_(status) 
+                       endif
+                   endif
 
-                end if TIME_TO_REPLAY
+                   if( (rplMode=="Regular") .and. (PREDICTOR_DURATION.gt.MKIAU_FREQUENCY/2) ) then
+                       if( is_RegularReplay09_ringing ) then
+                           if( filetmpl09.ne.'NULL' ) then
+                               call MAPL_GetCurrentFile(FILETMPL=filetmpl09, TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
+                               VERIFY_(status) 
+                           else
+                               call MAPL_GetCurrentFile(FILETMPL=filetmpl,   TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
+                               VERIFY_(status) 
+                           endif
+                       else
+                               call MAPL_GetCurrentFile(FILETMPL=filetmpl,   TIME=REPLAY_TIME, FILENAME=ReplayFile, RC=STATUS)
+                               VERIFY_(status) 
+                       endif
+                   endif
+
+                   call MAPL_ESMFStateReadFromFile(STATE=IMPORT, CLOCK=CLOCK, FILENAME=ReplayFile, MPL=STATE, HDR=.FALSE., RC=STATUS)
+                   VERIFY_(STATUS)
+               endif
 
            end if REPLAYING
 
@@ -1686,7 +1814,7 @@ TIME_TO_REPLAY: if(is_ringing) then
     call ESMF_FieldBundleGet(BUNDLE,FieldCount=NumFriendly,   RC=STATUS)
     VERIFY_(STATUS)
 
-    ASSERT_(NumFriendly==2)
+    _ASSERT(NumFriendly==2,'needs informative message')
 
     allocate(Names(NumFriendly), stat=STATUS)
     VERIFY_(STATUS)
@@ -1760,14 +1888,12 @@ TIME_TO_REPLAY: if(is_ringing) then
     ALF = ALPHA
     BET = BETA
 
-!   if(MAPL_AM_I_ROOT() ) print *, 'TYPE: ',TYPE,' PRED: ',PREDICTOR,' CORR: ',CORRECTOR,' FORE: ',FORECAST
-
 ! Get IAU Scaling Coefficient
 ! ---------------------------
     if( TYPE /= CORRECTOR ) then
         IAUcoeff = 1.0    ! Do NOT modify Forecast/Predictor forcing term
     else
-        call get_iau_coeff( IAUcoeff )
+        call get_iau_coeff( IAUcoeff,CLOCK )
 
       ! If 4DIAU, overwrite increments from analysis by recreating them on the fly
       ! --------------------------------------------------------------------------
@@ -1934,41 +2060,49 @@ TIME_TO_REPLAY: if(is_ringing) then
                 DQGANA = QGRAUPEL
 
                 if(TYPE  == CORRECTOR) then
-                    IF( CONSTRAIN_DAS == 1 ) then
-                    ! ---------------------------
 
-                    ! Create BKG Water Mass
-                    ! ---------------------
+                    IF( CONSTRAIN_DAS == 1 .or. CONSTRAIN_DAS == 2 ) then
+                    ! ---------------------------------------------------
+
+                    ! Create BKG Water Variables
+                    ! --------------------------
+                       allocate( dry_bkg( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
                        allocate( qdp_bkg( IM,JM,LM ),STAT=STATUS ) ; VERIFY_(STATUS)
                        do L=1,lm
-                          qdp_bkg(:,:,L) = ( q(:,:,L)+qlls(:,:,L)+qlcn(:,:,L)+qils(:,:,L)+qicn(:,:,L)+qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L) )*dp(:,:,L)
+                          dry_bkg(:,:,L) = ( 1.0 - (     q(:,:,L)+ qlls(:,:,L)+qlcn(:,:,L) + qils(:,:,L)+qicn(:,:,L)  &
+                                                   + qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L)) )*dp(:,:,L)
+                          qdp_bkg(:,:,L) = (             q(:,:,L)+ qlls(:,:,L)+qlcn(:,:,L) + qils(:,:,L)+qicn(:,:,L)  &
+                                                   + qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L)  )*dp(:,:,L)
                        enddo
                     ENDIF
-#if debug
-                    allocate( qint( IM,JM ),STAT=STATUS ) ; VERIFY_(STATUS)
-                    allocate( sumq( IM,JM ),STAT=STATUS ) ; VERIFY_(STATUS)
-                    sumq = 0.0_8
-                    do L=1,lm
-                       sumq = sumq + ( q(:,:,L)+qlls(:,:,L)+qlcn(:,:,L)+qils(:,:,L)+qicn(:,:,L)+qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L) )*dp(:,:,L)
-                    enddo
-                    qint = sumq
-                    call MAPL_AreaMean( qint_bkg_ave, qint, area, grid, rc=STATUS )
-                    VERIFY_(STATUS)
-#endif
+
                 ENDIF ! End CORRECTOR Test
+
+                ! -----------------------------------------------------------------------------------------
+                ! -----------------------------------------------------------------------------------------
 
                 call DO_Friendly (Q,'DQVDT',PREF)
 
+                ! -----------------------------------------------------------------------------------------
+                ! -----------------------------------------------------------------------------------------
+
+                ! Create Proxies for Updated Pressure due to Analysis
+                !----------------------------------------------------
+                allocate(  dp_ana(IM,JM,  LM),STAT=STATUS ) ; VERIFY_(STATUS)
+                allocate( ple_ana(IM,JM,0:LM),STAT=STATUS ) ; VERIFY_(STATUS)
+
+                allocate( DQVCON(IM,JM,LM),STAT=STATUS ) ; VERIFY_(STATUS)
+                DQVCON = Q                               ! Initialize Constraint Tendency
+
                 if(TYPE  == CORRECTOR) then
+
                     IF( CONSTRAIN_DAS == 1 ) then
                     ! ---------------------------
 
-                    ! Create Proxies for Updated Pressure and Temperature due to Analysis
-                    !--------------------------------------------------------------------
-                       allocate(  dp_ana(IM,JM,  LM),STAT=STATUS ) ; VERIFY_(STATUS)
-                       allocate( ple_ana(IM,JM,0:LM),STAT=STATUS ) ; VERIFY_(STATUS)
+                    ! Proxies for Pressure Changes due to Analysis
+                    ! --------------------------------------------
                        ple_ana = ple + dt*dpedt
-                       dp_ana  = ple_ana(:,:,1:LM)-ple_ana(:,:,0:LM-1)
+                       dp_ana  = real(ple_ana(:,:,1:LM),kind=4) - real(ple_ana(:,:,0:LM-1),kind=4)  ! Kind=4 for consistency with old tag
 
                     ! Create ANA Water Mass
                     ! ---------------------
@@ -2016,7 +2150,8 @@ TIME_TO_REPLAY: if(is_ringing) then
                     ! ----------------------------------
                        if( real(qdp_bkg_ave,kind=4).ne.MAPL_UNDEF .and. &
                            real(qdp_ana_ave,kind=4).ne.MAPL_UNDEF       ) then
-                           gamma = real( qdp_bkg_ave / qdp_ana_ave , kind=4 )
+                         ! gamma = qdp_bkg_ave / qdp_ana_ave                  ! Prefered Method
+                           gamma = real( qdp_bkg_ave / qdp_ana_ave, kind=4 )  ! Method for Zero-diff Backward Compatibility
                        else
                            gamma = 1.0_8
                        endif
@@ -2025,34 +2160,21 @@ TIME_TO_REPLAY: if(is_ringing) then
                     ! ---------------------------------------------------
                        do L=1,lm
                        where( qdp_ana(:,:,L).ne.qdp_bkg(:,:,L) )
-                                 q   (:,:,L) = q   (:,:,L) * gamma
-                                 qlls(:,:,L) = qlls(:,:,L) * gamma
-                                 qlcn(:,:,L) = qlcn(:,:,L) * gamma
-                                 qils(:,:,L) = qils(:,:,L) * gamma
-                                 qicn(:,:,L) = qicn(:,:,L) * gamma
-                                 qrain(:,:,L) = qrain(:,:,L) * gamma
-                                 qsnow(:,:,L) = qsnow(:,:,L) * gamma
-                                 qgraupel(:,:,L) = qgraupel(:,:,L) * gamma
+                                 q   (:,:,L) =     q   (:,:,L) * gamma
+                                 qlls(:,:,L) =     qlls(:,:,L) * gamma
+                                 qlcn(:,:,L) =     qlcn(:,:,L) * gamma
+                                 qils(:,:,L) =     qils(:,:,L) * gamma
+                                 qicn(:,:,L) =     qicn(:,:,L) * gamma
+                                qrain(:,:,L) =    qrain(:,:,L) * gamma
+                                qsnow(:,:,L) =    qsnow(:,:,L) * gamma
+                             qgraupel(:,:,L) = qgraupel(:,:,L) * gamma
                        end where
                        enddo
 #if debug
-                       sumq = 0.0_8
-                       do L=1,lm
-                       sumq = sumq + ( q(:,:,L)+qlls(:,:,L)+qlcn(:,:,L)+qils(:,:,L)+qicn(:,:,L)+qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L) )*dp_ana(:,:,L)
-                       enddo
-                       qint = sumq
-                       call MAPL_AreaMean( qint_ana_ave, qint, area, grid, rc=STATUS )
-                       VERIFY_(STATUS)
-
-                       if(MAPL_AM_I_ROOT() ) then
-                          write(6,1001) qint_ana_ave,qint_bkg_ave,qint_ana_ave-qint_bkg_ave,gamma
-  1001                 format(5x,'Global_QDP_ANA: ',g,'  Global_QDP_BKG: ',g,'  DIFF: ',g,'  GAMMA: ',g)
-                       endif
-                       deallocate(    qint )
-                       deallocate(    sumq )
+                       i=1
+                       call Dry_Mass_Check (im,jm,lm,i)
 #endif
-                       deallocate(  dp_ana )
-                       deallocate( ple_ana )
+                       deallocate( dry_bkg )
                        deallocate( qdp_bkg )
                        deallocate( qdp_ana )
                        deallocate( qdp_bkg_int )
@@ -2060,15 +2182,107 @@ TIME_TO_REPLAY: if(is_ringing) then
                        deallocate( sum_qdp_bkg )
                        deallocate( sum_qdp_ana )
 
-                    ENDIF  ! End CONSTRAIN_DAS Test
+                    ENDIF  ! End CONSTRAIN_DAS ==1 Test
+
+                    IF( CONSTRAIN_DAS == 2 ) then  ! Constrain Dry_Mass Conservation using Least-Squares of P
+                    ! ---------------------------------------------------------------------------------------
+
+                    ! Proxies for Pressure Changes due to Analysis
+                    ! --------------------------------------------
+                       ple_ana = real(ple,kind=8) + real(dt,kind=8)*real(dpedt,kind=8)
+                       dp_ana  = ple_ana(:,:,1:LM)-ple_ana(:,:,0:LM-1)
+
+                       call MAPL_GetPointer ( EXPORT, ptr2d, 'DPSDT_CON', rc=STATUS )
+                       VERIFY_(STATUS)
+                       if(associated(ptr2d)) ptr2d = real( ple_ana(:,:,LM),kind=4 )   ! Initialize Constraint Tendency
+
+                       do i=1,10
+
+                    ! Create ANA Dry Mass
+                    ! -------------------
+                       allocate( dry_ana(IM,JM,LM),STAT=STATUS ); VERIFY_(STATUS)
+                       do L=1,lm
+                          dry_ana(:,:,L) = ( 1.0 - ( q(:,:,L)+qlls(:,:,L)+qlcn(:,:,L)+qils(:,:,L)+qicn(:,:,L)  &
+                                                   + qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L) ) )*dp_ana(:,:,L)
+                       enddo
+
+                    ! allocate(  ALPHA2D(IM,JM),STAT=STATUS ) ; VERIFY_(STATUS)
+                    !            ALPHA2D = 1.0
+
+                    ! Vertically Integrate ANA & BKG Dry Mass
+                    ! ---------------------------------------
+                       allocate( sum_dry_bkg( IM,JM ),STAT=STATUS ) ; VERIFY_(STATUS)
+                       allocate( sum_dry_ana( IM,JM ),STAT=STATUS ) ; VERIFY_(STATUS)
+
+                       sum_dry_bkg = 0.0_8
+                       sum_dry_ana = 0.0_8
+                       do L=1,lm
+                              sum_dry_bkg = sum_dry_bkg + dry_bkg(:,:,L)
+                              sum_dry_ana = sum_dry_ana + dry_ana(:,:,L)
+                       enddo
+
+                    ! Compute Area-Mean Vertically Integrated BKG Water Mass
+                    ! ------------------------------------------------------
+                       allocate( alf_bks_int( IM,JM ),STAT=STATUS ) ; VERIFY_(STATUS)
+                       allocate( dry_bkg_int( IM,JM ),STAT=STATUS ) ; VERIFY_(STATUS)
+                       allocate( dry_ana_int( IM,JM ),STAT=STATUS ) ; VERIFY_(STATUS)
+
+                            dry_bkg_int =   sum_dry_bkg
+                            dry_ana_int =   sum_dry_ana
+                            alf_bks_int = ( sum_dry_ana/ple_ana(:,:,LM) )**2 ! * alpha2d    Multiply for generic alpha2d NE 1.0
+
+                       call MAPL_AreaMean( alf_bks_ave, alf_bks_int, area, grid, rc=STATUS )
+                       VERIFY_(STATUS)
+                       call MAPL_AreaMean( dry_bkg_ave, dry_bkg_int, area, grid, rc=STATUS )
+                       VERIFY_(STATUS)
+                       call MAPL_AreaMean( dry_ana_ave, dry_ana_int, area, grid, rc=STATUS )
+                       VERIFY_(STATUS)
+
+                    ! Compute Dry-Mass Constraint Parameter
+                    ! -------------------------------------
+                                   gamma = ( dry_ana_ave - dry_bkg_ave ) / alf_bks_ave
+                         ple_ana(:,:,LM) = ple_ana(:,:,LM) - gamma * sum_dry_ana/ple_ana(:,:,LM) ! * alpha2d    Multiply for generic alpha2d NE 1.0
+
+                         do L=0,LM-1
+                         ple_ana(:,:,L) = AK(L) + BK(L)*ple_ana(:,:,LM)
+                         enddo
+                         dpedt = ( ple_ana-ple )/dt
+
+                       call Dry_Mass_Check (im,jm,lm,i)
+
+                    !  deallocate( alpha2d )
+                       deallocate( dry_ana )
+                       deallocate( alf_bks_int )
+                       deallocate( dry_bkg_int )
+                       deallocate( dry_ana_int )
+                       deallocate( sum_dry_bkg )
+                       deallocate( sum_dry_ana )
+
+                       enddo
+
+                       call MAPL_GetPointer ( EXPORT, ptr2d, 'DPSDT_CON', rc=STATUS )
+                       VERIFY_(STATUS)
+                       if(associated(ptr2d)) ptr2d = ( real( ple_ana(:,:,LM),kind=4 ) - ptr2d )/DT
+
+                       deallocate( dry_bkg )
+                       deallocate( qdp_bkg )
+
+                    ENDIF  ! End CONSTRAIN_DAS == 2 Test
+
                 ENDIF  ! End CORRECTOR Test
 
+                DQVCON = Q           - DQVCON
                 DQVANA = Q           - DQVANA
                 DQLANA = QLLS + QLCN - DQLANA
                 DQIANA = QILS + QICN - DQIANA
 
                 ! Update Tendency Diagnostic due to CONSTRAINTS
                 ! ---------------------------------------------
+                call MAPL_GetPointer ( EXPORT, TENDAN, 'DQVDT_CON', rc=STATUS )
+                VERIFY_(STATUS)
+                if(associated(TENDAN)) TENDAN = DQVCON/DT
+                deallocate( DQVCON )
+
                 call MAPL_GetPointer ( EXPORT, TENDAN, 'DQVDT_ANA', rc=STATUS )
                 VERIFY_(STATUS)
                 if(associated(TENDAN)) TENDAN = DQVANA/DT
@@ -2081,19 +2295,28 @@ TIME_TO_REPLAY: if(is_ringing) then
                 VERIFY_(STATUS)
                 if(associated(TENDAN)) TENDAN = DQIANA/DT
 
+                deallocate(  dp_ana )
+                deallocate( ple_ana )
+
              else
 
                 call DO_Friendly (Q,'D'//trim(Names(K))//'DT',PREF)
 
-             end if
+             end if ! End Test for Q Friendly
 
-          end if
+          end if  ! End Test for OX Friendly
 
-       end do
+       end do  ! End Friendly Loop List
        deallocate(FC)
        deallocate (zero)
 
     end if ! not free-running
+
+! Update Total Pressure Tendency due to Analysis + Constraint
+! -----------------------------------------------------------
+      call MAPL_GetPointer ( EXPORT, ptr3d, 'DPEDT_ANA', rc=STATUS )
+      VERIFY_(STATUS)
+      if(associated(ptr3d)) ptr3d = dpedt
 
 ! Make Sure EPV is Allocated for TROPOPAUSE Diagnostics
 !------------------------------------------------------
@@ -2116,6 +2339,10 @@ TIME_TO_REPLAY: if(is_ringing) then
         call MAPL_GetPointer( GEX(SDYN),EPV,'EPV',ALLOC=.true.,rc=STATUS )
         VERIFY_(STATUS)
      endif
+
+! Initialize TRADVI bundle with TRADV bundle
+!--------------------------------------------
+    call Initialize_IncBundle_run(GEX(PHYS), EXPORT, DYNinc, __RC__)
 
 ! Call basic run phase for both Child
 !-------------------------------------
@@ -2142,6 +2369,10 @@ TIME_TO_REPLAY: if(is_ringing) then
 !   if(DYN_TIME<0) then
 !      DYN_TIME = DYN_TIME + COUNT_MAX
 !   endif
+
+! Compute Tracer Advection increments
+!-------------------------------------
+    call Compute_IncBundle(GEX(PHYS), EXPORT, DYNinc, STATE, __RC__)
 
     call Unpack_Chem_Groups( GEX(PHYS), PLE, AREA )  ! Finish transporting chemical families
 
@@ -2490,18 +2721,75 @@ TIME_TO_REPLAY: if(is_ringing) then
 
   contains
 
+    subroutine Dry_Mass_Check (im,jm,lm,n)
+    implicit none
+    integer im,jm,lm
+    integer L,n,status
+
+    real,   allocatable :: dry_ana(:,:,:)
+    real,   allocatable ::    qint(:,:)
+    real*8, allocatable ::    qsum(:,:)
+    real*8  dry_bkg_ave
+    real*8  dry_ana_ave
+    real*8  dry_diff
+
+                       allocate(    qsum(IM,JM)     ,STAT=STATUS ) ; VERIFY_(STATUS)
+                       allocate(    qint(IM,JM)     ,STAT=STATUS ) ; VERIFY_(STATUS)
+                       allocate( dry_ana(IM,JM,  LM),STAT=STATUS ) ; VERIFY_(STATUS)
+
+                       ple_ana = real(ple,kind=8) + real(dt,kind=8)*real(dpedt,kind=8)
+                       dp_ana  = ple_ana(:,:,1:LM)-ple_ana(:,:,0:LM-1)
+
+                       do L=1,lm
+                          dry_ana(:,:,L) = ( 1.0 - (     q(:,:,L)+ qlls(:,:,L)+qlcn(:,:,L) + qils(:,:,L)+qicn(:,:,L)  &
+                                                   + qrain(:,:,L)+qsnow(:,:,L)+qgraupel(:,:,L)) )*dp_ana(:,:,L)
+                       enddo
+
+                       qsum = 0.0_8
+                       do L=1,lm
+                       qsum = qsum + dry_bkg(:,:,L)
+                       enddo
+                       qint = qsum
+                       call MAPL_AreaMean( dry_bkg_ave, qint, area, grid, rc=STATUS )
+                       VERIFY_(STATUS)
+
+                       qsum = 0.0_8
+                       do L=1,lm
+                       qsum = qsum + dry_ana(:,:,L)
+                       enddo
+                       qint = qsum
+                       call MAPL_AreaMean( dry_ana_ave, qint, area, grid, rc=STATUS )
+                       VERIFY_(STATUS)
+
+                       dry_ana_ave = (dry_ana_ave+1.0)/100
+                       dry_bkg_ave = (dry_bkg_ave+1.0)/100
+                       dry_diff    =  dry_ana_ave - dry_bkg_ave
+#if debug
+                       if(MAPL_AM_I_ROOT() ) then
+                          write(6,1000) n,dry_ana_ave,dry_bkg_ave,dry_diff
+  1000                    format(5x,'n: ',i2,3x,'DRY_ANA: ',g,'  DRY_BKG: ',g,'  DIFF: ',g)
+                       endif
+#endif
+                       deallocate(   qsum)
+                       deallocate(   qint)
+                       deallocate(dry_ana)
+
+                       return
+
+    end subroutine Dry_Mass_Check
+
     subroutine DO_UPDATE_ANA3D(NAME, COMP, PREF, CONSTRAIN_DAS)
       character*(*),     intent(IN) :: NAME
       integer,           intent(IN) :: COMP
       real,    pointer,  intent(IN) :: PREF(:)
       integer, optional, intent(IN) :: CONSTRAIN_DAS
 
-      real,   pointer,     dimension(:,:)   :: DPSDT_CONSTRAINT => null()
-      real,   pointer,     dimension(:,:,:) :: TENDSD   => null()
-      real,   pointer,     dimension(:,:,:) :: TENDPH   => null()
-      real,   pointer,     dimension(:,:,:) :: TENDBS   => null()
-      real,   pointer,     dimension(:,:,:) :: TENDAN   => null()
-      real,   pointer,     dimension(:,:,:) :: ANAINC   => null()
+      real,   pointer,     dimension(:,:)   :: DPSDT_CON => null()
+      real,   pointer,     dimension(:,:,:) :: TENDSD    => null()
+      real,   pointer,     dimension(:,:,:) :: TENDPH    => null()
+      real,   pointer,     dimension(:,:,:) :: TENDBS    => null()
+      real,   pointer,     dimension(:,:,:) :: TENDAN    => null()
+      real,   pointer,     dimension(:,:,:) :: ANAINC    => null()
       real,   allocatable, dimension(:,:,:) :: TENDANAL
       real,   allocatable, dimension(:,:)   :: dummy
       real,   allocatable, dimension(:)     :: ALFZ, BETZ
@@ -2540,11 +2828,11 @@ TIME_TO_REPLAY: if(is_ringing) then
          allocate(TENDANAL(size(TENDSD,1),size(TENDSD,2),LL:LU), stat=STATUS)
          VERIFY_(STATUS)
 
-         call MAPL_GetPointer(INTERNAL , TENDBS, trim(NAME), rc=STATUS)
+         call MAPL_GetPointer(INTERNAL , TENDBS, trim(NAME),  rc=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetPointer(IMPORT   , ANAINC, trim(NAME), rc=STATUS)
+         call MAPL_GetPointer(IMPORT   , ANAINC, trim(NAME),  rc=STATUS)
          VERIFY_(STATUS)
-         call MAPL_GetPointer(EXPORT, DPSDT_CONSTRAINT, 'DPSDT_CONSTRAINT', rc=STATUS)
+         call MAPL_GetPointer(EXPORT, DPSDT_CON, 'DPSDT_CON', rc=STATUS)
          VERIFY_(STATUS)
 
          TENDANAL = ANAINC*IAUcoeff  ! No Constraints
@@ -2572,24 +2860,29 @@ TIME_TO_REPLAY: if(is_ringing) then
                      endwhere
                      call MAPL_AreaMean( qave2, dummy, area, grid, rc=STATUS )  ! qave2 = AreaMean( P_n )
 
-                     if( qave1.ne.MAPL_UNDEF .and. qave2.ne.MAPL_UNDEF ) then
+                     if(      qave1        .ne.MAPL_UNDEF  .and. &
+                              qave2        .ne.MAPL_UNDEF ) then
+                   ! if( real(qave1,kind=4).ne.MAPL_UNDEF  .and. &
+                   !     real(qave2,kind=4).ne.MAPL_UNDEF ) then
                          qave3 = qave2 + qave1*dt*IAUcoeff ! qave3 = AreaMean( P_n+1 = P_n + ANAINC*dt/tau )
                      else
                          qave3 = MAPL_UNDEF
                      endif
 
-                     if( qave3.ne.MAPL_UNDEF ) then
+                     if(      qave3        .ne.MAPL_UNDEF ) then
+                   ! if( real(qave3,kind=4).ne.MAPL_UNDEF ) then
                          where( ANAINC(:,:,LU).ne.0.0 )
+                              ! dummy = ANAINC(:,:,LU)*(qave2/qave3) - dummy*(qave1/qave3)   ! Preferred Method
                                 dummy = ANAINC(:,:,LU)*real(qave2/qave3,kind=4) - dummy * real(qave1/qave3,kind=4)
                          elsewhere
-                                dummy = 0.0
+                                dummy = ANAINC(:,:,LU)
                          endwhere
                      else
-                         dummy = 0.0
+                                dummy = ANAINC(:,:,LU)
                      endif
 
-                     if(associated(DPSDT_CONSTRAINT)) then
-                                   DPSDT_CONSTRAINT = ( dummy - ANAINC(:,:,LU) )*IAUcoeff
+                     if(associated(DPSDT_CON)) then
+                                   DPSDT_CON = ( dummy - ANAINC(:,:,LU) )*IAUcoeff
                      endif
 
                      DO L=LL,LU
@@ -2598,8 +2891,8 @@ TIME_TO_REPLAY: if(is_ringing) then
                      TENDANAL = TENDANAL*IAUcoeff
                      deallocate(dummy)
                   ELSE
-                     if(associated(DPSDT_CONSTRAINT)) then
-                                   DPSDT_CONSTRAINT = 0.0
+                     if(associated(DPSDT_CON)) then
+                                   DPSDT_CON = 0.0
                      endif
                   ENDIF
          ENDIF
@@ -2637,7 +2930,7 @@ TIME_TO_REPLAY: if(is_ringing) then
 
       case default
 
-         ASSERT_(.false.)
+         _ASSERT(.false.,'needs informative message')
 
       end select
 
@@ -2707,7 +3000,7 @@ TIME_TO_REPLAY: if(is_ringing) then
 
       case default
 
-         ASSERT_(.false.)
+         _ASSERT(.false.,'needs informative message')
 
       end select
 
@@ -2819,7 +3112,7 @@ TIME_TO_REPLAY: if(is_ringing) then
 
       case default
 
-         ASSERT_(.false.)
+         _ASSERT(.false.,'needs informative message')
 
       end select
 
@@ -2884,16 +3177,25 @@ TIME_TO_REPLAY: if(is_ringing) then
 
     end subroutine FILL_FRIENDLY
 
-    subroutine get_iau_coeff( TNDCoeff )
-    use m_chars,       only:  uppercase
+    subroutine get_iau_coeff( TNDCoeff,CLOCK )
     implicit none
 
     real, intent(OUT) :: TNDCoeff
+    type(ESMF_Clock), intent(inout) :: CLOCK
+    type(ESMF_Time)                 :: currtime
+    type(ESMF_Time)                 :: MKIAU_RefTime
+    type(ESMF_Calendar)             :: cal
+    type(ESMF_TimeInterval)         :: MKIAU_HALF_FREQUENCY
+    type(ESMF_TimeInterval)         :: TIME_Offset
 
+    real*8  :: TIME_Fraction
     integer :: nsteps
     integer :: kstep, kshift
-    integer :: PREDICTOR_DURATION
-    integer :: CORRECTOR_DURATION
+    integer :: MKIAU_RingDate
+    integer :: MKIAU_RingTime
+    integer :: rep_YY, rep_MM, rep_DD 
+    integer :: rep_H,  rep_M,  rep_S 
+    integer :: MKIAU_FREQUENCY
     logical :: IAU_DIGITAL_FILTER
 
     character(len=ESMF_MAXSTR) :: STRING
@@ -2903,12 +3205,15 @@ TIME_TO_REPLAY: if(is_ringing) then
     type (IAU_coeffs)                 :: wrap
     real, allocatable                 :: shifted_dfi(:)
 
+    call ESMF_ClockGet( CLOCK, currTime=currTime, calendar=cal, RC=STATUS)
+    VERIFY_(STATUS)
+
     call MAPL_GetResource(STATE, REPLAY_MODE, Label='REPLAY_MODE:', default="NoReplay", RC=STATUS )
     VERIFY_(STATUS)
  
     call MAPL_GetResource(STATE, STRING, LABEL="IAU_DIGITAL_FILTER:", default="YES", RC=STATUS)
     VERIFY_(STATUS)
-    STRING = uppercase(STRING)
+    STRING = ESMF_UtilStringUpperCase(STRING)
     IAU_DIGITAL_FILTER = trim(STRING)=="YES"
 
 !   Standard Constant IAU Scaling (1/TAU)
@@ -2924,26 +3229,51 @@ TIME_TO_REPLAY: if(is_ringing) then
        VERIFY_(STATUS)
        myCoeffs => wrap%ptr
 
-     ! Note: PREDICTOR and CORRECTOR Durations are Initialized in GCM_GridComp
-     ! -----------------------------------------------------------------------
-       call MAPL_GetResource( STATE, CORRECTOR_DURATION, Label="CORRECTOR_DURATION:", RC=STATUS )
-       VERIFY_(STATUS)
-       call MAPL_GetResource( STATE, PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", RC=STATUS )
+     ! Note: MKIAU_FREQUENCY is Initialized in GCM_GridComp
+     ! ----------------------------------------------------------
+       call MAPL_GetResource( STATE,MKIAU_FREQUENCY, Label="MKIAU_FREQUENCY:", rc=STATUS )
        VERIFY_(STATUS)
 
-       nsteps = nint( CORRECTOR_DURATION/DT ) + 1
+       nsteps = nint( MKIAU_FREQUENCY/DT ) + 1
 
        if (.not.associated(myCoeffs%dfi)) then
             allocate(myCoeffs%dfi(nsteps))
             myCoeffs%istep=0
 
-            call dfi_coeffs (DT,CORRECTOR_DURATION,TAUANL,nsteps,myCoeffs%dfi) 
+            call dfi_coeffs (DT,MKIAU_FREQUENCY,TAUANL,nsteps,myCoeffs%dfi) 
 
         ! Shift DFI Coefficients if Necessary
         ! -----------------------------------
-                                                    kshift = 0
-           if( adjustl(REPLAY_MODE) == "Exact_4D" ) kshift = (nsteps-1)/2
-           if( adjustl(REPLAY_MODE) == "Regular"  ) kshift = abs( 0.5 - float(PREDICTOR_DURATION)/float(CORRECTOR_DURATION) )*(nsteps-1)
+           call MAPL_GetResource( STATE, MKIAU_RingDate, Label="MKIAU_RingDate:", RC=STATUS )
+           VERIFY_(STATUS)
+           call MAPL_GetResource( STATE, MKIAU_RingTime, Label="MKIAU_RingTime:", RC=STATUS )
+           VERIFY_(STATUS)
+
+           call ESMF_TimeIntervalSet( MKIAU_HALF_FREQUENCY, S=MKIAU_FREQUENCY/2, rc=STATUS )
+           VERIFY_(STATUS)
+
+         ! REPACK MKIAU_RingDate and MKIAU_RingTime
+         ! ----------------------------------------
+           rep_YY =     MKIAU_RingDate /10000
+           rep_MM = mod(MKIAU_RingDate ,10000)/100
+           rep_DD = mod(MKIAU_RingDate ,100)
+           rep_H  =     MKIAU_RingTime /10000
+           rep_M  = mod(MKIAU_RingTime ,10000)/100
+           rep_S  = mod(MKIAU_RingTime ,100)
+
+           call ESMF_TimeSet( MKIAU_RefTime, YY = rep_YY, &
+                                             MM = rep_MM, &
+                                             DD = rep_DD, &
+                                              H = rep_H , &
+                                              M = rep_M , &
+                                              S = rep_S , &
+                              calendar=cal,  rc = STATUS  )
+           VERIFY_(STATUS)
+
+           TIME_Offset   = MKIAU_RefTime - CurrTime
+           TIME_Fraction = Time_Offset   / MKIAU_HALF_FREQUENCY
+
+           kshift = abs( 1.0 - Time_Fraction )*(nsteps-1)/2
 
            allocate( shifted_dfi(nsteps) )
            do i=1,nsteps-1
@@ -2975,11 +3305,9 @@ TIME_TO_REPLAY: if(is_ringing) then
     
     subroutine update_ainc_(RC)
 
-    use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
     use ESMF_CFIOFileMod
     use GEOS_UtilsMod
     use GEOS_RemapMod, only: myremap => remap
-    use m_chars,  only: uppercase
     implicit none
 
     integer,optional, intent(OUT) :: RC
@@ -3215,27 +3543,27 @@ TIME_TO_REPLAY: if(is_ringing) then
 
     call MAPL_GetResource(STATE, NUDGE,    LABEL="NUDGE_STATE:", default="NO", RC=STATUS)
     VERIFY_(STATUS)
-    NUDGE = uppercase(NUDGE)
+    NUDGE = ESMF_UtilStringUpperCase(NUDGE)
     l_nudge=trim(NUDGE)=="YES"
 
     call MAPL_GetResource(STATE, NUDGE_REMAP, LABEL="NUDGE_REMAP:", default="YES", RC=STATUS)
     VERIFY_(STATUS)
-    NUDGE_REMAP = uppercase(NUDGE_REMAP)
+    NUDGE_REMAP = ESMF_UtilStringUpperCase(NUDGE_REMAP)
     l_remap=trim(NUDGE_REMAP)=="YES"
 
     call MAPL_GetResource(STATE, NUDGE_WINDFIX, LABEL="NUDGE_WINDFIX:", default="YES", RC=STATUS)
     VERIFY_(STATUS)
-    NUDGE_WINDFIX = uppercase(NUDGE_WINDFIX)
+    NUDGE_WINDFIX = ESMF_UtilStringUpperCase(NUDGE_WINDFIX)
     l_windfix=trim(NUDGE_WINDFIX)=="YES"
 
     call MAPL_GetResource(STATE, USE_ANA_DELP, LABEL="USE_ANA_DELP:", default="NO", RC=STATUS)
     VERIFY_(STATUS)
-    USE_ANA_DELP = uppercase(USE_ANA_DELP)
+    USE_ANA_DELP = ESMF_UtilStringUpperCase(USE_ANA_DELP)
     l_use_ana_delp=trim(USE_ANA_DELP)=="YES"
 
     call MAPL_GetResource(STATE, NUDGE_STORE_TRANSFORMS, LABEL="NUDGE_STORE_TRANSFORMS:", default="YES", RC=STATUS)
     VERIFY_(STATUS)
-    NUDGE_STORE_TRANSFORMS = uppercase(NUDGE_STORE_TRANSFORMS)
+    NUDGE_STORE_TRANSFORMS = ESMF_UtilStringUpperCase(NUDGE_STORE_TRANSFORMS)
     l_store_transforms=trim(NUDGE_STORE_TRANSFORMS)=="YES"
 
     IMbkg=IM
@@ -3972,8 +4300,6 @@ TIME_TO_REPLAY: if(is_ringing) then
 
 
     subroutine make_ana_grid(myANA, IM_world, JM_world, NX, NY, LM, rc)
-       use MAPL_ConfigMod
-       use MAPL_LatLonGridFactoryMod
        type (CONNECT_AnanBKG), intent(inout) :: myANA
        integer, intent(in) :: IM_world
        integer, intent(in) :: JM_world
@@ -4025,14 +4351,13 @@ TIME_TO_REPLAY: if(is_ringing) then
     enddo
     end function check_list_
 
-    subroutine dfi_coeffs (DT,CORR,TAUIAU,nsteps,dfi)
-!   This subroutine belongs to GEOS_Shared, but for now it lives here
+    subroutine dfi_coeffs (DT,FILE_FREQUENCY,TAUIAU,nsteps,dfi)
     implicit none
 
     real,   intent(in)  :: DT     ! model time step
-    integer,intent(in)  :: CORR   ! Corrector Duration
     real,   intent(in)  :: TAUIAU ! IAU time scale
-    integer,intent(in)  :: nsteps ! number of steps:  Corrector_Duration/DT+1
+    integer,intent(in)  :: nsteps         ! number of steps:  FILE_FREQUENCY/DT+1
+    integer,intent(in)  :: FILE_FREQUENCY
     real,   intent(out) :: dfi(nsteps)
 
     real pi,arg,wc
@@ -4046,9 +4371,9 @@ TIME_TO_REPLAY: if(is_ringing) then
        n   = k-nhlf
        arg = n*pi/nhlf            
        wc  = sin(arg)/arg ! Lanczos window
-       dfi(k) = wc*sin(n*2.0*pi*DT/CORR)/(n*pi)
+       dfi(k) = wc*sin(n*2.0*pi*DT/FILE_FREQUENCY)/(n*pi)
     end do
-    dfi(nhlf) = 2*DT/CORR
+    dfi(nhlf) = 2*DT/FILE_FREQUENCY
     do i = nhlf+1, nsteps
        dfi(i) = dfi(nsteps-i+1)
     end do
@@ -4056,7 +4381,7 @@ TIME_TO_REPLAY: if(is_ringing) then
 !   Normalize coefficients
 !   ----------------------
     dfi = dfi/sum(dfi)
-    dfi = dfi*(CORR/TAUIAU)/DT ! remember: dynamics multiplies by DT
+    dfi = dfi*(FILE_FREQUENCY/TAUIAU)/DT ! remember: dynamics multiplies by DT
 
    end subroutine dfi_coeffs
 
@@ -4100,15 +4425,12 @@ TIME_TO_REPLAY: if(is_ringing) then
   endif
   end function my_nearest_time
 
-  subroutine GET_REPLAY_TIME ( MAPL, CLOCK, REPLAY_TIME, RC )
+  subroutine GET_REPLAY_TIME ( MAPL, CLOCK, REPLAY_TIME, Begin_REPLAY_Cycle, RC )
 
-  use ESMF
-  use MAPL_Mod
-  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
-  use ESMF_CFIOFileMod
 
     type(ESMF_Clock),    intent(inout) :: CLOCK
     type(ESMF_Time),     intent(  out) :: REPLAY_TIME
+    logical                               Begin_REPLAY_Cycle
     integer, optional,   intent(  out) :: RC
 
 ! Locals
@@ -4128,11 +4450,12 @@ TIME_TO_REPLAY: if(is_ringing) then
     integer                             ::    TOTAL_SEC
 
     integer                             :: PREDICTOR_DURATION
-    integer                             :: CORRECTOR_DURATION
     real*8                              :: facp0, facm1
     integer                             :: CUR_YY,CUR_MM,CUR_DD,CUR_H,CUR_M,CUR_S
     integer                             :: nymd,  nhms
     integer                             :: rymd,  rhms
+    integer                             :: Pymd,  Phms
+    integer                             :: Mymd,  Mhms
     integer                             :: STATUS
     integer nsecf
             nsecf(nhms) = nhms/10000*3600 + mod(nhms,10000)/100*60 + mod(nhms,100)
@@ -4141,17 +4464,15 @@ TIME_TO_REPLAY: if(is_ringing) then
 
    Iam = 'REPLAY_Time'
 
-! Note: REPLAY_FILE_FREQUENCY should be initialized within GEOS_GcmGridComp
-! -------------------------------------------------------------------------
-   call MAPL_GetResource( MAPL,FileFreq_SEC, Label="REPLAY_FILE_FREQUENCY:",                      rc=STATUS )
+! Note: MKIAU_FREQUENCY and MKIAU_REFERENCE_TIME are initialized within GEOS_GcmGridComp
+! --------------------------------------------------------------------------------------
+   call MAPL_GetResource( MAPL,FileFreq_SEC, Label="MKIAU_FREQUENCY:",      rc=STATUS )
    VERIFY_(STATUS)
-   call MAPL_GetResource( MAPL,FileReft_HMS, Label="REPLAY_FILE_REFERENCE_TIME:", default=000000, rc=STATUS )
+   call MAPL_GetResource( MAPL,FileReft_HMS, Label="MKIAU_REFERENCE_TIME:", rc=STATUS )
    VERIFY_(STATUS)
 
- ! Note: PREDICTOR and CORRECTOR Durations are Initialized in GCM_GridComp
- ! -----------------------------------------------------------------------
-   call MAPL_GetResource( MAPL, CORRECTOR_DURATION, Label="CORRECTOR_DURATION:", RC=STATUS )
-   VERIFY_(STATUS)
+ ! Note: PREDICTOR Duration is Initialized in GCM_GridComp
+ ! -------------------------------------------------------
    call MAPL_GetResource( MAPL, PREDICTOR_DURATION, Label="PREDICTOR_DURATION:", RC=STATUS )
    VERIFY_(STATUS)
 
@@ -4191,7 +4512,7 @@ TIME_TO_REPLAY: if(is_ringing) then
 
 ! --------------------------------------------------------------------------------------------------------
 
-    if( currTime /= REPLAY_TIME ) then
+    if( currTime /= REPLAY_TIME .or. Begin_REPLAY_Cycle ) then
 
         if( currTime < REPLAY_TIME ) then
             REPLAY_TIMEP0 = REPLAY_TIME
@@ -4206,33 +4527,33 @@ TIME_TO_REPLAY: if(is_ringing) then
 
       ! Backward Time
       ! -------------
-        if( PREDICTOR_DURATION == 0 ) then
-            if( facm1 > 0.0 ) then
-                REPLAY_TIME = REPLAY_TIMEM1
-            else
-                REPLAY_TIME = REPLAY_TIMEP0
-            endif
-        endif
+      ! if( PREDICTOR_DURATION == 0 ) then
+      !     if( facm1 > 0.0 ) then
+      !         REPLAY_TIME = REPLAY_TIMEM1
+      !     else
+      !         REPLAY_TIME = REPLAY_TIMEP0
+      !     endif
+      ! endif
 
       ! Forward Time
       ! ------------
-        if( PREDICTOR_DURATION == CORRECTOR_DURATION ) then
-            if( facp0 > 0.0 ) then
-                REPLAY_TIME = REPLAY_TIMEP0
-            else
-                REPLAY_TIME = REPLAY_TIMEM1
-            endif
-        endif
+      ! if( PREDICTOR_DURATION == FileFreq_SEC ) then
+      !     if( facp0 > 0.0 ) then
+      !         REPLAY_TIME = REPLAY_TIMEP0
+      !     else
+      !         REPLAY_TIME = REPLAY_TIMEM1
+      !     endif
+      ! endif
 
       ! Nearest Time
       ! ------------
-        if( PREDICTOR_DURATION == CORRECTOR_DURATION/2 ) then
+      ! if( PREDICTOR_DURATION == FileFreq_SEC/2 ) then
             if( facm1 > 0.5 ) then
                 REPLAY_TIME = REPLAY_TIMEM1
             else
                 REPLAY_TIME = REPLAY_TIMEP0
             endif
-        endif
+      ! endif
 
     endif
 
@@ -4245,7 +4566,19 @@ TIME_TO_REPLAY: if(is_ringing) then
  !   VERIFY_(STATUS)
  !   call strToInt(TimeString, rymd, rhms)
 
- !   write(6,'(1x,a,i8.8,a,i6.6,a,i8.8,a,i6.6)') 'Current_Time  nymd: ',nymd , '  nhms: ',nhms,'  Replay_Time: ',rymd,' ',rhms 
+ !   call ESMF_TimeGet(REPLAY_TIMEP0, timeString=TimeString, RC=STATUS)
+ !   VERIFY_(STATUS)
+ !   call strToInt(TimeString, Pymd, Phms)
+
+ !   call ESMF_TimeGet(REPLAY_TIMEM1, timeString=TimeString, RC=STATUS)
+ !   VERIFY_(STATUS)
+ !   call strToInt(TimeString, Mymd, Mhms)
+
+ !   write(6,'(1x,a,i8.8,a,i6.6,a,f5.3,a,a,i8.8,a,i6.6,a,i8.8,a,i6.6,a,i8.8,a,i6.6,a,f5.3,a,l)') &
+ !                                            ' Current_Time: ',nymd,' ',nhms,' (',facm1,') ', &
+ !                                            ' -Replay_Time: ',Mymd,' ',Mhms, & 
+ !                                            '  Replay_Time: ',rymd,' ',rhms, & 
+ !                                            ' +Replay_Time: ',Pymd,' ',Phms,' (',facp0,') Begin_REPLAY_Cycle: ',Begin_REPLAY_Cycle
  ! endif
 
 ! --------------------------------------------------------------------------------------------------------

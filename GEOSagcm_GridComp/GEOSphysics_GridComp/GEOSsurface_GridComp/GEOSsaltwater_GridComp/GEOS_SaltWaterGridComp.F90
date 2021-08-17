@@ -30,15 +30,15 @@ module GEOS_SaltwaterGridCompMod
 ! !USES:
 
   use ESMF
-  use MAPL_Mod
+  use MAPL
   use GEOS_UtilsMod
-  !use DragCoefficientsMod
+  use atmOcnIntlayer,     only: water_RHO
 
   use GEOS_OpenwaterGridCompMod,            only : OpenWaterSetServices       => SetServices
   use GEOS_SimpleSeaiceGridCompMod,         only : SimpleSeaiceSetServices    => SetServices
   use GEOS_CICE4ColumnPhysGridComp,         only : CICE4ColumnPhysSetServices => SetServices
+  use GEOS_ObioGridCompMod,                 only : ObioSetServices            => SetServices
   
-
   implicit none
   private
 
@@ -51,21 +51,11 @@ module GEOS_SaltwaterGridCompMod
   integer, parameter :: NUM_SUBTILES  = 2  ! number of subtiles for each tile (see above prologue)
   integer, parameter :: ICE           = 1  ! index(id) of two children fixed here 
   integer, parameter :: WATER         = 2  ! AddChild needs to adhere to the specification
+  integer, parameter :: OBIO          = 3   
 
-
-! Following could also be controlled via resource parameter
-  integer, parameter :: NUM_DUDP = 5                           ! number of DUst Depositions
-  integer, parameter :: NUM_DUWT = 5
-  integer, parameter :: NUM_DUSD = 5
-  integer, parameter :: NUM_BCDP = 2                           ! number of Black Carbon 
-  integer, parameter :: NUM_BCWT = 2
-  integer, parameter :: NUM_OCDP = 2                           ! number of Organic Carbon 
-  integer, parameter :: NUM_OCWT = 2
-
-  integer, parameter :: NB_CHOU_UV  = 5                        ! number of UV bands
-  integer, parameter :: NB_CHOU_NIR = 3                        ! number of near-IR bands
-  integer, parameter :: NB_CHOU     = NB_CHOU_UV + NB_CHOU_NIR ! total number of bands
-
+    type bandptr
+      real, pointer, dimension(:) :: b
+    end type bandptr
 
    contains
 
@@ -106,11 +96,11 @@ module GEOS_SaltwaterGridCompMod
 
     type (MAPL_MetaComp),  pointer          :: MAPL
     type (ESMF_Config)                      :: CF
-    integer                                 :: I
+    integer                                 :: I, k
     integer                                 :: DO_OBIO         ! default (=0) is to run saltwater, with no ocean bio and chem
     integer                                 :: DO_CICE_THERMO  ! default (=0) is to run saltwater, with no LANL CICE Thermodynamics
-!!$    integer                                 :: DO_GUEST        ! default (=0) is to run saltwater, with Data (fake) ocean, i.e., SST and SSS from existing data products
 
+    character(len = 2) :: suffix
 
 !=============================================================================
 
@@ -129,7 +119,6 @@ module GEOS_SaltwaterGridCompMod
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
     VERIFY_(STATUS)
 
-
 ! Sea-Ice Thermodynamics computation: using CICE or not?
 !-------------------------------------------------------
 
@@ -139,7 +128,7 @@ module GEOS_SaltwaterGridCompMod
 ! Ocean biology and chemistry: using OBIO or not?
 !------------------------------------------------
 
-    call MAPL_GetResource ( MAPL, DO_OBIO,            Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, DO_OBIO,            Label="USE_OCEANOBIOGEOCHEM:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     call MAPL_GridCompSetEntryPoint ( GC, ESMF_METHOD_INITIALIZE, Initialize, RC=STATUS )
@@ -162,8 +151,13 @@ module GEOS_SaltwaterGridCompMod
        VERIFY_(STATUS)
     endif  
 
-    I = MAPL_AddChild(GC,    NAME='OPENWATER'   , SS=OpenWaterSetServices   ,    RC=STATUS)
+    I = MAPL_AddChild(GC,    NAME='OPENWATER', SS=OpenWaterSetServices,    RC=STATUS)
     VERIFY_(STATUS)
+
+    if(DO_OBIO /= 0) then
+       I = MAPL_AddChild(GC, NAME='OBIO', SS=ObioSetServices, RC=STATUS)
+       VERIFY_(STATUS)
+    endif  
 
 ! Set the state variable specs.
 ! -----------------------------
@@ -396,6 +390,15 @@ module GEOS_SaltwaterGridCompMod
         VLOCATION          = MAPL_VLocationNone,                  &
                                                        RC=STATUS  )
      VERIFY_(STATUS)
+ 
+     call MAPL_AddExportSpec(GC,                         &
+        SHORT_NAME         = 'TSKINICE',                    &
+        LONG_NAME          = 'snow_or_ice_surface_temperature',&
+        UNITS              = 'K'                         ,&
+        DIMS               = MAPL_DimsTileOnly           ,&
+        VLOCATION          = MAPL_VLocationNone          ,&
+                                                      RC=STATUS  )
+     VERIFY_(STATUS)
 
      call MAPL_AddExportSpec(GC,                             &
         SHORT_NAME         = 'FRACI',                             &
@@ -586,6 +589,17 @@ module GEOS_SaltwaterGridCompMod
                                                RC=STATUS  ) 
      VERIFY_(STATUS)
 
+! Following export of DISCHARGE is here in saltwater only for the sake of 
+! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
+     call MAPL_AddExportSpec(GC,                            &      
+          LONG_NAME          = 'river_discharge_at_ocean_points',& 
+          UNITS              = 'kg m-2 s-1'                ,&
+          SHORT_NAME         = 'DISCHARGE'                 ,&
+          DIMS               = MAPL_DimsTileOnly           ,&
+          VLOCATION          = MAPL_VLocationNone          ,&
+          RC=STATUS  ) 
+     VERIFY_(STATUS)
+
      call MAPL_AddExportSpec(GC,                             &
         LONG_NAME          = 'surface_pressure',                  &
         UNITS              = 'Pa',                                &
@@ -595,125 +609,7 @@ module GEOS_SaltwaterGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
 
-!!$  if (DO_GUEST /= 0) then    
-  ! this export is here in saltwater only for the sake of 
-  ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
-     call MAPL_AddExportSpec(GC,                    &
-          LONG_NAME          = 'river_discharge_at_ocean_points',&
-          UNITS              = 'kg m-2 s-1'                ,&
-          SHORT_NAME         = 'DISCHARGE'                 ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-!!$  endif ! DO_GUEST
-
-
-  if (DO_OBIO /= 0) then    
-  ! these OBIO related exports are here in saltwater only for the sake of 
-  ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
-
-    call MAPL_AddExportSpec(GC                            ,&
-          SHORT_NAME         = 'CO2SC',                     &
-          LONG_NAME          = 'CO2 Surface Concentration Bin 001',&
-          UNITS              = '1e-6'                      ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'DUDP'                      ,&
-          LONG_NAME          = 'Dust Dry Deposition'       ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          UNGRIDDED_DIMS     = (/NUM_DUDP/)                ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'DUWT'                      ,&
-          LONG_NAME          = 'Dust Wet Deposition'       ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          UNGRIDDED_DIMS     = (/NUM_DUWT/)                ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
- 
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'DUSD'                      ,&
-          LONG_NAME          = 'Dust Sedimentation'        ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          UNGRIDDED_DIMS     = (/NUM_DUSD/)                ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'BCDP'                            ,&
-          LONG_NAME          = 'Black Carbon Dry Deposition'     ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_BCDP/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'BCWT'                            ,&
-          LONG_NAME          = 'Black Carbon Wet Deposition'     ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_BCWT/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'OCDP'                            ,&
-          LONG_NAME          = 'Organic Carbon Dry Deposition'   ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_OCDP/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'OCWT'                            ,&
-          LONG_NAME          = 'Organic Carbon Wet Deposition'   ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_OCWT/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-     
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'FSWBAND'                         ,                   &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
-          UNITS              = 'W m-2'                           ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                    &
-          SHORT_NAME         = 'FSWBANDNA'                       ,                                       &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
-          UNITS              = 'W m-2'                           ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RC=STATUS  ) 
-     VERIFY_(STATUS)
-  endif ! DO_OBIO
-     
-! following 3 exports (HFLUX, WATERFLUX, SALTFLUX) are for ocean model - need to be filled up.
+! Following 3 exports (HFLUX, WATERFLUX, SALTFLUX) are for ocean model - need to be filled up.
    call MAPL_AddExportSpec(GC,                                   &
         SHORT_NAME         = 'HFLUX',                            &
         LONG_NAME          = 'heat_flux_below_saltwater_ocean',  &
@@ -806,8 +702,7 @@ module GEOS_SaltwaterGridCompMod
                                                        RC=STATUS  )
      VERIFY_(STATUS)
     
-!!$  if (DO_GUEST /= 0) then    
-  ! this import is here in saltwater only for the sake of 
+  ! Following import is here in saltwater only for the sake of 
   ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
     call MAPL_AddImportSpec(GC,                    &
           LONG_NAME          = 'river_discharge_at_ocean_points',&
@@ -818,162 +713,117 @@ module GEOS_SaltwaterGridCompMod
           RESTART            = MAPL_RestartSkip            ,&
           RC=STATUS  ) 
      VERIFY_(STATUS)
-!!$  endif ! DO_GUEST
 
-  if (DO_OBIO /= 0) then
-  ! these OBIO related imports are here in saltwater only for the sake of 
-  ! "passing thru" from atmosphere to ocean, no computation is otherwise done with (on) them.
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINW'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINW'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINW'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)  
 
-   call MAPL_AddImportSpec(GC,                             &
-        SHORT_NAME         = 'CO2SC',                             &
-        LONG_NAME          = 'CO2 Surface Concentration Bin 001', &
-        UNITS              = '1e-6',                              &
-        DIMS               = MAPL_DimsTileOnly,                   &
-        VLOCATION          = MAPL_VLocationNone,                  &
-        RESTART            = MAPL_RestartSkip,                    &
-                                                       RC=STATUS  )
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                            &
-         SHORT_NAME         = 'DUDP'                      ,&
-          LONG_NAME          = 'Dust Dry Deposition'       ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          UNGRIDDED_DIMS     = (/NUM_DUDP/)                ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartSkip            ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                            &
-         SHORT_NAME         = 'DUWT'                      ,&
-          LONG_NAME          = 'Dust Wet Deposition'       ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          UNGRIDDED_DIMS     = (/NUM_DUWT/)                ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartSkip            ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                            &
-         SHORT_NAME         = 'DUSD'                      ,&
-          LONG_NAME          = 'Dust Sedimentation'        ,&
-          UNITS              = 'kg m-2 s-1'                ,&
-          DIMS               = MAPL_DimsTileOnly           ,&
-          UNGRIDDED_DIMS     = (/NUM_DUSD/)                ,&
-          VLOCATION          = MAPL_VLocationNone          ,&
-          RESTART            = MAPL_RestartSkip            ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                                  &
-         SHORT_NAME         = 'BCDP'                            ,&
-          LONG_NAME          = 'Black Carbon Dry Deposition'     ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_BCDP/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                                  &
-         SHORT_NAME         = 'BCWT'                            ,&
-          LONG_NAME          = 'Black Carbon Wet Deposition'     ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_BCWT/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                                  &
-         SHORT_NAME         = 'OCDP'                            ,&
-          LONG_NAME          = 'Organic Carbon Dry Deposition'   ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_OCDP/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                                  &
-         SHORT_NAME         = 'OCWT'                            ,&
-          LONG_NAME          = 'Organic Carbon Wet Deposition'   ,&
-          UNITS              = 'kg m-2 s-1'                      ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NUM_OCWT/)                      ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                    &
-         SHORT_NAME         = 'FSWBAND'                         ,                   &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air',&
-          UNITS              = 'W m-2'                           ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-   call MAPL_AddImportSpec(GC,                    &
-         SHORT_NAME         = 'FSWBANDNA'                       ,                                       &
-          LONG_NAME          = 'net_surface_downward_shortwave_flux_per_band_in_air_assuming_no_aerosol',&
-          UNITS              = 'W m-2'                           ,&
-          DIMS               = MAPL_DimsTileOnly                 ,&
-          UNGRIDDED_DIMS     = (/NB_CHOU/)                       ,&
-          VLOCATION          = MAPL_VLocationNone                ,&
-          RESTART            = MAPL_RestartSkip                  ,&
-          RC=STATUS  ) 
-   VERIFY_(STATUS)
-
-  endif !DO_OBIO
-
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'GHTSKIN'   , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINI'    , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINI'    , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINI'    , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TSKINI'    , CHILD_ID = ICE,   RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HSKINI'    , CHILD_ID = ICE,   RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SSKINI'    , CHILD_ID = ICE,   RC=STATUS)
+  VERIFY_(STATUS)
      
   if(DO_CICE_THERMO /= 0) then ! additional exports from CICE4 sea ice thermodynamics
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'FR'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLICE' , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLSNO' , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ERGICE' , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ERGSNO' , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLPOND', CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS) 
-    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUAGE' , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS) 
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'FR'     , CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLICE' , CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLSNO' , CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ERGICE' , CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'ERGSNO' , CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'VOLPOND', CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUAGE' , CHILD_ID =   ICE, RC=STATUS)
+    VERIFY_(STATUS)
   endif 
 
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUXI'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUYI'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SUBLIM'    , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HLATICE'   , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWNDICE'   , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LWNDICE'   , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SHICE'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FRESH'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSALT'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FHOCN'     , CHILD_ID =   ICE, RC=STATUS); VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUXW'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUYW'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HLATWTR'   , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWNDWTR'   , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LWNDWTR'   , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SHWTR'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SNOWOCN'   , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'RAINOCN'   , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
 
-  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENUVF'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENUVR'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENPAF'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  !call MAPL_AddExportSpec(GC, SHORT_NAME = 'PENPAR'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUXW'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUYW'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HLATWTR'   , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWNDWTR'   , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LWNDWTR'   , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SHWTR'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SNOWOCN'   , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'RAINOCN'   , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
+! Atmosphere-Ocean Interface Layer (AOIL) specific variables
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'DCOOL'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'DWARM'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TDROP'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'QCOOL'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'QWARM'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWCOOL'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWWARM'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'PHIW'      , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LANGM'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'USTARW'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TBAR'      , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LCOOL'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCOOL'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TDEL'      , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TS_FOUND'  , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SS_FOUND'  , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUTW'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'ZETA_W'    , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TWMTF'     , CHILD_ID = WATER, RC=STATUS)
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUXI'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUYI'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SUBLIM'    , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'HLATICE'   , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWNDICE'   , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LWNDICE'   , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SHICE'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'GHTSKIN'   , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FRESH'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSALT'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'FHOCN'     , CHILD_ID =   ICE, RC=STATUS)
+  VERIFY_(STATUS)
 
 ! Atmosphere-Ocean Fluxes
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_SHFLX'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
@@ -984,49 +834,134 @@ module GEOS_SaltwaterGridCompMod
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_DRNIR'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
   call MAPL_AddExportSpec(GC, SHORT_NAME = 'AO_DFNIR'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
 
-! Atmosphere-Ocean Interface Layer (AOIL) specific variables
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'DCOOL'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'DWARM'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TDROP'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'QCOOL'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'QWARM'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWCOOL'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS) 
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SWWARM'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS) 
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'PHIW'      , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS) 
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LANGM'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)  
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'USTARW'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)  
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TBAR'      , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)  
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'LCOOL'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCOOL'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TDEL'      , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TS_FOUND'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'SS_FOUND'  , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TAUTW'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'ZETA_W'    , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
-  call MAPL_AddExportSpec(GC, SHORT_NAME = 'TWMTF'     , CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
+  if(DO_OBIO /= 0) then
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'CO2SC'     , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DUDP'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DUWT'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'DUSD'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCDP'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'BCWT'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'OCDP'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'OCWT'      , CHILD_ID = OBIO, __RC__)
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBAND'   , CHILD_ID = OBIO, __RC__)  ! Delete? It's not imported by OBIO, EMS
+     call MAPL_AddExportSpec(GC, SHORT_NAME = 'FSWBANDNA' , CHILD_ID = OBIO, __RC__)  ! Delete? It's not imported by OBIO, EMS
+
+!    ! We are setting these variable values for OBIORAD temporarily. These variables should be read from
+!    ! file or computed.
+     do k=1, 33
+        write(unit = suffix, fmt = '(i2.2)') k
+        call MAPL_AddExportSpec(GC,                               &
+             SHORT_NAME = 'TAUA_'//suffix,                        &
+             LONG_NAME  = 'aerosol optical thickness',            &
+             UNITS      = '',                                     &
+             DIMS       = MAPL_DimsTileOnly,                      &
+             VLOCATION  = MAPL_VLocationNone,                     &
+             default    = 1.0, &
+             __RC__)
+
+        call MAPL_AddExportSpec(GC,                               &
+             SHORT_NAME = 'ASYMP_'//suffix,                       &
+             LONG_NAME  = 'asymmetry parameter',                  &
+             UNITS      = '',                                     &
+             DIMS       = MAPL_DimsTileOnly,                      &
+             VLOCATION  = MAPL_VLocationNone,                     &
+             default    = 0.0, &
+             __RC__)
+
+        call MAPL_AddExportSpec(GC,                               &
+             SHORT_NAME = 'SSALB_'//suffix,                       &
+             LONG_NAME  = 'single scattering albedo',             &
+             UNITS      = '',                                     &
+             DIMS       = MAPL_DimsTileOnly,                      &
+             VLOCATION  = MAPL_VLocationNone,                     &
+             default    = 0.95, &
+             __RC__)
+     enddo
+
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'RH',                                   &
+          LONG_NAME  = 'relative humidity',             &
+          UNITS      = 'percent',                                     &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 1.0, &
+          __RC__)
+
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'CCOVM',                                &
+          LONG_NAME  = 'cloud cover',                          &
+          UNITS      = 'fraction (dimensionless)',             &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 1.0, &
+          __RC__)
+
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'CDREM',                                   &
+          LONG_NAME  = 'cloud droplet effective radius',             &
+          UNITS      = '',                                     &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 1.0, &
+          __RC__)
+     
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'RLWPM',                                &
+          LONG_NAME  = 'cloud liquid water path',              &
+          UNITS      = '',                                     &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 1.0, &
+          __RC__)
+
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'CLDTCM',                               &
+          LONG_NAME  = 'cloud optical thickness',              &
+          UNITS      = '',                                     &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 1.0, &
+          __RC__)
+
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'OZ',                                   &
+          LONG_NAME  = 'ozone thickness',                      &
+          UNITS      = 'Dobson units',                         &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 1.0, &
+          __RC__)
+
+     call MAPL_AddExportSpec(GC,                               &
+          SHORT_NAME = 'WV',                                   &
+          LONG_NAME  = 'water vapor',                          &
+          UNITS      = 'cm',                                   &
+          DIMS       = MAPL_DimsTileOnly,                      &
+          VLOCATION  = MAPL_VLocationNone,                     &
+          default    = 1.0, &
+          __RC__)
+
+  end if
+
+
+! and that penetrated below ocean model first layer
+  call MAPL_AddExportSpec(GC, SHORT_NAME = 'PEN_OCN' ,   CHILD_ID = WATER, RC=STATUS); VERIFY_(STATUS)
 
 !EOS
 
-  !call MAPL_AddConnectivity ( GC,   &
-  !     SHORT_NAME  = (/'FRZMLT'/),  &
-  !     DST_ID      = ICE,           &
-  !     SRC_ID      = WATER,         &
-  !     RC=STATUS  )
-  !VERIFY_(STATUS)
+  call MAPL_AddConnectivity ( GC,   &
+       SHORT_NAME  = (/'TSKINW','SSKINW'/),  &
+       DST_ID = ICE,                &
+       SRC_ID = WATER,              &
+       RC=STATUS  )
+  VERIFY_(STATUS)
 
   call MAPL_AddConnectivity ( GC,   &
-        !SHORT_NAME  = [character(len=9) :: &
-        !                'FRESH','FSALT','FHOCN',           &
-        !                'FRACI', 'FRACINEW','TFREEZE',     &
-        !                'DRUVRTHRU','DFUVRTHRU',           &
-        !                'DRPARTHRU','DFPARTHRU'],          &
        SHORT_NAME  = [character(len=8) :: 'FRACI', 'FRACINEW','TFREEZE'],     & 
        DST_ID = WATER,              &
        SRC_ID = ICE,                &
        RC=STATUS  )
   VERIFY_(STATUS)
-
-
 
 ! Set the Profiling timers
 ! ------------------------
@@ -1036,7 +971,6 @@ module GEOS_SaltwaterGridCompMod
     VERIFY_(STATUS)
     call MAPL_TimerAdd(GC,    name="RUN2"  ,                RC=STATUS)
     VERIFY_(STATUS)
-
 
 ! Set generic init and final methods
 ! ----------------------------------
@@ -1089,7 +1023,6 @@ module GEOS_SaltwaterGridCompMod
     type (ESMF_GridComp    ), pointer    :: GCS(:)
   
     integer                              :: I
-
 !=============================================================================
 
 ! Begin... 
@@ -1157,7 +1090,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! !DESCRIPTION: Periodically refreshes the sea-surface conditions
 
 !EOP
-
 
 ! ErrLog Variables
 
@@ -1276,7 +1208,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_TimerOn(MAPL,"TOTAL")
    call MAPL_TimerOn(MAPL,"RUN1" )
 
-
 ! Pointers to outputs
 !--------------------
 
@@ -1333,113 +1264,115 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    call MAPL_GetPointer(EXPORT,VNT   , 'VENT'    ,    RC=STATUS)
    VERIFY_(STATUS)
 
+!  Retrieve pointers to exports from all children except OBIO
    do I = 1, size(GCS)
+      if (trim(GCnames(I)) .ne. 'OBIO') then
 
-     if(associated(MOT2M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOT2M'  , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOQ2M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOQ2M'  , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOU2M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOU2M'  , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOV2M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOV2M'  , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOT10M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOT10M' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOQ10M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOQ10M' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOU10M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOU10M' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOV10M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOV10M' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOU50M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOU50M' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(MOV50M)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'MOV50M' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(TH)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'TH'     , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(QH)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'QH'     , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(UH)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'UH'     , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(VH)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'VH'     , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(CHT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'CHT'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(CQT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'CQT'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(CMT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'CMT'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(TST)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'TST'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(QST)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'QST'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(CNT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'CNT'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(CNT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'RIT'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(CNT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'RET'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(Z0O)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'Z0'     , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(Z0H)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'Z0H'    , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(GST)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'GUST'   , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(VNT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'VENT'   , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-
+         if(associated(MOT2M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOT2M'  , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOQ2M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOQ2M'  , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOU2M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOU2M'  , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOV2M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOV2M'  , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOT10M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOT10M' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOQ10M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOQ10M' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOU10M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOU10M' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOV10M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOV10M' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOU50M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOU50M' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(MOV50M)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'MOV50M' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(TH)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'TH'     , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(QH)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'QH'     , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(UH)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'UH'     , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(VH)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'VH'     , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(CHT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'CHT'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(CQT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'CQT'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(CMT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'CMT'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(TST)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'TST'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(QST)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'QST'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(CNT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'CNT'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(CNT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'RIT'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(CNT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'RET'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(Z0O)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'Z0'     , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(Z0H)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'Z0H'    , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(GST)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'GUST'   , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(VNT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'VENT'   , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+        endif 
+      endif 
    enddo
 
    NT = size(LONS)
@@ -1485,6 +1418,7 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
    if(associated( MOU2M))  MOU2M = 0.0
    if(associated( MOV2M))  MOV2M = 0.0
    if(associated(VNT)) VNT = 0.0
+   if(associated(GST)) GST = 0.0
 
 ! Call the childrens' RUN1
 !-------------------------
@@ -1597,7 +1531,6 @@ subroutine RUN1 ( GC, IMPORT, EXPORT, CLOCK, RC )
 
    RETURN_(ESMF_SUCCESS)
 
-
  end subroutine RUN1
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1620,7 +1553,6 @@ subroutine RUN2 ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! !DESCRIPTION: Periodically refreshes the sea-surface conditions
 
 !EOP
-
 
 ! ErrLog Variables
 
@@ -1733,21 +1665,11 @@ contains
    real, pointer, dimension(:  )  :: USTR3  => null()
    real, pointer, dimension(:  )  :: UUEX   => null()
    real, pointer, dimension(:  )  :: PSEX   => null()
+   real, pointer, dimension(:  )  :: TSKINI => null()
    real, pointer, dimension(:  )  :: FRI    => null()
    real, pointer, dimension(:  )  :: FRW    => null()
 
    real, pointer, dimension(:)    :: DISCHARGE   => null()
-
-   real, pointer, dimension(:  )  :: CO2SCEX     => null()
-   real, pointer, dimension(:,:)  :: DUDPEX      => null()
-   real, pointer, dimension(:,:)  :: DUWTEX      => null()
-   real, pointer, dimension(:,:)  :: DUSDEX      => null()
-   real, pointer, dimension(:,:)  :: BCDPEX      => null()
-   real, pointer, dimension(:,:)  :: BCWTEX      => null()
-   real, pointer, dimension(:,:)  :: OCDPEX      => null()
-   real, pointer, dimension(:,:)  :: OCWTEX      => null()
-   real, pointer, dimension(:,:)  :: FSWBANDEX   => null()
-   real, pointer, dimension(:,:)  :: FSWBANDNAEX => null()
 
 ! pointers to import
 
@@ -1755,17 +1677,6 @@ contains
    real, pointer, dimension(:)    :: UU => null()
    real, pointer, dimension(:)    :: FI => null()
    real, pointer, dimension(:)    :: DISCHARGE_IM => null()
-
-   real, pointer, dimension(:)    :: CO2SC     => null()
-   real, pointer, dimension(:,:)  :: DUDP      => null()
-   real, pointer, dimension(:,:)  :: DUWT      => null()
-   real, pointer, dimension(:,:)  :: DUSD      => null()
-   real, pointer, dimension(:,:)  :: BCDP      => null()
-   real, pointer, dimension(:,:)  :: BCWT      => null()
-   real, pointer, dimension(:,:)  :: OCDP      => null()
-   real, pointer, dimension(:,:)  :: OCWT      => null()
-   real, pointer, dimension(:,:)  :: FSWBAND   => null()
-   real, pointer, dimension(:,:)  :: FSWBANDNA => null()
 
 ! pointers to the childrens' export
    real, pointer, dimension(:)    :: TS        => null() 
@@ -1802,8 +1713,7 @@ contains
 
    integer                             :: N
    integer                             :: NSUB, I, K, L
-   integer                             :: DO_OBIO
-!!$   integer                             :: DO_GUEST
+   integer                             :: DO_CICE_THERMO
 
 !  -------------------------------------------------------------------
 
@@ -1812,7 +1722,7 @@ contains
 
    IAm =  trim(COMP_NAME) // "SALTWATERCORE"
 
-   call MAPL_GetResource ( MAPL, DO_OBIO,    Label="USE_OCEANOBIOGEOCHEM:",DEFAULT=0, RC=STATUS)
+   call MAPL_GetResource ( MAPL, DO_CICE_THERMO,     Label="USE_CICE_Thermo:" ,    DEFAULT=0, RC=STATUS)
    VERIFY_(STATUS)
 
 ! Pointers to inputs
@@ -1823,20 +1733,6 @@ contains
 !!$   if (DO_GUEST /= 0) then    
       call MAPL_GetPointer(IMPORT, DISCHARGE_IM, 'DISCHARGE', RC=STATUS); VERIFY_(STATUS)
 !!$   endif
-
-   if (DO_OBIO /= 0) then    
-      call MAPL_GetPointer(IMPORT,CO2SC  , 'CO2SC'  ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,DUDP   , 'DUDP'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,DUWT   , 'DUWT'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,DUSD   , 'DUSD'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,BCDP   , 'BCDP'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,BCWT   , 'BCWT'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,OCDP   , 'OCDP'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,OCWT   , 'OCWT'   ,    RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,FSWBAND ,'FSWBAND' ,   RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,FSWBANDNA,'FSWBANDNA', RC=STATUS); VERIFY_(STATUS)
-   endif
-
 
 ! Pointers to outputs
 !--------------------
@@ -1862,6 +1758,7 @@ contains
    call MAPL_GetPointer(EXPORT,HLWUP  , 'HLWUP'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,LWNDSRF, 'LWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SWNDSRF, 'SWNDSRF' ,    RC=STATUS); VERIFY_(STATUS)
+   call MAPL_GetPointer(EXPORT,TSKINI , 'TSKINICE',    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FRI    , 'FRACI'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,FRW    , 'FRACW'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,PENUVR , 'PENUVR'  ,    RC=STATUS); VERIFY_(STATUS)
@@ -1871,92 +1768,83 @@ contains
    call MAPL_GetPointer(EXPORT,FSURF  , 'FSURF'   ,    RC=STATUS); VERIFY_(STATUS)
    call MAPL_GetPointer(EXPORT,SWFLX  , 'SWFLX'   ,    RC=STATUS); VERIFY_(STATUS)
 
-
-!!$   if (DO_GUEST /= 0) then    
      call MAPL_GetPointer(EXPORT, DISCHARGE, 'DISCHARGE', RC=STATUS); VERIFY_(STATUS)
      if(associated(DISCHARGE)) DISCHARGE = DISCHARGE_IM
-!!$   endif
-
-   ! category dimensional exports
-   if (DO_OBIO /= 0) then    
-       call MAPL_GetPointer(EXPORT,CO2SCEX,    'CO2SC'   ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,DUDPEX ,    'DUDP'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,DUWTEX ,    'DUWT'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,DUSDEX ,    'DUSD'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,BCDPEX ,    'BCDP'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,BCWTEX ,    'BCWT'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,OCDPEX ,    'OCDP'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,OCWTEX ,    'OCWT'    ,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,FSWBANDEX,  'FSWBAND',     RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetPointer(EXPORT,FSWBANDNAEX,'FSWBANDNA',   RC=STATUS); VERIFY_(STATUS)
-   endif
 
    call MAPL_Get (MAPL, GCS=GCS, GIM=GIM, GEX=GEX, GCnames=GCnames,rc=STATUS)
    VERIFY_(STATUS)
 
    do I = 1, size(GCS)
-
-     if(associated(TST)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'TST'   , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(QST)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'QST'   , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(DELTS)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'DELTS' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(DELQS)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'DELQS' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(EVAPOUT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'EVAPOUT', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(SHOUT)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'SHOUT' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(HLATN)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'HLATN' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(HLWUP)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'HLWUP' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif 
-     if(associated(LWNDSRF)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'LWNDSRF', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
-     if(associated(SWNDSRF)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'SWNDSRF', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
-     if(associated(PENUVR)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'PENUVR', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
-     if(associated(PENUVF)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'PENUVF', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
-     if(associated(PENPAR)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'PENPAR', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
-     if(associated(PENPAF)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'PENPAF', alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
-     if(associated(FSURF)) then
-         call MAPL_GetPointer(GEX(I), dummy, 'FSURF' , alloc=.true., RC=STATUS)
-         VERIFY_(STATUS)
-     endif  
+      if (trim(GCnames(I)) .ne. 'OBIO') then
+         if(associated(TST)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'TST'   , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(QST)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'QST'   , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(DELTS)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'DELTS' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(DELQS)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'DELQS' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(EVAPOUT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'EVAPOUT', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(SHOUT)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'SHOUT' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(HLATN)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'HLATN' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(HLWUP)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'HLWUP' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif 
+         if(associated(LWNDSRF)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'LWNDSRF', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif  
+         if(associated(SWNDSRF)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'SWNDSRF', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif  
+         if(associated(PENUVR)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'PENUVR', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif  
+         if(associated(PENUVF)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'PENUVF', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif  
+         if(associated(PENPAR)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'PENPAR', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif  
+         if(associated(PENPAF)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'PENPAF', alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif  
+         if(associated(FSURF)) then
+            call MAPL_GetPointer(GEX(I), dummy, 'FSURF' , alloc=.true., RC=STATUS)
+            VERIFY_(STATUS)
+         endif
+      endif
    enddo
+
+   if(DO_CICE_THERMO /= 0) then
+      if(associated(TSKINI)) then
+         call MAPL_GetPointer(GEX(ICE), dummy, 'ISTSFC' , alloc=.true., RC=STATUS)
+         VERIFY_(STATUS)
+      endif
+   endif
 
 ! Call the childrens' RUN2
 !-------------------------
@@ -1986,6 +1874,17 @@ contains
     if(associated(FRI)) FRI = FRNEW(:,  ICE)
     if(associated(FRW)) FRW = FRNEW(:,WATER)
 
+    if(associated(TSKINI)) then
+       if(DO_CICE_THERMO /= 0) then
+          call MAPL_GetPointer(GEX(ICE), TSKINI, 'ISTSFC' ,  RC=STATUS)
+          VERIFY_(STATUS)
+          TSKINI = TSKINI + MAPL_TICE ! convert to K
+       else
+          call MAPL_GetPointer(GEX(ICE), TSKINI, 'TSKINI' ,  RC=STATUS)
+          VERIFY_(STATUS)
+       endif
+    endif
+
                             EMISS   = 0.0
                             ALBVR   = 0.0
                             ALBVF   = 0.0
@@ -2007,7 +1906,6 @@ contains
     if(associated(PENPAF )) PENPAF  = 0.0
     if(associated(FSURF  )) FSURF   = 0.0
     if(associated(SWFLX  )) SWFLX   = 0.0
-
 
 ! Cycle through sub-tiles aggregating fluxes
 !-------------------------------------------
@@ -2039,8 +1937,7 @@ contains
                                ! use updated ice fraction to aggregate albedos 
                                ! only relevant for coupled; AMIP sees the same fraction
                                ! albedo computed here only correct when solar alarm 
-                               ! is ringing (double check with Andrea!!!) 
-                               ! SA: Bin, Did you check w/her?
+                               ! is ringing
                                ALBVR   = ALBVR   + AVR    *FRNEW(:,N)
                                ALBVF   = ALBVF   + AVF    *FRNEW(:,N)
                                ALBNR   = ALBNR   + ANR    *FRNEW(:,N)
@@ -2087,21 +1984,8 @@ contains
     if(associated(TAUYO)) TAUYO = TYO
 
     if(associated(PSEX )) PSEX  = PS 
-    if(associated(USTR3)) USTR3 = sqrt(sqrt(TXO*TXO+TYO*TYO)/MAPL_RHO_SEAWATER)**3
+    if(associated(USTR3)) USTR3 = sqrt(sqrt(TXO*TXO+TYO*TYO)/water_RHO('salt_water'))**3
     if(associated(UUEX))  UUEX  = UU
-
-    if(DO_OBIO/=0) then
-       if  (  associated(CO2SCEX)      )  CO2SCEX      =  CO2SC
-       if  (  associated(DUDPEX)       )  DUDPEX       =  DUDP
-       if  (  associated(DUWTEX)       )  DUWTEX       =  DUWT
-       if  (  associated(DUSDEX)       )  DUSDEX       =  DUSD
-       if  (  associated(BCDPEX)       )  BCDPEX       =  BCDP
-       if  (  associated(BCWTEX)       )  BCWTEX       =  BCWT
-       if  (  associated(OCDPEX)       )  OCDPEX       =  OCDP
-       if  (  associated(OCWTEX)       )  OCWTEX       =  OCWT
-       if  (  associated(FSWBANDEX)    )  FSWBANDEX    =  FSWBAND
-       if  (  associated(FSWBANDNAEX)  )  FSWBANDNAEX  =  FSWBANDNA
-    endif
 
 !  All done with SALTWATERCORE
 !-----------------------------
@@ -2113,7 +1997,6 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end subroutine RUN2
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

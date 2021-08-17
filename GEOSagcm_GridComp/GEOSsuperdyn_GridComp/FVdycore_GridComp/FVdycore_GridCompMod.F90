@@ -1,4 +1,4 @@
-!  $Id$
+!  $Id: FVdycore_GridCompMod.F90,v 1.268.106.1.2.1 2019/07/23 15:32:49 mmanyin Exp $
 
 #include "MAPL_Generic.h"
 
@@ -177,7 +177,7 @@
 ! !USES:
 
    use ESMF                ! ESMF base class
-   use MAPL_Mod            ! GEOS base class
+   use MAPL                ! GEOS base class
    use G3_MPI_Util_Mod
    use dynamics_vars, only : T_TRACERS, T_FVDYCORE_VARS, &
                              T_FVDYCORE_GRID, T_FVDYCORE_STATE
@@ -2048,9 +2048,9 @@ contains
   NPRYZ_Y = NY
   NPRYZ_Z = NX
 
-  ASSERT_( NPRXY_X>0 .AND. NPRXY_Y>0          )
-  ASSERT_( NPRYZ_Y>0 .AND. NPRYZ_Z>0          )
-  ASSERT_( NPRXY_X*NPRXY_Y == NPRYZ_Y*NPRYZ_Z )
+  _ASSERT( NPRXY_X>0 .AND. NPRXY_Y>0          ,'needs informative message')
+  _ASSERT( NPRYZ_Y>0 .AND. NPRYZ_Z>0          ,'needs informative message')
+  _ASSERT( NPRXY_X*NPRXY_Y == NPRYZ_Y*NPRYZ_Z ,'needs informative message')
 
   call MAPL_GetResource( MAPL, force_2d, 'force_2d:', default=0, RC=STATUS )
   VERIFY_(STATUS)
@@ -2128,9 +2128,9 @@ contains
 
 ! Other assertions
 !
-  ASSERT_(maxval(IMXY)>0 .AND. maxval(JMXY)>0)
-  ASSERT_(maxval(JMYZ)>0 .AND. maxval(KMYZ)>0)
-  ASSERT_(DT > 0.0                           )
+  _ASSERT(maxval(IMXY)>0 .AND. maxval(JMXY)>0,'needs informative message')
+  _ASSERT(maxval(JMYZ)>0 .AND. maxval(KMYZ)>0,'needs informative message')
+  _ASSERT(DT > 0.0                           ,'needs informative message')
 
   call WRITE_PARALLEL('Dynamics PE Layout')
   call WRITE_PARALLEL(IMG        ,format='("IM_Global: ",(   I4))')
@@ -2213,14 +2213,14 @@ contains
          !      if needed, we could compute, ks by count(BK==0.0)
          !      then FV will try to run slightly more efficient code
          !      So far, GEOS-5 has used ks = 0
-  ASSERT_(ks <= KM+1)
+  _ASSERT(ks <= KM+1,'needs informative message')
   call WRITE_PARALLEL(ks                          , &
      format='("Number of true pressure levels =", I5)'   )
 
 !
 ! Make sure that IM, JM, KM are the sums of the (exclusive) dist.
 !
-  ASSERT_(jm == SUM(JMYZ))
+  _ASSERT(jm == SUM(JMYZ),'needs informative message')
 
 !
 !
@@ -2475,7 +2475,7 @@ end subroutine FV_INITSTATE
     integer  :: NKE, NPHI
     integer  :: NUMVARS
     integer  :: ifirstxy, ilastxy, jfirstxy, jlastxy
-    integer  :: I, J, K, L, n
+    integer  :: I, J, K, L, n, pos
     logical, parameter :: convt = .false. ! Until this is run with full physics
     logical  :: is_ringing
 
@@ -2908,8 +2908,11 @@ end subroutine FV_INITSTATE
       call PULL_Q ( STATE, IMPORT, qqq, NXQ, rc )
 
       do k=1,size(names)
-         if( trim(names(k))=='OX' ) then
-            ooo = vars%tracer(k)
+         pos = index(names(k),'::')
+         if(pos > 0) then
+           if( (names(k)(pos+2:))=='OX' ) then
+              ooo = vars%tracer(k)
+           endif
          endif
          if( trim(names(k))=='Q'  ) then
             qqq = vars%tracer(k)
@@ -3223,12 +3226,15 @@ end subroutine FV_INITSTATE
 
                   ox = 0.0d0  ! Initialize in case no OX advection
       do k=1,size(names)
-         if( trim(names(k))=='OX' ) then
+         pos = index(names(k),'::')
+         if(pos > 0) then
+           if( (names(k)(pos+2:))=='OX' ) then
              if ( ooo%is_r4 ) then
                   ox = ooo%content_r4
              else
                   ox = ooo%content
              endif
+           endif
          endif
          if( trim(names(k))=='Q'  ) then
              if ( qqq%is_r4 ) then
@@ -3459,12 +3465,15 @@ end subroutine FV_INITSTATE
 !--------------------------------------------------------------------
 
       do k=1,size(names)
-         if( trim(names(k))=='OX' ) then
+         pos = index(names(k),'::')
+         if(pos > 0) then
+           if( (names(k)(pos+2:))=='OX' ) then
              if ( ooo%is_r4 ) then
                   ox = ooo%content_r4
              else
                   ox = ooo%content
              endif
+           endif
          endif
          if( trim(names(k))=='Q'  ) then
              if ( qqq%is_r4 ) then
@@ -3659,12 +3668,15 @@ end subroutine FV_INITSTATE
       if( associated(doxdt) ) then
           doxdt = 0.0
           do N = 1,size(names)
-             if( trim(names(N)).eq.'OX' ) then
+             pos = index(names(N),'::')
+             if(pos > 0) then
+               if( (names(N)(pos+2:))=='OX' ) then
                  if( state%vars%tracer(N)%is_r4 ) then 
                      doxdt = doxdt - state%vars%tracer(N)%content_r4
                  else
                      doxdt = doxdt - state%vars%tracer(N)%content
                  endif
+               endif
              endif
           enddo
       endif
@@ -3726,7 +3738,9 @@ end subroutine FV_INITSTATE
       if( associated(temp2D) ) then
           temp2d = 0.0
           do N = 1,size(names)
-             if( trim(names(N)).eq.'OX' ) then
+             pos = index(names(N),'::')
+             if(pos > 0) then
+               if( (names(N)(pos+2:))=='OX' ) then
                  if( state%vars%tracer(N)%is_r4 ) then 
                      do k=1,km
                      temp2d = temp2d - state%vars%tracer(N)%content_r4(:,:,k)*delp(:,:,k)
@@ -3736,6 +3750,7 @@ end subroutine FV_INITSTATE
                      temp2d = temp2d - state%vars%tracer(N)%content(:,:,k)*delp(:,:,k)
                      enddo
                  endif
+               endif
              endif
           enddo
       endif
@@ -4062,12 +4077,15 @@ end subroutine FV_INITSTATE
 
       if( associated(doxdt) ) then
           do N = 1,size(names)
-             if( trim(names(N)).eq.'OX' ) then
+             pos = index(names(N),'::')
+             if(pos > 0) then
+               if( (names(N)(pos+2:))=='OX' ) then
                  if( state%vars%tracer(N)%is_r4 ) then 
                      doxdt = doxdt + state%vars%tracer(N)%content_r4
                  else
                      doxdt = doxdt + state%vars%tracer(N)%content
                  endif
+               endif
              endif
           enddo
           doxdt = doxdt/dt
@@ -4129,7 +4147,9 @@ end subroutine FV_INITSTATE
       VERIFY_(STATUS)
       if( associated(temp2D) ) then
           do N = 1,size(names)
-             if( trim(names(N)).eq.'OX' ) then
+             pos = index(names(N),'::')
+             if(pos > 0) then
+               if( (names(N)(pos+2:))=='OX' ) then
                  if( state%vars%tracer(N)%is_r4 ) then 
                      do k=1,km
                      temp2d = temp2d + state%vars%tracer(N)%content_r4(:,:,k)*delp(:,:,k)
@@ -4139,6 +4159,7 @@ end subroutine FV_INITSTATE
                      temp2d = temp2d + state%vars%tracer(N)%content(:,:,k)*delp(:,:,k)
                      enddo
                  endif
+               endif
              endif
           enddo
           temp2d = temp2d * (MAPL_O3MW/MAPL_AIRMW) / (MAPL_GRAV*DT)
@@ -6119,7 +6140,7 @@ subroutine Coldstart(gc, import, export, clock, rc)
        VERIFY_(STATUS)
     enddo
 
-   ASSERT_(ANY(AK /= 0.0) .or. ANY(BK /= 0.0))
+   _ASSERT(ANY(AK /= 0.0) .or. ANY(BK /= 0.0),'needs informative message')
     do L=lbound(Ptr3,3),ubound(Ptr3,3)
        Ptr3(:,:,L) = AK(L) + BK(L)*MAPL_P00
     enddo

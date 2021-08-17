@@ -11,7 +11,8 @@ endif ()
 esma_add_library (${this}
   SRCS ${SRCS}
   SUBCOMPONENTS @mom
-  DEPENDENCIES MAPL_Base
+  DEPENDENCIES MAPL
+  TYPE SHARED
   )
 
 # Specs for r8 version

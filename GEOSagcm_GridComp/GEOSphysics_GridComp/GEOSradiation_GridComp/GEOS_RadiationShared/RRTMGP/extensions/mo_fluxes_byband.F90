@@ -16,7 +16,9 @@
 !    This implementation provides band-by-band flux profiles
 !
 module mo_fluxes_byband
-  use mo_rte_kind,   only: wp
+  use mo_rte_kind,      only: wp
+  use mo_rte_config,    only: check_extents
+  use mo_rte_util_array,only: extents_are
   use mo_fluxes,        only: ty_fluxes, ty_fluxes_broadband
   use mo_optical_props, only: ty_optical_props
   use mo_fluxes_byband_kernels, &
@@ -48,12 +50,13 @@ contains
     character(len=128)                               :: error_msg
     ! ------
     integer :: ncol, nlev, ngpt, nbnd
+    integer, dimension(2, spectral_disc%get_nband()) :: band_lims
     ! ------
     ncol = size(gpt_flux_up, DIM=1)
     nlev = size(gpt_flux_up, DIM=2)
     ngpt = spectral_disc%get_ngpt()
     nbnd = spectral_disc%get_nband()
-
+    band_lims(:,:) = spectral_disc%get_band_lims_gpoint()
 
     ! Compute broadband fluxes
     !   This also checks that input arrays are consistently sized
@@ -67,37 +70,24 @@ contains
     end if
 
     ! Check sizes of output arrays
-    if(associated(this%bnd_flux_up)) then
-      if(any([size(this%bnd_flux_up, 1) /= ncol,  &
-              size(this%bnd_flux_up, 2) /= nlev,  &
-              size(this%bnd_flux_up, 3) /= nbnd])) then
-        error_msg = "reduce: bnd_flux_up array incorrectly sized (can't compute net flux either)"
-        return
+    if(check_extents) then
+      if(associated(this%bnd_flux_up)) then
+        if(.not. extents_are(this%bnd_flux_up, ncol, nlev, nbnd)) &
+          error_msg = "reduce: bnd_flux_up array incorrectly sized (can't compute net flux either)"
       end if
-    end if
-    if(associated(this%bnd_flux_dn)) then
-      if(any([size(this%bnd_flux_dn, 1) /= ncol,  &
-              size(this%bnd_flux_dn, 2) /= nlev,  &
-              size(this%bnd_flux_dn, 3) /= nbnd])) then
-        error_msg = "reduce: bnd_flux_dn array incorrectly sized (can't compute net flux either)"
-        return
+      if(associated(this%bnd_flux_dn)) then
+        if(.not. extents_are(this%bnd_flux_dn, ncol, nlev, nbnd)) &
+          error_msg = "reduce: bnd_flux_dn array incorrectly sized (can't compute net flux either)"
       end if
-    end if
-    if(associated(this%bnd_flux_dn_dir)) then
-      if(any([size(this%bnd_flux_dn_dir, 1) /= ncol,  &
-              size(this%bnd_flux_dn_dir, 2) /= nlev,  &
-              size(this%bnd_flux_dn_dir, 3) /= nbnd])) then
-        error_msg = "reduce: bnd_flux_dn_dir array incorrectly sized"
-        return
+      if(associated(this%bnd_flux_dn_dir)) then
+        if(.not. extents_are(this%bnd_flux_dn_dir, ncol, nlev, nbnd)) &
+          error_msg = "reduce: bnd_flux_dn_dir array incorrectly sized"
       end if
-    end if
-    if(associated(this%bnd_flux_net)) then
-      if(any([size(this%bnd_flux_net, 1) /= ncol,  &
-              size(this%bnd_flux_net, 2) /= nlev,  &
-              size(this%bnd_flux_net, 3) /= nbnd])) then
-        error_msg = "reduce: bnd_flux_net array incorrectly sized (can't compute net flux either)"
-        return
+      if(associated(this%bnd_flux_net)) then
+        if(.not. extents_are(this%bnd_flux_net, ncol, nlev, nbnd)) &
+          error_msg = "reduce: bnd_flux_net array incorrectly sized (can't compute net flux either)"
       end if
+      if(error_msg /= "") return 
     end if
     !
     ! Self-consistency -- shouldn't be asking for direct beam flux if it isn't supplied
@@ -107,20 +97,21 @@ contains
     end if
 
     ! -------
+    !$acc enter data copyin(band_lims)
     ! Band-by-band fluxes
     ! Up flux
     if(associated(this%bnd_flux_up)) then
-      call sum_byband(ncol, nlev, ngpt, nbnd, spectral_disc%get_band_lims_gpoint(), gpt_flux_up,     this%bnd_flux_up    )
+      call sum_byband(ncol, nlev, ngpt, nbnd, band_lims, gpt_flux_up,     this%bnd_flux_up    )
     end if
 
     ! -------
     ! Down flux
     if(associated(this%bnd_flux_dn)) then
-      call sum_byband(ncol, nlev, ngpt, nbnd, spectral_disc%get_band_lims_gpoint(), gpt_flux_dn,     this%bnd_flux_dn    )
+      call sum_byband(ncol, nlev, ngpt, nbnd, band_lims, gpt_flux_dn,     this%bnd_flux_dn    )
     end if
 
     if(associated(this%bnd_flux_dn_dir)) then
-      call sum_byband(ncol, nlev, ngpt, nbnd, spectral_disc%get_band_lims_gpoint(), gpt_flux_dn_dir, this%bnd_flux_dn_dir)
+      call sum_byband(ncol, nlev, ngpt, nbnd, band_lims, gpt_flux_dn_dir, this%bnd_flux_dn_dir)
     end if
 
     ! -------
@@ -133,9 +124,10 @@ contains
       if(associated(this%bnd_flux_dn) .and. associated(this%bnd_flux_up)) then
         call net_byband(ncol, nlev,       nbnd,                             this%bnd_flux_dn, this%bnd_flux_up, this%bnd_flux_net)
       else
-        call net_byband(ncol, nlev, ngpt, nbnd, spectral_disc%get_band_lims_gpoint(), gpt_flux_dn, gpt_flux_up, this%bnd_flux_net)
+        call net_byband(ncol, nlev, ngpt, nbnd, band_lims, gpt_flux_dn, gpt_flux_up, this%bnd_flux_net)
       end if
     end if
+    !$acc exit data delete(band_lims)
   end function reduce_byband
   ! --------------------------------------------------------------------------------------
   ! Are any fluxes desired from this set of g-point fluxes? We can tell because memory will

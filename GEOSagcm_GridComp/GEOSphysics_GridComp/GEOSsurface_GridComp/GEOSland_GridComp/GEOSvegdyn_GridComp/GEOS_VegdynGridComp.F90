@@ -44,8 +44,7 @@ module GEOS_VegdynGridCompMod
 ! !USES: 
 
   use ESMF
-  use MAPL_Mod
-
+  use MAPL
   implicit none
   private
 
@@ -55,16 +54,14 @@ module GEOS_VegdynGridCompMod
 
 !EOP
 
-  integer :: NUM_ENSEMBLE
-  integer :: IGNORE_HEIGHTS  ! Do not use JPL lidar veg heights
   integer, parameter		     :: NTYPS = MAPL_NumVegTypes
   real,    dimension(   NTYPS)       :: VGRT
-  real,    dimension(   NTYPS)       :: VGZ2   ! VGZ2 replaces lidar heights with old values,
-                                               ! if IGNORE_HEIGHTS == 1
+  ! real,    dimension(   NTYPS)       :: VGZ2   
 
   data VGRT  / 19700., 7000., 9400., 7000., 7000., 14000./
-  data VGZ2 / 35.0, 20.0, 17.0, 0.6, 0.5, 0.6/ ! Dorman and Sellers (1989)
-  
+  ! commented out legacy look-up table for veg heights, which are now always from bcs via restarts, - reichle, 17 March 2020
+  ! data VGZ2 / 35.0, 20.0, 17.0, 0.6, 0.5, 0.6/ ! Dorman and Sellers (1989)   
+  real, pointer :: LAIens0(:),GRNens0(:), NDVIens0(:), ROOTLens0(:)  
 contains
 
 !BOP
@@ -135,20 +132,11 @@ contains
 ! -----------------------------------------------------------
 ! Get the intervals
 ! -----------------------------------------------------------
-    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS) 
 
     !call MAPL_GetResource ( MAPL,DT, Label="RUN_DT:", RC=STATUS)
     !VERIFY_(STATUS)
 
     !RUN_DT = nint(DT)
-
-   
-! -----------------------------------------------------------
-! Use Simard et al. canopy height data, or overwrite?
-! -----------------------------------------------------------     
-    call MAPL_GetResource ( MAPL, IGNORE_HEIGHTS, Label="IGNORE_VEG_HEIGHTS:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS) 
     
 ! -----------------------------------------------------------
 ! At the moment, this will refresh when the land parent 
@@ -319,10 +307,11 @@ contains
 
     character(len=ESMF_MAXSTR)         :: LAIFile
     character(len=ESMF_MAXSTR)         :: GRNFile
-    character(len=ESMF_MAXSTR)         :: LAIlabel
-    character(len=ESMF_MAXSTR)         :: GREENlabel
     character(len=ESMF_MAXSTR)         :: NDVIFile
-    character(len=ESMF_MAXSTR)         :: NDVIlabel
+    character(len=ESMF_MAXSTR)         :: LAItpl
+    character(len=ESMF_MAXSTR)         :: GRNtpl
+    character(len=ESMF_MAXSTR)         :: NDVItpl
+    integer                            :: NUM_LDAS_ENSEMBLE, ens_id_width, ldas_ens_id, ldas_first_ens_id
 
 ! Get the target components name and set-up traceback handle.
 ! -----------------------------------------------------------
@@ -343,28 +332,30 @@ contains
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, RC=STATUS)
     VERIFY_(STATUS) 
 
+    call MAPL_GetResource ( MAPL, NUM_LDAS_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, ldas_first_ens_id, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
+    ldas_ens_id = ldas_first_ens_id 
+
 ! -----------------------------------------------------------
 ! Get file names from configuration
 ! -----------------------------------------------------------
-
-    LAIlabel='LAI_FILE:'
-    GREENlabel='GREEN_FILE:'
-    NDVIlabel='NDVI_FILE:'
-    if(NUM_ENSEMBLE > 1) then
-        !comp_name should be vegdynxxxx....
-        LAIlabel='LAI'//comp_name(7:10)//'_FILE:'
-        GREENlabel='GREEN'//comp_name(7:10)//'_FILE:'
-        NDVIlabel='NDVI'//comp_name(7:10)//'_FILE:'
+    if(NUM_LDAS_ENSEMBLE > 1) then
+       !for GEOSldas, the comp_name should be vegdynxxxx....
+       read(comp_name(7:7+ens_id_width-1), *) ldas_ens_id
     endif
 
-    call MAPL_GetResource(MAPL, LAIFILE, label = trim(LAIlabel), &
-         default = 'lai.dat', RC=STATUS )
+    call MAPL_GetResource(MAPL, LAIFILE, label = 'LAI_FILE:', &
+        default = 'lai.dat', RC=STATUS )
     VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, GRNFILE, label = trim(GREENlabel), &
+    call MAPL_GetResource(MAPL, GRNFILE, label = 'GREEN_FILE:', &
          default = 'green.dat', RC=STATUS )
     VERIFY_(STATUS)
-    call MAPL_GetResource(MAPL, NDVIFILE, label = trim(NDVIlabel), &
-         default = 'ndvi.dat', RC=STATUS )
+    call MAPL_GetResource(MAPL, NDVIFILE, label = 'NDVI_FILE:', &
+        default = 'ndvi.dat', RC=STATUS )
     VERIFY_(STATUS)
 
 ! get pointers to internal variables
@@ -389,11 +380,21 @@ contains
     call MAPL_GetPointer(EXPORT, NDVI,   'NDVI',  RC=STATUS)
     VERIFY_(STATUS)
 
+    if (NUM_LDAS_ENSEMBLE > 1 .and. ldas_ens_id > ldas_first_ens_id) then
+       if(associated(LAI))  LAI   = LAIens0  
+       if(associated(GRN))  GRN   = GRNens0  
+       if(associated(NDVI)) NDVI  = NDVIens0 
+       if(associated(ROOTL))ROOTL = ROOTLens0
+       call MAPL_TimerOff(MAPL,"TOTAL")
+       RETURN_(ESMF_SUCCESS)
+    endif
+
 ! Do the lai greeness and ndvi interpolation
 ! ------------------------------------------
 
     call ESMF_ClockGet  ( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
     VERIFY_(STATUS)
+
     call MAPL_ReadForcing(MAPL,'LAI',LAIFILE,CURRENT_TIME,LAI,ON_TILES=.true.,RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_ReadForcing(MAPL,'GRN',GRNFILE,CURRENT_TIME,GRN,ON_TILES=.true.,RC=STATUS)
@@ -407,18 +408,19 @@ contains
 
     ROOTL = VGRT(nint(ITY))
 
-! overwrite canopy heights?
-! -------------------------    
-    if (IGNORE_HEIGHTS == 1) then
-       Z2CH = VGZ2(nint(ITY)) 
-    end if
-    
+    if (NUM_LDAS_ENSEMBLE > 1 .and. ldas_ens_id == ldas_first_ens_id) then
+       LAIens0  => LAI
+       GRNens0  => GRN
+       NDVIens0 => NDVI
+       ROOTLens0=> ROOTL
+    endif
+
 !  All done
 ! ---------
 
     call MAPL_TimerOff(MAPL,"TOTAL")
-
     RETURN_(ESMF_SUCCESS)
+
   end subroutine RUN
 
 end module GEOS_VegdynGridCompMod
