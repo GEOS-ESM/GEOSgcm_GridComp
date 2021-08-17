@@ -86,8 +86,9 @@ contains
       ! Initializations
       real, parameter :: stpfac = 296. / 1013. 
 
-      ! locate tropopause: laytrop in [1,nlayers-1] required
-      ! layer 1 is lowest, layer nlayers is at top of model atmosphere
+      ! Locate tropopause: laytrop in [1,nlayers-1] required.
+      ! Layer 1 is lowest, layer nlayers is at top of model atmos.
+      ! Note: plog(laytrop) >= 4.56, but plog(laytrop+1) < 4.56.
       laytrop = 0
       do icol = 1,ncol
          do lay = 1,nlayers
@@ -104,7 +105,7 @@ contains
          do lay = 1, nlayers
 
             ! Find the two reference pressures on either side of the
-            ! layer pressure.  Store them in JP and JP1. Store in FP the
+            ! layer pressure. Store them in JP and JP1. Store in FP the
             ! fraction of the difference (in ln(pressure)) between these
             ! two values that the layer pressure lies. Notes:
             ! :: jp is an index into pref and preflog.
@@ -118,6 +119,9 @@ contains
             ! :: jp limited to [1,58] even though pref and preflog have
             !    dimension (59). So jp+1 is always a valid index into
             !    these arrays.
+            ! :: jp=13 has preflog=4.56 (pref~95.6hPa)
+            ! :: preflog(jp) >= plog > preflog(jp+1)
+            ! :: fp in [0,1) for this range (0 at plog=preflog(jp)).
 
             plog = log(pavel(lay,icol))
             jp(lay,icol) = int(36. - 5*(plog+0.04 ))
@@ -127,7 +131,7 @@ contains
                jp(lay,icol) = 58
             endif
             jp1 = jp(lay,icol) + 1
-            fp = 5. * (preflog(jp(lay,icol) ) - plog)
+            fp = 5. * (preflog(jp(lay,icol)) - plog)
 
             ! Determine, for each reference pressure (JP and JP1), which
             ! reference temperature (these are different for each  
@@ -135,7 +139,15 @@ contains
             ! not exceed it. Store these indices in JT and JT1, resp.
             ! Store in FT (resp. FT1) the fraction of the way between JT
             ! (JT1) and the next highest reference temperature that the 
-            ! layer temperature falls.
+            ! layer temperature falls. Notes:
+            ! :: jt,jt1 in [1,4], each index being a 15K increment, with
+            !    1 and 4 being endpoint catch-alls. E.g., for jp:
+            !      jt=1 => tavel = tref(jp) + (-inf,-15);
+            !      jt=2 => tavel = tref(jp) + [ -15,  0);
+            !      jt=3 => tavel = tref(jp) + [   0, 15).
+            !      jt=4 => tavel = tref(jp) + [  15,inf);
+            !    These are the reference temperatures (diff for each jp)
+            !    discussed in the paragraph above.
 
             jt(lay,icol) = int(3. + (tavel(lay,icol)-tref(jp(lay,icol)))/15.)
             if (jt(lay,icol) < 1) then
