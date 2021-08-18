@@ -33,11 +33,11 @@ PROGRAM mk_GEOSldasRestarts
   ! Carbon model specifics
   ! ----------------------
 
-  character*256 :: Usage="mk_GEOSldasRestarts.x -a SPONSORCODE -b BCSDIR -d YYYYMMDD  -e EXPNAME -j JOBFILE -k ENS -l EXPDIR -m MODEL -r REORDER -s SURFLAY -t TILFILE -p PARAMFILE"
+  character*256 :: Usage="mk_GEOSldasRestarts.x -a SPONSORCODE -b BCSDIR -d YYYYMMDDHH  -e EXPNAME -j JOBFILE -k ENS -l EXPDIR -m MODEL -r REORDER -s SURFLAY -t TILFILE -p PARAMFILE -f RSTFILE"
   character*256 :: BCSDIR, SPONSORCODE, EXPNAME, EXPDIR, TILFILE, SFL, PFILE
   character*400 :: CMD
-  character*8   :: YYYYMMDD
-  character(len=:), allocatable :: model, catch_scaler
+  character*10  :: YYYYMMDDHH
+  character(len=:), allocatable :: model, catch_scaler, rstfile
 
   real, parameter :: ECCENTRICITY  = 0.0167
   real, parameter :: PERIHELION    = 102.0
@@ -133,7 +133,7 @@ PROGRAM mk_GEOSldasRestarts
   nxt = 1
   
   call getarg(nxt,arg)
-
+  rstfile = 'NONE'
   do while(arg(1:1)=='-')
 
      opt=arg(2:2)
@@ -150,7 +150,7 @@ PROGRAM mk_GEOSldasRestarts
      case ('b')
         BCSDIR = trim(arg)
      case ('d')
-        YYYYMMDD = trim(arg)
+        YYYYMMDDHH = trim(arg)
      case ('e')
         EXPNAME = trim(arg)
      case ('h')
@@ -163,7 +163,7 @@ PROGRAM mk_GEOSldasRestarts
         print *,'   '
         print *,'(2) to reorder an LDASsa restart file to the order of the BCs for use in an GCM experiment :'
         print *,'--------------------------------------------------------------------------------------------'
-        print *,'mpirun -np 1 bin/mk_GEOSldasRestarts.x -b BCSDIR  -d YYYYMMDD -e EXPNAME -l EXPDIR -m MODEL -s SURFLAY(20/50) -r Y -t TILFILE -p PARAMFILE'
+        print *,'mpirun -np 1 bin/mk_GEOSldasRestarts.x -b BCSDIR  -d YYYYMMDDHH -e EXPNAME -l EXPDIR -m MODEL -s SURFLAY(20/50) -r Y -t TILFILE -p PARAMFILE'
         stop
      case ('j')
         JOBFILE = trim(arg)
@@ -182,6 +182,8 @@ PROGRAM mk_GEOSldasRestarts
         TILFILE =  trim(arg)
      case ('p')
         PFILE   =  trim(arg)
+     case ('f')
+        RSTFILE   =  trim(arg)
      case default
         print *, trim(Usage)
         call exit(1)
@@ -208,7 +210,7 @@ PROGRAM mk_GEOSldasRestarts
 
      ! This call is to reorder a LDASsa restart file (RESTART: 1)
 
-     call reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, ENS)
+     call reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, ENS, rstfile)
 
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
      call MPI_FINALIZE(mpierr)
@@ -218,7 +220,7 @@ PROGRAM mk_GEOSldasRestarts
 
    ! This call is to regrid LDASsa/GEOSldas restarts from a different grid (RESTART: 2)
    
-     call regrid_from_xgrid (SURFLAY, BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, PFILE)
+     call regrid_from_xgrid (SURFLAY, BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, PFILE, rstfile)
  
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
      call MPI_FINALIZE(mpierr)
@@ -307,12 +309,12 @@ contains
 
   ! *****************************************************************************
 
-  SUBROUTINE  regrid_from_xgrid (SURFLAY, BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, PFILE)
+  SUBROUTINE  regrid_from_xgrid (SURFLAY, BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, PFILE, rstfile)
 
     implicit none
 
     real, intent (in)         :: SURFLAY
-    character(*), intent (in) :: BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, PFILE
+    character(*), intent (in) :: BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, PFILE, rstfile
     character(256)            :: tile_coord, vname
     character(300)            :: rst_file
     integer                   :: NTILES, nv, iv, i,j,k,n, nx, nz, ndims,dimSizes(3), NTILES_RST,nplus, STATUS,NCFID, req, filetype, OUTID
@@ -340,29 +342,37 @@ contains
     close (10, status = 'keep')  
 
     ! Determine whether LDASsa or GEOSldas
-    if(trim(MODEL) == 'catch') then
-       rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
-                   '.catch_internal_rst.'//trim(YYYYMMDD)//'_0000'  
-       inquire(file =  trim(rst_file), exist=fexist)
-       if (.not.fexist) then
-          rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'  &
-               //trim(ExpName)//'.ens'//ENS//'.catch_ldas_rst.'// &
-               YYYYMMDD(1:8)//'_0000z.bin'          
-          lendian = .false.
-       endif
-    else
-       rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
-            '.'//trim(MODEL)//'_internal_rst.'//trim(YYYYMMDD)//'_0000'
-       inquire(file =  trim(rst_file), exist=fexist)
-       if (.not. fexist) then
-          rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
-               '.ens'//ENS//'.'//trim(MODEL)//'_ldas_rst.'//trim(YYYYMMDD)//'_0000z'          
-          lendian = .false.
-       endif
+    if (trim(rstfile) == "NONE") then
+       if (trim(MODEL) == 'catch') then
+          rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDDHH(1:4)//'/M'//YYYYMMDDHH(5:6)//'/'//trim(ExpName)//&
+                   '.catch_internal_rst.'//YYYYMMDDHH(1:8)//'_'//YYYYMMDDHH(9:10)//'00'  
+          inquire(file =  trim(rst_file), exist=fexist)
+          if (.not.fexist) then
+             rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDDHH(1:4)//'/M'//YYYYMMDDHH(5:6)//'/'  &
+                //trim(ExpName)//'.ens'//ENS//'.catch_ldas_rst.'// &
+                YYYYMMDDHH(1:8)//'_'//YYYYMMDDHH(9:10)//'00z.bin'          
+             lendian = .false.
+          endif
+       else !catchcn
+          rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDDHH(1:4)//'/M'//YYYYMMDDHH(5:6)//'/'//trim(ExpName)//&
+              '.'//trim(MODEL)//'_internal_rst.'//YYYYMMDDHH(1:8)//'_'//YYYYMMDDHH(9:10)//'00'
+          inquire(file =  trim(rst_file), exist=fexist)
+          if (.not. fexist) then
+             rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDDHH(1:4)//'/M'//YYYYMMDDHH(5:6)//'/'//trim(ExpName)//&
+               '.ens'//ENS//'.'//trim(MODEL)//'_ldas_rst.'//YYYYMMDDHH(1:8)//'_'//YYYYMMDDHH(9:10)//'00z'          
+             lendian = .false.
+          endif
+       endif ! catch
+    else ! rstfile is provided
+       rst_file = rstfile
+       if (index(rst_file, "_ldas_rst") /=0) lendian = .false.
+    endif
+
+    if (index(MODEL, 'catchcn') /=0) then 
        call ldFmt%open(trim(rst_file) , pFIO_READ,rc=rc)
-        meta_data = ldFmt%read(rc=rc)
-        call ldFmt%close(rc=rc)
-        if(meta_data%get_dimension('unknown_dim3',rc=rc) == 105) then
+       meta_data = ldFmt%read(rc=rc)
+       call ldFmt%close(rc=rc)
+       if(meta_data%get_dimension('unknown_dim3',rc=rc) == 105) then
            clm45  = .true.
            VAR_COL = VAR_COL_CLM45 
            VAR_PFT = VAR_PFT_CLM45
@@ -374,6 +384,12 @@ contains
 
     ! Open input tile_coord
     tile_coord = trim(EXPDIR)//'rc_out/'//trim(expname)//'.ldas_tilecoord.bin'
+    inquire(file = trim(tile_coord), exist=fexist)
+    if ( .not. fexist ) then
+       print*, tile_coord // " file not exists"
+       stop " no tile_coord file"
+    endif
+
     if(lendian) then
        open (10,file =trim(tile_coord),status='old',form='unformatted', action = 'read')
     else
@@ -574,7 +590,7 @@ contains
            allocate (fveg_tmp (ntiles_rst,nveg))  
            allocate (DAYX   (NTILES))
 
-           READ(YYYYMMDD,'(I8)') AGCM_DATE 
+           READ(YYYYMMDDHH(1:8),'(I8)') AGCM_DATE 
            AGCM_YY = AGCM_DATE / 10000
            AGCM_MM = (AGCM_DATE - AGCM_YY*10000) / 100
            AGCM_DD = (AGCM_DATE - AGCM_YY*10000 - AGCM_MM*100)
@@ -692,12 +708,12 @@ contains
   
   ! *****************************************************************************
 
-  SUBROUTINE  reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, ENS)
+  SUBROUTINE  reorder_LDASsa_restarts (SURFLAY, BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, ENS, rstfile)
 
     implicit none
 
     real, intent (in)         :: SURFLAY
-    character(*), intent (in) :: BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, ENS
+    character(*), intent (in) :: BCSDIR, YYYYMMDDHH, EXPNAME, EXPDIR, MODEL, ENS, rstfile
     character(256)            :: tile_coord
     character(300)            :: rst_file, out_rst_file
     type(Netcdf4_FileFormatter) :: InFmt,OutFmt, ldFmt
@@ -713,11 +729,15 @@ contains
     character(len=:), pointer :: vname,dname
     logical :: fexist, bin_out = .false.
     character(len=:), allocatable :: ftype
-    
-    ftype = ''
-    if(trim(MODEL) == 'catch') ftype='.bin'
-    rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
-           '.ens'//ENS//'.'//trim(model)//'_ldas_rst.'//YYYYMMDD(1:8)//'_0000z'//trim(ftype)
+   
+    if (trim(rstfile) == "NONE") then 
+       ftype = ''
+       if(trim(MODEL) == 'catch') ftype='.bin'
+       rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDDHH(1:4)//'/M'//YYYYMMDDHH(5:6)//'/'//trim(ExpName)//&
+           '.ens'//ENS//'.'//trim(model)//'_ldas_rst.'//YYYYMMDDHH(1:8)//'_'//YYYYMMDDHH(9:10)//'00z'//trim(ftype)
+    else
+       rst_file = rstfile
+    endif
 
     inquire(file =  trim(rst_file), exist=fexist)
     if (.not. fexist) then
@@ -727,7 +747,7 @@ contains
        return
     endif
 
-    out_rst_file = trim(model)//ENS//'_internal_rst.'//trim(YYYYMMDD)
+    out_rst_file = trim(model)//ENS//'_internal_rst.'//YYYYMMDDHH(1:8)
 
     if (index(model,'catchcn') /=0) then
         call ldFmt%open(trim(rst_file) , pFIO_READ,rc=rc)
@@ -750,6 +770,12 @@ contains
    ! read NTILES from BCs and tile_coord from LDASsa experiment
 
     tile_coord = trim(EXPDIR)//'rc_out/'//trim(expname)//'.ldas_tilecoord.bin'
+    inquire(file = tile_coord, exist=fexist)
+    if (.not. fexist) then
+      print*, trim(tile_coord) // " file should be provided"
+      stop "no tile_coord file"
+    endif
+
     open (10,file =trim(tile_coord),status='old',form='unformatted',convert='big_endian')
     read (10) i
     if (i /= ntiles) then 
